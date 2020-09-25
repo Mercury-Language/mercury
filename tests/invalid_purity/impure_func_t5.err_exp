@@ -2,9 +2,12 @@ impure_func_t5.m:025: In clause for predicate `main'/2:
 impure_func_t5.m:025:   in argument 1 of functor `foo/1':
 impure_func_t5.m:025:   type error in unification of argument
 impure_func_t5.m:025:   and constant `get_counter'.
-impure_func_t5.m:025:   argument has type `((func int) = int)',
-impure_func_t5.m:025:   constant `get_counter' has type `(impure ((func int) =
-impure_func_t5.m:025:   int))'.
+impure_func_t5.m:025:   argument has type `func(
+impure_func_t5.m:025:     int
+impure_func_t5.m:025:   ) = int',
+impure_func_t5.m:025:   constant `get_counter' has type `impure func(
+impure_func_t5.m:025:     int
+impure_func_t5.m:025:   ) = int'.
 impure_func_t5.m:025:   The partial type assignment was:
 impure_func_t5.m:025:     Y_3: impure_func_t5.foo
 impure_func_t5.m:025:     DCG_0_5: io.state

@@ -175,6 +175,7 @@ SINGLEMODULE= \
 	ho_default_func_3 \
 	ho_default_func_4 \
 	ho_type_mode_bug \
+	ho_type_arity_bug \
 	ho_unique_error \
 	illtyped_compare \
 	impl_def_literal_syntax \

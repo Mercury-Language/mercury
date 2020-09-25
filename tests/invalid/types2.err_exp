@@ -4,7 +4,7 @@ types2.m:019:   error: undefined predicate `zzzzzzzz'/0.
 types2.m:020: In clause for predicate `q'/0:
 types2.m:020:   in argument 1 of call to predicate `types2.p'/1:
 types2.m:020:   type error: argument has type `int',
-types2.m:020:   expected type was `(pred)'.
+types2.m:020:   expected type was `pred'.
 types2.m:020:   The partial type assignment was:
 types2.m:020:     V_1: (pred)
 types2.m:020:     V_2: int

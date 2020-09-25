@@ -197,6 +197,7 @@
 :- import_module libs.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_to_term.
 :- import_module parse_tree.prog_out.
@@ -705,14 +706,17 @@ report_error_unif_var_var(Info, ClauseContext, UnifyContext, Context,
     unify_context_to_pieces(UnifyContext, [], UnifyContextPieces),
 
     VarSet = ClauseContext ^ tecc_varset,
+    get_inst_varset(ClauseContext, InstVarSet),
     MainPieces = [words("type error in unification of variable"),
         quote(mercury_var_to_name_only(VarSet, X)), nl,
         words("and variable"),
         quote(mercury_var_to_name_only(VarSet, Y)), suffix("."), nl,
         quote(mercury_var_to_name_only(VarSet, X))] ++
-        type_of_var_to_pieces(TypeAssignSet, X) ++ [suffix(","), nl,
+        type_of_var_to_pieces(InstVarSet, TypeAssignSet, X) ++
+            [suffix(","), nl,
         quote(mercury_var_to_name_only(VarSet, Y))] ++
-        type_of_var_to_pieces(TypeAssignSet, Y) ++ [suffix("."), nl],
+        type_of_var_to_pieces(InstVarSet, TypeAssignSet, Y) ++
+            [suffix("."), nl],
     type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
         VerboseComponents),
     Msg = simple_msg(Context,
@@ -728,6 +732,7 @@ report_error_lambda_var(Info, ClauseContext, UnifyContext, Context,
     unify_context_to_pieces(UnifyContext, [], UnifyContextPieces),
 
     VarSet = ClauseContext ^ tecc_varset,
+    get_inst_varset(ClauseContext, InstVarSet),
     Pieces1 = [words("type error in unification of")] ++
         argument_name_to_pieces(VarSet, Var) ++ [nl],
     (
@@ -746,7 +751,8 @@ report_error_lambda_var(Info, ClauseContext, UnifyContext, Context,
     ),
 
     Pieces3 = argument_name_to_pieces(VarSet, Var) ++
-        type_of_var_to_pieces(TypeAssignSet, Var) ++ [suffix(","), nl],
+        type_of_var_to_pieces(InstVarSet, TypeAssignSet, Var) ++
+        [suffix(","), nl],
 
     LambdaExprStr = "lambda expression has type",
     Pieces4a = [words(LambdaExprStr)],
@@ -797,15 +803,17 @@ report_error_functor_type(Info, UnifyContext, Context,
     unify_context_to_pieces(UnifyContext, [], UnifyContextPieces),
 
     VarSet = ClauseContext ^ tecc_varset,
+    get_inst_varset(ClauseContext, InstVarSet),
     MainPieces = [words("type error in unification of")] ++
         argument_name_to_pieces(VarSet, Var) ++ [nl, words("and")] ++
         functor_name_to_pieces(Functor, Arity) ++ [suffix("."), nl] ++
 
         argument_name_to_pieces(VarSet, Var) ++
-        type_of_var_to_pieces(TypeAssignSet, Var) ++ [suffix(","), nl] ++
+        type_of_var_to_pieces(InstVarSet, TypeAssignSet, Var) ++
+            [suffix(","), nl] ++
 
         functor_name_to_pieces(Functor, Arity) ++
-        type_of_functor_to_pieces(Functor, Arity, ConsDefnList) ++
+        type_of_functor_to_pieces(InstVarSet, Functor, Arity, ConsDefnList) ++
         [suffix("."), nl],
 
     ( if
@@ -835,6 +843,7 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
 
     ModuleInfo = ClauseContext ^ tecc_module_info,
     VarSet = ClauseContext ^ tecc_varset,
+    get_inst_varset(ClauseContext, InstVarSet),
     strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor),
     StrippedFunctorStr = functor_cons_id_to_string(ModuleInfo, VarSet,
         print_name_only, StrippedFunctor, Args),
@@ -851,7 +860,7 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
     then
         assoc_list.from_corresponding_lists(Args, ConsArgTypes, ArgExpTypes),
         TypeAssigns = list.map(get_caller_arg_assign, ArgsTypeAssignSet),
-        find_mismatched_args(1, ArgExpTypes, TypeAssigns,
+        find_mismatched_args(InstVarSet, 1, ArgExpTypes, TypeAssigns,
             [], RevSubsumesMismatches, [], RevNoSubsumeMismatches),
         % RevSubsumesMismatches will contain errors where the actual type
         % is e.g. list(T), while the expected type is list(some_actual_type).
@@ -889,15 +898,16 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
         then
             % If so, print out the type of `Var'.
             ResultTypePieces = argument_name_to_pieces(VarSet, Var) ++
-                type_of_var_to_pieces(TypeAssignSet, Var) ++
+                type_of_var_to_pieces(InstVarSet, TypeAssignSet, Var) ++
                 [suffix(","), nl]
         else
             ResultTypePieces = []
         ),
 
         AllTypesPieces = functor_name_to_pieces(Functor, Arity) ++
-            type_of_functor_to_pieces(Functor, Arity, ConsDefnList) ++
-            types_of_vars_to_pieces(Args, VarSet, TypeAssignSet),
+            type_of_functor_to_pieces(InstVarSet, Functor, Arity,
+                ConsDefnList) ++
+            types_of_vars_to_pieces(VarSet, InstVarSet, Args, TypeAssignSet),
         ErrorPieces = ResultTypePieces ++ AllTypesPieces,
         type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
             VerboseComponents)
@@ -947,22 +957,23 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
                 mismatch_subsumes   :: does_actual_subsume_expected
             ).
 
-:- pred find_mismatched_args(int::in, assoc_list(prog_var, mer_type)::in,
-    type_assign_set::in,
+:- pred find_mismatched_args(inst_varset::in, int::in,
+    assoc_list(prog_var, mer_type)::in, type_assign_set::in,
     list(mismatch_info)::in, list(mismatch_info)::out,
     list(mismatch_info)::in, list(mismatch_info)::out) is det.
 
-find_mismatched_args(_, [], _,
+find_mismatched_args(_, _, [], _,
         !RevSubsumesMismatches, !RevNoSubsumeMismatches).
-find_mismatched_args(CurArgNum, [Arg - ExpType | ArgExpTypes], TypeAssignSet,
-        !RevSubsumesMismatches, !RevNoSubsumeMismatches) :-
+find_mismatched_args(InstVarSet, CurArgNum, [Arg - ExpType | ArgExpTypes],
+        TypeAssignSet, !RevSubsumesMismatches, !RevNoSubsumeMismatches) :-
     % XXX When we get a test case in which the quadratic behavior of
     % get_all_type_stuffs_remove_dups is a performance issue, we should
     % try switching to get_all_type_stuffs without the remove_dups,
     % since the call to list.sort_and_remove_dups below should make it
     % semantically unnecessary.
     get_all_type_stuffs_remove_dups(TypeAssignSet, Arg, TypeStuffList),
-    list.foldl2(substitute_types_check_match(ExpType), TypeStuffList,
+    list.foldl2(substitute_types_check_match(InstVarSet, ExpType),
+        TypeStuffList,
         [], TypeMismatches0, no_type_stuff_matches, DoesSomeTypeStuffMatch),
     (
         DoesSomeTypeStuffMatch = some_type_stuff_matches
@@ -992,18 +1003,19 @@ find_mismatched_args(CurArgNum, [Arg - ExpType | ArgExpTypes], TypeAssignSet,
             )
         )
     ),
-    find_mismatched_args(CurArgNum + 1, ArgExpTypes, TypeAssignSet,
-        !RevSubsumesMismatches, !RevNoSubsumeMismatches).
+    find_mismatched_args(InstVarSet, CurArgNum + 1, ArgExpTypes,
+        TypeAssignSet, !RevSubsumesMismatches, !RevNoSubsumeMismatches).
 
 :- type does_some_type_stuff_match
     --->    no_type_stuff_matches
     ;       some_type_stuff_matches.
 
-:- pred substitute_types_check_match(mer_type::in, type_stuff::in,
+:- pred substitute_types_check_match(inst_varset::in,
+    mer_type::in, type_stuff::in,
     list(type_mismatch)::in, list(type_mismatch)::out,
     does_some_type_stuff_match::in, does_some_type_stuff_match::out) is det.
 
-substitute_types_check_match(ExpType, TypeStuff,
+substitute_types_check_match(InstVarSet, ExpType, TypeStuff,
         !TypeMismatches, !DoesSomeTypeStuffMatch) :-
     TypeStuff = type_stuff(ArgType, TVarSet, TypeBindings, ExternalTypeParams),
     apply_rec_subst_to_type(TypeBindings, ArgType, FullArgType),
@@ -1026,10 +1038,10 @@ substitute_types_check_match(ExpType, TypeStuff,
         else
             ActualSubsumesExpected = actual_does_not_subsume_expected
         ),
-        ExpectedPieces = type_to_pieces(add_quotes, FullExpType,
-            TVarSet, ExternalTypeParams),
-        ActualPieces = type_to_pieces(add_quotes, FullArgType,
-            TVarSet, ExternalTypeParams),
+        ExpectedPieces = type_to_pieces(add_quotes, TVarSet, InstVarSet,
+            ExternalTypeParams, FullExpType),
+        ActualPieces = type_to_pieces(add_quotes, TVarSet, InstVarSet,
+            ExternalTypeParams, FullArgType),
         TypeMismatch = type_mismatch_exp_act(ExpectedPieces, ActualPieces,
             ActualSubsumesExpected),
         !:TypeMismatches = [TypeMismatch | !.TypeMismatches]
@@ -1178,7 +1190,9 @@ report_error_var(Info, GoalContext, Context, Var, Type, TypeAssignSet)
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
 
-    get_all_transformed_type_stuffs(type_stuff_to_actual_expected(Type),
+    get_inst_varset(ClauseContext, InstVarSet),
+    get_all_transformed_type_stuffs(
+        type_stuff_to_actual_expected(InstVarSet, Type),
         TypeAssignSet, Var, ActualExpectedList0),
     list.sort_and_remove_dups(ActualExpectedList0, ActualExpectedList),
 
@@ -1337,10 +1351,13 @@ report_error_var_either_type(Info, ClauseContext, GoalContext, Context,
     % try switching to get_all_type_stuffs without the remove_dups,
     % since the two calls to list.sort_and_remove_dups below make it
     % semantically unnecessary.
+    get_inst_varset(ClauseContext, InstVarSet),
     get_all_type_stuffs_remove_dups(TypeAssignSet, Var, TypeStuffList),
-    ActualExpectedListA0 = list.map(type_stuff_to_actual_expected(TypeA),
+    ActualExpectedListA0 = list.map(
+        type_stuff_to_actual_expected(InstVarSet, TypeA),
         TypeStuffList),
-    ActualExpectedListB0 = list.map(type_stuff_to_actual_expected(TypeB),
+    ActualExpectedListB0 = list.map(
+        type_stuff_to_actual_expected(InstVarSet, TypeB),
         TypeStuffList),
     list.sort_and_remove_dups(ActualExpectedListA0, ActualExpectedListA),
     list.sort_and_remove_dups(ActualExpectedListB0, ActualExpectedListB),
@@ -1384,8 +1401,10 @@ report_error_arg_var(Info, ClauseContext, GoalContext, Context, Var,
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
 
+    get_inst_varset(ClauseContext, InstVarSet),
     get_arg_type_stuff(ArgTypeAssignSet, Var, ArgTypeStuffList),
-    ActualExpectedList0 = list.map(arg_type_stuff_to_actual_expected,
+    ActualExpectedList0 = list.map(
+        arg_type_stuff_to_actual_expected(InstVarSet),
         ArgTypeStuffList),
     list.sort_and_remove_dups(ActualExpectedList0, ActualExpectedList),
 
@@ -1697,10 +1716,11 @@ report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
     Pieces1 =
         [words("error: ambiguous overloading causes type ambiguity."), nl],
     VarSet = ClauseContext ^ tecc_varset,
+    get_inst_varset(ClauseContext, InstVarSet),
     type_assign_get_var_types(TypeAssign1, VarTypes1),
     vartypes_vars(VarTypes1, Vars1),
-    AmbiguityPieces = ambiguity_error_possibilities_to_pieces(Vars1, VarSet,
-        TypeAssign1, TypeAssign2),
+    AmbiguityPieces = ambiguity_error_possibilities_to_pieces(Vars1,
+        VarSet, InstVarSet, TypeAssign1, TypeAssign2),
     (
         AmbiguityPieces = [],
         Pieces2 = [],
@@ -1728,17 +1748,17 @@ add_qualifiers_reminder = [
     words("to resolve the type ambiguity."),
     words("The way to add an explicit type qualification"),
     words("is to use \"with_type\"."),
-    words("For details see the"),  fixed("\"Explicit type qualification\""),
+    words("For details see the"), fixed("\"Explicit type qualification\""),
     words(" sub-section of the \"Data-terms\" section of the"),
     words("\"Syntax\" chapter of the Mercury language reference manual.")
 ].
 
 :- func ambiguity_error_possibilities_to_pieces(list(prog_var), prog_varset,
-    type_assign, type_assign) = list(format_component).
+    inst_varset, type_assign, type_assign) = list(format_component).
 
-ambiguity_error_possibilities_to_pieces([], _VarSet,
+ambiguity_error_possibilities_to_pieces([], _VarSet, _InstVarSet,
         _TypeAssign1, _TypeAssign2) = [].
-ambiguity_error_possibilities_to_pieces([Var | Vars], VarSet,
+ambiguity_error_possibilities_to_pieces([Var | Vars], VarSet, InstVarSet,
         TypeAssign1, TypeAssign2) = Pieces :-
     type_assign_get_var_types(TypeAssign1, VarTypes1),
     type_assign_get_var_types(TypeAssign2, VarTypes2),
@@ -1757,15 +1777,17 @@ ambiguity_error_possibilities_to_pieces([Var | Vars], VarSet,
         type_assign_get_typevarset(TypeAssign2, TVarSet2),
         HeadPieces =
             [words(mercury_var_to_name_only(VarSet, Var)), suffix(":")] ++
-            type_to_pieces(add_quotes, T1, TVarSet1, ExternalTypeParams1) ++
+            type_to_pieces(add_quotes, TVarSet1, InstVarSet,
+                ExternalTypeParams1, T1) ++
             [words("or")] ++
-            type_to_pieces(add_quotes, T2, TVarSet2, ExternalTypeParams2) ++
+            type_to_pieces(add_quotes, TVarSet2, InstVarSet,
+                ExternalTypeParams2, T2) ++
             [nl]
     else
         HeadPieces = []
     ),
-    TailPieces = ambiguity_error_possibilities_to_pieces(Vars, VarSet,
-        TypeAssign1, TypeAssign2),
+    TailPieces = ambiguity_error_possibilities_to_pieces(Vars,
+        VarSet, InstVarSet, TypeAssign1, TypeAssign2),
     Pieces = HeadPieces ++ TailPieces.
 
     % Check whether two types are identical, i.e. whether they can be unified
@@ -1836,15 +1858,15 @@ report_missing_tvar_in_foreign_code(ClauseContext, Context, VarName) = Spec :-
 
 %-----------------------------------------------------------------------------%
 
-:- func types_of_vars_to_pieces(list(prog_var), prog_varset, type_assign_set)
-    = list(format_component).
+:- func types_of_vars_to_pieces(prog_varset, inst_varset, list(prog_var),
+    type_assign_set) = list(format_component).
 
-types_of_vars_to_pieces([], _, _) = [suffix("."), nl].
-types_of_vars_to_pieces([Var | Vars], VarSet, TypeAssignSet) =
+types_of_vars_to_pieces(_, _, [], _) = [suffix("."), nl].
+types_of_vars_to_pieces(VarSet, InstVarSet, [Var | Vars], TypeAssignSet) =
     [suffix(","), nl] ++
     argument_name_to_pieces(VarSet, Var) ++
-    type_of_var_to_pieces(TypeAssignSet, Var) ++
-    types_of_vars_to_pieces(Vars, VarSet, TypeAssignSet).
+    type_of_var_to_pieces(InstVarSet, TypeAssignSet, Var) ++
+    types_of_vars_to_pieces(VarSet, InstVarSet, Vars, TypeAssignSet).
 
 :- func argument_name_to_pieces(prog_varset, prog_var)
     = list(format_component).
@@ -1876,38 +1898,37 @@ functor_name_to_pieces(Functor, Arity) = Pieces :-
         Pieces = [words("functor"), qual_cons_id_and_maybe_arity(Functor)]
     ).
 
-:- func type_of_var_to_pieces(type_assign_set, prog_var)
+:- func type_of_var_to_pieces(inst_varset, type_assign_set, prog_var)
     = list(format_component).
 
-type_of_var_to_pieces(TypeAssignSet, Var) = Pieces :-
-    get_all_transformed_type_stuffs(typestuff_to_typestr, TypeAssignSet,
-        Var, TypeStrs0),
-    list.sort_and_remove_dups(TypeStrs0, TypeStrs),
-    ( if TypeStrs = [TypeStr] then
-        Pieces = [words("has type"), words(add_quotes(TypeStr))]
+type_of_var_to_pieces(InstVarSet, TypeAssignSet, Var) = Pieces :-
+    get_all_transformed_type_stuffs(typestuff_to_pieces(InstVarSet),
+        TypeAssignSet, Var, TypePiecesLists0),
+    list.sort_and_remove_dups(TypePiecesLists0, TypePiecesLists),
+    ( if TypePiecesLists = [TypePieces] then
+        Pieces = [words("has type")] ++ TypePieces
     else
         Pieces = [words("has overloaded type {"), nl_indent_delta(2)] ++
-            component_list_to_line_pieces(
-                list.map(string_to_pieces, TypeStrs), []) ++
+            component_list_to_line_pieces(TypePiecesLists, []) ++
             [nl_indent_delta(-2), words("}")]
     ).
 
-:- func type_of_functor_to_pieces(cons_id, int, list(cons_type_info))
-    = list(format_component).
+:- func type_of_functor_to_pieces(inst_varset, cons_id, int,
+    list(cons_type_info)) = list(format_component).
 
-type_of_functor_to_pieces(Functor, Arity, ConsDefnList) = Pieces :-
+type_of_functor_to_pieces(InstVarSet, Functor, Arity, ConsDefnList) = Pieces :-
     ( if ConsDefnList = [SingleDefn] then
         ( if Arity = 0 then
             SepPieces = []
         else
             SepPieces = [nl]
         ),
-        ConsTypePieces = cons_type_to_pieces(SingleDefn, Functor),
+        ConsTypePieces = cons_type_to_pieces(InstVarSet, SingleDefn, Functor),
         Pieces = [words("has type")] ++ SepPieces ++
             [prefix("`")] ++ ConsTypePieces ++ [suffix("'")]
     else
         ConsTypeListPieces =
-            cons_type_list_to_pieces(ConsDefnList, Functor, Arity),
+            cons_type_list_to_pieces(InstVarSet, ConsDefnList, Functor, Arity),
         Pieces = [words("has overloaded type {"), nl_indent_delta(1)] ++
             ConsTypeListPieces ++ [nl_indent_delta(-1), fixed("}")]
     ).
@@ -1917,9 +1938,10 @@ type_of_functor_to_pieces(Functor, Arity, ConsDefnList) = Pieces :-
     % The caller should ensure that these pieces are indented one or two levels
     % to separate them from surrounding material.
     %
-:- func cons_type_to_pieces(cons_type_info, cons_id) = list(format_component).
+:- func cons_type_to_pieces(inst_varset, cons_type_info, cons_id)
+    = list(format_component).
 
-cons_type_to_pieces(ConsInfo, Functor) = Pieces :-
+cons_type_to_pieces(InstVarSet, ConsInfo, Functor) = Pieces :-
     ConsInfo = cons_type_info(TVarSet, ExistQVars, ConsType, ArgTypes, _, _),
     (
         ArgTypes = [_ | _],
@@ -1930,7 +1952,8 @@ cons_type_to_pieces(ConsInfo, Functor) = Pieces :-
             % code to print types, so we take a shortcut.
             Type = defined_type(SymName, ArgTypes, kind_star),
             ArgPieces =
-                type_to_pieces(do_not_add_quotes, Type, TVarSet, ExistQVars) ++
+                type_to_pieces(do_not_add_quotes, TVarSet, InstVarSet,
+                    ExistQVars, Type) ++
                 [suffix(":")]
         else
             unexpected($pred, "invalid cons_id")
@@ -1940,7 +1963,8 @@ cons_type_to_pieces(ConsInfo, Functor) = Pieces :-
         ArgPieces = []
     ),
     Pieces = ArgPieces ++
-        type_to_pieces(do_not_add_quotes, ConsType, TVarSet, ExistQVars).
+        type_to_pieces(do_not_add_quotes, TVarSet, InstVarSet,
+            ExistQVars, ConsType).
 
     % Return a description of the  argument types of the given list of
     % data constructors.
@@ -1948,12 +1972,13 @@ cons_type_to_pieces(ConsInfo, Functor) = Pieces :-
     % The caller should ensure that these pieces are indented one or two levels
     % to separate them from surrounding material.
     %
-:- func cons_type_list_to_pieces(list(cons_type_info), cons_id, int)
-    = list(format_component).
+:- func cons_type_list_to_pieces(inst_varset, list(cons_type_info), cons_id,
+    int) = list(format_component).
 
-cons_type_list_to_pieces([], _, _) = [].
-cons_type_list_to_pieces([ConsDefn | ConsDefns], Functor, Arity) = Pieces :-
-    ThisPieces = cons_type_to_pieces(ConsDefn, Functor),
+cons_type_list_to_pieces(_, [], _, _) = [].
+cons_type_list_to_pieces(InstVarSet, [ConsDefn | ConsDefns], Functor, Arity)
+        = Pieces :-
+    ThisPieces = cons_type_to_pieces(InstVarSet, ConsDefn, Functor),
     (
         ConsDefns = [],
         Pieces = ThisPieces
@@ -1964,7 +1989,8 @@ cons_type_list_to_pieces([ConsDefn | ConsDefns], Functor, Arity) = Pieces :-
         else
             ConnectPieces = [suffix(","), nl]
         ),
-        TailPieces = cons_type_list_to_pieces(ConsDefns, Functor, Arity),
+        TailPieces = cons_type_list_to_pieces(InstVarSet, ConsDefns, Functor,
+            Arity),
         Pieces = ThisPieces ++ ConnectPieces ++ TailPieces
     ).
 
@@ -2016,27 +2042,28 @@ args_type_assign_set_msg_to_pieces(ArgTypeAssignSet, VarSet) = Pieces :-
     Pieces = [words(FirstWords), nl_indent_delta(1) | LaterPieces] ++
         [nl_indent_delta(-1)].
 
-:- func type_stuff_to_actual_expected(mer_type, type_stuff)
+:- func type_stuff_to_actual_expected(inst_varset, mer_type, type_stuff)
     = actual_expected_types.
 
-type_stuff_to_actual_expected(Type, VarTypeStuff) = ActualExpected :-
+type_stuff_to_actual_expected(InstVarSet, Type, VarTypeStuff)
+        = ActualExpected :-
     VarTypeStuff = type_stuff(VarType, TVarSet, TypeBinding,
         ExternalTypeParams),
-    ActualPieces = bound_type_to_pieces(VarType, TVarSet, TypeBinding,
-        ExternalTypeParams),
-    ExpectedPieces = bound_type_to_pieces(Type, TVarSet, TypeBinding,
-        ExternalTypeParams),
+    ActualPieces = bound_type_to_pieces(TVarSet, InstVarSet, TypeBinding,
+        ExternalTypeParams, VarType),
+    ExpectedPieces = bound_type_to_pieces(TVarSet, InstVarSet, TypeBinding,
+        ExternalTypeParams, Type),
     ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces).
 
-:- func arg_type_stuff_to_actual_expected(arg_type_stuff) =
+:- func arg_type_stuff_to_actual_expected(inst_varset, arg_type_stuff) =
     actual_expected_types.
 
-arg_type_stuff_to_actual_expected(ArgTypeStuff) = ActualExpected :-
+arg_type_stuff_to_actual_expected(InstVarSet, ArgTypeStuff) = ActualExpected :-
     ArgTypeStuff = arg_type_stuff(Type, VarType, TVarSet, ExternalTypeParams),
-    ActualPieces = type_to_pieces(add_quotes, VarType, TVarSet,
-        ExternalTypeParams),
-    ExpectedPieces = type_to_pieces(add_quotes, Type, TVarSet,
-        ExternalTypeParams),
+    ActualPieces = type_to_pieces(add_quotes, TVarSet, InstVarSet,
+        ExternalTypeParams, VarType),
+    ExpectedPieces = type_to_pieces(add_quotes, TVarSet, InstVarSet,
+        ExternalTypeParams, Type),
     ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces).
 
 :- func actual_expected_types_list_to_pieces(list(actual_expected_types))
@@ -2066,13 +2093,14 @@ actual_types_to_pieces(ActualExpected) = Pieces :-
     ActualExpected = actual_expected_types(ActualPieces, _ExpectedPieces),
     Pieces = [words("(inferred)") | ActualPieces].
 
-:- func bound_type_to_pieces(mer_type, tvarset, tsubst, external_type_params)
-    = list(format_component).
+:- func bound_type_to_pieces(tvarset, inst_varset, tsubst,
+    external_type_params, mer_type) = list(format_component).
 
-bound_type_to_pieces(Type0, TypeVarSet, TypeBindings, ExternalTypeParams)
-        = Pieces :-
+bound_type_to_pieces(TVarSet, InstVarSet, TypeBindings, ExternalTypeParams,
+        Type0) = Pieces :-
     apply_rec_subst_to_type(TypeBindings, Type0, Type),
-    Pieces = type_to_pieces(add_quotes, Type, TypeVarSet, ExternalTypeParams).
+    Pieces = type_to_pieces(add_quotes, TVarSet, InstVarSet,
+        ExternalTypeParams, Type).
 
 %-----------------------------------------------------------------------------%
 
@@ -2441,17 +2469,14 @@ typestuff_to_type(TypeStuff) = Type :-
     apply_rec_subst_to_type(TypeBindings, Type0, Type1),
     strip_builtin_qualifiers_from_type(Type1, Type).
 
-:- func typestuff_to_typestr(type_stuff) = string.
+:- func typestuff_to_pieces(inst_varset, type_stuff) = list(format_component).
 
-typestuff_to_typestr(TypeStuff) = TypeStr :-
+typestuff_to_pieces(InstVarSet, TypeStuff) = Pieces :-
     Type = typestuff_to_type(TypeStuff),
-    unparse_type(Type, Term0),
     TypeStuff = type_stuff(_Type0, TypeVarSet, _TypeBindings,
         ExternalTypeParams),
-    list.map(term.coerce_var, ExternalTypeParams, ExistQVars),
-    maybe_add_existential_quantifier(ExistQVars, Term0, Term),
-    varset.coerce(TypeVarSet, VarSet),
-    TypeStr = mercury_term_to_string(VarSet, print_name_only, Term).
+    Pieces = type_to_pieces(add_quotes, TypeVarSet, InstVarSet,
+        ExternalTypeParams, Type).
 
 :- type arg_type_stuff
     --->    arg_type_stuff(
@@ -2529,27 +2554,150 @@ make_list_term([Var | Vars]) =
     --->    do_not_add_quotes
     ;       add_quotes.
 
-:- func type_to_pieces(maybe_add_quotes, mer_type, tvarset,
-    external_type_params) = list(format_component).
+:- func type_to_pieces(maybe_add_quotes, tvarset, inst_varset,
+    external_type_params, mer_type) = list(format_component).
 
-type_to_pieces(MaybeAddQuotes, Type0, TVarSet, ExternalTypeParams) = Pieces :-
+type_to_pieces(MaybeAddQuotes, TVarSet, InstVarSet, ExternalTypeParams,
+        Type0) = Pieces :-
     strip_builtin_qualifiers_from_type(Type0, Type),
-    unparse_type(Type, Term0),
-    list.map(term.coerce_var, ExternalTypeParams, ExistQVars),
-    maybe_add_existential_quantifier(ExistQVars, Term0, Term),
-    varset.coerce(TVarSet, VarSet),
-    TermPiece = words(mercury_term_to_string(VarSet, print_name_only, Term)),
     (
         MaybeAddQuotes = do_not_add_quotes,
-        Pieces = [TermPiece]
+        StartQuotePieces = [],
+        EndQuotePieces = []
     ;
         MaybeAddQuotes = add_quotes,
-        Pieces = [prefix("`"), TermPiece, suffix("'")]
+        StartQuotePieces = [error_util.prefix("`")],
+        EndQuotePieces = [error_util.suffix("'")]
+    ),
+    % For most types, we convert the type back to a term, and print that.
+    % This is done by the final else part of this if-then-else.
+    % This is ok for most types, which tend to be small.
+    ( if
+        % We handle higher order types differently, because when the
+        % actual and expected types differ in e.g. arity, having each
+        % argument type on its own line helps readability a *lot*.
+        Type = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity,
+            _LambdaEvalMethod)
+    then
+        ( Purity = purity_pure,     PurityPieces = []
+        ; Purity = purity_semipure, PurityPieces = [words("semipure")]
+        ; Purity = purity_impure,   PurityPieces = [words("impure")]
+        ),
+        ( PorF = pf_predicate,      PorFPieces = [words("pred")]
+        ; PorF = pf_function,       PorFPieces = [words("func")]
+        ),
+        (
+            HOInstInfo = none_or_default_func,
+            ArgPieces = list.map(
+                type_to_pieces(do_not_add_quotes, TVarSet, InstVarSet,
+                    ExternalTypeParams),
+                ArgTypes),
+            FuncResultPrefixPieces = [],
+            FuncResultSuffixPieces = [],
+            DetismPieces = [],
+            PorFMismatchPieces = [],
+            ArityMismatchPieces = []
+        ;
+            HOInstInfo = higher_order(PredInstInfo),
+            PorFStr = pred_or_func_to_full_str(PorF),
+            PredInstInfo = pred_inst_info(HOPorF, ArgModes, _ArgRegs, Detism),
+            ( if PorF = HOPorF then
+                PorFMismatchPieces = []
+            else
+                HOPorFStr = pred_or_func_to_full_str(HOPorF),
+                PorFMismatchPieces = [nl,
+                    words("The type says this is a"),
+                    words(PorFStr), suffix(","),
+                    words("but its mode says it is a"),
+                    words(HOPorFStr), suffix(".")]
+            ),
+            list.length(ArgTypes, NumArgTypes),
+            list.length(ArgModes, NumArgModes),
+            ( if NumArgTypes = NumArgModes then
+                assoc_list.from_corresponding_lists(ArgTypes, ArgModes,
+                    ArgTypesModes),
+                % If this higher order type is a function, then the type::mode
+                % for the function result must be wrapped in parentheses.
+                FuncResultPrefixPieces = [error_util.prefix("(")],
+                FuncResultSuffixPieces = [error_util.suffix(")")],
+                ArgPieces = list.map(
+                    type_and_mode_to_pieces(TVarSet, InstVarSet,
+                        ExternalTypeParams),
+                    ArgTypesModes),
+                ArityMismatchPieces = []
+            else
+                ArgPieces = list.map(
+                    type_to_pieces(do_not_add_quotes, TVarSet, InstVarSet,
+                        ExternalTypeParams),
+                    ArgTypes),
+                FuncResultPrefixPieces = [],
+                FuncResultSuffixPieces = [],
+                ArityMismatchPieces = [nl,
+                    words("The type says this"), words(PorFStr),
+                    words("has"), int_fixed(NumArgTypes), words("arguments,"),
+                    words("but its mode says it has"),
+                    int_fixed(NumArgModes), suffix(".")]
+            ),
+            DetismPieces = [words("is"), words(determinism_to_string(Detism))]
+        ),
+        (
+            PorF = pf_predicate,
+            (
+                ArgPieces = [],
+                ArgBlockPieces = []
+            ;
+                ArgPieces = [_ | _],
+                ArgBlockPieces = [suffix("("), nl_indent_delta(1)] ++
+                    component_list_to_line_pieces(ArgPieces, []) ++
+                    [nl_indent_delta(-1), fixed(")")]
+            )
+        ;
+            PorF = pf_function,
+            (
+                ArgPieces = [],
+                unexpected($pred, "function has no arguments")
+            ;
+                ArgPieces = [ReturnValuePieces],
+                ArgBlockPieces = [fixed("=")] ++
+                    FuncResultPrefixPieces ++ ReturnValuePieces ++
+                    FuncResultSuffixPieces
+            ;
+                ArgPieces = [_, _ | _],
+                list.det_split_last(ArgPieces, FuncArgPieces,
+                    ReturnValuePieces),
+                ArgBlockPieces = [suffix("("), nl_indent_delta(1)] ++
+                    component_list_to_line_pieces(FuncArgPieces, []) ++
+                    [nl_indent_delta(-1), fixed(") =")] ++
+                    FuncResultPrefixPieces ++ ReturnValuePieces ++
+                    FuncResultSuffixPieces
+            )
+        ),
+        Pieces = StartQuotePieces ++
+            PurityPieces ++ PorFPieces ++ ArgBlockPieces ++ DetismPieces ++
+            EndQuotePieces ++
+            PorFMismatchPieces ++ ArityMismatchPieces
+    else
+        unparse_type(Type, Term0),
+        list.map(term.coerce_var, ExternalTypeParams, ExistQVars),
+        maybe_add_existential_quantifier(ExistQVars, Term0, Term),
+        varset.coerce(TVarSet, VarSet),
+        TermPiece =
+            words(mercury_term_to_string(VarSet, print_name_only, Term)),
+        Pieces = StartQuotePieces ++ [TermPiece] ++ EndQuotePieces
     ).
 
-:- func string_to_pieces(string) = list(format_component).
+:- func type_and_mode_to_pieces(tvarset, inst_varset, external_type_params,
+    pair(mer_type, mer_mode)) = list(format_component).
 
-string_to_pieces(Str) = [words(Str)].
+type_and_mode_to_pieces(TVarSet, InstVarSet, ExternalTypeParams,
+        Type - Mode) = Pieces :-
+    TypePieces = type_to_pieces(do_not_add_quotes, TVarSet, InstVarSet,
+        ExternalTypeParams, Type),
+    ModeTerm0 = mode_to_term(output_mercury, Mode),
+    term.coerce(ModeTerm0, ModeTerm),
+    ModePiece =
+        words(mercury_term_to_string(InstVarSet, print_name_only, ModeTerm)),
+    Pieces = TypePieces ++ [fixed("::"), ModePiece].
 
 %-----------------------------------------------------------------------------%
 
@@ -2720,6 +2868,21 @@ arg_type_assign_set_msg_to_verbose_pieces(Info, ArgTypeAssignSet, VarSet,
             args_type_assign_set_msg_to_pieces(ArgTypeAssignSet, VarSet),
         VerboseComponents = [verbose_only(verbose_always, VerbosePieces)]
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred get_inst_varset(type_error_clause_context::in, inst_varset::out)
+    is det.
+
+get_inst_varset(ClauseContext, InstVarSet) :-
+    % XXX Typechecking works on pred_infos, which do NOT have an inst_varset.
+    % I (zs) don't know where the inst variables in any ho_inst_infos
+    % in higher-order types come from, but I am *guessing* that it is
+    % from the varset of the clause itself. I am not even sure whether
+    % this matters, since I don't know whether ho_inst_infos can ever
+    % be filled in before the end of typechecking.
+    ProgVarSet = ClauseContext ^ tecc_varset,
+    varset.coerce(ProgVarSet, InstVarSet).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_errors.

@@ -44,6 +44,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.prog_out.
 
 :- import_module list.
 :- import_module require.
@@ -772,18 +773,7 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
 
 :- func det_to_term(prog_context, determinism) = prog_term.
 
-det_to_term(Context, Det) = make_atom(Context, det_to_string(Det)).
-
-:- func det_to_string(determinism) = string.
-
-det_to_string(detism_erroneous) = "erroneous".
-det_to_string(detism_failure) = "failure".
-det_to_string(detism_det) = "det".
-det_to_string(detism_semi) = "semidet".
-det_to_string(detism_cc_multi) = "cc_multi".
-det_to_string(detism_cc_non) = "cc_nondet".
-det_to_string(detism_multi) = "multi".
-det_to_string(detism_non) = "nondet".
+det_to_term(Context, Det) = make_atom(Context, determinism_to_string(Det)).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_tree_to_term.
