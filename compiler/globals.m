@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
 % Copyright (C) 2013-2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: globals.m.
 % Main author: fjh.
@@ -15,8 +15,8 @@
 % that would be global variables in an imperative language.
 % This global data is stored in the io.state.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module libs.globals.
 :- interface.
@@ -36,9 +36,14 @@
 :- import_module map.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
+    % The main type this module defines. The following sections define
+    % the types of some of the components of this type.
+    %
 :- type globals.
+
+%---------------------%
 
     % XXX The erlang backend does not fit into the low vs high dichotomy.
     % The grade_lib classifies the backends as llds/elds/mlds.
@@ -84,6 +89,8 @@
 
 :- func all_foreign_language_strings = list(string).
 
+%---------------------%
+
     % The GC method specifies how we do garbage collection.
     % The last five alternatives are for the C back-ends;
     % the first alternative is for compiling to C#, Java, Il or Erlang
@@ -113,15 +120,19 @@
             % See runtime/mercury_accurate_gc.c and compiler/ml_elim_nested.m.
 
     % Returns yes if the GC method is conservative, i.e. if it is `boehm'.
-    % Conservative GC methods don't support heap reclamation on failure.
+    % Conservative GC methods do not support heap reclamation on failure.
     %
 :- func gc_is_conservative(gc_method) = bool.
+
+%---------------------%
 
 :- type termination_norm
     --->    norm_simple
     ;       norm_total
     ;       norm_num_data_elems
     ;       norm_size_data_elems.
+
+%---------------------%
 
 :- type may_be_thread_safe == bool.
 
@@ -154,6 +165,8 @@
 :- type clang_version
     --->    clang_version(int, int, int).
 
+%---------------------%
+
     % The strategy for determining the reuse possibilities, i.e., either
     % reuse is only allowed between terms that have exactly the same cons_id,
     % or reuse is also allowed between terms that have different cons_id, yet
@@ -162,6 +175,8 @@
 :- type reuse_strategy
     --->    same_cons_id
     ;       within_n_cells_difference(int).
+
+%---------------------%
 
     % The env_type specifies the environment in which a Mercury program
     % is being run or is expected to be run. This is used both for the
@@ -188,6 +203,8 @@
             % Windows PowerShell.
             % (NOTE: COMSPEC must be pointing to powershell.exe not cmd.exe.)
 
+%---------------------%
+
     % The tracing levels to use for a module when doing the source to source
     % debugging transformation.
 :- type ssdb_trace_level
@@ -199,6 +216,8 @@
 
     ;       deep.
             % Deep trace all procedures in this module.
+
+%---------------------%
 
     % This type specifies the command compiler uses to install files.
     %
@@ -214,9 +233,13 @@
     ;       install_cmd_cp.
             % POSIX conformant cp command.
 
+%---------------------%
+
     % Map from module name to file name.
     %
 :- type source_file_map == bimap(module_name, string).
+
+%---------------------%
 
 :- type line_number_range
     --->    line_number_range(
@@ -230,6 +253,8 @@
     %
     % An entry with the empty string as the key applies to every file.
 :- type limit_error_contexts_map == map(string, list(line_number_range)).
+
+%---------------------%
 
 :- pred convert_target(string::in, compilation_target::out) is semidet.
 :- pred convert_foreign_language(string::in, foreign_language::out) is semidet.
@@ -249,7 +274,7 @@
 :- pred convert_limit_error_contexts(list(string)::in, list(string)::out,
     limit_error_contexts_map::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Access predicates for the `globals' structure.
 %
@@ -266,8 +291,6 @@
 :- pred get_options(globals::in, option_table::out) is det.
 :- pred get_op_mode(globals::in, op_mode::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
-:- pred get_backend_foreign_languages(globals::in,
-    list(foreign_language)::out) is det.
 :- pred get_gc_method(globals::in, gc_method::out) is det.
 :- pred get_termination_norm(globals::in, termination_norm::out) is det.
 :- pred get_termination2_norm(globals::in, termination_norm::out) is det.
@@ -286,6 +309,8 @@
 :- pred get_file_install_cmd(globals::in, file_install_cmd::out) is det.
 :- pred get_limit_error_contexts_map(globals::in,
     limit_error_contexts_map::out) is det.
+:- pred get_backend_foreign_languages(globals::in,
+    list(foreign_language)::out) is det.
 
 :- pred set_option(option::in, option_data::in, globals::in, globals::out)
     is det.
@@ -315,7 +340,7 @@
 :- pred lookup_accumulating_option(globals::in, option::in, list(string)::out)
     is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % More complex options.
 %
@@ -348,7 +373,7 @@
     %
 :- pred double_width_floats_on_det_stack(globals::in, bool::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred globals_init_mutables(globals::in, io::di, io::uo) is det.
 
@@ -398,8 +423,8 @@
 :- pred io_set_maybe_source_file_map(maybe(source_file_map)::in,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -408,7 +433,42 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+target_lang_to_foreign_export_lang(target_c) = lang_c.
+target_lang_to_foreign_export_lang(target_erlang) = lang_erlang.
+target_lang_to_foreign_export_lang(target_csharp) = lang_csharp.
+target_lang_to_foreign_export_lang(target_java) = lang_java.
+
+compilation_target_string(target_c) = "C".
+compilation_target_string(target_csharp) = "C#".
+compilation_target_string(target_java) = "Java".
+compilation_target_string(target_erlang) = "Erlang".
+
+foreign_language_string(lang_c) = "C".
+foreign_language_string(lang_csharp) = "C#".
+foreign_language_string(lang_java) = "Java".
+foreign_language_string(lang_erlang) = "Erlang".
+
+simple_foreign_language_string(lang_c, "c").
+simple_foreign_language_string(lang_csharp, "csharp").
+simple_foreign_language_string(lang_java, "java").
+simple_foreign_language_string(lang_erlang, "erlang").
+
+simple_foreign_language_string(Lang) = Str :-
+    simple_foreign_language_string(Lang, Str).
+
+all_foreign_language_strings =
+    ["c", "C", "csharp", "C#", "erlang", "Erlang", "java", "Java"].
+
+gc_is_conservative(gc_boehm) = yes.
+gc_is_conservative(gc_boehm_debug) = yes.
+gc_is_conservative(gc_hgc) = yes.
+gc_is_conservative(gc_none) = no.
+gc_is_conservative(gc_accurate) = no.
+gc_is_conservative(gc_automatic) = no.
+
+%---------------------------------------------------------------------------%
 
 convert_target(String, Target) :-
     convert_target_2(string.to_lower(String), Target).
@@ -497,10 +557,11 @@ convert_c_compiler_type_with_version(CC_Str, C_CompilerType) :-
     %   <major>_<minor>_<u>
     %   <major>_<minor>_<patch>
     %
-    % That is setting the minor version number when the major one
-    % is unknown won't be accepted. (It wouldn't be useful in any case.)
+    % This means that setting the minor version number will not be accepted
+    % when the major version number is unknown. (It wouldn't be useful
+    % in any case.)
     %
-    % <major> must be >= 2 (Mercury won't work with anything older than that)
+    % <major> must be >= 2. (Mercury won't work with anything older than that)
     % and <minor> and <patch> must be non-negative.
     %
 :- pred convert_gcc_version(string::in, string::in, string::in,
@@ -576,6 +637,10 @@ convert_msvc_version(VersionStr, C_CompilerType) :-
 convert_csharp_compiler_type("microsoft", csharp_microsoft).
 convert_csharp_compiler_type("mono", csharp_mono).
 convert_csharp_compiler_type("unknown", csharp_unknown).
+
+convert_reuse_strategy("same_cons_id", _, same_cons_id).
+convert_reuse_strategy("within_n_cells_difference", NCells,
+    within_n_cells_difference(NCells)).
 
 convert_env_type("posix",   env_type_posix).
 convert_env_type("cygwin",  env_type_cygwin).
@@ -655,44 +720,7 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
         MaybeMax = yes(Max)
     ).
 
-convert_reuse_strategy("same_cons_id", _, same_cons_id).
-convert_reuse_strategy("within_n_cells_difference", NCells,
-    within_n_cells_difference(NCells)).
-
-target_lang_to_foreign_export_lang(target_c) = lang_c.
-target_lang_to_foreign_export_lang(target_erlang) = lang_erlang.
-target_lang_to_foreign_export_lang(target_csharp) = lang_csharp.
-target_lang_to_foreign_export_lang(target_java) = lang_java.
-
-compilation_target_string(target_c) = "C".
-compilation_target_string(target_csharp) = "C#".
-compilation_target_string(target_java) = "Java".
-compilation_target_string(target_erlang) = "Erlang".
-
-foreign_language_string(lang_c) = "C".
-foreign_language_string(lang_csharp) = "C#".
-foreign_language_string(lang_java) = "Java".
-foreign_language_string(lang_erlang) = "Erlang".
-
-simple_foreign_language_string(lang_c, "c").
-simple_foreign_language_string(lang_csharp, "csharp").
-simple_foreign_language_string(lang_java, "java").
-simple_foreign_language_string(lang_erlang, "erlang").
-
-simple_foreign_language_string(Lang) = Str :-
-    simple_foreign_language_string(Lang, Str).
-
-all_foreign_language_strings =
-    ["c", "C", "csharp", "C#", "erlang", "Erlang", "java", "Java"].
-
-gc_is_conservative(gc_boehm) = yes.
-gc_is_conservative(gc_boehm_debug) = yes.
-gc_is_conservative(gc_hgc) = yes.
-gc_is_conservative(gc_none) = no.
-gc_is_conservative(gc_accurate) = no.
-gc_is_conservative(gc_automatic) = no.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type globals
     --->    globals(
@@ -755,13 +783,13 @@ get_backend_foreign_languages(Globals, ForeignLangs) :-
     lookup_accumulating_option(Globals, backend_foreign_languages, LangStrs),
     list.map(convert_foreign_language_det, LangStrs, ForeignLangs).
 
-set_options(Options, !Globals) :-
-    !Globals ^ g_options := Options.
-
 set_option(Option, OptionData, !Globals) :-
     get_options(!.Globals, OptionTable0),
     map.set(Option, OptionData, OptionTable0, OptionTable),
     set_options(OptionTable, !Globals).
+
+set_options(Options, !Globals) :-
+    !Globals ^ g_options := Options.
 
 set_op_mode(OpMode, !Globals) :-
     !Globals ^ g_op_mode := OpMode.
@@ -783,7 +811,7 @@ set_maybe_feedback_info(MaybeFeedback, !Globals) :-
 set_file_install_cmd(FileInstallCmd, !Globals) :-
     !Globals ^ g_file_install_cmd := FileInstallCmd.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 lookup_option(Globals, Option, OptionData) :-
     get_options(Globals, OptionTable),
@@ -796,16 +824,6 @@ lookup_bool_option(Globals, Option, Value) :-
     else
         unexpected($pred,
             string.format("invalid bool option (%s is %s)",
-                [s(string(Option)), s(string(OptionData))]))
-    ).
-
-lookup_string_option(Globals, Option, Value) :-
-    lookup_option(Globals, Option, OptionData),
-    ( if OptionData = string(String) then
-        Value = String
-    else
-        unexpected($pred,
-            string.format("invalid string option (%s is %s)",
                 [s(string(Option)), s(string(OptionData))]))
     ).
 
@@ -829,6 +847,16 @@ lookup_maybe_int_option(Globals, Option, Value) :-
                 [s(string(Option)), s(string(OptionData))]))
     ).
 
+lookup_string_option(Globals, Option, Value) :-
+    lookup_option(Globals, Option, OptionData),
+    ( if OptionData = string(String) then
+        Value = String
+    else
+        unexpected($pred,
+            string.format("invalid string option (%s is %s)",
+                [s(string(Option)), s(string(OptionData))]))
+    ).
+
 lookup_maybe_string_option(Globals, Option, Value) :-
     lookup_option(Globals, Option, OptionData),
     ( if OptionData = maybe_string(MaybeString) then
@@ -849,7 +877,7 @@ lookup_accumulating_option(Globals, Option, Value) :-
                 [s(string(Option)), s(string(OptionData))]))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 lookup_current_backend(Globals) = CurrentBackend :-
     globals.lookup_bool_option(Globals, highlevel_code, HighLevel),
@@ -954,8 +982,8 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
         unexpected($pred, "bits_per_word not 32 or 64")
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This mutable controls how big a ground term has to be before the code
     % in superhomogeneous.m wraps it up in a from_ground_term scope.
@@ -987,7 +1015,7 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
 :- mutable(maybe_source_file_map, maybe(source_file_map), no, ground,
     [untrailed, attach_to_io_state]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 globals_init_mutables(Globals, !IO) :-
     globals.lookup_int_option(Globals, from_ground_term_threshold,
@@ -1029,6 +1057,6 @@ io_get_maybe_source_file_map(MaybeSourceFileMap, !IO) :-
 io_set_maybe_source_file_map(MaybeSourceFileMap, !IO) :-
     set_maybe_source_file_map(MaybeSourceFileMap, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module libs.globals.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

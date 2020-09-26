@@ -105,16 +105,12 @@ MCFLAGS-parse_tree.write_deps_file    = --warn-implicit-stream-calls
 MCFLAGS-hlds.du_type_layout           = --warn-implicit-stream-calls
 
 # Keep all modules' contents in a consistent order, except these (for now).
-MCFLAGS-analysis                += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-analysis.file           += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-check_hlds.mode_info    += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-check_hlds.mode_util    += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-check_hlds.polymorphism += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-hlds.goal_util          += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-hlds.inst_graph         += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-libs.globals            += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-libs.handle_options     += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-libs.options            += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-ll_backend.code_info    += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-ll_backend.code_loc_dep += --no-warn-inconsistent-pred-order-clauses

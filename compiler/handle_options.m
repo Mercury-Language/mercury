@@ -2445,14 +2445,6 @@ disable_smart_recompilation(OptionDescr, !Globals, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-usage_errors(Globals, Specs, !IO) :-
-    io.progname_base("mercury_compile", ProgName, !IO),
-    io.format("%s:\n", [s(ProgName)], !IO),
-    % If _NumErrors > 0, this will set the exit status to 1.
-    % It will also set the exit status to 1 if  _NumWarnings > 0
-    % and --halt-at-warn was specified.
-    write_error_specs_ignore(Globals, Specs, !IO).
-
 display_compiler_version(!IO) :-
     library.version(Version, Fullarch),
     io.write_strings([
@@ -2460,6 +2452,14 @@ display_compiler_version(!IO) :-
         "Copyright (C) 1993-2012 The University of Melbourne\n",
         "Copyright (C) 2013-2020 The Mercury team\n"
     ], !IO).
+
+usage_errors(Globals, Specs, !IO) :-
+    io.progname_base("mercury_compile", ProgName, !IO),
+    io.format("%s:\n", [s(ProgName)], !IO),
+    % If _NumErrors > 0, this will set the exit status to 1.
+    % It will also set the exit status to 1 if  _NumWarnings > 0
+    % and --halt-at-warn was specified.
+    write_error_specs_ignore(Globals, Specs, !IO).
 
 :- mutable(already_printed_usage, bool, no, ground,
     [untrailed, attach_to_io_state]).
