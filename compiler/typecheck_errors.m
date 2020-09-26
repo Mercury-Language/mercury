@@ -2607,9 +2607,9 @@ type_to_pieces(MaybeAddQuotes, TVarSet, InstVarSet, ExternalTypeParams,
                 HOPorFStr = pred_or_func_to_full_str(HOPorF),
                 PorFMismatchPieces = [nl,
                     words("The type says this is a"),
-                    words(PorFStr), suffix(","),
+                    words(PorFStr), error_util.suffix(","),
                     words("but its mode says it is a"),
-                    words(HOPorFStr), suffix(".")]
+                    words(HOPorFStr), error_util.suffix(".")]
             ),
             list.length(ArgTypes, NumArgTypes),
             list.length(ArgModes, NumArgModes),
@@ -2636,7 +2636,7 @@ type_to_pieces(MaybeAddQuotes, TVarSet, InstVarSet, ExternalTypeParams,
                     words("The type says this"), words(PorFStr),
                     words("has"), int_fixed(NumArgTypes), words("arguments,"),
                     words("but its mode says it has"),
-                    int_fixed(NumArgModes), suffix(".")]
+                    int_fixed(NumArgModes), error_util.suffix(".")]
             ),
             DetismPieces = [words("is"), words(determinism_to_string(Detism))]
         ),
@@ -2647,7 +2647,7 @@ type_to_pieces(MaybeAddQuotes, TVarSet, InstVarSet, ExternalTypeParams,
                 ArgBlockPieces = []
             ;
                 ArgPieces = [_ | _],
-                ArgBlockPieces = [suffix("("), nl_indent_delta(1)] ++
+                ArgBlockPieces = [error_util.suffix("("), nl_indent_delta(1)] ++
                     component_list_to_line_pieces(ArgPieces, []) ++
                     [nl_indent_delta(-1), fixed(")")]
             )
