@@ -778,13 +778,22 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
         map.init(ImpImportUseMap)
     else
         one_or_more_map.select(ImpImportUseMap1, ImpNeededModules,
-            ImpImportUseMap),
-        map.keys_as_set(IntImportUseMap, IntImportUseModuleNameSet),
-        map.keys_as_set(ImpImportUseMap, ImpImportUseModuleNameSet),
-        set.intersect(IntImportUseModuleNameSet, ImpImportUseModuleNameSet,
-            IntImpImportUseModuleNameSet),
-        expect(set.is_empty(IntImpImportUseModuleNameSet), $pred,
-            "Int and Imp ImportUseModuleNames intersect")
+            ImpImportUseMap)
+        % This sanity check is commented out, because it causes the failure
+        % of tests/valid/int_imp_test.m. While field of parse_tree_module_src
+        % that holds ImportUseMap0 is guaranteed to be free of a module
+        % imported or used more than once (except the permitted combo of
+        % used in interface, imported in implementation), the four previous
+        % fields, which this code draws its information from, have no such
+        % guarantee. They hold raw data from the source file, which may contain
+        % redundant import_module and use_module items.
+        %
+        % map.keys_as_set(IntImportUseMap, IntImportUseModuleNameSet),
+        % map.keys_as_set(ImpImportUseMap, ImpImportUseModuleNameSet),
+        % set.intersect(IntImportUseModuleNameSet, ImpImportUseModuleNameSet,
+        %     IntImpImportUseModuleNameSet),
+        % expect(set.is_empty(IntImpImportUseModuleNameSet), $pred,
+        %     "Int and Imp ImportUseModuleNames intersect")
     ),
 
     % Compute the list of type definitions we deleted from ImpItems0

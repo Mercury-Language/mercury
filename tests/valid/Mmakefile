@@ -128,7 +128,6 @@ OTHER_PROGS = \
 	explicit_quant \
 	export_before_func \
 	fail_ite \
-	unify_typeinfo_bug \
 	file_stream_instances \
 	followcode_det_problem \
 	foreign_underscore_var \
@@ -160,6 +159,7 @@ OTHER_PROGS = \
 	inst_perf_bug_1 \
 	inst_perf_bug_2 \
 	instmap_generic_failure \
+	int_imp_test \
 	lambda_inference\
 	lambda_instmap_bug \
 	lambda_instmap_bug2 \
@@ -257,6 +257,7 @@ OTHER_PROGS = \
 	undead_proc \
 	unescaped_special_char \
 	unify_dummy \
+	unify_typeinfo_bug \
 	uniq_mode_inf_bug \
 	uniq_unify \
 	unknown_warning \
