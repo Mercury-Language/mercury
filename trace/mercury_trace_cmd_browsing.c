@@ -123,6 +123,8 @@ MR_trace_cmd_level(char **words, int word_count, MR_TraceCmdInfo *cmd,
         }
     } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         selected_level = n;
+    } else if (word_count == 1) {
+        selected_level = 0;
     } else {
         MR_trace_usage_cur_cmd();
         return KEEP_INTERACTING;
