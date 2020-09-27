@@ -5,6 +5,15 @@ mdb> context none
 Contexts will not be printed.
 mdb> goto 9
        9:      5  4 DISJ pred queens_rep.qdelete/3-0 (nondet) c2;d1;
+mdb> up
+Ancestor level set to 1:
+   1  pred queens_rep.qperm/2-0 (nondet)
+mdb> up 2
+Ancestor level set to 3:
+   3  pred queens_rep.main/2-0 (cc_multi)
+mdb> level
+Ancestor level set to 0:
+   0  pred queens_rep.qdelete/3-0 (nondet)
 mdb> print
 qdelete(_, [1, 2, 3, 4, 5], _)
 mdb> continue -n -S

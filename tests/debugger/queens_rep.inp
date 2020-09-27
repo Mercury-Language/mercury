@@ -1,5 +1,8 @@
 echo on
 context none
 goto 9
+up
+up 2
+level
 print
 continue -n -S
