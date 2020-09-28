@@ -1547,11 +1547,11 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         % The following option prevents useless variables from cluttering
         % the trace. Its explicit setting removes a source of variability
         % in the goal paths reported by tracing.
-        !OptTuple ^ ot_elim_excess_assigns := do_not_elim_excess_assigns,
+        !OptTuple ^ ot_elim_excess_assigns := elim_excess_assigns,
 
         % The explicit setting of the following option removes a source
         % of variability in the goal paths reported by tracing.
-        !OptTuple ^ ot_opt_follow_code := do_not_opt_follow_code,
+        !OptTuple ^ ot_opt_follow_code := opt_follow_code,
 
         % The following option selects a special-case code generator
         % that cannot (yet) implement tracing.
@@ -1823,7 +1823,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, agc_stack_layout, AgcStackLayout),
     % Likewise for accurate GC.
     ( if (ProcIdStackLayout = yes ; AgcStackLayout = yes) then
-        !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc
+        !OptTuple ^ ot_opt_dups := do_not_opt_dups
     else
         true
     ),
