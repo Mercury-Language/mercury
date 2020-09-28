@@ -21,7 +21,10 @@
 :- import_module exception.
 :- import_module list.
 
-:- type fruit ---> apple ; lemon ; orange.
+:- type fruit
+    --->    apple
+    ;       lemon
+    ;       orange.
 
 main(!IO) :-
     test_copy(['a', 'b', 'c'], !IO),
