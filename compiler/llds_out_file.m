@@ -1700,7 +1700,8 @@ c_data_const_string(Globals, InclCodeAddr) =
     ( if
         InclCodeAddr = yes,
         globals.get_opt_tuple(Globals, OptTuple),
-        OptTuple ^ ot_use_static_code_addresses = use_static_code_addresses
+        OptTuple ^ ot_use_static_code_addresses =
+            do_not_use_static_code_addresses
     then
         ""
     else
