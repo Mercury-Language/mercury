@@ -556,8 +556,9 @@
 
 process_optimization_options(OptionTable, OptOptions, !:OptTuple) :-
     !:OptTuple = init_opt_tuple,
-    list.foldl2(update_opt_tuple(OptionTable), OptOptions,
-        !OptTuple, not_seen_opt_level, MaybeSeenOptLevel),
+    list.foldl2(
+        update_opt_tuple(not_from_opt_level, OptionTable),
+        OptOptions, !OptTuple, not_seen_opt_level, MaybeSeenOptLevel),
     (
         MaybeSeenOptLevel = not_seen_opt_level,
         DefaultOptLevel = 2,
@@ -703,11 +704,16 @@ init_opt_tuple = opt_tuple(
     --->    not_seen_opt_level
     ;       seen_opt_level.
 
-:- pred update_opt_tuple(option_table::in, optimization_option::in,
-    opt_tuple::in, opt_tuple::out,
+:- type maybe_from_opt_level
+    --->    not_from_opt_level
+    ;       from_opt_level.
+
+:- pred update_opt_tuple(maybe_from_opt_level::in, option_table::in,
+    optimization_option::in, opt_tuple::in, opt_tuple::out,
     maybe_seen_opt_level::in, maybe_seen_opt_level::out) is det.
 
-update_opt_tuple(OptionTable, OptOption, !OptTuple, !MaybeSeenOptLevel) :-
+update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
+        !MaybeSeenOptLevel) :-
     require_complete_switch [OptOption]
     (
         OptOption = oo_allow_inlining(Bool),
@@ -2412,152 +2418,374 @@ update_opt_tuple(OptionTable, OptOption, !OptTuple, !MaybeSeenOptLevel) :-
         )
     ;
         OptOption = oo_inline_call_cost(N),
-        OldN = !.OptTuple ^ ot_inline_call_cost,
-        !OptTuple ^ ot_inline_call_cost := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_inline_call_cost := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_inline_call_cost,
+            !OptTuple ^ ot_inline_call_cost := int.max(OldN, N)
+        )
     ;
         OptOption = oo_inline_compound_threshold(N),
-        OldN = !.OptTuple ^ ot_inline_compound_threshold,
-        !OptTuple ^ ot_inline_compound_threshold := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_inline_compound_threshold := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_inline_compound_threshold,
+            !OptTuple ^ ot_inline_compound_threshold := int.max(OldN, N)
+        )
     ;
         OptOption = oo_inline_simple_threshold(N),
-        OldN = !.OptTuple ^ ot_inline_simple_threshold,
-        !OptTuple ^ ot_inline_simple_threshold := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_inline_simple_threshold := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_inline_simple_threshold,
+            !OptTuple ^ ot_inline_simple_threshold := int.max(OldN, N)
+        )
     ;
         OptOption = oo_inline_vars_threshold(N),
-        OldN = !.OptTuple ^ ot_inline_vars_threshold,
-        !OptTuple ^ ot_inline_vars_threshold := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_inline_vars_threshold := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_inline_vars_threshold,
+            !OptTuple ^ ot_inline_vars_threshold := int.max(OldN, N)
+        )
     ;
         OptOption = oo_intermod_inline_simple_threshold(N),
-        OldN = !.OptTuple ^ ot_intermod_inline_simple_threshold,
-        !OptTuple ^ ot_intermod_inline_simple_threshold := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_intermod_inline_simple_threshold := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_intermod_inline_simple_threshold,
+            !OptTuple ^ ot_intermod_inline_simple_threshold := int.max(OldN, N)
+        )
     ;
         OptOption = oo_inline_linear_tail_rec_sccs_max_extra(N),
-        OldN = !.OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra,
-        !OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra,
+            !OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra := int.max(OldN, N)
+        )
     ;
         OptOption = oo_from_ground_term_threshold(N),
-        OldN = !.OptTuple ^ ot_from_ground_term_threshold,
-        !OptTuple ^ ot_from_ground_term_threshold := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_from_ground_term_threshold := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_from_ground_term_threshold,
+            !OptTuple ^ ot_from_ground_term_threshold := int.max(OldN, N)
+        )
     ;
         OptOption = oo_opt_svcell_cv_store_cost(N),
-        OldN = !.OptTuple ^ ot_opt_svcell_cv_store_cost,
-        !OptTuple ^ ot_opt_svcell_cv_store_cost := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_opt_svcell_cv_store_cost := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_opt_svcell_cv_store_cost,
+            !OptTuple ^ ot_opt_svcell_cv_store_cost := int.max(OldN, N)
+        )
     ;
         OptOption = oo_opt_svcell_cv_load_cost(N),
-        OldN = !.OptTuple ^ ot_opt_svcell_cv_load_cost,
-        !OptTuple ^ ot_opt_svcell_cv_load_cost := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_opt_svcell_cv_load_cost := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_opt_svcell_cv_load_cost,
+            !OptTuple ^ ot_opt_svcell_cv_load_cost := int.max(OldN, N)
+        )
     ;
         OptOption = oo_opt_svcell_fv_store_cost(N),
-        OldN = !.OptTuple ^ ot_opt_svcell_fv_store_cost,
-        !OptTuple ^ ot_opt_svcell_fv_store_cost := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_opt_svcell_fv_store_cost := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_opt_svcell_fv_store_cost,
+            !OptTuple ^ ot_opt_svcell_fv_store_cost := int.max(OldN, N)
+        )
     ;
         OptOption = oo_opt_svcell_fv_load_cost(N),
-        OldN = !.OptTuple ^ ot_opt_svcell_fv_load_cost,
-        !OptTuple ^ ot_opt_svcell_fv_load_cost := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_opt_svcell_fv_load_cost := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_opt_svcell_fv_load_cost,
+            !OptTuple ^ ot_opt_svcell_fv_load_cost := int.max(OldN, N)
+        )
     ;
         OptOption = oo_opt_svcell_op_ratio(N),
-        OldN = !.OptTuple ^ ot_opt_svcell_op_ratio,
-        !OptTuple ^ ot_opt_svcell_op_ratio := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_opt_svcell_op_ratio := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_opt_svcell_op_ratio,
+            !OptTuple ^ ot_opt_svcell_op_ratio := int.max(OldN, N)
+        )
     ;
         OptOption = oo_opt_svcell_node_ratio(N),
-        OldN = !.OptTuple ^ ot_opt_svcell_node_ratio,
-        !OptTuple ^ ot_opt_svcell_node_ratio := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_opt_svcell_node_ratio := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_opt_svcell_node_ratio,
+            !OptTuple ^ ot_opt_svcell_node_ratio := int.max(OldN, N)
+        )
     ;
         OptOption = oo_opt_svcell_all_path_node_ratio(N),
-        OldN = !.OptTuple ^ ot_opt_svcell_all_path_node_ratio,
-        !OptTuple ^ ot_opt_svcell_all_path_node_ratio := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_opt_svcell_all_path_node_ratio := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_opt_svcell_all_path_node_ratio,
+            !OptTuple ^ ot_opt_svcell_all_path_node_ratio := int.max(OldN, N)
+        )
     ;
         OptOption = oo_higher_order_size_limit(N),
-        OldN = !.OptTuple ^ ot_higher_order_size_limit,
-        !OptTuple ^ ot_higher_order_size_limit := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_higher_order_size_limit := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_higher_order_size_limit,
+            !OptTuple ^ ot_higher_order_size_limit := int.max(OldN, N)
+        )
     ;
         OptOption = oo_higher_order_arg_limit(N),
-        OldN = !.OptTuple ^ ot_higher_order_arg_limit,
-        !OptTuple ^ ot_higher_order_arg_limit := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_higher_order_arg_limit := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_higher_order_arg_limit,
+            !OptTuple ^ ot_higher_order_arg_limit := int.max(OldN, N)
+        )
     ;
         OptOption = oo_opt_unneeded_code_copy_limit(N),
-        OldN = !.OptTuple ^ ot_opt_unneeded_code_copy_limit,
-        !OptTuple ^ ot_opt_unneeded_code_copy_limit := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_opt_unneeded_code_copy_limit := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_opt_unneeded_code_copy_limit,
+            !OptTuple ^ ot_opt_unneeded_code_copy_limit := int.max(OldN, N)
+        )
     ;
         OptOption = oo_deforestation_depth_limit(N),
-        OldN = !.OptTuple ^ ot_deforestation_depth_limit,
-        !OptTuple ^ ot_deforestation_depth_limit := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_deforestation_depth_limit := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_deforestation_depth_limit,
+            !OptTuple ^ ot_deforestation_depth_limit := int.max(OldN, N)
+        )
     ;
         OptOption = oo_deforestation_cost_factor(N),
-        OldN = !.OptTuple ^ ot_deforestation_cost_factor,
-        !OptTuple ^ ot_deforestation_cost_factor := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_deforestation_cost_factor := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_deforestation_cost_factor,
+            !OptTuple ^ ot_deforestation_cost_factor := int.max(OldN, N)
+        )
     ;
         OptOption = oo_deforestation_vars_threshold(N),
-        OldN = !.OptTuple ^ ot_deforestation_vars_threshold,
-        !OptTuple ^ ot_deforestation_vars_threshold := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_deforestation_vars_threshold := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_deforestation_vars_threshold,
+            !OptTuple ^ ot_deforestation_vars_threshold := int.max(OldN, N)
+        )
     ;
         OptOption = oo_deforestation_size_threshold(N),
-        OldN = !.OptTuple ^ ot_deforestation_size_threshold,
-        !OptTuple ^ ot_deforestation_size_threshold := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_deforestation_size_threshold := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_deforestation_size_threshold,
+            !OptTuple ^ ot_deforestation_size_threshold := int.max(OldN, N)
+        )
     ;
         OptOption = oo_tuple_costs_ratio(N),
-        OldN = !.OptTuple ^ ot_tuple_costs_ratio,
-        !OptTuple ^ ot_tuple_costs_ratio := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_tuple_costs_ratio := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_tuple_costs_ratio,
+            !OptTuple ^ ot_tuple_costs_ratio := int.max(OldN, N)
+        )
     ;
         OptOption = oo_tuple_min_args(N),
-        OldN = !.OptTuple ^ ot_tuple_min_args,
-        !OptTuple ^ ot_tuple_min_args := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_tuple_min_args := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_tuple_min_args,
+            !OptTuple ^ ot_tuple_min_args := int.max(OldN, N)
+        )
     ;
         OptOption = oo_dense_switch_req_density(N),
-        OldN = !.OptTuple ^ ot_dense_switch_req_density,
-        !OptTuple ^ ot_dense_switch_req_density := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_dense_switch_req_density := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_dense_switch_req_density,
+            !OptTuple ^ ot_dense_switch_req_density := int.max(OldN, N)
+        )
     ;
         OptOption = oo_lookup_switch_req_density(N),
-        OldN = !.OptTuple ^ ot_lookup_switch_req_density,
-        !OptTuple ^ ot_lookup_switch_req_density := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_lookup_switch_req_density := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_lookup_switch_req_density,
+            !OptTuple ^ ot_lookup_switch_req_density := int.max(OldN, N)
+        )
     ;
         OptOption = oo_dense_switch_size(N),
-        OldN = !.OptTuple ^ ot_dense_switch_size,
-        !OptTuple ^ ot_dense_switch_size := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_dense_switch_size := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_dense_switch_size,
+            !OptTuple ^ ot_dense_switch_size := int.max(OldN, N)
+        )
     ;
         OptOption = oo_lookup_switch_size(N),
-        OldN = !.OptTuple ^ ot_lookup_switch_size,
-        !OptTuple ^ ot_lookup_switch_size := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_lookup_switch_size := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_lookup_switch_size,
+            !OptTuple ^ ot_lookup_switch_size := int.max(OldN, N)
+        )
     ;
         OptOption = oo_string_trie_switch_size(N),
-        OldN = !.OptTuple ^ ot_string_trie_switch_size,
-        !OptTuple ^ ot_string_trie_switch_size := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_string_trie_switch_size := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_string_trie_switch_size,
+            !OptTuple ^ ot_string_trie_switch_size := int.max(OldN, N)
+        )
     ;
         OptOption = oo_string_hash_switch_size(N),
-        OldN = !.OptTuple ^ ot_string_hash_switch_size,
-        !OptTuple ^ ot_string_hash_switch_size := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_string_hash_switch_size := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_string_hash_switch_size,
+            !OptTuple ^ ot_string_hash_switch_size := int.max(OldN, N)
+        )
     ;
         OptOption = oo_string_binary_switch_size(N),
-        OldN = !.OptTuple ^ ot_string_binary_switch_size,
-        !OptTuple ^ ot_string_binary_switch_size := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_string_binary_switch_size := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_string_binary_switch_size,
+            !OptTuple ^ ot_string_binary_switch_size := int.max(OldN, N)
+        )
     ;
         OptOption = oo_tag_switch_size(N),
-        OldN = !.OptTuple ^ ot_tag_switch_size,
-        !OptTuple ^ ot_tag_switch_size := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_tag_switch_size := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_tag_switch_size,
+            !OptTuple ^ ot_tag_switch_size := int.max(OldN, N)
+        )
     ;
         OptOption = oo_try_switch_size(N),
-        OldN = !.OptTuple ^ ot_try_switch_size,
-        !OptTuple ^ ot_try_switch_size := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_try_switch_size := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_try_switch_size,
+            !OptTuple ^ ot_try_switch_size := int.max(OldN, N)
+        )
     ;
         OptOption = oo_binary_switch_size(N),
-        OldN = !.OptTuple ^ ot_binary_switch_size,
-        !OptTuple ^ ot_binary_switch_size := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_binary_switch_size := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_binary_switch_size,
+            !OptTuple ^ ot_binary_switch_size := int.max(OldN, N)
+        )
     ;
         OptOption = oo_local_var_access_threshold(N),
-        OldN = !.OptTuple ^ ot_local_var_access_threshold,
-        !OptTuple ^ ot_local_var_access_threshold := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_local_var_access_threshold := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_local_var_access_threshold,
+            !OptTuple ^ ot_local_var_access_threshold := int.max(OldN, N)
+        )
     ;
         OptOption = oo_opt_repeat(N),
-        OldN = !.OptTuple ^ ot_opt_repeat,
-        !OptTuple ^ ot_opt_repeat := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_opt_repeat := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_opt_repeat,
+            !OptTuple ^ ot_opt_repeat := int.max(OldN, N)
+        )
     ;
         OptOption = oo_layout_compression_limit(N),
-        OldN = !.OptTuple ^ ot_layout_compression_limit,
-        !OptTuple ^ ot_layout_compression_limit := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_layout_compression_limit := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_layout_compression_limit,
+            !OptTuple ^ ot_layout_compression_limit := int.max(OldN, N)
+        )
     ;
         OptOption = oo_procs_per_c_function(N),
-        OldN = !.OptTuple ^ ot_procs_per_c_function,
-        !OptTuple ^ ot_procs_per_c_function := int.max(OldN, N)
+        (
+            FromOptLevel = not_from_opt_level,
+            !OptTuple ^ ot_procs_per_c_function := N
+        ;
+            FromOptLevel = from_opt_level,
+            OldN = !.OptTuple ^ ot_procs_per_c_function,
+            !OptTuple ^ ot_procs_per_c_function := int.max(OldN, N)
+        )
     ;
         OptOption = oo_tuple_trace_counts_file(Str),
         !OptTuple ^ ot_tuple_trace_counts_file := Str
@@ -2580,8 +2808,8 @@ set_opts_upto_level(OptionTable, Cur, Max,
         Cur =< Max,
         opts_enabled_at_level(Cur, LevelOptOptions)
     then
-        list.foldl2(update_opt_tuple(OptionTable), LevelOptOptions,
-            !OptTuple, !MaybeSeenOptLevel),
+        list.foldl2(update_opt_tuple(from_opt_level, OptionTable),
+            LevelOptOptions, !OptTuple, !MaybeSeenOptLevel),
         set_opts_upto_level(OptionTable, Cur + 1, Max,
             !OptTuple, !MaybeSeenOptLevel)
     else

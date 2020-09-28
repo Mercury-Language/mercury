@@ -9,8 +9,8 @@ set_opts_upto_level(OptionTable, Cur, Max,
         Cur =< Max,
         opts_enabled_at_level(Cur, LevelOptOptions)
     then
-        list.foldl2(update_opt_tuple(OptionTable), LevelOptOptions,
-            !OptTuple, !MaybeSeenOptLevel),
+        list.foldl2(update_opt_tuple(from_opt_level, OptionTable),
+            LevelOptOptions, !OptTuple, !MaybeSeenOptLevel),
         set_opts_upto_level(OptionTable, Cur + 1, Max,
             !OptTuple, !MaybeSeenOptLevel)
     else

@@ -168,8 +168,9 @@ END {
 
         printf("process_optimization_options(OptionTable, OptOptions, !:OptTuple) :-\n");
         printf("%-4s!:OptTuple = init_opt_tuple,\n", "");
-        printf("%-4slist.foldl2(update_opt_tuple(OptionTable), OptOptions,\n", "");
-        printf("%-8s!OptTuple, not_seen_opt_level, MaybeSeenOptLevel),\n", "");
+        printf("%-4slist.foldl2(\n", "");
+        printf("%-8supdate_opt_tuple(not_from_opt_level, OptionTable),\n", "");
+        printf("%-8sOptOptions, !OptTuple, not_seen_opt_level, MaybeSeenOptLevel),\n", "");
         printf("%-4s(\n", "");
         printf("%-8sMaybeSeenOptLevel = not_seen_opt_level,\n", "");
         printf("%-8sDefaultOptLevel = %d,\n", "", default_opt_level);
@@ -209,15 +210,22 @@ END {
         printf("%-4s%-8sseen_opt_level.\n", "", ";");
 
         printf("\n");
-        printf(":- pred update_opt_tuple(option_table::in, %s::in,\n",
-            switch_type_name);
-        printf("%-4s%s::in, %s::out,\n",
-            "", record_type_name, record_type_name);
+        printf(":- type maybe_from_opt_level\n");
+        printf("%-4s%-8snot_from_opt_level\n", "", "--->");
+        printf("%-4s%-8sfrom_opt_level.\n", "", ";");
+
+        printf("\n");
+        printf(":- pred update_opt_tuple(maybe_from_opt_level::in, ");
+        printf("option_table::in,\n");
+        printf("%-4s%s::in, %s::in, %s::out,\n",
+            "", switch_type_name, record_type_name, record_type_name);
         printf("%-4smaybe_seen_opt_level::in, maybe_seen_opt_level::out) is det.\n", "");
         printf("\n");
 
-        printf("update_opt_tuple(OptionTable, %s, !%s, !MaybeSeenOptLevel) :-\n",
+        printf("update_opt_tuple(FromOptLevel, OptionTable, %s, !%s,\n",
             switch_var_name, record_var_name);
+        printf("%-8s!MaybeSeenOptLevel) :-\n",
+            "", switch_var_name, record_var_name);
         printf("%-4srequire_complete_switch [%s]\n", "", switch_var_name);
         lparen_or_semi = "(";
         for (i = 0; i < next_bool_opt; i++) {
@@ -255,10 +263,17 @@ END {
             lparen_or_semi = ";";
             printf("%-8s%s = oo_%s(N),\n",
                 "", switch_var_name, int_field_names[i]);
-            printf("%-8sOldN = !.%s ^ ot_%s,\n",
+            printf("%-8s(\n", "");
+            printf("%-12sFromOptLevel = not_from_opt_level,\n", "");
+            printf("%-12s!%s ^ ot_%s := N\n",
                 "", record_var_name, int_field_names[i]);
-            printf("%-8s!%s ^ ot_%s := int.max(OldN, N)\n",
+            printf("%-8s;\n", "");
+            printf("%-12sFromOptLevel = from_opt_level,\n", "");
+            printf("%-12sOldN = !.%s ^ ot_%s,\n",
                 "", record_var_name, int_field_names[i]);
+            printf("%-12s!%s ^ ot_%s := int.max(OldN, N)\n",
+                "", record_var_name, int_field_names[i]);
+            printf("%-8s)\n", "");
         }
         for (i = 0; i < next_string_opt; i++) {
             printf("%-4s%s\n", "", lparen_or_semi);
