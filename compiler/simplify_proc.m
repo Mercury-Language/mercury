@@ -102,6 +102,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module parse_tree.prog_data_foreign.
 
@@ -334,7 +335,7 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
         % either the compiler runs out of memory or the user runs out of
         % patience. The fact that we would generate better code if the
         % compilation finished is therefore of limited interest.
-        !SimplifyTasks ^ do_common_struct := no
+        !SimplifyTasks ^ do_common_struct := do_not_opt_common_structs
     else
         true
     ),
@@ -353,7 +354,7 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
             ( if list.member(PredIdInt, CommonStructPredIdInts) then
                 true
             else
-                !SimplifyTasks ^ do_common_struct := no
+                !SimplifyTasks ^ do_common_struct := do_not_opt_common_structs
             )
         else
             true
@@ -514,7 +515,7 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             )
         then
             !SimplifyTasks ^ do_mark_code_model_changes := no,
-            !SimplifyTasks ^ do_excess_assign := no,
+            !SimplifyTasks ^ do_excess_assign := do_not_elim_excess_assigns,
             simplify_info_set_simplify_tasks(!.SimplifyTasks, !Info),
 
             do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info),
@@ -537,8 +538,8 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             % would serve no purpose, since we do nothing in pass 1
             % that would generate new occurrences of the situations
             % that these tasks seek to optimize.
-            !SimplifyTasks ^ do_common_struct := no,
-            !SimplifyTasks ^ do_opt_duplicate_calls := no,
+            !SimplifyTasks ^ do_common_struct := do_not_opt_common_structs,
+            !SimplifyTasks ^ do_opt_duplicate_calls := do_not_opt_dup_calls,
             simplify_info_reinit(!.SimplifyTasks, !Info)
         else
             true

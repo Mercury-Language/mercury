@@ -16,6 +16,8 @@
 :- module ll_backend.jumpopt.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.optimization_options.
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -55,7 +57,8 @@
     % by the optimization.
     %
 :- pred optimize_jumps_in_proc(set_tree234(label)::in, may_alter_rtti::in,
-    proc_label::in, bool::in, bool::in, bool::in, bool::in,
+    proc_label::in, maybe_opt_fulljumps::in, bool::in,
+    maybe_pessimize_tailcalls::in, maybe_opt_checked_nondet_tailcalls::in,
     counter::in, counter::out, list(instruction)::in, list(instruction)::out,
     bool::out) is det.
 
@@ -123,9 +126,9 @@ optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
             !ProcMap, !SdprocMap, !SuccMap),
         jump_opt_build_forkmap(!.Instrs, !.SdprocMap, map.init, !:ForkMap),
         (
-            PessimizeTailCalls = no
+            PessimizeTailCalls = do_not_pessimize_tailcalls
         ;
-            PessimizeTailCalls = yes,
+            PessimizeTailCalls = pessimize_tailcalls,
             !:ProcMap = map.init,
             !:SdprocMap = map.init,
             !:SuccMap = map.init,
@@ -135,7 +138,7 @@ optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
             !.ProcMap, !.SdprocMap, !.ForkMap, !.SuccMap, LayoutLabels,
             Fulljumpopt, MayAlterRtti),
         (
-            CheckedNondetTailCall = yes,
+            CheckedNondetTailCall = opt_checked_nondet_tailcalls,
             CheckedNondetTailCallInfo0 =
                 check_nondet_tailcalls(ProcLabel, !.LabelNumCounter),
             jump_opt_instr_list(!.Instrs, comment(""), JumpOptInfo,
@@ -149,7 +152,7 @@ optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
                 unexpected($pred, "lost the next label number")
             )
         ;
-            CheckedNondetTailCall = no,
+            CheckedNondetTailCall = do_not_opt_checked_nondet_tailcalls,
             CheckedNondetTailCallInfo0 = dont_check_nondet_tailcalls,
             jump_opt_instr_list(!.Instrs, comment(""), JumpOptInfo,
                 CheckedNondetTailCallInfo0, _, [], RevInstrs)
@@ -259,7 +262,7 @@ jump_opt_build_forkmap([llds_instr(Uinstr, _Comment) | Instrs], SdprocMap,
                 joi_fork_map        :: tailmap,
                 joi_succ_map        :: tailmap,
                 joi_layout_labels   :: set_tree234(label),
-                joi_full_jump_opt   :: bool,
+                joi_full_jump_opt   :: maybe_opt_fulljumps,
                 joi_may_alter_rtti  :: may_alter_rtti
             ).
 
@@ -681,7 +684,7 @@ jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             % is necessary because another optimization below eliminates
             % labels, which is correct only if jumps to those labels are
             % short-circuited everywhere.
-            JumpOptInfo ^ joi_full_jump_opt = yes,
+            JumpOptInfo ^ joi_full_jump_opt = opt_fulljumps,
             InstrMap = JumpOptInfo ^ joi_instr_map,
             map.search(InstrMap, TargetLabel, TargetInstr),
             final_dest(InstrMap, TargetLabel, DestLabel,
@@ -816,7 +819,7 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
             % and get the code processed again starting after the if_val,
             % to get the recursive call to replace the goto to L1
             % with the code at L1.
-            Fulljumpopt = yes,
+            Fulljumpopt = opt_fulljumps,
             map.search(BlockMap, TargetLabel, _TargetBlock),
             opt_util.skip_comments(Instrs0, Instrs1),
             Instrs1 = [GotoInstr | AfterGoto],

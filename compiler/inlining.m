@@ -170,6 +170,7 @@
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
@@ -198,9 +199,10 @@
     %
 :- type inline_params
     --->    inline_params(
-                ip_simple                       :: bool,
-                ip_single_use                   :: bool,
-                ip_linear_tail_rec              :: bool,
+                ip_simple                       :: maybe_inline_simple,
+                ip_single_use                   :: maybe_inline_single_use,
+                ip_linear_tail_rec              ::
+                                            maybe_inline_linear_tail_rec_sccs,
 
                 ip_highlevel_code               :: bool,
 
@@ -228,18 +230,16 @@ inline_in_module(!ModuleInfo) :-
     % - whether we're in an MLDS grade
 
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, inline_simple, Simple),
-    globals.lookup_bool_option(Globals, inline_single_use, SingleUse),
-    globals.lookup_bool_option(Globals, inline_linear_tail_rec_sccs,
-        LinearTailRec),
-    globals.lookup_int_option(Globals, inline_linear_tail_rec_sccs_max_extra,
-        LinearTailRecMaxExtra),
-    globals.lookup_int_option(Globals, inline_call_cost, CallCost),
-    globals.lookup_int_option(Globals, inline_compound_threshold,
-        CompoundThreshold),
-    globals.lookup_int_option(Globals, inline_simple_threshold,
-        SimpleThreshold),
-    globals.lookup_int_option(Globals, inline_vars_threshold, VarThreshold),
+    globals.get_opt_tuple(Globals, OptTuple),
+    Simple = OptTuple ^ ot_inline_simple,
+    SingleUse = OptTuple ^ ot_inline_single_use,
+    LinearTailRec = OptTuple ^ ot_inline_linear_tail_rec_sccs,
+    LinearTailRecMaxExtra =
+        OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra,
+    CallCost = OptTuple ^ ot_inline_call_cost,
+    CompoundThreshold = OptTuple ^ ot_inline_compound_threshold,
+    SimpleThreshold = OptTuple ^ ot_inline_simple_threshold,
+    VarThreshold = OptTuple ^ ot_inline_vars_threshold,
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals.get_trace_level(Globals, TraceLevel),
     AnyTracing = bool.not(given_trace_level_is_none(TraceLevel)),
@@ -247,7 +247,7 @@ inline_in_module(!ModuleInfo) :-
     % Get the usage counts for predicates (but only if needed, i.e. only if
     % --inline-single-use or --inline-compound-threshold has been specified).
     ( if
-        ( SingleUse = yes
+        ( SingleUse = inline_single_use
         ; CompoundThreshold > 0
         )
     then
@@ -267,10 +267,10 @@ inline_in_module(!ModuleInfo) :-
     % calls where the callee is in the *same* SCC as the caller.
 
     (
-        LinearTailRec = no,
+        LinearTailRec = do_not_inline_linear_tail_rec_sccs,
         module_info_ensure_dependency_info(!ModuleInfo, DepInfo)
     ;
-        LinearTailRec = yes,
+        LinearTailRec = inline_linear_tail_rec_sccs,
         % For this, we need *accurate* information about SCCs.
         % I (zs) am not 100% certain that every pass before this one
         % that invalidates any existing dependency info also clobbers
@@ -319,11 +319,11 @@ inline_in_scc(Params, SCCEntryPoints, !ShouldInlineProcs, !ModuleInfo) :-
         SCCProcs = [_, _ | _],
         LinearTailRec = Params ^ ip_linear_tail_rec,
         (
-            LinearTailRec = no,
+            LinearTailRec = do_not_inline_linear_tail_rec_sccs,
             inline_in_simple_non_singleton_scc(Params, SCCProcs,
                 !ShouldInlineProcs, !ModuleInfo)
         ;
-            LinearTailRec = yes,
+            LinearTailRec = inline_linear_tail_rec_sccs,
             inline_in_maybe_linear_tail_rec_scc(Params,
                 SCCEntryPoints, SCCProcs, !ShouldInlineProcs, !ModuleInfo)
         )
@@ -499,8 +499,7 @@ should_proc_be_inlined(Params, ModuleInfo, PredProcId) :-
 
     % The heuristic represented by the following code could be improved.
     (
-        Simple = Params ^ ip_simple,
-        Simple = yes,
+        Params ^ ip_simple = inline_simple,
         SimpleThreshold = Params ^ ip_simple_goal_threshold,
         is_simple_goal(CalledGoal, SimpleThreshold)
     ;
@@ -516,8 +515,7 @@ should_proc_be_inlined(Params, ModuleInfo, PredProcId) :-
         CompoundThreshold = Params ^ ip_compound_size_threshold,
         (Size - CallCost) * NumUses =< CompoundThreshold
     ;
-        SingleUse = Params ^ ip_single_use,
-        SingleUse = yes,
+        Params ^ ip_single_use = inline_single_use,
         NeededMap = Params ^ ip_needed_map,
         map.search(NeededMap, Entity, Needed),
         Needed = maybe_eliminable(NumUses),

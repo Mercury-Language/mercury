@@ -37,6 +37,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.layout.
@@ -124,7 +125,7 @@
 :- pred get_emit_region_ops(code_info::in, add_region_ops::out) is det.
 :- pred get_opt_region_ops(code_info::in, bool::out) is det.
 :- pred get_auto_comments(code_info::in, bool::out) is det.
-:- pred get_lcmc_null(code_info::in, bool::out) is det.
+:- pred get_lcmc_null(code_info::in, maybe_opt_lcmc_null::out) is det.
 :- pred get_profile_memory(code_info::in, bool::out) is det.
 :- pred get_may_use_atomic_alloc(code_info::in,
     may_use_atomic_alloc::out) is det.
@@ -274,7 +275,7 @@
 
                 % The settings of --optimize-constructor-last-call-null,
                 % --profile-memory, and --use-atomic-cells.
-                cis_lcmc_null           :: bool,
+                cis_lcmc_null           :: maybe_opt_lcmc_null,
                 cis_profile_memory      :: bool,
                 cis_may_use_atomic_alloc :: may_use_atomic_alloc,
 
@@ -396,25 +397,25 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         EmitTrailOps = do_not_add_trail_ops
     ),
     globals.lookup_bool_option(Globals, optimize_trail_usage, OptTrailOps),
-    globals.lookup_bool_option(Globals, region_analysis, UseRegions),
+    globals.get_opt_tuple(Globals, OptTuple),
+    UseRegions = OptTuple ^ ot_analyse_regions,
     (
-        UseRegions = yes,
+        UseRegions = analyse_regions,
         EmitRegionOps = add_region_ops
     ;
-        UseRegions = no,
+        UseRegions = do_not_analyse_regions,
         EmitRegionOps = do_not_add_region_ops
     ),
     globals.lookup_bool_option(Globals, optimize_region_ops, OptRegionOps),
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
-    globals.lookup_bool_option(Globals, optimize_constructor_last_call_null,
-        LCMCNull),
+    LCMCNull = OptTuple ^ ot_opt_lcmc_null,
     globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
-    globals.lookup_bool_option(Globals, use_atomic_cells, UseAtomicCells),
+    UseAtomicCells = OptTuple ^ ot_use_atomic_cells,
     (
-        UseAtomicCells = no,
+        UseAtomicCells = do_not_use_atomic_cells,
         InitMayUseAtomic = may_not_use_atomic_alloc
     ;
-        UseAtomicCells = yes,
+        UseAtomicCells = use_atomic_cells,
         InitMayUseAtomic = may_use_atomic_alloc
     ),
     globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBitsInt),
@@ -512,12 +513,13 @@ init_exprn_opts(Globals) = ExprnOpts :-
         OptASM = no,
         ASM = do_not_have_asm_labels
     ),
-    globals.lookup_bool_option(Globals, static_ground_cells, OptSGCell),
+    globals.get_opt_tuple(Globals, OptTuple),
+    OptSGCell = OptTuple ^ ot_use_static_ground_cells,
     (
-        OptSGCell = yes,
+        OptSGCell = use_static_ground_cells,
         SGCell = have_static_ground_cells
     ;
-        OptSGCell = no,
+        OptSGCell = do_not_use_static_ground_cells,
         SGCell = do_not_have_static_ground_cells
     ),
     globals.lookup_bool_option(Globals, unboxed_float, OptUBF),
@@ -552,29 +554,28 @@ init_exprn_opts(Globals) = ExprnOpts :-
         OptUBI64s = no,
         UBI64s = do_not_have_unboxed_int64s
     ),
-    globals.lookup_bool_option(Globals, static_ground_floats, OptSGFloat),
+    OptSGFloat = OptTuple ^ ot_use_static_ground_floats,
     (
-        OptSGFloat = yes,
+        OptSGFloat = use_static_ground_floats,
         SGFloat = have_static_ground_floats
     ;
-        OptSGFloat = no,
+        OptSGFloat = do_not_use_static_ground_floats,
         SGFloat = do_not_have_static_ground_floats
     ),
-    globals.lookup_bool_option(Globals, static_ground_int64s, OptSGInt64s),
+    OptSGInt64s = OptTuple ^ ot_use_static_ground_int64s,
     (
-        OptSGInt64s = yes,
+        OptSGInt64s = use_static_ground_int64s,
         SGInt64s = have_static_ground_int64s
     ;
-        OptSGInt64s = no,
+        OptSGInt64s = do_not_use_static_ground_int64s,
         SGInt64s = do_not_have_static_ground_int64s
     ),
-    globals.lookup_bool_option(Globals, static_code_addresses,
-        OptStaticCodeAddr),
+    OptStaticCodeAddr = OptTuple ^ ot_use_static_code_addresses,
     (
-        OptStaticCodeAddr = yes,
+        OptStaticCodeAddr = use_static_code_addresses,
         StaticCodeAddrs = have_static_code_addresses
     ;
-        OptStaticCodeAddr = no,
+        OptStaticCodeAddr = do_not_use_static_code_addresses,
         StaticCodeAddrs = do_not_have_static_code_addresses
     ),
     ExprnOpts = exprn_opts(NLG, ASM, UBF, UseFloatRegs, DetStackFloatWidth,
@@ -982,7 +983,8 @@ make_proc_entry_label(CI, ModuleInfo, PredId, ProcId, Immed0) = CodeAddr :-
     ;
         Immed0 = yes,
         get_globals(CI, Globals),
-        globals.lookup_int_option(Globals, procs_per_c_function, ProcsPerFunc),
+        globals.get_opt_tuple(Globals, OptTuple),
+        ProcsPerFunc = OptTuple ^ ot_procs_per_c_function,
         get_pred_id(CI, CurPredId),
         get_proc_id(CI, CurProcId),
         Immed = yes(ProcsPerFunc - proc(CurPredId, CurProcId))

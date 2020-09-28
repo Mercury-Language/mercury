@@ -883,6 +883,8 @@
 
 :- implementation.
 
+:- import_module libs.optimization_options.
+
 :- type pred_id
     --->    pred_id(int).
 
@@ -3883,13 +3885,10 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
         is_inline_builtin(ModuleName, PredName, ProcId, Arity),
         (
             module_info_get_globals(ModuleInfo, Globals),
-            globals.lookup_bool_option(Globals, allow_inlining,
-                AllowInlining),
-            AllowInlining = yes,
-            globals.lookup_bool_option(Globals, inline_builtins,
-                InlineBuiltins),
+            globals.get_opt_tuple(Globals, OptTuple),
+            OptTuple ^ ot_allow_inlining = allow_inlining,
             (
-                InlineBuiltins = yes
+                OptTuple ^ ot_inline_builtins = inline_builtins
             ;
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
                 pred_info_get_name(PredInfo, PredName),

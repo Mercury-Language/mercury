@@ -62,6 +62,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.deep_profiling.
@@ -772,9 +773,10 @@ maybe_bytecodes(HLDS0, Verbose, Stats, !DumpInfo, !IO) :-
 
 maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, untuple, Untuple),
+    globals.get_opt_tuple(Globals, OptTuple),
+    Untuple = OptTuple ^ ot_untuple,
     (
-        Untuple = yes,
+        Untuple = untuple,
         maybe_write_string(Verbose, "% Untupling...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         untuple_arguments(!HLDS, !IO),
@@ -785,7 +787,7 @@ maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
             "simplify has errors"),
         maybe_report_stats(Stats, !IO)
     ;
-        Untuple = no
+        Untuple = do_not_untuple
     ).
 
 %---------------------------------------------------------------------------%
@@ -795,16 +797,17 @@ maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_tuple_arguments(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, tuple, Tuple),
+    globals.get_opt_tuple(Globals, OptTuple),
+    Tuple = OptTuple ^ ot_tuple,
     (
-        Tuple = yes,
+        Tuple = tuple,
         maybe_write_string(Verbose, "% Tupling...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         tuple_arguments(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        Tuple = no
+        Tuple = do_not_tuple
     ).
 
 %---------------------------------------------------------------------------%
@@ -814,10 +817,10 @@ maybe_tuple_arguments(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, optimize_higher_order, HigherOrder),
+    globals.get_opt_tuple(Globals, OptTuple),
+    HigherOrder = OptTuple ^ ot_opt_higher_order,
     % --type-specialization implies --user-guided-type-specialization.
-    globals.lookup_bool_option(Globals, user_guided_type_specialization,
-        Types),
+    UserTypeSpec = OptTuple ^ ot_spec_types_user_guided,
 
     % Always produce the specialized versions for which
     % `:- pragma type_spec' declarations exist, because
@@ -825,8 +828,8 @@ maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_type_spec_info(!.HLDS, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(TypeSpecPreds, _, _, _),
     ( if
-        ( HigherOrder = yes
-        ; Types = yes
+        ( HigherOrder = opt_higher_order
+        ; UserTypeSpec = spec_types_user_guided
         ; set.is_non_empty(TypeSpecPreds)
         )
     then
@@ -901,9 +904,10 @@ maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_introduce_accumulators(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, introduce_accumulators, Optimize),
+    globals.get_opt_tuple(Globals, OptTuple),
+    IntroduceAccumulators = OptTuple ^ ot_introduce_accumulators,
     (
-        Optimize = yes,
+        IntroduceAccumulators = introduce_accumulators,
         maybe_write_string(Verbose,
             "% Attempting to introduce accumulators...\n", !IO),
         maybe_flush_output(Verbose, !IO),
@@ -921,7 +925,7 @@ maybe_introduce_accumulators(Verbose, Stats, !HLDS, !Specs, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        Optimize = no
+        IntroduceAccumulators = do_not_introduce_accumulators
     ).
 
 %---------------------------------------------------------------------------%
@@ -931,18 +935,18 @@ maybe_introduce_accumulators(Verbose, Stats, !HLDS, !Specs, !IO) :-
 
 maybe_do_inlining(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, allow_inlining, Allow),
-    globals.lookup_bool_option(Globals, inline_simple, Simple),
-    globals.lookup_bool_option(Globals, inline_single_use, SingleUse),
-    globals.lookup_int_option(Globals, inline_compound_threshold, Threshold),
-    globals.lookup_bool_option(Globals, inline_linear_tail_rec_sccs,
-        LinearRec),
+    globals.get_opt_tuple(Globals, OptTuple),
+    Allow = OptTuple ^ ot_allow_inlining,
+    Simple = OptTuple ^ ot_inline_simple,
+    SingleUse = OptTuple ^ ot_inline_single_use,
+    Threshold = OptTuple ^ ot_inline_compound_threshold,
+    LinearRec = OptTuple ^ ot_inline_linear_tail_rec_sccs,
     ( if
-        Allow = yes,
-        ( Simple = yes
-        ; SingleUse = yes
+        Allow = allow_inlining,
+        ( Simple = inline_simple
+        ; SingleUse = inline_single_use
         ; Threshold > 0
-        ; LinearRec = yes
+        ; LinearRec = inline_linear_tail_rec_sccs
         )
     then
         maybe_write_string(Verbose, "% Inlining...\n", !IO),
@@ -962,9 +966,10 @@ maybe_do_inlining(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, loop_invariants, LoopInv),
+    globals.get_opt_tuple(Globals, OptTuple),
+    LoopInv = OptTuple ^ ot_opt_loop_invariants,
     (
-        LoopInv = yes,
+        LoopInv = opt_loop_invariants,
         % We run the mark_static pass because we need the construct_how flag
         % to be valid.
         maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO),
@@ -977,7 +982,7 @@ maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        LoopInv = no
+        LoopInv = do_not_opt_loop_invariants
     ).
 
 %---------------------------------------------------------------------------%
@@ -987,31 +992,26 @@ maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
 
 maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, deforestation, Deforest),
+    globals.get_opt_tuple(Globals, OptTuple),
+    Deforest = OptTuple ^ ot_deforest,
 
     % --constraint-propagation implies --local-constraint-propagation.
-    globals.lookup_bool_option(Globals, local_constraint_propagation,
-        Constraints),
-    ( if
-        ( Deforest = yes
-        ; Constraints = yes
-        )
-    then
+    PropLocalConstraints = OptTuple ^ ot_prop_local_constraints,
+    (
+        Deforest = do_not_deforest,
+        PropLocalConstraints = do_not_prop_local_constraints
+    ;
         (
-            Deforest = no,
-            Constraints = no,
-            unexpected($pred, "no no")
-        ;
-            Deforest = yes,
-            Constraints = yes,
+            Deforest = deforest,
+            PropLocalConstraints = prop_local_constraints,
             Msg = "% Deforestation and constraint propagation...\n"
         ;
-            Deforest = yes,
-            Constraints = no,
+            Deforest = deforest,
+            PropLocalConstraints = do_not_prop_local_constraints,
             Msg = "% Deforestation...\n"
         ;
-            Deforest = no,
-            Constraints = yes,
+            Deforest = do_not_deforest,
+            PropLocalConstraints = prop_local_constraints,
             Msg = "% Constraint propagation...\n"
         ),
         maybe_write_string(Verbose, Msg, !IO),
@@ -1019,8 +1019,6 @@ maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
         deforestation(!HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
-    else
-        true
     ).
 
 %---------------------------------------------------------------------------%
@@ -1030,9 +1028,10 @@ maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_delay_construct(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, delay_construct, DelayConstruct),
+    globals.get_opt_tuple(Globals, OptTuple),
+    DelayConstruct = OptTuple ^ ot_delay_constructs,
     (
-        DelayConstruct = yes,
+        DelayConstruct = delay_constructs,
         maybe_write_string(Verbose,
             "% Delaying construction unifications ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
@@ -1041,7 +1040,7 @@ maybe_delay_construct(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        DelayConstruct = no
+        DelayConstruct = do_not_delay_constructs
     ).
 
 %---------------------------------------------------------------------------%
@@ -1089,13 +1088,14 @@ maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_unused_args(Verbose, Stats, UnusedArgsInfos, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, intermod_unused_args, Intermod),
-    globals.lookup_bool_option(Globals, optimize_unused_args, Optimize),
-    globals.lookup_bool_option(Globals, warn_unused_args, Warn),
+    globals.get_opt_tuple(Globals, OptTuple),
+    OptUnusedArgs = OptTuple ^ ot_opt_unused_args,
+    OptUnusedArgsIntermod = OptTuple ^ ot_opt_unused_args_intermod,
+    globals.lookup_bool_option(Globals, warn_unused_args, WarnUnusedArgs),
     ( if
-        ( Optimize = yes
-        ; Warn = yes
-        ; Intermod = yes
+        ( OptUnusedArgs = opt_unused_args
+        ; OptUnusedArgsIntermod = opt_unused_args_intermod
+        ; WarnUnusedArgs = yes
         )
     then
         maybe_write_string(Verbose, "% Finding unused arguments ...\n", !IO),
@@ -1133,9 +1133,10 @@ maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_unneeded_code(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, unneeded_code, UnneededCode),
+    globals.get_opt_tuple(Globals, OptTuple),
+    UnneededCode = OptTuple ^ ot_opt_unneeded_code,
     (
-        UnneededCode = yes,
+        UnneededCode = opt_unneeded_code,
         maybe_write_string(Verbose,
             "% Removing unneeded code from procedure bodies...\n", !IO),
         maybe_flush_output(Verbose, !IO),
@@ -1144,7 +1145,7 @@ maybe_unneeded_code(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        UnneededCode = no
+        UnneededCode = do_not_opt_unneeded_code
     ).
 
 %---------------------------------------------------------------------------%
@@ -1154,9 +1155,10 @@ maybe_unneeded_code(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_lco(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, optimize_constructor_last_call, LCO),
+    globals.get_opt_tuple(Globals, OptTuple),
+    LCMC = OptTuple ^ ot_opt_lcmc,
     (
-        LCO = yes,
+        LCMC = opt_lcmc,
         maybe_write_string(Verbose,
             "% Looking for LCO modulo constructor application ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
@@ -1164,7 +1166,7 @@ maybe_lco(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        LCO = no
+        LCMC = do_not_opt_lcmc
     ).
 
 %---------------------------------------------------------------------------%
@@ -1433,16 +1435,17 @@ maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_region_analysis(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, region_analysis, Analysis),
+    globals.get_opt_tuple(Globals, OptTuple),
+    Analysis = OptTuple ^ ot_analyse_regions,
     (
-        Analysis = yes,
+        Analysis = analyse_regions,
         maybe_write_string(Verbose, "% Analysing regions ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         do_region_analysis(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        Analysis = no
+        Analysis = do_not_analyse_regions
     ).
 
 %---------------------------------------------------------------------------%
@@ -1452,16 +1455,17 @@ maybe_region_analysis(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, optimize_dead_procs, Dead),
+    globals.get_opt_tuple(Globals, OptTuple),
+    OptDeadProcs = OptTuple ^ ot_opt_dead_procs,
     (
-        Dead = yes,
+        OptDeadProcs = opt_dead_procs,
         maybe_write_string(Verbose, "% Eliminating dead procedures...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         dead_proc_elim(elim_opt_imported, !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        Dead = no
+        OptDeadProcs = do_not_opt_dead_procs
     ).
 
 %---------------------------------------------------------------------------%

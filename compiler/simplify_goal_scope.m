@@ -51,6 +51,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
@@ -77,11 +78,12 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         const_struct_db_get_ground_term_enabled(ConstStructDb0,
             ConstStructEnabled),
         (
-            ConstStructEnabled = no,
+            ConstStructEnabled = do_not_enable_const_struct,
             module_info_get_globals(ModuleInfo0, Globals),
-            globals.lookup_bool_option(Globals, common_struct, CommonStruct),
+            globals.get_opt_tuple(Globals, OptTuple),
+            CommonStruct = OptTuple ^ ot_opt_common_structs,
             (
-                CommonStruct = yes,
+                CommonStruct = opt_common_structs,
                 % Traversing the construction unifications inside the scope
                 % would allow common.m to
                 %
@@ -106,7 +108,7 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 GoalInfo = GoalInfo0,
                 Common = Common0
             ;
-                CommonStruct = no,
+                CommonStruct = do_not_opt_common_structs,
                 % Looking inside the scope may allow us to reduce the number of
                 % memory cells we may need to allocate dynamically. This
                 % improvement in the generated code trumps the cost in compile
@@ -122,7 +124,7 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 GoalInfo = GoalInfo0
             )
         ;
-            ConstStructEnabled = yes,
+            ConstStructEnabled = enable_const_struct,
             ( if
                 SubGoal0 = hlds_goal(SubGoalExpr, _),
                 SubGoalExpr = conj(plain_conj, Conjuncts),

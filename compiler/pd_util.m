@@ -175,6 +175,7 @@
 :- import_module hlds.quantification.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_type.
@@ -202,11 +203,11 @@ goal_get_calls(Goal0, CalledPreds) :-
 propagate_constraints(!Goal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     module_info_get_globals(ModuleInfo0, Globals),
-    globals.lookup_bool_option(Globals, local_constraint_propagation,
-        ConstraintProp),
+    globals.get_opt_tuple(Globals, OptTuple),
+    ConstraintProp = OptTuple ^ ot_prop_local_constraints,
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     (
-        ConstraintProp = yes,
+        ConstraintProp = prop_local_constraints,
         Goal0 = !.Goal,
         trace [io(!IO)] (
             pd_debug_message(DebugPD, "%% Propagating constraints\n", [], !IO),
@@ -246,7 +247,7 @@ propagate_constraints(!Goal, !PDInfo) :-
             !:Goal = Goal0
         )
     ;
-        ConstraintProp = no
+        ConstraintProp = do_not_prop_local_constraints
     ).
 
 %-----------------------------------------------------------------------------%

@@ -1,0 +1,123 @@
+bool   y    allow_inlining
+bool   n    inline_simple                                  
+bool   y    inline_builtins                                
+bool   n    inline_single_use                              
+int    0    inline_call_cost                               
+int    0    inline_compound_threshold                      
+int    5    inline_simple_threshold                        
+int    100  inline_vars_threshold                          
+int    5    intermod_inline_simple_threshold               
+bool   n    inline_linear_tail_rec_sccs                    
+int    0    inline_linear_tail_rec_sccs_max_extra          
+int    5    from_ground_term_threshold                     
+bool   y    enable_const_struct                            
+bool   n    common_struct                                  opt_common_structs
+bool   n    constraint_propagation                         prop_constraints
+bool   n    local_constraint_propagation                   prop_local_constraints
+bool   n    optimize_duplicate_calls                       opt_dup_calls
+bool   n    constant_propagation                           prop_constants
+bool   n    excess_assign                                  elim_excess_assigns
+bool   n    test_after_switch                              opt_test_after_switch
+bool   y    optimize_format_calls                          opt_format_calls
+bool   n    loop_invariants                                opt_loop_invariants
+bool   n    optimize_saved_vars_const                      opt_saved_vars_const
+bool   n    optimize_saved_vars_cell                       opt_svcell
+bool   y    optimize_saved_vars_cell_loop                  opt_svcell_loop
+bool   y    optimize_saved_vars_cell_full_path             opt_svcell_full_path
+bool   y    optimize_saved_vars_cell_on_stack              opt_svcell_on_stack
+bool   y    optimize_saved_vars_cell_candidate_headvars    opt_svcell_candidate_headvars
+int    3    optimize_saved_vars_cell_cv_store_cost         opt_svcell_cv_store_cost
+int    1    optimize_saved_vars_cell_cv_load_cost          opt_svcell_cv_load_cost
+int    1    optimize_saved_vars_cell_fv_store_cost         opt_svcell_fv_store_cost
+int    1    optimize_saved_vars_cell_fv_load_cost          opt_svcell_fv_load_cost
+int    100  optimize_saved_vars_cell_op_ratio              opt_svcell_op_ratio
+int    100  optimize_saved_vars_cell_node_ratio            opt_svcell_node_ratio 
+int    100  optimize_saved_vars_cell_all_path_node_ratio   opt_svcell_all_path_node_ratio
+bool   n    optimize_saved_vars_cell_include_all_candidates opt_svcell_all_candidates
+bool   n    delay_construct                                delay_constructs
+bool   n    follow_code                                    opt_follow_code
+bool   n    optimize_unused_args                           opt_unused_args
+bool   n    intermod_unused_args                           opt_unused_args_intermod
+bool   n    optimize_higher_order                          opt_higher_order
+int    20   higher_order_size_limit                        
+int    10   higher_order_arg_limit                         
+bool   n    unneeded_code                                  opt_unneeded_code
+int    10   unneeded_code_copy_limit                       opt_unneeded_code_copy_limit
+bool   n    type_specialization                            spec_types
+bool   n    user_guided_type_specialization                spec_types_user_guided
+bool   n    introduce_accumulators                         
+bool   n    optimize_constructor_last_call_accumulator     opt_lcmc_accumulator
+bool   n    optimize_constructor_last_call_null            opt_lcmc_null
+bool   n    optimize_constructor_last_call                 opt_lcmc
+bool   n    optimize_dead_procs                            opt_dead_procs
+bool   n    deforestation                                  deforest
+int    4    deforestation_depth_limit                      
+int    1000 deforestation_cost_factor                      
+int    200  deforestation_vars_threshold                   
+int    15   deforestation_size_threshold                   
+bool   n    untuple                                        
+bool   n    tuple                                          
+string -    tuple_trace_counts_file                        
+int    100  tuple_costs_ratio                              
+int    4    tuple_min_args                                 
+bool   n    inline_par_builtins                            
+bool   n    always_specialize_in_dep_par_conjs             spec_in_all_dep_par_conjs
+bool   y    allow_some_paths_only_waits                    
+bool   n    region_analysis                                analyse_regions
+bool   n    smart_indexing                                 use_smart_indexing
+bool   y    smart_atomic_indexing                          use_smart_indexing_atomic
+bool   y    smart_string_indexing                          use_smart_indexing_string
+bool   y    smart_tag_indexing                             use_smart_indexing_tag
+bool   y    smart_float_indexing                           use_smart_indexing_float
+int    25   dense_switch_req_density                       
+int    25   lookup_switch_req_density                      
+int    4    dense_switch_size                              
+int    4    lookup_switch_size                             
+int    16   string_trie_switch_size                        
+int    8    string_hash_switch_size                        
+int    4    string_binary_switch_size                      
+int    3    tag_switch_size                                
+int    3    try_switch_size                                
+int    4    binary_switch_size                             
+bool   n    switch_single_rec_base_first                   put_base_first_single_rec
+bool   y    switch_multi_rec_base_first                    put_base_first_multi_rec
+bool   n    static_ground_cells                            use_static_ground_cells
+bool   n    static_ground_floats                           use_static_ground_floats
+bool   n    static_ground_int64s                           use_static_ground_int64s
+bool   n    static_code_addresses                          use_static_code_addresses
+bool   n    use_atomic_cells                               
+bool   n    middle_rec                                     opt_middle_rec
+bool   n    simple_neg                                     opt_simple_neg
+bool   y    allow_hijacks                                  
+bool   n    optimize_tailcalls                             opt_mlds_tailcalls
+bool   n    optimize_initializations                       opt_initializations
+bool   y    eliminate_unused_mlds_assigns                  elim_unused_mlds_assigns
+bool   n    eliminate_local_vars                           elim_local_vars
+bool   y    generate_trail_ops_inline                      gen_trail_ops_inline
+bool   n    common_data                                    use_common_data
+bool   y    common_layout_data                             use_common_layout_data
+bool   n    optimize                                       
+bool   n    optimize_peep                                  opt_peep
+bool   n    optimize_peep_mkword                           opt_peep_mkword
+bool   n    optimize_jumps                                 opt_jumps
+bool   n    optimize_fulljumps                             opt_fulljumps
+bool   n    pessimize_tailcalls                            
+bool   n    checked_nondet_tailcalls                       opt_checked_nondet_tailcalls
+bool   n    use_local_vars                                 
+int    2    local_var_access_threshold                     
+bool   n    standardize_labels                             
+bool   n    optimize_labels                                opt_labels
+bool   n    optimize_dups                                  opt_dups
+bool   n    optimize_proc_dups                             opt_proc_dups
+bool   n    optimize_frames                                opt_frames
+bool   n    optimize_delay_slot                            opt_delay_slot
+bool   n    optimize_reassign                              opt_reassign
+int    0    optimize_repeat                                opt_repeat
+int    4000 layout_compression_limit                       
+bool   n    use_macro_for_redo_fail                        
+bool   n    emit_c_loops                                   
+int    1    procs_per_c_function                           
+bool   y    local_thread_engine_base                       use_local_thread_engine_base
+bool   n    erlang_switch_on_strings_as_atoms              switch_on_strings_as_atoms
+bool   n    inline_alloc
+bool   n    c_optimize                                     opt_c

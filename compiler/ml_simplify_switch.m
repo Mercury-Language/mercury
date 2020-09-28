@@ -42,6 +42,7 @@
 :- import_module backend_libs.switch_util.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_target_util.
@@ -79,12 +80,12 @@ ml_simplify_switch(Stmt0, Stmt, !Info) :-
 
         % Is the switch big enough?
         list.length(Cases, NumCases),
-        globals.lookup_int_option(Globals, dense_switch_size, DenseSize),
+        globals.get_opt_tuple(Globals, OptTuple),
+        DenseSize = OptTuple ^ ot_dense_switch_size,
         NumCases >= DenseSize,
 
         % ... and dense enough?
-        globals.lookup_int_option(Globals, dense_switch_req_density,
-            ReqDensity),
+        ReqDensity = OptTuple ^ ot_dense_switch_req_density,
         is_dense_switch(Cases, ReqDensity)
     then
         maybe_eliminate_default(Range, Cases, Default, ReqDensity,

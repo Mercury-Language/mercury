@@ -66,6 +66,7 @@
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -132,9 +133,10 @@ deforestation(!ModuleInfo) :-
     map.keys(VersionIndex, Versions),
 
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, constraint_propagation, Constraints),
+    globals.get_opt_tuple(Globals, OptTuple),
+    PropConstraints = OptTuple ^ ot_prop_constraints,
     ( if
-        Constraints = yes,
+        PropConstraints = prop_constraints,
         Versions = [_ | _]
     then
         % We can sometimes improve efficiency by rerunning determinism
@@ -302,25 +304,24 @@ deforest_goal_expr(GoalExpr0, GoalExpr, !GoalInfo, !PDInfo) :-
                 NonLocals = goal_info_get_nonlocals(!.GoalInfo),
                 pd_info_get_module_info(!.PDInfo, ModuleInfo),
                 module_info_get_globals(ModuleInfo, Globals),
-                globals.lookup_bool_option(Globals, deforestation,
-                    Deforestation),
+                globals.get_opt_tuple(Globals, OptTuple),
+                Deforest = OptTuple ^ ot_deforest,
                 (
-                    Deforestation = yes,
+                    Deforest = deforest,
                     compute_goal_infos(!Goals, !PDInfo),
                     pd_info_set_instmap(InstMap0, !PDInfo),
                     deforest_conj(!.Goals, NonLocals, [], !:Goals, !PDInfo)
                 ;
-                    Deforestation = no
+                    Deforest = do_not_deforest
                 ),
-                globals.lookup_bool_option(Globals, constraint_propagation,
-                    Constraints),
+                PropConstraints = OptTuple ^ ot_prop_constraints,
                 pd_info_set_instmap(InstMap0, !PDInfo),
                 (
-                    Constraints = yes,
+                    PropConstraints = prop_constraints,
                     propagate_conj_constraints(!.Goals, NonLocals, [], !:Goals,
                         !PDInfo)
                 ;
-                    Constraints = no
+                    PropConstraints = do_not_prop_constraints
                 ),
                 pd_info_set_instmap(InstMap0, !PDInfo)
             ;
@@ -887,16 +888,17 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
     pd_info_get_depth(!.PDInfo, Depth0),
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_option(Globals, deforestation_depth_limit, DepthLimitOpt),
+    globals.get_opt_tuple(Globals, OptTuple),
+    MaxDepth = OptTuple ^ ot_deforestation_depth_limit,
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     Depth = Depth0 + 1,
     pd_info_set_depth(Depth, !PDInfo),
-    globals.lookup_int_option(Globals, deforestation_size_threshold,
-        SizeLimit),
+    SizeLimit = OptTuple ^ ot_deforestation_size_threshold,
     globals.lookup_option(Globals, fully_strict, FullyStrictOp),
     ( if
-        DepthLimitOpt = int(MaxDepth),
         MaxDepth \= -1,     % no depth limit set
+        % XXX The *default* value of the depth_limit is 4,
+        % so -1 does NOT mean that there is no depth limit set.
         Depth0 >= MaxDepth
     then
         % The depth limit was exceeded. This should not occur too often in
@@ -1018,7 +1020,8 @@ is_improvement_worth_while(PDInfo, Optimized0, CostDelta0, SizeDelta0)
 
     pd_info_get_module_info(PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_int_option(Globals, deforestation_cost_factor, Factor),
+    globals.get_opt_tuple(Globals, OptTuple),
+    Factor = OptTuple ^ ot_deforestation_cost_factor,
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     ( if
         Optimized0 = yes,
@@ -1169,16 +1172,19 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
         MaybeGeneralised, MaybeCallGoal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     module_info_get_globals(ModuleInfo0, Globals),
-    globals.lookup_int_option(Globals, deforestation_vars_threshold, VarsOpt),
+    globals.get_opt_tuple(Globals, OptTuple),
+    VarsThreshold = OptTuple ^ ot_deforestation_vars_threshold,
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     ( if
         EarlierGoal = hlds_goal(EarlierGoalExpr, _),
         EarlierGoalExpr = plain_call(PredId1, ProcId1, Args1, _, _, _),
         (
             % No threshold set.
-            VarsOpt = -1
+            VarsThreshold = -1
+            % XXX The *default* value of the vars threshold is 200,
+            % so -1 does NOT mean that there is no threshold set.
         ;
-            % Check that we're not creating a procedure with a massive number
+            % Check that we are not creating a procedure with a massive number
             % of variables. We assume that all the variables in the first
             % called goal are present in the final version. If the number
             % of variables in the first called goal plus the number of
@@ -1196,7 +1202,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             list.length(GoalVarsList1, NumVars1),
             list.length(GoalVarsList2, NumVars2),
             NumVars = NumVars1 + NumVars2,
-            NumVars < VarsOpt
+            NumVars < VarsThreshold
         )
     then
         % Create the goal for the new predicate, unfolding the first call.
@@ -1916,8 +1922,8 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
     pd_info_get_local_term_info(!.PDInfo, LocalTermInfo0),
 
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_int_option(Globals, deforestation_size_threshold,
-        SizeThreshold),
+    globals.get_opt_tuple(Globals, OptTuple),
+    SizeThreshold = OptTuple ^ ot_deforestation_size_threshold,
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     ( if
         % Check for extra information to the call.
@@ -1993,7 +1999,8 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         Goal0, Goal, Optimized, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_int_option(Globals, deforestation_vars_threshold, VarsOpt),
+    globals.get_opt_tuple(Globals, OptTuple),
+    VarsThreshold = OptTuple ^ ot_deforestation_vars_threshold,
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
     proc_info_get_varset(ProcInfo0, VarSet0),
     varset.vars(VarSet0, Vars),
@@ -2004,10 +2011,11 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         (
             CheckVars = no
         ;
-            VarsOpt = -1
+            VarsThreshold = -1
+            % XXX The *default* value of the vars threshold is 200,
+            % so -1 does NOT mean that there is no threshold set.
         ;
-            VarsOpt = MaxVars,
-            NumVars < MaxVars
+            NumVars < VarsThreshold
         )
     then
         pd_info_get_pred_info(!.PDInfo, PredInfo0),
@@ -2085,7 +2093,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         CostDelta = CostDelta1 - CostDelta0,
         goal_size(Goal4, GoalSize),
         SizeDelta = GoalSize - cost_of_call,
-        globals.lookup_int_option(Globals, deforestation_cost_factor, Factor),
+        Factor = OptTuple ^ ot_deforestation_cost_factor,
         ( if
             Optimized0 = yes,
             (

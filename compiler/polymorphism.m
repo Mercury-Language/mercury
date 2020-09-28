@@ -408,7 +408,7 @@
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.options.
+:- import_module libs.optimization_options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.goal_path.
@@ -2991,7 +2991,7 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
     poly_info_get_const_struct_db(!.Info, ConstStructDb0),
     const_struct_db_get_poly_enabled(ConstStructDb0, ConstStructEnabled),
     ( if
-        ConstStructEnabled = yes,
+        ConstStructEnabled = enable_const_struct,
         all_are_const_struct_args(ArgVarsMCAs, VarConstArgs)
     then
         poly_info_get_num_reuses(!.Info, NumReuses),
@@ -3424,7 +3424,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         poly_info_get_const_struct_db(!.Info, ConstStructDb0),
         const_struct_db_get_poly_enabled(ConstStructDb0, Enabled),
         ( if
-            Enabled = yes,
+            Enabled = enable_const_struct,
             all_are_const_struct_args(ArgTypeInfoVarsMCAs,
                 ArgTypeInfoConstArgs)
         then
@@ -3987,15 +3987,15 @@ post_copy_polymorphism(ExistsCastPredIds, !ModuleInfo) :-
     map.keys(ClassMap, ClassIds0),
 
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, user_guided_type_specialization,
-        TypeSpec),
+    globals.get_opt_tuple(Globals, OptTuple),
+    UserTypeSpec = OptTuple ^ ot_spec_types_user_guided,
     (
-        TypeSpec = no,
+        UserTypeSpec = do_not_spec_types_user_guided,
         % Don't expand classes from other modules.
         list.filter(class_id_is_from_given_module(ModuleName),
             ClassIds0, ClassIds)
     ;
-        TypeSpec = yes,
+        UserTypeSpec = spec_types_user_guided,
         ClassIds = ClassIds0
     ),
     map.apply_to_list(ClassIds, ClassMap, ClassDefns),

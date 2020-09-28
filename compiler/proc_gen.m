@@ -88,6 +88,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.code_gen.
@@ -709,9 +710,10 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
 generate_det_code(ProcContext, Goal, ResumePoint, TraceSlotInfo,
         Code, MaybeTraceCallLabel, ProcFrameSlots, !CI, !.CLD) :-
     get_globals(!.CI, Globals),
-    globals.lookup_bool_option(Globals, middle_rec, MiddleRec),
+    globals.get_opt_tuple(Globals, OptTuple),
+    MiddleRec = OptTuple ^ ot_opt_middle_rec,
     ( if
-        MiddleRec = yes,
+        MiddleRec = opt_middle_rec,
         middle_rec.match_and_generate(Goal, MiddleRecCode, !CI, !.CLD, _CLD)
     then
         Code = MiddleRecCode,

@@ -32,6 +32,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -103,8 +104,8 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
         map.map_values_only(reset_imported_structure_sharing_reuse,
             Procs1, Procs),
         module_info_get_globals(!.ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, user_guided_type_specialization,
-            DoTypeSpec),
+        globals.get_opt_tuple(Globals, OptTuple),
+        DoTypeSpec = OptTuple ^ ot_spec_types_user_guided,
         globals.lookup_bool_option(Globals, smart_recompilation, Smart),
         % XXX Should check whether smart recompilation has been disabled?
         ( if
@@ -118,7 +119,7 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
             % problems with differing output for the recompilation tests
             % in debugging grades.
 
-            ( DoTypeSpec = yes
+            ( DoTypeSpec = spec_types_user_guided
             ; not pred_info_is_imported(PredInfo0)
             ; Smart = yes
             )

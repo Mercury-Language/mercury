@@ -113,6 +113,7 @@
 :- import_module hlds.hlds_statistics.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -609,7 +610,8 @@ mark_entities_in_opt_file_as_opt_exported(IntermodAnalysis,
 :- pred need_middle_pass_for_opt_file(globals::in, bool::out) is det.
 
 need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile) :-
-    globals.lookup_bool_option(Globals, intermod_unused_args, IntermodArgs),
+    globals.get_opt_tuple(Globals, OptTuple),
+    IntermodArgs = OptTuple ^ ot_opt_unused_args_intermod,
     globals.lookup_bool_option(Globals, termination, Termination),
     globals.lookup_bool_option(Globals, termination2, Termination2),
     globals.lookup_bool_option(Globals, structure_sharing_analysis,
@@ -621,7 +623,7 @@ need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile) :-
     globals.lookup_bool_option(Globals, analyse_trail_usage, TrailingAnalysis),
     globals.lookup_bool_option(Globals, analyse_mm_tabling, TablingAnalysis),
     ( if
-        ( IntermodArgs = yes
+        ( IntermodArgs = opt_unused_args_intermod
         ; Termination = yes
         ; Termination2 = yes
         ; ExceptionAnalysis = yes
@@ -1246,15 +1248,15 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
             %
             % NOTE: Any changes made here may also need to be made
             % to the relevant parts of backend_pass_by_preds_4/12.
-            globals.lookup_bool_option(Globals, constant_propagation,
-                ConstProp),
+            globals.get_opt_tuple(Globals, OptTuple),
+            ConstProp = OptTuple ^ ot_prop_constants,
             globals.lookup_bool_option(Globals, profile_deep, DeepProf),
             globals.lookup_bool_option(Globals, record_term_sizes_as_words,
                 TSWProf),
             globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
                 TSCProf),
             ( if
-                ConstProp = yes,
+                ConstProp = prop_constants,
                 DeepProf = no,
                 TSWProf = no,
                 TSCProf = no

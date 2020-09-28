@@ -40,6 +40,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -120,11 +121,12 @@ optimize_in_maybe_stmt(OptInfo, !MaybeStmt) :-
 optimize_in_stmts(OptInfo, !Stmts) :-
     list.map(optimize_in_stmt(OptInfo), !Stmts),
     Globals = OptInfo ^ oi_globals,
-    globals.lookup_bool_option(Globals, optimize_peep, OptPeep),
+    globals.get_opt_tuple(Globals, OptTuple),
+    OptPeep = OptTuple ^ ot_opt_peep,
     (
-        OptPeep = no
+        OptPeep = do_not_opt_peep
     ;
-        OptPeep = yes,
+        OptPeep = opt_peep,
         peephole_opt_statements(!Stmts)
     ).
 
@@ -706,12 +708,13 @@ cases_affect_lvals(Lvals, [Head | Tail], Affects) :-
 maybe_convert_assignments_into_initializers(OptInfo, !Defns, !Stmts) :-
     Globals = OptInfo ^ oi_globals,
     % Check if --optimize-initializations is enabled.
-    globals.lookup_bool_option(Globals, optimize_initializations, OptInit),
+    globals.get_opt_tuple(Globals, OptTuple),
+    OptInit = OptTuple ^ ot_opt_initializations,
     (
-        OptInit = yes,
+        OptInit = opt_initializations,
         convert_assignments_into_initializers(OptInfo, !Defns, !Stmts)
     ;
-        OptInit = no
+        OptInit = do_not_opt_initializations
     ).
 
 :- pred convert_assignments_into_initializers(opt_info::in,
@@ -807,13 +810,14 @@ find_this_var_defn(VarName, [LocalVarDefn | LocalVarDefns], !RevPrevDefns,
     list(mlds_stmt)::in, list(mlds_stmt)::out) is det.
 
 maybe_eliminate_locals(OptInfo, !LocalVarDefns, !FuncDefns, !Stmts) :-
-    globals.lookup_bool_option(OptInfo ^ oi_globals, eliminate_local_vars,
-        EliminateLocalVars),
+    Globals = OptInfo ^ oi_globals,
+    globals.get_opt_tuple(Globals, OptTuple),
+    EliminateLocalVars = OptTuple ^ ot_elim_local_vars,
     (
-        EliminateLocalVars = yes,
+        EliminateLocalVars = elim_local_vars,
         eliminate_locals(OptInfo, !LocalVarDefns, !FuncDefns, !Stmts)
     ;
-        EliminateLocalVars = no
+        EliminateLocalVars = do_not_elim_local_vars
     ).
 
 :- pred eliminate_locals(opt_info::in,

@@ -20,6 +20,8 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.optimization_options.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
@@ -28,7 +30,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module set_tree234.
@@ -94,7 +95,7 @@
 :- type static_cell_info.
 
 :- func init_static_cell_info(module_name, have_unboxed_floats,
-    have_unboxed_int64s, bool) = static_cell_info.
+    have_unboxed_int64s, maybe_use_common_data) = static_cell_info.
 
 :- pred add_scalar_static_cell_natural_types(list(rval)::in, data_id::out,
     static_cell_info::in, static_cell_info::out) is det.
@@ -349,7 +350,7 @@ make_alloc_id_map(AllocSite, Slot, Slot + 1, !Map) :-
                 scsi_module_name            :: module_name, % base file name
                 scsi_unbox_float            :: have_unboxed_floats,
                 scsi_unbox_int64s           :: have_unboxed_int64s,
-                scsi_common_data            :: bool
+                scsi_common_data            :: maybe_use_common_data
             ).
 
 :- type cell_type_bimap == bimap(common_cell_type, type_num).
@@ -434,7 +435,7 @@ do_add_scalar_static_cell(TypedArgs, CellType, CellValue, DataId, !Info) :-
 
         InsertCommonData = !.Info ^ sci_sub_info ^ scsi_common_data,
         (
-            InsertCommonData = yes,
+            InsertCommonData = use_common_data,
             MembersMap0 = !.CellGroup ^ scalar_cell_group_members,
             CellNumCounter0 = !.CellGroup ^ scalar_cell_counter,
             counter.allocate(CellNum, CellNumCounter0, CellNumCounter),
@@ -459,7 +460,7 @@ do_add_scalar_static_cell(TypedArgs, CellType, CellValue, DataId, !Info) :-
                 !Info ^ sci_scalar_cell_group_map := CellGroupMap
             )
         ;
-            InsertCommonData = no,
+            InsertCommonData = do_not_use_common_data,
             MembersMap0 = !.CellGroup ^ scalar_cell_group_members,
             ( if bimap.search(MembersMap0, Args, DataIdPrime) then
                 DataId = DataIdPrime

@@ -59,6 +59,7 @@
 :- import_module hlds.mark_static_terms.            % HLDS -> HLDS
 :- import_module hlds.mark_tail_calls.              % HLDS -> HLDS
 :- import_module libs.file_util.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ml_backend.add_trail_ops.          % HLDS -> HLDS
 :- import_module ml_backend.add_heap_ops.           % HLDS -> HLDS
@@ -74,7 +75,6 @@
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
 
-:- import_module getopt_io.
 :- import_module maybe.
 :- import_module pprint.
 :- import_module require.
@@ -150,16 +150,18 @@ mlds_backend(!HLDS, !:MLDS, !:Specs, !DumpInfo, !IO) :-
     %
     % However, we need to disable optimize_initializations, because
     % ml_elim_nested doesn't correctly handle code containing initializations.
-    globals.lookup_bool_option(Globals, optimize, Optimize),
+    globals.get_opt_tuple(Globals, OptTuple),
+    Optimize = OptTuple ^ ot_optimize,
     (
-        Optimize = yes,
-        globals.set_option(optimize_initializations, bool(no),
-            Globals, NoInitOptGlobals),
+        Optimize = optimize,
+        NoInitOptTuple = OptTuple ^ ot_opt_initializations
+            := do_not_opt_initializations,
+        globals.set_opt_tuple(NoInitOptTuple, Globals, NoInitOptGlobals),
         maybe_write_string(Verbose, "% Optimizing MLDS...\n", !IO),
         mlds_optimize(NoInitOptGlobals, !MLDS),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
-        Optimize = no
+        Optimize = do_not_optimize
     ),
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(Globals, !.MLDS, 25, "optimize1", !IO),
@@ -199,12 +201,12 @@ mlds_backend(!HLDS, !:MLDS, !:Specs, !DumpInfo, !IO) :-
     % optimize_initializations. (It may also help pick up some additional
     % optimization opportunities for the other optimizations in this pass.)
     (
-        Optimize = yes,
+        Optimize = optimize,
         maybe_write_string(Verbose, "% Optimizing MLDS again...\n", !IO),
         mlds_optimize(Globals, !MLDS),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
-        Optimize = no
+        Optimize = do_not_optimize
     ),
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(Globals, !.MLDS, 40, "optimize2", !IO),
@@ -215,16 +217,17 @@ mlds_backend(!HLDS, !:MLDS, !:Specs, !DumpInfo, !IO) :-
 
 maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, static_ground_cells, SGCells),
+    globals.get_opt_tuple(Globals, OptTuple),
+    SGCells = OptTuple ^ ot_use_static_ground_cells,
     (
-        SGCells = yes,
+        SGCells = use_static_ground_cells,
         maybe_write_string(Verbose, "% Marking static ground terms...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_valid_nonimported_procs(update_proc(mark_static_terms), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        SGCells = no
+        SGCells = do_not_use_static_ground_cells
     ).
 
 :- pred maybe_add_trail_ops(bool::in, bool::in,
@@ -254,8 +257,8 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
         globals.get_target(Globals, Target),
         (
             Target = target_c,
-            globals.lookup_bool_option(Globals, generate_trail_ops_inline,
-                GenerateInline)
+            globals.get_opt_tuple(Globals, OptTuple),
+            GenerateInline = OptTuple ^ ot_gen_trail_ops_inline
         ;
             % XXX Currently, we can only generate trail ops inline for
             % the C backends.
@@ -264,7 +267,7 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
             ; Target = target_java
             ; Target = target_erlang
             ),
-            GenerateInline = no
+            GenerateInline = do_not_gen_trail_ops_inline
         ),
         maybe_write_string(Verbose, "% Adding trailing operations...\n", !IO),
         maybe_flush_output(Verbose, !IO),
@@ -324,9 +327,10 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_mark_tail_rec_calls_hlds(Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, optimize_tailcalls, OptimizeTailCalls),
+    globals.get_opt_tuple(Globals, OptTuple),
+    OptimizeTailCalls = OptTuple ^ ot_opt_mlds_tailcalls,
     (
-        OptimizeTailCalls = yes,
+        OptimizeTailCalls = opt_mlds_tailcalls,
         maybe_write_string(Verbose, "% Marking tail recursive calls...", !IO),
         maybe_flush_output(Verbose, !IO),
         module_info_rebuild_dependency_info(!HLDS, DepInfo),
@@ -335,7 +339,7 @@ maybe_mark_tail_rec_calls_hlds(Verbose, Stats, !HLDS, !Specs, !IO) :-
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        OptimizeTailCalls = no
+        OptimizeTailCalls = do_not_opt_mlds_tailcalls
     ).
 
 :- pred mlds_gen_rtti_data(module_info::in, mlds_target_lang::in,

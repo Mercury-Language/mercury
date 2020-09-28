@@ -21,6 +21,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
+:- import_module libs.optimization_options.
 :- import_module libs.globals.
 :- import_module libs.trace_params.
 :- import_module ll_backend.layout.
@@ -51,19 +52,23 @@
                                                     layout_slot_name),
                 lout_auto_comments              :: maybe_auto_comments,
                 lout_foreign_line_numbers       :: bool,
-                lout_emit_c_loops               :: bool,
+                lout_emit_c_loops               :: maybe_emit_c_loops,
                 lout_generate_bytecode          :: bool,
-                lout_local_thread_engine_base   :: bool,
+                lout_local_thread_engine_base   ::
+                                            maybe_use_local_thread_engine_base,
                 lout_profile_calls              :: bool,
                 lout_profile_time               :: bool,
                 lout_profile_memory             :: bool,
                 lout_profile_deep               :: bool,
                 lout_unboxed_float              :: bool,
                 lout_det_stack_dword_alignment  :: bool,
-                lout_static_ground_floats       :: bool,
+                lout_static_ground_floats       ::
+                                            maybe_use_static_ground_floats,
                 lout_unboxed_int64s             :: bool,
-                lout_static_ground_int64s       :: bool,
-                lout_use_macro_for_redo_fail    :: bool,
+                lout_static_ground_int64s       ::
+                                            maybe_use_static_ground_int64s,
+                lout_use_macro_for_redo_fail    ::
+                                            maybe_use_macro_for_redo_fail,
                 lout_trace_level                :: trace_level,
                 lout_globals                    :: globals
             ).
@@ -136,24 +141,21 @@ init_llds_out_info(ModuleName, SourceFileName, Globals,
     ),
     globals.lookup_bool_option(Globals, line_numbers_around_foreign_code,
         ForeignLineNumbers),
-    globals.lookup_bool_option(Globals, emit_c_loops, EmitCLoops),
+    globals.get_opt_tuple(Globals, OptTuple),
+    EmitCLoops = OptTuple ^ ot_emit_c_loops,
     globals.lookup_bool_option(Globals, generate_bytecode, GenerateBytecode),
-    globals.lookup_bool_option(Globals, local_thread_engine_base,
-        LocalThreadEngineBase),
+    LocalThreadEngineBase = OptTuple ^ ot_use_local_thread_engine_base,
     globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
     globals.lookup_bool_option(Globals, profile_time, ProfileTime),
     globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
     globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
     double_width_floats_on_det_stack(Globals, DetStackDwordAligment),
-    globals.lookup_bool_option(Globals, static_ground_floats,
-        StaticGroundFloats),
+    StaticGroundFloats = OptTuple ^ ot_use_static_ground_floats,
     globals.lookup_bool_option(Globals, unboxed_int64s, UnboxedInt64s),
     % XXX ARG_PACK We probably need double_width_int64s_on_det_stack.
-    globals.lookup_bool_option(Globals, static_ground_int64s,
-        StaticGroundInt64s),
-    globals.lookup_bool_option(Globals, use_macro_for_redo_fail,
-        UseMacroForRedoFail),
+    StaticGroundInt64s = OptTuple ^ ot_use_static_ground_int64s,
+    UseMacroForRedoFail = OptTuple ^ ot_use_macro_for_redo_fail,
     globals.get_trace_level(Globals, TraceLevel),
     Info = llds_out_info(ModuleName, MangledModuleName, SourceFileName,
         InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoEntryMap,

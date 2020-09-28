@@ -129,7 +129,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.options.
+:- import_module libs.optimization_options.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_global_data.
@@ -167,9 +167,9 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Stmts, !Info) :-
 
                 ml_gen_info_get_module_info(!.Info, ModuleInfo),
                 module_info_get_globals(ModuleInfo, Globals),
-                globals.lookup_bool_option(Globals, static_ground_cells,
-                    StaticGroundCells),
-                StaticGroundCells = yes,
+                globals.get_opt_tuple(Globals, OptTuple),
+                OptTuple ^ ot_use_static_ground_cells =
+                    use_static_ground_cells,
 
                 DisjNonLocals = goal_info_get_nonlocals(GoalInfo),
                 all_disjuncts_are_conj_of_unify(DisjNonLocals, Disjuncts),

@@ -238,6 +238,7 @@
 :- implementation.
 
 :- import_module libs.compute_grade.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module parse_tree.error_util.
@@ -395,13 +396,14 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         TypeLayoutOption = yes,
         TypeLayoutOpt = ""
     ),
-    globals.lookup_bool_option(Globals, c_optimize, C_optimize),
+    globals.get_opt_tuple(Globals, OptTuple),
+    OptimizeC = OptTuple ^ ot_opt_c,
     (
-        C_optimize = yes,
+        OptimizeC = opt_c,
         globals.lookup_string_option(Globals, cflags_for_optimization,
             OptimizeOpt)
     ;
-        C_optimize = no,
+        OptimizeC = do_not_opt_c,
         OptimizeOpt = ""
     ),
     globals.lookup_bool_option(Globals, ansi_c, Ansi),
@@ -412,14 +414,14 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         Ansi = no,
         AnsiOpt = ""
     ),
-    globals.lookup_bool_option(Globals, inline_alloc, InlineAlloc),
+    InlineAlloc = OptTuple ^ ot_inline_alloc,
     (
-        InlineAlloc = yes,
+        InlineAlloc = inline_alloc,
         % XXX disabled because inline allocation is broken in gc7.0 alpha6.
         % InlineAllocOpt = "-DMR_INLINE_ALLOC "
         InlineAllocOpt = ""
     ;
-        InlineAlloc = no,
+        InlineAlloc = do_not_inline_alloc,
         InlineAllocOpt = ""
     ),
     globals.lookup_bool_option(Globals, warn_target_code, Warn),

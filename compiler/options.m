@@ -63,7 +63,10 @@
 :- module libs.options.
 :- interface.
 
+:- import_module libs.optimization_options.
+
 :- import_module char.
+:- import_module cord.
 :- import_module getopt_io.
 :- import_module io.
 :- import_module list.
@@ -88,8 +91,9 @@
     % The MaybeOptionTableOut may either be ok(OptionTableOut), or it may
     % be error(ErrorString).
     %
-:- pred special_handler(option::in, special_data::in, option_table::in,
-    maybe_option_table::out) is semidet.
+:- pred special_handler(option::in, special_data::in,
+    option_table::in, maybe_option_table::out,
+    cord(optimization_option)::in, cord(optimization_option)::out) is semidet.
 
     % Return the style and non-style warning options.
     %
@@ -147,6 +151,19 @@
     % The documentation can go either next to the option definition
     % here, or as commented-out code in the appropriate subroutine
     % of options_help/2.
+    %
+    % NOTE: We should ensure that the order of the options
+    % is consistent in all the following places:
+    %
+    % - in this definition of the `option' type
+    % - in the clauses of the `optdef' predicate
+    % - in the clauses of `long_option' predicate
+    %   (not in the clauses of the `short_option' predicate, since
+    %   that is sorted alphabetically on the option letter)
+    % - in the special_handler predicate, if they appear there
+    % - in the help predicates.
+    %
+    % At the moment, there are considerable deviations from such consistency.
 :- type option
 
     % Warning options
@@ -370,6 +387,9 @@
     ;       compute_goal_modes
     ;       benchmark_modes
     ;       benchmark_modes_repeat
+    ;       unneeded_code_debug
+    ;       unneeded_code_debug_pred_name
+    ;       common_struct_preds
 
     % Language semantics options
     ;       reorder_conj
@@ -699,12 +719,155 @@
     ;       prefer_switch
     ;       prefer_while_loop_over_jump_self
     ;       prefer_while_loop_over_jump_mutual
-    ;       opt_no_return_calls
+    ;       opt_no_return_calls                     % XXX should be oc_opt
     ;       debug_class_init
 
     % Optimization Options
+
+    %   - HLDS
+    ;       optopt_allow_inlining
+    ;       inlining
+    ;       optopt_inline_simple
+    ;       optopt_inline_builtins
+    ;       optopt_inline_single_use
+    ;       optopt_inline_call_cost
+    ;       optopt_inline_compound_threshold
+    ;       optopt_inline_simple_threshold
+    ;       optopt_inline_vars_threshold
+    ;       optopt_intermod_inline_simple_threshold
+    ;       optopt_inline_linear_tail_rec_sccs
+    ;       optopt_inline_linear_tail_rec_sccs_max_extra
+    ;       optopt_from_ground_term_threshold
+    ;       optopt_enable_const_struct
+    ;       optopt_common_struct
+    ;       optopt_constraint_propagation
+    ;       optopt_local_constraint_propagation
+    ;       optopt_optimize_unused_args
+    ;       optopt_intermod_unused_args
+    ;       optopt_optimize_higher_order
+    ;       optopt_higher_order_size_limit
+    ;       optopt_higher_order_arg_limit
+    ;       optopt_unneeded_code
+    ;       optopt_unneeded_code_copy_limit
+    ;       optopt_type_specialization
+    ;       optopt_user_guided_type_specialization
+    ;       optopt_introduce_accumulators
+    ;       optopt_optimize_constructor_last_call_accumulator
+    ;       optopt_optimize_constructor_last_call_null
+    ;       optopt_optimize_constructor_last_call
+    ;       optopt_optimize_duplicate_calls
+    ;       optopt_constant_propagation
+    ;       optopt_excess_assign
+    ;       optopt_test_after_switch
+    ;       optopt_optimize_format_calls
+    ;       optopt_optimize_saved_vars_const
+    ;       optopt_optimize_saved_vars_cell
+    ;       optopt_optimize_saved_vars_cell_loop
+    ;       optopt_optimize_saved_vars_cell_full_path
+    ;       optopt_optimize_saved_vars_cell_on_stack
+    ;       optopt_optimize_saved_vars_cell_candidate_headvars
+    ;       optopt_optimize_saved_vars_cell_cv_store_cost
+    ;       optopt_optimize_saved_vars_cell_cv_load_cost
+    ;       optopt_optimize_saved_vars_cell_fv_store_cost
+    ;       optopt_optimize_saved_vars_cell_fv_load_cost
+    ;       optopt_optimize_saved_vars_cell_op_ratio
+    ;       optopt_optimize_saved_vars_cell_node_ratio
+    ;       optopt_optimize_saved_vars_cell_all_path_node_ratio
+    ;       optopt_optimize_saved_vars_cell_include_all_candidates
+    ;       optimize_saved_vars
+    ;       optopt_loop_invariants
+    ;       optopt_delay_construct
+    ;       optopt_follow_code
+    ;       optopt_optimize_dead_procs
+    ;       optopt_deforestation
+    ;       optopt_deforestation_depth_limit
+    ;       optopt_deforestation_cost_factor
+    ;       optopt_deforestation_vars_threshold
+    ;       optopt_deforestation_size_threshold
+    ;       optopt_untuple
+    ;       optopt_tuple
+    ;       optopt_tuple_trace_counts_file
+    ;       optopt_tuple_costs_ratio
+    ;       optopt_tuple_min_args
+    ;       optopt_inline_par_builtins
+    ;       optopt_always_specialize_in_dep_par_conjs
+    ;       optopt_allow_some_paths_only_waits
+    ;       optopt_region_analysis
+
+    %   - HLDS->LLDS
+    ;       optopt_smart_indexing
+    ;         optopt_dense_switch_req_density
+    ;         optopt_lookup_switch_req_density
+    ;         optopt_dense_switch_size
+    ;         optopt_lookup_switch_size
+    ;         optopt_string_trie_switch_size
+    ;         optopt_string_hash_switch_size
+    ;         optopt_string_binary_switch_size
+    ;         optopt_tag_switch_size
+    ;         optopt_try_switch_size
+    ;         optopt_binary_switch_size
+    ;         optopt_switch_single_rec_base_first
+    ;         optopt_switch_multi_rec_base_first
+
+    ;         optopt_smart_atomic_indexing
+    ;         optopt_smart_string_indexing
+    ;         optopt_smart_tag_indexing
+    ;         optopt_smart_float_indexing
+
+    ;       optopt_static_ground_cells
+    ;       optopt_static_ground_floats
+    ;       optopt_static_ground_int64s
+    ;       optopt_static_code_addresses
+
+    ;       optopt_use_atomic_cells
+    ;       optopt_middle_rec
+    ;       optopt_simple_neg
+    ;       optopt_allow_hijacks
+
+    %   - MLDS
+    ;       optopt_optimize_mlds_tailcalls
+    ;       optopt_optimize_initializations
+    ;       optopt_eliminate_unused_mlds_assigns
+    ;       optopt_eliminate_local_vars
+    ;       optopt_generate_trail_ops_inline
+
+    %   - LLDS
+    ;       optopt_common_data
+    ;       optopt_common_layout_data
+    ;       optopt_optimize            % Also used for MLDS->MLDS optimizations.
+    ;       optopt_optimize_peep
+    ;       optopt_optimize_peep_mkword
+    ;       optopt_optimize_jumps
+    ;       optopt_optimize_fulljumps
+    ;       optopt_pessimize_tailcalls
+    ;       optopt_checked_nondet_tailcalls
+    ;       optopt_use_local_vars
+    ;       optopt_local_var_access_threshold
+    ;       optopt_standardize_labels
+    ;       optopt_optimize_labels
+    ;       optopt_optimize_dups
+    ;       optopt_optimize_proc_dups
+    ;       optopt_optimize_frames
+    ;       optopt_optimize_delay_slot
+    ;       optopt_optimize_reassign
+    ;       optopt_optimize_repeat
+    ;       optopt_layout_compression_limit
+
+    %   - C
+    ;       optopt_use_macro_for_redo_fail
+    ;       optopt_emit_c_loops
+    ;       optopt_procs_per_c_function
+    ;       everything_in_one_c_function
+    ;       optopt_local_thread_engine_base
+    ;       optopt_inline_alloc
+    ;       optopt_c_optimize
+
+    %   - Erlang
+    ;       optopt_erlang_switch_on_strings_as_atoms
+
+    % Special optimization options.
+
     ;       opt_level
-    ;       opt_level_number
     ;       opt_space                   % Default is to optimize time.
     ;       intermodule_optimization
     ;       read_opt_files_transitively
@@ -715,82 +878,10 @@
     ;       analysis_repeat
     ;       analysis_file_cache
 
-    %   - HLDS
-    ;       allow_inlining
-    ;       inlining
-    ;       inline_simple
-    ;       inline_builtins
-    ;       inline_single_use
-    ;       inline_call_cost
-    ;       inline_compound_threshold
-    ;       inline_simple_threshold
-    ;       inline_vars_threshold
-    ;       intermod_inline_simple_threshold
-    ;       inline_linear_tail_rec_sccs
-    ;       inline_linear_tail_rec_sccs_max_extra
-    ;       from_ground_term_threshold
-    ;       enable_const_struct
-    ;       common_struct
-    ;       common_struct_preds
-    ;       constraint_propagation
-    ;       local_constraint_propagation
-    ;       optimize_unused_args
-    ;       intermod_unused_args
-    ;       optimize_higher_order
-    ;       higher_order_size_limit
-    ;       higher_order_arg_limit
-    ;       unneeded_code
-    ;       unneeded_code_copy_limit
-    ;       unneeded_code_debug
-    ;       unneeded_code_debug_pred_name
-    ;       type_specialization
-    ;       user_guided_type_specialization
-    ;       introduce_accumulators
-    ;       optimize_constructor_last_call_accumulator
-    ;       optimize_constructor_last_call_null
-    ;       optimize_constructor_last_call
-    ;       optimize_duplicate_calls
-    ;       constant_propagation
-    ;       excess_assign
-    ;       test_after_switch
-    ;       optimize_format_calls
-    ;       optimize_saved_vars_const
-    ;       optimize_saved_vars_cell
-    ;       optimize_saved_vars_cell_loop
-    ;       optimize_saved_vars_cell_full_path
-    ;       optimize_saved_vars_cell_on_stack
-    ;       optimize_saved_vars_cell_candidate_headvars
-    ;       optimize_saved_vars_cell_cv_store_cost
-    ;       optimize_saved_vars_cell_cv_load_cost
-    ;       optimize_saved_vars_cell_fv_store_cost
-    ;       optimize_saved_vars_cell_fv_load_cost
-    ;       optimize_saved_vars_cell_op_ratio
-    ;       optimize_saved_vars_cell_node_ratio
-    ;       optimize_saved_vars_cell_all_path_node_ratio
-    ;       optimize_saved_vars_cell_include_all_candidates
-    ;       optimize_saved_vars
-    ;       loop_invariants
-    ;       delay_construct
-    ;       follow_code
-    ;       optimize_dead_procs
-    ;       deforestation
-    ;       deforestation_depth_limit
-    ;       deforestation_cost_factor
-    ;       deforestation_vars_threshold
-    ;       deforestation_size_threshold
     ;       analyse_trail_usage
     ;       optimize_trail_usage
     ;       optimize_region_ops
     ;       analyse_mm_tabling
-    ;       untuple
-    ;       tuple
-    ;       tuple_trace_counts_file
-    ;       tuple_costs_ratio
-    ;       tuple_min_args
-    ;       inline_par_builtins
-    ;       always_specialize_in_dep_par_conjs
-    ;       allow_some_paths_only_waits
-    ;       region_analysis
 
     % Stuff for the CTGC system (structure sharing / structure reuse).
     ;       structure_sharing_analysis
@@ -823,75 +914,6 @@
     ;       analyse_exceptions
     ;       analyse_closures
 
-    %   - HLDS->LLDS
-    ;       smart_indexing
-    ;         dense_switch_req_density
-    ;         lookup_switch_req_density
-    ;         dense_switch_size
-    ;         lookup_switch_size
-    ;         string_trie_switch_size
-    ;         string_hash_switch_size
-    ;         string_binary_switch_size
-    ;         tag_switch_size
-    ;         try_switch_size
-    ;         binary_switch_size
-    ;         switch_single_rec_base_first
-    ;         switch_multi_rec_base_first
-
-    ;         smart_atomic_indexing
-    ;         smart_string_indexing
-    ;         smart_tag_indexing
-    ;         smart_float_indexing
-
-    ;       static_ground_cells
-    ;       static_ground_floats
-    ;       static_ground_int64s
-    ;       static_code_addresses
-
-    ;       use_atomic_cells
-    ;       middle_rec
-    ;       simple_neg
-    ;       allow_hijacks
-
-    %   - MLDS
-    ;       optimize_tailcalls
-    ;       optimize_initializations
-    ;       eliminate_unused_mlds_assigns
-    ;       eliminate_local_vars
-    ;       generate_trail_ops_inline
-
-    %   - LLDS
-    ;       common_data
-    ;       common_layout_data
-    ;       optimize            % Also used for MLDS->MLDS optimizations.
-    ;       optimize_peep
-    ;       optimize_peep_mkword
-    ;       optimize_jumps
-    ;       optimize_fulljumps
-    ;       pessimize_tailcalls
-    ;       checked_nondet_tailcalls
-    ;       use_local_vars
-    ;       local_var_access_threshold
-    ;       standardize_labels
-    ;       optimize_labels
-    ;       optimize_dups
-    ;       optimize_proc_dups
-    ;       optimize_frames
-    ;       optimize_delay_slot
-    ;       optimize_reassign
-    ;       optimize_repeat
-    ;       layout_compression_limit
-
-    %   - C
-    ;       use_macro_for_redo_fail
-    ;       emit_c_loops
-    ;       procs_per_c_function
-    ;       everything_in_one_c_function
-    ;       local_thread_engine_base
-
-    %   - Erlang
-    ;       erlang_switch_on_strings_as_atoms
-
     % Target code compilation options
     ;       target_debug
 
@@ -900,9 +922,7 @@
     ;       cflags
     ;       quoted_cflag
     ;       c_include_directory
-    ;       c_optimize
     ;       ansi_c
-    ;       inline_alloc
 
     % Flags for specific C compilers.
     ;       gcc_flags
@@ -1141,11 +1161,9 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module dir.
-:- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module require.
 :- import_module solutions.
 :- import_module string.
 
@@ -1411,6 +1429,9 @@ optdef(oc_aux_output, prop_mode_constraints,            bool(no)).
 optdef(oc_aux_output, compute_goal_modes,               bool(no)).
 optdef(oc_aux_output, benchmark_modes,                  bool(no)).
 optdef(oc_aux_output, benchmark_modes_repeat,           int(1)).
+optdef(oc_aux_output, unneeded_code_debug,              bool(no)).
+optdef(oc_aux_output, unneeded_code_debug_pred_name,    accumulating([])).
+optdef(oc_aux_output, common_struct_preds,              string("")).
 
     % Language semantics options.
 
@@ -1627,7 +1648,6 @@ optdef(oc_codegen, debug_class_init,                    bool(no)).
     % These ones are not affected by `-O<n>'.
 
 optdef(oc_spec_opt, opt_level,                          int_special).
-optdef(oc_spec_opt, opt_level_number,                   int(-2)).
 optdef(oc_spec_opt, opt_space,                          special).
 optdef(oc_spec_opt, intermodule_optimization,           bool(no)).
 optdef(oc_spec_opt, read_opt_files_transitively,        bool(yes)).
@@ -1675,147 +1695,146 @@ optdef(oc_spec_opt, analyse_mm_tabling,                 bool(no)).
     % in the opt_level table.
 
     % HLDS
-optdef(oc_opt, allow_inlining,                          bool(yes)).
+optdef(oc_opt, optopt_allow_inlining,                   bool_special).
 optdef(oc_opt, inlining,                                bool_special).
-optdef(oc_opt, inline_simple,                           bool(no)).
-optdef(oc_opt, inline_builtins,                         bool(yes)).
-optdef(oc_opt, inline_single_use,                       bool(no)).
-optdef(oc_opt, inline_call_cost,                        int(0)).
-optdef(oc_opt, inline_compound_threshold,               int(0)).
-optdef(oc_opt, inline_simple_threshold,                 int(5)).
+optdef(oc_opt, optopt_inline_simple,                    bool_special).
+optdef(oc_opt, optopt_inline_builtins,                  bool_special).
+optdef(oc_opt, optopt_inline_single_use,                bool_special).
+optdef(oc_opt, optopt_inline_call_cost,                 int_special).
+optdef(oc_opt, optopt_inline_compound_threshold,        int_special).
+optdef(oc_opt, optopt_inline_simple_threshold,          int_special).
     % Has no effect until --inline-simple is enabled.
-optdef(oc_opt, inline_vars_threshold,                   int(100)).
-optdef(oc_opt, intermod_inline_simple_threshold,        int(5)).
+optdef(oc_opt, optopt_inline_vars_threshold,            int_special).
+optdef(oc_opt, optopt_intermod_inline_simple_threshold, int_special).
     % Has no effect until --intermodule-optimization.
-optdef(oc_opt, inline_linear_tail_rec_sccs,             bool(no)).
-optdef(oc_opt, inline_linear_tail_rec_sccs_max_extra,   int(0)).
-optdef(oc_opt, from_ground_term_threshold,              int(5)).
-optdef(oc_opt, enable_const_struct,                     bool(yes)).
-optdef(oc_opt, common_struct,                           bool(no)).
-optdef(oc_opt, common_struct_preds,                     string("")).
-optdef(oc_opt, constraint_propagation,                  bool(no)).
-optdef(oc_opt, local_constraint_propagation,            bool(no)).
-optdef(oc_opt, optimize_duplicate_calls,                bool(no)).
-optdef(oc_opt, constant_propagation,                    bool(no)).
-optdef(oc_opt, excess_assign,                           bool(no)).
-optdef(oc_opt, test_after_switch,                       bool(no)).
-optdef(oc_opt, optimize_format_calls,                   bool(yes)).
-optdef(oc_opt, loop_invariants,                         bool(no)).
-optdef(oc_opt, optimize_saved_vars_const,               bool(no)).
-optdef(oc_opt, optimize_saved_vars_cell,                bool(no)).
-optdef(oc_opt, optimize_saved_vars_cell_loop,           bool(yes)).
-optdef(oc_opt, optimize_saved_vars_cell_full_path,      bool(yes)).
-optdef(oc_opt, optimize_saved_vars_cell_on_stack,       bool(yes)).
-optdef(oc_opt, optimize_saved_vars_cell_candidate_headvars, bool(yes)).
-optdef(oc_opt, optimize_saved_vars_cell_cv_store_cost,  int(3)).
-optdef(oc_opt, optimize_saved_vars_cell_cv_load_cost,   int(1)).
-optdef(oc_opt, optimize_saved_vars_cell_fv_store_cost,  int(1)).
-optdef(oc_opt, optimize_saved_vars_cell_fv_load_cost,   int(1)).
-optdef(oc_opt, optimize_saved_vars_cell_op_ratio,       int(100)).
-optdef(oc_opt, optimize_saved_vars_cell_node_ratio,     int(100)).
-optdef(oc_opt, optimize_saved_vars_cell_all_path_node_ratio, int(100)).
-optdef(oc_opt, optimize_saved_vars_cell_include_all_candidates, bool(yes)).
+optdef(oc_opt, optopt_inline_linear_tail_rec_sccs,      bool_special).
+optdef(oc_opt, optopt_inline_linear_tail_rec_sccs_max_extra, int_special).
+optdef(oc_opt, optopt_from_ground_term_threshold,       int_special).
+optdef(oc_opt, optopt_enable_const_struct,              bool_special).
+optdef(oc_opt, optopt_common_struct,                    bool_special).
+optdef(oc_opt, optopt_constraint_propagation,           bool_special).
+optdef(oc_opt, optopt_local_constraint_propagation,     bool_special).
+optdef(oc_opt, optopt_optimize_duplicate_calls,         bool_special).
+optdef(oc_opt, optopt_constant_propagation,             bool_special).
+optdef(oc_opt, optopt_excess_assign,                    bool_special).
+optdef(oc_opt, optopt_test_after_switch,                bool_special).
+optdef(oc_opt, optopt_optimize_format_calls,            bool_special).
+optdef(oc_opt, optopt_loop_invariants,                  bool_special).
+optdef(oc_opt, optopt_optimize_saved_vars_const,        bool_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell,         bool_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_loop,    bool_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_full_path, bool_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_on_stack, bool_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_candidate_headvars, bool_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_cv_store_cost, int_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_cv_load_cost, int_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_fv_store_cost, int_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_fv_load_cost, int_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_op_ratio, int_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_node_ratio, int_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_all_path_node_ratio, int_special).
+optdef(oc_opt, optopt_optimize_saved_vars_cell_include_all_candidates, bool_special).
 optdef(oc_opt, optimize_saved_vars,                     bool_special).
-optdef(oc_opt, delay_construct,                         bool(no)).
-optdef(oc_opt, follow_code,                             bool(no)).
-optdef(oc_opt, optimize_unused_args,                    bool(no)).
-optdef(oc_opt, intermod_unused_args,                    bool(no)).
-optdef(oc_opt, optimize_higher_order,                   bool(no)).
-optdef(oc_opt, higher_order_size_limit,                 int(20)).
-optdef(oc_opt, higher_order_arg_limit,                  int(10)).
-optdef(oc_opt, unneeded_code,                           bool(no)).
-optdef(oc_opt, unneeded_code_copy_limit,                int(10)).
-optdef(oc_opt, unneeded_code_debug,                     bool(no)).
-optdef(oc_opt, unneeded_code_debug_pred_name,           accumulating([])).
-optdef(oc_opt, type_specialization,                     bool(no)).
-optdef(oc_opt, user_guided_type_specialization,         bool(no)).
-optdef(oc_opt, introduce_accumulators,                  bool(no)).
-optdef(oc_opt, optimize_constructor_last_call_accumulator, bool(no)).
-optdef(oc_opt, optimize_constructor_last_call_null,     bool(no)).
-optdef(oc_opt, optimize_constructor_last_call,          bool(no)).
-optdef(oc_opt, optimize_dead_procs,                     bool(no)).
-optdef(oc_opt, deforestation,                           bool(no)).
-optdef(oc_opt, deforestation_depth_limit,               int(4)).
-optdef(oc_opt, deforestation_cost_factor,               int(1000)).
-optdef(oc_opt, deforestation_vars_threshold,            int(200)).
-optdef(oc_opt, deforestation_size_threshold,            int(15)).
-optdef(oc_opt, untuple,                                 bool(no)).
-optdef(oc_opt, tuple,                                   bool(no)).
-optdef(oc_opt, tuple_trace_counts_file,                 string("")).
-optdef(oc_opt, tuple_costs_ratio,                       int(100)).
-optdef(oc_opt, tuple_min_args,                          int(4)).
-optdef(oc_opt, inline_par_builtins,                     bool(no)).
-optdef(oc_opt, always_specialize_in_dep_par_conjs,      bool(no)).
-optdef(oc_opt, allow_some_paths_only_waits,             bool(yes)).
-optdef(oc_opt, region_analysis,                         bool(no)).
+optdef(oc_opt, optopt_delay_construct,                  bool_special).
+optdef(oc_opt, optopt_follow_code,                      bool_special).
+optdef(oc_opt, optopt_optimize_unused_args,             bool_special).
+optdef(oc_opt, optopt_intermod_unused_args,             bool_special).
+optdef(oc_opt, optopt_optimize_higher_order,            bool_special).
+optdef(oc_opt, optopt_higher_order_size_limit,          int_special).
+optdef(oc_opt, optopt_higher_order_arg_limit,           int_special).
+optdef(oc_opt, optopt_unneeded_code,                    bool_special).
+optdef(oc_opt, optopt_unneeded_code_copy_limit,         int_special).
+optdef(oc_opt, optopt_type_specialization,              bool_special).
+optdef(oc_opt, optopt_user_guided_type_specialization,  bool_special).
+optdef(oc_opt, optopt_introduce_accumulators,           bool_special).
+optdef(oc_opt, optopt_optimize_constructor_last_call_accumulator, bool_special).
+optdef(oc_opt, optopt_optimize_constructor_last_call_null, bool_special).
+optdef(oc_opt, optopt_optimize_constructor_last_call,   bool_special).
+optdef(oc_opt, optopt_optimize_dead_procs,              bool_special).
+optdef(oc_opt, optopt_deforestation,                    bool_special).
+optdef(oc_opt, optopt_deforestation_depth_limit,        int_special).
+optdef(oc_opt, optopt_deforestation_cost_factor,        int_special).
+optdef(oc_opt, optopt_deforestation_vars_threshold,     int_special).
+optdef(oc_opt, optopt_deforestation_size_threshold,     int_special).
+optdef(oc_opt, optopt_untuple,                          bool_special).
+optdef(oc_opt, optopt_tuple,                            bool_special).
+optdef(oc_opt, optopt_tuple_trace_counts_file,          string_special).
+optdef(oc_opt, optopt_tuple_costs_ratio,                int_special).
+optdef(oc_opt, optopt_tuple_min_args,                   int_special).
+optdef(oc_opt, optopt_inline_par_builtins,              bool_special).
+optdef(oc_opt, optopt_always_specialize_in_dep_par_conjs, bool_special).
+optdef(oc_opt, optopt_allow_some_paths_only_waits,      bool_special).
+optdef(oc_opt, optopt_region_analysis,                  bool_special).
 
     % HLDS -> LLDS
-optdef(oc_opt, smart_indexing,                          bool(no)).
-optdef(oc_opt, smart_atomic_indexing,                   bool(yes)).
-optdef(oc_opt, smart_string_indexing,                   bool(yes)).
-optdef(oc_opt, smart_tag_indexing,                      bool(yes)).
-optdef(oc_opt, smart_float_indexing,                    bool(yes)).
-optdef(oc_opt, dense_switch_req_density,                int(25)).
+optdef(oc_opt, optopt_smart_indexing,                   bool_special).
+optdef(oc_opt, optopt_smart_atomic_indexing,            bool_special).
+optdef(oc_opt, optopt_smart_string_indexing,            bool_special).
+optdef(oc_opt, optopt_smart_tag_indexing,               bool_special).
+optdef(oc_opt, optopt_smart_float_indexing,             bool_special).
+optdef(oc_opt, optopt_dense_switch_req_density,         int_special).
     % Minimum density before using a dense switch.
-optdef(oc_opt, lookup_switch_req_density,               int(25)).
+optdef(oc_opt, optopt_lookup_switch_req_density,        int_special).
     % Minimum density before using a lookup switch.
-optdef(oc_opt, dense_switch_size,                       int(4)).
-optdef(oc_opt, lookup_switch_size,                      int(4)).
-optdef(oc_opt, string_trie_switch_size,                 int(16)).
-optdef(oc_opt, string_hash_switch_size,                 int(8)).
-optdef(oc_opt, string_binary_switch_size,               int(4)).
-optdef(oc_opt, tag_switch_size,                         int(3)).
-optdef(oc_opt, try_switch_size,                         int(3)).
-optdef(oc_opt, binary_switch_size,                      int(4)).
-optdef(oc_opt, switch_single_rec_base_first,            bool(no)).
-optdef(oc_opt, switch_multi_rec_base_first,             bool(yes)).
-optdef(oc_opt, static_ground_cells,                     bool(no)).
-optdef(oc_opt, static_ground_floats,                    bool(no)).
-optdef(oc_opt, static_ground_int64s,                    bool(no)).
-optdef(oc_opt, static_code_addresses,                   bool(no)).
-optdef(oc_opt, use_atomic_cells,                        bool(no)).
-optdef(oc_opt, middle_rec,                              bool(no)).
-optdef(oc_opt, simple_neg,                              bool(no)).
-optdef(oc_opt, allow_hijacks,                           bool(yes)).
+optdef(oc_opt, optopt_dense_switch_size,                int_special).
+optdef(oc_opt, optopt_lookup_switch_size,               int_special).
+optdef(oc_opt, optopt_string_trie_switch_size,          int_special).
+optdef(oc_opt, optopt_string_hash_switch_size,          int_special).
+optdef(oc_opt, optopt_string_binary_switch_size,        int_special).
+optdef(oc_opt, optopt_tag_switch_size,                  int_special).
+optdef(oc_opt, optopt_try_switch_size,                  int_special).
+optdef(oc_opt, optopt_binary_switch_size,               int_special).
+optdef(oc_opt, optopt_switch_single_rec_base_first,     bool_special).
+optdef(oc_opt, optopt_switch_multi_rec_base_first,      bool_special).
+optdef(oc_opt, optopt_static_ground_cells,              bool_special).
+optdef(oc_opt, optopt_static_ground_floats,             bool_special).
+optdef(oc_opt, optopt_static_ground_int64s,             bool_special).
+optdef(oc_opt, optopt_static_code_addresses,            bool_special).
+optdef(oc_opt, optopt_use_atomic_cells,                 bool_special).
+optdef(oc_opt, optopt_middle_rec,                       bool_special).
+optdef(oc_opt, optopt_simple_neg,                       bool_special).
+optdef(oc_opt, optopt_allow_hijacks,                    bool_special).
 
     % MLDS
-optdef(oc_opt, optimize_tailcalls,                      bool(no)).
-optdef(oc_opt, optimize_initializations,                bool(no)).
-optdef(oc_opt, eliminate_unused_mlds_assigns,           bool(yes)).
-optdef(oc_opt, eliminate_local_vars,                    bool(no)).
-optdef(oc_opt, generate_trail_ops_inline,               bool(yes)).
+optdef(oc_opt, optopt_optimize_mlds_tailcalls,          bool_special).
+optdef(oc_opt, optopt_optimize_initializations,         bool_special).
+optdef(oc_opt, optopt_eliminate_unused_mlds_assigns,    bool_special).
+optdef(oc_opt, optopt_eliminate_local_vars,             bool_special).
+optdef(oc_opt, optopt_generate_trail_ops_inline,        bool_special).
 
     % LLDS
-optdef(oc_opt, common_data,                             bool(no)).
-optdef(oc_opt, common_layout_data,                      bool(yes)).
-optdef(oc_opt, optimize,                                bool(no)).
-optdef(oc_opt, optimize_peep,                           bool(no)).
-optdef(oc_opt, optimize_peep_mkword,                    bool(no)).
-optdef(oc_opt, optimize_jumps,                          bool(no)).
-optdef(oc_opt, optimize_fulljumps,                      bool(no)).
-optdef(oc_opt, pessimize_tailcalls,                     bool(no)).
-optdef(oc_opt, checked_nondet_tailcalls,                bool(no)).
-optdef(oc_opt, use_local_vars,                          bool(no)).
-optdef(oc_opt, local_var_access_threshold,              int(2)).
-optdef(oc_opt, standardize_labels,                      bool(no)).
-optdef(oc_opt, optimize_labels,                         bool(no)).
-optdef(oc_opt, optimize_dups,                           bool(no)).
-optdef(oc_opt, optimize_proc_dups,                      bool(no)).
-optdef(oc_opt, optimize_frames,                         bool(no)).
-optdef(oc_opt, optimize_delay_slot,                     bool(no)).
-optdef(oc_opt, optimize_reassign,                       bool(no)).
-optdef(oc_opt, optimize_repeat,                         int(0)).
-optdef(oc_opt, layout_compression_limit,                int(4000)).
+optdef(oc_opt, optopt_common_data,                      bool_special).
+optdef(oc_opt, optopt_common_layout_data,               bool_special).
+optdef(oc_opt, optopt_optimize,                         bool_special).
+optdef(oc_opt, optopt_optimize_peep,                    bool_special).
+optdef(oc_opt, optopt_optimize_peep_mkword,             bool_special).
+optdef(oc_opt, optopt_optimize_jumps,                   bool_special).
+optdef(oc_opt, optopt_optimize_fulljumps,               bool_special).
+optdef(oc_opt, optopt_pessimize_tailcalls,              bool_special).
+optdef(oc_opt, optopt_checked_nondet_tailcalls,         bool_special).
+optdef(oc_opt, optopt_use_local_vars,                   bool_special).
+optdef(oc_opt, optopt_local_var_access_threshold,       int_special).
+optdef(oc_opt, optopt_standardize_labels,               bool_special).
+optdef(oc_opt, optopt_optimize_labels,                  bool_special).
+optdef(oc_opt, optopt_optimize_dups,                    bool_special).
+optdef(oc_opt, optopt_optimize_proc_dups,               bool_special).
+optdef(oc_opt, optopt_optimize_frames,                  bool_special).
+optdef(oc_opt, optopt_optimize_delay_slot,              bool_special).
+optdef(oc_opt, optopt_optimize_reassign,                bool_special).
+optdef(oc_opt, optopt_optimize_repeat,                  int_special).
+optdef(oc_opt, optopt_layout_compression_limit,         int_special).
 
     % LLDS -> C
-optdef(oc_opt, use_macro_for_redo_fail,                 bool(no)).
-optdef(oc_opt, emit_c_loops,                            bool(no)).
-optdef(oc_opt, procs_per_c_function,                    int(1)).
+optdef(oc_opt, optopt_use_macro_for_redo_fail,          bool_special).
+optdef(oc_opt, optopt_emit_c_loops,                     bool_special).
+optdef(oc_opt, optopt_procs_per_c_function,             int_special).
 optdef(oc_opt, everything_in_one_c_function,            special).
-optdef(oc_opt, local_thread_engine_base,                bool(yes)).
+optdef(oc_opt, optopt_local_thread_engine_base,         bool_special).
+optdef(oc_opt, optopt_inline_alloc,                     bool_special).
+optdef(oc_opt, optopt_c_optimize,                       bool_special).
 
     % Erlang
-optdef(oc_opt, erlang_switch_on_strings_as_atoms,       bool(no)).
+optdef(oc_opt, optopt_erlang_switch_on_strings_as_atoms, bool_special).
 
     % Target code compilation options.
 
@@ -1828,9 +1847,7 @@ optdef(oc_target_comp, cc,                              string("gcc")).
 optdef(oc_target_comp, c_include_directory,             accumulating([])).
     % The `mmc' script will override the default with a value
     % determined at configuration time.
-optdef(oc_target_comp, c_optimize,                      bool(no)).
 optdef(oc_target_comp, ansi_c,                          bool(yes)).
-optdef(oc_target_comp, inline_alloc,                    bool(no)).
 optdef(oc_target_comp, cflags,                          accumulating([])).
 optdef(oc_target_comp, quoted_cflag,                    string_special).
 optdef(oc_target_comp, gcc_flags,                       accumulating([])).
@@ -2360,6 +2377,9 @@ long_option("compute-goal-modes",       compute_goal_modes).
 long_option("propagate-mode-constraints",   prop_mode_constraints).
 long_option("benchmark-modes",          benchmark_modes).
 long_option("benchmark-modes-repeat",   benchmark_modes_repeat).
+long_option("unneeded-code-debug",      unneeded_code_debug).
+long_option("unneeded-code-debug-pred-name",  unneeded_code_debug_pred_name).
+long_option("common-struct-preds",      common_struct_preds).
 
 % language semantics options
 long_option("reorder-conj",         reorder_conj).
@@ -2444,7 +2464,6 @@ long_option("deep-profile-tail-recursion",
 long_option("record-term-sizes-as-words", record_term_sizes_as_words).
 long_option("record-term-sizes-as-cells", record_term_sizes_as_cells).
 long_option("experimental-complexity",  experimental_complexity).
-long_option("region-analysis",      region_analysis).
 % (c) miscellaneous optional features
 long_option("gc",                   gc).
 long_option("garbage-collection",   gc).
@@ -2599,101 +2618,208 @@ long_option("analysis-file-cache",  analysis_file_cache).
 
 % HLDS->HLDS optimizations
 long_option("inlining",             inlining).
-long_option("inline-simple",        inline_simple).
-long_option("inline-builtins",      inline_builtins).
-long_option("inline-single-use",    inline_single_use).
-long_option("inline-call-cost",     inline_call_cost).
-long_option("inline-compound-threshold",    inline_compound_threshold).
-long_option("inline-simple-threshold",      inline_simple_threshold).
+long_option("inline-simple",        optopt_inline_simple).
+long_option("inline-builtins",      optopt_inline_builtins).
+long_option("inline-single-use",    optopt_inline_single_use).
+long_option("inline-call-cost",     optopt_inline_call_cost).
+long_option("inline-compound-threshold",    optopt_inline_compound_threshold).
+long_option("inline-simple-threshold",      optopt_inline_simple_threshold).
 long_option("intermod-inline-simple-threshold",
-                                    intermod_inline_simple_threshold).
-long_option("inline-linear-tail-rec-sccs",  inline_linear_tail_rec_sccs).
+                                    optopt_intermod_inline_simple_threshold).
+long_option("inline-linear-tail-rec-sccs",  optopt_inline_linear_tail_rec_sccs).
 long_option("inline-linear-tail-rec-sccs-max-extra",
-                                    inline_linear_tail_rec_sccs_max_extra).
+                                    optopt_inline_linear_tail_rec_sccs_max_extra).
 long_option("from-ground-term-threshold",
-                                    from_ground_term_threshold).
-long_option("inline-vars-threshold",        inline_vars_threshold).
-long_option("const-struct",         enable_const_struct).
-long_option("common-struct",        common_struct).
-long_option("common-struct-preds",  common_struct_preds).
-long_option("excess-assign",        excess_assign).
-long_option("test-after-switch",    test_after_switch).
-long_option("optimize-format-calls",         optimize_format_calls).
-long_option("optimize-duplicate-calls", optimize_duplicate_calls).
-long_option("optimise-duplicate-calls", optimize_duplicate_calls).
-long_option("optimise-constant-propagation", constant_propagation).
-long_option("optimize-constant-propagation", constant_propagation).
+                                    optopt_from_ground_term_threshold).
+long_option("inline-vars-threshold",        optopt_inline_vars_threshold).
+long_option("const-struct",         optopt_enable_const_struct).
+long_option("common-struct",        optopt_common_struct).
+long_option("excess-assign",        optopt_excess_assign).
+long_option("test-after-switch",    optopt_test_after_switch).
+long_option("optimize-format-calls",         optopt_optimize_format_calls).
+long_option("optimize-duplicate-calls", optopt_optimize_duplicate_calls).
+long_option("optimise-duplicate-calls", optopt_optimize_duplicate_calls).
+long_option("optimise-constant-propagation", optopt_constant_propagation).
+long_option("optimize-constant-propagation", optopt_constant_propagation).
 long_option("optimize-saved-vars",  optimize_saved_vars).
 long_option("optimise-saved-vars",  optimize_saved_vars).
-long_option("loop-invariants",      loop_invariants).
-long_option("optimize-saved-vars-const",    optimize_saved_vars_const).
-long_option("optimise-saved-vars-const",    optimize_saved_vars_const).
-long_option("optimize-saved-vars-cell", optimize_saved_vars_cell).
-long_option("optimise-saved-vars-cell", optimize_saved_vars_cell).
-long_option("osv-loop",             optimize_saved_vars_cell_loop).
-long_option("osv-full-path",        optimize_saved_vars_cell_full_path).
-long_option("osv-on-stack",         optimize_saved_vars_cell_on_stack).
+long_option("loop-invariants",      optopt_loop_invariants).
+long_option("optimize-saved-vars-const",    optopt_optimize_saved_vars_const).
+long_option("optimise-saved-vars-const",    optopt_optimize_saved_vars_const).
+long_option("optimize-saved-vars-cell", optopt_optimize_saved_vars_cell).
+long_option("optimise-saved-vars-cell", optopt_optimize_saved_vars_cell).
+long_option("osv-loop",             optopt_optimize_saved_vars_cell_loop).
+long_option("osv-full-path",        optopt_optimize_saved_vars_cell_full_path).
+long_option("osv-on-stack",         optopt_optimize_saved_vars_cell_on_stack).
 long_option("osv-cand-head",
-                            optimize_saved_vars_cell_candidate_headvars).
+                            optopt_optimize_saved_vars_cell_candidate_headvars).
 % The next four options are used by tupling.m as well; changes to them
 % may require changes there as well.
-long_option("osv-cvstore-cost",     optimize_saved_vars_cell_cv_store_cost).
-long_option("osv-cvload-cost",      optimize_saved_vars_cell_cv_load_cost).
-long_option("osv-fvstore-cost",     optimize_saved_vars_cell_fv_store_cost).
-long_option("osv-fvload-cost",      optimize_saved_vars_cell_fv_load_cost).
-long_option("osv-op-ratio",         optimize_saved_vars_cell_op_ratio).
-long_option("osv-node-ratio",       optimize_saved_vars_cell_node_ratio).
+long_option("osv-cvstore-cost",     optopt_optimize_saved_vars_cell_cv_store_cost).
+long_option("osv-cvload-cost",      optopt_optimize_saved_vars_cell_cv_load_cost).
+long_option("osv-fvstore-cost",     optopt_optimize_saved_vars_cell_fv_store_cost).
+long_option("osv-fvload-cost",      optopt_optimize_saved_vars_cell_fv_load_cost).
+long_option("osv-op-ratio",         optopt_optimize_saved_vars_cell_op_ratio).
+long_option("osv-node-ratio",       optopt_optimize_saved_vars_cell_node_ratio).
 long_option("osv-allpath-node-ratio",
-                            optimize_saved_vars_cell_all_path_node_ratio).
+                            optopt_optimize_saved_vars_cell_all_path_node_ratio).
 long_option("osv-all-cand",
-                            optimize_saved_vars_cell_include_all_candidates).
-long_option("delay-construct",      delay_construct).
-long_option("delay-constructs",     delay_construct).
-long_option("follow-code",          follow_code).
-long_option("constraint-propagation",   constraint_propagation).
-long_option("local-constraint-propagation", local_constraint_propagation).
-long_option("optimize-unused-args", optimize_unused_args).
-long_option("optimise-unused-args", optimize_unused_args).
-long_option("intermod-unused-args", intermod_unused_args).
-long_option("optimize-higher-order",    optimize_higher_order).
-long_option("optimise-higher-order",    optimize_higher_order).
-long_option("higher-order-size-limit",  higher_order_size_limit).
-long_option("higher-order-arg-limit",   higher_order_arg_limit).
-long_option("unneeded-code",        unneeded_code).
-long_option("unneeded-code-copy-limit", unneeded_code_copy_limit).
-long_option("unneeded-code-debug",  unneeded_code_debug).
-long_option("unneeded-code-debug-pred-name",  unneeded_code_debug_pred_name).
-long_option("type-specialization",  type_specialization).
-long_option("type-specialisation",  type_specialization).
+                            optopt_optimize_saved_vars_cell_include_all_candidates).
+long_option("delay-construct",      optopt_delay_construct).
+long_option("delay-constructs",     optopt_delay_construct).
+long_option("follow-code",          optopt_follow_code).
+long_option("constraint-propagation",   optopt_constraint_propagation).
+long_option("local-constraint-propagation", optopt_local_constraint_propagation).
+long_option("optimize-unused-args", optopt_optimize_unused_args).
+long_option("optimise-unused-args", optopt_optimize_unused_args).
+long_option("intermod-unused-args", optopt_intermod_unused_args).
+long_option("optimize-higher-order",    optopt_optimize_higher_order).
+long_option("optimise-higher-order",    optopt_optimize_higher_order).
+long_option("higher-order-size-limit",  optopt_higher_order_size_limit).
+long_option("higher-order-arg-limit",   optopt_higher_order_arg_limit).
+long_option("unneeded-code",        optopt_unneeded_code).
+long_option("unneeded-code-copy-limit", optopt_unneeded_code_copy_limit).
+long_option("type-specialization",  optopt_type_specialization).
+long_option("type-specialisation",  optopt_type_specialization).
 long_option("user-guided-type-specialization",
-                    user_guided_type_specialization).
+                    optopt_user_guided_type_specialization).
 long_option("user-guided-type-specialisation",
-                    user_guided_type_specialization).
+                    optopt_user_guided_type_specialization).
 % This option is for use in configure.in to test for some bug-fixes for
 % type-specialization which are needed to compile the library. It's not
 % documented, and should eventually be removed.
 long_option("fixed-user-guided-type-specialization",
-                    user_guided_type_specialization).
-long_option("introduce-accumulators",   introduce_accumulators).
+                    optopt_user_guided_type_specialization).
+long_option("introduce-accumulators",   optopt_introduce_accumulators).
 long_option("optimise-constructor-last-call-accumulator",
-                    optimize_constructor_last_call_accumulator).
+                    optopt_optimize_constructor_last_call_accumulator).
 long_option("optimize-constructor-last-call-accumulator",
-                    optimize_constructor_last_call_accumulator).
+                    optopt_optimize_constructor_last_call_accumulator).
 long_option("optimise-constructor-last-call-null",
-                    optimize_constructor_last_call_null).
+                    optopt_optimize_constructor_last_call_null).
 long_option("optimize-constructor-last-call-null",
-                    optimize_constructor_last_call_null).
+                    optopt_optimize_constructor_last_call_null).
 long_option("optimise-constructor-last-call",
-                    optimize_constructor_last_call).
+                    optopt_optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",
-                    optimize_constructor_last_call).
-long_option("optimize-dead-procs",  optimize_dead_procs).
-long_option("optimise-dead-procs",  optimize_dead_procs).
-long_option("deforestation",        deforestation).
-long_option("deforestation-depth-limit",    deforestation_depth_limit).
-long_option("deforestation-cost-factor",    deforestation_cost_factor).
-long_option("deforestation-vars-threshold", deforestation_vars_threshold).
-long_option("deforestation-size-threshold", deforestation_size_threshold).
+                    optopt_optimize_constructor_last_call).
+long_option("optimize-dead-procs",  optopt_optimize_dead_procs).
+long_option("optimise-dead-procs",  optopt_optimize_dead_procs).
+long_option("deforestation",        optopt_deforestation).
+long_option("deforestation-depth-limit",    optopt_deforestation_depth_limit).
+long_option("deforestation-cost-factor",    optopt_deforestation_cost_factor).
+long_option("deforestation-vars-threshold", optopt_deforestation_vars_threshold).
+long_option("deforestation-size-threshold", optopt_deforestation_size_threshold).
+
+long_option("untuple",              optopt_untuple).
+long_option("tuple",                optopt_tuple).
+long_option("tuple-trace-counts-file",  optopt_tuple_trace_counts_file).
+long_option("tuple-costs-ratio",    optopt_tuple_costs_ratio).
+long_option("tuple-min-args",       optopt_tuple_min_args).
+long_option("inline-par-builtins",  optopt_inline_par_builtins).
+long_option("always-specialize-in-dep-par-conjs",
+                                    optopt_always_specialize_in_dep_par_conjs).
+long_option("allow-some-paths-only-waits",
+                                    optopt_allow_some_paths_only_waits).
+long_option("region-analysis",      optopt_region_analysis).
+
+% HLDS->LLDS optimizations
+long_option("smart-indexing",       optopt_smart_indexing).
+long_option("smart-atomic-indexing", optopt_smart_atomic_indexing).
+long_option("smart-string-indexing", optopt_smart_string_indexing).
+long_option("smart-tag-indexing",    optopt_smart_tag_indexing).
+long_option("smart-float-indexing",  optopt_smart_float_indexing).
+long_option("dense-switch-req-density", optopt_dense_switch_req_density).
+long_option("lookup-switch-req-density",optopt_lookup_switch_req_density).
+long_option("dense-switch-size",    optopt_dense_switch_size).
+long_option("lookup-switch-size",   optopt_lookup_switch_size).
+long_option("string-switch-size",   optopt_string_hash_switch_size).
+long_option("string-trie-size",     optopt_string_trie_switch_size).
+long_option("string-trie-switch-size",      optopt_string_trie_switch_size).
+long_option("string-hash-switch-size",      optopt_string_hash_switch_size).
+long_option("string-binary-switch-size",    optopt_string_binary_switch_size).
+long_option("tag-switch-size",      optopt_tag_switch_size).
+long_option("try-switch-size",      optopt_try_switch_size).
+long_option("binary-switch-size",   optopt_binary_switch_size).
+long_option("switch-single-rec-base-first", optopt_switch_single_rec_base_first).
+long_option("switch-multi-rec-base-first",  optopt_switch_multi_rec_base_first).
+long_option("static-ground-terms",  optopt_static_ground_cells).
+% static_ground_floats should be set only in handle_options.m.
+% long_option("static-ground-floats", static_ground_floats).
+% static_ground_int64s should be set only in handle_options.m.
+% long_option("static-ground-int64s", static_ground_int64s).
+% static_code_addresses should be set only in handle_options.m.
+% long_option("static-code-addresses", static_code_addresses).
+long_option("use-atomic-cells",     optopt_use_atomic_cells).
+long_option("middle-rec",           optopt_middle_rec).
+long_option("simple-neg",           optopt_simple_neg).
+long_option("allow-hijacks",        optopt_allow_hijacks).
+
+% MLDS optimizations
+% Option `optimize' is used for both MLDS and LLDS optimizations, but since
+% you can't use both at the same time it doesn't really matter.
+long_option("mlds-optimize",        optopt_optimize).
+long_option("mlds-optimise",        optopt_optimize).
+long_option("mlds-peephole",        optopt_optimize_peep).
+long_option("optimize-tailcalls",   optopt_optimize_mlds_tailcalls).
+long_option("optimise-tailcalls",   optopt_optimize_mlds_tailcalls).
+long_option("optimize-initializations", optopt_optimize_initializations).
+long_option("optimise-initializations", optopt_optimize_initializations).
+long_option("eliminate-unused-mlds-assigns", optopt_eliminate_unused_mlds_assigns).
+long_option("eliminate-local-vars", optopt_eliminate_local_vars).
+long_option("generate-trail-ops-inline", optopt_generate_trail_ops_inline).
+
+% LLDS optimizations
+long_option("common-data",          optopt_common_data).
+long_option("common-layout-data",   optopt_common_layout_data).
+long_option("llds-optimize",        optopt_optimize).
+long_option("llds-optimise",        optopt_optimize).
+long_option("optimize-peep",        optopt_optimize_peep).
+long_option("optimise-peep",        optopt_optimize_peep).
+long_option("optimize-peep-mkword", optopt_optimize_peep_mkword).
+long_option("optimise-peep-mkword", optopt_optimize_peep_mkword).
+long_option("optimize-jumps",       optopt_optimize_jumps).
+long_option("optimise-jumps",       optopt_optimize_jumps).
+long_option("optimize-fulljumps",   optopt_optimize_fulljumps).
+long_option("optimise-fulljumps",   optopt_optimize_fulljumps).
+long_option("pessimize-tailcalls",  optopt_pessimize_tailcalls).
+long_option("checked-nondet-tailcalls", optopt_checked_nondet_tailcalls).
+long_option("use-local-vars",       optopt_use_local_vars).
+long_option("local-var-access-threshold", optopt_local_var_access_threshold).
+long_option("standardise-labels",   optopt_standardize_labels).
+long_option("standardize-labels",   optopt_standardize_labels).
+long_option("optimize-labels",      optopt_optimize_labels).
+long_option("optimise-labels",      optopt_optimize_labels).
+long_option("optimize-dups",        optopt_optimize_dups).
+long_option("optimise-dups",        optopt_optimize_dups).
+long_option("optimize-proc-dups",   optopt_optimize_proc_dups).
+long_option("optimise-proc-dups",   optopt_optimize_proc_dups).
+%%% long_option("optimize-copyprop",    optimize_copyprop).
+%%% long_option("optimise-copyprop",    optimize_copyprop).
+long_option("optimize-frames",      optopt_optimize_frames).
+long_option("optimise-frames",      optopt_optimize_frames).
+long_option("optimize-delay-slot",  optopt_optimize_delay_slot).
+long_option("optimise-delay-slot",  optopt_optimize_delay_slot).
+long_option("optimize-reassign",    optopt_optimize_reassign).
+long_option("optimise-reassign",    optopt_optimize_reassign).
+long_option("optimize-repeat",      optopt_optimize_repeat).
+long_option("optimise-repeat",      optopt_optimize_repeat).
+long_option("layout-compression-limit",      optopt_layout_compression_limit).
+
+% LLDS->C optimizations
+long_option("use-macro-for-redo-fail",  optopt_use_macro_for_redo_fail).
+long_option("emit-c-loops",         optopt_emit_c_loops).
+long_option("procs-per-c-function", optopt_procs_per_c_function).
+long_option("procs-per-C-function", optopt_procs_per_c_function).
+long_option("everything-in-one-c-function", everything_in_one_c_function).
+long_option("everything-in-one-C-function", everything_in_one_c_function).
+long_option("inline-alloc",         optopt_inline_alloc).
+long_option("local-thread-engine-base", optopt_local_thread_engine_base).
+
+% Erlang
+long_option("erlang-switch-on-strings-as-atoms",
+                optopt_erlang_switch_on_strings_as_atoms).
+
 long_option("enable-termination",   termination).
 long_option("enable-term",          termination).
 long_option("check-termination",    termination_check).
@@ -2738,16 +2864,6 @@ long_option("analyse-trail-usage",  analyse_trail_usage).
 long_option("optimize-trail-usage", optimize_trail_usage).
 long_option("optimize-region-ops",  optimize_region_ops).
 long_option("analyse-mm-tabling",   analyse_mm_tabling).
-long_option("untuple",              untuple).
-long_option("tuple",                tuple).
-long_option("tuple-trace-counts-file",  tuple_trace_counts_file).
-long_option("tuple-costs-ratio",    tuple_costs_ratio).
-long_option("tuple-min-args",       tuple_min_args).
-long_option("inline-par-builtins",  inline_par_builtins).
-long_option("always-specialize-in-dep-par-conjs",
-                                    always_specialize_in_dep_par_conjs).
-long_option("allow-some-paths-only-waits",
-                                    allow_some_paths_only_waits).
 
 % CTGC related options.
 long_option("structure-sharing",    structure_sharing_analysis).
@@ -2762,109 +2878,12 @@ long_option("structure-reuse-max-conditions", structure_reuse_max_conditions).
 long_option("structure-reuse-repeat", structure_reuse_repeat).
 long_option("structure-reuse-free-cells", structure_reuse_free_cells).
 
-% HLDS->LLDS optimizations
-long_option("smart-indexing",       smart_indexing).
-long_option("smart-atomic-indexing", smart_atomic_indexing).
-long_option("smart-string-indexing", smart_string_indexing).
-long_option("smart-tag-indexing",    smart_tag_indexing).
-long_option("smart-float-indexing",  smart_float_indexing).
-long_option("dense-switch-req-density", dense_switch_req_density).
-long_option("lookup-switch-req-density",lookup_switch_req_density).
-long_option("dense-switch-size",    dense_switch_size).
-long_option("lookup-switch-size",   lookup_switch_size).
-long_option("string-switch-size",   string_hash_switch_size).
-long_option("string-trie-size",     string_trie_switch_size).
-long_option("string-trie-switch-size",      string_trie_switch_size).
-long_option("string-hash-switch-size",      string_hash_switch_size).
-long_option("string-binary-switch-size",    string_binary_switch_size).
-long_option("tag-switch-size",      tag_switch_size).
-long_option("try-switch-size",      try_switch_size).
-long_option("binary-switch-size",   binary_switch_size).
-long_option("switch-single-rec-base-first", switch_single_rec_base_first).
-long_option("switch-multi-rec-base-first",  switch_multi_rec_base_first).
-long_option("static-ground-terms",  static_ground_cells).
-% static_ground_floats should be set only in handle_options.m.
-% long_option("static-ground-floats", static_ground_floats).
-% static_ground_int64s should be set only in handle_options.m.
-% long_option("static-ground-int64s", static_ground_int64s).
-% static_code_addresses should be set only in handle_options.m.
-% long_option("static-code-addresses", static_code_addresses).
-long_option("use-atomic-cells",     use_atomic_cells).
-long_option("middle-rec",           middle_rec).
-long_option("simple-neg",           simple_neg).
-long_option("allow-hijacks",        allow_hijacks).
-
-% MLDS optimizations
-% Option `optimize' is used for both MLDS and LLDS optimizations, but since
-% you can't use both at the same time it doesn't really matter.
-long_option("mlds-optimize",        optimize).
-long_option("mlds-optimise",        optimize).
-long_option("mlds-peephole",        optimize_peep).
-long_option("optimize-tailcalls",   optimize_tailcalls).
-long_option("optimise-tailcalls",   optimize_tailcalls).
-long_option("optimize-initializations", optimize_initializations).
-long_option("optimise-initializations", optimize_initializations).
-long_option("eliminate-unused-mlds-assigns", eliminate_unused_mlds_assigns).
-long_option("eliminate-local-vars", eliminate_local_vars).
-long_option("generate-trail-ops-inline", generate_trail_ops_inline).
-
-% LLDS optimizations
-long_option("common-data",          common_data).
-long_option("common-layout-data",   common_layout_data).
-long_option("llds-optimize",        optimize).
-long_option("llds-optimise",        optimize).
-long_option("optimize-peep",        optimize_peep).
-long_option("optimise-peep",        optimize_peep).
-long_option("optimize-peep-mkword", optimize_peep_mkword).
-long_option("optimise-peep-mkword", optimize_peep_mkword).
-long_option("optimize-jumps",       optimize_jumps).
-long_option("optimise-jumps",       optimize_jumps).
-long_option("optimize-fulljumps",   optimize_fulljumps).
-long_option("optimise-fulljumps",   optimize_fulljumps).
-long_option("pessimize-tailcalls",  pessimize_tailcalls).
-long_option("checked-nondet-tailcalls", checked_nondet_tailcalls).
-long_option("use-local-vars",       use_local_vars).
-long_option("local-var-access-threshold", local_var_access_threshold).
-long_option("standardise-labels",   standardize_labels).
-long_option("standardize-labels",   standardize_labels).
-long_option("optimize-labels",      optimize_labels).
-long_option("optimise-labels",      optimize_labels).
-long_option("optimize-dups",        optimize_dups).
-long_option("optimise-dups",        optimize_dups).
-long_option("optimize-proc-dups",   optimize_proc_dups).
-long_option("optimise-proc-dups",   optimize_proc_dups).
-%%% long_option("optimize-copyprop",    optimize_copyprop).
-%%% long_option("optimise-copyprop",    optimize_copyprop).
-long_option("optimize-frames",      optimize_frames).
-long_option("optimise-frames",      optimize_frames).
-long_option("optimize-delay-slot",  optimize_delay_slot).
-long_option("optimise-delay-slot",  optimize_delay_slot).
-long_option("optimize-reassign",    optimize_reassign).
-long_option("optimise-reassign",    optimize_reassign).
-long_option("optimize-repeat",      optimize_repeat).
-long_option("optimise-repeat",      optimize_repeat).
-long_option("layout-compression-limit",      layout_compression_limit).
-
-% LLDS->C optimizations
-long_option("use-macro-for-redo-fail",  use_macro_for_redo_fail).
-long_option("emit-c-loops",         emit_c_loops).
-long_option("procs-per-c-function", procs_per_c_function).
-long_option("procs-per-C-function", procs_per_c_function).
-long_option("everything-in-one-c-function", everything_in_one_c_function).
-long_option("everything-in-one-C-function", everything_in_one_c_function).
-long_option("inline-alloc",         inline_alloc).
-long_option("local-thread-engine-base", local_thread_engine_base).
-
-% Erlang
-long_option("erlang-switch-on-strings-as-atoms",
-                erlang_switch_on_strings_as_atoms).
-
 % Target code compilation options
 long_option("target-debug",         target_debug).
 
 long_option("cc",                   cc).
-long_option("c-optimise",           c_optimize).
-long_option("c-optimize",           c_optimize).
+long_option("c-optimise",           optopt_c_optimize).
+long_option("c-optimize",           optopt_c_optimize).
 % XXX we should consider the relationship between c_debug and target_debug
 % more carefully. Perhaps target_debug could imply C debug if the target is C.
 % However for the moment they are just synonyms.
@@ -3162,7 +3181,7 @@ long_option("par-loop-control-preserve-tail-recursion",
 
 %---------------------------------------------------------------------------%
 
-special_handler(Option, SpecialData, !.OptionTable, Result) :-
+special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
     require_switch_arms_semidet [Option]
     (
         (
@@ -3259,20 +3278,24 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
         ;
             Option = inlining,
             SpecialData = bool(Inline),
-            map.set(inline_simple, bool(Inline), !OptionTable),
-            map.set(inline_builtins, bool(Inline), !OptionTable),
-            map.set(inline_single_use, bool(Inline), !OptionTable),
             (
                 Inline = yes,
-                map.set(inline_compound_threshold, int(10), !OptionTable)
+                CompoundThreshold = 10
             ;
                 Inline = no,
-                map.set(inline_compound_threshold, int(0), !OptionTable)
-            )
+                CompoundThreshold = 0
+            ),
+            InlineOpts = cord.from_list([
+                oo_inline_simple(Inline),
+                oo_inline_builtins(Inline),
+                oo_inline_single_use(Inline),
+                oo_inline_compound_threshold(CompoundThreshold)
+            ]),
+            !:OptOptions = !.OptOptions ++ InlineOpts
         ;
             Option = everything_in_one_c_function,
             SpecialData = none,
-            map.set(procs_per_c_function, int(0), !OptionTable)
+            cord.snoc(oo_procs_per_c_function(0), !OptOptions)
         ;
             Option = reclaim_heap_on_failure,
             SpecialData = bool(Reclaim),
@@ -3342,27 +3365,13 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
                     infer_det                       -   bool(Infer)
                 ], !OptionTable)
         ;
-            Option = opt_space,
-            SpecialData = none,
-            opt_space(OptionSettingsList),
-            override_options(OptionSettingsList, !OptionTable)
-        ;
-            Option = opt_level,
-            SpecialData = int(SpecifiedLevel),
-            ( if SpecifiedLevel > 6 then
-                EffectiveLevel = 6
-            else if SpecifiedLevel < -1 then
-                EffectiveLevel = -1
-            else
-                EffectiveLevel = SpecifiedLevel
-            ),
-            map.set(opt_level_number, int(EffectiveLevel), !OptionTable),
-            set_opt_level(EffectiveLevel, !OptionTable)
-        ;
             Option = optimize_saved_vars,
             SpecialData = bool(Optimize),
-            map.set(optimize_saved_vars_const, bool(Optimize), !OptionTable),
-            map.set(optimize_saved_vars_cell, bool(Optimize), !OptionTable)
+            SavedVarsOpts = cord.from_list([
+                oo_opt_saved_vars_const(Optimize),
+                oo_opt_svcell(Optimize)
+            ]),
+            !:OptOptions = !.OptOptions ++ SavedVarsOpts
         ;
             Option = mercury_library_directory_special,
             SpecialData = string(Dir),
@@ -3444,6 +3453,510 @@ special_handler(Option, SpecialData, !.OptionTable, Result) :-
                     inform_inferred_modes -   bool(Inform)
                 ], !OptionTable)
         ),
+        Result = ok(!.OptionTable)
+    ;
+        (
+            Option = optopt_allow_inlining,
+            SpecialData = bool(Bool),
+            OptOption = oo_allow_inlining(Bool)
+        ;
+            Option = optopt_inline_simple,
+            SpecialData = bool(Bool),
+            OptOption = oo_inline_simple(Bool)
+        ;
+            Option = optopt_inline_builtins,
+            SpecialData = bool(Bool),
+            OptOption = oo_inline_builtins(Bool)
+        ;
+            Option = optopt_inline_single_use,
+            SpecialData = bool(Bool),
+            OptOption = oo_inline_single_use(Bool)
+        ;
+            Option = optopt_inline_linear_tail_rec_sccs,
+            SpecialData = bool(Bool),
+            OptOption = oo_inline_linear_tail_rec_sccs(Bool)
+        ;
+            Option = optopt_enable_const_struct,
+            SpecialData = bool(Bool),
+            OptOption = oo_enable_const_struct(Bool)
+        ;
+            Option = optopt_common_struct,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_common_structs(Bool)
+        ;
+            Option = optopt_constraint_propagation,
+            SpecialData = bool(Bool),
+            OptOption = oo_prop_constraints(Bool)
+        ;
+            Option = optopt_local_constraint_propagation,
+            SpecialData = bool(Bool),
+            OptOption = oo_prop_local_constraints(Bool)
+        ;
+            Option = optopt_optimize_duplicate_calls,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_dup_calls(Bool)
+        ;
+            Option = optopt_constant_propagation,
+            SpecialData = bool(Bool),
+            OptOption = oo_prop_constants(Bool)
+        ;
+            Option = optopt_excess_assign,
+            SpecialData = bool(Bool),
+            OptOption = oo_elim_excess_assigns(Bool)
+        ;
+            Option = optopt_test_after_switch,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_test_after_switch(Bool)
+        ;
+            Option = optopt_optimize_format_calls,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_format_calls(Bool)
+        ;
+            Option = optopt_loop_invariants,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_loop_invariants(Bool)
+        ;
+            Option = optopt_optimize_saved_vars_const,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_saved_vars_const(Bool)
+        ;
+            Option = optopt_optimize_saved_vars_cell,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_svcell(Bool)
+        ;
+            Option = optopt_optimize_saved_vars_cell_loop,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_svcell_loop(Bool)
+        ;
+            Option = optopt_optimize_saved_vars_cell_full_path,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_svcell_full_path(Bool)
+        ;
+            Option = optopt_optimize_saved_vars_cell_on_stack,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_svcell_on_stack(Bool)
+        ;
+            Option = optopt_optimize_saved_vars_cell_candidate_headvars,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_svcell_candidate_headvars(Bool)
+        ;
+            Option = optopt_optimize_saved_vars_cell_include_all_candidates,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_svcell_all_candidates(Bool)
+        ;
+            Option = optopt_delay_construct,
+            SpecialData = bool(Bool),
+            OptOption = oo_delay_constructs(Bool)
+        ;
+            Option = optopt_follow_code,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_follow_code(Bool)
+        ;
+            Option = optopt_optimize_unused_args,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_unused_args(Bool)
+        ;
+            Option = optopt_intermod_unused_args,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_unused_args_intermod(Bool)
+        ;
+            Option = optopt_optimize_higher_order,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_higher_order(Bool)
+        ;
+            Option = optopt_unneeded_code,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_unneeded_code(Bool)
+        ;
+            Option = optopt_type_specialization,
+            SpecialData = bool(Bool),
+            OptOption = oo_spec_types(Bool)
+        ;
+            Option = optopt_user_guided_type_specialization,
+            SpecialData = bool(Bool),
+            OptOption = oo_spec_types_user_guided(Bool)
+        ;
+            Option = optopt_introduce_accumulators,
+            SpecialData = bool(Bool),
+            OptOption = oo_introduce_accumulators(Bool)
+        ;
+            Option = optopt_optimize_constructor_last_call_accumulator,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_lcmc_accumulator(Bool)
+        ;
+            Option = optopt_optimize_constructor_last_call_null,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_lcmc_null(Bool)
+        ;
+            Option = optopt_optimize_constructor_last_call,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_lcmc(Bool)
+        ;
+            Option = optopt_optimize_dead_procs,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_dead_procs(Bool)
+        ;
+            Option = optopt_deforestation,
+            SpecialData = bool(Bool),
+            OptOption = oo_deforest(Bool)
+        ;
+            Option = optopt_untuple,
+            SpecialData = bool(Bool),
+            OptOption = oo_untuple(Bool)
+        ;
+            Option = optopt_tuple,
+            SpecialData = bool(Bool),
+            OptOption = oo_tuple(Bool)
+        ;
+            Option = optopt_inline_par_builtins,
+            SpecialData = bool(Bool),
+            OptOption = oo_inline_par_builtins(Bool)
+        ;
+            Option = optopt_always_specialize_in_dep_par_conjs,
+            SpecialData = bool(Bool),
+            OptOption = oo_spec_in_all_dep_par_conjs(Bool)
+        ;
+            Option = optopt_allow_some_paths_only_waits,
+            SpecialData = bool(Bool),
+            OptOption = oo_allow_some_paths_only_waits(Bool)
+        ;
+            Option = optopt_region_analysis,
+            SpecialData = bool(Bool),
+            OptOption = oo_analyse_regions(Bool)
+        ;
+            Option = optopt_smart_indexing,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_smart_indexing(Bool)
+        ;
+            Option = optopt_smart_atomic_indexing,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_smart_indexing_atomic(Bool)
+        ;
+            Option = optopt_smart_string_indexing,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_smart_indexing_string(Bool)
+        ;
+            Option = optopt_smart_tag_indexing,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_smart_indexing_tag(Bool)
+        ;
+            Option = optopt_smart_float_indexing,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_smart_indexing_float(Bool)
+        ;
+            Option = optopt_switch_single_rec_base_first,
+            SpecialData = bool(Bool),
+            OptOption = oo_put_base_first_single_rec(Bool)
+        ;
+            Option = optopt_switch_multi_rec_base_first,
+            SpecialData = bool(Bool),
+            OptOption = oo_put_base_first_multi_rec(Bool)
+        ;
+            Option = optopt_static_ground_cells,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_static_ground_cells(Bool)
+        ;
+            Option = optopt_static_ground_floats,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_static_ground_floats(Bool)
+        ;
+            Option = optopt_static_ground_int64s,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_static_ground_int64s(Bool)
+        ;
+            Option = optopt_static_code_addresses,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_static_code_addresses(Bool)
+        ;
+            Option = optopt_use_atomic_cells,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_atomic_cells(Bool)
+        ;
+            Option = optopt_middle_rec,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_middle_rec(Bool)
+        ;
+            Option = optopt_simple_neg,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_simple_neg(Bool)
+        ;
+            Option = optopt_allow_hijacks,
+            SpecialData = bool(Bool),
+            OptOption = oo_allow_hijacks(Bool)
+        ;
+            Option = optopt_optimize_mlds_tailcalls,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_mlds_tailcalls(Bool)
+        ;
+            Option = optopt_optimize_initializations,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_initializations(Bool)
+        ;
+            Option = optopt_eliminate_unused_mlds_assigns,
+            SpecialData = bool(Bool),
+            OptOption = oo_elim_unused_mlds_assigns(Bool)
+        ;
+            Option = optopt_eliminate_local_vars,
+            SpecialData = bool(Bool),
+            OptOption = oo_elim_local_vars(Bool)
+        ;
+            Option = optopt_generate_trail_ops_inline,
+            SpecialData = bool(Bool),
+            OptOption = oo_gen_trail_ops_inline(Bool)
+        ;
+            Option = optopt_common_data,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_common_data(Bool)
+        ;
+            Option = optopt_common_layout_data,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_common_layout_data(Bool)
+        ;
+            Option = optopt_optimize,
+            SpecialData = bool(Bool),
+            OptOption = oo_optimize(Bool)
+        ;
+            Option = optopt_optimize_peep,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_peep(Bool)
+        ;
+            Option = optopt_optimize_peep_mkword,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_peep_mkword(Bool)
+        ;
+            Option = optopt_optimize_jumps,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_jumps(Bool)
+        ;
+            Option = optopt_optimize_fulljumps,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_fulljumps(Bool)
+        ;
+            Option = optopt_pessimize_tailcalls,
+            SpecialData = bool(Bool),
+            OptOption = oo_pessimize_tailcalls(Bool)
+        ;
+            Option = optopt_checked_nondet_tailcalls,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_checked_nondet_tailcalls(Bool)
+        ;
+            Option = optopt_use_local_vars,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_local_vars(Bool)
+        ;
+            Option = optopt_standardize_labels,
+            SpecialData = bool(Bool),
+            OptOption = oo_standardize_labels(Bool)
+        ;
+            Option = optopt_optimize_labels,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_labels(Bool)
+        ;
+            Option = optopt_optimize_dups,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_dups(Bool)
+        ;
+            Option = optopt_optimize_proc_dups,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_proc_dups(Bool)
+        ;
+            Option = optopt_optimize_frames,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_frames(Bool)
+        ;
+            Option = optopt_optimize_delay_slot,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_delay_slot(Bool)
+        ;
+            Option = optopt_optimize_reassign,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_reassign(Bool)
+        ;
+            Option = optopt_use_macro_for_redo_fail,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_macro_for_redo_fail(Bool)
+        ;
+            Option = optopt_emit_c_loops,
+            SpecialData = bool(Bool),
+            OptOption = oo_emit_c_loops(Bool)
+        ;
+            Option = optopt_local_thread_engine_base,
+            SpecialData = bool(Bool),
+            OptOption = oo_use_local_thread_engine_base(Bool)
+        ;
+            Option = optopt_erlang_switch_on_strings_as_atoms,
+            SpecialData = bool(Bool),
+            OptOption = oo_switch_on_strings_as_atoms(Bool)
+        ;
+            Option = optopt_inline_alloc,
+            SpecialData = bool(Bool),
+            OptOption = oo_inline_alloc(Bool)
+        ;
+            Option = optopt_c_optimize,
+            SpecialData = bool(Bool),
+            OptOption = oo_opt_c(Bool)
+        ;
+            Option = optopt_inline_call_cost,
+            SpecialData = int(N),
+            OptOption = oo_inline_call_cost(N)
+        ;
+            Option = optopt_inline_compound_threshold,
+            SpecialData = int(N),
+            OptOption = oo_inline_compound_threshold(N)
+        ;
+            Option = optopt_inline_simple_threshold,
+            SpecialData = int(N),
+            OptOption = oo_inline_simple_threshold(N)
+        ;
+            Option = optopt_inline_vars_threshold,
+            SpecialData = int(N),
+            OptOption = oo_inline_vars_threshold(N)
+        ;
+            Option = optopt_intermod_inline_simple_threshold,
+            SpecialData = int(N),
+            OptOption = oo_intermod_inline_simple_threshold(N)
+        ;
+            Option = optopt_inline_linear_tail_rec_sccs_max_extra,
+            SpecialData = int(N),
+            OptOption = oo_inline_linear_tail_rec_sccs_max_extra(N)
+        ;
+            Option = optopt_from_ground_term_threshold,
+            SpecialData = int(N),
+            OptOption = oo_from_ground_term_threshold(N)
+        ;
+            Option = optopt_optimize_saved_vars_cell_cv_store_cost,
+            SpecialData = int(N),
+            OptOption = oo_opt_svcell_cv_store_cost(N)
+        ;
+            Option = optopt_optimize_saved_vars_cell_cv_load_cost,
+            SpecialData = int(N),
+            OptOption = oo_opt_svcell_cv_load_cost(N)
+        ;
+            Option = optopt_optimize_saved_vars_cell_fv_store_cost,
+            SpecialData = int(N),
+            OptOption = oo_opt_svcell_fv_store_cost(N)
+        ;
+            Option = optopt_optimize_saved_vars_cell_fv_load_cost,
+            SpecialData = int(N),
+            OptOption = oo_opt_svcell_fv_load_cost(N)
+        ;
+            Option = optopt_optimize_saved_vars_cell_op_ratio,
+            SpecialData = int(N),
+            OptOption = oo_opt_svcell_op_ratio(N)
+        ;
+            Option = optopt_optimize_saved_vars_cell_node_ratio,
+            SpecialData = int(N),
+            OptOption = oo_opt_svcell_node_ratio(N)
+        ;
+            Option = optopt_optimize_saved_vars_cell_all_path_node_ratio,
+            SpecialData = int(N),
+            OptOption = oo_opt_svcell_all_path_node_ratio(N)
+        ;
+            Option = optopt_higher_order_size_limit,
+            SpecialData = int(N),
+            OptOption = oo_higher_order_size_limit(N)
+        ;
+            Option = optopt_higher_order_arg_limit,
+            SpecialData = int(N),
+            OptOption = oo_higher_order_arg_limit(N)
+        ;
+            Option = optopt_unneeded_code_copy_limit,
+            SpecialData = int(N),
+            OptOption = oo_opt_unneeded_code_copy_limit(N)
+        ;
+            Option = optopt_deforestation_depth_limit,
+            SpecialData = int(N),
+            OptOption = oo_deforestation_depth_limit(N)
+        ;
+            Option = optopt_deforestation_cost_factor,
+            SpecialData = int(N),
+            OptOption = oo_deforestation_cost_factor(N)
+        ;
+            Option = optopt_deforestation_vars_threshold,
+            SpecialData = int(N),
+            OptOption = oo_deforestation_vars_threshold(N)
+        ;
+            Option = optopt_deforestation_size_threshold,
+            SpecialData = int(N),
+            OptOption = oo_deforestation_size_threshold(N)
+        ;
+            Option = optopt_tuple_costs_ratio,
+            SpecialData = int(N),
+            OptOption = oo_tuple_costs_ratio(N)
+        ;
+            Option = optopt_tuple_min_args,
+            SpecialData = int(N),
+            OptOption = oo_tuple_min_args(N)
+        ;
+            Option = optopt_dense_switch_req_density,
+            SpecialData = int(N),
+            OptOption = oo_dense_switch_req_density(N)
+        ;
+            Option = optopt_lookup_switch_req_density,
+            SpecialData = int(N),
+            OptOption = oo_lookup_switch_req_density(N)
+        ;
+            Option = optopt_dense_switch_size,
+            SpecialData = int(N),
+            OptOption = oo_dense_switch_size(N)
+        ;
+            Option = optopt_lookup_switch_size,
+            SpecialData = int(N),
+            OptOption = oo_lookup_switch_size(N)
+        ;
+            Option = optopt_string_trie_switch_size,
+            SpecialData = int(N),
+            OptOption = oo_string_trie_switch_size(N)
+        ;
+            Option = optopt_string_hash_switch_size,
+            SpecialData = int(N),
+            OptOption = oo_string_hash_switch_size(N)
+        ;
+            Option = optopt_string_binary_switch_size,
+            SpecialData = int(N),
+            OptOption = oo_string_binary_switch_size(N)
+        ;
+            Option = optopt_tag_switch_size,
+            SpecialData = int(N),
+            OptOption = oo_tag_switch_size(N)
+        ;
+            Option = optopt_try_switch_size,
+            SpecialData = int(N),
+            OptOption = oo_try_switch_size(N)
+        ;
+            Option = optopt_binary_switch_size,
+            SpecialData = int(N),
+            OptOption = oo_binary_switch_size(N)
+        ;
+            Option = optopt_local_var_access_threshold,
+            SpecialData = int(N),
+            OptOption = oo_local_var_access_threshold(N)
+        ;
+            Option = optopt_optimize_repeat,
+            SpecialData = int(N),
+            OptOption = oo_opt_repeat(N)
+        ;
+            Option = optopt_layout_compression_limit,
+            SpecialData = int(N),
+            OptOption = oo_layout_compression_limit(N)
+        ;
+            Option = optopt_procs_per_c_function,
+            SpecialData = int(N),
+            OptOption = oo_procs_per_c_function(N)
+        ;
+            Option = optopt_tuple_trace_counts_file,
+            SpecialData = string(Str),
+            OptOption = oo_tuple_trace_counts_file(Str)
+        ;
+            Option = opt_level,
+            SpecialData = int(N),
+            OptOption = oo_opt_level(N)
+        ;
+            Option = opt_space,
+            SpecialData = none,
+            OptOption = oo_opt_for_space
+        ),
+        cord.snoc(OptOption, !OptOptions),
         Result = ok(!.OptionTable)
     ).
 
@@ -3531,30 +4044,6 @@ append_to_accumulating_option(Option - Value, !OptionTable) :-
     Values = Values0 ++ [Value],
     map.set(Option, accumulating(Values), !OptionTable).
 
-:- pred set_opt_level(int::in, option_table::in, option_table::out) is det.
-
-set_opt_level(N, !OptionTable) :-
-    % First reset all optimizations to their default
-    % (the default should be all optimizations off).
-    option_defaults_2(oc_opt, OptimizationDefaults),
-    override_options(OptimizationDefaults, !OptionTable),
-
-    % Next enable the optimization levels from 0 up to N.
-    enable_opt_levels(0, N, !OptionTable).
-
-:- pred enable_opt_levels(int::in, int::in,
-    option_table::in, option_table::out) is det.
-
-enable_opt_levels(Cur, Max, !OptionTable) :-
-    ( if Cur > Max then
-        true
-    else if opt_level(Cur, !.OptionTable, OptionSettingsList) then
-        override_options(OptionSettingsList, !OptionTable),
-        enable_opt_levels(Cur + 1, Max, !OptionTable)
-    else
-        unexpected($pred, "unknown optimization level")
-    ).
-
 :- pred override_options(list(pair(option, option_data))::in,
     option_table::in, option_table::out) is det.
 
@@ -3567,178 +4056,6 @@ set_all_options_to([], _Value, !OptionTable).
 set_all_options_to([Option | Options], Value, !OptionTable) :-
     map.set(Option, Value, !OptionTable),
     set_all_options_to(Options, Value, !OptionTable).
-
-%---------------------------------------------------------------------------%
-
-:- pred opt_space(list(pair(option, option_data))::out) is det.
-
-opt_space([
-    unneeded_code_copy_limit    -   int(1),
-    optimize_dead_procs         -   bool(yes),
-    optimize_labels             -   bool(yes),
-    optimize_dups               -   bool(yes),
-    optimize_proc_dups          -   bool(yes),
-    optimize_fulljumps          -   bool(no),
-    optimize_reassign           -   bool(yes),
-    inline_alloc                -   bool(no),
-    use_macro_for_redo_fail     -   bool(no),
-    loop_invariants             -   bool(no)
-]).
-
-%---------------------------------------------------------------------------%
-
-:- pred opt_level(int::in, option_table::in,
-    list(pair(option, option_data))::out) is semidet.
-
-opt_level(OptLevel, OptionTable, Settings) :-
-    % If the optimization level is not set, we use the default values of
-    % all the optimization options (HLDS->HLDS, HLDS->LLDS, LLDS->LLDS,
-    % LLDS->C, and C->object, and their equivalents for the other backends
-    % and targets.
-    %
-    % However, some optimizations are not controlled by options
-    % and thus can't be disabled.
-
-    (
-        OptLevel = 0,
-        % Optimization level 0: aim to minimize overall compilation time.
-        % XXX I just guessed. We should run lots of experiments.
-        Settings = [
-            common_data                 -   bool(yes),
-            optimize                    -   bool(yes),
-            optimize_repeat             -   int(1),
-            optimize_peep               -   bool(yes),
-            optimize_peep_mkword        -   bool(yes),
-            static_ground_cells         -   bool(yes),
-            smart_indexing              -   bool(yes),
-            optimize_jumps              -   bool(yes),
-            optimize_labels             -   bool(yes),
-            optimize_dead_procs         -   bool(yes),
-            excess_assign               -   bool(yes)   % ???
-        ]
-    ;
-        OptLevel = 1,
-        % Optimization level 1: apply optimizations which are cheap and
-        % have a good payoff while still keeping compilation time small.
-        getopt_io.lookup_bool_option(OptionTable, have_delay_slot, DelaySlot),
-        Settings = [
-            use_local_vars              -   bool(yes),
-            c_optimize                  -   bool(yes),  % XXX we want `gcc -O1'
-            optimize_frames             -   bool(yes),
-            optimize_delay_slot         -   bool(DelaySlot),
-            middle_rec                  -   bool(yes),
-            emit_c_loops                -   bool(yes),
-            optimize_tailcalls          -   bool(yes)
-            % dups?
-        ]
-    ;
-        OptLevel = 2,
-        % Optimization level 2: apply optimizations which have a good payoff
-        % relative to their cost; but include optimizations which are
-        % more costly than with -O1.
-        Settings = [
-            optimize_fulljumps          -   bool(yes),
-            optimize_repeat             -   int(3),
-            optimize_dups               -   bool(yes),
-            follow_code                 -   bool(yes),
-            inline_simple               -   bool(yes),
-            inline_single_use           -   bool(yes),
-            inline_compound_threshold   -   int(10),
-            common_struct               -   bool(yes),
-            user_guided_type_specialization -   bool(yes),
-            % XXX While inst `array' is defined as `ground', we can't optimize
-            % duplicate calls (we might combine calls to `array.init').
-            % optimize_duplicate_calls  -   bool(yes),
-            simple_neg                  -   bool(yes),
-            test_after_switch           -   bool(yes),
-
-            optimize_initializations    -  bool(yes)
-        ]
-    ;
-        OptLevel = 3,
-        % Optimization level 3: apply optimizations which usually have a good
-        % payoff even if they increase compilation time quite a bit.
-        Settings = [
-            optimize_saved_vars_const   - bool(yes),
-            optimize_unused_args        -   bool(yes),
-            optimize_higher_order       -   bool(yes),
-            deforestation               -   bool(yes),
-            local_constraint_propagation -  bool(yes),
-            constant_propagation        -   bool(yes),
-            optimize_reassign           -   bool(yes),
-            % Disabled until a bug in extras/trailed_update/var.m is resolved.
-            % introduce_accumulators    -   bool(yes),
-            optimize_repeat             -   int(4)
-        ]
-    ;
-        OptLevel = 4,
-        % Optimization level 4: apply optimizations which may have some payoff
-        % even if they increase compilation time quite a bit.
-        %
-        % Currently this enables the use of local variables
-        % and increases the inlining thresholds.
-        Settings = [
-            inline_simple_threshold     -   int(8),
-            inline_compound_threshold   -   int(20),
-            higher_order_size_limit     -   int(30)
-        ]
-    ;
-        OptLevel = 5,
-        % Optimization level 5: apply optimizations which may have some
-        % payoff even if they increase compilation time a lot.
-        %
-        % Currently this enables the search for construction unifications that
-        % can be delayed past failing computations, allows more passes of the
-        % low-level optimizations, and increases the inlining thresholds
-        % still further. We also enable eliminate_local_vars only at
-        % this level, because that pass is implemented pretty inefficiently.
-        Settings = [
-            optimize_repeat             -   int(5),
-            delay_construct             -   bool(yes),
-            inline_compound_threshold   -   int(100),
-            higher_order_size_limit     -   int(40),
-            eliminate_local_vars        -   bool(yes),
-            loop_invariants             -   bool(yes)
-        ]
-    ;
-        OptLevel = 6,
-        % Optimization level 6: apply optimizations which may have any payoff
-        % even if they increase compilation time to completely unreasonable
-        % levels.
-        %
-        % Currently this sets `everything_in_one_c_function', which causes
-        % the compiler to put everything in the one C function and treat calls
-        % to predicates in the same module as local. We also enable inlining
-        % of GC_malloc(), redo(), and fail().
-        Settings = [
-            procs_per_c_function        -   int(0),
-            inline_alloc                -   bool(yes),
-            use_macro_for_redo_fail     -   bool(yes)
-        ]
-
-        % The following optimization options are not enabled at any level:
-        %
-        %   checked_nondet_tailcalls:
-        %       This is deliberate, because the transformation
-        %       might make code run slower.
-        %
-        %   constraint_propagation:
-        %       I think this is deliberate, because the transformation
-        %       might make code run slower?
-        %
-        %   unneeded_code:
-        %       Because it can cause slowdowns at high optimization levels;
-        %       cause unknown
-        %   type_specialization:
-        %       XXX why not?
-        %
-        %   introduce_accumulators:
-        %       XXX Disabled until a bug in extras/trailed_update/var.m
-        %       is resolved.
-        %
-        %   optimize_constructor_last_call:
-        %       Not a speedup in general.
-    ).
 
 %---------------------------------------------------------------------------%
 
@@ -4580,6 +4897,15 @@ options_help_aux_output -->
 %       "\tmode analysis.",
 %       "--compute-goal-modes",
 %       "\tCompute goal modes.",
+% These options are only intended to be used for debugging the compiler.
+%       "--unneeded-code-debug",
+%       "\tPrint progress messages during the unneeded code elimination",
+%       "\tpasses.",
+%       "--unneeded-code-debug-pred-name <predname>",
+%       "\tPrint the definition of <predname> at the start of each pass",
+%       "\tof the unneeded code elimination algorithm.",
+%       "--common-struct-preds <predids>",
+%       "\tLimit common struct optimization to the preds with the given ids.",
     ]).
 
 :- pred options_help_semantics(io::di, io::uo) is det.
@@ -5501,8 +5827,6 @@ options_help_hlds_hlds_optimization -->
         "\ttable.",
         "--no-common-struct",
         "\tDisable optimization of common term structures.",
-%       "--common-struct-preds <predids>",
-%       "\tLimit common struct optimization to the preds with the given ids.",
 
 %       Common goal optimization should not be turned off, since it can
 %       break programs that would otherwise compile properly (e.g.,
@@ -5589,12 +5913,6 @@ options_help_hlds_hlds_optimization -->
         "\tnot needed. A value of zero forbids goal movement and allows",
         "\tonly goal deletion; a value of one prevents any increase in the",
         "\tsize of the code.",
-%       "--unneeded-code-debug",
-%       "\tPrint progress messages during the unneeded code elimination",
-%       "\tpasses.",
-%       "--unneeded-code-debug-pred-name <predname>",
-%       "\tPrint the definition of <predname> at the start of each pass",
-%       "\tof the unneeded code elimination algorithm.",
         "--introduce-accumulators",
         "\tAttempt to introduce accumulating variables into",
         "\tprocedures, so as to make them tail recursive.",

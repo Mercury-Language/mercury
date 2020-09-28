@@ -85,6 +85,8 @@
 :- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.optimization_options.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.llds_out.llds_out_data.
@@ -645,10 +647,10 @@ output_instruction(Info, Instr, LabelOutputInfo, !IO) :-
         output_label_defn(Label, !IO),
         LocalThreadEngineBase = Info ^ lout_local_thread_engine_base,
         (
-            LocalThreadEngineBase = yes,
+            LocalThreadEngineBase = use_local_thread_engine_base,
             io.write_string("\tMR_MAYBE_INIT_LOCAL_THREAD_ENGINE_BASE\n", !IO)
         ;
-            LocalThreadEngineBase = no
+            LocalThreadEngineBase = do_not_use_local_thread_engine_base
         ),
         maybe_output_update_prof_counter(Info, Label, LabelOutputInfo, !IO)
     ;
@@ -1517,20 +1519,20 @@ output_goto(Info, Target, CallerLabel, !IO) :-
         Target = do_redo,
         UseMacro = Info ^ lout_use_macro_for_redo_fail,
         (
-            UseMacro = yes,
+            UseMacro = use_macro_for_redo_fail,
             io.write_string("MR_redo();\n", !IO)
         ;
-            UseMacro = no,
+            UseMacro = do_not_use_macro_for_redo_fail,
             io.write_string("MR_GOTO(MR_ENTRY(MR_do_redo));\n", !IO)
         )
     ;
         Target = do_fail,
         UseMacro = Info ^ lout_use_macro_for_redo_fail,
         (
-            UseMacro = yes,
+            UseMacro = use_macro_for_redo_fail,
             io.write_string("MR_fail();\n", !IO)
         ;
-            UseMacro = no,
+            UseMacro = do_not_use_macro_for_redo_fail,
             io.write_string("MR_GOTO(MR_ENTRY(MR_do_fail));\n", !IO)
         )
     ;

@@ -390,6 +390,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_code_util.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 
 :- import_module int.
@@ -851,12 +852,12 @@ find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
     SwitchCategory = type_ctor_cat_to_switch_cat(SwitchTypeCtorCat),
 
     module_info_get_globals(ModuleInfo, Globals),
+    globals.get_opt_tuple(Globals, OptTuple),
     ( if
         (
             % We cannot use smart indexing if smart indexing is turned off
             % in general.
-            globals.lookup_bool_option(Globals, smart_indexing, SmartIndexing),
-            SmartIndexing = no
+            OptTuple ^ ot_use_smart_indexing = do_not_use_smart_indexing
         ;
             % We cannot use smart indexing if smart indexing is turned off
             % for this category of switches.
@@ -874,23 +875,39 @@ find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory,
     = bool.
 
 is_smart_indexing_allowed_for_category(Globals, SwitchCategory) = Allowed :-
+    globals.get_opt_tuple(Globals, OptTuple),
     (
         SwitchCategory = atomic_switch,
-        globals.lookup_bool_option(Globals, smart_atomic_indexing, Allowed)
+        Atomic = OptTuple ^ ot_use_smart_indexing_atomic,
+        ( Atomic = use_smart_indexing_atomic, Allowed = yes
+        ; Atomic = do_not_use_smart_indexing_atomic, Allowed = no
+        )
     ;
         SwitchCategory = string_switch,
-        globals.lookup_bool_option(Globals, smart_string_indexing, Allowed)
+        String = OptTuple ^ ot_use_smart_indexing_string,
+        ( String = use_smart_indexing_string, Allowed = yes
+        ; String = do_not_use_smart_indexing_string, Allowed = no
+        )
     ;
         SwitchCategory = tag_switch,
-        globals.lookup_bool_option(Globals, smart_tag_indexing, Allowed)
+        Tag = OptTuple ^ ot_use_smart_indexing_tag,
+        ( Tag = use_smart_indexing_tag, Allowed = yes
+        ; Tag = do_not_use_smart_indexing_tag, Allowed = no
+        )
     ;
         SwitchCategory = float_switch,
-        globals.lookup_bool_option(Globals, smart_float_indexing, Allowed)
+        Float = OptTuple ^ ot_use_smart_indexing_float,
+        ( Float = use_smart_indexing_float, Allowed = yes
+        ; Float = do_not_use_smart_indexing_float, Allowed = no
+        )
     ;
         SwitchCategory = int64_switch,
         % We do not have a separate option for controlling smart indexing
         % of 64-bit integers.
-        globals.lookup_bool_option(Globals, smart_atomic_indexing, Allowed)
+        Gen = OptTuple ^ ot_use_smart_indexing,
+        ( Gen = use_smart_indexing, Allowed = yes
+        ; Gen = do_not_use_smart_indexing, Allowed = no
+        )
     ).
 
 %-----------------------------------------------------------------------------%

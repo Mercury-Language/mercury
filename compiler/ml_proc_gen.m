@@ -51,7 +51,7 @@
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
-:- import_module libs.options.
+:- import_module libs.optimization_options.
 :- import_module ml_backend.ml_args_util.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
@@ -95,12 +95,13 @@ ml_gen_preds(Target, ConstStructMap, FuncDefns,
 
     % Optimize tail calls only if asked.
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, optimize_tailcalls, TailCalls),
+    globals.get_opt_tuple(Globals, OptTuple),
+    TailCalls = OptTuple ^ ot_opt_mlds_tailcalls,
     (
-        TailCalls = yes,
+        TailCalls = opt_mlds_tailcalls,
         OptTailCalls = tail_call_opt_in_code_gen
     ;
-        TailCalls = no,
+        TailCalls = do_not_opt_mlds_tailcalls,
         OptTailCalls = no_tail_call_opt_in_code_gen
     ),
     get_default_warn_parms(Globals, DefaultWarnParams),
@@ -1690,15 +1691,15 @@ ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars, Goal, SeenAtLabelMap,
         LocalVarDefns1 = ConvLocalVarDefns ++ LocalVarDefns0
     ),
     ml_gen_info_get_globals(!.Info, Globals),
-    globals.lookup_bool_option(Globals, eliminate_unused_mlds_assigns,
-        EliminateUnusedAssigns),
+    globals.get_opt_tuple(Globals, OptTuple),
+    EliminateUnusedAssigns = OptTuple ^ ot_elim_unused_mlds_assigns,
     (
-        EliminateUnusedAssigns = no,
+        EliminateUnusedAssigns = do_not_elim_unused_mlds_assigns,
         LocalVarDefns = LocalVarDefns1,
         FuncDefns = FuncDefns0,
         Stmts = Stmts1
     ;
-        EliminateUnusedAssigns = yes,
+        EliminateUnusedAssigns = elim_unused_mlds_assigns,
         list.map((func(var_mvar_type_mode(_, LocalVar, _, _)) = LocalVar),
             ArgTuples) = ArgLocalVars,
         (

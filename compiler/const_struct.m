@@ -19,11 +19,11 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module list.
 :- import_module map.
 
@@ -111,19 +111,19 @@
     % and simplify.m respectively.
     %
 :- pred const_struct_db_get_poly_enabled(const_struct_db::in,
-    bool::out) is det.
+    maybe_enable_const_struct::out) is det.
 :- pred const_struct_db_get_ground_term_enabled(const_struct_db::in,
-    bool::out) is det.
+    maybe_enable_const_struct::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 
+:- import_module bool.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
@@ -137,13 +137,13 @@ const_struct_db_init(Globals, Db) :-
     ;
         Target = target_java,
         can_enable_const_struct(Globals, PolyEnabled, _GroundTermEnabled),
-        GroundTermEnabled = no
+        GroundTermEnabled = do_not_enable_const_struct
     ;
         ( Target = target_csharp
         ; Target = target_erlang
         ),
-        PolyEnabled = no,
-        GroundTermEnabled = no
+        PolyEnabled = do_not_enable_const_struct,
+        GroundTermEnabled = do_not_enable_const_struct
     ),
     Db = const_struct_db(PolyEnabled, GroundTermEnabled, 0,
         map.init, map.init, map.init, map.init).
@@ -154,19 +154,19 @@ const_struct_db_init(Globals, Db) :-
     % (const_struct_db_init/2) must also check if the compilation grade
     % supports constant structures.
     %
-:- pred can_enable_const_struct(globals::in, bool::out, bool::out) is det.
+:- pred can_enable_const_struct(globals::in,
+    maybe_enable_const_struct::out, maybe_enable_const_struct::out) is det.
 
 can_enable_const_struct(Globals, PolyEnabled, GroundTermEnabled) :-
-    globals.lookup_bool_option(Globals, enable_const_struct,
-        OptionEnabled),
-    PolyEnabled = OptionEnabled,
+    globals.get_opt_tuple(Globals, OptTuple),
+    PolyEnabled = OptTuple ^ ot_enable_const_struct,
 
     globals.get_trace_level(Globals, TraceLevel),
     globals.get_trace_suppress(Globals, TraceSuppress),
     Bodies = trace_needs_proc_body_reps(TraceLevel, TraceSuppress),
     (
         Bodies = no,
-        GroundTermEnabled = OptionEnabled
+        GroundTermEnabled = PolyEnabled
     ;
         Bodies = yes,
         % We generate representations of procedure bodies for the
@@ -178,16 +178,16 @@ can_enable_const_struct(Globals, PolyEnabled, GroundTermEnabled) :-
         % arising in the first place. (We never look for the original
         % sources of type infos and typeclass infos, so we can use constant
         % structures for them.)
-        GroundTermEnabled = no
+        GroundTermEnabled = do_not_enable_const_struct
     ).
 
 lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
     const_struct_db_get_poly_enabled(!.Db, Enabled),
     (
-        Enabled = no,
+        Enabled = do_not_enable_const_struct,
         unexpected($pred, "not enabled")
     ;
-        Enabled = yes,
+        Enabled = enable_const_struct,
         ConstStruct = const_struct(ConsId, Args, Type, Inst),
         ( if ConsId = cons(SymName, _, _) then
             Name = unqualify_name(SymName),
@@ -286,8 +286,8 @@ const_struct_db_get_structs(Db, Structs) :-
 
 :- type const_struct_db
     --->    const_struct_db(
-                csdb_poly_enabled           :: bool,
-                csdb_ground_term_enabled    :: bool,
+                csdb_poly_enabled           :: maybe_enable_const_struct,
+                csdb_ground_term_enabled    :: maybe_enable_const_struct,
                 csdb_next_num               :: int,
                 csdb_cons_proxy_map         :: map(cons_proxy_struct, int),
                 csdb_other_struct_map       :: map(const_struct, int),

@@ -50,6 +50,7 @@
 :- import_module hlds.instmap.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.continuation_info.
@@ -316,7 +317,8 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI, !CLD) :-
         GoalExpr = unify(_, _, _, simple_test(L, R), _),
         failure_is_direct_branch(!.CLD, CodeAddr),
         get_globals(!.CI, Globals),
-        globals.lookup_bool_option(Globals, simple_neg, yes)
+        globals.get_opt_tuple(Globals, OptTuple),
+        OptTuple ^ ot_opt_simple_neg = opt_simple_neg
     then
         % Because we are generating the negated goal ourselves, we need to
         % apply the pre- and post-goal updates that would normally be applied

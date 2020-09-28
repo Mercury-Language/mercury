@@ -148,6 +148,7 @@
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -231,7 +232,8 @@ impl_dep_par_conjs_in_module(!ModuleInfo) :-
 
                 % The value of the --allow-some-paths-only-waits option.
                 % Read-only.
-                sync_allow_some_paths_only  :: bool,
+                sync_allow_some_paths_only  ::
+                                            maybe_allow_some_paths_only_waits,
 
                 % The varset and vartypes for the procedure being analysed.
                 % These fields are updated when we add new variables.
@@ -290,8 +292,8 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
         proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
         module_info_get_globals(!.ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, allow_some_paths_only_waits,
-            AllowSomePathsOnly),
+        globals.get_opt_tuple(Globals, OptTuple),
+        AllowSomePathsOnly = OptTuple ^ ot_allow_some_paths_only_waits,
 
         % We rely on dependency information in order to determine which calls
         % are recursive. The information is stored within !ModuleInfo so
@@ -530,7 +532,8 @@ maybe_sync_dep_par_conj(Conjuncts, GoalInfo, NewGoal, InstMap, !SyncInfo) :-
     %           append(AB_10, A, ABA)
     %       ).
     %
-:- pred sync_dep_par_conj(module_info::in, bool::in, set_of_progvar::in,
+:- pred sync_dep_par_conj(module_info::in,
+    maybe_allow_some_paths_only_waits::in, set_of_progvar::in,
     list(hlds_goal)::in, hlds_goal_info::in, hlds_goal::out, instmap::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     ts_string_table::in, ts_string_table::out) is det.
@@ -578,10 +581,10 @@ sync_dep_par_conj(ModuleInfo, AllowSomePathsOnly, SharedVars, Goals, GoalInfo,
     % procedure simply to maintain the above invariant. Can an unused argument
     % analysis prevent this situation?
     %
-:- pred sync_dep_par_proc_body(module_info::in, bool::in,
-    set_of_progvar::in, future_map::in, instmap::in,
-    hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+:- pred sync_dep_par_proc_body(module_info::in,
+    maybe_allow_some_paths_only_waits::in, set_of_progvar::in,
+    future_map::in, instmap::in, hlds_goal::in, hlds_goal::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 sync_dep_par_proc_body(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
         InstMap, !Goal, !VarSet, !VarTypes) :-
@@ -618,10 +621,10 @@ sync_dep_par_proc_body(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
             !Goal, !VarSet, !VarTypes)
     ).
 
-:- pred sync_dep_par_conjunct(module_info::in, bool::in,
-    set_of_progvar::in, future_map::in, hlds_goal::in, hlds_goal::out,
-    instmap::in, instmap::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+:- pred sync_dep_par_conjunct(module_info::in,
+    maybe_allow_some_paths_only_waits::in, set_of_progvar::in, future_map::in,
+    hlds_goal::in, hlds_goal::out, instmap::in, instmap::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
         !Goal, !InstMap, !VarSet, !VarTypes) :-
@@ -636,8 +639,8 @@ sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
             NonlocalSharedVars, ConsumedVarsList, ProducedVarsList),
 
         % Insert waits into the conjunct, as late as possible.
-        list.map_foldl3(insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly,
-                FutureMap),
+        list.map_foldl3(
+            insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap),
             ConsumedVarsList, _WaitedOnAllSuccessPaths,
             !Goal, !VarSet, !VarTypes),
 
@@ -671,8 +674,9 @@ consumed_and_produced_vars(ModuleInfo, InstMap, InstMapDelta, Vars,
     ConsumedVarsList = set_of_var.to_sorted_list(ConsumedVars),
     ProducedVarsList = set_of_var.to_sorted_list(ProducedVars).
 
-:- pred insert_wait_in_goal_for_proc(module_info::in, bool::in, future_map::in,
-    prog_var::in, hlds_goal::in, hlds_goal::out,
+:- pred insert_wait_in_goal_for_proc(module_info::in,
+    maybe_allow_some_paths_only_waits::in, future_map::in, prog_var::in,
+    hlds_goal::in, hlds_goal::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 insert_wait_in_goal_for_proc(ModuleInfo, AllowSomePathsOnly, FutureMap,
@@ -723,7 +727,8 @@ join_branches(not_waited_on_all_success_paths, not_waited_on_all_success_paths,
     % (We must ensure that if one branch of a branched goal inserts a wait
     % for a variable, then *all* branches of that goal insert a wait.)
     %
-:- pred insert_wait_in_goal(module_info::in, bool::in, future_map::in,
+:- pred insert_wait_in_goal(module_info::in,
+    maybe_allow_some_paths_only_waits::in, future_map::in,
     prog_var::in, waited_on_all_success_paths::out,
     hlds_goal::in, hlds_goal::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
@@ -917,11 +922,11 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
         ;
             WaitedOnAllSuccessPaths0 = not_waited_on_all_success_paths,
             (
-                AllowSomePathsOnly = yes,
+                AllowSomePathsOnly = allow_some_paths_only_waits,
                 WaitedOnAllSuccessPaths = WaitedOnAllSuccessPaths0,
                 Goal = Goal2
             ;
-                AllowSomePathsOnly = no,
+                AllowSomePathsOnly = do_not_allow_some_paths_only_waits,
                 (
                     InvariantEstablished = no,
                     WaitedOnAllSuccessPaths = waited_on_all_success_paths,
@@ -960,7 +965,8 @@ insert_wait_after_goal(ModuleInfo, FutureMap, ConsumedVar,
     % that references it. Any later conjuncts will get the waited-for variable
     % without having to call wait.
     %
-:- pred insert_wait_in_plain_conj(module_info::in, bool::in, future_map::in,
+:- pred insert_wait_in_plain_conj(module_info::in,
+    maybe_allow_some_paths_only_waits::in, future_map::in,
     prog_var::in, waited_on_all_success_paths::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
@@ -1021,8 +1027,8 @@ insert_wait_in_plain_conj(ModuleInfo, AllowSomePathsOnly, FutureMap,
     % "earlier" conjuncts waited for, since those waits may not have finished
     % yet.
     %
-:- pred insert_wait_in_par_conj(module_info::in, bool::in,
-    future_map::in, prog_var::in,
+:- pred insert_wait_in_par_conj(module_info::in,
+    maybe_allow_some_paths_only_waits::in, future_map::in, prog_var::in,
     waited_in_conjunct::in, waited_in_conjunct::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
@@ -1057,8 +1063,8 @@ insert_wait_in_par_conj(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
     insert_wait_in_par_conj(ModuleInfo, AllowSomePathsOnly, FutureMap,
         ConsumedVar, !WaitedInConjunct, Goals0, Goals, !VarSet, !VarTypes).
 
-:- pred insert_wait_in_disj(module_info::in, bool::in,
-    future_map::in, prog_var::in,
+:- pred insert_wait_in_disj(module_info::in,
+    maybe_allow_some_paths_only_waits::in, future_map::in, prog_var::in,
     waited_on_all_success_paths::in, waited_on_all_success_paths::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
@@ -1075,8 +1081,8 @@ insert_wait_in_disj(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
     insert_wait_in_disj(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
         !WaitedOnAllSuccessPaths, Goals0, Goals, !VarSet, !VarTypes).
 
-:- pred insert_wait_in_cases(module_info::in, bool::in,
-    future_map::in, prog_var::in,
+:- pred insert_wait_in_cases(module_info::in,
+    maybe_allow_some_paths_only_waits::in, future_map::in, prog_var::in,
     waited_on_all_success_paths::in, waited_on_all_success_paths::out,
     list(case)::in, list(case)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
@@ -1658,8 +1664,8 @@ add_requested_specialized_par_proc(CallPattern, NewProc, !PendingParProcs,
         % Insert signals and waits into the procedure body. We treat the body
         % as it were a conjunct of a parallel conjunction, since it is.
         module_info_get_globals(InitialModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, allow_some_paths_only_waits,
-            AllowSomePathsOnly),
+        globals.get_opt_tuple(Globals, OptTuple),
+        AllowSomePathsOnly = OptTuple ^ ot_allow_some_paths_only_waits,
         SharedVars = set_of_var.sorted_list_to_set(map.keys(FutureMap)),
         sync_dep_par_proc_body(!.ModuleInfo, AllowSomePathsOnly, SharedVars,
             FutureMap, InstMap0, Goal0, Goal, !VarSet, !VarTypes),
@@ -2367,13 +2373,13 @@ should_we_push(PredProcId, ArgPos, PushOp, IsWorthPushing, !SpecInfo) :-
     else
         InitialModuleInfo = !.SpecInfo ^ spec_initial_module,
         module_info_get_globals(InitialModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, always_specialize_in_dep_par_conjs,
-            AlwaysSpecialize),
+        globals.get_opt_tuple(Globals, OptTuple),
+        AlwaysSpecialize = OptTuple ^ ot_spec_in_all_dep_par_conjs,
         (
-            AlwaysSpecialize = yes,
+            AlwaysSpecialize = spec_in_all_dep_par_conjs,
             IsWorthPushing = worth_pushing
         ;
-            AlwaysSpecialize = no,
+            AlwaysSpecialize = do_not_spec_in_all_dep_par_conjs,
             should_we_push_test(PredProcId, ArgPos, PushOp, IsWorthPushing,
                 !.SpecInfo)
         ),
@@ -3126,13 +3132,13 @@ allocate_future(ModuleInfo, SharedVar, Goals, !VarSet, !VarTypes,
     Context = term.context_init,
     ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
     (
-        ShouldInline = no,
+        ShouldInline = do_not_inline_par_builtins,
         ArgVars = [FutureNameVar, FutureVar],
         generate_simple_call(ModuleInfo, ModuleName, PredName, pf_predicate,
             only_mode, detism_det, purity_pure, ArgVars, Features,
             InstMapDelta, Context, AllocGoal)
     ;
-        ShouldInline = yes,
+        ShouldInline = inline_par_builtins,
         ForeignAttrs = par_builtin_foreign_proc_attributes(purity_pure, no),
         ArgName = foreign_arg(FutureNameVar,
             yes(foreign_arg_name_mode("Name", in_mode)),
@@ -3228,13 +3234,13 @@ make_wait_or_get(ModuleInfo, VarTypes, FutureVar, ConsumedVar, WaitOrGetPred,
     Context = term.context_init,
     ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
     (
-        ShouldInline = no,
+        ShouldInline = do_not_inline_par_builtins,
         ArgVars = [FutureVar, ConsumedVar],
         generate_simple_call(ModuleInfo, ModuleName, PredName, pf_predicate,
             only_mode, detism_det, Purity, ArgVars, Features,
             InstMapDelta, Context, WaitGoal)
     ;
-        ShouldInline = yes,
+        ShouldInline = inline_par_builtins,
         ForeignAttrs = par_builtin_foreign_proc_attributes(Purity, no),
         lookup_var_type(VarTypes, FutureVar, FutureVarType),
         lookup_var_type(VarTypes, ConsumedVar, ConsumedVarType),
@@ -3263,13 +3269,13 @@ make_signal_goal(ModuleInfo, FutureMap, ProducedVar, VarTypes, SignalGoal) :-
     Context = term.context_init,
     ShouldInline = should_inline_par_builtin_calls(ModuleInfo),
     (
-        ShouldInline = no,
+        ShouldInline = do_not_inline_par_builtins,
         ArgVars = [FutureVar, ProducedVar],
         generate_simple_call(ModuleInfo, ModuleName, PredName, pf_predicate,
             only_mode, detism_det, purity_impure, ArgVars, Features,
             InstMapDelta, Context, SignalGoal)
     ;
-        ShouldInline = yes,
+        ShouldInline = inline_par_builtins,
         ForeignAttrs = par_builtin_foreign_proc_attributes(purity_impure,
             yes(needs_call_standard_output_registers)),
         lookup_var_type(VarTypes, FutureVar, FutureVarType),
@@ -3319,11 +3325,13 @@ new_future_code = "
     #endif
 ".
 
-:- func should_inline_par_builtin_calls(module_info) = bool.
+:- func should_inline_par_builtin_calls(module_info) =
+    maybe_inline_par_builtins.
 
 should_inline_par_builtin_calls(ModuleInfo) = ShouldInline :-
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, inline_par_builtins, ShouldInline).
+    globals.get_opt_tuple(Globals, OptTuple),
+    ShouldInline = OptTuple ^ ot_inline_par_builtins.
 
 :- func par_builtin_foreign_proc_attributes(purity,
     maybe(pragma_foreign_proc_extra_attribute))

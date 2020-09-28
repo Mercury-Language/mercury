@@ -69,6 +69,7 @@
 :- import_module libs.dependency_graph.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.dupproc.
@@ -112,7 +113,8 @@ llds_backend_pass(!HLDS, !:GlobalData, LLDS, !DumpInfo, !IO) :-
     module_info_get_name(!.HLDS, ModuleName),
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, unboxed_float, OptUnboxFloat),
-    globals.lookup_bool_option(Globals, common_data, DoCommonData),
+    globals.get_opt_tuple(Globals, OptTuple),
+    DoCommonData = OptTuple ^ ot_use_common_data,
     (
         OptUnboxFloat = yes,
         UnboxFloats = have_unboxed_floats
@@ -211,13 +213,14 @@ llds_backend_pass_by_phases(!HLDS, !:LLDS, !GlobalData, !Specs,
 llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, !Specs) :-
     module_info_get_valid_pred_ids(!.HLDS, PredIds),
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, optimize_proc_dups, ProcDups),
+    globals.get_opt_tuple(Globals, OptTuple),
+    ProcDups = OptTuple ^ ot_opt_proc_dups,
     (
-        ProcDups = no,
+        ProcDups = do_not_opt_proc_dups,
         OrderedPredIds = PredIds,
         MaybeDupProcMap = no
     ;
-        ProcDups = yes,
+        ProcDups = opt_proc_dups,
         PredDepInfo = build_pred_dependency_graph(!.HLDS, PredIds,
             do_not_include_imported),
         OrderedPredIds = dependency_info_get_condensed_bottom_up_sccs(
@@ -355,33 +358,32 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
         ProcId, !.ProcInfo, CProc, !GlobalData, !Specs) :-
     PredProcId = proc(PredId, ProcId),
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, optimize_saved_vars_const,
-        SavedVarsConst),
+    globals.get_opt_tuple(Globals, OptTuple),
+    SavedVarsConst = OptTuple ^ ot_opt_saved_vars_const,
     (
-        SavedVarsConst = yes,
+        SavedVarsConst = opt_saved_vars_const,
         saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !HLDS)
     ;
-        SavedVarsConst = no
+        SavedVarsConst = do_not_opt_saved_vars_const
     ),
-    globals.lookup_bool_option(Globals, optimize_saved_vars_cell,
-        SavedVarsCell),
+    SavedVarsCell = OptTuple ^ ot_opt_svcell,
     (
-        SavedVarsCell = yes,
+        SavedVarsCell = opt_svcell,
         stack_opt_cell(PredProcId, !ProcInfo, !HLDS)
     ;
-        SavedVarsCell = no
+        SavedVarsCell = do_not_opt_svcell
     ),
-    globals.lookup_bool_option(Globals, follow_code, FollowCode),
+    FollowCode = OptTuple ^ ot_opt_follow_code,
     (
-        FollowCode = yes,
+        FollowCode = opt_follow_code,
         move_follow_code_in_proc(PredProcId, !ProcInfo, !HLDS)
     ;
-        FollowCode = no
+        FollowCode = do_not_opt_follow_code
     ),
     find_simplify_tasks(no, Globals, SimplifyTasks0),
     SimpList0 = simplify_tasks_to_list(SimplifyTasks0),
 
-    globals.lookup_bool_option(Globals, constant_propagation, ConstProp),
+    ConstProp = OptTuple ^ ot_prop_constants,
     globals.lookup_bool_option(Globals, profile_deep, DeepProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_words, TSWProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_cells, TSCProf),
@@ -394,7 +396,7 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
     % mercury_compile.simplify.
 
     ( if
-        ConstProp = yes,
+        ConstProp = prop_constants,
         ProfTrans = no
     then
         list.cons(simptask_constant_prop, SimpList0, SimpList1)
@@ -440,12 +442,12 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
     ),
     generate_proc_code(!.HLDS, ConstStructMap, PredId, PredInfo,
          ProcId, !.ProcInfo, CProc0, !GlobalData),
-    globals.lookup_bool_option(Globals, optimize, Optimize),
+    Optimize = OptTuple ^ ot_optimize,
     (
-        Optimize = yes,
+        Optimize = optimize,
         optimize_proc(Globals, !.GlobalData, CProc0, CProc)
     ;
-        Optimize = no,
+        Optimize = do_not_optimize,
         CProc = CProc0
     ),
     trace [io(!IO)] (
@@ -473,9 +475,10 @@ map_args_to_regs(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_saved_vars(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, optimize_saved_vars_const, SavedVars),
+    globals.get_opt_tuple(Globals, OptTuple),
+    SavedVars = OptTuple ^ ot_opt_saved_vars_const,
     (
-        SavedVars = yes,
+        SavedVars = opt_saved_vars_const,
         maybe_write_string(Verbose,
             "% Minimizing variable saves using constants...\n", !IO),
         maybe_flush_output(Verbose, !IO),
@@ -483,7 +486,7 @@ maybe_saved_vars(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        SavedVars = no
+        SavedVars = do_not_opt_saved_vars_const
     ).
 
 :- pred maybe_stack_opt(bool::in, bool::in,
@@ -491,9 +494,10 @@ maybe_saved_vars(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_stack_opt(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, optimize_saved_vars_cell, SavedVars),
+    globals.get_opt_tuple(Globals, OptTuple),
+    SavedVars = OptTuple ^ ot_opt_svcell,
     (
-        SavedVars = yes,
+        SavedVars = opt_svcell,
         maybe_write_string(Verbose,
             "% Minimizing variable saves using cells...\n", !IO),
         maybe_flush_output(Verbose, !IO),
@@ -501,7 +505,7 @@ maybe_stack_opt(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        SavedVars = no
+        SavedVars = do_not_opt_svcell
     ).
 
 :- pred maybe_followcode(bool::in, bool::in,
@@ -509,9 +513,10 @@ maybe_stack_opt(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, follow_code, FollowCode),
+    globals.get_opt_tuple(Globals, OptTuple),
+    FollowCode = OptTuple ^ ot_opt_follow_code,
     (
-        FollowCode = yes,
+        FollowCode = opt_follow_code,
         maybe_write_string(Verbose, "% Migrating branch code...", !IO),
         maybe_flush_output(Verbose, !IO),
         process_valid_nonimported_procs(update_module(move_follow_code_in_proc),
@@ -519,7 +524,7 @@ maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        FollowCode = no
+        FollowCode = do_not_opt_follow_code
     ).
 
 :- pred compute_liveness(bool::in, bool::in,
@@ -599,16 +604,17 @@ generate_llds_code_for_module(HLDS, Verbose, Stats, !GlobalData, LLDS, !IO) :-
 
 maybe_optimize_llds(HLDS, GlobalData, Verbose, Stats, !LLDS, !IO) :-
     module_info_get_globals(HLDS, Globals),
-    globals.lookup_bool_option(Globals, optimize, Optimize),
+    globals.get_opt_tuple(Globals, OptTuple),
+    Optimize = OptTuple ^ ot_optimize,
     (
-        Optimize = yes,
+        Optimize = optimize,
         maybe_write_string(Verbose, "% Doing optimizations...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         optimize_procs(Globals, GlobalData, !LLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        Optimize = no
+        Optimize = do_not_optimize
     ).
 
 :- pred maybe_generate_stack_layouts(module_info::in, list(c_procedure)::in,
@@ -680,7 +686,8 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
     CModuleName = MangledModuleName ++ "_module",
 
     % Split the code up into bite-size chunks for the C compiler.
-    globals.lookup_int_option(Globals, procs_per_c_function, ProcsPerFunc),
+    globals.get_opt_tuple(Globals, OptTuple),
+    ProcsPerFunc = OptTuple ^ ot_procs_per_c_function,
     ( if ProcsPerFunc = 0 then
         % ProcsPerFunc = 0 really means infinity -
         % we store all the procs in a single function.

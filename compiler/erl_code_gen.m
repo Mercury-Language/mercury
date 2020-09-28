@@ -67,7 +67,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.options.
+:- import_module libs.optimization_options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -811,8 +811,8 @@ erl_gen_switch(Var, CanFail, CasesList, CodeModel, InstMap0, _Context,
         % enable the workaround unless the user specifically passes
         % --erlang-switch-on-strings-as-atoms.
         module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, erlang_switch_on_strings_as_atoms,
-            yes),
+        globals.get_opt_tuple(Globals, OptTuple),
+        OptTuple ^ ot_switch_on_strings_as_atoms = switch_on_strings_as_atoms,
 
         list.length(CasesList) > switch_strings_as_atoms_limit,
 

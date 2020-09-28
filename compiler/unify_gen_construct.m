@@ -71,6 +71,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ll_backend.closure_gen.
 :- import_module ll_backend.code_util.
@@ -314,20 +315,20 @@ generate_and_pack_construct_args([RHSVarWidth | RHSVarsWidths],
             (
                 ArgPosWidth = apw_full(_, _),
                 (
-                    LCMCNull = no,
+                    LCMCNull = do_not_opt_lcmc_null,
                     MaybeNull = no
                 ;
-                    LCMCNull = yes,
+                    LCMCNull = opt_lcmc_null,
                     MaybeNull = yes(const(llconst_int(0)))
                 ),
                 HeadCellArgs = [cell_arg_take_addr_one_word(RHSVar, MaybeNull)]
             ;
                 ArgPosWidth = apw_double(_, _, _),
                 (
-                    LCMCNull = no,
+                    LCMCNull = do_not_opt_lcmc_null,
                     MaybeNulls = no
                 ;
-                    LCMCNull = yes,
+                    LCMCNull = opt_lcmc_null,
                     Null = const(llconst_int(0)),
                     MaybeNulls = yes({Null, Null})
                 ),

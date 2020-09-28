@@ -129,6 +129,7 @@
 
 :- implementation.
 
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.comp_unit_interface.    % undesirable dependency
@@ -1868,10 +1869,11 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
     % condition reuse actually has none. But we have to maintain the interface
     % for modules that use the conditional reuse information from the `.opt'
     % file.
-    globals.lookup_bool_option(Globals, intermod_unused_args, UnusedArgs),
+    globals.get_opt_tuple(Globals, OptTuple),
+    UnusedArgs = OptTuple ^ ot_opt_unused_args_intermod,
     globals.lookup_bool_option(Globals, structure_reuse_analysis,
         StructureReuse),
-    ( if (UnusedArgs = yes ; StructureReuse = yes) then
+    ( if (UnusedArgs = opt_unused_args_intermod ; StructureReuse = yes) then
         read_plain_opt_file(Globals, VeryVerbose, ModuleName, OwnFileName,
             OwnParseTreePlainOpt0, OwnSpecs, OwnError, !IO),
         % XXX We should store the whole parse_tree, with a note next to it
@@ -1945,7 +1947,7 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
     ).
 
 :- pred keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
-    bool::in, bool::in,
+    maybe_opt_unused_args_intermod::in, bool::in,
     parse_tree_plain_opt::in, parse_tree_plain_opt::out) is det.
 
 keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
@@ -1957,10 +1959,10 @@ keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
         _MarkerPragmas, _TypeSpecs, UnusedArgs0, _TermInfos, _Term2Infos,
         _Exceptions, _Trailings, _MMTablings, _Sharings, Reuses0),
     (
-        KeepUnusedArgs = yes,
+        KeepUnusedArgs = opt_unused_args_intermod,
         UnusedArgs = UnusedArgs0
     ;
-        KeepUnusedArgs = no,
+        KeepUnusedArgs = do_not_opt_unused_args_intermod,
         UnusedArgs = []
     ),
     (

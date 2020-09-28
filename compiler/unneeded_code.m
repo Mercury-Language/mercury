@@ -90,6 +90,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
@@ -332,7 +333,8 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, reorder_conj, ReorderConj),
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
-    globals.lookup_int_option(Globals, unneeded_code_copy_limit, Limit),
+    globals.get_opt_tuple(Globals, OptTuple),
+    Limit = OptTuple ^ ot_opt_unneeded_code_copy_limit,
     globals.lookup_bool_option(Globals, unneeded_code_debug, Debug),
     Options = uc_option_values(FullyStrict, ReorderConj, Debug, Limit),
     (

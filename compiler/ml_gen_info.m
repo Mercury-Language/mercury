@@ -25,6 +25,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
@@ -505,7 +506,8 @@
 :- pred ml_gen_info_get_gc(ml_gen_info::in, gc_method::out) is det.
 :- pred ml_gen_info_get_det_copy_out(ml_gen_info::in, bool::out) is det.
 :- pred ml_gen_info_get_nondet_copy_out(ml_gen_info::in, bool::out) is det.
-:- pred ml_gen_info_get_use_atomic_cells(ml_gen_info::in, bool::out) is det.
+:- pred ml_gen_info_get_use_atomic_cells(ml_gen_info::in,
+    maybe_use_atomic_cells::out) is det.
 :- pred ml_gen_info_get_profile_memory(ml_gen_info::in, bool::out) is det.
 :- pred ml_gen_info_get_num_ptag_bits(ml_gen_info::in, uint8::out) is det.
 :- pred ml_gen_info_get_const_struct_map(ml_gen_info::in,
@@ -774,7 +776,7 @@ generate_tail_rec_start_label(TsccKind, Id) = Label :-
 /*  - */        mgri_gc                 :: gc_method,
 /*  - */        mgri_det_copy_out       :: bool,
 /*  - */        mgri_nondet_copy_out    :: bool,
-/*  - */        mgri_use_atomic_cells   :: bool,
+/*  - */        mgri_use_atomic_cells   :: maybe_use_atomic_cells,
 /*  - */        mgri_profile_memory     :: bool,
 
 /*  - */        mgri_num_ptag_bits      :: uint8,
@@ -968,7 +970,8 @@ ml_gen_info_init(ModuleInfo, Target, ConstStructMap, PredProcId, ProcInfo,
     globals.get_gc_method(Globals, GC),
     globals.lookup_bool_option(Globals, det_copy_out, DetCopyOut),
     globals.lookup_bool_option(Globals, nondet_copy_out, NondetCopyOut),
-    globals.lookup_bool_option(Globals, use_atomic_cells, UseAtomicCells),
+    globals.get_opt_tuple(Globals, OptTuple),
+    UseAtomicCells = OptTuple ^ ot_use_atomic_cells,
     globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
     globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBitsInt),
     NumPtagBits = uint8.det_from_int(NumPtagBitsInt),

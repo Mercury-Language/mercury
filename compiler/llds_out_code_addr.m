@@ -80,6 +80,8 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.name_mangle.
+:- import_module libs.
+:- import_module libs.optimization_options.
 
 :- import_module int.
 :- import_module string.
@@ -149,10 +151,10 @@ need_code_addr_decls(Info, CodeAddr, Need) :-
         ),
         UseMacro = Info ^ lout_use_macro_for_redo_fail,
         (
-            UseMacro = yes,
+            UseMacro = use_macro_for_redo_fail,
             Need = no
         ;
-            UseMacro = no,
+            UseMacro = do_not_use_macro_for_redo_fail,
             Need = yes
         )
     ).
@@ -177,18 +179,18 @@ output_code_addr_decls(Info, CodeAddr, !IO) :-
         CodeAddr = do_redo,
         UseMacro = Info ^ lout_use_macro_for_redo_fail,
         (
-            UseMacro = yes
+            UseMacro = use_macro_for_redo_fail
         ;
-            UseMacro = no,
+            UseMacro = do_not_use_macro_for_redo_fail,
             io.write_string("MR_declare_entry(MR_do_redo);\n", !IO)
         )
     ;
         CodeAddr = do_fail,
         UseMacro = Info ^ lout_use_macro_for_redo_fail,
         (
-            UseMacro = yes
+            UseMacro = use_macro_for_redo_fail
         ;
-            UseMacro = no,
+            UseMacro = do_not_use_macro_for_redo_fail,
             io.write_string("MR_declare_entry(MR_do_fail);\n", !IO)
         )
     ;

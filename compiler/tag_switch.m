@@ -48,6 +48,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ll_backend.switch_case.
 
@@ -230,9 +231,10 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
 
     map.count(PtagCaseMap, PtagsUsed),
     get_globals(!.CI, Globals),
-    globals.lookup_int_option(Globals, dense_switch_size, DenseSwitchSize),
-    globals.lookup_int_option(Globals, try_switch_size, TrySwitchSize),
-    globals.lookup_int_option(Globals, binary_switch_size, BinarySwitchSize),
+    globals.get_opt_tuple(Globals, OptTuple),
+    DenseSwitchSize = OptTuple ^ ot_dense_switch_size,
+    TrySwitchSize = OptTuple ^ ot_try_switch_size,
+    BinarySwitchSize = OptTuple ^ ot_binary_switch_size,
     ( if PtagsUsed >= DenseSwitchSize then
         PrimaryMethod = jump_table
     else if PtagsUsed >= BinarySwitchSize then
@@ -731,11 +733,10 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
 
         % There is a secondary tag, so figure out how to switch on it.
         get_globals(!.CI, Globals),
-        globals.lookup_int_option(Globals, dense_switch_size,
-            DenseSwitchSize),
-        globals.lookup_int_option(Globals, binary_switch_size,
-            BinarySwitchSize),
-        globals.lookup_int_option(Globals, try_switch_size, TrySwitchSize),
+        globals.get_opt_tuple(Globals, OptTuple),
+        DenseSwitchSize = OptTuple ^ ot_dense_switch_size,
+        TrySwitchSize = OptTuple ^ ot_try_switch_size,
+        BinarySwitchSize = OptTuple ^ ot_binary_switch_size,
         ( if MaxSecondary >= DenseSwitchSize then
             SecondaryMethod = jump_table
         else if MaxSecondary >= BinarySwitchSize then

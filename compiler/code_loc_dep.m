@@ -42,6 +42,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module libs.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.continuation_info.
@@ -220,16 +221,10 @@ code_loc_dep_init(FollowVars, ResumePoint, !CI, !:CLD) :-
     init_var_locn_state(ModuleInfo, ArgList, EffLiveness, VarSet, VarTypes,
         FloatRegType, StackSlots, FollowVars, VarLocnInfo),
     stack.init(ResumePoints),
-    globals.lookup_bool_option(Globals, allow_hijacks, AllowHijack),
-    (
-        AllowHijack = yes,
-        Hijack = allowed
-    ;
-        AllowHijack = no,
-        Hijack = not_allowed
-    ),
+    globals.get_opt_tuple(Globals, OptTuple),
+    AllowHijack = OptTuple ^ ot_allow_hijacks,
     DummyFailInfo = fail_info(ResumePoints, resume_point_unknown,
-        may_be_different, not_inside_non_condition, Hijack),
+        may_be_different, not_inside_non_condition, AllowHijack),
     set.init(TempsInUse),
     Zombies = set_of_var.init,
     NestedParConjDepth = 0,
@@ -506,12 +501,12 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !.CLD) :-
             CurfrMaxfr = may_be_different
         ),
         ( if
-            Hijack0 = allowed,
-            Hijack1 = allowed
+            Hijack0 = allow_hijacks,
+            Hijack1 = allow_hijacks
         then
-            Hijack = allowed
+            Hijack = allow_hijacks
         else
-            Hijack = not_allowed
+            Hijack = do_not_allow_hijacks
         ),
         expect(unify(CondEnv0, CondEnv1), $pred,
             "some but not all branches inside a non condition"),
@@ -775,7 +770,7 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, !CI) :-
                 resume_point_known,
                 curfr_vs_maxfr,
                 condition_env,
-                hijack_allowed
+                maybe_allow_hijacks
             ).
 
     % A resumption point has one or two labels associated with it.
@@ -817,10 +812,6 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, !CI) :-
 :- type condition_env
     --->    inside_non_condition
     ;       not_inside_non_condition.
-
-:- type hijack_allowed
-    --->    allowed
-    ;       not_allowed.
 
 %---------------------------------------------------------------------------%
 
@@ -865,7 +856,7 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI, !CLD) :-
         ;
             CondEnv = not_inside_non_condition,
             (
-                Allow = not_allowed,
+                Allow = do_not_allow_hijacks,
                 ( if
                     CurfrMaxfr = must_be_equal,
                     ResumeKnown = resume_point_known(has_been_done),
@@ -884,7 +875,7 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI, !CLD) :-
                         !CI, !CLD)
                 )
             ;
-                Allow = allowed,
+                Allow = allow_hijacks,
                 (
                     CurfrMaxfr = must_be_equal,
                     (
@@ -1055,7 +1046,7 @@ prepare_for_ite_hijack(CondCodeModel, MaybeEmbeddedFrameId, HijackInfo, Code,
     ;
         CondCodeModel = model_non,
         ( if
-            ( Allow = not_allowed
+            ( Allow = do_not_allow_hijacks
             ; CondEnv = inside_non_condition
             ; MaybeEmbeddedFrameId = yes(_)
             )
@@ -1416,7 +1407,7 @@ prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
     pick_stack_resume_point(NewResumePoint, _, StackLabel),
     StackLabelConst = const(llconst_code_addr(StackLabel)),
     ( if
-        ( Allow = not_allowed ; CondEnv = inside_non_condition )
+        ( Allow = do_not_allow_hijacks ; CondEnv = inside_non_condition )
     then
         acquire_temp_slot(slot_lval(maxfr), non_persistent_temp_slot,
             MaxfrSlot, !CI, !CLD),

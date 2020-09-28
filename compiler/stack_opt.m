@@ -106,6 +106,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ll_backend.live_vars.
 :- import_module ll_backend.liveness.
@@ -154,9 +155,9 @@
     --->    stack_opt_params(
                 sop_matching_params     :: matching_params,
                 sop_all_path_node_ratio :: int,
-                sop_fixpoint_loop       :: bool,
-                sop_full_path           :: bool,
-                sop_on_stack            :: bool,
+                sop_fixpoint_loop       :: maybe_opt_svcell_loop,
+                sop_full_path           :: maybe_opt_svcell_full_path,
+                sop_on_stack            :: maybe_opt_svcell_on_stack,
                 sop_non_candidate_vars  :: set_of_progvar
             ).
 
@@ -257,14 +258,14 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
         InputArgs, OutputArgs, UnusedArgs),
     HeadVars = set.union_list([InputArgs, OutputArgs, UnusedArgs]),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals,
-        optimize_saved_vars_cell_candidate_headvars, CandHeadvars),
+    globals.get_opt_tuple(Globals, OptTuple),
+    CandHeadvars = OptTuple ^ ot_opt_svcell_candidate_headvars,
     (
-        CandHeadvars = no,
+        CandHeadvars = do_not_opt_svcell_candidate_headvars,
         set_of_var.union(set_to_bitset(HeadVars), ParConjOwnSlot,
             NonCandidateVars)
     ;
-        CandHeadvars = yes,
+        CandHeadvars = opt_svcell_candidate_headvars,
         NonCandidateVars = ParConjOwnSlot
     ),
     Counter0 = counter.init(1),
@@ -275,33 +276,20 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
     map.init(StartMap0),
     SuccMap0 = map.singleton(CurIntervalId, []),
     VarsMap0 = map.singleton(CurIntervalId, set_to_bitset(OutputArgs)),
-    globals.lookup_int_option(Globals,
-        optimize_saved_vars_cell_cv_store_cost, CellVarStoreCost),
-    globals.lookup_int_option(Globals,
-        optimize_saved_vars_cell_cv_load_cost, CellVarLoadCost),
-    globals.lookup_int_option(Globals,
-        optimize_saved_vars_cell_fv_store_cost, FieldVarStoreCost),
-    globals.lookup_int_option(Globals,
-        optimize_saved_vars_cell_fv_load_cost, FieldVarLoadCost),
-    globals.lookup_int_option(Globals,
-        optimize_saved_vars_cell_op_ratio, OpRatio),
-    globals.lookup_int_option(Globals,
-        optimize_saved_vars_cell_node_ratio, NodeRatio),
-    globals.lookup_bool_option(Globals,
-        optimize_saved_vars_cell_include_all_candidates, InclAllCand),
+    CellVarStoreCost = OptTuple ^ ot_opt_svcell_cv_store_cost,
+    CellVarLoadCost = OptTuple ^ ot_opt_svcell_cv_load_cost,
+    FieldVarStoreCost = OptTuple ^ ot_opt_svcell_fv_store_cost,
+    FieldVarLoadCost = OptTuple ^ ot_opt_svcell_fv_load_cost,
+    OpRatio = OptTuple ^ ot_opt_svcell_op_ratio,
+    NodeRatio = OptTuple ^ ot_opt_svcell_node_ratio,
+    InclAllCand = OptTuple ^ ot_opt_svcell_all_candidates,
     MatchingParams = matching_params(CellVarStoreCost, CellVarLoadCost,
         FieldVarStoreCost, FieldVarLoadCost, OpRatio, NodeRatio, InclAllCand),
-    globals.lookup_int_option(Globals,
-        optimize_saved_vars_cell_all_path_node_ratio,
-        AllPathNodeRatio),
-    globals.lookup_bool_option(Globals,
-        optimize_saved_vars_cell_loop, FixpointLoop),
-    globals.lookup_bool_option(Globals,
-        optimize_saved_vars_cell_full_path, FullPath),
-    globals.lookup_bool_option(Globals,
-        optimize_saved_vars_cell_on_stack, OnStack),
-    globals.lookup_bool_option(Globals,
-        opt_no_return_calls, OptNoReturnCalls),
+    AllPathNodeRatio = OptTuple ^ ot_opt_svcell_all_path_node_ratio,
+    FixpointLoop = OptTuple ^ ot_opt_svcell_loop,
+    FullPath = OptTuple ^ ot_opt_svcell_full_path,
+    OnStack = OptTuple ^ ot_opt_svcell_on_stack,
+    globals.lookup_bool_option(Globals, opt_no_return_calls, OptNoReturnCalls),
     IntParams = interval_params(ModuleInfo, VarTypes0, OptNoReturnCalls),
     IntervalInfo0 = interval_info(IntParams,
         set_of_var.init, set_to_bitset(OutputArgs),
@@ -473,14 +461,14 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
                 set_of_var.difference(CandidateArgVars0, RelevantAfterVars,
                     CandidateArgVars),
                 (
-                    OnStack = yes,
+                    OnStack = opt_svcell_on_stack,
                     ( if set_of_var.member(FlushedLater, CellVar) then
                         CellVarFlushedLater = yes
                     else
                         CellVarFlushedLater = no
                     )
                 ;
-                    OnStack = no,
+                    OnStack = do_not_opt_svcell_on_stack,
                     ( if
                         list.member(PathInfo, PathsInfo),
                         PathInfo = match_path_info(_, Segments),
@@ -549,12 +537,12 @@ apply_matching_loop(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
         CandidateArgVars1 = set_of_var.intersect_list(PathViaCellVars),
         FixpointLoop = StackOptParams ^ sop_fixpoint_loop,
         (
-            FixpointLoop = no,
+            FixpointLoop = do_not_opt_svcell_loop,
             BenefitNodeSets = BenefitNodeSets0,
             CostNodeSets = CostNodeSets0,
             ViaCellVars = CandidateArgVars1
         ;
-            FixpointLoop = yes,
+            FixpointLoop = opt_svcell_loop,
             apply_matching_loop(CellVar, CellVarFlushedLater,
                 IntParams, StackOptParams, PathInfos, CandidateArgVars1,
                 BenefitNodeSets, CostNodeSets, ViaCellVars)
@@ -895,7 +883,7 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
     StackOptParams = StackOptInfo ^ soi_stack_opt_params,
     FullPath = StackOptParams ^ sop_full_path,
     ( if
-        FullPath = yes,
+        FullPath = opt_svcell_full_path,
         End = anchor_branch_start(branch_disj, EndGoalId)
     then
         MaybeSearchAnchor1 = yes(anchor_branch_end(branch_disj, EndGoalId)),
@@ -907,7 +895,7 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
         apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
             IntervalInfo, StackOptInfo, ContinueId, !AllPaths)
     else if
-        FullPath = yes,
+        FullPath = opt_svcell_full_path,
         End = anchor_branch_start(branch_ite, EndGoalId)
     then
         ( if SuccessorIds = [ElseStartIdPrime, CondStartIdPrime] then

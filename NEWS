@@ -123,6 +123,14 @@ Changes to the Mercury language
 
         :- pragma memo(predname/arity, [disable_warning_if_ignored])]).
 
+Changes to the Mercury compiler
+-------------------------------
+
+* If a command line first enables an optimization (say opt1), and then
+  sets the optimization level to N with -O<N>, then the compiler will now
+  keep opt1 enabled even if opt1 is not normally enabled at optimization
+  level N.
+
 NEWS for Mercury 20.06.1
 ========================
 

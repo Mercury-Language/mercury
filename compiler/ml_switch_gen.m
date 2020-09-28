@@ -142,6 +142,7 @@
 :- import_module hlds.hlds_module.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
@@ -204,7 +205,8 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
         ;
             SwitchCategory = tag_switch,
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
-            globals.lookup_int_option(Globals, tag_switch_size, TagSize),
+            globals.get_opt_tuple(Globals, OptTuple),
+            TagSize = OptTuple ^ ot_tag_switch_size,
             ( if
                 NumConsIds >= TagSize,
                 NumArms > 1,
@@ -246,12 +248,12 @@ ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail, TaggedCases,
         ml_gen_info_get_high_level_data(!.Info, no),
         MaybeIntSwitchInfo = int_switch(IntSwitchInfo),
         IntSwitchInfo = int_switch_info(LowerLimit, UpperLimit, NumValues),
-        globals.lookup_bool_option(Globals, static_ground_cells, yes),
-        globals.lookup_int_option(Globals, lookup_switch_size, LookupSize),
+        globals.get_opt_tuple(Globals, OptTuple),
+        OptTuple ^ ot_use_static_ground_cells = use_static_ground_cells,
+        LookupSize = OptTuple ^ ot_lookup_switch_size,
         NumConsIds >= LookupSize,
         NumArms > 1,
-        globals.lookup_int_option(Globals, lookup_switch_req_density,
-            ReqDensity),
+        ReqDensity = OptTuple ^ ot_lookup_switch_req_density,
         filter_out_failing_cases_if_needed(CodeModel,
             TaggedCases, FilteredTaggedCases,
             CanFail, FilteredCanFail),
@@ -364,9 +366,9 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel,
             CodeModel, MaybeLookupSwitchInfo, !Info),
         ml_gen_var(!.Info, SwitchVar, SwitchVarLval),
         SwitchVarRval = ml_lval(SwitchVarLval),
+        globals.get_opt_tuple(Globals, OptTuple),
         ( if
-            globals.lookup_int_option(Globals, string_trie_switch_size,
-                StringTrieSwitchSize),
+            StringTrieSwitchSize = OptTuple ^ ot_string_trie_switch_size,
             NumConsIds >= StringTrieSwitchSize,
             globals.get_target(Globals, target_c)
         then
@@ -383,8 +385,7 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel,
             ),
             Decls = []
         else if
-            globals.lookup_int_option(Globals, string_hash_switch_size,
-                StringHashSwitchSize),
+            StringHashSwitchSize = OptTuple ^ ot_string_hash_switch_size,
             NumConsIds >= StringHashSwitchSize
         then
             (
@@ -399,8 +400,7 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel,
                     EntryPackedWordMap, Context, Decls, Stmts, !Info)
             )
         else if
-            globals.lookup_int_option(Globals, string_binary_switch_size,
-                StringBinarySwitchSize),
+            StringBinarySwitchSize = OptTuple ^ ot_string_binary_switch_size,
             NumConsIds >= StringBinarySwitchSize
         then
             (

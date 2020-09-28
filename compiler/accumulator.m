@@ -179,6 +179,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -246,12 +247,12 @@
 accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
         !Cookie) :-
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals,
-        optimize_constructor_last_call_accumulator, DoLCO),
+    globals.get_opt_tuple(Globals, OptTuple),
+    DoLCMC = OptTuple ^ ot_opt_lcmc_accumulator,
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
     ( if
         should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
-            !ProcInfo, FullyStrict, DoLCO, Warnings)
+            !ProcInfo, FullyStrict, DoLCMC, Warnings)
     then
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         (
@@ -360,10 +361,11 @@ generate_warning(ModuleInfo, VarSet, Warning, Msg) :-
     %
 :- pred should_attempt_accu_transform(module_info::in, module_info::out,
     pred_id::in, proc_id::in, pred_info::in, proc_info::in, proc_info::out,
-    bool::in, bool::in, list(accu_warning)::out) is semidet.
+    bool::in, maybe_opt_lcmc_accumulator::in,
+    list(accu_warning)::out) is semidet.
 
 should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
-        !ProcInfo, FullyStrict, DoLCO, Warnings) :-
+        !ProcInfo, FullyStrict, DoLCMC, Warnings) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo,
@@ -377,7 +379,7 @@ should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
     list.length(Rec, M),
 
     should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo, !ProcInfo,
-        HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCO,
+        HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCMC,
         RecCallIds, C, M, Rec, Warnings).
 
     % should_attempt_accu_transform_2 takes a list of locations of the
@@ -393,18 +395,19 @@ should_attempt_accu_transform(!ModuleInfo, PredId, ProcId, PredInfo,
     %
 :- pred should_attempt_accu_transform_2(module_info::in, module_info::out,
     pred_id::in, pred_info::in, proc_info::in, proc_info::out,
-    list(prog_var)::in, instmap::in, top_level::in, bool::in, bool::in,
+    list(prog_var)::in, instmap::in, top_level::in, bool::in,
+    maybe_opt_lcmc_accumulator::in,
     list(accu_goal_id)::in, accu_goal_store::in, int::in, list(hlds_goal)::in,
     list(accu_warning)::out) is semidet.
 
 should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo, !ProcInfo,
-        HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCO,
+        HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCMC,
         [Id | Ids], C, M, Rec, Warnings) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     identify_out_and_out_prime(!.ModuleInfo, VarTypes0, InitialInstMap,
         Id, Rec, HeadVars, Out, OutPrime, HeadToCallSubst, CallToHeadSubst),
     ( if
-        accu_stage1(!.ModuleInfo, VarTypes0, FullyStrict, DoLCO, Id, M, C,
+        accu_stage1(!.ModuleInfo, VarTypes0, FullyStrict, DoLCMC, Id, M, C,
             Sets),
         accu_stage2(!.ModuleInfo, !.ProcInfo, Id, C, Sets, OutPrime, Out,
             VarSet, VarTypes, Accs, BaseCase, BasePairs, Substs, CS,
@@ -416,7 +419,7 @@ should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo, !ProcInfo,
         Warnings = WarningsPrime
     else
         should_attempt_accu_transform_2(!ModuleInfo, PredId, PredInfo,
-            !ProcInfo, HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCO,
+            !ProcInfo, HeadVars, InitialInstMap, TopLevel, FullyStrict, DoLCMC,
             Ids, C, M, Rec, Warnings)
     ).
 
@@ -681,10 +684,11 @@ identify_out_and_out_prime(ModuleInfo, VarTypes, InitialInstMap, GoalId,
     % Stage 1 is responsible for identifying which goals are associative,
     % which can be moved before the recursive call and so on.
     %
-:- pred accu_stage1(module_info::in, vartypes::in, bool::in, bool::in,
-    accu_goal_id::in, int::in, accu_goal_store::in, accu_sets::out) is semidet.
+:- pred accu_stage1(module_info::in, vartypes::in, bool::in,
+    maybe_opt_lcmc_accumulator::in, accu_goal_id::in, int::in,
+    accu_goal_store::in, accu_sets::out) is semidet.
 
-accu_stage1(ModuleInfo, VarTypes, FullyStrict, DoLCO, GoalId, M, GoalStore,
+accu_stage1(ModuleInfo, VarTypes, FullyStrict, DoLCMC, GoalId, M, GoalStore,
         Sets) :-
     GoalId = accu_goal_id(Case, K),
     NextGoalId = accu_goal_id(Case, K + 1),
@@ -706,13 +710,13 @@ accu_stage1(ModuleInfo, VarTypes, FullyStrict, DoLCO, GoalId, M, GoalStore,
         not set.is_empty(Update)
     ),
     (
-        DoLCO = no,
+        DoLCMC = do_not_opt_lcmc_accumulator,
         % If LCMC is not turned on, then there must be no construction
         % unifications after the recursive call.
         set.is_empty(Construct),
         set.is_empty(ConstructAssoc)
     ;
-        DoLCO = yes
+        DoLCMC = opt_lcmc_accumulator
     ).
 
     % For each goal after the recursive call decide which set

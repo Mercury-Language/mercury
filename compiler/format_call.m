@@ -165,6 +165,7 @@
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.goal_path.
@@ -398,14 +399,15 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
     format_call_traverse_goal(ModuleInfo, Goal1, _, [], FormatCallSites,
         Counter0, _Counter, ConjMaps0, ConjMaps, map.init, PredMap,
         set_of_var.init, _),
-    globals.lookup_bool_option(Globals, optimize_format_calls, OptFormatCalls),
+    globals.get_opt_tuple(Globals, OptTuple),
+    OptFormatCalls = OptTuple ^ ot_opt_format_calls,
     globals.lookup_bool_option(Globals, exec_trace, ExecTrace),
     % If users write a call to e.g. to string.format, they expect the debugger
     % to show them calls to string.format. Showing a sequence of calls to
     % lower level predicates instead of that higher level call would probably
     % confuse debugger users.
     ( if
-        OptFormatCalls = yes,
+        OptFormatCalls = opt_format_calls,
         ExecTrace = no
     then
         ShouldOptFormatCalls = opt_format_calls
@@ -438,10 +440,6 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
         ),
         MaybeGoal = yes(Goal)
     ).
-
-:- type maybe_opt_format_calls
-    --->    do_not_opt_format_calls
-    ;       opt_format_calls.
 
 :- pred check_format_call_site(module_info::in,
     maybe_generate_implicit_stream_warnings::in, maybe_opt_format_calls::in,

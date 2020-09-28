@@ -77,7 +77,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
-:- import_module libs.options.
+:- import_module libs.optimization_options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.exprn_aux.
 :- import_module ll_backend.layout.
@@ -351,11 +351,11 @@ annotate_c_procedure(Info, Proc, AnnotatedProc,
     find_cont_labels(Instrs, set_tree234.init, ContLabels),
     EmitCLoops = Info ^ lout_emit_c_loops,
     (
-        EmitCLoops = no,
+        EmitCLoops = do_not_emit_c_loops,
         WhileLabels = set_tree234.init,
         UndefWhileLabels = set_tree234.init
     ;
-        EmitCLoops = yes,
+        EmitCLoops = emit_c_loops,
         find_while_labels(Instrs, set_tree234.init, WhileLabels),
 
         % We compute UndefWhileLabels by starting with an overapproximation,
@@ -1293,26 +1293,26 @@ output_annotated_c_procedure(Info, AnnotatedProc, !IO) :-
 
     LocalThreadEngineBase = Info ^ lout_local_thread_engine_base,
     (
-        LocalThreadEngineBase = yes,
+        LocalThreadEngineBase = use_local_thread_engine_base,
         io.write_string("#ifdef MR_maybe_local_thread_engine_base\n", !IO),
         io.write_string("\t#undef MR_maybe_local_thread_engine_base\n", !IO),
         io.write_string("\t#define MR_maybe_local_thread_engine_base " ++
             "MR_local_thread_engine_base\n", !IO),
         io.write_string("#endif\n", !IO)
     ;
-        LocalThreadEngineBase = no
+        LocalThreadEngineBase = do_not_use_local_thread_engine_base
     ),
     output_instruction_list(Info, Instrs, LabelOutputInfo,
         not_after_layout_label, !IO),
     (
-        LocalThreadEngineBase = yes,
+        LocalThreadEngineBase = use_local_thread_engine_base,
         io.write_string("#ifdef MR_maybe_local_thread_engine_base\n", !IO),
         io.write_string("\t#undef MR_maybe_local_thread_engine_base\n", !IO),
         io.write_string("\t#define MR_maybe_local_thread_engine_base " ++
             "MR_thread_engine_base\n", !IO),
         io.write_string("#endif\n", !IO)
     ;
-        LocalThreadEngineBase = no
+        LocalThreadEngineBase = do_not_use_local_thread_engine_base
     ).
 
     % Find the entry label for the procedure, for use as the profiling
@@ -1699,7 +1699,8 @@ c_data_linkage_string(DefaultLinkage, BeingDefined) = LinkageStr :-
 c_data_const_string(Globals, InclCodeAddr) =
     ( if
         InclCodeAddr = yes,
-        globals.lookup_bool_option(Globals, static_code_addresses, no)
+        globals.get_opt_tuple(Globals, OptTuple),
+        OptTuple ^ ot_use_static_code_addresses = use_static_code_addresses
     then
         ""
     else

@@ -73,12 +73,14 @@
 :- import_module libs.compiler_util.
 :- import_module libs.compute_grade.
 :- import_module libs.op_mode.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module int.
@@ -100,7 +102,8 @@ handle_given_options(Args0, OptionArgs, Args, Specs, !:Globals, !IO) :-
         io.write_string("original arguments\n", !TIO),
         dump_arguments(Args0, !TIO)
     ),
-    process_given_options(Args0, OptionArgs, Args, MaybeOptionTable, !IO),
+    process_given_options(Args0, OptionArgs, Args, MaybeError, OptionTable,
+        OptOptions, !IO),
     trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
         io.nl(!TIO),
         io.write_string("final option arguments\n", !TIO),
@@ -110,8 +113,8 @@ handle_given_options(Args0, OptionArgs, Args, Specs, !:Globals, !IO) :-
         io.write_string("final non-option arguments\n", !TIO),
         dump_arguments(Args, !TIO)
     ),
-    convert_option_table_result_to_globals(MaybeOptionTable, Specs,
-        !:Globals, !IO),
+    convert_option_table_result_to_globals(MaybeError, OptionTable, OptOptions,
+        Specs, !:Globals, !IO),
     (
         Specs = [_ | _]
         % Do NOT set the exit status. This predicate may be called before all
@@ -136,7 +139,7 @@ handle_given_options(Args0, OptionArgs, Args, Specs, !:Globals, !IO) :-
     ).
 
 separate_option_args(RawArgs, OptionArgs, NonOptionArgs, !IO) :-
-    process_given_options(RawArgs, OptionArgs, NonOptionArgs, _, !IO).
+    process_given_options(RawArgs, OptionArgs, NonOptionArgs, _, _, _, !IO).
 
     % process_given_options(Args, OptionArgs, NonOptionArgs, MaybeOptionTable,
     %   !IO):
@@ -145,15 +148,19 @@ separate_option_args(RawArgs, OptionArgs, NonOptionArgs, !IO) :-
     % useful for separating the list of arguments into option and non-option
     % arguments.
     %
-:- pred process_given_options(list(string)::in,
-    list(string)::out, list(string)::out, maybe_option_table_se(option)::out,
+:- pred process_given_options(list(string)::in, list(string)::out,
+    list(string)::out, maybe(option_error(option))::out,
+    option_table(option)::out, cord(optimization_option)::out,
     io::di, io::uo) is det.
 
-process_given_options(RawArgs, OptionArgs, NonOptionArgs, Result, !IO) :-
-    OptionOps = option_ops(short_option, long_option,
-        option_defaults, special_handler),
-    getopt_io.process_options_se(OptionOps, RawArgs,
-        OptionArgs, NonOptionArgs, Result, !IO).
+process_given_options(RawArgs, OptionArgs, NonOptionArgs, MaybeError,
+        OptionTable, OptOptionsCord, !IO) :-
+    OptionOps =
+        option_ops_userdata(short_option, long_option, special_handler),
+    getopt_io.init_option_table(option_defaults, OptionTable0),
+    getopt_io.process_options_userdata_se(OptionOps, RawArgs,
+        OptionArgs, NonOptionArgs, MaybeError, _OptionsSet,
+        OptionTable0, OptionTable, cord.init, OptOptionsCord, !IO).
 
 :- pred dump_arguments(list(string)::in, io::di, io::uo) is det.
 
@@ -169,13 +176,14 @@ dump_arguments([Arg | Args], !IO) :-
     % one option implies setting/unsetting another one).
     %
 :- pred convert_option_table_result_to_globals(
-    maybe_option_table_se(option)::in,
+    maybe(option_error(option))::in, option_table(option)::in,
+    cord(optimization_option)::in,
     list(error_spec)::out, globals::out, io::di, io::uo) is det.
 
-convert_option_table_result_to_globals(MaybeOptionTable0, !:Specs, Globals,
-        !IO) :-
+convert_option_table_result_to_globals(MaybeError, OptionTable0,
+        OptOptionsCord, !:Specs, Globals, !IO) :-
     (
-        MaybeOptionTable0 = error(Error),
+        MaybeError = yes(Error),
         ErrorMessage = option_error_to_string(Error),
         OptionTablePieces = [words(ErrorMessage)],
         OptionTableMsg = error_msg(no, do_not_treat_as_first, 0,
@@ -185,7 +193,9 @@ convert_option_table_result_to_globals(MaybeOptionTable0, !:Specs, Globals,
         !:Specs = [OptionTableSpec],
         generate_default_globals(Globals, !IO)
     ;
-        MaybeOptionTable0 = ok(OptionTable0),
+        MaybeError = no,
+        OptOptions = cord.list(OptOptionsCord),
+        process_optimization_options(OptionTable, OptOptions, OptTuple),
         check_option_values(OptionTable0, OptionTable, Target, GC_Method,
             TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
             MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
@@ -206,7 +216,7 @@ convert_option_table_result_to_globals(MaybeOptionTable0, !:Specs, Globals,
         ),
         (
             !.Specs = [],
-            convert_options_to_globals(OptionTable, OpMode, Target,
+            convert_options_to_globals(OptionTable, OptTuple, OpMode, Target,
                 GC_Method, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
                 SSTraceLevel, MaybeThreadSafe,
                 C_CompilerType, CSharp_CompilerType,
@@ -631,8 +641,8 @@ check_option_values(!OptionTable, Target, GC_Method, TermNorm, Term2Norm,
 
     % NOTE: each termination analyser has its own norm setting.
     %
-:- pred convert_options_to_globals(option_table::in, op_mode::in,
-    compilation_target::in, gc_method::in,
+:- pred convert_options_to_globals(option_table::in, opt_tuple::in,
+    op_mode::in, compilation_target::in, gc_method::in,
     termination_norm::in, termination_norm::in, trace_level::in,
     trace_suppress_items::in, ssdb_trace_level::in, may_be_thread_safe::in,
     c_compiler_type::in, csharp_compiler_type::in,
@@ -641,7 +651,7 @@ check_option_values(!OptionTable, Target, GC_Method, TermNorm, Term2Norm,
     list(error_spec)::in, list(error_spec)::out,
     globals::out, io::di, io::uo) is det.
 
-convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
+convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
@@ -657,7 +667,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
         FileInstallCmd = install_cmd_user(InstallCmd, InstallCmdDirOption)
     ),
 
-    globals_init(OptionTable0, OpMode, Target, GC_Method,
+    globals_init(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
@@ -901,7 +911,10 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
         globals.set_option(can_compare_constants_as_ints, bool(no), !Globals),
         globals.set_option(can_compare_compound_values, bool(yes), !Globals),
         globals.set_option(order_constructors_for_erlang, bool(yes), !Globals),
-        globals.set_option(optimize_tailcalls, bool(no), !Globals),
+        % XXX opt_mlds_tailcalls is now in the opt_tuple.
+        % However, there is no need to disable it, since the elds backend
+        % pays not attention to its value.
+        % globals.set_option(optimize_mlds_tailcalls, bool(no), !Globals),
 
         % The following options do not directly affect the Erlang backend,
         % however we need to ensure they are set to values that are consistent
@@ -937,8 +950,14 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
     option_implies(highlevel_code, gcc_global_registers, bool(no), !Globals),
     option_implies(highlevel_code, asm_labels, bool(no), !Globals),
 
-    % --no-mlds-optimize implies --no-optimize-tailcalls.
-    option_neg_implies(optimize, optimize_tailcalls, bool(no), !Globals),
+    Optimize = !.OptTuple ^ ot_optimize,
+    (
+        Optimize = do_not_optimize,
+        % --no-mlds-optimize implies --no-optimize-tailcalls.
+        !OptTuple ^ ot_opt_mlds_tailcalls := do_not_opt_mlds_tailcalls
+    ;
+        Optimize = optimize
+    ),
 
     % If no --lib-linkage option has been specified, default to the
     % set of all possible linkages.
@@ -1379,7 +1398,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
     then
         % Switch off string hash switches until these backends implement
         % the hash operations.
-        globals.set_option(string_hash_switch_size, int(999999), !Globals)
+        !OptTuple ^ ot_string_binary_switch_size := 999999
     else
         true
     ),
@@ -1406,7 +1425,13 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, prof_optimized, ProfOptimized),
     (
         ProfOptimized = no,
-        option_implies(profile_deep, allow_inlining, bool(no), !Globals)
+        globals.lookup_bool_option(!.Globals, profile_deep, ProfDeep),
+        (
+            ProfDeep = no
+        ;
+            ProfDeep = yes,
+            !OptTuple ^ ot_allow_inlining := do_not_allow_inlining
+        )
     ;
         ProfOptimized = yes
     ),
@@ -1424,7 +1449,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
     ( if ExpComp = "" then
         true
     else
-        globals.set_option(allow_inlining, bool(no), !Globals)
+        !OptTuple ^ ot_allow_inlining := do_not_allow_inlining
     ),
 
     % --decl-debug is an extension of --debug
@@ -1476,27 +1501,24 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
             % of the program, which makes it difficult to
             % relate the trace to the source code (although
             % it can be easily related to the transformed HLDS).
-            globals.set_option(allow_inlining, bool(no), !Globals),
-            globals.set_option(optimize_unused_args, bool(no), !Globals),
-            globals.set_option(optimize_higher_order, bool(no), !Globals),
-            globals.set_option(type_specialization, bool(no), !Globals),
-            globals.set_option(user_guided_type_specialization,
-                bool(no), !Globals),
-            globals.set_option(deforestation, bool(no), !Globals),
-            globals.set_option(constraint_propagation,
-                bool(no), !Globals),
-            globals.set_option(local_constraint_propagation,
-                bool(no), !Globals),
-            globals.set_option(optimize_duplicate_calls,
-                bool(no), !Globals),
-            globals.set_option(optimize_constructor_last_call,
-                bool(no), !Globals),
-            globals.set_option(optimize_saved_vars_cell,
-                bool(no), !Globals),
-            globals.set_option(loop_invariants, bool(no), !Globals),
-            globals.set_option(untuple, bool(no), !Globals),
-            globals.set_option(tuple, bool(no), !Globals),
-            globals.set_option(test_after_switch, bool(no), !Globals)
+            !OptTuple ^ ot_allow_inlining := do_not_allow_inlining,
+            !OptTuple ^ ot_opt_unused_args := do_not_opt_unused_args,
+            !OptTuple ^ ot_opt_higher_order := do_not_opt_higher_order,
+            !OptTuple ^ ot_spec_types := do_not_spec_types,
+            !OptTuple ^ ot_spec_types_user_guided
+                := do_not_spec_types_user_guided,
+            !OptTuple ^ ot_deforest := do_not_deforest,
+            !OptTuple ^ ot_prop_constraints := do_not_prop_constraints,
+            !OptTuple ^ ot_prop_local_constraints
+                := do_not_prop_local_constraints,
+            !OptTuple ^ ot_opt_dup_calls := do_not_opt_dup_calls,
+            !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc,
+            !OptTuple ^ ot_opt_svcell := do_not_opt_svcell,
+            !OptTuple ^ ot_opt_loop_invariants := do_not_opt_loop_invariants,
+            !OptTuple ^ ot_untuple := do_not_untuple,
+            !OptTuple ^ ot_tuple := do_not_tuple,
+            !OptTuple ^ ot_opt_test_after_switch
+                := do_not_opt_test_after_switch
         ;
             TraceOptimized = yes
         ),
@@ -1520,20 +1542,20 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
         % more complex than simply disabling hijacks, it would be slower
         % as well, except in procedures that would have many nested
         % hijacks, and such code is extremely rare.
-        globals.set_option(allow_hijacks, bool(no), !Globals),
+        !OptTuple ^ ot_allow_hijacks := do_not_allow_hijacks,
 
         % The following option prevents useless variables from cluttering
         % the trace. Its explicit setting removes a source of variability
         % in the goal paths reported by tracing.
-        globals.set_option(excess_assign, bool(yes), !Globals),
+        !OptTuple ^ ot_elim_excess_assigns := do_not_elim_excess_assigns,
 
         % The explicit setting of the following option removes a source
         % of variability in the goal paths reported by tracing.
-        globals.set_option(follow_code, bool(yes), !Globals),
+        !OptTuple ^ ot_opt_follow_code := do_not_opt_follow_code,
 
         % The following option selects a special-case code generator
         % that cannot (yet) implement tracing.
-        globals.set_option(middle_rec, bool(no), !Globals),
+        !OptTuple ^ ot_opt_middle_rec := do_not_opt_middle_rec,
 
         % The following options cause the info required by tracing
         % to be generated.
@@ -1574,13 +1596,13 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
                 words("high level code."), nl],
             add_error(phase_options, DeepHLSpec, !Specs)
         ),
-        globals.set_option(optimize_constructor_last_call, bool(no), !Globals),
+        !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc,
         globals.lookup_bool_option(!.Globals,
             use_lots_of_ho_specialization, LotsOfHOSpec),
         (
             LotsOfHOSpec = yes,
-            globals.set_option(optimize_higher_order, bool(yes), !Globals),
-            globals.set_option(higher_order_size_limit, int(999999), !Globals)
+            !OptTuple ^ ot_opt_higher_order := opt_higher_order,
+            !OptTuple ^ ot_higher_order_size_limit := 999999
         ;
             LotsOfHOSpec = no
         )
@@ -1604,7 +1626,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
         ; RecordTermSizesAsCells = yes
         )
     then
-        globals.set_option(optimize_constructor_last_call, bool(no), !Globals),
+        !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc,
         % Term size profiling breaks the assumption that even word offsets from
         % the start of the cell are double-word aligned memory addresses.
         %
@@ -1645,17 +1667,16 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
         ( SSTraceLevel = shallow
         ; SSTraceLevel = deep
         ),
-        globals.set_option(allow_inlining, bool(no), !Globals),
-        globals.set_option(optimize_unused_args, bool(no), !Globals),
-        globals.set_option(optimize_higher_order, bool(no), !Globals),
-        globals.set_option(type_specialization, bool(no), !Globals),
-        globals.set_option(user_guided_type_specialization, bool(no),
-            !Globals),
-        globals.set_option(deforestation, bool(no), !Globals),
-        globals.set_option(constraint_propagation, bool(no), !Globals),
-        globals.set_option(local_constraint_propagation, bool(no), !Globals),
-        globals.set_option(optimize_duplicate_calls, bool(no), !Globals),
-        globals.set_option(optimize_constructor_last_call, bool(no), !Globals)
+        !OptTuple ^ ot_allow_inlining := do_not_allow_inlining,
+        !OptTuple ^ ot_opt_unused_args := do_not_opt_unused_args,
+        !OptTuple ^ ot_opt_higher_order := do_not_opt_higher_order,
+        !OptTuple ^ ot_spec_types := do_not_spec_types,
+        !OptTuple ^ ot_spec_types_user_guided := do_not_spec_types_user_guided,
+        !OptTuple ^ ot_deforest := do_not_deforest,
+        !OptTuple ^ ot_prop_constraints := do_not_prop_constraints,
+        !OptTuple ^ ot_prop_local_constraints := do_not_prop_local_constraints,
+        !OptTuple ^ ot_opt_dup_calls := do_not_opt_dup_calls,
+        !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc
     ;
         SSTraceLevel = none
     ),
@@ -1665,8 +1686,13 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
     % XXX we don't pass -ansi to the C compiler anymore.
     option_implies(parallel, ansi_c, bool(no), !Globals),
 
-    option_neg_implies(inline_builtins, constant_propagation, bool(no),
-        !Globals),
+    InlineBuiltins = !.OptTuple ^ ot_inline_builtins,
+    (
+        InlineBuiltins = do_not_inline_builtins,
+        !OptTuple ^ ot_prop_constants := do_not_prop_constants
+    ;
+        InlineBuiltins = inline_builtins
+    ),
 
     % `--optimize-constant-propagation' effectively inlines builtins.
     %
@@ -1679,19 +1705,28 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
     % e.g. when tracing is enabled.
     (
         ProfileDeep = no,
-        option_neg_implies(allow_inlining, constant_propagation, bool(no),
-            !Globals)
+        AllowInlining = !.OptTuple ^ ot_allow_inlining,
+        (
+            AllowInlining = do_not_allow_inlining,
+            !OptTuple ^ ot_prop_constants := do_not_prop_constants
+        ;
+            AllowInlining = allow_inlining
+        )
     ;
         ProfileDeep = yes
     ),
 
     % --no-reorder-conj implies --no-deforestation,
     % --no-constraint-propagation and --no-local-constraint-propagation.
-    option_neg_implies(reorder_conj, deforestation, bool(no), !Globals),
-    option_neg_implies(reorder_conj, constraint_propagation, bool(no),
-        !Globals),
-    option_neg_implies(reorder_conj, local_constraint_propagation, bool(no),
-        !Globals),
+    globals.lookup_bool_option(!.Globals, reorder_conj, ReorderConj),
+    (
+        ReorderConj = no,
+        !OptTuple ^ ot_deforest := do_not_deforest,
+        !OptTuple ^ ot_prop_constraints := do_not_prop_constraints,
+        !OptTuple ^ ot_prop_local_constraints := do_not_prop_local_constraints
+    ;
+        ReorderConj = yes
+    ),
 
     % --stack-trace requires `procid' stack layouts
     option_implies(stack_trace, procid_stack_layout, bool(yes), !Globals),
@@ -1736,17 +1771,16 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
         GC_Method = gc_accurate,
         globals.set_option(agc_stack_layout, bool(yes), !Globals),
         globals.set_option(body_typeinfo_liveness, bool(yes), !Globals),
-        globals.set_option(allow_hijacks, bool(no), !Globals),
-        globals.set_option(optimize_frames, bool(no), !Globals),
+        !OptTuple ^ ot_allow_hijacks := do_not_allow_hijacks,
+        !OptTuple ^ ot_opt_frames := do_not_opt_frames,
         globals.set_option(opt_no_return_calls, bool(no), !Globals),
-        globals.set_option(middle_rec, bool(no), !Globals),
-        globals.set_option(
-            reclaim_heap_on_semidet_failure, bool(no), !Globals),
-        globals.set_option(
-            reclaim_heap_on_nondet_failure, bool(no), !Globals),
-        globals.set_option(optimize_constructor_last_call, bool(no), !Globals),
-        globals.set_option(type_specialization, bool(no), !Globals),
-        globals.set_option(user_guided_type_specialization, bool(no), !Globals)
+        !OptTuple ^ ot_opt_middle_rec := do_not_opt_middle_rec,
+        globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
+            !Globals),
+        globals.set_option(reclaim_heap_on_nondet_failure, bool(no), !Globals),
+        !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc,
+        !OptTuple ^ ot_spec_types := do_not_spec_types,
+        !OptTuple ^ ot_spec_types_user_guided := do_not_spec_types_user_guided
     ;
         ( GC_Method = gc_automatic
         ; GC_Method = gc_none
@@ -1784,21 +1818,39 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
     % change the return address in a call to a different label whose code
     % is the same but which has a different label layout structure),
     % so we need to disable it when tracing.
-    option_implies(procid_stack_layout, optimize_dups, bool(no), !Globals),
+    globals.lookup_bool_option(!.Globals, procid_stack_layout,
+        ProcIdStackLayout),
+    globals.lookup_bool_option(!.Globals, agc_stack_layout, AgcStackLayout),
     % Likewise for accurate GC.
-    option_implies(agc_stack_layout, optimize_dups, bool(no), !Globals),
+    ( if (ProcIdStackLayout = yes ; AgcStackLayout = yes) then
+        !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc
+    else
+        true
+    ),
 
     % stdlabel.m tries to perform operations that yield compiler aborts
     % if any stack layout information is present in the generated code.
-    option_implies(basic_stack_layout, standardize_labels, bool(no),
-        !Globals),
+    globals.lookup_bool_option(!.Globals, basic_stack_layout,
+        BasicStackLayout),
+    (
+        BasicStackLayout = yes,
+        !OptTuple ^ ot_standardize_labels := do_not_standardize_labels
+    ;
+        BasicStackLayout = no
+    ),
 
-    % XXX deforestation and constraint propagation do not perform
-    % folding on polymorphic predicates correctly with
-    % --body-typeinfo-liveness.
-    option_implies(body_typeinfo_liveness, deforestation, bool(no), !Globals),
-    option_implies(body_typeinfo_liveness, constraint_propagation, bool(no),
-        !Globals),
+    % XXX deforestation and constraint propagation do not perform folding
+    % on polymorphic predicates correctly with --body-typeinfo-liveness.
+    globals.lookup_bool_option(!.Globals, body_typeinfo_liveness,
+        BodyTypeInfoLiveness),
+    (
+        BodyTypeInfoLiveness = yes,
+        !OptTuple ^ ot_deforest := do_not_deforest,
+        !OptTuple ^ ot_prop_constraints := do_not_prop_constraints
+        % XXX What about ot_prop_local_constraints?
+    ;
+        BodyTypeInfoLiveness = no
+    ),
 
     % XXX If trailing is enabled, middle recursion optimization
     % can generate code which does not allocate a stack frame
@@ -1806,14 +1858,18 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
     % trail, if the code being optimized contains a construct which
     % might save/restore the trail state, i.e. an if-then-else,
     % negation, disjunction, or commit.
-    option_implies(use_trail, middle_rec, bool(no), !Globals),
-
+    %
     % The cut-down stack frames used by middle recursion optimization
     % don't include return addresses. Since stack extension arranges for
     % the return to the old stack segments by overriding the return address,
     % stack extension via stack segments and middle recursion optimization
     % are incompatible.
-    option_implies(stack_segments, middle_rec, bool(no), !Globals),
+    globals.lookup_bool_option(!.Globals, stack_segments, StackSegments),
+    ( if (UseTrail = yes ; StackSegments = yes) then
+        !OptTuple ^ ot_opt_middle_rec := do_not_opt_middle_rec
+    else
+        true
+    ),
 
     % Stack copy minimal model tabling needs to be able to rewrite all
     % the redoips in a given nondet stack segments. If we allow hijacks,
@@ -1822,8 +1878,12 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
     % Since we want to allow tabling in grades that do not have label
     % layout info, we disable hijacks instead.
     % XXX we should allow hijacks in table_builtin.m
-    option_implies(use_minimal_model_stack_copy, allow_hijacks, bool(no),
-        !Globals),
+    ( 
+        UseMinimalModelStackCopy = yes,
+        !OptTuple ^ ot_allow_hijacks := do_not_allow_hijacks
+    ;
+        UseMinimalModelStackCopy = no
+    ),
 
     % Stack copy minimal model tabling needs to generate extra code
     % at possibly negated contexts to handle the pneg stack and at commits
@@ -1876,31 +1936,51 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
 
     % If we are doing type-specialization, we may as well take advantage
     % of the declarations supplied by the programmer.
-    option_implies(type_specialization, user_guided_type_specialization,
-        bool(yes), !Globals),
+    TypeSpec = !.OptTuple ^ ot_spec_types,
+    (
+        TypeSpec = spec_types,
+        !OptTuple ^ ot_spec_types_user_guided := spec_types_user_guided
+    ;
+        TypeSpec = do_not_spec_types
+    ),
 
     % The local constraint propagation transformation (constraint.m)
     % is a required part of the constraint propagation transformation
     % performed by deforest.m.
-    option_implies(constraint_propagation, local_constraint_propagation,
-        bool(yes), !Globals),
+    ConstProp = !.OptTuple ^ ot_prop_constraints,
+    (
+        ConstProp = prop_constraints,
+        !OptTuple ^ ot_prop_local_constraints := prop_local_constraints
+    ;
+        ConstProp = do_not_prop_constraints
+    ),
 
     % --intermod-unused-args implies --intermodule-optimization and
     % --optimize-unused-args.
-    option_implies(intermod_unused_args, intermodule_optimization, bool(yes),
-        !Globals),
-    option_implies(intermod_unused_args, optimize_unused_args, bool(yes),
-        !Globals),
+    IntermodUnusedArgs = !.OptTuple ^ ot_opt_unused_args_intermod,
+    (
+        IntermodUnusedArgs = opt_unused_args_intermod,
+        !OptTuple ^ ot_opt_unused_args := opt_unused_args,
+        globals.set_option(intermodule_optimization, bool(yes), !Globals)
+    ;
+        IntermodUnusedArgs = do_not_opt_unused_args_intermod
+    ),
 
     % --introduce-accumulators implies --excess-assign and
     % --common-struct.
-    option_implies(introduce_accumulators, excess_assign, bool(yes), !Globals),
-    option_implies(introduce_accumulators, common_struct, bool(yes), !Globals),
+    IntroduceAccumulators = !.OptTuple ^ ot_introduce_accumulators,
+    (
+        IntroduceAccumulators = introduce_accumulators,
+        !OptTuple ^ ot_elim_excess_assigns := elim_excess_assigns,
+        !OptTuple ^ ot_opt_common_structs := opt_common_structs
+    ;
+        IntroduceAccumulators = do_not_introduce_accumulators
+    ),
 
     % Don't do the unused_args optimization when making the
     % optimization interface.
     ( if OpMode = opm_top_args(opma_augment(opmau_make_opt_int)) then
-        globals.set_option(optimize_unused_args, bool(no), !Globals)
+        !OptTuple ^ ot_opt_unused_args := do_not_opt_unused_args
     else
         true
     ),
@@ -2190,22 +2270,26 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
         ; WarnNonTailRecMutual = yes
         )
     then
-        globals.lookup_bool_option(!.Globals, pessimize_tailcalls,
-            PessimizeTailCalls),
-        globals.lookup_bool_option(!.Globals, optimize_tailcalls,
-            OptimizeTailCalls),
+        PessimizeTailCalls = !.OptTuple ^ ot_pessimize_tailcalls,
+        OptimizeTailCalls = !.OptTuple ^ ot_opt_mlds_tailcalls,
         (
-            PessimizeTailCalls = no
+            PessimizeTailCalls = do_not_pessimize_tailcalls
         ;
-            PessimizeTailCalls = yes,
+            PessimizeTailCalls = pessimize_tailcalls,
             PessimizeWords = "--warn-non-tail-recursion is incompatible" ++
                  " with --pessimize-tailcalls",
+            % XXX While these two options look diametrically opposed,
+            % they are actually compatible, because pessimize_tailcalls
+            % is implemented only for the LLDS backend, while the
+            % optimize_tailcalls option is only for the MLDS backend.
+            % (The LLDS backend's tail call optimization does NOT depend
+            % on the value of that option.)
             add_error(phase_options, [words(PessimizeWords)], !Specs)
         ),
         (
-            OptimizeTailCalls = yes
+            OptimizeTailCalls = opt_mlds_tailcalls
         ;
-            OptimizeTailCalls = no,
+            OptimizeTailCalls = do_not_opt_mlds_tailcalls,
             OptimizeWords =
                 "--warn-non-tail-recursion requires --optimize-tailcalls",
             add_error(phase_options, [words(OptimizeWords)], !Specs)
@@ -2234,7 +2318,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
     ;
         Target = target_erlang,
         BackendForeignLanguages = ["erlang"],
-        set_option(optimize_constructor_last_call, bool(no), !Globals),
+        !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc,
         set_option(allow_multi_arm_switches, bool(no), !Globals)
     ),
 
@@ -2282,10 +2366,11 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
 
     (
         HighLevelCode = no,
-        postprocess_options_lowlevel(!Globals)
+        postprocess_options_lowlevel(!Globals, !OptTuple)
     ;
         HighLevelCode = yes
     ),
+    globals.set_opt_tuple(!.OptTuple, !Globals),
     postprocess_options_libgrades(!Globals, !Specs),
     globals_init_mutables(!.Globals, !IO).
 
@@ -2299,28 +2384,45 @@ convert_options_to_globals(OptionTable0, OpMode, Target, GC_Method,
     % the user interface unchanged, but would let us handle the implications
     % for the two backends separately.
     %
-:- pred postprocess_options_lowlevel(globals::in, globals::out) is det.
+:- pred postprocess_options_lowlevel(globals::in, globals::out,
+    opt_tuple::in, opt_tuple::out) is det.
 
-postprocess_options_lowlevel(!Globals) :-
+postprocess_options_lowlevel(!Globals, !OptTuple) :-
     % --optimize-saved-vars-cell requires --use-local-vars for
     % acceptable performance.
-    option_implies(optimize_saved_vars_cell, use_local_vars, bool(yes),
-        !Globals),
+    SavedVarsCell = !.OptTuple ^ ot_opt_svcell,
+    (
+        SavedVarsCell = opt_svcell,
+        !OptTuple ^ ot_use_local_vars := use_local_vars
+    ;
+        SavedVarsCell = do_not_opt_svcell
+    ),
 
     % --optimize-frames requires --optimize-labels and
     % --optimize-jumps
-    option_implies(optimize_frames, optimize_labels, bool(yes), !Globals),
-    option_implies(optimize_frames, optimize_jumps, bool(yes), !Globals),
+    OptFrames = !.OptTuple ^ ot_opt_frames,
+    (
+        OptFrames = opt_frames,
+        !OptTuple ^ ot_opt_labels := opt_labels,
+        !OptTuple ^ ot_opt_jumps := opt_jumps
+    ;
+        OptFrames = do_not_opt_frames
+    ),
 
     % --optimize-proc-dups is implemented only with --trad-passes.
-    option_implies(optimize_proc_dups, trad_passes, bool(yes), !Globals),
+    OptProcDups = !.OptTuple ^ ot_opt_proc_dups,
+    (
+        OptProcDups = opt_proc_dups,
+        globals.set_option(trad_passes, bool(yes), !Globals)
+    ;
+        OptProcDups = do_not_opt_proc_dups
+    ),
 
-    globals.lookup_bool_option(!.Globals, optimize_frames, OptFrames),
-    globals.lookup_bool_option(!.Globals, use_local_vars, OptLocalVars),
-    globals.lookup_int_option(!.Globals, optimize_repeat, OptRepeat),
+    UseLocalVars = !.OptTuple ^ ot_use_local_vars,
+    OptRepeat = !.OptTuple ^ ot_opt_repeat,
     ( if
-        ( OptFrames = yes
-        ; OptLocalVars = yes
+        ( OptFrames = opt_frames
+        ; UseLocalVars = use_local_vars
         ),
         OptRepeat < 1
     then
@@ -2328,7 +2430,7 @@ postprocess_options_lowlevel(!Globals) :-
         % the jump and label optimization having been done. They are turned
         % on above, but they still won't be executed unless optimize_repeat
         % is at least one.
-        globals.set_option(optimize_repeat, int(1), !Globals)
+        !OptTuple ^ ot_opt_repeat := 1
     else
         true
     ),
@@ -2338,34 +2440,30 @@ postprocess_options_lowlevel(!Globals) :-
     globals.lookup_bool_option(!.Globals, unboxed_float, UnboxedFloat),
     (
         UnboxedFloat = yes,
-        % If we're using unboxed (MR_Word-sized) floats, floating point values
+        % If we are using unboxed (MR_Word-sized) floats, floating point values
         % are always constants.
-        StaticGroundFloats = yes
+        !OptTuple ^ ot_use_static_ground_floats := use_static_ground_floats
     ;
         UnboxedFloat = no,
-        % If we're using boxed floats, then we can generate a static constant
+        % If we are using boxed floats, then we can generate a static constant
         % variable to hold a float constant, and gcc doesn't mind us converting
         % from its address to MR_Word in a static initializer. In theory,
         % we should do this with --static-ground-terms. However, the code
         % generator does not yet handle the dynamic creation of boxed float
         % constants, and assumes that binding a variable to a constant
         % generates no code.
-        StaticGroundFloats = yes
+        !OptTuple ^ ot_use_static_ground_floats := use_static_ground_floats
     ),
-    globals.set_option(static_ground_floats, bool(StaticGroundFloats),
-        !Globals),
 
     % Ditto for 64-bit integers.
     globals.lookup_bool_option(!.Globals, unboxed_int64s, UnboxedInt64s),
     (
         UnboxedInt64s = yes,
-        StaticGroundInt64s = yes
+        !OptTuple ^ ot_use_static_ground_int64s := use_static_ground_int64s
     ;
         UnboxedInt64s = no,
-        StaticGroundInt64s = yes
+        !OptTuple ^ ot_use_static_ground_int64s := use_static_ground_int64s
     ),
-    globals.set_option(static_ground_int64s, bool(StaticGroundInt64s),
-        !Globals),
 
     % The setting of static_code_addresses is governed only by the settings
     % of gcc_non_local_gotos and asm_labels.
@@ -2380,11 +2478,11 @@ postprocess_options_lowlevel(!Globals) :-
         % of these global variables is not constant (i.e. not computable at
         % load time), since they can't be initialized until we call
         % init_modules().
-        StaticCodeAddrs = no
+        !OptTuple ^ ot_use_static_code_addresses
+            := do_not_use_static_code_addresses
     else
-        StaticCodeAddrs = yes
-    ),
-    globals.set_option(static_code_addresses, bool(StaticCodeAddrs), !Globals).
+        !OptTuple ^ ot_use_static_code_addresses := use_static_code_addresses
+    ).
 
     % option_implies(SourceBoolOption, ImpliedOption, ImpliedOptionValue):
     % If the SourceBoolOption is set to yes, then the ImpliedOption is set
@@ -2408,6 +2506,7 @@ option_implies(SourceOption, ImpliedOption, ImpliedOptionValue, !Globals) :-
     %
 :- pred option_neg_implies(option::in, option::in, option_data::in,
     globals::in, globals::out) is det.
+:- pragma consider_used(option_neg_implies/5).
 
 option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue,
         !Globals) :-

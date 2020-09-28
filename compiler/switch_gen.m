@@ -107,8 +107,8 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module libs.
+:- import_module libs.optimization_options.
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.dense_switch.
 :- import_module ll_backend.lookup_switch.
@@ -119,7 +119,6 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module maybe.
@@ -170,7 +169,8 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
         ;
             SwitchCategory = tag_switch,
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
-            globals.lookup_int_option(Globals, tag_switch_size, TagSize),
+            globals.get_opt_tuple(Globals, OptTuple),
+            TagSize = OptTuple ^ ot_tag_switch_size,
             ( if NumConsIds >= TagSize, NumArms > 1 then
                 generate_tag_switch(TaggedCases, SwitchVarRval, SwitchVarType,
                     SwitchVarName, CodeModel, CanFail, GoalInfo, EndLabel,
@@ -210,18 +210,17 @@ generate_atomic_or_int64_switch(ModuleInfo, Globals, CodeModel, CanFail,
         % circumstances, but it would take a pretty complex heuristic
         % to get it right, so, lets just use a simple one - no static
         % ground terms, no lookup switch.
-        globals.lookup_bool_option(Globals, static_ground_cells, yes),
+        globals.get_opt_tuple(Globals, OptTuple),
+        OptTuple ^ ot_use_static_ground_cells = use_static_ground_cells,
 
         % Lookup switches do not generate trace events.
         get_maybe_trace_info(!.CI, MaybeTraceInfo),
         MaybeTraceInfo = no,
 
-        globals.lookup_int_option(Globals, lookup_switch_size,
-            LookupSize),
+        LookupSize = OptTuple ^ ot_lookup_switch_size,
         NumConsIds >= LookupSize,
         NumArms > 1,
-        globals.lookup_int_option(Globals, lookup_switch_req_density,
-            ReqDensity),
+        ReqDensity = OptTuple ^ ot_lookup_switch_req_density,
         filter_out_failing_cases_if_needed(CodeModel,
             TaggedCases, FilteredTaggedCases,
             CanFail, FilteredCanFail),
@@ -244,12 +243,11 @@ generate_atomic_or_int64_switch(ModuleInfo, Globals, CodeModel, CanFail,
     else if
         MaybeIntSwitchInfo = int_switch(IntSwitchInfo),
         IntSwitchInfo = int_switch_info(LowerLimit, UpperLimit, NumValues),
-        globals.lookup_int_option(Globals, dense_switch_size,
-            DenseSize),
+        globals.get_opt_tuple(Globals, OptTuple),
+        DenseSize = OptTuple ^ ot_dense_switch_size,
         NumConsIds >= DenseSize,
         NumArms > 1,
-        globals.lookup_int_option(Globals, dense_switch_req_density,
-            ReqDensity),
+        ReqDensity = OptTuple ^ ot_dense_switch_req_density,
         tagged_case_list_is_dense_switch(!.CI, SwitchVarType,
             TaggedCases, LowerLimit, UpperLimit, NumValues,
             ReqDensity, CanFail, DenseSwitchInfo)
@@ -277,10 +275,9 @@ generate_string_switch(Globals, CodeModel, CanFail,
     num_cons_ids_in_tagged_cases(FilteredTaggedCases,
         NumConsIds, NumArms),
     ( if NumArms > 1 then
-        globals.lookup_int_option(Globals, string_hash_switch_size,
-            StringHashSwitchSize),
-        globals.lookup_int_option(Globals, string_binary_switch_size,
-            StringBinarySwitchSize),
+        globals.get_opt_tuple(Globals, OptTuple),
+        StringHashSwitchSize = OptTuple ^ ot_string_hash_switch_size,
+        StringBinarySwitchSize = OptTuple ^ ot_string_binary_switch_size,
         ( if NumConsIds >= StringHashSwitchSize then
             ( if
                 remember_position(!.CLD, BranchStart),
@@ -486,13 +483,13 @@ order_recursive_cases(Cases0, Cases, CodeModel, CanFail, CI) :-
                 fail
             )
         then
-            globals.lookup_bool_option(Globals, switch_single_rec_base_first,
-                SingleRecBaseFirst),
+            globals.get_opt_tuple(Globals, OptTuple),
+            SingleRecBaseFirst = OptTuple ^ ot_put_base_first_single_rec,
             (
-                SingleRecBaseFirst = yes,
+                SingleRecBaseFirst = put_base_first_single_rec,
                 Cases = [SingleRecCase, BaseCase]
             ;
-                SingleRecBaseFirst = no,
+                SingleRecBaseFirst = do_not_put_base_first_single_rec,
                 Cases = [BaseCase, SingleRecCase]
             )
         else if
@@ -512,13 +509,13 @@ order_recursive_cases(Cases0, Cases, CodeModel, CanFail, CI) :-
                 fail
             )
         then
-            globals.lookup_bool_option(Globals, switch_multi_rec_base_first,
-                MultiRecBaseFirst),
+            globals.get_opt_tuple(Globals, OptTuple),
+            MultiRecBaseFirst = OptTuple ^ ot_put_base_first_multi_rec,
             (
-                MultiRecBaseFirst = yes,
+                MultiRecBaseFirst = put_base_first_multi_rec,
                 Cases = [BaseCase, MultiRecCase]
             ;
-                MultiRecBaseFirst = no,
+                MultiRecBaseFirst = do_not_put_base_first_multi_rec,
                 Cases = [MultiRecCase, BaseCase]
             )
         else

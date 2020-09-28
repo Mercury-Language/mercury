@@ -47,6 +47,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ll_backend.code_gen.
 :- import_module ll_backend.continuation_info.
@@ -159,7 +160,8 @@ is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Disjuncts, DisjGoalInfo,
 
     % Lookup disjunctions rely on static ground terms to work.
     get_globals(!.CI, Globals),
-    globals.lookup_bool_option(Globals, static_ground_cells, yes),
+    globals.get_opt_tuple(Globals, OptTuple),
+    OptTuple ^ ot_use_static_ground_cells = use_static_ground_cells,
 
     % XXX The code to generate lookup disjunctions hasn't yet been updated
     % to handle region operations.

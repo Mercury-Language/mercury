@@ -98,6 +98,8 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
+:- import_module libs.
+:- import_module libs.optimization_options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_closure_gen.
@@ -468,10 +470,10 @@ ml_gen_new_object_dynamically(MaybeConsId, MaybeCtorName, Ptag,
         Stmts, !Info) :-
     ml_gen_info_get_use_atomic_cells(!.Info, UseAtomicCells),
     (
-        UseAtomicCells = yes,
+        UseAtomicCells = use_atomic_cells,
         MayUseAtomic0 = may_use_atomic_alloc
     ;
-        UseAtomicCells = no,
+        UseAtomicCells = do_not_use_atomic_cells,
         MayUseAtomic0 = may_not_use_atomic_alloc
     ),
     ml_generate_and_pack_dynamic_construct_args(!.Info, RHSVarsTypesWidths,

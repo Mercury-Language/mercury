@@ -18,6 +18,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 
 :- import_module bool.
 :- import_module list.
@@ -113,12 +114,12 @@
                 do_warn_obsolete                :: bool,
                 do_mark_code_model_changes      :: bool,
                 do_after_front_end              :: bool,
-                do_excess_assign                :: bool,
-                do_test_after_switch            :: bool,
+                do_excess_assign                :: maybe_elim_excess_assigns,
+                do_test_after_switch            :: maybe_opt_test_after_switch,
                 do_elim_removable_scopes        :: bool,
-                do_opt_duplicate_calls          :: bool,
-                do_constant_prop                :: bool,
-                do_common_struct                :: bool,
+                do_opt_duplicate_calls          :: maybe_opt_dup_calls,
+                do_constant_prop                :: maybe_prop_constants,
+                do_common_struct                :: maybe_opt_common_structs,
                 do_extra_common_struct          :: bool,
                 do_ignore_par_conjunctions      :: bool,
                 do_warn_suspicious_recursion    :: bool,
@@ -157,13 +158,17 @@ simplify_tasks_to_list(SimplifyTasks) = List :-
         ( MarkCodeModelChanges = yes ->
             [simptask_mark_code_model_changes] ; [] ) ++
         ( AfterFrontEnd = yes -> [simptask_after_front_end] ; [] ) ++
-        ( ExcessAssign = yes -> [simptask_excess_assigns] ; [] ) ++
-        ( TestAfterSwitch = yes -> [simptask_test_after_switch] ; [] ) ++
+        ( ExcessAssign = elim_excess_assigns ->
+            [simptask_excess_assigns] ; [] ) ++
+        ( TestAfterSwitch = opt_test_after_switch ->
+            [simptask_test_after_switch] ; [] ) ++
         ( ElimRemovableScopes = yes ->
             [simptask_elim_removable_scopes] ; [] ) ++
-        ( OptDuplicateCalls = yes -> [simptask_opt_duplicate_calls] ; [] ) ++
-        ( ConstantProp = yes -> [simptask_constant_prop] ; [] ) ++
-        ( CommonStruct = yes -> [simptask_common_struct] ; [] ) ++
+        ( OptDuplicateCalls = opt_dup_calls ->
+            [simptask_opt_duplicate_calls] ; [] ) ++
+        ( ConstantProp = prop_constants -> [simptask_constant_prop] ; [] ) ++
+        ( CommonStruct = opt_common_structs ->
+            [simptask_common_struct] ; [] ) ++
         ( ExtraCommonStruct = yes -> [simptask_extra_common_struct] ; [] ) ++
         ( RemoveParConjunctions = yes -> [simptask_ignore_par_conjs] ; [] ) ++
         ( WarnSuspiciousRecursion = yes ->
@@ -180,12 +185,17 @@ list_to_simplify_tasks(List) =
         ( list.member(simptask_warn_obsolete, List) -> yes ; no ),
         ( list.member(simptask_mark_code_model_changes, List) -> yes ; no ),
         ( list.member(simptask_after_front_end, List) -> yes ; no ),
-        ( list.member(simptask_excess_assigns, List) -> yes ; no ),
-        ( list.member(simptask_test_after_switch, List) -> yes ; no ),
+        ( list.member(simptask_excess_assigns, List) ->
+            elim_excess_assigns ; do_not_elim_excess_assigns ),
+        ( list.member(simptask_test_after_switch, List) ->
+            opt_test_after_switch ; do_not_opt_test_after_switch ),
         ( list.member(simptask_elim_removable_scopes, List) -> yes ; no ),
-        ( list.member(simptask_opt_duplicate_calls, List) -> yes ; no ),
-        ( list.member(simptask_constant_prop, List) -> yes ; no ),
-        ( list.member(simptask_common_struct, List) -> yes ; no ),
+        ( list.member(simptask_opt_duplicate_calls, List) ->
+            opt_dup_calls ; do_not_opt_dup_calls ),
+        ( list.member(simptask_constant_prop, List) ->
+            prop_constants ; do_not_prop_constants ),
+        ( list.member(simptask_common_struct, List) ->
+            opt_common_structs ; do_not_opt_common_structs ),
         ( list.member(simptask_extra_common_struct, List) -> yes ; no ),
         ( list.member(simptask_ignore_par_conjs, List) -> yes ; no ),
         ( list.member(simptask_warn_suspicious_recursion, List) -> yes ; no ),
@@ -201,14 +211,14 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
         WarnKnownBadFormat),
     globals.lookup_bool_option(Globals, warn_unknown_format_calls,
         WarnUnknownFormat),
-    globals.lookup_bool_option(Globals, optimize_format_calls,
-        OptFormatCalls),
+    globals.get_opt_tuple(Globals, OptTuple),
+    OptFormatCalls = OptTuple ^ ot_opt_format_calls,
     ( if
         (
             WarnThisPass = yes,
             ( WarnKnownBadFormat = yes ; WarnUnknownFormat = yes  )
         ;
-            OptFormatCalls = yes
+            OptFormatCalls = opt_format_calls
         )
     then
         DoFormatCalls = yes
@@ -216,12 +226,11 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
         DoFormatCalls = no
     ),
     globals.lookup_bool_option(Globals, warn_obsolete, WarnObsolete),
-    globals.lookup_bool_option(Globals, excess_assign, ExcessAssign),
-    globals.lookup_bool_option(Globals, test_after_switch, TestAfterSwitch),
-    globals.lookup_bool_option(Globals, common_struct, CommonStruct),
-    globals.lookup_bool_option(Globals, optimize_duplicate_calls,
-        OptDuplicateCalls),
-    globals.lookup_bool_option(Globals, constant_propagation, ConstantProp),
+    ExcessAssign = OptTuple ^ ot_elim_excess_assigns,
+    TestAfterSwitch = OptTuple ^ ot_opt_test_after_switch,
+    CommonStruct = OptTuple ^ ot_opt_common_structs,
+    OptDuplicateCalls = OptTuple ^ ot_opt_dup_calls,
+    ConstantProp = OptTuple ^ ot_prop_constants,
     MarkCodeModelChanges = no,
     AfterFrontEnd = no,
     ElimRemovableScopes = no,

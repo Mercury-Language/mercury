@@ -59,6 +59,7 @@
 :- import_module libs.file_util.
 :- import_module libs.handle_options.
 :- import_module libs.op_mode.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module make.
@@ -1768,7 +1769,10 @@ process_augmented_module(Globals0, OpModeAugment, ModuleAndImports,
             globals.lookup_bool_option(Globals, warn_unused_args, UnusedArgs),
             (
                 UnusedArgs = yes,
-                globals.set_option(optimize_unused_args, bool(no),
+                globals.get_opt_tuple(Globals, OptTuple),
+                NoOptUnusedArgsOptTuple = OptTuple ^ ot_opt_unused_args
+                    := do_not_opt_unused_args,
+                globals.set_opt_tuple(NoOptUnusedArgsOptTuple,
                     Globals, NoOptUnusedArgsGlobals),
                 module_info_set_globals(NoOptUnusedArgsGlobals,
                     HLDS21, HLDS21a),

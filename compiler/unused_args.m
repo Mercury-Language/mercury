@@ -106,6 +106,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -292,9 +293,10 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
     else
         true
     ),
-    globals.lookup_bool_option(Globals, optimize_unused_args, DoFixup),
+    globals.get_opt_tuple(Globals, OptTuple),
+    OptUnusedArgs = OptTuple ^ ot_opt_unused_args,
     (
-        DoFixup = yes,
+        OptUnusedArgs = opt_unused_args,
         list.foldl2(unused_args_create_new_pred(UnusedArgInfo),
             PredProcIdsToFix, ProcCallInfo0, ProcCallInfo, !ModuleInfo),
         % maybe_write_string(VeryVerbose, "% Finished new preds.\n",
@@ -310,7 +312,7 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
             module_info_clobber_dependency_info(!ModuleInfo)
         )
     ;
-        DoFixup = no
+        OptUnusedArgs = do_not_opt_unused_args
     ).
 
 %-----------------------------------------------------------------------------%
@@ -435,14 +437,14 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcIds, !OptProcs,
                     initialise_vardep(UnusedVars, !.VarDep, VarDep),
                     PredProcId = proc(PredId, ProcId),
                     map.set(PredProcId, VarDep, !VarUsage),
-                    globals.lookup_bool_option(Globals,
-                        optimize_unused_args, OptimizeUnusedArgs),
+                    globals.get_opt_tuple(Globals, OptTuple),
+                    OptUnusedArgs = OptTuple ^ ot_opt_unused_args,
                     (
-                        OptimizeUnusedArgs = yes,
+                        OptUnusedArgs = opt_unused_args,
                         make_imported_unused_args_pred_info(PredProcId,
                             UnusedArgs, !OptProcs, !ModuleInfo)
                     ;
-                        OptimizeUnusedArgs = no
+                        OptUnusedArgs = do_not_opt_unused_args
                     )
                 ;
                     UnusedArgs = []

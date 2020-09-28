@@ -126,7 +126,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.options.
+:- import_module libs.optimization_options.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_util.
@@ -151,10 +151,9 @@ ml_is_lookup_switch(SwitchVar, TaggedCases, GoalInfo, CodeModel,
     set_of_var.to_sorted_list(OtherNonLocals, OutVars),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, static_ground_cells,
-        StaticGroundCells),
+    globals.get_opt_tuple(Globals, OptTuple),
     ( if
-        StaticGroundCells = yes,
+        OptTuple ^ ot_use_static_ground_cells = use_static_ground_cells,
         ml_generate_constants_for_lookup_switch(CodeModel, OutVars,
             OtherNonLocals, TaggedCases, map.init, CaseSolnMap, !Info)
     then

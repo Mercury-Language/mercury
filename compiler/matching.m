@@ -19,6 +19,8 @@
 :- module backend_libs.matching.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.optimization_options.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
@@ -55,7 +57,7 @@
                 field_var_load_cost     :: int,
                 one_path_op_ratio       :: int,
                 one_path_node_ratio     :: int,
-                include_all_candidates  :: bool
+                include_all_candidates  :: maybe_opt_svcell_all_candidates
             ).
 
 :- type benefit_node.
@@ -151,14 +153,14 @@ find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
         RealizedBenefitNodes, RealizedCostNodes, ViaCellVars) :-
     InclAllCand = MatchingParams ^ include_all_candidates,
     (
-        InclAllCand = no,
+        InclAllCand = do_not_opt_svcell_all_candidates,
         AllSegmentVars = set_of_var.union_list([BeforeFlush | AfterFlush]),
         set_of_var.intersect(CandidateFieldVars, AllSegmentVars,
             OccurringCandidateFieldVars),
         set_of_var.difference(CandidateFieldVars, OccurringCandidateFieldVars,
             NonOccurringCandidateFieldVars)
     ;
-        InclAllCand = yes,
+        InclAllCand = opt_svcell_all_candidates,
         OccurringCandidateFieldVars = CandidateFieldVars,
         NonOccurringCandidateFieldVars = set_of_var.init
     ),

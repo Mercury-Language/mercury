@@ -920,8 +920,9 @@ process_arguments(OptionOps, [Arg0 | Args0], NonOptionArgs, !OptionArgs,
 handle_long_option(OptionOps, Option, Flag, OptionData, MaybeOptionArg0,
         Args0, Args, !OptionArgs, MaybeError, !OptionTable,
         !OptionsSet, !UserData, !IO) :-
+    need_arg(OptionData, NeedArg),
     ( if
-        need_arg(OptionData, yes),
+        NeedArg = yes,
         MaybeOptionArg0 = no
     then
         (
@@ -949,7 +950,7 @@ handle_long_option(OptionOps, Option, Flag, OptionData, MaybeOptionArg0,
     ;
         MissingArg = no,
         ( if
-            need_arg(OptionData, no),
+            NeedArg = no,
             MaybeOptionArg = yes(ArgVal)
         then
             Args = Args0,
@@ -1207,15 +1208,21 @@ process_option(OptionOps, OptionData, Option, Flag, MaybeArg,
                         FileMaybeError, !.OptionTable, NewOptionTable,
                         !OptionsSet, !UserData, !IO),
                     (
-                        Args = [],
-                        !:OptionTable = NewOptionTable,
-                        MaybeError = FileMaybeError
+                        FileMaybeError = no,
+                        (
+                            Args = [],
+                            !:OptionTable = NewOptionTable,
+                            MaybeError = no
+                        ;
+                            Args = [_ | _],
+                            Reason =
+                                file_special_contains_non_option_args(FileName),
+                            Error = option_error(Flag, Option, Reason),
+                            MaybeError = yes(Error)
+                        )
                     ;
-                        Args = [_ | _],
-                        Reason =
-                            file_special_contains_non_option_args(FileName),
-                        Error = option_error(Flag, Option, Reason),
-                        MaybeError = yes(Error)
+                        FileMaybeError = yes(_),
+                        MaybeError = FileMaybeError
                     )
                 ;
                     ReadRes = error(_, IO_Error),

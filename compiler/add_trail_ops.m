@@ -56,13 +56,15 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.optimization_options.
 
 :- import_module bool.
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_trail_ops(bool::in, bool::in, module_info::in,
-    proc_info::in, proc_info::out) is det.
+:- pred add_trail_ops(bool::in, maybe_gen_trail_ops_inline::in,
+    module_info::in, proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -78,7 +80,6 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
-:- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -113,7 +114,7 @@
                 trail_var_types     :: vartypes,
                 trail_module_info   :: module_info,
                 opt_trail_usage     :: bool,
-                inline_ops          :: bool
+                inline_ops          :: maybe_gen_trail_ops_inline
             ).
 
 add_trail_ops(OptTrailUsage, GenerateInline, ModuleInfo0, !Proc) :-
@@ -435,12 +436,12 @@ cases_add_trail_ops([Case0 | Cases0], [Case | Cases], !Info) :-
 gen_store_ticket(TicketVar, Context, SaveTicketGoal, Info) :-
     GenerateInline = Info ^ inline_ops,
     (
-        GenerateInline = no,
+        GenerateInline = do_not_gen_trail_ops_inline,
         trail_generate_call("store_ticket", detism_det, purity_impure,
             [TicketVar], instmap_delta_bind_var(TicketVar),
             Info ^ trail_module_info, Context, SaveTicketGoal)
     ;
-        GenerateInline =  yes,
+        GenerateInline = gen_trail_ops_inline,
         Args = [foreign_arg(TicketVar,
             yes(foreign_arg_name_mode("Ticket", out_mode)),
             ticket_type, bp_native_if_possible)],
@@ -456,12 +457,12 @@ gen_store_ticket(TicketVar, Context, SaveTicketGoal, Info) :-
 gen_reset_ticket_undo(TicketVar, Context, ResetTicketGoal, Info) :-
     GenerateInline = Info ^ inline_ops,
     (
-        GenerateInline = no,
+        GenerateInline = do_not_gen_trail_ops_inline,
         trail_generate_call("reset_ticket_undo", detism_det, purity_impure,
             [TicketVar], instmap_delta_bind_no_var, Info ^ trail_module_info,
             Context, ResetTicketGoal)
     ;
-        GenerateInline = yes,
+        GenerateInline = gen_trail_ops_inline,
         Args = [foreign_arg(TicketVar,
             yes(foreign_arg_name_mode("Ticket", in_mode)),
             ticket_type, bp_native_if_possible)],
@@ -477,12 +478,12 @@ gen_reset_ticket_undo(TicketVar, Context, ResetTicketGoal, Info) :-
 gen_reset_ticket_solve(TicketVar, Context, ResetTicketGoal, Info) :-
     GenerateInline = Info ^ inline_ops,
     (
-        GenerateInline = no,
+        GenerateInline = do_not_gen_trail_ops_inline,
         trail_generate_call("reset_ticket_solve", detism_det, purity_impure,
             [TicketVar], instmap_delta_bind_no_var, Info ^ trail_module_info,
             Context, ResetTicketGoal)
     ;
-        GenerateInline = yes,
+        GenerateInline = gen_trail_ops_inline,
         Args = [foreign_arg(TicketVar,
             yes(foreign_arg_name_mode("Ticket", in_mode)),
             ticket_type, bp_native_if_possible)],
@@ -498,12 +499,12 @@ gen_reset_ticket_solve(TicketVar, Context, ResetTicketGoal, Info) :-
 gen_reset_ticket_commit(TicketVar, Context, ResetTicketGoal, Info) :-
     GenerateInline = Info ^ inline_ops,
     (
-        GenerateInline = no,
+        GenerateInline = do_not_gen_trail_ops_inline,
         trail_generate_call("reset_ticket_commit", detism_det, purity_impure,
             [TicketVar], instmap_delta_bind_no_var, Info ^ trail_module_info,
             Context, ResetTicketGoal)
     ;
-        GenerateInline = yes,
+        GenerateInline = gen_trail_ops_inline,
         Args = [foreign_arg(TicketVar,
             yes(foreign_arg_name_mode("Ticket", in_mode)),
             ticket_type, bp_native_if_possible)],
@@ -519,12 +520,12 @@ gen_reset_ticket_commit(TicketVar, Context, ResetTicketGoal, Info) :-
 gen_prune_ticket(Context, PruneTicketGoal, Info) :-
     GenerateInline = Info ^ inline_ops,
     (
-        GenerateInline = no,
+        GenerateInline = do_not_gen_trail_ops_inline,
         trail_generate_call("prune_ticket", detism_det, purity_impure, [],
             instmap_delta_bind_no_var, Info ^ trail_module_info,
             Context, PruneTicketGoal)
     ;
-        GenerateInline = yes,
+        GenerateInline = gen_trail_ops_inline,
         Args = [],
         ForeignCode = "MR_prune_ticket();",
         trail_generate_foreign_proc("prune_ticket", purity_impure,
@@ -538,12 +539,12 @@ gen_prune_ticket(Context, PruneTicketGoal, Info) :-
 gen_discard_ticket(Context, DiscardTicketGoal, Info) :-
     GenerateInline = Info ^ inline_ops,
     (
-        GenerateInline = no,
+        GenerateInline = do_not_gen_trail_ops_inline,
         trail_generate_call("discard_ticket", detism_det, purity_impure, [],
             instmap_delta_bind_no_var, Info ^ trail_module_info,
             Context, DiscardTicketGoal)
     ;
-        GenerateInline = yes,
+        GenerateInline = gen_trail_ops_inline,
         Args = [],
         ForeignCode = "MR_discard_ticket();",
         trail_generate_foreign_proc("discard_ticket", purity_impure,
@@ -558,13 +559,13 @@ gen_mark_ticket_stack(SavedTicketCounterVar, Context, MarkTicketStackGoal,
         Info) :-
     GenerateInline = Info ^ inline_ops,
     (
-        GenerateInline = no,
+        GenerateInline = do_not_gen_trail_ops_inline,
         trail_generate_call("mark_ticket_stack", detism_det, purity_impure,
             [SavedTicketCounterVar],
             instmap_delta_bind_no_var, Info ^ trail_module_info,
             Context, MarkTicketStackGoal)
     ;
-        GenerateInline = yes,
+        GenerateInline = gen_trail_ops_inline,
         Args = [foreign_arg(SavedTicketCounterVar,
             yes(foreign_arg_name_mode("TicketCounter", out_mode)),
             ticket_counter_type, bp_native_if_possible)],
@@ -581,12 +582,12 @@ gen_prune_tickets_to(SavedTicketCounterVar, Context, PruneTicketsToGoal,
         Info) :-
     GenerateInline = Info ^ inline_ops,
     (
-        GenerateInline = no,
+        GenerateInline = do_not_gen_trail_ops_inline,
         trail_generate_call("prune_tickets_to", detism_det, purity_impure,
             [SavedTicketCounterVar], instmap_delta_bind_no_var,
             Info ^ trail_module_info, Context, PruneTicketsToGoal)
     ;
-        GenerateInline = yes,
+        GenerateInline = gen_trail_ops_inline,
         Args = [foreign_arg(SavedTicketCounterVar,
             yes(foreign_arg_name_mode("TicketCounter", in_mode)),
             ticket_counter_type, bp_native_if_possible)],

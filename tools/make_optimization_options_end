@@ -1,0 +1,158 @@
+
+:- pred set_opts_upto_level(option_table::in, int::in, int::in,
+    opt_tuple::in, opt_tuple::out,
+    maybe_seen_opt_level::in, maybe_seen_opt_level::out) is det.
+
+set_opts_upto_level(OptionTable, Cur, Max,
+        !OptTuple, !MaybeSeenOptLevel) :-
+    ( if
+        Cur =< Max,
+        opts_enabled_at_level(Cur, LevelOptOptions)
+    then
+        list.foldl2(update_opt_tuple(OptionTable), LevelOptOptions,
+            !OptTuple, !MaybeSeenOptLevel),
+        set_opts_upto_level(OptionTable, Cur + 1, Max,
+            !OptTuple, !MaybeSeenOptLevel)
+    else
+        true
+    ).
+
+:- pred set_opts_for_space(opt_tuple::in, opt_tuple::out) is det.
+
+set_opts_for_space(!OptTuple) :-
+    UnneededCopyLimit = !.OptTuple ^ ot_opt_unneeded_code_copy_limit,
+    !OptTuple ^ ot_opt_unneeded_code_copy_limit :=
+        int.min(UnneededCopyLimit, 1),
+    !OptTuple ^ ot_opt_dead_procs := opt_dead_procs,
+    !OptTuple ^ ot_opt_labels := opt_labels,
+    !OptTuple ^ ot_opt_dups := opt_dups,
+    !OptTuple ^ ot_opt_proc_dups := opt_proc_dups,
+    !OptTuple ^ ot_opt_fulljumps := opt_fulljumps,
+    !OptTuple ^ ot_opt_reassign := opt_reassign,
+    !OptTuple ^ ot_inline_alloc := inline_alloc,
+    !OptTuple ^ ot_use_macro_for_redo_fail := use_macro_for_redo_fail,
+    !OptTuple ^ ot_opt_loop_invariants := do_not_opt_loop_invariants.
+
+:- pred opts_enabled_at_level(int::in, list(optimization_option)::out)
+    is semidet.
+
+opts_enabled_at_level(0, [
+    % Optimization level 0: aim to minimize overall compilation time.
+    oo_use_common_data(yes),
+    oo_optimize(yes),
+    oo_opt_repeat(1),
+    oo_opt_peep(yes),
+    oo_opt_peep_mkword(yes),
+    oo_use_static_ground_cells(yes),
+    oo_use_smart_indexing(yes),
+    oo_opt_jumps(yes),
+    oo_opt_labels(yes),
+    oo_opt_dead_procs(yes),
+    oo_elim_excess_assigns(yes)
+]).
+opts_enabled_at_level(1, [
+    % Optimization level 1: apply optimizations which are cheap and
+    % have a good payoff while still keeping compilation time small.
+    oo_use_local_vars(yes),
+    oo_opt_c(yes),              % XXX We want `gcc -O1'
+    oo_opt_frames(yes),
+    % We ignore oo_opt_delay_slot if have_delay_slot = no.
+    oo_opt_delay_slot(yes),
+    oo_opt_middle_rec(yes),
+    oo_emit_c_loops(yes),
+    oo_opt_mlds_tailcalls(yes)
+]).
+opts_enabled_at_level(2, [
+    % Optimization level 2: apply optimizations which have a good payoff
+    % relative to their cost; but include optimizations which are
+    % more costly than with -O1.
+    oo_opt_fulljumps(yes),
+    oo_opt_repeat(3),
+    oo_opt_dups(yes),
+    oo_opt_follow_code(yes),
+    oo_inline_simple(yes),
+    oo_inline_single_use(yes),
+    oo_inline_compound_threshold(10),
+    oo_opt_common_structs(yes),
+    oo_spec_types_user_guided(yes),
+    oo_opt_simple_neg(yes),
+    oo_opt_test_after_switch(yes),
+    oo_opt_initializations(yes)
+]).
+opts_enabled_at_level(3, [
+    % Optimization level 3: apply optimizations which usually have a good
+    % payoff even if they increase compilation time quite a bit.
+    oo_opt_saved_vars_const(yes),
+    oo_opt_unused_args(yes),
+    oo_opt_higher_order(yes),
+    oo_deforest(yes),
+    oo_prop_constraints(yes),
+    oo_prop_local_constraints(yes),
+    oo_opt_reassign(yes),
+    oo_opt_repeat(4)
+]).
+opts_enabled_at_level(4, [
+    % Optimization level 4: apply optimizations which may have some payoff
+    % even if they increase compilation time quite a bit.
+    %
+    % Currently this enables the use of local variables
+    % and increases the inlining thresholds.
+    oo_inline_simple_threshold(8),
+    oo_inline_compound_threshold(20),
+    oo_higher_order_size_limit(30)
+]).
+opts_enabled_at_level(5, [
+    % Optimization level 5: apply optimizations which may have some
+    % payoff even if they increase compilation time a lot.
+    %
+    % Currently this enables the search for construction unifications that
+    % can be delayed past failing computations, allows more passes of the
+    % low-level optimizations, and increases the inlining thresholds
+    % still further. We also enable eliminate_local_vars only at
+    % this level, because that pass is implemented pretty inefficiently.
+    oo_opt_repeat(5),
+    oo_delay_constructs(yes),
+    oo_inline_compound_threshold(100),
+    oo_higher_order_size_limit(40),
+    oo_elim_local_vars(yes),
+    oo_opt_loop_invariants(yes)
+]).
+opts_enabled_at_level(6, [
+     % Optimization level 6: apply optimizations which may have any payoff
+    % even if they increase compilation time to completely unreasonable
+    % levels.
+    %
+    % Currently this sets `everything_in_one_c_function', which causes
+    % the compiler to put everything in the one C function and treat calls
+    % to predicates in the same module as local. We also enable inlining
+    % of GC_malloc(), redo(), and fail().
+    oo_procs_per_c_function(999999),
+    oo_inline_alloc(yes),
+    oo_use_macro_for_redo_fail(yes)
+]).
+
+% The following optimization options are not enabled at any level:
+% XXX This comment is old. Since then, we have added many optimizations
+% that are not enabled automatically at any level :-(
+%
+%   checked_nondet_tailcalls:
+%       This is deliberate, because the transformation might make
+%       code run slower.
+%
+%   unneeded_code:
+%       Because it can cause slowdowns at high optimization levels;
+%       cause unknown
+%
+%   type_specialization:
+%       XXX why not?
+%
+%   introduce_accumulators:
+%       XXX Disabled until a bug in extras/trailed_update/var.m
+%       is resolved.
+%
+%   optimize_constructor_last_call:
+%       Not a speedup in general.
+
+%---------------------------------------------------------------------------%
+:- end_module libs.optimization_options.
+%---------------------------------------------------------------------------%

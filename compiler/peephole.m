@@ -16,17 +16,18 @@
 :- module ll_backend.peephole.
 :- interface.
 
-:- import_module ll_backend.llds.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
+:- import_module ll_backend.llds.
 
 :- import_module bool.
 :- import_module list.
 
     % Peephole optimize a list of instructions.
     %
-:- pred peephole_optimize(gc_method::in, bool::in, list(instruction)::in,
-    list(instruction)::out, bool::out) is det.
+:- pred peephole_optimize(gc_method::in, maybe_opt_peep_mkword::in,
+    list(instruction)::in, list(instruction)::out, bool::out) is det.
 
 :- pred combine_decr_sp(list(instruction)::in, list(instruction)::out) is det.
 
@@ -725,8 +726,8 @@ replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
 
     % Given a GC method, return the list of invalid peephole optimizations.
     %
-:- pred invalid_peephole_opts(gc_method::in, bool::in, list(pattern)::out)
-    is det.
+:- pred invalid_peephole_opts(gc_method::in, maybe_opt_peep_mkword::in,
+    list(pattern)::out) is det.
 
 invalid_peephole_opts(GC_Method, OptPeepMkword, InvalidPatterns) :-
     (
@@ -742,10 +743,10 @@ invalid_peephole_opts(GC_Method, OptPeepMkword, InvalidPatterns) :-
         InvalidPatterns0 = []
     ),
     (
-        OptPeepMkword = yes,
+        OptPeepMkword = opt_peep_mkword,
         InvalidPatterns = InvalidPatterns0
     ;
-        OptPeepMkword = no,
+        OptPeepMkword = do_not_opt_peep_mkword,
         InvalidPatterns = [pattern_mkword | InvalidPatterns0]
     ).
 

@@ -1,0 +1,326 @@
+#!/usr/bin/awk -f
+# vim: ts=4 sw=4 et ft=awk
+#---------------------------------------------------------------------------#
+# Copyright (C) 2020 The Mercury team.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# The input to this file, make_optimization_options_db, has one line
+# for every optimization option. Each line must have either three
+# or four fields.
+#
+# - The first field indicates what kind of option this is. It must be
+#   one of "bool", "int" and "string".
+#
+# - The second field gives the initial value of the option.
+#
+#   - If the option is boolean, the initial value must be either "n" or "y".
+#
+#   - If the option is an integer, the initial value must be an integer.
+#
+#   - If the option is a string, the initial value will be set
+#     to the empty string regardless of the contents of the second field.
+#
+# - The third field is the name of the option in options.m.
+#
+# - The fourth field, if it exists, gives the name of the option
+#   in the file this script helps generate, optimization_options.m.
+#   If there is no fourth field, the name is taken to be the same
+#   as the name in the third field.
+#
+#   For boolean options, the name in optimization_options.m should be a verb,
+#   because when we generate a bespoke type for it, its two function symbols
+#   will be named "verb" and "do_not_verb".
+#
+
+BEGIN {
+        default_opt_level = 2;
+        next_bool_opt = 0;
+        next_int_opt = 0;
+        next_string_opt = 0;
+    }
+    {
+        if (NF == 3 || NF == 4) {
+            kind = $1;
+            initial_value = $2;
+            option_name = $3;
+            if (NF == 4) {
+                option_field_name = $4;
+            } else {
+                option_field_name = $3;
+            }
+
+            if (kind == "bool") {
+                bool_opts[next_bool_opt] = option_name;
+                bool_field_names[next_bool_opt] = option_field_name;
+                if (initial_value == "y") {
+                    bool_defaults[next_bool_opt] = option_field_name;
+                } else if (initial_value == "n") {
+                    bool_defaults[next_bool_opt] = "do_not_" option_field_name;
+                } else {
+                    printf("ERROR: bad bool default<%s>\n", $0);
+                }
+                next_bool_opt++;
+            } else if (kind == "int") {
+                int_opts[next_int_opt] = $3;
+                int_field_names[next_int_opt] = option_field_name;
+                int_defaults[next_int_opt] = initial_value + 0;
+                next_int_opt++;
+            } else if (kind == "string") {
+                string_opts[next_string_opt] = $3;
+                string_field_names[next_string_opt] = option_field_name;
+                # String options are always initialized to the empty string.
+                # To avoid this messing up awk's field counting, we require
+                # a dash to fill in the black.
+                if (initial_value == "-") {
+                    string_defaults[next_int_opt] = "";
+                } else {
+                    printf("ERROR: bad string default<%s>\n", $0);
+                }
+                next_string_opt++;
+            } else {
+                printf("ERROR: line with unknown type: <%s>\n", $0);
+            }
+        } else {
+            printf("ERROR: line with %d fields: <%s>\n", NF, $0);
+        }
+    }
+END {
+        switch_type_name = "optimization_option";
+        switch_var_name = "OptOption";
+        record_type_name = "opt_tuple";
+        record_var_name = "OptTuple";
+
+        for (i = 0; i < next_bool_opt; i++) {
+            printf(":- type maybe_%s\n", bool_field_names[i]);
+            printf("    --->    %s\n", bool_field_names[i]);
+            printf("    ;       do_not_%s.\n", bool_field_names[i]);
+        }
+
+        printf("\n%%---------------------%%\n\n");
+
+        printf(":- type %s\n", switch_type_name);
+        for (i = 0; i < next_bool_opt; i++) {
+            prefix=";";
+            suffix="";
+
+            if (i == 0)
+                prefix = "--->";
+
+            printf("%-4s%-4s%-4soo_%s(bool)%s\n",
+                "", prefix, "", bool_field_names[i], suffix);
+        }
+        for (i = 0; i < next_int_opt; i++) {
+            prefix=";";
+            suffix="";
+            printf("%-4s%-4s%-4soo_%s(int)%s\n", "",
+                prefix, "", int_field_names[i], suffix);
+        }
+        for (i = 0; i < next_string_opt; i++) {
+            prefix=";";
+            suffix="";
+
+            printf("%-4s%-4s%-4soo_%s(string)%s\n",
+                "", prefix, "", string_field_names[i], suffix);
+        }
+        printf("%-4s%-4s%-4soo_opt_level(int)\n", "", prefix, "");
+        printf("%-4s%-4s%-4soo_opt_for_space.\n", "", prefix, "");
+
+        printf("\n%%---------------------%%\n\n");
+
+        printf(":- type %s\n", record_type_name);
+        printf("%-4s--->%-4s%s(\n", "", "", record_type_name);
+        for (i = 0; i < next_bool_opt; i++) {
+            suffix = ",";
+            printf("%-16sot_%-26s :: maybe_%s%s\n",
+                "", bool_field_names[i], bool_field_names[i], suffix);
+        }
+        for (i = 0; i < next_int_opt; i++) {
+            suffix = ",";
+            printf("%-16sot_%-26s :: int%s\n", "", int_field_names[i], suffix);
+        }
+        for (i = 0; i < next_string_opt; i++) {
+            suffix = ",";
+            if (i == next_string_opt-1)
+                suffix = "";
+
+            printf("%-16sot_%-26s :: string%s\n",
+                "", string_field_names[i], suffix);
+        }
+        printf("%-12s).\n", "");
+
+        printf("\n");
+        printf(":- pred process_optimization_options(option_table::in,\n");
+        printf("%-4slist(%s)::in, %s::out) is det.\n",
+            "", switch_type_name, record_type_name);
+
+        printf("\n");
+        printf("%%---------------------------------------------------------------------------%%\n");
+        printf("\n");
+
+        printf(":- implementation.\n");
+
+        printf("\n");
+        printf(":- import_module int.\n");
+
+        printf("\n%%---------------------%%\n\n");
+
+        printf("process_optimization_options(OptionTable, OptOptions, !:OptTuple) :-\n");
+        printf("%-4s!:OptTuple = init_opt_tuple,\n", "");
+        printf("%-4slist.foldl2(update_opt_tuple(OptionTable), OptOptions,\n", "");
+        printf("%-8s!OptTuple, not_seen_opt_level, MaybeSeenOptLevel),\n", "");
+        printf("%-4s(\n", "");
+        printf("%-8sMaybeSeenOptLevel = not_seen_opt_level,\n", "");
+        printf("%-8sDefaultOptLevel = %d,\n", "", default_opt_level);
+        printf("%-8sset_opts_upto_level(OptionTable, 0, DefaultOptLevel,\n",
+            "");
+        printf("%-12s!OptTuple, MaybeSeenOptLevel, _)\n", "");
+        printf("%-4s;\n", "");
+        printf("%-8sMaybeSeenOptLevel = seen_opt_level\n", "");
+        printf("%-4s).\n", "");
+
+        printf("\n%%---------------------%%\n");
+
+        printf("\n");
+        printf(":- func init_opt_tuple = %s.\n\n", record_type_name);
+
+        printf("init_opt_tuple = %s(\n", record_type_name);
+        for (i = 0; i < next_bool_opt; i++) {
+            printf("%-8s%s,\n", "", bool_defaults[i]);
+        }
+        for (i = 0; i < next_int_opt; i++) {
+            printf("%-8s%s,\n", "", int_defaults[i]);
+        }
+        for (i = 0; i < next_string_opt; i++) {
+            suffix = ",";
+            if (i == next_string_opt-1) {
+                suffix = "";
+            }
+            printf("%-8s%s%s\n", "", "\"\"", suffix);
+        }
+        printf("%-4s).\n", "");
+
+        printf("\n%%---------------------%%\n");
+
+        printf("\n");
+        printf(":- type maybe_seen_opt_level\n");
+        printf("%-4s%-8snot_seen_opt_level\n", "", "--->");
+        printf("%-4s%-8sseen_opt_level.\n", "", ";");
+
+        printf("\n");
+        printf(":- pred update_opt_tuple(option_table::in, %s::in,\n",
+            switch_type_name);
+        printf("%-4s%s::in, %s::out,\n",
+            "", record_type_name, record_type_name);
+        printf("%-4smaybe_seen_opt_level::in, maybe_seen_opt_level::out) is det.\n", "");
+        printf("\n");
+
+        printf("update_opt_tuple(OptionTable, %s, !%s, !MaybeSeenOptLevel) :-\n",
+            switch_var_name, record_var_name);
+        printf("%-4srequire_complete_switch [%s]\n", "", switch_var_name);
+        lparen_or_semi = "(";
+        for (i = 0; i < next_bool_opt; i++) {
+            printf("%-4s%s\n", "", lparen_or_semi);
+            lparen_or_semi = ";";
+            printf("%-8s%s = oo_%s(Bool),\n", "", switch_var_name, bool_field_names[i]);
+            printf("%-8sOldValue = !.%s ^ ot_%s,\n",
+                "", record_var_name, bool_field_names[i]);
+            printf("%-8s( if\n", "");
+            if (bool_field_names[i] == "opt_delay_slot") {
+                printf("%-12sgetopt_io.lookup_bool_option(OptionTable, have_delay_slot, yes),\n",
+                    "");
+            }
+            printf("%-12sBool = yes\n", "");
+            printf("%-8sthen\n", "");
+            printf("%-12s(\n", "");
+            printf("%-16sOldValue = do_not_%s,\n", "", bool_field_names[i]);
+            printf("%-16s!%s ^ ot_%s := %s\n",
+                "", record_var_name, bool_field_names[i], bool_field_names[i]);
+            printf("%-12s;\n", "");
+            printf("%-16sOldValue = %s\n", "", bool_field_names[i]);
+            printf("%-12s)\n", "");
+            printf("%-8selse\n", "");
+            printf("%-12s(\n", "");
+            printf("%-16sOldValue = do_not_%s\n", "", bool_field_names[i]);
+            printf("%-12s;\n", "");
+            printf("%-16sOldValue = %s,\n", "", bool_field_names[i]);
+            printf("%-16s!%s ^ ot_%s := do_not_%s\n",
+                "", record_var_name, bool_field_names[i], bool_field_names[i]);
+            printf("%-12s)\n", "");
+            printf("%-8s)\n", "");
+        }
+        for (i = 0; i < next_int_opt; i++) {
+            printf("%-4s%s\n", "", lparen_or_semi);
+            lparen_or_semi = ";";
+            printf("%-8s%s = oo_%s(N),\n",
+                "", switch_var_name, int_field_names[i]);
+            printf("%-8sOldN = !.%s ^ ot_%s,\n",
+                "", record_var_name, int_field_names[i]);
+            printf("%-8s!%s ^ ot_%s := int.max(OldN, N)\n",
+                "", record_var_name, int_field_names[i]);
+        }
+        for (i = 0; i < next_string_opt; i++) {
+            printf("%-4s%s\n", "", lparen_or_semi);
+            lparen_or_semi = ";";
+            printf("%-8s%s = oo_%s(Str),\n",
+                "", switch_var_name, string_field_names[i]);
+            printf("%-8s!%s ^ ot_%s := Str\n",
+                "", record_var_name, string_field_names[i]);
+        }
+        printf("%-4s%s\n", "", lparen_or_semi);
+        lparen_or_semi = ";";
+        printf("%-8s%s = oo_opt_level(OptLevel),\n", "", switch_var_name);
+        printf("%-8sset_opts_upto_level(OptionTable, 0, OptLevel, !%s, !.MaybeSeenOptLevel, _),\n",
+            "", record_var_name);
+        printf("%-8s!:MaybeSeenOptLevel = seen_opt_level\n", "");
+
+        printf("%-4s%s\n", "", lparen_or_semi);
+        printf("%-8s%s = oo_opt_for_space,\n", "", switch_var_name);
+        printf("%-8sset_opts_for_space(!%s)\n", "", record_var_name);
+        printf("%-4s).\n", "");
+
+        # The code from here to the end of the script generates code
+        # that should be included in the special_handler predicate in options.m.
+
+        handler_file = "handler_file";
+        arm_start = "(";
+        for (i = 0; i < next_bool_opt; i++) {
+            printf("%-8s%s\n", "", arm_start) > handler_file;
+            arm_start = ";";
+            printf("%-12sOption = optopt_%s,\n",
+                "", bool_opts[i]) > handler_file;
+            printf("%-12sSpecialData = bool(Bool),\n", "") > handler_file;
+            printf("%-12sOptOption = oo_%s(Bool)\n",
+                "", bool_field_names[i]) > handler_file;
+        }
+        for (i = 0; i < next_int_opt; i++) {
+            printf("%-8s;\n", "") > handler_file;
+            printf("%-12sOption = optopt_%s,\n",
+                "", int_opts[i]) > handler_file;
+            printf("%-12sSpecialData = int(N),\n", "") > handler_file;
+            printf("%-12sOptOption = oo_%s(N)\n",
+                "", int_field_names[i]) > handler_file;
+        }
+        for (i = 0; i < next_string_opt; i++) {
+            printf("%-8s;\n", "") > handler_file;
+            printf("%-12sOption = optopt_%s,\n",
+                "", string_opts[i]) > handler_file;
+            printf("%-12sSpecialData = string(Str),\n", "") > handler_file;
+            printf("%-12sOptOption = oo_%s(Str)\n",
+                "", string_field_names[i]) > handler_file;
+        }
+
+        printf("%-8s;\n", "") > handler_file;
+        printf("%-12sOption = optopt_level,\n", "") > handler_file;
+        printf("%-12sSpecialData = string(N),\n", "") > handler_file;
+        printf("%-12sOptOption = oo_opt_level(N)\n", "") > handler_file;
+
+        printf("%-8s;\n", "") > handler_file;
+        printf("%-12sOption = optopt_space,\n", "") > handler_file;
+        printf("%-12sSpecialData = none,\n", "") > handler_file;
+        printf("%-12sOptOption = oo_opt_for_space\n", "") > handler_file;
+
+        printf("%-8s),\n", "") > handler_file;
+        printf("%-8scord.snoc(OptOption, !OptOptions)\n", "") > handler_file;
+    }

@@ -111,6 +111,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.layout_out.
@@ -787,10 +788,10 @@ construct_proc_traversal(Params, EntryLabel, Detism, NumStackSlots,
     ),
     StaticCodeAddr = Params ^ slp_static_code_addresses,
     (
-        StaticCodeAddr = yes,
+        StaticCodeAddr = use_static_code_addresses,
         MaybeEntryLabel = yes(EntryLabel)
     ;
-        StaticCodeAddr = no,
+        StaticCodeAddr = do_not_use_static_code_addresses,
         MaybeEntryLabel = no
     ),
     Traversal = proc_layout_stack_traversal(MaybeEntryLabel,
@@ -2492,7 +2493,7 @@ represent_determinism_rval(Detism,
                 slp_procid_stack_layout     :: bool,
 
                 % Do we have static code addresses or unboxed floats?
-                slp_static_code_addresses   :: bool,
+                slp_static_code_addresses   :: maybe_use_static_code_addresses,
                 slp_unboxed_floats          :: have_unboxed_floats,
 
                 % Do we have unboxed 64-bit integer types?
@@ -2506,24 +2507,24 @@ represent_determinism_rval(Detism,
 
 init_stack_layout_params(ModuleInfo) = Params :-
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, common_layout_data, CommonLayoutData),
-    globals.lookup_int_option(Globals, layout_compression_limit,
-        CompressLimit),
+    globals.get_opt_tuple(Globals, OptTuple),
+    CommonLayoutData = OptTuple ^ ot_use_common_layout_data,
+    CompressLimit = OptTuple ^ ot_layout_compression_limit,
     globals.get_trace_level(Globals, TraceLevel),
     globals.get_trace_suppress(Globals, TraceSuppress),
     globals.lookup_bool_option(Globals, profile_deep, DeepProfiling),
     globals.lookup_bool_option(Globals, agc_stack_layout, AgcLayout),
     globals.lookup_bool_option(Globals, trace_stack_layout, TraceLayout),
     globals.lookup_bool_option(Globals, procid_stack_layout, ProcIdLayout),
-    globals.lookup_bool_option(Globals, static_code_addresses, StaticCodeAddr),
+    StaticCodeAddr = OptTuple ^ ot_use_static_code_addresses,
     globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloatOpt),
     globals.lookup_bool_option(Globals, unboxed_int64s, UnboxedInt64sOpt),
     globals.lookup_bool_option(Globals, rtti_line_numbers, RttiLineNumbers),
     (
-        CommonLayoutData = no,
+        CommonLayoutData = do_not_use_common_layout_data,
         CompressArrays = no
     ;
-        CommonLayoutData = yes,
+        CommonLayoutData = use_common_layout_data,
         CompressArrays = yes(CompressLimit)
     ),
     (

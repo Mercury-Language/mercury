@@ -71,6 +71,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -106,14 +107,14 @@ specialize_higher_order(!ModuleInfo, !IO) :-
     % requests remaining.
 
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, optimize_higher_order, HigherOrder),
-    globals.lookup_bool_option(Globals, type_specialization, TypeSpec),
-    globals.lookup_bool_option(Globals, user_guided_type_specialization,
-        UserTypeSpec),
-    globals.lookup_int_option(Globals, higher_order_size_limit, SizeLimit),
-    globals.lookup_int_option(Globals, higher_order_arg_limit, ArgLimit),
-    Params = ho_params(HigherOrder, TypeSpec, UserTypeSpec, SizeLimit,
-        ArgLimit),
+    globals.get_opt_tuple(Globals, OptTuple),
+    HigherOrder = OptTuple ^ ot_opt_higher_order,
+    TypeSpec = OptTuple ^ ot_spec_types,
+    UserTypeSpec = OptTuple ^ ot_spec_types_user_guided,
+    SizeLimit = OptTuple ^ ot_higher_order_size_limit,
+    ArgLimit = OptTuple ^ ot_higher_order_arg_limit,
+    Params =
+        ho_params(HigherOrder, TypeSpec, UserTypeSpec, SizeLimit, ArgLimit),
     map.init(NewPredMap0),
     map.init(GoalSizes0),
     set.init(Requests0),
@@ -143,22 +144,26 @@ specialize_higher_order(!ModuleInfo, !IO) :-
                 NonUserSpecPredIdSet),
             set.to_sorted_list(NonUserSpecPredIdSet, NonUserSpecPredIds),
 
-            !GlobalInfo ^ hogi_params ^ param_do_user_type_spec := yes,
+            !GlobalInfo ^ hogi_params ^ param_do_user_type_spec
+                := spec_types_user_guided,
             list.foldl(get_specialization_requests, UserSpecPredIds,
                 !GlobalInfo),
             process_ho_spec_requests(!GlobalInfo, !IO)
         ),
 
-        bool.or_list([HigherOrder, TypeSpec, UserTypeSpec], AnySpec),
-        (
-            AnySpec = yes,
+        ( if
+            ( HigherOrder = opt_higher_order
+            ; TypeSpec = spec_types
+            ; UserTypeSpec = spec_types_user_guided
+            )
+        then
             % Process all other specializations until no more requests
             % are generated.
             list.foldl(get_specialization_requests, NonUserSpecPredIds,
                 !GlobalInfo),
             recursively_process_ho_spec_requests(!GlobalInfo, !IO)
-        ;
-            AnySpec = no
+        else
+            true
         ),
 
         % Remove the predicates which were used to force the production of
@@ -352,13 +357,13 @@ recursively_process_ho_spec_requests(!GlobalInfo, !IO) :-
 :- type ho_params
     --->    ho_params(
                 % Propagate higher-order constants.
-                param_do_higher_order_spec  :: bool,
+                param_do_higher_order_spec  :: maybe_opt_higher_order,
 
                 % Propagate type-info constants.
-                param_do_type_spec          :: bool,
+                param_do_type_spec          :: maybe_spec_types,
 
                 % User-guided type specialization.
-                param_do_user_type_spec     :: bool,
+                param_do_user_type_spec     :: maybe_spec_types_user_guided,
 
                 % Size limit on requested version.
                 param_size_limit            :: int,
@@ -1013,10 +1018,24 @@ is_interesting_cons_id(Params, ConsId) = IsInteresting :-
         ; ConsId = type_info_const(_)
         ; ConsId = typeclass_info_const(_)
         ),
-        IsInteresting = Params ^ param_do_user_type_spec
+        UserTypeSpec = Params ^ param_do_user_type_spec,
+        (
+            UserTypeSpec = spec_types_user_guided,
+            IsInteresting = yes
+        ;
+            UserTypeSpec = do_not_spec_types_user_guided,
+            IsInteresting = no
+        )
     ;
         ConsId = closure_cons(_, _),
-        IsInteresting = Params ^ param_do_higher_order_spec
+        HigherOrder = Params ^ param_do_higher_order_spec,
+        (
+            HigherOrder = opt_higher_order,
+            IsInteresting = yes
+        ;
+            HigherOrder = do_not_opt_higher_order,
+            IsInteresting = no
+        )
     ).
 
     % Process a higher-order call to see if it could possibly be specialized.
@@ -1513,7 +1532,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
             IsUserSpecProc = yes
         ;
             !.Info ^ hoi_global_info ^ hogi_params ^ param_do_user_type_spec
-                = yes,
+                = spec_types_user_guided,
             lookup_var_types(VarTypes, Args0, ArgTypes),
 
             % Check whether any typeclass constraints now match an instance.
@@ -1763,7 +1782,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
         TypeSpec = Params ^ param_do_type_spec,
         UserTypeSpec = Params ^ param_do_user_type_spec,
         (
-            UserTypeSpec = yes,
+            UserTypeSpec = spec_types_user_guided,
             IsUserSpecProc = yes
         ;
             module_info_pred_info(ModuleInfo, CalledPred, CalledPredInfo),
@@ -1773,7 +1792,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
                 % to call the class methods for a specific instance. Without
                 % this, user-specified specialized versions of class methods
                 % won't be called.
-                UserTypeSpec = yes,
+                UserTypeSpec = spec_types_user_guided,
                 pred_info_get_markers(CalledPredInfo, Markers),
                 (
                     check_marker(Markers, marker_class_method)
@@ -1781,11 +1800,11 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
                     check_marker(Markers, marker_class_instance_method)
                 )
             ;
-                HigherOrder = yes,
+                HigherOrder = opt_higher_order,
                 list.member(HOArg, HigherOrderArgs),
                 HOArg ^ hoa_cons_id = closure_cons(_, _)
             ;
-                TypeSpec = yes
+                TypeSpec = spec_types
             )
         )
     then
@@ -1946,7 +1965,7 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
         not check_marker(Markers, marker_class_method),
         not check_marker(Markers, marker_class_instance_method),
         (
-            Params ^ param_do_type_spec = no
+            Params ^ param_do_type_spec = do_not_spec_types
         ;
             pred_info_is_imported(CalleePredInfo)
         )

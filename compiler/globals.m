@@ -22,6 +22,7 @@
 :- interface.
 
 :- import_module libs.op_mode.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
@@ -279,7 +280,7 @@
 % Access predicates for the `globals' structure.
 %
 
-:- pred globals_init(option_table::in, op_mode::in,
+:- pred globals_init(option_table::in, opt_tuple::in, op_mode::in,
     compilation_target::in, gc_method::in,
     termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
@@ -289,6 +290,7 @@
     limit_error_contexts_map::in, globals::out) is det.
 
 :- pred get_options(globals::in, option_table::out) is det.
+:- pred get_opt_tuple(globals::in, opt_tuple::out) is det.
 :- pred get_op_mode(globals::in, op_mode::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
 :- pred get_gc_method(globals::in, gc_method::out) is det.
@@ -315,6 +317,7 @@
 :- pred set_option(option::in, option_data::in, globals::in, globals::out)
     is det.
 :- pred set_options(option_table::in, globals::in, globals::out) is det.
+:- pred set_opt_tuple(opt_tuple::in, globals::in, globals::out) is det.
 :- pred set_op_mode(op_mode::in, globals::in, globals::out) is det.
 :- pred set_gc_method(gc_method::in, globals::in, globals::out) is det.
 :- pred set_trace_level(trace_level::in, globals::in, globals::out) is det.
@@ -725,6 +728,7 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
 :- type globals
     --->    globals(
                 g_options                   :: option_table,
+                g_opt_tuple                 :: opt_tuple,
                 g_op_mode                   :: op_mode,
                 g_trace_suppress_items      :: trace_suppress_items,
                 g_reuse_strategy            :: reuse_strategy,
@@ -748,18 +752,19 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
                 g_target_env_type           :: env_type
             ).
 
-globals_init(Options, OpMode, Target, GC_Method,
+globals_init(Options, OptTuple, OpMode, Target, GC_Method,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedback, HostEnvType, SystemEnvType,
         TargetEnvType, FileInstallCmd, LimitErrorContextsMap, Globals) :-
-    Globals = globals(Options, OpMode, TraceSuppress,
+    Globals = globals(Options, OptTuple, OpMode, TraceSuppress,
         ReuseStrategy, MaybeFeedback, FileInstallCmd, LimitErrorContextsMap,
         C_CompilerType, CSharp_CompilerType, Target, GC_Method,
         TerminationNorm, Termination2Norm, TraceLevel, SSTraceLevel,
         MaybeThreadSafe, HostEnvType, SystemEnvType, TargetEnvType).
 
 get_options(Globals, Globals ^ g_options).
+get_opt_tuple(Globals, Globals ^ g_opt_tuple).
 get_op_mode(Globals, Globals ^ g_op_mode).
 get_target(Globals, Globals ^ g_target).
 get_gc_method(Globals, Globals ^ g_gc_method).
@@ -790,6 +795,9 @@ set_option(Option, OptionData, !Globals) :-
 
 set_options(Options, !Globals) :-
     !Globals ^ g_options := Options.
+
+set_opt_tuple(OptTuple, !Globals) :-
+    !Globals ^ g_opt_tuple := OptTuple.
 
 set_op_mode(OpMode, !Globals) :-
     !Globals ^ g_op_mode := OpMode.
@@ -1018,8 +1026,8 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
 %---------------------------------------------------------------------------%
 
 globals_init_mutables(Globals, !IO) :-
-    globals.lookup_int_option(Globals, from_ground_term_threshold,
-        FromGroundTermThreshold),
+    globals.get_opt_tuple(Globals, OptTuple),
+    FromGroundTermThreshold = OptTuple ^ ot_from_ground_term_threshold,
     set_maybe_from_ground_term_threshold(yes(FromGroundTermThreshold), !IO).
 
 get_maybe_from_ground_term_threshold = MaybeThreshold :-

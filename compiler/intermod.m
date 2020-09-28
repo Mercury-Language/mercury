@@ -228,6 +228,7 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.lp_rational.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module libs.polyhedron.
 :- import_module mdbcomp.
@@ -285,11 +286,10 @@ write_initial_opt_file(TmpOptStream, ModuleInfo, IntermodInfo,
 
 decide_what_to_opt_export(ModuleInfo, !:IntermodInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_int_option(Globals, intermod_inline_simple_threshold,
-        Threshold),
-    globals.lookup_bool_option(Globals, deforestation, Deforestation),
-    globals.lookup_int_option(Globals, higher_order_size_limit,
-        HigherOrderSizeLimit),
+    globals.get_opt_tuple(Globals, OptTuple),
+    Threshold = OptTuple ^ ot_intermod_inline_simple_threshold,
+    HigherOrderSizeLimit = OptTuple ^ ot_higher_order_size_limit,
+    Deforest = OptTuple ^ ot_deforest,
 
     module_info_get_valid_pred_ids(ModuleInfo, RealPredIds),
     module_info_get_assertion_table(ModuleInfo, AssertionTable),
@@ -297,34 +297,35 @@ decide_what_to_opt_export(ModuleInfo, !:IntermodInfo) :-
     PredIds = AssertPredIds ++ RealPredIds,
 
     init_intermod_info(ModuleInfo, !:IntermodInfo),
-    gather_opt_export_preds(PredIds, yes, Threshold,
-        HigherOrderSizeLimit, Deforestation, !IntermodInfo),
+    gather_opt_export_preds(PredIds, yes, Threshold, HigherOrderSizeLimit,
+        Deforest, !IntermodInfo),
     gather_opt_export_instances(!IntermodInfo),
     gather_opt_export_types(!IntermodInfo).
 
 %---------------------------------------------------------------------------%
 
 :- pred gather_opt_export_preds(list(pred_id)::in, bool::in, int::in, int::in,
-    bool::in, intermod_info::in, intermod_info::out) is det.
+    maybe_deforest::in, intermod_info::in, intermod_info::out) is det.
 
 gather_opt_export_preds(AllPredIds, CollectTypes,
-        InlineThreshold, HigherOrderSizeLimit, Deforestation, !IntermodInfo) :-
+        InlineThreshold, HigherOrderSizeLimit, Deforest, !IntermodInfo) :-
     % First gather exported preds.
     ProcessLocalPreds = no,
     gather_opt_export_preds_in_list(AllPredIds, ProcessLocalPreds,
-        CollectTypes, InlineThreshold, HigherOrderSizeLimit, Deforestation,
+        CollectTypes, InlineThreshold, HigherOrderSizeLimit, Deforest,
         !IntermodInfo),
 
     % Then gather preds used by exported preds (recursively).
     set.init(ExtraExportedPreds0),
     gather_opt_export_preds_fixpoint(ExtraExportedPreds0, CollectTypes,
-        InlineThreshold, HigherOrderSizeLimit, Deforestation, !IntermodInfo).
+        InlineThreshold, HigherOrderSizeLimit, Deforest, !IntermodInfo).
 
 :- pred gather_opt_export_preds_fixpoint(set(pred_id)::in, bool::in,
-    int::in, int::in, bool::in, intermod_info::in, intermod_info::out) is det.
+    int::in, int::in, maybe_deforest::in,
+    intermod_info::in, intermod_info::out) is det.
 
 gather_opt_export_preds_fixpoint(ExtraExportedPreds0, CollectTypes,
-        InlineThreshold, HigherOrderSizeLimit, Deforestation, !IntermodInfo) :-
+        InlineThreshold, HigherOrderSizeLimit, Deforest, !IntermodInfo) :-
     intermod_info_get_pred_decls(!.IntermodInfo, ExtraExportedPreds),
     NewlyExportedPreds = set.to_sorted_list(
         set.difference(ExtraExportedPreds, ExtraExportedPreds0)),
@@ -334,19 +335,20 @@ gather_opt_export_preds_fixpoint(ExtraExportedPreds0, CollectTypes,
         NewlyExportedPreds = [_ | _],
         ProcessLocalPreds = yes,
         gather_opt_export_preds_in_list(NewlyExportedPreds, ProcessLocalPreds,
-            CollectTypes, InlineThreshold, HigherOrderSizeLimit, Deforestation,
+            CollectTypes, InlineThreshold, HigherOrderSizeLimit, Deforest,
             !IntermodInfo),
         gather_opt_export_preds_fixpoint(ExtraExportedPreds, CollectTypes,
-            InlineThreshold, HigherOrderSizeLimit, Deforestation,
+            InlineThreshold, HigherOrderSizeLimit, Deforest,
             !IntermodInfo)
     ).
 
 :- pred gather_opt_export_preds_in_list(list(pred_id)::in, bool::in, bool::in,
-    int::in, int::in, bool::in, intermod_info::in, intermod_info::out) is det.
+    int::in, int::in, maybe_deforest::in,
+    intermod_info::in, intermod_info::out) is det.
 
 gather_opt_export_preds_in_list([], _, _, _, _, _, !IntermodInfo).
 gather_opt_export_preds_in_list([PredId | PredIds], ProcessLocalPreds,
-        CollectTypes, InlineThreshold, HigherOrderSizeLimit, Deforestation,
+        CollectTypes, InlineThreshold, HigherOrderSizeLimit, Deforest,
         !IntermodInfo) :-
     intermod_info_get_module_info(!.IntermodInfo, ModuleInfo),
     module_info_get_preds(ModuleInfo, PredTable),
@@ -359,7 +361,7 @@ gather_opt_export_preds_in_list([PredId | PredIds], ProcessLocalPreds,
         vartypes_is_empty(ExplicitVarTypes),
         should_opt_export_pred(ModuleInfo, PredId, PredInfo,
             ProcessLocalPreds, TypeSpecForcePreds, InlineThreshold,
-            HigherOrderSizeLimit, Deforestation)
+            HigherOrderSizeLimit, Deforest)
     then
         SavedIntermodInfo = !.IntermodInfo,
         % Write a declaration to the `.opt' file for
@@ -397,14 +399,15 @@ gather_opt_export_preds_in_list([PredId | PredIds], ProcessLocalPreds,
         true
     ),
     gather_opt_export_preds_in_list(PredIds, ProcessLocalPreds, CollectTypes,
-        InlineThreshold, HigherOrderSizeLimit, Deforestation, !IntermodInfo).
+        InlineThreshold, HigherOrderSizeLimit, Deforest, !IntermodInfo).
 
 :- pred should_opt_export_pred(module_info::in, pred_id::in, pred_info::in,
-    bool::in, set(pred_id)::in, int::in, int::in, bool::in) is semidet.
+    bool::in, set(pred_id)::in, int::in, int::in, maybe_deforest::in)
+    is semidet.
 
 should_opt_export_pred(ModuleInfo, PredId, PredInfo, ProcessLocalPreds,
         TypeSpecForcePreds, InlineThreshold, HigherOrderSizeLimit,
-        Deforestation) :-
+        Deforest) :-
     (
         ProcessLocalPreds = no,
         ( pred_info_is_exported(PredInfo)
@@ -421,14 +424,15 @@ should_opt_export_pred(ModuleInfo, PredId, PredInfo, ProcessLocalPreds,
     ;
         may_opt_export_pred(PredId, PredInfo, TypeSpecForcePreds),
         opt_exporting_pred_is_likely_worthwhile(ModuleInfo, PredId, PredInfo,
-            InlineThreshold, HigherOrderSizeLimit, Deforestation)
+            InlineThreshold, HigherOrderSizeLimit, Deforest)
     ).
 
 :- pred opt_exporting_pred_is_likely_worthwhile(module_info::in,
-    pred_id::in, pred_info::in, int::in, int::in, bool::in) is semidet.
+    pred_id::in, pred_info::in, int::in, int::in, maybe_deforest::in)
+    is semidet.
 
 opt_exporting_pred_is_likely_worthwhile(ModuleInfo, PredId, PredInfo,
-        InlineThreshold, HigherOrderSizeLimit, Deforestation) :-
+        InlineThreshold, HigherOrderSizeLimit, Deforest) :-
     pred_info_get_clauses_info(PredInfo, ClauseInfo),
     clauses_info_get_clauses_rep(ClauseInfo, ClausesRep, _ItemNumbers),
     get_clause_list_maybe_repeated(ClausesRep, Clauses),
@@ -449,7 +453,7 @@ opt_exporting_pred_is_likely_worthwhile(ModuleInfo, PredId, PredInfo,
         clause_list_size(Clauses, GoalSize),
         GoalSize =< HigherOrderSizeLimit + Arity
     ;
-        Deforestation = yes,
+        Deforest = deforest,
         % Double the inline-threshold since goals we want to deforest
         % will have at least two disjuncts. This allows one simple goal
         % in each disjunct. The disjunction adds one to the goal size,

@@ -170,6 +170,8 @@
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.rtti_out.
+:- import_module libs.
+:- import_module libs.optimization_options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
@@ -734,7 +736,7 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
             StaticGroundFloats = Info ^ lout_static_ground_floats,
             ( if
                 UnboxedFloat = no,
-                StaticGroundFloats = yes
+                StaticGroundFloats = use_static_ground_floats
             then
                 float_literal_name(FloatVal, FloatName),
                 FloatLabel = decl_float_label(FloatName),
@@ -759,7 +761,7 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
             StaticGroundInt64s = Info ^ lout_static_ground_int64s,
             ( if
                 UnboxedInt64s = no,
-                StaticGroundInt64s = yes
+                StaticGroundInt64s = use_static_ground_int64s
             then
                 Int64Label = decl_int64_label(Int64Val),
                 ( if decl_set_is_member(Int64Label, !.DeclSet) then
@@ -784,7 +786,7 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
             StaticGroundInt64s = Info ^ lout_static_ground_int64s,
             ( if
                 UnboxedInt64s = no,
-                StaticGroundInt64s = yes
+                StaticGroundInt64s = use_static_ground_int64s
             then
                 UInt64Label = decl_uint64_label(UInt64Val),
                 ( if decl_set_is_member(UInt64Label, !.DeclSet) then
@@ -846,7 +848,7 @@ output_record_rval_decls_format(Info, Rval, FirstIndent, LaterIndent,
             StaticGroundFloats = Info ^ lout_static_ground_floats,
             ( if
                 UnboxFloat = no,
-                StaticGroundFloats = yes,
+                StaticGroundFloats = use_static_ground_floats,
                 float_const_binop_expr_name(Op, SubRvalA, SubRvalB, FloatName)
             then
                 FloatLabel = decl_float_label(FloatName),
@@ -1704,7 +1706,7 @@ output_float_rval(Info, Rval, IsPtr, !IO) :-
     StaticGroundFloats = Info ^ lout_static_ground_floats,
     ( if
         UnboxFloat = no,
-        StaticGroundFloats = yes,
+        StaticGroundFloats = use_static_ground_floats,
         float_const_expr_name(Rval, FloatName)
     then
         (
@@ -1758,7 +1760,7 @@ output_int64_rval(Info, Rval, IsPtr, !IO) :-
     StaticGroundInt64s = Info ^ lout_static_ground_int64s,
     ( if
         UnboxInt64s = no,
-        StaticGroundInt64s = yes,
+        StaticGroundInt64s = use_static_ground_int64s,
         int64_const_expr_name(Rval, Int64Name)
     then
         (
@@ -1812,7 +1814,7 @@ output_uint64_rval(Info, Rval, IsPtr, !IO) :-
     StaticGroundInt64s = Info ^ lout_static_ground_int64s,
     ( if
         UnboxInt64s = no,
-        StaticGroundInt64s = yes,
+        StaticGroundInt64s = use_static_ground_int64s,
         uint64_const_expr_name(Rval, UInt64Name)
     then
         (

@@ -83,6 +83,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.int_emu.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -244,7 +245,7 @@ simplify_goal_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo,
                 Common0, Common, !Info),
             ( if
                 MaybeAssignsGoalExpr = yes(AssignsGoalExpr),
-                OptDuplicateCalls = yes
+                OptDuplicateCalls = opt_dup_calls
             then
                 GoalExpr = AssignsGoalExpr
             else
@@ -315,7 +316,7 @@ simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo,
                 GoalExpr1, MaybeAssignsGoalExpr, !Common, !Info),
             ( if
                 MaybeAssignsGoalExpr = yes(AssignsGoalExpr),
-                OptDuplicateCalls = yes
+                OptDuplicateCalls = opt_dup_calls
             then
                 GoalExpr = AssignsGoalExpr
             else
@@ -931,7 +932,7 @@ simplify_look_for_duplicate_call(PredId, ProcId, Args, GoalExpr0, GoalInfo0,
             GoalExpr0, MaybeAssignsGoalExpr0, Common0, Common, !Info),
         ( if
             MaybeAssignsGoalExpr0 = yes(_AssignsGoalExpr0),
-            OptDupCalls = yes
+            OptDupCalls = opt_dup_calls
         then
             MaybeAssignsGoalExpr = MaybeAssignsGoalExpr0
         else

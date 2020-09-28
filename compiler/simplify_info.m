@@ -26,6 +26,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.vartypes.
 :- import_module libs.
+:- import_module libs.optimization_options.
 :- import_module libs.trace_params.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
@@ -215,8 +216,8 @@
     % Succeed if either warn_duplicate_calls or opt_duplicate_calls is set,
     % and return whether opt_duplicate_calls is set.
     %
-:- pred simplify_do_warn_or_opt_duplicate_calls(simplify_info::in, bool::out)
-    is semidet.
+:- pred simplify_do_warn_or_opt_duplicate_calls(simplify_info::in,
+    maybe_opt_dup_calls::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -647,22 +648,22 @@ simplify_do_after_front_end(Info) :-
     SimplifyTasks ^ do_after_front_end = yes.
 simplify_do_excess_assign(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_excess_assign = yes.
+    SimplifyTasks ^ do_excess_assign = elim_excess_assigns.
 simplify_do_test_after_switch(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_test_after_switch = yes.
+    SimplifyTasks ^ do_test_after_switch = opt_test_after_switch.
 simplify_do_elim_removable_scopes(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_elim_removable_scopes = yes.
 simplify_do_opt_duplicate_calls(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_opt_duplicate_calls = yes.
+    SimplifyTasks ^ do_opt_duplicate_calls = opt_dup_calls.
 simplify_do_const_prop(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_constant_prop = yes.
+    SimplifyTasks ^ do_constant_prop = prop_constants.
 simplify_do_common_struct(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_common_struct = yes.
+    SimplifyTasks ^ do_common_struct = opt_common_structs.
 simplify_do_extra_common_struct(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_extra_common_struct = yes.
@@ -681,7 +682,7 @@ simplify_do_warn_or_opt_duplicate_calls(Info, OptDuplicateCalls) :-
     WarnDuplicateCalls = SimplifyTasks ^ do_warn_duplicate_calls,
     OptDuplicateCalls = SimplifyTasks ^ do_opt_duplicate_calls,
     ( WarnDuplicateCalls = yes
-    ; OptDuplicateCalls = yes
+    ; OptDuplicateCalls = opt_dup_calls
     ).
 
 %---------------------------------------------------------------------------%

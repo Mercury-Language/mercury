@@ -119,6 +119,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.call_gen.
@@ -165,8 +166,8 @@ tuple_arguments(!ModuleInfo, !IO) :-
     % we have already read in this file, and if we have, then avoid reading
     % it in again.
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_string_option(Globals, tuple_trace_counts_file,
-        TraceCountsFile),
+    globals.get_opt_tuple(Globals, OptTuple),
+    TraceCountsFile = OptTuple ^ ot_tuple_trace_counts_file,
     ( if TraceCountsFile = "" then
         report_warning(Globals, "Warning: --tuple requires " ++
             "--tuple-trace-counts-file to work.\n", !IO)
@@ -196,16 +197,13 @@ warn_trace_counts_error(Globals, TraceCountsFile, Reason, !IO) :-
 tuple_arguments_with_trace_counts(!ModuleInfo, TraceCounts0) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     % We use the same cost options as for the stack optimisation.
-    globals.lookup_int_option(Globals,
-        optimize_saved_vars_cell_cv_load_cost, CellVarLoadCost),
-    globals.lookup_int_option(Globals,
-        optimize_saved_vars_cell_cv_store_cost, CellVarStoreCost),
-    globals.lookup_int_option(Globals,
-        optimize_saved_vars_cell_fv_load_cost, FieldVarLoadCost),
-    globals.lookup_int_option(Globals,
-        optimize_saved_vars_cell_fv_store_cost, FieldVarStoreCost),
-    globals.lookup_int_option(Globals, tuple_costs_ratio, CostsRatio),
-    globals.lookup_int_option(Globals, tuple_min_args, MinArgsToTuple),
+    globals.get_opt_tuple(Globals, OptTuple),
+    CellVarLoadCost = OptTuple ^ ot_opt_svcell_cv_load_cost,
+    CellVarStoreCost = OptTuple ^ ot_opt_svcell_cv_store_cost,
+    FieldVarLoadCost = OptTuple ^ ot_opt_svcell_fv_load_cost,
+    FieldVarStoreCost = OptTuple ^ ot_opt_svcell_fv_store_cost,
+    CostsRatio = OptTuple ^ ot_tuple_costs_ratio,
+    MinArgsToTuple = OptTuple ^ ot_tuple_min_args,
     % These are the costs for untupled variables. We just assume it is
     % the lesser of the cell and field variable costs (usually the field
     % variable costs should be smaller).
