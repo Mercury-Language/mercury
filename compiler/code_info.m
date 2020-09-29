@@ -813,26 +813,19 @@ set_used_env_vars(X, !CI) :-
 
 :- func variable_name(code_info, prog_var) = string.
 
+:- type for_call_or_closure
+    --->    for_immediate_call
+    ;       for_closure.
+
     % Create a code address which holds the address of the specified procedure.
-    % The fourth argument should be `no' if the caller wants the
-    % returned address to be valid from everywhere in the program.
-    % If being valid from within the current procedure is enough,
-    % this argument should be `yes' wrapped around the value of the
-    % --procs-per-c-function option and the current procedure id.
-    % Using an address that is only valid from within the current
-    % procedure may make jumps more efficient.
+    % The fourth argument should be `for_immediate_call' if the caller
+    % will use the returned address only to construct calls from the
+    % current procedure, and `for_closure' if the returned address is
+    % to be put into a closure. (These are the only circumstances in which
+    % this predicate is called.)
     %
-    % If the procs_per_c_function option tells us to put more than one
-    % procedure into each C function, but not all procedures in the module
-    % are in one function, then we would like to be able to use the
-    % fast form of reference to a procedure for references not only from
-    % within the same procedure but also from other procedures within
-    % the same C function. However, at the time of code generation,
-    % we do not yet know which procedures will be put into the same
-    % C functions, and so we cannot do this.
-    %
-:- func make_proc_entry_label(code_info, module_info, pred_id, proc_id, bool)
-    = code_addr.
+:- func make_proc_entry_label(code_info, module_info, pred_id, proc_id,
+    for_call_or_closure) = code_addr.
 
     % Generate the next local label in sequence.
     %
@@ -976,20 +969,21 @@ variable_name(CI, Var) = Name :-
 
 %---------------------------------------------------------------------------%
 
-make_proc_entry_label(CI, ModuleInfo, PredId, ProcId, Immed0) = CodeAddr :-
+make_proc_entry_label(CI, ModuleInfo, PredId, ProcId, CallOrClosure)
+        = CodeAddr :-
     (
-        Immed0 = no,
-        Immed = no
+        CallOrClosure = for_closure,
+        ForFromWhere = for_from_everywhere
     ;
-        Immed0 = yes,
+        CallOrClosure = for_immediate_call,
         get_globals(CI, Globals),
         globals.get_opt_tuple(Globals, OptTuple),
-        ProcsPerFunc = OptTuple ^ ot_procs_per_c_function,
+        UseJustOneCFunc = OptTuple ^ ot_use_just_one_c_func,
         get_pred_id(CI, CurPredId),
         get_proc_id(CI, CurProcId),
-        Immed = yes(ProcsPerFunc - proc(CurPredId, CurProcId))
+        ForFromWhere = for_from_proc(UseJustOneCFunc, CurPredId, CurProcId)
     ),
-    CodeAddr = make_entry_label(ModuleInfo, PredId, ProcId, Immed).
+    CodeAddr = make_entry_label(ModuleInfo, PredId, ProcId, ForFromWhere).
 
 get_next_label(Label, !CI) :-
     get_proc_label(!.CI, ProcLabel),

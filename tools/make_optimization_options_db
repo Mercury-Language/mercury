@@ -117,6 +117,7 @@ int    4000 layout_compression_limit
 bool   n    use_macro_for_redo_fail                        
 bool   n    emit_c_loops                                   
 int    1    procs_per_c_function                           
+bool   n    everything_in_one_c_function                   use_just_one_c_func
 bool   y    local_thread_engine_base                       use_local_thread_engine_base
 bool   n    erlang_switch_on_strings_as_atoms              switch_on_strings_as_atoms
 bool   n    inline_alloc

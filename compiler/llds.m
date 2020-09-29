@@ -1498,7 +1498,6 @@
     --->    have_static_code_addresses
     ;       do_not_have_static_code_addresses.
 
-
 :- type exprn_opts
     --->    exprn_opts(
                 non_local_gotos         :: have_non_local_gotos,

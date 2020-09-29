@@ -1557,7 +1557,7 @@ output_du_ptag_ordered_table_body(RttiTypeCtor,
 :- func make_code_addr(rtti_proc_label) = code_addr.
 
 make_code_addr(ProcLabel) =
-    make_entry_label_from_rtti(ProcLabel, no).
+    make_entry_label_from_rtti(ProcLabel, for_from_everywhere).
 
 %-----------------------------------------------------------------------------%
 

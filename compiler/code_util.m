@@ -21,6 +21,8 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module libs.
+:- import_module libs.optimization_options.
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -36,18 +38,29 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Create a code address which holds the address of the specified procedure.
-    % The `immed' argument should be `no' if the caller wants the returned
-    % address to be valid from everywhere in the program. If being valid from
-    % within the current procedure is enough, this argument should be `yes'
-    % wrapped around the value of the --procs-per-c-function option and the
-    % current procedure id. Using an address that is only valid from within
-    % the current procedure may make jumps more efficient.
-    %
-:- type immed == maybe(pair(int, pred_proc_id)).
-:- func make_entry_label(module_info, pred_id, proc_id, immed) = code_addr.
+:- type for_from_where
+    --->    for_from_everywhere
+    ;       for_from_proc(maybe_use_just_one_c_func, pred_id, proc_id).
 
-:- func make_entry_label_from_rtti(rtti_proc_label, immed) = code_addr.
+    % Create a code address which holds the address of the specified procedure.
+    % The `for_from_where' argument should be `for_from_everywhere'
+    % if the caller wants the returned address to be valid from everywhere
+    % in the program. If being valid from within a specified procedure
+    % (the current procedure) is enough, this argument should be
+    % `for_from_proc' wrapped around the value of the use_just_one_c_func
+    % option and the current procedure id. Using an address that is
+    % only valid from within the current procedure may make jumps faster.
+    %
+    % Note that we cannot take advantage of situations in which the caller
+    % and the callee are in the same C module even though use_just_one_c_func
+    % is not set, because what procedures end up in the same C module
+    % is decided only long after the LLDS has been constructed.
+    %
+:- func make_entry_label(module_info, pred_id, proc_id, for_from_where)
+    = code_addr.
+
+:- func make_entry_label_from_rtti(rtti_proc_label, for_from_where)
+    = code_addr.
 
     % Create a label which holds the address of the specified procedure,
     % which must be defined in the current module (procedures that are
@@ -55,7 +68,8 @@
     % not as labels, since their address is not known at C compilation time).
     % The fourth argument has the same meaning as for make_entry_label.
     %
-:- func make_local_entry_label(module_info, pred_id, proc_id, immed) = label.
+:- func make_local_entry_label(module_info, pred_id, proc_id, for_from_where)
+    = label.
 
     % Create a label internal to a Mercury procedure.
     %
@@ -123,11 +137,11 @@
 
 %---------------------------------------------------------------------------%
 
-make_entry_label(ModuleInfo, PredId, ProcId, Immed) = ProcAddr :-
+make_entry_label(ModuleInfo, PredId, ProcId, ForFromWhere) = ProcAddr :-
     RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
-    ProcAddr = make_entry_label_from_rtti(RttiProcLabel, Immed).
+    ProcAddr = make_entry_label_from_rtti(RttiProcLabel, ForFromWhere).
 
-make_entry_label_from_rtti(RttiProcLabel, Immed) = ProcAddr :-
+make_entry_label_from_rtti(RttiProcLabel, ForFromWhere) = ProcAddr :-
     ProcIsImported = RttiProcLabel ^ rpl_proc_is_imported,
     (
         ProcIsImported = yes,
@@ -135,20 +149,21 @@ make_entry_label_from_rtti(RttiProcLabel, Immed) = ProcAddr :-
         ProcAddr = code_imported_proc(ProcLabel)
     ;
         ProcIsImported = no,
-        Label = make_local_entry_label_from_rtti(RttiProcLabel, Immed),
+        Label = make_local_entry_label_from_rtti(RttiProcLabel, ForFromWhere),
         ProcAddr = code_label(Label)
     ).
 
-make_local_entry_label(ModuleInfo, PredId, ProcId, Immed) = Label :-
+make_local_entry_label(ModuleInfo, PredId, ProcId, ForFromWhere) = Label :-
     RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
-    Label = make_local_entry_label_from_rtti(RttiProcLabel, Immed).
+    Label = make_local_entry_label_from_rtti(RttiProcLabel, ForFromWhere).
 
-:- func make_local_entry_label_from_rtti(rtti_proc_label, immed) = label.
+:- func make_local_entry_label_from_rtti(rtti_proc_label, for_from_where)
+    = label.
 
-make_local_entry_label_from_rtti(RttiProcLabel, Immed) = Label :-
+make_local_entry_label_from_rtti(RttiProcLabel, ForFromWhere) = Label :-
     ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
     (
-        Immed = no,
+        ForFromWhere = for_from_everywhere,
         % If we want to define the label or use it to put it into a data
         % structure, a label that is usable only within the current C module
         % won't do.
@@ -162,23 +177,25 @@ make_local_entry_label_from_rtti(RttiProcLabel, Immed) = Label :-
         ),
         Label = entry_label(EntryType, ProcLabel)
     ;
-        Immed = yes(ProcsPerFunc - proc(CurPredId, CurProcId)),
-        Label = choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
+        ForFromWhere = for_from_proc(MaybeUseJustOneFunc,
+            CurPredId, CurProcId),
+        Label = choose_local_label_type(MaybeUseJustOneFunc,
+            CurPredId, CurProcId,
             RttiProcLabel ^ rpl_pred_id, RttiProcLabel ^ rpl_proc_id,
             ProcLabel)
     ).
 
-:- func choose_local_label_type(int, pred_id, proc_id, pred_id, proc_id,
-        proc_label) = label.
+:- func choose_local_label_type(maybe_use_just_one_c_func,
+    pred_id, proc_id, pred_id, proc_id, proc_label) = label.
 
-choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
+choose_local_label_type(MaybeUseJustOneFunc, CurPredId, CurProcId,
         PredId, ProcId, ProcLabel) = Label :-
     ( if
         % If we want to branch to the label now, we prefer a form that is
         % usable only within the current C module, since it is likely to be
         % faster.
         (
-            ProcsPerFunc = 0
+            MaybeUseJustOneFunc = use_just_one_c_func
         ;
             PredId = CurPredId,
             ProcId = CurProcId

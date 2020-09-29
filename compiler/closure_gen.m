@@ -237,7 +237,8 @@ generate_new_closure_from_old(Var, CallPred, CallArgs, GoalInfo, Code,
 
 generate_closure_from_scratch(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         Var, Args, GoalInfo, Code, !CI, !CLD) :-
-    CodeAddr = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId, no),
+    CodeAddr = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId,
+        for_closure),
     ProcLabel = extract_proc_label_from_code_addr(CodeAddr),
     CodeAddrRval = const(llconst_code_addr(CodeAddr)),
     continuation_info.generate_closure_layout( ModuleInfo, PredId, ProcId,

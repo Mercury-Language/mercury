@@ -687,12 +687,13 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
 
     % Split the code up into bite-size chunks for the C compiler.
     globals.get_opt_tuple(Globals, OptTuple),
-    ProcsPerFunc = OptTuple ^ ot_procs_per_c_function,
-    ( if ProcsPerFunc = 0 then
-        % ProcsPerFunc = 0 really means infinity -
-        % we store all the procs in a single function.
+    JustOneCFunc = OptTuple ^ ot_use_just_one_c_func,
+    (
+        JustOneCFunc = use_just_one_c_func,
         ChunkedModules = [comp_gen_c_module(CModuleName, Procs)]
-    else
+    ;
+        JustOneCFunc = do_not_use_just_one_c_func,
+        ProcsPerFunc = OptTuple ^ ot_procs_per_c_function,
         list.chunk(Procs, ProcsPerFunc, ChunkedProcs),
         combine_chunks(ChunkedProcs, CModuleName, ChunkedModules)
     ),

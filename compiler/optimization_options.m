@@ -272,6 +272,9 @@
 :- type maybe_emit_c_loops
     --->    emit_c_loops
     ;       do_not_emit_c_loops.
+:- type maybe_use_just_one_c_func
+    --->    use_just_one_c_func
+    ;       do_not_use_just_one_c_func.
 :- type maybe_use_local_thread_engine_base
     --->    use_local_thread_engine_base
     ;       do_not_use_local_thread_engine_base.
@@ -369,6 +372,7 @@
     ;       oo_opt_reassign(bool)
     ;       oo_use_macro_for_redo_fail(bool)
     ;       oo_emit_c_loops(bool)
+    ;       oo_use_just_one_c_func(bool)
     ;       oo_use_local_thread_engine_base(bool)
     ;       oo_switch_on_strings_as_atoms(bool)
     ;       oo_inline_alloc(bool)
@@ -499,6 +503,7 @@
                 ot_opt_reassign               :: maybe_opt_reassign,
                 ot_use_macro_for_redo_fail    :: maybe_use_macro_for_redo_fail,
                 ot_emit_c_loops               :: maybe_emit_c_loops,
+                ot_use_just_one_c_func        :: maybe_use_just_one_c_func,
                 ot_use_local_thread_engine_base :: maybe_use_local_thread_engine_base,
                 ot_switch_on_strings_as_atoms :: maybe_switch_on_strings_as_atoms,
                 ot_inline_alloc               :: maybe_inline_alloc,
@@ -654,6 +659,7 @@ init_opt_tuple = opt_tuple(
         do_not_opt_reassign,
         do_not_use_macro_for_redo_fail,
         do_not_emit_c_loops,
+        do_not_use_just_one_c_func,
         use_local_thread_engine_base,
         do_not_switch_on_strings_as_atoms,
         do_not_inline_alloc,
@@ -2337,6 +2343,26 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
             )
         )
     ;
+        OptOption = oo_use_just_one_c_func(Bool),
+        OldValue = !.OptTuple ^ ot_use_just_one_c_func,
+        ( if
+            Bool = yes
+        then
+            (
+                OldValue = do_not_use_just_one_c_func,
+                !OptTuple ^ ot_use_just_one_c_func := use_just_one_c_func
+            ;
+                OldValue = use_just_one_c_func
+            )
+        else
+            (
+                OldValue = do_not_use_just_one_c_func
+            ;
+                OldValue = use_just_one_c_func,
+                !OptTuple ^ ot_use_just_one_c_func := do_not_use_just_one_c_func
+            )
+        )
+    ;
         OptOption = oo_use_local_thread_engine_base(Bool),
         OldValue = !.OptTuple ^ ot_use_local_thread_engine_base,
         ( if
@@ -2921,11 +2947,11 @@ opts_enabled_at_level(6, [
     % even if they increase compilation time to completely unreasonable
     % levels.
     %
-    % Currently this sets `everything_in_one_c_function', which causes
-    % the compiler to put everything in the one C function and treat calls
-    % to predicates in the same module as local. We also enable inlining
-    % of GC_malloc(), redo(), and fail().
-    oo_procs_per_c_function(999999),
+    % Currently this sets `use_just_one_c_func', which causes the compiler
+    % to put everything in the one C function and treat calls to predicates
+    % in the same module as local. We also enable inlining of GC_malloc(),
+    % redo(), and fail().
+    oo_use_just_one_c_func(yes),
     oo_inline_alloc(yes),
     oo_use_macro_for_redo_fail(yes)
 ]).

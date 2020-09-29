@@ -116,7 +116,8 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI, !CLD) :-
     % Make the call. Note that the construction of CallCode will be moved
     % *after* the code that computes ReturnLiveLvalues.
     get_module_info(!.CI, ModuleInfo),
-    Address = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId, yes),
+    Address = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId,
+        for_immediate_call),
     get_next_label(ReturnLabel, !CI),
     call_gen.call_comment(!.CI, PredId, CodeModel, CallComment),
     Context = goal_info_get_context(GoalInfo),

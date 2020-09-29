@@ -3293,10 +3293,6 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             ]),
             !:OptOptions = !.OptOptions ++ InlineOpts
         ;
-            Option = everything_in_one_c_function,
-            SpecialData = none,
-            cord.snoc(oo_procs_per_c_function(0), !OptOptions)
-        ;
             Option = reclaim_heap_on_failure,
             SpecialData = bool(Reclaim),
             map.set(reclaim_heap_on_semidet_failure, bool(Reclaim),
@@ -3943,6 +3939,10 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             Option = optopt_procs_per_c_function,
             SpecialData = int(N),
             OptOption = oo_procs_per_c_function(N)
+        ;
+            Option = everything_in_one_c_function,
+            SpecialData = none,
+            OptOption = oo_use_just_one_c_func(yes)
         ;
             Option = optopt_tuple_trace_counts_file,
             SpecialData = string(Str),

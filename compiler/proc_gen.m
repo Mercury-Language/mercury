@@ -458,7 +458,8 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         % Create the procedure layout structure.
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
         get_layout_info(CodeInfo, InternalMap),
-        EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
+        EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId,
+            for_from_everywhere),
         proc_info_get_eval_method(ProcInfo, EvalMethod),
         proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
         proc_info_get_headvars(ProcInfo, HeadVars),
@@ -964,7 +965,8 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, ProcFrameSlots,
     get_pred_id(CI, PredId),
     get_proc_id(CI, ProcId),
     get_module_info(CI, ModuleInfo),
-    EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
+    EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId,
+        for_from_everywhere),
     LabelCode = singleton(
         llds_instr(label(EntryLabel), "Procedure entry point")
     ),
@@ -1308,7 +1310,8 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 
     ModuleName = sym_name_to_string_sep(ModuleSymName, "__"),
 
-    EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId, no),
+    EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId,
+        for_from_everywhere),
 
     PredName = pred_info_name(PredInfo),
     proc_id_to_int(ProcId, ProcNum),

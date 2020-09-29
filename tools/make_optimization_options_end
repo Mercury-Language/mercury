@@ -122,11 +122,11 @@ opts_enabled_at_level(6, [
     % even if they increase compilation time to completely unreasonable
     % levels.
     %
-    % Currently this sets `everything_in_one_c_function', which causes
-    % the compiler to put everything in the one C function and treat calls
-    % to predicates in the same module as local. We also enable inlining
-    % of GC_malloc(), redo(), and fail().
-    oo_procs_per_c_function(999999),
+    % Currently this sets `use_just_one_c_func', which causes the compiler
+    % to put everything in the one C function and treat calls to predicates
+    % in the same module as local. We also enable inlining of GC_malloc(),
+    % redo(), and fail().
+    oo_use_just_one_c_func(yes),
     oo_inline_alloc(yes),
     oo_use_macro_for_redo_fail(yes)
 ]).

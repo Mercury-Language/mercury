@@ -88,7 +88,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -734,7 +733,8 @@ make_proc_label_hash_define(ModuleInfo, PredId, ProcId,
 :- func make_proc_label_string(module_info, pred_id, proc_id) = string.
 
 make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
-    CodeAddr = make_entry_label(ModuleInfo, PredId, ProcId, no),
+    CodeAddr = make_entry_label(ModuleInfo, PredId, ProcId,
+        for_from_everywhere),
     ( if CodeAddr = code_imported_proc(ProcLabel) then
         ProcLabelString = proc_label_to_c_string(ProcLabel, yes)
     else if CodeAddr = code_label(Label) then
