@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-1998,2000, 2003, 2005-2006 The University of Melbourne.
-% Copyright (C) 2014, 2018 The Mercury team.
+% Copyright (C) 2014, 2018, 2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %-----------------------------------------------------------------------------%
 %
@@ -38,7 +38,7 @@
     --->    tcl_ok
     ;       tcl_error.
 
-    % mtcltk.main(Callback, Args):
+    % main(Callback, Args):
     %   first initializes a Tcl interpreter `Interp' using `Args';
     %       the first `Arg' should be the program name (which you
     %       can obtain using io.progname), and the remainder
@@ -50,17 +50,17 @@
 :- pred mtcltk.main(pred(tcl_interp, io, io)::(pred(in, di, uo) is det),
     list(string)::in, io::di, io::uo) is det.
 
-    % mtcltk.eval(Interp, Command, Status, Result):
+    % eval(Interp, Command, Status, Result):
     %   evaluates `Command' in `Interp'.
     %   if successful, returns `Status = tcl_ok'
     %   and binds `Result' to the return string,
     %   otherwise returns `Status = tcl_error'
     %   and binds `Result' to the error message.
     %
-:- pred mtcltk.eval(tcl_interp::in, string::in, tcl_status::out, string::out,
-    io::di, io::uo) is det. 
+:- pred eval(tcl_interp::in, string::in, tcl_status::out, string::out,
+    io::di, io::uo) is det.
 
-    % mtcltk.create_command(Interp, Name, Command).
+    % create_command(Interp, Name, Command):
     %   creates a new Tcl command called `Name' in `Interp'.
     %   Whenever `Name' is evaluated as a Tcl command in `Interp',
     %   the Tcl interpreter will use
@@ -73,16 +73,16 @@
     %   `Status = tcl_error' and should bind `Result' to an
     %   appropriate error message.
     %
-:- pred mtcltk.create_command(tcl_interp::in, string::in,
+:- pred create_command(tcl_interp::in, string::in,
     pred(tcl_interp, list(string), tcl_status, string, io, io)
     ::(pred(in, in, out, out, di, uo) is det), io::di, io::uo) is det.
 
-    % mtcltk.delete_command(Interp, Name, Result).
-    %   
+    % delete_command(Interp, Name, Result):
+    %
     % Deletes the Tcl/Tk command called in `Name' in `Interp' and
     % returns `Result'.
     %
-:- pred mtcltk.delete_command(tcl_interp::in, string::in, tcl_status::out,
+:- pred delete_command(tcl_interp::in, string::in, tcl_status::out,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -93,7 +93,7 @@
 :- pragma foreign_type("C", tcl_interp, "Tcl_Interp *").
 
 :- pragma foreign_decl("C", "
-/* 
+/*
 ** tkAppInit.c --
 **
 **  Provides a default version of the Tcl_AppInit procedure for
@@ -115,16 +115,6 @@
 #endif
 ").
 
-/*
-** The following variable is a special hack that is needed in order for
-** Sun shared libraries to be used for Tcl.
-*/
-
-:- pragma foreign_code("C", "
-    extern int matherr(void);
-    int *tclDummyMathPtr = (int *) matherr;
-").
-
 :- pragma foreign_decl("C", "
     extern MR_Word mtcltk_mercury_initializer;
     extern char *mtcltk_strdup(const char *str);
@@ -135,7 +125,7 @@
 ").
 
 :- pragma foreign_proc("C",
-    mtcltk.main(Closure::pred(in, di, uo) is det, Args::in, IO0::di, IO::uo), 
+    main(Closure::pred(in, di, uo) is det, Args::in, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure], "
 {
     MR_Word l;
@@ -157,13 +147,12 @@
     for (i = 0, l = Args; l != MR_list_empty(); l = MR_list_tail(l), i++) {
         argv[i] = (char *) MR_list_head(l);
     }
-    
+
     argv[i] = NULL;
 
     mtcltk_mercury_initializer = Closure;
 
     Tk_Main(argc, argv, Tcl_AppInit);
-    IO = IO0;
 }").
 
 :- pragma foreign_export("C",
@@ -199,11 +188,11 @@ Tcl_AppInit(Tcl_Interp *interp)
     if (Tcl_Init(interp) == TCL_ERROR) {
         return TCL_ERROR;
     }
-    
+
     if (Tk_Init(interp) == TCL_ERROR) {
         return TCL_ERROR;
     }
-    
+
     Tcl_StaticPackage(interp, tk_str, Tk_Init,
         (Tcl_PackageInitProc *) NULL);
 
@@ -215,28 +204,27 @@ Tcl_AppInit(Tcl_Interp *interp)
     % XXX Had to change Status to RStatus because using Status
     % resulted in *parse errors* in gcc :-(
 :- pragma foreign_proc("C",
-    eval(Interp::in, Cmd::in, RStatus::out, Result::out, IO0::di, IO::uo), 
+    eval(Interp::in, Cmd::in, RStatus::out, Result::out, _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure],
 "
     int err;
 
     err = Tcl_Eval(Interp, (char *)Cmd);
-    
+
     switch (err) {
         case TCL_OK:
             RStatus = 0;
             break;
-        
+
         case TCL_ERROR:
             RStatus = 1;
             break;
-        
+
         default:
             MR_fatal_error(""Tcl_Eval returned neither TCL_OK or TCL_ERROR"");
     }
-    
+
     Result = mtcltk_strdup(Interp->result);
-    IO = IO0;
 ").
 
 :- pragma foreign_code("C", "
@@ -263,10 +251,10 @@ mtcltk_strdup(const char *str)
     pred(tcl_interp, list(string), tcl_status, string, io, io)
     ::(pred(in, in, out, out, di, uo) is det), tcl_interp::in,
     list(string)::in, tcl_status::out, string::out, io::di, io::uo)
-    is det. 
+    is det.
 call_mercury_closure(Closure, Interp, Args, Status, Result, !IO) :-
     Closure(Interp, Args, Status, Result, !IO).
-    
+
     % NOTE: CONST is defined in tcl.h.
     %
 :- pragma foreign_decl("C", "
@@ -292,7 +280,7 @@ mtcltk_do_callback(ClientData clientData, Tcl_Interp *interp,
     */
     args = MR_list_empty();
     for (i = argc - 1; i >= 0; i--) {
-        args = MR_list_cons((MR_Word) mtcltk_strdup(argv[i]), 
+        args = MR_list_cons((MR_Word) mtcltk_strdup(argv[i]),
             (MR_Word) args);
     }
 
@@ -302,7 +290,7 @@ mtcltk_do_callback(ClientData clientData, Tcl_Interp *interp,
     fprintf(stderr, ""mercury result: `%s'\n"", interp->result);
 */
     return (mtcltk_tcl_status_ok(status) ? TCL_OK : TCL_ERROR);
-}  
+}
 
 ").
 
@@ -313,22 +301,20 @@ tcl_status_ok(tcl_ok).
 :- pragma foreign_proc("C",
     create_command(Interp::in, Name::in,
         Closure::pred(in, in, out, out, di, uo) is det,
-        IO0::di, IO::uo), 
+        _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure],
 "
     Tcl_CreateCommand(Interp, Name, mtcltk_do_callback,
         (ClientData)Closure, NULL);
-    IO = IO0;
 ").
 
 :- pragma foreign_proc("C",
-    delete_command(Interp::in, Name::in, Result::out, IO0::di, IO::uo),
-    [may_call_mercury, promise_pure], 
+    delete_command(Interp::in, Name::in, Result::out, _IO0::di, _IO::uo),
+    [may_call_mercury, promise_pure],
 "
     int err;
     err = Tcl_DeleteCommand(Interp, Name);
     Result = (err == 0 ? 0 : 1);
-    IO = IO0;
 ").
 
 :- pragma foreign_code("C", "
