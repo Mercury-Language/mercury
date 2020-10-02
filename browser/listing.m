@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2007, 2010-2011 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2020 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -86,14 +86,32 @@
     file_name::in, line_no::in, line_no::in, line_no::in, search_path::in,
     io::di, io::uo) is det.
 
+    % list_file_with_command(OutStrm, ErrStrm, FileName, FirstLine, LastLine,
+    %   MarkLine, Path, !IO):
+    %
+    % Like list_file, but invokes an external command to print the source
+    % listing. The command is passed the four arguments:
+    %
+    %   FileName, FirstLine, LastLine, MarkLine
+    %
+    % The command should print all the lines from the first to the last,
+    % both inclusive, with the current line marked (or highlighted) in
+    % some fashion to standard output, and report any errors to standard error.
+    %
+:- pred list_file_with_command(c_file_ptr::in, c_file_ptr::in, string::in,
+    file_name::in, line_no::in, line_no::in, line_no::in, search_path::in,
+    io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module bool.
 :- import_module dir.
 :- import_module int.
 :- import_module maybe.
+:- import_module string.
 :- import_module type_desc.
 
 %---------------------------------------------------------------------------%
@@ -122,6 +140,8 @@
     "ML_LISTING_pop_list_path").
 :- pragma foreign_export("C", list_file(in, in, in, in, in, in, in, di, uo),
     "ML_LISTING_list_file").
+:- pragma foreign_export("C", list_file_with_command(in, in, in, in, in, in,
+    in, in, di, uo), "ML_LISTING_list_file_with_command").
 
 :- func listing_type = type_desc.
 :- pragma foreign_export("C", listing_type = out, "ML_LISTING_listing_type").
@@ -158,34 +178,41 @@ list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
         io.open_input(FileName, Result0, !IO),
         (
             Result0 = ok(InStream),
-            InStrm = mercury_stream_to_c_FILE_star(InStream),
+            InStrm = mercury_stream_to_c_file_ptr(InStream),
             print_lines_in_range_c(InStrm, OutStrm, 1, FirstLine, LastLine,
                 MarkLine, !IO),
             io.close_input(InStream, !IO)
         ;
             Result0 = error(Error),
             ErrorMsg = io.error_message(Error),
-            write_to_c_file(ErrStrm, "mdb: cannot open file ", !IO),
-            write_to_c_file(ErrStrm, FileName, !IO),
-            write_to_c_file(ErrStrm, ": ", !IO),
-            write_to_c_file(ErrStrm, ErrorMsg, !IO),
-            write_to_c_file(ErrStrm, "\n", !IO)
+            write_to_c_file(ErrStrm,
+                string.format("mdb: cannot open file %s: %s\n",
+                    [s(FileName), s(ErrorMsg)]), !IO)
         )
     else
         find_and_open_file([dir.this_directory | Path], FileName, Result, !IO),
         (
             Result = yes(InStream),
-            InStrm = mercury_stream_to_c_FILE_star(InStream),
+            InStrm = mercury_stream_to_c_file_ptr(InStream),
             print_lines_in_range_c(InStrm, OutStrm, 1, FirstLine, LastLine,
                 MarkLine, !IO),
             io.close_input(InStream, !IO)
         ;
             Result = no,
-            write_to_c_file(ErrStrm, "mdb: cannot find file ", !IO),
-            write_to_c_file(ErrStrm, FileName, !IO),
-            write_to_c_file(ErrStrm, "\n", !IO)
+            write_to_c_file(ErrStrm,
+                string.format("mdb: cannot find file %s\n",
+                    [s(FileName)]), !IO)
         )
     ).
+
+:- func mercury_stream_to_c_file_ptr(io.input_stream) = c_file_ptr.
+
+:- pragma foreign_proc("C",
+    mercury_stream_to_c_file_ptr(InStream::in) = (InStrm::out),
+    [promise_pure, thread_safe, will_not_call_mercury],
+"
+    InStrm = MR_file(*(MR_unwrap_input_stream(InStream)));
+").
 
 :- pred write_to_c_file(c_file_ptr::in, string::in, io::di, io::uo) is det.
 
@@ -233,6 +260,54 @@ list_file_portable(OutStrm, ErrStrm, FileName, FirstLine, LastLine,
 
 %---------------------------------------------------------------------------%
 
+list_file_with_command(OutStrm, ErrStrm, Command, FileName, FirstLine,
+        LastLine, MarkLine, Path, !IO) :-
+    LineArgs = [string.from_int(FirstLine), string.from_int(LastLine),
+        string.from_int(MarkLine)],
+    ( if dir.path_name_is_absolute(FileName) then
+        FindResult = yes(FileName)
+    else
+        find_file([dir.this_directory | Path], FileName, FindResult, !IO)
+    ),
+    (
+        FindResult = yes(FoundFileName),
+        execute_command(OutStrm, ErrStrm, Command, [FoundFileName | LineArgs],
+            CallResult, !IO),
+        (
+            CallResult = ok
+        ;
+            CallResult = error(Error),
+            write_to_c_file(ErrStrm,
+                string.format("mdb: %s: %s\n", [s(Command), s(Error)]), !IO)
+        )
+    ;
+        FindResult = no,
+        write_to_c_file(ErrStrm,
+            string.format("mdb: cannot find file %s\n", [s(FileName)]), !IO)
+    ).
+
+:- pred execute_command(c_file_ptr::in, c_file_ptr::in, string::in,
+    list(string)::in, maybe_error::out, io::di, io::uo) is det.
+
+execute_command(_OutStrm, _ErrStrm, Command, Args, Result, !IO) :-
+    % XXX use posix_spawn to avoid shell meta characters
+    % XXX use posix_spawn to redirect 1>OutStrm 2>ErrStrm
+    CommandString = string.join_list(" ", [Command | Args]),
+    io.call_system(CommandString, CallResult, !IO),
+    (
+        CallResult = ok(ExitStatus),
+        ( if ExitStatus = 0 then
+            Result = ok
+        else
+            Result = error("exit status " ++ string.from_int(ExitStatus))
+        )
+    ;
+        CallResult = error(Error),
+        Result = error(io.error_message(Error))
+    ).
+
+%---------------------------------------------------------------------------%
+
     % Search for the first file with the given name on the search path
     % that we can open for reading and return the complete file name
     % (including the path component) and input stream handle.
@@ -251,14 +326,38 @@ find_and_open_file([Dir | Path], FileName, Result, !IO) :-
         find_and_open_file(Path, FileName, Result, !IO)
     ).
 
-:- func mercury_stream_to_c_FILE_star(io.input_stream) = c_file_ptr.
+:- pred find_file(search_path::in, file_name::in, maybe(file_name)::out,
+    io::di, io::uo) is det.
 
-:- pragma foreign_proc("C",
-    mercury_stream_to_c_FILE_star(InStream::in) = (InStrm::out),
-    [promise_pure, thread_safe, will_not_call_mercury],
-"
-    InStrm = MR_file(*(MR_unwrap_input_stream(InStream)));
-").
+find_file([], _, no, !IO).
+find_file([Dir | Path], FileName0, Result, !IO) :-
+    FileName = Dir / FileName0,
+    FollowSymLinks = yes,
+    io.file_type(FollowSymLinks, FileName, FileTypeRes, !IO),
+    (
+        FileTypeRes = ok(FileType),
+        (
+            ( FileType = regular_file
+            ; FileType = symbolic_link
+            ; FileType = named_pipe
+            ; FileType = socket
+            ; FileType = character_device
+            ; FileType = block_device
+            ; FileType = message_queue
+            ; FileType = semaphore
+            ; FileType = shared_memory
+            ; FileType = unknown
+            ),
+            Result = yes(FileName)
+        ;
+            FileType = directory,
+            % It is debatable whether we should continue searching.
+            find_file(Path, FileName0, Result, !IO)
+        )
+    ;
+        FileTypeRes = error(_),
+        find_file(Path, FileName0, Result, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 

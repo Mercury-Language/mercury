@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2007 The University of Melbourne.
-// Copyright (C) 2017-2018 The Mercury team.
+// Copyright (C) 2017-2018, 2020 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module implements the mdb commands in the "parameter" category.
@@ -60,6 +60,8 @@ MR_bool                 MR_print_goal_paths = MR_TRUE;
 MR_Word                 MR_listing_path;
 
 MR_Unsigned             MR_num_context_lines = 2;
+
+char                    *MR_listing_cmd = NULL;
 
 MR_SpyWhen              MR_default_breakpoint_scope = MR_SPY_INTERFACE;
 
@@ -578,6 +580,38 @@ MR_trace_cmd_pop_list_dir(char **words, int word_count,
     MR_listing_path =
         MR_make_permanent(MR_listing_path,
             (MR_TypeInfo) ML_LISTING_listing_type());
+
+    return KEEP_INTERACTING;
+}
+
+MR_Next
+MR_trace_cmd_list_cmd(char **words, int word_count,
+    MR_TraceCmdInfo *cmd, MR_EventInfo *event_info, MR_Code **jumpaddr)
+{
+    if (word_count == 2) {
+        if (MR_streq(words[1], "none")) {
+            MR_listing_cmd = NULL;
+        } else {
+            char    *copied_value;
+            char    *aligned_value;
+
+            copied_value = (char *) MR_GC_malloc(strlen(words[1]) + 1);
+            strcpy(copied_value, words[1]);
+            MR_TRACE_USE_HP(
+                MR_make_aligned_string(aligned_value, copied_value);
+            );
+            MR_listing_cmd = aligned_value;
+        }
+    } else if (word_count == 1) {
+        if (MR_listing_cmd != NULL && strlen(MR_listing_cmd) > 0) {
+            fprintf(MR_mdb_out, "The external listing command is %s\n",
+                MR_listing_cmd);
+        } else {
+            fprintf(MR_mdb_out, "No external listing command has been set.\n");
+        }
+    } else {
+        MR_trace_usage_cur_cmd();
+    }
 
     return KEEP_INTERACTING;
 }

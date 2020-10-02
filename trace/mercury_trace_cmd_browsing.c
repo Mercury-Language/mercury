@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2008,2010,2012 The University of Melbourne.
-// Copyright (C) 2017-2018 The Mercury team.
+// Copyright (C) 2017-2018, 2020 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module implements the mdb commands in the "browsing" category.
@@ -923,10 +923,18 @@ MR_trace_cmd_list(char **words, int word_count,
         MR_make_aligned_string(aligned_filename, (MR_String) filename);
     );
 
-    MR_TRACE_CALL_MERCURY(
-        ML_LISTING_list_file(MR_mdb_out, MR_mdb_err, (char *) aligned_filename,
-            lineno - num, lineno + num, lineno, MR_listing_path);
-    );
+    if (MR_listing_cmd != NULL && strlen(MR_listing_cmd) > 0) {
+        MR_TRACE_CALL_MERCURY(
+            ML_LISTING_list_file_with_command(MR_mdb_out, MR_mdb_err,
+                MR_listing_cmd, (char *) aligned_filename,
+                lineno - num, lineno + num, lineno, MR_listing_path);
+        );
+    } else {
+        MR_TRACE_CALL_MERCURY(
+            ML_LISTING_list_file(MR_mdb_out, MR_mdb_err, (char *) aligned_filename,
+                lineno - num, lineno + num, lineno, MR_listing_path);
+        );
+    }
 
     return KEEP_INTERACTING;
 }

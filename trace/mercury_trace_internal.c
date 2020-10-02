@@ -1556,6 +1556,8 @@ static const MR_TraceCmdTableEntry  MR_trace_command_table[] =
         NULL, MR_trace_null_completer },
     { "parameter", "pop_list_dir", MR_trace_cmd_pop_list_dir,
         NULL, MR_trace_null_completer },
+    { "parameter", "list_cmd", MR_trace_cmd_list_cmd,
+        NULL, MR_trace_null_completer },
     { "parameter", "fail_trace_counts", MR_trace_cmd_fail_trace_counts,
         NULL, MR_trace_filename_completer },
     { "parameter", "pass_trace_counts", MR_trace_cmd_pass_trace_counts,

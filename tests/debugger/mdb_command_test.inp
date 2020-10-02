@@ -75,6 +75,7 @@ list_context_lines   xyzzy xyzzy xyzzy xyzzy xyzzy
 list_path            xyzzy xyzzy xyzzy xyzzy xyzzy
 push_list_dir        xyzzy xyzzy xyzzy xyzzy xyzzy
 pop_list_dir         xyzzy xyzzy xyzzy xyzzy xyzzy
+list_cmd             xyzzy xyzzy xyzzy xyzzy xyzzy
 fail_trace_counts    xyzzy xyzzy xyzzy xyzzy xyzzy
 pass_trace_counts    xyzzy xyzzy xyzzy xyzzy xyzzy
 max_io_actions       xyzzy xyzzy xyzzy xyzzy xyzzy

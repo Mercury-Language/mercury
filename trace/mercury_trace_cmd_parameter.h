@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2007 The University of Melbourne.
-// Copyright (C) 2017-2018 The Mercury team.
+// Copyright (C) 2017-2018, 2020 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 #ifndef MERCURY_TRACE_CMD_PARAMETER_H
@@ -84,6 +84,8 @@ extern  void                MR_trace_listing_path_ensure_init(void);
 
 extern  MR_Unsigned         MR_num_context_lines;
 
+extern  char *              MR_listing_cmd;
+
 extern  MR_SpyWhen          MR_default_breakpoint_scope;
 
 extern  MR_TraceCmdFunc     MR_trace_cmd_mmc_options;
@@ -99,6 +101,7 @@ extern  MR_TraceCmdFunc     MR_trace_cmd_list_context_lines;
 extern  MR_TraceCmdFunc     MR_trace_cmd_list_path;
 extern  MR_TraceCmdFunc     MR_trace_cmd_push_list_dir;
 extern  MR_TraceCmdFunc     MR_trace_cmd_pop_list_dir;
+extern  MR_TraceCmdFunc     MR_trace_cmd_list_cmd;
 extern  MR_TraceCmdFunc     MR_trace_cmd_fail_trace_counts;
 extern  MR_TraceCmdFunc     MR_trace_cmd_pass_trace_counts;
 extern  MR_TraceCmdFunc     MR_trace_cmd_max_io_actions;

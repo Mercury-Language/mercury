@@ -4112,6 +4112,26 @@ on to the search path consulted by the @samp{list} command.
 Pops the leftmost (most recently pushed) directory
 from the search path consulted by the @samp{list} command.
 @sp 1
+@item list_cmd @var{ExternalCommand}
+@kindex list_cmd (mdb command)
+Tells mdb that all future @samp{list} commands should be handled by
+@var{ExternalCommand}.
+The command will be called with four arguments:
+the source file name,
+the first line number (counting from 1),
+the last line number,
+the current line number.
+The command should print all the lines from the first to the last,
+both inclusive, with the current line marked (or highlighted) in some fashion
+to standard output, and report any errors to standard error.
+@sp 1
+If @var{ExternalCommand} is @samp{none} then the @samp{list} command
+will revert to printing source listings internally.
+@sp 1
+@item list_cmd
+When invoked without arguments, the @samp{list_cmd} command
+prints the last value set by the @samp{list_cmd} command.
+@sp 1
 @item fail_trace_counts @var{filename}
 @kindex fail_trace_counts (mdb command)
 The declarative debugger can exploit information
