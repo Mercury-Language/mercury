@@ -11,7 +11,7 @@
 %
 % 07/13/01 hkrug@rationalizer.com:
 %        * only one toplevel window is created
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -90,7 +90,7 @@ make_calculator(Interp, Frame, !IO) :-
     label(Interp, [text("0"), relief("sunken")], Frame, AnsLab, !IO),
     pack(Interp, [pack(DisLab, [top, expand, fill_x]),
         pack(AnsLab, [top, expand, fill_x])], !IO),
-    
+
     frame(Interp, [], Frame, NumPad, !IO),
 
     button(Interp, [text(" 0 ")], NumPad, Zero,   !IO),
@@ -236,19 +236,19 @@ compute(num(_), _, _, _, _, _) :-
     error("shouldn't happen").
 compute(plus, Acc, [], 0, Acc, [plus(Acc)]).
 compute(plus, Acc, [Op | Ops], NewAcc, DispAcc, Stack) :-
-    ( 
+    (
         Op = times(Fac),
         compute(plus, Fac * Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = div(Fac),
         compute(plus, Fac // Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = plus(Sum),
         compute(plus, Sum + Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = minus(Sum),
         compute(plus, Sum - Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = mark,
         NewAcc = Acc,
         DispAcc = Acc,
@@ -256,19 +256,19 @@ compute(plus, Acc, [Op | Ops], NewAcc, DispAcc, Stack) :-
     ).
 compute(minus, Acc, [], 0, Acc, [minus(Acc)]).
 compute(minus, Acc, [Op | Ops], NewAcc, DispAcc, Stack) :-
-    ( 
+    (
         Op = times(Fac),
         compute(minus, Fac * Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = div(Fac),
         compute(minus, Fac // Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = plus(Sum),
         compute(minus, Sum + Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = minus(Sum),
         compute(minus, Sum - Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = mark,
         NewAcc = Acc,
         DispAcc = Acc,
@@ -276,23 +276,23 @@ compute(minus, Acc, [Op | Ops], NewAcc, DispAcc, Stack) :-
     ).
 compute(times, Acc, [], 0, Acc, [times(Acc)]).
 compute(times, Acc, [Op | Ops], NewAcc, DispAcc, Stack) :-
-    ( 
+    (
         Op = times(Fac),
         compute(times, Fac * Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = div(Fac),
         compute(times, Fac // Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = plus(_),
         NewAcc = 0,
         DispAcc = Acc,
         Stack = [times(Acc), Op | Ops]
-    ; 
+    ;
         Op = minus(_),
         NewAcc = 0,
         DispAcc = Acc,
         Stack = [times(Acc), Op | Ops]
-    ; 
+    ;
         Op = mark,
         NewAcc = Acc,
         DispAcc = Acc,
@@ -300,23 +300,23 @@ compute(times, Acc, [Op | Ops], NewAcc, DispAcc, Stack) :-
     ).
 compute(divide, Acc, [], 0, Acc, [div(Acc)]).
 compute(divide, Acc, [Op | Ops], NewAcc, DispAcc, Stack) :-
-    ( 
+    (
         Op = times(Fac),
         compute(divide, Fac * Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = div(Fac),
         compute(divide, Fac // Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = plus(_),
         NewAcc = 0,
         DispAcc = Acc,
         Stack = [div(Acc), Op | Ops]
-    ; 
+    ;
         Op = minus(_),
         NewAcc = 0,
         DispAcc = Acc,
         Stack = [div(Acc), Op | Ops]
-    ; 
+    ;
         Op = mark,
         NewAcc = Acc,
         DispAcc = Acc,
@@ -327,16 +327,16 @@ compute(equal, Acc, [Op | Ops], NewAcc, DispAcc, Stack) :-
     (
         Op = times(Fac),
         compute(equal, Fac * Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = div(Fac),
         compute(equal, Fac // Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = plus(Sum),
         compute(equal, Sum + Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = minus(Sum),
         compute(equal, Sum - Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = mark,
         NewAcc = Acc,
         DispAcc = Acc,
@@ -347,19 +347,19 @@ compute(dot, _, _, _, _, _) :-
 compute(lpar, Acc, Store, 0, Acc, [mark | Store]).
 compute(rpar, _Acc0, [], 0, 0, []). % error!
 compute(rpar, Acc, [Op | Ops], NewAcc, DispAcc, Stack) :-
-    ( 
+    (
         Op = times(Fac),
         compute(rpar, Fac*Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = div(Fac),
         compute(rpar, Fac//Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = plus(Sum),
         compute(rpar, Sum+Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = minus(Sum),
         compute(rpar, Sum-Acc, Ops, NewAcc, DispAcc, Stack)
-    ; 
+    ;
         Op = mark,
         NewAcc = Acc,
         DispAcc = Acc,
