@@ -119,8 +119,8 @@ MR_trace_help(void)
     MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
 
     MR_TRACE_CALL_MERCURY(
-        ML_HELP_print_top_level_help_nodes(MR_trace_help_system,
-            MR_wrap_output_stream(&mdb_out));
+        ML_HELP_print_top_level_help_nodes(MR_wrap_output_stream(&mdb_out),
+            MR_trace_help_system);
     );
 }
 
