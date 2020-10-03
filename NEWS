@@ -3,6 +3,31 @@ NEWS for Mercury 20.06.1
 
 This is a bug-fix release.
 
+* [Mantis bug #519]. We have deleted an old workaround from the Tcl/Tk
+  binding in the extras that causes linking errors with recent versions
+  of Tcl/Tk.
+
+* [Mantis bug #514]. We have fixed a bug that caused linking errors
+  in the deep profiling version of the Mercury runtime library when using
+  GCC with the `-fno-common` option.
+
+  Users of GCC 10 should note that `-fno-common` is now the default.
+
+* [Mantis bug #513]. We have fixed a bug that caused the compiler to
+  generate code that incorrectly reads variable values from the stack
+  in disjunctions.
+
+* [Github issue #90]. We have fixed a bug that the caused the compiler
+  to abort on code that used type classes in lambda expressions.
+
+* We have fixed a bug that caused the low-level C backend to incorrectly
+  place the contents of `foreign_code` pragmas after the contents of
+  `foreign_proc` pragmas in the generated C code.
+
+* We have fixed a bug with the debugger's `level` command where it would
+  report an error when invoked without any arguments instead of resetting
+  the current ancestor level to the level of the current event.
+
 
 NEWS for Mercury 20.06
 ======================
