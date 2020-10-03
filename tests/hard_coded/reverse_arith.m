@@ -6,14 +6,14 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module int.
 
-main -->
-    ( { X = 5, X = 2 * 2 } ->
-        io__write_string("yes\n")
-    ;
-        io__write_string("no\n")
+main(!IO) :-
+    ( if X = 5, X = 2 * 2 then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ).

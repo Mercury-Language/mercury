@@ -53,16 +53,16 @@ main(!IO) :-
 
     list.sort_and_remove_dups([Addr1, Addr2, Addr3, Addr4], Addrs),
     list.length(Addrs, NumAddrs),
-    (
+    ( if
         NumAddrs = 4
-    ->
+    then
         io.write_string("4 distinct addresses - no reuse detected\n", !IO)
-    ;
+    else if
         NumAddrs = 3,
         Addr2 = Addr3
-    ->
+    then
         io.write_string("3 distinct addresses - reuse detected\n", !IO)
-    ;
+    else
         io.write_string("unexpected addresses: ", !IO),
         io.write(Addrs, !IO),
         io.nl(!IO)
