@@ -126,17 +126,17 @@ Changes to the Mercury language
 Changes to the Mercury compiler
 -------------------------------
 
-* If a command line first enables an optimization (say opt1), and then
-  sets the optimization level to N with -O<N>, then the compiler will now
-  keep opt1 enabled even if opt1 is not normally enabled at optimization
-  level N.
+* If a command line first enables an optimization (say `opt1`), and then
+  sets the optimization level to `N` with `-O<N>`, then the compiler will now
+  keep `opt1` enabled even if `opt1` is not normally enabled at optimization
+  level `N`.
 
-Changes to the Mercury implementation
--------------------------------------
+Changes to the Mercury debugger
+-------------------------------
 
-* The `list` command in mdb (the Mercury debugger) may now call an external
-  command to print source listings; the command is set using `list_cmd`.
-  For example, the command could produce syntax highlighted source listings.
+* The `list` command may now call an external command to print source listings;
+  the command is set using `list_cmd`.  For example, the command could
+  produce syntax highlighted source listings.
 
 
 NEWS for Mercury 20.06.1
