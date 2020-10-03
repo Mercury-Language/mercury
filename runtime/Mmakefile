@@ -415,12 +415,19 @@ cs:	$(CFILES)
 
 .PHONY: tags
 tags:	$(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
-	ctags $(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
+	-ctags $(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
 
+# We ignore the exit status because we expect to get lots of messages
+# saying "Duplicate entry", due to the fact that many .h and .c files
+# have two or more definitions of the same macro or function. Even though
+# #ifs and #elses guarantee that the C compiler sees exactly one,
+# ctags sees them all.
 .PHONY: tags_file_exists
 tags_file_exists:
-	@if test ! -f tags; then echo making tags; \
-	ctags $(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H); fi
+	-@if test ! -f tags; then \
+		echo making tags; \
+		ctags $(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H); \
+	fi
 
 #-----------------------------------------------------------------------------#
 
