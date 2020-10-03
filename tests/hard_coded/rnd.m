@@ -8,8 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io.state, io.state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -20,9 +19,10 @@
 main -->
     { rnd.init(17, Rnd) },
     { gen_nums(10, Rnd, [], Nums) },
-    foldl((pred(Num::in, di, uo) is det -->
-        print(Num), nl
-    ), Nums).
+    foldl(
+        ( pred(Num::in, di, uo) is det -->
+            io.print(Num), nl
+        ), Nums).
 
 :- pred gen_nums(int, rnd, list(int), list(int)).
 :- mode gen_nums(in, in, in, out) is det.
@@ -80,11 +80,11 @@ shuffle(Ins, Outs, R0, R) :-
 :- mode shuffle2(in, in, in, out, in, out) is det.
 
 shuffle2(N, Ins, Acc0, Acc, R0, R) :-
-    ( N > 0 ->
+    ( if N > 0 then
         irange(0, N-1, J, R0, R1),
         delnth(Ins, J, Rest, T),
         shuffle2(N-1, Rest, [T | Acc0], Acc, R1, R)
-    ;
+    else
         Acc = Acc0,
         R = R0
     ).
@@ -95,10 +95,10 @@ shuffle2(N, Ins, Acc0, Acc, R0, R) :-
 delnth([], _, _, _) :-
     error("delnth: no enough elems!").
 delnth([X | Xs], N, Zs, Z) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         Z = X,
         Zs = Xs
-    ;
+    else
         Zs = [X | Ys],
         delnth(Xs, N-1, Ys, Z)
     ).
@@ -111,14 +111,14 @@ oneof(Things, Thing, R0, R) :-
 %---------------------------------------------------------------------------%
 
 :- type vec
-    ---> vec(int, int, int, int, int, int, int, int, int, int).
+    --->    vec(int, int, int, int, int, int, int, int, int, int).
 
 :- type rnd
-    ---> rnd(
-        vec,
-        vec,
-        int
-    ).
+    --->    rnd(
+                vec,
+                vec,
+                int
+            ).
 
 rnd.init(Seed, rnd(M1, M2, Seed)) :-
     SN = Seed /\ ((1 << 15) - 1),
@@ -133,18 +133,18 @@ rnd.init(Seed, rnd(M1, M2, Seed)) :-
 :- mode seed1(in, in, in, in, in, out, out) is det.
 
 seed1(N, SNum0, Num0, M1a, M2a, M1, M2) :-
-    (N > 0 ->
+    ( if N > 0 then
         Num1 = 30903 * SNum0 + (Num0 >> 15),
         SNum1 = Num1 /\ ((1 << 15) - 1),
-        ( N >= 9 ->
+        ( if N >= 9 then
             M2b = M2a,
             set(M1a, 17 - N, SNum1, M1b)
-        ;
+        else
             M1b = M1a,
             set(M2a, 8 - N, SNum1, M2b)
         ),
         seed1(N-1, SNum1, Num1, M1b, M2b, M1, M2)
-    ;
+    else
         M1 = M1a,
         M2 = M2a
     ).
@@ -195,7 +195,7 @@ shift(Vec0, Vec1) :-
 
 ( Vec ** Ind ) = Res :-
     Vec = vec(A, B, C, D, E, F, G, H, I, J),
-    (
+    ( if
         ( Ind = 0, Res0 = A
         ; Ind = 1, Res0 = B
         ; Ind = 2, Res0 = C
@@ -207,9 +207,9 @@ shift(Vec0, Vec1) :-
         ; Ind = 8, Res0 = I
         ; Ind = 9, Res0 = J
         )
-    ->
+    then
         Res = Res0
-    ;
+    else
         error("**: out of range")
     ).
 
@@ -228,7 +228,7 @@ shift(Vec0, Vec1) :-
 
 set(Vec0, Ind, V, Vec) :-
     Vec0 = vec(A, B, C, D, E, F, G, H, I, J),
-    (
+    ( if
         ( Ind = 0, Vec1 = vec(V, B, C, D, E, F, G, H, I, J)
         ; Ind = 1, Vec1 = vec(A, V, C, D, E, F, G, H, I, J)
         ; Ind = 2, Vec1 = vec(A, B, V, D, E, F, G, H, I, J)
@@ -240,9 +240,9 @@ set(Vec0, Ind, V, Vec) :-
         ; Ind = 8, Vec1 = vec(A, B, C, D, E, F, G, H, V, J)
         ; Ind = 9, Vec1 = vec(A, B, C, D, E, F, G, H, I, V)
         )
-    ->
+    then
         Vec = Vec1
-    ;
+    else
         error("set: out of range")
     ).
 
@@ -302,9 +302,9 @@ set(Vec0, Ind, V, Vec) :-
 :- mode for(in, in, pred(in, in, out) is det, in, out) is det.
 
 for(Min, Max, Pred, Acc0, Acc) :-
-    ( Min =< Max ->
+    ( if Min =< Max then
         call(Pred, Min, Acc0, Acc1),
         for(Min+1, Max, Pred, Acc1, Acc)
-    ;
+    else
         Acc = Acc0
     ).

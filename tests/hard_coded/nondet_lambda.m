@@ -15,10 +15,10 @@ main(!IO) :-
     % The compiler was incorrectly simplifying this to `F = bar' in the erlang
     % grade.
     F = (pred(X::out) is nondet :- bar(X)),
-    ( F(Y) ->
-        io__write(Y, !IO),
-        io__write_string("\n", !IO)
-    ;
+    ( if F(Y) then
+        io.write(Y, !IO),
+        io.write_string("\n", !IO)
+    else
         true
     ).
 

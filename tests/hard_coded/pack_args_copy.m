@@ -25,7 +25,5 @@
 main(!IO) :-
     S0 = struct(aa, bb, "string", cc, dd),
     copy(S0, S),
-    io.write(S0, !IO),
-    io.nl(!IO),
-    io.write(S, !IO),
-    io.nl(!IO).
+    io.write_line(S0, !IO),
+    io.write_line(S, !IO).

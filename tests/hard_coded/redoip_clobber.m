@@ -22,8 +22,7 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -84,11 +83,9 @@ bar(X) :- X = 1.
     SUCCESS_INDICATOR = false
 ").
 
-main -->
-    ( { foo(X), use(X) } ->
-        io__write_string("Succeeded."),
-        nl
-    ;
-        io__write_string("Failed."),
-        nl
+main(!IO) :-
+    ( if foo(X), use(X) then
+        io.write_string("Succeeded.\n", !IO)
+    else
+        io.write_string("Failed.\n", !IO)
     ).

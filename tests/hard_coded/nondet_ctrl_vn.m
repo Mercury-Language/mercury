@@ -8,6 +8,7 @@
 % of hijacked nondet control slots.
 %
 % This is a cut-down version of cut_test.m
+%
 
 :- module nondet_ctrl_vn.
 
@@ -15,17 +16,17 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int.
 
-main -->
-    ( { middle(100) } ->
-        io__write_string("test succeeded: BUG.\n")
-    ;
-        io__write_string("test failed: OK.\n")
+main(!IO) :-
+    ( if middle(100) then
+        io.write_string("test succeeded: BUG.\n", !IO)
+    else
+        io.write_string("test failed: OK.\n", !IO)
     ).
 
 :- pragma no_inline(middle/1).

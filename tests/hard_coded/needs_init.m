@@ -1,27 +1,29 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module needs_init.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- pred init_modules(io__state::di, io__state::uo) is det.
+:- pred init_modules(io::di, io::uo) is det.
 :- pragma import(init_modules(di, uo), "do_init_modules").
 
-main -->
-    init_modules,
-    write_string("world!\n").
+main(!IO) :-
+    init_modules(!IO),
+    io.write_string("world!\n", !IO).
 
-:- pred hello(io__state::di, io__state::uo) is det.
+:- pred hello(io::di, io::uo) is det.
 :- pragma export(hello(di, uo), "run_at_init_time_init").
-hello --> write_string("hello, ").
+
+hello(!IO) :-
+    io.write_string("hello, ", !IO).
 
 :- pragma c_header_code("
 #include <stdio.h>

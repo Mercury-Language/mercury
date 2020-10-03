@@ -3,7 +3,8 @@
 %---------------------------------------------------------------------------%
 %
 % A regression test to ensure that we don't get warnings about the variables
-% _IO0 and _IO occuring more than once.
+% _IO0 and _IO in the foreign_proc occuring only once.
+%
 
 :- module no_warn_singleton.
 
@@ -15,10 +16,10 @@
 
 :- implementation.
 
-main -->
-    f(X),
-    io__write_int(X),
-    io__nl.
+main(!IO) :-
+    f(X, !IO),
+    io.write_int(X, !IO),
+    io.nl(!IO).
 
 :- pred f(int::out, io::di, io::uo) is det.
 
@@ -29,4 +30,4 @@ main -->
     X = 5;
 ").
 
-f(5) --> [].
+f(5, !IO).

@@ -9,22 +9,19 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 
 :- pragma promise_pure(main/2).
-main -->
-    {
+main(!IO) :-
     impure bar(A),
     impure bar(B),
     impure bar(C),
-    impure bar(D)
-    },
-    io__write([A, B, C, D]),
-    io__write_string("\n").
+    impure bar(D),
+    io.write_line([A, B, C, D], !IO).
 
 :- pragma no_inline(bar/1).
 :- impure pred bar(int::out) is det.

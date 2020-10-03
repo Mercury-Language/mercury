@@ -65,11 +65,11 @@ main(!IO) :-
 
         % Find the first prime number.
         io.write_string("First prime from 0 to 100:\n", !IO),
-        ( rtree.search_first(any_is_prime, id, !.RTree, 100.0, L, _) ->
+        ( if rtree.search_first(any_is_prime, id, !.RTree, 100.0, L, _) then
             io.write(L, !IO),
             io.nl(!IO),
             io.nl(!IO)
-        ;
+        else
             io.write_string("search_first FAILED!\n\n", !IO)
         ),
 
@@ -77,13 +77,13 @@ main(!IO) :-
         io.write_string("All odds deleted, " ++
             "remaining integers from 33 to 66:\n", !IO),
         some [!Is] (
-            ( delete_odd(1, 100, !RTree) ->
+            ( if delete_odd(1, 100, !RTree) then
                 !:Is = rtree.search_intersects(!.RTree, interval(33.0, 66.0)),
                 list.sort(!Is),
                 io.write(!.Is, !IO),
                 io.nl(!IO),
                 io.nl(!IO)
-            ;
+            else
                 io.write_string("delete FAILED!\n\n", !IO)
             )
         )
@@ -106,9 +106,10 @@ id(I, float(I)) :-
 :- pred add_integers(int::in, int::in, irtree::in, irtree::out) is det.
 
 add_integers(N, M, !RTree) :-
-    ( N >= M ->
+    ( if N >= M then
         true
-    ;   NF = float(N),
+    else
+        NF = float(N),
         K = interval(NF, NF),
         insert(K, N, !RTree),
         add_integers(N + 1, M, !RTree)
@@ -136,7 +137,7 @@ test_range(Cnts, Mn, Mx, RT, Is, P) :-
 :- func check_range(int, int, list(int)) = bool.
 
 check_range(N, M, Is) = P :-
-    ( N > M ->
+    ( if N > M then
         (
             Is = [] ,
             P = yes
@@ -144,9 +145,10 @@ check_range(N, M, Is) = P :-
             Is = [_ | _],
             P = no
         )
-    ;   ( Is = [N | Is1] ->
+    else
+        ( if Is = [N | Is1] then
             P = check_range(N + 1, M, Is1)
-        ;
+        else
             P = no
         )
     ).
@@ -175,9 +177,9 @@ any_is_prime(interval(Min, Max), P) :-
 
 any_is_prime(Min, Max, P) :-
     Min =< Max,
-    ( is_prime(Min) ->
+    ( if is_prime(Min) then
         P = Min
-    ;
+    else
         any_is_prime(Min + 1.0, Max, P)
     ).
 
@@ -196,11 +198,11 @@ is_prime(N) :-
 :- pred none_divides(int::in, int::in, int::in) is semidet.
 
 none_divides(N, M, I) :-
-    ( N > M ->
+    ( if N > M then
         true
-    ; I mod N = 0 ->
+    else if I mod N = 0 then
         false
-    ;
+    else
         none_divides(N + 1, M, I)
     ).
 
@@ -211,9 +213,9 @@ none_divides(N, M, I) :-
 :- pred delete_odd(int::in, int::in, irtree::in, irtree::out) is semidet.
 
 delete_odd(N, M, !RT) :-
-    ( N >= M ->
+    ( if N >= M then
         true
-    ;
+    else
         NF = float(N),
         I = interval(NF, NF),
         delete(I, N, !RT),

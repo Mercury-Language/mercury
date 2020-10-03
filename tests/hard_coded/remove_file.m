@@ -17,7 +17,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io.state::di, io.state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 

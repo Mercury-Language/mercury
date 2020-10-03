@@ -5,6 +5,7 @@
 % Try to retain structure sharing information when we encounter generic calls
 % whose output argument modes and types tell us they can't introduce more
 % sharing.
+%
 
 :- module reuse_ho.
 :- interface.
@@ -55,17 +56,17 @@ main(!IO) :-
     swap(Foo5, Foo6),
     addr(Foo6, Foo6_Addr),
 
-    ( capable_grade($grade) ->
-        (
+    ( if capable_grade($grade) then
+        ( if
             Foo1_Addr = Foo2_Addr,
             Foo3_Addr \= Foo4_Addr,
             Foo5_Addr \= Foo6_Addr
-        ->
+        then
             io.write_string("addresses as expected\n", !IO)
-        ;
+        else
             io.write_string("addresses NOT as expected\n", !IO)
         )
-    ;
+    else
         io.write_string("grade probably doesn't support reuse\n", !IO)
     ).
 

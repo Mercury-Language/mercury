@@ -7,10 +7,10 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module require.
 
-main -->
-    { error("oops") }.
+main(!IO) :-
+    error("oops").
