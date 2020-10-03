@@ -33,12 +33,12 @@ main(!IO) :-
     write_array2d("Empty", Empty, !IO),
     io.nl(!IO),
 
-    One   = array2d([[1]]),
+    One = array2d([[1]]),
     write_array2d("One", One, !IO),
     write_array2d_elem("One", One, 0, 0, !IO),
     io.nl(!IO),
 
-    Two   = array2d([[1, 0], [0, 2]]),
+    Two = array2d([[1, 0], [0, 2]]),
     write_array2d("Two", Two, !IO),
     write_array2d_elem("Two", Two, 0, 0, !IO),
     write_array2d_elem("Two", Two, 0, 1, !IO),
@@ -82,6 +82,16 @@ main(!IO) :-
     write_array2d_elem("Zeroes", Zeroes,  3,  0, !IO),
     write_array2d_elem("Zeroes", Zeroes,  0,  3, !IO),
     write_array2d_elem("Zeroes", Zeroes,  3,  3, !IO),
+    io.nl(!IO),
+
+    FourSix = array2d([
+        [11, 12, 13, 14, 15, 16],
+        [21, 22, 23, 24, 25, 26],
+        [31, 32, 33, 34, 35, 36],
+        [41, 42, 43, 44, 45, 46]
+    ]),
+    FourSixLists = lists(FourSix),
+    list.foldl(io.write_line, FourSixLists, !IO),
 
     true.
 
@@ -98,12 +108,15 @@ write_array2d(Name, Table, !IO) :-
 :- pred write_array2d_elem(string, array2d(T), int, int, io, io).
 :- mode write_array2d_elem(in,     array2d_ui, in,  in,  di, uo) is cc_multi.
 
-write_array2d_elem(Name, Table, I, J, !IO) :-
-    io.format("%s ^ elem(%d, %d) = ", [s(Name), i(I), i(J)], !IO),
-    try((pred(X::out) is det :- X = Table ^ elem(I, J)), Result),
+write_array2d_elem(Name, Table, R, C, !IO) :-
+    io.format("%s ^ elem(%d, %d) = ", [s(Name), i(R), i(C)], !IO),
+    try(
+        ( pred(X::out) is det :-
+            X = Table ^ elem(R, C)
+        ), Result),
     (
-        Result = succeeded(Y),
-        io.print(Y, !IO)
+        Result = succeeded(Elem),
+        io.print(Elem, !IO)
     ;
         Result = exception(_),
         io.print(Result, !IO)
@@ -115,6 +128,7 @@ write_array2d_elem(Name, Table, I, J, !IO) :-
 :- func string(array2d(T)) = string.
 :- mode string(array2d_ui) = out is det.
 
-string(T) = to_string(80, brackets(nest(1, separated(to_doc, line, lists(T))))).
+string(T) =
+    to_string(80, brackets(nest(1, separated(to_doc, line, lists(T))))).
 
 %---------------------------------------------------------------------------%

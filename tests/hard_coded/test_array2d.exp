@@ -37,3 +37,8 @@ Zeroes ^ elem(-1, -1) = exception(univ_cons(software_error("function `array2d.el
 Zeroes ^ elem(3, 0) = exception(univ_cons(software_error("function `array2d.elem\'/3: indices out of bounds")))
 Zeroes ^ elem(0, 3) = exception(univ_cons(software_error("function `array2d.elem\'/3: indices out of bounds")))
 Zeroes ^ elem(3, 3) = exception(univ_cons(software_error("function `array2d.elem\'/3: indices out of bounds")))
+
+[11, 12, 13, 14, 15, 16]
+[21, 22, 23, 24, 25, 26]
+[31, 32, 33, 34, 35, 36]
+[41, 42, 43, 44, 45, 46]
