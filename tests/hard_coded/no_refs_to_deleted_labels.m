@@ -6,7 +6,21 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% XXX
+% The diff that created this regression test described the problem that
+% that this test case checks for as follow.
+%
+% Fix a problem that left references to undefined labels in C code.
+%
+% The problem was introduced by my recent change that removed the definitions
+% of internal labels if those labels started while loops, and all references
+% to them would be converted into "continue" statements within those loops.
+% The diff removed the definitions of these labels, but they were still being
+% declared. Those declarations expand out to nothing in most cases, which is
+% why I did not notice the problem, but they are used in some situations,
+% such as when MR_LOWLEVEL_DEBUG is defined, in which case they register
+% the correspondence between the names of labels and the code addresses
+% they represent. The problem was that the code that was registering this
+% correspondence referred to a now-undefined label.
 %
 %---------------------------------------------------------------------------%
 
