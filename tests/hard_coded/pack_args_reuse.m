@@ -3,6 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % Check structure reuse takes into account argument packing.
+%
 
 :- module pack_args_reuse.
 :- interface.
@@ -30,8 +31,7 @@
 main(!IO) :-
     T0 = struct(aa, bb, cc, str, dd, ee),
     update2(xx, T0, T),
-    io.write(T, !IO),
-    nl(!IO).
+    io.write_line(T, !IO).
 
 :- pred update2(enum::in, struct::di(uniq_struct), struct::out(uniq_struct))
     is det.
@@ -39,9 +39,9 @@ main(!IO) :-
 
 update2(X, T0, T) :-
     T0 = struct(A, _, C, D, E, F),
-    % field 0 (A, X, C)   needs update
-    % field 1 (D)       does not need update
-    % field 2 (E, F)     does not need update
+    % field 0 (A, X, C)             needs update
+    % field 1 (D)                   does not need update
+    % field 2 (E, F)                does not need update
     T = struct(A, X, C, D, E, F).
 
 :- func str = string.
