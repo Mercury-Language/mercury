@@ -147,7 +147,7 @@ write_cycles(Nodes, !IO) :-
     write_cycles1(Nodes, yes, !IO),
     io.write_string("\n", !IO).
 
-:- pred write_cycles1(list(list(node))::in, io::di, io::uo) is det.
+:- pred write_cycles1(list(list(node))::in, bool::in, io::di, io::uo) is det.
 
 write_cycles1([], yes, !IO) :-
     io.write_string("[]", !IO).
@@ -164,7 +164,7 @@ write_cycles1([N | Ns], Start, !IO) :-
     (
         Ns = []
     ;
-        Ns = [],
+        Ns = [_ | _],
         io.write_string(", ", !IO)
     ),
     write_cycles1(Ns, no, !IO).
@@ -173,7 +173,7 @@ write_cycles1([N | Ns], Start, !IO) :-
 
 :- pred write_nodes(list(node)::in, io::di, io::uo) is det.
 
-write_nodes(Nodes, !IO) :_
+write_nodes(Nodes, !IO) :-
     write_nodes1(Nodes, yes, !IO).
 
 :- pred write_nodes1(list(node)::in, bool::in, io::di, io::uo) is det.
@@ -193,7 +193,7 @@ write_nodes1([N | Ns], Start, !IO) :-
     (
         Ns = []
     ;
-        Ns = [],
+        Ns = [_ | _],
         io.write_string(", ", !IO)
     ),
     write_nodes1(Ns, no, !IO).
