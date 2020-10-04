@@ -53,7 +53,7 @@ SUBDIRS = \
 
 MMAKEFLAGS =
 
-# We include ../../mfilterjavac in this path because $SUBDIR_MMAKE is used
+# We include ../../mfilterjavac in this path because $(SUBDIR_MMAKE) is used
 # from the grade install directories, and we need mfilterjavac in our path
 # when executing in install_grade_dir.java/library and others.
 SUBDIR_MMAKE = \
@@ -612,7 +612,7 @@ tar2: 	$(GENERATED_DOCS)
 	chmod -R a+r *
 	# Our invoker should have passed to us in ${SRCDIST_NAME}
 	# the name of the current directory in its parent directory.
-	# This name should have the form mercury-srcdist-$VERSION,
+	# This name should have the form mercury-srcdist-$(VERSION),
 	# which matters, because it will also be the name of the directory
 	# that the tar file we are creating here will unpack into.
 	#
@@ -929,7 +929,7 @@ bindist: WORK_IN_PROGRESS TODO
 
 #-----------------------------------------------------------------------------#
 
-clean: clean_tests clean_subdirs
+clean: clean_tests clean_subdirs clean_extras
 
 .PHONY: clean_subdirs
 clean_subdirs:
@@ -941,14 +941,20 @@ clean_subdirs:
 .PHONY: clean_tests
 clean_tests:
 	+if test -d tests; then \
-		(cd tests; $(SUBDIR_MMAKE) clean) \
+		(cd tests; $(MMAKE) $(MMAKEFLAGS) clean) \
 	fi
 
 realclean: realclean_tests realclean_subdirs realclean_local
 	+cd scripts; $(SUBDIR_MMAKE) realclean
 
+.PHONY: clean_extras
+clean_extras:
+	+if test -d extras; then \
+		(cd extras; $(MMAKE) $(MMAKEFLAGS) clean) \
+	fi
+
 .PHONY: realclean_local
-realclean_local: realclean_config realclean_docs
+realclean_local: realclean_config realclean_docs realclean_extras
 
 .PHONY: realclean_subdirs
 realclean_subdirs: clean_subdirs
@@ -970,7 +976,13 @@ realclean_config:
 .PHONY: realclean_tests
 realclean_tests:
 	+if test -d tests; then \
-		(cd tests; $(SUBDIR_MMAKE) realclean) \
+		(cd tests; $(MMAKE) $(MMAKEFLAGS) realclean) \
+	fi
+
+.PHONY: realclean_extras
+realclean_extras:
+	+if test -d extras; then \
+		(cd extras; $(MMAKE) $(MMAKEFLAGS) realclean) \
 	fi
 
 #-----------------------------------------------------------------------------#

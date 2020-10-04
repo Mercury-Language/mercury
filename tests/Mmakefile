@@ -91,6 +91,10 @@ $(RUNTESTS_IN_SUBDIRS): runtests_in_%:
 		echo Could not run tests in directory $* >> NOMAKE_DIRS ; \
 	fi
 
+#-----------------------------------------------------------------------------#
+
+realclean: realclean_subdirs
+
 realclean_subdirs:
 	+succeeded=true; \
 	for dir in $(SUBDIRS); do \
@@ -102,6 +106,8 @@ realclean_subdirs:
 			;; \
 	esac
 
+clean: clean_subdirs
+
 clean_subdirs:
 	+succeeded=true; \
 	for dir in $(SUBDIRS); do \
@@ -112,3 +118,5 @@ clean_subdirs:
 			exit 1 \
 			;; \
 	esac
+
+#-----------------------------------------------------------------------------#

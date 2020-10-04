@@ -82,7 +82,7 @@ JAVA=java
 # the source of irrelevant difference between the actual and expected outputs.
 
 MDB = HOME=/nonexistent MERCURY_SUPPRESS_MDB_BANNER=yes \
-	MERCURY_DEBUGGER_INIT=$(TESTS_DIR)/mdbrc mdb
+	MERCURY_DEBUGGER_INIT=$(WORKSPACE)/scripts/test_mdbrc mdb
 
 MDB_NOINIT = HOME=/nonexistent MERCURY_SUPPRESS_MDB_BANNER=yes \
 	MERCURY_DEBUGGER_INIT="" mdb
@@ -274,6 +274,10 @@ realclean_local: clean_logs clean_errors clean_mdbrc
 
 clean_local: clean_out clean_res clean_trace_counts clean_mdbrc_in
 
+# XXX As of 2020 oct 4, mdbrc and mdbrc.in are no longer created
+# in this directory. After a few weeks, after all workspaces can be
+# expected to be cleaned up, we should delete these two now-redundant
+# targets, and the references to them.
 clean_mdbrc:
 	-rm -f mdbrc
 

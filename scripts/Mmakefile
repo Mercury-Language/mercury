@@ -48,22 +48,23 @@ CONF_FILES = \
 	Mmake.vars \
 	parse_ml_options.sh-subr
 
-CONF_DEBUG_SCRIPTS = 	\
+CONF_DEBUG_SCRIPTS = \
 	mdbrc
 
-DEBUGGER_SCRIPTS = $(CONF_DEBUG_SCRIPTS) 	\
-		xul_tree.xsl			\
-		mdb_open			\
-		mdb_grep			\
-		mdb_track			\
-		mdb_term_browser.js		\
-		mdb_term_browser.css		\
-		jquery.slim.js			\
-		jstree.js			\
-		jstree.style.css		\
-		32px.png			\
-		40px.png			\
-		throbber.gif
+DEBUGGER_SCRIPTS = \
+	$(CONF_DEBUG_SCRIPTS) \
+	xul_tree.xsl \
+	mdb_open \
+	mdb_grep \
+	mdb_track \
+	mdb_term_browser.js \
+	mdb_term_browser.css \
+	jquery.slim.js \
+	jstree.js \
+	jstree.style.css \
+	32px.png \
+	40px.png \
+	throbber.gif
 
 EMACS_SCRIPTS = gud.el
 
@@ -78,7 +79,7 @@ CSHARP_WRAPPER_SCRIPTS = \
 
 # .SUFFIXES: .in
 
-# we test membership of CONF_SCRIPTS and CONF_FILES, because testing $(@D)
+# We test membership of CONF_SCRIPTS and CONF_FILES, because testing $(@D)
 # (the directory part of $*) does the wrong thing for Mercury.config.
 # Not testing anything would make this rule apply even to ../Mmake.common.
 # The grep is there to ensure that there were no mispelt autoconf variable
@@ -105,10 +106,30 @@ CSHARP_WRAPPER_SCRIPTS = \
 		fi \
 	done
 
+# To allow a change to the debugger and/or to its documentation to be
+# matched by changes in the expected output files in the debugger and
+# declarative_debugger test directories, we must give the tests in those
+# directories access to mdb_doc and mdbrc files in the current workspace,
+# *not* in the installed system.
+test_mdbrc: mdbrc.in mdbrc
+	ABS_MERCURY_DIR=`(cd $(MERCURY_DIR); /bin/pwd)` ; \
+	sed \
+		-e "s:@DEFAULT_MERCURY_DEBUGGER_DOC@:$${ABS_MERCURY_DIR}/doc/mdb_doc:" \
+		-e "s:@DEFAULT_MERCURY_DEBUGGER_INIT_DIR@:$${ABS_MERCURY_DIR}/scripts:" \
+		-e '/^xml_/d' \
+		-e '/^web_/d' \
+	< mdbrc.in > test_mdbrc
+	egrep '^xml_' < mdbrc >> test_mdbrc
+	egrep '^web_' < mdbrc >> test_mdbrc
+	@if grep '@' test_mdbrc; then \
+		echo "unhandled configuration variable in test_mdbrc"; \
+		exit 1; \
+	fi
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: $(CONF_FILES) $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS)
+all: $(CONF_FILES) $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS) test_mdbrc
 
 #-----------------------------------------------------------------------------#
 
@@ -171,11 +192,9 @@ install_config: Mercury.config install_dirs
 
 .PHONY: install_debugger_scripts
 install_debugger_scripts: $(DEBUGGER_SCRIPTS) install_dirs
-	# Reportedly old versions of Mercury
-	# used to install mdbrc as read-only.
-	# If that is the case, then we need to make sure
-	# that it gets made writable before we install the
-	# new version.
+	# Reportedly old versions of Mercury used to install mdbrc
+	# as read-only. If that is the case, then we need to make sure
+	# that it gets made writable before we install the new version.
 	-chmod u+w $(INSTALL_LIBDIR)/mdb/*
 	cp $(DEBUGGER_SCRIPTS) $(INSTALL_LIBDIR)/mdb
 

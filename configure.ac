@@ -5677,17 +5677,6 @@ AC_SUBST(CSHPATH)
 
 #-----------------------------------------------------------------------------#
 
-# When running the debugger tests we want to use the local mdbrc file,
-# not the installed one, so that we can test changes to this file
-# without having to install first. We therefore create a copy of the mdbrc.in
-# for use with the test suite.
-
-test_mdbrc=tests/mdbrc
-
-cat "`pwd`"/scripts/mdbrc.in | sed \
-    -e 's/DEFAULT_MERCURY_DEBUGGER_INIT_DIR/TESTS_MDB_INIT_DIR/g' \
-    -e 's/DEFAULT_MERCURY_DEBUGGER_DOC/TESTS_MDB_DOC/g' > $test_mdbrc.in
-
 TESTS_MDB_INIT_DIR="`pwd`"/scripts
 TESTS_MDB_DOC="`pwd`"/doc/mdb_doc
 AC_SUBST(TESTS_MDB_INIT_DIR)
@@ -5774,7 +5763,6 @@ output_files="$nonexecutable_output_files $executable_output_files"
 # scripts/mercury_config.in.
 
 AC_OUTPUT($output_files
-"$test_mdbrc"
 ,
 [
 # Only do this when compiling the source, not when reconfiguring
