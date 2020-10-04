@@ -3,6 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % test case for the `--allow-stubs' option.
+%
 
 :- module allow_stubs.
 :- interface.
@@ -15,14 +16,15 @@
 :- import_module exception.
 :- import_module univ.
 
-main -->
-    hello,
-    trap_exceptions(how_are_you),
-    trap_exceptions(going_today),
-    goodbye.
+main(!IO) :-
+    hello(!IO),
+    trap_exceptions(how_are_you, !IO),
+    trap_exceptions(going_today, !IO),
+    goodbye(!IO).
 
-hello -->
-    print("hello world"), nl.
+hello(!IO) :-
+    print("hello world", !IO),
+    nl(!IO).
 
 :- pred goodbye(io::di, io::uo) is det.
 
@@ -33,9 +35,9 @@ goodbye -->
 
 :- mode going_today(di, uo) is det.
 
-going_today -->
-    print("going "),
-    today.
+going_today(!IO) :-
+    print("going ", !IO),
+    today(!IO).
 
 :- pred today(io::di, io::uo) is det.
 
@@ -49,13 +51,13 @@ unused1(IO0, IO) :-
 
 :- mode trap_exceptions(pred(di, uo) is det, di, uo) is cc_multi.
 
-trap_exceptions(IOGoal) -->
-    try_io((pred({}::out, di, uo) is det --> IOGoal), Res),
+trap_exceptions(IOGoal, !IO) :-
+    try_io((pred({}::out, di, uo) is det --> IOGoal), Res, !IO),
     (
-        { Res = succeeded({}) }
+        Res = succeeded({})
     ;
-        { Res = exception(Exception) },
-        print("[caught exception: "),
-        print(univ_value(Exception)),
-        print("]\n")
+        Res = exception(Exception),
+        print("[caught exception: ", !IO),
+        print(univ_value(Exception), !IO),
+        print("]\n", !IO)
     ).

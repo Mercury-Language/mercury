@@ -28,9 +28,9 @@ main(!IO) :-
 :- pred test(int::in, int::out) is det.
 
 test(X, Y) :-
-    ( X < 10 ->
+    ( if X < 10 then
         X = Y
-    ;
+    else
         trace [compiletime(flag("flag_is_not_set"))] (
             error("error_is_not_thrown")
         ),

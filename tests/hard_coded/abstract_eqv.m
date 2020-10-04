@@ -22,12 +22,12 @@ main(!IO) :-
 :- pred test(t_abs::in, t_abs::in, io::di, io::uo) is det.
 
 test(A, B, !IO) :-
-    io__write(A, !IO),
-    io__write_string(" = ", !IO),
-    io__write(B, !IO),
-    io__write_string(": ", !IO),
-    ( A = B ->
-        io__write_string("true\n", !IO)
-    ;
-        io__write_string("false\n", !IO)
+    io.write(A, !IO),
+    io.write_string(" = ", !IO),
+    io.write(B, !IO),
+    io.write_string(": ", !IO),
+    ( if A = B then
+        io.write_string("true\n", !IO)
+    else
+        io.write_string("false\n", !IO)
     ).

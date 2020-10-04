@@ -246,42 +246,42 @@ test_error_sequence(ErrorTestType, BufferSize,
     io.nl(!IO),
     ExpectedBM = requests_to_bitmap(SetupRequests),
     TempFile = bit_buffer_test_tmp_file,
-    (
+    ( if
         ( ErrorTestType = io_and_bitmap
         ; ErrorTestType = timebomb(_)
         )
-    ->
+    then
         test_writes(8, TempFile, SetupRequests, ExpectedBM, !IO)
-    ;
+    else
         true
     ),
-    (
+    ( if
         ( ErrorTestType = io_and_bitmap
         ; ErrorTestType = bitmap_only
         )
-    ->
+    then
         check_that_error_occurs("bitmap",
             test_bitmap_reads(Requests, ExpectedBM),
             !IO)
-    ;
+    else
         true
     ),
-    (
+    ( if
         ErrorTestType = io_and_bitmap
-    ->
+    then
         check_that_error_occurs("I/O",
             test_io_reads(BufferSize, TempFile, Requests),
             !IO)
-    ;
+    else
         true
     ),
-    (
+    ( if
         ErrorTestType = timebomb(Timer)
-    ->
+    then
         check_that_error_occurs("stream read error",
             test_io_timebomb_reads(BufferSize, Timer, TempFile, Requests),
             !IO)
-    ;
+    else
         true
     ),
 
@@ -348,9 +348,9 @@ test_writes(BufferSize, FileName, Writes, ExpectedBM, !IO) :-
             io.close_binary_output(WriteStream, !IO)
         ),
 
-        ( BM = ExpectedBM ->
+        ( if BM = ExpectedBM then
             io.write_string("Collected bitmap compares OK.\n", !IO)
-        ;
+        else
             io.write_string("Collected bitmap differs: \n", !IO),
             io.write_string(to_byte_string(BM), !IO),
             io.nl(!IO),
@@ -363,10 +363,10 @@ test_writes(BufferSize, FileName, Writes, ExpectedBM, !IO) :-
             io.read_binary_file_as_bitmap(ReadStream, BMReadResult, !IO),
             (
                 BMReadResult = ok(ReadBM),
-                ( ReadBM = ExpectedBM ->
+                ( if ReadBM = ExpectedBM then
                     io.write_string("I/O bitmap compares OK.\n", !IO),
                     io.flush_output(!IO)
-                ;
+                else
                     io.write_string("I/O bitmap differs: \n", !IO),
                     io.write_string(to_byte_string(ReadBM), !IO),
                     io.nl(!IO),
@@ -398,18 +398,18 @@ test_writes(BufferSize, FileName, Writes, ExpectedBM, !IO) :-
     <= stream.writer(S, bitmap.slice, St).
 
 do_write(bits(Word, NumBits), !Buffer) :-
-    ( NumBits = 1 ->
-        Bit = ( Word = 0 -> no ; yes ),
+    ( if NumBits = 1 then
+        Bit = ( if Word = 0 then no else yes ),
         put_bit(Bit, !Buffer)
-    ; NumBits = 8 ->
+    else if NumBits = 8 then
         put_byte(Word, !Buffer)
-    ;
+    else
         put_bits(Word, NumBits, !Buffer)
     ).
 do_write(bitmap(BM, Index, NumBits), !Buffer) :-
-    ( Index = 0, NumBits = BM ^ num_bits ->
+    ( if Index = 0, NumBits = BM ^ num_bits then
         put_bitmap(BM, !Buffer)
-    ;
+    else
         put_bitmap(BM, Index, NumBits, !Buffer)
     ).
 do_write(pad_to_byte, !Buffer) :-
@@ -435,7 +435,7 @@ request_list_length([Req | Reqs], L0) = L :-
     ( Req = bits(_, NumBits)
     ; Req = bitmap(_, _, NumBits)
     ; Req = pad_to_byte, Rem = L0 `rem` bits_per_byte,
-        NumBits = ( Rem = 0 -> 0 ; bits_per_byte - Rem )
+        NumBits = ( if Rem = 0 then 0 else bits_per_byte - Rem )
     ; Req = flush, NumBits = 0
     ; Req = check_buffer_status(_), NumBits = 0
     ),
@@ -452,7 +452,7 @@ request_to_bitmap(bitmap(OtherBM, Start, NumBits), !Index, !BM) :-
     !:Index = !.Index + NumBits.
 request_to_bitmap(pad_to_byte, !Index, !BM) :-
     Rem = !.Index `rem` bits_per_byte,
-    NumBits = ( Rem = 0 -> 0 ; bits_per_byte - Rem ),
+    NumBits = ( if Rem = 0 then 0 else bits_per_byte - Rem ),
     !:BM = !.BM ^ bits(!.Index, NumBits) := 0,
     !:Index = !.Index + NumBits.
 request_to_bitmap(flush, !Index, !BM).
@@ -473,9 +473,9 @@ test_bitmap_reads(Requests, ExpectedBM, !IO) :-
         !:BMBuffer = new_bitmap_reader(ExpectedBM, 0, ExpectedBM ^ num_bits),
         do_reads("bitmap", 1, Requests, !BMBuffer),
         finalize(!.BMBuffer, _, _, _, _, BMNumFinalBits),
-        ( BMNumFinalBits = 0 ->
+        ( if BMNumFinalBits = 0 then
             true
-        ;
+        else
             throw(string.format("bitmap reader has %d bits left over: \n",
                 [i(BMNumFinalBits)]) : string)
         ),
@@ -492,9 +492,9 @@ test_io_reads(BufferSize, FileName, Requests, !IO) :-
         !:IOBuffer = new(BufferSize, ReadStream, !.IO) : io_read_buffer,
         do_reads("I/O", 1, Requests, !IOBuffer),
         finalize(!.IOBuffer, _, !:IO, _, _, IONumFinalBits),
-        ( IONumFinalBits = 0 ->
+        ( if IONumFinalBits = 0 then
             true
-        ;
+        else
             throw(string.format("I/O reader has %d bits left over: \n",
                 [i(IONumFinalBits)]): string)
         ),
@@ -521,9 +521,9 @@ test_io_timebomb_reads(BufferSize, Countdown, FileName, Requests, !IO) :-
 
         do_reads("timebomb", 1, Requests, !ErrorBuffer),
         finalize(!.ErrorBuffer, _, ErrorState, _, _, ErrorNumFinalBits),
-        ( ErrorNumFinalBits = 0 ->
+        ( if ErrorNumFinalBits = 0 then
             true
-        ;
+        else
             throw(string.format("timebomb reader has %d bits left over: \n",
                 [i(ErrorNumFinalBits)]) : string)
         ),
@@ -553,14 +553,14 @@ do_reads(Desc, Index, [Req | Reqs], !Buffer) :-
 
 do_read(Desc, ReqIndex, bits(ExpectedWord0, NumBits), !Buffer) :-
     ExpectedWord = mask_word(ExpectedWord0, NumBits),
-    ( NumBits = 1 ->
+    ( if NumBits = 1 then
         get_bit(GetResult, !Buffer),
         (
             GetResult = ok(ResultBit),
-            ResultWord = ( ResultBit = yes -> 1 ; 0 ),
-            ( ResultWord = ExpectedWord ->
+            ResultWord = ( if ResultBit = yes then 1 else 0 ),
+            ( if ResultWord = ExpectedWord then
                 true
-            ;
+            else
                 throw_read_result_error(bits(ExpectedWord, ResultWord, 1),
                     Desc, ReqIndex)
             )
@@ -571,14 +571,14 @@ do_read(Desc, ReqIndex, bits(ExpectedWord0, NumBits), !Buffer) :-
             GetResult = error(Err),
             throw(Err)
         )
-    ;
+    else
         get_bits(bits_per_int - NumBits, NumBits, 0, ResultWord,
             NumBitsRead, GetResult, !Buffer),
         (
             GetResult = ok,
-            ( NumBitsRead = NumBits, ExpectedWord = ResultWord ->
+            ( if NumBitsRead = NumBits, ExpectedWord = ResultWord then
                 true
-            ;
+            else
                 throw_read_result_error(
                     bits(ExpectedWord, ResultWord, NumBits),
                     Desc, ReqIndex)
@@ -592,9 +592,9 @@ do_read(Desc, ReqIndex, bits(ExpectedWord0, NumBits), !Buffer) :-
 do_read(Desc, ReqIndex, bitmap(SourceBM, Index, NumBits), !Buffer) :-
     some [!BM] (
         !:BM = bitmap.init(SourceBM ^ num_bits),
-        ( Index = 0, NumBits = SourceBM ^ num_bits ->
+        ( if Index = 0, NumBits = SourceBM ^ num_bits then
             get_bitmap(!BM, BitsRead, GetResult, !Buffer)
-        ;
+        else
             get_bitmap(Index, NumBits, !BM, BitsRead, GetResult, !Buffer)
         ),
         (
@@ -602,9 +602,9 @@ do_read(Desc, ReqIndex, bitmap(SourceBM, Index, NumBits), !Buffer) :-
             ExpectedBM0 = bitmap.init(SourceBM ^ num_bits),
             ExpectedBM = copy_bits(SourceBM, Index,
                             ExpectedBM0, Index, NumBits),
-            ( ExpectedBM = !.BM ->
+            ( if ExpectedBM = !.BM then
                 true
-            ;
+            else
                 throw_read_result_error(
                     bitmap(ExpectedBM, !.BM, NumBits, BitsRead),
                     Desc, ReqIndex)
@@ -622,12 +622,11 @@ do_read(Desc, ReqIndex, check_buffer_status(ExpectedStatus), !Buffer) :-
     buffer_status(FoundStatus0, !Buffer),
     ( FoundStatus0 = ok, FoundStatus = ok
     ; FoundStatus0 = eof, FoundStatus = eof
-    ; FoundStatus0 = error(Err),
-        FoundStatus = error(univ(Err))
+    ; FoundStatus0 = error(Err), FoundStatus = error(univ(Err))
     ),
-    ( ExpectedStatus = FoundStatus ->
+    ( if ExpectedStatus = FoundStatus then
         true
-    ;
+    else
         throw_read_result_error(
             check_buffer_status(ExpectedStatus, FoundStatus),
             Desc, ReqIndex)
@@ -650,11 +649,11 @@ throw_read_stream_error(Error, Desc, ReqIndex) :-
 :- func mask_word(word, num_bits) = word.
 
 mask_word(ExpectedWord0, N) = ExpectedWord :-
-    ( N \= 0 ->
+    ( if N \= 0 then
         BitMask  = 1 `unchecked_left_shift` (N - 1),
         BitsMask = BitMask \/ (BitMask - 1),
         ExpectedWord = ExpectedWord0 /\ BitsMask
-    ;
+    else
         ExpectedWord = 0
     ).
 
@@ -698,12 +697,12 @@ bit_buffer_test_tmp_file = "bit_buffer_test_tmp".
 [
     (get(_Stream, Result, !.State, unsafe_promise_unique(!:State)) :-
         !.State = timebomb_state(TStream, TState0, Countdown0),
-        ( Countdown0 < 0 ->
+        ( if Countdown0 < 0 then
             Result = error(already_exploded)
-        ; Countdown0 = 0 ->
+        else if Countdown0 = 0 then
             Result = error(bang),
             !:State = 'new timebomb_state'(TStream, TState0, -1)
-        ;
+        else
             get(TStream, ByteResult, unsafe_promise_unique(TState0), TState),
             (
                 ByteResult = ok(Byte),
@@ -730,23 +729,23 @@ bit_buffer_test_tmp_file = "bit_buffer_test_tmp".
     (bulk_get(_, Index, NumBytes, !BM, NumBytesRead, Result,
             !.State, unsafe_promise_unique(!:State)) :-
         !.State = timebomb_state(TStream, TState0, Countdown0),
-        ( Countdown0 < 0 ->
+        ( if Countdown0 < 0 then
             NumBytesRead = 0,
             Result = error(already_exploded)
-        ; Countdown0 = 0 ->
+        else if Countdown0 = 0 then
             NumBytesRead = 0,
             Result = error(bang),
             !:State = 'new timebomb_state'(TStream, TState0, -1)
-        ;
+        else
             unsafe_promise_unique(TState0, TState1),
             bulk_get(TStream, Index, NumBytes, !BM, NumBytesRead0,
                 BulkGetResult, TState1, TState),
             (
                 BulkGetResult = ok,
-                ( NumBytesRead0 >= Countdown0 ->
+                ( if NumBytesRead0 >= Countdown0 then
                     NumBytesRead = Countdown0,
                     Result = error(bang)
-                ;
+                else
                     NumBytesRead = NumBytesRead0,
                     Result = ok
                 ),

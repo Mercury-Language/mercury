@@ -17,7 +17,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -27,6 +27,14 @@
 :- import_module char.
 :- import_module list.
 :- import_module solutions.
+
+%---------------------------------------------------------------------------%
+
+main(!IO) :-
+    cycles(a, Cycles),
+    write_cycles(Cycles, !IO).
+
+%---------------------------------------------------------------------------%
 
 :- type node ---> a ; b ; c ; d ; e ; f ; g ; h ; i ; j ; k ; l.
 
@@ -38,7 +46,7 @@
 :- pred cycle(node::in, list(node)::out) is nondet.
 
 cycle(StartNode, NodeLs) :-
-    (
+    ( if
         NodeLs0 = [StartNode],
         (
             StartNode = a,
@@ -60,24 +68,18 @@ cycle(StartNode, NodeLs) :-
             StartNode = d,
             AdjNode = d
         )
-    ->
-       ( (\+ list__member(AdjNode, NodeLs0)) ->
+    then
+       ( if not list__member(AdjNode, NodeLs0) then
           Status1 = traverse
-       ;
+       else
           Status1 = cycle
        ),
        NodeLs1 = [AdjNode | NodeLs0],
        cycle1(StartNode, AdjNode, NodeLs1, NodeLs, Status1)
-    ;
+    else
        NodeLs2 = [StartNode],
        cycle1(StartNode, StartNode, NodeLs2, NodeLs, no_cycle)
     ).
-
-%---------------------------------------------------------------------------%
-
-main -->
-    { cycles(a, Cycles) },
-    write_cycles(Cycles).
 
 %---------------------------------------------------------------------------%
 
@@ -107,15 +109,15 @@ cycles(N, Nodes) :-
 :- mode cycle1(in, in, in,  out, in) is nondet.
 
 cycle1(StartNode, CurrNode, NodeLs0, NodeLs, traverse) :-
-    ( arrow(CurrNode, AdjNode) ->
-       ( (\+ list__member(AdjNode, NodeLs0)) ->
+    ( if arrow(CurrNode, AdjNode) then
+       ( if not list__member(AdjNode, NodeLs0) then
           Status1 = traverse
-       ;
+       else
           Status1 = cycle
        ),
        NodeLs1 = [AdjNode | NodeLs0],
        cycle1(StartNode, AdjNode, NodeLs1, NodeLs, Status1)
-    ;
+    else
        cycle1(StartNode, StartNode, NodeLs0, NodeLs, no_cycle)
     ).
 cycle1(StartNode, StartNode, NodeLs, NodeLs, cycle).
@@ -139,48 +141,69 @@ node_to_char(l, 'l').
 
 %---------------------------------------------------------------------------%
 
-:- pred write_node(node::in, io__state::di, io__state::uo) is det.
+:- pred write_cycles(list(list(node))::in, io::di, io::uo) is det.
 
-write_node(N) -->
-    { node_to_char(N, C) },
-    io__write_char(C).
+write_cycles(Nodes, !IO) :-
+    write_cycles1(Nodes, yes, !IO),
+    io.write_string("\n", !IO).
 
-:- pred write_nodes(list(node)::in, io__state::di, io__state::uo) is det.
+:- pred write_cycles1(list(list(node))::in, io::di, io::uo) is det.
 
-write_nodes(Nodes) -->
-    write_nodes1(Nodes, yes).
-
-:- pred write_nodes1(list(node), bool, io__state, io__state).
-:- mode write_nodes1(in, in, di, uo) is det.
-
-write_nodes1([], yes) -->
-    io__write_string("[]").
-write_nodes1([], no) -->
-    io__write_string("]").
-write_nodes1([N | Ns], Start) -->
-    ( { Start = yes } -> io__write_string("[") ; { true }),
-    write_node(N),
-    ( { Ns \= [] } -> io__write_string(", ") ; { true }),
-    write_nodes1(Ns, no).
+write_cycles1([], yes, !IO) :-
+    io.write_string("[]", !IO).
+write_cycles1([], no, !IO) :-
+    io.write_string("]", !IO).
+write_cycles1([N | Ns], Start, !IO) :-
+    (
+        Start = yes,
+        io.write_string("[", !IO)
+    ;
+        Start = no
+    ),
+    write_nodes(N, !IO),
+    (
+        Ns = []
+    ;
+        Ns = [],
+        io.write_string(", ", !IO)
+    ),
+    write_cycles1(Ns, no, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_cycles(list(list(node)), io__state, io__state).
-:- mode write_cycles(in, di, uo) is det.
+:- pred write_nodes(list(node)::in, io::di, io::uo) is det.
 
-write_cycles(Nodes) -->
-    write_cycles1(Nodes, yes),
-    io__write_string("\n").
+write_nodes(Nodes, !IO) :_
+    write_nodes1(Nodes, yes, !IO).
 
-:- pred write_cycles1(list(list(node)), bool, io__state, io__state).
-:- mode write_cycles1(in, in, di, uo) is det.
+:- pred write_nodes1(list(node)::in, bool::in, io::di, io::uo) is det.
 
-write_cycles1([], yes) -->
-    io__write_string("[]").
-write_cycles1([], no) -->
-    io__write_string("]").
-write_cycles1([N | Ns], Start) -->
-    ( { Start = yes } -> io__write_string("[") ; { true }),
-    write_nodes(N),
-    ( { Ns \= [] } -> io__write_string(", ") ; { true }),
-    write_cycles1(Ns, no).
+write_nodes1([], yes, !IO) :-
+    io.write_string("[]", !IO).
+write_nodes1([], no, !IO) :-
+    io.write_string("]", !IO).
+write_nodes1([N | Ns], Start, !IO) :-
+    (
+        Start = yes,
+        io.write_string("[", !IO)
+    ;
+        Start = no
+    ),
+    write_node(N, !IO),
+    (
+        Ns = []
+    ;
+        Ns = [],
+        io.write_string(", ", !IO)
+    ),
+    write_nodes1(Ns, no, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred write_node(node::in, io::di, io::uo) is det.
+
+write_node(N, !IO) :-
+    node_to_char(N, C),
+    io.write_char(C, !IO).
+
+%---------------------------------------------------------------------------%

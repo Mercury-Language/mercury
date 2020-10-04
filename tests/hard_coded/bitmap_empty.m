@@ -58,36 +58,36 @@ main(!IO) :-
     ),
 
     io.write_string("-- in_range\n", !IO),
-    ( in_range(A0, -1) ->
+    ( if in_range(A0, -1) then
         io.write_string("error\n", !IO)
-    ;
+    else
         io.write_string("ok\n", !IO)
     ),
-    ( in_range(A0, 0) ->
+    ( if in_range(A0, 0) then
         io.write_string("error\n", !IO)
-    ;
+    else
         io.write_string("ok\n", !IO)
     ),
-    ( in_range(A0, 1) ->
+    ( if in_range(A0, 1) then
         io.write_string("error\n", !IO)
-    ;
+    else
         io.write_string("ok\n", !IO)
     ),
 
     io.write_string("-- byte_in_range\n", !IO),
-    ( byte_in_range(A0, -1) ->
+    ( if byte_in_range(A0, -1) then
         io.write_string("error\n", !IO)
-    ;
+    else
         io.write_string("ok\n", !IO)
     ),
-    ( byte_in_range(A0, 0) ->
+    ( if byte_in_range(A0, 0) then
         io.write_string("error\n", !IO)
-    ;
+    else
         io.write_string("ok\n", !IO)
     ),
-    ( byte_in_range(A0, 1) ->
+    ( if byte_in_range(A0, 1) then
         io.write_string("error\n", !IO)
-    ;
+    else
         io.write_string("ok\n", !IO)
     ),
 
@@ -102,7 +102,7 @@ main(!IO) :-
     io.nl(!IO),
 
     io.write_string("-- ^bit\n", !IO),
-    (try []
+    ( try []
         Bit = A0 ^ bit(0)
     then
         io.write(Bit, !IO),
@@ -127,7 +127,7 @@ main(!IO) :-
     ),
 
     io.write_string("-- ^byte\n", !IO),
-    (try []
+    ( try []
         Byte = A0 ^ byte(0)
     then
         io.write(Byte, !IO),
@@ -140,7 +140,7 @@ main(!IO) :-
 
     io.write_string("-- ^byte:=\n", !IO),
     some [B0, B1] (
-        (try [] (
+        ( try [] (
             B0 = bitmap.init(0, no),
             B1 = B0 ^ byte(0) := 0
         )
@@ -170,7 +170,7 @@ main(!IO) :-
 
     io.write_string("-- flip\n", !IO),
     some [B0, B1] (
-        (try [] (
+        ( try [] (
             B0 = bitmap.init(0, no),
             B1 = flip(B0, 0)
         )
@@ -257,10 +257,10 @@ main(!IO) :-
 
     io.write_string("-- from_string\n", !IO),
     String = to_string(A0),
-    ( Bstring = bitmap.from_string(String) ->
+    ( if Bstring = bitmap.from_string(String) then
         io.write(Bstring, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("error\n", !IO)
     ),
 
@@ -279,9 +279,9 @@ main(!IO) :-
     some [B0, B1] (
         B0 = bitmap.init(0, no),
         B1 = bitmap.init(0, no),
-        ( B0 = B1 ->
+        ( if B0 = B1 then
             io.write_string("equal\n", !IO)
-        ;
+        else
             io.write_string("not equal\n", !IO)
         )
     ),

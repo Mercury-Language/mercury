@@ -37,7 +37,8 @@ test_unify([A | As], Bs, !IO) :-
     do_test_unify(array(A), Bs, !IO),
     test_unify(As, Bs, !IO).
 
-:- pred do_test_unify(array(int)::in, list(list(int))::in, io::di, io::uo) is det.
+:- pred do_test_unify(array(int)::in, list(list(int))::in,
+    io::di, io::uo) is det.
 
 do_test_unify(_, [], !IO).
 do_test_unify(ArrayA, [B | Bs], !IO) :-

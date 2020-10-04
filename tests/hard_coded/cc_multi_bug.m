@@ -7,10 +7,15 @@
 :- interface.
 
 :- import_module io.
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 :- import_module io.
+
+main(!IO) :-
+    plus(N1, N2, s(zero)),
+    print(N1, !IO), nl(!IO),
+    print(N2, !IO), nl(!IO).
 
 :- type nat
     --->    zero
@@ -25,8 +30,3 @@ plus(zero, s(N), s(N)).
 plus(s(N), zero, s(N)).
 plus(s(N1), s(N2), s(N3)):-
     plus(N1, s(N2), N3).
-
-main -->
-    {plus(N1, N2, s(zero))},
-    print(N1), nl,
-    print(N2), nl.

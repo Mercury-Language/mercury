@@ -1,3 +1,7 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Regression test for bug #455.
 % Compile with: mmc --intermod-opt -m bug455_ mod_a
 %
@@ -9,6 +13,7 @@
 %
 % The problem was that the list of predicates that simplification may introduce
 % did not include the uint and fixed size integers.
+%
 
 :- module bug455_mod_a.
 :- interface.

@@ -14,7 +14,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- type mypair(T, U) ---> (fst::T) - (snd::U).
+:- type mypair(T, U)
+    --->    (fst::T) - (snd::U).
 :- type tbitmap == mypair(bitmap, sbitmap).
 
 :- inst tbitmap == bound(bitmap - sbitmap).
@@ -30,8 +31,7 @@
     ;       some [OtherArgs, Result] query(string, sbitmap, OtherArgs,
                     mypair(Result, Result))
     ;       some [OtherArgs, Result] binary_query(string, sbitmap, sbitmap,
-                    OtherArgs, mypair(Result, Result))
-    .
+                    OtherArgs, mypair(Result, Result)).
 
 :- type bitmap_verify_error
     --->    bitmap_verify_error(bitmap, bitmap_verify_error_type).
@@ -39,8 +39,7 @@
 :- type bitmap_verify_error_type
     --->    hash
     ;       trailing_bits_not_empty
-    ;       to_string(string, string)
-    .
+    ;       to_string(string, string).
 
 %---------------------------------------------------------------------------%
 
@@ -329,9 +328,9 @@ test_unify(BM1, BM2) =
 check(Op, Tester0, OtherArgs, Tester) = Tester :-
     Tester = BM - SBM,
     BMArray = to_sbitmap(BM),
-    ( verify(BM), BMArray = SBM ->
+    ( if verify(BM), BMArray = SBM then
         true
-    ;
+    else
         throw('new one_argument'(Op, Tester0 ^ snd, OtherArgs, Tester))
     ).
 
@@ -342,9 +341,9 @@ check(Op, Tester0, OtherArgs, Tester) = Tester :-
 check2(Op, Tester1, Tester2, OtherArgs, Tester) = Result :-
     Tester = BM - SBM,
     BMArray = to_sbitmap(BM),
-    ( verify(BM), SBM = BMArray ->
+    ( if verify(BM), SBM = BMArray then
         Result = Tester
-    ;
+    else
         throw('new two_arguments'(Op, Tester1 ^ snd, Tester2 ^ snd,
             OtherArgs, Tester))
     ).
@@ -355,9 +354,9 @@ check2(Op, Tester1, Tester2, OtherArgs, Tester) = Result :-
 
 check_query(Op, Tester1, OtherArgs, Res) = TheRes :-
     Res = Res1 - Res2,
-    ( Res1 = Res2 ->
+    ( if Res1 = Res2 then
         TheRes = Res1
-    ;
+    else
         throw('new query'(Op, Tester1 ^ snd, OtherArgs, Res))
     ).
 
@@ -368,9 +367,9 @@ check_query(Op, Tester1, OtherArgs, Res) = TheRes :-
 
 check_query2(Op, Tester1, Tester2, OtherArgs, Res) = TheRes :-
     Res = Res1 - Res2,
-    ( Res1 = Res2 ->
+    ( if Res1 = Res2 then
         TheRes = Res1
-    ;
+    else
         throw('new binary_query'(Op, Tester1 ^ snd, Tester2 ^ snd,
             OtherArgs, Res))
     ).
@@ -387,10 +386,10 @@ to_sbitmap(BM) =
 :- mode to_sbitmap_2(in, in, in, sbitmap_di) = sbitmap_uo.
 
 to_sbitmap_2(Index, NumBits, BM, SBM) =
-    ( Index < NumBits ->
+    ( if Index < NumBits then
         to_sbitmap_2(Index + 1, NumBits, BM,
             SBM ^ bit(Index) := BM ^ bit(Index))
-    ;
+    else
         SBM
     ).
 
@@ -408,26 +407,30 @@ verify(BM) :-
     % functor/4 uses MR_bitmap_to_string in runtime/mercury_bitmap.h.
     functor(BM, do_not_allow, Functor, _Arity),
     Str = bitmap.to_string(BM),
-    (
+    ( if
         Functor = "\"" ++ Str ++ "\"",
         BM = bitmap.from_string(Str)
-    ->
+    then
         semidet_succeed
-    ;
+    else
         throw(bitmap_verify_error(BM, to_string(Functor, Str)))
     ),
-    ( bitmap.hash(BM) = foreign_hash(BM) ->
+    ( if bitmap.hash(BM) = foreign_hash(BM) then
         semidet_succeed
-    ;
+    else
         throw(bitmap_verify_error(BM, hash))
     ),
     NumBits = BM ^ num_bits,
     BitsInLastByte = NumBits `rem` bitmap.bits_per_byte,
-    ( BitsInLastByte = 0 ->
+    ( if
+        BitsInLastByte = 0
+    then
         true
-    ; 0 = BM ^ unsafe_bits(NumBits, bitmap.bits_per_byte - BitsInLastByte) ->
+    else if
+        0 = BM ^ unsafe_bits(NumBits, bitmap.bits_per_byte - BitsInLastByte)
+    then
         true
-    ;
+    else
         throw(bitmap_verify_error(BM, trailing_bits_not_empty))
     ).
 

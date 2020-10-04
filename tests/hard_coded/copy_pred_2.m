@@ -15,15 +15,16 @@
 :- import_module map.
 :- import_module string.
 
-main -->
-    { make_closure(10, 20, P0) },
-    io.write_string("copying\n"),
-    { copy(P0, P1) },
-    { inst_cast(P1, P) },
-    io.write_string("calling\n"),
-    { P("blah", S) },
-    io.write_string("printing\n"),
-    print(S), nl.
+main(!IO) :-
+    make_closure(10, 20, P0),
+    io.write_string("copying\n", !IO),
+    copy(P0, P1),
+    inst_cast(P1, P),
+    io.write_string("calling\n", !IO),
+    P("blah", S),
+    io.write_string("printing\n", !IO),
+    io.print(S, !IO),
+    io.nl(!IO).
 
 :- pred make_closure(T, T, pred(string, string)).
 :- mode make_closure(in, in, out(pred(in, out) is det)) is det.
@@ -52,5 +53,4 @@ make_closure(A, B, foo(A, B)).
 foo(A, B, S0, S) :-
     functor(A, canonicalize, FA, _),
     functor(B, canonicalize, FB, _),
-    string.format("%s, %s, %s",
-        [s(FA), s(FB), s(S0)], S).
+    string.format("%s, %s, %s", [s(FA), s(FB), s(S0)], S).

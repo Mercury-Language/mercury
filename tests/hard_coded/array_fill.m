@@ -21,9 +21,13 @@
 :- import_module exception.
 :- import_module list.
 
-:- type dummy ---> dummy.
+:- type dummy
+    --->    dummy.
 
-:- type fruit ---> apple ; orange ; lemon.
+:- type fruit
+    --->    apple
+    ;       orange
+    ;       lemon.
 
 :- type color
     --->    color(

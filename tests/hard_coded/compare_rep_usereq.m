@@ -6,16 +6,16 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
 :- import_module pair.
 :- import_module univ.
 
-main -->
-    test(da, da),
-    test(da, db).
+main(!IO) :-
+    test(da, da, !IO),
+    test(da, db, !IO).
 
 :- type val == pair(string, univ).
 
@@ -35,14 +35,14 @@ db = "bb : foo" - univ(bb).
 foo_eq(_, _) :-
     semidet_succeed.
 
-:- pred test(val::in, val::in, io__state::di, io__state::uo) is cc_multi.
+:- pred test(val::in, val::in, io::di, io::uo) is cc_multi.
 
-test(SA - A, SB - B) -->
-    io__write_string(SA),
-    io__nl,
-    io__write_string(SB),
-    io__nl,
-    { compare_representation(Res, A, B) },
-    io__write_string("Result = "),
-    io__write(Res),
-    io__write_string(".\n\n").
+test(SA - A, SB - B, !IO) :-
+    io.write_string(SA, !IO),
+    io.nl(!IO),
+    io.write_string(SB, !IO),
+    io.nl(!IO),
+    compare_representation(Res, A, B),
+    io.write_string("Result = ", !IO),
+    io.write(Res, !IO),
+    io.write_string(".\n\n", !IO).

@@ -16,7 +16,11 @@
 :- import_module uint.
 
 main(!IO) :-
-    io.write_string("foo" ++ "bar", !IO), io.nl(!IO),
-    io.write_int(1 * 1000 + 2 * 100 + 3 * 10 + 4, !IO), io.nl(!IO),
-    io.write_float(5.0 * 1000.0 + 6.0 * 100.0 + 7.0 * 10.0 + 8.0, !IO), io.nl(!IO),
-    io.write_uint(2u * 1000u + 4u * 100u + 6u * 10u + 8u, !IO), io.nl(!IO).
+    io.write_string("foo" ++ "bar", !IO),
+    io.nl(!IO),
+    io.write_int(1 * 1000 + 2 * 100 + 3 * 10 + 4, !IO),
+    io.nl(!IO),
+    io.write_float(5.0 * 1000.0 + 6.0 * 100.0 + 7.0 * 10.0 + 8.0, !IO),
+    io.nl(!IO),
+    io.write_uint(2u * 1000u + 4u * 100u + 6u * 10u + 8u, !IO),
+    io.nl(!IO).

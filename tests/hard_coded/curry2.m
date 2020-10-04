@@ -5,58 +5,73 @@
 % This is a test of a bunch of different cases of currying.
 % It uses the predicates defined in curry2_test.m.
 % This is specifically aimed at testing the code
-% which optimizes currying in compiler/unify_gen.m.
+% which optimizes currying in compiler/closure_gen.m.
+%
 
 :- module curry2.
 :- interface.
 
 :- import_module io.
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module curry2_test.
 :- import_module int.
 
-main -->
-    { n(foo, NFoo) }, do_test(NFoo),
-    { p(foo, PFoo) }, do_test(PFoo),
-    ( { q(foo, QFoo) } -> do_test(QFoo)
-    ; io__write_string("q/2 failed\n")
+main(!IO) :-
+    n(foo, NFoo),
+    do_test(NFoo, !IO),
+    p(foo, PFoo),
+    do_test(PFoo, !IO),
+    ( if q(foo, QFoo) then
+        do_test(QFoo, !IO)
+    else
+        io.write_string("q/2 failed\n", !IO)
     ),
-    { r(foo, 42, RFoo) }, do_test(RFoo),
-    { s(foo2, 42, SFoo) }, do_test2(SFoo),
-    { t(foo2, 42, TFoo) }, do_test(TFoo),
-    { n(bar(7), NBar) }, do_test(NBar),
-    { p(bar(7), PBar) }, do_test(PBar),
-    ( { q(bar(7), QBar) } -> do_test(QBar)
-    ; io__write_string("q/2 failed\n")
+    r(foo, 42, RFoo),
+    do_test(RFoo, !IO),
+    s(foo2, 42, SFoo),
+    do_test2(SFoo, !IO),
+    t(foo2, 42, TFoo),
+    do_test(TFoo, !IO),
+    n(bar(7), NBar),
+    do_test(NBar, !IO),
+    p(bar(7), PBar),
+    do_test(PBar, !IO),
+    ( if q(bar(7), QBar) then
+        do_test(QBar, !IO)
+    else
+        io.write_string("q/2 failed\n", !IO)
     ),
-    { r(bar(7), 42, RBar) }, do_test(RBar),
-    { s(bar2(7), 42, SBar) }, do_test2(SBar),
-    { t(bar2(7), 42, TBar) }, do_test(TBar).
+    r(bar(7), 42, RBar),
+    do_test(RBar, !IO),
+    s(bar2(7), 42, SBar),
+    do_test2(SBar, !IO),
+    t(bar2(7), 42, TBar),
+    do_test(TBar, !IO).
 
-:- pred do_test(pred(int, int)::in(pred(in, out) is det), io::di, io::uo)
-    is det.
+:- pred do_test(pred(int, int)::in(pred(in, out) is det),
+    io::di, io::uo) is det.
 
-do_test(Pred) -->
-    { call(Pred, 3, X) },
-    { call(Pred, 3, Y) },
-    io__write_int(X),
-    io__write_string(" "),
-    io__write_int(Y),
-    io__write_string("\n").
+do_test(Pred, !IO) :-
+    call(Pred, 3, X),
+    call(Pred, 3, Y),
+    io.write_int(X, !IO),
+    io.write_string(" ", !IO),
+    io.write_int(Y, !IO),
+    io.write_string("\n", !IO).
 
-:- pred do_test2(pred(int, int)::in(pred(out, in) is det), io::di, io::uo)
-    is det.
+:- pred do_test2(pred(int, int)::in(pred(out, in) is det),
+    io::di, io::uo) is det.
 
-do_test2(Pred) -->
-    { call(Pred, X, 3) },
-    { call(Pred, Y, 3) },
-    io__write_int(X),
-    io__write_string(" "),
-    io__write_int(Y),
-    io__write_string("\n").
+do_test2(Pred, !IO) :-
+    call(Pred, X, 3),
+    call(Pred, Y, 3),
+    io.write_int(X, !IO),
+    io.write_string(" ", !IO),
+    io.write_int(Y, !IO),
+    io.write_string("\n", !IO).
 
 :- pred foo(int, int, int).
 :- mode foo(in, in, out) is det.

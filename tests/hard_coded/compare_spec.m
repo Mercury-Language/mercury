@@ -9,6 +9,7 @@
 % to link due to references to private_builtin__unsafe_type_cast
 % in the generated code (calls to private_builtin__unsafe_type_cast
 % should be generated inline).
+%
 
 :- module compare_spec.
 
@@ -16,17 +17,17 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module bool.
 
-main -->
-    ( { compare_bool } ->
-        io__write_string("failed\n")
-    ;
-        io__write_string("succeeded\n")
+main(!IO) :-
+    ( if compare_bool then
+        io.write_string("failed\n", !IO)
+    else
+        io.write_string("succeeded\n", !IO)
     ).
 
 :- pred compare_bool is semidet.

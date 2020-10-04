@@ -81,15 +81,15 @@ cycle(StartNode, NodeLs) :-
     is nondet.
 
 cycle1(StartNode, CurrNode, NodeLs0, NodeLs, traverse) :-
-    ( arrow(CurrNode, AdjNode) ->
-        ( (\+ list__member(AdjNode, NodeLs0)) ->
+    ( if arrow(CurrNode, AdjNode) then
+        ( if not list.member(AdjNode, NodeLs0) then
             Status1 = traverse
-        ;
+        else
             Status1 = cycle
         ),
         NodeLs1 = [AdjNode | NodeLs0],
         cycle1(StartNode, AdjNode, NodeLs1, NodeLs, Status1)
-    ;
+    else
         cycle1(StartNode, StartNode, NodeLs0, NodeLs, no_cycle)
     ).
 cycle1(StartNode, StartNode, NodeLs, NodeLs, cycle).

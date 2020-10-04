@@ -89,7 +89,7 @@ plain_to_string(Stat) = Out :-
   Counts = bag.to_assoc_list(Stat),
   list.sort(comparator(Stat, 0), Counts, CountsS),
   list.map(
-    (pred((Name - Count)::in, Line::out) is det :-
+    ( pred((Name - Count)::in, Line::out) is det :-
       Line = string.int_to_string(Count) ++ "\t" ++ join_list("-", Name)
     ), CountsS, Lines),
   Out = join_list("\n", Lines) ++ "\n".
@@ -99,29 +99,29 @@ plain_to_string(Stat) = Out :-
     is det.
 
 comparator(Stats, Level, (ADescr-ANum), (BDescr-BNum), Out) :-
-    ( take(Level, ADescr, ALevel) ->
-        ( take(Level, BDescr, BLevel) ->
-            ( count_value(Stats, ALevel) < count_value(Stats, BLevel) ->
+    ( if take(Level, ADescr, ALevel) then
+        ( if take(Level, BDescr, BLevel) then
+            ( if count_value(Stats, ALevel) < count_value(Stats, BLevel) then
                 Out = (>)
-            ; count_value(Stats, ALevel) > count_value(Stats, BLevel) ->
+            else if count_value(Stats, ALevel) > count_value(Stats, BLevel) then
                 Out = (<)
-            ;
+            else
                 % same value
-                ( ALevel = BLevel ->
+                ( if ALevel = BLevel then
                     comparator(Stats, Level+1, (ADescr-ANum), (BDescr-BNum),
                         Out)
-                ; compare((<), ALevel, BLevel) ->
+                else if compare((<), ALevel, BLevel) then
                     Out = (>)
-                ;
+                else
                     Out = (<)
                 )
             )
-        ;
+        else
             Out = (>)
         )
-    ; take(Level, BDescr, _BLevel) ->
+    else if take(Level, BDescr, _BLevel) then
         Out = (<)
-    ;
+    else
         Out = (=)
     ).
 
@@ -130,7 +130,7 @@ comparator(Stats, Level, (ADescr-ANum), (BDescr-BNum), Out) :-
 calc_subtotals(Stat) = OutStat :-
   Counts = bag.to_assoc_list(Stat),
   list.foldl(
-    (pred((Name - Count)::in, InBag::in, OutBag::out) is det :-
+    ( pred((Name - Count)::in, InBag::in, OutBag::out) is det :-
       aggregate(substarts(Name), count(Count), InBag, OutBag)
     ), Counts, Stat, OutStat).
 
@@ -163,7 +163,7 @@ plain_to_doc(Stat) = Out :-
 subtotals_to_doc(Stat) = Out :-
   Counts = bag.to_assoc_list(Stat),
   list.foldl(
-    (pred((Name - Count)::in, InBag::in, OutBag::out) is det :-
+    ( pred((Name - Count)::in, InBag::in, OutBag::out) is det :-
       aggregate(substarts(Name), count(Count), InBag, OutBag)
     ), Counts, Stat, Subtotals),
   Out = plain_to_doc(Subtotals).
@@ -189,7 +189,7 @@ minavgmax_string(List) = Str :-
     ;
         List = [H | Tail],
         list.foldl3(
-            (pred(N::in, MinSoFar::in, NewMin::out, MaxSoFar::in, NewMax::out,
+            ( pred(N::in, MinSoFar::in, NewMin::out, MaxSoFar::in, NewMax::out,
                     SumSoFar::in, NewSum::out) is det:-
                 NewSum = SumSoFar + N,
                 NewMin = (if N < MinSoFar then N else MinSoFar),

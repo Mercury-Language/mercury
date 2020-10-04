@@ -43,12 +43,12 @@ main(!IO) :-
 :- pred bug(string::out) is det.
 
 bug(R) :-
-    ( p ->
+    ( if p then
         R = "RESULT: BAD A"
-    ;
-        ( q(R0) ->
+    else
+        ( if q(R0) then
             R1 = R0
-        ;
+        else
             R1 = c(f(a, a))
         ),
         % Enabling the following causes R1 to be bound to the correct value.
@@ -68,18 +68,18 @@ bug(R) :-
 :- pred p is semidet.
 
 p :-
-    ( 1 = 2 ->
+    ( if 1 = 2 then
         true
-    ;
+    else
         fail
     ).
 
 :- pred q(t2::out) is semidet.
 
 q(Out) :-
-    ( 1 = 2 ->
+    ( if 1 = 2 then
         Out = d
-    ;
+    else
         fail
     ).
 

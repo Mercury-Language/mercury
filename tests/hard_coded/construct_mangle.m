@@ -109,21 +109,21 @@ test_type(Type, !IO) :-
 :- pred test_functor(type_desc::in, int::in, io::di, io::uo) is det.
 
 test_functor(Type, FunctorNumber, !IO) :-
-    ( get_functor(Type, FunctorNumber, Name, Arity, _ArgTypes) ->
+    ( if get_functor(Type, FunctorNumber, Name, Arity, _ArgTypes) then
         % Assume that any arguments are ints.
         ArgUnivs = list.map(int_univ, 1 .. Arity),
-        (
+        ( if
             find_functor(Type, Name, Arity, FunctorNumber, _),
             Univ = construct(Type, FunctorNumber, ArgUnivs)
-        ->
+        then
             io.write(Univ, !IO),
             io.nl(!IO)
-        ;
+        else
             io.write_string("failed FunctorNumber = ", !IO),
             io.write_int(FunctorNumber, !IO),
             io.nl(!IO)
         )
-    ;
+    else
         io.write_string("failed FunctorNumber = ", !IO),
         io.write_int(FunctorNumber, !IO),
         io.nl(!IO)

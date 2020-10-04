@@ -11,8 +11,7 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- type foo(T)
     --->    ok(T)
@@ -23,14 +22,15 @@
 :- import_module int.
 :- import_module float.
 
-main -->
-    { Pred = (pred(Int::in, Float::out) is det :- Float = float(Int)) },
-    { test(Pred, error("error"), Output1) },
-    { test(Pred, ok(1), Output2) },
-    io__write(Output1),
-    io__nl,
-    io__write(Output2),
-    io__nl.
+main(!IO) :-
+    Pred =
+        ( pred(Int::in, Float::out) is det :-
+            Float = float(Int)
+        ),
+    test(Pred, error("error"), Output1),
+    test(Pred, ok(1), Output2),
+    io.write_line(Output1, !IO),
+    io.write_line(Output2, !IO).
 
 :- pred test(pred(T, U), foo(T), foo(U)).
 :- mode test(pred(in, out) is det, in, out) is det.

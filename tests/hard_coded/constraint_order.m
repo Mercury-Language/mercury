@@ -11,17 +11,17 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    ( { p(3, Y) } ->
-        io__write_string("succeeded: "),
-        io__write_int(Y),
-        io__nl
-    ;
-        io__write_string("failed\n")
+main(!IO) :-
+    ( if p(3, Y) then
+        io.write_string("succeeded: ", !IO),
+        io.write_int(Y, !IO),
+        io.nl(!IO)
+    else
+        io.write_string("failed\n", !IO)
     ).
 
 :- pred p(int::di, int::out) is semidet.

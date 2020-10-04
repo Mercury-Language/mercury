@@ -1,23 +1,24 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module compare_rep_array.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
 :- import_module array.
 :- import_module list.
-:- import_module std_util.
+:- import_module pair.
+:- import_module univ.
 
-main -->
-    test(d1, d2),
-    test(d2, d3),
-    test(d3, d3).
+main(!IO) :-
+    test(d1, d2, !IO),
+    test(d2, d3, !IO),
+    test(d3, d3, !IO).
 
 :- type val == pair(string, univ).
 
@@ -30,13 +31,14 @@ d2 = "{1, 4, 9} : array(int)" - univ(array([1, 4, 9])).
 :- func d3 = val.
 d3 = "{1.0, 1.1, 1.2} : array(float)" - univ(array([1.0, 1.1, 1.2])).
 
-:- pred test(val::in, val::in, io__state::di, io__state::uo) is cc_multi.
-test(SA - A, SB - B) -->
-    io__write_string(SA),
-    io__nl,
-    io__write_string(SB),
-    io__nl,
-    { std_util__compare_representation(Res, A, B) },
-    io__write_string("Result = "),
-    io__write(Res),
-    io__write_string(".\n\n").
+:- pred test(val::in, val::in, io::di, io::uo) is cc_multi.
+
+test(SA - A, SB - B, !IO) :-
+    io.write_string(SA, !IO),
+    io.nl(!IO),
+    io.write_string(SB, !IO),
+    io.nl(!IO),
+    compare_representation(Res, A, B),
+    io.write_string("Result = ", !IO),
+    io.write(Res, !IO),
+    io.write_string(".\n\n", !IO).

@@ -4,6 +4,7 @@
 %
 % Test array generators.
 %
+
 :- module array_gen.
 :- interface.
 

@@ -6,19 +6,19 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
 :- import_module list.
 
-main -->
-    io__read_line(Res),
-    ( { Res = ok(['y' | _]), Message = "Yes\n" }
-    ; { Res = ok(['n' | _]), Message = "No\n" }
-    ; { Message = "Huh?\n" }
+main(!IO) :-
+    io.read_line(Res, !IO),
+    ( Res = ok(['y' | _]), Message = "Yes\n"
+    ; Res = ok(['n' | _]), Message = "No\n"
+    ; Message = "Huh?\n"
     ),
-    io__write_string(Message).
+    io.write_string(Message, !IO).
 
 /***
 % This test used to be written as follows, but currently

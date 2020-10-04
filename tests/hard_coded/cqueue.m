@@ -8,23 +8,23 @@
 
 :- type cqueue(T).
 
-:- pred cqueue__cqueue(cqueue(T)).
-:- mode cqueue__cqueue(out) is det.
+:- pred cqueue.cqueue(cqueue(T)).
+:- mode cqueue.cqueue(out) is det.
 
-:- pred cqueue__insert(cqueue(T), T, cqueue(T)).
-:- mode cqueue__insert(in, in, out) is det.
+:- pred cqueue.insert(cqueue(T), T, cqueue(T)).
+:- mode cqueue.insert(in, in, out) is det.
 
-:- pred cqueue__append(cqueue(T), T, cqueue(T)).
-:- mode cqueue__append(in, in, out) is det.
+:- pred cqueue.append(cqueue(T), T, cqueue(T)).
+:- mode cqueue.append(in, in, out) is det.
 
-:- pred cqueue__this(cqueue(T), T).
-:- mode cqueue__this(in, out) is semidet.
+:- pred cqueue.this(cqueue(T), T).
+:- mode cqueue.this(in, out) is semidet.
 
-:- pred cqueue__next(cqueue(T), cqueue(T)).
-:- mode cqueue__next(in, out) is det.
+:- pred cqueue.next(cqueue(T), cqueue(T)).
+:- mode cqueue.next(in, out) is det.
 
-:- pred cqueue__prev(cqueue(T), cqueue(T)).
-:- mode cqueue__prev(in, out) is det.
+:- pred cqueue.prev(cqueue(T), cqueue(T)).
+:- mode cqueue.prev(in, out) is det.
 
 :- implementation.
 
@@ -33,11 +33,11 @@
 
 :- type cqueue(T) == pair(list(T)).
 
-cqueue__cqueue([] - []).
+cqueue.cqueue([] - []).
 
-cqueue__insert([Thing | Before] - After, New, [Thing, New | Before] - After).
-cqueue__insert([] - After0, New, Before - After) :-
-    list__reverse(After0, Before0),
+cqueue.insert([Thing | Before] - After, New, [Thing, New | Before] - After).
+cqueue.insert([] - After0, New, Before - After) :-
+    list.reverse(After0, Before0),
     (
         Before0 = [],
         Before = [New],
@@ -48,15 +48,15 @@ cqueue__insert([] - After0, New, Before - After) :-
         After = []
     ).
 
-cqueue__append(Before - After, New, Before - [New | After]).
+cqueue.append(Before - After, New, Before - [New | After]).
 
-cqueue__this([This | _Before] - _After, This).
-cqueue__this([] - After, This) :-
-    list__reverse(After, [This | _Before]).
+cqueue.this([This | _Before] - _After, This).
+cqueue.this([] - After, This) :-
+    list.reverse(After, [This | _Before]).
 
-cqueue__next(Before - [Thing | After], [Thing | Before] - After).
-cqueue__next(Before0 - [], Before - After) :-
-    list__reverse(Before0, After0),
+cqueue.next(Before - [Thing | After], [Thing | Before] - After).
+cqueue.next(Before0 - [], Before - After) :-
+    list.reverse(Before0, After0),
     (
         After0 = [],
         Before = [],
@@ -66,9 +66,9 @@ cqueue__next(Before0 - [], Before - After) :-
         Before = [Thing]
     ).
 
-cqueue__prev([Thing | Before] - After, Before - [Thing | After]).
-cqueue__prev([] - After0, Before - After) :-
-    list__reverse(After0, Before0),
+cqueue.prev([Thing | Before] - After, Before - [Thing | After]).
+cqueue.prev([] - After0, Before - After) :-
+    list.reverse(After0, Before0),
     (
         Before0 = [],
         After = [],

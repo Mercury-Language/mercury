@@ -6,19 +6,19 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
 :- import_module pair.
 :- import_module univ.
 
-main -->
-    test(d1, d1),
-    test(d1, dm),
-    test(dm, dm),
-    test(dm, dt),
-    test(df1, df2).
+main(!IO) :-
+    test(d1, d1, !IO),
+    test(d1, dm, !IO),
+    test(dm, dm, !IO),
+    test(dm, dt, !IO),
+    test(df1, df2, !IO).
 
 :- type val == pair(string, univ).
 
@@ -40,13 +40,14 @@ df2 = "foo(2) : func(int) = int" - univ(foo(2)).
 :- func foo(int, int) = int.
 foo(_, Z) = Z.
 
-:- pred test(val::in, val::in, io__state::di, io__state::uo) is cc_multi.
-test(SA - A, SB - B) -->
-    io__write_string(SA),
-    io__nl,
-    io__write_string(SB),
-    io__nl,
-    { compare_representation(Res, A, B) },
-    io__write_string("Result = "),
-    io__write(Res),
-    io__write_string(".\n\n").
+:- pred test(val::in, val::in, io::di, io::uo) is cc_multi.
+
+test(SA - A, SB - B, !IO) :-
+    io.write_string(SA, !IO),
+    io.nl(!IO),
+    io.write_string(SB, !IO),
+    io.nl(!IO),
+    compare_representation(Res, A, B),
+    io.write_string("Result = ", !IO),
+    io.write(Res, !IO),
+    io.write_string(".\n\n", !IO).

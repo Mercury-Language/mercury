@@ -60,12 +60,12 @@ label(Name, [_ | Ns], N, P) :-
     choice_id::in) is semidet.
 
 check(A, B, C, PA, PB, PC) :-
-    ( is_nogood(A, B, C, PA, PB, PC, P) ->
+    ( if is_nogood(A, B, C, PA, PB, PC, P) then
         trace [io(!IO)] (
             io.format("backjump (%d)\n", [i(to_int(P))], !IO)
         ),
         impure backjump(P)
-    ;
+    else
         is_solution(A, B, C),
         trace [io(!IO)] (
             io.format("solution %d, %d, %d\n", [i(A), i(B), i(C)], !IO)

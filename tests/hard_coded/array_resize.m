@@ -63,9 +63,11 @@ main(!IO) :-
     test_resize([orange, lemon, apple, pear], 3, pineapple, !IO),
     test_resize([orange, lemon, apple, pear], 6, pineapple, !IO),
     test_resize([color(1u8, 1u8, 1u8), color(2u8, 2u8, 2u8),
-        color(3u8, 3u8, 3u8), color(4u8, 4u8, 4u8)], 3, color(0u8, 0u8, 0u8), !IO),
+        color(3u8, 3u8, 3u8), color(4u8, 4u8, 4u8)], 3, color(0u8, 0u8, 0u8),
+        !IO),
     test_resize([color(1u8, 1u8, 1u8), color(2u8, 2u8, 2u8),
-        color(3u8, 3u8, 3u8), color(4u8, 4u8, 4u8)], 6, color(0u8, 0u8, 0u8), !IO),
+        color(3u8, 3u8, 3u8), color(4u8, 4u8, 4u8)], 6, color(0u8, 0u8, 0u8),
+        !IO),
     test_resize([[1], [2, 2], [3, 3, 3], [4, 4, 4, 4]], 3, [42], !IO),
     test_resize([[1], [2, 2], [3, 3, 3], [4, 4, 4, 4]], 6, [42], !IO).
 

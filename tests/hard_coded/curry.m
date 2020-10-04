@@ -4,22 +4,23 @@
 %
 % Test curried functions.
 % This is a regression test: mercury-0.6 failed this test.
+%
 
 :- module curry.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int.
 :- import_module list.
 
-main -->
-    io__write_string("Hello, world\n"),
-    { _ = my_map(curry2(my_append), [[1], [2], [3]]) },
-    { _ = my_map(curry2(my_plus), [1, 2, 3]) }.
+main(!IO) :-
+    io.write_string("Hello, world\n", !IO),
+    _ = my_map(curry2(my_append), [[1], [2], [3]]),
+    _ = my_map(curry2(my_plus), [1, 2, 3]).
 
 :- func my_append(list(T), list(T)) = list(T).
 my_append(A, B) = C :- list__append(A, B, C).

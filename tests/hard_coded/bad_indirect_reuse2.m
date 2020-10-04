@@ -49,10 +49,10 @@ my_merge([], [], []).
 my_merge([A | As], [], [A | As]).
 my_merge([], [B | Bs], [B | Bs]).
 my_merge([A | As], [B | Bs], [C | Cs]) :-
-    ( compare(>, A, B) ->
+    ( if compare(>, A, B) then
         C = B,
         my_merge([A | As], Bs, Cs)
-    ;
+    else
         % If compare((=), A, B), take A first.
         C = A,
         my_merge(As, [B | Bs], Cs)

@@ -25,8 +25,7 @@ main(!IO) :-
     test_left_shift(!IO),
     test_unchecked_left_shift(!IO),
     test_right_shift(!IO),
-    test_unchecked_right_shift(!IO),
-    true.
+    test_unchecked_right_shift(!IO).
 
 :- pred test_plus(io::di, io::uo) is det.
 

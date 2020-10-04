@@ -59,9 +59,9 @@ read_byte_test(Stream, ExpectedByte, !IO) :-
     io.read_byte(Stream, Res, !IO),
     (
         Res = ok(ReadByte),
-        ( ExpectedByte = ReadByte ->
+        ( if ExpectedByte = ReadByte then
             true
-        ;
+        else
             Stderr = io.stderr_stream,
             io.write_string(Stderr, "expected ", !IO),
             io.write_int(Stderr, ExpectedByte, !IO),

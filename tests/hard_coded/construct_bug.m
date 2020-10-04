@@ -25,7 +25,7 @@ main(!IO) :-
     FileName = "temp.term",
 
     call(
-        (pred(!.S::in, !:S::out) is det:-
+        ( pred(!.S::in, !:S::out) is det:-
             count(["A"], !S),
             count(["A", "A2"], !S),
             count(["B"], !S),
@@ -37,9 +37,9 @@ main(!IO) :-
         ), construct_bug_submodule.init, Map),
 
     io.open_output(FileName, Result, !IO),
-    ( Result = ok(Temp_ORDIE_Out_OutStream) ->
+    ( if Result = ok(Temp_ORDIE_Out_OutStream) then
         OutStream = Temp_ORDIE_Out_OutStream
-    ;
+    else
         error( "Failed to write to '" ++ FileName ++ "'.")
     ),
     io.write(OutStream, Map, !IO),
@@ -49,9 +49,9 @@ main(!IO) :-
     io.write_string("Saved the map to file: " ++ FileName ++ "\n", !IO),
 
     io.open_input(FileName, Result2, !IO),
-    ( Result2 = ok(Temp_ORDIE_Out_InStream) ->
+    ( if Result2 = ok(Temp_ORDIE_Out_InStream) then
         InStream = Temp_ORDIE_Out_InStream
-    ;
+    else
         error( "Failed to open '" ++ FileName ++ "'.")
     ),
     io.read(InStream, MayDataTerm, !IO),
@@ -68,9 +68,9 @@ main(!IO) :-
 
     io.write_string("Loaded the map from file: " ++ FileName ++ "\n", !IO),
 
-    ( Map = ReadMap ->
+    ( if Map = ReadMap then
         io.write_string("The representations are identical.\n", !IO)
-    ;
+    else
         io.write_string("The representations are different.\n", !IO)
     ),
 

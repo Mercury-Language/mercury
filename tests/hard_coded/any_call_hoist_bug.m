@@ -2,10 +2,10 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
 %
-% rotd-2006-06-30 and before incorrectly hoisted the method call new_literal/1
-% in the function literal_list/1.  The problem was that loop invariant
-% hoisting was considering calls (and generic_calls) with modes that contained
-% an inst any component as candidates for hoisting.
+% rotd-2006-06-30 and before incorrectly hoisted the method call
+% new_literal/1 in the function literal_list/1. The problem was that
+% loop invariant hoisting was considering calls (and generic_calls) with
+% modes that contained an inst `any' component as candidates for hoisting.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -46,9 +46,9 @@ main(!IO) :-
 :- func literal_list(int::in) = (lit_list(L)::oa) is det <= foo(L).
 
 literal_list(N) = LitList :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         LitList = []
-    ;
+    else
         new_literal(A),   % XXX This is incorrectly hoisted.
         LitList0 = literal_list(N - 1),
         LitList  = [ N - A | LitList0 ]

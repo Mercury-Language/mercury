@@ -10,15 +10,15 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 
-main -->
-    { benchmark([1, 16, 100, 15, 20], Found) },
-    io__write_string(Found).
+main(!IO) :-
+    benchmark([1, 16, 100, 15, 20], Found),
+    io.write_string(Found, !IO).
 
 :- pred benchmark(list(int), string).
 :- mode benchmark(in, out) is det.
@@ -26,9 +26,9 @@ main -->
 :- pragma no_inline(benchmark/2).
 
 benchmark(Data, Out) :-
-    ( mymember(X, Data), test(X) ->
+    ( if mymember(X, Data), test(X) then
         Out = "found"
-    ;
+    else
         Out = "not_found"
     ).
 

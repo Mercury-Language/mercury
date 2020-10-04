@@ -30,10 +30,10 @@ main(!IO) :-
     ;
         Res = exception(Excp),
         io.set_exit_status(1, !IO),
-        ( univ_to_type(Excp, BitmapResErr) ->
+        ( if univ_to_type(Excp, BitmapResErr) then
             io.nl(!IO),
             write_bitmap_result_error(BitmapResErr, !IO)
-        ;
+        else
             rethrow(Res)
         )
     ).
@@ -74,11 +74,11 @@ run_test({}, !IO) :-
         io.write_string(to_byte_string(!.BM), !IO),
         nl(!IO),
         !:BM = ((((((!.BM  ^ bit(3) := yes)
-                        ^ bit(6) := yes)
-                        ^ bit(8) := yes)
-                        ^ bit(10) := yes)
-                        ^ bit(12) := yes)
-                        ^ bit(17) := yes),
+            ^ bit(6) := yes)
+            ^ bit(8) := yes)
+            ^ bit(10) := yes)
+            ^ bit(12) := yes)
+            ^ bit(17) := yes),
         io.write_string(to_byte_string(!.BM), !IO),
         nl(!IO),
         write_binary_string(!.BM ^ bits(1, 10), !IO),
@@ -120,9 +120,9 @@ run_test({}, !IO) :-
         builtin.copy(!.BM ^ fst, CopyBM),
         io.write_string(to_byte_string(CopyBM), !IO),
         nl(!IO),
-        ( CopyBM = !.BM ^ fst ->
+        ( if CopyBM = !.BM ^ fst then
             io.write_string("Copy succeeded\n", !IO)
-        ;
+        else
             io.write_string("Copy failed\n", !IO)
         )
     ),
@@ -389,13 +389,13 @@ test_binary_io(!IO) :-
             InputBMa0 = bitmap.init(64, no),
             io.read_bitmap(IStream, InputBMa0, InputBMa,
                 BytesReadA, ReadResA, !IO),
-            (
+            ( if
                 ReadResA = ok,
                 BytesReadA = 8,
                 InputBMa = BMa
-            ->
+            then
                 io.write_string("First read succeeded\n", !IO)
-            ;
+            else
                 io.write_string("First read failed\n", !IO)
             ),
             InputBMb0 = bitmap.init(32, no),
@@ -405,15 +405,15 @@ test_binary_io(!IO) :-
             % Check that we're at eof.
             io.read_bitmap(IStream, InputBMb1, InputBMb,
                 BytesReadB2, ReadResB2, !IO),
-            (
+            ( if
                 ReadResB = ok,
                 BytesReadB = 3,
                 ReadResB2 = ok,
                 BytesReadB2 = 0,
                 BMb ^ bits(16, 24) = InputBMb ^ bits(0, 24)
-            ->
+            then
                 io.write_string("Second read succeeded\n", !IO)
-            ;
+            else
                 io.write_string("Second read failed\n", !IO)
             ),
             io.close_binary_input(IStream, !IO),
@@ -454,19 +454,19 @@ test_text_io(!IO) :-
         (
             OpenInputRes = ok(IStream),
             io.read(IStream, ReadResA, !IO),
-            ( ReadResA = ok(BMa) ->
+            ( if ReadResA = ok(BMa) then
                 io.write_string("First read succeeded\n", !IO)
-            ;
+            else
                 io.write_string("First read failed\n", !IO),
                 io.close_input(IStream, !IO),
                 throw(ReadResA)
             ),
             io.read(IStream, ReadResB, !IO),
-            (
+            ( if
                 ReadResB = ok(BMb)
-            ->
+            then
                 io.write_string("Second read succeeded\n", !IO)
-            ;
+            else
                 io.write_string("Second read failed\n", !IO),
                 io.close_input(IStream, !IO),
                 throw(ReadResB)
@@ -490,9 +490,9 @@ fill_in_alternating_pattern(Byte, !BM) :-
     NumBytes = NumBits / bits_per_byte,
     fill_in_alternating_pattern(0, NumBytes, Byte, !BM),
     LastByteNumBits = NumBits `rem` bits_per_byte,
-    ( LastByteNumBits \= 0 ->
+    ( if LastByteNumBits \= 0 then
         !:BM = !.BM ^ bits(NumBytes * bits_per_byte, LastByteNumBits) := Byte
-    ;
+    else
         true
     ).
 
@@ -500,12 +500,12 @@ fill_in_alternating_pattern(Byte, !BM) :-
             tbitmap::tbitmap_di, tbitmap::tbitmap_uo) is det.
 
 fill_in_alternating_pattern(Index, NumBytes, Pattern, !BM) :-
-    ( Index >= NumBytes ->
+    ( if Index >= NumBytes then
         true
-    ;
-        ( Index rem 2 = 0 ->
+    else
+        ( if Index rem 2 = 0 then
             BytePattern = Pattern
-        ;
+        else
             BytePattern = \Pattern
         ),
         !:BM = !.BM ^ byte(Index) := BytePattern,

@@ -8,20 +8,20 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module char.
 :- import_module string.
 
-main -->
-    (
-        { char__to_int(Nul, 0) },
-        { string__contains_char("", Nul) }
-    ->
-        io__write_string("test failed\n")
-    ;
-        io__write_string("test succeeded\n")
+main(!IO) :-
+    ( if
+        char__to_int(Nul, 0),
+        string__contains_char("", Nul)
+    then
+        io.write_string("test failed\n", !IO)
+    else
+        io.write_string("test succeeded\n", !IO)
     ).
 

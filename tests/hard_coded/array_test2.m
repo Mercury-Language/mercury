@@ -49,28 +49,28 @@ test(List, !IO) :-
     io.write(Elements, !IO),
     io.nl(!IO),
 
-    ( semidet_lookup(Array, -1, _) ->
+    ( if semidet_lookup(Array, -1, _) then
         io.write_string("error: out of bounds lookup suceeded\n", !IO)
-    ;
+    else
         io.write_string("good: out of bounds lookup averted\n", !IO)
     ),
-    ( semidet_lookup(Array, list.length(List), _) ->
+    ( if semidet_lookup(Array, list.length(List), _) then
         io.write_string("error: out of bounds lookup suceeded\n", !IO)
-    ;
+    else
         io.write_string("good: out of bounds lookup averted\n", !IO)
     ),
 
     Elem = list.det_head(List),
 
     array.copy(Array, ArrayB),
-    ( semidet_set(-1, Elem, Array, _) ->
+    ( if semidet_set(-1, Elem, Array, _) then
         io.write_string("error: out of bounds set succeeded\n", !IO)
-    ;
+    else
         io.write_string("good: out of bounds set averted\n", !IO)
     ),
-    ( semidet_set(5, Elem, ArrayB, _) ->
+    ( if semidet_set(5, Elem, ArrayB, _) then
         io.write_string("error: out of bounds set succeeded\n", !IO)
-    ;
+    else
         io.write_string("good: out of bounds set averted\n", !IO)
     ),
 

@@ -6,7 +6,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -17,15 +17,16 @@
 
 :- type phloat == float.
 
-main -->
-    { F = foo(10, 20.2, 30, 40.4) },
-    { copy(F, F2) },
-    io__set_globals(univ(F2)),
-    io__get_globals(Univ),
-    { det_univ_to_type(Univ, F3) },
-    { inst_cast(F3, F4) },
-    { F4("blah", S) },
-    print(S), nl.
+main(!IO) :-
+    F = foo(10, 20.2, 30, 40.4),
+    copy(F, F2),
+    io.set_globals(univ(F2), !IO),
+    io.get_globals(Univ, !IO),
+    det_univ_to_type(Univ, F3),
+    inst_cast(F3, F4),
+    F4("blah", S),
+    io.print(S, !IO),
+    io.nl(!IO).
 
 :- pred inst_cast(pred(string, string), pred(string, string)).
 :- mode inst_cast(in, out(pred(in, out) is det)) is det.
@@ -47,4 +48,4 @@ main -->
     is det.
 
 foo(A, B, C, D, S0, S) :-
-    string__format("%d, %g, %d, %g, %s", [i(A), f(B), i(C), f(D), s(S0)], S).
+    string.format("%d, %g, %d, %g, %s", [i(A), f(B), i(C), f(D), s(S0)], S).

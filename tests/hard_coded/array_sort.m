@@ -45,12 +45,12 @@ sub([H | T], [H | L]) :-
 test(L, !IO) :-
     list.sort(L, LS),
     AS = to_list(array.sort(from_list(L))),
-    ( LS = AS ->
+    ( if LS = AS then
         % io.write_string("ok: ", !IO),
         % io.write(L, !IO),
         % io.nl(!IO)
         true
-    ;
+    else
         io.write_string("failed: ", !IO),
         io.write(L, !IO),
         io.write_string(" -> ", !IO),

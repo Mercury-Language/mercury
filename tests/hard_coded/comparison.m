@@ -30,51 +30,50 @@
     ;       b3(int)
     ;       c3.
 
-main -->
-    perform_comparison_test(a1(10, 20), a1(10, 21)),
-    perform_comparison_test(a1(10, 20), a1(10, 20)),
-    perform_comparison_test(a1(10, 20), a1( 9, 20)),
+main(!IO) :-
+    perform_comparison_test(a1(10, 20), a1(10, 21), !IO),
+    perform_comparison_test(a1(10, 20), a1(10, 20), !IO),
+    perform_comparison_test(a1(10, 20), a1( 9, 20), !IO),
 
-    perform_comparison_test(a2(10, 20), a2(10, 19)),
-    perform_comparison_test(a2(10, 20), a2(10, 20)),
-    perform_comparison_test(a2(10, 20), a2(11, 20)),
-    perform_comparison_test(a2(10, 20), b2(10)),
+    perform_comparison_test(a2(10, 20), a2(10, 19), !IO),
+    perform_comparison_test(a2(10, 20), a2(10, 20), !IO),
+    perform_comparison_test(a2(10, 20), a2(11, 20), !IO),
+    perform_comparison_test(a2(10, 20), b2(10), !IO),
 
-    perform_comparison_test(b2(30), a2(50, 40)),
-    perform_comparison_test(b2(30), b2(29)),
-    perform_comparison_test(b2(30), b2(30)),
-    perform_comparison_test(b2(30), b2(31)),
+    perform_comparison_test(b2(30), a2(50, 40), !IO),
+    perform_comparison_test(b2(30), b2(29), !IO),
+    perform_comparison_test(b2(30), b2(30), !IO),
+    perform_comparison_test(b2(30), b2(31), !IO),
 
-    perform_comparison_test(a3(10, 20), a3(10, 19)),
-    perform_comparison_test(a3(10, 20), a3(10, 20)),
-    perform_comparison_test(a3(10, 20), a3(11, 20)),
-    perform_comparison_test(a3(10, 20), b3(10)),
-    perform_comparison_test(a3(10, 20), c3),
+    perform_comparison_test(a3(10, 20), a3(10, 19), !IO),
+    perform_comparison_test(a3(10, 20), a3(10, 20), !IO),
+    perform_comparison_test(a3(10, 20), a3(11, 20), !IO),
+    perform_comparison_test(a3(10, 20), b3(10), !IO),
+    perform_comparison_test(a3(10, 20), c3, !IO),
 
-    perform_comparison_test(b3(30), a3(50, 40)),
-    perform_comparison_test(b3(30), b3(29)),
-    perform_comparison_test(b3(30), b3(30)),
-    perform_comparison_test(b3(30), b3(31)),
-    perform_comparison_test(b3(30), c3),
+    perform_comparison_test(b3(30), a3(50, 40), !IO),
+    perform_comparison_test(b3(30), b3(29), !IO),
+    perform_comparison_test(b3(30), b3(30), !IO),
+    perform_comparison_test(b3(30), b3(31), !IO),
+    perform_comparison_test(b3(30), c3, !IO),
 
-    perform_comparison_test(c3, a3(50, 40)),
-    perform_comparison_test(c3, b3(50)),
-    perform_comparison_test(c3, c3).
+    perform_comparison_test(c3, a3(50, 40), !IO),
+    perform_comparison_test(c3, b3(50), !IO),
+    perform_comparison_test(c3, c3, !IO).
 
 :- pred perform_comparison_test(T::in, T::in, io::di, io::uo) is det.
 
-perform_comparison_test(X, Y) -->
-    { compare(R, X, Y) },
-    io__write(X),
+perform_comparison_test(X, Y, !IO) :-
+    compare(R, X, Y),
+    io.write(X, !IO),
     (
-        { R = (<) },
-        io__write_string(" < ")
+        R = (<),
+        io.write_string(" < ", !IO)
     ;
-        { R = (=) },
-        io__write_string(" = ")
+        R = (=),
+        io.write_string(" = ", !IO)
     ;
-        { R = (>) },
-        io__write_string(" > ")
+        R = (>),
+        io.write_string(" > ", !IO)
     ),
-    io__write(Y),
-    io__write_string("\n").
+    io.write_line(Y, !IO).

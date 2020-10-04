@@ -15,9 +15,10 @@
 :- import_module list.
 :- import_module std_util.
 
-main -->
-    { test_any_free_unify([], Result1) },
-    io__print(Result1), io__nl.
+main(!IO) :-
+    test_any_free_unify([], Result1),
+    io.print(Result1, !IO),
+    io.nl(!IO).
 
 :- solver type foo
     where
@@ -35,16 +36,17 @@ init_foo(X) :-
 :- mode test_any_free_unify(in(list_skel(any)), out) is det.
 
 % In the unification in the condition of the if-then-else, the variable
-% List has an inst which includes `any' components.  Normally, we can't
+% List has an inst which includes `any' components. Normally, we can't
 % check whether `any' has become further instantiated over a goal so we
-% do not allow it in a negated context.  However, in this case, the
-% `any' component is unified with `free' so we know that it cannot have
-% become further instantiated.  Therefore we should allow the
-% unification in the condition.
+% do not allow it in a negated context. However, in this case, the `any'
+% component is unified with `free' so we know that it cannot have become
+% further instantiated. Therefore we should allow the unification
+% in the condition.
 
 test_any_free_unify(List, Result) :-
-    promise_pure ( List = [_ | _] ->
-        Result = no
-    ;
-        Result = yes
-    ).
+    promise_pure
+        ( if List = [_ | _] then
+            Result = no
+        else
+            Result = yes
+        ).

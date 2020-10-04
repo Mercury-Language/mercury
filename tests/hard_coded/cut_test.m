@@ -8,62 +8,62 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int.
 
-main -->
-    ( { best(100) } ->
-        io__write_string("best case nondet test 1 succeeded:   BUG.\n")
-    ;
-        io__write_string("best case nondet test 1 failed:      OK.\n")
+main(!IO) :-
+    ( if best(100) then
+        io.write_string("best case nondet test 1 succeeded:   BUG.\n", !IO)
+    else
+        io.write_string("best case nondet test 1 failed:      OK.\n", !IO)
     ),
-    ( { best(300) } ->
-        io__write_string("best case nondet test 2 succeeded:   OK.\n")
-    ;
-        io__write_string("best case nondet test 2 failed:      BUG.\n")
+    ( if best(300) then
+        io.write_string("best case nondet test 2 succeeded:   OK.\n", !IO)
+    else
+        io.write_string("best case nondet test 2 failed:      BUG.\n", !IO)
     ),
-    ( { middle(100) } ->
-        io__write_string("middle case nondet test 1 succeeded: BUG.\n")
-    ;
-        io__write_string("middle case nondet test 1 failed:    OK.\n")
+    ( if middle(100) then
+        io.write_string("middle case nondet test 1 succeeded: BUG.\n", !IO)
+    else
+        io.write_string("middle case nondet test 1 failed:    OK.\n", !IO)
     ),
-    ( { middle(180) } ->
-        io__write_string("middle case nondet test 2 succeeded: OK.\n")
-    ;
-        io__write_string("middle case nondet test 2 failed:    BUG.\n")
+    ( if middle(180) then
+        io.write_string("middle case nondet test 2 succeeded: OK.\n", !IO)
+    else
+        io.write_string("middle case nondet test 2 failed:    BUG.\n", !IO)
     ),
-    ( { middle(190) } ->
-        io__write_string("middle case nondet test 3 succeeded: OK.\n")
-    ;
-        io__write_string("middle case nondet test 3 failed:    BUG.\n")
+    ( if middle(190) then
+        io.write_string("middle case nondet test 3 succeeded: OK.\n", !IO)
+    else
+        io.write_string("middle case nondet test 3 failed:    BUG.\n", !IO)
     ),
-    ( { middle(200) } ->
-        io__write_string("middle case nondet test 4 succeeded: OK.\n")
-    ;
-        io__write_string("middle case nondet test 4 failed:    BUG.\n")
+    ( if middle(200) then
+        io.write_string("middle case nondet test 4 succeeded: OK.\n", !IO)
+    else
+        io.write_string("middle case nondet test 4 failed:    BUG.\n", !IO)
     ),
-    ( { worst(100) } ->
-        io__write_string("worst case nondet test 1 succeeded:  BUG.\n")
-    ;
-        io__write_string("worst case nondet test 1 failed:     OK.\n")
+    ( if worst(100) then
+        io.write_string("worst case nondet test 1 succeeded:  BUG.\n", !IO)
+    else
+        io.write_string("worst case nondet test 1 failed:     OK.\n", !IO)
     ),
-    ( { worst(180) } ->
-        io__write_string("worst case nondet test 2 succeeded:  OK.\n")
-    ;
-        io__write_string("worst case nondet test 2 failed:     BUG.\n")
+    ( if worst(180) then
+        io.write_string("worst case nondet test 2 succeeded:  OK.\n", !IO)
+    else
+        io.write_string("worst case nondet test 2 failed:     BUG.\n", !IO)
     ),
-    ( { worst(190) } ->
-        io__write_string("worst case nondet test 3 succeeded:  OK.\n")
-    ;
-        io__write_string("worst case nondet test 3 failed:     BUG.\n")
+    ( if worst(190) then
+        io.write_string("worst case nondet test 3 succeeded:  OK.\n", !IO)
+    else
+        io.write_string("worst case nondet test 3 failed:     BUG.\n", !IO)
     ),
-    ( { worst(200) } ->
-        io__write_string("worst case nondet test 4 succeeded:  OK.\n")
-    ;
-        io__write_string("worst case nondet test 4 failed:     BUG.\n")
+    ( if worst(200) then
+        io.write_string("worst case nondet test 4 succeeded:  OK.\n", !IO)
+    else
+        io.write_string("worst case nondet test 4 failed:     BUG.\n", !IO)
     ).
 
 :- pred best(int::in) is semidet.
