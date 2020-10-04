@@ -110,10 +110,7 @@ write_array2d(Name, Table, !IO) :-
 
 write_array2d_elem(Name, Table, R, C, !IO) :-
     io.format("%s ^ elem(%d, %d) = ", [s(Name), i(R), i(C)], !IO),
-    try(
-        ( pred(X::out) is det :-
-            X = Table ^ elem(R, C)
-        ), Result),
+    try(array2d.lookup(Table, R, C), Result),
     (
         Result = succeeded(Elem),
         io.print(Elem, !IO)

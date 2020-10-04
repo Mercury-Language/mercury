@@ -18,6 +18,17 @@ Changes to the Mercury standard library
     - func `least_index/1`          (replacement: `min/1`)
     - func `greatest_index/1`       (replacement: `max/1`)
 
+### Changes to the `array2d` module
+
+* The following predicates and functions have been added:
+
+    - func `lookup/3`               (synonym for `Array ^ elem(R, C)')
+    - pred `lookup/4`               (synonym for `Array ^ elem(R, C)')
+    - func `unsafe_lookup/3`        (synonym for `Array ^ unsafe_elem(R, C)')
+    - pred `unsafe_lookup/4`        (synonym for `Array ^ unsafe_elem(R, C)')
+
+* The `lists/1' function now returns an empty list for a 0x0 array.
+
 ### Changes to the `bag` module
 
 * The following obsolete predicates and functions have been removed:
