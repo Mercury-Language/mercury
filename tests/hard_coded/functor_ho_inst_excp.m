@@ -12,6 +12,8 @@
 
 :- pred main(io::di, io::uo) is det.
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module construct.
@@ -19,6 +21,12 @@
 :- import_module list.
 :- import_module type_desc.
 :- import_module univ.
+
+main(!IO) :-
+    Jobs = [bad_job],
+    list.foldl(run, Jobs, !IO).
+
+%---------------------------------------------------------------------------%
 
 :- type job
     ---> job(pred(int::in, string::out) is det).
@@ -44,8 +52,3 @@ bad_job = Job :-
     else
         throw("unable to create job")
     ).
-
-main(!IO) :-
-    Jobs = [bad_job],
-    list.foldl(run, Jobs, !IO).
-

@@ -3,13 +3,13 @@
 %---------------------------------------------------------------------------%
 %
 % A very basic check of arithmetic on big integers.
+%
 
 :- module integer_test.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module int.
@@ -18,98 +18,93 @@
 :- import_module require.
 :- import_module string.
 
-main -->
-    { X = integer.det_from_string("+1234567890987654321") },
-    { Y = integer.det_from_string(
-        "98765432101234567890123400000009999111") },
-    { Z = integer(200) },
-    test(X, Y, Z).
+main(!IO) :-
+    X = integer.det_from_string("+1234567890987654321"),
+    Y = integer.det_from_string("98765432101234567890123400000009999111"),
+    Z = integer(200),
+    test(X, Y, Z, !IO).
 
-:- pred test(integer, integer, integer, io__state, io__state).
-:- mode test(in, in, in, di, uo) is det.
+:- pred test(integer::in, integer::in, integer::in, io::di, io::uo) is det.
 
-test(X, Y, Z) -->
-    {
-        Plus = X + Y,
-        Times = X * Y,
-        Minus = X - Y,
-        Div = Y // X,
-        Rem = Y rem X,
-        Pow = integer.pow(X, Z),
-        fac(Z, Fac)
-    },
-    write_message("X: ", X),
-    write_message("Y: ", Y),
-    write_message("Z: ", Z),
-    write_message("X + Y: ", Plus),
-    write_message("X * Y: ", Times),
-    write_message("X - Y: ", Minus),
-    write_message("Y // X: ", Div),
-    write_message("Y rem X: ", Rem),
-    write_message("fac(Z): ", Fac),
-    write_message("pow(X,Z): ", Pow),
-    { X0 = integer(100000), X1 = integer(3) },
-    write_integer(X0), io.write_string(" div mod "),
-        write_integer(X1), io.write_string(" = "),
-        write_integer(X0 div X1), io.write_string(" "),
-        write_integer(X0 mod X1), io.nl,
-    write_integer(-X0), io.write_string(" div mod "),
-        write_integer(X1), io.write_string(" = "),
-        write_integer(X0 div -X1), io.write_string(" "),
-        write_integer(X0 mod -X1), io.nl,
-    write_integer(X0), io.write_string(" div mod "),
-        write_integer(-X1), io.write_string(" = "),
-        write_integer(-X0 div X1), io.write_string(" "),
-        write_integer(-X0 mod X1), io.nl,
-    write_integer(-X0), io.write_string(" div mod "),
-        write_integer(-X1), io.write_string(" = "),
-        write_integer(-X0 div -X1), io.write_string(" "),
-        write_integer(-X0 mod -X1), io.nl,
-    write_integer(X0), io.write_string(" // rem "),
-        write_integer(X1), io.write_string(" = "),
-        write_integer(X0 // X1), io.write_string(" "),
-        write_integer(X0 rem X1), io.nl,
-    write_integer(-X0), io.write_string(" // rem "),
-        write_integer(X1), io.write_string(" = "),
-        write_integer(X0 // -X1), io.write_string(" "),
-        write_integer(X0 rem -X1), io.nl,
-    write_integer(X0), io.write_string(" // rem "),
-        write_integer(-X1), io.write_string(" = "),
-        write_integer(-X0 // X1), io.write_string(" "),
-        write_integer(-X0 rem X1), io.nl,
-    write_integer(-X0), io.write_string(" // rem "),
-        write_integer(-X1), io.write_string(" = "),
-        write_integer(-X0 // -X1), io.write_string(" "),
-        write_integer(-X0 rem -X1), io.nl,
-    { int.min_int(Minint) },
-        ( { integer(Minint) < integer(0) } ->
-            io.write_string("integer(min_int) ok\n")
-        ;
-            io.write_string("integer(min_int) failed\n")
-        ).
+test(X, Y, Z, !IO) :-
+    Plus = X + Y,
+    Times = X * Y,
+    Minus = X - Y,
+    Div = Y // X,
+    Rem = Y rem X,
+    Pow = integer.pow(X, Z),
+    fac(Z, Fac),
 
-:- pred write_message(string, integer, io__state, io__state).
-:- mode write_message(in, in, di, uo) is det.
+    write_message("X: ", X, !IO),
+    write_message("Y: ", Y, !IO),
+    write_message("Z: ", Z, !IO),
+    write_message("X + Y: ", Plus, !IO),
+    write_message("X * Y: ", Times, !IO),
+    write_message("X - Y: ", Minus, !IO),
+    write_message("Y // X: ", Div, !IO),
+    write_message("Y rem X: ", Rem, !IO),
+    write_message("fac(Z): ", Fac, !IO),
+    write_message("pow(X,Z): ", Pow, !IO),
+    X0 = integer(100000), X1 = integer(3),
+    write_integer(X0, !IO), io.write_string(" div mod ", !IO),
+        write_integer(X1, !IO), io.write_string(" = ", !IO),
+        write_integer(X0 div X1, !IO), io.write_string(" ", !IO),
+        write_integer(X0 mod X1, !IO), io.nl(!IO),
+    write_integer(-X0, !IO), io.write_string(" div mod ", !IO),
+        write_integer(X1, !IO), io.write_string(" = ", !IO),
+        write_integer(X0 div -X1, !IO), io.write_string(" ", !IO),
+        write_integer(X0 mod -X1, !IO), io.nl(!IO),
+    write_integer(X0, !IO), io.write_string(" div mod ", !IO),
+        write_integer(-X1, !IO), io.write_string(" = ", !IO),
+        write_integer(-X0 div X1, !IO), io.write_string(" ", !IO),
+        write_integer(-X0 mod X1, !IO), io.nl(!IO),
+    write_integer(-X0, !IO), io.write_string(" div mod ", !IO),
+        write_integer(-X1, !IO), io.write_string(" = ", !IO),
+        write_integer(-X0 div -X1, !IO), io.write_string(" ", !IO),
+        write_integer(-X0 mod -X1, !IO), io.nl(!IO),
+    write_integer(X0, !IO), io.write_string(" // rem ", !IO),
+        write_integer(X1, !IO), io.write_string(" = ", !IO),
+        write_integer(X0 // X1, !IO), io.write_string(" ", !IO),
+        write_integer(X0 rem X1, !IO), io.nl(!IO),
+    write_integer(-X0, !IO), io.write_string(" // rem ", !IO),
+        write_integer(X1, !IO), io.write_string(" = ", !IO),
+        write_integer(X0 // -X1, !IO), io.write_string(" ", !IO),
+        write_integer(X0 rem -X1, !IO), io.nl(!IO),
+    write_integer(X0, !IO), io.write_string(" // rem ", !IO),
+        write_integer(-X1, !IO), io.write_string(" = ", !IO),
+        write_integer(-X0 // X1, !IO), io.write_string(" ", !IO),
+        write_integer(-X0 rem X1, !IO), io.nl(!IO),
+    write_integer(-X0, !IO), io.write_string(" // rem ", !IO),
+        write_integer(-X1, !IO), io.write_string(" = ", !IO),
+        write_integer(-X0 // -X1, !IO), io.write_string(" ", !IO),
+        write_integer(-X0 rem -X1, !IO), io.nl(!IO),
+    int.min_int(Minint),
+    ( if integer(Minint) < integer(0) then
+        io.write_string("integer(min_int) ok\n", !IO)
+    else
+        io.write_string("integer(min_int) failed\n", !IO)
+    ).
 
-write_message(String, Int) -->
-    io__write_string(String),
-    { Str = integer.to_string(Int) },
-    io__write_string(Str),
-    io__nl.
-
-:- pred fac(integer, integer).
-:- mode fac(in, out) is det.
+:- pred fac(integer::in, integer::out) is det.
 
 fac(X, F) :-
-    ( X =< integer.zero ->
+    ( if X =< integer.zero then
         F = integer.one
-    ;
+    else
         fac(X - integer.one, F1),
         F = F1 * X
     ).
 
-:- pred write_integer(integer, io.state, io.state).
-:- mode write_integer(in, di, uo) is det.
-write_integer(X) -->
-    { S = integer.to_string(X) },
-    io.write_string(S).
+:- pred write_message(string::in, integer::in, io::di, io::uo) is det.
+
+write_message(String, Int, !IO) :-
+    io__write_string(String, !IO),
+    Str = integer.to_string(Int),
+    io.write_string(Str, !IO),
+    io.nl(!IO).
+
+:- pred write_integer(integer::in, io::di, io::uo) is det.
+
+write_integer(X, !IO) :-
+    S = integer.to_string(X),
+    io.write_string(S, !IO).

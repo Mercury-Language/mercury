@@ -7,6 +7,7 @@
 % by doing the division at runtime.
 % This is a regression test; versions of the compiler prior to Nov 2002
 % failed this test at -O3 and higher.
+%
 
 :- module float_consistency.
 :- interface.
@@ -18,11 +19,12 @@
 :- import_module float.
 :- import_module string.
 
-main -->
-    { Lit_one = 1.0 },
-    { Calc_one = same_as(Lit_one) },
+main(!IO) :-
+    Lit_one = 1.0,
+    Calc_one = same_as(Lit_one),
     print("Calc_one     = Lit_one:     " ++
-        (if Calc_one = Lit_one then "true" else "false")), nl,
+        (if Calc_one = Lit_one then "true" else "false"), !IO),
+    nl(!IO),
     print("Calc_one/9.0 = Lit_one/9.0: " ++
         ( if
             unchecked_quotient(Calc_one, 9.0)
@@ -30,9 +32,10 @@ main -->
         then
             "true"
         else
-            "false")),
-    nl.
+            "false"), !IO),
+    nl(!IO).
 
-:- pragma no_inline(same_as/1).
 :- func same_as(float) = float.
+:- pragma no_inline(same_as/1).
+
 same_as(X) = X.

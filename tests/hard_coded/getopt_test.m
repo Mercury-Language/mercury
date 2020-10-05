@@ -37,7 +37,7 @@
 :- pred option_defaults(option::out, option_data::out) is nondet.
 :- pred option_default(option::out, option_data::out) is multidet.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -51,35 +51,31 @@ option_defaults(Option, Default) :-
     semidet_succeed,
     option_default(Option, Default).
 
-option_default(foo,     string("happy")).
-option_default(bar,     bool(yes)).
+option_default(foo, string("happy")).
+option_default(bar, bool(yes)).
 
-short_option('f',           foo).
-short_option('b',           bar).
+short_option('f',   foo).
+short_option('b',   bar).
 
-long_option("foo",          foo).
-long_option("bar",          bar).
+long_option("foo",  foo).
+long_option("bar",  bar).
 
-main -->
-    { getopt__process_options(option_ops(short_option, long_option,
-        option_defaults), ["-"], Left, MaybeOptionTable) },
-    (
-        { MaybeOptionTable = ok(OptionTable) }
-    ->
-        { getopt__lookup_bool_option(OptionTable, bar,
-            Bar) },
-        { getopt__lookup_string_option(OptionTable, foo,
-            FooStr) },
-        io__write_string("option bar: `"),
-        io__write(Bar),
-        io__write_string("'\n"),
-        io__write_string("option foo: `"),
-        io__write_string(FooStr),
-        io__write_string("'\n"),
+main(!IO) :-
+    Ops = option_ops(short_option, long_option, option_defaults),
+    getopt.process_options(Ops, ["-"], Left, MaybeOptionTable),
+    ( if
+        MaybeOptionTable = ok(OptionTable)
+    then
+        getopt.lookup_bool_option(OptionTable, bar, Bar),
+        getopt.lookup_string_option(OptionTable, foo, FooStr),
+        io.write_string("option bar: `", !IO),
+        io.write(Bar, !IO),
+        io.write_string("'\n", !IO),
+        io.write_string("option foo: `", !IO),
+        io.write_string(FooStr, !IO),
+        io.write_string("'\n", !IO),
 
-        io__write(Left),
-        io__write_string("\n")
-
-    ;
-        { error("unable to process options") }
+        io.write_line(Left, !IO)
+    else
+        error("unable to process options")
     ).

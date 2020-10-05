@@ -520,11 +520,11 @@ get_struct_pred_disj(_, foo(1.5, 2.5)).
 :- pragma no_inline(get_struct_pred_ite/2).
 
 get_struct_pred_ite(S, P) :-
-    ( S = struct_poly(P0) ->
+    ( if S = struct_poly(P0) then
         P = P0
-    ; S = struct_mono(P0) ->
+    else if S = struct_mono(P0) then
         P = P0
-    ;
+    else
         P = foo(-1.5, -2.5) % dummy
     ).
 

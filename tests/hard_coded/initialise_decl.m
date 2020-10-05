@@ -25,6 +25,9 @@
 :- initialise i1/2.
 :- initialize i2/2.
 
+main(!IO) :-
+    io.print("This is main/2.\n", !IO).
+
 :- pred i1(io::di, io::uo) is det.
 i1(!IO) :-
     io.print("This is the first initialise pred, i1/2.\n", !IO).
@@ -32,8 +35,5 @@ i1(!IO) :-
 :- pred i2(io::di, io::uo) is det.
 i2(!IO) :-
     io.print("This is the second initialise pred, i2/2.\n", !IO).
-
-main(!IO) :-
-    io.print("This is main/2.\n", !IO).
 
 %---------------------------------------------------------------------------%

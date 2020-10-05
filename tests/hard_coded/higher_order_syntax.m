@@ -9,7 +9,7 @@
 :- import_module list.
 :- import_module std_util.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- func map_f(func(X) = Y, list(X)) = list(Y).
 :- mode map_f(func(in) = out is det, in) = out is det.
@@ -21,8 +21,30 @@
 :- mode map_p(pred(in, out) is multi, in, out) is multi.
 :- mode map_p(pred(in, out) is nondet, in, out) is nondet.
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
 :- import_module int.
+
+main -->
+    { L1 = [1, 2, 3] },
+    { L2 = map_f((func(X::in) = (Y::out) is det :- Y = 2*X), L1) },
+    { map_p((pred(X::in, Y::out) is det :- Y = 2*X), L2, L3) },
+    { L4 = map_f((func(X2) = Y2 :- Y2 = 5*X2), L3) },
+    { L = map_f(func(X3) = 10*X3, L4) },
+    { Foldit =
+        ( pred(IO0::di, IO::uo) is det :-
+            list.foldl(io.write_int, L, IO0, IO)
+        )
+    },
+    Foldit,
+    { Write = io.write_string },
+    Write("\n"),
+    ( if { doit(semidet_succeed) } then
+        Write("Yes.\n")
+    else
+        Write("No.\n")
+    ).
 
 map_f(_, []) = [].
 map_f(F, [H0 | T0]) = [F(H0) | map_f(F, T0)].
@@ -34,21 +56,5 @@ map_p(P, [X | Xs], [Y | Ys]) :-
 
 :- pred doit(pred).
 :- mode doit((pred) is semidet).
-doit(P) :- P.
-
-main -->
-    { L1 = [1, 2, 3] },
-    { L2 = map_f((func(X::in) = (Y::out) is det :- Y = 2*X), L1) },
-    { map_p((pred(X::in, Y::out) is det :- Y = 2*X), L2, L3) },
-    { L4 = map_f((func(X2) = Y2 :- Y2 = 5*X2), L3) },
-    { L = map_f(func(X3) = 10*X3, L4) },
-    { Foldit = (pred(IO0::di, IO::uo) is det :-
-            list__foldl(io__write_int, L, IO0, IO)) },
-    Foldit,
-    { Write = io__write_string },
-    Write("\n"),
-    (if { doit(semidet_succeed) } then
-        Write("Yes.\n")
-    else
-        Write("No.\n")
-    ).
+doit(P) :-
+    P.

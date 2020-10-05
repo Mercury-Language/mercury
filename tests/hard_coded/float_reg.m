@@ -14,23 +14,24 @@
 % flo.c:23: `mercury_float_const_2pt88e' undeclared (first use this function)
 %
 % Author: trd
+%
 
 :- module float_reg.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module io.
 :- import_module float.
 
-main -->
-    io__write_float(2.88e32),
-    io__write_string("\n"),
-    io__write_float(1.0e32),
-    io__write_string("\n"),
-    io__write_float(1.0e10),
-    io__write_string("\n").
+main(!IO) :-
+    io.write_float(2.88e32, !IO),
+    io.write_string("\n", !IO),
+    io.write_float(1.0e32, !IO),
+    io.write_string("\n", !IO),
+    io.write_float(1.0e10, !IO),
+    io.write_string("\n", !IO).
 

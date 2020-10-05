@@ -15,12 +15,13 @@
 %   - In non-conservative GC grades, deep_copy of closures (since
 %     solutions is implemented using deep copy on them).
 %   - Higher order syntax -- P(5, 1, X)
+%
 
 :- module ho_solns.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
@@ -28,10 +29,10 @@
 :- import_module list.
 :- import_module solutions.
 
-main -->
-    { unsorted_solutions(foo, List0) },
-    { convert_list(List0, List) },
-    use_list(List).
+main(!IO) :-
+    unsorted_solutions(foo, List0),
+    convert_list(List0, List),
+    use_list(List, !IO).
 
 :- type mypred == (pred(int, int, int)).
 :- inst mypred == (pred(in, in, out) is det).
@@ -67,15 +68,14 @@ main -->
     L = L0
 ").
 
-:- pred use_list(list(mypred), io__state, io__state).
-:- mode use_list(in(list_skel(mypred)), di, uo) is det.
+:- pred use_list(list(mypred)::in(list_skel(mypred)), io::di, io::uo) is det.
 
-use_list([]) --> [].
-use_list([P | Ps]) -->
-    { P(5, 1, X) },
-    io__write_int(X),
-    io__write_string("\n"),
-    use_list(Ps).
+use_list([], !IO).
+use_list([P | Ps], !IO) :-
+    P(5, 1, X),
+    io.write_int(X, !IO),
+    io.write_string("\n", !IO),
+    use_list(Ps, !IO).
 
 :- pred foo(mypred).
 :- mode foo(out(mypred)) is multi.

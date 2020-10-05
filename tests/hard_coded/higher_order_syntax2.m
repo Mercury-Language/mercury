@@ -6,7 +6,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module int.
@@ -23,9 +23,9 @@ id(F) = uncurry(curry(F)).
 :- func pplus(int, int) = int.
 pplus(X, Y) = X + Y.
 
-main -->
-    { Result = (id)(pplus)(3, 4) },
-    print("Result = "), print(Result), nl,
-    { Result2 = (func(X, Y) = X + Y)(5, 6) },
-    print("Result2 = "), print(Result2), nl.
+main(!IO) :-
+    Result = (id)(pplus)(3, 4),
+    Result2 = (func(X, Y) = X + Y)(5, 6),
+    print("Result = ", !IO),  print(Result, !IO),  nl(!IO),
+    print("Result2 = ", !IO), print(Result2, !IO), nl(!IO).
 

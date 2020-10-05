@@ -37,30 +37,35 @@ main(!IO) :-
 
     % Test all_true_in_range/3.
     io.write_string("all_true_in_range(int.even, 1, 0): ", !IO),
-    ( if all_true_in_range(int.even, 1, 0)
-    then io.print_line("true", !IO)
-    else io.print_line("false", !IO)
+    ( if all_true_in_range(int.even, 1, 0) then
+        io.print_line("true", !IO)
+    else
+        io.print_line("false", !IO)
     ),
     io.write_string("all_true_in_range(int.even, 1, 1): ", !IO),
-    ( if all_true_in_range(int.even, 1, 1)
-    then io.print_line("true", !IO)
-    else io.print_line("false", !IO)
+    ( if all_true_in_range(int.even, 1, 1) then
+        io.print_line("true", !IO)
+    else
+        io.print_line("false", !IO)
     ),
     io.write_string("all_true_in_range(int.odd, 1, 1): ", !IO),
-    ( if all_true_in_range(int.odd, 1, 1)
-    then io.print_line("true", !IO)
-    else io.print_line("false", !IO)
+    ( if all_true_in_range(int.odd, 1, 1) then
+        io.print_line("true", !IO)
+    else
+        io.print_line("false", !IO)
     ),
     LessThan10 = (pred(I::in) is semidet :- I < 10),
     io.write_string("all_true_in_range(LessThan10, 1, 5): ", !IO),
-    ( if all_true_in_range(LessThan10, 1, 5)
-    then io.print_line("true", !IO)
-    else io.print_line("false", !IO)
+    ( if all_true_in_range(LessThan10, 1, 5) then
+        io.print_line("true", !IO)
+    else
+        io.print_line("false", !IO)
     ),
     io.write_string("all_true_in_range(LessThan10, 8, 11): ", !IO),
-    ( if all_true_in_range(LessThan10, 8, 11)
-    then io.print_line("true", !IO)
-    else io.print_line("false", !IO)
+    ( if all_true_in_range(LessThan10, 8, 11) then
+        io.print_line("true", !IO)
+    else
+        io.print_line("false", !IO)
     ).
 
 %---------------------------------------------------------------------------%

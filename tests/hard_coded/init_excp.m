@@ -40,9 +40,9 @@ init_pred_a(!IO) :-
 :- pred get_string(int::in, string::out) is det.
 
 get_string(X, Str) :-
-    ( X = 561 ->
+    ( if X = 561 then
         throw(magic_number_exception)
-    ;
+    else
         Str = "not 561"
     ).
 
@@ -52,9 +52,9 @@ get_string(X, Str) :-
 
 init_pred_b(!IO) :-
     get_magic_number(X, !IO),
-    ( X = 3 ->
+    ( if X = 3 then
         throw(magic_number_exception)
-    ;
+    else
         io.write_string("This is init_pred_b/2\n", !IO)
     ).
 

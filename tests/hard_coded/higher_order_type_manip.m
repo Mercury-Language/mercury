@@ -7,6 +7,7 @@
 % Test case for higher order type manipulation.
 %
 % Author: trd
+%
 
 :- module higher_order_type_manip.
 :- interface.
@@ -24,23 +25,23 @@
 :- type container(T)
     --->    container(T).
 
-main -->
-    io__write_string(type_name(type_of(type_name))),
-    io__write_string("\n"),
-    io__write_string(type_name(type_of(type_ctor_and_args))),
-    io__write_string("\n"),
-    io__write_string(type_name(type_of(tryme))),
-    io__write_string("\n"),
-    io__write_string(type_name(type_of((func) = tryme))),
-    io__write_string("\n"),
-    io__write_string(type_name(type_of(container([1, 2, 3])))),
-    io__write_string("\n"),
-    io__write_string(type_name(type_of(container(main)))),
-    io__write_string("\n"),
-    { Ctor = type_ctor(type_of(type_name)) },
-    { IntType = type_of(8) },
-    { NewType = det_make_type(Ctor, [IntType, IntType]) },
-    io__write_string(type_name(NewType)),
-    io__write_string("\n").
+main(!IO) :-
+    io.write_string(type_name(type_of(type_name)), !IO),
+    io.write_string("\n", !IO),
+    io.write_string(type_name(type_of(type_ctor_and_args)), !IO),
+    io.write_string("\n", !IO),
+    io.write_string(type_name(type_of(tryme)), !IO),
+    io.write_string("\n", !IO),
+    io.write_string(type_name(type_of((func) = tryme)), !IO),
+    io.write_string("\n", !IO),
+    io.write_string(type_name(type_of(container([1, 2, 3]))), !IO),
+    io.write_string("\n", !IO),
+    io.write_string(type_name(type_of(container(main))), !IO),
+    io.write_string("\n", !IO),
+    Ctor = type_ctor(type_of(type_name)),
+    IntType = type_of(8),
+    NewType = det_make_type(Ctor, [IntType, IntType]),
+    io.write_string(type_name(NewType), !IO),
+    io.write_string("\n", !IO).
 
 tryme = 4.

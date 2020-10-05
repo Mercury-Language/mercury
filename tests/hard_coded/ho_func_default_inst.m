@@ -17,13 +17,13 @@
 
 :- import_module map.
 
-main -->
-    { Map = map },
-    { F1 = Map ^ det_elem(1) },
-    { F2 = Map ^ det_elem(2) },
-    io__write_int(F1(1)),
-    io__nl,
-    write_func(F2).
+main(!IO) :-
+    Map = map,
+    F1 = Map ^ det_elem(1),
+    F2 = Map ^ det_elem(2),
+    io.write_int(F1(1), !IO),
+    io.nl(!IO),
+    write_func(F2, !IO).
 
 :- type t == (func(int) = int).
 
@@ -31,16 +31,16 @@ main -->
 
 :- func map = map(int, t).
 
-map = ((map__init
+map = ((map.init
         ^ elem(1) := foo1)
         ^ elem(2) := foo2)
         ^ elem(3) := foo3.
 
 :- pred write_func(t::in(func(in) = out is det), io::di, io::uo) is det.
 
-write_func(F) -->
-    io__write_int(F(1)),
-    io__nl.
+write_func(F, !IO) :-
+    io.write_int(F(1), !IO),
+    io.nl(!IO).
 
 :- func foo1(int) = int.
 

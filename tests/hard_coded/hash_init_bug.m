@@ -1,14 +1,14 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module hash_init_bug.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -22,19 +22,20 @@
 :- import_module string.
 
 main(!IO) :-
-    HashPred = (pred(Name::in, Hash::out) is det :-
-        sym_name_to_string(Name, ".", Str),
-        Hash = hash(Str)
-    ),
+    HashPred =
+        ( pred(Name::in, Hash::out) is det :-
+            sym_name_to_string(Name, ".", Str),
+            Hash = hash(Str)
+        ),
     HT0 = init(HashPred, 10, 0.8),
     build_table(entries, HT0, HT),
-    (
-        hash_table__search(HT,
+    ( if
+        hash_table.search(HT,
             qualified(unqualified("io"), "read_word"), _)
-    ->
-        io__write_string("error: search succeeded\n", !IO)
-    ;
-        io__write_string("search failed as expected\n", !IO)
+    then
+        io.write_string("error: search succeeded\n", !IO)
+    else
+        io.write_string("search failed as expected\n", !IO)
     ).
 
 :- pred build_table(list(sym_name)::in, name_ht::hash_table_di,
@@ -60,7 +61,7 @@ build_table([K | T], HT0, HT) :-
 
 sym_name_to_string(SymName, Separator, String) :-
     sym_name_to_string_2(SymName, Separator, Parts, []),
-    string__append_list(Parts, String).
+    string.append_list(Parts, String).
 
 :- pred sym_name_to_string_2(sym_name, string,
     list(string), list(string)).

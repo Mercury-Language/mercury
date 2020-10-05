@@ -11,7 +11,7 @@
 :- pred foo(int::(f>>f)) is det.
 :- pred bar(int::(f>>f)) is det.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -20,9 +20,9 @@ foo(_).
 bar(X) :-
     foo(X).
 
-main -->
-    { bar(X) },
-    { X = 42 },
-    { bar(X) },
-    io__write_int(X),
-    io__write_string("\n").
+main(!IO) :-
+    bar(X),
+    X = 42,
+    bar(X),
+    io.write_int(X, !IO),
+    io.write_string("\n", !IO).

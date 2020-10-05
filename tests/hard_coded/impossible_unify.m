@@ -7,21 +7,22 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module bool.
 
-main -->
-    \+ { bar(42) },
-    print("ok"), nl.
+main(!IO) :-
+    not bar(42),
+    print("ok", !IO),
+    nl(!IO).
 
 :- pred bar(int::in) is failure.
+
+bar(X) :-
+    foo(X, yes).
 
 :- pred foo(int, bool).
 :- mode foo(in, out(bound(no))) is det.
 
 foo(_, no).
-
-bar(X) :-
-    foo(X, yes).

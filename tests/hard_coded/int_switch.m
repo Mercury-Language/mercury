@@ -43,32 +43,32 @@ main(!IO) :-
 :- pred test_jump(int::in, io::di, io::uo) is det.
 
 test_jump(S, !IO) :-
-    ( jump(S, 50, N) ->
+    ( if jump(S, 50, N) then
         io.format("jump %d -> %d\n", [i(S), i(N)], !IO)
-    ;
+    else
         io.format("jump %d failed\n", [i(S)], !IO)
     ).
 
 :- pred test_one(int::in, io::di, io::uo) is det.
 
 test_one(S, !IO) :-
-    ( one(S, N) ->
+    ( if one(S, N) then
         io.format("one %d -> %d\n", [i(S), i(N)], !IO)
-    ;
+    else
         io.format("one %d failed\n", [i(S)], !IO)
     ).
 
 :- pred test_one_known(int::in, io::di, io::uo) is det.
 
 test_one_known(S, !IO) :-
-    (
+    ( if
         ( S = 11
         ; S = 22
         ),
         one(S, N)
-    ->
+    then
         io.format("one known %d -> %d\n", [i(S), i(N)], !IO)
-    ;
+    else
         io.format("one known %d failed\n", [i(S)], !IO)
     ).
 
@@ -256,9 +256,9 @@ several_nested(S0, R) :-
     (
         S = S0
     ;
-        ( S0 < 10 ->
+        ( if S0 < 10 then
             S = 10 + S0
-        ;
+        else
             S = 100 + S0
         )
     ),

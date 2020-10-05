@@ -76,11 +76,11 @@ check_deconstruct(Data, !IO) :-
     io::di, io::uo) is det.
 
 check_construct(TypeDesc, LexFunctorNum, !IO) :-
-    ( Univ = construct(TypeDesc, LexFunctorNum, []) ->
+    ( if Univ = construct(TypeDesc, LexFunctorNum, []) then
         io.write_string("    ", !IO),
         io.write(Univ, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("FAILED: construct.construct\n", !IO)
     ).
 
@@ -88,9 +88,9 @@ check_construct(TypeDesc, LexFunctorNum, !IO) :-
         io::di, io::uo) is det.
 
 check_get_functor_ordinal(TypeDesc, Lex, !IO) :-
-    ( Ordinal = get_functor_ordinal(TypeDesc, Lex) ->
+    ( if Ordinal = get_functor_ordinal(TypeDesc, Lex) then
         io.format("    lex = %d, ordinal = %d\n", [i(Lex), i(Ordinal)], !IO)
-    ;
+    else
         io.write_string("FAILED: get_functor_ordinal\n", !IO)
     ).
 
@@ -99,7 +99,7 @@ check_get_functor_ordinal(TypeDesc, Lex, !IO) :-
 
 test_get_functor(TypeDesc, LexFunctorNum, !IO) :-
     io.format("functor_number_lex = %d\n", [i(LexFunctorNum)], !IO),
-    ( get_functor(TypeDesc, LexFunctorNum, Name, Arity, ArgTypes) ->
+    ( if get_functor(TypeDesc, LexFunctorNum, Name, Arity, ArgTypes) then
         io.format("    name  = %s\n", [s(Name)],  !IO),
         io.format("    arity = %d\n", [i(Arity)], !IO),
         (
@@ -109,7 +109,7 @@ test_get_functor(TypeDesc, LexFunctorNum, !IO) :-
             ArgTypes = [_ | _],
             io.write_string("FAILED: args for foreign enum functor.\n", !IO)
         )
-    ;
+    else
         io.write_string("FAILED: not a d.u type.\n", !IO)
     ).
 

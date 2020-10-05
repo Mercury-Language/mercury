@@ -10,15 +10,15 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    { _C = new(1, 2) },
-    { _E = north },
-    { _Pi = pi },
-    io__write_string("Success.\n").
+main(!IO) :-
+    _C = new(1, 2),
+    _E = north,
+    _Pi = pi,
+    io.write_string("Success.\n", !IO).
 
 :- pragma foreign_decl(c, "
 typedef enum {

@@ -15,7 +15,15 @@
 
 :- implementation.
 
+%---------------------------------------------------------------------------%
+
 :- import_module list.
+
+main(!IO) :-
+    Jobs = [job(1, j1), job(2, j2)],
+    list.foldl(run, Jobs, !IO).
+
+%---------------------------------------------------------------------------%
 
 :- type job
     --->    job(int, pred(job_result::out, io::di, io::uo) is det).
@@ -38,8 +46,3 @@ j1(job_result_ok, !IO).
 :- pred j2(job_result::out, io::di, io::uo) is det.
 
 j2(job_result_failed, !IO).
-
-main(!IO) :-
-    Jobs = [job(1, j1), job(2, j2)],
-    list.foldl(run, Jobs, !IO).
-

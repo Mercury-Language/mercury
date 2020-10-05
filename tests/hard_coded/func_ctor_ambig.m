@@ -3,6 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % Mercury 0.7.3 generated incorrect code for this test case.
+%
 
 :- module func_ctor_ambig.
 :- interface.
@@ -18,11 +19,11 @@
 
 :- implementation.
 
-main -->
-    print("bar = "), print(bar), nl,
-    print("bar2 = "), print(bar2), nl,
-    print("baz = "), print(baz), nl,
-    print("baz2 = "), print(baz2), nl.
+main(!IO) :-
+    io.print("bar = ", !IO),  io.print(bar, !IO),  nl(!IO),
+    io.print("bar2 = ", !IO), io.print(bar2, !IO), nl(!IO),
+    io.print("baz = ", !IO),  io.print(baz, !IO),  nl(!IO),
+    io.print("baz2 = ", !IO), io.print(baz2, !IO), nl(!IO).
 
 :- type t
     --->    ambig.

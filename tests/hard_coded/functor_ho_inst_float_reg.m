@@ -12,9 +12,20 @@
 
 :- pred main(io::di, io::uo) is det.
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module list.
+
+main(!IO) :-
+    JobsGeneric = [job_generic(j1)],
+    list.foldl(run_generic, JobsGeneric, !IO),
+
+    JobsFloat = [job_float(j1)],
+    list.foldl(run_float, JobsFloat, !IO).
+
+%---------------------------------------------------------------------------%
 
 :- type job_generic(T)
     --->    job_generic(pred(T::out, io::di, io::uo) is det).
@@ -39,11 +50,3 @@ run_float(Job, !IO) :-
 :- pred j1(float::out, io::di, io::uo) is det.
 
 j1(3.141529, !IO).
-
-main(!IO) :-
-    JobsGeneric = [job_generic(j1)],
-    list.foldl(run_generic, JobsGeneric, !IO),
-
-    JobsFloat = [job_float(j1)],
-    list.foldl(run_float, JobsFloat, !IO).
-

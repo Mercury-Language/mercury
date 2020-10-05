@@ -46,17 +46,19 @@ main(!IO) :-
     io.nl(!IO),
 
     % This should produce some solutions.
-    UpNondetPred = (pred(Res::out) is nondet :-
-        int.fold_up(p_nondet, 1, 5, "", Res)
-    ),
+    UpNondetPred =
+        ( pred(Res::out) is nondet :-
+            int.fold_up(p_nondet, 1, 5, "", Res)
+        ),
     solutions(UpNondetPred, NondetSolnsUp),
     io.write_list(NondetSolnsUp, "\n", io.write_string, !IO),
     io.nl(!IO),
 
     % This will produce no solutions.
-    DownNondetPred = (pred(Res::out) is nondet :-
-        int.fold_down(p_nondet, 1, 6, "", Res)
-    ),
+    DownNondetPred =
+        ( pred(Res::out) is nondet :-
+            int.fold_down(p_nondet, 1, 6, "", Res)
+        ),
     solutions(DownNondetPred, NondetSolnsDown),
     io.write_list(NondetSolnsDown, "\n", io.write_string, !IO),
     io.nl(!IO),
@@ -70,24 +72,21 @@ main(!IO) :-
     ),
 
     % This should fail.
-    ( if int.fold_up(p_semi, 1, 6, "", SemidetUpResF)
-    then
+    ( if int.fold_up(p_semi, 1, 6, "", SemidetUpResF) then
         io.write_string(SemidetUpResF ++ "\n", !IO)
     else
         io.write_string("int.fold_up/5 failed\n", !IO)
     ),
 
     % This should succeed.
-    ( if int.fold_down(p_semi, 1, 5, "", SemidetDownResS)
-    then
+    ( if int.fold_down(p_semi, 1, 5, "", SemidetDownResS) then
         io.write_string(SemidetDownResS ++ "\n", !IO)
     else
         io.write_string("int.fold_down/5 failed\n", !IO)
     ),
 
     % This should fail.
-    ( if int.fold_down(p_semi, 1, 6, "", SemidetDownResF)
-    then
+    ( if int.fold_down(p_semi, 1, 6, "", SemidetDownResF) then
         io.write_string(SemidetDownResF ++ "\n", !IO)
     else
         io.write_string("int.fold_down/5 failed\n", !IO)

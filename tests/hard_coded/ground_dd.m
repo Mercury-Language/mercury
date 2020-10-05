@@ -17,6 +17,7 @@
 %
 %  21 January, 1998
 %  Mark Brown
+%
 
 :- module ground_dd.
 
@@ -26,6 +27,8 @@
 
 :- pred main(io::di, io::uo) is det.
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module int.
@@ -34,6 +37,8 @@
 :- import_module term_conversion.
 :- import_module term_io.
 :- import_module varset.
+
+%---------------------------------------------------------------------------%
 
 :- type proof
         --->    node(term, proof)
@@ -64,6 +69,20 @@
 
 :- type proc_id == string.
 
+%---------------------------------------------------------------------------%
+
+main(!IO) :-
+    append_w([a, b, c], [d, e], As, P_1),
+    write_proof(0, P_1, !IO),
+
+    length_w(As, _, P_2),
+    write_proof(0, P_2, !IO),
+
+    isort_w([4, 2, 5, 3, 1], _, P_3),
+    write_proof(0, P_3, !IO).
+
+%---------------------------------------------------------------------------%
+
 :- pred append_w(list(T), list(T), list(T), proof).
 :- mode append_w(in, in, out, out) is det.
 :- mode append_w(out, out, in, out) is multi.
@@ -78,10 +97,10 @@ append_w([A | As], Bs, [A | Cs], node(Node, Proof)) :-
 :- mode length_w(in, out, out) is det.
 
 length_w([], 0, node(N, assumed)) :-
-    type_to_term(n_length([], 0), N).
-length_w([A | As], N+1, node(Node, Proof)) :-
+    type_to_term(n_length([] : list(int), 0), N).
+length_w([A | As], N + 1, node(Node, Proof)) :-
     length_w(As, N, Proof),
-    type_to_term(n_length([A | As], N+1), Node).
+    type_to_term(n_length([A | As], N + 1), Node).
 
 :- pred isort_w(list(int), list(int), proof).
 :- mode isort_w(in, out, out) is det.
@@ -99,10 +118,10 @@ isort_w([A | As], Ss, node(Node, conj([Proof_1, Proof_2]))) :-
 insert_w(N, [], [N], node(Node, assumed)) :-
     type_to_term(n_insert(N, [], [N]), Node).
 insert_w(N, [A | As], Ss, node(Node, Proof)) :-
-    ( N =< A ->
+    ( if N =< A then
         Ss = [N, A | As],
         Proof = if_then(assumed, assumed)
-    ;
+    else
         insert_w(N, As, Ss0, Proof_1),
         Ss = [A | Ss0],
         Proof = else(failed, Proof_1)
@@ -111,51 +130,37 @@ insert_w(N, [A | As], Ss, node(Node, Proof)) :-
 
 %------------------------------------------------------------
 
-:- pred write_proof(int, proof, io__state, io__state).
-:- mode write_proof(in, in, di, uo) is det.
+:- pred write_proof(int::in, proof::in, io::di, io::uo) is det.
 
-write_proof(L, node(N, P)) -->
-    indent(L),
-    { varset__init(V) },
-    write_term(V, N),
-    nl,
-    write_proof(L+1, P).
-% write_proof(L, leaf(Closure)) -->
-%   { Closure(P) },
-%   write_proof(L, P).
-write_proof(L, new_types(P)) -->
-    write_proof(L, P).
-write_proof(L, conj(Ps)) -->
-    foldl(write_proof(L), Ps).
-write_proof(L, disj(_, P)) -->
-    write_proof(L, P).
-write_proof(L, if_then(P_1, P_2)) -->
-    write_proof(L, P_1),
-    write_proof(L, P_2).
-write_proof(L, else(_, P_2)) -->
-    write_proof(L, P_2).
-write_proof(_, not(_)) -->
-    [].
-write_proof(_, assumed) -->
-    [].
+write_proof(L, node(N, P), !IO) :-
+    indent(L, !IO),
+    varset.init(V),
+    write_term(V, N, !IO),
+    nl(!IO),
+    write_proof(L + 1, P, !IO).
+% write_proof(L, leaf(Closure), !IO) :-
+%   Closure(P),
+%   write_proof(L, P, !IO).
+write_proof(L, new_types(P), !IO) :-
+    write_proof(L, P, !IO).
+write_proof(L, conj(Ps), !IO) :-
+    foldl(write_proof(L), Ps, !IO).
+write_proof(L, disj(_, P), !IO) :-
+    write_proof(L, P, !IO).
+write_proof(L, if_then(P_1, P_2), !IO) :-
+    write_proof(L, P_1, !IO),
+    write_proof(L, P_2, !IO).
+write_proof(L, else(_, P_2), !IO) :-
+    write_proof(L, P_2, !IO).
+write_proof(_, not(_), !IO).
+write_proof(_, assumed, !IO).
 
-:- pred indent(int, io__state, io__state).
-:- mode indent(in, di, uo) is det.
+:- pred indent(int::in, io::di, io::uo) is det.
 
-indent(L) -->
-    ( { L > 0 } ->
-        write_char('\t'),
-        indent(L-1)
-    ;
-        []
+indent(L, !IO) :-
+    ( if L > 0 then
+        io.write_char('\t', !IO),
+        indent(L - 1, !IO)
+    else
+        true
     ).
-
-main -->
-    { append_w([a, b, c], [d, e], As, P_1) },
-    write_proof(0, P_1),
-
-    { length_w(As, _, P_2) },
-    write_proof(0, P_2),
-
-    { isort_w([4, 2, 5, 3, 1], _, P_3) },
-    write_proof(0, P_3).

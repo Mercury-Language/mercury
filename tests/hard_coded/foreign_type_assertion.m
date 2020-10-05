@@ -4,6 +4,7 @@
 %
 % This tests the use of assertions on C foreign types.
 % (Assertions on types in other languages are not yet used.)
+%
 
 :- module foreign_type_assertion.
 

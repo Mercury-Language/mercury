@@ -10,6 +10,7 @@
 % so that they still led to code that deallocated the (now nonexistent)
 % stack frame. This meant that calls to check_interval violated the
 % invariant which says that calls leave MR_sp unchanged.
+%
 
 :- module frameopt_pragma_redirect.
 
@@ -19,6 +20,8 @@
 
 :- pred main(io::di, io::uo) is det.
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module int.
@@ -26,10 +29,18 @@
 :- import_module pair.
 :- import_module require.
 
+%---------------------------------------------------------------------------%
+
+main(!IO) :-
+    add_interval_list([1 - 2, 3 - 4, 5 - 6, 7 - 8, 9 - 10], I),
+    io.write(I, !IO),
+    io.nl(!IO).
+
+%---------------------------------------------------------------------------%
+
 :- type interval == pair(int).
 
-:- pred add_interval_list(list(interval), interval).
-:- mode add_interval_list(in, out) is det.
+:- pred add_interval_list(list(interval)::in, interval::out) is det.
 
 add_interval_list([], (0 - 0)).
 add_interval_list([I | Is], SumI) :-
@@ -37,30 +48,25 @@ add_interval_list([I | Is], SumI) :-
     add_interval_list(Is, SumI0),
     add_intervals(I, SumI0, SumI).
 
-:- pred add_intervals(interval, interval, interval).
-:- mode add_intervals(in, in, out) is det.
+:- pred add_intervals(interval::in, interval::in, interval::out) is det.
 
 add_intervals(S1 - E1, S2 - E2, S - E) :-
     S = S1 + S2,
     E = E1 + E2.
 
-:- pred check_interval(interval).
-:- mode check_interval(in) is det.
-
+:- pred check_interval(interval::in) is det.
 :- pragma no_inline(check_interval/1).
 
 check_interval(S - E) :-
-    ( is_invalid(S) ->
+    ( if is_invalid(S) then
         error("Found an invalid interval 1!")
-    ; is_invalid(E) ->
+    else if is_invalid(E) then
         error("Found an invalid interval 2!")
-    ;
+    else
         true
     ).
 
-:- pred is_invalid(int).
-:- mode is_invalid(in) is semidet.
-
+:- pred is_invalid(int::in) is semidet.
 :- pragma inline(is_invalid/1).
 
 :- pragma foreign_proc("C",
@@ -69,9 +75,5 @@ check_interval(S - E) :-
 "
     SUCCESS_INDICATOR = X > 50;
 ").
-is_invalid(X) :- X > 50.
 
-main -->
-    { add_interval_list([1 - 2, 3 - 4, 5 - 6, 7 - 8, 9 - 10], I) },
-    write(I),
-    nl.
+is_invalid(X) :- X > 50.

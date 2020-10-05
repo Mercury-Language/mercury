@@ -8,32 +8,30 @@
 
 :- import_module io.
 
-:- impure pred main(io__state::di, io__state::uo) is det.
+:- impure pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module require.
 
-main -->
-    % Inlining this call forces recomputation
-    % of purity for main/2 (because of the
-    % `:- pragma promise_pure').
-    % In some versions of this compiler, this
-    % recomputation would erroneously infer
-    % that the inlined calls to incr/1 below
-    % were `pure'. Duplicate call elimination
-    % would then remove all but one of them.
-    { unsafe_get(Val0) },
+main(!IO) :-
+    % Inlining this call forces recomputation of purity for main/2
+    % (because of the `:- pragma promise_pure').
+    % In some versions of this compiler, this recomputation would
+    % erroneously infer that the inlined calls to incr/1 below
+    % were `pure'. Duplicate call elimination would then remove
+    % all but one of them.
+    unsafe_get(Val0),
 
-    io__write_int(Val0),
-    io__nl,
+    io.write_int(Val0, !IO),
+    io.nl(!IO),
 
-    { impure incr(_) },
-    { impure incr(_) },
-    { impure incr(_) },
-    { semipure get(Val) },
-    io__write_int(Val),
-    io__nl.
+    impure incr(_),
+    impure incr(_),
+    impure incr(_),
+    semipure get(Val),
+    io.write_int(Val, !IO),
+    io.nl(!IO).
 
 :- pragma foreign_decl("C",
 "
@@ -119,4 +117,5 @@ get(_::out) :-
 :- pred unsafe_get(int::out) is det.
 :- pragma promise_pure(unsafe_get/1).
 
-unsafe_get(X) :- semipure get(X).
+unsafe_get(X) :-
+    semipure get(X).

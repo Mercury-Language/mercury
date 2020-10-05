@@ -1,12 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module impure_prune.
 :- interface.
 :- import_module io.
 
-:- pred main(state::di, state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module int.
@@ -14,12 +14,12 @@
 
 :- pragma promise_pure(main/2).
 
-main -->
-    ( { impure do_impure_stuff, fail } ->
-        { error("not reached") }
-    ;
-        { semipure get_counter(X) },
-        print("X = "), print(X), nl
+main(!IO) :-
+    ( if impure do_impure_stuff, fail then
+        error("not reached")
+    else
+        semipure get_counter(X),
+        print("X = ", !IO), print(X, !IO), nl(!IO)
     ).
 
 :- impure pred do_impure_stuff is multi.

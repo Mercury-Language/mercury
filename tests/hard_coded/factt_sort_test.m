@@ -3,6 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % This is a regression test.
+%
 
 :- module factt_sort_test.
 
@@ -28,9 +29,9 @@ main(!IO) :-
 :- mode test(in, di, uo) is det.
 
 test(X, !IO) :-
-    ( unicode_to_big5(X, Y) ->
+    ( if unicode_to_big5(X, Y) then
         format("%d => %d\n", [i(X), i(Y)], !IO)
-    ;
+    else
         format("%d => fail\n", [i(X)], !IO)
     ).
 

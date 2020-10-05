@@ -3,6 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % Check that the dummy type optimisation is disabled for foreign enumerations.
+%
 
 :- module foreign_enum_dummy.
 :- interface.
@@ -16,9 +17,9 @@
 :- import_module bool.
 
 main(!IO) :-
-    ( test(foo) ->
+    ( if test(foo) then
         io.write_string("Success.\n", !IO)
-    ;
+    else
         io.write_string("Failure.\n", !IO)
     ).
 
@@ -44,6 +45,7 @@ main(!IO) :-
     }
 ").
 
-:- type foo ---> foo.
+:- type foo
+    --->    foo.
 :- pragma foreign_enum("C", foo/0, [foo - "561"]).
 :- pragma foreign_enum("C#", foo/0, [foo - "561"]).

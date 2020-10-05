@@ -5,6 +5,7 @@
 % Check that finalisers that terminate with an uncaught exception cause
 % the program to abort rather than keep running (i.e. execute
 % other finalisers).
+%
 
 :- module final_excp.
 :- interface.
@@ -41,9 +42,9 @@ final_pred_a(!IO) :-
 
 final_pred_b(!IO) :-
     get_magic_number(X, !IO),
-    ( X = 3 ->
+    ( if X = 3 then
         throw(magic_number_exception)
-    ;
+    else
         io.write_string("This is final_pred_b/2\n", !IO)
     ).
 
@@ -57,9 +58,9 @@ final_pred_c(!IO) :-
 :- pred get_string(int::in, string::out) is det.
 
 get_string(X, Str) :-
-    ( X = 561 ->
+    ( if X = 561 then
         throw(magic_number_exception)
-    ;
+    else
         Str = "not 561"
     ).
 

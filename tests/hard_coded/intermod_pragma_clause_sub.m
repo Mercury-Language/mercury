@@ -4,6 +4,7 @@
 %
 % Ensure that the foreign_decl is placed into the .opt file for procedures
 % which are defined by both a foreign proc and a mercury clause.
+%
 
 :- module intermod_pragma_clause_sub.
 

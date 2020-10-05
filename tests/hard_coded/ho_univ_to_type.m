@@ -15,12 +15,13 @@
 %   Nice try, but you can't fool univ_to_type!
 %
 % Author: trd
+%
 
 :- module ho_univ_to_type.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -37,18 +38,16 @@
 :- inst fpred
     --->    fpred(mypred).
 
-main -->
-    { foo(Pred0) },
-    { type_to_univ(Pred0, Univ) },
-    (
-        { univ_to_type(Univ, Pred1) }
-    ->
-        { convert_inst(fpred(Pred1), fpred(Pred2)) },
-        { Pred2(5.0, 1, X) },
-        io__write_int(X),
-        io__write_string("\n")
-    ;
-        io__write_string("Nice try, but you can't fool univ_to_type!\n")
+main(!IO) :-
+    foo(Pred0),
+    type_to_univ(Pred0, Univ),
+    ( if univ_to_type(Univ, Pred1) then
+        convert_inst(fpred(Pred1), fpred(Pred2)),
+        Pred2(5.0, 1, X),
+        io.write_int(X, !IO),
+        io.write_string("\n", !IO)
+    else
+        io.write_string("Nice try, but you can't fool univ_to_type!\n", !IO)
     ).
 
 :- pred foo(mypred).

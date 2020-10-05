@@ -6,6 +6,7 @@
 % types with both Mercury and foreign definitions,
 % It also tests field access functions for types with
 % both Mercury and foreign definitions.
+%
 
 :- module foreign_type2.
 
@@ -26,16 +27,16 @@
 :- func x(coord(T)) = int.
 :- func y(coord(T)) = int.
 
-main -->
-    { C = new(1, 4, 5) },
-    io__write_string("X:"),
-    io__write_int(x(C)),
-    io__nl,
-    io__write_string("Y:"),
-    io__write_int(y(C)),
-    io__nl,
-    io__write_string(type_name(type_of(C))),
-    io__nl.
+main(!IO) :-
+    C = new(1, 4, 5),
+    io.write_string("X:", !IO),
+    io.write_int(x(C), !IO),
+    io.nl(!IO),
+    io.write_string("Y:", !IO),
+    io.write_int(y(C), !IO),
+    io.nl(!IO),
+    io.write_string(type_name(type_of(C)), !IO),
+    io.nl(!IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

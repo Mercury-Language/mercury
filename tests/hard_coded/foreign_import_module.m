@@ -9,20 +9,20 @@
 :- import_module int.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- pred bar(int::in, int::out) is det.
 
 :- implementation.
 
-main -->
-    { bar(41, X) },
-    io__write(X),
-    io__nl,
+main(!IO) :-
+    bar(41, X),
+    io.write(X, !IO),
+    io.nl(!IO),
 
-    { bar2(41, Y) },
-    io__write(Y),
-    io__nl.
+    bar2(41, Y),
+    io.write(Y, !IO),
+    io.nl(!IO).
 
 :- pragma foreign_import_module(c, foreign_import_module_2).
 :- pragma foreign_import_module(java, foreign_import_module_2).
