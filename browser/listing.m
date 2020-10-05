@@ -271,8 +271,8 @@ list_file_with_command(OutStrm, ErrStrm, Command, FileName, FirstLine,
     ),
     (
         FindResult = yes(FoundFileName),
-        execute_command(OutStrm, ErrStrm, Command, [FoundFileName | LineArgs],
-            CallResult, !IO),
+        execute_command_with_redirects(Command, [FoundFileName | LineArgs],
+            OutStrm, ErrStrm, CallResult, !IO),
         (
             CallResult = ok
         ;
@@ -284,26 +284,6 @@ list_file_with_command(OutStrm, ErrStrm, Command, FileName, FirstLine,
         FindResult = no,
         write_to_c_file(ErrStrm,
             string.format("mdb: cannot find file %s\n", [s(FileName)]), !IO)
-    ).
-
-:- pred execute_command(c_file_ptr::in, c_file_ptr::in, string::in,
-    list(string)::in, maybe_error::out, io::di, io::uo) is det.
-
-execute_command(_OutStrm, _ErrStrm, Command, Args, Result, !IO) :-
-    % XXX use posix_spawn to avoid shell meta characters
-    % XXX use posix_spawn to redirect 1>OutStrm 2>ErrStrm
-    CommandString = string.join_list(" ", [Command | Args]),
-    io.call_system(CommandString, CallResult, !IO),
-    (
-        CallResult = ok(ExitStatus),
-        ( if ExitStatus = 0 then
-            Result = ok
-        else
-            Result = error("exit status " ++ string.from_int(ExitStatus))
-        )
-    ;
-        CallResult = error(Error),
-        Result = error(io.error_message(Error))
     ).
 
 %---------------------------------------------------------------------------%
@@ -431,6 +411,185 @@ print_lines_in_range_m(InStrm, OutStrm, ThisLine, FirstLine, LastLine,
         io.write_string(OutStrm, io.error_message(Error), !IO),
         io.write_string(OutStrm, "\n", !IO)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred execute_command_with_redirects(string::in, list(string)::in,
+    c_file_ptr::in, c_file_ptr::in, maybe_error::out, io::di, io::uo) is det.
+
+execute_command_with_redirects(Prog, Args, OutStrm, ErrStrm, Result, !IO) :-
+    do_posix_spawnp(Prog, length(Args), Args, OutStrm, ErrStrm, Status, Error0,
+        !IO),
+    ( if Status = -1 then
+        io.make_err_msg(Error0, "error invoking system command: ", Message,
+            !IO),
+        Result = error(Message)
+    else if Status = -2 then
+        Result = error("posix_spawn not supported on this platform")
+    else
+        Result0 = io.decode_system_command_exit_code(Status),
+        (
+            Result0 = ok(exited(ExitStatus)),
+            ( if ExitStatus = 0 then
+                Result = ok
+            else
+                Result = error("exit status " ++ string.from_int(ExitStatus))
+            )
+        ;
+            Result0 = ok(signalled(Signal)),
+            Result = error("received signal " ++ string.from_int(Signal))
+        ;
+            Result0 = error(Error),
+            Result = error(io.error_message(Error))
+        )
+    ).
+
+:- pred do_posix_spawnp(string::in, int::in, list(string)::in,
+    c_file_ptr::in, c_file_ptr::in, int::out, io.system_error::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    do_posix_spawnp(Prog::in, NumArgs::in, Args::in, OutStrm::in, ErrStrm::in,
+        Status::out, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+    int error;
+
+    Status = do_posix_spawnp(Prog, NumArgs, Args,
+        fileno(OutStrm), fileno(ErrStrm), &error);
+    if (Status == -1) {
+        Error = error;
+    } else {
+        Error = 0;
+    }
+").
+
+:- pragma foreign_decl("C", local, "
+// See library/io.m regarding declaration of the environ global variable.
+#ifdef MR_HAVE_SPAWN_H && defined(MR_HAVE_ENVIRON)
+    #include <spawn.h>
+
+    #if defined(MR_MAC_OSX)
+        #include <crt_externs.h>
+    #else
+        extern char **environ;
+    #endif
+#endif
+
+static int do_posix_spawnp(MR_String prog, int num_args, MR_Word args,
+    const int outfd, const int errfd, int *ret_errno);
+").
+
+:- pragma foreign_code("C", "
+static int
+do_posix_spawnp(MR_String prog, int num_args, MR_Word args,
+    const int outfd, const int errfd, int *ret_errno)
+{
+#if defined(MR_HAVE_POSIX_SPAWN) && defined(MR_HAVE_ENVIRON)
+
+    pid_t   pid;
+    char    **argv;
+    posix_spawn_file_actions_t file_actions;
+    posix_spawnattr_t attr;
+    int     rc;
+    int     status;
+    int     i;
+
+    argv = MR_GC_NEW_ARRAY(char *, 1 + num_args + 1);
+    argv[0] = prog;
+    for (i = 1; i <= num_args; i++) {
+        argv[i] = (MR_String) MR_list_head(args);
+        args = MR_list_tail(args);
+    }
+    argv[i] = NULL;
+
+    rc = posix_spawnattr_init(&attr);
+    if (rc == -1) {
+        *ret_errno = errno;
+        return -1;
+    }
+
+    rc = posix_spawn_file_actions_init(&file_actions);
+    if (rc == -1) {
+        *ret_errno = errno;
+        goto error_cleanup_attr;
+    }
+
+    if (outfd != STDOUT_FILENO) {
+        // Redirect standard output in child process.
+        rc = posix_spawn_file_actions_adddup2(&file_actions,
+            outfd, STDOUT_FILENO);
+        if (rc == -1) {
+            *ret_errno = errno;
+            goto error_cleanup_fa_attr;
+        }
+        // Close outfd in child process.
+        rc = posix_spawn_file_actions_addclose(&file_actions, outfd);
+        if (rc == -1) {
+            *ret_errno = errno;
+            goto error_cleanup_fa_attr;
+        }
+    }
+
+    if (errfd != STDERR_FILENO) {
+        // Redirect standard error in child process.
+        rc = posix_spawn_file_actions_adddup2(&file_actions,
+            errfd, STDERR_FILENO);
+        if (rc == -1) {
+            *ret_errno = errno;
+            goto error_cleanup_fa_attr;
+        }
+        // Close errfd in child process.
+        rc = posix_spawn_file_actions_addclose(&file_actions, errfd);
+        if (rc == -1) {
+            *ret_errno = errno;
+            goto error_cleanup_fa_attr;
+        }
+    }
+
+    #ifdef MR_MAC_OSX
+        rc = posix_spawnp(&pid, prog, &file_actions, &attr, argv,
+            *_NSGetEnviron());
+    #else
+        rc = posix_spawnp(&pid, prog, &file_actions, &attr, argv,
+            environ);
+    #endif
+
+    if (rc == -1) {
+        // Spawn failed.
+        *ret_errno = errno;
+        goto error_cleanup_fa_attr;
+    }
+
+    posix_spawnattr_destroy(&attr);
+    posix_spawn_file_actions_destroy(&file_actions);
+
+    // Wait for the spawned process to exit.
+    do {
+        rc = waitpid(pid, &status, 0);
+    } while (rc == -1 && MR_is_eintr(errno));
+    if (rc == -1) {
+        *ret_errno = errno;
+        return -1;
+    }
+    *ret_errno = 0;
+    return status;
+
+error_cleanup_fa_attr:
+    posix_spawn_file_actions_destroy(&file_actions);
+error_cleanup_attr:
+    posix_spawnattr_destroy(&attr);
+    return -1;
+
+#else   // not (defined(MR_HAVE_POSIX_SPAWN) && defined(MR_HAVE_ENVIRON))
+
+    *ret_errno = ENOEXEC;
+    return -2;
+
+#endif  // not (defined(MR_HAVE_POSIX_SPAWN) && defined(MR_HAVE_ENVIRON))
+}
+").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

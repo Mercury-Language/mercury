@@ -901,6 +901,8 @@ MR_trace_cmd_list(char **words, int word_count,
     const MR_ProcLayout     *entry_ptr;
     const char              *filename;
     int                     lineno;
+    int                     first_lineno;
+    int                     last_lineno;
     MR_Word                 *base_sp_ptr;
     MR_Word                 *base_curfr_ptr;
     MR_Unsigned             num = MR_num_context_lines;
@@ -923,16 +925,22 @@ MR_trace_cmd_list(char **words, int word_count,
         MR_make_aligned_string(aligned_filename, (MR_String) filename);
     );
 
+    first_lineno = lineno - num;
+    last_lineno = lineno + num;
+    if (first_lineno < 1) {
+        first_lineno = 1;
+    }
+
     if (MR_listing_cmd != NULL && strlen(MR_listing_cmd) > 0) {
         MR_TRACE_CALL_MERCURY(
             ML_LISTING_list_file_with_command(MR_mdb_out, MR_mdb_err,
                 MR_listing_cmd, (char *) aligned_filename,
-                lineno - num, lineno + num, lineno, MR_listing_path);
+                first_lineno, last_lineno, lineno, MR_listing_path);
         );
     } else {
         MR_TRACE_CALL_MERCURY(
             ML_LISTING_list_file(MR_mdb_out, MR_mdb_err, (char *) aligned_filename,
-                lineno - num, lineno + num, lineno, MR_listing_path);
+                first_lineno, last_lineno, lineno, MR_listing_path);
         );
     }
 
