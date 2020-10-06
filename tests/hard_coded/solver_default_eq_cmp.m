@@ -30,9 +30,9 @@ main(!IO) :-
         io.write_string("equality predicate not called", !IO)
     ;
         EqResult = exception(EqExcp),
-        ( univ_to_type(EqExcp, software_error(EqErr)) ->
+        ( if univ_to_type(EqExcp, software_error(EqErr)) then
             io.write_string(EqErr ++ "\n", !IO)
-        ;
+        else
             io.write_string("unknown exception thrown\n", !IO)
         )
     ),
@@ -43,9 +43,9 @@ main(!IO) :-
         io.write_string("comparison predicate not called", !IO)
     ;
         CmpResult = exception(CmpExcp),
-        ( univ_to_type(CmpExcp, software_error(CmpErr)) ->
+        ( if univ_to_type(CmpExcp, software_error(CmpErr)) then
             io.write_string(CmpErr ++ "\n", !IO)
-        ;
+        else
             io.write_string("unknown exception thrown\n", !IO)
         )
     ).
@@ -61,9 +61,12 @@ test_eq(unit, !IO) :-
 :- pred write_solver_type_eq(T::ia, T::ia, io::di, io::uo) is det.
 
 write_solver_type_eq(X, Y, !IO) :-
-    promise_pure ( if X =  Y
-        then io.write_string("Same\n", !IO)
-        else io.write_string("Different\n", !IO)
+    promise_pure (
+        ( if X =  Y then
+            io.write_string("Same\n", !IO)
+        else
+            io.write_string("Different\n", !IO)
+        )
     ).
 
 :- pred test_cmp(unit::out, io::di, io::uo) is det.

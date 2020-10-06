@@ -4,6 +4,7 @@
 %
 % This test case is to ensure that stdin/stdout are redirected correctly for
 % system commands.
+%
 
 :- module system_sort.
 
@@ -11,9 +12,9 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    io__call_system("sort", _).
+main(!IO) :-
+    io.call_system("sort", _, !IO).

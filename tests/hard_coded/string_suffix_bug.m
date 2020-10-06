@@ -12,9 +12,9 @@
 
 :- import_module string.
 
-main -->
-    ( { string__suffix("testing string__suffix", "suffix") } ->
-        io__write_string("yes\n")
-    ;
-        io__write_string("no\n")
+main(!IO) :-
+    ( if string.suffix("testing string__suffix", "suffix") then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ).

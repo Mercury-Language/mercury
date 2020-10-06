@@ -9,20 +9,19 @@
 % The Mercury compiler of 12 Dec 2000 failed to correctly run this test.
 %
 % Author: trd
+%
 
 :- module write_reg2.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module pair.
 :- import_module univ.
 
-main -->
-    io__write(univ((1 - 2))),
-    io__nl,
-    io__write(univ({1, 2, 3})),
-    io__nl.
+main(!IO) :-
+    io.write_line(univ((1 - 2)), !IO),
+    io.write_line(univ({1, 2, 3}), !IO).

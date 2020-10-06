@@ -53,9 +53,9 @@ main(!IO) :-
         ),
 
         NumOccupants0 = version_hash_table.num_occupants(!.HT),
-        ( NumOccupants0 = Max ->
+        ( if NumOccupants0 = Max then
             true
-        ;
+        else
             error("num_occupants failed")
         ),
 
@@ -67,16 +67,16 @@ main(!IO) :-
         ),
 
         NumOccupants = version_hash_table.num_occupants(!.HT),
-        ( NumOccupants = Max - Half ->
+        ( if NumOccupants = Max - Half then
             true
-        ;
+        else
             error("num_occupants failed")
         ),
 
         AL = version_hash_table.to_assoc_list(!.HT),
-        ( list.length(AL) = NumOccupants ->
+        ( if list.length(AL) = NumOccupants then
             true
-        ;
+        else
             error("to_assoc_list failed")
         ),
 
@@ -106,9 +106,9 @@ do_insert(I, !HT) :-
 
 do_lookup(I, !HT) :-
     V = version_hash_table.lookup(!.HT, I),
-    ( I = V ->
+    ( if I = V then
         true
-    ;
+    else
         error("do_lookup failed")
     ).
 
@@ -117,9 +117,9 @@ do_lookup(I, !HT) :-
 
 do_lookup_neg(I, !HT) :-
     V = version_hash_table.lookup(!.HT, I),
-    ( -I = V ->
+    ( if -I = V then
         true
-    ;
+    else
         error("do_lookup failed")
     ).
 

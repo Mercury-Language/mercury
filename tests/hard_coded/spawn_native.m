@@ -25,7 +25,7 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    ( can_spawn_native ->
+    ( if can_spawn_native then
         init_tl_key(!IO),
         thread.spawn_native(go("a"), _, !IO),
         msleep(100, !IO),
@@ -34,7 +34,7 @@ main(!IO) :-
         thread.spawn_native(go("c"), _, !IO),
         msleep(100, !IO),
         go("d", !IO)
-    ;
+    else
         io.write_string("spawn_native not supported\n", !IO)
     ).
 

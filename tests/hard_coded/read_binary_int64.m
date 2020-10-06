@@ -46,9 +46,11 @@ run_test(ByteOrder, TestBytes, !IO) :-
             TestBytes = [Byte1, Byte2, Byte3, Byte4, Byte5, Byte6, Byte7, Byte8]
         then
             io.write_string(" (LE: ", !IO),
-            io.write_int64(from_bytes_le(Byte1, Byte2, Byte3, Byte4, Byte5, Byte6, Byte7, Byte8), !IO),
+            io.write_int64(from_bytes_le(Byte1, Byte2, Byte3, Byte4,
+                Byte5, Byte6, Byte7, Byte8), !IO),
             io.write_string(") (BE: ", !IO),
-            io.write_int64(from_bytes_be(Byte1, Byte2, Byte3, Byte4, Byte5, Byte6, Byte7, Byte8), !IO),
+            io.write_int64(from_bytes_be(Byte1, Byte2, Byte3, Byte4,
+                Byte5, Byte6, Byte7, Byte8), !IO),
             io.write_string(")\n", !IO)
         else
             io.nl(!IO)
@@ -89,8 +91,8 @@ run_test(ByteOrder, TestBytes, !IO) :-
                 io.write_string(")\n", !IO)
             ;
                 ReadResult = error(IO_Error),
-                io.format("Result: Error (%s)\n", [s(io.error_message(IO_Error))],
-                    !IO)
+                io.format("Result: Error (%s)\n",
+                    [s(io.error_message(IO_Error))], !IO)
             ),
             io.remove_file(test_file, _, !IO)
         ;

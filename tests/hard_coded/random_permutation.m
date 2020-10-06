@@ -6,7 +6,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -14,38 +14,34 @@
 :- import_module list.
 :- import_module random.
 
-main -->
-    { List = gen_sorted_list(1, 100) },
-    { random__init(1, RS) },
-    do_tests(List, 10, RS).
+main(!IO) :-
+    List = gen_sorted_list(1, 100),
+    random.init(1, RS),
+    do_tests(List, 10, RS, !IO).
 
-:- pred do_tests(list(int), int, random__supply, io__state, io__state).
-:- mode do_tests(in, in, mdi, di, uo) is det.
+:- pred do_tests(list(int)::in, int::in, random.supply::mdi,
+    io::di, io::uo) is det.
 
-do_tests(List, Count, RS0) -->
-    (
-        { Count > 1 }
-    ->
-        { random__permutation(List, Perm, RS0, RS1) },
-        { list__sort_and_remove_dups(Perm, SortedList) },
-        (
-            { SortedList = List }
-        ->
-            io__write_string("Test passed.\n")
-        ;
-            io__write_string("Test failed!\n")
+do_tests(List, Count, RS0, !IO) :-
+    ( if Count > 1 then
+        random.permutation(List, Perm, RS0, RS1),
+        list.sort_and_remove_dups(Perm, SortedList),
+        ( if SortedList = List then
+            io.write_string("Test passed.\n", !IO)
+        else
+            io.write_string("Test failed!\n", !IO)
         ),
-        do_tests(List, Count - 1, RS1)
-    ;
-        []
+        do_tests(List, Count - 1, RS1, !IO)
+    else
+        true
     ).
 
 :- func gen_sorted_list(int, int) = list(int).
 
 gen_sorted_list(M, N) =
-    ( M > N ->
+    ( if M > N then
         []
-    ;
+    else
         [M | gen_sorted_list(M + 1, N)]
     ).
 

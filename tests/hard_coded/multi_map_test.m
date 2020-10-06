@@ -29,12 +29,12 @@ main(!IO) :-
     %
     ( if multi_map.is_empty(EmptyMap) then
         io.write_string("PASSED: is_empty(EmptyMap) succeeded\n", !IO)
-      else
+    else
         io.write_string("FAILED: is_empty(EmptyMap) failed\n", !IO)
     ),
     ( if multi_map.is_empty(Map) then
         io.write_string("FAILED: is_empty(Map) succeeded\n", !IO)
-      else
+    else
         io.write_string("PASSED: is_empty(Map) failed\n", !IO)
     ),
 
@@ -51,7 +51,7 @@ main(!IO) :-
         io.write_string("insert/4 (test 1): PASSED: ", !IO),
         io.write(AL2, !IO),
         io.nl(!IO)
-      else
+    else
         io.write_string("insert/4 test 1): FAILED\n", !IO)
     ),
 
@@ -60,7 +60,7 @@ main(!IO) :-
         io.write_string("insert/4 (test 2) FAILED: ", !IO),
         io.write(AL3, !IO),
         io.nl(!IO)
-      else
+    else
         io.write_string("insert/4 (test 2) PASSED\n", !IO)
     ),
 
@@ -77,7 +77,7 @@ main(!IO) :-
         io.write_string("update/4 (test 1): PASSED: ", !IO),
         io.write(UAL1, !IO),
         io.nl(!IO)
-     else
+    else
         io.write_string("update/4 (test 1): FAILED\n", !IO)
     ),
 
@@ -86,7 +86,7 @@ main(!IO) :-
         io.write_string("update/4 (test 2): FAILED: ", !IO),
         io.write(UAL2, !IO),
         io.nl(!IO)
-     else
+    else
         io.write_string("update/4 (test 2): PASSED\n", !IO)
     ),
 
@@ -103,7 +103,7 @@ main(!IO) :-
         io.write_string("replace/4 (test 1): PASSED: ", !IO),
         io.write(RAL1, !IO),
         io.nl(!IO)
-      else
+    else
         io.write_string("replace/4 (test 1): FAILED\n", !IO)
     ),
 
@@ -112,7 +112,7 @@ main(!IO) :-
         io.write_string("replace/4 (test 2): FAILED: ", !IO),
         io.write(RAL2, !IO),
         io.nl(!IO)
-      else
+    else
         io.write_string("replace/4 (test 2): PASSED\n", !IO)
     ),
 

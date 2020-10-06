@@ -6,7 +6,8 @@
 % (Oct 98) got a `var not found' error for this test case, due to
 % mode analysis producing incorrect instmap delta annotations
 % for the complicated unification in the implied mode in the
-% first call to map__from_assoc_list in next/3.
+% first call to map.from_assoc_list in next/3.
+%
 
 :- module var_not_found.
 
@@ -14,7 +15,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -30,12 +31,12 @@
 :- import_module std_util.
 :- import_module string.
 
-main -->
-    { map__from_assoc_list([int(1) - int(2)], Map) },
-    ( { next(Map, Map, Next) } ->
-        write(Next), nl
-    ;
-        write_string("failed (as we should)\n")
+main(!IO) :-
+    map.from_assoc_list([int(1) - int(2)], Map),
+    ( if next(Map, Map, Next) then
+        io.write_line(Next, !IO)
+    else
+        io.write_string("failed (as we should)\n", !IO)
     ).
 
 :- type data
@@ -45,21 +46,20 @@ main -->
     ;       array(map(data, data))
     ;       void.
 
-:- pred next(map(data, data), map(data, data), map(data, data)).
-:- mode next(in, in, out) is semidet.
+:- pred next(map(data, data)::in, map(data, data)::in, map(data, data)::out)
+    is semidet.
 
 next(Thing, Array, Next) :-
-    map__to_assoc_list(Thing, [int(0) - Key, int(1) - _]),
-    map__to_assoc_list(Array, List),
+    map.to_assoc_list(Thing, [int(0) - Key, int(1) - _]),
+    map.to_assoc_list(Array, List),
     next_pair(List, Key, NewKey - NewValue),
-    map__from_assoc_list([int(0) - NewKey, int(1) - NewValue], Next).
+    map.from_assoc_list([int(0) - NewKey, int(1) - NewValue], Next).
 
-:- pred next_pair(list(pair(data)), data, pair(data)).
-:- mode next_pair(in, in, out) is semidet.
+:- pred next_pair(list(pair(data))::in, data::in, pair(data)::out) is semidet.
 
 next_pair([Pair0 | Pairs], Key, Pair) :-
-    ( Pair0 = Key - _ ->
+    ( if Pair0 = Key - _ then
         Pairs = [Pair | _]
-    ;
+    else
         next_pair(Pairs, Key, Pair)
     ).

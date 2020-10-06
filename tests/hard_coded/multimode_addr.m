@@ -31,10 +31,10 @@ main(!IO) :-
     !:IO = my_foldl(echo, ["a", "b", "c"], !.IO),
 
     io.write_string("\nTEST 3\n", !IO),
-    ( RevB = my_foldl(maybe_cons, 1 .. 5, []) ->
+    ( if RevB = my_foldl(maybe_cons, 1 .. 5, []) then
         io.write(RevB, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("found a multiple of three\n", !IO)
     ).
 

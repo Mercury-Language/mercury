@@ -4,6 +4,7 @@
 %
 % Regression test for bug which showed up when --structure-sharing-widening
 % was used.
+%
 
 :- module sharing_comb.
 :- interface.
@@ -12,7 +13,6 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -111,7 +111,7 @@ main(!IO) :-
     io.write(RP, !IO),
     io.nl(!IO),
 
-    ( find_intersection(RP, _, Surface) ->
+    ( if find_intersection(RP, _, Surface) then
         io.write_string("Surface = ", !IO),
         io.write(Surface, !IO),
         io.nl(!IO),
@@ -122,7 +122,7 @@ main(!IO) :-
         io.write_string("NewSurface = ", !IO),
         io.write(NewSurface, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("find_intersection failed!\n", !IO)
     ),
 

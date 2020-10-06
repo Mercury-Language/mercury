@@ -17,14 +17,16 @@
 main(!IO) :-
     some [!X] (
         !:X = 10,
-        Foo = (pred(I::in, !.IO::di, !:IO::uo) is det :-
-            Bar = (pred(J::in, !.IO::di, !:IO::uo) is det :-
-                Result = J + I + !.X,
-                io.write_int(Result, !IO),
-                io.nl(!IO)
+        Foo =
+            ( pred(I::in, !.IO::di, !:IO::uo) is det :-
+                Bar =
+                    ( pred(J::in, !.IO::di, !:IO::uo) is det :-
+                        Result = J + I + !.X,
+                        io.write_int(Result, !IO),
+                        io.nl(!IO)
+                    ),
+                Bar(4, !IO)
             ),
-            Bar(4, !IO)
-        ),
         Foo(3, !IO)
     ),
     baz(-200, X, !IO),
@@ -35,11 +37,13 @@ main(!IO) :-
 
 baz(!Y, !IO) :-
     io.format("(baz) !.Y = %d\n", [i(!.Y)], !IO),
-    BazFoo = (pred(!.Y::in, !:Y::out, !.IO::di, !:IO::uo) is det :-
-        io.format("(BazFoo) !.Y = %d\n", [i(!.Y)], !IO),
-        BazBar = (pred(!.Z::in, !:Z::out, !.IO::di, !:IO::uo) is det :-
-            io.format("(BazBar) !.Y = %d\n", [i(!.Y)], !IO)
+    BazFoo =
+        ( pred(!.Y::in, !:Y::out, !.IO::di, !:IO::uo) is det :-
+            io.format("(BazFoo) !.Y = %d\n", [i(!.Y)], !IO),
+            BazBar =
+                ( pred(!.Z::in, !:Z::out, !.IO::di, !:IO::uo) is det :-
+                    io.format("(BazBar) !.Y = %d\n", [i(!.Y)], !IO)
+                ),
+            BazBar(400, _, !IO)
         ),
-        BazBar(400, _, !IO)
-    ),
     BazFoo(700, _, !IO).

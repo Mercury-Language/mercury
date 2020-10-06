@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module stable_foreign.
 
 :- interface.
@@ -33,44 +33,44 @@ test(P1, P2, !IO) :-
     rep(P1, V1),
     rep(P2, V2),
 
-    io__write_int(V1, !IO),
-    ( unify(P1, P2) ->
-        io__write_string(" u= ", !IO)
-    ;
-        io__write_string(" u!= ", !IO)
+    io.write_int(V1, !IO),
+    ( if unify(P1, P2) then
+        io.write_string(" u= ", !IO)
+    else
+        io.write_string(" u!= ", !IO)
     ),
-    io__write_int(V2, !IO),
-    io__write_string("\n", !IO),
+    io.write_int(V2, !IO),
+    io.write_string("\n", !IO),
 
     compare(R, P1, P2),
-    io__write_int(V1, !IO),
+    io.write_int(V1, !IO),
     (
         R = (<),
-        io__write_string(" c< ", !IO)
+        io.write_string(" c< ", !IO)
     ;
         R = (=),
-        io__write_string(" c= ", !IO)
+        io.write_string(" c= ", !IO)
     ;
         R = (>),
-        io__write_string(" c> ", !IO)
+        io.write_string(" c> ", !IO)
     ),
-    io__write_int(V2, !IO),
-    io__write_string("\n", !IO),
+    io.write_int(V2, !IO),
+    io.write_string("\n", !IO),
 
     compare_representation(RR, P1, P2),
-    io__write_int(V1, !IO),
+    io.write_int(V1, !IO),
     (
         RR = (<),
-        io__write_string(" r< ", !IO)
+        io.write_string(" r< ", !IO)
     ;
         RR = (=),
-        io__write_string(" r= ", !IO)
+        io.write_string(" r= ", !IO)
     ;
         RR = (>),
-        io__write_string(" r> ", !IO)
+        io.write_string(" r> ", !IO)
     ),
-    io__write_int(V2, !IO),
-    io__write_string("\n", !IO).
+    io.write_int(V2, !IO),
+    io.write_string("\n", !IO).
 
 :- pragma foreign_decl(c, "
 #define STABLE_FOREIGN_MAX 100

@@ -41,9 +41,9 @@ init_foo = X :-
 :- func init_bar = int.
 
 init_bar =
-    ( get_magic_number(3) ->
+    ( if get_magic_number(3) then
         throw(magic_number_exception)
-    ;
+    else
         561
     ).
 
@@ -58,13 +58,14 @@ init_baz = X :-
 :- pred get_string(int::in, string::out) is det.
 
 get_string(X, Str) :-
-    ( X = 561 ->
+    ( if X = 561 then
         throw(magic_number_exception)
-    ;
+    else
         Str = "not 561"
     ).
 
-:- type magic_number_exception ---> magic_number_exception.
+:- type magic_number_exception
+    --->    magic_number_exception.
 
 :- pred get_magic_number(int::out) is det.
 

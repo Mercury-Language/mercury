@@ -16,7 +16,7 @@
 :- import_module string.
 
 main(!IO) :-
-    (
+    ( if
         string.sub_string_search("", "", 0),
         not string.sub_string_search("", "dog", _),
         not string.sub_string_search("cat", "catdog", _),
@@ -40,8 +40,8 @@ main(!IO) :-
         not string.sub_string_search_start("catcatcat", "cat", 10, _),
 
         string.sub_string_search("cαtcατcat", "cατ", length("cαt"))
-    ->
+    then
         io.write_string("test succeeded\n", !IO)
-    ;
+    else
         io.write_string("test failed\n", !IO)
     ).

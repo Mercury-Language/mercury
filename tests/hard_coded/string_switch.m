@@ -4,6 +4,7 @@
 %
 % The code of this test is identical to the code of string_switch2 and
 % string_switch3, but we compile them with different compilation options.
+%
 
 :- module string_switch.
 
@@ -46,32 +47,32 @@ main(!IO) :-
 :- pred test_jump(string::in, io::di, io::uo) is det.
 
 test_jump(S, !IO) :-
-    ( jump(S, 50, N) ->
+    ( if jump(S, 50, N) then
         io.format("jump %s -> %d\n", [s(S), i(N)], !IO)
-    ;
+    else
         io.format("jump %s failed\n", [s(S)], !IO)
     ).
 
 :- pred test_one(string::in, io::di, io::uo) is det.
 
 test_one(S, !IO) :-
-    ( one(S, N) ->
+    ( if one(S, N) then
         io.format("one %s -> %d\n", [s(S), i(N)], !IO)
-    ;
+    else
         io.format("one %s failed\n", [s(S)], !IO)
     ).
 
 :- pred test_one_known(string::in, io::di, io::uo) is det.
 
 test_one_known(S, !IO) :-
-    (
+    ( if
         ( S = "aa"
         ; S = "bb"
         ),
         one(S, N)
-    ->
+    then
         io.format("one known %s -> %d\n", [s(S), i(N)], !IO)
-    ;
+    else
         io.format("one known %s failed\n", [s(S)], !IO)
     ).
 

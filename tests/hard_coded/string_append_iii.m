@@ -19,13 +19,13 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    (
+    ( if
         string.append("", "cat", "cat"),
         string.append("c", "at", "cat"),
         string.append("ca", "t", "cat"),
         string.append("cat", "", "cat")
-    ->
+    then
         io.write_string("test succeeded\n", !IO)
-    ;
+    else
         io.write_string("test failed\n", !IO)
     ).

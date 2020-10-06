@@ -92,8 +92,8 @@ run_test(ByteOrder, TestBytes, !IO) :-
                 io.write_string(")\n", !IO)
             ;
                 ReadResult = error(IO_Error),
-                io.format("Result: Error (%s)\n", [s(io.error_message(IO_Error))],
-                    !IO)
+                io.format("Result: Error (%s)\n",
+                    [s(io.error_message(IO_Error))], !IO)
             ),
             io.remove_file(test_file, _, !IO)
         ;

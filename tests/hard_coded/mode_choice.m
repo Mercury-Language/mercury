@@ -6,7 +6,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(state::di, state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -14,47 +14,47 @@
 #include ""mercury_string.h""
 ").
 
-main -->
-    ( { test1("foo", T0, T0b) } ->
-        print("T0: "), print(T0), nl,
-        print("T0b: "), print(T0b), nl
-    ;
-        print("test1: failed")
+main(!IO) :-
+    ( if test1("foo", T0, T0b) then
+        print("T0: ", !IO), print(T0, !IO), nl(!IO),
+        print("T0b: ", !IO), print(T0b, !IO), nl(!IO)
+    else
+        print("test1: failed", !IO)
     ),
-    ( { test1("foo", "fooie", T1) } ->
-        print("T1: "), print(T1), nl
-    ;
-        print("test1: failed")
+    ( if test1("foo", "fooie", T1) then
+        print("T1: ", !IO), print(T1, !IO), nl(!IO)
+    else
+        print("test1: failed", !IO)
     ),
-    { test2("bar", T2) },
-    print("T2: "), print(T2), nl,
-    { Z = "z" },
-    { test2(Z, T3) },
-    print("T3: "), print(T3), nl,
-    { test2(Z, T4) },
-    print("T4: "), print(T4), nl,
-    { mkany(Any) },
-    { test3(Any, T5) },
-    print("T5: "), print(T5), nl,
-    { test3(_, T6) },
-    print("T6: "), print(T6), nl,
-    ( { test4("", "", T7) } ->
-        print("T7: "), print(T7), nl
-    ;
-        print("T7 failed\n")
+    test2("bar", T2),
+    print("T2: ", !IO), print(T2, !IO), nl(!IO),
+    Z = "z",
+    test2(Z, T3),
+    print("T3: ", !IO), print(T3, !IO), nl(!IO),
+    test2(Z, T4),
+    print("T4: ", !IO), print(T4, !IO), nl(!IO),
+    mkany(Any),
+    test3(Any, T5),
+    print("T5: ", !IO), print(T5, !IO), nl(!IO),
+    test3(_, T6),
+    print("T6: ", !IO), print(T6, !IO), nl(!IO),
+    ( if test4("", "", T7) then
+        print("T7: ", !IO), print(T7, !IO), nl(!IO)
+    else
+        print("T7 failed\n", !IO)
     ),
-    { test4("", T8, T9) },
-    print("T8: "), print(T8), nl,
-    print("T9: "), print(T9), nl,
-    { test4(T10, "", T11) },
-    print("T10: "), print(T10), nl,
-    print("T11: "), print(T11), nl,
-    { test5("a", "b", T12) },
-    print("T12: "), print(T12), nl,
-    { test5("a", "a", T13) },
-    print("T13: "), print(T13), nl,
-    { test5("b", "b", T14) },
-    print("T14: "), print(T14), nl.
+    test4("", T8, T9),
+    print("T8: ", !IO), print(T8, !IO), nl(!IO),
+    print("T9: ", !IO), print(T9, !IO), nl(!IO),
+    test4(T10, "", T11),
+    print("T10: ", !IO), print(T10, !IO), nl(!IO),
+    print("T11: ", !IO), print(T11, !IO), nl(!IO),
+    test5("a", "b", T12),
+    print("T12: ", !IO), print(T12, !IO), nl(!IO),
+    test5("a", "a", T13),
+    print("T13: ", !IO), print(T13, !IO), nl(!IO),
+    test5("b", "b", T14),
+    print("T14: ", !IO), print(T14, !IO), nl(!IO).
 
 % prefer `in' to `out'
 

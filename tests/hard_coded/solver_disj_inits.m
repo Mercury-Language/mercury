@@ -55,9 +55,9 @@ write_foo(Foo, !IO) :-
 
 :- func f(bar::in) = (foo::oa) is det.
 f(Bar) = Foo :-
-    (   Bar = a
-    ;   Bar = b, Foo = foo(1)
-    ;   Bar = c, Foo = foo(2)
+    ( Bar = a
+    ; Bar = b, Foo = foo(1)
+    ; Bar = c, Foo = foo(2)
     ).
 
 %---------------------------------------------------------------------------%

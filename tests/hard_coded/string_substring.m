@@ -17,7 +17,7 @@
 :- import_module string.
 
 main(!IO) :-
-    (
+    ( if
         string.between("cat", -1, max_int, "cat"),
         string.between("cat", 0, max_int, "cat"),
         string.between("cat", 1, max_int, "at"),
@@ -34,8 +34,8 @@ main(!IO) :-
         string.between("cat", 1, 2, "a"),
         string.between("cat", 1, 3, "at"),
         string.between("cat", 1, 4, "at")
-    ->
+    then
         io.write_string("test succeeded\n", !IO)
-    ;
+    else
         io.write_string("test failed\n", !IO)
     ).

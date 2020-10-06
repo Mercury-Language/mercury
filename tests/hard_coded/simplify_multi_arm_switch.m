@@ -6,6 +6,7 @@
 % Previously a singleton switch could be replaced by the case goal, possibly
 % with a functor test beforehand, but that's only true if the case arm is
 % applicable to only a single functor.
+%
 
 :- module simplify_multi_arm_switch.
 :- interface.
@@ -45,8 +46,8 @@ squishy(Fruit) :-
     IsSquishy = yes.
 
 main(!IO) :-
-    ( squishy(apple) ->
+    ( if squishy(apple) then
         io.write_string("bug!\n", !IO)
-    ;
+    else
         io.write_string("ok\n", !IO)
     ).

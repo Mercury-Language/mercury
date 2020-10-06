@@ -70,7 +70,7 @@ test_to_lower_in_out(S, !IO) :-
     list.map(char.to_lower, Chars, LowerChars),
     string.from_char_list(LowerChars, Expected),
 
-    expect(unify(LowerS, Expected), $module, $pred, "LowerS != Expected").
+    expect(unify(LowerS, Expected), $pred, "LowerS != Expected").
 
 :- pred test_to_upper_in_out(string::in, io::di, io::uo) is det.
 
@@ -81,16 +81,16 @@ test_to_upper_in_out(S, !IO) :-
     list.map(char.to_upper, Chars, UpperChars),
     string.from_char_list(UpperChars, Expected),
 
-    expect(unify(UpperS, Expected), $module, $pred, "UpperS != Expected").
+    expect(unify(UpperS, Expected), $pred, "UpperS != Expected").
 
 :- pred test_to_lower_in_in({string, string}::in, io::di, io::uo) is det.
 
 test_to_lower_in_in({X, Y}, !IO) :-
     compare(Expected, to_lower(X), Y),
     ( if string.to_lower(X, Y) then
-        expect(unify(Expected, (=)), $module, $pred, "to_lower wrong")
+        expect(unify(Expected, (=)), $pred, "to_lower wrong")
     else
-        expect_not(unify(Expected, (=)), $module, $pred, "to_lower wrong")
+        expect_not(unify(Expected, (=)), $pred, "to_lower wrong")
     ).
 
 :- pred test_to_upper_in_in({string, string}::in, io::di, io::uo) is det.
@@ -98,16 +98,17 @@ test_to_lower_in_in({X, Y}, !IO) :-
 test_to_upper_in_in({X, Y}, !IO) :-
     compare(Expected, to_upper(X), Y),
     ( if string.to_upper(X, Y) then
-        expect(unify(Expected, (=)), $module, $pred, "to_upper wrong")
+        expect(unify(Expected, (=)), $pred, "to_upper wrong")
     else
-        expect_not(unify(Expected, (=)), $module, $pred, "to_upper wrong")
+        expect_not(unify(Expected, (=)), $pred, "to_upper wrong")
     ).
 
-:- pred test_compare_ignore_case_ascii({string, string}::in, io::di, io::uo) is det.
+:- pred test_compare_ignore_case_ascii({string, string}::in,
+    io::di, io::uo) is det.
 
 test_compare_ignore_case_ascii({X, Y}, !IO) :-
     compare_ignore_case_ascii(ResIgnCase, X, Y),
     compare(ResLower, to_lower(X), to_lower(Y) : string),
     compare(ResUpper, to_upper(X), to_upper(Y) : string),
-    expect(unify(ResIgnCase, ResLower), $module, $pred, "ResIgnCase != ResLower"),
-    expect(unify(ResIgnCase, ResUpper), $module, $pred, "ResIgnCase != ResUpper").
+    expect(unify(ResIgnCase, ResLower), $pred, "ResIgnCase != ResLower"),
+    expect(unify(ResIgnCase, ResUpper), $pred, "ResIgnCase != ResUpper").

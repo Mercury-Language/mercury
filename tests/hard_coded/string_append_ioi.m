@@ -20,15 +20,15 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    (
+    ( if
         string.append("", A, "cat"),
         string.append("c", B, "cat"),
         string.append("ca", C, "cat"),
         string.append("cat", D, "cat"),
         not string.append("cat", _, "dogcat")
-    ->
+    then
         io.write([A, B, C, D], !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("tested failed\n", !IO)
     ).

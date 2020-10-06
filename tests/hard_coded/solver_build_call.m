@@ -7,7 +7,7 @@
 % Tue Oct 18 15:30:39 EST 2005
 %
 % This detects a bug where modes.build_call was using out-of-date versions
-% of the varset and vartypes and then overwriting these fields in the
+% of the varset and vartypes, and then overwriting these fields in the
 % mode_info, leading to a compiler abort:
 %
 %   Uncaught Mercury exception:
@@ -21,7 +21,7 @@
 
 :- import_module io.
 
-:- pred main(io :: di, io :: uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -35,14 +35,13 @@
 
 main(!IO) :-
     promise_pure (
-      if
-        solve_problem(Solution)
-      then
-        io.print("solution found: ", !IO),
-        io.print(Solution, !IO),
-        io.nl(!IO)
-      else
-        io.print("no solution found\n", !IO)
+        ( if solve_problem(Solution) then
+            io.print("solution found: ", !IO),
+            io.print(Solution, !IO),
+            io.nl(!IO)
+        else
+            io.print("no solution found\n", !IO)
+        )
     ).
 
 :- pred solve_problem(int::out) is semidet.

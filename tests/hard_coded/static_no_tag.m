@@ -1,4 +1,6 @@
-% vim: ts=4 et ft=mercury
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
 % This is a regression test for a problem in rotd-2008-01-15 and before.
 % In those versions of Mercury the MLDS->C code generator was generating
@@ -13,6 +15,7 @@
 %
 % This module also exercises creating static ground terms with other sorts
 % of no_tag type as well.
+%
 
 :- module static_no_tag.
 :- interface.

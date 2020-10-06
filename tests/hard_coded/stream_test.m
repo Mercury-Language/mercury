@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module stream_test.
 :- interface.
 
@@ -17,7 +17,10 @@
 :- import_module stream.
 :- import_module univ.
 
-:- type foo ---> foo ; bar ; baz.
+:- type foo
+    --->    foo
+    ;       bar
+    ;       baz.
 
 main(!IO) :-
     io.stdout_stream(Stdout, !IO),

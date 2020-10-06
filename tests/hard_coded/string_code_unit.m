@@ -48,9 +48,9 @@ test(String, !IO) :-
     io.write_string("UTF-8:\t\t", !IO),
     write_hex_ints(UTF8, !IO),
     io.nl(!IO),
-    ( string.from_utf8_code_unit_list(UTF8, String) ->
+    ( if string.from_utf8_code_unit_list(UTF8, String) then
         true
-    ;
+    else
         io.write_string("from_utf8_code_unit_list failed\n", !IO)
     ),
 
@@ -58,9 +58,9 @@ test(String, !IO) :-
     io.write_string("UTF-16:\t\t", !IO),
     write_hex_ints(UTF16, !IO),
     io.nl(!IO),
-    ( string.from_utf16_code_unit_list(UTF16, String) ->
+    ( if string.from_utf16_code_unit_list(UTF16, String) then
         true
-    ;
+    else
         io.write_string("from_utf16_code_unit_list failed\n", !IO)
     ),
     io.nl(!IO).

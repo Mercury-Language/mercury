@@ -3,6 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % Test string prefix- and suffix-related predicates.
+%
 
 :- module string_presuffix.
 :- interface.
@@ -26,7 +27,7 @@
 main(!IO) :-
     Str = "aßξ啕𐀀.",
     io.write_string("prefix(in, in):\n", !IO),
-    (
+    ( if
         string.prefix(Str, ""),
         string.prefix(Str, "a"),
         string.prefix(Str, "aß"),
@@ -35,9 +36,9 @@ main(!IO) :-
         string.prefix(Str, "aßξ啕𐀀"),
         string.prefix(Str, "aßξ啕𐀀."),
         not string.prefix(Str, "aßξ啕𐀀.z")
-    ->
+    then
         io.write_string("pass\n", !IO)
-    ;
+    else
         io.write_string("fail\n", !IO)
     ),
 
@@ -47,7 +48,7 @@ main(!IO) :-
     io.nl(!IO),
 
     io.write_string("\nsuffix(in, in):\n", !IO),
-    (
+    ( if
         not string.suffix(Str, "aßξ啕𐀀.z"),
         string.suffix(Str, "aßξ啕𐀀."),
         string.suffix(Str, "ßξ啕𐀀."),
@@ -56,9 +57,9 @@ main(!IO) :-
         string.suffix(Str, "𐀀."),
         string.suffix(Str, "."),
         string.suffix(Str, "")
-    ->
+    then
         io.write_string("pass\n", !IO)
-    ;
+    else
         io.write_string("fail\n", !IO)
     ),
 
@@ -68,23 +69,23 @@ main(!IO) :-
     io.nl(!IO),
 
     io.write_string("\nremove_prefix:\n", !IO),
-    (
+    ( if
         string.remove_prefix(Str, Str, ""),
         string.remove_prefix("aßξ", Str, "啕𐀀."),
         not string.remove_prefix("☿", Str, Str)
-    ->
+    then
         io.write_string("pass\n", !IO)
-    ;
+    else
         io.write_string("fail\n", !IO)
     ),
 
     io.write_string("\nremove_suffix:\n", !IO),
-    (
+    ( if
         string.remove_suffix(Str, Str, ""),
         string.remove_suffix(Str, "啕𐀀.", "aßξ"),
         not string.remove_suffix(Str, "☿", Str)
-    ->
+    then
         io.write_string("pass\n", !IO)
-    ;
+    else
         io.write_string("fail\n", !IO)
     ).

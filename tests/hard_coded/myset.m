@@ -33,7 +33,7 @@
 % :- mode [in | in] = out is det.
 :- mode [out | out] = in is cc_nondet.
 
-:- pred print_myset_rep(set(T)::in, io__state::di, io__state::uo) is cc_multi.
+:- pred print_myset_rep(set(T)::in, io::di, io::uo) is cc_multi.
 
 :- implementation.
 
@@ -53,44 +53,50 @@ set(List) = set_rep(List).
 set_to_list(set_rep(List), List).
 
 set_to_sorted_list(Set) =
-    promise_only_solution((pred(Sorted::out) is cc_multi :-
-        Set = set_rep(Unsorted),
-        list__sort(Unsorted, Sorted)
-    )).
+    promise_only_solution(
+        ( pred(Sorted::out) is cc_multi :-
+            Set = set_rep(Unsorted),
+            list.sort(Unsorted, Sorted)
+        )
+    ).
 
 {} = set_rep([]).
 
 {X} = set_rep([X]).
 
 is_empty(Set) :-
-    promise_only_solution((pred(Empty::out) is cc_multi :-
-        Set = set_rep(List),
-        Empty = (if List = [] then yes else no)
-    )) = yes.
+    promise_only_solution(
+        ( pred(Empty::out) is cc_multi :-
+            Set = set_rep(List),
+            Empty = (if List = [] then yes else no)
+        )
+    ) = yes.
 
 Set1 + Set2 =
-    promise_only_solution((pred(Union::out) is cc_multi :-
-        Set1 = set_rep(List1),
-        Set2 = set_rep(List2),
-        list__append(List1, List2, UnionList),
-        Union = set_rep(UnionList)
-    )).
+    promise_only_solution(
+        ( pred(Union::out) is cc_multi :-
+            Set1 = set_rep(List1),
+            Set2 = set_rep(List2),
+            list.append(List1, List2, UnionList),
+            Union = set_rep(UnionList)
+        )
+    ).
 
 % [Element | set_rep(Rest)] = set_rep([Element | Rest]).
 [Element | set_rep(Rest)] = UnionSet :-
-    ( is_empty(UnionSet) ->
+    ( if is_empty(UnionSet) then
         fail
-    ;
+    else
         UnionSet = set_rep(UnionList),
-        ( UnionList = [Element1 | Rest1] ->
+        ( if UnionList = [Element1 | Rest1] then
             Element = Element1,
             Rest = Rest1
-        ;
+        else
             error("unexpected non-empty list")
         )
     ).
 
-print_myset_rep(set_rep(List)) -->
-    print("set_rep("),
-    print(List),
-    print(")").
+print_myset_rep(set_rep(List), !IO) :-
+    print("set_rep(", !IO),
+    print(List, !IO),
+    print(")", !IO).

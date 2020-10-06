@@ -31,7 +31,7 @@
 main(!IO) :-
     A0 = version_array.empty,
     A1 = version_array(0`..`20),
-    % These two updates are overwritten but they're here to help test that
+    % These two updates are overwritten, but they are here to help test that
     % the rollback rolls back to the correct version, that is that changes
     % are applied in the correct order.
     version_array.set(3, 333, A1, A10),
@@ -97,39 +97,45 @@ main(!IO) :-
 
     A8 = version_array([2, 4, 6, 8]),
     io.write_string("all_true(int.even A8): ", !IO),
-    ( if version_array.all_true(int.even, A8)
-    then io.write_string("passed\n", !IO)
-    else io.write_string("failed\n", !IO)
+    ( if version_array.all_true(int.even, A8) then
+        io.write_string("passed\n", !IO)
+    else
+        io.write_string("failed\n", !IO)
     ),
 
     io.write_string("all_false(int.odd, A8): ", !IO),
-    ( if version_array.all_false(int.odd, A8)
-    then io.write_string("passed\n", !IO)
-    else io.write_string("failed\n", !IO)
+    ( if version_array.all_false(int.odd, A8) then
+        io.write_string("passed\n", !IO)
+    else
+        io.write_string("failed\n", !IO)
     ),
 
     io.write_string("all_true(int.even, A0): ", !IO),
-    ( if version_array.all_true(int.even, A0)
-    then io.write_string("passed\n", !IO)
-    else io.write_string("failed\n", !IO)
+    ( if version_array.all_true(int.even, A0) then
+        io.write_string("passed\n", !IO)
+    else
+        io.write_string("failed\n", !IO)
     ),
 
     io.write_string("all_false(int.even, A0): ", !IO),
-    ( if version_array.all_false(int.even, A0)
-    then io.write_string("passed\n", !IO)
-    else io.write_string("failed\n", !IO)
+    ( if version_array.all_false(int.even, A0) then
+        io.write_string("passed\n", !IO)
+    else
+        io.write_string("failed\n", !IO)
     ),
 
     io.write_string("not all_true(int.odd, A8): ", !IO),
-    ( if not version_array.all_true(int.odd, A8)
-    then io.write_string("passed\n", !IO)
-    else io.write_string("failed\n", !IO)
+    ( if not version_array.all_true(int.odd, A8) then
+        io.write_string("passed\n", !IO)
+    else
+        io.write_string("failed\n", !IO)
     ),
 
     io.write_string("not all_false(int.even, A8): ", !IO),
-    ( if not version_array.all_false(int.even, A8)
-    then io.write_string("passed\n", !IO)
-    else io.write_string("failed\n", !IO)
+    ( if not version_array.all_false(int.even, A8) then
+        io.write_string("passed\n", !IO)
+    else
+        io.write_string("failed\n", !IO)
     ),
 
     FromList1 = version_array.from_list([] : list(int)),
@@ -144,9 +150,7 @@ main(!IO) :-
     FromRevList2 = version_array.from_reverse_list([1]),
     write_array("from_reverse_list([1])", FromRevList2, !IO),
     FromRevList3 = version_array.from_reverse_list([2, 1]),
-    write_array("from_reverse_list([2, 1])", FromRevList3, !IO),
-
-    true.
+    write_array("from_reverse_list([2, 1])", FromRevList3, !IO).
 
 :- pred test_exception((pred)::in((pred) is semidet),
     io::di, io::uo) is cc_multi.
@@ -170,9 +174,9 @@ test_exception(Pred, !IO) :-
 
 make_a21(I, A0) = A :-
     X = A0 ^ elem(I),
-    ( X `mod` 2 = 0 ->
+    ( if X `mod` 2 = 0 then
         A = A0 ^ elem(I) := X * 3
-    ;
+    else
         A = A0
     ).
 

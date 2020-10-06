@@ -6,35 +6,31 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module int.
 :- import_module random.
 
-main -->
-    { Seed = 3 },
-    { random__init(Seed, RS0) },
-    test(1, 20, RS0, RS1),
-    test(-1, 20, RS1, _).
+main(!IO) :-
+    Seed = 3,
+    random.init(Seed, RS0),
+    test(1, 20, RS0, RS1, !IO),
+    test(-1, 20, RS1, _, !IO).
 
-:- pred test(int::in, int::in, random__supply::mdi, random__supply::muo,
-    io__state::di, io__state::uo) is det.
+:- pred test(int::in, int::in, random.supply::mdi, random.supply::muo,
+    io::di, io::uo) is det.
 
-test(Range, Count, RS0, RS) -->
-    (
-        { Count > 0 }
-    ->
-        { random__random(0, Range, N, RS0, RS1) },
-        (
-            { N = 0 }
-        ->
-            test(Range, Count - 1, RS1, RS)
-        ;
-            io__write_string("Test failed.\n"),
-            { RS = RS1 }
+test(Range, Count, RS0, RS, !IO) :-
+    ( if Count > 0 then
+        random.random(0, Range, N, RS0, RS1),
+        ( if N = 0 then
+            test(Range, Count - 1, RS1, RS, !IO)
+        else
+            io.write_string("Test failed.\n", !IO),
+            RS = RS1
         )
-    ;
-        io__write_string("Test passed.\n"),
-        { RS = RS0 }
+    else
+        io.write_string("Test passed.\n", !IO),
+        RS = RS0
     ).

@@ -66,11 +66,11 @@ main(!IO) :-
     io.write(CodeUnitList, !IO),
     io.nl(!IO),
 
-    ( string.from_code_unit_list(CodeUnitList, Str2) ->
+    ( if string.from_code_unit_list(CodeUnitList, Str2) then
         io.write_string("\nfrom_code_unit_list:\n", !IO),
         io.write_string(Str2, !IO),
         io.nl(!IO)
-    ;
+    else
         true
     ),
 
@@ -114,24 +114,24 @@ main(!IO) :-
 :- pred test_codepoint_offset(string::in, int::in, io::di, io::uo) is det.
 
 test_codepoint_offset(Str, Pos, !IO) :-
-    ( string.codepoint_offset(Str, Pos, Offset) ->
+    ( if string.codepoint_offset(Str, Pos, Offset) then
         io.format("string.codepoint_offset(Str, %d, %d)\n",
             [i(Pos), i(Offset)], !IO),
-        ( string.codepoint_offset(Str, Offset, 1, Offset2) ->
+        ( if string.codepoint_offset(Str, Offset, 1, Offset2) then
             io.format("string.codepoint_offset(Str, %d, 1, %d)\n",
                 [i(Offset), i(Offset2)], !IO)
-        ;
+        else
             io.format("string.codepoint_offset(Str, %d, 1, _) failed\n",
                 [i(Offset)], !IO)
         ),
-        ( string.index(Str, Offset, Char) ->
+        ( if string.index(Str, Offset, Char) then
             io.format("string.index(Str, %d, '%c')\n",
                 [i(Offset), c(Char)], !IO)
-        ;
+        else
             io.format("string.index(Str, %d, _) failed\n",
                 [i(Offset)], !IO)
         )
-    ;
+    else
         io.format("string.codepoint_offset(Str, %d, _) failed\n",
             [i(Pos)], !IO)
     ).
@@ -139,33 +139,33 @@ test_codepoint_offset(Str, Pos, !IO) :-
 :- pred test_index_next(string::in, int::in, io::di, io::uo) is det.
 
 test_index_next(Str, Index, !IO) :-
-    ( string.index_next(Str, Index, NextIndex, C) ->
+    ( if string.index_next(Str, Index, NextIndex, C) then
         io.format("index_next(Str, %d, %d, '%c')\n",
             [i(Index), i(NextIndex), c(C)], !IO),
         test_index_next(Str, NextIndex, !IO)
-    ;
+    else
         io.write_string("end\n", !IO)
     ).
 
 :- pred test_unsafe_index_next(string::in, int::in, io::di, io::uo) is det.
 
 test_unsafe_index_next(Str, Index, !IO) :-
-    ( string.unsafe_index_next(Str, Index, NextIndex, C) ->
+    ( if string.unsafe_index_next(Str, Index, NextIndex, C) then
         io.format("unsafe_index_next(Str, %d, %d, '%c')\n",
             [i(Index), i(NextIndex), c(C)], !IO),
         test_unsafe_index_next(Str, NextIndex, !IO)
-    ;
+    else
         io.write_string("end\n", !IO)
     ).
 
 :- pred test_unsafe_prev_index(string::in, int::in, io::di, io::uo) is det.
 
 test_unsafe_prev_index(Str, Index, !IO) :-
-    ( string.unsafe_prev_index(Str, Index, PrevIndex, C) ->
+    ( if string.unsafe_prev_index(Str, Index, PrevIndex, C) then
         io.format("unsafe_prev_index(Str, %d, %d, '%c')\n",
             [i(Index), i(PrevIndex), c(C)], !IO),
         test_unsafe_prev_index(Str, PrevIndex, !IO)
-    ;
+    else
         io.write_string("end\n", !IO)
     ).
 
@@ -191,9 +191,9 @@ test_between_codepoints_2(Str, Start, End, !IO) :-
         [i(Start), i(End), s(SubString)], !IO),
 
     slow_between_codepoints(Str, Start, End, SlowSubString),
-    ( SubString = SlowSubString ->
+    ( if SubString = SlowSubString then
         true
-    ;
+    else
         io.write_string("but slow_between_codepoints returned: \"", !IO),
         io.write_string(SlowSubString, !IO),
         io.write_string("\"\n", !IO)

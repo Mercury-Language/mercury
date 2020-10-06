@@ -9,6 +9,7 @@
 % condition containing X = h(I, F): that unification is equivalent to false
 % in one arm of the generated switch and to true in the other, but it is
 % not redundant in the source code.
+%
 
 :- module switch_detect.
 :- interface.
@@ -31,18 +32,17 @@ main(!IO) :-
     read_t(X, !IO),
     (
         X = f,
-        io__write_string("f\n", !IO)
+        io.write_string("f\n", !IO)
     ;
         ( X = g(_) ; X = h(_, _) ),
-        io__write(X, !IO),
-        io__nl(!IO),
-        ( X = h(I, F) ->
+        io.write_line(X, !IO),
+        ( if X = h(I, F) then
             io.write_string("h: ", !IO),
             io.write_int(I, !IO),
             io.write_string(" ", !IO),
             io.write_float(F, !IO),
             io.nl(!IO)
-        ;
+        else
             true
         )
     ),
@@ -60,13 +60,13 @@ main(!IO) :-
             Num = Num0 + 5
         )
     ),
-    io__write_int(Num, !IO),
-    io__nl(!IO).
+    io.write_int(Num, !IO),
+    io.nl(!IO).
 
 :- pred read_t(t::out, io::di, io::uo) is det.
 
 read_t(X, !IO) :-
-    io__read(Res, !IO),
+    io.read(Res, !IO),
     (
         Res = ok(X)
     ;

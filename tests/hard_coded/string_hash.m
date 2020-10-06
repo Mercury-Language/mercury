@@ -1,5 +1,7 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
-
+%---------------------------------------------------------------------------%
+%
 % Test that string.hash and MR_hash_string return the same value.
 % Do the same for:
 % * string.hash2 and MR_hash_string2,
@@ -7,6 +9,7 @@
 % * string.hash4 and MR_hash_string4,
 % * string.hash5 and MR_hash_string5,
 % * string.hash6 and MR_hash_string6.
+%
 
 :- module string_hash.
 
@@ -42,9 +45,9 @@ main(!IO) :-
     random.supply::mdi, random.supply::muo, io::di, io::uo) is det.
 
 test(Length, !Succeeded, !RS, !IO) :-
-    ( Length < 0 ->
+    ( if Length < 0 then
         true
-    ;
+    else
         make_char_list(Length, [], List, !RS),
         string.from_char_list(List, String),
 
@@ -79,9 +82,9 @@ test(Length, !Succeeded, !RS, !IO) :-
     random.supply::mdi, random.supply::muo) is det.
 
 make_char_list(Length, !List, !RS) :-
-    ( Length = 0 ->
+    ( if Length = 0 then
         true
-    ;
+    else
         rand_char(Char, !RS),
         !:List = [Char | !.List],
         make_char_list(Length - 1, !List, !RS)
@@ -104,9 +107,9 @@ rand_char(Char, !RS) :-
     bool::in, bool::out, io::di, io::uo) is det.
 
 test_hash(HashName, LibHash, RuntimeHash, String, !Succeeded, !IO) :-
-    ( LibHash = RuntimeHash ->
+    ( if LibHash = RuntimeHash then
         true
-    ;
+    else
         !:Succeeded = no,
         io.write_string("failed " ++ HashName ++ ": runtime ", !IO),
         io.write_int(RuntimeHash, !IO),

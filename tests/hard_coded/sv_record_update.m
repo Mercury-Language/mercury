@@ -38,6 +38,7 @@ main(!IO) :-
     io.nl(!IO).
 
 :- pred test1(type1::in, type1::out) is det.
+
 test1(!Type1) :-
     !Type1 ^ field2 := 12.
 

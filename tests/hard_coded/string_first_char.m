@@ -65,10 +65,10 @@ main(!IO) :-
     is det.
 
 test_first_char_iii(Str, FirstChar, Rest, !IO) :-
-    ( string.first_char(Str, FirstChar, Rest) ->
+    ( if string.first_char(Str, FirstChar, Rest) then
         io.format("first_char(""%s"", '%c', ""%s"")\n",
             [s(Str), c(FirstChar), s(Rest)], !IO)
-    ;
+    else
         io.format("not first_char(""%s"", '%c', ""%s"")\n",
             [s(Str), c(FirstChar), s(Rest)], !IO)
     ).
@@ -76,10 +76,10 @@ test_first_char_iii(Str, FirstChar, Rest, !IO) :-
 :- pred test_first_char_ioi(string::in, string::in, io::di, io::uo) is det.
 
 test_first_char_ioi(Str, Rest, !IO) :-
-    ( string.first_char(Str, FirstChar, Rest) ->
+    ( if string.first_char(Str, FirstChar, Rest) then
         io.format("first_char(""%s"", '%c', ""%s"")\n",
             [s(Str), c(FirstChar), s(Rest)], !IO)
-    ;
+    else
         io.format("not first_char(""%s"", _, ""%s"")\n",
             [s(Str), s(Rest)], !IO)
     ).
@@ -87,10 +87,10 @@ test_first_char_ioi(Str, Rest, !IO) :-
 :- pred test_first_char_iio(string::in, char::in, io::di, io::uo) is det.
 
 test_first_char_iio(Str, FirstChar, !IO) :-
-    ( string.first_char(Str, FirstChar, Rest) ->
+    ( if string.first_char(Str, FirstChar, Rest) then
         io.format("first_char(""%s"", '%c', ""%s"")\n",
             [s(Str), c(FirstChar), s(Rest)], !IO)
-    ;
+    else
         io.format("not first_char(""%s"", '%c', _)\n",
             [s(Str), c(FirstChar)], !IO)
     ).
@@ -98,10 +98,10 @@ test_first_char_iio(Str, FirstChar, !IO) :-
 :- pred test_first_char_ioo(string::in, io::di, io::uo) is det.
 
 test_first_char_ioo(Str, !IO) :-
-    ( string.first_char(Str, FirstChar, Rest) ->
+    ( if string.first_char(Str, FirstChar, Rest) then
         io.format("first_char(""%s"", '%c', ""%s"")\n",
             [s(Str), c(FirstChar), s(Rest)], !IO)
-    ;
+    else
         io.format("not first_char(""%s"", _, _)\n",
             [s(Str)], !IO)
     ).

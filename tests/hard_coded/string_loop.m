@@ -3,6 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % Tom says "The following module loops forever on mundook".
+%
 
 :- module string_loop.
 
@@ -10,7 +11,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -19,5 +20,5 @@
 :- import_module string.
 
 main(IO0, IO) :-
-    string__format("%ei\n", [f(0.0)], Str),
-    io__write_string(Str, IO0, IO).
+    string.format("%ei\n", [f(0.0)], Str),
+    io.write_string(Str, IO0, IO).

@@ -23,7 +23,7 @@
 
 main(!IO) :-
     unsorted_solutions(
-        (pred(L - R::out) is multi :-
+        ( pred(L - R::out) is multi :-
             string.append(L, R, "cat")
         ), UnsortedSolutions),
     list.sort(UnsortedSolutions, Solutions),

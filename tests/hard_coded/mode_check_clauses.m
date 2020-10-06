@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module mode_check_clauses.
 
 :- interface.
@@ -20,15 +20,15 @@ main(!IO) :-
     solutions(test02_pragma, Pragma02),
     solutions(test11_base(1), Base11),
     solutions(test11_pragma(1), Pragma11),
-    ( Base02 = Pragma02 ->
-        io__write_string("02 test works\n", !IO)
-    ;
-        io__write_string("02 test doesn't work\n", !IO)
+    ( if Base02 = Pragma02 then
+        io.write_string("02 test works\n", !IO)
+    else
+        io.write_string("02 test doesn't work\n", !IO)
     ),
-    ( Base11 = Pragma11 ->
-        io__write_string("11 test works\n", !IO)
-    ;
-        io__write_string("11 test doesn't work\n", !IO)
+    ( if Base11 = Pragma11 then
+        io.write_string("11 test works\n", !IO)
+    else
+        io.write_string("11 test doesn't work\n", !IO)
     ).
 
 :- pred test02_base(pair(int)::out) is multi.

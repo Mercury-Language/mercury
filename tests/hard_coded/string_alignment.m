@@ -4,6 +4,7 @@
 %
 % This module tests for possible problems that unaligned string literals
 % would cause if tagged.
+%
 
 :- module string_alignment.
 :- interface.
@@ -14,7 +15,11 @@
 :- implementation.
 :- import_module require.
 
-:- type t ---> f1(string) ; f2(string) ; f3(string) ; f4(string).
+:- type t
+    --->    f1(string)
+    ;       f2(string)
+    ;       f3(string)
+    ;       f4(string).
 
 main -->
     show(f1("foo")),
@@ -22,10 +27,22 @@ main -->
     show(f1("oo")),
     show(f2("oo")).
 
-:- pred show(t::in, io__state::di, io__state::uo) is det.
+:- pred show(t::in, io::di, io::uo) is det.
 
-show(f1(S)) --> io__write_string("f1: "), io__write_string(S), io__nl.
-show(f2(S)) --> io__write_string("f2: "), io__write_string(S), io__nl.
-show(f3(S)) --> io__write_string("f3: "), io__write_string(S), io__nl.
-show(f4(S)) --> io__write_string("f4: "), io__write_string(S), io__nl.
+show(f1(S), !IO) :-
+    io.write_string("f1: ", !IO),
+    io.write_string(S, !IO),
+    io.nl(!IO).
+show(f2(S), !IO) :-
+    io.write_string("f2: ", !IO),
+    io.write_string(S, !IO),
+    io.nl(!IO).
+show(f3(S), !IO) :-
+    io.write_string("f3: ", !IO),
+    io.write_string(S, !IO),
+    io.nl(!IO).
+show(f4(S), !IO) :-
+    io.write_string("f4: ", !IO),
+    io.write_string(S, !IO),
+    io.nl(!IO).
 

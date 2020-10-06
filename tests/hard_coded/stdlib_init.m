@@ -1,4 +1,9 @@
+%---------------------------------------------------------------------------%
+% vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
+%
 % Test that the standard library is initialised before main/2 is called.
+%
 
 :- module stdlib_init.
 :- interface.

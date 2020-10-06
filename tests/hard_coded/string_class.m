@@ -45,9 +45,9 @@ test_is_all(Pred, Name, !IO) :-
     string::in, io::di, io::uo) is det.
 
 test_is_all_2(Pred, Name, Chars, !IO) :-
-    ( Pred(Chars) ->
+    ( if Pred(Chars) then
         io.format("%s(""%s"")\n", [s(Name), s(Chars)], !IO)
-    ;
+    else
         io.format("not %s(""%s"")\n", [s(Name), s(Chars)], !IO)
     ).
 

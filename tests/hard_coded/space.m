@@ -4,7 +4,7 @@
 %
 % A regression test: the Mercury compiler dated May 20 1997
 % generated incorrect code for this program.
-
+%
 %---------------------------------------------------------------------------%
 %
 % space : an ambient music generator
@@ -21,7 +21,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -99,37 +99,37 @@
 
 %---------------------------------------------------------------------------%
 
-main -->
-    % io__command_line_arguments(Args0),
-    { Args0 = ["-k", "dM", "-l", "30", "-s", "1"] },
+main(!IO) :-
+    % io.command_line_arguments(Args0),
+    Args0 = ["-k", "dM", "-l", "30", "-s", "1"],
 
-    { getopt__process_options(
-        option_ops(short, long, defaults), Args0, _Args, MOptTable) },
+    Ops = option_ops_multi(short, long, defaults),
+    getopt.process_options(Ops, Args0, _Args, MOptTable),
     (
-        { MOptTable = error(String) },
-        { string__format("bad option: %s\n", [s(String)], Msg) },
-        io__stderr_stream(Stderr),
-        io__write_string(Stderr, Msg)
+        MOptTable = error(String),
+        string.format("bad option: %s\n", [s(String)], Msg),
+        io.stderr_stream(Stderr, !IO),
+        io.write_string(Stderr, Msg, !IO)
     ;
-        { MOptTable = ok(Opts) },
+        MOptTable = ok(Opts),
         (
-            { getopt__lookup_bool_option(Opts, help, yes) }
+            getopt.lookup_bool_option(Opts, help, yes)
         ->
-            help
+            help(!IO)
         ;
-            { getopt__lookup_string_option(Opts, key, KeyStr) },
-            { figure_key(KeyStr, Note, Qual, Kind) }
+            getopt.lookup_string_option(Opts, key, KeyStr),
+            figure_key(KeyStr, Note, Qual, Kind)
         ->
-            { getopt__lookup_int_option(Opts, length, Len) },
-            { getopt__lookup_int_option(Opts, seed, Seed) },
-            { random_init(Seed, Rnd) },
-            { Chord0 = chord(i, Kind, up(ii)) },
-            doit(Len, Note, Qual, Chord0, Rnd)
+            getopt.lookup_int_option(Opts, length, Len),
+            getopt.lookup_int_option(Opts, seed, Seed),
+            random_init(Seed, Rnd),
+            Chord0 = chord(i, Kind, up(ii)),
+            doit(Len, Note, Qual, Chord0, Rnd, !IO)
         ;
-            { getopt__lookup_string_option(Opts, key, KeyStr) },
-            { string__format("illegal key: `%s'\n", [s(KeyStr)], Msg) },
-            io__stderr_stream(Stderr),
-            io__write_string(Stderr, Msg)
+            getopt.lookup_string_option(Opts, key, KeyStr),
+            string.format("illegal key: `%s'\n", [s(KeyStr)], Msg),
+            io.stderr_stream(Stderr, !IO),
+            io.write_string(Stderr, Msg, !IO)
         )
     ).
 
@@ -161,138 +161,112 @@ figure_key("a#M", note(a, sharp, 2), min, min).
 figure_key("b", note(b, natural, 2), maj, maj).
 figure_key("bM", note(b, natural, 2), min, min).
 
-:- pred doit(int, note, qualifier, chord, random_supply, io__state, io__state).
-:- mode doit(in, in, in, in, mdi, di, uo) is det.
+:- pred doit(int::in, note::in, qualifier::in, chord::in,
+    random_supply::mdi, io::di, io::uo) is det.
 
-doit(N, Trans, Qual, Chord0, Rnd0) -->
-    (
-        { N =< 0 }
-    ->
-        []
-    ;
-        { chord_notes(Chord0, Qual, Notes0) },
-        { list__map(trans(Trans), Notes0, Notes) },
-        write_chord(Notes),
-        (
-            { random_random(I, Rnd0, Rnd) },
-            { next_chord(Chord0, Qual, I, Chord1) }
-        ->
-            { N1 = N - 1 },
-            doit(N1, Trans, Qual, Chord1, Rnd)
-        ;
-            io__write_string("next_chord failed\n")
+doit(N, Trans, Qual, Chord0, Rnd0, !IO) :-
+    ( if
+        N =< 0
+    then
+        true
+    else
+        chord_notes(Chord0, Qual, Notes0),
+        list.map(trans(Trans), Notes0, Notes),
+        write_chord(Notes, !IO),
+        ( if
+            random_random(I, Rnd0, Rnd),
+            next_chord(Chord0, Qual, I, Chord1)
+        then
+            doit(N - 1, Trans, Qual, Chord1, Rnd, !IO)
+        else
+            io.write_string("next_chord failed\n", !IO)
         )
     ).
 
-:- pred write_chord(list(note), io__state, io__state).
-:- mode write_chord(in, di, uo) is det.
+:- pred write_chord(list(note)::in, io::di, io::uo) is det.
 
-write_chord([]) --> io__nl.
-write_chord([Note]) -->
-    { Note = note(Rank, Mod, Oct) },
-    write_note(Rank, Mod, Oct),
-    io__nl.
-write_chord([Note | Notes]) -->
-    { Notes = [_ | _] },
-    { Note = note(Rank, Mod, Oct) },
-    write_note(Rank, Mod, Oct),
-    io__write_string(" "),
-    write_chord(Notes).
+write_chord([], !IO) :-
+    io.nl(!IO).
+write_chord([Note], !IO) :-
+    Note = note(Rank, Mod, Oct),
+    write_note(Rank, Mod, Oct, !IO),
+    io.nl(!IO).
+write_chord([Note | Notes], !IO) :-
+    Notes = [_ | _],
+    Note = note(Rank, Mod, Oct),
+    write_note(Rank, Mod, Oct, !IO),
+    io.write_string(" ", !IO),
+    write_chord(Notes, !IO).
 
-:- pred write_note(rank, modifier, octave, io__state, io__state).
-:- mode write_note(in, in, in, di, uo) is det.
+:- pred write_note(rank::in, modifier::in, octave::in, io::di, io::uo) is det.
 
-write_note(c, flat, Oct) -->
-    { Oct1 = Oct - 1 },
-    { string__format("b%d", [i(Oct1)], Str) },
-    io__write_string(Str).
-write_note(c, natural, Oct) -->
-    { string__format("c%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(c, sharp, Oct) -->
-    { string__format("c#%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(d, flat, Oct) -->
-    { string__format("c#%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(d, natural, Oct) -->
-    { string__format("d%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(d, sharp, Oct) -->
-    { string__format("d#%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(e, flat, Oct) -->
-    { string__format("d#%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(e, natural, Oct) -->
-    { string__format("e%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(e, sharp, Oct) -->
-    { string__format("f%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(f, flat, Oct) -->
-    { string__format("e%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(f, natural, Oct) -->
-    { string__format("f%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(f, sharp, Oct) -->
-    { string__format("f#%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(g, flat, Oct) -->
-    { string__format("f#%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(g, natural, Oct) -->
-    { string__format("g%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(g, sharp, Oct) -->
-    { string__format("g#%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(a, flat, Oct) -->
-    { string__format("g#%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(a, natural, Oct) -->
-    { string__format("a%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(a, sharp, Oct) -->
-    { string__format("a#%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(b, flat, Oct) -->
-    { string__format("a#%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(b, natural, Oct) -->
-    { string__format("b%d", [i(Oct)], Str) },
-    io__write_string(Str).
-write_note(b, sharp, Oct) -->
-    { Oct1 = Oct + 1 },
-    { string__format("c%d", [i(Oct1)], Str) },
-    io__write_string(Str).
+write_note(c, flat, Oct, !IO) :-
+    io.format("b%d", [i(Oct - 1)], !IO).
+write_note(c, natural, Oct, !IO) :-
+    io.format("c%d", [i(Oct)], !IO).
+write_note(c, sharp, Oct, !IO) :-
+    io.format("c#%d", [i(Oct)], !IO).
+write_note(d, flat, Oct, !IO) :-
+    io.format("c#%d", [i(Oct)], !IO).
+write_note(d, natural, Oct, !IO) :-
+    io.format("d%d", [i(Oct)], !IO).
+write_note(d, sharp, Oct, !IO) :-
+    io.format("d#%d", [i(Oct)], !IO).
+write_note(e, flat, Oct, !IO) :-
+    io.format("d#%d", [i(Oct)], !IO).
+write_note(e, natural, Oct, !IO) :-
+    io.format("e%d", [i(Oct)], !IO).
+write_note(e, sharp, Oct, !IO) :-
+    io.format("f%d", [i(Oct)], !IO).
+write_note(f, flat, Oct, !IO) :-
+    io.format("e%d", [i(Oct)], !IO).
+write_note(f, natural, Oct, !IO) :-
+    io.format("f%d", [i(Oct)], !IO).
+write_note(f, sharp, Oct, !IO) :-
+    io.format("f#%d", [i(Oct)], !IO).
+write_note(g, flat, Oct, !IO) :-
+    io.format("f#%d", [i(Oct)], !IO).
+write_note(g, natural, Oct, !IO) :-
+    io.format("g%d", [i(Oct)], !IO).
+write_note(g, sharp, Oct, !IO) :-
+    io.format("g#%d", [i(Oct)], !IO).
+write_note(a, flat, Oct, !IO) :-
+    io.format("g#%d", [i(Oct)], !IO).
+write_note(a, natural, Oct, !IO) :-
+    io.format("a%d", [i(Oct)], !IO).
+write_note(a, sharp, Oct, !IO) :-
+    io.format("a#%d", [i(Oct)], !IO).
+write_note(b, flat, Oct, !IO) :-
+    io.format("a#%d", [i(Oct)], !IO).
+write_note(b, natural, Oct, !IO) :-
+    io.format("b%d", [i(Oct)], !IO).
+write_note(b, sharp, Oct, !IO) :-
+    io.format("c%d", [i(Oct + 1)], !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred next_chord(chord, qualifier, int, chord).
-:- mode next_chord(in, in, in, out) is semidet.
+:- pred next_chord(chord::in, qualifier::in, int::in, chord::out) is semidet.
 
 next_chord(Chord0, Qual, Pr, Chord) :-
     chord_notes(Chord0, Qual, Notes0),
     last(Notes0, TopNote0, _),
     Chord0 = chord(Int0, _, _),
-/*
-    Lambda = lambda([Ch::out] is nondet, (
-        next_interval(Int0, Qual, Int, Kind),
-        next_inversion(Inv),
-        Ch = chord(Int, Kind, Inv),
-        chord_notes(Ch, Qual, Notes),
-        last(Notes, TopNote, _),
-        next_topnote(TopNote0, Qual, TopNote)
-    )),
-    solutions(Lambda, List),
-*/
+
+%   Lambda = lambda([Ch::out] is nondet, (
+%       next_interval(Int0, Qual, Int, Kind),
+%       next_inversion(Inv),
+%       Ch = chord(Int, Kind, Inv),
+%       chord_notes(Ch, Qual, Notes),
+%       last(Notes, TopNote, _),
+%       next_topnote(TopNote0, Qual, TopNote)
+%   )),
+%   solutions(Lambda, List),
+
     solutions(try_next_chord(Qual, Int0, TopNote0), List),
-    list__length(List, Len),
+    list.length(List, Len),
     Len > 0,
     Ind = Pr mod Len,
-    list__index0(List, Ind, Chord).
+    list.index0(List, Ind, Chord).
 
 :- pred try_next_chord(qualifier::in, interval::in, note::in, chord::out)
     is nondet.
@@ -305,29 +279,24 @@ try_next_chord(Qual, Int0, TopNote0, Ch) :-
     last(Notes, TopNote, _),
     next_topnote(TopNote0, Qual, TopNote).
 
-:- pred rotate(int, list(T), list(T)).
-:- mode rotate(in, in, out) is det.
+:- pred rotate(int::in, list(T)::in, list(T)::out) is det.
 
 rotate(_, [], []).
 rotate(I, [X | Xs], Zs) :-
-    (
-        I > 0
-    ->
-        list__append(Xs, [X], Ys),
+    ( if I > 0 then
+        list.append(Xs, [X], Ys),
         I1 = I - 1,
         rotate(I1, Ys, Zs)
-    ;
-        I < 0
-    ->
-        list__append(Xs, [X], Ys),
+    else if I < 0 then
+        list.append(Xs, [X], Ys),
         I1 = I + 1,
         rotate(I1, Ys, Zs)
-    ;
+    else
         Zs = [X | Xs]
     ).
 
-:- pred next_interval(interval, qualifier, interval, kind).
-:- mode next_interval(in, in, out, out) is nondet.
+:- pred next_interval(interval::in, qualifier::in, interval::out, kind::out)
+    is nondet.
 
 next_interval(i, maj, iv, maj).
 next_interval(i, maj, v, maj).
@@ -397,8 +366,7 @@ next_inversion(down(i)).
 next_inversion(down(ii)).
 next_inversion(down(iii)).
 
-:- pred next_topnote(note, qualifier, note).
-:- mode next_topnote(in, in, out) is nondet.
+:- pred next_topnote(note::in, qualifier::in, note::out) is nondet.
 
 next_topnote(Note0, Qual, Note) :-
     note_to_interval(Note0, Qual, Int0, Oct0),
@@ -423,8 +391,8 @@ note_to_interval(note(a, sharp, Oct), min, vii, Oct).
 note_to_interval(note(b, flat, Oct), min, vii, Oct).
 note_to_interval(note(b, natural, Oct), maj, vii, Oct).
 
-:- pred adj_interval(interval, octave, interval, octave).
-:- mode adj_interval(in, in, out, out) is multi.
+:- pred adj_interval(interval::in, octave::in, interval::out, octave::out)
+    is multi.
 
 adj_interval(i, Oct, vii, Oct1) :-
     Oct1 = Oct - 1.
@@ -445,18 +413,16 @@ adj_interval(vii, Oct, i, Oct1) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred chord_notes(chord, qualifier, list(note)).
-:- mode chord_notes(in, in, out) is det.
+:- pred chord_notes(chord::in, qualifier::in, list(note)::out) is det.
 
 chord_notes(chord(Interval, Kind, Inversion), Qual, Notes) :-
     base_notes(Kind, Notes0),
-    list__map(transpose(Interval, Qual), Notes0, Notes1),
+    list.map(transpose(Interval, Qual), Notes0, Notes1),
     invert(Notes1, Inversion, Notes).
 
 %---------------------------------------------------------------------------%
 
-:- pred base_notes(kind, list(note)).
-:- mode base_notes(in, out) is det.
+:- pred base_notes(kind::in, list(note)::out) is det.
 
 base_notes(maj, Notes) :-
     Notes = [ note(c, natural, 0),
@@ -520,8 +486,7 @@ base_notes(dim, Notes) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred transpose(interval, qualifier, note, note).
-:- mode transpose(in, in, in, out) is det.
+:- pred transpose(interval::in, qualifier::in, note::in, note::out) is det.
 
 transpose(Trans, Qual, Note0, Note) :-
     interval_to_int(Trans, Qual, TNum),
@@ -529,8 +494,7 @@ transpose(Trans, Qual, Note0, Note) :-
     NNum = TNum + NNum0,
     int_to_note(NNum, Note).
 
-:- pred trans(note, note, note).
-:- mode trans(in, in, out) is det.
+:- pred trans(note::in, note::in, note::out) is det.
 
 trans(Trans, Note0, Note) :-
     note_to_int(Trans, TNum),
@@ -540,10 +504,11 @@ trans(Trans, Note0, Note) :-
 
 %---------------------------------------------------------------------------%
 
-:- type direction ---> up ; down .
+:- type direction
+    --->    up
+    ;       down.
 
-:- pred invert(list(note), inversion, list(note)).
-:- mode invert(in, in, out) is det.
+:- pred invert(list(note)::in, inversion::in, list(note)::out) is det.
 
 invert(Notes, o, Notes).
 invert(Notes0, up(Degree), Notes) :-
@@ -553,39 +518,37 @@ invert(Notes0, down(Degree), Notes) :-
     degree_to_int(Degree, N),
     invert_list(Notes0, down, -N, Notes).
 
-:- pred invert_list(list(note), direction, int, list(note)).
-:- mode invert_list(in, in, in, out) is det.
+:- pred invert_list(list(note)::in, direction::in, int::in, list(note)::out)
+    is det.
 
 invert_list(Notes0, Dir, N, Notes) :-
-    (
+    ( if
         N > 0,
         Notes0 = [Note0 | Notes1]
-    ->
+    then
         shift(Dir, Note0, Note),
-        list__append(Notes1, [Note], Notes2),
+        list.append(Notes1, [Note], Notes2),
         N1 = N - 1,
         invert_list(Notes2, Dir, N1, Notes)
-    ;
+    else if
         N < 0,
         last(Notes0, Note0, Notes1)
-    ->
+    then
         shift(Dir, Note0, Note),
         N1 = N + 1,
         invert_list([Note | Notes1], Dir, N1, Notes)
-    ;
+    else
         Notes = Notes0
     ).
 
-:- pred shift(direction, note, note).
-:- mode shift(in, in, out) is det.
+:- pred shift(direction::in, note::in, note::out) is det.
 
 shift(up, note(Rank, Mod, Oct), note(Rank, Mod, Oct1)) :-
     Oct1 = Oct + 1.
 shift(down, note(Rank, Mod, Oct), note(Rank, Mod, Oct1)) :-
     Oct1 = Oct - 1.
 
-:- pred last(list(T), T, list(T)).
-:- mode last(in, out, out) is semidet.
+:- pred last(list(T)::in, T::out, list(T)::out) is semidet.
 
 last([X], X, []).
 last([X | Xs], Z, [X | Ys]) :-
@@ -594,22 +557,21 @@ last([X | Xs], Z, [X | Ys]) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred inversion_to_int(inversion, int).
-:- mode inversion_to_int(in, out) is det.
+:- pred inversion_to_int(inversion::in, int::out) is det.
 
 inversion_to_int(o, 0).
-inversion_to_int(up(Deg), Int) :- degree_to_int(Deg, Int).
-inversion_to_int(down(Deg), -Int) :- degree_to_int(Deg, Int).
+inversion_to_int(up(Deg), Int) :-
+    degree_to_int(Deg, Int).
+inversion_to_int(down(Deg), -Int) :-
+    degree_to_int(Deg, Int).
 
-:- pred degree_to_int(degree, int).
-:- mode degree_to_int(in, out) is det.
+:- pred degree_to_int(degree::in, int::out) is det.
 
 degree_to_int(i,    1).
 degree_to_int(ii,   2).
 degree_to_int(iii,  3).
 
-:- pred interval_to_int(interval, qualifier, int).
-:- mode interval_to_int(in, in, out) is det.
+:- pred interval_to_int(interval::in, qualifier::in, int::out) is det.
 
 interval_to_int(i, _, 0).
 interval_to_int(ii, _, 2).
@@ -622,8 +584,7 @@ interval_to_int(vi, maj, 9).
 interval_to_int(vii, min, 10).
 interval_to_int(vii, maj, 11).
 
-:- pred note_to_int(note, int).
-:- mode note_to_int(in, out) is det.
+:- pred note_to_int(note::in, int::out) is det.
 
 note_to_int(note(c, flat, Oct),     I) :-
     I = -1 + 12 * Oct.
@@ -668,13 +629,12 @@ note_to_int(note(b, natural, Oct),  I) :-
 note_to_int(note(b, sharp, Oct),    I) :-
     I = 12 + 12 * Oct.
 
-:- pred int_to_note(int, note).
-:- mode int_to_note(in, out) is det.
+:- pred int_to_note(int::in, note::out) is det.
 
 int_to_note(Num, note(Rank, Mod, Oct)) :-
     Oct = Num // 12,
     Off = Num mod 12,
-    (
+    ( if
         (
             Off = 0, Rank0 = c, Mod0 = natural
         ;
@@ -700,58 +660,43 @@ int_to_note(Num, note(Rank, Mod, Oct)) :-
         ;
             Off = 11, Rank0 = b, Mod0 = natural
         )
-    ->
+    then
         Rank = Rank0,
         Mod = Mod0
-    ;
+    else
         error("Num mod 12 gave an illegal result!")
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred short(char, option).
-:- mode short(in, out) is semidet.
+:- pred short(char::in, option::out) is semidet.
 
 short('h', help).
 short('k', key).
 short('l', length).
 short('s', seed).
 
-:- pred long(string, option).
-:- mode long(in, out) is semidet.
+:- pred long(string::in, option::out) is semidet.
 
 long("help", help).
 long("key", key).
 long("length", length).
 long("seed", seed).
 
-:- pred defaults(option, option_data).
-:- mode defaults(out, out) is nondet.
+:- pred defaults(option::out, option_data::out) is multi.
 
-defaults(Opt, Data) :-
-    (
-        semidet_succeed
-    ->
-        defaults0(Opt, Data)
-    ;
-        fail
-    ).
+defaults(help, bool(no)).
+defaults(key, string("c")).
+defaults(length, int(16)).
+defaults(seed, int(0)).
 
-:- pred defaults0(option, option_data).
-:- mode defaults0(out, out) is multi.
+:- pred help(io::di, io::uo) is det.
 
-defaults0(help, bool(no)).
-defaults0(key, string("c")).
-defaults0(length, int(16)).
-defaults0(seed, int(0)).
-
-:- pred help(io__state::di, io__state::uo) is det.
-
-help -->
-    io__stderr_stream(StdErr),
-    io__write_string(StdErr,
-"usage: space [-h | --help] [-k | --key key[M]] [-l | --length n] [-s | --seed n]\n"
-).
+help(!IO) :-
+    io.stderr_stream(StdErr, !IO),
+    io.write_string(StdErr,
+        "usage: space [-h | --help] [-k | --key key[M]] " ++
+        "[-l | --length n] [-s | --seed n]\n", !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -769,9 +714,9 @@ random_init(Seed, Supply) :-
 
 random_random(Value, Supply0, Supply) :-
     Value = Supply0,
-    ( Supply0 < 100 ->
+    ( if Supply0 < 100 then
         Supply = Supply0 + 1
-    ;
+    else
         Supply = 0
     ).
 
