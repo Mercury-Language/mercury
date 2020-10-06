@@ -1916,7 +1916,7 @@ then
     # was last built, that file will refer to the OLD location of
     # the workspace, which may not exist anymore. We therefore rebuild
     # the file.
-    (cd =${root}/scripts; /bin/rm test_mdbrc; mmake test_mdbrc)
+    (cd ${root}/scripts; /bin/rm test_mdbrc; mmake test_mdbrc)
     MERCURY_DEBUGGER_INIT=${root}/scripts/test_mdbrc
     export MERCURY_DEBUGGER_INIT
 
