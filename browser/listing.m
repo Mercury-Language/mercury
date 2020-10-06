@@ -467,7 +467,7 @@ execute_command_with_redirects(Prog, Args, OutStrm, ErrStrm, Result, !IO) :-
 
 :- pragma foreign_decl("C", local, "
 // See library/io.m regarding declaration of the environ global variable.
-#ifdef MR_HAVE_SPAWN_H && defined(MR_HAVE_ENVIRON)
+#if defined(MR_HAVE_SPAWN_H) && defined(MR_HAVE_ENVIRON)
     #include <spawn.h>
 
     #if defined(MR_MAC_OSX)
