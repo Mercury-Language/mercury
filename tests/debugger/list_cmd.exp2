@@ -1,0 +1,10 @@
+       1:      1  1 CALL pred list_cmd.main/2-0 (det) list_cmd.m:22
+mdb> echo on
+Command echo enabled.
+mdb> list_cmd ./list_cmd.sh
+mdb> step
+       2:      2  2 CALL pred list_cmd.fib/2-0 (det) list_cmd.m:29 (list_cmd.m:23)
+mdb> list
+mdb: ./list_cmd.sh: posix_spawn not supported on this platform
+mdb> continue -n
+8

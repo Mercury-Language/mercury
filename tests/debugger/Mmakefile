@@ -48,6 +48,7 @@ NONRETRY_PROGS = \
 	interpreter			\
 	label_layout			\
 	lambdatest			\
+	list_cmd			\
 	loopcheck			\
 	lval_desc_array			\
 	mdbrc_test			\
@@ -444,6 +445,9 @@ label_layout.out: label_layout label_layout.inp
 
 lambdatest.out: lambdatest lambdatest.inp
 	$(MDB_STD) ./lambdatest < lambdatest.inp > lambdatest.out 2>&1
+
+list_cmd.out: list_cmd list_cmd.inp
+	$(MDB) ./list_cmd < list_cmd.inp > list_cmd.out 2>&1
 
 loopcheck.out: loopcheck loopcheck.$(INP)
 	if $(MDB) ./loopcheck < loopcheck.$(INP)		\

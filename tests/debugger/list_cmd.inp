@@ -1,0 +1,5 @@
+echo on
+list_cmd ./list_cmd.sh
+step
+list
+continue -n
