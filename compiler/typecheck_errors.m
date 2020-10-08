@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: typecheck_errors.m.
 % Main author: fjh.
 %
 % This file contains predicates to report errors for typechecking.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.typecheck_errors.
 :- interface.
@@ -35,7 +35,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type arg_vector_kind
     --->    arg_vector_clause_head
@@ -69,7 +69,7 @@
             )
     ;       type_error_in_atomic_inner.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type cons_error
     --->    foreign_type_constructor(type_ctor, hlds_type_defn)
@@ -78,7 +78,7 @@
                 tvarset, list(tvar))
     ;       new_on_non_existential_type(type_ctor).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func report_pred_call_error(type_error_clause_context, prog_context,
     pf_sym_name_arity) = error_spec.
@@ -183,8 +183,8 @@
     list(mer_type)::in, maybe(mer_type)::in, pred_id::in,
     list(format_component)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -219,7 +219,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_pred_call_error(ClauseContext, Context, PredCallId) = Spec :-
     PredCallId = pf_sym_name_arity(PredOrFunc, SymName, _Arity),
@@ -395,7 +395,7 @@ report_apply_instead_of_pred = Components :-
     VerboseComponent = verbose_only(verbose_always, VerbosePieces),
     Components = [MainComponent, VerboseComponent].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_unknown_event_call_error(Context, EventName) = Spec :-
     Pieces = [words("Error: there is no event named"),
@@ -411,7 +411,7 @@ report_event_args_mismatch(Context, EventName, EventArgTypes, Args) = Spec :-
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_report_no_clauses(ModuleInfo, PredId, PredInfo) = Specs :-
     ( if should_report_no_clauses(ModuleInfo, PredInfo) then
@@ -473,7 +473,7 @@ should_report_no_clauses(ModuleInfo, PredInfo) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_non_contiguous_clauses(ModuleInfo, PredId, PredInfo,
         FirstRegion, SecondRegion, LaterRegions) = Spec :-
@@ -531,7 +531,7 @@ report_non_contiguous_clause_contexts(PredPieces, GapNumber,
         Msgs = [FirstMsg, SecondMsg | LaterMsgs]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_warning_too_much_overloading(ClauseContext, Context,
         OverloadedSymbolMap) = Spec :-
@@ -698,7 +698,7 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
         Pieces = [words("the builtin operator constructor"), quote(ApplyOp)]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_error_unif_var_var(Info, ClauseContext, UnifyContext, Context,
         X, Y, TypeAssignSet) = Spec :-
@@ -724,7 +724,7 @@ report_error_unif_var_var(Info, ClauseContext, UnifyContext, Context,
         always(MainPieces) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_error_lambda_var(Info, ClauseContext, UnifyContext, Context,
         PredOrFunc, _EvalMethod, Var, ArgVars, TypeAssignSet) = Spec :-
@@ -792,15 +792,13 @@ report_error_lambda_var(Info, ClauseContext, UnifyContext, Context,
         always(Pieces1 ++ Pieces2 ++ Pieces3 ++ Pieces4) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_error_functor_type(Info, UnifyContext, Context,
         Var, ConsDefnList, Functor, Arity, TypeAssignSet) = Spec :-
     typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    % XXX We could append UnifyContextPieces after InClauseForPieces
-    % instead of after the empty list.
-    unify_context_to_pieces(UnifyContext, [], UnifyContextPieces),
+    unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
 
     VarSet = ClauseContext ^ tecc_varset,
     get_inst_varset(ClauseContext, InstVarSet),
@@ -829,12 +827,11 @@ report_error_functor_type(Info, UnifyContext, Context,
 
     type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
         VerboseComponents),
-    Msg = simple_msg(Context,
-        [always(InClauseForPieces ++ UnifyContextPieces),
-        always(MainPieces ++ NoSuffixIntegerPieces) | VerboseComponents]),
+    AlwaysPieces = ContextPieces ++ MainPieces ++ NoSuffixIntegerPieces,
+    Msg = simple_msg(Context, [always(AlwaysPieces) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
         ConsDefnList, Functor, Args, ArgsTypeAssignSet) = Spec :-
@@ -1182,7 +1179,7 @@ report_possible_expected_actual_types(CurrPossNum, [Mismatch | Mismatches])
         Mismatches),
     Pieces = HeadPieces ++ TailPieces.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_error_var(Info, GoalContext, Context, Var, Type, TypeAssignSet)
         = SpecAndMaybeActualExpected :-
@@ -1235,7 +1232,7 @@ report_error_var(Info, GoalContext, Context, Var, Type, TypeAssignSet)
     SpecAndMaybeActualExpected =
         spec_and_maybe_actual_expected(Spec, MaybeActualExpected).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_arg_vector_type_errors(Info, ClauseContext, Context, ArgVectorKind,
         TypeAssignSet, ArgVectorTypeErrors0) = Spec :-
@@ -1339,7 +1336,7 @@ find_expecteds_matching_actual(VarSet, SearchActualPieces,
         MismatchPieces = TailMismatchPieces
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_error_var_either_type(Info, ClauseContext, GoalContext, Context,
         Var, TypeA, TypeB, TypeAssignSet) = Spec :-
@@ -1394,7 +1391,7 @@ report_error_var_either_type(Info, ClauseContext, GoalContext, Context,
         always(Pieces1 ++ Pieces2) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_error_arg_var(Info, ClauseContext, GoalContext, Context, Var,
         ArgTypeAssignSet) = Spec :-
@@ -1433,7 +1430,7 @@ report_error_arg_var(Info, ClauseContext, GoalContext, Context, Var,
         always(Pieces1 ++ Pieces2) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_error_undef_cons(ClauseContext, GoalContext, Context,
         ConsErrors, Functor, Arity) = Spec :-
@@ -1708,7 +1705,7 @@ report_cons_error(Context, ConsError) = Msgs :-
         Msgs = [simplest_msg(Context, Pieces)]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
         TypeAssign1, TypeAssign2) = Spec :-
@@ -1800,7 +1797,7 @@ identical_types(Type1, Type2) :-
     type_unify(Type1, Type2, [], TypeSubst0, TypeSubst),
     TypeSubst = TypeSubst0.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_unsatisfiable_constraints(ClauseContext, Context, TypeAssignSet)
         = Spec :-
@@ -1845,7 +1842,7 @@ constraints_to_pieces(TypeAssign, Pieces, !NumUnsatisfied) :-
 
 wrap_quote(Str) = quote(Str).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_missing_tvar_in_foreign_code(ClauseContext, Context, VarName) = Spec :-
     ModuleInfo = ClauseContext ^ tecc_module_info,
@@ -1856,7 +1853,7 @@ report_missing_tvar_in_foreign_code(ClauseContext, Context, VarName) = Spec :-
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func types_of_vars_to_pieces(prog_varset, inst_varset, list(prog_var),
     type_assign_set) = list(format_component).
@@ -2102,7 +2099,7 @@ bound_type_to_pieces(TVarSet, InstVarSet, TypeBindings, ExternalTypeParams,
     Pieces = type_to_pieces(add_quotes, TVarSet, InstVarSet,
         ExternalTypeParams, Type).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func maybe_report_missing_import_addendum(type_error_clause_context,
     module_name) = list(format_component).
@@ -2162,7 +2159,7 @@ report_unimported_parents(UnimportedParents) = Pieces :-
             ++ AllUnimportedParents ++ [words("have not been imported)."), nl]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func goal_context_to_pieces(type_error_clause_context,
     type_error_goal_context) = list(format_component).
@@ -2365,7 +2362,7 @@ error_right_num_args_to_pieces([Arity | Arities]) = Pieces :-
         Pieces = [ArityPiece, suffix(",") | TailPieces]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type type_stuff
     --->    type_stuff(
@@ -2548,7 +2545,7 @@ make_list_term([Var | Vars]) =
         [term.variable(Var, context_init), make_list_term(Vars)],
         term.context_init).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type maybe_add_quotes
     --->    do_not_add_quotes
@@ -2647,7 +2644,8 @@ type_to_pieces(MaybeAddQuotes, TVarSet, InstVarSet, ExternalTypeParams,
                 ArgBlockPieces = []
             ;
                 ArgPieces = [_ | _],
-                ArgBlockPieces = [error_util.suffix("("), nl_indent_delta(1)] ++
+                ArgBlockPieces =
+                    [error_util.suffix("("), nl_indent_delta(1)] ++
                     component_list_to_line_pieces(ArgPieces, []) ++
                     [nl_indent_delta(-1), fixed(")")]
             )
@@ -2699,7 +2697,7 @@ type_and_mode_to_pieces(TVarSet, InstVarSet, ExternalTypeParams,
         words(mercury_term_to_string(InstVarSet, print_name_only, ModeTerm)),
     Pieces = TypePieces ++ [fixed("::"), ModePiece].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 construct_pred_decl_diff(ModuleInfo, ActualArgTypes, MaybeActualReturnType,
         OtherPredId, Pieces) :-
@@ -2797,7 +2795,7 @@ arg_decl_lines(PredOrFuncStr, TVarSet, NonLastArgTypes, LastArgType, Suffix,
 
 one_indent = "    ".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred expected_type_needs_int_constant_suffix(mer_type::in) is semidet.
 
@@ -2821,7 +2819,7 @@ nosuffix_integer_pieces = Pieces :-
         quote("u32"), words("or"), quote("u64"), words("suffix"),
         words("if they are unsigned."), nl].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Converting a type assign set to a part of an error_spec can take
 % a *very* long time if the type assign set is very big, which it can be
@@ -2869,7 +2867,7 @@ arg_type_assign_set_msg_to_verbose_pieces(Info, ArgTypeAssignSet, VarSet,
         VerboseComponents = [verbose_only(verbose_always, VerbosePieces)]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_inst_varset(type_error_clause_context::in, inst_varset::out)
     is det.
@@ -2884,6 +2882,6 @@ get_inst_varset(ClauseContext, InstVarSet) :-
     ProgVarSet = ClauseContext ^ tecc_varset,
     varset.coerce(ProgVarSet, InstVarSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_errors.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
