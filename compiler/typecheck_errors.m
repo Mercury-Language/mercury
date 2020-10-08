@@ -703,7 +703,7 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
 report_error_unif_var_var(Info, ClauseContext, UnifyContext, Context,
         X, Y, TypeAssignSet) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    unify_context_to_pieces(UnifyContext, [], UnifyContextPieces),
+    unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
 
     VarSet = ClauseContext ^ tecc_varset,
     get_inst_varset(ClauseContext, InstVarSet),
@@ -720,8 +720,7 @@ report_error_unif_var_var(Info, ClauseContext, UnifyContext, Context,
     type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
         VerboseComponents),
     Msg = simple_msg(Context,
-        [always(InClauseForPieces), always(UnifyContextPieces),
-        always(MainPieces) | VerboseComponents]),
+        [always(ContextPieces), always(MainPieces) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
@@ -729,7 +728,7 @@ report_error_unif_var_var(Info, ClauseContext, UnifyContext, Context,
 report_error_lambda_var(Info, ClauseContext, UnifyContext, Context,
         PredOrFunc, _EvalMethod, Var, ArgVars, TypeAssignSet) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    unify_context_to_pieces(UnifyContext, [], UnifyContextPieces),
+    unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
 
     VarSet = ClauseContext ^ tecc_varset,
     get_inst_varset(ClauseContext, InstVarSet),
@@ -784,12 +783,12 @@ report_error_lambda_var(Info, ClauseContext, UnifyContext, Context,
     ),
     Pieces4c = [suffix("."), nl],
     Pieces4 = Pieces4a ++ Pieces4b ++ Pieces4c,
+    MainPieces = Pieces1 ++ Pieces2 ++ Pieces3 ++ Pieces4,
 
     type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
         VerboseComponents),
     Msg = simple_msg(Context,
-        [always(InClauseForPieces ++ UnifyContextPieces),
-        always(Pieces1 ++ Pieces2 ++ Pieces3 ++ Pieces4) | VerboseComponents]),
+        [always(ContextPieces), always(MainPieces) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
@@ -836,7 +835,7 @@ report_error_functor_type(Info, UnifyContext, Context,
 report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
         ConsDefnList, Functor, Args, ArgsTypeAssignSet) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    unify_context_to_pieces(UnifyContext, [], UnifyContextPieces),
+    unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
 
     ModuleInfo = ClauseContext ^ tecc_module_info,
     VarSet = ClauseContext ^ tecc_varset,
@@ -928,8 +927,8 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
         functor_name_to_pieces(StrippedFunctor, Arity) ++ [suffix("."), nl],
 
     Msg = simple_msg(Context,
-        [always(InClauseForPieces ++ UnifyContextPieces),
-        always(VarAndTermPieces ++ ErrorPieces) | VerboseComponents]),
+        [always(ContextPieces), always(VarAndTermPieces),
+        always(ErrorPieces) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 :- type mismatch_info
