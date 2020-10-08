@@ -222,6 +222,12 @@ END {
         printf("%-4smaybe_seen_opt_level::in, maybe_seen_opt_level::out) is det.\n", "");
         printf("\n");
 
+        # Each arm of the switch that handles an ordinary bool or int option
+        # forwards its work to a separate tiny predicate. We used to generate
+        # inline code for them, but this led to the Java bytecode generated
+        # for update_opt_tuple to exceed the 64k limit on the size of a single
+        # method. This was Mantis bug #522.
+
         printf("update_opt_tuple(FromOptLevel, OptionTable, %s, !%s,\n",
             switch_var_name, record_var_name);
         printf("%-8s!MaybeSeenOptLevel) :-\n",
@@ -232,48 +238,21 @@ END {
             printf("%-4s%s\n", "", lparen_or_semi);
             lparen_or_semi = ";";
             printf("%-8s%s = oo_%s(Bool),\n", "", switch_var_name, bool_field_names[i]);
-            printf("%-8sOldValue = !.%s ^ ot_%s,\n",
-                "", record_var_name, bool_field_names[i]);
-            printf("%-8s( if\n", "");
             if (bool_field_names[i] == "opt_delay_slot") {
-                printf("%-12sgetopt_io.lookup_bool_option(OptionTable, have_delay_slot, yes),\n",
-                    "");
+                printf("%-8supdate_opt_tuple_bool_%s(OptionTable, Bool, !%s)\n",
+                    "", bool_field_names[i], record_var_name);
+            } else {
+                printf("%-8supdate_opt_tuple_bool_%s(Bool, !%s)\n",
+                    "", bool_field_names[i], record_var_name);
             }
-            printf("%-12sBool = yes\n", "");
-            printf("%-8sthen\n", "");
-            printf("%-12s(\n", "");
-            printf("%-16sOldValue = do_not_%s,\n", "", bool_field_names[i]);
-            printf("%-16s!%s ^ ot_%s := %s\n",
-                "", record_var_name, bool_field_names[i], bool_field_names[i]);
-            printf("%-12s;\n", "");
-            printf("%-16sOldValue = %s\n", "", bool_field_names[i]);
-            printf("%-12s)\n", "");
-            printf("%-8selse\n", "");
-            printf("%-12s(\n", "");
-            printf("%-16sOldValue = do_not_%s\n", "", bool_field_names[i]);
-            printf("%-12s;\n", "");
-            printf("%-16sOldValue = %s,\n", "", bool_field_names[i]);
-            printf("%-16s!%s ^ ot_%s := do_not_%s\n",
-                "", record_var_name, bool_field_names[i], bool_field_names[i]);
-            printf("%-12s)\n", "");
-            printf("%-8s)\n", "");
         }
         for (i = 0; i < next_int_opt; i++) {
             printf("%-4s%s\n", "", lparen_or_semi);
             lparen_or_semi = ";";
             printf("%-8s%s = oo_%s(N),\n",
                 "", switch_var_name, int_field_names[i]);
-            printf("%-8s(\n", "");
-            printf("%-12sFromOptLevel = not_from_opt_level,\n", "");
-            printf("%-12s!%s ^ ot_%s := N\n",
-                "", record_var_name, int_field_names[i]);
-            printf("%-8s;\n", "");
-            printf("%-12sFromOptLevel = from_opt_level,\n", "");
-            printf("%-12sOldN = !.%s ^ ot_%s,\n",
-                "", record_var_name, int_field_names[i]);
-            printf("%-12s!%s ^ ot_%s := int.max(OldN, N)\n",
-                "", record_var_name, int_field_names[i]);
-            printf("%-8s)\n", "");
+            printf("%-8supdate_opt_tuple_int_%s(FromOptLevel, N, !%s)\n",
+                "", int_field_names[i], record_var_name);
         }
         for (i = 0; i < next_string_opt; i++) {
             printf("%-4s%s\n", "", lparen_or_semi);
@@ -293,7 +272,75 @@ END {
         printf("%-4s%s\n", "", lparen_or_semi);
         printf("%-8s%s = oo_opt_for_space,\n", "", switch_var_name);
         printf("%-8sset_opts_for_space(!%s)\n", "", record_var_name);
-        printf("%-4s).\n", "");
+        printf("%-4s).\n\n", "");
+
+        for (i = 0; i < next_bool_opt; i++) {
+            if (bool_field_names[i] == "opt_delay_slot") {
+                printf(":- pred update_opt_tuple_bool_%s(",
+                    bool_field_names[i]);
+                printf("option_table::in, bool::in,\n");
+                printf("%-4s%s::in, %s::out) is det.\n\n",
+                    "", record_type_name, record_type_name);
+                printf("update_opt_tuple_bool_%s(OptionTable, Bool, !%s) :-\n",
+                    bool_field_names[i], record_var_name);
+            } else {
+                printf(":- pred update_opt_tuple_bool_%s(",
+                    bool_field_names[i]);
+                printf("bool::in,\n");
+                printf("%-4s%s::in, %s::out) is det.\n\n",
+                    "", record_type_name, record_type_name);
+                printf("update_opt_tuple_bool_%s(Bool, !%s) :-\n",
+                    bool_field_names[i], record_var_name);
+            }
+
+            printf("%-4sOldValue = !.%s ^ ot_%s,\n",
+                "", record_var_name, bool_field_names[i]);
+            printf("%-4s( if\n", "");
+            if (bool_field_names[i] == "opt_delay_slot") {
+                printf("%-8sgetopt_io.lookup_bool_option(OptionTable, have_delay_slot, yes),\n",
+                    "");
+            }
+            printf("%-8sBool = yes\n", "");
+            printf("%-4sthen\n", "");
+            printf("%-8s(\n", "");
+            printf("%-12sOldValue = do_not_%s,\n", "", bool_field_names[i]);
+            printf("%-12s!%s ^ ot_%s := %s\n",
+                "", record_var_name, bool_field_names[i], bool_field_names[i]);
+            printf("%-8s;\n", "");
+            printf("%-12sOldValue = %s\n", "", bool_field_names[i]);
+            printf("%-8s)\n", "");
+            printf("%-4selse\n", "");
+            printf("%-8s(\n", "");
+            printf("%-12sOldValue = do_not_%s\n", "", bool_field_names[i]);
+            printf("%-8s;\n", "");
+            printf("%-12sOldValue = %s,\n", "", bool_field_names[i]);
+            printf("%-12s!%s ^ ot_%s := do_not_%s\n",
+                "", record_var_name, bool_field_names[i], bool_field_names[i]);
+            printf("%-8s)\n", "");
+            printf("%-4s).\n\n", "");
+        }
+
+        for (i = 0; i < next_int_opt; i++) {
+            printf(":- pred update_opt_tuple_int_%s(\n",
+                int_field_names[i]);
+            printf("%-4smaybe_from_opt_level::in, int::in,\n", "");
+            printf("%-4s%s::in, %s::out) is det.\n\n",
+                "", record_type_name, record_type_name);
+            printf("update_opt_tuple_int_%s(FromOptLevel, N, !%s) :-\n",
+                int_field_names[i], record_var_name);
+
+            printf("%-4s(\n", "");
+            printf("%-8sFromOptLevel = not_from_opt_level,\n", "");
+            printf("%-8s!%s ^ ot_%s := N\n",
+                "", record_var_name, int_field_names[i]);
+            printf("%-4s;\n", "");
+            printf("%-8sFromOptLevel = from_opt_level,\n", "");
+            printf("%-8sOldN = !.%s ^ ot_%s,\n",
+                "", record_var_name, int_field_names[i]);
+            printf("%-8s!%s ^ ot_%s := int.max(OldN, N)\n",
+                "", record_var_name, int_field_names[i]);
+            printf("%-4s).\n\n", "");
+        }
 
         # The code from here to the end of the script generates code
         # that should be included in the special_handler predicate in options.m.

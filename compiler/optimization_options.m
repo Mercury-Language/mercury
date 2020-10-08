@@ -723,2095 +723,373 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
     require_complete_switch [OptOption]
     (
         OptOption = oo_allow_inlining(Bool),
-        OldValue = !.OptTuple ^ ot_allow_inlining,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_allow_inlining,
-                !OptTuple ^ ot_allow_inlining := allow_inlining
-            ;
-                OldValue = allow_inlining
-            )
-        else
-            (
-                OldValue = do_not_allow_inlining
-            ;
-                OldValue = allow_inlining,
-                !OptTuple ^ ot_allow_inlining := do_not_allow_inlining
-            )
-        )
+        update_opt_tuple_bool_allow_inlining(Bool, !OptTuple)
     ;
         OptOption = oo_inline_simple(Bool),
-        OldValue = !.OptTuple ^ ot_inline_simple,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_inline_simple,
-                !OptTuple ^ ot_inline_simple := inline_simple
-            ;
-                OldValue = inline_simple
-            )
-        else
-            (
-                OldValue = do_not_inline_simple
-            ;
-                OldValue = inline_simple,
-                !OptTuple ^ ot_inline_simple := do_not_inline_simple
-            )
-        )
+        update_opt_tuple_bool_inline_simple(Bool, !OptTuple)
     ;
         OptOption = oo_inline_builtins(Bool),
-        OldValue = !.OptTuple ^ ot_inline_builtins,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_inline_builtins,
-                !OptTuple ^ ot_inline_builtins := inline_builtins
-            ;
-                OldValue = inline_builtins
-            )
-        else
-            (
-                OldValue = do_not_inline_builtins
-            ;
-                OldValue = inline_builtins,
-                !OptTuple ^ ot_inline_builtins := do_not_inline_builtins
-            )
-        )
+        update_opt_tuple_bool_inline_builtins(Bool, !OptTuple)
     ;
         OptOption = oo_inline_single_use(Bool),
-        OldValue = !.OptTuple ^ ot_inline_single_use,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_inline_single_use,
-                !OptTuple ^ ot_inline_single_use := inline_single_use
-            ;
-                OldValue = inline_single_use
-            )
-        else
-            (
-                OldValue = do_not_inline_single_use
-            ;
-                OldValue = inline_single_use,
-                !OptTuple ^ ot_inline_single_use := do_not_inline_single_use
-            )
-        )
+        update_opt_tuple_bool_inline_single_use(Bool, !OptTuple)
     ;
         OptOption = oo_inline_linear_tail_rec_sccs(Bool),
-        OldValue = !.OptTuple ^ ot_inline_linear_tail_rec_sccs,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_inline_linear_tail_rec_sccs,
-                !OptTuple ^ ot_inline_linear_tail_rec_sccs := inline_linear_tail_rec_sccs
-            ;
-                OldValue = inline_linear_tail_rec_sccs
-            )
-        else
-            (
-                OldValue = do_not_inline_linear_tail_rec_sccs
-            ;
-                OldValue = inline_linear_tail_rec_sccs,
-                !OptTuple ^ ot_inline_linear_tail_rec_sccs := do_not_inline_linear_tail_rec_sccs
-            )
-        )
+        update_opt_tuple_bool_inline_linear_tail_rec_sccs(Bool, !OptTuple)
     ;
         OptOption = oo_enable_const_struct(Bool),
-        OldValue = !.OptTuple ^ ot_enable_const_struct,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_enable_const_struct,
-                !OptTuple ^ ot_enable_const_struct := enable_const_struct
-            ;
-                OldValue = enable_const_struct
-            )
-        else
-            (
-                OldValue = do_not_enable_const_struct
-            ;
-                OldValue = enable_const_struct,
-                !OptTuple ^ ot_enable_const_struct := do_not_enable_const_struct
-            )
-        )
+        update_opt_tuple_bool_enable_const_struct(Bool, !OptTuple)
     ;
         OptOption = oo_opt_common_structs(Bool),
-        OldValue = !.OptTuple ^ ot_opt_common_structs,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_common_structs,
-                !OptTuple ^ ot_opt_common_structs := opt_common_structs
-            ;
-                OldValue = opt_common_structs
-            )
-        else
-            (
-                OldValue = do_not_opt_common_structs
-            ;
-                OldValue = opt_common_structs,
-                !OptTuple ^ ot_opt_common_structs := do_not_opt_common_structs
-            )
-        )
+        update_opt_tuple_bool_opt_common_structs(Bool, !OptTuple)
     ;
         OptOption = oo_prop_constraints(Bool),
-        OldValue = !.OptTuple ^ ot_prop_constraints,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_prop_constraints,
-                !OptTuple ^ ot_prop_constraints := prop_constraints
-            ;
-                OldValue = prop_constraints
-            )
-        else
-            (
-                OldValue = do_not_prop_constraints
-            ;
-                OldValue = prop_constraints,
-                !OptTuple ^ ot_prop_constraints := do_not_prop_constraints
-            )
-        )
+        update_opt_tuple_bool_prop_constraints(Bool, !OptTuple)
     ;
         OptOption = oo_prop_local_constraints(Bool),
-        OldValue = !.OptTuple ^ ot_prop_local_constraints,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_prop_local_constraints,
-                !OptTuple ^ ot_prop_local_constraints := prop_local_constraints
-            ;
-                OldValue = prop_local_constraints
-            )
-        else
-            (
-                OldValue = do_not_prop_local_constraints
-            ;
-                OldValue = prop_local_constraints,
-                !OptTuple ^ ot_prop_local_constraints := do_not_prop_local_constraints
-            )
-        )
+        update_opt_tuple_bool_prop_local_constraints(Bool, !OptTuple)
     ;
         OptOption = oo_opt_dup_calls(Bool),
-        OldValue = !.OptTuple ^ ot_opt_dup_calls,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_dup_calls,
-                !OptTuple ^ ot_opt_dup_calls := opt_dup_calls
-            ;
-                OldValue = opt_dup_calls
-            )
-        else
-            (
-                OldValue = do_not_opt_dup_calls
-            ;
-                OldValue = opt_dup_calls,
-                !OptTuple ^ ot_opt_dup_calls := do_not_opt_dup_calls
-            )
-        )
+        update_opt_tuple_bool_opt_dup_calls(Bool, !OptTuple)
     ;
         OptOption = oo_prop_constants(Bool),
-        OldValue = !.OptTuple ^ ot_prop_constants,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_prop_constants,
-                !OptTuple ^ ot_prop_constants := prop_constants
-            ;
-                OldValue = prop_constants
-            )
-        else
-            (
-                OldValue = do_not_prop_constants
-            ;
-                OldValue = prop_constants,
-                !OptTuple ^ ot_prop_constants := do_not_prop_constants
-            )
-        )
+        update_opt_tuple_bool_prop_constants(Bool, !OptTuple)
     ;
         OptOption = oo_elim_excess_assigns(Bool),
-        OldValue = !.OptTuple ^ ot_elim_excess_assigns,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_elim_excess_assigns,
-                !OptTuple ^ ot_elim_excess_assigns := elim_excess_assigns
-            ;
-                OldValue = elim_excess_assigns
-            )
-        else
-            (
-                OldValue = do_not_elim_excess_assigns
-            ;
-                OldValue = elim_excess_assigns,
-                !OptTuple ^ ot_elim_excess_assigns := do_not_elim_excess_assigns
-            )
-        )
+        update_opt_tuple_bool_elim_excess_assigns(Bool, !OptTuple)
     ;
         OptOption = oo_opt_test_after_switch(Bool),
-        OldValue = !.OptTuple ^ ot_opt_test_after_switch,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_test_after_switch,
-                !OptTuple ^ ot_opt_test_after_switch := opt_test_after_switch
-            ;
-                OldValue = opt_test_after_switch
-            )
-        else
-            (
-                OldValue = do_not_opt_test_after_switch
-            ;
-                OldValue = opt_test_after_switch,
-                !OptTuple ^ ot_opt_test_after_switch := do_not_opt_test_after_switch
-            )
-        )
+        update_opt_tuple_bool_opt_test_after_switch(Bool, !OptTuple)
     ;
         OptOption = oo_opt_format_calls(Bool),
-        OldValue = !.OptTuple ^ ot_opt_format_calls,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_format_calls,
-                !OptTuple ^ ot_opt_format_calls := opt_format_calls
-            ;
-                OldValue = opt_format_calls
-            )
-        else
-            (
-                OldValue = do_not_opt_format_calls
-            ;
-                OldValue = opt_format_calls,
-                !OptTuple ^ ot_opt_format_calls := do_not_opt_format_calls
-            )
-        )
+        update_opt_tuple_bool_opt_format_calls(Bool, !OptTuple)
     ;
         OptOption = oo_opt_loop_invariants(Bool),
-        OldValue = !.OptTuple ^ ot_opt_loop_invariants,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_loop_invariants,
-                !OptTuple ^ ot_opt_loop_invariants := opt_loop_invariants
-            ;
-                OldValue = opt_loop_invariants
-            )
-        else
-            (
-                OldValue = do_not_opt_loop_invariants
-            ;
-                OldValue = opt_loop_invariants,
-                !OptTuple ^ ot_opt_loop_invariants := do_not_opt_loop_invariants
-            )
-        )
+        update_opt_tuple_bool_opt_loop_invariants(Bool, !OptTuple)
     ;
         OptOption = oo_opt_saved_vars_const(Bool),
-        OldValue = !.OptTuple ^ ot_opt_saved_vars_const,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_saved_vars_const,
-                !OptTuple ^ ot_opt_saved_vars_const := opt_saved_vars_const
-            ;
-                OldValue = opt_saved_vars_const
-            )
-        else
-            (
-                OldValue = do_not_opt_saved_vars_const
-            ;
-                OldValue = opt_saved_vars_const,
-                !OptTuple ^ ot_opt_saved_vars_const := do_not_opt_saved_vars_const
-            )
-        )
+        update_opt_tuple_bool_opt_saved_vars_const(Bool, !OptTuple)
     ;
         OptOption = oo_opt_svcell(Bool),
-        OldValue = !.OptTuple ^ ot_opt_svcell,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_svcell,
-                !OptTuple ^ ot_opt_svcell := opt_svcell
-            ;
-                OldValue = opt_svcell
-            )
-        else
-            (
-                OldValue = do_not_opt_svcell
-            ;
-                OldValue = opt_svcell,
-                !OptTuple ^ ot_opt_svcell := do_not_opt_svcell
-            )
-        )
+        update_opt_tuple_bool_opt_svcell(Bool, !OptTuple)
     ;
         OptOption = oo_opt_svcell_loop(Bool),
-        OldValue = !.OptTuple ^ ot_opt_svcell_loop,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_svcell_loop,
-                !OptTuple ^ ot_opt_svcell_loop := opt_svcell_loop
-            ;
-                OldValue = opt_svcell_loop
-            )
-        else
-            (
-                OldValue = do_not_opt_svcell_loop
-            ;
-                OldValue = opt_svcell_loop,
-                !OptTuple ^ ot_opt_svcell_loop := do_not_opt_svcell_loop
-            )
-        )
+        update_opt_tuple_bool_opt_svcell_loop(Bool, !OptTuple)
     ;
         OptOption = oo_opt_svcell_full_path(Bool),
-        OldValue = !.OptTuple ^ ot_opt_svcell_full_path,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_svcell_full_path,
-                !OptTuple ^ ot_opt_svcell_full_path := opt_svcell_full_path
-            ;
-                OldValue = opt_svcell_full_path
-            )
-        else
-            (
-                OldValue = do_not_opt_svcell_full_path
-            ;
-                OldValue = opt_svcell_full_path,
-                !OptTuple ^ ot_opt_svcell_full_path := do_not_opt_svcell_full_path
-            )
-        )
+        update_opt_tuple_bool_opt_svcell_full_path(Bool, !OptTuple)
     ;
         OptOption = oo_opt_svcell_on_stack(Bool),
-        OldValue = !.OptTuple ^ ot_opt_svcell_on_stack,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_svcell_on_stack,
-                !OptTuple ^ ot_opt_svcell_on_stack := opt_svcell_on_stack
-            ;
-                OldValue = opt_svcell_on_stack
-            )
-        else
-            (
-                OldValue = do_not_opt_svcell_on_stack
-            ;
-                OldValue = opt_svcell_on_stack,
-                !OptTuple ^ ot_opt_svcell_on_stack := do_not_opt_svcell_on_stack
-            )
-        )
+        update_opt_tuple_bool_opt_svcell_on_stack(Bool, !OptTuple)
     ;
         OptOption = oo_opt_svcell_candidate_headvars(Bool),
-        OldValue = !.OptTuple ^ ot_opt_svcell_candidate_headvars,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_svcell_candidate_headvars,
-                !OptTuple ^ ot_opt_svcell_candidate_headvars := opt_svcell_candidate_headvars
-            ;
-                OldValue = opt_svcell_candidate_headvars
-            )
-        else
-            (
-                OldValue = do_not_opt_svcell_candidate_headvars
-            ;
-                OldValue = opt_svcell_candidate_headvars,
-                !OptTuple ^ ot_opt_svcell_candidate_headvars := do_not_opt_svcell_candidate_headvars
-            )
-        )
+        update_opt_tuple_bool_opt_svcell_candidate_headvars(Bool, !OptTuple)
     ;
         OptOption = oo_opt_svcell_all_candidates(Bool),
-        OldValue = !.OptTuple ^ ot_opt_svcell_all_candidates,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_svcell_all_candidates,
-                !OptTuple ^ ot_opt_svcell_all_candidates := opt_svcell_all_candidates
-            ;
-                OldValue = opt_svcell_all_candidates
-            )
-        else
-            (
-                OldValue = do_not_opt_svcell_all_candidates
-            ;
-                OldValue = opt_svcell_all_candidates,
-                !OptTuple ^ ot_opt_svcell_all_candidates := do_not_opt_svcell_all_candidates
-            )
-        )
+        update_opt_tuple_bool_opt_svcell_all_candidates(Bool, !OptTuple)
     ;
         OptOption = oo_delay_constructs(Bool),
-        OldValue = !.OptTuple ^ ot_delay_constructs,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_delay_constructs,
-                !OptTuple ^ ot_delay_constructs := delay_constructs
-            ;
-                OldValue = delay_constructs
-            )
-        else
-            (
-                OldValue = do_not_delay_constructs
-            ;
-                OldValue = delay_constructs,
-                !OptTuple ^ ot_delay_constructs := do_not_delay_constructs
-            )
-        )
+        update_opt_tuple_bool_delay_constructs(Bool, !OptTuple)
     ;
         OptOption = oo_opt_follow_code(Bool),
-        OldValue = !.OptTuple ^ ot_opt_follow_code,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_follow_code,
-                !OptTuple ^ ot_opt_follow_code := opt_follow_code
-            ;
-                OldValue = opt_follow_code
-            )
-        else
-            (
-                OldValue = do_not_opt_follow_code
-            ;
-                OldValue = opt_follow_code,
-                !OptTuple ^ ot_opt_follow_code := do_not_opt_follow_code
-            )
-        )
+        update_opt_tuple_bool_opt_follow_code(Bool, !OptTuple)
     ;
         OptOption = oo_opt_unused_args(Bool),
-        OldValue = !.OptTuple ^ ot_opt_unused_args,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_unused_args,
-                !OptTuple ^ ot_opt_unused_args := opt_unused_args
-            ;
-                OldValue = opt_unused_args
-            )
-        else
-            (
-                OldValue = do_not_opt_unused_args
-            ;
-                OldValue = opt_unused_args,
-                !OptTuple ^ ot_opt_unused_args := do_not_opt_unused_args
-            )
-        )
+        update_opt_tuple_bool_opt_unused_args(Bool, !OptTuple)
     ;
         OptOption = oo_opt_unused_args_intermod(Bool),
-        OldValue = !.OptTuple ^ ot_opt_unused_args_intermod,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_unused_args_intermod,
-                !OptTuple ^ ot_opt_unused_args_intermod := opt_unused_args_intermod
-            ;
-                OldValue = opt_unused_args_intermod
-            )
-        else
-            (
-                OldValue = do_not_opt_unused_args_intermod
-            ;
-                OldValue = opt_unused_args_intermod,
-                !OptTuple ^ ot_opt_unused_args_intermod := do_not_opt_unused_args_intermod
-            )
-        )
+        update_opt_tuple_bool_opt_unused_args_intermod(Bool, !OptTuple)
     ;
         OptOption = oo_opt_higher_order(Bool),
-        OldValue = !.OptTuple ^ ot_opt_higher_order,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_higher_order,
-                !OptTuple ^ ot_opt_higher_order := opt_higher_order
-            ;
-                OldValue = opt_higher_order
-            )
-        else
-            (
-                OldValue = do_not_opt_higher_order
-            ;
-                OldValue = opt_higher_order,
-                !OptTuple ^ ot_opt_higher_order := do_not_opt_higher_order
-            )
-        )
+        update_opt_tuple_bool_opt_higher_order(Bool, !OptTuple)
     ;
         OptOption = oo_opt_unneeded_code(Bool),
-        OldValue = !.OptTuple ^ ot_opt_unneeded_code,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_unneeded_code,
-                !OptTuple ^ ot_opt_unneeded_code := opt_unneeded_code
-            ;
-                OldValue = opt_unneeded_code
-            )
-        else
-            (
-                OldValue = do_not_opt_unneeded_code
-            ;
-                OldValue = opt_unneeded_code,
-                !OptTuple ^ ot_opt_unneeded_code := do_not_opt_unneeded_code
-            )
-        )
+        update_opt_tuple_bool_opt_unneeded_code(Bool, !OptTuple)
     ;
         OptOption = oo_spec_types(Bool),
-        OldValue = !.OptTuple ^ ot_spec_types,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_spec_types,
-                !OptTuple ^ ot_spec_types := spec_types
-            ;
-                OldValue = spec_types
-            )
-        else
-            (
-                OldValue = do_not_spec_types
-            ;
-                OldValue = spec_types,
-                !OptTuple ^ ot_spec_types := do_not_spec_types
-            )
-        )
+        update_opt_tuple_bool_spec_types(Bool, !OptTuple)
     ;
         OptOption = oo_spec_types_user_guided(Bool),
-        OldValue = !.OptTuple ^ ot_spec_types_user_guided,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_spec_types_user_guided,
-                !OptTuple ^ ot_spec_types_user_guided := spec_types_user_guided
-            ;
-                OldValue = spec_types_user_guided
-            )
-        else
-            (
-                OldValue = do_not_spec_types_user_guided
-            ;
-                OldValue = spec_types_user_guided,
-                !OptTuple ^ ot_spec_types_user_guided := do_not_spec_types_user_guided
-            )
-        )
+        update_opt_tuple_bool_spec_types_user_guided(Bool, !OptTuple)
     ;
         OptOption = oo_introduce_accumulators(Bool),
-        OldValue = !.OptTuple ^ ot_introduce_accumulators,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_introduce_accumulators,
-                !OptTuple ^ ot_introduce_accumulators := introduce_accumulators
-            ;
-                OldValue = introduce_accumulators
-            )
-        else
-            (
-                OldValue = do_not_introduce_accumulators
-            ;
-                OldValue = introduce_accumulators,
-                !OptTuple ^ ot_introduce_accumulators := do_not_introduce_accumulators
-            )
-        )
+        update_opt_tuple_bool_introduce_accumulators(Bool, !OptTuple)
     ;
         OptOption = oo_opt_lcmc_accumulator(Bool),
-        OldValue = !.OptTuple ^ ot_opt_lcmc_accumulator,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_lcmc_accumulator,
-                !OptTuple ^ ot_opt_lcmc_accumulator := opt_lcmc_accumulator
-            ;
-                OldValue = opt_lcmc_accumulator
-            )
-        else
-            (
-                OldValue = do_not_opt_lcmc_accumulator
-            ;
-                OldValue = opt_lcmc_accumulator,
-                !OptTuple ^ ot_opt_lcmc_accumulator := do_not_opt_lcmc_accumulator
-            )
-        )
+        update_opt_tuple_bool_opt_lcmc_accumulator(Bool, !OptTuple)
     ;
         OptOption = oo_opt_lcmc_null(Bool),
-        OldValue = !.OptTuple ^ ot_opt_lcmc_null,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_lcmc_null,
-                !OptTuple ^ ot_opt_lcmc_null := opt_lcmc_null
-            ;
-                OldValue = opt_lcmc_null
-            )
-        else
-            (
-                OldValue = do_not_opt_lcmc_null
-            ;
-                OldValue = opt_lcmc_null,
-                !OptTuple ^ ot_opt_lcmc_null := do_not_opt_lcmc_null
-            )
-        )
+        update_opt_tuple_bool_opt_lcmc_null(Bool, !OptTuple)
     ;
         OptOption = oo_opt_lcmc(Bool),
-        OldValue = !.OptTuple ^ ot_opt_lcmc,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_lcmc,
-                !OptTuple ^ ot_opt_lcmc := opt_lcmc
-            ;
-                OldValue = opt_lcmc
-            )
-        else
-            (
-                OldValue = do_not_opt_lcmc
-            ;
-                OldValue = opt_lcmc,
-                !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc
-            )
-        )
+        update_opt_tuple_bool_opt_lcmc(Bool, !OptTuple)
     ;
         OptOption = oo_opt_dead_procs(Bool),
-        OldValue = !.OptTuple ^ ot_opt_dead_procs,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_dead_procs,
-                !OptTuple ^ ot_opt_dead_procs := opt_dead_procs
-            ;
-                OldValue = opt_dead_procs
-            )
-        else
-            (
-                OldValue = do_not_opt_dead_procs
-            ;
-                OldValue = opt_dead_procs,
-                !OptTuple ^ ot_opt_dead_procs := do_not_opt_dead_procs
-            )
-        )
+        update_opt_tuple_bool_opt_dead_procs(Bool, !OptTuple)
     ;
         OptOption = oo_deforest(Bool),
-        OldValue = !.OptTuple ^ ot_deforest,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_deforest,
-                !OptTuple ^ ot_deforest := deforest
-            ;
-                OldValue = deforest
-            )
-        else
-            (
-                OldValue = do_not_deforest
-            ;
-                OldValue = deforest,
-                !OptTuple ^ ot_deforest := do_not_deforest
-            )
-        )
+        update_opt_tuple_bool_deforest(Bool, !OptTuple)
     ;
         OptOption = oo_untuple(Bool),
-        OldValue = !.OptTuple ^ ot_untuple,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_untuple,
-                !OptTuple ^ ot_untuple := untuple
-            ;
-                OldValue = untuple
-            )
-        else
-            (
-                OldValue = do_not_untuple
-            ;
-                OldValue = untuple,
-                !OptTuple ^ ot_untuple := do_not_untuple
-            )
-        )
+        update_opt_tuple_bool_untuple(Bool, !OptTuple)
     ;
         OptOption = oo_tuple(Bool),
-        OldValue = !.OptTuple ^ ot_tuple,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_tuple,
-                !OptTuple ^ ot_tuple := tuple
-            ;
-                OldValue = tuple
-            )
-        else
-            (
-                OldValue = do_not_tuple
-            ;
-                OldValue = tuple,
-                !OptTuple ^ ot_tuple := do_not_tuple
-            )
-        )
+        update_opt_tuple_bool_tuple(Bool, !OptTuple)
     ;
         OptOption = oo_inline_par_builtins(Bool),
-        OldValue = !.OptTuple ^ ot_inline_par_builtins,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_inline_par_builtins,
-                !OptTuple ^ ot_inline_par_builtins := inline_par_builtins
-            ;
-                OldValue = inline_par_builtins
-            )
-        else
-            (
-                OldValue = do_not_inline_par_builtins
-            ;
-                OldValue = inline_par_builtins,
-                !OptTuple ^ ot_inline_par_builtins := do_not_inline_par_builtins
-            )
-        )
+        update_opt_tuple_bool_inline_par_builtins(Bool, !OptTuple)
     ;
         OptOption = oo_spec_in_all_dep_par_conjs(Bool),
-        OldValue = !.OptTuple ^ ot_spec_in_all_dep_par_conjs,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_spec_in_all_dep_par_conjs,
-                !OptTuple ^ ot_spec_in_all_dep_par_conjs := spec_in_all_dep_par_conjs
-            ;
-                OldValue = spec_in_all_dep_par_conjs
-            )
-        else
-            (
-                OldValue = do_not_spec_in_all_dep_par_conjs
-            ;
-                OldValue = spec_in_all_dep_par_conjs,
-                !OptTuple ^ ot_spec_in_all_dep_par_conjs := do_not_spec_in_all_dep_par_conjs
-            )
-        )
+        update_opt_tuple_bool_spec_in_all_dep_par_conjs(Bool, !OptTuple)
     ;
         OptOption = oo_allow_some_paths_only_waits(Bool),
-        OldValue = !.OptTuple ^ ot_allow_some_paths_only_waits,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_allow_some_paths_only_waits,
-                !OptTuple ^ ot_allow_some_paths_only_waits := allow_some_paths_only_waits
-            ;
-                OldValue = allow_some_paths_only_waits
-            )
-        else
-            (
-                OldValue = do_not_allow_some_paths_only_waits
-            ;
-                OldValue = allow_some_paths_only_waits,
-                !OptTuple ^ ot_allow_some_paths_only_waits := do_not_allow_some_paths_only_waits
-            )
-        )
+        update_opt_tuple_bool_allow_some_paths_only_waits(Bool, !OptTuple)
     ;
         OptOption = oo_analyse_regions(Bool),
-        OldValue = !.OptTuple ^ ot_analyse_regions,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_analyse_regions,
-                !OptTuple ^ ot_analyse_regions := analyse_regions
-            ;
-                OldValue = analyse_regions
-            )
-        else
-            (
-                OldValue = do_not_analyse_regions
-            ;
-                OldValue = analyse_regions,
-                !OptTuple ^ ot_analyse_regions := do_not_analyse_regions
-            )
-        )
+        update_opt_tuple_bool_analyse_regions(Bool, !OptTuple)
     ;
         OptOption = oo_use_smart_indexing(Bool),
-        OldValue = !.OptTuple ^ ot_use_smart_indexing,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_smart_indexing,
-                !OptTuple ^ ot_use_smart_indexing := use_smart_indexing
-            ;
-                OldValue = use_smart_indexing
-            )
-        else
-            (
-                OldValue = do_not_use_smart_indexing
-            ;
-                OldValue = use_smart_indexing,
-                !OptTuple ^ ot_use_smart_indexing := do_not_use_smart_indexing
-            )
-        )
+        update_opt_tuple_bool_use_smart_indexing(Bool, !OptTuple)
     ;
         OptOption = oo_use_smart_indexing_atomic(Bool),
-        OldValue = !.OptTuple ^ ot_use_smart_indexing_atomic,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_smart_indexing_atomic,
-                !OptTuple ^ ot_use_smart_indexing_atomic := use_smart_indexing_atomic
-            ;
-                OldValue = use_smart_indexing_atomic
-            )
-        else
-            (
-                OldValue = do_not_use_smart_indexing_atomic
-            ;
-                OldValue = use_smart_indexing_atomic,
-                !OptTuple ^ ot_use_smart_indexing_atomic := do_not_use_smart_indexing_atomic
-            )
-        )
+        update_opt_tuple_bool_use_smart_indexing_atomic(Bool, !OptTuple)
     ;
         OptOption = oo_use_smart_indexing_string(Bool),
-        OldValue = !.OptTuple ^ ot_use_smart_indexing_string,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_smart_indexing_string,
-                !OptTuple ^ ot_use_smart_indexing_string := use_smart_indexing_string
-            ;
-                OldValue = use_smart_indexing_string
-            )
-        else
-            (
-                OldValue = do_not_use_smart_indexing_string
-            ;
-                OldValue = use_smart_indexing_string,
-                !OptTuple ^ ot_use_smart_indexing_string := do_not_use_smart_indexing_string
-            )
-        )
+        update_opt_tuple_bool_use_smart_indexing_string(Bool, !OptTuple)
     ;
         OptOption = oo_use_smart_indexing_tag(Bool),
-        OldValue = !.OptTuple ^ ot_use_smart_indexing_tag,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_smart_indexing_tag,
-                !OptTuple ^ ot_use_smart_indexing_tag := use_smart_indexing_tag
-            ;
-                OldValue = use_smart_indexing_tag
-            )
-        else
-            (
-                OldValue = do_not_use_smart_indexing_tag
-            ;
-                OldValue = use_smart_indexing_tag,
-                !OptTuple ^ ot_use_smart_indexing_tag := do_not_use_smart_indexing_tag
-            )
-        )
+        update_opt_tuple_bool_use_smart_indexing_tag(Bool, !OptTuple)
     ;
         OptOption = oo_use_smart_indexing_float(Bool),
-        OldValue = !.OptTuple ^ ot_use_smart_indexing_float,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_smart_indexing_float,
-                !OptTuple ^ ot_use_smart_indexing_float := use_smart_indexing_float
-            ;
-                OldValue = use_smart_indexing_float
-            )
-        else
-            (
-                OldValue = do_not_use_smart_indexing_float
-            ;
-                OldValue = use_smart_indexing_float,
-                !OptTuple ^ ot_use_smart_indexing_float := do_not_use_smart_indexing_float
-            )
-        )
+        update_opt_tuple_bool_use_smart_indexing_float(Bool, !OptTuple)
     ;
         OptOption = oo_put_base_first_single_rec(Bool),
-        OldValue = !.OptTuple ^ ot_put_base_first_single_rec,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_put_base_first_single_rec,
-                !OptTuple ^ ot_put_base_first_single_rec := put_base_first_single_rec
-            ;
-                OldValue = put_base_first_single_rec
-            )
-        else
-            (
-                OldValue = do_not_put_base_first_single_rec
-            ;
-                OldValue = put_base_first_single_rec,
-                !OptTuple ^ ot_put_base_first_single_rec := do_not_put_base_first_single_rec
-            )
-        )
+        update_opt_tuple_bool_put_base_first_single_rec(Bool, !OptTuple)
     ;
         OptOption = oo_put_base_first_multi_rec(Bool),
-        OldValue = !.OptTuple ^ ot_put_base_first_multi_rec,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_put_base_first_multi_rec,
-                !OptTuple ^ ot_put_base_first_multi_rec := put_base_first_multi_rec
-            ;
-                OldValue = put_base_first_multi_rec
-            )
-        else
-            (
-                OldValue = do_not_put_base_first_multi_rec
-            ;
-                OldValue = put_base_first_multi_rec,
-                !OptTuple ^ ot_put_base_first_multi_rec := do_not_put_base_first_multi_rec
-            )
-        )
+        update_opt_tuple_bool_put_base_first_multi_rec(Bool, !OptTuple)
     ;
         OptOption = oo_use_static_ground_cells(Bool),
-        OldValue = !.OptTuple ^ ot_use_static_ground_cells,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_static_ground_cells,
-                !OptTuple ^ ot_use_static_ground_cells := use_static_ground_cells
-            ;
-                OldValue = use_static_ground_cells
-            )
-        else
-            (
-                OldValue = do_not_use_static_ground_cells
-            ;
-                OldValue = use_static_ground_cells,
-                !OptTuple ^ ot_use_static_ground_cells := do_not_use_static_ground_cells
-            )
-        )
+        update_opt_tuple_bool_use_static_ground_cells(Bool, !OptTuple)
     ;
         OptOption = oo_use_static_ground_floats(Bool),
-        OldValue = !.OptTuple ^ ot_use_static_ground_floats,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_static_ground_floats,
-                !OptTuple ^ ot_use_static_ground_floats := use_static_ground_floats
-            ;
-                OldValue = use_static_ground_floats
-            )
-        else
-            (
-                OldValue = do_not_use_static_ground_floats
-            ;
-                OldValue = use_static_ground_floats,
-                !OptTuple ^ ot_use_static_ground_floats := do_not_use_static_ground_floats
-            )
-        )
+        update_opt_tuple_bool_use_static_ground_floats(Bool, !OptTuple)
     ;
         OptOption = oo_use_static_ground_int64s(Bool),
-        OldValue = !.OptTuple ^ ot_use_static_ground_int64s,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_static_ground_int64s,
-                !OptTuple ^ ot_use_static_ground_int64s := use_static_ground_int64s
-            ;
-                OldValue = use_static_ground_int64s
-            )
-        else
-            (
-                OldValue = do_not_use_static_ground_int64s
-            ;
-                OldValue = use_static_ground_int64s,
-                !OptTuple ^ ot_use_static_ground_int64s := do_not_use_static_ground_int64s
-            )
-        )
+        update_opt_tuple_bool_use_static_ground_int64s(Bool, !OptTuple)
     ;
         OptOption = oo_use_static_code_addresses(Bool),
-        OldValue = !.OptTuple ^ ot_use_static_code_addresses,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_static_code_addresses,
-                !OptTuple ^ ot_use_static_code_addresses := use_static_code_addresses
-            ;
-                OldValue = use_static_code_addresses
-            )
-        else
-            (
-                OldValue = do_not_use_static_code_addresses
-            ;
-                OldValue = use_static_code_addresses,
-                !OptTuple ^ ot_use_static_code_addresses := do_not_use_static_code_addresses
-            )
-        )
+        update_opt_tuple_bool_use_static_code_addresses(Bool, !OptTuple)
     ;
         OptOption = oo_use_atomic_cells(Bool),
-        OldValue = !.OptTuple ^ ot_use_atomic_cells,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_atomic_cells,
-                !OptTuple ^ ot_use_atomic_cells := use_atomic_cells
-            ;
-                OldValue = use_atomic_cells
-            )
-        else
-            (
-                OldValue = do_not_use_atomic_cells
-            ;
-                OldValue = use_atomic_cells,
-                !OptTuple ^ ot_use_atomic_cells := do_not_use_atomic_cells
-            )
-        )
+        update_opt_tuple_bool_use_atomic_cells(Bool, !OptTuple)
     ;
         OptOption = oo_opt_middle_rec(Bool),
-        OldValue = !.OptTuple ^ ot_opt_middle_rec,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_middle_rec,
-                !OptTuple ^ ot_opt_middle_rec := opt_middle_rec
-            ;
-                OldValue = opt_middle_rec
-            )
-        else
-            (
-                OldValue = do_not_opt_middle_rec
-            ;
-                OldValue = opt_middle_rec,
-                !OptTuple ^ ot_opt_middle_rec := do_not_opt_middle_rec
-            )
-        )
+        update_opt_tuple_bool_opt_middle_rec(Bool, !OptTuple)
     ;
         OptOption = oo_opt_simple_neg(Bool),
-        OldValue = !.OptTuple ^ ot_opt_simple_neg,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_simple_neg,
-                !OptTuple ^ ot_opt_simple_neg := opt_simple_neg
-            ;
-                OldValue = opt_simple_neg
-            )
-        else
-            (
-                OldValue = do_not_opt_simple_neg
-            ;
-                OldValue = opt_simple_neg,
-                !OptTuple ^ ot_opt_simple_neg := do_not_opt_simple_neg
-            )
-        )
+        update_opt_tuple_bool_opt_simple_neg(Bool, !OptTuple)
     ;
         OptOption = oo_allow_hijacks(Bool),
-        OldValue = !.OptTuple ^ ot_allow_hijacks,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_allow_hijacks,
-                !OptTuple ^ ot_allow_hijacks := allow_hijacks
-            ;
-                OldValue = allow_hijacks
-            )
-        else
-            (
-                OldValue = do_not_allow_hijacks
-            ;
-                OldValue = allow_hijacks,
-                !OptTuple ^ ot_allow_hijacks := do_not_allow_hijacks
-            )
-        )
+        update_opt_tuple_bool_allow_hijacks(Bool, !OptTuple)
     ;
         OptOption = oo_opt_mlds_tailcalls(Bool),
-        OldValue = !.OptTuple ^ ot_opt_mlds_tailcalls,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_mlds_tailcalls,
-                !OptTuple ^ ot_opt_mlds_tailcalls := opt_mlds_tailcalls
-            ;
-                OldValue = opt_mlds_tailcalls
-            )
-        else
-            (
-                OldValue = do_not_opt_mlds_tailcalls
-            ;
-                OldValue = opt_mlds_tailcalls,
-                !OptTuple ^ ot_opt_mlds_tailcalls := do_not_opt_mlds_tailcalls
-            )
-        )
+        update_opt_tuple_bool_opt_mlds_tailcalls(Bool, !OptTuple)
     ;
         OptOption = oo_opt_initializations(Bool),
-        OldValue = !.OptTuple ^ ot_opt_initializations,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_initializations,
-                !OptTuple ^ ot_opt_initializations := opt_initializations
-            ;
-                OldValue = opt_initializations
-            )
-        else
-            (
-                OldValue = do_not_opt_initializations
-            ;
-                OldValue = opt_initializations,
-                !OptTuple ^ ot_opt_initializations := do_not_opt_initializations
-            )
-        )
+        update_opt_tuple_bool_opt_initializations(Bool, !OptTuple)
     ;
         OptOption = oo_elim_unused_mlds_assigns(Bool),
-        OldValue = !.OptTuple ^ ot_elim_unused_mlds_assigns,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_elim_unused_mlds_assigns,
-                !OptTuple ^ ot_elim_unused_mlds_assigns := elim_unused_mlds_assigns
-            ;
-                OldValue = elim_unused_mlds_assigns
-            )
-        else
-            (
-                OldValue = do_not_elim_unused_mlds_assigns
-            ;
-                OldValue = elim_unused_mlds_assigns,
-                !OptTuple ^ ot_elim_unused_mlds_assigns := do_not_elim_unused_mlds_assigns
-            )
-        )
+        update_opt_tuple_bool_elim_unused_mlds_assigns(Bool, !OptTuple)
     ;
         OptOption = oo_elim_local_vars(Bool),
-        OldValue = !.OptTuple ^ ot_elim_local_vars,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_elim_local_vars,
-                !OptTuple ^ ot_elim_local_vars := elim_local_vars
-            ;
-                OldValue = elim_local_vars
-            )
-        else
-            (
-                OldValue = do_not_elim_local_vars
-            ;
-                OldValue = elim_local_vars,
-                !OptTuple ^ ot_elim_local_vars := do_not_elim_local_vars
-            )
-        )
+        update_opt_tuple_bool_elim_local_vars(Bool, !OptTuple)
     ;
         OptOption = oo_gen_trail_ops_inline(Bool),
-        OldValue = !.OptTuple ^ ot_gen_trail_ops_inline,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_gen_trail_ops_inline,
-                !OptTuple ^ ot_gen_trail_ops_inline := gen_trail_ops_inline
-            ;
-                OldValue = gen_trail_ops_inline
-            )
-        else
-            (
-                OldValue = do_not_gen_trail_ops_inline
-            ;
-                OldValue = gen_trail_ops_inline,
-                !OptTuple ^ ot_gen_trail_ops_inline := do_not_gen_trail_ops_inline
-            )
-        )
+        update_opt_tuple_bool_gen_trail_ops_inline(Bool, !OptTuple)
     ;
         OptOption = oo_use_common_data(Bool),
-        OldValue = !.OptTuple ^ ot_use_common_data,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_common_data,
-                !OptTuple ^ ot_use_common_data := use_common_data
-            ;
-                OldValue = use_common_data
-            )
-        else
-            (
-                OldValue = do_not_use_common_data
-            ;
-                OldValue = use_common_data,
-                !OptTuple ^ ot_use_common_data := do_not_use_common_data
-            )
-        )
+        update_opt_tuple_bool_use_common_data(Bool, !OptTuple)
     ;
         OptOption = oo_use_common_layout_data(Bool),
-        OldValue = !.OptTuple ^ ot_use_common_layout_data,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_common_layout_data,
-                !OptTuple ^ ot_use_common_layout_data := use_common_layout_data
-            ;
-                OldValue = use_common_layout_data
-            )
-        else
-            (
-                OldValue = do_not_use_common_layout_data
-            ;
-                OldValue = use_common_layout_data,
-                !OptTuple ^ ot_use_common_layout_data := do_not_use_common_layout_data
-            )
-        )
+        update_opt_tuple_bool_use_common_layout_data(Bool, !OptTuple)
     ;
         OptOption = oo_optimize(Bool),
-        OldValue = !.OptTuple ^ ot_optimize,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_optimize,
-                !OptTuple ^ ot_optimize := optimize
-            ;
-                OldValue = optimize
-            )
-        else
-            (
-                OldValue = do_not_optimize
-            ;
-                OldValue = optimize,
-                !OptTuple ^ ot_optimize := do_not_optimize
-            )
-        )
+        update_opt_tuple_bool_optimize(Bool, !OptTuple)
     ;
         OptOption = oo_opt_peep(Bool),
-        OldValue = !.OptTuple ^ ot_opt_peep,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_peep,
-                !OptTuple ^ ot_opt_peep := opt_peep
-            ;
-                OldValue = opt_peep
-            )
-        else
-            (
-                OldValue = do_not_opt_peep
-            ;
-                OldValue = opt_peep,
-                !OptTuple ^ ot_opt_peep := do_not_opt_peep
-            )
-        )
+        update_opt_tuple_bool_opt_peep(Bool, !OptTuple)
     ;
         OptOption = oo_opt_peep_mkword(Bool),
-        OldValue = !.OptTuple ^ ot_opt_peep_mkword,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_peep_mkword,
-                !OptTuple ^ ot_opt_peep_mkword := opt_peep_mkword
-            ;
-                OldValue = opt_peep_mkword
-            )
-        else
-            (
-                OldValue = do_not_opt_peep_mkword
-            ;
-                OldValue = opt_peep_mkword,
-                !OptTuple ^ ot_opt_peep_mkword := do_not_opt_peep_mkword
-            )
-        )
+        update_opt_tuple_bool_opt_peep_mkword(Bool, !OptTuple)
     ;
         OptOption = oo_opt_jumps(Bool),
-        OldValue = !.OptTuple ^ ot_opt_jumps,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_jumps,
-                !OptTuple ^ ot_opt_jumps := opt_jumps
-            ;
-                OldValue = opt_jumps
-            )
-        else
-            (
-                OldValue = do_not_opt_jumps
-            ;
-                OldValue = opt_jumps,
-                !OptTuple ^ ot_opt_jumps := do_not_opt_jumps
-            )
-        )
+        update_opt_tuple_bool_opt_jumps(Bool, !OptTuple)
     ;
         OptOption = oo_opt_fulljumps(Bool),
-        OldValue = !.OptTuple ^ ot_opt_fulljumps,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_fulljumps,
-                !OptTuple ^ ot_opt_fulljumps := opt_fulljumps
-            ;
-                OldValue = opt_fulljumps
-            )
-        else
-            (
-                OldValue = do_not_opt_fulljumps
-            ;
-                OldValue = opt_fulljumps,
-                !OptTuple ^ ot_opt_fulljumps := do_not_opt_fulljumps
-            )
-        )
+        update_opt_tuple_bool_opt_fulljumps(Bool, !OptTuple)
     ;
         OptOption = oo_pessimize_tailcalls(Bool),
-        OldValue = !.OptTuple ^ ot_pessimize_tailcalls,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_pessimize_tailcalls,
-                !OptTuple ^ ot_pessimize_tailcalls := pessimize_tailcalls
-            ;
-                OldValue = pessimize_tailcalls
-            )
-        else
-            (
-                OldValue = do_not_pessimize_tailcalls
-            ;
-                OldValue = pessimize_tailcalls,
-                !OptTuple ^ ot_pessimize_tailcalls := do_not_pessimize_tailcalls
-            )
-        )
+        update_opt_tuple_bool_pessimize_tailcalls(Bool, !OptTuple)
     ;
         OptOption = oo_opt_checked_nondet_tailcalls(Bool),
-        OldValue = !.OptTuple ^ ot_opt_checked_nondet_tailcalls,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_checked_nondet_tailcalls,
-                !OptTuple ^ ot_opt_checked_nondet_tailcalls := opt_checked_nondet_tailcalls
-            ;
-                OldValue = opt_checked_nondet_tailcalls
-            )
-        else
-            (
-                OldValue = do_not_opt_checked_nondet_tailcalls
-            ;
-                OldValue = opt_checked_nondet_tailcalls,
-                !OptTuple ^ ot_opt_checked_nondet_tailcalls := do_not_opt_checked_nondet_tailcalls
-            )
-        )
+        update_opt_tuple_bool_opt_checked_nondet_tailcalls(Bool, !OptTuple)
     ;
         OptOption = oo_use_local_vars(Bool),
-        OldValue = !.OptTuple ^ ot_use_local_vars,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_local_vars,
-                !OptTuple ^ ot_use_local_vars := use_local_vars
-            ;
-                OldValue = use_local_vars
-            )
-        else
-            (
-                OldValue = do_not_use_local_vars
-            ;
-                OldValue = use_local_vars,
-                !OptTuple ^ ot_use_local_vars := do_not_use_local_vars
-            )
-        )
+        update_opt_tuple_bool_use_local_vars(Bool, !OptTuple)
     ;
         OptOption = oo_standardize_labels(Bool),
-        OldValue = !.OptTuple ^ ot_standardize_labels,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_standardize_labels,
-                !OptTuple ^ ot_standardize_labels := standardize_labels
-            ;
-                OldValue = standardize_labels
-            )
-        else
-            (
-                OldValue = do_not_standardize_labels
-            ;
-                OldValue = standardize_labels,
-                !OptTuple ^ ot_standardize_labels := do_not_standardize_labels
-            )
-        )
+        update_opt_tuple_bool_standardize_labels(Bool, !OptTuple)
     ;
         OptOption = oo_opt_labels(Bool),
-        OldValue = !.OptTuple ^ ot_opt_labels,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_labels,
-                !OptTuple ^ ot_opt_labels := opt_labels
-            ;
-                OldValue = opt_labels
-            )
-        else
-            (
-                OldValue = do_not_opt_labels
-            ;
-                OldValue = opt_labels,
-                !OptTuple ^ ot_opt_labels := do_not_opt_labels
-            )
-        )
+        update_opt_tuple_bool_opt_labels(Bool, !OptTuple)
     ;
         OptOption = oo_opt_dups(Bool),
-        OldValue = !.OptTuple ^ ot_opt_dups,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_dups,
-                !OptTuple ^ ot_opt_dups := opt_dups
-            ;
-                OldValue = opt_dups
-            )
-        else
-            (
-                OldValue = do_not_opt_dups
-            ;
-                OldValue = opt_dups,
-                !OptTuple ^ ot_opt_dups := do_not_opt_dups
-            )
-        )
+        update_opt_tuple_bool_opt_dups(Bool, !OptTuple)
     ;
         OptOption = oo_opt_proc_dups(Bool),
-        OldValue = !.OptTuple ^ ot_opt_proc_dups,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_proc_dups,
-                !OptTuple ^ ot_opt_proc_dups := opt_proc_dups
-            ;
-                OldValue = opt_proc_dups
-            )
-        else
-            (
-                OldValue = do_not_opt_proc_dups
-            ;
-                OldValue = opt_proc_dups,
-                !OptTuple ^ ot_opt_proc_dups := do_not_opt_proc_dups
-            )
-        )
+        update_opt_tuple_bool_opt_proc_dups(Bool, !OptTuple)
     ;
         OptOption = oo_opt_frames(Bool),
-        OldValue = !.OptTuple ^ ot_opt_frames,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_frames,
-                !OptTuple ^ ot_opt_frames := opt_frames
-            ;
-                OldValue = opt_frames
-            )
-        else
-            (
-                OldValue = do_not_opt_frames
-            ;
-                OldValue = opt_frames,
-                !OptTuple ^ ot_opt_frames := do_not_opt_frames
-            )
-        )
+        update_opt_tuple_bool_opt_frames(Bool, !OptTuple)
     ;
         OptOption = oo_opt_delay_slot(Bool),
-        OldValue = !.OptTuple ^ ot_opt_delay_slot,
-        ( if
-            getopt_io.lookup_bool_option(OptionTable, have_delay_slot, yes),
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_delay_slot,
-                !OptTuple ^ ot_opt_delay_slot := opt_delay_slot
-            ;
-                OldValue = opt_delay_slot
-            )
-        else
-            (
-                OldValue = do_not_opt_delay_slot
-            ;
-                OldValue = opt_delay_slot,
-                !OptTuple ^ ot_opt_delay_slot := do_not_opt_delay_slot
-            )
-        )
+        update_opt_tuple_bool_opt_delay_slot(OptionTable, Bool, !OptTuple)
     ;
         OptOption = oo_opt_reassign(Bool),
-        OldValue = !.OptTuple ^ ot_opt_reassign,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_reassign,
-                !OptTuple ^ ot_opt_reassign := opt_reassign
-            ;
-                OldValue = opt_reassign
-            )
-        else
-            (
-                OldValue = do_not_opt_reassign
-            ;
-                OldValue = opt_reassign,
-                !OptTuple ^ ot_opt_reassign := do_not_opt_reassign
-            )
-        )
+        update_opt_tuple_bool_opt_reassign(Bool, !OptTuple)
     ;
         OptOption = oo_use_macro_for_redo_fail(Bool),
-        OldValue = !.OptTuple ^ ot_use_macro_for_redo_fail,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_macro_for_redo_fail,
-                !OptTuple ^ ot_use_macro_for_redo_fail := use_macro_for_redo_fail
-            ;
-                OldValue = use_macro_for_redo_fail
-            )
-        else
-            (
-                OldValue = do_not_use_macro_for_redo_fail
-            ;
-                OldValue = use_macro_for_redo_fail,
-                !OptTuple ^ ot_use_macro_for_redo_fail := do_not_use_macro_for_redo_fail
-            )
-        )
+        update_opt_tuple_bool_use_macro_for_redo_fail(Bool, !OptTuple)
     ;
         OptOption = oo_emit_c_loops(Bool),
-        OldValue = !.OptTuple ^ ot_emit_c_loops,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_emit_c_loops,
-                !OptTuple ^ ot_emit_c_loops := emit_c_loops
-            ;
-                OldValue = emit_c_loops
-            )
-        else
-            (
-                OldValue = do_not_emit_c_loops
-            ;
-                OldValue = emit_c_loops,
-                !OptTuple ^ ot_emit_c_loops := do_not_emit_c_loops
-            )
-        )
+        update_opt_tuple_bool_emit_c_loops(Bool, !OptTuple)
     ;
         OptOption = oo_use_just_one_c_func(Bool),
-        OldValue = !.OptTuple ^ ot_use_just_one_c_func,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_just_one_c_func,
-                !OptTuple ^ ot_use_just_one_c_func := use_just_one_c_func
-            ;
-                OldValue = use_just_one_c_func
-            )
-        else
-            (
-                OldValue = do_not_use_just_one_c_func
-            ;
-                OldValue = use_just_one_c_func,
-                !OptTuple ^ ot_use_just_one_c_func := do_not_use_just_one_c_func
-            )
-        )
+        update_opt_tuple_bool_use_just_one_c_func(Bool, !OptTuple)
     ;
         OptOption = oo_use_local_thread_engine_base(Bool),
-        OldValue = !.OptTuple ^ ot_use_local_thread_engine_base,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_use_local_thread_engine_base,
-                !OptTuple ^ ot_use_local_thread_engine_base := use_local_thread_engine_base
-            ;
-                OldValue = use_local_thread_engine_base
-            )
-        else
-            (
-                OldValue = do_not_use_local_thread_engine_base
-            ;
-                OldValue = use_local_thread_engine_base,
-                !OptTuple ^ ot_use_local_thread_engine_base := do_not_use_local_thread_engine_base
-            )
-        )
+        update_opt_tuple_bool_use_local_thread_engine_base(Bool, !OptTuple)
     ;
         OptOption = oo_switch_on_strings_as_atoms(Bool),
-        OldValue = !.OptTuple ^ ot_switch_on_strings_as_atoms,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_switch_on_strings_as_atoms,
-                !OptTuple ^ ot_switch_on_strings_as_atoms := switch_on_strings_as_atoms
-            ;
-                OldValue = switch_on_strings_as_atoms
-            )
-        else
-            (
-                OldValue = do_not_switch_on_strings_as_atoms
-            ;
-                OldValue = switch_on_strings_as_atoms,
-                !OptTuple ^ ot_switch_on_strings_as_atoms := do_not_switch_on_strings_as_atoms
-            )
-        )
+        update_opt_tuple_bool_switch_on_strings_as_atoms(Bool, !OptTuple)
     ;
         OptOption = oo_inline_alloc(Bool),
-        OldValue = !.OptTuple ^ ot_inline_alloc,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_inline_alloc,
-                !OptTuple ^ ot_inline_alloc := inline_alloc
-            ;
-                OldValue = inline_alloc
-            )
-        else
-            (
-                OldValue = do_not_inline_alloc
-            ;
-                OldValue = inline_alloc,
-                !OptTuple ^ ot_inline_alloc := do_not_inline_alloc
-            )
-        )
+        update_opt_tuple_bool_inline_alloc(Bool, !OptTuple)
     ;
         OptOption = oo_opt_c(Bool),
-        OldValue = !.OptTuple ^ ot_opt_c,
-        ( if
-            Bool = yes
-        then
-            (
-                OldValue = do_not_opt_c,
-                !OptTuple ^ ot_opt_c := opt_c
-            ;
-                OldValue = opt_c
-            )
-        else
-            (
-                OldValue = do_not_opt_c
-            ;
-                OldValue = opt_c,
-                !OptTuple ^ ot_opt_c := do_not_opt_c
-            )
-        )
+        update_opt_tuple_bool_opt_c(Bool, !OptTuple)
     ;
         OptOption = oo_inline_call_cost(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_inline_call_cost := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_inline_call_cost,
-            !OptTuple ^ ot_inline_call_cost := int.max(OldN, N)
-        )
+        update_opt_tuple_int_inline_call_cost(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_inline_compound_threshold(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_inline_compound_threshold := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_inline_compound_threshold,
-            !OptTuple ^ ot_inline_compound_threshold := int.max(OldN, N)
-        )
+        update_opt_tuple_int_inline_compound_threshold(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_inline_simple_threshold(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_inline_simple_threshold := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_inline_simple_threshold,
-            !OptTuple ^ ot_inline_simple_threshold := int.max(OldN, N)
-        )
+        update_opt_tuple_int_inline_simple_threshold(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_inline_vars_threshold(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_inline_vars_threshold := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_inline_vars_threshold,
-            !OptTuple ^ ot_inline_vars_threshold := int.max(OldN, N)
-        )
+        update_opt_tuple_int_inline_vars_threshold(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_intermod_inline_simple_threshold(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_intermod_inline_simple_threshold := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_intermod_inline_simple_threshold,
-            !OptTuple ^ ot_intermod_inline_simple_threshold := int.max(OldN, N)
-        )
+        update_opt_tuple_int_intermod_inline_simple_threshold(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_inline_linear_tail_rec_sccs_max_extra(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra,
-            !OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra := int.max(OldN, N)
-        )
+        update_opt_tuple_int_inline_linear_tail_rec_sccs_max_extra(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_from_ground_term_threshold(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_from_ground_term_threshold := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_from_ground_term_threshold,
-            !OptTuple ^ ot_from_ground_term_threshold := int.max(OldN, N)
-        )
+        update_opt_tuple_int_from_ground_term_threshold(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_opt_svcell_cv_store_cost(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_opt_svcell_cv_store_cost := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_opt_svcell_cv_store_cost,
-            !OptTuple ^ ot_opt_svcell_cv_store_cost := int.max(OldN, N)
-        )
+        update_opt_tuple_int_opt_svcell_cv_store_cost(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_opt_svcell_cv_load_cost(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_opt_svcell_cv_load_cost := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_opt_svcell_cv_load_cost,
-            !OptTuple ^ ot_opt_svcell_cv_load_cost := int.max(OldN, N)
-        )
+        update_opt_tuple_int_opt_svcell_cv_load_cost(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_opt_svcell_fv_store_cost(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_opt_svcell_fv_store_cost := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_opt_svcell_fv_store_cost,
-            !OptTuple ^ ot_opt_svcell_fv_store_cost := int.max(OldN, N)
-        )
+        update_opt_tuple_int_opt_svcell_fv_store_cost(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_opt_svcell_fv_load_cost(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_opt_svcell_fv_load_cost := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_opt_svcell_fv_load_cost,
-            !OptTuple ^ ot_opt_svcell_fv_load_cost := int.max(OldN, N)
-        )
+        update_opt_tuple_int_opt_svcell_fv_load_cost(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_opt_svcell_op_ratio(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_opt_svcell_op_ratio := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_opt_svcell_op_ratio,
-            !OptTuple ^ ot_opt_svcell_op_ratio := int.max(OldN, N)
-        )
+        update_opt_tuple_int_opt_svcell_op_ratio(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_opt_svcell_node_ratio(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_opt_svcell_node_ratio := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_opt_svcell_node_ratio,
-            !OptTuple ^ ot_opt_svcell_node_ratio := int.max(OldN, N)
-        )
+        update_opt_tuple_int_opt_svcell_node_ratio(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_opt_svcell_all_path_node_ratio(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_opt_svcell_all_path_node_ratio := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_opt_svcell_all_path_node_ratio,
-            !OptTuple ^ ot_opt_svcell_all_path_node_ratio := int.max(OldN, N)
-        )
+        update_opt_tuple_int_opt_svcell_all_path_node_ratio(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_higher_order_size_limit(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_higher_order_size_limit := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_higher_order_size_limit,
-            !OptTuple ^ ot_higher_order_size_limit := int.max(OldN, N)
-        )
+        update_opt_tuple_int_higher_order_size_limit(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_higher_order_arg_limit(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_higher_order_arg_limit := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_higher_order_arg_limit,
-            !OptTuple ^ ot_higher_order_arg_limit := int.max(OldN, N)
-        )
+        update_opt_tuple_int_higher_order_arg_limit(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_opt_unneeded_code_copy_limit(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_opt_unneeded_code_copy_limit := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_opt_unneeded_code_copy_limit,
-            !OptTuple ^ ot_opt_unneeded_code_copy_limit := int.max(OldN, N)
-        )
+        update_opt_tuple_int_opt_unneeded_code_copy_limit(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_deforestation_depth_limit(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_deforestation_depth_limit := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_deforestation_depth_limit,
-            !OptTuple ^ ot_deforestation_depth_limit := int.max(OldN, N)
-        )
+        update_opt_tuple_int_deforestation_depth_limit(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_deforestation_cost_factor(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_deforestation_cost_factor := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_deforestation_cost_factor,
-            !OptTuple ^ ot_deforestation_cost_factor := int.max(OldN, N)
-        )
+        update_opt_tuple_int_deforestation_cost_factor(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_deforestation_vars_threshold(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_deforestation_vars_threshold := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_deforestation_vars_threshold,
-            !OptTuple ^ ot_deforestation_vars_threshold := int.max(OldN, N)
-        )
+        update_opt_tuple_int_deforestation_vars_threshold(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_deforestation_size_threshold(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_deforestation_size_threshold := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_deforestation_size_threshold,
-            !OptTuple ^ ot_deforestation_size_threshold := int.max(OldN, N)
-        )
+        update_opt_tuple_int_deforestation_size_threshold(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_tuple_costs_ratio(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_tuple_costs_ratio := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_tuple_costs_ratio,
-            !OptTuple ^ ot_tuple_costs_ratio := int.max(OldN, N)
-        )
+        update_opt_tuple_int_tuple_costs_ratio(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_tuple_min_args(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_tuple_min_args := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_tuple_min_args,
-            !OptTuple ^ ot_tuple_min_args := int.max(OldN, N)
-        )
+        update_opt_tuple_int_tuple_min_args(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_dense_switch_req_density(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_dense_switch_req_density := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_dense_switch_req_density,
-            !OptTuple ^ ot_dense_switch_req_density := int.max(OldN, N)
-        )
+        update_opt_tuple_int_dense_switch_req_density(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_lookup_switch_req_density(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_lookup_switch_req_density := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_lookup_switch_req_density,
-            !OptTuple ^ ot_lookup_switch_req_density := int.max(OldN, N)
-        )
+        update_opt_tuple_int_lookup_switch_req_density(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_dense_switch_size(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_dense_switch_size := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_dense_switch_size,
-            !OptTuple ^ ot_dense_switch_size := int.max(OldN, N)
-        )
+        update_opt_tuple_int_dense_switch_size(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_lookup_switch_size(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_lookup_switch_size := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_lookup_switch_size,
-            !OptTuple ^ ot_lookup_switch_size := int.max(OldN, N)
-        )
+        update_opt_tuple_int_lookup_switch_size(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_string_trie_switch_size(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_string_trie_switch_size := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_string_trie_switch_size,
-            !OptTuple ^ ot_string_trie_switch_size := int.max(OldN, N)
-        )
+        update_opt_tuple_int_string_trie_switch_size(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_string_hash_switch_size(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_string_hash_switch_size := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_string_hash_switch_size,
-            !OptTuple ^ ot_string_hash_switch_size := int.max(OldN, N)
-        )
+        update_opt_tuple_int_string_hash_switch_size(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_string_binary_switch_size(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_string_binary_switch_size := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_string_binary_switch_size,
-            !OptTuple ^ ot_string_binary_switch_size := int.max(OldN, N)
-        )
+        update_opt_tuple_int_string_binary_switch_size(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_tag_switch_size(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_tag_switch_size := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_tag_switch_size,
-            !OptTuple ^ ot_tag_switch_size := int.max(OldN, N)
-        )
+        update_opt_tuple_int_tag_switch_size(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_try_switch_size(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_try_switch_size := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_try_switch_size,
-            !OptTuple ^ ot_try_switch_size := int.max(OldN, N)
-        )
+        update_opt_tuple_int_try_switch_size(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_binary_switch_size(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_binary_switch_size := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_binary_switch_size,
-            !OptTuple ^ ot_binary_switch_size := int.max(OldN, N)
-        )
+        update_opt_tuple_int_binary_switch_size(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_local_var_access_threshold(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_local_var_access_threshold := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_local_var_access_threshold,
-            !OptTuple ^ ot_local_var_access_threshold := int.max(OldN, N)
-        )
+        update_opt_tuple_int_local_var_access_threshold(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_opt_repeat(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_opt_repeat := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_opt_repeat,
-            !OptTuple ^ ot_opt_repeat := int.max(OldN, N)
-        )
+        update_opt_tuple_int_opt_repeat(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_layout_compression_limit(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_layout_compression_limit := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_layout_compression_limit,
-            !OptTuple ^ ot_layout_compression_limit := int.max(OldN, N)
-        )
+        update_opt_tuple_int_layout_compression_limit(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_procs_per_c_function(N),
-        (
-            FromOptLevel = not_from_opt_level,
-            !OptTuple ^ ot_procs_per_c_function := N
-        ;
-            FromOptLevel = from_opt_level,
-            OldN = !.OptTuple ^ ot_procs_per_c_function,
-            !OptTuple ^ ot_procs_per_c_function := int.max(OldN, N)
-        )
+        update_opt_tuple_int_procs_per_c_function(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_tuple_trace_counts_file(Str),
         !OptTuple ^ ot_tuple_trace_counts_file := Str
@@ -2823,6 +1101,2504 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
         OptOption = oo_opt_for_space,
         set_opts_for_space(!OptTuple)
     ).
+
+:- pred update_opt_tuple_bool_allow_inlining(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_allow_inlining(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_allow_inlining,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_allow_inlining,
+            !OptTuple ^ ot_allow_inlining := allow_inlining
+        ;
+            OldValue = allow_inlining
+        )
+    else
+        (
+            OldValue = do_not_allow_inlining
+        ;
+            OldValue = allow_inlining,
+            !OptTuple ^ ot_allow_inlining := do_not_allow_inlining
+        )
+    ).
+
+:- pred update_opt_tuple_bool_inline_simple(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_inline_simple(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_inline_simple,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_inline_simple,
+            !OptTuple ^ ot_inline_simple := inline_simple
+        ;
+            OldValue = inline_simple
+        )
+    else
+        (
+            OldValue = do_not_inline_simple
+        ;
+            OldValue = inline_simple,
+            !OptTuple ^ ot_inline_simple := do_not_inline_simple
+        )
+    ).
+
+:- pred update_opt_tuple_bool_inline_builtins(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_inline_builtins(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_inline_builtins,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_inline_builtins,
+            !OptTuple ^ ot_inline_builtins := inline_builtins
+        ;
+            OldValue = inline_builtins
+        )
+    else
+        (
+            OldValue = do_not_inline_builtins
+        ;
+            OldValue = inline_builtins,
+            !OptTuple ^ ot_inline_builtins := do_not_inline_builtins
+        )
+    ).
+
+:- pred update_opt_tuple_bool_inline_single_use(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_inline_single_use(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_inline_single_use,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_inline_single_use,
+            !OptTuple ^ ot_inline_single_use := inline_single_use
+        ;
+            OldValue = inline_single_use
+        )
+    else
+        (
+            OldValue = do_not_inline_single_use
+        ;
+            OldValue = inline_single_use,
+            !OptTuple ^ ot_inline_single_use := do_not_inline_single_use
+        )
+    ).
+
+:- pred update_opt_tuple_bool_inline_linear_tail_rec_sccs(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_inline_linear_tail_rec_sccs(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_inline_linear_tail_rec_sccs,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_inline_linear_tail_rec_sccs,
+            !OptTuple ^ ot_inline_linear_tail_rec_sccs := inline_linear_tail_rec_sccs
+        ;
+            OldValue = inline_linear_tail_rec_sccs
+        )
+    else
+        (
+            OldValue = do_not_inline_linear_tail_rec_sccs
+        ;
+            OldValue = inline_linear_tail_rec_sccs,
+            !OptTuple ^ ot_inline_linear_tail_rec_sccs := do_not_inline_linear_tail_rec_sccs
+        )
+    ).
+
+:- pred update_opt_tuple_bool_enable_const_struct(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_enable_const_struct(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_enable_const_struct,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_enable_const_struct,
+            !OptTuple ^ ot_enable_const_struct := enable_const_struct
+        ;
+            OldValue = enable_const_struct
+        )
+    else
+        (
+            OldValue = do_not_enable_const_struct
+        ;
+            OldValue = enable_const_struct,
+            !OptTuple ^ ot_enable_const_struct := do_not_enable_const_struct
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_common_structs(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_common_structs(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_common_structs,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_common_structs,
+            !OptTuple ^ ot_opt_common_structs := opt_common_structs
+        ;
+            OldValue = opt_common_structs
+        )
+    else
+        (
+            OldValue = do_not_opt_common_structs
+        ;
+            OldValue = opt_common_structs,
+            !OptTuple ^ ot_opt_common_structs := do_not_opt_common_structs
+        )
+    ).
+
+:- pred update_opt_tuple_bool_prop_constraints(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_prop_constraints(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_prop_constraints,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_prop_constraints,
+            !OptTuple ^ ot_prop_constraints := prop_constraints
+        ;
+            OldValue = prop_constraints
+        )
+    else
+        (
+            OldValue = do_not_prop_constraints
+        ;
+            OldValue = prop_constraints,
+            !OptTuple ^ ot_prop_constraints := do_not_prop_constraints
+        )
+    ).
+
+:- pred update_opt_tuple_bool_prop_local_constraints(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_prop_local_constraints(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_prop_local_constraints,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_prop_local_constraints,
+            !OptTuple ^ ot_prop_local_constraints := prop_local_constraints
+        ;
+            OldValue = prop_local_constraints
+        )
+    else
+        (
+            OldValue = do_not_prop_local_constraints
+        ;
+            OldValue = prop_local_constraints,
+            !OptTuple ^ ot_prop_local_constraints := do_not_prop_local_constraints
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_dup_calls(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_dup_calls(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_dup_calls,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_dup_calls,
+            !OptTuple ^ ot_opt_dup_calls := opt_dup_calls
+        ;
+            OldValue = opt_dup_calls
+        )
+    else
+        (
+            OldValue = do_not_opt_dup_calls
+        ;
+            OldValue = opt_dup_calls,
+            !OptTuple ^ ot_opt_dup_calls := do_not_opt_dup_calls
+        )
+    ).
+
+:- pred update_opt_tuple_bool_prop_constants(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_prop_constants(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_prop_constants,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_prop_constants,
+            !OptTuple ^ ot_prop_constants := prop_constants
+        ;
+            OldValue = prop_constants
+        )
+    else
+        (
+            OldValue = do_not_prop_constants
+        ;
+            OldValue = prop_constants,
+            !OptTuple ^ ot_prop_constants := do_not_prop_constants
+        )
+    ).
+
+:- pred update_opt_tuple_bool_elim_excess_assigns(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_elim_excess_assigns(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_elim_excess_assigns,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_elim_excess_assigns,
+            !OptTuple ^ ot_elim_excess_assigns := elim_excess_assigns
+        ;
+            OldValue = elim_excess_assigns
+        )
+    else
+        (
+            OldValue = do_not_elim_excess_assigns
+        ;
+            OldValue = elim_excess_assigns,
+            !OptTuple ^ ot_elim_excess_assigns := do_not_elim_excess_assigns
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_test_after_switch(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_test_after_switch(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_test_after_switch,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_test_after_switch,
+            !OptTuple ^ ot_opt_test_after_switch := opt_test_after_switch
+        ;
+            OldValue = opt_test_after_switch
+        )
+    else
+        (
+            OldValue = do_not_opt_test_after_switch
+        ;
+            OldValue = opt_test_after_switch,
+            !OptTuple ^ ot_opt_test_after_switch := do_not_opt_test_after_switch
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_format_calls(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_format_calls(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_format_calls,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_format_calls,
+            !OptTuple ^ ot_opt_format_calls := opt_format_calls
+        ;
+            OldValue = opt_format_calls
+        )
+    else
+        (
+            OldValue = do_not_opt_format_calls
+        ;
+            OldValue = opt_format_calls,
+            !OptTuple ^ ot_opt_format_calls := do_not_opt_format_calls
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_loop_invariants(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_loop_invariants(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_loop_invariants,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_loop_invariants,
+            !OptTuple ^ ot_opt_loop_invariants := opt_loop_invariants
+        ;
+            OldValue = opt_loop_invariants
+        )
+    else
+        (
+            OldValue = do_not_opt_loop_invariants
+        ;
+            OldValue = opt_loop_invariants,
+            !OptTuple ^ ot_opt_loop_invariants := do_not_opt_loop_invariants
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_saved_vars_const(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_saved_vars_const(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_saved_vars_const,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_saved_vars_const,
+            !OptTuple ^ ot_opt_saved_vars_const := opt_saved_vars_const
+        ;
+            OldValue = opt_saved_vars_const
+        )
+    else
+        (
+            OldValue = do_not_opt_saved_vars_const
+        ;
+            OldValue = opt_saved_vars_const,
+            !OptTuple ^ ot_opt_saved_vars_const := do_not_opt_saved_vars_const
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_svcell(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_svcell(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_svcell,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_svcell,
+            !OptTuple ^ ot_opt_svcell := opt_svcell
+        ;
+            OldValue = opt_svcell
+        )
+    else
+        (
+            OldValue = do_not_opt_svcell
+        ;
+            OldValue = opt_svcell,
+            !OptTuple ^ ot_opt_svcell := do_not_opt_svcell
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_svcell_loop(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_svcell_loop(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_svcell_loop,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_svcell_loop,
+            !OptTuple ^ ot_opt_svcell_loop := opt_svcell_loop
+        ;
+            OldValue = opt_svcell_loop
+        )
+    else
+        (
+            OldValue = do_not_opt_svcell_loop
+        ;
+            OldValue = opt_svcell_loop,
+            !OptTuple ^ ot_opt_svcell_loop := do_not_opt_svcell_loop
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_svcell_full_path(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_svcell_full_path(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_svcell_full_path,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_svcell_full_path,
+            !OptTuple ^ ot_opt_svcell_full_path := opt_svcell_full_path
+        ;
+            OldValue = opt_svcell_full_path
+        )
+    else
+        (
+            OldValue = do_not_opt_svcell_full_path
+        ;
+            OldValue = opt_svcell_full_path,
+            !OptTuple ^ ot_opt_svcell_full_path := do_not_opt_svcell_full_path
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_svcell_on_stack(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_svcell_on_stack(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_svcell_on_stack,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_svcell_on_stack,
+            !OptTuple ^ ot_opt_svcell_on_stack := opt_svcell_on_stack
+        ;
+            OldValue = opt_svcell_on_stack
+        )
+    else
+        (
+            OldValue = do_not_opt_svcell_on_stack
+        ;
+            OldValue = opt_svcell_on_stack,
+            !OptTuple ^ ot_opt_svcell_on_stack := do_not_opt_svcell_on_stack
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_svcell_candidate_headvars(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_svcell_candidate_headvars(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_svcell_candidate_headvars,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_svcell_candidate_headvars,
+            !OptTuple ^ ot_opt_svcell_candidate_headvars := opt_svcell_candidate_headvars
+        ;
+            OldValue = opt_svcell_candidate_headvars
+        )
+    else
+        (
+            OldValue = do_not_opt_svcell_candidate_headvars
+        ;
+            OldValue = opt_svcell_candidate_headvars,
+            !OptTuple ^ ot_opt_svcell_candidate_headvars := do_not_opt_svcell_candidate_headvars
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_svcell_all_candidates(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_svcell_all_candidates(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_svcell_all_candidates,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_svcell_all_candidates,
+            !OptTuple ^ ot_opt_svcell_all_candidates := opt_svcell_all_candidates
+        ;
+            OldValue = opt_svcell_all_candidates
+        )
+    else
+        (
+            OldValue = do_not_opt_svcell_all_candidates
+        ;
+            OldValue = opt_svcell_all_candidates,
+            !OptTuple ^ ot_opt_svcell_all_candidates := do_not_opt_svcell_all_candidates
+        )
+    ).
+
+:- pred update_opt_tuple_bool_delay_constructs(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_delay_constructs(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_delay_constructs,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_delay_constructs,
+            !OptTuple ^ ot_delay_constructs := delay_constructs
+        ;
+            OldValue = delay_constructs
+        )
+    else
+        (
+            OldValue = do_not_delay_constructs
+        ;
+            OldValue = delay_constructs,
+            !OptTuple ^ ot_delay_constructs := do_not_delay_constructs
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_follow_code(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_follow_code(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_follow_code,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_follow_code,
+            !OptTuple ^ ot_opt_follow_code := opt_follow_code
+        ;
+            OldValue = opt_follow_code
+        )
+    else
+        (
+            OldValue = do_not_opt_follow_code
+        ;
+            OldValue = opt_follow_code,
+            !OptTuple ^ ot_opt_follow_code := do_not_opt_follow_code
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_unused_args(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_unused_args(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_unused_args,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_unused_args,
+            !OptTuple ^ ot_opt_unused_args := opt_unused_args
+        ;
+            OldValue = opt_unused_args
+        )
+    else
+        (
+            OldValue = do_not_opt_unused_args
+        ;
+            OldValue = opt_unused_args,
+            !OptTuple ^ ot_opt_unused_args := do_not_opt_unused_args
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_unused_args_intermod(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_unused_args_intermod(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_unused_args_intermod,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_unused_args_intermod,
+            !OptTuple ^ ot_opt_unused_args_intermod := opt_unused_args_intermod
+        ;
+            OldValue = opt_unused_args_intermod
+        )
+    else
+        (
+            OldValue = do_not_opt_unused_args_intermod
+        ;
+            OldValue = opt_unused_args_intermod,
+            !OptTuple ^ ot_opt_unused_args_intermod := do_not_opt_unused_args_intermod
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_higher_order(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_higher_order(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_higher_order,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_higher_order,
+            !OptTuple ^ ot_opt_higher_order := opt_higher_order
+        ;
+            OldValue = opt_higher_order
+        )
+    else
+        (
+            OldValue = do_not_opt_higher_order
+        ;
+            OldValue = opt_higher_order,
+            !OptTuple ^ ot_opt_higher_order := do_not_opt_higher_order
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_unneeded_code(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_unneeded_code(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_unneeded_code,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_unneeded_code,
+            !OptTuple ^ ot_opt_unneeded_code := opt_unneeded_code
+        ;
+            OldValue = opt_unneeded_code
+        )
+    else
+        (
+            OldValue = do_not_opt_unneeded_code
+        ;
+            OldValue = opt_unneeded_code,
+            !OptTuple ^ ot_opt_unneeded_code := do_not_opt_unneeded_code
+        )
+    ).
+
+:- pred update_opt_tuple_bool_spec_types(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_spec_types(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_spec_types,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_spec_types,
+            !OptTuple ^ ot_spec_types := spec_types
+        ;
+            OldValue = spec_types
+        )
+    else
+        (
+            OldValue = do_not_spec_types
+        ;
+            OldValue = spec_types,
+            !OptTuple ^ ot_spec_types := do_not_spec_types
+        )
+    ).
+
+:- pred update_opt_tuple_bool_spec_types_user_guided(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_spec_types_user_guided(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_spec_types_user_guided,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_spec_types_user_guided,
+            !OptTuple ^ ot_spec_types_user_guided := spec_types_user_guided
+        ;
+            OldValue = spec_types_user_guided
+        )
+    else
+        (
+            OldValue = do_not_spec_types_user_guided
+        ;
+            OldValue = spec_types_user_guided,
+            !OptTuple ^ ot_spec_types_user_guided := do_not_spec_types_user_guided
+        )
+    ).
+
+:- pred update_opt_tuple_bool_introduce_accumulators(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_introduce_accumulators(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_introduce_accumulators,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_introduce_accumulators,
+            !OptTuple ^ ot_introduce_accumulators := introduce_accumulators
+        ;
+            OldValue = introduce_accumulators
+        )
+    else
+        (
+            OldValue = do_not_introduce_accumulators
+        ;
+            OldValue = introduce_accumulators,
+            !OptTuple ^ ot_introduce_accumulators := do_not_introduce_accumulators
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_lcmc_accumulator(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_lcmc_accumulator(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_lcmc_accumulator,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_lcmc_accumulator,
+            !OptTuple ^ ot_opt_lcmc_accumulator := opt_lcmc_accumulator
+        ;
+            OldValue = opt_lcmc_accumulator
+        )
+    else
+        (
+            OldValue = do_not_opt_lcmc_accumulator
+        ;
+            OldValue = opt_lcmc_accumulator,
+            !OptTuple ^ ot_opt_lcmc_accumulator := do_not_opt_lcmc_accumulator
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_lcmc_null(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_lcmc_null(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_lcmc_null,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_lcmc_null,
+            !OptTuple ^ ot_opt_lcmc_null := opt_lcmc_null
+        ;
+            OldValue = opt_lcmc_null
+        )
+    else
+        (
+            OldValue = do_not_opt_lcmc_null
+        ;
+            OldValue = opt_lcmc_null,
+            !OptTuple ^ ot_opt_lcmc_null := do_not_opt_lcmc_null
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_lcmc(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_lcmc(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_lcmc,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_lcmc,
+            !OptTuple ^ ot_opt_lcmc := opt_lcmc
+        ;
+            OldValue = opt_lcmc
+        )
+    else
+        (
+            OldValue = do_not_opt_lcmc
+        ;
+            OldValue = opt_lcmc,
+            !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_dead_procs(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_dead_procs(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_dead_procs,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_dead_procs,
+            !OptTuple ^ ot_opt_dead_procs := opt_dead_procs
+        ;
+            OldValue = opt_dead_procs
+        )
+    else
+        (
+            OldValue = do_not_opt_dead_procs
+        ;
+            OldValue = opt_dead_procs,
+            !OptTuple ^ ot_opt_dead_procs := do_not_opt_dead_procs
+        )
+    ).
+
+:- pred update_opt_tuple_bool_deforest(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_deforest(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_deforest,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_deforest,
+            !OptTuple ^ ot_deforest := deforest
+        ;
+            OldValue = deforest
+        )
+    else
+        (
+            OldValue = do_not_deforest
+        ;
+            OldValue = deforest,
+            !OptTuple ^ ot_deforest := do_not_deforest
+        )
+    ).
+
+:- pred update_opt_tuple_bool_untuple(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_untuple(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_untuple,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_untuple,
+            !OptTuple ^ ot_untuple := untuple
+        ;
+            OldValue = untuple
+        )
+    else
+        (
+            OldValue = do_not_untuple
+        ;
+            OldValue = untuple,
+            !OptTuple ^ ot_untuple := do_not_untuple
+        )
+    ).
+
+:- pred update_opt_tuple_bool_tuple(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_tuple(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_tuple,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_tuple,
+            !OptTuple ^ ot_tuple := tuple
+        ;
+            OldValue = tuple
+        )
+    else
+        (
+            OldValue = do_not_tuple
+        ;
+            OldValue = tuple,
+            !OptTuple ^ ot_tuple := do_not_tuple
+        )
+    ).
+
+:- pred update_opt_tuple_bool_inline_par_builtins(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_inline_par_builtins(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_inline_par_builtins,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_inline_par_builtins,
+            !OptTuple ^ ot_inline_par_builtins := inline_par_builtins
+        ;
+            OldValue = inline_par_builtins
+        )
+    else
+        (
+            OldValue = do_not_inline_par_builtins
+        ;
+            OldValue = inline_par_builtins,
+            !OptTuple ^ ot_inline_par_builtins := do_not_inline_par_builtins
+        )
+    ).
+
+:- pred update_opt_tuple_bool_spec_in_all_dep_par_conjs(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_spec_in_all_dep_par_conjs(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_spec_in_all_dep_par_conjs,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_spec_in_all_dep_par_conjs,
+            !OptTuple ^ ot_spec_in_all_dep_par_conjs := spec_in_all_dep_par_conjs
+        ;
+            OldValue = spec_in_all_dep_par_conjs
+        )
+    else
+        (
+            OldValue = do_not_spec_in_all_dep_par_conjs
+        ;
+            OldValue = spec_in_all_dep_par_conjs,
+            !OptTuple ^ ot_spec_in_all_dep_par_conjs := do_not_spec_in_all_dep_par_conjs
+        )
+    ).
+
+:- pred update_opt_tuple_bool_allow_some_paths_only_waits(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_allow_some_paths_only_waits(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_allow_some_paths_only_waits,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_allow_some_paths_only_waits,
+            !OptTuple ^ ot_allow_some_paths_only_waits := allow_some_paths_only_waits
+        ;
+            OldValue = allow_some_paths_only_waits
+        )
+    else
+        (
+            OldValue = do_not_allow_some_paths_only_waits
+        ;
+            OldValue = allow_some_paths_only_waits,
+            !OptTuple ^ ot_allow_some_paths_only_waits := do_not_allow_some_paths_only_waits
+        )
+    ).
+
+:- pred update_opt_tuple_bool_analyse_regions(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_analyse_regions(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_analyse_regions,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_analyse_regions,
+            !OptTuple ^ ot_analyse_regions := analyse_regions
+        ;
+            OldValue = analyse_regions
+        )
+    else
+        (
+            OldValue = do_not_analyse_regions
+        ;
+            OldValue = analyse_regions,
+            !OptTuple ^ ot_analyse_regions := do_not_analyse_regions
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_smart_indexing(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_smart_indexing(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_smart_indexing,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_smart_indexing,
+            !OptTuple ^ ot_use_smart_indexing := use_smart_indexing
+        ;
+            OldValue = use_smart_indexing
+        )
+    else
+        (
+            OldValue = do_not_use_smart_indexing
+        ;
+            OldValue = use_smart_indexing,
+            !OptTuple ^ ot_use_smart_indexing := do_not_use_smart_indexing
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_smart_indexing_atomic(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_smart_indexing_atomic(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_smart_indexing_atomic,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_smart_indexing_atomic,
+            !OptTuple ^ ot_use_smart_indexing_atomic := use_smart_indexing_atomic
+        ;
+            OldValue = use_smart_indexing_atomic
+        )
+    else
+        (
+            OldValue = do_not_use_smart_indexing_atomic
+        ;
+            OldValue = use_smart_indexing_atomic,
+            !OptTuple ^ ot_use_smart_indexing_atomic := do_not_use_smart_indexing_atomic
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_smart_indexing_string(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_smart_indexing_string(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_smart_indexing_string,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_smart_indexing_string,
+            !OptTuple ^ ot_use_smart_indexing_string := use_smart_indexing_string
+        ;
+            OldValue = use_smart_indexing_string
+        )
+    else
+        (
+            OldValue = do_not_use_smart_indexing_string
+        ;
+            OldValue = use_smart_indexing_string,
+            !OptTuple ^ ot_use_smart_indexing_string := do_not_use_smart_indexing_string
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_smart_indexing_tag(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_smart_indexing_tag(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_smart_indexing_tag,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_smart_indexing_tag,
+            !OptTuple ^ ot_use_smart_indexing_tag := use_smart_indexing_tag
+        ;
+            OldValue = use_smart_indexing_tag
+        )
+    else
+        (
+            OldValue = do_not_use_smart_indexing_tag
+        ;
+            OldValue = use_smart_indexing_tag,
+            !OptTuple ^ ot_use_smart_indexing_tag := do_not_use_smart_indexing_tag
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_smart_indexing_float(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_smart_indexing_float(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_smart_indexing_float,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_smart_indexing_float,
+            !OptTuple ^ ot_use_smart_indexing_float := use_smart_indexing_float
+        ;
+            OldValue = use_smart_indexing_float
+        )
+    else
+        (
+            OldValue = do_not_use_smart_indexing_float
+        ;
+            OldValue = use_smart_indexing_float,
+            !OptTuple ^ ot_use_smart_indexing_float := do_not_use_smart_indexing_float
+        )
+    ).
+
+:- pred update_opt_tuple_bool_put_base_first_single_rec(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_put_base_first_single_rec(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_put_base_first_single_rec,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_put_base_first_single_rec,
+            !OptTuple ^ ot_put_base_first_single_rec := put_base_first_single_rec
+        ;
+            OldValue = put_base_first_single_rec
+        )
+    else
+        (
+            OldValue = do_not_put_base_first_single_rec
+        ;
+            OldValue = put_base_first_single_rec,
+            !OptTuple ^ ot_put_base_first_single_rec := do_not_put_base_first_single_rec
+        )
+    ).
+
+:- pred update_opt_tuple_bool_put_base_first_multi_rec(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_put_base_first_multi_rec(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_put_base_first_multi_rec,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_put_base_first_multi_rec,
+            !OptTuple ^ ot_put_base_first_multi_rec := put_base_first_multi_rec
+        ;
+            OldValue = put_base_first_multi_rec
+        )
+    else
+        (
+            OldValue = do_not_put_base_first_multi_rec
+        ;
+            OldValue = put_base_first_multi_rec,
+            !OptTuple ^ ot_put_base_first_multi_rec := do_not_put_base_first_multi_rec
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_static_ground_cells(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_static_ground_cells(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_static_ground_cells,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_static_ground_cells,
+            !OptTuple ^ ot_use_static_ground_cells := use_static_ground_cells
+        ;
+            OldValue = use_static_ground_cells
+        )
+    else
+        (
+            OldValue = do_not_use_static_ground_cells
+        ;
+            OldValue = use_static_ground_cells,
+            !OptTuple ^ ot_use_static_ground_cells := do_not_use_static_ground_cells
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_static_ground_floats(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_static_ground_floats(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_static_ground_floats,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_static_ground_floats,
+            !OptTuple ^ ot_use_static_ground_floats := use_static_ground_floats
+        ;
+            OldValue = use_static_ground_floats
+        )
+    else
+        (
+            OldValue = do_not_use_static_ground_floats
+        ;
+            OldValue = use_static_ground_floats,
+            !OptTuple ^ ot_use_static_ground_floats := do_not_use_static_ground_floats
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_static_ground_int64s(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_static_ground_int64s(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_static_ground_int64s,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_static_ground_int64s,
+            !OptTuple ^ ot_use_static_ground_int64s := use_static_ground_int64s
+        ;
+            OldValue = use_static_ground_int64s
+        )
+    else
+        (
+            OldValue = do_not_use_static_ground_int64s
+        ;
+            OldValue = use_static_ground_int64s,
+            !OptTuple ^ ot_use_static_ground_int64s := do_not_use_static_ground_int64s
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_static_code_addresses(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_static_code_addresses(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_static_code_addresses,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_static_code_addresses,
+            !OptTuple ^ ot_use_static_code_addresses := use_static_code_addresses
+        ;
+            OldValue = use_static_code_addresses
+        )
+    else
+        (
+            OldValue = do_not_use_static_code_addresses
+        ;
+            OldValue = use_static_code_addresses,
+            !OptTuple ^ ot_use_static_code_addresses := do_not_use_static_code_addresses
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_atomic_cells(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_atomic_cells(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_atomic_cells,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_atomic_cells,
+            !OptTuple ^ ot_use_atomic_cells := use_atomic_cells
+        ;
+            OldValue = use_atomic_cells
+        )
+    else
+        (
+            OldValue = do_not_use_atomic_cells
+        ;
+            OldValue = use_atomic_cells,
+            !OptTuple ^ ot_use_atomic_cells := do_not_use_atomic_cells
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_middle_rec(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_middle_rec(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_middle_rec,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_middle_rec,
+            !OptTuple ^ ot_opt_middle_rec := opt_middle_rec
+        ;
+            OldValue = opt_middle_rec
+        )
+    else
+        (
+            OldValue = do_not_opt_middle_rec
+        ;
+            OldValue = opt_middle_rec,
+            !OptTuple ^ ot_opt_middle_rec := do_not_opt_middle_rec
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_simple_neg(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_simple_neg(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_simple_neg,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_simple_neg,
+            !OptTuple ^ ot_opt_simple_neg := opt_simple_neg
+        ;
+            OldValue = opt_simple_neg
+        )
+    else
+        (
+            OldValue = do_not_opt_simple_neg
+        ;
+            OldValue = opt_simple_neg,
+            !OptTuple ^ ot_opt_simple_neg := do_not_opt_simple_neg
+        )
+    ).
+
+:- pred update_opt_tuple_bool_allow_hijacks(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_allow_hijacks(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_allow_hijacks,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_allow_hijacks,
+            !OptTuple ^ ot_allow_hijacks := allow_hijacks
+        ;
+            OldValue = allow_hijacks
+        )
+    else
+        (
+            OldValue = do_not_allow_hijacks
+        ;
+            OldValue = allow_hijacks,
+            !OptTuple ^ ot_allow_hijacks := do_not_allow_hijacks
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_mlds_tailcalls(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_mlds_tailcalls(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_mlds_tailcalls,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_mlds_tailcalls,
+            !OptTuple ^ ot_opt_mlds_tailcalls := opt_mlds_tailcalls
+        ;
+            OldValue = opt_mlds_tailcalls
+        )
+    else
+        (
+            OldValue = do_not_opt_mlds_tailcalls
+        ;
+            OldValue = opt_mlds_tailcalls,
+            !OptTuple ^ ot_opt_mlds_tailcalls := do_not_opt_mlds_tailcalls
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_initializations(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_initializations(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_initializations,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_initializations,
+            !OptTuple ^ ot_opt_initializations := opt_initializations
+        ;
+            OldValue = opt_initializations
+        )
+    else
+        (
+            OldValue = do_not_opt_initializations
+        ;
+            OldValue = opt_initializations,
+            !OptTuple ^ ot_opt_initializations := do_not_opt_initializations
+        )
+    ).
+
+:- pred update_opt_tuple_bool_elim_unused_mlds_assigns(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_elim_unused_mlds_assigns(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_elim_unused_mlds_assigns,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_elim_unused_mlds_assigns,
+            !OptTuple ^ ot_elim_unused_mlds_assigns := elim_unused_mlds_assigns
+        ;
+            OldValue = elim_unused_mlds_assigns
+        )
+    else
+        (
+            OldValue = do_not_elim_unused_mlds_assigns
+        ;
+            OldValue = elim_unused_mlds_assigns,
+            !OptTuple ^ ot_elim_unused_mlds_assigns := do_not_elim_unused_mlds_assigns
+        )
+    ).
+
+:- pred update_opt_tuple_bool_elim_local_vars(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_elim_local_vars(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_elim_local_vars,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_elim_local_vars,
+            !OptTuple ^ ot_elim_local_vars := elim_local_vars
+        ;
+            OldValue = elim_local_vars
+        )
+    else
+        (
+            OldValue = do_not_elim_local_vars
+        ;
+            OldValue = elim_local_vars,
+            !OptTuple ^ ot_elim_local_vars := do_not_elim_local_vars
+        )
+    ).
+
+:- pred update_opt_tuple_bool_gen_trail_ops_inline(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_gen_trail_ops_inline(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_gen_trail_ops_inline,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_gen_trail_ops_inline,
+            !OptTuple ^ ot_gen_trail_ops_inline := gen_trail_ops_inline
+        ;
+            OldValue = gen_trail_ops_inline
+        )
+    else
+        (
+            OldValue = do_not_gen_trail_ops_inline
+        ;
+            OldValue = gen_trail_ops_inline,
+            !OptTuple ^ ot_gen_trail_ops_inline := do_not_gen_trail_ops_inline
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_common_data(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_common_data(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_common_data,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_common_data,
+            !OptTuple ^ ot_use_common_data := use_common_data
+        ;
+            OldValue = use_common_data
+        )
+    else
+        (
+            OldValue = do_not_use_common_data
+        ;
+            OldValue = use_common_data,
+            !OptTuple ^ ot_use_common_data := do_not_use_common_data
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_common_layout_data(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_common_layout_data(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_common_layout_data,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_common_layout_data,
+            !OptTuple ^ ot_use_common_layout_data := use_common_layout_data
+        ;
+            OldValue = use_common_layout_data
+        )
+    else
+        (
+            OldValue = do_not_use_common_layout_data
+        ;
+            OldValue = use_common_layout_data,
+            !OptTuple ^ ot_use_common_layout_data := do_not_use_common_layout_data
+        )
+    ).
+
+:- pred update_opt_tuple_bool_optimize(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_optimize(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_optimize,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_optimize,
+            !OptTuple ^ ot_optimize := optimize
+        ;
+            OldValue = optimize
+        )
+    else
+        (
+            OldValue = do_not_optimize
+        ;
+            OldValue = optimize,
+            !OptTuple ^ ot_optimize := do_not_optimize
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_peep(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_peep(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_peep,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_peep,
+            !OptTuple ^ ot_opt_peep := opt_peep
+        ;
+            OldValue = opt_peep
+        )
+    else
+        (
+            OldValue = do_not_opt_peep
+        ;
+            OldValue = opt_peep,
+            !OptTuple ^ ot_opt_peep := do_not_opt_peep
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_peep_mkword(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_peep_mkword(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_peep_mkword,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_peep_mkword,
+            !OptTuple ^ ot_opt_peep_mkword := opt_peep_mkword
+        ;
+            OldValue = opt_peep_mkword
+        )
+    else
+        (
+            OldValue = do_not_opt_peep_mkword
+        ;
+            OldValue = opt_peep_mkword,
+            !OptTuple ^ ot_opt_peep_mkword := do_not_opt_peep_mkword
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_jumps(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_jumps(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_jumps,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_jumps,
+            !OptTuple ^ ot_opt_jumps := opt_jumps
+        ;
+            OldValue = opt_jumps
+        )
+    else
+        (
+            OldValue = do_not_opt_jumps
+        ;
+            OldValue = opt_jumps,
+            !OptTuple ^ ot_opt_jumps := do_not_opt_jumps
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_fulljumps(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_fulljumps(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_fulljumps,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_fulljumps,
+            !OptTuple ^ ot_opt_fulljumps := opt_fulljumps
+        ;
+            OldValue = opt_fulljumps
+        )
+    else
+        (
+            OldValue = do_not_opt_fulljumps
+        ;
+            OldValue = opt_fulljumps,
+            !OptTuple ^ ot_opt_fulljumps := do_not_opt_fulljumps
+        )
+    ).
+
+:- pred update_opt_tuple_bool_pessimize_tailcalls(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_pessimize_tailcalls(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_pessimize_tailcalls,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_pessimize_tailcalls,
+            !OptTuple ^ ot_pessimize_tailcalls := pessimize_tailcalls
+        ;
+            OldValue = pessimize_tailcalls
+        )
+    else
+        (
+            OldValue = do_not_pessimize_tailcalls
+        ;
+            OldValue = pessimize_tailcalls,
+            !OptTuple ^ ot_pessimize_tailcalls := do_not_pessimize_tailcalls
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_checked_nondet_tailcalls(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_checked_nondet_tailcalls(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_checked_nondet_tailcalls,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_checked_nondet_tailcalls,
+            !OptTuple ^ ot_opt_checked_nondet_tailcalls := opt_checked_nondet_tailcalls
+        ;
+            OldValue = opt_checked_nondet_tailcalls
+        )
+    else
+        (
+            OldValue = do_not_opt_checked_nondet_tailcalls
+        ;
+            OldValue = opt_checked_nondet_tailcalls,
+            !OptTuple ^ ot_opt_checked_nondet_tailcalls := do_not_opt_checked_nondet_tailcalls
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_local_vars(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_local_vars(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_local_vars,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_local_vars,
+            !OptTuple ^ ot_use_local_vars := use_local_vars
+        ;
+            OldValue = use_local_vars
+        )
+    else
+        (
+            OldValue = do_not_use_local_vars
+        ;
+            OldValue = use_local_vars,
+            !OptTuple ^ ot_use_local_vars := do_not_use_local_vars
+        )
+    ).
+
+:- pred update_opt_tuple_bool_standardize_labels(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_standardize_labels(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_standardize_labels,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_standardize_labels,
+            !OptTuple ^ ot_standardize_labels := standardize_labels
+        ;
+            OldValue = standardize_labels
+        )
+    else
+        (
+            OldValue = do_not_standardize_labels
+        ;
+            OldValue = standardize_labels,
+            !OptTuple ^ ot_standardize_labels := do_not_standardize_labels
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_labels(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_labels(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_labels,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_labels,
+            !OptTuple ^ ot_opt_labels := opt_labels
+        ;
+            OldValue = opt_labels
+        )
+    else
+        (
+            OldValue = do_not_opt_labels
+        ;
+            OldValue = opt_labels,
+            !OptTuple ^ ot_opt_labels := do_not_opt_labels
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_dups(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_dups(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_dups,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_dups,
+            !OptTuple ^ ot_opt_dups := opt_dups
+        ;
+            OldValue = opt_dups
+        )
+    else
+        (
+            OldValue = do_not_opt_dups
+        ;
+            OldValue = opt_dups,
+            !OptTuple ^ ot_opt_dups := do_not_opt_dups
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_proc_dups(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_proc_dups(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_proc_dups,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_proc_dups,
+            !OptTuple ^ ot_opt_proc_dups := opt_proc_dups
+        ;
+            OldValue = opt_proc_dups
+        )
+    else
+        (
+            OldValue = do_not_opt_proc_dups
+        ;
+            OldValue = opt_proc_dups,
+            !OptTuple ^ ot_opt_proc_dups := do_not_opt_proc_dups
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_frames(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_frames(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_frames,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_frames,
+            !OptTuple ^ ot_opt_frames := opt_frames
+        ;
+            OldValue = opt_frames
+        )
+    else
+        (
+            OldValue = do_not_opt_frames
+        ;
+            OldValue = opt_frames,
+            !OptTuple ^ ot_opt_frames := do_not_opt_frames
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_delay_slot(option_table::in, bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_delay_slot(OptionTable, Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_delay_slot,
+    ( if
+        getopt_io.lookup_bool_option(OptionTable, have_delay_slot, yes),
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_delay_slot,
+            !OptTuple ^ ot_opt_delay_slot := opt_delay_slot
+        ;
+            OldValue = opt_delay_slot
+        )
+    else
+        (
+            OldValue = do_not_opt_delay_slot
+        ;
+            OldValue = opt_delay_slot,
+            !OptTuple ^ ot_opt_delay_slot := do_not_opt_delay_slot
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_reassign(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_reassign(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_reassign,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_reassign,
+            !OptTuple ^ ot_opt_reassign := opt_reassign
+        ;
+            OldValue = opt_reassign
+        )
+    else
+        (
+            OldValue = do_not_opt_reassign
+        ;
+            OldValue = opt_reassign,
+            !OptTuple ^ ot_opt_reassign := do_not_opt_reassign
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_macro_for_redo_fail(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_macro_for_redo_fail(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_macro_for_redo_fail,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_macro_for_redo_fail,
+            !OptTuple ^ ot_use_macro_for_redo_fail := use_macro_for_redo_fail
+        ;
+            OldValue = use_macro_for_redo_fail
+        )
+    else
+        (
+            OldValue = do_not_use_macro_for_redo_fail
+        ;
+            OldValue = use_macro_for_redo_fail,
+            !OptTuple ^ ot_use_macro_for_redo_fail := do_not_use_macro_for_redo_fail
+        )
+    ).
+
+:- pred update_opt_tuple_bool_emit_c_loops(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_emit_c_loops(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_emit_c_loops,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_emit_c_loops,
+            !OptTuple ^ ot_emit_c_loops := emit_c_loops
+        ;
+            OldValue = emit_c_loops
+        )
+    else
+        (
+            OldValue = do_not_emit_c_loops
+        ;
+            OldValue = emit_c_loops,
+            !OptTuple ^ ot_emit_c_loops := do_not_emit_c_loops
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_just_one_c_func(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_just_one_c_func(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_just_one_c_func,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_just_one_c_func,
+            !OptTuple ^ ot_use_just_one_c_func := use_just_one_c_func
+        ;
+            OldValue = use_just_one_c_func
+        )
+    else
+        (
+            OldValue = do_not_use_just_one_c_func
+        ;
+            OldValue = use_just_one_c_func,
+            !OptTuple ^ ot_use_just_one_c_func := do_not_use_just_one_c_func
+        )
+    ).
+
+:- pred update_opt_tuple_bool_use_local_thread_engine_base(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_use_local_thread_engine_base(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_local_thread_engine_base,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_use_local_thread_engine_base,
+            !OptTuple ^ ot_use_local_thread_engine_base := use_local_thread_engine_base
+        ;
+            OldValue = use_local_thread_engine_base
+        )
+    else
+        (
+            OldValue = do_not_use_local_thread_engine_base
+        ;
+            OldValue = use_local_thread_engine_base,
+            !OptTuple ^ ot_use_local_thread_engine_base := do_not_use_local_thread_engine_base
+        )
+    ).
+
+:- pred update_opt_tuple_bool_switch_on_strings_as_atoms(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_switch_on_strings_as_atoms(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_switch_on_strings_as_atoms,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_switch_on_strings_as_atoms,
+            !OptTuple ^ ot_switch_on_strings_as_atoms := switch_on_strings_as_atoms
+        ;
+            OldValue = switch_on_strings_as_atoms
+        )
+    else
+        (
+            OldValue = do_not_switch_on_strings_as_atoms
+        ;
+            OldValue = switch_on_strings_as_atoms,
+            !OptTuple ^ ot_switch_on_strings_as_atoms := do_not_switch_on_strings_as_atoms
+        )
+    ).
+
+:- pred update_opt_tuple_bool_inline_alloc(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_inline_alloc(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_inline_alloc,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_inline_alloc,
+            !OptTuple ^ ot_inline_alloc := inline_alloc
+        ;
+            OldValue = inline_alloc
+        )
+    else
+        (
+            OldValue = do_not_inline_alloc
+        ;
+            OldValue = inline_alloc,
+            !OptTuple ^ ot_inline_alloc := do_not_inline_alloc
+        )
+    ).
+
+:- pred update_opt_tuple_bool_opt_c(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_opt_c(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_c,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_opt_c,
+            !OptTuple ^ ot_opt_c := opt_c
+        ;
+            OldValue = opt_c
+        )
+    else
+        (
+            OldValue = do_not_opt_c
+        ;
+            OldValue = opt_c,
+            !OptTuple ^ ot_opt_c := do_not_opt_c
+        )
+    ).
+
+:- pred update_opt_tuple_int_inline_call_cost(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_inline_call_cost(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_inline_call_cost := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_inline_call_cost,
+        !OptTuple ^ ot_inline_call_cost := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_inline_compound_threshold(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_inline_compound_threshold(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_inline_compound_threshold := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_inline_compound_threshold,
+        !OptTuple ^ ot_inline_compound_threshold := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_inline_simple_threshold(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_inline_simple_threshold(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_inline_simple_threshold := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_inline_simple_threshold,
+        !OptTuple ^ ot_inline_simple_threshold := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_inline_vars_threshold(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_inline_vars_threshold(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_inline_vars_threshold := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_inline_vars_threshold,
+        !OptTuple ^ ot_inline_vars_threshold := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_intermod_inline_simple_threshold(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_intermod_inline_simple_threshold(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_intermod_inline_simple_threshold := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_intermod_inline_simple_threshold,
+        !OptTuple ^ ot_intermod_inline_simple_threshold := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_inline_linear_tail_rec_sccs_max_extra(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_inline_linear_tail_rec_sccs_max_extra(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra,
+        !OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_from_ground_term_threshold(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_from_ground_term_threshold(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_from_ground_term_threshold := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_from_ground_term_threshold,
+        !OptTuple ^ ot_from_ground_term_threshold := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_opt_svcell_cv_store_cost(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_opt_svcell_cv_store_cost(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_opt_svcell_cv_store_cost := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_opt_svcell_cv_store_cost,
+        !OptTuple ^ ot_opt_svcell_cv_store_cost := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_opt_svcell_cv_load_cost(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_opt_svcell_cv_load_cost(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_opt_svcell_cv_load_cost := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_opt_svcell_cv_load_cost,
+        !OptTuple ^ ot_opt_svcell_cv_load_cost := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_opt_svcell_fv_store_cost(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_opt_svcell_fv_store_cost(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_opt_svcell_fv_store_cost := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_opt_svcell_fv_store_cost,
+        !OptTuple ^ ot_opt_svcell_fv_store_cost := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_opt_svcell_fv_load_cost(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_opt_svcell_fv_load_cost(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_opt_svcell_fv_load_cost := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_opt_svcell_fv_load_cost,
+        !OptTuple ^ ot_opt_svcell_fv_load_cost := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_opt_svcell_op_ratio(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_opt_svcell_op_ratio(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_opt_svcell_op_ratio := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_opt_svcell_op_ratio,
+        !OptTuple ^ ot_opt_svcell_op_ratio := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_opt_svcell_node_ratio(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_opt_svcell_node_ratio(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_opt_svcell_node_ratio := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_opt_svcell_node_ratio,
+        !OptTuple ^ ot_opt_svcell_node_ratio := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_opt_svcell_all_path_node_ratio(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_opt_svcell_all_path_node_ratio(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_opt_svcell_all_path_node_ratio := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_opt_svcell_all_path_node_ratio,
+        !OptTuple ^ ot_opt_svcell_all_path_node_ratio := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_higher_order_size_limit(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_higher_order_size_limit(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_higher_order_size_limit := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_higher_order_size_limit,
+        !OptTuple ^ ot_higher_order_size_limit := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_higher_order_arg_limit(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_higher_order_arg_limit(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_higher_order_arg_limit := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_higher_order_arg_limit,
+        !OptTuple ^ ot_higher_order_arg_limit := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_opt_unneeded_code_copy_limit(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_opt_unneeded_code_copy_limit(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_opt_unneeded_code_copy_limit := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_opt_unneeded_code_copy_limit,
+        !OptTuple ^ ot_opt_unneeded_code_copy_limit := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_deforestation_depth_limit(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_deforestation_depth_limit(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_deforestation_depth_limit := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_deforestation_depth_limit,
+        !OptTuple ^ ot_deforestation_depth_limit := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_deforestation_cost_factor(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_deforestation_cost_factor(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_deforestation_cost_factor := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_deforestation_cost_factor,
+        !OptTuple ^ ot_deforestation_cost_factor := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_deforestation_vars_threshold(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_deforestation_vars_threshold(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_deforestation_vars_threshold := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_deforestation_vars_threshold,
+        !OptTuple ^ ot_deforestation_vars_threshold := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_deforestation_size_threshold(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_deforestation_size_threshold(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_deforestation_size_threshold := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_deforestation_size_threshold,
+        !OptTuple ^ ot_deforestation_size_threshold := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_tuple_costs_ratio(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_tuple_costs_ratio(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_tuple_costs_ratio := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_tuple_costs_ratio,
+        !OptTuple ^ ot_tuple_costs_ratio := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_tuple_min_args(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_tuple_min_args(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_tuple_min_args := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_tuple_min_args,
+        !OptTuple ^ ot_tuple_min_args := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_dense_switch_req_density(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_dense_switch_req_density(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_dense_switch_req_density := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_dense_switch_req_density,
+        !OptTuple ^ ot_dense_switch_req_density := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_lookup_switch_req_density(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_lookup_switch_req_density(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_lookup_switch_req_density := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_lookup_switch_req_density,
+        !OptTuple ^ ot_lookup_switch_req_density := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_dense_switch_size(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_dense_switch_size(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_dense_switch_size := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_dense_switch_size,
+        !OptTuple ^ ot_dense_switch_size := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_lookup_switch_size(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_lookup_switch_size(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_lookup_switch_size := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_lookup_switch_size,
+        !OptTuple ^ ot_lookup_switch_size := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_string_trie_switch_size(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_string_trie_switch_size(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_string_trie_switch_size := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_string_trie_switch_size,
+        !OptTuple ^ ot_string_trie_switch_size := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_string_hash_switch_size(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_string_hash_switch_size(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_string_hash_switch_size := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_string_hash_switch_size,
+        !OptTuple ^ ot_string_hash_switch_size := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_string_binary_switch_size(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_string_binary_switch_size(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_string_binary_switch_size := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_string_binary_switch_size,
+        !OptTuple ^ ot_string_binary_switch_size := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_tag_switch_size(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_tag_switch_size(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_tag_switch_size := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_tag_switch_size,
+        !OptTuple ^ ot_tag_switch_size := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_try_switch_size(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_try_switch_size(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_try_switch_size := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_try_switch_size,
+        !OptTuple ^ ot_try_switch_size := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_binary_switch_size(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_binary_switch_size(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_binary_switch_size := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_binary_switch_size,
+        !OptTuple ^ ot_binary_switch_size := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_local_var_access_threshold(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_local_var_access_threshold(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_local_var_access_threshold := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_local_var_access_threshold,
+        !OptTuple ^ ot_local_var_access_threshold := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_opt_repeat(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_opt_repeat(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_opt_repeat := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_opt_repeat,
+        !OptTuple ^ ot_opt_repeat := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_layout_compression_limit(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_layout_compression_limit(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_layout_compression_limit := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_layout_compression_limit,
+        !OptTuple ^ ot_layout_compression_limit := int.max(OldN, N)
+    ).
+
+:- pred update_opt_tuple_int_procs_per_c_function(
+    maybe_from_opt_level::in, int::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_int_procs_per_c_function(FromOptLevel, N, !OptTuple) :-
+    (
+        FromOptLevel = not_from_opt_level,
+        !OptTuple ^ ot_procs_per_c_function := N
+    ;
+        FromOptLevel = from_opt_level,
+        OldN = !.OptTuple ^ ot_procs_per_c_function,
+        !OptTuple ^ ot_procs_per_c_function := int.max(OldN, N)
+    ).
+
 
 :- pred set_opts_upto_level(option_table::in, int::in, int::in,
     opt_tuple::in, opt_tuple::out,
