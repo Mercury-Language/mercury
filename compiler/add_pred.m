@@ -1,18 +1,18 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012,2014 The University of Melbourne.
 % Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: add_pred.m.
 %
 % This submodule of make_hlds handles the type and mode declarations
 % for predicates.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.add_pred.
 :- interface.
@@ -32,7 +32,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Add a pred or predmode declaration for a predicate.
     %
@@ -86,8 +86,8 @@
     sec_item(item_pred_decl_info)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -392,7 +392,26 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual,
             ),
             module_info_set_predicate_table(PredTable, !ModuleInfo)
         )
+    ),
+    DefnThisModule = pred_status_defined_in_this_module(PredStatus0),
+    (
+        DefnThisModule = yes
+    ;
+        DefnThisModule = no,
+        % All predicate and function declarations read in from
+        % automatically generated interface files should be fully qualified,
+        % *provided* that the source files they are derived from
+        % import all the modules needed to module qualify them.
+        %
+        % For now, we look for and report any unqualified types read in
+        % from .int files. Once we can guarantee that such things cannot occur,
+        % by making --print-errors-warnings-when-generating-interface
+        % not just the default but not even an option that can be switched off,
+        % this code should not be needed anymore.
+        report_any_unqualified_types(PredSymName, Context, Types, !Specs)
     ).
+
+%---------------------%
 
 :- func item_decl_section(item_export) = decl_section.
 
@@ -407,7 +426,70 @@ item_decl_section(ItemExport) = DeclSection :-
         DeclSection = decl_implementation
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
+
+:- pred report_any_unqualified_types(sym_name::in, prog_context::in,
+    list(mer_type)::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+report_any_unqualified_types(_PredSymName, _Context, [], !Specs).
+report_any_unqualified_types(PredSymName, Context, [Type | Types], !Specs) :-
+    report_any_unqualified_type(PredSymName, Context, Type, !Specs),
+    report_any_unqualified_types(PredSymName, Context, Types, !Specs).
+
+:- pred report_any_unqualified_type(sym_name::in, prog_context::in,
+    mer_type::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+report_any_unqualified_type(PredSymName, Context, Type, !Specs) :-
+    (
+        Type = defined_type(TypeCtorSymName, ArgTypes, _Kind),
+        (
+            TypeCtorSymName = qualified(_, _)
+        ;
+            TypeCtorSymName = unqualified(TypeCtorName),
+            (
+                PredSymName = qualified(PredModuleName, _),
+                Pieces = [words("Error: unqualified type"),
+                    quote(TypeCtorName),
+                    words("in automatically generated interface file."),
+                    words("The problem is that the definition of this type"),
+                    words("is not visible in the source file of the"),
+                    qual_sym_name(PredModuleName), words("module."),
+                    words("The cause is probably"),
+                    words("either a typo in the type name,"),
+                    words("or a missing"), decl("import_module"),
+                    words("declaration."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_parse_tree_to_hlds, Context, Pieces),
+                !:Specs = [Spec | !.Specs]
+            ;
+                PredSymName = unqualified(_)
+                % While a module qualification may be missing from a type name
+                % in a predicate declaration, it *should not* be missing
+                % from the name of the predicate (or function) itself,
+                % since the parser implicitly module qualifies such names.
+            )
+        ),
+        report_any_unqualified_types(PredSymName, Context, ArgTypes, !Specs)
+    ;
+        Type = tuple_type(ArgTypes, _Kind),
+        report_any_unqualified_types(PredSymName, Context, ArgTypes, !Specs)
+    ;
+        Type = higher_order_type(_PorF, ArgTypes, _HOInstInfo,
+            _Purity, _LambdaEvalMethod),
+        report_any_unqualified_types(PredSymName, Context, ArgTypes, !Specs)
+    ;
+        Type = apply_n_type(_TVar, ArgTypes, _Kind),
+        report_any_unqualified_types(PredSymName, Context, ArgTypes, !Specs)
+    ;
+        Type = kinded_type(SubType, _Kind),
+        report_any_unqualified_type(PredSymName, Context, SubType, !Specs)
+    ;
+        ( Type = type_variable(_, _)
+        ; Type = builtin_type(_)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
 
     % For most builtin predicates, say foo/2, we add a clause
     %
@@ -578,7 +660,7 @@ add_builtin(PredId, HeadTypes0, CompilationTarget, !PredInfo) :-
     ),
     pred_info_set_markers(Markers, !PredInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 add_new_proc(Context, SeqNum, Arity, InstVarSet, ArgModes,
         MaybeDeclaredArgModes, MaybeArgLives, DetismDecl, MaybeDetism,
@@ -595,7 +677,7 @@ add_new_proc(Context, SeqNum, Arity, InstVarSet, ArgModes,
     map.det_insert(ModeId, NewProc, Procs0, Procs),
     pred_info_set_proc_table(Procs, PredInfo0, PredInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 module_add_mode(Context, SeqNum, MaybeItemMercuryStatus, PredStatus,
         PredOrFunc, PredSymName, InstVarSet, Modes, MaybeDetism,
@@ -735,7 +817,7 @@ module_do_add_mode(Context, SeqNum, MaybeItemMercuryStatus, Arity,
 decl_section_to_string(decl_interface) = "interface".
 decl_section_to_string(decl_implementation) = "implementation".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred unspecified_det_for_method(pf_sym_name_arity::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -788,7 +870,7 @@ unqualified_pred_error(PredSymName, Arity, Context, !Specs) :-
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 preds_add_implicit_report_error(!ModuleInfo, ModuleName,
         PredSymName, PredArity, PredOrFunc, Status, IsClassMethod, Context,
@@ -858,7 +940,7 @@ preds_do_add_implicit(ModuleName, PredSymName, PredArity, PredOrFunc,
         unexpected($pred, "search succeeded")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 check_pred_if_field_access_function(ModuleInfo, SectionItem, !Specs) :-
     SectionItem = sec_item(SectionInfo, ItemPredDecl),
@@ -930,6 +1012,6 @@ report_field_status_mismatch(Context, PFSymNameArity, !Specs) :-
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.add_pred.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -20,6 +20,7 @@ MAYBE_J1 =
 
 MULTIMODULE_PROGS= \
 	abstract_eqv \
+	bug521 \
 	duplicate_instance_2 \
 	exported_unify \
 	ho_default_func_2.sub \

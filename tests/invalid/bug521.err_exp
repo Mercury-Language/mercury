@@ -1,0 +1,13 @@
+bug521.m:027: In clause for predicate `get_wrapped_things'/1:
+bug521.m:027:   in argument 1 of functor `list_wrapper/1':
+bug521.m:027:   type error in unification of argument
+bug521.m:027:   and constant `get_things'.
+bug521.m:027:   argument has type `list.list(bug521_sub.thing)',
+bug521.m:027:   constant `get_things' has type `list(bug521_sub.thing)'.
+bug521_sub.int:006: Error: unqualified type `list' in automatically generated
+bug521_sub.int:006:   interface file. The problem is that the definition of
+bug521_sub.int:006:   this type is not visible in the source file of the
+bug521_sub.int:006:   `bug521_sub' module. The cause is probably either a typo
+bug521_sub.int:006:   in the type name, or a missing `:- import_module'
+bug521_sub.int:006:   declaration.
+For more information, recompile with `-E'.

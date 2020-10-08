@@ -13,6 +13,7 @@ MAYBE_J1 =
 # Multi-module tests should use *separate* modules, not *nested* modules.
 
 SINGLE_MODULE_PROGS = \
+	bug521_sub \
 	missing_interface_import
 
 MULTI_MODULE_PROGS =
