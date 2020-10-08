@@ -1215,7 +1215,7 @@ make_handle_event(HandleTypeString, Arguments, HandleEventGoal, !ModuleInfo,
     SSDBModule = mercury_ssdb_builtin_module,
     Features = [],
     Context = term.context_init,
-    goal_util.generate_simple_call(!.ModuleInfo, SSDBModule, HandleTypeString,
+    generate_simple_call(!.ModuleInfo, SSDBModule, HandleTypeString,
         pf_predicate, only_mode, detism_det, purity_impure, Arguments,
         Features, instmap_delta_bind_no_var, Context, HandleEventGoal).
 

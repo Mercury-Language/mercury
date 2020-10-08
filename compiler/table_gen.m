@@ -3303,7 +3303,7 @@ table_generate_call(PredName, Detism, Args, Purity, InstMapDelta, ModuleInfo,
     else
         Features = Features0
     ),
-    goal_util.generate_simple_call(ModuleInfo, BuiltinModule, PredName,
+    generate_simple_call(ModuleInfo, BuiltinModule, PredName,
         pf_predicate, only_mode, Detism, Purity, Args, Features, InstMapDelta,
         Context, Goal).
 

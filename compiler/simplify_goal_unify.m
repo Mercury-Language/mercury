@@ -251,8 +251,8 @@ call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, _, _, GoalInfo,
         Call) :-
     ArgVars = [TypeInfoVar, XVar, YVar],
     Context = goal_info_get_context(GoalInfo),
-    goal_util.generate_simple_call(ModuleInfo, mercury_public_builtin_module,
-        "unify", pf_predicate, mode_no(0), detism_semi, purity_pure, ArgVars,
+    generate_simple_call(ModuleInfo, mercury_public_builtin_module, "unify",
+        pf_predicate, mode_no(0), detism_semi, purity_pure, ArgVars,
         [], instmap_delta_bind_no_var, Context, Call).
 
 :- pred call_specific_unify(type_ctor::in, list(prog_var)::in,
@@ -285,7 +285,7 @@ call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId, ModuleInfo,
 
 call_builtin_compound_eq(XVar, YVar, ModuleInfo, GoalInfo, Call) :-
     Context = goal_info_get_context(GoalInfo),
-    goal_util.generate_simple_call(ModuleInfo, mercury_private_builtin_module,
+    generate_simple_call(ModuleInfo, mercury_private_builtin_module,
         "builtin_compound_eq", pf_predicate, only_mode, detism_semi,
         purity_pure, [XVar, YVar], [], instmap_delta_bind_no_var,
         Context, Call).
