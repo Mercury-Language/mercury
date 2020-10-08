@@ -324,7 +324,6 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                     FlagsSpecs, FlagsArgsGlobals, !IO),
                 (
                     FlagsSpecs = [_ | _],
-                    usage_errors(FlagsArgsGlobals, FlagsSpecs, !IO),
                     DetectedGradeFlags = [],
                     Variables = options_variables_init,
                     AllSpecs = OptFileSpecs ++ MCFlagsSpecs0 ++ FlagsSpecs,
