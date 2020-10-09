@@ -15,14 +15,14 @@
 
 :- type type1
     --->    type1(
-                field1::int,
-                field2::int
+                field1  :: int,
+                field2  :: int
             ).
 
 :- type type2
     --->    type2(
-                type1::type1,
-                field3::int
+                type1   :: type1,
+                field3  :: int
             ).
 
 main(!IO) :-
