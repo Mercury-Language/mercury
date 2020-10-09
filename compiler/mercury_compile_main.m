@@ -107,7 +107,7 @@
 :- import_module cord.
 :- import_module dir.
 :- import_module gc.
-:- import_module getopt_io.
+:- import_module getopt.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.

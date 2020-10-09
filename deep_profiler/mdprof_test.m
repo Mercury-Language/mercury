@@ -85,7 +85,8 @@ main(!IO) :-
             true
         )
     ;
-        MaybeOptions = error(Msg),
+        MaybeOptions = error(Error),
+        Msg = option_error_to_string(Error),
         io.set_exit_status(1, !IO),
         io.format("%s: error parsing options: %s\n",
             [s(ProgName), s(Msg)], !IO)

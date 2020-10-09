@@ -1,0 +1,7 @@
+getopt_io_old.m:022: In clause for predicate `main'/2:
+getopt_io_old.m:022:   error: wrong number of arguments (6; should be 4 or 5)
+getopt_io_old.m:022:   in call to predicate `process_options'.
+getopt_io_old.m:022:   One possible reason for the error is that the predicate
+getopt_io_old.m:022:   in the `getopt_io' module that used to be named
+getopt_io_old.m:022:   `process_options' has been renamed to
+getopt_io_old.m:022:   `process_options_io'.

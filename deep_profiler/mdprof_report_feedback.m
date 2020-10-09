@@ -86,7 +86,8 @@ main(!IO) :-
             )
         )
     ;
-        MaybeOptions = error(Msg),
+        MaybeOptions = error(Error),
+        Msg = option_error_to_string(Error),
         io.format(Stderr, "%s: error parsing options: %s\n",
             [s(ProgName), s(Msg)], !IO),
         write_help_message(ProgName, !IO),

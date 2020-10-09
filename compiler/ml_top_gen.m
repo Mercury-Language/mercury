@@ -56,7 +56,7 @@
 
 :- import_module bool.
 :- import_module cord.
-:- import_module getopt_io.
+:- import_module getopt.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.

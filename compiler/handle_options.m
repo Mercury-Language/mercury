@@ -82,7 +82,7 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module dir.
-:- import_module getopt_io.
+:- import_module getopt.
 :- import_module int.
 :- import_module library.
 :- import_module map.
@@ -157,8 +157,8 @@ process_given_options(RawArgs, OptionArgs, NonOptionArgs, MaybeError,
         OptionTable, OptOptionsCord, !IO) :-
     OptionOps =
         option_ops_userdata(short_option, long_option, special_handler),
-    getopt_io.init_option_table(option_defaults, OptionTable0),
-    getopt_io.process_options_userdata_se(OptionOps, RawArgs,
+    getopt.init_option_table(option_defaults, OptionTable0),
+    getopt.process_options_userdata_io(OptionOps, RawArgs,
         OptionArgs, NonOptionArgs, MaybeError, _OptionsSet,
         OptionTable0, OptionTable, cord.init, OptOptionsCord, !IO).
 

@@ -1,0 +1,14 @@
+getopt_old.m:027: In clause for predicate `main'/2:
+getopt_old.m:027:   in argument 2 of call to predicate `io.format'/4:
+getopt_old.m:027:   in list element #0:
+getopt_old.m:027:   in unification of argument
+getopt_old.m:027:   and term `s(ErrorMsg)':
+getopt_old.m:027:   type error in argument of functor `s'/1.
+getopt_old.m:027:   Argument 1 (ErrorMsg) has type
+getopt_old.m:027:   `getopt.option_error(getopt_old.option)',
+getopt_old.m:027:   expected type was `string'.
+getopt_old.m:027:   One possible reason for the error is that the signatures of
+getopt_old.m:027:   the option processing predicates in the `getopt' module
+getopt_old.m:027:   have changed recently. Errors are now returned in a
+getopt_old.m:027:   structured form, which can be converted to a string by
+getopt_old.m:027:   calling the `option_error_to_string' function.

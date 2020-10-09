@@ -169,14 +169,17 @@ SINGLEMODULE= \
 	fundeps_coverage \
 	fundeps_unbound_in_ctor \
 	fundeps_vars \
+	getopt_io_old \
+	getopt_old \
+	getopt_old_se \
 	hawkins_mm_fail_reset \
 	higher_order_no_detism \
 	ho_any_inst \
 	ho_default_func_1 \
 	ho_default_func_3 \
 	ho_default_func_4 \
-	ho_type_mode_bug \
 	ho_type_arity_bug \
+	ho_type_mode_bug \
 	ho_unique_error \
 	illtyped_compare \
 	impl_def_literal_syntax \

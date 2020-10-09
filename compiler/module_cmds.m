@@ -212,7 +212,7 @@
 :- import_module parse_tree.java_names.
 
 :- import_module dir.
-:- import_module getopt_io.
+:- import_module getopt.
 :- import_module int.
 :- import_module require.
 :- import_module set.

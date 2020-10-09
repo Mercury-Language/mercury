@@ -297,7 +297,7 @@ END {
                 "", record_var_name, bool_field_names[i]);
             printf("%-4s( if\n", "");
             if (bool_field_names[i] == "opt_delay_slot") {
-                printf("%-8sgetopt_io.lookup_bool_option(OptionTable, have_delay_slot, yes),\n",
+                printf("%-8sgetopt.lookup_bool_option(OptionTable, have_delay_slot, yes),\n",
                     "");
             }
             printf("%-8sBool = yes\n", "");

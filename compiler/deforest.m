@@ -85,7 +85,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module getopt_io.
+:- import_module getopt.
 :- import_module int.
 :- import_module io.
 :- import_module list.

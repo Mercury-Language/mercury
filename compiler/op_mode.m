@@ -124,7 +124,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module getopt_io.
+:- import_module getopt.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -156,7 +156,7 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
 
         % The option `--invoked-by-mmc-make' implicitly disables `--make'.
         %
-        getopt_io.lookup_bool_option(OptionTable, invoked_by_mmc_make,
+        getopt.lookup_bool_option(OptionTable, invoked_by_mmc_make,
             InvokedByMMCMake),
         (
             InvokedByMMCMake = yes,

@@ -247,7 +247,7 @@
 :- import_module parse_tree.prog_foreign.
 
 :- import_module dir.
-:- import_module getopt_io.
+:- import_module getopt.
 :- import_module require.
 :- import_module set.
 :- import_module string.

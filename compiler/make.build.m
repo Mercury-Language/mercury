@@ -159,7 +159,7 @@
 :- import_module bool.
 :- import_module char.
 :- import_module dir.
-:- import_module getopt_io.
+:- import_module getopt.
 :- import_module int.
 :- import_module maybe.
 :- import_module require.

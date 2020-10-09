@@ -35,7 +35,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module getopt_io.
+:- import_module getopt.
 :- import_module int.
 :- import_module library.
 :- import_module list.
@@ -53,7 +53,7 @@ main(!IO) :-
     unlimit_stack(!IO),
     io.command_line_arguments(Args0, !IO),
     OptionOps = option_ops_multi(short_option, long_option, option_default),
-    getopt_io.process_options(OptionOps, Args0, Args, GetoptResult, !IO),
+    getopt.process_options_io(OptionOps, Args0, Args, GetoptResult, !IO),
     (
         GetoptResult = ok(OptionTable),
         ( if lookup_bool_option(OptionTable, help, yes) then
@@ -63,7 +63,8 @@ main(!IO) :-
             do_coverage_testing(OptionTable, Args, !IO)
         )
     ;
-        GetoptResult = error(GetoptErrorMsg),
+        GetoptResult = error(GetoptError),
+        GetoptErrorMsg = option_error_to_string(GetoptError),
         write_error_message(GetoptErrorMsg, !IO)
     ).
 

@@ -31,7 +31,7 @@
 
 :- import_module bimap.
 :- import_module bool.
-:- import_module getopt_io.
+:- import_module getopt.
 :- import_module io.
 :- import_module list.
 :- import_module map.

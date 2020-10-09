@@ -196,6 +196,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.options.
+:- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
@@ -261,13 +262,46 @@ report_pred_call_error(ClauseContext, Context, PredCallId) = Spec :-
 report_error_pred_num_args(ClauseContext, Context, PFSymNameArity, Arities)
         = Spec :-
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, Arity),
-    Pieces = in_clause_for_pieces(ClauseContext) ++
+    MainPieces = in_clause_for_pieces(ClauseContext) ++
         [words("error:")] ++
         error_num_args_to_pieces(yes(PredOrFunc), Arity, Arities) ++ [nl] ++
         [words("in call to"), p_or_f(PredOrFunc), qual_sym_name(SymName),
         suffix("."), nl],
+    ( if
+        % A call to process_options or to process_options_track in getopt_io
+        % may appear in the source code either explicitly qualified,
+        % or unqualified. If not explicitly qualified by the user,
+        % it won't be qualified by the compiler either, due to
+        % the arity mismatch.
+        (
+            SymName = unqualified(PredName),
+            StdLibModuleName = "getopt_io"
+        ;
+            SymName = qualified(ModuleName, PredName),
+            is_std_lib_module_name(ModuleName, StdLibModuleName),
+            StdLibModuleName = "getopt_io"
+        ),
+        % We add SpecialPieces if these predicates are called
+        % with (one of) their old arities.
+        (
+            PredName = "process_options",
+            ( Arity = 6 ; Arity = 7 )
+        ;
+            PredName = "process_options_track",
+            Arity = 9
+        )
+    then
+        SpecialPieces =
+            [words("One possible reason for the error is that"),
+            words("the predicate in the"), quote(StdLibModuleName),
+            words("module that used to be named"), quote(PredName),
+            words("has been renamed to"), quote(PredName ++ "_io"),
+            suffix("."), nl]
+    else
+        SpecialPieces = []
+    ),
     Spec = simplest_spec($pred, severity_error, phase_type_check,
-        Context, Pieces).
+        Context, MainPieces ++ SpecialPieces).
 
 :- func report_error_func_instead_of_pred(prog_context, pred_or_func)
     = error_msg.
@@ -292,11 +326,11 @@ report_error_func_instead_of_pred(Context, PredOrFunc) = Msg :-
     pf_sym_name_arity) = error_msg.
 
 report_error_undef_pred(ClauseContext, Context, PFSymNameArity) = Msg :-
-    PFSymNameArity = pf_sym_name_arity(_PredOrFunc, PredName, Arity),
+    PFSymNameArity = pf_sym_name_arity(_PredOrFunc, PredSymName, Arity),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     InClauseForComponent = always(InClauseForPieces),
     ( if
-        PredName = unqualified("->"),
+        PredSymName = unqualified("->"),
         ( Arity = 2 ; Arity = 4 )
     then
         MainPieces = [words("error:"), quote("->"), words("without"),
@@ -308,20 +342,20 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity) = Msg :-
         VerboseComponent = verbose_only(verbose_once, VerbosePieces),
         Components = [MainComponent, VerboseComponent]
     else if
-        PredName = unqualified("else"),
+        PredSymName = unqualified("else"),
         ( Arity = 2 ; Arity = 4 )
     then
         Components = [always([words("error: unmatched"), quote("else"),
             suffix("."), nl])]
     else if
-        PredName = unqualified("if"),
+        PredSymName = unqualified("if"),
         ( Arity = 2 ; Arity = 4 )
     then
         Pieces = [words("error:"), quote("if"), words("without"),
             quote("then"), words("or"), quote("else"), suffix("."), nl],
         Components = [always(Pieces)]
     else if
-        PredName = unqualified("then"),
+        PredSymName = unqualified("then"),
         ( Arity = 2 ; Arity = 4 )
     then
         MainPieces = [words("error:"), quote("then"), words("without"),
@@ -334,12 +368,12 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity) = Msg :-
         VerboseComponent = verbose_only(verbose_once, VerbosePieces),
         Components = [MainComponent, VerboseComponent]
     else if
-        PredName = unqualified("apply"),
+        PredSymName = unqualified("apply"),
         Arity >= 1
     then
         Components = report_apply_instead_of_pred
     else if
-        PredName = unqualified(PurityString),
+        PredSymName = unqualified(PurityString),
         Arity = 1,
         ( PurityString = "impure" ; PurityString = "semipure" )
     then
@@ -351,7 +385,7 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity) = Msg :-
         VerboseComponent = verbose_only(verbose_once, VerbosePieces),
         Components = [MainComponent, VerboseComponent]
     else if
-        PredName = unqualified("some"),
+        PredSymName = unqualified("some"),
         Arity = 2
     then
         Pieces = [words("syntax error in existential quantification:"),
@@ -362,15 +396,52 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity) = Msg :-
         MainPieces = [words("error: undefined"),
             qual_pf_sym_name_orig_arity(PFSymNameArity)],
         (
-            PredName = qualified(ModuleQualifier, _),
-            Pieces = MainPieces ++
+            PredSymName = qualified(ModuleQualifier, _),
+            OrdinaryPieces = MainPieces ++
                 maybe_report_missing_import_addendum(ClauseContext,
                     ModuleQualifier)
         ;
-            PredName = unqualified(_),
-            Pieces = MainPieces ++ [suffix("."), nl]
+            PredSymName = unqualified(_),
+            OrdinaryPieces = MainPieces ++ [suffix("."), nl]
         ),
-        Components = [always(Pieces)]
+        ( if
+            % A call to process_options_se or to process_options_track_se
+            % in getopt or getopt_io may appear in the source code either
+            % explicitly qualified, or unqualified. If not explicitly
+            % qualified by the user, it won't be qualified by the compiler
+            % either, due to the wrong name.
+            (
+                PredSymName = unqualified(PredName)
+            ;
+                PredSymName = qualified(ModuleName, PredName),
+                is_std_lib_module_name(ModuleName, StdLibModuleName),
+                ( StdLibModuleName = "getopt"
+                ; StdLibModuleName = "getopt_io"
+                )
+            ),
+            % We add SpecialPieces if these predicates are called
+            % with (one of) their old arities. (If they are called
+            % with any other arity, then the caller didn't work
+            % with the old contents of the getopt modules either.
+            (
+                PredName = "process_options_se",
+                ( Arity = 4 ; Arity = 5 ; Arity = 6 ; Arity = 7 ),
+                NewPredName = "process_options"
+            ;
+                PredName = "process_options_track_se",
+                ( Arity = 7 ; Arity = 9 ),
+                NewPredName = "process_options_track"
+            )
+        then
+            SpecialPieces =
+                [words("One possible reason for the error is that"),
+                words("the predicate"), quote(PredName),
+                words("in the Mercury standard library has been renamed to"),
+                quote(NewPredName), suffix("."), nl]
+        else
+            SpecialPieces = []
+        ),
+        Components = [always(OrdinaryPieces ++ SpecialPieces)]
     ),
     Msg = simple_msg(Context, [InClauseForComponent | Components]).
 
@@ -946,11 +1017,15 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
     --->    actual_does_not_subsume_expected
     ;       actual_subsumes_expected.
 
+:- type type_mismatch_special
+    --->    type_mismatch_special_getopt_error(string).
+
 :- type type_mismatch
     --->    type_mismatch_exp_act(
                 expected_type_desc  :: list(format_component),
                 actual_type_desc    :: list(format_component),
-                mismatch_subsumes   :: does_actual_subsume_expected
+                mismatch_subsumes   :: does_actual_subsume_expected,
+                maybe_special       :: maybe(type_mismatch_special)
             ).
 
 :- pred find_mismatched_args(inst_varset::in, int::in,
@@ -1038,8 +1113,23 @@ substitute_types_check_match(InstVarSet, ExpType, TypeStuff,
             ExternalTypeParams, FullExpType),
         ActualPieces = type_to_pieces(add_quotes, TVarSet, InstVarSet,
             ExternalTypeParams, FullArgType),
+        ( if
+            FullExpType = builtin_type(builtin_type_string),
+            FullArgType = defined_type(ArgTypeCtorSymName, [_], kind_star),
+            ArgTypeCtorSymName = qualified(ArgTypeModuleName, ArgTypeName),
+            ArgTypeName = "option_error",
+            is_std_lib_module_name(ArgTypeModuleName, StdLibModuleName),
+            ( StdLibModuleName = "getopt"
+            ; StdLibModuleName = "getopt_io"
+            )
+        then
+            Special = type_mismatch_special_getopt_error(StdLibModuleName),
+            MaybeSpecial = yes(Special)
+        else
+            MaybeSpecial = no
+        ),
         TypeMismatch = type_mismatch_exp_act(ExpectedPieces, ActualPieces,
-            ActualSubsumesExpected),
+            ActualSubsumesExpected, MaybeSpecial),
         !:TypeMismatches = [TypeMismatch | !.TypeMismatches]
     ).
 
@@ -1047,7 +1137,7 @@ substitute_types_check_match(InstVarSet, ExpType, TypeStuff,
 
 all_no_subsume_mismatches([]).
 all_no_subsume_mismatches([Mismatch | Mismatches]) :-
-    Mismatch = type_mismatch_exp_act(_, _, actual_does_not_subsume_expected),
+    Mismatch ^ mismatch_subsumes = actual_does_not_subsume_expected,
     all_no_subsume_mismatches(Mismatches).
 
 :- func mismatched_args_to_pieces(list(mismatch_info), bool, prog_varset,
@@ -1074,16 +1164,10 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
             ArgNumPieces = [fixed("Functor")]
         ;
             First = no,
-            ArgNumPieces = [fixed("argument"), int_fixed(ArgNum - 1)]
+            ArgNumPieces = [fixed("Argument"), int_fixed(ArgNum - 1)]
         )
     else
-        (
-            First = yes,
-            ArgNumPieces = [fixed("Argument"), int_fixed(ArgNum)]
-        ;
-            First = no,
-            ArgNumPieces = [fixed("argument"), int_fixed(ArgNum)]
-        )
+        ArgNumPieces = [fixed("Argument"), int_fixed(ArgNum)]
     ),
     ( if varset.search_name(VarSet, Var, _) then
         VarNamePieces = [prefix("("),
@@ -1094,7 +1178,7 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
     ),
     HeadTypeMismatch =
         type_mismatch_exp_act(HeadExpectedTypePieces, HeadActualTypePieces,
-            _ActualSubsumesExpected),
+            _ActualSubsumesExpected, _MaybeSpecial),
     ( if
         expected_types_match(HeadExpectedTypePieces, TailTypeMismatches,
             TailActualTypePieces)
@@ -1103,7 +1187,8 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
             TailActualTypePieces = [],
             ErrorDescPieces = [words("has type")] ++ HeadActualTypePieces ++
                 [suffix(","), nl] ++
-                [words("expected type was")] ++ HeadExpectedTypePieces
+                [words("expected type was")] ++ HeadExpectedTypePieces ++
+                [suffix("."), nl]
         ;
             TailActualTypePieces =
                 [SecondActualTypePieces | ThirdPlusActualTypePieces],
@@ -1111,25 +1196,32 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
                 report_actual_types(HeadActualTypePieces,
                     SecondActualTypePieces, ThirdPlusActualTypePieces) ++
                 [suffix(","), nl] ++
-                [words("expected type was")] ++ HeadExpectedTypePieces
+                [words("expected type was")] ++ HeadExpectedTypePieces ++
+                [suffix("."), nl]
         )
     else
         AllMismatches = [HeadTypeMismatch | TailTypeMismatches],
         ErrorDescPieces =
             [words("has one of the following type mismatches."), nl] ++
-            report_possible_expected_actual_types(1, AllMismatches)
+            report_possible_expected_actual_types(1, AllMismatches) ++
+        [suffix("."), nl]
     ),
+    gather_special_type_mismatches([HeadTypeMismatch | TailTypeMismatches],
+        SpecialMismatches),
+    SpecialReasonPieces = report_special_type_mismatches(SpecialMismatches),
+
+    ThisMismatchPieces = ArgNumPieces ++ VarNamePieces ++ ErrorDescPieces ++
+        SpecialReasonPieces,
 
     (
         Mismatches = [],
-        FollowingMismatchPieces = [suffix("."), nl]
+        FollowingMismatchPieces = []
     ;
         Mismatches = [_ | _],
-        FollowingMismatchPieces = [suffix(";"), nl] ++
+        FollowingMismatchPieces =
             mismatched_args_to_pieces(Mismatches, no, VarSet, Functor)
     ),
-    Pieces = ArgNumPieces ++ VarNamePieces ++ ErrorDescPieces ++
-        FollowingMismatchPieces.
+    Pieces = ThisMismatchPieces ++ FollowingMismatchPieces.
 
 :- pred expected_types_match(list(format_component)::in,
     list(type_mismatch)::in, list(list(format_component))::out) is semidet.
@@ -1139,7 +1231,7 @@ expected_types_match(ExpTypePieces, [HeadMismatch | TailMismatches],
         [HeadActualTypePieces | TailActualTypePieces]) :-
     HeadMismatch =
         type_mismatch_exp_act(HeadExpTypePieces, HeadActualTypePieces,
-            _ActualSubsumesExpected),
+            _ActualSubsumesExpected, _MaybeSpecial),
     ExpTypePieces = HeadExpTypePieces,
     expected_types_match(ExpTypePieces, TailMismatches, TailActualTypePieces).
 
@@ -1169,7 +1261,7 @@ report_possible_expected_actual_types(_CurrPossNum, []) = [].
 report_possible_expected_actual_types(CurrPossNum, [Mismatch | Mismatches])
         = Pieces :-
     Mismatch = type_mismatch_exp_act(ExpectedTypePieces, ActualTypePieces,
-        _ActualSubsumesExpected),
+        _ActualSubsumesExpected, _MaybeSpecial),
     HeadPieces =
         [words("Possibility"), int_fixed(CurrPossNum), suffix(":")] ++
         [words("actual type")] ++ ActualTypePieces ++ [suffix(",")] ++
@@ -1177,6 +1269,65 @@ report_possible_expected_actual_types(CurrPossNum, [Mismatch | Mismatches])
     TailPieces = report_possible_expected_actual_types(CurrPossNum + 1,
         Mismatches),
     Pieces = HeadPieces ++ TailPieces.
+
+%---------------------------------------------------------------------------%
+
+:- pred gather_special_type_mismatches(list(type_mismatch)::in,
+    set(type_mismatch_special)::out) is det.
+
+gather_special_type_mismatches([], set.init).
+gather_special_type_mismatches([Mismatch | Mismatches], !:Specials) :-
+    gather_special_type_mismatches(Mismatches, !:Specials),
+    Mismatch = type_mismatch_exp_act(_ExpectedTypePieces, _ActualTypePieces,
+        _ActualSubsumesExpected, MaybeSpecial),
+    (
+        MaybeSpecial = no
+    ;
+        MaybeSpecial = yes(Special),
+        set.insert(Special, !Specials)
+    ).
+
+:- func report_special_type_mismatches(set(type_mismatch_special))
+    = list(format_component).
+
+report_special_type_mismatches(Specials) = Pieces :-
+    report_special_type_mismatches_loop(is_first,
+        set.to_sorted_list(Specials), Pieces).
+
+:- pred report_special_type_mismatches_loop(is_first::in,
+    list(type_mismatch_special)::in, list(format_component)::out) is det.
+
+report_special_type_mismatches_loop(_IsFirst, [], []).
+report_special_type_mismatches_loop(IsFirst, [HeadSpecial | TailSpecials],
+        Pieces) :-
+    report_special_type_mismatches_loop(is_not_first, TailSpecials,
+        TailPieces),
+    HeadPieces = report_special_type_mismatch(IsFirst, HeadSpecial),
+    Pieces = HeadPieces ++ TailPieces.
+
+:- func report_special_type_mismatch(is_first, type_mismatch_special)
+    = list(format_component).
+
+report_special_type_mismatch(IsFirst, MismatchSpecial) = Pieces :-
+    (
+        IsFirst = is_first,
+        ReasonIsPieces =
+            [words("One possible reason for the error is that")]
+    ;
+        IsFirst = is_not_first,
+        ReasonIsPieces =
+            [words("Another possible reason for the error is that")]
+    ),
+    (
+        MismatchSpecial = type_mismatch_special_getopt_error(GetoptModule),
+        Pieces = ReasonIsPieces ++
+            [words("the signatures of the option processing predicates"),
+            words("in the"), quote(GetoptModule), words("module"),
+            words("have changed recently."),
+            words("Errors are now returned in a structured form,"),
+            words("which can be converted to a string by calling the"),
+            quote("option_error_to_string"), words("function."), nl]
+    ).
 
 %---------------------------------------------------------------------------%
 

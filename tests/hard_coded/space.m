@@ -106,26 +106,26 @@ main(!IO) :-
     Ops = option_ops_multi(short, long, defaults),
     getopt.process_options(Ops, Args0, _Args, MOptTable),
     (
-        MOptTable = error(String),
-        string.format("bad option: %s\n", [s(String)], Msg),
+        MOptTable = error(Error),
+        ErrorMsg = option_error_to_string(Error),
         io.stderr_stream(Stderr, !IO),
-        io.write_string(Stderr, Msg, !IO)
+        io.format(Stderr, "bad option: %s\n", [s(ErrorMsg)], !IO)
     ;
         MOptTable = ok(Opts),
-        (
+        ( if
             getopt.lookup_bool_option(Opts, help, yes)
-        ->
+        then
             help(!IO)
-        ;
+        else if
             getopt.lookup_string_option(Opts, key, KeyStr),
             figure_key(KeyStr, Note, Qual, Kind)
-        ->
+        then
             getopt.lookup_int_option(Opts, length, Len),
             getopt.lookup_int_option(Opts, seed, Seed),
             random_init(Seed, Rnd),
             Chord0 = chord(i, Kind, up(ii)),
             doit(Len, Note, Qual, Chord0, Rnd, !IO)
-        ;
+        else
             getopt.lookup_string_option(Opts, key, KeyStr),
             string.format("illegal key: `%s'\n", [s(KeyStr)], Msg),
             io.stderr_stream(Stderr, !IO),

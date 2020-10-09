@@ -11,7 +11,7 @@
 % Main author: fjh.
 %
 % This modules defines the set of options accepted by the Mercury compiler.
-% The definition takes the form of the types and predicates that getopt_io.m
+% The definition takes the form of the types and predicates that getopt.m
 % needs to parse command-line options.
 %
 % IMPORTANT NOTE: any changes to the options should be reflected in
@@ -67,7 +67,7 @@
 
 :- import_module char.
 :- import_module cord.
-:- import_module getopt_io.
+:- import_module getopt.
 :- import_module io.
 :- import_module list.
 :- import_module set.
@@ -1171,7 +1171,7 @@
 
 
 :- pragma no_determinism_warning(option_defaults/2).
-% getopt_io and hence handle_options.m expect a nondet predicate,
+% getopt and hence handle_options.m expect a nondet predicate,
 % so we declare option_defaults to be nondet, even though it is multi.
 
 option_defaults(Opt, Data) :-
@@ -4040,7 +4040,7 @@ option_table_add_search_library_files_directory(Dir, !OptionTable) :-
     option_table::in, option_table::out) is det.
 
 append_to_accumulating_option(Option - Value, !OptionTable) :-
-    getopt_io.lookup_accumulating_option(!.OptionTable, Option, Values0),
+    getopt.lookup_accumulating_option(!.OptionTable, Option, Values0),
     Values = Values0 ++ [Value],
     map.set(Option, accumulating(Values), !OptionTable).
 

@@ -27,6 +27,6 @@ type_mismatch.m:039:   in unification of variable `Tuple'
 type_mismatch.m:039:   and term `f4(Field1, Field2, V_7)':
 type_mismatch.m:039:   type error in arguments of functor `f4'/3.
 type_mismatch.m:039:   Argument 1 (Field1) has type `float',
-type_mismatch.m:039:   expected type was `(some [F4] F4)';
-type_mismatch.m:039:   argument 2 (Field2) has type `float',
+type_mismatch.m:039:   expected type was `(some [F4] F4)'.
+type_mismatch.m:039:   Argument 2 (Field2) has type `float',
 type_mismatch.m:039:   expected type was `int'.

@@ -77,9 +77,10 @@ main(!IO) :-
             )
         )
     ;
-        MaybeOptions = error(Message),
+        MaybeOptions = error(Error),
+        Msg = option_error_to_string(Error),
         io.stderr_stream(Stderr, !IO),
-        io.format(Stderr, "%s: %s\n", [s(ProgName), s(Message)], !IO),
+        io.format(Stderr, "%s: %s\n", [s(ProgName), s(Msg)], !IO),
         io.set_exit_status(1, !IO)
     ).
 

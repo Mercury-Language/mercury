@@ -86,7 +86,7 @@
 
 :- import_module bool.
 :- import_module dir.
-:- import_module getopt_io.
+:- import_module getopt.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.

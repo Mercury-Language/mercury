@@ -48,7 +48,8 @@ main(!IO) :-
         Args0, Args, MaybeOptions),
     io.stderr_stream(StdErr, !IO),
     (
-        MaybeOptions = error(Msg),
+        MaybeOptions = error(Error),
+        Msg = option_error_to_string(Error),
         io.format(StdErr, "%s: error parsing options: %s\n",
             [s(ProgName), s(Msg)], !IO),
         io.write_string(help_message(ProgName), !IO),

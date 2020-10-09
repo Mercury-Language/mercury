@@ -389,7 +389,9 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
             OptionOps = option_ops_multi(short_format_option,
                 long_format_option, format_option_defaults),
             getopt.process_options(OptionOps, ArgWords,
-                RemainingWords, MaybeOptionTable),
+                RemainingWords, MaybeOptionTable0),
+            MaybeOptionTable =
+                convert_to_maybe_option_table(MaybeOptionTable0),
             MaybeMaybeOptionTable = yes(MaybeOptionTable),
             lexer_words(RemainingWords, RemainingTokens)
         ),
@@ -521,7 +523,9 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
             OptionOps = option_ops_multi(short_format_cmd_option,
                 long_format_cmd_option, format_cmd_option_defaults),
             getopt.process_options(OptionOps, ArgWords,
-                RemainingWords, MaybeOptionTable),
+                RemainingWords, MaybeOptionTable0),
+            MaybeOptionTable =
+                convert_to_maybe_option_table(MaybeOptionTable0),
             lexer_words(RemainingWords, RemainingTokens),
             parse_format(RemainingTokens, Setting),
             FormatCmd = format(MaybeOptionTable, Setting)
@@ -552,7 +556,9 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
                 long_format_param_cmd_option,
                 format_param_cmd_option_defaults),
             getopt.process_options(OptionOps, ArgWords,
-                RemainingWords, MaybeOptionTable),
+                RemainingWords, MaybeOptionTable0),
+            MaybeOptionTable =
+                convert_to_maybe_option_table(MaybeOptionTable0),
             lexer_words(RemainingWords, RemainingTokens),
             RemainingTokens = [token_num(N)],
             param_cmd_to_setting(ParamCmd, N, Setting),
@@ -565,7 +571,8 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
         ArgTokens = [token_num(Depth)],
         OptionOps = option_ops_multi(short_format_param_cmd_option,
             long_format_param_cmd_option, format_param_cmd_option_defaults),
-        getopt.process_options(OptionOps, [], _, MaybeOptionTable),
+        getopt.process_options(OptionOps, [], _, MaybeOptionTable0),
+        MaybeOptionTable = convert_to_maybe_option_table(MaybeOptionTable0),
         FormatCmd = format_param(MaybeOptionTable, setting_depth(Depth)),
         Command = cmd_param(FormatCmd)
     else if

@@ -79,9 +79,9 @@ main(!IO) :-
             usage(StdOutStream, !IO)
         )
     ;
-        GetoptResult = error(GetoptErrorMsg),
-        io.write_string(StdOutStream, GetoptErrorMsg, !IO),
-        io.nl(StdOutStream, !IO)
+        GetoptResult = error(GetoptError),
+        GetoptErrorMsg = option_error_to_string(GetoptError),
+        io.format(StdOutStream, "%s\n", [s(GetoptErrorMsg)], !IO)
     ).
 
 :- pred usage(io.text_output_stream::in, io::di, io::uo) is det.

@@ -45,7 +45,6 @@
 :- import_module getopt.
 :- import_module library.
 :- import_module list.
-:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
@@ -53,23 +52,22 @@ main(!IO) :-
     io.command_line_arguments(Args0, !IO),
     OptionOps = option_ops_multi(short_option, long_option, option_default,
         special_handler),
-    getopt.process_options(OptionOps, Args0, Args, Result0),
-    postprocess_options(Result0, Args, Result, !IO),
+    getopt.process_options(OptionOps, Args0, Args, GetoptResult),
     (
-        Result = yes(ErrorMessage),
+        GetoptResult = error(Error),
+        ErrorMessage = option_error_to_string(Error),
         usage_error(ErrorMessage, !IO)
     ;
-        Result = no,
+        GetoptResult = ok(OptionTable0),
+        globals.io_init(OptionTable0, !IO),
+        postprocess_options(Args, !IO),
         main_2(Args, !IO)
     ).
 
-:- pred postprocess_options(maybe_option_table(option)::in, list(string)::in,
-    maybe(string)::out, io::di, io::uo) is det.
+:- pred postprocess_options(list(string)::in,
+    io::di, io::uo) is det.
 
-postprocess_options(error(ErrorMessage), _Args, yes(ErrorMessage), !IO).
-postprocess_options(ok(OptionTable), Args, no, !IO) :-
-    globals.io_init(OptionTable, !IO),
-
+postprocess_options(Args, !IO) :-
     % --very-verbose implies --verbose
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (

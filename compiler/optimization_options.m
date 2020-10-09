@@ -23,7 +23,7 @@
 :- import_module libs.options.
 
 :- import_module bool.
-:- import_module getopt_io.
+:- import_module getopt.
 :- import_module list.
 :- import_module map.
 
@@ -2879,7 +2879,7 @@ update_opt_tuple_bool_opt_frames(Bool, !OptTuple) :-
 update_opt_tuple_bool_opt_delay_slot(OptionTable, Bool, !OptTuple) :-
     OldValue = !.OptTuple ^ ot_opt_delay_slot,
     ( if
-        getopt_io.lookup_bool_option(OptionTable, have_delay_slot, yes),
+        getopt.lookup_bool_option(OptionTable, have_delay_slot, yes),
         Bool = yes
     then
         (
