@@ -488,7 +488,6 @@ tar: 	$(GENERATED_DOCS)
 	touch Mmake.params
 	cd util && mmake
 	+cd runtime && $(SUBDIR_MMAKE) cs $(RT_LIB_NAME).init
-	+cd library && $(SUBDIR_MMAKE) apply_getopt_template
 	+cd library && $(SUBDIR_MMAKE) depend
 	+cd library && $(SUBDIR_MMAKE) all-ints cs $(STD_LIB_NAME).init tags
 	+cd mdbcomp && $(SUBDIR_MMAKE) depend
@@ -563,7 +562,6 @@ tar2: 	$(GENERATED_DOCS)
 	touch Mmake.params
 	cd util && mmake
 	+cd runtime && $(SUBDIR_MMAKE) cs $(RT_LIB_NAME).init
-	+cd library && $(SUBDIR_MMAKE) apply_getopt_template
 	+cd library && $(SUBDIR_MMAKE) depend
 	+cd library && $(SUBDIR_MMAKE) all-ints cs $(STD_LIB_NAME).init tags
 	+cd mdbcomp && $(SUBDIR_MMAKE) depend
