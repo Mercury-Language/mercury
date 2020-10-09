@@ -189,142 +189,149 @@ simplify_conj(!.PrevGoals, [HeadGoal0 | TailGoals0], Goals, ConjInfo,
                     determinism_components(Detism1, _, at_most_zero)
                 )
             then
-                simplify_info_get_deleted_call_callees(!.Info,
-                    DeletedCallCallees0),
-                SubGoalCalledProcs = goals_proc_refs(TailGoals0),
-                set.union(SubGoalCalledProcs,
-                    DeletedCallCallees0, DeletedCallCallees),
-                simplify_info_set_deleted_call_callees(DeletedCallCallees,
-                    !Info),
-
-                !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal1),
-                ( if
-                    ( HeadGoal1 = hlds_goal(disj([]), _)
-                    ; TailGoals0 = []
-                    )
-                then
-                    % XXX If TailGoals0 = [], why don't we add
-                    % an explicit failure?
-                    true
-                else
-                    % We insert an explicit failure at the end of the
-                    % non-succeeding conjunction. This is necessary, since
-                    % the unreachability of the instmap could have been derived
-                    % using inferred determinism information. Without the
-                    % explicit fail goal, mode errors could result if mode
-                    % analysis is rerun, since according to the language
-                    % specification, mode analysis does not use inferred
-                    % determinism information when deciding what can never
-                    % succeed.
-                    HeadGoal0 = hlds_goal(_, HeadGoalInfo0),
-                    Context = goal_info_get_context(HeadGoalInfo0),
-                    FailGoal = fail_goal_with_context(Context),
-                    !:PrevGoals = cord.snoc(!.PrevGoals, FailGoal)
-                ),
-                Goals = cord.list(!.PrevGoals)
+                HeadGoal0 = hlds_goal(_, HeadGoalInfo0),
+                HeadGoalContext0 = goal_info_get_context(HeadGoalInfo0),
+                delete_tail_unreachable_goals(!.PrevGoals, HeadGoalContext0,
+                    HeadGoal1, TailGoals0, Goals, !Info)
             else
-                ( if
-                    simplify_do_test_after_switch(!.Info),
-                    % Look for situations like this:
-                    %
-                    %   (
-                    %       ( X = a
-                    %       ; X = b
-                    %       ),
-                    %       Res = yes
-                    %   ;
-                    %       ( X = c
-                    %       ; X = d(_)
-                    %       ),
-                    %       Res = no
-                    %   ),
-                    %   Res = no
-                    %
-                    % and transform them into
-                    %
-                    %   ( X = a
-                    %   ; X = b
-                    %   )
-                    %
-                    % The idea is to avoid the performance overhead of
-                    % setting and testing Res in such switches.
-                    %
-                    % The point of switches like this, in which each arm
-                    % does nothing except set a flag that is tested
-                    % after the switch, is that if the type of X gets
-                    % a new functor added to it, they get a message if
-                    %
-                    % - either the --inform-incomplete-switch option is given,
-                    %   or
-                    % - the switch is wrapped in a require_complete_switch
-                    %   scope.
-                    %
-                    % In the latter case, the simplification of HeadGoal0
-                    % into HeadGoal1 will remove the scope wrapper.
-                    %
-                    HeadGoalExpr1 = switch(SwitchVar, SwitchCanFail1, Cases1),
-                    TailGoals0 = [HeadTailGoal0 | TailTailGoals0],
-                    HeadTailGoal0 = hlds_goal(HeadTailGoalExpr0, _),
-                    HeadTailGoalExpr0 = unify(_LHSVar, _RHS, _UniMode,
-                        Unification, _UnifyContext),
-                    Unification = deconstruct(TestVar, TestConsId, TestArgs,
-                        _ArgModes, DeconstructCanFail, _CanCGC),
-                    TestArgs = [],
-                    DeconstructCanFail = can_fail,
-                    all_cases_construct_test_var(Cases1, TestVar, TestConsId,
-                        [], RevTruncatedSameCases, [], RevDiffCases),
-
-                    % If the procedure body can refer to TestVar anywhere
-                    % other than in HeadGoal0 or HeadTailGoal0, then we
-                    % cannot eliminate the assignment to TestVar. Since
-                    % the mode system does not permit conjuncts before
-                    % HeadGoal0 to refer to TestVar, the places we need
-                    % to check are the conjuncts after HeadTailGoal0 and
-                    % the code outside the conjunction as a whole.
-                    %
-                    % If there are outside references to TestVar, we could
-                    % still delete RevDiffCases from the switch, while keeping
-                    % the assignment of TestConsId to TestVar, either in
-                    % the non-truncated originals of the RevTruncatedSameCases,
-                    % or in a construct unification after the switch that would
-                    % replace the original deconstruction in HeadTailGoal0.
-                    % However, a bootcheck found no situations with outside
-                    % references to TestVar, so that situation is probably
-                    % too rare to be worth trying to optimize.
-
-                    ConjNonLocals = goal_info_get_nonlocals(ConjInfo),
-                    not set_of_var.contains(ConjNonLocals, TestVar),
-                    no_conjunct_refers_to_var(TailTailGoals0, TestVar)
-                then
-                    (
-                        RevDiffCases = [],
-                        SwitchCanFail2 = SwitchCanFail1
-                    ;
-                        RevDiffCases = [_ | _],
-                        SwitchCanFail2 = can_fail
-                    ),
-                    % We need to update the determinism fields of the goals.
-                    % We could try to do that here, but it is simpler to use
-                    % the existing code for the job.
-                    simplify_info_set_should_rerun_det(!Info),
-
-                    list.reverse(RevTruncatedSameCases, TruncatedSameCases),
-                    HeadGoalExpr2 = switch(SwitchVar, SwitchCanFail2,
-                        TruncatedSameCases),
-                    HeadGoal2 = hlds_goal(HeadGoalExpr2, HeadGoalInfo1),
-                    !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal2),
-                    % We pass TailTailGoals0 instead of TailGoals, since
-                    % the effect of HeadTailGoal0 has now been folded into
-                    % HeadGoal2.
-                    simplify_conj(!.PrevGoals, TailTailGoals0, Goals, ConjInfo,
-                        NestedContext0, InstMap1, !Common, !Info)
-                else
-                    !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal1),
-                    simplify_conj(!.PrevGoals, TailGoals0, Goals, ConjInfo,
-                        NestedContext0, InstMap1, !Common, !Info)
-                )
+                try_to_opt_test_after_switch(!PrevGoals, HeadGoal1,
+                    TailGoals0, TailGoals1, ConjInfo, !Info),
+                simplify_conj(!.PrevGoals, TailGoals1, Goals, ConjInfo,
+                    NestedContext0, InstMap1, !Common, !Info)
             )
         )
+    ).
+
+:- pred delete_tail_unreachable_goals(cord(hlds_goal)::in,
+    prog_context::in, hlds_goal::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    simplify_info::in, simplify_info::out) is det.
+
+delete_tail_unreachable_goals(!.PrevGoals, HeadGoalContext0, HeadGoal1,
+        TailGoals0, Goals, !Info) :-
+    simplify_info_get_deleted_call_callees(!.Info, DeletedCallCallees0),
+    SubGoalCalledProcs = goals_proc_refs(TailGoals0),
+    set.union(SubGoalCalledProcs, DeletedCallCallees0, DeletedCallCallees),
+    simplify_info_set_deleted_call_callees(DeletedCallCallees, !Info),
+
+    !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal1),
+    ( if
+        ( HeadGoal1 = hlds_goal(disj([]), _)
+        ; TailGoals0 = []
+        )
+    then
+        % XXX If TailGoals0 = [], why don't we add an explicit failure?
+        true
+    else
+        % We insert an explicit failure at the end of the non-succeeding
+        % conjunction. This is necessary, since the unreachability of the
+        % instmap could have been derived using inferred determinism
+        % information. Without the explicit fail goal, mode errors could
+        % result if mode analysis is rerun, since according to the language
+        % specification, mode analysis does not use inferred determinism
+        % information when deciding what can never succeed.
+        FailGoal = fail_goal_with_context(HeadGoalContext0),
+        !:PrevGoals = cord.snoc(!.PrevGoals, FailGoal)
+    ),
+    Goals = cord.list(!.PrevGoals).
+
+:- pred try_to_opt_test_after_switch(cord(hlds_goal)::in, cord(hlds_goal)::out,
+    hlds_goal::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    hlds_goal_info::in, simplify_info::in, simplify_info::out) is det.
+
+try_to_opt_test_after_switch(!PrevGoals, HeadGoal1,
+        TailGoals0, TailGoals1, ConjInfo, !Info) :-
+    ( if
+        simplify_do_test_after_switch(!.Info),
+        % Look for situations like this:
+        %
+        %   (
+        %       ( X = a
+        %       ; X = b
+        %       ),
+        %       Res = yes
+        %   ;
+        %       ( X = c
+        %       ; X = d(_)
+        %       ),
+        %       Res = no
+        %   ),
+        %   Res = no
+        %
+        % and transform them into
+        %
+        %   ( X = a
+        %   ; X = b
+        %   )
+        %
+        % The idea is to avoid the performance overhead of setting and testing
+        % Res in such switches.
+        %
+        % The point of switches like this, in which each arm does nothing
+        % except set a flag that is tested after the switch, is that if the
+        % type of X gets a new functor added to it, they get a message if
+        %
+        % - either the --inform-incomplete-switch option is given, or
+        % - the switch is wrapped in a require_complete_switch scope.
+        %
+        % In the latter case, the simplification of HeadGoal0 into HeadGoal1
+        % will remove the scope wrapper.
+        %
+        HeadGoal1 = hlds_goal(HeadGoalExpr1, HeadGoalInfo1),
+        HeadGoalExpr1 = switch(SwitchVar, SwitchCanFail1, Cases1),
+        TailGoals0 = [HeadTailGoal0 | TailTailGoals0],
+        HeadTailGoal0 = hlds_goal(HeadTailGoalExpr0, _),
+        HeadTailGoalExpr0 = unify(_LHSVar, _RHS, _UniMode,
+            Unification, _UnifyContext),
+        Unification = deconstruct(TestVar, TestConsId, TestArgs, _ArgModes,
+            DeconstructCanFail, _CanCGC),
+        TestArgs = [],
+        DeconstructCanFail = can_fail,
+        all_cases_construct_test_var(Cases1, TestVar, TestConsId,
+            [], RevTruncatedSameCases, [], RevDiffCases),
+
+        % If the procedure body can refer to TestVar anywhere other than
+        % in HeadGoal0 or HeadTailGoal0, then we cannot eliminate the
+        % assignment to TestVar. Since the mode system does not permit
+        % conjuncts before HeadGoal0 to refer to TestVar, the places we need
+        % to check are the conjuncts after HeadTailGoal0 and the code
+        % outside the conjunction as a whole.
+        %
+        % If there are outside references to TestVar, we could still delete
+        % RevDiffCases from the switch, while keeping the assignment of
+        % TestConsId to TestVar, either in the non-truncated originals
+        % of the RevTruncatedSameCases, or in a construct unification
+        % after the switch that would replace the original deconstruction
+        % in HeadTailGoal0. However, a bootcheck found no situations
+        % with outside references to TestVar, so that situation is probably
+        % too rare to be worth trying to optimize.
+
+        ConjNonLocals = goal_info_get_nonlocals(ConjInfo),
+        not set_of_var.contains(ConjNonLocals, TestVar),
+        no_conjunct_refers_to_var(TailTailGoals0, TestVar)
+    then
+        (
+            RevDiffCases = [],
+            SwitchCanFail2 = SwitchCanFail1
+        ;
+            RevDiffCases = [_ | _],
+            SwitchCanFail2 = can_fail
+        ),
+        % We need to update the determinism fields of the goals.
+        % We could try to do that here, but it is simpler to use
+        % the existing code for the job.
+        simplify_info_set_should_rerun_det(!Info),
+
+        list.reverse(RevTruncatedSameCases, TruncatedSameCases),
+        HeadGoalExpr2 = switch(SwitchVar, SwitchCanFail2, TruncatedSameCases),
+        HeadGoal2 = hlds_goal(HeadGoalExpr2, HeadGoalInfo1),
+        !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal2),
+        % Let the recursive call to simplify_conj in our caller process
+        % TailTailGoals0 instead of TailGoals, since the effect of
+        % HeadTailGoal0 has now been folded into HeadGoal2.
+        TailGoals1 = TailTailGoals0
+    else
+        !:PrevGoals = cord.snoc(!.PrevGoals, HeadGoal1),
+        TailGoals1 = TailGoals0
     ).
 
     % See the comment above the call to this predicate.
