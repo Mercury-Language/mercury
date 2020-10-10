@@ -162,7 +162,9 @@ END {
         printf(":- implementation.\n");
 
         printf("\n");
+        printf(":- import_module getopt.\n");
         printf(":- import_module int.\n");
+        printf(":- import_module map.\n");
 
         printf("\n%%---------------------%%\n\n");
 

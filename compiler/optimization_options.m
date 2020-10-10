@@ -23,9 +23,7 @@
 :- import_module libs.options.
 
 :- import_module bool.
-:- import_module getopt.
 :- import_module list.
-:- import_module map.
 
 %---------------------------------------------------------------------------%
 
@@ -555,7 +553,9 @@
 
 :- implementation.
 
+:- import_module getopt.
 :- import_module int.
+:- import_module map.
 
 %---------------------%
 

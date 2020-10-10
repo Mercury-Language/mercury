@@ -42,7 +42,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module libs.
-:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.continuation_info.
@@ -74,6 +73,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.vartypes.
 :- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_debug.
