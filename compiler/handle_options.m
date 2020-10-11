@@ -657,6 +657,38 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
         !Specs, !:Globals, !IO) :-
+    OptTuple0 = !.OptTuple,
+    OT_AllowInlining0 = OptTuple0 ^ ot_allow_inlining,
+    OT_OptCommonStructs0 = OptTuple0 ^ ot_opt_common_structs,
+    OT_PropConstraints0 = OptTuple0 ^ ot_prop_constraints,
+    OT_PropLocalConstraints0 = OptTuple0 ^ ot_prop_local_constraints,
+    OT_OptDupCalls0 = OptTuple0 ^ ot_opt_dup_calls,
+    OT_PropConstants0 = OptTuple0 ^ ot_prop_constants,
+    OT_ElimExcessAssigns0 = OptTuple0 ^ ot_elim_excess_assigns,
+    OT_OptTestAfterSwitch0 = OptTuple0 ^ ot_opt_test_after_switch,
+    OT_OptLoopInvariants0 = OptTuple0 ^ ot_opt_loop_invariants,
+    OT_OptSVCell0 = OptTuple0 ^ ot_opt_svcell,
+    OT_OptFollowCode0 = OptTuple0 ^ ot_opt_follow_code,
+    OT_OptUnusedArgs0 = OptTuple0 ^ ot_opt_unused_args,
+    OT_OptUnusedArgsIntermod0 = OptTuple0 ^ ot_opt_unused_args_intermod,
+    OT_OptHigherOrder0 = OptTuple0 ^ ot_opt_higher_order,
+    OT_HigherOrderSizeLimit0 = OptTuple0 ^ ot_higher_order_size_limit,
+    OT_SpecTypes0 = OptTuple0 ^ ot_spec_types,
+    OT_SpecTypesUserGuided0 = OptTuple0 ^ ot_spec_types_user_guided,
+    OT_IntroduceAccumulators0 = OptTuple0 ^ ot_introduce_accumulators,
+    OT_OptLCMC0 = OptTuple0 ^ ot_opt_lcmc,
+    OT_Deforest0 = OptTuple0 ^ ot_deforest,
+    OT_Tuple0 = OptTuple0 ^ ot_tuple,
+    OT_Untuple0 = OptTuple0 ^ ot_untuple,
+    OT_OptMiddleRec0 = OptTuple0 ^ ot_opt_middle_rec,
+    OT_AllowHijacks0 = OptTuple0 ^ ot_allow_hijacks,
+    OT_OptMLDSTailCalls0 = OptTuple0 ^ ot_opt_mlds_tailcalls,
+    OT_Optimize0 = OptTuple0 ^ ot_optimize,
+    OT_PessimizeTailCalls0 = OptTuple0 ^ ot_pessimize_tailcalls,
+    OT_StdLabels0 = OptTuple0 ^ ot_standardize_labels,
+    OT_OptDups0 = OptTuple0 ^ ot_opt_dups,
+    OT_OptFrames0 = OptTuple0 ^ ot_opt_frames,
+    OT_StringBinarySwitchSize0 = OptTuple0 ^ ot_string_binary_switch_size,
 
     lookup_string_option(OptionTable0, install_command, InstallCmd),
     ( if InstallCmd = "" then
@@ -684,11 +716,11 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         io.get_environment_var("MERCURY_EVENT_SET_FILE_NAME",
             MaybeEventSetFileName, !IO),
         (
-            MaybeEventSetFileName = yes(EventSetFileName),
+            MaybeEventSetFileName = maybe.yes(EventSetFileName),
             globals.set_option(event_set_file_name, string(EventSetFileName),
                 !Globals)
         ;
-            MaybeEventSetFileName = no
+            MaybeEventSetFileName = maybe.no
         )
     else
         true
@@ -697,13 +729,13 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % Conservative GC implies --no-reclaim-heap-*
     GCIsConservative = gc_is_conservative(GC_Method),
     (
-        GCIsConservative = yes,
+        GCIsConservative = bool.yes,
         globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
             !Globals),
         globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
             !Globals)
     ;
-        GCIsConservative = no
+        GCIsConservative = bool.no
     ),
 
     % --pregenerated-dist sets options so that the pre-generated C source
@@ -711,7 +743,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % Any changes here may require changes in runtime/mercury_conf_param.h.
     globals.lookup_bool_option(!.Globals, pregenerated_dist, PregeneratedDist),
     (
-        PregeneratedDist = yes,
+        PregeneratedDist = bool.yes,
         globals.set_option(num_ptag_bits, int(2), !Globals),
         globals.set_option(arg_pack_bits, int(32), !Globals),
         globals.set_option(unboxed_float, bool(no), !Globals),
@@ -719,7 +751,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         globals.set_option(single_prec_float, bool(no), !Globals),
         globals.set_option(allow_double_word_fields, bool(no), !Globals)
     ;
-        PregeneratedDist = no
+        PregeneratedDist = bool.no
     ),
 
     (
@@ -761,8 +793,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, parallel, Parallel),
     globals.lookup_bool_option(!.Globals, threadscope, Threadscope),
     ( if
-        GradeSupportsParConj = no,
-        Threadscope = yes
+        GradeSupportsParConj = bool.no,
+        Threadscope = bool.yes
     then
         ThreadScopeSpec =
             [words("The"), quote("threadscope"), words("grade component"),
@@ -778,9 +810,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, implicit_parallelism,
         ImplicitParallelism),
     (
-        ImplicitParallelism = yes,
+        ImplicitParallelism = bool.yes,
         (
-            GradeSupportsParConj = yes,
+            GradeSupportsParConj = bool.yes,
             globals.lookup_string_option(!.Globals, feedback_file,
                 FeedbackFile),
             ( if FeedbackFile = "" then
@@ -796,7 +828,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
             % Report an error when used in parallel grades without parallel
             % conjunction support. In non-parallel grades simply ignore
             % --implicit-parallelism.
-            GradeSupportsParConj = no,
+            GradeSupportsParConj = bool.no,
             (
                 Parallel = yes,
                 NoParConjSupportSpec =
@@ -806,12 +838,12 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
                     words("Use a low-level C grade without trailing."), nl],
                 add_error(phase_options, NoParConjSupportSpec, !Specs)
             ;
-                Parallel = no
+                Parallel = bool.no
             ),
             globals.set_option(implicit_parallelism, bool(no), !Globals)
         )
     ;
-        ImplicitParallelism = no
+        ImplicitParallelism = bool.no
     ),
     % Perform a simplification pass before the implicit parallelism pass to
     % ensure that the HLDS more-closely matches the feedback data.
@@ -820,9 +852,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
 
     % Loop control is not applicable in non-parallel grades.
     (
-        GradeSupportsParConj = yes
+        GradeSupportsParConj = bool.yes
     ;
-        GradeSupportsParConj = no,
+        GradeSupportsParConj = bool.no,
         globals.set_option(par_loop_control, bool(no), !Globals)
     ),
 
@@ -950,13 +982,13 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     option_implies(highlevel_code, gcc_global_registers, bool(no), !Globals),
     option_implies(highlevel_code, asm_labels, bool(no), !Globals),
 
-    Optimize = !.OptTuple ^ ot_optimize,
     (
-        Optimize = do_not_optimize,
+        OT_Optimize0 = do_not_optimize,
         % --no-mlds-optimize implies --no-optimize-tailcalls.
-        !OptTuple ^ ot_opt_mlds_tailcalls := do_not_opt_mlds_tailcalls
+        OT_OptMLDSTailCalls = do_not_opt_mlds_tailcalls
     ;
-        Optimize = optimize
+        OT_Optimize0 = optimize,
+        OT_OptMLDSTailCalls = OT_OptMLDSTailCalls0
     ),
 
     % If no --lib-linkage option has been specified, default to the
@@ -1012,7 +1044,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % not compatible with each other.
     globals.lookup_bool_option(!.Globals, transitive_optimization, TransOpt),
     (
-        TransOpt = yes,
+        TransOpt = bool.yes,
         ( if
             ( InvokedByMMCMake = yes
             ; OpMode = opm_top_make
@@ -1027,7 +1059,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
             true
         )
     ;
-        TransOpt = no
+        TransOpt = bool.no
     ),
 
     % `--intermodule-optimization' and `--intermodule-analysis' are
@@ -1037,8 +1069,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, intermodule_analysis,
         InterModAnalysis),
     ( if
-        InterModOpt = yes,
-        InterModAnalysis = yes
+        InterModOpt = bool.yes,
+        InterModAnalysis = bool.yes
     then
         OptAnalysisSpec =
             [words("The"), quote("--intermodule-optimization"),
@@ -1060,8 +1092,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals,
         extra_initialization_functions, ExtraInitFunctions),
     ( if
-        MaybeStandaloneInt = yes(_),
-        ExtraInitFunctions = yes
+        MaybeStandaloneInt = maybe.yes(_),
+        ExtraInitFunctions = bool.yes
     then
         ExtraInitsSpec =
             [words("The"), quote("--generate-standalone-interface"),
@@ -1158,9 +1190,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % optimization themselves.
     globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
     (
-        Smart = no
+        Smart = bool.no
     ;
-        Smart = yes,
+        Smart = bool.yes,
         ( if
             globals.lookup_bool_option(!.Globals, intermodule_optimization,
                 yes)
@@ -1200,8 +1232,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, very_verbose, VeryVerbose),
     globals.lookup_bool_option(!.Globals, statistics, Statistics),
     ( if
-        VeryVerbose = yes,
-        Statistics = yes
+        VeryVerbose = bool.yes,
+        Statistics = bool.yes
     then
         globals.set_option(detailed_statistics, bool(yes), !Globals)
     else
@@ -1300,24 +1332,24 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     bool.or(UseMinimalModelStackCopy, UseMinimalModelOwnStacks,
         UseMinimalModel),
     ( if
-        UseMinimalModelStackCopy = yes,
-        UseMinimalModelOwnStacks = yes
+        UseMinimalModelStackCopy = bool.yes,
+        UseMinimalModelOwnStacks = bool.yes
     then
         DualMMSpec =
             [words("You cannot use both forms of minimal model tabling"),
             words("at once."), nl],
         add_error(phase_options, DualMMSpec, !Specs)
     else if
-        UseMinimalModel = yes,
-        HighLevelCode = yes
+        UseMinimalModel = bool.yes,
+        HighLevelCode = bool.yes
     then
         MMHLSpec =
             [words("Minimal model tabling is incompatible with"),
             words("high level code."), nl],
         add_error(phase_options, MMHLSpec, !Specs)
     else if
-        UseMinimalModel = yes,
-        UseTrail = yes
+        UseMinimalModel = bool.yes,
+        UseTrail = bool.yes
     then
         MMTrailSpec =
             [words("Minimal model tabling is incompatible with"),
@@ -1398,9 +1430,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     then
         % Switch off string hash switches until these backends implement
         % the hash operations.
-        !OptTuple ^ ot_string_binary_switch_size := 999999
+        OT_StringBinarySwitchSize = 999999
     else
-        true
+        OT_StringBinarySwitchSize = OT_StringBinarySwitchSize0
     ),
 
     option_implies(target_debug, strip, bool(no), !Globals),
@@ -1424,16 +1456,18 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     option_implies(profile_for_feedback, prof_optimized, bool(yes), !Globals),
     globals.lookup_bool_option(!.Globals, prof_optimized, ProfOptimized),
     (
-        ProfOptimized = no,
+        ProfOptimized = bool.no,
         globals.lookup_bool_option(!.Globals, profile_deep, ProfDeep),
         (
-            ProfDeep = no
+            ProfDeep = bool.no,
+            AllowInliningProfDeep = bool.yes
         ;
-            ProfDeep = yes,
-            !OptTuple ^ ot_allow_inlining := do_not_allow_inlining
+            ProfDeep = bool.yes,
+            AllowInliningProfDeep = bool.no
         )
     ;
-        ProfOptimized = yes
+        ProfOptimized = bool.yes,
+        AllowInliningProfDeep = bool.yes
     ),
 
     % Perform a simplification pass before the profiling passes if one of
@@ -1447,9 +1481,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
 
     globals.lookup_string_option(!.Globals, experimental_complexity, ExpComp),
     ( if ExpComp = "" then
-        true
+        AllowInliningExpComp = bool.yes
     else
-        !OptTuple ^ ot_allow_inlining := do_not_allow_inlining
+        AllowInliningExpComp = bool.no
     ),
 
     % --decl-debug is an extension of --debug
@@ -1494,33 +1528,41 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, trace_optimized, TraceOptimized),
     TraceLevelIsNone = given_trace_level_is_none(TraceLevel),
     (
-        TraceLevelIsNone = no,
+        TraceLevelIsNone = bool.no,
         (
-            TraceOptimized = no,
+            TraceOptimized = bool.no,
             % The following options modify the structure
             % of the program, which makes it difficult to
             % relate the trace to the source code (although
             % it can be easily related to the transformed HLDS).
-            !OptTuple ^ ot_allow_inlining := do_not_allow_inlining,
-            !OptTuple ^ ot_opt_unused_args := do_not_opt_unused_args,
-            !OptTuple ^ ot_opt_higher_order := do_not_opt_higher_order,
-            !OptTuple ^ ot_spec_types := do_not_spec_types,
-            !OptTuple ^ ot_spec_types_user_guided
-                := do_not_spec_types_user_guided,
-            !OptTuple ^ ot_deforest := do_not_deforest,
-            !OptTuple ^ ot_prop_constraints := do_not_prop_constraints,
-            !OptTuple ^ ot_prop_local_constraints
-                := do_not_prop_local_constraints,
-            !OptTuple ^ ot_opt_dup_calls := do_not_opt_dup_calls,
-            !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc,
-            !OptTuple ^ ot_opt_svcell := do_not_opt_svcell,
-            !OptTuple ^ ot_opt_loop_invariants := do_not_opt_loop_invariants,
-            !OptTuple ^ ot_untuple := do_not_untuple,
-            !OptTuple ^ ot_tuple := do_not_tuple,
-            !OptTuple ^ ot_opt_test_after_switch
-                := do_not_opt_test_after_switch
+            AllowInliningTrace = bool.no,
+            AllowOptUnusedArgsTrace = bool.no,
+            AllowOptHigherOrderTrace = bool.no,
+            AllowAnySpecTypesTrace = bool.no,
+            AllowDeforestTrace = bool.no,
+            AllowPropLocalConstraintsTrace = bool.no,
+            AllowOptDupCallsTrace = bool.no,
+            AllowOptLCMCTrace = bool.no,
+            OT_OptSVCell = do_not_opt_svcell,
+            OT_OptLoopInvariants = do_not_opt_loop_invariants,
+            OT_Untuple = do_not_untuple,
+            OT_Tuple = do_not_tuple,
+            OT_OptTestAfterSwitch = do_not_opt_test_after_switch
         ;
-            TraceOptimized = yes
+            TraceOptimized = bool.yes,
+            AllowInliningTrace = bool.yes,
+            AllowOptUnusedArgsTrace = bool.yes,
+            AllowOptHigherOrderTrace = bool.yes,
+            AllowAnySpecTypesTrace = bool.yes,
+            AllowDeforestTrace = bool.yes,
+            AllowPropLocalConstraintsTrace = bool.yes,
+            AllowOptLCMCTrace = bool.yes,
+            OT_OptSVCell = OT_OptSVCell0,
+            AllowOptDupCallsTrace = bool.yes,
+            OT_OptLoopInvariants = OT_OptLoopInvariants0,
+            OT_Tuple = OT_Tuple0,
+            OT_Untuple = OT_Untuple0,
+            OT_OptTestAfterSwitch = OT_OptTestAfterSwitch0
         ),
 
         % Disable hijacks if debugging is enabled. The code we now use
@@ -1542,20 +1584,20 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         % more complex than simply disabling hijacks, it would be slower
         % as well, except in procedures that would have many nested
         % hijacks, and such code is extremely rare.
-        !OptTuple ^ ot_allow_hijacks := do_not_allow_hijacks,
+        AllowHijacksTrace = bool.no,
 
         % The following option prevents useless variables from cluttering
         % the trace. Its explicit setting removes a source of variability
         % in the goal paths reported by tracing.
-        !OptTuple ^ ot_elim_excess_assigns := elim_excess_assigns,
+        ForceElimExcessAssignTrace = yes,
 
         % The explicit setting of the following option removes a source
         % of variability in the goal paths reported by tracing.
-        !OptTuple ^ ot_opt_follow_code := opt_follow_code,
+        OT_OptFollowCode = opt_follow_code,
 
         % The following option selects a special-case code generator
         % that cannot (yet) implement tracing.
-        !OptTuple ^ ot_opt_middle_rec := do_not_opt_middle_rec,
+        AllowOptMiddleRecTrace = bool.no,
 
         % The following options cause the info required by tracing
         % to be generated.
@@ -1569,13 +1611,31 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         % The declarative debugger does not (yet) know about tail calls.
         TraceTailRec = trace_level_allows_tail_rec(TraceLevel),
         (
-            TraceTailRec = no,
+            TraceTailRec = bool.no,
             globals.set_option(exec_trace_tail_rec, bool(no), !Globals)
         ;
-            TraceTailRec = yes
+            TraceTailRec = bool.yes
         )
     ;
-        TraceLevelIsNone = yes,
+        TraceLevelIsNone = bool.yes,
+        AllowInliningTrace = bool.yes,
+        AllowOptUnusedArgsTrace = bool.yes,
+        AllowOptHigherOrderTrace = bool.yes,
+        AllowAnySpecTypesTrace = bool.yes,
+        AllowDeforestTrace = bool.yes,
+        AllowPropLocalConstraintsTrace = bool.yes,
+        AllowOptLCMCTrace = bool.yes,
+        OT_OptSVCell = OT_OptSVCell0,
+        AllowOptDupCallsTrace = bool.yes,
+        OT_OptFollowCode = OT_OptFollowCode0,
+        OT_OptLoopInvariants = OT_OptLoopInvariants0,
+        OT_Tuple = OT_Tuple0,
+        OT_Untuple = OT_Untuple0,
+        OT_OptTestAfterSwitch = OT_OptTestAfterSwitch0,
+        AllowOptMiddleRecTrace = bool.yes,
+        AllowHijacksTrace = bool.yes,
+        ForceElimExcessAssignTrace = bool.no,
+
         % Since there will be no call and exit events, there is no point
         % in trying to turn them into tailcall events.
         globals.set_option(exec_trace_tail_rec, bool(no), !Globals)
@@ -1584,7 +1644,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     option_implies(profile_deep, procid_stack_layout, bool(yes), !Globals),
     globals.lookup_bool_option(!.Globals, profile_deep, ProfileDeep),
     (
-        ProfileDeep = yes,
+        ProfileDeep = bool.yes,
         ( if
             HighLevelCode = no,
             Target = target_c
@@ -1596,18 +1656,26 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
                 words("high level code."), nl],
             add_error(phase_options, DeepHLSpec, !Specs)
         ),
-        !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc,
+        AllowOptLCMCProfDeep = bool.no,
         globals.lookup_bool_option(!.Globals,
             use_lots_of_ho_specialization, LotsOfHOSpec),
         (
-            LotsOfHOSpec = yes,
-            !OptTuple ^ ot_opt_higher_order := opt_higher_order,
-            !OptTuple ^ ot_higher_order_size_limit := 999999
+            LotsOfHOSpec = bool.yes,
+            % We used to switch on --optimize-higher-order here,
+            % even if it was disabled e.g. for execution tracing.
+            % That was almost certainly a bug.
+            %
+            % Setting the limit here is ok, since the limit is irrelevant
+            % if the only optimization that looks at it is not run.
+            OT_HigherOrderSizeLimit = 999999
         ;
-            LotsOfHOSpec = no
+            LotsOfHOSpec = bool.no,
+            OT_HigherOrderSizeLimit = OT_HigherOrderSizeLimit0
         )
     ;
-        ProfileDeep = no
+        ProfileDeep = bool.no,
+        OT_HigherOrderSizeLimit = OT_HigherOrderSizeLimit0,
+        AllowOptLCMCProfDeep = bool.yes
     ),
 
     globals.lookup_bool_option(!.Globals, record_term_sizes_as_words,
@@ -1615,18 +1683,19 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, record_term_sizes_as_cells,
         RecordTermSizesAsCells),
     ( if
-        RecordTermSizesAsWords = yes,
-        RecordTermSizesAsCells = yes
+        RecordTermSizesAsWords = bool.yes,
+        RecordTermSizesAsCells = bool.yes
     then
         DualTermSizeSpec =
             [words("Cannot record term size as both words and cells."), nl],
-        add_error(phase_options, DualTermSizeSpec, !Specs)
+        add_error(phase_options, DualTermSizeSpec, !Specs),
+        AllowOptLCMCTermSize = bool.yes
     else if
-        ( RecordTermSizesAsWords = yes
-        ; RecordTermSizesAsCells = yes
+        ( RecordTermSizesAsWords = bool.yes
+        ; RecordTermSizesAsCells = bool.yes
         )
     then
-        !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc,
+        AllowOptLCMCTermSize = bool.no,
         % Term size profiling breaks the assumption that even word offsets from
         % the start of the cell are double-word aligned memory addresses.
         %
@@ -1635,21 +1704,21 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         % allocates an extra word at the start of a cell.
         globals.set_option(allow_double_word_fields, bool(no), !Globals),
         (
-            HighLevelCode = yes,
+            HighLevelCode = bool.yes,
             TermSizeHLSpec =
                 [words("Term size profiling is incompatible with"),
                 words("high level code."), nl],
             add_error(phase_options, TermSizeHLSpec, !Specs)
         ;
-            HighLevelCode = no
+            HighLevelCode = bool.no
         )
     else
-        true
+        AllowOptLCMCTermSize = bool.yes
     ),
 
     ( if
-        ( given_trace_level_is_none(TraceLevel) = yes
-        ; HighLevelCode = no, Target = target_c
+        ( given_trace_level_is_none(TraceLevel) = bool.yes
+        ; HighLevelCode = bool.no, Target = target_c
         )
     then
         true
@@ -1667,18 +1736,52 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         ( SSTraceLevel = shallow
         ; SSTraceLevel = deep
         ),
-        !OptTuple ^ ot_allow_inlining := do_not_allow_inlining,
-        !OptTuple ^ ot_opt_unused_args := do_not_opt_unused_args,
-        !OptTuple ^ ot_opt_higher_order := do_not_opt_higher_order,
-        !OptTuple ^ ot_spec_types := do_not_spec_types,
-        !OptTuple ^ ot_spec_types_user_guided := do_not_spec_types_user_guided,
-        !OptTuple ^ ot_deforest := do_not_deforest,
-        !OptTuple ^ ot_prop_constraints := do_not_prop_constraints,
-        !OptTuple ^ ot_prop_local_constraints := do_not_prop_local_constraints,
-        !OptTuple ^ ot_opt_dup_calls := do_not_opt_dup_calls,
-        !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc
+        AllowInliningSSDB = bool.no,
+        AllowOptUnusedArgsSSDB = bool.no,
+        AllowOptHigherOrderSSDB = bool.no,
+        AllowAnySpecTypesSSDB = bool.no,
+        AllowDeforestSSDB = bool.no,
+        AllowPropLocalConstraintsSSDB = bool.no,
+        AllowOptDupCallsSSDB = bool.no,
+        AllowOptLCMCSSDB = bool.no
     ;
-        SSTraceLevel = none
+        SSTraceLevel = none,
+        AllowInliningSSDB = bool.yes,
+        AllowOptUnusedArgsSSDB = bool.yes,
+        AllowOptHigherOrderSSDB = bool.yes,
+        AllowAnySpecTypesSSDB = bool.yes,
+        AllowDeforestSSDB = bool.yes,
+        AllowPropLocalConstraintsSSDB = bool.yes,
+        AllowOptDupCallsSSDB = bool.yes,
+        AllowOptLCMCSSDB = bool.yes
+    ),
+
+    ( if
+        AllowOptDupCallsTrace = bool.yes,
+        AllowOptDupCallsSSDB = bool.yes
+    then
+        OT_OptDupCalls = OT_OptDupCalls0
+    else
+        OT_OptDupCalls = do_not_opt_dup_calls
+    ),
+
+    ( if
+        AllowInliningProfDeep = bool.yes,
+        AllowInliningExpComp = bool.yes,
+        AllowInliningTrace = bool.yes,
+        AllowInliningSSDB = bool.yes
+    then
+        OT_AllowInlining = OT_AllowInlining0
+    else
+        OT_AllowInlining = do_not_allow_inlining
+    ),
+    ( if
+        AllowOptHigherOrderTrace = bool.yes,
+        AllowOptHigherOrderSSDB = bool.yes
+    then
+        OT_OptHigherOrder = OT_OptHigherOrder0
+    else
+        OT_OptHigherOrder = do_not_opt_higher_order
     ),
 
     % The pthreads headers on some architectures (Solaris, Linux)
@@ -1686,12 +1789,13 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % XXX we don't pass -ansi to the C compiler anymore.
     option_implies(parallel, ansi_c, bool(no), !Globals),
 
-    InlineBuiltins = !.OptTuple ^ ot_inline_builtins,
+    OT_InlineBuiltins0 = OptTuple0 ^ ot_inline_builtins,
     (
-        InlineBuiltins = do_not_inline_builtins,
-        !OptTuple ^ ot_prop_constants := do_not_prop_constants
+        OT_InlineBuiltins0 = do_not_inline_builtins,
+        AllowPropConstantsInlineBuiltins = bool.no
     ;
-        InlineBuiltins = inline_builtins
+        OT_InlineBuiltins0 = inline_builtins,
+        AllowPropConstantsInlineBuiltins = bool.yes
     ),
 
     % `--optimize-constant-propagation' effectively inlines builtins.
@@ -1704,28 +1808,38 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % `--no-optimize-constant-propagation' otherwise,
     % e.g. when tracing is enabled.
     (
-        ProfileDeep = no,
-        AllowInlining = !.OptTuple ^ ot_allow_inlining,
+        ProfileDeep = bool.no,
         (
-            AllowInlining = do_not_allow_inlining,
-            !OptTuple ^ ot_prop_constants := do_not_prop_constants
+            OT_AllowInlining = do_not_allow_inlining,
+            AllowPropConstantsProfDeep = bool.no
         ;
-            AllowInlining = allow_inlining
+            OT_AllowInlining = allow_inlining,
+            AllowPropConstantsProfDeep = bool.yes
         )
     ;
-        ProfileDeep = yes
+        ProfileDeep = bool.yes,
+        AllowPropConstantsProfDeep = bool.yes
+    ),
+    ( if
+        AllowPropConstantsInlineBuiltins = bool.yes,
+        AllowPropConstantsProfDeep = bool.yes
+    then
+        OT_PropConstants = OT_PropConstants0
+    else
+        OT_PropConstants = do_not_prop_constants
     ),
 
     % --no-reorder-conj implies --no-deforestation,
     % --no-constraint-propagation and --no-local-constraint-propagation.
     globals.lookup_bool_option(!.Globals, reorder_conj, ReorderConj),
     (
-        ReorderConj = no,
-        !OptTuple ^ ot_deforest := do_not_deforest,
-        !OptTuple ^ ot_prop_constraints := do_not_prop_constraints,
-        !OptTuple ^ ot_prop_local_constraints := do_not_prop_local_constraints
+        ReorderConj = bool.no,
+        AllowDeforestReorderConj = bool.no,
+        AllowPropLocalConstraintsReorderConj = bool.no
     ;
-        ReorderConj = yes
+        ReorderConj = bool.yes,
+        AllowDeforestReorderConj = bool.yes,
+        AllowPropLocalConstraintsReorderConj = bool.yes
     ),
 
     % --stack-trace requires `procid' stack layouts
@@ -1771,23 +1885,27 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         GC_Method = gc_accurate,
         globals.set_option(agc_stack_layout, bool(yes), !Globals),
         globals.set_option(body_typeinfo_liveness, bool(yes), !Globals),
-        !OptTuple ^ ot_allow_hijacks := do_not_allow_hijacks,
-        !OptTuple ^ ot_opt_frames := do_not_opt_frames,
+        AllowHijacksGc = bool.no,
+        OT_OptFrames = do_not_opt_frames,
         globals.set_option(opt_no_return_calls, bool(no), !Globals),
-        !OptTuple ^ ot_opt_middle_rec := do_not_opt_middle_rec,
+        AllowOptMiddleRecGc = bool.no,
         globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
             !Globals),
         globals.set_option(reclaim_heap_on_nondet_failure, bool(no), !Globals),
-        !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc,
-        !OptTuple ^ ot_spec_types := do_not_spec_types,
-        !OptTuple ^ ot_spec_types_user_guided := do_not_spec_types_user_guided
+        AllowOptLCMCGc = bool.no,
+        AllowAnySpecTypesGc = bool.no
     ;
         ( GC_Method = gc_automatic
         ; GC_Method = gc_none
         ; GC_Method = gc_boehm
         ; GC_Method = gc_boehm_debug
         ; GC_Method = gc_hgc
-        )
+        ),
+        OT_OptFrames = OT_OptFrames0,
+        AllowOptMiddleRecGc = bool.yes,
+        AllowHijacksGc = bool.yes,
+        AllowOptLCMCGc = bool.yes,
+        AllowAnySpecTypesGc = bool.yes
     ),
 
     % ml_gen_params_base and ml_declare_env_ptr_arg, in ml_code_util.m,
@@ -1797,9 +1915,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, put_nondet_env_on_heap,
         PutNondetEnvOnHeap),
     ( if
-        HighLevelCode = yes,
+        HighLevelCode = bool.yes,
         GC_Method = gc_accurate,
-        PutNondetEnvOnHeap = yes
+        PutNondetEnvOnHeap = bool.yes
     then
         AGCEnvSpec =
             [words_quote("--gc accurate"), words("is incompatible with"),
@@ -1823,9 +1941,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, agc_stack_layout, AgcStackLayout),
     % Likewise for accurate GC.
     ( if (ProcIdStackLayout = yes ; AgcStackLayout = yes) then
-        !OptTuple ^ ot_opt_dups := do_not_opt_dups
+        OT_OptDups = do_not_opt_dups
     else
-        true
+        OT_OptDups = OT_OptDups0
     ),
 
     % stdlabel.m tries to perform operations that yield compiler aborts
@@ -1834,9 +1952,10 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         BasicStackLayout),
     (
         BasicStackLayout = yes,
-        !OptTuple ^ ot_standardize_labels := do_not_standardize_labels
+        OT_StdLabels = do_not_standardize_labels
     ;
-        BasicStackLayout = no
+        BasicStackLayout = no,
+        OT_StdLabels = OT_StdLabels0
     ),
 
     % XXX deforestation and constraint propagation do not perform folding
@@ -1844,12 +1963,24 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, body_typeinfo_liveness,
         BodyTypeInfoLiveness),
     (
-        BodyTypeInfoLiveness = yes,
-        !OptTuple ^ ot_deforest := do_not_deforest,
-        !OptTuple ^ ot_prop_constraints := do_not_prop_constraints
+        BodyTypeInfoLiveness = bool.yes,
+        AllowDeforestBodyTypeInfoLiveness = bool.no,
+        AllowPropConstraintsBodyTypeInfoLiveness = bool.no
         % XXX What about ot_prop_local_constraints?
     ;
-        BodyTypeInfoLiveness = no
+        BodyTypeInfoLiveness = bool.no,
+        AllowPropConstraintsBodyTypeInfoLiveness = bool.yes,
+        AllowDeforestBodyTypeInfoLiveness = bool.yes
+    ),
+    ( if
+        AllowDeforestTrace = bool.yes,
+        AllowDeforestSSDB = bool.yes,
+        AllowDeforestReorderConj = bool.yes,
+        AllowDeforestBodyTypeInfoLiveness = bool.yes
+    then
+        OT_Deforest = OT_Deforest0
+    else
+        OT_Deforest = do_not_deforest
     ),
 
     % XXX If trailing is enabled, middle recursion optimization
@@ -1865,10 +1996,19 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % stack extension via stack segments and middle recursion optimization
     % are incompatible.
     globals.lookup_bool_option(!.Globals, stack_segments, StackSegments),
-    ( if (UseTrail = yes ; StackSegments = yes) then
-        !OptTuple ^ ot_opt_middle_rec := do_not_opt_middle_rec
+    ( if (UseTrail = bool.yes ; StackSegments = bool.yes) then
+        AllowOptMiddleRecTrailStack = bool.no
     else
-        true
+        AllowOptMiddleRecTrailStack = bool.yes
+    ),
+    ( if
+        AllowOptMiddleRecTrace = bool.yes,
+        AllowOptMiddleRecGc = bool.yes,
+        AllowOptMiddleRecTrailStack = bool.yes
+    then
+        OT_OptMiddleRec = OT_OptMiddleRec0
+    else
+        OT_OptMiddleRec = do_not_opt_middle_rec
     ),
 
     % Stack copy minimal model tabling needs to be able to rewrite all
@@ -1879,10 +2019,20 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % layout info, we disable hijacks instead.
     % XXX we should allow hijacks in table_builtin.m
     ( 
-        UseMinimalModelStackCopy = yes,
-        !OptTuple ^ ot_allow_hijacks := do_not_allow_hijacks
+        UseMinimalModelStackCopy = bool.yes,
+        AllowHijacksMMSC = bool.no
     ;
-        UseMinimalModelStackCopy = no
+        UseMinimalModelStackCopy = bool.no,
+        AllowHijacksMMSC = bool.yes
+    ),
+    ( if
+        AllowHijacksTrace = bool.yes,
+        AllowHijacksGc = bool.yes,
+        AllowHijacksMMSC = bool.yes
+    then
+        OT_AllowHijacks = do_not_allow_hijacks
+    else
+        OT_AllowHijacks = OT_AllowHijacks0
     ),
 
     % Stack copy minimal model tabling needs to generate extra code
@@ -1896,8 +2046,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals,
         disable_minimal_model_stack_copy_cut, DisableCut),
     ( if
-        UseMinimalModelStackCopy = yes,
-        DisablePneg = no
+        UseMinimalModelStackCopy = bool.yes,
+        DisablePneg = bool.no
     then
         globals.set_option(use_minimal_model_stack_copy_pneg, bool(yes),
             !Globals)
@@ -1905,8 +2055,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         true
     ),
     ( if
-        UseMinimalModelStackCopy = yes,
-        DisableCut = no
+        UseMinimalModelStackCopy = bool.yes,
+        DisableCut = bool.no
     then
         globals.set_option(use_minimal_model_stack_copy_cut, bool(yes),
             !Globals)
@@ -1924,9 +2074,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     ( if
         ( DumpHLDSStages = [_ | _]
         ; DumpTraceStages = [_ | _]
-        ; Statistics = yes
-        ; ParallelLiveness = yes
-        ; ParallelCodeGen = yes
+        ; Statistics = bool.yes
+        ; ParallelLiveness = bool.yes
+        ; ParallelCodeGen = bool.yes
         )
     then
         globals.set_option(trad_passes, bool(no), !Globals)
@@ -1934,55 +2084,104 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         true
     ),
 
-    % If we are doing type-specialization, we may as well take advantage
-    % of the declarations supplied by the programmer.
-    TypeSpec = !.OptTuple ^ ot_spec_types,
-    (
-        TypeSpec = spec_types,
-        !OptTuple ^ ot_spec_types_user_guided := spec_types_user_guided
-    ;
-        TypeSpec = do_not_spec_types
+    ( if
+        AllowAnySpecTypesTrace = bool.yes,
+        AllowAnySpecTypesSSDB = bool.yes,
+        AllowAnySpecTypesGc = bool.yes
+    then
+        OT_SpecTypes = OT_SpecTypes0,
+        (
+            OT_SpecTypes = spec_types,
+            % If we are doing type-specialization, we may as well take
+            % advantage of the declarations supplied by the programmer.
+            OT_SpecTypesUserGuided = spec_types_user_guided
+        ;
+            OT_SpecTypes = do_not_spec_types,
+            OT_SpecTypesUserGuided = OT_SpecTypesUserGuided0
+        )
+    else
+        OT_SpecTypes = do_not_spec_types,
+        OT_SpecTypesUserGuided = do_not_spec_types_user_guided
     ),
 
     % The local constraint propagation transformation (constraint.m)
     % is a required part of the constraint propagation transformation
-    % performed by deforest.m.
-    ConstProp = !.OptTuple ^ ot_prop_constraints,
-    (
-        ConstProp = prop_constraints,
-        !OptTuple ^ ot_prop_local_constraints := prop_local_constraints
-    ;
-        ConstProp = do_not_prop_constraints
+    % performed by deforest.m, so if propagating local constraints
+    % is disallowed, we can't propagate any other constraints either.
+    %
+    % Every place above that sets one of AllowPropLocalConstraints*
+    % to "no" is therefore also saying no to prop_constraints.
+    ( if
+        AllowPropLocalConstraintsTrace = bool.yes,
+        AllowPropLocalConstraintsSSDB = bool.yes,
+        AllowPropLocalConstraintsReorderConj = bool.yes
+    then
+        OT_PropLocalConstraints = OT_PropLocalConstraints0
+    else
+        OT_PropLocalConstraints = do_not_prop_local_constraints
     ),
-
-    % --intermod-unused-args implies --intermodule-optimization and
-    % --optimize-unused-args.
-    IntermodUnusedArgs = !.OptTuple ^ ot_opt_unused_args_intermod,
-    (
-        IntermodUnusedArgs = opt_unused_args_intermod,
-        !OptTuple ^ ot_opt_unused_args := opt_unused_args,
-        globals.set_option(intermodule_optimization, bool(yes), !Globals)
-    ;
-        IntermodUnusedArgs = do_not_opt_unused_args_intermod
+    ( if
+        AllowPropConstraintsBodyTypeInfoLiveness = bool.yes,
+        OT_PropLocalConstraints = prop_local_constraints
+    then
+        OT_PropConstraints = OT_PropConstraints0
+    else
+        OT_PropConstraints = do_not_prop_constraints
     ),
 
     % --introduce-accumulators implies --excess-assign and
     % --common-struct.
-    IntroduceAccumulators = !.OptTuple ^ ot_introduce_accumulators,
     (
-        IntroduceAccumulators = introduce_accumulators,
-        !OptTuple ^ ot_elim_excess_assigns := elim_excess_assigns,
-        !OptTuple ^ ot_opt_common_structs := opt_common_structs
+        OT_IntroduceAccumulators0 = introduce_accumulators,
+        ForceElimExcessAssignAcc = bool.yes,
+        OT_OptCommonStructs = opt_common_structs
     ;
-        IntroduceAccumulators = do_not_introduce_accumulators
+        OT_IntroduceAccumulators0 = do_not_introduce_accumulators,
+        ForceElimExcessAssignAcc = bool.no,
+        OT_OptCommonStructs = OT_OptCommonStructs0
+    ),
+    ( if
+        ( ForceElimExcessAssignTrace = bool.yes
+        ; ForceElimExcessAssignAcc = bool.yes
+        )
+    then
+        OT_ElimExcessAssigns = elim_excess_assigns
+    else
+        OT_ElimExcessAssigns = OT_ElimExcessAssigns0
     ),
 
     % Don't do the unused_args optimization when making the
     % optimization interface.
     ( if OpMode = opm_top_args(opma_augment(opmau_make_opt_int)) then
-        !OptTuple ^ ot_opt_unused_args := do_not_opt_unused_args
+        AllowOptUnusedArgsMakeOptInt = bool.no
     else
-        true
+        AllowOptUnusedArgsMakeOptInt = bool.yes
+    ),
+
+    ( if
+        AllowOptUnusedArgsTrace = bool.yes,
+        AllowOptUnusedArgsSSDB = bool.yes,
+        AllowOptUnusedArgsMakeOptInt = bool.yes
+    then
+        OT_OptUnusedArgs = OT_OptUnusedArgs0
+    else
+        OT_OptUnusedArgs = do_not_opt_unused_args
+    ),
+
+    % --intermod-unused-args implies --intermodule-optimization and
+    % --optimize-unused-args. The latter implies that it must be switched
+    % off if --optimize-unused-args is disallowed,
+    % XXX In the presence of --intermod-unused-args, we used to *ignore*
+    % whether some code above disallowed --optimize-unused-args; we used
+    % to turn it *back on*, and set --intermodule-optimization to yes anyway.
+    ( if
+        OT_OptUnusedArgsIntermod0 = opt_unused_args_intermod,
+        OT_OptUnusedArgs = opt_unused_args
+    then
+        OT_OptUnusedArgsIntermod = OT_OptUnusedArgsIntermod0,
+        globals.set_option(intermodule_optimization, bool(yes), !Globals)
+    else
+        OT_OptUnusedArgsIntermod = do_not_opt_unused_args_intermod
     ),
 
     % The results of trail usage analysis assume that trail usage
@@ -2002,7 +2201,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
 
     globals.lookup_string_option(!.Globals, mercury_linkage, MercuryLinkage),
     ( if MercuryLinkage = "static" then
-        DefaultRuntimeLibraryDirs = no,
+        DefaultRuntimeLibraryDirs = bool.no,
         globals.set_option(default_runtime_library_directory, bool(no),
             !Globals)
     else
@@ -2027,13 +2226,13 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
             accumulating([StdLibDir/"lib" | LinkLibDirs0]), !Globals),
 
         (
-            DefaultRuntimeLibraryDirs = yes,
+            DefaultRuntimeLibraryDirs = bool.yes,
             globals.lookup_accumulating_option(!.Globals,
                 runtime_link_library_directories, Rpath0),
             globals.set_option(runtime_link_library_directories,
                 accumulating([StdLibDir/"lib" | Rpath0]), !Globals)
         ;
-            DefaultRuntimeLibraryDirs = no
+            DefaultRuntimeLibraryDirs = bool.no
         )
     ;
         MaybeStdLibDir = no,
@@ -2089,13 +2288,13 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
             accumulating(LinkLibDirs1 ++ ExtraLinkLibDirs), !Globals),
 
         (
-            DefaultRuntimeLibraryDirs = yes,
+            DefaultRuntimeLibraryDirs = bool.yes,
             globals.lookup_accumulating_option(!.Globals,
                 runtime_link_library_directories, Rpath),
             globals.set_option(runtime_link_library_directories,
                 accumulating(Rpath ++ ExtraLinkLibDirs), !Globals)
         ;
-            DefaultRuntimeLibraryDirs = no
+            DefaultRuntimeLibraryDirs = bool.no
         ),
 
         ExtraIncludeDirs = list.map(
@@ -2140,7 +2339,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals,
         use_search_directories_for_intermod, UseSearchDirs),
     (
-        UseSearchDirs = yes,
+        UseSearchDirs = bool.yes,
         globals.lookup_accumulating_option(!.Globals,
             intermod_directories, IntermodDirs1),
         globals.lookup_accumulating_option(!.Globals,
@@ -2148,7 +2347,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         globals.set_option(intermod_directories,
             accumulating(IntermodDirs1 ++ SearchDirs), !Globals)
     ;
-        UseSearchDirs = no
+        UseSearchDirs = bool.no
     ),
 
     globals.lookup_bool_option(!.Globals, use_grade_subdirs,
@@ -2159,7 +2358,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         intermod_directories, IntermodDirs2),
     ToGradeSubdir = (func(Dir) = Dir/"Mercury"/GradeString/TargetArch),
     (
-        UseGradeSubdirs = yes,
+        UseGradeSubdirs = bool.yes,
         % With `--use-grade-subdirs', `.opt', `.trans_opt' and
         % `.mih' files are placed in a directory named
         % `Mercury/<grade>/<target_arch>/Mercury/<ext>s'.
@@ -2177,7 +2376,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         IntermodDirs3 = [GradeSubdir] ++ SearchLibFilesGradeSubdirs ++
             list.filter(isnt(unify(dir.this_directory)), IntermodDirs2)
     ;
-        UseGradeSubdirs = no,
+        UseGradeSubdirs = bool.no,
         IntermodDirs3 = SearchLibFilesDirs ++ IntermodDirs2
     ),
     globals.set_option(intermod_directories,
@@ -2188,7 +2387,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_accumulating_option(!.Globals,
         init_file_directories, InitDirs2),
     (
-        UseGradeSubdirs = yes,
+        UseGradeSubdirs = bool.yes,
         % With --use-grade-subdirs we need to search in
         % `Mercury/<grade>/<target_arch>/Mercury/lib' for libraries and
         % `Mercury/<grade>/<target_arch>/Mercury/inits' for init files,
@@ -2202,7 +2401,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         SearchGradeInitDirs = list.map(ToGradeInitDir, SearchLibFilesDirs),
         InitDirs = SearchGradeInitDirs ++ InitDirs2
     ;
-        UseGradeSubdirs = no,
+        UseGradeSubdirs = bool.no,
         LinkLibDirs = SearchLibFilesDirs ++ LinkLibDirs2,
         InitDirs = SearchLibFilesDirs ++ InitDirs2
     ),
@@ -2218,13 +2417,13 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, use_subdirs, UseSubdirs),
     ( if
         (
-            UseGradeSubdirs = yes,
+            UseGradeSubdirs = bool.yes,
             ToMihsSubdir =
                 (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"mihs"),
             ToHrlsSubdir =
                 (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"hrls")
         ;
-            UseGradeSubdirs = no,
+            UseGradeSubdirs = bool.no,
             (
                 UseSubdirs = yes,
                 ToMihsSubdir = (func(Dir) = Dir/"Mercury"/"mihs"),
@@ -2266,16 +2465,14 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, warn_non_tail_recursion_mutual,
         WarnNonTailRecMutual),
     ( if
-        ( WarnNonTailRecSelf = yes
-        ; WarnNonTailRecMutual = yes
+        ( WarnNonTailRecSelf = bool.yes
+        ; WarnNonTailRecMutual = bool.yes
         )
     then
-        PessimizeTailCalls = !.OptTuple ^ ot_pessimize_tailcalls,
-        OptimizeTailCalls = !.OptTuple ^ ot_opt_mlds_tailcalls,
         (
-            PessimizeTailCalls = do_not_pessimize_tailcalls
+            OT_PessimizeTailCalls0 = do_not_pessimize_tailcalls
         ;
-            PessimizeTailCalls = pessimize_tailcalls,
+            OT_PessimizeTailCalls0 = pessimize_tailcalls,
             PessimizeWords = "--warn-non-tail-recursion is incompatible" ++
                  " with --pessimize-tailcalls",
             % XXX While these two options look diametrically opposed,
@@ -2287,9 +2484,13 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
             add_error(phase_options, [words(PessimizeWords)], !Specs)
         ),
         (
-            OptimizeTailCalls = opt_mlds_tailcalls
+            OT_OptMLDSTailCalls = opt_mlds_tailcalls
         ;
-            OptimizeTailCalls = do_not_opt_mlds_tailcalls,
+            OT_OptMLDSTailCalls = do_not_opt_mlds_tailcalls,
+            % XXX This error message could be misleading. It is possible that
+            % - the user *did* ask for MLDS tailcalls, but
+            % - accidentally also specified --no-optimize, which would
+            %   lead to code above turning MLDS tailcalls *off*.
             OptimizeWords =
                 "--warn-non-tail-recursion requires --optimize-tailcalls",
             add_error(phase_options, [words(OptimizeWords)], !Specs)
@@ -2308,18 +2509,33 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % The backend foreign languages depend on the target.
     (
         Target = target_c,
-        BackendForeignLanguages = ["c"]
+        BackendForeignLanguages = ["c"],
+        AllowOptLCMCBackend = bool.yes
     ;
         Target = target_csharp,
-        BackendForeignLanguages = ["csharp"]
+        BackendForeignLanguages = ["csharp"],
+        AllowOptLCMCBackend = bool.yes
     ;
         Target = target_java,
-        BackendForeignLanguages = ["java"]
+        BackendForeignLanguages = ["java"],
+        AllowOptLCMCBackend = bool.yes
     ;
         Target = target_erlang,
         BackendForeignLanguages = ["erlang"],
-        !OptTuple ^ ot_opt_lcmc := do_not_opt_lcmc,
+        AllowOptLCMCBackend = bool.no,
         set_option(allow_multi_arm_switches, bool(no), !Globals)
+    ),
+    ( if
+        AllowOptLCMCTrace = bool.yes,
+        AllowOptLCMCProfDeep = bool.yes,
+        AllowOptLCMCTermSize = bool.yes,
+        AllowOptLCMCSSDB = bool.yes,
+        AllowOptLCMCGc = bool.yes,
+        AllowOptLCMCBackend = bool.yes
+    then
+        OT_OptLCMC = OT_OptLCMC0
+    else
+        OT_OptLCMC = do_not_opt_lcmc
     ),
 
     % Only set the backend foreign languages if they are unset.
@@ -2340,10 +2556,10 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         % may be back end specific, since different back ends have
         % different performance tradeoffs.
         (
-            HighLevelCode = no,
+            HighLevelCode = bool.no,
             globals.set_option(compare_specialization, int(13), !Globals)
         ;
-            HighLevelCode = yes,
+            HighLevelCode = bool.yes,
             globals.set_option(compare_specialization, int(14), !Globals)
         )
     else
@@ -2363,6 +2579,35 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     else
         globals.set_option(can_compare_constants_as_ints, bool(no), !Globals)
     ),
+
+    !OptTuple ^ ot_allow_inlining := OT_AllowInlining,
+    !OptTuple ^ ot_opt_common_structs := OT_OptCommonStructs,
+    !OptTuple ^ ot_prop_constraints := OT_PropConstraints,
+    !OptTuple ^ ot_prop_local_constraints := OT_PropLocalConstraints,
+    !OptTuple ^ ot_opt_dup_calls := OT_OptDupCalls,
+    !OptTuple ^ ot_prop_constants := OT_PropConstants,
+    !OptTuple ^ ot_opt_svcell := OT_OptSVCell,
+    !OptTuple ^ ot_opt_loop_invariants := OT_OptLoopInvariants,
+    !OptTuple ^ ot_elim_excess_assigns := OT_ElimExcessAssigns,
+    !OptTuple ^ ot_opt_test_after_switch := OT_OptTestAfterSwitch,
+    !OptTuple ^ ot_opt_follow_code := OT_OptFollowCode,
+    !OptTuple ^ ot_opt_unused_args := OT_OptUnusedArgs,
+    !OptTuple ^ ot_opt_unused_args_intermod := OT_OptUnusedArgsIntermod,
+    !OptTuple ^ ot_opt_higher_order := OT_OptHigherOrder,
+    !OptTuple ^ ot_higher_order_size_limit := OT_HigherOrderSizeLimit,
+    !OptTuple ^ ot_spec_types := OT_SpecTypes,
+    !OptTuple ^ ot_spec_types_user_guided := OT_SpecTypesUserGuided,
+    !OptTuple ^ ot_opt_lcmc := OT_OptLCMC,
+    !OptTuple ^ ot_deforest := OT_Deforest,
+    !OptTuple ^ ot_tuple := OT_Tuple,
+    !OptTuple ^ ot_untuple := OT_Untuple,
+    !OptTuple ^ ot_opt_middle_rec := OT_OptMiddleRec,
+    !OptTuple ^ ot_allow_hijacks := OT_AllowHijacks,
+    !OptTuple ^ ot_opt_mlds_tailcalls := OT_OptMLDSTailCalls,
+    !OptTuple ^ ot_standardize_labels := OT_StdLabels,
+    !OptTuple ^ ot_opt_dups := OT_OptDups,
+    !OptTuple ^ ot_opt_frames := OT_OptFrames,
+    !OptTuple ^ ot_string_binary_switch_size := OT_StringBinarySwitchSize,
 
     (
         HighLevelCode = no,
