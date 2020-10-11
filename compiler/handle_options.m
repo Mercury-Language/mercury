@@ -2030,9 +2030,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         AllowHijacksGc = bool.yes,
         AllowHijacksMMSC = bool.yes
     then
-        OT_AllowHijacks = do_not_allow_hijacks
-    else
         OT_AllowHijacks = OT_AllowHijacks0
+    else
+        OT_AllowHijacks = do_not_allow_hijacks
     ),
 
     % Stack copy minimal model tabling needs to generate extra code
