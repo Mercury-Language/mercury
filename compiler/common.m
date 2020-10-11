@@ -112,9 +112,11 @@
 :- type common_info.
 :- func common_info_init = common_info.
 
-    % Clear the list of structs seen since the last stack flush.
+    % Handle the effects of a stack flush. Specifically, clear both
+    % the list of structs, and the set of variables, seen since
+    % the last stack flush.
     %
-:- pred common_info_clear_structs(common_info::in, common_info::out) is det.
+:- pred common_info_stack_flush(common_info::in, common_info::out) is det.
 
     % If we find a construction that constructs a cell identical to one we
     % have seen before, replace the construction with an assignment from the
@@ -181,6 +183,7 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -238,6 +241,7 @@
                 var_eqv                 :: eqvclass(prog_var),
                 all_structs             :: struct_map,
                 since_call_structs      :: struct_map,
+                since_call_vars         :: set_of_progvar,
                 seen_calls              :: seen_calls
             ).
 
@@ -297,11 +301,14 @@
 common_info_init = CommonInfo :-
     eqvclass.init(VarEqv0),
     map.init(StructMap0),
+    set_of_var.init(SinceCallVars0),
     map.init(SeenCalls0),
-    CommonInfo = common_info(VarEqv0, StructMap0, StructMap0, SeenCalls0).
+    CommonInfo = common_info(VarEqv0, StructMap0, StructMap0, SinceCallVars0,
+        SeenCalls0).
 
-common_info_clear_structs(!Info) :-
-    !Info ^ since_call_structs := map.init.
+common_info_stack_flush(!Info) :-
+    !Info ^ since_call_structs := map.init,
+    !Info ^ since_call_vars := set_of_var.init.
 
 %---------------------------------------------------------------------------%
 
@@ -414,7 +421,11 @@ common_optimise_unification(Unification0, UnifyMode, !GoalExpr, !GoalInfo,
         record_equivalence(Var1, Var2, !Common)
     ;
         Unification0 = complicated_unify(_, _, _)
-    ).
+    ),
+    NonLocals = goal_info_get_nonlocals(!.GoalInfo),
+    SinceCallVars0 = !.Common ^ since_call_vars,
+    set_of_var.union(NonLocals, SinceCallVars0, SinceCallVars),
+    !Common ^ since_call_vars := SinceCallVars.
 
 :- pred common_optimise_construct(prog_var::in, cons_id::in,
     list(prog_var)::in, mer_inst::in,
@@ -431,15 +442,18 @@ common_optimise_construct(Var, ConsId, ArgVars, LVarFinalInst,
         ArgVars, ArgVarIds, VarEqv0, VarEqv1),
     AllStructMap0 = !.Common ^ all_structs,
     ( if
+        map.search(AllStructMap0, TypeCtor, ConsIdMap0),
+        map.search(ConsIdMap0, ConsId, Structs),
+        find_matching_cell_construct(Structs, VarEqv1, ArgVarIds, OldStruct),
+
         % generate_assign assumes that the output variable is in the
         % instmap_delta, which will not be true if the variable is local
         % to the unification. The optimization is pointless in that case.
+        % This test is after find_matching_cell_construct, because that call
+        % is *much* more likely to fail than this test, even though it is
+        % also significantly more expensive.
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
-        instmap_delta_search_var(InstMapDelta, Var, _),
-
-        map.search(AllStructMap0, TypeCtor, ConsIdMap0),
-        map.search(ConsIdMap0, ConsId, Structs),
-        find_matching_cell_construct(Structs, VarEqv1, ArgVarIds, OldStruct)
+        instmap_delta_search_var(InstMapDelta, Var, _)
     then
         OldStruct = structure(OldVar, _),
         eqvclass.ensure_equivalence(Var, OldVar, VarEqv1, VarEqv),
@@ -461,11 +475,131 @@ common_optimise_construct(Var, ConsId, ArgVars, LVarFinalInst,
             simplify_info_incr_cost_delta(Cost, !Info)
         )
     else
-        GoalExpr = GoalExpr0,
-        GoalInfo = GoalInfo0,
-        Struct = structure(Var, ArgVars),
-        record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv1, !Common)
+        common_standardize_and_record_construct(Var, TypeCtor, ConsId, ArgVars,
+            VarEqv1, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Common, !Info)
     ).
+
+    % The purpose of this predicate is to short-circuit variable-to-variable
+    % equivalences in structure arguments.
+    %
+    % The kind of situation where this matters is a sequence of
+    % updates to various fields of a structure. Consider the code
+    %
+    %   !S ^ f1 = F1,
+    %   !S ^ f2 = F2
+    %
+    % where S has four fields. The compiler represents those two lines as
+    %
+    %   ( % removable barrier scope
+    %       S0 = struct(_V11, V12, V13, V14),
+    %       S1 = struct(  F1, V12, V13, V14)
+    %   ),
+    %   ( % removable barrier scope
+    %       S1 = struct(V_21, _V22, V23, V24),
+    %       S2 = struct(V_21,   F2, V13, V14)
+    %   ),
+    %
+    % The compiler knows that V_21 is equivalent to F1, since both
+    % occur in the same place, the first argument of S1. But as long as
+    % the first argument of S2 is recorded as V_21, the compiler will
+    % need to keep the goal that defines V_21, the deconstruction of S1,
+    % which means that it also needs to keep the *construction* of S1.
+    % This means that the compiler cannot optimize a sequence of field
+    % assignments into the single construction of a new cell with all
+    % the updated field values.
+    %
+    % We handle this by replacing each argument variable in a construction
+    % unification with the lowest-numbered (and therefore earliest-introduced)
+    % variable in its equivalence class (but see next paragraph). That means
+    % that we would make the first argument of S2 be F1, not V_21. And since
+    % we know that V23 and V24 are equivalent to V13 and V14 respectively
+    % (due to the appearance in the third and fourth slots of S1), the args
+    % from which we construct S2 would be F1, F2, V13 and V14.
+    %
+    % There is one qualification to the above. When we look for the lowest
+    % numbered variable in the argument variable's equivalence class,
+    % we confine our attention to the variables that we have seen since
+    % the last call. This is because reading the value of a variable
+    % that we last saw before a call will require the code generator
+    % to save the value of that variable on the stack, which has costs
+    % of its own. Between (a) saving the values of three fields in stack slots
+    % and later loading those values from their stack slots, and (b) saving
+    % just the cell variable on the stack, and later loading it from the stack
+    % and then reading the fields from the heap, (b) is almost certainly
+    % faster, since it does 1 store and 3 loads vs 3 stores and 3 loads.
+    % When reusing just one or two fields, the difference almost certainly
+    % going to be minor, and its direction (which approach is better) will
+    % probably depend on information we don't have right now. I (zs) think
+    % that not requiring extra variables to be stored in stack slots is
+    % probably the better approach overall.
+    %
+:- pred common_standardize_and_record_construct(prog_var::in, type_ctor::in,
+    cons_id::in, list(prog_var)::in, eqvclass(prog_var)::in,
+    hlds_goal_expr::in, hlds_goal_expr::out,
+    hlds_goal_info::in, hlds_goal_info::out,
+    common_info::in, common_info::out,
+    simplify_info::in, simplify_info::out) is det.
+
+common_standardize_and_record_construct(Var, TypeCtor, ConsId, ArgVars, VarEqv,
+        GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Common, !Info) :-
+    SinceCallVars = !.Common ^ since_call_vars,
+    list.map(find_representative(SinceCallVars, VarEqv),
+        ArgVars, ArgRepnVars),
+    ( if
+        ArgRepnVars = ArgVars
+    then
+        GoalExpr = GoalExpr0,
+        GoalInfo = GoalInfo0
+    else if
+        GoalExpr0 = unify(Var, RHS0, UnifyMode, Unification0, Ctxt),
+        RHS0 = rhs_functor(ConsId, IsExistConstr, ArgVars),
+        Unification0 = construct(Var, ConsId, ArgVars, ArgModes, How,
+            Uniq, SubInfo)
+    then
+        Unification = construct(Var, ConsId, ArgRepnVars, ArgModes, How,
+            Uniq, SubInfo),
+        RHS = rhs_functor(ConsId, IsExistConstr, ArgRepnVars),
+        GoalExpr = unify(Var, RHS, UnifyMode, Unification, Ctxt),
+        set_of_var.list_to_set([Var | ArgRepnVars], NonLocals),
+        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
+        !Common ^ var_eqv := VarEqv,
+        simplify_info_set_should_requantify(!Info)
+    else
+        unexpected($pred, "GoalExpr0 has unexpected shape")
+    ),
+    Struct = structure(Var, ArgRepnVars),
+    record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv, !Common).
+
+%---------------------%
+
+    % Given a variable, return the lowest numbered variable in its
+    % equivalence class that we have seen since the last stack flush.
+    % See the comment on common_standardize_and_record_construct
+    % for the reason why we do this.
+    % 
+:- pred find_representative(set_of_progvar::in,
+    eqvclass(prog_var)::in, prog_var::in, prog_var::out) is det.
+
+find_representative(SinceCallVars, VarEqv, Var, RepnVar) :-
+    EqvVarsSet = get_equivalent_elements(VarEqv, Var),
+    set.to_sorted_list(EqvVarsSet, EqvVars),
+    ( if find_representative_loop(SinceCallVars, EqvVars, RepnVarPrime) then
+        RepnVar = RepnVarPrime
+    else
+        RepnVar = Var
+    ).
+
+:- pred find_representative_loop(set_of_progvar::in, list(prog_var)::in,
+    prog_var::out) is semidet.
+
+find_representative_loop(SinceCallVars, [Var | Vars], RepnVar) :-
+    ( if set_of_var.contains(SinceCallVars, Var) then
+        RepnVar = Var
+    else
+        find_representative_loop(SinceCallVars, Vars, RepnVar)
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- pred common_optimise_deconstruct(prog_var::in, cons_id::in,
     list(prog_var)::in, list(unify_mode)::in, can_fail::in,

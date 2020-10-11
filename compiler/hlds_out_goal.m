@@ -45,6 +45,12 @@
 :- pred dump_goal(module_info::in, prog_varset::in, hlds_goal::in,
     io::di, io::uo) is det.
 
+    % Print a goal in a way that is suitable for debugging the compiler
+    % (but necessarily for anything else), followed by a newline.
+    %
+:- pred dump_goal_nl(module_info::in, prog_varset::in, hlds_goal::in,
+    io::di, io::uo) is det.
+
     % Print out an HLDS goal. The module_info and prog_varset give
     % the context of the goal. The integer gives the level of indentation
     % to be used within the goal. The string says what should end the line
@@ -162,6 +168,10 @@ dump_goal(ModuleInfo, VarSet, Goal, !IO) :-
     TypeQual = no_varset_vartypes,
     do_write_goal(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
         Indent, Follow, Goal, !IO).
+
+dump_goal_nl(ModuleInfo, VarSet, Goal, !IO) :-
+    dump_goal(ModuleInfo, VarSet, Goal, !IO),
+    io.nl(!IO).
 
 write_goal(Info, ModuleInfo, VarSet, VarNamePrint, Indent, Follow, Goal,
         !IO) :-

@@ -331,10 +331,6 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
     proc_info_get_vartypes(ProcInfo, VarTypes0),
     vartypes_count(VarTypes0, NumVars),
     ( if NumVars > turn_off_common_struct_threshold then
-        % If we have too many variables, common_struct takes so long that
-        % either the compiler runs out of memory or the user runs out of
-        % patience. The fact that we would generate better code if the
-        % compilation finished is therefore of limited interest.
         !SimplifyTasks ^ do_common_struct := do_not_opt_common_structs
     else
         true
@@ -361,9 +357,26 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
         )
     ).
 
+    % If we have too many variables, common_struct used to take so long that
+    % either the compiler runs out of memory, or the user runs out of patience.
+    % In such cases, the fact that we would generate better code if the
+    % compilation finished is therefore of limited interest.
+    %
+    % However, since this limit was first imposed, we have optimized
+    % the compiler's infrastructure for such things, e.g. by using much more
+    % compact representations for sets of variables, which permit much faster
+    % operations on them. These changes do not eliminate the danger described
+    % above completely, but they do raise the threshold at which they can
+    % appear.
+    %
+    % As of 2020 october 11, the code of convert_options_to_globals in
+    % handle_options.m has just shy of 9,000 variables at the time of the
+    % first simplify pass (HLDS dump stage 65). The compiler can handle that
+    % easily, so the setting below allows for some growth.
+    % 
 :- func turn_off_common_struct_threshold = int.
 
-turn_off_common_struct_threshold = 1000.
+turn_off_common_struct_threshold = 12000.
 
 :- pred simplify_proc_maybe_mark_modecheck_clauses(
     proc_info::in, proc_info::out) is det.

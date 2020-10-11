@@ -273,10 +273,10 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         Goal3 = Goal2
     ),
     Goal3 = hlds_goal(GoalExpr3, GoalInfo3),
-    maybe_clear_common_structs(before, GoalExpr3, !.Info, !Common),
+    maybe_handle_stack_flush(before, GoalExpr3, !.Info, !Common),
     simplify_goal_expr(GoalExpr3, GoalExpr4, GoalInfo3, GoalInfo4,
         NestedContext, InstMap0, !Common, !Info),
-    maybe_clear_common_structs(after, GoalExpr4, !.Info, !Common),
+    maybe_handle_stack_flush(after, GoalExpr4, !.Info, !Common),
     enforce_unreachability_invariant(GoalInfo4, GoalInfo, !Info),
     Goal = hlds_goal(GoalExpr4, GoalInfo).
 
@@ -374,16 +374,19 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, NestedContext0,
     % When doing deforestation, it may be better to remove
     % as many common structures as possible.
     %
-:- pred maybe_clear_common_structs(before_after::in, hlds_goal_expr::in,
+    % Clear the set of variables seen since the last stack flush,
+    % for the same reason.
+    %
+:- pred maybe_handle_stack_flush(before_after::in, hlds_goal_expr::in,
     simplify_info::in, common_info::in, common_info::out) is det.
 
-maybe_clear_common_structs(BeforeAfter, GoalExpr, Info, !Common) :-
+maybe_handle_stack_flush(BeforeAfter, GoalExpr, Info, !Common) :-
     ( if
         simplify_do_common_struct(Info),
         not simplify_do_extra_common_struct(Info),
         will_flush(GoalExpr, BeforeAfter) = yes
     then
-        common_info_clear_structs(!Common)
+        common_info_stack_flush(!Common)
     else
         true
     ).
