@@ -61,7 +61,7 @@
     static void         complex_bushandler(int, siginfo_t *, void *);
     static void         complex_segvhandler(int, siginfo_t *, void *);
   #else
-    #error "MR_HAVE_SIGINFO defined but don't know how to get it"
+    static void         simple_sighandler(int);
   #endif
 #else
   static void           simple_sighandler(int);
@@ -80,7 +80,8 @@
     #define     bus_handler     complex_bushandler
     #define     segv_handler    complex_segvhandler
   #else
-    #error "MR_HAVE_SIGINFO defined but don't know how to get it"
+    #define     bus_handler     simple_sighandler
+    #define     segv_handler    simple_sighandler
   #endif
 #else
     #define     bus_handler     simple_sighandler
