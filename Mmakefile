@@ -532,7 +532,12 @@ tar: 	$(GENERATED_DOCS)
 	-rm -rf bytecode
 	-rm -rf extras/quickcheck
 	-rm -rf .git
-	-rm -rf .gitignore
+	-rm -f .gitignore
+	-rm -f boehm_gc/.git boehm_gc/.gitignore boehm_gc/.gitattributes
+	-rm -f boehm_gc/.gitmodules
+	-rm -f boehm_gc/libatomic_ops/.git
+	-rm -f boehm_gc/libatomic_ops/.gitignore
+	-rm -f boehm_gc/libatomic_ops/.gitattributes
 	chmod -R a+r *
 	# Our invoker should have passed to us in ${SRCDIST_NAME}
 	# the name of the current directory in its parent directory.
