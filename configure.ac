@@ -1538,7 +1538,9 @@ AC_CACHE_VAL(mercury_cv_siginfo_t,
 AC_TRY_RUN(
     [
         #include <stdio.h>
+        #include <stdlib.h>
         #include <signal.h>
+        #include <unistd.h>
         #ifdef MR_HAVE_SYS_SIGINFO_H
         #include <sys/siginfo.h>
         #endif
@@ -1584,127 +1586,69 @@ if test "$mercury_cv_siginfo_t" = yes; then
     AC_DEFINE(MR_HAVE_SIGINFO_T)
     AC_DEFINE(MR_HAVE_SIGINFO)
 
-    AC_MSG_CHECKING(for \`siginfo' pc access at signals)
+    AC_MSG_CHECKING(for PC access from signal handler context)
     AC_CACHE_VAL(mercury_cv_pc_access,
-    mercury_cv_pc_access=no
-    AC_TRY_RUN(
-        [
-            #include <stdio.h>
-            #include <signal.h>
-            #ifdef MR_HAVE_SYS_SIGINFO_H
-            #include <sys/siginfo.h>
-            #endif
-            #ifdef MR_HAVE_UCONTEXT_H
-            #include <ucontext.h>
-            #else
-            #include <sys/ucontext.h>
-            #endif
-            int save_signum = 0;
-            int save_cause;
-            int save_pc;
-            extern void handler(int signum, siginfo_t *info, void *context);
-            int main() {
-                struct sigaction act;
-                act.sa_flags = SA_SIGINFO;
-                act.sa_sigaction = handler;
-                if (sigemptyset(&act.sa_mask) != 0)
-                    exit(1);
-                if (sigaction(SIGSEGV, &act, NULL) != 0)
-                    exit(1);
-                if (kill(getpid(), SIGSEGV) != 0)
-                    exit(1);
-                if (save_signum == 0)
-                    exit(1);
-                exit(0);
-            }
-            void handler(int signum, siginfo_t *info, void *context) {
-                save_signum = signum;
-                save_cause = info->si_code;
-                /* Don't use array indexing - the square brackets
-                   are autoconf quote characters */
-                save_pc = *(((ucontext_t *) context)->uc_mcontext.gregs
-                        + REG_PC);
-            }
-        ],
-        [mercury_cv_pc_access=REG_PC;mercury_cv_pc_access_greg=yes],
-        [true])
-    AC_TRY_RUN(
-        [
-            #include <stdio.h>
-            #include <signal.h>
-            #ifdef MR_HAVE_SYS_SIGINFO_H
-            #include <sys/siginfo.h>
-            #endif
-            #ifdef MR_HAVE_UCONTEXT_H
-            #include <ucontext.h>
-            #else
-            #include <sys/ucontext.h>
-            #endif
-            int save_signum = 0;
-            int save_cause;
-            int save_pc;
-            extern void handler(int signum, siginfo_t *info, void *context);
-            int main() {
-                struct sigaction act;
-                act.sa_flags = SA_SIGINFO;
-                act.sa_sigaction = handler;
-                if (sigemptyset(&act.sa_mask) != 0)
-                    exit(1);
-                if (sigaction(SIGSEGV, &act, NULL) != 0)
-                    exit(1);
-                if (kill(getpid(), SIGSEGV) != 0)
-                    exit(1);
-                if (save_signum == 0)
-                    exit(1);
-                exit(0);
-            }
-            void handler(int signum, siginfo_t *info, void *context) {
-                save_signum = signum;
-                save_cause = info->si_code;
-                save_pc = *(((ucontext_t *) context)->uc_mcontext.gregs
-                        + CTX_EPC);
-            }
-        ],
-        [mercury_cv_pc_access=CTX_EPC;mercury_cv_pc_access_greg=yes],
-        [true])
-    AC_TRY_RUN(
-        [
-            #include <stdio.h>
-            #include <signal.h>
-            #ifdef MR_HAVE_SYS_SIGINFO_H
-            #include <sys/siginfo.h>
-            #endif
-            #ifdef MR_HAVE_UCONTEXT_H
-            #include <ucontext.h>
-            #else
-            #include <sys/ucontext.h>
-            #endif
-            int save_signum = 0;
-            int save_cause;
-            int save_pc;
-            extern void handler(int signum, siginfo_t *info, void *context);
-            int main() {
-                struct sigaction act;
-                act.sa_flags = SA_SIGINFO;
-                act.sa_sigaction = handler;
-                if (sigemptyset(&act.sa_mask) != 0)
-                    exit(1);
-                if (sigaction(SIGSEGV, &act, NULL) != 0)
-                    exit(1);
-                if (kill(getpid(), SIGSEGV) != 0)
-                    exit(1);
-                if (save_signum == 0)
-                    exit(1);
-                exit(0);
-            }
-            void handler(int signum, siginfo_t *info, void *context) {
-                save_signum = signum;
-                save_cause = info->si_code;
-                save_pc = ((ucontext_t *) context)->uc_mcontext.sc_pc;
-            }
-        ],
-        [mercury_cv_pc_access=sc_pc;mercury_cv_pc_access_greg=no],
-        [true])
+        mercury_cv_pc_access=no
+        mercury_cv_pc_access_greg=no
+        # Which register contains the program counter:
+        #   x86-64  REG_RIP
+        #   i386    REG_EIP
+        #   SPARC   REG_PC
+        #   MIPS    CTX_EPC
+        for try_reg in REG_RIP REG_EIP REG_PC CTX_EPC ; do
+            AC_TRY_RUN(
+                [
+                    changequote(<<,>>)
+                    #define _GNU_SOURCE /* for register constants */
+                    #include <stdio.h>
+                    #include <stdlib.h>
+                    #include <signal.h>
+                    #include <unistd.h>
+                    #ifdef MR_HAVE_SYS_SIGINFO_H
+                    #include <sys/siginfo.h>
+                    #endif
+                    #ifdef MR_HAVE_SYS_SIGNAL_H
+                    #include <sys/signal.h>
+                    #endif
+                    #ifdef MR_HAVE_UCONTEXT_H
+                    #include <ucontext.h>
+                    #endif
+                    #ifdef MR_HAVE_SYS_UCONTEXT_H
+                    #include <sys/ucontext.h>
+                    #endif
+                    int save_signum = 0;
+                    int save_cause;
+                    int save_pc;
+                    extern void handler(int signum, siginfo_t *info,
+                                        void *context);
+                    int main() {
+                        struct sigaction act;
+                        act.sa_flags = SA_SIGINFO;
+                        act.sa_sigaction = handler;
+                        if (sigemptyset(&act.sa_mask) != 0)
+                            exit(1);
+                        if (sigaction(SIGSEGV, &act, NULL) != 0)
+                            exit(1);
+                        if (kill(getpid(), SIGSEGV) != 0)
+                            exit(1);
+                        if (save_signum == 0)
+                            exit(1);
+                        exit(0);
+                    }
+                    void handler(int signum, siginfo_t *info, void *context) {
+                        ucontext_t *uc = (ucontext_t *) context;
+                        save_signum = signum;
+                        save_cause = info->si_code;
+                        save_pc = uc->uc_mcontext.gregs[$try_reg];
+                    }
+                    changequote([,])
+                ],
+                [mercury_cv_pc_access=$try_reg;mercury_cv_pc_access_greg=yes],
+                [true])
+            if test "$mercury_cv_pc_access" != no; then
+                break
+            fi
+        done
     )
     AC_MSG_RESULT($mercury_cv_pc_access)
     if test "$mercury_cv_pc_access" != no; then

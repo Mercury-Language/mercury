@@ -11,6 +11,11 @@
 
 ////////////////////////////////////////////////////////////////////////////
 
+#ifndef _GNU_SOURCE
+  // This must be defined for REG_RIP, etc.
+  #define _GNU_SOURCE
+#endif
+
 #include "mercury_imp.h"
 
 #ifdef MR_HAVE_UNISTD_H
