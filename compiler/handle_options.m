@@ -1089,96 +1089,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     option_implies(trace_stack_layout, procid_stack_layout, bool(yes),
         !Globals),
 
-    % --gc accurate for the LLDS back-end requires `agc' stack layouts,
-    % typeinfo liveness, and needs hijacks, frameopt, and middle recursion
-    % optimization to be switched off.
-    % We also turn off optimization of stack slots for no_return calls,
-    % because that optimization does not preserve agc typeinfo liveness.
-    %
-    % For the MLDS back-end, `--gc accurate' requires just typeinfo liveness.
-    %
-    % XXX Currently we also need to disable heap reclamation on failure
-    % if accurate GC is enabled.
-    % There are two issues with heap reclamation on failure:
-    %
-    % 1 For heap reclamation on failure to work at all, we also need
-    %   at least some degree of liveness-accuracy. Otherwise, a local variable
-    %   may get initialized to point to the heap, then the heap is reset,
-    %   then the memory is overwritten with new allocations, and then
-    %   a collection occurs, at which point the local variable now points to
-    %   a value of the wrong type.
-    % 2 The current method of handling saved heap pointers during GC means that
-    %   we lose heap reclamation on failure after a GC occurs. A better method
-    %   would be to just allocate a word of heap space at each choice point.
-    %
-    % XXX We also need to disable optimize-constructor-last-call as currently
-    % the collector (and tracing code generator) knows neither about the
-    % pre-constructed data structures nor the references into them
-    % that this optimisation uses.
-    %
-    % XXX We also disable type specialization. This is needed because
-    % type specialization may create type class constraints of the form
-    % `c(t(T))' (e.g. `enum(var(T))'' in library/sparse_bitset.m),
-    % which the current RTTI system can't handle.
-    %
-    (
-        GC_Method = gc_accurate,
-        globals.set_option(agc_stack_layout, bool(yes), !Globals),
-        globals.set_option(body_typeinfo_liveness, bool(yes), !Globals),
-        AllowHijacksGc = bool.no,
-        OT_OptFrames = do_not_opt_frames,
-        globals.set_option(opt_no_return_calls, bool(no), !Globals),
-        AllowOptMiddleRecGc = bool.no,
-        AllowOptLCMCGc = bool.no,
-        AllowAnySpecTypesGc = bool.no,
-
-        globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
-            !Globals),
-        globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
-            !Globals),
-
-        % ml_gen_params_base and ml_declare_env_ptr_arg, in ml_code_util.m,
-        % both assume (for accurate GC) that continuation environments
-        % are always allocated on the stack, which means that things won't
-        % work if --gc accurate and --put-nondet-env-on-heap are both enabled.
-        globals.lookup_bool_option(!.Globals, put_nondet_env_on_heap,
-            PutNondetEnvOnHeap),
-        ( if
-            HighLevelCode = bool.yes,
-            PutNondetEnvOnHeap = bool.yes
-        then
-            AGCEnvSpec =
-                [words_quote("--gc accurate"), words("is incompatible with"),
-                words_quote("--put-nondet-env-on-heap"), suffix("."), nl],
-            add_error(phase_options, AGCEnvSpec, !Specs)
-        else
-            true
-        )
-    ;
-        ( GC_Method = gc_automatic
-        ; GC_Method = gc_none
-        ; GC_Method = gc_boehm
-        ; GC_Method = gc_boehm_debug
-        ; GC_Method = gc_hgc
-        ),
-        OT_OptFrames = OT_OptFrames0,
-        AllowOptMiddleRecGc = bool.yes,
-        AllowHijacksGc = bool.yes,
-        AllowOptLCMCGc = bool.yes,
-        AllowAnySpecTypesGc = bool.yes,
-
-        % Conservative GC implies --no-reclaim-heap-*
-        GCIsConservative = gc_is_conservative(GC_Method),
-        (
-            GCIsConservative = bool.yes,
-            globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
-                !Globals),
-            globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
-                !Globals)
-        ;
-            GCIsConservative = bool.no
-        )
-    ),
+    handle_gc_options(!Globals, GC_Method, OT_OptFrames0, OT_OptFrames,
+        !Specs),
 
     % `procid' and `agc' stack layouts need `basic' stack layouts
     option_implies(procid_stack_layout, basic_stack_layout, bool(yes),
@@ -1254,9 +1166,11 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         AllowOptMiddleRecTrailStack = bool.yes
     ),
     ( if
-        % The middle_rec special-case code generator cannot implement tracing.
+        % The middle_rec special-case code generator cannot implement tracing,
+        % and the RTTI needed for accurate gc cannot handle the stack shapes
+        % that it generates.
         TraceEnabled = exec_trace_is_not_enabled,
-        AllowOptMiddleRecGc = bool.yes,
+        GC_Method \= gc_accurate,
         AllowOptMiddleRecTrailStack = bool.yes
     then
         OT_OptMiddleRec = OT_OptMiddleRec0
@@ -1287,7 +1201,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % hijacks, and such code is extremely rare.
     ( if
         TraceEnabled = exec_trace_is_not_enabled,
-        AllowHijacksGc = bool.yes,
+        GC_Method \= gc_accurate,
         AllowHijacksMMSC = bool.yes
     then
         OT_AllowHijacks = OT_AllowHijacks0
@@ -1295,9 +1209,13 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         OT_AllowHijacks = do_not_allow_hijacks
     ),
 
+    % XXX With accurate gc, we disable type specialization, because
+    % type specialization may create type class constraints of the form
+    % `c(t(T))' (e.g. `enum(var(T))'' in library/sparse_bitset.m),
+    % which the current RTTI system can't handle.
     ( if
         AllowSrcChangesDebug = allow_src_changes,
-        AllowAnySpecTypesGc = bool.yes
+        GC_Method \= gc_accurate
     then
         OT_SpecTypes = OT_SpecTypes0,
         (
@@ -1420,11 +1338,15 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     handle_compiler_developer_options(!Globals, !IO),
     handle_directory_options(OpMode, !Globals),
 
+    % XXX With accurate gc, we need to disable optimize-constructor-last-call
+    % as currently the collector (and tracing code generator) knows neither
+    % about the pre-constructed data structures nor the references into them
+    % that this optimisation uses.
     ( if
         AllowSrcChangesDebug = allow_src_changes,
         AllowOptLCMCProfDeep = bool.yes,
         AllowOptLCMCTermSize = bool.yes,
-        AllowOptLCMCGc = bool.yes,
+        GC_Method \= gc_accurate,
         Target \= target_erlang
     then
         OT_OptLCMC = OT_OptLCMC0
@@ -1982,6 +1904,96 @@ handle_debugging_options(Target, TraceLevel, TraceEnabled, SSTraceLevel,
     % --ssdb implies --link-ssdb-libs
     option_implies(source_to_source_debug, link_ssdb_libs, bool(yes),
         !Globals).
+
+%---------------------%
+
+    % Options updated:
+    %   agc_stack_layout
+    %   body_typeinfo_liveness
+    %   opt_no_return_calls
+    %   reclaim_heap_on_nondet_failure
+    %   reclaim_heap_on_semidet_failure
+    %
+:- pred handle_gc_options(globals::in, globals::out, gc_method::in,
+    maybe_opt_frames::in, maybe_opt_frames::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+handle_gc_options(!Globals, GC_Method, OT_OptFrames0, OT_OptFrames, !Specs) :-
+    % --gc accurate for the LLDS back-end requires `agc' stack layouts,
+    % typeinfo liveness, and needs hijacks, frameopt, and middle recursion
+    % optimization to be switched off.
+    %
+    % For the MLDS back-end, `--gc accurate' requires just typeinfo liveness.
+    %
+    % XXX Currently we also need to disable heap reclamation on failure
+    % if accurate GC is enabled.
+    % There are two issues with heap reclamation on failure:
+    %
+    % 1 For heap reclamation on failure to work at all, we also need
+    %   at least some degree of liveness-accuracy. Otherwise, a local variable
+    %   may get initialized to point to the heap, then the heap is reset,
+    %   then the memory is overwritten with new allocations, and then
+    %   a collection occurs, at which point the local variable now points to
+    %   a value of the wrong type.
+    % 2 The current method of handling saved heap pointers during GC means that
+    %   we lose heap reclamation on failure after a GC occurs. A better method
+    %   would be to just allocate a word of heap space at each choice point.
+    %
+    (
+        GC_Method = gc_accurate,
+        globals.set_option(agc_stack_layout, bool(yes), !Globals),
+        globals.set_option(body_typeinfo_liveness, bool(yes), !Globals),
+        % We turn off optimization of stack slots for no_return calls,
+        % because that optimization does not preserve agc typeinfo liveness.
+        globals.set_option(opt_no_return_calls, bool(no), !Globals),
+
+        globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
+            !Globals),
+        globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
+            !Globals),
+
+        OT_OptFrames = do_not_opt_frames,
+
+        % ml_gen_params_base and ml_declare_env_ptr_arg, in ml_code_util.m,
+        % both assume (for accurate GC) that continuation environments
+        % are always allocated on the stack, which means that things won't
+        % work if --gc accurate and --put-nondet-env-on-heap are both enabled.
+        globals.lookup_bool_option(!.Globals, highlevel_code,
+            HighLevelCode),
+        globals.lookup_bool_option(!.Globals, put_nondet_env_on_heap,
+            PutNondetEnvOnHeap),
+        ( if
+            HighLevelCode = bool.yes,
+            PutNondetEnvOnHeap = bool.yes
+        then
+            AGCEnvSpec =
+                [words_quote("--gc accurate"), words("is incompatible with"),
+                words_quote("--put-nondet-env-on-heap"), suffix("."), nl],
+            add_error(phase_options, AGCEnvSpec, !Specs)
+        else
+            true
+        )
+    ;
+        ( GC_Method = gc_automatic
+        ; GC_Method = gc_none
+        ; GC_Method = gc_boehm
+        ; GC_Method = gc_boehm_debug
+        ; GC_Method = gc_hgc
+        ),
+        OT_OptFrames = OT_OptFrames0,
+
+        % Conservative GC implies --no-reclaim-heap-*
+        GCIsConservative = gc_is_conservative(GC_Method),
+        (
+            GCIsConservative = bool.yes,
+            globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
+                !Globals),
+            globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
+                !Globals)
+        ;
+            GCIsConservative = bool.no
+        )
+    ).
 
 %---------------------%
 
