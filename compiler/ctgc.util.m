@@ -86,7 +86,6 @@
 
 :- import_module bool.
 :- import_module map.
-:- import_module require.
 
 %-----------------------------------------------------------------------------%
 
@@ -109,8 +108,8 @@ get_variable_renaming(ModuleInfo, PPId, ActualArgs) = VariableRenaming :-
     proc_info_get_headvars(ProcInfo, FormalVars),
     map.from_corresponding_lists(FormalVars, ActualArgs, VariableRenaming).
 
-get_type_substitution(ModuleInfo, PPId, ActualTypes, CallerTypeVarSet,
-        CallerExternalTypeParams) = TypeSubst :-
+get_type_substitution(ModuleInfo, PPId, CallerArgTypes, CallerTypeVarSet,
+        CallerExternalTypeParams) = TypeSubn :-
     PPId = proc(PredId, _),
     module_info_pred_info(ModuleInfo, PredId, CalleePredInfo),
     pred_info_get_typevarset(CalleePredInfo, CalleeTypeVarSet),
@@ -124,41 +123,19 @@ get_type_substitution(ModuleInfo, PPId, ActualTypes, CallerTypeVarSet,
     apply_variable_renaming_to_type_list(CalleeTypeVarRenaming,
         CalleeArgTypes0, CalleeArgTypes),
 
-    (
-        CalleeExistQVars = [],
-        ( if type_list_subsumes(CalleeArgTypes, ActualTypes, TypeSubst0) then
-            TypeSubst1 = TypeSubst0
-        else
-            % See comment in inlining.get_type_substitution.
-            TypeSubst1 = map.init
-        )
-    ;
-        CalleeExistQVars = [_ | _],
-        % XXX from inlining.m:
-        % "For calls to existentially type preds, we may need to bind
-        % type variables in the caller, not just those in the callee."
-        % We don't do that (yet?).
-        ( if
-            map.init(TypeSubstPrime),
-            type_unify_list(CalleeArgTypes, ActualTypes,
-                CallerExternalTypeParams, TypeSubstPrime, TypeSubst0)
-        then
-            TypeSubst1 = TypeSubst0
-        else
-            unexpected($pred, "type unification failed")
-        )
-    ),
+    compute_caller_callee_type_substitution(CalleeArgTypes, CallerArgTypes,
+        CallerExternalTypeParams, CalleeExistQVars, TypeSubn1),
 
-    % TypeSubst1 is a substitition for the merged typevarset.  We apply the
-    % reverse of CalleeTypeVarRenaming to get TypeSubst, a substitition for
+    % TypeSubn1 is a substitition for the merged typevarset. We apply the
+    % reverse of CalleeTypeVarRenaming to get TypeSubn, a substitition for
     % the callee typevarset.
     % XXX preferably, we wouldn't need to do this reverse renaming
     map.keys(CalleeTypeVarRenaming, CalleeTypeVarRenamingKeys),
     map.values(CalleeTypeVarRenaming, CalleeTypeVarRenamingValues),
     map.from_corresponding_lists(CalleeTypeVarRenamingValues,
         CalleeTypeVarRenamingKeys, RevCalleeTypeVarRenaming),
-    map.foldl(reverse_renaming(RevCalleeTypeVarRenaming), TypeSubst1,
-        map.init, TypeSubst).
+    map.foldl(reverse_renaming(RevCalleeTypeVarRenaming), TypeSubn1,
+        map.init, TypeSubn).
 
 :- pred reverse_renaming(tvar_renaming::in, tvar::in, mer_type::in,
     tsubst::in, tsubst::out) is det.

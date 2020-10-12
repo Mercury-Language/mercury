@@ -122,15 +122,6 @@
     vartypes::in, vartypes::out, tvarset::in, tvarset::out,
     rtti_varmaps::in, rtti_varmaps::out, hlds_goal::out) is det.
 
-    % get_type_substitution(CalleeArgTypes, CallerArgTypes,
-    %   ExternalTypeParams, CalleeExistQTVars, TypeSubn):
-    %
-    % Work out a type substitution to map the callee's argument types
-    % into the caller's.
-    %
-:- pred get_type_substitution(list(mer_type)::in, list(mer_type)::in,
-    external_type_params::in, list(tvar)::in, map(tvar, mer_type)::out) is det.
-
     % rename_goal(CalledProcHeadVars, CallArgs,
     %   CallerVarSet0, CalleeVarSet, CallerVarSet,
     %   CallerVarTypes0, CalleeVarTypes, CallerVarTypes,
@@ -974,8 +965,8 @@ do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
     lookup_var_types(VarTypes0, ArgVars, ArgTypes),
 
     pred_info_get_exist_quant_tvars(PredInfo, CalleeExistQVars),
-    get_type_substitution(HeadTypes, ArgTypes, ExternalTypeParams,
-        CalleeExistQVars, TypeSubn),
+    compute_caller_callee_type_substitution(HeadTypes, ArgTypes,
+        ExternalTypeParams, CalleeExistQVars, TypeSubn),
 
     % Handle the common case of non-existentially typed preds specially,
     % since we can do things more efficiently in that case
@@ -1005,39 +996,6 @@ do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
     % from typeclass_infos in the caller, so they won't necessarily
     % be the same.
     rtti_varmaps_overlay(CalleeRttiVarMaps1, RttiVarMaps0, RttiVarMaps).
-
-get_type_substitution(HeadTypes, ArgTypes,
-        ExternalTypeParams, CalleeExistQVars, TypeSubn) :-
-    (
-        CalleeExistQVars = [],
-        ( if type_list_subsumes(HeadTypes, ArgTypes, TypeSubn0) then
-            TypeSubn = TypeSubn0
-        else
-            % The head types should always be unifiable with the actual
-            % argument types, otherwise it is a type error that should have
-            % been detected by typechecking. But polymorphism.m introduces
-            % type-incorrect code -- e.g. compare(Res, EnumA, EnumB) gets
-            % converted into builtin_compare_int(Res, EnumA, EnumB), which
-            % is a type error since it assumes that an enumeration is an int.
-            % In those cases, we don't need to worry about the type
-            % substitution. (Perhaps it would be better if polymorphism
-            % introduced calls to unsafe_type_cast/2 for such cases.)
-            map.init(TypeSubn)
-        )
-    ;
-        CalleeExistQVars = [_ | _],
-        % For calls to existentially type preds, we may need to bind
-        % type variables in the caller, not just those in the callee.
-        ( if
-            map.init(TypeSubn0),
-            type_unify_list(HeadTypes, ArgTypes, ExternalTypeParams,
-                TypeSubn0, TypeSubn1)
-        then
-            TypeSubn = TypeSubn1
-        else
-            unexpected($pred, "type unification failed")
-        )
-    ).
 
 rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet, VarSet, VarTypes1,
         CalleeVarTypes, VarTypes, Renaming, CalledGoal, Goal) :-

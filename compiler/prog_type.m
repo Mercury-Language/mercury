@@ -405,6 +405,15 @@
     tvarset::in, tvar_kind_map::in, existq_tvars::in, list(mer_type)::in)
     is semidet.
 
+    % compute_caller_callee_type_substitution(CalleeArgTypes, CallerArgTypes,
+    %   ExternalTypeParams, CalleeExistQTVars, TypeSubn):
+    %
+    % Work out a type substitution to map the callee's argument types
+    % into the caller's.
+    %
+:- pred compute_caller_callee_type_substitution(list(mer_type)::in,
+    list(mer_type)::in, list(tvar)::in, list(tvar)::in, tsubst::out) is det.
+
     % Apply a renaming (partial map) to a list.
     % Useful for applying a variable renaming to a list of variables.
     %
@@ -1389,6 +1398,41 @@ arg_type_list_subsumes(TVarSet, ExistQVars, ActualArgTypes, HeadTypeParams,
         % It might make sense to also check that the type substitution
         % did not bind any existentially typed variables to universally
         % quantified type variables in the caller's argument types.
+    ).
+
+%-----------------------------------------------------------------------------%
+
+compute_caller_callee_type_substitution(CalleeArgTypes, CallerArgTypes,
+        ExternalTypeParams, CalleeExistQVars, TypeSubn) :-
+    (
+        CalleeExistQVars = [],
+        ( if type_list_subsumes(CalleeArgTypes, CallerArgTypes, TypeSubn0) then
+            TypeSubn = TypeSubn0
+        else
+            % The callee's arg types should always be unifiable with the
+            % caller's, otherwise there is a type error that should have
+            % been detected by typechecking. But polymorphism.m introduces
+            % type-incorrect code -- e.g. compare(Res, EnumA, EnumB) gets
+            % converted into builtin_compare_int(Res, EnumA, EnumB), which
+            % is a type error, since it assumes that an enumeration is an int.
+            % In those cases, we don't need to worry about the type
+            % substitution. (Perhaps it would be better if polymorphism
+            % introduced calls to unsafe_type_cast/2 for such cases.)
+            map.init(TypeSubn)
+        )
+    ;
+        CalleeExistQVars = [_ | _],
+        % For calls to existentially type preds, we may need to bind
+        % type variables in the caller, as well as in the callee.
+        ( if
+            map.init(TypeSubn0),
+            type_unify_list(CalleeArgTypes, CallerArgTypes, ExternalTypeParams,
+                TypeSubn0, TypeSubn1)
+        then
+            TypeSubn = TypeSubn1
+        else
+            unexpected($pred, "type unification failed")
+        )
     ).
 
 %-----------------------------------------------------------------------------%

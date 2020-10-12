@@ -84,7 +84,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
-:- import_module transform_hlds.inlining.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1684,7 +1683,7 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
         CalleeArgTypes1),
 
     % Substitute the types in the callee's class constraints.
-    inlining.get_type_substitution(CalleeArgTypes1, ArgTypes,
+    compute_caller_callee_type_substitution(CalleeArgTypes1, ArgTypes,
         CallerHeadTypeParams, CalleeExistQVars, TypeSubn),
     apply_variable_renaming_to_prog_constraint_list(TypeRenaming,
         CalleeUnivConstraints0, CalleeUnivConstraints1),
@@ -3088,7 +3087,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
     apply_variable_renaming_to_tvar_list(TypeRenaming,
         ExistQVars0, ExistQVars1),
 
-    inlining.get_type_substitution(OriginalArgTypes1, CallerArgTypes0,
+    compute_caller_callee_type_substitution(OriginalArgTypes1, CallerArgTypes0,
         CallerHeadParams, ExistQVars1, TypeSubn),
 
     apply_rec_subst_to_tvar_list(KindMap, TypeSubn, ExistQVars1, ExistQTypes),
