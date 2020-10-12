@@ -39,16 +39,11 @@
 
 ////////////////////////////////////////////////////////////////////////////
 
-// If we don't have SA_RESTART or SA_SIGINFO, defined them as 0.
-// It would be nice to have them, but it is still better to use
-// sigaction without SA_RESTART or SA_SIGINFO than to use signal.
+// If we don't have SA_RESTART define it as 0. It is still better to use
+// sigaction without SA_RESTART than to use signal.
 
 #if !defined(SA_RESTART)
   #define   SA_RESTART 0
-#endif
-
-#if !defined(SA_SIGINFO)
-  #define   SA_SIGINFO 0
 #endif
 
 static void MR_do_setup_signal(int sig, MR_Code *handler, MR_bool need_info,
@@ -109,7 +104,16 @@ MR_init_signal_action(MR_signal_action *act, MR_Code *handler,
     if (need_info) {
     #ifdef MR_HAVE_SIGINFO_T
         act->sa_flags |= SA_SIGINFO;
+        act->sa_sigaction = handler;
+    #else
+        // This branch should be unreachable in practice.
+        // The caller must check that MR_HAVE_SIGINFO_T is defined
+        // before calling this function with need_info=TRUE,
+        // otherwise the handler will have the wrong type.
+        act->sa_handler = handler;
     #endif
+    } else {
+        act->sa_handler = handler;
     }
 
     if (sigemptyset(&(act->sa_mask)) != 0) {
@@ -117,8 +121,6 @@ MR_init_signal_action(MR_signal_action *act, MR_Code *handler,
         exit(1);
     }
     errno = 0;
-
-    act->MR_SIGACTION_FIELD = handler;
 
 #else // not MR_HAVE_SIGACTION
 

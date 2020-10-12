@@ -410,12 +410,6 @@
 #undef  MR_PC_ACCESS
 #undef  MR_PC_ACCESS_GREG
 
-// MR_SIGACTION_FIELD: the name of the field in the sigaction struct
-// (either sa_handler or sa_sigaction). Defined only if MR_HAVE_SIGACTION
-// is defined.
-
-#undef  MR_SIGACTION_FIELD
-
 // Configuration parameters for multithreaded execution support.
 //
 // MR_THREAD_LOCAL_STORAGE is defined if the thread-local storage extension
