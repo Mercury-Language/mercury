@@ -684,7 +684,6 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     OT_AllowHijacks0 = OptTuple0 ^ ot_allow_hijacks,
     OT_OptMLDSTailCalls0 = OptTuple0 ^ ot_opt_mlds_tailcalls,
     OT_Optimize0 = OptTuple0 ^ ot_optimize,
-    OT_PessimizeTailCalls0 = OptTuple0 ^ ot_pessimize_tailcalls,
     OT_StdLabels0 = OptTuple0 ^ ot_standardize_labels,
     OT_OptDups0 = OptTuple0 ^ ot_opt_dups,
     OT_OptFrames0 = OptTuple0 ^ ot_opt_frames,
@@ -710,34 +709,6 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % sets options based on the target language or GC method.
     check_grade_component_compatibility(!.Globals, Target, GC_Method, !Specs),
 
-    globals.lookup_string_option(!.Globals, event_set_file_name,
-        EventSetFileName0),
-    ( if EventSetFileName0 = "" then
-        io.get_environment_var("MERCURY_EVENT_SET_FILE_NAME",
-            MaybeEventSetFileName, !IO),
-        (
-            MaybeEventSetFileName = maybe.yes(EventSetFileName),
-            globals.set_option(event_set_file_name, string(EventSetFileName),
-                !Globals)
-        ;
-            MaybeEventSetFileName = maybe.no
-        )
-    else
-        true
-    ),
-
-    % Conservative GC implies --no-reclaim-heap-*
-    GCIsConservative = gc_is_conservative(GC_Method),
-    (
-        GCIsConservative = bool.yes,
-        globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
-            !Globals),
-        globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
-            !Globals)
-    ;
-        GCIsConservative = bool.no
-    ),
-
     % --pregenerated-dist sets options so that the pre-generated C source
     % distribution can be compiled equally on 32-bit and 64-bit platforms.
     % Any changes here may require changes in runtime/mercury_conf_param.h.
@@ -756,6 +727,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
 
     (
         Target = target_c,
+        BackendForeignLanguages = ["c"],
         globals.lookup_int_option(!.Globals, num_ptag_bits, NumPtagBits0),
         ( if NumPtagBits0 = -1 then
             % The default value of NumPtagBits0 is -1. We replace it with the
@@ -779,89 +751,63 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
                 words("option is"), int_fixed(NumPtagBits), suffix(","),
                 words("but the only valid values are 2 and 3."), nl],
             add_error(phase_options, NumPtagBitsSpec, !Specs)
-        )
+        ),
+
+        % Generating high-level C code requires putting each commit
+        % in its own function, to avoid problems with setjmp() and
+        % non-volatile local variables.
+        option_implies(highlevel_code, put_commit_in_own_func, bool(yes),
+            !Globals),
+
+        % Since we have never targeted 16-bit platforms, the minimum number
+        % of low ptag bits we ever configure is two.
+        ( if NumPtagBits >= 2 then
+            globals.set_option(can_compare_constants_as_ints, bool(yes),
+                !Globals)
+        else
+            globals.set_option(can_compare_constants_as_ints, bool(no),
+                !Globals)
+        ),
+
+        % Argument packing only works on back-ends, which use low-level data,
+        % i.e the C backend. For the other target languages, implementing
+        % argument packing will require not just a lot of work on RTTI,
+        % but also generalizing field addressing, to allow both single fields
+        % and a group of adjacent fields packed into a single word to be
+        % addressed via a mechanism other than an argument's name.
+        globals.lookup_int_option(!.Globals, arg_pack_bits, ArgPackBits0),
+        globals.lookup_int_option(!.Globals, bits_per_word, BitsPerWord),
+        % If --arg-pack-bits is negative then it means use all word bits.
+        ( if ArgPackBits0 < 0 then
+            ArgPackBits = BitsPerWord
+        else if ArgPackBits0 > BitsPerWord then
+            ArgPackBits = BitsPerWord,
+            ArgPackBitsSpec =
+                [words("Warning: cannot set the value of"),
+                quote("--arg-pack-bits"),
+                words("to value higher than the value of"),
+                quote("--bits-per-word"), suffix("."),
+                words("Reducing the effective value of"),
+                quote("--arg-pack-bits"),
+                words("to the maximum allowable value, which is"),
+                int_fixed(BitsPerWord), suffix("."), nl],
+            add_error(phase_options, ArgPackBitsSpec, !Specs)
+        else
+            ArgPackBits = ArgPackBits0
+        ),
+        globals.set_option(arg_pack_bits, int(ArgPackBits), !Globals),
+        % Leave the value of allow_double_word_fields as set by the user.
+        % Leave the value of allow_packing_dummies as set by the user.
+        % Leave the value of allow_packing_ints as set by the user.
+
+        OT_StringBinarySwitchSize = OT_StringBinarySwitchSize0,
+
+        AllowOptLCMCBackend = bool.yes
     ;
         ( Target = target_java
         ; Target = target_csharp
-        ; Target = target_erlang
         ),
-        NumPtagBits = 0,
-        globals.set_option(num_ptag_bits, int(0), !Globals)
-    ),
-
-    current_grade_supports_par_conj(!.Globals, GradeSupportsParConj),
-    globals.lookup_bool_option(!.Globals, parallel, Parallel),
-    globals.lookup_bool_option(!.Globals, threadscope, Threadscope),
-    ( if
-        GradeSupportsParConj = bool.no,
-        Threadscope = bool.yes
-    then
-        ThreadScopeSpec =
-            [words("The"), quote("threadscope"), words("grade component"),
-            words("requires a parallel grade."), nl],
-        add_error(phase_options, ThreadScopeSpec, !Specs)
-    else
-        true
-    ),
-
-    % Implicit parallelism requires feedback information, however this
-    % error should only be shown in a parallel grade, otherwise implicit
-    % parallelism should be disabled.
-    globals.lookup_bool_option(!.Globals, implicit_parallelism,
-        ImplicitParallelism),
-    (
-        ImplicitParallelism = bool.yes,
-        (
-            GradeSupportsParConj = bool.yes,
-            globals.lookup_string_option(!.Globals, feedback_file,
-                FeedbackFile),
-            ( if FeedbackFile = "" then
-                NoFeedbackFileSpec =
-                    [words("The"), quote("--implicit-parallelism"),
-                    words("option requires the use of"),
-                    quote("--feedback-file"), suffix("."), nl],
-                add_error(phase_options, NoFeedbackFileSpec, !Specs)
-            else
-                true
-            )
-        ;
-            % Report an error when used in parallel grades without parallel
-            % conjunction support. In non-parallel grades simply ignore
-            % --implicit-parallelism.
-            GradeSupportsParConj = bool.no,
-            (
-                Parallel = yes,
-                NoParConjSupportSpec =
-                    [words("The"), quote("--implicit-parallelism"),
-                    words("option requires a grade that"),
-                    words("supports parallel conjunctions."),
-                    words("Use a low-level C grade without trailing."), nl],
-                add_error(phase_options, NoParConjSupportSpec, !Specs)
-            ;
-                Parallel = bool.no
-            ),
-            globals.set_option(implicit_parallelism, bool(no), !Globals)
-        )
-    ;
-        ImplicitParallelism = bool.no
-    ),
-    % Perform a simplification pass before the implicit parallelism pass to
-    % ensure that the HLDS more-closely matches the feedback data.
-    option_implies(implicit_parallelism, pre_implicit_parallelism_simplify,
-        bool(yes), !Globals),
-
-    % Loop control is not applicable in non-parallel grades.
-    (
-        GradeSupportsParConj = bool.yes
-    ;
-        GradeSupportsParConj = bool.no,
-        globals.set_option(par_loop_control, bool(no), !Globals)
-    ),
-
-    (
-        ( Target = target_java
-        ; Target = target_csharp
-        ),
+        globals.set_option(num_ptag_bits, int(0), !Globals),
 
         % Generating Java implies
         %   - gc_method `automatic' and no heap reclamation on failure
@@ -909,15 +855,35 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
             !Globals),
         globals.set_option(structure_reuse_analysis, bool(no), !Globals),
         globals.set_option(structure_sharing_analysis, bool(no), !Globals),
+
         (
             Target = target_csharp,
+            BackendForeignLanguages = ["csharp"],
             globals.set_option(executable_file_extension, string(".exe"),
                 !Globals)
         ;
-            Target = target_java
-        )
+            Target = target_java,
+            BackendForeignLanguages = ["java"]
+        ),
+
+        % In the non-C backends, it may not be possible to cast a value
+        % of a non-enum du type to an integer.
+        globals.set_option(can_compare_constants_as_ints, bool(no), !Globals),
+
+        globals.set_option(arg_pack_bits, int(0), !Globals),
+        globals.set_option(allow_double_word_fields, bool(no), !Globals),
+        globals.set_option(allow_packing_dummies, bool(no), !Globals),
+        globals.set_option(allow_packing_ints, bool(no), !Globals),
+
+        % Switch off string hash switches until these backends implement
+        % the hash operations.
+        OT_StringBinarySwitchSize = 999999,
+
+        AllowOptLCMCBackend = bool.yes
     ;
         Target = target_erlang,
+        BackendForeignLanguages = ["erlang"],
+        globals.set_option(num_ptag_bits, int(0), !Globals),
 
         % Generating Erlang implies
         %   - gc_method `automatic' and no heap reclamation on failure
@@ -954,16 +920,27 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         globals.set_option(gcc_non_local_gotos, bool(no), !Globals),
         globals.set_option(gcc_global_registers, bool(no), !Globals),
         globals.set_option(asm_labels, bool(no), !Globals),
-        globals.set_option(highlevel_code, bool(no), !Globals)
-    ;
-        Target = target_c,
+        globals.set_option(highlevel_code, bool(no), !Globals),
 
-        % Generating high-level C code requires putting each commit
-        % in its own function, to avoid problems with setjmp() and
-        % non-volatile local variables.
-        option_implies(highlevel_code, put_commit_in_own_func, bool(yes),
-            !Globals)
+        % In the non-C backends, it may not be possible to cast a value
+        % of a non-enum du type to an integer.
+        globals.set_option(can_compare_constants_as_ints, bool(no), !Globals),
+
+        globals.set_option(arg_pack_bits, int(0), !Globals),
+        globals.set_option(allow_double_word_fields, bool(no), !Globals),
+        globals.set_option(allow_packing_dummies, bool(no), !Globals),
+        globals.set_option(allow_packing_ints, bool(no), !Globals),
+
+        % Currently, multi-arm switches have been tested only for the LLDS
+        % backend (which always generates C) and for the MLDS backend when
+        % it is generating C, C# or Java code.
+        globals.set_option(allow_multi_arm_switches, bool(no), !Globals),
+
+        OT_StringBinarySwitchSize = OT_StringBinarySwitchSize0,
+        AllowOptLCMCBackend = bool.no
     ),
+
+    handle_implications_of_parallel(!Globals, !Specs),
 
     % Using trail segments implies the use of the trail.
     option_implies(trail_segments, use_trail, bool(yes), !Globals),
@@ -973,7 +950,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     %
 
     % Shared libraries always use `--linkage shared'.
-    option_implies(compile_to_shared_lib, linkage, string("shared"), !Globals),
+    option_implies(compile_to_shared_lib, linkage,
+        string("shared"), !Globals),
     option_implies(compile_to_shared_lib, mercury_linkage,
         string("shared"), !Globals),
 
@@ -981,15 +959,6 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     option_implies(highlevel_code, gcc_non_local_gotos, bool(no), !Globals),
     option_implies(highlevel_code, gcc_global_registers, bool(no), !Globals),
     option_implies(highlevel_code, asm_labels, bool(no), !Globals),
-
-    (
-        OT_Optimize0 = do_not_optimize,
-        % --no-mlds-optimize implies --no-optimize-tailcalls.
-        OT_OptMLDSTailCalls = do_not_opt_mlds_tailcalls
-    ;
-        OT_Optimize0 = optimize,
-        OT_OptMLDSTailCalls = OT_OptMLDSTailCalls0
-    ),
 
     % If no --lib-linkage option has been specified, default to the
     % set of all possible linkages.
@@ -1002,19 +971,13 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         LibLinkages0 = [_ | _]
     ),
 
-    % This is needed for library installation (the library grades
-    % are built using `--use-grade-subdirs', and assume that
-    % the interface files were built using `--use-subdirs').
-    globals.lookup_bool_option(!.Globals, invoked_by_mmc_make,
-        InvokedByMMCMake),
-    ( if
-        ( OpMode = opm_top_make
-        ; InvokedByMMCMake = yes
-        )
-    then
-        globals.set_option(use_subdirs, bool(yes), !Globals)
-    else
-        true
+    (
+        OT_Optimize0 = do_not_optimize,
+        % --no-mlds-optimize implies --no-optimize-tailcalls.
+        OT_OptMLDSTailCalls = do_not_opt_mlds_tailcalls
+    ;
+        OT_Optimize0 = optimize,
+        OT_OptMLDSTailCalls = OT_OptMLDSTailCalls0
     ),
 
     % --make handles creation of the module dependencies itself,
@@ -1022,27 +985,11 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     option_implies(invoked_by_mmc_make,
         generate_mmc_make_module_dependencies, bool(no), !Globals),
 
-    % We only perform the library grade install check if we are
-    % building a linked target using mmc --make or if we are building
-    % a single source file linked target.  (The library grade install
-    % check is *not* compatible with the use of mmake.)
-    ( if
-        (
-            OpMode = opm_top_make
-        ;
-            OpMode = opm_top_args(OpModeArgs),
-            OpModeArgs = opma_augment(opmau_generate_code(
-                opmcg_target_object_and_executable))
-        )
-    then
-        true
-    else
-        globals.set_option(libgrade_install_check, bool(no), !Globals)
-    ),
-
     % `--transitive-intermodule-optimization' and `--make' are
     % not compatible with each other.
     globals.lookup_bool_option(!.Globals, transitive_optimization, TransOpt),
+    globals.lookup_bool_option(!.Globals, invoked_by_mmc_make,
+        InvokedByMMCMake),
     (
         TransOpt = bool.yes,
         ( if
@@ -1116,6 +1063,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     option_implies(check_termination2, termination2, bool(yes), !Globals),
     option_implies(check_termination2, warn_missing_trans_opt_files,
         bool(yes), !Globals),
+
     ( if OpMode = opm_top_args(opma_augment(opmau_make_trans_opt_int)) then
         globals.set_option(transitive_optimization, bool(yes), !Globals)
     else
@@ -1140,6 +1088,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % XXX Should that be "with `--no-use-opt-files'"?
     globals.set_option(use_opt_files, bool(no), !Globals),
 
+    % XXX Doing this implication *before* code that turns off
+    % smart_recompilation looks like a bug to me. -zs
     option_implies(smart_recompilation, generate_item_version_numbers,
         bool(yes), !Globals),
     option_implies(find_all_recompilation_reasons, verbose_recompilation,
@@ -1183,133 +1133,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         true
     ),
 
-    % XXX Smart recompilation does not yet work with inter-module
-    % optimization, but we still want to generate version numbers
-    % in interface files for users of a library compiled with
-    % inter-module optimization but not using inter-module
-    % optimization themselves.
-    globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
-    (
-        Smart = bool.no
-    ;
-        Smart = bool.yes,
-        ( if
-            globals.lookup_bool_option(!.Globals, intermodule_optimization,
-                yes)
-        then
-            disable_smart_recompilation("`--intermodule-optimization'",
-                !Globals, !IO)
-        else
-            true
-        ),
-        ( if globals.lookup_bool_option(!.Globals, use_opt_files, yes) then
-            disable_smart_recompilation("`--use-opt-files'", !Globals, !IO)
-        else
-            true
-        ),
-        % XXX Smart recompilation does not yet work with
-        % `--no-target-code-only'. With `--no-target-code-only'
-        % it becomes difficult to work out what all the target files
-        % are and check whether they are up-to-date. By default, mmake always
-        % enables `--target-code-only' and processes the target code file
-        % itself, so this isn't a problem.
-        % XXX I (zs) don't believe that mmake sets --target-code-only anymore.
-        ( if
-            OpMode = opm_top_args(opma_augment(
-                opmau_generate_code(opmcg_target_code_only)))
-        then
-            true
-        else
-            disable_smart_recompilation("`--no-target-code-only'",
-                !Globals, !IO)
-        )
-    ),
-
-    option_implies(use_grade_subdirs, use_subdirs, bool(yes), !Globals),
-
-    option_implies(very_verbose, verbose, bool(yes), !Globals),
-    option_implies(verbose, verbose_commands, bool(yes), !Globals),
-    globals.lookup_bool_option(!.Globals, very_verbose, VeryVerbose),
-    globals.lookup_bool_option(!.Globals, statistics, Statistics),
-    ( if
-        VeryVerbose = bool.yes,
-        Statistics = bool.yes
-    then
-        globals.set_option(detailed_statistics, bool(yes), !Globals)
-    else
-        true
-    ),
-
-    option_implies(debug_modes_minimal, debug_modes, bool(yes), !Globals),
-    option_implies(debug_modes_verbose, debug_modes, bool(yes), !Globals),
-    option_implies(debug_modes_statistics, debug_modes, bool(yes), !Globals),
-
-    globals.lookup_int_option(!.Globals, debug_liveness, DebugLiveness),
-    ( if
-        DebugLiveness >= 0,
-        convert_dump_alias("all", AllDumpOptions)
-    then
-        % Programmers only enable --debug-liveness if they are interested
-        % in the goal annotations put on goals by the various phases
-        % of the liveness pass. The default dump options do not print
-        % these annotations.
-        globals.lookup_string_option(!.Globals, dump_hlds_options,
-            DumpOptions0),
-        DumpOptions1 = DumpOptions0 ++ AllDumpOptions,
-        globals.set_option(dump_hlds_options, string(DumpOptions1), !Globals)
-    else
-        true
-    ),
-
-    option_implies(debug_modes_verbose, debug_modes, bool(yes), !Globals),
-    globals.lookup_int_option(!.Globals, debug_modes_pred_id,
-        DebugModesPredId),
-    ( if DebugModesPredId > 0 then
-        globals.set_option(debug_modes, bool(yes), !Globals)
-    else
-        true
-    ),
-
-    globals.lookup_accumulating_option(!.Globals,
-        unneeded_code_debug_pred_name, DebugUnneededCodePredNames),
-    (
-        DebugUnneededCodePredNames = []
-    ;
-        DebugUnneededCodePredNames = [_ | _],
-        globals.set_option(unneeded_code_debug, bool(yes), !Globals)
-    ),
-
-    globals.lookup_accumulating_option(!.Globals, debug_opt_pred_id,
-        DebugOptPredIdStrs),
-    globals.lookup_accumulating_option(!.Globals, debug_opt_pred_name,
-        DebugOptPredNames),
-    ( if
-        ( DebugOptPredIdStrs = [_ | _]
-        ; DebugOptPredNames = [_ | _]
-        )
-    then
-        globals.set_option(debug_opt, bool(yes), !Globals)
-    else
-        true
-    ),
-
-    globals.lookup_bool_option(!.Globals, debug_intermodule_analysis,
-        DebugIntermoduleAnalysis),
-    analysis.enable_debug_messages(DebugIntermoduleAnalysis, !IO),
-
-    globals.lookup_accumulating_option(!.Globals, dump_hlds_pred_id,
-        DumpHLDSPredIds),
-    (
-        DumpHLDSPredIds = [_ | _],
-        globals.lookup_string_option(!.Globals, dump_hlds_options,
-            DumpOptions2),
-        % Prevent the dumping of the mode and type tables.
-        string.replace_all(DumpOptions2, "M", "", DumpOptions3),
-        string.replace_all(DumpOptions3, "T", "", DumpOptions),
-        globals.set_option(dump_hlds_options, string(DumpOptions), !Globals)
-    ;
-        DumpHLDSPredIds = []
-    ),
+    maybe_disable_smart_recompilation(OpMode, !Globals, !IO),
 
     option_implies(debug_mode_constraints, prop_mode_constraints, bool(yes),
         !Globals),
@@ -1318,89 +1142,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     option_implies(simple_mode_constraints, mode_constraints, bool(yes),
         !Globals),
 
-    option_implies(frameopt_comments, auto_comments, bool(yes), !Globals),
-
-    % Minimal model tabling is not compatible with high level code
-    % or with trailing; see the comments in runtime/mercury_grade.h.
-
     globals.lookup_bool_option(!.Globals, use_trail, UseTrail),
     globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
-    globals.lookup_bool_option(!.Globals, use_minimal_model_stack_copy,
-        UseMinimalModelStackCopy),
-    globals.lookup_bool_option(!.Globals, use_minimal_model_own_stacks,
-        UseMinimalModelOwnStacks),
-    bool.or(UseMinimalModelStackCopy, UseMinimalModelOwnStacks,
-        UseMinimalModel),
-    ( if
-        UseMinimalModelStackCopy = bool.yes,
-        UseMinimalModelOwnStacks = bool.yes
-    then
-        DualMMSpec =
-            [words("You cannot use both forms of minimal model tabling"),
-            words("at once."), nl],
-        add_error(phase_options, DualMMSpec, !Specs)
-    else if
-        UseMinimalModel = bool.yes,
-        HighLevelCode = bool.yes
-    then
-        MMHLSpec =
-            [words("Minimal model tabling is incompatible with"),
-            words("high level code."), nl],
-        add_error(phase_options, MMHLSpec, !Specs)
-    else if
-        UseMinimalModel = bool.yes,
-        UseTrail = bool.yes
-    then
-        MMTrailSpec =
-            [words("Minimal model tabling is incompatible with"),
-            words("trailing."), nl],
-        add_error(phase_options, MMTrailSpec, !Specs)
-    else
-        true
-    ),
-
-    % Argument packing only works on C back-ends, which use low-level data.
-    % For the other target languages, implementing argument packing
-    % will require not just a lot of work on RTTI, but also generalizing
-    % field addressing, to allow both single fields and a group of adjacent
-    % fields packed into a single word to be addressed via a mechanism
-    % other than an argument's name.
-    (
-        Target = target_c,
-        globals.lookup_int_option(!.Globals, arg_pack_bits, ArgPackBits0),
-        globals.lookup_int_option(!.Globals, bits_per_word, BitsPerWord),
-        % If --arg-pack-bits is negative then it means use all word bits.
-        ( if ArgPackBits0 < 0 then
-            ArgPackBits = BitsPerWord
-        else if ArgPackBits0 > BitsPerWord then
-            ArgPackBits = BitsPerWord,
-            ArgPackBitsSpec =
-                [words("Warning: cannot set the value of"),
-                quote("--arg-pack-bits"),
-                words("to value higher than the value of"),
-                quote("--bits-per-word"), suffix("."),
-                words("Reducing the effective value of"),
-                quote("--arg-pack-bits"),
-                words("to the maximum allowable value, which is"),
-                int_fixed(BitsPerWord), suffix("."), nl],
-            add_error(phase_options, ArgPackBitsSpec, !Specs)
-        else
-            ArgPackBits = ArgPackBits0
-        ),
-        globals.set_option(arg_pack_bits, int(ArgPackBits), !Globals)
-        % Leave the value of allow_double_word_fields as set by the user.
-        % Leave the value of allow_packing_dummies as set by the user.
-        % Leave the value of allow_packing_ints as set by the user.
-    ;
-        ( Target = target_java
-        ; Target = target_csharp
-        ; Target = target_erlang
-        ),
-        globals.set_option(arg_pack_bits, int(0), !Globals),
-        globals.set_option(allow_double_word_fields, bool(no), !Globals),
-        globals.set_option(allow_packing_dummies, bool(no), !Globals),
-        globals.set_option(allow_packing_ints, bool(no), !Globals)
-    ),
 
     % We assume that single-precision floats do not need to be boxed.
     option_implies(single_prec_float, unboxed_float, bool(yes), !Globals),
@@ -1410,101 +1153,16 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     option_implies(highlevel_code, use_float_registers, bool(no), !Globals),
     option_implies(unboxed_float, use_float_registers, bool(no), !Globals),
 
-    % Currently, multi-arm switches have been tested only for the LLDS
-    % backend (which always generates C) and for the MLDS backend when
-    % it is generating C, C# or Java code.
-    (
-        ( Target = target_c
-        ; Target = target_csharp
-        ; Target = target_java
-        )
-    ;
-        Target = target_erlang,
-        globals.set_option(allow_multi_arm_switches, bool(no), !Globals)
-    ),
-
-    ( if
-        ( Target = target_csharp
-        ; Target = target_java
-        )
-    then
-        % Switch off string hash switches until these backends implement
-        % the hash operations.
-        OT_StringBinarySwitchSize = 999999
-    else
-        OT_StringBinarySwitchSize = OT_StringBinarySwitchSize0
-    ),
-
     option_implies(target_debug, strip, bool(no), !Globals),
-
-    % Profile for feedback requires coverage profiling.
-    option_implies(profile_for_feedback, coverage_profiling, bool(yes),
-        !Globals),
-
-    % At the moment coverage profiling is not compatible with the tail
-    % recursion preservation optimization used by the deep profiler.
-    option_implies(coverage_profiling, deep_profile_tail_recursion,
-        bool(no), !Globals),
-
-    % Inlining happens before the deep profiling transformation, so if
-    % we allowed inlining to happen, then we would lose all profiling
-    % information about the inlined calls - this is not usually what we
-    % want so we disable inlining with deep profiling by default.
-    % The user can re-enable it with the `--profile-optimized' option.
-    % Leave inlining enabled when profiling for implicit parallelism.
-    %
-    option_implies(profile_for_feedback, prof_optimized, bool(yes), !Globals),
-    globals.lookup_bool_option(!.Globals, prof_optimized, ProfOptimized),
-    (
-        ProfOptimized = bool.no,
-        globals.lookup_bool_option(!.Globals, profile_deep, ProfDeep),
-        (
-            ProfDeep = bool.no,
-            AllowInliningProfDeep = bool.yes
-        ;
-            ProfDeep = bool.yes,
-            AllowInliningProfDeep = bool.no
-        )
-    ;
-        ProfOptimized = bool.yes,
-        AllowInliningProfDeep = bool.yes
-    ),
-
-    % Perform a simplification pass before the profiling passes if one of
-    % these profiling options is enabled.
-    option_implies(profile_deep, pre_prof_transforms_simplify, bool(yes),
-        !Globals),
-    option_implies(record_term_sizes_as_words, pre_prof_transforms_simplify,
-        bool(yes), !Globals),
-    option_implies(record_term_sizes_as_cells, pre_prof_transforms_simplify,
-        bool(yes), !Globals),
-
-    globals.lookup_string_option(!.Globals, experimental_complexity, ExpComp),
-    ( if ExpComp = "" then
-        AllowInliningExpComp = bool.yes
-    else
-        AllowInliningExpComp = bool.no
-    ),
 
     % --decl-debug is an extension of --debug
     option_implies(decl_debug, exec_trace, bool(yes), !Globals),
-
-    % --ssdb implies --link-ssdb-libs
-    option_implies(source_to_source_debug,
-        link_ssdb_libs, bool(yes), !Globals),
 
     % We need to be able to simulate exits for calls between where an
     % exception is thrown to where it is caught both in the debugger and
     % for deep profiling.
     option_implies(exec_trace, stack_trace, bool(yes), !Globals),
     option_implies(profile_deep, stack_trace, bool(yes), !Globals),
-
-    % Deep profiling disables the optimization for pretesting whether
-    % x == y in runtime/mercury_unify_compare_body.h, so compensate by
-    % doing the same test in the unify and compare predicates generated by
-    % the Mercury compiler.
-    option_implies(profile_deep, should_pretest_equality, bool(yes),
-        !Globals),
 
     % In debugging grades, we want to generate executables in which
     % one can do retries across I/O safely.
@@ -1529,6 +1187,14 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     TraceLevelIsNone = given_trace_level_is_none(TraceLevel),
     (
         TraceLevelIsNone = bool.no,
+        ( if HighLevelCode = bool.no, Target = target_c then
+            true
+        else
+            TraceHLSpec =
+                [words("Debugging is available only in low level C grades."),
+                nl],
+            add_error(phase_options, TraceHLSpec, !Specs)
+        ),
         (
             TraceOptimized = bool.no,
             % The following options modify the structure
@@ -1641,92 +1307,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         globals.set_option(exec_trace_tail_rec, bool(no), !Globals)
     ),
 
-    option_implies(profile_deep, procid_stack_layout, bool(yes), !Globals),
-    globals.lookup_bool_option(!.Globals, profile_deep, ProfileDeep),
-    (
-        ProfileDeep = bool.yes,
-        ( if
-            HighLevelCode = no,
-            Target = target_c
-        then
-            true
-        else
-            DeepHLSpec =
-                [words("Deep profiling is incompatible with"),
-                words("high level code."), nl],
-            add_error(phase_options, DeepHLSpec, !Specs)
-        ),
-        AllowOptLCMCProfDeep = bool.no,
-        globals.lookup_bool_option(!.Globals,
-            use_lots_of_ho_specialization, LotsOfHOSpec),
-        (
-            LotsOfHOSpec = bool.yes,
-            % We used to switch on --optimize-higher-order here,
-            % even if it was disabled e.g. for execution tracing.
-            % That was almost certainly a bug.
-            %
-            % Setting the limit here is ok, since the limit is irrelevant
-            % if the only optimization that looks at it is not run.
-            OT_HigherOrderSizeLimit = 999999
-        ;
-            LotsOfHOSpec = bool.no,
-            OT_HigherOrderSizeLimit = OT_HigherOrderSizeLimit0
-        )
-    ;
-        ProfileDeep = bool.no,
-        OT_HigherOrderSizeLimit = OT_HigherOrderSizeLimit0,
-        AllowOptLCMCProfDeep = bool.yes
-    ),
-
-    globals.lookup_bool_option(!.Globals, record_term_sizes_as_words,
-        RecordTermSizesAsWords),
-    globals.lookup_bool_option(!.Globals, record_term_sizes_as_cells,
-        RecordTermSizesAsCells),
-    ( if
-        RecordTermSizesAsWords = bool.yes,
-        RecordTermSizesAsCells = bool.yes
-    then
-        DualTermSizeSpec =
-            [words("Cannot record term size as both words and cells."), nl],
-        add_error(phase_options, DualTermSizeSpec, !Specs),
-        AllowOptLCMCTermSize = bool.yes
-    else if
-        ( RecordTermSizesAsWords = bool.yes
-        ; RecordTermSizesAsCells = bool.yes
-        )
-    then
-        AllowOptLCMCTermSize = bool.no,
-        % Term size profiling breaks the assumption that even word offsets from
-        % the start of the cell are double-word aligned memory addresses.
-        %
-        % XXX Actually, we do not (or should not) make that assumption as it
-        % would also be violated by memory attribution profiling which also
-        % allocates an extra word at the start of a cell.
-        globals.set_option(allow_double_word_fields, bool(no), !Globals),
-        (
-            HighLevelCode = bool.yes,
-            TermSizeHLSpec =
-                [words("Term size profiling is incompatible with"),
-                words("high level code."), nl],
-            add_error(phase_options, TermSizeHLSpec, !Specs)
-        ;
-            HighLevelCode = bool.no
-        )
-    else
-        AllowOptLCMCTermSize = bool.yes
-    ),
-
-    ( if
-        ( given_trace_level_is_none(TraceLevel) = bool.yes
-        ; HighLevelCode = bool.no, Target = target_c
-        )
-    then
-        true
-    else
-        TraceHLSpec =
-            [words("Debugging is available only in low level C grades."), nl],
-        add_error(phase_options, TraceHLSpec, !Specs)
-    ),
+    % --ssdb implies --link-ssdb-libs
+    option_implies(source_to_source_debug, link_ssdb_libs, bool(yes),
+        !Globals),
 
     % Source-to-source debugging requires disabling many HLDS->HLDS
     % optimizations. This is so that the trace being generated relates to the
@@ -1756,6 +1339,94 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         AllowOptLCMCSSDB = bool.yes
     ),
 
+    % Profile for feedback requires coverage profiling.
+    option_implies(profile_for_feedback, coverage_profiling, bool(yes),
+        !Globals),
+
+    % At the moment coverage profiling is not compatible with the tail
+    % recursion preservation optimization used by the deep profiler.
+    option_implies(coverage_profiling, deep_profile_tail_recursion,
+        bool(no), !Globals),
+
+    globals.lookup_bool_option(!.Globals, profile_deep, ProfileDeep),
+
+    % Perform a simplification pass before the profiling passes if one of
+    % these profiling options is enabled.
+    option_implies(profile_deep, pre_prof_transforms_simplify, bool(yes),
+        !Globals),
+    option_implies(record_term_sizes_as_words, pre_prof_transforms_simplify,
+        bool(yes), !Globals),
+    option_implies(record_term_sizes_as_cells, pre_prof_transforms_simplify,
+        bool(yes), !Globals),
+
+    option_implies(profile_deep, procid_stack_layout, bool(yes), !Globals),
+    (
+        ProfileDeep = bool.yes,
+        ( if
+            HighLevelCode = no,
+            Target = target_c
+        then
+            true
+        else
+            DeepHLSpec =
+                [words("Deep profiling is incompatible with"),
+                words("high level code."), nl],
+            add_error(phase_options, DeepHLSpec, !Specs)
+        ),
+
+        % Deep profiling disables the optimization for pretesting whether
+        % x == y in runtime/mercury_unify_compare_body.h, so compensate by
+        % doing the same test in the unify and compare predicates generated by
+        % the Mercury compiler.
+        globals.set_option(should_pretest_equality, bool(yes), !Globals),
+
+        % Inlining happens before the deep profiling transformation, so if
+        % we allowed inlining to happen, then we would lose all profiling
+        % information about the inlined calls - this is not usually what we
+        % want so we disable inlining with deep profiling by default.
+        % The user can re-enable it with the `--profile-optimized' option.
+        % Leave inlining enabled when profiling for implicit parallelism.
+        option_implies(profile_for_feedback, prof_optimized, bool(yes),
+            !Globals),
+        globals.lookup_bool_option(!.Globals, prof_optimized, ProfOptimized),
+        (
+            ProfOptimized = bool.no,
+            AllowInliningProfDeep = bool.no
+        ;
+            ProfOptimized = bool.yes,
+            AllowInliningProfDeep = bool.yes
+        ),
+
+        AllowOptLCMCProfDeep = bool.no,
+        globals.lookup_bool_option(!.Globals,
+            use_lots_of_ho_specialization, LotsOfHOSpec),
+        (
+            LotsOfHOSpec = bool.yes,
+            % We used to switch on --optimize-higher-order here,
+            % even if it was disabled e.g. for execution tracing.
+            % That was almost certainly a bug.
+            %
+            % Setting the limit here is ok, since the limit is irrelevant
+            % if the only optimization that looks at it is not run.
+            OT_HigherOrderSizeLimit = 999999
+        ;
+            LotsOfHOSpec = bool.no,
+            OT_HigherOrderSizeLimit = OT_HigherOrderSizeLimit0
+        )
+    ;
+        ProfileDeep = bool.no,
+        OT_HigherOrderSizeLimit = OT_HigherOrderSizeLimit0,
+        AllowInliningProfDeep = bool.yes,
+        AllowOptLCMCProfDeep = bool.yes
+    ),
+
+    globals.lookup_string_option(!.Globals, experimental_complexity, ExpComp),
+    ( if ExpComp = "" then
+        AllowInliningExpComp = bool.yes
+    else
+        AllowInliningExpComp = bool.no
+    ),
+
     ( if
         AllowOptDupCallsTrace = bool.yes,
         AllowOptDupCallsSSDB = bool.yes
@@ -1766,10 +1437,10 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     ),
 
     ( if
-        AllowInliningProfDeep = bool.yes,
-        AllowInliningExpComp = bool.yes,
         AllowInliningTrace = bool.yes,
-        AllowInliningSSDB = bool.yes
+        AllowInliningSSDB = bool.yes,
+        AllowInliningProfDeep = bool.yes,
+        AllowInliningExpComp = bool.yes
     then
         OT_AllowInlining = OT_AllowInlining0
     else
@@ -1783,11 +1454,6 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     else
         OT_OptHigherOrder = do_not_opt_higher_order
     ),
-
-    % The pthreads headers on some architectures (Solaris, Linux)
-    % don't work with -ansi.
-    % XXX we don't pass -ansi to the C compiler anymore.
-    option_implies(parallel, ansi_c, bool(no), !Globals),
 
     OT_InlineBuiltins0 = OptTuple0 ^ ot_inline_builtins,
     (
@@ -1889,11 +1555,31 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         OT_OptFrames = do_not_opt_frames,
         globals.set_option(opt_no_return_calls, bool(no), !Globals),
         AllowOptMiddleRecGc = bool.no,
+        AllowOptLCMCGc = bool.no,
+        AllowAnySpecTypesGc = bool.no,
+
         globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
             !Globals),
-        globals.set_option(reclaim_heap_on_nondet_failure, bool(no), !Globals),
-        AllowOptLCMCGc = bool.no,
-        AllowAnySpecTypesGc = bool.no
+        globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
+            !Globals),
+
+        % ml_gen_params_base and ml_declare_env_ptr_arg, in ml_code_util.m,
+        % both assume (for accurate GC) that continuation environments
+        % are always allocated on the stack, which means that things won't
+        % work if --gc accurate and --put-nondet-env-on-heap are both enabled.
+        globals.lookup_bool_option(!.Globals, put_nondet_env_on_heap,
+            PutNondetEnvOnHeap),
+        ( if
+            HighLevelCode = bool.yes,
+            PutNondetEnvOnHeap = bool.yes
+        then
+            AGCEnvSpec =
+                [words_quote("--gc accurate"), words("is incompatible with"),
+                words_quote("--put-nondet-env-on-heap"), suffix("."), nl],
+            add_error(phase_options, AGCEnvSpec, !Specs)
+        else
+            true
+        )
     ;
         ( GC_Method = gc_automatic
         ; GC_Method = gc_none
@@ -1905,26 +1591,19 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         AllowOptMiddleRecGc = bool.yes,
         AllowHijacksGc = bool.yes,
         AllowOptLCMCGc = bool.yes,
-        AllowAnySpecTypesGc = bool.yes
-    ),
+        AllowAnySpecTypesGc = bool.yes,
 
-    % ml_gen_params_base and ml_declare_env_ptr_arg, in ml_code_util.m,
-    % both assume (for accurate GC) that continuation environments
-    % are always allocated on the stack, which means that things won't work
-    % if --gc accurate and --put-nondet-env-on-heap are both enabled.
-    globals.lookup_bool_option(!.Globals, put_nondet_env_on_heap,
-        PutNondetEnvOnHeap),
-    ( if
-        HighLevelCode = bool.yes,
-        GC_Method = gc_accurate,
-        PutNondetEnvOnHeap = bool.yes
-    then
-        AGCEnvSpec =
-            [words_quote("--gc accurate"), words("is incompatible with"),
-            words_quote("--put-nondet-env-on-heap"), suffix("."), nl],
-        add_error(phase_options, AGCEnvSpec, !Specs)
-    else
-        true
+        % Conservative GC implies --no-reclaim-heap-*
+        GCIsConservative = gc_is_conservative(GC_Method),
+        (
+            GCIsConservative = bool.yes,
+            globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
+                !Globals),
+            globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
+                !Globals)
+        ;
+            GCIsConservative = bool.no
+        )
     ),
 
     % `procid' and `agc' stack layouts need `basic' stack layouts
@@ -2011,20 +1690,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         OT_OptMiddleRec = do_not_opt_middle_rec
     ),
 
-    % Stack copy minimal model tabling needs to be able to rewrite all
-    % the redoips in a given nondet stack segments. If we allow hijacks,
-    % some of these redoips may have been saved in ordinary framevars,
-    % which means that tabling can't find them without label layout info.
-    % Since we want to allow tabling in grades that do not have label
-    % layout info, we disable hijacks instead.
-    % XXX we should allow hijacks in table_builtin.m
-    ( 
-        UseMinimalModelStackCopy = bool.yes,
-        AllowHijacksMMSC = bool.no
-    ;
-        UseMinimalModelStackCopy = bool.no,
-        AllowHijacksMMSC = bool.yes
-    ),
+    handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs),
+
     ( if
         AllowHijacksTrace = bool.yes,
         AllowHijacksGc = bool.yes,
@@ -2033,55 +1700,6 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         OT_AllowHijacks = OT_AllowHijacks0
     else
         OT_AllowHijacks = do_not_allow_hijacks
-    ),
-
-    % Stack copy minimal model tabling needs to generate extra code
-    % at possibly negated contexts to handle the pneg stack and at commits
-    % to handle the cut stack. The code below allows the generation of
-    % these extra pieces of code to be disabled. The disabled program will
-    % work only if the program doesn't actually use minimal model tabling,
-    % which makes it useful only for performance testing.
-    globals.lookup_bool_option(!.Globals,
-        disable_minimal_model_stack_copy_pneg, DisablePneg),
-    globals.lookup_bool_option(!.Globals,
-        disable_minimal_model_stack_copy_cut, DisableCut),
-    ( if
-        UseMinimalModelStackCopy = bool.yes,
-        DisablePneg = bool.no
-    then
-        globals.set_option(use_minimal_model_stack_copy_pneg, bool(yes),
-            !Globals)
-    else
-        true
-    ),
-    ( if
-        UseMinimalModelStackCopy = bool.yes,
-        DisableCut = bool.no
-    then
-        globals.set_option(use_minimal_model_stack_copy_cut, bool(yes),
-            !Globals)
-    else
-        true
-    ),
-
-    % --dump-hlds, --statistics, --parallel-liveness and
-    % --parallel-code-gen require compilation by phases.
-    globals.lookup_accumulating_option(!.Globals, dump_hlds, DumpHLDSStages),
-    globals.lookup_accumulating_option(!.Globals, dump_trace_counts,
-        DumpTraceStages),
-    globals.lookup_bool_option(!.Globals, parallel_liveness, ParallelLiveness),
-    globals.lookup_bool_option(!.Globals, parallel_code_gen, ParallelCodeGen),
-    ( if
-        ( DumpHLDSStages = [_ | _]
-        ; DumpTraceStages = [_ | _]
-        ; Statistics = bool.yes
-        ; ParallelLiveness = bool.yes
-        ; ParallelCodeGen = bool.yes
-        )
-    then
-        globals.set_option(trad_passes, bool(no), !Globals)
-    else
-        true
     ),
 
     ( if
@@ -2197,7 +1815,656 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         true
     ),
 
-    globals.lookup_string_option(!.Globals, target_arch, TargetArch),
+    % --use-opt-files implies --no-warn-missing-opt-files since
+    % we are expecting some to be missing.
+    option_implies(use_opt_files, warn_missing_opt_files, bool(no),
+        !Globals),
+
+    ( if
+        AllowOptLCMCTrace = bool.yes,
+        AllowOptLCMCSSDB = bool.yes,
+        AllowOptLCMCProfDeep = bool.yes,
+        AllowOptLCMCTermSize = bool.yes,
+        AllowOptLCMCGc = bool.yes,
+        AllowOptLCMCBackend = bool.yes
+    then
+        OT_OptLCMC = OT_OptLCMC0
+    else
+        OT_OptLCMC = do_not_opt_lcmc
+    ),
+
+    maybe_update_backend_foreign_languages(BackendForeignLanguages, !Globals),
+    maybe_update_event_set_file_name(!Globals, !IO),
+    handle_record_term_sizes_options(!Globals, AllowOptLCMCTermSize, !Specs),
+    handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls, OpMode,
+        !Globals, !Specs),
+    handle_compare_specialization(!Globals),
+    handle_compiler_developer_options(!Globals, !IO),
+    handle_directory_options(OpMode, !Globals),
+
+    !OptTuple ^ ot_allow_inlining := OT_AllowInlining,
+    !OptTuple ^ ot_opt_common_structs := OT_OptCommonStructs,
+    !OptTuple ^ ot_prop_constraints := OT_PropConstraints,
+    !OptTuple ^ ot_prop_local_constraints := OT_PropLocalConstraints,
+    !OptTuple ^ ot_opt_dup_calls := OT_OptDupCalls,
+    !OptTuple ^ ot_prop_constants := OT_PropConstants,
+    !OptTuple ^ ot_opt_svcell := OT_OptSVCell,
+    !OptTuple ^ ot_opt_loop_invariants := OT_OptLoopInvariants,
+    !OptTuple ^ ot_elim_excess_assigns := OT_ElimExcessAssigns,
+    !OptTuple ^ ot_opt_test_after_switch := OT_OptTestAfterSwitch,
+    !OptTuple ^ ot_opt_follow_code := OT_OptFollowCode,
+    !OptTuple ^ ot_opt_unused_args := OT_OptUnusedArgs,
+    !OptTuple ^ ot_opt_unused_args_intermod := OT_OptUnusedArgsIntermod,
+    !OptTuple ^ ot_opt_higher_order := OT_OptHigherOrder,
+    !OptTuple ^ ot_higher_order_size_limit := OT_HigherOrderSizeLimit,
+    !OptTuple ^ ot_spec_types := OT_SpecTypes,
+    !OptTuple ^ ot_spec_types_user_guided := OT_SpecTypesUserGuided,
+    !OptTuple ^ ot_opt_lcmc := OT_OptLCMC,
+    !OptTuple ^ ot_deforest := OT_Deforest,
+    !OptTuple ^ ot_tuple := OT_Tuple,
+    !OptTuple ^ ot_untuple := OT_Untuple,
+    !OptTuple ^ ot_opt_middle_rec := OT_OptMiddleRec,
+    !OptTuple ^ ot_allow_hijacks := OT_AllowHijacks,
+    !OptTuple ^ ot_opt_mlds_tailcalls := OT_OptMLDSTailCalls,
+    !OptTuple ^ ot_standardize_labels := OT_StdLabels,
+    !OptTuple ^ ot_opt_dups := OT_OptDups,
+    !OptTuple ^ ot_opt_frames := OT_OptFrames,
+    !OptTuple ^ ot_string_binary_switch_size := OT_StringBinarySwitchSize,
+
+    (
+        HighLevelCode = no,
+        postprocess_options_lowlevel(!Globals, !OptTuple)
+    ;
+        HighLevelCode = yes
+    ),
+    globals.set_opt_tuple(!.OptTuple, !Globals),
+    postprocess_options_libgrades(!Globals, !Specs),
+    globals_init_mutables(!.Globals, !IO).
+
+%---------------------------------------------------------------------------%
+
+    % Options updated:
+    %   ansi_c
+    %   implicit_parallelism
+    %   par_loop_control
+    %   pre_implicit_parallelism_simplify
+    %
+:- pred handle_implications_of_parallel(globals::in, globals::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+handle_implications_of_parallel(!Globals, !Specs) :-
+    current_grade_supports_par_conj(!.Globals, GradeSupportsParConj),
+    globals.lookup_bool_option(!.Globals, parallel, Parallel),
+    globals.lookup_bool_option(!.Globals, threadscope, Threadscope),
+    ( if
+        GradeSupportsParConj = bool.no,
+        Threadscope = bool.yes
+    then
+        ThreadScopeSpec =
+            [words("The"), quote("threadscope"), words("grade component"),
+            words("requires a parallel grade."), nl],
+        add_error(phase_options, ThreadScopeSpec, !Specs)
+    else
+        true
+    ),
+
+    % Implicit parallelism requires feedback information, however this
+    % error should only be shown in a parallel grade, otherwise implicit
+    % parallelism should be disabled.
+    globals.lookup_bool_option(!.Globals, implicit_parallelism,
+        ImplicitParallelism),
+    (
+        ImplicitParallelism = bool.yes,
+        (
+            GradeSupportsParConj = bool.yes,
+            globals.lookup_string_option(!.Globals, feedback_file,
+                FeedbackFile),
+            ( if FeedbackFile = "" then
+                NoFeedbackFileSpec =
+                    [words("The"), quote("--implicit-parallelism"),
+                    words("option requires the use of"),
+                    quote("--feedback-file"), suffix("."), nl],
+                add_error(phase_options, NoFeedbackFileSpec, !Specs)
+            else
+                true
+            )
+        ;
+            % Report an error when used in parallel grades without parallel
+            % conjunction support. In non-parallel grades simply ignore
+            % --implicit-parallelism.
+            GradeSupportsParConj = bool.no,
+            (
+                Parallel = yes,
+                NoParConjSupportSpec =
+                    [words("The"), quote("--implicit-parallelism"),
+                    words("option requires a grade that"),
+                    words("supports parallel conjunctions."),
+                    words("Use a low-level C grade without trailing."), nl],
+                add_error(phase_options, NoParConjSupportSpec, !Specs)
+            ;
+                Parallel = bool.no
+            ),
+            globals.set_option(implicit_parallelism, bool(no), !Globals)
+        )
+    ;
+        ImplicitParallelism = bool.no
+    ),
+    % Perform a simplification pass before the implicit parallelism pass to
+    % ensure that the HLDS more-closely matches the feedback data.
+    option_implies(implicit_parallelism, pre_implicit_parallelism_simplify,
+        bool(yes), !Globals),
+
+    % Loop control is not applicable in non-parallel grades.
+    (
+        GradeSupportsParConj = bool.yes
+    ;
+        GradeSupportsParConj = bool.no,
+        globals.set_option(par_loop_control, bool(no), !Globals)
+    ),
+
+    % The pthreads headers on some architectures (Solaris, Linux)
+    % don't work with -ansi.
+    % XXX We don't pass -ansi to the C compiler anymore.
+    option_implies(parallel, ansi_c, bool(no), !Globals).
+
+%---------------------%
+
+    % Options updated:
+    %   none
+    %
+:- pred maybe_disable_smart_recompilation(op_mode::in,
+    globals::in, globals::out, io::di, io::uo) is det.
+
+maybe_disable_smart_recompilation(OpMode, !Globals, !IO) :-
+    % XXX Smart recompilation does not yet work with inter-module
+    % optimization, but we still want to generate version numbers
+    % in interface files for users of a library compiled with
+    % inter-module optimization but not using inter-module
+    % optimization themselves.
+    globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
+    (
+        Smart = bool.no
+    ;
+        Smart = bool.yes,
+        ( if
+            globals.lookup_bool_option(!.Globals, intermodule_optimization,
+                yes)
+        then
+            disable_smart_recompilation("`--intermodule-optimization'",
+                !Globals, !IO)
+        else
+            true
+        ),
+        ( if globals.lookup_bool_option(!.Globals, use_opt_files, yes) then
+            disable_smart_recompilation("`--use-opt-files'", !Globals, !IO)
+        else
+            true
+        ),
+        % XXX Smart recompilation does not yet work with
+        % `--no-target-code-only'. With `--no-target-code-only'
+        % it becomes difficult to work out what all the target files
+        % are and check whether they are up-to-date. By default, mmake always
+        % enables `--target-code-only' and processes the target code file
+        % itself, so this isn't a problem.
+        % XXX I (zs) don't believe that mmake sets --target-code-only anymore.
+        ( if
+            OpMode = opm_top_args(opma_augment(
+                opmau_generate_code(opmcg_target_code_only)))
+        then
+            true
+        else
+            disable_smart_recompilation("`--no-target-code-only'",
+                !Globals, !IO)
+        )
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   event_set_file_name
+    %
+:- pred handle_minimal_model_options(globals::in, globals::out,
+    bool::out, list(error_spec)::in, list(error_spec)::out) is det.
+
+handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs) :-
+    globals.lookup_bool_option(!.Globals, use_minimal_model_stack_copy,
+        UseMinimalModelStackCopy),
+    globals.lookup_bool_option(!.Globals, use_minimal_model_own_stacks,
+        UseMinimalModelOwnStacks),
+    bool.or(UseMinimalModelStackCopy, UseMinimalModelOwnStacks,
+        UseMinimalModel),
+    % Minimal model tabling is not compatible with high level code
+    % or with trailing; see the comments in runtime/mercury_grade.h.
+    ( if
+        UseMinimalModelStackCopy = bool.yes,
+        UseMinimalModelOwnStacks = bool.yes
+    then
+        DualMMSpec =
+            [words("You cannot use both forms of minimal model tabling"),
+            words("at once."), nl],
+        add_error(phase_options, DualMMSpec, !Specs)
+    else if
+        UseMinimalModel = bool.yes,
+        globals.lookup_bool_option(!.Globals, highlevel_code, yes)
+    then
+        MMHLSpec =
+            [words("Minimal model tabling is incompatible with"),
+            words("high level code."), nl],
+        add_error(phase_options, MMHLSpec, !Specs)
+    else if
+        UseMinimalModel = bool.yes,
+        globals.lookup_bool_option(!.Globals, use_trail, yes)
+    then
+        MMTrailSpec =
+            [words("Minimal model tabling is incompatible with"),
+            words("trailing."), nl],
+        add_error(phase_options, MMTrailSpec, !Specs)
+    else
+        true
+    ),
+
+    % Stack copy minimal model tabling needs to be able to rewrite all
+    % the redoips in a given nondet stack segments. If we allow hijacks,
+    % some of these redoips may have been saved in ordinary framevars,
+    % which means that tabling can't find them without label layout info.
+    % Since we want to allow tabling in grades that do not have label
+    % layout info, we disable hijacks instead.
+    % XXX we should allow hijacks in table_builtin.m
+    ( 
+        UseMinimalModelStackCopy = bool.yes,
+        AllowHijacksMMSC = bool.no
+    ;
+        UseMinimalModelStackCopy = bool.no,
+        AllowHijacksMMSC = bool.yes
+    ),
+
+    % Stack copy minimal model tabling needs to generate extra code
+    % at possibly negated contexts to handle the pneg stack and at commits
+    % to handle the cut stack. The code below allows the generation of
+    % these extra pieces of code to be disabled. The disabled program will
+    % work only if the program doesn't actually use minimal model tabling,
+    % which makes it useful only for performance testing.
+    globals.lookup_bool_option(!.Globals,
+        disable_minimal_model_stack_copy_pneg, DisablePneg),
+    globals.lookup_bool_option(!.Globals,
+        disable_minimal_model_stack_copy_cut, DisableCut),
+    ( if
+        UseMinimalModelStackCopy = bool.yes,
+        DisablePneg = bool.no
+    then
+        globals.set_option(use_minimal_model_stack_copy_pneg, bool(yes),
+            !Globals)
+    else
+        true
+    ),
+    ( if
+        UseMinimalModelStackCopy = bool.yes,
+        DisableCut = bool.no
+    then
+        globals.set_option(use_minimal_model_stack_copy_cut, bool(yes),
+            !Globals)
+    else
+        true
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   backend_foreign_languages
+    %
+:- pred maybe_update_backend_foreign_languages(list(string)::in,
+    globals::in, globals::out) is det.
+
+maybe_update_backend_foreign_languages(BackendForeignLanguages, !Globals) :-
+    % Only set the backend foreign languages if they are unset.
+    globals.lookup_accumulating_option(!.Globals,
+        backend_foreign_languages, CurrentBackendForeignLanguage),
+    (
+        CurrentBackendForeignLanguage = [],
+        globals.set_option(backend_foreign_languages,
+            accumulating(BackendForeignLanguages), !Globals)
+    ;
+        CurrentBackendForeignLanguage = [_ | _]
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   event_set_file_name
+    %
+:- pred maybe_update_event_set_file_name(globals::in, globals::out,
+    io::di, io::uo) is det.
+
+maybe_update_event_set_file_name(!Globals, !IO) :-
+    globals.lookup_string_option(!.Globals, event_set_file_name,
+        EventSetFileName0),
+    ( if EventSetFileName0 = "" then
+        io.get_environment_var("MERCURY_EVENT_SET_FILE_NAME",
+            MaybeEventSetFileName, !IO),
+        (
+            MaybeEventSetFileName = maybe.yes(EventSetFileName),
+            globals.set_option(event_set_file_name, string(EventSetFileName),
+                !Globals)
+        ;
+            MaybeEventSetFileName = maybe.no
+        )
+    else
+        true
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   allow_double_word_fields
+    %
+:- pred handle_record_term_sizes_options(globals::in, globals::out,
+    bool::out, list(error_spec)::in, list(error_spec)::out) is det.
+
+handle_record_term_sizes_options(!Globals, AllowOptLCMCTermSize, !Specs) :-
+    globals.lookup_bool_option(!.Globals, record_term_sizes_as_words,
+        RecordTermSizesAsWords),
+    globals.lookup_bool_option(!.Globals, record_term_sizes_as_cells,
+        RecordTermSizesAsCells),
+    ( if
+        RecordTermSizesAsWords = bool.yes,
+        RecordTermSizesAsCells = bool.yes
+    then
+        DualTermSizeSpec =
+            [words("Cannot record term size as both words and cells."), nl],
+        add_error(phase_options, DualTermSizeSpec, !Specs),
+        AllowOptLCMCTermSize = bool.yes
+    else if
+        ( RecordTermSizesAsWords = bool.yes
+        ; RecordTermSizesAsCells = bool.yes
+        )
+    then
+        AllowOptLCMCTermSize = bool.no,
+        % Term size profiling breaks the assumption that even word offsets from
+        % the start of the cell are double-word aligned memory addresses.
+        %
+        % XXX Actually, we do not (or should not) make that assumption as it
+        % would also be violated by memory attribution profiling which also
+        % allocates an extra word at the start of a cell.
+        globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
+        globals.set_option(allow_double_word_fields, bool(no), !Globals),
+        (
+            HighLevelCode = bool.yes,
+            TermSizeHLSpec =
+                [words("Term size profiling is incompatible with"),
+                words("high level code."), nl],
+            add_error(phase_options, TermSizeHLSpec, !Specs)
+        ;
+            HighLevelCode = bool.no
+        )
+    else
+        AllowOptLCMCTermSize = bool.yes
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   none
+    %
+:- pred handle_non_tail_rec_warnings(opt_tuple::in,
+    maybe_opt_mlds_tailcalls::in, op_mode::in,
+    globals::in, globals::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls, OpMode,
+        !Globals, !Specs) :-
+    % --warn-non-tail-recursion requires tail call optimization to be enabled.
+    % It also doesn't work if you use --errorcheck-only.
+    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion_self,
+        WarnNonTailRecSelf),
+    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion_mutual,
+        WarnNonTailRecMutual),
+    ( if
+        ( WarnNonTailRecSelf = bool.yes
+        ; WarnNonTailRecMutual = bool.yes
+        )
+    then
+        OT_PessimizeTailCalls0 = OptTuple0 ^ ot_pessimize_tailcalls,
+        (
+            OT_PessimizeTailCalls0 = do_not_pessimize_tailcalls
+        ;
+            OT_PessimizeTailCalls0 = pessimize_tailcalls,
+            PessimizeWords = "--warn-non-tail-recursion is incompatible" ++
+                 " with --pessimize-tailcalls",
+            % XXX While these two options look diametrically opposed,
+            % they are actually compatible, because pessimize_tailcalls
+            % is implemented only for the LLDS backend, while the
+            % optimize_tailcalls option is only for the MLDS backend.
+            % (The LLDS backend's tail call optimization does NOT depend
+            % on the value of that option.)
+            add_error(phase_options, [words(PessimizeWords)], !Specs)
+        ),
+        (
+            OT_OptMLDSTailCalls = opt_mlds_tailcalls
+        ;
+            OT_OptMLDSTailCalls = do_not_opt_mlds_tailcalls,
+            % XXX This error message could be misleading. It is possible that
+            % - the user *did* ask for MLDS tailcalls, but
+            % - accidentally also specified --no-optimize, which would
+            %   lead to code above turning MLDS tailcalls *off*.
+            OptimizeWords =
+                "--warn-non-tail-recursion requires --optimize-tailcalls",
+            add_error(phase_options, [words(OptimizeWords)], !Specs)
+        ),
+        ( if OpMode = opm_top_args(opma_augment(opmau_errorcheck_only)) then
+            ECOWords = "--warn-non-tail-recursion is incompatible"
+                ++ " with --errorcheck-only",
+            add_error(phase_options, [words(ECOWords)], !Specs)
+        else
+            true
+        )
+    else
+        true
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   compare_specialization
+    %
+:- pred handle_compare_specialization(globals::in, globals::out) is det.
+
+handle_compare_specialization(!Globals) :-
+    globals.lookup_int_option(!.Globals, compare_specialization, CompareSpec),
+    ( if CompareSpec < 0 then
+        % This indicates that the option was not set by the user;
+        % we should set the option to the default value. This value
+        % may be back end specific, since different back ends have
+        % different performance tradeoffs.
+        globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
+        (
+            HighLevelCode = bool.no,
+            globals.set_option(compare_specialization, int(13), !Globals)
+        ;
+            HighLevelCode = bool.yes,
+            globals.set_option(compare_specialization, int(14), !Globals)
+        )
+    else
+        true
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   auto_comments
+    %   debug_modes
+    %   debug_opt
+    %   dump_hlds_options
+    %   dump_hlds_options
+    %   statistics
+    %   trad_passes
+    %   unneeded_code_debug
+    %   verbose
+    %   verbose_commands
+    %   very_verbose
+    %
+:- pred handle_compiler_developer_options(globals::in, globals::out,
+    io::di, io::uo) is det.
+
+handle_compiler_developer_options(!Globals, !IO) :-
+    option_implies(very_verbose, verbose, bool(yes), !Globals),
+    option_implies(verbose, verbose_commands, bool(yes), !Globals),
+    globals.lookup_bool_option(!.Globals, very_verbose, VeryVerbose),
+    globals.lookup_bool_option(!.Globals, statistics, Statistics),
+    ( if
+        VeryVerbose = bool.yes,
+        Statistics = bool.yes
+    then
+        globals.set_option(detailed_statistics, bool(yes), !Globals)
+    else
+        true
+    ),
+
+    option_implies(debug_modes_minimal, debug_modes, bool(yes), !Globals),
+    option_implies(debug_modes_verbose, debug_modes, bool(yes), !Globals),
+    option_implies(debug_modes_statistics, debug_modes, bool(yes), !Globals),
+
+    globals.lookup_int_option(!.Globals, debug_liveness, DebugLiveness),
+    ( if
+        DebugLiveness >= 0,
+        convert_dump_alias("all", AllDumpOptions)
+    then
+        % Programmers only enable --debug-liveness if they are interested
+        % in the goal annotations put on goals by the various phases
+        % of the liveness pass. The default dump options do not print
+        % these annotations.
+        globals.lookup_string_option(!.Globals, dump_hlds_options,
+            DumpOptions0),
+        DumpOptions1 = DumpOptions0 ++ AllDumpOptions,
+        globals.set_option(dump_hlds_options, string(DumpOptions1), !Globals)
+    else
+        true
+    ),
+
+    option_implies(debug_modes_verbose, debug_modes, bool(yes), !Globals),
+    globals.lookup_int_option(!.Globals, debug_modes_pred_id,
+        DebugModesPredId),
+    ( if DebugModesPredId > 0 then
+        globals.set_option(debug_modes, bool(yes), !Globals)
+    else
+        true
+    ),
+
+    globals.lookup_accumulating_option(!.Globals,
+        unneeded_code_debug_pred_name, DebugUnneededCodePredNames),
+    (
+        DebugUnneededCodePredNames = []
+    ;
+        DebugUnneededCodePredNames = [_ | _],
+        globals.set_option(unneeded_code_debug, bool(yes), !Globals)
+    ),
+
+    globals.lookup_accumulating_option(!.Globals, debug_opt_pred_id,
+        DebugOptPredIdStrs),
+    globals.lookup_accumulating_option(!.Globals, debug_opt_pred_name,
+        DebugOptPredNames),
+    ( if
+        ( DebugOptPredIdStrs = [_ | _]
+        ; DebugOptPredNames = [_ | _]
+        )
+    then
+        globals.set_option(debug_opt, bool(yes), !Globals)
+    else
+        true
+    ),
+
+    globals.lookup_bool_option(!.Globals, debug_intermodule_analysis,
+        DebugIntermoduleAnalysis),
+    analysis.enable_debug_messages(DebugIntermoduleAnalysis, !IO),
+
+    globals.lookup_accumulating_option(!.Globals, dump_hlds_pred_id,
+        DumpHLDSPredIds),
+    (
+        DumpHLDSPredIds = [_ | _],
+        globals.lookup_string_option(!.Globals, dump_hlds_options,
+            DumpOptions2),
+        % Prevent the dumping of the mode and type tables.
+        string.replace_all(DumpOptions2, "M", "", DumpOptions3),
+        string.replace_all(DumpOptions3, "T", "", DumpOptions),
+        globals.set_option(dump_hlds_options, string(DumpOptions), !Globals)
+    ;
+        DumpHLDSPredIds = []
+    ),
+
+    option_implies(frameopt_comments, auto_comments, bool(yes), !Globals),
+
+    % --dump-hlds, --statistics, --parallel-liveness and
+    % --parallel-code-gen require compilation by phases.
+    globals.lookup_accumulating_option(!.Globals, dump_hlds, DumpHLDSStages),
+    globals.lookup_accumulating_option(!.Globals, dump_trace_counts,
+        DumpTraceStages),
+    globals.lookup_bool_option(!.Globals, parallel_liveness, ParallelLiveness),
+    globals.lookup_bool_option(!.Globals, parallel_code_gen, ParallelCodeGen),
+    ( if
+        ( DumpHLDSStages = [_ | _]
+        ; DumpTraceStages = [_ | _]
+        ; Statistics = bool.yes
+        ; ParallelLiveness = bool.yes
+        ; ParallelCodeGen = bool.yes
+        )
+    then
+        globals.set_option(trad_passes, bool(no), !Globals)
+    else
+        true
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   c_include_directory
+    %   config_file
+    %   default_runtime_library_directory
+    %   erlang_include_directory
+    %   init_file_directories
+    %   intermod_directories
+    %   libgrade_install_check
+    %   link_library_directories
+    %   use_subdirs
+    %
+:- pred handle_directory_options(op_mode::in, globals::in, globals::out)
+    is det.
+
+handle_directory_options(OpMode, !Globals) :-
+    globals.lookup_bool_option(!.Globals, invoked_by_mmc_make,
+        InvokedByMMCMake),
+    globals.lookup_bool_option(!.Globals, use_grade_subdirs,
+        UseGradeSubdirs),
+
+    % This is needed for library installation (the library grades
+    % are built using `--use-grade-subdirs', and assume that
+    % the interface files were built using `--use-subdirs').
+    ( if
+        ( OpMode = opm_top_make
+        ; InvokedByMMCMake = bool.yes
+        ; UseGradeSubdirs = bool.yes
+        )
+    then
+        globals.set_option(use_subdirs, bool(yes), !Globals)
+    else
+        true
+    ),
+
+    % We only perform the library grade install check if we are
+    % building a linked target using mmc --make or if we are building
+    % a single source file linked target.  (The library grade install
+    % check is *not* compatible with the use of mmake.)
+    ( if
+        (
+            OpMode = opm_top_make
+        ;
+            OpMode = opm_top_args(OpModeArgs),
+            OpModeArgs = opma_augment(opmau_generate_code(
+                opmcg_target_object_and_executable))
+        )
+    then
+        true
+    else
+        globals.set_option(libgrade_install_check, bool(no), !Globals)
+    ),
 
     globals.lookup_string_option(!.Globals, mercury_linkage, MercuryLinkage),
     ( if MercuryLinkage = "static" then
@@ -2350,12 +2617,11 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         UseSearchDirs = bool.no
     ),
 
-    globals.lookup_bool_option(!.Globals, use_grade_subdirs,
-        UseGradeSubdirs),
     globals.lookup_accumulating_option(!.Globals,
         search_library_files_directories, SearchLibFilesDirs),
     globals.lookup_accumulating_option(!.Globals,
         intermod_directories, IntermodDirs2),
+    globals.lookup_string_option(!.Globals, target_arch, TargetArch),
     ToGradeSubdir = (func(Dir) = Dir/"Mercury"/GradeString/TargetArch),
     (
         UseGradeSubdirs = bool.yes,
@@ -2451,173 +2717,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
             accumulating(SubdirErlangIncludeDirs), !Globals)
     else
         true
-    ),
+    ).
 
-    % --use-opt-files implies --no-warn-missing-opt-files since
-    % we are expecting some to be missing.
-    option_implies(use_opt_files, warn_missing_opt_files, bool(no),
-        !Globals),
-
-    % --warn-non-tail-recursion requires tail call optimization to be enabled.
-    % It also doesn't work if you use --errorcheck-only.
-    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion_self,
-        WarnNonTailRecSelf),
-    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion_mutual,
-        WarnNonTailRecMutual),
-    ( if
-        ( WarnNonTailRecSelf = bool.yes
-        ; WarnNonTailRecMutual = bool.yes
-        )
-    then
-        (
-            OT_PessimizeTailCalls0 = do_not_pessimize_tailcalls
-        ;
-            OT_PessimizeTailCalls0 = pessimize_tailcalls,
-            PessimizeWords = "--warn-non-tail-recursion is incompatible" ++
-                 " with --pessimize-tailcalls",
-            % XXX While these two options look diametrically opposed,
-            % they are actually compatible, because pessimize_tailcalls
-            % is implemented only for the LLDS backend, while the
-            % optimize_tailcalls option is only for the MLDS backend.
-            % (The LLDS backend's tail call optimization does NOT depend
-            % on the value of that option.)
-            add_error(phase_options, [words(PessimizeWords)], !Specs)
-        ),
-        (
-            OT_OptMLDSTailCalls = opt_mlds_tailcalls
-        ;
-            OT_OptMLDSTailCalls = do_not_opt_mlds_tailcalls,
-            % XXX This error message could be misleading. It is possible that
-            % - the user *did* ask for MLDS tailcalls, but
-            % - accidentally also specified --no-optimize, which would
-            %   lead to code above turning MLDS tailcalls *off*.
-            OptimizeWords =
-                "--warn-non-tail-recursion requires --optimize-tailcalls",
-            add_error(phase_options, [words(OptimizeWords)], !Specs)
-        ),
-        ( if OpMode = opm_top_args(opma_augment(opmau_errorcheck_only)) then
-            ECOWords = "--warn-non-tail-recursion is incompatible"
-                ++ " with --errorcheck-only",
-            add_error(phase_options, [words(ECOWords)], !Specs)
-        else
-            true
-        )
-    else
-        true
-    ),
-
-    % The backend foreign languages depend on the target.
-    (
-        Target = target_c,
-        BackendForeignLanguages = ["c"],
-        AllowOptLCMCBackend = bool.yes
-    ;
-        Target = target_csharp,
-        BackendForeignLanguages = ["csharp"],
-        AllowOptLCMCBackend = bool.yes
-    ;
-        Target = target_java,
-        BackendForeignLanguages = ["java"],
-        AllowOptLCMCBackend = bool.yes
-    ;
-        Target = target_erlang,
-        BackendForeignLanguages = ["erlang"],
-        AllowOptLCMCBackend = bool.no,
-        set_option(allow_multi_arm_switches, bool(no), !Globals)
-    ),
-    ( if
-        AllowOptLCMCTrace = bool.yes,
-        AllowOptLCMCProfDeep = bool.yes,
-        AllowOptLCMCTermSize = bool.yes,
-        AllowOptLCMCSSDB = bool.yes,
-        AllowOptLCMCGc = bool.yes,
-        AllowOptLCMCBackend = bool.yes
-    then
-        OT_OptLCMC = OT_OptLCMC0
-    else
-        OT_OptLCMC = do_not_opt_lcmc
-    ),
-
-    % Only set the backend foreign languages if they are unset.
-    globals.lookup_accumulating_option(!.Globals,
-        backend_foreign_languages, CurrentBackendForeignLanguage),
-    (
-        CurrentBackendForeignLanguage = [],
-        globals.set_option(backend_foreign_languages,
-            accumulating(BackendForeignLanguages), !Globals)
-    ;
-        CurrentBackendForeignLanguage = [_ | _]
-    ),
-
-    globals.lookup_int_option(!.Globals, compare_specialization, CompareSpec),
-    ( if CompareSpec < 0 then
-        % This indicates that the option was not set by the user;
-        % we should set the option to the default value. This value
-        % may be back end specific, since different back ends have
-        % different performance tradeoffs.
-        (
-            HighLevelCode = bool.no,
-            globals.set_option(compare_specialization, int(13), !Globals)
-        ;
-            HighLevelCode = bool.yes,
-            globals.set_option(compare_specialization, int(14), !Globals)
-        )
-    else
-        true
-    ),
-
-    ( if
-        % In the non-C backends, it may not be possible to cast a value
-        % of a non-enum du type to an integer.
-        Target = target_c,
-
-        % Since we have never targeted 16-bit platforms, the minimum number
-        % of low ptag bits we ever configure is two.
-        NumPtagBits >= 2
-    then
-        globals.set_option(can_compare_constants_as_ints, bool(yes), !Globals)
-    else
-        globals.set_option(can_compare_constants_as_ints, bool(no), !Globals)
-    ),
-
-    !OptTuple ^ ot_allow_inlining := OT_AllowInlining,
-    !OptTuple ^ ot_opt_common_structs := OT_OptCommonStructs,
-    !OptTuple ^ ot_prop_constraints := OT_PropConstraints,
-    !OptTuple ^ ot_prop_local_constraints := OT_PropLocalConstraints,
-    !OptTuple ^ ot_opt_dup_calls := OT_OptDupCalls,
-    !OptTuple ^ ot_prop_constants := OT_PropConstants,
-    !OptTuple ^ ot_opt_svcell := OT_OptSVCell,
-    !OptTuple ^ ot_opt_loop_invariants := OT_OptLoopInvariants,
-    !OptTuple ^ ot_elim_excess_assigns := OT_ElimExcessAssigns,
-    !OptTuple ^ ot_opt_test_after_switch := OT_OptTestAfterSwitch,
-    !OptTuple ^ ot_opt_follow_code := OT_OptFollowCode,
-    !OptTuple ^ ot_opt_unused_args := OT_OptUnusedArgs,
-    !OptTuple ^ ot_opt_unused_args_intermod := OT_OptUnusedArgsIntermod,
-    !OptTuple ^ ot_opt_higher_order := OT_OptHigherOrder,
-    !OptTuple ^ ot_higher_order_size_limit := OT_HigherOrderSizeLimit,
-    !OptTuple ^ ot_spec_types := OT_SpecTypes,
-    !OptTuple ^ ot_spec_types_user_guided := OT_SpecTypesUserGuided,
-    !OptTuple ^ ot_opt_lcmc := OT_OptLCMC,
-    !OptTuple ^ ot_deforest := OT_Deforest,
-    !OptTuple ^ ot_tuple := OT_Tuple,
-    !OptTuple ^ ot_untuple := OT_Untuple,
-    !OptTuple ^ ot_opt_middle_rec := OT_OptMiddleRec,
-    !OptTuple ^ ot_allow_hijacks := OT_AllowHijacks,
-    !OptTuple ^ ot_opt_mlds_tailcalls := OT_OptMLDSTailCalls,
-    !OptTuple ^ ot_standardize_labels := OT_StdLabels,
-    !OptTuple ^ ot_opt_dups := OT_OptDups,
-    !OptTuple ^ ot_opt_frames := OT_OptFrames,
-    !OptTuple ^ ot_string_binary_switch_size := OT_StringBinarySwitchSize,
-
-    (
-        HighLevelCode = no,
-        postprocess_options_lowlevel(!Globals, !OptTuple)
-    ;
-        HighLevelCode = yes
-    ),
-    globals.set_opt_tuple(!.OptTuple, !Globals),
-    postprocess_options_libgrades(!Globals, !Specs),
-    globals_init_mutables(!.Globals, !IO).
+%---------------------------------------------------------------------------%
 
     % These option implications only affect the low-level (LLDS) code
     % generator. They may in fact be harmful if set for the high-level
