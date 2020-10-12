@@ -10,9 +10,3 @@
 # directory.
 #
 #-----------------------------------------------------------------------------#
-# These are defined by mercury_signal.h. The first is defined only temporarily,
-# and the second eliminates gratuitous differences between Linux versions.
-# Neither really pollutes the namespace.
-__KERNEL__
-sigcontext_struct
-#-----------------------------------------------------------------------------#

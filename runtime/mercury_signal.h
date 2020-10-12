@@ -1,15 +1,12 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998, 2000, 2002, 2004-2005, 2010 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2020 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_signal.h - functions for setting up signal handlers.
 //
 // This defines a generic signal handler setup mechanism.
-//
-// NOTE: If `struct sigcontext' is needed, mercury_signal.h must be
-// included before anything which could include <signal.h>.
 
 #ifndef MERCURY_SIGNAL_H
 #define MERCURY_SIGNAL_H
@@ -17,31 +14,7 @@
 #include "mercury_regs.h"   // include before system headers
 #include "mercury_conf.h"
 
-#ifdef MR_HAVE_SIGCONTEXT_STRUCT
-  // Some versions of Linux call it struct sigcontext_struct, some call it
-  // struct sigcontext. The following #define eliminates the differences.
-
-  #define sigcontext_struct sigcontext // must be before #include <signal.h>
-  struct sigcontext; // this forward decl avoids a gcc warning in signal.h
-
-  // On some systems (e.g. most versions of Linux) we need to #define
-  // __KERNEL__ to get sigcontext_struct from <signal.h>.
-  // This stuff must come before anything else that might include <signal.h>,
-  // otherwise the #define __KERNEL__ may not work.
-
-  #define __KERNEL__
-  #include <signal.h>   // must come third
-  #undef __KERNEL__
-
-  // Some versions of Linux define it in <signal.h>, others define it in
-  // <asm/sigcontext.h>. We try both.
-
-  #ifdef MR_HAVE_ASM_SIGCONTEXT_H
-    #include <asm/sigcontext.h>
-  #endif
-#else
-  #include <signal.h>
-#endif
+#include <signal.h>
 
 #include "mercury_types.h"
 #include "mercury_std.h"

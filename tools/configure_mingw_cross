@@ -67,8 +67,6 @@ fi
 
 mercury_cv_cc_type=gcc \
 mercury_cv_sigaction_field=no \
-mercury_cv_sigcontext_struct_2arg=no \
-mercury_cv_sigcontext_struct_3arg=no \
 mercury_cv_siginfo_t=no \
 mercury_cv_is_bigender=no \
 mercury_cv_is_littleender=yes \

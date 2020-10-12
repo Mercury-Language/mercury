@@ -123,7 +123,6 @@
 //  MR_HAVE_SYS_SIGNAL_H    we have <sys/signal.h>
 //  MR_HAVE_UCONTEXT_H      we have <ucontext.h>
 //  MR_HAVE_SYS_UCONTEXT_H  we have <sys/ucontext.h>
-//  MR_HAVE_ASM_SIGCONTEXT_H we have <asm/sigcontext.h> (e.g. i386 Linux)
 //  MR_HAVE_SYS_TIME_H      we have <sys/time.h>
 //  MR_HAVE_UNISTD_H        we have <unistd.h>
 //  MR_HAVE_SYS_PARAM_H     we have <sys/param.h>
@@ -158,7 +157,6 @@
 #undef  MR_HAVE_SYS_SIGNAL_H
 #undef  MR_HAVE_UCONTEXT_H
 #undef  MR_HAVE_SYS_UCONTEXT_H
-#undef  MR_HAVE_ASM_SIGCONTEXT_H
 #undef  MR_HAVE_SYS_TIME_H
 #undef  MR_HAVE_UNISTD_H
 #undef  MR_HAVE_SYS_PARAM_H
@@ -393,22 +391,9 @@
 //                      fault address for SIGSEGVs.
 //  MR_HAVE_SIGINFO_T   defined iff we can figure out the fault address
 //                      for SIGSEGVs using sigaction and siginfo_t.
-//  MR_HAVE_SIGCONTEXT_STRUCT
-//                      defined iff normal signal handlers are given
-//                      sigcontext_struct arguments that we can use to
-//                      figure out the fault address for SIGSEGVs.
-//  MR_HAVE_SIGCONTEXT_STRUCT_3ARG
-//                      defined iff signal handlers have three parameters,
-//                      the third being the sigcontext struct.
-//  MR_HAVE_SIGCONTEXT_STRUCT_2ARG
-//                      defined iff signal handlers have two parameters,
-//                      the second being the sigcontext struct.
 
 #undef  MR_HAVE_SIGINFO
 #undef  MR_HAVE_SIGINFO_T
-#undef  MR_HAVE_SIGCONTEXT_STRUCT
-#undef  MR_HAVE_SIGCONTEXT_STRUCT_3ARG
-#undef  MR_HAVE_SIGCONTEXT_STRUCT_2ARG
 
 // For debugging purposes, if we get a fatal signal, we print out the
 // program counter (PC) at which the signal occurred.
