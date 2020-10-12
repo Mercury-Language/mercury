@@ -64,18 +64,6 @@
   static void           simple_sighandler(int);
 #endif
 
-#ifdef MR_HAVE_SIGINFO
-  #ifdef MR_HAVE_SIGINFO_T
-    #define     bus_handler     complex_bushandler
-    #define     segv_handler    complex_segvhandler
-  #else
-    #error "MR_HAVE_SIGINFO defined but don't know how to get it"
-  #endif
-#else
-    #define     bus_handler     simple_sighandler
-    #define     segv_handler    simple_sighandler
-#endif
-
 // round_up(amount, align) returns `amount' rounded up to the nearest
 // alignment boundary. `align' must be a power of 2.
 
@@ -255,12 +243,27 @@ MR_setup_signals(void)
 // See mercury_wrapper.c for the reason why.
 
 #ifndef MR_MSVC_STRUCTURED_EXCEPTIONS
-  #ifdef SIGBUS
-    MR_setup_signal(SIGBUS, (MR_Code *) bus_handler, MR_TRUE,
+
+  #ifdef MR_HAVE_SIGINFO_T
+
+    #ifdef SIGBUS
+    MR_setup_signal(SIGBUS, (MR_Code *) complex_bushandler, MR_TRUE,
         "cannot set SIGBUS handler");
-  #endif
-    MR_setup_signal(SIGSEGV, (MR_Code *) segv_handler, MR_TRUE,
+    #endif
+    MR_setup_signal(SIGSEGV, (MR_Code *) complex_segvhandler, MR_TRUE,
         "cannot set SIGSEGV handler");
+
+  #else
+
+    #ifdef SIGBUS
+    MR_setup_signal(SIGBUS, (MR_Code *) simple_sighandler, MR_FALSE,
+        "cannot set SIGBUS handler");
+    #endif
+    MR_setup_signal(SIGSEGV, (MR_Code *) simple_sighandler, MR_FALSE,
+        "cannot set SIGSEGV handler");
+
+  #endif
+
 #endif
 }
 
