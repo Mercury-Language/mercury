@@ -97,8 +97,8 @@
 :- pred expand_lambda(purity::in, ho_groundness::in,
     pred_or_func::in, lambda_eval_method::in, reg_wrapper_proc::in,
     list(prog_var)::in, list(mer_mode)::in, determinism::in,
-    list(prog_var)::in, hlds_goal::in, unification::in,
-    unify_rhs::out, unification::out,
+    list(prog_var)::in, hlds_goal::in, prog_var::in, unify_mode::in,
+    unification::in, unify_context::in, hlds_goal_expr::out,
     lambda_info::in, lambda_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -356,8 +356,8 @@ expand_lambdas_in_cases([Case0 | Cases0], [Case | Cases], !Info) :-
     unify_mode::in, unification::in, unify_context::in, hlds_goal_expr::out,
     lambda_info::in, lambda_info::out) is det.
 
-expand_lambdas_in_unify_goal(LHS, RHS0, Mode, Unification0, Context, GoalExpr,
-        !Info) :-
+expand_lambdas_in_unify_goal(LHSVar, RHS0, UnifyMode, Unification0,
+        UnifyContext, GoalExpr, !Info) :-
     (
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocalVars, Vars, Modes, Det, LambdaGoal0),
@@ -368,21 +368,20 @@ expand_lambdas_in_unify_goal(LHS, RHS0, Mode, Unification0, Context, GoalExpr,
         % Then, convert the lambda expression into a new predicate.
         expand_lambda(Purity, Groundness, PredOrFunc, EvalMethod,
             not_reg_wrapper_proc, Vars, Modes, Det, NonLocalVars, LambdaGoal,
-            Unification0, Y, Unification, !Info),
-        GoalExpr = unify(LHS, Y, Mode, Unification, Context)
+            LHSVar, UnifyMode, Unification0, UnifyContext, GoalExpr, !Info)
     ;
         ( RHS0 = rhs_var(_)
         ; RHS0 = rhs_functor(_, _, _)
         ),
         % We leave ordinary unifications unchanged.
-        GoalExpr = unify(LHS, RHS0, Mode, Unification0, Context)
+        GoalExpr = unify(LHSVar, RHS0, UnifyMode, Unification0, UnifyContext)
     ).
 
 %-----------------------------------------------------------------------------%
 
 expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
-        Vars, Modes, Detism, OrigNonLocals0, LambdaGoal, Unification0,
-        Functor, Unification, LambdaInfo0, LambdaInfo) :-
+        Vars, Modes, Detism, OrigNonLocals0, LambdaGoal, LHSVar, UnifyMode,
+        Unification0, UnifyContext, GoalExpr, LambdaInfo0, LambdaInfo) :-
     LambdaInfo0 = lambda_info(VarSet, VarTypes, TVarSet,
         InstVarSet, RttiVarMaps, OrigPredInfo, ModuleInfo0,
         HasParallelConj, MustRecomputeNonLocals0, _HaveExpandedLambdas),
@@ -632,10 +631,11 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
     ),
     ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
     ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
-    Functor = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
-
+    RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
     Unification = construct(Var, ConsId, ArgVars, ArgUnifyModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
+    GoalExpr = unify(LHSVar, RHS, UnifyMode, Unification, UnifyContext),
+
     HaveExpandedLambdas = yes,
     LambdaInfo = lambda_info(VarSet, VarTypes, TVarSet,
         InstVarSet, RttiVarMaps, OrigPredInfo, ModuleInfo,

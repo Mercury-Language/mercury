@@ -395,7 +395,7 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, ConsId)
         ConsId = closure_cons(PredProcId, _),
         PredProcId = shrouded_pred_proc_id(PredId, ProcId),
         String =
-            "<pred " ++ int_to_string(PredId) ++
+            "closure_cons<pred " ++ int_to_string(PredId) ++
             " proc " ++ int_to_string(ProcId) ++ ">"
     ;
         ConsId = type_ctor_info_const(Module, Ctor, Arity),

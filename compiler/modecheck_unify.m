@@ -1317,25 +1317,17 @@ categorize_unify_var_lambda(InitInstX, FinalInstX, ArgInsts, X, ArgVars,
                 RHS0 = rhs_lambda_goal(_, _, _, EvalMethod, _, _, _, _, Goal),
                 Goal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _)
             then
-                module_info_pred_info(ModuleInfo, PredId, PredInfo),
-                PredModule = pred_info_module(PredInfo),
-                PredName = pred_info_name(PredInfo),
-                mode_info_get_var_types(!.ModeInfo, VarTypes),
-                lookup_var_type(VarTypes, X, Type),
-                ( if Type = higher_order_type(PorF, _, _, _, _) then
-                    (
-                        PorF = pf_predicate,
-                        RHSTypeCtor = type_ctor(unqualified("pred"), 0)
-                    ;
-                        PorF = pf_function,
-                        RHSTypeCtor = type_ctor(unqualified("func"), 0)
-                    )
-                else
-                    unexpected($pred, "bad HO type")
-                ),
-                RHSConsId = cons(qualified(PredModule, PredName), Arity,
-                    RHSTypeCtor),
-                RHS = rhs_functor(RHSConsId, is_not_exist_constr, ArgVars)
+                % XXX We used to construct RHS as a rhs_functor whose cons_id
+                % is not ConsId, but cons(PredSymName, Arity, RHSTypeCtor).
+                % This code was added by Simon Taylor in 1998 in commit
+                % d0085d8119780aa922bec7bbbb2f97d8cd6be660, with the message
+                % "Avoid aborting on higher-order predicate constants with
+                % multiple modes if lambda expansion has already been run."
+                %
+                % We now keep the original ConsId, since the predicate
+                % common_standardize_and_record_construct in common.m
+                % relies the cons_ids in rhs and the construct being the same.
+                RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars)
             else
                 unexpected($pred, "reintroduced lambda goal")
             )

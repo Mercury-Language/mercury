@@ -1618,7 +1618,7 @@ match_var_inst(Var, ExpectInst, InstMap0, Context, !Renaming, !WrapGoals,
     prog_var::out, hlds_goal::out, lambda_info::in, lambda_info::out) is det.
 
 create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
-        Context, Var, UnifyGoal, !Info) :-
+        Context, LHSVar, UnifyGoal, !Info) :-
     lambda_info_get_varset(!.Info, VarSet0),
     lambda_info_get_vartypes(!.Info, VarTypes0),
     lambda_info_get_module_info(!.Info, ModuleInfo0),
@@ -1646,9 +1646,9 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
         Context, CallGoalInfo),
     CallGoal = hlds_goal(CallGoalExpr, CallGoalInfo),
 
-    % Create the replacement variable Var.
-    varset.new_var(Var, VarSet1, VarSet),
-    add_var_type(Var, OrigVarType, VarTypes1, VarTypes),
+    % Create the replacement variable LHSVar.
+    varset.new_var(LHSVar, VarSet1, VarSet),
+    add_var_type(LHSVar, OrigVarType, VarTypes1, VarTypes),
     lambda_info_set_varset(VarSet, !Info),
     lambda_info_set_vartypes(VarTypes, !Info),
 
@@ -1663,25 +1663,25 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     ConsId = closure_cons(DummyShroudedPPId, EvalMethod),
     InInst = ground(shared, higher_order(OrigVarPredInstInfo)),
     ArgUnifyModes0 = [unify_modes_li_lf_ri_rf(InInst, InInst, InInst, InInst)],
-    Unification0 = construct(Var, ConsId, LambdaNonLocals, ArgUnifyModes0,
+    Unification0 = construct(LHSVar, ConsId, LambdaNonLocals, ArgUnifyModes0,
         construct_dynamically, cell_is_shared, no_construct_sub_info),
-    LambdaNonLocals = [CallVar],
-    lambda.expand_lambda(Purity, ho_ground, PredOrFunc, EvalMethod,
-        reg_wrapper_proc(RegR_HeadVars), CallVars, ArgModes, Determinism,
-        LambdaNonLocals, CallGoal, Unification0, Functor, Unification, !Info),
-
-    % Create the unification goal for Var.
     UnifyMode = unify_modes_li_lf_ri_rf(free, ground_inst,
         ground_inst, ground_inst),
     MainContext = umc_implicit("reg_wrapper"),
     UnifyContext = unify_context(MainContext, []),
-    UnifyGoalExpr = unify(Var, Functor, UnifyMode, Unification, UnifyContext),
-    UnifyNonLocals = set_of_var.make_singleton(Var),
+    LambdaNonLocals = [CallVar],
+    lambda.expand_lambda(Purity, ho_ground, PredOrFunc, EvalMethod,
+        reg_wrapper_proc(RegR_HeadVars), CallVars, ArgModes, Determinism,
+        LambdaNonLocals, CallGoal, LHSVar, UnifyMode, Unification0,
+        UnifyContext, UnifyGoalExpr, !Info),
+
+    % Create the unification goal for Var.
+    UnifyNonLocals = set_of_var.make_singleton(LHSVar),
     UnifyPredInstInfo = pred_inst_info(PredOrFunc, ArgModes,
         arg_reg_types(OuterArgRegs), Determinism),
     UnifyPredVarInst = ground(shared, higher_order(UnifyPredInstInfo)),
     UnifyInstMapDelta = instmap_delta_from_assoc_list([
-        Var - UnifyPredVarInst]),
+        LHSVar - UnifyPredVarInst]),
     goal_info_init(UnifyNonLocals, UnifyInstMapDelta, detism_det,
         purity_pure, UnifyGoalInfo),
     UnifyGoal = hlds_goal(UnifyGoalExpr, UnifyGoalInfo),

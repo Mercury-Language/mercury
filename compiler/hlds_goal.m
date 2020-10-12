@@ -823,6 +823,10 @@
                 construct_cell_var      :: prog_var,
 
                 % The cons_id of the functor f/1 in the above example.
+                %
+                % common_standardize_and_record_construct in common.m
+                % depends on this cons_id being the same as in the rhs_functor
+                % of the unify goal.
                 construct_cons_id       :: cons_id,
 
                 % The list of argument variables; [X] in the above example.
