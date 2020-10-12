@@ -1823,7 +1823,9 @@ else
             [
                 #include <stdio.h>
                 #include <signal.h>
+                #ifdef MR_HAVE_SYS_SIGINFO_H
                 #include <sys/siginfo.h>
+                #endif
                 #ifdef MR_HAVE_UCONTEXT_H
                 #include <ucontext.h>
                 #else
@@ -1862,7 +1864,9 @@ else
             [
                 #include <stdio.h>
                 #include <signal.h>
+                #ifdef MR_HAVE_SYS_SIGINFO_H
                 #include <sys/siginfo.h>
+                #endif
                 #ifdef MR_HAVE_UCONTEXT_H
                 #include <ucontext.h>
                 #else
@@ -1899,7 +1903,9 @@ else
             [
                 #include <stdio.h>
                 #include <signal.h>
+                #ifdef MR_HAVE_SYS_SIGINFO_H
                 #include <sys/siginfo.h>
+                #endif
                 #ifdef MR_HAVE_UCONTEXT_H
                 #include <ucontext.h>
                 #else
