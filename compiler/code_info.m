@@ -614,10 +614,10 @@ max_var_slot_2([Slot | Slots], !Max) :-
 
 init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
         ProcInfo, TraceSlotInfo, !CI) :-
-    TraceLevelIsNone =
-        eff_trace_level_is_none(ModuleInfo, PredInfo, ProcInfo, TraceLevel),
+    TraceEnabled = is_exec_trace_enabled_at_eff_trace_level(ModuleInfo,
+        PredInfo, ProcInfo, TraceLevel),
     (
-        TraceLevelIsNone = no,
+        TraceEnabled = exec_trace_is_enabled,
         proc_info_get_has_tail_rec_call(ProcInfo, HasTailRecCall),
         HasTailRecCall =
             has_tail_rec_call(HasSelfTailRecCall, _HasMutualTailRecCall),
@@ -633,7 +633,7 @@ init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
             TraceSlotInfo, TraceInfo, !CI),
         set_maybe_trace_info(yes(TraceInfo), !CI)
     ;
-        TraceLevelIsNone = yes,
+        TraceEnabled = exec_trace_is_not_enabled,
         TraceSlotInfo = trace_slot_info(no, no, no, no, no, no)
     ).
 

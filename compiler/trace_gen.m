@@ -364,8 +364,8 @@ do_we_need_maxfr_slot(Globals, ModuleInfo, PredInfo0, !ProcInfo) :-
     globals.get_trace_level(Globals, TraceLevel),
     CodeModel = proc_info_interface_code_model(!.ProcInfo),
     ( if
-        eff_trace_level_is_none(ModuleInfo, PredInfo0, !.ProcInfo, TraceLevel)
-            = no,
+        is_exec_trace_enabled_at_eff_trace_level(ModuleInfo,
+            PredInfo0, !.ProcInfo, TraceLevel) = exec_trace_is_enabled,
         CodeModel \= model_non,
         proc_info_get_goal(!.ProcInfo, Goal),
         code_util.goal_may_alloc_temp_frame(Goal, yes)

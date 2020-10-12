@@ -172,7 +172,6 @@
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
-:- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data_foreign.
@@ -206,9 +205,6 @@
 
                 ip_highlevel_code               :: bool,
 
-                % Is any procedure being traced in the module?
-                ip_any_tracing                  :: bool,
-
                 ip_linear_tail_rec_max_extra    :: int,
                 ip_call_cost                    :: int,
                 ip_compound_size_threshold      :: int,
@@ -241,8 +237,6 @@ inline_in_module(!ModuleInfo) :-
     SimpleThreshold = OptTuple ^ ot_inline_simple_threshold,
     VarThreshold = OptTuple ^ ot_inline_vars_threshold,
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-    globals.get_trace_level(Globals, TraceLevel),
-    AnyTracing = bool.not(given_trace_level_is_none(TraceLevel)),
 
     % Get the usage counts for predicates (but only if needed, i.e. only if
     % --inline-single-use or --inline-compound-threshold has been specified).
@@ -255,8 +249,7 @@ inline_in_module(!ModuleInfo) :-
     else
         map.init(NeededMap)
     ),
-    Params = inline_params(Simple, SingleUse,
-        LinearTailRec, HighLevelCode, AnyTracing,
+    Params = inline_params(Simple, SingleUse, LinearTailRec, HighLevelCode,
         LinearTailRecMaxExtra, CallCost,
         CompoundThreshold, SimpleThreshold, VarThreshold, NeededMap),
 
@@ -606,17 +599,13 @@ is_flat_simple_goal_list([Goal | Goals]) :-
 :- type inline_info
     --->    inline_info(
             % The static fields.
+                i_module_info           :: module_info,
 
                 % Variable threshold for inlining.
                 i_var_threshold         :: int,
 
                 % Highlevel_code option.
                 i_highlevel_code        :: bool,
-
-                % Is executing tracing enabled?
-                i_exec_trace            :: bool,
-
-                i_module_info           :: module_info,
 
                 % Universally quantified type vars occurring in the argument
                 % types for this predicate (the caller, not the callee).
@@ -668,7 +657,6 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
     some [!PredInfo, !ProcInfo] (
         VarThresh = Params ^ ip_var_threshold,
         HighLevelCode = Params ^ ip_highlevel_code,
-        AnyTracing = Params ^ ip_any_tracing,
 
         PredProcId = proc(PredId, ProcId),
 
@@ -690,15 +678,14 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         DetChanged0 = bool.no,
         PurityChanged0 = bool.no,
 
-        InlineInfo0 = inline_info(VarThresh, HighLevelCode, AnyTracing,
-            !.ModuleInfo, UnivQTVars,
-            ShouldInlineTailProcs, ShouldInlineProcs,
+        InlineInfo0 = inline_info(!.ModuleInfo, VarThresh, HighLevelCode,
+            UnivQTVars, ShouldInlineTailProcs, ShouldInlineProcs,
             VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0,
             DidInlining0, InlinedParallel0, DetChanged0, PurityChanged0),
 
         inlining_in_goal(Goal0, Goal, InlineInfo0, InlineInfo),
 
-        InlineInfo = inline_info(_, _, _, _, _, _, _,
+        InlineInfo = inline_info(_, _, _, _, _, _,
             VarSet, VarTypes, TypeVarSet, RttiVarMaps,
             DidInlining, InlinedParallel, DetChanged, PurityChanged),
 
@@ -830,9 +817,8 @@ inlining_in_goal(Goal0, Goal, !Info) :-
     inline_info::in, inline_info::out) is det.
 
 inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
-    !.Info = inline_info(VarThresh, HighLevelCode, AnyTracing,
-        ModuleInfo, ExternalTypeParams,
-        ShouldInlineTailProcs, ShouldInlineProcs,
+    !.Info = inline_info(ModuleInfo, VarThresh, HighLevelCode,
+        ExternalTypeParams, ShouldInlineTailProcs, ShouldInlineProcs,
         VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0, _DidInlining0,
         InlinedParallel0, DetChanged0, PurityChanged0),
     GoalExpr0 =
@@ -895,9 +881,8 @@ inlining_in_call(GoalExpr0, GoalInfo0, Goal, !Info) :-
             PurityChanged = yes
         ),
 
-        !:Info = inline_info(VarThresh, HighLevelCode, AnyTracing,
-            ModuleInfo, ExternalTypeParams,
-            ShouldInlineTailProcs, ShouldInlineProcs,
+        !:Info = inline_info(ModuleInfo, VarThresh, HighLevelCode,
+            ExternalTypeParams, ShouldInlineTailProcs, ShouldInlineProcs,
             VarSet, VarTypes, TypeVarSet, RttiVarMaps, DidInlining,
             InlinedParallel, DetChanged, PurityChanged),
 
@@ -1139,9 +1124,8 @@ inlining_in_par_conj([HeadGoal0 | TailGoals0], Goals, !Info) :-
     maybe_should_inline::out) is det.
 
 should_inline_at_call_site(Info, GoalExpr0, GoalInfo0, ShouldInline) :-
-    Info = inline_info(_VarThresh, HighLevelCode, _AnyTracing,
-        ModuleInfo, _ExternalTypeParams,
-        ShouldInlineTailProcs, ShouldInlineProcs,
+    Info = inline_info(ModuleInfo, _VarThresh, HighLevelCode,
+        _ExternalTypeParams, ShouldInlineTailProcs, ShouldInlineProcs,
         _VarSet, _VarTypes, _TypeVarSet, _RttiVarMaps, _DidInlining,
         _InlinedParallel, _DetChanged, _PurityChanged),
     GoalExpr0 =

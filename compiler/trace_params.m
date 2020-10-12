@@ -87,9 +87,14 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type maybe_exec_trace_enabled
+    --->    exec_trace_is_not_enabled
+    ;       exec_trace_is_enabled.
+
     % These functions check for various properties of the global trace level.
     %
-:- func given_trace_level_is_none(trace_level) = bool.
+:- func is_exec_trace_enabled_at_given_trace_level(trace_level) =
+    maybe_exec_trace_enabled.
 :- func trace_level_allows_delay_death(trace_level) = bool.
 :- func trace_needs_return_info(trace_level, trace_suppress_items) = bool.
 :- func trace_level_allows_tail_rec(trace_level) = bool.
@@ -106,8 +111,8 @@
     % These functions check for various properties of the given procedure's
     % effective trace level.
     %
-:- func eff_trace_level_is_none(module_info, pred_info, proc_info,
-    trace_level) = bool.
+:- func is_exec_trace_enabled_at_eff_trace_level(module_info,
+    pred_info, proc_info, trace_level) = maybe_exec_trace_enabled.
 :- func eff_trace_level_needs_input_vars(module_info, pred_info, proc_info,
     trace_level) = bool.
 :- func eff_trace_level_needs_fail_vars(module_info, pred_info, proc_info,
@@ -397,19 +402,14 @@ at_least_at_deep(shallow) = no.
 at_least_at_deep(deep) = yes.
 at_least_at_deep(decl_rep) = yes.
 
-given_trace_level_is_none(TraceLevel) =
-    trace_level_is_none(TraceLevel).
-
 %-----------------------------------------------------------------------------%
 
-:- func trace_level_is_none(trace_level) = bool.
-
-trace_level_is_none(none) = yes.
-trace_level_is_none(basic) = no.
-trace_level_is_none(basic_user) = no.
-trace_level_is_none(shallow) = no.
-trace_level_is_none(deep) = no.
-trace_level_is_none(decl_rep) = no.
+is_exec_trace_enabled_at_given_trace_level(none) = exec_trace_is_not_enabled.
+is_exec_trace_enabled_at_given_trace_level(basic) = exec_trace_is_enabled.
+is_exec_trace_enabled_at_given_trace_level(basic_user) = exec_trace_is_enabled.
+is_exec_trace_enabled_at_given_trace_level(shallow) = exec_trace_is_enabled.
+is_exec_trace_enabled_at_given_trace_level(deep) = exec_trace_is_enabled.
+is_exec_trace_enabled_at_given_trace_level(decl_rep) = exec_trace_is_enabled.
 
 :- func trace_level_needs_input_vars(trace_level) = bool.
 
@@ -502,8 +502,9 @@ trace_needs_proc_body_reps(TraceLevel, TraceSuppressItems) = Need :-
 
 %-----------------------------------------------------------------------------%
 
-eff_trace_level_is_none(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =
-    trace_level_is_none(
+is_exec_trace_enabled_at_eff_trace_level(ModuleInfo, PredInfo, ProcInfo,
+        TraceLevel) =
+    is_exec_trace_enabled_at_given_trace_level(
         eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)).
 
 eff_trace_level_needs_input_vars(ModuleInfo, PredInfo, ProcInfo, TraceLevel) =

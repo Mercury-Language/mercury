@@ -235,12 +235,12 @@ output_c_file_mercury_headers(Info, !IO) :-
     io.write_string("#define MR_ALLOW_RESET\n", !IO),
     io.write_string("#include ""mercury_imp.h""\n", !IO),
     TraceLevel = Info ^ lout_trace_level,
-    TraceLevelIsNone = given_trace_level_is_none(TraceLevel),
+    TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
     (
-        TraceLevelIsNone = no,
+        TraceEnabled = exec_trace_is_enabled,
         io.write_string("#include ""mercury_trace_base.h""\n", !IO)
     ;
-        TraceLevelIsNone = yes
+        TraceEnabled = exec_trace_is_not_enabled
     ),
     DeepProfile = Info ^ lout_profile_deep,
     (

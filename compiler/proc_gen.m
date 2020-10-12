@@ -339,8 +339,11 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
     ( if
         % Make the containing goal map available if we need it.
         % It is needed for execution tracing, and for parallel conjunctions.
-        ( given_trace_level_is_none(TraceLevel) = no
-        ; HasParConj = has_parallel_conj
+        (
+            is_exec_trace_enabled_at_given_trace_level(TraceLevel) =
+                exec_trace_is_enabled
+        ;
+            HasParConj = has_parallel_conj
         )
     then
         (

@@ -939,10 +939,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     %     paths across optimization levels
     %   - enabling stack layouts
     %   - enabling typeinfo liveness
-    globals.lookup_bool_option(!.Globals, trace_optimized, TraceOptimized),
-    TraceLevelIsNone = given_trace_level_is_none(TraceLevel),
+    TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
     (
-        TraceLevelIsNone = bool.no,
+        TraceEnabled = exec_trace_is_enabled,
         ( if HighLevelCode = bool.no, Target = target_c then
             true
         else
@@ -951,75 +950,22 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
                 nl],
             add_error(phase_options, TraceHLSpec, !Specs)
         ),
+        globals.lookup_bool_option(!.Globals, trace_optimized, TraceOptimized),
         (
             TraceOptimized = bool.no,
-            % The following options modify the structure
-            % of the program, which makes it difficult to
-            % relate the trace to the source code (although
+            % The options controlled by AllowSrcChangesTrace modify
+            % the structure of the program, which makes it difficult
+            % to relate the trace to the source code (although
             % it can be easily related to the transformed HLDS).
-            AllowInliningTrace = bool.no,
-            AllowOptUnusedArgsTrace = bool.no,
-            AllowOptHigherOrderTrace = bool.no,
-            AllowAnySpecTypesTrace = bool.no,
-            AllowDeforestTrace = bool.no,
-            AllowPropLocalConstraintsTrace = bool.no,
-            AllowOptDupCallsTrace = bool.no,
-            AllowOptLCMCTrace = bool.no,
-            OT_OptSVCell = do_not_opt_svcell,
-            OT_OptLoopInvariants = do_not_opt_loop_invariants,
-            OT_Untuple = do_not_untuple,
-            OT_Tuple = do_not_tuple,
-            OT_OptTestAfterSwitch = do_not_opt_test_after_switch
+            AllowSrcChangesTrace = bool.no
         ;
             TraceOptimized = bool.yes,
-            AllowInliningTrace = bool.yes,
-            AllowOptUnusedArgsTrace = bool.yes,
-            AllowOptHigherOrderTrace = bool.yes,
-            AllowAnySpecTypesTrace = bool.yes,
-            AllowDeforestTrace = bool.yes,
-            AllowPropLocalConstraintsTrace = bool.yes,
-            AllowOptLCMCTrace = bool.yes,
-            OT_OptSVCell = OT_OptSVCell0,
-            AllowOptDupCallsTrace = bool.yes,
-            OT_OptLoopInvariants = OT_OptLoopInvariants0,
-            OT_Tuple = OT_Tuple0,
-            OT_Untuple = OT_Untuple0,
-            OT_OptTestAfterSwitch = OT_OptTestAfterSwitch0
+            AllowSrcChangesTrace = bool.yes
         ),
-
-        % Disable hijacks if debugging is enabled. The code we now use
-        % to restore the stacks for direct retries works only if the retry
-        % does not "backtrack" over a hijacked nondet stack frame whose
-        % hijack has not been undone. Note that code compiled without
-        % debugging may still hijack nondet stack frames. Execution may
-        % reemerge from the nondebugged region in one of two ways. If the
-        % nondebugged code returns, then it will have undone hijack,
-        % and the retry code will work. If the nondebugged code calls
-        % debugged code, there will be a region on the stacks containing
-        % no debugging information, and the retry command will refuse
-        % to perform retries that go into or beyond this region.
-        % Both cases preserve correctness.
-        %
-        % An alternative solution would be to store everything on the
-        % nondet stack that may be hijacked in ordinary stack slots
-        % on entry to every procedure, but that would be not only
-        % more complex than simply disabling hijacks, it would be slower
-        % as well, except in procedures that would have many nested
-        % hijacks, and such code is extremely rare.
-        AllowHijacksTrace = bool.no,
-
-        % The following option prevents useless variables from cluttering
-        % the trace. Its explicit setting removes a source of variability
-        % in the goal paths reported by tracing.
-        ForceElimExcessAssignTrace = yes,
 
         % The explicit setting of the following option removes a source
         % of variability in the goal paths reported by tracing.
         OT_OptFollowCode = opt_follow_code,
-
-        % The following option selects a special-case code generator
-        % that cannot (yet) implement tracing.
-        AllowOptMiddleRecTrace = bool.no,
 
         % The following options cause the info required by tracing
         % to be generated.
@@ -1039,28 +985,28 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
             TraceTailRec = bool.yes
         )
     ;
-        TraceLevelIsNone = bool.yes,
-        AllowInliningTrace = bool.yes,
-        AllowOptUnusedArgsTrace = bool.yes,
-        AllowOptHigherOrderTrace = bool.yes,
-        AllowAnySpecTypesTrace = bool.yes,
-        AllowDeforestTrace = bool.yes,
-        AllowPropLocalConstraintsTrace = bool.yes,
-        AllowOptLCMCTrace = bool.yes,
-        OT_OptSVCell = OT_OptSVCell0,
-        AllowOptDupCallsTrace = bool.yes,
+        TraceEnabled = exec_trace_is_not_enabled,
+        AllowSrcChangesTrace = bool.yes,
         OT_OptFollowCode = OT_OptFollowCode0,
-        OT_OptLoopInvariants = OT_OptLoopInvariants0,
-        OT_Tuple = OT_Tuple0,
-        OT_Untuple = OT_Untuple0,
-        OT_OptTestAfterSwitch = OT_OptTestAfterSwitch0,
-        AllowOptMiddleRecTrace = bool.yes,
-        AllowHijacksTrace = bool.yes,
-        ForceElimExcessAssignTrace = bool.no,
 
         % Since there will be no call and exit events, there is no point
         % in trying to turn them into tailcall events.
         globals.set_option(exec_trace_tail_rec, bool(no), !Globals)
+    ),
+    (
+        AllowSrcChangesTrace = no,
+        OT_OptSVCell = do_not_opt_svcell,
+        OT_OptLoopInvariants = do_not_opt_loop_invariants,
+        OT_Untuple = do_not_untuple,
+        OT_Tuple = do_not_tuple,
+        OT_OptTestAfterSwitch = do_not_opt_test_after_switch
+    ;
+        AllowSrcChangesTrace = yes,
+        OT_OptSVCell = OT_OptSVCell0,
+        OT_OptLoopInvariants = OT_OptLoopInvariants0,
+        OT_Tuple = OT_Tuple0,
+        OT_Untuple = OT_Untuple0,
+        OT_OptTestAfterSwitch = OT_OptTestAfterSwitch0
     ),
 
     % --ssdb implies --link-ssdb-libs
@@ -1075,24 +1021,10 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         ( SSTraceLevel = ssdb_shallow
         ; SSTraceLevel = ssdb_deep
         ),
-        AllowInliningSSDB = bool.no,
-        AllowOptUnusedArgsSSDB = bool.no,
-        AllowOptHigherOrderSSDB = bool.no,
-        AllowAnySpecTypesSSDB = bool.no,
-        AllowDeforestSSDB = bool.no,
-        AllowPropLocalConstraintsSSDB = bool.no,
-        AllowOptDupCallsSSDB = bool.no,
-        AllowOptLCMCSSDB = bool.no
+        AllowSrcChangesSSDB = bool.no
     ;
         SSTraceLevel = ssdb_none,
-        AllowInliningSSDB = bool.yes,
-        AllowOptUnusedArgsSSDB = bool.yes,
-        AllowOptHigherOrderSSDB = bool.yes,
-        AllowAnySpecTypesSSDB = bool.yes,
-        AllowDeforestSSDB = bool.yes,
-        AllowPropLocalConstraintsSSDB = bool.yes,
-        AllowOptDupCallsSSDB = bool.yes,
-        AllowOptLCMCSSDB = bool.yes
+        AllowSrcChangesSSDB = bool.yes
     ),
 
     % Profile for feedback requires coverage profiling.
@@ -1184,8 +1116,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     ),
 
     ( if
-        AllowOptDupCallsTrace = bool.yes,
-        AllowOptDupCallsSSDB = bool.yes
+        AllowSrcChangesTrace = bool.yes,
+        AllowSrcChangesSSDB = bool.yes
     then
         OT_OptDupCalls = OT_OptDupCalls0
     else
@@ -1193,8 +1125,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     ),
 
     ( if
-        AllowInliningTrace = bool.yes,
-        AllowInliningSSDB = bool.yes,
+        AllowSrcChangesTrace = bool.yes,
+        AllowSrcChangesSSDB = bool.yes,
         AllowInliningProfDeep = bool.yes,
         AllowInliningExpComp = bool.yes
     then
@@ -1203,8 +1135,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         OT_AllowInlining = do_not_allow_inlining
     ),
     ( if
-        AllowOptHigherOrderTrace = bool.yes,
-        AllowOptHigherOrderSSDB = bool.yes
+        AllowSrcChangesTrace = bool.yes,
+        AllowSrcChangesSSDB = bool.yes
     then
         OT_OptHigherOrder = OT_OptHigherOrder0
     else
@@ -1408,8 +1340,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         AllowDeforestBodyTypeInfoLiveness = bool.yes
     ),
     ( if
-        AllowDeforestTrace = bool.yes,
-        AllowDeforestSSDB = bool.yes,
+        AllowSrcChangesTrace = bool.yes,
+        AllowSrcChangesSSDB = bool.yes,
         AllowDeforestReorderConj = bool.yes,
         AllowDeforestBodyTypeInfoLiveness = bool.yes
     then
@@ -1437,7 +1369,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         AllowOptMiddleRecTrailStack = bool.yes
     ),
     ( if
-        AllowOptMiddleRecTrace = bool.yes,
+        % The middle_rec special-case code generator cannot implement tracing.
+        TraceEnabled = exec_trace_is_not_enabled,
         AllowOptMiddleRecGc = bool.yes,
         AllowOptMiddleRecTrailStack = bool.yes
     then
@@ -1448,8 +1381,27 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
 
     handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs),
 
+    % Disable hijacks if debugging is enabled. The code we now use
+    % to restore the stacks for direct retries works only if the retry
+    % does not "backtrack" over a hijacked nondet stack frame whose
+    % hijack has not been undone. Note that code compiled without
+    % debugging may still hijack nondet stack frames. Execution may
+    % reemerge from the nondebugged region in one of two ways. If the
+    % nondebugged code returns, then it will have undone hijack,
+    % and the retry code will work. If the nondebugged code calls
+    % debugged code, there will be a region on the stacks containing
+    % no debugging information, and the retry command will refuse
+    % to perform retries that go into or beyond this region.
+    % Both cases preserve correctness.
+    %
+    % An alternative solution would be to store everything on the
+    % nondet stack that may be hijacked in ordinary stack slots
+    % on entry to every procedure, but that would be not only
+    % more complex than simply disabling hijacks, it would be slower
+    % as well, except in procedures that would have many nested
+    % hijacks, and such code is extremely rare.
     ( if
-        AllowHijacksTrace = bool.yes,
+        TraceEnabled = exec_trace_is_not_enabled,
         AllowHijacksGc = bool.yes,
         AllowHijacksMMSC = bool.yes
     then
@@ -1459,8 +1411,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     ),
 
     ( if
-        AllowAnySpecTypesTrace = bool.yes,
-        AllowAnySpecTypesSSDB = bool.yes,
+        AllowSrcChangesTrace = bool.yes,
+        AllowSrcChangesSSDB = bool.yes,
         AllowAnySpecTypesGc = bool.yes
     then
         OT_SpecTypes = OT_SpecTypes0,
@@ -1486,8 +1438,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % Every place above that sets one of AllowPropLocalConstraints*
     % to "no" is therefore also saying no to prop_constraints.
     ( if
-        AllowPropLocalConstraintsTrace = bool.yes,
-        AllowPropLocalConstraintsSSDB = bool.yes,
+        AllowSrcChangesTrace = bool.yes,
+        AllowSrcChangesSSDB = bool.yes,
         AllowPropLocalConstraintsReorderConj = bool.yes
     then
         OT_PropLocalConstraints = OT_PropLocalConstraints0
@@ -1507,16 +1459,17 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % --common-struct.
     (
         OT_IntroduceAccumulators0 = introduce_accumulators,
-        ForceElimExcessAssignAcc = bool.yes,
         OT_OptCommonStructs = opt_common_structs
     ;
         OT_IntroduceAccumulators0 = do_not_introduce_accumulators,
-        ForceElimExcessAssignAcc = bool.no,
         OT_OptCommonStructs = OT_OptCommonStructs0
     ),
     ( if
-        ( ForceElimExcessAssignTrace = bool.yes
-        ; ForceElimExcessAssignAcc = bool.yes
+        % Doing elim_excess_assigns prevents useless variables from
+        % cluttering the trace. Its explicit setting removes a source
+        % of variability in the goal paths reported by tracing.
+        ( TraceEnabled = exec_trace_is_enabled
+        ; OT_IntroduceAccumulators0 = introduce_accumulators
         )
     then
         OT_ElimExcessAssigns = elim_excess_assigns
@@ -1533,8 +1486,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     ),
 
     ( if
-        AllowOptUnusedArgsTrace = bool.yes,
-        AllowOptUnusedArgsSSDB = bool.yes,
+        AllowSrcChangesTrace = bool.yes,
+        AllowSrcChangesSSDB = bool.yes,
         AllowOptUnusedArgsMakeOptInt = bool.yes
     then
         OT_OptUnusedArgs = OT_OptUnusedArgs0
@@ -1577,8 +1530,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         !Globals),
 
     ( if
-        AllowOptLCMCTrace = bool.yes,
-        AllowOptLCMCSSDB = bool.yes,
+        AllowSrcChangesTrace = bool.yes,
+        AllowSrcChangesSSDB = bool.yes,
         AllowOptLCMCProfDeep = bool.yes,
         AllowOptLCMCTermSize = bool.yes,
         AllowOptLCMCGc = bool.yes,

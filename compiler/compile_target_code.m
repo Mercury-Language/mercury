@@ -1443,13 +1443,13 @@ make_init_target_file(Globals, ErrorStream, MkInit, ModuleName, ModuleNames,
     TraceInitFileNamesList = StdTraceInitFileNames ++ TraceInitFileNamesList0,
 
     globals.get_trace_level(Globals, TraceLevel),
-    TraceLevelIsNone = given_trace_level_is_none(TraceLevel),
+    TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
     (
-        TraceLevelIsNone = no,
+        TraceEnabled = exec_trace_is_enabled,
         TraceOpt = "-t",
         InitFileNamesList3 = InitFileNamesList2 ++ TraceInitFileNamesList
     ;
-        TraceLevelIsNone = yes,
+        TraceEnabled = exec_trace_is_not_enabled,
         TraceOpt = "",
         InitFileNamesList3 = InitFileNamesList2
     ),
@@ -1967,12 +1967,12 @@ link_exe_or_shared_lib(Globals, ErrorStream, LinkTargetType, ModuleName,
     ),
 
     globals.get_trace_level(Globals, TraceLevel),
-    TraceLevelIsNone = given_trace_level_is_none(TraceLevel),
+    TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
     (
-        TraceLevelIsNone = yes,
+        TraceEnabled = exec_trace_is_not_enabled,
         TraceOpts = ""
     ;
-        TraceLevelIsNone = no,
+        TraceEnabled = exec_trace_is_enabled,
         globals.lookup_string_option(Globals, TraceFlagsOpt, TraceOpts)
     ),
 
@@ -2202,13 +2202,13 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
 
         % Trace libraries.
         globals.get_trace_level(Globals, TraceLevel),
-        TraceLevelIsNone = given_trace_level_is_none(TraceLevel),
+        TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
         (
-            TraceLevelIsNone = yes,
+            TraceEnabled = exec_trace_is_not_enabled,
             StaticTraceLibs = "",
             SharedTraceLibs = ""
         ;
-            TraceLevelIsNone = no,
+            TraceEnabled = exec_trace_is_enabled,
             link_lib_args(Globals, TargetType, StdLibDir, GradeDir,
                 LibOtherExt, "mer_trace", StaticTraceLib, TraceLib),
             link_lib_args(Globals, TargetType, StdLibDir, GradeDir,
@@ -2407,12 +2407,12 @@ get_runtime_library_path_opts(Globals, LinkTargetType,
 get_system_libs(Globals, TargetType, SystemLibs) :-
     % System libraries used when tracing.
     globals.get_trace_level(Globals, TraceLevel),
-    TraceLevelIsNone = given_trace_level_is_none(TraceLevel),
+    TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
     (
-        TraceLevelIsNone = yes,
+        TraceEnabled = exec_trace_is_not_enabled,
         SystemTraceLibs = ""
     ;
-        TraceLevelIsNone = no,
+        TraceEnabled = exec_trace_is_enabled,
         globals.lookup_string_option(Globals, trace_libs, SystemTraceLibs0),
         globals.lookup_bool_option(Globals, use_readline, UseReadline),
         (
@@ -3391,13 +3391,13 @@ make_standalone_int_body(Globals, BaseName, !IO) :-
         SourceDebugInitFiles = []
     ),
     globals.get_trace_level(Globals, TraceLevel),
-    TraceLevelIsNone = given_trace_level_is_none(TraceLevel),
+    TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
     (
-        TraceLevelIsNone = no,
+        TraceEnabled = exec_trace_is_enabled,
         TraceOpt = "-t",
         InitFiles3 = InitFiles2 ++ TraceInitFiles
     ;
-        TraceLevelIsNone = yes,
+        TraceEnabled = exec_trace_is_not_enabled,
         TraceOpt = "",
         InitFiles3 = InitFiles2
     ),

@@ -206,15 +206,15 @@ code_loc_dep_init(FollowVars, ResumePoint, !CI, !:CLD) :-
         FloatRegType = reg_r
     ),
     globals.get_trace_level(Globals, TraceLevel),
-    TraceLevelIsNone = eff_trace_level_is_none(ModuleInfo, PredInfo, ProcInfo,
-        TraceLevel),
+    TraceEnabled = is_exec_trace_enabled_at_eff_trace_level(ModuleInfo,
+        PredInfo, ProcInfo, TraceLevel),
     (
-        TraceLevelIsNone = no,
+        TraceEnabled = exec_trace_is_enabled,
         trace_fail_vars(ModuleInfo, ProcInfo, FailVars),
         MaybeFailVars = yes(FailVars),
         set_of_var.union(Liveness, FailVars, EffLiveness)
     ;
-        TraceLevelIsNone = yes,
+        TraceEnabled = exec_trace_is_not_enabled,
         MaybeFailVars = no,
         EffLiveness = Liveness
     ),
