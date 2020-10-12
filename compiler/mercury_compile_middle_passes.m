@@ -858,10 +858,10 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
         ForceDisableSSDB = no,
         globals.get_ssdb_trace_level(Globals, SSTraceLevel),
         (
-            SSTraceLevel = none
+            SSTraceLevel = ssdb_none
         ;
-            ( SSTraceLevel = shallow
-            ; SSTraceLevel = deep
+            ( SSTraceLevel = ssdb_shallow
+            ; SSTraceLevel = ssdb_deep
             ),
             maybe_write_string(Verbose,
                 "% Apply source to source debugging transformation ...\n",

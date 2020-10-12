@@ -379,7 +379,7 @@ check_option_values(!OptionTable, Target, GC_Method, TermNorm, Term2Norm,
         ForceDisableSSDB),
     (
         ForceDisableSSDB = yes,
-        SSTraceLevel = none
+        SSTraceLevel = ssdb_none
     ;
         ForceDisableSSDB = no,
         raw_lookup_string_option(!.OptionTable, ssdb_trace_level, SSTrace),
@@ -387,7 +387,7 @@ check_option_values(!OptionTable, Target, GC_Method, TermNorm, Term2Norm,
         ( if convert_ssdb_trace_level(SSTrace, SSDB, SSTL) then
             SSTraceLevel = SSTL
         else
-            SSTraceLevel = none,
+            SSTraceLevel = ssdb_none,
             SSDBSpec =
                 [words("Invalid argument"), quote(SSTrace), words("to the"),
                 quote("--ssdb-trace"), words("option; must be")] ++
@@ -709,256 +709,20 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % sets options based on the target language or GC method.
     check_grade_component_compatibility(!.Globals, Target, GC_Method, !Specs),
 
-    % --pregenerated-dist sets options so that the pre-generated C source
-    % distribution can be compiled equally on 32-bit and 64-bit platforms.
-    % Any changes here may require changes in runtime/mercury_conf_param.h.
-    globals.lookup_bool_option(!.Globals, pregenerated_dist, PregeneratedDist),
-    (
-        PregeneratedDist = bool.yes,
-        globals.set_option(num_ptag_bits, int(2), !Globals),
-        globals.set_option(arg_pack_bits, int(32), !Globals),
-        globals.set_option(unboxed_float, bool(no), !Globals),
-        globals.set_option(unboxed_int64s, bool(no), !Globals),
-        globals.set_option(single_prec_float, bool(no), !Globals),
-        globals.set_option(allow_double_word_fields, bool(no), !Globals)
-    ;
-        PregeneratedDist = bool.no
-    ),
-
-    (
-        Target = target_c,
-        BackendForeignLanguages = ["c"],
-        globals.lookup_int_option(!.Globals, num_ptag_bits, NumPtagBits0),
-        ( if NumPtagBits0 = -1 then
-            % The default value of NumPtagBits0 is -1. We replace it with the
-            % autoconf-determined value for the number of low ptag bits,
-            % which is passed to us from the `mmc' script using the
-            % deliberately undocumented --conf-low-tag-bits option.
-            globals.lookup_int_option(!.Globals, conf_low_ptag_bits,
-                NumPtagBits)
-        else
-            % This non-default value may have been set above for
-            % PregeneratedDist = yes, or it could have been set by the user.
-            % The only legitimate reason for the latter is cross-compilation.
-            NumPtagBits = NumPtagBits0
-        ),
-        globals.set_option(num_ptag_bits, int(NumPtagBits), !Globals),
-        ( if (NumPtagBits = 2 ; NumPtagBits = 3) then
-            true
-        else
-            NumPtagBitsSpec =
-                [words("Error: the value of the"), quote("--num-ptag-bits"),
-                words("option is"), int_fixed(NumPtagBits), suffix(","),
-                words("but the only valid values are 2 and 3."), nl],
-            add_error(phase_options, NumPtagBitsSpec, !Specs)
-        ),
-
-        % Generating high-level C code requires putting each commit
-        % in its own function, to avoid problems with setjmp() and
-        % non-volatile local variables.
-        option_implies(highlevel_code, put_commit_in_own_func, bool(yes),
-            !Globals),
-
-        % Since we have never targeted 16-bit platforms, the minimum number
-        % of low ptag bits we ever configure is two.
-        ( if NumPtagBits >= 2 then
-            globals.set_option(can_compare_constants_as_ints, bool(yes),
-                !Globals)
-        else
-            globals.set_option(can_compare_constants_as_ints, bool(no),
-                !Globals)
-        ),
-
-        % Argument packing only works on back-ends, which use low-level data,
-        % i.e the C backend. For the other target languages, implementing
-        % argument packing will require not just a lot of work on RTTI,
-        % but also generalizing field addressing, to allow both single fields
-        % and a group of adjacent fields packed into a single word to be
-        % addressed via a mechanism other than an argument's name.
-        globals.lookup_int_option(!.Globals, arg_pack_bits, ArgPackBits0),
-        globals.lookup_int_option(!.Globals, bits_per_word, BitsPerWord),
-        % If --arg-pack-bits is negative then it means use all word bits.
-        ( if ArgPackBits0 < 0 then
-            ArgPackBits = BitsPerWord
-        else if ArgPackBits0 > BitsPerWord then
-            ArgPackBits = BitsPerWord,
-            ArgPackBitsSpec =
-                [words("Warning: cannot set the value of"),
-                quote("--arg-pack-bits"),
-                words("to value higher than the value of"),
-                quote("--bits-per-word"), suffix("."),
-                words("Reducing the effective value of"),
-                quote("--arg-pack-bits"),
-                words("to the maximum allowable value, which is"),
-                int_fixed(BitsPerWord), suffix("."), nl],
-            add_error(phase_options, ArgPackBitsSpec, !Specs)
-        else
-            ArgPackBits = ArgPackBits0
-        ),
-        globals.set_option(arg_pack_bits, int(ArgPackBits), !Globals),
-        % Leave the value of allow_double_word_fields as set by the user.
-        % Leave the value of allow_packing_dummies as set by the user.
-        % Leave the value of allow_packing_ints as set by the user.
-
-        OT_StringBinarySwitchSize = OT_StringBinarySwitchSize0,
-
-        AllowOptLCMCBackend = bool.yes
-    ;
-        ( Target = target_java
-        ; Target = target_csharp
-        ),
-        globals.set_option(num_ptag_bits, int(0), !Globals),
-
-        % Generating Java implies
-        %   - gc_method `automatic' and no heap reclamation on failure
-        %     Because GC is handled automatically by the Java implementation.
-        %   - high-level code
-        %     Because only the MLDS back-end supports compiling to Java.
-        %   - high-level data
-        %     Because it is more efficient, and better for interoperability.
-        %     (In theory --low-level-data should work too, but there is
-        %     no reason to bother supporting it.)
-        %   - unboxed floats
-        %   - unboxed 64-bit integers
-        %   - using copy-out for both det and nondet output arguments
-        %     Because Java doesn't support pass-by-reference.
-        %   - using no tags
-        %     Because Java doesn't provide any mechanism for tagging pointers.
-        %   - box no-tag types
-        %     We require no-tag types to be boxed since in Java,
-        %     java.lang.Object is the only type that all other types
-        %     can be successfully cast to and then cast back from.
-        %   - store nondet environments on the heap
-        %     Because Java has no way of allocating structs on the stack.
-        %   - pretest-equality-cast-pointers
-        %   - no structure reuse
-        %     Because mlds_to_java_stmt.m does not handle assign_if_in_heap.
-        %
-        % C# should be the same as Java, except that:
-        %   - C# supports pass-by-reference, but for reasons explained in
-        %     mlds_to_cs_stmt.m, we pretend it doesn't at the MLDS level.
-
-        globals.set_gc_method(gc_automatic, !Globals),
-        globals.set_option(gc, string("automatic"), !Globals),
-        globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
-            !Globals),
-        globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
-            !Globals),
-        globals.set_option(highlevel_code, bool(yes), !Globals),
-        globals.set_option(unboxed_float, bool(yes), !Globals),
-        globals.set_option(unboxed_int64s, bool(yes), !Globals),
-        globals.set_option(nondet_copy_out, bool(yes), !Globals),
-        globals.set_option(det_copy_out, bool(yes), !Globals),
-        globals.set_option(unboxed_no_tag_types, bool(no), !Globals),
-        globals.set_option(put_nondet_env_on_heap, bool(yes), !Globals),
-        globals.set_option(pretest_equality_cast_pointers, bool(yes),
-            !Globals),
-        globals.set_option(structure_reuse_analysis, bool(no), !Globals),
-        globals.set_option(structure_sharing_analysis, bool(no), !Globals),
-
-        (
-            Target = target_csharp,
-            BackendForeignLanguages = ["csharp"],
-            globals.set_option(executable_file_extension, string(".exe"),
-                !Globals)
-        ;
-            Target = target_java,
-            BackendForeignLanguages = ["java"]
-        ),
-
-        % In the non-C backends, it may not be possible to cast a value
-        % of a non-enum du type to an integer.
-        globals.set_option(can_compare_constants_as_ints, bool(no), !Globals),
-
-        globals.set_option(arg_pack_bits, int(0), !Globals),
-        globals.set_option(allow_double_word_fields, bool(no), !Globals),
-        globals.set_option(allow_packing_dummies, bool(no), !Globals),
-        globals.set_option(allow_packing_ints, bool(no), !Globals),
-
-        % Switch off string hash switches until these backends implement
-        % the hash operations.
-        OT_StringBinarySwitchSize = 999999,
-
-        AllowOptLCMCBackend = bool.yes
-    ;
-        Target = target_erlang,
-        BackendForeignLanguages = ["erlang"],
-        globals.set_option(num_ptag_bits, int(0), !Globals),
-
-        % Generating Erlang implies
-        %   - gc_method `automatic' and no heap reclamation on failure
-        %     Because GC is handled automatically by the Erlang implementation.
-        %   - unboxed floats
-        %   - unboxed 64-bit integers
-        %   - delay-partial-instantiations
-        %   - no-can-compare-constants-as-ints
-        %   - can-compare-compound-values
-        %   - lexically-compare-constructors
-        %   - --no-optimize-tailcalls because Erlang implementations perform
-        %     LCO.
-
-        globals.set_gc_method(gc_automatic, !Globals),
-        globals.set_option(gc, string("automatic"), !Globals),
-        globals.set_option(unboxed_float, bool(yes), !Globals),
-        globals.set_option(unboxed_int64s, bool(yes), !Globals),
-        globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
-            !Globals),
-        globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
-            !Globals),
-        globals.set_option(delay_partial_instantiations, bool(yes), !Globals),
-        globals.set_option(can_compare_constants_as_ints, bool(no), !Globals),
-        globals.set_option(can_compare_compound_values, bool(yes), !Globals),
-        globals.set_option(order_constructors_for_erlang, bool(yes), !Globals),
-        % XXX opt_mlds_tailcalls is now in the opt_tuple.
-        % However, there is no need to disable it, since the elds backend
-        % pays not attention to its value.
-        % globals.set_option(optimize_mlds_tailcalls, bool(no), !Globals),
-
-        % The following options do not directly affect the Erlang backend,
-        % however we need to ensure they are set to values that are consistent
-        % with what the predicate grade_component_table/2 (below) expects.
-        globals.set_option(gcc_non_local_gotos, bool(no), !Globals),
-        globals.set_option(gcc_global_registers, bool(no), !Globals),
-        globals.set_option(asm_labels, bool(no), !Globals),
-        globals.set_option(highlevel_code, bool(no), !Globals),
-
-        % In the non-C backends, it may not be possible to cast a value
-        % of a non-enum du type to an integer.
-        globals.set_option(can_compare_constants_as_ints, bool(no), !Globals),
-
-        globals.set_option(arg_pack_bits, int(0), !Globals),
-        globals.set_option(allow_double_word_fields, bool(no), !Globals),
-        globals.set_option(allow_packing_dummies, bool(no), !Globals),
-        globals.set_option(allow_packing_ints, bool(no), !Globals),
-
-        % Currently, multi-arm switches have been tested only for the LLDS
-        % backend (which always generates C) and for the MLDS backend when
-        % it is generating C, C# or Java code.
-        globals.set_option(allow_multi_arm_switches, bool(no), !Globals),
-
-        OT_StringBinarySwitchSize = OT_StringBinarySwitchSize0,
-        AllowOptLCMCBackend = bool.no
-    ),
-
+    handle_implications_of_pregen_target_spf(!Globals, Target,
+        OT_StringBinarySwitchSize0, OT_StringBinarySwitchSize,
+        BackendForeignLanguages, !Specs),
     handle_implications_of_parallel(!Globals, !Specs),
 
     % Using trail segments implies the use of the trail.
     option_implies(trail_segments, use_trail, bool(yes), !Globals),
 
-    %
     % Set up options for position independent code.
-    %
-
     % Shared libraries always use `--linkage shared'.
     option_implies(compile_to_shared_lib, linkage,
         string("shared"), !Globals),
     option_implies(compile_to_shared_lib, mercury_linkage,
         string("shared"), !Globals),
-
-    % --high-level-code disables the use of low-level gcc extensions.
-    option_implies(highlevel_code, gcc_non_local_gotos, bool(no), !Globals),
-    option_implies(highlevel_code, gcc_global_registers, bool(no), !Globals),
-    option_implies(highlevel_code, asm_labels, bool(no), !Globals),
 
     % If no --lib-linkage option has been specified, default to the
     % set of all possible linkages.
@@ -1145,14 +909,6 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals.lookup_bool_option(!.Globals, use_trail, UseTrail),
     globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
 
-    % We assume that single-precision floats do not need to be boxed.
-    option_implies(single_prec_float, unboxed_float, bool(yes), !Globals),
-
-    % We only use the float registers if floats would not fit into the
-    % regular registers.
-    option_implies(highlevel_code, use_float_registers, bool(no), !Globals),
-    option_implies(unboxed_float, use_float_registers, bool(no), !Globals),
-
     option_implies(target_debug, strip, bool(no), !Globals),
 
     % --decl-debug is an extension of --debug
@@ -1316,8 +1072,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % source code and also because the SSDB transformation cannot (yet) handle
     % the specialised predicates introduced by many optimizations.
     (
-        ( SSTraceLevel = shallow
-        ; SSTraceLevel = deep
+        ( SSTraceLevel = ssdb_shallow
+        ; SSTraceLevel = ssdb_deep
         ),
         AllowInliningSSDB = bool.no,
         AllowOptUnusedArgsSSDB = bool.no,
@@ -1328,7 +1084,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         AllowOptDupCallsSSDB = bool.no,
         AllowOptLCMCSSDB = bool.no
     ;
-        SSTraceLevel = none,
+        SSTraceLevel = ssdb_none,
         AllowInliningSSDB = bool.yes,
         AllowOptUnusedArgsSSDB = bool.yes,
         AllowOptHigherOrderSSDB = bool.yes,
@@ -1826,7 +1582,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         AllowOptLCMCProfDeep = bool.yes,
         AllowOptLCMCTermSize = bool.yes,
         AllowOptLCMCGc = bool.yes,
-        AllowOptLCMCBackend = bool.yes
+        Target \= target_erlang
     then
         OT_OptLCMC = OT_OptLCMC0
     else
@@ -1882,6 +1638,293 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals_init_mutables(!.Globals, !IO).
 
 %---------------------------------------------------------------------------%
+
+    % Options updated:
+    %   allow_double_word_fields
+    %   allow_multi_arm_switches
+    %   allow_packing_dummies
+    %   allow_packing_ints
+    %   arg_pack_bits
+    %   asm_labels
+    %   can_compare_compound_values
+    %   can_compare_constants_as_ints
+    %   delay_partial_instantiations
+    %   det_copy_out
+    %   executable_file_extension
+    %   gc
+    %   gcc_global_registers
+    %   gcc_non_local_gotos
+    %   highlevel_code
+    %   nondet_copy_out
+    %   num_ptag_bits
+    %   order_constructors_for_erlang
+    %   pretest_equality_cast_pointers
+    %   put_commit_in_own_func
+    %   put_nondet_env_on_heap
+    %   reclaim_heap_on_nondet_failure
+    %   reclaim_heap_on_semidet_failure
+    %   single_prec_float
+    %   structure_reuse_analysis
+    %   structure_sharing_analysis
+    %   unboxed_float
+    %   unboxed_int64s
+    %   unboxed_no_tag_types
+    %   use_float_registers
+    %
+:- pred handle_implications_of_pregen_target_spf(globals::in, globals::out,
+    compilation_target::in, int::in, int::out, list(string)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+handle_implications_of_pregen_target_spf(!Globals, Target,
+        OT_StringBinarySwitchSize0, OT_StringBinarySwitchSize,
+        BackendForeignLanguages, !Specs) :-
+    % --pregenerated-dist sets options so that the pre-generated C source
+    % distribution can be compiled equally on 32-bit and 64-bit platforms.
+    % Any changes here may require changes in runtime/mercury_conf_param.h.
+    globals.lookup_bool_option(!.Globals, pregenerated_dist, PregeneratedDist),
+    (
+        PregeneratedDist = bool.yes,
+        globals.set_option(num_ptag_bits, int(2), !Globals),
+        globals.set_option(arg_pack_bits, int(32), !Globals),
+        globals.set_option(unboxed_float, bool(no), !Globals),
+        globals.set_option(unboxed_int64s, bool(no), !Globals),
+        globals.set_option(single_prec_float, bool(no), !Globals),
+        globals.set_option(allow_double_word_fields, bool(no), !Globals)
+    ;
+        PregeneratedDist = bool.no
+    ),
+
+    % We assume that single-precision floats do not need to be boxed.
+    option_implies(single_prec_float, unboxed_float, bool(yes), !Globals),
+
+    (
+        Target = target_c,
+        BackendForeignLanguages = ["c"],
+        globals.lookup_int_option(!.Globals, num_ptag_bits, NumPtagBits0),
+        ( if NumPtagBits0 = -1 then
+            % The default value of NumPtagBits0 is -1. We replace it with the
+            % autoconf-determined value for the number of low ptag bits,
+            % which is passed to us from the `mmc' script using the
+            % deliberately undocumented --conf-low-tag-bits option.
+            globals.lookup_int_option(!.Globals, conf_low_ptag_bits,
+                NumPtagBits)
+        else
+            % This non-default value may have been set above for
+            % PregeneratedDist = yes, or it could have been set by the user.
+            % The only legitimate reason for the latter is cross-compilation.
+            NumPtagBits = NumPtagBits0
+        ),
+        globals.set_option(num_ptag_bits, int(NumPtagBits), !Globals),
+        ( if (NumPtagBits = 2 ; NumPtagBits = 3) then
+            true
+        else
+            NumPtagBitsSpec =
+                [words("Error: the value of the"), quote("--num-ptag-bits"),
+                words("option is"), int_fixed(NumPtagBits), suffix(","),
+                words("but the only valid values are 2 and 3."), nl],
+            add_error(phase_options, NumPtagBitsSpec, !Specs)
+        ),
+
+        globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
+        (
+            HighLevelCode = no
+        ;
+            HighLevelCode = yes,
+            % Generating high-level C code requires putting each commit
+            % in its own function, to avoid problems with setjmp() and
+            % non-volatile local variables. It also disables the use
+            % of low-level gcc extensions.
+            globals.set_option(put_commit_in_own_func, bool(yes), !Globals),
+            globals.set_option(gcc_non_local_gotos, bool(no), !Globals),
+            globals.set_option(gcc_global_registers, bool(no), !Globals),
+            globals.set_option(asm_labels, bool(no), !Globals)
+        ),
+
+        % Since we have never targeted 16-bit platforms, the minimum number
+        % of low ptag bits we ever configure is two.
+        ( if NumPtagBits >= 2 then
+            globals.set_option(can_compare_constants_as_ints, bool(yes),
+                !Globals)
+        else
+            globals.set_option(can_compare_constants_as_ints, bool(no),
+                !Globals)
+        ),
+
+        % Argument packing only works on back-ends, which use low-level data,
+        % i.e the C backend. For the other target languages, implementing
+        % argument packing will require not just a lot of work on RTTI,
+        % but also generalizing field addressing, to allow both single fields
+        % and a group of adjacent fields packed into a single word to be
+        % addressed via a mechanism other than an argument's name.
+        globals.lookup_int_option(!.Globals, arg_pack_bits, ArgPackBits0),
+        globals.lookup_int_option(!.Globals, bits_per_word, BitsPerWord),
+        % If --arg-pack-bits is negative then it means use all word bits.
+        ( if ArgPackBits0 < 0 then
+            ArgPackBits = BitsPerWord
+        else if ArgPackBits0 > BitsPerWord then
+            ArgPackBits = BitsPerWord,
+            ArgPackBitsSpec =
+                [words("Warning: cannot set the value of"),
+                quote("--arg-pack-bits"),
+                words("to value higher than the value of"),
+                quote("--bits-per-word"), suffix("."),
+                words("Reducing the effective value of"),
+                quote("--arg-pack-bits"),
+                words("to the maximum allowable value, which is"),
+                int_fixed(BitsPerWord), suffix("."), nl],
+            add_error(phase_options, ArgPackBitsSpec, !Specs)
+        else
+            ArgPackBits = ArgPackBits0
+        ),
+        globals.set_option(arg_pack_bits, int(ArgPackBits), !Globals),
+        % Leave the value of allow_double_word_fields as set by the user.
+        % Leave the value of allow_packing_dummies as set by the user.
+        % Leave the value of allow_packing_ints as set by the user.
+
+        OT_StringBinarySwitchSize = OT_StringBinarySwitchSize0
+    ;
+        ( Target = target_java
+        ; Target = target_csharp
+        ),
+        globals.set_option(num_ptag_bits, int(0), !Globals),
+
+        % Generating Java implies
+        %   - gc_method `automatic' and no heap reclamation on failure
+        %     Because GC is handled automatically by the Java implementation.
+        %   - high-level code
+        %     Because only the MLDS back-end supports compiling to Java.
+        %   - high-level data
+        %     Because it is more efficient, and better for interoperability.
+        %     (In theory --low-level-data should work too, but there is
+        %     no reason to bother supporting it.)
+        %   - unboxed floats
+        %   - unboxed 64-bit integers
+        %   - using copy-out for both det and nondet output arguments
+        %     Because Java doesn't support pass-by-reference.
+        %   - using no tags
+        %     Because Java doesn't provide any mechanism for tagging pointers.
+        %   - box no-tag types
+        %     We require no-tag types to be boxed since in Java,
+        %     java.lang.Object is the only type that all other types
+        %     can be successfully cast to and then cast back from.
+        %   - store nondet environments on the heap
+        %     Because Java has no way of allocating structs on the stack.
+        %   - pretest-equality-cast-pointers
+        %   - no structure reuse
+        %     Because mlds_to_java_stmt.m does not handle assign_if_in_heap.
+        %
+        % C# should be the same as Java, except that:
+        %   - C# supports pass-by-reference, but for reasons explained in
+        %     mlds_to_cs_stmt.m, we pretend it doesn't at the MLDS level.
+
+        globals.set_gc_method(gc_automatic, !Globals),
+        globals.set_option(gc, string("automatic"), !Globals),
+        globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
+            !Globals),
+        globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
+            !Globals),
+        globals.set_option(highlevel_code, bool(yes), !Globals),
+        globals.set_option(gcc_non_local_gotos, bool(no), !Globals),
+        globals.set_option(gcc_global_registers, bool(no), !Globals),
+        globals.set_option(asm_labels, bool(no), !Globals),
+        globals.set_option(unboxed_float, bool(yes), !Globals),
+        globals.set_option(unboxed_int64s, bool(yes), !Globals),
+        globals.set_option(nondet_copy_out, bool(yes), !Globals),
+        globals.set_option(det_copy_out, bool(yes), !Globals),
+        globals.set_option(unboxed_no_tag_types, bool(no), !Globals),
+        globals.set_option(put_nondet_env_on_heap, bool(yes), !Globals),
+        globals.set_option(pretest_equality_cast_pointers, bool(yes),
+            !Globals),
+        globals.set_option(structure_reuse_analysis, bool(no), !Globals),
+        globals.set_option(structure_sharing_analysis, bool(no), !Globals),
+
+        (
+            Target = target_csharp,
+            BackendForeignLanguages = ["csharp"],
+            globals.set_option(executable_file_extension, string(".exe"),
+                !Globals)
+        ;
+            Target = target_java,
+            BackendForeignLanguages = ["java"]
+        ),
+
+        % In the non-C backends, it may not be possible to cast a value
+        % of a non-enum du type to an integer.
+        globals.set_option(can_compare_constants_as_ints, bool(no), !Globals),
+
+        globals.set_option(arg_pack_bits, int(0), !Globals),
+        globals.set_option(allow_double_word_fields, bool(no), !Globals),
+        globals.set_option(allow_packing_dummies, bool(no), !Globals),
+        globals.set_option(allow_packing_ints, bool(no), !Globals),
+
+        % Switch off string hash switches until these backends implement
+        % the hash operations.
+        OT_StringBinarySwitchSize = 999999
+    ;
+        Target = target_erlang,
+        BackendForeignLanguages = ["erlang"],
+        globals.set_option(num_ptag_bits, int(0), !Globals),
+
+        % Generating Erlang implies
+        %   - gc_method `automatic' and no heap reclamation on failure
+        %     Because GC is handled automatically by the Erlang implementation.
+        %   - unboxed floats
+        %   - unboxed 64-bit integers
+        %   - delay-partial-instantiations
+        %   - no-can-compare-constants-as-ints
+        %   - can-compare-compound-values
+        %   - lexically-compare-constructors
+        %   - --no-optimize-tailcalls because Erlang implementations perform
+        %     LCO.
+
+        globals.set_gc_method(gc_automatic, !Globals),
+        globals.set_option(gc, string("automatic"), !Globals),
+        globals.set_option(unboxed_float, bool(yes), !Globals),
+        globals.set_option(unboxed_int64s, bool(yes), !Globals),
+        globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
+            !Globals),
+        globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
+            !Globals),
+        globals.set_option(delay_partial_instantiations, bool(yes), !Globals),
+        globals.set_option(can_compare_constants_as_ints, bool(no), !Globals),
+        globals.set_option(can_compare_compound_values, bool(yes), !Globals),
+        globals.set_option(order_constructors_for_erlang, bool(yes), !Globals),
+        % XXX opt_mlds_tailcalls is now in the opt_tuple.
+        % However, there is no need to disable it, since the elds backend
+        % pays not attention to its value.
+        % globals.set_option(optimize_mlds_tailcalls, bool(no), !Globals),
+
+        % The following options do not directly affect the Erlang backend,
+        % however we need to ensure they are set to values that are consistent
+        % with what the predicate grade_component_table/2 (below) expects.
+        globals.set_option(highlevel_code, bool(no), !Globals),
+        globals.set_option(gcc_non_local_gotos, bool(no), !Globals),
+        globals.set_option(gcc_global_registers, bool(no), !Globals),
+        globals.set_option(asm_labels, bool(no), !Globals),
+
+        % In the non-C backends, it may not be possible to cast a value
+        % of a non-enum du type to an integer.
+        globals.set_option(can_compare_constants_as_ints, bool(no), !Globals),
+
+        globals.set_option(arg_pack_bits, int(0), !Globals),
+        globals.set_option(allow_double_word_fields, bool(no), !Globals),
+        globals.set_option(allow_packing_dummies, bool(no), !Globals),
+        globals.set_option(allow_packing_ints, bool(no), !Globals),
+
+        % Currently, multi-arm switches have been tested only for the LLDS
+        % backend (which always generates C) and for the MLDS backend when
+        % it is generating C, C# or Java code.
+        globals.set_option(allow_multi_arm_switches, bool(no), !Globals),
+
+        OT_StringBinarySwitchSize = OT_StringBinarySwitchSize0
+    ),
+
+    % We only use the float registers if floats would not fit into the
+    % regular registers.
+    option_implies(unboxed_float, use_float_registers, bool(no), !Globals),
+    option_implies(highlevel_code, use_float_registers, bool(no), !Globals).
+
+%---------------------%
 
     % Options updated:
     %   ansi_c

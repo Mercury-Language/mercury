@@ -209,13 +209,13 @@
     % The tracing levels to use for a module when doing the source to source
     % debugging transformation.
 :- type ssdb_trace_level
-    --->    none
+    --->    ssdb_none
             % No tracing of this module.
 
-    ;       shallow
+    ;       ssdb_shallow
             % Shallow trace all procedures in this module.
 
-    ;       deep.
+    ;       ssdb_deep.
             % Deep trace all procedures in this module.
 
 %---------------------%
@@ -651,11 +651,11 @@ convert_env_type("msys",    env_type_msys).
 convert_env_type("windows", env_type_win_cmd).
 convert_env_type("powershell", env_type_powershell).
 
-convert_ssdb_trace_level("default", yes, deep).
-convert_ssdb_trace_level("default", no, none).
-convert_ssdb_trace_level("none", _, none).
-convert_ssdb_trace_level("shallow", _, shallow).
-convert_ssdb_trace_level("deep", _, deep).
+convert_ssdb_trace_level("default", yes, ssdb_deep).
+convert_ssdb_trace_level("default", no, ssdb_none).
+convert_ssdb_trace_level("none", _, ssdb_none).
+convert_ssdb_trace_level("shallow", _, ssdb_shallow).
+convert_ssdb_trace_level("deep", _, ssdb_deep).
 
 convert_limit_error_contexts(Options, BadOptions, Map) :-
     convert_limit_error_contexts_acc(Options, [], RevBadOptions,

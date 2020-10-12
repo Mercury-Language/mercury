@@ -197,8 +197,8 @@
 :- import_module io.
 
 :- inst shallow_or_deep for globals.ssdb_trace_level/0
-    --->    shallow
-    ;       deep.
+    --->    ssdb_shallow
+    ;       ssdb_deep.
 
 :- pred ssdebug_transform_module(ssdb_trace_level::in(shallow_or_deep),
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -247,7 +247,7 @@
 
 ssdebug_transform_module(SSTraceLevel, !ModuleInfo, !IO) :-
     (
-        SSTraceLevel = shallow,
+        SSTraceLevel = ssdb_shallow,
         % With the shallow trace level, the parent of a library procedure
         % will also be have trace level shallow, thus we don't need to proxy
         % the library methods.
@@ -255,7 +255,7 @@ ssdebug_transform_module(SSTraceLevel, !ModuleInfo, !IO) :-
             update_module(ssdebug_process_proc_if_needed(SSTraceLevel)),
             !ModuleInfo)
     ;
-        SSTraceLevel = deep,
+        SSTraceLevel = ssdb_deep,
         ssdebug_first_pass(!ModuleInfo),
         process_valid_nonimported_procs(
             update_module(ssdebug_process_proc_if_needed(SSTraceLevel)),
@@ -521,9 +521,9 @@ insert_context_update_call(ModuleInfo, Goal0, Goal, !ProcInfo) :-
 ssdebug_process_proc_if_needed(SSTraceLevel, PredProcId,
         !ProcInfo, !ModuleInfo) :-
     (
-        SSTraceLevel = none
+        SSTraceLevel = ssdb_none
     ;
-        SSTraceLevel = shallow,
+        SSTraceLevel = ssdb_shallow,
         PredProcId = proc(PredId, _ProcId),
         % Only transform the procedures in the interface.
         % XXX We still need to fix the ssdb so that events generated
@@ -536,7 +536,7 @@ ssdebug_process_proc_if_needed(SSTraceLevel, PredProcId,
             true
         )
     ;
-        SSTraceLevel = deep,
+        SSTraceLevel = ssdb_deep,
         % Transfrom all procedures.
         ssdebug_process_proc(SSTraceLevel, PredProcId, !ProcInfo, !ModuleInfo)
     ).
@@ -1273,10 +1273,10 @@ make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar,
 
 make_level_construction(SSTraceLevel, Goal, LevelVar, !VarSet, !VarTypes) :-
     (
-        SSTraceLevel = shallow,
+        SSTraceLevel = ssdb_shallow,
         ConsId = shallow_cons_id
     ;
-        SSTraceLevel = deep,
+        SSTraceLevel = ssdb_deep,
         ConsId = deep_cons_id
     ),
     make_const_construction_alloc(ConsId, ssdb_tracing_level_type,

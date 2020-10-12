@@ -1065,10 +1065,10 @@ compute_implicit_avail_needs(Globals, ImplicitAvailNeeds,
     ),
     globals.get_ssdb_trace_level(Globals, SSDBTraceLevel),
     (
-        SSDBTraceLevel = none
+        SSDBTraceLevel = ssdb_none
     ;
-        ( SSDBTraceLevel = shallow
-        ; SSDBTraceLevel = deep
+        ( SSDBTraceLevel = ssdb_shallow
+        ; SSDBTraceLevel = ssdb_deep
         ),
         globals.lookup_bool_option(Globals, force_disable_ssdebug,
             DisableSSDB),
