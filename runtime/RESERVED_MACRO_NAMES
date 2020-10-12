@@ -11,12 +11,6 @@
 # directory.
 #
 #-----------------------------------------------------------------------------#
-# These are defined by mercury_signal.h. The first is defined only temporarily,
-# and the second eliminates gratuitous differences between Linux versions.
-# Neither really pollutes the namespace.
-__KERNEL__
-sigcontext_struct
-#-----------------------------------------------------------------------------#
 # This is defined on Windows to workaround problems with windows.h.
 WIN32_LEAN_AND_MEAN
 #-----------------------------------------------------------------------------#

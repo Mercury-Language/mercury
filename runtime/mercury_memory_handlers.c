@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998, 2000, 2002, 2005-2007, 2010-2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2020 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module defines the signal handlers for memory zones.
@@ -44,20 +44,12 @@
 #include "mercury_trace_base.h"
 #include "mercury_memory_zones.h"
 #include "mercury_memory_handlers.h"
-#include "mercury_faultaddr.h"
 #include "mercury_threadscope.h"
 
 ////////////////////////////////////////////////////////////////////////////
 
 #ifdef MR_HAVE_SIGINFO
-  #if defined(MR_HAVE_SIGCONTEXT_STRUCT)
-    #if defined(MR_HAVE_SIGCONTEXT_STRUCT_3ARG)
-      static void       complex_sighandler_3arg(int, int,
-                            struct sigcontext_struct);
-    #else
-      static void       complex_sighandler(int, struct sigcontext_struct);
-    #endif
-  #elif defined(MR_HAVE_SIGINFO_T)
+  #ifdef MR_HAVE_SIGINFO_T
     static void         complex_bushandler(int, siginfo_t *, void *);
     static void         complex_segvhandler(int, siginfo_t *, void *);
   #else
@@ -68,15 +60,7 @@
 #endif
 
 #ifdef MR_HAVE_SIGINFO
-  #if defined(MR_HAVE_SIGCONTEXT_STRUCT)
-    #if defined(MR_HAVE_SIGCONTEXT_STRUCT_3ARG)
-      #define     bus_handler   complex_sighandler_3arg
-      #define     segv_handler  complex_sighandler_3arg
-    #else
-      #define     bus_handler   complex_sighandler
-      #define     segv_handler  complex_sighandler
-    #endif
-  #elif defined(MR_HAVE_SIGINFO_T)
+  #ifdef MR_HAVE_SIGINFO_T
     #define     bus_handler     complex_bushandler
     #define     segv_handler    complex_segvhandler
   #else
@@ -280,19 +264,7 @@ MR_explain_context(void *the_context)
 {
     static  char    buf[100];
 
-#if defined(MR_HAVE_SIGCONTEXT_STRUCT)
-
-  #ifdef MR_PC_ACCESS
-    struct sigcontext_struct *context = the_context;
-    void *pc_at_signal = (void *) context->MR_PC_ACCESS;
-
-    sprintf(buf, "PC at signal: %ld (%lx)\n",
-        (long)pc_at_signal, (long)pc_at_signal);
-  #else
-    buf[0] = '\0';
-  #endif
-
-#elif defined(MR_HAVE_SIGINFO_T)
+#ifdef MR_HAVE_SIGINFO_T
 
   #ifdef MR_PC_ACCESS
 
@@ -316,7 +288,7 @@ MR_explain_context(void *the_context)
 
   #endif // not MR_PC_ACCESS
 
-#else // not MR_HAVE_SIGINFO_T && not MR_HAVE_SIGCONTEXT_STRUCT
+#else // not MR_HAVE_SIGINFO_T
 
     buf[0] = '\0';
 
@@ -325,72 +297,7 @@ MR_explain_context(void *the_context)
     return buf;
 }
 
-#if defined(MR_HAVE_SIGCONTEXT_STRUCT)
-  #if defined(MR_HAVE_SIGCONTEXT_STRUCT_3ARG)
-    static void
-    complex_sighandler_3arg(int sig, int code,
-            struct sigcontext_struct sigcontext)
-  #else
-    static void
-    complex_sighandler(int sig, struct sigcontext_struct sigcontext)
-  #endif
-{
-    void *address = (void *) MR_GET_FAULT_ADDR(sigcontext);
-  #ifdef MR_PC_ACCESS
-    void *pc_at_signal = (void *) sigcontext.MR_PC_ACCESS;
-  #endif
-
-    switch (sig) {
-        case SIGSEGV:
-            // If we are debugging, print the segv explanation messages
-            // before we call MR_try_munprotect. But if we are not debugging,
-            // only print them if MR_try_munprotect fails.
-
-            if (MR_memdebug) {
-                fflush(stdout);
-                fprintf(stderr, "\n*** Mercury runtime: "
-                    "caught segmentation violation ***\n");
-            }
-            if (MR_try_munprotect(address, &sigcontext)) {
-                if (MR_memdebug) {
-                    fprintf(stderr, "returning from signal handler\n\n");
-                }
-                return;
-            }
-            if (!MR_memdebug) {
-                fflush(stdout);
-                fprintf(stderr, "\n*** Mercury runtime: "
-                    "caught segmentation violation ***\n");
-            }
-            break;
-
-#ifdef SIGBUS
-        case SIGBUS:
-            fflush(stdout);
-            fprintf(stderr, "\n*** Mercury runtime: caught bus error ***\n");
-            break;
-#endif
-
-        default:
-            fflush(stdout);
-            fprintf(stderr, "\n*** Mercury runtime: "
-                    "caught unknown signal %d ***\n", sig);
-            break;
-    }
-
-  #ifdef MR_PC_ACCESS
-    fprintf(stderr, "PC at signal: %ld (%lx)\n",
-        (long) pc_at_signal, (long) pc_at_signal);
-  #endif
-    fprintf(stderr, "address involved: %p\n", address);
-
-    MR_trace_report(stderr);
-    MR_print_dump_stack();
-    MR_dump_prev_locations();
-    leave_signal_handler(sig);
-} // end complex_sighandler()
-
-#elif defined(MR_HAVE_SIGINFO_T)
+#ifdef MR_HAVE_SIGINFO_T
 
 static void
 complex_bushandler(int sig, siginfo_t *info, void *context)
@@ -542,7 +449,7 @@ complex_segvhandler(int sig, siginfo_t *info, void *context)
     leave_signal_handler(sig);
 } // end complex_segvhandler
 
-#else // not MR_HAVE_SIGINFO_T && not MR_HAVE_SIGCONTEXT_STRUCT
+#else // not MR_HAVE_SIGINFO_T
 
 static void
 simple_sighandler(int sig)
@@ -572,7 +479,7 @@ simple_sighandler(int sig)
     leave_signal_handler(sig);
 }
 
-#endif // not MR_HAVE_SIGINFO_T && not MR_HAVE_SIGCONTEXT_STRUCT
+#endif // not MR_HAVE_SIGINFO_T
 
 #ifdef MR_MSVC_STRUCTURED_EXCEPTIONS
 static const char   *MR_find_exception_name(DWORD exception_code);
@@ -844,17 +751,7 @@ static MR_Code *
 get_pc_from_context(void *the_context)
 {
     MR_Code *pc_at_signal = NULL;
-#if defined(MR_HAVE_SIGCONTEXT_STRUCT)
-
-  #ifdef MR_PC_ACCESS
-    struct sigcontext_struct *context = the_context;
-
-    pc_at_signal = (MR_Code *) context->MR_PC_ACCESS;
-  #else
-    pc_at_signal = (MR_Code *) NULL;
-  #endif
-
-#elif defined(MR_HAVE_SIGINFO_T)
+#ifdef MR_HAVE_SIGINFO_T
 
   #ifdef MR_PC_ACCESS
 
@@ -873,7 +770,7 @@ get_pc_from_context(void *the_context)
 
   #endif // not MR_PC_ACCESS
 
-#else // not MR_HAVE_SIGINFO_T && not MR_HAVE_SIGCONTEXT_STRUCT
+#else // not MR_HAVE_SIGINFO_T
 
     pc_at_signal = (MR_Code *) NULL;
 
@@ -897,20 +794,11 @@ get_sp_from_context(void *the_context)
 {
     MR_Word *sp_at_signal = NULL;
 #if defined(MR_NATIVE_GC) && !defined(MR_HIGHLEVEL_CODE)
-  #if defined(MR_HAVE_SIGCONTEXT_STRUCT)
-
-    #ifdef MR_PC_ACCESS
-    struct sigcontext_struct *context = the_context;
-
-    sp_at_signal = (MR_Word *) context->MR_real_reg_number_sp;
-    #else
-    sp_at_signal = (MR_Word *) NULL;
-    #endif
-
-  #elif defined(MR_HAVE_SIGINFO_T)
+  #ifdef MR_HAVE_SIGINFO_T
 
     #ifdef MR_PC_ACCESS
 
+    // XXX This probably needs to be cast to ucontext_t instead.
     struct sigcontext *context = the_context;
 
       #ifdef MR_PC_ACCESS_GREG
@@ -927,7 +815,7 @@ get_sp_from_context(void *the_context)
 
     #endif // not MR_PC_ACCESS
 
-  #else // not MR_HAVE_SIGINFO_T && not MR_HAVE_SIGCONTEXT_STRUCT
+  #else // not MR_HAVE_SIGINFO_T
 
     sp_at_signal = (MR_Word *) NULL;
 

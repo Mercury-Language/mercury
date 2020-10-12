@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998,2000,2002, 2006, 2010 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018 The Mercury team.
+// Copyright (C) 2015-2016, 2018, 2020 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module defines functions for setting up signal handlers.
@@ -102,18 +102,14 @@ void
 MR_init_signal_action(MR_signal_action *act, MR_Code *handler,
     MR_bool need_info, MR_bool restart)
 {
-#if defined(MR_HAVE_SIGACTION)
+#ifdef MR_HAVE_SIGACTION
 
     act->sa_flags = (restart ? SA_RESTART : 0);
 
     if (need_info) {
-        // If we are using sigcontext struct, it means we have configured
-        // to not use siginfo, and so when we request signals, we should not
-        // ask for SA_SIGINFO, since our handler will not be of the right type.
-
-#if !defined(MR_HAVE_SIGCONTEXT_STRUCT)
+    #ifdef MR_HAVE_SIGINFO_T
         act->sa_flags |= SA_SIGINFO;
-#endif
+    #endif
     }
 
     if (sigemptyset(&(act->sa_mask)) != 0) {
@@ -123,6 +119,7 @@ MR_init_signal_action(MR_signal_action *act, MR_Code *handler,
     errno = 0;
 
     act->MR_SIGACTION_FIELD = handler;
+
 #else // not MR_HAVE_SIGACTION
 
     *act = handler;
