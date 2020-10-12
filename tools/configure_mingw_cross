@@ -66,7 +66,6 @@ fi
 # Taken from the config.cache file after running configure -C in msys.
 
 mercury_cv_cc_type=gcc \
-mercury_cv_sigaction_field=no \
 mercury_cv_siginfo_t=no \
 mercury_cv_is_bigender=no \
 mercury_cv_is_littleender=yes \

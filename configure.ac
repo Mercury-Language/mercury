@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
-# Copyright (C) 2013-2018 The Mercury team.
+# Copyright (C) 2013-2020 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -1529,63 +1529,12 @@ AC_SUBST(HAVE_GETOPT)
 
 #-----------------------------------------------------------------------------#
 #
-# Check the basics of sigaction
+# Check the basics of SA_SIGINFO and siginfo_t
 #
 
 if test "$ac_cv_func_sigaction" = yes; then
-    AC_MSG_CHECKING(for \`sigaction' field name)
-    AC_CACHE_VAL(mercury_cv_sigaction_field,
-    AC_TRY_RUN(
-        [
-            #include <signal.h>
-            #include <stdlib.h>
-
-            #define FAULT_ADDRESS ((int *)112)
-
-            extern void handler(int signum, siginfo_t *info, void *context);
-
-            int main() {
-                struct sigaction act;
-                act.sa_flags = SA_SIGINFO;
-                act.sa_sigaction = handler;
-                if (sigemptyset(&act.sa_mask) != 0)
-                    exit(1);
-                if (sigaction(SIGSEGV, &act, NULL) != 0)
-                    exit(1);
-                /* provoke a SIGSEGV */
-                (*FAULT_ADDRESS)++;
-                exit(1);
-            }
-
-            void handler(int signum, siginfo_t *info, void *context) {
-                if (signum == SIGSEGV &&
-                    info->si_signo == SIGSEGV &&
-                    info->si_code > 0 &&
-                    (int *)info->si_addr == FAULT_ADDRESS)
-                {
-                    exit(0);
-                } else {
-                    exit(1);
-                }
-            }
-        ],
-        [mercury_cv_sigaction_field=sa_sigaction],
-        [mercury_cv_sigaction_field=sa_handler]))
-    AC_MSG_RESULT($mercury_cv_sigaction_field)
-    AC_DEFINE_UNQUOTED(MR_SIGACTION_FIELD,$mercury_cv_sigaction_field)
-    if test "$mercury_cv_sigaction_field" = sa_sigaction; then
-        AC_DEFINE([MR_HAVE_SIGINFO])
-    fi
-fi
-
-#-----------------------------------------------------------------------------#
-#
-# Check the basics of siginfo_t
-#
-
-AC_MSG_CHECKING(for \`siginfo_t')
+AC_MSG_CHECKING(for SA_SIGINFO and siginfo_t)
 AC_CACHE_VAL(mercury_cv_siginfo_t,
-mercury_cv_siginfo_t=no
 AC_TRY_RUN(
     [
         #include <stdio.h>
@@ -1609,7 +1558,7 @@ AC_TRY_RUN(
         int main() {
             struct sigaction act;
             act.sa_flags = SA_SIGINFO;
-            act.$mercury_cv_sigaction_field = handler;
+            act.sa_sigaction = handler;
             if (sigemptyset(&act.sa_mask) != 0)
                 exit(1);
             if (sigaction(SIGSEGV, &act, NULL) != 0)
@@ -1626,8 +1575,11 @@ AC_TRY_RUN(
         }
     ],
     [mercury_cv_siginfo_t=yes],
-    [true]))
+    [mercury_cv_siginfo_t=no]))
 AC_MSG_RESULT($mercury_cv_siginfo_t)
+else
+    mercury_cv_siginfo_t=no
+fi
 if test "$mercury_cv_siginfo_t" = yes; then
     AC_DEFINE(MR_HAVE_SIGINFO_T)
     AC_DEFINE(MR_HAVE_SIGINFO)
@@ -1654,7 +1606,7 @@ if test "$mercury_cv_siginfo_t" = yes; then
             int main() {
                 struct sigaction act;
                 act.sa_flags = SA_SIGINFO;
-                act.$mercury_cv_sigaction_field = handler;
+                act.sa_sigaction = handler;
                 if (sigemptyset(&act.sa_mask) != 0)
                     exit(1);
                 if (sigaction(SIGSEGV, &act, NULL) != 0)
@@ -1695,7 +1647,7 @@ if test "$mercury_cv_siginfo_t" = yes; then
             int main() {
                 struct sigaction act;
                 act.sa_flags = SA_SIGINFO;
-                act.$mercury_cv_sigaction_field = handler;
+                act.sa_sigaction = handler;
                 if (sigemptyset(&act.sa_mask) != 0)
                     exit(1);
                 if (sigaction(SIGSEGV, &act, NULL) != 0)
@@ -1734,7 +1686,7 @@ if test "$mercury_cv_siginfo_t" = yes; then
             int main() {
                 struct sigaction act;
                 act.sa_flags = SA_SIGINFO;
-                act.$mercury_cv_sigaction_field = handler;
+                act.sa_sigaction = handler;
                 if (sigemptyset(&act.sa_mask) != 0)
                     exit(1);
                 if (sigaction(SIGSEGV, &act, NULL) != 0)
