@@ -911,121 +911,15 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
 
     option_implies(target_debug, strip, bool(no), !Globals),
 
-    % --decl-debug is an extension of --debug
-    option_implies(decl_debug, exec_trace, bool(yes), !Globals),
+    TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
+    handle_debugging_options(Target, TraceLevel, TraceEnabled, SSTraceLevel,
+        AllowSrcChangesDebug, !Globals, !Specs),
 
     % We need to be able to simulate exits for calls between where an
     % exception is thrown to where it is caught both in the debugger and
     % for deep profiling.
     option_implies(exec_trace, stack_trace, bool(yes), !Globals),
     option_implies(profile_deep, stack_trace, bool(yes), !Globals),
-
-    % In debugging grades, we want to generate executables in which
-    % one can do retries across I/O safely.
-    option_implies(exec_trace, trace_table_io_all, bool(yes), !Globals),
-
-    % --trace-table-io-all is compulsory application of --trace-table-io
-    option_implies(trace_table_io_all, trace_table_io, bool(yes),
-        !Globals),
-    % --trace-table-io-require is compulsory application
-    %   of --trace-table-io
-    option_implies(trace_table_io_require, trace_table_io, bool(yes),
-        !Globals),
-
-    % Execution tracing requires
-    %   - disabling optimizations that would change
-    %     the trace being generated (except with --trace-optimized)
-    %   - enabling some low level optimizations to ensure consistent
-    %     paths across optimization levels
-    %   - enabling stack layouts
-    %   - enabling typeinfo liveness
-    TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
-    (
-        TraceEnabled = exec_trace_is_enabled,
-        ( if HighLevelCode = bool.no, Target = target_c then
-            true
-        else
-            TraceHLSpec =
-                [words("Debugging is available only in low level C grades."),
-                nl],
-            add_error(phase_options, TraceHLSpec, !Specs)
-        ),
-        globals.lookup_bool_option(!.Globals, trace_optimized, TraceOptimized),
-        (
-            TraceOptimized = bool.no,
-            % The options controlled by AllowSrcChangesTrace modify
-            % the structure of the program, which makes it difficult
-            % to relate the trace to the source code (although
-            % it can be easily related to the transformed HLDS).
-            AllowSrcChangesTrace = bool.no
-        ;
-            TraceOptimized = bool.yes,
-            AllowSrcChangesTrace = bool.yes
-        ),
-
-        % The explicit setting of the following option removes a source
-        % of variability in the goal paths reported by tracing.
-        OT_OptFollowCode = opt_follow_code,
-
-        % The following options cause the info required by tracing
-        % to be generated.
-        globals.set_option(trace_stack_layout, bool(yes), !Globals),
-        globals.set_option(body_typeinfo_liveness, bool(yes), !Globals),
-
-        % To support up-level printing, we need to save variables across
-        % a call even if the call cannot succeed.
-        globals.set_option(opt_no_return_calls, bool(no), !Globals),
-
-        % The declarative debugger does not (yet) know about tail calls.
-        TraceTailRec = trace_level_allows_tail_rec(TraceLevel),
-        (
-            TraceTailRec = bool.no,
-            globals.set_option(exec_trace_tail_rec, bool(no), !Globals)
-        ;
-            TraceTailRec = bool.yes
-        )
-    ;
-        TraceEnabled = exec_trace_is_not_enabled,
-        AllowSrcChangesTrace = bool.yes,
-        OT_OptFollowCode = OT_OptFollowCode0,
-
-        % Since there will be no call and exit events, there is no point
-        % in trying to turn them into tailcall events.
-        globals.set_option(exec_trace_tail_rec, bool(no), !Globals)
-    ),
-    (
-        AllowSrcChangesTrace = no,
-        OT_OptSVCell = do_not_opt_svcell,
-        OT_OptLoopInvariants = do_not_opt_loop_invariants,
-        OT_Untuple = do_not_untuple,
-        OT_Tuple = do_not_tuple,
-        OT_OptTestAfterSwitch = do_not_opt_test_after_switch
-    ;
-        AllowSrcChangesTrace = yes,
-        OT_OptSVCell = OT_OptSVCell0,
-        OT_OptLoopInvariants = OT_OptLoopInvariants0,
-        OT_Tuple = OT_Tuple0,
-        OT_Untuple = OT_Untuple0,
-        OT_OptTestAfterSwitch = OT_OptTestAfterSwitch0
-    ),
-
-    % --ssdb implies --link-ssdb-libs
-    option_implies(source_to_source_debug, link_ssdb_libs, bool(yes),
-        !Globals),
-
-    % Source-to-source debugging requires disabling many HLDS->HLDS
-    % optimizations. This is so that the trace being generated relates to the
-    % source code and also because the SSDB transformation cannot (yet) handle
-    % the specialised predicates introduced by many optimizations.
-    (
-        ( SSTraceLevel = ssdb_shallow
-        ; SSTraceLevel = ssdb_deep
-        ),
-        AllowSrcChangesSSDB = bool.no
-    ;
-        SSTraceLevel = ssdb_none,
-        AllowSrcChangesSSDB = bool.yes
-    ),
 
     % Profile for feedback requires coverage profiling.
     option_implies(profile_for_feedback, coverage_profiling, bool(yes),
@@ -1115,32 +1009,24 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         AllowInliningExpComp = bool.no
     ),
 
-    ( if
-        AllowSrcChangesTrace = bool.yes,
-        AllowSrcChangesSSDB = bool.yes
-    then
-        OT_OptDupCalls = OT_OptDupCalls0
-    else
-        OT_OptDupCalls = do_not_opt_dup_calls
+    (
+        AllowSrcChangesDebug = allow_src_changes,
+        OT_OptDupCalls = OT_OptDupCalls0,
+        OT_OptHigherOrder = OT_OptHigherOrder0
+    ;
+        AllowSrcChangesDebug = do_not_allow_src_changes,
+        OT_OptDupCalls = do_not_opt_dup_calls,
+        OT_OptHigherOrder = do_not_opt_higher_order
     ),
 
     ( if
-        AllowSrcChangesTrace = bool.yes,
-        AllowSrcChangesSSDB = bool.yes,
+        AllowSrcChangesDebug = allow_src_changes,
         AllowInliningProfDeep = bool.yes,
         AllowInliningExpComp = bool.yes
     then
         OT_AllowInlining = OT_AllowInlining0
     else
         OT_AllowInlining = do_not_allow_inlining
-    ),
-    ( if
-        AllowSrcChangesTrace = bool.yes,
-        AllowSrcChangesSSDB = bool.yes
-    then
-        OT_OptHigherOrder = OT_OptHigherOrder0
-    else
-        OT_OptHigherOrder = do_not_opt_higher_order
     ),
 
     OT_InlineBuiltins0 = OptTuple0 ^ ot_inline_builtins,
@@ -1340,8 +1226,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         AllowDeforestBodyTypeInfoLiveness = bool.yes
     ),
     ( if
-        AllowSrcChangesTrace = bool.yes,
-        AllowSrcChangesSSDB = bool.yes,
+        AllowSrcChangesDebug = allow_src_changes,
         AllowDeforestReorderConj = bool.yes,
         AllowDeforestBodyTypeInfoLiveness = bool.yes
     then
@@ -1411,8 +1296,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     ),
 
     ( if
-        AllowSrcChangesTrace = bool.yes,
-        AllowSrcChangesSSDB = bool.yes,
+        AllowSrcChangesDebug = allow_src_changes,
         AllowAnySpecTypesGc = bool.yes
     then
         OT_SpecTypes = OT_SpecTypes0,
@@ -1438,8 +1322,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % Every place above that sets one of AllowPropLocalConstraints*
     % to "no" is therefore also saying no to prop_constraints.
     ( if
-        AllowSrcChangesTrace = bool.yes,
-        AllowSrcChangesSSDB = bool.yes,
+        AllowSrcChangesDebug = allow_src_changes,
         AllowPropLocalConstraintsReorderConj = bool.yes
     then
         OT_PropLocalConstraints = OT_PropLocalConstraints0
@@ -1486,8 +1369,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     ),
 
     ( if
-        AllowSrcChangesTrace = bool.yes,
-        AllowSrcChangesSSDB = bool.yes,
+        AllowSrcChangesDebug = allow_src_changes,
         AllowOptUnusedArgsMakeOptInt = bool.yes
     then
         OT_OptUnusedArgs = OT_OptUnusedArgs0
@@ -1529,9 +1411,17 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     option_implies(use_opt_files, warn_missing_opt_files, bool(no),
         !Globals),
 
+    maybe_update_backend_foreign_languages(BackendForeignLanguages, !Globals),
+    maybe_update_event_set_file_name(!Globals, !IO),
+    handle_record_term_sizes_options(!Globals, AllowOptLCMCTermSize, !Specs),
+    handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls, OpMode,
+        !Globals, !Specs),
+    handle_compare_specialization(!Globals),
+    handle_compiler_developer_options(!Globals, !IO),
+    handle_directory_options(OpMode, !Globals),
+
     ( if
-        AllowSrcChangesTrace = bool.yes,
-        AllowSrcChangesSSDB = bool.yes,
+        AllowSrcChangesDebug = allow_src_changes,
         AllowOptLCMCProfDeep = bool.yes,
         AllowOptLCMCTermSize = bool.yes,
         AllowOptLCMCGc = bool.yes,
@@ -1542,14 +1432,31 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         OT_OptLCMC = do_not_opt_lcmc
     ),
 
-    maybe_update_backend_foreign_languages(BackendForeignLanguages, !Globals),
-    maybe_update_event_set_file_name(!Globals, !IO),
-    handle_record_term_sizes_options(!Globals, AllowOptLCMCTermSize, !Specs),
-    handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls, OpMode,
-        !Globals, !Specs),
-    handle_compare_specialization(!Globals),
-    handle_compiler_developer_options(!Globals, !IO),
-    handle_directory_options(OpMode, !Globals),
+    (
+        TraceEnabled = exec_trace_is_enabled,
+        % The explicit setting of the following option removes a source
+        % of variability in the goal paths reported by tracing.
+        OT_OptFollowCode = opt_follow_code
+    ;
+        TraceEnabled = exec_trace_is_not_enabled,
+        OT_OptFollowCode = OT_OptFollowCode0
+    ),
+
+    (
+        AllowSrcChangesDebug = do_not_allow_src_changes,
+        OT_OptSVCell = do_not_opt_svcell,
+        OT_OptLoopInvariants = do_not_opt_loop_invariants,
+        OT_Untuple = do_not_untuple,
+        OT_Tuple = do_not_tuple,
+        OT_OptTestAfterSwitch = do_not_opt_test_after_switch
+    ;
+        AllowSrcChangesDebug = allow_src_changes,
+        OT_OptSVCell = OT_OptSVCell0,
+        OT_OptLoopInvariants = OT_OptLoopInvariants0,
+        OT_Tuple = OT_Tuple0,
+        OT_Untuple = OT_Untuple0,
+        OT_OptTestAfterSwitch = OT_OptTestAfterSwitch0
+    ),
 
     !OptTuple ^ ot_allow_inlining := OT_AllowInlining,
     !OptTuple ^ ot_opt_common_structs := OT_OptCommonStructs,
@@ -1962,6 +1869,119 @@ handle_implications_of_parallel(!Globals, !Specs) :-
     % don't work with -ansi.
     % XXX We don't pass -ansi to the C compiler anymore.
     option_implies(parallel, ansi_c, bool(no), !Globals).
+
+%---------------------%
+
+:- type maybe_allow_src_changes
+    --->    do_not_allow_src_changes
+    ;       allow_src_changes.
+
+    % Options updated:
+    %   body_typeinfo_liveness
+    %   exec_trace
+    %   exec_trace_tail_rec
+    %   link_ssdb_libs
+    %   opt_no_return_calls
+    %   trace_stack_layout
+    %   trace_table_io
+    %   trace_table_io_all
+    %
+:- pred handle_debugging_options(compilation_target::in, trace_level::in,
+    maybe_exec_trace_enabled::in, ssdb_trace_level::in,
+    maybe_allow_src_changes::out, globals::in, globals::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+handle_debugging_options(Target, TraceLevel, TraceEnabled, SSTraceLevel,
+        !:AllowSrcChanges, !Globals, !Specs) :-
+    % --decl-debug is an extension of --debug
+    option_implies(decl_debug, exec_trace, bool(yes), !Globals),
+
+    % In debugging grades, we want to generate executables in which
+    % one can do retries across I/O safely.
+    option_implies(exec_trace, trace_table_io_all, bool(yes), !Globals),
+
+    % --trace-table-io-all is compulsory application of --trace-table-io
+    option_implies(trace_table_io_all, trace_table_io, bool(yes),
+        !Globals),
+    % --trace-table-io-require is compulsory application
+    %   of --trace-table-io
+    option_implies(trace_table_io_require, trace_table_io, bool(yes),
+        !Globals),
+
+    % Execution tracing requires
+    %   - disabling optimizations that would change
+    %     the trace being generated (except with --trace-optimized)
+    %   - enabling some low level optimizations to ensure consistent
+    %     paths across optimization levels
+    %   - enabling stack layouts
+    %   - enabling typeinfo liveness
+    (
+        TraceEnabled = exec_trace_is_enabled,
+        globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
+        ( if HighLevelCode = bool.no, Target = target_c then
+            true
+        else
+            TraceHLSpec =
+                [words("Debugging is available only in low level C grades."),
+                nl],
+            add_error(phase_options, TraceHLSpec, !Specs)
+        ),
+        globals.lookup_bool_option(!.Globals, trace_optimized, TraceOptimized),
+        (
+            TraceOptimized = bool.no,
+            % The options controlled by AllowSrcChanges modify
+            % the structure of the program, which makes it difficult
+            % to relate the trace to the source code (although
+            % it can be easily related to the transformed HLDS).
+            !:AllowSrcChanges = do_not_allow_src_changes
+        ;
+            TraceOptimized = bool.yes,
+            !:AllowSrcChanges = allow_src_changes
+        ),
+
+        % The following options cause the info required by tracing
+        % to be generated.
+        globals.set_option(trace_stack_layout, bool(yes), !Globals),
+        globals.set_option(body_typeinfo_liveness, bool(yes), !Globals),
+
+        % To support up-level printing, we need to save variables across
+        % a call even if the call cannot succeed.
+        globals.set_option(opt_no_return_calls, bool(no), !Globals),
+
+        % The declarative debugger does not (yet) know about tail calls.
+        AllowTraceTailRec = trace_level_allows_tail_rec(TraceLevel),
+        (
+            AllowTraceTailRec = bool.no,
+            globals.set_option(exec_trace_tail_rec, bool(no), !Globals)
+        ;
+            AllowTraceTailRec = bool.yes
+        )
+    ;
+        TraceEnabled = exec_trace_is_not_enabled,
+        !:AllowSrcChanges = allow_src_changes,
+
+        % Since there will be no call and exit events, there is no point
+        % in trying to turn them into tailcall events.
+        globals.set_option(exec_trace_tail_rec, bool(no), !Globals)
+    ),
+
+    % Source-to-source debugging requires disabling many HLDS->HLDS
+    % optimizations. This is so that the trace being generated relates to the
+    % source code and also because the SSDB transformation cannot (yet) handle
+    % the specialised predicates introduced by many optimizations.
+    (
+        ( SSTraceLevel = ssdb_shallow
+        ; SSTraceLevel = ssdb_deep
+        ),
+        !:AllowSrcChanges = do_not_allow_src_changes
+    ;
+        SSTraceLevel = ssdb_none
+        % Leave AllowSrcChanges alone.
+    ),
+
+    % --ssdb implies --link-ssdb-libs
+    option_implies(source_to_source_debug, link_ssdb_libs, bool(yes),
+        !Globals).
 
 %---------------------%
 
