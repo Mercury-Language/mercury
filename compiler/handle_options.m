@@ -717,23 +717,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % Using trail segments implies the use of the trail.
     option_implies(trail_segments, use_trail, bool(yes), !Globals),
 
-    % Set up options for position independent code.
-    % Shared libraries always use `--linkage shared'.
-    option_implies(compile_to_shared_lib, linkage,
-        string("shared"), !Globals),
-    option_implies(compile_to_shared_lib, mercury_linkage,
-        string("shared"), !Globals),
-
-    % If no --lib-linkage option has been specified, default to the
-    % set of all possible linkages.
-    globals.lookup_accumulating_option(!.Globals, lib_linkages, LibLinkages0),
-    (
-        LibLinkages0 = [],
-        globals.set_option(lib_linkages,
-            accumulating(["static", "shared"]), !Globals)
-    ;
-        LibLinkages0 = [_ | _]
-    ),
+    handle_target_compile_link_symlink_options(!Globals),
 
     (
         OT_Optimize0 = do_not_optimize,
@@ -790,12 +774,6 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         add_error(phase_options, OptAnalysisSpec, !Specs)
     else
         true
-    ),
-
-    ( if io.have_symlinks then
-        true
-    else
-        globals.set_option(use_symlinks, bool(no), !Globals)
     ),
 
     globals.lookup_maybe_string_option(!.Globals,
@@ -866,33 +844,38 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         globals.set_option(smart_recompilation, bool(no), !Globals)
     ),
 
-    % Disable --line-numbers when building the `.int', `.opt', etc. files,
-    % since including line numbers in those would cause unnecessary
-    % recompilation.
-    ( if
-        ( OpMode = opm_top_args(opma_make_interface(_))
-        ; OpMode = opm_top_args(opma_augment(opmau_make_opt_int))
-        ; OpMode = opm_top_args(opma_augment(opmau_make_trans_opt_int))
+    ( if OpMode = opm_top_args(OpModeArgs) then
+        % Disable --line-numbers when building the `.int', `.opt', etc. files,
+        % since including line numbers in those would cause unnecessary
+        % recompilation.
+        (
+            OpModeArgs = opma_make_interface(OpModeArgsMI),
+            globals.set_option(line_numbers, bool(no), !Globals),
+            ( if OpModeArgsMI = omif_int3 then
+                % We never use version number information in `.int3',
+                % `.opt' or `.trans_opt' files.
+                globals.set_option(generate_item_version_numbers, bool(no),
+                    !Globals)
+            else
+                true
+            )
+        ;
+            OpModeArgs = opma_augment(OpModeAugment),
+            ( if
+                ( OpModeAugment = opmau_make_opt_int
+                ; OpModeAugment = opmau_make_trans_opt_int
+                )
+            then
+                globals.set_option(line_numbers, bool(no), !Globals)
+            else
+                true
+            )
+        ;
+            ( OpModeArgs = opma_generate_dependencies
+            ; OpModeArgs = opma_generate_dependency_file
+            ; OpModeArgs = opma_convert_to_mercury
+            )
         )
-    then
-        globals.set_option(line_numbers, bool(no), !Globals)
-    else
-        true
-    ),
-
-    % We never use version number information in `.int3',
-    % `.opt' or `.trans_opt' files.
-    ( if OpMode = opm_top_args(opma_make_interface(omif_int3)) then
-        globals.set_option(generate_item_version_numbers, bool(no), !Globals)
-    else
-        true
-    ),
-
-    % The combination of --make-xml-documentation and
-    % --intermodule-optimization can causes spurious warnings about
-    % missing .opt files if they haven't been built yet.
-    ( if OpMode = opm_top_args(opma_augment(opmau_make_xml_documentation)) then
-        globals.set_option(intermodule_optimization, bool(no), !Globals)
     else
         true
     ),
@@ -905,11 +888,6 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         !Globals),
     option_implies(simple_mode_constraints, mode_constraints, bool(yes),
         !Globals),
-
-    globals.lookup_bool_option(!.Globals, use_trail, UseTrail),
-    globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
-
-    option_implies(target_debug, strip, bool(no), !Globals),
 
     TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
     handle_debugging_options(Target, TraceLevel, TraceEnabled, SSTraceLevel,
@@ -979,65 +957,21 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         AllowPropLocalConstraintsReorderConj = bool.yes
     ),
 
-    % --stack-trace requires `procid' stack layouts
-    option_implies(stack_trace, procid_stack_layout, bool(yes), !Globals),
-
-    % `trace' stack layouts need `procid' stack layouts
-    option_implies(trace_stack_layout, procid_stack_layout, bool(yes),
-        !Globals),
-
     handle_gc_options(!Globals, GC_Method, OT_OptFrames0, OT_OptFrames,
         !Specs),
-
-    % `procid' and `agc' stack layouts need `basic' stack layouts
-    option_implies(procid_stack_layout, basic_stack_layout, bool(yes),
-        !Globals),
-    option_implies(agc_stack_layout, basic_stack_layout, bool(yes), !Globals),
-
-    % dupelim.m doesn't preserve label layout structures (e.g. it can
-    % change the return address in a call to a different label whose code
-    % is the same but which has a different label layout structure),
-    % so we need to disable it when tracing.
-    globals.lookup_bool_option(!.Globals, procid_stack_layout,
-        ProcIdStackLayout),
-    globals.lookup_bool_option(!.Globals, agc_stack_layout, AgcStackLayout),
-    % Likewise for accurate GC.
-    ( if (ProcIdStackLayout = yes ; AgcStackLayout = yes) then
-        OT_OptDups = do_not_opt_dups
-    else
-        OT_OptDups = OT_OptDups0
-    ),
-
-    % stdlabel.m tries to perform operations that yield compiler aborts
-    % if any stack layout information is present in the generated code.
-    globals.lookup_bool_option(!.Globals, basic_stack_layout,
-        BasicStackLayout),
-    (
-        BasicStackLayout = yes,
-        OT_StdLabels = do_not_standardize_labels
-    ;
-        BasicStackLayout = no,
-        OT_StdLabels = OT_StdLabels0
-    ),
+    handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
+        OT_StdLabels0, OT_StdLabels),
 
     % XXX deforestation and constraint propagation do not perform folding
     % on polymorphic predicates correctly with --body-typeinfo-liveness.
     globals.lookup_bool_option(!.Globals, body_typeinfo_liveness,
         BodyTypeInfoLiveness),
-    (
-        BodyTypeInfoLiveness = bool.yes,
-        AllowDeforestBodyTypeInfoLiveness = bool.no,
-        AllowPropConstraintsBodyTypeInfoLiveness = bool.no
-        % XXX What about ot_prop_local_constraints?
-    ;
-        BodyTypeInfoLiveness = bool.no,
-        AllowPropConstraintsBodyTypeInfoLiveness = bool.yes,
-        AllowDeforestBodyTypeInfoLiveness = bool.yes
-    ),
     ( if
         AllowSrcChangesDebug = allow_src_changes,
         AllowDeforestReorderConj = bool.yes,
-        AllowDeforestBodyTypeInfoLiveness = bool.yes
+        % XXX The folding done by deforestation on on polymorphic predicates
+        % does not respect --body-typeinfo-liveness.
+        BodyTypeInfoLiveness = bool.no
     then
         OT_Deforest = OT_Deforest0
     else
@@ -1059,7 +993,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         % if the code being optimized contains a construct which
         % might save/restore the trail state, i.e. an if-then-else,
         % negation, disjunction, or commit.
-        UseTrail = bool.no,
+        globals.lookup_bool_option(!.Globals, use_trail, bool.no),
 
         % The cut-down stack frames used by middle recursion optimization
         % don't include return addresses. Since stack extension arranges for
@@ -1143,7 +1077,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         OT_PropLocalConstraints = do_not_prop_local_constraints
     ),
     ( if
-        AllowPropConstraintsBodyTypeInfoLiveness = bool.yes,
+        % XXX The folding done by constraint propagation on polymorphic
+        % predicates does not respect --body-typeinfo-liveness.
+        BodyTypeInfoLiveness = bool.no,
         OT_PropLocalConstraints = prop_local_constraints
     then
         OT_PropConstraints = OT_PropConstraints0
@@ -1298,6 +1234,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     !OptTuple ^ ot_opt_frames := OT_OptFrames,
     !OptTuple ^ ot_string_binary_switch_size := OT_StringBinarySwitchSize,
 
+    globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
     (
         HighLevelCode = no,
         postprocess_options_lowlevel(!Globals, !OptTuple)
@@ -1982,6 +1919,56 @@ handle_gc_options(!Globals, GC_Method, OT_OptFrames0, OT_OptFrames, !Specs) :-
 %---------------------%
 
     % Options updated:
+    %   basic_stack_layout
+    %   procid_stack_layout
+    %
+:- pred handle_stack_layout_options(globals::in, globals::out,
+    maybe_opt_dups::in, maybe_opt_dups::out,
+    maybe_standardize_labels::in, maybe_standardize_labels::out) is det.
+
+handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
+        OT_StdLabels0, OT_StdLabels) :-
+    % --stack-trace requires `procid' stack layouts.
+    option_implies(stack_trace, procid_stack_layout, bool(yes), !Globals),
+
+    % `trace' stack layouts need `procid' stack layouts.
+    option_implies(trace_stack_layout, procid_stack_layout, bool(yes),
+        !Globals),
+
+    % `procid' and `agc' stack layouts need `basic' stack layouts
+    option_implies(procid_stack_layout, basic_stack_layout, bool(yes),
+        !Globals),
+    option_implies(agc_stack_layout, basic_stack_layout, bool(yes), !Globals),
+
+    % dupelim.m doesn't preserve label layout structures (e.g. it can
+    % change the return address in a call to a different label whose code
+    % is the same but which has a different label layout structure),
+    % so we need to disable it when tracing. We also need to disable it
+    % when using accurate GC, for the same reason.
+    globals.lookup_bool_option(!.Globals, procid_stack_layout,
+        ProcIdStackLayout),
+    globals.lookup_bool_option(!.Globals, agc_stack_layout, AgcStackLayout),
+    ( if (ProcIdStackLayout = yes ; AgcStackLayout = yes) then
+        OT_OptDups = do_not_opt_dups
+    else
+        OT_OptDups = OT_OptDups0
+    ),
+
+    % stdlabel.m tries to perform operations that yield compiler aborts
+    % if any stack layout information is present in the generated code.
+    globals.lookup_bool_option(!.Globals, basic_stack_layout,
+        BasicStackLayout),
+    (
+        BasicStackLayout = yes,
+        OT_StdLabels = do_not_standardize_labels
+    ;
+        BasicStackLayout = no,
+        OT_StdLabels = OT_StdLabels0
+    ).
+
+%---------------------%
+
+    % Options updated:
     %   none
     %
 :- pred maybe_disable_smart_recompilation(op_mode::in,
@@ -2424,6 +2411,43 @@ handle_compiler_developer_options(!Globals, !IO) :-
         globals.set_option(trad_passes, bool(no), !Globals)
     else
         true
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   linkage
+    %   mercury_linkage
+    %   lib_linkages
+    %
+:- pred handle_target_compile_link_symlink_options(globals::in, globals::out)
+    is det.
+
+handle_target_compile_link_symlink_options(!Globals) :-
+    % Set up options for position independent code.
+    % Shared libraries always use `--linkage shared'.
+    option_implies(compile_to_shared_lib, linkage,
+        string("shared"), !Globals),
+    option_implies(compile_to_shared_lib, mercury_linkage,
+        string("shared"), !Globals),
+
+    % If no --lib-linkage option has been specified, default to the
+    % set of all possible linkages.
+    globals.lookup_accumulating_option(!.Globals, lib_linkages, LibLinkages0),
+    (
+        LibLinkages0 = [],
+        globals.set_option(lib_linkages,
+            accumulating(["static", "shared"]), !Globals)
+    ;
+        LibLinkages0 = [_ | _]
+    ),
+
+    option_implies(target_debug, strip, bool(no), !Globals),
+
+    ( if io.have_symlinks then
+        true
+    else
+        globals.set_option(use_symlinks, bool(no), !Globals)
     ).
 
 %---------------------%
