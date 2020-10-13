@@ -966,10 +966,6 @@
 
 // Memory protection and signal handling.
 
-#if defined(MR_HAVE_SIGINFO) && defined(MR_PC_ACCESS)
-  #define MR_CAN_GET_PC_AT_SIGNAL
-#endif
-
 // MR_CHECK_OVERFLOW_VIA_MPROTECT
 // Can check for overflow of various memory zones using mprotect() like
 // functionality.
