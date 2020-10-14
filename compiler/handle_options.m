@@ -736,15 +736,16 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
 
     option_implies(structure_reuse_analysis, structure_sharing_analysis,
         bool(yes), !Globals),
-    option_implies(verbose_check_termination, termination_check, bool(yes),
+
+    option_implies(termination_check_verbose, termination_check, bool(yes),
         !Globals),
+    option_implies(termination2_check_verbose, termination2_check,
+        bool(yes), !Globals),
     option_implies(termination_check, termination, bool(yes), !Globals),
+    option_implies(termination2_check, termination2, bool(yes), !Globals),
     option_implies(termination_check, warn_missing_trans_opt_files,
         bool(yes), !Globals),
-    option_implies(verbose_check_termination2, check_termination2,
-        bool(yes), !Globals),
-    option_implies(check_termination2, termination2, bool(yes), !Globals),
-    option_implies(check_termination2, warn_missing_trans_opt_files,
+    option_implies(termination2_check, warn_missing_trans_opt_files,
         bool(yes), !Globals),
 
     ( if OpMode = opm_top_args(opma_augment(opmau_make_trans_opt_int)) then

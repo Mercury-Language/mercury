@@ -361,10 +361,11 @@ classify_termination_status(ModuleInfo, [PPId | PPIds],
     list(error_spec)::in, list(error_spec)::out) is det.
 
 analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !Specs) :-
-    IsArgSizeKnown = (pred(PPId::in) is semidet :-
-        module_info_pred_proc_info(!.ModuleInfo, PPId, _, ProcInfo),
-        proc_info_get_maybe_arg_size_info(ProcInfo, yes(_))
-    ),
+    IsArgSizeKnown =
+        ( pred(PPId::in) is semidet :-
+            module_info_pred_proc_info(!.ModuleInfo, PPId, _, ProcInfo),
+            proc_info_get_maybe_arg_size_info(ProcInfo, yes(_))
+        ),
     set.filter(IsArgSizeKnown, SCC, _SCCArgSizeKnown, SCCArgSizeUnknown),
     ( if set.is_empty(SCCArgSizeUnknown) then
         ArgSizeErrors = [],
@@ -393,10 +394,11 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !Specs) :-
         % XXX That comment does not make sense here.
         true
     else
-        IsFatal = (pred(Error::in) is semidet :-
-            Error = term_error(_Context, ErrorKind),
-            term_error_kind_is_fatal_error(ErrorKind) = yes
-        ),
+        IsFatal =
+            ( pred(Error::in) is semidet :-
+                Error = term_error(_Context, ErrorKind),
+                term_error_kind_is_fatal_error(ErrorKind) = yes
+            ),
         list.filter(IsFatal, ArgSizeErrors, FatalErrors),
         BothErrors = TermErrors ++ FatalErrors,
         (
@@ -515,7 +517,7 @@ decide_what_term_errors_to_report(ModuleInfo, SCC, Errors,
 
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, termination_check, NormalErrors),
-    globals.lookup_bool_option(Globals, verbose_check_termination,
+    globals.lookup_bool_option(Globals, termination_check_verbose,
         VerboseErrors),
     ( if
         IsCheckTerm =
@@ -532,10 +534,11 @@ decide_what_term_errors_to_report(ModuleInfo, SCC, Errors,
         % print out one error message for the whole SCC and indicate an error.
         MaybeErrorsToReport = yes(Errors)
     else if
-        IsNonImported = (pred(PPId::in) is semidet :-
-            module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _),
-            not pred_info_is_imported(PredInfo)
-        ),
+        IsNonImported =
+            ( pred(PPId::in) is semidet :-
+                module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _),
+                not pred_info_is_imported(PredInfo)
+            ),
         set.filter(IsNonImported, SCC, NonImportedPPIds),
         set.is_non_empty(NonImportedPPIds)
     then
@@ -554,10 +557,11 @@ decide_what_term_errors_to_report(ModuleInfo, SCC, Errors,
                 % all be indirect errors. This is better than giving no error
                 % at all, which would lead to a message reporting that
                 % termination could not be proven for "unknown reasons".
-                IsDirect = (pred(Error::in) is semidet :-
-                    Error = term_error(_, ErrorKind),
-                    term_error_kind_is_direct_error(ErrorKind) = yes
-                ),
+                IsDirect =
+                    ( pred(Error::in) is semidet :-
+                        Error = term_error(_, ErrorKind),
+                        term_error_kind_is_direct_error(ErrorKind) = yes
+                    ),
                 list.filter(IsDirect, Errors, DirectErrors),
                 (
                     DirectErrors = [],

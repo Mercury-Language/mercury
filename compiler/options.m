@@ -896,7 +896,7 @@
     % Stuff for the old termination analyser.
     ;       termination
     ;       termination_check
-    ;       verbose_check_termination
+    ;       termination_check_verbose
     ;       termination_single_args
     ;       termination_norm
     ;       termination_error_limit
@@ -904,13 +904,14 @@
 
     % Stuff for the new termination analyser.
     ;       termination2
-    ;          check_termination2
-    ;          verbose_check_termination2
-    ;          termination2_norm
-    ;          widening_limit
-    ;          arg_size_analysis_only
-    ;          propagate_failure_constrs
-    ;          term2_maximum_matrix_size
+    ;       termination2_check
+    ;       termination2_check_verbose
+    ;       termination2_norm
+    ;       widening_limit
+    ;       arg_size_analysis_only
+    ;       propagate_failure_constrs
+    ;       term2_maximum_matrix_size
+
     ;       analyse_exceptions
     ;       analyse_closures
 
@@ -1658,7 +1659,7 @@ optdef(oc_spec_opt, intermodule_analysis,               bool(no)).
 optdef(oc_spec_opt, analysis_repeat,                    int(0)).
 optdef(oc_spec_opt, analysis_file_cache,                bool(no)).
 optdef(oc_spec_opt, termination_check,                  bool(no)).
-optdef(oc_spec_opt, verbose_check_termination,          bool(no)).
+optdef(oc_spec_opt, termination_check_verbose,          bool(no)).
 optdef(oc_spec_opt, structure_sharing_analysis,         bool(no)).
 optdef(oc_spec_opt, structure_sharing_widening,         int(0)).
 optdef(oc_spec_opt, structure_reuse_analysis,           bool(no)).
@@ -1675,8 +1676,8 @@ optdef(oc_spec_opt, termination_error_limit,            int(3)).
 optdef(oc_spec_opt, termination_path_limit,             int(256)).
 optdef(oc_spec_opt, termination2,                       bool(no)).
 optdef(oc_spec_opt, termination2_norm,                  string("total")).
-optdef(oc_spec_opt, check_termination2,                 bool(no)).
-optdef(oc_spec_opt, verbose_check_termination2,         bool(no)).
+optdef(oc_spec_opt, termination2_check,                 bool(no)).
+optdef(oc_spec_opt, termination2_check_verbose,         bool(no)).
 optdef(oc_spec_opt, widening_limit,                     int(4)).
 optdef(oc_spec_opt, arg_size_analysis_only,             bool(no)).
 optdef(oc_spec_opt, propagate_failure_constrs,          bool(yes)).
@@ -2825,9 +2826,9 @@ long_option("enable-term",          termination).
 long_option("check-termination",    termination_check).
 long_option("check-term",           termination_check).
 long_option("chk-term",             termination_check).
-long_option("verbose-check-termination",verbose_check_termination).
-long_option("verb-check-term",      verbose_check_termination).
-long_option("verb-chk-term",        verbose_check_termination).
+long_option("verbose-check-termination", termination_check_verbose).
+long_option("verb-check-term",      termination_check_verbose).
+long_option("verb-chk-term",        termination_check_verbose).
 long_option("termination-single-argument-analysis",
                     termination_single_args).
 long_option("term-single-arg",      termination_single_args).
@@ -2839,12 +2840,12 @@ long_option("termination-path-limit",   termination_path_limit).
 long_option("term-path-limit",      termination_path_limit).
 long_option("enable-termination2",  termination2).
 long_option("enable-term2",         termination2).
-long_option("check-termination2",   check_termination2).
-long_option("check-term2",          check_termination2).
-long_option("chk-term2",            check_termination2).
-long_option("verbose-check-termination2",verbose_check_termination2).
-long_option("verb-check-term2",     verbose_check_termination2).
-long_option("verb-chk-term2",       verbose_check_termination2).
+long_option("check-termination2",   termination2_check).
+long_option("check-term2",          termination2_check).
+long_option("chk-term2",            termination2_check).
+long_option("verbose-check-termination2", termination2_check_verbose).
+long_option("verb-check-term2",     termination2_check_verbose).
+long_option("verb-chk-term2",       termination2_check_verbose).
 long_option("termination2-widening-limit", widening_limit).
 long_option("term2-widening-limit",     widening_limit).
 long_option("arg-size-analysis-only",   arg_size_analysis_only).

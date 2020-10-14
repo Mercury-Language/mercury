@@ -114,8 +114,8 @@ decide_what_term2_errors_to_report(ModuleInfo, SCC, Errors,
     % decide_what_term_errors_to_report.
 
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, check_termination2, NormalErrors),
-    globals.lookup_bool_option(Globals, verbose_check_termination2,
+    globals.lookup_bool_option(Globals, termination2_check, NormalErrors),
+    globals.lookup_bool_option(Globals, termination2_check_verbose,
         VerboseErrors),
     ( if
         IsCheckTerm =
