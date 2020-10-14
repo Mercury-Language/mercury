@@ -712,11 +712,28 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     check_for_incompatibilities(!.Globals, OpMode, !Specs),
 
     handle_implications_of_pregen_target_spf(!Globals, Target,
-        OT_StringBinarySwitchSize0, OT_StringBinarySwitchSize,
-        BackendForeignLanguages, !Specs),
+        OT_StringBinarySwitchSize0, OT_StringBinarySwitchSize, !Specs),
     handle_implications_of_parallel(!Globals, !Specs),
+    handle_gc_options(!Globals, GC_Method, OT_OptFrames0, OT_OptFrames,
+        !Specs),
+    handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs),
 
-    handle_target_compile_link_symlink_options(!Globals),
+    TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
+    handle_debugging_options(Target, TraceLevel, TraceEnabled, SSTraceLevel,
+        AllowSrcChangesDebug, !Globals, !Specs),
+    maybe_update_event_set_file_name(!Globals, !IO),
+
+    globals.lookup_bool_option(!.Globals, profile_deep, ProfileDeep),
+    handle_profiling_options(!Globals, Target, ProfileDeep,
+        AllowSrcChangesProf,
+        OT_HigherOrderSizeLimit0, OT_HigherOrderSizeLimit, !Specs),
+    handle_record_term_sizes_options(!Globals, AllowOptLCMCTermSize, !Specs),
+
+    % Debugging and profiling both affect what stack layouts we need,
+    % which is why this call is after both handle_debugging_options and
+    % handle_profiling_options.
+    handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
+        OT_StdLabels0, OT_StdLabels),
 
     % These three calls are in this order because
     %
@@ -736,14 +753,21 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     handle_option_to_option_implications(!Globals),
     maybe_disable_smart_recompilation(OpMode, !Globals, !IO),
 
-    TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
-    handle_debugging_options(Target, TraceLevel, TraceEnabled, SSTraceLevel,
-        AllowSrcChangesDebug, !Globals, !Specs),
+    handle_directory_options(OpMode, !Globals),
+    handle_target_compile_link_symlink_options(!Globals),
+    handle_compiler_developer_options(!Globals, !IO),
+    handle_compare_specialization(!Globals),
 
-    globals.lookup_bool_option(!.Globals, profile_deep, ProfileDeep),
-    handle_profiling_options(!Globals, Target, ProfileDeep,
-        AllowSrcChangesProf,
-        OT_HigherOrderSizeLimit0, OT_HigherOrderSizeLimit, !Specs),
+    (
+        OT_Optimize0 = do_not_optimize,
+        % --no-mlds-optimize implies --no-optimize-tailcalls.
+        OT_OptMLDSTailCalls = do_not_opt_mlds_tailcalls
+    ;
+        OT_Optimize0 = optimize,
+        OT_OptMLDSTailCalls = OT_OptMLDSTailCalls0
+    ),
+    handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls, OpMode,
+        !Globals, !Specs),
 
     ( if
         AllowSrcChangesDebug = allow_src_changes,
@@ -785,31 +809,15 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         OT_OptHigherOrder = do_not_opt_higher_order
     ),
 
-    % --no-reorder-conj implies --no-deforestation,
-    % --no-constraint-propagation and --no-local-constraint-propagation.
-    globals.lookup_bool_option(!.Globals, reorder_conj, ReorderConj),
-    (
-        ReorderConj = bool.no,
-        AllowDeforestReorderConj = bool.no,
-        AllowPropLocalConstraintsReorderConj = bool.no
-    ;
-        ReorderConj = bool.yes,
-        AllowDeforestReorderConj = bool.yes,
-        AllowPropLocalConstraintsReorderConj = bool.yes
-    ),
-
-    handle_gc_options(!Globals, GC_Method, OT_OptFrames0, OT_OptFrames,
-        !Specs),
-    handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
-        OT_StdLabels0, OT_StdLabels),
-
     % XXX deforestation and constraint propagation do not perform folding
     % on polymorphic predicates correctly with --body-typeinfo-liveness.
     globals.lookup_bool_option(!.Globals, body_typeinfo_liveness,
         BodyTypeInfoLiveness),
+    globals.lookup_bool_option(!.Globals, reorder_conj, ReorderConj),
     ( if
         AllowSrcChangesDebug = allow_src_changes,
-        AllowDeforestReorderConj = bool.yes,
+        % --no-reorder-conj implies --no-deforestation,
+        ReorderConj = bool.yes,
         % XXX The folding done by deforestation on on polymorphic predicates
         % does not respect --body-typeinfo-liveness.
         BodyTypeInfoLiveness = bool.no
@@ -847,8 +855,6 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     else
         OT_OptMiddleRec = do_not_opt_middle_rec
     ),
-
-    handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs),
 
     % Disable hijacks if debugging is enabled. The code we now use
     % to restore the stacks for direct retries works only if the retry
@@ -906,12 +912,11 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % is a required part of the constraint propagation transformation
     % performed by deforest.m, so if propagating local constraints
     % is disallowed, we can't propagate any other constraints either.
-    %
-    % Every place above that sets one of AllowPropLocalConstraints*
-    % to "no" is therefore also saying no to prop_constraints.
     ( if
         AllowSrcChangesDebug = allow_src_changes,
-        AllowPropLocalConstraintsReorderConj = bool.yes
+        % --no-reorder-conj implies --no-local-constraint-propagation,
+        % and hence also --no-constraint-propagation.
+        ReorderConj = bool.yes
     then
         OT_PropLocalConstraints = OT_PropLocalConstraints0
     else
@@ -977,15 +982,6 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         OT_OptUnusedArgsIntermod = do_not_opt_unused_args_intermod
     ),
 
-    maybe_update_backend_foreign_languages(BackendForeignLanguages, !Globals),
-    maybe_update_event_set_file_name(!Globals, !IO),
-    handle_record_term_sizes_options(!Globals, AllowOptLCMCTermSize, !Specs),
-    handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls, OpMode,
-        !Globals, !Specs),
-    handle_compare_specialization(!Globals),
-    handle_compiler_developer_options(!Globals, !IO),
-    handle_directory_options(OpMode, !Globals),
-
     % XXX With accurate gc, we need to disable optimize-constructor-last-call
     % as currently the collector (and tracing code generator) knows neither
     % about the pre-constructed data structures nor the references into them
@@ -1026,15 +1022,6 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         OT_Tuple = OT_Tuple0,
         OT_Untuple = OT_Untuple0,
         OT_OptTestAfterSwitch = OT_OptTestAfterSwitch0
-    ),
-
-    (
-        OT_Optimize0 = do_not_optimize,
-        % --no-mlds-optimize implies --no-optimize-tailcalls.
-        OT_OptMLDSTailCalls = do_not_opt_mlds_tailcalls
-    ;
-        OT_Optimize0 = optimize,
-        OT_OptMLDSTailCalls = OT_OptMLDSTailCalls0
     ),
 
     !OptTuple ^ ot_allow_inlining := OT_AllowInlining,
@@ -1246,6 +1233,7 @@ handle_option_to_option_implications(!Globals) :-
     %   allow_packing_dummies
     %   allow_packing_ints
     %   arg_pack_bits
+    %   backend_foreign_languages
     %   asm_labels
     %   can_compare_compound_values
     %   can_compare_constants_as_ints
@@ -1273,12 +1261,11 @@ handle_option_to_option_implications(!Globals) :-
     %   use_float_registers
     %
 :- pred handle_implications_of_pregen_target_spf(globals::in, globals::out,
-    compilation_target::in, int::in, int::out, list(string)::out,
+    compilation_target::in, int::in, int::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 handle_implications_of_pregen_target_spf(!Globals, Target,
-        OT_StringBinarySwitchSize0, OT_StringBinarySwitchSize,
-        BackendForeignLanguages, !Specs) :-
+        OT_StringBinarySwitchSize0, OT_StringBinarySwitchSize, !Specs) :-
     % --pregenerated-dist sets options so that the pre-generated C source
     % distribution can be compiled equally on 32-bit and 64-bit platforms.
     % Any changes here may require changes in runtime/mercury_conf_param.h.
@@ -1523,7 +1510,18 @@ handle_implications_of_pregen_target_spf(!Globals, Target,
     % We only use the float registers if floats would not fit into the
     % regular registers.
     option_implies(unboxed_float, use_float_registers, bool(no), !Globals),
-    option_implies(highlevel_code, use_float_registers, bool(no), !Globals).
+    option_implies(highlevel_code, use_float_registers, bool(no), !Globals),
+
+    % Only set the backend foreign languages if they are unset.
+    globals.lookup_accumulating_option(!.Globals,
+        backend_foreign_languages, CurrentBackendForeignLanguage),
+    (
+        CurrentBackendForeignLanguage = [],
+        globals.set_option(backend_foreign_languages,
+            accumulating(BackendForeignLanguages), !Globals)
+    ;
+        CurrentBackendForeignLanguage = [_ | _]
+    ).
 
 %---------------------%
 
@@ -2101,7 +2099,8 @@ maybe_disable_smart_recompilation(OpMode, !Globals, !IO) :-
 %---------------------%
 
     % Options updated:
-    %   event_set_file_name
+    %   use_minimal_model_stack_copy_cut
+    %   use_minimal_model_stack_copy_pneg
     %
 :- pred handle_minimal_model_options(globals::in, globals::out,
     bool::out, list(error_spec)::in, list(error_spec)::out) is det.
@@ -2185,26 +2184,6 @@ handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs) :-
             !Globals)
     else
         true
-    ).
-
-%---------------------%
-
-    % Options updated:
-    %   backend_foreign_languages
-    %
-:- pred maybe_update_backend_foreign_languages(list(string)::in,
-    globals::in, globals::out) is det.
-
-maybe_update_backend_foreign_languages(BackendForeignLanguages, !Globals) :-
-    % Only set the backend foreign languages if they are unset.
-    globals.lookup_accumulating_option(!.Globals,
-        backend_foreign_languages, CurrentBackendForeignLanguage),
-    (
-        CurrentBackendForeignLanguage = [],
-        globals.set_option(backend_foreign_languages,
-            accumulating(BackendForeignLanguages), !Globals)
-    ;
-        CurrentBackendForeignLanguage = [_ | _]
     ).
 
 %---------------------%
@@ -2500,6 +2479,7 @@ handle_compiler_developer_options(!Globals, !IO) :-
     %   linkage
     %   mercury_linkage
     %   lib_linkages
+    %   strip
     %
 :- pred handle_target_compile_link_symlink_options(globals::in, globals::out)
     is det.
