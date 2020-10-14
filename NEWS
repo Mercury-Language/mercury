@@ -22,10 +22,10 @@ Changes to the Mercury standard library
 
 * The following predicates and functions have been added:
 
-    - func `lookup/3`               (synonym for `Array ^ elem(R, C)')
-    - pred `lookup/4`               (synonym for `Array ^ elem(R, C)')
-    - func `unsafe_lookup/3`        (synonym for `Array ^ unsafe_elem(R, C)')
-    - pred `unsafe_lookup/4`        (synonym for `Array ^ unsafe_elem(R, C)')
+    - func `lookup/3`               (synonym for `Array ^ elem(R, C)`)
+    - pred `lookup/4`               (synonym for `Array ^ elem(R, C)`)
+    - func `unsafe_lookup/3`        (synonym for `Array ^ unsafe_elem(R, C)`)
+    - pred `unsafe_lookup/4`        (synonym for `Array ^ unsafe_elem(R, C)`)
 
 * The `lists/1' function now returns an empty list for a 0x0 array.
 
@@ -43,7 +43,7 @@ Changes to the Mercury standard library
     - func `det_int_to_digit/1`     (replacement: `det_int_to_decimal_digit/1`)
     - pred `det_int_to_digit/2`     (replacement: `det_int_to_decimal_digit/2`)
     - pred `digit_to_int/2`         (replacement: `decimal_digit_to_int/2`)
-    - pred `int_to_digit/2`         (replacement: `int_to_decimal_digit/2)
+    - pred `int_to_digit/2`         (replacement: `int_to_decimal_digit/2`)
 
 ### Changes to the `int` module
 
