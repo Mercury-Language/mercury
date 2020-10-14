@@ -106,24 +106,6 @@ MR_trace_save_term_xml(const char *filename, MR_Word browser_term)
             MR_wrap_output_stream(&mdb_out));
     );
 }
-
-void
-MR_trace_save_and_invoke_xml_browser(MR_Word browser_term)
-{
-    MercuryFile mdb_out;
-    MercuryFile mdb_err;
-
-    MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
-    MR_c_file_to_mercury_file(MR_mdb_err, &mdb_err);
-
-    MR_TRACE_CALL_MERCURY(
-        ML_BROWSE_browse_term_xml(browser_term,
-            MR_wrap_output_stream(&mdb_out),
-            MR_wrap_output_stream(&mdb_err),
-            MR_trace_browser_persistent_state);
-    );
-}
-
 void
 MR_trace_save_and_invoke_web_browser(MR_Word browser_term)
 {

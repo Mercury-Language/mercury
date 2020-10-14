@@ -19,6 +19,4 @@ alias	!	shell
 alias	open	source @DEFAULT_MERCURY_DEBUGGER_INIT_DIR@/mdb_open
 alias	grep	source @DEFAULT_MERCURY_DEBUGGER_INIT_DIR@/mdb_grep
 alias	track	source @DEFAULT_MERCURY_DEBUGGER_INIT_DIR@/mdb_track
-xml_browser_cmd '@DEFAULT_XML_BROWSER_CMD@'
-xml_tmp_filename '@DEFAULT_XML_TMP_FILENAME@'
 web_browser_cmd '@DEFAULT_WEB_BROWSER_CMD@'

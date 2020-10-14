@@ -49,9 +49,8 @@ parameter  - Commands that let users access debugger parameters.
              `stack_default_limit', `goal_paths' `scope', `echo', 
              `context', `user_event_context', `list_context_lines',
 	     `list_path', `push_list_dir', `pop_list_dir', `fail_trace_counts',
-	     `pass_trace_counts', `max_io_actions', `xml_browser_cmd',
-	     `xml_tmp_filename', `format', `format_param', `alias'
-	     and `unalias'.
+	     `pass_trace_counts', `max_io_actions', `format', `format_param',
+	     `alias' and `unalias'.
 
 end
 document_category 800 help

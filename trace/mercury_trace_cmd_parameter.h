@@ -105,8 +105,6 @@ extern  MR_TraceCmdFunc     MR_trace_cmd_list_cmd;
 extern  MR_TraceCmdFunc     MR_trace_cmd_fail_trace_counts;
 extern  MR_TraceCmdFunc     MR_trace_cmd_pass_trace_counts;
 extern  MR_TraceCmdFunc     MR_trace_cmd_max_io_actions;
-extern  MR_TraceCmdFunc     MR_trace_cmd_xml_browser_cmd;
-extern  MR_TraceCmdFunc     MR_trace_cmd_xml_tmp_filename;
 extern  MR_TraceCmdFunc     MR_trace_cmd_web_browser_cmd;
 extern  MR_TraceCmdFunc     MR_trace_cmd_format;
 extern  MR_TraceCmdFunc     MR_trace_cmd_format_param;

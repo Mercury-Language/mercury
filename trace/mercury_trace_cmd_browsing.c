@@ -44,13 +44,6 @@ static  const char  *MR_trace_browse_proc_body(MR_EventInfo *event_info,
                         MR_Browser browser, MR_BrowseCallerType caller,
                         MR_BrowseFormat format);
 
-// Functions to invoke the user's XML browser on terms or goals.
-static  void        MR_trace_browse_xml(MR_Word type_info, MR_Word value,
-                        MR_BrowseCallerType caller, MR_BrowseFormat format);
-static  void        MR_trace_browse_goal_xml(MR_ConstString name,
-                        MR_Word arg_list, MR_Word is_func,
-                        MR_BrowseCallerType caller, MR_BrowseFormat format);
-
 // Functions to invoke the user's web browser on terms or goals.
 static  void        MR_trace_browse_web(MR_Word type_info, MR_Word value,
                         MR_BrowseCallerType caller, MR_BrowseFormat format);
@@ -79,7 +72,7 @@ static  MR_bool     MR_trace_options_print(MR_BrowseFormat *format,
                         MR_bool *set_max_printed_actions,
                         char ***words, int *word_count);
 static  MR_bool     MR_trace_options_browse(MR_BrowseFormat *format,
-                        MR_bool *xml, MR_bool *web,
+                        MR_bool *web,
                         char ***words, int *word_count);
 static  MR_bool     MR_trace_options_view(const char **window_cmd,
                         const char **server_cmd, const char **server_name,
@@ -497,21 +490,17 @@ MR_trace_cmd_browse(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_BrowseFormat     format;
-    MR_bool             xml;
     MR_bool             web;
     MR_IoActionNum      action;
     MR_GoalBrowser      goal_browser;
     MR_Browser          browser;
     const char          *problem;
 
-    if (! MR_trace_options_browse(&format, &xml, &web, &words, &word_count)) {
+    if (! MR_trace_options_browse(&format, &web, &words, &word_count)) {
         // The usage message has already been printed.
         ;
     } else {
-        if (xml) {
-            goal_browser = MR_trace_browse_goal_xml;
-            browser = MR_trace_browse_xml;
-        } else if (web) {
+        if (web) {
             goal_browser = MR_trace_browse_goal_web;
             browser = MR_trace_browse_web;
         } else {
@@ -1080,28 +1069,6 @@ MR_trace_browse_proc_body(MR_EventInfo *event_info, MR_Browser browser,
 }
 
 static void
-MR_trace_browse_xml(MR_Word type_info, MR_Word value,
-    MR_BrowseCallerType caller, MR_BrowseFormat format)
-{
-    MR_Word     browser_term;
-
-    browser_term = MR_type_value_to_browser_term((MR_TypeInfo) type_info,
-        value);
-
-    MR_trace_save_and_invoke_xml_browser(browser_term);
-}
-
-static void
-MR_trace_browse_goal_xml(MR_ConstString name, MR_Word arg_list,
-    MR_Word is_func, MR_BrowseCallerType caller, MR_BrowseFormat format)
-{
-    MR_Word     browser_term;
-
-    browser_term = MR_synthetic_to_browser_term(name, arg_list, is_func);
-    MR_trace_save_and_invoke_xml_browser(browser_term);
-}
-
-static void
 MR_trace_browse_web(MR_Word type_info, MR_Word value,
     MR_BrowseCallerType caller, MR_BrowseFormat format)
 {
@@ -1421,22 +1388,20 @@ static struct MR_option MR_trace_browse_opts[] =
     { "raw_pretty", MR_no_argument, NULL,   'r' },
     { "verbose",    MR_no_argument, NULL,   'v' },
     { "pretty",     MR_no_argument, NULL,   'p' },
-    { "xml",        MR_no_argument, NULL,   'x' },
     { "web",        MR_no_argument, NULL,   'w' },
     { NULL,         MR_no_argument, NULL,   0   }
 };
 
 static MR_bool
-MR_trace_options_browse(MR_BrowseFormat *format, MR_bool *xml, MR_bool *web,
+MR_trace_options_browse(MR_BrowseFormat *format, MR_bool *web,
     char ***words, int *word_count)
 {
     int c;
 
     *format = MR_BROWSE_DEFAULT_FORMAT;
-    *xml = MR_FALSE;
     *web = MR_FALSE;
     MR_optind = 0;
-    while ((c = MR_getopt_long(*word_count, *words, "frvpxw",
+    while ((c = MR_getopt_long(*word_count, *words, "frvpw",
         MR_trace_browse_opts, NULL)) != EOF)
     {
         switch (c) {
@@ -1457,14 +1422,8 @@ MR_trace_options_browse(MR_BrowseFormat *format, MR_bool *xml, MR_bool *web,
                 *format = MR_BROWSE_FORMAT_PRETTY;
                 break;
 
-            case 'x':
-                *xml = MR_TRUE;
-                *web = MR_FALSE;
-                break;
-
             case 'w':
                 *web = MR_TRUE;
-                *xml = MR_FALSE;
                 break;
 
             default:

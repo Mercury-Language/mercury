@@ -152,9 +152,6 @@
             % Browse the nth argument before answering. Or browse
             % the whole predicate/function if the maybe is no.
 
-    ;       user_cmd_browse_xml_arg(maybe(int))
-            % Browse the argument using an XML browser.
-
     ;       user_cmd_browse_io(int)
             % Browse the nth IO action before answering.
 
@@ -329,18 +326,6 @@ handle_command(Cmd, UserQuestion, Response, !User, !IO) :-
                 query_user(UserQuestion, Response, !User, !IO)
             )
         )
-    ;
-        Cmd = user_cmd_browse_xml_arg(MaybeArgNum),
-        Question = get_decl_question(UserQuestion),
-        edt_node_trace_atoms(Question, _, FinalAtom),
-        (
-            MaybeArgNum = yes(ArgNum),
-            browse_xml_atom_argument(FinalAtom, ArgNum, !.User, !IO)
-        ;
-            MaybeArgNum = no,
-            browse_xml_atom(FinalAtom, !.User, !IO)
-        ),
-        query_user(UserQuestion, Response, !User, !IO)
     ;
         Cmd = user_cmd_print_arg(From, To),
         Question = get_decl_question(UserQuestion),
@@ -640,19 +625,6 @@ browse_decl_bug(Bug, MaybeArgNum, !User, !IO) :-
         browse_atom(InitAtom, FinalAtom, _, !User, !IO)
     ).
 
-:- pred browse_xml_decl_bug(decl_bug::in, maybe(int)::in, user_state::in,
-    io::di, io::uo) is cc_multi.
-
-browse_xml_decl_bug(Bug, MaybeArgNum, User, !IO) :-
-    decl_bug_trace_atom(Bug, _, FinalAtom),
-    (
-        MaybeArgNum = yes(ArgNum),
-        browse_xml_atom_argument(FinalAtom, ArgNum, User, !IO)
-    ;
-        MaybeArgNum = no,
-        browse_xml_atom(FinalAtom, User, !IO)
-    ).
-
 :- pred browse_atom_argument(trace_atom::in, trace_atom::in, int::in,
     maybe_track_subterm(term_path)::out, user_state::in, user_state::out,
     io::di, io::uo) is cc_multi.
@@ -679,24 +651,6 @@ browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeTrack, !User, !IO) :-
         MaybeTrack = no_track
     ).
 
-:- pred browse_xml_atom_argument(trace_atom::in, int::in, user_state::in,
-    io::di, io::uo) is cc_multi.
-
-browse_xml_atom_argument(Atom, ArgNum, User, !IO) :-
-    Atom = atom(_, Args0),
-    maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args),
-    ( if
-        list.index1(Args, ArgNum, ArgInfo),
-        ArgInfo = arg_info(_, _, MaybeArg),
-        MaybeArg = yes(ArgRep),
-        term_rep.rep_to_univ(ArgRep, Arg)
-    then
-        save_and_browse_browser_term_xml(univ_to_browser_term(Arg),
-            User ^ outstr, User ^ outstr, User ^ browser, !IO)
-    else
-        io.write_string(User ^ outstr, "Invalid argument number\n", !IO)
-    ).
-
 :- pred browse_atom(trace_atom::in, trace_atom::in,
     maybe_track_subterm(term_path)::out,
     user_state::in, user_state::out, io::di, io::uo) is cc_multi.
@@ -716,21 +670,6 @@ browse_atom(InitAtom, FinalAtom, MaybeTrack, !User, !IO) :-
     convert_maybe_track_dirs_to_term_path_from_atom(FinalAtom,
         MaybeTrackDirs, MaybeTrack),
     !User ^ browser := Browser.
-
-:- pred browse_xml_atom(trace_atom::in, user_state::in, io::di, io::uo)
-    is cc_multi.
-
-browse_xml_atom(Atom, User, !IO) :-
-    Atom = atom(ProcLayout, Args),
-    ProcLabel = get_proc_label_from_layout(ProcLayout),
-    get_user_arg_values(Args, ArgValues),
-    get_pred_attributes(ProcLabel, Module, Name, _, PredOrFunc),
-    IsFunction = pred_to_bool(unify(PredOrFunc, pf_function)),
-    ModuleStr = sym_name_to_string(Module),
-    BrowserTerm = synthetic_term_to_browser_term(ModuleStr ++ "." ++ Name,
-        ArgValues, IsFunction),
-    save_and_browse_browser_term_xml(BrowserTerm, User ^ outstr,
-        User ^ outstr, User ^ browser, !IO).
 
 :- func get_subterm_mode_from_atoms(trace_atom::in, trace_atom::in,
     list(down_dir)::in) = (browser_term_mode::out) is det.
@@ -924,8 +863,6 @@ cmd_handler("size",     format_param_arg_cmd("size")).
 cmd_handler("width",    format_param_arg_cmd("width")).
 cmd_handler("lines",    format_param_arg_cmd("lines")).
 cmd_handler("actions",  num_io_actions_cmd).
-% cmd_handler("xml_browser_cmd", set_xml_browser_cmd_cmd).
-% cmd_handler("xml_tmp_filename", set_xml_tmp_filename_cmd).
 cmd_handler("t",        trust_arg_cmd).
 cmd_handler("trust",    trust_arg_cmd).
 cmd_handler("mode",     search_mode_cmd).
@@ -942,16 +879,8 @@ one_word_cmd(Cmd, [], Cmd).
 
 browse_arg_cmd([], user_cmd_browse_arg(no)).
 browse_arg_cmd([Arg], BrowseCmd) :-
-    ( if string.to_int(Arg, ArgNum) then
-        BrowseCmd = user_cmd_browse_arg(yes(ArgNum))
-    else
-        ( Arg = "-x" ; Arg = "--xml" ),
-        BrowseCmd = user_cmd_browse_xml_arg(no)
-    ).
-browse_arg_cmd(["-x", Arg], user_cmd_browse_xml_arg(yes(ArgNum))) :-
-    string.to_int(Arg, ArgNum).
-browse_arg_cmd(["--xml", Arg], user_cmd_browse_xml_arg(yes(ArgNum))) :-
-    string.to_int(Arg, ArgNum).
+    string.to_int(Arg, ArgNum),
+    BrowseCmd = user_cmd_browse_arg(yes(ArgNum)).
 browse_arg_cmd(["io", Arg], user_cmd_browse_io(ArgNum)) :-
     string.to_int(Arg, ArgNum).
 
@@ -1008,16 +937,6 @@ format_param_arg_cmd(Cmd, ArgWords0, Command) :-
 
 num_io_actions_cmd([Arg], user_cmd_param_command(num_io_actions(N))) :-
     string.to_int(Arg, N).
-
-% :- func set_xml_browser_cmd_cmd(list(string)::in) = (user_command::out)
-%     is semidet.
-%
-% set_xml_browser_cmd_cmd([Arg]) = param_command(xml_browser_cmd(Arg)).
-%
-% :- func set_xml_tmp_filename_cmd(list(string)::in) = (user_command::out)
-%     is semidet.
-%
-% set_xml_tmp_filename_cmd([Arg]) = param_command(xml_tmp_filename(Arg)).
 
 :- pred trust_arg_cmd(list(string)::in, user_command::out) is semidet.
 
@@ -1093,10 +1012,6 @@ user_confirm_bug(Bug, Response, !User, !IO) :-
         ;
             Command = user_cmd_browse_arg(MaybeArgNum),
             browse_decl_bug(Bug, MaybeArgNum, !User, !IO),
-            user_confirm_bug(Bug, Response, !User, !IO)
-        ;
-            Command = user_cmd_browse_xml_arg(MaybeArgNum),
-            browse_xml_decl_bug(Bug, MaybeArgNum, !.User, !IO),
             user_confirm_bug(Bug, Response, !User, !IO)
         ;
             Command = user_cmd_browse_io(ActionNum),

@@ -79,8 +79,6 @@ list_cmd             xyzzy xyzzy xyzzy xyzzy xyzzy
 fail_trace_counts    xyzzy xyzzy xyzzy xyzzy xyzzy
 pass_trace_counts    xyzzy xyzzy xyzzy xyzzy xyzzy
 max_io_actions       xyzzy xyzzy xyzzy xyzzy xyzzy
-xml_browser_cmd      xyzzy xyzzy xyzzy xyzzy xyzzy
-xml_tmp_filename     xyzzy xyzzy xyzzy xyzzy xyzzy
 web_browser_cmd      xyzzy xyzzy xyzzy xyzzy xyzzy
 format               xyzzy xyzzy xyzzy xyzzy xyzzy
 format_param         xyzzy xyzzy xyzzy xyzzy xyzzy

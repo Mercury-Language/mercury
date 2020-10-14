@@ -9,8 +9,6 @@ mdb> continue
 mdb> finish
        3:      2  2 EXIT pred browse_arg.p/2-0 (det) browse_arg.m:25 (browse_arg.m:14)
 mdb> format_param depth 10
-mdb> xml_browser_cmd 'cat ./browse_arg.xml.out'
-mdb> xml_tmp_filename './browse_arg.xml.out'
 mdb> dd -d 3 -n 7
 p(1, baz(1, bar))
 Valid? browse 2
@@ -36,36 +34,7 @@ p
 Valid? format -P pretty
 dd> p
 p(1, baz(1, bar))
-Valid? b -x 2
-Saving term to XML file...
-Launching XML browser (this may take some time) ...
-<?xml version="1.0"?>
-<baz functor="baz" type="browse_arg.foo" arity="2">
-	<Int type="int">1</Int>
-	<bar functor="bar" type="browse_arg.foo" arity="0" />
-</baz>
-dd> b --xml
-Saving term to XML file...
-Launching XML browser (this may take some time) ...
-<?xml version="1.0"?>
-<predicate functor="predicate" type="mdb.browse.xml_predicate_wrapper" arity="2">
-	<String type="string" field="predicate_name">browse_arg.p</String>
-	<List functor="[|]" field="predicate_arguments" type="list.list(univ.univ)" arity="2">
-		<univ_cons functor="univ_cons" type="univ.univ" arity="1">
-			<Int type="int">1</Int>
-		</univ_cons>
-		<List functor="[|]" type="list.list(univ.univ)" arity="2">
-			<univ_cons functor="univ_cons" type="univ.univ" arity="1">
-				<baz functor="baz" type="browse_arg.foo" arity="2">
-					<Int type="int">1</Int>
-					<bar functor="bar" type="browse_arg.foo" arity="0" />
-				</baz>
-			</univ_cons>
-			<Nil functor="[]" type="list.list(univ.univ)" arity="0" />
-		</List>
-	</List>
-</predicate>
-dd> no
+Valid? no
 Found incorrect contour:
 p(1, baz(1, bar))
 Is this a bug? yes

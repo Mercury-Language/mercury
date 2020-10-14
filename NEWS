@@ -149,6 +149,10 @@ Changes to the Mercury debugger
   the command is set using `list_cmd`.  For example, the command could
   produce syntax highlighted source listings.
 
+* We have removed support for browsing terms as XML (`browse --xml`)
+  as it was unmaintained and did not work any more. The `browse --web`
+  command provides an alternative method for interactively exploring a term.
+
 
 NEWS for Mercury 20.06.1
 ========================

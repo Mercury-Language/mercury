@@ -5204,26 +5204,6 @@ fi
 
 #-----------------------------------------------------------------------------#
 #
-# Check for a XUL browser and xsltproc and if we find both then set the
-# default xml_browser_command and xml_tmp_filename mdb options.
-#
-
-AC_PATH_PROGS(XUL_BROWSER, firefox mozilla, "")
-AC_PATH_PROGS(XSLTPROC, xsltproc, "")
-
-if test "$XUL_BROWSER" != "" && test "$XSLTPROC" != ""; then
-    DEFAULT_XML_BROWSER_CMD="$XSLTPROC $DEFAULT_MERCURY_DEBUGGER_INIT_DIR/xul_tree.xsl $TMPDIR/mdbtmp.xml > $TMPDIR/mdbtmp.xul && $XUL_BROWSER file://$TMPDIR/mdbtmp.xul"
-    DEFAULT_XML_TMP_FILENAME="$TMPDIR/mdbtmp.xml"
-else
-    DEFAULT_XML_BROWSER_CMD=""
-    DEFAULT_XML_TMP_FILENAME=""
-fi
-
-AC_SUBST(DEFAULT_XML_BROWSER_CMD)
-AC_SUBST(DEFAULT_XML_TMP_FILENAME)
-
-#-----------------------------------------------------------------------------#
-#
 # Set the default web_browser_cmd.
 #
 

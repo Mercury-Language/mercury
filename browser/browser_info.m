@@ -181,12 +181,6 @@
 :- pred info_set_num_io_actions(int::in,
     browser_info::in, browser_info::out) is det.
 
-:- pred info_set_xml_browser_cmd(string::in,
-    browser_info::in, browser_info::out) is det.
-
-:- pred info_set_xml_tmp_filename(string::in,
-    browser_info::in, browser_info::out) is det.
-
 :- pred info_set_web_browser_cmd(string::in,
     browser_info::in, browser_info::out) is det.
 
@@ -197,14 +191,6 @@
     % between calls.
     %
 :- type browser_persistent_state.
-
-:- func browser_persistent_state ^ xml_browser_cmd = maybe(string).
-:- func browser_persistent_state ^ xml_browser_cmd := maybe(string) =
-    browser_persistent_state.
-
-:- func browser_persistent_state ^ xml_tmp_filename = maybe(string).
-:- func browser_persistent_state ^ xml_tmp_filename := maybe(string) =
-    browser_persistent_state.
 
 :- func browser_persistent_state ^ web_browser_cmd = maybe(string).
 :- func browser_persistent_state ^ web_browser_cmd := maybe(string) =
@@ -262,15 +248,6 @@
     ;       format_param(maybe_option_table(setting_option), setting)
     ;       num_io_actions(int)
     ;       print_params.
-% We can't set the browser command from within the browser because we parse
-% user commands from the browser by breaking them up into words at whitespace,
-% which doesn't respect quotation marks. Since the browser command will usually
-% include spaces, this parsing method would need to be changed before we could
-% include xml_browser_cmd here. And until we handle xml_browser_cmd, there is
-% no point in handling xml_tmp_filename.
-%
-%   ;       xml_browser_cmd(string)
-%   ;       xml_tmp_filename(string)
 
 :- type debugger
     --->    debugger_internal
@@ -432,16 +409,6 @@ info_set_num_io_actions(N, !Info) :-
     set_num_io_actions(N, PersistentState0, PersistentState),
     !Info ^ bri_state := PersistentState.
 
-info_set_xml_browser_cmd(Cmd, !Info) :-
-    PersistentState0 = !.Info ^ bri_state,
-    set_xml_browser_cmd_from_mdb(Cmd, PersistentState0, PersistentState),
-    !Info ^ bri_state := PersistentState.
-
-info_set_xml_tmp_filename(FileName, !Info) :-
-    PersistentState0 = !.Info ^ bri_state,
-    set_xml_tmp_filename_from_mdb(FileName, PersistentState0, PersistentState),
-    !Info ^ bri_state := PersistentState.
-
 info_set_web_browser_cmd(Cmd, !Info) :-
     PersistentState0 = !.Info ^ bri_state,
     set_web_browser_cmd_from_mdb(Cmd, PersistentState0, PersistentState),
@@ -509,58 +476,6 @@ set_format_from_mdb(P, B, A, Format, !Browser) :-
     set_browser_param(no, P, B, A, no, no, no, no, setting_format(Format),
         !Browser).
 
-:- pred get_xml_browser_cmd_from_mdb(browser_persistent_state::in,
-    string::out) is det.
-:- pragma foreign_export("C", get_xml_browser_cmd_from_mdb(in, out),
-    "ML_BROWSE_get_xml_browser_cmd_from_mdb").
-
-get_xml_browser_cmd_from_mdb(Browser, Command) :-
-    MaybeCommand = Browser ^ xml_browser_cmd,
-    (
-        MaybeCommand = no,
-        Command = ""
-    ;
-        MaybeCommand = yes(Command)
-    ).
-
-:- pred set_xml_browser_cmd_from_mdb(string::in,
-    browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma foreign_export("C", set_xml_browser_cmd_from_mdb(in, in, out),
-    "ML_BROWSE_set_xml_browser_cmd_from_mdb").
-
-set_xml_browser_cmd_from_mdb(Command, !Browser) :-
-    ( if Command = "" then
-        !Browser ^ xml_browser_cmd := no
-    else
-        !Browser ^ xml_browser_cmd := yes(Command)
-    ).
-
-:- pred get_xml_tmp_filename_from_mdb(browser_persistent_state::in,
-    string::out) is det.
-:- pragma foreign_export("C", get_xml_tmp_filename_from_mdb(in, out),
-    "ML_BROWSE_get_xml_tmp_filename_from_mdb").
-
-get_xml_tmp_filename_from_mdb(Browser, FileName) :-
-    MaybeFileName = Browser ^ xml_tmp_filename,
-    (
-        MaybeFileName = no,
-        FileName = ""
-    ;
-        MaybeFileName = yes(FileName)
-    ).
-
-:- pred set_xml_tmp_filename_from_mdb(string::in,
-    browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma foreign_export("C", set_xml_tmp_filename_from_mdb(in, in, out),
-    "ML_BROWSE_set_xml_tmp_filename_from_mdb").
-
-set_xml_tmp_filename_from_mdb(FileName, !Browser) :-
-    ( if FileName = "" then
-        !Browser ^ xml_tmp_filename := no
-    else
-        !Browser ^ xml_tmp_filename := yes(FileName)
-    ).
-
 :- pred get_web_browser_cmd_from_mdb(browser_persistent_state::in,
     string::out) is det.
 :- pragma foreign_export("C", get_web_browser_cmd_from_mdb(in, out),
@@ -613,12 +528,6 @@ mercury_bool_no = no.
                 print_all_params        :: caller_params,
                 num_printed_io_actions  :: int,
 
-                % The command to launch the user's preferred XML browser.
-                xml_browser_cmd         :: maybe(string),
-
-                % The file to save XML to before launching the browser.
-                xml_tmp_filename        :: maybe(string),
-
                 % The command to launch the user's preferred web browser.
                 web_browser_cmd         :: maybe(string)
             ).
@@ -658,7 +567,7 @@ init_persistent_state(State) :-
     Browse = caller_type_browse_defaults,
     PrintAll = caller_type_print_all_defaults,
     State = browser_persistent_state(Print, Browse, PrintAll,
-        num_printed_io_actions_default, no, no, no).
+        num_printed_io_actions_default, no).
 
 :- func caller_type_print_defaults = caller_params.
 
@@ -740,7 +649,6 @@ set_browser_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0, Setting,
     maybe_set_param(A, F, Pr, V, NPr, Setting, AParams0, AParams),
     !:State = browser_persistent_state(PParams, BParams, AParams,
         !.State ^ num_printed_io_actions,
-        !.State ^ xml_browser_cmd, !.State ^ xml_tmp_filename,
         !.State ^ web_browser_cmd).
 
 set_browser_param_with_caller_type(CallerType, P0, B0, A0, F0, Pr0, V0, NPr0,
@@ -768,7 +676,6 @@ set_browser_param_with_caller_type(CallerType, P0, B0, A0, F0, Pr0, V0, NPr0,
     maybe_set_param(A, F, Pr, V, NPr, Setting, AParams0, AParams),
     !:State = browser_persistent_state(PParams, BParams, AParams,
         !.State ^ num_printed_io_actions,
-        !.State ^ xml_browser_cmd, !.State ^ xml_tmp_filename,
         !.State ^ web_browser_cmd).
 
 set_browser_param_maybe_caller_type(FromBrowser, MaybeCallerType,
@@ -924,12 +831,6 @@ run_param_command(Debugger, ParamCmd, ShowPath, !PersistentState, !IO) :-
     ;
         ParamCmd = print_params,
         show_settings(Debugger, ShowPath, !.PersistentState, !IO)
-%   ;
-%       ParamCmd = xml_browser_cmd(Cmd),
-%       set_xml_browser_cmd(Cmd, !PersistentState)
-%   ;
-%       ParamCmd = xml_tmp_filename(FileName),
-%       set_xml_tmp_filename(FileName, !PersistentState)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1134,34 +1035,13 @@ send_term_to_socket(Term, !IO) :-
 
 browser_params_to_string(Browser, Desc) :-
     Browser = browser_persistent_state(PrintParams, BrowseParams,
-        PrintAllParams, NumIOActions, MaybeXMLBrowserCmd, MaybeXMLTmpFileName,
-        MaybeWebBrowserCmd),
+        PrintAllParams, NumIOActions, MaybeWebBrowserCmd),
     ParamCmds =
         caller_params_to_mdb_command("-P ", PrintParams) ++
         caller_params_to_mdb_command("-B ", BrowseParams) ++
         caller_params_to_mdb_command("-A ", PrintAllParams),
     NumIOActionCmd =
         "max_io_actions " ++ int_to_string(NumIOActions) ++ "\n",
-    ( if
-        MaybeXMLBrowserCmd = yes(XMLBrowserCmd),
-        % XMLBrowserCmd shouldn't be "" if MaybeXMLBrowserCmd is yes,
-        % but better safe than sorry.
-        XMLBrowserCmd \= ""
-    then
-        XMLBrowserCmdCmd = "xml_browser_cmd " ++ XMLBrowserCmd ++ "\n"
-    else
-        XMLBrowserCmdCmd = ""
-    ),
-    ( if
-        MaybeXMLTmpFileName = yes(XMLTmpFileName),
-        % XMLTmpFileName shouldn't be "" if MaybeXMLTmpFileName is yes,
-        % but better safe than sorry.
-        XMLTmpFileName \= ""
-    then
-        XMLTmpFileNameCmd = "xml_tmp_filename " ++ XMLTmpFileName ++ "\n"
-    else
-        XMLTmpFileNameCmd = ""
-    ),
     ( if
         MaybeWebBrowserCmd = yes(WebBrowserCmd),
         WebBrowserCmd \= ""
@@ -1171,7 +1051,6 @@ browser_params_to_string(Browser, Desc) :-
         WebBrowserCmdCmd = ""
     ),
     Desc = ParamCmds ++ NumIOActionCmd ++
-        XMLBrowserCmdCmd ++ XMLTmpFileNameCmd ++
         WebBrowserCmdCmd.
 
 :- func caller_params_to_mdb_command(string, caller_params) = string.

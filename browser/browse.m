@@ -146,13 +146,6 @@
 :- pred save_term_to_file_xml(string::in, browser_term::in,
     io.output_stream::in, io::di, io::uo) is cc_multi.
 
-    % Dump the term as an XML file and launch the XML browser specified
-    % by the xml_browser_cmd field in the browser_persistent_state.
-    %
-:- pred save_and_browse_browser_term_xml(browser_term::in,
-    io.output_stream::in, io.output_stream::in,
-    browser_persistent_state::in, io::di, io::uo) is cc_multi.
-
     % Save BrowserTerm in an HTML file and launch the web browser specified
     % by the web_browser_cmd field in the browser_persistent_state.
     %
@@ -235,10 +228,6 @@
 
 :- pragma foreign_export("C", save_term_to_file_xml(in, in, in, di, uo),
     "ML_BROWSE_save_term_to_file_xml").
-
-:- pragma foreign_export("C",
-    save_and_browse_browser_term_xml(in, in, in, in, di, uo),
-    "ML_BROWSE_browse_term_xml").
 
 :- pragma foreign_export("C",
     save_and_browse_browser_term_web(in, in, in, in, di, uo),
@@ -1393,77 +1382,6 @@ maybe_save_term_to_file_xml(FileName, BrowserTerm, FileStreamRes, !IO) :-
         io.close_output(OutputStream, !IO)
     ;
         FileStreamRes = error(_)
-    ).
-
-%---------------------------------------------------------------------------%
-
-save_and_browse_browser_term_xml(Term, OutStream, ErrStream, State, !IO) :-
-    MaybeXMLBrowserCmd = State ^ xml_browser_cmd,
-    MaybeTmpFileName = State ^ xml_tmp_filename,
-    (
-        MaybeXMLBrowserCmd = yes(CommandStr),
-        MaybeTmpFileName = yes(TmpFileName),
-        io.write_string(OutStream, "Saving term to XML file...\n", !IO),
-        maybe_save_term_to_file_xml(TmpFileName, Term, SaveResult, !IO),
-        (
-            SaveResult = ok(_),
-            launch_xml_browser(OutStream, ErrStream, CommandStr, !IO)
-        ;
-            SaveResult = error(Error),
-            io.error_message(Error, Msg),
-            io.write_string(ErrStream,
-                "Error opening file `" ++ TmpFileName ++ "': ", !IO),
-            io.write_string(ErrStream, Msg, !IO),
-            io.nl(!IO)
-        )
-    ;
-        MaybeXMLBrowserCmd = yes(_),
-        MaybeTmpFileName = no,
-        io.write_string(ErrStream, "mdb: You need to issue a " ++
-            "\"set xml_tmp_filename '<filename>'\" command first.\n", !IO)
-    ;
-        MaybeXMLBrowserCmd = no,
-        MaybeTmpFileName = yes(_),
-        io.write_string(ErrStream, "mdb: You need to issue a " ++
-            "\"set xml_browser_cmd '<command>'\" command first.\n", !IO)
-    ;
-        MaybeXMLBrowserCmd = no,
-        MaybeTmpFileName = no,
-        io.write_string(ErrStream, "mdb: You need to issue a " ++
-            "\"set xml_browser_cmd '<command>'\" command\n" ++
-            "and a \"set xml_tmp_filename '<filename>'\" command first.\n",
-            !IO)
-    ).
-
-:- pred launch_xml_browser(io.output_stream::in, io.output_stream::in,
-    string::in, io::di, io::uo) is det.
-
-launch_xml_browser(OutStream, ErrStream, CommandStr, !IO) :-
-    io.write_string(OutStream, "Launching XML browser "
-        ++ "(this may take some time) ...\n", !IO),
-    % Flush the output stream, so output appears in the correct order
-    % for tests where the `cat' command is used as the XML browser.
-    io.flush_output(OutStream, !IO),
-    io.call_system_return_signal(CommandStr, Result, !IO),
-    (
-        Result = ok(ExitStatus),
-        (
-            ExitStatus = exited(ExitCode),
-            ( if ExitCode = 0 then
-                true
-            else
-                io.write_string(ErrStream,
-                    "mdb: The command `" ++ CommandStr ++
-                    "' terminated with a non-zero exit code.\n", !IO)
-            )
-        ;
-            ExitStatus = signalled(_),
-            io.write_string(ErrStream, "mdb: The browser was killed.\n", !IO)
-        )
-    ;
-        Result = error(Error),
-        io.write_string(ErrStream, "mdb: Error launching browser: "
-            ++ string.string(Error) ++ ".\n", !IO)
     ).
 
 %---------------------------------------------------------------------------%

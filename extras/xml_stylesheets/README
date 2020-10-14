@@ -6,9 +6,6 @@ You can apply a stylesheet to an XML document using the program xsltproc
 include a reference to the stylesheet in the XML document and have your browser
 apply the stylesheet, although this only works with some browsers.
 
-These stylesheets can also be used with mdb's `browse --xml' command
-(see the user guide for more details on `browse --xml').
-
 mercury_term.xsl
 	Stylesheet to convert an XML document generated with 
 	term_to_xml.write_xml_doc/6 back to a Mercury term suitable for reading

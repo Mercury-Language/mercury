@@ -53,7 +53,6 @@ CONF_DEBUG_SCRIPTS = \
 
 DEBUGGER_SCRIPTS = \
 	$(CONF_DEBUG_SCRIPTS) \
-	xul_tree.xsl \
 	mdb_open \
 	mdb_grep \
 	mdb_track \
@@ -116,10 +115,8 @@ test_mdbrc: mdbrc.in mdbrc
 	sed \
 		-e "s:@DEFAULT_MERCURY_DEBUGGER_DOC@:$${ABS_MERCURY_DIR}/doc/mdb_doc:" \
 		-e "s:@DEFAULT_MERCURY_DEBUGGER_INIT_DIR@:$${ABS_MERCURY_DIR}/scripts:" \
-		-e '/^xml_/d' \
 		-e '/^web_/d' \
 	< mdbrc.in > test_mdbrc
-	egrep '^xml_' < mdbrc >> test_mdbrc
 	egrep '^web_' < mdbrc >> test_mdbrc
 	@if grep '@' test_mdbrc; then \
 		echo "unhandled configuration variable in test_mdbrc"; \

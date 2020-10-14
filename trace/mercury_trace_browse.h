@@ -74,10 +74,6 @@ extern  void        MR_trace_browse_external(MR_Word type_info, MR_Word value,
                         MR_BrowseCallerType caller, MR_BrowseFormat format);
 #endif
 
-// Browse a term using an XML browser.
-
-extern  void        MR_trace_save_and_invoke_xml_browser(MR_Word browser_term);
-
 // Browse a term using a web browser.
 
 extern  void        MR_trace_save_and_invoke_web_browser(MR_Word browser_term);

@@ -105,8 +105,6 @@ format_param -A -p size 10
 format_param -A -p width 80
 format_param -A -p lines 2
 max_io_actions 20
-xml_browser_cmd ZZZ
-xml_tmp_filename ZZZ
 web_browser_cmd ZZZ
 trust save
 trust std lib

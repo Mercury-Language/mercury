@@ -561,14 +561,12 @@ resume_typeinfos.out: resume_typeinfos resume_typeinfos.inp
 retry.out: retry retry.inp
 	$(MDB_STD) ./retry < retry.inp > retry.out 2>&1
 
-# The values of web_browser_cmd, xml_browser_cmd and xml_tmp_filename will be
-# system specific, so we pipe the output through sed and replace the system
-# specific bit with a known character sequence.
+# The value of web_browser_cmd will be system specific, so we pipe the output
+# through sed and replace the system specific bit with a known character
+# sequence.
 save.out: save save.inp
 	$(MDB) ./save < save.inp 2>&1 | \
 	    sed 's/web_browser_cmd.*/web_browser_cmd ZZZ/g' | \
-	    sed 's/xml_browser_cmd.*/xml_browser_cmd ZZZ/g' | \
-	    sed 's/xml_tmp_filename.*/xml_tmp_filename ZZZ/g' | \
 	    sed 's/^alias grep source.*$$/alias grep source ZZZ\/mdb_grep/' | \
 	    sed 's/^alias open source.*$$/alias open source ZZZ\/mdb_open/' | \
 	    sed 's/^alias track source.*$$/alias track source ZZZ\/mdb_track/'\
