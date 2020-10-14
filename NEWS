@@ -27,7 +27,7 @@ Changes to the Mercury standard library
     - func `unsafe_lookup/3`        (synonym for `Array ^ unsafe_elem(R, C)`)
     - pred `unsafe_lookup/4`        (synonym for `Array ^ unsafe_elem(R, C)`)
 
-* The `lists/1' function now returns an empty list for a 0x0 array.
+* The `lists/1` function now returns an empty list for a 0x0 array.
 
 ### Changes to the `bag` module
 
