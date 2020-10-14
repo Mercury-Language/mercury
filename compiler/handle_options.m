@@ -639,7 +639,8 @@ check_option_values(!OptionTable, Target, GC_Method, TermNorm, Term2Norm,
         add_error(phase_options, LECSpec, !Specs)
     ).
 
-    % NOTE: each termination analyser has its own norm setting.
+    % NOTE: We take two termination_norm arguments because each
+    % termination analyser (the old and the new) has its own norm setting.
     %
 :- pred convert_options_to_globals(option_table::in, opt_tuple::in,
     op_mode::in, compilation_target::in, gc_method::in,
@@ -715,131 +716,21 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         BackendForeignLanguages, !Specs),
     handle_implications_of_parallel(!Globals, !Specs),
 
-    % Using trail segments implies the use of the trail.
-    option_implies(trail_segments, use_trail, bool(yes), !Globals),
-
     handle_target_compile_link_symlink_options(!Globals),
-
-    (
-        OT_Optimize0 = do_not_optimize,
-        % --no-mlds-optimize implies --no-optimize-tailcalls.
-        OT_OptMLDSTailCalls = do_not_opt_mlds_tailcalls
-    ;
-        OT_Optimize0 = optimize,
-        OT_OptMLDSTailCalls = OT_OptMLDSTailCalls0
-    ),
-
-    % --make handles creation of the module dependencies itself,
-    % and they don't need to be recreated when compiling to C.
-    option_implies(invoked_by_mmc_make,
-        generate_mmc_make_module_dependencies, bool(no), !Globals),
-
-    option_implies(structure_reuse_analysis, structure_sharing_analysis,
-        bool(yes), !Globals),
-
-    option_implies(termination_check_verbose, termination_check, bool(yes),
-        !Globals),
-    option_implies(termination2_check_verbose, termination2_check,
-        bool(yes), !Globals),
-    option_implies(termination_check, termination, bool(yes), !Globals),
-    option_implies(termination2_check, termination2, bool(yes), !Globals),
-    option_implies(termination_check, warn_missing_trans_opt_files,
-        bool(yes), !Globals),
-    option_implies(termination2_check, warn_missing_trans_opt_files,
-        bool(yes), !Globals),
 
     ( if OpMode = opm_top_args(opma_augment(opmau_make_trans_opt_int)) then
         globals.set_option(transitive_optimization, bool(yes), !Globals)
     else
         true
     ),
-    option_implies(transitive_optimization, intermodule_optimization,
-        bool(yes), !Globals),
-    option_implies(use_trans_opt_files, use_opt_files, bool(yes), !Globals),
 
-    % If we are doing full inter-module or transitive optimization,
-    % we need to build all `.opt' or `.trans_opt' files.
-    option_implies(intermodule_optimization, use_opt_files, bool(no),
-        !Globals),
-    option_implies(transitive_optimization, use_trans_opt_files, bool(no),
-        !Globals),
+    handle_option_to_option_implications(!Globals),
 
-    % XXX `--use-opt-files' is broken.
-    % When inter-module optimization is enabled, error checking
-    % without the extra information from the `.opt' files
-    % is done when making the `.opt' file. With `--use-opt-files',
-    % that doesn't happen.
-    % XXX Should that be "with `--no-use-opt-files'"?
-    globals.set_option(use_opt_files, bool(no), !Globals),
-
-    % XXX Doing this implication *before* code that turns off
-    % smart_recompilation looks like a bug to me. -zs
-    option_implies(smart_recompilation, generate_item_version_numbers,
-        bool(yes), !Globals),
-    option_implies(find_all_recompilation_reasons, verbose_recompilation,
-        bool(yes), !Globals),
-
-    % Disable `--smart-recompilation' unless we are generating target code.
-    ( if OpMode = opm_top_args(opma_augment(opmau_generate_code(_))) then
-        true
-    else
-        globals.set_option(smart_recompilation, bool(no), !Globals)
-    ),
-
-    ( if OpMode = opm_top_args(OpModeArgs) then
-        % Disable --line-numbers when building the `.int', `.opt', etc. files,
-        % since including line numbers in those would cause unnecessary
-        % recompilation.
-        (
-            OpModeArgs = opma_make_interface(OpModeArgsMI),
-            globals.set_option(line_numbers, bool(no), !Globals),
-            ( if OpModeArgsMI = omif_int3 then
-                % We never use version number information in `.int3',
-                % `.opt' or `.trans_opt' files.
-                globals.set_option(generate_item_version_numbers, bool(no),
-                    !Globals)
-            else
-                true
-            )
-        ;
-            OpModeArgs = opma_augment(OpModeAugment),
-            ( if
-                ( OpModeAugment = opmau_make_opt_int
-                ; OpModeAugment = opmau_make_trans_opt_int
-                )
-            then
-                globals.set_option(line_numbers, bool(no), !Globals)
-            else
-                true
-            )
-        ;
-            ( OpModeArgs = opma_generate_dependencies
-            ; OpModeArgs = opma_generate_dependency_file
-            ; OpModeArgs = opma_convert_to_mercury
-            )
-        )
-    else
-        true
-    ),
-
-    maybe_disable_smart_recompilation(OpMode, !Globals, !IO),
-
-    option_implies(debug_mode_constraints, prop_mode_constraints, bool(yes),
-        !Globals),
-    option_implies(prop_mode_constraints, mode_constraints, bool(yes),
-        !Globals),
-    option_implies(simple_mode_constraints, mode_constraints, bool(yes),
-        !Globals),
+    handle_opmode_implications(OpMode, !Globals, !IO),
 
     TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
     handle_debugging_options(Target, TraceLevel, TraceEnabled, SSTraceLevel,
         AllowSrcChangesDebug, !Globals, !Specs),
-
-    % We need to be able to simulate exits for calls between where an
-    % exception is thrown to where it is caught both in the debugger and
-    % for deep profiling.
-    option_implies(exec_trace, stack_trace, bool(yes), !Globals),
-    option_implies(profile_deep, stack_trace, bool(yes), !Globals),
 
     globals.lookup_bool_option(!.Globals, profile_deep, ProfileDeep),
     handle_profiling_options(!Globals, Target, ProfileDeep,
@@ -1078,24 +969,6 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         OT_OptUnusedArgsIntermod = do_not_opt_unused_args_intermod
     ),
 
-    % The results of trail usage analysis assume that trail usage
-    % optimization is being done, i.e. that redundant trailing
-    % operations are really being eliminated.
-    option_implies(analyse_trail_usage, optimize_trail_usage, bool(yes),
-        !Globals),
-
-    % Without an existing source file mapping, there is no "right" module name.
-    ( if OpMode = opm_top_generate_source_file_mapping then
-        globals.set_option(warn_wrong_module_name, bool(no), !Globals)
-    else
-        true
-    ),
-
-    % --use-opt-files implies --no-warn-missing-opt-files since
-    % we are expecting some to be missing.
-    option_implies(use_opt_files, warn_missing_opt_files, bool(no),
-        !Globals),
-
     maybe_update_backend_foreign_languages(BackendForeignLanguages, !Globals),
     maybe_update_event_set_file_name(!Globals, !IO),
     handle_record_term_sizes_options(!Globals, AllowOptLCMCTermSize, !Specs),
@@ -1145,6 +1018,15 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         OT_Tuple = OT_Tuple0,
         OT_Untuple = OT_Untuple0,
         OT_OptTestAfterSwitch = OT_OptTestAfterSwitch0
+    ),
+
+    (
+        OT_Optimize0 = do_not_optimize,
+        % --no-mlds-optimize implies --no-optimize-tailcalls.
+        OT_OptMLDSTailCalls = do_not_opt_mlds_tailcalls
+    ;
+        OT_Optimize0 = optimize,
+        OT_OptMLDSTailCalls = OT_OptMLDSTailCalls0
     ),
 
     !OptTuple ^ ot_allow_inlining := OT_AllowInlining,
@@ -1255,6 +1137,100 @@ check_for_incompatibilities(!.Globals, OpMode, !Specs) :-
     else
         true
     ).
+
+%---------------------%
+
+    % Options updated:
+    %   mode_constraints
+    %   optimize_trail_usage
+    %   prop_mode_constraints
+    %   stack_trace
+    %   structure_sharing_analysis
+    %   termination
+    %   termination2
+    %   termination2_check
+    %   termination_check
+    %   use_opt_files
+    %   use_trail
+    %   use_trans_opt_files
+    %   verbose_recompilation
+    %   warn_missing_trans_opt_files
+    %
+:- pred handle_option_to_option_implications(globals::in, globals::out)
+    is det.
+
+handle_option_to_option_implications(!Globals) :-
+    % --make handles creation of the module dependencies itself,
+    % and they don't need to be recreated when compiling to C.
+    option_implies(invoked_by_mmc_make,
+        generate_mmc_make_module_dependencies, bool(no), !Globals),
+
+    option_implies(find_all_recompilation_reasons, verbose_recompilation,
+        bool(yes), !Globals),
+
+    option_implies(debug_mode_constraints, prop_mode_constraints, bool(yes),
+        !Globals),
+    option_implies(prop_mode_constraints, mode_constraints, bool(yes),
+        !Globals),
+    option_implies(simple_mode_constraints, mode_constraints, bool(yes),
+        !Globals),
+
+    % We need to be able to simulate exits for calls between where an
+    % exception is thrown to where it is caught both in the debugger and
+    % for deep profiling.
+    option_implies(exec_trace, stack_trace, bool(yes), !Globals),
+    option_implies(profile_deep, stack_trace, bool(yes), !Globals),
+
+    % Using trail segments implies the use of the trail.
+    option_implies(trail_segments, use_trail, bool(yes), !Globals),
+
+    % The results of trail usage analysis assume that trail usage
+    % optimization is being done, i.e. that redundant trailing
+    % operations are really being eliminated.
+    option_implies(analyse_trail_usage, optimize_trail_usage, bool(yes),
+        !Globals),
+
+    option_implies(structure_reuse_analysis, structure_sharing_analysis,
+        bool(yes), !Globals),
+
+    option_implies(termination_check_verbose, termination_check, bool(yes),
+        !Globals),
+    option_implies(termination2_check_verbose, termination2_check,
+        bool(yes), !Globals),
+    option_implies(termination_check, termination, bool(yes), !Globals),
+    option_implies(termination2_check, termination2, bool(yes), !Globals),
+    % Note that setting warn_missing_trans_opt_files to yes can be
+    % overridden below.
+    option_implies(termination_check, warn_missing_trans_opt_files,
+        bool(yes), !Globals),
+    option_implies(termination2_check, warn_missing_trans_opt_files,
+        bool(yes), !Globals),
+
+    % If we are doing full inter-module or transitive optimization,
+    % we need to build all `.opt' or `.trans_opt' files.
+    option_implies(transitive_optimization, intermodule_optimization,
+        bool(yes), !Globals),
+    option_implies(transitive_optimization, use_trans_opt_files, bool(no),
+        !Globals),
+    option_implies(intermodule_optimization, use_opt_files, bool(no),
+        !Globals),
+    option_implies(use_trans_opt_files, use_opt_files, bool(yes), !Globals),
+
+    % XXX `--use-opt-files' is broken.
+    % When inter-module optimization is enabled, error checking
+    % without the extra information from the `.opt' files
+    % is done when making the `.opt' file. With `--use-opt-files',
+    % that doesn't happen.
+    % XXX Should that be "with `--no-use-opt-files'"?
+    globals.set_option(use_opt_files, bool(no), !Globals).
+
+    % --use-opt-files implies --no-warn-missing-opt-files since
+    % we are expecting some to be missing.
+    % XXX This rule will never fire while we set use_opt_files to "no" above.
+    % option_implies(use_opt_files, warn_missing_opt_files, bool(no),
+    %     !Globals).
+
+%---------------------%
 
     % Options updated:
     %   allow_double_word_fields
@@ -1974,6 +1950,75 @@ handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
         BasicStackLayout = no,
         OT_StdLabels = OT_StdLabels0
     ).
+
+%---------------------%
+
+    % Options updated:
+    %   generate_item_version_numbers
+    %   line_numbers
+    %   smart_recompilation
+    %   warn_wrong_module_name
+    %
+:- pred handle_opmode_implications(op_mode::in,
+    globals::in, globals::out, io::di, io::uo) is det.
+
+handle_opmode_implications(OpMode, !Globals, !IO) :-
+    % XXX Doing this implication *before* code that turns off
+    % smart_recompilation looks like a bug to me. -zs
+    option_implies(smart_recompilation, generate_item_version_numbers,
+        bool(yes), !Globals),
+
+    % Disable `--smart-recompilation' unless we are generating target code.
+    ( if OpMode = opm_top_args(opma_augment(opmau_generate_code(_))) then
+        true
+    else
+        globals.set_option(smart_recompilation, bool(no), !Globals)
+    ),
+
+    % Without an existing source file mapping, there is no "right" module name.
+    ( if OpMode = opm_top_generate_source_file_mapping then
+        globals.set_option(warn_wrong_module_name, bool(no), !Globals)
+    else
+        true
+    ),
+
+    ( if OpMode = opm_top_args(OpModeArgs) then
+        % Disable --line-numbers when building the `.int', `.opt', etc. files,
+        % since including line numbers in those would cause unnecessary
+        % recompilation.
+        (
+            OpModeArgs = opma_make_interface(OpModeArgsMI),
+            globals.set_option(line_numbers, bool(no), !Globals),
+            ( if OpModeArgsMI = omif_int3 then
+                % We never use version number information in `.int3',
+                % `.opt' or `.trans_opt' files.
+                globals.set_option(generate_item_version_numbers, bool(no),
+                    !Globals)
+            else
+                true
+            )
+        ;
+            OpModeArgs = opma_augment(OpModeAugment),
+            ( if
+                ( OpModeAugment = opmau_make_opt_int
+                ; OpModeAugment = opmau_make_trans_opt_int
+                )
+            then
+                globals.set_option(line_numbers, bool(no), !Globals)
+            else
+                true
+            )
+        ;
+            ( OpModeArgs = opma_generate_dependencies
+            ; OpModeArgs = opma_generate_dependency_file
+            ; OpModeArgs = opma_convert_to_mercury
+            )
+        )
+    else
+        true
+    ),
+
+    maybe_disable_smart_recompilation(OpMode, !Globals, !IO).
 
 %---------------------%
 
