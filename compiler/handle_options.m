@@ -708,6 +708,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % NOTE: this call must occur *before* any code below that implicitly
     % sets options based on the target language or GC method.
     check_grade_component_compatibility(!.Globals, Target, GC_Method, !Specs),
+    check_for_incompatibilities(!.Globals, OpMode, !Specs),
 
     handle_implications_of_pregen_target_spf(!Globals, Target,
         OT_StringBinarySwitchSize0, OT_StringBinarySwitchSize,
@@ -732,66 +733,6 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     % and they don't need to be recreated when compiling to C.
     option_implies(invoked_by_mmc_make,
         generate_mmc_make_module_dependencies, bool(no), !Globals),
-
-    % `--transitive-intermodule-optimization' and `--make' are
-    % not compatible with each other.
-    globals.lookup_bool_option(!.Globals, transitive_optimization, TransOpt),
-    globals.lookup_bool_option(!.Globals, invoked_by_mmc_make,
-        InvokedByMMCMake),
-    (
-        TransOpt = bool.yes,
-        ( if
-            ( InvokedByMMCMake = yes
-            ; OpMode = opm_top_make
-            )
-        then
-            TransOptMakeSpec =
-                [words("The"), quote("--transitive-intermodule-optimization"),
-                words("option is incompatible with the"), quote("--make"),
-                words("option."), nl],
-            add_error(phase_options, TransOptMakeSpec, !Specs)
-        else
-            true
-        )
-    ;
-        TransOpt = bool.no
-    ),
-
-    % `--intermodule-optimization' and `--intermodule-analysis' are
-    % not compatible with each other.
-    globals.lookup_bool_option(!.Globals, intermodule_optimization,
-        InterModOpt),
-    globals.lookup_bool_option(!.Globals, intermodule_analysis,
-        InterModAnalysis),
-    ( if
-        InterModOpt = bool.yes,
-        InterModAnalysis = bool.yes
-    then
-        OptAnalysisSpec =
-            [words("The"), quote("--intermodule-optimization"),
-            words("option is incompatible with the"),
-            quote("--intermodule-analysis"), words("option."), nl],
-        add_error(phase_options, OptAnalysisSpec, !Specs)
-    else
-        true
-    ),
-
-    globals.lookup_maybe_string_option(!.Globals,
-        generate_standalone_interface, MaybeStandaloneInt),
-    globals.lookup_bool_option(!.Globals,
-        extra_initialization_functions, ExtraInitFunctions),
-    ( if
-        MaybeStandaloneInt = maybe.yes(_),
-        ExtraInitFunctions = bool.yes
-    then
-        ExtraInitsSpec =
-            [words("The"), quote("--generate-standalone-interface"),
-            words("option is incompatible with the"),
-            quote("--extra-initialization-functions"), words("option."), nl],
-        add_error(phase_options, ExtraInitsSpec, !Specs)
-    else
-        true
-    ),
 
     option_implies(structure_reuse_analysis, structure_sharing_analysis,
         bool(yes), !Globals),
@@ -1246,6 +1187,73 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
     globals_init_mutables(!.Globals, !IO).
 
 %---------------------------------------------------------------------------%
+
+    % Options updated:
+    %   none
+    %
+:- pred check_for_incompatibilities(globals::in, op_mode::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_for_incompatibilities(!.Globals, OpMode, !Specs) :-
+    % `--transitive-intermodule-optimization' and `--make' are
+    % not compatible with each other.
+    globals.lookup_bool_option(!.Globals, transitive_optimization, TransOpt),
+    globals.lookup_bool_option(!.Globals, invoked_by_mmc_make,
+        InvokedByMMCMake),
+    (
+        TransOpt = bool.yes,
+        ( if
+            ( InvokedByMMCMake = yes
+            ; OpMode = opm_top_make
+            )
+        then
+            TransOptMakeSpec =
+                [words("The"), quote("--transitive-intermodule-optimization"),
+                words("option is incompatible with the"), quote("--make"),
+                words("option."), nl],
+            add_error(phase_options, TransOptMakeSpec, !Specs)
+        else
+            true
+        )
+    ;
+        TransOpt = bool.no
+    ),
+
+    % `--intermodule-optimization' and `--intermodule-analysis' are
+    % not compatible with each other.
+    globals.lookup_bool_option(!.Globals, intermodule_optimization,
+        InterModOpt),
+    globals.lookup_bool_option(!.Globals, intermodule_analysis,
+        InterModAnalysis),
+    ( if
+        InterModOpt = bool.yes,
+        InterModAnalysis = bool.yes
+    then
+        OptAnalysisSpec =
+            [words("The"), quote("--intermodule-optimization"),
+            words("option is incompatible with the"),
+            quote("--intermodule-analysis"), words("option."), nl],
+        add_error(phase_options, OptAnalysisSpec, !Specs)
+    else
+        true
+    ),
+
+    globals.lookup_maybe_string_option(!.Globals,
+        generate_standalone_interface, MaybeStandaloneInt),
+    globals.lookup_bool_option(!.Globals,
+        extra_initialization_functions, ExtraInitFunctions),
+    ( if
+        MaybeStandaloneInt = maybe.yes(_),
+        ExtraInitFunctions = bool.yes
+    then
+        ExtraInitsSpec =
+            [words("The"), quote("--generate-standalone-interface"),
+            words("option is incompatible with the"),
+            quote("--extra-initialization-functions"), words("option."), nl],
+        add_error(phase_options, ExtraInitsSpec, !Specs)
+    else
+        true
+    ).
 
     % Options updated:
     %   allow_double_word_fields
