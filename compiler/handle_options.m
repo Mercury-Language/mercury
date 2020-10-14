@@ -1136,98 +1136,6 @@ check_for_incompatibilities(!.Globals, OpMode, !Specs) :-
 %---------------------%
 
     % Options updated:
-    %   mode_constraints
-    %   optimize_trail_usage
-    %   prop_mode_constraints
-    %   stack_trace
-    %   structure_sharing_analysis
-    %   termination
-    %   termination2
-    %   termination2_check
-    %   termination_check
-    %   use_opt_files
-    %   use_trail
-    %   use_trans_opt_files
-    %   verbose_recompilation
-    %   warn_missing_trans_opt_files
-    %
-:- pred handle_option_to_option_implications(globals::in, globals::out)
-    is det.
-
-handle_option_to_option_implications(!Globals) :-
-    % --make handles creation of the module dependencies itself,
-    % and they don't need to be recreated when compiling to C.
-    option_implies(invoked_by_mmc_make,
-        generate_mmc_make_module_dependencies, bool(no), !Globals),
-
-    option_implies(find_all_recompilation_reasons, verbose_recompilation,
-        bool(yes), !Globals),
-
-    option_implies(debug_mode_constraints, prop_mode_constraints, bool(yes),
-        !Globals),
-    option_implies(prop_mode_constraints, mode_constraints, bool(yes),
-        !Globals),
-    option_implies(simple_mode_constraints, mode_constraints, bool(yes),
-        !Globals),
-
-    % We need to be able to simulate exits for calls between where an
-    % exception is thrown to where it is caught both in the debugger and
-    % for deep profiling.
-    option_implies(exec_trace, stack_trace, bool(yes), !Globals),
-    option_implies(profile_deep, stack_trace, bool(yes), !Globals),
-
-    % Using trail segments implies the use of the trail.
-    option_implies(trail_segments, use_trail, bool(yes), !Globals),
-
-    % The results of trail usage analysis assume that trail usage
-    % optimization is being done, i.e. that redundant trailing
-    % operations are really being eliminated.
-    option_implies(analyse_trail_usage, optimize_trail_usage, bool(yes),
-        !Globals),
-
-    option_implies(structure_reuse_analysis, structure_sharing_analysis,
-        bool(yes), !Globals),
-
-    option_implies(termination_check_verbose, termination_check, bool(yes),
-        !Globals),
-    option_implies(termination2_check_verbose, termination2_check,
-        bool(yes), !Globals),
-    option_implies(termination_check, termination, bool(yes), !Globals),
-    option_implies(termination2_check, termination2, bool(yes), !Globals),
-    % Note that setting warn_missing_trans_opt_files to yes can be
-    % overridden below.
-    option_implies(termination_check, warn_missing_trans_opt_files,
-        bool(yes), !Globals),
-    option_implies(termination2_check, warn_missing_trans_opt_files,
-        bool(yes), !Globals),
-
-    % If we are doing full inter-module or transitive optimization,
-    % we need to build all `.opt' or `.trans_opt' files.
-    option_implies(transitive_optimization, intermodule_optimization,
-        bool(yes), !Globals),
-    option_implies(transitive_optimization, use_trans_opt_files, bool(no),
-        !Globals),
-    option_implies(intermodule_optimization, use_opt_files, bool(no),
-        !Globals),
-    option_implies(use_trans_opt_files, use_opt_files, bool(yes), !Globals),
-
-    % XXX `--use-opt-files' is broken.
-    % When inter-module optimization is enabled, error checking
-    % without the extra information from the `.opt' files
-    % is done when making the `.opt' file. With `--use-opt-files',
-    % that doesn't happen.
-    % XXX Should that be "with `--no-use-opt-files'"?
-    globals.set_option(use_opt_files, bool(no), !Globals).
-
-    % --use-opt-files implies --no-warn-missing-opt-files since
-    % we are expecting some to be missing.
-    % XXX This rule will never fire while we set use_opt_files to "no" above.
-    % option_implies(use_opt_files, warn_missing_opt_files, bool(no),
-    %     !Globals).
-
-%---------------------%
-
-    % Options updated:
     %   allow_double_word_fields
     %   allow_multi_arm_switches
     %   allow_packing_dummies
@@ -1611,6 +1519,186 @@ handle_implications_of_parallel(!Globals, !Specs) :-
 
 %---------------------%
 
+    % Options updated:
+    %   agc_stack_layout
+    %   body_typeinfo_liveness
+    %   opt_no_return_calls
+    %   reclaim_heap_on_nondet_failure
+    %   reclaim_heap_on_semidet_failure
+    %
+:- pred handle_gc_options(globals::in, globals::out, gc_method::in,
+    maybe_opt_frames::in, maybe_opt_frames::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+handle_gc_options(!Globals, GC_Method, OT_OptFrames0, OT_OptFrames, !Specs) :-
+    % --gc accurate for the LLDS back-end requires `agc' stack layouts,
+    % typeinfo liveness, and needs hijacks, frameopt, and middle recursion
+    % optimization to be switched off.
+    %
+    % For the MLDS back-end, `--gc accurate' requires just typeinfo liveness.
+    %
+    % XXX Currently we also need to disable heap reclamation on failure
+    % if accurate GC is enabled.
+    % There are two issues with heap reclamation on failure:
+    %
+    % 1 For heap reclamation on failure to work at all, we also need
+    %   at least some degree of liveness-accuracy. Otherwise, a local variable
+    %   may get initialized to point to the heap, then the heap is reset,
+    %   then the memory is overwritten with new allocations, and then
+    %   a collection occurs, at which point the local variable now points to
+    %   a value of the wrong type.
+    % 2 The current method of handling saved heap pointers during GC means that
+    %   we lose heap reclamation on failure after a GC occurs. A better method
+    %   would be to just allocate a word of heap space at each choice point.
+    %
+    (
+        GC_Method = gc_accurate,
+        globals.set_option(agc_stack_layout, bool(yes), !Globals),
+        globals.set_option(body_typeinfo_liveness, bool(yes), !Globals),
+        % We turn off optimization of stack slots for no_return calls,
+        % because that optimization does not preserve agc typeinfo liveness.
+        globals.set_option(opt_no_return_calls, bool(no), !Globals),
+
+        globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
+            !Globals),
+        globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
+            !Globals),
+
+        OT_OptFrames = do_not_opt_frames,
+
+        % ml_gen_params_base and ml_declare_env_ptr_arg, in ml_code_util.m,
+        % both assume (for accurate GC) that continuation environments
+        % are always allocated on the stack, which means that things won't
+        % work if --gc accurate and --put-nondet-env-on-heap are both enabled.
+        globals.lookup_bool_option(!.Globals, highlevel_code,
+            HighLevelCode),
+        globals.lookup_bool_option(!.Globals, put_nondet_env_on_heap,
+            PutNondetEnvOnHeap),
+        ( if
+            HighLevelCode = bool.yes,
+            PutNondetEnvOnHeap = bool.yes
+        then
+            AGCEnvSpec =
+                [words_quote("--gc accurate"), words("is incompatible with"),
+                words_quote("--put-nondet-env-on-heap"), suffix("."), nl],
+            add_error(phase_options, AGCEnvSpec, !Specs)
+        else
+            true
+        )
+    ;
+        ( GC_Method = gc_automatic
+        ; GC_Method = gc_none
+        ; GC_Method = gc_boehm
+        ; GC_Method = gc_boehm_debug
+        ; GC_Method = gc_hgc
+        ),
+        OT_OptFrames = OT_OptFrames0,
+
+        % Conservative GC implies --no-reclaim-heap-*
+        GCIsConservative = gc_is_conservative(GC_Method),
+        (
+            GCIsConservative = bool.yes,
+            globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
+                !Globals),
+            globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
+                !Globals)
+        ;
+            GCIsConservative = bool.no
+        )
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   use_minimal_model_stack_copy_cut
+    %   use_minimal_model_stack_copy_pneg
+    %
+:- pred handle_minimal_model_options(globals::in, globals::out,
+    bool::out, list(error_spec)::in, list(error_spec)::out) is det.
+
+handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs) :-
+    globals.lookup_bool_option(!.Globals, use_minimal_model_stack_copy,
+        UseMinimalModelStackCopy),
+    globals.lookup_bool_option(!.Globals, use_minimal_model_own_stacks,
+        UseMinimalModelOwnStacks),
+    bool.or(UseMinimalModelStackCopy, UseMinimalModelOwnStacks,
+        UseMinimalModel),
+    % Minimal model tabling is not compatible with high level code
+    % or with trailing; see the comments in runtime/mercury_grade.h.
+    ( if
+        UseMinimalModelStackCopy = bool.yes,
+        UseMinimalModelOwnStacks = bool.yes
+    then
+        DualMMSpec =
+            [words("You cannot use both forms of minimal model tabling"),
+            words("at once."), nl],
+        add_error(phase_options, DualMMSpec, !Specs)
+    else if
+        UseMinimalModel = bool.yes,
+        globals.lookup_bool_option(!.Globals, highlevel_code, yes)
+    then
+        MMHLSpec =
+            [words("Minimal model tabling is incompatible with"),
+            words("high level code."), nl],
+        add_error(phase_options, MMHLSpec, !Specs)
+    else if
+        UseMinimalModel = bool.yes,
+        globals.lookup_bool_option(!.Globals, use_trail, yes)
+    then
+        MMTrailSpec =
+            [words("Minimal model tabling is incompatible with"),
+            words("trailing."), nl],
+        add_error(phase_options, MMTrailSpec, !Specs)
+    else
+        true
+    ),
+
+    % Stack copy minimal model tabling needs to be able to rewrite all
+    % the redoips in a given nondet stack segments. If we allow hijacks,
+    % some of these redoips may have been saved in ordinary framevars,
+    % which means that tabling can't find them without label layout info.
+    % Since we want to allow tabling in grades that do not have label
+    % layout info, we disable hijacks instead.
+    % XXX we should allow hijacks in table_builtin.m
+    (
+        UseMinimalModelStackCopy = bool.yes,
+        AllowHijacksMMSC = bool.no
+    ;
+        UseMinimalModelStackCopy = bool.no,
+        AllowHijacksMMSC = bool.yes
+    ),
+
+    % Stack copy minimal model tabling needs to generate extra code
+    % at possibly negated contexts to handle the pneg stack and at commits
+    % to handle the cut stack. The code below allows the generation of
+    % these extra pieces of code to be disabled. The disabled program will
+    % work only if the program doesn't actually use minimal model tabling,
+    % which makes it useful only for performance testing.
+    globals.lookup_bool_option(!.Globals,
+        disable_minimal_model_stack_copy_pneg, DisablePneg),
+    globals.lookup_bool_option(!.Globals,
+        disable_minimal_model_stack_copy_cut, DisableCut),
+    ( if
+        UseMinimalModelStackCopy = bool.yes,
+        DisablePneg = bool.no
+    then
+        globals.set_option(use_minimal_model_stack_copy_pneg, bool(yes),
+            !Globals)
+    else
+        true
+    ),
+    ( if
+        UseMinimalModelStackCopy = bool.yes,
+        DisableCut = bool.no
+    then
+        globals.set_option(use_minimal_model_stack_copy_cut, bool(yes),
+            !Globals)
+    else
+        true
+    ).
+
+%---------------------%
+
 :- type maybe_allow_src_changes
     --->    do_not_allow_src_changes
     ;       allow_src_changes.
@@ -1725,6 +1813,31 @@ handle_debugging_options(Target, TraceLevel, TraceEnabled, SSTraceLevel,
 %---------------------%
 
     % Options updated:
+    %   event_set_file_name
+    %
+:- pred maybe_update_event_set_file_name(globals::in, globals::out,
+    io::di, io::uo) is det.
+
+maybe_update_event_set_file_name(!Globals, !IO) :-
+    globals.lookup_string_option(!.Globals, event_set_file_name,
+        EventSetFileName0),
+    ( if EventSetFileName0 = "" then
+        io.get_environment_var("MERCURY_EVENT_SET_FILE_NAME",
+            MaybeEventSetFileName, !IO),
+        (
+            MaybeEventSetFileName = maybe.yes(EventSetFileName),
+            globals.set_option(event_set_file_name, string(EventSetFileName),
+                !Globals)
+        ;
+            MaybeEventSetFileName = maybe.no
+        )
+    else
+        true
+    ).
+
+%---------------------%
+
+    % Options updated:
     %   coverage_profiling
     %   deep_profile_tail_recursion
     %   pre_prof_transforms_simplify
@@ -1820,91 +1933,51 @@ handle_profiling_options(!Globals, Target, ProfileDeep, !:AllowSrcChangesProf,
 %---------------------%
 
     % Options updated:
-    %   agc_stack_layout
-    %   body_typeinfo_liveness
-    %   opt_no_return_calls
-    %   reclaim_heap_on_nondet_failure
-    %   reclaim_heap_on_semidet_failure
+    %   allow_double_word_fields
+    %   pre_prof_transforms_simplify
     %
-:- pred handle_gc_options(globals::in, globals::out, gc_method::in,
-    maybe_opt_frames::in, maybe_opt_frames::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred handle_record_term_sizes_options(globals::in, globals::out,
+    bool::out, list(error_spec)::in, list(error_spec)::out) is det.
 
-handle_gc_options(!Globals, GC_Method, OT_OptFrames0, OT_OptFrames, !Specs) :-
-    % --gc accurate for the LLDS back-end requires `agc' stack layouts,
-    % typeinfo liveness, and needs hijacks, frameopt, and middle recursion
-    % optimization to be switched off.
-    %
-    % For the MLDS back-end, `--gc accurate' requires just typeinfo liveness.
-    %
-    % XXX Currently we also need to disable heap reclamation on failure
-    % if accurate GC is enabled.
-    % There are two issues with heap reclamation on failure:
-    %
-    % 1 For heap reclamation on failure to work at all, we also need
-    %   at least some degree of liveness-accuracy. Otherwise, a local variable
-    %   may get initialized to point to the heap, then the heap is reset,
-    %   then the memory is overwritten with new allocations, and then
-    %   a collection occurs, at which point the local variable now points to
-    %   a value of the wrong type.
-    % 2 The current method of handling saved heap pointers during GC means that
-    %   we lose heap reclamation on failure after a GC occurs. A better method
-    %   would be to just allocate a word of heap space at each choice point.
-    %
-    (
-        GC_Method = gc_accurate,
-        globals.set_option(agc_stack_layout, bool(yes), !Globals),
-        globals.set_option(body_typeinfo_liveness, bool(yes), !Globals),
-        % We turn off optimization of stack slots for no_return calls,
-        % because that optimization does not preserve agc typeinfo liveness.
-        globals.set_option(opt_no_return_calls, bool(no), !Globals),
-
-        globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
-            !Globals),
-        globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
-            !Globals),
-
-        OT_OptFrames = do_not_opt_frames,
-
-        % ml_gen_params_base and ml_declare_env_ptr_arg, in ml_code_util.m,
-        % both assume (for accurate GC) that continuation environments
-        % are always allocated on the stack, which means that things won't
-        % work if --gc accurate and --put-nondet-env-on-heap are both enabled.
-        globals.lookup_bool_option(!.Globals, highlevel_code,
-            HighLevelCode),
-        globals.lookup_bool_option(!.Globals, put_nondet_env_on_heap,
-            PutNondetEnvOnHeap),
-        ( if
-            HighLevelCode = bool.yes,
-            PutNondetEnvOnHeap = bool.yes
-        then
-            AGCEnvSpec =
-                [words_quote("--gc accurate"), words("is incompatible with"),
-                words_quote("--put-nondet-env-on-heap"), suffix("."), nl],
-            add_error(phase_options, AGCEnvSpec, !Specs)
-        else
-            true
+handle_record_term_sizes_options(!Globals, AllowOptLCMCTermSize, !Specs) :-
+    globals.lookup_bool_option(!.Globals, record_term_sizes_as_words,
+        RecordTermSizesAsWords),
+    globals.lookup_bool_option(!.Globals, record_term_sizes_as_cells,
+        RecordTermSizesAsCells),
+    ( if
+        RecordTermSizesAsWords = bool.yes,
+        RecordTermSizesAsCells = bool.yes
+    then
+        DualTermSizeSpec =
+            [words("Cannot record term size as both words and cells."), nl],
+        add_error(phase_options, DualTermSizeSpec, !Specs),
+        AllowOptLCMCTermSize = bool.yes
+    else if
+        ( RecordTermSizesAsWords = bool.yes
+        ; RecordTermSizesAsCells = bool.yes
         )
-    ;
-        ( GC_Method = gc_automatic
-        ; GC_Method = gc_none
-        ; GC_Method = gc_boehm
-        ; GC_Method = gc_boehm_debug
-        ; GC_Method = gc_hgc
-        ),
-        OT_OptFrames = OT_OptFrames0,
-
-        % Conservative GC implies --no-reclaim-heap-*
-        GCIsConservative = gc_is_conservative(GC_Method),
+    then
+        globals.set_option(pre_prof_transforms_simplify, bool(yes), !Globals),
+        AllowOptLCMCTermSize = bool.no,
+        % Term size profiling breaks the assumption that even word offsets from
+        % the start of the cell are double-word aligned memory addresses.
+        %
+        % XXX Actually, we do not (or should not) make that assumption as it
+        % would also be violated by memory attribution profiling which also
+        % allocates an extra word at the start of a cell.
+        globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
+        globals.set_option(allow_double_word_fields, bool(no), !Globals),
         (
-            GCIsConservative = bool.yes,
-            globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
-                !Globals),
-            globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
-                !Globals)
+            HighLevelCode = bool.yes,
+            TermSizeHLSpec =
+                [words("Term size profiling is incompatible with"),
+                words("high level code."), nl],
+            add_error(phase_options, TermSizeHLSpec, !Specs)
         ;
-            GCIsConservative = bool.no
+            HighLevelCode = bool.no
         )
+    else
+        AllowOptLCMCTermSize = bool.yes
     ).
 
 %---------------------%
@@ -1996,7 +2069,6 @@ handle_opmode_implications(OpMode, !Globals) :-
                 % `.opt' or `.trans_opt' files.
                 globals.set_option(generate_item_version_numbers,
                     bool(no), !Globals)
-
             ),
             Smart = bool.no
         ;
@@ -2042,8 +2114,99 @@ handle_opmode_implications(OpMode, !Globals) :-
         ),
         Smart = bool.no
     ),
-
     globals.set_option(smart_recompilation, bool(Smart), !Globals).
+
+%---------------------%
+
+    % Options updated:
+    %   mode_constraints
+    %   optimize_trail_usage
+    %   prop_mode_constraints
+    %   stack_trace
+    %   structure_sharing_analysis
+    %   termination
+    %   termination2
+    %   termination2_check
+    %   termination_check
+    %   use_opt_files
+    %   use_trail
+    %   use_trans_opt_files
+    %   verbose_recompilation
+    %   warn_missing_trans_opt_files
+    %
+:- pred handle_option_to_option_implications(globals::in, globals::out)
+    is det.
+
+handle_option_to_option_implications(!Globals) :-
+    % --make handles creation of the module dependencies itself,
+    % and they don't need to be recreated when compiling to C.
+    option_implies(invoked_by_mmc_make,
+        generate_mmc_make_module_dependencies, bool(no), !Globals),
+
+    option_implies(find_all_recompilation_reasons, verbose_recompilation,
+        bool(yes), !Globals),
+
+    option_implies(debug_mode_constraints, prop_mode_constraints, bool(yes),
+        !Globals),
+    option_implies(prop_mode_constraints, mode_constraints, bool(yes),
+        !Globals),
+    option_implies(simple_mode_constraints, mode_constraints, bool(yes),
+        !Globals),
+
+    % We need to be able to simulate exits for calls between where an
+    % exception is thrown to where it is caught both in the debugger and
+    % for deep profiling.
+    option_implies(exec_trace, stack_trace, bool(yes), !Globals),
+    option_implies(profile_deep, stack_trace, bool(yes), !Globals),
+
+    % Using trail segments implies the use of the trail.
+    option_implies(trail_segments, use_trail, bool(yes), !Globals),
+
+    % The results of trail usage analysis assume that trail usage
+    % optimization is being done, i.e. that redundant trailing
+    % operations are really being eliminated.
+    option_implies(analyse_trail_usage, optimize_trail_usage, bool(yes),
+        !Globals),
+
+    option_implies(structure_reuse_analysis, structure_sharing_analysis,
+        bool(yes), !Globals),
+
+    option_implies(termination_check_verbose, termination_check, bool(yes),
+        !Globals),
+    option_implies(termination2_check_verbose, termination2_check,
+        bool(yes), !Globals),
+    option_implies(termination_check, termination, bool(yes), !Globals),
+    option_implies(termination2_check, termination2, bool(yes), !Globals),
+    % Note that setting warn_missing_trans_opt_files to yes can be
+    % overridden below.
+    option_implies(termination_check, warn_missing_trans_opt_files,
+        bool(yes), !Globals),
+    option_implies(termination2_check, warn_missing_trans_opt_files,
+        bool(yes), !Globals),
+
+    % If we are doing full inter-module or transitive optimization,
+    % we need to build all `.opt' or `.trans_opt' files.
+    option_implies(transitive_optimization, intermodule_optimization,
+        bool(yes), !Globals),
+    option_implies(transitive_optimization, use_trans_opt_files, bool(no),
+        !Globals),
+    option_implies(intermodule_optimization, use_opt_files, bool(no),
+        !Globals),
+    option_implies(use_trans_opt_files, use_opt_files, bool(yes), !Globals),
+
+    % XXX `--use-opt-files' is broken.
+    % When inter-module optimization is enabled, error checking
+    % without the extra information from the `.opt' files
+    % is done when making the `.opt' file. With `--use-opt-files',
+    % that doesn't happen.
+    % XXX Should that be "with `--no-use-opt-files'"?
+    globals.set_option(use_opt_files, bool(no), !Globals).
+
+    % --use-opt-files implies --no-warn-missing-opt-files since
+    % we are expecting some to be missing.
+    % XXX This rule will never fire while we set use_opt_files to "no" above.
+    % option_implies(use_opt_files, warn_missing_opt_files, bool(no),
+    %     !Globals).
 
 %---------------------%
 
@@ -2094,421 +2257,6 @@ maybe_disable_smart_recompilation(OpMode, !Globals, !IO) :-
             disable_smart_recompilation("`--no-target-code-only'",
                 !Globals, !IO)
         )
-    ).
-
-%---------------------%
-
-    % Options updated:
-    %   use_minimal_model_stack_copy_cut
-    %   use_minimal_model_stack_copy_pneg
-    %
-:- pred handle_minimal_model_options(globals::in, globals::out,
-    bool::out, list(error_spec)::in, list(error_spec)::out) is det.
-
-handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs) :-
-    globals.lookup_bool_option(!.Globals, use_minimal_model_stack_copy,
-        UseMinimalModelStackCopy),
-    globals.lookup_bool_option(!.Globals, use_minimal_model_own_stacks,
-        UseMinimalModelOwnStacks),
-    bool.or(UseMinimalModelStackCopy, UseMinimalModelOwnStacks,
-        UseMinimalModel),
-    % Minimal model tabling is not compatible with high level code
-    % or with trailing; see the comments in runtime/mercury_grade.h.
-    ( if
-        UseMinimalModelStackCopy = bool.yes,
-        UseMinimalModelOwnStacks = bool.yes
-    then
-        DualMMSpec =
-            [words("You cannot use both forms of minimal model tabling"),
-            words("at once."), nl],
-        add_error(phase_options, DualMMSpec, !Specs)
-    else if
-        UseMinimalModel = bool.yes,
-        globals.lookup_bool_option(!.Globals, highlevel_code, yes)
-    then
-        MMHLSpec =
-            [words("Minimal model tabling is incompatible with"),
-            words("high level code."), nl],
-        add_error(phase_options, MMHLSpec, !Specs)
-    else if
-        UseMinimalModel = bool.yes,
-        globals.lookup_bool_option(!.Globals, use_trail, yes)
-    then
-        MMTrailSpec =
-            [words("Minimal model tabling is incompatible with"),
-            words("trailing."), nl],
-        add_error(phase_options, MMTrailSpec, !Specs)
-    else
-        true
-    ),
-
-    % Stack copy minimal model tabling needs to be able to rewrite all
-    % the redoips in a given nondet stack segments. If we allow hijacks,
-    % some of these redoips may have been saved in ordinary framevars,
-    % which means that tabling can't find them without label layout info.
-    % Since we want to allow tabling in grades that do not have label
-    % layout info, we disable hijacks instead.
-    % XXX we should allow hijacks in table_builtin.m
-    (
-        UseMinimalModelStackCopy = bool.yes,
-        AllowHijacksMMSC = bool.no
-    ;
-        UseMinimalModelStackCopy = bool.no,
-        AllowHijacksMMSC = bool.yes
-    ),
-
-    % Stack copy minimal model tabling needs to generate extra code
-    % at possibly negated contexts to handle the pneg stack and at commits
-    % to handle the cut stack. The code below allows the generation of
-    % these extra pieces of code to be disabled. The disabled program will
-    % work only if the program doesn't actually use minimal model tabling,
-    % which makes it useful only for performance testing.
-    globals.lookup_bool_option(!.Globals,
-        disable_minimal_model_stack_copy_pneg, DisablePneg),
-    globals.lookup_bool_option(!.Globals,
-        disable_minimal_model_stack_copy_cut, DisableCut),
-    ( if
-        UseMinimalModelStackCopy = bool.yes,
-        DisablePneg = bool.no
-    then
-        globals.set_option(use_minimal_model_stack_copy_pneg, bool(yes),
-            !Globals)
-    else
-        true
-    ),
-    ( if
-        UseMinimalModelStackCopy = bool.yes,
-        DisableCut = bool.no
-    then
-        globals.set_option(use_minimal_model_stack_copy_cut, bool(yes),
-            !Globals)
-    else
-        true
-    ).
-
-%---------------------%
-
-    % Options updated:
-    %   event_set_file_name
-    %
-:- pred maybe_update_event_set_file_name(globals::in, globals::out,
-    io::di, io::uo) is det.
-
-maybe_update_event_set_file_name(!Globals, !IO) :-
-    globals.lookup_string_option(!.Globals, event_set_file_name,
-        EventSetFileName0),
-    ( if EventSetFileName0 = "" then
-        io.get_environment_var("MERCURY_EVENT_SET_FILE_NAME",
-            MaybeEventSetFileName, !IO),
-        (
-            MaybeEventSetFileName = maybe.yes(EventSetFileName),
-            globals.set_option(event_set_file_name, string(EventSetFileName),
-                !Globals)
-        ;
-            MaybeEventSetFileName = maybe.no
-        )
-    else
-        true
-    ).
-
-%---------------------%
-
-    % Options updated:
-    %   allow_double_word_fields
-    %   pre_prof_transforms_simplify
-    %
-:- pred handle_record_term_sizes_options(globals::in, globals::out,
-    bool::out, list(error_spec)::in, list(error_spec)::out) is det.
-
-handle_record_term_sizes_options(!Globals, AllowOptLCMCTermSize, !Specs) :-
-    globals.lookup_bool_option(!.Globals, record_term_sizes_as_words,
-        RecordTermSizesAsWords),
-    globals.lookup_bool_option(!.Globals, record_term_sizes_as_cells,
-        RecordTermSizesAsCells),
-    ( if
-        RecordTermSizesAsWords = bool.yes,
-        RecordTermSizesAsCells = bool.yes
-    then
-        DualTermSizeSpec =
-            [words("Cannot record term size as both words and cells."), nl],
-        add_error(phase_options, DualTermSizeSpec, !Specs),
-        AllowOptLCMCTermSize = bool.yes
-    else if
-        ( RecordTermSizesAsWords = bool.yes
-        ; RecordTermSizesAsCells = bool.yes
-        )
-    then
-        globals.set_option(pre_prof_transforms_simplify, bool(yes), !Globals),
-        AllowOptLCMCTermSize = bool.no,
-        % Term size profiling breaks the assumption that even word offsets from
-        % the start of the cell are double-word aligned memory addresses.
-        %
-        % XXX Actually, we do not (or should not) make that assumption as it
-        % would also be violated by memory attribution profiling which also
-        % allocates an extra word at the start of a cell.
-        globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
-        globals.set_option(allow_double_word_fields, bool(no), !Globals),
-        (
-            HighLevelCode = bool.yes,
-            TermSizeHLSpec =
-                [words("Term size profiling is incompatible with"),
-                words("high level code."), nl],
-            add_error(phase_options, TermSizeHLSpec, !Specs)
-        ;
-            HighLevelCode = bool.no
-        )
-    else
-        AllowOptLCMCTermSize = bool.yes
-    ).
-
-%---------------------%
-
-    % Options updated:
-    %   none
-    %
-:- pred handle_non_tail_rec_warnings(opt_tuple::in,
-    maybe_opt_mlds_tailcalls::in, op_mode::in,
-    globals::in, globals::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls, OpMode,
-        !Globals, !Specs) :-
-    % --warn-non-tail-recursion requires tail call optimization to be enabled.
-    % It also doesn't work if you use --errorcheck-only.
-    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion_self,
-        WarnNonTailRecSelf),
-    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion_mutual,
-        WarnNonTailRecMutual),
-    ( if
-        ( WarnNonTailRecSelf = bool.yes
-        ; WarnNonTailRecMutual = bool.yes
-        )
-    then
-        OT_PessimizeTailCalls0 = OptTuple0 ^ ot_pessimize_tailcalls,
-        (
-            OT_PessimizeTailCalls0 = do_not_pessimize_tailcalls
-        ;
-            OT_PessimizeTailCalls0 = pessimize_tailcalls,
-            PessimizeWords = "--warn-non-tail-recursion is incompatible" ++
-                 " with --pessimize-tailcalls",
-            % XXX While these two options look diametrically opposed,
-            % they are actually compatible, because pessimize_tailcalls
-            % is implemented only for the LLDS backend, while the
-            % optimize_tailcalls option is only for the MLDS backend.
-            % (The LLDS backend's tail call optimization does NOT depend
-            % on the value of that option.)
-            add_error(phase_options, [words(PessimizeWords)], !Specs)
-        ),
-        (
-            OT_OptMLDSTailCalls = opt_mlds_tailcalls
-        ;
-            OT_OptMLDSTailCalls = do_not_opt_mlds_tailcalls,
-            % XXX This error message could be misleading. It is possible that
-            % - the user *did* ask for MLDS tailcalls, but
-            % - accidentally also specified --no-optimize, which would
-            %   lead to code above turning MLDS tailcalls *off*.
-            OptimizeWords =
-                "--warn-non-tail-recursion requires --optimize-tailcalls",
-            add_error(phase_options, [words(OptimizeWords)], !Specs)
-        ),
-        ( if OpMode = opm_top_args(opma_augment(opmau_errorcheck_only)) then
-            ECOWords = "--warn-non-tail-recursion is incompatible"
-                ++ " with --errorcheck-only",
-            add_error(phase_options, [words(ECOWords)], !Specs)
-        else
-            true
-        )
-    else
-        true
-    ).
-
-%---------------------%
-
-    % Options updated:
-    %   compare_specialization
-    %
-:- pred handle_compare_specialization(globals::in, globals::out) is det.
-
-handle_compare_specialization(!Globals) :-
-    globals.lookup_int_option(!.Globals, compare_specialization, CompareSpec),
-    ( if CompareSpec < 0 then
-        % This indicates that the option was not set by the user;
-        % we should set the option to the default value. This value
-        % may be back end specific, since different back ends have
-        % different performance tradeoffs.
-        globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
-        (
-            HighLevelCode = bool.no,
-            globals.set_option(compare_specialization, int(13), !Globals)
-        ;
-            HighLevelCode = bool.yes,
-            globals.set_option(compare_specialization, int(14), !Globals)
-        )
-    else
-        true
-    ).
-
-%---------------------%
-
-    % Options updated:
-    %   auto_comments
-    %   debug_modes
-    %   debug_opt
-    %   dump_hlds_options
-    %   dump_hlds_options
-    %   statistics
-    %   trad_passes
-    %   unneeded_code_debug
-    %   verbose
-    %   verbose_commands
-    %   very_verbose
-    %
-:- pred handle_compiler_developer_options(globals::in, globals::out,
-    io::di, io::uo) is det.
-
-handle_compiler_developer_options(!Globals, !IO) :-
-    option_implies(very_verbose, verbose, bool(yes), !Globals),
-    option_implies(verbose, verbose_commands, bool(yes), !Globals),
-    globals.lookup_bool_option(!.Globals, very_verbose, VeryVerbose),
-    globals.lookup_bool_option(!.Globals, statistics, Statistics),
-    ( if
-        VeryVerbose = bool.yes,
-        Statistics = bool.yes
-    then
-        globals.set_option(detailed_statistics, bool(yes), !Globals)
-    else
-        true
-    ),
-
-    option_implies(debug_modes_minimal, debug_modes, bool(yes), !Globals),
-    option_implies(debug_modes_verbose, debug_modes, bool(yes), !Globals),
-    option_implies(debug_modes_statistics, debug_modes, bool(yes), !Globals),
-
-    globals.lookup_int_option(!.Globals, debug_liveness, DebugLiveness),
-    ( if
-        DebugLiveness >= 0,
-        convert_dump_alias("all", AllDumpOptions)
-    then
-        % Programmers only enable --debug-liveness if they are interested
-        % in the goal annotations put on goals by the various phases
-        % of the liveness pass. The default dump options do not print
-        % these annotations.
-        globals.lookup_string_option(!.Globals, dump_hlds_options,
-            DumpOptions0),
-        DumpOptions1 = DumpOptions0 ++ AllDumpOptions,
-        globals.set_option(dump_hlds_options, string(DumpOptions1), !Globals)
-    else
-        true
-    ),
-
-    option_implies(debug_modes_verbose, debug_modes, bool(yes), !Globals),
-    globals.lookup_int_option(!.Globals, debug_modes_pred_id,
-        DebugModesPredId),
-    ( if DebugModesPredId > 0 then
-        globals.set_option(debug_modes, bool(yes), !Globals)
-    else
-        true
-    ),
-
-    globals.lookup_accumulating_option(!.Globals,
-        unneeded_code_debug_pred_name, DebugUnneededCodePredNames),
-    (
-        DebugUnneededCodePredNames = []
-    ;
-        DebugUnneededCodePredNames = [_ | _],
-        globals.set_option(unneeded_code_debug, bool(yes), !Globals)
-    ),
-
-    globals.lookup_accumulating_option(!.Globals, debug_opt_pred_id,
-        DebugOptPredIdStrs),
-    globals.lookup_accumulating_option(!.Globals, debug_opt_pred_name,
-        DebugOptPredNames),
-    ( if
-        ( DebugOptPredIdStrs = [_ | _]
-        ; DebugOptPredNames = [_ | _]
-        )
-    then
-        globals.set_option(debug_opt, bool(yes), !Globals)
-    else
-        true
-    ),
-
-    globals.lookup_bool_option(!.Globals, debug_intermodule_analysis,
-        DebugIntermoduleAnalysis),
-    analysis.enable_debug_messages(DebugIntermoduleAnalysis, !IO),
-
-    globals.lookup_accumulating_option(!.Globals, dump_hlds_pred_id,
-        DumpHLDSPredIds),
-    (
-        DumpHLDSPredIds = [_ | _],
-        globals.lookup_string_option(!.Globals, dump_hlds_options,
-            DumpOptions2),
-        % Prevent the dumping of the mode and type tables.
-        string.replace_all(DumpOptions2, "M", "", DumpOptions3),
-        string.replace_all(DumpOptions3, "T", "", DumpOptions),
-        globals.set_option(dump_hlds_options, string(DumpOptions), !Globals)
-    ;
-        DumpHLDSPredIds = []
-    ),
-
-    option_implies(frameopt_comments, auto_comments, bool(yes), !Globals),
-
-    % --dump-hlds, --statistics, --parallel-liveness and
-    % --parallel-code-gen require compilation by phases.
-    globals.lookup_accumulating_option(!.Globals, dump_hlds, DumpHLDSStages),
-    globals.lookup_accumulating_option(!.Globals, dump_trace_counts,
-        DumpTraceStages),
-    globals.lookup_bool_option(!.Globals, parallel_liveness, ParallelLiveness),
-    globals.lookup_bool_option(!.Globals, parallel_code_gen, ParallelCodeGen),
-    ( if
-        ( DumpHLDSStages = [_ | _]
-        ; DumpTraceStages = [_ | _]
-        ; Statistics = bool.yes
-        ; ParallelLiveness = bool.yes
-        ; ParallelCodeGen = bool.yes
-        )
-    then
-        globals.set_option(trad_passes, bool(no), !Globals)
-    else
-        true
-    ).
-
-%---------------------%
-
-    % Options updated:
-    %   linkage
-    %   mercury_linkage
-    %   lib_linkages
-    %   strip
-    %
-:- pred handle_target_compile_link_symlink_options(globals::in, globals::out)
-    is det.
-
-handle_target_compile_link_symlink_options(!Globals) :-
-    % Set up options for position independent code.
-    % Shared libraries always use `--linkage shared'.
-    option_implies(compile_to_shared_lib, linkage,
-        string("shared"), !Globals),
-    option_implies(compile_to_shared_lib, mercury_linkage,
-        string("shared"), !Globals),
-
-    % If no --lib-linkage option has been specified, default to the
-    % set of all possible linkages.
-    globals.lookup_accumulating_option(!.Globals, lib_linkages, LibLinkages0),
-    (
-        LibLinkages0 = [],
-        globals.set_option(lib_linkages,
-            accumulating(["static", "shared"]), !Globals)
-    ;
-        LibLinkages0 = [_ | _]
-    ),
-
-    option_implies(target_debug, strip, bool(no), !Globals),
-
-    ( if io.have_symlinks then
-        true
-    else
-        globals.set_option(use_symlinks, bool(no), !Globals)
     ).
 
 %---------------------%
@@ -2814,6 +2562,256 @@ handle_directory_options(OpMode, !Globals) :-
         SubdirErlangIncludeDirs = [HrlsSubdir | ErlangIncludeDirs1],
         globals.set_option(erlang_include_directory,
             accumulating(SubdirErlangIncludeDirs), !Globals)
+    else
+        true
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   linkage
+    %   mercury_linkage
+    %   lib_linkages
+    %   strip
+    %
+:- pred handle_target_compile_link_symlink_options(globals::in, globals::out)
+    is det.
+
+handle_target_compile_link_symlink_options(!Globals) :-
+    % Set up options for position independent code.
+    % Shared libraries always use `--linkage shared'.
+    option_implies(compile_to_shared_lib, linkage,
+        string("shared"), !Globals),
+    option_implies(compile_to_shared_lib, mercury_linkage,
+        string("shared"), !Globals),
+
+    % If no --lib-linkage option has been specified, default to the
+    % set of all possible linkages.
+    globals.lookup_accumulating_option(!.Globals, lib_linkages, LibLinkages0),
+    (
+        LibLinkages0 = [],
+        globals.set_option(lib_linkages,
+            accumulating(["static", "shared"]), !Globals)
+    ;
+        LibLinkages0 = [_ | _]
+    ),
+
+    option_implies(target_debug, strip, bool(no), !Globals),
+
+    ( if io.have_symlinks then
+        true
+    else
+        globals.set_option(use_symlinks, bool(no), !Globals)
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   auto_comments
+    %   debug_modes
+    %   debug_opt
+    %   dump_hlds_options
+    %   dump_hlds_options
+    %   statistics
+    %   trad_passes
+    %   unneeded_code_debug
+    %   verbose
+    %   verbose_commands
+    %   very_verbose
+    %
+:- pred handle_compiler_developer_options(globals::in, globals::out,
+    io::di, io::uo) is det.
+
+handle_compiler_developer_options(!Globals, !IO) :-
+    option_implies(very_verbose, verbose, bool(yes), !Globals),
+    option_implies(verbose, verbose_commands, bool(yes), !Globals),
+    globals.lookup_bool_option(!.Globals, very_verbose, VeryVerbose),
+    globals.lookup_bool_option(!.Globals, statistics, Statistics),
+    ( if
+        VeryVerbose = bool.yes,
+        Statistics = bool.yes
+    then
+        globals.set_option(detailed_statistics, bool(yes), !Globals)
+    else
+        true
+    ),
+
+    option_implies(debug_modes_minimal, debug_modes, bool(yes), !Globals),
+    option_implies(debug_modes_verbose, debug_modes, bool(yes), !Globals),
+    option_implies(debug_modes_statistics, debug_modes, bool(yes), !Globals),
+
+    globals.lookup_int_option(!.Globals, debug_liveness, DebugLiveness),
+    ( if
+        DebugLiveness >= 0,
+        convert_dump_alias("all", AllDumpOptions)
+    then
+        % Programmers only enable --debug-liveness if they are interested
+        % in the goal annotations put on goals by the various phases
+        % of the liveness pass. The default dump options do not print
+        % these annotations.
+        globals.lookup_string_option(!.Globals, dump_hlds_options,
+            DumpOptions0),
+        DumpOptions1 = DumpOptions0 ++ AllDumpOptions,
+        globals.set_option(dump_hlds_options, string(DumpOptions1), !Globals)
+    else
+        true
+    ),
+
+    option_implies(debug_modes_verbose, debug_modes, bool(yes), !Globals),
+    globals.lookup_int_option(!.Globals, debug_modes_pred_id,
+        DebugModesPredId),
+    ( if DebugModesPredId > 0 then
+        globals.set_option(debug_modes, bool(yes), !Globals)
+    else
+        true
+    ),
+
+    globals.lookup_accumulating_option(!.Globals,
+        unneeded_code_debug_pred_name, DebugUnneededCodePredNames),
+    (
+        DebugUnneededCodePredNames = []
+    ;
+        DebugUnneededCodePredNames = [_ | _],
+        globals.set_option(unneeded_code_debug, bool(yes), !Globals)
+    ),
+
+    globals.lookup_accumulating_option(!.Globals, debug_opt_pred_id,
+        DebugOptPredIdStrs),
+    globals.lookup_accumulating_option(!.Globals, debug_opt_pred_name,
+        DebugOptPredNames),
+    ( if
+        ( DebugOptPredIdStrs = [_ | _]
+        ; DebugOptPredNames = [_ | _]
+        )
+    then
+        globals.set_option(debug_opt, bool(yes), !Globals)
+    else
+        true
+    ),
+
+    globals.lookup_bool_option(!.Globals, debug_intermodule_analysis,
+        DebugIntermoduleAnalysis),
+    analysis.enable_debug_messages(DebugIntermoduleAnalysis, !IO),
+
+    globals.lookup_accumulating_option(!.Globals, dump_hlds_pred_id,
+        DumpHLDSPredIds),
+    (
+        DumpHLDSPredIds = [_ | _],
+        globals.lookup_string_option(!.Globals, dump_hlds_options,
+            DumpOptions2),
+        % Prevent the dumping of the mode and type tables.
+        string.replace_all(DumpOptions2, "M", "", DumpOptions3),
+        string.replace_all(DumpOptions3, "T", "", DumpOptions),
+        globals.set_option(dump_hlds_options, string(DumpOptions), !Globals)
+    ;
+        DumpHLDSPredIds = []
+    ),
+
+    option_implies(frameopt_comments, auto_comments, bool(yes), !Globals),
+
+    % --dump-hlds, --statistics, --parallel-liveness and
+    % --parallel-code-gen require compilation by phases.
+    globals.lookup_accumulating_option(!.Globals, dump_hlds, DumpHLDSStages),
+    globals.lookup_accumulating_option(!.Globals, dump_trace_counts,
+        DumpTraceStages),
+    globals.lookup_bool_option(!.Globals, parallel_liveness, ParallelLiveness),
+    globals.lookup_bool_option(!.Globals, parallel_code_gen, ParallelCodeGen),
+    ( if
+        ( DumpHLDSStages = [_ | _]
+        ; DumpTraceStages = [_ | _]
+        ; Statistics = bool.yes
+        ; ParallelLiveness = bool.yes
+        ; ParallelCodeGen = bool.yes
+        )
+    then
+        globals.set_option(trad_passes, bool(no), !Globals)
+    else
+        true
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   compare_specialization
+    %
+:- pred handle_compare_specialization(globals::in, globals::out) is det.
+
+handle_compare_specialization(!Globals) :-
+    globals.lookup_int_option(!.Globals, compare_specialization, CompareSpec),
+    ( if CompareSpec < 0 then
+        % This indicates that the option was not set by the user;
+        % we should set the option to the default value. This value
+        % may be back end specific, since different back ends have
+        % different performance tradeoffs.
+        globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
+        (
+            HighLevelCode = bool.no,
+            globals.set_option(compare_specialization, int(13), !Globals)
+        ;
+            HighLevelCode = bool.yes,
+            globals.set_option(compare_specialization, int(14), !Globals)
+        )
+    else
+        true
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   none
+    %
+:- pred handle_non_tail_rec_warnings(opt_tuple::in,
+    maybe_opt_mlds_tailcalls::in, op_mode::in,
+    globals::in, globals::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls, OpMode,
+        !Globals, !Specs) :-
+    % --warn-non-tail-recursion requires tail call optimization to be enabled.
+    % It also doesn't work if you use --errorcheck-only.
+    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion_self,
+        WarnNonTailRecSelf),
+    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion_mutual,
+        WarnNonTailRecMutual),
+    ( if
+        ( WarnNonTailRecSelf = bool.yes
+        ; WarnNonTailRecMutual = bool.yes
+        )
+    then
+        OT_PessimizeTailCalls0 = OptTuple0 ^ ot_pessimize_tailcalls,
+        (
+            OT_PessimizeTailCalls0 = do_not_pessimize_tailcalls
+        ;
+            OT_PessimizeTailCalls0 = pessimize_tailcalls,
+            PessimizeWords = "--warn-non-tail-recursion is incompatible" ++
+                 " with --pessimize-tailcalls",
+            % XXX While these two options look diametrically opposed,
+            % they are actually compatible, because pessimize_tailcalls
+            % is implemented only for the LLDS backend, while the
+            % optimize_tailcalls option is only for the MLDS backend.
+            % (The LLDS backend's tail call optimization does NOT depend
+            % on the value of that option.)
+            add_error(phase_options, [words(PessimizeWords)], !Specs)
+        ),
+        (
+            OT_OptMLDSTailCalls = opt_mlds_tailcalls
+        ;
+            OT_OptMLDSTailCalls = do_not_opt_mlds_tailcalls,
+            % XXX This error message could be misleading. It is possible that
+            % - the user *did* ask for MLDS tailcalls, but
+            % - accidentally also specified --no-optimize, which would
+            %   lead to code above turning MLDS tailcalls *off*.
+            OptimizeWords =
+                "--warn-non-tail-recursion requires --optimize-tailcalls",
+            add_error(phase_options, [words(OptimizeWords)], !Specs)
+        ),
+        ( if OpMode = opm_top_args(opma_augment(opmau_errorcheck_only)) then
+            ECOWords = "--warn-non-tail-recursion is incompatible"
+                ++ " with --errorcheck-only",
+            add_error(phase_options, [words(ECOWords)], !Specs)
+        else
+            true
+        )
     else
         true
     ).
