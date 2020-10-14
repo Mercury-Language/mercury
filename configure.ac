@@ -2043,6 +2043,7 @@ AC_MSG_CHECKING(whether architecture is big-endian)
 AC_CACHE_VAL(mercury_cv_is_bigender,
     AC_TRY_RUN(
         [
+            #include <stdlib.h>
             int main() {
                 int     x = 1;
                 unsigned char   *x_p;
@@ -2070,6 +2071,7 @@ AC_MSG_CHECKING(whether architecture is little-endian)
 AC_CACHE_VAL(mercury_cv_is_littleender,
     AC_TRY_RUN(
         [
+            #include <stdlib.h>
             int main() {
                 int     x = 1;
                 unsigned char   *x_p;
@@ -2196,6 +2198,7 @@ AC_CACHE_VAL(mercury_cv_can_do_pending_io,
             #endif
             #include <sys/types.h>
             #include <sys/time.h>
+            #include <stdlib.h>
             int main() {
                 fd_set f;
                 struct timeval zero;
