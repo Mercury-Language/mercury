@@ -718,15 +718,23 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
 
     handle_target_compile_link_symlink_options(!Globals),
 
-    ( if OpMode = opm_top_args(opma_augment(opmau_make_trans_opt_int)) then
-        globals.set_option(transitive_optimization, bool(yes), !Globals)
-    else
-        true
-    ),
-
+    % These three calls are in this order because
+    %
+    % - handle_opmode_implications may set transitive_optimization,
+    % - handle_option_to_option_implications may set
+    %   intermodule_optimization if transitive_optimization is set,
+    % - maybe_disable_smart_recompilation then needs the final value
+    %   of intermodule_optimization.
+    %
+    % However, while it is hard to see, there is no conflict here.
+    % handle_opmode_implications sets transitive_optimization
+    % only when the opmode calls for making .trans_opt files,
+    % while maybe_disable_smart_recompilation needs the value of
+    % intermodule_optimization only when the opmode calls for
+    % generating target language code.
+    handle_opmode_implications(OpMode, !Globals),
     handle_option_to_option_implications(!Globals),
-
-    handle_opmode_implications(OpMode, !Globals, !IO),
+    maybe_disable_smart_recompilation(OpMode, !Globals, !IO),
 
     TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
     handle_debugging_options(Target, TraceLevel, TraceEnabled, SSTraceLevel,
@@ -1957,68 +1965,87 @@ handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
     %   generate_item_version_numbers
     %   line_numbers
     %   smart_recompilation
+    %   transitive_optimization
     %   warn_wrong_module_name
     %
 :- pred handle_opmode_implications(op_mode::in,
-    globals::in, globals::out, io::di, io::uo) is det.
+    globals::in, globals::out) is det.
 
-handle_opmode_implications(OpMode, !Globals, !IO) :-
-    % XXX Doing this implication *before* code that turns off
-    % smart_recompilation looks like a bug to me. -zs
-    option_implies(smart_recompilation, generate_item_version_numbers,
-        bool(yes), !Globals),
-
+handle_opmode_implications(OpMode, !Globals) :-
     % Disable `--smart-recompilation' unless we are generating target code.
-    ( if OpMode = opm_top_args(opma_augment(opmau_generate_code(_))) then
-        true
-    else
-        globals.set_option(smart_recompilation, bool(no), !Globals)
-    ),
-
-    % Without an existing source file mapping, there is no "right" module name.
-    ( if OpMode = opm_top_generate_source_file_mapping then
-        globals.set_option(warn_wrong_module_name, bool(no), !Globals)
-    else
-        true
-    ),
-
-    ( if OpMode = opm_top_args(OpModeArgs) then
+    globals.lookup_bool_option(!.Globals, smart_recompilation, Smart0),
+    (
+        OpMode = opm_top_args(OpModeArgs),
         % Disable --line-numbers when building the `.int', `.opt', etc. files,
         % since including line numbers in those would cause unnecessary
         % recompilation.
         (
             OpModeArgs = opma_make_interface(OpModeArgsMI),
             globals.set_option(line_numbers, bool(no), !Globals),
-            ( if OpModeArgsMI = omif_int3 then
+            (
+                ( OpModeArgsMI = omif_int0
+                ; OpModeArgsMI = omif_int1_int2
+                ),
+                % NOTE When generating interface files, --smart-recompilation
+                % calls not for *doing* smart recompilation, but *preparing*
+                % for smart recompilation, in the form of generating item
+                % version numbers.
+                globals.set_option(generate_item_version_numbers,
+                    bool(Smart0), !Globals)
+            ;
+                OpModeArgsMI = omif_int3,
                 % We never use version number information in `.int3',
                 % `.opt' or `.trans_opt' files.
-                globals.set_option(generate_item_version_numbers, bool(no),
-                    !Globals)
-            else
-                true
-            )
+                globals.set_option(generate_item_version_numbers,
+                    bool(no), !Globals)
+
+            ),
+            Smart = bool.no
         ;
             OpModeArgs = opma_augment(OpModeAugment),
-            ( if
-                ( OpModeAugment = opmau_make_opt_int
-                ; OpModeAugment = opmau_make_trans_opt_int
-                )
-            then
-                globals.set_option(line_numbers, bool(no), !Globals)
-            else
-                true
+            (
+                OpModeAugment = opmau_make_opt_int,
+                globals.set_option(line_numbers, bool(no), !Globals),
+                Smart = bool.no
+            ;
+                OpModeAugment = opmau_make_trans_opt_int,
+                globals.set_option(transitive_optimization, bool(yes),
+                    !Globals),
+                globals.set_option(line_numbers, bool(no), !Globals),
+                Smart = bool.no
+            ;
+                ( OpModeAugment = opmau_make_analysis_registry
+                ; OpModeAugment = opmau_make_xml_documentation
+                ; OpModeAugment = opmau_typecheck_only
+                ; OpModeAugment = opmau_errorcheck_only
+                ),
+                Smart = bool.no
+            ;
+                OpModeAugment = opmau_generate_code(_),
+                Smart = Smart0
             )
         ;
             ( OpModeArgs = opma_generate_dependencies
             ; OpModeArgs = opma_generate_dependency_file
             ; OpModeArgs = opma_convert_to_mercury
-            )
+            ),
+            Smart = bool.no
         )
-    else
-        true
+    ;
+        OpMode = opm_top_generate_source_file_mapping,
+        % Without an existing source file mapping, there is no "right"
+        % module name.
+        globals.set_option(warn_wrong_module_name, bool(no), !Globals),
+        Smart = bool.no
+    ;
+        ( OpMode = opm_top_generate_standalone_interface(_)
+        ; OpMode = opm_top_query(_)
+        ; OpMode = opm_top_make
+        ),
+        Smart = bool.no
     ),
 
-    maybe_disable_smart_recompilation(OpMode, !Globals, !IO).
+    globals.set_option(smart_recompilation, bool(Smart), !Globals).
 
 %---------------------%
 
@@ -2029,10 +2056,10 @@ handle_opmode_implications(OpMode, !Globals, !IO) :-
     globals::in, globals::out, io::di, io::uo) is det.
 
 maybe_disable_smart_recompilation(OpMode, !Globals, !IO) :-
-    % XXX Smart recompilation does not yet work with inter-module
+    % XXX Smart recompilation does not yet work with intermodule
     % optimization, but we still want to generate version numbers
     % in interface files for users of a library compiled with
-    % inter-module optimization but not using inter-module
+    % intermodule optimization but not using intermodule
     % optimization themselves.
     globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
     (
@@ -2123,7 +2150,7 @@ handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs) :-
     % Since we want to allow tabling in grades that do not have label
     % layout info, we disable hijacks instead.
     % XXX we should allow hijacks in table_builtin.m
-    ( 
+    (
         UseMinimalModelStackCopy = bool.yes,
         AllowHijacksMMSC = bool.no
     ;
