@@ -2573,6 +2573,7 @@ handle_directory_options(OpMode, !Globals) :-
     %   mercury_linkage
     %   lib_linkages
     %   strip
+    %   use_symlinks
     %
 :- pred handle_target_compile_link_symlink_options(globals::in, globals::out)
     is det.
