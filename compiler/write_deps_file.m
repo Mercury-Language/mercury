@@ -242,7 +242,6 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     set.delete(ModuleName, LongDeps0, LongDeps),
     set.difference(ShortDeps0, LongDeps, ShortDeps1),
     set.delete(ModuleName, ShortDeps1, ShortDeps),
-    list.sort_and_remove_dups(FactDeps0, FactDeps),
 
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
         ext_other(other_ext(".trans_opt_date")),
@@ -268,31 +267,10 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         MaybeTransOptDeps = no
     ),
 
-    (
-        FactDeps = [_ | _],
-        MmakeVarFactTables = mmake_var_defn_list(
-            ModuleMakeVarName ++ ".fact_tables",
-            FactDeps),
-        add_mmake_entry(MmakeVarFactTables, !MmakeFile),
-        MmakeVarFactTablesOs = mmake_var_defn(
-            ModuleMakeVarName ++ ".fact_tables.os",
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
-        MmakeVarFactTablesAllOs = mmake_var_defn(
-            ModuleMakeVarName ++ ".fact_tables.all_os",
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
-        MmakeVarFactTablesCs = mmake_var_defn(
-            ModuleMakeVarName ++ ".fact_tables.cs",
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(cs_subdir)%.c)"),
-        MmakeVarFactTablesAllCs = mmake_var_defn(
-            ModuleMakeVarName ++ ".fact_tables.all_cs",
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(cs_subdir)%.c)"),
-        MmakeVarsFactTables =
-            [MmakeVarFactTablesOs, MmakeVarFactTablesAllOs,
-            MmakeVarFactTablesCs, MmakeVarFactTablesAllCs],
-        add_mmake_entries(MmakeVarsFactTables, !MmakeFile)
-    ;
-        FactDeps = []
-    ),
+    construct_fact_tables_entries(ModuleMakeVarName,
+        SourceFileName, ObjFileName, FactDeps0,
+        MmakeVarsFactTables, FactTableSourceGroups, MmakeRulesFactTables),
+    add_mmake_entries(MmakeVarsFactTables, !MmakeFile),
 
     ( if string.remove_suffix(SourceFileName, ".m", SourceFileBase) then
         ErrFileName = SourceFileBase ++ ".err"
@@ -363,16 +341,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
                 ForeignIncludeFiles),
         !:SourceGroups = !.SourceGroups ++
             make_file_name_group("foreign imports", ForeignImportFileNames),
-
-        (
-            FactDeps = [_ | _],
-            FactTableSourceGroup = mmake_file_name_group("fact tables",
-                one_or_more("$(" ++ ModuleMakeVarName ++ ".fact_tables)", [])),
-            !:SourceGroups = !.SourceGroups ++ [FactTableSourceGroup]
-        ;
-            FactDeps = []
-        ),
-
+        !:SourceGroups = !.SourceGroups ++ FactTableSourceGroups,
         MmakeRuleDateFileDeps = mmake_general_rule("date_file_deps",
             mmake_rule_is_not_phony,
             TargetGroups,
@@ -381,24 +350,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         add_mmake_entry(MmakeRuleDateFileDeps, !MmakeFile)
     ),
 
-    (
-        FactDeps = [_ | _],
-        % XXX These rules seem wrong to me. -zs
-        MmakeRuleFactOs = mmake_simple_rule("fact_table_os",
-            mmake_rule_is_not_phony,
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables.os)",
-            ["$(" ++ ModuleMakeVarName ++  ".fact_tables)", SourceFileName],
-            []),
-        MmakeRuleFactCs = mmake_simple_rule("fact_table_cs",
-            mmake_rule_is_not_phony,
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables.cs)",
-            [ObjFileName],
-            []),
-        MmakeRulesFactOsCs = [MmakeRuleFactOs, MmakeRuleFactCs],
-        add_mmake_entries(MmakeRulesFactOsCs, !MmakeFile)
-    ;
-        FactDeps = []
-    ),
+    add_mmake_entries(MmakeRulesFactTables, !MmakeFile),
 
     NestedOtherExts = [
         other_ext(".optdate"),
@@ -652,19 +604,6 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         []),
     add_mmake_entry(MmakeRuleParentDate0s, !MmakeFile),
 
-    % If we can pass the module name rather than the file name, then do so.
-    % `--smart-recompilation' doesn't work if the file name is passed
-    % and the module name doesn't match the file name.
-
-    have_source_file_map(HaveMap, !IO),
-    (
-        HaveMap = yes,
-        module_name_to_file_name_stem(SourceFileModuleName, ModuleArg)
-    ;
-        HaveMap = no,
-        ModuleArg = SourceFileName
-    ),
-
     (
         ContainsForeignCode = foreign_code_langs_known(_ForeignCodeLangs),
         % XXX This looks wrong to me (zs) in cases when _ForeignCodeLangs
@@ -837,9 +776,39 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     ;
         UseSubdirs = no
     ),
+    have_source_file_map(HaveMap, !IO),
+    construct_any_needed_pattern_rules(HaveMap,
+        ModuleName, SourceFileModuleName, SourceFileName,
+        Date0FileName, DateFileName, Date3FileName,
+        OptDateFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
+        MmakeRulesPatterns),
+    add_mmake_entries(MmakeRulesPatterns, !MmakeFile).
 
+%---------------------%
+
+:- pred construct_any_needed_pattern_rules(bool::in,
+    module_name::in, module_name::in, string::in,
+    string::in, string::in, string::in,
+    string::in, string::in, string::in, string::in,
+    list(mmake_entry)::out) is det.
+
+construct_any_needed_pattern_rules(HaveMap,
+        ModuleName ,SourceFileModuleName, SourceFileName,
+        Date0FileName, DateFileName, Date3FileName,
+        OptDateFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
+        MmakeRulesPatterns) :-
+    % If we can pass the module name rather than the file name, then do so.
+    % `--smart-recompilation' doesn't work if the file name is passed
+    % and the module name doesn't match the file name.
+    (
+        HaveMap = yes,
+        module_name_to_file_name_stem(SourceFileModuleName, ModuleArg)
+    ;
+        HaveMap = no,
+        ModuleArg = SourceFileName
+    ),
     ( if SourceFileName = default_source_file_name(ModuleName) then
-        true
+        MmakeRulesPatterns = []
     else
         % The pattern rules in Mmake.rules won't work, since the source file
         % name doesn't match the expected source file name for this module
@@ -854,7 +823,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         % Any changes here will require corresponding changes to
         % scripts/Mmake.rules. See that file for documentation on these rules.
 
-        MmakeRulesPattern = [
+        MmakeRulesPatterns = [
             mmake_simple_rule("date0_on_src",
                 mmake_rule_is_not_phony,
                 Date0FileName, [SourceFileName],
@@ -886,8 +855,63 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
                 JavaDateFileName, [SourceFileName],
                 ["$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --java-only " ++
                     ModuleArg ++ " $(ERR_REDIRECT)"])
-        ],
-        add_mmake_entries(MmakeRulesPattern, !MmakeFile)
+        ]
+    ).
+
+%---------------------%
+
+:- pred construct_fact_tables_entries(string::in, string::in, string::in,
+    list(string)::in,
+    list(mmake_entry)::out, list(mmake_file_name_group)::out,
+    list(mmake_entry)::out) is det.
+
+construct_fact_tables_entries(ModuleMakeVarName, SourceFileName, ObjFileName,
+        FactDeps0, MmakeVarsFactTables, FactTableSourceGroups,
+        MmakeRulesFactTables) :-
+    list.sort_and_remove_dups(FactDeps0, FactDeps),
+    (
+        FactDeps = [_ | _],
+        MmakeVarFactTables = mmake_var_defn_list(
+            ModuleMakeVarName ++ ".fact_tables",
+            FactDeps),
+        MmakeVarFactTablesOs = mmake_var_defn(
+            ModuleMakeVarName ++ ".fact_tables.os",
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
+        MmakeVarFactTablesAllOs = mmake_var_defn(
+            ModuleMakeVarName ++ ".fact_tables.all_os",
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
+        MmakeVarFactTablesCs = mmake_var_defn(
+            ModuleMakeVarName ++ ".fact_tables.cs",
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(cs_subdir)%.c)"),
+        MmakeVarFactTablesAllCs = mmake_var_defn(
+            ModuleMakeVarName ++ ".fact_tables.all_cs",
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(cs_subdir)%.c)"),
+        MmakeVarsFactTables =
+            [MmakeVarFactTables,
+            MmakeVarFactTablesOs, MmakeVarFactTablesAllOs,
+            MmakeVarFactTablesCs, MmakeVarFactTablesAllCs],
+
+        FactTableSourceGroup = mmake_file_name_group("fact tables",
+            one_or_more("$(" ++ ModuleMakeVarName ++ ".fact_tables)", [])),
+        FactTableSourceGroups = [FactTableSourceGroup],
+
+        % XXX These rules seem wrong to me. -zs
+        MmakeRuleFactOs = mmake_simple_rule("fact_table_os",
+            mmake_rule_is_not_phony,
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables.os)",
+            ["$(" ++ ModuleMakeVarName ++  ".fact_tables)", SourceFileName],
+            []),
+        MmakeRuleFactCs = mmake_simple_rule("fact_table_cs",
+            mmake_rule_is_not_phony,
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables.cs)",
+            [ObjFileName],
+            []),
+        MmakeRulesFactTables = [MmakeRuleFactOs, MmakeRuleFactCs]
+    ;
+        FactDeps = [],
+        MmakeVarsFactTables = [],
+        FactTableSourceGroups = [],
+        MmakeRulesFactTables = []
     ).
 
 %---------------------------------------------------------------------------%
