@@ -4066,7 +4066,7 @@ AC_TRY_RUN(
         #include "mercury_imp.h"
         #include "mercury_trace_spy.h"
 
-        MR_Spy_Point    spied_procs[2];
+        MR_SpyPoint     spied_procs[2];
 
         int main() {
             spied_procs[1] = spied_procs[0];
