@@ -91,7 +91,7 @@
     % came from.
     %
     % Every rule has a name which is printed before the rule (unless
-    % the "name" is the empty string), and a indication whether the
+    % the "name" is the empty string), and an indication whether the
     % targets are phony.
     %
 :- type mmake_entry
@@ -138,7 +138,7 @@
             )
     ;       mmake_deep_rule(
                 % A rule that has exactly one target.
-                % The target is not in named group, but the sources are.
+                % The target is not in a named group, but the sources are.
                 mdr_rule_name   :: string,
                 mdr_flags       :: is_mmake_rule_phony,
                 mdr_targets     :: mmake_file_name,
