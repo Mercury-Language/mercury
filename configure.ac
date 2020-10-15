@@ -2610,6 +2610,7 @@ if test "$mercury_cv_gcc_labels" = yes; then
     AC_CACHE_VAL(mercury_cv_asm_labels,
     AC_TRY_RUN(
         [
+            #include <stdlib.h>
             void *volatile volatile_global_pointer;
             extern void mercury__label1 (void)
                 __asm__("entry_" "mercury__label1" );
