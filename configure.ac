@@ -2558,7 +2558,7 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
             int             global;
             void            *dummy_identity_function(void *);
 
-            foo() {
+            void foo() {
                 entry_foo_1 = && foo_1;
                 goto *dummy_identity_function(&&return_label);
             return_label:
@@ -2568,7 +2568,7 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
                 if (global != 42) exit(1);
                 goto *entry_bar_1;
             }
-            bar() {
+            void bar() {
                 entry_bar_1 = && bar_1;
                 goto *dummy_identity_function(&&return_label);
             return_label:
@@ -2578,7 +2578,7 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
                 if (global != 42) exit(1);
                 goto *succip;
             }
-            main() {
+            int main() {
                 global = 42;
                 foo();
                 bar();
@@ -2614,7 +2614,7 @@ if test "$mercury_cv_gcc_labels" = yes; then
             void *volatile volatile_global_pointer;
             extern void mercury__label1 (void)
                 __asm__("entry_" "mercury__label1" );
-            main() {
+            int main() {
                 void *addr;
 
                 volatile_global_pointer = &&mercury__label1;
@@ -2679,7 +2679,7 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
             changequote(<<,>>)
             MercuryEngine MR_engine_base;
             changequote([,])
-            main() {
+            int main() {
                 MR_mr0 = 20;
                 MR_mr7 = 22;
                 if (MR_mr0 + MR_mr7 != 42)
@@ -2715,7 +2715,7 @@ AC_TRY_RUN(
         changequote(<<,>>)
         MercuryEngine MR_engine_base;
         changequote([,])
-        main() {
+        int main() {
             MR_mr0 = 20;
             MR_mr7 = 22;
             if (MR_mr0 + MR_mr7 != 42)
