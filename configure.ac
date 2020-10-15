@@ -4070,7 +4070,7 @@ AC_TRY_RUN(
 
         int main() {
             spied_procs[1] = spied_procs[0];
-        #if __GNUC__ >= 3
+        #if (__GNUC__ >= 3) && defined(__i386__)
             /* gcc 3.1 seems to have problems with structure assignment
                and global registers, but which this simple test case
                does not trigger. So just force the test to fail for gcc 3.x. */
