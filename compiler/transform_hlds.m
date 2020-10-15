@@ -95,9 +95,6 @@
 
 :- include_module mmc_analysis.
 
-% XXX The following modules are all currently unused.
-:- include_module transform.
-
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.
 %-----------------------------------------------------------------------------%
