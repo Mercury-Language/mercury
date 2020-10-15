@@ -316,11 +316,14 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         ext_other(other_ext(".int0")), ModuleName, Int0FileName, !IO),
 
     some [TargetGroup, TargetGroups, !SourceGroups] (
-        % The reason for why there is no mention of a date file
-        % for C# or Erlang here is that use mmake with those backends
-        % is not supported. Even support for Java is rudimentary
-        % and may not be complete.
-        % XXX Document the *reason* for the lack of that support.
+        % The reason for why there is no mention of a date file for C#
+        % or Erlang here is that with those backends, we do not support
+        % the use of mmake. Even support for Java is incomplete, and
+        % not even *intended* to be complete. In an email to m-rev
+        % on 2020 may 25, Julien said: "IIRC, most of the mmake rules for
+        % Java that are not required by --use-mmc-make are long obsolete".
+        % Unfortunately, apparently there is no documentation of *which*
+        % mmake rules for Java are required by --use-mmc-make.
         TargetGroup = mmake_file_name_group("dates_and_err",
             one_or_more(OptDateFileName,
                 [TransOptDateFileName, ErrFileName,
@@ -507,7 +510,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
                     ext_other(other_ext(".trans_opt")),
                     TransOptDeps2, TransOptDepsOptFileNames, !IO),
                 MmakeRuleTransOptOpts = mmake_flat_rule(
-                    "dates_on_trans_opts'_opts",
+                    "dates_on_trans_opts",
                     mmake_rule_is_not_phony,
                     Targets,
                     TransOptDepsOptFileNames,
