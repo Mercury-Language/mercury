@@ -747,32 +747,52 @@ call_goal_cost(CSCost) = non_trivial_goal(Cost, Calls) :-
     Calls = round_to_int(cs_cost_get_calls(CSCost)),
     Cost = CSCost ^ cscc_csq_cost.
 
-add_goal_costs_seq(dead_goal, dead_goal) = dead_goal.
-add_goal_costs_seq(dead_goal, R@trivial_goal(_)) = R.
-add_goal_costs_seq(dead_goal, R@non_trivial_goal(_, _)) = R.
-add_goal_costs_seq(R@trivial_goal(_), dead_goal) = R.
-add_goal_costs_seq(trivial_goal(CallsA), trivial_goal(_CallsB)) =
-    trivial_goal(CallsA).
-add_goal_costs_seq(trivial_goal(Calls), non_trivial_goal(CostB, CallsB)) =
-        non_trivial_goal(Cost, Calls) :-
-    CostTotal = cost_get_total(float(CallsB), CostB),
-    Cost = cost_total(CostTotal).
-add_goal_costs_seq(R@non_trivial_goal(_, _), dead_goal) = R.
-add_goal_costs_seq(R@non_trivial_goal(_, _), trivial_goal(_)) = R.
-add_goal_costs_seq(non_trivial_goal(CostA, CallsA),
-        non_trivial_goal(CostB, CallsB))
-        = non_trivial_goal(Cost, Calls) :-
-    Calls = CallsA,
-    CostTotal = cost_get_total(float(CallsA), CostA) +
-        cost_get_total(float(CallsB), CostB),
-    Cost = cost_total(CostTotal),
-    ( if
-        Calls = 0,
-        CostTotal \= 0.0
-    then
-        unexpected($pred, "Calls = 0, Cost \\= 0")
-    else
-        true
+add_goal_costs_seq(GoalCostsA, GoalCostsB) = GoalCosts :-
+    % GoalA is earlier and GoalB is later, during either forward
+    % or backward execution.
+    %
+    % XXX The reasons for the decisions taken by this predicate
+    % are not obvious, and may be invalid. Take with a grain of salt.
+    (
+        GoalCostsA = dead_goal,
+        GoalCosts = GoalCostsB
+    ;
+        GoalCostsA = trivial_goal(CallsA),
+        (
+            ( GoalCostsB = dead_goal
+            ; GoalCostsB = trivial_goal(_CallsB)
+            ),
+            GoalCosts = GoalCostsA
+        ;
+            GoalCostsB = non_trivial_goal(CostB, CallsB),
+            CostTotal = cost_get_total(float(CallsB), CostB),
+            Cost = cost_total(CostTotal),
+            GoalCosts = non_trivial_goal(Cost, CallsA)
+        )
+    ;
+        GoalCostsA = non_trivial_goal(CostA, CallsA),
+        (
+            ( GoalCostsB = dead_goal
+            ; GoalCostsB = trivial_goal(_CallsB)
+            ),
+            GoalCosts = GoalCostsA
+        ;
+            GoalCostsB = non_trivial_goal(CostB, CallsB),
+            Calls = CallsA,
+            CostTotal =
+                cost_get_total(float(CallsA), CostA) +
+                cost_get_total(float(CallsB), CostB),
+            Cost = cost_total(CostTotal),
+            ( if
+                Calls = 0,
+                CostTotal \= 0.0
+            then
+                unexpected($pred, "Calls = 0, Cost \\= 0")
+            else
+                true
+            ),
+            GoalCosts = non_trivial_goal(Cost, Calls)
+        )
     ).
 
 add_goal_costs_branch(TotalCalls, A, B) = R :-
