@@ -212,6 +212,25 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+    % Generate the contents of the module's .d file.
+    %
+    % The mmake rules we construct treat C differently from Java, C# and
+    % Erlang. The reason is that we support using mmake when targeting C,
+    % but require the use of --use-mmc-make when targeting Java, C# and Erlang.
+    %
+    % Initially, when the only target language was C, the only build system
+    % we had was mmake, so the mmake rules we generate here can do everything
+    % that one wants to do when targeting C. When we added the ability to
+    % target C# and Erlang, we implemented it for --use-mmc-make only,
+    % *not* for mmake, so the entries we generate for C# and Erlang
+    % mostly just forward the work to --use-mmc-make. Java is in between;
+    % there are more mmake rules for it than for C# or Erlang, but far from
+    % enough for full functionality. In an email to m-rev on 2020 may 25,
+    % Julien said: "IIRC, most of the mmake rules for Java that are not
+    % required by --use-mmc-make are long obsolete". Unfortunately,
+    % apparently there is no documentation of *which* mmake rules for Java
+    % are required by --use-mmc-make.
+    %
 :- pred generate_d_file(globals::in, module_and_imports::in,
     set(module_name)::in, maybe(list(module_name))::in,
     mmakefile::in, mmakefile::out, io::di, io::uo) is det.
@@ -293,83 +312,17 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
         ext_other(other_ext(".int0")), ModuleName, Int0FileName, !IO),
 
-    some [TargetGroup, TargetGroups, !SourceGroups] (
-        % The reason for why there is no mention of a date file for C#
-        % or Erlang here is that with those backends, we do not support
-        % the use of mmake. Even support for Java is incomplete, and
-        % not even *intended* to be complete. In an email to m-rev
-        % on 2020 may 25, Julien said: "IIRC, most of the mmake rules for
-        % Java that are not required by --use-mmc-make are long obsolete".
-        % Unfortunately, apparently there is no documentation of *which*
-        % mmake rules for Java are required by --use-mmc-make.
-        TargetGroup = mmake_file_name_group("dates_and_err",
-            one_or_more(OptDateFileName,
-                [TransOptDateFileName, ErrFileName,
-                CDateFileName, JavaDateFileName])),
-        TargetGroups = one_or_more(TargetGroup, []),
-
-        !:SourceGroups = [make_singleton_file_name_group(SourceFileName)],
-        % If the module contains nested submodules, then the `.int0' file
-        % must first be built.
-        ( if set.is_empty(PublicChildren) then
-            true
-        else
-            !:SourceGroups = !.SourceGroups ++
-                [make_singleton_file_name_group(Int0FileName)]
-        ),
-        make_module_file_name_group_with_suffix(Globals,
-            "ancestors", ext_other(other_ext(".int0")),
-            Ancestors, AncestorSourceGroups, !IO),
-        make_module_file_name_group_with_suffix(Globals,
-            "long deps", ext_other(other_ext(".int")),
-            LongDeps, LongDepsSourceGroups, !IO),
-        make_module_file_name_group_with_suffix(Globals,
-            "short deps", ext_other(other_ext(".int2")),
-            ShortDeps, ShortDepsSourceGroups, !IO),
-        make_module_file_name_group_with_suffix(Globals,
-            "type_repn self dep", ext_other(other_ext(".int")),
-            set.make_singleton_set(ModuleName), TypeRepnSelfDepGroups, !IO),
-        !:SourceGroups = !.SourceGroups ++ AncestorSourceGroups ++
-            LongDepsSourceGroups ++ ShortDepsSourceGroups ++
-            TypeRepnSelfDepGroups,
-
-        ForeignIncludeFiles = cord.list(ForeignIncludeFilesCord),
-        % This is conservative: a target file for foreign language A
-        % does not truly depend on a file included for foreign language B.
-        ForeignImportFileNames =
-            list.map(foreign_include_file_path_name(SourceFileName),
-                ForeignIncludeFiles),
-        !:SourceGroups = !.SourceGroups ++
-            make_file_name_group("foreign imports", ForeignImportFileNames),
-        !:SourceGroups = !.SourceGroups ++ FactTableSourceGroups,
-        MmakeRuleDateFileDeps = mmake_general_rule("date_file_deps",
-            mmake_rule_is_not_phony,
-            TargetGroups,
-            !.SourceGroups,
-            []),
-        add_mmake_entry(MmakeRuleDateFileDeps, !MmakeFile)
-    ),
-
+    construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
+        Ancestors, LongDeps, ShortDeps, PublicChildren, Int0FileName,
+        OptDateFileName, TransOptDateFileName, ForeignIncludeFilesCord,
+        CDateFileName, JavaDateFileName, ErrFileName,
+        FactTableSourceGroups, MmakeRuleDateFileDeps, !IO),
+    add_mmake_entry(MmakeRuleDateFileDeps, !MmakeFile),
     add_mmake_entries(MmakeRulesFactTables, !MmakeFile),
 
-    NestedOtherExts = [
-        other_ext(".optdate"),
-        other_ext(".trans_opt_date"),
-        other_ext(".c_date"),
-        other_ext(".dir/*.$O"),
-        other_ext(".java_date")],
-
-    % If a module contains nested submodules, then we need to build
-    % the nested children before attempting to build the parent module.
-    ( if set.is_empty(NestedDeps) then
-        true
-    else
-        list.map_foldl(
-            gather_nested_deps(Globals, ModuleName,
-                set.to_sorted_list(NestedDeps)),
-            NestedOtherExts, MmakeRulesNestedDeps, !IO),
-        add_mmake_entries(MmakeRulesNestedDeps, !MmakeFile)
-    ),
+    construct_build_nested_children_first_rule(Globals,
+        ModuleName, NestedDeps, MmakeRulesNestedDeps, !IO),
+    add_mmake_entries(MmakeRulesNestedDeps, !MmakeFile),
 
     globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
     globals.lookup_bool_option(Globals, intermodule_optimization,
@@ -776,6 +729,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     ;
         UseSubdirs = no
     ),
+
     have_source_file_map(HaveMap, !IO),
     construct_any_needed_pattern_rules(HaveMap,
         ModuleName, SourceFileModuleName, SourceFileName,
@@ -783,6 +737,153 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         OptDateFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
         MmakeRulesPatterns),
     add_mmake_entries(MmakeRulesPatterns, !MmakeFile).
+
+%---------------------%
+
+:- pred construct_fact_tables_entries(string::in, string::in, string::in,
+    list(string)::in,
+    list(mmake_entry)::out, list(mmake_file_name_group)::out,
+    list(mmake_entry)::out) is det.
+
+construct_fact_tables_entries(ModuleMakeVarName, SourceFileName, ObjFileName,
+        FactDeps0, MmakeVarsFactTables, FactTableSourceGroups,
+        MmakeRulesFactTables) :-
+    list.sort_and_remove_dups(FactDeps0, FactDeps),
+    (
+        FactDeps = [_ | _],
+        MmakeVarFactTables = mmake_var_defn_list(
+            ModuleMakeVarName ++ ".fact_tables",
+            FactDeps),
+        MmakeVarFactTablesOs = mmake_var_defn(
+            ModuleMakeVarName ++ ".fact_tables.os",
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
+        MmakeVarFactTablesAllOs = mmake_var_defn(
+            ModuleMakeVarName ++ ".fact_tables.all_os",
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
+        MmakeVarFactTablesCs = mmake_var_defn(
+            ModuleMakeVarName ++ ".fact_tables.cs",
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(cs_subdir)%.c)"),
+        MmakeVarFactTablesAllCs = mmake_var_defn(
+            ModuleMakeVarName ++ ".fact_tables.all_cs",
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(cs_subdir)%.c)"),
+        MmakeVarsFactTables =
+            [MmakeVarFactTables,
+            MmakeVarFactTablesOs, MmakeVarFactTablesAllOs,
+            MmakeVarFactTablesCs, MmakeVarFactTablesAllCs],
+
+        FactTableSourceGroup = mmake_file_name_group("fact tables",
+            one_or_more("$(" ++ ModuleMakeVarName ++ ".fact_tables)", [])),
+        FactTableSourceGroups = [FactTableSourceGroup],
+
+        % XXX These rules seem wrong to me. -zs
+        MmakeRuleFactOs = mmake_simple_rule("fact_table_os",
+            mmake_rule_is_not_phony,
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables.os)",
+            ["$(" ++ ModuleMakeVarName ++  ".fact_tables)", SourceFileName],
+            []),
+        MmakeRuleFactCs = mmake_simple_rule("fact_table_cs",
+            mmake_rule_is_not_phony,
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables.cs)",
+            [ObjFileName],
+            []),
+        MmakeRulesFactTables = [MmakeRuleFactOs, MmakeRuleFactCs]
+    ;
+        FactDeps = [],
+        MmakeVarsFactTables = [],
+        FactTableSourceGroups = [],
+        MmakeRulesFactTables = []
+    ).
+
+%---------------------%
+
+:- pred construct_date_file_deps_rule(globals::in,
+    module_name::in, string::in,
+    set(module_name)::in, set(module_name)::in, set(module_name)::in,
+    set(module_name)::in, string::in, string::in, string::in,
+    cord(foreign_include_file_info)::in, string::in, string::in, string::in,
+    list(mmake_file_name_group)::in,
+    mmake_entry::out, io::di, io::uo) is det.
+
+construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
+        Ancestors, LongDeps, ShortDeps, PublicChildren, Int0FileName,
+        OptDateFileName, TransOptDateFileName, ForeignIncludeFilesCord,
+        CDateFileName, JavaDateFileName, ErrFileName,
+        FactTableSourceGroups, MmakeRuleDateFileDeps, !IO) :-
+    % For the reason for why there is no mention of a date file for C#
+    % or Erlang here, see the comment at the top of generate_d_file.
+    TargetGroup = mmake_file_name_group("dates_and_err",
+        one_or_more(OptDateFileName,
+            [TransOptDateFileName, ErrFileName,
+            CDateFileName, JavaDateFileName])),
+    TargetGroups = one_or_more(TargetGroup, []),
+
+    SourceFileNameGroup = [make_singleton_file_name_group(SourceFileName)],
+    % If the module contains nested submodules, then the `.int0' file
+    % must first be built.
+    ( if set.is_empty(PublicChildren) then
+        Int0FileNameGroups = []
+    else
+        Int0FileNameGroups = [make_singleton_file_name_group(Int0FileName)]
+    ),
+    make_module_file_name_group_with_suffix(Globals,
+        "ancestors", ext_other(other_ext(".int0")),
+        Ancestors, AncestorSourceGroups, !IO),
+    make_module_file_name_group_with_suffix(Globals,
+        "long deps", ext_other(other_ext(".int")),
+        LongDeps, LongDepsSourceGroups, !IO),
+    make_module_file_name_group_with_suffix(Globals,
+        "short deps", ext_other(other_ext(".int2")),
+        ShortDeps, ShortDepsSourceGroups, !IO),
+    make_module_file_name_group_with_suffix(Globals,
+        "type_repn self dep", ext_other(other_ext(".int")),
+        set.make_singleton_set(ModuleName), TypeRepnSelfDepGroups, !IO),
+    ForeignIncludeFiles = cord.list(ForeignIncludeFilesCord),
+    % This is conservative: a target file for foreign language A
+    % does not truly depend on a file included for foreign language B.
+    ForeignImportFileNames =
+        list.map(foreign_include_file_path_name(SourceFileName),
+            ForeignIncludeFiles),
+    ForeignImportFileNameGroup =
+        make_file_name_group("foreign imports", ForeignImportFileNames),
+    SourceGroups = SourceFileNameGroup ++
+        Int0FileNameGroups ++ AncestorSourceGroups ++
+        LongDepsSourceGroups ++ ShortDepsSourceGroups ++
+        TypeRepnSelfDepGroups ++
+        ForeignImportFileNameGroup ++ FactTableSourceGroups,
+    MmakeRuleDateFileDeps = mmake_general_rule("date_file_deps",
+        mmake_rule_is_not_phony,
+        TargetGroups,
+        SourceGroups,
+        []).
+
+%---------------------%
+
+    % If a module contains nested submodules, then we need to build
+    % the nested children before attempting to build the parent module.
+    % Build rules that enforce this.
+    %
+:- pred construct_build_nested_children_first_rule(globals::in,
+    module_name::in, set(module_name)::in, list(mmake_entry)::out,
+    io::di, io::uo) is det.
+
+construct_build_nested_children_first_rule(Globals,
+        ModuleName, NestedDeps, MmakeRulesNestedDeps, !IO) :-
+    NestedModuleNames = set.to_sorted_list(NestedDeps),
+    (
+        NestedModuleNames = [],
+        MmakeRulesNestedDeps = []
+    ;
+        NestedModuleNames = [_ | _],
+        NestedOtherExts = [
+            other_ext(".optdate"),
+            other_ext(".trans_opt_date"),
+            other_ext(".c_date"),
+            other_ext(".dir/*.$O"),
+            other_ext(".java_date")],
+        list.map_foldl(
+            gather_nested_deps(Globals, ModuleName, NestedModuleNames),
+            NestedOtherExts, MmakeRulesNestedDeps, !IO)
+    ).
 
 %---------------------%
 
@@ -856,62 +957,6 @@ construct_any_needed_pattern_rules(HaveMap,
                 ["$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --java-only " ++
                     ModuleArg ++ " $(ERR_REDIRECT)"])
         ]
-    ).
-
-%---------------------%
-
-:- pred construct_fact_tables_entries(string::in, string::in, string::in,
-    list(string)::in,
-    list(mmake_entry)::out, list(mmake_file_name_group)::out,
-    list(mmake_entry)::out) is det.
-
-construct_fact_tables_entries(ModuleMakeVarName, SourceFileName, ObjFileName,
-        FactDeps0, MmakeVarsFactTables, FactTableSourceGroups,
-        MmakeRulesFactTables) :-
-    list.sort_and_remove_dups(FactDeps0, FactDeps),
-    (
-        FactDeps = [_ | _],
-        MmakeVarFactTables = mmake_var_defn_list(
-            ModuleMakeVarName ++ ".fact_tables",
-            FactDeps),
-        MmakeVarFactTablesOs = mmake_var_defn(
-            ModuleMakeVarName ++ ".fact_tables.os",
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
-        MmakeVarFactTablesAllOs = mmake_var_defn(
-            ModuleMakeVarName ++ ".fact_tables.all_os",
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
-        MmakeVarFactTablesCs = mmake_var_defn(
-            ModuleMakeVarName ++ ".fact_tables.cs",
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(cs_subdir)%.c)"),
-        MmakeVarFactTablesAllCs = mmake_var_defn(
-            ModuleMakeVarName ++ ".fact_tables.all_cs",
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(cs_subdir)%.c)"),
-        MmakeVarsFactTables =
-            [MmakeVarFactTables,
-            MmakeVarFactTablesOs, MmakeVarFactTablesAllOs,
-            MmakeVarFactTablesCs, MmakeVarFactTablesAllCs],
-
-        FactTableSourceGroup = mmake_file_name_group("fact tables",
-            one_or_more("$(" ++ ModuleMakeVarName ++ ".fact_tables)", [])),
-        FactTableSourceGroups = [FactTableSourceGroup],
-
-        % XXX These rules seem wrong to me. -zs
-        MmakeRuleFactOs = mmake_simple_rule("fact_table_os",
-            mmake_rule_is_not_phony,
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables.os)",
-            ["$(" ++ ModuleMakeVarName ++  ".fact_tables)", SourceFileName],
-            []),
-        MmakeRuleFactCs = mmake_simple_rule("fact_table_cs",
-            mmake_rule_is_not_phony,
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables.cs)",
-            [ObjFileName],
-            []),
-        MmakeRulesFactTables = [MmakeRuleFactOs, MmakeRuleFactCs]
-    ;
-        FactDeps = [],
-        MmakeVarsFactTables = [],
-        FactTableSourceGroups = [],
-        MmakeRulesFactTables = []
     ).
 
 %---------------------------------------------------------------------------%
