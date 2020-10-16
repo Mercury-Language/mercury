@@ -379,7 +379,7 @@
     % that we need to put into an automatically generated .d file.
     %
 :- pred module_and_imports_d_file(module_and_imports::in,
-    file_name::out, module_name::out, module_name::out,
+    file_name::out, module_name::out,
     set(module_name)::out, module_names_contexts::out, set(module_name)::out,
     module_names_contexts::out, module_names_contexts::out,
     set(module_name)::out, list(string)::out,
@@ -1872,7 +1872,7 @@ module_and_imports_add_specs_errors(NewSpecs, NewErrors, !ModuleAndImports) :-
 %---------------------------------------------------------------------------%
 
 module_and_imports_d_file(ModuleAndImports,
-        SourceFileName, SourceFileModuleName, ModuleName,
+        SourceFileName, SourceFileModuleName,
         Ancestors, PublicChildrenMap, NestedChildren,
         IntDepsMap, ImpDepsMap, IndirectDeps, FactDeps,
         CJCsEFIMs, ForeignIncludeFilesCord, ContainsForeignCode,

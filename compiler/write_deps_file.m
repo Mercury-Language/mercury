@@ -238,7 +238,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
 generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         !MmakeFile, !IO) :-
     module_and_imports_d_file(ModuleAndImports,
-        SourceFileName, SourceFileModuleName, ModuleName,
+        SourceFileName, SourceFileModuleName,
         Ancestors, PublicChildrenMap, NestedDeps,
         IntDepsMap, ImpDepsMap, IndirectDeps, FactDeps0,
         ForeignImportModules0, ForeignIncludeFilesCord, ContainsForeignCode,
@@ -247,6 +247,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     one_or_more_map.keys_as_set(ImpDepsMap, ImpDeps),
     one_or_more_map.keys_as_set(PublicChildrenMap, PublicChildren),
 
+    ModuleName = AugCompUnit ^ aci_module_name,
     ModuleNameString = sym_name_to_string(ModuleName),
     library.version(Version, FullArch),
 
@@ -265,26 +266,9 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
         ext_other(other_ext(".trans_opt_date")),
         ModuleName, TransOptDateFileName, !IO),
-    (
-        MaybeTransOptDeps = yes(TransOptDeps0),
-        set.intersect(set.list_to_set(TransOptDeps0), LongDeps,
-            TransOptDateDeps),
-
-        % Note that maybe_read_dependency_file searches for
-        % this exact pattern.
-        make_module_file_names_with_suffix(Globals,
-            ext_other(other_ext(".trans_opt")),
-            set.to_sorted_list(TransOptDateDeps), TransOptDateDepsFileNames,
-            !IO),
-        MmakeRuleTransOpt = mmake_simple_rule("trans_opt_deps",
-            mmake_rule_is_not_phony,
-            TransOptDateFileName,
-            TransOptDateDepsFileNames,
-            []),
-        add_mmake_entry(MmakeRuleTransOpt, !MmakeFile)
-    ;
-        MaybeTransOptDeps = no
-    ),
+    construct_trans_opt_deps_rule(Globals, MaybeTransOptDeps, LongDeps,
+        TransOptDateFileName, MmakeRulesTransOpt, !IO),
+    add_mmake_entries(MmakeRulesTransOpt, !MmakeFile),
 
     construct_fact_tables_entries(ModuleMakeVarName,
         SourceFileName, ObjFileName, FactDeps0,
@@ -324,157 +308,16 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         ModuleName, NestedDeps, MmakeRulesNestedDeps, !IO),
     add_mmake_entries(MmakeRulesNestedDeps, !MmakeFile),
 
-    globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
-    globals.lookup_bool_option(Globals, intermodule_optimization,
-        Intermod),
-    globals.lookup_accumulating_option(Globals, intermod_directories,
-        IntermodDirs),
-
-    % If intermodule_optimization is enabled, then all the .mh files
-    % must exist, because it is possible that the .c file imports them
-    % directly or indirectly.
-    (
-        Intermod = yes,
-        make_module_file_names_with_suffix(Globals,
-            ext_other(other_ext(".mh")),
-            set.to_sorted_list(AllDeps), AllDepsFileNames, !IO),
-        MmakeRuleMhDeps = mmake_simple_rule("machine_dependent_header_deps",
-            mmake_rule_is_not_phony,
-            ObjFileName,
-            AllDepsFileNames,
-            []),
-        add_mmake_entry(MmakeRuleMhDeps, !MmakeFile)
-    ;
-        Intermod = no
-    ),
-    ( if
-        ( Intermod = yes
-        ; UseOptFiles = yes
-        )
-    then
-        some [Targets] (
-            Targets = one_or_more(TransOptDateFileName,
-                [ErrFileName, CDateFileName, JavaDateFileName]),
-
-            % The target (e.g. C) file only depends on the .opt files from the
-            % current directory, so that inter-module optimization works when
-            % the .opt files for the library are unavailable. This is only
-            % necessary because make doesn't allow conditional dependencies.
-            % The dependency on the current module's .opt file is to make sure
-            % the module gets type-checked without having the definitions
-            % of abstract types from other modules.
-            %
-            % XXX The code here doesn't correctly handle dependencies
-            % on `.int' and `.int2' files needed by the `.opt' files.
-            globals.lookup_bool_option(Globals, transitive_optimization,
-                TransOpt),
-            globals.lookup_bool_option(Globals, use_trans_opt_files,
-                UseTransOpt),
-
-            bool.not(UseTransOpt, BuildOptFiles),
-            ( if
-                ( TransOpt = yes
-                ; UseTransOpt = yes
-                )
-            then
-                get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs,
-                    [ModuleName | set.to_sorted_list(LongDeps)],
-                    OptDeps, TransOptDeps1, !IO),
-                MaybeTransOptDeps1 = yes(TransOptDeps1)
-            else
-                get_opt_deps(Globals, BuildOptFiles, IntermodDirs,
-                    other_ext(".opt"),
-                    [ModuleName | set.to_sorted_list(LongDeps)],
-                    OptDeps, !IO),
-                MaybeTransOptDeps1 = no
-            ),
-
-            OptInt0Deps = set.union_list(list.map(get_ancestors_set, OptDeps)),
-            make_module_file_names_with_suffix(Globals,
-                ext_other(other_ext(".opt")),
-                OptDeps, OptDepsFileNames, !IO),
-            make_module_file_names_with_suffix(Globals,
-                ext_other(other_ext(".int0")),
-                set.to_sorted_list(OptInt0Deps), OptInt0DepsFileNames, !IO),
-
-            MmakeRuleDateOptInt0Deps = mmake_flat_rule(
-                "dates_on_opts_and_int0s",
-                mmake_rule_is_not_phony,
-                Targets,
-                OptDepsFileNames ++ OptInt0DepsFileNames,
-                []),
-            add_mmake_entry(MmakeRuleDateOptInt0Deps, !MmakeFile)
-        ),
-
-        (
-            MaybeTransOptDeps1 = yes(TransOptDeps2),
-            some [Targets] (
-                Targets = one_or_more(ErrFileName,
-                    [CDateFileName, JavaDateFileName]),
-                make_module_file_names_with_suffix(Globals,
-                    ext_other(other_ext(".trans_opt")),
-                    TransOptDeps2, TransOptDepsOptFileNames, !IO),
-                MmakeRuleTransOptOpts = mmake_flat_rule(
-                    "dates_on_trans_opts",
-                    mmake_rule_is_not_phony,
-                    Targets,
-                    TransOptDepsOptFileNames,
-                    []),
-                add_mmake_entry(MmakeRuleTransOptOpts, !MmakeFile)
-            )
-        ;
-            MaybeTransOptDeps1 = no
-        )
-    else
-        true
-    ),
-
-    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-    globals.get_target(Globals, CompilationTarget),
-    ( if
-        HighLevelCode = yes,
-        CompilationTarget = target_c
-    then
-        % For --high-level-code with --target c, we need to make sure that
-        % we generate the header files for imported modules before compiling
-        % the C files, since the generated C files #include those header files.
-
-        some [Targets, AllDepsFileNames] (
-            Targets = one_or_more(PicObjFileName, [ObjFileName]),
-            make_module_file_names_with_suffix(Globals,
-                ext_other(other_ext(".mih")),
-                set.to_sorted_list(AllDeps), AllDepsFileNames, !IO),
-            MmakeRuleObjOnMihs = mmake_flat_rule("objs_on_mihs",
-                mmake_rule_is_not_phony,
-                Targets,
-                AllDepsFileNames,
-                []),
-            add_mmake_entry(MmakeRuleObjOnMihs, !MmakeFile)
-        )
-    else
-        true
-    ),
-
-    % We need to tell make how to make the header files. The header files
-    % are actually built by the same command that creates the .c or .s file,
-    % so we just make them depend on the .c or .s files. This is needed
-    % for the --high-level-code rule above, and for the rules introduced for
-    % `:- pragma foreign_import_module' declarations. In some grades the header
-    % file won't actually be built (e.g. LLDS grades for modules not containing
-    % `:- pragma export' declarations), but this rule won't do any harm.
+    construct_intermod_rules(Globals, ModuleName, LongDeps, AllDeps,
+        ErrFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
+        ObjFileName, MmakeRulesIntermod, !IO),
+    add_mmake_entries(MmakeRulesIntermod, !MmakeFile),
 
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
         ext_other(other_ext(".c")), ModuleName, CFileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".mh")), ModuleName, MhHeaderFileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".mih")), ModuleName, MihHeaderFileName, !IO),
-    MmakeRuleMhMihOnC = mmake_flat_rule("mh_and_mih_on_c",
-        mmake_rule_is_not_phony,
-        one_or_more(MhHeaderFileName, [MihHeaderFileName]),
-        [CFileName],
-        []),
-    add_mmake_entry(MmakeRuleMhMihOnC, !MmakeFile),
+    construct_c_header_rules(Globals, ModuleName, AllDeps,
+        CFileName, ObjFileName, PicObjFileName, MmakeRulesCHeaders, !IO),
+    add_mmake_entries(MmakeRulesCHeaders, !MmakeFile),
 
     % The `.module_dep' file is made as a side effect of
     % creating the `.c' or `.java'.
@@ -557,120 +400,10 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         []),
     add_mmake_entry(MmakeRuleParentDate0s, !MmakeFile),
 
-    (
-        ContainsForeignCode = foreign_code_langs_known(_ForeignCodeLangs),
-        % XXX This looks wrong to me (zs) in cases when _ForeignCodeLangs
-        % is not the empty set. It is possible that in all such cases,
-        % ForeignImportModules0 already contains the needed
-        % foreign_import_module declarations, but it would be nice to see
-        % a reasoned correctness argument about that.
-        FIMSpecs = get_all_fim_specs(ForeignImportModules0)
-    ;
-        ContainsForeignCode = foreign_code_langs_unknown,
-        % If we are generating the `.dep' file, ForeignImportModules0
-        % will contain a conservative approximation to the set of foreign
-        % imports needed which will include imports required by imported
-        % modules.
-        % XXX ITEM_LIST What is the correctness argument that supports
-        % the above assertion?
-        % XXX ITEM_LIST And even if it is true, how does that lead to
-        % us adding the foreign_import_module declarations from the
-        % interface and optimization files to ForeignImportModules
-        % ONLY if ForeignImportModules0 contains nothing?
-        % (Actually, we are replacing ForeignImportModules0 with them,
-        % but when ForeignImportModules0 contains nothing, that is equivalent
-        % to addition.)
-        ( if
-            ForeignImportModules0 = c_j_cs_e_fims(C0, Java0, CSharp0, Erlang0),
-            set.is_empty(C0),
-            set.is_empty(Java0),
-            set.is_empty(CSharp0),
-            set.is_empty(Erlang0)
-        then
-            AugCompUnit = aug_compilation_unit(_, _, _, _ParseTreeModuleSrc,
-                AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-                PlainOpts, _TransOpts, IntForOptSpecs),
-            some [!FIMSpecs] (
-                set.init(!:FIMSpecs),
-                map.foldl_values(gather_fim_specs_in_ancestor_int_spec,
-                    AncestorIntSpecs, !FIMSpecs),
-                map.foldl_values(gather_fim_specs_in_direct_int_spec,
-                    DirectIntSpecs, !FIMSpecs),
-                map.foldl_values(gather_fim_specs_in_indirect_int_spec,
-                    IndirectIntSpecs, !FIMSpecs),
-                map.foldl_values(gather_fim_specs_in_parse_tree_plain_opt,
-                    PlainOpts, !FIMSpecs),
-                % .trans_opt files cannot contain FIMs.
-                map.foldl_values(gather_fim_specs_in_int_for_opt_spec,
-                    IntForOptSpecs, !FIMSpecs),
-                % We restrict the set of FIMs to those that are valid
-                % for the current backend. This preserves old behavior,
-                % and makes sense in that the code below generates mmake rules
-                % only for the current backend, but it would be nice if we
-                % could generate dependency rules for *all* the backends.
-                globals.get_backend_foreign_languages(Globals, BackendLangs),
-                IsBackendFIM =
-                    ( pred(FIMSpec::in) is semidet :-
-                        list.member(FIMSpec ^ fimspec_lang, BackendLangs)
-                    ),
-                set.filter(IsBackendFIM, !.FIMSpecs, FIMSpecs)
-            )
-        else
-            FIMSpecs = get_all_fim_specs(ForeignImportModules0)
-        )
-    ),
-
-    % Handle dependencies introduced by
-    % `:- pragma foreign_import_module' declarations.
-
-    set.filter_map(
-        ( pred(ForeignImportMod::in, ImportModuleName::out) is semidet :-
-            ImportModuleName = fim_spec_module_name_from_module(
-                ForeignImportMod, SourceFileModuleName),
-
-            % XXX We can't include mercury.dll as mmake can't find it,
-            % but we know that it exists.
-            ImportModuleName \= unqualified("mercury")
-        ), FIMSpecs, ForeignImportedModuleNames),
-    ( if set.is_empty(ForeignImportedModuleNames) then
-        true
-    else
-        globals.get_target(Globals, Target),
-        (
-            Target = target_c,
-            % NOTE: for C the possible targets might be a .o file _or_ a
-            % .pic_o file. We need to include dependencies for the latter
-            % otherwise invoking mmake with a <module>.pic_o target will break.
-            ForeignImportTargets = [ObjFileName, PicObjFileName],
-            ForeignImportOtherExt = other_ext(".mh")
-        ;
-            Target = target_java,
-            module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-                ext_other(other_ext(".class")),
-                ModuleName, ClassFileName, !IO),
-            ForeignImportTargets = [ClassFileName],
-            ForeignImportOtherExt = other_ext(".java")
-        ;
-            Target = target_csharp,
-            % XXX don't know enough about C# yet
-            ForeignImportTargets = [],
-            ForeignImportOtherExt = other_ext(".cs")
-        ;
-            Target = target_erlang,
-            module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-                ext_other(other_ext(".beam")), ModuleName, BeamFileName, !IO),
-            ForeignImportTargets = [BeamFileName],
-            ForeignImportOtherExt = other_ext(".hrl")
-        ),
-        % XXX Instead of generating a separate rule for each target in
-        % ForeignImportTargets, generate one rule with all those targets
-        % before the colon.
-        list.map_foldl(
-            gather_foreign_import_deps(Globals, ForeignImportOtherExt,
-                set.to_sorted_list(ForeignImportedModuleNames)),
-            ForeignImportTargets, MmakeRulesForeignImports, !IO),
-        add_mmake_entries(MmakeRulesForeignImports, !MmakeFile)
-    ),
+    construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
+        ContainsForeignCode, ForeignImportModules0,
+        ObjFileName, PicObjFileName, MmakeRulesForeignImports, !IO),
+    add_mmake_entries(MmakeRulesForeignImports, !MmakeFile),
 
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
         ext_other(other_ext(".int")), ModuleName, IntFileName, !IO),
@@ -737,6 +470,35 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         OptDateFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
         MmakeRulesPatterns),
     add_mmake_entries(MmakeRulesPatterns, !MmakeFile).
+
+%---------------------%
+
+:- pred construct_trans_opt_deps_rule(globals::in,
+    maybe(list(module_name))::in, set(module_name)::in, string::in,
+    list(mmake_entry)::out, io::di, io::uo) is det.
+
+construct_trans_opt_deps_rule(Globals, MaybeTransOptDeps, LongDeps,
+        TransOptDateFileName, MmakeRulesTransOpt, !IO) :-
+    (
+        MaybeTransOptDeps = yes(TransOptDeps0),
+        set.intersect(set.list_to_set(TransOptDeps0), LongDeps,
+            TransOptDateDeps),
+        % Note that maybe_read_dependency_file searches for
+        % this exact pattern.
+        make_module_file_names_with_suffix(Globals,
+            ext_other(other_ext(".trans_opt")),
+            set.to_sorted_list(TransOptDateDeps), TransOptDateDepsFileNames,
+            !IO),
+        MmakeRuleTransOpt = mmake_simple_rule("trans_opt_deps",
+            mmake_rule_is_not_phony,
+            TransOptDateFileName,
+            TransOptDateDepsFileNames,
+            []),
+        MmakeRulesTransOpt = [MmakeRuleTransOpt]
+    ;
+        MaybeTransOptDeps = no,
+        MmakeRulesTransOpt = []
+    ).
 
 %---------------------%
 
@@ -883,6 +645,293 @@ construct_build_nested_children_first_rule(Globals,
         list.map_foldl(
             gather_nested_deps(Globals, ModuleName, NestedModuleNames),
             NestedOtherExts, MmakeRulesNestedDeps, !IO)
+    ).
+
+%---------------------%
+
+:- pred construct_intermod_rules(globals::in, module_name::in,
+    set(module_name)::in, set(module_name)::in,
+    string::in, string::in, string::in, string::in, string::in,
+    list(mmake_entry)::out, io::di, io::uo) is det.
+
+construct_intermod_rules(Globals, ModuleName, LongDeps, AllDeps,
+        ErrFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
+        ObjFileName, MmakeRulesIntermod, !IO) :-
+    % XXX Note that currently, due to a design problem, handle_option.m
+    % *always* sets use_opt_files to no.
+    globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
+    globals.lookup_bool_option(Globals, intermodule_optimization,
+        Intermod),
+    globals.lookup_accumulating_option(Globals, intermod_directories,
+        IntermodDirs),
+
+    % If intermodule_optimization is enabled, then all the .mh files
+    % must exist, because it is possible that the .c file imports them
+    % directly or indirectly.
+    (
+        Intermod = yes,
+        make_module_file_names_with_suffix(Globals,
+            ext_other(other_ext(".mh")),
+            set.to_sorted_list(AllDeps), AllDepsFileNames, !IO),
+        MmakeRuleMhDeps = mmake_simple_rule("machine_dependent_header_deps",
+            mmake_rule_is_not_phony,
+            ObjFileName,
+            AllDepsFileNames,
+            []),
+        MmakeRulesMhDeps = [MmakeRuleMhDeps]
+    ;
+        Intermod = no,
+        MmakeRulesMhDeps = []
+    ),
+    ( if
+        ( Intermod = yes
+        ; UseOptFiles = yes
+        )
+    then
+        Targets = one_or_more(TransOptDateFileName,
+            [ErrFileName, CDateFileName, JavaDateFileName]),
+
+        % The target (e.g. C) file only depends on the .opt files from the
+        % current directory, so that inter-module optimization works when
+        % the .opt files for the library are unavailable. This is only
+        % necessary because make doesn't allow conditional dependencies.
+        % The dependency on the current module's .opt file is to make sure
+        % the module gets type-checked without having the definitions
+        % of abstract types from other modules.
+        %
+        % XXX The code here doesn't correctly handle dependencies
+        % on `.int' and `.int2' files needed by the `.opt' files.
+        globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
+        globals.lookup_bool_option(Globals, use_trans_opt_files,
+            UseTransOpt),
+
+        bool.not(UseTransOpt, BuildOptFiles),
+        ( if
+            ( TransOpt = yes
+            ; UseTransOpt = yes
+            )
+        then
+            get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs,
+                [ModuleName | set.to_sorted_list(LongDeps)],
+                OptDeps, TransOptDeps1, !IO),
+            MaybeTransOptDeps1 = yes(TransOptDeps1)
+        else
+            get_opt_deps(Globals, BuildOptFiles, IntermodDirs,
+                other_ext(".opt"),
+                [ModuleName | set.to_sorted_list(LongDeps)],
+                OptDeps, !IO),
+            MaybeTransOptDeps1 = no
+        ),
+
+        OptInt0Deps = set.union_list(list.map(get_ancestors_set, OptDeps)),
+        make_module_file_names_with_suffix(Globals,
+            ext_other(other_ext(".opt")),
+            OptDeps, OptDepsFileNames, !IO),
+        make_module_file_names_with_suffix(Globals,
+            ext_other(other_ext(".int0")),
+            set.to_sorted_list(OptInt0Deps), OptInt0DepsFileNames, !IO),
+        MmakeRuleDateOptInt0Deps = mmake_flat_rule("dates_on_opts_and_int0s",
+            mmake_rule_is_not_phony,
+            Targets,
+            OptDepsFileNames ++ OptInt0DepsFileNames,
+            []),
+
+        (
+            MaybeTransOptDeps1 = yes(TransOptDeps2),
+            ErrDateTargets = one_or_more(ErrFileName,
+                [CDateFileName, JavaDateFileName]),
+            make_module_file_names_with_suffix(Globals,
+                ext_other(other_ext(".trans_opt")),
+                TransOptDeps2, TransOptDepsOptFileNames, !IO),
+            MmakeRuleTransOptOpts = mmake_flat_rule("dates_on_trans_opts",
+                mmake_rule_is_not_phony,
+                ErrDateTargets,
+                TransOptDepsOptFileNames,
+                []),
+            MmakeRulesIntermod = MmakeRulesMhDeps ++
+                [MmakeRuleDateOptInt0Deps, MmakeRuleTransOptOpts]
+        ;
+            MaybeTransOptDeps1 = no,
+            MmakeRulesIntermod = MmakeRulesMhDeps ++ [MmakeRuleDateOptInt0Deps]
+        )
+    else
+        MmakeRulesIntermod = MmakeRulesMhDeps
+    ).
+
+%---------------------%
+
+:- pred construct_c_header_rules(globals::in, module_name::in,
+    set(module_name)::in, string::in, string::in, string::in,
+    list(mmake_entry)::out, io::di, io::uo) is det.
+
+construct_c_header_rules(Globals, ModuleName, AllDeps,
+        CFileName, ObjFileName, PicObjFileName, MmakeRulesCHeaders, !IO) :-
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.get_target(Globals, CompilationTarget),
+    ( if
+        HighLevelCode = yes,
+        CompilationTarget = target_c
+    then
+        % For --high-level-code with --target c, we need to make sure that
+        % we generate the header files for imported modules before compiling
+        % the C files, since the generated C files #include those header files.
+        Targets = one_or_more(PicObjFileName, [ObjFileName]),
+        make_module_file_names_with_suffix(Globals,
+            ext_other(other_ext(".mih")),
+            set.to_sorted_list(AllDeps), AllDepsFileNames, !IO),
+        MmakeRuleObjOnMihs = mmake_flat_rule("objs_on_mihs",
+            mmake_rule_is_not_phony,
+            Targets,
+            AllDepsFileNames,
+            []),
+        MmakeRulesObjOnMihs = [MmakeRuleObjOnMihs]
+    else
+        MmakeRulesObjOnMihs = []
+    ),
+
+    % We need to tell make how to make the header files. The header files
+    % are actually built by the same command that creates the .c or .s file,
+    % so we just make them depend on the .c or .s files. This is needed
+    % for the --high-level-code rule above, and for the rules introduced for
+    % `:- pragma foreign_import_module' declarations. In some grades the header
+    % file won't actually be built (e.g. LLDS grades for modules not containing
+    % `:- pragma export' declarations), but this rule won't do any harm.
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(".mh")), ModuleName, MhHeaderFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(".mih")), ModuleName, MihHeaderFileName, !IO),
+    MmakeRuleMhMihOnC = mmake_flat_rule("mh_and_mih_on_c",
+        mmake_rule_is_not_phony,
+        one_or_more(MhHeaderFileName, [MihHeaderFileName]),
+        [CFileName],
+        []),
+    MmakeRulesCHeaders = MmakeRulesObjOnMihs ++ [MmakeRuleMhMihOnC].
+
+%---------------------%
+
+:- pred construct_foreign_import_rules(globals::in, aug_compilation_unit::in,
+    module_name::in, contains_foreign_code::in, c_j_cs_e_fims::in,
+    string::in, string::in, list(mmake_entry)::out, io::di, io::uo) is det.
+
+construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
+        ContainsForeignCode, ForeignImportModules0,
+        ObjFileName, PicObjFileName, MmakeRulesForeignImports, !IO) :-
+    ModuleName = AugCompUnit ^ aci_module_name,
+    (
+        ContainsForeignCode = foreign_code_langs_known(_ForeignCodeLangs),
+        % XXX This looks wrong to me (zs) in cases when _ForeignCodeLangs
+        % is not the empty set. It is possible that in all such cases,
+        % ForeignImportModules0 already contains the needed
+        % foreign_import_module declarations, but it would be nice to see
+        % a reasoned correctness argument about that.
+        FIMSpecs = get_all_fim_specs(ForeignImportModules0)
+    ;
+        ContainsForeignCode = foreign_code_langs_unknown,
+        % If we are generating the `.dep' file, ForeignImportModules0
+        % will contain a conservative approximation to the set of foreign
+        % imports needed which will include imports required by imported
+        % modules.
+        % XXX ITEM_LIST What is the correctness argument that supports
+        % the above assertion?
+        % XXX ITEM_LIST And even if it is true, how does that lead to
+        % us adding the foreign_import_module declarations from the
+        % interface and optimization files to ForeignImportModules
+        % ONLY if ForeignImportModules0 contains nothing?
+        % (Actually, we are replacing ForeignImportModules0 with them,
+        % but when ForeignImportModules0 contains nothing, that is equivalent
+        % to addition.)
+        ( if
+            ForeignImportModules0 = c_j_cs_e_fims(C0, Java0, CSharp0, Erlang0),
+            set.is_empty(C0),
+            set.is_empty(Java0),
+            set.is_empty(CSharp0),
+            set.is_empty(Erlang0)
+        then
+            AugCompUnit = aug_compilation_unit(_, _, _, _ParseTreeModuleSrc,
+                AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+                PlainOpts, _TransOpts, IntForOptSpecs),
+            some [!FIMSpecs] (
+                set.init(!:FIMSpecs),
+                map.foldl_values(gather_fim_specs_in_ancestor_int_spec,
+                    AncestorIntSpecs, !FIMSpecs),
+                map.foldl_values(gather_fim_specs_in_direct_int_spec,
+                    DirectIntSpecs, !FIMSpecs),
+                map.foldl_values(gather_fim_specs_in_indirect_int_spec,
+                    IndirectIntSpecs, !FIMSpecs),
+                map.foldl_values(gather_fim_specs_in_parse_tree_plain_opt,
+                    PlainOpts, !FIMSpecs),
+                % .trans_opt files cannot contain FIMs.
+                map.foldl_values(gather_fim_specs_in_int_for_opt_spec,
+                    IntForOptSpecs, !FIMSpecs),
+                % We restrict the set of FIMs to those that are valid
+                % for the current backend. This preserves old behavior,
+                % and makes sense in that the code below generates mmake rules
+                % only for the current backend, but it would be nice if we
+                % could generate dependency rules for *all* the backends.
+                globals.get_backend_foreign_languages(Globals, BackendLangs),
+                IsBackendFIM =
+                    ( pred(FIMSpec::in) is semidet :-
+                        list.member(FIMSpec ^ fimspec_lang, BackendLangs)
+                    ),
+                set.filter(IsBackendFIM, !.FIMSpecs, FIMSpecs)
+            )
+        else
+            FIMSpecs = get_all_fim_specs(ForeignImportModules0)
+        )
+    ),
+
+    % Handle dependencies introduced by
+    % `:- pragma foreign_import_module' declarations.
+    set.filter_map(
+        ( pred(ForeignImportMod::in, ImportModuleName::out) is semidet :-
+            ImportModuleName = fim_spec_module_name_from_module(
+                ForeignImportMod, SourceFileModuleName),
+
+            % XXX We can't include mercury.dll as mmake can't find it,
+            % but we know that it exists.
+            ImportModuleName \= unqualified("mercury")
+        ), FIMSpecs, ForeignImportedModuleNamesSet),
+    ForeignImportedModuleNames =
+        set.to_sorted_list(ForeignImportedModuleNamesSet),
+    (
+        ForeignImportedModuleNames = [],
+        MmakeRulesForeignImports = []
+    ;
+        ForeignImportedModuleNames = [_ | _],
+        globals.get_target(Globals, Target),
+        (
+            Target = target_c,
+            % NOTE: for C the possible targets might be a .o file _or_ a
+            % .pic_o file. We need to include dependencies for the latter
+            % otherwise invoking mmake with a <module>.pic_o target will break.
+            ForeignImportTargets = [ObjFileName, PicObjFileName],
+            ForeignImportOtherExt = other_ext(".mh")
+        ;
+            Target = target_java,
+            module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+                ext_other(other_ext(".class")),
+                ModuleName, ClassFileName, !IO),
+            ForeignImportTargets = [ClassFileName],
+            ForeignImportOtherExt = other_ext(".java")
+        ;
+            Target = target_csharp,
+            % XXX don't know enough about C# yet
+            ForeignImportTargets = [],
+            ForeignImportOtherExt = other_ext(".cs")
+        ;
+            Target = target_erlang,
+            module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+                ext_other(other_ext(".beam")), ModuleName, BeamFileName, !IO),
+            ForeignImportTargets = [BeamFileName],
+            ForeignImportOtherExt = other_ext(".hrl")
+        ),
+        % XXX Instead of generating a separate rule for each target in
+        % ForeignImportTargets, generate one rule with all those targets
+        % before the colon.
+        list.map_foldl(
+            gather_foreign_import_deps(Globals, ForeignImportOtherExt,
+                ForeignImportedModuleNames),
+            ForeignImportTargets, MmakeRulesForeignImports, !IO)
     ).
 
 %---------------------%
