@@ -319,86 +319,18 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         CFileName, ObjFileName, PicObjFileName, MmakeRulesCHeaders, !IO),
     add_mmake_entries(MmakeRulesCHeaders, !MmakeFile),
 
-    % The `.module_dep' file is made as a side effect of
-    % creating the `.c' or `.java'.
-    % XXX What about C# and Erlang?
-
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".java")), ModuleName, JavaFileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(make_module_dep_file_extension),
-        ModuleName, ModuleDepFileName, !IO),
-    MmakeFragmentModuleDep = mmf_conditional_entry(
-        mmake_cond_grade_has_component("java"),
-        mmake_simple_rule("module_dep_on_java",
-            mmake_rule_is_not_phony,
-            ModuleDepFileName,
-            [JavaFileName],
-            []),
-        mmake_simple_rule("module_dep_on_c",
-            mmake_rule_is_not_phony,
-            ModuleDepFileName,
-            [CFileName],
-            [])
-    ),
+    construct_module_dep_fragment(Globals, ModuleName, CFileName,
+        MmakeFragmentModuleDep, !IO),
     add_mmake_fragment(MmakeFragmentModuleDep, !MmakeFile),
-
-    % The .date and .date0 files depend on the .int0 files for the parent
-    % modules, and the .int3 files for the directly and indirectly imported
-    % modules.
-    %
-    % For nested submodules, the `.date' files for the parent modules
-    % also depend on the same things as the `.date' files for this module,
-    % since all the `.date' files will get produced by a single mmc command.
-    % Similarly for `.date0' files, except these don't depend on the `.int0'
-    % files, because when doing the `--make-private-interface' for nested
-    % modules, mmc will process the modules in outermost to innermost order
-    % so as to produce each `.int0' file before it is needed.
 
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
         ext_other(other_ext(".date")), ModuleName, DateFileName, !IO),
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
         ext_other(other_ext(".date0")), ModuleName, Date0FileName, !IO),
-    make_module_file_names_with_suffix(Globals,
-        ext_other(other_ext(".date")),
-        set.to_sorted_list(Ancestors), AncestorDateFileNames, !IO),
-    make_module_file_names_with_suffix(Globals,
-        ext_other(other_ext(".int0")),
-        set.to_sorted_list(Ancestors), AncestorInt0FileNames, !IO),
-    make_module_file_names_with_suffix(Globals,
-        ext_other(other_ext(".int3")),
-        set.to_sorted_list(LongDeps), LongDepInt3FileNames, !IO),
-    make_module_file_names_with_suffix(Globals,
-        ext_other(other_ext(".int3")),
-        set.to_sorted_list(ShortDeps), ShortDepInt3FileNames, !IO),
-    MmakeRuleParentDates = mmake_general_rule("self_and_parent_date_deps",
-        mmake_rule_is_not_phony,
-        one_or_more(
-            mmake_file_name_group("",
-                one_or_more(DateFileName,
-                    [Date0FileName | AncestorDateFileNames])),
-            []),
-        [make_singleton_file_name_group(SourceFileName)] ++
-            make_file_name_group("ancestor int0", AncestorInt0FileNames) ++
-            make_file_name_group("long dep int3s", LongDepInt3FileNames) ++
-            make_file_name_group("short dep int3s", ShortDepInt3FileNames),
-        []),
-    add_mmake_entry(MmakeRuleParentDates, !MmakeFile),
-
-    make_module_file_names_with_suffix(Globals,
-        ext_other(other_ext(".date0")),
-        set.to_sorted_list(Ancestors), AncestorDate0FileNames, !IO),
-    MmakeRuleParentDate0s = mmake_general_rule("self_and_parent_date0_deps",
-        mmake_rule_is_not_phony,
-        one_or_more(
-            mmake_file_name_group("date0s",
-                one_or_more(Date0FileName, AncestorDate0FileNames)),
-            []),
-        [make_singleton_file_name_group(SourceFileName)] ++
-            make_file_name_group("long dep int3s", LongDepInt3FileNames) ++
-            make_file_name_group("short dep int3s", ShortDepInt3FileNames),
-        []),
-    add_mmake_entry(MmakeRuleParentDate0s, !MmakeFile),
+    construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
+        Date0FileName, DateFileName, Ancestors, LongDeps, ShortDeps,
+        MmakeRulesParentDates, !IO),
+    add_mmake_entries(MmakeRulesParentDates, !MmakeFile),
 
     construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
         ContainsForeignCode, ForeignImportModules0,
@@ -406,62 +338,16 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     add_mmake_entries(MmakeRulesForeignImports, !MmakeFile),
 
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".int")), ModuleName, IntFileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".int2")), ModuleName, Int2FileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".int3")), ModuleName, Int3FileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".opt")), ModuleName, OptFileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-        ext_other(other_ext(".trans_opt")), ModuleName, TransOptFileName, !IO),
-    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
         ext_other(other_ext(".date3")), ModuleName, Date3FileName, !IO),
-
-    % We add some extra dependencies to the generated `.d' files, so that
-    % local `.int', `.opt', etc. files shadow the installed versions properly
-    % (e.g. for when you are trying to build a new version of an installed
-    % library). This saves the user from having to add these explicitly
-    % if they have multiple libraries installed in the same installation
-    % hierarchy which aren't independent (e.g. one uses another). These extra
-    % dependencies are necessary due to the way the combination of search paths
-    % and pattern rules works in Make.
-
-    MmakeRulesInstallShadows = [
-        mmake_simple_rule("int0_on_date0",
-            mmake_rule_is_not_phony,
-            Int0FileName, [Date0FileName], [silent_noop_action]),
-        mmake_simple_rule("int_on_date",
-            mmake_rule_is_not_phony,
-            IntFileName, [DateFileName], [silent_noop_action]),
-        mmake_simple_rule("int2_on_date",
-            mmake_rule_is_not_phony,
-            Int2FileName, [DateFileName], [silent_noop_action]),
-        mmake_simple_rule("int3_on_date3",
-            mmake_rule_is_not_phony,
-            Int3FileName, [Date3FileName], [silent_noop_action]),
-        mmake_simple_rule("opt_on_opt_date",
-            mmake_rule_is_not_phony,
-            OptFileName, [OptDateFileName], [silent_noop_action]),
-        mmake_simple_rule("trans_opt_on_trans_opt_date",
-            mmake_rule_is_not_phony,
-            TransOptFileName, [TransOptDateFileName], [silent_noop_action])
-    ],
+    construct_install_shadow_rules(Globals, ModuleName,
+        Int0FileName, Date0FileName, DateFileName, Date3FileName,
+        OptDateFileName, TransOptDateFileName,
+        MmakeRulesInstallShadows, !IO),
     add_mmake_entries(MmakeRulesInstallShadows, !MmakeFile),
 
-    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-    (
-        UseSubdirs = yes,
-        SubDirShorthandOtherExts =
-            [other_ext(".c"), other_ext(".$O"), other_ext(".pic_o"),
-            other_ext(".java"), other_ext(".class"), other_ext(".dll")],
-        list.map_foldl(
-            construct_subdirs_shorthand_rule(Globals, ModuleName),
-            SubDirShorthandOtherExts, MmakeRulesSubDirShorthand, !IO),
-        add_mmake_entries(MmakeRulesSubDirShorthand, !MmakeFile)
-    ;
-        UseSubdirs = no
-    ),
+    construct_subdir_short_rules(Globals, ModuleName,
+        MmakeRulesSubDirShorthand, !IO),
+    add_mmake_entries(MmakeRulesSubDirShorthand, !MmakeFile),
 
     have_source_file_map(HaveMap, !IO),
     construct_any_needed_pattern_rules(HaveMap,
@@ -809,6 +695,99 @@ construct_c_header_rules(Globals, ModuleName, AllDeps,
 
 %---------------------%
 
+    % The `.module_dep' file is made as a side effect of
+    % creating the `.c' or `.java'.
+    % XXX What about C# and Erlang?
+    % (See the main comment on generate_d_file above.
+    %
+:- pred construct_module_dep_fragment(globals::in, module_name::in,
+    string::in, mmake_fragment::out, io::di, io::uo) is det.
+
+construct_module_dep_fragment(Globals, ModuleName, CFileName,
+        MmakeFragmentModuleDep, !IO) :-
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(".java")), ModuleName, JavaFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(make_module_dep_file_extension),
+        ModuleName, ModuleDepFileName, !IO),
+    MmakeFragmentModuleDep = mmf_conditional_entry(
+        mmake_cond_grade_has_component("java"),
+        mmake_simple_rule("module_dep_on_java",
+            mmake_rule_is_not_phony,
+            ModuleDepFileName,
+            [JavaFileName],
+            []),
+        mmake_simple_rule("module_dep_on_c",
+            mmake_rule_is_not_phony,
+            ModuleDepFileName,
+            [CFileName],
+            [])
+    ).
+
+%---------------------%
+
+    % The .date and .date0 files depend on the .int0 files for the parent
+    % modules, and the .int3 files for the directly and indirectly imported
+    % modules.
+    %
+    % For nested submodules, the `.date' files for the parent modules
+    % also depend on the same things as the `.date' files for this module,
+    % since all the `.date' files will get produced by a single mmc command.
+    % Similarly for `.date0' files, except these don't depend on the `.int0'
+    % files, because when doing the `--make-private-interface' for nested
+    % modules, mmc will process the modules in outermost to innermost order
+    % so as to produce each `.int0' file before it is needed.
+    %
+:- pred construct_self_and_parent_date_date0_rules(globals::in,
+    string::in, string::in, string::in,
+    set(module_name)::in, set(module_name)::in, set(module_name)::in,
+    list(mmake_entry)::out, io::di, io::uo) is det.
+
+construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
+        Date0FileName, DateFileName, Ancestors, LongDeps, ShortDeps,
+        MmakeRulesParentDates, !IO) :-
+    make_module_file_names_with_suffix(Globals,
+        ext_other(other_ext(".date")),
+        set.to_sorted_list(Ancestors), AncestorDateFileNames, !IO),
+    make_module_file_names_with_suffix(Globals,
+        ext_other(other_ext(".int0")),
+        set.to_sorted_list(Ancestors), AncestorInt0FileNames, !IO),
+    make_module_file_names_with_suffix(Globals,
+        ext_other(other_ext(".int3")),
+        set.to_sorted_list(LongDeps), LongDepInt3FileNames, !IO),
+    make_module_file_names_with_suffix(Globals,
+        ext_other(other_ext(".int3")),
+        set.to_sorted_list(ShortDeps), ShortDepInt3FileNames, !IO),
+
+    MmakeRuleParentDates = mmake_general_rule("self_and_parent_date_deps",
+        mmake_rule_is_not_phony,
+        one_or_more(
+            mmake_file_name_group("",
+                one_or_more(DateFileName,
+                    [Date0FileName | AncestorDateFileNames])),
+            []),
+        [make_singleton_file_name_group(SourceFileName)] ++
+            make_file_name_group("ancestor int0", AncestorInt0FileNames) ++
+            make_file_name_group("long dep int3s", LongDepInt3FileNames) ++
+            make_file_name_group("short dep int3s", ShortDepInt3FileNames),
+        []),
+    make_module_file_names_with_suffix(Globals,
+        ext_other(other_ext(".date0")),
+        set.to_sorted_list(Ancestors), AncestorDate0FileNames, !IO),
+    MmakeRuleParentDate0s = mmake_general_rule("self_and_parent_date0_deps",
+        mmake_rule_is_not_phony,
+        one_or_more(
+            mmake_file_name_group("date0s",
+                one_or_more(Date0FileName, AncestorDate0FileNames)),
+            []),
+        [make_singleton_file_name_group(SourceFileName)] ++
+            make_file_name_group("long dep int3s", LongDepInt3FileNames) ++
+            make_file_name_group("short dep int3s", ShortDepInt3FileNames),
+        []),
+    MmakeRulesParentDates = [MmakeRuleParentDates, MmakeRuleParentDate0s].
+
+%---------------------%
+
 :- pred construct_foreign_import_rules(globals::in, aug_compilation_unit::in,
     module_name::in, contains_foreign_code::in, c_j_cs_e_fims::in,
     string::in, string::in, list(mmake_entry)::out, io::di, io::uo) is det.
@@ -932,6 +911,78 @@ construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
             gather_foreign_import_deps(Globals, ForeignImportOtherExt,
                 ForeignImportedModuleNames),
             ForeignImportTargets, MmakeRulesForeignImports, !IO)
+    ).
+
+%---------------------%
+
+    % We add some extra dependencies to the generated `.d' files, so that
+    % local `.int', `.opt', etc. files shadow the installed versions properly
+    % (e.g. for when you are trying to build a new version of an installed
+    % library). This saves the user from having to add these explicitly
+    % if they have multiple libraries installed in the same installation
+    % hierarchy which aren't independent (e.g. one uses another). These extra
+    % dependencies are necessary due to the way the combination of search paths
+    % and pattern rules works in Make.
+    %
+:- pred construct_install_shadow_rules(globals::in, module_name::in,
+    string::in, string::in, string::in, string::in, string::in, string::in,
+    list(mmake_entry)::out, io::di, io::uo) is det.
+
+construct_install_shadow_rules(Globals, ModuleName,
+        Int0FileName, Date0FileName, DateFileName, Date3FileName,
+        OptDateFileName, TransOptDateFileName,
+        MmakeRulesInstallShadows, !IO) :-
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(".int")), ModuleName, IntFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(".int2")), ModuleName, Int2FileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(".int3")), ModuleName, Int3FileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(".opt")), ModuleName, OptFileName, !IO),
+    module_name_to_file_name(Globals, $pred, do_not_create_dirs,
+        ext_other(other_ext(".trans_opt")), ModuleName, TransOptFileName, !IO),
+
+    MmakeRulesInstallShadows = [
+        mmake_simple_rule("int0_on_date0",
+            mmake_rule_is_not_phony,
+            Int0FileName, [Date0FileName], [silent_noop_action]),
+        mmake_simple_rule("int_on_date",
+            mmake_rule_is_not_phony,
+            IntFileName, [DateFileName], [silent_noop_action]),
+        mmake_simple_rule("int2_on_date",
+            mmake_rule_is_not_phony,
+            Int2FileName, [DateFileName], [silent_noop_action]),
+        mmake_simple_rule("int3_on_date3",
+            mmake_rule_is_not_phony,
+            Int3FileName, [Date3FileName], [silent_noop_action]),
+        mmake_simple_rule("opt_on_opt_date",
+            mmake_rule_is_not_phony,
+            OptFileName, [OptDateFileName], [silent_noop_action]),
+        mmake_simple_rule("trans_opt_on_trans_opt_date",
+            mmake_rule_is_not_phony,
+            TransOptFileName, [TransOptDateFileName], [silent_noop_action])
+    ].
+
+%---------------------%
+
+:- pred construct_subdir_short_rules(globals::in, module_name::in,
+    list(mmake_entry)::out, io::di, io::uo) is det.
+
+construct_subdir_short_rules(Globals, ModuleName,
+        MmakeRulesSubDirShorthand, !IO) :-
+    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
+    (
+        UseSubdirs = yes,
+        SubDirShorthandOtherExts =
+            [other_ext(".c"), other_ext(".$O"), other_ext(".pic_o"),
+            other_ext(".java"), other_ext(".class"), other_ext(".dll")],
+        list.map_foldl(
+            construct_subdirs_shorthand_rule(Globals, ModuleName),
+            SubDirShorthandOtherExts, MmakeRulesSubDirShorthand, !IO)
+    ;
+        UseSubdirs = no,
+        MmakeRulesSubDirShorthand = []
     ).
 
 %---------------------%
