@@ -37,8 +37,10 @@
 :- pred add_mmake_entries(list(mmake_entry)::in,
     mmakefile::in, mmakefile::out) is det.
 
-:- pred end_mmakefile(io.text_output_stream::in,
-    mmakefile::in, io::di, io::uo) is det.
+:- func mmake_entry_to_fragment(mmake_entry) = mmake_fragment.
+
+:- pred write_mmakefile(io.text_output_stream::in, mmakefile::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -294,8 +296,6 @@ add_mmake_entries(Entries, !MmakeFile) :-
     !:MmakeFile = !.MmakeFile ++
         cord.from_list(list.map(mmake_entry_to_fragment, Entries)).
 
-:- func mmake_entry_to_fragment(mmake_entry) = mmake_fragment.
-
 mmake_entry_to_fragment(Entry) = mmf_entry(Entry).
 
 %---------------------------------------------------------------------------%
@@ -304,7 +304,7 @@ mmake_entry_to_fragment(Entry) = mmf_entry(Entry).
     --->    do_not_write_mmake_comments
     ;       write_mmake_comments.
 
-end_mmakefile(OutStream, !.MmakeFile, !IO) :-
+write_mmakefile(OutStream, !.MmakeFile, !IO) :-
     cord.foldl_pred(
         write_mmake_fragment(OutStream, write_mmake_comments),
         !.MmakeFile, !IO).
