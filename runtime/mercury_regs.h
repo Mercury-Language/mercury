@@ -87,8 +87,6 @@
     #include "machdeps/x86_64_regs.h"
   #elif defined(__sparc__)
     #include "machdeps/sparc_regs.h"
-  #elif defined(__alpha__)
-    #include "machdeps/alpha_regs.h"
   #elif defined(__hppa__)
     #include "machdeps/pa_regs.h"
   #elif defined(_POWER) || defined(__powerpc__) || defined(__ppc__)

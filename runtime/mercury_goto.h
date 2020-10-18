@@ -312,34 +312,7 @@
 
 // MACHINE SPECIFIC STUFF REQUIRED FOR NON-LOCAL GOTOS
 
-#if defined(__alpha__)
-
-  // We need special handling for the "global pointer" (gp) register.
-
-  // When doing a jump, we need to set $27, the "procedure value" register,
-  // to the address we are jumping to, so that we can use an `ldgp'
-  // instruction on entry to the procedure to set up the right gp value.
-
-  #define MR_ASM_JUMP(address)                                           \
-    __asm__("bis %0, %0, $27\n\t"                                        \
-        : : "r"(address) : "$27");                                       \
-    goto *(address)
-    // Explanation:
-    //  Move `address' to register $27,
-    //  jump to `address'.
-
-  // On entry to a procedure, we need to load the $gp register
-  // with the correct value relative to the current address in $27.
-
-  #define MR_INLINE_ASM_FIXUP_REGS                                       \
-    "   ldgp $gp, 0($27)\n" : : : "memory"
-
-  // On fall-thru, we need to skip the ldgp instruction.
-
-  #define MR_ASM_FALLTHROUGH(label)                                      \
-    goto MR_skip(label);
-
-#elif defined(__i386__) || defined(__mc68000__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__mc68000__) || defined(__x86_64__)
 
   // This hack is to prevent gcc 4.x optimizing away stores to succip before
   // jumping to a label in asm_fast.

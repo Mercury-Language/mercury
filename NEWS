@@ -6,6 +6,8 @@ Changes that may break compatibility
 
 * We have removed `is` as a synonym for unification.
 
+* We have removed the legacy support for the Alpha architecture.
+
 Changes to the Mercury standard library
 ---------------------------------------
 

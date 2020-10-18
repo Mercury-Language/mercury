@@ -142,7 +142,6 @@ BODY_HDRS = \
 
 MACHHDRS = \
 	machdeps/no_regs.h			\
-	machdeps/alpha_regs.h			\
 	machdeps/i386_regs.h			\
 	machdeps/ia64_regs.h			\
 	machdeps/mips_regs.h			\

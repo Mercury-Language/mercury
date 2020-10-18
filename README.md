@@ -38,7 +38,6 @@ Specific information is contained in individual README files:
 
       * [Docker](README.Docker)
       * [Linux](README.Linux)
-        ([Alpha](README.Linux-Alpha),
         [PPC](README.Linux-PPC),
         [m68k](README.Linux-m68k))
       * [MacOS X](README.MacOS)

@@ -2338,7 +2338,7 @@ AC_SUBST(MR_DARWIN_SETJMP_WORKAROUND)
 # versions), we need -fno-reorder-functions to avoid segmentation faults.
 # We don't yet know exactly which grades are affected.
 #
-# For alpha, mips, and ARM, and probably on other architectures, when using
+# For mips and ARM, and probably on other architectures, when using
 # non-local gotos we need -fomit-frame-pointer, otherwise when compiling
 # with --no-c-optimize we run into a problem similar to the one above:
 # Gcc generates code which initializes the frame pointer in the
@@ -2410,18 +2410,6 @@ case "$ac_cv_prog_gcc" in yes)
             CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS"
             CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
             ;;
-        # We need a special-case hack here, because the auto-config gets it
-        # wrong on the Alpha: the little example program works fine
-        # in fast.gc mode, but big programs don't, due to problems with
-        # the `gp' register. Ideally we ought to write a big enough example
-        # program to trigger the problem, but that would be too much work.
-        alpha*-dec-*)
-            MERCURY_MSG("asm labels work on the Alpha but plain gcc labels do not")
-            mercury_cv_asm_labels=yes
-            mercury_cv_gcc_labels=no
-            CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
-            ;;
-        # Similarly for rs6000.
         rs6000-*)
             MERCURY_MSG("gcc labels do not work on the RS/6000")
             mercury_cv_asm_labels=no
@@ -3942,13 +3930,6 @@ case "$host" in
         # but succip and sp are real reg, so subtract 2
         NUM_REAL_R_REGS=2
         NUM_REAL_R_TEMPS=0
-        HAVE_DELAY_SLOT=
-        ;;
-    alpha*-*)
-        # NUM_REAL_REGS=7
-        # but succip, sp, and hp are real regs, so subtract 3
-        NUM_REAL_R_REGS=4
-        NUM_REAL_R_TEMPS=6
         HAVE_DELAY_SLOT=
         ;;
     mips-*)

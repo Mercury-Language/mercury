@@ -1,6 +1,5 @@
 This file documents the Linux/x86 and Linux/x86_64 ports.
 For the Linux/PowerPC port, see README.Linux-PPC.
-For the Linux/Alpha port, see README.Linux-Alpha.
 (Ports to Linux on other architectures have not yet
 been attempted, but should not be difficult.)
 

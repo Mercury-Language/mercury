@@ -535,7 +535,7 @@ LTO_OPTS="${CFLAGS_FOR_LTO}"
 
 #
 # Special case hacks for particular architectures
-# Any code here needs to be duplicated in ../configure.in.
+# Any code here needs to be duplicated in ../configure.ac.
 #
 
 ARCH_OPTS=""
