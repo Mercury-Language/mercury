@@ -2563,19 +2563,5 @@ compare_module_names(Sym1, Sym2, Result) :-
     compare(Result, Str1, Str2).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-    % add_suffix(Suffix, Str) = StrSuffix:
-    %
-    % Does the same job as Str ++ Suffix = StrSuffix, but allows
-    % using list.map to add the same suffix to many strings.
-    %
-    % XXX Should this be in library/string.m?
-    %
-:- func add_suffix(string, string) = string.
-
-add_suffix(Suffix, Str) = Str ++ Suffix.
-
-%---------------------------------------------------------------------------%
 :- end_module parse_tree.write_deps_file.
 %---------------------------------------------------------------------------%

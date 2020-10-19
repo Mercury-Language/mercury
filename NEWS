@@ -95,6 +95,12 @@ Changes to the Mercury standard library
     - func `maybe_func/2`           (replacement: func `maybe.func_to_maybe/1`)
     - pred `maybe_pred/3`           (replacement: func `maybe.pred_to_maybe/1`)
 
+### Changes to the `string` module
+
+* The following function has been added:
+
+    - func `add_suffix/2`
+
 ### Changes to the `thread.mvar` module
 
 * The following obsolete function has been removed:

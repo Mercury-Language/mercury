@@ -1029,6 +1029,13 @@
     %
 :- func remove_suffix_if_present(string, string) = string.
 
+    % add_suffix(Suffix, Str) = StrSuffix:
+    %
+    % Does the same job as Str ++ Suffix = StrSuffix, but allows
+    % using list.map to add the same suffix to many strings.
+    %
+:- func add_suffix(string, string) = string.
+
 %---------------------------------------------------------------------------%
 %
 % Transformations of strings.
@@ -4551,6 +4558,8 @@ remove_suffix_if_present(Suffix, String) = Out :-
     else
         Out = String
     ).
+
+add_suffix(Suffix, Str) = Str ++ Suffix.
 
 %---------------------------------------------------------------------------%
 %
