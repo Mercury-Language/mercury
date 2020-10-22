@@ -42,6 +42,7 @@ MCFLAGS-bug300			= --optimize-constructor-last-call
 MCFLAGS-bug457			= --loop-invariants --intermodule-optimization
 MCFLAGS-bug483			= --warn-unused-imports --halt-at-warn
 MCFLAGS-bug493			= --loop-invariants
+MCFLAGS-bug512			= -O5 --intermodule-optimization
 MCFLAGS-compl_unify_bug		= -O3
 MCFLAGS-constraint_prop_bug	= -O0 --common-struct --local-constraint-propagation
 MCFLAGS-csharp_hello		= --no-intermodule-optimization

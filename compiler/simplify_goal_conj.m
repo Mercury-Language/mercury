@@ -102,7 +102,15 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
             determinism_components(InnerDetism, CanFail, at_most_many),
             goal_info_set_determinism(InnerDetism, GoalInfo0, InnerInfo),
             InnerGoal = hlds_goal(conj(plain_conj, Goals), InnerInfo),
-            GoalExpr = scope(commit(dont_force_pruning), InnerGoal)
+            GoalExpr = scope(commit(dont_force_pruning), InnerGoal),
+            % We have deleted goals that contain what could be
+            % the last references to variables. This may require
+            % adjustments to the nonlocals sets of not only this goal,
+            % but of the other goals containing it. Likewise, it may
+            % require adjustments of the instmap_deltas of such
+            % containing goals, and we recompute instmap_deltas
+            % only with requantification.
+            simplify_info_set_should_requantify(!Info)
         else
             GoalExpr = conj(plain_conj, Goals)
         ),
@@ -206,7 +214,15 @@ simplify_conj(!.PrevGoals, [HeadGoal0 | TailGoals0], Goals, ConjInfo,
                 HeadGoal0 = hlds_goal(_, HeadGoalInfo0),
                 HeadGoalContext0 = goal_info_get_context(HeadGoalInfo0),
                 delete_tail_unreachable_goals(!.PrevGoals, HeadGoalContext0,
-                    HeadGoal1, TailGoals0, Goals, !Info)
+                    HeadGoal1, TailGoals0, Goals, !Info),
+                % We have deleted goals that contain what could be
+                % the last references to variables. This may require
+                % adjustments to the nonlocals sets of not only this goal,
+                % but of the other goals containing it. Likewise, it may
+                % require adjustments of the instmap_deltas of such
+                % containing goals, and we recompute instmap_deltas
+                % only with requantification.
+                simplify_info_set_should_requantify(!Info)
             else
                 try_to_opt_test_after_switch(!PrevGoals, HeadGoal1,
                     TailGoals0, TailGoals1, ConjInfo, !Info),
