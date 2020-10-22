@@ -151,6 +151,12 @@ Changes to the Mercury standard library
     - pred `merge_subst_without_names/4`
                                     (replacement: `merge_renaming_without_names/4`)
 
+* The following functions and predicates have been added:
+
+    - func `unname_var/2`
+    - pred `unname_var/3`
+    - pred `undo_default_names/2`
+
 Changes to the Mercury language
 -------------------------------
 

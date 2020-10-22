@@ -1001,7 +1001,7 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
     set.list_to_set(list.map(fim_item_to_spec, FIMs), FIMSpecs),
     classify_plain_opt_items(Items, [], TypeDefns0, [], ForeignEnums0,
         [], InstDefns0, [], ModeDefns0, [], TypeClasses0, [], Instances0,
-        [], PredDecls0, [], RevModeDecls, [], RevClauses, [], RevForeignProcs,
+        [], PredDecls0, [], RevModeDecls, [], RevClauses0, [], RevForeignProcs,
         [], Promises0, [], PredMarkers0, [], TypeSpecs0, [], UnusedArgs0,
         [], TermInfos0, [], Term2Infos0,
         [], Exceptions0, [], Trailings0, [], MMTablings0,
@@ -1014,7 +1014,7 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
     list.sort(Instances0, Instances),
     list.sort(PredDecls0, PredDecls),
     list.reverse(RevModeDecls, ModeDecls),
-    list.reverse(RevClauses, Clauses),
+    list.reverse(RevClauses0, Clauses0),
     list.reverse(RevForeignProcs, ForeignProcs),
     list.sort(Promises0, Promises),
     list.sort(PredMarkers0, PredMarkers),
@@ -1028,6 +1028,7 @@ check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt, ParseTreePlainOpt,
     list.sort(Sharings0, Sharings),
     list.sort(Reuses0, Reuses),
 
+    list.map(undo_default_names_in_clause, Clauses0, Clauses),
     ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, ModuleNameContext,
         UseMap, FIMSpecs, TypeDefns, ForeignEnums,
         InstDefns, ModeDefns, TypeClasses, Instances,
@@ -1231,6 +1232,43 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
         !PredDecls, !RevModeDecls, !RevClauses, !RevForeignProcs, !Promises,
         !PredMarkers, !TypeSpecs, !UnusedArgs, !TermInfos, !Term2Infos,
         !Exceptions, !Trailings, !MMTablings, !Sharings, !Reuses, !Specs).
+
+    % When the compiler writes out a clause to an optimization file,
+    % it must give every variable in that clause visible representation,
+    % even if that variable *had* no name in the memory representation
+    % of the clause. The name written out will be the default name of the
+    % variable, as given by varset.lookup_name, which will have the form
+    % V_<N>, where <N> is the variable's number.
+    %
+    % When the clause thus written out is later read in, the compiler will
+    % record e.g. "V_3" as the name of a variable. However, in HLDS dumps,
+    % and probably in some other contexts, where it is important to be able
+    % to distinguish two different variables even if they have the same name
+    % (as in e.g. two variables that started out with the same name but then
+    % got automatically renamed apart), the compiler will write this variable
+    % out as e.g. "V_V_3_17". In this form, the middle "V_3" is the variable
+    % name that the compiler believes was given by the user, the "_17" is
+    % the variable's actual number, and the initial "V_" is a "stuffing" prefix
+    % added by mercury_convert_var_name to every variable name whose name
+    % starts with "V_", to allow them to be distinguished from the default
+    % names given by varset.lookup_name to unnamed variables.
+    %
+    % However, for clauses read in from compiler-generated files,
+    % variable names such as "V_3" are *not* given by the programmer,
+    % so for them, all this effor is wasted. Worse, names such as "V_V_3_17"
+    % are harder to read and remember than the printed default names
+    % of actually unnamed variables.
+    %
+    % Therefore, before we put a clause into the parse tree of a .opt file,
+    % delete the name of every variable whose name has the form "V_<N>".
+    %
+:- pred undo_default_names_in_clause(
+    item_clause_info::in, item_clause_info::out) is det.
+
+undo_default_names_in_clause(Clause0, Clause) :-
+    VarSet0 = Clause0 ^ cl_varset,
+    varset.undo_default_names(VarSet0, VarSet),
+    Clause = Clause0 ^ cl_varset := VarSet.
 
 %---------------------------------------------------------------------------%
 

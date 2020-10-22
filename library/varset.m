@@ -129,8 +129,15 @@
 :- pred name_var(var(T)::in, string::in,
     varset(T)::in, varset(T)::out) is det.
 
+    % Unset the name of a variable.
+    %
+:- func unname_var(varset(T), var(T)) = varset(T).
+:- pred unname_var(var(T)::in, varset(T)::in, varset(T)::out) is det.
+
     % Lookup the name of a variable;
-    % If it doesn't have one, create on using V_ as a prefix.
+    % If it doesn't have one, return a default name consisting of two parts:
+    % "V_" as a prefix, followed by a unique number. This is meant to evoke
+    % "variable number N".
     %
 :- func lookup_name(varset(T), var(T)) = string.
 :- pred lookup_name(varset(T)::in, var(T)::in, string::out) is det.
@@ -253,6 +260,20 @@
     = varset(T).
 :- pred ensure_unique_names(list(var(T))::in,
     string::in, varset(T)::in, varset(T)::out) is det.
+
+    % Unname all variables whose explicitly given names have the form
+    % of the default names used by lookup_name, i.e. "V_" followed by
+    % an integer.
+    %
+    % This predicate is intended to be used in situations where
+    % a term has been read in after being written out. The process of
+    % writing out the term forces requires every variable to given
+    % a name that can be written out, even variables that until then
+    % did not have names. If these variables are given names of the default
+    % form, then, after the written-out term is read back in, this predicate
+    % will recreate the original varset, including the variables without names.
+    %
+:- pred undo_default_names(varset(T)::in, varset(T)::out) is det.
 
 %---------------------%
 
@@ -438,6 +459,14 @@ name_var(!.VarSet, Var, Name) = !:VarSet :-
 name_var(Var, Name, !VarSet) :-
     Names0 = !.VarSet ^ var_names,
     map.set(Var, Name, Names0, Names),
+    !VarSet ^ var_names := Names.
+
+unname_var(!.VarSet, Var) = !:VarSet :-
+    varset.unname_var(Var, !VarSet).
+
+unname_var(Var, !VarSet) :-
+    Names0 = !.VarSet ^ var_names,
+    map.delete(Var, Names0, Names),
     !VarSet ^ var_names := Names.
 
 %---------------------------------------------------------------------------%
@@ -647,24 +676,26 @@ simple_merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
     assoc_list(var(T), var(T))::in, assoc_list(var(T), var(T))::out) is det.
 
 fast_merge_renaming_loop(CurVarNumB, NumAllocatedB, !NumAllocated,
-        VarsNamesB @ [HeadVarB - HeadNameB | TailVarsNamesB],
-        !RevNamesListSuffix, !RevRenaming) :-
-    !:NumAllocated = !.NumAllocated + 1,
-    Var = force_construct_var(!.NumAllocated),
-    VarB = force_construct_var(CurVarNumB),
-    !:RevRenaming = [VarB - Var | !.RevRenaming],
-    ( if CurVarNumB = var_to_int(HeadVarB) then
-        !:RevNamesListSuffix = [Var - HeadNameB | !.RevNamesListSuffix],
-        NextVarsNamesB = TailVarsNamesB
-    else
-        NextVarsNamesB = VarsNamesB
-    ),
-    fast_merge_renaming_loop(CurVarNumB + 1, NumAllocatedB, !NumAllocated,
-        NextVarsNamesB, !RevNamesListSuffix, !RevRenaming).
-fast_merge_renaming_loop(CurVarNumB, NumAllocatedB, !NumAllocated,
-        [], !RevNamesListSuffix, !RevRenaming) :-
-    fast_merge_renaming_loop_leftover(CurVarNumB, NumAllocatedB,
-        !NumAllocated, !RevRenaming).
+        VarNamesB, !RevNamesListSuffix, !RevRenaming) :-
+    (
+        VarNamesB = [],
+        fast_merge_renaming_loop_leftover(CurVarNumB, NumAllocatedB,
+            !NumAllocated, !RevRenaming)
+    ;
+        VarNamesB = [HeadVarB - HeadNameB | TailVarNamesB],
+        !:NumAllocated = !.NumAllocated + 1,
+        Var = force_construct_var(!.NumAllocated),
+        VarB = force_construct_var(CurVarNumB),
+        !:RevRenaming = [VarB - Var | !.RevRenaming],
+        ( if CurVarNumB = var_to_int(HeadVarB) then
+            !:RevNamesListSuffix = [Var - HeadNameB | !.RevNamesListSuffix],
+            NextVarNamesB = TailVarNamesB
+        else
+            NextVarNamesB = VarNamesB
+        ),
+        fast_merge_renaming_loop(CurVarNumB + 1, NumAllocatedB, !NumAllocated,
+            NextVarNamesB, !RevNamesListSuffix, !RevRenaming)
+    ).
 
     % A version of fast_merge_renaming_loop specialized for the case
     % where there are no names left from VarSetB.
@@ -815,6 +846,32 @@ append_suffix_until_unique(Trial0, Suffix, UsedNames, Final) :-
     else
         Final = Trial0
     ).
+
+%---------------------------------------------------------------------------%
+
+undo_default_names(VarSet0, VarSet) :-
+    VarSet0 = varset(Supply0, Names0, Values0),
+    map.to_sorted_assoc_list(Names0, NamesList0),
+    undo_default_names_loop(NamesList0, [], RevNamesList),
+    map.from_rev_sorted_assoc_list(RevNamesList, Names),
+    VarSet = varset(Supply0, Names, Values0).
+
+:- pred undo_default_names_loop(assoc_list(var(T), string)::in,
+    assoc_list(var(T), string)::in, assoc_list(var(T), string)::out) is det.
+
+undo_default_names_loop([], !RevNamesList).
+undo_default_names_loop([Var - Name | VarNames], !RevNamesList) :-
+    ( if
+        % Does the variable name have the default form used by lookup_name?
+        remove_prefix("V_", Name, NameAfterV),
+        string.to_int(NameAfterV, _IntAfterV)
+    then
+        % Yes, so delete the name by simply not adding it to the list.
+        true
+    else
+        !:RevNamesList = [Var - Name | !.RevNamesList]
+    ),
+    undo_default_names_loop(VarNames, !RevNamesList).
 
 %---------------------------------------------------------------------------%
 
