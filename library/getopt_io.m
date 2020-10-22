@@ -127,9 +127,9 @@
     % The predicates below that process options, namely
     %
     %   - process_options
-    %   - process_options_se
+    %   - process_options_io
     %   - process_options_track
-    %   - process_options_track_se
+    %   - process_options_track_io
     %
     % all take an argument of the option_ops type to tell them
     %
@@ -226,7 +226,7 @@
 %---------------------%
 
     % A version of the option_ops type for the process_options_track
-    % predicate and its process_options_track_se variant.
+    % predicate and its process_options_track_io variant.
     % Unlike the option_ops type, it does not contain a predicate
     % for setting the initial default values of options, since
     % process_options_track expects that to be done separately.
@@ -251,7 +251,7 @@
 %---------------------%
 
     % A version of the option_ops type for the process_options_userdata
-    % predicate and its process_options_userdata_se variant.
+    % predicate and its process_options_userdata_io variant.
     %
 :- type option_ops_userdata(OptionType, UserDataType)
     --->    option_ops_userdata(

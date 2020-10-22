@@ -6,6 +6,9 @@ Changes that may break compatibility
 
 * We have removed `is` as a synonym for unification.
 
+* We have made slight changes to the names and/or the functionality
+  of several predicates in the `getopt` and `getopt_io` modules.
+
 * We have removed the legacy support for the Alpha architecture.
 
 Changes to the Mercury standard library
@@ -62,6 +65,26 @@ Changes to the Mercury standard library
     that they also have a pair of I/O state arguments that allow them
     to implement `file_special` options. This functionality used to be
     available only from the `getopt_io` module.
+
+* The following predicates have had their argument types changed:
+
+    - pred `process_options/6`
+    - pred `process_options/7`
+    - pred `process_options_track/7`
+
+    All these predicates used to return error indications in the form of a
+    simple string. They now return error indications using the existing
+    structured type `option_error`, which can be converted into a string
+    on demand.
+
+* The following predicates have been deleted:
+
+    - pred `process_options_se/6`
+    - pred `process_options_se/7`
+    - pred `process_options_track_se/7`
+
+    Their functionality is now available from the predicates with the same name
+    minus the `_se` suffix.
 
 ### Changes to the `getopt_io` module
 
