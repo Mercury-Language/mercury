@@ -544,6 +544,9 @@ simplify_maybe_wrap_goal(OuterGoalInfo, InnerGoalInfo, GoalExpr1,
         GoalExpr = GoalExpr1,
         GoalInfo = InnerGoalInfo
     else
+        % XXX There are some inner goals for which it does not make sense
+        % to wrap a scope around it. This includes disj([]), which can be
+        % created by e.g. delete_tail_unreachable_goals.
         GoalExpr = scope(commit(dont_force_pruning),
             hlds_goal(GoalExpr1, InnerGoalInfo)),
         GoalInfo = OuterGoalInfo,
