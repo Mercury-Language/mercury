@@ -47,6 +47,28 @@ Changes to the Mercury standard library
     - pred `digit_to_int/2`         (replacement: `decimal_digit_to_int/2`)
     - pred `int_to_digit/2`         (replacement: `int_to_decimal_digit/2`)
 
+### Changes to the `getopt` module
+
+* The following predicates have been added:
+
+    - pred `process_options_io/6`
+    - pred `process_options_io/7`
+    - pred `process_options_track_io/9`
+    - pred `process_options_userdata/8`
+    - pred `process_options_userdata_io/10`
+
+    The ones whose names have an `_io` suffix do the same jobs as the
+    corresponding predicates without the `_io` suffix, with the exception
+    that they also have a pair of I/O state arguments that allow them
+    to implement `file_special` options. This functionality used to be
+    available only from the `getopt_io` module.
+
+### Changes to the `getopt_io` module
+
+* This module has been deprecated. For now, it exports the same functionality
+  as the updated `getopt` module, but it is scheduled to be deleted after
+  the next release.
+
 ### Changes to the `int` module
 
 * The following obsolete predicates and functions have been removed:
