@@ -599,7 +599,6 @@ do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             % Always recompute instmap_deltas for atomic goals - this is safer
             % in the case where unused variables should no longer be included
             % in the instmap_delta for a goal.
-            % In the alias branch this is necessary anyway.
             simplify_info_get_module_info(!.Info, !:ModuleInfo),
             simplify_info_get_inst_varset(!.Info, InstVarSet),
             recompute_instmap_delta(recompute_atomic_instmap_deltas, !Goal,
