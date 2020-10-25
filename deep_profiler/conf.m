@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2002, 2004-2008, 2010 The University of Melbourne.
+% Copyright (C) 2015-2017, 2019-2020 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -9,11 +10,12 @@
 % Author: zs.
 %
 % This module contains primitives whose parameters are decided by
-% ../configure.in. This module picks them up from the #defines put into
+% ../configure.ac. This module picks them up from the #defines put into
 % runtime/mercury_conf.h by the configure script.
+%
+%---------------------------------------------------------------------------%
 
 :- module conf.
-
 :- interface.
 
 :- import_module io.

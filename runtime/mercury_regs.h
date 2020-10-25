@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1993-2007, 2011 The University of Melbourne.
-// Copyright (C) 2016-2018 The Mercury team.
+// Copyright (C) 2016-2018, 2020 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 #ifndef MERCURY_REGS_H
@@ -278,7 +278,7 @@
 // MR_engine_base, and increase all other MR_mrN numbers by 1.
 //
 // If you change this section, you should also change the settings of
-// NUM_REAL_R_REGS in ../configure.in.
+// NUM_REAL_R_REGS in ../configure.ac.
 //
 // You may also wish to use the MR_verify_fake_registers function
 // to check that no MR_fake_reg slot is assigned to two abstract machine

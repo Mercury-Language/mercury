@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2012 The University of Melbourne.
-// Copyright (C) 2013-2014, 2016-2018 The Mercury team.
+// Copyright (C) 2013-2014, 2016-2018, 2020 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // The main purpose of this file is to define the MR_GRADE_VAR macro,
@@ -44,7 +44,7 @@
 //      scripts/ml.in
 //      compiler/handle_options.m
 //      compiler/compile_target_code.m
-//      configure.in
+//      configure.ac
 
 #ifndef MERCURY_GRADES_H
 #define MERCURY_GRADES_H

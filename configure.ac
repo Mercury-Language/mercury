@@ -7,7 +7,7 @@
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 #
-# configure.in: autoconf source code for `configure' script.
+# configure.ac: autoconf source code for `configure' script.
 #
 # This file is automatically processed by `autoconf' to produce the
 # `configure' script.

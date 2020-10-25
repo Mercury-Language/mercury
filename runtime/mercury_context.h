@@ -1,8 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018 The Mercury team.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2020 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_context.h - defines Mercury multithreading stuff.
@@ -745,7 +744,7 @@ extern  void        MR_schedule_context(MR_Context *ctxt);
 
 #ifdef MR_LL_PARALLEL_CONJ
 
-  // If you change MR_SyncTerm_Struct you need to update configure.in.
+  // If you change MR_SyncTerm_Struct you need to update configure.ac.
   //
   // MR_st_count is manipulated via atomic operations, therefore it is declared
   // as volatile.

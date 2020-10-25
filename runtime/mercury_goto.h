@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2001, 2003-2007, 2009, 2011-2012 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018 The Mercury team.
+// Copyright (C) 2015-2016, 2018-2020 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_goto.h - definitions for the "portable assembler" non-local gotos
@@ -529,7 +529,7 @@
      // directly hence the .word directive in the code section and the branch
      // instruction bypassing it.
      // If you change MR_ARM_PIC_REG, update CFLAGS_FOR_PIC (-mpic-register)
-     // in configure.in.
+     // in configure.ac.
 
     #define MR_ARM_PIC_REG "sl"
 
