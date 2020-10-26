@@ -43,7 +43,8 @@ main(!IO) :-
     io.command_line_arguments(Args0, !IO),
     options.get_option_ops(OptionOps),
     getopt.process_options(OptionOps, Args0, Args, Result0),
-    postprocess_options(Result0, Result, !IO),
+    Result1 = convert_to_maybe_option_table(Result0),
+    postprocess_options(Result1, Result, !IO),
     (
         Result = yes(Msg),
         usage_error(Msg, !IO)

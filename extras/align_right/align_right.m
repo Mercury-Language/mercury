@@ -44,9 +44,9 @@ main(!IO) :-
     getopt.process_options(OptionOps, Args, _OptionArgs, NonOptionArgs,
         OptionsResult),
     (
-        OptionsResult = error(ErrorMsg),
+        OptionsResult = error(Error),
         set_exit_status(1, !IO),
-        io.write_string(ErrorMsg, !IO),
+        io.write_string(option_error_to_string(Error), !IO),
         io.nl(!IO)
     ;
         OptionsResult = ok(OptionTable),

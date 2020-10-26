@@ -49,7 +49,8 @@
 parse_options(MOpts, Args, !IO) :-
     io.command_line_arguments(Args0, !IO),
     OptionOpts = option_ops_multi(short, long, defaults),
-    getopt.process_options(OptionOpts, Args0, Args, MOpts).
+    getopt.process_options(OptionOpts, Args0, Args, MOpts0),
+    MOpts = convert_to_maybe_option_table(MOpts0).
 
 :- pred short(char::in, option::out) is semidet.
 

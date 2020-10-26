@@ -70,8 +70,8 @@ main(!IO) :-
             true
         )
     ;
-        OptionResult = error(Msg),
-        io.write_string(Msg, !IO),
+        OptionResult = error(Error),
+        io.write_string(option_error_to_string(Error), !IO),
         io.nl(!IO),
         io.set_exit_status(1, !IO)
     ).

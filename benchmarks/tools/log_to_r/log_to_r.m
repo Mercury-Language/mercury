@@ -28,8 +28,8 @@ main(!IO) :-
     command_line_arguments(Args, !IO),
     OptionOpts = option_ops_multi(short, long, defaults),
     getopt.process_options(OptionOpts, Args, InputFiles, MaybeOptions),
-(
-    MaybeOptions = ok(Options),
+    (
+        MaybeOptions = ok(Options),
         getopt.lookup_bool_option(Options, help_option, HelpOption),
         ( HelpOption = yes ->
             io.stdout_stream(Stdout, !IO),
@@ -61,8 +61,8 @@ main(!IO) :-
     ;
         MaybeOptions = error(Error),
         io.stderr_stream(Stderr, !IO),
-        io.write_string(Stderr, "Error passing command line options: " ++ Error,
-            !IO),
+        io.write_string(Stderr, "Error passing command line options: " ++
+            option_error_to_string(Error), !IO),
         show_help(Stderr, !IO),
         io.set_exit_status(1, !IO)
     ).

@@ -81,7 +81,7 @@ main -->
 	io__command_line_arguments(AL0),
 	{getopt__process_options(Option_Ops, AL0, AL, Maybe_Option_Table)},
 	( {Maybe_Option_Table = error(Message)},
-		zmessage("muz", [Message]),
+		zmessage("muz", [option_error_to_string(Message)]),
 		usage
 	; {Maybe_Option_Table = ok(Option_Table)},
 		( {getopt__lookup_bool_option(Option_Table, help, yes)} ->

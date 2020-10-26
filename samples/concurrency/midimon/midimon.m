@@ -62,9 +62,9 @@ main(!IO) :-
             )
         )
     ;
-        MOpts = error(Msg),
+        MOpts = error(Error),
         io.stderr_stream(StdErr, !IO),
-        io.format(StdErr, "%s\n", [s(Msg)], !IO),
+        io.format(StdErr, "%s\n", [s(option_error_to_string(Error))], !IO),
         io.set_exit_status(1, !IO)
     ).
 

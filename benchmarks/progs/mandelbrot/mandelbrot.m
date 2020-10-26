@@ -58,7 +58,7 @@ main(!IO) :-
     ;
         GetoptResult = error(Error),
         Result = error(format("Error processing options: %s\n",
-            [s(Error)]))
+            [s(option_error_to_string(Error))]))
     ),
 
     (

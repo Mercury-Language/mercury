@@ -91,8 +91,8 @@ main(!IO) :-
     OptionOps = option_ops_multi(short_options, long_options, option_defaults),
     getopt.process_options(OptionOps, Args0, Args, GetoptResult),
     (
-        GetoptResult = error(ErrorMessage),
-        io.write_string(ErrorMessage, !IO),
+        GetoptResult = error(Error),
+        io.write_string(option_error_to_string(Error), !IO),
         io.set_exit_status(1, !IO)
     ;
         GetoptResult = ok(OptionTable),

@@ -78,8 +78,8 @@ main(!IO) :-
         getopt.lookup_int_option(OptionTable, second_seed, SecondSeed),
         getopt.lookup_int_option(OptionTable, third_seed, ThirdSeed)
     ;
-        Result = error(ErrorMessage),
-        require.error(ErrorMessage)
+        Result = error(Error),
+        require.error(option_error_to_string(Error))
     ),
 
     % Read the input files.
