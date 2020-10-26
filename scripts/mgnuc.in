@@ -638,24 +638,6 @@ case "${FULLARCH}" in x86_64*)
     ;;
 esac
 
-# The -floop-optimize option is incompatible with the global register code
-# we generated on Darwin PowerPC. See the hard_coded/ppc_bug test case
-# for an example program which fails with this optimization.
-
-case ${FULLARCH} in
-    powerpc*apple*darwin*)
-        case ${highlevel_code} in
-            false)
-                case ${global_regs} in
-                    true)
-                        ARCH_OPTS="${ARCH_OPTS} -fno-loop-optimize"
-                        ;;
-                esac
-                ;;
-        esac
-        ;;
-esac
-
 # At -O2 compilation times on Mac OS X are extremely slow for
 # Apple GCC 4.{0,2}. We must force GCC to use -O0 here in order
 # to get acceptable compilation times.

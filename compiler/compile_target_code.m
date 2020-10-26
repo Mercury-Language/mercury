@@ -433,26 +433,11 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         WarningOpt = ""
     ),
 
-    % The -floop-optimize option is incompatible with the global
-    % register code we generate on Darwin PowerPC.
-    % See the hard_coded/ppc_bug test case for an example
-    % program which fails with this optimization.
-
-    globals.lookup_string_option(Globals, target_arch, TargetArch),
-    ( if
-        globals.lookup_bool_option(Globals, highlevel_code, no),
-        GCC_Regs = yes,
-        string.prefix(TargetArch, "powerpc-apple-darwin")
-    then
-        AppleGCCRegWorkaroundOpt = "-fno-loop-optimize "
-    else
-        AppleGCCRegWorkaroundOpt = ""
-    ),
-
     % Last resort workarounds for C compiler bugs.
     % Changes here need to be reflected in scripts/mgnuc.in.
     %
     globals.lookup_bool_option(Globals, exec_trace, ExecTrace),
+    globals.lookup_string_option(Globals, target_arch, TargetArch),
     ( if
         % We need to disable C compiler optimizations in debugging grades
         % in either of the two situations described below.
@@ -508,7 +493,6 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         TypeLayoutOpt,
         InlineAllocOpt,
         AnsiOpt, " ",
-        AppleGCCRegWorkaroundOpt,
         C_FnAlignOpt,
         WarningOpt, " ",
         CFLAGS, " ",

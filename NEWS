@@ -11,6 +11,8 @@ Changes that may break compatibility
 
 * We have removed the legacy support for the Alpha architecture.
 
+* We have dropped support for macOS 10.8 and earlier.
+
 Changes to the Mercury standard library
 ---------------------------------------
 

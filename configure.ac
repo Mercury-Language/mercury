@@ -235,28 +235,6 @@ AC_SUBST(BUILD_C_PROGS_FOR_BUILD_SYSTEM)
 
 #-----------------------------------------------------------------------------#
 
-# Check that we are not using llvm-gcc on Mac OS X since it is too broken
-# to successfully compile Mercury.
-
-if test "$MERCURY_HAVE_GCC" = yes
-then
-    case "$host" in
-        *apple*darwin*)
-            if $CC -v 2>&1 | grep -q "gcc.*Apple.*LLVM"
-            then
-                AC_MSG_ERROR(
-[
-**** The executable `$CC' on this system appears to be llvm-gcc.
-**** It contains bugs that means it cannot be used to compile Mercury.
-**** See README.MacOS for further details.])
-            exit 1
-            fi
-            ;;
-    esac
-fi
-
-#-----------------------------------------------------------------------------#
-
 # Versions of Xcode 11 up until 11.4 ship with a broken version of clang.
 # NOTE: what we are checking for below is Apple version for clang, Xcode 11.4
 # has Apple clang version 11.0.3.
