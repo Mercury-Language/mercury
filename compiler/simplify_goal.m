@@ -170,7 +170,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         ( if set_of_var.is_empty(NonLocals0) then
             true
         else
-            simplify_info_set_should_requantify(!Info)
+            simplify_info_set_rerun_quant_instmap_delta(!Info)
         ),
         goal_cost(Goal0, CostDelta),
         simplify_info_incr_cost_delta(CostDelta, !Info),
@@ -239,7 +239,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         ( if set_of_var.is_empty(NonLocals0) then
             true
         else
-            simplify_info_set_should_requantify(!Info)
+            simplify_info_set_rerun_quant_instmap_delta(!Info)
         ),
         goal_cost(Goal0, CostDelta),
         simplify_info_incr_cost_delta(CostDelta, !Info),
@@ -522,14 +522,14 @@ enforce_unreachability_invariant(GoalInfo0, GoalInfo, !Info) :-
         instmap_delta_init_unreachable(UnreachableInstMapDelta),
         goal_info_set_instmap_delta(UnreachableInstMapDelta,
             GoalInfo0, GoalInfo),
-        simplify_info_set_should_rerun_det(!Info)
+        simplify_info_set_rerun_det(!Info)
     else if
         instmap_delta_is_unreachable(InstmapDelta0),
         NumSolns0 \= at_most_zero
     then
         determinism_components(Determinism, CanFail0, at_most_zero),
         goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo),
-        simplify_info_set_should_rerun_det(!Info)
+        simplify_info_set_rerun_det(!Info)
     else
         GoalInfo = GoalInfo0
     ).
@@ -550,7 +550,7 @@ simplify_maybe_wrap_goal(OuterGoalInfo, InnerGoalInfo, GoalExpr1,
         GoalExpr = scope(commit(dont_force_pruning),
             hlds_goal(GoalExpr1, InnerGoalInfo)),
         GoalInfo = OuterGoalInfo,
-        simplify_info_set_should_rerun_det(!Info)
+        simplify_info_set_rerun_det(!Info)
     ).
 
 %---------------------------------------------------------------------------%

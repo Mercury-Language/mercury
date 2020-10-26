@@ -139,9 +139,8 @@ simplify_goal_disj(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         % recompute instmap_deltas and rerun determinism analysis
         % to avoid aborts in the code generator because the disjunction
         % now cannot produce variables it did before.
-
-        simplify_info_set_should_requantify(!Info),
-        simplify_info_set_should_rerun_det(!Info)
+        simplify_info_set_rerun_quant_instmap_delta(!Info),
+        simplify_info_set_rerun_det(!Info)
     ).
 
     % Look for the kind of bug represented by tests/invalid/bug311.m.

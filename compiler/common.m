@@ -470,7 +470,7 @@ common_optimise_construct(Var, ConsId, ArgVars, LVarFinalInst,
             VarFromToInsts = from_to_insts(LVarFinalInst, LVarFinalInst),
             generate_assign(Var, OldVar, VarFromToInsts, GoalInfo0,
                 GoalExpr, GoalInfo, !Common, !Info),
-            simplify_info_set_should_requantify(!Info),
+            simplify_info_set_rerun_quant_instmap_delta(!Info),
             goal_cost(hlds_goal(GoalExpr0, GoalInfo0), Cost),
             simplify_info_incr_cost_delta(Cost, !Info)
         )
@@ -563,7 +563,7 @@ common_standardize_and_record_construct(Var, TypeCtor, ConsId, ArgVars, VarEqv,
         set_of_var.list_to_set([Var | ArgRepnVars], NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         !Common ^ var_eqv := VarEqv,
-        simplify_info_set_should_requantify(!Info)
+        simplify_info_set_rerun_quant_instmap_delta(!Info)
     else
         unexpected($pred, "GoalExpr0 has unexpected shape")
     ),
@@ -636,10 +636,10 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail,
         GoalExpr = conj(plain_conj, Goals),
         goal_cost(hlds_goal(GoalExpr0, GoalInfo0), Cost),
         simplify_info_incr_cost_delta(Cost, !Info),
-        simplify_info_set_should_requantify(!Info),
+        simplify_info_set_rerun_quant_instmap_delta(!Info),
         (
             CanFail = can_fail,
-            simplify_info_set_should_rerun_det(!Info)
+            simplify_info_set_rerun_det(!Info)
         ;
             CanFail = cannot_fail
         )
@@ -844,7 +844,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
             ),
             goal_cost(hlds_goal(GoalExpr0, GoalInfo), Cost),
             simplify_info_incr_cost_delta(Cost, !Info),
-            simplify_info_set_should_requantify(!Info),
+            simplify_info_set_rerun_quant_instmap_delta(!Info),
             Detism0 = goal_info_get_determinism(GoalInfo),
             (
                 Detism0 = detism_det
@@ -857,7 +857,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 ; Detism0 = detism_cc_non
                 ; Detism0 = detism_cc_multi
                 ),
-                simplify_info_set_should_rerun_det(!Info)
+                simplify_info_set_rerun_det(!Info)
             )
         else
             Context = goal_info_get_context(GoalInfo),

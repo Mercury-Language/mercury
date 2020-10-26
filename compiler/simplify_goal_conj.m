@@ -103,14 +103,13 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
             goal_info_set_determinism(InnerDetism, GoalInfo0, InnerInfo),
             InnerGoal = hlds_goal(conj(plain_conj, Goals), InnerInfo),
             GoalExpr = scope(commit(dont_force_pruning), InnerGoal),
-            % We have deleted goals that contain what could be
+            % We may have deleted goals that contain what could be
             % the last references to variables. This may require
             % adjustments to the nonlocals sets of not only this goal,
             % but of the other goals containing it. Likewise, it may
             % require adjustments of the instmap_deltas of such
-            % containing goals, and we recompute instmap_deltas
-            % only with requantification.
-            simplify_info_set_should_requantify(!Info)
+            % containing goals.
+            simplify_info_set_rerun_quant_instmap_delta(!Info)
         else
             GoalExpr = conj(plain_conj, Goals)
         ),
@@ -220,9 +219,8 @@ simplify_conj(!.PrevGoals, [HeadGoal0 | TailGoals0], Goals, ConjInfo,
                 % adjustments to the nonlocals sets of not only this goal,
                 % but of the other goals containing it. Likewise, it may
                 % require adjustments of the instmap_deltas of such
-                % containing goals, and we recompute instmap_deltas
-                % only with requantification.
-                simplify_info_set_should_requantify(!Info)
+                % containing goals.
+                simplify_info_set_rerun_quant_instmap_delta(!Info)
             else
                 try_to_opt_test_after_switch(!PrevGoals, HeadGoal1,
                     TailGoals0, TailGoals1, ConjInfo, !Info),
@@ -349,7 +347,7 @@ try_to_opt_test_after_switch(!PrevGoals, HeadGoal1,
         % We need to update the determinism fields of the goals.
         % We could try to do that here, but it is simpler to use
         % the existing code for the job.
-        simplify_info_set_should_rerun_det(!Info),
+        simplify_info_set_rerun_det(!Info),
 
         list.reverse(RevTruncatedSameCases, TruncatedSameCases),
         HeadGoalExpr2 = switch(SwitchVar, SwitchCanFail2, TruncatedSameCases),

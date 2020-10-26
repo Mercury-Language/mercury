@@ -582,9 +582,9 @@ do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
     simplify_goal(!Goal, NestedContext0, InstMap0,
         common_info_init, _Common, !Info),
 
-    simplify_info_get_should_requantify(!.Info, ShouldRequantify),
+    simplify_info_get_rerun_quant_instmap_delta(!.Info, RerunQuantDelta),
     (
-        ShouldRequantify = yes,
+        RerunQuantDelta = yes,
         some [!VarSet, !VarTypes, !RttiVarMaps, !ModuleInfo] (
             simplify_info_get_varset(!.Info, !:VarSet),
             simplify_info_get_var_types(!.Info, !:VarTypes),
@@ -606,11 +606,11 @@ do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             simplify_info_set_module_info(!.ModuleInfo, !Info)
         )
     ;
-        ShouldRequantify = no
+        RerunQuantDelta = no
     ),
-    simplify_info_get_should_rerun_det(!.Info, ShouldRerunDet),
+    simplify_info_get_rerun_det(!.Info, RerunDet),
     (
-        ShouldRerunDet = yes,
+        RerunDet = yes,
         some [!VarSet, !VarTypes, !RttiVarMaps, !ModuleInfo, !ProcInfo]
         (
             det_get_soln_context(Detism, SolnContext),
@@ -642,7 +642,7 @@ do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             simplify_info_set_var_types(!.VarTypes, !Info)
         )
     ;
-        ShouldRerunDet = no
+        RerunDet = no
     ).
 
 %-----------------------------------------------------------------------------%

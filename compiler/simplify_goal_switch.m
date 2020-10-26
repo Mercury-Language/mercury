@@ -139,7 +139,7 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 goal_info_init(NonLocals, InstMapDelta, Detism, Purity,
                     CombinedGoalInfo),
 
-                simplify_info_set_should_requantify(!Info),
+                simplify_info_set_rerun_quant_instmap_delta(!Info),
                 GoalExpr = conj(plain_conj, GoalList),
                 GoalInfo = CombinedGoalInfo
             )
@@ -190,8 +190,8 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         % analysis to avoid aborts in the code generator because the switch
         % now cannot produce variables it did before.
 
-        simplify_info_set_should_requantify(!Info),
-        simplify_info_set_should_rerun_det(!Info)
+        simplify_info_set_rerun_quant_instmap_delta(!Info),
+        simplify_info_set_rerun_det(!Info)
     ).
 
 %---------------------------------------------------------------------------%

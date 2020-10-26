@@ -130,10 +130,9 @@
     is det.
 :- pred simplify_info_get_varset(simplify_info::in, prog_varset::out) is det.
 :- pred simplify_info_get_var_types(simplify_info::in, vartypes::out) is det.
-:- pred simplify_info_get_should_requantify(simplify_info::in, bool::out)
-    is det.
-:- pred simplify_info_get_should_rerun_det(simplify_info::in, bool::out)
-    is det.
+:- pred simplify_info_get_rerun_quant_instmap_delta( simplify_info::in,
+    bool::out) is det.
+:- pred simplify_info_get_rerun_det(simplify_info::in, bool::out) is det.
 
 :- pred simplify_info_get_pred_proc_id(simplify_info::in,
     pred_proc_id::out) is det.
@@ -169,9 +168,9 @@
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_var_types(vartypes::in,
     simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_should_requantify(
+:- pred simplify_info_set_rerun_quant_instmap_delta(
     simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_should_rerun_det(
+:- pred simplify_info_set_rerun_det(
     simplify_info::in, simplify_info::out) is det.
 
 :- pred simplify_info_set_rtti_varmaps(rtti_varmaps::in,
@@ -262,11 +261,12 @@
 /* 3 */         simp_varset                 :: prog_varset,
 /* 4 */         simp_vartypes               :: vartypes,
 
-                % Does the goal need requantification?
-/* 5 */         simp_should_requantify      :: bool,
+                % Does the goal need requantification, and the recomputation
+                % of instmap_deltas?
+/* 5 */         simp_rerun_quant_instmap_delta :: bool,
 
                 % Does determinism analysis need to be rerun?
-/* 6 */         simp_should_rerun_det       :: bool,
+/* 6 */         simp_rerun_det              :: bool,
 
 /* 7 */         simp_params                 :: simplify_info_params,
 /* 8 */         simp_sub_info               :: simplify_sub_info
@@ -367,8 +367,8 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
 
 simplify_info_reinit(SimplifyTasks, !Info) :-
     !Info ^ simp_simplify_tasks := SimplifyTasks,
-    !Info ^ simp_should_requantify := no,
-    !Info ^ simp_should_rerun_det := no,
+    !Info ^ simp_rerun_quant_instmap_delta := no,
+    !Info ^ simp_rerun_det := no,
     !Info ^ simp_sub_info ^ ssimp_has_parallel_conj := has_no_parallel_conj,
     !Info ^ simp_sub_info ^ ssimp_has_user_event := has_no_user_event.
 
@@ -422,10 +422,10 @@ simplify_info_get_varset(Info, X) :-
     X = Info ^ simp_varset.
 simplify_info_get_var_types(Info, X) :-
     X = Info ^ simp_vartypes.
-simplify_info_get_should_requantify(Info, X) :-
-    X = Info ^ simp_should_requantify.
-simplify_info_get_should_rerun_det(Info, X) :-
-    X = Info ^ simp_should_rerun_det.
+simplify_info_get_rerun_quant_instmap_delta(Info, X) :-
+    X = Info ^ simp_rerun_quant_instmap_delta.
+simplify_info_get_rerun_det(Info, X) :-
+    X = Info ^ simp_rerun_det.
 
 simplify_info_get_pred_proc_id(Info, X) :-
     X = Info ^ simp_params ^ sip_pred_proc_id.
@@ -478,19 +478,19 @@ simplify_info_set_var_types(X, !Info) :-
     else
         !Info ^ simp_vartypes := X
     ).
-simplify_info_set_should_requantify(!Info) :-
+simplify_info_set_rerun_quant_instmap_delta(!Info) :-
     X = yes,
-    ( if X = !.Info ^ simp_should_requantify then
+    ( if X = !.Info ^ simp_rerun_quant_instmap_delta then
         true
     else
-        !Info ^ simp_should_requantify := X
+        !Info ^ simp_rerun_quant_instmap_delta := X
     ).
-simplify_info_set_should_rerun_det(!Info) :-
+simplify_info_set_rerun_det(!Info) :-
     X = yes,
-    ( if X = !.Info ^ simp_should_rerun_det then
+    ( if X = !.Info ^ simp_rerun_det then
         true
     else
-        !Info ^ simp_should_rerun_det := X
+        !Info ^ simp_rerun_det := X
     ).
 
 simplify_info_set_rtti_varmaps(X, !Info) :-
@@ -557,8 +557,8 @@ simplify_info_set_deleted_call_callees(X, !Info) :-
 %  8    431612         0      4700   0.00%  elim_vars
 %  9      8132         0    428653   0.00%  allow_messages
 % 10    431084         0      4172   0.00%  error_specs
-% 11    858622     41608     25167  62.31%  should_requantify
-% 12    858622       531      1606  24.85%  should_rerun_det
+% 11    858622     41608     25167  62.31%  requantify
+% 12    858622       531      1606  24.85%  rerun_det
 % 13    148274     83477     61740  57.48%  cost_delta
 % 14    426912        52       170  23.42%  has_parallel_conj
 % 15    429969      8066       887  90.09%  found_contains_trace

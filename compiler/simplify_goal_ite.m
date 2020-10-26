@@ -175,8 +175,8 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 simplify_goal(hlds_goal(conj(plain_conj, Goals), GoalInfo0),
                     hlds_goal(GoalExpr, GoalInfo), NestedContext0, InstMap0,
                     Common0, Common, !Info),
-                simplify_info_set_should_requantify(!Info),
-                simplify_info_set_should_rerun_det(!Info)
+                simplify_info_set_rerun_quant_instmap_delta(!Info),
+                simplify_info_set_rerun_det(!Info)
             else
                 simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
                     GoalInfo0, GoalInfo, NestedContext0, InstMap0,
@@ -207,8 +207,8 @@ maybe_warn_about_condition(GoalInfo0, NestedContext0, Problem, !Info) :-
             [simplest_msg(Context, Pieces)]),
         simplify_info_add_message(Spec, !Info)
     ),
-    simplify_info_set_should_requantify(!Info),
-    simplify_info_set_should_rerun_det(!Info).
+    simplify_info_set_rerun_quant_instmap_delta(!Info),
+    simplify_info_set_rerun_det(!Info).
 
 %----------------------------------------------------------------------------%
 

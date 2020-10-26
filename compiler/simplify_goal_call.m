@@ -180,7 +180,7 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         then
             GoalExpr = EvaluatedGoalExpr,
             GoalInfo = EvaluatedGoalInfo,
-            simplify_info_set_should_requantify(!Info)
+            simplify_info_set_rerun_quant_instmap_delta(!Info)
         else
             % Step 2.
             simplify_look_for_duplicate_call(PredId, ProcId, Args, GoalExpr0,
@@ -1042,7 +1042,7 @@ simplify_improve_library_call(InstMap0, ModuleName, PredName, ModeNum, Args,
                 GoalInfo0, ImprovedGoalInfo, !Info)
         )
     ),
-    simplify_info_set_should_requantify(!Info).
+    simplify_info_set_rerun_quant_instmap_delta(!Info).
 
 %---------------------%
 
