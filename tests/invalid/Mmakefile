@@ -410,15 +410,15 @@ NON_PROFDEEP_MODULES = \
 
 # These tests test things which only work for back-ends which support
 # the C interface.
-ifneq "$(filter java% csharp% erlang%,$(GRADE))" ""
+ifneq "$(filter java% csharp%,$(GRADE))" ""
 	C_INTERFACE_PROGS=
 else
 	C_INTERFACE_PROGS=$(C_INTERFACE_MODULES)
 endif
 
-# The java, csharp and erlang grades compile with num_tag_bits = 0.
+# The java and csharp grades compile with num_tag_bits = 0.
 # NOTE We don't support reserving tags anymore.
-# ifneq "$(filter java% csharp% erlang%,$(GRADE))" ""
+# ifneq "$(filter java% csharp%,$(GRADE))" ""
 # 	RESERVE_TAG_PROGS =
 # else
 # 	RESERVE_TAG_PROGS = $(RESERVE_TAG_MODULES)

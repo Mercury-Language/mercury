@@ -194,7 +194,6 @@ ALL_NONRETRY_PROGS = \
 	$(MMOS_PROGS)
 
 # Debugging doesn't yet don't work in MLDS grades (hl*, csharp, java),
-# or the Erlang grade,
 # and the retry command doesn't and will not work in deep profiling
 # grades (profdeep).
 # Also base grades `jump' and `fast' cannot be used with
@@ -218,7 +217,7 @@ else
     DEBUGGER_PROGS = $(DEBUGGER_PROGS0)
 endif
 
-ifneq "$(filter hl% java% csharp% erlang%,$(GRADE))" ""
+ifneq "$(filter hl% java% csharp%,$(GRADE))" ""
     PROGS =
 else
     ifneq "$(findstring asm_,$(GRADE))" ""

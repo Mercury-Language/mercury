@@ -90,17 +90,17 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java%,$(GRADE))","")
 MLOBJS =
 endif
 
 #-----------------------------------------------------------------------------#
 
 # The deep profiler contains quite a lot of C code for which there are
-# currently not C#, Java or Erlang implementations. We need to pass
+# currently not C# or Java implementations. We need to pass
 # `--allow-stubs' in order to compile it.
 #
-ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java%,$(GRADE))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
@@ -158,7 +158,7 @@ RUN_LIB = \
 	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A \
 	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 
-ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifeq ("$(filter csharp% java%,$(GRADE))","")
 mdprof_cgi:		$(RUN_LIB)
 mdprof_test:		$(RUN_LIB)
 mdprof_dump:		$(RUN_LIB)

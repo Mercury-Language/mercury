@@ -345,7 +345,7 @@ mercury_method_call_codes.i: ../tools/make_spec_method_call
 .PHONY: all
 all:	runtime $(TAGS_FILE_EXISTS)
 
-ifneq "$(filter csharp% java% erlang%,$(GRADE))" ""
+ifneq "$(filter csharp% java%,$(GRADE))" ""
 #
 # For these grades, there's nothing to do.
 
@@ -447,7 +447,7 @@ install_dirs:
 	-[ -d $(INSTALL_RECONF_DIR)/runtime ] || \
 		mkdir -p $(INSTALL_RECONF_DIR)/runtime
 
-ifneq "$(filter csharp% java% erlang%,$(GRADE))" ""
+ifneq "$(filter csharp% java%,$(GRADE))" ""
 
 # For non-C grades, the only thing that needs to be done is install the runtime
 # headers (see the comment above the install_headers target for the rationale).
@@ -456,7 +456,6 @@ ifneq "$(filter csharp% java% erlang%,$(GRADE))" ""
 # The C# version of the Mercury runtime *is* in this directory (in
 # mercury_dotnet.cs.in), but it is included directly in the standard library
 # assembly (mer_std.dll) by ../library/Mmakefile.
-# The Erlang version of the Mercury runtime is in the library directory.
 
 .PHONY: install_init
 install_init:

@@ -201,7 +201,7 @@ STATIC_TRACE_LIBS = $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
 endif
 endif
 endif
-ifeq ("$(filter csharp% erlang% java%,$(GRADE))","")
+ifeq ("$(filter csharp% java%,$(GRADE))","")
 MLOBJS += $(STATIC_TRACE_LIBS) $(STATIC_STD_LIBS) \
 		$(STATIC_RT_LIBS) $(STATIC_GC_LIBS)
 endif

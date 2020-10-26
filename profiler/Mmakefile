@@ -55,7 +55,7 @@ demangle_test.depend: PROF_FLAGS
 # Add some additional dependencies, so that Mmake knows to remake the
 # profiler if one of the libraries changes.
 
-ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifeq ("$(filter csharp% java%,$(GRADE))","")
 mercury_profile: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mercury_profile: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 # XXX Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
@@ -64,7 +64,7 @@ endif
 
 $(cs_subdir)mercury_profile_init.c: $(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
 
-ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java%,$(GRADE))","")
 MLOBJS =
 endif
 

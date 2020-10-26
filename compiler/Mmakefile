@@ -45,7 +45,7 @@ VPATH = \
 
 MCFLAGS	     += --flags COMP_FLAGS $(CONFIG_OVERRIDE)
 
-ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifeq ("$(filter csharp% java%,$(GRADE))","")
 MLLIBS       += $(THREAD_LIBS)
 else
 MLOBJS =
@@ -116,7 +116,7 @@ endif
 # Add some additional dependencies, so that Mmake knows to remake the
 # compiler if one of the libraries changes.
 
-ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifeq ("$(filter csharp% java%,$(GRADE))","")
 $(MC_PROG): $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 $(MC_PROG): $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 $(MC_PROG): $(MDBCOMP_DIR)/lib$(MDBCOMP_LIB_NAME).$A

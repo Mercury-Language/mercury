@@ -488,7 +488,7 @@ endif
 # grades because deep profiling cannot yet handle exceptions being caught and
 # this test does that.
 #
-ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
+ifeq "$(filter csharp% java%,$(GRADE))" ""
 	ifeq "$(findstring profdeep,$(GRADE))" ""
 		SOLVER_PROGS_2 = \
 			solver_default_eq_cmp
@@ -505,7 +505,7 @@ else
 endif
 
 # Foreign enum pragmas only (currently) work in the C and C# grades.
-ifeq "$(filter java% erlang%,$(GRADE))" ""
+ifeq "$(filter java%,$(GRADE))" ""
 	FOREIGN_ENUM_PROGS = \
 		exported_foreign_enum \
 		foreign_enum_dummy \
@@ -514,18 +514,12 @@ else
 	FOREIGN_ENUM_PROGS =
 endif
 
-# Tests of the random module do not work in the Erlang grade due to support for
-# fixed size integer types in that grade being incomplete.
-ifeq "$(filter erlang%,$(GRADE))" ""
-	RANDOM_PROGS = \
-		random1 \
-		random2 \
-		random3 \
-		random_shuffle \
-		random_shuffle2
-else
-	RANDOM_PROGS =
-endif
+RANDOM_PROGS = \
+	random1 \
+	random2 \
+	random3 \
+	random_shuffle \
+	random_shuffle2
 
 # Some tests only link in trailing grades.
 ifeq "$(filter tr%,$(GRADE))" ""
@@ -557,7 +551,7 @@ TRACE_GOAL_ENV_PROGS = \
 # The programs listed in CTGC_PROGS_2 do not currently work in non-C grades.
 #
 ifeq "$(findstring debug,$(GRADE))" ""
-	ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
+	ifeq "$(filter csharp% java%,$(GRADE))" ""
 		CTGC_PROGS_2 = \
 			bad_direct_reuse \
 			bad_indirect_reuse2 \
@@ -617,7 +611,7 @@ endif
 # The foreign_type_assertion test is currently meaningful only in C grades.
 # Tests of the C foreign language interface only work in C grades.
 # Runtime options are specific to the C backend.
-ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
+ifeq "$(filter csharp% java%,$(GRADE))" ""
 	C_ONLY_PROGS = \
 		factt \
 		factt_sort_test \
@@ -717,7 +711,7 @@ CLOSURE_LAYOUT_PROGS = \
 # they use backjumping, which is NI for the non-C grades.
 #
 ifeq "$(findstring profdeep,$(GRADE))" ""
-	ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
+	ifeq "$(filter csharp% java%,$(GRADE))" ""
 		NON_PROFDEEP_PROGS_2 = \
 			backend_external \
 			backend_external_func \
@@ -813,7 +807,7 @@ endif
 # be replaced by a test that exercises functionality enabled by type tables.
 # However, this must wait for the implementation of that functionality.
 
-ifeq "$(filter hl% csharp% java% erlang%,$(GRADE))" ""
+ifeq "$(filter hl% csharp% java%,$(GRADE))" ""
 	ifeq "$(findstring profdeep,$(GRADE))" ""
 		BACKEND_PROGS_2 = \
 			factt_non \
@@ -855,7 +849,7 @@ ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
   ifneq "$(findstring solaris,$(FULLARCH))" "solaris"
 	# The `parse' test also links with the debug libraries,
 	# so it only works in LLDS grades.
-	ifeq "$(filter hl% csharp% java% erlang%,$(GRADE))" ""
+	ifeq "$(filter hl% csharp% java%,$(GRADE))" ""
 		STATIC_LINK_PROGS = parse
 	endif
   endif

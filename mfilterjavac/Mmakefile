@@ -51,7 +51,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java%,$(GRADE))","")
 MLOBJS =
 endif
 
@@ -73,7 +73,7 @@ all:	$(ALL_MODULES) $(TAGS_FILE_EXISTS)
 # Add some additional dependencies, so that Mmake knows to remake the
 # profiler if one of the libraries changes.
 
-ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifeq ("$(filter csharp% java%,$(GRADE))","")
 mfilterjavac: \
 	$(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A \
 	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A

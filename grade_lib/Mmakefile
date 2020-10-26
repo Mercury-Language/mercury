@@ -32,7 +32,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java%,$(GRADE))","")
 MLOBJS =
 endif
 

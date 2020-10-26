@@ -42,7 +42,7 @@ SUB_MODULE_PROGS = \
 	use_submodule
 
 # Solver types only work in C grades.
-ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
+ifeq "$(filter csharp% java%,$(GRADE))" ""
 	SOLVER_PROGS = \
 		ts
 else

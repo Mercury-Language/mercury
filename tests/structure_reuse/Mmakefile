@@ -12,7 +12,7 @@ STRUCTURE_REUSE_PROGS = \
 	interpret
 
 # We currently don't do any testing in some grades on this directory.
-ifneq "$(filter java% csharp% erlang%,$(GRADE))" ""
+ifneq "$(filter java% csharp%,$(GRADE))" ""
 	PROGS=
 else
 	PROGS=$(STRUCTURE_REUSE_PROGS)

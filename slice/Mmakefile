@@ -71,7 +71,7 @@ MCFLAGS += --flags SLICE_FLAGS $(CONFIG_OVERRIDE)
 
 #-----------------------------------------------------------------------------#
 
-ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java%,$(GRADE))","")
 MLOBJS =
 endif
 
@@ -125,11 +125,11 @@ $(MDBCOMP_MODULES): %: $(MDBCOMP_DIR)/%
 
 #-----------------------------------------------------------------------------#
 
-# The C#, Java and Erlang implementations of the mdbcomp library are not yet
+# The C# and Java implementations of the mdbcomp library are not yet
 # complete, so we need to pass `--allow-stubs' to get them to compile.
 # Since the standard library is compiled with `--halt-at-warn',
 # we also need `--no-warn-stubs'.
-ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java%,$(GRADE))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
@@ -145,7 +145,7 @@ RUN_LIB_BROW = \
 	$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A \
 	$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
 
-ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifeq ("$(filter csharp% java%,$(GRADE))","")
 mslice:		$(RUN_LIB_BROW)
 mdice:		$(RUN_LIB_BROW)
 mcov:		$(RUN_LIB_BROW)

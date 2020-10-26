@@ -643,7 +643,7 @@ install_trace: trace
 # be able to compile anything in .gc grades.
 #
 .PHONY: install_boehm_gc
-ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifeq ("$(filter csharp% java%,$(GRADE))","")
 install_boehm_gc: boehm_gc
 	+gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`; \
 	cd boehm_gc && $(SUBDIR_MMAKE) install GC_GRADE=$$gc_grade
@@ -725,7 +725,7 @@ install_grades: install_main
 	    IWS=`/bin/pwd`/install_grade_dir.$${grade};                       \
 	    (                                                                 \
 		case $${grade} in                                             \
-			csharp*|java*|erlang*) MMAKE_USE_MMC_MAKE=yes;        \
+			csharp*|java*) MMAKE_USE_MMC_MAKE=yes;		      \
 		esac;                                                         \
 		scripts/prepare_install_dir $${IWS} &&                        \
 		( cd $${IWS}/boehm_gc &&                                      \

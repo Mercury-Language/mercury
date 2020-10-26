@@ -58,6 +58,7 @@ ERRORCHECK_PROGS = \
 	warn_non_contiguous \
 	warn_non_contiguous_foreign \
 	warn_non_contiguous_foreign_group \
+	warn_return \
 	warn_self_import \
 	warn_stubs \
 	warn_succ_ind
@@ -68,14 +69,6 @@ ERRORCHECK_PROGS = \
 #
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 	ERRORCHECK_PROGS += unused_args_analysis
-endif
-
-# We don't run these tests in the erlang grade:
-#
-#     warn_return  (Erlang doesn't have return statements).
-#
-ifeq "$(filter erlang%,$(GRADE))" ""
-	ERRORCHECK_PROGS += warn_return
 endif
 
 PROGS = $(COMPILE_PROGS) $(ERRORCHECK_PROGS) up_to_date

@@ -36,11 +36,11 @@ MULTI_PROGS =			\
 	conflict
 
 # These tests require debugging, which hasn't been implemented for
-# the MLDS backend or Erlang backend.
+# the MLDS backend.
 #
 LLDS_PROGS =
 
-ifeq "$(filter hl% java% csharp% il% erlang%,$(GRADE))" ""
+ifeq "$(filter hl% java% csharp%,$(GRADE))" ""
 	PROGS0 = $(LLDS_PROGS)
 else
 	PROGS0 =
@@ -106,7 +106,7 @@ endif
 
 # Exercise multiple Mercury engines in lowlevel grades.
 ENGINES :=
-ifeq "$(filter hl% java% csharp% il% erlang%,$(GRADE))" ""
+ifeq "$(filter hl% java% csharp%,$(GRADE))" ""
 	ENGINES := MERCURY_OPTIONS=-P8
 endif
 

@@ -100,11 +100,11 @@ endif
 MCFLAGS += --flags LIB_FLAGS $(CONFIG_OVERRIDE)
 MCFLAGS += $(LIBRARY_TRACE_LEVEL) $(INTER_FLAGS)
 
-# The C#, Java and Erlang implementations of the standard library are not
+# The C# and Java implementations of the standard library are not
 # yet complete, so we need to pass `--allow-stubs' to get them to compile.
 # Since the standard library is compiled with `--halt-at-warn',
 # we also need `--no-warn-stubs'.
-ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java%,$(GRADE))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
@@ -403,13 +403,10 @@ endif
 ifeq ("$(findstring java,$(GRADE))","java")
 lib_std: $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar
 endif
-ifeq ("$(findstring erlang,$(GRADE))","erlang")
-lib_std: $(STD_LIB_NAME).beams
-endif
 endif
 
 # Some extra rules that we need for the C back-ends.
-ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifeq ("$(filter csharp% java%,$(GRADE))","")
 
 # The following dependency is just there to improve compilation speed;
 # making tree234.$O first improves effective parallelism with parallel makes.
@@ -426,7 +423,7 @@ else
 MCFLAGS += --extra-init-command ./print_extra_inits
 endif
 
-endif	# GRADE != csharp && GRADE != java && GRADE != erlang
+endif	# GRADE != csharp && GRADE != java
 
 #-----------------------------------------------------------------------------#
 

@@ -67,13 +67,13 @@ INDEP_PAR_CONJ_PROGS = \
 	threads_hang
 
 # These tests require debugging, which hasn't been implemented for
-# the MLDS backend or Erlang backend.
+# the MLDS backend.
 #
 LLDS_PROGS = \
 	par_ddeath \
 	par_ddeath_2
 
-ifeq "$(filter hl% java% csharp% erlang%,$(GRADE))" ""
+ifeq "$(filter hl% java% csharp%,$(GRADE))" ""
 	PROGS0 = $(LLDS_PROGS)
 else
 	PROGS0 =
@@ -126,7 +126,7 @@ $(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
 
 # Exercise multiple Mercury engines in lowlevel grades.
 ENGINES :=
-ifeq "$(filter hl% java% csharp% il% erlang%,$(GRADE))" ""
+ifeq "$(filter hl% java% csharp%,$(GRADE))" ""
 	ENGINES := MERCURY_OPTIONS=-P2
 endif
 
@@ -134,7 +134,7 @@ endif
 	{ [ -f $*.inp ] && cat $*.inp; } | $(ENGINES) ./$< > $@ 2>&1 || \
 		{ grep . $@ /dev/null; exit 1; }
 
-ifeq "$(filter hl% java% csharp% il% erlang%,$(GRADE))" ""
+ifeq "$(filter hl% java% csharp%,$(GRADE))" ""
 
 # Run threads_hang with multiple OS threads in lowlevel parallel grades.
 # Repeat the test a few times in increase the chances of getting a deadlock.

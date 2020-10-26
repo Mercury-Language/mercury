@@ -58,7 +58,7 @@ MLFLAGS      += -R$(FINAL_INSTALL_MERC_LIB_DIR)	\
 MCFLAGS      += -R$(FINAL_INSTALL_MERC_LIB_DIR)	\
 		-R$(FINAL_INSTALL_MERC_GC_LIB_DIR)
 endif
-ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifeq ("$(filter csharp% java%,$(GRADE))","")
 MLLIBS       += $(SOCKET_LIBRARY) $(NSL_LIBRARY) $(DL_LIBRARY) \
 		$(READLINE_LIBRARIES)
 endif
@@ -95,11 +95,11 @@ LN	= ln
 
 #-----------------------------------------------------------------------------#
 
-# The C#, Java and Erlang implementations of the standard library are not yet
+# The C# and Java implementations of the standard library are not yet
 # complete, so we need to pass `--allow-stubs' to get them to compile.
 # Since the standard library is compiled with `--halt-at-warn',
 # we also need `--no-warn-stubs'.
-ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java%,$(GRADE))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
@@ -238,14 +238,6 @@ realclean_local:
 .PHONY: install
 install: install_library
 
-ifneq ("$(filter erlang%,$(GRADE))","")
-
-# there is no debugger in the Erlang backends
-
-.PHONY: install_library
-install_library:
-
-else
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 
 .PHONY: install_library
@@ -259,5 +251,4 @@ install_library:				\
 	lib$(MDBCOMP_LIB_NAME).install_ints	\
 	lib$(MDBCOMP_LIB_NAME).install_hdrs
 
-endif
 endif
