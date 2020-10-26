@@ -48,7 +48,7 @@
 
 :- import_module bool.
 :- import_module int.
-:- import_module float.
+:- import_module uint.
 
 ambig_overload1(L) :-
     A = f, B = f, C = f, D = f, E = f, F = f,
@@ -60,56 +60,56 @@ ambig_overload2(L) :-
     L = [A, B, C, D, E, F, G].
 
 test_lt(X) :-
-    (
-        X1 < Y1,
-        X2 < Y2,
-        X3 < Y3,
-        X4 < Y4,
-        X5 < Y5,
-        X6 < Y6,
-        X7 < Y7,
-        X8 < Y8,
-        X9 < Y9,
-        XA < YA,
-        XB < YB,
-        XC < YC,
-        XD < YD,
-        XE < YE,
-        XF < YF,
-        XG < YG,
-        XH < YH,
-        XI < YI,
-        XJ < YJ,
-        XK < YK,
-        XL < YL,
-        XM < YM,
-        XN < YN,
+    ( if
+        _ = X1 `unchecked_left_shift` Y1,
+        _ = X2 `unchecked_left_shift` Y2,
+        _ = X3 `unchecked_left_shift` Y3,
+        _ = X4 `unchecked_left_shift` Y4,
+        _ = X5 `unchecked_left_shift` Y5,
+        _ = X6 `unchecked_left_shift` Y6,
+        _ = X7 `unchecked_left_shift` Y7,
+        _ = X8 `unchecked_left_shift` Y8,
+        _ = X9 `unchecked_left_shift` Y9,
+        _ = XA `unchecked_left_shift` YA,
+        _ = XB `unchecked_left_shift` YB,
+        _ = XC `unchecked_left_shift` YC,
+        _ = XD `unchecked_left_shift` YD,
+        _ = XE `unchecked_left_shift` YE,
+        _ = XF `unchecked_left_shift` YF,
+        _ = XG `unchecked_left_shift` YG,
+        _ = XH `unchecked_left_shift` YH,
+        _ = XI `unchecked_left_shift` YI,
+        _ = XJ `unchecked_left_shift` YJ,
+        _ = XK `unchecked_left_shift` YK,
+        _ = XL `unchecked_left_shift` YL,
+        _ = XM `unchecked_left_shift` YM,
+        _ = XN `unchecked_left_shift` YN,
         X1 = 1, Y1 = 11,
         X2 = 2, Y2 = 12,
         X3 = 3, Y3 = 13,
-        X4 = 4.0, Y4 = 14.0,
-        X5 = 5.0, Y5 = 15.0,
-        X6 = 6.0, Y6 = 16.0,
-        X7 = 7.0, Y7 = 17.0,
-        X8 = 8.0, Y8 = 18.0,
-        X9 = 9.0, Y9 = 19.0,
-        XA = 10.0, YA = 20.0,
-        XB = 11.0, YB = 21.0,
-        XC = 12.0, YC = 22.0,
-        XD = 13.0, YD = 23.0,
-        XE = 14.0, YE = 24.0,
-        XF = 15.0, YF = 25.0,
-        XG = 16.0, YG = 26.0,
-        XH = 17.0, YH = 27.0,
-        XI = 18.0, YI = 28.0,
-        XJ = 19.0, YJ = 29.0,
-        XK = 20.0, YK = 30.0,
-        XL = 21.0, YL = 31.0,
-        XM = 22.0, YM = 32.0,
-        XN = 23.0, YN = 33.0
-    ->
+        X4 = 4u, Y4 = 14u,
+        X5 = 5u, Y5 = 15u,
+        X6 = 6u, Y6 = 16u,
+        X7 = 7u, Y7 = 17u,
+        X8 = 8u, Y8 = 18u,
+        X9 = 9u, Y9 = 19u,
+        XA = 10u, YA = 20u,
+        XB = 11u, YB = 21u,
+        XC = 12u, YC = 22u,
+        XD = 13u, YD = 23u,
+        XE = 14u, YE = 24u,
+        XF = 15u, YF = 25u,
+        XG = 16u, YG = 26u,
+        XH = 17u, YH = 27u,
+        XI = 18u, YI = 28u,
+        XJ = 19u, YJ = 29u,
+        XK = 20u, YK = 30u,
+        XL = 21u, YL = 31u,
+        XM = 22u, YM = 32u,
+        XN = 23u, YN = 33u
+    then
         X = 0
-    ;
+    else
         X = 1
     ).
 

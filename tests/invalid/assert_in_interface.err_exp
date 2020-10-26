@@ -1,7 +1,7 @@
-assert_in_interface.m:011: In interface for module `assert_in_interface':
-assert_in_interface.m:011:   error: exported promise refers to predicate
-assert_in_interface.m:011:   `list.last'/2 which is defined in the
-assert_in_interface.m:011:   implementation section of module
-assert_in_interface.m:011:   `assert_in_interface'.
-assert_in_interface.m:011:   Either move the promise into the implementation
-assert_in_interface.m:011:   section or move the definition into the interface.
+assert_in_interface.m:012: In interface for module `assert_in_interface':
+assert_in_interface.m:012:   error: exported promise refers to predicate
+assert_in_interface.m:012:   `list.last'/2 which is defined in the
+assert_in_interface.m:012:   implementation section of module
+assert_in_interface.m:012:   `assert_in_interface'.
+assert_in_interface.m:012:   Either move the promise into the implementation
+assert_in_interface.m:012:   section or move the definition into the interface.

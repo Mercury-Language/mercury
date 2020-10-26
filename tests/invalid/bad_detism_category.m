@@ -1,8 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Test the error message generated when the determinism on a pred, func, mode
-% declaration is invalid.
+% Test the error message generated when the determinism on a pred, func,
+% or mode declaration is invalid.
 %---------------------------------------------------------------------------%
 
 :- module bad_detism_category.

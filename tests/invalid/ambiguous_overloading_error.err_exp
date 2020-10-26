@@ -34,32 +34,32 @@ ambiguous_overloading_error.m:116: In clause for predicate `test_lt'/1:
 ambiguous_overloading_error.m:116:   error: excessively ambiguous overloading.
 ambiguous_overloading_error.m:116:   The following symbol was overloaded in the
 ambiguous_overloading_error.m:116:   following contexts.
-ambiguous_overloading_error.m:067:   The predicate symbol predicate `<'/2.
+ambiguous_overloading_error.m:067:   The predicate symbol `<'/2.
 ambiguous_overloading_error.m:067:   The possible matches are:
 ambiguous_overloading_error.m:067:     predicate `float.<'/2,
 ambiguous_overloading_error.m:067:     predicate `int.<'/2.
-ambiguous_overloading_error.m:068:   The predicate symbol predicate `<'/2 is
-ambiguous_overloading_error.m:068:   also overloaded here.
-ambiguous_overloading_error.m:069:   The predicate symbol predicate `<'/2 is
-ambiguous_overloading_error.m:069:   also overloaded here.
-ambiguous_overloading_error.m:070:   The predicate symbol predicate `<'/2 is
-ambiguous_overloading_error.m:070:   also overloaded here.
-ambiguous_overloading_error.m:071:   The predicate symbol predicate `<'/2 is
-ambiguous_overloading_error.m:071:   also overloaded here.
-ambiguous_overloading_error.m:072:   The predicate symbol predicate `<'/2 is
-ambiguous_overloading_error.m:072:   also overloaded here.
-ambiguous_overloading_error.m:073:   The predicate symbol predicate `<'/2 is
-ambiguous_overloading_error.m:073:   also overloaded here.
-ambiguous_overloading_error.m:074:   The predicate symbol predicate `<'/2 is
-ambiguous_overloading_error.m:074:   also overloaded here.
-ambiguous_overloading_error.m:075:   The predicate symbol predicate `<'/2 is
-ambiguous_overloading_error.m:075:   also overloaded here.
-ambiguous_overloading_error.m:076:   The predicate symbol predicate `<'/2 is
-ambiguous_overloading_error.m:076:   also overloaded here.
-ambiguous_overloading_error.m:077:   The predicate symbol predicate `<'/2 is
-ambiguous_overloading_error.m:077:   also overloaded here.
-ambiguous_overloading_error.m:078:   The predicate symbol predicate `<'/2 is
-ambiguous_overloading_error.m:078:   also overloaded here.
+ambiguous_overloading_error.m:068:   The predicate symbol `<'/2 is also
+ambiguous_overloading_error.m:068:   overloaded here.
+ambiguous_overloading_error.m:069:   The predicate symbol `<'/2 is also
+ambiguous_overloading_error.m:069:   overloaded here.
+ambiguous_overloading_error.m:070:   The predicate symbol `<'/2 is also
+ambiguous_overloading_error.m:070:   overloaded here.
+ambiguous_overloading_error.m:071:   The predicate symbol `<'/2 is also
+ambiguous_overloading_error.m:071:   overloaded here.
+ambiguous_overloading_error.m:072:   The predicate symbol `<'/2 is also
+ambiguous_overloading_error.m:072:   overloaded here.
+ambiguous_overloading_error.m:073:   The predicate symbol `<'/2 is also
+ambiguous_overloading_error.m:073:   overloaded here.
+ambiguous_overloading_error.m:074:   The predicate symbol `<'/2 is also
+ambiguous_overloading_error.m:074:   overloaded here.
+ambiguous_overloading_error.m:075:   The predicate symbol `<'/2 is also
+ambiguous_overloading_error.m:075:   overloaded here.
+ambiguous_overloading_error.m:076:   The predicate symbol `<'/2 is also
+ambiguous_overloading_error.m:076:   overloaded here.
+ambiguous_overloading_error.m:077:   The predicate symbol `<'/2 is also
+ambiguous_overloading_error.m:077:   overloaded here.
+ambiguous_overloading_error.m:078:   The predicate symbol `<'/2 is also
+ambiguous_overloading_error.m:078:   overloaded here.
 ambiguous_overloading_error.m:126: In clause for predicate
 ambiguous_overloading_error.m:126:   `set_browser_param_from_option_table'/3:
 ambiguous_overloading_error.m:126:   warning: highly ambiguous overloading.

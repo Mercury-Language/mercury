@@ -63,7 +63,7 @@ ambig_overload2(L) :-
     L = [A, B, C, D, E, F, G].
 
 test_lt(X) :-
-    (
+    ( if
         X1 < Y1,
         X2 < Y2,
         X3 < Y3,
@@ -110,9 +110,9 @@ test_lt(X) :-
         XL = 21.0, YL = 31.0,
         XM = 22.0, YM = 32.0,
         XN = 23.0, YN = 33.0
-    ->
+    then
         X = 0
-    ;
+    else
         X = 1
     ).
 

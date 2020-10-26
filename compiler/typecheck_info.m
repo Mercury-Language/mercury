@@ -93,7 +93,7 @@
 
 :- type overloaded_symbol
     --->    overloaded_pred(
-                pf_sym_name_arity,
+                sym_name_arity,
                 list(pred_id)
             )
     ;       overloaded_func(

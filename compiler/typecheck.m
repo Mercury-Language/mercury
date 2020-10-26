@@ -1404,9 +1404,9 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             type_checkpoint("call", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
         ),
         list.length(Args, Arity),
-        PFSymNameArity = pf_sym_name_arity(pf_predicate, Name, Arity),
+        SymNameArity = sym_name_arity(Name, Arity),
         GoalId = goal_info_get_goal_id(GoalInfo),
-        typecheck_call_pred_name(PFSymNameArity, Context, GoalId, Args, PredId,
+        typecheck_call_pred_name(SymNameArity, Context, GoalId, Args, PredId,
             !TypeAssignSet, !Info),
         GoalExpr = plain_call(PredId, ProcId, Args, BI, UC, Name)
     ;
@@ -1707,25 +1707,25 @@ typecheck_event_call(Context, EventName, Args, !TypeAssignSet, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred typecheck_call_pred_name(pf_sym_name_arity::in, prog_context::in,
+:- pred typecheck_call_pred_name(sym_name_arity::in, prog_context::in,
     goal_id::in, list(prog_var)::in, pred_id::out,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_call_pred_name(PFSymNameArity, Context, GoalId, Args, PredId,
+typecheck_call_pred_name(SymNameArity, Context, GoalId, Args, PredId,
         !TypeAssignSet, !Info) :-
     % Look up the called predicate's arg types.
     typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
-    PFSymNameArity = pf_sym_name_arity(PorF, SymName, Arity),
+    SymNameArity = sym_name_arity(SymName, Arity),
     typecheck_info_get_calls_are_fully_qualified(!.Info, IsFullyQualified),
     predicate_table_lookup_pf_sym_arity(PredicateTable, IsFullyQualified,
-        PorF, SymName, Arity, PredIds),
+        pf_predicate, SymName, Arity, PredIds),
     (
         PredIds = [],
         PredId = invalid_pred_id,
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_pred_call_error(ClauseContext, Context, PFSymNameArity),
+        Spec = report_pred_call_error(ClauseContext, Context, SymNameArity),
         typecheck_info_add_error(Spec, !Info)
     ;
         PredIds = [HeadPredId | TailPredIds],
@@ -1740,7 +1740,7 @@ typecheck_call_pred_name(PFSymNameArity, Context, GoalId, Args, PredId,
                 PredId, Args, !TypeAssignSet, !Info)
         ;
             TailPredIds = [_ | _],
-            typecheck_call_overloaded_pred(PFSymNameArity, Context, GoalId,
+            typecheck_call_overloaded_pred(SymNameArity, Context, GoalId,
                 PredIds, Args, !TypeAssignSet, !Info),
 
             % In general, we can't figure out which predicate it is until
@@ -1795,14 +1795,14 @@ typecheck_call_pred_id(ArgVectorKind, Context, GoalId, PredId, Args,
             PredArgTypes, PredConstraints, !TypeAssignSet, !Info)
     ).
 
-:- pred typecheck_call_overloaded_pred(pf_sym_name_arity::in, prog_context::in,
+:- pred typecheck_call_overloaded_pred(sym_name_arity::in, prog_context::in,
     goal_id::in, list(pred_id)::in, list(prog_var)::in,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_call_overloaded_pred(PFSymNameArity, Context, GoalId, PredIdList,
+typecheck_call_overloaded_pred(SymNameArity, Context, GoalId, PredIdList,
         Args, TypeAssignSet0, TypeAssignSet, !Info) :-
-    Symbol = overloaded_pred(PFSymNameArity, PredIdList),
+    Symbol = overloaded_pred(SymNameArity, PredIdList),
     typecheck_info_add_overloaded_symbol(Symbol, Context, !Info),
 
     % Let the new arg_type_assign_set be the cross-product of the current
@@ -1817,7 +1817,7 @@ typecheck_call_overloaded_pred(PFSymNameArity, Context, GoalId, PredIdList,
 
     % Then unify the types of the call arguments with the
     % called predicates' arg types.
-    VarVectorKind = var_vector_args(arg_vector_plain_call(PFSymNameArity)),
+    VarVectorKind = var_vector_args(arg_vector_plain_pred_call(SymNameArity)),
     typecheck_var_has_arg_type_list(VarVectorKind, 1, Context, Args,
         ArgsTypeAssignSet, TypeAssignSet, !Info).
 

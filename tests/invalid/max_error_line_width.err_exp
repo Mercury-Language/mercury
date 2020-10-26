@@ -28,21 +28,21 @@ max_error_line_width.m:113:   error: excessively ambiguous overloading.
 max_error_line_width.m:113:   This caused the type checker to exceed its limits. It may also make your code difficult to
 max_error_line_width.m:113:   understand.
 max_error_line_width.m:113:   The following symbol was overloaded in the following contexts.
-max_error_line_width.m:064:   The predicate symbol predicate `<'/2.
+max_error_line_width.m:064:   The function symbol `unchecked_left_shift'/2.
 max_error_line_width.m:064:   The possible matches are:
-max_error_line_width.m:064:     predicate `float.<'/2,
-max_error_line_width.m:064:     predicate `int.<'/2.
-max_error_line_width.m:065:   The predicate symbol predicate `<'/2 is also overloaded here.
-max_error_line_width.m:066:   The predicate symbol predicate `<'/2 is also overloaded here.
-max_error_line_width.m:067:   The predicate symbol predicate `<'/2 is also overloaded here.
-max_error_line_width.m:068:   The predicate symbol predicate `<'/2 is also overloaded here.
-max_error_line_width.m:069:   The predicate symbol predicate `<'/2 is also overloaded here.
-max_error_line_width.m:070:   The predicate symbol predicate `<'/2 is also overloaded here.
-max_error_line_width.m:071:   The predicate symbol predicate `<'/2 is also overloaded here.
-max_error_line_width.m:072:   The predicate symbol predicate `<'/2 is also overloaded here.
-max_error_line_width.m:073:   The predicate symbol predicate `<'/2 is also overloaded here.
-max_error_line_width.m:074:   The predicate symbol predicate `<'/2 is also overloaded here.
-max_error_line_width.m:075:   The predicate symbol predicate `<'/2 is also overloaded here.
+max_error_line_width.m:064:     function `int.unchecked_left_shift'/2,
+max_error_line_width.m:064:     function `uint.unchecked_left_shift'/2.
+max_error_line_width.m:065:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
+max_error_line_width.m:066:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
+max_error_line_width.m:067:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
+max_error_line_width.m:068:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
+max_error_line_width.m:069:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
+max_error_line_width.m:070:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
+max_error_line_width.m:071:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
+max_error_line_width.m:072:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
+max_error_line_width.m:073:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
+max_error_line_width.m:074:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
+max_error_line_width.m:075:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
 max_error_line_width.m:123: In clause for predicate `set_browser_param_from_option_table'/3:
 max_error_line_width.m:123:   warning: highly ambiguous overloading.
 max_error_line_width.m:123:   This may cause type-checking to be very slow. It may also make your code difficult to

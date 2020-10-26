@@ -17,9 +17,9 @@
 main(!IO) :-
     A = 3.0,
     B = 2,
-    ( test(A, B, 3.0, 4.0, "abc") ->
+    ( if test(A, B, 3.0, 4.0, "abc") then
         io.write_string("ok\n", !IO)
-    ;
+    else
         io.write_string("not ok\n", !IO)
     ).
 

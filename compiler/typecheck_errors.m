@@ -40,7 +40,7 @@
 :- type arg_vector_kind
     --->    arg_vector_clause_head
     ;       arg_vector_plain_call_pred_id(pred_id)
-    ;       arg_vector_plain_call(pf_sym_name_arity)
+    ;       arg_vector_plain_pred_call(sym_name_arity)
     ;       arg_vector_generic_call(generic_call_id)
     ;       arg_vector_foreign_proc_call(pred_id)
     ;       arg_vector_event(string).
@@ -81,7 +81,7 @@
 %---------------------------------------------------------------------------%
 
 :- func report_pred_call_error(type_error_clause_context, prog_context,
-    pf_sym_name_arity) = error_spec.
+    sym_name_arity) = error_spec.
 
 :- func report_unknown_event_call_error(prog_context, string) = error_spec.
 
@@ -222,35 +222,33 @@
 
 %---------------------------------------------------------------------------%
 
-report_pred_call_error(ClauseContext, Context, PredCallId) = Spec :-
-    PredCallId = pf_sym_name_arity(PredOrFunc, SymName, _Arity),
+report_pred_call_error(ClauseContext, Context, SymNameArity) = Spec :-
+    SymNameArity = sym_name_arity(SymName, Arity),
     ModuleInfo = ClauseContext ^ tecc_module_info,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     PredMarkers = ClauseContext ^ tecc_pred_markers,
     IsFullyQualified = calls_are_fully_qualified(PredMarkers),
     predicate_table_lookup_pf_sym(PredicateTable, IsFullyQualified,
-        PredOrFunc, SymName, OtherIds),
+        pf_predicate, SymName, OtherIds),
+    PFSymNameArity = pf_sym_name_arity(pf_predicate, SymName, Arity),
     (
         OtherIds = [_ | _],
         predicate_table_get_preds(PredicateTable, Preds),
         find_pred_arities(Preds, OtherIds, Arities),
         Spec = report_error_pred_num_args(ClauseContext, Context,
-            PredCallId, Arities)
+            PFSymNameArity, Arities)
     ;
         OtherIds = [],
-        UndefMsg = report_error_undef_pred(ClauseContext, Context, PredCallId),
-        ( PredOrFunc = pf_predicate, SwitchedPredOrFunc = pf_function
-        ; PredOrFunc = pf_function,  SwitchedPredOrFunc = pf_predicate
-        ),
+        UndefMsg = report_error_undef_pred(ClauseContext, Context,
+            PFSymNameArity),
         predicate_table_lookup_pf_sym(PredicateTable, IsFullyQualified,
-            SwitchedPredOrFunc, SymName, SwitchedOtherIds),
+            pf_function, SymName, FuncOtherIds),
         (
-            SwitchedOtherIds = [_ | _],
-            KindMsg = report_error_func_instead_of_pred(Context,
-                SwitchedPredOrFunc),
+            FuncOtherIds = [_ | _],
+            KindMsg = report_error_func_instead_of_pred(Context),
             Msgs = [UndefMsg, KindMsg]
         ;
-            SwitchedOtherIds = [],
+            FuncOtherIds = [],
             Msgs = [UndefMsg]
         ),
         Spec = error_spec($pred, severity_error, phase_type_check, Msgs)
@@ -303,23 +301,12 @@ report_error_pred_num_args(ClauseContext, Context, PFSymNameArity, Arities)
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, MainPieces ++ SpecialPieces).
 
-:- func report_error_func_instead_of_pred(prog_context, pred_or_func)
-    = error_msg.
+:- func report_error_func_instead_of_pred(prog_context) = error_msg.
 
-report_error_func_instead_of_pred(Context, PredOrFunc) = Msg :-
-    (
-        PredOrFunc = pf_function,
-        Pieces = [words("(There is a"),
-            prefix("*"), p_or_f(PredOrFunc), suffix("*"),
-            words("with that name, however."), nl,
-            words("Perhaps you forgot to add"),
-            quote(" = ..."), suffix("?)"), nl]
-    ;
-        PredOrFunc = pf_predicate,
-        Pieces = [words("(There is a"),
-            prefix("*"), p_or_f(PredOrFunc), suffix("*"),
-            words("with that name, however.)"), nl]
-    ),
+report_error_func_instead_of_pred(Context) = Msg :-
+    Pieces = [words("(There is a *function* with that name, however."), nl,
+        words("Perhaps you forgot to add"), quote(" = ..."),
+        suffix("?)"), nl],
     Msg = simplest_msg(Context, Pieces).
 
 :- func report_error_undef_pred(type_error_clause_context, prog_context,
@@ -697,7 +684,7 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
         (
             Symbol = overloaded_pred(CallId, PredIds),
             StartPieces = [words("The predicate symbol"),
-                qual_pf_sym_name_orig_arity(CallId), suffix("."), nl,
+                qual_sym_name_arity(CallId), suffix("."), nl,
                 words("The possible matches are:"), nl_indent_delta(1)],
             PredIdPiecesList = list.map(
                 describe_one_pred_name(ModuleInfo, should_module_qualify),
@@ -708,8 +695,7 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
                     [suffix(".")]),
             FirstPieces = StartPieces ++ PredIdPieces,
             LaterPieces = [words("The predicate symbol"),
-                qual_pf_sym_name_orig_arity(CallId),
-                words("is also overloaded here.")]
+                qual_sym_name_arity(CallId), words("is also overloaded here.")]
         ;
             Symbol = overloaded_func(ConsId, Sources0),
             list.sort(Sources0, Sources),
@@ -2326,7 +2312,10 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                     int_fixed(ArgNum), words("of the clause head:"), nl]
             ;
                 (
-                    ArgVectorKind = arg_vector_plain_call(PFSymNameArity),
+                    ArgVectorKind = arg_vector_plain_pred_call(SymNameArity),
+                    SymNameArity = sym_name_arity(SymName, Arity),
+                    PFSymNameArity =
+                        pf_sym_name_arity(pf_predicate, SymName, Arity),
                     CallId = plain_call_id(PFSymNameArity)
                 ;
                     ArgVectorKind = arg_vector_plain_call_pred_id(PredId),
@@ -2423,7 +2412,9 @@ arg_vector_kind_to_pieces(ClauseContext, ArgVectorKind) = Pieces :-
         Pieces = [words("in arguments of the clause head:"), nl]
     ;
         (
-            ArgVectorKind = arg_vector_plain_call(PFSymNameArity),
+            ArgVectorKind = arg_vector_plain_pred_call(SymNameArity),
+            SymNameArity = sym_name_arity(SymName, Arity),
+            PFSymNameArity = pf_sym_name_arity(pf_predicate, SymName, Arity),
             CallId = plain_call_id(PFSymNameArity)
         ;
             ArgVectorKind = arg_vector_plain_call_pred_id(PredId),
