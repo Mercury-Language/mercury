@@ -28,7 +28,6 @@
 //      - compiler/compile_target_code.m
 //          in particular the predicates make_init_obj/7 and
 //          make_standalone_interface/3.
-//      - util/mkinit_erl.c
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -808,10 +807,7 @@ parse_options(int argc, char *argv[])
     String_List *tmp_slist;
     int         seen_f_option = 0;
 
-    // The set of options for mkinit and mkinit_erl should be kept in sync,
-    // even if they may not necessarily make sense.
-
-    while ((c = getopt(argc, argv, "A:c:f:g:iI:lm:o:r:tw:xX:ks")) != EOF) {
+    while ((c = getopt(argc, argv, "A:c:f:g:iI:l:o:r:tw:xX:ks")) != EOF) {
         switch (c) {
         case 'A':
             // Add the argument to the end of the list of always executed
@@ -900,11 +896,6 @@ parse_options(int argc, char *argv[])
         case 's':
             output_task = TASK_OUTPUT_STANDALONE_INIT;
             output_main_func = MR_FALSE; // -s implies -l
-            break;
-
-        case 'm':
-            // Used by mkinit_erl.
-            usage();
             break;
 
         default:

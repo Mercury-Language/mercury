@@ -11,7 +11,7 @@
 ** File: mkinit_common.c
 ** Main authors: zs, fjh
 **
-** Common code shared by mkinit.c and mkinit_erl.c.
+** Common code previously shared by mkinit.c and mkinit_erl.c.
 **
 */
 

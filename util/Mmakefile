@@ -20,7 +20,7 @@ include $(MERCURY_DIR)/Mmake.common
 
 CFLAGS = -I$(RUNTIME_DIR) -I../getopt
 
-PROGS=mkinit mkinit_erl mdemangle mfiltercc info_to_mdb
+PROGS=mkinit mdemangle mfiltercc info_to_mdb
 PROGFILENAMES=$(PROGS:%=%$(EXT_FOR_EXE))
 SRC=$(PROGS:%=%.c)
 
@@ -33,7 +33,6 @@ endif
 
 # mkinit.c needs `struct stat'
 MGNUCFLAGS-mkinit = --no-ansi
-MGNUCFLAGS-mkinit_erl = --no-ansi
 
 # For the C distribution mfiltercc may not be available until after we build
 # it here.
@@ -52,11 +51,6 @@ mkinit$(EXT_FOR_EXE): mkinit.c mkinit_common.c mkinit_common.h
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) $(ALL_LDFLAGS) -Fe$@ \
 			mkinit.c mkinit_common.c $(GETOPT_SRC)
-
-mkinit_erl$(EXT_FOR_EXE): mkinit_erl.c mkinit_common.c mkinit_common.h
-	$(MGNUC) --no-mercury-stdlib-dir \
-		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) $(ALL_LDFLAGS) -Fe$@ \
-			mkinit_erl.c mkinit_common.c $(GETOPT_SRC)
 else
 .c$(EXT_FOR_EXE):
 	$(MGNUC) --no-mercury-stdlib-dir \
@@ -66,12 +60,6 @@ mkinit$(EXT_FOR_EXE): mkinit.c mkinit_common.c mkinit_common.h
 	$(MGNUC) --no-mercury-stdlib-dir \
 		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) $(ALL_LDFLAGS) -o $@ \
 			mkinit.c mkinit_common.c $(GETOPT_SRC)
-
-mkinit_erl$(EXT_FOR_EXE): mkinit_erl.c mkinit_common.c mkinit_common.h
-	$(MGNUC) --no-mercury-stdlib-dir \
-		$(GRADEFLAGS) $(ALL_MGNUCFLAGS) $(ALL_LDFLAGS) -o $@ \
-			mkinit_erl.c mkinit_common.c $(GETOPT_SRC)
-
 endif
 
 tags:
