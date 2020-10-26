@@ -151,7 +151,7 @@ that uses a web interface.
 @end itemize
 
 Mercury programs can be compiled to executables
-via any one of four target languages: C, Java, C#, and Erlang.
+via any one of three target languages: C, Java and C#.
 The most frequently used target language is C, for two main reasons.
 The first is that several important parts of the Mercury system,
 such as @samp{mdb}, @samp{mprof} and @samp{mdprof},
@@ -248,11 +248,6 @@ to avoid conflicts with system header files.
 @file{.cs} files are C# source code,
 @file{.dll} files are library assemblies and,
 when compiling to C#, @file{.exe} files are process assemblies.
-
-@file{.erl} files are Erlang source code, and
-@file{.beam} files are Erlang bytecode (object) files.
-@file{.beams} directories are collections of @file{.beam} files,
-and as such they act like a library archive.
 
 When smart recompilation (@pxref{Auxiliary output options}) is enabled,
 @file{.c_date}, @file{.cs_date}, @file{.java_date} and @file{.erl_date} files
@@ -355,15 +350,6 @@ If you are using the Windows command line interpreter @samp{cmd.exe},
 that invokes the program using the Java interpreter.
 Otherwise, it will generate a shell script called @file{@var{filename}}
 that also invokes the program using the Java interpreter.
-
-When targeting Erlang,
-@samp{mmc} will place all of the object files for the executable
-into the subdirectory @file{Mercury/beams}.
-If you are using the Windows command line interpreter @samp{cmd.exe},
-@samp{mmc} will generate a batch file called @file{@var{filename}.bat}
-that starts the Erlang runtime system and runs the program.
-Otherwise, it will generate a shell script named @file{@var{filename}}
-that also starts the Erlang runtime system and runs the program.
 
 If you use Mmake or @samp{mmc --make},
 then you do not need to understand the details
@@ -510,7 +496,7 @@ The most useful of these are the options that set the size of the stacks.
 (For the full list of available options, see @ref{Environment}.)
 
 @c XXX FIXME This is wrong for the case when --high-level-code is enabled.
-When targeting Java, C# or Erlang,
+When targeting Java or C#,
 and when targeting high level C (@samp{mmc --high-level-code}),
 stack management is the responsibility of the target language's compiler.
 When targeting low level C (@samp{mmc} without --high-level code),
@@ -774,11 +760,6 @@ Options to pass to the C compiler.
 @vindex EXTRA_JAVACFLAGS
 Options to pass to the Java compiler (if you are using it).
 
-@item ERLANG_FLAGS and EXTRA_ERLANG_FLAGS
-@vindex ERLANG_FLAGS
-@vindex EXTRA_ERLANG_FLAGS
-Options to pass to the Erlang compiler (if you are using it).
-
 @item ML
 @vindex ML
 The executable that invokes the linker.
@@ -1041,7 +1022,6 @@ and, on many platforms, it supports shared object libraries.
 * Building with Mmake::
 * Libraries and the Java grade::
 * Libraries and the C# grade::
-* Libraries and the Erlang grade::
 @end menu
 
 @node Writing libraries
@@ -1448,19 +1428,6 @@ Mmake does @emph{not} support C# targets.
 
 Libraries are complied to a dynamic link library assembly whose name has the
 form @file{@var{library-name}.dll}.
-
-@node Libraries and the Erlang grade
-@section Libraries and the Erlang grade
-@cindex .beams directories
-@cindex Erlang libraries
-
-Since the Erlang implementation does not have library files, the Mercury
-compiler puts all the @file{.beam} files for a single Mercury library into a
-directory named @file{lib@var{library-name}.beams}.
-
-To create or install an Erlang "library", specify that you want to use
-the erlang grade and use @samp{mmc --make}.
-Mmake does @emph{not} support Erlang targets.
 
 @c ----------------------------------------------------------------------------
 
@@ -7310,8 +7277,7 @@ Check the module for errors, but do not generate any code.
 @findex --target-code-only
 Generate target code (i.e.@: C in @file{@var{module}.c},
 C# in @file{@var{module}.cs},
-Java in @file{@var{module}.java}
-or Erlang in @file{@var{module}.erl}),
+or Java in @file{@var{module}.java},
 but not object code.
 
 @sp 1
@@ -7993,7 +7959,6 @@ in which the first element is a @samp{base grade},
 and each following element (if any) is a @samp{grade modifier}.
 
 @cindex csharp (compilation grade)
-@cindex erlang (compilation grade)
 @cindex java (compilation grade)
 
 @cindex hlc (compilation grade)
@@ -8008,7 +7973,7 @@ and if the compiler can do this in several different ways,
 selects one of those ways.
 The available base grades are the following.
 
-@c What target language to use (C, C#, Java or Erlang),
+@c What target language to use (C, C# or Java),
 @c for C, whether to generate idiomatic C or assembly-like code,
 @c and if the latter, what combination of GNU C extensions to use.
 @c The options are 
@@ -8046,10 +8011,6 @@ This base grade calls for generating C#.
 
 @item @samp{java}
 This base grade calls for generating Java.
-
-@item @samp{erlang}
-This base grade calls for generating Erlang.
-Note that support for generating Erlang is experimental.
 @end table
 
 The default base grade is system dependent,
@@ -8088,7 +8049,7 @@ and not all grade modifiers are compatible with each other.
 @table @asis
 @item garbage collection
 The default is no garbage collection beyond what the target language provides.
-C#, Java and Erlang have their own builtin garbage collectors, but C does not.
+C# and Java have their own builtin garbage collectors, but C does not.
 Since garbage collection is essential for all programs
 other than those with @emph{very} short runtimes,
 base grades that target C
@@ -8217,7 +8178,6 @@ and grade modifier; they are followed by descriptions of those options.
 @findex --target
 @findex --csharp
 @findex --java
-@findex --erlang
 @findex --gc
 @findex --profiling
 @findex --memory-profiling
@@ -8256,9 +8216,6 @@ and grade modifier; they are followed by descriptions of those options.
 
 @item @samp{java}
 @code{--target java --high-level-code}.
-
-@item @samp{erlang}
-@code{--target erlang}.
 
 @item @samp{.gc}
 @code{--gc boehm}.
@@ -8336,11 +8293,9 @@ and grade modifier; they are followed by descriptions of those options.
 @item @code{--target c} (grades: none, reg, asm_fast, hlc)
 @itemx @code{--csharp}, @code{--target csharp} (grades: csharp)
 @itemx @code{--java}, @code{--target java} (grades: java)
-@itemx @code{--erlang}, @code{--target erlang} (grades: erlang)
-Specify the target language used for compilation: C, C#, Java
-or Erlang.
+Specify the target language used for compilation: C, C# or Java.
 C means ANSI/ISO C, optionally with GNU C extensions (see below).
-Targets other than C and Erlang imply @samp{--high-level-code}.
+Targets other than C imply @samp{--high-level-code}.
 
 @sp 1
 @item @code{--compile-to-c}
@@ -8363,13 +8318,6 @@ the C# compiler to produce CIL bytecode.
 An abbreviation for @samp{--target java --target-code-only}.
 Generate Java code in @file{@var{module}.java}, but do not invoke
 the Java compiler to produce Java bytecode.
-
-@sp 1
-@item @code{--erlang-only}
-@findex --erlang-only
-An abbreviation for @samp{--target erlang --target-code-only}.
-Generate Erlang code in @file{@var{module}.erl}, but do not invoke
-the Erlang compiler to produce Erlang bytecode.
 
 @end table
 
@@ -8623,7 +8571,7 @@ For now, this option itself is for developers only.
 @findex --gc
 @findex --garbage-collection
 Specify which method of garbage collection to use.
-Grades containing @samp{csharp}, @samp{java}, or @samp{erlang} use
+Grades containing @samp{csharp} or @samp{java} use
 @samp{--gc automatic},
 grades containing @samp{.gc} use @samp{--gc boehm},
 other grades use @samp{--gc none}.
@@ -8632,7 +8580,7 @@ garbage collector.
 @c @samp{accurate} is our own type-accurate copying collector.
 @c It requires @samp{--high-level-code}.
 @samp{automatic} means the target language provides it.
-This is the case for the C#, Java and Erlang back-ends, which always use
+This is the case for the C# and Java back-ends, which always use
 the underlying implementation's garbage collector.
 
 @sp 1
@@ -8674,7 +8622,7 @@ accessible via the @samp{thread} module in the standard library.
 The runtime uses POSIX threads to achieve this, therefore it may also support
 parallel execution of threads.
 
-The Java, C# and Erlang grades support concurrency without this option.
+The Java and C# grades support concurrency without this option.
 Parallel execution may also be available depending on the target's runtime.
 
 @sp 1
@@ -8702,7 +8650,7 @@ attribute.  The default is @samp{no}.
 Use single precision floats so that, on 32-bit machines
 floating point values don't need to be boxed.  Double
 precision floats are used by default.
-This option is not supported for the C#, Java or Erlang back-ends.
+This option is not supported for the C# or Java back-ends.
 
 @c RBMM is undocumented since it is still experimental.
 @c @sp 1
@@ -8912,7 +8860,6 @@ Assume that @var{n} float temporaries will fit into real machine registers.
 * Overall optimization options::
 * High-level (HLDS -> HLDS) optimization options::
 * MLDS back-end (MLDS -> MLDS) optimization options::
-* Erlang (HLDS -> ELDS) optimization options::
 * Medium-level (HLDS -> LLDS) optimization options::
 * Low-level (LLDS -> LLDS) optimization options::
 * Output-level (LLDS -> C) optimization options::
@@ -9434,21 +9381,6 @@ but instead insert calls to the versions of these operations
 in the standard library.
 @end table
 
-@node Erlang (HLDS -> ELDS) optimization options
-@subsection Erlang (HLDS -> ELDS) optimization options
-@cindex HLDS
-@cindex ELDS
-
-@table @code
-@item --erlang-switch-on-strings-as-atoms
-@findex --no-erlang-switch-on-strings-as-atoms
-@findex --erlang-switch-on-strings-as-atoms
-Enable a workaround for slow HiPE compilation of large string
-switches by converting the string to an atom at runtime and
-switching on atoms. Do not enable if the string switched on
-could be longer than 255 characters at runtime.
-@end table
-
 @node Medium-level (HLDS -> LLDS) optimization options
 @subsection Medium-level (HLDS -> LLDS) optimization options
 @cindex HLDS
@@ -9848,62 +9780,6 @@ to be quoted when passed to the shell.
 Specify the program that implements the Common Language
 Infrastructure (CLI) execution environment, e.g. @samp{mono}.
 
-@sp 1
-@item --erlang-compiler @var{compiler-name}
-@findex --erlang-compiler
-@cindex Erlang compiler
-Specify which Erlang compiler to use.  The default is @samp{erlc}.
-
-@sp 1
-@item --erlang-interpreter @var{interpreter-name}
-@findex --erlang-interpreter
-@cindex Erlang interpreter
-Specify which Erlang interpreter to use.  The default is @samp{erl}.
-
-@sp 1
-@item --erlang-flags @var{options}
-@itemx --erlang-flag @var{option}
-@findex --erlang-flags
-@findex --erlang-flag
-@cindex Erlang compiler options
-Specify options to be passed to the Erlang compiler.
-@samp{--erlang-flag} should be used for single words which need
-to be quoted when passed to the shell.
-
-@sp 1
-@item --erlang-include-directory @var{dir}
-@itemx --erlang-include-dir @var{dir}
-@findex --erlang-include-directory
-@findex --erlang-include-dir
-@cindex Include directories
-@cindex Directories
-Append @var{dir} to the list of directories to be searched for
-Erlang header files (.hrl).
-
-@sp 1
-@item --erlang-native-code
-@findex --erlang-native-code
-@cindex Erlang compiler options
-Add @samp{+native} to the start of flags passed to the Erlang compiler.
-Cancelled out by @samp{--no-erlang-native-code} so it is useful when you
-wish to enable native code generation for all modules except for
-a select few.
-
-@sp 1
-@item --no-erlang-inhibit-trivial-warnings
-@findex --no-erlang-inhibit-trivial-warnings
-@cindex Erlang compiler options
-Do not add @samp{+nowarn_unused_vars +nowarn_unused_function} to the
-list of flags passed to the Erlang compiler.
-
-@c This option is not fully implemented and not very useful.
-@c @sp 1
-@c @item --erlang-object-file-extension @var{extension}
-@c @findex --erlang-object-file-extension
-@c @cindex File extensions
-@c Specify an extension for Erlang object (bytecode) files.  By default this
-@c is @samp{.beam}.
-
 @end table
 
 @node Link options
@@ -10002,7 +9878,7 @@ Search @var{directory} for Mercury library files have not yet been
 installed.  Similar to adding @var{directory} using all of the
 @samp{--search-directory}, @samp{--intermod-directory},
 @samp{--library-directory}, @samp{--init-file-directory},
-@samp{--c-include-directory} and @samp{--erlang-include-directory}
+and @samp{--c-include-directory}
 options, but does the right thing when @samp{--use-subdirs} or
 @samp{--use-grade-subdirs} options are used.
 
@@ -10016,8 +9892,7 @@ options, but does the right thing when @samp{--use-subdirs} or
 Append @var{directory} to the list of directories to
 be searched for Mercury libraries.
 This will add @samp{--search-directory}, @samp{--library-directory},
-@samp{--init-file-directory}, @samp{--c-include-directory}
-and @samp{--erlang-include-directory}
+@samp{--init-file-directory} and @samp{--c-include-directory}
 options as needed.  @xref{Using installed libraries with mmc --make}.
 
 @sp 1
@@ -11255,9 +11130,6 @@ Only available on back-ends that compile to C.
 @item @samp{C#}
 This is the only foreign language for back-ends which compile to C#.
 
-@item @samp{Erlang}
-This is the only foreign language for back-ends which compile to Erlang.
-
 @item @samp{Java}
 This is the only foreign language for back-ends which compile to Java.
 
@@ -11363,9 +11235,6 @@ or C#.
 For those target languages the Mercury runtime will be automatically
 initialised when the classes or library assemblies containing code generated
 by the Mercury compiler are loaded.
-
-Stand-alone interfaces are not currently supported when the target language is
-Erlang.
 
 For an example of using a stand-alone interface see the
 @samp{samples/c_interface/standalone_c} directory in the Mercury distribution.

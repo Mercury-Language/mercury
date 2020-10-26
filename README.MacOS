@@ -24,10 +24,9 @@ The `asm_fast*` and `reg*` grades are only available on 64-bit Intel systems
 and only when using GCC version 4.3 or later as the C compiler.
 
 If `clang` is being used as the C compiler then the only low-level C grades
-available are the `none*` grades.  The high-level C, Java, Erlang and C# grades
-all work.  The `erlang` grade requires an Erlang installation to be available
-and the C# grades require the Mono .NET implementation.  (See README.Erlang and
-README.CSharp for further details.)
+available are the `none*` grades.  The high-level C, Java and C# grades
+all work. The C# grades require the Mono .NET implementation.
+(See README.CSharp for further details.)
 
 If the `asm_fast.gc` grade is not available, and unless otherwise directed,
 then the `hlc.gc` grade will be used as the default grade for compiling

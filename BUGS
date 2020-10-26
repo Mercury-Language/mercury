@@ -19,8 +19,8 @@ Please include the following information in your bug report:
   * the command line flags with which the Mercury compiler was invoked;
   * the name and version of the C compiler that you are using;
 
-For bugs that involve the Erlang, Java or C# backends, include the name and
-version of the Erlang, Java or C# implementation that you are using.
+For bugs that involve the Java or C# backends, include the name and
+version of the Java or C# implementation that you are using.
 
 Please try to ensure that bug report contains all the information that we need to
 be able to reproduce the problem.  Make sure that all bug reports are fully

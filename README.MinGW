@@ -86,15 +86,6 @@ To build the source distribution under MSYS follow these steps:
     
     See README.CSharp for further details.
 
-    Optional: To build the Erlang grade with MinGW and MSYS / MSYS2 you will
-    require the Windows version of the Erlang/OTP distribution to be installed
-    on your system.  The Erlang compiler (erlc) and runtime (erl) needs to be
-    in your PATH, for example do the following in the shell:
-
-        export PATH=/c/Program\ Files/erl5.8.2/bin/:$PATH
-
-    See README.Erlang for further details.
-
 3.  Unpack the source distribution with a command like:
     
         tar -xvzf mercury-compiler-<VERSION>.tar.gz

@@ -177,10 +177,6 @@ make install
 #          C# grade.  The C# grade will be installed by default if the
 #          .NET SDK is found.
 #
-#          The option --enable-erlang-grade causes the installation of the
-#          Erlang grade.  This grade is only installed if the Erlang/OTP
-#          distribution is found.
-#
 #          The option --enable-ssdebug-grades adds source-to-source debugging
 #          grades hlc.gc.ssdebug and java.ssdebug, if hlc.gc or java grades
 #          are also present.

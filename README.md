@@ -31,7 +31,6 @@ Specific information is contained in individual README files:
 
       * C
       * [C#](README.CSharp)
-      * [Erlang](README.Erlang)
       * [Java](README.Java)
 
   * Platforms
