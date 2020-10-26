@@ -85,7 +85,7 @@ esac
 # The non-C backends do not support single-precision floats, time profiling,
 # memory profiling or deep profiling.
 case ${target} in
-    csharp|java|erlang)
+    csharp|java)
         case ${single_prec_float} in
             true)
                 echo "--single-prec-float and --target $target are not compatible" 1>&2
@@ -120,19 +120,19 @@ case ${decl_debug} in
         ;;
 esac
 
-# --target C#, Java, Erlang implies --high-level-code
+# --target C#, Java implies --high-level-code
 case ${target} in
-    csharp|java|erlang)
+    csharp|java)
         highlevel_code=true
         ;;
 esac
 
-# --target C#, Java, Erlang implies --gc automatic.
+# --target C#, Java implies --gc automatic.
 # NOTE: the .par grade component is meaningless for the non-C backends,
 # so we set it to false if they are being used.  This avoids having to
 # deal with grades like "java.par".
 case ${target} in
-    csharp|java|erlang)
+    csharp|java)
         gc_method=automatic
         thread_safe=false
         ;;

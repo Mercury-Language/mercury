@@ -39,9 +39,6 @@ case ${highlevel_code},${target} in
             java)
                 GRADE="java"
                 ;;
-            erlang)
-                GRADE="erlang"
-                ;;
             *)
                 progname=`basename $0`
                 echo "${progname}: unknown target: ${target}"
