@@ -83,7 +83,6 @@ cp library/*FLAGS* ${installdir}/library
 cp library/print_extra_inits ${installdir}/library
 cp library/library_strong_name.sn ${installdir}/library
 cp library/*.m ${installdir}/library
-cp library/*.hrl ${installdir}/library
 mkdir ${installdir}/mdbcomp
 cp mdbcomp/Mmake* ${installdir}/mdbcomp
 cp mdbcomp/Mercury.* ${installdir}/mdbcomp

@@ -192,19 +192,12 @@
 :- import_module term_size_prof_builtin.
 :- import_module test_bitset.
 
-:- pragma foreign_decl("Erlang", local, "
--include(""erlang_conf.hrl"").
-").
-
 % library.version must be implemented using pragma foreign_proc,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration
 % parameters.  We can't just generate library.m from library.m.in
 % at configuration time, because that would cause bootstrapping problems --
 % we might not have a Mercury compiler around to compile library.m with.
 
-% We can't allow library.version to inlined into other modules.  The Erlang
-% definition depends on erlang_conf.hrl, which will only be included by this
-% module and not installed.
 :- pragma no_inline(library.version/2).
 
 :- pragma foreign_proc("C",

@@ -473,7 +473,6 @@ then
         :- type x ---> x.
         :- pragma foreign_type("C", x, "MR_Integer",
             [[can_pass_as_mercury_type, stable]]).
-        :- pragma foreign_type("Erlang", x, "").
         :- pragma foreign_type("C#", x, "object").
 
         :- pragma foreign_proc("C", return_rtti_version(Version::out),
@@ -1352,12 +1351,6 @@ case "$enable_javac_flags_for_heap_size" in
 esac
 AC_SUBST(JAVAC_FLAGS_FOR_HEAP_SIZE_MMAKE)
 AC_SUBST(JAVAC_FLAGS_FOR_HEAP_SIZE_CONFIG)
-
-#-----------------------------------------------------------------------------#
-# Erlang configuration
-#
-
-MERCURY_CHECK_ERLANG
 
 #-----------------------------------------------------------------------------#
 
@@ -3464,12 +3457,6 @@ AC_ARG_ENABLE(java-grade,
    AC_HELP_STRING([--disable-java-grade], [do not install the Java grade]),
    enable_java_grade="$enableval",enable_java_grade=yes)
 
-# We don't enable the Erlang grades by default because it is still
-# experimental.
-AC_ARG_ENABLE(erlang-grade,
-   AC_HELP_STRING([--enable-erlang-grade], [install the Erlang grade]),
-   enable_erlang_grade="$enableval",enable_erlang_grade=no)
-
 AC_ARG_ENABLE(libgrades,
     AC_HELP_STRING([--enable-libgrades=...],
             [install exactly the given versions of the library.
@@ -3501,7 +3488,6 @@ if test "$enable_most_grades" = no; then
     enable_stseg_grades=no
     enable_csharp_grade=no
     enable_java_grade=no
-    enable_erlang_grade=no
 fi
 
 #-----------------------------------------------------------------------------#
@@ -3718,12 +3704,6 @@ fi
 if test $mercury_cv_java = yes -a "$enable_java_grade" = yes
 then
     LIBGRADES="$LIBGRADES java"
-fi
-
-# Add Erlang back-end grade, if Erlang is installed.
-if test $mercury_cv_erlang = yes -a "$enable_erlang_grade" = yes
-then
-    LIBGRADES="$LIBGRADES erlang"
 fi
 
 # Add `.ssdebug' grades.
@@ -5393,7 +5373,6 @@ bindist/bindist.Makefile
 runtime/mercury_dotnet.cs
 java/runtime/Constants.java
 java/runtime/Native.java
-library/erlang_conf.hrl
 compiler/COMP_FLAGS
 grade_lib/GRADE_LIB_FLAGS
 library/LIB_FLAGS

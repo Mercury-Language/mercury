@@ -30,5 +30,4 @@
 --java-classpath ../library/mer_std.jar
 --java-classpath ../browser/mer_browser.jar
 --java-classpath ../mdbcomp/mer_mdbcomp.jar
---erlang-include-directory ../library/Mercury/hrls
 --config-file ../scripts/Mercury.config.bootstrap

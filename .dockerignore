@@ -25,7 +25,6 @@ configure.log
 *.date0
 *.date3
 *.dll
-erlang_conf.hrl
 *.err
 *.exe
 /.git/*

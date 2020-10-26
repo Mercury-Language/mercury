@@ -32,5 +32,4 @@
 --no-java-classpath
 --java-classpath ../library/mer_rt.jar
 --java-classpath ../library/mer_std.jar
---erlang-include-directory ../library/Mercury/hrls
 --config-file ../scripts/Mercury.config.bootstrap

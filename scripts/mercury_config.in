@@ -165,7 +165,6 @@ mkdir $TMPDIR/grade_lib || exit 1
 touch $TMPDIR/grade_lib/GRADE_LIB_FLAGS.in || exit 1
 mkdir $TMPDIR/library || exit 1
 touch $TMPDIR/library/LIB_FLAGS.in || exit 1
-touch $TMPDIR/library/erlang_conf.hrl.in || exit 1
 mkdir $TMPDIR/mdbcomp || exit 1
 touch $TMPDIR/mdbcomp/MDBCOMP_FLAGS.in || exit 1
 mkdir $TMPDIR/browser || exit 1

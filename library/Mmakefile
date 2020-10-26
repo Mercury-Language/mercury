@@ -519,7 +519,6 @@ realclean_local:
 	rm -f mr_int.class mr_float.class mr_char.class
 	rm -f mr_int\$$*.class mr_float\$$*.class mr_char\$$*.class
 	rm -f $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar $(NATIVE_SO)
-	rm -f erlang_conf.hrl
 
 #-----------------------------------------------------------------------------#
 

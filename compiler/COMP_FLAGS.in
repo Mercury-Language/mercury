@@ -29,9 +29,6 @@
 --c-include-directory ../ssdb/Mercury/mihs
 --c-include-directory ../trace
 --csharp-flag -keyfile:../mercury.snk
---erlang-include-directory ../library/Mercury/hrls
---erlang-include-directory ../mdbcomp/Mercury/hrls
---erlang-include-directory ../ssdb/Mercury/hrls
 --no-java-classpath
 --java-classpath ../library/mer_rt.jar
 --java-classpath ../library/mer_std.jar

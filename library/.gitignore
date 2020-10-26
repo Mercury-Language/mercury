@@ -46,7 +46,6 @@ libmer_std.so
 *.jar
 LIB_FLAGS
 config.log
-erlang_conf.hrl
 jmercury
 tags
 *.check.mmacros

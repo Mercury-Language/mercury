@@ -620,65 +620,6 @@ fi
 ])
 
 #-----------------------------------------------------------------------------#
-#
-# Erlang configuration.
-#
-
-# copy of AC_ERLANG_PATH_ERLC from autoconf-2.60
-AC_DEFUN([MERCURY_ERLANG_PATH_ERLC],
-[AC_ARG_VAR([ERLC], [Erlang/OTP compiler command [autodetected]])dnl
-if test -n "$ERLC"; then
-    AC_MSG_CHECKING([for erlc])
-    AC_MSG_RESULT([$ERLC])
-else
-    AC_PATH_TOOL(ERLC, erlc, [$1], [$2])
-fi
-AC_ARG_VAR([ERLCFLAGS], [Erlang/OTP compiler flags [none]])dnl
-])
-
-# copy of AC_ERLANG_PATH_ERL from autoconf-2.60
-AC_DEFUN([MERCURY_ERLANG_PATH_ERL],
-[AC_ARG_VAR([ERL], [Erlang/OTP interpreter command [autodetected]])dnl
-if test -n "$ERL"; then
-    AC_MSG_CHECKING([for erl])
-    AC_MSG_RESULT([$ERL])
-else
-    AC_PATH_TOOL(ERL, erl, [$1], [$2])[]dnl
-fi
-])
-
-AC_DEFUN([MERCURY_CHECK_ERLANG],
-[
-MERCURY_ERLANG_PATH_ERLC
-MERCURY_ERLANG_PATH_ERL
-
-if test "$ERLC" != "" -a "$ERL" != ""; then
-	mercury_cv_erlang="yes"
-else
-	mercury_cv_erlang="no"
-fi
-
-# On Windows, Erlang/OTP has a high chance of being installed in a path
-# containing spaces. The simplest solution is to keep only the basename.
-# Everything will still work so long as the executables can be found
-# on the PATH later.
-case "$ERLC" in
-    *" "*)
-        ERLC=`basename "$ERLC"`
-        ;;
-esac
-
-case "$ERL" in
-    *" "*)
-        ERL=`basename "$ERL"`
-        ;;
-esac
-
-AC_SUBST([ERLC])
-AC_SUBST([ERL])
-])
-
-#-----------------------------------------------------------------------------#
 
 # NOTE: updates to this macro may need to be reflected in compiler/globals.m.
 # Generating an executable and running it does not work when cross-compiling.
