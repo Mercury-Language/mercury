@@ -46,11 +46,3 @@ main(!IO) :-
 "
     System.out.println(""Progress reported "" + X);
 ").
-
-:- pragma foreign_proc("Erlang",
-    progress_report(X::in),
-    [will_not_call_mercury, thread_safe, tabled_for_io],
-"
-    io:format(""Progress reported ~p~n"", [X])
-").
-

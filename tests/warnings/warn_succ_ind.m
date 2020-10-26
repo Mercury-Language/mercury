@@ -4,8 +4,8 @@
 %
 % Test --warn-suspicious-foreign-procs for SUCCESS_INDICATOR.
 %
-% The .exp, .exp2, .exp3 and .exp4 files contain the expected warnings
-% for the C, C#, Java and Erlang foreign_procs respectively.
+% The .exp, .exp2, .exp3 files contain the expected warnings
+% for the C, C# and Java foreign_procs respectively.
 %
 % XXX We should add all foreign_procs to the HLDS to enable checks like this,
 % and only *after* these checks should we delete from the HLDS any
@@ -51,14 +51,6 @@
     SUCCESS_INDICATOR = false;
 ").
 
-:- pragma foreign_proc("Erlang",
-    foo(X::in, Y::out),
-    [will_not_call_mercury, promise_pure],
-"
-    X = Y,
-    SUCCESS_INDICATOR = false
-").
-
 :- pragma foreign_proc("C",
     foo2(X::in, Y::out),
     [will_not_call_mercury, promise_pure],
@@ -83,14 +75,6 @@
     SUCCESS_INDICATOR = false;
 ").
 
-:- pragma foreign_proc("Erlang",
-    foo2(X::in, Y::out),
-    [will_not_call_mercury, promise_pure],
-"
-    X = Y,
-    SUCCESS_INDICATOR = false
-").
-
 :- pragma foreign_proc("C",
     bar(X::in, Y::out),
     [will_not_call_mercury, promise_pure],
@@ -112,13 +96,6 @@
     X = Y;
 ").
 
-:- pragma foreign_proc("Erlang",
-    bar(X::in, Y::out),
-    [will_not_call_mercury, promise_pure],
-"
-    X = Y
-").
-
 :- pragma foreign_proc("C",
     bar2(X::in, Y::out),
     [will_not_call_mercury, promise_pure],
@@ -138,13 +115,6 @@
     [will_not_call_mercury, promise_pure],
 "
     X = Y;
-").
-
-:- pragma foreign_proc("Erlang",
-    bar2(X::in, Y::out),
-    [will_not_call_mercury, promise_pure],
-"
-    X = Y
 ").
 
 :- end_module warn_succ_ind.

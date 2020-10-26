@@ -108,10 +108,3 @@ test2(0::out, 0::out) :-
 "
     System.out.println(S);
 ").
-:- pragma foreign_proc("Erlang",
-    puts(S::in),
-    [will_not_call_mercury],
-"
-    io:put_chars(S),
-    io:nl()
-").

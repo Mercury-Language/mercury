@@ -75,13 +75,11 @@
 :- pragma foreign_type("C", T, "int").
 
     % Empty foreign type descriptor (C, C# , Java).
-    % Non-empty foreign type descriptor (Erlang).
     %
 :- type quux.
 :- pragma foreign_type("C", quux, "").
 :- pragma foreign_type("C#", quux, "").
 :- pragma foreign_type("Java", quux, "").
-:- pragma foreign_type("Erlang", quux, "abcde").
 
     % Repeated foreign type assertion.
     %

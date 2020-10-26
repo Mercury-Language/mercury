@@ -14,6 +14,5 @@
 :- pragma foreign_code("C", include_file("missing_file")).
 :- pragma foreign_code("Java", include_file("missing_file")).
 :- pragma foreign_code("C#", include_file("missing_file")).
-:- pragma foreign_code("Erlang", include_file("missing_file")).
 
 main(!IO).

@@ -106,20 +106,6 @@ loop2(N, Acc0, Acc) :-
 
     X = 42;
 ").
-:- pragma foreign_proc("Erlang",
-    p(X::out),
-    [will_not_call_mercury, promise_pure],
-"
-    % Test that p/1 only gets called once.
-    case get(p_called) of
-        undefined ->
-            put(p_called, true);
-        _ ->
-            throw(""p/1 called more than once"")
-    end,
-
-    X = 42
-").
 
 :- pred q(int::out) is det.
 :- pragma foreign_proc("C",
@@ -157,20 +143,6 @@ loop2(N, Acc0, Acc) :-
     }
 
     X = 53;
-").
-:- pragma foreign_proc("Erlang",
-    q(X::out),
-    [will_not_call_mercury, promise_pure],
-"
-    % Test that q/1 only gets called once.
-    case get(q_called) of
-        undefined ->
-            put(q_called, true);
-        _ ->
-            throw(""q/1 called more than once"")
-    end,
-
-    X = 53
 ").
 
 %---------------------------------------------------------------------------%

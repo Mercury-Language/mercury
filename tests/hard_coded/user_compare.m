@@ -62,8 +62,6 @@ compare_foo(Res, Foo1, Foo2) :-
      equality is foreign_equals, comparison is foreign_compare.
 :- pragma foreign_type("Java", foreign, "Integer") where
      equality is foreign_equals, comparison is foreign_compare.
-:- pragma foreign_type(erlang, foreign, "") where
-     equality is foreign_equals, comparison is foreign_compare.
 
 :- pred foreign_equals(foreign::in, foreign::in) is semidet.
 :- pragma foreign_proc(c,
@@ -83,12 +81,6 @@ compare_foo(Res, Foo1, Foo2) :-
     [will_not_call_mercury, promise_pure],
 "
     SUCCESS_INDICATOR = (Foreign1 == Foreign2);
-").
-:- pragma foreign_proc("Erlang",
-    foreign_equals(Foreign1::in, Foreign2::in),
-    [will_not_call_mercury, promise_pure],
-"
-    SUCCESS_INDICATOR = (Foreign1 =:= Foreign2)
 ").
 
 :- pred foreign_compare `with_type` compare(foreign) `with_inst` compare.
@@ -117,16 +109,6 @@ foreign_compare(Result, Foreign1, Foreign2) :-
 "
     Result = (Foreign1 < Foreign2 ? 1 : (Foreign1 == Foreign2 ? 0 : -1));
 ").
-:- pragma foreign_proc("Erlang",
-    foreign_compare_2(Result::out, Foreign1::in, Foreign2::in),
-    [will_not_call_mercury, promise_pure],
-"
-    Result = if
-    Foreign1 < Foreign2 -> 1;
-    Foreign1 =:= Foreign2 -> 0;
-    true -> -1
-end
-").
 
 :- func foreign(int) = foreign.
 :- pragma foreign_proc(c,
@@ -146,10 +128,4 @@ end
     [will_not_call_mercury, promise_pure],
 "
     Foreign = Int;
-").
-:- pragma foreign_proc("Erlang",
-    foreign(Int::in) = (Foreign::out),
-    [will_not_call_mercury, promise_pure],
-"
-    Foreign = Int
 ").

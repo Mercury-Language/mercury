@@ -33,10 +33,3 @@ intermod_impure(Int) :-
     System.out.println(""Output from impure predicate\\n"");
     Int = 2;
 ").
-:- pragma foreign_proc("Erlang",
-    intermod_impure_2(Int::out),
-    [will_not_call_mercury],
-"
-    io:format(""Output from impure predicate\\n""),
-    Int = 2
-").

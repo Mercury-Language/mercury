@@ -50,13 +50,11 @@
 :- pragma foreign_type("C", c_candidate, "void *",
     [stable, can_pass_as_mercury_type]).
 :- pragma foreign_type("Java", c_candidate, "Object").
-:- pragma foreign_type("Erlang", c_candidate, "").
 
 :- type data. % C-implemented, represents the whole nbestlist
 :- pragma foreign_type("C", data, "void *",
     [stable, can_pass_as_mercury_type]).
 :- pragma foreign_type("Java", data, "Object").
-:- pragma foreign_type("Erlang", data, "").
 
 :- type feats == list(float). % score breakdown
 
@@ -80,13 +78,6 @@ new_c_candidate(F, C) = new_c_candidate(length(F), F, length(C), C).
 "
     /* NFeats, Feats, NComps, Comps, C */
     C = null;
-").
-
-:- pragma foreign_proc("Erlang",
-new_c_candidate(NFeats::in, Feats::in, NComps::in, Comps::in) = (C::uo),
-  [promise_pure, will_not_call_mercury, thread_safe], "
-  % NFeats, Feats, NComps, Comps, C
-  C = void
 ").
 
 :- func nbestlist_to_data(scorednbestlist) = data.
@@ -124,20 +115,11 @@ nbestlist_to_data(NBL) = OutData :-
     /* NSents, CandsPerSent, TotNCands, AllCands */
     D = null;
 ").
-:- pragma foreign_proc("Erlang",
-    new_c_data(NSents::in, CandsPerSent::in, TotNCands::in, AllCands::in)
-        = (D::uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    % NSents, CandsPerSent, TotNCands, AllCands
-    D = void
-").
 
 :- type point. % C-implemented, represents the whole nbestlist
 :- pragma foreign_type("C", point, "void *",
     [stable, can_pass_as_mercury_type]).
 :- pragma foreign_type("Java", point, "Object").
-:- pragma foreign_type("Erlang", point, "").
 
 optimize(NBL, Rand, InW) = OutW :-
     Data = nbestlist_to_data(NBL),
@@ -176,14 +158,6 @@ optimize(NBL, Rand, InW) = OutW :-
     /* Data, BestSoFar, Min, Max, Iter */
     Out = null;
 ").
-:- pragma foreign_proc("Erlang",
-    optimize_random(Data::in, BestSoFar::in, Min::in, Max::in, Iter::in)
-        = (Out::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    % Data, BestSoFar, Min, Max, Iter
-    Out = void
-").
 
 :- func optimize_koehn(data, point) = point.
   % destructively replace contents of point doing one iteration of optimization
@@ -200,13 +174,6 @@ optimize(NBL, Rand, InW) = OutW :-
 "
     /* Data, In, Out */
     Out = null;
-").
-:- pragma foreign_proc("Erlang",
-    optimize_koehn(Data::in, In::in) = (Out::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    % Data, In, Out
-    Out = void
 ").
 
 :- func construct_point(list(float)) = point.
@@ -228,12 +195,6 @@ construct_point(List::in) = (Point::out),
     /* List, Point */
     Point = null;
 ").
-:- pragma foreign_proc("Erlang",
-    construct_point(List::in) = (Point::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    Point = List
-").
 
 :- pragma foreign_proc("C",
     deconstruct_point(Point::in) = (List::out),
@@ -250,12 +211,6 @@ construct_point(List::in) = (Point::out),
     List = null;
 ").
 
-:- pragma foreign_proc("Erlang",
-    deconstruct_point(Point::in) = (List::out),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    List = Point
-").
 
 :- type bleucomps == list(int).
 

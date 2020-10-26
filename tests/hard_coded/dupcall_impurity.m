@@ -91,36 +91,3 @@ test2 -->
 "
         my_global++;
 ").
-
-:- pragma foreign_proc("Erlang",
-    get_x(X::out),
-    [will_not_call_mercury, promise_semipure],
-"
-    X = case get(my_global) of
-        undefined -> 0;
-        X0 -> X0
-        end
-").
-
-:- pragma foreign_proc("Erlang",
-    next_x(X::out),
-    [will_not_call_mercury],
-"
-    X = case get(my_global) of
-        undefined -> 0;
-        X0 -> X0
-        end,
-    put(my_global, X + 1),
-    X
-").
-
-:- pragma foreign_proc("Erlang",
-    incr_x,
-    [will_not_call_mercury],
-"
-    X = case get(my_global) of
-        undefined -> 0;
-        X0 -> X0
-        end,
-    put(my_global, X + 1)
-").

@@ -44,9 +44,3 @@ unwrap_cvar(cvar_wrapper(V)) = unsafe_any_to_cvar(V).
 "
     Y = X;
 ").
-:- pragma foreign_proc("Erlang",
-    unsafe_any_to_cvar(X::in) = (Y::out(cvar)),
-    [will_not_call_mercury, promise_pure],
-"
-    Y = X
-").

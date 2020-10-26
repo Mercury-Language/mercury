@@ -115,12 +115,10 @@ ORDINARY_PROGS = \
 	equality_pred_which_requires_boxing \
 	eqv_type_bug \
 	eqvclass_bug \
-	erlang_deconstruct \
 	erroneous_liveness \
 	error_func \
 	existential_bound_tvar \
 	existential_float \
-	existential_list \
 	existential_reordering \
 	existential_reordering_class \
 	existential_type_switch_opt \

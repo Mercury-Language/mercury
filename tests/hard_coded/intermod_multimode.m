@@ -106,13 +106,6 @@ test2(0::out, 0::out) :-
 "
     System.out.println(S);
 ").
-:- pragma foreign_proc("Erlang",
-    puts(S::in),
-    [],
-"
-    io:put_chars(S),
-    io:nl()
-").
 
 :- pragma promise_pure(get_determinism/2).
 :- pragma inline(get_determinism/2).

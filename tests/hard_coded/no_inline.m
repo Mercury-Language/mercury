@@ -58,16 +58,3 @@ main(!IO) :-
 "
     Value = counter++;
 ").
-
-:- pragma foreign_proc("Erlang",
-    bar(Value::out),
-    [],
-"
-    case get(counter) of
-    undefined ->
-        Value = 0;
-    C ->
-        Value = C
-    end,
-    put(counter, Value + 1)
-").

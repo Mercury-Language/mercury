@@ -41,9 +41,3 @@ main(!IO) :-
 "
     Y = X+1;
 ").
-:- pragma foreign_proc("Erlang",
-    fp(X::in) = (Y::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Y = X+1
-").

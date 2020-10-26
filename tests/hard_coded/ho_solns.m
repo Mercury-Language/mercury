@@ -62,11 +62,6 @@ main(!IO) :-
     L = L0;
 }
 ").
-:- pragma foreign_proc("Erlang",
-    convert_list(L0 :: in, L :: out(list_skel(mypred))),
-    [promise_pure], "
-    L = L0
-").
 
 :- pred use_list(list(mypred)::in(list_skel(mypred)), io::di, io::uo) is det.
 

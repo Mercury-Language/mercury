@@ -265,12 +265,6 @@ set(Vec0, Ind, V, Vec) :-
 "
     F = I;
 ").
-:- pragma foreign_proc("Erlang",
-    rfloat(I::in) = (F::out),
-    [promise_pure],
-"
-    F = float(I)
-").
 
 :- func rint(float) = int.
 :- pragma foreign_proc("C",
@@ -290,12 +284,6 @@ set(Vec0, Ind, V, Vec) :-
     [promise_pure],
 "
     I = (int) F;"
-).
-:- pragma foreign_proc("Erlang",
-    rint(F::in) = (I::out),
-    [promise_pure],
-"
-    I = trunc(F)"
 ).
 
 :- pred for(int, int, pred(int, T, T), T, T).

@@ -45,12 +45,6 @@ foo(Y::out(I), X::in(I)) :-
 "
     Y = X;
 ").
-:- pragma foreign_proc("Erlang",
-    foo_2(Y::out(I), X::in(I)),
-    [promise_pure, thread_safe, will_not_call_mercury],
-"
-    Y = X
-").
 
 :- pragma foreign_export("C", bar(in(I), out(I)), "BAR").
 bar(X, X).

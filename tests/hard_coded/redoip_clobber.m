@@ -76,12 +76,6 @@ bar(X) :- X = 1.
 "
     SUCCESS_INDICATOR = false;
 ").
-:- pragma foreign_proc("Erlang",
-    use(_X::in),
-    [will_not_call_mercury, promise_pure],
-"
-    SUCCESS_INDICATOR = false
-").
 
 main(!IO) :-
     ( if foo(X), use(X) then

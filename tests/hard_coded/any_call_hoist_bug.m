@@ -75,12 +75,6 @@ make_new_literal(NewLiteral) :-
 "
     B = A;
 ").
-:- pragma foreign_proc("Erlang",
-    cast_to_ground(A::ia) = (B::out),
-    [promise_pure, will_not_call_mercury],
-"
-    B = A
-").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

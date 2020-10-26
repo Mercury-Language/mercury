@@ -60,10 +60,3 @@ p(N, M) :-
 "
     M = N + 1;
 ").
-
-:- pragma foreign_proc("Erlang",
-    p(N::in, M::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    M = N + 1
-").

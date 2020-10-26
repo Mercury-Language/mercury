@@ -83,8 +83,3 @@ foo(X) :-
     Pred2 = Pred1;
 }
 ").
-:- pragma foreign_proc("Erlang",
-    convert_inst(Pred1::in, Pred2::out(fpred)),
-    [will_not_call_mercury, promise_pure], "
-    Pred2 = Pred1
-").

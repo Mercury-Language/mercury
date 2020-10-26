@@ -24,8 +24,6 @@
         "System.Double") where equality is unify_ft.
 :- pragma foreign_type(java, type_which_needs_boxing,
         "Double") where equality is unify_ft.
-:- pragma foreign_type(erlang, type_which_needs_boxing,
-        "") where equality is unify_ft.
 
 :- type type_which_needs_boxing(T).
 :- pragma foreign_type(c, type_which_needs_boxing(T), "double")
@@ -34,8 +32,6 @@
         "System.Double")
         where equality is unify_ft_T.
 :- pragma foreign_type(java, type_which_needs_boxing(T), "Double")
-        where equality is unify_ft_T.
-:- pragma foreign_type(erlang, type_which_needs_boxing(T), "")
         where equality is unify_ft_T.
 
 main(!IO) :-
@@ -91,9 +87,6 @@ unify(S, X, Y, !IO) :-
 :- pragma foreign_proc("Java", create(X::in) = (Y::out), [promise_pure], "
     Y = X;
 ").
-:- pragma foreign_proc("Erlang", create(X::in) = (Y::out), [promise_pure], "
-    Y = X
-").
 
 :- func create_T(float) = type_which_needs_boxing(int).
 :- pragma foreign_proc("C", create_T(X::in) = (Y::out), [promise_pure], "
@@ -104,9 +97,6 @@ unify(S, X, Y, !IO) :-
 ").
 :- pragma foreign_proc("Java", create_T(X::in) = (Y::out), [promise_pure], "
     Y = X;
-").
-:- pragma foreign_proc("Erlang", create_T(X::in) = (Y::out), [promise_pure], "
-    Y = X
 ").
 
 :- pred unify_ft(type_which_needs_boxing::in, type_which_needs_boxing::in)
@@ -120,9 +110,6 @@ unify(S, X, Y, !IO) :-
 :- pragma foreign_proc("Java", unify_ft(X::in, Y::in), [promise_pure], "
     SUCCESS_INDICATOR = X.equals(Y);
 ").
-:- pragma foreign_proc("Erlang", unify_ft(X::in, Y::in), [promise_pure], "
-    SUCCESS_INDICATOR = (X =:= Y)
-").
 
 :- pred unify_ft_T(type_which_needs_boxing(T)::in,
         type_which_needs_boxing(T)::in) is semidet.
@@ -134,9 +121,6 @@ unify(S, X, Y, !IO) :-
 ").
 :- pragma foreign_proc("Java", unify_ft_T(X::in, Y::in), [promise_pure], "
     SUCCESS_INDICATOR = X.equals(Y);
-").
-:- pragma foreign_proc("Erlang", unify_ft_T(X::in, Y::in), [promise_pure], "
-    SUCCESS_INDICATOR = (X =:= Y)
 ").
 
 :- pragma no_inline(float_a/0).

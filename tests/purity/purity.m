@@ -55,12 +55,6 @@ main -->
 "
     x = X;
 ").
-:- pragma foreign_proc("Erlang",
-    set_x(X::in),
-    [will_not_call_mercury],
-"
-    set_x(X)
-").
 
 :- impure pred incr_x is det.
 :- pragma no_inline(incr_x/0).
@@ -81,12 +75,6 @@ main -->
     [will_not_call_mercury],
 "
     ++x;
-").
-:- pragma foreign_proc("Erlang",
-    incr_x,
-    [will_not_call_mercury],
-"
-    incr_x()
 ").
 
 :- semipure pred get_x(int::out) is det.
@@ -109,12 +97,6 @@ main -->
 "
     X = x;
 ").
-:- pragma foreign_proc("Erlang",
-    get_x(X::out),
-    [will_not_call_mercury, promise_semipure],
-"
-    X = get_x()
-").
 
 :- impure pred set_x_inline(int::in) is det.
 :- pragma inline(set_x_inline/1).
@@ -135,12 +117,6 @@ main -->
     [will_not_call_mercury],
 "
     x = X;
-").
-:- pragma foreign_proc("Erlang",
-    set_x_inline(X::in),
-    [will_not_call_mercury],
-"
-    set_x(X)
 ").
 
 :- impure pred incr_x_inline is det.
@@ -163,12 +139,6 @@ main -->
 "
     ++x;
 ").
-:- pragma foreign_proc("Erlang",
-    incr_x_inline,
-    [will_not_call_mercury],
-"
-    incr_x()
-").
 
 :- semipure pred get_x_inline(int::out) is det.
 :- pragma inline(get_x_inline/1).
@@ -190,31 +160,11 @@ main -->
 "
     X=x;
 ").
-:- pragma foreign_proc("Erlang",
-    get_x_inline(X::out),
-    [will_not_call_mercury, promise_semipure],
-"
-    X=get_x()
-").
 
 :- pragma foreign_decl("C", "extern int x;").
 :- pragma foreign_code("C", "int x = 0;").
 :- pragma foreign_code("C#", "static int x = 0;").
 :- pragma foreign_code("Java", "static int x = 0;").
-
-:- pragma foreign_code("Erlang", "
-    get_x() ->
-        case get(x) of
-            undefined -> 0;
-            X -> X
-        end.
-
-    set_x(X) ->
-        put(x, X).
-
-    incr_x() ->
-        set_x(get_x() + 1).
-").
 
 % tempt compiler to optimize away duplicate semipure goals.
 test1 -->

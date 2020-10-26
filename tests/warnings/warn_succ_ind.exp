@@ -1,8 +1,8 @@
 warn_succ_ind.m:030: Warning: the C code for predicate `foo'/2 may set
 warn_succ_ind.m:030:   `SUCCESS_INDICATOR', but it cannot fail.
-warn_succ_ind.m:062: Warning: the C code for predicate `foo2'/2 may set
-warn_succ_ind.m:062:   `SUCCESS_INDICATOR', but it cannot fail.
-warn_succ_ind.m:094: Warning: the C code for predicate `bar'/2 does not appear
-warn_succ_ind.m:094:   to set `SUCCESS_INDICATOR', but it can fail.
-warn_succ_ind.m:122: Warning: the C code for predicate `bar2'/2 does not appear
-warn_succ_ind.m:122:   to set `SUCCESS_INDICATOR', but it can fail.
+warn_succ_ind.m:054: Warning: the C code for predicate `foo2'/2 may set
+warn_succ_ind.m:054:   `SUCCESS_INDICATOR', but it cannot fail.
+warn_succ_ind.m:078: Warning: the C code for predicate `bar'/2 does not appear
+warn_succ_ind.m:078:   to set `SUCCESS_INDICATOR', but it can fail.
+warn_succ_ind.m:099: Warning: the C code for predicate `bar2'/2 does not appear
+warn_succ_ind.m:099:   to set `SUCCESS_INDICATOR', but it can fail.

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% The .exp files are for C, C#, Java and Erlang respectively.
+% The .exp files are for C, C# and Java respectively.
 
 :- module singleton_test.
 :- interface.
@@ -47,10 +47,6 @@ my_append_func([H | T], L) = [H | my_append_func(L, L)].
     [promise_pure, will_not_call_mercury], "
     Z = 2 * X;
 ").
-:- pragma foreign_proc("Erlang", my_c_pred(X::in, Y::in, Z::out),
-    [promise_pure, will_not_call_mercury], "
-    Z = 2 * X
-").
 
 :- pragma foreign_proc("C", my_c_func(X::in, Y::in) = (Z::out),
     [promise_pure, will_not_call_mercury], "
@@ -63,10 +59,6 @@ my_append_func([H | T], L) = [H | my_append_func(L, L)].
 :- pragma foreign_proc("Java", my_c_func(X::in, Y::in) = (Z::out),
     [promise_pure, will_not_call_mercury], "
     Z = 2 * Y;
-").
-:- pragma foreign_proc("Erlang", my_c_func(X::in, Y::in) = (Z::out),
-    [promise_pure, will_not_call_mercury], "
-    Z = 2 * Y
 ").
 
 :- pragma foreign_decl("C", "#include <stdio.h>").
@@ -85,11 +77,6 @@ my_append_func([H | T], L) = [H | my_append_func(L, L)].
         [promise_pure, will_not_call_mercury], "
     System.out.println(""Hello, world"");
     IO = IO0;
-").
-:- pragma foreign_proc("Erlang", c_hello_world(Msg::in, IO0::di, IO::uo),
-        [promise_pure, will_not_call_mercury], "
-    io:format(""Hello, world""),
-    IO = IO0
 ").
 
 test_head(A, B, C, _D, C, _D).

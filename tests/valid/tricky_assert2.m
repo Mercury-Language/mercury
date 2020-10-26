@@ -11,4 +11,3 @@
 
 :- implementation.
 :- pragma external_pred(tricky_assert2.local/0).
-:- pragma foreign_code("Erlang", "local_0_p_0() -> void.").

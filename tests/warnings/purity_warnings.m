@@ -103,20 +103,14 @@ static int x = 0;
 :- pragma foreign_proc("C", set_x(X::in), [will_not_call_mercury], "x=X;" ).
 :- pragma foreign_proc("C#", set_x(X::in), [will_not_call_mercury], "x=X;" ).
 :- pragma foreign_proc("Java", set_x(X::in), [will_not_call_mercury], "x=X;" ).
-:- pragma foreign_proc("Erlang", set_x(X::in), [will_not_call_mercury],
-    "put(x, X)" ).
 
 :- impure pred incr_x is det.
 :- pragma foreign_proc("C", incr_x, [will_not_call_mercury], "++x;" ).
 :- pragma foreign_proc("C#", incr_x, [will_not_call_mercury], "++x;" ).
 :- pragma foreign_proc("Java", incr_x, [will_not_call_mercury], "++x;" ).
-:- pragma foreign_proc("Erlang", incr_x, [will_not_call_mercury],
-    "put(x, get(x) + 1)" ).
 
 :- semipure pred get_x(int::out) is det.
 :- pragma promise_semipure(get_x/1).
 :- pragma foreign_proc("C", get_x(X::out), [will_not_call_mercury], "X=x;").
 :- pragma foreign_proc("C#", get_x(X::out), [will_not_call_mercury], "X=x;").
 :- pragma foreign_proc("Java", get_x(X::out), [will_not_call_mercury], "X=x;").
-:- pragma foreign_proc("Erlang", get_x(X::out), [will_not_call_mercury],
-    "X = get(x)").

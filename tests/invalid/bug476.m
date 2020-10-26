@@ -51,7 +51,6 @@
 
 :- pragma foreign_type("C", jinput_stream, "void *").
 :- pragma foreign_type("C#", jinput_stream, "object").
-:- pragma foreign_type("Erlang", jinput_stream, "").
 :- pragma foreign_type("Java", jinput_stream, "java.io.InputStream").
 
 %---------------------------------------------------------------------------%

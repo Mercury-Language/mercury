@@ -1,8 +1,8 @@
 warn_succ_ind.m:038: Warning: the C# code for predicate `foo'/2 may set
 warn_succ_ind.m:038:   `SUCCESS_INDICATOR', but it cannot fail.
-warn_succ_ind.m:070: Warning: the C# code for predicate `foo2'/2 may set
-warn_succ_ind.m:070:   `SUCCESS_INDICATOR', but it cannot fail.
-warn_succ_ind.m:101: Warning: the C# code for predicate `bar'/2 does not appear
-warn_succ_ind.m:101:   to set `SUCCESS_INDICATOR', but it can fail.
-warn_succ_ind.m:129: Warning: the C# code for predicate `bar2'/2 does not
-warn_succ_ind.m:129:   appear to set `SUCCESS_INDICATOR', but it can fail.
+warn_succ_ind.m:062: Warning: the C# code for predicate `foo2'/2 may set
+warn_succ_ind.m:062:   `SUCCESS_INDICATOR', but it cannot fail.
+warn_succ_ind.m:085: Warning: the C# code for predicate `bar'/2 does not appear
+warn_succ_ind.m:085:   to set `SUCCESS_INDICATOR', but it can fail.
+warn_succ_ind.m:106: Warning: the C# code for predicate `bar2'/2 does not
+warn_succ_ind.m:106:   appear to set `SUCCESS_INDICATOR', but it can fail.

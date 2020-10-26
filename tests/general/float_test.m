@@ -7,7 +7,6 @@
 %
 % The .exp file is for grades that use double-precision floats.
 % The .exp2 file is for grades that use single-precision floats.
-% The .exp3 file is for the erlang grades (see below).
 %
 %---------------------------------------------------------------------------%
 
@@ -43,13 +42,8 @@ main(!IO) :-
     test_rounding(0.0, !IO),
     test_rounding(2.7, !IO),
     test_rounding(-3.6, !IO),
-    ( if have_erlang_grade then
-        true
-    else
-        % float.infinity is NYI for Erlang.
-        test_rounding(float.infinity, !IO),
-        test_rounding(-float.infinity, !IO)
-    ),
+    test_rounding(float.infinity, !IO),
+    test_rounding(-float.infinity, !IO),
     test_power(2.2, !IO),
     test_trig(0.5, !IO),
     test_inv_trig(0.6, !IO).
@@ -149,20 +143,6 @@ test_inv_trig(X, !IO) :-
     write_message("acos(X): ", math.acos(X), !IO),
     write_message("atan(X): ", math.atan(X), !IO),
     io.nl(!IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred have_erlang_grade is semidet.
-
-:- pragma foreign_proc("Erlang",
-    have_erlang_grade,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true
-").
-
-have_erlang_grade :-
-    semidet_false.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

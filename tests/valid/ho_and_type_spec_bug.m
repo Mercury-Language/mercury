@@ -63,12 +63,6 @@ beta(_E, V, _R0, R) :-
     /* V */
     F = null;
 ").
-:- pragma foreign_proc("Erlang",
-    gamma(V::in) = (F::out),
-    [will_not_call_mercury, promise_pure],
-"
-    F = V
-").
 
 :- pred foldl(pred(T, U, U), sparse_bitset(T), U, U) <= foo(T).
 :- mode foldl(pred(in, in, out) is det, in, in, out) is det.

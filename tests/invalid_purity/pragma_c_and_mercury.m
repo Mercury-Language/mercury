@@ -35,10 +35,4 @@
 :- pragma foreign_proc("C#",
     c_int_unify(Int::out, Int0::in), [promise_pure], "Int = Int0;").
 
-:- pragma foreign_proc("Erlang",
-    c_int_unify(Int0::in, Int::out), [promise_pure], "Int = Int0").
-
-:- pragma foreign_proc("Erlang",
-    c_int_unify(Int::out, Int0::in), [promise_pure], "Int = Int0").
-
 c_int_unify(X, X).

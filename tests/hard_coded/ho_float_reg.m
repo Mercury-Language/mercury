@@ -592,12 +592,6 @@ lost_inst(S0, S) :-
 "
     S = S0;
 ").
-:- pragma foreign_proc("Erlang",
-    cast_inst(S0::in, S::out(struct)),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    S = S0;
-").
 
 %---------------------------------------------------------------------------%
 

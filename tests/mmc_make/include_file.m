@@ -20,9 +20,6 @@
 :- pragma foreign_decl("C#", include_file("inc/decl.cs")).
 :- pragma foreign_code("C#", include_file("inc/code.cs")).
 
-:- pragma foreign_decl("Erlang", include_file("inc/decl.erl")).
-:- pragma foreign_code("Erlang", include_file("inc/code.erl")).
-
 :- pred test(int::out, int::out) is det.
 
 :- pragma foreign_proc("C",
@@ -47,14 +44,6 @@
 "
     X = Ones.ones();
     Y = twos();
-").
-
-:- pragma foreign_proc("Erlang",
-    test(X::out, Y::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    X = ones(),
-    Y = twos()
 ").
 
 main(!IO) :-

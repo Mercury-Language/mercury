@@ -46,7 +46,3 @@ foo(X, X+1).
         [may_call_mercury, promise_pure], "
     Y = export_test.foo(X);
 ").
-:- pragma foreign_proc("Erlang", bar(X::in, Y::out),
-        [may_call_mercury, promise_pure], "
-    Y = foo_2_p_0(X)
-").

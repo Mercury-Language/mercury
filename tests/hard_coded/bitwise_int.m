@@ -205,9 +205,6 @@ shift_amounts = [
         java.lang.Integer.toBinaryString(U)).replace(' ', '0');
 ").
 
-to_binary_string_lz(_) = _ :-
-    sorry($file, $pred, "to_binary_string_lz for Erlang backend").
-
 %---------------------------------------------------------------------------%
 :- end_module bitwise_int.
 %---------------------------------------------------------------------------%

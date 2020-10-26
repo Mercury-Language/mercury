@@ -14,14 +14,14 @@ singleton_test.m:036: In clause for function `my_append_func'/2:
 singleton_test.m:036:   warning: variable `T' occurs only once in this scope.
 singleton_test.m:038: In the C code for predicate `my_c_pred'/3:
 singleton_test.m:038:   warning: variable `Y' does not occur in the C code.
-singleton_test.m:055: In the C code for function `my_c_func'/2:
-singleton_test.m:055:   warning: variable `X' does not occur in the C code.
-singleton_test.m:074: In the C code for predicate `c_hello_world'/3:
-singleton_test.m:074:   warning: variable `Msg' does not occur in the C code.
-singleton_test.m:095: In clause for predicate `test_head'/6:
-singleton_test.m:095:   warning: variable `_D' occurs more than once in this
-singleton_test.m:095:   scope.
-singleton_test.m:095: In clause for predicate `test_head'/6:
-singleton_test.m:095:   warning: variables `A, B' occur only once in this
-singleton_test.m:095:   scope.
+singleton_test.m:051: In the C code for function `my_c_func'/2:
+singleton_test.m:051:   warning: variable `X' does not occur in the C code.
+singleton_test.m:066: In the C code for predicate `c_hello_world'/3:
+singleton_test.m:066:   warning: variable `Msg' does not occur in the C code.
+singleton_test.m:082: In clause for predicate `test_head'/6:
+singleton_test.m:082:   warning: variable `_D' occurs more than once in this
+singleton_test.m:082:   scope.
+singleton_test.m:082: In clause for predicate `test_head'/6:
+singleton_test.m:082:   warning: variables `A, B' occur only once in this
+singleton_test.m:082:   scope.
 For more information, recompile with `-E'.

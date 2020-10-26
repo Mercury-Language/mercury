@@ -122,7 +122,6 @@ OTHER_PROGS = \
 	empty_submodule \
 	empty_switch \
 	equiv_solns_ia \
-	erl_ite_vars \
 	error \
 	eval \
 	existential_cons \
@@ -266,8 +265,7 @@ OTHER_PROGS = \
 	unused_args_test2 \
 	vn_float \
 	wrapper_arg_lvals \
-	zero_arity \
-	zf_erlang_bug
+	zero_arity
 
 C_INTERFACE_PROGS =
 

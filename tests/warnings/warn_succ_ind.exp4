@@ -1,8 +1,0 @@
-warn_succ_ind.m:054: Warning: the Erlang code for predicate `foo'/2 may set
-warn_succ_ind.m:054:   `SUCCESS_INDICATOR', but it cannot fail.
-warn_succ_ind.m:086: Warning: the Erlang code for predicate `foo2'/2 may set
-warn_succ_ind.m:086:   `SUCCESS_INDICATOR', but it cannot fail.
-warn_succ_ind.m:115: Warning: the Erlang code for predicate `bar'/2 does not
-warn_succ_ind.m:115:   appear to set `SUCCESS_INDICATOR', but it can fail.
-warn_succ_ind.m:143: Warning: the Erlang code for predicate `bar2'/2 does not
-warn_succ_ind.m:143:   appear to set `SUCCESS_INDICATOR', but it can fail.

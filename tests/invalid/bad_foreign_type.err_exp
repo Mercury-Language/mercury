@@ -61,25 +61,21 @@ bad_foreign_type.m:075: In the second argument of `:- pragma foreign_type'
 bad_foreign_type.m:075:   declaration:
 bad_foreign_type.m:075:   error: expected a type constructor and zero or more
 bad_foreign_type.m:075:   type variables as arguments, got `T'.
+bad_foreign_type.m:080: In the third argument of `:- pragma foreign_type'
+bad_foreign_type.m:080:   declaration:
+bad_foreign_type.m:080:   error: foreign type descriptor for language `C' must
+bad_foreign_type.m:080:   be a non-empty string.
 bad_foreign_type.m:081: In the third argument of `:- pragma foreign_type'
 bad_foreign_type.m:081:   declaration:
-bad_foreign_type.m:081:   error: foreign type descriptor for language `C' must
+bad_foreign_type.m:081:   error: foreign type descriptor for language `C#' must
 bad_foreign_type.m:081:   be a non-empty string.
 bad_foreign_type.m:082: In the third argument of `:- pragma foreign_type'
 bad_foreign_type.m:082:   declaration:
-bad_foreign_type.m:082:   error: foreign type descriptor for language `C#' must
-bad_foreign_type.m:082:   be a non-empty string.
-bad_foreign_type.m:083: In the third argument of `:- pragma foreign_type'
-bad_foreign_type.m:083:   declaration:
-bad_foreign_type.m:083:   error: foreign type descriptor for language `Java'
-bad_foreign_type.m:083:   must be a non-empty string.
-bad_foreign_type.m:084: In the third argument of `:- pragma foreign_type'
-bad_foreign_type.m:084:   declaration:
-bad_foreign_type.m:084:   error: foreign type descriptor for language `Erlang'
-bad_foreign_type.m:084:   must be an empty string.
-bad_foreign_type.m:089: In the fourth argument of `:- pragma foreign_type'
-bad_foreign_type.m:089:   declaration:
-bad_foreign_type.m:089:   error: foreign type assertion
-bad_foreign_type.m:089:   `can_pass_as_mercury_type' is repeated.
-bad_foreign_type.m:091: Warning: duplicate declaration for type `quux'/0.
-bad_foreign_type.m:080:   The previous declaration was here.
+bad_foreign_type.m:082:   error: foreign type descriptor for language `Java'
+bad_foreign_type.m:082:   must be a non-empty string.
+bad_foreign_type.m:087: In the fourth argument of `:- pragma foreign_type'
+bad_foreign_type.m:087:   declaration:
+bad_foreign_type.m:087:   error: foreign type assertion
+bad_foreign_type.m:087:   `can_pass_as_mercury_type' is repeated.
+bad_foreign_type.m:089: Warning: duplicate declaration for type `quux'/0.
+bad_foreign_type.m:079:   The previous declaration was here.

@@ -145,12 +145,6 @@ test2(_A::di, B::uo) :-
 "
     S = null;
 ").
-:- pragma foreign_proc("Erlang",
-    mkany(S::out(any)),
-    [promise_pure],
-"
-    S = null
-").
 
 % prefer in(any) over out(any)
 % [i.e. any -> any beats free -> any]

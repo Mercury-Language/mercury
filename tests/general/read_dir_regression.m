@@ -7,7 +7,6 @@
 % The .exp file is for the C grades (on Unix like systems).
 % The .exp2 file is for the Java grades.
 % The .exp3 file is for the C# grades.
-% The .exp4 file is for the Erlang grades.
 %
 %---------------------------------------------------------------------------%
 

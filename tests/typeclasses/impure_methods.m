@@ -107,22 +107,5 @@ main -->
     Val = foo_counter;
 ").
 
-:- pragma foreign_proc("Erlang",
-    foo_m1(_F::in),
-    [will_not_call_mercury],
-"
-    put(foo_counter,
-    case get(foo_counter) of
-        undefined -> 1;
-        N -> N + 1
-    end)
-").
-:- pragma foreign_proc("Erlang",
-    foo_m2(_F::in, Val::out),
-    [will_not_call_mercury, promise_semipure],
-"
-    Val = get(foo_counter)
-").
-
 goo_m1(_).
 goo_m2(_, 42).

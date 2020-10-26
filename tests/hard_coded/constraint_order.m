@@ -55,8 +55,3 @@ test(3) :-
 "
     System.out.println(Str);
 ").
-:- pragma foreign_proc("Erlang", puts(Str::in), [],
-"
-    io:put_chars(Str),
-    io:nl()
-").
