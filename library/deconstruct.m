@@ -419,11 +419,6 @@ SUCCESS_INDICATOR = (FunctorNumber >= 0);
 functor_number(_Term, _FunctorNumber, _Arity) :-
     private_builtin.sorry("deconstruct.functor_number").
 
-    % This is needed because rtti_implementation.functor_number_cc
-    % is currently declared semidet instead of cc_nondet.
-    %
-:- pragma no_determinism_warning(functor_number_cc/3).
-
 :- pragma foreign_proc("C",
     functor_number_cc(Term::in, FunctorNumber::out, Arity::out),
     [will_not_call_mercury, thread_safe, promise_pure],

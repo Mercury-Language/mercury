@@ -123,8 +123,7 @@
     is cc_multi.
 :- mode deconstruct(in, in, out, out, out, out) is cc_multi.
 
-:- pred functor_number_cc(T::in, int::out, int::out)
-    is semidet. % conceptually committed-choice
+:- pred functor_number_cc(T::in, int::out, int::out) is cc_nondet.
 
 :- pred univ_named_arg(T, noncanon_handling, string, univ).
 :- mode univ_named_arg(in, in(do_not_allow), in, out) is semidet.
@@ -2731,7 +2730,8 @@ functor_number_cc(Term, FunctorNumber, Arity) :-
             include_details_cc, _Functor, Ordinal, Arity, _Arguments)
     ),
     Ordinal >= 0,
-    type_ctor_search_functor_number_map(TypeCtorInfo, Ordinal, FunctorNumber).
+    type_ctor_search_functor_number_map(TypeCtorInfo, Ordinal, FunctorNumber0),
+    cc_multi_equal(FunctorNumber0, FunctorNumber).
 
 :- pred deconstruct_2(T, type_info, type_ctor_info, type_ctor_rep,
     noncanon_handling, string, int, int, list(univ)).
