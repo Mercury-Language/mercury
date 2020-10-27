@@ -332,16 +332,6 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
     SUCCESS_INDICATOR = (S == null);
 ").
 
-:- pragma foreign_proc("Erlang",
-    null(S::in),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    % Erlang doesn't have null pointers, but in erlang_rtti_implementation we
-    % return empty strings (binaries) for the cases where functor arguments
-    % have no names.
-    SUCCESS_INDICATOR = (S =:= <<>>)
-").
-
 get_functor_ordinal(TypeDesc, FunctorNumber) = Ordinal :-
     get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal).
 

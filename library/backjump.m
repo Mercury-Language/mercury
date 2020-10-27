@@ -447,17 +447,6 @@ mercury_sys_init_backjumps_write_out_proc_statics(FILE *deep_fp,
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_code("Erlang", "
-
-    builtin_choice_id_1_p_0(_) ->
-        throw(""builtin_choice_id/1 NYI for Erlang backend"").
-
-    builtin_backjump_1_p_0(_) ->
-        throw(""builtin_backjump/1 NYI for Erlang backend"").
-").
-
-%---------------------------------------------------------------------------%
-
 :- pragma foreign_export("C", report_invalid_backjump(in, di, uo),
     "ML_report_invalid_backjump").
 

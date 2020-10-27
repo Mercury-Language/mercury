@@ -482,13 +482,6 @@ get_skip_whitespace_pred(Src, SkipWS) :-
     SkipWS = SkipWS0;
 ").
 
-:- pragma foreign_proc("Erlang",
-    unsafe_skip_ws_pred_cast(SkipWS0::in, SkipWS::out(parser)),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SkipWS = SkipWS0
-").
-
 %---------------------------------------------------------------------------%
 
 input_substring(Src, Start, EndPlusOne, Substring) :-

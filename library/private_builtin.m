@@ -368,20 +368,6 @@ builtin_compare_string(R, S1, S2) :-
 "
     Res = S1.compareTo(S2);
 ").
-:- pragma foreign_proc("Erlang",
-    builtin_strcmp(Res::out, S1::in, S2::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    % XXX is there a more efficient three-way compare?
-    if
-        S1 =:= S2 ->
-            Res = 0;
-        S1 < S2 ->
-            Res = -1;
-        true ->
-            Res = 1
-    end
-").
 
 builtin_unify_float(F, F).
 
@@ -831,33 +817,6 @@ __Compare____base_typeclass_info_1_0(
 
 ").
 
-:- pragma foreign_code("Erlang", "
-
-'__Unify____type_info_0_0'(X, Y) ->
-    throw(""unify for type_info"").
-
-'__Unify____typeclass_info_0_0'(X, Y) ->
-    throw(""unify for typeclass_info"").
-
-'__Unify____base_typeclass_info_0_0'(X, Y) ->
-    throw(""unify for base_typeclass_info"").
-
-'__Unify____type_ctor_info_0_0'(X, Y) ->
-    throw(""unify for type_ctor_info"").
-
-'__Compare____type_ctor_info_0_0'(X, Y) ->
-    throw(""compare for type_ctor_info"").
-
-'__Compare____type_info_0_0'(X, Y) ->
-    throw(""compare for type_info"").
-
-'__Compare____typeclass_info_0_0'(X, Y) ->
-    throw(""compare for typeclass_info"").
-
-'__Compare____base_typeclass_info_0_0'(X, Y) ->
-    throw(""compare for base_typeclass_info"").
-").
-
 %---------------------%
 
 :- pragma foreign_proc("C",
@@ -883,17 +842,6 @@ __Compare____base_typeclass_info_1_0(
 "
     TypeInfo = jmercury.private_builtin.
         MR_typeclass_info_param_type_info(TypeClassInfo, Index);
-").
-:- pragma foreign_proc("Erlang",
-    type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
-        TypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    BaseTypeClassInfo = element(1, TypeClassInfo),
-    ExtraArgs = element(1, BaseTypeClassInfo),
-        % Indexes start at 1 in Erlang,
-        % while in C they start at 0
-    TypeInfo = element(ExtraArgs + Index + 1, TypeClassInfo)
 ").
 
 %---------------------%
@@ -921,15 +869,6 @@ __Compare____base_typeclass_info_1_0(
 "
     TypeInfo = jmercury.private_builtin.
         MR_typeclass_info_instance_tvar_type_info(TypeClassInfo, Index);
-").
-:- pragma foreign_proc("Erlang",
-    unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
-        Index::in, TypeInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-        % Indexes start at 1 in Erlang,
-        % while in C they start at 0
-    TypeInfo = element(Index + 1, TypeClassInfo)
 ").
 
 %---------------------%
@@ -959,17 +898,6 @@ __Compare____base_typeclass_info_1_0(
     TypeClassInfo = jmercury.private_builtin.
         MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
 ").
-:- pragma foreign_proc("Erlang",
-    superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
-        TypeClassInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    BaseTypeClassInfo = element(1, TypeClassInfo0),
-    ExtraArgs = element(1, BaseTypeClassInfo),
-        % Indexes start at 1 in Erlang,
-        % while in C they start at 0
-    TypeClassInfo = element(ExtraArgs + Index + 1, TypeClassInfo0)
-").
 
 %---------------------%
 
@@ -997,15 +925,6 @@ __Compare____base_typeclass_info_1_0(
 "
     TypeClassInfo = jmercury.private_builtin.
         MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
-").
-:- pragma foreign_proc("Erlang",
-    instance_constraint_from_typeclass_info(TypeClassInfo0::in,
-        Index::in, TypeClassInfo::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-        % Indexes start at 1 in Erlang,
-        % while in C they start at 0
-    TypeClassInfo = element(Index + 1, TypeClassInfo0)
 ").
 
 %---------------------------------------------------------------------------%
@@ -1079,13 +998,6 @@ __Compare____base_typeclass_info_1_0(
     // XXX No trailing for the Java back-end, so take no action.
     Ticket = null;
 ").
-:- pragma foreign_proc("Erlang",
-    store_ticket(Ticket::out),
-    [will_not_call_mercury, thread_safe],
-"
-    % XXX No trailing for the Erlang back-end, so take no action.
-    Ticket = null
-").
 
 %---------------------%
 
@@ -1111,13 +1023,6 @@ __Compare____base_typeclass_info_1_0(
     [will_not_call_mercury, thread_safe],
 "
     // XXX No trailing for the Java back-end, so take no action.
-").
-:- pragma foreign_proc("Erlang",
-    reset_ticket_undo(_Ticket::in),
-    [will_not_call_mercury, thread_safe],
-"
-    % XXX No trailing for the Erlang back-end, so take no action.
-    void
 ").
 
 %---------------------%
@@ -1145,13 +1050,6 @@ __Compare____base_typeclass_info_1_0(
 "
     // XXX No trailing for the Java back-end, so take no action.
 ").
-:- pragma foreign_proc("Erlang",
-    reset_ticket_commit(_Ticket::in),
-    [will_not_call_mercury, thread_safe],
-"
-    % XXX No trailing for the Erlang back-end, so take no action.
-    void
-").
 
 %---------------------%
 
@@ -1177,13 +1075,6 @@ __Compare____base_typeclass_info_1_0(
     [will_not_call_mercury, thread_safe],
 "
     // XXX No trailing for the Java back-end, so take no action.
-").
-:- pragma foreign_proc("Erlang",
-    reset_ticket_solve(_Ticket::in),
-    [will_not_call_mercury, thread_safe],
-"
-    % XXX No trailing for the Erlang back-end, so take no action.
-    void
 ").
 
 %---------------------%
@@ -1211,13 +1102,6 @@ __Compare____base_typeclass_info_1_0(
 "
     // XXX No trailing for the Java back-end, so take no action.
 ").
-:- pragma foreign_proc("Erlang",
-    discard_ticket,
-    [will_not_call_mercury, thread_safe],
-"
-    % XXX No trailing for the Erlang back-end, so take no action.
-    void
-").
 
 %---------------------%
 
@@ -1243,13 +1127,6 @@ __Compare____base_typeclass_info_1_0(
     [will_not_call_mercury, thread_safe],
 "
     // XXX No trailing for the Java back-end, so take no action.
-").
-:- pragma foreign_proc("Erlang",
-    prune_ticket,
-    [will_not_call_mercury, thread_safe],
-"
-    % XXX No trailing for the Erlang back-end, so take no action.
-    void
 ").
 
 %---------------------%
@@ -1282,13 +1159,6 @@ __Compare____base_typeclass_info_1_0(
     // XXX No trailing for the Java back-end, so take no action.
     TicketCounter = null;
 ").
-:- pragma foreign_proc("Erlang",
-    mark_ticket_stack(TicketCounter::out),
-    [will_not_call_mercury, thread_safe],
-"
-    % XXX No trailing for the Erlang back-end, so take no action.
-    TicketCounter = null
-").
 
 %---------------------%
 
@@ -1314,14 +1184,6 @@ __Compare____base_typeclass_info_1_0(
     [will_not_call_mercury, thread_safe],
 "
     // XXX No trailing for the Java back-end, so take no action.
-").
-
-:- pragma foreign_proc("Erlang",
-    prune_tickets_to(_TicketCounter::in),
-    [will_not_call_mercury, thread_safe],
-"
-    % XXX No trailing for the Erlang back-end, so take no action.
-    void
 ").
 
 %---------------------------------------------------------------------------%
@@ -1416,14 +1278,6 @@ __Compare____base_typeclass_info_1_0(
     // For the Java back-end, we use the Java garbage collector,
     // so we take no action here.
 ").
-:- pragma foreign_proc("Erlang",
-    gc_trace(_Pointer::in),
-    [will_not_call_mercury, thread_safe],
-"
-    % For the Erlang back-end, we use the Erlang garbage collector, so we
-    % take no action here.
-    void
-").
 
 %---------------------%
 
@@ -1439,14 +1293,6 @@ __Compare____base_typeclass_info_1_0(
 "
     // For the Java back-end, we don't define our own heaps.
     // So take no action here.
-").
-:- pragma foreign_proc("Erlang",
-    free_heap(_Val::di),
-    [will_not_call_mercury, thread_safe],
-"
-    % For the Erlang back-end, as for the .NET back-end, we don't define
-    % our own heaps. So take no action here.
-    void
 ").
 
 %---------------------%
@@ -1477,13 +1323,6 @@ __Compare____base_typeclass_info_1_0(
     // We can't do heap reclamation on failure in the Java back-end.
     SavedHeapPointer = null;
 ").
-:- pragma foreign_proc("Erlang",
-    mark_hp(SavedHeapPointer::out),
-    [will_not_call_mercury, thread_safe],
-"
-    % We can't do heap reclamation on failure in the Erlang back-end.
-    SavedHeapPointer = null
-").
 
 %---------------------%
 
@@ -1507,14 +1346,6 @@ __Compare____base_typeclass_info_1_0(
     [will_not_call_mercury, thread_safe],
 "
     // We can't do heap reclamation on failure in the Java back-end.
-").
-
-:- pragma foreign_proc("Erlang",
-    restore_hp(_SavedHeapPointer::in),
-    [will_not_call_mercury, thread_safe],
-"
-    % We can't do heap reclamation on failure in the Erlang back-end.
-    void
 ").
 
 %---------------------------------------------------------------------------%
@@ -1707,15 +1538,6 @@ nyi_foreign_type_compare(Result, _, _) :-
 "
     /* All uses of this predicate should override the body. */
     MR_fatal_error(""trace_evaluate_runtime_condition called"");
-").
-:- pragma foreign_proc("Erlang",
-    trace_evaluate_runtime_condition,
-    [will_not_call_mercury, thread_safe, promise_semipure,
-        does_not_affect_liveness],
-"
-    % All uses of this predicate should override the body.
-    throw(""trace_evaluate_runtime_condition called""),
-    SUCCESS_INDICATOR = false
 ").
 :- pragma foreign_proc("C#",
     trace_evaluate_runtime_condition,
@@ -2166,10 +1988,6 @@ sorry(PredName) :-
     imp,
     [will_not_call_mercury, thread_safe],
 "").
-:- pragma foreign_proc("Erlang",
-    imp,
-    [will_not_call_mercury, thread_safe],
-"void").
 
 :- pragma foreign_proc("C",
     semip,
@@ -2184,10 +2002,6 @@ sorry(PredName) :-
     semip,
     [will_not_call_mercury, thread_safe, promise_semipure],
 "").
-:- pragma foreign_proc("Erlang",
-    semip,
-    [will_not_call_mercury, thread_safe, promise_semipure],
-"void").
 
 %---------------------------------------------------------------------------%
 %
@@ -2485,23 +2299,6 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
             (""compare/2 for type typeclass_info/0"");
     }
 
-").
-
-:- pragma foreign_code("Erlang", "
-    '__Compare____heap_pointer_0_0'(_, _) ->
-        throw(""called compare/2 for type `private_builtin.heap_pointer'"").
-
-    '__Unify____heap_pointer_0_0'(_, _) ->
-        throw(""called unify/2 for type `private_builtin.heap_pointer'"").
-
-    '__Compare____ref_1_0'(_, _, _) ->
-        throw(""called compare/3 for type `private_builtin.ref'"").
-
-    '__Unify____ref_1_0'(TypeInfo, X, Y) ->
-        case X =:= Y of
-            true -> {};
-            false -> fail
-        end.
 ").
 
 %---------------------------------------------------------------------------%

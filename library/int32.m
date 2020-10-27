@@ -371,8 +371,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- pragma no_determinism_warning(from_int/2).
-
 :- pragma foreign_proc("C",
     from_int(I::in, I32::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -403,17 +401,12 @@
     SUCCESS_INDICATOR = true;
 ").
 
-from_int(_, _) :-
-    sorry($module, "int32.from_int/1 NYI for Erlang").
-
 det_from_int(I) = I32 :-
     ( if from_int(I, I32Prime) then
         I32 = I32Prime
     else
         error($pred, "cannot convert int to int32")
     ).
-
-:- pragma no_determinism_warning(cast_from_int/1).
 
 :- pragma foreign_proc("C",
     cast_from_int(I::in) = (I32::out),
@@ -437,12 +430,7 @@ det_from_int(I) = I32 :-
     I32 = I;
 ").
 
-cast_from_int(_) = _ :-
-    sorry($module, "int32.cast_from_int/1 NYI for Erlang").
-
 %---------------------------------------------------------------------------%
-
-:- pragma no_determinism_warning(to_int/1).
 
 :- pragma foreign_proc("C",
     to_int(I32::in) = (I::out),
@@ -465,11 +453,6 @@ cast_from_int(_) = _ :-
     I = I32;
 ").
 
-to_int(_) = _ :-
-    sorry($module, "int32.to_int/1 NYI for Erlang").
-
-:- pragma no_determinism_warning(cast_to_int/1).
-
 :- pragma foreign_proc("C",
     cast_to_int(I32::in) = (I::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -491,12 +474,7 @@ to_int(_) = _ :-
     I = I32;
 ").
 
-cast_to_int(_) = _ :-
-    sorry($module, "int32.cast_to_int/1 NYI for Erlang").
-
 %---------------------------------------------------------------------------%
-
-:- pragma no_determinism_warning(cast_from_uint32/1).
 
 :- pragma foreign_proc("C",
     cast_from_uint32(U32::in) = (I32::out),
@@ -519,9 +497,6 @@ cast_to_int(_) = _ :-
 "
     I32 = U32;
 ").
-
-cast_from_uint32(_) = _ :-
-    sorry($module, "int32.cast_from_uint32/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
@@ -560,9 +535,6 @@ cast_from_uint32(_) = _ :-
 "
     I32 = (Byte3 << 24 | Byte2 << 16 | Byte1 << 8 | Byte0);
 ").
-
-from_bytes_le(_, _, _, _) = _ :-
-    sorry($module, "int32.from_bytes_le/4 NYI for Erlang").
 
 from_bytes_be(Byte3, Byte2, Byte1, Byte0) =
     from_bytes_le(Byte0, Byte1, Byte2, Byte3).
@@ -709,8 +681,6 @@ num_trailing_zeros(I32) = N :-
 
 %---------------------%
 
-:- pragma no_determinism_warning(reverse_bytes/1).
-
 :- pragma foreign_proc("C",
     reverse_bytes(A::in) = (B::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -737,9 +707,6 @@ num_trailing_zeros(I32) = N :-
 "
     B = java.lang.Integer.reverseBytes(A);
 ").
-
-reverse_bytes(_) = _ :-
-    sorry($module, "int32.reverse_bytes/1 NYI for Erlang").
 
 %---------------------%
 

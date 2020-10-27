@@ -463,28 +463,6 @@ to_int(C) = N :-
     SUCCESS_INDICATOR = (Int >= 0 && Int <= 0x10ffff);
 ").
 
-:- pragma foreign_proc("Erlang",
-    to_int(Character::in, Int::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Int = Character
-").
-
-:- pragma foreign_proc("Erlang",
-    to_int(Character::in, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = (Character =:= Int)
-").
-
-:- pragma foreign_proc("Erlang",
-    to_int(Character::out, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Character = Int,
-    SUCCESS_INDICATOR = (Int >= 0 andalso Int =< 16#10ffff)
-").
-
 from_int(Int, Char) :-
     to_int(Char, Int).
 
@@ -528,12 +506,6 @@ max_char_value = N :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = 0x10ffff;
-").
-:- pragma foreign_proc("Erlang",
-    max_char_value(Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Max = 16#10ffff
 ").
 
 %---------------------------------------------------------------------------%

@@ -147,7 +147,6 @@ public class ML_Semaphore {
 :- pragma foreign_type("C",  semaphore, "struct ML_SEMAPHORE_STRUCT *",
     [can_pass_as_mercury_type]).
 :- pragma foreign_type("C#", semaphore, "thread__semaphore.ML_Semaphore").
-:- pragma foreign_type("Erlang", semaphore, "").
 :- pragma foreign_type("Java", semaphore, "jmercury.runtime.Semaphore").
 
 :- pragma foreign_decl("C", "

@@ -260,8 +260,6 @@ wait(Future, Value) :-
     [will_not_call_mercury, thread_safe], "").
 :- pragma foreign_proc("Java", make_io_state(_IO::uo),
     [will_not_call_mercury, thread_safe], "").
-:- pragma foreign_proc("Erlang", make_io_state(_IO::uo),
-    [will_not_call_mercury, thread_safe], "void").
 
 :- impure pred consume_io_state(io::di) is det.
 :- pragma foreign_proc("C",
@@ -273,8 +271,5 @@ wait(Future, Value) :-
 :- pragma foreign_proc("Java",
     consume_io_state(_IO::di),
     [will_not_call_mercury, thread_safe], "").
-:- pragma foreign_proc("Erlang",
-    consume_io_state(_IO::di),
-    [will_not_call_mercury, thread_safe], "void").
 
 %---------------------------------------------------------------------------%

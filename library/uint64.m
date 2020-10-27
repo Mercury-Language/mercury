@@ -340,8 +340,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- pragma no_determinism_warning(from_int/2).
-
 :- pragma foreign_proc("C",
     from_int(I::in, U64::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -372,9 +370,6 @@
     SUCCESS_INDICATOR = (I < 0) ? false : true;
 ").
 
-from_int(_, _) :-
-    sorry($module, "uint64.from_int NYI for Erlang").
-
 det_from_int(I) = U64 :-
     ( if from_int(I, U64Prime) then
         U64 = U64Prime
@@ -383,8 +378,6 @@ det_from_int(I) = U64 :-
     ).
 
 %---------------------------------------------------------------------------%
-
-:- pragma no_determinism_warning(cast_from_int/1).
 
 :- pragma foreign_proc("C",
     cast_from_int(I::in) = (U64::out),
@@ -408,12 +401,7 @@ det_from_int(I) = U64 :-
     U64 = I;
 ").
 
-cast_from_int(_) = _ :-
-    sorry($module, "uint64.cast_from_int/1 NYI for Erlang").
-
 %---------------------------------------------------------------------------%
-
-:- pragma no_determinism_warning(cast_to_int/1).
 
 :- pragma foreign_proc("C",
     cast_to_int(U64::in) = (I::out),
@@ -437,12 +425,7 @@ cast_from_int(_) = _ :-
     I = (int) U64;
 ").
 
-cast_to_int(_) = _ :-
-    sorry($module, "uint64.cast_to_int/1 NYI for Erlang").
-
 %---------------------------------------------------------------------------%
-
-:- pragma no_determinism_warning(cast_to_uint/1).
 
 :- pragma foreign_proc("C",
     cast_to_uint(U64::in) = (U::out),
@@ -466,12 +449,7 @@ cast_to_int(_) = _ :-
     U = (int) U64;
 ").
 
-cast_to_uint(_) = _ :-
-    sorry($module, "uint64.cast_to_uint/1 NYI for Erlang").
-
 %---------------------------------------------------------------------------%
-
-:- pragma no_determinism_warning(cast_from_int64/1).
 
 :- pragma foreign_proc("C",
     cast_from_int64(I64::in) = (U64::out),
@@ -494,9 +472,6 @@ cast_to_uint(_) = _ :-
 "
     U64 = I64;
 ").
-
-cast_from_int64(_) = _ :-
-    sorry($module, "uint64.cast_from_int64/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
@@ -558,9 +533,6 @@ cast_from_int64(_) = _ :-
         (ulong) Byte1 << 8  |
         (ulong) Byte0);
 ").
-
-from_bytes_le(_, _, _, _, _, _, _, _) = _ :-
-    sorry($module, "uint64.from_bytes_le/8 NYI for Erlang").
 
 from_bytes_be(Byte7, Byte6, Byte5,Byte4, Byte3, Byte2, Byte1, Byte0) =
     from_bytes_le(Byte0, Byte1, Byte2, Byte3, Byte4, Byte5, Byte6, Byte7).

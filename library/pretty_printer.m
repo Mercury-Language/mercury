@@ -1013,18 +1013,6 @@ set_default_formatter(ModuleName, TypeName, TypeArity, Formatter, !IO) :-
     Okay = pretty_printer.isInitialised;
 ").
 
-:- pragma foreign_proc("Erlang",
-    pretty_printer_is_initialised(Okay::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
-"
-    'ML_erlang_global_server' !
-        {get_mutable, pretty_printer_is_initialised, self()},
-    receive
-        {get_mutable_ack, undefined} -> Okay = {no};
-        {get_mutable_ack, Okay} -> void
-    end
-").
-
 %---------------------%
 
     % This predicate must not be called unless pretty_printer_is_initialised ==
@@ -1055,17 +1043,6 @@ set_default_formatter(ModuleName, TypeName, TypeArity, Formatter, !IO) :-
     FMap = pretty_printer.defaultFormatterMap;
 ").
 
-:- pragma foreign_proc("Erlang",
-    unsafe_get_default_formatter_map(FMap::out, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
-"
-    'ML_erlang_global_server' !
-        {get_mutable, pretty_printer_default_formatter_map, self()},
-    receive
-        {get_mutable_ack, FMap} -> FMap
-    end
-").
-
 %---------------------%
 
 :- pragma foreign_proc("C",
@@ -1090,16 +1067,6 @@ set_default_formatter(ModuleName, TypeName, TypeArity, Formatter, !IO) :-
 "
     pretty_printer.isInitialised = bool.YES;
     pretty_printer.defaultFormatterMap = FMap;
-").
-
-:- pragma foreign_proc("Erlang",
-    set_default_formatter_map(FMap::in, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, thread_safe, may_not_duplicate],
-"
-    'ML_erlang_global_server' !
-        {set_mutable, pretty_printer_is_initialised, {yes}},
-    'ML_erlang_global_server' !
-        {set_mutable, pretty_printer_default_formatter_map, FMap}
 ").
 
 %---------------------------------------------------------------------------%

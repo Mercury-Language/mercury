@@ -909,55 +909,6 @@ __Compare____tuple_0_0(object x, object y)
     }
 ").
 
-:- pragma foreign_code("Erlang", "
-
-    '__Compare____c_pointer_0_0'(_, _) ->
-        throw(""called compare/3 for type `c_pointer'"").
-
-    '__Unify____c_pointer_0_0'(_, _) ->
-        throw(""called unify for type `c_pointer'"").
-
-    compare_3_p_0(TypeInfo, X, Y) ->
-        mercury__erlang_rtti_implementation:generic_compare_3_p_0(
-            TypeInfo, X, Y).
-
-    compare_3_p_1(TypeInfo, X, Y) ->
-        compare_3_p_0(TypeInfo, X, Y).
-
-    compare_3_p_2(TypeInfo, X, Y) ->
-        compare_3_p_0(TypeInfo, X, Y).
-
-    compare_3_p_3(TypeInfo, X, Y) ->
-        compare_3_p_0(TypeInfo, X, Y).
-
-    % XXX what is this supposed to do?
-    compare_representation_3_p_0(TypeInfo, X, Y) ->
-        compare_3_p_0(TypeInfo, X, Y).
-
-    unify_2_p_0(TypeInfo, X, Y) ->
-        mercury__erlang_rtti_implementation:generic_unify_2_p_0(
-            TypeInfo, X, Y).
-
-    '__Unify____tuple_0_0'(X, Y) ->
-        mercury__require:error_1_p_0(""call to unify for tuple/0"").
-
-    '__Compare____tuple_0_0'(X, Y) ->
-        mercury__require:error_1_p_0(""call to compare for tuple/0"").
-
-    '__Unify____void_0_0'(X, Y) ->
-        mercury__require:error_1_p_0(""call to unify for void/0"").
-
-    '__Compare____void_0_0'(X, Y) ->
-        mercury__require:error_1_p_0(""call to compare for void/0"").
-
-    '__Unify____func_0_0'(X, Y) ->
-        mercury__require:error_1_p_0(""call to unify for func/0"").
-
-    '__Compare____func_0_0'(X, Y) ->
-        mercury__require:error_1_p_0(""call to compare for func/0"").
-").
-
-
 %---------------------------------------------------------------------------%
 
 % unsafe_promise_unique is a compiler builtin.
@@ -1022,20 +973,6 @@ __Compare____tuple_0_0(object x, object y)
     } catch (java.lang.IllegalAccessException E) {
         throw new RuntimeException(E);
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    copy(X::ui, Y::uo),
-    [may_call_mercury, thread_safe, promise_pure, terminates],
-"
-    Y = X
-").
-
-:- pragma foreign_proc("Erlang",
-    copy(X::in, Y::uo),
-    [may_call_mercury, thread_safe, promise_pure, terminates],
-"
-    Y = X
 ").
 
 %---------------------------------------------------------------------------%
@@ -1239,12 +1176,6 @@ __Compare____tuple_0_0(object x, object y)
 "
     SUCCESS_INDICATOR = true;
 ").
-:- pragma foreign_proc("Erlang",
-    semidet_succeed,
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    SUCCESS_INDICATOR = true
-").
 
 semidet_succeed :-
     0 + 0 = 0.
@@ -1261,12 +1192,6 @@ semidet_succeed :-
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     SUCCESS_INDICATOR = false;
-").
-:- pragma foreign_proc("Erlang",
-    semidet_fail,
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    SUCCESS_INDICATOR = false
 ").
 
 semidet_fail :-
@@ -1329,19 +1254,6 @@ semidet_false :-
     Y = X;
 ").
 
-:- pragma foreign_proc("Erlang",
-    cc_multi_equal(X::in, Y::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    Y = X
-").
-:- pragma foreign_proc("Erlang",
-    cc_multi_equal(X::di, Y::uo),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    Y = X
-").
-
 %---------------------------------------------------------------------------%
 
 impure_true :-
@@ -1379,13 +1291,6 @@ dynamic_cast(X, Y) :-
     [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
     Y = X;
-").
-
-:- pragma foreign_proc("Erlang",
-    unsafe_cast_any_to_ground(X::ia) = (Y::out),
-    [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
-"
-    Y = X
 ").
 
 %---------------------------------------------------------------------------%

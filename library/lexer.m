@@ -499,7 +499,7 @@ linestr_grab_float_string(String, LinePosn0, LinePosn, FloatString) :-
     FloatStr = Str.substring(Start, End).replace(\"_\", \"\");
 ").
 
-    % For use by the Erlang backend.
+    % Default implementation.
     %
 unsafe_get_float_between(Str, Start, End, FloatStr) :-
     string.unsafe_between(Str, Start, End, FloatStr0),

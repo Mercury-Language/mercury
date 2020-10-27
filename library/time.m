@@ -230,8 +230,6 @@
     where comparison is compare_time_t_reps.
 :- pragma foreign_type("Java", time_t_rep, "java.time.Instant")
     where comparison is compare_time_t_reps.
-:- pragma foreign_type("Erlang", time_t_rep, "")
-    where comparison is compare_time_t_reps.
 
 :- pred compare_time_t_reps(comparison_result::uo,
     time_t_rep::in, time_t_rep::in) is det.
@@ -333,12 +331,6 @@ time(Result, !IO) :-
 "
     Ret = java.time.Instant.now();
 ").
-:- pragma foreign_proc("Erlang",
-    c_time(Ret::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    Ret = erlang:universaltime()
-").
 
 :- pred time_t_is_invalid(time_t_rep::in) is semidet.
 
@@ -359,12 +351,6 @@ time(Result, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = false;
-").
-:- pragma foreign_proc("Erlang",
-    time_t_is_invalid(_Val::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = false
 ").
 
 %---------------------------------------------------------------------------%
@@ -555,14 +541,6 @@ difftime(time_t(T1), time_t(T0)) = Diff :-
 "
     Diff = (double) (T1.toEpochMilli() - T0.toEpochMilli()) / 1000;
 ").
-:- pragma foreign_proc("Erlang",
-    c_difftime(T1::in, T0::in, Diff::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    S0 = calendar:datetime_to_gregorian_seconds(T0),
-    S1 = calendar:datetime_to_gregorian_seconds(T1),
-    Diff = float(S1 - S0)
-").
 
 %---------------------------------------------------------------------------%
 
@@ -720,24 +698,6 @@ gmtime(time_t(Time)) = TM :-
     // Sunday = 7 = 0.
     WD = utcTime.getDayOfWeek().getValue() % 7;
     N = 0;
-").
-:- pragma foreign_proc("Erlang",
-    c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
-        Min::out, Sec::out, YD::out, WD::out, N::out),
-    [will_not_call_mercury, promise_pure],
-"
-    {{Yr0, Mnt0, MD}, {Hrs, Min, Sec}} = Time,
-    Yr = Yr0 - 1900,
-    Mnt = Mnt0 - 1,
-
-    DayNumber = calendar:date_to_gregorian_days(Yr, Mnt, MD),
-    Jan1_Number = calendar:date_to_gregorian_days(Yr, 1, 1),
-    YD = DayNumber - Jan1_Number,
-
-    % Sunday = 7 = 0
-    WD = calendar:day_of_the_week(Yr, Mnt, MD) rem 7,
-
-    N = 0
 ").
 
 :- func int_to_maybe_dst(int) = maybe(dst).

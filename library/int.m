@@ -573,12 +573,6 @@
 "
     SUCCESS_INDICATOR = true;
 ").
-:- pragma foreign_proc("Erlang",
-    int_domain_checks,
-    [thread_safe, promise_pure],
-"
-    SUCCESS_INDICATOR = true
-").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -782,14 +776,6 @@ X >> Y = Z :-
     Max = java.lang.Integer.MAX_VALUE;
 ").
 
-:- pragma foreign_proc("Erlang",
-    max_int(Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    % XXX Erlang ints are actually arbitrary precision.
-    Max = (1 bsl 31) - 1
-").
-
 max_int = X :-
     max_int(X).
 
@@ -827,14 +813,6 @@ max_int = X :-
     Min = java.lang.Integer.MIN_VALUE;
 ").
 
-:- pragma foreign_proc("Erlang",
-    min_int(Min::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    % XXX Erlang ints are actually arbitrary precision.
-    Min = -(1 bsl 31)
-").
-
 min_int = X :-
     min_int(X).
 
@@ -863,14 +841,6 @@ min_int = X :-
 "
     // Java ints are 32 bits.
     Bits = 32;
-").
-
-:- pragma foreign_proc("Erlang",
-    bits_per_int(Bits::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    % XXX Erlang ints are actually arbitrary precision.
-    Bits = 32
 ").
 
 bits_per_int = X :-

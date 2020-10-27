@@ -24,9 +24,6 @@
 % A single code point requires one or two 16-bit integers (code units)
 % to encode.
 %
-% When Mercury is compiled to Erlang, strings are represented as Erlang
-% binaries using UTF-8 encoding.
-%
 % The Mercury compiler will only allow well-formed UTF-8 or UTF-16 string
 % constants. However, it is possible to produce strings containing invalid
 % UTF-8 or UTF-16 via I/O, foreign code, and substring operations.
@@ -46,7 +43,6 @@
 % - C's strcmp() function, when compiling to C;
 % - Java's String.compareTo() method, when compiling to Java;
 % - C#'s System.String.CompareOrdinal() method, when compiling to C#; and
-% - Erlang's term comparison operator, when compiling to Erlang.
 %
 %---------------------------------------------------------------------------%
 %
@@ -1690,12 +1686,6 @@
 "
     SUCCESS_INDICATOR = false;
 ").
-:- pragma foreign_proc("Erlang",
-    internal_encoding_is_utf8,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true
-").
 
 %---------------------------------------------------------------------------%
 %
@@ -1872,14 +1862,6 @@ from_char_list(Chars::in, Str::uo) :-
         }
     }
     Str = sb.toString();
-").
-:- pragma foreign_proc("Erlang",
-    semidet_from_char_list(CharList::in, Str::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    Str = unicode:characters_to_binary(CharList),
-    SUCCESS_INDICATOR = true
 ").
 
 semidet_from_char_list(CharList, Str) :-
@@ -2235,15 +2217,6 @@ from_code_unit_list_allow_ill_formed(CodeList, Str) :-
         Str = """";
     }
 ").
-:- pragma foreign_proc("Erlang",
-    do_from_code_unit_list(CodeList::in, _Verify::in, Str::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    Str = list_to_binary(CodeList),
-    % XXX validate the string
-    SUCCESS_INDICATOR = true
-").
 
 %---------------------%
 
@@ -2423,13 +2396,6 @@ unsafe_index(S, N) = C :-
 "
     Ch = Str.codePointAt(Index);
 ").
-:- pragma foreign_proc("Erlang",
-    unsafe_index(Str::in, Index::in, Ch::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    % XXX does not handle ill-formed sequences as described
-    <<_:Index/binary, Ch/utf8, _/binary>> = Str
-").
 
 %---------------------%
 
@@ -2528,34 +2494,6 @@ unsafe_index_next_repl(Str, Index, NextIndex, Ch, MaybeReplaced) :-
         NextIndex = Index;
         SUCCESS_INDICATOR = false;
     }
-").
-:- pragma foreign_proc("Erlang",
-    unsafe_index_next_repl_2(Str::in, Index::in, NextIndex::out, Ch::uo,
-        ReplacedCodeUnit::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-    % XXX does not handle ill-formed sequences as described
-    case Str of
-        << _:Index/binary, Ch/utf8, _/binary >> ->
-            if
-                Ch =< 16#7f ->
-                    NextIndex = Index + 1;
-                Ch =< 16#7ff ->
-                    NextIndex = Index + 2;
-                Ch =< 16#ffff ->
-                    NextIndex = Index + 3;
-                true ->
-                    NextIndex = Index + 4
-            end,
-            ReplacedCodeUnit = -1,
-            SUCCESS_INDICATOR = true;
-        _ ->
-            Ch = -1,
-            ReplacedCodeUnit = -1,
-            NextIndex = Index,
-            SUCCESS_INDICATOR = false
-    end
 ").
 
 %---------------------%
@@ -2665,43 +2603,6 @@ unsafe_prev_index_repl(Str, Index, PrevIndex, Ch, MaybeReplaced) :-
         SUCCESS_INDICATOR = false;
     }
 ").
-:- pragma foreign_proc("Erlang",
-    unsafe_prev_index_repl_2(Str::in, Index::in, PrevIndex::out, Ch::uo,
-        ReplacedCodeUnit::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-    % XXX does not handle ill-formed sequences as described
-    {PrevIndex, Ch} = mercury__string:do_unsafe_prev_index(Str, Index - 1),
-    ReplacedCodeUnit = -1,
-    SUCCESS_INDICATOR = (Ch =/= -1)
-").
-
-:- pragma foreign_decl("Erlang", local, "
--export([do_unsafe_prev_index/2]).
-").
-
-:- pragma foreign_code("Erlang", "
-do_unsafe_prev_index(Str, Index) ->
-    if Index >= 0 ->
-        case Str of
-            <<_:Index/binary, Ch/integer, _/binary>> ->
-                if
-                    (Ch band 16#80) =:= 0 ->
-                        {Index, Ch};
-                    (Ch band 16#C0) == 16#80 ->
-                        do_unsafe_prev_index(Str, Index - 1);
-                    true ->
-                        <<_:Index/binary, Ch2/utf8, _/binary>> = Str,
-                        {Index, Ch2}
-                end;
-            true ->
-                {Index, -1}
-        end
-    ; true ->
-        {Index, -1}
-    end.
-").
 
 %---------------------%
 
@@ -2752,12 +2653,6 @@ index_check(Index, Length) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Code = Str.charAt(Index);
-").
-:- pragma foreign_proc("Erlang",
-    unsafe_index_code_unit(Str::in, Index::in, Code::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    <<_:Index/binary, Code/integer, _/binary>> = Str
 ").
 
 %---------------------------------------------------------------------------%
@@ -2890,15 +2785,6 @@ unsafe_set_char(Char, Index, Str0, Str) :-
         + new String(Character.toChars(Ch))
         + Str0.subSequence(Index + oldwidth, Str0.length());
 ").
-:- pragma foreign_proc("Erlang",
-    unsafe_set_char_copy_string(Ch::in, Index::in, _Len0::in,
-        Str0::in, Str::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    % XXX does not implement defined behaviour
-    <<Left:Index/binary, _/utf8, Right/binary>> = Str0,
-    Str = unicode:characters_to_binary([Left, Ch, Right])
-").
 
 %---------------------------------------------------------------------------%
 %
@@ -2929,12 +2815,6 @@ length(S) = L :-
 "
     Length = Str.length();
 ").
-:- pragma foreign_proc("Erlang",
-    length(Str::in, Length::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Length = size(Str)
-").
 
 :- pragma foreign_proc("C",
     length(Str::ui, Length::uo),
@@ -2954,12 +2834,6 @@ length(S) = L :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Length = Str.length();
-").
-:- pragma foreign_proc("Erlang",
-    length(Str::ui, Length::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Length = size(Str)
 ").
 
 length(Str, Len) :-
@@ -3641,25 +3515,6 @@ sub_string_search_start(WholeString, Pattern, BeginAt, Index) :-
     Index = WholeString.indexOf(Pattern, BeginAt);
     SUCCESS_INDICATOR = (Index >= 0);
 ").
-:- pragma foreign_proc("Erlang",
-    unsafe_sub_string_search_start(String::in, SubString::in, BeginAt::in,
-        Index::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    <<_:BeginAt/binary, Haystack/binary>> = String,
-    if
-        size(SubString) =:= 0 ->
-            Index = BeginAt;
-        true ->
-            case binary:match(Haystack, SubString) of
-                {FoundStart, FoundLength} ->
-                    Index = BeginAt + FoundStart;
-                nomatch ->
-                    Index = -1
-            end
-    end,
-    SUCCESS_INDICATOR = (Index =/= -1)
-").
 
 unsafe_sub_string_search_start(String, SubString, BeginAt, Index) :-
     Len = length(String),
@@ -3758,12 +3613,6 @@ append_ioi(S1, S2, S3) :-
 "
     S3 = S1.concat(S2);
 ").
-:- pragma foreign_proc("Erlang",
-    append_iio(S1::in, S2::in, S3::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    S3 = list_to_binary([S1, S2])
-").
 
 :- pred append_oii(string::uo, string::in, string::in) is semidet.
 
@@ -3858,13 +3707,6 @@ S1 ++ S2 = append(S1, S2).
     }
 
     Str = sb.toString();
-").
-:- pragma foreign_proc("Erlang",
-    append_list(Strs::in) = (Str::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    Str = list_to_binary(Strs)
 ").
 
 append_list(Strs) = Str :-
@@ -4347,13 +4189,6 @@ unsafe_between(Str, Start, End) = SubString :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SubString = Str.substring(Start, End);
-").
-:- pragma foreign_proc("Erlang",
-    unsafe_between(Str::in, Start::in, End::in, SubString::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Count = End - Start,
-    << _:Start/binary, SubString:Count/binary, _/binary >> = Str
 ").
 
 %---------------------%
@@ -5542,23 +5377,6 @@ accumulate_negative_int(Base, Char, N0, N) :-
             }
         }
     }
-").
-:- pragma foreign_proc("Erlang",
-    to_float(FloatString::in, FloatVal::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    S = binary_to_list(FloatString),
-    % string:to_float fails on integers, so tack on a trailing '.0' string.
-    case string:to_float(S ++ "".0"") of
-        {FloatVal, []} ->
-            SUCCESS_INDICATOR = true;
-        {FloatVal, "".0""} ->
-            SUCCESS_INDICATOR = true;
-        _ ->
-            SUCCESS_INDICATOR = false,
-            FloatVal = -1.0
-    end
 ").
 
 det_to_float(FloatString) = Float :-

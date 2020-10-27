@@ -1599,8 +1599,6 @@
     % in `AccessTypes' on `FileName'.
     % XXX When using the .NET CLI, this predicate will sometimes report
     % that a directory is writable when in fact it is not.
-    % XXX On the Erlang backend, or on Windows with some compilers, `execute'
-    % access is not checked.
     %
 :- pred check_file_accessibility(string::in, list(access_type)::in,
     io.res::out, io::di, io::uo) is det.
@@ -1642,7 +1640,7 @@
     %
     % The file is placed in the directory returned by get_temp_directory/3.
     %
-    % On the Erlang and Java backends, this does not attempt to create the file
+    % On the Java backend, this does not attempt to create the file
     % with restrictive permissions (600 on Unix-like systems) and therefore
     % should not be used when security is required.
     %
@@ -1668,9 +1666,7 @@
     %   - Prefix is ignored.
     %   - Suffix is ignored.
     %
-    % On the Erlang backend Suffix is ignored.
-    %
-    % On the Erlang and Java backends, this does not attempt to create the file
+    % On the Java backend, this does not attempt to create the file
     % with restrictive permissions (600 on Unix-like systems) and therefore
     % should not be used when security is required.
     %
@@ -1681,8 +1677,6 @@
     % is different from the name of any existing directory.
     %
     % On the Java backend this is insecure as the file permissions are not set.
-    %
-    % This is unimplemented on the Erlang backend.
     %
 :- pred make_temp_directory(io.res(string)::out, io::di, io::uo) is det.
 
@@ -1703,14 +1697,11 @@
     %
     % On the Java backend this is insecure as the file permissions are not set.
     %
-    % This is unimplemented on the Erlang backend.
-    %
 :- pred make_temp_directory(string::in, string::in, string::in,
     io.res(string)::out, io::di, io::uo) is det.
 
-    % Test if the make_temp_directory predicates are available. This is false
-    % for the Erlang backends and either C backend without support for
-    % mkdtemp(3).
+    % Test if the make_temp_directory predicates are available.
+    % This is false for C backends without support for mkdtemp(3).
     %
 :- pred have_make_temp_directory is semidet.
 
@@ -2005,13 +1996,11 @@
     % (In a few cases, we pass a Win32 error as a system_error.)
     % For Java, this is null for success or an exception object.
     % For C#, this is null for success or an exception object.
-    % For Erlang, this is `ok' for success or `{error, Reason}'.
     %
 :- type system_error.
 :- pragma foreign_type(c, system_error, "MR_Integer").
 :- pragma foreign_type("C#", system_error, "System.Exception").
 :- pragma foreign_type(java, system_error, "java.lang.Exception").
-:- pragma foreign_type(erlang, system_error, "").
 
     % is_error(Error, MessagePrefix, MaybeIOError, !IO):
     % Returns `yes(IOError)' if `Error' indicates an error (not success).
@@ -2206,8 +2195,6 @@
     [can_pass_as_mercury_type]).
 :- pragma foreign_type("Java", io.state, "java.lang.Object",
     [can_pass_as_mercury_type]).
-:- pragma foreign_type("Erlang", io.state, "",
-    [can_pass_as_mercury_type]).
 
 :- type input_stream
     --->    input_stream(stream).
@@ -2225,7 +2212,6 @@
     [can_pass_as_mercury_type]).
 :- pragma foreign_type("C#", stream, "io.MR_MercuryFileStruct").
 :- pragma foreign_type("Java", stream, "io.MR_MercuryFileStruct").
-:- pragma foreign_type("Erlang", stream, "").
 
     % A unique identifier for an I/O stream.
     %
@@ -4015,409 +4001,6 @@ mercury_close(MR_MercuryFileStruct mf)
 
 ").
 
-%---------------------%
-
-:- pragma foreign_decl("Erlang", local, "
--include_lib(""kernel/include/file.hrl"").
-").
-
-:- pragma foreign_decl("Erlang", local, "
-    % These need to be exported because code in foreign_procs may be inlined
-    % into other modules. Hence, calls to these functions must be module
-    % qualified as well.
-    %
--export([
-    mercury_open_stream/2,
-    mercury_close_stream/1,
-    mercury_getc/1,
-    mercury_read_string_to_eof/1,
-    mercury_putback/2,
-    mercury_write_string/2,
-    mercury_write_char/2,
-    mercury_write_int/2,
-    mercury_write_binary/2,
-    mercury_sync/1,
-    mercury_get_line_number/1,
-    mercury_set_line_number/2,
-    mercury_get_pos/1,
-    mercury_set_pos/2,
-    mercury_get_file_size/1,
-
-    % We may want to inline the following by hand to avoid inter-module calls.
-    mercury_set_current_text_input/1,
-    mercury_set_current_text_output/1,
-    mercury_set_current_binary_input/1,
-    mercury_set_current_binary_output/1
-]).
-").
-
-:- pragma foreign_decl("Erlang", "
-    % Avoid an intermodule function call every time we want to get the current
-    % stream.
-    %
--define(ML_get_current_text_input, get('ML_io_current_text_input')).
--define(ML_get_current_text_output, get('ML_io_current_text_output')).
--define(ML_get_current_binary_input, get('ML_io_current_binary_input')).
--define(ML_get_current_binary_output, get('ML_io_current_binary_output')).
-").
-
-:- pragma foreign_code("Erlang", "
-    % For each open file we have a process running in the background.
-    % This is necessary so we can layer pushback support and line number
-    % tracking on top of what the Erlang runtime provides.
-    %
-    % Note that we send back acknowledgements for all messages. This is to
-    % ensure that two operations from the same process are done in order.
-    %
-mercury_start_file_server(ParentPid, FileName, Mode) ->
-    % XXX This is wrong for binary streams.
-    Encoding = {encoding, utf8},
-    case Mode of
-        [$r | _] ->
-            ModeList = [read, read_ahead, binary, Encoding];
-        [$w | _] ->
-            ModeList = [write, delayed_write, binary, Encoding];
-        [$a | _] ->
-            ModeList = [append, delayed_write, binary, Encoding]
-    end,
-    case file:open(FileName, ModeList) of
-        {ok, IoDevice} ->
-            StreamId = make_ref(),
-            Stream = {'ML_stream', StreamId, self()},
-            ParentPid ! {self(), open_ack, {ok, Stream}},
-            mercury_file_server(IoDevice, 1, [])
-    ;
-        {error, Reason} ->
-            ParentPid ! {self(), open_ack, {error, Reason}}
-    end.
-
-mercury_stdio_file_server(IoDevice) ->
-    % XXX This is wrong for binary streams.
-    io:setopts(IoDevice, [binary, {encoding, utf8}]),
-    mercury_file_server(IoDevice, 1, []).
-
-mercury_file_server(IoDevice, LineNr0, PutBack0) ->
-    receive
-        {From, close} ->
-            Result = file:close(IoDevice),
-            From ! {self(), close_ack, Result}
-    ;
-        {From, read_char} ->
-            case PutBack0 of
-                [] ->
-                    Prompt = '',
-                    GetChars = io:get_chars(IoDevice, Prompt, 1),
-                    case GetChars of
-                        <<Char/utf8>> ->
-                            Ret = Char,
-                            LineNr = LineNr0 + one_if_nl(Char);
-                        EofOrError ->
-                            Ret = EofOrError,
-                            LineNr = LineNr0
-                    end,
-                    PutBack = PutBack0;
-                [Char | PutBack] ->
-                    Ret = Char,
-                    LineNr = LineNr0 + one_if_nl(Char)
-            end,
-            From ! {self(), read_char_ack, Ret},
-            mercury_file_server(IoDevice, LineNr, PutBack)
-    ;
-        {From, read_string_to_eof} ->
-            % Grab everything from the putback buffer.
-            Pre = list_to_binary(lists:reverse(PutBack0)),
-            PutBack = [],
-
-            % Read everything to EOF.
-            case mercury_read_file_to_eof_2(IoDevice, []) of
-                {ok, Chunks} ->
-                    Binary = list_to_binary([Pre | Chunks]),
-                    Ret = {ok, Binary},
-                    LineNr = LineNr0 + count_nls(Binary, 0);
-                {error, Chunks, Reason} ->
-                    Binary = list_to_binary([Pre | Chunks]),
-                    Ret = {error, list_to_binary(Chunks), Reason},
-                    LineNr = LineNr0 + count_nls(Binary, 0)
-            end,
-
-            From ! {self(), read_string_to_eof_ack, Ret},
-            mercury_file_server(IoDevice, LineNr, PutBack)
-    ;
-        {From, putback, Char} ->
-            From ! {self(), putback_ack},
-            PutBack = [Char | PutBack0],
-            LineNr = LineNr0 - one_if_nl(Char),
-            mercury_file_server(IoDevice, LineNr, PutBack)
-    ;
-        {From, write_char, Char} ->
-            From ! {self(), write_char_ack},
-            % XXX return error code
-            io:put_chars(IoDevice, [Char]),
-            LineNr = LineNr0 + one_if_nl(Char),
-            mercury_file_server(IoDevice, LineNr, PutBack0)
-    ;
-        {From, write_string, Chars} ->
-            From ! {self(), write_string_ack},
-            % XXX return error code
-            io:put_chars(IoDevice, Chars),
-            LineNr = LineNr0 + count_nls(Chars, 0),
-            mercury_file_server(IoDevice, LineNr, PutBack0)
-    ;
-        {From, write_int, Val} ->
-            From ! {self(), write_int_ack},
-            % XXX return error code
-            io:put_chars(IoDevice, integer_to_list(Val)),
-            mercury_file_server(IoDevice, LineNr0, PutBack0)
-    ;
-        {From, write_binary, Binary} ->
-            From ! {self(), write_binary_ack},
-            % XXX return error code
-            io:put_chars(IoDevice, Binary),
-            mercury_file_server(IoDevice, LineNr0, PutBack0)
-    ;
-        {From, sync} ->
-            % XXX file:sync seems to hang if run on a pid, e.g. standard I/O
-            if
-                is_pid(IoDevice) ->
-                    Result = ok;
-                true ->
-                    Result = file:sync(IoDevice)
-            end,
-            From ! {self(), sync_ack, Result},
-            mercury_file_server(IoDevice, LineNr0, PutBack0)
-    ;
-        {From, get_line_number} ->
-            From ! {self(), get_line_number_ack, LineNr0},
-            mercury_file_server(IoDevice, LineNr0, PutBack0)
-    ;
-        {From, set_line_number, N} ->
-            From ! {self(), set_line_number_ack},
-            mercury_file_server(IoDevice, N, PutBack0)
-    ;
-        {From, get_pos} ->
-            case file:position(IoDevice, cur) of
-                {ok, N} ->
-                    Pos = {ok, N - length(PutBack0)};
-                Other ->
-                    Pos = Other
-            end,
-            From ! {self(), get_pos_ack, Pos},
-            mercury_file_server(IoDevice, LineNr0, PutBack0)
-    ;
-        {From, set_pos, Loc} ->
-            case Loc of
-                {cur, N} ->
-                    AdjLoc = {cur, N - length(PutBack0)};
-                _ ->
-                    AdjLoc = Loc
-            end,
-            SeekResult = file:position(IoDevice, AdjLoc),
-            From ! {self(), set_pos_ack, SeekResult},
-            PutBack = [],
-            mercury_file_server(IoDevice, LineNr0, PutBack)
-    ;
-        {From, get_file_size} ->
-            case file:pid2name(IoDevice) of
-                {ok, FileName} ->
-                    case file:read_file_info(FileName) of
-                        {ok, FileInfo} ->
-                            #file_info{size = Size} = FileInfo;
-                        _ ->
-                            Size = -1
-                    end;
-                _ ->
-                    Size = -1
-            end,
-            From ! {self(), get_file_size_ack, Size},
-            mercury_file_server(IoDevice, LineNr0, PutBack0)
-    ;
-        Other ->
-            io:format(""** io.m: unrecognised message ~p~n"", [Other]),
-            mercury_file_server(IoDevice, LineNr0, PutBack0)
-    end.
-
-mercury_read_file_to_eof_2(IoDevice, Acc) ->
-    ChunkSize = 65536,
-    case io:get_chars(IoDevice, '', ChunkSize) of
-        eof ->
-            {ok, lists:reverse(Acc)};
-        {error, Reason} ->
-            {error, lists:reverse(Acc), Reason};
-        Chunk ->
-            mercury_read_file_to_eof_2(IoDevice, [Chunk | Acc])
-    end.
-
-one_if_nl($\\n) -> 1;
-one_if_nl(_)    -> 0.
-
-count_nls(Bin, N) ->
-    count_nls_2(Bin, size(Bin) - 1, N).
-
-count_nls_2(_,  -1, N) -> N;
-count_nls_2(Bin, I, N) ->
-    case Bin of
-        <<_:I/binary, $\\n, _/binary>> ->
-            count_nls_2(Bin, I - 1, N + 1);
-        _ ->
-            count_nls_2(Bin, I - 1, N)
-    end.
-
-% Client side.
-
-    % Returns {ok, Stream} | {error, Reason}
-    %
-mercury_open_stream(FileName, Mode) ->
-    ParentPid = self(),
-    Pid = spawn(fun() ->
-        % Raw streams can only be used by the process which opened it.
-        mercury_start_file_server(ParentPid, FileName, Mode)
-    end),
-    receive
-        {Pid, open_ack, Result} ->
-            Result
-    end.
-
-    % Returns ok | {error, Reason}
-    %
-mercury_close_stream(Stream) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), close},
-    receive
-        {Pid, close_ack, Result} ->
-            Result
-    end.
-
-    % Returns <integer> | eof | {error, Reason}
-    %
-mercury_getc(Stream) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), read_char},
-    receive
-        {Pid, read_char_ack, Result} ->
-            Result
-    end.
-
-    % Returns {ok, Binary} | {error, Partial, Reason}
-    %
-mercury_read_string_to_eof(Stream) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), read_string_to_eof},
-    receive
-        {Pid, read_string_to_eof_ack, Result} ->
-            Result
-    end.
-
-mercury_putback(Stream, Character) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), putback, Character},
-    receive
-        {Pid, putback_ack} ->
-            % Putbacks always succeed so there is no data.
-            void
-    end.
-
-mercury_write_string(Stream, Characters) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), write_string, Characters},
-    receive
-        {Pid, write_string_ack} ->
-            void
-    end.
-
-mercury_write_char(Stream, Character) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), write_char, Character},
-    receive
-        {Pid, write_char_ack} ->
-            void
-    end.
-
-mercury_write_int(Stream, Value) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), write_int, Value},
-    receive
-        {Pid, write_int_ack} ->
-            void
-    end.
-
-mercury_write_binary(Stream, Binary) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), write_binary, Binary},
-    receive
-        {Pid, write_binary_ack} ->
-            void
-    end.
-
-    % Returns ok | {error, Reason}
-    %
-mercury_sync(Stream) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), sync},
-    receive
-        {Pid, sync_ack, Result} ->
-            Result
-    end.
-
-mercury_get_line_number(Stream) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), get_line_number},
-    receive
-        {Pid, get_line_number_ack, LineNum} ->
-            LineNum
-    end.
-
-mercury_set_line_number(Stream, LineNum) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), set_line_number, LineNum},
-    receive
-        {Pid, set_line_number_ack} ->
-            void
-    end.
-
-    % Returns {ok, NewPosition} | {error, Reason}
-    %
-mercury_get_pos(Stream) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), get_pos},
-    receive
-        {Pid, get_pos_ack, Result} ->
-            Result
-    end.
-
-    % Returns {ok, NewPosition} | {error, Reason}
-    %
-mercury_set_pos(Stream, Loc) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), set_pos, Loc},
-    receive
-        {Pid, set_pos_ack, Result} ->
-            Result
-    end.
-
-    % Returns Size or -1
-    %
-mercury_get_file_size(Stream) ->
-    {'ML_stream', _Id, Pid} = Stream,
-    Pid ! {self(), get_file_size},
-    receive
-        {Pid, get_file_size_ack, Result} ->
-            Result
-    end.
-
-mercury_set_current_text_input(Stream) ->
-    put('ML_io_current_text_input', Stream).
-
-mercury_set_current_text_output(Stream) ->
-    put('ML_io_current_text_output', Stream).
-
-mercury_set_current_binary_input(Stream) ->
-    put('ML_io_current_binary_input', Stream).
-
-mercury_set_current_binary_output(Stream) ->
-    put('ML_io_current_binary_output', Stream).
-
-").
-
 %---------------------------------------------------------------------------%
 %
 % Opening and closing streams, both text and binary.
@@ -4583,25 +4166,6 @@ open_binary_append(FileName, Result, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    do_open_text(FileName::in, Mode::in, StreamId::out, Stream::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    FileNameStr = binary_to_list(FileName),
-    ModeStr = binary_to_list(Mode),
-    % XXX This should probably pass encoding 'utf8'.
-    case mercury__io:mercury_open_stream(FileNameStr, ModeStr) of
-        {ok, Stream} ->
-            {'ML_stream', StreamId, _Pid} = Stream,
-            Error = ok;
-        {error, Reason} ->
-            StreamId = -1,
-            Stream = null,
-            Error = {error, Reason}
-    end
-").
-
 %---------------------%
 
 :- pred do_open_binary(string::in, string::in, int::out, stream::out,
@@ -4673,25 +4237,6 @@ open_binary_append(FileName, Result, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    do_open_binary(FileName::in, Mode::in, StreamId::out, Stream::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    FileNameStr = binary_to_list(FileName),
-    ModeStr = binary_to_list(Mode),
-    % XXX This should probably pass encoding 'latin1'.
-    case mercury__io:mercury_open_stream(FileNameStr, ModeStr) of
-        {ok, Stream} ->
-            {'ML_stream', StreamId, _Pid} = Stream,
-            Error = ok;
-        {error, Reason} ->
-            StreamId = -1,
-            Stream = null,
-            Error = {error, Reason}
-    end
-").
-
 %---------------------%
 
 close_input(input_stream(Stream), !IO) :-
@@ -4757,13 +4302,6 @@ close_binary_output(binary_output_stream(Stream), !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    close_stream(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    Error = mercury__io:mercury_close_stream(Stream)
-").
-
 %---------------------------------------------------------------------------%
 %
 % Switching streams.
@@ -4799,14 +4337,6 @@ set_input_stream(input_stream(NewStream), input_stream(OutStream), !IO) :-
 "
     OutStream = io.mercury_current_text_input.get();
     io.mercury_current_text_input.set((io.MR_TextInputFile) NewStream);
-").
-
-:- pragma foreign_proc("Erlang",
-    set_input_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    OutStream = ?ML_get_current_text_input,
-    mercury__io:mercury_set_current_text_input(NewStream)
 ").
 
 %---------------------%
@@ -4848,15 +4378,6 @@ set_binary_input_stream(binary_input_stream(NewStream),
     io.mercury_current_binary_input.set((io.MR_BinaryInputFile) NewStream);
 ").
 
-:- pragma foreign_proc("Erlang",
-    set_binary_input_stream_2(NewStream::in, OutStream::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    OutStream = ?ML_get_current_binary_input,
-    mercury__io:mercury_set_current_binary_input(NewStream)
-").
-
 %---------------------%
 
 set_output_stream(output_stream(NewStream), output_stream(OutStream), !IO) :-
@@ -4889,14 +4410,6 @@ set_output_stream(output_stream(NewStream), output_stream(OutStream), !IO) :-
 "
     OutStream = io.mercury_current_text_output.get();
     io.mercury_current_text_output.set((io.MR_TextOutputFile) NewStream);
-").
-
-:- pragma foreign_proc("Erlang",
-    set_output_stream_2(NewStream::in, OutStream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    OutStream = ?ML_get_current_text_output,
-    mercury__io:mercury_set_current_text_output(NewStream)
 ").
 
 %---------------------%
@@ -4936,15 +4449,6 @@ set_binary_output_stream(binary_output_stream(NewStream),
 "
     OutStream = io.mercury_current_binary_output.get();
     io.mercury_current_binary_output.set((io.MR_BinaryOutputFile) NewStream);
-").
-
-:- pragma foreign_proc("Erlang",
-    set_binary_output_stream_2(NewStream::in, OutStream::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    OutStream = ?ML_get_current_binary_output,
-    mercury__io:mercury_set_current_binary_output(NewStream)
 ").
 
 %---------------------------------------------------------------------------%
@@ -5095,25 +4599,6 @@ whence_to_int(end, 2).
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    seek_binary_2(Stream::in, Flag::in, Off::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    % Constants from whence_to_int.
-    case Flag of
-        0 -> Loc = {bof, Off};
-        1 -> Loc = {cur, Off};
-        2 -> Loc = {eof, Off}
-    end,
-    case mercury__io:mercury_set_pos(Stream, Loc) of
-        {ok, _NewPosition} ->
-            Error = ok;
-        {error, Reason} ->
-            Error = {error, Reason}
-    end
-").
-
 %---------------------%
 
 binary_input_stream_offset(binary_input_stream(Stream), Offset, !IO) :-
@@ -5184,20 +4669,6 @@ binary_output_stream_offset64(binary_output_stream(Stream), Offset, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    binary_stream_offset_2(Stream::in, Offset::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    case mercury__io:mercury_get_pos(Stream) of
-        {ok, Offset} ->
-            Error = ok;
-        {error, Reason} ->
-            Offset = -1,
-            Error = {error, Reason}
-    end
-").
-
 %---------------------------------------------------------------------------%
 %
 % Standard stream id predicates.
@@ -5241,13 +4712,6 @@ stdin_stream = input_stream(stdin_stream_2).
     Stream = io.mercury_stdin;
 ").
 
-:- pragma foreign_proc("Erlang",
-    stdin_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = get('ML_stdin_stream')
-").
-
 %---------------------%
 
 stdin_stream(input_stream(Stream), !IO) :-
@@ -5276,13 +4740,6 @@ stdin_stream(input_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = io.mercury_stdin;
-").
-
-:- pragma foreign_proc("Erlang",
-    stdin_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = get('ML_stdin_stream')
 ").
 
 %---------------------%
@@ -5317,13 +4774,6 @@ stdin_binary_stream(binary_input_stream(Stream), !IO) :-
     Stream = io.mercury_stdin_binary;
 ").
 
-:- pragma foreign_proc("Erlang",
-    stdin_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = get('ML_stdin_binary_stream')
-").
-
 %---------------------%
 
 stdout_stream = output_stream(io.stdout_stream_2).
@@ -5355,13 +4805,6 @@ stdout_stream = output_stream(io.stdout_stream_2).
     Stream = io.mercury_stdout;
 ").
 
-:- pragma foreign_proc("Erlang",
-    stdout_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = get('ML_stdout_stream')
-").
-
 %---------------------%
 
 stdout_stream(output_stream(Stream), !IO) :-
@@ -5390,13 +4833,6 @@ stdout_stream(output_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = io.mercury_stdout;
-").
-
-:- pragma foreign_proc("Erlang",
-    stdout_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = get('ML_stdout_stream')
 ").
 
 %---------------------%
@@ -5431,13 +4867,6 @@ stdout_binary_stream(binary_output_stream(Stream), !IO) :-
     Stream = io.mercury_stdout_binary;
 ").
 
-:- pragma foreign_proc("Erlang",
-    stdout_binary_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = get('ML_stdout_binary_stream')
-").
-
 %---------------------%
 
 stderr_stream = output_stream(stderr_stream_2).
@@ -5469,13 +4898,6 @@ stderr_stream = output_stream(stderr_stream_2).
     Stream = io.mercury_stderr;
 ").
 
-:- pragma foreign_proc("Erlang",
-    stderr_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = get('ML_stderr_stream')
-").
-
 %---------------------%
 
 stderr_stream(output_stream(Stream), !IO) :-
@@ -5504,13 +4926,6 @@ stderr_stream(output_stream(Stream), !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Stream = io.mercury_stderr;
-").
-
-:- pragma foreign_proc("Erlang",
-    stderr_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Stream = get('ML_stderr_stream')
 ").
 
 %---------------------------------------------------------------------------%
@@ -5547,13 +4962,6 @@ input_stream(input_stream(Stream), !IO) :-
     Stream = io.mercury_current_text_input.get();
 ").
 
-:- pragma foreign_proc("Erlang",
-    input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    Stream = ?ML_get_current_text_input
-").
-
 %---------------------%
 
 binary_input_stream(binary_input_stream(Stream), !IO) :-
@@ -5583,13 +4991,6 @@ binary_input_stream(binary_input_stream(Stream), !IO) :-
         may_not_duplicate],
 "
     Stream = io.mercury_current_binary_input.get();
-").
-
-:- pragma foreign_proc("Erlang",
-    binary_input_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    Stream = ?ML_get_current_binary_input
 ").
 
 %---------------------%
@@ -5623,13 +5024,6 @@ output_stream(output_stream(Stream), !IO) :-
     Stream = io.mercury_current_text_output.get();
 ").
 
-:- pragma foreign_proc("Erlang",
-    output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    Stream = ?ML_get_current_text_output
-").
-
 %---------------------%
 
 binary_output_stream(binary_output_stream(Stream), !IO) :-
@@ -5659,13 +5053,6 @@ binary_output_stream(binary_output_stream(Stream), !IO) :-
         may_not_duplicate],
 "
     Stream = io.mercury_current_binary_output.get();
-").
-
-:- pragma foreign_proc("Erlang",
-    binary_output_stream_2(Stream::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    Stream = ?ML_get_current_binary_output
 ").
 
 %---------------------------------------------------------------------------%
@@ -5773,14 +5160,6 @@ may_delete_stream_info(1, !IO).
     LineNum = io.mercury_current_text_input.get().line_number;
 ").
 
-:- pragma foreign_proc("Erlang",
-    get_line_number(LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    Stream = ?ML_get_current_text_input,
-    LineNum = mercury__io:mercury_get_line_number(Stream)
-").
-
 %---------------------%
 
 get_line_number(input_stream(Stream), LineNum, !IO) :-
@@ -5809,13 +5188,6 @@ get_line_number(input_stream(Stream), LineNum, !IO) :-
     LineNum = ((io.MR_TextInputFile) Stream).line_number;
 ").
 
-:- pragma foreign_proc("Erlang",
-    get_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    LineNum = mercury__io:mercury_get_line_number(Stream)
-").
-
 %---------------------%
 
 :- pragma foreign_proc("C",
@@ -5838,14 +5210,6 @@ get_line_number(input_stream(Stream), LineNum, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     io.mercury_current_text_input.get().line_number = LineNum;
-").
-
-:- pragma foreign_proc("Erlang",
-    set_line_number(LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    Stream = ?ML_get_current_text_input,
-    mercury__io:mercury_set_line_number(Stream, LineNum)
 ").
 
 %---------------------%
@@ -5877,13 +5241,6 @@ set_line_number(input_stream(Stream), LineNum, !IO) :-
     ((io.MR_TextInputFile) Stream).line_number = LineNum;
 ").
 
-:- pragma foreign_proc("Erlang",
-    set_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    mercury__io:mercury_set_line_number(Stream, LineNum)
-").
-
 %---------------------%
 
 :- pragma foreign_proc("C",
@@ -5906,14 +5263,6 @@ set_line_number(input_stream(Stream), LineNum, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     LineNum = io.mercury_current_text_output.get().line_number;
-").
-
-:- pragma foreign_proc("Erlang",
-    get_output_line_number(LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    Stream = ?ML_get_current_text_output,
-    LineNum = mercury__io:mercury_get_line_number(Stream)
 ").
 
 %---------------------%
@@ -5945,13 +5294,6 @@ get_output_line_number(output_stream(Stream), LineNum, !IO) :-
     LineNum = ((io.MR_TextOutputFile) Stream).line_number;
 ").
 
-:- pragma foreign_proc("Erlang",
-    get_output_line_number_2(Stream::in, LineNum::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    LineNum = mercury__io:mercury_get_line_number(Stream)
-").
-
 %---------------------%
 
 :- pragma foreign_proc("C",
@@ -5973,14 +5315,6 @@ get_output_line_number(output_stream(Stream), LineNum, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     io.mercury_current_text_output.get().line_number = LineNum;
-").
-
-:- pragma foreign_proc("Erlang",
-    set_output_line_number(LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    Stream = ?ML_get_current_text_output,
-    mercury__io:mercury_set_line_number(Stream, LineNum)
 ").
 
 %---------------------%
@@ -6010,13 +5344,6 @@ set_output_line_number(output_stream(Stream), LineNum, !IO) :-
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     ((io.MR_TextOutputFile) Stream).line_number = LineNum;
-").
-
-:- pragma foreign_proc("Erlang",
-    set_output_line_number_2(Stream::in, LineNum::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    mercury__io:mercury_set_line_number(Stream, LineNum)
 ").
 
 %---------------------------------------------------------------------------%
@@ -6199,28 +5526,6 @@ read_char_code(input_stream(Stream), ResultCode, Char, Error, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    read_char_code_2(Stream::in, ResultCode::out, Char::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
-"
-    case mercury__io:mercury_getc(Stream) of
-        C when is_integer(C) ->
-            ResultCode = {ok},
-            Char = C,
-            Error = ok;
-        eof ->
-            ResultCode = {eof},
-            Char = 0,
-            Error = ok;
-        {error, Reason} ->
-            ResultCode = {error},
-            Char = 0,
-            Error = {error, Reason}
-    end
-").
-
 %---------------------%
 
 putback_char(Char, !IO) :-
@@ -6290,14 +5595,6 @@ putback_char(input_stream(Stream), Character, !IO) :-
 "
     ((io.MR_TextInputFile) File).ungetc(Character);
     Ok = bool.YES;
-").
-
-:- pragma foreign_proc("Erlang",
-    putback_char_2(File::in, Character::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    mercury__io:mercury_putback(File, Character),
-    Ok = {yes}
 ").
 
 %---------------------%
@@ -6453,28 +5750,6 @@ read_byte_val(input_stream(Stream), Result, ByteVal, Error, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    read_byte_val_2(Stream::in, ResultCode::out, ByteVal::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
-"
-    case mercury__io:mercury_getc(Stream) of
-        B when is_integer(B) ->
-            ResultCode = {ok},
-            ByteVal = B,
-            Error = ok;
-        eof ->
-            ResultCode = {eof},
-            ByteVal = 0,
-            Error = ok;
-        {error, Reason} ->
-            ResultCode = {error},
-            ByteVal = 0,
-            Error = {error, Reason}
-    end
-").
-
 %---------------------%
 
 putback_byte(Char, !IO) :-
@@ -6524,14 +5799,6 @@ putback_byte(binary_input_stream(Stream), Character, !IO) :-
 "
     ((io.MR_BinaryInputFile) File).ungetc((byte) Byte);
     Ok = bool.YES;
-").
-
-:- pragma foreign_proc("Erlang",
-    putback_byte_2(File::in, Byte::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    mercury__io:mercury_putback(File, Byte),
-    Ok = {yes}
 ").
 
 %---------------------%
@@ -6600,14 +5867,6 @@ putback_uint8(binary_input_stream(Stream), UInt8, !IO) :-
 "
     ((io.MR_BinaryInputFile) File).ungetc((byte) UInt8);
     Ok = bool.YES;
-").
-
-:- pragma foreign_proc("Erlang",
-    putback_uint8_2(File::in, UInt8::in, Ok::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    mercury__io:mercury_putback(File, UInt8),
-    Ok = {yes}
 ").
 
 %---------------------%
@@ -6837,9 +6096,6 @@ read_binary_uint16_be(binary_input_stream(Stream), Result, !IO) :-
         Error = e;
     }
 ").
-
-do_read_binary_uint16(_, _, _, _, _, _, _, _) :-
-    sorry($module, "do_read_binary_uint16 NYI for Erlang").
 
 %---------------------%
 
@@ -7089,9 +6345,6 @@ read_binary_uint32_be(binary_input_stream(Stream), Result, !IO) :-
         Error = e;
     }
 ").
-
-do_read_binary_uint32(_, _, _, _, _, _, _, _) :-
-    sorry($module, "do_read_binary_uint32 NYI for Erlang").
 
 %---------------------%
 
@@ -7358,9 +6611,6 @@ read_binary_uint64_be(binary_input_stream(Stream), Result, !IO) :-
     }
 ").
 
-do_read_binary_uint64(_, _, _, _, _, _, _, _) :-
-    sorry($module, "do_read_binary_uint64_le NYI for Erlang").
-
 %---------------------%
 
 :- type byte_order
@@ -7401,9 +6651,6 @@ do_read_binary_uint64(_, _, _, _, _, _, _, _) :-
     SUCCESS_INDICATOR =
         (java.nio.ByteOrder.nativeOrder() == java.nio.ByteOrder.BIG_ENDIAN);
 ").
-
-native_byte_order_is_big_endian :-
-    sorry($module, "native_byte_order_is_big_endian/0 NYI for Erlang").
 
 %---------------------%
 %
@@ -7599,15 +6846,6 @@ write_char(output_stream(Stream), Character, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    do_write_char(Stream::in, Character::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    mercury__io:mercury_write_char(Stream, Character),
-    % mercury_write_char does not return errors yet.
-    Error = ok
-").
-
 %---------------------%
 
 write_int(Val, !IO) :-
@@ -7655,15 +6893,6 @@ write_int(output_stream(Stream), Val, !IO) :-
     } catch (java.io.IOException e) {
         Error = e;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    do_write_int(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    mercury__io:mercury_write_int(Stream, Val),
-    % mercury_write_int does not return errors yet.
-    Error = ok
 ").
 
 %---------------------%
@@ -7716,15 +6945,6 @@ write_uint(output_stream(Stream), Val, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    do_write_uint(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    mercury__io:mercury_write_int(Stream, Val),
-    % mercury_write_int does not return errors yet.
-    Error = ok
-").
-
 %---------------------%
 
 write_int8(Val, !IO) :-
@@ -7772,15 +6992,6 @@ write_int8(output_stream(Stream), Val, !IO) :-
     } catch (java.io.IOException e) {
         Error = e;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    do_write_int8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    mercury__io:mercury_write_int(Stream, Val),
-    % mercury_write_int does not return errors yet.
-    Error = ok
 ").
 
 %---------------------%
@@ -7833,15 +7044,6 @@ write_uint8(output_stream(Stream), Val, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    do_write_uint8(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    mercury__io:mercury_write_int(Stream, Val),
-    % mercury_write_int does not return errors yet.
-    Error = ok
-").
-
 %---------------------%
 
 write_int16(Val, !IO) :-
@@ -7889,15 +7091,6 @@ write_int16(output_stream(Stream), Val, !IO) :-
     } catch (java.io.IOException e) {
         Error = e;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    do_write_int16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    mercury__io:mercury_write_int(Stream, Val),
-    % mercury_write_int does not return errors yet.
-    Error = ok
 ").
 
 %---------------------%
@@ -7950,15 +7143,6 @@ write_uint16(output_stream(Stream), Val, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    do_write_uint16(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    mercury__io:mercury_write_int(Stream, Val),
-    % mercury_write_int does not return errors yet.
-    Error = ok
-").
-
 %---------------------%
 
 write_int32(Val, !IO) :-
@@ -8006,15 +7190,6 @@ write_int32(output_stream(Stream), Val, !IO) :-
     } catch (java.io.IOException e) {
         Error = e;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    do_write_int32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    mercury__io:mercury_write_int(Stream, Val),
-    % mercury_write_int does not return errors yet.
-    Error = ok
 ").
 
 %---------------------%
@@ -8067,15 +7242,6 @@ write_uint32(output_stream(Stream), Val, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    do_write_uint32(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    mercury__io:mercury_write_int(Stream, Val),
-    % mercury_write_int does not return errors yet.
-    Error = ok
-").
-
 %---------------------%
 
 write_int64(Val, !IO) :-
@@ -8123,15 +7289,6 @@ write_int64(output_stream(Stream), Val, !IO) :-
     } catch (java.io.IOException e) {
         Error = e;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    do_write_int64(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    mercury__io:mercury_write_int(Stream, Val),
-    % mercury_write_int does not return errors yet.
-    Error = ok
 ").
 
 %---------------------%
@@ -8182,15 +7339,6 @@ write_uint64(output_stream(Stream), Val, !IO) :-
     } catch (java.io.IOException e) {
         Error = e;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    do_write_uint64(Stream::in, Val::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    mercury__io:mercury_write_int(Stream, Val),
-    % mercury_write_int does not return errors yet.
-    Error = ok
 ").
 
 %---------------------%
@@ -8245,8 +7393,6 @@ write_float(output_stream(Stream), Val, !IO) :-
         Error = e;
     }
 ").
-
-% XXX MISSING Erlang do_write_float
 
 do_write_float(Stream, Float, Error, !IO) :-
     do_write_string(Stream, string.float_to_string(Float), Error, !IO).
@@ -8304,15 +7450,6 @@ write_string(output_stream(Stream), Message, !IO) :-
     } catch (java.io.IOException e) {
         Error = e;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    do_write_string(Stream::in, Message::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    mercury__io:mercury_write_string(Stream, Message),
-    % mercury_write_string does not return errors yet.
-    Error = ok
 ").
 
 %---------------------%
@@ -8394,15 +7531,6 @@ write_binary_uint8(binary_output_stream(Stream), UInt8, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    do_write_byte(Stream::in, Byte::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    mercury__io:mercury_write_char(Stream, Byte),
-    % mercury_write_char does not return errors yet.
-    Error = ok
-").
-
 %---------------------%
 
 write_binary_int16(Int16, !IO) :-
@@ -8464,8 +7592,6 @@ write_binary_uint16(binary_output_stream(Stream), UInt16, !IO) :-
         Error = e;
     }
 ").
-
-% MISSING ERLANG do_write_binary_uint16
 
 %---------------------%
 
@@ -8539,8 +7665,6 @@ write_binary_uint16_le(binary_output_stream(Stream), UInt16, !IO) :-
     }
 ").
 
-% XXX MISSING ERLANG do_write_binary_uint16_le
-
 %---------------------%
 
 write_binary_int16_be(Int16, !IO) :-
@@ -8612,7 +7736,6 @@ write_binary_uint16_be(binary_output_stream(Stream), UInt16, !IO) :-
         Error = e;
     }
 ").
-% XXX MISSING ERLANG do_write_binary_uint16_be
 
 %---------------------%
 
@@ -8677,8 +7800,6 @@ write_binary_uint32(binary_output_stream(Stream), UInt32, !IO) :-
         Error = e;
     }
 ").
-
-% XXX MISSING ERLANG do_write_binary_uint32
 
 %---------------------%
 
@@ -8752,8 +7873,6 @@ write_binary_uint32_le(binary_output_stream(Stream), UInt32, !IO) :-
     }
 ").
 
-% XXX MISSING ERLANG do_write_binary_uint32_le
-
 %---------------------%
 
 write_binary_int32_be(Int32, !IO) :-
@@ -8826,8 +7945,6 @@ write_binary_uint32_be(binary_output_stream(Stream), UInt32, !IO) :-
     }
 ").
 
-% XXX MISSING ERLANG do_write_binary_uint32_be
-
 %---------------------%
 
 write_binary_int64(Int64, !IO) :-
@@ -8891,8 +8008,6 @@ write_binary_uint64(binary_output_stream(Stream), UInt64, !IO) :-
         Error = e;
     }
 ").
-
-% XXX MISSING ERLANG do_write_binary_uint64
 
 %---------------------%
 
@@ -8966,8 +8081,6 @@ write_binary_uint64_le(binary_output_stream(Stream), UInt64, !IO) :-
     }
 ").
 
-% XXX MISSING ERLANG do_write_binary_uint64_le
-
 %---------------------%
 
 write_binary_int64_be(Int64, !IO) :-
@@ -9039,8 +8152,6 @@ write_binary_uint64_be(binary_output_stream(Stream), UInt64, !IO) :-
         Error = e;
     }
 ").
-
-% XXX MISSING ERLANG do_write_binary_uint64_be
 
 %---------------------------------------------------------------------------%
 %
@@ -9439,7 +8550,8 @@ read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
     }
 ").
 
-    % Default implementation for Erlang.
+    % Default implementation.
+    %
 do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, Error, !IO) :-
     ( if NumBytes > 0 then
         read_byte_val(input_stream(Stream), ResultCode, Byte, Error0, !IO),
@@ -9538,19 +8650,6 @@ write_bitmap(binary_output_stream(Stream), Bitmap, Start, NumBytes, !IO) :-
     } catch (java.io.IOException e) {
         Error = e;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    do_write_bitmap(Stream::in, Bitmap::in, Start::in, Length::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        no_sharing],
-"
-    {Binary, _NumBits} = Bitmap,
-    <<_:Start/binary, Mid:Length/binary, _/binary>> = Binary,
-    mercury__io:mercury_write_binary(Stream, Mid),
-    % mercury_write_binary does not return errors yet.
-    Error = ok
 ").
 
 %---------------------------------------------------------------------------%
@@ -9915,13 +9014,6 @@ flush_output(output_stream(Stream), !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    flush_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Error = mercury__io:mercury_sync(Stream)
-").
-
 %---------------------%
 
 flush_binary_output(!IO) :-
@@ -9969,13 +9061,6 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
     } catch (java.io.IOException e) {
         Error = e;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    flush_binary_output_2(Stream::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
-"
-    Error = mercury__io:mercury_sync(Stream)
 ").
 
 %---------------------------------------------------------------------------%
@@ -10068,21 +9153,6 @@ read_file_as_string_and_num_code_units(input_stream(Stream), Result, !IO) :-
     String = sb.toString();
     NumCUs = String.length();
     NullCharError = bool.NO;
-").
-
-:- pragma foreign_proc("Erlang",
-    read_file_as_string_2(Stream::in, String::out, NumCUs::out,
-        Error::out, NullCharError::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    case mercury__io:mercury_read_string_to_eof(Stream) of
-        {ok, String} ->
-            Error = ok;
-        {error, String, Reason} ->
-            Error = {error, Reason}
-    end,
-    NumCUs = size(String),
-    NullCharError = {no}
 ").
 
 read_file_as_string_2(Stream, String, NumCUs, Error, NullCharError, !IO) :-
@@ -10311,13 +9381,6 @@ binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
     } catch (java.io.IOException e) {
         Size = -1;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    stream_file_size(Stream::in, Size::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Size = mercury__io:mercury_get_file_size(Stream)
 ").
 
 %---------------------%
@@ -10979,20 +10042,6 @@ remove_file(FileName, Result, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    remove_file_2(FileName::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
-"
-    FileNameStr = binary_to_list(FileName),
-    case file:delete(FileNameStr) of
-        ok ->
-            Error = ok;
-        {error, Reason} ->
-            Error = {error, Reason}
-    end
-").
-
 %---------------------%
 
 remove_file_recursively(FileName, Res, !IO) :-
@@ -11130,21 +10179,6 @@ rename_file(OldFileName, NewFileName, Result, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    rename_file_2(OldFileName::in, NewFileName::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    OldFileNameStr = binary_to_list(OldFileName),
-    NewFileNameStr = binary_to_list(NewFileName),
-    case file:rename(OldFileNameStr, NewFileNameStr) of
-        ok ->
-            Error = ok;
-        {error, Reason} ->
-            Error = {error, Reason}
-    end
-").
-
 %---------------------%
 
 :- pragma foreign_proc("C",
@@ -11157,15 +10191,6 @@ rename_file(OldFileName, NewFileName, Result, !IO) :-
 #else
     SUCCESS_INDICATOR = MR_FALSE;
 #endif
-").
-
-:- pragma foreign_proc("Erlang",
-    have_symlinks,
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness],
-"
-    % XXX how do we check without actually trying to make one?
-    SUCCESS_INDICATOR = true
 ").
 
 have_symlinks :-
@@ -11222,22 +10247,6 @@ make_symlink(FileName, LinkFileName, Result, !IO) :-
 "
     Error = new java.lang.UnsupportedOperationException(
         ""io.make_symlink_2 not implemented"");
-").
-
-:- pragma foreign_proc("Erlang",
-    make_symlink_2(FileName::in, LinkFileName::in, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
-"
-    FileNameStr = binary_to_list(FileName),
-    LinkFileNameStr = binary_to_list(LinkFileName),
-    case file:make_symlink(FileNameStr, LinkFileNameStr) of
-        ok ->
-            Error = ok;
-        {error, Reason} ->
-            Error = {error, Reason}
-    end
 ").
 
 %---------------------%
@@ -11326,22 +10335,6 @@ read_symlink(FileName, Result, !IO) :-
     TargetFileName = """";
     Error = new java.lang.UnsupportedOperationException(
         ""io.read_symlink_2 not implemented"");
-").
-
-:- pragma foreign_proc("Erlang",
-    read_symlink_2(FileName::in, TargetFileName::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
-"
-    case file:read_link(binary_to_list(FileName)) of
-        {ok, TargetFileNameStr} ->
-            TargetFileName = list_to_binary(TargetFileNameStr),
-            Error = ok;
-        {error, Reason} ->
-            TargetFileName = <<>>,
-            Error = {error, Reason}
-    end
 ").
 
 %---------------------%
@@ -11460,46 +10453,6 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     catch (java.lang.Exception e) {
         Error = e;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    check_file_accessibility_2(FileName::in, CheckRead::in, CheckWrite::in,
-        _CheckExecute::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness, may_not_duplicate],
-"
-    FileNameStr = binary_to_list(FileName),
-    case file:read_file_info(FileNameStr) of
-        {ok, FileInfo} ->
-            Access = FileInfo#file_info.access,
-            case CheckRead of
-                {yes} ->
-                    Ok0 = lists:member(Access, [read, read_write]);
-                {no} ->
-                    Ok0 = true
-            end,
-            case Ok0 of
-                true ->
-                    case CheckWrite of
-                        {yes} ->
-                            Ok = lists:member(Access, [write, read_write]);
-                        {no} ->
-                            Ok = true
-                    end;
-                false ->
-                    Ok = Ok0
-            end,
-            % XXX test execute access somehow
-            case Ok of
-                true ->
-                    Error = ok;
-                false ->
-                    Error = {error, eacces}
-            end
-    ;
-        {error, Reason} ->
-            Error = {error, Reason}
-    end
 ").
 
     % XXX why not write this as check_file_accessibility_2?
@@ -11896,41 +10849,6 @@ file_type(FollowSymLinks, FileName, Result, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    file_type_2(FollowSymLinks::in, FileName::in, FileType::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    FileNameStr = binary_to_list(FileName),
-    case FollowSymLinks of
-        0 -> Read = fun file:read_link_info/1;
-        1 -> Read = fun file:read_file_info/1
-    end,
-    case Read(FileNameStr) of
-        {ok, FileInfo} ->
-            #file_info{type = Type} = FileInfo,
-            case Type of
-                device ->
-                    % XXX It may be a block device, but Erlang doesn't
-                    % distinguish between character and block devices.
-                    FileType = {character_device};
-                directory ->
-                    FileType = {directory};
-                regular ->
-                    FileType = {regular_file};
-                symlink ->
-                    FileType = {symbolic_link};
-                other ->
-                    FileType = {unknown}
-            end,
-            Error = ok;
-        {error, Reason} ->
-            FileType = {unknown},
-            Error = {error, Reason}
-    end
-").
-
 %---------------------%
 
 file_modification_time(File, Result, !IO) :-
@@ -12017,23 +10935,6 @@ file_modification_time(File, Result, !IO) :-
         Error = e;
         Time = null;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    file_modification_time_2(FileName::in, Time::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    FileNameStr = binary_to_list(FileName),
-    case filelib:last_modified(FileNameStr) of
-        {YMD, HMS} ->
-            % time_t in Erlang is in UTC.
-            Time = {time_t, erlang:localtime_to_universaltime({YMD, HMS})},
-            Error = ok;
-        0 ->
-            Error = {error, enoent},
-            Time = {time_t, erlang:localtime()}
-    end
 ").
 
 %---------------------------------------------------------------------------%
@@ -12179,48 +11080,6 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
         FileName = """";
         Error = e;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    do_make_temp(Dir::in, Prefix::in, Suffix::in, Sep::in, FileName::out,
-        Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io,
-        does_not_affect_liveness],
-"
-    DirStr = binary_to_list(Dir),
-    PrefixStr = binary_to_list(Prefix),
-    SuffixStr = binary_to_list(Suffix),
-    SepStr = binary_to_list(Sep),
-
-    % Constructs a temporary name by concatenating Dir, Sep, Prefix
-    % three hex digits, '.', and 3 more hex digits.
-
-    % XXX we should try to mix in the Erlang process id in case two Erlang
-    % processes from the same Unix process are trying to create temporary files
-    % at the same time (it's not as far-fetched as it sounds, e.g. mmc --make)
-
-    MaxTries = 24,
-
-    {A1, A2, A3} = now(),
-    case string:to_integer(os:getpid()) of
-        {Pid, []} ->
-            void;
-        _ ->
-            Pid = 0
-    end,
-    Seed = {A1 + Pid, A2, A3},
-
-    case
-        mercury__io:'ML_do_make_temp_2'(DirStr, PrefixStr, SuffixStr, SepStr,
-            MaxTries, Seed, eio)
-    of
-        {ok, FileName0} ->
-            FileName = list_to_binary(FileName0),
-            Error = ok;
-        {error, Reason} ->
-            FileName = <<>>,
-            Error = {error, Reason}
-    end
 ").
 
 %---------------------%
@@ -12385,13 +11244,6 @@ make_temp_directory(Dir, Prefix, Suffix, Result, !IO) :-
     SUCCESS_INDICATOR = true;
 ").
 
-:- pragma foreign_proc("Erlang",
-    have_make_temp_directory,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = false
-").
-
 %---------------------%
 
 :- pragma foreign_decl("C", "
@@ -12443,38 +11295,6 @@ import java.util.Random;
 
         return sb.toString();
     }
-").
-
-:- pragma foreign_decl("Erlang", local, "
-    -export(['ML_do_make_temp_2'/7]).
-").
-
-:- pragma foreign_code("Erlang", "
-    'ML_do_make_temp_2'(_Dir, _Prefix, _Suffix, _Sep, 0, _Seed, LastError) ->
-        {error, LastError};
-    'ML_do_make_temp_2'(Dir, Prefix, Suffix, Sep, Tries, Seed0, LastError) ->
-        {R1, Seed1} = random:uniform_s(16#1000, Seed0),
-        {R2, Seed}  = random:uniform_s(16#1000, Seed1),
-        FileName = lists:flatten(io_lib:format(""~s~s~s~3.16.0B.~3.16.0B~s"",
-            [Dir, Sep, Prefix, R1, R2, Suffix])),
-        case filelib:is_file(FileName) of
-            true ->
-                'ML_do_make_temp_2'(Dir, Prefix, Suffix, Sep, Tries - 1, Seed,
-                    eexist);
-            false ->
-                case file:open(FileName, [write, {encoding, utf8}]) of
-                    {ok, IoDevice} ->
-                        case file:close(IoDevice) of
-                            ok ->
-                                {ok, FileName};
-                            {error, Reason} ->
-                                {error, Reason}
-                        end;
-                    {error, Reason} ->
-                        'ML_do_make_temp_2'(Dir, Prefix, Suffix, Sep,
-                            Tries - 1, Seed, Reason)
-                end
-        end.
 ").
 
 %---------------------%
@@ -12622,14 +11442,6 @@ progname_base(DefaultName, PrognameBase, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    command_line_arguments(Args::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    ArgStrings = init:get_plain_arguments(),
-    Args = lists:map(fun list_to_binary/1, ArgStrings)
-").
-
 %---------------------%
 
 :- pragma foreign_proc("C",
@@ -12655,17 +11467,6 @@ progname_base(DefaultName, PrognameBase, !IO) :-
     ExitStatus = jmercury.runtime.JavaInternal.exit_status;
 ").
 
-:- pragma foreign_proc("Erlang",
-    get_exit_status(ExitStatus::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    'ML_erlang_global_server' ! {get_exit_status, self()},
-    receive
-        {get_exit_status_ack, ExitStatus} ->
-            void
-    end
-").
-
 %---------------------%
 
 :- pragma foreign_proc("C",
@@ -12689,13 +11490,6 @@ progname_base(DefaultName, PrognameBase, !IO) :-
         may_not_duplicate],
 "
     jmercury.runtime.JavaInternal.exit_status = ExitStatus;
-").
-
-:- pragma foreign_proc("Erlang",
-    set_exit_status(ExitStatus::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    'ML_erlang_global_server' ! {set_exit_status, ExitStatus}
 ").
 
 %---------------------%
@@ -12753,13 +11547,6 @@ set_environment_var(Var, Value, IO0, IO) :-
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     SUCCESS_INDICATOR = true;
-").
-
-:- pragma foreign_proc("Erlang",
-    have_set_environment_var,
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    SUCCESS_INDICATOR = true
 ").
 
 %---------------------%
@@ -12842,20 +11629,6 @@ set_environment_var(Var, Value, IO0, IO) :-
     SUCCESS_INDICATOR = (Value != null);
 ").
 
-:- pragma foreign_proc("Erlang",
-    getenv(Var::in, Value::out),
-    [promise_semipure, will_not_call_mercury, tabled_for_io],
-"
-    case os:getenv(binary_to_list(Var)) of
-        false ->
-            SUCCESS_INDICATOR = false,
-            Value = <<>>;
-        ValueStr ->
-            SUCCESS_INDICATOR = true,
-            Value = list_to_binary(ValueStr)
-    end
-").
-
     % setenv(NameString, ValueString):
     %
     % Sets the named environment variable to the specified value.
@@ -12897,16 +11670,6 @@ set_environment_var(Var, Value, IO0, IO) :-
 
     // Avoid warning: Var, Value
     SUCCESS_INDICATOR = false;
-").
-
-:- pragma foreign_proc("Erlang",
-    setenv(Var::in, Value::in),
-    [will_not_call_mercury, tabled_for_io],
-"
-    VarStr = binary_to_list(Var),
-    ValueStr = binary_to_list(Value),
-    os:putenv(VarStr, ValueStr),
-    SUCCESS_INDICATOR = true
 ").
 
 %---------------------------------------------------------------------------%
@@ -13117,32 +11880,6 @@ call_system_return_signal(Command, Result, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    call_system_code(Command::in, Status::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        does_not_affect_liveness],
-"
-    % XXX this is just a hack
-    % 0. assumes unix shell
-    % 1. the command cannot receive input
-    % 2. output doesn't come out until process finishes
-    % 3. the error code is returned in an inefficient way
-    % 4. standard output and standard error are always tied together
-    % 5. the command should be bracketed/sanitised
-    %
-    CommandStr = binary_to_list(Command),
-    OutputAndCode = os:cmd(CommandStr ++ ""; printf '\\n%d' $?""),
-    case string:rchr(OutputAndCode, $\\n) of
-        0 ->
-            Code = OutputAndCode;
-        NL ->
-            {Output, [$\\n | Code]} = lists:split(NL - 1, OutputAndCode),
-            io:put_chars(Output)
-    end,
-    {Status, []} = string:to_integer(Code),
-    Error = ok
-").
-
 %---------------------------------------------------------------------------%
 %
 % Managing the globals structure that Mercury attaches to the I/O state.
@@ -13257,14 +11994,6 @@ unlock_globals :-
     Globals = io.ML_io_user_globals;
 ").
 
-:- pragma foreign_proc("Erlang",
-    unsafe_get_globals(Globals::out, _IOState0::di, _IOState::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    % XXX This Erlang implementation doesn't work with multiple threads.
-    Globals = get('ML_io_user_globals')
-").
-
 %---------------------%
 
 :- pred unsafe_set_globals(univ::in, io::di, io::uo) is det.
@@ -13290,14 +12019,6 @@ unlock_globals :-
     [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
 "
     io.ML_io_user_globals = Globals;
-").
-
-:- pragma foreign_proc("Erlang",
-    unsafe_set_globals(Globals::in, _IOState0::di, _IOState::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    % XXX This Erlang implementation doesn't work with multiple threads.
-    put('ML_io_user_globals', Globals)
 ").
 
 %---------------------------------------------------------------------------%
@@ -13361,37 +12082,6 @@ init_state(!IO) :-
 :- pred init_std_streams(io::di, io::uo) is det.
 
 init_std_streams(!IO).
-
-:- pragma foreign_proc("Erlang",
-    init_std_streams(_IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure],
-"
-    F = (fun() -> mercury_stdio_file_server(group_leader()) end),
-    StdinPid = spawn(F),
-    StdoutPid = spawn(F),
-    StderrPid = spawn(F),
-    StdinBinaryPid = spawn(F),
-    StdoutBinaryPid = spawn(F),
-
-    Stdin = {'ML_stream', make_ref(), StdinPid},
-    Stdout = {'ML_stream', make_ref(), StdoutPid},
-    Stderr = {'ML_stream', make_ref(), StderrPid},
-    StdinBinary = {'ML_stream', make_ref(), StdinBinaryPid},
-    StdoutBinary = {'ML_stream', make_ref(), StdoutBinaryPid},
-
-    % Initialise the process dictionary.
-    put('ML_stdin_stream', Stdin),
-    put('ML_stdout_stream', Stdout),
-    put('ML_stderr_stream', Stderr),
-    put('ML_stdin_binary_stream', StdinBinary),
-    put('ML_stdout_binary_stream', StdoutBinary),
-
-    % Save the standard streams to the global server. When we spawn a new
-    % Mercury thread later we will need to look it up in order to initialise
-    % the new process's process dictionary.
-    StdStreams = {Stdin, Stdout, Stderr, StdinBinary, StdoutBinary},
-    'ML_erlang_global_server' ! {init_std_streams, StdStreams}
-").
 
 :- pred init_current_streams(io::di, io::uo) is det.
 
@@ -13597,13 +12287,6 @@ have_dotnet :-
     Error = null;
 ").
 
-:- pragma foreign_proc("Erlang",
-    no_error = (Error::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Error = ok
-").
-
 :- pred is_success(system_error::in) is semidet.
 
 :- pragma foreign_proc("C",
@@ -13626,13 +12309,6 @@ have_dotnet :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     SUCCESS_INDICATOR = (Error == null);
-").
-
-:- pragma foreign_proc("Erlang",
-    is_success(Error::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = (Error =:= ok)
 ").
 
 is_error(Error, Prefix, MaybeError, !IO) :-
@@ -13677,18 +12353,6 @@ is_maybe_win32_error(Error, Prefix, MaybeError, !IO) :-
     } else {
         Msg = Msg0;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    make_err_msg(Error::in, Msg0::in, Msg::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    case Error of
-        {error, Reason} ->
-            Msg = list_to_binary([Msg0, file:format_error(Reason)]);
-        _ ->
-            Msg = Msg0
-    end
 ").
 
 make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
@@ -13749,8 +12413,6 @@ throw_on_close_error(Error, !IO) :-
     --->    file_id.
 
 :- pragma foreign_type("C", file_id, "ML_File_Id")
-    where comparison is compare_file_id.
-:- pragma foreign_type("Erlang", file_id, "")
     where comparison is compare_file_id.
 
 :- pragma foreign_decl("C", "
@@ -13823,21 +12485,6 @@ compare_file_id(Result, FileId1, FileId2) :-
 compare_file_id_2(_, _, _) :-
     unexpected($pred, "File IDs are not supported by Java").
 
-:- pragma foreign_proc("Erlang",
-    compare_file_id_2(Res::out, FileId1::in, FileId2::in),
-    [will_not_call_mercury, promise_pure, thread_safe,
-        does_not_affect_liveness],
-"
-    if
-        FileId1 =:= FileId2 ->
-            Res = 0;
-        FileId1  <  FileId2 ->
-            Res = -1;
-        true ->
-            Res = 1
-    end
-").
-
 file_id(FileName, Result, !IO) :-
     file_id_2(FileName, FileId, Error, !IO),
     is_error(Error, "cannot get file id: ", MaybeIOError, !IO),
@@ -13890,24 +12537,6 @@ file_id(FileName, Result, !IO) :-
         ""io.file_id not supported on this platform"");
 ").
 
-:- pragma foreign_proc("Erlang",
-    file_id_2(FileName::in, FileId::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    FileNameStr = binary_to_list(FileName),
-    case file:read_file_info(FileNameStr) of
-        {ok, FileInfo} ->
-            MajorDevice = FileInfo#file_info.major_device,
-            Inode = FileInfo#file_info.inode,
-            FileId = {MajorDevice, Inode},
-            Error = ok;
-        {error, Reason} ->
-            FileId = null,
-            Error = {error, Reason}
-    end
-").
-
 %---------------------------------------------------------------------------%
 %
 % For use by term_io.m.
@@ -13948,14 +12577,6 @@ set_op_table(_OpTable, !IO).
     StreamDb = io.ML_io_stream_db;
 ").
 
-:- pragma foreign_proc("Erlang",
-    get_stream_db(StreamDb::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    % XXX This Erlang implementation doesn't work with multiple threads.
-    StreamDb = get('ML_io_stream_db')
-").
-
 %---------------------%
 
     % Caller must NOT hold the stream_db lock.
@@ -13981,14 +12602,6 @@ set_op_table(_OpTable, !IO).
     [will_not_call_mercury, tabled_for_io],
 "
     StreamDb = io.ML_io_stream_db;
-").
-
-:- pragma foreign_proc("Erlang",
-    get_stream_db_with_locking(StreamDb::out),
-    [will_not_call_mercury, tabled_for_io],
-"
-    % XXX This Erlang implementation doesn't work with multiple threads.
-    StreamDb = get('ML_io_stream_db')
 ").
 
 %---------------------%
@@ -14017,14 +12630,6 @@ set_op_table(_OpTable, !IO).
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     io.ML_io_stream_db = StreamDb;
-").
-
-:- pragma foreign_proc("Erlang",
-    set_stream_db(StreamDb::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
-"
-    % XXX This Erlang implementation doesn't work with multiple threads.
-    put('ML_io_stream_db', StreamDb)
 ").
 
 %---------------------%
@@ -14165,13 +12770,6 @@ source_name(stderr) = "<standard error>".
     [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     Id = Stream.id;
-").
-
-:- pragma foreign_proc("Erlang",
-    get_stream_id(Stream::in) = (Id::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    {'ML_stream', Id, _IoDevice} = Stream
 ").
 
 %---------------------------------------------------------------------------%

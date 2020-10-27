@@ -2109,13 +2109,6 @@ det_index1_of_first_occurrence(Xs, SearchX) = N :-
     % reverse(A, B) <=> reverse(B, A).
 :- pragma promise_equivalent_clauses(list.reverse/2).
 
-:- pragma foreign_proc("Erlang",
-    list.reverse(L0::in, L::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    L = lists:reverse(L0)
-").
-
 reverse(L0::in, L::out) :-
     list.reverse_prepend(L0, [], L).
 reverse(L::out, L0::in) :-

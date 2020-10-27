@@ -930,20 +930,6 @@ current_directory(Res, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    current_directory_2(CurDir::out, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    case file:get_cwd() of
-        {ok, Cwd} ->
-            CurDir = list_to_binary(Cwd),
-            Error = ok;
-        {error, Reason} ->
-            CurDir = <<>>,
-            Error = {error, Reason}
-    end
-").
-
 %---------------------------------------------------------------------------%
 
 make_directory(PathName, Result, !IO) :-
@@ -1268,26 +1254,6 @@ make_single_directory(DirName, Result, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    make_single_directory_2(DirName::in, Status::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe,
-        may_not_duplicate],
-"
-    DirNameStr = binary_to_list(DirName),
-    case file:make_dir(DirNameStr) of
-        ok ->
-            Status = {ok},
-            Error = ok;
-        {error, eexist} ->
-            Status = {name_exists},
-            Error = {error, eexist};
-        {error, Reason} ->
-            Status = {error},
-            Error = {error, Reason}
-    end
-").
-
 %---------------------------------------------------------------------------%
 
 foldl2(P, DirName, Data0, Res, !IO) :-
@@ -1563,7 +1529,6 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
 :- pragma foreign_type("C", dir.stream, "ML_DIR_STREAM").
 :- pragma foreign_type("C#", dir.stream, "System.Collections.IEnumerator").
 :- pragma foreign_type("Java", dir.stream, "java.util.Iterator").
-:- pragma foreign_type("Erlang", dir.stream, "").
 
 :- pred open(string::in, io.result(dir.stream)::out, io::di, io::uo) is det.
 
@@ -1685,23 +1650,6 @@ open_2(DirName, DirPattern, Res, !IO) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    open_3(DirName::in, _DirPattern::in, Dir::out, Error::out,
-        _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    DirNameStr = binary_to_list(DirName),
-    case file:list_dir(DirNameStr) of
-        {ok, FileNames} ->
-            Dir = ets:new(mutvar, [set, private]),
-            ets:insert(Dir, {value, lists:sort(FileNames)}),
-            Error = ok;
-        {error, Reason} ->
-            Dir = null,
-            Error = {error, Reason}
-    end
-").
-
 :- pred check_dir_readable(string::in, io.res::out, io::di, io::uo) is det.
 
 check_dir_readable(DirName, Res, !IO) :-
@@ -1787,14 +1735,6 @@ close(Dir, Res, !IO) :-
 "
     // Nothing to do.
     Error = null;
-").
-
-:- pragma foreign_proc("Erlang",
-    close_2(Dir::in, Error::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    ets:delete(Dir, value),
-    Error = ok
 ").
 
 :- pred read_entry(dir.stream::in, io.result(string)::out, io::di, io::uo)
@@ -1931,24 +1871,6 @@ read_entry(Dir, Res, !IO) :-
         HaveFileName = bool.NO;
         FileName = """";
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    read_entry_2(Dir::in, Error::out, HaveFileName::out,
-        FileName::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
-    [{value, FileNames0}] = ets:lookup(Dir, value),
-    case FileNames0 of
-        [] ->
-            HaveFileName = {no},
-            FileName = <<>>;
-        [Head | Tail] ->
-            HaveFileName = {yes},
-            FileName = list_to_binary(Head),
-            ets:insert(Dir, {value, Tail})
-    end,
-    Error = ok
 ").
 
 %---------------------------------------------------------------------------%

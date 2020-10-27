@@ -339,14 +339,6 @@
     SUCCESS_INDICATOR = true;
 ").
 
-:- pragma foreign_proc("Erlang",
-    math_domain_checks,
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    SUCCESS_INDICATOR = true
-").
-
 %
 % Mathematical constants from math.m
 %
@@ -369,12 +361,6 @@
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Pi = java.lang.Math.PI;
-").
-:- pragma foreign_proc("Erlang",
-    pi = (Pi::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Pi = math:pi()
 ").
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version. We define this with sufficient
@@ -429,18 +415,6 @@ e = 2.7182818284590452353602874713526625.
 "
     Ceil = java.lang.Math.ceil(Num);
 ").
-:- pragma foreign_proc("Erlang",
-    ceiling(Num::in) = (Ceil::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    T = erlang:trunc(Num),
-    case (Num - T) > 0 of
-        true  ->
-            Ceil = float(T + 1);
-        false ->
-            Ceil = float(T)
-    end
-").
 
 :- pragma foreign_proc("C",
     floor(Num::in) = (Floor::out),
@@ -460,18 +434,6 @@ e = 2.7182818284590452353602874713526625.
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Floor = java.lang.Math.floor(Num);
-").
-:- pragma foreign_proc("Erlang",
-    floor(Num::in) = (Floor::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    T = erlang:trunc(Num),
-    case (Num - T) < 0 of
-        true ->
-            Floor = float(T - 1);
-        false ->
-            Floor = float(T)
-    end
 ").
 
 :- pragma foreign_proc("C",
@@ -502,12 +464,6 @@ e = 2.7182818284590452353602874713526625.
         Rounded = java.lang.Math.round(Num);
     }
 ").
-:- pragma foreign_proc("Erlang",
-    round(Num::in) = (Rounded::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Rounded = float(round(Num))
-").
 round(Num) = math.floor(Num + 0.5).
 
 truncate(X) = ( if X < 0.0 then math.ceiling(X) else math.floor(X)).
@@ -537,12 +493,6 @@ sqrt(X) = SquareRoot :-
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     SquareRoot = java.lang.Math.sqrt(X);
-").
-:- pragma foreign_proc("Erlang",
-    unchecked_sqrt(X::in) = (SquareRoot::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    SquareRoot = math:sqrt(X)
 ").
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
@@ -617,13 +567,6 @@ pow(X, Y) = Res :-
     Res = java.lang.Math.pow(X, Y);
 ").
 
-:- pragma foreign_proc("Erlang",
-    unchecked_pow(X::in, Y::in) = (Res::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    Res = math:pow(X, Y)
-").
-
 :- pragma foreign_proc("C",
     exp(X::in) = (Exp::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -642,12 +585,6 @@ pow(X, Y) = Res :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Exp = java.lang.Math.exp(X);
-").
-:- pragma foreign_proc("Erlang",
-    exp(X::in) = (Exp::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Exp = math:exp(X)
 ").
 
 ln(X) = Log :-
@@ -676,12 +613,6 @@ ln(X) = Log :-
 "
     Log = java.lang.Math.log(X);
 ").
-:- pragma foreign_proc("Erlang",
-    unchecked_ln(X::in) = (Log::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    Log = math:log(X)
-").
 
 log10(X) = Log :-
     ( if math_domain_checks, X =< 0.0 then
@@ -708,12 +639,6 @@ log10(X) = Log :-
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     Log10 = java.lang.Math.log10(X);
-").
-:- pragma foreign_proc("Erlang",
-    unchecked_log10(X::in) = (Log10::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    Log10 = math:log10(X)
 ").
 
 log2(X) = Log :-
@@ -771,7 +696,6 @@ log(B, X) = Log :-
     Log = System.Math.Log(X, B);
 ").
 % Java implementation will default to mercury here.
-% Erlang implementation will default to mercury here.
 unchecked_log(B, X) = math.unchecked_ln(X) / math.unchecked_ln(B).
 
 :- pragma foreign_proc("C",
@@ -793,12 +717,6 @@ unchecked_log(B, X) = math.unchecked_ln(X) / math.unchecked_ln(B).
 "
     Sin = java.lang.Math.sin(X);
 ").
-:- pragma foreign_proc("Erlang",
-    sin(X::in) = (Sin::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Sin = math:sin(X)
-").
 
 :- pragma foreign_proc("C",
     cos(X::in) = (Cos::out),
@@ -819,12 +737,6 @@ unchecked_log(B, X) = math.unchecked_ln(X) / math.unchecked_ln(B).
 "
     Cos = java.lang.Math.cos(X);
 ").
-:- pragma foreign_proc("Erlang",
-    cos(X::in) = (Cos::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Cos = math:cos(X)
-").
 
 :- pragma foreign_proc("C",
     tan(X::in) = (Tan::out),
@@ -844,12 +756,6 @@ unchecked_log(B, X) = math.unchecked_ln(X) / math.unchecked_ln(B).
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Tan = java.lang.Math.tan(X);
-").
-:- pragma foreign_proc("Erlang",
-    math.tan(X::in) = (Tan::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Tan = math:tan(X)
 ").
 
 asin(X) = ASin :-
@@ -883,12 +789,6 @@ asin(X) = ASin :-
 "
     ASin = java.lang.Math.asin(X);
 ").
-:- pragma foreign_proc("Erlang",
-    unchecked_asin(X::in) = (ASin::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    ASin = math:asin(X)
-").
 
 acos(X) = ACos :-
     ( if
@@ -921,12 +821,6 @@ acos(X) = ACos :-
 "
     ACos = java.lang.Math.acos(X);
 ").
-:- pragma foreign_proc("Erlang",
-    unchecked_acos(X::in) = (ACos::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    ACos = math:acos(X)
-").
 
 :- pragma foreign_proc("C",
     math.atan(X::in) = (ATan::out),
@@ -946,12 +840,6 @@ acos(X) = ACos :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     ATan = java.lang.Math.atan(X);
-").
-:- pragma foreign_proc("Erlang",
-    atan(X::in) = (ATan::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    ATan = math:atan(X)
 ").
 
 :- pragma foreign_proc("C",
@@ -973,12 +861,6 @@ acos(X) = ACos :-
 "
     ATan2 = java.lang.Math.atan2(Y, X);
 ").
-:- pragma foreign_proc("Erlang",
-    atan2(Y::in, X::in) = (ATan2::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    ATan2 = math:atan2(Y, X)
-").
 
 :- pragma foreign_proc("C",
     sinh(X::in) = (Sinh::out),
@@ -998,12 +880,6 @@ acos(X) = ACos :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Sinh = System.Math.Sinh(X);
-").
-:- pragma foreign_proc("Erlang",
-    sinh(X::in) = (Sinh::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Sinh = math:sinh(X)
 ").
 % Version for back-ends that do not have a foreign_proc version.
 sinh(X) = Sinh :-
@@ -1028,12 +904,6 @@ sinh(X) = Sinh :-
 "
     Cosh = System.Math.Cosh(X);
 ").
-:- pragma foreign_proc("Erlang",
-    cosh(X::in) = (Cosh::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Cosh = math:cosh(X)
-").
 % Version for back-ends that do not have a foreign_proc version.
 cosh(X) = Cosh :-
     Cosh = (exp(X)+exp(-X)) / 2.0.
@@ -1056,12 +926,6 @@ cosh(X) = Cosh :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Tanh = System.Math.Tanh(X);
-").
-:- pragma foreign_proc("Erlang",
-    tanh(X::in) = (Tanh::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Tanh = math:tanh(X)
 ").
 % Version for back-ends that do not have a foreign_proc version.
 tanh(X) = Tanh :-

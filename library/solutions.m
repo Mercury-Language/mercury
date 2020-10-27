@@ -603,17 +603,6 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     TrailPtr = null;
 ").
 
-:- pragma foreign_proc("Erlang",
-    get_registers(HeapPtr::out, SolutionsHeapPtr::out, TrailPtr::out),
-    [will_not_call_mercury, thread_safe],
-"
-    % Erlang has a builtin garbage collector,
-    % so we don't have to worry here about heap reclamation on failure.
-    HeapPtr = null,
-    SolutionsHeapPtr = null,
-    TrailPtr = null
-").
-
 :- impure pred check_for_floundering(trail_ptr::in) is det.
 
 :- pragma foreign_proc("C",
@@ -640,14 +629,6 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     [will_not_call_mercury, thread_safe],
 "
     // XXX No trailing for the Java back-end, so take no action.
-").
-
-:- pragma foreign_proc("Erlang",
-    check_for_floundering(_TrailPtr::in),
-    [will_not_call_mercury, thread_safe],
-"
-    % XXX No trailing for the Erlang back-end, so take no action.
-    void
 ").
 
     % Discard the topmost trail ticket.
@@ -677,14 +658,6 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     [will_not_call_mercury, thread_safe],
 "
     // XXX No trailing for the Java back-end, so take no action.
-").
-
-:- pragma foreign_proc("Erlang",
-    discard_trail_ticket,
-    [will_not_call_mercury, thread_safe],
-"
-    % XXX No trailing for the Erlang back-end, so take no action.
-    void
 ").
 
     % Swap the heap with the solutions heap
@@ -723,15 +696,6 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
 "
     // For the Java back-end we don't define our own heaps.
     // So take no action here.
-").
-
-:- pragma foreign_proc("Erlang",
-    swap_heap_and_solutions_heap,
-    [will_not_call_mercury, thread_safe],
-"
-    % For the Erlang back-end, as for the .NET back-end, we don't define
-    % our own heaps. So take no action here.
-    void
 ").
 
     % partial_deep_copy(SolutionsHeapPtr, OldVal, NewVal):
@@ -836,29 +800,6 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     NewVal = OldVal;
 ").
 
-:- pragma foreign_proc("Erlang",
-    partial_deep_copy(_SolutionsHeapPtr::in, OldVal::in, NewVal::out),
-    [will_not_call_mercury, thread_safe],
-"
-    % For the Erlang back-end, as for the .NET implementation,
-    % we don't do heap reclamation on failure,
-    % so we don't need to worry about making deep copies here.
-    % Shallow copies will suffice.
-    NewVal = OldVal
-").
-:- pragma foreign_proc("Erlang",
-    partial_deep_copy(_SolutionsHeapPtr::in, OldVal::mdi, NewVal::muo),
-    [will_not_call_mercury, thread_safe],
-"
-    NewVal = OldVal
-").
-:- pragma foreign_proc("Erlang",
-    partial_deep_copy(_SolutionsHeapPtr::in, OldVal::di, NewVal::uo),
-    [will_not_call_mercury, thread_safe],
-"
-    NewVal = OldVal
-").
-
     % reset_solutions_heap(SolutionsHeapPtr):
     %
     % Reset the solutions heap pointer to the specified value,
@@ -889,14 +830,6 @@ do_while(GeneratorPred, CollectorPred, !Acc) :-
     [will_not_call_mercury, thread_safe],
 "
     // As above, we take no action.
-").
-
-:- pragma foreign_proc("Erlang",
-    reset_solutions_heap(_SolutionsHeapPtr::in),
-    [will_not_call_mercury, thread_safe],
-"
-    % As above, we take no action.
-    void
 ").
 
 :- impure pred start_all_soln_neg_context is det.

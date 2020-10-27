@@ -32,9 +32,6 @@
     % nonsensical results if the previous call to `report_stats' was from a
     % different thread.
     %
-    % Note: in Erlang, the benchmark_* procedures will change the apparent time
-    % of the last call to report_stats.
-    %
 :- impure pred report_stats is det.
 
     % `report_full_memory_stats' is a non-logical procedure intended for use
@@ -195,13 +192,6 @@ extern void ML_report_full_memory_stats(void);
     [may_call_mercury, terminates],
 "
     ML_report_stats();
-").
-
-:- pragma foreign_proc("Erlang",
-    report_stats,
-    [may_call_mercury, terminates],
-"
-    'ML_report_stats'()
 ").
 
 :- pragma foreign_proc("C",
@@ -827,20 +817,6 @@ ML_report_full_memory_stats()
 }
 ").
 
-:- pragma foreign_code("Erlang",
-"
-'ML_report_stats'() ->
-    {Time, TimeSinceLastCall} = statistics(runtime),
-    TimeSecs = Time / 1000.0,
-    TimeSinceLastCallSecs = TimeSinceLastCall / 1000.0,
-
-    Bytes = erlang:memory(total),
-    KBytes = Bytes / 1024.0,
-
-    io:format(""[Time: ~.3fs, +~.3fs, Total used: ~.3fk]~n"",
-        [TimeSecs, TimeSinceLastCallSecs, KBytes]).
-").
-
 %---------------------------------------------------------------------------%
 
 :- pragma promise_pure(benchmark_det/5).
@@ -995,13 +971,6 @@ repeat(N) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    get_user_cpu_milliseconds(Time::out),
-    [will_not_call_mercury, thread_safe],
-"
-    {Time, _TimeSinceLastCall} = statistics(runtime)
-").
-
 % To prevent the C compiler from optimizing the benchmark code away,
 % we assign the benchmark output to a volatile global variable.
 
@@ -1035,13 +1004,6 @@ repeat(N) :-
     [will_not_call_mercury, thread_safe],
 "
     ML_benchmarking_dummy_word = X;
-").
-
-:- pragma foreign_proc("Erlang",
-    do_nothing(_X::in),
-    [will_not_call_mercury, thread_safe],
-"
-    void
 ").
 
 %---------------------------------------------------------------------------%

@@ -2066,29 +2066,4 @@ table_report_statistics :-
     private_builtin.sorry("table_report_statistics").
 
 %---------------------------------------------------------------------------%
-
-:- pragma foreign_code("Erlang", "
-
-    % These stubs are needed so that the Erlang compiler doesn't complain
-    % about missing definitions for exported functions.
-
-    table_memo_return_all_answers_multi_2_p_0(_, _) ->
-        mercury__private_builtin:sorry_1_p_0(""tabling in Erlang backend"").
-    table_memo_return_all_answers_nondet_2_p_0(_, _) ->
-        mercury__private_builtin:sorry_1_p_0(""tabling in Erlang backend"").
-    table_mm_completion_1_p_0(_) ->
-        mercury__private_builtin:sorry_1_p_0(""tabling in Erlang backend"").
-    table_mm_return_all_multi_2_p_0(_, _) ->
-        mercury__private_builtin:sorry_1_p_0(""tabling in Erlang backend"").
-    table_mm_return_all_nondet_2_p_0(_, _) ->
-        mercury__private_builtin:sorry_1_p_0(""tabling in Erlang backend"").
-    table_mm_suspend_consumer_2_p_0(_, _) ->
-        mercury__private_builtin:sorry_1_p_0(""tabling in Erlang backend"").
-    table_mmos_consume_next_answer_multi_2_p_0(_, _) ->
-        mercury__private_builtin:sorry_1_p_0(""tabling in Erlang backend"").
-    table_mmos_consume_next_answer_nondet_2_p_0(_, _) ->
-        mercury__private_builtin:sorry_1_p_0(""tabling in Erlang backend"").
-").
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

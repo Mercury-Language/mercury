@@ -56,8 +56,6 @@
 
 :- pragma foreign_type("Java", region, "java.lang.Object"). % dummy
 
-:- pragma foreign_type("Erlang", region, ""). % dummy
-
 :- pragma foreign_proc("C",
     create_region(Region::out),
     [will_not_call_mercury],

@@ -227,14 +227,6 @@
     Fullarch = jmercury.runtime.Constants.MR_FULLARCH;
 ").
 
-:- pragma foreign_proc("Erlang",
-    library.version(Version::out, Fullarch::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Version = << ?MR_VERSION >>,
-    Fullarch = << ?MR_FULLARCH >>
-").
-
 %---------------------------------------------------------------------------%
 
 mercury_std_library_module("array").
@@ -381,8 +373,6 @@ mercury_std_library_module("version_store").
     "ML_std_library_init").
 :- pragma foreign_export("Java", std_library_init(di, uo),
     "ML_std_library_init").
-:- pragma foreign_export("Erlang", std_library_init(di, uo),
-    "ML_std_library_init").
 
 std_library_init(!IO) :-
     promise_pure (
@@ -395,8 +385,6 @@ std_library_init(!IO) :-
 :- pred std_library_finalize(io::di, io::uo) is det.
 
 :- pragma foreign_export("C", std_library_finalize(di, uo),
-    "ML_std_library_finalize").
-:- pragma foreign_export("Erlang", std_library_finalize(di, uo),
     "ML_std_library_finalize").
 
 std_library_finalize(!IO) :-

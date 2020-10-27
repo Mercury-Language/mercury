@@ -865,10 +865,6 @@
     where equality is array.array_equal,
     comparison is array.array_compare.
 
-:- pragma foreign_type("Erlang", array(T), "")
-    where equality is array.array_equal,
-    comparison is array.array_compare.
-
     % unify/2 for arrays
     %
 :- pred array_equal(array(T)::in, array(T)::in) is semidet.
@@ -976,13 +972,6 @@ compare_elements(N, Size, Array1, Array2, Result) :-
 "
     // never do bounds checking for Java (throw exceptions instead)
     SUCCESS_INDICATOR = false;
-").
-
-:- pragma foreign_proc("Erlang",
-    bounds_checks,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = true
 ").
 
 %---------------------------------------------------------------------------%
@@ -1528,12 +1517,6 @@ init(Size, Item, Array) :-
 "
     Array = array.ML_new_array(Size, Item, true);
 ").
-:- pragma foreign_proc("Erlang",
-    init_2(Size::in, Item::in, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Array = erlang:make_tuple(Size, Item)
-").
 
 make_empty_array = A :-
     array.make_empty_array(A).
@@ -1565,12 +1548,6 @@ make_empty_array = A :-
 "
     // XXX as per C#
     Array = null;
-").
-:- pragma foreign_proc("Erlang",
-    make_empty_array(Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Array = {}
 ").
 
 %---------------------------------------------------------------------------%
@@ -1620,12 +1597,6 @@ generate(Size, GenFunc) = Array :-
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     Array = array.ML_unsafe_new_array(Size, FirstElem, IndexToSet);
-").
-:- pragma foreign_proc("Erlang",
-    unsafe_init(Size::in, FirstElem::in, _IndexToSet::in) = (Array::array_uo),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    Array = erlang:make_tuple(Size, FirstElem)
 ").
 
 :- func generate_2(int::in, int::in, (func(int) = T)::in, array(T)::array_di)
@@ -1701,13 +1672,6 @@ min(A) = N :-
     Min = 0;
 ").
 
-:- pragma foreign_proc("Erlang",
-    min(Array::in, Min::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    % Array not used
-    Min = 0
-").
 
 :- pragma foreign_proc("Java",
     min(_Array::in, Min::out),
@@ -1736,12 +1700,6 @@ max(A) = N :-
     } else {
         Max = -1;
     }
-").
-:- pragma foreign_proc("Erlang",
-    max(Array::in, Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Max = size(Array) - 1
 ").
 
 :- pragma foreign_proc("Java",
@@ -1781,13 +1739,6 @@ size(A) = N :-
     } else {
         Max = 0;
     }
-").
-
-:- pragma foreign_proc("Erlang",
-    size(Array::in, Max::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Max = size(Array)
 ").
 
 :- pragma foreign_proc("Java",
@@ -1873,13 +1824,6 @@ semidet_lookup(Array, Index, Item) :-
     Item = Array.GetValue(Index);
 }").
 
-:- pragma foreign_proc("Erlang",
-    unsafe_lookup(Array::in, Index::in, Item::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Item = element(Index + 1, Array)
-").
-
 :- pragma foreign_proc("Java",
     unsafe_lookup(Array::in, Index::in, Item::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1946,13 +1890,6 @@ set(Index, Item, !Array) :-
     Array0.SetValue(Item, Index);   // destructive update!
     Array = Array0;
 }").
-
-:- pragma foreign_proc("Erlang",
-    unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Array = setelement(Index + 1, Array0, Item)
-").
 
 :- pragma foreign_proc("Java",
     unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
@@ -2066,23 +2003,6 @@ resize(N, X, !Array) :-
     Array = array.ML_array_resize(Array0, Size, Item);
 ").
 
-:- pragma foreign_proc("Erlang",
-    do_resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    InitialSize = size(Array0),
-    List = tuple_to_list(Array0),
-    if
-        Size < InitialSize ->
-            Array = list_to_tuple(lists:sublist(List, Size));
-        Size > InitialSize ->
-            Array = list_to_tuple(lists:append(List,
-                lists:duplicate(Size - InitialSize, Item)));
-        true ->
-            Array = Array0
-    end
-").
-
 :- pragma foreign_proc("Java",
     do_resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -2156,13 +2076,6 @@ shrink(Size, !Array) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = array.ML_shrink_array(Array0, Size);
-").
-
-:- pragma foreign_proc("Erlang",
-    shrink_2(Size::in, Array0::array_di, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Array = list_to_tuple(lists:sublist(tuple_to_list(Array0), Size))
 ").
 
 :- pragma foreign_proc("Java",
@@ -2283,13 +2196,6 @@ copy(A1) = A2 :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = (System.Array) Array0.Clone();
-").
-
-:- pragma foreign_proc("Erlang",
-    copy(Array0::in, Array::array_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Array = Array0
 ").
 
 :- pragma foreign_proc("Java",

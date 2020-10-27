@@ -753,15 +753,9 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
         equality   is eq_version_array,
         comparison is cmp_version_array.
 
-    % This is necessary for the library to compile in the Erlang grades.
-    %
-:- type version_array(T)
-    --->    version_array(T).
-
 :- pred eq_version_array(version_array(T)::in, version_array(T)::in)
     is semidet.
 :- pragma terminates(eq_version_array/2).
-:- pragma consider_used(eq_version_array/2). % For the Erlang grade.
 
 eq_version_array(VAa, VAb) :-
     N = max(VAa),
@@ -782,7 +776,6 @@ eq_version_array_2(I, VAa, VAb) :-
 :- pred cmp_version_array(comparison_result::uo,
     version_array(T)::in, version_array(T)::in) is det.
 :- pragma terminates(cmp_version_array/3).
-:- pragma consider_used(cmp_version_array/3). % For the Erlang grade.
 
 cmp_version_array(R, VAa, VAb) :-
     SizeA = VAa ^ size,

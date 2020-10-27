@@ -122,7 +122,6 @@
     % stub.
 :- pragma foreign_type("C#", c_file_ptr, "object").
 :- pragma foreign_type("Java", c_file_ptr, "java.lang.Object").
-:- pragma foreign_type("Erlang", c_file_ptr, "").
 
     % These predicates are called from trace/mercury_trace_internal.c.
     %

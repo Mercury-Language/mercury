@@ -141,7 +141,6 @@
     [can_pass_as_mercury_type]).
 
     % Placeholders only.
-:- pragma foreign_type("Erlang", future(T), "").
 :- pragma foreign_type("C#", future(T), "object").
 :- pragma foreign_type("Java", future(T), "java.lang.Object").
 
@@ -268,7 +267,6 @@ INIT mercury_sys_init_par_builtin_modules
     [can_pass_as_mercury_type]).
 
     % Placeholders only.
-:- pragma foreign_type("Erlang", loop_control, "").
 :- pragma foreign_type("C#", loop_control, "object").
 :- pragma foreign_type("Java", loop_control, "java.lang.Object").
 
@@ -498,17 +496,6 @@ mercury_sys_init_lc_write_out_proc_statics(FILE *deep_fp,
 #else
     MR_fatal_error(""par_cond_close_stats_file is unavailable in this grade"");
 #endif
-").
-
-%---------------------------------------------------------------------------%
-
-:- pragma foreign_code("Erlang",
-"
-lc_finish_1_p_0(_) ->
-    throw(""lc_finish is unavailable in this grade"").
-
-lc_wait_free_slot_2_p_0(_) ->
-    throw(""lc_wait_free_slot is unavailable in this grade"").
 ").
 
 %---------------------------------------------------------------------------%

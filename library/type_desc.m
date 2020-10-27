@@ -370,13 +370,6 @@ type_info_desc_same_representation :-
     PseudoTypeDesc = TypeDesc;
 ").
 
-:- pragma foreign_proc("Erlang",
-    type_desc_to_pseudo_type_desc(TypeDesc::in) = (PseudoTypeDesc::out),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
-"
-    PseudoTypeDesc = TypeDesc
-").
-
 type_desc_to_pseudo_type_desc(_TypeDesc) = _PseudoTypeDesc :-
     % The backends in which we use this definition of this predicate
     % don't yet support pseudo_type_descs.
@@ -437,13 +430,6 @@ det_ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
     TypeInfo = TypeInfo_for_T;
 ").
 
-:- pragma foreign_proc("Erlang",
-    type_of(_Value::unused) = (TypeInfo::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    TypeInfo = TypeInfo_for_T
-").
-
 :- pragma foreign_proc("C",
     has_type(_Arg::unused, TypeInfo::in),
     [will_not_call_mercury, thread_safe, promise_pure, no_sharing],
@@ -463,13 +449,6 @@ det_ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     TypeInfo_for_T = TypeInfo;
-").
-
-:- pragma foreign_proc("Erlang",
-    has_type(_Arg::unused, TypeInfo::in),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    TypeInfo_for_T = TypeInfo
 ").
 
 same_type(_, _).
@@ -1070,47 +1049,6 @@ get_type_info_for_type_info = TypeDesc :-
     {
         return rtti_implementation.ML_compare_pseudo_type_infos(x, y);
     }
-").
-
-:- pragma foreign_code("Erlang", "
-    '__Unify____type_desc_0_0'(X0, Y0) ->
-        Res = mercury__erlang_rtti_implementation:compare_type_infos_3_p_0(
-            X0, Y0),
-        case Res of
-            { '=' } -> {};
-            _ -> fail
-        end.
-
-    '__Unify____type_ctor_desc_0_0'(X0, Y0) ->
-        X = eval_if_function(X0),
-        Y = eval_if_function(Y0),
-        case X =:= Y of
-            true -> {};
-            false -> fail
-        end.
-
-    '__Unify____pseudo_type_desc_0_0'(_, _) ->
-        throw(""foreign code for unifying pseudo_type_desc"").
-
-    '__Compare____type_desc_0_0'(X0, Y0) ->
-        mercury__erlang_rtti_implementation:compare_type_infos_3_p_0(X0, Y0).
-
-    '__Compare____type_ctor_desc_0_0'(X0, Y0) ->
-        X = eval_if_function(X0),
-        Y = eval_if_function(Y0),
-        if
-            X =:= Y -> {'='};
-            X  <  Y -> {'<'};
-            true    -> {'>'}
-        end.
-
-    '__Compare____pseudo_type_desc_0_0'(_, _) ->
-        throw(""foreign code for comparing pseudo_type_desc"").
-
-    eval_if_function(X) when is_function(X, 0) -> X();
-    eval_if_function(X) when is_tuple(X) ->
-        list_to_tuple([eval_if_function(E) || E <- tuple_to_list(X)]);
-    eval_if_function(X) -> X.
 ").
 
 %---------------------------------------------------------------------------%

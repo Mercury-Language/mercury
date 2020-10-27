@@ -332,8 +332,6 @@ det_from_int(I) = U8 :-
         error($pred, "cannot convert int to uint8")
     ).
 
-:- pragma no_determinism_warning(cast_from_int/1).
-
 :- pragma foreign_proc("C",
     cast_from_int(I::in) = (U8::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -356,12 +354,7 @@ det_from_int(I) = U8 :-
     U8 = (byte) I;
 ").
 
-cast_from_int(_) = _ :-
-    sorry($module, "uint8.cast_from_int/1 NYI for Erlang").
-
 %---------------------------------------------------------------------------%
-
-:- pragma no_determinism_warning(to_int/1).
 
 :- pragma foreign_proc("C",
     to_int(U8::in) = (I::out),
@@ -385,11 +378,6 @@ cast_from_int(_) = _ :-
     I = U8 & 0xff;
 ").
 
-to_int(_) = _ :-
-    sorry($module, "uint8.to_int/1 NYI for Erlang").
-
-:- pragma no_determinism_warning(cast_to_int/1).
-
 :- pragma foreign_proc("C",
     cast_to_int(U8::in) = (I::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -412,12 +400,7 @@ to_int(_) = _ :-
     I = U8 & 0xff;
 ").
 
-cast_to_int(_) = _ :-
-    sorry($module, "uint8.cast_to_int/1 NYI for Erlang").
-
 %---------------------------------------------------------------------------%
-
-:- pragma no_determinism_warning(cast_to_uint/1).
 
 :- pragma foreign_proc("C",
     cast_to_uint(U8::in) = (U::out),
@@ -441,12 +424,7 @@ cast_to_int(_) = _ :-
     U = U8 & 0xff;
 ").
 
-cast_to_uint(_) = _ :-
-    sorry($module, "uint8.cast_to_uint/1 NYI for Erlang").
-
 %---------------------------------------------------------------------------%
-
-:- pragma no_determinism_warning(cast_from_int8/1).
 
 :- pragma foreign_proc("C",
     cast_from_int8(I8::in) = (U8::out),
@@ -469,9 +447,6 @@ cast_to_uint(_) = _ :-
 "
     U8 = I8;
 ").
-
-cast_from_int8(_) = _ :-
-    sorry($module, "uint8.cast_from_int8/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 

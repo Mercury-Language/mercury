@@ -73,9 +73,6 @@ MCFLAGS-uint64                  += --no-warn-unused-imports
 MCFLAGS-thread                  += --no-local-thread-engine-base
 MCFLAGS-thread.semaphore        += --no-local-thread-engine-base
 
-# Work around a problem in the HiPE compiler (as of Erlang R11B5).
-MCFLAGS-bitmap                  += --no-erlang-native-code
-
 # Work around a warning for termination analysis of the user defined equality
 # and comparison code for lazy values.
 MCFLAGS-lazy                    += --no-warn-non-term-special-preds

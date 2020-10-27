@@ -268,9 +268,6 @@ det_from_int(I) = U :-
 
 %---------------------------------------------------------------------------%
 
-cast_from_int(_) = _ :-
-    sorry($module, "uint.cast_from_int/1 NYI for Erlang").
-
 :- pragma foreign_proc("C",
     cast_to_int(U::in) = (I::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -292,9 +289,6 @@ cast_from_int(_) = _ :-
 "
     I = U;
 ").
-
-cast_to_int(_) = _ :-
-    sorry($module, "uint.cast_to_int/1 NYI for Erlang").
 
 %---------------------------------------------------------------------------%
 
@@ -416,14 +410,6 @@ odd(X) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Bits = 32;
-").
-
-:- pragma foreign_proc("Erlang",
-    bits_per_uint = (Bits::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    % XXX Erlang ints are actually arbitrary precision.
-    Bits = 32
 ").
 
 %---------------------------------------------------------------------------%

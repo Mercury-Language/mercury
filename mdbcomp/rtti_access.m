@@ -110,7 +110,6 @@
     % The following definitions are only stubs.
 :- pragma foreign_type("C#", bytecode_bytes, "object", []).
 :- pragma foreign_type("Java", bytecode_bytes, "java.lang.Object", []).
-:- pragma foreign_type("Erlang", bytecode_bytes, "").
 
     % read_byte(ByteCode, Byte, !Pos):
     %
@@ -206,7 +205,6 @@
     % The following definitions are only stubs.
 :- pragma foreign_type("C#", label_layout, "object", []).
 :- pragma foreign_type("Java", label_layout, "java.lang.Object", []).
-:- pragma foreign_type("Erlang", label_layout, "").
 
 :- pragma foreign_proc("C",
     get_proc_layout_from_label_layout(Label::in) = (ProcLayout::out),
@@ -260,7 +258,6 @@ get_path_port_from_label_layout(Label) = PathPort :-
     % The following definitions are only stubs.
 :- pragma foreign_type("C#", proc_layout, "object", []).
 :- pragma foreign_type("Java", proc_layout, "java.lang.Object", []).
-:- pragma foreign_type("Erlang", proc_layout, "").
 
 get_proc_label_from_layout(Layout) = ProcLabel :-
     ( if proc_layout_is_uci(Layout) then
@@ -597,14 +594,6 @@ get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName.
     if (1 == 1) throw new Error(\"not supported in java grade\");
 ").
 
-:- pragma foreign_proc("Erlang",
-    proc_bytecode_bytes(_ProcLayout::in) = (ByteCodeBytes::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    ByteCodeBytes = 0,  % Avoid a warning.
-    throw({""not supported in erlang grade""})
-").
-
     % Default version for non-C backends.
 proc_bytecode_bytes(_) = dummy_bytecode_bytes.
 
@@ -615,14 +604,12 @@ proc_bytecode_bytes(_) = dummy_bytecode_bytes.
     % The following definitions are only stubs.
 :- pragma foreign_type("C#", module_layout, "object", []).
 :- pragma foreign_type("Java", module_layout, "java.lang.Object", []).
-:- pragma foreign_type("Erlang", module_layout, "").
 
 :- pragma foreign_type("C", string_table_chars, "MR_ConstString",
     [can_pass_as_mercury_type, stable]).
     % The following definitions are only stubs.
 :- pragma foreign_type("C#", string_table_chars, "object", []).
 :- pragma foreign_type("Java", string_table_chars, "java.lang.Object", []).
-:- pragma foreign_type("Erlang", string_table_chars, "").
 
 :- pragma foreign_proc("C",
     containing_module_layout(ProcLayout::in, ModuleLayout::out),

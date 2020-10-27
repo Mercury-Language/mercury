@@ -260,8 +260,6 @@
     where equality is store_equal, comparison is store_compare.
 :- pragma foreign_type("Java", store(S), "int", [can_pass_as_mercury_type])
     where equality is store_equal, comparison is store_compare.
-:- pragma foreign_type("Erlang", store(S), "", [can_pass_as_mercury_type])
-    where equality is store_equal, comparison is store_compare.
 
 :- pred store_equal(store(S)::in, store(S)::in) is semidet.
 
@@ -306,12 +304,6 @@ init(S) :-
 "
     TypeInfo_for_S = null;
 ").
-:- pragma foreign_proc("Erlang",
-    do_init(_S0::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    TypeInfo_for_S = 'XXX'
-").
 
 % Note -- the syntax for the operations on stores
 % might be nicer if we used some new operators, e.g.
@@ -330,10 +322,6 @@ init(S) :-
 
 :- pragma foreign_type("C#", generic_mutvar(T, S), "object[]").
 :- pragma foreign_type("Java", generic_mutvar(T, S), "mutvar.Mutvar").
-% XXX ets are not garbage collected
-% but shareable between processes
-
-:- pragma foreign_type("Erlang", generic_mutvar(T, S), "").
 
 :- pragma foreign_proc("C",
     new_mutvar(Val::in, Mutvar::out, S0::di, S::uo),
@@ -357,14 +345,6 @@ init(S) :-
 "
     Mutvar = new mutvar.Mutvar(Val);
 ").
-:- pragma foreign_proc("Erlang",
-    new_mutvar(Val::in, Mutvar::out, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Mutvar = ets:new(mutvar, [set, public]),
-    ets:insert(Mutvar, {value, Val}),
-    S = S0
-").
 
 :- pragma foreign_proc("C",
     get_mutvar(Mutvar::in, Val::out, S0::di, S::uo),
@@ -385,13 +365,6 @@ init(S) :-
 "
     Val = Mutvar.object;
 ").
-:- pragma foreign_proc("Erlang",
-    get_mutvar(Mutvar::in, Val::out, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    [{value, Val}] = ets:lookup(Mutvar, value),
-    S = S0
-").
 
 :- pragma foreign_proc("C",
     set_mutvar(Mutvar::in, Val::in, S0::di, S::uo),
@@ -411,13 +384,6 @@ init(S) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Mutvar.object = Val;
-").
-:- pragma foreign_proc("Erlang",
-    set_mutvar(Mutvar::in, Val::in, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    ets:insert(Mutvar, {value, Val}),
-    S = S0
 ").
 
 copy_mutvar(Mutvar, Copy, !S) :-
@@ -609,15 +575,6 @@ new_cyclic_mutvar(Func, MutVar, !Store) :-
     Ref = new store.Ref(Val);
 ").
 
-:- pragma foreign_proc("Erlang",
-    new_ref(Val::di, Ref::out, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Ref = ets:new(mutvar, [set, public]),
-    ets:insert(Ref, {value, Val}),
-    S = S0
-").
-
 ref_functor(Ref, Functor, Arity, !Store) :-
     unsafe_ref_value(Ref, Val, !Store),
     functor(Val, canonicalize, Functor, Arity).
@@ -653,14 +610,6 @@ copy_ref_value(Ref, Val) -->
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Val = Ref.getValue();
-").
-
-:- pragma foreign_proc("Erlang",
-    unsafe_ref_value(Ref::in, Val::uo, S0::di, S::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    [{value, Val}] = ets:lookup(Ref, value),
-    S = S0
 ").
 
 :- pragma foreign_decl("C",

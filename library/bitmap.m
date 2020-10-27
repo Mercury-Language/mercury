@@ -557,13 +557,6 @@ num_bits(_) = _ :-
     NumBits = BM.num_bits;
 ").
 
-:- pragma foreign_proc("Erlang",
-    num_bits(BM::in) = (NumBits::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    {_, NumBits} = BM
-").
-
 %---------------------------------------------------------------------------%
 
 num_bytes(BM) = Bytes :-
@@ -765,14 +758,6 @@ _ ^ unsafe_byte(_) = _ :-
     Byte = BM.elements[N];
 ").
 
-:- pragma foreign_proc("Erlang",
-    unsafe_byte(N::in, BM::in) = (Byte::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    {Bin, _} = BM,
-    <<_:N/binary, Byte/integer, _/binary>> = Bin
-").
-
 %---------------------------------------------------------------------------%
 
 (!.BM ^ byte(N) := Byte) = !:BM :-
@@ -809,16 +794,6 @@ _ ^ unsafe_byte(_) = _ :-
     BM.elements[N] = (byte) Byte;
 ").
 
-:- pragma foreign_proc("Erlang",
-    'unsafe_byte :='(N::in, BM0::bitmap_di, Byte::in) = (BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    {Bin0, NumBits} = BM0,
-    <<Left:N/binary, _/integer, Right/binary>> = Bin0,
-    Bin = <<Left/binary, Byte/integer, Right/binary>>,
-    BM = {Bin, NumBits}
-").
-
 %---------------------------------------------------------------------------%
 
 get_uint8(BM, N) = U8 :-
@@ -847,14 +822,6 @@ get_uint8(BM, N) = U8 :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     U8 = BM.elements[N];
-").
-
-:- pragma foreign_proc("Erlang",
-    unsafe_get_uint8(BM::in, N::in) = (U8::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    {Bin, _} = BM,
-    <<_:N/binary, U8/integer, _/binary>> = Bin
 ").
 
 %---------------------------------------------------------------------------%
@@ -888,16 +855,6 @@ set_uint8(N, U8, !BM) :-
 "
     BM = BM0;
     BM.elements[N] = (byte) U8;
-").
-
-:- pragma foreign_proc("Erlang",
-    unsafe_set_uint8(N::in, U8::in, BM0::bitmap_di, BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    {Bin0, NumBits} = BM0,
-    <<Left:N/binary, _/integer, Right/binary>> = Bin0,
-    Bin = <<Left/binary, U8/integer, Right/binary>>,
-    BM = {Bin, NumBits}
 ").
 
 %---------------------------------------------------------------------------%
@@ -1004,13 +961,6 @@ unsafe_is_clear(BM, I) :-
     System.arraycopy(BM0.elements, 0, BM.elements, 0, BM0.elements.length);
 ").
 
-:- pragma foreign_proc("Erlang",
-    copy(BM0::in) = (BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    BM = BM0
-").
-
 copy(BM0) = BM :-
     NumBits = BM0 ^ num_bits,
     BM = clear_filler_bits(
@@ -1079,14 +1029,6 @@ shrink_without_copying(!.BM, NewSize) = !:BM :-
 "
     BM = BM0;
     BM.num_bits = NumBits;
-").
-
-:- pragma foreign_proc("Erlang",
-    'num_bits :='(BM0::bitmap_di, NumBits::in) = (BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    {Bin, _} = BM0,
-    BM = {Bin, NumBits}
 ").
 
 %---------------------------------------------------------------------------%
@@ -1845,8 +1787,6 @@ import jmercury.runtime.MercuryBitmap;
     where equality is bitmap_equal, comparison is bitmap_compare.
 :- pragma foreign_type("C#", bitmap, "mercury.runtime.MercuryBitmap")
     where equality is bitmap_equal, comparison is bitmap_compare.
-:- pragma foreign_type("Erlang", bitmap, "")
-    where equality is bitmap_equal, comparison is bitmap_compare.
 
 :- pred bitmap_equal(bitmap::in, bitmap::in) is semidet.
 :- pragma terminates(bitmap_equal/2).
@@ -1870,13 +1810,6 @@ import jmercury.runtime.MercuryBitmap;
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "
     SUCCESS_INDICATOR = BM1.equals(BM2);
-").
-
-:- pragma foreign_proc("Erlang",
-    bitmap_equal(BM1::in, BM2::in),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
-"
-    SUCCESS_INDICATOR = (BM1 =:= BM2)
 ").
 
 bitmap_equal(BM1, BM2) :-
@@ -1963,20 +1896,6 @@ bytes_equal(Index, MaxIndex, BM1, BM2) :-
     }
 ").
 
-:- pragma foreign_proc("Erlang",
-    bitmap_compare(Result::uo, BM1::in, BM2::in),
-    [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
-"
-    if
-        BM1 =:= BM2 ->
-            Result = {'='};
-        BM1 < BM2 ->
-            Result = {'<'};
-        true ->
-            Result = {'>'}
-    end
-").
-
 bitmap_compare(Result, BM1, BM2) :-
     NumBits1 = BM1 ^ num_bits,
     NumBits2 = BM2 ^ num_bits,
@@ -2038,15 +1957,6 @@ bytes_compare(Result, Index, MaxIndex, BM1, BM2) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     BM = new mercury.runtime.MercuryBitmap(N);
-").
-
-:- pragma foreign_proc("Erlang",
-    allocate_bitmap(N::in) = (BM::bitmap_uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
-"
-    Roundup = 8 * ((N + 7) div 8),
-    Bin = <<0:Roundup>>,
-    BM = {Bin, N}
 ").
 
 :- func resize_bitmap(bitmap, num_bits) = bitmap.

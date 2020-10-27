@@ -475,11 +475,6 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
 "
     SUCCESS_INDICATOR = false;
 ").
-:- pragma foreign_proc("Erlang", using_sprintf,
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = false
-").
 
 :- pred using_sprintf_for_char(char::in) is semidet.
 
@@ -1497,13 +1492,6 @@ convert_float_to_string(Float) = String :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatString = java.lang.Double.toString(FloatVal);
-").
-:- pragma foreign_proc("Erlang",
-    float_to_string_first_pass(FloatVal::in, FloatString::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    List = io_lib:format(""~.17g"", [FloatVal]),
-    FloatString = list_to_binary(List)
 ").
 
     % Converts a floating point number to a specified number of standard

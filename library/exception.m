@@ -546,10 +546,6 @@ finally_2(P, Cleanup, PRes, CleanupRes, !IO) :-
     use(_T::in),
     [will_not_call_mercury, thread_safe],
     ";").
-:- pragma foreign_proc("Erlang",
-    use(_T::in),
-    [will_not_call_mercury, thread_safe],
-    "void").
 
 %---------------------------------------------------------------------------%
 
@@ -709,13 +705,6 @@ throw_impl(Univ::in) :-
 "
     exception.ssdb_hooks.on_throw_impl(T);
     throw new jmercury.runtime.Exception(T);
-").
-
-:- pragma foreign_proc("Erlang",
-    throw_impl(T::in),
-    [will_not_call_mercury, promise_pure],
-"
-    throw({'ML_exception', T})
 ").
 
 %---------------------%
@@ -1452,60 +1441,6 @@ public class SsdbHooks {
 }
 
 public static SsdbHooks ssdb_hooks = new SsdbHooks();
-").
-
-%---------------------------------------------------------------------------%
-
-:- pragma foreign_code("Erlang", "
-    % det ==> model_det
-    builtin_catch_3_p_0(TypeInfo, WrappedGoal, Handler) ->
-        T = try
-            WrappedGoal()
-        catch
-            throw: {'ML_exception', Excp} ->
-                Handler(Excp)
-        end.
-
-    % semidet ==> model_semi
-    builtin_catch_3_p_1(_TypeInfo, _WrappedGoal, _Handler) ->
-        % This function is not called anywhere in this module.
-        mercury__private_builtin:sorry_1_p_0(
-            ""builtin_catch_3_p_1 not implemented"").
-
-    % cc_multi ==> model_det
-    builtin_catch_3_p_2(TypeInfo, WrappedGoal, Handler) ->
-        try
-            WrappedGoal()
-        catch
-            throw: {'ML_exception', Excp} ->
-                Handler(Excp)
-        end.
-
-    % cc_nondet ==> model_semi
-    builtin_catch_3_p_3(_TypeInfo, _Pred, _Handler) ->
-        % This function is not called anywhere in this module.
-        mercury__private_builtin:sorry_1_p_0(
-            ""builtin_catch_3_p_3 not implemented"").
-
-    % multi ==> model_non
-    builtin_catch_3_p_4(_TypeInfo_for_T, Pred, Handler, Succeed) ->
-        try
-            Pred(Succeed)
-        catch
-            throw: {'ML_exception', Excp} ->
-                Result = Handler(Excp),
-                Succeed(Result)
-        end.
-
-    % multi ==> model_non
-    builtin_catch_3_p_5(_TypeInfo_for_T, Pred, Handler, Succeed) ->
-        try
-            Pred(Succeed)
-        catch
-            throw: {'ML_exception', Excp} ->
-                Result = Handler(Excp),
-                Succeed(Result)
-        end.
 ").
 
 %---------------------------------------------------------------------------%
@@ -2535,8 +2470,6 @@ mercury_sys_init_exceptions_write_out_proc_statics(FILE *deep_fp,
 :- pragma foreign_export("C#", report_uncaught_exception(in, di, uo),
     "ML_report_uncaught_exception").
 :- pragma foreign_export("Java", report_uncaught_exception(in, di, uo),
-    "ML_report_uncaught_exception").
-:- pragma foreign_export("Erlang", report_uncaught_exception(in, di, uo),
     "ML_report_uncaught_exception").
 
 :- pred report_uncaught_exception(univ::in, io::di, io::uo) is cc_multi.

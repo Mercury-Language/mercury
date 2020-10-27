@@ -107,9 +107,6 @@ new_mutvar(X, Ref) :-
 
 :- pragma foreign_type("C#", mutvar(T), "object[]").
 :- pragma foreign_type("Java", mutvar(T), "mutvar.Mutvar").
-:- pragma foreign_type("Erlang", mutvar(T), "").
-% Erlang implementation:
-% XXX ets are not garbage collected but shareable between processes
 
 %---------------------%
 
@@ -133,12 +130,6 @@ new_mutvar(X, Ref) :-
 "
     Ref = new mutvar.Mutvar();
 ").
-:- pragma foreign_proc("Erlang",
-    new_mutvar0(Ref::uo),
-    [will_not_call_mercury, thread_safe],
-"
-    Ref = ets:new(mutvar, [set, public])
-").
 
 %---------------------%
 
@@ -159,12 +150,6 @@ new_mutvar(X, Ref) :-
     [will_not_call_mercury, thread_safe],
 "
     X = Ref.object;
-").
-:- pragma foreign_proc("Erlang",
-    get_mutvar(Ref::in, X::uo),
-    [will_not_call_mercury, thread_safe],
-"
-    [{value, X}] = ets:lookup(Ref, value)
 ").
 
 %---------------------%
@@ -187,12 +172,6 @@ new_mutvar(X, Ref) :-
 "
     Ref.object = X;
 ").
-:- pragma foreign_proc("Erlang",
-    set_mutvar(Ref::in, X::in),
-    [will_not_call_mercury, thread_safe],
-"
-    ets:insert(Ref, {value, X})
-").
 
 %---------------------%
 
@@ -213,12 +192,6 @@ new_mutvar(X, Ref) :-
     [will_not_call_mercury, thread_safe],
 "
     Ref.object = null;
-").
-:- pragma foreign_proc("Erlang",
-    clear_mutvar(Ref::in),
-    [will_not_call_mercury, thread_safe],
-"
-    ets:delete(Ref, value)
 ").
 
 %---------------------------------------------------------------------------%
