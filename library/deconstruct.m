@@ -288,10 +288,6 @@
 :- import_module require.
 :- import_module type_desc.
 
-% For use by the Erlang backends.
-%
-:- use_module erlang_rtti_implementation.
-
 % For use by the Java and C# backends.
 %
 :- use_module rtti_implementation.
@@ -420,12 +416,8 @@ functor_idcc(Term, Functor, Arity) :-
 SUCCESS_INDICATOR = (FunctorNumber >= 0);
 }").
 
-functor_number(Term, FunctorNumber, Arity) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.functor_number(Term, FunctorNumber, Arity)
-    else
-        private_builtin.sorry("deconstruct.functor_number")
-    ).
+functor_number(_Term, _FunctorNumber, _Arity) :-
+    private_builtin.sorry("deconstruct.functor_number").
 
 :- pragma foreign_proc("C",
     functor_number_cc(Term::in, FunctorNumber::out, Arity::out),
@@ -448,12 +440,7 @@ SUCCESS_INDICATOR = (FunctorNumber >= 0);
 }").
 
 functor_number_cc(Term, FunctorNumber, Arity) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.functor_number_cc(Term, FunctorNumber,
-            Arity)
-    else
-        rtti_implementation.functor_number_cc(Term, FunctorNumber, Arity)
-    ).
+    rtti_implementation.functor_number_cc(Term, FunctorNumber, Arity).
 
 %---------------------------------------------------------------------------%
 
@@ -569,21 +556,6 @@ deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     ).
 
 deconstruct_du(Term, NonCanon, FunctorNumber, Arity, Arguments) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.deconstruct_du(Term, NonCanon,
-            FunctorNumber, Arity, Arguments)
-    else
-        deconstruct_du_2(Term, NonCanon, FunctorNumber, Arity, Arguments)
-    ).
-
-:- pred deconstruct_du_2(T, noncanon_handling, functor_number_lex,
-    int, list(univ)).
-:- mode deconstruct_du_2(in, in(do_not_allow), out, out, out) is semidet.
-:- mode deconstruct_du_2(in, in(include_details_cc), out, out, out)
-    is cc_nondet.
-:- mode deconstruct_du_2(in, in, out, out, out) is cc_nondet.
-
-deconstruct_du_2(Term, NonCanon, FunctorNumber, Arity, Arguments) :-
     ( if _ = construct.num_functors(type_of(Term)) then
         (
             NonCanon = do_not_allow,
@@ -1078,15 +1050,8 @@ limited_deconstruct_idcc(Term, _MaxArity, Functor, Arity, Arguments) :-
 :- pragma consider_used(local_deconstruct/6).
 
 local_deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.deconstruct(Term, NonCanon, Functor, Arity,
-            Arguments),
-        % XXX incomplete
-        FunctorNumber = 0
-    else
-        rtti_implementation.deconstruct(Term, NonCanon, Functor, FunctorNumber,
-            Arity, Arguments)
-    ).
+    rtti_implementation.deconstruct(Term, NonCanon, Functor, FunctorNumber,
+        Arity, Arguments).
 
 :- pred local_univ_named_arg(T, noncanon_handling, string, univ).
 :- mode local_univ_named_arg(in, in(do_not_allow), in, out) is semidet.
@@ -1096,11 +1061,7 @@ local_deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
 :- pragma consider_used(local_univ_named_arg/4).
 
 local_univ_named_arg(Term, NonCanon, Name, Argument) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        private_builtin.sorry("local_univ_named_arg")
-    else
-        rtti_implementation.univ_named_arg(Term, NonCanon, Name, Argument)
-    ).
+    rtti_implementation.univ_named_arg(Term, NonCanon, Name, Argument).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

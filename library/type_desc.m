@@ -239,8 +239,6 @@
 :- import_module require.
 :- import_module string.
 
-:- use_module erlang_rtti_implementation.
-
 :- pragma foreign_decl("C", "
 #include ""mercury_heap.h""         // for MR_incr_hp_msg() etc.
 #include ""mercury_misc.h""         // for MR_fatal_error()
@@ -304,12 +302,8 @@ pseudo_type_desc_to_rep(PseudoTypeDesc) = PseudoTypeRep :-
 ").
 
 is_univ_pseudo_type_desc(PTD, N) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.is_univ_pseudo_type_desc(PTD, N)
-    else
-        pseudo_type_desc_to_pseudo_type_info(PTD, PTI),
-        rtti_implementation.is_univ_pseudo_type_info(PTI, N)
-    ).
+    pseudo_type_desc_to_pseudo_type_info(PTD, PTI),
+    rtti_implementation.is_univ_pseudo_type_info(PTI, N).
 
 :- pred is_exist_pseudo_type_desc(pseudo_type_desc::in, int::out) is semidet.
 
@@ -332,12 +326,8 @@ is_univ_pseudo_type_desc(PTD, N) :-
 ").
 
 is_exist_pseudo_type_desc(PTD, N) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.is_exist_pseudo_type_desc(PTD, N)
-    else
-        pseudo_type_desc_to_pseudo_type_info(PTD, PTI),
-        rtti_implementation.is_exist_pseudo_type_info(PTI, N)
-    ).
+    pseudo_type_desc_to_pseudo_type_info(PTD, PTI),
+    rtti_implementation.is_exist_pseudo_type_info(PTI, N).
 
 %---------------------------------------------------------------------------%
 
@@ -581,16 +571,11 @@ type_arg_names([Type | Types], IsFunc, ArgNames) :-
 }").
 
 type_ctor_and_args(TypeDesc, TypeCtorDesc, ArgTypeDescs) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.type_ctor_desc_and_args(TypeDesc,
-            TypeCtorDesc, ArgTypeDescs)
-    else
-        type_desc_to_type_info(TypeDesc, TypeInfo),
-        rtti_implementation.type_ctor_and_args(TypeInfo, TypeCtorInfo,
-            ArgTypeInfos),
-        make_type_ctor_desc(TypeInfo, TypeCtorInfo, TypeCtorDesc),
-        type_info_list_to_type_desc_list(ArgTypeInfos, ArgTypeDescs)
-    ).
+    type_desc_to_type_info(TypeDesc, TypeInfo),
+    rtti_implementation.type_ctor_and_args(TypeInfo, TypeCtorInfo,
+        ArgTypeInfos),
+    make_type_ctor_desc(TypeInfo, TypeCtorInfo, TypeCtorDesc),
+    type_info_list_to_type_desc_list(ArgTypeInfos, ArgTypeDescs).
 
 :- pragma foreign_proc("C",
     pseudo_type_ctor_and_args(PseudoTypeDesc::in, TypeCtorDesc::out,
@@ -611,18 +596,12 @@ type_ctor_and_args(TypeDesc, TypeCtorDesc, ArgTypeDescs) :-
 }").
 
 pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtorDesc, ArgPseudoTypeDescs) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.pseudo_type_ctor_and_args(PseudoTypeDesc,
-            TypeCtorDesc, ArgPseudoTypeDescs)
-    else
-        pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc, PseudoTypeInfo),
-        rtti_implementation.pseudo_type_ctor_and_args(PseudoTypeInfo,
-            TypeCtorInfo, ArgPseudoTypeInfos),
-        Arity = list.length(ArgPseudoTypeInfos),
-        make_type_ctor_desc_with_arity(Arity, TypeCtorInfo, TypeCtorDesc),
-        private_builtin.unsafe_type_cast(ArgPseudoTypeInfos,
-            ArgPseudoTypeDescs)
-    ).
+    pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc, PseudoTypeInfo),
+    rtti_implementation.pseudo_type_ctor_and_args(PseudoTypeInfo,
+        TypeCtorInfo, ArgPseudoTypeInfos),
+    Arity = list.length(ArgPseudoTypeInfos),
+    make_type_ctor_desc_with_arity(Arity, TypeCtorInfo, TypeCtorDesc),
+    private_builtin.unsafe_type_cast(ArgPseudoTypeInfos, ArgPseudoTypeDescs).
 
 %---------------------------------------------------------------------------%
 
@@ -645,13 +624,9 @@ pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtorDesc, ArgPseudoTypeDescs) :-
 }").
 
 type_ctor(TypeDesc) = TypeCtorDesc :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.type_ctor_desc(TypeDesc, TypeCtorDesc)
-    else
-        type_desc_to_type_info(TypeDesc, TypeInfo),
-        TypeCtorInfo = rtti_implementation.get_type_ctor_info(TypeInfo),
-        make_type_ctor_desc(TypeInfo, TypeCtorInfo, TypeCtorDesc)
-    ).
+    type_desc_to_type_info(TypeDesc, TypeInfo),
+    TypeCtorInfo = rtti_implementation.get_type_ctor_info(TypeInfo),
+    make_type_ctor_desc(TypeInfo, TypeCtorInfo, TypeCtorDesc).
 
 :- pragma foreign_proc("C",
     pseudo_type_ctor(PseudoTypeInfo::in) = (TypeCtor::out),
@@ -844,14 +819,9 @@ make_type_ctor_desc_with_arity(_, _, _) :-
 
 type_ctor_name_and_arity(TypeCtorDesc, ModuleName, TypeCtorName,
         TypeCtorArity) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.type_ctor_desc_name_and_arity(TypeCtorDesc,
-            ModuleName, TypeCtorName, TypeCtorArity)
-    else
-        type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo),
-        rtti_implementation.type_ctor_name_and_arity(TypeCtorInfo,
-            ModuleName, TypeCtorName, TypeCtorArity)
-    ).
+    type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo),
+    rtti_implementation.type_ctor_name_and_arity(TypeCtorInfo,
+        ModuleName, TypeCtorName, TypeCtorArity).
 
 :- pred type_ctor_desc_to_type_ctor_info(type_ctor_desc::in,
     rtti_implementation.type_ctor_info::out) is det.
@@ -869,14 +839,8 @@ type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo) :-
 :- pragma promise_equivalent_clauses(make_type/2).
 :- pragma no_determinism_warning(make_type/2).
 
-make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.make_type_desc(TypeCtorDesc, ArgTypes,
-            TypeDesc)
-    else
-        private_builtin.sorry("make_type(in, in) = out")
-    ).
-
+make_type(_TypeCtorDesc::in, _ArgTypes::in) = (_TypeDesc::out) :-
+    private_builtin.sorry("make_type(in, in) = out").
 make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
     private_builtin.sorry("make_type(out, out) = in").
 

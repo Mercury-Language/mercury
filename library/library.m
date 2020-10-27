@@ -179,8 +179,6 @@
 % NOTE: changes to this list may need to be reflected
 % in mdbcomp/builtin_modules.m.
 %
-:- import_module erlang_builtin.
-:- import_module erlang_rtti_implementation.
 :- import_module mutvar.
 :- import_module par_builtin.
 :- import_module private_builtin.
@@ -265,8 +263,6 @@ mercury_std_library_module("dir").
 mercury_std_library_module("edit_seq").
 mercury_std_library_module("enum").
 mercury_std_library_module("eqvclass").
-mercury_std_library_module("erlang_builtin").
-mercury_std_library_module("erlang_rtti_implementation").
 mercury_std_library_module("exception").
 mercury_std_library_module("fat_sparse_bitset").
 mercury_std_library_module("float").

@@ -31,11 +31,6 @@ MCFLAGS-std_util                += --no-halt-at-warn
 MCFLAGS-dir                     += --no-halt-at-warn
 MCFLAGS-exception               += --no-halt-at-warn
 
-# Workaround for a compiler abort with --profile-for-implicit-parallelism.
-# Bug #98 in Mantis.
-#
-MCFLAGS-erlang_rtti_implementation += --no-inline-simple
-
 # io.m uses library features that are supported by POSIX but which are not
 # part of ANSI C, such as `struct stat', fileno(), and putenv().
 # We need to pass --no-ansi to mgnuc to ensure that these are declared.
@@ -49,8 +44,6 @@ MCFLAGS-stream                  += --no-warn-unknown-format-calls
 MCFLAGS-stream.string_writer    += --no-warn-unknown-format-calls
 MCFLAGS-string                  += --no-warn-unknown-format-calls
 
-MCFLAGS-erlang_builtin          += --no-warn-nothing-exported
-MCFLAGS-erlang_conf             += --no-warn-nothing-exported
 MCFLAGS-mer_std                 += --no-warn-nothing-exported
 
 # Avoid warnings about insts with non-existent function symbols in their
@@ -86,10 +79,6 @@ MCFLAGS-bitmap                  += --no-erlang-native-code
 # Work around a warning for termination analysis of the user defined equality
 # and comparison code for lazy values.
 MCFLAGS-lazy                    += --no-warn-non-term-special-preds
-
-# Work around a problem with --warn-unused-imports: it complains about
-# erlang_rtti_implementation, which is needed in some grades.
-MCFLAGS-type_desc               += --no-warn-unused-imports
 
 # Keep all modules' contents in a consistent order, except these (for now).
 MCFLAGS-array                   += --no-warn-inconsistent-pred-order-clauses

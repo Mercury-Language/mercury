@@ -127,10 +127,6 @@
 :- import_module int.
 :- import_module require.
 
-% For use by the Erlang backends.
-%
-:- use_module erlang_rtti_implementation.
-
 % For use by the Java and C# backends.
 %
 :- use_module rtti_implementation.
@@ -153,12 +149,8 @@
 }").
 
 num_functors(TypeDesc) = NumFunctors :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        NumFunctors = erlang_rtti_implementation.num_functors(TypeDesc)
-    else
-        type_desc_to_type_info(TypeDesc, TypeInfo),
-        rtti_implementation.type_info_num_functors(TypeInfo, NumFunctors)
-    ).
+    type_desc_to_type_info(TypeDesc, TypeInfo),
+    rtti_implementation.type_info_num_functors(TypeInfo, NumFunctors).
 
 det_num_functors(TypeInfo) =
     ( if N = num_functors(TypeInfo) then
@@ -182,23 +174,11 @@ get_functor_with_names(TypeDesc, I, Functor, Arity,
 
 get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
         PseudoTypeDescList) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.get_functor(TypeDesc, FunctorNumber,
-            FunctorName, Arity, TypeDescList),
-        % XXX This old comment is wrong now:
-        % The backends in which we use this definition of this predicate don't
-        % yet support function symbols with existential types, which is the
-        % only kind of function symbol in which we may want to return unbound.
-        PseudoTypeDescList = list.map(type_desc_to_pseudo_type_desc,
-            TypeDescList)
-    else
-        type_desc_to_type_info(TypeDesc, TypeInfo),
-        rtti_implementation.type_info_get_functor(TypeInfo, FunctorNumber,
-            FunctorName, Arity, PseudoTypeInfoList),
-        % Assumes they have the same representation.
-        private_builtin.unsafe_type_cast(PseudoTypeInfoList,
-            PseudoTypeDescList)
-    ).
+    type_desc_to_type_info(TypeDesc, TypeInfo),
+    rtti_implementation.type_info_get_functor(TypeInfo, FunctorNumber,
+        FunctorName, Arity, PseudoTypeInfoList),
+    % Assumes they have the same representation.
+    private_builtin.unsafe_type_cast(PseudoTypeInfoList, PseudoTypeDescList).
 
 :- pragma foreign_proc("C",
     get_functor_internal(TypeDesc::in, FunctorNumber::in, FunctorName::out,
@@ -257,23 +237,11 @@ get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
 
 get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
         PseudoTypeDescList, Names) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.get_functor_with_names(TypeDesc,
-            FunctorNumber, FunctorName, Arity, TypeDescList, Names),
-        % XXX This old comment is wrong now:
-        % The backends in which we use this definition of this predicate don't
-        % yet support function symbols with existential types, which is the
-        % only kind of function symbol in which we may want to return unbound.
-        PseudoTypeDescList = list.map(type_desc_to_pseudo_type_desc,
-            TypeDescList)
-    else
-        type_desc_to_type_info(TypeDesc, TypeInfo),
-        rtti_implementation.type_info_get_functor_with_names(TypeInfo,
-            FunctorNumber, FunctorName, Arity, PseudoTypeInfoList, Names),
-        % Assumes they have the same representation.
-        private_builtin.unsafe_type_cast(PseudoTypeInfoList,
-            PseudoTypeDescList)
-    ).
+    type_desc_to_type_info(TypeDesc, TypeInfo),
+    rtti_implementation.type_info_get_functor_with_names(TypeInfo,
+        FunctorNumber, FunctorName, Arity, PseudoTypeInfoList, Names),
+    % Assumes they have the same representation.
+    private_builtin.unsafe_type_cast(PseudoTypeInfoList, PseudoTypeDescList).
 
 :- pragma foreign_proc("C",
     get_functor_with_names_internal(TypeDesc::in, FunctorNumber::in,
@@ -378,14 +346,9 @@ get_functor_ordinal(TypeDesc, FunctorNumber) = Ordinal :-
     get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal).
 
 get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.get_functor_ordinal(TypeDesc, FunctorNumber,
-            Ordinal)
-    else
-        type_desc_to_type_info(TypeDesc, TypeInfo),
-        rtti_implementation.type_info_get_functor_ordinal(TypeInfo,
-            FunctorNumber, Ordinal)
-    ).
+    type_desc_to_type_info(TypeDesc, TypeInfo),
+    rtti_implementation.type_info_get_functor_ordinal(TypeInfo,
+        FunctorNumber, Ordinal).
 
 :- pragma foreign_proc("C",
     get_functor_ordinal(TypeDesc::in, FunctorNumber::in, Ordinal::out),
@@ -488,14 +451,9 @@ get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
 }").
 
 get_functor_lex(TypeDesc, Ordinal) = FunctorNumber :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        erlang_rtti_implementation.get_functor_lex(TypeDesc, Ordinal,
-            FunctorNumber)
-    else
-        type_desc_to_type_info(TypeDesc, TypeInfo),
-        rtti_implementation.type_info_get_functor_lex(TypeInfo, Ordinal,
-            FunctorNumber)
-    ).
+    type_desc_to_type_info(TypeDesc, TypeInfo),
+    rtti_implementation.type_info_get_functor_lex(TypeInfo, Ordinal,
+        FunctorNumber).
 
 :- pragma foreign_proc("C",
     get_functor_lex(TypeDesc::in, Ordinal::in) = (FunctorNumber::out),
@@ -1282,12 +1240,8 @@ ML_copy_tagword_args(MR_Word *arg_list_ptr, const MR_Word ptag,
 }").
 
 construct(TypeDesc, Index, Args) = Term :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        Term = erlang_rtti_implementation.construct(TypeDesc, Index, Args)
-    else
-        type_desc_to_type_info(TypeDesc, TypeInfo),
-        Term = rtti_implementation.construct(TypeInfo, Index, Args)
-    ).
+    type_desc_to_type_info(TypeDesc, TypeInfo),
+    Term = rtti_implementation.construct(TypeInfo, Index, Args).
 
 construct_tuple(Args) =
     construct_tuple_2(Args, list.map(univ_type, Args), list.length(Args)).
@@ -1338,12 +1292,7 @@ construct_tuple(Args) =
 }").
 
 construct_tuple_2(Args, ArgTypeDescs, Arity) = Term :-
-    ( if erlang_rtti_implementation.is_erlang_backend then
-        Term = erlang_rtti_implementation.construct_tuple_2(Args, ArgTypeDescs,
-            Arity)
-    else
-        list.map(type_desc_to_type_info, ArgTypeDescs, ArgTypeInfos),
-        Term = rtti_implementation.construct_tuple_2(Args, ArgTypeInfos, Arity)
-    ).
+    list.map(type_desc_to_type_info, ArgTypeDescs, ArgTypeInfos),
+    Term = rtti_implementation.construct_tuple_2(Args, ArgTypeInfos, Arity).
 
 %---------------------------------------------------------------------------%
