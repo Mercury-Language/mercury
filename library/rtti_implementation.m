@@ -231,10 +231,7 @@
 :- pragma foreign_type("C#", type_layout, "runtime.TypeLayout").
 :- pragma foreign_type("Java", type_layout, "jmercury.runtime.TypeLayout").
 
-:- type pseudo_type_info ---> pseudo_type_info(int).
-    % This should be a dummy type. The non-dummy definition is a workaround
-    % for a bug in the Erlang backend that generates invalid code for the
-    % dummy type.
+:- type pseudo_type_info ---> pseudo_type_info(c_pointer).
 :- pragma foreign_type("C#", pseudo_type_info,
     "runtime.PseudoTypeInfo").
 :- pragma foreign_type("Java", pseudo_type_info,
@@ -3525,8 +3522,8 @@ new_type_info(TypeInfo, _) = NewTypeInfo :-
     %
 :- func get_pti_from_arg_types(arg_types, int) = pseudo_type_info.
 
-get_pti_from_arg_types(_, _) = pseudo_type_info(0) :-
-    det_unimplemented("get_pti_from_arg_types").
+get_pti_from_arg_types(_, _) = _ :-
+    sorry($module, "get_pti_from_arg_types").
 
 :- pragma foreign_proc("Java",
     get_pti_from_arg_types(ArgTypes::in, Index::in) = (ArgTypeInfo::out),
