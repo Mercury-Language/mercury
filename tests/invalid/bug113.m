@@ -34,7 +34,7 @@ new(N) = new(N, no).
 new(N, B) = BM :-
     ( if N < 0 then
         throw_bitmap_error("bitmap.new: negative size") = _ : int
-      else
+    else
         X    = initializer(B),
         BM0  = initialize_bitmap(allocate_bitmap(N), N, X),
         BM   = clear_filler_bits(BM0)

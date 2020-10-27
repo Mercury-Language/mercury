@@ -16,9 +16,9 @@
 :- implementation.
 
 p(A, B, C) :-
-    ( A = B ->
+    ( if A = B then
         C = A
-    ;
+    else
         C = f(1, 1),
         A = f(1, _),
         B = f(_, 1)

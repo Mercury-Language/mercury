@@ -16,7 +16,7 @@
 :- implementation.
 
 foo(X, Y) :-
-    builtin__no_such_pred(X, Y).
+    builtin.no_such_pred(X, Y).
 
 bar(X, Y) :-
-    builtin__copy(X, Y).
+    builtin.copy(X, Y).

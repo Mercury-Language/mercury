@@ -31,9 +31,9 @@ build_map(KeyToValue, Keys, Map, !MemoTable) :-
         % compiler.
         ( pred(K::in, !.M::in, !:M::out, !.MemoTable1::in, !:MemoTable::out)
                 is det :-
-            ( KeyToValue(K, V, !MemoTable1) ->
+            ( if KeyToValue(K, V, !MemoTable1) then
                 map.det_insert(K, V, !M)
-            ;   
+            else
                 true
             )
         ), Keys, map.init, Map, !MemoTable).

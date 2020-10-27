@@ -10,7 +10,7 @@
 
 :- interface.
 
-:- pred foo(builtin__ints::in) is semidet.
+:- pred foo(builtin.ints::in) is semidet.
 
 :- implementation.
 

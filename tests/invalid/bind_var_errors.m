@@ -36,12 +36,12 @@ bind_var_in_negation :-
     consume(X).
 
 bind_var_in_ite_cond(X) :-
-    (
+    ( if
         X = 42,
         Y = 42
-    ->
+    then
         true
-    ;
+    else
         true
     ),
     consume(Y).
