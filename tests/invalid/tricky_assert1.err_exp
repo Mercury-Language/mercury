@@ -2,5 +2,5 @@ tricky_assert1.m:010: In interface for module `tricky_assert1':
 tricky_assert1.m:010:   error: exported promise refers to predicate
 tricky_assert1.m:010:   `tricky_assert1.local'/0 which is defined in the
 tricky_assert1.m:010:   implementation section of module `tricky_assert1'.
-tricky_assert1.m:010:   Either move the promise into the implementation section
-tricky_assert1.m:010:   or move the definition into the interface.
+tricky_assert1.m:010:   Either move the promise into the implementation
+tricky_assert1.m:010:   section, or move the definition into the interface.

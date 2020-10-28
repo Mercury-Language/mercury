@@ -316,7 +316,7 @@ report_assertion_interface_error(ModuleInfo, Context, IdPieces, !Specs) :-
         [words("which is defined in the implementation section of module"),
         qual_sym_name(ModuleName), suffix("."), nl],
     VerbosePieces =
-        [words("Either move the promise into the implementation section"),
+        [words("Either move the promise into the implementation section,"),
         words("or move the definition into the interface."), nl],
     Msgs = [always(MainPieces), verbose_only(verbose_always, VerbosePieces)],
     Spec = error_spec($pred, severity_error, phase_type_check,
