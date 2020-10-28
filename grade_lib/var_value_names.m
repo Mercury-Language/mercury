@@ -89,12 +89,10 @@ solver_var_value_name("mercuryfile",            svalue_ac_merc_file_yes).
 
 solver_var_value_name("mlds",                   svalue_backend_mlds).
 solver_var_value_name("llds",                   svalue_backend_llds).
-solver_var_value_name("elds",                   svalue_backend_elds).
 
 solver_var_value_name("c",                      svalue_target_c).
 solver_var_value_name("csharp",                 svalue_target_csharp).
 solver_var_value_name("java",                   svalue_target_java).
-solver_var_value_name("erlang",                 svalue_target_erlang).
 
 solver_var_value_name("none",                   svalue_gcc_conf_none).
 solver_var_value_name("reg",                    svalue_gcc_conf_reg).

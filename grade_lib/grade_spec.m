@@ -96,12 +96,10 @@
 
     ;       svalue_backend_mlds
     ;       svalue_backend_llds
-    ;       svalue_backend_elds
 
     ;       svalue_target_c
     ;       svalue_target_csharp
     ;       svalue_target_java
-    ;       svalue_target_erlang
 
     ;       svalue_gcc_conf_none       % used for non-LLDS backends
     ;       svalue_gcc_conf_reg
@@ -326,10 +324,9 @@ init_solver_var_specs(SpecsVersion) = Specs :-
             [svalue_ac_merc_file_no, svalue_ac_merc_file_yes]),
 
         solver_var_spec(svar_backend,
-            [svalue_backend_mlds, svalue_backend_llds, svalue_backend_elds]),
+            [svalue_backend_mlds, svalue_backend_llds]),
         solver_var_spec(svar_target,
-            [svalue_target_c, svalue_target_csharp,
-            svalue_target_java, svalue_target_erlang]),
+            [svalue_target_c, svalue_target_csharp, svalue_target_java]),
 
         solver_var_spec(svar_gcc_conf,
             % XXX The order of preference here is partially speed,
@@ -435,20 +432,10 @@ init_requirement_specs = [
         (svar_backend `being` svalue_backend_llds) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
-    requirement_spec(
-        "Using the ELDS backend requires targeting Erlang.",
-        (svar_backend `being` svalue_backend_elds) `implies_that`
-        (svar_target `is_one_of` [svalue_target_erlang])
-    ),
 
     requirement_spec(
         "The use of gcc extensions makes sense only for the LLDS backend.",
         (svar_backend `being` svalue_backend_mlds) `implies_that`
-        (svar_gcc_conf `is_one_of` [svalue_gcc_conf_none])
-    ),
-    requirement_spec(
-        "The use of gcc extensions makes sense only for the LLDS backend.",
-        (svar_backend `being` svalue_backend_elds) `implies_that`
         (svar_gcc_conf `is_one_of` [svalue_gcc_conf_none])
     ),
 
@@ -462,11 +449,6 @@ init_requirement_specs = [
         "Targeting Java requires the MLDS backend.",
         (svar_target `being` svalue_target_java) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_mlds])
-    ),
-    requirement_spec(
-        "Targeting Erlang requires the ELDS backend.",
-        (svar_target `being` svalue_target_erlang) `implies_that`
-        (svar_backend `is_one_of` [svalue_backend_elds])
     ),
 
     requirement_spec(
@@ -483,11 +465,6 @@ init_requirement_specs = [
     requirement_spec(
         "Targeting Java requires target native gc.",
         (svar_target `being` svalue_target_java) `implies_that`
-        (svar_gc `is_one_of` [svalue_gc_target_native])
-    ),
-    requirement_spec(
-        "Targeting Erlang requires target native gc.",
-        (svar_target `being` svalue_target_erlang) `implies_that`
         (svar_gc `is_one_of` [svalue_gc_target_native])
     ),
 
@@ -507,14 +484,6 @@ init_requirement_specs = [
         (svar_target `being` svalue_target_java) `implies_that`
         (svar_thread_safe `is_one_of` [svalue_thread_safe_target_native])
     ),
-    % XXX Generated Erlang is also always thread safe, but library/thread.m
-    % does not (yet) have Erlang implementations of its foreign_procs,
-    % so the program cannot create new threads.
-    requirement_spec(
-        "Generating Erlang implies using the Erlang threading model.",
-        (svar_target `being` svalue_target_erlang) `implies_that`
-        (svar_thread_safe `is_one_of` [svalue_thread_safe_target_native])
-    ),
 
 % These are covered by a single requirement from spf back to target.
 %   requirement_spec(
@@ -525,11 +494,6 @@ init_requirement_specs = [
 %   requirement_spec(
 %       "Targeting Java is incompatible with single-precision floats.",
 %       (svar_target `being` svalue_target_java) `implies_that`
-%       (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
-%   ),
-%   requirement_spec(
-%       "Targeting Erlang is incompatible with single-precision floats.",
-%       (svar_target `being` svalue_target_erlang) `implies_that`
 %       (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
 %   ),
 
@@ -931,7 +895,7 @@ init_requirement_specs = [
     requirement_spec(
         "Source-to-source debugging does not make sense for the LLDS backend.",
         (svar_ssdebug `being` svalue_ssdebug_yes) `implies_that`
-        (svar_backend `is_one_of` [svalue_backend_mlds, svalue_backend_elds])
+        (svar_backend `is_one_of` [svalue_backend_mlds])
     ),
     requirement_spec(
         "Source-to-source debugging does not work for multithreaded programs.",

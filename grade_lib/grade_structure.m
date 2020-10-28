@@ -66,10 +66,6 @@
     ;       grade_mlds(
                 mlds_target,
                 grade_var_target_debug
-            )
-    ;       grade_elds(
-                grade_var_ssdebug,
-                grade_var_target_debug
             ).
 
 :- type pregen_kind
@@ -312,9 +308,6 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
         ;
             Backend = grade_var_backend_mlds,
             PregenKind = pregen_mlds_hlc
-        ;
-            Backend = grade_var_backend_elds,
-            unexpected($pred, "pregen but elds")
         ),
         GradeStructure = grade_pregen(PregenKind)
     ;
@@ -600,72 +593,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                     MLDSTarget = mlds_target_java(SSDebug)
                 ),
                 GradeStructure = grade_mlds(MLDSTarget, TargetDebug)
-            ;
-                Target = grade_var_target_erlang,
-                unexpected($pred, "Backend = mlds but Target = erlang")
             )
-        ;
-            Backend = grade_var_backend_elds,
-
-            GradeVars = grade_vars(_Pregen, _Backend, Target,
-                GccConf, _LowTagBitsUse, StackLen, Trail,
-                MinimalModel, ThreadSafe, Gc,
-                DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
-                TermSizeProf, Debug, SSDebug, TargetDebug,
-                RBMM, RBMMDebug, RBMMProf, _MercFile, MercFloat),
-
-            % XXX The ELDS backend's data representation is NOT the same
-            % as the LLDS backends'. If it were, we couldn't ignore the value
-            % of _LowTagBitsUse.
-            expect(unify(Target, grade_var_target_erlang), $pred,
-                "Target != grade_var_target_erlang"),
-            expect(unify(GccConf, grade_var_gcc_conf_none), $pred,
-                "GccConf != grade_var_gcc_conf_none"),
-            expect(unify(StackLen, grade_var_stack_len_std), $pred,
-                "StackLen != grade_var_stack_len_std"),
-            expect(unify(Trail, grade_var_trail_no), $pred,
-                "Trail != grade_var_trail_no"),
-            expect(unify(MinimalModel, grade_var_minmodel_no), $pred,
-                "MinimalModel != grade_var_minmodel_no"),
-            expect(unify(ThreadSafe, grade_var_thread_safe_target_native),
-                $pred, "ThreadSafe != grade_var_thread_safe_target_native"),
-            expect(unify(Gc, grade_var_gc_target_native), $pred,
-                "Gc != grade_var_gc_target_native"),
-            expect(unify(DeepProf, grade_var_deep_prof_no), $pred,
-                "DeepProf != grade_var_deep_prof_no"),
-            expect(unify(MprofCall, grade_var_mprof_call_no), $pred,
-                "MprofCall != grade_var_mprof_call_no"),
-            expect(unify(MprofTime, grade_var_mprof_time_no), $pred,
-                "MprofTime != grade_var_mprof_time_no"),
-            expect(unify(MprofMemory, grade_var_mprof_memory_no), $pred,
-                "MprofMemory != grade_var_mprof_memory_no"),
-            expect(unify(TScopeProf, grade_var_tscope_prof_no), $pred,
-                "TScopeProf != grade_var_tscope_prof_no"),
-            expect(unify(TermSizeProf, grade_var_term_size_prof_no), $pred,
-                "TermSizeProf != grade_var_term_size_prof_no"),
-            expect(unify(Debug, grade_var_debug_none), $pred,
-                "Debug != grade_var_debug_none"),
-            expect(unify(RBMM, grade_var_rbmm_no), $pred,
-                "RBMM != grade_var_rbmm_no"),
-            expect(unify(RBMMDebug, grade_var_rbmm_debug_no), $pred,
-                "RBMMDebug != grade_var_rbmm_debug_no"),
-            expect(unify(RBMMProf, grade_var_rbmm_prof_no), $pred,
-                "RBMMProf != grade_var_rbmm_prof_no"),
-            % The definition of MR_NEW_MERCURYFILE_STRUCT applies only
-            % to grades that target C. When targeting other languages,
-            % we don't insist on MercFile = grade_var_merc_file_no.
-            (
-                ( MercFloat = grade_var_merc_float_is_boxed_c_double
-                ; MercFloat = grade_var_merc_float_is_unboxed_c_double
-                )
-                % We don't care which one. XXX Should we, on either backend?
-            ;
-                MercFloat = grade_var_merc_float_is_unboxed_c_float,
-                unexpected($pred,
-                    "MercFloat = grade_var_merc_float_is_unboxed_c_float")
-            ),
-            % XXX probably incomplete
-            GradeStructure = grade_elds(SSDebug, TargetDebug)
         )
     ).
 

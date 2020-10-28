@@ -216,8 +216,7 @@ print_solve_count_stats(Msg, SolveCountStats, !IO) :-
 
 broad_test_set_spec = [
     test_set_component(svar_target,
-        [svalue_target_c, svalue_target_csharp,
-        svalue_target_java, svalue_target_erlang]),
+        [svalue_target_c, svalue_target_csharp, svalue_target_java]),
     test_set_component(svar_trail,
         [svalue_trail_no, svalue_trail_yes]),
     test_set_component(svar_thread_safe,

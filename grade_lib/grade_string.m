@@ -298,11 +298,6 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             SSDebugStrs = ssdebug_to_strs(WhichGradeString, SSDebug),
             GradeComponents = ["java" | SSDebugStrs] ++ TargetDebugStrs
         )
-    ;
-        GradeStructure = grade_elds(SSDebug, TargetDebug),
-        SSDebugStrs = ssdebug_to_strs(WhichGradeString, SSDebug),
-        TargetDebugStrs = target_debug_to_strs(TargetDebug),
-        GradeComponents = ["erlang" | SSDebugStrs] ++ TargetDebugStrs
     ),
     (
         WhichGradeString = grade_string_user,
@@ -607,12 +602,6 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         Setting = svar_target - svalue_target_java,
         Settings =
             [svar_backend - svalue_backend_mlds,
-            svar_gcc_conf - svalue_gcc_conf_none]
-    ;
-        ComponentStr = "erlang",
-        Setting = svar_target - svalue_target_erlang,
-        Settings =
-            [svar_backend - svalue_backend_elds,
             svar_gcc_conf - svalue_gcc_conf_none]
     ;
         ComponentStr = "par",

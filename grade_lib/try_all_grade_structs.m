@@ -72,7 +72,6 @@ generate_all_tests(GradeStructure) :-
     ( generate_pregen_tests(GradeStructure)
     ; generate_llds_tests(GradeStructure)
     ; generate_mlds_tests(GradeStructure)
-    ; generate_elds_tests(GradeStructure)
     ).
 
 %---------------------%
@@ -222,15 +221,6 @@ generate_mlds_c_target(MLDSCTarget) :-
     generate_grade_var_merc_float(MercFloat),
     MLDSCTarget = mlds_target_c(MLDSCThreadSafe, CTrail, MercFile,
         LowTagBitsUse, MercFloat).
-
-%---------------------%
-
-:- pred generate_elds_tests(grade_structure::out) is multi.
-
-generate_elds_tests(GradeStructure) :-
-    generate_grade_var_ssdebug(SSDebug),
-    generate_grade_var_target_debug(TargetDebug),
-    GradeStructure = grade_elds(SSDebug, TargetDebug).
 
 %---------------------%
 

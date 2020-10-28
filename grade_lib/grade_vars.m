@@ -78,14 +78,12 @@
 
 :- type grade_var_backend
     --->    grade_var_backend_mlds
-    ;       grade_var_backend_llds
-    ;       grade_var_backend_elds.
+    ;       grade_var_backend_llds.
 
 :- type grade_var_target
     --->    grade_var_target_c
     ;       grade_var_target_csharp
-    ;       grade_var_target_java
-    ;       grade_var_target_erlang.
+    ;       grade_var_target_java.
 
 :- type grade_var_nested_funcs
     --->    grade_var_nested_funcs_no
@@ -254,8 +252,6 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         GradeVarBackend = grade_var_backend_mlds
     else if Backend = svalue_backend_llds then
         GradeVarBackend = grade_var_backend_llds
-    else if Backend = svalue_backend_elds then
-        GradeVarBackend = grade_var_backend_elds
     else
         unexpected($pred, "unexpected value of Backend")
     ),
@@ -266,8 +262,6 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         GradeVarTarget = grade_var_target_csharp
     else if Target = svalue_target_java then
         GradeVarTarget = grade_var_target_java
-    else if Target = svalue_target_erlang then
-        GradeVarTarget = grade_var_target_erlang
     else
         unexpected($pred, "unexpected value of Target")
     ),
