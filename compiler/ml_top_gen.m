@@ -96,7 +96,7 @@ ml_gen_foreign_code(ModuleInfo, AllForeignCodeMap) :-
     module_info_get_foreign_decl_codes_aux(ModuleInfo,
         ForeignDeclCodeAuxCord),
     module_info_get_foreign_body_codes(ModuleInfo, ForeignBodyCodeCord),
-    module_info_get_c_j_cs_e_fims(ModuleInfo, CJCsEFIMs),
+    module_info_get_c_j_cs_fims(ModuleInfo, CJCsEFIMs),
     module_info_get_pragma_exported_procs(ModuleInfo, ForeignExportsCord),
     ForeignDeclCodes =
         cord.list(ForeignDeclCodeUserCord ++ ForeignDeclCodeAuxCord),

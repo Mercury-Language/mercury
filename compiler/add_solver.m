@@ -239,9 +239,6 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
     ;
         Target = target_java,
         Lang = lang_java
-    ;
-        Target = target_erlang,
-        Lang = lang_erlang
     ),
 
     Attrs0 = default_attributes(Lang),
@@ -254,16 +251,7 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
         Attrs = !.Attrs
     ),
 
-    (
-        ( Lang = lang_c
-        ; Lang = lang_csharp
-        ; Lang = lang_java
-        ),
-        Impl = fp_impl_ordinary("Y = X;", yes(Context))
-    ;
-        Lang = lang_erlang,
-        Impl = fp_impl_ordinary("Y = X", yes(Context))
-    ),
+    Impl = fp_impl_ordinary("Y = X;", yes(Context)),
 
     % The `func(in) = out(<i_ground>) is det' mode.
     %

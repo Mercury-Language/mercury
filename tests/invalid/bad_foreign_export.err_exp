@@ -12,14 +12,14 @@ bad_foreign_export.m:032: In the first argument of `:- pragma foreign_export'
 bad_foreign_export.m:032:   declaration:
 bad_foreign_export.m:032:   error: expected the name of a foreign language, got
 bad_foreign_export.m:032:   `"InvalidLanguage"'.
-bad_foreign_export.m:032:   The valid languages are c, C, csharp, C#, erlang,
-bad_foreign_export.m:032:   Erlang, java and Java.
+bad_foreign_export.m:032:   The valid languages are c, C, csharp, C#, java and
+bad_foreign_export.m:032:   Java.
 bad_foreign_export.m:037: In the first argument of `:- pragma foreign_export'
 bad_foreign_export.m:037:   declaration:
 bad_foreign_export.m:037:   error: expected the name of a foreign language, got
 bad_foreign_export.m:037:   `"InvalidLanguage"'.
-bad_foreign_export.m:037:   The valid languages are c, C, csharp, C#, erlang,
-bad_foreign_export.m:037:   Erlang, java and Java.
+bad_foreign_export.m:037:   The valid languages are c, C, csharp, C#, java and
+bad_foreign_export.m:037:   Java.
 bad_foreign_export.m:038: In the second argument of `:- pragma foreign_export'
 bad_foreign_export.m:038:   declaration:
 bad_foreign_export.m:038:   error: expected a symbol name, got `3333'.
@@ -33,3 +33,10 @@ bad_foreign_export.m:044:   declaration:
 bad_foreign_export.m:044:   error: expected a non-empty string for the foreign
 bad_foreign_export.m:044:   language name of the exported procedure, got an
 bad_foreign_export.m:044:   empty string.
+bad_foreign_export.m:046: In the first argument of `:- pragma foreign_export'
+bad_foreign_export.m:046:   declaration:
+bad_foreign_export.m:046:   error: expected the name of a foreign language, got
+bad_foreign_export.m:046:   `"Erlang"'.
+bad_foreign_export.m:046:   The valid languages are c, C, csharp, C#, java and
+bad_foreign_export.m:046:   Java.
+bad_foreign_export.m:046:   Support for Erlang has been discontinued.

@@ -88,7 +88,6 @@ target_bits_per_int(Globals, bits_per_int(BitsPerInt)) :-
     ;
         ( Target = target_csharp
         ; Target = target_java
-        ; Target = target_erlang
         ),
         BitsPerInt = 32
     ).

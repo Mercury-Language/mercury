@@ -406,7 +406,6 @@ compiler_generated_rtti_for_builtins(ModuleInfo) :-
     globals.get_target(Globals, Target),
     ( Target = target_csharp
     ; Target = target_java
-    ; Target = target_erlang
     ).
 
 %-----------------------------------------------------------------------------%

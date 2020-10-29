@@ -253,8 +253,8 @@
     set(module_name)::out) is det.
 :- pred module_and_imports_get_fact_table_deps(module_and_imports::in,
     list(string)::out) is det.
-:- pred module_and_imports_get_c_j_cs_e_fims(module_and_imports::in,
-    c_j_cs_e_fims::out) is det.
+:- pred module_and_imports_get_c_j_cs_fims(module_and_imports::in,
+    c_j_cs_fims::out) is det.
 :- pred module_and_imports_get_foreign_include_files(module_and_imports::in,
     foreign_include_file_infos::out) is det.
 :- pred module_and_imports_get_contains_foreign_code(module_and_imports::in,
@@ -294,7 +294,7 @@
     module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_set_indirect_deps(set(module_name)::in,
     module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_c_j_cs_e_fims(c_j_cs_e_fims::in,
+:- pred module_and_imports_set_c_j_cs_fims(c_j_cs_fims::in,
     module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_set_maybe_timestamp_map(
     maybe(module_timestamp_map)::in,
@@ -383,7 +383,7 @@
     set(module_name)::out, module_names_contexts::out, set(module_name)::out,
     module_names_contexts::out, module_names_contexts::out,
     set(module_name)::out, list(string)::out,
-    c_j_cs_e_fims::out, foreign_include_file_infos::out,
+    c_j_cs_fims::out, foreign_include_file_infos::out,
     contains_foreign_code::out, aug_compilation_unit::out) is det.
 
     % Return the results recorded in the module_and_imports structure.
@@ -520,7 +520,7 @@
 
                 % The information from `:- pragma foreign_import_module'
                 % declarations.
-                mai_fims                :: c_j_cs_e_fims,
+                mai_fims                :: c_j_cs_fims,
 
                 % The list of filenames referenced by `:- pragma foreign_decl'
                 % or `:- pragma foreign_code' declarations.
@@ -1264,7 +1264,7 @@ module_and_imports_get_fact_table_deps(ModuleAndImports, X) :-
         ),
         X = ModuleAndImports ^ mai_fact_table_deps
     ).
-module_and_imports_get_c_j_cs_e_fims(ModuleAndImports, X) :-
+module_and_imports_get_c_j_cs_fims(ModuleAndImports, X) :-
     promise_pure (
         trace [compile_time(flag("mai-stats"))] (
             semipure get_accesses(Accesses0),
@@ -1699,7 +1699,7 @@ module_and_imports_set_imp_deps_map(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_imp_deps_map := X.
 module_and_imports_set_indirect_deps(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_indirect_deps := X.
-module_and_imports_set_c_j_cs_e_fims(X, !ModuleAndImports) :-
+module_and_imports_set_c_j_cs_fims(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_fims := X.
 module_and_imports_set_ancestor_int_specs(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_ancestor_int_specs := X.
@@ -1896,7 +1896,7 @@ module_and_imports_d_file(ModuleAndImports,
     module_and_imports_get_imp_deps_map(ModuleAndImports, ImpDepsMap),
     module_and_imports_get_indirect_deps(ModuleAndImports, IndirectDeps),
     module_and_imports_get_fact_table_deps(ModuleAndImports, FactDeps),
-    module_and_imports_get_c_j_cs_e_fims(ModuleAndImports, CJCsEFIMs),
+    module_and_imports_get_c_j_cs_fims(ModuleAndImports, CJCsEFIMs),
     module_and_imports_get_foreign_include_files(ModuleAndImports,
         ForeignIncludeFilesCord),
     module_and_imports_get_contains_foreign_code(ModuleAndImports,

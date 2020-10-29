@@ -31,3 +31,4 @@
     5678
 ).
 
+:- pragma foreign_export_enum(erlang, fruit/0).

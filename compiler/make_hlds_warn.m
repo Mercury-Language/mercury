@@ -662,58 +662,51 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
     proc_info_get_declared_determinism(ProcInfo, MaybeDeclDetism),
     (
         MaybeDeclDetism = yes(Detism),
+        SuccIndStr = "SUCCESS_INDICATOR",
         (
-            ( Lang = lang_c
-            ; Lang = lang_csharp
-            ; Lang = lang_erlang
-            ; Lang = lang_java
+            ( Detism = detism_det
+            ; Detism = detism_cc_multi
+            ; Detism = detism_erroneous
             ),
-            SuccIndStr = "SUCCESS_INDICATOR",
-            (
-                ( Detism = detism_det
-                ; Detism = detism_cc_multi
-                ; Detism = detism_erroneous
-                ),
-                ( if list.member(SuccIndStr, BodyPieces) then
-                    LangStr = foreign_language_string(Lang),
-                    Pieces = [words("Warning: the"), fixed(LangStr),
-                        words("code for"),
-                        unqual_pf_sym_name_orig_arity(PFSymNameArity),
-                        words("may set"), quote(SuccIndStr), suffix(","),
-                        words("but it cannot fail.")],
-                    Spec = conditional_spec($pred,
-                        warn_suspicious_foreign_procs, yes,
-                        severity_warning, phase_parse_tree_to_hlds,
-                        [simplest_msg(Context, Pieces)]),
-                    !:Specs = [Spec | !.Specs]
-                else
-                    true
-                )
-            ;
-                ( Detism = detism_semi
-                ; Detism = detism_cc_non
-                ),
-                ( if list.member(SuccIndStr, BodyPieces) then
-                    true
-                else
-                    LangStr = foreign_language_string(Lang),
-                    Pieces = [words("Warning: the"), fixed(LangStr),
-                        words("code for"),
-                        unqual_pf_sym_name_orig_arity(PFSymNameArity),
-                        words("does not appear to set"),
-                        quote(SuccIndStr), suffix(","),
-                        words("but it can fail.")],
-                    Spec = conditional_spec($pred,
-                        warn_suspicious_foreign_procs, yes,
-                        severity_warning, phase_parse_tree_to_hlds,
-                        [simplest_msg(Context, Pieces)]),
-                    !:Specs = [Spec | !.Specs]
-                )
-            ;
-                ( Detism = detism_multi
-                ; Detism = detism_non
-                ; Detism = detism_failure
-                )
+            ( if list.member(SuccIndStr, BodyPieces) then
+                LangStr = foreign_language_string(Lang),
+                Pieces = [words("Warning: the"), fixed(LangStr),
+                    words("code for"),
+                    unqual_pf_sym_name_orig_arity(PFSymNameArity),
+                    words("may set"), quote(SuccIndStr), suffix(","),
+                    words("but it cannot fail.")],
+                Spec = conditional_spec($pred,
+                    warn_suspicious_foreign_procs, yes,
+                    severity_warning, phase_parse_tree_to_hlds,
+                    [simplest_msg(Context, Pieces)]),
+                !:Specs = [Spec | !.Specs]
+            else
+                true
+            )
+        ;
+            ( Detism = detism_semi
+            ; Detism = detism_cc_non
+            ),
+            ( if list.member(SuccIndStr, BodyPieces) then
+                true
+            else
+                LangStr = foreign_language_string(Lang),
+                Pieces = [words("Warning: the"), fixed(LangStr),
+                    words("code for"),
+                    unqual_pf_sym_name_orig_arity(PFSymNameArity),
+                    words("does not appear to set"),
+                    quote(SuccIndStr), suffix(","),
+                    words("but it can fail.")],
+                Spec = conditional_spec($pred,
+                    warn_suspicious_foreign_procs, yes,
+                    severity_warning, phase_parse_tree_to_hlds,
+                    [simplest_msg(Context, Pieces)]),
+                !:Specs = [Spec | !.Specs]
+            )
+        ;
+            ( Detism = detism_multi
+            ; Detism = detism_non
+            ; Detism = detism_failure
             )
         )
     ;
@@ -728,27 +721,19 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_fp_body_for_return(Lang, Context, PFSymNameArity, BodyPieces, !Specs) :-
-    (
-        ( Lang = lang_c
-        ; Lang = lang_csharp
-        ; Lang = lang_java
-        ),
-        ( if list.member("return", BodyPieces) then
-            LangStr = foreign_language_string(Lang),
-            Pieces = [words("Warning: the"), fixed(LangStr),
-                words("code for"),
-                unqual_pf_sym_name_orig_arity(PFSymNameArity),
-                words("may contain a"), quote("return"),
-                words("statement."), nl],
-            Spec = conditional_spec($pred, warn_suspicious_foreign_procs, yes,
-                severity_warning, phase_parse_tree_to_hlds,
-                [simplest_msg(Context, Pieces)]),
-            !:Specs = [Spec | !.Specs]
-        else
-            true
-        )
-    ;
-        Lang = lang_erlang
+    ( if list.member("return", BodyPieces) then
+        LangStr = foreign_language_string(Lang),
+        Pieces = [words("Warning: the"), fixed(LangStr),
+            words("code for"),
+            unqual_pf_sym_name_orig_arity(PFSymNameArity),
+            words("may contain a"), quote("return"),
+            words("statement."), nl],
+        Spec = conditional_spec($pred, warn_suspicious_foreign_procs, yes,
+            severity_warning, phase_parse_tree_to_hlds,
+            [simplest_msg(Context, Pieces)]),
+        !:Specs = [Spec | !.Specs]
+    else
+        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -921,7 +906,6 @@ warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs) :-
         ;
             ( Lang = lang_csharp
             ; Lang = lang_java
-            ; Lang = lang_erlang
             )
         )
     ).

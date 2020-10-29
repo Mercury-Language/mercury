@@ -2612,9 +2612,7 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
     % The body of this function is very similar to the function
     % foreign_type_body_to_exported_type in foreign.m.
     % Any changes here may require changes there as well.
-
-    ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava,
-        MaybeCSharp, _MaybeErlang),
+    ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCSharp),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
@@ -2650,9 +2648,6 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
             % This is checked by check_foreign_type in make_hlds.
             unexpected($pred, "no Java foreign type")
         )
-    ;
-        Target = target_erlang,
-        unexpected($pred, "target erlang")
     ),
     MLDSType = mlds_foreign_type(ForeignType).
 
@@ -2691,7 +2686,6 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
             ;
                 ( Target = target_c
                 ; Target = target_java
-                ; Target = target_erlang
                 ),
                 MLDSType = mlds_ptr_type(MLDSRefType)
             )

@@ -16,7 +16,6 @@
 :- include_module mercury_compile_main.
 :- include_module mercury_compile_front_end.
 :- include_module mercury_compile_middle_passes.
-:- include_module mercury_compile_erl_back_end.
 :- include_module mercury_compile_llds_back_end.
 :- include_module mercury_compile_mlds_back_end.
 

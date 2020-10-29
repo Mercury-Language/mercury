@@ -129,6 +129,9 @@
     % Not all foreign languages generate external files,
     % so this function only succeeds for those that do.
     %
+    % XXX Actually, all the foreign languages we handle *now* *do*
+    % generate external files. (The exception used to be Erlang.)
+    %
 :- func foreign_language_file_extension(foreign_language) = other_ext.
 :- mode foreign_language_file_extension(in) = out is semidet.
 :- mode foreign_language_file_extension(in(lang_gen_ext_file)) = out is det.
@@ -205,9 +208,6 @@ fim_spec_module_name(FIMSpec) = ModuleName :-
         Lang = lang_java,
         ModuleName = ForeignImportModule
     ;
-        Lang = lang_erlang,
-        ModuleName = ForeignImportModule
-    ;
         Lang = lang_csharp,
         ModuleName = foreign_language_module_name(ForeignImportModule, Lang)
     ).
@@ -225,10 +225,6 @@ fim_spec_module_name_from_module(ModuleFIMSpec, CurrentModule) =
             ImportedForeignCodeModuleName1)
     ;
         Lang = lang_java,
-        ImportedForeignCodeModuleName = handle_std_library(CurrentModule,
-            ImportedForeignCodeModuleName1)
-    ;
-        Lang = lang_erlang,
         ImportedForeignCodeModuleName = handle_std_library(CurrentModule,
             ImportedForeignCodeModuleName1)
     ).
@@ -267,6 +263,8 @@ foreign_language_module_name(ModuleName, Lang) = FullyQualifiedModuleName :-
 
 %-----------------------------------------------------------------------------%
 
+:- pragma no_determinism_warning(foreign_language_file_extension/1).
+
 foreign_language_file_extension(lang_c) = other_ext(".c").
 foreign_language_file_extension(lang_csharp) = other_ext(".cs").
 foreign_language_file_extension(lang_java) = other_ext(".java").
@@ -294,12 +292,6 @@ prefer_foreign_language(_Globals, Target, Lang1, Lang2) = Prefer :-
         % foreign language, we should add it here.
         % XXX Obsolete comment.
         Prefer = no
-    ;
-        Target = target_erlang,
-        % Nothing useful to do here, but when we add Erlang as a
-        % foreign language, we should add it here.
-        % XXX Obsolete comment.
-        Prefer = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -315,14 +307,12 @@ all_foreign_languages = Langs :-
 valid_foreign_language(lang_c).
 valid_foreign_language(lang_java).
 valid_foreign_language(lang_csharp).
-valid_foreign_language(lang_erlang).
 
 %-----------------------------------------------------------------------------%
 
 foreign_type_language(c(_)) = lang_c.
 foreign_type_language(java(_)) = lang_java.
 foreign_type_language(csharp(_)) = lang_csharp.
-foreign_type_language(erlang(_)) = lang_erlang.
 
 %-----------------------------------------------------------------------------%
 

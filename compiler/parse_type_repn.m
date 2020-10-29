@@ -37,8 +37,6 @@
 
 :- implementation.
 
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_pragma_foreign.
 :- import_module parse_tree.parse_sym_name.
@@ -48,13 +46,11 @@
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_item.
 
-:- import_module assoc_list.
 :- import_module cord.
 :- import_module int.
 :- import_module integer.
 :- import_module maybe.
 :- import_module one_or_more.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module uint.
@@ -272,19 +268,19 @@ parse_type_repn_du_direct_dummy(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         parse_string(VarSet, ContextPieces1, "function symbol",
             ArgTerm1, MaybeFunctorName),
         DescPieces2 = [words("the second argument of"), quote("direct_dummy")],
-        parse_c_j_cs_e_repn_or_enum(DescPieces2, VarSet, ArgTerm2,
-            MaybeCJCsERepnOrEnum),
+        parse_c_j_cs_repn_or_enum(DescPieces2, VarSet, ArgTerm2,
+            MaybeCJCsRepnOrEnum),
         ( if
             MaybeFunctorName = ok1(FunctorName),
-            MaybeCJCsERepnOrEnum = ok1(CJCsERepnOrEnum)
+            MaybeCJCsRepnOrEnum = ok1(CJCsRepnOrEnum)
         then
-            DirectDummyRepn = direct_dummy_repn(FunctorName, CJCsERepnOrEnum),
+            DirectDummyRepn = direct_dummy_repn(FunctorName, CJCsRepnOrEnum),
             DuRepn = dur_direct_dummy(DirectDummyRepn),
             MaybeDuRepn = ok1(DuRepn)
         else
             Specs =
                 get_any_errors1(MaybeFunctorName) ++
-                get_any_errors1(MaybeCJCsERepnOrEnum),
+                get_any_errors1(MaybeCJCsRepnOrEnum),
             MaybeDuRepn = error1(Specs)
         )
     ;
@@ -331,23 +327,23 @@ parse_type_repn_du_enum(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
             LaterEnumSpecs = [LaterEnumSpec]
         ),
         DescPieces4 = [words("the fourth argument of"), quote("enum")],
-        parse_c_j_cs_e_repn_or_enum(DescPieces4, VarSet, ArgTerm4,
-            MaybeCJCsERepnOrEnum),
+        parse_c_j_cs_repn_or_enum(DescPieces4, VarSet, ArgTerm4,
+            MaybeCJCsRepnOrEnum),
         ( if
             MaybeEnumFunctorName1 = ok1(EnumFunctorName1),
             MaybeEnumFunctorName2 = ok1(EnumFunctorName2),
             LaterEnumSpecs = [],
-            MaybeCJCsERepnOrEnum = ok1(CJCsERepnOrEnum)
+            MaybeCJCsRepnOrEnum = ok1(CJCsRepnOrEnum)
         then
             EnumRepn = enum_repn(EnumFunctorName1, EnumFunctorName2,
-                LaterEnumFunctorNames, CJCsERepnOrEnum),
+                LaterEnumFunctorNames, CJCsRepnOrEnum),
             MaybeDuRepn = ok1(dur_enum(EnumRepn))
         else
             Specs =
                 get_any_errors1(MaybeEnumFunctorName1) ++
                 get_any_errors1(MaybeEnumFunctorName2) ++
                 LaterEnumSpecs ++
-                get_any_errors1(MaybeCJCsERepnOrEnum),
+                get_any_errors1(MaybeCJCsRepnOrEnum),
             MaybeDuRepn = error1(Specs)
         )
     ;
@@ -397,20 +393,20 @@ parse_type_repn_du_notag(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         parse_type(allow_ho_inst_info, VarSet, ContextPieces2,
             ArgTerm2, MaybeArgType),
         DescPieces3 = [words("the third argument of"), quote("notag")],
-        parse_c_j_cs_e_repn(DescPieces3, VarSet, ArgTerm3, MaybeCJCsERepn),
+        parse_c_j_cs_repn(DescPieces3, VarSet, ArgTerm3, MaybeCJCsRepn),
         ( if
             MaybeFunctorName = ok1(FunctorName),
             MaybeArgType = ok1(ArgType),
-            MaybeCJCsERepn = ok1(CJCsERepn)
+            MaybeCJCsRepn = ok1(CJCsRepn)
         then
-            NotagRepn = notag_repn(FunctorName, ArgType, CJCsERepn),
+            NotagRepn = notag_repn(FunctorName, ArgType, CJCsRepn),
             DuRepn = dur_notag(NotagRepn),
             MaybeDuRepn = ok1(DuRepn)
         else
             Specs =
                 get_any_errors1(MaybeFunctorName) ++
                 get_any_errors1(MaybeArgType) ++
-                get_any_errors1(MaybeCJCsERepn),
+                get_any_errors1(MaybeCJCsRepn),
             MaybeDuRepn = error1(Specs)
         )
     ;
@@ -457,22 +453,22 @@ parse_type_repn_du_gen_du_only_functor(VarSet, TermContext, AtomStr, ArgTerms,
             ArgTerm3, MaybeCRepns),
         DescPieces4 = [words("fourth argument of"),
             quote(AtomStr)],
-        parse_c_j_cs_e_repn(DescPieces4, VarSet, ArgTerm4, MaybeCJCsERepn),
+        parse_c_j_cs_repn(DescPieces4, VarSet, ArgTerm4, MaybeCJCsRepn),
         ( if
             MaybeFunctorName = ok1(FunctorName),
             MaybeCRepns = ok1(CRepns),
             MaybeArgTypes = ok1(ArgTypes),
-            MaybeCJCsERepn = ok1(CJCsERepn)
+            MaybeCJCsRepn = ok1(CJCsRepn)
         then
             OnlyFunctor = gen_du_only_functor_repn(FunctorName, ArgTypes,
-                CRepns, CJCsERepn),
+                CRepns, CJCsRepn),
             MaybeDuRepn = ok1(dur_gen_only_functor(OnlyFunctor))
         else
             Specs =
                 get_any_errors1(MaybeFunctorName) ++
                 get_any_errors1(MaybeArgTypes) ++
                 get_any_errors1(MaybeCRepns) ++
-                get_any_errors1(MaybeCJCsERepn),
+                get_any_errors1(MaybeCJCsRepn),
             MaybeDuRepn = error1(Specs)
         )
     ;
@@ -520,22 +516,22 @@ parse_type_repn_du_gen_du_more_functors(VarSet, TermContext, AtomStr, ArgTerms,
         ),
         DescPieces4 = [words("fourth argument of"),
             quote(AtomStr)],
-        parse_c_j_cs_e_repn(DescPieces4, VarSet, ArgTerm4, MaybeCJCsERepn),
+        parse_c_j_cs_repn(DescPieces4, VarSet, ArgTerm4, MaybeCJCsRepn),
         ( if
             MaybeFunctor1 = ok1(Functor1),
             MaybeFunctor2 = ok1(Functor2),
             MaybeOtherFunctors = ok1(OtherFunctors),
-            MaybeCJCsERepn = ok1(CJCsERepn)
+            MaybeCJCsRepn = ok1(CJCsRepn)
         then
             MoreFunctors = gen_du_more_functors_repn(Functor1, Functor2,
-                OtherFunctors, CJCsERepn),
+                OtherFunctors, CJCsRepn),
             MaybeDuRepn = ok1(dur_gen_more_functors(MoreFunctors))
         else
             Specs =
                 get_any_errors1(MaybeFunctor1) ++
                 get_any_errors1(MaybeFunctor2) ++
                 get_any_errors1(MaybeOtherFunctors) ++
-                get_any_errors1(MaybeCJCsERepn),
+                get_any_errors1(MaybeCJCsRepn),
             MaybeDuRepn = error1(Specs)
         )
     ;
@@ -1563,38 +1559,41 @@ ok_if_arity_zero(AtomStr, TermContext, ArgTerms, FillKindSize,
 % We now therefore generate this information in a another form that *does*
 % encode this invariant. Specifically, we now generate either
 %
-%   no_c_j_cs_e
+%   no_c_j_cs
 %
 % or a term of the form
 %
-%   c_j_cs_e(MaybeC, MaybeJava, MaybeCsharp, MaybeErlang)
+%   c_j_cs(MaybeC, MaybeJava, MaybeCsharp)
 %
 % where all of the MaybeXs have the same structure and none of them mention
 % what foreign language they are for, that information being implicit
-% in their position inside c_j_cs_e.
+% in their position inside c_j_cs.
 %
-% However, while installed compilers still generate the old style descriptions,
-% we accept the old form as well, though we don't bother generating useful
-% error messages for them. Instead, if there is any error, we generate
-% an error about the deviation from the *new* description style.
+% For a short while, we also accept no_c_j_cs_e and c_j_cs_e, with the
+% latter taking a fourth argument (for Erlang type representations)
+% which we ignore.
 %
 
-:- pred parse_c_j_cs_e_repn_or_enum(list(format_component)::in,
-    varset::in, term::in, maybe1(c_j_cs_e_enum_repn)::out) is det.
+:- pred parse_c_j_cs_repn_or_enum(list(format_component)::in,
+    varset::in, term::in, maybe1(c_j_cs_enum_repn)::out) is det.
 
-parse_c_j_cs_e_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsERepnOrEnum) :-
+parse_c_j_cs_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsRepnOrEnum) :-
     ( if
         Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
-        ( AtomStr = "no_c_j_cs_e"
+        ( AtomStr = "no_c_j_cs"
+        ; AtomStr = "no_c_j_cs_e"
+        ; AtomStr = "c_j_cs"
         ; AtomStr = "c_j_cs_e"
         )
     then
         (
-            AtomStr = "no_c_j_cs_e",
+            ( AtomStr = "no_c_j_cs"
+            ; AtomStr = "no_c_j_cs_e"
+            ),
             (
                 ArgTerms = [],
-                CJCsERepnOrEnum = c_java_csharp_erlang(no, no, no, no),
-                MaybeCJCsERepnOrEnum = ok1(CJCsERepnOrEnum)
+                CJCsRepnOrEnum = c_java_csharp(no, no, no),
+                MaybeCJCsRepnOrEnum = ok1(CJCsRepnOrEnum)
             ;
                 ArgTerms = [_ | _],
                 Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
@@ -1602,37 +1601,70 @@ parse_c_j_cs_e_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsERepnOrEnum) :-
                     words("should have zero arguments."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_term_to_parse_tree, TermContext, Pieces),
-                MaybeCJCsERepnOrEnum = error1([Spec])
+                MaybeCJCsRepnOrEnum = error1([Spec])
             )
         ;
-            AtomStr = "c_j_cs_e",
+            AtomStr = "c_j_cs",
             (
-                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3, ArgTerm4],
+                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3],
                 parse_maybe_enum_foreign_repn(DescPieces, 1,
                     VarSet, ArgTerm1, MaybeMaybeRepnOrEnumC),
                 parse_maybe_enum_foreign_repn(DescPieces, 2,
                     VarSet, ArgTerm2, MaybeMaybeRepnOrEnumJava),
                 parse_maybe_enum_foreign_repn(DescPieces, 3,
                     VarSet, ArgTerm3, MaybeMaybeRepnOrEnumCsharp),
-                parse_maybe_enum_foreign_repn(DescPieces, 4,
-                    VarSet, ArgTerm4, MaybeMaybeRepnOrEnumErlang),
                 ( if
                     MaybeMaybeRepnOrEnumC = ok1(MaybeRepnOrEnumC),
                     MaybeMaybeRepnOrEnumJava = ok1(MaybeRepnOrEnumJava),
-                    MaybeMaybeRepnOrEnumCsharp = ok1(MaybeRepnOrEnumCsharp),
-                    MaybeMaybeRepnOrEnumErlang = ok1(MaybeRepnOrEnumErlang)
+                    MaybeMaybeRepnOrEnumCsharp = ok1(MaybeRepnOrEnumCsharp)
                 then
-                    CJCsERepnOrEnum = c_java_csharp_erlang(
-                        MaybeRepnOrEnumC, MaybeRepnOrEnumJava,
-                        MaybeRepnOrEnumCsharp, MaybeRepnOrEnumErlang),
-                    MaybeCJCsERepnOrEnum = ok1(CJCsERepnOrEnum)
+                    CJCsRepnOrEnum = c_java_csharp(MaybeRepnOrEnumC,
+                        MaybeRepnOrEnumJava, MaybeRepnOrEnumCsharp),
+                    MaybeCJCsRepnOrEnum = ok1(CJCsRepnOrEnum)
                 else
                     Specs =
                         get_any_errors1(MaybeMaybeRepnOrEnumC) ++
                         get_any_errors1(MaybeMaybeRepnOrEnumJava) ++
-                        get_any_errors1(MaybeMaybeRepnOrEnumCsharp) ++
-                        get_any_errors1(MaybeMaybeRepnOrEnumErlang),
-                    MaybeCJCsERepnOrEnum = error1(Specs)
+                        get_any_errors1(MaybeMaybeRepnOrEnumCsharp),
+                    MaybeCJCsRepnOrEnum = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_]
+                ; ArgTerms = [_, _]
+                ; ArgTerms = [_, _, _, _ | _]
+                ),
+                Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+                    words("error:"), quote(AtomStr),
+                    words("should have three arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeCJCsRepnOrEnum = error1([Spec])
+            )
+        ;
+            AtomStr = "c_j_cs_e",
+            (
+                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3, _ArgTerm4],
+                parse_maybe_enum_foreign_repn(DescPieces, 1,
+                    VarSet, ArgTerm1, MaybeMaybeRepnOrEnumC),
+                parse_maybe_enum_foreign_repn(DescPieces, 2,
+                    VarSet, ArgTerm2, MaybeMaybeRepnOrEnumJava),
+                parse_maybe_enum_foreign_repn(DescPieces, 3,
+                    VarSet, ArgTerm3, MaybeMaybeRepnOrEnumCsharp),
+                ( if
+                    MaybeMaybeRepnOrEnumC = ok1(MaybeRepnOrEnumC),
+                    MaybeMaybeRepnOrEnumJava = ok1(MaybeRepnOrEnumJava),
+                    MaybeMaybeRepnOrEnumCsharp = ok1(MaybeRepnOrEnumCsharp)
+                then
+                    CJCsRepnOrEnum = c_java_csharp(MaybeRepnOrEnumC,
+                        MaybeRepnOrEnumJava, MaybeRepnOrEnumCsharp),
+                    MaybeCJCsRepnOrEnum = ok1(CJCsRepnOrEnum)
+                else
+                    Specs =
+                        get_any_errors1(MaybeMaybeRepnOrEnumC) ++
+                        get_any_errors1(MaybeMaybeRepnOrEnumJava) ++
+                        get_any_errors1(MaybeMaybeRepnOrEnumCsharp),
+                    MaybeCJCsRepnOrEnum = error1(Specs)
                 )
             ;
                 ( ArgTerms = []
@@ -1646,46 +1678,40 @@ parse_c_j_cs_e_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsERepnOrEnum) :-
                     words("should have four arguments."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_term_to_parse_tree, TermContext, Pieces),
-                MaybeCJCsERepnOrEnum = error1([Spec])
+                MaybeCJCsRepnOrEnum = error1([Spec])
             )
         )
-    else if
-        list_term_to_term_list(Term, ForeignTerms),
-        parse_old_style_foreign_type_repn_or_enums(VarSet, ForeignTerms,
-            ForeignPairs, ForeignSpecs),
-        ForeignSpecs = [],
-        assoc_list_to_c_j_cs_e(ForeignPairs, MaybeOldStyleCJCsERepnOrEnum),
-        MaybeOldStyleCJCsERepnOrEnum = ok1(_)
-    then
-        MaybeCJCsERepnOrEnum = MaybeOldStyleCJCsERepnOrEnum
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
-            words("error: expected either"),
-            quote("no_c_j_cs_e"), words("or"),
-            quote("c_j_cs_e(...)"), suffix(","),
+            words("error: expected either"), quote("no_c_j_cs"),
+            words("or"), quote("c_j_cs(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
-        MaybeCJCsERepnOrEnum = error1([Spec])
+        MaybeCJCsRepnOrEnum = error1([Spec])
     ).
 
-:- pred parse_c_j_cs_e_repn(list(format_component)::in,
-    varset::in, term::in, maybe1(c_j_cs_e_repn)::out) is det.
+:- pred parse_c_j_cs_repn(list(format_component)::in,
+    varset::in, term::in, maybe1(c_j_cs_repn)::out) is det.
 
-parse_c_j_cs_e_repn(DescPieces, VarSet, Term, MaybeCJCsERepn) :-
+parse_c_j_cs_repn(DescPieces, VarSet, Term, MaybeCJCsRepn) :-
     ( if
         Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
-        ( AtomStr = "no_c_j_cs_e"
+        ( AtomStr = "no_c_j_cs"
+        ; AtomStr = "no_c_j_cs_e"
+        ; AtomStr = "c_j_cs"
         ; AtomStr = "c_j_cs_e"
         )
     then
         (
-            AtomStr = "no_c_j_cs_e",
+            ( AtomStr = "no_c_j_cs"
+            ; AtomStr = "no_c_j_cs_e"
+            ),
             (
                 ArgTerms = [],
-                CJCsERepn = c_java_csharp_erlang(no, no, no, no),
-                MaybeCJCsERepn = ok1(CJCsERepn)
+                CJCsRepn = c_java_csharp(no, no, no),
+                MaybeCJCsRepn = ok1(CJCsRepn)
             ;
                 ArgTerms = [_ | _],
                 Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
@@ -1693,37 +1719,70 @@ parse_c_j_cs_e_repn(DescPieces, VarSet, Term, MaybeCJCsERepn) :-
                     words("should have zero arguments."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_term_to_parse_tree, TermContext, Pieces),
-                MaybeCJCsERepn = error1([Spec])
+                MaybeCJCsRepn = error1([Spec])
             )
         ;
-            AtomStr = "c_j_cs_e",
+            AtomStr = "c_j_cs",
             (
-                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3, ArgTerm4],
+                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3],
                 parse_maybe_foreign_repn(DescPieces, 1,
                     VarSet, ArgTerm1, MaybeMaybeRepnC),
                 parse_maybe_foreign_repn(DescPieces, 2,
                     VarSet, ArgTerm2, MaybeMaybeRepnJava),
                 parse_maybe_foreign_repn(DescPieces, 3,
                     VarSet, ArgTerm3, MaybeMaybeRepnCsharp),
-                parse_maybe_foreign_repn(DescPieces, 4,
-                    VarSet, ArgTerm4, MaybeMaybeRepnErlang),
                 ( if
                     MaybeMaybeRepnC = ok1(MaybeRepnC),
                     MaybeMaybeRepnJava = ok1(MaybeRepnJava),
-                    MaybeMaybeRepnCsharp = ok1(MaybeRepnCsharp),
-                    MaybeMaybeRepnErlang = ok1(MaybeRepnErlang)
+                    MaybeMaybeRepnCsharp = ok1(MaybeRepnCsharp)
                 then
-                    CJCsERepn = c_java_csharp_erlang(
-                        MaybeRepnC, MaybeRepnJava,
-                        MaybeRepnCsharp, MaybeRepnErlang),
-                    MaybeCJCsERepn = ok1(CJCsERepn)
+                    CJCsRepn = c_java_csharp(MaybeRepnC, MaybeRepnJava,
+                        MaybeRepnCsharp),
+                    MaybeCJCsRepn = ok1(CJCsRepn)
                 else
                     Specs =
                         get_any_errors1(MaybeMaybeRepnC) ++
                         get_any_errors1(MaybeMaybeRepnJava) ++
-                        get_any_errors1(MaybeMaybeRepnCsharp) ++
-                        get_any_errors1(MaybeMaybeRepnErlang),
-                    MaybeCJCsERepn = error1(Specs)
+                        get_any_errors1(MaybeMaybeRepnCsharp),
+                    MaybeCJCsRepn = error1(Specs)
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_]
+                ; ArgTerms = [_, _]
+                ; ArgTerms = [_, _, _, _ | _]
+                ),
+                Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
+                    words("error:"), quote(AtomStr),
+                    words("should have three arguments."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeCJCsRepn = error1([Spec])
+            )
+        ;
+            AtomStr = "c_j_cs_e",
+            (
+                ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3, _ArgTerm4],
+                parse_maybe_foreign_repn(DescPieces, 1,
+                    VarSet, ArgTerm1, MaybeMaybeRepnC),
+                parse_maybe_foreign_repn(DescPieces, 2,
+                    VarSet, ArgTerm2, MaybeMaybeRepnJava),
+                parse_maybe_foreign_repn(DescPieces, 3,
+                    VarSet, ArgTerm3, MaybeMaybeRepnCsharp),
+                ( if
+                    MaybeMaybeRepnC = ok1(MaybeRepnC),
+                    MaybeMaybeRepnJava = ok1(MaybeRepnJava),
+                    MaybeMaybeRepnCsharp = ok1(MaybeRepnCsharp)
+                then
+                    CJCsRepn = c_java_csharp(MaybeRepnC, MaybeRepnJava,
+                        MaybeRepnCsharp),
+                    MaybeCJCsRepn = ok1(CJCsRepn)
+                else
+                    Specs =
+                        get_any_errors1(MaybeMaybeRepnC) ++
+                        get_any_errors1(MaybeMaybeRepnJava) ++
+                        get_any_errors1(MaybeMaybeRepnCsharp),
+                    MaybeCJCsRepn = error1(Specs)
                 )
             ;
                 ( ArgTerms = []
@@ -1737,28 +1796,18 @@ parse_c_j_cs_e_repn(DescPieces, VarSet, Term, MaybeCJCsERepn) :-
                     words("should have four arguments."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_term_to_parse_tree, TermContext, Pieces),
-                MaybeCJCsERepn = error1([Spec])
+                MaybeCJCsRepn = error1([Spec])
             )
         )
-    else if
-        list_term_to_term_list(Term, ForeignTerms),
-        parse_old_style_foreign_type_repns(VarSet, ForeignTerms,
-            ForeignPairs, ForeignSpecs),
-        ForeignSpecs = [],
-        assoc_list_to_c_j_cs_e(ForeignPairs, MaybeOldStyleCJCsERepn),
-        MaybeOldStyleCJCsERepn = ok1(_)
-    then
-        MaybeCJCsERepn = MaybeOldStyleCJCsERepn
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
-            words("error: expected either"),
-            quote("no_c_j_cs_e"), words("or"),
-            quote("c_j_cs_e(...)"), suffix(","),
+            words("error: expected either"), quote("no_c_j_cs"),
+            words("or"), quote("c_j_cs(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
-        MaybeCJCsERepn = error1([Spec])
+        MaybeCJCsRepn = error1([Spec])
     ).
 
 %---------------------%
@@ -1915,12 +1964,12 @@ parse_type_repn_foreign_type(VarSet, RepnStr, RepnArgs, RepnContext,
     (
         RepnArgs = [RepnArg1],
         DescPieces = [words("the argument of"), quote(RepnStr)],
-        parse_c_j_cs_e_repn(DescPieces, VarSet, RepnArg1, MaybeCJCsERepn),
+        parse_c_j_cs_repn(DescPieces, VarSet, RepnArg1, MaybeCJCsRepn),
         (
-            MaybeCJCsERepn = ok1(CJCsERepn),
-            MaybeRepn = ok1(tcrepn_foreign(CJCsERepn))
+            MaybeCJCsRepn = ok1(CJCsRepn),
+            MaybeRepn = ok1(tcrepn_foreign(CJCsRepn))
         ;
-            MaybeCJCsERepn = error1(Specs),
+            MaybeCJCsRepn = error1(Specs),
             MaybeRepn = error1(Specs)
         )
     ;
@@ -2041,220 +2090,6 @@ parse_one_or_more_strings(DescPieces, VarSet, Term, MaybeOoMStrings) :-
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
         MaybeOoMStrings = error1([Spec])
-    ).
-
-%-----------------------------------------------------------------------------e
-%
-% XXX The code in this section should be needed only during a changeover
-% period while installed compilers may generate old-style terms for describing
-% foreign language type representations.
-%
-
-:- pred parse_old_style_foreign_type_repn_or_enums(varset::in, list(term)::in,
-    assoc_list(foreign_language, enum_foreign_repn)::out,
-    list(error_spec)::out) is det.
-
-parse_old_style_foreign_type_repn_or_enums(_, [], [], []).
-parse_old_style_foreign_type_repn_or_enums(VarSet, [Term | Terms],
-        !:ForeignPairs, !:Specs) :-
-    parse_old_style_foreign_type_repn_or_enums(VarSet, Terms,
-        !:ForeignPairs, !:Specs),
-    parse_old_style_foreign_language_type_repn_or_enum(VarSet, Term,
-        MaybeForeignLangRepn),
-    (
-        MaybeForeignLangRepn = ok2(Lang, Repn),
-        !:ForeignPairs = [Lang - Repn | !.ForeignPairs]
-    ;
-        MaybeForeignLangRepn = error2(Specs),
-        !:Specs = Specs ++ !.Specs
-    ).
-
-%---------------------%
-
-:- pred parse_old_style_foreign_language_type_repn_or_enum(varset::in,
-    term::in, maybe2(foreign_language, enum_foreign_repn)::out) is det.
-
-parse_old_style_foreign_language_type_repn_or_enum(VarSet, Term,
-        MaybeForeignLangRepnOrEnum) :-
-    ( if
-        Term = term.functor(term.atom(FunctorStr), ArgTerms, _),
-        ( FunctorStr = "foreign_type"
-        ; FunctorStr = "foreign_enum"
-        )
-    then
-        (
-            FunctorStr = "foreign_type",
-            (
-                ArgTerms = [ArgTerm1],
-                parse_old_style_foreign_language_type_repn(VarSet, ArgTerm1,
-                    MaybeForeignLangRepn),
-                (
-                    MaybeForeignLangRepn = ok2(Lang, ForeignRepn),
-                    MaybeForeignLangRepnOrEnum =
-                        ok2(Lang, enum_foreign_type(ForeignRepn))
-                ;
-                    MaybeForeignLangRepn = error2(Specs),
-                    MaybeForeignLangRepnOrEnum = error2(Specs)
-                )
-            ;
-                ( ArgTerms = []
-                ; ArgTerms = [_, _ | _]
-                ),
-                MaybeForeignLangRepnOrEnum = error2([])
-            )
-        ;
-            FunctorStr = "foreign_enum",
-            (
-                ArgTerms = [ArgTerm1, ArgTerm2],
-                ( if
-                    ArgTerm1 = term.functor(term.atom(LangStr), [], _),
-                    ( LangStr = "c",      Lang0 = lang_c
-                    ; LangStr = "csharp", Lang0 = lang_csharp
-                    ; LangStr = "java",   Lang0 = lang_java
-                    ; LangStr = "erlang", Lang0 = lang_erlang
-                    )
-                then
-                    MaybeLang = ok1(Lang0)
-                else
-                    MaybeLang = error1([])
-                ),
-                parse_one_or_more_strings([], VarSet, ArgTerm2,
-                    MaybeOoMStrings),
-                ( if
-                    MaybeLang = ok1(Lang),
-                    MaybeOoMStrings = ok1(OoMStrings)
-                then
-                    MaybeForeignLangRepnOrEnum =
-                        ok2(Lang, enum_foreign_enum(OoMStrings))
-                else
-                    MaybeForeignLangRepnOrEnum = error2([])
-                )
-            ;
-                ( ArgTerms = []
-                ; ArgTerms = [_]
-                ; ArgTerms = [_, _, _ | _]
-                ),
-                MaybeForeignLangRepnOrEnum = error2([])
-            )
-        )
-    else
-        MaybeForeignLangRepnOrEnum = error2([])
-    ).
-
-%---------------------%
-
-:- pred parse_old_style_foreign_type_repns(varset::in, list(term)::in,
-    assoc_list(foreign_language, foreign_type_repn)::out,
-    list(error_spec)::out) is det.
-
-parse_old_style_foreign_type_repns(_, [], [], []).
-parse_old_style_foreign_type_repns(VarSet, [Term | Terms],
-        !:ForeignPairs, !:Specs) :-
-    parse_old_style_foreign_type_repns(VarSet, Terms,
-        !:ForeignPairs, !:Specs),
-    parse_old_style_foreign_language_type_repn(VarSet, Term,
-        MaybeForeignLangRepn),
-    (
-        MaybeForeignLangRepn = ok2(Lang, Repn),
-        !:ForeignPairs = [Lang - Repn | !.ForeignPairs]
-    ;
-        MaybeForeignLangRepn = error2(Specs),
-        !:Specs = Specs ++ !.Specs
-    ).
-
-:- pred parse_old_style_foreign_language_type_repn(varset::in, term::in,
-    maybe2(foreign_language, foreign_type_repn)::out) is det.
-
-parse_old_style_foreign_language_type_repn(VarSet, Term,
-        MaybeForeignLangRepn) :-
-    ( if
-        Term = term.functor(term.atom(FunctorStr), ArgTerms, _),
-        ( FunctorStr = "c", Lang = lang_c
-        ; FunctorStr = "csharp", Lang = lang_csharp
-        ; FunctorStr = "java", Lang = lang_java
-        ; FunctorStr = "erlang", Lang = lang_erlang
-        ),
-        ArgTerms = [TypeNameTerm, AssertionTerm]
-    then
-        parse_old_style_foreign_type_repn(VarSet, Lang,
-            TypeNameTerm, AssertionTerm, MaybeForeignLangRepn)
-    else
-        MaybeForeignLangRepn = error2([])
-    ).
-
-:- pred parse_old_style_foreign_type_repn(varset::in,
-    foreign_language::in, term::in, term::in,
-    maybe2(foreign_language, foreign_type_repn)::out) is det.
-
-parse_old_style_foreign_type_repn(VarSet, Lang,
-        TypeNameTerm, AssertionTerm, MaybeForeignLangRepn) :-
-    ( if TypeNameTerm = term.functor(term.string(TypeNameStr), [], _) then
-        (
-            ( Lang = lang_c
-            ; Lang = lang_csharp
-            ; Lang = lang_java
-            ),
-            MaybeTypeName = ok1(TypeNameStr)
-        ;
-            Lang = lang_erlang,
-            ( if TypeNameStr = "" then
-                MaybeTypeName = ok1(TypeNameStr)
-            else
-                MaybeTypeName = error1([])
-            )
-        )
-    else
-        MaybeTypeName = error1([])
-    ),
-    AssertionContextPieces = cord.from_list([]),
-    parse_foreign_type_assertions(AssertionContextPieces, VarSet,
-        AssertionTerm, set.init, AssertionSet, [], AssertionSpecs),
-    ( if
-        MaybeTypeName = ok1(TypeName),
-        AssertionSpecs = []
-    then
-        Assertions = foreign_type_assertions(AssertionSet),
-        Repn = foreign_type_repn(TypeName, Assertions),
-        MaybeForeignLangRepn = ok2(Lang, Repn)
-    else
-        Specs = get_any_errors1(MaybeTypeName) ++ AssertionSpecs,
-        MaybeForeignLangRepn = error2(Specs)
-    ).
-
-%---------------------%
-
-:- pred assoc_list_to_c_j_cs_e(assoc_list(foreign_language, T)::in,
-    maybe1(c_java_csharp_erlang(maybe(T)))::out) is det.
-
-assoc_list_to_c_j_cs_e(!.Pairs, MaybeCJCsE) :-
-    ( if !.Pairs = [lang_c - ValueC | !:Pairs] then
-        MaybeValueC = yes(ValueC)
-    else
-        MaybeValueC = no
-    ),
-    ( if !.Pairs = [lang_java - ValueJava | !:Pairs] then
-        MaybeValueJava = yes(ValueJava)
-    else
-        MaybeValueJava = no
-    ),
-    ( if !.Pairs = [lang_csharp - ValueCsharp | !:Pairs] then
-        MaybeValueCsharp = yes(ValueCsharp)
-    else
-        MaybeValueCsharp = no
-    ),
-    ( if !.Pairs = [lang_erlang - ValueErlang | !:Pairs] then
-        MaybeValueErlang = yes(ValueErlang)
-    else
-        MaybeValueErlang = no
-    ),
-    (
-        !.Pairs = [],
-        CJCsE = c_java_csharp_erlang(MaybeValueC, MaybeValueJava,
-            MaybeValueCsharp, MaybeValueErlang),
-        MaybeCJCsE = ok1(CJCsE)
-    ;
-        !.Pairs = [_ | _],
-        MaybeCJCsE = error1([])
     ).
 
 %-----------------------------------------------------------------------------e

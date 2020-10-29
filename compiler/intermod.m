@@ -1221,8 +1221,7 @@ gather_opt_export_types_in_type_defn(TypeCtor, TypeDefn0, !IntermodInfo) :-
 
 resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         ForeignTypeBody0, ForeignTypeBody, !IntermodInfo) :-
-    ForeignTypeBody0 = foreign_type_body(MaybeC0, MaybeJava0, MaybeCSharp0,
-        MaybeErlang0),
+    ForeignTypeBody0 = foreign_type_body(MaybeC0, MaybeJava0, MaybeCSharp0),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
 
@@ -1234,9 +1233,7 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
     % a module to IL when the workspace was compiled to C).
 
     (
-        ( Target = target_c
-        ; Target = target_erlang
-        ),
+        Target = target_c,
         resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
             MaybeC0, MaybeC, !IntermodInfo)
     ;
@@ -1252,7 +1249,6 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
     ;
         ( Target = target_c
         ; Target = target_java
-        ; Target = target_erlang
         ),
         MaybeCSharp = MaybeCSharp0
     ),
@@ -1263,23 +1259,10 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
     ;
         ( Target = target_c
         ; Target = target_csharp
-        ; Target = target_erlang
         ),
         MaybeJava = MaybeJava0
     ),
-    (
-        Target = target_erlang,
-        resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
-            MaybeErlang0, MaybeErlang, !IntermodInfo)
-    ;
-        ( Target = target_c
-        ; Target = target_csharp
-        ; Target = target_java
-        ),
-        MaybeErlang = MaybeErlang0
-    ),
-    ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCSharp,
-        MaybeErlang).
+    ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCSharp).
 
 :- pred resolve_foreign_type_body_overloading_2(module_info::in, type_ctor::in,
     foreign_type_lang_body(T)::in, foreign_type_lang_body(T)::out,
@@ -1463,7 +1446,7 @@ write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
     intermod_write_instances(OutInfo, InstanceDefns, Instances, !IO),
     (
         NeedFIMs = do_need_foreign_import_modules,
-        module_info_get_c_j_cs_e_fims(ModuleInfo, CJCsEFIMs),
+        module_info_get_c_j_cs_fims(ModuleInfo, CJCsEFIMs),
         FIMSpecs = get_all_fim_specs(CJCsEFIMs),
         ( if set.is_empty(FIMSpecs) then
             true
@@ -1613,7 +1596,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn,
             MaybeForeignTypeBody = yes(ForeignTypeBody)
         ),
         ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava,
-            MaybeCSharp, MaybeErlang)
+            MaybeCSharp)
     then
         (
             MaybeC = yes(DataC),
@@ -1660,22 +1643,6 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn,
             mercury_output_item(MercInfo, CSharpItem, !IO)
         ;
             MaybeCSharp = no
-        ),
-        (
-            MaybeErlang = yes(DataErlang),
-            DataErlang = type_details_foreign(ErlangForeignType,
-                ErlangMaybeUserEqComp, AssertionsErlang),
-            ErlangDetailsForeign = type_details_foreign(
-                erlang(ErlangForeignType),
-                ErlangMaybeUserEqComp, AssertionsErlang),
-            ErlangItemTypeDefn = item_type_defn_info(Name, Args,
-                parse_tree_foreign_type(ErlangDetailsForeign),
-                VarSet, Context, -1),
-            cord.snoc(ErlangItemTypeDefn, !TypeDefnsCord),
-            ErlangItem = item_type_defn(ErlangItemTypeDefn),
-            mercury_output_item(MercInfo, ErlangItem, !IO)
-        ;
-            MaybeErlang = no
         )
     else
         true

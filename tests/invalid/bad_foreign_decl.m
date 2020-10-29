@@ -52,3 +52,5 @@
     lcoal,
     7777
 ).
+
+:- pragma foreign_decl("Erlang", include_file("")).

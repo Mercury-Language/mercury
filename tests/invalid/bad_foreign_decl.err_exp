@@ -5,25 +5,46 @@ bad_foreign_decl.m:021: Error: a `:- pragma foreign_decl' declaration may have
 bad_foreign_decl.m:021:   at most three arguments (a language specification, a
 bad_foreign_decl.m:021:   local/exported indication, and the foreign language
 bad_foreign_decl.m:021:   declaration itself).
-bad_foreign_decl.m:025: Error: invalid `:- pragma foreign_decl' declaration:
-bad_foreign_decl.m:025:   invalid language parameter `"InvalidLanguage"'.
-bad_foreign_decl.m:029: Error: invalid `:- pragma foreign_decl' declaration:
-bad_foreign_decl.m:029:   expected string or include_file for foreign
-bad_foreign_decl.m:029:   declaration code, got `1234'.
+bad_foreign_decl.m:025: In the first argument of `:- pragma foreign_decl'
+bad_foreign_decl.m:025:   declaration:
+bad_foreign_decl.m:025:   error: expected the name of a foreign language, got
+bad_foreign_decl.m:025:   `"InvalidLanguage"'.
+bad_foreign_decl.m:025:   The valid languages are c, C, csharp, C#, java and
+bad_foreign_decl.m:025:   Java.
+bad_foreign_decl.m:029: In the second argument of `:- pragma foreign_decl'
+bad_foreign_decl.m:029:   declaration:
+bad_foreign_decl.m:029:   error: expected either a string containing code, or a
+bad_foreign_decl.m:029:   term of the form `include_file(...)' naming a file to
+bad_foreign_decl.m:029:   include, got `1234'.
 bad_foreign_decl.m:033: Error: the second argument of a
 bad_foreign_decl.m:033:   `:- pragma foreign_decl' declaration must be either
 bad_foreign_decl.m:033:   `local' or `exported': got `lcoal'.
 bad_foreign_decl.m:037: Error: the second argument of a
 bad_foreign_decl.m:037:   `:- pragma foreign_decl' declaration must be either
 bad_foreign_decl.m:037:   `local' or `exported': got `4444'.
-bad_foreign_decl.m:041: Error: invalid `:- pragma foreign_decl' declaration:
-bad_foreign_decl.m:041:   expected string or include_file for foreign
-bad_foreign_decl.m:041:   declaration code, got `include_file(5555)'.
-bad_foreign_decl.m:051: Error: invalid `:- pragma foreign_decl' declaration:
-bad_foreign_decl.m:051:   invalid language parameter `"InvalidLanguage"'.
+bad_foreign_decl.m:041: In the second argument of `:- pragma foreign_decl'
+bad_foreign_decl.m:041:   declaration:
+bad_foreign_decl.m:041:   error: expected either a string containing code, or a
+bad_foreign_decl.m:041:   term of the form `include_file(...)' naming a file to
+bad_foreign_decl.m:041:   include, got `include_file(5555)'.
+bad_foreign_decl.m:051: In the first argument of `:- pragma foreign_decl'
+bad_foreign_decl.m:051:   declaration:
+bad_foreign_decl.m:051:   error: expected the name of a foreign language, got
+bad_foreign_decl.m:051:   `"InvalidLanguage"'.
+bad_foreign_decl.m:051:   The valid languages are c, C, csharp, C#, java and
+bad_foreign_decl.m:051:   Java.
 bad_foreign_decl.m:052: Error: the second argument of a
 bad_foreign_decl.m:052:   `:- pragma foreign_decl' declaration must be either
 bad_foreign_decl.m:052:   `local' or `exported': got `lcoal'.
-bad_foreign_decl.m:053: Error: invalid `:- pragma foreign_decl' declaration:
-bad_foreign_decl.m:053:   expected string or include_file for foreign
-bad_foreign_decl.m:053:   declaration code, got `7777'.
+bad_foreign_decl.m:053: In the third argument of `:- pragma foreign_decl'
+bad_foreign_decl.m:053:   declaration:
+bad_foreign_decl.m:053:   error: expected either a string containing code, or a
+bad_foreign_decl.m:053:   term of the form `include_file(...)' naming a file to
+bad_foreign_decl.m:053:   include, got `7777'.
+bad_foreign_decl.m:056: In the first argument of `:- pragma foreign_decl'
+bad_foreign_decl.m:056:   declaration:
+bad_foreign_decl.m:056:   error: expected the name of a foreign language, got
+bad_foreign_decl.m:056:   `"Erlang"'.
+bad_foreign_decl.m:056:   The valid languages are c, C, csharp, C#, java and
+bad_foreign_decl.m:056:   Java.
+bad_foreign_decl.m:056:   Support for Erlang has been discontinued.

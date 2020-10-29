@@ -83,6 +83,12 @@
      X
 ]).
 
+:- pragma foreign_enum(
+    "Erlang",
+    meat,
+    []
+).
+
 % XXX TODO: we should generate more specific error messages in cases
 % like the following:
 %:- pragma foreign_enum("C", more_poultry/0, [

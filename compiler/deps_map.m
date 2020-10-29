@@ -159,7 +159,7 @@ generate_deps_map_step(Globals, Module, ExpectationContexts,
         Done0 = not_yet_processed,
         Deps = deps(already_processed, ModuleImports),
         map.det_update(Module, Deps, !DepsMap),
-        module_and_imports_get_c_j_cs_e_fims(ModuleImports, CJCsEFIMs),
+        module_and_imports_get_c_j_cs_fims(ModuleImports, CJCsEFIMs),
         % We could keep a list of the modules we have already processed
         % and subtract it from the sets of modules we add here, but doing that
         % actually leads to a small slowdown.

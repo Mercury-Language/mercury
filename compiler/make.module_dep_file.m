@@ -355,7 +355,7 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
         ContainsForeignCode),
     module_and_imports_get_contains_foreign_export(ModuleAndImports,
         ContainsForeignExport),
-    module_and_imports_get_c_j_cs_e_fims(ModuleAndImports, CJCsEFIMs),
+    module_and_imports_get_c_j_cs_fims(ModuleAndImports, CJCsEFIMs),
     module_and_imports_get_foreign_include_files(ModuleAndImports,
         ForeignIncludeFiles),
     module_and_imports_get_has_main(ModuleAndImports, HasMain),

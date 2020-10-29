@@ -205,13 +205,6 @@ user_defined_pickler(picklers(Pickles), TypeCtorDesc, Pickle) :-
     B = A;
 ").
 
-:- pragma foreign_proc("Erlang",
-    pickler_inst_cast(A::in, B::out(pickler_pred)),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    B = A
-").
-
 :- pragma foreign_proc("C#",
     pickler_inst_cast(A::in, B::out(pickler_pred)),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -353,13 +346,6 @@ user_defined_unpickler(unpicklers(Unpicklers), TypeCtorDesc, Unpickle) :-
     [will_not_call_mercury, thread_safe, promise_pure],
 "
     B = A;
-").
-
-:- pragma foreign_proc("Erlang",
-    unpickler_inst_cast(A::in, B::out(unpickler_pred)),
-    [will_not_call_mercury, thread_safe, promise_pure],
-"
-    B = A
 ").
 
 :- pragma foreign_proc("C#",

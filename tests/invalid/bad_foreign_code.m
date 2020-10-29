@@ -43,3 +43,5 @@
     "InvalidLanguage",
     6666
 ).
+
+:- pragma foreign_code("Erlang", include_file("")).

@@ -1152,9 +1152,8 @@ mercury_output_pred_or_mode_decl(Info, Item, !IO) :-
 
 mercury_output_type_ctor_all_defns(Info, TypeCtorAllDefns, !IO) :-
     TypeCtorAllDefns = type_ctor_all_defns(SolverAbs, SolverNonAbs,
-        StdAbs, StdEqv, StdDu, CJCsE),
-    CJCsE = c_java_csharp_erlang(ForeignC, ForeignJava,
-        ForeignCsharp, ForeignErlang),
+        StdAbs, StdEqv, StdDu, CJCs),
+    CJCs = c_java_csharp(ForeignC, ForeignJava, ForeignCsharp),
     AbsToGen =
         ( func(Item) = Item ^ td_ctor_defn :=
             parse_tree_abstract_type(Item ^ td_ctor_defn)
@@ -1190,9 +1189,7 @@ mercury_output_type_ctor_all_defns(Info, TypeCtorAllDefns, !IO) :-
     list.foldl(mercury_output_item_type_defn(Info),
         list.map(ForeignToGen, ForeignJava), !IO),
     list.foldl(mercury_output_item_type_defn(Info),
-        list.map(ForeignToGen, ForeignCsharp), !IO),
-    list.foldl(mercury_output_item_type_defn(Info),
-        list.map(ForeignToGen, ForeignErlang), !IO).
+        list.map(ForeignToGen, ForeignCsharp), !IO).
 
 :- pred mercury_output_item_type_defn(merc_out_info::in,
     item_type_defn_info::in, io::di, io::uo) is det.
@@ -1286,9 +1283,6 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
         ;
             ForeignType = csharp(_),
             io.write_string("csharp, ", !IO)
-        ;
-            ForeignType = erlang(_),
-            io.write_string("erlang, ", !IO)
         ),
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm, !IO),
         io.write_string(", \"", !IO),
@@ -1298,9 +1292,6 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
             ForeignType = java(java_type(ForeignTypeStr))
         ;
             ForeignType = csharp(csharp_type(ForeignTypeStr))
-        ;
-            ForeignType = erlang(erlang_type),
-            ForeignTypeStr = ""
         ),
         io.write_string(ForeignTypeStr, !IO),
         io.write_string("\"", !IO),
@@ -1785,15 +1776,13 @@ mercury_output_item_mode_decl(Info, ItemModeDecl, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred mercury_output_foreign_enums(merc_out_info::in,
-    c_j_cs_e_enums::in, U::di, U::uo) is det <= output(U).
+    c_j_cs_enums::in, U::di, U::uo) is det <= output(U).
 
-mercury_output_foreign_enums(Info, CJCsEEnums, !U) :-
-    CJCsEEnums = c_java_csharp_erlang(CEnums, JavaEnums,
-        CsharpEnums, ErlangEnums),
+mercury_output_foreign_enums(Info, CJCsnums, !U) :-
+    CJCsnums = c_java_csharp(CEnums, JavaEnums, CsharpEnums),
     list.foldl(mercury_output_item_foreign_enum(Info), CEnums, !U),
     list.foldl(mercury_output_item_foreign_enum(Info), JavaEnums, !U),
-    list.foldl(mercury_output_item_foreign_enum(Info), CsharpEnums, !U),
-    list.foldl(mercury_output_item_foreign_enum(Info), ErlangEnums, !U).
+    list.foldl(mercury_output_item_foreign_enum(Info), CsharpEnums, !U).
 
 :- pred mercury_output_item_foreign_enum(merc_out_info::in,
     item_foreign_enum_info::in, U::di, U::uo) is det <= output(U).

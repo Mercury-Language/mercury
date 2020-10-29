@@ -177,9 +177,7 @@ cons_id_to_tag(ModuleInfo, ConsId) = ConsTag:-
         module_info_get_globals(ModuleInfo, Globals),
         globals.get_target(Globals, TargetLang),
         (
-            ( TargetLang = target_c
-            ; TargetLang = target_erlang
-            ),
+            TargetLang = target_c,
             ( if Arity = 0 then
                 ConsTag = int_tag(int_tag_int(0))
             else

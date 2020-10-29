@@ -104,18 +104,18 @@ mercury_output_item_type_repn(Info, ItemTypeRepn, !IO) :-
             io.format("\n%s)", [s(I)], !IO)
         )
     ;
-        RepnInfo = tcrepn_foreign(MaybeCJCsERepn),
+        RepnInfo = tcrepn_foreign(MaybeCJCsRepn),
         TypeRepnFor = get_type_repn_for(Info),
         (
             TypeRepnFor = type_repn_for_machines,
             io.write_string(" foreign_type_repn(", !IO),
-            mercury_output_c_j_cs_e_repn(TypeRepnFor, 2, MaybeCJCsERepn, !IO),
+            mercury_output_c_j_cs_repn(TypeRepnFor, 2, MaybeCJCsRepn, !IO),
             io.write_string(")", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
             I = indent(1),
             io.format("\n%sforeign_type_repn(\n", [s(I)], !IO),
-            mercury_output_c_j_cs_e_repn(TypeRepnFor, 2, MaybeCJCsERepn, !IO),
+            mercury_output_c_j_cs_repn(TypeRepnFor, 2, MaybeCJCsRepn, !IO),
             io.format("\n%s)", [s(I)], !IO)
         )
     ),
@@ -152,14 +152,14 @@ mercury_output_du_type_repn(TypeRepnFor, Indent, TVarSet, DuRepn, !IO) :-
     direct_dummy_repn::in, io::di, io::uo) is det.
 
 mercury_output_du_direct_dummy(TypeRepnFor, Indent, DummyRepn, !IO) :-
-    DummyRepn = direct_dummy_repn(FunctorName, MaybeCJCsERepnOrEnum),
+    DummyRepn = direct_dummy_repn(FunctorName, MaybeCJCsRepnOrEnum),
     (
         TypeRepnFor = type_repn_for_machines,
         io.write_string("direct_dummy(", !IO),
         mercury_output_functor_name(FunctorName, !IO),
         io.write_string(", ", !IO),
-        mercury_output_c_j_cs_e_repn_or_enum(TypeRepnFor, Indent + 1,
-            MaybeCJCsERepnOrEnum, !IO),
+        mercury_output_c_j_cs_repn_or_enum(TypeRepnFor, Indent + 1,
+            MaybeCJCsRepnOrEnum, !IO),
         io.write_string(")", !IO)
     ;
         TypeRepnFor = type_repn_for_humans,
@@ -167,8 +167,8 @@ mercury_output_du_direct_dummy(TypeRepnFor, Indent, DummyRepn, !IO) :-
         io.format("\n%sdirect_dummy(", [s(I)], !IO),
         mercury_output_functor_name(FunctorName, !IO),
         io.write_string(",\n", !IO),
-        mercury_output_c_j_cs_e_repn_or_enum(TypeRepnFor, Indent + 1,
-            MaybeCJCsERepnOrEnum, !IO),
+        mercury_output_c_j_cs_repn_or_enum(TypeRepnFor, Indent + 1,
+            MaybeCJCsRepnOrEnum, !IO),
         io.format("\n%s)", [s(I)], !IO)
     ).
 
@@ -179,7 +179,7 @@ mercury_output_du_direct_dummy(TypeRepnFor, Indent, DummyRepn, !IO) :-
 
 mercury_output_du_enum(TypeRepnFor, Indent, EnumRepn, !IO) :-
     EnumRepn = enum_repn(Functor1, Functor2, OtherFunctors,
-        MaybeCJCsERepnOrEnum),
+        MaybeCJCsRepnOrEnum),
     (
         TypeRepnFor = type_repn_for_machines,
         io.write_string("enum(", !IO),
@@ -198,8 +198,8 @@ mercury_output_du_enum(TypeRepnFor, Indent, EnumRepn, !IO) :-
             io.write_string("]", !IO)
         ),
         io.write_string(", ", !IO),
-        mercury_output_c_j_cs_e_repn_or_enum(TypeRepnFor, 0,
-            MaybeCJCsERepnOrEnum, !IO),
+        mercury_output_c_j_cs_repn_or_enum(TypeRepnFor, 0,
+            MaybeCJCsRepnOrEnum, !IO),
         io.write_string(")", !IO)
     ;
         TypeRepnFor = type_repn_for_humans,
@@ -215,8 +215,8 @@ mercury_output_du_enum(TypeRepnFor, Indent, EnumRepn, !IO) :-
             mercury_output_one_functor_name(nl_indent(Indent + 2), ""),
             OtherFunctors, !IO),
         io.format(",\n", [], !IO),
-        mercury_output_c_j_cs_e_repn_or_enum(TypeRepnFor, Indent1,
-            MaybeCJCsERepnOrEnum, !IO),
+        mercury_output_c_j_cs_repn_or_enum(TypeRepnFor, Indent1,
+            MaybeCJCsRepnOrEnum, !IO),
         io.format("\n%s)", [s(I)], !IO)
     ).
 
@@ -226,7 +226,7 @@ mercury_output_du_enum(TypeRepnFor, Indent, EnumRepn, !IO) :-
     notag_repn::in, io::di, io::uo) is det.
 
 mercury_output_du_notag(TypeRepnFor, Indent, TVarSet, NotagRepn, !IO) :-
-    NotagRepn = notag_repn(FunctorName, ArgType, MaybeCJCsERepn),
+    NotagRepn = notag_repn(FunctorName, ArgType, MaybeCJCsRepn),
     (
         TypeRepnFor = type_repn_for_machines,
         io.write_string("notag(", !IO),
@@ -234,7 +234,7 @@ mercury_output_du_notag(TypeRepnFor, Indent, TVarSet, NotagRepn, !IO) :-
         io.write_string(", ", !IO),
         mercury_output_type(TVarSet, print_num_only, ArgType, !IO),
         io.write_string(", ", !IO),
-        mercury_output_c_j_cs_e_repn(TypeRepnFor, 0, MaybeCJCsERepn, !IO),
+        mercury_output_c_j_cs_repn(TypeRepnFor, 0, MaybeCJCsRepn, !IO),
         io.write_string(")", !IO)
     ;
         TypeRepnFor = type_repn_for_humans,
@@ -245,8 +245,8 @@ mercury_output_du_notag(TypeRepnFor, Indent, TVarSet, NotagRepn, !IO) :-
         io.format(",\n%s", [s(I1)], !IO),
         mercury_output_type(TVarSet, print_num_only, ArgType, !IO),
         io.format(",\n", [], !IO),
-        mercury_output_c_j_cs_e_repn(TypeRepnFor, Indent + 1,
-            MaybeCJCsERepn, !IO),
+        mercury_output_c_j_cs_repn(TypeRepnFor, Indent + 1,
+            MaybeCJCsRepn, !IO),
         io.format("\n%s)", [s(I)], !IO)
     ).
 
@@ -258,7 +258,7 @@ mercury_output_du_notag(TypeRepnFor, Indent, TVarSet, NotagRepn, !IO) :-
 mercury_output_du_only_functor(TypeRepnFor, Indent, TVarSet, OnlyFunctorRepn,
         !IO) :-
     OnlyFunctorRepn = gen_du_only_functor_repn(FunctorName, ArgTypes, CRepns,
-        MaybeCJCsERepn),
+        MaybeCJCsRepn),
     (
         TypeRepnFor = type_repn_for_machines,
         io.write_string("gen_du_only_functor(", !IO),
@@ -271,7 +271,7 @@ mercury_output_du_only_functor(TypeRepnFor, Indent, TVarSet, OnlyFunctorRepn,
             mercury_output_nonconstant_repn(TypeRepnFor, 0),
             CRepns, !IO),
         io.write_string(", ", !IO),
-        mercury_output_c_j_cs_e_repn(TypeRepnFor, 0, MaybeCJCsERepn, !IO),
+        mercury_output_c_j_cs_repn(TypeRepnFor, 0, MaybeCJCsRepn, !IO),
         io.write_string(")", !IO)
     ;
         TypeRepnFor = type_repn_for_humans,
@@ -290,8 +290,8 @@ mercury_output_du_only_functor(TypeRepnFor, Indent, TVarSet, OnlyFunctorRepn,
             mercury_output_nonconstant_repn(TypeRepnFor, Indent2),
             CRepns, !IO),
         io.format(",\n", [], !IO),
-        mercury_output_c_j_cs_e_repn(TypeRepnFor, Indent1,
-            MaybeCJCsERepn, !IO),
+        mercury_output_c_j_cs_repn(TypeRepnFor, Indent1,
+            MaybeCJCsRepn, !IO),
         io.format("\n%s)", [s(I)], !IO)
     ).
 
@@ -303,7 +303,7 @@ mercury_output_du_only_functor(TypeRepnFor, Indent, TVarSet, OnlyFunctorRepn,
 mercury_output_du_more_functors(TypeRepnFor, Indent, TVarSet,
         MoreFunctorsRepn, !IO) :-
     MoreFunctorsRepn = gen_du_more_functors_repn(Functor1, Functor2,
-        OtherFunctors, MaybeCJCsERepn),
+        OtherFunctors, MaybeCJCsRepn),
     (
         TypeRepnFor = type_repn_for_machines,
         io.write_string("gen_du_more_functors(", !IO),
@@ -325,7 +325,7 @@ mercury_output_du_more_functors(TypeRepnFor, Indent, TVarSet,
             io.write_string("]", !IO)
         ),
         io.write_string(", ", !IO),
-        mercury_output_c_j_cs_e_repn(TypeRepnFor, 0, MaybeCJCsERepn, !IO),
+        mercury_output_c_j_cs_repn(TypeRepnFor, 0, MaybeCJCsRepn, !IO),
         io.write_string(")", !IO)
     ;
         TypeRepnFor = type_repn_for_humans,
@@ -343,8 +343,8 @@ mercury_output_du_more_functors(TypeRepnFor, Indent, TVarSet,
                 TVarSet),
             OtherFunctors, !IO),
         io.format(",\n", [], !IO),
-        mercury_output_c_j_cs_e_repn(TypeRepnFor, Indent1,
-            MaybeCJCsERepn, !IO),
+        mercury_output_c_j_cs_repn(TypeRepnFor, Indent1,
+            MaybeCJCsRepn, !IO),
         io.format("\n%s)", [s(I)], !IO)
     ).
 
@@ -616,32 +616,31 @@ fill_kind_size_to_string(FillKindSize) = Str :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_c_j_cs_e_repn_or_enum(type_repn_for::in, int::in,
-    c_j_cs_e_enum_repn::in, io::di, io::uo) is det.
+:- pred mercury_output_c_j_cs_repn_or_enum(type_repn_for::in, int::in,
+    c_j_cs_enum_repn::in, io::di, io::uo) is det.
 
-mercury_output_c_j_cs_e_repn_or_enum(TypeRepnFor, Indent,
-        MaybeCJCsERepnOrEnum, !IO) :-
-    MaybeCJCsERepnOrEnum = c_java_csharp_erlang(MaybeRepnOrEnumC,
-        MaybeRepnOrEnumJava, MaybeRepnOrEnumCsharp, MaybeRepnOrEnumErlang),
+mercury_output_c_j_cs_repn_or_enum(TypeRepnFor, Indent,
+        MaybeCJCsRepnOrEnum, !IO) :-
+    MaybeCJCsRepnOrEnum = c_java_csharp(MaybeRepnOrEnumC, MaybeRepnOrEnumJava,
+        MaybeRepnOrEnumCsharp),
     Indent1 = Indent + 1,
     I = indent(Indent),
     ( if
         MaybeRepnOrEnumC = no,
         MaybeRepnOrEnumJava = no,
-        MaybeRepnOrEnumCsharp = no,
-        MaybeRepnOrEnumErlang = no
+        MaybeRepnOrEnumCsharp = no
     then
         (
             TypeRepnFor = type_repn_for_machines,
-            io.write_string(" no_c_j_cs_e", !IO)
+            io.write_string(" no_c_j_cs", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
-            io.format("%sno_c_j_cs_e", [s(I)], !IO)
+            io.format("%sno_c_j_cs", [s(I)], !IO)
         )
     else
         (
             TypeRepnFor = type_repn_for_machines,
-            io.write_string(" c_j_cs_e(", !IO),
+            io.write_string(" c_j_cs(", !IO),
             mercury_output_maybe_enum_foreign_repn(TypeRepnFor, Indent1,
                 MaybeRepnOrEnumC, !IO),
             io.write_string(", ", !IO),
@@ -650,13 +649,10 @@ mercury_output_c_j_cs_e_repn_or_enum(TypeRepnFor, Indent,
             io.write_string(", ", !IO),
             mercury_output_maybe_enum_foreign_repn(TypeRepnFor, Indent1,
                 MaybeRepnOrEnumCsharp, !IO),
-            io.write_string(", ", !IO),
-            mercury_output_maybe_enum_foreign_repn(TypeRepnFor, Indent1,
-                MaybeRepnOrEnumErlang, !IO),
             io.write_string(")", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
-            io.format("\n%sc_j_cs_e(\n", [s(I)], !IO),
+            io.format("\n%sc_j_cs(\n", [s(I)], !IO),
             mercury_output_maybe_enum_foreign_repn(TypeRepnFor, Indent1,
                 MaybeRepnOrEnumC, !IO),
             io.write_string(",\n", !IO),
@@ -665,38 +661,33 @@ mercury_output_c_j_cs_e_repn_or_enum(TypeRepnFor, Indent,
             io.write_string(",\n", !IO),
             mercury_output_maybe_enum_foreign_repn(TypeRepnFor, Indent1,
                 MaybeRepnOrEnumCsharp, !IO),
-            io.write_string(",\n", !IO),
-            mercury_output_maybe_enum_foreign_repn(TypeRepnFor, Indent1,
-                MaybeRepnOrEnumErlang, !IO),
             io.format("\n%s)", [s(I)], !IO)
         )
     ).
 
-:- pred mercury_output_c_j_cs_e_repn(type_repn_for::in, int::in,
-    c_j_cs_e_repn::in, io::di, io::uo) is det.
+:- pred mercury_output_c_j_cs_repn(type_repn_for::in, int::in,
+    c_j_cs_repn::in, io::di, io::uo) is det.
 
-mercury_output_c_j_cs_e_repn(TypeRepnFor, Indent, MaybeCJCsERepn, !IO) :-
-    MaybeCJCsERepn = c_java_csharp_erlang(MaybeRepnC, MaybeRepnJava,
-        MaybeRepnCsharp, MaybeRepnErlang),
+mercury_output_c_j_cs_repn(TypeRepnFor, Indent, MaybeCJCsRepn, !IO) :-
+    MaybeCJCsRepn = c_java_csharp(MaybeRepnC, MaybeRepnJava, MaybeRepnCsharp),
     ( if
         MaybeRepnC = no,
         MaybeRepnJava = no,
-        MaybeRepnCsharp = no,
-        MaybeRepnErlang = no
+        MaybeRepnCsharp = no
     then
         (
             TypeRepnFor = type_repn_for_machines,
-            io.write_string(" no_c_j_cs_e", !IO)
+            io.write_string(" no_c_j_cs", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
             I = indent(Indent),
-            io.format("%sno_c_j_cs_e", [s(I)], !IO)
+            io.format("%sno_c_j_cs", [s(I)], !IO)
         )
     else
         Indent1 = Indent + 1,
         (
             TypeRepnFor = type_repn_for_machines,
-            io.write_string(" c_j_cs_e(", !IO),
+            io.write_string(" c_j_cs(", !IO),
             mercury_output_maybe_foreign_type_repn(TypeRepnFor, Indent1,
                 MaybeRepnC, !IO),
             io.write_string(", ", !IO),
@@ -705,14 +696,11 @@ mercury_output_c_j_cs_e_repn(TypeRepnFor, Indent, MaybeCJCsERepn, !IO) :-
             io.write_string(", ", !IO),
             mercury_output_maybe_foreign_type_repn(TypeRepnFor, Indent1,
                 MaybeRepnCsharp, !IO),
-            io.write_string(", ", !IO),
-            mercury_output_maybe_foreign_type_repn(TypeRepnFor, Indent1,
-                MaybeRepnErlang, !IO),
             io.write_string(")", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
             I = indent(Indent),
-            io.format("%sc_j_cs_e(\n", [s(I)], !IO),
+            io.format("%sc_j_cs(\n", [s(I)], !IO),
             mercury_output_maybe_foreign_type_repn(TypeRepnFor, Indent1,
                 MaybeRepnC, !IO),
             io.write_string(",\n", !IO),
@@ -721,9 +709,6 @@ mercury_output_c_j_cs_e_repn(TypeRepnFor, Indent, MaybeCJCsERepn, !IO) :-
             io.write_string(",\n", !IO),
             mercury_output_maybe_foreign_type_repn(TypeRepnFor, Indent1,
                 MaybeRepnCsharp, !IO),
-            io.write_string(",\n", !IO),
-            mercury_output_maybe_foreign_type_repn(TypeRepnFor, Indent1,
-                MaybeRepnErlang, !IO),
             io.format("\n%s)", [s(I)], !IO)
         )
     ).

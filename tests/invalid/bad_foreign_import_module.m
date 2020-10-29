@@ -27,3 +27,5 @@
      "InvalidForeignLang",
       int(int)
 ).
+
+:- pragma foreign_import_module("Erlang", int).

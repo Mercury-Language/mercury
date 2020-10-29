@@ -46,8 +46,9 @@
 
 %---------------------%
 
-    % XXX The erlang backend does not fit into the low vs high dichotomy.
-    % The grade_lib classifies the backends as llds/elds/mlds.
+    % XXX Note that neither the LLDS nor the MLDS backends can accommodate
+    % target languages such as Aditi or Erlang, which (while they existed)
+    % had their own backends.
 :- type backend
     --->    high_level_backend
     ;       low_level_backend.
@@ -55,8 +56,7 @@
 :- type compilation_target
     --->    target_c        % Generate C code (including GNU C).
     ;       target_csharp   % Generate C#.
-    ;       target_java     % Generate Java.
-    ;       target_erlang.  % Generate Erlang.
+    ;       target_java.    % Generate Java.
 
     % If you ever uncomment lang_cplusplus, you should also uncomment
     % the corresponding field in the foreign_import_modules type.
@@ -64,8 +64,7 @@
     --->    lang_c
 %   ;       lang_cplusplus
     ;       lang_csharp
-    ;       lang_java
-    ;       lang_erlang.
+    ;       lang_java.
 
 :- func target_lang_to_foreign_export_lang(compilation_target)
     = foreign_language.
@@ -94,7 +93,7 @@
 
     % The GC method specifies how we do garbage collection.
     % The last five alternatives are for the C back-ends;
-    % the first alternative is for compiling to C#, Java, Il or Erlang
+    % the first alternative is for compiling to C# or Java
     % where the target language implementation handles garbage collection
     % automatically.
     %
@@ -439,30 +438,26 @@
 %---------------------------------------------------------------------------%
 
 target_lang_to_foreign_export_lang(target_c) = lang_c.
-target_lang_to_foreign_export_lang(target_erlang) = lang_erlang.
 target_lang_to_foreign_export_lang(target_csharp) = lang_csharp.
 target_lang_to_foreign_export_lang(target_java) = lang_java.
 
 compilation_target_string(target_c) = "C".
 compilation_target_string(target_csharp) = "C#".
 compilation_target_string(target_java) = "Java".
-compilation_target_string(target_erlang) = "Erlang".
 
 foreign_language_string(lang_c) = "C".
 foreign_language_string(lang_csharp) = "C#".
 foreign_language_string(lang_java) = "Java".
-foreign_language_string(lang_erlang) = "Erlang".
 
 simple_foreign_language_string(lang_c, "c").
 simple_foreign_language_string(lang_csharp, "csharp").
 simple_foreign_language_string(lang_java, "java").
-simple_foreign_language_string(lang_erlang, "erlang").
 
 simple_foreign_language_string(Lang) = Str :-
     simple_foreign_language_string(Lang, Str).
 
 all_foreign_language_strings =
-    ["c", "C", "csharp", "C#", "erlang", "Erlang", "java", "Java"].
+    ["c", "C", "csharp", "C#", "java", "Java"].
 
 gc_is_conservative(gc_boehm) = yes.
 gc_is_conservative(gc_boehm_debug) = yes.
@@ -481,7 +476,6 @@ convert_target(String, Target) :-
 convert_target_2("csharp", target_csharp).
 convert_target_2("java", target_java).
 convert_target_2("c", target_c).
-convert_target_2("erlang", target_erlang).
 
 :- pred convert_foreign_language_det(string::in, foreign_language::out) is det.
 
@@ -503,7 +497,6 @@ convert_foreign_language_2("c#", lang_csharp).
 convert_foreign_language_2("csharp", lang_csharp).
 convert_foreign_language_2("c sharp", lang_csharp).
 convert_foreign_language_2("java", lang_java).
-convert_foreign_language_2("erlang", lang_erlang).
 
 convert_gc_method("none", gc_none).
 convert_gc_method("conservative", gc_boehm).
@@ -961,8 +954,7 @@ current_grade_supports_concurrency(Globals, ThreadsSupported) :-
             ThreadsSupported = Parallel
         )
     ;
-        ( Target = target_erlang
-        ; Target = target_java
+        ( Target = target_java
         ; Target = target_csharp
         ),
         ThreadsSupported = yes

@@ -587,7 +587,6 @@ check_mutable(ItemMutable, ModuleInfo, !Specs) :-
         ( CompilationTarget = target_c,      ForeignLanguage = lang_c
         ; CompilationTarget = target_java,   ForeignLanguage = lang_java
         ; CompilationTarget = target_csharp, ForeignLanguage = lang_csharp
-        ; CompilationTarget = target_erlang, ForeignLanguage = lang_erlang
         ),
         mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
         (
@@ -1995,14 +1994,6 @@ get_mutable_target_params(Globals, MutAttrs, TargetParams) :-
         PreInit0 = dont_need_pre_init_pred,
         LockUnlock0 = dont_need_lock_unlock_preds,
         UnsafeAccess0 = need_unsafe_get_set_preds,
-        BoxPolicy = bp_native_if_possible
-    ;
-        CompilationTarget = target_erlang,
-        ImplLang = mutable_lang_erlang,
-        Lang = lang_erlang,
-        PreInit0 = dont_need_pre_init_pred,
-        LockUnlock0 = dont_need_lock_unlock_preds,
-        UnsafeAccess0 = dont_need_unsafe_get_set_preds,
         BoxPolicy = bp_native_if_possible
     ),
     IsConstant = mutable_var_constant(MutAttrs),

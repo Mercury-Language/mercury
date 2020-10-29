@@ -42,3 +42,5 @@ foo(X, Y) = X + Y.
     % Third arg is the empty string.
     %
 :- pragma foreign_export("C", foo(in, in) = out, "").
+
+:- pragma foreign_export("Erlang", foo(in, in) = out, "xyzzy").

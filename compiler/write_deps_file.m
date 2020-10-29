@@ -789,7 +789,7 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
 %---------------------%
 
 :- pred construct_foreign_import_rules(globals::in, aug_compilation_unit::in,
-    module_name::in, contains_foreign_code::in, c_j_cs_e_fims::in,
+    module_name::in, contains_foreign_code::in, c_j_cs_fims::in,
     string::in, string::in, list(mmake_entry)::out, io::di, io::uo) is det.
 
 construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
@@ -820,11 +820,10 @@ construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
         % but when ForeignImportModules0 contains nothing, that is equivalent
         % to addition.)
         ( if
-            ForeignImportModules0 = c_j_cs_e_fims(C0, Java0, CSharp0, Erlang0),
+            ForeignImportModules0 = c_j_cs_fims(C0, Java0, CSharp0),
             set.is_empty(C0),
             set.is_empty(Java0),
-            set.is_empty(CSharp0),
-            set.is_empty(Erlang0)
+            set.is_empty(CSharp0)
         then
             AugCompUnit = aug_compilation_unit(_, _, _, _ParseTreeModuleSrc,
                 AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
@@ -897,12 +896,6 @@ construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
             % XXX don't know enough about C# yet
             ForeignImportTargets = [],
             ForeignImportOtherExt = other_ext(".cs")
-        ;
-            Target = target_erlang,
-            module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-                ext_other(other_ext(".beam")), ModuleName, BeamFileName, !IO),
-            ForeignImportTargets = [BeamFileName],
-            ForeignImportOtherExt = other_ext(".hrl")
         ),
         % XXX Instead of generating a separate rule for each target in
         % ForeignImportTargets, generate one rule with all those targets
@@ -1289,25 +1282,22 @@ generate_dependencies_write_d_file(Globals, Dep,
         % (we will if they define foreign types).
         % XXX This overly conservative assumption can lead to a lot of
         % unnecessary recompilations.
-        CJCsEFIMs0 = init_foreign_import_modules,
+        CSCsFIMs0 = init_foreign_import_modules,
         globals.get_target(Globals, Target),
         (
             Target = target_c,
-            CJCsEFIMs = CJCsEFIMs0 ^ fim_c := IndirectOptDeps
+            CSCsFIMs = CSCsFIMs0 ^ fim_c := IndirectOptDeps
         ;
             Target = target_csharp,
-            CJCsEFIMs = CJCsEFIMs0 ^ fim_csharp := IndirectOptDeps
+            CSCsFIMs = CSCsFIMs0 ^ fim_csharp := IndirectOptDeps
         ;
             Target = target_java,
-            CJCsEFIMs = CJCsEFIMs0 ^ fim_java := IndirectOptDeps
-        ;
-            Target = target_erlang,
-            CJCsEFIMs = CJCsEFIMs0 ^ fim_erlang := IndirectOptDeps
+            CSCsFIMs = CSCsFIMs0 ^ fim_java := IndirectOptDeps
         ),
         module_and_imports_set_int_deps_map(IntDepsMap, !ModuleAndImports),
         module_and_imports_set_imp_deps_map(ImpDepsMap, !ModuleAndImports),
         module_and_imports_set_indirect_deps(IndirectDeps, !ModuleAndImports),
-        module_and_imports_set_c_j_cs_e_fims(CJCsEFIMs, !ModuleAndImports),
+        module_and_imports_set_c_j_cs_fims(CSCsFIMs, !ModuleAndImports),
 
         % Compute the trans-opt dependencies for this module. To avoid
         % the possibility of cycles, each module is only allowed to depend
@@ -1430,7 +1420,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         ( Target = target_c
         ; Target = target_csharp
         ; Target = target_java
-        ; Target = target_erlang
         ),
         ForeignModulesAndExts = []
     ),
@@ -1591,7 +1580,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         % We don't generate C header files for non-C backends.
         ( Target = target_csharp
         ; Target = target_java
-        ; Target = target_erlang
         ),
         MihSources = [],
         MhSources = []

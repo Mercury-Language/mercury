@@ -160,7 +160,7 @@
 
 :- pred get_foreign_code_indicators_from_item_blocks(globals::in,
     list(item_block(MS))::in,
-    set(foreign_language)::out, c_j_cs_e_fims::out,
+    set(foreign_language)::out, c_j_cs_fims::out,
     foreign_include_file_infos::out, contains_foreign_export::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -1203,7 +1203,7 @@ impl_pragma_needs_foreign_imports(ImplPragma) = Langs :-
     --->    module_foreign_info(
                 used_foreign_languages      :: set(foreign_language),
                 foreign_proc_languages      :: map(sym_name, foreign_language),
-                all_foreign_import_modules  :: c_j_cs_e_fims,
+                all_foreign_import_modules  :: c_j_cs_fims,
                 all_foreign_include_files   :: foreign_include_file_infos,
                 module_has_foreign_export   :: contains_foreign_export
             ).
@@ -1368,7 +1368,6 @@ get_impl_pragma_foreign_code(Globals, Pragma, !Info) :-
         ;
             ( Target = target_csharp
             ; Target = target_java
-            ; Target = target_erlang
             )
         )
     ;

@@ -80,7 +80,6 @@ target_bits_per_uint(Globals, bits_per_uint(BitsPerUInt)) :-
     ;
         ( Target = target_csharp
         ; Target = target_java
-        ; Target = target_erlang
         ),
         BitsPerUInt = 32
     ).

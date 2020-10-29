@@ -287,7 +287,6 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
 target_lang_to_foreign_enum_lang(target_c) = lang_c.
 target_lang_to_foreign_enum_lang(target_csharp) = lang_csharp.
 target_lang_to_foreign_enum_lang(target_java) = lang_java.
-target_lang_to_foreign_enum_lang(target_erlang) = lang_erlang.
 
 :- pred map_cons_id_to_foreign_tag(type_ctor::in, module_name::in,
     foreign_language::in,
@@ -413,9 +412,7 @@ build_export_enum_name_map(ContextPieces, Context, Lang, Prefix, MakeUpperCase,
             Lang = lang_java,
             LangName = "Java"
         ;
-            ( Lang = lang_csharp
-            ; Lang = lang_erlang
-            ),
+            Lang = lang_csharp,
             % XXX The code of add_ctor_to_name_map is OK
             % with Lang = lang_csharp.
             sorry($pred, "foreign_export_enum pragma for unsupported language")
@@ -445,7 +442,7 @@ build_export_enum_name_map(ContextPieces, Context, Lang, Prefix, MakeUpperCase,
     map(string, string)::in, map(string, string)::out,
     cord(string)::in, cord(string)::out) is det.
 
-add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, OverrideMap, CtorRepn,
+add_ctor_to_name_map(_Lang, Prefix, MakeUpperCase, OverrideMap, CtorRepn,
         !NameMap, !BadForeignNames) :-
     CtorSymName = CtorRepn ^ cr_name,
     CtorName = unqualify_name(CtorSymName),
@@ -464,16 +461,7 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, OverrideMap, CtorRepn,
         )
     ),
     ForeignName = Prefix ++ ForeignNameTail,
-    (
-        ( Lang = lang_c
-        ; Lang = lang_java
-        ; Lang = lang_csharp
-        ),
-        IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName))
-    ;
-        Lang = lang_erlang,
-        sorry($pred, "foreign_export_enum for Erlang")
-    ),
+    IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName)),
     (
         IsValidForeignName = yes,
         map.det_insert(CtorName, ForeignName, !NameMap)

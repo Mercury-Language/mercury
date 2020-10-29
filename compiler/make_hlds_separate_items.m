@@ -612,10 +612,10 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
     acc_ims_list(IntItemMercuryStatus, IntModeDecls,
         AccModeDecls1, AccModeDecls),
     acc_ims_tuple_list(ImpItemMercuryStatus,
-        cjcse_map_to_list(ImpForeignEnumMap),
+        cjcs_map_to_list(ImpForeignEnumMap),
         AccForeignEnums0, AccForeignEnums1),
     acc_ims_tuple_list(IntItemMercuryStatus,
-        cjcse_map_to_list(IntForeignEnumMap),
+        cjcs_map_to_list(IntForeignEnumMap),
         AccForeignEnums1, AccForeignEnums),
     acc_ims_list(ImpItemMercuryStatus, ImpDeclPragmas,
         AccDeclPragmas0, AccDeclPragmas1),
@@ -746,10 +746,10 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
     acc_ims_list(IntItemMercuryStatus, IntModeDecls,
         AccModeDecls0, AccModeDecls),
     acc_ims_tuple_list(ImpItemMercuryStatus,
-        cjcse_map_to_list(ImpForeignEnumMap),
+        cjcs_map_to_list(ImpForeignEnumMap),
         AccForeignEnums0, AccForeignEnums1),
     acc_ims_tuple_list(IntItemMercuryStatus,
-        cjcse_map_to_list(IntForeignEnumMap),
+        cjcs_map_to_list(IntForeignEnumMap),
         AccForeignEnums1, AccForeignEnums),
     acc_ims_list(IntItemMercuryStatus, IntDeclPragmas,
         AccDeclPragmas0, AccDeclPragmas),
@@ -1268,19 +1268,19 @@ acc_ims_tuple_list_loop(ItemMercuryStatus, [RevItem | RevItems], !ImsItems) :-
 
 %---------------------------------------------------------------------------%
 
-:- func cjcse_map_to_list(map(_K, c_java_csharp_erlang(list(V)))) = list(V).
+:- func cjcs_map_to_list(map(_K, c_java_csharp(list(V)))) = list(V).
 
-cjcse_map_to_list(Map) = List :-
+cjcs_map_to_list(Map) = List :-
     RevList0 = [],
-    map.foldl_values(acc_cjcse_map_to_list, Map, RevList0, RevList),
+    map.foldl_values(acc_cjcs_map_to_list, Map, RevList0, RevList),
     list.reverse(RevList, List).
 
-:- pred acc_cjcse_map_to_list(c_java_csharp_erlang(list(V))::in,
+:- pred acc_cjcs_map_to_list(c_java_csharp(list(V))::in,
     list(V)::in, list(V)::out) is det.
 
-acc_cjcse_map_to_list(CJCsE, !RevList) :-
-    CJCsE = c_java_csharp_erlang(Cs, Javas, Csharps, Erlangs),
-    !:RevList = Cs ++ Javas ++ Csharps ++ Erlangs ++ !.RevList.
+acc_cjcs_map_to_list(CJCsE, !RevList) :-
+    CJCsE = c_java_csharp(Cs, Javas, Csharps),
+    !:RevList = Cs ++ Javas ++ Csharps ++ !.RevList.
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.make_hlds_passes.make_hlds_separate_items.

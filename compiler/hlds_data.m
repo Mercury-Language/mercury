@@ -1098,8 +1098,7 @@ gather_constructor_cons_ids(TypeCtor, [Ctor | Ctors], !ConsIds) :-
     --->    foreign_type_body(
                 c       :: foreign_type_lang_body(c_foreign_type),
                 java    :: foreign_type_lang_body(java_foreign_type),
-                csharp  :: foreign_type_lang_body(csharp_foreign_type),
-                erlang  :: foreign_type_lang_body(erlang_foreign_type)
+                csharp  :: foreign_type_lang_body(csharp_foreign_type)
             ).
 
 :- type foreign_type_lang_body(T) == maybe(type_details_foreign(T)).

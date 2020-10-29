@@ -387,8 +387,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 :- type generic_language_foreign_type
     --->    c(c_foreign_type)
     ;       java(java_foreign_type)
-    ;       csharp(csharp_foreign_type)
-    ;       erlang(erlang_foreign_type).
+    ;       csharp(csharp_foreign_type).
 
 :- type c_foreign_type
     --->    c_type(
@@ -404,9 +403,6 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     --->    csharp_type(
                 string      % The C# type name
             ).
-
-:- type erlang_foreign_type
-    --->    erlang_type.    % Erlang is untyped.
 
 :- type foreign_type_assertions
     --->    foreign_type_assertions(set(foreign_type_assertion)).
@@ -1787,8 +1783,7 @@ best_purity(purity_impure, purity_impure) = purity_impure.
     ;       trace_grade_mlds
     ;       trace_grade_c
     ;       trace_grade_csharp
-    ;       trace_grade_java
-    ;       trace_grade_erlang.
+    ;       trace_grade_java.
 
 :- type trace_trace_level
     --->    trace_level_shallow
@@ -1839,7 +1834,6 @@ parse_trace_grade_name("mlds", trace_grade_mlds).
 parse_trace_grade_name("c", trace_grade_c).
 parse_trace_grade_name("csharp", trace_grade_csharp).
 parse_trace_grade_name("java", trace_grade_java).
-parse_trace_grade_name("erlang", trace_grade_erlang).
 
 valid_trace_grade_name(GradeName) :-
     parse_trace_grade_name(GradeName, _).

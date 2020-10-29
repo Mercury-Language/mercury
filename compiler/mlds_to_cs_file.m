@@ -221,7 +221,6 @@ output_csharp_decl(Info, Indent, DeclCode, Res, !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_java
-        ; Lang = lang_erlang
         ),
         sorry($pred, "foreign decl other than C#")
     ).
@@ -239,7 +238,6 @@ output_csharp_body_code(Info, Indent, ForeignBodyCode, Res, !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_java
-        ; Lang = lang_erlang
         ),
         sorry($pred, "foreign code other than C#")
     ).

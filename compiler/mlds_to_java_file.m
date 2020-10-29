@@ -406,7 +406,6 @@ output_java_decl(Info, Indent, DeclCode, Res, !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
-        ; Lang = lang_erlang
         ),
         sorry($pred, "foreign decl other than Java")
     ).
@@ -424,7 +423,6 @@ output_java_body_code(Info, Indent, ForeignBodyCode, Res, !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
-        ; Lang = lang_erlang
         ),
         sorry($pred, "foreign code other than Java")
     ).

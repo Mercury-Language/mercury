@@ -87,3 +87,6 @@
     [can_pass_as_mercury_type, can_pass_as_mercury_type]).
 
 :- type quux.
+
+:- pragma foreign_type("Erlang", quux, "").
+:- pragma foreign_type("erlang", quux, "").

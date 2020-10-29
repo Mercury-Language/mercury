@@ -23,7 +23,7 @@ see <a href="overall_design.html">overall_design.html</a>.
 
 <p>
 The main job of the compiler is to translate Mercury into a target language,
-which can be C, Java, C# or Erlang,
+which can be C, Java or C#,
 although it can also translate Mercury to Mercury bytecode,
 for a once-planned but never implemented bytecode interpreter,
 and once upon a time it could also translate a subset of it
@@ -70,9 +70,8 @@ but it subcontracts the supervision of the later steps to other modules.
 Semantic analysis (step 2) is looked after by mercury_compile_front_end.m;
 high level transformations (step 3) by mercury_compile_middle_passes.m;
 and code generation, optimization and output (steps 4, 5 and 6)
-by mercury_compile_llds_backend.m, mercury_compile_mlds_backend.m
-and mercury_compile_erl_backend.m
-for the LLDS, MLDS and Erlang backends respectively.
+by mercury_compile_llds_backend.m and mercury_compile_mlds_backend.m
+for the LLDS and MLDS backends respectively.
 <p>
 The modules in the compiler are structured by being grouped into "packages".
 A "package" is just a meta-module,
@@ -152,16 +151,6 @@ depend on data structures defined in earlier passes, but not vice versa.
         <ul type=disc>
         <li>
             4c. code generation (annotated HLDS -&gt; bytecode)
-        </ul>
-    <li>
-        d. Erlang back-end
-        <br>
-        Package: erl_backend.m
-        <ul type=disc>
-        <li>
-            4d. code generation (annotated HLDS -&gt; ELDS)
-        <li>
-            6d. output code (ELDS -&gt; Erlang)
         </ul>
     <li>
         There is also the backend_libs.m package which contains modules
@@ -2070,42 +2059,6 @@ bytecode_gen.m contains the predicates that translate HLDS into bytecode.
 <li>
 bytecode_data.m contains the predicates
 that translate ints, strings and floats into bytecode.
-</ul>
-
-<h2>d. Erlang backend</h2>
-
-<p>
-The backend that generates Erlang code is in the erl_backend.m package.
-<p>
-The intent of this backend is to take advantage
-of the main features of the Erlang implementation
-(the most important being concurrency and fault tolerance).
-However, the backend is still incomplete.
-This backend uses the Erlang Data Structure (elds.m)
-as its intermediate representation.
-
-<h3>4d. ELDS code generation</h3>
-
-<ul>
-<li>
-erl_code_gen.m converts HLDS code to ELDS.
-It handles most kinds goals itself.
-<li>
-erl_unify_gen.m translates unifications.
-<li>
-erl_call_gen.m translates calls.
-<li>
-The module erl_code_util.m provides utility routines.
-<li>
-erl_rtti.m converts RTTI data structures defined in rtti.m
-into ELDS functions which return the same information when called.
-</ul>
-
-<h3>6d. ELDS output</h3>
-
-<ul>
-<li>
-elds_to_erlang.m converts ELDS to Erlang code.
 </ul>
 
 <h2>Smart recompilation</h2>

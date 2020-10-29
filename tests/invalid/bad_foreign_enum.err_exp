@@ -4,8 +4,8 @@ bad_foreign_enum.m:048: In the first argument of `:- pragma foreign_enum'
 bad_foreign_enum.m:048:   declaration:
 bad_foreign_enum.m:048:   error: expected the name of a foreign language, got
 bad_foreign_enum.m:048:   `"InvalidLanguage"'.
-bad_foreign_enum.m:048:   The valid languages are c, C, csharp, C#, erlang,
-bad_foreign_enum.m:048:   Erlang, java and Java.
+bad_foreign_enum.m:048:   The valid languages are c, C, csharp, C#, java and
+bad_foreign_enum.m:048:   Java.
 bad_foreign_enum.m:048: In the third argument of `:- pragma foreign_enum'
 bad_foreign_enum.m:048:   declaration:
 bad_foreign_enum.m:048:   error: the list mapping constructors to foreign
@@ -18,8 +18,8 @@ bad_foreign_enum.m:059: In the first argument of `:- pragma foreign_enum'
 bad_foreign_enum.m:059:   declaration:
 bad_foreign_enum.m:059:   error: expected the name of a foreign language, got
 bad_foreign_enum.m:059:   `"InvalidLanguage"'.
-bad_foreign_enum.m:059:   The valid languages are c, C, csharp, C#, erlang,
-bad_foreign_enum.m:059:   Erlang, java and Java.
+bad_foreign_enum.m:059:   The valid languages are c, C, csharp, C#, java and
+bad_foreign_enum.m:059:   Java.
 bad_foreign_enum.m:060: In the second argument of `:- pragma foreign_enum'
 bad_foreign_enum.m:060:   declaration:
 bad_foreign_enum.m:060:   error: expected `type_name/type_arity', got `meat'.
@@ -37,3 +37,17 @@ bad_foreign_enum.m:082: Error: expected a mapping element of the form
 bad_foreign_enum.m:082:   `possibly_qualified_name - string', got `turkey'.
 bad_foreign_enum.m:083: Error: expected a mapping element of the form
 bad_foreign_enum.m:083:   `possibly_qualified_name - string', got `X'.
+bad_foreign_enum.m:087: In the first argument of `:- pragma foreign_enum'
+bad_foreign_enum.m:087:   declaration:
+bad_foreign_enum.m:087:   error: expected the name of a foreign language, got
+bad_foreign_enum.m:087:   `"Erlang"'.
+bad_foreign_enum.m:087:   The valid languages are c, C, csharp, C#, java and
+bad_foreign_enum.m:087:   Java.
+bad_foreign_enum.m:087:   Support for Erlang has been discontinued.
+bad_foreign_enum.m:088: In the second argument of `:- pragma foreign_enum'
+bad_foreign_enum.m:088:   declaration:
+bad_foreign_enum.m:088:   error: expected `type_name/type_arity', got `meat'.
+bad_foreign_enum.m:089: In the third argument of `:- pragma foreign_enum'
+bad_foreign_enum.m:089:   declaration:
+bad_foreign_enum.m:089:   error: the list mapping constructors to foreign
+bad_foreign_enum.m:089:   values must not be empty.

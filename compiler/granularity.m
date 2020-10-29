@@ -158,7 +158,6 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
         ;
             ( Target = target_csharp
             ; Target = target_java
-            ; Target = target_erlang
             ),
             % This should have caught by mercury_compile.m.
             unexpected($pred, "unsupported target language")

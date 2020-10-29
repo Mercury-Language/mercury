@@ -167,9 +167,6 @@ mlds_output_pragma_export_type(PrefixSuffix, MLDS_Type, !IO) :-
             ;
                 ForeignType = csharp(_),
                 unexpected($pred, "csharp foreign_type")
-            ;
-                ForeignType = erlang(_),
-                unexpected($pred, "erlang foreign_type")
             )
         ;
             MLDS_Type = mlds_ptr_type(Type),
@@ -412,7 +409,6 @@ mlds_output_export_enum(Opts, _Indent, ExportedEnum, !IO) :-
     ;
         ( Lang = lang_csharp
         ; Lang = lang_java
-        ; Lang = lang_erlang
         )
     ).
 

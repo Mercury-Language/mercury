@@ -456,9 +456,7 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        ( Target = target_c
-        ; Target = target_erlang
-        ),
+        Target = target_c,
         HighLevelData = no
     ;
         ( Target = target_java
@@ -1450,9 +1448,7 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        ( Target = target_c
-        ; Target = target_erlang
-        )
+        Target = target_c
     ;
         ( Target = target_java
         ; Target = target_csharp
@@ -1743,9 +1739,7 @@ lco_transform_variant_plain_call(ModuleInfo, VariantMap, VarToAddr, InstMap0,
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_target(Globals, Target),
             (
-                ( Target = target_c
-                ; Target = target_erlang
-                ),
+                Target = target_c,
                 GoalInfo = GoalInfo0
             ;
                 ( Target = target_java

@@ -185,7 +185,6 @@ target_dependencies(Globals, Target) = FindDeps :-
         ( Target = module_target_c_code
         ; Target = module_target_csharp_code
         ; Target = module_target_java_code
-        ; Target = module_target_erlang_code
         ; Target = module_target_errors
         ),
         FindDeps = compiled_code_dependencies(Globals)
@@ -195,20 +194,6 @@ target_dependencies(Globals, Target) = FindDeps :-
     ;
         Target = module_target_java_class_code,
         FindDeps = module_target_java_code `of` self
-    ;
-        Target = module_target_erlang_header,
-        FindDeps = target_dependencies(Globals, module_target_erlang_code)
-    ;
-        Target = module_target_erlang_beam_code,
-        FindDeps =
-        combine_deps_list([
-            module_target_erlang_code `of` self,
-            % The `.erl' file will -include the header files
-            % of imported modules.
-            module_target_erlang_header `of` direct_imports,
-            module_target_erlang_header `of` indirect_imports,
-            module_target_erlang_header `of` intermod_imports
-        ])
     ;
         ( Target = module_target_foreign_object(PIC, _)
         ; Target = module_target_fact_table_object(PIC, _)
@@ -746,7 +731,7 @@ find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
         !Info, !IO),
     (
         MaybeModuleAndImports = yes(ModuleAndImports),
-        module_and_imports_get_c_j_cs_e_fims(ModuleAndImports, CJCsEFIMs),
+        module_and_imports_get_c_j_cs_fims(ModuleAndImports, CJCsEFIMs),
         LangForeignModuleNameSets =
             set.map(get_lang_fim_modules(CJCsEFIMs), Languages),
         set.power_union(LangForeignModuleNameSets, ForeignModuleNameSet),
@@ -970,7 +955,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                     ModuleDir = dir.this_directory
                 )
             then
-                module_and_imports_get_c_j_cs_e_fims(ModuleAndImports,
+                module_and_imports_get_c_j_cs_fims(ModuleAndImports,
                     CJCsEFIMs),
                 module_and_imports_get_ancestors(ModuleAndImports,
                     Ancestors),

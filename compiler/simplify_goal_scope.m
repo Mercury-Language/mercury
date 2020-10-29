@@ -383,9 +383,6 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
                     Target = target_c,
                     !:EvalAttributes = default_attributes(lang_c)
                 ;
-                    Target = target_erlang,
-                    !:EvalAttributes = default_attributes(lang_erlang)
-                ;
                     Target = target_java,
                     !:EvalAttributes = default_attributes(lang_java)
                 ;
@@ -512,14 +509,6 @@ evaluate_compile_time_condition_comptime(CompTime, Info) = Result :-
             Grade = trace_grade_java,
             globals.get_target(Globals, Target),
             ( if Target = target_java then
-                Result = yes
-            else
-                Result = no
-            )
-        ;
-            Grade = trace_grade_erlang,
-            globals.get_target(Globals, Target),
-            ( if Target = target_erlang then
                 Result = yes
             else
                 Result = no

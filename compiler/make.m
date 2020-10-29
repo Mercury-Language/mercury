@@ -238,9 +238,6 @@
     ;       module_target_csharp_code
     ;       module_target_java_code
     ;       module_target_java_class_code
-    ;       module_target_erlang_header
-    ;       module_target_erlang_code
-    ;       module_target_erlang_beam_code
     ;       module_target_object_code(pic)
     ;       module_target_foreign_object(pic, foreign_language)
     ;       module_target_fact_table_object(pic, file_name)
@@ -521,12 +518,6 @@ classify_target_2(Globals, ModuleNameStr0, ExtStr, ModuleName - TargetType) :-
         ExecutableType = get_executable_type(Globals),
         TargetType = linked_target(ExecutableType)
     else if
-        ExtStr = ".beams",
-        string.append("lib", ModuleNameStr1, ModuleNameStr0)
-    then
-        ModuleNameStr = ModuleNameStr1,
-        TargetType = linked_target(erlang_archive)
-    else if
         (
             string.append(".all_", Rest, ExtStr),
             string.append(DotlessExtStr1, "s", Rest),
@@ -605,9 +596,6 @@ get_executable_type(Globals) = ExecutableType :-
     ;
         CompilationTarget = target_java,
         ExecutableType = java_executable
-    ;
-        CompilationTarget = target_erlang,
-        ExecutableType = erlang_launcher
     ).
 
 %-----------------------------------------------------------------------------%

@@ -139,9 +139,7 @@ const_struct_db_init(Globals, Db) :-
         can_enable_const_struct(Globals, PolyEnabled, _GroundTermEnabled),
         GroundTermEnabled = do_not_enable_const_struct
     ;
-        ( Target = target_csharp
-        ; Target = target_erlang
-        ),
+        Target = target_csharp,
         PolyEnabled = do_not_enable_const_struct,
         GroundTermEnabled = do_not_enable_const_struct
     ),

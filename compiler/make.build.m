@@ -772,7 +772,6 @@ MC_unlock_job_ctl(MC_JobCtl *job_ctl)
 :- pragma foreign_type("C", job_ctl, "MC_JobCtl *").
 :- pragma foreign_type("C#", job_ctl, "object").                % stub
 :- pragma foreign_type("Java", job_ctl, "java.lang.Object").    % stub
-:- pragma foreign_type("Erlang", job_ctl, "").                  % stub
 
 :- pred have_job_ctl_ipc is semidet.
 

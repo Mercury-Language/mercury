@@ -1738,15 +1738,14 @@ add_type_defn_to_map(TypeDefnInfo, !TypeDefnMap) :-
     TypeCtor = type_ctor(SymName, Arity),
     some [!AbstractSolverDefns, !SolverDefns,
         !AbstractStdDefns, !EqvDefns, !DuDefns,
-        !ForeignDefnsC, !ForeignDefnsJava,
-        !ForeignDefnsCsharp, !ForeignDefnsErlang]
+        !ForeignDefnsC, !ForeignDefnsJava, !ForeignDefnsCsharp]
     (
         ( if map.search(!.TypeDefnMap, TypeCtor, AllDefns0) then
             AllDefns0 = type_ctor_all_defns(
                 !:AbstractSolverDefns, !:SolverDefns,
                 !:AbstractStdDefns, !:EqvDefns, !:DuDefns,
-                c_java_csharp_erlang(!:ForeignDefnsC, !:ForeignDefnsJava,
-                    !:ForeignDefnsCsharp, !:ForeignDefnsErlang))
+                c_java_csharp(!:ForeignDefnsC, !:ForeignDefnsJava,
+                    !:ForeignDefnsCsharp))
         else
             !:AbstractSolverDefns = [],
             !:SolverDefns = [],
@@ -1756,8 +1755,7 @@ add_type_defn_to_map(TypeDefnInfo, !TypeDefnMap) :-
             !:DuDefns = [],
             !:ForeignDefnsC = [],
             !:ForeignDefnsJava = [],
-            !:ForeignDefnsCsharp = [],
-            !:ForeignDefnsErlang = []
+            !:ForeignDefnsCsharp = []
         ),
         (
             TypeDefn = parse_tree_abstract_type(DetailsAbstract),
@@ -1800,16 +1798,12 @@ add_type_defn_to_map(TypeDefnInfo, !TypeDefnMap) :-
                 LangType = csharp(_),
                 !:ForeignDefnsCsharp = !.ForeignDefnsCsharp ++
                     [ForeignDefnInfo]
-            ;
-                LangType = erlang(_),
-                !:ForeignDefnsErlang = !.ForeignDefnsErlang ++
-                    [ForeignDefnInfo]
             )
         ),
         AllDefns = type_ctor_all_defns(!.AbstractSolverDefns, !.SolverDefns,
             !.AbstractStdDefns, !.EqvDefns, !.DuDefns,
-            c_java_csharp_erlang(!.ForeignDefnsC, !.ForeignDefnsJava,
-                !.ForeignDefnsCsharp, !.ForeignDefnsErlang))
+            c_java_csharp(!.ForeignDefnsC, !.ForeignDefnsJava,
+                !.ForeignDefnsCsharp))
     ),
     map.set(TypeCtor, AllDefns, !TypeDefnMap).
 
@@ -1914,17 +1908,15 @@ type_ctor_foreign_enum_items_to_map(ForeignEnums) = ForeignEnumMap :-
 
 add_foreign_enum_item_to_map(ForeignEnumInfo, !ForeignEnumMap) :-
     ForeignEnumInfo = item_foreign_enum_info(Lang, TypeCtor, _Values, _, _),
-    some [!ForeignEnumsC, !ForeignEnumsJava,
-        !ForeignEnumsCsharp, !ForeignEnumsErlang]
+    some [!ForeignEnumsC, !ForeignEnumsJava, !ForeignEnumsCsharp]
     (
         ( if map.search(!.ForeignEnumMap, TypeCtor, AllEnums0) then
-            AllEnums0 = c_java_csharp_erlang(!:ForeignEnumsC,
-                !:ForeignEnumsJava, !:ForeignEnumsCsharp, !:ForeignEnumsErlang)
+            AllEnums0 = c_java_csharp(!:ForeignEnumsC,
+                !:ForeignEnumsJava, !:ForeignEnumsCsharp)
         else
             !:ForeignEnumsC = [],
             !:ForeignEnumsJava = [],
-            !:ForeignEnumsCsharp = [],
-            !:ForeignEnumsErlang = []
+            !:ForeignEnumsCsharp = []
         ),
         (
             Lang = lang_c,
@@ -1935,12 +1927,9 @@ add_foreign_enum_item_to_map(ForeignEnumInfo, !ForeignEnumMap) :-
         ;
             Lang = lang_csharp,
             !:ForeignEnumsCsharp = !.ForeignEnumsCsharp ++ [ForeignEnumInfo]
-        ;
-            Lang = lang_erlang,
-            !:ForeignEnumsErlang = !.ForeignEnumsErlang ++ [ForeignEnumInfo]
         ),
-        AllEnums = c_java_csharp_erlang(!.ForeignEnumsC,
-            !.ForeignEnumsJava, !.ForeignEnumsCsharp, !.ForeignEnumsErlang),
+        AllEnums = c_java_csharp(!.ForeignEnumsC,
+            !.ForeignEnumsJava, !.ForeignEnumsCsharp),
         map.set(TypeCtor, AllEnums, !ForeignEnumMap)
     ).
 
@@ -1963,8 +1952,8 @@ type_ctor_defn_map_to_type_defns(TypeCtorDefnMap) = TypeDefns :-
 accumulate_type_ctor_defns(CtorAllDefns, !TypeDefns) :-
     CtorAllDefns = type_ctor_all_defns(AbstractSolverDefns, SolverDefns,
         AbstractStdDefns, EqvDefns, DuDefns, CJCsEDefns),
-    CJCsEDefns = c_java_csharp_erlang(ForeignDefnsC, ForeignDefnsJava,
-        ForeignDefnsCsharp, ForeignDefnsErlang),
+    CJCsEDefns = c_java_csharp(ForeignDefnsC, ForeignDefnsJava,
+        ForeignDefnsCsharp),
     !:TypeDefns = !.TypeDefns ++ cord.from_list(
         list.map(wrap_abstract_type_defn, at_most_one(AbstractSolverDefns)) ++
         list.map(wrap_solver_type_defn, SolverDefns) ++
@@ -1973,8 +1962,7 @@ accumulate_type_ctor_defns(CtorAllDefns, !TypeDefns) :-
         list.map(wrap_du_type_defn, DuDefns) ++
         list.map(wrap_foreign_type_defn, ForeignDefnsC) ++
         list.map(wrap_foreign_type_defn, ForeignDefnsJava) ++
-        list.map(wrap_foreign_type_defn, ForeignDefnsCsharp) ++
-        list.map(wrap_foreign_type_defn, ForeignDefnsErlang)).
+        list.map(wrap_foreign_type_defn, ForeignDefnsCsharp)).
 
 :- func at_most_one(list(T)) = list(T).
 
@@ -2095,18 +2083,17 @@ type_ctor_foreign_enum_map_to_items(ForeignEnumMap) = Items :-
     ForeignEnumItems = cord.list(ForeignEnumItemsCord),
     Items = list.map(wrap_foreign_enum_item, ForeignEnumItems).
 
-:- pred accumulate_foreign_enum_items(c_j_cs_e_enums::in,
+:- pred accumulate_foreign_enum_items(c_j_cs_enums::in,
     cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out)
     is det.
 
 accumulate_foreign_enum_items(AllEnums, !ForeignEnums) :-
-    AllEnums = c_java_csharp_erlang(ForeignEnumsC, ForeignEnumsJava,
-        ForeignEnumsCsharp, ForeignEnumsErlang),
+    AllEnums = c_java_csharp(ForeignEnumsC, ForeignEnumsJava,
+        ForeignEnumsCsharp),
     !:ForeignEnums = !.ForeignEnums ++
         cord.from_list(ForeignEnumsC) ++
         cord.from_list(ForeignEnumsJava) ++
-        cord.from_list(ForeignEnumsCsharp) ++
-        cord.from_list(ForeignEnumsErlang).
+        cord.from_list(ForeignEnumsCsharp).
 
 %---------------------------------------------------------------------------%
 

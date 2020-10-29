@@ -478,29 +478,19 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         Call_CodeModel = proc_info_interface_code_model(Call_ProcInfo),
         determinism_to_code_model(Detism, CodeModel),
         module_info_get_globals(ModuleInfo0, Globals),
-        globals.get_target(Globals, Target),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
-            ( Target = target_c
-            ; Target = target_csharp
-            ; Target = target_java
-            ),
+            HighLevelCode = no,
             (
-                HighLevelCode = no,
-                (
-                    CodeModel = Call_CodeModel
-                ;
-                    CodeModel = model_non,
-                    Call_CodeModel = model_det
-                )
-            ;
-                HighLevelCode = yes,
-                Call_PredOrFunc = pred_info_is_pred_or_func(Call_PredInfo),
-                PredOrFunc = Call_PredOrFunc,
                 CodeModel = Call_CodeModel
+            ;
+                CodeModel = model_non,
+                Call_CodeModel = model_det
             )
         ;
-            Target = target_erlang,
+            HighLevelCode = yes,
+            Call_PredOrFunc = pred_info_is_pred_or_func(Call_PredInfo),
+            PredOrFunc = Call_PredOrFunc,
             CodeModel = Call_CodeModel
         ),
 

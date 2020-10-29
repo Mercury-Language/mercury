@@ -96,7 +96,6 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
         % XXX how are we supposed to handle gc_automatic for C?
     ;
         ( Target = target_csharp
-        ; Target = target_erlang
         ; Target = target_java
         ),
         (
@@ -136,7 +135,6 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
         (
             ( Target = target_java
             ; Target = target_csharp
-            ; Target = target_erlang
             ),
             TimeProfpec =
                 [words("Time profiling is incompatible with"),
@@ -157,7 +155,6 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
         (
             ( Target = target_java
             ; Target = target_csharp
-            ; Target = target_erlang
             ),
             MemProfpec =
                 [words("Memory profiling is incompatible with"),
@@ -188,7 +185,6 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
         (
             ( Target = target_java
             ; Target = target_csharp
-            ; Target = target_erlang
             ),
             TrailSpec =
                 [words("Trailing is incompatible with"),
@@ -221,7 +217,6 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
         ;
             ( Target = target_java
             ; Target = target_csharp
-            ; Target = target_erlang
             ),
             StackSegmentpec =
                 [words("Stack segments are incompatible with"),
@@ -240,7 +235,6 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
         (
             ( Target = target_java
             ; Target = target_csharp
-            ; Target = target_erlang
             ),
             SPFSpec =
                 [words("Single precision floats are incompatible with"),
@@ -289,11 +283,17 @@ postprocess_options_libgrades(!Globals, !Specs) :-
 string_to_grade_component(FilterDesc, Comp, !Comps, !Specs) :-
     ( if grade_component_table(Comp, _, _, _, _) then
         !:Comps = [Comp | !.Comps]
+    else if Comp = "erlang" then
+        Pieces = [words("Support for"), quote("erlang"), words("as an"),
+            words(FilterDesc), words("library grade component"),
+            words("has been discontinued"), nl],
+        Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
+        Spec = error_spec($pred, severity_informational, phase_options, [Msg]),
+        !:Specs = [Spec | !.Specs]
     else
-        GradeCompSpec =
-            [words("Unknown"), words(FilterDesc),
+        Pieces = [words("Unknown"), words(FilterDesc),
             words("library grade component:"), quote(Comp), suffix("."), nl],
-        add_error(phase_options, GradeCompSpec, !Specs)
+        add_error(phase_options, Pieces, !Specs)
     ).
 
     % filter_grade(FilterPred, Components, GradeString, !Grades, !Specs):
@@ -587,12 +587,6 @@ grade_component_table("csharp", comp_gcc_ext, [
         gcc_global_registers    - bool(no),
         highlevel_code          - bool(yes)],
         yes([string("csharp")]), yes).
-grade_component_table("erlang", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(no),
-        gcc_global_registers    - bool(no),
-        highlevel_code          - bool(no)],
-        yes([string("erlang")]), yes).
 
     % Parallelism/multithreading components.
 grade_component_table("par", comp_par, [parallel - bool(yes)], no, yes).

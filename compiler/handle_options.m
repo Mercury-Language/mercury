@@ -990,8 +990,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         AllowSrcChangesDebug = allow_src_changes,
         ProfileDeep = bool.no,
         AllowOptLCMCTermSize = bool.yes,
-        GC_Method \= gc_accurate,
-        Target \= target_erlang
+        GC_Method \= gc_accurate
     then
         OT_OptLCMC = OT_OptLCMC0
     else
@@ -1356,63 +1355,6 @@ handle_implications_of_pregen_target_spf(!Globals, Target,
         % Switch off string hash switches until these backends implement
         % the hash operations.
         OT_StringBinarySwitchSize = 999999
-    ;
-        Target = target_erlang,
-        BackendForeignLanguages = ["erlang"],
-        globals.set_option(num_ptag_bits, int(0), !Globals),
-
-        % Generating Erlang implies
-        %   - gc_method `automatic' and no heap reclamation on failure
-        %     Because GC is handled automatically by the Erlang implementation.
-        %   - unboxed floats
-        %   - unboxed 64-bit integers
-        %   - delay-partial-instantiations
-        %   - no-can-compare-constants-as-ints
-        %   - can-compare-compound-values
-        %   - lexically-compare-constructors
-        %   - --no-optimize-tailcalls because Erlang implementations perform
-        %     LCO.
-
-        globals.set_gc_method(gc_automatic, !Globals),
-        globals.set_option(gc, string("automatic"), !Globals),
-        globals.set_option(unboxed_float, bool(yes), !Globals),
-        globals.set_option(unboxed_int64s, bool(yes), !Globals),
-        globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
-            !Globals),
-        globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
-            !Globals),
-        globals.set_option(delay_partial_instantiations, bool(yes), !Globals),
-        globals.set_option(can_compare_constants_as_ints, bool(no), !Globals),
-        globals.set_option(can_compare_compound_values, bool(yes), !Globals),
-        globals.set_option(order_constructors_for_erlang, bool(yes), !Globals),
-        % XXX opt_mlds_tailcalls is now in the opt_tuple.
-        % However, there is no need to disable it, since the elds backend
-        % pays not attention to its value.
-        % globals.set_option(optimize_mlds_tailcalls, bool(no), !Globals),
-
-        % The following options do not directly affect the Erlang backend,
-        % however we need to ensure they are set to values that are consistent
-        % with what the predicate grade_component_table/2 (below) expects.
-        globals.set_option(highlevel_code, bool(no), !Globals),
-        globals.set_option(gcc_non_local_gotos, bool(no), !Globals),
-        globals.set_option(gcc_global_registers, bool(no), !Globals),
-        globals.set_option(asm_labels, bool(no), !Globals),
-
-        % In the non-C backends, it may not be possible to cast a value
-        % of a non-enum du type to an integer.
-        globals.set_option(can_compare_constants_as_ints, bool(no), !Globals),
-
-        globals.set_option(arg_pack_bits, int(0), !Globals),
-        globals.set_option(allow_double_word_fields, bool(no), !Globals),
-        globals.set_option(allow_packing_dummies, bool(no), !Globals),
-        globals.set_option(allow_packing_ints, bool(no), !Globals),
-
-        % Currently, multi-arm switches have been tested only for the LLDS
-        % backend (which always generates C) and for the MLDS backend when
-        % it is generating C, C# or Java code.
-        globals.set_option(allow_multi_arm_switches, bool(no), !Globals),
-
-        OT_StringBinarySwitchSize = OT_StringBinarySwitchSize0
     ),
 
     % We only use the float registers if floats would not fit into the

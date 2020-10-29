@@ -101,6 +101,10 @@
     %
 :- pred term_to_foreign_language(term::in, foreign_language::out) is semidet.
 
+    % Does the term represent the recently deleted lang_erlang?
+    %
+:- pred term_to_foreign_language_erlang(term::in) is semidet.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -124,6 +128,7 @@
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -225,44 +230,27 @@ parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
         (
             MaybeLanguage = ok1(Language),
             (
-                (
-                    Language = lang_c,
-                    ForeignLangType = c(c_type(ForeignTypeName))
-                ;
-                    Language = lang_java,
-                    ForeignLangType = java(java_type(ForeignTypeName))
-                ;
-                    Language = lang_csharp,
-                    ForeignLangType = csharp(csharp_type(ForeignTypeName))
-                ),
-                ( if ForeignTypeName = "" then
-                    Pieces = cord.list(ContextPieces) ++
-                        [lower_case_next_if_not_first,
-                        words("Error: foreign type descriptor for language"),
-                        quote(foreign_language_string(Language)),
-                        words("must be a non-empty string."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree,
-                        get_term_context(InputTerm), Pieces),
-                    MaybeForeignLangType = error1([Spec])
-                else
-                    MaybeForeignLangType = ok1(ForeignLangType)
-                )
+                Language = lang_c,
+                ForeignLangType = c(c_type(ForeignTypeName))
             ;
-                Language = lang_erlang,
-                ( if ForeignTypeName = "" then
-                    MaybeForeignLangType = ok1(erlang(erlang_type))
-                else
-                    Pieces = cord.list(ContextPieces) ++
-                        [lower_case_next_if_not_first,
-                        words("Error: foreign type descriptor for language"),
-                        quote(foreign_language_string(Language)),
-                        words("must be an empty string."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree,
-                        get_term_context(InputTerm), Pieces),
-                    MaybeForeignLangType = error1([Spec])
-                )
+                Language = lang_java,
+                ForeignLangType = java(java_type(ForeignTypeName))
+            ;
+                Language = lang_csharp,
+                ForeignLangType = csharp(csharp_type(ForeignTypeName))
+            ),
+            ( if ForeignTypeName = "" then
+                Pieces = cord.list(ContextPieces) ++
+                    [lower_case_next_if_not_first,
+                    words("Error: foreign type descriptor for language"),
+                    quote(foreign_language_string(Language)),
+                    words("must be a non-empty string."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree,
+                    get_term_context(InputTerm), Pieces),
+                MaybeForeignLangType = error1([Spec])
+            else
+                MaybeForeignLangType = ok1(ForeignLangType)
             )
         ;
             % NOTE: if we get here then MaybeFooreignLang will be an error and
@@ -361,15 +349,14 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
     ;
         (
             PragmaTerms = [LangTerm, HeaderTerm],
-            IsLocal = foreign_decl_is_exported,
-            IsLocalSpecs = []
+            HeaderArgNum = "second",
+            MaybeIsLocal = ok1(foreign_decl_is_exported)
         ;
             PragmaTerms = [LangTerm, IsLocalTerm, HeaderTerm],
-            ( if parse_foreign_decl_is_local(IsLocalTerm, IsLocalPrime) then
-                IsLocal = IsLocalPrime,
-                IsLocalSpecs = []
+            HeaderArgNum = "third",
+            ( if parse_foreign_decl_is_local(IsLocalTerm, IsLocal0) then
+                MaybeIsLocal = ok1(IsLocal0)
             else
-                IsLocal = foreign_decl_is_exported, % Dummy, won't be used.
                 IsLocalStr = describe_error_term(VarSet, IsLocalTerm),
                 IsLocalPieces = [words("Error: the second argument"),
                     words("of a"), pragma_decl("foreign_decl"),
@@ -379,53 +366,42 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
                 IsLocalSpec = simplest_spec($pred, severity_error,
                     phase_term_to_parse_tree,
                     get_term_context(IsLocalTerm), IsLocalPieces),
-                IsLocalSpecs = [IsLocalSpec]
+                MaybeIsLocal = error1([IsLocalSpec])
             )
         ),
-        InvalidDeclPieces = [words("Error: invalid"),
-            pragma_decl("foreign_decl"), words("declaration:"), nl],
-        ( if term_to_foreign_language(LangTerm, ForeignLanguagePrime) then
-            ForeignLanguage = ForeignLanguagePrime,
-            LangSpecs = []
+        LangContextPieces = cord.from_list([words("In the first argument of"),
+            pragma_decl("foreign_decl"), words("declaration:"), nl]),
+        parse_foreign_language(LangContextPieces, VarSet, LangTerm, MaybeLang),
+        ( if parse_foreign_literal_or_include(HeaderTerm, LitOrIncl0) then
+            MaybeLitOrIncl = ok1(LitOrIncl0)
         else
-            ForeignLanguage = lang_c,   % Dummy, won't be used.
-            LangStr = describe_error_term(VarSet, LangTerm),
-            LangPieces = InvalidDeclPieces ++
-                [words("invalid language parameter"),
-                quote(LangStr), suffix("."), nl],
-            LangSpec = simplest_spec($pred, severity_error,
+            LitOrInclStr = describe_error_term(VarSet, HeaderTerm),
+            LitOrInclPieces = [words("In the"), words(HeaderArgNum),
+                words("argument of"), pragma_decl("foreign_decl"),
+                words("declaration:"), nl,
+                words("error: expected either a string containing code,"),
+                words("or a term of the form"), quote("include_file(...)"),
+                words("naming a file to include,"),
+                words("got"), quote(LitOrInclStr), suffix("."), nl],
+            LitOrInclSpec = simplest_spec($pred, severity_error,
                 phase_term_to_parse_tree,
-                get_term_context(LangTerm), LangPieces),
-            LangSpecs = [LangSpec]
-        ),
-        ( if parse_foreign_literal_or_include(HeaderTerm, LitOrInclPrime) then
-            LiteralOrInclude = LitOrInclPrime,
-            LitInclSpecs = []
-        else
-            LiteralOrInclude = floi_literal(""),    % Dummy, won't be used.
-            LitInclStr = describe_error_term(VarSet, HeaderTerm),
-            LitInclPieces = InvalidDeclPieces ++
-                [words("expected string or include_file for"),
-                words("foreign declaration code, got"),
-                quote(LitInclStr), suffix("."), nl],
-            LitInclSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree,
-                get_term_context(HeaderTerm), LitInclPieces),
-            LitInclSpecs = [LitInclSpec]
+                get_term_context(HeaderTerm), LitOrInclPieces),
+            MaybeLitOrIncl = error1([LitOrInclSpec])
         ),
         ( if
-            IsLocalSpecs = [],
-            LangSpecs = [],
-            LitInclSpecs = []
+            MaybeIsLocal = ok1(IsLocal),
+            MaybeLang = ok1(Lang),
+            MaybeLitOrIncl = ok1(LitOrIncl)
         then
-            FDInfo = pragma_info_foreign_decl(ForeignLanguage, IsLocal,
-                LiteralOrInclude),
+            FDInfo = pragma_info_foreign_decl(Lang, IsLocal, LitOrIncl),
             Pragma = impl_pragma_foreign_decl(FDInfo),
             ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
             Item = item_impl_pragma(ItemPragma),
             MaybeIOM = ok1(iom_item(Item))
         else
-            MaybeIOM = error1(IsLocalSpecs ++ LangSpecs ++ LitInclSpecs)
+            Specs = get_any_errors1(MaybeIsLocal) ++
+                get_any_errors1(MaybeLang) ++ get_any_errors1(MaybeLitOrIncl),
+            MaybeIOM = error1(Specs)
         )
     ;
         PragmaTerms = [_, _, _, _ | _],
@@ -1114,7 +1090,6 @@ check_required_attributes(Lang, Attrs, _Context) = MaybeAttrs :-
         ( Lang = lang_c
         ; Lang = lang_csharp
         ; Lang = lang_java
-        ; Lang = lang_erlang
         ),
         MaybeAttrs = ok1(Attrs)
     ).
@@ -1628,11 +1603,17 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
     ( if term_to_foreign_language(LangTerm, ForeignLang) then
         MaybeForeignLang = ok1(ForeignLang)
     else
-        Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+        MainPieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
             words("Error: expected the name of a foreign language, got"),
             quote(describe_error_term(VarSet, LangTerm)), suffix("."), nl,
             words("The valid languages are")] ++
             list_to_pieces(all_foreign_language_strings) ++ [suffix("."), nl],
+        ( if term_to_foreign_language_erlang(LangTerm) then
+            Pieces = MainPieces ++
+                [words("Support for Erlang has been discontinued."), nl]
+        else
+            Pieces = MainPieces
+        ),
         Spec = simplest_spec($pred, severity_error,
             phase_term_to_parse_tree, get_term_context(LangTerm), Pieces),
         MaybeForeignLang = error1([Spec])
@@ -1643,8 +1624,7 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
 :- pred parse_type_ctor_name_arity(cord(format_component)::in, varset::in,
     term::in, maybe1(type_ctor)::out) is det.
 
-parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm,
-        MaybeTypeCtor) :-
+parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm, MaybeTypeCtor) :-
     ( if parse_unqualified_name_and_arity(TypeTerm, SymName, Arity) then
         MaybeTypeCtor = ok1(type_ctor(SymName, Arity))
     else
@@ -1657,8 +1637,6 @@ parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm,
             get_term_context(TypeTerm), Pieces),
         MaybeTypeCtor = error1([Spec])
     ).
-
-%---------------------------------------------------------------------------%
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1680,11 +1658,14 @@ parse_foreign_literal_or_include(Term, LiteralOrInclude) :-
 
 %---------------------------------------------------------------------------%
 
-term_to_foreign_language(term.functor(term.string(String), _, _), Lang) :-
-    globals.convert_foreign_language(String, Lang).
-term_to_foreign_language(term.functor(term.atom(String), _, _), Lang) :-
+term_to_foreign_language(Term, Lang) :-
+    ( Term = term.functor(term.string(String), _, _)
+    ; Term = term.functor(term.atom(String), _, _)
+    ),
     globals.convert_foreign_language(String, Lang).
 
-%---------------------------------------------------------------------------%
-:- end_module parse_tree.parse_pragma_foreign.
-%---------------------------------------------------------------------------%
+term_to_foreign_language_erlang(Term) :-
+    ( Term = term.functor(term.string(String), _, _)
+    ; Term = term.functor(term.atom(String), _, _)
+    ),
+    string.to_lower(String) = "erlang".

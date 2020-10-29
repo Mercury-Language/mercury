@@ -117,9 +117,7 @@
     ;       csharp_executable
     ;       csharp_library
     ;       java_executable
-    ;       java_archive
-    ;       erlang_launcher
-    ;       erlang_archive.
+    ;       java_archive.
 
     % link(Globals, TargetType, MainModuleName, ObjectFileNames, Succeeded,
     %   !IO)
@@ -1026,7 +1024,7 @@ compile_csharp_file(Globals, ErrorStream, ModuleAndImports,
     else
         Prefix = "-r:"
     ),
-    module_and_imports_get_c_j_cs_e_fims(ModuleAndImports, CJCsEFIMs),
+    module_and_imports_get_c_j_cs_fims(ModuleAndImports, CJCsEFIMs),
     ForeignDeps = list.map(
         (func(FI) = fim_spec_module_name_from_module(FI, ModuleName)),
         set.to_sorted_list(get_all_fim_specs(CJCsEFIMs))),
@@ -1698,13 +1696,6 @@ link(Globals, ErrorStream, LinkTargetType, ModuleName, ObjectsList, Succeeded,
         ),
         create_java_exe_or_lib(Globals, ErrorStream, LinkTargetType,
             ModuleName, OutputFileName, ObjectsList, LinkSucceeded, !IO)
-    ;
-        LinkTargetType = erlang_launcher,
-        create_erlang_shell_script(Globals, ModuleName, LinkSucceeded, !IO)
-    ;
-        LinkTargetType = erlang_archive,
-        create_erlang_archive(Globals, ErrorStream, ModuleName, OutputFileName,
-            ObjectsList, LinkSucceeded, !IO)
     ),
     maybe_report_stats(Stats, !IO),
     (
@@ -1752,11 +1743,6 @@ link_output_filename(Globals, LinkTargetType, ModuleName,
         module_name_to_file_name(Globals, $pred, do_create_dirs,
             ext_other(OtherExt), ModuleName, OutputFileName, !IO)
     ;
-        LinkTargetType = erlang_launcher,
-        get_launcher_script_extension(Globals, OtherExt),
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(OtherExt), ModuleName, OutputFileName, !IO)
-    ;
         LinkTargetType = java_executable,
         OtherExt = other_ext(".jar"),
         module_name_to_file_name(Globals, $pred, do_create_dirs,
@@ -1766,11 +1752,6 @@ link_output_filename(Globals, LinkTargetType, ModuleName,
         OtherExt = other_ext(".jar"),
         module_name_to_file_name(Globals, $pred, do_create_dirs,
             ext_other(OtherExt), ModuleName, OutputFileName, !IO)
-    ;
-        LinkTargetType = erlang_archive,
-        OtherExt = other_ext(".beams"),
-        module_name_to_lib_file_name(Globals, $pred, do_create_dirs,
-            "lib", OtherExt, ModuleName, OutputFileName, !IO)
     ).
 
 :- pred get_launcher_script_extension(globals::in, other_ext::out) is det.
@@ -2120,8 +2101,6 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
         ;
             ( TargetType = java_executable
             ; TargetType = java_archive
-            ; TargetType = erlang_launcher
-            ; TargetType = erlang_archive
             ),
             unexpected($pred, string(TargetType))
         ),
@@ -2281,8 +2260,6 @@ link_lib_args(Globals, TargetType, StdLibDir, GradeDir, LibOtherExt, Name,
     ;
         ( TargetType = java_executable
         ; TargetType = java_archive
-        ; TargetType = erlang_launcher
-        ; TargetType = erlang_archive
         ),
         unexpected($pred, string(TargetType))
     ),
@@ -2344,8 +2321,6 @@ make_link_lib(Globals, TargetType, LibName, LinkOpt) :-
         ( TargetType = static_library
         ; TargetType = java_executable
         ; TargetType = java_archive
-        ; TargetType = erlang_launcher
-        ; TargetType = erlang_archive
         ),
         unexpected($pred, string(TargetType))
     ).
@@ -2432,8 +2407,6 @@ get_system_libs(Globals, TargetType, SystemLibs) :-
         ; TargetType = csharp_library
         ; TargetType = java_executable
         ; TargetType = java_archive
-        ; TargetType = erlang_launcher
-        ; TargetType = erlang_archive
         ),
         unexpected($pred, string(TargetType))
     ),
@@ -2491,8 +2464,6 @@ get_restricted_command_line_link_opts(Globals, LinkTargetType,
             ; LinkTargetType = csharp_library
             ; LinkTargetType = java_executable
             ; LinkTargetType = java_archive
-            ; LinkTargetType = erlang_launcher
-            ; LinkTargetType = erlang_archive
             ),
             ResCmdLinkOpts = ""
         )
@@ -2540,7 +2511,6 @@ post_link_make_symlink_or_copy(Globals, ErrorStream, LinkTargetType,
             ; LinkTargetType = csharp_library
             ; LinkTargetType = java_executable
             ; LinkTargetType = java_archive
-            ; LinkTargetType = erlang_launcher
             ),
             module_name_to_file_name(NoSubdirGlobals, $pred,
                 do_not_create_dirs, ext_other(OtherExt),
@@ -2548,7 +2518,6 @@ post_link_make_symlink_or_copy(Globals, ErrorStream, LinkTargetType,
         ;
             ( LinkTargetType = static_library
             ; LinkTargetType = shared_library
-            ; LinkTargetType = erlang_archive
             ),
             module_name_to_lib_file_name(NoSubdirGlobals, $pred,
                 do_not_create_dirs, "lib", OtherExt,
@@ -2566,16 +2535,8 @@ post_link_make_symlink_or_copy(Globals, ErrorStream, LinkTargetType,
             % Remove the target of the symlink/copy in case it already exists.
             io.remove_file_recursively(UserDirFileName, _, !IO),
 
-            % Erlang "archives" are just directories of .beam files,
-            % so we need to copy them as directories rather than files
-            % (on systems on which symbolic links are not available).
-            ( if LinkTargetType = erlang_archive then
-                make_symlink_or_copy_dir(Globals, OutputFileName,
-                    UserDirFileName, Succeeded0, !IO)
-            else
-                make_symlink_or_copy_file(Globals, OutputFileName,
-                    UserDirFileName, Succeeded0, !IO)
-            ),
+            make_symlink_or_copy_file(Globals, OutputFileName,
+                UserDirFileName, Succeeded0, !IO),
             io.set_output_stream(OutputStream, _, !IO),
             MadeSymlinkOrCopy = yes
         ),
@@ -2741,9 +2702,6 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
     ;
         Target = target_java,
         unexpected($pred, "target_java")
-    ;
-        Target = target_erlang,
-        unexpected($pred, "target_erlang")
     ),
 
     globals.lookup_accumulating_option(Globals, mercury_libraries,
@@ -2912,8 +2870,6 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         ; LinkTargetType = shared_library
         ; LinkTargetType = java_executable
         ; LinkTargetType = java_archive
-        ; LinkTargetType = erlang_launcher
-        ; LinkTargetType = erlang_archive
         ),
         unexpected($pred, "wrong target type")
     ),
@@ -3108,56 +3064,6 @@ write_jar_class_argument(Stream, ClassSubDir, ClassFileName, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Create an "Erlang archive", which is simply a directory containing
-    % `.beam' files.
-    %
-:- pred create_erlang_archive(globals::in, io.output_stream::in,
-    module_name::in, file_name::in, list(file_name)::in, bool::out,
-    io::di, io::uo) is det.
-
-create_erlang_archive(Globals, ErrorStream, _ModuleName, ErlangArchiveFileName,
-        ObjectList, Succeeded, !IO) :-
-    % Delete anything in the way first.
-    io.remove_file_recursively(ErlangArchiveFileName, _, !IO),
-    dir.make_directory(ErlangArchiveFileName, Res, !IO),
-    (
-        Res = ok,
-        copy_erlang_archive_files(Globals, ErrorStream, ErlangArchiveFileName,
-            ObjectList, Succeeded, !IO)
-    ;
-        Res = error(Error),
-        io.write_string(ErrorStream, "Error creating `", !IO),
-        io.write_string(ErrorStream, ErlangArchiveFileName, !IO),
-        io.write_string(ErrorStream, "': ", !IO),
-        io.write_string(ErrorStream, io.error_message(Error), !IO),
-        io.nl(ErrorStream, !IO),
-        Succeeded = no
-    ).
-
-:- pred copy_erlang_archive_files(globals::in, io.output_stream::in,
-    file_name::in, list(file_name)::in, bool::out, io::di, io::uo) is det.
-
-copy_erlang_archive_files(_Globals, _ErrorStream, _ErlangArchiveFileName,
-        [], yes, !IO).
-copy_erlang_archive_files(Globals, ErrorStream, ErlangArchiveFileName,
-        [Obj | Objs], Succeeded, !IO) :-
-    copy_file(Globals, Obj, ErlangArchiveFileName, Res, !IO),
-    (
-        Res = ok,
-        copy_erlang_archive_files(Globals, ErrorStream, ErlangArchiveFileName,
-            Objs, Succeeded, !IO)
-    ;
-        Res = error(Error),
-        io.write_string(ErrorStream, "Error copying `", !IO),
-        io.write_string(ErrorStream, Obj, !IO),
-        io.write_string(ErrorStream, "': ", !IO),
-        io.write_string(ErrorStream, io.error_message(Error), !IO),
-        io.nl(ErrorStream, !IO),
-        Succeeded = no
-    ).
-
-%-----------------------------------------------------------------------------%
-
 get_object_code_type(Globals, FileType, ObjectCodeType) :-
     (
         ( FileType = executable
@@ -3166,8 +3072,6 @@ get_object_code_type(Globals, FileType, ObjectCodeType) :-
         ; FileType = csharp_library
         ; FileType = java_executable
         ; FileType = java_archive
-        ; FileType = erlang_launcher
-        ; FileType = erlang_archive
         ),
         ObjectCodeType = non_pic
     ;

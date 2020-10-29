@@ -906,7 +906,6 @@ output_foreign_body_code(Info, ForeignBodyCode, Res, !IO) :-
     ;
         ( Lang = lang_java
         ; Lang = lang_csharp
-        ; Lang = lang_erlang
         ),
         unexpected($pred, "unimplemented: foreign code other than C")
     ).
@@ -938,7 +937,6 @@ output_foreign_header_include_line(Info, Decl, Res, !AlreadyDone, !IO) :-
     ;
         ( Lang = lang_java
         ; Lang = lang_csharp
-        ; Lang = lang_erlang
         ),
         unexpected($pred, "foreign decl code other than C")
     ).

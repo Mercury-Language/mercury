@@ -6,8 +6,8 @@ bad_foreign_type.m:025: In the first argument of `:- pragma foreign_type'
 bad_foreign_type.m:025:   declaration:
 bad_foreign_type.m:025:   error: expected the name of a foreign language, got
 bad_foreign_type.m:025:   `"InvalidLanguage"'.
-bad_foreign_type.m:025:   The valid languages are c, C, csharp, C#, erlang,
-bad_foreign_type.m:025:   Erlang, java and Java.
+bad_foreign_type.m:025:   The valid languages are c, C, csharp, C#, java and
+bad_foreign_type.m:025:   Java.
 bad_foreign_type.m:029: In the second argument of `:- pragma foreign_type'
 bad_foreign_type.m:029:   declaration:
 bad_foreign_type.m:029:   error: expected a symbol name, got `1111'.
@@ -41,8 +41,8 @@ bad_foreign_type.m:060: In the first argument of `:- pragma foreign_type'
 bad_foreign_type.m:060:   declaration:
 bad_foreign_type.m:060:   error: expected the name of a foreign language, got
 bad_foreign_type.m:060:   `"InvalidLanguage"'.
-bad_foreign_type.m:060:   The valid languages are c, C, csharp, C#, erlang,
-bad_foreign_type.m:060:   Erlang, java and Java.
+bad_foreign_type.m:060:   The valid languages are c, C, csharp, C#, java and
+bad_foreign_type.m:060:   Java.
 bad_foreign_type.m:061: In the second argument of `:- pragma foreign_type'
 bad_foreign_type.m:061:   declaration:
 bad_foreign_type.m:061:   error: expected a symbol name, got `9999'.
@@ -79,3 +79,17 @@ bad_foreign_type.m:087:   error: foreign type assertion
 bad_foreign_type.m:087:   `can_pass_as_mercury_type' is repeated.
 bad_foreign_type.m:089: Warning: duplicate declaration for type `quux'/0.
 bad_foreign_type.m:079:   The previous declaration was here.
+bad_foreign_type.m:091: In the first argument of `:- pragma foreign_type'
+bad_foreign_type.m:091:   declaration:
+bad_foreign_type.m:091:   error: expected the name of a foreign language, got
+bad_foreign_type.m:091:   `"Erlang"'.
+bad_foreign_type.m:091:   The valid languages are c, C, csharp, C#, java and
+bad_foreign_type.m:091:   Java.
+bad_foreign_type.m:091:   Support for Erlang has been discontinued.
+bad_foreign_type.m:092: In the first argument of `:- pragma foreign_type'
+bad_foreign_type.m:092:   declaration:
+bad_foreign_type.m:092:   error: expected the name of a foreign language, got
+bad_foreign_type.m:092:   `"erlang"'.
+bad_foreign_type.m:092:   The valid languages are c, C, csharp, C#, java and
+bad_foreign_type.m:092:   Java.
+bad_foreign_type.m:092:   Support for Erlang has been discontinued.

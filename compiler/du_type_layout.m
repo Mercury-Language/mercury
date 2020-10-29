@@ -1139,7 +1139,6 @@ decide_complex_du_ctor_remote_args(ModuleInfo, Params, ComponentTypeMap,
 target_uses_constructors(target_c) = no.
 target_uses_constructors(target_csharp) = yes.
 target_uses_constructors(target_java) = yes.
-target_uses_constructors(target_erlang) = no.
 % NOTE The information here is repeated in ml_target_uses_constructors in
 % ml_type_gen.m; any changes here will require corresponding changes there.
 
@@ -2131,9 +2130,6 @@ is_foreign_type_body_for_target(ForeignType, Target, Assertions) :-
     ;
         Target = target_csharp,
         ForeignType ^ csharp = yes(type_details_foreign(_, _, Assertions))
-    ;
-        Target = target_erlang,
-        ForeignType ^ erlang = yes(type_details_foreign(_, _, Assertions))
     ).
 
 %---------------------------------------------------------------------------%
@@ -3119,7 +3115,6 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
     ;
         ( Target = target_java
         ; Target = target_csharp
-        ; Target = target_erlang
         ),
         MaybePrimaryTags = no_primary_tags
     ),
@@ -3165,7 +3160,6 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
     ;
         ( Target = target_csharp
         ; Target = target_java
-        ; Target = target_erlang
         ),
         % Direct arg functors have not (yet) been implemented on these targets.
         MaybeDirectArgs = direct_args_disabled,

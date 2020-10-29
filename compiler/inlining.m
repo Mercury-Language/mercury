@@ -1240,7 +1240,6 @@ can_inline_proc_2(ModuleInfo, PredId, ProcId, BuiltinState, HighLevelCode,
     is semidet.
 
 ok_to_inline_language(lang_c, target_c).
-ok_to_inline_language(lang_erlang, target_erlang).
 ok_to_inline_language(lang_java, target_java).
 ok_to_inline_language(lang_csharp, target_csharp).
 

@@ -532,7 +532,6 @@ add_builtin(PredId, HeadTypes0, CompilationTarget, !PredInfo) :-
             (
                 ( CompilationTarget = target_java
                 ; CompilationTarget = target_csharp
-                ; CompilationTarget = target_erlang
                 ),
                 SupportsStore = no
             ;

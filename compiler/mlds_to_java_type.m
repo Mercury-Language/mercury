@@ -218,9 +218,6 @@ type_to_string_for_java(Info, MLDS_Type, String, ArrayDims) :-
         ;
             ForeignType = csharp(_),
             unexpected($pred, "csharp foreign_type")
-        ;
-            ForeignType = erlang(_),
-            unexpected($pred, "erlang foreign_type")
         )
     ;
         MLDS_Type = mlds_class_type(mlds_class_id(Name, Arity, _ClassKind)),
@@ -598,9 +595,6 @@ java_primitive_foreign_language_type(ForeignLangType, PrimitiveType,
     ;
         ForeignLangType = csharp(_),
         unexpected($file, $pred, "foreign_type for C#")
-    ;
-        ForeignLangType = erlang(_),
-        unexpected($file, $pred, "foreign_type for Erlang")
     ),
     PrimitiveType = string.strip(JavaForeignType),
     (

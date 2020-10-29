@@ -271,7 +271,6 @@ output_exported_enum_for_java(Info, Indent, ExportedEnum, !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
-        ; Lang = lang_erlang
         )
     ).
 

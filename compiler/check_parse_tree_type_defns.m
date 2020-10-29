@@ -141,7 +141,7 @@
                 % allocated consecutively from 0 to represent function symbols,
                 % this is not true even for foreign enum definitions,
                 % much less foreign type definitions.
-                c_j_cs_e_maybe_defn_or_enum
+                c_j_cs_maybe_defn_or_enum
             )
     ;       std_mer_type_du_not_all_plain_constants(
                 std_du_type_status,
@@ -153,7 +153,7 @@
                 % For each of our target foreign languages, this field
                 % specifies whether we have a foreign language type definition
                 % for this type.
-                c_j_cs_e_maybe_defn
+                c_j_cs_maybe_defn
             )
     ;       std_mer_type_abstract(
                 std_abs_type_status,
@@ -164,7 +164,7 @@
                 % For each of our target foreign languages, this field
                 % specifies whether we have a foreign language type definition
                 % for this type.
-                c_j_cs_e_maybe_defn
+                c_j_cs_maybe_defn
             ).
 
 :- type maybe_only_constants
@@ -210,8 +210,8 @@
     ;       std_abs_type_all_private.
             % Everything about the type is private.
 
-:- type c_j_cs_e_maybe_defn_or_enum ==
-    c_java_csharp_erlang(maybe(foreign_type_or_enum)).
+:- type c_j_cs_maybe_defn_or_enum ==
+    c_java_csharp(maybe(foreign_type_or_enum)).
 
 :- type foreign_type_or_enum
     --->    foreign_type_or_enum_type(item_type_defn_info_foreign)
@@ -335,18 +335,17 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
     check_any_type_ctor_defns_for_duplicates(ImpTypeDefnMap, TypeCtor,
         ImpMaybeDefn, !Specs),
     check_any_type_ctor_enums_for_duplicates(ImpForeignEnumMap, TypeCtor,
-        ImpMaybeEnumCJCsE, ImpLeftOverEnumsCJCsE, !Specs),
+        ImpMaybeEnumCJCs, ImpLeftOverEnumsCJCs, !Specs),
 
     % The second stage is to look for and report inconsistencies that manifest
     % themselves as violations of the "foreign enum declarations must not occur
     % in the interface section" rule. This generates an error for *every*
     % foreign enum definition for TypeCtor in the interface, not just the
     % duplicates.
-    ( if map.search(IntForeignEnumMap, TypeCtor, IntEnumsCJCsE) then
-        IntEnumsCJCsE = c_java_csharp_erlang(IntEnumsC, IntEnumsJava,
-            IntEnumsCsharp, IntEnumsErlang),
-        IntEnums = IntEnumsC ++ IntEnumsJava ++
-            IntEnumsCsharp ++ IntEnumsErlang,
+    ( if map.search(IntForeignEnumMap, TypeCtor, IntEnumsCJCs) then
+        IntEnumsCJCs = c_java_csharp(IntEnumsC, IntEnumsJava,
+            IntEnumsCsharp),
+        IntEnums = IntEnumsC ++ IntEnumsJava ++ IntEnumsCsharp,
         list.foldl(report_type_ctor_enum_in_int(ModuleName, TypeCtor),
             IntEnums, !Specs)
     else
@@ -356,27 +355,26 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
     % Get the contexts of each different definition in case we later
     % need to generate error messages for them. This is not very efficient
     % in terms of runtime, but it keeps the later code sane.
-    ( if map.search(ImpForeignEnumMap, TypeCtor, ImpEnumsCJCsEPrime) then
-        ImpEnumsCJCsE = ImpEnumsCJCsEPrime
+    ( if map.search(ImpForeignEnumMap, TypeCtor, ImpEnumsCJCsPrime) then
+        ImpEnumsCJCs = ImpEnumsCJCsPrime
     else
-        ImpEnumsCJCsE = c_java_csharp_erlang([], [], [], [])
+        ImpEnumsCJCs = c_java_csharp([], [], [])
     ),
-    ImpEnumsCJCsE = c_java_csharp_erlang(ImpEnumsC, ImpEnumsJava,
-        ImpEnumsCsharp, ImpEnumsErlang),
-    ImpEnums = ImpEnumsC ++ ImpEnumsJava ++ ImpEnumsCsharp ++ ImpEnumsErlang,
+    ImpEnumsCJCs = c_java_csharp(ImpEnumsC, ImpEnumsJava, ImpEnumsCsharp),
+    ImpEnums = ImpEnumsC ++ ImpEnumsJava ++ ImpEnumsCsharp,
 
     IntMaybeDefn = type_ctor_maybe_defn(
         IntAbstractSolverMaybeDefn, IntSolverMaybeDefn,
         IntAbstractStdMaybeDefn, IntEqvMaybeDefn, IntDuMaybeDefn,
-        IntMaybeDefnCJCsE),
+        IntMaybeDefnCJCs),
     ImpMaybeDefn = type_ctor_maybe_defn(
         ImpAbstractSolverMaybeDefn, ImpSolverMaybeDefn,
         ImpAbstractStdMaybeDefn, ImpEqvMaybeDefn, ImpDuMaybeDefn,
-        ImpMaybeDefnCJCsE),
-    IntMaybeDefnCJCsE = c_java_csharp_erlang(IntMaybeDefnC, IntMaybeDefnJava,
-        IntMaybeDefnCsharp, IntMaybeDefnErlang),
-    ImpMaybeDefnCJCsE = c_java_csharp_erlang(ImpMaybeDefnC, ImpMaybeDefnJava,
-        ImpMaybeDefnCsharp, ImpMaybeDefnErlang),
+        ImpMaybeDefnCJCs),
+    IntMaybeDefnCJCs = c_java_csharp(IntMaybeDefnC, IntMaybeDefnJava,
+        IntMaybeDefnCsharp),
+    ImpMaybeDefnCJCs = c_java_csharp(ImpMaybeDefnC, ImpMaybeDefnJava,
+        ImpMaybeDefnCsharp),
 
     IntContextAbstractSolver = get_maybe_context(IntAbstractSolverMaybeDefn),
     % IntContextSolver = get_maybe_context(IntSolverMaybeDefn),
@@ -392,11 +390,9 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
     IntContextC      = get_maybe_context(IntMaybeDefnC),
     IntContextJava   = get_maybe_context(IntMaybeDefnJava),
     IntContextCsharp = get_maybe_context(IntMaybeDefnCsharp),
-    IntContextErlang = get_maybe_context(IntMaybeDefnErlang),
     ImpContextC      = get_maybe_context(ImpMaybeDefnC),
     ImpContextJava   = get_maybe_context(ImpMaybeDefnJava),
     ImpContextCsharp = get_maybe_context(ImpMaybeDefnCsharp),
-    ImpContextErlang = get_maybe_context(ImpMaybeDefnErlang),
 
     % Now we have at most one definition of each kind in each section,
     % and no definition in a section in which that kind is not allowed.
@@ -433,11 +429,9 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
             report_any_incompatible_type_definition(TypeCtor,
                 ImpSolverDefn ^ td_context, "solver type", "implementation"),
             [IntContextAbstractStd, IntContextEqv, IntContextDu,
-                IntContextC, IntContextJava,
-                IntContextCsharp, IntContextErlang,
+                IntContextC, IntContextJava, IntContextCsharp,
             ImpContextAbstractStd, ImpContextEqv, ImpContextDu,
-                ImpContextC, ImpContextJava,
-                ImpContextCsharp, ImpContextErlang],
+                ImpContextC, ImpContextJava, ImpContextCsharp],
             !Specs),
         list.foldl(
             report_incompatible_foreign_enum(TypeCtor,
@@ -481,11 +475,9 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
             report_any_incompatible_type_definition(TypeCtor,
                 EqvDefn ^ td_context, "equivalence type", EqvWhere),
             [IntContextAbstractSolver, IntContextDu,
-                IntContextC, IntContextJava,
-                IntContextCsharp, IntContextErlang,
+                IntContextC, IntContextJava, IntContextCsharp,
             ImpContextAbstractSolver, ImpContextDu,
-                ImpContextC, ImpContextJava,
-                ImpContextCsharp, ImpContextErlang],
+                ImpContextC, ImpContextJava, ImpContextCsharp],
             !Specs),
         list.foldl(
             report_incompatible_foreign_enum(TypeCtor,
@@ -532,8 +524,8 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         % definitions in the other section as errors.)
         decide_du_foreign_type_section(TypeCtor, DuDefn, DuSection,
             IntAbstractStdMaybeDefn,
-            IntMaybeDefnCJCsE, ImpMaybeDefnCJCsE,
-            Status, ChosenMaybeDefnCJCsE, !Specs),
+            IntMaybeDefnCJCs, ImpMaybeDefnCJCs,
+            Status, ChosenMaybeDefnCJCs, !Specs),
 
         % XXX TYPE_REPN As part of switching over to this new system,
         % we will have to disable users' ability to specify MaybeDirectArgs
@@ -570,15 +562,15 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
             list.foldl(non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn),
                 ImpEnums, !Specs),
             CheckedStdDefn = std_mer_type_du_not_all_plain_constants(Status,
-                DuDefn, ChosenMaybeDefnCJCsE)
+                DuDefn, ChosenMaybeDefnCJCs)
         ;
             MaybeOnlyConstants = only_plain_constants(HeadName, TailNames),
             decide_du_repn_foreign_only_constants(TypeCtor,
-                [HeadName | TailNames], ChosenMaybeDefnCJCsE,
-                ImpMaybeEnumCJCsE, ImpLeftOverEnumsCJCsE,
-                MaybeDefnOrEnumCJCsE, !Specs),
+                [HeadName | TailNames], ChosenMaybeDefnCJCs,
+                ImpMaybeEnumCJCs, ImpLeftOverEnumsCJCs,
+                MaybeDefnOrEnumCJCs, !Specs),
             CheckedStdDefn = std_mer_type_du_all_plain_constants(Status,
-                DuDefn, HeadName, TailNames, MaybeDefnOrEnumCJCsE)
+                DuDefn, HeadName, TailNames, MaybeDefnOrEnumCJCs)
         ),
 
         CheckedDefn = checked_defn_std(CheckedStdDefn),
@@ -590,16 +582,13 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         ( IntMaybeDefnC = yes(_)
         ; IntMaybeDefnJava = yes(_)
         ; IntMaybeDefnCsharp = yes(_)
-        ; IntMaybeDefnErlang = yes(_)
         ; ImpMaybeDefnC = yes(_)
         ; ImpMaybeDefnJava = yes(_)
         ; ImpMaybeDefnCsharp = yes(_)
-        ; ImpMaybeDefnErlang = yes(_)
         )
     then
         IntForeignContexts = get_maybe_type_defn_contexts([
-            IntMaybeDefnC, IntMaybeDefnJava,
-                IntMaybeDefnCsharp, IntMaybeDefnErlang]),
+            IntMaybeDefnC, IntMaybeDefnJava, IntMaybeDefnCsharp]),
         list.sort(IntForeignContexts, SortedIntForeignContexts),
         (
             SortedIntForeignContexts = [FirstForeignContext | _],
@@ -607,8 +596,7 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         ;
             SortedIntForeignContexts = [],
             ImpForeignContexts = get_maybe_type_defn_contexts([
-                ImpMaybeDefnC, ImpMaybeDefnJava,
-                    ImpMaybeDefnCsharp, ImpMaybeDefnErlang]),
+                ImpMaybeDefnC, ImpMaybeDefnJava, ImpMaybeDefnCsharp]),
             list.sort(ImpForeignContexts, SortedImpForeignContexts),
             FirstForeignContext = list.det_head(SortedImpForeignContexts),
             ForeignWhere = "implementation"
@@ -625,11 +613,11 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
 
         decide_only_foreign_type_section(TypeCtor,
             IntAbstractStdMaybeDefn, ImpAbstractStdMaybeDefn,
-            IntMaybeDefnCJCsE, ImpMaybeDefnCJCsE,
-            Status, ChosenAbstractStdDefn, ChosenMaybeDefnCJCsE, !Specs),
+            IntMaybeDefnCJCs, ImpMaybeDefnCJCs,
+            Status, ChosenAbstractStdDefn, ChosenMaybeDefnCJCs, !Specs),
 
         CheckedStdDefn = std_mer_type_abstract(Status,
-            ChosenAbstractStdDefn, ChosenMaybeDefnCJCsE),
+            ChosenAbstractStdDefn, ChosenMaybeDefnCJCs),
         CheckedDefn = checked_defn_std(CheckedStdDefn),
         map.det_insert(TypeCtor, CheckedDefn, !TypeCtorCheckedMap)
     else if
@@ -672,8 +660,7 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         % list.foldl(
         %   report_any_foreign_enum_for_undefined_type(TypeCtor,
         %       "undefined"),
-        %   [ImpMaybeEnumC, ImpMaybeEnumJava,
-        %       ImpMaybeEnumCsharp, ImpMaybeEnumErlang],
+        %   [ImpMaybeEnumC, ImpMaybeEnumJava, ImpMaybeEnumCsharp],
         %   !Specs),
         CheckedSolverDefn = solver_type_abstract(Status, AbstractSolverDefn),
         CheckedDefn = checked_defn_solver(CheckedSolverDefn),
@@ -703,9 +690,9 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         list.foldl(
             report_foreign_enum_for_undefined_type(TypeCtor, "undefined"),
             ImpEnums, !Specs),
-        MaybeEnumCJCsE = c_java_csharp_erlang(no, no, no, no),
+        MaybeEnumCJCs = c_java_csharp(no, no, no),
         CheckedStdDefn = std_mer_type_abstract(Status,
-            AbstractStdDefn, MaybeEnumCJCsE),
+            AbstractStdDefn, MaybeEnumCJCs),
         CheckedDefn = checked_defn_std(CheckedStdDefn),
         map.det_insert(TypeCtor, CheckedDefn, !TypeCtorCheckedMap)
     else
@@ -728,35 +715,34 @@ get_maybe_context(yes(TypeDefnInfo)) = yes(TypeDefnInfo ^ td_context).
 :- pred decide_du_foreign_type_section(type_ctor::in,
     item_type_defn_info_du::in, module_section::in,
     maybe(item_type_defn_info_abstract)::in,
-    c_j_cs_e_maybe_defn::in, c_j_cs_e_maybe_defn::in,
-    std_du_type_status::out, c_j_cs_e_maybe_defn::out,
+    c_j_cs_maybe_defn::in, c_j_cs_maybe_defn::in,
+    std_du_type_status::out, c_j_cs_maybe_defn::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_du_foreign_type_section(TypeCtor, DuDefn, DuSection,
-        IntAbstractStdMaybeDefn, IntMaybeDefnCJCsE, ImpMaybeDefnCJCsE,
-        Status, ChosenMaybeDefnCJCsE, !Specs) :-
-    IntMaybeDefnCJCsE = c_java_csharp_erlang(IntMaybeDefnC, IntMaybeDefnJava,
-        IntMaybeDefnCsharp, IntMaybeDefnErlang),
-    ImpMaybeDefnCJCsE = c_java_csharp_erlang(ImpMaybeDefnC, ImpMaybeDefnJava,
-        ImpMaybeDefnCsharp, ImpMaybeDefnErlang),
+        IntAbstractStdMaybeDefn, IntMaybeDefnCJCs, ImpMaybeDefnCJCs,
+        Status, ChosenMaybeDefnCJCs, !Specs) :-
+    IntMaybeDefnCJCs = c_java_csharp(IntMaybeDefnC, IntMaybeDefnJava,
+        IntMaybeDefnCsharp),
+    ImpMaybeDefnCJCs = c_java_csharp(ImpMaybeDefnC, ImpMaybeDefnJava,
+        ImpMaybeDefnCsharp),
     (
         DuSection = ms_interface,
         IntContexts = get_maybe_type_defn_contexts([IntMaybeDefnC,
-            IntMaybeDefnJava, IntMaybeDefnCsharp, IntMaybeDefnErlang]),
+            IntMaybeDefnJava, IntMaybeDefnCsharp]),
         (
             IntContexts = [FirstIntContext | _],
             Status = std_du_type_mer_ft_exported,
             list.foldl(
                 foreign_int_report_any_foreign_defn_in_imp(TypeCtor,
                     FirstIntContext),
-                [ImpMaybeDefnC, ImpMaybeDefnJava,
-                    ImpMaybeDefnCsharp, ImpMaybeDefnErlang],
+                [ImpMaybeDefnC, ImpMaybeDefnJava, ImpMaybeDefnCsharp],
                 !Specs),
-            ChosenMaybeDefnCJCsE = IntMaybeDefnCJCsE
+            ChosenMaybeDefnCJCs = IntMaybeDefnCJCs
         ;
             IntContexts = [],
             Status = std_du_type_mer_exported,
-            ChosenMaybeDefnCJCsE = ImpMaybeDefnCJCsE
+            ChosenMaybeDefnCJCs = ImpMaybeDefnCJCs
         )
     ;
         DuSection = ms_implementation,
@@ -769,33 +755,32 @@ decide_du_foreign_type_section(TypeCtor, DuDefn, DuSection,
         ),
         list.foldl(
             du_imp_report_any_foreign_defn_in_int(TypeCtor, DuDefn),
-            [IntMaybeDefnC, IntMaybeDefnJava,
-                IntMaybeDefnCsharp, IntMaybeDefnErlang],
+            [IntMaybeDefnC, IntMaybeDefnJava, IntMaybeDefnCsharp],
             !Specs),
-        ChosenMaybeDefnCJCsE = ImpMaybeDefnCJCsE
+        ChosenMaybeDefnCJCs = ImpMaybeDefnCJCs
     ).
 
 :- pred decide_only_foreign_type_section(type_ctor::in,
     maybe(item_type_defn_info_abstract)::in,
         maybe(item_type_defn_info_abstract)::in,
-    c_j_cs_e_maybe_defn::in, c_j_cs_e_maybe_defn::in,
+    c_j_cs_maybe_defn::in, c_j_cs_maybe_defn::in,
     std_abs_type_status::out,
-    item_type_defn_info_abstract::out, c_j_cs_e_maybe_defn::out,
+    item_type_defn_info_abstract::out, c_j_cs_maybe_defn::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_only_foreign_type_section(TypeCtor,
         IntAbstractStdMaybeDefn, ImpAbstractStdMaybeDefn,
-        IntMaybeDefnCJCsE, ImpMaybeDefnCJCsE,
-        Status, AbstractStdDefn, ChosenMaybeDefnCJCsE, !Specs) :-
-    IntMaybeDefnCJCsE = c_java_csharp_erlang(IntMaybeDefnC, IntMaybeDefnJava,
-        IntMaybeDefnCsharp, IntMaybeDefnErlang),
-    ImpMaybeDefnCJCsE = c_java_csharp_erlang(ImpMaybeDefnC, ImpMaybeDefnJava,
-        ImpMaybeDefnCsharp, ImpMaybeDefnErlang),
+        IntMaybeDefnCJCs, ImpMaybeDefnCJCs,
+        Status, AbstractStdDefn, ChosenMaybeDefnCJCs, !Specs) :-
+    IntMaybeDefnCJCs = c_java_csharp(IntMaybeDefnC, IntMaybeDefnJava,
+        IntMaybeDefnCsharp),
+    ImpMaybeDefnCJCs = c_java_csharp(ImpMaybeDefnC, ImpMaybeDefnJava,
+        ImpMaybeDefnCsharp),
     (
         IntAbstractStdMaybeDefn = yes(IntAbstractStdDefn),
         AbstractStdDefn = IntAbstractStdDefn,
         IntContexts = get_maybe_type_defn_contexts([IntMaybeDefnC,
-            IntMaybeDefnJava, IntMaybeDefnCsharp, IntMaybeDefnErlang]),
+            IntMaybeDefnJava, IntMaybeDefnCsharp]),
         list.sort(IntContexts, SortedIntContexts),
         (
             SortedIntContexts = [FirstIntContext | _],
@@ -803,14 +788,13 @@ decide_only_foreign_type_section(TypeCtor,
             list.foldl(
                 foreign_int_report_any_foreign_defn_in_imp(TypeCtor,
                     FirstIntContext),
-                [ImpMaybeDefnC, ImpMaybeDefnJava,
-                    ImpMaybeDefnCsharp, ImpMaybeDefnErlang],
+                [ImpMaybeDefnC, ImpMaybeDefnJava, ImpMaybeDefnCsharp],
                 !Specs),
-            ChosenMaybeDefnCJCsE = IntMaybeDefnCJCsE
+            ChosenMaybeDefnCJCs = IntMaybeDefnCJCs
         ;
             SortedIntContexts = [],
             Status = std_abs_type_abstract_exported,
-            ChosenMaybeDefnCJCsE = ImpMaybeDefnCJCsE
+            ChosenMaybeDefnCJCs = ImpMaybeDefnCJCs
         )
     ;
         IntAbstractStdMaybeDefn = no,
@@ -821,24 +805,19 @@ decide_only_foreign_type_section(TypeCtor,
             list.foldl(
                 du_imp_report_any_foreign_defn_in_int(TypeCtor,
                     ImpAbstractStdDefn),
-                [IntMaybeDefnC, IntMaybeDefnJava,
-                    IntMaybeDefnCsharp, IntMaybeDefnErlang],
+                [IntMaybeDefnC, IntMaybeDefnJava, IntMaybeDefnCsharp],
                 !Specs)
         ;
             ImpAbstractStdMaybeDefn = no,
             list.foldl(
                 report_any_foreign_type_without_declaration(TypeCtor),
-                [IntMaybeDefnC, IntMaybeDefnJava,
-                    IntMaybeDefnCsharp, IntMaybeDefnErlang,
-                ImpMaybeDefnC, ImpMaybeDefnJava,
-                    ImpMaybeDefnCsharp, ImpMaybeDefnErlang],
+                [IntMaybeDefnC, IntMaybeDefnJava, IntMaybeDefnCsharp,
+                ImpMaybeDefnC, ImpMaybeDefnJava, ImpMaybeDefnCsharp],
                 !Specs),
 
             Defns = get_maybe_type_defns([
-                IntMaybeDefnC, IntMaybeDefnJava,
-                    IntMaybeDefnCsharp, IntMaybeDefnErlang,
-                ImpMaybeDefnC, ImpMaybeDefnJava,
-                    ImpMaybeDefnCsharp, ImpMaybeDefnErlang]),
+                IntMaybeDefnC, IntMaybeDefnJava, IntMaybeDefnCsharp,
+                ImpMaybeDefnC, ImpMaybeDefnJava, ImpMaybeDefnCsharp]),
 
             % Defns cannot be empty because our caller calls us only if
             % at least one of the foreign language definitions is yes(_).
@@ -855,30 +834,27 @@ decide_only_foreign_type_section(TypeCtor,
             % typr_ctor_checked_defn we are constructing.
             AbstractStdDefn = FirstDefn ^ td_ctor_defn := abstract_type_general
         ),
-        ChosenMaybeDefnCJCsE = ImpMaybeDefnCJCsE
+        ChosenMaybeDefnCJCs = ImpMaybeDefnCJCs
     ).
 
 :- pred decide_du_repn_foreign_only_constants(type_ctor::in,
-    list(string)::in, c_j_cs_e_maybe_defn::in,
-    c_j_cs_e_maybe_enum::in, c_j_cs_e_enums::in,
-    c_j_cs_e_maybe_defn_or_enum::out,
+    list(string)::in, c_j_cs_maybe_defn::in,
+    c_j_cs_maybe_enum::in, c_j_cs_enums::in,
+    c_j_cs_maybe_defn_or_enum::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_du_repn_foreign_only_constants(TypeCtor, CtorNames,
-        MaybeDefnCJCsE, MaybeEnumCJCsE, LeftOverEnumsCJCsE,
-        MaybeDefnOrEnumCJCsE, !Specs) :-
+        MaybeDefnCJCs, MaybeEnumCJCs, LeftOverEnumsCJCs,
+        MaybeDefnOrEnumCJCs, !Specs) :-
     % If TypeCtor has more than one enum definition for a given foreign
-    % language, we pick on to return in MaybeEnumCJCsE, but we return
-    % all the others as well in LeftOverEnumsCJCsE so that our caller
+    % language, we pick on to return in MaybeEnumCJCs, but we return
+    % all the others as well in LeftOverEnumsCJCs so that our caller
     % can generate error messages for them where required.
     set_tree234.list_to_set(CtorNames, CtorNamesSet),
-    MaybeDefnCJCsE = c_java_csharp_erlang(MaybeDefnC, MaybeDefnJava,
-        MaybeDefnCsharp, MaybeDefnErlang),
-    MaybeEnumCJCsE = c_java_csharp_erlang(MaybeEnumC, MaybeEnumJava,
-        MaybeEnumCsharp, MaybeEnumErlang),
-    LeftOverEnumsCJCsE = c_java_csharp_erlang(
-        LeftOverEnumsC, LeftOverEnumsJava,
-        LeftOverEnumsCsharp, LeftOverEnumsErlang),
+    MaybeDefnCJCs = c_java_csharp(MaybeDefnC, MaybeDefnJava, MaybeDefnCsharp),
+    MaybeEnumCJCs = c_java_csharp(MaybeEnumC, MaybeEnumJava, MaybeEnumCsharp),
+    LeftOverEnumsCJCs = c_java_csharp(LeftOverEnumsC, LeftOverEnumsJava,
+        LeftOverEnumsCsharp),
 
     decide_du_repn_foreign_only_constants_lang(TypeCtor,
         CtorNames, CtorNamesSet, MaybeDefnC,
@@ -889,13 +865,9 @@ decide_du_repn_foreign_only_constants(TypeCtor, CtorNames,
     decide_du_repn_foreign_only_constants_lang(TypeCtor,
         CtorNames, CtorNamesSet, MaybeDefnCsharp,
         MaybeEnumCsharp, LeftOverEnumsCsharp, MaybeDefnOrEnumCsharp, !Specs),
-    decide_du_repn_foreign_only_constants_lang(TypeCtor,
-        CtorNames, CtorNamesSet, MaybeDefnErlang,
-        MaybeEnumErlang, LeftOverEnumsErlang, MaybeDefnOrEnumErlang, !Specs),
 
-    MaybeDefnOrEnumCJCsE = c_java_csharp_erlang(
-        MaybeDefnOrEnumC, MaybeDefnOrEnumJava,
-        MaybeDefnOrEnumCsharp, MaybeDefnOrEnumErlang).
+    MaybeDefnOrEnumCJCs = c_java_csharp(MaybeDefnOrEnumC, MaybeDefnOrEnumJava,
+        MaybeDefnOrEnumCsharp).
 
 :- pred decide_du_repn_foreign_only_constants_lang(type_ctor::in,
     list(string)::in, set_tree234(string)::in,
@@ -1322,7 +1294,7 @@ check_any_type_ctor_defns_for_duplicates(TypeDefnMap, TypeCtor,
             ForeignMaybeDefn)
     else
         MaybeDefn = type_ctor_maybe_defn(no, no, no, no, no,
-            c_java_csharp_erlang(no, no, no, no))
+            c_java_csharp(no, no, no))
     ).
 
 :- pred at_most_one_type_defn(string::in, type_ctor::in,
@@ -1352,23 +1324,19 @@ at_most_one_type_defn(Kind, TypeCtor, TypeDefns, MaybeTypeDefn, !Specs) :-
     ).
 
 :- pred at_most_one_foreign_type_for_all_langs(type_ctor::in,
-    c_j_cs_e_defns::in, c_j_cs_e_maybe_defn::out,
+    c_j_cs_defns::in, c_j_cs_maybe_defn::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-at_most_one_foreign_type_for_all_langs(TypeCtor, DefnsCJCsE, MaybeDefnCJCsE,
+at_most_one_foreign_type_for_all_langs(TypeCtor, DefnsCJCs, MaybeDefnCJCs,
         !Specs) :-
-    DefnsCJCsE = c_java_csharp_erlang(DefnsC, DefnsJava,
-        DefnsCsharp, DefnsErlang),
+    DefnsCJCs = c_java_csharp(DefnsC, DefnsJava, DefnsCsharp),
     at_most_one_foreign_type_for_lang(TypeCtor, lang_c,
         DefnsC, MaybeDefnC, !Specs),
     at_most_one_foreign_type_for_lang(TypeCtor, lang_java,
         DefnsJava, MaybeDefnJava, !Specs),
     at_most_one_foreign_type_for_lang(TypeCtor, lang_csharp,
         DefnsCsharp, MaybeDefnCsharp, !Specs),
-    at_most_one_foreign_type_for_lang(TypeCtor, lang_erlang,
-        DefnsErlang, MaybeDefnErlang, !Specs),
-    MaybeDefnCJCsE = c_java_csharp_erlang(MaybeDefnC, MaybeDefnJava,
-        MaybeDefnCsharp, MaybeDefnErlang).
+    MaybeDefnCJCs = c_java_csharp(MaybeDefnC, MaybeDefnJava, MaybeDefnCsharp).
 
 :- pred report_type_ctor_enum_in_int(module_name::in, type_ctor::in,
     item_foreign_enum_info::in,
@@ -1400,39 +1368,37 @@ report_type_ctor_enum_in_int(ModuleName, TypeCtor, ForeignEnum, !Specs) :-
 
 :- pred check_any_type_ctor_enums_for_duplicates(
     type_ctor_foreign_enum_map::in, type_ctor::in,
-    c_j_cs_e_maybe_enum::out, c_j_cs_e_enums::out,
+    c_j_cs_maybe_enum::out, c_j_cs_enums::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_any_type_ctor_enums_for_duplicates(ForeignEnumMap, TypeCtor,
-        MaybeEnumCJCsE, LeftOverEnumCJCse, !Specs) :-
+        MaybeEnumCJCs, LeftOverEnumCJCse, !Specs) :-
     ( if map.search(ForeignEnumMap, TypeCtor, AllEnums) then
         at_most_one_foreign_enum_for_all_langs(TypeCtor,
-            AllEnums, MaybeEnumCJCsE, LeftOverEnumCJCse, !Specs)
+            AllEnums, MaybeEnumCJCs, LeftOverEnumCJCse, !Specs)
     else
-        MaybeEnumCJCsE = c_java_csharp_erlang(no, no, no, no),
-        LeftOverEnumCJCse = c_java_csharp_erlang([], [], [], [])
+        MaybeEnumCJCs = c_java_csharp(no, no, no),
+        LeftOverEnumCJCse = c_java_csharp([], [], [])
     ).
 
 :- pred at_most_one_foreign_enum_for_all_langs(type_ctor::in,
-    c_j_cs_e_enums::in, c_j_cs_e_maybe_enum::out, c_j_cs_e_enums::out,
+    c_j_cs_enums::in, c_j_cs_maybe_enum::out, c_j_cs_enums::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-at_most_one_foreign_enum_for_all_langs(TypeCtor, AllEnumsCJCsE,
-        MaybeEnumCJCsE, LeftOverEnumsCJCsE, !Specs) :-
-    AllEnumsCJCsE = c_java_csharp_erlang(EnumsC, EnumsJava,
-        EnumsCsharp, EnumsErlang),
+at_most_one_foreign_enum_for_all_langs(TypeCtor, AllEnumsCJCs,
+        MaybeEnumCJCs, LeftOverEnumsCJCs, !Specs) :-
+    AllEnumsCJCs = c_java_csharp(EnumsC, EnumsJava,
+        EnumsCsharp),
     at_most_one_foreign_enum_for_lang(TypeCtor, lang_c,
         EnumsC, MaybeEnumC, LeftOverEnumsC, !Specs),
     at_most_one_foreign_enum_for_lang(TypeCtor, lang_java,
         EnumsJava, MaybeEnumJava, LeftOverEnumsJava, !Specs),
     at_most_one_foreign_enum_for_lang(TypeCtor, lang_csharp,
         EnumsCsharp, MaybeEnumCsharp, LeftOverEnumsCsharp, !Specs),
-    at_most_one_foreign_enum_for_lang(TypeCtor, lang_erlang,
-        EnumsErlang, MaybeEnumErlang, LeftOverEnumsErlang, !Specs),
-    MaybeEnumCJCsE = c_java_csharp_erlang(MaybeEnumC, MaybeEnumJava,
-        MaybeEnumCsharp, MaybeEnumErlang),
-    LeftOverEnumsCJCsE = c_java_csharp_erlang(LeftOverEnumsC,
-        LeftOverEnumsJava, LeftOverEnumsCsharp, LeftOverEnumsErlang).
+    MaybeEnumCJCs = c_java_csharp(MaybeEnumC, MaybeEnumJava,
+        MaybeEnumCsharp),
+    LeftOverEnumsCJCs = c_java_csharp(LeftOverEnumsC,
+        LeftOverEnumsJava, LeftOverEnumsCsharp).
 
 :- pred report_duplicate_type_defn(string::in, type_ctor::in,
     prog_context::in, prog_context::in,
@@ -1609,7 +1575,7 @@ add_type_ctor_to_field_name_map(TypeCtor, CheckedDefn, !FieldNameMap) :-
             )
         ;
             CheckedStdDefn = std_mer_type_du_not_all_plain_constants(_Status,
-                DuDefn, _MaybeDefnCJCsE),
+                DuDefn, _MaybeDefnCJCs),
             DetailsDu = DuDefn ^ td_ctor_defn,
             DetailsDu = type_details_du(OoMCtors,
                 _MaybeCanonical, _MaybeDirectArgs),

@@ -1099,9 +1099,6 @@ mlds_type_to_strcord(MLDS_Type) = Cord :-
         ;
             ForeignType = csharp(csharp_type(TypeName)),
             Cord = strcord("csharp_type(") ++ strcord(TypeName) ++ strcord(")")
-        ;
-            ForeignType = erlang(erlang_type),
-            Cord = strcord("erlang_type")
         )
     ;
         MLDS_Type = mlds_class_type(ClassId),

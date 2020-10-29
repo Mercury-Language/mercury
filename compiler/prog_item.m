@@ -723,7 +723,7 @@
                 tcad_abstract_std       :: list(item_type_defn_info_abstract),
                 tcad_eqv                :: list(item_type_defn_info_eqv),
                 tcad_du                 :: list(item_type_defn_info_du),
-                tcad_foreign            :: c_j_cs_e_defns
+                tcad_foreign            :: c_j_cs_defns
             ).
 
 :- type type_ctor_maybe_defn
@@ -736,7 +736,7 @@
                 tcmd_abstract_std       :: maybe(item_type_defn_info_abstract),
                 tcmd_eqv                :: maybe(item_type_defn_info_eqv),
                 tcmd_du                 :: maybe(item_type_defn_info_du),
-                tcmd_foreign            :: c_j_cs_e_maybe_defn
+                tcmd_foreign            :: c_j_cs_maybe_defn
             ).
 
     % We support foreign type definitions in all four of our target languages,
@@ -748,22 +748,21 @@
     % one of these foreign languages. This can be done in instances
     % of this type, whose fields always contain the info for C, Java, C#
     % and Erlang (in that order).
-    %
-:- type c_java_csharp_erlang(T)
-    --->    c_java_csharp_erlang(T, T, T, T).
+:- type c_java_csharp(T)
+    --->    c_java_csharp(T, T, T).
 
-:- type c_j_cs_e_defns ==
-    c_java_csharp_erlang(list(item_type_defn_info_foreign)).
-:- type c_j_cs_e_maybe_defn ==
-    c_java_csharp_erlang(maybe(item_type_defn_info_foreign)).
-:- type c_j_cs_e_enums ==
-    c_java_csharp_erlang(list(item_foreign_enum_info)).
-:- type c_j_cs_e_maybe_enum ==
-    c_java_csharp_erlang(maybe(item_foreign_enum_info)).
-:- type c_j_cs_e_repn ==
-    c_java_csharp_erlang(maybe(foreign_type_repn)).
-:- type c_j_cs_e_enum_repn ==
-    c_java_csharp_erlang(maybe(enum_foreign_repn)).
+:- type c_j_cs_defns ==
+    c_java_csharp(list(item_type_defn_info_foreign)).
+:- type c_j_cs_maybe_defn ==
+    c_java_csharp(maybe(item_type_defn_info_foreign)).
+:- type c_j_cs_enums ==
+    c_java_csharp(list(item_foreign_enum_info)).
+:- type c_j_cs_maybe_enum ==
+    c_java_csharp(maybe(item_foreign_enum_info)).
+:- type c_j_cs_repn ==
+    c_java_csharp(maybe(foreign_type_repn)).
+:- type c_j_cs_enum_repn ==
+    c_java_csharp(maybe(enum_foreign_repn)).
 
 % The map key is sym_name_arity because we don't have an inst_ctor type.
 % XXX CLEANUP We should add one.
@@ -783,7 +782,7 @@
                 mcad_eqv                    :: list(item_mode_defn_info)
             ).
 
-:- type type_ctor_foreign_enum_map == map(type_ctor, c_j_cs_e_enums).
+:- type type_ctor_foreign_enum_map == map(type_ctor, c_j_cs_enums).
 
 :- type type_ctor_repn_map == map(type_ctor, item_type_repn_info).
 
@@ -1938,7 +1937,7 @@
     --->    tcrepn_is_word_aligned_ptr
     ;       tcrepn_is_eqv_to(mer_type)
     ;       tcrepn_du(du_repn)
-    ;       tcrepn_foreign(c_j_cs_e_repn).
+    ;       tcrepn_foreign(c_j_cs_repn).
 
     % A type that has a discriminated union definition in Mercury
     % may also have a definition in each of our foreign languages,
@@ -2010,7 +2009,7 @@
                 dummy_functor_name      :: string,
 
                 % Any foreign type or foreign enum definitions for the type.
-                dummy_foreign           :: c_j_cs_e_enum_repn
+                dummy_foreign           :: c_j_cs_enum_repn
             ).
 
 %---------------------%
@@ -2036,7 +2035,7 @@
                 enum_functors3plus      :: list(string),
 
                 % Any foreign type or foreign enum definitions for the type.
-                enum_foreign            :: c_j_cs_e_enum_repn
+                enum_foreign            :: c_j_cs_enum_repn
             ).
 
 %---------------------%
@@ -2059,7 +2058,7 @@
                 notag_functor_arg_type  :: mer_type,
 
                 % The foreign language definitions for this type, if any.
-                notag_foreign           :: c_j_cs_e_repn
+                notag_foreign           :: c_j_cs_repn
             ).
 
 %---------------------%
@@ -2082,7 +2081,7 @@
                 only_arg_repns          :: c_repns(nonconstant_repn),
 
                 % The foreign language definitions for this type, if any.
-                only_foreign            :: c_j_cs_e_repn
+                only_foreign            :: c_j_cs_repn
             ).
 
 :- type gen_du_more_functors_repn
@@ -2095,7 +2094,7 @@
                 more_functors3plus      :: list(gen_du_functor_repn),
 
                 % The foreign language definitions for this type, if any.
-                more_foreign            :: c_j_cs_e_repn
+                more_foreign            :: c_j_cs_repn
             ).
 
 %---------------------%

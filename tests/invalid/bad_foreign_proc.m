@@ -69,3 +69,5 @@
 ).
 
 foo(X, X).
+
+:- pragma foreign_proc("Erlang", foo(A::in, B::out), [promise_pure], "B = A").

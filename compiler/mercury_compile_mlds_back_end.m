@@ -127,9 +127,6 @@ mlds_backend(!HLDS, !:MLDS, !:Specs, !DumpInfo, !IO) :-
     ;
         Target = target_csharp,
         MLDS_Target = ml_target_csharp
-    ;
-        Target = target_erlang,
-        unexpected($pred, "MLDS cannot target Erlang")
     ),
     maybe_write_string(Verbose, "% Converting HLDS to MLDS...\n", !IO),
     ml_code_gen(MLDS_Target, !:MLDS, !HLDS, !Specs),
@@ -265,7 +262,6 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
             %
             ( Target = target_csharp
             ; Target = target_java
-            ; Target = target_erlang
             ),
             GenerateInline = do_not_gen_trail_ops_inline
         ),

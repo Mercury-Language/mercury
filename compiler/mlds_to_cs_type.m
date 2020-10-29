@@ -186,9 +186,6 @@ type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
         ;
             ForeignType = java(_),
             unexpected($pred, "java foreign_type")
-        ;
-            ForeignType = erlang(_),
-            unexpected($pred, "erlang foreign_type")
         )
     ;
         MLDS_Type = mlds_class_type(ClassId),

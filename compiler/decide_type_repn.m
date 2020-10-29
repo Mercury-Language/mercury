@@ -299,12 +299,12 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
 %---------------------%
 
 :- pred maybe_mark_type_ctor_as_word_aligned_for_c(type_ctor::in,
-    c_j_cs_e_maybe_defn::in,
+    c_j_cs_maybe_defn::in,
     word_aligned_type_ctors_c::in, word_aligned_type_ctors_c::out) is det.
 
 maybe_mark_type_ctor_as_word_aligned_for_c(TypeCtor, MaybeDefnCJCsE,
         !WordAlignedTypeCtorsC) :-
-    MaybeDefnCJCsE = c_java_csharp_erlang(MaybeDefnC, _, _, _),
+    MaybeDefnCJCsE = c_java_csharp(MaybeDefnC, _, _),
     ( if
         MaybeDefnC = yes(DefnC),
         DefnC ^ td_ctor_defn ^ foreign_assertions =
@@ -320,7 +320,7 @@ maybe_mark_type_ctor_as_word_aligned_for_c(TypeCtor, MaybeDefnCJCsE,
 
 :- pred decide_type_repns_stage_1_du_all_plain_constants(type_ctor::in,
     item_type_defn_info_du::in, string::in, list(string)::in,
-    c_j_cs_e_maybe_defn_or_enum::in,
+    c_j_cs_maybe_defn_or_enum::in,
     simple_du_map::in, simple_du_map::out) is det.
 
 decide_type_repns_stage_1_du_all_plain_constants(TypeCtor, DuDefn,
@@ -344,7 +344,7 @@ decide_type_repns_stage_1_du_all_plain_constants(TypeCtor, DuDefn,
     map.det_insert(TypeCtor, SimpleDuRepn, !SimpleDuMap).
 
 :- pred decide_type_repns_stage_1_du_not_all_plain_constants(type_ctor::in,
-    item_type_defn_info_du::in, c_j_cs_e_maybe_defn::in,
+    item_type_defn_info_du::in, c_j_cs_maybe_defn::in,
     simple_du_map::in, simple_du_map::out,
     word_aligned_type_ctors_c::in, word_aligned_type_ctors_c::out) is det.
 
@@ -398,22 +398,20 @@ decide_type_repns_stage_1_du_not_all_plain_constants(TypeCtor, DuDefn,
 %---------------------------------------------------------------------------%
 
 :- pred decide_type_repns_foreign_defns_or_enums(
-    c_j_cs_e_maybe_defn_or_enum::in, c_j_cs_e_enum_repn::out) is det.
+    c_j_cs_maybe_defn_or_enum::in, c_j_cs_enum_repn::out) is det.
 
 decide_type_repns_foreign_defns_or_enums(MaybeDefnOrEnumCJCsE,
         MaybeRepnCJCsE) :-
-    MaybeDefnOrEnumCJCsE = c_java_csharp_erlang(MaybeDefnOrEnumC,
-        MaybeDefnOrEnumJava, MaybeDefnOrEnumCsharp, MaybeDefnOrEnumErlang),
+    MaybeDefnOrEnumCJCsE = c_java_csharp(MaybeDefnOrEnumC,
+        MaybeDefnOrEnumJava, MaybeDefnOrEnumCsharp),
     represent_maybe_foreign_defn_or_enum(MaybeDefnOrEnumC,
         MaybeRepnC),
     represent_maybe_foreign_defn_or_enum(MaybeDefnOrEnumJava,
         MaybeRepnJava),
     represent_maybe_foreign_defn_or_enum(MaybeDefnOrEnumCsharp,
         MaybeRepnCsharp),
-    represent_maybe_foreign_defn_or_enum(MaybeDefnOrEnumErlang,
-        MaybeRepnErlang),
-    MaybeRepnCJCsE = c_java_csharp_erlang(MaybeRepnC, MaybeRepnJava,
-        MaybeRepnCsharp, MaybeRepnErlang).
+    MaybeRepnCJCsE = c_java_csharp(MaybeRepnC, MaybeRepnJava,
+        MaybeRepnCsharp).
 
 :- pred represent_maybe_foreign_defn_or_enum(maybe(foreign_type_or_enum)::in,
     maybe(enum_foreign_repn)::out) is det.
@@ -439,18 +437,17 @@ represent_maybe_foreign_defn_or_enum(MaybeForeignDefnOrEnum,
 
 %---------------------%
 
-:- pred decide_type_repns_foreign_defns(c_j_cs_e_maybe_defn::in,
-    c_j_cs_e_repn::out) is det.
+:- pred decide_type_repns_foreign_defns(c_j_cs_maybe_defn::in,
+    c_j_cs_repn::out) is det.
 
 decide_type_repns_foreign_defns(MaybeDefnCJCsE, MaybeRepnCJCsE) :-
-    MaybeDefnCJCsE = c_java_csharp_erlang(MaybeDefnC, MaybeDefnJava,
-        MaybeDefnCsharp, MaybeDefnErlang),
+    MaybeDefnCJCsE = c_java_csharp(MaybeDefnC, MaybeDefnJava,
+        MaybeDefnCsharp),
     represent_maybe_foreign_defn(MaybeDefnC, MaybeRepnC),
     represent_maybe_foreign_defn(MaybeDefnJava, MaybeRepnJava),
     represent_maybe_foreign_defn(MaybeDefnCsharp, MaybeRepnCsharp),
-    represent_maybe_foreign_defn(MaybeDefnErlang, MaybeRepnErlang),
-    MaybeRepnCJCsE = c_java_csharp_erlang(MaybeRepnC, MaybeRepnJava,
-        MaybeRepnCsharp, MaybeRepnErlang).
+    MaybeRepnCJCsE = c_java_csharp(MaybeRepnC, MaybeRepnJava,
+        MaybeRepnCsharp).
 
 :- pred represent_maybe_foreign_defn(maybe(item_type_defn_info_foreign)::in,
     maybe(foreign_type_repn)::out) is det.
@@ -477,7 +474,6 @@ foreign_type_defn_to_repn(ItemTypeDefnInfo, ForeignTypeRepn) :-
     ( LangType = c(c_type(ForeignTypeName))
     ; LangType = java(java_type(ForeignTypeName))
     ; LangType = csharp(csharp_type(ForeignTypeName))
-    ; LangType = erlang(erlang_type), ForeignTypeName = ""
     ),
     ForeignTypeRepn = foreign_type_repn(ForeignTypeName, Assertions).
 
@@ -740,7 +736,7 @@ decide_all_type_repns_stage_2(BaseParams, EqvRepnMap, EqvMap,
 
 :- pred decide_type_repns_stage_2_du_gen(base_params::in, type_eqv_map::in,
     set_tree234(type_ctor)::in, simple_du_map::in, type_ctor::in,
-    item_type_defn_info_du::in, c_j_cs_e_maybe_defn::in,
+    item_type_defn_info_du::in, c_j_cs_maybe_defn::in,
     type_ctor_repn_map::in, type_ctor_repn_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -778,7 +774,7 @@ decide_type_repns_stage_2_du_gen(BaseParams, EqvMap,
 
 :- pred decide_type_repns_stage_2_du_gen_only_functor(base_params::in,
     simple_du_map::in, type_ctor::in, list(tvar)::in,
-    tvarset::in, maybe_canonical::in, constructor::in, c_j_cs_e_repn::in,
+    tvarset::in, maybe_canonical::in, constructor::in, c_j_cs_repn::in,
     type_ctor_repn_map::in, type_ctor_repn_map::out) is det.
 
 decide_type_repns_stage_2_du_gen_only_functor(BaseParams, SimpleDuMap,
@@ -883,7 +879,7 @@ decide_complex_du_only_functor_remote_args(PlatformParams,
 :- pred decide_type_repns_stage_2_du_gen_more_functors(base_params::in,
     set_tree234(type_ctor)::in, simple_du_map::in,
     type_ctor::in, list(tvar)::in, tvarset::in,
-    list(constructor)::in, c_j_cs_e_repn::in,
+    list(constructor)::in, c_j_cs_repn::in,
     type_ctor_repn_map::in, type_ctor_repn_map::out) is det.
 
 decide_type_repns_stage_2_du_gen_more_functors(BaseParams,
@@ -2280,7 +2276,7 @@ expand_eqv_cnotag_type_fixpoint(TypeEqvMap, SimpleDuMap, TVarSet0, Context,
         % language definition for C?
         NotagRepn = notag_repn(_NotagFunctorName, NotagFunctorArgType0,
             MaybeCJCsERepn),
-        MaybeCJCsERepn = c_java_csharp_erlang(no, _, _, _)
+        MaybeCJCsERepn = c_java_csharp(no, _, _)
     then
         varset.merge_renaming(TVarSet0, NotagTVarSet0, TVarSet1,
             RenamingNotagTo1),

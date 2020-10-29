@@ -562,11 +562,6 @@ build_object_code(Globals, ModuleName, Target, PIC, ErrorStream, _Imports,
             ext_other(other_ext(".cs")), ModuleName, CsharpFile, !IO),
         compile_target_code.link(Globals, ErrorStream, csharp_library,
             ModuleName, [CsharpFile], Succeeded, !IO)
-    ;
-        Target = target_erlang,
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".erl")), ModuleName, ErlangFile, !IO),
-        compile_erlang_file(Globals, ErrorStream, ErlangFile, Succeeded, !IO)
     ).
 
 :- pred compile_foreign_code_file(globals::in, io.output_stream::in, pic::in,
@@ -586,9 +581,6 @@ compile_foreign_code_file(Globals, ErrorStream, PIC, Imports, ForeignCodeFile,
         ForeignCodeFile = foreign_code_file(lang_csharp, CSharpFile, DLLFile),
         compile_csharp_file(Globals, ErrorStream, Imports, CSharpFile, DLLFile,
             Succeeded, !IO)
-    ;
-        ForeignCodeFile = foreign_code_file(lang_erlang, ErlFile, _BeamFile),
-        compile_erlang_file(Globals, ErrorStream, ErlFile, Succeeded, !IO)
     ).
 
 :- func forkable_module_compilation_task_type(module_compilation_task_type)
@@ -638,9 +630,6 @@ get_object_extension(Globals, PIC) = OtherExt :-
     ;
         CompilationTarget = target_java,
         sorry($pred, "object extension for java")
-    ;
-        CompilationTarget = target_erlang,
-        sorry($pred, "mmc --make NYI and target erlang")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -881,15 +870,6 @@ compilation_task(Target) = Result :-
         Target = module_target_java_class_code,
         Result = task_and_options(target_code_to_object_code(non_pic), [])
     ;
-        ( Target = module_target_erlang_header
-        ; Target = module_target_erlang_code
-        ),
-        Result = task_and_options(process_module(task_compile_to_target_code),
-            ["--erlang-only"])
-    ;
-        Target = module_target_erlang_beam_code,
-        Result = task_and_options(target_code_to_object_code(non_pic), [])
-    ;
         Target = module_target_object_code(PIC),
         Result = task_and_options(target_code_to_object_code(PIC), [])
     ;
@@ -1010,12 +990,6 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
             ; CompilationTarget = target_java
             ),
             HeaderTargets0 = []
-        ;
-            CompilationTarget = target_erlang,
-            % When compiling to Erlang we always generate a header file.
-            HeaderModuleNames = SourceFileModuleNames,
-            HeaderTargets0 = make_target_file_list(HeaderModuleNames,
-                module_target_erlang_header)
         ),
 
         (
@@ -1027,7 +1001,6 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
         ;
             ( CompilationTarget = target_csharp
             ; CompilationTarget = target_java
-            ; CompilationTarget = target_erlang
             ),
             HeaderTargets = HeaderTargets0
         ),
@@ -1098,7 +1071,6 @@ external_foreign_code_files(Globals, PIC, ModuleAndImports, ForeignFiles,
     ;
         ( CompilationTarget = target_java
         ; CompilationTarget = target_csharp
-        ; CompilationTarget = target_erlang
         ),
         ForeignFiles = []
     ).
@@ -1138,9 +1110,6 @@ target_type_to_pic(TargetType) = Result :-
         ; TargetType = module_target_csharp_code
         ; TargetType = module_target_java_code
         ; TargetType = module_target_java_class_code
-        ; TargetType = module_target_erlang_header
-        ; TargetType = module_target_erlang_code
-        ; TargetType = module_target_erlang_beam_code
         ; TargetType = module_target_foreign_object(_, _)
         ; TargetType = module_target_fact_table_object(_, _)
         ; TargetType = module_target_xml_doc

@@ -96,7 +96,6 @@
 :- import_module recompilation.
 :- import_module recompilation.check.
 :- import_module recompilation.usage.
-:- import_module top_level.mercury_compile_erl_back_end.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
 :- import_module top_level.mercury_compile_middle_passes.
@@ -729,14 +728,6 @@ do_op_mode_standalone_interface(Globals, StandaloneIntBasename, !IO) :-
         write_error_pieces_plain(Globals, NotRequiredMsg, !IO),
         io.set_exit_status(1, !IO)
     ;
-        Target = target_erlang,
-        NYIMsg = [words("Sorry,"),
-            quote("--generate-standalone-interface"),
-            words("is not yet supported with target language"),
-            words(compilation_target_string(Target)), suffix("."), nl],
-        write_error_pieces_plain(Globals, NYIMsg, !IO),
-        io.set_exit_status(1, !IO)
-    ;
         Target = target_c,
         make_standalone_interface(Globals, StandaloneIntBasename, !IO)
     ).
@@ -877,7 +868,6 @@ do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin, DetectedGradeFlags,
             ;
                 ( Target = target_c
                 ; Target = target_csharp
-                ; Target = target_erlang
                 ),
                 compile_with_module_options(Globals, MainModuleName,
                     DetectedGradeFlags, OptionVariables, OptionArgs,
@@ -1335,7 +1325,6 @@ find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
     ( CompilationTarget = target_c, TargetOtherExt = other_ext(".c")
     ; CompilationTarget = target_csharp, TargetOtherExt = other_ext(".cs")
     ; CompilationTarget = target_java, TargetOtherExt = other_ext(".java")
-    ; CompilationTarget = target_erlang, TargetOtherExt = other_ext(".erl")
     ),
     FindTargetFiles = usual_find_target_files(Globals, TargetOtherExt).
 
@@ -1363,9 +1352,6 @@ find_timestamp_files(Globals, FindTimestampFiles) :-
     ;
         CompilationTarget = target_java,
         TimestampOtherExt = other_ext(".java_date")
-    ;
-        CompilationTarget = target_erlang,
-        TimestampOtherExt = other_ext(".erl_date")
     ),
     FindTimestampFiles = find_timestamp_files_2(Globals, TimestampOtherExt).
 
@@ -2539,12 +2525,6 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
                 llds_output_pass(OpModeCodeGen, !.HLDS, GlobalData, LLDS,
                     ModuleName, Succeeded, ExtraObjFiles, !IO)
             )
-        ;
-            Target = target_erlang,
-            erlang_backend(!.HLDS, ELDS, !DumpInfo, !IO),
-            % elds_to_erlang never goes beyond generating Erlang code.
-            elds_to_erlang(!.HLDS, ELDS, Succeeded, !IO),
-            ExtraObjFiles = []
         ),
         (
             Succeeded = yes,

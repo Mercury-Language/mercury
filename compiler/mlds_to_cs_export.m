@@ -172,7 +172,6 @@ output_exported_enum_for_csharp(Info, Indent, ExportedEnum, !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_java
-        ; Lang = lang_erlang
         )
     ).
 

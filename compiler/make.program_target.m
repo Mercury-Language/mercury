@@ -74,8 +74,6 @@ make_linked_target(Globals, LinkedTargetFile, LinkedTargetSucceeded,
         ; FileType = csharp_library
         ; FileType = java_executable
         ; FileType = java_archive
-        ; FileType = erlang_launcher
-        ; FileType = erlang_archive
         ),
         ExtraOptions = []
     ),
@@ -168,10 +166,6 @@ make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
             CompilationTarget = target_java,
             IntermediateTargetType = module_target_java_code,
             ObjectTargetType = module_target_java_class_code
-        ;
-            CompilationTarget = target_erlang,
-            IntermediateTargetType = module_target_erlang_code,
-            ObjectTargetType = module_target_erlang_beam_code
         ),
 
         AllModulesList = set.to_sorted_list(AllModules),
@@ -386,7 +380,6 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
     ;
         ( CompilationTarget = target_java
         ; CompilationTarget = target_csharp
-        ; CompilationTarget = target_erlang
         ),
         ObjectTargets = []
     ).
@@ -447,18 +440,12 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             AllModulesList, InitObjectResult, !IO),
         MaybeInitObjectResult = yes(InitObjectResult)
     ;
-        FileType = erlang_launcher,
-        make_erlang_program_init_file(NoLinkObjsGlobals, ErrorStream,
-            MainModuleName, AllModulesList, InitObjectResult, !IO),
-        MaybeInitObjectResult = yes(InitObjectResult)
-    ;
         ( FileType = static_library
         ; FileType = shared_library
         ; FileType = csharp_executable
         ; FileType = csharp_library
         ; FileType = java_executable
         ; FileType = java_archive
-        ; FileType = erlang_archive
         ),
         MaybeInitObjectResult = no
     ),
@@ -581,11 +568,6 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             globals.lookup_string_option(NoLinkObjsGlobals,
                 java_object_file_extension, ObjExtToUseStr),
             ObjOtherExtToUse = other_ext(ObjExtToUseStr)
-        ;
-            CompilationTarget = target_erlang,
-            globals.lookup_string_option(NoLinkObjsGlobals,
-                erlang_object_file_extension, ObjExtToUseStr),
-            ObjOtherExtToUse = other_ext(ObjExtToUseStr)
         ),
         list.map_foldl(
             module_name_to_file_name(NoLinkObjsGlobals, $pred,
@@ -597,7 +579,6 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         AllObjects = InitObjects ++ ObjList ++ ForeignObjects ++ LinkObjects,
         (
             ( CompilationTarget = target_c
-            ; CompilationTarget = target_erlang
             ; CompilationTarget = target_java
             ; CompilationTarget = target_csharp
             ),
@@ -640,8 +621,6 @@ linked_target_cleanup(Globals, MainModuleName, FileType, OutputFileName,
         ; FileType = csharp_library
         ; FileType = java_executable
         ; FileType = java_archive
-        ; FileType = erlang_launcher
-        ; FileType = erlang_archive
         )
     ).
 
@@ -1199,10 +1178,6 @@ build_library(MainModuleName, AllModules, Globals, Succeeded, !Info, !IO) :-
     ;
         Target = target_java,
         build_java_library(Globals, MainModuleName, Succeeded, !Info, !IO)
-    ;
-        Target = target_erlang,
-        build_erlang_library(Globals, MainModuleName, AllModules, Succeeded,
-            !Info, !IO)
     ).
 
 :- pred build_c_library(globals::in, module_name::in, list(module_name)::in,
@@ -1256,26 +1231,6 @@ build_java_library(Globals, MainModuleName, Succeeded, !Info, !IO) :-
     make_linked_target(Globals,
         linked_target_file(MainModuleName, java_archive),
         Succeeded, !Info, !IO).
-
-:- pred build_erlang_library(globals::in, module_name::in,
-    list(module_name)::in, bool::out, make_info::in,
-    make_info::out, io::di, io::uo) is det.
-
-build_erlang_library(Globals, MainModuleName, AllModules, Succeeded,
-        !Info, !IO) :-
-    make_linked_target(Globals,
-        linked_target_file(MainModuleName, erlang_archive),
-        Succeeded0, !Info, !IO),
-    (
-        Succeeded0 = yes,
-        % Errors while making the .init file should be very rare.
-        io.output_stream(ErrorStream, !IO),
-        make_erlang_library_init_file(Globals, ErrorStream, MainModuleName,
-            AllModules, Succeeded, !IO)
-    ;
-        Succeeded0 = no,
-        Succeeded = no
-    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1378,11 +1333,6 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
                 ModuleName, {other_ext(".mh"), "mhs"}, HeaderSucceeded2, !IO),
 
             HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
-        ;
-            Target = target_erlang,
-            module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-                ext_other(other_ext(".hrl")), ModuleName, FileName, !IO),
-            install_file(Globals, FileName, LibDir/"inc", HeaderSucceeded, !IO)
         ;
             ( Target = target_java
             ; Target = target_csharp
@@ -1548,8 +1498,6 @@ install_library_grade_files(Globals, LinkSucceeded0, GradeDir, ModuleName,
             DllFileName, !IO),
         linked_target_file_name(Globals, ModuleName, java_archive,
             JarFileName, !IO),
-        linked_target_file_name(Globals, ModuleName, erlang_archive,
-            ErlangArchiveFileName, !IO),
 
         globals.lookup_string_option(Globals, install_prefix, Prefix),
 
@@ -1563,13 +1511,6 @@ install_library_grade_files(Globals, LinkSucceeded0, GradeDir, ModuleName,
             install_file(Globals, JarFileName, GradeLibDir, LibsSucceeded,
                 !IO),
             InitSucceeded = yes
-        else if string.prefix(GradeDir, "erlang") then
-            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/GradeDir,
-            % Our "Erlang archives" are actually directories.
-            install_directory(Globals, ErlangArchiveFileName, GradeLibDir,
-                LibsSucceeded, !IO),
-            install_grade_init(Globals, GradeDir, ModuleName, InitSucceeded,
-                !IO)
         else
             GradeLibDir = Prefix/"lib"/"mercury"/"lib"/GradeDir,
             maybe_install_library_file(Globals, "static", LibFileName,
@@ -1744,6 +1685,7 @@ install_file(Globals, FileName, InstallDir, Succeeded, !IO) :-
 
 :- pred install_directory(globals::in, dir_name::in, dir_name::in, bool::out,
     io::di, io::uo) is det.
+:- pragma consider_used(install_directory/6).
 
 install_directory(Globals, SourceDirName, InstallDir, Succeeded, !IO) :-
     verbose_make_msg(Globals,
@@ -1922,9 +1864,7 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
         csharp_executable,
         csharp_library,
         java_executable,
-        java_archive,
-        erlang_launcher,
-        erlang_archive
+        java_archive
     ],
     list.map_foldl(linked_target_file_name(Globals, ModuleName),
         LinkedTargetTypes, FileNames, !IO),
@@ -1981,10 +1921,7 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
         module_target_c_header(header_mih),
         module_target_csharp_code,
         module_target_java_code,
-        module_target_java_class_code,
-        module_target_erlang_code,
-        module_target_erlang_header,
-        module_target_erlang_beam_code], !Info, !IO),
+        module_target_java_class_code], !Info, !IO),
 
     make_remove_module_file(Globals, very_verbose, ModuleName,
         ext_other(other_ext(".used")), !Info, !IO),
@@ -2063,7 +2000,6 @@ make_module_realclean(Globals, ModuleName, !Info, !IO) :-
         module_target_int3, module_target_opt,
         module_target_analysis_registry,
         module_target_c_header(header_mh),
-        module_target_erlang_header,
         module_target_track_flags],
     list.foldl2(
         make_remove_target_file_by_name(Globals, very_verbose, ModuleName),

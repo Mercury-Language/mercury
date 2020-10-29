@@ -323,7 +323,7 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
     ],
     ( if
         list_term_to_term_list(MutAttrsTerm, MutAttrTerms),
-        map_parser(parse_mutable_attr, MutAttrTerms, MaybeAttrList),
+        map_parser(parse_mutable_attr(VarSet), MutAttrTerms, MaybeAttrList),
         MaybeAttrList = ok1(CollectedMutAttrs)
     then
         % We check for trailed/untrailed, constant/trailed,
@@ -385,10 +385,10 @@ process_mutable_attribute(mutable_attr_constant(Constant), !Attributes) :-
 process_mutable_attribute(mutable_attr_thread_local(ThrLocal), !Attributes) :-
     set_mutable_var_thread_local(ThrLocal, !Attributes).
 
-:- pred parse_mutable_attr(term::in,
+:- pred parse_mutable_attr(varset::in, term::in,
     maybe1(collected_mutable_attribute)::out) is det.
 
-parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
+parse_mutable_attr(VarSet, MutAttrTerm, MutAttrResult) :-
     ( if
         MutAttrTerm = term.functor(term.atom(String), [], _),
         (
@@ -418,9 +418,21 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
     then
         MutAttr = mutable_attr_foreign_name(foreign_name(Lang, ForeignName)),
         MutAttrResult = ok1(MutAttr)
+    else if
+        MutAttrTerm = term.functor(term.atom("foreign_name"), Args, _),
+        Args = [LangTerm, _ForeignNameTerm],
+        term_to_foreign_language_erlang(LangTerm)
+    then
+        Pieces = [words("Error in"), decl("mutable"), words("declaration:"),
+            nl, words("support for Erlang has been discontinued."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(MutAttrTerm), Pieces),
+        MutAttrResult = error1([Spec])
     else
-        Pieces = [words("Error: unrecognised attribute"),
-            words("in"), decl("mutable"), words("declaration."), nl],
+        MutAttrStr = describe_error_term(VarSet, MutAttrTerm),
+        Pieces = [words("Error in"), decl("mutable"), words("declaration:"),
+            nl, words("unrecognised attribute"), quote(MutAttrStr),
+            suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(MutAttrTerm), Pieces),
         MutAttrResult = error1([Spec])

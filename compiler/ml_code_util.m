@@ -974,7 +974,6 @@ ml_must_box_field_type(ModuleInfo, Type, Width) :-
     (
         ( Target = target_c
         ; Target = target_csharp
-        ; Target = target_erlang
         ),
         classify_type(ModuleInfo, Type) = Category,
         globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),

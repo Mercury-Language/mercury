@@ -591,15 +591,6 @@ target_type_to_extension(Globals, Target, Ext) :-
         Target = module_target_java_class_code,
         Ext = ext_other(other_ext(".class"))
     ;
-        Target = module_target_erlang_header,
-        Ext = ext_other(other_ext(".hrl"))
-    ;
-        Target = module_target_erlang_code,
-        Ext = ext_other(other_ext(".erl"))
-    ;
-        Target = module_target_erlang_beam_code,
-        Ext = ext_other(other_ext(".beam"))
-    ;
         Target = module_target_object_code(PIC),
         pic_object_file_extension(Globals, PIC, OtherExt),
         Ext = ext_other(OtherExt)
@@ -665,15 +656,6 @@ extension_to_target_type(Globals, ExtStr, Target) :-
             ExtStr = ".class",
             TargetPrime = module_target_java_class_code
         ;
-            ExtStr = ".hrl",
-            TargetPrime = module_target_erlang_header
-        ;
-            ExtStr = ".erl",
-            TargetPrime = module_target_erlang_code
-        ;
-            ExtStr = ".beam",
-            TargetPrime = module_target_erlang_beam_code
-        ;
             ExtStr = ".xml",
             TargetPrime = module_target_xml_doc
         )
@@ -718,22 +700,11 @@ linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
         module_name_to_file_name(Globals, $pred, do_not_create_dirs,
             ext_other(other_ext(".dll")), ModuleName, FileName, !IO)
     ;
-        TargetType = erlang_launcher,
-        % These are shell scripts.
-        % XXX Shouldn't the extension be ".bat" when --target-env-type
-        % is windows?
-        module_name_to_file_name(Globals, $pred, do_not_create_dirs,
-            ext_other(other_ext("")), ModuleName, FileName, !IO)
-    ;
         ( TargetType = java_archive
         ; TargetType = java_executable
         ),
         module_name_to_file_name(Globals, $pred, do_not_create_dirs,
             ext_other(other_ext(".jar")), ModuleName, FileName, !IO)
-    ;
-        TargetType = erlang_archive,
-        module_name_to_lib_file_name(Globals, $pred, do_not_create_dirs,
-            "lib", other_ext(".beams"), ModuleName, FileName, !IO)
     ).
 
 :- pred module_target_to_file_name(globals::in, maybe_create_dirs::in,
@@ -788,9 +759,6 @@ module_target_to_file_name_maybe_search(Globals, Search, MkDir, TargetType,
             ; TargetType = module_target_analysis_registry
             ; TargetType = module_target_c_code
             ; TargetType = module_target_c_header(_)
-            ; TargetType = module_target_erlang_beam_code
-            ; TargetType = module_target_erlang_code
-            ; TargetType = module_target_erlang_header
             ; TargetType = module_target_errors
             ; TargetType = module_target_opt
             ; TargetType = module_target_csharp_code
@@ -846,13 +814,6 @@ timestamp_extension(ModuleTargetType, other_ext(ExtStr)) :-
     ;
         ModuleTargetType = module_target_java_code,
         ExtStr = ".java_date"
-    ;
-        % Header files share a timestamp file with their corresponding
-        % target code files.
-        ( ModuleTargetType = module_target_erlang_code
-        ; ModuleTargetType = module_target_erlang_header
-        ),
-        ExtStr = ".erl_date"
     ).
 
 :- func search_for_file_type(module_target_type) = maybe(option).
@@ -866,8 +827,6 @@ search_for_file_type(ModuleTargetType) = MaybeSearchOption :-
         ; ModuleTargetType = module_target_csharp_code
         ; ModuleTargetType = module_target_java_code
         ; ModuleTargetType = module_target_java_class_code
-        ; ModuleTargetType = module_target_erlang_code
-        ; ModuleTargetType = module_target_erlang_beam_code
         ; ModuleTargetType = module_target_object_code(_)
         ; ModuleTargetType = module_target_foreign_object(_, _)
         ; ModuleTargetType = module_target_fact_table_object(_, _)
@@ -889,9 +848,6 @@ search_for_file_type(ModuleTargetType) = MaybeSearchOption :-
     ;
         ModuleTargetType = module_target_c_header(_),
         MaybeSearchOption = yes(c_include_directory)
-    ;
-        ModuleTargetType = module_target_erlang_header,
-        MaybeSearchOption = yes(erlang_include_directory)
     ).
 
 target_is_grade_or_arch_dependent(Target) :-
@@ -920,9 +876,6 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_csharp_code
         ; Target = module_target_java_code
         ; Target = module_target_java_class_code
-        ; Target = module_target_erlang_code
-        ; Target = module_target_erlang_beam_code
-        ; Target = module_target_erlang_header
         ; Target = module_target_object_code(_)
         ; Target = module_target_foreign_object(_, _)
         ; Target = module_target_fact_table_object(_, _)
@@ -1171,15 +1124,15 @@ module_target_type_to_nonce(Type) = X :-
     ;
         Type = module_target_java_code,
         X = 12
-    ;
-        Type = module_target_erlang_header,
-        X = 13
-    ;
-        Type = module_target_erlang_code,
-        X = 14
-    ;
-        Type = module_target_erlang_beam_code,
-        X = 15
+%   ;
+%       Type = module_target_erlang_header,
+%       X = 13
+%   ;
+%       Type = module_target_erlang_code,
+%       X = 14
+%   ;
+%       Type = module_target_erlang_beam_code,
+%       X = 15
     ;
         Type = module_target_object_code(PIC),
         X = 16 `mix` pic_to_nonce(PIC)

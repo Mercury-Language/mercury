@@ -1281,7 +1281,6 @@ get_default_initializer_for_csharp(Info, Type) = Initializer :-
         ;
             ( ForeignType = c(_)
             ; ForeignType = java(_)
-            ; ForeignType = erlang(_)
             ),
             unexpected($pred, "wrong foreign language type")
         )

@@ -5,8 +5,8 @@ bad_foreign_export_enum.m:021: In the first argument of
 bad_foreign_export_enum.m:021:   `:- pragma foreign_export_enum' declaration:
 bad_foreign_export_enum.m:021:   error: expected the name of a foreign
 bad_foreign_export_enum.m:021:   language, got `"InvalidLanguage"'.
-bad_foreign_export_enum.m:021:   The valid languages are c, C, csharp, C#,
-bad_foreign_export_enum.m:021:   erlang, Erlang, java and Java.
+bad_foreign_export_enum.m:021:   The valid languages are c, C, csharp, C#, java
+bad_foreign_export_enum.m:021:   and Java.
 bad_foreign_export_enum.m:025: In the second argument of
 bad_foreign_export_enum.m:025:   `:- pragma foreign_export_enum' declaration:
 bad_foreign_export_enum.m:025:   error: expected `type_name/type_arity', got
@@ -15,8 +15,8 @@ bad_foreign_export_enum.m:028: In the first argument of
 bad_foreign_export_enum.m:028:   `:- pragma foreign_export_enum' declaration:
 bad_foreign_export_enum.m:028:   error: expected the name of a foreign
 bad_foreign_export_enum.m:028:   language, got `"InvalidLanguage"'.
-bad_foreign_export_enum.m:028:   The valid languages are c, C, csharp, C#,
-bad_foreign_export_enum.m:028:   erlang, Erlang, java and Java.
+bad_foreign_export_enum.m:028:   The valid languages are c, C, csharp, C#, java
+bad_foreign_export_enum.m:028:   and Java.
 bad_foreign_export_enum.m:029: In the second argument of
 bad_foreign_export_enum.m:029:   `:- pragma foreign_export_enum' declaration:
 bad_foreign_export_enum.m:029:   error: expected `type_name/type_arity', got
@@ -27,3 +27,10 @@ bad_foreign_export_enum.m:030:   error: expected a list of attributes, got
 bad_foreign_export_enum.m:030:   `1234'.
 bad_foreign_export_enum.m:031: Error: expected a list of mapping elements, got
 bad_foreign_export_enum.m:031:   `5678'.
+bad_foreign_export_enum.m:034: In the first argument of
+bad_foreign_export_enum.m:034:   `:- pragma foreign_export_enum' declaration:
+bad_foreign_export_enum.m:034:   error: expected the name of a foreign
+bad_foreign_export_enum.m:034:   language, got `erlang'.
+bad_foreign_export_enum.m:034:   The valid languages are c, C, csharp, C#, java
+bad_foreign_export_enum.m:034:   and Java.
+bad_foreign_export_enum.m:034:   Support for Erlang has been discontinued.

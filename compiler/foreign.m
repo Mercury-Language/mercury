@@ -204,9 +204,6 @@ maybe_foreign_type_to_string(Lang, Type, MaybeForeignType) = String :-
     ;
         Lang = lang_java,
         String = maybe_foreign_type_to_java_string(Type, MaybeForeignType)
-    ;
-        Lang = lang_erlang,
-        unexpected($pred, "erlang")
     ).
 
 maybe_foreign_type_to_c_string(Type, MaybeForeignType) = String :-
@@ -444,8 +441,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
     % foreign_type_to_mlds_type in mlds.m.
     % Any changes here may require changes there as well.
 
-    ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava,
-        MaybeCSharp, MaybeErlang),
+    ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCSharp),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
@@ -481,17 +477,6 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
             MaybeJava = no,
             unexpected($pred, "no Java type")
         )
-    ;
-        Target = target_erlang,
-        (
-            MaybeErlang = yes(Data),
-            Data = type_details_foreign(erlang_type, MaybeUserEqComp,
-                Assertions),
-            Name = unqualified("")
-        ;
-            MaybeErlang = no,
-            unexpected($pred, "no Erlang type")
-        )
     ).
 
 have_foreign_type_for_backend(Target, ForeignTypeBody, Have) :-
@@ -504,9 +489,6 @@ have_foreign_type_for_backend(Target, ForeignTypeBody, Have) :-
     ;
         Target = target_csharp,
         Have = ( if ForeignTypeBody ^ csharp = yes(_) then yes else no )
-    ;
-        Target = target_erlang,
-        Have = ( if ForeignTypeBody ^ erlang = yes(_) then yes else no )
     ).
 
 foreign_type_body_has_user_defined_eq_comp_pred(ModuleInfo, Body,
@@ -572,7 +554,6 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
         ;
             ( ForeignLanguage = lang_csharp
             ; ForeignLanguage = lang_java
-            ; ForeignLanguage = lang_erlang
             ),
             unimplemented_combination(TargetLanguage, ForeignLanguage)
         )
@@ -583,7 +564,6 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
         ;
             ( ForeignLanguage = lang_c
             ; ForeignLanguage = lang_java
-            ; ForeignLanguage = lang_erlang
             ),
             unimplemented_combination(TargetLanguage, ForeignLanguage)
         )
@@ -594,18 +574,6 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
         ;
             ( ForeignLanguage = lang_c
             ; ForeignLanguage = lang_csharp
-            ; ForeignLanguage = lang_erlang
-            ),
-            unimplemented_combination(TargetLanguage, ForeignLanguage)
-        )
-    ;
-        TargetLanguage = lang_erlang,
-        (
-            ForeignLanguage = lang_erlang
-        ;
-            ( ForeignLanguage = lang_c
-            ; ForeignLanguage = lang_csharp
-            ; ForeignLanguage = lang_java
             ),
             unimplemented_combination(TargetLanguage, ForeignLanguage)
         )
