@@ -641,7 +641,7 @@
 
 :- type tc_rtti_name
     --->    type_class_base_typeclass_info(
-                % The name of the odule containing the instance declaration.
+                % The name of the module containing the instance declaration.
                 module_name,
 
                 % A string that uniquely and reversibly encodes
