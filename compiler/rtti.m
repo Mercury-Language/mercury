@@ -22,9 +22,6 @@
 % and which we can then convert to either LLDS or MLDS. The LLDS actually
 % incorporates this data structure unchanged.
 %
-% Any changes here will probably need to be reflected in
-% library/erlang_rtti_implementation.m.
-%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.rtti.
