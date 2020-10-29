@@ -136,6 +136,8 @@
     ;       compound_lt.
             % Comparisons on values of non-atomic types. This is likely to be
             % supported only on very high-level back-ends.
+            % XXX The only backend that used these was erlang, which
+            % has been deleted.
 
     % For the MLDS back-end, we need to know the element type for each
     % array_index operation.

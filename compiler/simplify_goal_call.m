@@ -1122,7 +1122,7 @@ simplify_inline_builtin_inequality(TI, X, Y, Inequality, Invert, GoalInfo,
 
 simplify_improve_builtin_compare(_ModeNum, Args, Context,
         GoalExpr, GoalInfo, !Info) :-
-    % On the Erlang backend, it is faster for us to use builtin comparison
+    % On the Erlang backend, it was faster for us to use builtin comparison
     % operators on high level data structures than to deconstruct the data
     % structure and compare the atomic constituents. We can only do this
     % on values of types which we know not to have user-defined equality

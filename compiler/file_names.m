@@ -444,19 +444,6 @@ decide_base_name_parent_dirs_other(OtherExt, ModuleName,
         BaseParentDirs = ["jmercury"],
         mangle_sym_name_for_java(ModuleName, module_qual, "__",
             BaseNameNoExt)
-    else if
-        % Erlang uses `.' as a package separator and expects a module
-        % `a.b.c' to be in a file `a/b/c.erl'. Rather than that, we use
-        % a flat namespace with `__' as module separators.
-        ( string.suffix(ExtStr, ".erl")
-        ; string.suffix(ExtStr, ".hrl")
-        ; string.suffix(ExtStr, ".beam")
-        )
-    then
-        EffectiveModuleName =
-            qualify_mercury_std_library_module_name(ModuleName),
-        BaseParentDirs = [],
-        BaseNameNoExt = sym_name_to_string_sep(EffectiveModuleName, "__")
     else
         BaseParentDirs = [],
         BaseNameNoExt = sym_name_to_string_sep(ModuleName, ".")
@@ -483,13 +470,8 @@ choose_file_name(Globals, _From, Search, OtherExt,
         % use the plain file name. This is so that searches for files
         % in installed libraries will work. `--c-include-directory' is
         % set so that searches for files in the current directory will work.
-        % Similarly for `.hrl' files. We set `--erlang-include-directory'
-        % for those.
-
         Search = do_search,
-        ( ExtStr = ".mih"
-        ; ExtStr = ".hrl"
-        )
+        ExtStr = ".mih"
     then
         DirComponents = [],
         FileName = BaseNameNoExt ++ ExtStr
@@ -559,7 +541,6 @@ is_current_dir_extension(ExtStr) :-
     ; ExtStr = ".dylib"
     ; ExtStr = ".$(EXT_FOR_SHARED_LIB)"
     ; ExtStr = ".jar"
-    ; ExtStr = ".beams"
     ; ExtStr = ".init"
 
     % XXX Describe me.
@@ -591,8 +572,6 @@ is_current_dir_extension(ExtStr) :-
     ; ExtStr = ".ils"
     ; ExtStr = ".javas"
     ; ExtStr = ".classes"
-    ; ExtStr = ".erls"
-    ; ExtStr = ".beams"
     ; ExtStr = ".opts"
     ; ExtStr = ".trans_opts"
     ; ExtStr = ".all_ints"
@@ -786,19 +765,12 @@ file_is_arch_or_grade_dependent_2(".java").
 file_is_arch_or_grade_dependent_2(".java_date").
 file_is_arch_or_grade_dependent_2(".jar").
 file_is_arch_or_grade_dependent_2(".class").
-file_is_arch_or_grade_dependent_2(".erl").
-file_is_arch_or_grade_dependent_2(".erl_date").
-file_is_arch_or_grade_dependent_2(".beam").
-file_is_arch_or_grade_dependent_2(".beams").
-file_is_arch_or_grade_dependent_2(".hrl").
 file_is_arch_or_grade_dependent_2(".dir").
 file_is_arch_or_grade_dependent_2(".dll").
 file_is_arch_or_grade_dependent_2(".$A").
 file_is_arch_or_grade_dependent_2(".a").
 file_is_arch_or_grade_dependent_2("_init.c").
 file_is_arch_or_grade_dependent_2("_init.$O").
-file_is_arch_or_grade_dependent_2("_init.erl").
-file_is_arch_or_grade_dependent_2("_init.beam").
 
 %---------------------------------------------------------------------------%
 

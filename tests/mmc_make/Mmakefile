@@ -41,7 +41,7 @@ complex_test.log: install_libs
 # Check that included files are identified as dependencies of the target code.
 # sleep 1 is required because mmc --make timestamps are not granular enough.
 include_file2.runtest: include_file
-	sleep 1 && touch inc/code.c inc/code.java inc/code.cs inc/code.erl
+	sleep 1 && touch inc/code.c inc/code.java inc/code.cs
 	$(MCM) --verbose-make include_file > include_file2.err 2>&1
 	grep '^Making Mercury/.*/include_file[.]' include_file2.err
 
@@ -61,7 +61,7 @@ install_libs: start_runtests_local
 	$(MMAKE) TESTS_FLAGS
 	( cd lib; \
 	$(MCM) --no-libgrade --install-prefix $(shell pwd)/install \
-			libcomplex_numbers.install ) \
+		libcomplex_numbers.install ) \
 	|| touch complex_test.failed
 
 .PHONY: install_libs_linkage_test2
@@ -69,7 +69,7 @@ install_libs_linkage_test2: start_runtests_local
 	$(MMAKE) TESTS_FLAGS
 	( cd lib; \
 	$(MCM) --no-libgrade --install-prefix $(shell pwd)/install \
-			liblinkage_test2.install --lib-linkage static ) \
+		liblinkage_test2.install --lib-linkage static ) \
 	|| touch linkage_test.failed
 
 # Copy/symlink TESTS_FLAGS into the current directory for when

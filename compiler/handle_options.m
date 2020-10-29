@@ -253,7 +253,7 @@ check_option_values(!OptionTable, Target, GC_Method, TermNorm, Term2Norm,
         TargetSpec =
             [words("Invalid argument"), quote(TargetStr), words("to the"),
             quote("--target"), words("option; must be")] ++
-            list_to_quoted_pieces_or(["c", "java", "csharp", "erlang"]) ++
+            list_to_quoted_pieces_or(["c", "java", "csharp"]) ++
             [suffix("."), nl],
         add_error(phase_options, TargetSpec, !Specs)
     ),
@@ -1153,7 +1153,6 @@ check_for_incompatibilities(!.Globals, OpMode, !Specs) :-
     %   highlevel_code
     %   nondet_copy_out
     %   num_ptag_bits
-    %   order_constructors_for_erlang
     %   pretest_equality_cast_pointers
     %   put_commit_in_own_func
     %   put_nondet_env_on_heap
@@ -2207,7 +2206,6 @@ maybe_disable_smart_recompilation(OpMode, !Globals, !IO) :-
     %   c_include_directory
     %   config_file
     %   default_runtime_library_directory
-    %   erlang_include_directory
     %   init_file_directories
     %   intermod_directories
     %   libgrade_install_check
@@ -2325,7 +2323,7 @@ handle_directory_options(OpMode, !Globals) :-
         true
     ),
 
-    % Handle the `.opt', C and Erlang header, init file and library search
+    % Handle the `.opt', C header, init file and library search
     % directories for installed libraries. These couldn't be handled by
     % options.m because they are grade dependent.
     globals.lookup_accumulating_option(!.Globals,
@@ -2361,10 +2359,6 @@ handle_directory_options(OpMode, !Globals) :-
             CIncludeDirs),
         globals.set_option(c_include_directory,
             accumulating(ExtraIncludeDirs ++ CIncludeDirs), !Globals),
-        globals.lookup_accumulating_option(!.Globals,
-            erlang_include_directory, ErlangIncludeDirs),
-        globals.set_option(erlang_include_directory,
-            accumulating(ExtraIncludeDirs ++ ErlangIncludeDirs), !Globals),
 
         ExtraIntermodDirs = list.map(
             ( func(MercuryLibDir) =
@@ -2474,15 +2468,12 @@ handle_directory_options(OpMode, !Globals) :-
         (
             UseGradeSubdirs = bool.yes,
             ToMihsSubdir =
-                (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"mihs"),
-            ToHrlsSubdir =
-                (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"hrls")
+                (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"mihs")
         ;
             UseGradeSubdirs = bool.no,
             (
                 UseSubdirs = yes,
-                ToMihsSubdir = (func(Dir) = Dir/"Mercury"/"mihs"),
-                ToHrlsSubdir = (func(Dir) = Dir/"Mercury"/"hrls")
+                ToMihsSubdir = (func(Dir) = Dir/"Mercury"/"mihs")
             ;
                 UseSubdirs = no,
                 fail
@@ -2496,14 +2487,7 @@ handle_directory_options(OpMode, !Globals) :-
         SubdirCIncludeDirs = [dir.this_directory, MihsSubdir |
             SearchLibMihsSubdirs ++ CIncludeDirs1],
         globals.set_option(c_include_directory,
-            accumulating(SubdirCIncludeDirs), !Globals),
-
-        globals.lookup_accumulating_option(!.Globals,
-            erlang_include_directory, ErlangIncludeDirs1),
-        HrlsSubdir = ToHrlsSubdir(dir.this_directory),
-        SubdirErlangIncludeDirs = [HrlsSubdir | ErlangIncludeDirs1],
-        globals.set_option(erlang_include_directory,
-            accumulating(SubdirErlangIncludeDirs), !Globals)
+            accumulating(SubdirCIncludeDirs), !Globals)
     else
         true
     ).

@@ -63,11 +63,6 @@
     module_and_imports::in, file_name::in, file_name::in, bool::out,
     io::di, io::uo) is det.
 
-    % compile_erlang_file(Globals, ErrorStream, ErlangFile, Succeeded, !IO)
-    %
-:- pred compile_erlang_file(globals::in, io.output_stream::in, file_name::in,
-    bool::out, io::di, io::uo) is det.
-
     % make_library_init_file(Globals, ErrorStream, MainModuleName, ModuleNames,
     %   Succeeded, !IO):
     %
@@ -76,27 +71,11 @@
 :- pred make_library_init_file(globals::in, io.output_stream::in,
     module_name::in, list(module_name)::in, bool::out, io::di, io::uo) is det.
 
-    % make_erlang_init_library(Globals, ErrorStream, MainModuleName,
-    %   ModuleNames, Succeeded, !IO):
-    %
-    % Make the `.init' file for an Erlang library containing the given
-    % modules.
-    %
-:- pred make_erlang_library_init_file(globals::in, io.output_stream::in,
-    module_name::in, list(module_name)::in, bool::out, io::di, io::uo) is det.
-
     % make_init_obj_file(Globals, ErrorStream, MainModuleName, AllModuleNames,
     %   MaybeInitObjFileName)
     %
 :- pred make_init_obj_file(globals::in, io.output_stream::in, module_name::in,
     list(module_name)::in, maybe(file_name)::out, io::di, io::uo) is det.
-
-    % make_erlang_program_init_file(Globals, ErrorStream, MainModuleName,
-    %   AllModuleNames, MaybeInitObjFileName, !IO)
-    %
-:- pred make_erlang_program_init_file(globals::in, io.output_stream::in,
-    module_name::in, list(module_name)::in, maybe(file_name)::out,
-    io::di, io::uo) is det.
 
     % link_module_list(ModulesToLink, ExtraObjFiles, Globals, Succeeded, !IO):
     %
@@ -1082,79 +1061,11 @@ referenced_dlls(Module, DepModules0) = Modules :-
 
 %-----------------------------------------------------------------------------%
 
-compile_erlang_file(Globals, ErrorStream, ErlangFile, Succeeded, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Compiling `", !IO),
-    maybe_write_string(Verbose, ErlangFile, !IO),
-    maybe_write_string(Verbose, "':\n", !IO),
-    globals.lookup_string_option(Globals, erlang_compiler, ErlangCompiler),
-    globals.lookup_accumulating_option(Globals, erlang_flags,
-        ErlangFlagsList0),
-    globals.lookup_bool_option(Globals, erlang_native_code, ErlangNativeCode),
-    globals.lookup_bool_option(Globals, erlang_inhibit_trivial_warnings,
-        ErlangInhibitTrivialWarnings),
-    (
-        ErlangNativeCode = yes,
-        ErlangFlagsList1 = ["+native" | ErlangFlagsList0]
-    ;
-        ErlangNativeCode = no,
-        ErlangFlagsList1 = ErlangFlagsList0
-    ),
-    (
-        ErlangInhibitTrivialWarnings = yes,
-        ErlangFlagsList = ["+nowarn_unused_vars", "+nowarn_unused_function"
-            | ErlangFlagsList1]
-    ;
-        ErlangInhibitTrivialWarnings = no,
-        ErlangFlagsList = ErlangFlagsList1
-    ),
-    ERLANGFLAGS = string.join_list(" ", ErlangFlagsList),
-
-    globals.lookup_accumulating_option(Globals, erlang_include_directory,
-        Erlang_Incl_Dirs),
-    InclOpt = string.append_list(list.condense(list.map(
-        (func(E_INCL) = ["-I", quote_arg(E_INCL), " "]), Erlang_Incl_Dirs))),
-
-    globals.lookup_bool_option(Globals, use_subdirs, UseSubdirs),
-    globals.lookup_bool_option(Globals, use_grade_subdirs, UseGradeSubdirs),
-    globals.lookup_string_option(Globals, target_arch, TargetArch),
-    (
-        UseSubdirs = yes,
-        (
-            UseGradeSubdirs = yes,
-            grade_directory_component(Globals, Grade),
-            DirName = "Mercury"/Grade/TargetArch/"Mercury"/"beams"
-        ;
-            UseGradeSubdirs = no,
-            DirName = "Mercury"/"beams"
-        ),
-        % Create the destination directory.
-        dir.make_directory(DirName, _, !IO),
-        % Set destination directory for .beam files.
-        DestDir = "-o " ++ DirName ++ " "
-    ;
-        UseSubdirs = no,
-        DestDir = ""
-    ),
-
-    string.append_list([ErlangCompiler, " ", InclOpt, DestDir, ERLANGFLAGS,
-        " ", ErlangFile], Command),
-    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
-        Succeeded, !IO).
-
-%-----------------------------------------------------------------------------%
-
 make_library_init_file(Globals, ErrorStream, MainModuleName, AllModules,
         Succeeded, !IO) :-
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
     make_library_init_file_2(Globals, ErrorStream, MainModuleName, AllModules,
         ext_other(other_ext(".c")), MkInit, Succeeded, !IO).
-
-make_erlang_library_init_file(Globals, ErrorStream, MainModuleName, AllModules,
-        Succeeded, !IO) :-
-    globals.lookup_string_option(Globals, mkinit_erl_command, MkInit),
-    make_library_init_file_2(Globals, ErrorStream, MainModuleName, AllModules,
-        ext_other(other_ext(".erl")), MkInit, Succeeded, !IO).
 
 :- pred make_library_init_file_2(globals::in, io.output_stream::in,
     module_name::in, list(module_name)::in, ext::in, string::in,
@@ -1340,49 +1251,6 @@ do_make_init_obj_file(Globals, ErrorStream, MustCompile, ModuleName,
         ),
     maybe_compile_init_obj_file(Globals, MaybeInitTargetFile, MustCompile,
         CompileCInitFile, InitObjFileName, Result, !IO).
-
-make_erlang_program_init_file(Globals, ErrorStream, ModuleName, ModuleNames,
-        Result, !IO) :-
-    globals.lookup_bool_option(Globals, rebuild, MustCompile),
-    globals.lookup_maybe_string_option(Globals,
-        mercury_standard_library_directory, MaybeStdLibDir),
-    grade_directory_component(Globals, GradeDir),
-    (
-        MaybeStdLibDir = yes(StdLibDir),
-        StdInitFileNames = [
-            StdLibDir / "modules" / GradeDir / "mer_std.init"
-        ],
-        SourceDebugInitFileNames = [
-            StdLibDir / "modules" / GradeDir / "mer_ssdb.init"
-        ]
-    ;
-        MaybeStdLibDir = no,
-        StdInitFileNames = [],
-        SourceDebugInitFileNames = []
-    ),
-    % Tracing is not supported in Erlang backend.
-    StdTraceInitFileNames = [],
-
-    % We need to pass the module name to mkinit_erl.
-    ErlangModuleName = qualify_mercury_std_library_module_name(ModuleName),
-    ModuleNameStr = sym_name_to_string_sep(ErlangModuleName, "__") ++ "_init",
-    ModuleNameOption = " -m " ++ quote_arg(ModuleNameStr),
-
-    globals.lookup_string_option(Globals, mkinit_erl_command, MkInitErl),
-    make_init_target_file(Globals, ErrorStream, MkInitErl, ModuleName,
-        ModuleNames, other_ext(".erl"), other_ext("_init.erl"),
-        StdInitFileNames, StdTraceInitFileNames, SourceDebugInitFileNames,
-        ModuleNameOption, MaybeInitTargetFile, !IO),
-
-    module_name_to_file_name(Globals, $pred, do_create_dirs,
-        ext_other(other_ext("_init.beam")), ModuleName, InitObjFileName, !IO),
-    CompileErlangInitFile =
-        ( pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
-            compile_erlang_file(Globals, ErrorStream, InitTargetFileName, Res,
-                IO0, IO)
-        ),
-    maybe_compile_init_obj_file(Globals, MaybeInitTargetFile, MustCompile,
-        CompileErlangInitFile, InitObjFileName, Result, !IO).
 
 :- pred make_init_target_file(globals::in, io.output_stream::in, string::in,
     module_name::in, list(module_name)::in, other_ext::in, other_ext::in,

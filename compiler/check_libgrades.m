@@ -72,10 +72,9 @@ check_stdlib_is_installed(Globals, GradeDirName, Succeeded, !IO) :-
         globals.get_target(Globals, Target),
         (
             Target = target_c,
-            % In C or Erlang grades, check for the presence of mer_std.init in
-            % the required grade.  Unless the installation is broken this
-            % implies the presence of the other standard library files in that
-            % grade.
+            % In C grades, check for the presence of mer_std.init in the
+            % required grade. Unless the installation is broken, this implies
+            % the presence of the other standard library files in that grade.
             StdLibCheckFile =
                 StdLibDir / "modules" / GradeDirName / "mer_std.init"
         ;
@@ -115,7 +114,7 @@ check_stdlib_is_installed(Globals, GradeDirName, Succeeded, !IO) :-
 check_library_is_installed(Globals, GradeDirName, LibName, !Succeeded, !IO) :-
     globals.get_target(Globals, Target),
     (
-        % In C and Erlang grades, check for the presence of a library by seeing
+        % In C grades, check for the presence of a library by seeing
         % if its .init files exists.
         Target = target_c,
         CheckFileName = LibName ++ ".init",

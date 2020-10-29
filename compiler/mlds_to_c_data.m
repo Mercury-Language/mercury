@@ -676,8 +676,8 @@ mlds_output_binop(Opts, Op, X, Y, !IO) :-
         ( Op = compound_lt
         ; Op = compound_eq
         ),
-        % These operators are intended to be generated only when using
-        % the Erlang backend.
+        % These operators were intended to be generated only when using
+        % the now-deleted Erlang backend.
         unexpected($pred, "compound_compare_binop")
     ;
         Op = pointer_equal_conservative,

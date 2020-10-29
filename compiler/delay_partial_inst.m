@@ -12,7 +12,7 @@
 %
 % This module runs just after mode analysis on mode-correct procedures and
 % tries to transform procedures to avoid intermediate partially instantiated
-% data structures. The Erlang backend in particular cannot handle partially
+% data structures. The Erlang backend in particular could not handle partially
 % instantiated data structures (we cannot use destructive update to further
 % instantiate data structures since all values are immutable).
 %

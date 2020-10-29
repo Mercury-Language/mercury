@@ -113,7 +113,6 @@
 
     % Add a directory to search for Mercury libraries. This
     % adds `--search-directory', `--c-include-directory',
-    % `--erlang-include-directory',
     % `--library-directory' and `--init-file-directory' options.
     %
 :- pred option_table_add_mercury_library_directory(string::in,
@@ -122,8 +121,7 @@
     % Add a directory using all of the
     % `--search-directory', `--intermod-directory',
     % `--library-directory', `--init-file-directory' and
-    % `--c-include-directory', `--erlang-include-directory'
-    % options.
+    % `--c-include-directory', options.
     %
 :- pred option_table_add_search_library_files_directory(string::in,
     option_table::in, option_table::out) is det.
@@ -608,11 +606,9 @@
     ;       can_compare_compound_values
             % Should be set to yes if the target back end supports comparison
             % of non-atomic values with builtin operators.
-
-    ;       order_constructors_for_erlang
-            % Should be set to yes if we need to order functors the way Erlang
-            % expects them to be ordered, i.e. first by arity, then by
-            % lexicographic order on function symbol name.
+            % XXX This was never automatically set to "yes" even when we
+            % still had the Erlang backend. None of our other target languages
+            % had ever had this capability.
 
     ;       delay_partial_instantiations
 
@@ -1579,7 +1575,6 @@ optdef(oc_internal, body_typeinfo_liveness,             bool(no)).
 optdef(oc_internal, can_compare_constants_as_ints,      bool(no)).
 optdef(oc_internal, pretest_equality_cast_pointers,     bool(no)).
 optdef(oc_internal, can_compare_compound_values,        bool(no)).
-optdef(oc_internal, order_constructors_for_erlang,      bool(no)).
 optdef(oc_internal, delay_partial_instantiations,       bool(no)).
 optdef(oc_internal, allow_defn_of_builtins,             bool(no)).
 optdef(oc_internal, type_ctor_info,                     bool(yes)).
@@ -2535,8 +2530,6 @@ long_option("body-typeinfo-liveness",   body_typeinfo_liveness).
 long_option("can-compare-constants-as-ints",    can_compare_constants_as_ints).
 long_option("pretest-equality-cast-pointers",   pretest_equality_cast_pointers).
 long_option("can-compare-compound-values",      can_compare_compound_values).
-long_option("order-constructors-for-erlang",
-                                    order_constructors_for_erlang).
 long_option("delay-partial-instantiations", delay_partial_instantiations).
 long_option("allow-defn-of-builtins",           allow_defn_of_builtins).
 long_option("type-ctor-info",       type_ctor_info).
@@ -4164,7 +4157,6 @@ options_help -->
     options_help_hlds_llds_optimization,
     options_help_llds_llds_optimization,
     options_help_mlds_mlds_optimization,
-    options_help_hlds_elds_optimization,
     options_help_output_optimization,
     options_help_target_code_compilation,
     options_help_link,
@@ -5081,8 +5073,8 @@ options_help_compilation_model -->
     write_tabbed_lines([
         "-s <grade>, --grade <grade>",
         "\tSelect the compilation model. The <grade> should be one of",
-        "\tthe base grades `none', `reg', `asm_fast', `hlc', `java',",
-        "\t`csharp' or `erlang'",
+        "\tthe base grades `none', `reg', `asm_fast', `hlc', `java' or,",
+        "\t`csharp'.",
 
 % The following base grade components are not publicly documented:
 %
@@ -5113,8 +5105,7 @@ options_help_compilation_model -->
         "--target c\t\t\t(grades: none, reg, asm_fast, hlc)",
         "--target csharp\t\t\t(grades: csharp)",
         "--target java\t\t\t(grades: java)",
-        "--target erlang\t\t\t(grades: erlang)",
-        "\tSpecify the target language: C, C#, Java or Erlang.",
+        "\tSpecify the target language: C, C# or Java.",
         "\tThe default is C.",
         "\tTargets other than C imply `--high-level-code' (see below).",
 
@@ -5130,13 +5121,6 @@ options_help_compilation_model -->
         "--java-only",
         "\tAn abbreviation for `--target java --target-code-only'.",
         "\tGenerate Java code in `<module>.java', but do not generate",
-        "\tobject code.",
-
-        "--erlang",
-        "\tAn abbreviation for `--target erlang'.",
-        "--erlang-only",
-        "\tAn abbreviation for `--target erlang --target-code-only'.",
-        "\tGenerate Erlang code in `<module>.erl', but do not generate",
         "\tobject code.",
 
         "--compile-to-c",
@@ -5175,13 +5159,13 @@ options_help_compilation_model -->
         "\tgenerated code, and also output some profiling",
         "\tinformation (the static call graph) to the file",
         "\t`<module>.prof'.",
-        "\tThis option is not supported for the C#, Erlang or Java back-ends.",
+        "\tThis option is not supported for the C# or Java back-ends.",
         "--memory-profiling\t\t(grade modifier: `.memprof')",
         "\tEnable memory and call profiling.",
-        "\tThis option is not supported for the C#, Erlang or Java back-ends.",
+        "\tThis option is not supported for the C# or Java back-ends.",
         "--deep-profiling\t\t(grade modifier: `.profdeep')",
         "\tEnable deep profiling.",
-        "\tThis option is not supported for the high-level C, C#, Erlang",
+        "\tThis option is not supported for the high-level C, C#",
         "\tor Java back-ends.",
 
 % This option is not documented, it is intended for use by developers only.
@@ -5278,8 +5262,8 @@ options_help_compilation_model -->
     write_tabbed_lines([
         "--gc {none, boehm, hgc, accurate, automatic}",
         "--garbage-collection {none, boehm, hgc, accurate, automatic}",
-        "\t\t\t\t(`java', `csharp', and `erlang'",
-        "\t\t\t\t\tgrades use `--gc automatic',",
+        "\t\t\t\t(`java' and `csharp' grades",
+        "\t\t\t\t\t use `--gc automatic',",
         "\t\t\t\t`.gc' grades use `--gc boehm',",
         "\t\t\t\t`.hgc' grades use `--gc hgc',",
         "\t\t\t\tother grades use `--gc none'.)",
@@ -5290,15 +5274,14 @@ options_help_compilation_model -->
         "\t`accurate' is our own type-accurate copying GC;",
         "\tit requires `--high-level-code'.",
         "\t`automatic' means the target language provides it.",
-        "\tThis is the case for the C#, Java and Erlang back-ends,",
+        "\tThis is the case for the C# and Java back-ends,",
         "\twhich always use the garbage collector of the underlying",
         "\timplementation.",
         "--use-trail\t\t\t(grade modifier: `.tr')",
         "\tEnable use of a trail.",
         "\tThis is necessary for interfacing with constraint solvers,",
         "\tor for backtrackable destructive update.",
-        "\tThis option is not yet supported for the C#, Java",
-        "\tor Erlang back-ends.",
+        "\tThis option is not yet supported for the C# or Java backends.",
         "--trail-segments\t\t\t(grade modifier: `.trseg')",
         "\tThis option is deprecated as trail segments are now used by",
         "\tdefault. The `.trseg' grade modifier is a synonym for `.tr'.",
@@ -5316,7 +5299,7 @@ options_help_compilation_model -->
         "\tUse single precision floats so that, on 32-bit machines,",
         "\tfloating point values don't need to be boxed. Double",
         "\tprecision floats are used by default.",
-        "\tThis option is not supported for the C#, Java or Erlang back-ends."
+        "\tThis option is not supported for the C# or Java back-ends."
         % This is commented out as this feature is still experimental.
         %"--extend-stacks-when-needed",
         %"\tSpecify that code that increments a stack pointer must",
@@ -6181,18 +6164,6 @@ options_help_mlds_mlds_optimization -->
         "\tin the standard library."
 ]).
 
-:- pred options_help_hlds_elds_optimization(io::di, io::uo) is det.
-
-options_help_hlds_elds_optimization -->
-    io.write_string("\n    HLDS -> ELDS optimizations:\n"),
-    write_tabbed_lines([
-        "--erlang-switch-on-strings-as-atoms",
-        "\tEnable a workaround for slow HiPE compilation of large string",
-        "\tswitches by converting the string to an atom at runtime and",
-        "\tswitching on atoms. Do not enable if the string switched on",
-        "\tcould be longer than 255 characters at runtime."
-    ]).
-
 :- pred options_help_output_optimization(io::di, io::uo) is det.
 
 options_help_output_optimization -->
@@ -6314,32 +6285,7 @@ options_help_target_code_compilation -->
         "\tto be quoted when passed to the shell.",
         "--cli-interpreter <prog>",
         "\tSpecify the program that implements the Common Language",
-        "\tInfrastructure (CLI) execution environment, e.g. `mono'.",
-
-        "--erlang-compiler <erlc>",
-        "\tSpecify the name of the Erlang compiler.",
-        "\tThe default is `erlc'.",
-        "--erlang-interpreter <erl>",
-        "\tSpecify the name of the Erlang interpreter.",
-        "\tThe default is `erl'.",
-        "--erlang-flags <options>, --erlang-flag <option>",
-        "\tSpecify options to be passed to the Erlang compiler.",
-        "\t`--erlang-flag' should be used for single words which need",
-        "\tto be quoted when passed to the shell.",
-        "--erlang-include-directory <dir>, --erlang-include-dir <dir>",
-        "\tAppend <dir> to the list of directories to be searched for",
-        "\tErlang header files (.hrl).",
-        "--erlang-native-code",
-        "\tAdd `+native' to the list of flags passed to the",
-        "\tErlang compiler. Cancelled out by `--no-erlang-native code'",
-        "\tso it is useful when you wish to enable native code",
-        "\tgeneration for all modules except for a select few.",
-        "--no-erlang-inhibit-trivial-warnings",
-        "\tDo not add `+nowarn_unused_vars +nowarn_unused_function' to the",
-        "\tlist of flags passed to the Erlang compiler."
-
-        % --erlang-object-file-extension is deliberately not documented.
-        % It is not fully implemented and not very useful.
+        "\tInfrastructure (CLI) execution environment, e.g. `mono'."
     ]).
 
 :- pred options_help_link(io::di, io::uo) is det.

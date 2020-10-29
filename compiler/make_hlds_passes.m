@@ -888,9 +888,6 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
     % (3) record the initpred/cname pair in the ModuleInfo so that
     %     code generation can ensure CName is called during module
     %     initialisation.
-    %
-    % For the Erlang backend, we need to have the initpred recorded in the
-    % ModuleInfo. This is implied by the handling for the C backends.
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     predicate_table_lookup_pred_sym_arity(PredTable,
@@ -948,9 +945,6 @@ implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
     % (2) add `:- pragma foreign_export("C", finalpred(di, uo), CName).',
     % (3) record the finalpred/cname pair in the ModuleInfo so that
     % code generation can ensure cname is called during module finalisation.
-    %
-    % For the Erlang backend, we need to have the finalpred recorded in the
-    % ModuleInfo. This is implied by the handling for the C backends.
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     predicate_table_lookup_pred_sym_arity(PredTable,

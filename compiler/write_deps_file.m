@@ -212,9 +212,9 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
 
     % Generate the contents of the module's .d file.
     %
-    % The mmake rules we construct treat C differently from Java, C# and
-    % Erlang. The reason is that we support using mmake when targeting C,
-    % but require the use of --use-mmc-make when targeting Java, C# and Erlang.
+    % The mmake rules we construct treat C differently from Java and C#.
+    % The reason is that we support using mmake when targeting C, but require
+    % the use of --use-mmc-make when targeting Java and C#.
     %
     % Initially, when the only target language was C, the only build system
     % we had was mmake, so the mmake rules we generate here can do everything
@@ -457,8 +457,8 @@ construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
         OptDateFileName, TransOptDateFileName, ForeignIncludeFilesCord,
         CDateFileName, JavaDateFileName, ErrFileName,
         FactTableSourceGroups, MmakeRuleDateFileDeps, !IO) :-
-    % For the reason for why there is no mention of a date file for C#
-    % or Erlang here, see the comment at the top of generate_d_file.
+    % For the reason for why there is no mention of a date file for C# here,
+    % see the comment at the top of generate_d_file.
     TargetGroup = mmake_file_name_group("dates_and_err",
         one_or_more(OptDateFileName,
             [TransOptDateFileName, ErrFileName,
@@ -697,7 +697,7 @@ construct_c_header_rules(Globals, ModuleName, AllDeps,
 
     % The `.module_dep' file is made as a side effect of
     % creating the `.c' or `.java'.
-    % XXX What about C# and Erlang?
+    % XXX What about C#?
     % (See the main comment on generate_d_file above.
     %
 :- pred construct_module_dep_fragment(globals::in, module_name::in,

@@ -1210,19 +1210,10 @@ generate_compare_proc_body_enum(Context, Res, X, Y, Clause, !Info) :-
     list(constructor_repn)::in, prog_var::in, prog_var::in, prog_var::in,
     clause::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_proc_body_du(SpecDefnInfo, CtorRepns0, Res, X, Y, Clause,
+generate_compare_proc_body_du(SpecDefnInfo, CtorRepns, Res, X, Y, Clause,
         !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, order_constructors_for_erlang,
-        ErlangOrder),
-    (
-        ErlangOrder = yes,
-        list.sort(compare_ctors_for_erlang, CtorRepns0, CtorRepns)
-    ;
-        ErlangOrder = no,
-        CtorRepns = CtorRepns0
-    ),
     expect_not(unify(CtorRepns, []), $pred,
         "compare for type with no functors"),
     UCOptions = lookup_unify_compare_options(!.Info),
@@ -1351,30 +1342,6 @@ is_ctor_with_all_locally_packed_unsigned_args(CtorRepn, PtagUint8) :-
             )
         ),
     list.all_true(IsArgUnsignedComparable, CtorArgRepns).
-
-    % Order constructors the way Erlang does it: first by arity,
-    % then by lexicographic order on the name.
-    %
-:- pred compare_ctors_for_erlang(constructor_repn::in, constructor_repn::in,
-    comparison_result::out) is det.
-
-compare_ctors_for_erlang(CtorRepnA, CtorRepnB, Res) :-
-    list.length(CtorRepnA ^ cr_args, ArityA),
-    list.length(CtorRepnB ^ cr_args, ArityB),
-    compare(ArityRes, ArityA, ArityB),
-    (
-        ArityRes = (=),
-        % XXX This assumes the string ordering used by the Mercury compiler
-        % is the same as that of the target language compiler.
-        NameA = unqualify_name(CtorRepnA ^ cr_name),
-        NameB = unqualify_name(CtorRepnB ^ cr_name),
-        compare(Res, NameA, NameB)
-    ;
-        ( ArityRes = (<)
-        ; ArityRes = (>)
-        ),
-        Res = ArityRes
-    ).
 
 %---------------------%
 
@@ -2920,8 +2887,8 @@ compute_maybe_packable_args_locn(ConsTag) = ArgsLocn :-
         ),
         % These ConsTags are for terms that have no arguments.
         % *If* we can compare constants as ints, we should never get here,
-        % but in some situations (such as the Erlang grade), we cannot compare
-        % them as ints, which *does* allow us to get here.
+        % but in some situations (such as the now-deleted Erlang grade),
+        % we cannot compare them as ints, which *does* allow us to get here.
         ArgsLocn = unpackable_args
     ).
 

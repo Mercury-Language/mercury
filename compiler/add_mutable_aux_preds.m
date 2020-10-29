@@ -383,101 +383,6 @@
 %   ").
 %
 %-----------------------------------------------------------------------------%
-%
-% ERLANG BACKEND
-%
-% Every Erlang "process" has an associated process dictionary, which we can use
-% to implement mutables. However, since a process dictionary is local to the
-% process, it would not work (in multi-process/multi-threaded programs) to just
-% have each process work with its own process dictionary. Therefore, at
-% initialisation time we start up a global server process to hold the mutable
-% values. Other processes can get and set mutables by communicating messages
-% with this global server.
-%
-% In the transformations below, <varname> is a key derived from the name of the
-% mutable and the module name. The module name must be included.
-%
-% For non-constant mutables:
-%
-%   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
-%
-% ===>
-%
-%   :- initialise initialise_mutable_<varname>/0.
-%
-%   :- impure pred initialise_mutable_<varname> is det.
-%
-%   initialise_mutable_<varname> :-
-%       impure X = <initval>,
-%       impure set_<varname>(X).
-%
-%   :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.
-%   :- pragma foreign_proc("Erlang",
-%       set_<varname>(X::in(<varinst>)),
-%       [will_not_call_mercury, thread_safe],
-%   "
-%       'ML_erlang_global_server' ! {set_mutable, <varname>, X}
-%   ").
-%
-%   :- semipure pred get_<varname>(<vartype>::out(<varinst>)) is det.
-%   :- pragma foreign_proc("Erlang",
-%       get_<varname>(X::out(<varinst>)),
-%       [promise_semipure, will_not_call_mercury, thread_safe],
-%   "
-%       'ML_erlang_global_server' ! {get_mutable, <varname>, self()}},
-%       receive
-%           {get_mutable_ack, Value} ->
-%               X = value
-%       end
-%   ").
-%
-% For constant mutables:
-%
-%   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [constant]).
-%
-% ===>
-%
-%   :- pred get_<varname>(<vartype>::out(<varinst>)) is det.
-%   :- pragma foreign_proc("Erlang",
-%       get_<varname>(X::out(<varinst>)),
-%       [will_not_call_mercury, promise_pure, thread_safe],
-%   "
-%       'ML_erlang_global_server' ! {get_mutable, <varname>, self()}},
-%       receive
-%           {get_mutable_ack, Value} ->
-%               X = value
-%       end
-%   ").
-%
-% In order to initialise constant mutables we generate the following:
-%
-%   :- impure pred secret_initialization_only_set_<varname>(
-%       <vartype>::in(<varinst>)) is det.
-%
-%   :- pragma foreign_proc("Erlang",
-%       secret_initialization_only_set_<varname>(X::in(<varinst>)),
-%       [will_not_call_mercury],
-%   "
-%       'ML_erlang_global_server' ! {set_mutable, <varname>, X}
-%   ").
-%
-%   :- initialise initialise_mutable_<varname>/0.
-%
-%   :- impure pred initialise_mutable_<varname> is det.
-%
-%   initialise_mutable_<varname> :-
-%       impure X = <initval>,
-%       impure secret_initialization_only_set_<varname>(X).
-%
-% The transformation for thread_local mutables has not been decided (we need a
-% way for spawned processes to inherit all the thread-local mutable values of
-% its parent process, but a child process in Erlang does not automatically
-% inherit its parent process's process dictionary).
-%
-% Trailed mutabled are not supported because the Erlang backend doesn't
-% support trailing.
-%
-%-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.add_mutable_aux_preds.
 :- interface.
@@ -946,13 +851,6 @@ add_aux_pred_defns_for_mutable(ItemMutable, PredStatus,
         ImplLang = mutable_lang_java,
         define_mutable_global_var_java( TargetMutableName, Type,
             IsThreadLocal, Context, !ModuleInfo)
-    ;
-        ImplLang = mutable_lang_erlang
-        % For the Erlang backend, we don't define any global variables;
-        % instead, the values of thread-local mutables are stored
-        % in the thread's process dictionary, and the values of
-        % non-thread-local mutables are stored in the
-        % ML_erlang_global_server process.
     ),
     define_aux_preds_for_mutable(TargetParams, ItemMutable, TargetMutableName,
         PredStatus, !ModuleInfo, !QualInfo, !Specs).
@@ -1131,9 +1029,6 @@ define_aux_preds_for_mutable(TargetParams, ItemMutable, TargetMutableName,
         % qualification but it would be better to move the mutable code
         % generation into the backends first.
         set_may_duplicate(yes(proc_may_not_duplicate), Attrs0, Attrs)
-    ;
-        ImplLang = mutable_lang_erlang,
-        Attrs = Attrs0
     ),
 
     % The logic of this code should match the logic of
@@ -1241,9 +1136,6 @@ define_pre_init_pred(TargetParams, ItemMutable, TargetMutableName, Attrs,
     ;
         ImplLang = mutable_lang_java,
         unexpected($pred, "preinit for java")
-    ;
-        ImplLang = mutable_lang_erlang,
-        unexpected($pred, "preinit for erlang")
     ),
     PreInitFCInfo = pragma_info_foreign_proc(Attrs,
         PreInitPredName,
@@ -1339,9 +1231,6 @@ define_lock_unlock_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
     ;
         ImplLang = mutable_lang_java,
         unexpected($pred, "lock_unlock for java")
-    ;
-        ImplLang = mutable_lang_erlang,
-        unexpected($pred, "lock_unlock for erlang")
     ).
 
     % Define the unsafe get and set predicates, if needed.
@@ -1434,9 +1323,6 @@ define_unsafe_get_set_preds(TargetParams, ItemMutable, TargetMutableName,
             UnsafeGetCode = "\tX = " ++ TargetMutableName ++ ".get();\n",
             UnsafeSetCode = "\t" ++ TargetMutableName ++ ".set(X);\n"
         )
-    ;
-        ImplLang = mutable_lang_erlang,
-        unexpected($pred, "unsafe_get_set for erlang")
     ),
 
     UnsafeGetPredName =
@@ -1499,7 +1385,6 @@ define_main_get_set_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
         _OrigType, _Type, _OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
         IsConstant = mutable_var_constant(MutAttrs),
-    IsThreadLocal = mutable_var_thread_local(MutAttrs),
     AttachToIO = mutable_var_attach_to_io_state(MutAttrs),
     ImplLang = TargetParams ^ mtp_mutable_impl_lang,
     BoxPolicy = TargetParams ^ mtp_box_policy,
@@ -1535,22 +1420,6 @@ define_main_get_set_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
             ),
             ConstantGetCode = "X = " ++ TargetMutableName ++ ";\n",
             ConstantSetCode = TargetMutableName ++ " = X;\n"
-        ;
-            ImplLang = mutable_lang_erlang,
-            % These Erlang fragments duplicate those for non-thread-local
-            % non-constant mutables below.
-            ConstantGetCode =
-                string.append_list([
-                    "'ML_erlang_global_server' ! {get_mutable, ",
-                        TargetMutableName, ", self()},\n",
-                    "receive\n",
-                    "   {get_mutable_ack, Value} ->\n",
-                    "       X = Value\n",
-                    "end\n"
-                ]),
-            ConstantSetCode =
-                "'ML_erlang_global_server' ! {set_mutable, " ++
-                    TargetMutableName ++ ", X}"
         ),
         ConstantGetFCInfo = pragma_info_foreign_proc(ConstantGetAttrs,
             ConstantGetPredName,
@@ -1621,69 +1490,6 @@ define_main_get_set_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
                 goal_type_none, !ModuleInfo, !QualInfo, !Specs),
             set.det_remove(mutable_pred_std_get, !PredKinds),
             set.det_remove(mutable_pred_std_set, !PredKinds)
-        ;
-            ImplLang = mutable_lang_erlang,
-            % NOTE We don't call the unsafe get/set predicates, since
-            % we don't declare/define them. We don't need them, because
-            % in Erlang we can do their job here directly, since (a)
-            % we don't need explicit locking, as the message passing
-            % system takes care of that, and (b) we don't need to trail
-            % the setting of the mutable, even if the mutable is nominally
-            % trailed, because the Erlang backend does not implement
-            % trailing.
-            set_thread_safe(proc_thread_safe, Attrs, ThreadSafeAttrs),
-            set_purity(purity_semipure, ThreadSafeAttrs, ErlangGetAttrs),
-            set_purity(purity_impure, ThreadSafeAttrs, ErlangSetAttrs),
-            (
-                IsThreadLocal = mutable_thread_local,
-                StdGetCode = "X = get({'MR_thread_local_mutable', " ++
-                    TargetMutableName ++ "})",
-                StdSetCode = "put({'MR_thread_local_mutable', " ++
-                    TargetMutableName ++ "}, X)"
-            ;
-                IsThreadLocal = mutable_not_thread_local,
-                % These Erlang fragments duplicate those for
-                % constant mutables above.
-                StdGetCode =
-                    string.append_list([
-                        "'ML_erlang_global_server' ! {get_mutable, ",
-                            TargetMutableName, ", self()},\n",
-                        "receive\n",
-                        "   {get_mutable_ack, Value} ->\n",
-                        "       X = Value\n",
-                        "end\n"
-                    ]),
-                StdSetCode =
-                    "'ML_erlang_global_server' ! {set_mutable, " ++
-                        TargetMutableName ++ ", X}"
-            ),
-            StdGetFCInfo = pragma_info_foreign_proc(ErlangGetAttrs,
-                StdGetPredName,
-                pf_predicate,
-                [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
-                VarSetOnlyX,    % ProgVarSet
-                varset.init,    % InstVarSet
-                fp_impl_ordinary(StdGetCode, yes(Context))
-            ),
-            StdSetFCInfo = pragma_info_foreign_proc(ErlangSetAttrs,
-                StdSetPredName,
-                pf_predicate,
-                [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
-                VarSetOnlyX,    % ProgVarSet
-                varset.init,    % InstVarSet
-                fp_impl_ordinary(StdSetCode, yes(Context))
-            ),
-            add_pragma_foreign_proc(StdGetFCInfo, PredStatus, Context, no,
-                !ModuleInfo, !Specs),
-            add_pragma_foreign_proc(StdSetFCInfo, PredStatus, Context, no,
-                !ModuleInfo, !Specs),
-            set.det_remove(mutable_pred_std_get, !PredKinds),
-            set.det_remove(mutable_pred_std_set, !PredKinds),
-
-            ImpureGetExpr = call_expr(Context, StdGetPredName,
-                [variable(X, Context)], purity_semipure),
-            ImpureSetExpr = call_expr(Context, StdSetPredName,
-                [variable(X, Context)], purity_impure)
         ),
         (
             AttachToIO = mutable_dont_attach_to_io_state
@@ -1802,7 +1608,6 @@ decide_mutable_target_var_name(ModuleInfo, MutAttrs, ModuleName, MutableName,
     mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
     (
         MaybeForeignNames = no,
-        % This works for Erlang as well.
         TargetMutableName = mutable_c_var_name(ModuleName, MutableName)
     ;
         MaybeForeignNames = yes(ForeignNames),
@@ -1829,7 +1634,6 @@ get_global_name_from_foreign_names(ModuleInfo, Context,
         TargetMutableNames),
     (
         TargetMutableNames = [],
-        % This works for Erlang as well.
         TargetMutableName = mutable_c_var_name(ModuleName, MutableName)
     ;
         TargetMutableNames = [foreign_name(_, TargetMutableName)]
@@ -1847,7 +1651,6 @@ get_global_name_from_foreign_names(ModuleInfo, Context,
             Context, Pieces),
         !:Specs = [Spec | !.Specs],
 
-        % This works for Erlang as well.
         TargetMutableName = mutable_c_var_name(ModuleName, MutableName)
     ).
 
@@ -1871,7 +1674,6 @@ get_matching_foreign_names([ForeignName | ForeignNames], TargetForeignLanguage,
     % low-level C backends is that in the latter mutables are *always* boxed,
     % whereas in the former they may not be. The other backends that support
     % mutables are all native_if_possible.
-    % XXX is that true for erlang?
     %
 :- func global_foreign_type_name(box_policy, foreign_language, module_info,
     mer_type) = string.
@@ -1915,8 +1717,7 @@ mutable_mutex_var_name(TargetMutableVarName) = MutexVarName :-
 :- type mutable_impl_lang
     --->    mutable_lang_c
     ;       mutable_lang_csharp
-    ;       mutable_lang_java
-    ;       mutable_lang_erlang.
+    ;       mutable_lang_java.
 
 :- type need_pre_init_pred
     --->    dont_need_pre_init_pred

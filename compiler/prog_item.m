@@ -739,15 +739,14 @@
                 tcmd_foreign            :: c_j_cs_maybe_defn
             ).
 
-    % We support foreign type definitions in all four of our target languages,
-    % C, Java, C# and Erlang (though since Erlang is not statically typed,
-    % the only Erlang type name we allow is the empty string). Likewise,
-    % we allow foreign enum declarations in these four languages.
+    % We support foreign type definitions in all three of our target languages,
+    % C, Java and C#. Likewise, we allow foreign enum declarations
+    % in these three languages.
     %
     % There are several kinds of info that we may want to store for every
     % one of these foreign languages. This can be done in instances
-    % of this type, whose fields always contain the info for C, Java, C#
-    % and Erlang (in that order).
+    % of this type, whose fields always contain the info for C, Java and C#
+    % (in that order).
 :- type c_java_csharp(T)
     --->    c_java_csharp(T, T, T).
 
