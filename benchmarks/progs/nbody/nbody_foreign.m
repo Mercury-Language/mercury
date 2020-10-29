@@ -14,8 +14,6 @@
 %
 % For C (gcc) add: --cflags="-O3 -mfpmath=sse -msse3"
 %
-% TODO: support Erlang.
-%
 %-----------------------------------------------------------------------------%
 
 :- module nbody_foreign.
