@@ -126,14 +126,6 @@
 :- func var_to_int(var(T)) = int.
 :- pred var_to_int(var(T)::in, int::out) is det.
 
-    % var_id(Variable):
-    %
-    % Returns a unique number associated with this variable w.r.t.
-    % its originating var_supply.
-    %
-:- func var_id(var(T)) = int.
-:- pragma obsolete(var_id/1, [var_to_int/1]).
-
 %---------------------------------------------------------------------------%
 
 :- type renaming(T) == map(var(T), var(T)).
@@ -315,53 +307,6 @@
 % variable/variable pair or pairs directly.
 %
 
-    % relabel_variable(Term0, Var, ReplacementVar, Term):
-    %
-    % Replace all occurrences of Var in Term0 with ReplacementVar and return
-    % the result as Term.
-    %
-:- func relabel_variable(term(T), var(T), var(T)) = term(T).
-:- pred relabel_variable(term(T)::in, var(T)::in, var(T)::in, term(T)::out)
-    is det.
-:- pragma obsolete(relabel_variable/3, [rename_var_in_term/4]).
-:- pragma obsolete(relabel_variable/4, [rename_var_in_term/4]).
-
-    % relabel_variables(Terms0, Var, ReplacementVar, Terms):
-    %
-    % Replace all occurrences of Var in Terms0 with ReplacementVar and return
-    % the result as Terms.
-    %
-:- func relabel_variables(list(term(T)), var(T), var(T)) = list(term(T)).
-:- pred relabel_variables(list(term(T))::in, var(T)::in, var(T)::in,
-    list(term(T))::out) is det.
-:- pragma obsolete(relabel_variables/3, [rename_vars_in_terms/4]).
-:- pragma obsolete(relabel_variables/4, [rename_vars_in_terms/4]).
-
-%---------------------%
-
-    % rename(Term0, Var, ReplacementVar, Term):
-    %
-    % Replace all occurrences of Var in Term0 with ReplacementVar,
-    % and return the result in Term.
-    %
-:- func rename(term(T), var(T), var(T)) = term(T).
-:- pred rename(term(T)::in, var(T)::in, var(T)::in, term(T)::out) is det.
-:- pragma obsolete(rename/3, [rename_var_in_term/4]).
-:- pragma obsolete(rename/4, [rename_var_in_term/4]).
-
-    % rename_list(Terms0, Var, ReplacementVar, Terms):
-    %
-    % Replace all occurrences of Var in Terms0 with ReplacementVar,
-    % and return the result in Terms.
-    %
-:- func rename_list(list(term(T)), var(T), var(T)) = list(term(T)).
-:- pred rename_list(list(term(T))::in, var(T)::in, var(T)::in,
-    list(term(T))::out) is det.
-:- pragma obsolete(rename_list/3, [rename_var_in_terms/4]).
-:- pragma obsolete(rename_list/4, [rename_var_in_terms/4]).
-
-%---------------------%
-
     % rename_var_in_term(Var, ReplacementVar, Term0, Term):
     %
     % Replace all occurrences of Var in Term0 with ReplacementVar,
@@ -383,68 +328,6 @@
 % Rename predicates that specify the rename by giving an explicit
 % variable to variable map.
 %
-
-    % apply_renaming(Term0, Renaming, Term):
-    %
-    % Apply renaming to Term0 and return the result in Term.
-    %
-:- func apply_renaming(term(T), renaming(T)) = term(T).
-:- pred apply_renaming(term(T)::in, renaming(T)::in, term(T)::out) is det.
-:- pragma obsolete(apply_renaming/2, [apply_renaming_in_term/3]).
-:- pragma obsolete(apply_renaming/3, [apply_renaming_in_term/3]).
-
-    % As above, except applies to a list of terms rather than a single term.
-    %
-:- func apply_renaming_to_list(list(term(T)), renaming(T)) = list(term(T)).
-:- pred apply_renaming_to_list(list(term(T))::in, renaming(T)::in,
-    list(term(T))::out) is det.
-:- pragma obsolete(apply_renaming_to_list/2, [apply_renaming_in_terms/3]).
-:- pragma obsolete(apply_renaming_to_list/3, [apply_renaming_in_terms/3]).
-
-%---------------------%
-
-    % Applies apply_variable_renaming to a var.
-    %
-:- func apply_variable_renaming_to_var(renaming(T), var(T)) = var(T).
-:- pred apply_variable_renaming_to_var(renaming(T)::in,
-    var(T)::in, var(T)::out) is det.
-:- pragma obsolete(apply_variable_renaming_to_var/2,
-    [apply_renaming_in_var/3]).
-:- pragma obsolete(apply_variable_renaming_to_var/3,
-    [apply_renaming_in_var/3]).
-
-    % Applies apply_variable_renaming to a list of vars.
-    %
-:- func apply_variable_renaming_to_vars(renaming(T),
-    list(var(T))) = list(var(T)).
-:- pred apply_variable_renaming_to_vars(renaming(T)::in,
-    list(var(T))::in, list(var(T))::out) is det.
-:- pragma obsolete(apply_variable_renaming_to_vars/2,
-    [apply_renaming_in_vars/3]).
-:- pragma obsolete(apply_variable_renaming_to_vars/3,
-    [apply_renaming_in_vars/3]).
-
-    % Same as relabel_variable, except relabels multiple variables.
-    % If a variable is not in the map, it is not replaced.
-    %
-:- func apply_variable_renaming(term(T), renaming(T)) = term(T).
-:- pred apply_variable_renaming(term(T)::in, renaming(T)::in,
-    term(T)::out) is det.
-:- pragma obsolete(apply_variable_renaming/2, [apply_renaming_in_term/3]).
-:- pragma obsolete(apply_variable_renaming/3, [apply_renaming_in_term/3]).
-
-    % Applies apply_variable_renaming to a list of terms.
-    %
-:- func apply_variable_renaming_to_list(list(term(T)), renaming(T)) =
-    list(term(T)).
-:- pred apply_variable_renaming_to_list(list(term(T))::in, renaming(T)::in,
-    list(term(T))::out) is det.
-:- pragma obsolete(apply_variable_renaming_to_list/2,
-    [apply_renaming_in_terms/3]).
-:- pragma obsolete(apply_variable_renaming_to_list/3,
-    [apply_renaming_in_terms/3]).
-
-%---------------------%
 
     % apply_renaming_in_var(Renaming, Var0, Var):
     %
@@ -479,61 +362,6 @@
 % Substitution predicates that specify the substitution by giving the
 % variable/term pair or pairs directly.
 %
-
-    % substitute(Term0, Var, ReplacementTerm, Term):
-    %
-    % Replace all occurrences of Var in Term0 with ReplacementTerm,
-    % and return the result as Term.
-    %
-:- func substitute(term(T), var(T), term(T)) = term(T).
-:- pred substitute(term(T)::in, var(T)::in, term(T)::in, term(T)::out) is det.
-:- pragma obsolete(substitute/3, [substitute_var_in_term/4]).
-:- pragma obsolete(substitute/4, [substitute_var_in_term/4]).
-
-    % substitute_list(Var, ReplacementTerm, Terms0, Terms):
-    %
-    % Replace all occurrences of Var in Terms0 with ReplacementTerm,
-    % and return the result as Terms.
-    %
-:- func substitute_list(list(term(T)), var(T), term(T)) = list(term(T)).
-:- pred substitute_list(list(term(T))::in, var(T)::in, term(T)::in,
-    list(term(T))::out) is det.
-:- pragma obsolete(substitute_list/3, [substitute_var_in_terms/4]).
-:- pragma obsolete(substitute_list/4, [substitute_var_in_terms/4]).
-
-    % substitute_corresponding(Vars, ReplacementTerms, Term0, Term):
-    %
-    % Replace all occurrences of variables in Vars in Term0 with
-    % the corresponding term in ReplacementTerms, and return the result
-    % as Term. If Vars contains duplicates, or if Vars and ReplacementTerms
-    % have different lengths, the behaviour is undefined and probably harmful.
-    %
-:- func substitute_corresponding(list(var(T)), list(term(T)),
-    term(T)) = term(T).
-:- pred substitute_corresponding(list(var(T))::in, list(term(T))::in,
-    term(T)::in, term(T)::out) is det.
-:- pragma obsolete(substitute_corresponding/3,
-    [substitute_corresponding_in_term/4]).
-:- pragma obsolete(substitute_corresponding/4,
-    [substitute_corresponding_in_term/4]).
-
-    % substitute_corresponding_list(Vars, ReplacementTerms, Terms0, Terms):
-    %
-    % Replace all occurrences of variables in Vars in Terms0 with
-    % the corresponding term in ReplacementTerms, and return the result
-    % as Terms. If Vars contains duplicates, or if Vars and ReplacementTerms
-    % have different lengths, the behaviour is undefined and probably harmful.
-    %
-:- func substitute_corresponding_list(list(var(T)), list(term(T)),
-    list(term(T))) = list(term(T)).
-:- pred substitute_corresponding_list(list(var(T))::in, list(term(T))::in,
-    list(term(T))::in, list(term(T))::out) is det.
-:- pragma obsolete(substitute_corresponding_list/3,
-    [substitute_corresponding_in_terms/4]).
-:- pragma obsolete(substitute_corresponding_list/4,
-    [substitute_corresponding_in_terms/4]).
-
-%---------------------%
 
     % substitute_var_in_term(Var, ReplacementTerm, Term0, Term):
     %
@@ -576,60 +404,6 @@
 % Substitution predicates that specify the substitution by giving
 % an explicit variable to term map.
 %
-
-    % apply_substitution(Term0, Substitution, Term):
-    %
-    % Apply Substitution to Term0 and return the result as Term.
-    %
-:- func apply_substitution(term(T), substitution(T)) = term(T).
-:- pred apply_substitution(term(T)::in, substitution(T)::in,
-    term(T)::out) is det.
-:- pragma obsolete(apply_substitution/2,
-    [apply_substitution_in_term/3]).
-:- pragma obsolete(apply_substitution/3,
-    [apply_substitution_in_term/3]).
-
-    % apply_substitution_to_list(Term0, Substitution, Term):
-    %
-    % Apply Substitution to Term0 and return the result as Term.
-    %
-:- func apply_substitution_to_list(list(term(T)), substitution(T)) =
-    list(term(T)).
-:- pred apply_substitution_to_list(list(term(T))::in, substitution(T)::in,
-    list(term(T))::out) is det.
-:- pragma obsolete(apply_substitution_to_list/2,
-    [apply_substitution_in_terms/3]).
-:- pragma obsolete(apply_substitution_to_list/3,
-    [apply_substitution_in_terms/3]).
-
-    % apply_rec_substitution(Term0, Substitution, Term):
-    %
-    % Recursively apply Substitution to Term0 until no more substitutions
-    % can be applied, and then return the result as Term.
-    %
-:- func apply_rec_substitution(term(T), substitution(T)) = term(T).
-:- pred apply_rec_substitution(term(T)::in, substitution(T)::in,
-    term(T)::out) is det.
-:- pragma obsolete(apply_rec_substitution/2,
-    [apply_rec_substitution_in_term/3]).
-:- pragma obsolete(apply_rec_substitution/3,
-    [apply_rec_substitution_in_term/3]).
-
-    % apply_rec_substitution_to_list(Terms0, Substitution, Terms):
-    %
-    % Recursively apply Substitution to Terms0 until no more substitutions
-    % can be applied, and then return the result as Terms.
-    %
-:- func apply_rec_substitution_to_list(list(term(T)), substitution(T)) =
-    list(term(T)).
-:- pred apply_rec_substitution_to_list(list(term(T))::in, substitution(T)::in,
-    list(term(T))::out) is det.
-:- pragma obsolete(apply_rec_substitution_to_list/2,
-    [apply_rec_substitution_in_terms/3]).
-:- pragma obsolete(apply_rec_substitution_to_list/3,
-    [apply_rec_substitution_in_terms/3]).
-
-%---------------------%
 
     % apply_substitution_in_term(Substitution, Term0, Term):
     %
@@ -798,8 +572,6 @@ unsafe_int_to_var(VarNum) = var(VarNum).
 
 var_to_int(var(VarNum)) = VarNum.
 var_to_int(var(VarNum), VarNum).
-
-var_id(var(VarNum)) = VarNum.
 
 %---------------------------------------------------------------------------%
 
@@ -1189,26 +961,6 @@ are_ground_in_bindings([Term | Terms], Bindings) :-
 
 %---------------------------------------------------------------------------%
 
-% Forwarding functions and predicates, to be obsoleted.
-relabel_variable(Term0, Var, ReplacementVar) = Term :-
-    rename_var_in_term(Var, ReplacementVar, Term0, Term).
-relabel_variable(Term0, Var, ReplacementVar, Term) :-
-    rename_var_in_term(Var, ReplacementVar, Term0, Term).
-relabel_variables(Terms0, Var, ReplacementVar) = Terms :-
-    rename_var_in_terms(Var, ReplacementVar, Terms0, Terms).
-relabel_variables(Terms0, Var, ReplacementVar, Terms) :-
-    rename_var_in_terms(Var, ReplacementVar, Terms0, Terms).
-rename(Term0, Var, ReplacementVar) = Term :-
-    rename_var_in_term(Var, ReplacementVar, Term0, Term).
-rename(Term0, Var, ReplacementVar, Term) :-
-    rename_var_in_term(Var, ReplacementVar, Term0, Term).
-rename_list(Terms0, Var, ReplacementVar) = Terms :-
-    rename_var_in_terms(Var, ReplacementVar, Terms0, Terms).
-rename_list(Terms0, Var, ReplacementVar, Terms) :-
-    rename_var_in_terms(Var, ReplacementVar, Terms0, Terms).
-
-%---------------------%
-
 rename_var_in_term(Var, ReplacementVar, Term0, Term) :-
     (
         Term0 = variable(Var0, Context),
@@ -1229,34 +981,6 @@ rename_var_in_terms(Var, ReplacementVar, [Term0 | Terms0], [Term | Terms]) :-
     rename_var_in_terms(Var, ReplacementVar, Terms0, Terms).
 
 %---------------------------------------------------------------------------%
-
-% Forwarding functions and predicates, to be obsoleted.
-apply_renaming(Term0, Renaming) = Term :-
-    apply_renaming_in_term(Renaming, Term0, Term).
-apply_renaming(Term0, Renaming, Term) :-
-    apply_renaming_in_term(Renaming, Term0, Term).
-apply_renaming_to_list(Terms0, Renaming) = Terms :-
-    apply_renaming_in_terms(Renaming, Terms0, Terms).
-apply_renaming_to_list(Terms0, Renaming, Terms) :-
-    apply_renaming_in_terms(Renaming, Terms0, Terms).
-apply_variable_renaming_to_var(Renaming, Var0) = Var :-
-    apply_renaming_in_var(Renaming, Var0, Var).
-apply_variable_renaming_to_var(Renaming, Var0, Var) :-
-    apply_renaming_in_var(Renaming, Var0, Var).
-apply_variable_renaming_to_vars(Renaming, Vars0) = Vars :-
-    apply_renaming_in_vars(Renaming, Vars0, Vars).
-apply_variable_renaming_to_vars(Renaming, Vars0, Vars) :-
-    apply_renaming_in_vars(Renaming, Vars0, Vars).
-apply_variable_renaming(Term0, Renaming) = Term :-
-    apply_renaming_in_term(Renaming, Term0, Term).
-apply_variable_renaming(Term0, Renaming, Term) :-
-    apply_renaming_in_term(Renaming, Term0, Term).
-apply_variable_renaming_to_list(Terms0, Renaming) = Terms :-
-    apply_renaming_in_terms(Renaming, Terms0, Terms).
-apply_variable_renaming_to_list(Terms0, Renaming, Terms) :-
-    apply_renaming_in_terms(Renaming, Terms0, Terms).
-
-%---------------------%
 
 apply_renaming_in_var(Renaming, Var0, Var) :-
     ( if map.search(Renaming, Var0, NewVar) then
@@ -1287,26 +1011,6 @@ apply_renaming_in_terms(Renaming, [Term0 | Terms0], [Term | Terms]) :-
     apply_renaming_in_terms(Renaming, Terms0, Terms).
 
 %---------------------------------------------------------------------------%
-
-% Forwarding functions and predicates, to be obsoleted.
-substitute(Term0, Var, ReplacementTerm) = Term :-
-    substitute_var_in_term(Var, ReplacementTerm, Term0, Term).
-substitute(Term0, Var, ReplacementTerm, Term) :-
-    substitute_var_in_term(Var, ReplacementTerm, Term0, Term).
-substitute_list(Terms0, Var, ReplacementTerm) = Terms :-
-    substitute_var_in_terms(Var, ReplacementTerm, Terms0, Terms).
-substitute_list(Terms0, Var, ReplacementTerm, Terms) :-
-    substitute_var_in_terms(Var, ReplacementTerm, Terms0, Terms).
-substitute_corresponding(Vars, ReplacementTerms, Term0) = Term :-
-    substitute_corresponding_in_term(Vars, ReplacementTerms, Term0, Term).
-substitute_corresponding(Vars, ReplacementTerms, Term0, Term) :-
-    substitute_corresponding_in_term(Vars, ReplacementTerms, Term0, Term).
-substitute_corresponding_list(Vars, ReplacementTerms, Terms0) = Terms :-
-    substitute_corresponding_in_terms(Vars, ReplacementTerms, Terms0, Terms).
-substitute_corresponding_list(Vars, ReplacementTerms, Terms0, Terms) :-
-    substitute_corresponding_in_terms(Vars, ReplacementTerms, Terms0, Terms).
-
-%---------------------%
 
 substitute_var_in_term(Var, ReplacementTerm, Term0, Term) :-
     (
@@ -1353,26 +1057,6 @@ build_subst([Var | Vars], [Term | Terms], !Subst) :-
     build_subst(Vars, Terms, !Subst).
 
 %---------------------------------------------------------------------------%
-
-% Forwarding functions and predicates, to be obsoleted.
-apply_substitution(Term0, Subst) = Term :-
-    apply_substitution_in_term(Subst, Term0, Term).
-apply_substitution(Term0, Subst, Term) :-
-    apply_substitution_in_term(Subst, Term0, Term).
-apply_substitution_to_list(Terms0, Subst) = Terms :-
-    apply_substitution_in_terms(Subst, Terms0, Terms).
-apply_substitution_to_list(Terms0, Subst, Terms) :-
-    apply_substitution_in_terms(Subst, Terms0, Terms).
-apply_rec_substitution(Term0, Subst) = Term :-
-    apply_rec_substitution_in_term(Subst, Term0, Term).
-apply_rec_substitution(Term0, Subst, Term) :-
-    apply_rec_substitution_in_term(Subst, Term0, Term).
-apply_rec_substitution_to_list(Terms0, Subst) = Terms :-
-    apply_rec_substitution_in_terms(Subst, Terms0, Terms).
-apply_rec_substitution_to_list(Terms0, Subst, Terms) :-
-    apply_rec_substitution_in_terms(Subst, Terms0, Terms).
-
-%---------------------%
 
 apply_substitution_in_term(Subst, Term0, Term) :-
     (

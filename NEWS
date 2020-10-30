@@ -150,6 +150,79 @@ Changes to the Mercury standard library
 
     - func `add_suffix/2`
 
+### Changes to the `term` module
+
+* The following obsolete predicates and functions have been removed:
+
+    - func `var_id/1`               (replacement: `var_to_int/1`)
+
+    - func `relabel_variable/3`     (replacement: `rename_var_in_term/4`)
+    - pred `relabel_variable/4`     (replacement: `rename_var_in_term/4`)
+    - func `relabel_variables/3`    (replacement: `rename_var_in_terms/4`)
+    - pred `relabel_variables/4`    (replacement: `rename_var_in_terms/4`)
+
+    - func `rename/3`               (replacement: `rename_var_in_term/4`)
+    - pred `rename/4`               (replacement: `rename_var_in_term/4`)
+    - func `rename_list/3`          (replacement: `rename_var_in_terms/4`)
+    - pred `rename_list/4`          (replacement: `rename_var_in_terms/4`)
+
+    - func `apply_renaming/3`       (replacement: `apply_renaming_in_term/3`)
+    - pred `apply_renaming/3`       (replacement: `apply_renaming_in_term/3`)
+    - func `apply_renaming_to_list/3`
+                                    (replacement: `apply_renaming_in_terms/3`)
+    - pred `apply_renaming_to_list/3`
+                                    (replacement: `apply_renaming_in_terms/3`)
+
+    - func `apply_variable_renaming/2`
+                                    (replacement: `apply_renaming_in_term/3`)
+    - pred `apply_variable_renaming/3`
+                                    (replacement: `apply_renaming_in_term/3`)
+    - func `apply_variable_renaming_to_list/2`
+                                    (replacement: `apply_renaming_in_terms/3`)
+    - pred `apply_variable_renaming_to_list/3`
+                                    (replacement: `apply_renaming_in_terms/3`)
+
+    - func `apply_variable_renaming_to_var/2`
+                                    (replacement: `apply_renaming_in_var/3`)
+    - pred `apply_variable_renaming_to_var/3`
+                                    (replacement: `apply_renaming_in_var/3`)
+    - func `apply_variable_renaming_to_vars/2`
+                                    (replacement: `apply_renaming_in_vars/3`)
+    - pred `apply_variable_renaming_to_vars/3`
+                                    (replacement: `apply_renaming_in_vars/3`)
+
+    - func `substitute/3`           (replacement: `substitute_var_in_term/4`)
+    - pred `substitute/4`           (replacement: `substitute_var_in_term/4`)
+    - func `substitute_list/3`      (replacement: `substitute_var_in_terms/4`)
+    - pred `substitute_list/4`      (replacement: `substitute_var_in_terms/4`)
+
+    - func `substitute_corresponding/3`
+                        (replacement: `substitute_corresponding_in_term/4`)
+    - pred `substitute_corresponding/4`
+                        (replacement: `substitute_corresponding_in_term/4`)
+    - func `substitute_corresponding_list/3`
+                        (replacement: `substitute_corresponding_in_terms/4`)
+    - pred `substitute_corresponding_list/4`
+                        (replacement: `substitute_corresponding_in_terms/4`)
+
+    - func `apply_substitution/2`
+                        (replacement: `apply_substitution_in_term/3`)
+    - pred `apply_substitution/3`
+                        (replacement: `apply_substitution_in_term/3`)
+    - func `apply_substitution_to_list/2`
+                        (replacement: `apply_substitution_in_terms/3`)
+    - pred `apply_substitution_to_list/3`
+                        (replacement: `apply_substitution_in_terms/3`)
+
+    - func `apply_rec_substitution/2`
+                        (replacement: `apply_rec_substitution_in_term/3`)
+    - pred `apply_rec_substitution/3`
+                        (replacement: `apply_rec_substitution_in_term/3`)
+    - func `apply_rec_substitution_to_list/2`
+                        (replacement: `apply_rec_substitution_in_terms/3`)
+    - pred `apply_rec_substitution_to_list/3`
+                        (replacement: `apply_rec_substitution_in_terms/3`)
+
 ### Changes to the `thread.mvar` module
 
 * The following obsolete function has been removed:
