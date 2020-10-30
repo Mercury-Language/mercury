@@ -136,7 +136,7 @@ if you want to disable this, please use: >
 
     let mercury_no_highlight_tabs = 1
 <
-Highlighting of C, Java, C# and Erlang code is supported by default,
+Highlighting of C, Java and C# code is supported by default,
 disable (if you think loading huge files is slow) with: >
 
     let mercury_no_highlight_foreign = 1
