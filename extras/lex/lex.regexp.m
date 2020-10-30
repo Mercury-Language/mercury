@@ -204,13 +204,6 @@ add_atom_transitions(Outs, CTs) = NullFreeTs :-
     Y = X;
 ").
 
-:- pragma foreign_proc("Erlang",
-    unsafe_cast_to_atom_transitions(X::in, Y::out(atom_transitions)),
-    [promise_pure, will_not_call_mercury, thread_safe],
-"
-    Y = X
-").
-
 %-----------------------------------------------------------------------------%
 
 :- func add_atom_transitions_0(transitions, pair(state_no, set(state_no))) =
