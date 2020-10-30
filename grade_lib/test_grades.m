@@ -99,13 +99,11 @@ main(!IO) :-
         "csharp",                       Csharp),
     parse_installed_grade(SolverInfo0,
         "java",                         Java),
-    parse_installed_grade(SolverInfo0,
-        "erlang",                       Erlang),
 
     GradesAll = [AsmFastGc, AsmFastGcStseg, AsmFastGcStsegTr,
         AsmFastGcDebugStseg, AsmFastGcDecldebugStseg,
         AsmFastGcProfDeepStseg, AsmFastGcProfAllStseg, NoneGcProfAllStseg,
-        HlcGc, HlcGcTr, HlcGcPar, Csharp, Java, Erlang],
+        HlcGc, HlcGcTr, HlcGcPar, Csharp, Java],
     SetAll = installed_grade_set("grades_all", GradesAll),
 
     GradesLLDSAll = [AsmFastGc, AsmFastGcStseg, AsmFastGcStsegTr,
@@ -121,7 +119,7 @@ main(!IO) :-
         AsmFastGcProfAllStseg, NoneGcProfAllStseg],
     SetLLDSProf = installed_grade_set("grades_llds_prof", GradesLLDSProf),
 
-    GradesEMLDS = [HlcGc, HlcGcTr, HlcGcPar, Csharp, Java, Erlang],
+    GradesEMLDS = [HlcGc, HlcGcTr, HlcGcPar, Csharp, Java],
     SetEMLDS = installed_grade_set("grades_emlds", GradesEMLDS),
 
     GradesTrOnlyLLDS = [AsmFastGc, AsmFastGcStseg, HlcGc, AsmFastGcStsegTr],
