@@ -180,6 +180,7 @@
     ;       phase_read_files
     ;       phase_module_name
     ;       phase_term_to_parse_tree
+    ;       phase_type_repn
     ;       phase_parse_tree_to_hlds
     ;       phase_expand_types
     ;       phase_type_check
@@ -1190,6 +1191,7 @@ get_maybe_mode_report_control(phase_options) = no.
 get_maybe_mode_report_control(phase_read_files) = no.
 get_maybe_mode_report_control(phase_module_name) = no.
 get_maybe_mode_report_control(phase_term_to_parse_tree) = no.
+get_maybe_mode_report_control(phase_type_repn) = no.
 get_maybe_mode_report_control(phase_parse_tree_to_hlds) = no.
 get_maybe_mode_report_control(phase_expand_types) = no.
 get_maybe_mode_report_control(phase_type_check) = no.
