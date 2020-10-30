@@ -2459,7 +2459,7 @@ handle_directory_options(OpMode, !Globals) :-
     globals.set_option(init_file_directories,
         accumulating(InitDirs), !Globals),
 
-    % When searching for a header (.mh, .mih, .hrl) file,
+    % When searching for a header (.mh, .mih) file,
     % module_name_to_file_name uses the plain header name, so we need to
     % add the full path to the header files in the current directory,
     % and any directories listed with --search-library-files-directory.

@@ -453,8 +453,7 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         MaybeInitObjectResult = yes(InitObjectResult1),
         (
             InitObjectResult1 = yes(InitObject),
-            % We may need to update the timestamp of the `_init.o'
-            % or `_init.beam' file.
+            % We may need to update the timestamp of the `_init.o' file.
             !Info ^ file_timestamps :=
                 map.delete(!.Info ^ file_timestamps, InitObject),
             InitObjects = [InitObject],
@@ -1474,7 +1473,7 @@ install_library_grade_2(Globals, LinkSucceeded0, ModuleName, AllModules,
         Succeeded = no
     ).
 
-    % Install the `.a', `.so', `.jar', `.beams', `.opt' and `.mih' files for
+    % Install the `.a', `.so', `.jar', `.opt' and `.mih' files for
     % the current grade.
     %
     % NOTE: changes here may require changes to
@@ -1890,15 +1889,11 @@ remove_init_files(Globals, Verbose, ModuleName, !Info, !IO) :-
     globals.lookup_string_option(Globals, object_file_extension, ObjExt),
     globals.lookup_string_option(Globals, pic_object_file_extension,
         PicObjExt),
-    globals.lookup_string_option(Globals, erlang_object_file_extension,
-        BeamExt),
     % XXX EXT
     list.foldl2(make_remove_module_file(Globals, Verbose, ModuleName),
         [ext_other(other_ext("_init.c")),
             ext_other(other_ext("_init" ++ ObjExt)),
-            ext_other(other_ext("_init" ++ PicObjExt)),
-            ext_other(other_ext("_init.erl")),
-            ext_other(other_ext("_init" ++ BeamExt))],
+            ext_other(other_ext("_init" ++ PicObjExt))],
         !Info, !IO).
 
 %-----------------------------------------------------------------------------%
