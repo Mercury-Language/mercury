@@ -291,6 +291,15 @@
     --->    do_not_add_quotes
     ;       add_quotes.
 
+    % type_to_pieces(MaybeAddQuotes, TVarSet, InstVarSet, ExternalTypeParams,
+    %   Type) = Pieces:
+    %
+    % Format Type for printing as part of an error message. Use TVarSet
+    % as the source of the names of any type variables in the type, and
+    % InstVarSet as the source of the names of any inst variables in any
+    % higher order types. Put an existential quantifier in front of any type
+    % that contains any of the type variables in ExternalTypeParams.
+    %
 :- func type_to_pieces(maybe_add_quotes, tvarset, inst_varset, list(tvar),
     mer_type) = list(format_component).
 
