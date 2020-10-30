@@ -32,10 +32,6 @@
     %
     % The file is placed in the directory returned by get_temp_directory/3.
     %
-    % On the Erlang backend, this does not attempt to create the file with
-    % restrictive permissions (600 on Unix-like systems) and therefore should
-    % not be used when security is required.
-    %
 :- pred make_temp(string::out, io::di, io::uo) is det.
 
     % make_temp(Dir, Prefix, Name, !IO) creates an empty file whose
@@ -49,10 +45,6 @@
     %   - Dir is ignored.
     %   - Prefix is ignored.
     %
-    % On the Erlang backend, this does not attempt to create the file with
-    % restrictive permissions (600 on Unix-like systems) and therefore should
-    % not be used when security is required.
-    %
 :- pred make_temp(string::in, string::in, string::out, io::di, io::uo)
     is det.
 
@@ -61,8 +53,6 @@
     %
     % On the C# backend this is insecure as the file permissions are not set
     % and this call does not test for an existing directory.
-    %
-    % This is unimplemented on the Erlang backend.
     %
 :- pred make_temp_directory(string::out, io::di, io::uo) is det.
 
@@ -79,8 +69,6 @@
     %     (600 on Unix-like systems) and therefore should not be used when
     %     security is required.
     %   - Prefix is ignored.
-    %
-    % This is unimplemented on the Erlang backend.
     %
 :- pred make_temp_directory(string::in, string::in, string::out,
     io::di, io::uo) is det.
