@@ -287,6 +287,15 @@
 
 %---------------------------------------------------------------------------%
 
+:- type maybe_add_quotes
+    --->    do_not_add_quotes
+    ;       add_quotes.
+
+:- func type_to_pieces(maybe_add_quotes, tvarset, inst_varset, list(tvar),
+    mer_type) = list(format_component).
+
+%---------------------------------------------------------------------------%
+
     % Return the worst of two actual severities.
     %
 :- func worst_severity(actual_severity, actual_severity)
@@ -691,11 +700,15 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
+:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_to_term.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
-:- import_module libs.compiler_util.
 
+:- import_module assoc_list.
 :- import_module char.
 :- import_module cord.
 :- import_module int.
@@ -705,6 +718,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -724,6 +738,180 @@ extract_spec_msgs(Globals, Spec, Msgs) :-
             Msgs = []
         )
     ).
+
+%---------------------------------------------------------------------------%
+
+type_to_pieces(MaybeAddQuotes, TVarSet, InstVarSet, ExternalTypeParams,
+        Type0) = Pieces :-
+    strip_builtin_qualifiers_from_type(Type0, Type),
+    (
+        MaybeAddQuotes = do_not_add_quotes,
+        StartQuotePieces = [],
+        EndQuotePieces = []
+    ;
+        MaybeAddQuotes = add_quotes,
+        StartQuotePieces = [error_util.prefix("`")],
+        EndQuotePieces = [error_util.suffix("'")]
+    ),
+    % For most types, we convert the type back to a term, and print that.
+    % This is done by the final else part of this if-then-else.
+    % This is ok for most types, which tend to be small.
+    ( if
+        % We handle higher order types differently, because when the
+        % actual and expected types differ in e.g. arity, having each
+        % argument type on its own line helps readability a *lot*.
+        Type = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity,
+            _LambdaEvalMethod)
+    then
+        ( Purity = purity_pure,     PurityPieces = []
+        ; Purity = purity_semipure, PurityPieces = [words("semipure")]
+        ; Purity = purity_impure,   PurityPieces = [words("impure")]
+        ),
+        ( PorF = pf_predicate,      PorFPieces = [words("pred")]
+        ; PorF = pf_function,       PorFPieces = [words("func")]
+        ),
+        (
+            HOInstInfo = none_or_default_func,
+            ArgPieces = list.map(
+                type_to_pieces(do_not_add_quotes, TVarSet, InstVarSet,
+                    ExternalTypeParams),
+                ArgTypes),
+            FuncResultPrefixPieces = [],
+            FuncResultSuffixPieces = [],
+            DetismPieces = [],
+            PorFMismatchPieces = [],
+            ArityMismatchPieces = []
+        ;
+            HOInstInfo = higher_order(PredInstInfo),
+            PorFStr = pred_or_func_to_full_str(PorF),
+            PredInstInfo = pred_inst_info(HOPorF, ArgModes, _ArgRegs, Detism),
+            ( if PorF = HOPorF then
+                PorFMismatchPieces = []
+            else
+                HOPorFStr = pred_or_func_to_full_str(HOPorF),
+                PorFMismatchPieces = [nl,
+                    words("The type says this is a"),
+                    words(PorFStr), error_util.suffix(","),
+                    words("but its mode says it is a"),
+                    words(HOPorFStr), error_util.suffix(".")]
+            ),
+            list.length(ArgTypes, NumArgTypes),
+            list.length(ArgModes, NumArgModes),
+            ( if NumArgTypes = NumArgModes then
+                assoc_list.from_corresponding_lists(ArgTypes, ArgModes,
+                    ArgTypesModes),
+                % If this higher order type is a function, then the type::mode
+                % for the function result must be wrapped in parentheses.
+                FuncResultPrefixPieces = [error_util.prefix("(")],
+                FuncResultSuffixPieces = [error_util.suffix(")")],
+                ArgPieces = list.map(
+                    type_and_mode_to_pieces(TVarSet, InstVarSet,
+                        ExternalTypeParams),
+                    ArgTypesModes),
+                ArityMismatchPieces = []
+            else
+                ArgPieces = list.map(
+                    type_to_pieces(do_not_add_quotes, TVarSet, InstVarSet,
+                        ExternalTypeParams),
+                    ArgTypes),
+                FuncResultPrefixPieces = [],
+                FuncResultSuffixPieces = [],
+                ArityMismatchPieces = [nl,
+                    words("The type says this"), words(PorFStr),
+                    words("has"), int_fixed(NumArgTypes), words("arguments,"),
+                    words("but its mode says it has"),
+                    int_fixed(NumArgModes), error_util.suffix(".")]
+            ),
+            DetismPieces = [words("is"), words(determinism_to_string(Detism))]
+        ),
+        (
+            PorF = pf_predicate,
+            (
+                ArgPieces = [],
+                ArgBlockPieces = []
+            ;
+                ArgPieces = [_ | _],
+                ArgBlockPieces =
+                    [error_util.suffix("("), nl_indent_delta(1)] ++
+                    component_list_to_line_pieces(ArgPieces, []) ++
+                    [nl_indent_delta(-1), fixed(")")]
+            )
+        ;
+            PorF = pf_function,
+            (
+                ArgPieces = [],
+                unexpected($pred, "function has no arguments")
+            ;
+                ArgPieces = [ReturnValuePieces],
+                ArgBlockPieces = [fixed("=")] ++
+                    FuncResultPrefixPieces ++ ReturnValuePieces ++
+                    FuncResultSuffixPieces
+            ;
+                ArgPieces = [_, _ | _],
+                list.det_split_last(ArgPieces, FuncArgPieces,
+                    ReturnValuePieces),
+                ArgBlockPieces = [suffix("("), nl_indent_delta(1)] ++
+                    component_list_to_line_pieces(FuncArgPieces, []) ++
+                    [nl_indent_delta(-1), fixed(") =")] ++
+                    FuncResultPrefixPieces ++ ReturnValuePieces ++
+                    FuncResultSuffixPieces
+            )
+        ),
+        Pieces = StartQuotePieces ++
+            PurityPieces ++ PorFPieces ++ ArgBlockPieces ++ DetismPieces ++
+            EndQuotePieces ++
+            PorFMismatchPieces ++ ArityMismatchPieces
+    else
+        unparse_type(Type, Term0),
+        list.map(term.coerce_var, ExternalTypeParams, ExistQVars),
+        maybe_add_existential_quantifier(ExistQVars, Term0, Term),
+        varset.coerce(TVarSet, VarSet),
+        TermPiece =
+            words(mercury_term_to_string(VarSet, print_name_only, Term)),
+        Pieces = StartQuotePieces ++ [TermPiece] ++ EndQuotePieces
+    ).
+
+:- func type_and_mode_to_pieces(tvarset, inst_varset, list(tvar),
+    pair(mer_type, mer_mode)) = list(format_component).
+
+type_and_mode_to_pieces(TVarSet, InstVarSet, ExternalTypeParams,
+        Type - Mode) = Pieces :-
+    TypePieces = type_to_pieces(do_not_add_quotes, TVarSet, InstVarSet,
+        ExternalTypeParams, Type),
+    ModeTerm0 = mode_to_term(output_mercury, Mode),
+    term.coerce(ModeTerm0, ModeTerm),
+    ModePiece =
+        words(mercury_term_to_string(InstVarSet, print_name_only, ModeTerm)),
+    Pieces = TypePieces ++ [fixed("::"), ModePiece].
+
+    % Check if any of the variables in the term are existentially quantified
+    % (occur in the first argument), and if so, add the appropriate
+    % quantification to the term. Otherwise, return the term unchanged.
+    %
+:- pred maybe_add_existential_quantifier(list(var)::in, term::in, term::out)
+    is det.
+
+maybe_add_existential_quantifier(ExternalTypeParams, !Term) :-
+    term.vars(!.Term, Vars),
+    ExistQVars = set.to_sorted_list(set.intersect(
+        set.list_to_set(ExternalTypeParams), set.list_to_set(Vars))),
+    (
+        ExistQVars = []
+    ;
+        ExistQVars = [_ | _],
+        QTerm = make_list_term(ExistQVars),
+        !:Term = term.functor(term.atom("some"), [QTerm, !.Term],
+            term.context_init)
+    ).
+
+:- func make_list_term(list(var)) = term.
+
+make_list_term([]) =
+    term.functor(term.atom("[]"), [], term.context_init).
+make_list_term([Var | Vars]) =
+    term.functor(term.atom("[|]"),
+        [term.variable(Var, context_init), make_list_term(Vars)],
+        term.context_init).
 
 %---------------------------------------------------------------------------%
 
