@@ -10179,9 +10179,9 @@ set of library grades to be installed.
 
 @sp 1
 @item --libgrades-exclude-component @var{component}
-@itemx --libgrade-exclude @var{component}
+@itemx --libgrades-exclude @var{component}
 @findex --libgrades-exclude-component
-@findex --libgrade-exclude
+@findex --libgrades-exclude
 Remove grades that contain the specified component from the set of
 library grades to be installed.
 (This option does not work with Mmake, only @samp{mmc --make}.)
