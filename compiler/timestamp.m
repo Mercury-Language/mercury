@@ -70,7 +70,6 @@
 :- import_module char.
 :- import_module int.
 :- import_module maybe.
-:- import_module require.   % Required for erlang grade.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
