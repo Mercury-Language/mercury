@@ -91,6 +91,13 @@
 
 %---------------------%
 
+    % We support these two word sizes.
+:- type word_size
+    --->    word_size_32
+    ;       word_size_64.
+
+%---------------------%
+
     % The GC method specifies how we do garbage collection.
     % The last five alternatives are for the C back-ends;
     % the first alternative is for compiling to C# or Java
@@ -280,7 +287,7 @@
 %
 
 :- pred globals_init(option_table::in, opt_tuple::in, op_mode::in,
-    compilation_target::in, gc_method::in,
+    compilation_target::in, word_size::in, gc_method::in,
     termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
@@ -292,6 +299,7 @@
 :- pred get_opt_tuple(globals::in, opt_tuple::out) is det.
 :- pred get_op_mode(globals::in, op_mode::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
+:- pred get_word_size(globals::in, word_size::out) is det.
 :- pred get_gc_method(globals::in, gc_method::out) is det.
 :- pred get_termination_norm(globals::in, termination_norm::out) is det.
 :- pred get_termination2_norm(globals::in, termination_norm::out) is det.
@@ -318,6 +326,7 @@
 :- pred set_options(option_table::in, globals::in, globals::out) is det.
 :- pred set_opt_tuple(opt_tuple::in, globals::in, globals::out) is det.
 :- pred set_op_mode(op_mode::in, globals::in, globals::out) is det.
+:- pred set_word_size(word_size::in, globals::in, globals::out) is det.
 :- pred set_gc_method(gc_method::in, globals::in, globals::out) is det.
 :- pred set_trace_level(trace_level::in, globals::in, globals::out) is det.
 :- pred set_trace_level_none(globals::in, globals::out) is det.
@@ -734,6 +743,7 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
                 % to allow them to be packed together.
                 g_csharp_compiler_type      :: csharp_compiler_type,
                 g_target                    :: compilation_target,
+                g_word_size                 :: word_size,
                 g_gc_method                 :: gc_method,
                 g_termination_norm          :: termination_norm,
                 g_termination2_norm         :: termination_norm,
@@ -745,14 +755,14 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
                 g_target_env_type           :: env_type
             ).
 
-globals_init(Options, OptTuple, OpMode, Target, GC_Method,
+globals_init(Options, OptTuple, OpMode, Target, WordSize, GC_Method,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedback, HostEnvType, SystemEnvType,
         TargetEnvType, FileInstallCmd, LimitErrorContextsMap, Globals) :-
     Globals = globals(Options, OptTuple, OpMode, TraceSuppress,
         ReuseStrategy, MaybeFeedback, FileInstallCmd, LimitErrorContextsMap,
-        C_CompilerType, CSharp_CompilerType, Target, GC_Method,
+        C_CompilerType, CSharp_CompilerType, Target, WordSize, GC_Method,
         TerminationNorm, Termination2Norm, TraceLevel, SSTraceLevel,
         MaybeThreadSafe, HostEnvType, SystemEnvType, TargetEnvType).
 
@@ -760,6 +770,7 @@ get_options(Globals, Globals ^ g_options).
 get_opt_tuple(Globals, Globals ^ g_opt_tuple).
 get_op_mode(Globals, Globals ^ g_op_mode).
 get_target(Globals, Globals ^ g_target).
+get_word_size(Globals, Globals ^ g_word_size).
 get_gc_method(Globals, Globals ^ g_gc_method).
 get_termination_norm(Globals, Globals ^ g_termination_norm).
 get_termination2_norm(Globals, Globals ^ g_termination2_norm).
@@ -794,6 +805,9 @@ set_opt_tuple(OptTuple, !Globals) :-
 
 set_op_mode(OpMode, !Globals) :-
     !Globals ^ g_op_mode := OpMode.
+
+set_word_size(WordSize, !Globals) :-
+    !Globals ^ g_word_size := WordSize.
 
 set_gc_method(GC_Method, !Globals) :-
     !Globals ^ g_gc_method := GC_Method.

@@ -2472,10 +2472,6 @@ setup_base_params(Globals, BaseParams) :-
 
 %---------------------%
 
-:- type word_size
-    --->    word_size_64
-    ;       word_size_32.
-
 :- type maybe_double_word_floats
     --->    no_double_word_floats
     ;       use_double_word_floats.

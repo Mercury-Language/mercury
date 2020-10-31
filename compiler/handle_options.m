@@ -196,8 +196,9 @@ convert_option_table_result_to_globals(MaybeError, OptionTable0,
         MaybeError = no,
         OptOptions = cord.list(OptOptionsCord),
         process_optimization_options(OptionTable, OptOptions, OptTuple),
-        check_option_values(OptionTable0, OptionTable, Target, GC_Method,
-            TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
+        check_option_values(OptionTable0, OptionTable,
+            Target, WordSize, GC_Method, TermNorm, Term2Norm,
+            TraceLevel, TraceSuppress, SSTraceLevel,
             MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
             ReuseStrategy, MaybeFeedbackInfo,
             HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
@@ -217,8 +218,8 @@ convert_option_table_result_to_globals(MaybeError, OptionTable0,
         (
             !.Specs = [],
             convert_options_to_globals(OptionTable, OptTuple, OpMode, Target,
-                GC_Method, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
-                SSTraceLevel, MaybeThreadSafe,
+                WordSize, GC_Method, TermNorm, Term2Norm,
+                TraceLevel, TraceSuppress, SSTraceLevel, MaybeThreadSafe,
                 C_CompilerType, CSharp_CompilerType,
                 ReuseStrategy, MaybeFeedbackInfo,
                 HostEnvType, SystemEnvType, TargetEnvType,
@@ -230,7 +231,7 @@ convert_option_table_result_to_globals(MaybeError, OptionTable0,
     ).
 
 :- pred check_option_values(option_table::in, option_table::out,
-    compilation_target::out, gc_method::out,
+    compilation_target::out, word_size::out, gc_method::out,
     termination_norm::out, termination_norm::out, trace_level::out,
     trace_suppress_items::out, ssdb_trace_level::out, may_be_thread_safe::out,
     c_compiler_type::out, csharp_compiler_type::out,
@@ -239,8 +240,9 @@ convert_option_table_result_to_globals(MaybeError, OptionTable0,
     limit_error_contexts_map::out,
     list(error_spec)::out, io::di, io::uo) is det.
 
-check_option_values(!OptionTable, Target, GC_Method, TermNorm, Term2Norm,
-        TraceLevel, TraceSuppress, SSTraceLevel, MaybeThreadSafe,
+check_option_values(!OptionTable, Target, WordSize, GC_Method,
+        TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
+        MaybeThreadSafe,
         C_CompilerType, CSharp_CompilerType, ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
         !:Specs, !IO) :-
@@ -256,6 +258,22 @@ check_option_values(!OptionTable, Target, GC_Method, TermNorm, Term2Norm,
             list_to_quoted_pieces_or(["c", "java", "csharp"]) ++
             [suffix("."), nl],
         add_error(phase_options, TargetSpec, !Specs)
+    ),
+
+    raw_lookup_int_option(!.OptionTable, bits_per_word, BitsPerWord),
+    ( if BitsPerWord = 32 then
+        WordSize = word_size_32
+    else if BitsPerWord = 64 then
+        WordSize = word_size_64
+    else
+        WordSize = word_size_64,    % dummy
+        BitsPerWordStr = string.int_to_string(BitsPerWord),
+        WordSizeSpec =
+            [words("Invalid argument"), quote(BitsPerWordStr), 
+            words("to the"), quote("--bits-per-word"), words("option;"),
+            words("must be either"), quote("32"), words("or"), quote("64"),
+            suffix("."), nl],
+        add_error(phase_options, WordSizeSpec, !Specs)
     ),
 
     raw_lookup_string_option(!.OptionTable, gc, GC_MethodStr),
@@ -643,7 +661,7 @@ check_option_values(!OptionTable, Target, GC_Method, TermNorm, Term2Norm,
     % termination analyser (the old and the new) has its own norm setting.
     %
 :- pred convert_options_to_globals(option_table::in, opt_tuple::in,
-    op_mode::in, compilation_target::in, gc_method::in,
+    op_mode::in, compilation_target::in, word_size::in, gc_method::in,
     termination_norm::in, termination_norm::in, trace_level::in,
     trace_suppress_items::in, ssdb_trace_level::in, may_be_thread_safe::in,
     c_compiler_type::in, csharp_compiler_type::in,
@@ -652,8 +670,9 @@ check_option_values(!OptionTable, Target, GC_Method, TermNorm, Term2Norm,
     list(error_spec)::in, list(error_spec)::out,
     globals::out, io::di, io::uo) is det.
 
-convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
-        TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
+convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target,
+        WordSize, GC_Method, TermNorm, Term2Norm,
+        TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
@@ -699,7 +718,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
         FileInstallCmd = install_cmd_user(InstallCmd, InstallCmdDirOption)
     ),
 
-    globals_init(OptionTable0, !.OptTuple, OpMode, Target, GC_Method,
+    globals_init(OptionTable0, !.OptTuple, OpMode, Target, WordSize, GC_Method,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
@@ -1178,6 +1197,7 @@ handle_implications_of_pregen_target_spf(!Globals, Target,
     globals.lookup_bool_option(!.Globals, pregenerated_dist, PregeneratedDist),
     (
         PregeneratedDist = bool.yes,
+        globals.set_word_size(word_size_32, !Globals),
         globals.set_option(num_ptag_bits, int(2), !Globals),
         globals.set_option(arg_pack_bits, int(32), !Globals),
         globals.set_option(unboxed_float, bool(no), !Globals),
@@ -1244,7 +1264,7 @@ handle_implications_of_pregen_target_spf(!Globals, Target,
                 !Globals)
         ),
 
-        % Argument packing only works on back-ends, which use low-level data,
+        % Argument packing only works on back-ends which use low-level data,
         % i.e the C backend. For the other target languages, implementing
         % argument packing will require not just a lot of work on RTTI,
         % but also generalizing field addressing, to allow both single fields
