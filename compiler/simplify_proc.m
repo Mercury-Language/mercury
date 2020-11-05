@@ -273,14 +273,14 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
     proc_info_set_goal(Goal, !ProcInfo),
 
     simplify_info_get_varset(Info, VarSet0),
-    simplify_info_get_var_types(Info, VarTypes1),
+    simplify_info_get_var_types(Info, VarTypes0),
     simplify_info_get_rtti_varmaps(Info, RttiVarMaps),
     simplify_info_get_elim_vars(Info, ElimVarsLists0),
     % We sort the lists basically on the number of the first variable.
     list.sort(ElimVarsLists0, ElimVarsLists),
     list.condense(ElimVarsLists, ElimVars),
     varset.delete_sorted_vars(ElimVars, VarSet0, VarSet1),
-    delete_sorted_var_types(ElimVars, VarTypes1, VarTypes),
+    delete_sorted_var_types(ElimVars, VarTypes0, VarTypes),
     % We only eliminate vars that cannot occur in RttiVarMaps.
     ( if simplify_do_after_front_end(Info) then
         proc_info_get_var_name_remap(!.ProcInfo, VarNameRemap),
@@ -397,6 +397,8 @@ simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo) :-
         true
     ).
 
+%-----------------------------------------------------------------------------%
+
 :- pred simplify_proc_analyze_and_format_calls(
     module_info::in, module_info::out,
     maybe_generate_implicit_stream_warnings::in, pred_id::in, proc_id::in,
@@ -457,6 +459,8 @@ simplify_proc_analyze_and_format_calls(!ModuleInfo, ImplicitStreamWarnings,
         % of the goal that we will not be using.
     ).
 
+%-----------------------------------------------------------------------------%
+
 :- pred simplify_proc_maybe_warn_about_duplicates(module_info::in, pred_id::in,
     proc_info::in, list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -511,14 +515,16 @@ simplify_proc_maybe_warn_about_duplicates(ModuleInfo, PredId, ProcInfo,
     simplify_info::in, simplify_info::out) is det.
 
 simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
-    % Simplification is done in two passes. The first pass performs common
-    % structure and duplicate call elimination. The second pass performs excess
+    % Simplification is done in two passes, which is we have two calls to
+    % do_process_top_level_goal below. The first pass performs common structure
+    % and duplicate call elimination. The second pass performs excess
     % assignment elimination and cleans up the code after the first pass.
     %
-    % Two passes are required because the goal must be requantified after the
-    % optimizations in common.m are run so that excess assignment elimination
-    % works properly.
-
+    % Two passes are required because some parts of the first pass can
+    % obsolete existing nonlocals sets and instmap deltas, while some parts
+    % of the second pass may need this information to be up-to-date.
+    % Therefore we have to be prepared to recompute this information
+    % between the two passes.
     some [!SimplifyTasks] (
         simplify_info_get_simplify_tasks(!.Info, !:SimplifyTasks),
         OriginalSimplifyTasks = !.SimplifyTasks,
@@ -566,7 +572,7 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             FoundContainsTrace = no
         ;
             FoundContainsTrace = yes,
-            goal_contains_trace(!Goal, _)
+            set_goal_contains_trace_features_in_goal(!Goal, _)
         )
     ).
 
@@ -616,8 +622,7 @@ do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             det_get_soln_context(Detism, SolnContext),
 
             % Det_infer_goal looks up the proc_info in the module_info
-            % for the vartypes, so we'd better stick them back in the
-            % module_info.
+            % for the vartypes, so we have to put them back in the module_info.
             simplify_info_get_module_info(!.Info, !:ModuleInfo),
             simplify_info_get_varset(!.Info, !:VarSet),
             simplify_info_get_var_types(!.Info, !:VarTypes),
@@ -647,10 +652,10 @@ do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_contains_trace(hlds_goal::in, hlds_goal::out,
+:- pred set_goal_contains_trace_features_in_goal(hlds_goal::in, hlds_goal::out,
     contains_trace_goal::out) is det.
 
-goal_contains_trace(Goal0, Goal, ContainsTrace) :-
+set_goal_contains_trace_features_in_goal(Goal0, Goal, ContainsTrace) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         ( GoalExpr0 = unify(_, _, _, _, _)
@@ -663,32 +668,36 @@ goal_contains_trace(Goal0, Goal, ContainsTrace) :-
     ;
         GoalExpr0 = conj(ConjType, SubGoals0),
         ContainsTrace0 = contains_no_trace_goal,
-        goal_list_contains_trace_acc(SubGoals0, SubGoals,
+        set_goal_contains_trace_features_in_goals(SubGoals0, SubGoals,
             ContainsTrace0, ContainsTrace),
         GoalExpr = conj(ConjType, SubGoals)
     ;
         GoalExpr0 = disj(SubGoals0),
         ContainsTrace0 = contains_no_trace_goal,
-        goal_list_contains_trace_acc(SubGoals0, SubGoals,
+        set_goal_contains_trace_features_in_goals(SubGoals0, SubGoals,
             ContainsTrace0, ContainsTrace),
         GoalExpr = disj(SubGoals)
     ;
         GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
         ContainsTrace0 = contains_no_trace_goal,
-        case_list_contains_trace_acc(Cases0, Cases,
+        set_goal_contains_trace_features_in_cases(Cases0, Cases,
             ContainsTrace0, ContainsTrace),
         GoalExpr = switch(SwitchVar, CanFail, Cases)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        goal_contains_trace(Cond0, Cond, CondContainsTrace),
-        goal_contains_trace(Then0, Then, ThenContainsTrace),
-        goal_contains_trace(Else0, Else, ElseContainsTrace),
+        set_goal_contains_trace_features_in_goal(Cond0, Cond,
+            CondContainsTrace),
+        set_goal_contains_trace_features_in_goal(Then0, Then,
+            ThenContainsTrace),
+        set_goal_contains_trace_features_in_goal(Else0, Else,
+            ElseContainsTrace),
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         ContainsTrace = worst_contains_trace(CondContainsTrace,
             worst_contains_trace(ThenContainsTrace, ElseContainsTrace))
     ;
         GoalExpr0 = negation(SubGoal0),
-        goal_contains_trace(SubGoal0, SubGoal, ContainsTrace),
+        set_goal_contains_trace_features_in_goal(SubGoal0, SubGoal,
+            ContainsTrace),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
@@ -708,7 +717,8 @@ goal_contains_trace(Goal0, Goal, ContainsTrace) :-
                 ( FGT = from_ground_term_initial
                 ; FGT = from_ground_term_other
                 ),
-                goal_contains_trace(SubGoal0, SubGoal, ContainsTrace)
+                set_goal_contains_trace_features_in_goal(SubGoal0, SubGoal,
+                    ContainsTrace)
             )
         ;
             ( Reason = disable_warnings(_, _)
@@ -722,7 +732,8 @@ goal_contains_trace(Goal0, Goal, ContainsTrace) :-
             ; Reason = barrier(_)
             ; Reason = loop_control(_, _, _)
             ),
-            goal_contains_trace(SubGoal0, SubGoal, ContainsTrace)
+            set_goal_contains_trace_features_in_goal(SubGoal0, SubGoal,
+                ContainsTrace)
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;
@@ -730,9 +741,11 @@ goal_contains_trace(Goal0, Goal, ContainsTrace) :-
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal0, OrElseGoals0, OrElseInners),
-            goal_contains_trace(MainGoal0, MainGoal, MainContainsTrace),
+            set_goal_contains_trace_features_in_goal(MainGoal0, MainGoal,
+                MainContainsTrace),
             OrElseContainsTrace0 = contains_no_trace_goal,
-            goal_list_contains_trace_acc(OrElseGoals0, OrElseGoals,
+            set_goal_contains_trace_features_in_goals(
+                OrElseGoals0, OrElseGoals,
                 OrElseContainsTrace0, OrElseContainsTrace),
             ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal, OrElseGoals, OrElseInners),
@@ -741,7 +754,8 @@ goal_contains_trace(Goal0, Goal, ContainsTrace) :-
                 OrElseContainsTrace)
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
-            goal_contains_trace(SubGoal0, SubGoal, ContainsTrace),
+            set_goal_contains_trace_features_in_goal(SubGoal0, SubGoal,
+                ContainsTrace),
             ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
             GoalExpr = shorthand(ShortHand)
         ;
@@ -758,27 +772,29 @@ goal_contains_trace(Goal0, Goal, ContainsTrace) :-
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred goal_list_contains_trace_acc(list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred set_goal_contains_trace_features_in_goals(
+    list(hlds_goal)::in, list(hlds_goal)::out,
     contains_trace_goal::in, contains_trace_goal::out) is det.
 
-goal_list_contains_trace_acc([], [], !ContainsTrace).
-goal_list_contains_trace_acc([Goal0 | Goals0], [Goal | Goals],
+set_goal_contains_trace_features_in_goals([], [], !ContainsTrace).
+set_goal_contains_trace_features_in_goals([Goal0 | Goals0], [Goal | Goals],
         !ContainsTrace) :-
-    goal_contains_trace(Goal0, Goal, GoalContainsTrace),
+    set_goal_contains_trace_features_in_goal(Goal0, Goal, GoalContainsTrace),
     !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
-    goal_list_contains_trace_acc(Goals0, Goals, !ContainsTrace).
+    set_goal_contains_trace_features_in_goals(Goals0, Goals, !ContainsTrace).
 
-:- pred case_list_contains_trace_acc(list(case)::in, list(case)::out,
+:- pred set_goal_contains_trace_features_in_cases(
+    list(case)::in, list(case)::out,
     contains_trace_goal::in, contains_trace_goal::out) is det.
 
-case_list_contains_trace_acc([], [], !ContainsTrace).
-case_list_contains_trace_acc([Case0 | Cases0], [Case | Cases],
+set_goal_contains_trace_features_in_cases([], [], !ContainsTrace).
+set_goal_contains_trace_features_in_cases([Case0 | Cases0], [Case | Cases],
         !ContainsTrace) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
-    goal_contains_trace(Goal0, Goal, GoalContainsTrace),
+    set_goal_contains_trace_features_in_goal(Goal0, Goal, GoalContainsTrace),
     Case = case(MainConsId, OtherConsIds, Goal),
     !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
-    case_list_contains_trace_acc(Cases0, Cases, !ContainsTrace).
+    set_goal_contains_trace_features_in_cases(Cases0, Cases, !ContainsTrace).
 
 %-----------------------------------------------------------------------------%
 
