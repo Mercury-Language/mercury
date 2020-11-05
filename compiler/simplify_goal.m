@@ -165,7 +165,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
             true
         ),
 
-        % If the goal had any non-locals we should requantify.
+        % If the goal had any non-locals, we should requantify.
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         ( if set_of_var.is_empty(NonLocals0) then
             true
@@ -234,7 +234,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
 %           true
 %       ),
 
-        % If the goal had any non-locals we should requantify.
+        % If the goal had any non-locals, we should requantify.
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         ( if set_of_var.is_empty(NonLocals0) then
             true

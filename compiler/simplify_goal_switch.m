@@ -184,9 +184,10 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         true
     else
         % If we pruned some cases, variables used by those cases may no longer
-        % be nonlocal to the switch. Also, the determinism may have changed
-        % (especially if we pruned all the cases). If the switch now can't
-        % succeed, we have to recompute instmap_deltas and rerun determinism
+        % be used by the switch, which means they may no longer be nonlocal
+        % to the switch. Also, the determinism may have changed (especially
+        % if we pruned all the cases). If the switch now can't succeed,
+        % we have to recompute instmap_deltas and rerun determinism
         % analysis to avoid aborts in the code generator because the switch
         % now cannot produce variables it did before.
 
