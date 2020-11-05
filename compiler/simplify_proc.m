@@ -537,7 +537,10 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             !SimplifyTasks ^ do_excess_assign := do_not_elim_excess_assigns,
             simplify_info_set_simplify_tasks(!.SimplifyTasks, !Info),
 
-            do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info),
+            do_process_top_level_goal(!Goal, NestedContext0, InstMap0,
+                GoalInfo0, !Info),
+            maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
+                !Goal, !Info),
 
             !:SimplifyTasks = OriginalSimplifyTasks,
 
@@ -565,7 +568,10 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
         ),
         % On the second pass do excess assignment elimination and
         % some cleaning up after the common structure pass.
-        do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info),
+        do_process_top_level_goal(!Goal, NestedContext0, InstMap0,
+            GoalInfo1, !Info),
+        maybe_recompute_fields_after_top_level_goal(GoalInfo1, InstMap0,
+            !Goal, !Info),
 
         simplify_info_get_found_contains_trace(!.Info, FoundContainsTrace),
         (
@@ -574,23 +580,31 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             FoundContainsTrace = yes,
             set_goal_contains_trace_features_in_goal(!Goal, _)
         )
+        % We do not have to put OriginalSimplifyTasks back into !:Info
+        % at the end, because neither of our two callers will look at
+        % the tasks field of the !:Info value we return. We could return
+        % just the fields they *do* look at, but there are many of them.
     ).
 
 :- pred do_process_top_level_goal(hlds_goal::in, hlds_goal::out,
-    simplify_nested_context::in, instmap::in,
+    simplify_nested_context::in, instmap::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
+do_process_top_level_goal(!Goal, NestedContext0, InstMap0, GoalInfo0, !Info) :-
     !.Goal = hlds_goal(_, GoalInfo0),
-    Detism = goal_info_get_determinism(GoalInfo0),
-    NonLocals = goal_info_get_nonlocals(GoalInfo0),
-
     simplify_goal(!Goal, NestedContext0, InstMap0,
-        common_info_init, _Common, !Info),
+        common_info_init, _Common, !Info).
 
+:- pred maybe_recompute_fields_after_top_level_goal(hlds_goal_info::in,
+    instmap::in, hlds_goal::in, hlds_goal::out,
+    simplify_info::in, simplify_info::out) is det.
+
+maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
+        !Goal, !Info) :-
     simplify_info_get_rerun_quant_instmap_delta(!.Info, RerunQuantDelta),
     (
-        RerunQuantDelta = yes,
+        RerunQuantDelta = rerun_quant_instmap_deltas,
+        NonLocals = goal_info_get_nonlocals(GoalInfo0),
         some [!VarSet, !VarTypes, !RttiVarMaps, !ModuleInfo] (
             simplify_info_get_varset(!.Info, !:VarSet),
             simplify_info_get_var_types(!.Info, !:VarTypes),
@@ -612,11 +626,13 @@ do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             simplify_info_set_module_info(!.ModuleInfo, !Info)
         )
     ;
-        RerunQuantDelta = no
+        RerunQuantDelta = do_not_rerun_quant_instmap_deltas
     ),
+
     simplify_info_get_rerun_det(!.Info, RerunDet),
     (
-        RerunDet = yes,
+        RerunDet = rerun_det,
+        Detism = goal_info_get_determinism(GoalInfo0),
         some [!VarSet, !VarTypes, !RttiVarMaps, !ModuleInfo, !ProcInfo]
         (
             det_get_soln_context(Detism, SolnContext),
@@ -647,8 +663,11 @@ do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             simplify_info_set_var_types(!.VarTypes, !Info)
         )
     ;
-        RerunDet = no
+        RerunDet = do_not_rerun_det
     ).
+    % The call to simplify_info_reinit in our caller will reset !:Info
+    % to do_not_rerun_quant_instmap_deltas and do_not_rerun_det before
+    % the next pass, if there is a next pass.
 
 %-----------------------------------------------------------------------------%
 
