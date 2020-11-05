@@ -556,91 +556,47 @@ mercury_mode_to_string(Lang, InstVarSet, Mode) = String :-
 
 mercury_format_mode(Lang, InstVarSet, Mode, !U) :-
     (
-        Mode = from_to_mode(InstA, InstB),
-        % In the general case, we output this mode as "(InstA >> InstB)".
+        Mode = from_to_mode(FromInst, ToInst),
+        % In the general case, we output this mode as "(FromInst >> ToInst)".
+        % However, we do try to special case two kinds of modes.
         % 
-        % We special case the builtin modes in, out, ui, di, uo, mui, mdi, muo
-        % because they are by far the most frequently used modes,
-        % and higher-order pred and func modes, because their (InstA >> InstB)
-        % forms can be very hard to read.
+        % We try to special case the eight main builtin modes:
+        %   in, out, ui, di, uo, mui, mdi and muo
+        % for two reasons:
         %
-        % However, when we are generating actual Mercury code,
-        % we must not replace the expansions of in, out, di and uo
-        % with their names. Doing so would make the actual *definitions*
+        % - because they are by far the most frequently used modes, so their
+        %   readability is quite important, but
+        % - their (FromInst >> ToInst) forms can be very hard to read.
+        %
+        % However, we cannot replace the expansions of in, out etc
+        % with their names when we are generating actual Mercury code,
+        % because if we did, we would make the actual *definitions*
         % of these modes in builtin.int circular.
-        (
+        %
+        % The second kind of mode we try to special case are higher-order
+        % pred and func modes. These occur much less often than the eight
+        % builtin modes handled by the first special case, but their
+        % (FromInst >> ToInst) forms are even harder to read, due to both
+        % their size and the fact the same inst is unneceesarily repeated
+        % on both sides of the >> operator.
+
+        ( if
             Lang = output_debug,
-            ( if
-                InstB = ground(shared, none_or_default_func),
-                (
-                    InstA = ground(shared, none_or_default_func),
-                    ModeStr = "in"
-                ;
-                    InstA = free,
-                    ModeStr = "out"
-                )
-            then
-                add_string(ModeStr, !U)
-            else if
-                InstA = ground(unique, none_or_default_func),
-                InstB = ground(clobbered, none_or_default_func)
-            then
-                add_string("di", !U)
-            else if
-                InstB = ground(unique, none_or_default_func),
-                (
-                    InstA = ground(unique, none_or_default_func),
-                    ModeStr = "ui"
-                ;
-                    InstA = free,
-                    ModeStr = "uo"
-                )
-            then
-                add_string(ModeStr, !U)
-            else if
-                InstA = ground(mostly_unique, none_or_default_func),
-                InstB = ground(mostly_clobbered, none_or_default_func)
-            then
-                add_string("mdi", !U)
-            else if
-                InstB = ground(mostly_unique, none_or_default_func),
-                (
-                    InstA = ground(mostly_unique, none_or_default_func),
-                    ModeStr = "mui"
-                ;
-                    InstA = free,
-                    ModeStr = "muo"
-                )
-            then
-                add_string(ModeStr, !U)
-            else if
-                InstA = ground(_Uniq, higher_order(
-                    pred_inst_info(_PredOrFunc, _Modes, _, _Det))),
-                InstB = InstA
-            then
-                mercury_format_inst(Lang, InstVarSet, InstA, !U)
-            else
-                add_string("(", !U),
-                mercury_format_inst(Lang, InstVarSet, InstA, !U),
-                add_string(" >> ", !U),
-                mercury_format_inst(Lang, InstVarSet, InstB, !U),
-                add_string(")", !U)
-            )
-        ;
-            Lang = output_mercury,
-            ( if
-                InstA = ground(_Uniq, higher_order(
-                    pred_inst_info(_PredOrFunc, _Modes, _, _Det))),
-                InstB = InstA
-            then
-                mercury_format_inst(Lang, InstVarSet, InstA, !U)
-            else
-                add_string("(", !U),
-                mercury_format_inst(Lang, InstVarSet, InstA, !U),
-                add_string(" >> ", !U),
-                mercury_format_inst(Lang, InstVarSet, InstB, !U),
-                add_string(")", !U)
-            )
+            from_to_insts_is_standard_mode(FromInst, ToInst, StdMode)
+        then
+            add_string(StdMode, !U)
+        else if
+            FromInst = ground(_Uniq, higher_order(
+                pred_inst_info(_PredOrFunc, _Modes, _, _Det))),
+            ToInst = FromInst
+        then
+            mercury_format_inst(Lang, InstVarSet, FromInst, !U)
+        else
+            add_string("(", !U),
+            mercury_format_inst(Lang, InstVarSet, FromInst, !U),
+            add_string(" >> ", !U),
+            mercury_format_inst(Lang, InstVarSet, ToInst, !U),
+            add_string(")", !U)
         )
     ;
         Mode = user_defined_mode(Name, Args),
@@ -653,6 +609,48 @@ mercury_format_mode(Lang, InstVarSet, Mode, !U) :-
             add_string("(", !U),
             mercury_format_inst_list(Lang, InstVarSet, Args, !U),
             add_string(")", !U)
+        )
+    ).
+
+:- pred from_to_insts_is_standard_mode(mer_inst::in, mer_inst::in, string::out)
+    is semidet.
+
+from_to_insts_is_standard_mode(FromInst, ToInst, StdMode) :-
+    ToInst = ground(ToUniq, none_or_default_func),
+    (
+        ToUniq = shared,
+        (
+            FromInst = ground(shared, none_or_default_func),
+            StdMode = "in"
+        ;
+            FromInst = free,
+            StdMode = "out"
+        )
+    ;
+        ToUniq = clobbered,
+        FromInst = ground(unique, none_or_default_func),
+        StdMode = "di"
+    ;
+        ToUniq = unique,
+        (
+            FromInst = ground(unique, none_or_default_func),
+            StdMode = "ui"
+        ;
+            FromInst = free,
+            StdMode = "uo"
+        )
+    ;
+        ToUniq = mostly_clobbered,
+        FromInst = ground(mostly_unique, none_or_default_func),
+        StdMode = "mdi"
+    ;
+        ToUniq = mostly_unique,
+        (
+            FromInst = ground(mostly_unique, none_or_default_func),
+            StdMode = "mui"
+        ;
+            FromInst = free,
+            StdMode = "muo"
         )
     ).
 
