@@ -10,8 +10,8 @@
 
 :- pred p(foo, foo, foo).
 :- mode p(bound(f(free, ground)) >> ground,
-      bound(f(ground, free)) >> ground,
-      out) is det.
+    bound(f(ground, free)) >> ground,
+    out) is det.
 
 :- implementation.
 
