@@ -37,7 +37,7 @@ Specific information is contained in individual README files:
 
       * [Docker](README.Docker)
       * [Linux](README.Linux)
-        [PPC](README.Linux-PPC),
+        ([PPC](README.Linux-PPC),
         [m68k](README.Linux-m68k))
       * [MacOS X](README.MacOS)
       * [FreeBSD](README.FreeBSD)
