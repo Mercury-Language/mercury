@@ -165,8 +165,7 @@
                 ic_fifos                :: cord(foreign_include_file_info),
                 ic_fact_tables          :: set(string),
                 ic_langs                :: set(foreign_language),
-                ic_foreign_export_langs :: set(foreign_language),
-                ic_has_main             :: has_main
+                ic_foreign_export_langs :: set(foreign_language)
             ).
 
 :- func init_item_contents = item_contents.
@@ -1117,7 +1116,7 @@ add_implicit_avail(Implicit, ModuleName, !ImportUseMap) :-
 %---------------------------------------------------------------------------%
 
 init_item_contents =
-    item_contents(cord.init, set.init, set.init, set.init, no_main).
+    item_contents(cord.init, set.init, set.init, set.init).
 
 get_implicits_foreigns_fact_tables(IntItems, ImpItems,
         IntImplicitAvailNeeds, IntImpImplicitAvailNeeds, !:Contents) :-
@@ -1125,13 +1124,8 @@ get_implicits_foreigns_fact_tables(IntItems, ImpItems,
     !:Contents = init_item_contents,
     get_implicits_foreigns_fact_tables_acc(IntItems,
         ImplicitAvailNeeds0, IntImplicitAvailNeeds, !Contents),
-    IntHasMain = !.Contents ^ ic_has_main,
     get_implicits_foreigns_fact_tables_acc(ImpItems,
-        IntImplicitAvailNeeds, IntImpImplicitAvailNeeds, !Contents),
-    % We ignore declarations of predicates named "main" in the
-    % implementation section, because nonexported predicates cannot serve
-    % as program entry points.
-    !Contents ^ ic_has_main := IntHasMain.
+        IntImplicitAvailNeeds, IntImpImplicitAvailNeeds, !Contents).
 
 :- pred get_implicits_foreigns_fact_tables_acc(list(item)::in,
     implicit_avail_needs::in, implicit_avail_needs::out,
@@ -1279,38 +1273,9 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
         set.insert_list(all_foreign_languages, FELangs0, FELangs),
         !Contents ^ ic_foreign_export_langs := FELangs
     ;
-        Item = item_pred_decl(ItemPredDecl),
-        ItemPredDecl = item_pred_decl_info(SymName, PorF, ArgTypes,
-            _, WithType, _, _, _, _, _, _, _, _, _),
-        ( if
-            % XXX ITEM_LIST Could the predicate name be unqualified?
-            (
-                SymName = unqualified(_),
-                unexpected($pred, "unqualified SymName")
-            ;
-                SymName = qualified(_, "main")
-            ),
-            PorF = pf_predicate,
-            % XXX The comment below is obsolete, and was probably wrong
-            % even before it became obsolete.
-            % XXX We should allow `main/2' to be declared using `with_type`,
-            % but equivalences haven't been expanded at this point.
-            % The `has_main' field is only used for some special case handling
-            % of the module containing main for the IL backend (we generate
-            % a `.exe' file rather than a `.dll' file). This would arguably
-            % be better done by generating a `.dll' file as normal, and a
-            % separate `.exe' file containing initialization code and a call
-            % to `main/2', as we do with the `_init.c' file in the C backend.
-            ArgTypes = [_, _],
-            WithType = no
-        then
-            !Contents ^ ic_has_main := has_main
-        else
-            true
-        )
-    ;
         ( Item = item_inst_defn(_)
         ; Item = item_mode_defn(_)
+        ; Item = item_pred_decl(_)
         ; Item = item_mode_decl(_)
         ; Item = item_typeclass(_)
         ; Item = item_foreign_export_enum(_)

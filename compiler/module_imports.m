@@ -204,7 +204,7 @@
 :- pred make_module_and_imports(globals::in, file_name::in,
     module_name::in, parse_tree_module_src::in, module_names_contexts::in,
     set(module_name)::in, list(string)::in, foreign_include_file_infos::in,
-    set(foreign_language)::in, has_main::in,
+    set(foreign_language)::in,
     maybe(module_timestamp_map)::in, module_and_imports::out) is det.
 
     % Construct a module_and_imports structure for inclusion in
@@ -220,7 +220,7 @@
     list(module_name)::in, list(string)::in,
     list(fim_spec)::in, list(foreign_include_file_info)::in,
     contains_foreign_code::in, contains_foreign_export::in,
-    has_main::in, module_and_imports::out) is det.
+    module_and_imports::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -261,8 +261,6 @@
     contains_foreign_code::out) is det.
 :- pred module_and_imports_get_contains_foreign_export(module_and_imports::in,
     contains_foreign_export::out) is det.
-:- pred module_and_imports_get_has_main(module_and_imports::in,
-    has_main::out) is det.
 :- pred module_and_imports_get_parse_tree_module_src(module_and_imports::in,
     parse_tree_module_src::out) is det.
 :- pred module_and_imports_get_ancestor_int_specs(module_and_imports::in,
@@ -534,9 +532,6 @@
                 % declarations?
                 mai_has_foreign_export  :: contains_foreign_export,
 
-                % Does this module contain main/2?
-                mai_has_main            :: has_main,
-
                 % The contents of the module and its imports.
                 mai_src                 :: parse_tree_module_src,
                 mai_ancestor_int_specs  :: map(module_name, ancestor_int_spec),
@@ -748,7 +743,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     get_implicits_foreigns_fact_tables(IntItems, ImpItems,
         IntImplicitImportNeeds, IntImpImplicitImportNeeds, Contents),
     Contents = item_contents(NewForeignInclFilesCord, FactTables, _NewLangs,
-        NewForeignExportLangs, HasMain),
+        NewForeignExportLangs),
     set.to_sorted_list(FactTables, SortedFactTables),
     globals.get_backend_foreign_languages(Globals, BackendLangs),
     set.intersect(set.list_to_set(BackendLangs), NewForeignExportLangs,
@@ -807,7 +802,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         set.list_to_set(Ancestors), ChildrenMap, PublicChildrenMap,
         NestedDeps, IntDepsMap, IntImpDepsMap, IndirectDeps,
         SortedFactTables, ForeignImports, ForeignIncludeFilesCord,
-        ContainsForeignCode, ContainsForeignExport, HasMain,
+        ContainsForeignCode, ContainsForeignExport,
         ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs,
         VersionNumbers, MaybeTimestampMap, Specs, Errors,
@@ -843,8 +838,8 @@ accumulate_foreign_import_langs_in_item(Item, !LangSet) :-
 
 make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
         ParseTreeModuleSrc, PublicChildrenMap, NestedChildren, FactDeps,
-        ForeignIncludeFiles, ForeignExportLangs, HasMain,
-        MaybeTimestampMap, ModuleAndImports) :-
+        ForeignIncludeFiles, ForeignExportLangs, MaybeTimestampMap,
+        ModuleAndImports) :-
     set.init(Ancestors),
     map.init(IntDeps),
     map.init(ImpDeps),
@@ -877,7 +872,7 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
         Ancestors, ChildrenMap, PublicChildrenMap, NestedChildren,
         IntDeps, ImpDeps, IndirectDeps, FactDeps,
         ForeignImports, ForeignIncludeFiles,
-        foreign_code_langs_unknown, ContainsForeignExport, HasMain,
+        foreign_code_langs_unknown, ContainsForeignExport,
         ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs,
         VersionNumbers, MaybeTimestampMap, Specs, Errors,
@@ -889,8 +884,7 @@ make_module_dep_module_and_imports(SourceFileName, ModuleDir,
         SourceFileModuleName, ModuleName,
         Ancestors, Children, NestedChildren, IntDeps, ImpDeps, FactDeps,
         ForeignImports, ForeignIncludes,
-        ContainsForeignCode, ContainsForeignExport, HasMain,
-        ModuleAndImports) :-
+        ContainsForeignCode, ContainsForeignExport, ModuleAndImports) :-
     ModuleNameContext = term.dummy_context_init,
     AddDummyContext =
         ( func(MN) = MN - one_or_more(term.dummy_context_init, []) ),
@@ -925,7 +919,7 @@ make_module_dep_module_and_imports(SourceFileName, ModuleDir,
         set.list_to_set(NestedChildren),
         IntDepsContexts, ImpDepsContexts, IndirectDeps, FactDeps,
         ForeignImportModules, cord.from_list(ForeignIncludes),
-        ContainsForeignCode, ContainsForeignExport, HasMain,
+        ContainsForeignCode, ContainsForeignExport,
         ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs,
         ModuleVersionNumbers, MaybeTimestamps, Specs, Errors,
@@ -1363,31 +1357,6 @@ module_and_imports_get_contains_foreign_export(ModuleAndImports, X) :-
             impure set_accesses(Accesses)
         ),
         X = ModuleAndImports ^ mai_has_foreign_export
-    ).
-module_and_imports_get_has_main(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Method = ModuleAndImports ^ mai_construction_method,
-            (
-                Method = mcm_init,
-                Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_has_main := accessed,
-                Accesses = Accesses0 ^ mfk_init := Fields
-            ;
-                Method = mcm_make,
-                Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_has_main := accessed,
-                Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_has_main := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
-            ),
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_has_main
     ).
 module_and_imports_get_parse_tree_module_src(ModuleAndImports, X) :-
     promise_pure (
@@ -1971,7 +1940,6 @@ module_and_imports_get_aug_comp_unit(ModuleAndImports,
                 mf_foreign_include_files        :: maybe_accessed,
                 mf_contains_foreign_code        :: maybe_accessed,
                 mf_contains_foreign_export      :: maybe_accessed,
-                mf_has_main                     :: maybe_accessed,
 
                 mf_src                          :: maybe_accessed,
                 mf_ancestor_int_specs           :: maybe_accessed,
@@ -2005,7 +1973,7 @@ init_mai_fields =
 
         not_accessed, not_accessed, not_accessed, not_accessed,
 
-        not_accessed, not_accessed, not_accessed, not_accessed, not_accessed,
+        not_accessed, not_accessed, not_accessed, not_accessed,
 
         not_accessed, not_accessed, not_accessed, not_accessed,
         not_accessed, not_accessed, not_accessed,
@@ -2037,13 +2005,13 @@ write_mai_fields_stats(Stream, Kind, Fields, !IO) :-
         SrcFileModuleName, ModuleName, ModuleNameContext,
         Ancestors, Children, PublicChildren, NestedChildren,
         IntDepsMap, ImpDepsMap, IndirectDeps, FactTableDeps,
-        FIMs, ForeignIncludeFiles, HasForeignCode, HasForeignExport, HasMain,
+        FIMs, ForeignIncludeFiles, HasForeignCode, HasForeignExport,
         ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs,
         VersionNumbersMap, MaybeTimestamMap, Specs, Errors),
     io.format(Stream,
         "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s " ++
-        "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n",
+        "%s %s %s %s %s %s %s %s %s %s %s %s %s %s\n",
         [s(Kind),
         s(acc_str(SrcFileName)),
         s(acc_str(ModuleDir)),
@@ -2062,7 +2030,6 @@ write_mai_fields_stats(Stream, Kind, Fields, !IO) :-
         s(acc_str(ForeignIncludeFiles)),
         s(acc_str(HasForeignCode)),
         s(acc_str(HasForeignExport)),
-        s(acc_str(HasMain)),
         s(acc_str(ParseTreeModuleSrc)),
         s(acc_str(AncestorSpecs)),
         s(acc_str(DirectIntSpecs)),

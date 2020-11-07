@@ -1652,17 +1652,15 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     % minus the parts that are subject to the calls to expect below,
     % in the ParseTreeModuleSrc, to avoid the need to compute it again later.
     IntContents = item_contents(IntForeignIncludeFilesCord,
-        IntFactTablesSet, _IntLangSet, IntForeignExportLangs, _IntHasMain),
+        IntFactTablesSet, _IntLangSet, IntForeignExportLangs),
     ImpContents = item_contents(_ImpForeignIncludeFilesCord,
-        _ImpFactTablesSet, _ImpLangSet, _ImpForeignExportLangs, ImpHasMain),
+        _ImpFactTablesSet, _ImpLangSet, _ImpForeignExportLangs),
     expect(cord.is_empty(IntForeignIncludeFilesCord), $pred,
         "interface has foreign include files"),
     expect(set.is_empty(IntFactTablesSet), $pred,
         "interface has fact tables"),
     expect(set.is_empty(IntForeignExportLangs), $pred,
         "interface has foreign export languages"),
-    expect(unify(ImpHasMain, no_main), $pred,
-        "implementation has main"),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         IntInclMap, ImpInclMap, InclMap,
@@ -2365,35 +2363,6 @@ classify_src_items_int([Item | Items],
         !:RevInstances = [ItemInstanceInfo | !.RevInstances]
     ;
         Item = item_pred_decl(ItemPredDeclInfo),
-        % XXX ITEM_LIST This code can't handle `main/2' beinng declared
-        % using `with_type`, since those haven't been expanded at this point.
-        %
-        % Given that that most compiler invocations do not care whether
-        % the module being compiled defines main/2 or not, we should
-        %
-        % - delete the ic_has_main field, and the field in the
-        %   module_and_imports structure that it sets, and instead
-        %
-        % - get the code that actually needs to know this info to scan
-        %   the list of predicate declarations in the module, preferable
-        %   *after* with_type expansion.
-        ItemPredDeclInfo = item_pred_decl_info(SymName, PorF, ArgTypes,
-            _, WithType, _, _, _, _, _, _, _, _, _),
-        ( if
-            (
-                SymName = unqualified(_),
-                unexpected($pred, "unqualified SymName")
-            ;
-                SymName = qualified(_, "main")
-            ),
-            PorF = pf_predicate,
-            ArgTypes = [_, _],
-            WithType = no
-        then
-            !Contents ^ ic_has_main := has_main
-        else
-            true
-        ),
         !:RevPredDecls = [ItemPredDeclInfo | !.RevPredDecls]
     ;
         Item = item_mode_decl(ItemModeDeclInfo),

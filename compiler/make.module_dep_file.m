@@ -53,7 +53,6 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_sym_name.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
@@ -71,6 +70,18 @@
     % it does not include a list of files included by `pragma foreign_decl' and
     % `pragma foreign_code'. We continue to write version 1 files when
     % possible.
+    %
+    % XXX We should consider
+    %
+    % - adding a version 3 that differs from 2 in deleting the field
+    %   that now *always* contains "no_main", and
+    % - switching to always generating version 3.
+    %
+    % XXX The precise on-disk representation of each (current) module_dep file
+    % format version should be explicitly documented. This documentation
+    % should explain what the meaning of each field is, what purposes
+    % does it servce, an what invariants (if any) apply to it. It should
+    % also have some examples to help readers understand it all.
     %
 :- type module_dep_file_version
     --->    module_dep_file_v1
@@ -358,7 +369,6 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
     module_and_imports_get_c_j_cs_fims(ModuleAndImports, CJCsEFIMs),
     module_and_imports_get_foreign_include_files(ModuleAndImports,
         ForeignIncludeFiles),
-    module_and_imports_get_has_main(ModuleAndImports, HasMain),
     io.write_string("module(", !IO),
     version_number(Version, VersionNumber),
     io.write_int(VersionNumber, !IO),
@@ -404,8 +414,9 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
         ContainsForeignExportStr),
     io.write_string(ContainsForeignExportStr, !IO),
     io.write_string(",\n\t", !IO),
-    has_main_to_string(HasMain, HasMainStr),
-    io.write_string(HasMainStr, !IO),
+    % The has_main/no_main slot is not needed anymore, so we just put no_main
+    % in there always.
+    io.write_string("no_main", !IO),
     (
         Version = module_dep_file_v1
     ;
@@ -449,19 +460,6 @@ contains_foreign_export_to_string(ContainsForeignExport,
         % Yes, without the "contains_" prefix. Don't change it unless you mean
         % to break compatibility with older .module_dep files.
         ContainsForeignExportStr = "no_foreign_export"
-    ).
-
-:- pred has_main_to_string(has_main, string).
-:- mode has_main_to_string(in, out) is det.
-:- mode has_main_to_string(out, in) is semidet.
-
-has_main_to_string(HasMain, HasMainStr) :-
-    (
-        HasMain = has_main,
-        HasMainStr = "has_main"
-    ;
-        HasMain = no_main,
-        HasMainStr = "no_main"
     ).
 
 %-----------------------------------------------------------------------------%
@@ -551,7 +549,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
             ForeignLanguagesTerm,
             ForeignImportsTerm,
             ContainsForeignExportTerm,
-            HasMainTerm
+            _HasMainTerm
             | ModuleArgsTail
         ],
 
@@ -574,8 +572,6 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         contains_foreign_export_term(ContainsForeignExportTerm,
             ContainsForeignExport),
 
-        has_main_term(HasMainTerm, HasMain),
-
         (
             Version = module_dep_file_v1,
             ModuleArgsTail = [],
@@ -593,7 +589,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
             SourceFileModuleName, ModuleName,
             Parents, Children, NestedChildren, IntDeps, ImpDeps, FactDeps,
             ForeignImports, ForeignIncludes,
-            ContainsForeignCode, ContainsForeignExport, HasMain,
+            ContainsForeignCode, ContainsForeignExport,
             ModuleAndImports),
 
         % Discard the module dependencies if the module is a local module
@@ -701,12 +697,6 @@ foreign_include_term(Term, ForeignInclude) :-
 contains_foreign_export_term(Term, ContainsForeignExport) :-
     atom_term(Term, Atom, []),
     contains_foreign_export_to_string(ContainsForeignExport, Atom).
-
-:- pred has_main_term(term::in, has_main::out) is semidet.
-
-has_main_term(Term, HasMain) :-
-    atom_term(Term, String, []),
-    has_main_to_string(HasMain, String).
 
 :- pred some_bad_module_dependency(make_info::in, list(module_name)::in)
     is semidet.
