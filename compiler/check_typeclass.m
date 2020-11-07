@@ -144,7 +144,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module solutions.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -163,17 +162,17 @@ check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
     check_instance_declaration_types(!ModuleInfo, !Specs),
 
     % If we encounter any errors while checking that the types in an
-    % instance declaration are valid then don't attempt the remaining
-    % passes. Pass 2 cannot be run since the name mangling scheme we
-    % use to generate the names of the method wrapper predicates may
-    % abort if the types in an instance are not valid, e.g. if an
-    % instance head contains a type variable that is not wrapped inside
-    % a functor. Most of the other passes also depend upon information
-    % that is calculated during pass 2.
+    % instance declaration are valid, then don't attempt the remaining passes.
+    % Pass 2 cannot be run since the name mangling scheme we use
+    % to generate the names of the method wrapper predicates may abort
+    % if the types in an instance are not valid, e.g. if an instance head
+    % contains a type variable that is not wrapped inside a functor.
+    % Most of the other passes also depend upon information that is
+    % calculated during pass 2.
     %
-    % XXX it would be better to just remove the invalid instances at this
+    % XXX It would be better to just remove the invalid instances at this
     % point and then continue on with the valid instances.
-    %
+
     (
         !.Specs = [],
         trace [io(!IO2)] (
@@ -336,10 +335,10 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
             NonTVarArgs = []
         ;
             NonTVarArgs = [_ | _],
-            TypeNameArity =
-                sym_name_arity(unqualified("{}"), list.length(ArgTypes)),
+            TypeCtor =
+                type_ctor(unqualified("{}"), list.length(ArgTypes)),
             Spec = badly_formed_instance_type_msg(ClassId, InstanceDefn,
-                N, TypeNameArity, NonTVarArgs),
+                N, TypeCtor, NonTVarArgs),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -366,9 +365,9 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
             )
         ;
             NonTVarArgs = [_ | _],
-            TypeNameArity = sym_name_arity(TypeName, list.length(ArgTypes)),
+            TypeCtor = type_ctor(TypeName, list.length(ArgTypes)),
             Spec = badly_formed_instance_type_msg(ClassId, InstanceDefn,
-                N, TypeNameArity, NonTVarArgs),
+                N, TypeCtor, NonTVarArgs),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -397,9 +396,9 @@ find_non_type_variables([ArgType | ArgTypes], ArgNum, NonTVarArgs) :-
     ).
 
 :- func badly_formed_instance_type_msg(class_id, hlds_instance_defn, int,
-    sym_name_arity, assoc_list(int, mer_type)) = error_spec.
+    type_ctor, assoc_list(int, mer_type)) = error_spec.
 
-badly_formed_instance_type_msg(ClassId, InstanceDefn, N, TypeNameArity,
+badly_formed_instance_type_msg(ClassId, InstanceDefn, N, TypeCtor,
         NonTVarArgs) = Spec :-
     TVarSet = InstanceDefn ^ instdefn_tvarset,
     NonTVarArgPieceLists =
@@ -408,7 +407,7 @@ badly_formed_instance_type_msg(ClassId, InstanceDefn, N, TypeNameArity,
     EndPieces = [words("in the"), nth_fixed(N), words("instance type,"),
         words(choose_number(NonTVarArgs, "one", "some")),
         words("of the arguments of the type constructor"),
-        unqual_sym_name_arity(TypeNameArity),
+        unqual_type_ctor(TypeCtor),
         words(choose_number(NonTVarArgs,
             "is not a type variable, but should be. This is",
             "are not type variables, but should be. These are"))
@@ -423,7 +422,7 @@ non_tvar_arg_to_pieces(TVarSet, ArgNum - ArgType) = Pieces :-
     TypeStr = mercury_type_to_string(TVarSet, print_name_only, ArgType),
     Pieces = [words("the"), nth_fixed(ArgNum), words("argument,"),
         quote(TypeStr)].
- 
+
 :- func abstract_eqv_instance_type_msg(class_id, hlds_instance_defn, int,
     mer_type) = error_spec.
 
@@ -678,7 +677,7 @@ method_is_known(PredTable, ClassPredIds, Method) :-
         list.member(PredId, ClassPredIds)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Check one pred in one instance of one class.
     %
@@ -748,7 +747,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
         CheckInfo0, InstanceDefn0, InstanceDefn, !RevOrderedMethods,
         !ModuleInfo, !QualInfo, !Specs).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This structure holds the information we need to check
     % a particular instance method.
@@ -889,7 +888,7 @@ get_matching_instance_defns(instance_body_concrete(InstanceMethods),
     else
         % If there are less than two matching method definitions,
         % or if any of the instance method definitions is a method name,
-        % then we're done.
+        % then we are done.
         ResultList = MatchingMethods
     ).
 
@@ -1129,12 +1128,12 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
             ConstraintsString),
         Pieces = [words("In instance declaration for"),
             words_quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
-        suffix(":"), nl,
-        words("the following superclass"),
-        words(choose_number(UnprovenConstraints,
-            "constraint is", "constraints are")),
-        words("not satisfied:"), nl,
-        words(ConstraintsString), suffix("."), nl],
+            suffix(":"), nl,
+            words("the following superclass"),
+            words(choose_number(UnprovenConstraints,
+                "constraint is", "constraints are")),
+            words("not satisfied:"), nl,
+            words(ConstraintsString), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_type_check,
             Context, Pieces),
         !:Specs = [Spec | !.Specs],
@@ -1147,19 +1146,20 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
 constraint_list_to_string(_, [], "").
 constraint_list_to_string(VarSet, [C | Cs], String) :-
     retrieve_prog_constraint(C, P),
-    String0 = mercury_constraint_to_string(VarSet, P),
-    constraint_list_to_string_2(VarSet, Cs, String1),
-    string.append_list(["`", String0, "'", String1], String).
+    PString = mercury_constraint_to_string(VarSet, P),
+    constraint_list_to_comma_strings(VarSet, Cs, TailStrings),
+    Strings = ["`", PString, "'" | TailStrings],
+    String = string.append_list(Strings).
 
-:- pred constraint_list_to_string_2(tvarset::in, list(hlds_constraint)::in,
-    string::out) is det.
+:- pred constraint_list_to_comma_strings(tvarset::in,
+    list(hlds_constraint)::in, list(string)::out) is det.
 
-constraint_list_to_string_2(_VarSet, [], "").
-constraint_list_to_string_2(VarSet, [C | Cs], String) :-
+constraint_list_to_comma_strings(_VarSet, [], []).
+constraint_list_to_comma_strings(VarSet, [C | Cs], Strings) :-
     retrieve_prog_constraint(C, P),
-    String0 = mercury_constraint_to_string(VarSet, P),
-    constraint_list_to_string_2(VarSet, Cs, String1),
-    string.append_list([", `", String0, "'", String1], String).
+    PString = mercury_constraint_to_string(VarSet, P),
+    constraint_list_to_comma_strings(VarSet, Cs, TailStrings),
+    Strings = [", `", PString, "'" | TailStrings].
 
 %---------------------------------------------------------------------------%
 
@@ -1275,8 +1275,8 @@ check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
         MissingConcreteError = no
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Check for cyclic classes in the class table by traversing the class
     % hierarchy for each class. While we are doing this, calculate the set
@@ -1548,9 +1548,9 @@ check_consistency(ClassId, ClassDefn, [Instance | Instances], FunDeps,
 
 check_consistency_pair(ClassId, ClassDefn, FunDeps, InstanceA, InstanceB,
         !Specs) :-
-    % If both instances are imported from the same module then we don't need
-    % to check the consistency, since this would have been checked when
-    % compiling that module.
+    % If both instances are imported from the same module, then we do not
+    % need to check the consistency, since this would have been checked
+    % when compiling that module.
     ( if
         InstanceA ^ instdefn_module = InstanceB ^ instdefn_module,
         instance_status_is_imported(InstanceA ^ instdefn_status) = yes
@@ -1646,9 +1646,8 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
     PiecesA = [words("Inconsistent instance declaration for typeclass"),
         qual_sym_name_arity(sym_name_arity(SymName, Arity)),
         words("with functional dependency"),
-        quote("(" ++ Domains ++ " -> " ++ Ranges ++ ")"),
-        suffix("."), nl],
-    PiecesB = [words("Here is the conflicting instance.")],
+        quote("(" ++ Domains ++ " -> " ++ Ranges ++ ")"), suffix("."), nl],
+    PiecesB = [words("Here is the conflicting instance."), nl],
 
     MsgA = simplest_msg(ContextA, PiecesA),
     MsgB = error_msg(yes(ContextB), treat_as_first, 0, [always(PiecesB)]),
@@ -1670,29 +1669,93 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
 
 check_typeclass_constraints(ModuleInfo, !Specs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-    list.foldl(check_pred_constraints(ModuleInfo), PredIds, !Specs),
+    list.foldl(check_typeclass_constraints_on_pred(ModuleInfo),
+        PredIds, !Specs),
     module_info_get_type_table(ModuleInfo, TypeTable),
     get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
-    list.foldl(check_ctor_constraints(ModuleInfo), TypeCtorsDefns, !Specs).
+    list.foldl(check_typeclass_constraints_on_type_ctor(ModuleInfo),
+        TypeCtorsDefns, !Specs).
 
-:- pred check_pred_constraints(module_info::in, pred_id::in,
+:- pred check_typeclass_constraints_on_pred(module_info::in, pred_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_pred_constraints(ModuleInfo, PredId, !Specs) :-
+check_typeclass_constraints_on_pred(ModuleInfo, PredId, !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_status(PredInfo, Status),
-    NeedsAmbiguityCheck = pred_needs_ambiguity_check(Status),
-    (
-        NeedsAmbiguityCheck = no
-    ;
-        NeedsAmbiguityCheck = yes,
+    pred_info_get_class_context(PredInfo, Constraints),
+    Constraints = constraints(UnivConstraints, ExistConstraints),
+    ( if
+        ( UnivConstraints = [_ | _]
+        ; ExistConstraints = [_ | _]
+        )
+    then
+        % We are checking only the forms of the constraints, so for now,
+        % the distinction between universally and existentially quantified
+        % constraints does not matter.
+        AllConstraints = UnivConstraints ++ ExistConstraints,
         trace [io(!IO)] (
             write_pred_progress_message("% Checking typeclass constraints on ",
                 PredId, ModuleInfo, !IO)
         ),
-        check_pred_type_ambiguities(ModuleInfo, PredInfo, !Specs),
-        check_constraint_quant(PredInfo, !Specs)
+
+        % Check that all class ids mentioned in the constraints
+        % actually exist.
+        %
+        % Code in the type checker does map.lookups of class_ids
+        % in the class table, and these will abort the compiler
+        % if invoked on a class id that does not exist in the class table.
+        % I (zs) have tried to change that code to do a map.search instead,
+        % and report the nonexistence of the class id then, but that turned
+        % out to be quite complicated, mostly because the code that does
+        % the lookup is called from several different places, each of which
+        % would need to handle this error in its own way. It seems simpler
+        % to look for and report such errors before typechecking even begins.
+        %
+        % Normally, module qualification, operating on the parse tree
+        % before the HLDS is even constructed, will find and report such
+        % errors. However, it does such checks *only* on the code of
+        % the curent module; it does *not* check the information read in
+        % from .int* files. Any references to nonexistent typeclasses
+        % in other modules, that this module imports, will be reported
+        % when that other module is compiled, and *could* be reported
+        % when the other module's interface file is generated, but for now,
+        % the latter is inhibited by the fact that halt_at_invalid_interface
+        % can't really be set to "yes" just yet. This allows such errors
+        % to slip into .int* files silently. The code here exists
+        % to catch and report them. And if this phase reports any errors,
+        % the compiler will stop before the typecheck phase.
+
+        module_info_get_class_table(ModuleInfo, ClassTable),
+        find_bad_class_ids_in_constraints(ClassTable, AllConstraints,
+            set.init, BadClassSNAsSet),
+        set.to_sorted_list(BadClassSNAsSet, BadClassSNAs),
+        (
+            BadClassSNAs = [HeadBadClassSNA | TailBadClassSNAs],
+            BadClassIdsSpec = report_bad_class_ids_in_pred_decl(ModuleInfo,
+                PredInfo, HeadBadClassSNA, TailBadClassSNAs),
+            !:Specs = [BadClassIdsSpec | !.Specs]
+        ;
+            BadClassSNAs = [],
+            % In the presence of any BadClassSNAs, the map.lookups done
+            % in the class table by code indirectly invoked by
+            % get_unbound_tvars could cause a compiler abort.
+            %
+            % Any ambiguity errors can be reported *after* the programmer
+            % fixes the references to nonexistent typeclasses.
+            pred_info_get_status(PredInfo, Status),
+            NeedsAmbiguityCheck = pred_needs_ambiguity_check(Status),
+            (
+                NeedsAmbiguityCheck = no
+            ;
+                NeedsAmbiguityCheck = yes,
+                check_pred_type_ambiguities(ModuleInfo, PredInfo, !Specs),
+                check_constraint_quant(PredInfo, !Specs)
+            )
+        )
+    else
+        true
     ).
+
+%---------------------%
 
 :- func pred_needs_ambiguity_check(pred_status) = bool.
 
@@ -1728,15 +1791,20 @@ check_pred_type_ambiguities(ModuleInfo, PredInfo, !Specs) :-
         !:Specs = [Spec | !.Specs]
     ).
 
-:- pred check_ctor_constraints(module_info::in,
+%---------------------------------------------------------------------------%
+
+:- pred check_typeclass_constraints_on_type_ctor(module_info::in,
     pair(type_ctor, hlds_type_defn)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_ctor_constraints(ModuleInfo, TypeCtor - TypeDefn, !Specs) :-
+check_typeclass_constraints_on_type_ctor(ModuleInfo, TypeCtor - TypeDefn,
+        !Specs) :-
     get_type_defn_body(TypeDefn, Body),
     (
         Body = hlds_du_type(Ctors, _, _, _),
-        list.foldl(check_ctor_type_ambiguities(ModuleInfo, TypeCtor, TypeDefn),
+        list.foldl(
+            check_typeclass_constraints_on_data_ctor(ModuleInfo, TypeCtor,
+                TypeDefn),
             one_or_more_to_list(Ctors), !Specs)
     ;
         ( Body = hlds_eqv_type(_)
@@ -1746,11 +1814,12 @@ check_ctor_constraints(ModuleInfo, TypeCtor - TypeDefn, !Specs) :-
         )
     ).
 
-:- pred check_ctor_type_ambiguities(module_info::in, type_ctor::in,
+:- pred check_typeclass_constraints_on_data_ctor(module_info::in, type_ctor::in,
     hlds_type_defn::in, constructor::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_ctor_type_ambiguities(ModuleInfo, TypeCtor, TypeDefn, Ctor, !Specs) :-
+check_typeclass_constraints_on_data_ctor(ModuleInfo, TypeCtor, TypeDefn,
+        Ctor, !Specs) :-
     Ctor = ctor(_, MaybeExistConstraints, _, CtorArgs, _, _),
     (
         MaybeExistConstraints = no_exist_constraints
@@ -1758,27 +1827,48 @@ check_ctor_type_ambiguities(ModuleInfo, TypeCtor, TypeDefn, Ctor, !Specs) :-
         MaybeExistConstraints = exist_constraints(ExistConstraints),
         ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
             _UnconstrainedQVars, _ConstrainedQVars),
-        ArgTypes = list.map(func(ctor_arg(_, T, _)) = T, CtorArgs),
-        type_vars_list(ArgTypes, ArgTVars),
-        list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),
-            ArgTVars, ExistQArgTVars),
-        % Sanity check.
-        list.filter(list.contains(ExistQVars), ArgTVars, ExistQArgTVarsB),
-        expect(unify(ExistQArgTVars, ExistQArgTVarsB), $pred,
-            "ExistQArgTVars != ExistQArgTVarsB"),
-        constraint_list_get_tvars(Constraints, ConstrainedTVars),
-        get_type_defn_tvarset(TypeDefn, TVarSet),
-        get_unbound_tvars(ModuleInfo, TVarSet,
-            ExistQArgTVars, ConstrainedTVars, Constraints, UnboundTVars),
+
+        module_info_get_class_table(ModuleInfo, ClassTable),
+        find_bad_class_ids_in_constraints(ClassTable, Constraints,
+            set.init, BadClassSNAsSet),
+        set.to_sorted_list(BadClassSNAsSet, BadClassSNAs),
         (
-            UnboundTVars = []
+            BadClassSNAs = [HeadBadClassSNA | TailBadClassSNAs],
+            BadClassIdsSpec = report_bad_class_ids_in_data_ctor(TypeCtor,
+                TypeDefn, HeadBadClassSNA, TailBadClassSNAs),
+            !:Specs = [BadClassIdsSpec | !.Specs]
         ;
-            UnboundTVars = [_ | _],
-            Spec = report_unbound_tvars_in_ctor_context(UnboundTVars, TypeCtor,
-                TypeDefn),
-            !:Specs = [Spec | !.Specs]
+            BadClassSNAs = [],
+            % In the presence of any BadClassSNAs, the map.lookups done
+            % in the class table by code indirectly invoked by
+            % get_unbound_tvars could cause a compiler abort.
+            %
+            % Any ambiguity errors can be reported *after* the programmer
+            % fixes the references to nonexistent typeclasses.
+            ArgTypes = list.map(func(ctor_arg(_, T, _)) = T, CtorArgs),
+            type_vars_list(ArgTypes, ArgTVars),
+            list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),
+                ArgTVars, ExistQArgTVars),
+            % Sanity check.
+            list.filter(list.contains(ExistQVars), ArgTVars, ExistQArgTVarsB),
+            expect(unify(ExistQArgTVars, ExistQArgTVarsB), $pred,
+                "ExistQArgTVars != ExistQArgTVarsB"),
+            constraint_list_get_tvars(Constraints, ConstrainedTVars),
+            get_type_defn_tvarset(TypeDefn, TVarSet),
+            get_unbound_tvars(ModuleInfo, TVarSet,
+                ExistQArgTVars, ConstrainedTVars, Constraints, UnboundTVars),
+            (
+                UnboundTVars = []
+            ;
+                UnboundTVars = [_ | _],
+                Spec = report_unbound_tvars_in_ctor_context(UnboundTVars,
+                    TypeCtor, TypeDefn),
+                !:Specs = [Spec | !.Specs]
+            )
         )
     ).
+
+%---------------------%
 
     % The error messages for ambiguous types are intended to look like this:
     %
@@ -1840,12 +1930,9 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo) = Spec :-
 report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn) = Spec :-
     get_type_defn_context(TypeDefn, Context),
     get_type_defn_tvarset(TypeDefn, TVarSet),
-    TypeCtor = type_ctor(SymName, Arity),
-
     VarsStrs = list.map(mercury_var_to_name_only(TVarSet), Vars),
 
-    Pieces = [words("In declaration for type"),
-        qual_sym_name_arity(sym_name_arity(SymName, Arity)),
+    Pieces = [words("In declaration for type"), qual_type_ctor(TypeCtor),
         suffix(":"), nl,
         words("error in type class constraints:"),
         words(choose_number(Vars, "type variable", "type variables"))]
@@ -1890,6 +1977,91 @@ report_unbound_tvars_explanation =
     words("See the ""Functional dependencies"" section"),
     words("of the reference manual for details."), nl].
 
+%---------------------%
+
+:- pred find_bad_class_ids_in_constraints(class_table::in,
+    list(prog_constraint)::in,
+    set(sym_name_arity)::in, set(sym_name_arity)::out) is det.
+
+find_bad_class_ids_in_constraints(_, [], !BadClassSNAs).
+find_bad_class_ids_in_constraints(ClassTable, [C | Cs], !BadClassSNAs) :-
+    find_bad_class_ids_in_constraint(ClassTable, C, !BadClassSNAs),
+    find_bad_class_ids_in_constraints(ClassTable, Cs, !BadClassSNAs).
+
+:- pred find_bad_class_ids_in_constraint(class_table::in,
+    prog_constraint::in,
+    set(sym_name_arity)::in, set(sym_name_arity)::out) is det.
+
+find_bad_class_ids_in_constraint(ClassTable, C, !BadClassSNAs) :-
+    C = constraint(ClassSymName, ArgTypes),
+    list.length(ArgTypes, Arity),
+    ClassId = class_id(ClassSymName, Arity),
+    ( if map.search(ClassTable, ClassId, _) then
+        true
+    else
+        ClassSNA = sym_name_arity(ClassSymName, Arity),
+        set.insert(ClassSNA, !BadClassSNAs)
+    ).
+
+:- func report_bad_class_ids_in_pred_decl(module_info, pred_info,
+    sym_name_arity, list(sym_name_arity)) = error_spec.
+
+report_bad_class_ids_in_pred_decl(ModuleInfo, PredInfo,
+        HeadBadClassSNA, TailBadClassSNAs) = Spec :-
+    pred_info_get_context(PredInfo, Context),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    PredName = pred_info_name(PredInfo),
+    PredModuleName = pred_info_module(PredInfo),
+    module_info_get_name(ModuleInfo, CurModuleName),
+    % Module qualify the name of the predicate we are complaining about
+    % *only* if it is not from the current module.
+    ( if CurModuleName = PredModuleName then
+        PredSymName = unqualified(PredName)
+    else
+        PredSymName = qualified(PredModuleName, PredName)
+    ),
+    pred_info_get_arg_types(PredInfo, _TVarSet, _, ArgTypes),
+    PredArity = length(ArgTypes),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredArity),
+    StartPieces = [words("In declaration for"),
+        unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix(":"), nl],
+    Pieces = StartPieces ++
+        report_bad_class_ids(HeadBadClassSNA, TailBadClassSNAs),
+    Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Context, Pieces).
+
+:- func report_bad_class_ids_in_data_ctor(type_ctor,
+    hlds_type_defn, sym_name_arity, list(sym_name_arity)) = error_spec.
+
+report_bad_class_ids_in_data_ctor(TypeCtor, TypeDefn,
+        HeadBadClassSNA, TailBadClassSNAs) = Spec :-
+    get_type_defn_context(TypeDefn, Context),
+    StartPieces = [words("In declaration for type"), qual_type_ctor(TypeCtor),
+        suffix(":"), nl],
+    Pieces = StartPieces ++
+        report_bad_class_ids(HeadBadClassSNA, TailBadClassSNAs),
+    Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Context, Pieces).
+
+:- func report_bad_class_ids(sym_name_arity, list(sym_name_arity))
+    = list(format_component).
+
+report_bad_class_ids(HeadSNA, TailSNAs) = Pieces :-
+    WrapQualSNA = (func(SNA) = qual_sym_name_arity(SNA)),
+    QualHeadSNA = WrapQualSNA(HeadSNA),
+    (
+        TailSNAs = [],
+        Pieces = [words("error: the type class"), QualHeadSNA,
+            words("does not exist."), nl]
+    ;
+        TailSNAs = [_ | _],
+        QualTailSNAs = list.map(WrapQualSNA, TailSNAs),
+        QualSNAs = [QualHeadSNA | QualTailSNAs],
+        Pieces = [words("error: the type classes")] ++
+            component_list_to_pieces("and", QualSNAs) ++
+            [words("do not exist."), nl]
+    ).
+
 %---------------------------------------------------------------------------%
 
     % Check that all types appearing in universal (existential) constraints are
@@ -1903,13 +2075,11 @@ check_constraint_quant(PredInfo, !Specs) :-
     pred_info_get_class_context(PredInfo, Constraints),
     Constraints = constraints(UnivCs, ExistCs),
     prog_type.constraint_list_get_tvars(UnivCs, UnivTVars),
-    solutions.solutions(
-        ( pred(V::out) is nondet :-
-            list.member(V, UnivTVars),
-            list.member(V, ExistQVars)
-        ), BadUnivTVars),
+    set.list_to_set(ExistQVars, ExistQVarsSet),
+    set.list_to_set(UnivTVars, UnivTVarsSet),
+    set.intersect(ExistQVarsSet, UnivTVarsSet, BadUnivTVarsSet),
     maybe_report_badly_quantified_vars(PredInfo, universal_constraint,
-        BadUnivTVars, !Specs),
+        set.to_sorted_list(BadUnivTVarsSet), !Specs),
     prog_type.constraint_list_get_tvars(ExistCs, ExistTVars),
     list.delete_elems(ExistTVars, ExistQVars, BadExistTVars),
     maybe_report_badly_quantified_vars(PredInfo, existential_constraint,
@@ -1974,8 +2144,9 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars) = Spec :-
 get_unbound_tvars(ModuleInfo, TVarSet, RootTVars, AllTVars, Constraints,
         UnboundTVars) :-
     module_info_get_class_table(ModuleInfo, ClassTable),
-    InducedFunDeps = induced_fundeps(ClassTable, TVarSet, Constraints),
-    FunDepsClosure = fundeps_closure(InducedFunDeps, list_to_set(RootTVars)),
+    InducedFunDeps = compute_induced_fundeps(ClassTable, TVarSet, Constraints),
+    FunDepsClosure =
+        compute_fundeps_closure(InducedFunDeps, list_to_set(RootTVars)),
     UnboundTVarsSet = set.difference(list_to_set(AllTVars), FunDepsClosure),
     UnboundTVars = set.to_sorted_list(UnboundTVarsSet).
 
@@ -1986,17 +2157,18 @@ get_unbound_tvars(ModuleInfo, TVarSet, RootTVars, AllTVars, Constraints,
                 range       :: set(tvar)
             ).
 
-:- func induced_fundeps(class_table, tvarset, list(prog_constraint))
+:- func compute_induced_fundeps(class_table, tvarset, list(prog_constraint))
     = induced_fundeps.
 
-induced_fundeps(ClassTable, TVarSet, Constraints) = FunDeps :-
-    list.foldl(induced_fundeps_2(ClassTable, TVarSet), Constraints,
-        [], FunDeps).
+compute_induced_fundeps(ClassTable, TVarSet, Constraints) = FunDeps :-
+    list.foldl(acc_induced_fundeps_for_constraint(ClassTable, TVarSet),
+        Constraints, [], FunDeps).
 
-:- pred induced_fundeps_2(class_table::in, tvarset::in, prog_constraint::in,
-    induced_fundeps::in, induced_fundeps::out) is det.
+:- pred acc_induced_fundeps_for_constraint(class_table::in, tvarset::in,
+    prog_constraint::in, induced_fundeps::in, induced_fundeps::out) is det.
 
-induced_fundeps_2(ClassTable, TVarSet, Constraint, !FunDeps) :-
+acc_induced_fundeps_for_constraint(ClassTable, TVarSet, Constraint,
+        !FunDeps) :-
     Constraint = constraint(Name, Args),
     Arity = length(Args),
     ClassDefn = map.lookup(ClassTable, class_id(Name, Arity)),
@@ -2051,13 +2223,15 @@ induced_vars(Args, ArgNum, Vars) = union(Vars, NewVars) :-
     type_vars(Arg, ArgVars),
     NewVars = set.list_to_set(ArgVars).
 
-:- func fundeps_closure(induced_fundeps, set(tvar)) = set(tvar).
+:- func compute_fundeps_closure(induced_fundeps, set(tvar)) = set(tvar).
 
-fundeps_closure(FunDeps, TVars) = fundeps_closure_2(FunDeps, TVars, set.init).
+compute_fundeps_closure(FunDeps, TVars0) = TVars :-
+    fundeps_closure_loop(FunDeps, TVars0, set.init, TVars).
 
-:- func fundeps_closure_2(induced_fundeps, set(tvar), set(tvar)) = set(tvar).
+:- pred fundeps_closure_loop(induced_fundeps::in, set(tvar)::in,
+    set(tvar)::in, set(tvar)::out) is det.
 
-fundeps_closure_2(FunDeps0, NewVars0, Result0) = Result :-
+fundeps_closure_loop(FunDeps0, NewVars0, Result0, Result) :-
     ( if set.is_empty(NewVars0) then
         Result = Result0
     else
@@ -2065,7 +2239,7 @@ fundeps_closure_2(FunDeps0, NewVars0, Result0) = Result :-
         FunDeps1 = list.map(remove_vars(NewVars0), FunDeps0),
         list.foldl2(collect_determined_vars, FunDeps1, [], FunDeps,
             set.init, NewVars),
-        Result = fundeps_closure_2(FunDeps, NewVars, Result1)
+        fundeps_closure_loop(FunDeps, NewVars, Result1, Result)
     ).
 
 :- func remove_vars(set(tvar), induced_fundep) = induced_fundep.

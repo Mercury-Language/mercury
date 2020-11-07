@@ -31,7 +31,8 @@ MULTIMODULE_PROGS= \
 	partial_implied_mode \
 	test_nested \
 	transitive_import \
-	transitive_import_class
+	transitive_import_class \
+	bad_type_class_constraint_intermodule
 
 SINGLEMODULE= \
 	abstract_solver_type \
