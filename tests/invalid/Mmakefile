@@ -562,6 +562,30 @@ require_tailrec_1.err require_tailrec_2.err require_tailrec_3.err foreign_includ
 	else true; \
 	fi
 
+# For the following modules, error messages may be be produced while making a
+# `.opt' file. Add specific rules to capture those errors into a `.err' file,
+# and ignore the exit status.
+ifeq "$(filter --intermod%,$(EXTRA_MCFLAGS))" ""
+REDIRECT_OPT_ERROR_MODULES =
+else
+REDIRECT_OPT_ERROR_MODULES = \
+	abstract_eqv \
+	bad_type_class_constraint_intermodule \
+	bad_type_class_constraint_intermodule_2 \
+	bug214 \
+	bug521 \
+	bug521_sub \
+	int_impl_imports \
+	test_feature_set
+endif
+
+define OVERRIDE_OPT_RULE
+$$(optdates_subdir)$(1).optdate $(1).err : $(1).m
+	$$(MCOI) $$(ALL_GRADEFLAGS) $$(ALL_MCOIFLAGS) $$(*F) $$(ERR_REDIRECT) || true
+endef
+
+$(foreach module,$(REDIRECT_OPT_ERROR_MODULES),$(eval $(call OVERRIDE_OPT_RULE,$(module))))
+
 clean_local: clean_invalid
 
 clean_invalid:
