@@ -74,14 +74,18 @@ format_string(Specifier, FormatStr) :-
 
 format_string(Flags, Width - Prec, Specifier) = Str :-
     FlagsStr = string.append_list(Flags),
-    ( Width = yes(WidthStr) ->
+    (
+        Width = yes(WidthStr),
         Str0 = WidthStr
     ;
+        Width = no,
         Str0 = ""
     ),
-    ( Prec = yes(PrecStr) ->
+    (
+        Prec = yes(PrecStr),
         Str1 = Str0 ++ "." ++ PrecStr ++ Specifier
     ;
+        Prec = no,
         Str1 = Str0 ++ Specifier
     ),
     Str = "%" ++ FlagsStr ++ Str1.
@@ -97,14 +101,14 @@ flags_combinations(Specifier, X) :-
 
 flags(Specifier) = Flags :-
     Flags0 = ["-", "+", " "],
-    ( member(Specifier, ["o", "x", "X", "e", "E", "f", "F", "g", "G"]) ->
+    ( if member(Specifier, ["o", "x", "X", "e", "E", "f", "F", "g", "G"]) then
         Flags1 = ["#" | Flags0]
-    ;
+    else
         Flags1 = Flags0
     ),
-    ( ( member(Specifier, ["d", "i", "u"]) ; Flags1 = ["#" | _] ) ->
+    ( if ( member(Specifier, ["d", "i", "u"]) ; Flags1 = ["#" | _] ) then
         Flags = ["0" | Flags1]
-    ;
+    else
         Flags = Flags1
     ).
 
@@ -120,11 +124,12 @@ all_combinations(List, Combination) :-
 width_and_prec(Specifier, Width - Prec) :-
     maybe_num(Width),
     maybe_num(Prec),
-    ( Prec = yes(_) ->
+    (
+        Prec = yes(_),
         member(Specifier, ["d", "i", "o", "u", "x", "X",
             "e", "E", "f", "F", "g", "G"])
     ;
-        true
+        Prec = no
     ).
 
 :- pred maybe_num(maybe(string)::out) is multi.

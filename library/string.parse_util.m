@@ -78,7 +78,15 @@
     --->    poly_kind_char
     ;       poly_kind_str
     ;       poly_kind_int
+    ;       poly_kind_int8
+    ;       poly_kind_int16
+    ;       poly_kind_int32
+    ;       poly_kind_int64
     ;       poly_kind_uint
+    ;       poly_kind_uint8
+    ;       poly_kind_uint16
+    ;       poly_kind_uint32
+    ;       poly_kind_uint64
     ;       poly_kind_float.
 
 :- type string_format_error
@@ -284,7 +292,15 @@ specifier_char(SpecChar) =
 poly_kind_desc(poly_kind_char) = "a character".
 poly_kind_desc(poly_kind_str) = "a string".
 poly_kind_desc(poly_kind_int) = "an integer".
+poly_kind_desc(poly_kind_int8) = "an 8-bit integer".
+poly_kind_desc(poly_kind_int16) = "a 16-bit integer".
+poly_kind_desc(poly_kind_int32) = "a 32-bit integer".
+poly_kind_desc(poly_kind_int64) = "a 64-bit integer".
 poly_kind_desc(poly_kind_uint) = "an unsigned integer".
+poly_kind_desc(poly_kind_uint8) = "an 8-bit unsigned integer".
+poly_kind_desc(poly_kind_uint16) = "a 16-bit unsigned integer".
+poly_kind_desc(poly_kind_uint32) = "a 32-bit unsigned integer".
+poly_kind_desc(poly_kind_uint64) = "a 64-bit unsigned integer".
 poly_kind_desc(poly_kind_float) = "a float".
 
 :- func acceptable_specifier_chars_for_poly_kind_msg(poly_kind) = string.
@@ -301,8 +317,40 @@ acceptable_specifier_chars_for_poly_kind_msg(Kind) = Msg :-
         Msg = "The specifiers applicable to ints are " ++
             "%d, %i, %o, %x, %X, %u, and %p."
     ;
+        Kind = poly_kind_int8,
+        Msg = "The specifiers applicable to int8s are " ++
+            "%d, %i, %o, %x, %X, %u, and %p."
+    ;
+        Kind = poly_kind_int16,
+        Msg = "The specifiers applicable to int16s are " ++
+            "%d, %i, %o, %x, %X, %u, and %p."
+    ;
+        Kind = poly_kind_int32,
+        Msg = "The specifiers applicable to int32s are " ++
+            "%d, %i, %o, %x, %X, %u, and %p."
+    ;
+        Kind = poly_kind_int64,
+        Msg = "The specifiers applicable to int64s are " ++
+            "%d, %i, %o, %x, %X, %u, and %p."
+    ;
         Kind = poly_kind_uint,
         Msg = "The specifiers applicable to uints are " ++
+            "%o, %x, %X, %u, and %p."
+    ;
+        Kind = poly_kind_uint8,
+        Msg = "The specifiers applicable to uint8s are " ++
+            "%o, %x, %X, %u, and %p."
+    ;
+        Kind = poly_kind_uint16,
+        Msg = "The specifiers applicable to uint16s are " ++
+            "%o, %x, %X, %u, and %p."
+    ;
+        Kind = poly_kind_uint32,
+        Msg = "The specifiers applicable to uint32s are " ++
+            "%o, %x, %X, %u, and %p."
+    ;
+        Kind = poly_kind_uint64,
+        Msg = "The specifiers applicable to uint64s are " ++
             "%o, %x, %X, %u, and %p."
     ;
         Kind = poly_kind_float,

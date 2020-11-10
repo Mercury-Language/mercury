@@ -984,8 +984,32 @@ format_call_traverse_unify(Unification, GoalInfo, CurId, !ConjMaps, !PredMap,
                             Functor = "i",
                             VarPolyTypePrime = apt_i(ArgVar, Context)
                         ;
+                            Functor = "i8",
+                            VarPolyTypePrime = apt_i8(ArgVar, Context)
+                        ;
+                            Functor = "i16",
+                            VarPolyTypePrime = apt_i16(ArgVar, Context)
+                        ;
+                            Functor = "i32",
+                            VarPolyTypePrime = apt_i32(ArgVar, Context)
+                        ;
+                            Functor = "i64",
+                            VarPolyTypePrime = apt_i64(ArgVar, Context)
+                        ;
                             Functor = "u",
                             VarPolyTypePrime = apt_u(ArgVar, Context)
+                        ;
+                            Functor = "u8",
+                            VarPolyTypePrime = apt_u8(ArgVar, Context)
+                        ;
+                            Functor = "u16",
+                            VarPolyTypePrime = apt_u16(ArgVar, Context)
+                        ;
+                            Functor = "u32",
+                            VarPolyTypePrime = apt_u32(ArgVar, Context)
+                        ;
+                            Functor = "u64",
+                            VarPolyTypePrime = apt_u64(ArgVar, Context)
                         ;
                             Functor = "s",
                             VarPolyTypePrime = apt_s(ArgVar, Context)
@@ -1783,9 +1807,7 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             "format_char_component" ++ WidthSuffix,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ [ValueVar, ResultVar], [],
-            instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none_or_default_func)]),
-            Context, CallGoal),
+            instmap_delta_bind_var(ResultVar), Context, CallGoal),
         Goals = FlagsGoals ++ WidthGoals ++ [CallGoal]
     ;
         Spec = compiler_spec_string(Context, Flags,
@@ -1822,15 +1844,15 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
                 "format_string_component" ++ WidthSuffix ++ PrecSuffix,
                 pf_predicate, only_mode, detism_det, purity_pure,
                 [FlagsVar] ++ WidthVars ++ PrecVars ++ [ValueVar, ResultVar],
-                [], instmap_delta_from_assoc_list(
-                    [ResultVar - ground(unique, none_or_default_func)]),
-                Context, CallGoal),
+                [], instmap_delta_bind_var(ResultVar), Context, CallGoal),
             Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [CallGoal]
         )
     ;
         Spec = compiler_spec_signed_int(Context, Flags,
-            MaybeWidth, MaybePrec, ValueVar),
-        set_of_var.insert(ValueVar, !ValueVars),
+            MaybeWidth, MaybePrec, IntSize, OrigValueVar),
+        set_of_var.insert(OrigValueVar, !ValueVars),
+        cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
+            OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes),
         make_result_var_if_needed(MaybeResultVar, ResultVar,
             !VarSet, !VarTypes),
         build_flags_arg(Context, Flags, FlagsVar, FlagsGoals,
@@ -1843,14 +1865,15 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             "format_signed_int_component" ++ WidthSuffix ++ PrecSuffix,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ PrecVars ++ [ValueVar, ResultVar], [],
-            instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none_or_default_func)]),
-            Context, CallGoal),
-        Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [CallGoal]
+            instmap_delta_bind_var(ResultVar), Context, CallGoal),
+        Goals = ValueCastGoals ++ FlagsGoals ++ WidthGoals ++ PrecGoals ++
+            [CallGoal]
     ;
         Spec = compiler_spec_unsigned_int(Context, Flags,
-            MaybeWidth, MaybePrec, Base, ValueVar),
-        set_of_var.insert(ValueVar, !ValueVars),
+            MaybeWidth, MaybePrec, Base, IntSize, OrigValueVar),
+        set_of_var.insert(OrigValueVar, !ValueVars),
+        cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
+            OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes),
         make_result_var_if_needed(MaybeResultVar, ResultVar,
             !VarSet, !VarTypes),
         build_flags_arg(Context, Flags, FlagsVar, FlagsGoals,
@@ -1865,14 +1888,15 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ PrecVars ++
                 [BaseVar, ValueVar, ResultVar], [],
-            instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none_or_default_func)]),
-            Context, CallGoal),
-        Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [BaseGoal, CallGoal]
+            instmap_delta_bind_var(ResultVar), Context, CallGoal),
+        Goals = ValueCastGoals ++ FlagsGoals ++ WidthGoals ++ PrecGoals ++
+            [BaseGoal, CallGoal]
     ;
         Spec = compiler_spec_uint(Context, Flags,
-            MaybeWidth, MaybePrec, Base, ValueVar),
-        set_of_var.insert(ValueVar, !ValueVars),
+            MaybeWidth, MaybePrec, Base, UIntSize, OrigValueVar),
+        set_of_var.insert(OrigValueVar, !ValueVars),
+        cast_uint_value_var_if_needed(ModuleInfo, Context, UIntSize,
+            OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes),
         make_result_var_if_needed(MaybeResultVar, ResultVar,
             !VarSet, !VarTypes),
         build_flags_arg(Context, Flags, FlagsVar, FlagsGoals,
@@ -1887,10 +1911,9 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ PrecVars ++
                 [BaseVar, ValueVar, ResultVar], [],
-            instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none_or_default_func)]),
-            Context, CallGoal),
-        Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [BaseGoal, CallGoal]
+            instmap_delta_bind_var(ResultVar), Context, CallGoal),
+        Goals = ValueCastGoals ++ FlagsGoals ++ WidthGoals ++ PrecGoals ++
+            [BaseGoal, CallGoal]
     ;
         Spec = compiler_spec_float(Context, Flags,
             MaybeWidth, MaybePrec, Kind, ValueVar),
@@ -1909,10 +1932,60 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ PrecVars ++
                 [KindVar, ValueVar, ResultVar], [],
-            instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none_or_default_func)]),
-            Context, CallGoal),
+            instmap_delta_bind_var(ResultVar), Context, CallGoal),
         Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [KindGoal, CallGoal]
+    ).
+
+:- pred cast_int_value_var_if_needed(module_info::in, prog_context::in,
+    int_size::in, prog_var::in, prog_var::out, list(hlds_goal)::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+cast_int_value_var_if_needed(ModuleInfo, Context, UIntSize,
+        OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes) :-
+    (
+        UIntSize = int_size_word,
+        ValueVar = OrigValueVar,
+        ValueCastGoals = []
+    ;
+        ( UIntSize = int_size_8, Size = "8"
+        ; UIntSize = int_size_16, Size = "16"
+        ; UIntSize = int_size_32, Size = "32"
+        ; UIntSize = int_size_64, Size = "64"
+        ),
+        varset.new_var(ValueVar, !VarSet),
+        add_var_type(ValueVar, int_type, !VarTypes),
+        generate_simple_call(ModuleInfo, mercury_string_format_module,
+            "format_cast_int" ++ Size ++ "_to_int",
+            pf_predicate, only_mode, detism_det, purity_pure,
+            [OrigValueVar, ValueVar], [],
+            instmap_delta_bind_var(ValueVar), Context, ValueCastGoal),
+        ValueCastGoals = [ValueCastGoal]
+    ).
+
+:- pred cast_uint_value_var_if_needed(module_info::in, prog_context::in,
+    uint_size::in, prog_var::in, prog_var::out, list(hlds_goal)::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+
+cast_uint_value_var_if_needed(ModuleInfo, Context, UIntSize,
+        OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes) :-
+    (
+        UIntSize = uint_size_word,
+        ValueVar = OrigValueVar,
+        ValueCastGoals = []
+    ;
+        ( UIntSize = uint_size_8, Size = "8"
+        ; UIntSize = uint_size_16, Size = "16"
+        ; UIntSize = uint_size_32, Size = "32"
+        ; UIntSize = uint_size_64, Size = "64"
+        ),
+        varset.new_var(ValueVar, !VarSet),
+        add_var_type(ValueVar, uint_type, !VarTypes),
+        generate_simple_call(ModuleInfo, mercury_string_format_module,
+            "format_cast_uint" ++ Size ++ "_to_uint",
+            pf_predicate, only_mode, detism_det, purity_pure,
+            [OrigValueVar, ValueVar], [],
+            instmap_delta_bind_var(ValueVar), Context, ValueCastGoal),
+        ValueCastGoals = [ValueCastGoal]
     ).
 
     % This predicate generates code of the form

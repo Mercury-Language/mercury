@@ -28,7 +28,7 @@
 
 main(!IO) :-
     Ints = [i(0), i(-1), i(1), i(10), i(-10),
-        i(100), i(-100), i(min_int), i(max_int)],
+        i(100), i(-100), i(min_int), i(max_int), i8(56i8), i32(-4200i32)],
     list.foldl(output_list(Ints), format_strings("d"), !IO),
     list.foldl(output_list(Ints), format_strings("i"), !IO).
 

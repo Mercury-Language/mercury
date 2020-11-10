@@ -59,8 +59,16 @@ t(S) = S.
 
 :- func p(string.poly_type) = string.
 
-p(s(S)) = t(string.format("%s", [s(S)])).
-p(c(C)) = t(string.format("%c", [c(C)])).
-p(i(I)) = t(string.format("%d", [i(I)])).
-p(f(F)) = t(string.format("%f", [f(F)])).
-p(u(U)) = t(string.format("%u", [u(U)])).
+p(s(S)) =     t(string.format("%s", [s(S)])).
+p(c(C)) =     t(string.format("%c", [c(C)])).
+p(i(I)) =     t(string.format("%d", [i(I)])).
+p(i8(I8)) =   t(string.format("%d", [i8(I8)])).
+p(i16(I16)) = t(string.format("%d", [i16(I16)])).
+p(i32(I32)) = t(string.format("%d", [i32(I32)])).
+p(i64(I64)) = t(string.format("%d", [i64(I64)])).
+p(f(F)) =     t(string.format("%f", [f(F)])).
+p(u(U)) =     t(string.format("%u", [u(U)])).
+p(u8(U8)) =   t(string.format("%u", [u8(U8)])).
+p(u16(U16)) = t(string.format("%u", [u16(U16)])).
+p(u32(U32)) = t(string.format("%u", [u32(U32)])).
+p(u64(U64)) = t(string.format("%u", [u64(U64)])).

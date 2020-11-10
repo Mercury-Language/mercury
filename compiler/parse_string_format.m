@@ -36,7 +36,15 @@
 :- type abstract_poly_type
     --->    apt_f(prog_var, prog_context)
     ;       apt_i(prog_var, prog_context)
+    ;       apt_i8(prog_var, prog_context)
+    ;       apt_i16(prog_var, prog_context)
+    ;       apt_i32(prog_var, prog_context)
+    ;       apt_i64(prog_var, prog_context)
     ;       apt_u(prog_var, prog_context)
+    ;       apt_u8(prog_var, prog_context)
+    ;       apt_u16(prog_var, prog_context)
+    ;       apt_u32(prog_var, prog_context)
+    ;       apt_u64(prog_var, prog_context)
     ;       apt_s(prog_var, prog_context)
     ;       apt_c(prog_var, prog_context).
 
@@ -73,6 +81,7 @@
                 string_format_flags,
                 compiler_format_maybe_width,
                 compiler_format_maybe_prec,
+                int_size,
                 prog_var
             )
     ;       compiler_spec_unsigned_int(
@@ -81,6 +90,7 @@
                 compiler_format_maybe_width,
                 compiler_format_maybe_prec,
                 string_format_int_base,
+                int_size,
                 prog_var
             )
     ;       compiler_spec_uint(
@@ -89,6 +99,7 @@
                 compiler_format_maybe_width,
                 compiler_format_maybe_prec,
                 string_format_int_base,
+                uint_size,
                 prog_var
             )
     ;       compiler_spec_float(
@@ -99,6 +110,20 @@
                 string_format_float_kind,
                 prog_var
             ).
+
+:- type int_size
+    --->    int_size_word
+    ;       int_size_8
+    ;       int_size_16
+    ;       int_size_32
+    ;       int_size_64.
+
+:- type uint_size
+    --->    uint_size_word
+    ;       uint_size_8
+    ;       uint_size_16
+    ;       uint_size_32
+    ;       uint_size_64.
 
     % Parse the entire format string. Return either a list of things to be
     % formatted and printed, or a list of error messages.
@@ -161,9 +186,9 @@ merge_adjacent_const_strs([HeadSpec | TailSpecs], MergedSpecs) :-
     ;
         ( HeadSpec = compiler_spec_char(_, _, _, _)
         ; HeadSpec = compiler_spec_string(_, _, _, _, _)
-        ; HeadSpec = compiler_spec_signed_int(_, _, _, _, _)
-        ; HeadSpec = compiler_spec_unsigned_int(_, _, _, _, _, _)
-        ; HeadSpec = compiler_spec_uint(_, _, _, _, _, _)
+        ; HeadSpec = compiler_spec_signed_int(_, _, _, _, _, _)
+        ; HeadSpec = compiler_spec_unsigned_int(_, _, _, _, _, _, _)
+        ; HeadSpec = compiler_spec_uint(_, _, _, _, _, _, _)
         ; HeadSpec = compiler_spec_float(_, _, _, _, _, _)
         ),
         MergedSpecs = [HeadSpec | TailMergedSpecs]
@@ -346,155 +371,8 @@ get_first_spec(!Chars, !PolyTypes, OverallContext, !.Flags,
         MaybeWidth, MaybePrec, SpecNum, Spec, Errors) :-
     !.Chars = [SpecChar | !:Chars],
     ( if
-        require_switch_arms_det [SpecChar]
-        (
-            SpecChar = '%',
-            SpecPrime = compiler_const_string(OverallContext, "%"),
-            ErrorsPrime = []
-        ;
-            ( SpecChar = 'd'
-            ; SpecChar = 'i'
-            ),
-            (
-                !.PolyTypes = [SpecPolyType | !:PolyTypes],
-                ( if SpecPolyType = apt_i(IntVar, PolyContext) then
-                    % Base is always decimal
-                    SpecPrime = compiler_spec_signed_int(PolyContext,
-                        !.Flags, MaybeWidth, MaybePrec, IntVar),
-                    ErrorsPrime = []
-                else
-                    Error = error_wrong_polytype(SpecNum, SpecChar,
-                        abstract_poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = compiler_const_string(OverallContext, ""),
-                    ErrorsPrime = [Error]
-                )
-            ;
-                !.PolyTypes = [],
-                Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = compiler_const_string(OverallContext, ""),
-                ErrorsPrime = [Error]
-            )
-        ;
-            (
-                SpecChar = 'o',
-                Base = base_octal
-            ;
-                SpecChar = 'u',
-                Base = base_decimal
-            ;
-                SpecChar = 'x',
-                Base = base_hex_lc
-            ;
-                SpecChar = 'X',
-                Base = base_hex_uc
-            ;
-                SpecChar = 'p',
-                Base = base_hex_p,
-                % XXX This should not be necessary.
-                !Flags ^ flag_hash := flag_hash_set
-            ),
-            (
-                !.PolyTypes = [SpecPolyType | !:PolyTypes],
-                ( if SpecPolyType = apt_i(IntVar, PolyContext) then
-                    SpecPrime = compiler_spec_unsigned_int(PolyContext,
-                        !.Flags, MaybeWidth, MaybePrec, Base, IntVar),
-                    ErrorsPrime = []
-                else if SpecPolyType = apt_u(UIntVar, PolyContext) then
-                    SpecPrime = compiler_spec_uint(PolyContext,
-                        !.Flags, MaybeWidth, MaybePrec, Base, UIntVar),
-                    ErrorsPrime = []
-                else
-                    Error = error_wrong_polytype(SpecNum, SpecChar,
-                        abstract_poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = compiler_const_string(OverallContext, ""),
-                    ErrorsPrime = [Error]
-                )
-            ;
-                !.PolyTypes = [],
-                Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = compiler_const_string(OverallContext, ""),
-                ErrorsPrime = [Error]
-            )
-        ;
-            (
-                SpecChar = 'e',
-                FloatKind = kind_e_scientific_lc
-            ;
-                SpecChar = 'E',
-                FloatKind = kind_e_scientific_uc
-            ;
-                SpecChar = 'f',
-                FloatKind = kind_f_plain_lc
-            ;
-                SpecChar = 'F',
-                FloatKind = kind_f_plain_uc
-            ;
-                SpecChar = 'g',
-                FloatKind = kind_g_flexible_lc
-            ;
-                SpecChar = 'G',
-                FloatKind = kind_g_flexible_uc
-            ),
-            (
-                !.PolyTypes = [SpecPolyType | !:PolyTypes],
-                ( if SpecPolyType = apt_f(FloatVar, PolyContext) then
-                    SpecPrime = compiler_spec_float(PolyContext,
-                        !.Flags, MaybeWidth, MaybePrec, FloatKind, FloatVar),
-                    ErrorsPrime = []
-                else
-                    Error = error_wrong_polytype(SpecNum, SpecChar,
-                        abstract_poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = compiler_const_string(OverallContext, ""),
-                    ErrorsPrime = [Error]
-                )
-            ;
-                !.PolyTypes = [],
-                Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = compiler_const_string(OverallContext, ""),
-                ErrorsPrime = [Error]
-            )
-        ;
-            SpecChar = 'c',
-            (
-                !.PolyTypes = [SpecPolyType | !:PolyTypes],
-                ( if SpecPolyType = apt_c(CharVar, PolyContext) then
-                    % XXX Should we generate an error if MaybePrec = yes(...)?
-                    SpecPrime = compiler_spec_char(PolyContext,
-                        !.Flags, MaybeWidth, CharVar),
-                    ErrorsPrime = []
-                else
-                    Error = error_wrong_polytype(SpecNum, SpecChar,
-                        abstract_poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = compiler_const_string(OverallContext, ""),
-                    ErrorsPrime = [Error]
-                )
-            ;
-                !.PolyTypes = [],
-                Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = compiler_const_string(OverallContext, ""),
-                ErrorsPrime = [Error]
-            )
-        ;
-            SpecChar = 's',
-            (
-                !.PolyTypes = [SpecPolyType | !:PolyTypes],
-                ( if SpecPolyType = apt_s(StrVar, PolyContext) then
-                    SpecPrime = compiler_spec_string(PolyContext,
-                        !.Flags, MaybeWidth, MaybePrec, StrVar),
-                    ErrorsPrime = []
-                else
-                    Error = error_wrong_polytype(SpecNum, SpecChar,
-                        abstract_poly_type_to_kind(SpecPolyType)),
-                    SpecPrime = compiler_const_string(OverallContext, ""),
-                    ErrorsPrime = [Error]
-                )
-            ;
-                !.PolyTypes = [],
-                Error = error_no_polytype(SpecNum, SpecChar),
-                SpecPrime = compiler_const_string(OverallContext, ""),
-                ErrorsPrime = [Error]
-            )
-        )
+        parse_spec(SpecChar, !PolyTypes, OverallContext, !.Flags,
+            MaybeWidth, MaybePrec, SpecNum, SpecPrime, ErrorsPrime)
     then
         Spec = SpecPrime,
         Errors = ErrorsPrime
@@ -504,14 +382,241 @@ get_first_spec(!Chars, !PolyTypes, OverallContext, !.Flags,
         Errors = [Error]
     ).
 
+:- pred parse_spec(char::in,
+    list(abstract_poly_type)::in, list(abstract_poly_type)::out,
+    prog_context::in, string_format_flags::in,
+    compiler_format_maybe_width::in, compiler_format_maybe_prec::in, int::in,
+    compiler_format_spec::out, list(string_format_error)::out) is semidet.
+
+parse_spec(SpecChar, !PolyTypes, OverallContext, !.Flags,
+        MaybeWidth, MaybePrec, SpecNum, Spec, Errors) :-
+    require_switch_arms_det [SpecChar]
+    (
+        SpecChar = '%',
+        Spec = compiler_const_string(OverallContext, "%"),
+        Errors = []
+    ;
+        ( SpecChar = 'd'
+        ; SpecChar = 'i'
+        ),
+        (
+            !.PolyTypes = [SpecPolyType | !:PolyTypes],
+            (
+                (
+                    SpecPolyType = apt_i(IntVar, PolyContext),
+                    IntSize = int_size_word
+                ;
+                    SpecPolyType = apt_i8(IntVar, PolyContext),
+                    IntSize = int_size_8
+                ;
+                    SpecPolyType = apt_i16(IntVar, PolyContext),
+                    IntSize = int_size_16
+                ;
+                    SpecPolyType = apt_i32(IntVar, PolyContext),
+                    IntSize = int_size_32
+                ;
+                    SpecPolyType = apt_i64(IntVar, PolyContext),
+                    IntSize = int_size_64
+                ),
+                % Base is always decimal
+                Spec = compiler_spec_signed_int(PolyContext, !.Flags,
+                    MaybeWidth, MaybePrec, IntSize, IntVar),
+                Errors = []
+            ;
+                ( SpecPolyType = apt_f(_, _)
+                ; SpecPolyType = apt_u(_, _)
+                ; SpecPolyType = apt_u8(_, _)
+                ; SpecPolyType = apt_u16(_, _)
+                ; SpecPolyType = apt_u32(_, _)
+                ; SpecPolyType = apt_u64(_, _)
+                ; SpecPolyType = apt_c(_, _)
+                ; SpecPolyType = apt_s(_, _)
+                ),
+                Error = error_wrong_polytype(SpecNum, SpecChar,
+                    abstract_poly_type_to_kind(SpecPolyType)),
+                Spec = compiler_const_string(OverallContext, ""),
+                Errors = [Error]
+            )
+        ;
+            !.PolyTypes = [],
+            Error = error_no_polytype(SpecNum, SpecChar),
+            Spec = compiler_const_string(OverallContext, ""),
+            Errors = [Error]
+        )
+    ;
+        (
+            SpecChar = 'o',
+            Base = base_octal
+        ;
+            SpecChar = 'u',
+            Base = base_decimal
+        ;
+            SpecChar = 'x',
+            Base = base_hex_lc
+        ;
+            SpecChar = 'X',
+            Base = base_hex_uc
+        ;
+            SpecChar = 'p',
+            Base = base_hex_p,
+            % XXX This should not be necessary.
+            !Flags ^ flag_hash := flag_hash_set
+        ),
+        (
+            !.PolyTypes = [SpecPolyType | !:PolyTypes],
+            (
+                (
+                    SpecPolyType = apt_i(IntVar, PolyContext),
+                    IntSize = int_size_word
+                ;
+                    SpecPolyType = apt_i8(IntVar, PolyContext),
+                    IntSize = int_size_8
+                ;
+                    SpecPolyType = apt_i16(IntVar, PolyContext),
+                    IntSize = int_size_16
+                ;
+                    SpecPolyType = apt_i32(IntVar, PolyContext),
+                    IntSize = int_size_32
+                ;
+                    SpecPolyType = apt_i64(IntVar, PolyContext),
+                    IntSize = int_size_64
+                ),
+                Spec = compiler_spec_unsigned_int(PolyContext, !.Flags,
+                    MaybeWidth, MaybePrec, Base, IntSize, IntVar),
+                Errors = []
+            ;
+                (
+                    SpecPolyType = apt_u(UIntVar, PolyContext),
+                    UIntSize = uint_size_word
+                ;
+                    SpecPolyType = apt_u8(UIntVar, PolyContext),
+                    UIntSize = uint_size_8
+                ;
+                    SpecPolyType = apt_u16(UIntVar, PolyContext),
+                    UIntSize = uint_size_16
+                ;
+                    SpecPolyType = apt_u32(UIntVar, PolyContext),
+                    UIntSize = uint_size_32
+                ;
+                    SpecPolyType = apt_u64(UIntVar, PolyContext),
+                    UIntSize = uint_size_64
+                ),
+                Spec = compiler_spec_uint(PolyContext, !.Flags,
+                    MaybeWidth, MaybePrec, Base, UIntSize, UIntVar),
+                Errors = []
+            ;
+                ( SpecPolyType = apt_f(_, _)
+                ; SpecPolyType = apt_c(_, _)
+                ; SpecPolyType = apt_s(_, _)
+                ),
+                Error = error_wrong_polytype(SpecNum, SpecChar,
+                    abstract_poly_type_to_kind(SpecPolyType)),
+                Spec = compiler_const_string(OverallContext, ""),
+                Errors = [Error]
+            )
+        ;
+            !.PolyTypes = [],
+            Error = error_no_polytype(SpecNum, SpecChar),
+            Spec = compiler_const_string(OverallContext, ""),
+            Errors = [Error]
+        )
+    ;
+        (
+            SpecChar = 'e',
+            FloatKind = kind_e_scientific_lc
+        ;
+            SpecChar = 'E',
+            FloatKind = kind_e_scientific_uc
+        ;
+            SpecChar = 'f',
+            FloatKind = kind_f_plain_lc
+        ;
+            SpecChar = 'F',
+            FloatKind = kind_f_plain_uc
+        ;
+            SpecChar = 'g',
+            FloatKind = kind_g_flexible_lc
+        ;
+            SpecChar = 'G',
+            FloatKind = kind_g_flexible_uc
+        ),
+        (
+            !.PolyTypes = [SpecPolyType | !:PolyTypes],
+            ( if SpecPolyType = apt_f(FloatVar, PolyContext) then
+                Spec = compiler_spec_float(PolyContext,
+                    !.Flags, MaybeWidth, MaybePrec, FloatKind, FloatVar),
+                Errors = []
+            else
+                Error = error_wrong_polytype(SpecNum, SpecChar,
+                    abstract_poly_type_to_kind(SpecPolyType)),
+                Spec = compiler_const_string(OverallContext, ""),
+                Errors = [Error]
+            )
+        ;
+            !.PolyTypes = [],
+            Error = error_no_polytype(SpecNum, SpecChar),
+            Spec = compiler_const_string(OverallContext, ""),
+            Errors = [Error]
+        )
+    ;
+        SpecChar = 'c',
+        (
+            !.PolyTypes = [SpecPolyType | !:PolyTypes],
+            ( if SpecPolyType = apt_c(CharVar, PolyContext) then
+                % XXX Should we generate an error if MaybePrec = yes(...)?
+                Spec = compiler_spec_char(PolyContext,
+                    !.Flags, MaybeWidth, CharVar),
+                Errors = []
+            else
+                Error = error_wrong_polytype(SpecNum, SpecChar,
+                    abstract_poly_type_to_kind(SpecPolyType)),
+                Spec = compiler_const_string(OverallContext, ""),
+                Errors = [Error]
+            )
+        ;
+            !.PolyTypes = [],
+            Error = error_no_polytype(SpecNum, SpecChar),
+            Spec = compiler_const_string(OverallContext, ""),
+            Errors = [Error]
+        )
+    ;
+        SpecChar = 's',
+        (
+            !.PolyTypes = [SpecPolyType | !:PolyTypes],
+            ( if SpecPolyType = apt_s(StrVar, PolyContext) then
+                Spec = compiler_spec_string(PolyContext,
+                    !.Flags, MaybeWidth, MaybePrec, StrVar),
+                Errors = []
+            else
+                Error = error_wrong_polytype(SpecNum, SpecChar,
+                    abstract_poly_type_to_kind(SpecPolyType)),
+                Spec = compiler_const_string(OverallContext, ""),
+                Errors = [Error]
+            )
+        ;
+            !.PolyTypes = [],
+            Error = error_no_polytype(SpecNum, SpecChar),
+            Spec = compiler_const_string(OverallContext, ""),
+            Errors = [Error]
+        )
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- func abstract_poly_type_to_kind(abstract_poly_type) = poly_kind.
 
-abstract_poly_type_to_kind(apt_c(_, _)) = poly_kind_char.
-abstract_poly_type_to_kind(apt_s(_, _)) = poly_kind_str.
-abstract_poly_type_to_kind(apt_i(_, _)) = poly_kind_int.
-abstract_poly_type_to_kind(apt_u(_, _)) = poly_kind_uint.
-abstract_poly_type_to_kind(apt_f(_, _)) = poly_kind_float.
+abstract_poly_type_to_kind(apt_c(_, _)) =   poly_kind_char.
+abstract_poly_type_to_kind(apt_s(_, _)) =   poly_kind_str.
+abstract_poly_type_to_kind(apt_i(_, _)) =   poly_kind_int.
+abstract_poly_type_to_kind(apt_i8(_, _)) =  poly_kind_int8.
+abstract_poly_type_to_kind(apt_i16(_, _)) = poly_kind_int16.
+abstract_poly_type_to_kind(apt_i32(_, _)) = poly_kind_int32.
+abstract_poly_type_to_kind(apt_i64(_, _)) = poly_kind_int64.
+abstract_poly_type_to_kind(apt_u(_, _)) =   poly_kind_uint.
+abstract_poly_type_to_kind(apt_u8(_, _)) =  poly_kind_uint8.
+abstract_poly_type_to_kind(apt_u16(_, _)) = poly_kind_uint16.
+abstract_poly_type_to_kind(apt_u32(_, _)) = poly_kind_uint32.
+abstract_poly_type_to_kind(apt_u64(_, _)) = poly_kind_uint64.
+abstract_poly_type_to_kind(apt_f(_, _)) =   poly_kind_float.
 
 %---------------------------------------------------------------------------%

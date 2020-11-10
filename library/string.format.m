@@ -88,18 +88,37 @@
     int::in, int::in, string_format_float_kind::in, float::in, string::out)
     is det.
 
+:- pred format_cast_int8_to_int(int8::in, int::out) is det.
+:- pred format_cast_int16_to_int(int16::in, int::out) is det.
+:- pred format_cast_int32_to_int(int32::in, int::out) is det.
+:- pred format_cast_int64_to_int(int64::in, int::out) is det.
+:- pred format_cast_uint8_to_uint(uint8::in, uint::out) is det.
+:- pred format_cast_uint16_to_uint(uint16::in, uint::out) is det.
+:- pred format_cast_uint32_to_uint(uint32::in, uint::out) is det.
+:- pred format_cast_uint64_to_uint(uint64::in, uint::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module bool.
+:- import_module exception.
 :- import_module float.
 :- import_module int.
 :- import_module integer.
 :- import_module require.
 :- import_module string.parse_runtime.
 :- import_module uint.
+
+:- use_module int8.
+:- use_module int16.
+:- use_module int32.
+:- use_module int64.
+:- use_module uint8.
+:- use_module uint16.
+:- use_module uint32.
+:- use_module uint64.
 
 %---------------------------------------------------------------------------%
 
@@ -165,15 +184,18 @@ spec_to_string(Spec, String) :-
         Spec = spec_constant_string(String)
     ;
         % Signed int conversion specifiers.
-        Spec = spec_signed_int(Flags, MaybeWidth, MaybePrec, Int),
+        Spec = spec_signed_int(Flags, MaybeWidth, MaybePrec, SizedInt),
+        Int = sized_int_to_int(SizedInt),
         format_signed_int_component(Flags, MaybeWidth, MaybePrec, Int, String)
     ;
         % Unsigned int conversion specifiers.
-        Spec = spec_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int),
+        Spec = spec_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, SizedInt),
+        Int = sized_int_to_int(SizedInt),
         format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
             String)
     ;
-        Spec = spec_uint(Flags, MaybeWidth, MaybePrec, Base, UInt),
+        Spec = spec_uint(Flags, MaybeWidth, MaybePrec, Base, SizedUInt),
+        UInt = sized_uint_to_uint(SizedUInt),
         format_uint_component(Flags, MaybeWidth, MaybePrec, Base, UInt,
             String)
     ;
@@ -1785,5 +1807,100 @@ is_decimal_point('.').
 
 is_exponent('e').
 is_exponent('E').
+
+%---------------------------------------------------------------------------%
+
+:- func sized_int_to_int(sized_int) = int.
+
+sized_int_to_int(SizedInt) = Int :-
+    (
+        SizedInt = sized_int(Int)
+    ;
+        SizedInt = sized_int8(Int8),
+        format_cast_int8_to_int(Int8, Int)
+    ;
+        SizedInt = sized_int16(Int16),
+        format_cast_int16_to_int(Int16, Int)
+    ;
+        SizedInt = sized_int32(Int32),
+        format_cast_int32_to_int(Int32, Int)
+    ;
+        SizedInt = sized_int64(Int64),
+        format_cast_int64_to_int(Int64, Int)
+    ).
+
+:- func sized_uint_to_uint(sized_uint) = uint.
+
+sized_uint_to_uint(SizedUInt) = UInt :-
+    (
+        SizedUInt = sized_uint(UInt)
+    ;
+        SizedUInt = sized_uint8(UInt8),
+        format_cast_uint8_to_uint(UInt8, UInt)
+    ;
+        SizedUInt = sized_uint16(UInt16),
+        format_cast_uint16_to_uint(UInt16, UInt)
+    ;
+        SizedUInt = sized_uint32(UInt32),
+        format_cast_uint32_to_uint(UInt32, UInt)
+    ;
+        SizedUInt = sized_uint64(UInt64),
+        format_cast_uint64_to_uint(UInt64, UInt)
+    ).
+
+format_cast_int8_to_int(Int8, Int) :-
+    Int = int8.cast_to_int(Int8).
+format_cast_int16_to_int(Int16, Int) :-
+    Int = int16.cast_to_int(Int16).
+format_cast_int32_to_int(Int32, Int) :-
+    Int = int32.cast_to_int(Int32).
+format_cast_int64_to_int(Int64, Int) :-
+    ( if words_are_64_bit then
+        Int = int64.cast_to_int(Int64)
+    else
+        throw(software_error("casting from int64 to int on 32 bit platform"))
+    ).
+
+format_cast_uint8_to_uint(UInt8, UInt) :-
+    UInt = uint8.cast_to_uint(UInt8).
+format_cast_uint16_to_uint(UInt16, UInt) :-
+    UInt = uint16.cast_to_uint(UInt16).
+format_cast_uint32_to_uint(UInt32, UInt) :-
+    UInt = uint32.cast_to_uint(UInt32).
+format_cast_uint64_to_uint(UInt64, UInt) :-
+    ( if words_are_64_bit then
+        UInt = uint64.cast_to_uint(UInt64)
+    else
+        throw(software_error("casting from uint64 to uint on 32 bit platform"))
+    ).
+
+:- pred words_are_64_bit is semidet.
+:- pragma inline(words_are_64_bit/0).
+
+:- pragma foreign_proc("C",
+    words_are_64_bit,
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    if (MR_BITS_PER_WORD == 64) {
+        SUCCESS_INDICATOR = MR_TRUE;
+    } else {
+        SUCCESS_INDICATOR = MR_FALSE;
+    }
+").
+:- pragma foreign_proc("C#",
+    words_are_64_bit,
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    SUCCESS_INDICATOR = false;
+").
+:- pragma foreign_proc("Java",
+    words_are_64_bit,
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    SUCCESS_INDICATOR = false;
+").
 
 %---------------------------------------------------------------------------%

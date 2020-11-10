@@ -1556,7 +1556,15 @@
 :- type poly_type
     --->    f(float)
     ;       i(int)
+    ;       i8(int8)
+    ;       i16(int16)
+    ;       i32(int32)
+    ;       i64(int64)
     ;       u(uint)
+    ;       u8(uint8)
+    ;       u16(uint16)
+    ;       u32(uint32)
+    ;       u64(uint64)
     ;       s(string)
     ;       c(char).
 
@@ -1588,6 +1596,10 @@
     % e,E   float       [-]m.dddddE+-xx   with '.', if precision 0
     % g,G   float       either e or f     with trailing zeros.
     % p     int, uint   integer
+    %
+    % The valid conversion characters for int8, int16, int32 and int64
+    % are the same as for int, and the valid conversion characters for
+    % uint8, uint16, uint32 and uint64 are the same as for uint.
     %
     % An option of zero will cause any padding to be zeros rather than spaces.
     % A '-' will cause the output to be left-justified in its 'space'.

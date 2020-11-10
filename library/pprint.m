@@ -383,6 +383,10 @@
 :- import_module deconstruct.
 :- import_module enum.
 :- import_module int.
+:- import_module int8.
+:- import_module int16.
+:- import_module int32.
+:- import_module int64.
 :- import_module map.
 :- import_module ops.
 :- import_module pair.
@@ -390,6 +394,10 @@
 :- import_module sparse_bitset.
 :- import_module term.
 :- import_module type_desc.
+:- import_module uint8.
+:- import_module uint16.
+:- import_module uint32.
+:- import_module uint64.
 :- import_module version_array.
 
 %---------------------------------------------------------------------------%
@@ -452,19 +460,27 @@ Doc1 ++ Doc2 = doc(Doc1) `<>` doc(Doc2).
 
 %---------------------------------------------------------------------------%
 
-nil                     = 'NIL'.
-X `<>` Y                = 'SEQ'(X, Y).
-nest(I, X)              = 'NEST'(I, doc(X)).
-label(L, X)             = 'LABEL'(L, doc(X)).
-text(S)                 = 'TEXT'(S).
-line                    = 'LINE'.
-group(X)                = 'GROUP'(doc(X)).
+nil             = 'NIL'.
+X `<>` Y        = 'SEQ'(X, Y).
+nest(I, X)      = 'NEST'(I, doc(X)).
+label(L, X)     = 'LABEL'(L, doc(X)).
+text(S)         = 'TEXT'(S).
+line            = 'LINE'.
+group(X)        = 'GROUP'(doc(X)).
 
-poly(s(S))              = text(string.format("%s", [s(S)])).
-poly(c(C))              = text(string.format("%c", [c(C)])).
-poly(i(I))              = text(string.format("%d", [i(I)])).
-poly(u(U))              = text(string.format("%u", [u(U)])).
-poly(f(F))              = text(string.format("%f", [f(F)])).
+poly(s(S))      = text(string.format("%s", [s(S)])).
+poly(c(C))      = text(string.format("%c", [c(C)])).
+poly(i(I))      = text(string.format("%d", [i(I)])).
+poly(i8(I8))    = text(string.format("%d", [i(int8.cast_to_int(I8))])).
+poly(i16(I16))  = text(string.format("%d", [i(int16.cast_to_int(I16))])).
+poly(i32(I32))  = text(string.format("%d", [i(int32.cast_to_int(I32))])).
+poly(i64(I64))  = text(string.format("%d", [i(int64.cast_to_int(I64))])).
+poly(u(U))      = text(string.format("%u", [u(U)])).
+poly(u8(U8))    = text(string.format("%u", [u(uint8.cast_to_uint(U8))])).
+poly(u16(U16))  = text(string.format("%u", [u(uint16.cast_to_uint(U16))])).
+poly(u32(U32))  = text(string.format("%u", [u(uint32.cast_to_uint(U32))])).
+poly(u64(U64))  = text(string.format("%u", [u(uint64.cast_to_uint(U64))])).
+poly(f(F))      = text(string.format("%f", [f(F)])).
 
 %---------------------------------------------------------------------------%
 

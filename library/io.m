@@ -8886,8 +8886,32 @@ write_many(Stream, [c(C) | Rest], !IO) :-
 write_many(Stream, [i(I) | Rest], !IO) :-
     write_int(Stream, I, !IO),
     write_many(Stream, Rest, !IO).
+write_many(Stream, [i8(I) | Rest], !IO) :-
+    write_int8(Stream, I, !IO),
+    write_many(Stream, Rest, !IO).
+write_many(Stream, [i16(I) | Rest], !IO) :-
+    write_int16(Stream, I, !IO),
+    write_many(Stream, Rest, !IO).
+write_many(Stream, [i32(I) | Rest], !IO) :-
+    write_int32(Stream, I, !IO),
+    write_many(Stream, Rest, !IO).
+write_many(Stream, [i64(I) | Rest], !IO) :-
+    write_int64(Stream, I, !IO),
+    write_many(Stream, Rest, !IO).
 write_many(Stream, [u(U) | Rest], !IO) :-
     write_uint(Stream, U, !IO),
+    write_many(Stream, Rest, !IO).
+write_many(Stream, [u8(U) | Rest], !IO) :-
+    write_uint8(Stream, U, !IO),
+    write_many(Stream, Rest, !IO).
+write_many(Stream, [u16(U) | Rest], !IO) :-
+    write_uint16(Stream, U, !IO),
+    write_many(Stream, Rest, !IO).
+write_many(Stream, [u32(U) | Rest], !IO) :-
+    write_uint32(Stream, U, !IO),
+    write_many(Stream, Rest, !IO).
+write_many(Stream, [u64(U) | Rest], !IO) :-
+    write_uint64(Stream, U, !IO),
     write_many(Stream, Rest, !IO).
 write_many(Stream, [s(S) | Rest], !IO) :-
     write_string(Stream, S, !IO),

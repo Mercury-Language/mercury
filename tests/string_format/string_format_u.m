@@ -26,7 +26,8 @@
 :- import_module string_format_lib.
 
 main(!IO) :-
-    Ints = [i(0), i(1), i(10), i(100), i(max_int)],
+    Ints = [i(0), i(1), i(10), i(100), i(max_int),
+        i8(42i8), i16(32000i16), u32(999_999u32)],
     list.foldl(output_list(Ints), format_strings("u"), !IO).
 
 %---------------------------------------------------------------------------%
