@@ -25,6 +25,8 @@ main(!IO) :-
 :- pred perform_trials(int::in, io::di, io::uo) is cc_multi.
 
 perform_trials(N, !IO) :-
+    table_reset_for_strict_sum_2(!IO),
+    table_reset_for_fast_loose_sum_2(!IO),
     trial(N, STime, FLTime),
     % io.write_int(N, !IO),
     % io.write_string(": ", !IO),
@@ -65,7 +67,7 @@ strict(N, R) :-
     strict_sum(iota(N), R).
 
 :- pred strict_sum(list(int)::in, int::out) is det.
-:- pragma memo(strict_sum/2).
+:- pragma memo(strict_sum/2, [allow_reset]).
 
 strict_sum([], 0).
 strict_sum([H | T], H + TS) :-
@@ -77,7 +79,7 @@ fast_loose(N, R) :-
     fast_loose_sum(iota(N), R).
 
 :- pred fast_loose_sum(list(int)::in, int::out) is det.
-:- pragma memo(fast_loose_sum/2, [fast_loose]).
+:- pragma memo(fast_loose_sum/2, [fast_loose, allow_reset]).
 
 fast_loose_sum([], 0).
 fast_loose_sum([H | T], H + TS) :-
