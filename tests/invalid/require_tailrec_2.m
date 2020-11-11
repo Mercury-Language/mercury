@@ -73,6 +73,11 @@ odd1(N) =
         even1(N - 1)
     ).
 
+% Suppress inlining of calls to even1 into odd1 and vice versa at higher
+% optimisation levels, as that would affect the warning messages produced.
+:- pragma no_inline(even1/1).
+:- pragma no_inline(odd1/1).
+
 %---------------------------------------------------------------------------%
 
 :- pragma require_tail_recursion(qsortapp_1/2).

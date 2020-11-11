@@ -74,3 +74,13 @@ odd3(N) =
         even3(N - 1)
     ).
 
+% Suppress inlining of calls to evenN into oddN and vice versa at higher
+% optimisation levels, as that would affect the warning messages produced.
+:- pragma no_inline(even1/1).
+:- pragma no_inline(odd1/1).
+
+:- pragma no_inline(even2/1).
+:- pragma no_inline(odd2/1).
+
+:- pragma no_inline(even3/1).
+:- pragma no_inline(odd3/1).

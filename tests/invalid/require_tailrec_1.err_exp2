@@ -11,18 +11,18 @@ require_tailrec_1.m:074:   `even1'/1 is tail recursive, but tail recursion
 require_tailrec_1.m:074:   optimization cannot be applied to it, because the
 require_tailrec_1.m:074:   *callee* cannot reach the caller via tail calls
 require_tailrec_1.m:074:   only.
-require_tailrec_1.m:085: In mode number 1 of predicate `qsortapp_1'/2:
-require_tailrec_1.m:085:   warning: self-recursive call is not tail recursive.
-require_tailrec_1.m:103: In mode number 1 of predicate `qsortapp_3'/2:
-require_tailrec_1.m:103:   warning: self-recursive call is not tail recursive.
-require_tailrec_1.m:112: In mode number 1 of predicate `qsortapp_4'/2:
-require_tailrec_1.m:112:   error: self-recursive call is not tail recursive.
-require_tailrec_1.m:121: In mode number 1 of predicate `qsortapp_5'/2:
-require_tailrec_1.m:121:   warning: self-recursive call is not tail recursive.
-require_tailrec_1.m:130: In mode number 1 of predicate `qsortapp_6'/2:
-require_tailrec_1.m:130:   warning: self-recursive call is not tail recursive.
-require_tailrec_1.m:137: In `:- pragma require_tail_recursion' for function
-require_tailrec_1.m:137:   `cons'/2:
-require_tailrec_1.m:137:   warning: the code defining this function contains no
-require_tailrec_1.m:137:   recursive calls at all, tail-recursive or otherwise.
+require_tailrec_1.m:090: In mode number 1 of predicate `qsortapp_1'/2:
+require_tailrec_1.m:090:   warning: self-recursive call is not tail recursive.
+require_tailrec_1.m:108: In mode number 1 of predicate `qsortapp_3'/2:
+require_tailrec_1.m:108:   warning: self-recursive call is not tail recursive.
+require_tailrec_1.m:117: In mode number 1 of predicate `qsortapp_4'/2:
+require_tailrec_1.m:117:   error: self-recursive call is not tail recursive.
+require_tailrec_1.m:126: In mode number 1 of predicate `qsortapp_5'/2:
+require_tailrec_1.m:126:   warning: self-recursive call is not tail recursive.
+require_tailrec_1.m:135: In mode number 1 of predicate `qsortapp_6'/2:
+require_tailrec_1.m:135:   warning: self-recursive call is not tail recursive.
+require_tailrec_1.m:142: In `:- pragma require_tail_recursion' for function
+require_tailrec_1.m:142:   `cons'/2:
+require_tailrec_1.m:142:   warning: the code defining this function contains no
+require_tailrec_1.m:142:   recursive calls at all, tail-recursive or otherwise.
 For more information, recompile with `-E'.
