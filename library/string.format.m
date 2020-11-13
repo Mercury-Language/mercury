@@ -350,7 +350,7 @@ format_float_component_width_prec(Flags, Width, Prec, Kind, Float, String) :-
 
 format_char_component(Flags, MaybeWidth, Char, String) :-
     ( if using_sprintf_for_char(Char) then
-        FormatStr = make_format(Flags, MaybeWidth, no_specified_prec,
+        FormatStr = make_format_sprintf(Flags, MaybeWidth, no_specified_prec,
             "", "c"),
         String = native_format_char(FormatStr, Char)
     else
@@ -373,7 +373,7 @@ format_string_component(Flags, MaybeWidth, MaybePrec, Str, String) :-
             using_sprintf_for_string(Str)
         )
     then
-        FormatStr = make_format(Flags, MaybeWidth, MaybePrec, "", "s"),
+        FormatStr = make_format_sprintf(Flags, MaybeWidth, MaybePrec, "", "s"),
         String = native_format_string(FormatStr, Str)
     else
         String = format_string(Flags, MaybeWidth, MaybePrec, Str)
@@ -386,7 +386,7 @@ format_string_component(Flags, MaybeWidth, MaybePrec, Str, String) :-
 format_signed_int_component(Flags, MaybeWidth, MaybePrec, Int, String) :-
     ( if using_sprintf then
         % XXX The "d" could be "i"; we don't keep track.
-        FormatStr = make_format(Flags, MaybeWidth, MaybePrec,
+        FormatStr = make_format_sprintf(Flags, MaybeWidth, MaybePrec,
             int_length_modifier, "d"),
         String = native_format_int(FormatStr, Int)
     else
@@ -406,7 +406,7 @@ format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
         ; Base = base_hex_uc,  SpecChar = "X"
         ; Base = base_hex_p,   SpecChar = "p"
         ),
-        FormatStr = make_format(Flags, MaybeWidth, MaybePrec,
+        FormatStr = make_format_sprintf(Flags, MaybeWidth, MaybePrec,
             int_length_modifier, SpecChar),
         String = native_format_int(FormatStr, Int)
     else
@@ -425,7 +425,7 @@ format_uint_component(Flags, MaybeWidth, MaybePrec, Base, UInt, String) :-
         ; Base = base_hex_uc,  SpecChar = "X"
         ; Base = base_hex_p,   SpecChar = "p"
         ),
-        FormatStr = make_format(Flags, MaybeWidth, MaybePrec,
+        FormatStr = make_format_sprintf(Flags, MaybeWidth, MaybePrec,
             int_length_modifier, SpecChar),
         String = native_format_uint(FormatStr, UInt)
     else
@@ -448,7 +448,7 @@ format_float_component(Flags, MaybeWidth, MaybePrec, Kind, Float, String) :-
         ; Kind = kind_g_flexible_lc,   SpecChar = "g"
         ; Kind = kind_g_flexible_uc,   SpecChar = "G"
         ),
-        FormatStr = make_format(Flags, MaybeWidth, MaybePrec,
+        FormatStr = make_format_sprintf(Flags, MaybeWidth, MaybePrec,
             "", SpecChar),
         String = native_format_float(FormatStr, Float)
     else
@@ -456,18 +456,6 @@ format_float_component(Flags, MaybeWidth, MaybePrec, Kind, Float, String) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-    % Construct a format string.
-    %
-:- func make_format(string_format_flags, string_format_maybe_width,
-    string_format_maybe_prec, string, string) = string.
-
-make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
-    ( if using_sprintf then
-        make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod, Spec)
-    else
-        make_format_dotnet(Flags, MaybeWidth, MaybePrec, LengthMod, Spec)
-    ).
 
     % Are we using C's sprintf? All backends other than C return false.
     % Note that any backends which return true for using_sprintf/0 must
@@ -577,50 +565,6 @@ make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
     String = string.append_list(["%",
         FlagHashStr, FlagSpaceStr, FlagZeroStr, FlagMinusStr, FlagPlusStr,
         WidthStr, PrecPrefixStr, PrecStr, LengthMod, Spec]).
-
-    % Construct a format string suitable to passing to .NET's formatting
-    % functions.
-    % XXX this code is not yet complete. We need to do a lot more work
-    % to make this work perfectly.
-    %
-:- func make_format_dotnet(string_format_flags, string_format_maybe_width,
-    string_format_maybe_prec, string, string) = string.
-
-make_format_dotnet(_Flags, MaybeWidth, MaybePrec, _LengthMod, Spec0)
-        = String :-
-    (
-        MaybeWidth = specified_width(Width),
-        WidthPrefixStr = ",",
-        WidthStr = int_to_string(Width)
-    ;
-        MaybeWidth = no_specified_width,
-        WidthPrefixStr = "",
-        WidthStr = ""
-    ),
-    (
-        MaybePrec = specified_prec(Prec),
-        PrecStr = int_to_string(Prec)
-    ;
-        MaybePrec = no_specified_prec,
-        PrecStr = ""
-    ),
-    ( if Spec0 = "i" then
-        Spec = "d"
-    else if Spec0 = "f" then
-        Spec = "e"
-    else
-        Spec = Spec0
-    ),
-    String = string.append_list([
-        "{0",
-        WidthPrefixStr,
-        WidthStr,
-        ":",
-        Spec,
-        PrecStr,
-%       LengthMod,
-%       from_char_list(Flags),
-        "}"]).
 
 :- func int_length_modifier = string.
 :- pragma no_determinism_warning(int_length_modifier/0).
