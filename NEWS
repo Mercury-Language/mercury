@@ -161,8 +161,8 @@ Changes to the Mercury standard library
     - u32(uint32)
     - u64(uint64)
 
-  This allows predicates such as string.format and io.format to operate
-  on values of not just the word sized integer types int and uint, but on
+  This allows predicates such as `string.format` and `io.format` to operate
+  on values of not just the word sized integer types `int` and `uint`, but on
   sized versions of them as well.
 
   For now, the printing of 64 bit ints and uints is supported only
