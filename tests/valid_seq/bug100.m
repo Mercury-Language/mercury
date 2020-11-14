@@ -4,6 +4,7 @@
 %
 % rotd-2010-01-25 and before were incorrectly reporting that the import
 % of the module bug100_2 in the interface was unused.
+%
 
 :- module bug100.
 :- interface.

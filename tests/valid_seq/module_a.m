@@ -9,4 +9,4 @@
 :- import_module module_e.
 :- use_module module_b.
 
-:- type module_a__foo == module_b__foo.
+:- type module_a.foo == module_b.foo.

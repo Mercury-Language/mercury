@@ -10,6 +10,7 @@
 %     Key Type: term.var(parse_tree.prog_data.tvar_type)
 %     Key Value: var(1)
 %     Value Type: hlds.hlds_rtti.type_info_locn
+%
 
 :- module intermod_ua_type_spec.
 :- interface.

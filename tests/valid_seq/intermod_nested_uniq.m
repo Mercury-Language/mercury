@@ -16,6 +16,6 @@
 
 :- import_module intermod_nested_uniq2.
 
-main -->
-    { init(1, 1, Matrix) },
-    { lookup(1, 1, Matrix, _) }.
+main(!IO) :-
+    init(1, 1, Matrix),
+    lookup(1, 1, Matrix, _).

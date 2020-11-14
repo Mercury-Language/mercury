@@ -32,10 +32,11 @@ baz(X) :-
 :- pred bar(t::in, int::int_mode) is semidet.
 
 bar(T, 2) :-
-    Pred = (pred(T1::in, Int::int_mode) is semidet :-
-        T1 = f(1),
-        Int = 2
-    ),
+    Pred =
+        ( pred(T1::in, Int::int_mode) is semidet :-
+            T1 = f(1),
+            Int = 2
+        ),
     Pred(T, 2).
 
 % One version of the compiler incorrectly wrote this declaration to

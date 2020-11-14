@@ -8,11 +8,10 @@
 
 :- import_module io.
 
-:- pred main(io, io).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module intermod_nested2.
 
-main --> [].
+main(!IO).

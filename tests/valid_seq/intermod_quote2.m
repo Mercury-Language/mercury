@@ -4,6 +4,7 @@
 %
 % Regression test to ensure that terms are properly quoted in the intermodule
 % .opt file.
+%
 
 :- module intermod_quote2.
 :- interface.

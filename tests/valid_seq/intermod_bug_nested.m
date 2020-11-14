@@ -4,6 +4,7 @@
 %
 % Test case for spurious errors if there are predicates
 % module1.p and module2.module1.p.
+%
 
 :- module intermod_bug_nested.
 
@@ -11,17 +12,16 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module intermod_bug_nested.parser.
 :- import_module list.
 
-main -->
-    { parse_tokens("foo", [1, 2], List) },
-    io__write(List),
-    io__nl.
+main(!IO) :-
+    parse_tokens("foo", [1, 2], List),
+    io.write_line(List, !IO).
 
     :- module intermod_bug_nested.parser.
 

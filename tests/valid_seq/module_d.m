@@ -5,4 +5,4 @@
 :- module module_d.
 :- interface.
 
-:- type module_d__foo == int.
+:- type module_d.foo == int.

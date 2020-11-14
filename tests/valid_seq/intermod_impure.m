@@ -10,6 +10,7 @@
 % when reading the `.m' file and once when reading the `.opt' file.
 % The fix was to avoid putting goals which call impure predicates
 % in the `.opt' files.
+%
 
 :- module intermod_impure.
 
@@ -17,13 +18,13 @@
 
 :- import_module io.
 
-:- impure pred main(io__state::di, io__state::uo) is det.
+:- impure pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module intermod_impure2.
 
-main -->
-    { impure intermod_impure(Int) },
-    io__write_int(Int),
-    io__nl.
+main(!IO) :-
+    impure intermod_impure(Int),
+    io.write_int(Int, !IO),
+    io.nl(!IO).

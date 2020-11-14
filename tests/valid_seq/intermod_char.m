@@ -3,6 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % Character constants in clause heads were doubly-escaped in .opt files.
+%
 
 :- module intermod_char.
 :- interface.
@@ -16,8 +17,8 @@
 :- import_module intermod_char2.
 
 main(!IO) :-
-    ( p('\r') ->
+    ( if p('\r') then
         true
-    ;
+    else
         true
     ).

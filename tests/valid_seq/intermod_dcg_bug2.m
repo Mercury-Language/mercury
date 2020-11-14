@@ -8,8 +8,7 @@
 
 :- import_module io.
 
-:- pred foo(io__state, io__state).
-:- mode foo(di, uo) is det.
+:- pred foo(io::di, io::uo) is det.
 
 :- implementation.
 

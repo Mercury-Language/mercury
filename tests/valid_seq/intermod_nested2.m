@@ -10,7 +10,8 @@
 
     :- interface.
 
-    :- type bar ---> bar.
+    :- type bar
+        --->    bar.
 
     :- end_module intermod_nested2__bar.
 

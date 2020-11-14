@@ -2,17 +2,16 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module intermod_nested_module_bug2__sub.
+:- module intermod_nested_module_bug2.sub.
 
 :- interface.
 
 :- type post == assoc_list(string).
 
-:- pred read_post(cgi, maybe_error(post), io, io).
-:- mode read_post(in, out, di, uo) is det.
+:- pred read_post(cgi::in, maybe_error(post)::out, io::di, io::uo) is det.
 
 :- implementation.
 
-read_post(_CGI, error("foo")) --> [].
+read_post(_CGI, error("foo"), !IO).
 
-:- end_module intermod_nested_module_bug2__sub.
+:- end_module intermod_nested_module_bug2.sub.

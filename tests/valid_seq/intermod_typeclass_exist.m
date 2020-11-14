@@ -11,6 +11,7 @@
 % Uncaught Mercury exception:
 % Software Error: pred_table.m: Unexpected: type error in pred call:
 %   no matching pred
+%
 
 :- module intermod_typeclass_exist.
 :- interface.

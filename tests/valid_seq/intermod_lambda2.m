@@ -6,6 +6,7 @@
 % inter-module optimization.
 % This is also a regression test to check that local modes are put
 % in the .opt files.
+%
 
 :- module intermod_lambda2.
 
@@ -25,7 +26,8 @@
 sol(Generator, List) :-
     Test = ((pred) is semidet),
     TestFunc = ((func) = 1),
-    Cons = (pred(Elem::in, L0::in, L::out) is det :-
+    Cons =
+        ( pred(Elem::in, L0::in, L::out) is det :-
             intermod_lambda2__cons(Elem, L0, L)
         ),
     t(Test, TestFunc, Generator, Cons, [], List).

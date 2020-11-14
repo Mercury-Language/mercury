@@ -6,6 +6,7 @@
 % exported using inter-module optimization.
 % This is also a regression test to check that local modes are put
 % in the .opt files.
+%
 
 :- module intermod_lambda.
 
@@ -15,6 +16,7 @@
 
 :- implementation.
 
-:- type foo ---> foo.
+:- type foo
+    --->    foo.
 
 :- import_module intermod_lambda2.

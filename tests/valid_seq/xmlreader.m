@@ -1,5 +1,9 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
-% Binding to xmlReader by Daniel Veillard
+%---------------------------------------------------------------------------%
+%
+% Binding to xmlReader by Daniel Veillard.
+%
 
 :- module xmlreader.
 :- interface.
@@ -66,9 +70,11 @@
 
 open_file(FN, MayReader, !IO) :-
     c_open_file(FN, OK, Rdr, !IO),
-    ( OK = yes ->
+    (
+        OK = yes,
         MayReader = unsafe_promise_unique(yes(Rdr))
     ;
+        OK = no,
         MayReader = unsafe_promise_unique(no)
     ).
 
@@ -103,17 +109,17 @@ open_file(FN, MayReader, !IO) :-
 
 read(Evt, !Rdr) :-
     c_read(Ret, !Rdr),
-    ( Ret = 1 ->
+    ( if Ret = 1 then
         c_get(Depth, NodeType, Name, Empty, GotVal, Val, !Rdr),
-        ( GotVal = yes ->
+        ( if GotVal = yes then
             MayVal = yes(Val)
-        ;
+        else
             MayVal = no
         ),
         Evt = node(Depth, NodeType, Name, Empty, MayVal)
-    ; Ret = 0 ->
+    else if Ret = 0 then
         Evt = eof
-    ;
+    else
         Evt = error(Ret)
     ).
 

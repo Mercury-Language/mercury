@@ -1,6 +1,9 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 %
-% This is a regression test for bug #28 in Mantis.
+% This is a regression test for Mantis bug #28.
+%
 
 :- module test_xmlreader.
 :- interface.
@@ -20,9 +23,9 @@
 
 main(!IO) :-
     io.command_line_arguments(Args, !IO),
-    ( Args = [TFN] ->
+    ( if Args = [TFN] then
         FN = TFN
-    ;
+    then
         error("usage: testxmlreader file.xml")
     ),
     xmlreader.open_file(FN, MayR, !IO),
@@ -49,9 +52,9 @@ dump_all_and_close(R, !IO) :-
         E = node(D, T, N, Empty, MV),
         (
             MV = yes(V),
-            ( length(V) > 40 ->
+            ( if length(V) > 40 then
                 UseV = string.left(V, 40)
-            ;
+            else
                 UseV = V
             )
         ;

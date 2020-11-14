@@ -7,6 +7,7 @@
 % introduced for the DCG pred expressions clashed with the DCG arguments for
 % the enclosing clauses. The solution was to add variable numbers to clauses
 % in `.opt' files.
+%
 
 :- module intermod_dcg_bug.
 
@@ -14,12 +15,11 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module intermod_dcg_bug2.
 
-main -->
-    foo.
+main(!IO) :-
+    foo(!IO).

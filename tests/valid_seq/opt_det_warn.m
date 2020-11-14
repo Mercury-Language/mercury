@@ -4,6 +4,7 @@
 %
 % Check that we don't emit inferred erroneous warnings for opt imported
 % predicates.
+%
 
 :- module opt_det_warn.
 :- interface.

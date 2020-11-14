@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io.state::di, io.state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -33,13 +33,13 @@
 :- mode get_field(in, in, out) is semidet.
 
 get_field(Ev, Field, R) :-
-    ( Field = "date" ->
+    ( if Field = "date" then
         R = d(Dt),
         get_date_field(Ev, Dt)
-    ; Field = "code" ->
+    else if Field = "code" then
         R = c(Cd),
         get_code_field(Ev, Cd)
-    ;
+    else
         error("No handler for this field")
     ).
 
@@ -56,5 +56,5 @@ get_date_field(wrong(Dt), Dt).
 
 get_code_field(prest(_, _, Cd, _), Cd).
 
-main -->
-    print("hello world\n").
+main(!IO) :-
+    io.print("hello world\n", !IO).

@@ -3,6 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % Test handling of typeclasses with intermodule optimization.
+%
 
 :- module intermod_typeclass.
 :- interface.
@@ -25,7 +26,7 @@ p(X) :-
     Y = f(_),
     Lambda = (pred(Z::int_mode) is det :- Z = 2),
     local(Lambda, X),
-    intermod_typeclass2__baz(X).
+    intermod_typeclass2.baz(X).
 
 :- mode int_mode == out.
 

@@ -8,22 +8,21 @@
 
 :- import_module io.
 
-:- pred main(io, io).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module maybe.
 :- import_module intermod_nested_module_bug2.
-:- import_module intermod_nested_module_bug2__sub.
+:- import_module intermod_nested_module_bug2.sub.
 
-main -->
-    get_request(Res0),
+main(!IO) :-
+    get_request(Res0, !IO),
     (
-        { Res0 = ok(CGI) },
-        read_post(CGI, Form),
-        write(Form), nl
+        Res0 = ok(CGI),
+        read_post(CGI, Form, !IO),
+        io.write_line(Form, !IO)
     ;
-        { Res0 = error(Error) },
-        write_string(Error)
+        Res0 = error(Error),
+        io.write_string(Error, !IO)
     ).

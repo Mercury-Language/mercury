@@ -3,6 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % Test overloading resolution for cross-module optimization.
+%
 
 :- module intermod_test.
 :- interface.
@@ -25,7 +26,7 @@ p(X) :-
     Y = f(_),
     Lambda = (pred(Z::int_mode) is det :- Z = 2),
     local(Lambda, X),
-    intermod_test2__baz(X).
+    intermod_test2.baz(X).
 
 :- mode int_mode == out.
 

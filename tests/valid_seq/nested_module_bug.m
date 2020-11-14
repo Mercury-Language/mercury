@@ -4,6 +4,7 @@
 %
 % Test case for spurious errors if there are predicates
 % module1.p and module2.module1.p.
+%
 
 :- module nested_module_bug.
 
@@ -19,10 +20,9 @@
 :- import_module nested_module_bug.parser.
 :- import_module parser.
 
-main -->
-    { parse_tokens("foo", [1, 2], List) },
-    io__write(List),
-    io__nl.
+main(!IO) :-
+    parse_tokens("foo", [1, 2], List),
+    io.write_line(List, !IO).
 
     :- module nested_module_bug.parser.
 

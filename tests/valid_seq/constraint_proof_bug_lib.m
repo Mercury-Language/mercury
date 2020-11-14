@@ -1,4 +1,6 @@
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
+%---------------------------------------------------------------------------%
 
 :- module constraint_proof_bug_lib.
 
@@ -61,5 +63,7 @@ where [
 :- pred apply_op_fields(field(T, T2)::in, dep_op::in, field(T, T2)::in)
     is semidet <= (constrainable(T), constrainable(T2)).
 
-apply_op_fields(d(D1), Op, d(D2)) :- apply_op(D1, Op, D2).
-apply_op_fields(c(D1), Op, c(D2)) :- apply_op(D1, Op, D2).
+apply_op_fields(d(D1), Op, d(D2)) :-
+    apply_op(D1, Op, D2).
+apply_op_fields(c(D1), Op, c(D2)) :-
+    apply_op(D1, Op, D2).

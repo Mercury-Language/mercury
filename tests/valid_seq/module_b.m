@@ -6,4 +6,4 @@
 :- interface.
 
 :- use_module module_c.
-:- type module_b__foo == module_c__foo.
+:- type module_b.foo == module_c.foo.
