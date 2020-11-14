@@ -1432,9 +1432,9 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     % We don't want to output line numbers in the .opt files,
     % since that causes spurious changes to the .opt files
     % when you make trivial changes (e.g. add comments) to the source files.
-    MercInfo0 = OutInfo0 ^ hoi_mercury_to_mercury,
+    MercInfo0 = OutInfo0 ^ hoi_merc_out_info,
     MercInfo = merc_out_info_disable_line_numbers(MercInfo0),
-    OutInfo = OutInfo0 ^ hoi_mercury_to_mercury := MercInfo,
+    OutInfo = OutInfo0 ^ hoi_merc_out_info := MercInfo,
     % Disable verbose dumping of clauses.
     OutInfoForPreds = OutInfo ^ hoi_dump_hlds_options := "",
 
@@ -1587,7 +1587,7 @@ intermod_write_type(OutInfo, Stream, TypeCtor - TypeDefn,
     cord.snoc(MainItemTypeDefn, !TypeDefnsCord),
     MainItem = item_type_defn(MainItemTypeDefn),
 
-    MercInfo = OutInfo ^ hoi_mercury_to_mercury,
+    MercInfo = OutInfo ^ hoi_merc_out_info,
     mercury_output_item(MercInfo, Stream, MainItem, !IO),
     ( if
         (
@@ -1737,7 +1737,7 @@ intermod_write_inst(OutInfo, Stream, ModuleName, InstCtor, InstDefn,
             nonabstract_inst_defn(Inst), Varset, Context, -1),
         cord.snoc(ItemInstDefn, !InstDefnsCord),
         Item = item_inst_defn(ItemInstDefn),
-        MercInfo = OutInfo ^ hoi_mercury_to_mercury,
+        MercInfo = OutInfo ^ hoi_merc_out_info,
         mercury_output_item(MercInfo, Stream, Item, !IO)
     else
         true
@@ -1776,7 +1776,7 @@ intermod_write_mode(OutInfo, Stream, ModuleName, ModeCtor, ModeDefn,
             MaybeAbstractModeDefn, Varset, Context, -1),
         cord.snoc(ItemModeDefn, !ModeDefnsCord),
         Item = item_mode_defn(ItemModeDefn),
-        MercInfo = OutInfo ^ hoi_mercury_to_mercury,
+        MercInfo = OutInfo ^ hoi_merc_out_info,
         mercury_output_item(MercInfo, Stream, Item, !IO)
     else
         true
@@ -1815,7 +1815,7 @@ intermod_write_class(OutInfo, Stream, ModuleName, ClassId, ClassDefn,
             Constraints, FunDeps, Interface, TVarSet, Context, -1),
         cord.snoc(ItemTypeClass, !TypeClassesCord),
         Item = item_typeclass(ItemTypeClass),
-        MercInfo = OutInfo ^ hoi_mercury_to_mercury,
+        MercInfo = OutInfo ^ hoi_merc_out_info,
         mercury_output_item(MercInfo, Stream, Item, !IO)
     else
         true
@@ -1868,7 +1868,7 @@ intermod_write_instance(OutInfo, Stream, ClassId - InstanceDefn,
         Constraints, Body, TVarSet, ModuleName, Context, -1),
     cord.snoc(ItemInstance, !InstancesCord),
     Item = item_instance(ItemInstance),
-    MercInfo = OutInfo ^ hoi_mercury_to_mercury,
+    MercInfo = OutInfo ^ hoi_merc_out_info,
     mercury_output_item(MercInfo, Stream, Item, !IO).
 
 %---------------------------------------------------------------------------%

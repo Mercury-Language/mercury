@@ -987,6 +987,7 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarSet, InstVarSet, TypeQual,
             NonLocals, Vars, Modes, Det, Goal),
         Indent1 = Indent + 1,
         io.write_string(Stream, purity_prefix_to_string(Purity), !IO),
+        Lang = get_output_lang(Info ^ hoi_merc_out_info),
         (
             PredOrFunc = pf_predicate,
             (
@@ -1002,7 +1003,7 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarSet, InstVarSet, TypeQual,
                 io.format(Stream, "(%s)", [s(Functor)], !IO)
             ;
                 Vars = [_ | _],
-                ModesStr = var_modes_to_string(VarSet, InstVarSet,
+                ModesStr = var_modes_to_string(Lang, VarSet, InstVarSet,
                     VarNamePrint, Vars, Modes),
                 io.format(Stream, "%s(%s)",
                     [s(Functor), s(ModesStr)], !IO)
@@ -1030,13 +1031,13 @@ write_unify_rhs_2(Info, Stream, ModuleInfo, VarSet, InstVarSet, TypeQual,
                 io.format(Stream, "(%s)", [s(Functor)], !IO)
             ;
                 ArgVars = [_ | _],
-                ArgModesStr = var_modes_to_string(VarSet, InstVarSet,
+                ArgModesStr = var_modes_to_string(Lang, VarSet, InstVarSet,
                     VarNamePrint, ArgVars, ArgModes),
                 io.format(Stream, "%s(%s)",
                     [s(Functor), s(ArgModesStr)], !IO)
             ),
-            RetModeStr = var_mode_to_string(VarSet, InstVarSet, VarNamePrint,
-                RetVar - RetMode),
+            RetModeStr = var_mode_to_string(Lang, VarSet, InstVarSet,
+                VarNamePrint, RetVar - RetMode),
             DetStr = mercury_det_to_string(Det),
             io.format(Stream, " = (%s) is %s :-\n",
                 [s(RetModeStr), s(DetStr)], !IO),

@@ -11,4 +11,4 @@ mode_inf.m:016:   in argument 2 of clause head:
 mode_inf.m:016:   mode error in unification of `HeadVar__2' and `X'.
 mode_inf.m:016:   Variable `HeadVar__2' has instantiatedness `free',
 mode_inf.m:016:   variable `X' has instantiatedness `free'.
-mode_inf.m:016: REJECTED :- mode q((free >> ...), (free >> ...)).
+mode_inf.m:016: REJECTED :- mode q(out(...), out(...)).

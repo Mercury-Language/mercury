@@ -99,8 +99,10 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
 
 :- import_module require.
@@ -560,104 +562,105 @@ mercury_output_mode(Stream, Lang, InstVarSet, Mode, !IO) :-
 mercury_mode_to_string(Lang, InstVarSet, Mode) = String :-
     mercury_format_mode(Lang, InstVarSet, Mode, unit, "", String).
 
-mercury_format_mode(Lang, InstVarSet, Mode, S, !U) :-
+mercury_format_mode(Lang, InstVarSet, Mode0, S, !U) :-
     (
-        Mode = from_to_mode(FromInst, ToInst),
-        % In the general case, we output this mode as "(FromInst >> ToInst)".
-        % However, we do try to special case two kinds of modes.
-        % 
-        % We try to special case the eight main builtin modes:
-        %   in, out, ui, di, uo, mui, mdi and muo
-        % for two reasons:
-        %
-        % - because they are by far the most frequently used modes, so their
-        %   readability is quite important, but
-        % - their (FromInst >> ToInst) forms can be very hard to read.
+        Mode0 = from_to_mode(FromInst0, ToInst0),
+        % When generating output intended for humans, such as error
+        % messages and HLDS dumps, we try to make the mode as easy to read
+        % as possible. This involves transforming e.g. "free >> ground"
+        % to simply "out".
         %
         % However, we cannot replace the expansions of in, out etc
         % with their names when we are generating actual Mercury code,
         % because if we did, we would make the actual *definitions*
         % of these modes in builtin.int circular.
-        %
-        % The second kind of mode we try to special case are higher-order
-        % pred and func modes. These occur much less often than the eight
-        % builtin modes handled by the first special case, but their
-        % (FromInst >> ToInst) forms are even harder to read, due to both
-        % their size and the fact the same inst is unneceesarily repeated
-        % on both sides of the >> operator.
-
-        ( if
+        (
+            Lang = output_mercury,
+            mercury_format_from_to_mode(Lang, InstVarSet,
+                FromInst0, ToInst0, S, !U)
+        ;
             Lang = output_debug,
-            from_to_insts_is_standard_mode(FromInst, ToInst, StdMode)
-        then
-            add_string(StdMode, S, !U)
-        else if
-            FromInst = ground(_Uniq, higher_order(
-                pred_inst_info(_PredOrFunc, _Modes, _, _Det))),
-            ToInst = FromInst
-        then
-            mercury_format_inst(Lang, InstVarSet, FromInst, S, !U)
-        else
-            add_string("(", S, !U),
-            mercury_format_inst(Lang, InstVarSet, FromInst, S, !U),
-            add_string(" >> ", S, !U),
-            mercury_format_inst(Lang, InstVarSet, ToInst, S, !U),
-            add_string(")", S, !U)
+            ( if
+                FromInst0 = ground(_Uniq, HOInstInfo),
+                HOInstInfo = higher_order(pred_inst_info(_, _, _, _)),
+                ToInst0 = FromInst0
+            then
+                % This special case would be recognized by insts_to_mode
+                % as in(FromInst). However, in the case of higher order insts,
+                % the compiler allows programmers to omit the in(...) wrapper.
+                % Since we don't have to write the wrapper, we don't.
+                mercury_format_inst(Lang, InstVarSet, FromInst0, S, !U)
+            else
+                insts_to_mode(FromInst0, ToInst0, Mode1),
+                (
+                    Mode1 = from_to_mode(FromInst1, ToInst1),
+                    strip_builtin_qualifiers_from_inst(FromInst1, FromInst),
+                    strip_builtin_qualifiers_from_inst(ToInst1, ToInst),
+                    mercury_format_from_to_mode(Lang, InstVarSet,
+                        FromInst, ToInst, S, !U)
+                ;
+                    Mode1 = user_defined_mode(SymName, ArgInsts),
+                    mercury_format_user_defined_mode(Lang, InstVarSet,
+                        SymName, ArgInsts, S, !U)
+                )
+            )
         )
     ;
-        Mode = user_defined_mode(Name, Args),
-        (
-            Args = [],
-            mercury_format_bracketed_sym_name(Name, S, !U)
-        ;
-            Args = [_ | _],
-            mercury_format_sym_name(Name, S, !U),
-            add_string("(", S, !U),
-            mercury_format_inst_list(Lang, InstVarSet, Args, S, !U),
-            add_string(")", S, !U)
-        )
+        Mode0 = user_defined_mode(SymName, ArgInsts),
+        mercury_format_user_defined_mode(Lang, InstVarSet,
+            SymName, ArgInsts, S, !U)
     ).
 
-:- pred from_to_insts_is_standard_mode(mer_inst::in, mer_inst::in, string::out)
-    is semidet.
+:- pred mercury_format_from_to_mode(output_lang::in, inst_varset::in,
+    mer_inst::in, mer_inst::in, S::in, U::di, U::uo) is det <= output(S, U).
 
-from_to_insts_is_standard_mode(FromInst, ToInst, StdMode) :-
-    ToInst = ground(ToUniq, none_or_default_func),
+mercury_format_from_to_mode(Lang, InstVarSet, FromInst, ToInst, S, !U) :-
+    add_string("(", S, !U),
+    mercury_format_inst(Lang, InstVarSet, FromInst, S, !U),
+    add_string(" >> ", S, !U),
+    mercury_format_inst(Lang, InstVarSet, ToInst, S, !U),
+    add_string(")", S, !U).
+
+:- pred mercury_format_user_defined_mode(output_lang::in, inst_varset::in,
+    sym_name::in, list(mer_inst)::in, S::in, U::di, U::uo) is det
+    <= output(S, U).
+
+mercury_format_user_defined_mode(Lang, InstVarSet, SymName, ArgInsts, S, !U) :-
+    % When generating output for a human, we
+    %
+    % 1 omit brackets from around sym_names, and
+    % 2 omit module qualifiers from sym_names.
+    %
+    % The brackets are needed only to help the parser when trying to read in
+    % the output sym_name, when that happens to be an operator. Humans can
+    % parse the bracketless output even if the parser can't.
+    %
+    % It is extremely rare for two modules to define two modes with identical
+    % names. Therefore in 99.9%+ of cases, the module qualifiers on mode names
+    % are just clutter that humans would prefer not to have to read.
     (
-        ToUniq = shared,
+        ArgInsts = [],
         (
-            FromInst = ground(shared, none_or_default_func),
-            StdMode = "in"
+            Lang = output_mercury,
+            mercury_format_bracketed_sym_name(SymName, S, !U)
         ;
-            FromInst = free,
-            StdMode = "out"
+            Lang = output_debug,
+            Name = unqualify_name(SymName),
+            add_string(Name, S, !U)
         )
     ;
-        ToUniq = clobbered,
-        FromInst = ground(unique, none_or_default_func),
-        StdMode = "di"
-    ;
-        ToUniq = unique,
+        ArgInsts = [_ | _],
         (
-            FromInst = ground(unique, none_or_default_func),
-            StdMode = "ui"
+            Lang = output_mercury,
+            mercury_format_sym_name(SymName, S, !U)
         ;
-            FromInst = free,
-            StdMode = "uo"
-        )
-    ;
-        ToUniq = mostly_clobbered,
-        FromInst = ground(mostly_unique, none_or_default_func),
-        StdMode = "mdi"
-    ;
-        ToUniq = mostly_unique,
-        (
-            FromInst = ground(mostly_unique, none_or_default_func),
-            StdMode = "mui"
-        ;
-            FromInst = free,
-            StdMode = "muo"
-        )
+            Lang = output_debug,
+            Name = unqualify_name(SymName),
+            add_string(Name, S, !U)
+        ),
+        add_string("(", S, !U),
+        mercury_format_inst_list(Lang, InstVarSet, ArgInsts, S, !U),
+        add_string(")", S, !U)
     ).
 
 %-----------------------------------------------------------------------------%

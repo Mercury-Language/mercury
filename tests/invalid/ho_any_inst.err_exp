@@ -15,15 +15,15 @@ ho_any_inst.m:064:   in higher-order predicate call:
 ho_any_inst.m:064:   scope error: attempt to bind a non-local variable inside
 ho_any_inst.m:064:   the condition of an if-then-else.
 ho_any_inst.m:064:   Variable `P' has instantiatedness
-ho_any_inst.m:064:   `(any_pred(any >> any) is semidet)',
+ho_any_inst.m:064:   `(any_pred(in(any)) is semidet)',
 ho_any_inst.m:064:   expected instantiatedness was
-ho_any_inst.m:064:   `(pred(any >> any) is semidet)'.
+ho_any_inst.m:064:   `(pred(in(any)) is semidet)'.
 ho_any_inst.m:072: In clause for `neg1(in)':
 ho_any_inst.m:072:   in higher-order predicate call:
 ho_any_inst.m:072:   scope error: attempt to bind a non-local variable inside a
 ho_any_inst.m:072:   negation.
 ho_any_inst.m:072:   Variable `P' has instantiatedness
-ho_any_inst.m:072:   `(any_pred(any >> any) is semidet)',
+ho_any_inst.m:072:   `(any_pred(in(any)) is semidet)',
 ho_any_inst.m:072:   expected instantiatedness was
-ho_any_inst.m:072:   `(pred(any >> any) is semidet)'.
+ho_any_inst.m:072:   `(pred(in(any)) is semidet)'.
 For more information, recompile with `-E'.

@@ -66,6 +66,8 @@
     %
     % Given two lists of corresponding initial and final insts, return
     % a list of modes which maps from the initial insts to the final insts.
+    % Try to make the modes as short and as simple as possible, to make
+    % them easier to understand for readers.
     %
 :- pred inst_lists_to_mode_list(list(mer_inst)::in, list(mer_inst)::in,
     list(mer_mode)::out) is det.
@@ -74,8 +76,19 @@
     %
     % Given an initial and a final inst, return the mode which maps
     % the initial inst to the final inst.
+    % Try to make the mode as short and as simple as possible, to make
+    % it easier to understand for readers.
     %
 :- pred insts_to_mode(mer_inst::in, mer_inst::in, mer_mode::out) is det.
+
+    % from_to_insts_is_standard_mode(InitialInst, FinalInst, Modes):
+    %
+    % Does the given pair of initial and final insts correspond to
+    % one of the eight builtin arity-0 modes (in, out; ui, di, uo;
+    % and mui, mdi and muo), and if so, which one?
+    %
+:- pred from_to_insts_is_standard_mode(mer_inst::in, mer_inst::in, string::out)
+    is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -157,17 +170,32 @@
     list(cons_id)::out) is det.
 
 %---------------------------------------------------------------------------%
+%
+% Predicates to make error messages more readable by stripping "builtin."
+% module qualifiers from modes.
+%
 
-    % Predicates to make error messages more readable by stripping
-    % "builtin." module qualifiers from modes.
-    %
 :- pred strip_builtin_qualifiers_from_mode_list(list(mer_mode)::in,
     list(mer_mode)::out) is det.
+:- pred strip_builtin_qualifiers_from_mode(mer_mode::in, mer_mode::out) is det.
 
 :- pred strip_builtin_qualifiers_from_inst_list(list(mer_inst)::in,
     list(mer_inst)::out) is det.
-
 :- pred strip_builtin_qualifiers_from_inst(mer_inst::in, mer_inst::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Predicates to make error messages more readable by stripping "$typed_inst"
+% wrappers around insts.
+%
+
+:- pred strip_typed_insts_from_mode_list(list(mer_mode)::in,
+    list(mer_mode)::out) is det.
+:- pred strip_typed_insts_from_mode(mer_mode::in, mer_mode::out) is det.
+
+:- pred strip_typed_insts_from_inst_list(list(mer_inst)::in,
+    list(mer_inst)::out) is det.
+:- pred strip_typed_insts_from_inst(mer_inst::in, mer_inst::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -268,55 +296,62 @@ inst_lists_to_mode_list([Initial | Initials], [Final | Finals],
     insts_to_mode(Initial, Final, Mode),
     inst_lists_to_mode_list(Initials, Finals, Modes).
 
-insts_to_mode(Initial, Final, Mode) :-
-    % Use some abbreviations.
-    % This is just to make error messages and inferred modes more readable.
-
-    ( if
-        Initial = free
-    then
-        ( if Final = ground(shared, none_or_default_func) then
-            make_std_mode("out", [], Mode)
-        else if Final = ground(unique, none_or_default_func) then
-            make_std_mode("uo", [], Mode)
-        else if Final = ground(mostly_unique, none_or_default_func) then
-            make_std_mode("muo", [], Mode)
-        else
-            make_std_mode("out", [Final], Mode)
-        )
-    else if
-        Initial = ground(shared, none_or_default_func),
-        Final = ground(shared, none_or_default_func)
-    then
-        make_std_mode("in", [], Mode)
-    else if
-        Initial = ground(unique, none_or_default_func),
-        Final = ground(clobbered, none_or_default_func)
-    then
-        make_std_mode("di", [], Mode)
-    else if
-        Initial = ground(mostly_unique, none_or_default_func),
-        Final = ground(mostly_clobbered, none_or_default_func)
-    then
-        make_std_mode("mdi", [], Mode)
-    else if
-        Initial = ground(unique, none_or_default_func),
-        Final = ground(unique, none_or_default_func)
-    then
-        make_std_mode("ui", [], Mode)
-    else if
-        Initial = ground(mostly_unique, none_or_default_func),
-        Final = ground(mostly_unique, none_or_default_func)
-    then
-        make_std_mode("mui", [], Mode)
-    else if
-        Final = ground(clobbered, none_or_default_func)
-    then
-        make_std_mode("di", [Initial], Mode)
-    else if Initial = Final then
-        make_std_mode("in", [Initial], Mode)
+insts_to_mode(FromInst, ToInst, Mode) :-
+    % Do FromInst and ToInst represent one of the builtin arity-0 modes?
+    ( if from_to_insts_is_standard_mode(FromInst, ToInst, StdMode) then
+        make_std_mode(StdMode, [], Mode)
     else
-        Mode = from_to_mode(Initial, Final)
+        % Do they represent one of the builtin arity-1 modes?
+        ( if FromInst = ToInst then
+            make_std_mode("in", [FromInst], Mode)
+        else if FromInst = free then
+            make_std_mode("out", [ToInst], Mode)
+        else if ToInst = ground(clobbered, none_or_default_func) then
+            make_std_mode("di", [FromInst], Mode)
+        else if ToInst = ground(mostly_clobbered, none_or_default_func) then
+            make_std_mode("mdi", [FromInst], Mode)
+        else
+            Mode = from_to_mode(FromInst, ToInst)
+        )
+    ).
+
+from_to_insts_is_standard_mode(FromInst, ToInst, StdMode) :-
+    ToInst = ground(ToUniq, none_or_default_func),
+    (
+        ToUniq = shared,
+        (
+            FromInst = ground(shared, none_or_default_func),
+            StdMode = "in"
+        ;
+            FromInst = free,
+            StdMode = "out"
+        )
+    ;
+        ToUniq = clobbered,
+        FromInst = ground(unique, none_or_default_func),
+        StdMode = "di"
+    ;
+        ToUniq = unique,
+        (
+            FromInst = ground(unique, none_or_default_func),
+            StdMode = "ui"
+        ;
+            FromInst = free,
+            StdMode = "uo"
+        )
+    ;
+        ToUniq = mostly_clobbered,
+        FromInst = ground(mostly_unique, none_or_default_func),
+        StdMode = "mdi"
+    ;
+        ToUniq = mostly_unique,
+        (
+            FromInst = ground(mostly_unique, none_or_default_func),
+            StdMode = "mui"
+        ;
+            FromInst = free,
+            StdMode = "muo"
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -890,8 +925,6 @@ bound_insts_to_cons_ids(TypeCtor, [BoundInst | BoundInsts],
 strip_builtin_qualifiers_from_mode_list(Modes0, Modes) :-
     list.map(strip_builtin_qualifiers_from_mode, Modes0, Modes).
 
-:- pred strip_builtin_qualifiers_from_mode(mer_mode::in, mer_mode::out) is det.
-
 strip_builtin_qualifiers_from_mode(Mode0, Mode) :-
     (
         Mode0 = from_to_mode(Initial0, Final0),
@@ -961,45 +994,45 @@ strip_builtin_qualifiers_from_bound_inst(BoundInst0, BoundInst) :-
 :- pred strip_builtin_qualifiers_from_inst_name(inst_name::in, inst_name::out)
     is det.
 
-strip_builtin_qualifiers_from_inst_name(Inst0, Inst) :-
+strip_builtin_qualifiers_from_inst_name(InstName0, InstName) :-
     (
-        Inst0 = user_inst(SymName0, Insts0),
+        InstName0 = user_inst(SymName0, Insts0),
         strip_builtin_qualifier_from_sym_name(SymName0, SymName),
         strip_builtin_qualifiers_from_inst_list(Insts0, Insts),
-        Inst = user_inst(SymName, Insts)
+        InstName = user_inst(SymName, Insts)
     ;
-        Inst0 = unify_inst(Live, Real, InstA0, InstB0),
+        InstName0 = unify_inst(Live, Real, InstA0, InstB0),
         strip_builtin_qualifiers_from_inst(InstA0, InstA),
         strip_builtin_qualifiers_from_inst(InstB0, InstB),
-        Inst = unify_inst(Live, Real, InstA, InstB)
+        InstName = unify_inst(Live, Real, InstA, InstB)
     ;
-        Inst0 = merge_inst(InstA0, InstB0),
+        InstName0 = merge_inst(InstA0, InstB0),
         strip_builtin_qualifiers_from_inst(InstA0, InstA),
         strip_builtin_qualifiers_from_inst(InstB0, InstB),
-        Inst = merge_inst(InstA, InstB)
+        InstName = merge_inst(InstA, InstB)
     ;
-        Inst0 = ground_inst(InstName0, Uniq, Live, Real),
-        strip_builtin_qualifiers_from_inst_name(InstName0, InstName),
-        Inst = ground_inst(InstName, Uniq, Live, Real)
+        InstName0 = ground_inst(SubInstName0, Uniq, Live, Real),
+        strip_builtin_qualifiers_from_inst_name(SubInstName0, SubInstName),
+        InstName = ground_inst(SubInstName, Uniq, Live, Real)
     ;
-        Inst0 = any_inst(InstName0, Uniq, Live, Real),
-        strip_builtin_qualifiers_from_inst_name(InstName0, InstName),
-        Inst = any_inst(InstName, Uniq, Live, Real)
+        InstName0 = any_inst(SubInstName0, Uniq, Live, Real),
+        strip_builtin_qualifiers_from_inst_name(SubInstName0, SubInstName),
+        InstName = any_inst(SubInstName, Uniq, Live, Real)
     ;
-        Inst0 = shared_inst(InstName0),
-        strip_builtin_qualifiers_from_inst_name(InstName0, InstName),
-        Inst = shared_inst(InstName)
+        InstName0 = shared_inst(SubInstName0),
+        strip_builtin_qualifiers_from_inst_name(SubInstName0, SubInstName),
+        InstName = shared_inst(SubInstName)
     ;
-        Inst0 = mostly_uniq_inst(InstName0),
-        strip_builtin_qualifiers_from_inst_name(InstName0, InstName),
-        Inst = mostly_uniq_inst(InstName)
+        InstName0 = mostly_uniq_inst(SubInstName0),
+        strip_builtin_qualifiers_from_inst_name(SubInstName0, SubInstName),
+        InstName = mostly_uniq_inst(SubInstName)
     ;
-        Inst0 = typed_ground(_Uniq, _Type),
-        Inst = Inst0
+        InstName0 = typed_ground(_Uniq, _Type),
+        InstName = InstName0
     ;
-        Inst0 = typed_inst(Type, InstName0),
-        strip_builtin_qualifiers_from_inst_name(InstName0, InstName),
-        Inst = typed_inst(Type, InstName)
+        InstName0 = typed_inst(Type, SubInstName0),
+        strip_builtin_qualifiers_from_inst_name(SubInstName0, SubInstName),
+        InstName = typed_inst(Type, SubInstName)
     ).
 
 :- pred strip_builtin_qualifiers_from_ho_inst_info(ho_inst_info::in,
@@ -1013,6 +1046,135 @@ strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo) :-
         HOInstInfo0 = higher_order(Pred0),
         Pred0 = pred_inst_info(PorF, Modes0, ArgRegs, Det),
         strip_builtin_qualifiers_from_mode_list(Modes0, Modes),
+        Pred = pred_inst_info(PorF, Modes, ArgRegs, Det),
+        HOInstInfo = higher_order(Pred)
+    ).
+
+%---------------------------------------------------------------------------%
+
+strip_typed_insts_from_mode_list(Modes0, Modes) :-
+    list.map(strip_typed_insts_from_mode, Modes0, Modes).
+
+strip_typed_insts_from_mode(Mode0, Mode) :-
+    (
+        Mode0 = from_to_mode(Initial0, Final0),
+        strip_typed_insts_from_inst(Initial0, Initial),
+        strip_typed_insts_from_inst(Final0, Final),
+        Mode = from_to_mode(Initial, Final)
+    ;
+        Mode0 = user_defined_mode(SymName, Insts0),
+        strip_typed_insts_from_inst_list(Insts0, Insts),
+        Mode = user_defined_mode(SymName, Insts)
+    ).
+
+strip_typed_insts_from_inst_list(Insts0, Insts) :-
+    list.map(strip_typed_insts_from_inst, Insts0, Insts).
+
+strip_typed_insts_from_inst(Inst0, Inst) :-
+    (
+        ( Inst0 = inst_var(_)
+        ; Inst0 = not_reached
+        ; Inst0 = free
+        ; Inst0 = free(_)
+        ),
+        Inst = Inst0
+    ;
+        Inst0 = constrained_inst_vars(Vars, SubInst0),
+        strip_typed_insts_from_inst(SubInst0, SubInst),
+        Inst = constrained_inst_vars(Vars, SubInst)
+    ;
+        Inst0 = any(Uniq, HOInstInfo0),
+        strip_typed_insts_from_ho_inst_info(HOInstInfo0, HOInstInfo),
+        Inst = any(Uniq, HOInstInfo)
+    ;
+        Inst0 = ground(Uniq, HOInstInfo0),
+        strip_typed_insts_from_ho_inst_info(HOInstInfo0, HOInstInfo),
+        Inst = ground(Uniq, HOInstInfo)
+    ;
+        Inst0 = bound(Uniq, InstResults, BoundInsts0),
+        strip_typed_insts_from_bound_inst_list(BoundInsts0, BoundInsts),
+        Inst = bound(Uniq, InstResults, BoundInsts)
+    ;
+        Inst0 = defined_inst(InstName0),
+        strip_typed_insts_from_inst_name(InstName0, InstName),
+        Inst = defined_inst(InstName)
+    ;
+        Inst0 = abstract_inst(Name, Args0),
+        strip_typed_insts_from_inst_list(Args0, Args),
+        Inst = abstract_inst(Name, Args)
+    ).
+
+:- pred strip_typed_insts_from_bound_inst_list(list(bound_inst)::in,
+    list(bound_inst)::out) is det.
+
+strip_typed_insts_from_bound_inst_list(Insts0, Insts) :-
+    list.map(strip_typed_insts_from_bound_inst, Insts0, Insts).
+
+:- pred strip_typed_insts_from_bound_inst(bound_inst::in,
+    bound_inst::out) is det.
+
+strip_typed_insts_from_bound_inst(BoundInst0, BoundInst) :-
+    BoundInst0 = bound_functor(ConsId, Insts0),
+    list.map(strip_typed_insts_from_inst, Insts0, Insts),
+    BoundInst = bound_functor(ConsId, Insts).
+
+:- pred strip_typed_insts_from_inst_name(inst_name::in, inst_name::out)
+    is det.
+
+strip_typed_insts_from_inst_name(InstName0, InstName) :-
+    (
+        InstName0 = user_inst(SymName0, Insts0),
+        strip_builtin_qualifier_from_sym_name(SymName0, SymName),
+        strip_typed_insts_from_inst_list(Insts0, Insts),
+        InstName = user_inst(SymName, Insts)
+    ;
+        InstName0 = unify_inst(Live, Real, InstA0, InstB0),
+        strip_typed_insts_from_inst(InstA0, InstA),
+        strip_typed_insts_from_inst(InstB0, InstB),
+        InstName = unify_inst(Live, Real, InstA, InstB)
+    ;
+        InstName0 = merge_inst(InstA0, InstB0),
+        strip_typed_insts_from_inst(InstA0, InstA),
+        strip_typed_insts_from_inst(InstB0, InstB),
+        InstName = merge_inst(InstA, InstB)
+    ;
+        InstName0 = ground_inst(SubInstName0, Uniq, Live, Real),
+        strip_typed_insts_from_inst_name(SubInstName0, SubInstName),
+        InstName = ground_inst(SubInstName, Uniq, Live, Real)
+    ;
+        InstName0 = any_inst(SubInstName0, Uniq, Live, Real),
+        strip_typed_insts_from_inst_name(SubInstName0, SubInstName),
+        InstName = any_inst(SubInstName, Uniq, Live, Real)
+    ;
+        InstName0 = shared_inst(SubInstName0),
+        strip_typed_insts_from_inst_name(SubInstName0, SubInstName),
+        InstName = shared_inst(SubInstName)
+    ;
+        InstName0 = mostly_uniq_inst(SubInstName0),
+        strip_typed_insts_from_inst_name(SubInstName0, SubInstName),
+        InstName = mostly_uniq_inst(SubInstName)
+    ;
+        InstName0 = typed_ground(_Uniq, _Type),
+        % XXX Since "ground" is an inst but not an inst *name*, we cannot
+        % strip the "ground" part as long as we want to return an inst name.
+        InstName = InstName0
+    ;
+        InstName0 = typed_inst(_Type, SubInstName0),
+        strip_typed_insts_from_inst_name(SubInstName0, SubInstName),
+        InstName = SubInstName
+    ).
+
+:- pred strip_typed_insts_from_ho_inst_info(ho_inst_info::in,
+    ho_inst_info::out) is det.
+
+strip_typed_insts_from_ho_inst_info(HOInstInfo0, HOInstInfo) :-
+    (
+        HOInstInfo0 = none_or_default_func,
+        HOInstInfo = none_or_default_func
+    ;
+        HOInstInfo0 = higher_order(Pred0),
+        Pred0 = pred_inst_info(PorF, Modes0, ArgRegs, Det),
+        strip_typed_insts_from_mode_list(Modes0, Modes),
         Pred = pred_inst_info(PorF, Modes, ArgRegs, Det),
         HOInstInfo = higher_order(Pred)
     ).

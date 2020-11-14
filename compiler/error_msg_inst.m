@@ -777,7 +777,7 @@ pred_inst_info_to_inline_pieces(Info, !Expansions, AnyPrefix, Uniq,
     ),
     Pieces = UniqPieces ++ ModesDetPieces.
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 :- pred modes_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
@@ -799,151 +799,101 @@ modes_to_inline_pieces(Info, !Expansions, [HeadMode | TailModes],
     mode_to_inline_pieces(Info, !Expansions, HeadMode, HeadPieces),
     modes_to_inline_pieces(Info, !Expansions, TailModes, TailPieces).
 
+%---------------------%
+
 :- pred mode_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
     mer_mode::in, list(format_component)::out) is det.
 
-mode_to_pieces(Info, !Expansions, Mode, Pieces) :-
+mode_to_pieces(Info, !Expansions, Mode0, Pieces) :-
+    strip_typed_insts_from_mode(Mode0, Mode1),
     (
-        Mode = from_to_mode(InitInst0, FinalInst0),
-        % XXX We should strip these wrappers everywhere in both insts,
-        % not just at the top.
-        ( if InitInst0 = defined_inst(typed_inst(_, SubInitInstName)) then
-            InitInst = defined_inst(SubInitInstName)
-        else
-            InitInst = InitInst0
-        ),
-        ( if FinalInst0 = defined_inst(typed_inst(_, SubFinalInstName)) then
-            FinalInst = defined_inst(SubFinalInstName)
-        else
-            FinalInst = FinalInst0
-        ),
-        % XXX Should we special case the situation where InitInst = FinalInst?
-        ( if
-            InitInst = ground(shared, none_or_default_func),
-            FinalInst = ground(shared, none_or_default_func)
-        then
-            Pieces = [fixed("in")]
-        else if
-            InitInst = free,
-            FinalInst = ground(shared, none_or_default_func)
-        then
-            Pieces = [fixed("out")]
-        else if
-            InitInst = ground(unique, none_or_default_func),
-            FinalInst = ground(clobbered, none_or_default_func)
-        then
-            Pieces = [fixed("di")]
-        else if
-            InitInst = ground(unique, none_or_default_func),
-            FinalInst = ground(unique, none_or_default_func)
-        then
-            Pieces = [fixed("ui")]
-        else if
-            InitInst = free,
-            FinalInst = ground(unique, none_or_default_func)
-        then
-            Pieces = [fixed("uo")]
-        else if
-            InitInst = ground(mostly_unique, none_or_default_func),
-            FinalInst = ground(mostly_clobbered, none_or_default_func)
-        then
-            Pieces = [fixed("mdi")]
-        else if
-            InitInst = ground(mostly_unique, none_or_default_func),
-            FinalInst = ground(mostly_unique, none_or_default_func)
-        then
-            Pieces = [fixed("mui")]
-        else if
-            InitInst = free,
-            FinalInst = ground(mostly_unique, none_or_default_func)
-        then
-            Pieces = [fixed("muo")]
-        else
-            inst_to_pieces(Info, !Expansions, InitInst, [], InitPieces),
-            inst_to_pieces(Info, !Expansions, FinalInst, [], FinalPieces),
-            Pieces = InitPieces ++ [fixed(">>") | FinalPieces]
+        Mode1 = from_to_mode(FromInst1, ToInst1),
+        insts_to_mode(FromInst1, ToInst1, Mode),
+        (
+            Mode = from_to_mode(FromInst, ToInst),
+            inst_to_pieces(Info, !Expansions, FromInst, [], FromPieces),
+            inst_to_pieces(Info, !Expansions, ToInst, [], ToPieces),
+            Pieces = FromPieces ++ [fixed(">>") | ToPieces]
+        ;
+            Mode = user_defined_mode(ModeName, ArgInsts),
+            user_defined_mode_to_pieces(Info, !Expansions, ModeName, ArgInsts,
+                Pieces)
         )
     ;
-        Mode = user_defined_mode(ModeName, ArgInsts),
-        BaseModeName = unqualify_name(ModeName),
-        (
-            ArgInsts = [],
-            Pieces = [fixed(BaseModeName)]
-        ;
-            ArgInsts = [_ | _],
-            arg_insts_to_pieces(Info, !Expansions, ArgInsts, ArgInstPieces),
-            Pieces =
-                [prefix(BaseModeName ++ "(") |
-                    strict_component_lists_to_pieces(ArgInstPieces)] ++
-                    [suffix(")")]
-        )
+        Mode1 = user_defined_mode(ModeName, ArgInsts),
+        user_defined_mode_to_pieces(Info, !Expansions, ModeName, ArgInsts,
+            Pieces)
     ).
+
+%---------------------%
 
 :- pred mode_to_inline_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
     mer_mode::in, list(format_component)::out) is det.
 
-mode_to_inline_pieces(Info, !Expansions, Mode, Pieces) :-
+mode_to_inline_pieces(Info, !Expansions, Mode0, Pieces) :-
+    strip_typed_insts_from_mode(Mode0, Mode1),
     (
-        Mode = from_to_mode(InitInst0, FinalInst0),
-        % XXX We should strip these wrappers everywhere in both insts,
-        % not just at the top.
-        ( if InitInst0 = defined_inst(typed_inst(_, SubInitInstName)) then
-            InitInst = defined_inst(SubInitInstName)
-        else
-            InitInst = InitInst0
-        ),
-        ( if FinalInst0 = defined_inst(typed_inst(_, SubFinalInstName)) then
-            FinalInst = defined_inst(SubFinalInstName)
-        else
-            FinalInst = FinalInst0
-        ),
-        % XXX Should we special case the expanded versions of other
-        % "builtin" modes?
-        % XXX Should we special case the situation where InitInst = FinalInst?
-        ( if
-            InitInst = ground(shared, none_or_default_func),
-            FinalInst = ground(shared, none_or_default_func)
-        then
-            Pieces = [fixed("in")]
-        else if
-            InitInst = ground(unique, none_or_default_func),
-            FinalInst = ground(clobbered, none_or_default_func)
-        then
-            Pieces = [fixed("di")]
-        else if
-            InitInst = free,
-            FinalInst = ground(shared, none_or_default_func)
-        then
-            Pieces = [fixed("out")]
-        else if
-            InitInst = free,
-            FinalInst = ground(unique, none_or_default_func)
-        then
-            Pieces = [fixed("uo")]
-        else
-            inst_to_inline_pieces(Info, !Expansions, InitInst, [], InitPieces),
-            inst_to_inline_pieces(Info, !Expansions, FinalInst, [],
-                FinalPieces),
-            Pieces = InitPieces ++ [fixed(">>") | FinalPieces]
+        Mode1 = from_to_mode(FromInst1, ToInst1),
+        insts_to_mode(FromInst1, ToInst1, Mode),
+        (
+            Mode = from_to_mode(FromInst, ToInst),
+            inst_to_inline_pieces(Info, !Expansions, FromInst, [], FromPieces),
+            inst_to_inline_pieces(Info, !Expansions, ToInst, [], ToPieces),
+            Pieces = FromPieces ++ [fixed(">>") | ToPieces]
+        ;
+            Mode = user_defined_mode(ModeName, ArgInsts),
+            user_defined_mode_to_inline_pieces(Info, !Expansions,
+                ModeName, ArgInsts, Pieces)
         )
     ;
-        Mode = user_defined_mode(ModeName, ArgInsts),
-        BaseModeName = unqualify_name(ModeName),
-        (
-            ArgInsts = [],
-            Pieces = [fixed(BaseModeName)]
-        ;
-            ArgInsts = [_ | _],
-            arg_insts_to_inline_pieces(Info, !Expansions,
-                ArgInsts, ArgInstPieces),
-            Pieces =
-                [prefix(BaseModeName ++ "(") |
-                    strict_component_lists_to_pieces(ArgInstPieces)] ++
-                    [suffix(")")]
-        )
+        Mode1 = user_defined_mode(ModeName, ArgInsts),
+        user_defined_mode_to_inline_pieces(Info, !Expansions,
+            ModeName, ArgInsts, Pieces)
     ).
+
+%---------------------%
+
+:- pred user_defined_mode_to_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    sym_name::in, list(mer_inst)::in, list(format_component)::out) is det.
+
+user_defined_mode_to_pieces(Info, !Expansions, ModeName, ArgInsts, Pieces) :-
+    BaseModeName = unqualify_name(ModeName),
+    (
+        ArgInsts = [],
+        Pieces = [fixed(BaseModeName)]
+    ;
+        ArgInsts = [_ | _],
+        arg_insts_to_pieces(Info, !Expansions, ArgInsts, ArgInstPieces),
+        Pieces =
+            [prefix(BaseModeName ++ "(") |
+                strict_component_lists_to_pieces(ArgInstPieces)] ++
+                [suffix(")")]
+    ).
+
+:- pred user_defined_mode_to_inline_pieces(inst_msg_info::in,
+    expansions_info::in, expansions_info::out,
+    sym_name::in, list(mer_inst)::in, list(format_component)::out) is det.
+
+user_defined_mode_to_inline_pieces(Info, !Expansions, ModeName, ArgInsts,
+        Pieces) :-
+    BaseModeName = unqualify_name(ModeName),
+    (
+        ArgInsts = [],
+        Pieces = [fixed(BaseModeName)]
+    ;
+        ArgInsts = [_ | _],
+        arg_insts_to_inline_pieces(Info, !Expansions,
+            ArgInsts, ArgInstPieces),
+        Pieces =
+            [prefix(BaseModeName ++ "(") |
+                strict_component_lists_to_pieces(ArgInstPieces)] ++
+                [suffix(")")]
+    ).
+
+%---------------------%
 
 :- pred arg_insts_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,
@@ -965,7 +915,7 @@ arg_insts_to_inline_pieces(Info, !Expansions, [HeadArgInst | TailArgInsts],
     inst_to_inline_pieces(Info, !Expansions, HeadArgInst, [], HeadPieces),
     arg_insts_to_inline_pieces(Info, !Expansions, TailArgInsts, TailPieces).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 :- pred name_and_arg_insts_to_pieces(inst_msg_info::in,
     expansions_info::in, expansions_info::out,

@@ -1610,8 +1610,8 @@ mode_error_unify_pred_to_spec(ModeInfo, X, RHS, Type, PredOrFunc) = Spec :-
         RHS = error_at_lambda(ArgVars, ArgFromToInsts),
         ArgModes = list.map(from_to_insts_to_mode, ArgFromToInsts),
         RHSStr = "lambda(["
-            ++ var_modes_to_string(VarSet, InstVarSet, print_name_only,
-                ArgVars, ArgModes)
+            ++ var_modes_to_string(output_debug, VarSet, InstVarSet,
+                print_name_only, ArgVars, ArgModes)
             ++ "] ... )"
     ),
     varset.init(TypeVarSet),

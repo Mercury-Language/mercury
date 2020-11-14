@@ -44,7 +44,7 @@
                 hoi_dump_hlds_options_backup    :: string,
                 hoi_dump_hlds_pred_ids          :: list(string),
                 hoi_dump_hlds_pred_names        :: list(string),
-                hoi_mercury_to_mercury          :: merc_out_info
+                hoi_merc_out_info               :: merc_out_info
             ).
 
 :- func init_hlds_out_info(globals, output_lang) = hlds_out_info.
@@ -174,11 +174,11 @@
     % corresponding modes (e.g. for a lambda expressions). The varsets
     % give the context.
     %
-:- func var_modes_to_string(prog_varset, inst_varset, var_name_print,
-    list(prog_var), list(mer_mode)) = string.
+:- func var_modes_to_string(output_lang, prog_varset, inst_varset,
+    var_name_print, list(prog_var), list(mer_mode)) = string.
 
-:- func var_mode_to_string(prog_varset, inst_varset, var_name_print,
-    pair(prog_var, mer_mode)) = string.
+:- func var_mode_to_string(output_lang, prog_varset, inst_varset,
+    var_name_print, pair(prog_var, mer_mode)) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -956,15 +956,16 @@ write_constraint_proof(Indent, VarNamePrint, TVarSet, Constraint - Proof,
 % Write out modes.
 %
 
-var_modes_to_string(VarSet, InstVarSet, VarNamePrint, Vars, Modes) = Str :-
+var_modes_to_string(Lang, VarSet, InstVarSet, VarNamePrint, Vars, Modes)
+        = Str :-
     assoc_list.from_corresponding_lists(Vars, Modes, VarModes),
-    Strs = list.map(var_mode_to_string(VarSet, InstVarSet, VarNamePrint),
+    Strs = list.map(var_mode_to_string(Lang, VarSet, InstVarSet, VarNamePrint),
         VarModes),
     Str = string.join_list(", ", Strs).
 
-var_mode_to_string(VarSet, InstVarSet, VarNamePrint, Var - Mode) =
+var_mode_to_string(Lang, VarSet, InstVarSet, VarNamePrint, Var - Mode) =
     mercury_var_to_string(VarSet, VarNamePrint, Var)
-        ++ "::" ++ mercury_mode_to_string(output_debug, InstVarSet, Mode).
+        ++ "::" ++ mercury_mode_to_string(Lang, InstVarSet, Mode).
 
 %---------------------------------------------------------------------------%
 %

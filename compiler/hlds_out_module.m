@@ -359,7 +359,7 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         TypeBody = hlds_du_type(Ctors, MaybeUserEqComp, MaybeRepn, Foreign),
         io.nl(Stream, !IO),
         MaybeSolverTypeDetails = no,
-        MercInfo = Info ^ hoi_mercury_to_mercury,
+        MercInfo = Info ^ hoi_merc_out_info,
         (
             MaybeRepn = no,
             Ctors = one_or_more(HeadCtor, TailCtors),
@@ -477,7 +477,7 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         TypeBody = hlds_solver_type(DetailsSolver),
         DetailsSolver =
             type_details_solver(SolverTypeDetails, MaybeUserEqComp),
-        MercInfo = Info ^ hoi_mercury_to_mercury,
+        MercInfo = Info ^ hoi_merc_out_info,
         mercury_output_where_attributes(MercInfo, TVarSet,
             yes(SolverTypeDetails), MaybeUserEqComp, no, Stream, !IO),
         io.write_string(Stream, ".\n", !IO)
