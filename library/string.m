@@ -3122,9 +3122,6 @@ is_empty("").
     }
 ").
 
-is_well_formed(_) :-
-    sorry($module, "string.is_well_formed/1").
-
 %---------------------%
 
 % For speed, most of these predicates have C versions as well as
@@ -5559,9 +5556,6 @@ int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
     Str = java.lang.Long.toString(U & 0xffffffffL);
 ").
 
-uint_to_string(_) = _ :-
-    sorry($module, "string.uint_to_string/1").
-
 %---------------------%
 
 :- pragma foreign_proc("C",
@@ -5587,9 +5581,6 @@ uint_to_string(_) = _ :-
 "
     S = java.lang.Integer.toString(I8);
 ").
-
-int8_to_string(_) = _ :-
-    sorry($module, "string.int8_to_string/1").
 
 %---------------------%
 
@@ -5619,9 +5610,6 @@ int8_to_string(_) = _ :-
     S = java.lang.Integer.toString(U8 & 0xff);
 ").
 
-uint8_to_string(_) = _ :-
-    sorry($module, "string.uint8_to_string/1").
-
 %---------------------%
 
 :- pragma foreign_proc("C",
@@ -5647,9 +5635,6 @@ uint8_to_string(_) = _ :-
 "
     S = java.lang.Integer.toString(I16);
 ").
-
-int16_to_string(_) = _ :-
-    sorry($module, "string.int16_to_string/1").
 
 %---------------------%
 
@@ -5677,9 +5662,6 @@ int16_to_string(_) = _ :-
     S = java.lang.Integer.toString(U16 & 0xffff);
 ").
 
-uint16_to_string(_) = _ :-
-    sorry($module, "string.uint16_to_string/1").
-
 %---------------------%
 
 :- pragma foreign_proc("C",
@@ -5705,9 +5687,6 @@ uint16_to_string(_) = _ :-
 "
     S = java.lang.Integer.toString(I32);
 ").
-
-int32_to_string(_) = _ :-
-    sorry($module, "string.int32_to_string/1").
 
 %---------------------%
 
@@ -5735,9 +5714,6 @@ int32_to_string(_) = _ :-
     S = java.lang.Long.toString(U32 & 0xffffffffL);
 ").
 
-uint32_to_string(_) = _ :-
-    sorry($module, "string.uint32_to_string/1").
-
 %---------------------%
 
 :- pragma foreign_proc("C",
@@ -5764,9 +5740,6 @@ uint32_to_string(_) = _ :-
     S = java.lang.Long.toString(I64);
 ").
 
-int64_to_string(_) = _ :-
-    sorry($module, "string.int64_to_string/1").
-
 %---------------------%
 
 :- pragma foreign_proc("C",
@@ -5792,9 +5765,6 @@ int64_to_string(_) = _ :-
 "
     S = java.lang.Long.toUnsignedString(U64);
 ").
-
-uint64_to_string(_) = _ :-
-    sorry($module, "string.uint64_to_string/1").
 
 %---------------------%
 
