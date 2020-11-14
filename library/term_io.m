@@ -152,7 +152,8 @@
 %---------------------%
 
     % Given a string S, write S in double-quotes, with characters
-    % escaped if necessary, to stdout.
+    % escaped if necessary, to the current output stream, or to the
+    % specified output stream.
     %
 :- pred quote_string(string::in, io::di, io::uo) is det.
 :- pred quote_string(Stream::in, string::in, State::di, State::uo) is det
@@ -172,7 +173,7 @@
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 
-    % Like write_escaped_char, but return the result in a string.
+    % Like write_escaped_string, but return the result in a string.
     %
 :- func escaped_string(string) = string.
 

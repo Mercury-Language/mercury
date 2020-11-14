@@ -92,6 +92,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
+:- import_module string.
 :- import_module term.
 :- import_module varset.
 
@@ -202,9 +203,8 @@ term_constr_build_abstract_scc(Options, SCCWithEntryPoints, Errors,
 term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
         !SizeVarset, !AbstractInfo) :-
     trace [io(!DebugIO), compiletime(flag("term_constr_build"))] (
-        io.write_string("Building procedure: ", !DebugIO),
-        write_pred_proc_id(ModuleInfo, PPId, !DebugIO),
-        io.nl(!DebugIO),
+        PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+        io.format("Building procedure: %s\n", [s(PPIdStr)], !DebugIO),
         io.flush_output(!DebugIO)
     ),
 

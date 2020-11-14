@@ -31,29 +31,16 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 
-:- import_module bool.
-:- import_module io.
-
 %-----------------------------------------------------------------------------%
 
-    % Output a proc label, with the usual mercury_label_prefix prefix.
-    %
-:- pred output_proc_label(proc_label::in, io::di, io::uo) is det.
-
-    % Output a proc label without the mercury_label_prefix prefix.
-    %
-:- pred output_proc_label_no_prefix(proc_label::in, io::di, io::uo) is det.
-
-    % Output a proc label. The boolean controls whether mercury_label_prefix
-    % is added to it.
-    %
-:- pred output_proc_label_maybe_prefix(proc_label::in, bool::in,
-    io::di, io::uo) is det.
+:- type maybe_add_label_prefix
+    --->    do_not_add_label_prefix
+    ;       add_label_prefix.
 
     % Get a proc label string (used by procs which are exported to C).
     % The boolean controls whether label_prefix is added to the string.
     %
-:- func proc_label_to_c_string(proc_label, bool) = string.
+:- func proc_label_to_c_string(maybe_add_label_prefix, proc_label) = string.
 
     % Succeed iff the given name or sym_name doesn't need mangling.
     %
@@ -64,16 +51,8 @@
     %
 :- func make_base_typeclass_info_name(tc_name, string) = string.
 
-    % Output the name for base_typeclass_info,
-    % with the appropriate mercury_data_prefix.
-    %
-:- pred output_base_typeclass_info_name(tc_name::in, string::in,
-    io::di, io::uo) is det.
-
-    % Prints the name of the initialization function
-    % for a given module.
-    %
-:- pred output_init_name(module_name::in, io::di, io::uo) is det.
+:- func make_base_typeclass_info_name_with_data_prefix(tc_name, string)
+    = string.
 
     % To ensure that Mercury labels don't clash with C symbols, we
     % prefix them with the string returned by this function.
@@ -116,20 +95,10 @@
 
 %-----------------------------------------------------------------------------%
 
-output_proc_label(ProcLabel, !IO) :-
-    output_proc_label_maybe_prefix(ProcLabel, yes, !IO).
-
-output_proc_label_no_prefix(ProcLabel, !IO) :-
-    output_proc_label_maybe_prefix(ProcLabel, no, !IO).
-
-output_proc_label_maybe_prefix(ProcLabel, AddPrefix, !IO) :-
-    ProcLabelString = proc_label_to_c_string(ProcLabel, AddPrefix),
-    io.write_string(ProcLabelString, !IO).
-
-proc_label_to_c_string(ProcLabel, AddPrefix) = ProcLabelString :-
+proc_label_to_c_string(AddPrefix, ProcLabel) = ProcLabelString :-
     (
         ProcLabel = ordinary_proc_label(DefiningModule, PredOrFunc, PredModule,
-            PredName, Arity, ModeInt),
+            PredName, Arity, ModeNum),
         LabelName = make_pred_or_func_name(DefiningModule, PredOrFunc,
             PredModule, PredName, Arity, AddPrefix),
         (
@@ -139,13 +108,11 @@ proc_label_to_c_string(ProcLabel, AddPrefix) = ProcLabelString :-
             PredOrFunc = pf_predicate,
             OrigArity = Arity
         ),
-        string.int_to_string(OrigArity, ArityString),
-        string.int_to_string(ModeInt, ModeNumString),
-        string.append_list([LabelName, "_", ArityString, "_", ModeNumString],
-            ProcLabelString)
+        ProcLabelString = string.format("%s_%d_%d",
+            [s(LabelName), i(OrigArity), i(ModeNum)])
     ;
         ProcLabel = special_proc_label(Module, SpecialPredId, TypeModule,
-            TypeName, TypeArity, ModeInt),
+            TypeName, TypeArity, ModeNum),
         % For a special proc, output a label of the form:
         % mercury____<PredName>___<TypeModule>__<TypeName>_<TypeArity>_<Mode>
 
@@ -155,10 +122,6 @@ proc_label_to_c_string(ProcLabel, AddPrefix) = ProcLabelString :-
         PredName = special_pred_name(SpecialPredId, TypeCtor),
         LabelName = make_pred_or_func_name(unqualified(""), pf_predicate,
             unqualified(""), PredName, DummyArity, AddPrefix),
-
-        % Figure out the ModeNumString.
-        string.int_to_string(TypeArity, TypeArityString),
-        string.int_to_string(ModeInt, ModeNumString),
 
         % Mangle all the relevant names.
         MangledModule = sym_name_mangle(Module),
@@ -176,8 +139,9 @@ proc_label_to_c_string(ProcLabel, AddPrefix) = ProcLabelString :-
             QualifiedMangledTypeName),
 
         % Join it all together.
-        string.append_list([LabelName, "_", FullyQualifiedMangledTypeName,
-            "_", TypeArityString, "_", ModeNumString], ProcLabelString)
+        ProcLabelString = string.format("%s_%s_%d_%d",
+            [s(LabelName), s(FullyQualifiedMangledTypeName),
+            i(TypeArity), i(ModeNum)])
     ).
 
     % Make a name identifying a predicate or a function, given the
@@ -186,7 +150,7 @@ proc_label_to_c_string(ProcLabel, AddPrefix) = ProcLabelString :-
     % mercury_label_prefix.
     %
 :- func make_pred_or_func_name(module_name, pred_or_func, module_name, string,
-    arity, bool) = string.
+    arity, maybe_add_label_prefix) = string.
 
 make_pred_or_func_name(DefiningModule, PredOrFunc, DeclaringModule,
         Name0, Arity, AddPrefix) = LabelName :-
@@ -217,10 +181,10 @@ make_pred_or_func_name(DefiningModule, PredOrFunc, DeclaringModule,
         LabelName3 = LabelName2
     ),
     (
-        AddPrefix = yes,
+        AddPrefix = add_label_prefix,
         LabelName = mercury_label_prefix ++ LabelName3
     ;
-        AddPrefix = no,
+        AddPrefix = do_not_add_label_prefix,
         LabelName = LabelName3
     ).
 
@@ -266,21 +230,13 @@ make_base_typeclass_info_name(TCName, TypeNames) = Str :-
     TCName = tc_name(ModuleName, ClassName, ClassArity),
     ClassSym = qualified(ModuleName, ClassName),
     MangledClassString = sym_name_mangle(ClassSym),
-    string.int_to_string(ClassArity, ArityString),
     MangledTypeNames = name_mangle(TypeNames),
-    string.append_list(["base_typeclass_info_", MangledClassString,
-        "__arity", ArityString, "__", MangledTypeNames], Str).
+    Str = string.format("base_typeclass_info_%s__arity%d__%s",
+        [s(MangledClassString), i(ClassArity), s(MangledTypeNames)]).
 
-output_base_typeclass_info_name(TCName, TypeNames, !IO) :-
-    Str = make_base_typeclass_info_name(TCName, TypeNames),
-    io.write_string(mercury_data_prefix, !IO),
-    io.write_string(Str, !IO).
-
-%-----------------------------------------------------------------------------%
-
-output_init_name(ModuleName, !IO) :-
-    InitName = make_init_name(ModuleName),
-    io.write_string(InitName, !IO).
+make_base_typeclass_info_name_with_data_prefix(TCName, TypeNames) = Str :-
+    Str = mercury_data_prefix ++
+        make_base_typeclass_info_name(TCName, TypeNames).
 
 %-----------------------------------------------------------------------------%
 

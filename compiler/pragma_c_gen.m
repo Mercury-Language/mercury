@@ -736,9 +736,9 @@ make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
     CodeAddr = make_entry_label(ModuleInfo, PredId, ProcId,
         for_from_everywhere),
     ( if CodeAddr = code_imported_proc(ProcLabel) then
-        ProcLabelString = proc_label_to_c_string(ProcLabel, yes)
+        ProcLabelString = proc_label_to_c_string(add_label_prefix, ProcLabel)
     else if CodeAddr = code_label(Label) then
-        ProcLabelString = label_to_c_string(Label, yes)
+        ProcLabelString = label_to_c_string(add_label_prefix, Label)
     else
         unexpected($pred, "code_addr")
     ).

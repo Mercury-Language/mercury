@@ -102,6 +102,7 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
@@ -115,6 +116,7 @@
 :- import_module one_or_more.
 :- import_module queue.
 :- import_module require.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -135,56 +137,52 @@ write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestampMap, !IO) :-
             ext_other(other_ext(".used")), ModuleName, FileName, !IO),
         io.open_output(FileName, FileResult, !IO),
         (
-            FileResult = ok(Stream0),
-            io.set_output_stream(Stream0, OldStream, !IO),
-            write_usage_file_2(ModuleInfo,
+            FileResult = ok(FileStream),
+            write_usage_file_2(FileStream, ModuleInfo,
                 set.to_sorted_list(NestedSubModules), RecompInfo, TimestampMap,
                 !IO),
-            io.set_output_stream(OldStream, Stream, !IO),
-            io.close_output(Stream, !IO)
+            io.close_output(FileStream, !IO)
         ;
             FileResult = error(IOError),
             io.error_message(IOError, IOErrorMessage),
-            io.write_string("\nError opening `", !IO),
-            io.write_string(FileName, !IO),
-            io.write_string("'for output: ", !IO),
-            io.write_string(IOErrorMessage, !IO),
-            io.write_string(".\n", !IO),
+            io.output_stream(CurStream, !IO),
+            io.format(CurStream, "\nError opening `%s' for output: %s.\n",
+                [s(FileName), s(IOErrorMessage)], !IO),
             io.set_exit_status(1, !IO)
         )
     else
         true
     ).
 
-:- pred write_usage_file_2(module_info::in,
+:- pred write_usage_file_2(io.text_output_stream::in, module_info::in,
     list(module_name)::in, recompilation_info::in,
     module_timestamp_map::in, io::di, io::uo) is det.
 
-write_usage_file_2(ModuleInfo, NestedSubModules, RecompInfo, TimestampMap,
-        !IO) :-
-    io.write_int(usage_file_version_number, !IO),
-    io.write_string(",", !IO),
-    io.write_int(version_numbers_version_number, !IO),
-    io.write_string(".\n\n", !IO),
+write_usage_file_2(Stream, ModuleInfo, NestedSubModules, RecompInfo,
+        TimestampMap, !IO) :-
+    io.write_int(Stream, usage_file_version_number, !IO),
+    io.write_string(Stream, ",", !IO),
+    io.write_int(Stream, version_numbers_version_number, !IO),
+    io.write_string(Stream, ".\n\n", !IO),
 
     module_info_get_name(ModuleInfo, ThisModuleName),
     map.lookup(TimestampMap, ThisModuleName,
         module_timestamp(_, ThisModuleTimestamp, _)),
-    io.write_string("(", !IO),
-    mercury_output_bracketed_sym_name(ThisModuleName, !IO),
-    io.write_string(", "".m"", ", !IO),
-    write_version_number(ThisModuleTimestamp, !IO),
-    io.write_string(").\n\n", !IO),
+    io.write_string(Stream, "(", !IO),
+    mercury_output_bracketed_sym_name(ThisModuleName, Stream, !IO),
+    io.write_string(Stream, ", "".m"", ", !IO),
+    write_version_number(Stream, ThisModuleTimestamp, !IO),
+    io.write_string(Stream, ").\n\n", !IO),
 
     (
         NestedSubModules = [],
-        io.write_string("sub_modules.\n\n", !IO)
+        io.write_string(Stream, "sub_modules.\n\n", !IO)
     ;
         NestedSubModules = [_ | _],
-        io.write_string("sub_modules(", !IO),
-        io.write_list(NestedSubModules, ", ",
-            mercury_output_bracketed_sym_name, !IO),
-        io.write_string(").\n\n", !IO)
+        io.write_string(Stream, "sub_modules(", !IO),
+        write_out_list(mercury_output_bracketed_sym_name, ", ",
+            NestedSubModules, Stream, !IO),
+        io.write_string(Stream, ").\n\n", !IO)
     ),
 
     UsedItems = RecompInfo ^ recomp_used_items,
@@ -193,93 +191,93 @@ write_usage_file_2(ModuleInfo, NestedSubModules, RecompInfo, TimestampMap,
         UsedClasses, ImportedItems, ModuleInstances),
 
     ( if UsedItems = init_used_items then
-        io.write_string("used_items.\n", !IO)
+        io.write_string(Stream, "used_items.\n", !IO)
     else
-        io.write_string("used_items(\n\t", !IO),
+        io.write_string(Stream, "used_items(\n\t", !IO),
         some [!WriteComma] (
             !:WriteComma = no,
-            write_simple_item_matches(type_abstract_item, ResolvedUsedItems,
-                !WriteComma, !IO),
-            write_simple_item_matches(type_body_item, ResolvedUsedItems,
-                !WriteComma, !IO),
-            write_simple_item_matches(mode_item, ResolvedUsedItems,
-                !WriteComma, !IO),
-            write_simple_item_matches(inst_item, ResolvedUsedItems,
-                !WriteComma, !IO),
-            write_simple_item_matches(typeclass_item, ResolvedUsedItems,
-                !WriteComma, !IO),
-            write_pred_or_func_matches(predicate_item, ResolvedUsedItems,
-                !WriteComma, !IO),
-            write_pred_or_func_matches(function_item, ResolvedUsedItems,
-                !WriteComma, !IO),
-            write_functor_matches(ResolvedUsedItems ^ functors,
+            write_simple_item_matches(Stream, type_abstract_item,
+                ResolvedUsedItems, !WriteComma, !IO),
+            write_simple_item_matches(Stream, type_body_item,
+                ResolvedUsedItems, !WriteComma, !IO),
+            write_simple_item_matches(Stream, mode_item,
+                ResolvedUsedItems, !WriteComma, !IO),
+            write_simple_item_matches(Stream, inst_item,
+                ResolvedUsedItems, !WriteComma, !IO),
+            write_simple_item_matches(Stream, typeclass_item,
+                ResolvedUsedItems, !WriteComma, !IO),
+            write_pred_or_func_matches(Stream, predicate_item,
+                ResolvedUsedItems, !WriteComma, !IO),
+            write_pred_or_func_matches(Stream, function_item,
+                ResolvedUsedItems, !WriteComma, !IO),
+            write_functor_matches(Stream, ResolvedUsedItems ^ functors,
                 !WriteComma, !IO),
             _ = !.WriteComma
         ),
-        io.write_string("\n).\n\n", !IO)
+        io.write_string(Stream, "\n).\n\n", !IO)
     ),
 
     ( if set.is_empty(UsedClasses) then
-        io.write_string("used_classes.\n", !IO)
+        io.write_string(Stream, "used_classes.\n", !IO)
     else
-        io.write_string("used_classes(", !IO),
-        io.write_list(set.to_sorted_list(UsedClasses), ", ",
-            write_classname_and_arity, !IO),
-        io.write_string(").\n", !IO)
+        io.write_string(Stream, "used_classes(", !IO),
+        write_out_list(write_classname_and_arity, ", ",
+            set.to_sorted_list(UsedClasses), Stream, !IO),
+        io.write_string(Stream, ").\n", !IO)
     ),
 
     map.foldl(
-        write_module_name_and_used_items(RecompInfo, TimestampMap,
+        write_module_name_and_used_items(Stream, RecompInfo, TimestampMap,
             ModuleInstances),
         ImportedItems, !IO),
     % recompilation_check.m checks for this item when reading in the `.used'
     % file to make sure the earlier compilation wasn't interrupted in the
     % middle of writing the file.
-    io.nl(!IO),
-    io.write_string("done.\n", !IO).
+    io.nl(Stream, !IO),
+    io.write_string(Stream, "done.\n", !IO).
 
-:- pred write_module_name_and_used_items(recompilation_info::in,
-    module_timestamp_map::in, map(module_name, set(item_name))::in,
-    module_name::in, item_id_set(set(pair(string, arity)))::in,
-    io::di, io::uo) is det.
+:- pred write_module_name_and_used_items(io.text_output_stream::in,
+    recompilation_info::in, module_timestamp_map::in,
+    map(module_name, set(item_name))::in, module_name::in,
+    item_id_set(set(pair(string, arity)))::in, io::di, io::uo) is det.
 
-write_module_name_and_used_items(RecompInfo, TimestampMap, ModuleInstances,
-        ModuleName, ModuleUsedItems, !IO) :-
-    io.nl(!IO),
-    io.write_string("(", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io.write_string(", """, !IO),
+write_module_name_and_used_items(Stream, RecompInfo, TimestampMap,
+        ModuleInstances, ModuleName, ModuleUsedItems, !IO) :-
+    io.nl(Stream, !IO),
+    io.write_string(Stream, "(", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
+    io.write_string(Stream, ", """, !IO),
     map.lookup(TimestampMap, ModuleName,
         module_timestamp(FileKind, ModuleTimestamp, RecompNeedQual)),
     file_kind_to_extension(FileKind, ExtStr, _Ext),
-    io.write_string(ExtStr, !IO),
-    io.write_string(""", ", !IO),
-    write_version_number(ModuleTimestamp, !IO),
+    io.write_string(Stream, ExtStr, !IO),
+    io.write_string(Stream, """, ", !IO),
+    write_version_number(Stream, ModuleTimestamp, !IO),
     % This must be kept in sync with parse_module_timestamp in
     % recompilation.check.m.
     (
         RecompNeedQual = recomp_avail_src,
-        io.write_string(", src", !IO)
+        io.write_string(Stream, ", src", !IO)
     ;
         RecompNeedQual = recomp_avail_int_use,
         % We used to output just ", used".
-        io.write_string(", int_used", !IO)
+        io.write_string(Stream, ", int_used", !IO)
     ;
         RecompNeedQual = recomp_avail_imp_use,
-        io.write_string(", imp_used", !IO)
+        io.write_string(Stream, ", imp_used", !IO)
     ;
         RecompNeedQual = recomp_avail_int_import,
         % We used to output nothing.
-        io.write_string(", int_imported", !IO)
+        io.write_string(Stream, ", int_imported", !IO)
     ;
         RecompNeedQual = recomp_avail_imp_import,
         % We used to output nothing.
-        io.write_string(", imp_imported", !IO)
+        io.write_string(Stream, ", imp_imported", !IO)
     ;
         RecompNeedQual = recomp_avail_int_use_imp_import,
-        io.write_string(", int_used_imp_imported", !IO)
+        io.write_string(Stream, ", int_used_imp_imported", !IO)
     ),
-    io.write_string(")", !IO),
+    io.write_string(Stream, ")", !IO),
     ( if
         % XXX We don't yet record all uses of items from these modules
         % in polymorphism.m, etc.
@@ -304,217 +302,226 @@ write_module_name_and_used_items(RecompInfo, TimestampMap, ModuleInstances,
             map.init(ModuleUsedInstanceVersions)
         ),
 
-        io.write_string(" => ", !IO),
+        io.write_string(Stream, " => ", !IO),
         ModuleUsedVersionNumbers =
             version_numbers(ModuleUsedItemVersions,
                 ModuleUsedInstanceVersions),
-        write_version_numbers(ModuleUsedVersionNumbers, !IO),
-        io.write_string(".\n", !IO)
+        write_version_numbers(Stream, ModuleUsedVersionNumbers, !IO),
+        io.write_string(Stream, ".\n", !IO)
     else
         % If we don't have version numbers for a module we just recompile
         % if the interface file's timestamp changes.
-        io.write_string(".\n", !IO)
+        io.write_string(Stream, ".\n", !IO)
     ).
 
-:- pred write_classname_and_arity(item_name::in, io::di, io::uo) is det.
+:- pred write_classname_and_arity(item_name::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-write_classname_and_arity(item_name(ClassName, ClassArity), !IO) :-
-    mercury_output_bracketed_sym_name(ClassName, !IO),
-    io.write_string("/", !IO),
-    io.write_int(ClassArity, !IO).
+write_classname_and_arity(item_name(ClassName, ClassArity), Stream, !IO) :-
+    mercury_output_bracketed_sym_name(ClassName, Stream, !IO),
+    io.write_string(Stream, "/", !IO),
+    io.write_int(Stream, ClassArity, !IO).
 
-:- pred write_comma_if_needed(bool::in, bool::out, io::di, io::uo) is det.
+:- pred write_comma_if_needed(io.text_output_stream::in,
+    bool::in, bool::out, io::di, io::uo) is det.
 
-write_comma_if_needed(!WriteComma, !IO) :-
+write_comma_if_needed(Stream, !WriteComma, !IO) :-
     (
         !.WriteComma = yes,
-        io.write_string(",\n\t", !IO)
+        io.write_string(Stream, ",\n\t", !IO)
     ;
         !.WriteComma = no
     ),
     !:WriteComma = yes.
 
-:- pred write_simple_item_matches(item_type::in(simple_item),
-    resolved_used_items::in, bool::in, bool::out, io::di, io::uo) is det.
+:- pred write_simple_item_matches(io.text_output_stream::in,
+    item_type::in(simple_item), resolved_used_items::in,
+    bool::in, bool::out, io::di, io::uo) is det.
 
-write_simple_item_matches(ItemType, UsedItems, !WriteComma, !IO) :-
+write_simple_item_matches(Stream, ItemType, UsedItems, !WriteComma, !IO) :-
     Ids = extract_simple_item_set(UsedItems, ItemType),
     ( if map.is_empty(Ids) then
         true
     else
-        write_comma_if_needed(!WriteComma, !IO),
-        write_simple_item_matches_2(ItemType, Ids, !IO)
+        write_comma_if_needed(Stream, !WriteComma, !IO),
+        write_simple_item_matches_2(Stream, ItemType, Ids, !IO)
     ).
 
-:- pred write_simple_item_matches_2(item_type::in, simple_item_set::in,
-    io::di, io::uo) is det.
+:- pred write_simple_item_matches_2(io.text_output_stream::in,
+    item_type::in, simple_item_set::in, io::di, io::uo) is det.
 
-write_simple_item_matches_2(ItemType, ItemSet, !IO) :-
+write_simple_item_matches_2(Stream, ItemType, ItemSet, !IO) :-
     string_to_item_type(ItemTypeStr, ItemType),
-    io.write_string(ItemTypeStr, !IO),
-    io.write_string("(\n\t\t", !IO),
+    io.write_string(Stream, ItemTypeStr, !IO),
+    io.write_string(Stream, "(\n\t\t", !IO),
     map.to_assoc_list(ItemSet, ItemList),
-    io.write_list(ItemList, ",\n\t\t", write_simple_item_matches_3, !IO),
-    io.write_string("\n\t)", !IO).
+    write_out_list(write_simple_item_matches_3, ",\n\t\t", ItemList,
+        Stream, !IO),
+    io.write_string(Stream, "\n\t)", !IO).
 
 :- pred write_simple_item_matches_3(
     pair(pair(string, arity), map(module_qualifier, module_name))::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-write_simple_item_matches_3((Name - Arity) - Matches, !IO) :-
+write_simple_item_matches_3((Name - Arity) - Matches, Stream, !IO) :-
     mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-        unqualified(Name), !IO),
-    io.write_string("/", !IO),
-    io.write_int(Arity, !IO),
-    io.write_string(" - (", !IO),
+        unqualified(Name), Stream, !IO),
+    io.write_string(Stream, "/", !IO),
+    io.write_int(Stream, Arity, !IO),
+    io.write_string(Stream, " - (", !IO),
     map.to_assoc_list(Matches, MatchList),
-    io.write_list(MatchList, ", ", write_simple_item_matches_4, !IO),
-    io.write_string(")", !IO).
+    write_out_list(write_simple_item_matches_4, ", ", MatchList, Stream, !IO),
+    io.write_string(Stream, ")", !IO).
 
 :- pred write_simple_item_matches_4(pair(module_qualifier, module_name)::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-write_simple_item_matches_4(Qualifier - ModuleName, !IO) :-
-    mercury_output_bracketed_sym_name(Qualifier, !IO),
+write_simple_item_matches_4(Qualifier - ModuleName, Stream, !IO) :-
+    mercury_output_bracketed_sym_name(Qualifier, Stream, !IO),
     ( if Qualifier = ModuleName then
         true
     else
-        io.write_string(" => ", !IO),
-        mercury_output_bracketed_sym_name(ModuleName, !IO)
+        io.write_string(Stream, " => ", !IO),
+        mercury_output_bracketed_sym_name(ModuleName, Stream, !IO)
     ).
 
-:- pred write_pred_or_func_matches(item_type::in(pred_or_func_item),
-    resolved_used_items::in, bool::in, bool::out, io::di, io::uo) is det.
+:- pred write_pred_or_func_matches(io.text_output_stream::in,
+    item_type::in(pred_or_func_item), resolved_used_items::in,
+    bool::in, bool::out, io::di, io::uo) is det.
 
-write_pred_or_func_matches(ItemType, UsedItems, !WriteComma, !IO) :-
+write_pred_or_func_matches(Stream, ItemType, UsedItems, !WriteComma, !IO) :-
     Ids = extract_pred_or_func_set(UsedItems, ItemType),
     ( if map.is_empty(Ids) then
         true
     else
-        write_comma_if_needed(!WriteComma, !IO),
-        write_pred_or_func_matches_2(ItemType, Ids, !IO)
+        write_comma_if_needed(Stream, !WriteComma, !IO),
+        write_pred_or_func_matches_2(ItemType, Ids, Stream, !IO)
     ).
 
 :- pred write_pred_or_func_matches_2(item_type::in(pred_or_func_item),
-    resolved_pred_or_func_set::in, io::di, io::uo) is det.
+    resolved_pred_or_func_set::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-write_pred_or_func_matches_2(ItemType, ItemSet, !IO) :-
-    write_resolved_item_set(ItemType, ItemSet,
-        write_pred_or_func_matches_3, !IO).
+write_pred_or_func_matches_2(ItemType, ItemSet, Stream, !IO) :-
+    write_resolved_item_set(ItemType, ItemSet, write_pred_or_func_matches_3,
+        Stream, !IO).
 
 :- pred write_pred_or_func_matches_3(
     pair(sym_name, set(pair(pred_id, sym_name)))::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-write_pred_or_func_matches_3(Qualifier - PredIdModuleNames, !IO) :-
+write_pred_or_func_matches_3(Qualifier - PredIdModuleNames, Stream, !IO) :-
     ModuleNames = assoc_list.values(set.to_sorted_list(PredIdModuleNames)),
-    mercury_output_bracketed_sym_name(Qualifier, !IO),
+    mercury_output_bracketed_sym_name(Qualifier, Stream, !IO),
     ( if ModuleNames = [Qualifier] then
         true
     else
-        io.write_string(" => (", !IO),
-        io.write_list(ModuleNames, ", ", mercury_output_bracketed_sym_name,
-            !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, " => (", !IO),
+        write_out_list(mercury_output_bracketed_sym_name, ", ", ModuleNames,
+            Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ).
 
-:- pred write_functor_matches(resolved_functor_set::in,
-    bool::in, bool::out, io::di, io::uo) is det.
+:- pred write_functor_matches(io.text_output_stream::in,
+    resolved_functor_set::in, bool::in, bool::out, io::di, io::uo) is det.
 
-write_functor_matches(Ids, !WriteComma, !IO) :-
+write_functor_matches(Stream, Ids, !WriteComma, !IO) :-
     ( if map.is_empty(Ids) then
         true
     else
-        write_comma_if_needed(!WriteComma, !IO),
+        write_comma_if_needed(Stream, !WriteComma, !IO),
         write_resolved_item_set(functor_item, Ids, write_functor_matches_2,
-            !IO)
+            Stream, !IO)
     ).
 
 :- pred write_functor_matches_2(pair(sym_name, set(resolved_functor))::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-write_functor_matches_2(Qualifier - MatchingCtors, !IO) :-
-    mercury_output_bracketed_sym_name(Qualifier, !IO),
-    io.write_string(" => (", !IO),
-    io.write_list(set.to_sorted_list(MatchingCtors), ", ",
-        write_resolved_functor, !IO),
-    io.write_string(")", !IO).
+write_functor_matches_2(Qualifier - MatchingCtors, Stream, !IO) :-
+    mercury_output_bracketed_sym_name(Qualifier, Stream, !IO),
+    io.write_string(Stream, " => (", !IO),
+    write_out_list(write_resolved_functor, ", ",
+        set.to_sorted_list(MatchingCtors), Stream, !IO),
+    io.write_string(Stream, ")", !IO).
 
-:- type write_resolved_item(T) == pred(pair(module_qualifier, T), io, io).
-:- inst write_resolved_item == (pred(in, di, uo) is det).
+:- type write_resolved_item(T) ==
+    pred(pair(module_qualifier, T), io.text_output_stream, io, io).
+:- inst write_resolved_item == (pred(in, in, di, uo) is det).
 
 :- pred write_resolved_item_set(item_type::in, resolved_item_set(T)::in,
     write_resolved_item(T)::in(write_resolved_item),
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-write_resolved_item_set(ItemType, ItemSet, WriteMatches, !IO) :-
+write_resolved_item_set(ItemType, ItemSet, WriteMatches, Stream, !IO) :-
     string_to_item_type(ItemTypeStr, ItemType),
-    io.write_string(ItemTypeStr, !IO),
-    io.write_string("(\n\t\t", !IO),
+    io.write_string(Stream, ItemTypeStr, !IO),
+    io.write_string(Stream, "(\n\t\t", !IO),
     map.to_assoc_list(ItemSet, ItemList),
-    io.write_list(ItemList, ",\n\t\t",
-        write_resolved_item_set_2(WriteMatches), !IO),
-    io.write_string("\n\t)", !IO).
+    write_out_list(write_resolved_item_set_2(WriteMatches), ",\n\t\t",
+        ItemList, Stream, !IO),
+    io.write_string(Stream, "\n\t)", !IO).
 
 :- pred write_resolved_item_set_2(
     write_resolved_item(T)::in(write_resolved_item),
     pair(string, list(pair(int, map(sym_name, T))))::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-write_resolved_item_set_2(WriteMatches, Name - MatchesAL, !IO) :-
-    mercury_output_bracketed_sym_name(unqualified(Name), !IO),
-    io.write_string(" - (", !IO),
-    io.write_list(MatchesAL, ",\n\t\t\t",
-        write_resolved_item_set_3(WriteMatches), !IO),
-    io.write_string(")", !IO).
+write_resolved_item_set_2(WriteMatches, Name - MatchesAL, Stream, !IO) :-
+    mercury_output_bracketed_sym_name(unqualified(Name), Stream, !IO),
+    io.write_string(Stream, " - (", !IO),
+    write_out_list(write_resolved_item_set_3(WriteMatches), ",\n\t\t\t",
+        MatchesAL, Stream, !IO),
+    io.write_string(Stream, ")", !IO).
 
 :- pred write_resolved_item_set_3(
     write_resolved_item(T)::in(write_resolved_item),
-    pair(int, map(sym_name, T))::in, io::di, io::uo) is det.
+    pair(int, map(sym_name, T))::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-write_resolved_item_set_3(WriteMatches, Arity - Matches, !IO) :-
-    io.write_int(Arity, !IO),
-    io.write_string(" - (", !IO),
+write_resolved_item_set_3(WriteMatches, Arity - Matches, Stream, !IO) :-
+    io.write_int(Stream, Arity, !IO),
+    io.write_string(Stream, " - (", !IO),
     map.to_assoc_list(Matches, MatchList),
-    io.write_list(MatchList, ",\n\t\t\t\t", WriteMatches, !IO),
-    io.write_string(")", !IO).
+    write_out_list(WriteMatches, ",\n\t\t\t\t", MatchList, Stream, !IO),
+    io.write_string(Stream, ")", !IO).
 
-:- pred write_resolved_functor(resolved_functor::in, io::di, io::uo) is det.
+:- pred write_resolved_functor(resolved_functor::in,
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-write_resolved_functor(ResolvedFunctor, !IO) :-
+write_resolved_functor(ResolvedFunctor, Stream, !IO) :-
     (
         ResolvedFunctor = resolved_functor_pred_or_func(_, ModuleName,
             PredOrFunc, Arity),
-        write_pred_or_func(PredOrFunc, !IO),
-        io.write_string("(", !IO),
-        mercury_output_bracketed_sym_name(ModuleName, !IO),
-        io.write_string(", ", !IO),
-        io.write_int(Arity, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, pred_or_func_to_full_str(PredOrFunc), !IO),
+        io.write_string(Stream, "(", !IO),
+        mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        io.write_int(Stream, Arity, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         ResolvedFunctor = resolved_functor_constructor(ItemName),
         ItemName = item_name(TypeName, Arity),
-        io.write_string("ctor(", !IO),
+        io.write_string(Stream, "ctor(", !IO),
         mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-            TypeName, !IO),
-        io.write_string("/", !IO),
-        io.write_int(Arity, !IO),
-        io.write_string(")", !IO)
+            TypeName, Stream, !IO),
+        io.write_string(Stream, "/", !IO),
+        io.write_int(Stream, Arity, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         ResolvedFunctor = resolved_functor_field(TypeItemName, ConsItemName),
         TypeItemName = item_name(TypeName, TypeArity),
         ConsItemName = item_name(ConsName, ConsArity),
-        io.write_string("field(", !IO),
+        io.write_string(Stream, "field(", !IO),
         mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-            TypeName, !IO),
-        io.write_string("/", !IO),
-        io.write_int(TypeArity, !IO),
-        io.write_string(", ", !IO),
+            TypeName, Stream, !IO),
+        io.write_string(Stream, "/", !IO),
+        io.write_int(Stream, TypeArity, !IO),
+        io.write_string(Stream, ", ", !IO),
         mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-            ConsName, !IO),
-        io.write_string("/", !IO),
-        io.write_int(ConsArity, !IO),
-        io.write_string(")", !IO)
+            ConsName, Stream, !IO),
+        io.write_string(Stream, "/", !IO),
+        io.write_int(Stream, ConsArity, !IO),
+        io.write_string(Stream, ")", !IO)
     ).
 
 usage_file_version_number = 2.

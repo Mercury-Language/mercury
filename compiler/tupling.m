@@ -267,9 +267,10 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            io.write_string("% Considering tupling in ", !IO),
-            set.foldl(write_pred_proc_id(!.ModuleInfo), SCC, !IO),
-            io.write_string("...\n", !IO)
+            SccStrSet = set.map(pred_proc_id_to_string(!.ModuleInfo), SCC),
+            SccStrs = set.to_sorted_list(SccStrSet),
+            SccStr = string.join_list(", ", SccStrs),
+            io.format("%% Considering tupling in %s...\n", [s(SccStr)], !IO)
         )
     ;
         VeryVerbose = no

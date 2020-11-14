@@ -90,10 +90,11 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     OutInfo = init_hlds_out_info(Globals, output_debug),
     trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-        io.write_string("Goal before pushes:\n", !IO),
-        write_goal(OutInfo, !.ModuleInfo, VarSet0, print_name_and_num,
+        io.output_stream(Stream, !IO),
+        io.write_string(Stream, "Goal before pushes:\n", !IO),
+        write_goal(OutInfo, Stream, !.ModuleInfo, VarSet0, print_name_and_num,
             0, "", Goal0, !IO),
-        io.nl(!IO)
+        io.nl(Stream, !IO)
     ),
     do_push_list(PushGoals, PushInfo, OverallResult, Goal0, Goal1),
     (
@@ -101,10 +102,11 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
     ;
         OverallResult = push_succeeded,
         trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-            io.write_string("Goal after pushes:\n", !IO),
-            write_goal(OutInfo, !.ModuleInfo, VarSet0, print_name_and_num,
-                0, "", Goal1, !IO),
-            io.nl(!IO)
+            io.output_stream(Stream, !IO),
+            io.write_string(Stream, "Goal after pushes:\n", !IO),
+            write_goal(OutInfo, Stream, !.ModuleInfo, VarSet0,
+                print_name_and_num, 0, "", Goal1, !IO),
+            io.nl(Stream, !IO)
         ),
 
         % We need to fix up the goal_infos of the goals touched directly or
@@ -136,10 +138,11 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
         proc_info_set_vartypes(VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-            io.write_string("Goal after fixups:\n", !IO),
-            write_goal(OutInfo, !.ModuleInfo, VarSet, print_name_and_num,
-                0, "", Goal, !IO),
-            io.nl(!IO)
+            io.output_stream(Stream, !IO),
+            io.write_string(Stream, "Goal after fixups:\n", !IO),
+            write_goal(OutInfo, Stream, !.ModuleInfo, VarSet,
+                print_name_and_num, 0, "", Goal, !IO),
+            io.nl(Stream, !IO)
         )
     ).
 

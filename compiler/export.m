@@ -304,7 +304,7 @@ export_proc_to_c(ModuleInfo, Preds, ExportedProc, ExportDefn) :-
     retrieve_output_args(ModuleInfo, 0, ArgInfoTypes, RetrieveOutputArgs),
 
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
-    ProcLabelString = proc_label_to_c_string(ProcLabel, yes),
+    ProcLabelString = proc_label_to_c_string(add_label_prefix, ProcLabel),
 
     string.append_list([
         "\n",

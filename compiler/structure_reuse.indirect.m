@@ -272,11 +272,10 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
         )
     then
         trace [io(!IO)] (
-            io.write_string("% Indirect reuse analysis (run ", !IO),
-            io.write_int(Run, !IO),
-            io.write_string(") ", !IO),
-            write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
-            io.nl(!IO)
+            ProcStr =
+                pred_proc_id_pair_to_string(!.ModuleInfo, PredId, ProcId),
+            io.format("%% Indirect reuse analysis (run %d) %s\n",
+                [i(Run), s(ProcStr)], !IO)
         )
     else
         true
@@ -1023,10 +1022,11 @@ maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId, NoClobbers,
         GoalReuse = goal_info_get_reuse(GoalInfo),
         Context = goal_info_get_context(GoalInfo),
         proc_info_get_varset(BaseInfo ^ proc_info, VarSet),
+        CalleeStr = pred_proc_id_to_string(ModuleInfo, CalleePPId),
         io.write_string("\tcall to ", !IO),
-        write_pred_proc_id(ModuleInfo, CalleePPId, !IO),
+        io.write_string(CalleeStr, !IO),
         io.write_string("\n\tfrom ", !IO),
-        write_context(Context, !IO),
+        write_context_to_cur_stream(Context, !IO),
         io.write_string("\n\twith NoClobbers = ", !IO),
         io.write(NoClobbers, !IO),
         io.write_string("\n\t\treuse: ", !IO),
@@ -1042,6 +1042,7 @@ maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId, NoClobbers,
     prog_varset::in, io::di, io::uo) is det.
 
 write_verify_indirect_reuse_reason(Reason, VarSet, !IO) :-
+    io.output_stream(Stream, !IO),
     (
         ( Reason = callee_has_no_reuses
         ; Reason = callee_has_only_unconditional_reuse
@@ -1049,12 +1050,12 @@ write_verify_indirect_reuse_reason(Reason, VarSet, !IO) :-
         ; Reason = reuse_is_unconditional
         ; Reason = reuse_is_conditional
         ),
-        io.write(Reason, !IO)
+        io.write(Stream, Reason, !IO)
     ;
         Reason = reuse_is_unsafe(Vars),
-        io.write_string("reuse_is_unsafe(", !IO),
-        mercury_output_vars(VarSet, print_name_and_num, Vars, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "reuse_is_unsafe(", !IO),
+        mercury_output_vars(VarSet, print_name_and_num, Vars, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ).
 
 :- pred get_var_indices(prog_vars::in, prog_vars::in, int::in,

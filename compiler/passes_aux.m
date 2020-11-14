@@ -417,9 +417,8 @@ write_pred_progress_message(Message, PredId, ModuleInfo, !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
-        io.write_string(Message, !IO),
-        write_pred_id(ModuleInfo, PredId, !IO),
-        io.write_string("\n", !IO)
+        PredStr = pred_id_to_string(ModuleInfo, PredId),
+        io.format("%s%s\n", [s(Message), s(PredStr)], !IO)
     ;
         VeryVerbose = no
     ).
@@ -432,9 +431,8 @@ write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
-        io.write_string(Message, !IO),
-        write_pred_proc_id_pair(ModuleInfo, PredId, ProcId, !IO),
-        io.write_string("\n", !IO)
+        ProcStr = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
+        io.format("%s%s\n", [s(Message), s(ProcStr)], !IO)
     ;
         VeryVerbose = no
     ).
@@ -488,7 +486,7 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context, !IO) :-
         MaybeContext = no,
         OutContext = Context
     ),
-    prog_out.write_context(OutContext, !IO),
+    prog_out.write_context_to_cur_stream(OutContext, !IO),
     io.write_string("In `", !IO),
     report_pred_name_mode(PredOrFunc, PredName, ArgModes, !IO),
     io.write_string("':\n", !IO).
@@ -500,8 +498,9 @@ report_pred_name_mode(pf_predicate, PredName, ArgModes, !IO) :-
         varset.init(InstVarSet),   % XXX inst var names
         io.write_string("(", !IO),
         strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes),
-        mercury_output_mode_list(output_debug, InstVarSet, StrippedArgModes,
-            !IO),
+        io.output_stream(Stream, !IO),
+        mercury_output_mode_list(Stream, output_debug, InstVarSet,
+            StrippedArgModes, !IO),
         io.write_string(")", !IO)
     ;
         ArgModes = []
@@ -512,16 +511,18 @@ report_pred_name_mode(pf_function, FuncName, ArgModes, !IO) :-
     strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes),
     pred_args_to_func_args(StrippedArgModes, FuncArgModes, FuncRetMode),
     io.write_string(FuncName, !IO),
+    io.output_stream(Stream, !IO),
     (
         FuncArgModes = [_ | _],
         io.write_string("(", !IO),
-        mercury_output_mode_list(output_debug, InstVarSet, FuncArgModes, !IO),
+        mercury_output_mode_list(Stream, output_debug, InstVarSet,
+            FuncArgModes, !IO),
         io.write_string(")", !IO)
     ;
         FuncArgModes = []
     ),
     io.write_string(" = ", !IO),
-    mercury_output_mode(output_debug, InstVarSet, FuncRetMode, !IO).
+    mercury_output_mode(Stream, output_debug, InstVarSet, FuncRetMode, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -644,9 +645,7 @@ dump_hlds(DumpFile, HLDS, !IO) :-
     io.open_output(DumpFile, Res, !IO),
     (
         Res = ok(FileStream),
-        io.set_output_stream(FileStream, OutputStream, !IO),
-        write_hlds(0, HLDS, !IO),
-        io.set_output_stream(OutputStream, _, !IO),
+        write_hlds(FileStream, 0, HLDS, !IO),
         io.close_output(FileStream, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)

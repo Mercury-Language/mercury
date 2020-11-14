@@ -678,7 +678,7 @@ write_cycle(_, [], !IO).
 write_cycle(ModuleInfo, [Proc | Procs], !IO) :-
     io.write_string("\t- ", !IO),
     Proc = real(PredProcId),
-    write_pred_proc_id(ModuleInfo, PredProcId, !IO),
+    io.write_string(pred_proc_id_to_string(ModuleInfo, PredProcId), !IO),
     io.nl(!IO),
     write_cycle(ModuleInfo, Procs, !IO).
 
@@ -688,7 +688,7 @@ write_cycle(ModuleInfo, [Proc | Procs], !IO) :-
 write_edge(ModuleInfo, SizeVarSet, Edge, !IO) :-
     io.write_string("Edge is:\n\tHead: ", !IO),
     Edge ^ tcge_caller = real(PredProcId),
-    write_pred_proc_id(ModuleInfo, PredProcId, !IO),
+    io.write_string(pred_proc_id_to_string(ModuleInfo, PredProcId), !IO),
     io.write_string(" : ", !IO),
     write_size_vars(SizeVarSet, Edge ^ tcge_head_args, !IO),
     io.write_string(" :- \n", !IO),
@@ -696,7 +696,7 @@ write_edge(ModuleInfo, SizeVarSet, Edge, !IO) :-
     write_polyhedron(Edge ^ tcge_label, SizeVarSet, !IO),
     io.write_string("\n\tCall is:  ", !IO),
     Edge ^ tcge_callee = real(CallPredProcId),
-    write_pred_proc_id(ModuleInfo, CallPredProcId, !IO),
+    io.write_string(pred_proc_id_to_string(ModuleInfo, CallPredProcId), !IO),
     io.write_string(" : ", !IO),
     write_size_vars(SizeVarSet, Edge ^ tcge_call_args, !IO),
     io.write_string(" :- \n", !IO),

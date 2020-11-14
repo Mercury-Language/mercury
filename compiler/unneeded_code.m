@@ -342,21 +342,22 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
     ;
         Debug = yes,
         trace [io(!IO)] (
+            io.output_stream(Stream, !IO),
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
             PredName = pred_info_name(PredInfo),
             globals.lookup_accumulating_option(Globals,
                 unneeded_code_debug_pred_name, DebugPredNames),
             (
                 DebugPredNames = [],
-                io.format("%% Starting unneededed code pass %d\n",
+                io.format(Stream, "%% Starting unneededed code pass %d\n",
                     [i(Pass)], !IO)
             ;
                 DebugPredNames = [_ | _],
                 ( if list.member(PredName, DebugPredNames) then
-                    io.format("%% Starting unneededed code pass %d\n",
+                    io.format(Stream, "%% Starting unneededed code pass %d\n",
                         [i(Pass)], !IO),
                     OutInfo = init_hlds_out_info(Globals, output_debug),
-                    write_goal(OutInfo, !.ModuleInfo, VarSet0,
+                    write_goal(OutInfo, Stream, !.ModuleInfo, VarSet0,
                         print_name_and_num, 0, ".\n", Goal0, !IO)
                 else
                     true
@@ -433,8 +434,9 @@ unneeded_process_goal(UnneededInfo, Goal0, Goal, InitInstMap, FinalInstMap,
             Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
             goal_info_get_goal_id(GoalInfo0) = goal_id(GoalIdNum0),
             trace [io(!IO)] (
-                io.format("unneeded code at goal id %d\n", [i(GoalIdNum0)],
-                    !IO)
+                io.output_stream(Stream, !IO),
+                io.format(Stream, "unneeded code at goal id %d\n",
+                    [i(GoalIdNum0)], !IO)
             )
         )
     ),

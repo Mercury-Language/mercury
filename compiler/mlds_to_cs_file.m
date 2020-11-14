@@ -332,7 +332,7 @@ output_src_start_for_csharp(Info, Indent, MercuryModuleName, _Imports,
     output_auto_gen_comment(Info ^ csoi_source_filename, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("/* :- module ", !IO),
-    prog_out.write_sym_name(MercuryModuleName, !IO),
+    prog_out.write_sym_name_to_cur_stream(MercuryModuleName, !IO),
     io.write_string(". */\n", !IO),
     output_n_indents(Indent, !IO),
     io.write_string("namespace mercury {\n\n", !IO),
@@ -427,7 +427,7 @@ output_src_end_for_csharp(Indent, ModuleName, !IO) :-
     io.write_string("}\n", !IO),
     output_n_indents(Indent, !IO),
     io.write_string("// :- end_module ", !IO),
-    prog_out.write_sym_name(ModuleName, !IO),
+    prog_out.write_sym_name_to_cur_stream(ModuleName, !IO),
     io.write_string(".\n", !IO).
 
 %---------------------------------------------------------------------------%

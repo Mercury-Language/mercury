@@ -258,9 +258,9 @@ accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Accumulators introduced into ", !IO),
-                write_pred_id(!.ModuleInfo, PredId, !IO),
-                io.write_string("\n", !IO)
+                PredStr = pred_id_to_string(!.ModuleInfo, PredId),
+                io.format("%% Accumulators introduced into %s\n",
+                    [s(PredStr)], !IO)
             )
         ;
             VeryVerbose = no

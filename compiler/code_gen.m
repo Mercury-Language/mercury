@@ -196,8 +196,9 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
             ( if should_trace_code_gen(!.CI) then
                 io.format("\nGOAL FINISH: %s\n", [s(GoalDesc)], !IO),
                 Instrs = cord.list(Code),
-                write_instrs(Instrs, no, auto_comments, !IO),
-                io.flush_output(!IO)
+                io.output_stream(Stream, !IO),
+                write_instrs(Stream, Instrs, no, auto_comments, !IO),
+                io.flush_output(Stream, !IO)
             else
                 true
             )

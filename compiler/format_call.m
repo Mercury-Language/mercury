@@ -391,8 +391,9 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
     globals.set_option(dump_hlds_options, string("vxP"), Globals0, Globals),
     OutInfo = init_hlds_out_info(Globals, output_debug),
     trace [io(!IO), compiletime(flag("debug_format_call"))] (
-        io.write_string("\n\nBEFORE TRANSFORM:\n", !IO),
-        write_goal(OutInfo, ModuleInfo, !.VarSet, print_name_and_num,
+        io.output_stream(Stream, !IO),
+        io.write_string(Stream, "\n\nBEFORE TRANSFORM:\n", !IO),
+        write_goal(OutInfo, Stream, ModuleInfo, !.VarSet, print_name_and_num,
             0, "\n", Goal1, !IO)
     ),
 
@@ -434,9 +435,10 @@ analyze_and_optimize_format_calls(ModuleInfo, GenImplicitStreamWarnings,
             NeededVars0, _NeededVars, ToDeleteVars0, _ToDeleteVars,
             ToDeleteGoals0, _ToDeleteGoals),
         trace [io(!IO), compiletime(flag("debug_format_call"))] (
-            io.write_string("\n\nAFTER TRANSFORM:\n", !IO),
-            write_goal(OutInfo, ModuleInfo, !.VarSet, print_name_and_num,
-                0, "\n", Goal, !IO)
+            io.output_stream(Stream, !IO),
+            io.write_string(Stream, "\n\nAFTER TRANSFORM:\n", !IO),
+            write_goal(OutInfo, Stream, ModuleInfo, !.VarSet,
+                print_name_and_num, 0, "\n", Goal, !IO)
         ),
         MaybeGoal = yes(Goal)
     ).
@@ -1096,11 +1098,12 @@ get_conj_map(ConjMaps, ConjId) = ConjMap :-
 
 add_to_string_map(ConjId, Var, StringState, !ConjMaps) :-
     trace [io(!IO), compiletime(flag("debug_format_call"))] (
-        io.write_string("adding to string map: ", !IO),
-        io.write(Var, !IO),
-        io.write_string(" -> ", !IO),
-        io.write(StringState, !IO),
-        io.nl(!IO)
+        io.output_stream(Stream, !IO),
+        io.write_string(Stream, "adding to string map: ", !IO),
+        io.write(Stream, Var, !IO),
+        io.write_string(Stream, " -> ", !IO),
+        io.write(Stream, StringState, !IO),
+        io.nl(Stream, !IO)
     ),
     ( if map.search(!.ConjMaps, ConjId, ConjMap0) then
         ConjMap0 = conj_map(StringMap0, ListMap, ElementMap, EqvMap),
@@ -1118,11 +1121,12 @@ add_to_string_map(ConjId, Var, StringState, !ConjMaps) :-
 
 add_to_list_map(ConjId, Var, ListState, !ConjMaps) :-
     trace [io(!IO), compiletime(flag("debug_format_call"))] (
-        io.write_string("adding to list map: ", !IO),
-        io.write(Var, !IO),
-        io.write_string(" -> ", !IO),
-        io.write(ListState, !IO),
-        io.nl(!IO)
+        io.output_stream(Stream, !IO),
+        io.write_string(Stream, "adding to list map: ", !IO),
+        io.write(Stream, Var, !IO),
+        io.write_string(Stream, " -> ", !IO),
+        io.write(Stream, ListState, !IO),
+        io.nl(Stream, !IO)
     ),
     ( if map.search(!.ConjMaps, ConjId, ConjMap0) then
         ConjMap0 = conj_map(StringMap, ListMap0, ElementMap, EqvMap),
@@ -1140,11 +1144,12 @@ add_to_list_map(ConjId, Var, ListState, !ConjMaps) :-
 
 add_to_element_map(ConjId, Var, Element, !ConjMaps) :-
     trace [io(!IO), compiletime(flag("debug_format_call"))] (
-        io.write_string("adding to elemnt map: ", !IO),
-        io.write(Var, !IO),
-        io.write_string(" -> ", !IO),
-        io.write(Element, !IO),
-        io.nl(!IO)
+        io.output_stream(Stream, !IO),
+        io.write_string(Stream, "adding to elemnt map: ", !IO),
+        io.write(Stream, Var, !IO),
+        io.write_string(Stream, " -> ", !IO),
+        io.write(Stream, Element, !IO),
+        io.nl(Stream, !IO)
     ),
     ( if map.search(!.ConjMaps, ConjId, ConjMap0) then
         ConjMap0 = conj_map(StringMap, ListMap, ElementMap0, EqvMap),

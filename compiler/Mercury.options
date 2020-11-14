@@ -89,19 +89,53 @@ MCFLAGS-check_hlds.modes                  = --inline-vars-threshold 10000
 MCFLAGS-check_hlds.unique_modes           = --inline-vars-threshold 10000
 
 MCFLAGS-libs.process_util                 += --no-ansi-c
-MCFLAGS-make.module_dep_file              = --no-ansi-c
-MCFLAGS-make.module_target                = --no-ansi-c
-MCFLAGS-make.program_target               = --no-ansi-c
-MCFLAGS-make.util                         = --no-ansi-c --no-halt-at-warn
+MCFLAGS-make.module_dep_file              += --no-ansi-c
+MCFLAGS-make.module_target                += --no-ansi-c
+MCFLAGS-make.program_target               += --no-ansi-c
+MCFLAGS-make.util                         += --no-ansi-c --no-halt-at-warn
 
 # These modules provide general-purpose wrappers around string.format
 # in which the format strings are known only by their callers.
 MCFLAGS-transform_hlds.pd_debug           = --no-warn-unknown-format-calls
 MCFLAGS-parse_tree.parse_tree_out_info    = --no-warn-unknown-format-calls
 
-MCFLAGS-libs.mmakefiles               = --warn-implicit-stream-calls
-MCFLAGS-parse_tree.write_deps_file    = --warn-implicit-stream-calls
-MCFLAGS-hlds.du_type_layout           = --warn-implicit-stream-calls
+MCFLAGS-backend_lib.c_util                += --warn-implicit-stream-calls
+MCFLAGS-check_hlds.delay_partial_inst     += --warn-implicit-stream-calls
+MCFLAGS-check_hlds.simplify.format_call   += --warn-implicit-stream-calls
+MCFLAGS-check_hlds.type_assign            += --warn-implicit-stream-calls
+MCFLAGS-hlds.du_type_layout               += --warn-implicit-stream-calls
+MCFLAGS-hlds.hlds_dependency_graph        += --warn-implicit-stream-calls
+MCFLAGS-hlds.hlds_out_goal                += --warn-implicit-stream-calls
+MCFLAGS-hlds.hlds_out_mode                += --warn-implicit-stream-calls
+MCFLAGS-hlds.hlds_out_module              += --warn-implicit-stream-calls
+MCFLAGS-hlds.hlds_out_pred                += --warn-implicit-stream-calls
+MCFLAGS-hlds.hlds_out_util                += --warn-implicit-stream-calls
+MCFLAGS-libs.mmakefiles                   += --warn-implicit-stream-calls
+MCFLAGS-ll_backend.code_loc_dep           += --warn-implicit-stream-calls
+MCFLAGS-ll_backend.layout_out             += --warn-implicit-stream-calls
+MCFLAGS-ll_backend.llds_out_code_addr     += --warn-implicit-stream-calls
+MCFLAGS-ll_backend.llds_out_data          += --warn-implicit-stream-calls
+MCFLAGS-ll_backend.llds_out_file          += --warn-implicit-stream-calls
+MCFLAGS-ll_backend.llds_out_global        += --warn-implicit-stream-calls
+MCFLAGS-ll_backend.llds_out_instr         += --warn-implicit-stream-calls
+MCFLAGS-ll_backend.llds_out_util          += --warn-implicit-stream-calls
+MCFLAGS-ll_backend.opt_debug              += --warn-implicit-stream-calls
+MCFLAGS-ll_backend.rtti_out               += --warn-implicit-stream-calls
+MCFLAGS-parse_tree.mercury_to_mercury     += --warn-implicit-stream-calls
+MCFLAGS-parse_tree.parse_tree_out         += --warn-implicit-stream-calls
+MCFLAGS-parse_tree.parse_tree_out_clause  += --warn-implicit-stream-calls
+MCFLAGS-parse_tree.parse_tree_out_info    += --warn-implicit-stream-calls
+MCFLAGS-parse_tree.parse_tree_out_inst    += --warn-implicit-stream-calls
+MCFLAGS-parse_tree.parse_tree_out_pragma  += --warn-implicit-stream-calls
+MCFLAGS-parse_tree.parse_tree_out_pred_decl += --warn-implicit-stream-calls
+MCFLAGS-parse_tree.parse_tree_out_term    += --warn-implicit-stream-calls
+MCFLAGS-parse_tree.parse_tree_out_type-repn += --warn-implicit-stream-calls
+MCFLAGS-parse_tree.write_deps_file        += --warn-implicit-stream-calls
+MCFLAGS-recompilation                     += --warn-implicit-stream-calls
+MCFLAGS-recompilation.usage               += --warn-implicit-stream-calls
+MCFLAGS-recompilation.version             += --warn-implicit-stream-calls
+MCFLAGS-transform_hlds.intermod           += --warn-implicit-stream-calls
+MCFLAGS-transform_hlds.unneeded_code      += --warn-implicit-stream-calls
 
 # Keep all modules' contents in a consistent order, except these (for now).
 MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-inconsistent-pred-order-clauses

@@ -54,7 +54,8 @@
 
 :- func term_to_timestamp(term(T)) = timestamp is semidet.
 
-:- pred write_version_number(version_number::in, io::di, io::uo) is det.
+:- pred write_version_number(io.text_output_stream::in, version_number::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -305,10 +306,10 @@ term_to_version_number(Term) = term_to_timestamp(Term).
 term_to_timestamp(term.functor(term.string(TimestampString), [], _)) =
     string_to_timestamp(TimestampString).
 
-write_version_number(VersionNumber, !IO) :-
-    io.write_string("""", !IO),
-    io.write_string(timestamp_to_string(VersionNumber), !IO),
-    io.write_string("""", !IO).
+write_version_number(Stream, VersionNumber, !IO) :-
+    io.write_string(Stream, """", !IO),
+    io.write_string(Stream, timestamp_to_string(VersionNumber), !IO),
+    io.write_string(Stream, """", !IO).
 
 %-----------------------------------------------------------------------------%
 

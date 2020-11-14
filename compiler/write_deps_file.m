@@ -2439,7 +2439,9 @@ maybe_output_module_order(Globals, Module, DepsOrdering, !IO) :-
 
 write_module_scc(Stream, SCC0, !IO) :-
     set.to_sorted_list(SCC0, SCC),
-    io.write_list(Stream, SCC, "\n", prog_out.write_sym_name, !IO).
+    % XXX This is suboptimal (the stream should be specified once, not twice),
+    % but in the absence of a test case, I (zs) am leaving it alone for now.
+    io.write_list(Stream, SCC, "\n", prog_out.write_sym_name(Stream), !IO).
 
 %---------------------------------------------------------------------------%
 

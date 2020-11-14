@@ -166,7 +166,7 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
         VeryVerbose = yes,
         trace [io(!IO)] (
             io.write_string("% Detecting common deconstructions for ", !IO),
-            write_pred_id(!.ModuleInfo, PredId, !IO),
+            io.write_string(pred_id_to_string(!.ModuleInfo, PredId), !IO),
             io.write_string("\n", !IO)
         )
     ;
@@ -199,7 +199,7 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
             VeryVerbose = yes,
             trace [io(!IO)] (
                 io.write_string("% Repeating mode check for ", !IO),
-                write_pred_id(!.ModuleInfo, PredId, !IO),
+                io.write_string(pred_id_to_string(!.ModuleInfo, PredId), !IO),
                 io.write_string("\n", !IO)
             )
         ;
@@ -228,7 +228,7 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
             VeryVerbose = yes,
             trace [io(!IO)] (
                 io.write_string("% Repeating switch detection for ", !IO),
-                write_pred_id(!.ModuleInfo, PredId, !IO),
+                io.write_string(pred_id_to_string(!.ModuleInfo, PredId), !IO),
                 io.write_string("\n", !IO)
             )
         ;
@@ -256,7 +256,7 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
             trace [io(!IO)] (
                 io.write_string("% Repeating common " ++
                     "deconstruction detection for ", !IO),
-                write_pred_id(!.ModuleInfo, PredId, !IO),
+                io.write_string(pred_id_to_string(!.ModuleInfo, PredId), !IO),
                 io.write_string("\n", !IO)
             )
         ;

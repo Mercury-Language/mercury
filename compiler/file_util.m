@@ -96,8 +96,12 @@
     % and error messages if the file cannot be opened.
     %
 :- pred output_to_file(globals::in, string::in,
-    pred(list(string), io, io)::in(pred(out, di, uo) is det), bool::out,
-    io::di, io::uo) is det.
+    pred(list(string), io, io)::in(pred(out, di, uo) is det),
+    bool::out, io::di, io::uo) is det.
+:- pred output_to_file_stream(globals::in, string::in,
+    pred(io.text_output_stream, list(string), io, io)::
+        in(pred(in, out, di, uo) is det),
+    bool::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -360,7 +364,7 @@ output_to_file(Globals, FileName, Action, Succeeded, !IO) :-
             ;
                 Errors = [_ | _],
                 maybe_write_string(Verbose, "\n", !IO),
-                foldl(report_error, Errors, !IO),
+                list.foldl(report_error, Errors, !IO),
                 Succeeded = no
             )
         ;
@@ -370,8 +374,53 @@ output_to_file(Globals, FileName, Action, Succeeded, !IO) :-
     ;
         Res = error(_),
         maybe_write_string(Verbose, "\n", !IO),
-        string.append_list(["can't open file `", FileName, "' for output."],
-            ErrorMessage),
+        ErrorMessage =
+            string.format("can't open file `%s' for output.", [s(FileName)]),
+        report_error(ErrorMessage, !IO),
+        Succeeded = no
+    ).
+
+output_to_file_stream(Globals, FileName, Action0, Succeeded, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+    maybe_write_string(Verbose, "% Writing to file `", !IO),
+    maybe_write_string(Verbose, FileName, !IO),
+    maybe_write_string(Verbose, "'...\n", !IO),
+    maybe_flush_output(Verbose, !IO),
+    io.open_output(FileName, Res, !IO),
+    (
+        Res = ok(FileStream),
+        Action =
+            ( pred(E::out, S0::di, S::uo) is det :-
+                call(Action0, FileStream, E, S0, S)
+            ),
+        promise_equivalent_solutions [TryResult, !:IO] (
+            try_io(Action, TryResult, !IO)
+        ),
+        io.close_output(FileStream, !IO),
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO),
+        maybe_flush_output(Verbose, !IO),
+        (
+            TryResult = succeeded(Errors),
+            (
+                Errors = [],
+                Succeeded = yes
+            ;
+                Errors = [_ | _],
+                maybe_write_string(Verbose, "\n", !IO),
+                list.foldl(report_error, Errors, !IO),
+                Succeeded = no
+            )
+        ;
+            TryResult = exception(_),
+            rethrow(TryResult)
+        )
+    ;
+        Res = error(_),
+        maybe_write_string(Verbose, "\n", !IO),
+        ErrorMessage =
+            string.format("can't open file `%s' for output.", [s(FileName)]),
         report_error(ErrorMessage, !IO),
         Succeeded = no
     ).

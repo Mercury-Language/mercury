@@ -395,15 +395,13 @@ maybe_write_scc_procs(SCC, ModuleInfo, _, !IO) :-
 
 write_scc_procs_2([], _, !IO).
 write_scc_procs_2([PPId | PPIds], ModuleInfo, !IO) :-
-    io.write_char('\t', !IO),
-    write_pred_proc_id(ModuleInfo, PPId, !IO),
-    io.nl(!IO),
+    PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+    io.format("\t%s\n", [s(PPIdStr)], !IO),
     write_scc_procs_2(PPIds, ModuleInfo, !IO).
 
 maybe_write_proc_name(PPId, String, ModuleInfo, _, !IO) :-
-    io.write_string(String, !IO),
-    write_pred_proc_id(ModuleInfo, PPId, !IO),
-    io.nl(!IO).
+    PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+    io.format("%s%s\n", [s(String), s(PPIdStr)], !IO).
 
 write_size_vars(Varset, Vars, !IO) :-
     WriteSizeVar =

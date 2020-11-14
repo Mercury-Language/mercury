@@ -155,7 +155,7 @@ program_point_init(GoalInfo) = ProgPoint :-
     ProgPoint = pp(Context, RevGoalPath).
 
 dump_program_point(pp(Context, RevGoalPath), !IO):-
-    prog_out.write_context(Context, !IO),
+    prog_out.write_context_to_cur_stream(Context, !IO),
     io.write_string("--", !IO),
     io.write_string(rev_goal_path_to_string(RevGoalPath), !IO).
 

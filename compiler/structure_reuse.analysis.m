@@ -1046,10 +1046,10 @@ structure_reuse_answer_harsher_than_in_analysis_registry(ModuleInfo,
                 runtime(env("HARSHER_ANSWER_CHECK")),
                 io(!IO)
             ] (
-                io.write_string("Structure reuse answer for ", !IO),
-                write_pred_proc_id(ModuleInfo, ReusePPId, !IO),
-                io.write_string(" has harsher conditions than listed " ++
-                    "in analysis file.\n", !IO),
+                ReusePPIdStr = pred_proc_id_to_string(ModuleInfo, ReusePPId),
+                io.format("Structure reuse answer for %s\n" ++
+                    "has harsher conditions than listed in analysis file.\n",
+                    [s(ReusePPIdStr)], !IO),
                 io.write_string("was: ", !IO),
                 io.write(OldAnswer, !IO),
                 io.nl(!IO),
@@ -1095,9 +1095,9 @@ remove_useless_reuse_proc(ModuleInfo, VeryVerbose, ReuseAsMap, _, PPId,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Removing useless reuse ", !IO),
-                write_pred_proc_id(ModuleInfo, PPId, !IO),
-                io.nl(!IO)
+                PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+                io.format("%% Removing useless reuse %s\n",
+                    [s(PPIdStr)], !IO)
             )
         ;
             VeryVerbose = no

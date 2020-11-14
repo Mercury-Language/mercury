@@ -38,24 +38,27 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred msg(bool::in, int::in, string::in, io::di, io::uo) is det.
+:- pred msg(io.text_output_stream::in, bool::in, int::in, string::in,
+    io::di, io::uo) is det.
 
-    % maybe_write_instrs(OptDebug, AutoComments, MaybeProcLabel, Instrs, !IO):
+    % maybe_write_instrs(Stream, OptDebug, AutoComments, MaybeProcLabel,
+    %   Instrs, !IO):
     %
     % If OptDebug = yes, write out the given list of instructions,
     % Use the value of the auto_comments option to decide whether
     % to include comments in the output.
     %
-:- pred maybe_write_instrs(bool::in, maybe_auto_comments::in,
-    maybe(proc_label)::in, list(instruction)::in, io::di, io::uo) is det.
+:- pred maybe_write_instrs(io.text_output_stream::in, bool::in,
+    maybe_auto_comments::in, maybe(proc_label)::in, list(instruction)::in,
+    io::di, io::uo) is det.
 
-    % write_instrs(MaybeProcLabel, Instrs, AutoComments, !IO):
+    % write_instrs(Stream, MaybeProcLabel, Instrs, AutoComments, !IO):
     %
     % Write out the given list of instructions, together with comments if
     % AutoComments = auto_comments.
     %
-:- pred write_instrs(list(instruction)::in, maybe(proc_label)::in,
-    maybe_auto_comments::in, io::di, io::uo) is det.
+:- pred write_instrs(io.text_output_stream::in, list(instruction)::in,
+    maybe(proc_label)::in, maybe_auto_comments::in, io::di, io::uo) is det.
 
     % Return a string representation of a list of instructions; the string
     % is the same as what write_instrs would print. Returning it as a string
@@ -159,6 +162,7 @@
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
@@ -170,54 +174,55 @@
 :- import_module string.
 :- import_module term.
 
-msg(OptDebug, LabelNo, Msg, !IO) :-
+msg(Stream, OptDebug, LabelNo, Msg, !IO) :-
     (
         OptDebug = yes,
-        io.write_string("\n", !IO),
-        io.write_string(Msg, !IO),
+        io.write_string(Stream, "\n", !IO),
+        io.write_string(Stream, Msg, !IO),
         ( if LabelNo >= 0 then
-            io.write_string(", next label no: ", !IO),
-            io.write_int(LabelNo, !IO)
+            io.write_string(Stream, ", next label no: ", !IO),
+            io.write_int(Stream, LabelNo, !IO)
         else
             true
         ),
-        io.write_string("\n", !IO)
+        io.write_string(Stream, "\n", !IO)
     ;
         OptDebug = no
     ).
 
-maybe_write_instrs(OptDebug, AutoComments, MaybeProcLabel, Instrs, !IO) :-
+maybe_write_instrs(Stream, OptDebug, AutoComments, MaybeProcLabel,
+        Instrs, !IO) :-
     (
         OptDebug = yes,
-        write_instrs(Instrs, MaybeProcLabel, AutoComments, !IO)
+        write_instrs(Stream, Instrs, MaybeProcLabel, AutoComments, !IO)
     ;
         OptDebug = no
     ).
 
-write_instrs([], _MaybeProcLabel, _AutoComments, !IO).
-write_instrs([Instr | Instrs], MaybeProcLabel, AutoComments, !IO) :-
+write_instrs(_, [], _MaybeProcLabel, _AutoComments, !IO).
+write_instrs(Stream, [Instr | Instrs], MaybeProcLabel, AutoComments, !IO) :-
     Instr = llds_instr(Uinstr, Comment),
     ( if Uinstr = label(_) then
         InstrStr = dump_instr(MaybeProcLabel, AutoComments, Uinstr),
-        io.format("%s\n", [s(InstrStr)], !IO)
+        io.format(Stream, "%s\n", [s(InstrStr)], !IO)
     else if Uinstr = comment(InstrComment) then
         InstrCommentLines0 = string.split_at_char('\n', InstrComment),
         InstrCommentLines =
             list.map(add_instr_comment_prefix, InstrCommentLines0),
-        io.write_list(InstrCommentLines, "", io.write_string, !IO)
+        write_out_list(add_string, "", InstrCommentLines, Stream, !IO)
     else
         InstrStr = dump_instr(MaybeProcLabel, AutoComments, Uinstr),
-        io.format("    %s\n", [s(InstrStr)], !IO)
+        io.format(Stream, "    %s\n", [s(InstrStr)], !IO)
     ),
     ( if
         AutoComments = auto_comments,
         Comment \= ""
     then
-        io.format("         %% %s\n", [s(Comment)], !IO)
+        io.format(Stream, "         %% %s\n", [s(Comment)], !IO)
     else
         true
     ),
-    write_instrs(Instrs, MaybeProcLabel, AutoComments, !IO).
+    write_instrs(Stream, Instrs, MaybeProcLabel, AutoComments, !IO).
 
 dump_instrs(_MaybeProcLabel, _AutoComments, []) = "".
 dump_instrs(MaybeProcLabel, AutoComments, [Instr | Instrs]) = Str :-

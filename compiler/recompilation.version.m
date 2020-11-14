@@ -34,7 +34,8 @@
 :- pred compute_version_numbers(timestamp::in, parse_tree_int::in,
     maybe(parse_tree_int)::in, version_numbers::out) is det.
 
-:- pred write_version_numbers(version_numbers::in, io::di, io::uo) is det.
+:- pred write_version_numbers(io.text_output_stream::in, version_numbers::in,
+    io::di, io::uo) is det.
 
     % The version number for the format of the version numbers
     % written to the interface files.
@@ -1373,7 +1374,7 @@ class_methods_are_unchanged([Decl1 | Decls1], [Decl2 | Decls2]) :-
 
 %-----------------------------------------------------------------------------%
 
-write_version_numbers(AllVersionNumbers, !IO) :-
+write_version_numbers(Stream, AllVersionNumbers, !IO) :-
     AllVersionNumbers = version_numbers(VersionNumbers,
         InstanceVersionNumbers),
     VersionNumbersList = list.filter_map(
@@ -1383,9 +1384,12 @@ write_version_numbers(AllVersionNumbers, !IO) :-
         ),
         [type_abstract_item, type_body_item, mode_item, inst_item,
             predicate_item, function_item, typeclass_item]),
-    io.write_string("{\n\t", !IO),
-    io.write_list(VersionNumbersList, ",\n\t",
-        write_item_type_and_versions, !IO),
+    io.write_string(Stream, "{\n\t", !IO),
+    % XXX Specifying the stream to print the items and the separators
+    % is suboptimal, but in the absence of active work on smart
+    % recompilation, we probably don't care.
+    io.write_list(Stream, VersionNumbersList, ",\n\t",
+        write_item_type_and_versions(Stream), !IO),
     ( if map.is_empty(InstanceVersionNumbers) then
         true
     else
@@ -1393,51 +1397,58 @@ write_version_numbers(AllVersionNumbers, !IO) :-
             VersionNumbersList = []
         ;
             VersionNumbersList = [_ | _],
-            io.write_string(",\n\t", !IO)
+            io.write_string(Stream, ",\n\t", !IO)
         ),
-        io.write_string("instance(", !IO),
+        io.write_string(Stream, "instance(", !IO),
         map.to_assoc_list(InstanceVersionNumbers, InstanceAL),
-        io.write_list(InstanceAL, ",\n\n\t",
-            write_symname_arity_version_number, !IO),
-        io.write_string(")\n\t", !IO)
+        % XXX Specifying the stream to print the items and the separators
+        % is suboptimal, but in the absence of active work on smart
+        % recompilation, we probably don't care.
+        io.write_list(Stream, InstanceAL, ",\n\n\t",
+            write_symname_arity_version_number(Stream), !IO),
+        io.write_string(Stream, ")\n\t", !IO)
     ),
-    io.write_string("\n}", !IO).
+    io.write_string(Stream, "\n}", !IO).
 
-:- pred write_item_type_and_versions(
+:- pred write_item_type_and_versions(io.text_output_stream::in,
     pair(item_type, map(pair(string, int), version_number))::in,
     io::di, io::uo) is det.
 
-write_item_type_and_versions(ItemType - ItemVersions, !IO) :-
+write_item_type_and_versions(Stream, ItemType - ItemVersions, !IO) :-
     string_to_item_type(ItemTypeStr, ItemType),
-    io.write_string(ItemTypeStr, !IO),
-    io.write_string("(\n\t\t", !IO),
+    io.write_string(Stream, ItemTypeStr, !IO),
+    io.write_string(Stream, "(\n\t\t", !IO),
     map.to_assoc_list(ItemVersions, ItemVersionsList),
-    io.write_list(ItemVersionsList, ",\n\t\t",
-        write_name_arity_version_number, !IO),
-    io.write_string("\n\t)", !IO).
+    % XXX Specifying the stream to print the items and the separators
+    % is suboptimal, but in the absence of active work on smart
+    % recompilation, we probably don't care.
+    io.write_list(Stream, ItemVersionsList, ",\n\t\t",
+        write_name_arity_version_number(Stream), !IO),
+    io.write_string(Stream, "\n\t)", !IO).
 
-:- pred write_name_arity_version_number(
+:- pred write_name_arity_version_number(io.text_output_stream::in,
     pair(pair(string, int), version_number)::in, io::di, io::uo) is det.
 
-write_name_arity_version_number(NameArity - VersionNumber, !IO) :-
+write_name_arity_version_number(Stream, NameArity - VersionNumber, !IO) :-
     NameArity = Name - Arity,
     mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-        unqualified(Name), !IO),
-    io.write_string("/", !IO),
-    io.write_int(Arity, !IO),
-    io.write_string(" - ", !IO),
-    write_version_number(VersionNumber, !IO).
+        unqualified(Name), Stream, !IO),
+    io.write_string(Stream, "/", !IO),
+    io.write_int(Stream, Arity, !IO),
+    io.write_string(Stream, " - ", !IO),
+    write_version_number(Stream, VersionNumber, !IO).
 
-:- pred write_symname_arity_version_number(
+:- pred write_symname_arity_version_number(io.text_output_stream::in,
     pair(item_name, version_number)::in, io::di, io::uo) is det.
 
-write_symname_arity_version_number(ItemName - VersionNumber, !IO) :-
+write_symname_arity_version_number(Stream, ItemName - VersionNumber, !IO) :-
     ItemName = item_name(SymName, Arity),
-    mercury_output_bracketed_sym_name_ngt(next_to_graphic_token, SymName, !IO),
-    io.write_string("/", !IO),
-    io.write_int(Arity, !IO),
-    io.write_string(" - ", !IO),
-    write_version_number(VersionNumber, !IO).
+    mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
+        SymName, Stream, !IO),
+    io.write_string(Stream, "/", !IO),
+    io.write_int(Stream, Arity, !IO),
+    io.write_string(Stream, " - ", !IO),
+    write_version_number(Stream, VersionNumber, !IO).
 
 %-----------------------------------------------------------------------------%
 

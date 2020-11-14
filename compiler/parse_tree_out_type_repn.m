@@ -35,7 +35,7 @@
     % limited length lines.
     %
 :- pred mercury_output_item_type_repn(merc_out_info::in,
-    item_type_repn_info::in, io::di, io::uo) is det.
+    io.text_output_stream::in, item_type_repn_info::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -43,8 +43,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_foreign_type_assertion(foreign_type_assertion::in,
-    io::di, io::uo) is det.
+:- func foreign_type_assertion_to_string(foreign_type_assertion) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -69,210 +68,220 @@
 
 %---------------------------------------------------------------------------%
 
-mercury_output_item_type_repn(Info, ItemTypeRepn, !IO) :-
+mercury_output_item_type_repn(Info, Stream, ItemTypeRepn, !IO) :-
     ItemTypeRepn = item_type_repn_info(TypeCtorSymName0, TypeParams, RepnInfo,
         TVarSet, Context, _SeqNum),
-    io.write_string(":- type_representation(", !IO),
+    io.write_string(Stream, ":- type_representation(", !IO),
     maybe_unqualify_sym_name(Info, TypeCtorSymName0, TypeCtorSymName),
     Args = list.map((func(V) = term.variable(V, Context)), TypeParams),
     construct_qualified_term_with_context(TypeCtorSymName, Args, Context,
         TypeTerm),
     mercury_output_term_nq(TVarSet, print_num_only, next_to_graphic_token,
-        TypeTerm, !IO),
-    io.write_string(",", !IO),
+        TypeTerm, Stream, !IO),
+    io.write_string(Stream, ",", !IO),
     (
         RepnInfo = tcrepn_is_eqv_to(EqvType),
-        io.write_string(" is_eqv_to(", !IO),
-        mercury_output_type(TVarSet, print_num_only, EqvType, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, " is_eqv_to(", !IO),
+        mercury_output_type(TVarSet, print_num_only, EqvType, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         RepnInfo = tcrepn_is_word_aligned_ptr,
-        io.write_string(" is_word_aligned_ptr", !IO)
+        io.write_string(Stream, " is_word_aligned_ptr", !IO)
     ;
         RepnInfo = tcrepn_du(DuRepn),
         TypeRepnFor = get_type_repn_for(Info),
         (
             TypeRepnFor = type_repn_for_machines,
-            io.write_string(" du_repn(", !IO),
-            mercury_output_du_type_repn(TypeRepnFor, 2, TVarSet, DuRepn, !IO),
-            io.write_string(")", !IO)
+            io.write_string(Stream, " du_repn(", !IO),
+            mercury_output_du_type_repn(Stream, TypeRepnFor, 2,
+                TVarSet, DuRepn, !IO),
+            io.write_string(Stream, ")", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
             I = indent(1),
-            io.format("\n%sdu_repn(", [s(I)], !IO),
-            mercury_output_du_type_repn(TypeRepnFor, 2, TVarSet, DuRepn, !IO),
-            io.format("\n%s)", [s(I)], !IO)
+            io.format(Stream, "\n%sdu_repn(", [s(I)], !IO),
+            mercury_output_du_type_repn(Stream, TypeRepnFor, 2,
+                TVarSet, DuRepn, !IO),
+            io.format(Stream, "\n%s)", [s(I)], !IO)
         )
     ;
         RepnInfo = tcrepn_foreign(MaybeCJCsRepn),
         TypeRepnFor = get_type_repn_for(Info),
         (
             TypeRepnFor = type_repn_for_machines,
-            io.write_string(" foreign_type_repn(", !IO),
-            mercury_output_c_j_cs_repn(TypeRepnFor, 2, MaybeCJCsRepn, !IO),
-            io.write_string(")", !IO)
+            io.write_string(Stream, " foreign_type_repn(", !IO),
+            mercury_output_c_j_cs_repn(Stream, TypeRepnFor, 2,
+                MaybeCJCsRepn, !IO),
+            io.write_string(Stream, ")", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
             I = indent(1),
-            io.format("\n%sforeign_type_repn(\n", [s(I)], !IO),
-            mercury_output_c_j_cs_repn(TypeRepnFor, 2, MaybeCJCsRepn, !IO),
-            io.format("\n%s)", [s(I)], !IO)
+            io.format(Stream, "\n%sforeign_type_repn(\n", [s(I)], !IO),
+            mercury_output_c_j_cs_repn(Stream, TypeRepnFor, 2,
+                MaybeCJCsRepn, !IO),
+            io.format(Stream, "\n%s)", [s(I)], !IO)
         )
     ),
-    io.write_string(").\n", !IO).
+    io.write_string(Stream, ").\n", !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_du_type_repn(type_repn_for::in, int::in, tvarset::in,
-    du_repn::in, io::di, io::uo) is det.
+:- pred mercury_output_du_type_repn(io.text_output_stream::in,
+    type_repn_for::in, int::in, tvarset::in, du_repn::in,
+    io::di, io::uo) is det.
 
-mercury_output_du_type_repn(TypeRepnFor, Indent, TVarSet, DuRepn, !IO) :-
+mercury_output_du_type_repn(Stream, TypeRepnFor, Indent, TVarSet,
+        DuRepn, !IO) :-
     (
         DuRepn = dur_direct_dummy(DummyRepn),
-        mercury_output_du_direct_dummy(TypeRepnFor, Indent, DummyRepn, !IO)
+        mercury_output_du_direct_dummy(Stream, TypeRepnFor, Indent,
+            DummyRepn, !IO)
     ;
         DuRepn = dur_enum(EnumRepn),
-        mercury_output_du_enum(TypeRepnFor, Indent, EnumRepn, !IO)
+        mercury_output_du_enum(Stream, TypeRepnFor, Indent, EnumRepn, !IO)
     ;
         DuRepn = dur_notag(NotagRepn),
-        mercury_output_du_notag(TypeRepnFor, Indent, TVarSet, NotagRepn, !IO)
+        mercury_output_du_notag(Stream, TypeRepnFor, Indent, TVarSet,
+            NotagRepn, !IO)
     ;
         DuRepn = dur_gen_only_functor(OnlyFunctorRepn),
-        mercury_output_du_only_functor(TypeRepnFor, Indent, TVarSet,
+        mercury_output_du_only_functor(Stream, TypeRepnFor, Indent, TVarSet,
             OnlyFunctorRepn, !IO)
     ;
         DuRepn = dur_gen_more_functors(MoreFunctorsRepn),
-        mercury_output_du_more_functors(TypeRepnFor, Indent, TVarSet,
+        mercury_output_du_more_functors(Stream, TypeRepnFor, Indent, TVarSet,
             MoreFunctorsRepn, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_du_direct_dummy(type_repn_for::in, int::in,
-    direct_dummy_repn::in, io::di, io::uo) is det.
+:- pred mercury_output_du_direct_dummy(io.text_output_stream::in,
+    type_repn_for::in, int::in, direct_dummy_repn::in, io::di, io::uo) is det.
 
-mercury_output_du_direct_dummy(TypeRepnFor, Indent, DummyRepn, !IO) :-
+mercury_output_du_direct_dummy(Stream, TypeRepnFor, Indent, DummyRepn, !IO) :-
     DummyRepn = direct_dummy_repn(FunctorName, MaybeCJCsRepnOrEnum),
     (
         TypeRepnFor = type_repn_for_machines,
-        io.write_string("direct_dummy(", !IO),
-        mercury_output_functor_name(FunctorName, !IO),
-        io.write_string(", ", !IO),
-        mercury_output_c_j_cs_repn_or_enum(TypeRepnFor, Indent + 1,
+        io.write_string(Stream, "direct_dummy(", !IO),
+        mercury_output_functor_name(FunctorName, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        mercury_output_c_j_cs_repn_or_enum(Stream, TypeRepnFor, Indent + 1,
             MaybeCJCsRepnOrEnum, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, ")", !IO)
     ;
         TypeRepnFor = type_repn_for_humans,
         I = indent(Indent),
-        io.format("\n%sdirect_dummy(", [s(I)], !IO),
-        mercury_output_functor_name(FunctorName, !IO),
-        io.write_string(",\n", !IO),
-        mercury_output_c_j_cs_repn_or_enum(TypeRepnFor, Indent + 1,
+        io.format(Stream, "\n%sdirect_dummy(", [s(I)], !IO),
+        mercury_output_functor_name(FunctorName, Stream, !IO),
+        io.write_string(Stream, ",\n", !IO),
+        mercury_output_c_j_cs_repn_or_enum(Stream, TypeRepnFor, Indent + 1,
             MaybeCJCsRepnOrEnum, !IO),
-        io.format("\n%s)", [s(I)], !IO)
+        io.format(Stream, "\n%s)", [s(I)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_du_enum(type_repn_for::in, int::in, enum_repn::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_du_enum(io.text_output_stream::in, type_repn_for::in,
+    int::in, enum_repn::in, io::di, io::uo) is det.
 
-mercury_output_du_enum(TypeRepnFor, Indent, EnumRepn, !IO) :-
+mercury_output_du_enum(Stream, TypeRepnFor, Indent, EnumRepn, !IO) :-
     EnumRepn = enum_repn(Functor1, Functor2, OtherFunctors,
         MaybeCJCsRepnOrEnum),
     (
         TypeRepnFor = type_repn_for_machines,
-        io.write_string("enum(", !IO),
-        mercury_output_functor_name(Functor1, !IO),
-        io.write_string(", ", !IO),
-        mercury_output_functor_name(Functor2, !IO),
-        io.write_string(", ", !IO),
+        io.write_string(Stream, "enum(", !IO),
+        mercury_output_functor_name(Functor1, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        mercury_output_functor_name(Functor2, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
         (
             OtherFunctors = [],
-            io.write_string("[]", !IO)
+            io.write_string(Stream, "[]", !IO)
         ;
             OtherFunctors = [HeadFunctor | TailFunctors],
-            io.write_string("[", !IO),
-            io.write_list([HeadFunctor | TailFunctors], ", ",
-                mercury_output_functor_name, !IO),
-            io.write_string("]", !IO)
+            io.write_string(Stream, "[", !IO),
+            write_out_list(mercury_output_functor_name, ", ",
+                [HeadFunctor | TailFunctors], Stream, !IO),
+            io.write_string(Stream, "]", !IO)
         ),
-        io.write_string(", ", !IO),
-        mercury_output_c_j_cs_repn_or_enum(TypeRepnFor, 0,
+        io.write_string(Stream, ", ", !IO),
+        mercury_output_c_j_cs_repn_or_enum(Stream, TypeRepnFor, 0,
             MaybeCJCsRepnOrEnum, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, ")", !IO)
     ;
         TypeRepnFor = type_repn_for_humans,
         Indent1 = Indent + 1,
         I = indent(Indent),
         NlI1 = nl_indent(Indent1),
-        io.format("\n%senum(", [s(I)], !IO),
-        mercury_output_one_functor_name(NlI1, "", Functor1, !IO),
-        io.write_string(",", !IO),
-        mercury_output_one_functor_name(NlI1, "", Functor2, !IO),
-        io.write_string(",", !IO),
+        io.format(Stream, "\n%senum(", [s(I)], !IO),
+        mercury_output_one_functor_name(NlI1, "", Functor1, Stream, !IO),
+        io.write_string(Stream, ",", !IO),
+        mercury_output_one_functor_name(NlI1, "", Functor2, Stream, !IO),
+        io.write_string(Stream, ",", !IO),
         mercury_output_list_for_humans(Indent1,
             mercury_output_one_functor_name(nl_indent(Indent + 2), ""),
-            OtherFunctors, !IO),
-        io.format(",\n", [], !IO),
-        mercury_output_c_j_cs_repn_or_enum(TypeRepnFor, Indent1,
+            OtherFunctors, Stream, !IO),
+        io.format(Stream, ",\n", [], !IO),
+        mercury_output_c_j_cs_repn_or_enum(Stream, TypeRepnFor, Indent1,
             MaybeCJCsRepnOrEnum, !IO),
-        io.format("\n%s)", [s(I)], !IO)
+        io.format(Stream, "\n%s)", [s(I)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_du_notag(type_repn_for::in, int::in, tvarset::in,
-    notag_repn::in, io::di, io::uo) is det.
+:- pred mercury_output_du_notag(io.text_output_stream::in, type_repn_for::in,
+    int::in, tvarset::in, notag_repn::in, io::di, io::uo) is det.
 
-mercury_output_du_notag(TypeRepnFor, Indent, TVarSet, NotagRepn, !IO) :-
+mercury_output_du_notag(Stream, TypeRepnFor, Indent, TVarSet,
+        NotagRepn, !IO) :-
     NotagRepn = notag_repn(FunctorName, ArgType, MaybeCJCsRepn),
     (
         TypeRepnFor = type_repn_for_machines,
-        io.write_string("notag(", !IO),
-        mercury_output_functor_name(FunctorName, !IO),
-        io.write_string(", ", !IO),
-        mercury_output_type(TVarSet, print_num_only, ArgType, !IO),
-        io.write_string(", ", !IO),
-        mercury_output_c_j_cs_repn(TypeRepnFor, 0, MaybeCJCsRepn, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "notag(", !IO),
+        mercury_output_functor_name(FunctorName, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        mercury_output_type(TVarSet, print_num_only, ArgType, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        mercury_output_c_j_cs_repn(Stream, TypeRepnFor, 0, MaybeCJCsRepn, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         TypeRepnFor = type_repn_for_humans,
         I = indent(Indent),
         I1 = indent(Indent + 1),
-        io.format("\n%snotag(\n%s", [s(I), s(I1)], !IO),
-        mercury_output_functor_name(FunctorName, !IO),
-        io.format(",\n%s", [s(I1)], !IO),
-        mercury_output_type(TVarSet, print_num_only, ArgType, !IO),
-        io.format(",\n", [], !IO),
-        mercury_output_c_j_cs_repn(TypeRepnFor, Indent + 1,
+        io.format(Stream, "\n%snotag(\n%s", [s(I), s(I1)], !IO),
+        mercury_output_functor_name(FunctorName, Stream, !IO),
+        io.format(Stream, ",\n%s", [s(I1)], !IO),
+        mercury_output_type(TVarSet, print_num_only, ArgType, Stream, !IO),
+        io.format(Stream, ",\n", [], !IO),
+        mercury_output_c_j_cs_repn(Stream, TypeRepnFor, Indent + 1,
             MaybeCJCsRepn, !IO),
-        io.format("\n%s)", [s(I)], !IO)
+        io.format(Stream, "\n%s)", [s(I)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_du_only_functor(type_repn_for::in, int::in,
-    tvarset::in, gen_du_only_functor_repn::in, io::di, io::uo) is det.
+:- pred mercury_output_du_only_functor(io.text_output_stream::in,
+    type_repn_for::in, int::in, tvarset::in, gen_du_only_functor_repn::in,
+    io::di, io::uo) is det.
 
-mercury_output_du_only_functor(TypeRepnFor, Indent, TVarSet, OnlyFunctorRepn,
-        !IO) :-
+mercury_output_du_only_functor(Stream, TypeRepnFor, Indent, TVarSet,
+        OnlyFunctorRepn, !IO) :-
     OnlyFunctorRepn = gen_du_only_functor_repn(FunctorName, ArgTypes, CRepns,
         MaybeCJCsRepn),
     (
         TypeRepnFor = type_repn_for_machines,
-        io.write_string("gen_du_only_functor(", !IO),
-        mercury_output_functor_name(FunctorName, !IO),
-        io.write_string(", [", !IO),
-        io.write_list(ArgTypes, ", ",
-            mercury_output_type(TVarSet, print_num_only), !IO),
-        io.write_string("], ", !IO),
+        io.write_string(Stream, "gen_du_only_functor(", !IO),
+        mercury_output_functor_name(FunctorName, Stream, !IO),
+        io.write_string(Stream, ", [", !IO),
+        write_out_list(mercury_output_type(TVarSet, print_num_only),
+            ", ", ArgTypes, Stream, !IO),
+        io.write_string(Stream, "], ", !IO),
         mercury_output_c_repns(TypeRepnFor, 0,
             mercury_output_nonconstant_repn(TypeRepnFor, 0),
-            CRepns, !IO),
-        io.write_string(", ", !IO),
-        mercury_output_c_j_cs_repn(TypeRepnFor, 0, MaybeCJCsRepn, !IO),
-        io.write_string(")", !IO)
+            CRepns, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        mercury_output_c_j_cs_repn(Stream, TypeRepnFor, 0, MaybeCJCsRepn, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         TypeRepnFor = type_repn_for_humans,
         Indent1 = Indent + 1,
@@ -280,180 +289,185 @@ mercury_output_du_only_functor(TypeRepnFor, Indent, TVarSet, OnlyFunctorRepn,
         I = indent(Indent),
         I1 = indent(Indent1),
         NlI2 = nl_indent(Indent2),
-        io.format("\n%sgen_du_only_functor(\n%s", [s(I), s(I1)], !IO),
-        mercury_output_functor_name(FunctorName, !IO),
-        io.format(",", [], !IO),
+        io.format(Stream, "\n%sgen_du_only_functor(\n%s", [s(I), s(I1)], !IO),
+        mercury_output_functor_name(FunctorName, Stream, !IO),
+        io.format(Stream, ",", [], !IO),
         mercury_output_list_for_humans(Indent1,
-            mercury_output_one_type(NlI2, "", TVarSet), ArgTypes, !IO),
-        io.format(",", [], !IO),
+            mercury_output_one_type(NlI2, "", TVarSet), ArgTypes, Stream, !IO),
+        io.format(Stream, ",", [], !IO),
         mercury_output_c_repns(TypeRepnFor, Indent1,
             mercury_output_nonconstant_repn(TypeRepnFor, Indent2),
-            CRepns, !IO),
-        io.format(",\n", [], !IO),
-        mercury_output_c_j_cs_repn(TypeRepnFor, Indent1,
+            CRepns, Stream, !IO),
+        io.format(Stream, ",\n", [], !IO),
+        mercury_output_c_j_cs_repn(Stream, TypeRepnFor, Indent1,
             MaybeCJCsRepn, !IO),
-        io.format("\n%s)", [s(I)], !IO)
+        io.format(Stream, "\n%s)", [s(I)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_du_more_functors(type_repn_for::in, int::in,
-    tvarset::in, gen_du_more_functors_repn::in, io::di, io::uo) is det.
+:- pred mercury_output_du_more_functors(io.text_output_stream::in,
+    type_repn_for::in, int::in, tvarset::in, gen_du_more_functors_repn::in,
+    io::di, io::uo) is det.
 
-mercury_output_du_more_functors(TypeRepnFor, Indent, TVarSet,
+mercury_output_du_more_functors(Stream, TypeRepnFor, Indent, TVarSet,
         MoreFunctorsRepn, !IO) :-
     MoreFunctorsRepn = gen_du_more_functors_repn(Functor1, Functor2,
         OtherFunctors, MaybeCJCsRepn),
     (
         TypeRepnFor = type_repn_for_machines,
-        io.write_string("gen_du_more_functors(", !IO),
-        mercury_output_gen_du_functor_repn(TypeRepnFor, 0, TVarSet,
-            Functor1, !IO),
-        io.write_string(", ", !IO),
-        mercury_output_gen_du_functor_repn(TypeRepnFor, 0, TVarSet,
-            Functor2, !IO),
-        io.write_string(", ", !IO),
+        io.write_string(Stream, "gen_du_more_functors(", !IO),
+        mercury_output_gen_du_functor_repn(TypeRepnFor, 0, TVarSet, Functor1,
+            Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        mercury_output_gen_du_functor_repn(TypeRepnFor, 0, TVarSet, Functor2,
+            Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
         (
             OtherFunctors = [],
-            io.write_string("[]", !IO)
+            io.write_string(Stream, "[]", !IO)
         ;
             OtherFunctors = [HeadFunctor | TailFunctors],
-            io.write_string("[", !IO),
-            io.write_list([HeadFunctor | TailFunctors], ", ",
-                mercury_output_gen_du_functor_repn(TypeRepnFor, 0, TVarSet),
-                !IO),
-            io.write_string("]", !IO)
+            io.write_string(Stream, "[", !IO),
+            write_out_list(
+                mercury_output_gen_du_functor_repn(TypeRepnFor,
+                    0, TVarSet),
+                ", ", [HeadFunctor | TailFunctors], Stream, !IO),
+            io.write_string(Stream, "]", !IO)
         ),
-        io.write_string(", ", !IO),
-        mercury_output_c_j_cs_repn(TypeRepnFor, 0, MaybeCJCsRepn, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, ", ", !IO),
+        mercury_output_c_j_cs_repn(Stream, TypeRepnFor, 0, MaybeCJCsRepn, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         TypeRepnFor = type_repn_for_humans,
         Indent1 = Indent + 1,
         I = indent(Indent),
-        io.format("\n%sgen_du_more_functors(", [s(I)], !IO),
+        io.format(Stream, "\n%sgen_du_more_functors(", [s(I)], !IO),
         mercury_output_gen_du_functor_repn(TypeRepnFor, Indent1, TVarSet,
-            Functor1, !IO),
-        io.format(",", [], !IO),
+            Functor1, Stream, !IO),
+        io.format(Stream, ",", [], !IO),
         mercury_output_gen_du_functor_repn(TypeRepnFor, Indent1, TVarSet,
-            Functor2, !IO),
-        io.format(",", [], !IO),
+            Functor2, Stream, !IO),
+        io.format(Stream, ",", [], !IO),
         mercury_output_list_for_humans(Indent1,
             mercury_output_gen_du_functor_repn(TypeRepnFor, Indent + 2,
                 TVarSet),
-            OtherFunctors, !IO),
-        io.format(",\n", [], !IO),
-        mercury_output_c_j_cs_repn(TypeRepnFor, Indent1,
+            OtherFunctors, Stream, !IO),
+        io.format(Stream, ",\n", [], !IO),
+        mercury_output_c_j_cs_repn(Stream, TypeRepnFor, Indent1,
             MaybeCJCsRepn, !IO),
-        io.format("\n%s)", [s(I)], !IO)
+        io.format(Stream, "\n%s)", [s(I)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred mercury_output_gen_du_functor_repn(type_repn_for::in, int::in,
-    tvarset::in, gen_du_functor_repn::in, io::di, io::uo) is det.
+    tvarset::in, gen_du_functor_repn::in,
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_gen_du_functor_repn(TypeRepnFor, Indent, TVarSet,
-        FunctorRepn, !IO) :-
+mercury_output_gen_du_functor_repn(TypeRepnFor, Indent, TVarSet, FunctorRepn,
+        Stream, !IO) :-
     (
         FunctorRepn = gen_du_constant_functor_repn(FunctorName, ConstantRepns),
         (
             TypeRepnFor = type_repn_for_machines,
-            io.write_string("constant_functor(", !IO),
-            mercury_output_functor_name(FunctorName, !IO),
-            io.write_string(", ", !IO),
+            io.write_string(Stream, "constant_functor(", !IO),
+            mercury_output_functor_name(FunctorName, Stream, !IO),
+            io.write_string(Stream, ", ", !IO),
             mercury_output_c_repns(TypeRepnFor, 0,
                 mercury_output_constant_repn(TypeRepnFor, 0),
-                ConstantRepns, !IO),
-            io.write_string(")", !IO)
+                ConstantRepns, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
             I = indent(Indent),
-            io.format("\n%sconstant_functor(", [s(I)], !IO),
-            mercury_output_functor_name(FunctorName, !IO),
-            io.format(",", [], !IO),
+            io.format(Stream, "\n%sconstant_functor(", [s(I)], !IO),
+            mercury_output_functor_name(FunctorName, Stream, !IO),
+            io.format(Stream, ",", [], !IO),
             Indent1 = Indent + 1,
             mercury_output_c_repns(TypeRepnFor, Indent1,
                 mercury_output_constant_repn(TypeRepnFor, Indent + 2),
-                ConstantRepns, !IO),
-            io.format("\n%s)", [s(I)], !IO)
+                ConstantRepns, Stream, !IO),
+            io.format(Stream, "\n%s)", [s(I)], !IO)
         )
     ;
         FunctorRepn = gen_du_nonconstant_functor_repn(FunctorName,
             ArgTypes, NonConstantRepns),
         (
             TypeRepnFor = type_repn_for_machines,
-            io.write_string("nonconstant_functor(", !IO),
-            mercury_output_functor_name(FunctorName, !IO),
-            io.write_string(", [", !IO),
-            io.write_list(ArgTypes, ", ",
-                mercury_output_type(TVarSet, print_num_only), !IO),
-            io.write_string("], ", !IO),
+            io.write_string(Stream, "nonconstant_functor(", !IO),
+            mercury_output_functor_name(FunctorName, Stream, !IO),
+            io.write_string(Stream, ", [", !IO),
+            write_out_list(mercury_output_type(TVarSet, print_num_only),
+                ", ", ArgTypes, Stream, !IO),
+            io.write_string(Stream, "], ", !IO),
             mercury_output_c_repns(TypeRepnFor, 0,
                 mercury_output_nonconstant_repn(TypeRepnFor, 0),
-                NonConstantRepns, !IO),
-            io.write_string(")", !IO)
+                NonConstantRepns, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
             I = indent(Indent),
-            io.format("\n%snonconstant_functor(", [s(I)], !IO),
-            mercury_output_functor_name(FunctorName, !IO),
-            io.format(",", [], !IO),
+            io.format(Stream, "\n%snonconstant_functor(", [s(I)], !IO),
+            mercury_output_functor_name(FunctorName, Stream, !IO),
+            io.format(Stream, ",", [], !IO),
             Indent1 = Indent + 1,
             Indent2 = Indent + 2,
             NlI2 = nl_indent(Indent2),
             mercury_output_list_for_humans(Indent1,
-                mercury_output_one_type(NlI2, "", TVarSet), ArgTypes, !IO),
-            io.format(",", [], !IO),
+                mercury_output_one_type(NlI2, "", TVarSet),
+                ArgTypes, Stream, !IO),
+            io.format(Stream, ",", [], !IO),
             mercury_output_c_repns(TypeRepnFor, Indent1,
                 mercury_output_nonconstant_repn(TypeRepnFor, Indent2),
-                NonConstantRepns, !IO),
-            io.format("\n%s)", [s(I)], !IO)
+                NonConstantRepns, Stream, !IO),
+            io.format(Stream, "\n%s)", [s(I)], !IO)
         )
     ).
 
 %---------------------%
 
 :- pred mercury_output_constant_repn(type_repn_for::in, int::in,
-    constant_repn::in, io::di, io::uo) is det.
+    constant_repn::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_constant_repn(TypeRepnFor, Indent, ConstantRepn, !IO) :-
+mercury_output_constant_repn(TypeRepnFor, Indent, ConstantRepn, Stream, !IO) :-
     NlI = nl_indent_for_humans_space_for_machines(TypeRepnFor, Indent),
     ConstantRepn = constant_repn(Sectag, SectagWordOrSize),
-    io.format("%sconstant(%u, ", [s(NlI), u(Sectag)], !IO),
-    mercury_output_sectag_word_or_size(SectagWordOrSize, !IO),
-    io.write_string(")", !IO).
+    io.format(Stream, "%sconstant(%u, ", [s(NlI), u(Sectag)], !IO),
+    mercury_output_sectag_word_or_size(SectagWordOrSize, Stream, !IO),
+    io.write_string(Stream, ")", !IO).
 
 %---------------------%
 
 :- pred mercury_output_nonconstant_repn(type_repn_for::in, int::in,
-    nonconstant_repn::in, io::di, io::uo) is det.
+    nonconstant_repn::in, io.text_output_stream::in,io::di, io::uo) is det.
 
-mercury_output_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn, !IO) :-
+mercury_output_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn,
+        Stream, !IO) :-
     (
         NonConstantRepn = ncr_local_cell(CellLocalSectag, OoMLocalArgRepns),
         (
             TypeRepnFor = type_repn_for_machines,
-            io.write_string("local_cell(", !IO),
-            mercury_output_cell_local_sectag(CellLocalSectag, !IO),
-            io.write_string(", [", !IO),
+            io.write_string(Stream, "local_cell(", !IO),
+            mercury_output_cell_local_sectag(CellLocalSectag, Stream, !IO),
+            io.write_string(Stream, ", [", !IO),
             OoMLocalArgRepns =
                 one_or_more(HeadLocalArgRepn, TailLocalArgRepns),
-            io.write_list([HeadLocalArgRepn | TailLocalArgRepns], ", ",
-                mercury_output_local_arg_repn(TypeRepnFor, 0), !IO),
-            io.write_string("])", !IO)
+            write_out_list(mercury_output_local_arg_repn(TypeRepnFor, 0),
+                ", ", [HeadLocalArgRepn | TailLocalArgRepns], Stream, !IO),
+            io.write_string(Stream, "])", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
             I = indent(Indent),
-            io.format("\n%slocal_cell(", [s(I)], !IO),
-            mercury_output_cell_local_sectag(CellLocalSectag, !IO),
-            io.write_string(",", !IO),
+            io.format(Stream, "\n%slocal_cell(", [s(I)], !IO),
+            mercury_output_cell_local_sectag(CellLocalSectag, Stream, !IO),
+            io.write_string(Stream, ",", !IO),
             OoMLocalArgRepns =
                 one_or_more(HeadLocalArgRepn, TailLocalArgRepns),
             mercury_output_list_for_humans(Indent + 1,
                 mercury_output_local_arg_repn(TypeRepnFor, Indent + 2),
-                [HeadLocalArgRepn | TailLocalArgRepns], !IO),
-            io.format("\n%s)", [s(I)], !IO)
+                [HeadLocalArgRepn | TailLocalArgRepns], Stream, !IO),
+            io.format(Stream, "\n%s)", [s(I)], !IO)
         )
     ;
         NonConstantRepn =
@@ -462,26 +476,27 @@ mercury_output_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn, !IO) :-
         PtagUint = uint8.cast_to_uint(PtagUint8),
         (
             TypeRepnFor = type_repn_for_machines,
-            io.format("remote_cell(%u, ", [u(PtagUint)], !IO),
-            mercury_output_cell_remote_sectag(CellRemoteSectag, !IO),
-            io.write_string(", [", !IO),
+            io.format(Stream, "remote_cell(%u, ", [u(PtagUint)], !IO),
+            mercury_output_cell_remote_sectag(CellRemoteSectag, Stream, !IO),
+            io.write_string(Stream, ", [", !IO),
             OoMRemoteArgRepns =
                 one_or_more(HeadRemoteArgRepn, TailRemoteArgRepns),
-            io.write_list([HeadRemoteArgRepn | TailRemoteArgRepns], ", ",
-                mercury_output_remote_arg_repn(TypeRepnFor, 0), !IO),
-            io.write_string("])", !IO)
+            write_out_list(mercury_output_remote_arg_repn(TypeRepnFor, 0),
+                ", ", [HeadRemoteArgRepn | TailRemoteArgRepns], Stream, !IO),
+            io.write_string(Stream, "])", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
             I = indent(Indent),
-            io.format("\n%sremote_cell(%u, ", [s(I), u(PtagUint)], !IO),
-            mercury_output_cell_remote_sectag(CellRemoteSectag, !IO),
-            io.write_string(",", !IO),
+            io.format(Stream, "\n%sremote_cell(%u, ",
+                [s(I), u(PtagUint)], !IO),
+            mercury_output_cell_remote_sectag(CellRemoteSectag, Stream, !IO),
+            io.write_string(Stream, ",", !IO),
             OoMRemoteArgRepns =
                 one_or_more(HeadRemoteArgRepn, TailRemoteArgRepns),
             mercury_output_list_for_humans(Indent + 1,
                 mercury_output_remote_arg_repn(TypeRepnFor, Indent + 2),
-                [HeadRemoteArgRepn | TailRemoteArgRepns], !IO),
-            io.format("\n%s)", [s(I)], !IO)
+                [HeadRemoteArgRepn | TailRemoteArgRepns], Stream, !IO),
+            io.format(Stream, "\n%s)", [s(I)], !IO)
         )
     ;
         NonConstantRepn = ncr_direct_arg(Ptag),
@@ -489,87 +504,90 @@ mercury_output_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn, !IO) :-
         PtagUint = uint8.cast_to_uint(PtagUint8),
         (
             TypeRepnFor = type_repn_for_machines,
-            io.format("direct_arg(%u)", [u(PtagUint)], !IO)
+            io.format(Stream, "direct_arg(%u)", [u(PtagUint)], !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
             NlI = nl_indent(Indent),
-            io.format("%sdirect_arg(%u)", [s(NlI), u(PtagUint)], !IO)
+            io.format(Stream, "%sdirect_arg(%u)", [s(NlI), u(PtagUint)], !IO)
         )
     ).
 
 %---------------------%
 
 :- pred mercury_output_cell_local_sectag(cell_local_sectag::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_cell_local_sectag(CellLocalSectag, !IO) :-
+mercury_output_cell_local_sectag(CellLocalSectag, Stream, !IO) :-
     (
         CellLocalSectag = cell_local_no_sectag,
-        io.write_string("local_no_sectag", !IO)
+        io.write_string(Stream, "local_no_sectag", !IO)
     ;
         CellLocalSectag = cell_local_sectag(Sectag, SectagNumBits),
-        io.format("local_sectag(%u, %u)", [u(Sectag), u(SectagNumBits)], !IO)
+        io.format(Stream, "local_sectag(%u, %u)",
+            [u(Sectag), u(SectagNumBits)], !IO)
     ).
 
 :- pred mercury_output_cell_remote_sectag(cell_remote_sectag::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_cell_remote_sectag(CellLocalSectag, !IO) :-
+mercury_output_cell_remote_sectag(CellLocalSectag, Stream, !IO) :-
     (
         CellLocalSectag = cell_remote_no_sectag,
-        io.write_string("remote_no_sectag", !IO)
+        io.write_string(Stream, "remote_no_sectag", !IO)
     ;
         CellLocalSectag = cell_remote_sectag(Sectag, SectagWordOrSize),
-        io.format("remote_sectag(%u, ", [u(Sectag)], !IO),
-        mercury_output_sectag_word_or_size(SectagWordOrSize, !IO),
-        io.format(")", [], !IO)
+        io.format(Stream, "remote_sectag(%u, ", [u(Sectag)], !IO),
+        mercury_output_sectag_word_or_size(SectagWordOrSize, Stream, !IO),
+        io.format(Stream, ")", [], !IO)
     ).
 
 :- pred mercury_output_sectag_word_or_size(sectag_word_or_size::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_sectag_word_or_size(SectagWordOrSize, !IO) :-
+mercury_output_sectag_word_or_size(SectagWordOrSize, Stream, !IO) :-
     (
         SectagWordOrSize = sectag_rest_of_word,
-        io.write_string("rest", !IO)
+        io.write_string(Stream, "rest", !IO)
     ;
         SectagWordOrSize = sectag_part_of_word(NumBits),
-        io.format("part(%u)", [u(NumBits)], !IO)
+        io.format(Stream, "part(%u)", [u(NumBits)], !IO)
     ).
 
 %---------------------%
 
 :- pred mercury_output_local_arg_repn(type_repn_for::in, int::in,
-    local_arg_repn::in, io::di, io::uo) is det.
+    local_arg_repn::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_local_arg_repn(TypeRepnFor, Indent, LocalArgRepn, !IO) :-
+mercury_output_local_arg_repn(TypeRepnFor, Indent, LocalArgRepn,
+        Stream, !IO) :-
     NlI = nl_indent_for_humans(TypeRepnFor, Indent),
     (
         LocalArgRepn = local_partial(Shift, FillKindSize),
-        io.format("%slocal_partial(%u, %s)",
+        io.format(Stream, "%slocal_partial(%u, %s)",
             [s(NlI), u(Shift), s(fill_kind_size_to_string(FillKindSize))], !IO)
     ;
         LocalArgRepn = local_none,
-        io.format("%slocal_none", [s(NlI)], !IO)
+        io.format(Stream, "%slocal_none", [s(NlI)], !IO)
     ).
 
 :- pred mercury_output_remote_arg_repn(type_repn_for::in, int::in,
-    remote_arg_repn::in, io::di, io::uo) is det.
+    remote_arg_repn::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_remote_arg_repn(TypeRepnFor, Indent, RemoteArgRepn, !IO) :-
+mercury_output_remote_arg_repn(TypeRepnFor, Indent, RemoteArgRepn,
+        Stream, !IO) :-
     NlI = nl_indent_for_humans(TypeRepnFor, Indent),
     (
         RemoteArgRepn = remote_full(ArgOnlyOffset, CellOffset),
         ArgOnlyOffset = arg_only_offset(ArgOnlyOffsetInt),
         CellOffset = cell_offset(CellOffsetInt),
-        io.format("%sfull(%d, %d)",
+        io.format(Stream, "%sfull(%d, %d)",
             [s(NlI), i(ArgOnlyOffsetInt), i(CellOffsetInt)], !IO)
     ;
         RemoteArgRepn = remote_double(ArgOnlyOffset, CellOffset, DoubleKind),
         ArgOnlyOffset = arg_only_offset(ArgOnlyOffsetInt),
         CellOffset = cell_offset(CellOffsetInt),
         double_word_kind_string(DoubleKind, DKStr),
-        io.format("%sdouble(%d, %d, %s)",
+        io.format(Stream, "%sdouble(%d, %d, %s)",
             [s(NlI), i(ArgOnlyOffsetInt), i(CellOffsetInt), s(DKStr)], !IO)
     ;
         (
@@ -583,18 +601,18 @@ mercury_output_remote_arg_repn(TypeRepnFor, Indent, RemoteArgRepn, !IO) :-
         ),
         ArgOnlyOffset = arg_only_offset(ArgOnlyOffsetInt),
         CellOffset = cell_offset(CellOffsetInt),
-        io.format("%spartial_%s(%d, %d, %u, %s)",
+        io.format(Stream, "%spartial_%s(%d, %d, %u, %s)",
             [s(NlI), s(FirstOrShifted), i(ArgOnlyOffsetInt), i(CellOffsetInt),
             u(Shift), s(fill_kind_size_to_string(FillKindSize))], !IO)
     ;
         RemoteArgRepn = remote_none_shifted(ArgOnlyOffset, CellOffset),
         ArgOnlyOffset = arg_only_offset(ArgOnlyOffsetInt),
         CellOffset = cell_offset(CellOffsetInt),
-        io.format("%snone_shifted(%d, %d)",
+        io.format(Stream, "%snone_shifted(%d, %d)",
             [s(NlI), i(ArgOnlyOffsetInt), i(CellOffsetInt)], !IO)
     ;
         RemoteArgRepn = remote_none_nowhere,
-        io.format("%snone_nowhere", [s(NlI)],!IO)
+        io.format(Stream, "%snone_nowhere", [s(NlI)],!IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -616,10 +634,10 @@ fill_kind_size_to_string(FillKindSize) = Str :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_c_j_cs_repn_or_enum(type_repn_for::in, int::in,
-    c_j_cs_enum_repn::in, io::di, io::uo) is det.
+:- pred mercury_output_c_j_cs_repn_or_enum(io.text_output_stream::in,
+    type_repn_for::in, int::in, c_j_cs_enum_repn::in, io::di, io::uo) is det.
 
-mercury_output_c_j_cs_repn_or_enum(TypeRepnFor, Indent,
+mercury_output_c_j_cs_repn_or_enum(Stream, TypeRepnFor, Indent,
         MaybeCJCsRepnOrEnum, !IO) :-
     MaybeCJCsRepnOrEnum = c_java_csharp(MaybeRepnOrEnumC, MaybeRepnOrEnumJava,
         MaybeRepnOrEnumCsharp),
@@ -632,43 +650,43 @@ mercury_output_c_j_cs_repn_or_enum(TypeRepnFor, Indent,
     then
         (
             TypeRepnFor = type_repn_for_machines,
-            io.write_string(" no_c_j_cs", !IO)
+            io.write_string(Stream, " no_c_j_cs", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
-            io.format("%sno_c_j_cs", [s(I)], !IO)
+            io.format(Stream, "%sno_c_j_cs", [s(I)], !IO)
         )
     else
         (
             TypeRepnFor = type_repn_for_machines,
-            io.write_string(" c_j_cs(", !IO),
-            mercury_output_maybe_enum_foreign_repn(TypeRepnFor, Indent1,
-                MaybeRepnOrEnumC, !IO),
-            io.write_string(", ", !IO),
-            mercury_output_maybe_enum_foreign_repn(TypeRepnFor, Indent1,
-                MaybeRepnOrEnumJava, !IO),
-            io.write_string(", ", !IO),
-            mercury_output_maybe_enum_foreign_repn(TypeRepnFor, Indent1,
-                MaybeRepnOrEnumCsharp, !IO),
-            io.write_string(")", !IO)
+            io.write_string(Stream, " c_j_cs(", !IO),
+            mercury_output_maybe_enum_foreign_repn(Stream, TypeRepnFor,
+                Indent1, MaybeRepnOrEnumC, !IO),
+            io.write_string(Stream, ", ", !IO),
+            mercury_output_maybe_enum_foreign_repn(Stream, TypeRepnFor,
+                Indent1, MaybeRepnOrEnumJava, !IO),
+            io.write_string(Stream, ", ", !IO),
+            mercury_output_maybe_enum_foreign_repn(Stream, TypeRepnFor,
+                Indent1, MaybeRepnOrEnumCsharp, !IO),
+            io.write_string(Stream, ")", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
-            io.format("\n%sc_j_cs(\n", [s(I)], !IO),
-            mercury_output_maybe_enum_foreign_repn(TypeRepnFor, Indent1,
-                MaybeRepnOrEnumC, !IO),
-            io.write_string(",\n", !IO),
-            mercury_output_maybe_enum_foreign_repn(TypeRepnFor, Indent1,
-                MaybeRepnOrEnumJava, !IO),
-            io.write_string(",\n", !IO),
-            mercury_output_maybe_enum_foreign_repn(TypeRepnFor, Indent1,
-                MaybeRepnOrEnumCsharp, !IO),
-            io.format("\n%s)", [s(I)], !IO)
+            io.format(Stream, "\n%sc_j_cs(\n", [s(I)], !IO),
+            mercury_output_maybe_enum_foreign_repn(Stream, TypeRepnFor,
+                Indent1, MaybeRepnOrEnumC, !IO),
+            io.write_string(Stream, ",\n", !IO),
+            mercury_output_maybe_enum_foreign_repn(Stream, TypeRepnFor,
+                Indent1, MaybeRepnOrEnumJava, !IO),
+            io.write_string(Stream, ",\n", !IO),
+            mercury_output_maybe_enum_foreign_repn(Stream, TypeRepnFor,
+                Indent1, MaybeRepnOrEnumCsharp, !IO),
+            io.format(Stream, "\n%s)", [s(I)], !IO)
         )
     ).
 
-:- pred mercury_output_c_j_cs_repn(type_repn_for::in, int::in,
-    c_j_cs_repn::in, io::di, io::uo) is det.
+:- pred mercury_output_c_j_cs_repn(io.text_output_stream::in,
+    type_repn_for::in, int::in, c_j_cs_repn::in, io::di, io::uo) is det.
 
-mercury_output_c_j_cs_repn(TypeRepnFor, Indent, MaybeCJCsRepn, !IO) :-
+mercury_output_c_j_cs_repn(Stream, TypeRepnFor, Indent, MaybeCJCsRepn, !IO) :-
     MaybeCJCsRepn = c_java_csharp(MaybeRepnC, MaybeRepnJava, MaybeRepnCsharp),
     ( if
         MaybeRepnC = no,
@@ -677,167 +695,173 @@ mercury_output_c_j_cs_repn(TypeRepnFor, Indent, MaybeCJCsRepn, !IO) :-
     then
         (
             TypeRepnFor = type_repn_for_machines,
-            io.write_string(" no_c_j_cs", !IO)
+            io.write_string(Stream, " no_c_j_cs", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
             I = indent(Indent),
-            io.format("%sno_c_j_cs", [s(I)], !IO)
+            io.format(Stream, "%sno_c_j_cs", [s(I)], !IO)
         )
     else
         Indent1 = Indent + 1,
         (
             TypeRepnFor = type_repn_for_machines,
-            io.write_string(" c_j_cs(", !IO),
-            mercury_output_maybe_foreign_type_repn(TypeRepnFor, Indent1,
-                MaybeRepnC, !IO),
-            io.write_string(", ", !IO),
-            mercury_output_maybe_foreign_type_repn(TypeRepnFor, Indent1,
-                MaybeRepnJava, !IO),
-            io.write_string(", ", !IO),
-            mercury_output_maybe_foreign_type_repn(TypeRepnFor, Indent1,
-                MaybeRepnCsharp, !IO),
-            io.write_string(")", !IO)
+            io.write_string(Stream, " c_j_cs(", !IO),
+            mercury_output_maybe_foreign_type_repn(Stream, TypeRepnFor,
+                Indent1, MaybeRepnC, !IO),
+            io.write_string(Stream, ", ", !IO),
+            mercury_output_maybe_foreign_type_repn(Stream, TypeRepnFor,
+                Indent1, MaybeRepnJava, !IO),
+            io.write_string(Stream, ", ", !IO),
+            mercury_output_maybe_foreign_type_repn(Stream, TypeRepnFor,
+                Indent1, MaybeRepnCsharp, !IO),
+            io.write_string(Stream, ")", !IO)
         ;
             TypeRepnFor = type_repn_for_humans,
             I = indent(Indent),
-            io.format("%sc_j_cs(\n", [s(I)], !IO),
-            mercury_output_maybe_foreign_type_repn(TypeRepnFor, Indent1,
-                MaybeRepnC, !IO),
-            io.write_string(",\n", !IO),
-            mercury_output_maybe_foreign_type_repn(TypeRepnFor, Indent1,
-                MaybeRepnJava, !IO),
-            io.write_string(",\n", !IO),
-            mercury_output_maybe_foreign_type_repn(TypeRepnFor, Indent1,
-                MaybeRepnCsharp, !IO),
-            io.format("\n%s)", [s(I)], !IO)
+            io.format(Stream, "%sc_j_cs(\n", [s(I)], !IO),
+            mercury_output_maybe_foreign_type_repn(Stream, TypeRepnFor,
+                Indent1, MaybeRepnC, !IO),
+            io.write_string(Stream, ",\n", !IO),
+            mercury_output_maybe_foreign_type_repn(Stream, TypeRepnFor,
+                Indent1, MaybeRepnJava, !IO),
+            io.write_string(Stream, ",\n", !IO),
+            mercury_output_maybe_foreign_type_repn(Stream, TypeRepnFor,
+                Indent1, MaybeRepnCsharp, !IO),
+            io.format(Stream, "\n%s)", [s(I)], !IO)
         )
     ).
 
 %---------------------%
 
-:- pred mercury_output_maybe_enum_foreign_repn(type_repn_for::in, int::in,
-    maybe(enum_foreign_repn)::in, io::di, io::uo) is det.
+:- pred mercury_output_maybe_enum_foreign_repn(io.text_output_stream::in,
+    type_repn_for::in, int::in, maybe(enum_foreign_repn)::in,
+    io::di, io::uo) is det.
 
-mercury_output_maybe_enum_foreign_repn(TypeRepnFor, Indent,
+mercury_output_maybe_enum_foreign_repn(Stream, TypeRepnFor, Indent,
         MaybeTypeRepnOrEnum, !IO) :-
     (
         MaybeTypeRepnOrEnum = no,
         I = indent_for_humans(TypeRepnFor, Indent),
-        io.format("%sno_foreign", [s(I)], !IO)
+        io.format(Stream, "%sno_foreign", [s(I)], !IO)
     ;
         MaybeTypeRepnOrEnum = yes(enum_foreign_enum(EnumRepn)),
         % Top level functor will be "foreign_enum".
-        mercury_output_foreign_enum_repn(TypeRepnFor, Indent, EnumRepn, !IO)
+        mercury_output_foreign_enum_repn(Stream, TypeRepnFor, Indent,
+            EnumRepn, !IO)
     ;
         MaybeTypeRepnOrEnum = yes(enum_foreign_type(TypeRepn)),
         % Top level functor will be "foreign_type".
-        mercury_output_foreign_type_repn(TypeRepnFor, Indent, TypeRepn, !IO)
+        mercury_output_foreign_type_repn(Stream, TypeRepnFor, Indent,
+            TypeRepn, !IO)
     ).
 
-:- pred mercury_output_maybe_foreign_type_repn(type_repn_for::in, int::in,
-    maybe(foreign_type_repn)::in, io::di, io::uo) is det.
+:- pred mercury_output_maybe_foreign_type_repn(io.text_output_stream::in,
+    type_repn_for::in, int::in, maybe(foreign_type_repn)::in,
+    io::di, io::uo) is det.
 
-mercury_output_maybe_foreign_type_repn(TypeRepnFor, Indent,
+mercury_output_maybe_foreign_type_repn(Stream, TypeRepnFor, Indent,
         MaybeTypeRepn, !IO) :-
     (
         MaybeTypeRepn = no,
         I = indent_for_humans(TypeRepnFor, Indent),
-        io.format("%sno_foreign", [s(I)], !IO)
+        io.format(Stream, "%sno_foreign", [s(I)], !IO)
     ;
         MaybeTypeRepn = yes(TypeRepn),
         % Top level functor will be "foreign_type".
-        mercury_output_foreign_type_repn(TypeRepnFor, Indent, TypeRepn, !IO)
+        mercury_output_foreign_type_repn(Stream, TypeRepnFor, Indent,
+            TypeRepn, !IO)
     ).
 
 %---------------------%
 
-:- pred mercury_output_foreign_enum_repn(type_repn_for::in, int::in,
-    one_or_more(string)::in, io::di, io::uo) is det.
+:- pred mercury_output_foreign_enum_repn(io.text_output_stream::in,
+    type_repn_for::in, int::in, one_or_more(string)::in,
+    io::di, io::uo) is det.
 
-mercury_output_foreign_enum_repn(TypeRepnFor, Indent, EnumRepn, !IO) :-
+mercury_output_foreign_enum_repn(Stream, TypeRepnFor, Indent, EnumRepn, !IO) :-
     EnumRepn = one_or_more(HeadEnum, TailEnums),
     (
         TypeRepnFor = type_repn_for_machines,
-        io.format("foreign_enum([", [], !IO),
-        io.write_list([HeadEnum | TailEnums], ", ",
-            mercury_output_functor_name, !IO),
-        io.format("])", [], !IO)
+        io.format(Stream, "foreign_enum([", [], !IO),
+        write_out_list(mercury_output_functor_name, ", ",
+            [HeadEnum | TailEnums], Stream, !IO),
+        io.format(Stream, "])", [], !IO)
     ;
         TypeRepnFor = type_repn_for_humans,
         I = indent(Indent),
-        io.format("%sforeign_enum(", [s(I)], !IO),
+        io.format(Stream, "%sforeign_enum(", [s(I)], !IO),
         mercury_output_list_for_humans(Indent + 1,
             mercury_output_one_functor_name(nl_indent(Indent + 2), ""),
-            [HeadEnum | TailEnums], !IO),
-        io.format("\n%s)", [s(I)], !IO)
+            [HeadEnum | TailEnums], Stream, !IO),
+        io.format(Stream, "\n%s)", [s(I)], !IO)
     ).
 
 %---------------------%
 
-:- pred mercury_output_foreign_type_repn(type_repn_for::in, int::in,
-    foreign_type_repn::in, io::di, io::uo) is det.
+:- pred mercury_output_foreign_type_repn(io.text_output_stream::in,
+    type_repn_for::in, int::in, foreign_type_repn::in, io::di, io::uo) is det.
 
-mercury_output_foreign_type_repn(TypeRepnFor, Indent, TypeRepn, !IO) :-
+mercury_output_foreign_type_repn(Stream, TypeRepnFor, Indent, TypeRepn, !IO) :-
     TypeRepn = foreign_type_repn(ForeignTypeName, ForeignTypeAssertions),
     I = indent_for_humans(TypeRepnFor, Indent),
     ForeignTypeAssertions = foreign_type_assertions(Assertions),
     set.to_sorted_list(Assertions, AssertionsList),
-    io.format("%sforeign_type(\"%s\",", [s(I), s(ForeignTypeName)], !IO),
+    io.format(Stream, "%sforeign_type(\"%s\",",
+        [s(I), s(ForeignTypeName)], !IO),
+    AssertionStrs =
+        list.map(foreign_type_assertion_to_string, AssertionsList),
+    AssertionsStr = string.join_list(", ", AssertionStrs),
     (
         TypeRepnFor = type_repn_for_machines,
-        io.write_string(" [", !IO),
-        io.write_list(AssertionsList, ", ",
-            mercury_output_foreign_type_assertion, !IO),
-        io.write_string("])", !IO)
+        io.format(Stream, " [%s])", [s(AssertionsStr)], !IO)
     ;
         TypeRepnFor = type_repn_for_humans,
         I1 = indent(Indent + 1),
-        io.format("\n%s[", [s(I1)], !IO),
-        io.write_list(AssertionsList, ", ",
-            mercury_output_foreign_type_assertion, !IO),
-        io.format("]\n%s)", [s(I)], !IO)
+        io.format(Stream, "\n%s[%s]\n%s)",
+            [s(I1), s(AssertionsStr), s(I)], !IO)
     ).
 
-mercury_output_foreign_type_assertion(Assertion, !IO) :-
+foreign_type_assertion_to_string(Assertion) = Str :-
     (
         Assertion = foreign_type_can_pass_as_mercury_type,
-        io.write_string("can_pass_as_mercury_type", !IO)
+        Str = "can_pass_as_mercury_type"
     ;
         Assertion = foreign_type_stable,
-        io.write_string("stable", !IO)
+        Str = "stable"
     ;
         Assertion = foreign_type_word_aligned_pointer,
-        io.write_string("word_aligned_pointer", !IO)
+        Str = "word_aligned_pointer"
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_functor_name(string::in, io::di, io::uo) is det.
+:- pred mercury_output_functor_name(string::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-mercury_output_functor_name(FunctorName, !IO) :-
-    term_io.quote_string(FunctorName, !IO).
+mercury_output_functor_name(FunctorName, Stream, !IO) :-
+    term_io.quote_string(Stream, FunctorName, !IO).
 
     % Output one functor's name in a list of functor names.
     %
 :- pred mercury_output_one_functor_name(string::in, string::in, string::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_one_functor_name(Prefix, Suffix, FunctorName, !IO) :-
-    io.write_string(Prefix, !IO),
-    mercury_output_functor_name(FunctorName, !IO),
-    io.write_string(Suffix, !IO).
+mercury_output_one_functor_name(Prefix, Suffix, FunctorName, Stream, !IO) :-
+    io.write_string(Stream, Prefix, !IO),
+    mercury_output_functor_name(FunctorName, Stream, !IO),
+    io.write_string(Stream, Suffix, !IO).
 
 %---------------------------------------------------------------------------%
 
     % Output one type in a list of types.
     %
-:- pred mercury_output_one_type(string::in, string::in,
-    tvarset::in, mer_type::in, io::di, io::uo) is det.
+:- pred mercury_output_one_type(string::in, string::in, tvarset::in,
+    mer_type::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_one_type(Prefix, Suffix, TVarSet, Type, !IO) :-
-    io.write_string(Prefix, !IO),
-    mercury_output_type(TVarSet, print_num_only, Type, !IO),
-    io.write_string(Suffix, !IO).
+mercury_output_one_type(Prefix, Suffix, TVarSet, Type, Stream, !IO) :-
+    io.write_string(Stream, Prefix, !IO),
+    mercury_output_type(TVarSet, print_num_only, Type, Stream, !IO),
+    io.write_string(Stream, Suffix, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -913,70 +937,70 @@ indent(N) = Str :-
 %---------------------------------------------------------------------------%
 
 :- pred mercury_output_list_for_humans(int::in,
-    pred(T, io, io)::in(pred(in, di, uo) is det), list(T)::in,
-    io::di, io::uo) is det.
+    pred(T, io.text_output_stream, io, io)::in(pred(in, in, di, uo) is det),
+    list(T)::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_list_for_humans(Indent, WriteX, Xs, !IO) :-
+mercury_output_list_for_humans(Indent, WriteX, Xs, Stream, !IO) :-
     NlI = nl_indent(Indent),
     (
         Xs = [],
-        io.format("%s[]", [s(NlI)], !IO)
+        io.format(Stream, "%s[]", [s(NlI)], !IO)
     ;
         Xs = [HeadX | TailXs],
-        io.format("%s[", [s(NlI)], !IO),
-        mercury_output_list_for_humans_loop(WriteX, HeadX, TailXs, !IO),
-        io.format("%s]", [s(NlI)], !IO)
+        io.format(Stream, "%s[", [s(NlI)], !IO),
+        mercury_output_list_for_humans_loop(WriteX, HeadX, TailXs, Stream, !IO),
+        io.format(Stream, "%s]", [s(NlI)], !IO)
     ).
 
 :- pred mercury_output_list_for_humans_loop(
-    pred(T, io, io)::in(pred(in, di, uo) is det), T::in, list(T)::in,
-    io::di, io::uo) is det.
+    pred(T, io.text_output_stream, io, io)::in(pred(in, in, di, uo) is det),
+    T::in, list(T)::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_list_for_humans_loop(WriteX, X, Xs, !IO) :-
-    WriteX(X, !IO),
+mercury_output_list_for_humans_loop(WriteX, X, Xs, Stream, !IO) :-
+    WriteX(X, Stream, !IO),
     (
         Xs = []
     ;
         Xs = [HeadX | TailXs],
-        io.write_string(",", !IO),
-        mercury_output_list_for_humans_loop(WriteX, HeadX, TailXs, !IO)
+        io.write_string(Stream, ",", !IO),
+        mercury_output_list_for_humans_loop(WriteX, HeadX, TailXs, Stream, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred mercury_output_c_repns(type_repn_for::in, int::in,
-    pred(T, io, io)::in(pred(in, di, uo) is det),
-    c_repns(T)::in, io::di, io::uo) is det.
+    pred(T, io.text_output_stream, io, io)::in(pred(in, in, di, uo) is det),
+    c_repns(T)::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_c_repns(TypeRepnFor, Indent, WriteX, CRepns, !IO) :-
+mercury_output_c_repns(TypeRepnFor, Indent, WriteX, CRepns, Stream, !IO) :-
     NlI = nl_indent_for_humans_space_for_machines(TypeRepnFor, Indent),
     (
         CRepns = c_repns_same(X1),
-        io.format("%sc_repns_same(", [s(NlI)], !IO),
-        WriteX(X1, !IO),
-        io.format("%s)", [s(NlI)], !IO)
+        io.format(Stream, "%sc_repns_same(", [s(NlI)], !IO),
+        WriteX(X1, Stream, !IO),
+        io.format(Stream, "%s)", [s(NlI)], !IO)
     ;
         CRepns = c_repns_64_32(X1, X2),
-        io.format("%sc_repns_64_32(", [s(NlI)], !IO),
-        WriteX(X1, !IO),
-        io.format(", ", [], !IO),
-        WriteX(X2, !IO),
-        io.format("%s)", [s(NlI)], !IO)
+        io.format(Stream, "%sc_repns_64_32(", [s(NlI)], !IO),
+        WriteX(X1, Stream, !IO),
+        io.format(Stream, ", ", [], !IO),
+        WriteX(X2, Stream, !IO),
+        io.format(Stream, "%s)", [s(NlI)], !IO)
     ;
         CRepns = c_repns_all(X1, X2, X3, X4, X5, X6),
-        io.format("%sc_repns_all(", [s(NlI)], !IO),
-        WriteX(X1, !IO),
-        io.format(", ", [], !IO),
-        WriteX(X2, !IO),
-        io.format(", ", [], !IO),
-        WriteX(X3, !IO),
-        io.format(", ", [], !IO),
-        WriteX(X4, !IO),
-        io.format(", ", [], !IO),
-        WriteX(X5, !IO),
-        io.format(", ", [], !IO),
-        WriteX(X6, !IO),
-        io.format("%s)", [s(NlI)], !IO)
+        io.format(Stream, "%sc_repns_all(", [s(NlI)], !IO),
+        WriteX(X1, Stream, !IO),
+        io.format(Stream, ", ", [], !IO),
+        WriteX(X2, Stream, !IO),
+        io.format(Stream, ", ", [], !IO),
+        WriteX(X3, Stream, !IO),
+        io.format(Stream, ", ", [], !IO),
+        WriteX(X4, Stream, !IO),
+        io.format(Stream, ", ", [], !IO),
+        WriteX(X5, Stream, !IO),
+        io.format(Stream, ", ", [], !IO),
+        WriteX(X6, Stream, !IO),
+        io.format(Stream, "%s)", [s(NlI)], !IO)
     ).
 
 %---------------------------------------------------------------------------%

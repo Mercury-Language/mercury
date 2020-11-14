@@ -62,6 +62,7 @@
     % Write a rat in the form: r(<Numerator>, <Denominator>).
     %
 :- pred write_rat(rat::in, io::di, io::uo) is det.
+:- pred write_rat(io.text_output_stream::in, rat::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -69,6 +70,7 @@
 :- implementation.
 
 :- import_module int.
+:- import_module list.
 :- import_module require.
 :- import_module string.
 
@@ -216,12 +218,12 @@ to_string(r(Num, Denom)) =
         ++ ")"
     ).
 
-write_rat(r(Numerator, Denominator), !IO) :-
-    io.write_string("r(", !IO),
-    io.write_int(Numerator, !IO),
-    io.write_string(", ", !IO),
-    io.write_int(Denominator, !IO),
-    io.write_char(')', !IO).
+write_rat(Rat, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_rat(Stream, Rat, !IO).
+
+write_rat(Stream, r(Numerator, Denominator), !IO) :-
+    io.format(Stream, "r(%d, %d)", [i(Numerator), i(Denominator)], !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module libs.rat.

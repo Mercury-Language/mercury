@@ -1192,13 +1192,13 @@ write_top_feedback(ModuleInfo, Reason, !IO) :-
     (
         Reason = top_failed_lookup(ShroudedPPId),
         PPId = unshroud_pred_proc_id(ShroudedPPId),
-        io.write_string("failed_lookup: ", !IO),
-        write_pred_proc_id(ModuleInfo, PPId, !IO)
+        PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+        io.format("failed_lookup: %s", [s(PPIdStr)], !IO)
     ;
         Reason = top_from_lookup(ShroudedPPId),
         PPId = unshroud_pred_proc_id(ShroudedPPId),
-        io.write_string("from_lookup: ", !IO),
-        write_pred_proc_id(ModuleInfo, PPId, !IO)
+        PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+        io.format("from_lookup: %s", [s(PPIdStr)], !IO)
     ;
         Reason = top_cannot_improve(String),
         io.write_string("cannot_improve: ", !IO),

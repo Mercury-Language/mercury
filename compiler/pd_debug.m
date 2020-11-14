@@ -135,51 +135,43 @@ pd_debug_register_version_2(ModuleInfo, PredProcId, Version, !IO) :-
 
 pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
         !IO) :-
+    io.output_stream(Stream, !IO),
     Version = version_info(Goal, _, Args, _, InstMap,
         InitialCost, CostDelta, Parents, _),
     Goal = hlds_goal(_GoalExpr, GoalInfo),
     PredName = predicate_name(ModuleInfo, PredId),
-    io.write_string(PredName, !IO),
-    io.write_string(": (PredProcId :", !IO),
     PredProcId = proc(PredId, ProcId),
     pred_id_to_int(PredId, PredInt),
     proc_id_to_int(ProcId, ProcInt),
-    io.write_int(PredInt, !IO),
-    io.write_string("-", !IO),
-    io.write_int(ProcInt, !IO),
-    io.write_string(")", !IO),
-    io.nl(!IO),
-    io.write_string(" initial cost: ", !IO),
-    io.write_int(InitialCost, !IO),
-    io.nl(!IO),
-    io.write_string(" cost delta: ", !IO),
-    io.write_int(CostDelta, !IO),
-    io.nl(!IO),
+
+    io.format(Stream, "%s: (PredProcId :%d-%d)\n",
+        [s(PredName), i(PredInt), i(ProcInt)], !IO),
+    io.format(Stream, " initial cost: %d\n", [i(InitialCost)], !IO),
+    io.format(Stream, " cost delta: %d\n", [i(CostDelta)], !IO),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     instmap_restrict(NonLocals, InstMap, InstMap1),
-    io.write_string(" args: ", !IO),
-    mercury_output_vars(VarSet, print_name_and_num, Args, !IO),
-    io.nl(!IO),
-    write_instmap(VarSet, print_name_and_num, 1, InstMap1, !IO),
-    io.nl(!IO),
+    io.format(Stream, " args: %s\n",
+        [s(mercury_vars_to_string(VarSet, print_name_and_num, Args))], !IO),
+    write_instmap(Stream, VarSet, print_name_and_num, 1, InstMap1, !IO),
+    io.nl(Stream, !IO),
     module_info_get_globals(ModuleInfo, Globals),
     OutInfo = init_hlds_out_info(Globals, output_debug),
-    write_goal(OutInfo, ModuleInfo, VarSet, print_name_and_num, 1, "\n",
-        Goal, !IO),
-    io.nl(!IO),
-    io.write_string("Parents: ", !IO),
+    write_goal(OutInfo, Stream, ModuleInfo, VarSet, print_name_and_num,
+        1, "\n", Goal, !IO),
+    io.nl(Stream, !IO),
     set.to_sorted_list(Parents, ParentsList),
-    io.write_list(ParentsList, ", ", write_pred_proc_id(ModuleInfo), !IO),
-    io.nl(!IO),
+    ParentStrs = list.map(pred_proc_id_to_string(ModuleInfo), ParentsList),
+    ParentsStr = string.join_list(", ", ParentStrs),
+    io.format(Stream, "Parents: %s\n", [s(ParentsStr)], !IO),
     (
         WriteUnfoldedGoal = yes,
         proc_info_get_goal(ProcInfo, ProcGoal),
-        io.write_string("Unfolded goal\n", !IO),
-        write_goal(OutInfo, ModuleInfo, VarSet, print_name_and_num, 1, "\n",
-            ProcGoal, !IO),
-        io.nl(!IO)
+        io.write_string(Stream, "Unfolded goal\n", !IO),
+        write_goal(OutInfo, Stream, ModuleInfo, VarSet, print_name_and_num,
+            1, "\n", ProcGoal, !IO),
+        io.nl(Stream, !IO)
     ;
         WriteUnfoldedGoal = no
     ).
@@ -187,6 +179,7 @@ pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
 %-----------------------------------------------------------------------------%
 
 pd_debug_write_instmap(PDInfo, !IO) :-
+    io.output_stream(Stream, !IO),
     pd_info_get_instmap(PDInfo, InstMap),
     pd_info_get_proc_info(PDInfo, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
@@ -194,7 +187,7 @@ pd_debug_write_instmap(PDInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
     pd_debug_do_io(DebugPD,
-        write_instmap(VarSet, print_name_and_num, 1, InstMap), !IO).
+        write_instmap(Stream, VarSet, print_name_and_num, 1, InstMap), !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -210,7 +203,9 @@ pd_debug_write_pred_proc_id_list(PDInfo, PredProcIds, !IO) :-
     list(pred_proc_id)::in, io::di, io::uo) is det.
 
 pd_debug_write_pred_proc_id_list_2(ModuleInfo, PredProcIds, !IO) :-
-    io.write_list(PredProcIds, ", ", write_pred_proc_id(ModuleInfo), !IO).
+    ProcStrs = list.map(pred_proc_id_to_string(ModuleInfo), PredProcIds),
+    ProcsStr = string.join_list(", ", ProcStrs),
+    io.write_string(ProcsStr, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -224,6 +219,7 @@ pd_debug_output_goal(PDInfo, Msg, Goal, !IO) :-
     io::di, io::uo) is det.
 
 pd_debug_output_goal_2(PDInfo, Msg, Goal, !IO) :-
+    io.output_stream(Stream, !IO),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     pd_info_get_proc_info(PDInfo, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
@@ -232,14 +228,14 @@ pd_debug_output_goal_2(PDInfo, Msg, Goal, !IO) :-
     io.write_string(Msg, !IO),
     goal_util.goal_vars(hlds_goal(GoalExpr, GoalInfo), Vars),
     instmap_restrict(Vars, InstMap, InstMap1),
-    write_instmap(VarSet, print_name_and_num, 1, InstMap1, !IO),
-    io.nl(!IO),
+    write_instmap(Stream, VarSet, print_name_and_num, 1, InstMap1, !IO),
+    io.nl(Stream, !IO),
     module_info_get_globals(ModuleInfo, Globals),
     OutInfo = init_hlds_out_info(Globals, output_debug),
-    write_goal(OutInfo, ModuleInfo, VarSet, print_name_and_num, 1, "\n",
-        Goal, !IO),
-    io.nl(!IO),
-    io.flush_output(!IO).
+    write_goal(OutInfo, Stream, ModuleInfo, VarSet, print_name_and_num,
+        1, "\n", Goal, !IO),
+    io.nl(Stream, !IO),
+    io.flush_output(Stream, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -247,7 +243,8 @@ pd_debug_message(DebugPD, Fmt, Args, !IO) :-
     pd_debug_do_io(DebugPD, io.format(Fmt, Args), !IO).
 
 pd_debug_message_context(DebugPD, Context, Fmt, Args, !IO) :-
-    pd_debug_do_io(DebugPD, prog_out.write_context(Context), !IO),
+    pd_debug_do_io(DebugPD,
+        prog_out.write_context_to_cur_stream(Context), !IO),
     pd_debug_do_io(DebugPD, io.format(Fmt, Args), !IO).
 
 %-----------------------------------------------------------------------------%

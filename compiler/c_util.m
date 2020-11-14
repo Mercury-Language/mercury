@@ -23,6 +23,8 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 
 :- import_module char.
 :- import_module io.
@@ -275,7 +277,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % output_c_file_intro_and_grade(SourceFileName, Version, Fullarch, !IO):
+    % output_c_file_intro_and_grade(SourceFileName, Stream, Version,
+    %   Fullarch, !IO):
     %
     % Outputs a comment which includes the settings used to generate
     % the C file. This is used by configure to check the any existing C files
@@ -283,17 +286,43 @@
     % name of the file from which the C is generated, while Version is the
     % version name of the mercury compiler.
     %
-:- pred output_c_file_intro_and_grade(globals::in, string::in, string::in,
-    string::in, io::di, io::uo) is det.
+:- pred output_c_file_intro_and_grade(globals::in, io.text_output_stream::in,
+    string::in, string::in, string::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+    % output_init_c_comment(Stream, ModuleName,
+    %   UserInitPredCNames, UserFinalPredCNames, EnvVarNames, !IO):
+    %
+    % Output a comment to tell mkinit what initialization functions
+    % to call for this module from <main_module>_init.c.
+    %
+    % The main initialization function for the module records the
+    % correspondence between the addresses and the layout structures
+    % of labels in a table, for use mainly by the profilers and the debugger,
+    % but also to generate meaningful stack traces at exceptions in other
+    % grades as well.
+    %
+    % We generate other initialization functions to implement user defined
+    % initializers and finalizers, and to record the values of environment
+    % variables for the conditions of trace goals.
+    %
+:- pred output_init_c_comment(io.text_output_stream::in, module_name::in,
+    list(string)::in, list(string)::in, list(string)::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
     % Output #pragma pack directives to change the packing alignment value
     % for MSVC. See MR_Float_Aligned in mercury_float.h.
-    %
-:- pred output_pragma_pack_push(io::di, io::uo) is det.
 
-:- pred output_pragma_pack_pop(io::di, io::uo) is det.
+:- pred output_pragma_pack_push(io.text_output_stream::in,
+    io::di, io::uo) is det.
+:- pred output_pragma_pack_push_cur_stream(io::di, io::uo) is det.
+
+:- pred output_pragma_pack_pop(io.text_output_stream::in,
+    io::di, io::uo) is det.
+:- pred output_pragma_pack_pop_cur_stream(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -318,6 +347,9 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module parse_tree.
+:- import_module parse_tree.prog_foreign.
 
 :- import_module bool.
 :- import_module int.
@@ -507,7 +539,7 @@ output_quoted_string_lang(Stream, Lang, Str, !IO) :-
         ( if Right = "" then
             true
         else
-            io.write_string("\" \"", !IO),
+            io.write_string(Stream, "\" \"", !IO),
             output_quoted_string_lang(Stream, Lang, Right, !IO)
         )
     ;
@@ -824,7 +856,7 @@ output_int_expr_cur_stream(N, !IO) :-
 output_uint_expr(Stream, N, !IO) :-
     % We need to cast to (MR_Unsigned) to ensure things like 1 << 32 work
     % when `MR_Unsigned' is 64 bits but `unsigned int' is 32 bits.
-    io.write_string("(MR_Unsigned) ", !IO),
+    io.write_string(Stream, "(MR_Unsigned) ", !IO),
     io.write_uint(Stream, N, !IO),
     io.write_string(Stream, "U", !IO).
 
@@ -877,7 +909,7 @@ output_uint16_expr_cur_stream(N, !IO) :-
 
 output_int32_expr(Stream, N, !IO) :-
     ( if N = min_int32 then
-        io.write_string("INT32_MIN", !IO)
+        io.write_string(Stream, "INT32_MIN", !IO)
     else
         io.write_string(Stream, "INT32_C(", !IO),
         io.write_int32(Stream, N, !IO),
@@ -907,7 +939,7 @@ make_int64_literal(N) = Literal :-
 
 output_int64_expr(Stream, N, !IO) :-
     ( if N = min_int64 then
-        io.write_string("INT64_MIN", !IO)
+        io.write_string(Stream, "INT64_MIN", !IO)
     else
         io.write_string(Stream, "INT64_C(", !IO),
         io.write_int64(Stream, N, !IO),
@@ -978,8 +1010,8 @@ unary_prefix_op(dword_uint64_get_word1, "MR_dword_uint64_get_word1").
 
 %---------------------------------------------------------------------------%
 
-output_c_file_intro_and_grade(Globals, SourceFileName, Version, Fullarch,
-        !IO) :-
+output_c_file_intro_and_grade(Globals, Stream, SourceFileName, Version,
+        Fullarch, !IO) :-
     globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBits),
     string.int_to_string(NumPtagBits, NumPtagBitsStr),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
@@ -991,7 +1023,7 @@ output_c_file_intro_and_grade(Globals, SourceFileName, Version, Fullarch,
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     HighLevelCodeStr = convert_bool_to_string(HighLevelCode),
 
-    io.write_strings([
+    io.write_strings(Stream, [
         "/*\n",
         "** Automatically generated from `", SourceFileName, "'\n",
         "** by the Mercury compiler,\n",
@@ -1020,21 +1052,64 @@ convert_bool_to_string(yes) = "yes".
 
 %---------------------------------------------------------------------------%
 
-    % We could hide these blocks behind macros using the __pragma keyword
-    % introduced in MSVC 9 (2008):
-    %
-    %   #define MR_PRAGMA_PACK_PUSH  __pragma(pack(push, MR_BYTES_PER_WORD))
-    %   #define MR_PRAGMA_PACK_POP   __pragma(pack(pop))
-    %
-output_pragma_pack_push(!IO) :-
-    io.write_string("\n#ifdef MR_MSVC\n", !IO),
-    io.write_string("#pragma pack(push, MR_BYTES_PER_WORD)\n", !IO),
-    io.write_string("#endif\n", !IO).
+output_init_c_comment(Stream, ModuleName,
+        UserInitPredCNames, UserFinalPredCNames, EnvVarNames, !IO) :-
+    ModuleInitName = make_init_name(ModuleName),
+    io.write_string(Stream, "/*\n", !IO),
+    io.format(Stream, "INIT %sinit\n", [s(ModuleInitName)], !IO),
+    % We only print out the REQUIRED_INIT and REQUIRED_FINAL comments
+    % if there are user initialisation/finalisation predicates.
+    (
+        UserInitPredCNames = []
+    ;
+        UserInitPredCNames = [_ | _],
+        io.format(Stream, "REQUIRED_INIT %srequired_init\n",
+            [s(ModuleInitName)], !IO)
+    ),
+    (
+        UserFinalPredCNames = []
+    ;
+        UserFinalPredCNames = [_ | _],
+        io.format(Stream, "REQUIRED_FINAL %srequired_final\n",
+            [s(ModuleInitName)], !IO)
+    ),
+    list.foldl(output_env_var_init(Stream), EnvVarNames, !IO),
+    % We always write out ENDINIT so that mkinit does not scan the whole file.
+    io.write_string(Stream, "ENDINIT\n", !IO),
+    io.write_string(Stream, "*/\n\n", !IO).
 
-output_pragma_pack_pop(!IO) :-
-    io.write_string("#ifdef MR_MSVC\n", !IO),
-    io.write_string("#pragma pack(pop)\n", !IO),
-    io.write_string("#endif\n", !IO).
+:- pred output_env_var_init(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+
+output_env_var_init(Stream, EnvVarName, !IO) :-
+    io.format(Stream, "ENVVAR %s\n", [s(EnvVarName)], !IO).
+
+%---------------------------------------------------------------------------%
+%
+% We could hide these blocks behind macros using the __pragma keyword
+% introduced in MSVC 9 (2008):
+%
+%   #define MR_PRAGMA_PACK_PUSH  __pragma(pack(push, MR_BYTES_PER_WORD))
+%   #define MR_PRAGMA_PACK_POP   __pragma(pack(pop))
+%
+
+output_pragma_pack_push(Stream, !IO) :-
+    io.write_string(Stream, "\n#ifdef MR_MSVC\n", !IO),
+    io.write_string(Stream, "#pragma pack(push, MR_BYTES_PER_WORD)\n", !IO),
+    io.write_string(Stream, "#endif\n", !IO).
+
+output_pragma_pack_push_cur_stream(!IO) :-
+    io.output_stream(Stream, !IO),
+    output_pragma_pack_push(Stream, !IO).
+
+output_pragma_pack_pop(Stream, !IO) :-
+    io.write_string(Stream, "#ifdef MR_MSVC\n", !IO),
+    io.write_string(Stream, "#pragma pack(pop)\n", !IO),
+    io.write_string(Stream, "#endif\n", !IO).
+
+output_pragma_pack_pop_cur_stream(!IO) :-
+    io.output_stream(Stream, !IO),
+    output_pragma_pack_pop(Stream, !IO).
 
 %---------------------------------------------------------------------------%
 

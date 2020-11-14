@@ -168,9 +168,10 @@ term_iterate_over_abstract_proc(Iteration, Options, ModuleInfo, Proc,
     (
         DebugTerm = yes,
         trace [io(!IO)] (
+            PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
             io.write(PPId, !IO),
             io.write_string(": ", !IO),
-            write_pred_proc_id(ModuleInfo, PPId, !IO),
+            io.write_string(PPIdStr, !IO),
             io.write_string(" ", !IO),
             write_size_vars(SizeVarSet, HeadVars, !IO),
             io.format("\nIteration %d:\n", [i(Iteration)], !IO),

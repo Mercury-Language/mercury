@@ -675,17 +675,17 @@ dump_abstract_proc(ModuleInfo, Indent, Proc, !IO) :-
     SizeVarSet = Proc ^ ap_size_varset,
     indent_line(Indent, !IO),
     AbstractPPId = real(PPId),
-    write_pred_proc_id(ModuleInfo, PPId, !IO),
-    io.write_string(" : [", !IO),
-    io.write_list(HeadVars, ", ", dump_size_var(SizeVarSet), !IO),
-    io.write_string(" ] :- \n", !IO),
+    PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+    HeadVarSizeStrs = list.map(size_var_to_string(SizeVarSet), HeadVars),
+    HeadVarSizesStr = string.join_list(", ", HeadVarSizeStrs),
+    io.format("%s : [ %s ] :- \n", [s(PPIdStr), s(HeadVarSizesStr)], !IO),
     dump_abstract_goal(ModuleInfo, SizeVarSet, Indent + 1, Body, !IO).
 
-:- pred dump_size_var(size_varset::in, size_var::in, io::di, io::uo) is det.
+:- func size_var_to_string(size_varset, size_var) = string.
 
-dump_size_var(SizeVarSet, Var, !IO) :-
+size_var_to_string(SizeVarSet, Var) = Str :-
     varset.lookup_name(SizeVarSet, Var, VarName),
-    io.format("%s[%d]", [s(VarName), i(term.var_to_int(Var))], !IO).
+    Str = string.format("%s[%d]", [s(VarName), i(term.var_to_int(Var))]).
 
 :- func recursion_type_to_string(recursion_type) = string.
 :- pragma consider_used(recursion_type_to_string/1).
@@ -716,14 +716,12 @@ dump_abstract_goal(ModuleInfo, VarSet, Indent, AbstractGoal, !IO) :-
         indent_line(Indent, !IO),
         io.format("disj[%d](\n", [i(Size)], !IO),
         dump_abstract_disjuncts(ModuleInfo, VarSet, Indent, Goals, !IO),
+        LocalVarNamesStr = var_names_to_string(VarSet, Locals),
+        NonLocalVarNamesStr = var_names_to_string(VarSet, NonLocals),
         indent_line(Indent, !IO),
-        io.write_string(" Locals: ", !IO),
-        io.write_list(Locals, ", ", dump_var_name(VarSet), !IO),
-        io.nl(!IO),
+        io.format(" Locals: %s\n", [s(LocalVarNamesStr)], !IO),
         indent_line(Indent, !IO),
-        io.write_string(" Non-Locals: ", !IO),
-        io.write_list(NonLocals, ", ", dump_var_name(VarSet), !IO),
-        io.nl(!IO),
+        io.format(" Non-Locals: %s\n", [s(NonLocalVarNamesStr)], !IO),
         indent_line(Indent, !IO),
         io.write_string(")\n", !IO)
     ;
@@ -732,25 +730,22 @@ dump_abstract_goal(ModuleInfo, VarSet, Indent, AbstractGoal, !IO) :-
         io.write_string("conj(\n", !IO),
         list.foldl(dump_abstract_goal(ModuleInfo, VarSet, Indent + 1), Goals,
             !IO),
+        LocalVarNamesStr = var_names_to_string(VarSet, Locals),
+        NonLocalVarNamesStr = var_names_to_string(VarSet, NonLocals),
         indent_line(Indent, !IO),
-        io.write_string(" Locals: ", !IO),
-        io.write_list(Locals, ", ", dump_var_name(VarSet), !IO),
-        io.nl(!IO),
+        io.format(" Locals: %s\n", [s(LocalVarNamesStr)], !IO),
         indent_line(Indent, !IO),
-        io.write_string(" Non-Locals: ", !IO),
-        io.write_list(NonLocals, ", ", dump_var_name(VarSet), !IO),
-        io.nl(!IO),
+        io.format(" Non-Locals: %s\n", [s(NonLocalVarNamesStr)], !IO),
         indent_line(Indent, !IO),
         io.write_string(")\n", !IO)
     ;
         AbstractGoal = term_call(PPId0, _, CallVars, _, _, _, CallPoly),
         indent_line(Indent, !IO),
-        io.write_string("call: ", !IO),
         PPId0 = real(PPId),
-        write_pred_proc_id(ModuleInfo, PPId, !IO),
-        io.write_string(" : [", !IO),
-        io.write_list(CallVars, ", ", dump_var_name(VarSet), !IO),
-        io.write_string("]\n", !IO),
+        PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+        CallVarNamesStr = var_names_to_string(VarSet, CallVars),
+        io.format("call: %s : [%s]\n",
+            [s(PPIdStr), s(CallVarNamesStr)], !IO),
         indent_line(Indent, !IO),
         io.write_string("Other call constraints:[\n", !IO),
         polyhedron.write_polyhedron(CallPoly, VarSet, !IO),
@@ -765,11 +760,11 @@ dump_abstract_goal(ModuleInfo, VarSet, Indent, AbstractGoal, !IO) :-
         io.write_string("]\n", !IO)
     ).
 
-:- pred dump_var_name(size_varset::in, size_var::in, io::di, io::uo) is det.
+:- func var_names_to_string(size_varset, list(size_var)) = string.
 
-dump_var_name(VarSet, Var, !IO) :-
-    varset.lookup_name(VarSet, Var, VarName),
-    io.write_string(VarName, !IO).
+var_names_to_string(VarSet, Vars) = Str :-
+    list.map(varset.lookup_name(VarSet), Vars, VarNames),
+    Str = string.join_list(", ", VarNames).
 
 :- pred indent_line(int::in, io::di, io::uo) is det.
 

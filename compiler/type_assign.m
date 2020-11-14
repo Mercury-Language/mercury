@@ -592,53 +592,54 @@ type_checkpoint(Msg, ModuleInfo, VarSet, TypeAssignSet, !IO) :-
     globals.lookup_bool_option(Globals, debug_types, DoCheckPoint),
     (
         DoCheckPoint = yes,
-        do_type_checkpoint(Msg, ModuleInfo, VarSet, TypeAssignSet, !IO)
+        io.output_stream(Stream, !IO),
+        do_type_checkpoint(Stream, Msg, ModuleInfo, VarSet, TypeAssignSet, !IO)
     ;
         DoCheckPoint = no
     ).
 
-:- pred do_type_checkpoint(string::in, module_info::in, prog_varset::in,
-    type_assign_set::in, io::di, io::uo) is det.
+:- pred do_type_checkpoint(io.text_output_stream::in, string::in,
+    module_info::in, prog_varset::in, type_assign_set::in,
+    io::di, io::uo) is det.
 
-do_type_checkpoint(Msg, ModuleInfo, VarSet, TypeAssignSet, !IO) :-
-    io.write_string("At ", !IO),
-    io.write_string(Msg, !IO),
-    io.write_string(": ", !IO),
+do_type_checkpoint(Stream, Msg, ModuleInfo, VarSet, TypeAssignSet, !IO) :-
+    io.format(Stream, "At %s:", [s(Msg)], !IO),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
+    % XXX should pass Stream
     maybe_report_stats(Statistics, !IO),
-    io.write_string("\n", !IO),
+    io.nl(Stream, !IO),
     ( if
         Statistics = yes,
         TypeAssignSet = [TypeAssign | _]
     then
         type_assign_get_var_types(TypeAssign, VarTypes),
         vartypes_count(VarTypes, VarTypesCount),
-        io.format("\t`var -> type' map: count = %d\n",
+        io.format(Stream, "\t`var -> type' map: count = %d\n",
             [i(VarTypesCount)], !IO),
         type_assign_get_type_bindings(TypeAssign, TypeBindings),
         map.count(TypeBindings, TypeBindingsCount),
-        io.format("\t`type var -> type' map: count = %d\n",
+        io.format(Stream, "\t`type var -> type' map: count = %d\n",
             [i(TypeBindingsCount)], !IO)
     else
         true
     ),
-    write_type_assign_set(TypeAssignSet, VarSet, !IO).
+    write_type_assign_set(Stream, TypeAssignSet, VarSet, !IO).
 
-:- pred write_type_assign_set(type_assign_set::in, prog_varset::in,
-    io::di, io::uo) is det.
+:- pred write_type_assign_set(io.text_output_stream::in,
+    type_assign_set::in, prog_varset::in, io::di, io::uo) is det.
 
-write_type_assign_set([], _, !IO).
-write_type_assign_set([TypeAssign | TypeAssigns], VarSet, !IO) :-
-    io.write_string("\t", !IO),
-    write_type_assign(TypeAssign, VarSet, !IO),
-    io.write_string("\n", !IO),
-    write_type_assign_set(TypeAssigns, VarSet, !IO).
+write_type_assign_set(_, [], _, !IO).
+write_type_assign_set(Stream, [TypeAssign | TypeAssigns], VarSet, !IO) :-
+    io.write_string(Stream, "\t", !IO),
+    write_type_assign(Stream, TypeAssign, VarSet, !IO),
+    io.write_string(Stream, "\n", !IO),
+    write_type_assign_set(Stream, TypeAssigns, VarSet, !IO).
 
-:- pred write_type_assign(type_assign::in, prog_varset::in, io::di, io::uo)
-    is det.
+:- pred write_type_assign(io.text_output_stream::in,
+    type_assign::in, prog_varset::in, io::di, io::uo) is det.
 
-write_type_assign(TypeAssign, VarSet, !IO) :-
+write_type_assign(Stream, TypeAssign, VarSet, !IO) :-
     type_assign_get_external_type_params(TypeAssign, ExternalTypeParams),
     type_assign_get_var_types(TypeAssign, VarTypes),
     type_assign_get_typeclass_constraints(TypeAssign, Constraints),
@@ -649,85 +650,88 @@ write_type_assign(TypeAssign, VarSet, !IO) :-
         ExternalTypeParams = []
     ;
         ExternalTypeParams = [_ | _],
-        io.write_string("some [", !IO),
-        mercury_output_vars(TypeVarSet, varnums, ExternalTypeParams, !IO),
-        io.write_string("]\n\t", !IO)
+        io.write_string(Stream, "some [", !IO),
+        mercury_output_vars(TypeVarSet, varnums, ExternalTypeParams,
+            Stream, !IO),
+        io.write_string(Stream, "]\n\t", !IO)
     ),
-    write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
+    write_type_assign_types(Stream, VarSet, TypeVarSet, VarTypes, TypeBindings,
         no, Vars, !IO),
-    write_type_assign_hlds_constraints(TypeVarSet, TypeBindings, Constraints,
-        !IO),
-    io.write_string("\n", !IO).
+    write_type_assign_hlds_constraints(Stream, TypeVarSet, TypeBindings,
+        Constraints, !IO),
+    io.write_string(Stream, "\n", !IO).
 
-:- pred write_type_assign_types(prog_varset::in, tvarset::in, vartypes::in,
-    tsubst::in, bool::in, list(prog_var)::in, io::di, io::uo) is det.
+:- pred write_type_assign_types(io.text_output_stream::in,
+    prog_varset::in, tvarset::in, vartypes::in, tsubst::in, bool::in,
+    list(prog_var)::in, io::di, io::uo) is det.
 
-write_type_assign_types(_, _, _, _, FoundOne, [], !IO) :-
+write_type_assign_types(Stream, _, _, _, _, FoundOne, [], !IO) :-
     (
         FoundOne = no,
-        io.write_string("(No variables were assigned a type)", !IO)
+        io.write_string(Stream, "(No variables were assigned a type)", !IO)
     ;
         FoundOne = yes
     ).
-write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
+write_type_assign_types(Stream, VarSet, TypeVarSet, VarTypes, TypeBindings,
         FoundOne, [Var | Vars], !IO) :-
     ( if search_var_type(VarTypes, Var, Type) then
         (
             FoundOne = yes,
-            io.write_string("\n\t", !IO)
+            io.write_string(Stream, "\n\t", !IO)
         ;
             FoundOne = no
         ),
-        mercury_output_var(VarSet, varnums, Var, !IO),
-        io.write_string(": ", !IO),
-        write_type_with_bindings(TypeVarSet, TypeBindings, Type, !IO),
-        write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
-            yes, Vars, !IO)
+        mercury_output_var(VarSet, varnums, Var, Stream, !IO),
+        io.write_string(Stream, ": ", !IO),
+        write_type_with_bindings(Stream, TypeVarSet, TypeBindings, Type, !IO),
+        write_type_assign_types(Stream, VarSet, TypeVarSet, VarTypes,
+            TypeBindings, yes, Vars, !IO)
     else
-        write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
-            FoundOne, Vars, !IO)
+        write_type_assign_types(Stream, VarSet, TypeVarSet, VarTypes,
+            TypeBindings, FoundOne, Vars, !IO)
     ).
 
     % write_type_with_bindings writes out a type after applying the
     % type bindings.
     %
-:- pred write_type_with_bindings(tvarset::in, tsubst::in, mer_type::in,
-    io::di, io::uo) is det.
+:- pred write_type_with_bindings(io.text_output_stream::in, tvarset::in,
+    tsubst::in, mer_type::in, io::di, io::uo) is det.
 
-write_type_with_bindings(TypeVarSet, TypeBindings, Type0, !IO) :-
+write_type_with_bindings(Stream, TypeVarSet, TypeBindings, Type0, !IO) :-
     apply_rec_subst_to_type(TypeBindings, Type0, Type1),
     strip_builtin_qualifiers_from_type(Type1, Type),
-    mercury_output_type(TypeVarSet, print_name_and_num, Type, !IO).
+    mercury_output_type(TypeVarSet, print_name_and_num, Type, Stream, !IO).
 
-:- pred write_type_assign_hlds_constraints(tvarset::in, tsubst::in,
-    hlds_constraints::in, io::di, io::uo) is det.
+:- pred write_type_assign_hlds_constraints(io.text_output_stream::in,
+    tvarset::in, tsubst::in, hlds_constraints::in, io::di, io::uo) is det.
 
-write_type_assign_hlds_constraints(TypeVarSet, TypeBindings, Constraints,
-        !IO) :-
+write_type_assign_hlds_constraints(Stream, TypeVarSet, TypeBindings,
+        Constraints, !IO) :-
     Constraints =
         hlds_constraints(ConstraintsToProve, AssumedConstraints, _, _),
-    write_type_assign_constraints(TypeVarSet, TypeBindings,
+    write_type_assign_constraints(Stream, TypeVarSet, TypeBindings,
         "&", AssumedConstraints, no, !IO),
-    write_type_assign_constraints(TypeVarSet, TypeBindings,
+    write_type_assign_constraints(Stream, TypeVarSet, TypeBindings,
         "<=", ConstraintsToProve, no, !IO).
 
-:- pred write_type_assign_constraints(tvarset::in, tsubst::in,
-    string::in, list(hlds_constraint)::in, bool::in, io::di, io::uo) is det.
+:- pred write_type_assign_constraints(io.text_output_stream::in, tvarset::in,
+    tsubst::in, string::in, list(hlds_constraint)::in, bool::in,
+    io::di, io::uo) is det.
 
-write_type_assign_constraints(_, _, _, [], _, !IO).
-write_type_assign_constraints(TypeVarSet, TypeBindings, Operator,
+write_type_assign_constraints(_, _, _, _, [], _, !IO).
+write_type_assign_constraints(Stream, TypeVarSet, TypeBindings, Operator,
         [Constraint | Constraints], FoundOne, !IO) :-
     (
         FoundOne = no,
-        io.write_strings(["\n\t", Operator, " "], !IO)
+        io.write_strings(Stream, ["\n\t", Operator, " "], !IO)
     ;
         FoundOne = yes,
-        io.write_string(",\n\t   ", !IO)
+        io.write_string(Stream, ",\n\t   ", !IO)
     ),
     apply_rec_subst_to_constraint(TypeBindings, Constraint, BoundConstraint),
     retrieve_prog_constraint(BoundConstraint, ProgConstraint),
-    mercury_output_constraint(TypeVarSet, varnums, ProgConstraint, !IO),
-    write_type_assign_constraints(TypeVarSet, TypeBindings, Operator,
+    mercury_output_constraint(TypeVarSet, varnums, ProgConstraint, Stream, !IO),
+    write_type_assign_constraints(Stream, TypeVarSet, TypeBindings, Operator,
         Constraints, yes, !IO).
 
 %-----------------------------------------------------------------------------%

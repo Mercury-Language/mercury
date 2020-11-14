@@ -30,8 +30,7 @@
 
     % Given a c_file structure, output the LLDS code inside it into a .c file.
     %
-:- pred output_llds(globals::in, c_file::in, bool::out, io::di, io::uo)
-    is det.
+:- pred output_llds(globals::in, c_file::in, bool::out, io::di, io::uo) is det.
 
 %----------------------------------------------------------------------------%
 
@@ -93,6 +92,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
@@ -118,20 +118,21 @@ output_llds(Globals, CFile, Succeeded, !IO) :-
     ModuleName = CFile ^ cfile_modulename,
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".c")), ModuleName, FileName, !IO),
-    output_to_file(Globals, FileName, output_llds_2(Globals, CFile),
+    output_to_file_stream(Globals, FileName, output_llds_2(Globals, CFile),
         Succeeded, !IO).
 
-:- pred output_llds_2(globals::in, c_file::in, list(string)::out,
-    io::di, io::uo) is det.
+:- pred output_llds_2(globals::in, c_file::in, io.text_output_stream::in,
+    list(string)::out, io::di, io::uo) is det.
 
-output_llds_2(Globals, CFile, Errors, !IO) :-
+output_llds_2(Globals, CFile, Stream, Errors, !IO) :-
     decl_set_init(DeclSet0),
-    output_single_c_file(Globals, CFile, Errors, DeclSet0, _, !IO).
+    output_single_c_file(Globals, Stream, CFile, Errors, DeclSet0, _, !IO).
 
-:- pred output_single_c_file(globals::in, c_file::in, list(string)::out,
+:- pred output_single_c_file(globals::in, io.text_output_stream::in,
+    c_file::in, list(string)::out,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_single_c_file(Globals, CFile, Errors, !DeclSet, !IO) :-
+output_single_c_file(Globals, Stream, CFile, Errors, !DeclSet, !IO) :-
     CFile = c_file(ModuleName, C_HeaderLines, ForeignBodyCodes, Exports,
         TablingInfoStructs, ScalarCommonDatas, VectorCommonDatas,
         RttiDatas, PseudoTypeInfos, HLDSVarNums, ShortLocns, LongLocns,
@@ -146,8 +147,8 @@ output_single_c_file(Globals, CFile, Errors, !DeclSet, !IO) :-
         Modules, UserInitPredCNames, UserFinalPredCNames, ComplexityProcs),
     library.version(Version, Fullarch),
     module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
-    output_c_file_intro_and_grade(Globals, SourceFileName, Version, Fullarch,
-        !IO),
+    output_c_file_intro_and_grade(Globals, Stream, SourceFileName,
+        Version, Fullarch, !IO),
 
     Info = init_llds_out_info(ModuleName, SourceFileName, Globals,
         InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoEntryMap,
@@ -158,48 +159,48 @@ output_single_c_file(Globals, CFile, Errors, !DeclSet, !IO) :-
     EntryLabels = cord.list(EntryLabelsCord),
     InternalLabels = cord.list(InternalLabelsCord),
     EnvVarNames = set.to_sorted_list(EnvVarNameSet),
-    output_init_comment(ModuleName, UserInitPredCNames, UserFinalPredCNames,
-        EnvVarNames, !IO),
-    output_c_file_mercury_headers(Info, !IO),
+    output_init_c_comment(Stream, ModuleName,
+        UserInitPredCNames, UserFinalPredCNames, EnvVarNames, !IO),
+    output_c_file_mercury_headers(Info, Stream, !IO),
 
-    output_foreign_header_include_lines(Info, C_HeaderLines,
+    output_foreign_header_include_lines(Info, Stream, C_HeaderLines,
         ForeignIncludeResults, !IO),
-    io.write_string("\n", !IO),
+    io.write_string(Stream, "\n", !IO),
 
-    output_static_linkage_define(!IO),
-    list.foldl2(output_scalar_common_data_decl, ScalarCommonDatas,
+    output_static_linkage_define(Stream, !IO),
+    list.foldl2(output_scalar_common_data_decl(Stream), ScalarCommonDatas,
         !DeclSet, !IO),
-    list.foldl2(output_vector_common_data_decl, VectorCommonDatas,
+    list.foldl2(output_vector_common_data_decl(Stream), VectorCommonDatas,
         !DeclSet, !IO),
-    output_rtti_data_decl_list(Info, RttiDatas, !DeclSet, !IO),
-    output_record_c_label_decls(Info, EntryLabels, InternalLabels,
+    output_rtti_data_decl_list(Info, Stream, RttiDatas, !DeclSet, !IO),
+    output_record_c_label_decls(Info, Stream, EntryLabels, InternalLabels,
         !DeclSet, !IO),
-    list.foldl2(output_tabling_info_struct(Info), TablingInfoStructs,
+    list.foldl2(output_tabling_info_struct(Info, Stream), TablingInfoStructs,
         !DeclSet, !IO),
-    list.foldl2(output_scalar_common_data_defn(Info), ScalarCommonDatas,
+    list.foldl2(output_scalar_common_data_defn(Info, Stream), ScalarCommonDatas,
         !DeclSet, !IO),
-    list.foldl2(output_vector_common_data_defn(Info), VectorCommonDatas,
+    list.foldl2(output_vector_common_data_defn(Info, Stream), VectorCommonDatas,
         !DeclSet, !IO),
-    list.foldl2(output_rtti_data_defn(Info), RttiDatas, !DeclSet, !IO),
+    list.foldl2(output_rtti_data_defn(Info, Stream), RttiDatas, !DeclSet, !IO),
 
-    io.nl(!IO),
-    output_layout_array_decls(Info, PseudoTypeInfos, HLDSVarNums,
+    io.nl(Stream, !IO),
+    output_layout_array_decls(Info, Stream, PseudoTypeInfos, HLDSVarNums,
         ShortLocns, LongLocns, UserEventVarNums, UserEvents,
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         CallSiteStatics, CoveragePoints, ProcStatics,
         ProcHeadVarNums, ProcVarNames, ProcBodyBytecodes, TableIoEntries,
         ProcEventLayouts, ExecTraces, AllocSites, !IO),
 
-    list.foldl2(output_proc_layout_data_defn(Info), ProcLayoutDatas,
-        !DeclSet, !IO),
-    list.foldl2(output_module_layout_data_defn(Info), ModuleLayoutDatas,
-        !DeclSet, !IO),
-    list.foldl2(output_closure_layout_data_defn(Info), ClosureLayoutDatas,
-        !DeclSet, !IO),
-    io.nl(!IO),
+    list.foldl2(output_proc_layout_data_defn(Info, Stream),
+        ProcLayoutDatas, !DeclSet, !IO),
+    list.foldl2(output_module_layout_data_defn(Info, Stream),
+        ModuleLayoutDatas, !DeclSet, !IO),
+    list.foldl2(output_closure_layout_data_defn(Info, Stream),
+        ClosureLayoutDatas, !DeclSet, !IO),
+    io.nl(Stream, !IO),
 
-    output_record_rvals_decls(Info, PseudoTypeInfos, !DeclSet, !IO),
-    output_layout_array_defns(Info, PseudoTypeInfos, HLDSVarNums,
+    output_record_rvals_decls(Info, Stream, PseudoTypeInfos, !DeclSet, !IO),
+    output_layout_array_defns(Info, Stream, PseudoTypeInfos, HLDSVarNums,
         ShortLocns, LongLocns, UserEventVarNums, UserEvents,
         NoVarLabelLayouts, SVarLabelLayouts, LVarLabelLayouts,
         CallSiteStatics, CoveragePoints, ProcStatics,
@@ -207,20 +208,21 @@ output_single_c_file(Globals, CFile, Errors, !DeclSet, !IO) :-
         ProcEventLayouts, ExecTraces, TSStringTable, AllocSites,
         !DeclSet, !IO),
 
-    list.map_foldl(output_foreign_body_code(Info), ForeignBodyCodes,
+    list.map_foldl(output_foreign_body_code(Info, Stream), ForeignBodyCodes,
         ForeignCodeResults, !IO),
-    list.foldl2(output_annotated_c_module(Info), AnnotatedModules,
+    list.foldl2(output_annotated_c_module(Info, Stream), AnnotatedModules,
         !DeclSet, !IO),
     WriteForeignExportDefn =
         (pred(ForeignExportDefn::in, IO0::di, IO::uo) is det :-
             ForeignExportDefn = foreign_export_defn(ForeignExportCode),
-            io.write_string(ForeignExportCode, IO0, IO)
+            io.write_string(Stream, ForeignExportCode, IO0, IO)
         ),
     list.foldl(WriteForeignExportDefn, Exports, !IO),
-    io.write_string("\n", !IO),
-    output_c_module_init_list(Info, ModuleName, AnnotatedModules, RttiDatas,
-        ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs, TSStringTable,
-        AllocSites, UserInitPredCNames, UserFinalPredCNames, !DeclSet, !IO),
+    io.write_string(Stream, "\n", !IO),
+    output_c_module_init_list(Info, Stream, ModuleName, AnnotatedModules,
+        RttiDatas, ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs,
+        TSStringTable, AllocSites, UserInitPredCNames, UserFinalPredCNames,
+        !DeclSet, !IO),
 
     list.filter_map(maybe_is_error, ForeignIncludeResults, ErrorsA),
     list.filter_map(maybe_is_error, ForeignCodeResults, ErrorsB),
@@ -229,30 +231,30 @@ output_single_c_file(Globals, CFile, Errors, !DeclSet, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred output_c_file_mercury_headers(llds_out_info::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-output_c_file_mercury_headers(Info, !IO) :-
-    io.write_string("#define MR_ALLOW_RESET\n", !IO),
-    io.write_string("#include ""mercury_imp.h""\n", !IO),
+output_c_file_mercury_headers(Info, Stream, !IO) :-
+    io.write_string(Stream, "#define MR_ALLOW_RESET\n", !IO),
+    io.write_string(Stream, "#include ""mercury_imp.h""\n", !IO),
     TraceLevel = Info ^ lout_trace_level,
     TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
     (
         TraceEnabled = exec_trace_is_enabled,
-        io.write_string("#include ""mercury_trace_base.h""\n", !IO)
+        io.write_string(Stream, "#include ""mercury_trace_base.h""\n", !IO)
     ;
         TraceEnabled = exec_trace_is_not_enabled
     ),
     DeepProfile = Info ^ lout_profile_deep,
     (
         DeepProfile = yes,
-        io.write_string("#include ""mercury_deep_profiling.h""\n", !IO)
+        io.write_string(Stream, "#include ""mercury_deep_profiling.h""\n", !IO)
     ;
         DeepProfile = no
     ),
     GenerateBytecode = Info ^ lout_generate_bytecode,
     (
         GenerateBytecode = yes,
-        io.write_string("#include ""mb_interface_stub.h""\n", !IO)
+        io.write_string(Stream, "#include ""mb_interface_stub.h""\n", !IO)
     ;
         GenerateBytecode = no
     ).
@@ -412,19 +414,22 @@ gather_labels_from_instrs_acc([Instr | Instrs],
 
 %----------------------------------------------------------------------------%
 
-:- pred output_c_module_init_list(llds_out_info::in, module_name::in,
+:- pred output_c_module_init_list(llds_out_info::in,
+    io.text_output_stream::in, module_name::in,
     list(annotated_c_module)::in, list(rtti_data)::in,
     list(proc_layout_data)::in, list(module_layout_data)::in,
     list(complexity_proc_info)::in, list(string)::in,
     list(alloc_site_info)::in, list(string)::in, list(string)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_c_module_init_list(Info, ModuleName, AnnotatedModules, RttiDatas,
-        ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs, TSStringTable,
-        AllocSites, InitPredNames, FinalPredNames, !DeclSet, !IO) :-
-    MustInit = (pred(Module::in) is semidet :-
-        module_defines_label_with_layout(Info, Module)
-    ),
+output_c_module_init_list(Info, Stream, ModuleName, AnnotatedModules,
+        RttiDatas, ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs,
+        TSStringTable, AllocSites, InitPredNames, FinalPredNames,
+        !DeclSet, !IO) :-
+    MustInit =
+        ( pred(Module::in) is semidet :-
+            module_defines_label_with_layout(Info, Module)
+        ),
     list.filter(MustInit, AnnotatedModules,
         AlwaysInitAnnotatedModules, MaybeInitAnnotatedModules),
     list.chunk(AlwaysInitAnnotatedModules, 40,
@@ -432,209 +437,210 @@ output_c_module_init_list(Info, ModuleName, AnnotatedModules, RttiDatas,
     list.chunk(MaybeInitAnnotatedModules, 40,
         MaybeInitAnnotatedModuleBunches),
 
-    output_init_bunch_defs(Info, "always", 0,
+    output_init_bunch_defs(Info, Stream, "always", 0,
         AlwaysInitAnnotatedModuleBunches, !IO),
     (
         MaybeInitAnnotatedModuleBunches = []
     ;
         MaybeInitAnnotatedModuleBunches = [_ | _],
-        output_init_bunch_defs(Info, "maybe", 0,
+        output_init_bunch_defs(Info, Stream, "maybe", 0,
             MaybeInitAnnotatedModuleBunches, !IO)
     ),
 
-    io.write_string("/* suppress gcc -Wmissing-decls warnings */\n", !IO),
-    io.write_string("void ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("init(void);\n", !IO),
+    ModuleInitName = make_init_name(ModuleName),
 
-    io.write_string("void ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("init_type_tables(void);\n", !IO),
-    io.write_string("void ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("init_debugger(void);\n", !IO),
+    io.write_string(Stream,
+        "/* suppress gcc -Wmissing-decls warnings */\n", !IO),
+    io.write_string(Stream, "void ", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, "init(void);\n", !IO),
 
-    io.write_string("#ifdef MR_DEEP_PROFILING\n", !IO),
-    io.write_string("void ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string(
+    io.write_string(Stream, "void ", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, "init_type_tables(void);\n", !IO),
+    io.write_string(Stream, "void ", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, "init_debugger(void);\n", !IO),
+
+    io.write_string(Stream, "#ifdef MR_DEEP_PROFILING\n", !IO),
+    io.write_string(Stream, "void ", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, 
         "write_out_proc_statics(FILE *deep_fp, FILE *procrep_fp);\n", !IO),
-    io.write_string("#endif\n", !IO),
+    io.write_string(Stream, "#endif\n", !IO),
 
-    io.write_string("#ifdef MR_RECORD_TERM_SIZES\n", !IO),
-    io.write_string("void ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("init_complexity_procs(void);\n", !IO),
-    io.write_string("#endif\n", !IO),
+    io.write_string(Stream, "#ifdef MR_RECORD_TERM_SIZES\n", !IO),
+    io.write_string(Stream, "void ", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, "init_complexity_procs(void);\n", !IO),
+    io.write_string(Stream, "#endif\n", !IO),
 
-    io.write_string("#ifdef MR_THREADSCOPE\n", !IO),
-    io.write_string("void ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("init_threadscope_string_table(void);\n", !IO),
-    io.write_string("#endif\n", !IO),
+    io.write_string(Stream, "#ifdef MR_THREADSCOPE\n", !IO),
+    io.write_string(Stream, "void ", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, "init_threadscope_string_table(void);\n", !IO),
+    io.write_string(Stream, "#endif\n", !IO),
 
     (
         InitPredNames = []
     ;
         InitPredNames = [_ | _],
-        io.write_string("void ", !IO),
-        output_init_name(ModuleName, !IO),
-        io.write_string("required_init(void);\n", !IO)
+        io.format(Stream, "void %srequired_init(void);\n",
+            [s(ModuleInitName)], !IO)
     ),
 
     (
         FinalPredNames = []
     ;
         FinalPredNames = [_ | _],
-        io.write_string("void ", !IO),
-        output_init_name(ModuleName, !IO),
-        io.write_string("required_final(void);\n", !IO)
+        io.format(Stream, "void %srequired_final(void);\n",
+            [s(ModuleInitName)], !IO)
     ),
 
-    io.write_string("const char *", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("grade_check(void);\n", !IO),
+    io.format(Stream, "const char *%sgrade_check(void);\n",
+        [s(ModuleInitName)], !IO),
 
-    io.write_string("\n", !IO),
+    io.write_string(Stream, "\n", !IO),
 
-    io.write_string("void ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("init(void)\n", !IO),
-    io.write_string("{\n", !IO),
-    io.write_string("\tstatic MR_bool done = MR_FALSE;\n", !IO),
-    io.write_string("\tif (done) {\n", !IO),
-    io.write_string("\t\treturn;\n", !IO),
-    io.write_string("\t}\n", !IO),
-    io.write_string("\tdone = MR_TRUE;\n", !IO),
+    io.write_string(Stream, "void ", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, "init(void)\n", !IO),
+    io.write_string(Stream, "{\n", !IO),
+    io.write_string(Stream, "\tstatic MR_bool done = MR_FALSE;\n", !IO),
+    io.write_string(Stream, "\tif (done) {\n", !IO),
+    io.write_string(Stream, "\t\treturn;\n", !IO),
+    io.write_string(Stream, "\t}\n", !IO),
+    io.write_string(Stream, "\tdone = MR_TRUE;\n", !IO),
 
-    output_init_bunch_calls(Info, "always", 0,
+    output_init_bunch_calls(Info, Stream, "always", 0,
         AlwaysInitAnnotatedModuleBunches, !IO),
     (
         MaybeInitAnnotatedModuleBunches = []
     ;
         MaybeInitAnnotatedModuleBunches = [_ | _],
-        output_init_bunch_calls(Info, "maybe", 0,
+        output_init_bunch_calls(Info, Stream, "maybe", 0,
             MaybeInitAnnotatedModuleBunches, !IO)
     ),
 
-    output_c_data_init_list(RttiDatas, !IO),
-    output_alloc_sites_init(Info, AllocSites, !IO),
+    output_c_data_init_list(Stream, RttiDatas, !IO),
+    output_alloc_sites_init(Info, Stream, AllocSites, !IO),
 
     % The call to the debugger initialization function is for bootstrapping;
     % once the debugger has been modified to call do_init_modules_debugger()
     % and all debuggable object files created before this change have been
     % overwritten, it can be deleted.
-    io.write_string("\t", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("init_debugger();\n", !IO),
-    io.write_string("}\n\n", !IO),
+    io.write_string(Stream, "\t", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, "init_debugger();\n", !IO),
+    io.write_string(Stream, "}\n\n", !IO),
 
-    io.write_string("void ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("init_type_tables(void)\n", !IO),
-    io.write_string("{\n", !IO),
-    io.write_string("\tstatic MR_bool done = MR_FALSE;\n", !IO),
-    io.write_string("\tif (done) {\n", !IO),
-    io.write_string("\t\treturn;\n", !IO),
-    io.write_string("\t}\n", !IO),
-    io.write_string("\tdone = MR_TRUE;\n", !IO),
-    output_type_tables_init_list(RttiDatas, !IO),
-    io.write_string("}\n\n", !IO),
+    io.write_string(Stream, "void ", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, "init_type_tables(void)\n", !IO),
+    io.write_string(Stream, "{\n", !IO),
+    io.write_string(Stream, "\tstatic MR_bool done = MR_FALSE;\n", !IO),
+    io.write_string(Stream, "\tif (done) {\n", !IO),
+    io.write_string(Stream, "\t\treturn;\n", !IO),
+    io.write_string(Stream, "\t}\n", !IO),
+    io.write_string(Stream, "\tdone = MR_TRUE;\n", !IO),
+    output_type_tables_init_list(Stream, RttiDatas, !IO),
+    io.write_string(Stream, "}\n\n", !IO),
 
-    io.write_string("\n", !IO),
-    io.write_string("void ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("init_debugger(void)\n", !IO),
-    io.write_string("{\n", !IO),
-    io.write_string("\tstatic MR_bool done = MR_FALSE;\n", !IO),
-    io.write_string("\tif (done) {\n", !IO),
-    io.write_string("\t\treturn;\n", !IO),
-    io.write_string("\t}\n", !IO),
-    io.write_string("\tdone = MR_TRUE;\n", !IO),
-    output_debugger_init_list(ModuleLayoutDatas, !IO),
-    io.write_string("}\n\n", !IO),
+    io.write_string(Stream, "\n", !IO),
+    io.write_string(Stream, "void ", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, "init_debugger(void)\n", !IO),
+    io.write_string(Stream, "{\n", !IO),
+    io.write_string(Stream, "\tstatic MR_bool done = MR_FALSE;\n", !IO),
+    io.write_string(Stream, "\tif (done) {\n", !IO),
+    io.write_string(Stream, "\t\treturn;\n", !IO),
+    io.write_string(Stream, "\t}\n", !IO),
+    io.write_string(Stream, "\tdone = MR_TRUE;\n", !IO),
+    output_debugger_init_list(Stream, ModuleLayoutDatas, !IO),
+    io.write_string(Stream, "}\n\n", !IO),
 
-    io.write_string("#ifdef MR_DEEP_PROFILING\n", !IO),
-    io.write_string("\nvoid ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string(
+    io.write_string(Stream, "#ifdef MR_DEEP_PROFILING\n", !IO),
+    io.write_string(Stream, "\nvoid ", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, 
         "write_out_proc_statics(FILE *deep_fp, FILE *procrep_fp)\n", !IO),
-    io.write_string("{\n", !IO),
-    io.write_string("\tMR_write_out_module_proc_reps_start(procrep_fp, &",
-        !IO),
+    io.write_string(Stream, "{\n", !IO),
+    io.write_string(Stream,
+        "\tMR_write_out_module_proc_reps_start(procrep_fp, &", !IO),
     ModuleLayoutName = module_layout(ModuleName),
-    output_layout_name(ModuleLayoutName, !IO),
-    io.write_string(");\n", !IO),
-    output_write_proc_static_list(ProcLayoutDatas, !IO),
-    io.write_string("\tMR_write_out_module_proc_reps_end(procrep_fp);\n", !IO),
-    io.write_string("}\n", !IO),
-    io.write_string("\n#endif\n\n", !IO),
+    output_layout_name(Stream, ModuleLayoutName, !IO),
+    io.write_string(Stream, ");\n", !IO),
+    output_write_proc_static_list(Stream, ProcLayoutDatas, !IO),
+    io.write_string(Stream,
+        "\tMR_write_out_module_proc_reps_end(procrep_fp);\n", !IO),
+    io.write_string(Stream, "}\n", !IO),
+    io.write_string(Stream, "\n#endif\n\n", !IO),
 
-    io.write_string("#ifdef MR_RECORD_TERM_SIZES\n", !IO),
-    output_complexity_arg_info_arrays(ComplexityProcs, !IO),
-    io.write_string("\nvoid ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("init_complexity_procs(void)\n", !IO),
-    io.write_string("{\n", !IO),
-    output_init_complexity_proc_list(ComplexityProcs, !IO),
-    io.write_string("}\n", !IO),
-    io.write_string("\n#endif\n\n", !IO),
+    io.write_string(Stream, "#ifdef MR_RECORD_TERM_SIZES\n", !IO),
+    output_complexity_arg_info_arrays(Stream, ComplexityProcs, !IO),
+    io.write_string(Stream, "\nvoid ", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, "init_complexity_procs(void)\n", !IO),
+    io.write_string(Stream, "{\n", !IO),
+    output_init_complexity_proc_list(Stream, ComplexityProcs, !IO),
+    io.write_string(Stream, "}\n", !IO),
+    io.write_string(Stream, "\n#endif\n\n", !IO),
 
-    io.write_string("#ifdef MR_THREADSCOPE\n", !IO),
-    io.write_string("\nvoid ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("init_threadscope_string_table(void)\n", !IO),
-    io.write_string("{\n", !IO),
+    io.write_string(Stream, "#ifdef MR_THREADSCOPE\n", !IO),
+    io.write_string(Stream, "\nvoid ", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, "init_threadscope_string_table(void)\n", !IO),
+    io.write_string(Stream, "{\n", !IO),
     (
         TSStringTable = []
     ;
         TSStringTable = [_ | _],
         TSStringTableSize = length(TSStringTable),
-        io.write_string("\tMR_threadscope_register_strings_array(\n", !IO),
-        io.write_string("\t\t", !IO),
+        io.write_string(Stream,
+            "\tMR_threadscope_register_strings_array(\n", !IO),
+        io.write_string(Stream, "\t\t", !IO),
         MangledModuleName = Info ^ lout_mangled_module_name,
-        output_layout_array_name(use_layout_macro, MangledModuleName,
+        output_layout_array_name(Stream, use_layout_macro, MangledModuleName,
             threadscope_string_table_array, !IO),
         io.format(", %d);\n", [i(TSStringTableSize)], !IO)
     ),
-    io.write_string("}\n", !IO),
-    io.write_string("\n#endif\n\n", !IO),
+    io.write_string(Stream, "}\n", !IO),
+    io.write_string(Stream, "\n#endif\n\n", !IO),
 
     (
         InitPredNames = []
     ;
         InitPredNames = [_ | _],
-        io.write_string("void ", !IO),
-        output_init_name(ModuleName, !IO),
-        io.write_string("required_init(void)\n", !IO),
-        io.write_string("{\n", !IO),
-        output_required_init_or_final_calls(InitPredNames, !IO),
-        io.write_string("}\n", !IO),
-        io.nl(!IO)
+        io.write_string(Stream, "void ", !IO),
+        io.write_string(Stream, ModuleInitName,  !IO),
+        io.write_string(Stream, "required_init(void)\n", !IO),
+        io.write_string(Stream, "{\n", !IO),
+        output_required_init_or_final_calls(Stream, InitPredNames, !IO),
+        io.write_string(Stream, "}\n", !IO),
+        io.nl(Stream, !IO)
     ),
 
     (
         FinalPredNames = []
     ;
         FinalPredNames = [_ | _],
-        io.write_string("void ", !IO),
-        output_init_name(ModuleName, !IO),
-        io.write_string("required_final(void)\n", !IO),
-        io.write_string("{\n", !IO),
-        output_required_init_or_final_calls(FinalPredNames, !IO),
-        io.write_string("}\n", !IO),
-        io.nl(!IO)
+        io.write_string(Stream, "void ", !IO),
+        io.write_string(Stream, ModuleInitName,  !IO),
+        io.write_string(Stream, "required_final(void)\n", !IO),
+        io.write_string(Stream, "{\n", !IO),
+        output_required_init_or_final_calls(Stream, FinalPredNames, !IO),
+        io.write_string(Stream, "}\n", !IO),
+        io.nl(Stream, !IO)
     ),
 
-    io.write_string(
-        "// Ensure everything is compiled with the same grade.\n",
-        !IO),
-    io.write_string("const char *", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("grade_check(void)\n", !IO),
-    io.write_string("{\n", !IO),
-    io.write_string("    return &MR_GRADE_VAR;\n", !IO),
-    io.write_string("}\n", !IO).
+    io.write_string(Stream, 
+        "// Ensure everything is compiled with the same grade.\n", !IO),
+    io.write_string(Stream, "const char *", !IO),
+    io.write_string(Stream, ModuleInitName,  !IO),
+    io.write_string(Stream, "grade_check(void)\n", !IO),
+    io.write_string(Stream, "{\n", !IO),
+    io.write_string(Stream, "    return &MR_GRADE_VAR;\n", !IO),
+    io.write_string(Stream, "}\n", !IO).
 
 :- pred module_defines_label_with_layout(llds_out_info::in,
     annotated_c_module::in) is semidet.
@@ -670,118 +676,119 @@ entry_label_has_layout(EntryLabelToLayoutMap, Label) :-
 
 %----------------------------------------------------------------------------%
 
-:- pred output_init_bunch_defs(llds_out_info::in, string::in, int::in,
-    list(list(annotated_c_module))::in, io::di, io::uo) is det.
-
-output_init_bunch_defs(_, _, _, [], !IO).
-output_init_bunch_defs(Info, InitStatus, Seq, [Bunch | Bunches], !IO) :-
-    io.write_string("static void ", !IO),
-    output_bunch_name(Info, InitStatus, Seq, !IO),
-    io.write_string("(void)\n", !IO),
-    io.write_string("{\n", !IO),
-    output_init_bunch_def(Bunch, !IO),
-    io.write_string("}\n\n", !IO),
-    NextSeq = Seq + 1,
-    output_init_bunch_defs(Info, InitStatus, NextSeq, Bunches, !IO).
-
-:- pred output_init_bunch_def(list(annotated_c_module)::in,
+:- pred output_init_bunch_defs(llds_out_info::in, io.text_output_stream::in,
+    string::in, int::in, list(list(annotated_c_module))::in,
     io::di, io::uo) is det.
 
-output_init_bunch_def([], !IO).
-output_init_bunch_def([AnnotatedModule | AnnotatedModules], !IO) :-
+output_init_bunch_defs(_, _, _, _, [], !IO).
+output_init_bunch_defs(Info, Stream, InitStatus, Seq,
+        [Bunch | Bunches], !IO) :-
+    io.write_string(Stream, "static void ", !IO),
+    output_bunch_name(Info, Stream, InitStatus, Seq, !IO),
+    io.write_string(Stream, "(void)\n", !IO),
+    io.write_string(Stream, "{\n", !IO),
+    output_init_bunch_def(Stream, Bunch, !IO),
+    io.write_string(Stream, "}\n\n", !IO),
+    NextSeq = Seq + 1,
+    output_init_bunch_defs(Info, Stream, InitStatus, NextSeq, Bunches, !IO).
+
+:- pred output_init_bunch_def(io.text_output_stream::in,
+    list(annotated_c_module)::in, io::di, io::uo) is det.
+
+output_init_bunch_def(_, [], !IO).
+output_init_bunch_def(Stream, [AnnotatedModule | AnnotatedModules], !IO) :-
     C_ModuleName = AnnotatedModule ^ acm_name,
-    io.write_string("\t", !IO),
-    io.write_string(C_ModuleName, !IO),
-    io.write_string("();\n", !IO),
-    output_init_bunch_def(AnnotatedModules, !IO).
+    io.format(Stream, "\t%s();\n", [s(C_ModuleName)], !IO),
+    output_init_bunch_def(Stream, AnnotatedModules, !IO).
 
-:- pred output_init_bunch_calls(llds_out_info::in, string::in, int::in,
-    list(list(annotated_c_module))::in, io::di, io::uo) is det.
-
-output_init_bunch_calls(_, _, _, [], !IO).
-output_init_bunch_calls(Info, InitStatus, Seq, [_ | Bunches], !IO) :-
-    io.write_string("\t", !IO),
-    output_bunch_name(Info, InitStatus, Seq, !IO),
-    io.write_string("();\n", !IO),
-    NextSeq = Seq + 1,
-    output_init_bunch_calls(Info, InitStatus, NextSeq, Bunches, !IO).
-
-:- pred output_bunch_name(llds_out_info::in, string::in, int::in,
+:- pred output_init_bunch_calls(llds_out_info::in, io.text_output_stream::in,
+    string::in, int::in, list(list(annotated_c_module))::in,
     io::di, io::uo) is det.
 
-output_bunch_name(Info, InitStatus, Number, !IO) :-
-    io.write_string("mercury__", !IO),
+output_init_bunch_calls(_, _, _, _, [], !IO).
+output_init_bunch_calls(Info, Stream, InitStatus, Seq, [_ | Bunches], !IO) :-
+    io.write_string(Stream, "\t", !IO),
+    output_bunch_name(Info, Stream, InitStatus, Seq, !IO),
+    io.write_string(Stream, "();\n", !IO),
+    NextSeq = Seq + 1,
+    output_init_bunch_calls(Info, Stream, InitStatus, NextSeq, Bunches, !IO).
+
+:- pred output_bunch_name(llds_out_info::in, io.text_output_stream::in,
+    string::in, int::in, io::di, io::uo) is det.
+
+output_bunch_name(Info, Stream, InitStatus, Number, !IO) :-
+    io.write_string(Stream, "mercury__", !IO),
     MangledModuleName = Info ^ lout_mangled_module_name,
-    io.write_string(MangledModuleName, !IO),
-    io.write_string("_", !IO),
-    io.write_string(InitStatus, !IO),
-    io.write_string("_bunch_", !IO),
-    io.write_int(Number, !IO).
+    io.format(Stream, "%s_%s_bunch_%d",
+        [s(MangledModuleName), s(InitStatus), i(Number)], !IO).
 
     % Output MR_INIT_TYPE_CTOR_INFO(TypeCtorInfo, Typector);
     % for each type_ctor_info defined in this module.
     %
-:- pred output_c_data_init_list(list(rtti_data)::in, io::di, io::uo) is det.
+:- pred output_c_data_init_list(io.text_output_stream::in,
+    list(rtti_data)::in, io::di, io::uo) is det.
 
-output_c_data_init_list([], !IO).
-output_c_data_init_list([Data | Datas], !IO) :-
-    rtti_out.init_rtti_data_if_nec(Data, !IO),
-    output_c_data_init_list(Datas, !IO).
+output_c_data_init_list(_, [], !IO).
+output_c_data_init_list(Stream, [Data | Datas], !IO) :-
+    rtti_out.init_rtti_data_if_nec(Stream, Data, !IO),
+    output_c_data_init_list(Stream, Datas, !IO).
 
     % Output code to register the allocation sites defined in this module.
     %
-:- pred output_alloc_sites_init(llds_out_info::in, list(alloc_site_info)::in,
-    io::di, io::uo) is det.
+:- pred output_alloc_sites_init(llds_out_info::in, io.text_output_stream::in,
+    list(alloc_site_info)::in, io::di, io::uo) is det.
 
-output_alloc_sites_init(Info, AllocSites, !IO) :-
+output_alloc_sites_init(Info, Stream, AllocSites, !IO) :-
     (
         AllocSites = []
     ;
         AllocSites = [_ | _],
         MangledModuleName = Info ^ lout_mangled_module_name,
         NumAllocSites = list.length(AllocSites),
-        io.write_string("#ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION\n", !IO),
-        io.write_string("\tMR_register_alloc_sites(", !IO),
-        output_layout_array_name(do_not_use_layout_macro, MangledModuleName,
-            alloc_site_array, !IO),
-        io.write_string(", ", !IO),
-        io.write_int(NumAllocSites, !IO),
-        io.write_string(");\n", !IO),
-        io.write_string("#endif\n", !IO)
+        io.write_string(Stream,
+            "#ifdef MR_MPROF_PROFILE_MEMORY_ATTRIBUTION\n", !IO),
+        io.write_string(Stream, "\tMR_register_alloc_sites(", !IO),
+        output_layout_array_name(Stream, do_not_use_layout_macro,
+            MangledModuleName, alloc_site_array, !IO),
+        io.write_string(Stream, ", ", !IO),
+        io.write_int(Stream, NumAllocSites, !IO),
+        io.write_string(Stream, ");\n", !IO),
+        io.write_string(Stream, "#endif\n", !IO)
     ).
 
     % Output code to register each type_ctor_info defined in this module.
     %
-:- pred output_type_tables_init_list(list(rtti_data)::in, io::di, io::uo)
-    is det.
+:- pred output_type_tables_init_list(io.text_output_stream::in,
+    list(rtti_data)::in, io::di, io::uo) is det.
 
-output_type_tables_init_list([], !IO).
-output_type_tables_init_list([Data | Datas], !IO) :-
-    rtti_out.register_rtti_data_if_nec(Data, !IO),
-    output_type_tables_init_list(Datas, !IO).
+output_type_tables_init_list(_, [], !IO).
+output_type_tables_init_list(Stream, [Data | Datas], !IO) :-
+    rtti_out.register_rtti_data_if_nec(Stream, Data, !IO),
+    output_type_tables_init_list(Stream, Datas, !IO).
 
     % Output calls to MR_register_module_layout()
     % for each module layout defined in this module
     % (there should only be one, of course).
     %
-:- pred output_debugger_init_list(list(module_layout_data)::in,
-    io::di, io::uo) is det.
+:- pred output_debugger_init_list(io.text_output_stream::in,
+    list(module_layout_data)::in, io::di, io::uo) is det.
 
-output_debugger_init_list([], !IO).
-output_debugger_init_list([Data | Datas], !IO) :-
+output_debugger_init_list(_, [], !IO).
+output_debugger_init_list(Stream, [Data | Datas], !IO) :-
     Data = module_layout_data(ModuleName, _, _, _, _),
-    io.write_string("\tif (MR_register_module_layout != NULL) {\n", !IO),
-    io.write_string("\t\t(*MR_register_module_layout)(", !IO),
-    io.write_string("\n\t\t\t&", !IO),
-    output_layout_name(module_layout(ModuleName), !IO),
-    io.write_string(");\n\t}\n", !IO),
-    output_debugger_init_list(Datas, !IO).
+    io.write_string(Stream,
+        "\tif (MR_register_module_layout != NULL) {\n", !IO),
+    io.write_string(Stream, "\t\t(*MR_register_module_layout)(", !IO),
+    io.write_string(Stream, "\n\t\t\t&", !IO),
+    output_layout_name(Stream, module_layout(ModuleName), !IO),
+    io.write_string(Stream, ");\n\t}\n", !IO),
+    output_debugger_init_list(Stream, Datas, !IO).
 
-:- pred output_write_proc_static_list(list(proc_layout_data)::in,
-    io::di, io::uo) is det.
+:- pred output_write_proc_static_list(io.text_output_stream::in,
+    list(proc_layout_data)::in, io::di, io::uo) is det.
 
-output_write_proc_static_list([], !IO).
-output_write_proc_static_list([ProcLayout | ProcLayouts], !IO) :-
+output_write_proc_static_list(_, [], !IO).
+output_write_proc_static_list(Stream, [ProcLayout | ProcLayouts], !IO) :-
     ProcLayout = proc_layout_data(RttiProcLabel, _, MaybeMore),
     ( if MaybeMore = proc_id_and_more(yes(_ProcStatic), _, _, _) then
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
@@ -789,119 +796,82 @@ output_write_proc_static_list([ProcLayout | ProcLayouts], !IO) :-
         Kind = proc_layout_proc_id(UserOrUCI),
         (
             UserOrUCI = user,
-            io.write_string(
+            io.write_string(Stream, 
                 "\tMR_write_out_user_proc_static(deep_fp, procrep_fp,\n\t\t&",
                 !IO)
         ;
             UserOrUCI = uci,
-            io.write_string(
+            io.write_string(Stream, 
                 "\tMR_write_out_uci_proc_static(deep_fp, procrep_fp,\n\t\t&",
                 !IO)
         ),
-        output_layout_name(proc_layout(RttiProcLabel, Kind), !IO),
-        io.write_string(");\n", !IO)
+        output_layout_name(Stream, proc_layout(RttiProcLabel, Kind), !IO),
+        io.write_string(Stream, ");\n", !IO)
     else
         true
     ),
-    output_write_proc_static_list(ProcLayouts, !IO).
+    output_write_proc_static_list(Stream, ProcLayouts, !IO).
 
 %----------------------------------------------------------------------------%
 
-    % Output a comment to tell mkinit what functions to call from
-    % <module>_init.c.
-    %
-:- pred output_init_comment(module_name::in, list(string)::in,
-    list(string)::in, list(string)::in, io::di, io::uo) is det.
+:- pred output_required_init_or_final_calls(io.text_output_stream::in,
+    list(string)::in, io::di, io::uo) is det.
 
-output_init_comment(ModuleName, UserInitPredCNames, UserFinalPredCNames,
-        EnvVarNames, !IO) :-
-    io.write_string("/*\n", !IO),
-    io.write_string("INIT ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("init\n", !IO),
-    % We only print out the REQUIRED_INIT and REQUIRED_FINAL comments
-    % if there are user initialisation/finalisation predicates.
-    (
-        UserInitPredCNames = []
-    ;
-        UserInitPredCNames = [_ | _],
-        io.write_string("REQUIRED_INIT ", !IO),
-        output_init_name(ModuleName, !IO),
-        io.write_string("required_init\n", !IO)
-    ),
-    (
-        UserFinalPredCNames = []
-    ;
-        UserFinalPredCNames = [_ | _],
-        io.write_string("REQUIRED_FINAL ", !IO),
-        output_init_name(ModuleName, !IO),
-        io.write_string("required_final\n", !IO)
-    ),
-    list.foldl(output_env_var_init, EnvVarNames, !IO),
-    io.write_string("ENDINIT\n", !IO),
-    io.write_string("*/\n\n", !IO).
-
-:- pred output_env_var_init(string::in, io::di, io::uo) is det.
-
-output_env_var_init(EnvVarName, !IO) :-
-    io.write_string("ENVVAR ", !IO),
-    io.write_string(EnvVarName, !IO),
-    io.nl(!IO).
-
-:- pred output_required_init_or_final_calls(list(string)::in, io::di, io::uo)
-    is det.
-
-output_required_init_or_final_calls([], !IO).
-output_required_init_or_final_calls([ Name | Names ], !IO) :-
-    io.write_string("\t" ++ Name ++ "();\n", !IO),
-    output_required_init_or_final_calls(Names, !IO).
+output_required_init_or_final_calls(_, [], !IO).
+output_required_init_or_final_calls(Stream, [Name | Names], !IO) :-
+    io.format(Stream, "\t%s();\n", [s(Name)], !IO),
+    output_required_init_or_final_calls(Stream, Names, !IO).
 
 %----------------------------------------------------------------------------%
 
-:- pred output_annotated_c_module(llds_out_info::in, annotated_c_module::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
+:- pred output_annotated_c_module(llds_out_info::in, io.text_output_stream::in,
+    annotated_c_module::in, decl_set::in, decl_set::out,
+    io::di, io::uo) is det.
 
-output_annotated_c_module(Info, AnnotatedModule, !DeclSet, !IO) :-
+output_annotated_c_module(Info, Stream, AnnotatedModule, !DeclSet, !IO) :-
     AnnotatedModule = annotated_c_module(ModuleName, AnnotatedProcedures,
         EntryLabels, InternalLabels),
-    io.write_string("\n", !IO),
-    list.foldl2(output_record_c_procedure_decls(Info), AnnotatedProcedures,
-        !DeclSet, !IO),
-    io.write_string("\n", !IO),
-    io.write_string("MR_BEGIN_MODULE(", !IO),
-    io.write_string(ModuleName, !IO),
-    io.write_string(")\n", !IO),
-    output_c_label_inits(Info, EntryLabels, InternalLabels, !IO),
-    io.write_string("MR_BEGIN_CODE\n", !IO),
-    list.foldl(output_annotated_c_procedure(Info), AnnotatedProcedures, !IO),
-    io.write_string("MR_END_MODULE\n", !IO).
+    io.write_string(Stream, "\n", !IO),
+    list.foldl2(output_record_c_procedure_decls(Info, Stream),
+        AnnotatedProcedures, !DeclSet, !IO),
+    io.write_string(Stream, "\n", !IO),
+    io.write_string(Stream, "MR_BEGIN_MODULE(", !IO),
+    io.write_string(Stream, ModuleName, !IO),
+    io.write_string(Stream, ")\n", !IO),
+    output_c_label_inits(Info, Stream, EntryLabels, InternalLabels, !IO),
+    io.write_string(Stream, "MR_BEGIN_CODE\n", !IO),
+    list.foldl(output_annotated_c_procedure(Info, Stream),
+        AnnotatedProcedures, !IO),
+    io.write_string(Stream, "MR_END_MODULE\n", !IO),
+    true.
 
 %----------------------------------------------------------------------------%
 
-:- pred output_static_linkage_define(io::di, io::uo) is det.
+:- pred output_static_linkage_define(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-output_static_linkage_define(!IO) :-
+output_static_linkage_define(Stream, !IO) :-
     % The MS Visual C compiler treats the following declarations as
     % definitions, for which it cannot determine the size and hence aborts:
     %   static const struct s_name typename[];
     % However if we mark the linkage as extern, it treats it as a declaration.
 
-    io.write_string("#ifdef _MSC_VER\n", !IO),
-    io.write_string("#define MR_STATIC_LINKAGE extern\n", !IO),
-    io.write_string("#else\n", !IO),
-    io.write_string("#define MR_STATIC_LINKAGE static\n", !IO),
-    io.write_string("#endif\n", !IO).
+    io.write_string(Stream, "#ifdef _MSC_VER\n", !IO),
+    io.write_string(Stream, "#define MR_STATIC_LINKAGE extern\n", !IO),
+    io.write_string(Stream, "#else\n", !IO),
+    io.write_string(Stream, "#define MR_STATIC_LINKAGE static\n", !IO),
+    io.write_string(Stream, "#endif\n", !IO).
 
 %----------------------------------------------------------------------------%
 
-:- pred output_foreign_body_code(llds_out_info::in, foreign_body_code::in,
-    maybe_error::out, io::di, io::uo) is det.
+:- pred output_foreign_body_code(llds_out_info::in, io.text_output_stream::in,
+    foreign_body_code::in, maybe_error::out, io::di, io::uo) is det.
 
-output_foreign_body_code(Info, ForeignBodyCode, Res, !IO) :-
+output_foreign_body_code(Info, Stream, ForeignBodyCode, Res, !IO) :-
     ForeignBodyCode = foreign_body_code(Lang, LiteralOrInclude, Context),
     (
         Lang = lang_c,
-        output_foreign_decl_or_code(Info, "foreign_code", Lang,
+        output_foreign_decl_or_code(Info, Stream, "foreign_code", Lang,
             LiteralOrInclude, Context, Res, !IO)
     ;
         ( Lang = lang_java
@@ -911,25 +881,26 @@ output_foreign_body_code(Info, ForeignBodyCode, Res, !IO) :-
     ).
 
 :- pred output_foreign_header_include_lines(llds_out_info::in,
-    list(foreign_decl_code)::in, list(maybe_error)::out, io::di, io::uo)
-    is det.
+    io.text_output_stream::in, list(foreign_decl_code)::in,
+    list(maybe_error)::out, io::di, io::uo) is det.
 
-output_foreign_header_include_lines(Info, Decls, Results, !IO) :-
-    list.map_foldl2(output_foreign_header_include_line(Info), Decls, Results,
-        set.init, _, !IO).
+output_foreign_header_include_lines(Info, Stream, Decls, Results, !IO) :-
+    list.map_foldl2(output_foreign_header_include_line(Info, Stream),
+        Decls, Results, set.init, _, !IO).
 
 :- pred output_foreign_header_include_line(llds_out_info::in,
-    foreign_decl_code::in, maybe_error::out,
+    io.text_output_stream::in, foreign_decl_code::in, maybe_error::out,
     set(foreign_literal_or_include)::in, set(foreign_literal_or_include)::out,
     io::di, io::uo) is det.
 
-output_foreign_header_include_line(Info, Decl, Res, !AlreadyDone, !IO) :-
+output_foreign_header_include_line(Info, Stream, Decl, Res,
+        !AlreadyDone, !IO) :-
     Decl = foreign_decl_code(Lang, _IsLocal, LiteralOrInclude, Context),
     (
         Lang = lang_c,
         % This will not deduplicate the content of included files.
         ( if set.insert_new(LiteralOrInclude, !AlreadyDone) then
-            output_foreign_decl_or_code(Info, "foreign_decl", Lang,
+            output_foreign_decl_or_code(Info, Stream, "foreign_decl", Lang,
                 LiteralOrInclude, Context, Res, !IO)
         else
             Res = ok
@@ -941,54 +912,56 @@ output_foreign_header_include_line(Info, Decl, Res, !AlreadyDone, !IO) :-
         unexpected($pred, "foreign decl code other than C")
     ).
 
-:- pred output_foreign_decl_or_code(llds_out_info::in, string::in,
-    foreign_language::in, foreign_literal_or_include::in, prog_context::in,
+:- pred output_foreign_decl_or_code(llds_out_info::in,
+    io.text_output_stream::in, string::in, foreign_language::in,
+    foreign_literal_or_include::in, prog_context::in,
     maybe_error::out, io::di, io::uo) is det.
 
-output_foreign_decl_or_code(Info, PragmaType, Lang, LiteralOrInclude, Context,
-        Res, !IO) :-
+output_foreign_decl_or_code(Info, Stream, PragmaType, Lang, LiteralOrInclude,
+        Context, Res, !IO) :-
     AutoComments = Info ^ lout_auto_comments,
     ForeignLineNumbers = Info ^ lout_foreign_line_numbers,
     ( if
         AutoComments = auto_comments,
         ForeignLineNumbers = yes
     then
-        io.write_string("/* ", !IO),
-        prog_out.write_context(Context, !IO),
-        io.write_string(" pragma ", !IO),
-        io.write_string(PragmaType, !IO),
-        io.write_string("(", !IO),
-        io.write(Lang, !IO),
-        io.write_string(") */\n", !IO)
+        io.write_string(Stream, "/* ", !IO),
+        prog_out.write_context(Stream, Context, !IO),
+        io.write_string(Stream, " pragma ", !IO),
+        io.write_string(Stream, PragmaType, !IO),
+        io.write_string(Stream, "(", !IO),
+        io.write(Stream, Lang, !IO),
+        io.write_string(Stream, ") */\n", !IO)
     else
         true
     ),
     (
         LiteralOrInclude = floi_literal(Code),
-        output_set_line_num(ForeignLineNumbers, Context, !IO),
-        io.write_string(Code, !IO),
+        output_set_line_num(Stream, ForeignLineNumbers, Context, !IO),
+        io.write_string(Stream, Code, !IO),
         Res = ok
     ;
         LiteralOrInclude = floi_include_file(IncludeFileName),
         SourceFileName = Info ^ lout_source_file_name,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
-        output_set_line_num(ForeignLineNumbers, context(IncludePath, 1), !IO),
-        write_include_file_contents_cur_stream(IncludePath, Res, !IO)
+        output_set_line_num(Stream, ForeignLineNumbers,
+            context(IncludePath, 1), !IO),
+        write_include_file_contents(Stream, IncludePath, Res, !IO)
     ),
-    io.nl(!IO),
-    output_reset_line_num(ForeignLineNumbers, !IO).
+    io.nl(Stream, !IO),
+    output_reset_line_num(Stream, ForeignLineNumbers, !IO).
 
 :- pred output_record_c_label_decls(llds_out_info::in,
-    list(label)::in, list(label)::in,
+    io.text_output_stream::in, list(label)::in, list(label)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_record_c_label_decls(Info, EntryLabels, InternalLabels,
+output_record_c_label_decls(Info, Stream, EntryLabels, InternalLabels,
         !DeclSet, !IO) :-
     group_decl_c_labels(InternalLabels, multi_map.init, InternalLabelMap),
     multi_map.to_assoc_list(InternalLabelMap, InternalLabelList),
-    list.foldl2(output_record_internal_label_decls, InternalLabelList,
+    list.foldl2(output_record_internal_label_decls(Stream), InternalLabelList,
         !DeclSet, !IO),
-    list.foldl2(output_record_entry_label_decl(Info), EntryLabels,
+    list.foldl2(output_record_entry_label_decl(Info, Stream), EntryLabels,
         !DeclSet, !IO).
 
 :- pred group_decl_c_labels(list(label)::in,
@@ -1005,32 +978,36 @@ group_decl_c_labels([Label | Labels], !InternalLabelMap) :-
     ),
     group_decl_c_labels(Labels, !InternalLabelMap).
 
-:- pred output_record_internal_label_decls(pair(proc_label, list(int))::in,
+:- pred output_record_internal_label_decls(io.text_output_stream::in,
+    pair(proc_label, list(int))::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_record_internal_label_decls(ProcLabel - RevLabelNums, !DeclSet, !IO) :-
+output_record_internal_label_decls(Stream, ProcLabel - RevLabelNums,
+        !DeclSet, !IO) :-
     list.reverse(RevLabelNums, LabelNums),
     % There must be a macro of the form MR_decl_label<n> for every <n>
     % up to MaxChunkSize.
     MaxChunkSize = 10,
     list.chunk(LabelNums, MaxChunkSize, LabelNumChunks),
-    list.foldl2(output_record_internal_label_decl_group(ProcLabel),
+    list.foldl2(output_record_internal_label_decl_group(Stream, ProcLabel),
         LabelNumChunks, !DeclSet, !IO),
     list.foldl(insert_internal_label_code_addr_decl(ProcLabel), LabelNums,
         !DeclSet).
 
-:- pred output_record_internal_label_decl_group(proc_label::in, list(int)::in,
+:- pred output_record_internal_label_decl_group(io.text_output_stream::in,
+    proc_label::in, list(int)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_record_internal_label_decl_group(ProcLabel, LabelNums,
+output_record_internal_label_decl_group(Stream, ProcLabel, LabelNums,
         !DeclSet, !IO) :-
-    io.write_string("MR_decl_label", !IO),
-    io.write_int(list.length(LabelNums), !IO),
-    io.write_string("(", !IO),
-    output_proc_label_no_prefix(ProcLabel, !IO),
-    io.write_string(", ", !IO),
-    io.write_list(LabelNums, ",", io.write_int, !IO),
-    io.write_string(")\n", !IO),
+    io.write_string(Stream, "MR_decl_label", !IO),
+    io.write_int(Stream, list.length(LabelNums), !IO),
+    io.write_string(Stream, "(", !IO),
+    io.write_string(Stream, 
+        proc_label_to_c_string(do_not_add_label_prefix, ProcLabel), !IO),
+    io.write_string(Stream, ", ", !IO),
+    write_out_list(add_int, ",", LabelNums, Stream, !IO),
+    io.write_string(Stream, ")\n", !IO),
     list.foldl(insert_internal_label_code_addr_decl(ProcLabel), LabelNums,
         !DeclSet).
 
@@ -1041,10 +1018,11 @@ insert_internal_label_code_addr_decl(ProcLabel, LabelNum, !DeclSet) :-
     DeclId = decl_code_addr(code_label(internal_label(LabelNum, ProcLabel))),
     decl_set_insert(DeclId, !DeclSet).
 
-:- pred output_record_entry_label_decl(llds_out_info::in, label::in,
+:- pred output_record_entry_label_decl(llds_out_info::in,
+    io.text_output_stream::in, label::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_record_entry_label_decl(_Info, Label, !DeclSet, !IO) :-
+output_record_entry_label_decl(_Info, Stream, Label, !DeclSet, !IO) :-
     (
         Label = entry_label(entry_label_exported, _),
         DeclMacro = "MR_def_extern_entry"
@@ -1058,20 +1036,20 @@ output_record_entry_label_decl(_Info, Label, !DeclSet, !IO) :-
         Label = internal_label(_, _),
         unexpected($pred, "internal label")
     ),
-    io.write_string(DeclMacro, !IO),
-    io.write_string("(", !IO),
-    output_label_no_prefix(Label, !IO),
-    io.write_string(")\n", !IO),
+    io.write_string(Stream, DeclMacro, !IO),
+    io.write_string(Stream, "(", !IO),
+    output_label_no_prefix(Stream, Label, !IO),
+    io.write_string(Stream, ")\n", !IO),
     decl_set_insert(decl_code_addr(code_label(Label)), !DeclSet).
 
 %----------------------------------------------------------------------------%
 
-:- pred output_c_label_inits(llds_out_info::in,
+:- pred output_c_label_inits(llds_out_info::in, io.text_output_stream::in,
     list(label)::in, list(label)::in, io::di, io::uo) is det.
 
-output_c_label_inits(Info, EntryLabels, InternalLabels, !IO) :-
+output_c_label_inits(Info, Stream, EntryLabels, InternalLabels, !IO) :-
     EntryLabelToLayoutMap = Info ^ lout_entry_label_to_layout,
-    list.foldl(output_c_entry_label_init(EntryLabelToLayoutMap),
+    list.foldl(output_c_entry_label_init(Stream, EntryLabelToLayoutMap),
         EntryLabels, !IO),
 
     InternalLabelToLayoutMap = Info ^ lout_internal_label_to_layout,
@@ -1082,19 +1060,19 @@ output_c_label_inits(Info, EntryLabels, InternalLabels, !IO) :-
         multi_map.init, LVarLayoutInternalMap),
 
     multi_map.to_assoc_list(NoLayoutInternalMap, NoLayoutInternalList),
-    list.foldl(output_c_internal_label_no_layout_init_group,
+    list.foldl(output_c_internal_label_no_layout_init_group(Stream),
         NoLayoutInternalList, !IO),
 
     multi_map.to_assoc_list(NoVarLayoutInternalMap, NoVarLayoutInternalList),
-    list.foldl(output_c_internal_label_layout_init_group(Info, "_nvi"),
+    list.foldl(output_c_internal_label_layout_init_group(Info, Stream, "_nvi"),
         NoVarLayoutInternalList, !IO),
 
     multi_map.to_assoc_list(SVarLayoutInternalMap, SVarLayoutInternalList),
-    list.foldl(output_c_internal_label_layout_init_group(Info, "_svi"),
+    list.foldl(output_c_internal_label_layout_init_group(Info, Stream, "_svi"),
         SVarLayoutInternalList, !IO),
 
     multi_map.to_assoc_list(LVarLayoutInternalMap, LVarLayoutInternalList),
-    list.foldl(output_c_internal_label_layout_init_group(Info, "_lvi"),
+    list.foldl(output_c_internal_label_layout_init_group(Info, Stream, "_lvi"),
         LVarLayoutInternalList, !IO).
 
 :- pred group_init_c_labels(map(label, layout_slot_name)::in, list(label)::in,
@@ -1140,34 +1118,39 @@ group_init_c_labels(InternalLabelToLayoutMap, [Label | Labels],
         !NoLayoutMap, !NoVarLayoutMap, !SVarLayoutMap, !LVarLayoutMap).
 
 :- pred output_c_internal_label_no_layout_init_group(
-    pair(proc_label, list(int))::in, io::di, io::uo) is det.
+    io.text_output_stream::in, pair(proc_label, list(int))::in,
+    io::di, io::uo) is det.
 
-output_c_internal_label_no_layout_init_group(ProcLabel - RevLabelNums, !IO) :-
+output_c_internal_label_no_layout_init_group(Stream, ProcLabel - RevLabelNums,
+        !IO) :-
     list.reverse(RevLabelNums, LabelNums),
     % There must be macros of the form MR_init_label_nvi<n> for every <n>
     % up to MaxChunkSize.
     MaxChunkSize = 10,
     list.chunk(LabelNums, MaxChunkSize, LabelNumChunks),
-    list.foldl(output_c_internal_label_no_layout_init_chunk(ProcLabel),
+    list.foldl(
+        output_c_internal_label_no_layout_init_chunk(Stream, ProcLabel),
         LabelNumChunks, !IO).
 
-:- pred output_c_internal_label_no_layout_init_chunk(proc_label::in,
-    list(int)::in, io::di, io::uo) is det.
+:- pred output_c_internal_label_no_layout_init_chunk(io.text_output_stream::in,
+    proc_label::in, list(int)::in, io::di, io::uo) is det.
 
-output_c_internal_label_no_layout_init_chunk(ProcLabel, LabelNums, !IO) :-
-    io.write_string("\tMR_init_label", !IO),
-    io.write_int(list.length(LabelNums), !IO),
-    io.write_string("(", !IO),
-    output_proc_label_no_prefix(ProcLabel, !IO),
-    io.write_string(",", !IO),
-    io.write_list(LabelNums, ",", io.write_int, !IO),
-    io.write_string(")\n", !IO).
+output_c_internal_label_no_layout_init_chunk(Stream, ProcLabel, LabelNums,
+        !IO) :-
+    io.write_string(Stream, "\tMR_init_label", !IO),
+    io.write_int(Stream, list.length(LabelNums), !IO),
+    io.write_string(Stream, "(", !IO),
+    io.write_string(Stream, 
+        proc_label_to_c_string(do_not_add_label_prefix, ProcLabel), !IO),
+    io.write_string(Stream, ",", !IO),
+    write_out_list(add_int, ",", LabelNums, Stream, !IO),
+    io.write_string(Stream, ")\n", !IO).
 
 :- pred output_c_internal_label_layout_init_group(llds_out_info::in,
-    string::in, pair(proc_label, list({int, int}))::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, string::in,
+    pair(proc_label, list({int, int}))::in, io::di, io::uo) is det.
 
-output_c_internal_label_layout_init_group(Info, Suffix,
+output_c_internal_label_layout_init_group(Info, Stream, Suffix,
         ProcLabel - RevLabelSlotNums, !IO) :-
     list.reverse(RevLabelSlotNums, LabelSlotNums),
     % There must be macros of the form MR_init_label_vi<n> for every <n>
@@ -1175,37 +1158,41 @@ output_c_internal_label_layout_init_group(Info, Suffix,
     MaxChunkSize = 10,
     list.chunk(LabelSlotNums, MaxChunkSize, LabelSlotNumChunks),
     list.foldl(
-        output_c_internal_label_layout_init_chunk(Info, Suffix, ProcLabel),
+        output_c_internal_label_layout_init_chunk(Info, Stream,
+            Suffix, ProcLabel),
         LabelSlotNumChunks, !IO).
 
 :- pred output_c_internal_label_layout_init_chunk(llds_out_info::in,
-    string::in, proc_label::in, list({int, int})::in, io::di, io::uo) is det.
+    io.text_output_stream::in, string::in, proc_label::in,
+    list({int, int})::in, io::di, io::uo) is det.
 
-output_c_internal_label_layout_init_chunk(Info, Suffix, ProcLabel,
+output_c_internal_label_layout_init_chunk(Info, Stream, Suffix, ProcLabel,
         LabelSlotNums, !IO) :-
-    io.write_string("\tMR_init_label", !IO),
-    io.write_string(Suffix, !IO),
-    io.write_int(list.length(LabelSlotNums), !IO),
-    io.write_string("(", !IO),
-    output_proc_label_no_prefix(ProcLabel, !IO),
-    io.write_string(", ", !IO),
+    io.write_string(Stream, "\tMR_init_label", !IO),
+    io.write_string(Stream, Suffix, !IO),
+    io.write_int(Stream, list.length(LabelSlotNums), !IO),
+    io.write_string(Stream, "(", !IO),
+    io.write_string(Stream, 
+        proc_label_to_c_string(do_not_add_label_prefix, ProcLabel), !IO),
+    io.write_string(Stream, ", ", !IO),
     ModuleName = Info ^ lout_mangled_module_name,
-    io.write_string(ModuleName, !IO),
-    io.write_string(",\n\t\t", !IO),
-    io.write_list(LabelSlotNums, ", ", write_int_pair, !IO),
-    io.write_string(")\n", !IO).
+    io.write_string(Stream, ModuleName, !IO),
+    io.write_string(Stream, ",\n\t\t", !IO),
+    write_out_list(write_int_pair, ", ", LabelSlotNums, Stream, !IO),
+    io.write_string(Stream, ")\n", !IO).
 
-:- pred write_int_pair({int, int}::in, io::di, io::uo) is det.
-
-write_int_pair({LabelNum, SlotNum}, !IO) :-
-    io.write_int(LabelNum, !IO),
-    io.write_string(",", !IO),
-    io.write_int(SlotNum, !IO).
-
-:- pred output_c_entry_label_init(map(label, data_id)::in, label::in,
+:- pred write_int_pair({int, int}::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
-output_c_entry_label_init(EntryLabelToLayoutMap, Label, !IO) :-
+write_int_pair({LabelNum, SlotNum}, Stream, !IO) :-
+    io.write_int(Stream, LabelNum, !IO),
+    io.write_string(Stream, ",", !IO),
+    io.write_int(Stream, SlotNum, !IO).
+
+:- pred output_c_entry_label_init(io.text_output_stream::in,
+    map(label, data_id)::in, label::in, io::di, io::uo) is det.
+
+output_c_entry_label_init(Stream, EntryLabelToLayoutMap, Label, !IO) :-
     ( if map.search(EntryLabelToLayoutMap, Label, _LayoutId) then
         SuffixOpen = "_sl("
     else
@@ -1226,47 +1213,51 @@ output_c_entry_label_init(EntryLabelToLayoutMap, Label, !IO) :-
         % These should have been separated out by group_c_labels.
         unexpected($pred, "internal label")
     ),
-    io.write_string(TabInitMacro, !IO),
-    io.write_string(SuffixOpen, !IO),
-    output_proc_label_no_prefix(ProcLabel, !IO),
-    io.write_string(");\n", !IO),
+    io.write_string(Stream, TabInitMacro, !IO),
+    io.write_string(Stream, SuffixOpen, !IO),
+    io.write_string(Stream,
+        proc_label_to_c_string(do_not_add_label_prefix, ProcLabel), !IO),
+    io.write_string(Stream, ");\n", !IO),
 
-    io.write_string("\tMR_INIT_PROC_LAYOUT_ADDR(", !IO),
-    output_label(Label, !IO),
-    io.write_string(");\n", !IO).
+    io.write_string(Stream, "\tMR_INIT_PROC_LAYOUT_ADDR(", !IO),
+    output_label(Stream, Label, !IO),
+    io.write_string(Stream, ");\n", !IO).
 
 %----------------------------------------------------------------------------%
 
 :- pred output_record_c_procedure_decls(llds_out_info::in,
-    annotated_c_procedure::in,
+    io.text_output_stream::in, annotated_c_procedure::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_record_c_procedure_decls(Info, AnnotatedProc, !DeclSet, !IO) :-
+output_record_c_procedure_decls(Info, Stream, AnnotatedProc, !DeclSet, !IO) :-
     Proc = AnnotatedProc ^ acp_proc,
     Instrs = Proc ^ cproc_code,
     CGlobalVarSet = Proc ^ cproc_c_global_vars,
     set.to_sorted_list(CGlobalVarSet, CGlobalVars),
-    list.foldl2(output_c_global_var_decl, CGlobalVars, !DeclSet, !IO),
-    list.foldl2(output_record_instruction_decls(Info), Instrs, !DeclSet, !IO).
+    list.foldl2(output_c_global_var_decl(Stream), CGlobalVars,
+        !DeclSet, !IO),
+    list.foldl2(output_record_instruction_decls(Info, Stream), Instrs,
+        !DeclSet, !IO),
+    true.
 
-:- pred output_c_global_var_decl(string::in,
+:- pred output_c_global_var_decl(io.text_output_stream::in, string::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_c_global_var_decl(VarName, !DeclSet, !IO) :-
+output_c_global_var_decl(Stream, VarName, !DeclSet, !IO) :-
     GlobalVar = env_var_ref(VarName),
     ( if decl_set_is_member(decl_c_global_var(GlobalVar), !.DeclSet) then
         true
     else
         decl_set_insert(decl_c_global_var(GlobalVar), !DeclSet),
-        io.write_string("extern MR_Word ", !IO),
-        io.write_string(c_global_var_name(GlobalVar), !IO),
-        io.write_string(";\n", !IO)
+        io.format(Stream, "extern MR_Word %s;\n",
+            [s(c_global_var_name(GlobalVar))], !IO)
     ).
 
 :- pred output_annotated_c_procedure(llds_out_info::in,
-    annotated_c_procedure::in, io::di, io::uo) is det.
+    io.text_output_stream::in, annotated_c_procedure::in,
+    io::di, io::uo) is det.
 
-output_annotated_c_procedure(Info, AnnotatedProc, !IO) :-
+output_annotated_c_procedure(Info, Stream, AnnotatedProc, !IO) :-
     Proc = AnnotatedProc ^ acp_proc,
     LabelOutputInfo = AnnotatedProc ^ acp_label_output_info,
 
@@ -1277,38 +1268,39 @@ output_annotated_c_procedure(Info, AnnotatedProc, !IO) :-
     PredProcId = proc(_, ProcId),
     proc_id_to_int(ProcId, ModeNum),
 
-    io.write_string("\n/*-------------------------------------", !IO),
-    io.write_string("------------------------------------*/\n", !IO),
-    io.write_string("/* code for '", !IO),
+    io.write_string(Stream, "\n/*-------------------------------------", !IO),
+    io.write_string(Stream, "------------------------------------*/\n", !IO),
     % Now that we have unused_args.m mangling predicate names,
     % we should probably demangle them here.
-    io.write_string(Name, !IO),
-    io.write_string("'/", !IO),
-    io.write_int(Arity, !IO),
-    io.write_string(" mode ", !IO),
-    io.write_int(ModeNum, !IO),
-    io.write_string(" */\n", !IO),
+    io.format(Stream, "/* code for '%s'/%d mode %d */\n",
+        [s(Name), i(Arity), i(ModeNum)], !IO),
 
     LocalThreadEngineBase = Info ^ lout_local_thread_engine_base,
     (
         LocalThreadEngineBase = use_local_thread_engine_base,
-        io.write_string("#ifdef MR_maybe_local_thread_engine_base\n", !IO),
-        io.write_string("\t#undef MR_maybe_local_thread_engine_base\n", !IO),
-        io.write_string("\t#define MR_maybe_local_thread_engine_base " ++
+        io.write_string(Stream,
+            "#ifdef MR_maybe_local_thread_engine_base\n", !IO),
+        io.write_string(Stream,
+            "\t#undef MR_maybe_local_thread_engine_base\n", !IO),
+        io.write_string(Stream,
+            "\t#define MR_maybe_local_thread_engine_base " ++
             "MR_local_thread_engine_base\n", !IO),
-        io.write_string("#endif\n", !IO)
+        io.write_string(Stream, "#endif\n", !IO)
     ;
         LocalThreadEngineBase = do_not_use_local_thread_engine_base
     ),
-    output_instruction_list(Info, Instrs, LabelOutputInfo,
+    output_instruction_list(Info, Stream, Instrs, LabelOutputInfo,
         not_after_layout_label, !IO),
     (
         LocalThreadEngineBase = use_local_thread_engine_base,
-        io.write_string("#ifdef MR_maybe_local_thread_engine_base\n", !IO),
-        io.write_string("\t#undef MR_maybe_local_thread_engine_base\n", !IO),
-        io.write_string("\t#define MR_maybe_local_thread_engine_base " ++
+        io.write_string(Stream,
+            "#ifdef MR_maybe_local_thread_engine_base\n", !IO),
+        io.write_string(Stream,
+            "\t#undef MR_maybe_local_thread_engine_base\n", !IO),
+        io.write_string(Stream,
+            "\t#define MR_maybe_local_thread_engine_base " ++
             "MR_thread_engine_base\n", !IO),
-        io.write_string("#endif\n", !IO)
+        io.write_string(Stream, "#endif\n", !IO)
     ;
         LocalThreadEngineBase = do_not_use_local_thread_engine_base
     ).

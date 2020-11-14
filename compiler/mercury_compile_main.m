@@ -2346,9 +2346,7 @@ maybe_write_dependency_graph(Verbose, Stats, !HLDS, !IO) :-
         io.open_output(FileName, Res, !IO),
         (
             Res = ok(FileStream),
-            io.set_output_stream(FileStream, OutputStream, !IO),
-            write_dependency_graph(!HLDS, !IO),
-            io.set_output_stream(OutputStream, _, !IO),
+            write_dependency_graph(FileStream, !HLDS, !IO),
             io.close_output(FileStream, !IO),
             maybe_write_string(Verbose, " done.\n", !IO)
         ;
@@ -2574,9 +2572,7 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
         io.open_output(ProfFileName, Res, !IO),
         (
             Res = ok(FileStream),
-            io.set_output_stream(FileStream, OutputStream, !IO),
-            write_prof_dependency_graph(!HLDS, !IO),
-            io.set_output_stream(OutputStream, _, !IO),
+            write_prof_dependency_graph(FileStream, !HLDS, !IO),
             io.close_output(FileStream, !IO)
         ;
             Res = error(IOError),

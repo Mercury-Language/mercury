@@ -1039,15 +1039,16 @@ compress_paths(Paths) = Paths.
 maybe_write_progress_message(Message, DebugStackOpt, PredIdInt, ProcInfo,
         ModuleInfo, !IO) :-
     ( if DebugStackOpt = PredIdInt then
-        io.write_string(Message, !IO),
-        io.write_string(":\n", !IO),
         proc_info_get_goal(ProcInfo, Goal),
         proc_info_get_varset(ProcInfo, VarSet),
         module_info_get_globals(ModuleInfo, Globals),
+        io.output_stream(Stream, !IO),
+        io.write_string(Stream, Message, !IO),
+        io.write_string(Stream, ":\n", !IO),
         OutInfo = init_hlds_out_info(Globals, output_debug),
-        write_goal(OutInfo, ModuleInfo, VarSet, print_name_and_num, 0, "\n",
-            Goal, !IO),
-        io.write_string("\n", !IO)
+        write_goal(OutInfo, Stream, ModuleInfo, VarSet, print_name_and_num,
+            0, "\n", Goal, !IO),
+        io.write_string(Stream, "\n", !IO)
     else
         true
     ).

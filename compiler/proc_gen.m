@@ -271,7 +271,7 @@ generate_code_for_pred(ModuleInfo, ConstStructMap, VeryVerbose, Statistics,
             VeryVerbose = yes,
             trace [io(!IO)] (
                 io.write_string("% Generating code for ", !IO),
-                write_pred_id(ModuleInfo, PredId, !IO),
+                io.write_string(pred_id_to_string(ModuleInfo, PredId), !IO),
                 io.write_string("\n", !IO)
             ),
             generate_code_for_procs(ModuleInfo, ConstStructMap,

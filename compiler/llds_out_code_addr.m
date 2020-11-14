@@ -17,6 +17,8 @@
 :- module ll_backend.llds_out.llds_out_code_addr.
 :- interface.
 
+:- import_module backend_libs.
+:- import_module backend_libs.name_mangle.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.llds_out.llds_out_util.
 
@@ -29,10 +31,12 @@
     % declarations of any extern symbols, etc. that need to be declared
     % before output_code_addr(CodeAddr) is called.
     %
-:- pred output_record_code_addr_decls(llds_out_info::in, code_addr::in,
+:- pred output_record_code_addr_decls(llds_out_info::in,
+    io.text_output_stream::in, code_addr::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-:- pred output_record_code_addr_decls_format(llds_out_info::in, code_addr::in,
+:- pred output_record_code_addr_decls_format(llds_out_info::in,
+    io.text_output_stream::in, code_addr::in,
     string::in, string::in, int::in, int::out, decl_set::in,
     decl_set::out, io::di, io::uo) is det.
 
@@ -43,33 +47,38 @@
 
     % Output a label (used by garbage collection).
     %
-:- pred output_label(label::in, io::di, io::uo) is det.
+:- pred output_label(io.text_output_stream::in, label::in,
+    io::di, io::uo) is det.
 
-:- pred output_label_no_prefix(label::in, io::di, io::uo) is det.
+:- pred output_label_no_prefix(io.text_output_stream::in, label::in,
+    io::di, io::uo) is det.
 
     % Output a label with or without the standard mercury__ prefix.
     %
-:- pred output_label_maybe_prefix(label::in, bool::in, io::di, io::uo) is det.
+:- pred output_label_maybe_prefix(io.text_output_stream::in,
+    maybe_add_label_prefix::in, label::in, io::di, io::uo) is det.
 
-    % Convert a label to a C string. The boolean controls whether
-    % a prefix ("mercury__") is added to the string.
+    % Convert a label to a C string. The first argument controls whether
+    % we add a prefix ("mercury__") to the string.
     %
-:- func label_to_c_string(label, bool) = string.
+:- func label_to_c_string(maybe_add_label_prefix, label) = string.
 
-:- pred output_code_addr(code_addr::in, io::di, io::uo) is det.
+:- pred output_code_addr(io.text_output_stream::in, code_addr::in,
+    io::di, io::uo) is det.
 
 :- type wrapper
     --->    wrapper_entry
     ;       wrapper_label
     ;       wrapper_none.
 
-:- pred output_code_addr_from_pieces(string::in, bool::in, wrapper::in,
+:- pred output_code_addr_from_pieces(io.text_output_stream::in,
+    string::in, bool::in, wrapper::in, io::di, io::uo) is det.
+
+:- pred code_addr_to_string_base(code_addr::in,
+    string::out, bool::out, wrapper::out) is det.
+
+:- pred output_label_as_code_addr(io.text_output_stream::in, label::in,
     io::di, io::uo) is det.
-
-:- pred code_addr_to_string_base(code_addr::in, string::out,
-    bool::out, wrapper::out) is det.
-
-:- pred output_label_as_code_addr(label::in, io::di, io::uo) is det.
 
 :- func label_is_external_to_c_module(label) = bool.
 
@@ -78,12 +87,11 @@
 
 :- implementation.
 
-:- import_module backend_libs.
-:- import_module backend_libs.name_mangle.
 :- import_module libs.
 :- import_module libs.optimization_options.
 
 :- import_module int.
+:- import_module list.
 :- import_module string.
 
 %----------------------------------------------------------------------------%
@@ -91,11 +99,11 @@
 % Declare code addresses.
 %
 
-output_record_code_addr_decls(Info, CodeAddress, !DeclSet, !IO) :-
-    output_record_code_addr_decls_format(Info, CodeAddress, "", "", 0, _,
-        !DeclSet, !IO).
+output_record_code_addr_decls(Info, Stream, CodeAddress, !DeclSet, !IO) :-
+    output_record_code_addr_decls_format(Info, Stream, CodeAddress,
+        "", "", 0, _, !DeclSet, !IO).
 
-output_record_code_addr_decls_format(Info, CodeAddress,
+output_record_code_addr_decls_format(Info, Stream, CodeAddress,
         FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
     ( if decl_set_is_member(decl_code_addr(CodeAddress), !.DeclSet) then
         true
@@ -104,9 +112,9 @@ output_record_code_addr_decls_format(Info, CodeAddress,
         need_code_addr_decls(Info, CodeAddress, NeedDecl),
         (
             NeedDecl = yes,
-            output_indent(FirstIndent, LaterIndent, !.N, !IO),
+            output_indent(Stream, FirstIndent, LaterIndent, !.N, !IO),
             !:N = !.N + 1,
-            output_code_addr_decls(Info, CodeAddress, !IO)
+            output_code_addr_decls(Info, Stream, CodeAddress, !IO)
         ;
             NeedDecl = no
         )
@@ -159,18 +167,18 @@ need_code_addr_decls(Info, CodeAddr, Need) :-
         )
     ).
 
-:- pred output_code_addr_decls(llds_out_info::in, code_addr::in,
-    io::di, io::uo) is det.
+:- pred output_code_addr_decls(llds_out_info::in, io.text_output_stream::in,
+    code_addr::in, io::di, io::uo) is det.
 
-output_code_addr_decls(Info, CodeAddr, !IO) :-
+output_code_addr_decls(Info, Stream, CodeAddr, !IO) :-
     (
         CodeAddr = code_label(Label),
-        output_label_as_code_addr_decls(Label, !IO)
+        output_label_as_code_addr_decls(Stream, Label, !IO)
     ;
         CodeAddr = code_imported_proc(ProcLabel),
-        io.write_string("MR_decl_entry(", !IO),
-        output_proc_label_no_prefix(ProcLabel, !IO),
-        io.write_string(");\n", !IO)
+        io.format(Stream, "MR_decl_entry(%s);\n",
+            [s(proc_label_to_c_string(do_not_add_label_prefix, ProcLabel))],
+            !IO)
     ;
         ( CodeAddr = code_succip
         ; CodeAddr = do_succeed(_)
@@ -182,7 +190,7 @@ output_code_addr_decls(Info, CodeAddr, !IO) :-
             UseMacro = use_macro_for_redo_fail
         ;
             UseMacro = do_not_use_macro_for_redo_fail,
-            io.write_string("MR_declare_entry(MR_do_redo);\n", !IO)
+            io.write_string(Stream, "MR_declare_entry(MR_do_redo);\n", !IO)
         )
     ;
         CodeAddr = do_fail,
@@ -191,41 +199,43 @@ output_code_addr_decls(Info, CodeAddr, !IO) :-
             UseMacro = use_macro_for_redo_fail
         ;
             UseMacro = do_not_use_macro_for_redo_fail,
-            io.write_string("MR_declare_entry(MR_do_fail);\n", !IO)
+            io.write_string(Stream, "MR_declare_entry(MR_do_fail);\n", !IO)
         )
     ;
         CodeAddr = do_trace_redo_fail_shallow,
-        io.write_string("MR_declare_entry(MR_do_trace_redo_fail_shallow);\n",
-            !IO)
+        io.write_string(Stream,
+            "MR_declare_entry(MR_do_trace_redo_fail_shallow);\n", !IO)
     ;
         CodeAddr = do_trace_redo_fail_deep,
-        io.write_string("MR_declare_entry(MR_do_trace_redo_fail_deep);\n",
-            !IO)
+        io.write_string(Stream,
+            "MR_declare_entry(MR_do_trace_redo_fail_deep);\n", !IO)
     ;
         CodeAddr = do_call_closure(Variant),
-        io.write_string("MR_declare_entry(mercury__do_call_closure_", !IO),
-        io.write_string(ho_call_variant_to_string(Variant), !IO),
-        io.write_string(");\n", !IO)
+        io.write_string(Stream,
+            "MR_declare_entry(mercury__do_call_closure_", !IO),
+        io.write_string(Stream, ho_call_variant_to_string(Variant), !IO),
+        io.write_string(Stream, ");\n", !IO)
     ;
         CodeAddr = do_call_class_method(Variant),
-        io.write_string("MR_declare_entry(mercury__do_call_class_method_",
-            !IO),
-        io.write_string(ho_call_variant_to_string(Variant), !IO),
-        io.write_string(");\n", !IO)
+        io.write_string(Stream,
+            "MR_declare_entry(mercury__do_call_class_method_", !IO),
+        io.write_string(Stream, ho_call_variant_to_string(Variant), !IO),
+        io.write_string(Stream, ");\n", !IO)
     ;
         CodeAddr = do_not_reached,
-        io.write_string("MR_declare_entry(MR_do_not_reached);\n", !IO)
+        io.write_string(Stream, "MR_declare_entry(MR_do_not_reached);\n", !IO)
     ).
 
-:- pred output_label_as_code_addr_decls(label::in, io::di, io::uo) is det.
+:- pred output_label_as_code_addr_decls(io.text_output_stream::in, label::in,
+    io::di, io::uo) is det.
 
-output_label_as_code_addr_decls(Label, !IO) :-
+output_label_as_code_addr_decls(Stream, Label, !IO) :-
     (
         Label = entry_label(entry_label_exported, ProcLabel),
-        io.write_string("MR_decl_entry(", !IO),
-        output_label_no_prefix(entry_label(entry_label_exported, ProcLabel),
-            !IO),
-        io.write_string(");\n", !IO)
+        io.write_string(Stream, "MR_decl_entry(", !IO),
+        output_label_no_prefix(Stream,
+            entry_label(entry_label_exported, ProcLabel), !IO),
+        io.write_string(Stream, ");\n", !IO)
     ;
         Label = entry_label(entry_label_local, _ProcLabel)
     ;
@@ -250,19 +260,19 @@ ho_call_variant_to_string(Variant) = Str :-
 % Output labels.
 %
 
-output_label(Label, !IO) :-
-    LabelStr = label_to_c_string(Label, yes),
-    io.write_string(LabelStr, !IO).
+output_label(Stream, Label, !IO) :-
+    LabelStr = label_to_c_string(add_label_prefix, Label),
+    io.write_string(Stream, LabelStr, !IO).
 
-output_label_no_prefix(Label, !IO) :-
-    LabelStr = label_to_c_string(Label, no),
-    io.write_string(LabelStr, !IO).
+output_label_no_prefix(Stream, Label, !IO) :-
+    LabelStr = label_to_c_string(do_not_add_label_prefix, Label),
+    io.write_string(Stream, LabelStr, !IO).
 
-output_label_maybe_prefix(Label, AddPrefix, !IO) :-
-    LabelStr = label_to_c_string(Label, AddPrefix),
-    io.write_string(LabelStr, !IO).
+output_label_maybe_prefix(Stream, AddPrefix, Label, !IO) :-
+    LabelStr = label_to_c_string(AddPrefix, Label),
+    io.write_string(Stream, LabelStr, !IO).
 
-label_to_c_string(Label, AddPrefix) = LabelStr :-
+label_to_c_string(AddPrefix, Label) = LabelStr :-
     (
         Label = entry_label(_, ProcLabel),
         % Entry labels should have the same string form regardless of the
@@ -272,10 +282,10 @@ label_to_c_string(Label, AddPrefix) = LabelStr :-
         % is referred to as local in type_info structures and as c_local
         % in the recursive call, since the c_local is special cased in some
         % circumstances, leading to better code.
-        LabelStr = proc_label_to_c_string(ProcLabel, AddPrefix)
+        LabelStr = proc_label_to_c_string(AddPrefix, ProcLabel)
     ;
         Label = internal_label(Num, ProcLabel),
-        ProcLabelStr = proc_label_to_c_string(ProcLabel, AddPrefix),
+        ProcLabelStr = proc_label_to_c_string(AddPrefix, ProcLabel),
         string.int_to_string(Num, NumStr),
         LabelStr = ProcLabelStr ++ "_i" ++ NumStr
     ).
@@ -285,54 +295,46 @@ label_to_c_string(Label, AddPrefix) = LabelStr :-
 % Output code addresses.
 %
 
-output_code_addr(CodeAddr, !IO) :-
+output_code_addr(Stream, CodeAddr, !IO) :-
     code_addr_to_string_base(CodeAddr, BaseStr, NeedsPrefix, Wrapper),
-    output_code_addr_from_pieces(BaseStr, NeedsPrefix, Wrapper, !IO).
+    output_code_addr_from_pieces(Stream, BaseStr, NeedsPrefix, Wrapper, !IO).
 
-output_code_addr_from_pieces(BaseStr, NeedsPrefix, Wrapper, !IO) :-
+output_code_addr_from_pieces(Stream, BaseStr, NeedsPrefix, Wrapper, !IO) :-
     (
         Wrapper = wrapper_none,
         (
             NeedsPrefix = yes,
-            io.write_string(mercury_label_prefix, !IO)
+            io.write_string(Stream, mercury_label_prefix, !IO)
         ;
             NeedsPrefix = no
         ),
-        io.write_string(BaseStr, !IO)
+        io.write_string(Stream, BaseStr, !IO)
     ;
         Wrapper = wrapper_entry,
         (
             NeedsPrefix = yes,
             % The _AP version of the macro adds the prefix.
-            io.write_string("MR_ENTRY_AP(", !IO),
-            io.write_string(BaseStr, !IO),
-            io.write_string(")", !IO)
+            io.format(Stream, "MR_ENTRY_AP(%s)", [s(BaseStr)], !IO)
         ;
             NeedsPrefix = no,
-            io.write_string("MR_ENTRY(", !IO),
-            io.write_string(BaseStr, !IO),
-            io.write_string(")", !IO)
+            io.format(Stream, "MR_ENTRY(%s)", [s(BaseStr)], !IO)
         )
     ;
         Wrapper = wrapper_label,
         (
             NeedsPrefix = yes,
             % The _AP version of the macro adds the prefix.
-            io.write_string("MR_LABEL_AP(", !IO),
-            io.write_string(BaseStr, !IO),
-            io.write_string(")", !IO)
+            io.format(Stream, "MR_LABEL_AP(%s)", [s(BaseStr)], !IO)
         ;
             NeedsPrefix = no,
-            io.write_string("MR_LABEL(", !IO),
-            io.write_string(BaseStr, !IO),
-            io.write_string(")", !IO)
+            io.format(Stream, "MR_LABEL(%s)", [s(BaseStr)], !IO)
         )
     ).
 
 code_addr_to_string_base(CodeAddr, BaseStr, NeedsPrefix, Wrapper) :-
     (
         CodeAddr = code_label(Label),
-        BaseStr = label_to_c_string(Label, no),
+        BaseStr = label_to_c_string(do_not_add_label_prefix, Label),
         NeedsPrefix = yes,
         IsExternal = label_is_external_to_c_module(Label),
         (
@@ -344,7 +346,7 @@ code_addr_to_string_base(CodeAddr, BaseStr, NeedsPrefix, Wrapper) :-
         )
     ;
         CodeAddr = code_imported_proc(ProcLabel),
-        BaseStr = proc_label_to_c_string(ProcLabel, no),
+        BaseStr = proc_label_to_c_string(do_not_add_label_prefix, ProcLabel),
         NeedsPrefix = yes,
         Wrapper = wrapper_entry
     ;
@@ -396,14 +398,14 @@ code_addr_to_string_base(CodeAddr, BaseStr, NeedsPrefix, Wrapper) :-
         Wrapper = wrapper_entry
     ).
 
-output_label_as_code_addr(Label, !IO) :-
+output_label_as_code_addr(Stream, Label, !IO) :-
     label_as_code_addr_to_string(Label, Str),
-    io.write_string(Str, !IO).
+    io.write_string(Stream, Str, !IO).
 
 :- pred label_as_code_addr_to_string(label::in, string::out) is det.
 
 label_as_code_addr_to_string(Label, Str) :-
-    LabelStr = label_to_c_string(Label, no),
+    LabelStr = label_to_c_string(do_not_add_label_prefix, Label),
     IsEntry = label_is_external_to_c_module(Label),
     (
         IsEntry = yes,

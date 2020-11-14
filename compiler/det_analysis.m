@@ -263,11 +263,10 @@ global_inference_single_pass([proc(PredId, ProcId) | PredProcs], Debug,
     (
         Debug = yes,
         trace [io(!IO)] (
-            io.write_string("% Inferred " ++ ChangeStr ++ " detism ", !IO),
-            mercury_output_det(NewDetism, !IO),
-            io.write_string(" for ", !IO),
-            write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
-            io.write_string("\n", !IO)
+            NewDetismStr = mercury_det_to_string(NewDetism),
+            ProcStr = pred_proc_id_pair_to_string(!.ModuleInfo, PredId, ProcId),
+            io.format("%% Inferred %s detism %s for %s\n",
+                [s(ChangeStr), s(NewDetismStr), s(ProcStr)], !IO)
         )
     ;
         Debug = no

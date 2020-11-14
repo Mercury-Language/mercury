@@ -296,14 +296,15 @@
 %
 
     % A function that converts an lp_var into a string.
+    % XXX This is *not* a good name for this type.
     %
 :- type output_var == (func(lp_var) = string).
 
     % Write out the constraints in a form we can read in using the
     % term parser from the standard library.
     %
-:- pred output_constraints(output_var::in, constraints::in, io::di, io::uo)
-    is det.
+:- pred output_constraints(io.text_output_stream::in, output_var::in,
+    constraints::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -328,6 +329,10 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module parse_tree.
+:- import_module parse_tree.parse_tree_out_info.
+% undesirable dependency, for write_out_list
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -2335,45 +2340,48 @@ write_term(Varset, Var - Coefficient, !IO) :-
 % should output these constraints only as parts of termination pragmas,
 % and that should be done by parse_tree_out_pragma.m.
 
-output_constraints(OutputVar, Constraints, !IO) :-
-    io.write_char('[', !IO),
-    io.write_list(Constraints, ", ", output_constraint(OutputVar), !IO),
-    io.write_char(']', !IO).
+output_constraints(Stream, OutputVar, Constraints, !IO) :-
+    io.write_char(Stream, '[', !IO),
+    write_out_list(output_constraint(OutputVar), ", ", Constraints,
+        Stream, !IO),
+    io.write_char(Stream, ']', !IO).
 
 :- pred output_constraint(output_var::in, constraint::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-output_constraint(OutputVar, lte(Terms, Constant), !IO) :-
-    io.write_string("le(", !IO),
-    output_constraint_2(OutputVar, Terms, Constant, !IO).
-output_constraint(OutputVar, eq(Terms, Constant), !IO) :-
-    io.write_string("eq(", !IO),
-    output_constraint_2(OutputVar, Terms, Constant, !IO).
-output_constraint(_, gte(_,_), _, _) :-
+output_constraint(OutputVar, lte(Terms, Constant), Stream, !IO) :-
+    io.write_string(Stream, "le(", !IO),
+    output_constraint_2(OutputVar, Terms, Constant, Stream, !IO).
+output_constraint(OutputVar, eq(Terms, Constant), Stream, !IO) :-
+    io.write_string(Stream, "eq(", !IO),
+    output_constraint_2(OutputVar, Terms, Constant, Stream, !IO).
+output_constraint(_, gte(_,_), _, _, _) :-
     unexpected($pred, "gte").
 
 :- pred output_constraint_2(output_var::in, lp_terms::in, lp_constant::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-output_constraint_2(OutputVar, Terms, Constant, !IO) :-
-    output_terms(OutputVar, Terms, !IO),
-    io.write_string(", ", !IO),
-    rat.write_rat(Constant, !IO),
-    io.write_char(')', !IO).
+output_constraint_2(OutputVar, Terms, Constant, Stream, !IO) :-
+    output_terms(OutputVar, Terms, Stream, !IO),
+    io.write_string(Stream, ", ", !IO),
+    rat.write_rat(Stream, Constant, !IO),
+    io.write_char(Stream, ')', !IO).
 
-:- pred output_terms(output_var::in, lp_terms::in, io::di, io::uo) is det.
+:- pred output_terms(output_var::in, lp_terms::in,
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-output_terms(OutputVar, Terms, !IO) :-
-    io.write_char('[', !IO),
-    io.write_list(Terms, ", ", output_term(OutputVar), !IO),
-    io.write_char(']', !IO).
+output_terms(OutputVar, Terms, Stream, !IO) :-
+    io.write_char(Stream, '[', !IO),
+    write_out_list(output_term(OutputVar), ", ", Terms, Stream, !IO),
+    io.write_char(Stream, ']', !IO).
 
-:- pred output_term(output_var::in, lp_term::in, io::di, io::uo) is det.
+:- pred output_term(output_var::in, lp_term::in,
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-output_term(OutputVar, Var - Coefficient, !IO) :-
-    io.format("term(%s, ", [s(OutputVar(Var))], !IO),
-    rat.write_rat(Coefficient, !IO),
-    io.write_char(')', !IO).
+output_term(OutputVar, Var - Coefficient, Stream, !IO) :-
+    io.format(Stream, "term(%s, ", [s(OutputVar(Var))], !IO),
+    rat.write_rat(Stream, Coefficient, !IO),
+    io.write_char(Stream, ')', !IO).
 
 %-----------------------------------------------------------------------------%
 %

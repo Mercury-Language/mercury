@@ -252,14 +252,15 @@ delay_partial_inst_proc(ModuleInfo, PredId, ProcTable, ProcId,
             !:ChangedProcs = [ProcId - !.ProcInfo | !.ChangedProcs],
 
             trace [compiletime(flag("debug_delay_partial_inst")), io(!IO)] (
-                io.write_string("predicate body BEFORE delay_partial_inst:\n",
-                    !IO),
-                dump_goal(ModuleInfo, VarSet0, Goal0, !IO),
-                io.nl(!IO),
-                io.write_string("predicate body AFTER delay_partial_inst:\n",
-                    !IO),
-                dump_goal(ModuleInfo, VarSet, Goal, !IO),
-                io.nl(!IO)
+                io.output_stream(Stream, !IO),
+                io.write_string(Stream,
+                    "predicate body BEFORE delay_partial_inst:\n", !IO),
+                dump_goal(Stream, ModuleInfo, VarSet0, Goal0, !IO),
+                io.nl(Stream, !IO),
+                io.write_string(Stream,
+                    "predicate body AFTER delay_partial_inst:\n", !IO),
+                dump_goal(Stream, ModuleInfo, VarSet, Goal, !IO),
+                io.nl(Stream, !IO)
             )
         ;
             Changed = no

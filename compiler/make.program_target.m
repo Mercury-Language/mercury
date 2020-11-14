@@ -1834,7 +1834,7 @@ make_grade_clean(Globals, ModuleName, AllModules, !Info, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
             io.write_string("Cleaning up grade-dependent files for `", !IO),
-            write_sym_name(ModuleName, !IO),
+            write_sym_name_to_cur_stream(ModuleName, !IO),
             io.write_string("'in grade ", !IO),
             grade_directory_component(Globals, Grade),
             io.write_string(Grade, !IO),
@@ -1852,7 +1852,7 @@ make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
         ( pred(!.IO::di, !:IO::uo) is det :-
             io.write_string("Removing executable and library files for `",
                 !IO),
-            write_sym_name(ModuleName, !IO),
+            write_sym_name_to_cur_stream(ModuleName, !IO),
             io.write_string("'.\n", !IO)
         ), !IO),
 
@@ -1905,7 +1905,7 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
     verbose_make_msg_option(Globals, verbose_make,
         ( pred(!.IO::di, !:IO::uo) is det :-
             io.write_string("Cleaning up target files for module `", !IO),
-            write_sym_name(ModuleName, !IO),
+            write_sym_name_to_cur_stream(ModuleName, !IO),
             io.write_string("'.\n", !IO)
         ), !IO),
 
@@ -1988,7 +1988,7 @@ make_module_realclean(Globals, ModuleName, !Info, !IO) :-
     verbose_make_msg_option(Globals, verbose_make,
         ( pred(!.IO::di, !:IO::uo) is det :-
             io.write_string("Cleaning up interface files for module `", !IO),
-            write_sym_name(ModuleName, !IO),
+            write_sym_name_to_cur_stream(ModuleName, !IO),
             io.write_string("'.\n", !IO)
         ), !IO),
     Targets = [module_target_int0, module_target_int1, module_target_int2,

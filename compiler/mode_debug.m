@@ -125,6 +125,7 @@ write_var_insts([], _, _, _, _, _, !IO).
 write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
         Verbose, Minimal, !IO) :-
     instmap_lookup_var(OldInstMap, Var, OldInst),
+    io.output_stream(Stream, !IO),
     ( if
         (
             identical_insts(Inst, OldInst)
@@ -134,24 +135,24 @@ write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
     then
         (
             Verbose = yes,
-            io.write_string("\t", !IO),
-            mercury_output_var(VarSet, print_name_only, Var, !IO),
-            io.write_string(" ::", !IO),
-            io.write_string(" unchanged\n", !IO)
+            io.write_string(Stream, "\t", !IO),
+            mercury_output_var(VarSet, print_name_only, Var, Stream, !IO),
+            io.write_string(Stream, " ::", !IO),
+            io.write_string(Stream, " unchanged\n", !IO)
         ;
             Verbose = no
         )
     else
-        io.write_string("\t", !IO),
-        mercury_output_var(VarSet, print_name_only, Var, !IO),
-        io.write_string(" ::", !IO),
+        io.write_string(Stream, "\t", !IO),
+        mercury_output_var(VarSet, print_name_only, Var, Stream, !IO),
+        io.write_string(Stream, " ::", !IO),
         (
             Minimal = yes,
-            io.write_string(" changed\n", !IO)
+            io.write_string(Stream, " changed\n", !IO)
         ;
             Minimal = no,
-            io.write_string("\n", !IO),
-            mercury_output_structured_inst(Inst, 2,
+            io.write_string(Stream, "\n", !IO),
+            mercury_output_structured_inst(Stream, Inst, 2,
                 output_debug, do_not_incl_addr, InstVarSet, !IO)
         )
     ),

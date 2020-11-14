@@ -1,16 +1,16 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
 % Copyright (C) 2014-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: hlds_out_util.m.
 % Author: zs.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.hlds_out.hlds_out_util.
 :- interface.
@@ -36,7 +36,7 @@
 :- import_module pair.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type hlds_out_info
     --->    hlds_out_info(
@@ -49,7 +49,7 @@
 
 :- func init_hlds_out_info(globals, output_lang) = hlds_out_info.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type is_first
     --->    is_first
@@ -59,32 +59,28 @@
     --->    is_last
     ;       is_not_last.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % write_pred_id/4 writes out a message such as
+    % pred_id_to_string returns a string such as
     %       predicate `foo.bar/3'
     % or    function `foo.myfoo/5'
     % except in some special cases where the predicate name is mangled
     % and we can print a more meaningful identification of the predicate
     % in question.
     %
-:- pred write_pred_id(module_info::in, pred_id::in, io::di, io::uo) is det.
 :- func pred_id_to_string(module_info, pred_id) = string.
 
-    % Do the job of pred_id_to_string, but don't look up the pred_info
+    % Do the same job as pred_id_to_string, but don't look up the pred_info
     % in the module_info; get it directly from the caller.
     %
 :- func pred_info_id_to_string(pred_info) = string.
 
-:- pred write_pred_proc_id(module_info::in, pred_proc_id::in, io::di, io::uo)
-    is det.
+    % Do the same job as pred_id_to_string, only for a procedure.
+    %
 :- func pred_proc_id_to_string(module_info, pred_proc_id) = string.
-
-:- pred write_pred_proc_id_pair(module_info::in, pred_id::in, proc_id::in,
-    io::di, io::uo) is det.
 :- func pred_proc_id_pair_to_string(module_info, pred_id, proc_id) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % unify_context_to_pieces generates a message such as
     %   foo.m:123:   in argument 3 of functor `foo/5':
@@ -109,7 +105,17 @@
     unify_context::in,
     list(format_component)::in, list(format_component)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+    % maybe_output_context_comment(Stream, Indent, Suffix, Context, !IO):
+    %
+    % If the given context is meaningful, output it in a form suitable
+    % for a comment in HLDS dumps, followed by Suffix.
+    %
+:- pred maybe_output_context_comment(io.text_output_stream::in, int::in,
+    string::in, term.context::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 
 :- func call_id_to_string(call_id) = string.
 
@@ -124,38 +130,28 @@
     %
 :- func call_arg_id_to_string(call_id, int, pred_markers) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % Print out a functor and its arguments. The prog_varset gives
-    % the context.
+    % Return a printable representation of a functor and its arguments.
+    % The prog_varset gives the names of any variables.
     %
-:- pred write_functor(prog_varset::in, var_name_print::in,
-    const::in, list(prog_var)::in, io::di, io::uo) is det.
 :- func functor_to_string(prog_varset, var_name_print, const, list(prog_var))
     = string.
 
-:- pred write_functor_maybe_needs_quotes(prog_varset::in, var_name_print::in,
-    needs_quotes::in, const::in, list(prog_var)::in, io::di, io::uo) is det.
 :- func functor_to_string_maybe_needs_quotes(prog_varset, var_name_print,
     needs_quotes, const, list(prog_var)) = string.
 
-:- pred write_qualified_functor(prog_varset::in, var_name_print::in,
-    module_name::in, const::in, list(prog_var)::in, io::di, io::uo) is det.
 :- func qualified_functor_to_string(prog_varset, var_name_print,
     module_name, const, list(prog_var)) = string.
 
-:- pred write_qualified_functor_with_term_args(prog_varset::in,
-    var_name_print::in, module_name::in, const::in, list(prog_term)::in,
-    io::di, io::uo) is det.
 :- func qualified_functor_with_term_args_to_string(prog_varset, var_name_print,
     module_name, const, list(prog_term)) = string.
 
-    % Print out a cons_id and arguments. The module_info and prog_varset
-    % give the context.
+    % Return a printable representation of a cons_id and arguments.
+    % The prog_varset gives the names of any variables, while the module_info
+    % allows the interpretation of cons_ids that are shrouded references
+    % to procedures.
     %
-:- pred write_functor_cons_id(module_info::in, prog_varset::in,
-    var_name_print::in, cons_id::in, list(prog_var)::in,
-    io::di, io::uo) is det.
 :- func functor_cons_id_to_string(module_info, prog_varset, var_name_print,
     cons_id, list(prog_var)) = string.
 
@@ -163,33 +159,28 @@
     --->    qualify_cons_id
     ;       do_not_qualify_cons_id.
 
-:- pred write_cons_id_and_vars_or_arity(prog_varset::in,
-    maybe_qualify_cons_id::in, cons_id::in, maybe(list(prog_var))::in,
-    io::di, io::uo) is det.
 :- func cons_id_and_vars_or_arity_to_string(prog_varset,
     maybe_qualify_cons_id, cons_id, maybe(list(prog_var))) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred write_constraint_proof_map(int::in, var_name_print::in, tvarset::in,
-    constraint_proof_map::in, io::di, io::uo) is det.
+:- pred write_constraint_proof_map(io.text_output_stream::in, int::in,
+    var_name_print::in, tvarset::in, constraint_proof_map::in,
+    io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % Print out a list of variables and their corresponding modes
-    % (e.g. for a lambda expressions). The varsets gives the context.
+    % Return a string representing a list of variables and their
+    % corresponding modes (e.g. for a lambda expressions). The varsets
+    % give the context.
     %
-:- pred write_var_modes(prog_varset::in, inst_varset::in, var_name_print::in,
-    list(prog_var)::in, list(mer_mode)::in, io::di, io::uo) is det.
 :- func var_modes_to_string(prog_varset, inst_varset, var_name_print,
     list(prog_var), list(mer_mode)) = string.
 
-:- pred write_var_mode(prog_varset::in, inst_varset::in, var_name_print::in,
-    pair(prog_var, mer_mode)::in, io::di, io::uo) is det.
 :- func var_mode_to_string(prog_varset, inst_varset, var_name_print,
     pair(prog_var, mer_mode)) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func type_import_status_to_string(type_status) = string.
 :- func inst_import_status_to_string(inst_status) = string.
@@ -198,24 +189,25 @@
 :- func instance_import_status_to_string(instance_status) = string.
 :- func pred_import_status_to_string(pred_status) = string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Write out a list of integers as a Mercury list.
     %
-:- pred write_intlist(list(int)::in, io::di, io::uo) is det.
+:- pred write_intlist(io.text_output_stream::in, list(int)::in,
+    io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Write out the given indent level (two spaces per indent).
     %
-:- pred write_indent(int::in, io::di, io::uo) is det.
+:- pred write_indent(io.text_output_stream::in, int::in, io::di, io::uo) is det.
 
     % Return the indent for the given level as a string.
     %
 :- func indent_string(int) = string.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -236,7 +228,7 @@
 :- import_module term_io.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 init_hlds_out_info(Globals, Lang) = Info :-
     globals.lookup_string_option(Globals, dump_hlds_options, DumpOptions),
@@ -245,16 +237,10 @@ init_hlds_out_info(Globals, Lang) = Info :-
     MercInfo = init_merc_out_info(Globals, unqualified_item_names, Lang),
     Info = hlds_out_info(DumpOptions, DumpOptions, Ids, Names, MercInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Write out the ids of predicates and procedures.
 %
-
-write_pred_id(ModuleInfo, PredId, !IO) :-
-    % The code of this predicate duplicates the functionality of
-    % hlds_error_util.describe_one_pred_name. Changes here should be made
-    % there as well.
-    io.write_string(pred_id_to_string(ModuleInfo, PredId), !IO).
 
 pred_id_to_string(ModuleInfo, PredId) = Str :-
     module_info_get_preds(ModuleInfo, PredTable),
@@ -355,22 +341,15 @@ pred_info_id_to_string(PredInfo) = Str :-
         Str = pf_sym_name_orig_arity_to_string(PredOrFunc, SymName, Arity)
     ).
 
-write_pred_proc_id(ModuleInfo, proc(PredId, ProcId), !IO) :-
-    write_pred_proc_id_pair(ModuleInfo, PredId, ProcId, !IO).
-
 pred_proc_id_to_string(ModuleInfo, proc(PredId, ProcId)) =
     pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId).
-
-write_pred_proc_id_pair(ModuleInfo, PredId, ProcId, !IO) :-
-    io.write_string(pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
-        !IO).
 
 pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId) = Str :-
     proc_id_to_int(ProcId, ModeNum),
     Str = pred_id_to_string(ModuleInfo, PredId)
         ++ " mode " ++ int_to_string(ModeNum).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Write out the contexts of unifications.
 %
@@ -504,7 +483,20 @@ start_in_message_to_pieces(First, !Pieces) :-
         !:Pieces = !.Pieces ++ [words("in")]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+maybe_output_context_comment(Stream, Indent, Suffix, Context, !IO) :-
+    term.context_file(Context, FileName),
+    term.context_line(Context, LineNumber),
+    ( if FileName = "" then
+        true
+    else
+        write_indent(Stream, Indent, !IO),
+        io.format(Stream, "%% context: file `%s', line %d%s\n",
+            [s(FileName), i(LineNumber), s(Suffix)], !IO)
+    ).
+
+%---------------------------------------------------------------------------%
 %
 % Write out ids of calls.
 %
@@ -610,23 +602,14 @@ arg_number_to_string(CallId, ArgNum) = Str :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Write out functors.
 %
 
-write_functor(VarSet, VarNamePrint, Functor, ArgVars, !IO) :-
-    write_functor_maybe_needs_quotes(VarSet, VarNamePrint,
-        not_next_to_graphic_token, Functor, ArgVars, !IO).
-
 functor_to_string(VarSet, VarNamePrint, Functor, ArgVars)  =
     functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint,
         not_next_to_graphic_token, Functor, ArgVars).
-
-write_functor_maybe_needs_quotes(VarSet, VarNamePrint, NextToGraphicToken,
-        Functor, ArgVars, !IO) :-
-    io.write_string(functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint,
-        NextToGraphicToken, Functor, ArgVars), !IO).
 
 functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint, NextToGraphicToken,
         Functor, ArgVars) = Str :-
@@ -636,22 +619,12 @@ functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint, NextToGraphicToken,
     Str = mercury_term_nq_to_string(VarSet, VarNamePrint, NextToGraphicToken,
         Term).
 
-write_qualified_functor(VarSet, VarNamePrint, ModuleName, Functor, ArgVars,
-        !IO) :-
-    io.write_string(qualified_functor_to_string(VarSet, VarNamePrint,
-        ModuleName, Functor, ArgVars), !IO).
-
 qualified_functor_to_string(VarSet, VarNamePrint, ModuleName, Functor,
         ArgVars) = Str :-
     ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
     FunctorStr = functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint,
         next_to_graphic_token, Functor, ArgVars),
     Str = ModuleNameStr ++ "." ++ FunctorStr.
-
-write_qualified_functor_with_term_args(VarSet, VarNamePrint,
-        ModuleName, Functor, ArgTerms, !IO) :-
-    io.write_string(qualified_functor_with_term_args_to_string(VarSet,
-        VarNamePrint, ModuleName, Functor, ArgTerms), !IO).
 
 qualified_functor_with_term_args_to_string(VarSet, VarNamePrint,
         ModuleName, Functor, ArgTerms) = Str :-
@@ -661,11 +634,6 @@ qualified_functor_with_term_args_to_string(VarSet, VarNamePrint,
     TermStr = mercury_term_nq_to_string(VarSet, VarNamePrint,
         next_to_graphic_token, Term),
     Str = ModuleNameStr ++ "." ++ TermStr.
-
-write_functor_cons_id(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars,
-        !IO) :-
-    io.write_string(functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint,
-        ConsId, ArgVars), !IO).
 
 functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
         = Str :-
@@ -801,12 +769,6 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
             ++ pred_id_to_string(ModuleInfo, PredId)
             ++ " (mode " ++ int_to_string(ProcIdInt) ++ "))"
     ).
-
-write_cons_id_and_vars_or_arity(Qual, VarSet, ConsId, MaybeArgVars, !IO) :-
-    io.write_string(
-        cons_id_and_vars_or_arity_to_string(Qual, VarSet,
-            ConsId, MaybeArgVars),
-        !IO).
 
 cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
         = String :-
@@ -956,46 +918,43 @@ cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
             int_to_string(ProcId) ++ ">"
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Write out constraint proofs.
 %
 
-write_constraint_proof_map(Indent, VarNamePrint, TVarSet, ProofMap, !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("% Proofs: \n", !IO),
+write_constraint_proof_map(Stream, Indent, VarNamePrint, TVarSet,
+        ProofMap, !IO) :-
+    write_indent(Stream, Indent, !IO),
+    io.write_string(Stream, "% Proofs: \n", !IO),
     map.to_assoc_list(ProofMap, ProofsList),
-    io.write_list(ProofsList, "\n",
-        write_constraint_proof(Indent, VarNamePrint, TVarSet), !IO).
+    write_out_list(write_constraint_proof(Indent, VarNamePrint, TVarSet),
+        "\n", ProofsList, Stream, !IO).
 
 :- pred write_constraint_proof(int::in, var_name_print::in, tvarset::in,
-    pair(prog_constraint, constraint_proof)::in, io::di, io::uo) is det.
+    pair(prog_constraint, constraint_proof)::in,
+    io.text_output_stream::in, io::di, io::uo) is det.
 
 write_constraint_proof(Indent, VarNamePrint, TVarSet, Constraint - Proof,
-        !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("% ", !IO),
-    mercury_output_constraint(TVarSet, VarNamePrint, Constraint, !IO),
-    io.write_string(": ", !IO),
+        Stream, !IO) :-
+    write_indent(Stream, Indent, !IO),
+    io.write_string(Stream, "% ", !IO),
+    mercury_output_constraint(TVarSet, VarNamePrint, Constraint, Stream, !IO),
+    io.write_string(Stream, ": ", !IO),
     (
         Proof = apply_instance(Num),
-        io.write_string("apply instance decl #", !IO),
-        io.write_int(Num, !IO)
+        io.write_string(Stream, "apply instance decl #", !IO),
+        io.write_int(Stream, Num, !IO)
     ;
         Proof = superclass(Super),
-        io.write_string("super class of ", !IO),
-        mercury_output_constraint(TVarSet, VarNamePrint, Super, !IO)
+        io.write_string(Stream, "super class of ", !IO),
+        mercury_output_constraint(TVarSet, VarNamePrint, Super, Stream, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Write out modes.
 %
-
-write_var_modes(VarSet, InstVarSet, VarNamePrint, Vars, Modes, !IO) :-
-    io.write_string(
-        var_modes_to_string(VarSet, InstVarSet, VarNamePrint, Vars, Modes),
-        !IO).
 
 var_modes_to_string(VarSet, InstVarSet, VarNamePrint, Vars, Modes) = Str :-
     assoc_list.from_corresponding_lists(Vars, Modes, VarModes),
@@ -1003,15 +962,11 @@ var_modes_to_string(VarSet, InstVarSet, VarNamePrint, Vars, Modes) = Str :-
         VarModes),
     Str = string.join_list(", ", Strs).
 
-write_var_mode(VarSet, InstVarSet, VarNamePrint, Var - Mode, !IO) :-
-    io.write_string(var_mode_to_string(VarSet, InstVarSet, VarNamePrint,
-        Var - Mode), !IO).
-
 var_mode_to_string(VarSet, InstVarSet, VarNamePrint, Var - Mode) =
     mercury_var_to_string(VarSet, VarNamePrint, Var)
         ++ "::" ++ mercury_mode_to_string(output_debug, InstVarSet, Mode).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Write out statuses.
 %
@@ -1093,46 +1048,46 @@ old_import_status_to_string(status_pseudo_imported) =
 old_import_status_to_string(status_exported_to_submodules) =
     "exported_to_submodules".
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Write out lists of integers as Mercury terms.
 %
 
-write_intlist(IntList, !IO) :-
+write_intlist(Stream, IntList, !IO) :-
     (
         IntList = [],
-        io.write_string("[]", !IO)
+        io.write_string(Stream, "[]", !IO)
     ;
         IntList = [H | T],
-        io.write_string("[", !IO),
-        write_intlist_2(H, T, !IO),
-        io.write_string("]", !IO)
+        io.write_string(Stream, "[", !IO),
+        write_intlist_lag(Stream, H, T, !IO),
+        io.write_string(Stream, "]", !IO)
     ).
 
-:- pred write_intlist_2(int::in, list(int)::in, io::di, io::uo)
-    is det.
+:- pred write_intlist_lag(io.text_output_stream::in, int::in, list(int)::in,
+    io::di, io::uo) is det.
 
-write_intlist_2(H, T, !IO) :-
-    io.write_int(H, !IO),
+write_intlist_lag(Stream, H, T, !IO) :-
+    io.write_int(Stream, H, !IO),
     (
         T = [TH | TT],
-        io.write_string(", ", !IO),
-        write_intlist_2(TH, TT, !IO)
+        io.write_string(Stream, ", ", !IO),
+        write_intlist_lag(Stream, TH, TT, !IO)
     ;
         T = []
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Write out indentation.
 %
 
-write_indent(Indent, !IO) :-
+write_indent(Stream, Indent, !IO) :-
     ( if Indent = 0 then
         true
     else
-        io.write_string("  ", !IO),
-        write_indent(Indent - 1, !IO)
+        io.write_string(Stream, "  ", !IO),
+        write_indent(Stream, Indent - 1, !IO)
     ).
 
 indent_string(Indent) = Str :-
@@ -1142,6 +1097,6 @@ indent_string(Indent) = Str :-
         Str = "  " ++ indent_string(Indent - 1)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

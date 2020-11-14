@@ -320,15 +320,16 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
                 )
             then
                 OutInfo = init_hlds_out_info(Globals, output_debug),
-                io.format("Pred/Proc: %s/%s before dep-par-conj:\n",
+                io.output_stream(Stream, !IO),
+                io.format(Stream, "Pred/Proc: %s/%s before dep-par-conj:\n",
                     [s(string(PredId)), s(string(ProcId))], !IO),
-                write_goal(OutInfo, !.ModuleInfo, !.VarSet, print_name_and_num,
-                    0, "", GoalBeforeDepParConj, !IO),
-                io.nl(!IO),
-                io.write_string("After dep-par-conj:\n", !IO),
-                write_goal(OutInfo, !.ModuleInfo, !.VarSet, print_name_and_num,
-                    0, "", !.Goal, !IO),
-                io.nl(!IO)
+                write_goal(OutInfo, Stream, !.ModuleInfo, !.VarSet,
+                    print_name_and_num, 0, "", GoalBeforeDepParConj, !IO),
+                io.nl(Stream, !IO),
+                io.write_string(Stream, "After dep-par-conj:\n", !IO),
+                write_goal(OutInfo, Stream, !.ModuleInfo, !.VarSet,
+                    print_name_and_num, 0, "", !.Goal, !IO),
+                io.nl(Stream, !IO)
             else
                 true
             )
@@ -1576,13 +1577,15 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
                     DebugDepParConjWord = PredIdStr
                 )
             then
+                io.output_stream(Stream, !IO),
                 OutInfo = init_hlds_out_info(Globals, output_debug),
                 proc_info_get_varset(!.ProcInfo, VarSet),
-                format("About to search %d/%d for dependant par conjs:\n",
+                io.format(Stream,
+                    "About to search %d/%d for dependant par conjs:\n",
                     [i(PredIdInt), i(proc_id_to_int(ProcId))], !IO),
-                write_goal(OutInfo, !.ModuleInfo, VarSet, print_name_and_num,
-                    0, "", !.Goal, !IO),
-                nl(!IO)
+                write_goal(OutInfo, Stream, !.ModuleInfo, VarSet,
+                    print_name_and_num, 0, "", !.Goal, !IO),
+                io.nl(Stream, !IO)
             else
                 true
             )

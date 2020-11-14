@@ -1861,11 +1861,12 @@ generate_failure(Code, !CI, !.CLD) :-
     ),
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
         ( if should_trace_code_gen(!.CI) then
-            io.write_string("failure code\n", !IO),
+            io.output_stream(Stream, !IO),
+            io.write_string(Stream, "failure code\n", !IO),
             Instrs = cord.list(Code),
-            write_instrs(Instrs, no, auto_comments, !IO),
-            io.write_string("end failure code\n", !IO),
-            io.flush_output(!IO)
+            write_instrs(Stream, Instrs, no, auto_comments, !IO),
+            io.write_string(Stream, "end failure code\n", !IO),
+            io.flush_output(Stream, !IO)
         else
             true
         )
@@ -2126,10 +2127,12 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         ResumePoint = orig_only(OrigMap, OrigAddr),
         trace [compiletime(flag("codegen_goal")), io(!IO)] (
             ( if should_trace_code_gen(!.CI) then
+                io.output_stream(Stream, !IO),
                 code_info.get_varset(!.CI, VarSet),
-                io.write_string("make_resume_point orig_only\n", !IO),
-                output_resume_map(VarSet, "orig:", OrigMap, OrigLabel, !IO),
-                io.flush_output(!IO)
+                io.write_string(Stream, "make_resume_point orig_only\n", !IO),
+                output_resume_map(Stream, VarSet, "orig:",
+                    OrigMap, OrigLabel, !IO),
+                io.flush_output(Stream, !IO)
             else
                 true
             )
@@ -2142,10 +2145,13 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         ResumePoint = stack_only(StackMap, StackAddr),
         trace [compiletime(flag("codegen_goal")), io(!IO)] (
             ( if should_trace_code_gen(!.CI) then
+                io.output_stream(Stream, !IO),
                 code_info.get_varset(!.CI, VarSet),
-                io.write_string("make_resume_point stack_only\n", !IO),
-                output_resume_map(VarSet, "stack:", StackMap, StackLabel, !IO),
-                io.flush_output(!IO)
+                io.write_string(Stream,
+                    "make_resume_point stack_only\n", !IO),
+                output_resume_map(Stream, VarSet, "stack:",
+                    StackMap, StackLabel, !IO),
+                io.flush_output(Stream, !IO)
             else
                 true
             )
@@ -2160,11 +2166,15 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         ResumePoint = orig_then_stack(OrigMap, OrigAddr, StackMap, StackAddr),
         trace [compiletime(flag("codegen_goal")), io(!IO)] (
             ( if should_trace_code_gen(!.CI) then
+                io.output_stream(Stream, !IO),
                 code_info.get_varset(!.CI, VarSet),
-                io.write_string("make_resume_point orig_then_stack\n", !IO),
-                output_resume_map(VarSet, "orig:", OrigMap, OrigLabel, !IO),
-                output_resume_map(VarSet, "stack:", StackMap, StackLabel, !IO),
-                io.flush_output(!IO)
+                io.write_string(Stream,
+                    "make_resume_point orig_then_stack\n", !IO),
+                output_resume_map(Stream, VarSet, "orig:",
+                    OrigMap, OrigLabel, !IO),
+                output_resume_map(Stream, VarSet, "stack:",
+                    StackMap, StackLabel, !IO),
+                io.flush_output(Stream, !IO)
             else
                 true
             )
@@ -2180,10 +2190,14 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         trace [compiletime(flag("codegen_goal")), io(!IO)] (
             ( if should_trace_code_gen(!.CI) then
                 code_info.get_varset(!.CI, VarSet),
-                io.write_string("make_resume_point stack_then_orig\n", !IO),
-                output_resume_map(VarSet, "stack:", StackMap, StackLabel, !IO),
-                output_resume_map(VarSet, "orig:", OrigMap, OrigLabel, !IO),
-                io.flush_output(!IO)
+                io.output_stream(Stream, !IO),
+                io.write_string(Stream,
+                    "make_resume_point stack_then_orig\n", !IO),
+                output_resume_map(Stream, VarSet, "stack:",
+                    StackMap, StackLabel, !IO),
+                output_resume_map(Stream, VarSet, "orig:",
+                    OrigMap, OrigLabel, !IO),
+                io.flush_output(Stream, !IO)
             else
                 true
             )
@@ -3875,7 +3889,8 @@ release_several_temp_slots([StackVar | StackVars], Persistence, !CI, !CLD) :-
     % If you need to print a part that is not currently selectable, make it
     % selectable.
     %
-:- pred output_code_info(list(code_info_component)::in,
+:- pred output_code_info(io.text_output_stream::in,
+    list(code_info_component)::in,
     code_info::in, code_loc_dep::in, io::di, io::uo) is det.
 
 :- implementation.
@@ -3888,62 +3903,65 @@ should_trace_code_gen(CI) :-
     globals.lookup_int_option(Globals, debug_code_gen_pred_id, DebugPredIdInt),
     PredIdInt = DebugPredIdInt.
 
-output_code_info(Components, CI, CLD, !IO) :-
+output_code_info(Stream, Components, CI, CLD, !IO) :-
     get_varset(CI, VarSet),
     CLD = code_loc_dep(ForwardLiveVars, _InstMap, Zombies,
         _VarLocnInfo, TempsInUse, _FailInfo, ParConjDepth),
     ( if list.member(cic_forward_live_vars, Components) then
-        io.write_string("forward live vars: ", !IO),
+        io.write_string(Stream, "forward live vars: ", !IO),
         mercury_output_vars(VarSet, print_name_and_num,
-            set_of_var.to_sorted_list(ForwardLiveVars), !IO),
-        io.nl(!IO)
+            set_of_var.to_sorted_list(ForwardLiveVars), Stream, !IO),
+        io.nl(Stream, !IO)
     else
         true
     ),
     ( if list.member(cic_zombies, Components) then
-        io.write_string("zombies: ", !IO),
+        io.write_string(Stream, "zombies: ", !IO),
         mercury_output_vars(VarSet, print_name_and_num,
-            set_of_var.to_sorted_list(Zombies), !IO),
-        io.nl(!IO)
+            set_of_var.to_sorted_list(Zombies), Stream, !IO),
+        io.nl(Stream, !IO)
     else
         true
     ),
     ( if list.member(cic_temps_in_use, Components) then
-        io.write_string("temps_in_use: ", !IO),
-        io.write_string(dump_lvals(no, set.to_sorted_list(TempsInUse)), !IO),
-        io.nl(!IO)
+        io.write_string(Stream, "temps_in_use: ", !IO),
+        io.write_string(Stream,
+            dump_lvals(no, set.to_sorted_list(TempsInUse)), !IO),
+        io.nl(Stream, !IO)
     else
         true
     ),
     ( if list.member(cic_par_conj_depth, Components) then
-        io.format("par_conj_depth: %d\n", [i(ParConjDepth)], !IO)
+        io.format(Stream, "par_conj_depth: %d\n", [i(ParConjDepth)], !IO)
     else
         true
     ).
 
-:- pred output_resume_map(prog_varset::in, string::in,
-    map(prog_var, set(lval))::in, label::in, io::di, io::uo) is det.
+:- pred output_resume_map(io.text_output_stream::in, prog_varset::in,
+    string::in, map(prog_var, set(lval))::in, label::in,
+    io::di, io::uo) is det.
 
-output_resume_map(VarSet, Desc, ResumeMap, ResumeLabel, !IO) :-
+output_resume_map(Stream, VarSet, Desc, ResumeMap, ResumeLabel, !IO) :-
     (
         ResumeLabel = internal_label(LabelNumber, _ProcLabel)
     ;
         ResumeLabel = entry_label(_, _),
         unexpected($pred, "resume label is an entry label")
     ),
-    io.format("  %-6s local label %d\n", [s(Desc), i(LabelNumber)], !IO),
+    io.format(Stream, "  %-6s local label %d\n",
+        [s(Desc), i(LabelNumber)], !IO),
     map.to_assoc_list(ResumeMap, ResumeAssocList),
-    list.foldl(output_resume_map_element(VarSet), ResumeAssocList, !IO).
+    list.foldl(output_resume_map_element(Stream, VarSet), ResumeAssocList, !IO).
 
-:- pred output_resume_map_element(prog_varset::in,
+:- pred output_resume_map_element(io.text_output_stream::in, prog_varset::in,
     pair(prog_var, set(lval))::in, io::di, io::uo) is det.
 
-output_resume_map_element(VarSet, Var - LvalSet, !IO) :-
+output_resume_map_element(Stream, VarSet, Var - LvalSet, !IO) :-
     VarDesc = describe_var(VarSet, Var),
     Lvals = set.to_sorted_list(LvalSet),
     LvalDescs = list.map(dump_lval(no), Lvals),
     LvalsDesc = string.join_list(" ", LvalDescs),
-    io.format("    %s: %s\n", [s(VarDesc), s(LvalsDesc)], !IO).
+    io.format(Stream, "    %s: %s\n", [s(VarDesc), s(LvalsDesc)], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ll_backend.code_loc_dep.

@@ -328,12 +328,13 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
 maybe_debug_liveness(ModuleInfo, Message, DebugLiveness, PredIdInt, VarSet,
         Goal, !IO) :-
     ( if DebugLiveness = PredIdInt then
-        io.write_string(Message, !IO),
-        io.write_string(":\n", !IO),
+        io.output_stream(Stream, !IO),
+        io.write_string(Stream, Message, !IO),
+        io.write_string(Stream, ":\n", !IO),
         module_info_get_globals(ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals, output_debug),
-        write_goal(OutInfo, ModuleInfo, VarSet, print_name_and_num, 0,
-            "\n", Goal, !IO)
+        write_goal(OutInfo, Stream, ModuleInfo, VarSet, print_name_and_num,
+            0, "\n", Goal, !IO)
     else
         true
     ).

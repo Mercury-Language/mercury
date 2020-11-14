@@ -551,10 +551,8 @@ create_and_write_opt_file(IntermodAnalysis, Globals, !HLDS, !DumpInfo,
                 OptXResult = ok(OptXStream),
                 Info = init_merc_out_info(Globals, unqualified_item_names,
                     output_mercury),
-                io.set_output_stream(OptXStream, OldOutputStream, !IO),
-                mercury_output_parse_tree_plain_opt(Info, ParseTreePlainOpt,
-                    !IO),
-                io.set_output_stream(OldOutputStream, _, !IO),
+                mercury_output_parse_tree_plain_opt(Info, OptXStream,
+                    ParseTreePlainOpt, !IO),
                 io.close_output(OptXStream, !IO)
             )
         )

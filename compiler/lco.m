@@ -490,12 +490,13 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
         Changed = proc_changed
     then
         trace [compiletime(flag("lco")), io(!IO)] (
-            io.write_string("\ngoal before lco:\n", !IO),
-            dump_goal(!.ModuleInfo, VarSet, Goal0, !IO),
-            io.nl(!IO),
-            io.write_string("\ngoal after lco:\n", !IO),
-            dump_goal(!.ModuleInfo, VarSet, Goal, !IO),
-            io.nl(!IO)
+            io.output_stream(Stream, !IO),
+            io.write_string(Stream, "\ngoal before lco:\n", !IO),
+            dump_goal(Stream, !.ModuleInfo, VarSet, Goal0, !IO),
+            io.nl(Stream, !IO),
+            io.write_string(Stream, "\ngoal after lco:\n", !IO),
+            dump_goal(Stream, !.ModuleInfo, VarSet, Goal, !IO),
+            io.nl(Stream, !IO)
         ),
         some [!ProcInfo] (
             !:ProcInfo = ProcInfo0,
@@ -948,17 +949,16 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
             UnifyGoals, UpdatedUnifyGoals, map.init, AddrFieldIds, !Info),
         trace [compiletime(flag("lco")), io(!IO)] (
             VarSet = !.Info ^ lco_var_set,
-            io.write_string("original unifies:\n", !IO),
-            io.write_list(UnifyGoals, "\n",
-                dump_goal(ModuleInfo, VarSet), !IO),
-            io.nl(!IO),
+            io.output_stream(Stream, !IO),
+            io.write_string(Stream, "original unifies:\n", !IO),
+            list.foldl(dump_goal_nl(Stream, ModuleInfo, VarSet),
+                UnifyGoals, !IO),
             io.write_string("updated unifies:\n", !IO),
-            io.write_list(UpdatedUnifyGoals, "\n",
-                dump_goal(ModuleInfo, VarSet), !IO),
-            io.nl(!IO),
-            io.write_string("addr field ids:\n", !IO),
-            io.write(AddrFieldIds, !IO),
-            io.nl(!IO)
+            list.foldl(dump_goal_nl(Stream, ModuleInfo, VarSet),
+                UpdatedUnifyGoals, !IO),
+            io.write_string(Stream, "addr field ids:\n", !IO),
+            io.write(Stream, AddrFieldIds, !IO),
+            io.nl(Stream, !IO)
         ),
         HighLevelData = ConstInfo ^ lci_highlevel_data,
         make_variant_args(HighLevelData, AddrFieldIds, Mismatches,

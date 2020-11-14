@@ -153,8 +153,9 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
         ( if should_trace_code_gen(!.CI) then
             EffectResumeInstrs = cord.list(EffectResumeCode),
-            io.write_string("\nEFFECT RESUME INSTRS:\n", !IO),
-            write_instrs(EffectResumeInstrs, no, auto_comments, !IO),
+            io.output_stream(Stream, !IO),
+            io.write_string(Stream, "\nEFFECT RESUME INSTRS:\n", !IO),
+            write_instrs(Stream, EffectResumeInstrs, no, auto_comments, !IO),
             io.flush_output(!IO)
         else
             true
@@ -221,8 +222,9 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
         ( if should_trace_code_gen(!.CI) then
             ResumeInstrs = cord.list(ResumeCode),
-            io.write_string("\nRESUME INSTRS:\n", !IO),
-            write_instrs(ResumeInstrs, no, auto_comments, !IO),
+            io.output_stream(Stream, !IO),
+            io.write_string(Stream, "\nRESUME INSTRS:\n", !IO),
+            write_instrs(Stream, ResumeInstrs, no, auto_comments, !IO),
             io.flush_output(!IO)
         else
             true
@@ -243,8 +245,9 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
         ( if should_trace_code_gen(!.CI) then
             ElseSaveInstrs = cord.list(ElseSaveCode),
-            io.write_string("\nBRANCH END INSTRS:\n", !IO),
-            write_instrs(ElseSaveInstrs, no, auto_comments, !IO),
+            io.output_stream(Stream, !IO),
+            io.write_string(Stream, "\nBRANCH END INSTRS:\n", !IO),
+            write_instrs(Stream, ElseSaveInstrs, no, auto_comments, !IO),
             io.flush_output(!IO)
         else
             true

@@ -1987,7 +1987,7 @@ tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray) :-
         % as the last field, so we need to handle it specially in Java.
         GenTypeName = "BaseTypeclassInfo"
     then
-        JavaTypeName = "java.lang.Object" /* & IsArray = yes */
+        JavaTypeName = "java.lang.Object"   % & IsArray = yes
     else if
         % Java doesn't have typedefs (or "const"), so we need to use "String"
         % rather than "ConstString".
@@ -2050,7 +2050,7 @@ ctor_rtti_name_csharp_type(RttiName, CsharpTypeName, IsArray) :-
 tc_rtti_name_csharp_type(TCRttiName, CsharpTypeName, IsArray) :-
     tc_rtti_name_type(TCRttiName, GenTypeName, IsArray),
     ( if GenTypeName = "BaseTypeclassInfo" then
-        CsharpTypeName = "object" /* & IsArray = yes */
+        CsharpTypeName = "object"           % & IsArray = yes
     else if GenTypeName = "ConstString" then
         CsharpTypeName = "string"
     else if string.prefix(GenTypeName, "TypeClassConstraint_") then

@@ -116,15 +116,16 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
         GoalInfo = GoalInfo0
     ),
     trace [compile_time(flag("debug_simplify_conj")), io(!IO)] (
+        io.output_stream(Stream, !IO),
         simplify_info_get_module_info(!.Info, ModuleInfo),
         simplify_info_get_varset(!.Info, VarSet),
-        io.write_string("\n------------------------\n", !IO),
-        io.write_string("\nBEFORE SIMPLIFY_GOAL_PLAIN_CONJ\n\n", !IO),
-        list.foldl(dump_goal_nl(ModuleInfo, VarSet), Goals0, !IO),
-        io.write_string("\nAFTER EXCESS ASSIGN\n\n", !IO),
-        list.foldl(dump_goal_nl(ModuleInfo, VarSet), Goals1, !IO),
-        io.write_string("\nAFTER SIMPLIFY_CONJ\n\n", !IO),
-        list.foldl(dump_goal_nl(ModuleInfo, VarSet), Goals, !IO),
+        io.write_string(Stream, "\n------------------------\n", !IO),
+        io.write_string(Stream, "\nBEFORE SIMPLIFY_GOAL_PLAIN_CONJ\n\n", !IO),
+        list.foldl(dump_goal_nl(Stream, ModuleInfo, VarSet), Goals0, !IO),
+        io.write_string(Stream, "\nAFTER EXCESS ASSIGN\n\n", !IO),
+        list.foldl(dump_goal_nl(Stream, ModuleInfo, VarSet), Goals1, !IO),
+        io.write_string(Stream, "\nAFTER SIMPLIFY_CONJ\n\n", !IO),
+        list.foldl(dump_goal_nl(Stream, ModuleInfo, VarSet), Goals, !IO),
         io.flush_output(!IO)
     ).
 

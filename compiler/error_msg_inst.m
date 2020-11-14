@@ -79,6 +79,7 @@
 :- import_module map.
 :- import_module set.
 :- import_module string.
+:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
@@ -184,7 +185,7 @@ inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
         Pieces = [fixed("free") | Suffix]
     ;
         Inst = bound(Uniq, _, BoundInsts),
-        mercury_format_uniqueness(Uniq, "bound", "", BoundName),
+        mercury_format_uniqueness(Uniq, "bound", unit, "", BoundName),
         (
             BoundInsts = [],
             Pieces = [fixed(BoundName) | Suffix]
@@ -204,7 +205,7 @@ inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
             Pieces = HOPieces ++ Suffix
         ;
             HOInstInfo = none_or_default_func,
-            mercury_format_uniqueness(Uniq, "ground", "", Str),
+            mercury_format_uniqueness(Uniq, "ground", unit, "", Str),
             Pieces = [fixed(Str) | Suffix]
         )
     ;
@@ -216,19 +217,19 @@ inst_to_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
             Pieces = HOPieces ++ Suffix
         ;
             HOInstInfo = none_or_default_func,
-            mercury_format_any_uniqueness(Uniq, "", Str),
+            mercury_format_any_uniqueness(Uniq, unit, "", Str),
             Pieces = [fixed(Str) | Suffix]
         )
     ;
         Inst = inst_var(Var),
         InstVarSet = Info ^ imi_inst_varset,
-        mercury_format_var(InstVarSet, print_name_only, Var, "", Name),
+        mercury_format_var(InstVarSet, print_name_only, Var, unit, "", Name),
         Pieces = [fixed(Name) | Suffix]
     ;
         Inst = constrained_inst_vars(Vars, ConstrainedInst),
         InstVarSet = Info ^ imi_inst_varset,
         mercury_format_vars(InstVarSet, print_name_only,
-            set.to_sorted_list(Vars), "", Names),
+            set.to_sorted_list(Vars), unit, "", Names),
         inst_to_pieces(Info, !Expansions, ConstrainedInst,
             [fixed(")") | Suffix], InstPieces),
         Pieces = [fixed("("), words(Names), fixed("=<") | InstPieces]
@@ -256,7 +257,7 @@ inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
         Pieces = [fixed("free") | Suffix]
     ;
         Inst = bound(Uniq, _, BoundInsts),
-        mercury_format_uniqueness(Uniq, "bound", "", BoundName),
+        mercury_format_uniqueness(Uniq, "bound", unit, "", BoundName),
         (
             BoundInsts = [],
             Pieces = [fixed(BoundName) | Suffix]
@@ -276,7 +277,7 @@ inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
             Pieces = HOPieces ++ Suffix
         ;
             HOInstInfo = none_or_default_func,
-            mercury_format_uniqueness(Uniq, "ground", "", Str),
+            mercury_format_uniqueness(Uniq, "ground", unit, "", Str),
             Pieces = [fixed(Str) | Suffix]
         )
     ;
@@ -288,19 +289,19 @@ inst_to_inline_pieces(Info, !Expansions, Inst, Suffix, Pieces) :-
             Pieces = HOPieces ++ Suffix
         ;
             HOInstInfo = none_or_default_func,
-            mercury_format_any_uniqueness(Uniq, "", Str),
+            mercury_format_any_uniqueness(Uniq, unit, "", Str),
             Pieces = [fixed(Str) | Suffix]
         )
     ;
         Inst = inst_var(Var),
         InstVarSet = Info ^ imi_inst_varset,
-        mercury_format_var(InstVarSet, print_name_only, Var, "", Name),
+        mercury_format_var(InstVarSet, print_name_only, Var, unit, "", Name),
         Pieces = [fixed(Name) | Suffix]
     ;
         Inst = constrained_inst_vars(Vars, ConstrainedInst),
         InstVarSet = Info ^ imi_inst_varset,
         mercury_format_vars(InstVarSet, print_name_only,
-            set.to_sorted_list(Vars), "", Names),
+            set.to_sorted_list(Vars), unit, "", Names),
         inst_to_inline_pieces(Info, !Expansions, ConstrainedInst,
             [fixed(")") | Suffix], InstPieces),
         Pieces = [fixed("("), words(Names), fixed("=<") | InstPieces]
@@ -384,7 +385,8 @@ bound_insts_to_pieces(Info, !Expansions, HeadBoundInst, TailBoundInsts,
     else
         ConsId = ConsId0
     ),
-    mercury_format_cons_id(does_not_need_brackets, ConsId, "", ConsIdStr),
+    mercury_format_cons_id(does_not_need_brackets, ConsId, unit,
+        "", ConsIdStr),
     name_and_arg_insts_to_pieces(Info, !Expansions, ConsIdStr, ArgInsts,
         HeadSuffix, Pieces).
 
@@ -416,7 +418,8 @@ bound_insts_to_inline_pieces(Info, !Expansions, HeadBoundInst, TailBoundInsts,
     else
         ConsId = ConsId0
     ),
-    mercury_format_cons_id(does_not_need_brackets, ConsId, "", ConsIdStr),
+    mercury_format_cons_id(does_not_need_brackets, ConsId, unit,
+        "", ConsIdStr),
     name_and_arg_insts_to_inline_pieces(Info, !Expansions, ConsIdStr, ArgInsts,
         HeadSuffix, Pieces).
 
@@ -667,11 +670,11 @@ pred_inst_info_to_pieces(Info, !Expansions, AnyPrefix, Uniq,
         ; Uniq = clobbered
         ; Uniq = mostly_clobbered
         ),
-        mercury_format_uniqueness(Uniq, "ground", "", BoundName),
+        mercury_format_uniqueness(Uniq, "ground", unit, "", BoundName),
         UniqPieces = [fixed("/*"), fixed(BoundName), fixed("*/")]
     ),
     modes_to_pieces(Info, !Expansions, ArgModes, ArgModesPieces),
-    mercury_format_det(Det, "is ", IsDetStr),
+    mercury_format_det(Det, unit, "is ", IsDetStr),
     % XXX Should we print each argument mode on a separate line?
     (
         PredOrFunc = pf_predicate,
@@ -730,11 +733,11 @@ pred_inst_info_to_inline_pieces(Info, !Expansions, AnyPrefix, Uniq,
         ; Uniq = clobbered
         ; Uniq = mostly_clobbered
         ),
-        mercury_format_uniqueness(Uniq, "ground", "", BoundName),
+        mercury_format_uniqueness(Uniq, "ground", unit, "", BoundName),
         UniqPieces = [fixed("/*"), fixed(BoundName), fixed("*/")]
     ),
     modes_to_inline_pieces(Info, !Expansions, ArgModes, ArgModesPieces),
-    mercury_format_det(Det, "is ", IsDetStr),
+    mercury_format_det(Det, unit, "is ", IsDetStr),
     (
         PredOrFunc = pf_predicate,
         (

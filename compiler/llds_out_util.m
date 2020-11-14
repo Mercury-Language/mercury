@@ -78,10 +78,11 @@
     map(pred_proc_id, layout_slot_name),
     map(alloc_site_id, layout_slot_name)) = llds_out_info.
 
-:- pred output_set_line_num(bool::in, prog_context::in,
-    io::di, io::uo) is det.
+:- pred output_set_line_num(io.text_output_stream::in, bool::in,
+    prog_context::in, io::di, io::uo) is det.
 
-:- pred output_reset_line_num(bool::in, io::di, io::uo) is det.
+:- pred output_reset_line_num(io.text_output_stream::in, bool::in,
+    io::di, io::uo) is det.
 
 %----------------------------------------------------------------------------%
 
@@ -113,7 +114,8 @@
 
 %----------------------------------------------------------------------------%
 
-:- pred output_indent(string::in, string::in, int::in, io::di, io::uo) is det.
+:- pred output_indent(io.text_output_stream::in,
+    string::in, string::in, int::in, io::di, io::uo) is det.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -167,20 +169,20 @@ init_llds_out_info(ModuleName, SourceFileName, Globals,
         UnboxedInt64s, StaticGroundInt64s, UseMacroForRedoFail,
         TraceLevel, Globals).
 
-output_set_line_num(OutputLineNumbers, Context, !IO) :-
+output_set_line_num(Stream, OutputLineNumbers, Context, !IO) :-
     (
         OutputLineNumbers = yes,
         term.context_file(Context, File),
         term.context_line(Context, Line),
-        c_util.always_set_line_num_cur_stream(File, Line, !IO)
+        c_util.always_set_line_num(Stream, File, Line, !IO)
     ;
         OutputLineNumbers = no
     ).
 
-output_reset_line_num(OutputLineNumbers, !IO) :-
+output_reset_line_num(Stream, OutputLineNumbers, !IO) :-
     (
         OutputLineNumbers = yes,
-        c_util.always_reset_line_num_cur_stream(no, !IO)
+        c_util.always_reset_line_num(Stream, no, !IO)
     ;
         OutputLineNumbers= no
     ).
@@ -200,11 +202,11 @@ decl_set_is_member(DeclId, DeclSet) :-
 
 %----------------------------------------------------------------------------%
 
-output_indent(FirstIndent, LaterIndent, N0, !IO) :-
+output_indent(Stream, FirstIndent, LaterIndent, N0, !IO) :-
     ( if N0 > 0 then
-        io.write_string(LaterIndent, !IO)
+        io.write_string(Stream, LaterIndent, !IO)
     else
-        io.write_string(FirstIndent, !IO)
+        io.write_string(Stream, FirstIndent, !IO)
     ).
 
 %---------------------------------------------------------------------------%

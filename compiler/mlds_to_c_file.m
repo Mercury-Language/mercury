@@ -70,7 +70,6 @@
 :- import_module backend_libs.
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.foreign.
-:- import_module backend_libs.name_mangle.
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_pred.         % for pred_proc_id.
@@ -479,10 +478,13 @@ mlds_output_env_var_decl(EnvVarName, !IO) :-
     mercury_module_name::in, io::di, io::uo) is det.
 
 mlds_output_hdr_start(Opts, Indent, ModuleName, !IO) :-
-    mlds_output_auto_gen_comment(Opts, ModuleName, !IO),
+    % XXX Temporary, until mlds_to_*.m are converted to all output
+    % being done to an explicitly names stream.
+    io.output_stream(Stream, !IO),
+    mlds_output_auto_gen_comment(Opts, Stream, ModuleName, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("// :- module ", !IO),
-    prog_out.write_sym_name(ModuleName, !IO),
+    prog_out.write_sym_name_to_cur_stream(ModuleName, !IO),
     io.write_string(".\n", !IO),
     output_n_indents(Indent, !IO),
     io.write_string("// :- interface.\n", !IO),
@@ -527,16 +529,19 @@ mlds_output_hdr_start(Opts, Indent, ModuleName, !IO) :-
 
 mlds_output_src_start(Opts, Indent, ModuleName, ForeignCode,
         InitPreds, FinalPreds, EnvVarNames, !IO) :-
-    mlds_output_auto_gen_comment(Opts, ModuleName, !IO),
+    % XXX Temporary, until mlds_to_*.m are converted to all output
+    % being done to an explicitly names stream.
+    io.output_stream(Stream, !IO),
+    mlds_output_auto_gen_comment(Opts, Stream, ModuleName, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("// :- module ", !IO),
-    prog_out.write_sym_name(ModuleName, !IO),
+    prog_out.write_sym_name_to_cur_stream(ModuleName, !IO),
     io.write_string(".\n", !IO),
     output_n_indents(Indent, !IO),
     io.write_string("// :- implementation.\n", !IO),
     mlds_output_src_bootstrap_defines(!IO),
     io.nl(!IO),
-    mlds_output_init_and_final_comments(ModuleName, InitPreds, FinalPreds,
+    output_init_c_comment(Stream, ModuleName, InitPreds, FinalPreds,
         EnvVarNames, !IO),
 
     CompilerImport = mlds_import(compiler_visible_interface, ModuleName),
@@ -552,51 +557,6 @@ mlds_output_src_start(Opts, Indent, ModuleName, ForeignCode,
         UserImport = mlds_import(user_visible_interface, ModuleName),
         mlds_output_src_import(Opts, Indent, UserImport, !IO)
     ),
-    io.nl(!IO).
-
-    % Output a comment to tell mkinit what module initialisation
-    % predicates to call from <module>_init.c.
-    %
-:- pred mlds_output_init_and_final_comments(mercury_module_name::in,
-    list(string)::in, list(string)::in, list(string)::in, io::di, io::uo)
-    is det.
-
-mlds_output_init_and_final_comments(ModuleName,
-        UserInitPredCNames, UserFinalPredCNames, EnvVarNames, !IO) :-
-    io.write_string("/*\n", !IO),
-    % In profiling grades the module mercury__<modulename>__init predicate
-    % is responsible for calling MR_init_entry, so the INIT comment must be
-    % present.
-    % XXX we could probably omit it in non-profiling grades.
-    io.write_string("INIT ", !IO),
-    output_init_name(ModuleName, !IO),
-    io.write_string("init\n", !IO),
-    (
-        UserInitPredCNames = []
-    ;
-        UserInitPredCNames = [_ | _],
-        io.write_string("REQUIRED_INIT ", !IO),
-        output_init_name(ModuleName, !IO),
-        io.write_string("required_init\n", !IO)
-    ),
-    (
-        UserFinalPredCNames = []
-    ;
-        UserFinalPredCNames = [_ | _],
-        io.write_string("REQUIRED_FINAL ", !IO),
-        output_init_name(ModuleName, !IO),
-        io.write_string("required_final\n", !IO)
-    ),
-    list.foldl(mlds_output_env_var_init, EnvVarNames, !IO),
-    % We always write out ENDINIT so that mkinit does not scan the whole file.
-    io.write_string("ENDINIT\n", !IO),
-    io.write_string("*/\n\n", !IO).
-
-:- pred mlds_output_env_var_init(string::in, io::di, io::uo) is det.
-
-mlds_output_env_var_init(EnvVarName, !IO) :-
-    io.write_string("ENVVAR ", !IO),
-    io.write_string(EnvVarName, !IO),
     io.nl(!IO).
 
     % Output any #defines which are required to bootstrap in the hlc grade.
@@ -627,12 +587,12 @@ mlds_output_hdr_end(Opts, Indent, ModuleName, !IO) :-
     ),
     output_n_indents(Indent, !IO),
     io.write_string("#endif // MR_HEADER_GUARD_", !IO),
-    prog_out.write_sym_name(ModuleName, !IO),
+    prog_out.write_sym_name_to_cur_stream(ModuleName, !IO),
     io.nl(!IO),
     io.nl(!IO),
     output_n_indents(Indent, !IO),
     io.write_string("// :- end_interface ", !IO),
-    prog_out.write_sym_name(ModuleName, !IO),
+    prog_out.write_sym_name_to_cur_stream(ModuleName, !IO),
     io.write_string(".\n", !IO).
 
 :- pred mlds_output_src_end(indent::in, mercury_module_name::in,
@@ -641,22 +601,22 @@ mlds_output_hdr_end(Opts, Indent, ModuleName, !IO) :-
 mlds_output_src_end(Indent, ModuleName, !IO) :-
     output_n_indents(Indent, !IO),
     io.write_string("// :- end_module ", !IO),
-    prog_out.write_sym_name(ModuleName, !IO),
+    prog_out.write_sym_name_to_cur_stream(ModuleName, !IO),
     io.write_string(".\n", !IO).
 
     % Output a C comment saying that the file was automatically generated
     % (and giving details such as the compiler version).
     %
-:- pred mlds_output_auto_gen_comment(mlds_to_c_opts::in, module_name::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_auto_gen_comment(mlds_to_c_opts::in,
+    io.text_output_stream::in, module_name::in, io::di, io::uo) is det.
 
-mlds_output_auto_gen_comment(Opts, ModuleName, !IO) :-
+mlds_output_auto_gen_comment(Opts, Stream, ModuleName, !IO) :-
     library.version(Version, Fullarch),
     Globals = Opts ^ m2co_all_globals,
     module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
-    output_c_file_intro_and_grade(Globals, SourceFileName, Version,
+    output_c_file_intro_and_grade(Globals, Stream, SourceFileName, Version,
         Fullarch, !IO),
-    io.nl(!IO).
+    io.nl(Stream, !IO).
 
     % Output a reference to the mangled grade name for the grade that the C
     % file gets compiled with. This ensures that we do not try to link objects

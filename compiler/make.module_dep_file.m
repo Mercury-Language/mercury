@@ -53,6 +53,7 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
@@ -324,10 +325,9 @@ do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
     io.open_output(ProgDepFile, ProgDepResult, !IO),
     (
         ProgDepResult = ok(ProgDepStream),
-        io.set_output_stream(ProgDepStream, OldOutputStream, !IO),
         choose_module_dep_file_version(ModuleAndImports, Version),
-        do_write_module_dep_file_2(ModuleAndImports, Version, !IO),
-        io.set_output_stream(OldOutputStream, _, !IO),
+        do_write_module_dep_file_2(ProgDepStream, ModuleAndImports,
+            Version, !IO),
         io.close_output(ProgDepStream, !IO)
     ;
         ProgDepResult = error(Error),
@@ -349,10 +349,11 @@ choose_module_dep_file_version(ModuleAndImports, Version) :-
         Version = module_dep_file_v2
     ).
 
-:- pred do_write_module_dep_file_2(module_and_imports::in,
-    module_dep_file_version::in, io::di, io::uo) is det.
+:- pred do_write_module_dep_file_2(io.text_output_stream::in,
+    module_and_imports::in, module_dep_file_version::in,
+    io::di, io::uo) is det.
 
-do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
+do_write_module_dep_file_2(Stream, ModuleAndImports, Version, !IO) :-
     module_and_imports_get_source_file_name(ModuleAndImports, SourceFileName),
     module_and_imports_get_source_file_module_name(ModuleAndImports,
         SourceFileModuleName),
@@ -369,28 +370,31 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
     module_and_imports_get_c_j_cs_fims(ModuleAndImports, CJCsEFIMs),
     module_and_imports_get_foreign_include_files(ModuleAndImports,
         ForeignIncludeFiles),
-    io.write_string("module(", !IO),
+    io.write_string(Stream, "module(", !IO),
     version_number(Version, VersionNumber),
-    io.write_int(VersionNumber, !IO),
-    io.write_string(", """, !IO),
-    io.write_string(SourceFileName, !IO),
-    io.write_string(""",\n\t", !IO),
-    mercury_output_bracketed_sym_name(SourceFileModuleName, !IO),
-    io.write_string(",\n\t{", !IO),
-    io.write_list(set.to_sorted_list(Ancestors),
-        ", ", mercury_output_bracketed_sym_name, !IO),
-    io.write_string("},\n\t{", !IO),
-    io.write_list(IntDeps, ", ", mercury_output_bracketed_sym_name, !IO),
-    io.write_string("},\n\t{", !IO),
-    io.write_list(ImpDeps, ", ", mercury_output_bracketed_sym_name, !IO),
-    io.write_string("},\n\t{", !IO),
-    io.write_list(Children, ", ", mercury_output_bracketed_sym_name, !IO),
-    io.write_string("},\n\t{", !IO),
-    io.write_list(set.to_sorted_list(NestedChildren),
-        ", ", mercury_output_bracketed_sym_name, !IO),
-    io.write_string("},\n\t{", !IO),
-    io.write_list(FactDeps, ", ", io.write, !IO),
-    io.write_string("},\n\t{", !IO),
+    io.write_int(Stream, VersionNumber, !IO),
+    io.write_string(Stream, ", """, !IO),
+    io.write_string(Stream, SourceFileName, !IO),
+    io.write_string(Stream, """,\n\t", !IO),
+    mercury_output_bracketed_sym_name(SourceFileModuleName, Stream, !IO),
+    io.write_string(Stream, ",\n\t{", !IO),
+    write_out_list(mercury_output_bracketed_sym_name, ", ",
+        set.to_sorted_list(Ancestors), Stream, !IO),
+    io.write_string(Stream, "},\n\t{", !IO),
+    write_out_list(mercury_output_bracketed_sym_name, ", ",
+        IntDeps, Stream, !IO),
+    io.write_string(Stream, "},\n\t{", !IO),
+    write_out_list(mercury_output_bracketed_sym_name, ", ",
+        ImpDeps, Stream, !IO),
+    io.write_string(Stream, "},\n\t{", !IO),
+    write_out_list(mercury_output_bracketed_sym_name, ", ",
+        Children, Stream, !IO),
+    io.write_string(Stream, "},\n\t{", !IO),
+    write_out_list(mercury_output_bracketed_sym_name, ", ",
+        set.to_sorted_list(NestedChildren), Stream, !IO),
+    io.write_string(Stream, "},\n\t{", !IO),
+    io.write_string(Stream, string.join_list(", ", FactDeps), !IO),
+    io.write_string(Stream, "},\n\t{", !IO),
     (
         ContainsForeignCode = foreign_code_langs_known(ForeignLanguageSet),
         ForeignLanguages = set.to_sorted_list(ForeignLanguageSet)
@@ -404,46 +408,47 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
         % XXX CLEANUP We should try replacing this assignment with an abort.
         ForeignLanguages = []
     ),
-    io.write_list(ForeignLanguages,
-        ", ", mercury_output_foreign_language_string, !IO),
-    io.write_string("},\n\t{", !IO),
+    write_out_list(mercury_output_foreign_language_string, ", ",
+        ForeignLanguages, Stream, !IO),
+    io.write_string(Stream, "},\n\t{", !IO),
     FIMSpecs = get_all_fim_specs(CJCsEFIMs),
-    io.write_list(set.to_sorted_list(FIMSpecs), ", ", write_fim_spec, !IO),
-    io.write_string("},\n\t", !IO),
+    write_out_list(write_fim_spec, ", ",
+        set.to_sorted_list(FIMSpecs), Stream, !IO),
+    io.write_string(Stream, "},\n\t", !IO),
     contains_foreign_export_to_string(ContainsForeignExport,
         ContainsForeignExportStr),
-    io.write_string(ContainsForeignExportStr, !IO),
-    io.write_string(",\n\t", !IO),
+    io.write_string(Stream, ContainsForeignExportStr, !IO),
+    io.write_string(Stream, ",\n\t", !IO),
     % The has_main/no_main slot is not needed anymore, so we just put no_main
     % in there always.
-    io.write_string("no_main", !IO),
+    io.write_string(Stream, "no_main", !IO),
     (
         Version = module_dep_file_v1
     ;
         Version = module_dep_file_v2,
-        io.write_string(",\n\t{", !IO),
-        io.write_list(cord.list(ForeignIncludeFiles),
-            ", ", write_foreign_include_file_info, !IO),
-        io.write_string("}", !IO)
+        io.write_string(Stream, ",\n\t{", !IO),
+        write_out_list(write_foreign_include_file_info, ", ",
+            cord.list(ForeignIncludeFiles), Stream, !IO),
+        io.write_string(Stream, "}", !IO)
     ),
-    io.write_string("\n).\n", !IO).
+    io.write_string(Stream, "\n).\n", !IO).
 
-:- pred write_fim_spec(fim_spec::in,
+:- pred write_fim_spec(fim_spec::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
-write_fim_spec(FIMSpec, !IO) :-
+write_fim_spec(FIMSpec, Stream, !IO) :-
     FIMSpec = fim_spec(Lang, ForeignImport),
-    mercury_output_foreign_language_string(Lang, !IO),
-    io.write_string(" - ", !IO),
-    mercury_output_bracketed_sym_name(ForeignImport, !IO).
+    mercury_output_foreign_language_string(Lang, Stream, !IO),
+    io.write_string(Stream, " - ", !IO),
+    mercury_output_bracketed_sym_name(ForeignImport, Stream, !IO).
 
 :- pred write_foreign_include_file_info(foreign_include_file_info::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-write_foreign_include_file_info(ForeignInclude, !IO) :-
+write_foreign_include_file_info(ForeignInclude, Stream, !IO) :-
     ForeignInclude = foreign_include_file_info(Lang, FileName),
-    mercury_output_foreign_language_string(Lang, !IO),
-    io.write_string(" - ", !IO),
+    mercury_output_foreign_language_string(Lang, Stream, !IO),
+    io.write_string(Stream, " - ", !IO),
     term_io.quote_string(FileName, !IO).
 
 :- pred contains_foreign_export_to_string(contains_foreign_export, string).
@@ -942,9 +947,9 @@ cleanup_module_dep_file(Globals, ModuleName, !Info, !IO) :-
 maybe_write_importing_module(_, no, !IO).
 maybe_write_importing_module(ModuleName, yes(ImportingModuleName), !IO) :-
     io.write_string("** Module `", !IO),
-    write_sym_name(ModuleName, !IO),
+    write_sym_name_to_cur_stream(ModuleName, !IO),
     io.write_string("' is imported or included by module `", !IO),
-    write_sym_name(ImportingModuleName, !IO),
+    write_sym_name_to_cur_stream(ImportingModuleName, !IO),
     io.write_string("'.\n", !IO).
 
 %-----------------------------------------------------------------------------%

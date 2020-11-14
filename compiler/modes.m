@@ -1115,16 +1115,14 @@ queued_proc_progress_message(ModuleInfo, PredProcId, HowToCheckGoal, !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
+        ProcStr = pred_proc_id_to_string(ModuleInfo, PredProcId),
         (
             HowToCheckGoal = check_modes,
-            io.write_string("% Mode-analysing ", !IO)
+            io.format("%% Mode-analysing %s\n", [s(ProcStr)], !IO)
         ;
             HowToCheckGoal = check_unique_modes,
-            io.write_string("% Analysing modes, determinism, " ++
-                "and unique-modes for\n% ", !IO)
-        ),
-        write_pred_proc_id(ModuleInfo, PredProcId, !IO),
-        io.write_string("\n", !IO)
+            io.format("%% Analysing unique modes for\n%% %s", [s(ProcStr)], !IO)
+        )
     ;
         VeryVerbose = no
     ).

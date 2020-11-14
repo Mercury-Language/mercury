@@ -975,11 +975,9 @@ reuse_as_table_dump(ModuleInfo, Table, !IO) :-
     reuse_as_and_status::in, io::di, io::uo) is det.
 
 dump_entries(ModuleInfo, PPId, reuse_as_and_status(ReuseAs, _Status), !IO) :-
-    io.write_string("% ", !IO),
-    write_pred_proc_id(ModuleInfo, PPId, !IO),
-    io.write_string("\t--> ", !IO),
-    io.write_string(reuse_as_short_description(ReuseAs), !IO),
-    io.nl(!IO).
+    PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+    io.format("%% %s\t--> %s\n",
+        [s(PPIdStr), s(reuse_as_short_description(ReuseAs))], !IO).
 
 load_structure_reuse_table(ModuleInfo) = ReuseTable :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),

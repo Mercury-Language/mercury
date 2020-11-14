@@ -492,7 +492,8 @@ dump_ho_values(GoalInfo, Varset, !IO) :-
     ( if map.is_empty(HO_Values) then
         true
     else
-        prog_out.write_context(goal_info_get_context(GoalInfo), !IO),
+        prog_out.write_context_to_cur_stream(
+            goal_info_get_context(GoalInfo), !IO),
         io.nl(!IO),
         map.foldl(dump_ho_value(Varset), HO_Values, !IO)
     ).

@@ -36,27 +36,29 @@
 :- func mercury_type_list_to_string(tvarset, list(mer_type)) = string.
 
 :- pred mercury_output_type(tvarset::in, var_name_print::in, mer_type::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_type_to_string(tvarset, var_name_print, mer_type) = string.
 :- pred mercury_format_type(tvarset::in, var_name_print::in, mer_type::in,
-    U::di, U::uo) is det <= output(U).
+    S::in, U::di, U::uo) is det <= output(S, U).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_det(determinism::in, io::di, io::uo) is det.
+:- pred mercury_output_det(determinism::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
 :- func mercury_det_to_string(determinism) = string.
-:- pred mercury_format_det(determinism::in, U::di, U::uo) is det <= output(U).
+:- pred mercury_format_det(determinism::in, S::in, U::di, U::uo) is det
+    <= output(S, U).
 
 %---------------------------------------------------------------------------%
 
     % Output an existential quantifier.
     %
 :- pred mercury_output_quantifier(tvarset::in, var_name_print::in,
-    existq_tvars::in, io::di, io::uo) is det.
+    existq_tvars::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_quantifier_to_string(tvarset, var_name_print, existq_tvars)
     = string.
 :- pred mercury_format_quantifier(tvarset::in, var_name_print::in,
-    existq_tvars::in, U::di, U::uo) is det <= output(U).
+    existq_tvars::in, S::in, U::di, U::uo) is det <= output(S, U).
 
 %---------------------------------------------------------------------------%
 
@@ -64,17 +66,17 @@
     % with `!' to indicate that it is a state variable.
     %
 :- pred mercury_output_state_vars(varset(T)::in, var_name_print::in,
-    list(var(T))::in, io::di, io::uo) is det.
+    list(var(T))::in, io.text_output_stream::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
     % Output a cons_id, parenthesizing it if necessary.
     %
 :- pred mercury_output_cons_id(needs_brackets::in, cons_id::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_cons_id_to_string(needs_brackets, cons_id) = string.
-:- pred mercury_format_cons_id(needs_brackets::in, cons_id::in, U::di, U::uo)
-    is det <= output(U).
+:- pred mercury_format_cons_id(needs_brackets::in, cons_id::in, S::in,
+    U::di, U::uo) is det <= output(S, U).
 
 %---------------------------------------------------------------------------%
 %
@@ -90,44 +92,45 @@
     ;       does_not_need_brackets.
             % Doesn't need brackets.
 
-:- pred mercury_output_sym_name(sym_name::in, io::di, io::uo) is det.
-:- pred mercury_format_sym_name(sym_name::in, U::di, U::uo)
-    is det <= output(U).
+:- pred mercury_output_sym_name(sym_name::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
+:- pred mercury_format_sym_name(sym_name::in, S::in,
+    U::di, U::uo) is det <= output(S, U).
 
-:- pred mercury_format_sym_name_ngt(needs_quotes::in, sym_name::in,
-    U::di, U::uo) is det <= output(U).
+:- pred mercury_format_sym_name_ngt(needs_quotes::in, sym_name::in, S::in,
+    U::di, U::uo) is det <= output(S, U).
 
-:- pred mercury_format_sym_name_arity(sym_name_arity::in, U::di, U::uo)
-    is det <= output(U).
+:- pred mercury_format_sym_name_arity(sym_name_arity::in, S::in,
+    U::di, U::uo) is det <= output(S, U).
 
 %---------------------%
 
 :- pred mercury_output_bracketed_sym_name(sym_name::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_bracketed_sym_name_to_string(sym_name) = string.
-:- pred mercury_format_bracketed_sym_name(sym_name::in,
-    U::di, U::uo) is det <= output(U).
+:- pred mercury_format_bracketed_sym_name(sym_name::in, S::in,
+    U::di, U::uo) is det <= output(S, U).
 
 %---------------------%
 
 :- pred mercury_output_bracketed_sym_name_ngt(needs_quotes::in, sym_name::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_bracketed_sym_name_to_string_ngt(needs_quotes, sym_name)
     = string.
 :- pred mercury_format_bracketed_sym_name_ngt(needs_quotes::in, sym_name::in,
-    U::di, U::uo) is det <= output(U).
+    S::in, U::di, U::uo) is det <= output(S, U).
 
 %---------------------------------------------------------------------------%
 
 :- pred mercury_output_constraint(tvarset::in, var_name_print::in,
-    prog_constraint::in, io::di, io::uo) is det.
+    prog_constraint::in, io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_constraint_to_string(tvarset, prog_constraint) = string.
 :- pred mercury_format_constraint(tvarset::in, var_name_print::in,
-    prog_constraint::in, U::di, U::uo) is det <= output(U).
+    prog_constraint::in, S::in, U::di, U::uo) is det <= output(S, U).
 
 :- pred mercury_format_prog_constraint_list(tvarset::in, var_name_print::in,
-    string::in, list(prog_constraint)::in, U::di, U::uo) is det
-    <= output(U).
+    string::in, list(prog_constraint)::in, S::in, U::di, U::uo) is det
+    <= output(S, U).
 
 :- type maybe_exist_constraints
     --->    no_exist_constraints
@@ -140,25 +143,26 @@
     %
 :- pred mercury_output_class_context(tvarset::in, var_name_print::in,
     list(prog_constraint)::in, maybe_exist_constraints::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 :- pred mercury_format_class_context(tvarset::in, var_name_print::in,
     list(prog_constraint)::in, maybe_exist_constraints::in,
-    U::di, U::uo) is det <= output(U).
+    S::in, U::di, U::uo) is det <= output(S, U).
 
 %---------------------------------------------------------------------------%
 
 :- pred mercury_output_foreign_language_string(foreign_language::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 :- func mercury_foreign_language_to_string(foreign_language) = string.
 :- pred mercury_format_foreign_language_string(foreign_language::in,
-    U::di, U::uo) is det <= output(U).
+    S::in, U::di, U::uo) is det <= output(S, U).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_newline(int::in, io::di, io::uo) is det.
+:- pred mercury_output_newline(int::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-:- pred mercury_format_tabs(int::in,
-    U::di, U::uo) is det <= output(U).
+:- pred mercury_format_tabs(int::in, S::in, U::di, U::uo) is det
+    <= output(S, U).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -170,30 +174,31 @@
 :- import_module int.
 :- import_module string.
 :- import_module term_io.
+:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
 mercury_type_list_to_string(_, []) = "".
 mercury_type_list_to_string(VarSet, [Type | Types]) = String :-
-    String0 = mercury_type_to_string(VarSet, print_name_only, Type),
-    String1 = mercury_comma_type_list_to_string(VarSet, Types),
-    string.append(String0, String1, String).
+    HeadString = mercury_type_to_string(VarSet, print_name_only, Type),
+    TailString = mercury_comma_type_list_to_string(VarSet, Types),
+    String = HeadString ++ TailString.
 
 :- func mercury_comma_type_list_to_string(tvarset, list(mer_type)) = string.
 
 mercury_comma_type_list_to_string(_, []) = "".
 mercury_comma_type_list_to_string(VarSet, [Type | Types]) = String :-
-    String0 = mercury_type_to_string(VarSet, print_name_only, Type),
-    String1 = mercury_comma_type_list_to_string(VarSet, Types),
-    string.append_list([", ", String0, String1], String).
+    HeadString = mercury_type_to_string(VarSet, print_name_only, Type),
+    TailString = mercury_comma_type_list_to_string(VarSet, Types),
+    String = ", " ++ HeadString ++ TailString.
 
-mercury_output_type(VarSet, VarNamePrint, Type, !IO) :-
-    mercury_format_type(VarSet, VarNamePrint, Type, !IO).
+mercury_output_type(VarSet, VarNamePrint, Type, Stream, !IO) :-
+    mercury_format_type(VarSet, VarNamePrint, Type, Stream, !IO).
 
 mercury_type_to_string(VarSet, VarNamePrint, Type) = String :-
-    mercury_format_type(VarSet, VarNamePrint, Type, "", String).
+    mercury_format_type(VarSet, VarNamePrint, Type, unit, "", String).
 
-mercury_format_type(TypeVarSet, VarNamePrint, Type, !U) :-
+mercury_format_type(TypeVarSet, VarNamePrint, Type, S, !U) :-
     % We convert to a term and then use mercury_format_term. The reason
     % for this is that we have to be very careful about handling operators
     % and precedence properly, and it is better to have the code to manage
@@ -201,12 +206,12 @@ mercury_format_type(TypeVarSet, VarNamePrint, Type, !U) :-
     %
     unparse_type(Type, Term),
     VarSet = varset.coerce(TypeVarSet),
-    mercury_format_term(VarSet, VarNamePrint, Term, !U).
+    mercury_format_term(VarSet, VarNamePrint, Term, S, !U).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_det(Detism, !UI) :-
-    mercury_format_det(Detism, !UI).
+mercury_output_det(Detism, Stream, !UI) :-
+    mercury_format_det(Detism, Stream, !UI).
 
 mercury_det_to_string(detism_det) = "det".
 mercury_det_to_string(detism_semi) = "semidet".
@@ -217,305 +222,311 @@ mercury_det_to_string(detism_cc_non) = "cc_nondet".
 mercury_det_to_string(detism_failure) = "failure".
 mercury_det_to_string(detism_erroneous) = "erroneous".
 
-mercury_format_det(Detism, !U) :-
-    add_string(mercury_det_to_string(Detism), !U).
+mercury_format_det(Detism, S, !U) :-
+    add_string(mercury_det_to_string(Detism), S, !U).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_quantifier(TypeVarSet, VarNamePrint, ExistQVars, !IO) :-
-    mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars, !IO).
+mercury_output_quantifier(TypeVarSet, VarNamePrint, ExistQVars, Stream, !IO) :-
+    mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars,
+        Stream, !IO).
 
 mercury_quantifier_to_string(TypeVarSet, VarNamePrint, ExistQVars) = String :-
     mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars,
-        "", String).
+        unit, "", String).
 
-mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars, !U) :-
+mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars, S, !U) :-
     (
         ExistQVars = []
     ;
         ExistQVars = [_ | _],
-        add_string("some [", !U),
-        mercury_format_vars(TypeVarSet, VarNamePrint, ExistQVars, !U),
-        add_string("] ", !U)
+        add_string("some [", S, !U),
+        mercury_format_vars(TypeVarSet, VarNamePrint, ExistQVars, S, !U),
+        add_string("] ", S, !U)
     ).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_state_vars(VarSet, VarNamePrint, StateVars, !IO) :-
-    io.write_list(StateVars, ", ",
-        mercury_output_state_var(VarSet, VarNamePrint), !IO).
+mercury_output_state_vars(VarSet, VarNamePrint, StateVars, Stream, !IO) :-
+    write_out_list(mercury_output_state_var(VarSet, VarNamePrint),
+        ", ", StateVars, Stream, !IO).
 
 :- pred mercury_output_state_var(varset(T)::in, var_name_print::in, var(T)::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_state_var(VarSet, VarNamePrint, Var, !IO) :-
-    io.write_string("!", !IO),
-    mercury_output_var(VarSet, VarNamePrint, Var, !IO).
+mercury_output_state_var(VarSet, VarNamePrint, Var, Stream, !IO) :-
+    io.write_string(Stream, "!", !IO),
+    mercury_output_var(VarSet, VarNamePrint, Var, Stream, !IO).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_cons_id(NeedsBrackets, ConsId, !IO) :-
-    mercury_format_cons_id(NeedsBrackets, ConsId, !IO).
+mercury_output_cons_id(NeedsBrackets, ConsId, Stream, !IO) :-
+    mercury_format_cons_id(NeedsBrackets, ConsId, Stream, !IO).
 
 mercury_cons_id_to_string(NeedsBrackets, ConsId) = String :-
-    mercury_format_cons_id(NeedsBrackets, ConsId, "", String).
+    mercury_format_cons_id(NeedsBrackets, ConsId, unit, "", String).
 
-mercury_format_cons_id(NeedsBrackets, ConsId, !U) :-
+mercury_format_cons_id(NeedsBrackets, ConsId, S, !U) :-
     (
         ConsId = cons(Name, _, _),
         (
             NeedsBrackets = needs_brackets,
-            mercury_format_bracketed_sym_name(Name, !U)
+            mercury_format_bracketed_sym_name(Name, S, !U)
         ;
             NeedsBrackets = does_not_need_brackets,
-            mercury_format_sym_name(Name, !U)
+            mercury_format_sym_name(Name, S, !U)
         )
     ;
         ConsId = tuple_cons(_),
-        add_string("{}", !U)
+        add_string("{}", S, !U)
     ;
         ConsId = int_const(Int),
-        add_int(Int, !U)
+        add_int(Int, S, !U)
     ;
         ConsId = uint_const(UInt),
-        add_uint(UInt, !U)
+        add_uint(UInt, S, !U)
     ;
         ConsId = int8_const(Int8),
-        add_int8(Int8, !U)
+        add_int8(Int8, S, !U)
     ;
         ConsId = uint8_const(UInt8),
-        add_uint8(UInt8, !U)
+        add_uint8(UInt8, S, !U)
     ;
         ConsId = int16_const(Int16),
-        add_int16(Int16, !U)
+        add_int16(Int16, S, !U)
     ;
         ConsId = uint16_const(UInt16),
-        add_uint16(UInt16, !U)
+        add_uint16(UInt16, S, !U)
     ;
         ConsId = int32_const(Int32),
-        add_int32(Int32, !U)
+        add_int32(Int32, S, !U)
     ;
         ConsId = uint32_const(UInt32),
-        add_uint32(UInt32, !U)
+        add_uint32(UInt32, S, !U)
     ;
         ConsId = int64_const(Int64),
-        add_int64(Int64, !U)
+        add_int64(Int64, S, !U)
     ;
         ConsId = uint64_const(UInt64),
-        add_uint64(UInt64, !U)
+        add_uint64(UInt64, S, !U)
     ;
         ConsId = float_const(Float),
-        add_float(Float, !U)
+        add_float(Float, S, !U)
     ;
         ConsId = char_const(Char),
-        add_string(term_io.quoted_char(Char), !U)
+        add_string(term_io.quoted_char(Char), S, !U)
     ;
         ConsId = string_const(Str),
-        add_quoted_string(Str, !U)
+        add_quoted_string(Str, S, !U)
     ;
         ConsId = impl_defined_const(Name),
-        add_string("$", !U),
-        add_string(Name, !U)
+        add_string("$", S, !U),
+        add_string(Name, S, !U)
     ;
         ConsId = closure_cons(ShroudedPredProcId, _EvalMethod),
         % XXX Should probably print this out in name/arity form.
         ShroudedPredProcId = shrouded_pred_proc_id(PredInt, ProcInt),
-        add_string("<closure_cons(", !U),
-        add_int(PredInt, !U),
-        add_string(", ", !U),
-        add_int(ProcInt, !U),
-        % add_string(", ", !U),
-        % add_lambda_eval_method(EvalMethod, !U),
-        add_string(")>", !U)
+        add_string("<closure_cons(", S, !U),
+        add_int(PredInt, S, !U),
+        add_string(", ", S, !U),
+        add_int(ProcInt, S, !U),
+        % add_string(", ", S, !U),
+        % add_lambda_eval_method(EvalMethod, S, !U),
+        add_string(")>", S, !U)
     ;
         ConsId = type_ctor_info_const(ModuleName, Type, Arity),
         ModuleString = sym_name_to_string(ModuleName),
         string.int_to_string(Arity, ArityString),
         add_strings(["<type_ctor_info for ",
-            ModuleString, ".", Type, "/", ArityString, ">"], !U)
+            ModuleString, ".", Type, "/", ArityString, ">"], S, !U)
     ;
         ConsId = base_typeclass_info_const(ModuleName, ClassId, InstanceNum,
             InstanceString),
         ModuleString = sym_name_to_string(ModuleName),
         ClassId = class_id(ClassName, ClassArity),
-        add_string("<base_typeclass_info for ", !U),
-        add_string("class_id(", !U),
-        mercury_format_sym_name(ClassName, !U),
-        add_string(", ", !U),
-        add_int(ClassArity, !U),
-        add_string(")", !U),
+        add_string("<base_typeclass_info for ", S, !U),
+        add_string("class_id(", S, !U),
+        mercury_format_sym_name(ClassName, S, !U),
+        add_string(", ", S, !U),
+        add_int(ClassArity, S, !U),
+        add_string(")", S, !U),
         ( if ModuleString \= "some bogus module name" then
-            add_strings([" from module ", ModuleString], !U)
+            add_strings([" from module ", ModuleString], S, !U)
         else
             true
         ),
         add_format(", instance number %d (%s)>",
-            [i(InstanceNum), s(InstanceString)], !U)
+            [i(InstanceNum), s(InstanceString)], S, !U)
     ;
         ConsId = type_info_cell_constructor(_),
-        add_string("<type_info_cell_constructor>", !U)
+        add_string("<type_info_cell_constructor>", S, !U)
     ;
         ConsId = typeclass_info_cell_constructor,
-        add_string("<typeclass_info_cell_constructor>", !U)
+        add_string("<typeclass_info_cell_constructor>", S, !U)
     ;
         ConsId = type_info_const(TIConstNum),
         add_string("<type_info_cell_constructor " ++
-            int_to_string(TIConstNum) ++ ">", !U)
+            int_to_string(TIConstNum) ++ ">", S, !U)
     ;
         ConsId = typeclass_info_const(TCIConstNum),
         add_string("<typeclass_info_cell_constructor " ++
-            int_to_string(TCIConstNum) ++ ">", !U)
+            int_to_string(TCIConstNum) ++ ">", S, !U)
     ;
         ConsId = ground_term_const(ConstNum, SubConsId),
         add_string("<ground_term_cell_constructor " ++
-            int_to_string(ConstNum) ++ ", ", !U),
-        mercury_format_cons_id(does_not_need_brackets, SubConsId, !U),
-        add_string(">", !U)
+            int_to_string(ConstNum) ++ ", ", S, !U),
+        mercury_format_cons_id(does_not_need_brackets, SubConsId, S, !U),
+        add_string(">", S, !U)
     ;
         ConsId = tabling_info_const(_),
-        add_string("<tabling info>", !U)
+        add_string("<tabling info>", S, !U)
     ;
         ConsId = table_io_entry_desc(_),
-        add_string("<table_io_entry_desc>", !U)
+        add_string("<table_io_entry_desc>", S, !U)
     ;
         ConsId = deep_profiling_proc_layout(_),
-        add_string("<deep_profiling_proc_layout>", !U)
+        add_string("<deep_profiling_proc_layout>", S, !U)
     ).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_sym_name(SymName, !IO) :-
-    mercury_format_sym_name_ngt(not_next_to_graphic_token, SymName, !IO).
+mercury_output_sym_name(SymName, Stream, !IO) :-
+    mercury_format_sym_name_ngt(not_next_to_graphic_token, SymName,
+        Stream, !IO).
 
-mercury_format_sym_name(SymName, !U) :-
-    mercury_format_sym_name_ngt(not_next_to_graphic_token, SymName, !U).
+mercury_format_sym_name(SymName, S, !U) :-
+    mercury_format_sym_name_ngt(not_next_to_graphic_token, SymName, S, !U).
 
-mercury_format_sym_name_ngt(NextToGraphicToken, SymName, !U) :-
+mercury_format_sym_name_ngt(NextToGraphicToken, SymName, S, !U) :-
     (
         SymName = qualified(ModuleName, PredName),
         mercury_format_bracketed_sym_name_ngt(next_to_graphic_token,
-            ModuleName, !U),
-        add_string(".", !U),
-        mercury_format_quoted_atom(next_to_graphic_token, PredName, !U)
+            ModuleName, S, !U),
+        add_string(".", S, !U),
+        mercury_format_quoted_atom(next_to_graphic_token, PredName, S, !U)
     ;
         SymName = unqualified(PredName),
-        mercury_format_quoted_atom(NextToGraphicToken, PredName, !U)
+        mercury_format_quoted_atom(NextToGraphicToken, PredName, S, !U)
     ).
 
-mercury_format_sym_name_arity(sym_name_arity(SymName, Arity), !U) :-
-    mercury_format_sym_name(SymName, !U),
-    add_char('/', !U),
-    add_int(Arity, !U).
+mercury_format_sym_name_arity(sym_name_arity(SymName, Arity), S, !U) :-
+    mercury_format_sym_name(SymName, S, !U),
+    add_char('/', S, !U),
+    add_int(Arity, S, !U).
 
 %---------------------%
 
-mercury_output_bracketed_sym_name(SymName, !IO) :-
+mercury_output_bracketed_sym_name(SymName, Stream, !IO) :-
     mercury_output_bracketed_sym_name_ngt(not_next_to_graphic_token, SymName,
-        !IO).
+        Stream, !IO).
 
 mercury_bracketed_sym_name_to_string(SymName) =
     mercury_bracketed_sym_name_to_string_ngt(not_next_to_graphic_token,
         SymName).
 
-mercury_format_bracketed_sym_name(SymName, !U) :-
+mercury_format_bracketed_sym_name(SymName, S, !U) :-
     mercury_format_bracketed_sym_name_ngt(not_next_to_graphic_token, SymName,
-        !U).
+        S, !U).
 
 %---------------------%
 
-mercury_output_bracketed_sym_name_ngt(NextToGraphicToken, SymName, !IO) :-
-    mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName, !IO).
+mercury_output_bracketed_sym_name_ngt(NextToGraphicToken, SymName,
+        Stream, !IO) :-
+    mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName,
+        Stream, !IO).
 
 mercury_bracketed_sym_name_to_string_ngt(NextToGraphicToken, SymName) = Str :-
     mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName,
-        "", Str).
+        unit, "", Str).
 
-mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName, !U) :-
+mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName, S, !U) :-
     (
         SymName = qualified(ModuleName, Name),
-        add_string("(", !U),
+        add_string("(", S, !U),
         mercury_format_bracketed_sym_name_ngt(next_to_graphic_token,
-            ModuleName, !U),
-        add_string(".", !U),
-        mercury_format_bracketed_atom(next_to_graphic_token, Name, !U),
-        add_string(")", !U)
+            ModuleName, S, !U),
+        add_string(".", S, !U),
+        mercury_format_bracketed_atom(next_to_graphic_token, Name, S, !U),
+        add_string(")", S, !U)
     ;
         SymName = unqualified(Name),
-        mercury_format_bracketed_atom(NextToGraphicToken, Name, !U)
+        mercury_format_bracketed_atom(NextToGraphicToken, Name, S, !U)
     ).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_constraint(TypeVarSet, VarNamePrint, Constraint, !IO) :-
-    mercury_format_constraint(TypeVarSet, VarNamePrint, Constraint, !IO).
+mercury_output_constraint(TypeVarSet, VarNamePrint, Constraint, Stream, !IO) :-
+    mercury_format_constraint(TypeVarSet, VarNamePrint,
+        Constraint, Stream, !IO).
 
 mercury_constraint_to_string(TypeVarSet, Constraint) = String :-
     mercury_format_constraint(TypeVarSet, print_name_only, Constraint,
-        "", String).
+        unit, "", String).
 
-mercury_format_constraint(TypeVarSet, VarNamePrint, Constraint, !U) :-
+mercury_format_constraint(TypeVarSet, VarNamePrint, Constraint, S, !U) :-
     Constraint = constraint(Name, Types),
-    mercury_format_sym_name(Name, !U),
-    add_string("(", !U),
-    add_list(Types, ", ", mercury_format_type(TypeVarSet, VarNamePrint), !U),
-    add_string(")", !U).
+    mercury_format_sym_name(Name, S, !U),
+    add_string("(", S, !U),
+    add_list(mercury_format_type(TypeVarSet, VarNamePrint), ", ", Types,
+        S, !U),
+    add_string(")", S, !U).
 
 mercury_format_prog_constraint_list(TypeVarSet, VarNamePrint, Operator,
-        Constraints, !U) :-
+        Constraints, S, !U) :-
     (
         Constraints = []
     ;
         Constraints = [_ | _],
-        add_strings([" ", Operator, " ("], !U),
-        add_list(Constraints, ", ",
-            mercury_format_constraint(TypeVarSet, VarNamePrint), !U),
-        add_string(")", !U)
+        add_strings([" ", Operator, " ("], S, !U),
+        add_list(mercury_format_constraint(TypeVarSet, VarNamePrint),
+            ", ", Constraints, S, !U),
+        add_string(")", S, !U)
     ).
 
 %---------------------------------------------------------------------------%
 
 mercury_output_class_context(TypeVarSet, VarNamePrint,
-        UnivConstraints, MaybeExistConstraints, !IO) :-
+        UnivConstraints, MaybeExistConstraints, Stream, !IO) :-
     mercury_format_class_context(TypeVarSet, VarNamePrint,
-        UnivConstraints, MaybeExistConstraints, !IO).
+        UnivConstraints, MaybeExistConstraints, Stream, !IO).
 
 mercury_format_class_context(TypeVarSet, VarNamePrint,
-        UnivConstraints, MaybeExistConstraints, !U) :-
+        UnivConstraints, MaybeExistConstraints, S, !U) :-
     (
         MaybeExistConstraints = no_exist_constraints
     ;
         MaybeExistConstraints =
             have_exist_constraints_print_paren(ExistConstraints),
         mercury_format_prog_constraint_list(TypeVarSet, VarNamePrint, "=>",
-            ExistConstraints, !U),
+            ExistConstraints, S, !U),
         % The code that passed us have_exist_constraints_print_paren
         % should have printed the open paren that this closes.
-        add_string(")", !U)
+        add_string(")", S, !U)
     ),
     mercury_format_prog_constraint_list(TypeVarSet, VarNamePrint, "<=",
-        UnivConstraints, !U).
+        UnivConstraints, S, !U).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_foreign_language_string(Lang, !IO) :-
-    mercury_format_foreign_language_string(Lang, !IO).
+mercury_output_foreign_language_string(Lang, Stream, !IO) :-
+    mercury_format_foreign_language_string(Lang, Stream, !IO).
 
 mercury_foreign_language_to_string(Lang) = String :-
-    mercury_format_foreign_language_string(Lang, "", String).
+    mercury_format_foreign_language_string(Lang, unit, "", String).
 
-mercury_format_foreign_language_string(Lang, !U) :-
-    add_string("""" ++ foreign_language_string(Lang) ++ """", !U).
+mercury_format_foreign_language_string(Lang, S, !U) :-
+    add_string("""" ++ foreign_language_string(Lang) ++ """", S, !U).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_newline(Indent, !IO) :-
-    io.write_char('\n', !IO),
-    mercury_format_tabs(Indent, !IO).
+mercury_output_newline(Indent, Stream, !IO) :-
+    io.write_char(Stream, '\n', !IO),
+    mercury_format_tabs(Indent, Stream, !IO).
 
-mercury_format_tabs(Indent, !U) :-
+mercury_format_tabs(Indent, S, !U) :-
     ( if Indent > 0 then
-        add_string("\t", !U),
-        mercury_format_tabs(Indent - 1, !U)
+        add_string("\t", S, !U),
+        mercury_format_tabs(Indent - 1, S, !U)
     else
         true
     ).

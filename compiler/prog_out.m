@@ -37,7 +37,7 @@
     % Write out the information in term context (at the moment, just the
     % line number) in a form suitable for the beginning of an error message.
     %
-:- pred write_context(prog_context::in, io::di, io::uo) is det.
+:- pred write_context_to_cur_stream(prog_context::in, io::di, io::uo) is det.
 :- pred write_context(io.text_output_stream::in, prog_context::in,
     io::di, io::uo) is det.
 
@@ -49,13 +49,16 @@
     % any quotes. This is suitable for use in error messages, where the
     % caller should print out an enclosing forward/backward-quote pair (`...').
     %
-:- pred write_sym_name(sym_name::in, io::di, io::uo) is det.
+:- pred write_sym_name_to_cur_stream(sym_name::in, io::di, io::uo) is det.
+:- pred write_sym_name(io.text_output_stream::in, sym_name::in,
+    io::di, io::uo) is det.
 
     % Write out a symbol name, enclosed in single forward quotes ('...'),
     % and with any special characters escaped.
     % The output should be a syntactically valid Mercury term.
     %
-:- pred write_quoted_sym_name(sym_name::in, io::di, io::uo) is det.
+:- pred write_quoted_sym_name_to_cur_stream(sym_name::in,
+    io::di, io::uo) is det.
 
     % sym_name_arity_to_string(SymName, String):
     %
@@ -64,15 +67,16 @@
     % qualifier operator.
     %
 :- func sym_name_arity_to_string(sym_name_arity) = string.
-:- pred write_sym_name_arity(sym_name_arity::in, io::di, io::uo)
-    is det.
+:- pred write_sym_name_arity_to_cur_stream(sym_name_arity::in,
+    io::di, io::uo) is det.
+:- pred write_sym_name_arity(io.text_output_stream::in, sym_name_arity::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
     % Write out a module name.
     %
 :- func module_name_to_escaped_string(module_name) = string.
-:- pred write_module_name(module_name::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -85,14 +89,15 @@
 %-----------------------------------------------------------------------------%
 
 :- func type_ctor_to_string(type_ctor) = string.
-:- pred write_type_ctor(type_ctor::in, io::di, io::uo) is det.
 
 :- func type_name_to_string(type_ctor) = string.
-:- pred write_type_name(type_ctor::in, io::di, io::uo) is det.
+:- pred write_type_name(io.text_output_stream::in, type_ctor::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_class_id(class_id::in, io::di, io::uo) is det.
+:- pred write_class_id(io.text_output_stream::in, class_id::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -123,8 +128,6 @@
 :- mode promise_to_string(out) = in is semidet.
 :- mode promise_to_string(out) = out is multi.
 
-:- pred write_promise_type(promise_type::in, io::di, io::uo) is det.
-
     % Return "predicate" or "function" depending on the given value.
     %
 :- func pred_or_func_to_full_str(pred_or_func) = string.
@@ -135,7 +138,8 @@
 
     % Print "predicate" or "function" depending on the given value.
     %
-:- pred write_pred_or_func(pred_or_func::in, io::di, io::uo) is det.
+:- pred write_pred_or_func_to_cur_stream(pred_or_func::in,
+    io::di, io::uo) is det.
 
     % Get a purity name as a string.
     %
@@ -143,16 +147,11 @@
 :- mode purity_name(in, out) is det.
 :- mode purity_name(out, in) is semidet.
 
-    % Print out a purity name.
-    %
-:- pred write_purity(purity::in, io::di, io::uo) is det.
-
     % Print out a purity prefix.
     % This works under the assumptions that all purity names but `pure'
     % are operators, and that we never need `pure' indicators/declarations.
     %
 :- func purity_prefix_to_string(purity) = string.
-:- pred write_purity_prefix(purity::in, io::di, io::uo) is det.
 
     % Convert an eval_method of a pragma to a string giving the name
     % of the pragma.
@@ -162,7 +161,6 @@
     % Convert an eval_method to a string description.
     %
 :- func eval_method_to_string(eval_method) = string.
-:- pred write_eval_method(eval_method::in, io::di, io::uo) is det.
 
 :- func maybe_arg_tabling_method_to_string(maybe(arg_tabling_method)) = string.
 
@@ -173,8 +171,6 @@
 :- func can_fail_to_string(can_fail) = string.
 
 :- func goal_warning_to_string(goal_warning) = string.
-
-:- pred write_string_list(list(string)::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -202,7 +198,7 @@ context_to_string(Context, ContextMessage) :-
             ContextMessage)
     ).
 
-write_context(Context, !IO) :-
+write_context_to_cur_stream(Context, !IO) :-
     io.output_stream(Stream, !IO),
     write_context(Stream, Context, !IO).
 
@@ -212,23 +208,27 @@ write_context(Stream, Context, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-sym_name_to_escaped_string(qualified(ModuleSpec, Name)) =
-    module_name_to_escaped_string(ModuleSpec)
+sym_name_to_escaped_string(qualified(Module, Name)) =
+    module_name_to_escaped_string(Module)
     ++ "."
     ++ term_io.escaped_string(Name).
 sym_name_to_escaped_string(unqualified(Name)) =
     term_io.escaped_string(Name).
 
-write_sym_name(qualified(ModuleSpec, Name), !IO) :-
-    write_module_name(ModuleSpec, !IO),
-    io.write_string(".", !IO),
-    term_io.write_escaped_string(Name, !IO).
-write_sym_name(unqualified(Name), !IO) :-
-    term_io.write_escaped_string(Name, !IO).
+write_sym_name_to_cur_stream(SymName, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_sym_name(Stream, SymName, !IO).
 
-write_quoted_sym_name(SymName, !IO) :-
+write_sym_name(Stream, qualified(Module, Name), !IO) :-
+    write_sym_name(Stream, Module, !IO),
+    io.write_string(Stream, ".", !IO),
+    term_io.write_escaped_string(Stream, Name, !IO).
+write_sym_name(Stream, unqualified(Name), !IO) :-
+    term_io.write_escaped_string(Stream, Name, !IO).
+
+write_quoted_sym_name_to_cur_stream(SymName, !IO) :-
     io.write_string("'", !IO),
-    write_sym_name(SymName, !IO),
+    write_sym_name_to_cur_stream(SymName, !IO),
     io.write_string("'", !IO).
 
 sym_name_arity_to_string(sym_name_arity(SymName, Arity)) = String :-
@@ -236,18 +236,19 @@ sym_name_arity_to_string(sym_name_arity(SymName, Arity)) = String :-
     string.int_to_string(Arity, ArityString),
     string.append_list([SymNameString, "/", ArityString], String).
 
-write_sym_name_arity(sym_name_arity(Name, Arity), !IO) :-
-    write_sym_name(Name, !IO),
-    io.write_string("/", !IO),
-    io.write_int(Arity, !IO).
+write_sym_name_arity_to_cur_stream(SNA, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_sym_name_arity(Stream, SNA, !IO).
+
+write_sym_name_arity(Stream, sym_name_arity(Name, Arity), !IO) :-
+    write_sym_name(Stream, Name, !IO),
+    io.write_string(Stream, "/", !IO),
+    io.write_int(Stream, Arity, !IO).
 
 %-----------------------------------------------------------------------------%
 
 module_name_to_escaped_string(ModuleName) =
     sym_name_to_escaped_string(ModuleName).
-
-write_module_name(ModuleName, !IO) :-
-    write_sym_name(ModuleName, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -270,19 +271,16 @@ pf_sym_name_orig_arity_to_string(PredOrFunc, SymName, Arity) = Str :-
 type_ctor_to_string(type_ctor(Name, Arity)) =
     prog_out.sym_name_arity_to_string(sym_name_arity(Name, Arity)).
 
-write_type_ctor(type_ctor(Name, Arity), !IO) :-
-    prog_out.write_sym_name_arity(sym_name_arity(Name, Arity), !IO).
-
 type_name_to_string(type_ctor(Name, _Arity)) =
     sym_name_to_escaped_string(Name).
 
-write_type_name(type_ctor(Name, _Arity), !IO) :-
-    prog_out.write_sym_name(Name, !IO).
+write_type_name(Stream, type_ctor(Name, _Arity), !IO) :-
+    prog_out.write_sym_name(Stream, Name, !IO).
 
 %-----------------------------------------------------------------------------%
 
-write_class_id(class_id(Name, Arity), !IO) :-
-    prog_out.write_sym_name_arity(sym_name_arity(Name, Arity), !IO).
+write_class_id(Stream, class_id(Name, Arity), !IO) :-
+    prog_out.write_sym_name_arity(Stream, sym_name_arity(Name, Arity), !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -448,25 +446,18 @@ promise_to_string(promise_type_exhaustive) =  "promise_exhaustive".
 promise_to_string(promise_type_exclusive_exhaustive) =
     "promise_exclusive_exhaustive".
 
-write_promise_type(PromiseType, !IO) :-
-    io.write_string(promise_to_string(PromiseType), !IO).
-
 pred_or_func_to_full_str(pf_predicate) = "predicate".
 pred_or_func_to_full_str(pf_function) = "function".
 
 pred_or_func_to_str(pf_predicate) = "pred".
 pred_or_func_to_str(pf_function) = "func".
 
-write_pred_or_func(PorF, !IO) :-
+write_pred_or_func_to_cur_stream(PorF, !IO) :-
     io.write_string(pred_or_func_to_full_str(PorF), !IO).
 
 purity_name(purity_pure, "pure").
 purity_name(purity_semipure, "semipure").
 purity_name(purity_impure, "impure").
-
-write_purity(Purity, !IO) :-
-    purity_name(Purity, String),
-    io.write_string(String, !IO).
 
 purity_prefix_to_string(Purity) = String :-
     (
@@ -477,18 +468,7 @@ purity_prefix_to_string(Purity) = String :-
         ; Purity = purity_semipure
         ),
         purity_name(Purity, PurityName),
-        String = string.append(PurityName, " ")
-    ).
-
-write_purity_prefix(Purity, !IO) :-
-    (
-        Purity = purity_pure
-    ;
-        ( Purity = purity_impure
-        ; Purity = purity_semipure
-        ),
-        write_purity(Purity, !IO),
-        io.write_string(" ", !IO)
+        String = PurityName ++ " "
     ).
 
 eval_method_to_pragma_name(eval_normal) = _ :-
@@ -547,9 +527,6 @@ eval_method_to_string(eval_table_io(EntryKind, IsUnitize)) = Str :-
     ),
     Str = "table_io(" ++ EntryKindStr ++ UnitizeStr ++ ")".
 
-write_eval_method(EvalMethod, !IO) :-
-    io.write_string(eval_method_to_string(EvalMethod), !IO).
-
 maybe_arg_tabling_method_to_string(yes(ArgTablingMethod)) =
     arg_tabling_method_to_string(ArgTablingMethod).
 maybe_arg_tabling_method_to_string(no) = "output".
@@ -587,26 +564,6 @@ goal_warning_to_string(Warning) = Str :-
         Warning = goal_warning_no_solution_disjunct,
         Str = "no_solution_disjunct"
     ).
-
-%-----------------------------------------------------------------------------%
-
-write_string_list([], !IO).
-write_string_list([Name1], !IO) :-
-    io.write_string(Name1, !IO).
-write_string_list([Name1, Name2 | Names], !IO) :-
-    io.write_string(Name1, !IO),
-    io.write_string(", ", !IO),
-    write_string_list_lag(Name2, Names, !IO).
-
-:- pred write_string_list_lag(string::in, list(string)::in, io::di, io::uo)
-    is det.
-
-write_string_list_lag(Name1, [], !IO) :-
-    io.write_string(Name1, !IO).
-write_string_list_lag(Name1, [Name2 | Names], !IO) :-
-    io.write_string(Name1, !IO),
-    io.write_string(", ", !IO),
-    write_string_list_lag(Name2, Names, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.prog_out.

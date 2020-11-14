@@ -183,14 +183,14 @@ mlds_output_scalar_cell_group_defn(Opts, Indent, MangledModuleName,
 
 mlds_output_scalar_cell_group_struct_defn(Opts, Indent, MangledModuleName,
         TypeRawNum, ElemTypes, !IO) :-
-    output_pragma_pack_push(!IO),
+    output_pragma_pack_push_cur_stream(!IO),
     io.format("struct %s_scalar_cell_group_%d {\n",
         [s(MangledModuleName), i(TypeRawNum)], !IO),
     list.foldl2(mlds_output_scalar_cell_group_struct_field(Opts, Indent + 1),
         ElemTypes, 1, _, !IO),
     output_n_indents(Indent, !IO),
     io.write_string("};\n", !IO),
-    output_pragma_pack_pop(!IO).
+    output_pragma_pack_pop_cur_stream(!IO).
 
 :- pred mlds_output_scalar_cell_group_struct_field(mlds_to_c_opts::in,
     indent::in, mlds_type::in, int::in, int::out, io::di, io::uo) is det.

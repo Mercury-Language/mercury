@@ -194,7 +194,7 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
 
 write_not_recompiling_message(ModuleName, !IO) :-
     io.write_string("Not recompiling module ", !IO),
-    prog_out.write_sym_name(ModuleName, !IO),
+    prog_out.write_sym_name_to_cur_stream(ModuleName, !IO),
     io.write_string(".\n", !IO).
 
 :- pred write_reasons_message(globals::in, module_name::in,

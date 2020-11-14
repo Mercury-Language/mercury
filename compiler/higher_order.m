@@ -2944,7 +2944,7 @@ maybe_write_request(yes, ModuleInfo, Msg, SymName, PredArity, ActualArity,
     OldName = sym_name_to_string(SymName),
     string.int_to_string(PredArity, ArStr),
     io.write_string("% ", !IO),
-    prog_out.write_context(Context, !IO),
+    prog_out.write_context_to_cur_stream(Context, !IO),
     io.write_strings([Msg, " `", OldName, "'/", ArStr], !IO),
     (
         MaybeNewName = yes(NewName),
@@ -2989,13 +2989,14 @@ output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs],
         io.write_int(PredArity, !IO)
     else if ConsId = type_ctor_info_const(TypeModule, TypeName, TypeArity) then
         io.write_string("type_ctor_info for `", !IO),
-        prog_out.write_sym_name(qualified(TypeModule, TypeName), !IO),
+        prog_out.write_sym_name_to_cur_stream(
+            qualified(TypeModule, TypeName), !IO),
         io.write_string("'/", !IO),
         io.write_int(TypeArity, !IO)
     else if ConsId = base_typeclass_info_const(_, ClassId, _, _) then
         io.write_string("base_typeclass_info for `", !IO),
         ClassId = class_id(ClassName, ClassArity),
-        prog_out.write_sym_name(ClassName, !IO),
+        prog_out.write_sym_name_to_cur_stream(ClassName, !IO),
         io.write_string("'/", !IO),
         io.write_int(ClassArity, !IO)
     else

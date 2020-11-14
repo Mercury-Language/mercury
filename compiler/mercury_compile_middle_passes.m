@@ -423,10 +423,8 @@ output_trans_opt_file(!.HLDS, !Specs, !DumpInfo, !IO) :-
                 OptXResult = ok(OptXStream),
                 Info = init_merc_out_info(Globals, unqualified_item_names,
                     output_mercury),
-                io.set_output_stream(OptXStream, OldOutputStream, !IO),
-                mercury_output_parse_tree_trans_opt(Info, ParseTreeTransOpt,
-                    !IO),
-                io.set_output_stream(OldOutputStream, _, !IO),
+                mercury_output_parse_tree_trans_opt(Info, OptXStream,
+                    ParseTreeTransOpt, !IO),
                 io.close_output(OptXStream, !IO)
             )
         )

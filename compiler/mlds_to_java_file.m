@@ -568,7 +568,7 @@ output_src_start_for_java(Info, Indent, MercuryModuleName, Imports,
         AutoComments = yes,
         output_n_indents(Indent, !IO),
         io.write_string("/* :- module ", !IO),
-        prog_out.write_sym_name(MercuryModuleName, !IO),
+        prog_out.write_sym_name_to_cur_stream(MercuryModuleName, !IO),
         io.write_string(". */\n\n", !IO)
     ;
         AutoComments = no
@@ -642,7 +642,7 @@ output_src_end_for_java(Info, Indent, ModuleName, !IO) :-
         AutoComments = yes,
         output_n_indents(Indent, !IO),
         io.write_string("// :- end_module ", !IO),
-        prog_out.write_sym_name(ModuleName, !IO),
+        prog_out.write_sym_name_to_cur_stream(ModuleName, !IO),
         io.write_string(".\n", !IO)
     ;
         AutoComments = no

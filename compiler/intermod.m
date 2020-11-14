@@ -273,9 +273,7 @@
 write_initial_opt_file(TmpOptStream, ModuleInfo, IntermodInfo,
         ParseTreePlainOpt, !IO) :-
     decide_what_to_opt_export(ModuleInfo, IntermodInfo),
-    io.set_output_stream(TmpOptStream, OldOutputStream, !IO),
-    write_opt_file_initial(IntermodInfo, ParseTreePlainOpt, !IO),
-    io.set_output_stream(OldOutputStream, _, !IO).
+    write_opt_file_initial(TmpOptStream, IntermodInfo, ParseTreePlainOpt, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -1351,15 +1349,15 @@ should_opt_export_type_defn(ModuleName, TypeCtor, TypeDefn) :-
 
     % Output module imports, types, modes, insts and predicates.
     %
-:- pred write_opt_file_initial(intermod_info::in, parse_tree_plain_opt::out,
-    io::di, io::uo) is det.
+:- pred write_opt_file_initial(io.text_output_stream::in,
+    intermod_info::in, parse_tree_plain_opt::out, io::di, io::uo) is det.
 
-write_opt_file_initial(IntermodInfo, ParseTreePlainOpt, !IO) :-
+write_opt_file_initial(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     intermod_info_get_module_info(IntermodInfo, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
-    io.write_string(":- module ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io.write_string(".\n", !IO),
+    io.write_string(Stream, ":- module ", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
+    io.write_string(Stream, ".\n", !IO),
 
     intermod_info_get_pred_clauses(IntermodInfo, PredClauses),
     intermod_info_get_pred_decls(IntermodInfo, PredDecls),
@@ -1379,7 +1377,8 @@ write_opt_file_initial(IntermodInfo, ParseTreePlainOpt, !IO) :-
             map.init, set.init, [], [], [], [], [], [], [], [], [], [], [], [],
             [], [], [], [], [], [], [], [], [])
     else
-        write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO)
+        write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt,
+            !IO)
     ).
 
 :- pred some_type_needs_to_be_written(
@@ -1398,10 +1397,10 @@ some_type_needs_to_be_written([_ - TypeDefn | TypeCtorDefns], NeedWrite) :-
         some_type_needs_to_be_written(TypeCtorDefns, NeedWrite)
     ).
 
-:- pred write_opt_file_initial_body(intermod_info::in,
-    parse_tree_plain_opt::out, io::di, io::uo) is det.
+:- pred write_opt_file_initial_body(io.text_output_stream::in,
+    intermod_info::in, parse_tree_plain_opt::out, io::di, io::uo) is det.
 
-write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
+write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     IntermodInfo = intermod_info(ModuleInfo, _,
         WritePredPredIdSet, WriteDeclPredIdSet,
         InstanceDefns, Types, NeedFIMs),
@@ -1415,7 +1414,7 @@ write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
     % by an item, we *still* shouldn't include them, since the importing
     % module will import and use them respectively anyway.
     map.keys(AvailModuleMap, UsedModuleNames),
-    list.foldl(intermod_write_use_module, UsedModuleNames, !IO),
+    list.foldl(intermod_write_use_module(Stream), UsedModuleNames, !IO),
     AddToUseMap =
         ( pred(MN::in, UM0::in, UM::out) is det :-
             % We don't have a context for any use_module declaration
@@ -1439,11 +1438,11 @@ write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
     % Disable verbose dumping of clauses.
     OutInfoForPreds = OutInfo ^ hoi_dump_hlds_options := "",
 
-    intermod_write_types(OutInfo, Types, TypeDefns, ForeignEnums, !IO),
-    intermod_write_insts(OutInfo, ModuleInfo, InstDefns, !IO),
-    intermod_write_modes(OutInfo, ModuleInfo, ModeDefns, !IO),
-    intermod_write_classes(OutInfo, ModuleInfo, TypeClasses, !IO),
-    intermod_write_instances(OutInfo, InstanceDefns, Instances, !IO),
+    intermod_write_types(OutInfo, Stream, Types, TypeDefns, ForeignEnums, !IO),
+    intermod_write_insts(OutInfo, Stream, ModuleInfo, InstDefns, !IO),
+    intermod_write_modes(OutInfo, Stream, ModuleInfo, ModeDefns, !IO),
+    intermod_write_classes(OutInfo, Stream, ModuleInfo, TypeClasses, !IO),
+    intermod_write_instances(OutInfo, Stream, InstanceDefns, Instances, !IO),
     (
         NeedFIMs = do_need_foreign_import_modules,
         module_info_get_c_j_cs_fims(ModuleInfo, CJCsEFIMs),
@@ -1451,8 +1450,8 @@ write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
         ( if set.is_empty(FIMSpecs) then
             true
         else
-            io.nl(!IO),
-            set.fold(mercury_output_fim_spec, FIMSpecs, !IO)
+            io.nl(Stream, !IO),
+            set.fold(mercury_output_fim_spec(Stream), FIMSpecs, !IO)
         )
     ;
         NeedFIMs = do_not_need_foreign_import_modules,
@@ -1469,8 +1468,8 @@ write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
         TypeSpecPragmas = []
     ;
         DeclOrderPredInfos = [_ | _],
-        io.nl(!IO),
-        intermod_write_pred_decls(ModuleInfo, DeclOrderPredInfos,
+        io.nl(Stream, !IO),
+        intermod_write_pred_decls(Stream, ModuleInfo, DeclOrderPredInfos,
             PredMarkerPragmasCord0, PredMarkerPragmasCord1,
             cord.init, TypeSpecPragmasCord, !IO),
         TypeSpecPragmas = cord.list(TypeSpecPragmasCord)
@@ -1478,8 +1477,9 @@ write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
     PredDecls = [],
     ModeDecls = [],
     % Each of these writes a newline at the start.
-    intermod_write_preds(OutInfoForPreds, ModuleInfo, PredOrderPredInfos,
-        PredMarkerPragmasCord1, PredMarkerPragmasCord, !IO),
+    intermod_write_preds(OutInfoForPreds, Stream, ModuleInfo,
+        PredOrderPredInfos, PredMarkerPragmasCord1, PredMarkerPragmasCord,
+        !IO),
     PredMarkerPragmas = cord.list(PredMarkerPragmasCord),
     Clauses = [],
     ForeignProcs = [],
@@ -1500,13 +1500,13 @@ write_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !IO) :-
     --->    is_not_first
     ;       is_first.
 
-:- pred maybe_write_nl(maybe_first::in, maybe_first::out, io::di, io::uo)
-    is det.
+:- pred maybe_write_nl(io.text_output_stream::in,
+    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-maybe_write_nl(!First, !IO) :-
+maybe_write_nl(Stream, !First, !IO) :-
     (
         !.First = is_first,
-        io.nl(!IO),
+        io.nl(Stream, !IO),
         !:First = is_not_first
     ;
         !.First = is_not_first
@@ -1514,40 +1514,41 @@ maybe_write_nl(!First, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_use_module(module_name::in, io::di, io::uo) is det.
+:- pred intermod_write_use_module(io.text_output_stream::in, module_name::in,
+    io::di, io::uo) is det.
 
-intermod_write_use_module(ModuleName, !IO) :-
-    io.write_string(":- use_module ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io.write_string(".\n", !IO).
+intermod_write_use_module(Stream, ModuleName, !IO) :-
+    io.write_string(Stream, ":- use_module ", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
+    io.write_string(Stream, ".\n", !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_types(hlds_out_info::in,
+:- pred intermod_write_types(hlds_out_info::in, io.text_output_stream::in,
     assoc_list(type_ctor, hlds_type_defn)::in,
     list(item_type_defn_info)::out, list(item_foreign_enum_info)::out,
     io::di, io::uo) is det.
 
-intermod_write_types(OutInfo, Types, TypeDefns, ForeignEnums, !IO) :-
+intermod_write_types(OutInfo, Stream, Types, TypeDefns, ForeignEnums, !IO) :-
     (
         Types = []
     ;
         Types = [_ | _],
-        io.nl(!IO)
+        io.nl(Stream, !IO)
     ),
     list.sort(Types, SortedTypes),
-    list.foldl3(intermod_write_type(OutInfo), SortedTypes,
+    list.foldl3(intermod_write_type(OutInfo, Stream), SortedTypes,
         cord.init, TypeDefnsCord, cord.init, ForeignEnumsCord, !IO),
     TypeDefns = cord.list(TypeDefnsCord),
     ForeignEnums = cord.list(ForeignEnumsCord).
 
-:- pred intermod_write_type(hlds_out_info::in,
+:- pred intermod_write_type(hlds_out_info::in, io.text_output_stream::in,
     pair(type_ctor, hlds_type_defn)::in,
     cord(item_type_defn_info)::in, cord(item_type_defn_info)::out,
     cord(item_foreign_enum_info)::in, cord(item_foreign_enum_info)::out,
     io::di, io::uo) is det.
 
-intermod_write_type(OutInfo, TypeCtor - TypeDefn,
+intermod_write_type(OutInfo, Stream, TypeCtor - TypeDefn,
         !TypeDefnsCord, !ForeignEnumsCord, !IO) :-
     hlds_data.get_type_defn_tvarset(TypeDefn, VarSet),
     hlds_data.get_type_defn_tparams(TypeDefn, Args),
@@ -1587,7 +1588,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn,
     MainItem = item_type_defn(MainItemTypeDefn),
 
     MercInfo = OutInfo ^ hoi_mercury_to_mercury,
-    mercury_output_item(MercInfo, MainItem, !IO),
+    mercury_output_item(MercInfo, Stream, MainItem, !IO),
     ( if
         (
             Body = hlds_foreign_type(ForeignTypeBody)
@@ -1609,7 +1610,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn,
                 VarSet, Context, -1),
             cord.snoc(CItemTypeDefn, !TypeDefnsCord),
             CItem = item_type_defn(CItemTypeDefn),
-            mercury_output_item(MercInfo, CItem, !IO)
+            mercury_output_item(MercInfo, Stream, CItem, !IO)
         ;
             MaybeC = no
         ),
@@ -1624,7 +1625,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn,
                 VarSet, Context, -1),
             cord.snoc(JavaItemTypeDefn, !TypeDefnsCord),
             JavaItem = item_type_defn(JavaItemTypeDefn),
-            mercury_output_item(MercInfo, JavaItem, !IO)
+            mercury_output_item(MercInfo, Stream, JavaItem, !IO)
         ;
             MaybeJava = no
         ),
@@ -1640,7 +1641,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn,
                 VarSet, Context, -1),
             cord.snoc(CSharpItemTypeDefn, !TypeDefnsCord),
             CSharpItem = item_type_defn(CSharpItemTypeDefn),
-            mercury_output_item(MercInfo, CSharpItem, !IO)
+            mercury_output_item(MercInfo, Stream, CSharpItem, !IO)
         ;
             MaybeCSharp = no
         )
@@ -1675,7 +1676,7 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn,
             ItemForeignEnum = item_foreign_enum_info(Lang, TypeCtor,
                 OoMForeignEnumVals, Context, -1),
             ForeignItem = item_foreign_enum(ItemForeignEnum),
-            mercury_output_item(MercInfo, ForeignItem, !IO)
+            mercury_output_item(MercInfo, Stream, ForeignItem, !IO)
         )
     else
         true
@@ -1696,23 +1697,23 @@ gather_foreign_enum_value_pair(CtorRepn, !Values) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_insts(hlds_out_info::in, module_info::in,
-    list(item_inst_defn_info)::out, io::di, io::uo) is det.
+:- pred intermod_write_insts(hlds_out_info::in, io.text_output_stream::in,
+    module_info::in, list(item_inst_defn_info)::out, io::di, io::uo) is det.
 
-intermod_write_insts(OutInfo, ModuleInfo, InstDefns, !IO) :-
+intermod_write_insts(OutInfo, Stream, ModuleInfo, InstDefns, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_info_get_inst_table(ModuleInfo, Insts),
     inst_table_get_user_insts(Insts, UserInstMap),
-    map.foldl3(intermod_write_inst(OutInfo, ModuleName), UserInstMap,
+    map.foldl3(intermod_write_inst(OutInfo, Stream, ModuleName), UserInstMap,
         cord.init, InstDefnsCord, is_first, _, !IO),
     InstDefns = cord.list(InstDefnsCord).
 
-:- pred intermod_write_inst(hlds_out_info::in, module_name::in, inst_ctor::in,
-    hlds_inst_defn::in,
+:- pred intermod_write_inst(hlds_out_info::in, io.text_output_stream::in,
+    module_name::in, inst_ctor::in, hlds_inst_defn::in,
     cord(item_inst_defn_info)::in, cord(item_inst_defn_info)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-intermod_write_inst(OutInfo, ModuleName, InstCtor, InstDefn,
+intermod_write_inst(OutInfo, Stream, ModuleName, InstCtor, InstDefn,
         !InstDefnsCord, !First, !IO) :-
     InstCtor = inst_ctor(SymName, _Arity),
     InstDefn = hlds_inst_defn(Varset, Args, Inst, IFTC, Context, InstStatus),
@@ -1720,7 +1721,7 @@ intermod_write_inst(OutInfo, ModuleName, InstCtor, InstDefn,
         SymName = qualified(ModuleName, _),
         inst_status_to_write(InstStatus) = yes
     then
-        maybe_write_nl(!First, !IO),
+        maybe_write_nl(Stream, !First, !IO),
         (
             IFTC = iftc_applicable_declared(ForTypeCtor),
             MaybeForTypeCtor = yes(ForTypeCtor)
@@ -1737,30 +1738,30 @@ intermod_write_inst(OutInfo, ModuleName, InstCtor, InstDefn,
         cord.snoc(ItemInstDefn, !InstDefnsCord),
         Item = item_inst_defn(ItemInstDefn),
         MercInfo = OutInfo ^ hoi_mercury_to_mercury,
-        mercury_output_item(MercInfo, Item, !IO)
+        mercury_output_item(MercInfo, Stream, Item, !IO)
     else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_modes(hlds_out_info::in, module_info::in,
-    list(item_mode_defn_info)::out, io::di, io::uo) is det.
+:- pred intermod_write_modes(hlds_out_info::in, io.text_output_stream::in,
+    module_info::in, list(item_mode_defn_info)::out, io::di, io::uo) is det.
 
-intermod_write_modes(OutInfo, ModuleInfo, ModeDefns, !IO) :-
+intermod_write_modes(OutInfo, Stream, ModuleInfo, ModeDefns, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_info_get_mode_table(ModuleInfo, Modes),
     mode_table_get_mode_defns(Modes, ModeDefnMap),
-    map.foldl3(intermod_write_mode(OutInfo, ModuleName), ModeDefnMap,
+    map.foldl3(intermod_write_mode(OutInfo, Stream, ModuleName), ModeDefnMap,
         cord.init, ModeDefnsCord, is_first, _, !IO),
     ModeDefns = cord.list(ModeDefnsCord).
 
-:- pred intermod_write_mode(hlds_out_info::in, module_name::in, mode_ctor::in,
-    hlds_mode_defn::in,
+:- pred intermod_write_mode(hlds_out_info::in, io.text_output_stream::in,
+    module_name::in, mode_ctor::in, hlds_mode_defn::in,
     cord(item_mode_defn_info)::in, cord(item_mode_defn_info)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-intermod_write_mode(OutInfo, ModuleName, ModeCtor, ModeDefn,
+intermod_write_mode(OutInfo, Stream, ModuleName, ModeCtor, ModeDefn,
         !ModeDefnsCord, !First, !IO) :-
     ModeCtor = mode_ctor(SymName, _Arity),
     ModeDefn = hlds_mode_defn(Varset, Args, hlds_mode_body(Mode), Context,
@@ -1769,36 +1770,36 @@ intermod_write_mode(OutInfo, ModuleName, ModeCtor, ModeDefn,
         SymName = qualified(ModuleName, _),
         mode_status_to_write(ModeStatus) = yes
     then
-        maybe_write_nl(!First, !IO),
+        maybe_write_nl(Stream, !First, !IO),
         MaybeAbstractModeDefn = nonabstract_mode_defn(eqv_mode(Mode)),
         ItemModeDefn = item_mode_defn_info(SymName, Args,
             MaybeAbstractModeDefn, Varset, Context, -1),
         cord.snoc(ItemModeDefn, !ModeDefnsCord),
         Item = item_mode_defn(ItemModeDefn),
         MercInfo = OutInfo ^ hoi_mercury_to_mercury,
-        mercury_output_item(MercInfo, Item, !IO)
+        mercury_output_item(MercInfo, Stream, Item, !IO)
     else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_classes(hlds_out_info::in, module_info::in,
-    list(item_typeclass_info)::out, io::di, io::uo) is det.
+:- pred intermod_write_classes(hlds_out_info::in, io.text_output_stream::in,
+    module_info::in, list(item_typeclass_info)::out, io::di, io::uo) is det.
 
-intermod_write_classes(OutInfo, ModuleInfo, TypeClasses, !IO) :-
+intermod_write_classes(OutInfo, Stream, ModuleInfo, TypeClasses, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_info_get_class_table(ModuleInfo, ClassDefnMap),
-    map.foldl3(intermod_write_class(OutInfo, ModuleName), ClassDefnMap,
+    map.foldl3(intermod_write_class(OutInfo, Stream, ModuleName), ClassDefnMap,
         cord.init, TypeClassesCord, is_first, _, !IO),
     TypeClasses = cord.list(TypeClassesCord).
 
-:- pred intermod_write_class(hlds_out_info::in, module_name::in, class_id::in,
-    hlds_class_defn::in,
+:- pred intermod_write_class(hlds_out_info::in, io.text_output_stream::in,
+    module_name::in, class_id::in, hlds_class_defn::in,
     cord(item_typeclass_info)::in, cord(item_typeclass_info)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-intermod_write_class(OutInfo, ModuleName, ClassId, ClassDefn,
+intermod_write_class(OutInfo, Stream, ModuleName, ClassId, ClassDefn,
         !TypeClassesCord, !First, !IO) :-
     ClassDefn = hlds_class_defn(TypeClassStatus, Constraints, HLDSFunDeps,
         _Ancestors, TVars, _Kinds, Interface, _HLDSClassInterface, TVarSet,
@@ -1808,14 +1809,14 @@ intermod_write_class(OutInfo, ModuleName, ClassId, ClassDefn,
         QualifiedClassName = qualified(ModuleName, _),
         typeclass_status_to_write(TypeClassStatus) = yes
     then
-        maybe_write_nl(!First, !IO),
+        maybe_write_nl(Stream, !First, !IO),
         FunDeps = list.map(unmake_hlds_class_fundep(TVars), HLDSFunDeps),
         ItemTypeClass = item_typeclass_info(QualifiedClassName, TVars,
             Constraints, FunDeps, Interface, TVarSet, Context, -1),
         cord.snoc(ItemTypeClass, !TypeClassesCord),
         Item = item_typeclass(ItemTypeClass),
         MercInfo = OutInfo ^ hoi_mercury_to_mercury,
-        mercury_output_item(MercInfo, Item, !IO)
+        mercury_output_item(MercInfo, Stream, Item, !IO)
     else
         true
     ).
@@ -1837,28 +1838,28 @@ unmake_hlds_class_fundep_arg_posns(TVars, ArgPosns) = ArgTVars :-
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_instances(hlds_out_info::in,
+:- pred intermod_write_instances(hlds_out_info::in, io.text_output_stream::in, 
     assoc_list(class_id, hlds_instance_defn)::in,
     list(item_instance_info)::out, io::di, io::uo) is det.
 
-intermod_write_instances(OutInfo, InstanceDefns, Instances, !IO) :-
+intermod_write_instances(OutInfo, Stream, InstanceDefns, Instances, !IO) :-
     (
         InstanceDefns = []
     ;
         InstanceDefns = [_ | _],
-        io.nl(!IO)
+        io.nl(Stream, !IO)
     ),
     list.sort(InstanceDefns, SortedInstanceDefns),
-    list.foldl2(intermod_write_instance(OutInfo), SortedInstanceDefns,
+    list.foldl2(intermod_write_instance(OutInfo, Stream), SortedInstanceDefns,
         cord.init, InstancesCord, !IO),
     Instances = cord.list(InstancesCord).
 
-:- pred intermod_write_instance(hlds_out_info::in,
+:- pred intermod_write_instance(hlds_out_info::in, io.text_output_stream::in,
     pair(class_id, hlds_instance_defn)::in,
     cord(item_instance_info)::in, cord(item_instance_info)::out,
     io::di, io::uo) is det.
 
-intermod_write_instance(OutInfo, ClassId - InstanceDefn,
+intermod_write_instance(OutInfo, Stream, ClassId - InstanceDefn,
         !InstancesCord, !IO) :-
     InstanceDefn = hlds_instance_defn(ModuleName, Types, OriginalTypes, _,
         Context, Constraints, Body, _, TVarSet, _),
@@ -1868,7 +1869,7 @@ intermod_write_instance(OutInfo, ClassId - InstanceDefn,
     cord.snoc(ItemInstance, !InstancesCord),
     Item = item_instance(ItemInstance),
     MercInfo = OutInfo ^ hoi_mercury_to_mercury,
-    mercury_output_item(MercInfo, Item, !IO).
+    mercury_output_item(MercInfo, Stream, Item, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1903,26 +1904,28 @@ generate_order_pred_infos_acc(ModuleInfo, [PredId | PredIds],
     % We need to write all the declarations for local predicates so
     % the procedure labels for the C code are calculated correctly.
     %
-:- pred intermod_write_pred_decls(module_info::in, list(order_pred_info)::in,
+:- pred intermod_write_pred_decls(io.text_output_stream::in,
+    module_info::in, list(order_pred_info)::in,
     cord(item_pred_marker)::in, cord(item_pred_marker)::out,
     cord(item_type_spec)::in, cord(item_type_spec)::out,
     io::di, io::uo) is det.
 
-intermod_write_pred_decls(_, [],
+intermod_write_pred_decls(_, _, [],
         !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO).
-intermod_write_pred_decls(ModuleInfo, [OrderPredInfo | OrderPredInfos],
+intermod_write_pred_decls(ModuleInfo, Stream, [OrderPredInfo | OrderPredInfos],
         !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO) :-
-    intermod_write_pred_decl(ModuleInfo, OrderPredInfo,
+    intermod_write_pred_decl(ModuleInfo, Stream, OrderPredInfo,
         !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO),
-    intermod_write_pred_decls(ModuleInfo, OrderPredInfos,
+    intermod_write_pred_decls(ModuleInfo, Stream, OrderPredInfos,
         !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO).
 
-:- pred intermod_write_pred_decl(module_info::in, order_pred_info::in,
+:- pred intermod_write_pred_decl(io.text_output_stream::in,
+    module_info::in, order_pred_info::in,
     cord(item_pred_marker)::in, cord(item_pred_marker)::out,
     cord(item_type_spec)::in, cord(item_type_spec)::out,
     io::di, io::uo) is det.
 
-intermod_write_pred_decl(ModuleInfo, OrderPredInfo,
+intermod_write_pred_decl(Stream, ModuleInfo, OrderPredInfo,
         !PredMarkerPragmasCord, !TypeSpecPragmasCord, !IO) :-
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
@@ -1953,13 +1956,13 @@ intermod_write_pred_decl(ModuleInfo, OrderPredInfo,
     PredSymName = qualified(ModuleName, PredName),
     (
         PredOrFunc = pf_predicate,
-        mercury_output_pred_type(TVarSet, VarNamePrint, ExistQVars,
+        mercury_output_pred_type(Stream, TVarSet, VarNamePrint, ExistQVars,
             PredSymName, ArgTypes, no, Purity,
             ClassContext, !IO)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType),
-        mercury_output_func_type(TVarSet, VarNamePrint, ExistQVars,
+        mercury_output_func_type(Stream, TVarSet, VarNamePrint, ExistQVars,
             PredSymName, FuncArgTypes, FuncRetType, no, Purity,
             ClassContext, !IO)
     ),
@@ -1969,30 +1972,34 @@ intermod_write_pred_decl(ModuleInfo, OrderPredInfo,
     % SortedProcPairs will sorted on proc_ids. (map.values is not *documented*
     % to return a list sorted by keys.)
     map.to_sorted_assoc_list(ProcMap, SortedProcPairs),
-    intermod_write_pred_valid_modes(PredOrFunc, PredSymName,
+    intermod_write_pred_valid_modes(Stream, PredOrFunc, PredSymName,
         SortedProcPairs, !IO),
-    intermod_write_pred_marker_pragmas(PredInfo, !PredMarkerPragmasCord, !IO),
-    intermod_write_pred_type_spec_pragmas(ModuleInfo, PredId,
+    intermod_write_pred_marker_pragmas(Stream, PredInfo,
+        !PredMarkerPragmasCord, !IO),
+    intermod_write_pred_type_spec_pragmas(Stream, ModuleInfo, PredId,
         !TypeSpecPragmasCord, !IO).
 
-:- pred intermod_write_pred_valid_modes(pred_or_func::in, sym_name::in,
-    assoc_list(proc_id, proc_info)::in, io::di, io::uo) is det.
+:- pred intermod_write_pred_valid_modes(io.text_output_stream::in,
+    pred_or_func::in, sym_name::in, assoc_list(proc_id, proc_info)::in,
+    io::di, io::uo) is det.
 
-intermod_write_pred_valid_modes(_, _, [], !IO).
-intermod_write_pred_valid_modes(PredOrFunc, PredSymName,
+intermod_write_pred_valid_modes(_, _, _, [], !IO).
+intermod_write_pred_valid_modes(Stream, PredOrFunc, PredSymName,
         [ProcIdInfo | ProcIdInfos], !IO) :-
     ProcIdInfo = _ProcId - ProcInfo,
     ( if proc_info_is_valid_mode(ProcInfo) then
-        intermod_write_pred_mode(PredOrFunc, PredSymName, ProcInfo, !IO)
+        intermod_write_pred_mode(Stream, PredOrFunc, PredSymName,
+            ProcInfo, !IO)
     else
         true
     ),
-    intermod_write_pred_valid_modes(PredOrFunc, PredSymName, ProcIdInfos, !IO).
+    intermod_write_pred_valid_modes(Stream, PredOrFunc, PredSymName,
+        ProcIdInfos, !IO).
 
-:- pred intermod_write_pred_mode(pred_or_func::in, sym_name::in,
-    proc_info::in, io::di, io::uo) is det.
+:- pred intermod_write_pred_mode(io.text_output_stream::in,
+    pred_or_func::in, sym_name::in, proc_info::in, io::di, io::uo) is det.
 
-intermod_write_pred_mode(PredOrFunc, PredSymName, ProcInfo, !IO) :-
+intermod_write_pred_mode(Stream, PredOrFunc, PredSymName, ProcInfo, !IO) :-
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     ( if
@@ -2008,20 +2015,22 @@ intermod_write_pred_mode(PredOrFunc, PredSymName, ProcInfo, !IO) :-
     (
         PredOrFunc = pf_function,
         pred_args_to_func_args(ArgModes, FuncArgModes, FuncRetMode),
-        mercury_output_func_mode_decl(output_mercury, Varset, PredSymName,
-            FuncArgModes, FuncRetMode, yes(Detism), !IO)
+        mercury_output_func_mode_decl(Stream, output_mercury, Varset,
+            PredSymName, FuncArgModes, FuncRetMode, yes(Detism), !IO)
     ;
         PredOrFunc = pf_predicate,
         MaybeWithInst = maybe.no,
-        mercury_output_pred_mode_decl(output_mercury, Varset, PredSymName,
-            ArgModes, MaybeWithInst, yes(Detism), !IO)
+        mercury_output_pred_mode_decl(Stream, output_mercury, Varset,
+            PredSymName, ArgModes, MaybeWithInst, yes(Detism), !IO)
     ).
 
-:- pred intermod_write_pred_marker_pragmas(pred_info::in,
+:- pred intermod_write_pred_marker_pragmas(io.text_output_stream::in,
+    pred_info::in,
     cord(item_pred_marker)::in, cord(item_pred_marker)::out,
     io::di, io::uo) is det.
 
-intermod_write_pred_marker_pragmas(PredInfo, !PredMarkerPragmasCord, !IO) :-
+intermod_write_pred_marker_pragmas(Stream, PredInfo,
+        !PredMarkerPragmasCord, !IO) :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredArity = pred_info_orig_arity(PredInfo),
@@ -2029,18 +2038,18 @@ intermod_write_pred_marker_pragmas(PredInfo, !PredMarkerPragmasCord, !IO) :-
     PredSymName = qualified(ModuleName, PredName),
     pred_info_get_markers(PredInfo, Markers),
     markers_to_marker_list(Markers, MarkerList),
-    intermod_write_pred_marker_pragmas_loop(PredOrFunc, PredSymName, PredArity,
-        MarkerList, !PredMarkerPragmasCord, !IO).
+    intermod_write_pred_marker_pragmas_loop(Stream, PredOrFunc,
+        PredSymName, PredArity, MarkerList, !PredMarkerPragmasCord, !IO).
 
-:- pred intermod_write_pred_marker_pragmas_loop(pred_or_func::in,
-    sym_name::in, int::in, list(pred_marker)::in,
+:- pred intermod_write_pred_marker_pragmas_loop(io.text_output_stream::in,
+    pred_or_func::in, sym_name::in, int::in, list(pred_marker)::in,
     cord(item_pred_marker)::in, cord(item_pred_marker)::out,
     io::di, io::uo) is det.
 
-intermod_write_pred_marker_pragmas_loop(_, _, _,
+intermod_write_pred_marker_pragmas_loop(_, _, _, _,
         [], !PredMarkerPragmasCord, !IO).
-intermod_write_pred_marker_pragmas_loop(PredOrFunc, PredSymName, PredArity,
-        [Marker | Markers], !PredMarkerPragmasCord, !IO) :-
+intermod_write_pred_marker_pragmas_loop(Stream, PredOrFunc, PredSymName,
+        PredArity, [Marker | Markers], !PredMarkerPragmasCord, !IO) :-
     (
         % We do not output these markers.
         ( Marker = marker_stub
@@ -2106,23 +2115,24 @@ intermod_write_pred_marker_pragmas_loop(PredOrFunc, PredSymName, PredArity,
         cord.snoc(PragmaInfo, !PredMarkerPragmasCord),
 
         marker_name(Marker, MarkerName),
-        mercury_output_pragma_decl(PredSymName, PredArity, PredOrFunc,
+        mercury_output_pragma_decl(Stream, PredSymName, PredArity, PredOrFunc,
             MarkerName, no, !IO)
     ),
-    intermod_write_pred_marker_pragmas_loop(PredOrFunc, PredSymName, PredArity,
-        Markers, !PredMarkerPragmasCord, !IO).
+    intermod_write_pred_marker_pragmas_loop(Stream, PredOrFunc, PredSymName,
+        PredArity, Markers, !PredMarkerPragmasCord, !IO).
 
-:- pred intermod_write_pred_type_spec_pragmas(module_info::in, pred_id::in,
+:- pred intermod_write_pred_type_spec_pragmas(io.text_output_stream::in,
+    module_info::in, pred_id::in,
     cord(item_type_spec)::in, cord(item_type_spec)::out,
     io::di, io::uo) is det.
 
-intermod_write_pred_type_spec_pragmas(ModuleInfo, PredId,
+intermod_write_pred_type_spec_pragmas(Stream, ModuleInfo, PredId,
         !TypeSpecsCord, !IO) :-
     module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
     PragmaMap = TypeSpecInfo ^ pragma_map,
     ( if multi_map.search(PragmaMap, PredId, TypeSpecPragmas) then
         list.foldl(
-            mercury_output_pragma_type_spec(print_name_and_num,
+            mercury_output_pragma_type_spec(Stream, print_name_and_num,
                 output_mercury),
             TypeSpecPragmas, !IO),
         !:TypeSpecsCord = !.TypeSpecsCord ++
@@ -2137,32 +2147,33 @@ wrap_dummy_pragma_item(T) = item_pragma_info(T, term.context_init, -1).
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_preds(hlds_out_info::in, module_info::in,
-    list(order_pred_info)::in,
+:- pred intermod_write_preds(hlds_out_info::in, io.text_output_stream::in,
+    module_info::in, list(order_pred_info)::in,
     cord(item_pred_marker)::in, cord(item_pred_marker)::out,
     io::di, io::uo) is det.
 
-intermod_write_preds(_, _, [], !PredMarkerPragmas, !IO).
-intermod_write_preds(OutInfo, ModuleInfo, [OrderPredInfo | OrderPredInfos],
-        !PredMarkerPragmas, !IO) :-
-    intermod_write_pred(OutInfo, ModuleInfo, OrderPredInfo,
+intermod_write_preds(_, _, _, [], !PredMarkerPragmas, !IO).
+intermod_write_preds(OutInfo, Stream, ModuleInfo,
+        [OrderPredInfo | OrderPredInfos], !PredMarkerPragmas, !IO) :-
+    intermod_write_pred(OutInfo, Stream, ModuleInfo, OrderPredInfo,
         !PredMarkerPragmas, !IO),
-    intermod_write_preds(OutInfo, ModuleInfo, OrderPredInfos,
+    intermod_write_preds(OutInfo, Stream, ModuleInfo, OrderPredInfos,
         !PredMarkerPragmas, !IO).
 
-:- pred intermod_write_pred(hlds_out_info::in, module_info::in,
-    order_pred_info::in,
+:- pred intermod_write_pred(hlds_out_info::in, io.text_output_stream::in,
+    module_info::in, order_pred_info::in,
     cord(item_pred_marker)::in, cord(item_pred_marker)::out,
     io::di, io::uo) is det.
 
-intermod_write_pred(OutInfo, ModuleInfo, OrderPredInfo,
+intermod_write_pred(OutInfo, Stream, ModuleInfo, OrderPredInfo,
         !PredMarkerPragmas, !IO) :-
-    io.nl(!IO),
+    io.nl(Stream, !IO),
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredSymName = qualified(ModuleName, PredName),
-    intermod_write_pred_marker_pragmas(PredInfo, !PredMarkerPragmas, !IO),
+    intermod_write_pred_marker_pragmas(Stream, PredInfo,
+        !PredMarkerPragmas, !IO),
     % The type specialization pragmas for exported preds should
     % already be in the interface file.
 
@@ -2178,9 +2189,9 @@ intermod_write_pred(OutInfo, ModuleInfo, OrderPredInfo,
         GoalType = goal_type_promise(PromiseType),
         (
             Clauses = [Clause],
-            write_promise(OutInfo, ModuleInfo, VarSet, no_varset_vartypes,
-                print_name_only, 0, PromiseType, PredId, PredOrFunc,
-                HeadVars, Clause, !IO)
+            write_promise(OutInfo, Stream, ModuleInfo, VarSet,
+                no_varset_vartypes, print_name_only, 0, PromiseType,
+                PredId, PredOrFunc, HeadVars, Clause, !IO)
         ;
             ( Clauses = []
             ; Clauses = [_, _ | _]
@@ -2196,17 +2207,17 @@ intermod_write_pred(OutInfo, ModuleInfo, OrderPredInfo,
         pred_info_get_typevarset(PredInfo, TypeVarset),
         TypeQual = varset_vartypes(TypeVarset, VarTypes),
         list.foldl(
-            intermod_write_clause(OutInfo, ModuleInfo, PredId, PredSymName,
-                PredOrFunc, VarSet, TypeQual, HeadVars),
+            intermod_write_clause(OutInfo, Stream, ModuleInfo, PredId,
+                PredSymName, PredOrFunc, VarSet, TypeQual, HeadVars),
             Clauses, !IO)
     ).
 
-:- pred intermod_write_clause(hlds_out_info::in, module_info::in,
-    pred_id::in, sym_name::in, pred_or_func::in,
+:- pred intermod_write_clause(hlds_out_info::in, io.text_output_stream::in,
+    module_info::in, pred_id::in, sym_name::in, pred_or_func::in,
     prog_varset::in, maybe_vartypes::in, list(prog_var)::in, clause::in,
     io::di, io::uo) is det.
 
-intermod_write_clause(OutInfo, ModuleInfo, PredId, SymName, PredOrFunc,
+intermod_write_clause(OutInfo, Stream, ModuleInfo, PredId, SymName, PredOrFunc,
         VarSet, TypeQual, HeadVars, Clause0, !IO) :-
     Clause0 = clause(ApplicableProcIds, Goal, ImplLang, _, _),
     (
@@ -2227,9 +2238,9 @@ intermod_write_clause(OutInfo, ModuleInfo, PredId, SymName, PredOrFunc,
         % in such an order, both by the code that reads in terms and the
         % code that converts parse tree goals into HLDS goals, so this is
         % not likely to be necessary, while its cost may be be non-negligible.
-        write_clause(OutInfo, output_mercury, ModuleInfo, PredId, PredOrFunc,
-            varset.init, TypeQual, print_name_and_num, write_declared_modes, 1,
-            ClauseHeadVars, Clause, !IO)
+        write_clause(OutInfo, Stream, output_mercury, ModuleInfo,
+            PredId, PredOrFunc, varset.init, TypeQual, print_name_and_num,
+            write_declared_modes, 1, ClauseHeadVars, Clause, !IO)
     ;
         ImplLang = impl_lang_foreign(_),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -2258,7 +2269,7 @@ intermod_write_clause(OutInfo, ModuleInfo, PredId, SymName, PredOrFunc,
             ;
                 ApplicableProcIds = selected_modes(ProcIds),
                 list.foldl(
-                    intermod_write_foreign_clause(Procs, PredOrFunc,
+                    intermod_write_foreign_clause(Stream, Procs, PredOrFunc,
                         PragmaCode, Attributes, Args, VarSet, SymName),
                     ProcIds, !IO)
             ;
@@ -2412,12 +2423,13 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
     strip_headvar_unifications_from_goal_list(Goals0, HeadVars,
         RevGoals1, Goals, !HeadVarMap).
 
-:- pred intermod_write_foreign_clause(proc_table::in, pred_or_func::in,
+:- pred intermod_write_foreign_clause(io.text_output_stream::in,
+    proc_table::in, pred_or_func::in,
     pragma_foreign_proc_impl::in, pragma_foreign_proc_attributes::in,
     list(foreign_arg)::in, prog_varset::in, sym_name::in, proc_id::in,
     io::di, io::uo) is det.
 
-intermod_write_foreign_clause(Procs, PredOrFunc, PragmaImpl,
+intermod_write_foreign_clause(Stream, Procs, PredOrFunc, PragmaImpl,
         Attributes, Args, ProgVarset0, SymName, ProcId, !IO) :-
     map.lookup(Procs, ProcId, ProcInfo),
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
@@ -2428,7 +2440,7 @@ intermod_write_foreign_clause(Procs, PredOrFunc, PragmaImpl,
         proc_info_get_inst_varset(ProcInfo, InstVarset),
         FPInfo = pragma_info_foreign_proc(Attributes, SymName,
             PredOrFunc, PragmaVars, ProgVarset, InstVarset, PragmaImpl),
-        mercury_output_pragma_foreign_proc(output_mercury, FPInfo, !IO)
+        mercury_output_pragma_foreign_proc(Stream, output_mercury, FPInfo, !IO)
     ;
         MaybeArgModes = no,
         unexpected($pred, "no mode declaration")
@@ -2470,7 +2482,7 @@ get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-append_analysis_pragmas_to_opt_file(TmpOptStream, ModuleInfo, UnusedArgsInfos,
+append_analysis_pragmas_to_opt_file(Stream, ModuleInfo, UnusedArgsInfos,
         !ParseTreePlainOpt, !IO) :-
     module_info_get_proc_analysis_kinds(ModuleInfo, ProcAnalysisKinds),
     ( if
@@ -2480,13 +2492,11 @@ append_analysis_pragmas_to_opt_file(TmpOptStream, ModuleInfo, UnusedArgsInfos,
         % We have nothing to append to the .opt file.
         true
     else
-        io.set_output_stream(TmpOptStream, OldOutputStream, !IO),
-
         module_info_get_valid_pred_ids(ModuleInfo, PredIds),
         generate_order_pred_infos(ModuleInfo, PredIds, OrderPredInfos),
 
         ( if set.is_non_empty(UnusedArgsInfos) then
-            set.foldl2(write_pragma_unused_args, UnusedArgsInfos,
+            set.foldl2(write_pragma_unused_args(Stream), UnusedArgsInfos,
                 is_first, _, !IO),
             !ParseTreePlainOpt ^ ptpo_unused_args :=
                 list.map(wrap_dummy_pragma_item,
@@ -2495,14 +2505,16 @@ append_analysis_pragmas_to_opt_file(TmpOptStream, ModuleInfo, UnusedArgsInfos,
             true
         ),
         ( if set.contains(ProcAnalysisKinds, pak_termination) then
-            list.foldl3(write_pragma_termination_for_pred(ModuleInfo),
+            list.foldl3(
+                write_pragma_termination_for_pred(Stream, ModuleInfo),
                 OrderPredInfos, cord.init, TermInfosCord, is_first, _, !IO),
             !ParseTreePlainOpt ^ ptpo_termination := cord.list(TermInfosCord)
         else
             true
         ),
         ( if set.contains(ProcAnalysisKinds, pak_termination2) then
-            list.foldl3(write_pragma_termination2_for_pred(ModuleInfo),
+            list.foldl3(
+                write_pragma_termination2_for_pred(Stream, ModuleInfo),
                 OrderPredInfos, cord.init, TermInfos2Cord, is_first, _, !IO),
             !ParseTreePlainOpt ^ ptpo_termination2 := cord.list(TermInfos2Cord)
         else
@@ -2510,14 +2522,16 @@ append_analysis_pragmas_to_opt_file(TmpOptStream, ModuleInfo, UnusedArgsInfos,
         ),
 
         ( if set.contains(ProcAnalysisKinds, pak_exception) then
-            list.foldl3(write_pragma_exceptions_for_pred(ModuleInfo),
+            list.foldl3(
+                write_pragma_exceptions_for_pred(Stream, ModuleInfo),
                 OrderPredInfos, cord.init, ExceptionsCord, is_first, _, !IO),
             !ParseTreePlainOpt ^ ptpo_exceptions := cord.list(ExceptionsCord)
         else
             true
         ),
         ( if set.contains(ProcAnalysisKinds, pak_trailing) then
-            list.foldl3(write_pragma_trailing_info_for_pred(ModuleInfo),
+            list.foldl3(
+                write_pragma_trailing_info_for_pred(Stream, ModuleInfo),
                 OrderPredInfos, cord.init, TrailingInfosCord,
                 is_first, _, !IO),
             !ParseTreePlainOpt ^ ptpo_trailing := cord.list(TrailingInfosCord)
@@ -2525,7 +2539,8 @@ append_analysis_pragmas_to_opt_file(TmpOptStream, ModuleInfo, UnusedArgsInfos,
             true
         ),
         ( if set.contains(ProcAnalysisKinds, pak_mm_tabling) then
-            list.foldl3(write_pragma_mm_tabling_info_for_pred(ModuleInfo),
+            list.foldl3(
+                write_pragma_mm_tabling_info_for_pred(Stream, ModuleInfo),
                 OrderPredInfos, cord.init, MMTablingInfosCord,
                 is_first, _, !IO),
             !ParseTreePlainOpt ^ ptpo_mm_tabling :=
@@ -2535,7 +2550,7 @@ append_analysis_pragmas_to_opt_file(TmpOptStream, ModuleInfo, UnusedArgsInfos,
         ),
         ( if set.contains(ProcAnalysisKinds, pak_structure_sharing) then
             list.foldl3(
-                write_pragma_structure_sharing_for_pred(ModuleInfo),
+                write_pragma_structure_sharing_for_pred(Stream, ModuleInfo),
                 OrderPredInfos, cord.init, SharingInfosCord, is_first, _, !IO),
             !ParseTreePlainOpt ^ ptpo_struct_sharing :=
                 cord.list(SharingInfosCord)
@@ -2543,25 +2558,25 @@ append_analysis_pragmas_to_opt_file(TmpOptStream, ModuleInfo, UnusedArgsInfos,
             true
         ),
         ( if set.contains(ProcAnalysisKinds, pak_structure_reuse) then
-            list.foldl3(write_pragma_structure_reuse_for_pred(ModuleInfo),
+            list.foldl3(
+                write_pragma_structure_reuse_for_pred(Stream, ModuleInfo),
                 OrderPredInfos, cord.init, ReuseInfosCord, is_first, _, !IO),
             !ParseTreePlainOpt ^ ptpo_struct_reuse := cord.list(ReuseInfosCord)
         else
             true
-        ),
-
-        io.set_output_stream(OldOutputStream, _, !IO)
+        )
     ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred write_pragma_unused_args(pragma_info_unused_args::in,
-    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+:- pred write_pragma_unused_args(io.text_output_stream::in,
+    pragma_info_unused_args::in, maybe_first::in, maybe_first::out,
+    io::di, io::uo) is det.
 
-write_pragma_unused_args(UnusedArgInfo, !First, !IO) :-
-    maybe_write_nl(!First, !IO),
-    mercury_output_pragma_unused_args(UnusedArgInfo, !IO).
+write_pragma_unused_args(Stream, UnusedArgInfo, !First, !IO) :-
+    maybe_write_nl(Stream, !First, !IO),
+    mercury_output_pragma_unused_args(Stream, UnusedArgInfo, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -2569,11 +2584,12 @@ write_pragma_unused_args(UnusedArgInfo, !First, !IO) :-
     % it is not a builtin and it is not a predicate used to force type
     % specialization.
     %
-:- pred write_pragma_termination_for_pred(module_info::in, order_pred_info::in,
+:- pred write_pragma_termination_for_pred(io.text_output_stream::in,
+    module_info::in, order_pred_info::in,
     cord(item_termination)::in, cord(item_termination)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-write_pragma_termination_for_pred(ModuleInfo, OrderPredInfo,
+write_pragma_termination_for_pred(Stream, ModuleInfo, OrderPredInfo,
         !TermInfosCord, !First, !IO) :-
     OrderPredInfo = order_pred_info(_PredName, _PredArity, _PredOrFunc,
         PredId, PredInfo),
@@ -2592,19 +2608,20 @@ write_pragma_termination_for_pred(ModuleInfo, OrderPredInfo,
         not set.member(PredId, TypeSpecForcePreds)
     then
         pred_info_get_proc_table(PredInfo, ProcTable),
-        map.foldl3(maybe_write_pragma_termination_for_proc(OrderPredInfo),
+        map.foldl3(
+            maybe_write_pragma_termination_for_proc(Stream, OrderPredInfo),
             ProcTable, !TermInfosCord, !First, !IO)
     else
         true
     ).
 
-:- pred maybe_write_pragma_termination_for_proc(order_pred_info::in,
-    proc_id::in, proc_info::in,
+:- pred maybe_write_pragma_termination_for_proc(io.text_output_stream::in,
+    order_pred_info::in, proc_id::in, proc_info::in,
     cord(item_termination)::in, cord(item_termination)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-maybe_write_pragma_termination_for_proc(OrderPredInfo, _ProcId, ProcInfo,
-        !TermInfosCord, !First, !IO) :-
+maybe_write_pragma_termination_for_proc(Stream, OrderPredInfo,
+        _ProcId, ProcInfo, !TermInfosCord, !First, !IO) :-
     ( if proc_info_is_valid_mode(ProcInfo) then
         OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
             _PredId, PredInfo),
@@ -2613,7 +2630,7 @@ maybe_write_pragma_termination_for_proc(OrderPredInfo, _ProcId, ProcInfo,
         proc_info_declared_argmodes(ProcInfo, ArgModes),
         proc_info_get_maybe_arg_size_info(ProcInfo, MaybeArgSize),
         proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination),
-        maybe_write_nl(!First, !IO),
+        maybe_write_nl(Stream, !First, !IO),
         PredNameModesPF =
             pred_name_modes_pf(PredSymName, ArgModes, PredOrFunc),
         MaybeParseTreeArgSize =
@@ -2624,7 +2641,7 @@ maybe_write_pragma_termination_for_proc(OrderPredInfo, _ProcId, ProcInfo,
             MaybeParseTreeArgSize, MaybeParseTreeTermination),
         ItemTerm = item_pragma_info(TermInfo, term.context_init, -1),
         cord.snoc(ItemTerm, !TermInfosCord),
-        write_pragma_termination_info(output_mercury, TermInfo, !IO)
+        write_pragma_termination_info(Stream, output_mercury, TermInfo, !IO)
     else
         true
     ).
@@ -2674,12 +2691,12 @@ maybe_termination_info_to_parse_tree(MaybeTermination)
     %   - the predicate is exported.
     %   - the predicate is not compiler generated.
     %
-:- pred write_pragma_termination2_for_pred(module_info::in,
-    order_pred_info::in,
+:- pred write_pragma_termination2_for_pred(io.text_output_stream::in,
+    module_info::in, order_pred_info::in,
     cord(item_termination2)::in, cord(item_termination2)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-write_pragma_termination2_for_pred(ModuleInfo, OrderPredInfo,
+write_pragma_termination2_for_pred(Stream, ModuleInfo, OrderPredInfo,
         !TermInfos2Cord, !First, !IO) :-
     OrderPredInfo = order_pred_info(_, _, _, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
@@ -2693,7 +2710,8 @@ write_pragma_termination2_for_pred(ModuleInfo, OrderPredInfo,
         not set.member(PredId, TypeSpecForcePreds)
     then
         pred_info_get_proc_table(PredInfo, ProcTable),
-        map.foldl3(maybe_write_pragma_termination2_for_proc(OrderPredInfo),
+        map.foldl3(
+            maybe_write_pragma_termination2_for_proc(Stream, OrderPredInfo),
             ProcTable, !TermInfos2Cord, !First, !IO)
     else
         true
@@ -2701,13 +2719,13 @@ write_pragma_termination2_for_pred(ModuleInfo, OrderPredInfo,
 
     % Write out a termination2_info pragma for the procedure.
     %
-:- pred maybe_write_pragma_termination2_for_proc(order_pred_info::in,
-    proc_id::in, proc_info::in,
+:- pred maybe_write_pragma_termination2_for_proc(io.text_output_stream::in,
+    order_pred_info::in, proc_id::in, proc_info::in,
     cord(item_termination2)::in, cord(item_termination2)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-maybe_write_pragma_termination2_for_proc(OrderPredInfo, _ProcId, ProcInfo,
-        !TermInfos2Cord, !First, !IO) :-
+maybe_write_pragma_termination2_for_proc(Stream, OrderPredInfo,
+        _ProcId, ProcInfo, !TermInfos2Cord, !First, !IO) :-
     ( if proc_info_is_valid_mode(ProcInfo) then
         OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
             _PredId, PredInfo),
@@ -2747,17 +2765,17 @@ maybe_write_pragma_termination2_for_proc(OrderPredInfo, _ProcId, ProcInfo,
         ItemTerm2 = item_pragma_info(TermInfo2, term.context_init, -1),
         cord.snoc(ItemTerm2, !TermInfos2Cord),
 
-        maybe_write_nl(!First, !IO),
-        io.write_string(":- pragma termination2_info(", !IO),
+        maybe_write_nl(Stream, !First, !IO),
+        io.write_string(Stream, ":- pragma termination2_info(", !IO),
         (
             PredOrFunc = pf_predicate,
-            mercury_output_pred_mode_subdecl(output_mercury, varset.init,
-                PredSymName, ArgModes, no, !IO)
+            mercury_output_pred_mode_subdecl(Stream, output_mercury,
+                varset.init, PredSymName, ArgModes, no, !IO)
         ;
             PredOrFunc = pf_function,
             pred_args_to_func_args(ArgModes, FuncArgModes, ReturnMode),
-            mercury_output_func_mode_subdecl(output_mercury, varset.init,
-                PredSymName, FuncArgModes, ReturnMode, no, !IO)
+            mercury_output_func_mode_subdecl(Stream, output_mercury,
+                varset.init, PredSymName, FuncArgModes, ReturnMode, no, !IO)
         ),
 
         list.length(HeadSizeVars, NumHeadSizeVars),
@@ -2765,52 +2783,56 @@ maybe_write_pragma_termination2_for_proc(OrderPredInfo, _ProcId, ProcInfo,
         map.det_insert_from_corresponding_lists(HeadSizeVars, HeadSizeVarIds,
             map.init, VarToVarIdMap),
 
-        io.write_string(", ", !IO),
-        output_maybe_constr_arg_size_info(VarToVarIdMap,
+        io.write_string(Stream, ", ", !IO),
+        output_maybe_constr_arg_size_info(Stream, VarToVarIdMap,
             MaybeSuccessConstraints, !IO),
-        io.write_string(", ", !IO),
-        output_maybe_constr_arg_size_info(VarToVarIdMap,
+        io.write_string(Stream, ", ", !IO),
+        output_maybe_constr_arg_size_info(Stream, VarToVarIdMap,
             MaybeFailureConstraints, !IO),
-        io.write_string(", ", !IO),
-        output_maybe_constr_termination_info(MaybeTermination, !IO),
-        io.write_string(").\n", !IO)
+        io.write_string(Stream, ", ", !IO),
+        io.write_string(Stream, 
+            maybe_constr_termination_info_to_string(MaybeTermination), !IO),
+        io.write_string(Stream, ").\n", !IO)
     else
         true
     ).
 
 %---------------------%
 
-:- pred output_maybe_constr_arg_size_info(map(size_var, int)::in,
-    maybe(constr_arg_size_info)::in, io::di, io::uo) is det.
+:- pred output_maybe_constr_arg_size_info(io.text_output_stream::in,
+    map(size_var, int)::in, maybe(constr_arg_size_info)::in,
+    io::di, io::uo) is det.
 
-output_maybe_constr_arg_size_info(VarToVarIdMap, MaybeArgSizeConstrs, !IO) :-
+output_maybe_constr_arg_size_info(Stream, VarToVarIdMap, MaybeArgSizeConstrs,
+        !IO) :-
     (
         MaybeArgSizeConstrs = no,
-        io.write_string("not_set", !IO)
+        io.write_string(Stream, "not_set", !IO)
     ;
         MaybeArgSizeConstrs = yes(Polyhedron),
-        io.write_string("constraints(", !IO),
+        io.write_string(Stream, "constraints(", !IO),
         Constraints0 = polyhedron.non_false_constraints(Polyhedron),
         Constraints1 = list.filter(isnt(nonneg_constr), Constraints0),
         Constraints  = list.sort(Constraints1),
-        OutputVar = (func(Var) = int_to_string(VarToVarIdMap ^ det_elem(Var))),
-        lp_rational.output_constraints(OutputVar, Constraints, !IO),
-        io.write_char(')', !IO)
+        LookupVar =
+            (func(Var) = int_to_string(map.lookup(VarToVarIdMap, Var))),
+        lp_rational.output_constraints(Stream, LookupVar, Constraints, !IO),
+        io.write_char(Stream, ')', !IO)
     ).
 
-:- pred output_maybe_constr_termination_info(
-    maybe(constr_termination_info)::in, io::di, io::uo) is det.
+:- func maybe_constr_termination_info_to_string(maybe(constr_termination_info))
+    = string.
 
-output_maybe_constr_termination_info(MaybeConstrTermInfo, !IO) :-
+maybe_constr_termination_info_to_string(MaybeConstrTermInfo) = Str :-
     (
         MaybeConstrTermInfo = no,
-        io.write_string("not_set", !IO)
+        Str = "not_set"
     ;
         MaybeConstrTermInfo = yes(cannot_loop(_)),
-        io.write_string("cannot_loop", !IO)
+        Str = "cannot_loop"
     ;
         MaybeConstrTermInfo = yes(can_loop(_)),
-        io.write_string("can_loop", !IO)
+        Str = "can_loop"
     ).
 
 %---------------------%
@@ -2862,24 +2884,26 @@ lp_term_to_arg_size_term(VarToVarIdMap, LPTerm, ArgSizeTerm) :-
 
     % Write out the exception pragmas for this predicate.
     %
-:- pred write_pragma_exceptions_for_pred(module_info::in, order_pred_info::in,
+:- pred write_pragma_exceptions_for_pred(io.text_output_stream::in,
+    module_info::in, order_pred_info::in,
     cord(item_exceptions)::in, cord(item_exceptions)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-write_pragma_exceptions_for_pred(ModuleInfo, OrderPredInfo,
+write_pragma_exceptions_for_pred(Stream, ModuleInfo, OrderPredInfo,
         !ExceptionsCord, !First, !IO) :-
     OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.foldl3(
-        maybe_write_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo),
+        maybe_write_pragma_exceptions_for_proc(Stream, ModuleInfo,
+            OrderPredInfo),
         ProcTable, !ExceptionsCord, !First, !IO).
 
-:- pred maybe_write_pragma_exceptions_for_proc(module_info::in,
-    order_pred_info::in, proc_id::in, proc_info::in,
+:- pred maybe_write_pragma_exceptions_for_proc(io.text_output_stream::in,
+    module_info::in, order_pred_info::in, proc_id::in, proc_info::in,
     cord(item_exceptions)::in, cord(item_exceptions)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-maybe_write_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
+maybe_write_pragma_exceptions_for_proc(Stream, ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !ExceptionsCord, !First, !IO) :-
     OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
         PredId, PredInfo),
@@ -2911,8 +2935,8 @@ maybe_write_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
         ExceptionInfo = pragma_info_exceptions(PredNameArityPFMn, Status),
         ItemException = item_pragma_info(ExceptionInfo, term.context_init, -1),
         cord.snoc(ItemException, !ExceptionsCord),
-        maybe_write_nl(!First, !IO),
-        mercury_output_pragma_exceptions(ExceptionInfo, !IO)
+        maybe_write_nl(Stream, !First, !IO),
+        mercury_output_pragma_exceptions(Stream, ExceptionInfo, !IO)
     else
         true
     ).
@@ -2921,25 +2945,26 @@ maybe_write_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
 
     % Write out the trailing_info pragma for this module.
     %
-:- pred write_pragma_trailing_info_for_pred(module_info::in,
-    order_pred_info::in,
+:- pred write_pragma_trailing_info_for_pred(io.text_output_stream::in,
+    module_info::in, order_pred_info::in,
     cord(item_trailing)::in, cord(item_trailing)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-write_pragma_trailing_info_for_pred(ModuleInfo, OrderPredInfo,
+write_pragma_trailing_info_for_pred(Stream, ModuleInfo, OrderPredInfo,
         !TrailingInfosCord, !First, !IO) :-
     OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.foldl3(
-        maybe_write_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo),
+        maybe_write_pragma_trailing_info_for_proc(Stream, ModuleInfo,
+            OrderPredInfo),
         ProcTable, !TrailingInfosCord, !First, !IO).
 
-:- pred maybe_write_pragma_trailing_info_for_proc(module_info::in,
-    order_pred_info::in, proc_id::in, proc_info::in,
+:- pred maybe_write_pragma_trailing_info_for_proc(io.text_output_stream::in,
+    module_info::in, order_pred_info::in, proc_id::in, proc_info::in,
     cord(item_trailing)::in, cord(item_trailing)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-maybe_write_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo,
+maybe_write_pragma_trailing_info_for_proc(Stream, ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !TrailingInfosCord, !First, !IO) :-
     OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
         PredId, PredInfo),
@@ -2960,8 +2985,8 @@ maybe_write_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo,
         TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn, Status),
         ItemTrailing = item_pragma_info(TrailingInfo, term.context_init, -1),
         cord.snoc(ItemTrailing, !TrailingInfosCord),
-        maybe_write_nl(!First, !IO),
-        mercury_output_pragma_trailing_info(TrailingInfo, !IO)
+        maybe_write_nl(Stream, !First, !IO),
+        mercury_output_pragma_trailing_info(Stream, TrailingInfo, !IO)
     else
         true
     ).
@@ -2970,25 +2995,26 @@ maybe_write_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo,
 
     % Write out the mm_tabling_info pragma for this predicate.
     %
-:- pred write_pragma_mm_tabling_info_for_pred(module_info::in,
-    order_pred_info::in,
+:- pred write_pragma_mm_tabling_info_for_pred(io.text_output_stream::in,
+    module_info::in, order_pred_info::in,
     cord(item_mm_tabling)::in, cord(item_mm_tabling)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-write_pragma_mm_tabling_info_for_pred(ModuleInfo, OrderPredInfo,
+write_pragma_mm_tabling_info_for_pred(Stream, ModuleInfo, OrderPredInfo,
         !MMTablingInfosCord, !First, !IO) :-
     OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.foldl3(
-        maybe_write_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo),
+        maybe_write_pragma_mm_tabling_info_for_proc(Stream, ModuleInfo,
+            OrderPredInfo),
         ProcTable, !MMTablingInfosCord, !First, !IO).
 
-:- pred maybe_write_pragma_mm_tabling_info_for_proc(module_info::in,
-    order_pred_info::in, proc_id::in, proc_info::in,
+:- pred maybe_write_pragma_mm_tabling_info_for_proc(io.text_output_stream::in,
+    module_info::in, order_pred_info::in, proc_id::in, proc_info::in,
     cord(item_mm_tabling)::in, cord(item_mm_tabling)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-maybe_write_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo,
+maybe_write_pragma_mm_tabling_info_for_proc(Stream, ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !MMTablingInfosCord, !First, !IO) :-
     OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
         PredId, PredInfo),
@@ -3010,35 +3036,36 @@ maybe_write_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo,
             Status),
         ItemMMTabling = item_pragma_info(MMTablingInfo, term.context_init, -1),
         cord.snoc(ItemMMTabling, !MMTablingInfosCord),
-        maybe_write_nl(!First, !IO),
-        mercury_output_pragma_mm_tabling_info(MMTablingInfo, !IO)
+        maybe_write_nl(Stream, !First, !IO),
+        mercury_output_pragma_mm_tabling_info(Stream, MMTablingInfo, !IO)
     else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_pragma_structure_sharing_for_pred(module_info::in,
-    order_pred_info::in,
+:- pred write_pragma_structure_sharing_for_pred(io.text_output_stream::in,
+    module_info::in, order_pred_info::in,
     cord(item_struct_sharing)::in, cord(item_struct_sharing)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-write_pragma_structure_sharing_for_pred(ModuleInfo, OrderPredInfo,
+write_pragma_structure_sharing_for_pred(Stream, ModuleInfo, OrderPredInfo,
         !SharingInfosCord, !First, !IO) :-
     OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.foldl3(
-        maybe_write_pragma_structure_sharing_for_proc(ModuleInfo,
+        maybe_write_pragma_structure_sharing_for_proc(Stream, ModuleInfo,
             OrderPredInfo),
         ProcTable, !SharingInfosCord, !First, !IO).
 
-:- pred maybe_write_pragma_structure_sharing_for_proc(module_info::in,
+:- pred maybe_write_pragma_structure_sharing_for_proc(
+    io.text_output_stream::in, module_info::in,
     order_pred_info::in, proc_id::in, proc_info::in,
     cord(item_struct_sharing)::in, cord(item_struct_sharing)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-maybe_write_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
-        ProcId, ProcInfo, !SharingInfosCord, !First, !IO) :-
+maybe_write_pragma_structure_sharing_for_proc(Stream, ModuleInfo,
+        OrderPredInfo, ProcId, ProcInfo, !SharingInfosCord, !First, !IO) :-
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
     ( if
@@ -3064,34 +3091,35 @@ maybe_write_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
             HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Sharing)),
         ItemSharing = item_pragma_info(SharingInfo, term.context_init, -1),
         cord.snoc(ItemSharing, !SharingInfosCord),
-        maybe_write_nl(!First, !IO),
-        write_pragma_structure_sharing_info(output_debug, SharingInfo, !IO)
+        maybe_write_nl(Stream, !First, !IO),
+        write_pragma_structure_sharing_info(Stream, output_debug,
+            SharingInfo, !IO)
     else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_pragma_structure_reuse_for_pred(module_info::in,
-    order_pred_info::in,
+:- pred write_pragma_structure_reuse_for_pred(io.text_output_stream::in,
+    module_info::in, order_pred_info::in,
     cord(item_struct_reuse)::in, cord(item_struct_reuse)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-write_pragma_structure_reuse_for_pred(ModuleInfo, OrderPredInfo,
+write_pragma_structure_reuse_for_pred(Stream, ModuleInfo, OrderPredInfo,
         !ReuseInfosCord, !First, !IO) :-
     OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.foldl3(
-        maybe_write_pragma_structure_reuse_for_proc(ModuleInfo,
+        maybe_write_pragma_structure_reuse_for_proc(Stream, ModuleInfo,
             OrderPredInfo),
         ProcTable, !ReuseInfosCord, !First, !IO).
 
-:- pred maybe_write_pragma_structure_reuse_for_proc(module_info::in,
-    order_pred_info::in, proc_id::in, proc_info::in,
+:- pred maybe_write_pragma_structure_reuse_for_proc(io.text_output_stream::in,
+    module_info::in, order_pred_info::in, proc_id::in, proc_info::in,
     cord(item_struct_reuse)::in, cord(item_struct_reuse)::out,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
 
-maybe_write_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
+maybe_write_pragma_structure_reuse_for_proc(Stream, ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !ReuseInfosCord, !First, !IO) :-
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
@@ -3119,7 +3147,7 @@ maybe_write_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
             HeadVars, HeadVarTypes, VarSet, TypeVarSet, yes(Reuse)),
         ItemReuse = item_pragma_info(ReuseInfo, term.context_init, -1),
         cord.snoc(ItemReuse, !ReuseInfosCord),
-        write_pragma_structure_reuse_info(output_debug,
+        write_pragma_structure_reuse_info(Stream, output_debug,
             ReuseInfo,!IO)
     else
         true
@@ -3442,12 +3470,11 @@ intermod_info_set_need_foreign_import_modules(!IntermodInfo) :-
 
 %---------------------------------------------------------------------------%
 
-write_trans_opt_file(TmpOptStream, ModuleInfo, ParseTreeTransOpt, !IO) :-
+write_trans_opt_file(Stream, ModuleInfo, ParseTreeTransOpt, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
-    io.set_output_stream(TmpOptStream, OldOutputStream, !IO),
-    io.write_string(":- module ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io.write_string(".\n", !IO),
+    io.write_string(Stream, ":- module ", !IO),
+    mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
+    io.write_string(Stream, ".\n", !IO),
 
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, experiment5, Experiment5),
@@ -3479,9 +3506,9 @@ write_trans_opt_file(TmpOptStream, ModuleInfo, ParseTreeTransOpt, !IO) :-
 
     ( if set.contains(ProcAnalysisKinds, pak_termination) then
         list.foldl3(
-            write_pragma_termination_for_pred(ModuleInfo),
-            NoReuseOrderPredInfos, cord.init, TermInfosCord,
-            StartIsFirst, _, !IO),
+            write_pragma_termination_for_pred(Stream, ModuleInfo),
+            NoReuseOrderPredInfos,
+            cord.init, TermInfosCord, StartIsFirst, _, !IO),
         TermInfos = cord.list(TermInfosCord)
     else
         TermInfos = []
@@ -3489,9 +3516,9 @@ write_trans_opt_file(TmpOptStream, ModuleInfo, ParseTreeTransOpt, !IO) :-
 
     ( if set.contains(ProcAnalysisKinds, pak_termination2) then
         list.foldl3(
-            write_pragma_termination2_for_pred(ModuleInfo),
-            NoReuseOrderPredInfos, cord.init, TermInfos2Cord,
-            StartIsFirst, _, !IO),
+            write_pragma_termination2_for_pred(Stream, ModuleInfo),
+            NoReuseOrderPredInfos,
+            cord.init, TermInfos2Cord, StartIsFirst, _, !IO),
         TermInfos2 = cord.list(TermInfos2Cord)
     else
         TermInfos2 = []
@@ -3499,9 +3526,9 @@ write_trans_opt_file(TmpOptStream, ModuleInfo, ParseTreeTransOpt, !IO) :-
 
     ( if set.contains(ProcAnalysisKinds, pak_exception) then
         list.foldl3(
-            write_pragma_exceptions_for_pred(ModuleInfo),
-            NoReuseOrderPredInfos, cord.init, ExceptionsCord,
-            StartIsFirst, _, !IO),
+            write_pragma_exceptions_for_pred(Stream, ModuleInfo),
+            NoReuseOrderPredInfos,
+            cord.init, ExceptionsCord, StartIsFirst, _, !IO),
         Exceptions = cord.list(ExceptionsCord)
     else
         Exceptions = []
@@ -3509,9 +3536,9 @@ write_trans_opt_file(TmpOptStream, ModuleInfo, ParseTreeTransOpt, !IO) :-
 
     ( if set.contains(ProcAnalysisKinds, pak_trailing) then
         list.foldl3(
-            write_pragma_trailing_info_for_pred(ModuleInfo),
-            NoReuseOrderPredInfos, cord.init, TrailingInfosCord,
-            StartIsFirst, _, !IO),
+            write_pragma_trailing_info_for_pred(Stream, ModuleInfo),
+            NoReuseOrderPredInfos,
+            cord.init, TrailingInfosCord, StartIsFirst, _, !IO),
         TrailingInfos = cord.list(TrailingInfosCord)
     else
         TrailingInfos = []
@@ -3519,9 +3546,9 @@ write_trans_opt_file(TmpOptStream, ModuleInfo, ParseTreeTransOpt, !IO) :-
 
     ( if set.contains(ProcAnalysisKinds, pak_mm_tabling) then
         list.foldl3(
-            write_pragma_mm_tabling_info_for_pred(ModuleInfo),
-            NoReuseOrderPredInfos, cord.init, MMTablingInfosCord,
-            StartIsFirst, _, !IO),
+            write_pragma_mm_tabling_info_for_pred(Stream, ModuleInfo),
+            NoReuseOrderPredInfos,
+            cord.init, MMTablingInfosCord, StartIsFirst, _, !IO),
         MMTablingInfos = cord.list(MMTablingInfosCord)
     else
         MMTablingInfos = []
@@ -3529,9 +3556,9 @@ write_trans_opt_file(TmpOptStream, ModuleInfo, ParseTreeTransOpt, !IO) :-
 
     ( if set.contains(ProcAnalysisKinds, pak_structure_sharing) then
         list.foldl3(
-            write_pragma_structure_sharing_for_pred(ModuleInfo),
-            NoReuseOrderPredInfos, cord.init, SharingInfosCord,
-            StartIsFirst, _, !IO),
+            write_pragma_structure_sharing_for_pred(Stream, ModuleInfo),
+            NoReuseOrderPredInfos,
+            cord.init, SharingInfosCord, StartIsFirst, _, !IO),
         SharingInfos = cord.list(SharingInfosCord)
     else
         SharingInfos = []
@@ -3539,9 +3566,9 @@ write_trans_opt_file(TmpOptStream, ModuleInfo, ParseTreeTransOpt, !IO) :-
 
     ( if set.contains(ProcAnalysisKinds, pak_structure_reuse) then
         list.foldl3(
-            write_pragma_structure_reuse_for_pred(ModuleInfo),
-            NoReuseOrderPredInfos, cord.init, ReuseInfosCord,
-            StartIsFirst, _, !IO),
+            write_pragma_structure_reuse_for_pred(Stream, ModuleInfo),
+            NoReuseOrderPredInfos,
+            cord.init, ReuseInfosCord, StartIsFirst, _, !IO),
         ReuseInfos = cord.list(ReuseInfosCord)
     else
         ReuseInfos = []
@@ -3549,8 +3576,7 @@ write_trans_opt_file(TmpOptStream, ModuleInfo, ParseTreeTransOpt, !IO) :-
 
     ParseTreeTransOpt = parse_tree_trans_opt(ModuleName, term.context_init,
         TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
-        SharingInfos, ReuseInfos),
-    io.set_output_stream(OldOutputStream, _, !IO).
+        SharingInfos, ReuseInfos).
 
 %---------------------------------------------------------------------------%
 

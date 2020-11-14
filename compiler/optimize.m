@@ -223,13 +223,12 @@ output_first_opt_debug(Info, FileName, ProcLabel, Instrs0, Counter, !IO) :-
         io.open_output(FileName, Res, !IO),
         (
             Res = ok(FileStream),
-            io.set_output_stream(FileStream, OutputStream, !IO),
             counter.allocate(NextLabel, Counter, _),
-            opt_debug.msg(yes, NextLabel, "before optimization", !IO),
+            opt_debug.msg(FileStream, yes, NextLabel,
+                "before optimization", !IO),
             AutoComments = Info ^ lopt_auto_comments,
-            opt_debug.maybe_write_instrs(yes, AutoComments,
+            opt_debug.maybe_write_instrs(FileStream, yes, AutoComments,
                 yes(ProcLabel), Instrs0, !IO),
-            io.set_output_stream(OutputStream, _, !IO),
             io.close_output(FileStream, !IO)
         ;
             Res = error(_),
@@ -279,19 +278,17 @@ maybe_opt_debug(Info, Instrs, Counter, Suffix, Msg, ProcLabel,
             io.open_output(OptFileName, Res, !IO),
             (
                 Res = ok(FileStream),
-                io.set_output_stream(FileStream, OutputStream, !IO),
                 counter.allocate(NextLabel, Counter, _),
-                opt_debug.msg(yes, NextLabel, Msg, !IO),
+                opt_debug.msg(FileStream, yes, NextLabel, Msg, !IO),
                 (
                     Same = yes,
                     io.write_string("same as previous version\n", !IO)
                 ;
                     Same = no,
                     AutoComments = Info ^ lopt_auto_comments,
-                    opt_debug.maybe_write_instrs(yes, AutoComments,
+                    opt_debug.maybe_write_instrs(FileStream, yes, AutoComments,
                         yes(ProcLabel), Instrs, !IO)
                 ),
-                io.set_output_stream(OutputStream, _, !IO),
                 io.close_output(FileStream, !IO)
             ;
                 Res = error(_),

@@ -25,28 +25,29 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_clause(merc_out_info::in, item_clause_info::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_item_clause(merc_out_info::in,
+    io.text_output_stream::in, item_clause_info::in, io::di, io::uo) is det.
 
 :- pred output_instance_method_clause(sym_name::in, item_clause_info::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_goal(prog_varset::in, int::in, goal::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_goal(io.text_output_stream::in, prog_varset::in,
+    int::in, goal::in, io::di, io::uo) is det.
 
-:- pred write_goal_warnings(goal_warning::in, list(goal_warning)::in,
-    io::di, io::uo) is det.
+:- pred write_goal_warnings(io.text_output_stream::in, goal_warning::in,
+    list(goal_warning)::in, io::di, io::uo) is det.
 
-:- pred mercury_output_trace_expr(pred(T, io, io)::in(pred(in, di, uo) is det),
+:- pred mercury_output_trace_expr(io.text_output_stream::in,
+    pred(T, io.text_output_stream, io, io)::in(pred(in, in, di, uo) is det),
     trace_expr(T)::in, io::di, io::uo) is det.
 
 :- pred mercury_output_trace_compiletime(trace_compiletime::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
 :- pred mercury_output_trace_runtime(trace_runtime::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -69,34 +70,36 @@
 
 %---------------------------------------------------------------------------%
 
-mercury_output_item_clause(Info, ItemClause, !IO) :-
+mercury_output_item_clause(Info, Stream, ItemClause, !IO) :-
     ItemClause = item_clause_info(PredName0, PredOrFunc, ArgTerms, _MaybeAttrs,
         VarSet, MaybeBodyGoal, Context, _SeqNum),
     get_clause_body_goal(MaybeBodyGoal, BodyGoal),
     maybe_unqualify_sym_name(Info, PredName0, PredName),
-    maybe_output_line_number(Info, Context, !IO),
+    maybe_output_line_number(Info, Context, Stream, !IO),
     (
         PredOrFunc = pf_predicate,
-        mercury_output_pred_clause(VarSet, PredName, ArgTerms, BodyGoal, !IO)
+        mercury_output_pred_clause(Stream, VarSet, PredName,
+            ArgTerms, BodyGoal, !IO)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(ArgTerms, FuncArgTerms, ResultTerm),
-        mercury_output_func_clause(VarSet, PredName, FuncArgTerms, ResultTerm,
-            BodyGoal, !IO)
+        mercury_output_func_clause(Stream, VarSet, PredName,
+            FuncArgTerms, ResultTerm, BodyGoal, !IO)
     ),
-    io.write_string(".\n", !IO).
+    io.write_string(Stream, ".\n", !IO).
 
-output_instance_method_clause(MethodName, ItemClause, !IO) :-
+output_instance_method_clause(MethodName, ItemClause, Stream, !IO) :-
     ItemClause = item_clause_info(_PredName, PredOrFunc, ArgTerms, _MaybeAttrs,
         VarSet, MaybeBodyGoal, _Context, _SeqNum),
     get_clause_body_goal(MaybeBodyGoal, BodyGoal),
     (
         PredOrFunc = pf_predicate,
-        mercury_output_pred_clause(VarSet, MethodName, ArgTerms, BodyGoal, !IO)
+        mercury_output_pred_clause(Stream, VarSet, MethodName,
+            ArgTerms, BodyGoal, !IO)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(ArgTerms, FuncArgTerms, ResultTerm),
-        mercury_output_func_clause(VarSet, MethodName,
+        mercury_output_func_clause(Stream, VarSet, MethodName,
             FuncArgTerms, ResultTerm, BodyGoal, !IO)
     ).
 
@@ -113,277 +116,283 @@ get_clause_body_goal(MaybeBodyGoal, BodyGoal) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_pred_clause(prog_varset::in, sym_name::in,
-    list(prog_term)::in, goal::in, io::di, io::uo) is det.
+:- pred mercury_output_pred_clause(io.text_output_stream::in, prog_varset::in,
+    sym_name::in, list(prog_term)::in, goal::in, io::di, io::uo) is det.
 
-mercury_output_pred_clause(VarSet, PredName, Args, Body, !IO) :-
-    mercury_output_sym_name(PredName, !IO),
+mercury_output_pred_clause(Stream, VarSet, PredName, Args, Body, !IO) :-
+    mercury_output_sym_name(PredName, Stream, !IO),
     (
         Args = [HeadArg | TailArgs],
-        io.write_string("(", !IO),
+        io.write_string(Stream, "(", !IO),
         mercury_format_comma_separated_terms(VarSet, print_name_only,
-            HeadArg, TailArgs, !IO),
-        io.write_string(")", !IO)
+            HeadArg, TailArgs, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Args = []
     ),
     ( if Body = true_expr(_) then
         true
     else
-        io.write_string(" :-\n\t", !IO),
-        mercury_output_goal(VarSet, 1, Body, !IO)
+        io.write_string(Stream, " :-\n\t", !IO),
+        mercury_output_goal(Stream, VarSet, 1, Body, !IO)
     ).
 
-:- pred mercury_output_func_clause(prog_varset::in, sym_name::in,
-    list(prog_term)::in, prog_term::in, goal::in, io::di, io::uo) is det.
+:- pred mercury_output_func_clause(io.text_output_stream::in, prog_varset::in,
+    sym_name::in, list(prog_term)::in, prog_term::in, goal::in,
+    io::di, io::uo) is det.
 
-mercury_output_func_clause(VarSet, PredName, Args, Result, Body, !IO) :-
-    mercury_output_sym_name(PredName, !IO),
+mercury_output_func_clause(Stream, VarSet, PredName, Args, Result,
+        Body, !IO) :-
+    mercury_output_sym_name(PredName, Stream, !IO),
     (
         Args = [HeadArg | TailArgs],
-        io.write_string("(", !IO),
+        io.write_string(Stream, "(", !IO),
         mercury_format_comma_separated_terms(VarSet, print_name_only,
-            HeadArg, TailArgs, !IO),
-        io.write_string(")", !IO)
+            HeadArg, TailArgs, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Args = []
     ),
-    io.write_string(" = ", !IO),
+    io.write_string(Stream, " = ", !IO),
     ( if Body = true_expr(_) then
         mercury_format_term_nq(VarSet, print_name_only, next_to_graphic_token,
-            Result, !IO)
+            Result, Stream, !IO)
     else
-        mercury_format_term(VarSet, print_name_only, Result, !IO),
-        io.write_string(" :-\n\t", !IO),
-        mercury_output_goal(VarSet, 1, Body, !IO)
+        mercury_format_term(VarSet, print_name_only, Result, Stream, !IO),
+        io.write_string(Stream, " :-\n\t", !IO),
+        mercury_output_goal(Stream, VarSet, 1, Body, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_goal(VarSet, Indent, Goal, !IO) :-
+mercury_output_goal(Stream, VarSet, Indent, Goal, !IO) :-
     (
         Goal = fail_expr(_),
-        io.write_string("fail", !IO)
+        io.write_string(Stream, "fail", !IO)
     ;
         Goal = true_expr(_),
-        io.write_string("true", !IO)
+        io.write_string(Stream, "true", !IO)
     ;
         Goal = implies_expr(_, SubGoalA, SubGoalB),
         Indent1 = Indent + 1,
-        io.write_string("(", !IO),
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_connected_goal(VarSet, Indent1, SubGoalA, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string("=>", !IO),
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_connected_goal(VarSet, Indent1, SubGoalB, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "(", !IO),
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_connected_goal(Stream, VarSet, Indent1, SubGoalA, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, "=>", !IO),
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_connected_goal(Stream, VarSet, Indent1, SubGoalB, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = equivalent_expr(_, SubGoalA, SubGoalB),
         Indent1 = Indent + 1,
-        io.write_string("(", !IO),
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_connected_goal(VarSet, Indent1, SubGoalA, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string("<=>", !IO),
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_connected_goal(VarSet, Indent1, SubGoalB, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "(", !IO),
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_connected_goal(Stream, VarSet, Indent1, SubGoalA, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, "<=>", !IO),
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_connected_goal(Stream, VarSet, Indent1, SubGoalB, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = quant_expr(QuantType, QuantVarsKind, _, Vars, SubGoal),
         (
             Vars = [],
-            mercury_output_goal(VarSet, Indent, SubGoal, !IO)
+            mercury_output_goal(Stream, VarSet, Indent, SubGoal, !IO)
         ;
             Vars = [_ | _],
             (
                 QuantType = quant_some,
-                io.write_string("some", !IO)
+                io.write_string(Stream, "some", !IO)
             ;
                 QuantType = quant_all,
-                io.write_string("all", !IO)
+                io.write_string(Stream, "all", !IO)
             ),
-            io.write_string("[", !IO),
+            io.write_string(Stream, "[", !IO),
             (
                 QuantVarsKind = quant_ordinary_vars,
-                mercury_output_vars(VarSet, print_name_only, Vars, !IO)
+                mercury_output_vars(VarSet, print_name_only, Vars, Stream, !IO)
             ;
                 QuantVarsKind = quant_state_vars,
-                mercury_output_state_vars(VarSet, print_name_only, Vars, !IO)
+                mercury_output_state_vars(VarSet, print_name_only, Vars,
+                    Stream, !IO)
             ),
-            io.write_string("] (", !IO),
+            io.write_string(Stream, "] (", !IO),
             Indent1 = Indent + 1,
-            mercury_output_newline(Indent1, !IO),
-            mercury_output_goal(VarSet, Indent1, SubGoal, !IO),
-            mercury_output_newline(Indent, !IO),
-            io.write_string(")", !IO)
+            mercury_output_newline(Indent1, Stream, !IO),
+            mercury_output_goal(Stream, VarSet, Indent1, SubGoal, !IO),
+            mercury_output_newline(Indent, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
         )
     ;
         Goal = promise_equivalent_solutions_expr(_, Vars, StateVars,
             DotSVars, ColonSVars, SubGoal),
-        mercury_output_promise_eqv_solutions_goal(VarSet, Indent,
+        mercury_output_promise_eqv_solutions_goal(Stream, VarSet, Indent,
             Vars, StateVars, DotSVars, ColonSVars, SubGoal,
             "promise_equivalent_solutions", !IO)
     ;
         Goal = promise_equivalent_solution_sets_expr(_, Vars, StateVars,
             DotSVars, ColonSVars, SubGoal),
-        mercury_output_promise_eqv_solutions_goal(VarSet, Indent,
+        mercury_output_promise_eqv_solutions_goal(Stream, VarSet, Indent,
             Vars, StateVars, DotSVars, ColonSVars, SubGoal,
             "promise_equivalent_solution_sets", !IO)
     ;
         Goal = promise_equivalent_solution_arbitrary_expr(_, Vars, StateVars,
             DotSVars, ColonSVars, SubGoal),
-        mercury_output_promise_eqv_solutions_goal(VarSet, Indent,
+        mercury_output_promise_eqv_solutions_goal(Stream, VarSet, Indent,
             Vars, StateVars, DotSVars, ColonSVars, SubGoal, "arbitrary", !IO)
     ;
         Goal = promise_purity_expr(_, Purity, SubGoal),
         (
             Purity = purity_pure,
-            io.write_string("promise_pure (", !IO)
+            io.write_string(Stream, "promise_pure (", !IO)
         ;
             Purity = purity_semipure,
-            io.write_string("promise_semipure (", !IO)
+            io.write_string(Stream, "promise_semipure (", !IO)
         ;
             Purity = purity_impure,
-            io.write_string("promise_impure (", !IO)
+            io.write_string(Stream, "promise_impure (", !IO)
         ),
         Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, SubGoal, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, SubGoal, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = require_detism_expr(_, Detism, SubGoal),
         (
             Detism = detism_det,
-            io.write_string("require_det", !IO)
+            io.write_string(Stream, "require_det", !IO)
         ;
             Detism = detism_semi,
-            io.write_string("require_semidet", !IO)
+            io.write_string(Stream, "require_semidet", !IO)
         ;
             Detism = detism_multi,
-            io.write_string("require_multi", !IO)
+            io.write_string(Stream, "require_multi", !IO)
         ;
             Detism = detism_non,
-            io.write_string("require_nondet", !IO)
+            io.write_string(Stream, "require_nondet", !IO)
         ;
             Detism = detism_cc_multi,
-            io.write_string("require_cc_multi", !IO)
+            io.write_string(Stream, "require_cc_multi", !IO)
         ;
             Detism = detism_cc_non,
-            io.write_string("require_cc_nondet", !IO)
+            io.write_string(Stream, "require_cc_nondet", !IO)
         ;
             Detism = detism_erroneous,
-            io.write_string("require_erroneous", !IO)
+            io.write_string(Stream, "require_erroneous", !IO)
         ;
             Detism = detism_failure,
-            io.write_string("require_failure", !IO)
+            io.write_string(Stream, "require_failure", !IO)
         ),
-        io.write_string(" (", !IO),
+        io.write_string(Stream, " (", !IO),
         Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, SubGoal, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, SubGoal, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = require_complete_switch_expr(_, Var, SubGoal),
-        io.write_string("require_complete_switch [", !IO),
-        mercury_output_plain_or_dot_var(VarSet, print_name_only, Var, !IO),
-        io.write_string("] (", !IO),
+        io.write_string(Stream, "require_complete_switch [", !IO),
+        mercury_output_plain_or_dot_var(Stream, VarSet, print_name_only, Var,
+            !IO),
+        io.write_string(Stream, "] (", !IO),
         Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, SubGoal, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, SubGoal, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = require_switch_arms_detism_expr(_, Var, Detism, SubGoal),
         (
             Detism = detism_det,
-            io.write_string("require_switch_arms_det", !IO)
+            io.write_string(Stream, "require_switch_arms_det", !IO)
         ;
             Detism = detism_semi,
-            io.write_string("require_switch_arms_semidet", !IO)
+            io.write_string(Stream, "require_switch_arms_semidet", !IO)
         ;
             Detism = detism_multi,
-            io.write_string("require_switch_arms_multi", !IO)
+            io.write_string(Stream, "require_switch_arms_multi", !IO)
         ;
             Detism = detism_non,
-            io.write_string("require_switch_arms_nondet", !IO)
+            io.write_string(Stream, "require_switch_arms_nondet", !IO)
         ;
             Detism = detism_cc_multi,
-            io.write_string("require_switch_arms_cc_multi", !IO)
+            io.write_string(Stream, "require_switch_arms_cc_multi", !IO)
         ;
             Detism = detism_cc_non,
-            io.write_string("require_switch_arms_cc_nondet", !IO)
+            io.write_string(Stream, "require_switch_arms_cc_nondet", !IO)
         ;
             Detism = detism_erroneous,
-            io.write_string("require_switch_arms_erroneous", !IO)
+            io.write_string(Stream, "require_switch_arms_erroneous", !IO)
         ;
             Detism = detism_failure,
-            io.write_string("require_switch_arms_failure", !IO)
+            io.write_string(Stream, "require_switch_arms_failure", !IO)
         ),
-        io.write_string(" [", !IO),
-        mercury_output_plain_or_dot_var(VarSet, print_name_only, Var, !IO),
-        io.write_string("] (", !IO),
+        io.write_string(Stream, " [", !IO),
+        mercury_output_plain_or_dot_var(Stream, VarSet, print_name_only,
+            Var, !IO),
+        io.write_string(Stream, "] (", !IO),
         Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, SubGoal, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, SubGoal, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = disable_warnings_expr(_, HeadWarning, TailWarnings, SubGoal),
-        io.write_string("disable_warnings [", !IO),
-        write_goal_warnings(HeadWarning, TailWarnings, !IO),
-        io.write_string("] (", !IO),
+        io.write_string(Stream, "disable_warnings [", !IO),
+        write_goal_warnings(Stream, HeadWarning, TailWarnings, !IO),
+        io.write_string(Stream, "] (", !IO),
         Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, SubGoal, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, SubGoal, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = atomic_expr(_, Outer, Inner, _, MainGoal, OrElseGoals),
-        io.write_string("atomic [outer(", !IO),
+        io.write_string(Stream, "atomic [outer(", !IO),
         (
             Outer = atomic_state_var(OVar),
-            io.write_string("!", !IO),
-            mercury_output_var(VarSet, print_name_only, OVar, !IO)
+            io.write_string(Stream, "!", !IO),
+            mercury_output_var(VarSet, print_name_only, OVar, Stream, !IO)
         ;
             Outer = atomic_var_pair(OuterDI, OuterUO),
-            mercury_output_var(VarSet, print_name_only, OuterDI, !IO),
-            io.write_string(", ", !IO),
-            mercury_output_var(VarSet, print_name_only, OuterUO, !IO)
+            mercury_output_var(VarSet, print_name_only, OuterDI, Stream, !IO),
+            io.write_string(Stream, ", ", !IO),
+            mercury_output_var(VarSet, print_name_only, OuterUO, Stream, !IO)
         ),
-        io.write_string("), inner(", !IO),
+        io.write_string(Stream, "), inner(", !IO),
         (
             Inner = atomic_state_var(IVar),
-            io.write_string("!", !IO),
-            mercury_output_var(VarSet, print_name_only, IVar, !IO)
+            io.write_string(Stream, "!", !IO),
+            mercury_output_var(VarSet, print_name_only, IVar, Stream, !IO)
         ;
             Inner = atomic_var_pair(InnerDI, InnerUO),
-            mercury_output_var(VarSet, print_name_only, InnerDI, !IO),
-            io.write_string(", ", !IO),
-            mercury_output_var(VarSet, print_name_only, InnerUO, !IO)
+            mercury_output_var(VarSet, print_name_only, InnerDI, Stream, !IO),
+            io.write_string(Stream, ", ", !IO),
+            mercury_output_var(VarSet, print_name_only, InnerUO, Stream, !IO)
         ),
-        io.write_string(")] (", !IO),
+        io.write_string(Stream, ")] (", !IO),
 
         Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_orelse_goals(VarSet, Indent1, [MainGoal | OrElseGoals],
-            !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_orelse_goals(Stream, VarSet, Indent1,
+            [MainGoal | OrElseGoals], !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = trace_expr(_, MaybeCompileTime, MaybeRunTime, MaybeIO,
             MutableVars, SubGoal),
-        mercury_output_newline(Indent, !IO),
-        io.write_string("trace [", !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, "trace [", !IO),
         some [!NeedComma] (
             !:NeedComma = no,
             (
                 MaybeCompileTime = yes(CompileTime),
-                mercury_output_trace_expr(mercury_output_trace_compiletime,
+                mercury_output_trace_expr(Stream,
+                    mercury_output_trace_compiletime,
                     CompileTime, !IO),
                 !:NeedComma = yes
             ;
@@ -391,8 +400,8 @@ mercury_output_goal(VarSet, Indent, Goal, !IO) :-
             ),
             (
                 MaybeRunTime = yes(RunTime),
-                mercury_output_comma_if_needed(!.NeedComma, !IO),
-                mercury_output_trace_expr(mercury_output_trace_runtime,
+                mercury_output_comma_if_needed(Stream, !.NeedComma, !IO),
+                mercury_output_trace_expr(Stream, mercury_output_trace_runtime,
                     RunTime, !IO),
                 !:NeedComma = yes
             ;
@@ -400,140 +409,143 @@ mercury_output_goal(VarSet, Indent, Goal, !IO) :-
             ),
             (
                 MaybeIO = yes(IOStateVar),
-                mercury_output_comma_if_needed(!.NeedComma, !IO),
-                io.write_string("io(!", !IO),
-                mercury_output_var(VarSet, print_name_only, IOStateVar, !IO),
-                io.write_string(")", !IO),
+                mercury_output_comma_if_needed(Stream, !.NeedComma, !IO),
+                io.write_string(Stream, "io(!", !IO),
+                mercury_output_var(VarSet, print_name_only, IOStateVar,
+                    Stream, !IO),
+                io.write_string(Stream, ")", !IO),
                 !:NeedComma = yes
             ;
                 MaybeIO = no
             ),
             list.foldl2(
-                mercury_output_trace_mutable_var_and_comma(VarSet,
+                mercury_output_trace_mutable_var_and_comma(Stream, VarSet,
                     print_name_only),
                 MutableVars, !.NeedComma, _, !IO)
         ),
-        io.write_string("]", !IO),
-        mercury_output_newline(Indent + 1, !IO),
-        mercury_output_goal(VarSet, Indent + 1, SubGoal, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "]", !IO),
+        mercury_output_newline(Indent + 1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent + 1, SubGoal, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = try_expr(_, MaybeIO, SubGoal, Then, MaybeElse, Catches,
             MaybeCatchAny),
-        io.write_string("(try [", !IO),
+        io.write_string(Stream, "(try [", !IO),
         (
             MaybeIO = yes(IOStateVar),
-            io.write_string("io(!", !IO),
-            mercury_output_var(VarSet, print_name_only, IOStateVar, !IO),
-            io.write_string(")", !IO)
+            io.write_string(Stream, "io(!", !IO),
+            mercury_output_var(VarSet, print_name_only, IOStateVar,
+                Stream, !IO),
+            io.write_string(Stream, ")", !IO)
         ;
             MaybeIO = no
         ),
-        io.write_string("] (", !IO),
+        io.write_string(Stream, "] (", !IO),
         Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, SubGoal, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string("then", !IO),
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, Then, !IO),
-        mercury_output_newline(Indent, !IO),
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, SubGoal, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, "then", !IO),
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, Then, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
         (
             MaybeElse = yes(Else),
-            io.write_string("else", !IO),
-            mercury_output_newline(Indent1, !IO),
-            mercury_output_goal(VarSet, Indent1, Else, !IO)
+            io.write_string(Stream, "else", !IO),
+            mercury_output_newline(Indent1, Stream, !IO),
+            mercury_output_goal(Stream, VarSet, Indent1, Else, !IO)
         ;
             MaybeElse = no
         ),
-        list.foldl(mercury_output_catch(VarSet, Indent), Catches, !IO),
+        list.foldl(mercury_output_catch(Stream, VarSet, Indent), Catches, !IO),
         (
             MaybeCatchAny = yes(catch_any_expr(CatchAnyVar, CatchAnyGoal)),
-            io.write_string("catch_any ", !IO),
-            mercury_output_var(VarSet, print_name_only, CatchAnyVar, !IO),
-            io.write_string(" ->", !IO),
-            mercury_output_newline(Indent1, !IO),
-            mercury_output_goal(VarSet, Indent1, CatchAnyGoal, !IO)
+            io.write_string(Stream, "catch_any ", !IO),
+            mercury_output_var(VarSet, print_name_only, CatchAnyVar,
+                Stream, !IO),
+            io.write_string(Stream, " ->", !IO),
+            mercury_output_newline(Indent1, Stream, !IO),
+            mercury_output_goal(Stream, VarSet, Indent1, CatchAnyGoal, !IO)
         ;
             MaybeCatchAny = no
         ),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = if_then_else_expr(_, Vars, StateVars, Cond, Then, Else),
-        io.write_string("(if", !IO),
-        mercury_output_some(VarSet, Vars, StateVars, !IO),
+        io.write_string(Stream, "(if", !IO),
+        mercury_output_some(Stream, VarSet, Vars, StateVars, !IO),
         Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, Cond, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string("then", !IO),
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, Then, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string("else", !IO),
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, Else, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, Cond, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, "then", !IO),
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, Then, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, "else", !IO),
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, Else, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = not_expr(_, SubGoal),
-        io.write_string("\\+ (", !IO),
+        io.write_string(Stream, "\\+ (", !IO),
         Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, SubGoal, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, SubGoal, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = conj_expr(_, SubGoalA, SubGoalB),
-        mercury_output_goal(VarSet, Indent, SubGoalA, !IO),
-        io.write_string(",", !IO),
-        mercury_output_newline(Indent, !IO),
-        mercury_output_goal(VarSet, Indent, SubGoalB, !IO)
+        mercury_output_goal(Stream, VarSet, Indent, SubGoalA, !IO),
+        io.write_string(Stream, ",", !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent, SubGoalB, !IO)
     ;
         Goal = par_conj_expr(_, SubGoalA, SubGoalB),
-        io.write_string("(", !IO),
+        io.write_string(Stream, "(", !IO),
         Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, SubGoalA, !IO),
-        mercury_output_par_conj(VarSet, Indent, SubGoalB, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, SubGoalA, !IO),
+        mercury_output_par_conj(Stream, VarSet, Indent, SubGoalB, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = disj_expr(_, SubGoalA, SubGoalB),
-        io.write_string("(", !IO),
+        io.write_string(Stream, "(", !IO),
         Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, SubGoalA, !IO),
-        mercury_output_disj(VarSet, Indent, SubGoalB, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, SubGoalA, !IO),
+        mercury_output_disj(Stream, VarSet, Indent, SubGoalB, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Goal = event_expr(_, Name, Terms),
-        io.write_string("event ", !IO),
-        mercury_output_call(VarSet, unqualified(Name), Terms, !IO)
+        io.write_string(Stream, "event ", !IO),
+        mercury_output_call(Stream, VarSet, unqualified(Name), Terms, !IO)
     ;
         Goal = call_expr(_, Name, Terms, Purity),
-        write_purity_prefix(Purity, !IO),
-        mercury_output_call(VarSet, Name, Terms, !IO)
+        add_purity_prefix(Purity, Stream, !IO),
+        mercury_output_call(Stream, VarSet, Name, Terms, !IO)
     ;
         Goal = unify_expr(_, TermA, TermB, Purity),
-        write_purity_prefix(Purity, !IO),
-        mercury_output_term(VarSet, print_name_only, TermA, !IO),
-        io.write_string(" = ", !IO),
+        add_purity_prefix(Purity, Stream, !IO),
+        mercury_output_term(VarSet, print_name_only, TermA, Stream, !IO),
+        io.write_string(Stream, " = ", !IO),
         mercury_output_term_nq(VarSet, print_name_only, next_to_graphic_token,
-            TermB, !IO)
+            TermB, Stream, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_connected_goal(prog_varset::in, int::in, goal::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_connected_goal(io.text_output_stream::in,
+    prog_varset::in, int::in, goal::in, io::di, io::uo) is det.
 
-mercury_output_connected_goal(VarSet, Indent, Goal, !IO) :-
+mercury_output_connected_goal(Stream, VarSet, Indent, Goal, !IO) :-
     (
         ( Goal = fail_expr(_)
         ; Goal = true_expr(_)
@@ -548,7 +560,7 @@ mercury_output_connected_goal(VarSet, Indent, Goal, !IO) :-
         ; Goal = call_expr(_, _, _, _)
         ; Goal = unify_expr(_, _, _, _)
         ),
-        mercury_output_goal(VarSet, Indent, Goal, !IO)
+        mercury_output_goal(Stream, VarSet, Indent, Goal, !IO)
     ;
         ( Goal = quant_expr(_, _, _, _, _)
         ; Goal = promise_equivalent_solutions_expr(_, _, _, _, _, _)
@@ -563,144 +575,147 @@ mercury_output_connected_goal(VarSet, Indent, Goal, !IO) :-
         ; Goal = atomic_expr(_, _, _, _, _, _)
         ; Goal = trace_expr(_, _, _, _, _, _)
         ),
-        io.write_string("(", !IO),
+        io.write_string(Stream, "(", !IO),
         Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, Goal, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, Goal, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_plain_or_dot_var(prog_varset::in, var_name_print::in,
-    plain_or_dot_var::in, io::di, io::uo) is det.
-
-mercury_output_plain_or_dot_var(VarSet, VarNamePrint, PODVar, !IO) :-
-    (
-        PODVar = podv_plain(Var),
-        mercury_output_var(VarSet, VarNamePrint, Var, !IO)
-    ;
-        PODVar = podv_dot(Var),
-        io.write_string("!.", !IO),
-        mercury_output_var(VarSet, VarNamePrint, Var, !IO)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred mercury_output_call(prog_varset::in, sym_name::in, list(prog_term)::in,
+:- pred mercury_output_plain_or_dot_var(io.text_output_stream::in,
+    prog_varset::in, var_name_print::in, plain_or_dot_var::in,
     io::di, io::uo) is det.
 
-mercury_output_call(VarSet, SymName, Term, !IO) :-
+mercury_output_plain_or_dot_var(Stream, VarSet, VarNamePrint, PODVar, !IO) :-
+    (
+        PODVar = podv_plain(Var),
+        mercury_output_var(VarSet, VarNamePrint, Var, Stream, !IO)
+    ;
+        PODVar = podv_dot(Var),
+        io.write_string(Stream, "!.", !IO),
+        mercury_output_var(VarSet, VarNamePrint, Var, Stream, !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred mercury_output_call(io.text_output_stream::in, prog_varset::in,
+    sym_name::in, list(prog_term)::in, io::di, io::uo) is det.
+
+mercury_output_call(Stream, VarSet, SymName, Term, !IO) :-
     (
         SymName = qualified(ModuleName, PredName),
         mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
-            ModuleName, !IO),
-        io.write_string(".", !IO),
+            ModuleName, Stream, !IO),
+        io.write_string(Stream, ".", !IO),
         term.context_init(Context0),
         SubTerm = term.functor(term.atom(PredName), Term, Context0),
         mercury_output_term_nq(VarSet, print_name_only, next_to_graphic_token,
-            SubTerm, !IO)
+            SubTerm, Stream, !IO)
     ;
         SymName = unqualified(PredName),
         term.context_init(Context0),
         SubTerm = term.functor(term.atom(PredName), Term, Context0),
         mercury_output_term_nq(VarSet, print_name_only, next_to_graphic_token,
-            SubTerm, !IO)
+            SubTerm, Stream, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_disj(prog_varset::in, int::in, goal::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_disj(io.text_output_stream::in, prog_varset::in,
+    int::in, goal::in, io::di, io::uo) is det.
 
-mercury_output_disj(VarSet, Indent, Goal, !IO) :-
-    mercury_output_newline(Indent, !IO),
-    io.write_string(";", !IO),
+mercury_output_disj(Stream, VarSet, Indent, Goal, !IO) :-
+    mercury_output_newline(Indent, Stream, !IO),
+    io.write_string(Stream, ";", !IO),
     Indent1 = Indent + 1,
-    mercury_output_newline(Indent1, !IO),
+    mercury_output_newline(Indent1, Stream, !IO),
     ( if Goal = disj_expr(_, SubGoalA, SubGoalB) then
-        mercury_output_goal(VarSet, Indent1, SubGoalA, !IO),
-        mercury_output_disj(VarSet, Indent, SubGoalB, !IO)
+        mercury_output_goal(Stream, VarSet, Indent1, SubGoalA, !IO),
+        mercury_output_disj(Stream, VarSet, Indent, SubGoalB, !IO)
     else
-        mercury_output_goal(VarSet, Indent1, Goal, !IO)
+        mercury_output_goal(Stream, VarSet, Indent1, Goal, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_par_conj(prog_varset::in, int::in, goal::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_par_conj(io.text_output_stream::in, prog_varset::in,
+    int::in, goal::in, io::di, io::uo) is det.
 
-mercury_output_par_conj(VarSet, Indent, Goal, !IO) :-
-    mercury_output_newline(Indent, !IO),
-    io.write_string("&", !IO),
+mercury_output_par_conj(Stream, VarSet, Indent, Goal, !IO) :-
+    mercury_output_newline(Indent, Stream, !IO),
+    io.write_string(Stream, "&", !IO),
     Indent1 = Indent + 1,
-    mercury_output_newline(Indent1, !IO),
+    mercury_output_newline(Indent1, Stream, !IO),
     ( if Goal = par_conj_expr(_, SubGoalA, SubGoalB) then
-        mercury_output_goal(VarSet, Indent1, SubGoalA, !IO),
-        mercury_output_par_conj(VarSet, Indent, SubGoalB, !IO)
+        mercury_output_goal(Stream, VarSet, Indent1, SubGoalA, !IO),
+        mercury_output_par_conj(Stream, VarSet, Indent, SubGoalB, !IO)
     else
-        mercury_output_goal(VarSet, Indent1, Goal, !IO)
+        mercury_output_goal(Stream, VarSet, Indent1, Goal, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_orelse_goals(prog_varset::in, int::in, list(goal)::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_orelse_goals(io.text_output_stream::in,
+    prog_varset::in, int::in, list(goal)::in, io::di, io::uo) is det.
 
-mercury_output_orelse_goals(VarSet, Indent, Goals, !IO) :-
+mercury_output_orelse_goals(Stream, VarSet, Indent, Goals, !IO) :-
     (
         Goals = []
     ;
         Goals = [HeadGoal | TailGoals],
         (
             TailGoals = [],
-            mercury_output_goal(VarSet, Indent + 1, HeadGoal, !IO)
+            mercury_output_goal(Stream, VarSet, Indent + 1, HeadGoal, !IO)
         ;
             TailGoals = [_|_],
-            mercury_output_goal(VarSet, Indent + 1, HeadGoal, !IO),
-            mercury_output_newline(Indent, !IO),
-            io.write_string("orelse", !IO),
-            mercury_output_newline(Indent, !IO),
-            mercury_output_orelse_goals(VarSet, Indent, TailGoals, !IO)
+            mercury_output_goal(Stream, VarSet, Indent + 1, HeadGoal, !IO),
+            mercury_output_newline(Indent, Stream, !IO),
+            io.write_string(Stream, "orelse", !IO),
+            mercury_output_newline(Indent, Stream, !IO),
+            mercury_output_orelse_goals(Stream, VarSet, Indent, TailGoals, !IO)
         )
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_some(varset(T)::in, list(var(T))::in, list(var(T))::in,
-    io::di, io::uo) is det.
+:- pred mercury_output_some(io.text_output_stream::in, varset(T)::in,
+    list(var(T))::in, list(var(T))::in, io::di, io::uo) is det.
 
-mercury_output_some(VarSet, Vars, StateVars, !IO) :-
+mercury_output_some(Stream, VarSet, Vars, StateVars, !IO) :-
     ( if
         ( Vars = [_ | _]
         ; StateVars = [_ | _]
         )
     then
-        io.write_string(" some [", !IO),
-        mercury_output_vars(VarSet, print_name_only, Vars, !IO),
+        io.write_string(Stream, " some [", !IO),
+        mercury_output_vars(VarSet, print_name_only, Vars, Stream, !IO),
         ( if
             Vars = [_ | _],
             StateVars = [_ | _]
         then
-            io.write_string(", ", !IO),
+            io.write_string(Stream, ", ", !IO),
             % XXX BUG: we should print StateVars even if Vars = [].
-            mercury_output_state_vars(VarSet, print_name_only, StateVars, !IO)
+            mercury_output_state_vars(VarSet, print_name_only, StateVars,
+                Stream, !IO)
         else
             true
         ),
-        io.write_string("]", !IO)
+        io.write_string(Stream, "]", !IO)
     else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_promise_eqv_solutions_goal(prog_varset::in, int::in,
-    list(prog_var)::in, list(prog_var)::in, list(prog_var)::in,
-    list(prog_var)::in, goal::in, string::in, io::di, io::uo) is det.
+:- pred mercury_output_promise_eqv_solutions_goal(io.text_output_stream::in,
+    prog_varset::in, int::in, list(prog_var)::in, list(prog_var)::in,
+    list(prog_var)::in, list(prog_var)::in, goal::in, string::in,
+    io::di, io::uo) is det.
 
-mercury_output_promise_eqv_solutions_goal(VarSet, Indent,
+mercury_output_promise_eqv_solutions_goal(Stream, VarSet, Indent,
         Vars, StateVars, DotSVars, ColonSVars, Goal, Keyword, !IO) :-
     ( if
         Vars = [],
@@ -710,20 +725,20 @@ mercury_output_promise_eqv_solutions_goal(VarSet, Indent,
     then
         % This should have been caught be parse_goal when reading in
         % the term, but there is no point in aborting here.
-        mercury_output_goal(VarSet, Indent, Goal, !IO)
+        mercury_output_goal(Stream, VarSet, Indent, Goal, !IO)
     else
-        io.write_string(Keyword, !IO),
-        io.write_string(" [", !IO),
-        mercury_output_vars(VarSet, print_name_only, Vars, !IO),
+        io.write_string(Stream, Keyword, !IO),
+        io.write_string(Stream, " [", !IO),
+        mercury_output_vars(VarSet, print_name_only, Vars, Stream, !IO),
         ( if
             Vars = [_ | _],
             StateVars = [_ | _]
         then
-            io.write_string(", ", !IO)
+            io.write_string(Stream, ", ", !IO)
         else
             true
         ),
-        mercury_output_state_vars_using_prefix(VarSet, print_name_only,
+        mercury_output_state_vars_using_prefix(Stream, VarSet, print_name_only,
             "!", StateVars, !IO),
         ( if
             ( Vars = [_ | _]
@@ -731,11 +746,11 @@ mercury_output_promise_eqv_solutions_goal(VarSet, Indent,
             ),
             DotSVars = [_ | _]
         then
-            io.write_string(", ", !IO)
+            io.write_string(Stream, ", ", !IO)
         else
             true
         ),
-        mercury_output_state_vars_using_prefix(VarSet, print_name_only,
+        mercury_output_state_vars_using_prefix(Stream, VarSet, print_name_only,
             "!.", DotSVars, !IO),
         ( if
             ( Vars = [_ | _]
@@ -744,33 +759,33 @@ mercury_output_promise_eqv_solutions_goal(VarSet, Indent,
             ),
             ColonSVars = [_ | _]
         then
-            io.write_string(", ", !IO)
+            io.write_string(Stream, ", ", !IO)
         else
             true
         ),
-        mercury_output_state_vars_using_prefix(VarSet, print_name_only,
+        mercury_output_state_vars_using_prefix(Stream, VarSet, print_name_only,
             "!:", ColonSVars, !IO),
-        io.write_string("] (", !IO),
+        io.write_string(Stream, "] (", !IO),
         Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(VarSet, Indent1, Goal, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
+        mercury_output_newline(Indent1, Stream, !IO),
+        mercury_output_goal(Stream, VarSet, Indent1, Goal, !IO),
+        mercury_output_newline(Indent, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ).
 
-:- pred mercury_output_state_vars_using_prefix(prog_varset::in,
-    var_name_print::in, string::in, list(prog_var)::in, io::di, io::uo) is det.
+:- pred mercury_output_state_vars_using_prefix(io.text_output_stream::in,
+    prog_varset::in, var_name_print::in, string::in, list(prog_var)::in,
+    io::di, io::uo) is det.
 
-mercury_output_state_vars_using_prefix(_VarSet, _VarNamePrint, _BangPrefix,
-        [], !IO).
-mercury_output_state_vars_using_prefix(VarSet, VarNamePrint, BangPrefix,
+mercury_output_state_vars_using_prefix(_, _, _, _, [], !IO).
+mercury_output_state_vars_using_prefix(Stream, VarSet, VarNamePrint, BangPrefix,
         [SVar | SVars], !IO) :-
-    io.write_string(BangPrefix, !IO),
-    mercury_format_var(VarSet, VarNamePrint, SVar, !IO),
+    io.write_string(Stream, BangPrefix, !IO),
+    mercury_format_var(VarSet, VarNamePrint, SVar, Stream, !IO),
     (
         SVars = [_ | _],
-        io.write_string(", ", !IO),
-        mercury_output_state_vars_using_prefix(VarSet, VarNamePrint,
+        io.write_string(Stream, ", ", !IO),
+        mercury_output_state_vars_using_prefix(Stream, VarSet, VarNamePrint,
             BangPrefix, SVars, !IO)
     ;
         SVars = []
@@ -778,114 +793,118 @@ mercury_output_state_vars_using_prefix(VarSet, VarNamePrint, BangPrefix,
 
 %---------------------------------------------------------------------------%
 
-write_goal_warnings(HeadWarning, TailWarnings, !IO) :-
-    io.write_string(goal_warning_to_string(HeadWarning), !IO),
+write_goal_warnings(Stream, HeadWarning, TailWarnings, !IO) :-
+    io.write_string(Stream, goal_warning_to_string(HeadWarning), !IO),
     (
         TailWarnings = []
     ;
         TailWarnings = [HeadTailWarning | TailTailWarnings],
-        io.write_string(", ", !IO),
-        write_goal_warnings(HeadTailWarning, TailTailWarnings, !IO)
+        io.write_string(Stream, ", ", !IO),
+        write_goal_warnings(Stream, HeadTailWarning, TailTailWarnings, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_trace_expr(PrintBase, TraceExpr, !IO) :-
+mercury_output_trace_expr(Stream, PrintBase, TraceExpr, !IO) :-
     (
         TraceExpr = trace_base(Base),
-        PrintBase(Base, !IO)
+        PrintBase(Base, Stream, !IO)
     ;
         TraceExpr = trace_not(TraceExprA),
-        io.write_string("not(", !IO),
-        mercury_output_trace_expr(PrintBase, TraceExprA, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "not(", !IO),
+        mercury_output_trace_expr(Stream, PrintBase, TraceExprA, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         TraceExpr = trace_op(trace_or, TraceExprA, TraceExprB),
-        io.write_string("(", !IO),
-        mercury_output_trace_expr(PrintBase, TraceExprA, !IO),
-        io.write_string(") or (", !IO),
-        mercury_output_trace_expr(PrintBase, TraceExprB, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "(", !IO),
+        mercury_output_trace_expr(Stream, PrintBase, TraceExprA, !IO),
+        io.write_string(Stream, ") or (", !IO),
+        mercury_output_trace_expr(Stream, PrintBase, TraceExprB, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         TraceExpr = trace_op(trace_and, TraceExprA, TraceExprB),
-        mercury_output_trace_expr(PrintBase, TraceExprA, !IO),
-        io.write_string(" and ", !IO),
-        mercury_output_trace_expr(PrintBase, TraceExprB, !IO)
+        mercury_output_trace_expr(Stream, PrintBase, TraceExprA, !IO),
+        io.write_string(Stream, " and ", !IO),
+        mercury_output_trace_expr(Stream, PrintBase, TraceExprB, !IO)
     ).
 
-mercury_output_trace_compiletime(CompileTime, !IO) :-
+mercury_output_trace_compiletime(CompileTime, Stream, !IO) :-
     (
         CompileTime = trace_flag(FlagName),
-        io.write_string("flag(", !IO),
-        term_io.quote_string(FlagName, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "flag(", !IO),
+        term_io.quote_string(Stream, FlagName, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         CompileTime = trace_grade(Grade),
         parse_trace_grade_name(GradeName, Grade),
-        io.write_string("grade(", !IO),
-        io.write_string(GradeName, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "grade(", !IO),
+        io.write_string(Stream, GradeName, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         CompileTime = trace_trace_level(Level),
-        io.write_string("tracelevel(", !IO),
+        io.write_string(Stream, "tracelevel(", !IO),
         (
             Level = trace_level_shallow,
-            io.write_string("shallow", !IO)
+            io.write_string(Stream, "shallow", !IO)
         ;
             Level = trace_level_deep,
-            io.write_string("deep", !IO)
+            io.write_string(Stream, "deep", !IO)
         ),
-        io.write_string(")", !IO)
+        io.write_string(Stream, ")", !IO)
     ).
 
-mercury_output_trace_runtime(trace_envvar(EnvVarName), !IO) :-
-    io.write_string("env(", !IO),
-    term_io.quote_string(EnvVarName, !IO),
-    io.write_string(")", !IO).
+mercury_output_trace_runtime(trace_envvar(EnvVarName), Stream, !IO) :-
+    io.write_string(Stream, "env(", !IO),
+    term_io.quote_string(Stream, EnvVarName, !IO),
+    io.write_string(Stream, ")", !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_trace_mutable_var(prog_varset::in, var_name_print::in,
-    trace_mutable_var::in, io::di, io::uo) is det.
+:- pred mercury_output_trace_mutable_var(io.text_output_stream::in,
+    prog_varset::in, var_name_print::in, trace_mutable_var::in,
+    io::di, io::uo) is det.
 
-mercury_output_trace_mutable_var(VarSet, VarNamePrint, MutableVar, !IO) :-
+mercury_output_trace_mutable_var(Stream, VarSet, VarNamePrint, MutableVar,
+        !IO) :-
     MutableVar = trace_mutable_var(MutableName, StateVar),
-    io.write_string("state(", !IO),
-    io.write_string(MutableName, !IO),
-    io.write_string(", !", !IO),
-    mercury_output_var(VarSet, VarNamePrint, StateVar, !IO),
-    io.write_string(")", !IO).
+    io.write_string(Stream, "state(", !IO),
+    io.write_string(Stream, MutableName, !IO),
+    io.write_string(Stream, ", !", !IO),
+    mercury_output_var(VarSet, VarNamePrint, StateVar, Stream, !IO),
+    io.write_string(Stream, ")", !IO).
 
-:- pred mercury_output_trace_mutable_var_and_comma(prog_varset::in,
-    var_name_print::in, trace_mutable_var::in, bool::in, bool::out,
-    io::di, io::uo) is det.
+:- pred mercury_output_trace_mutable_var_and_comma(io.text_output_stream::in,
+    prog_varset::in, var_name_print::in, trace_mutable_var::in,
+    bool::in, bool::out, io::di, io::uo) is det.
 
-mercury_output_trace_mutable_var_and_comma(VarSet, VarNamePrint,
+mercury_output_trace_mutable_var_and_comma(Stream, VarSet, VarNamePrint,
         MutableVar, !NeedComma, !IO) :-
-    mercury_output_comma_if_needed(!.NeedComma, !IO),
+    mercury_output_comma_if_needed(Stream, !.NeedComma, !IO),
     !:NeedComma = yes,
-    mercury_output_trace_mutable_var(VarSet, VarNamePrint, MutableVar, !IO).
+    mercury_output_trace_mutable_var(Stream, VarSet, VarNamePrint,
+        MutableVar, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_catch(prog_varset::in, int::in, catch_expr::in,
+:- pred mercury_output_catch(io.text_output_stream::in, prog_varset::in,
+    int::in, catch_expr::in, io::di, io::uo) is det.
+
+mercury_output_catch(Stream, VarSet, Indent, catch_expr(Pattern, Goal), !IO) :-
+    io.write_string(Stream, "catch ", !IO),
+    mercury_output_term(VarSet, print_name_only, Pattern, Stream, !IO),
+    io.write_string(Stream, " ->", !IO),
+    mercury_output_newline(Indent + 1, Stream, !IO),
+    mercury_output_goal(Stream, VarSet, Indent + 1, Goal, !IO),
+    mercury_output_newline(Indent, Stream, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred mercury_output_comma_if_needed(io.text_output_stream::in, bool::in,
     io::di, io::uo) is det.
 
-mercury_output_catch(VarSet, Indent, catch_expr(Pattern, Goal), !IO) :-
-    io.write_string("catch ", !IO),
-    mercury_output_term(VarSet, print_name_only, Pattern, !IO),
-    io.write_string(" ->", !IO),
-    mercury_output_newline(Indent + 1, !IO),
-    mercury_output_goal(VarSet, Indent + 1, Goal, !IO),
-    mercury_output_newline(Indent, !IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred mercury_output_comma_if_needed(bool::in, io::di, io::uo) is det.
-
-mercury_output_comma_if_needed(no, !IO).
-mercury_output_comma_if_needed(yes, !IO) :-
-    io.write_string(", ", !IO).
+mercury_output_comma_if_needed(_, no, !IO).
+mercury_output_comma_if_needed(Stream, yes, !IO) :-
+    io.write_string(Stream, ", ", !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_tree_out_clause.
