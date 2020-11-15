@@ -25,7 +25,7 @@ main(!IO) :-
     io.command_line_arguments(Args, !IO),
     ( if Args = [TFN] then
         FN = TFN
-    then
+    else
         error("usage: testxmlreader file.xml")
     ),
     xmlreader.open_file(FN, MayR, !IO),
