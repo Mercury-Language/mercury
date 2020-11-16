@@ -15,10 +15,10 @@
 :- import_module int.
 :- import_module list.
 
-main -->
-    { list__map(p, [1, 2], X) },
-    io__write(X),
-    io__nl.
+main(!IO) :-
+    list__map(p, [1, 2], X),
+    io.write(X, !IO),
+    io.nl(!IO).
 
 :- typeclass foo(T) where [
     pred p(T::in, T::out) is det

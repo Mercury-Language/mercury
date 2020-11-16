@@ -10,10 +10,10 @@
 
 :- implementation.
 
-main -->
-    { S1 = f(0) },
-    io__write_string(S1),
-    io__nl.
+main(!IO) :-
+    S1 = f(0),
+    io.write_string(S1, !IO),
+    io.nl(!IO).
 
 :- typeclass foo(T) where [
     func s(T) = string

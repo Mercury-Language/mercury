@@ -22,8 +22,12 @@
 
 a_t2 = t2(2).
 
-run_t2(t2(I)) -->
-    io__write_string("t2: "), io__write_int(I), io__nl.
+run_t2(t2(I), !IO) :-
+    io.write_string("t2: ", !IO),
+    io.write_int(I, !IO),
+    io.nl(!IO).
 
-run_float(S) -->
-    io__write_string("float: "), io__write_float(S), io__nl.
+run_float(S, !IO) :-
+    io.write_string("float: ", !IO),
+    io.write_float(S, !IO),
+    io.nl(!IO).

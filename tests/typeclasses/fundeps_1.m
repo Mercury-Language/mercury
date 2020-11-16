@@ -12,9 +12,9 @@
 :- import_module list.
 
 main(!S) :-
-    ( test(intcoll([0]), 1) ->
+    ( if test(intcoll([0]), 1) then
         write_string("yes\n", !S)
-    ;
+    else
         write_string("no\n", !S)
     ).
 

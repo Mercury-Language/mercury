@@ -10,9 +10,9 @@
 
 :- implementation.
 
-main -->
-    io__write_int(type_num(43)),
-    io__nl.
+main(!IO) :-
+    io.write_int(type_num(43), !IO),
+    io.nl(!IO).
 
 :- typeclass numbered_type(T) where [
     func type_num(T::in) = (int::out) is det

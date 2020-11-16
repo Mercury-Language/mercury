@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % This tests the interaction between type classes, instance declarations,
-% and modules.  In particular this test checks that in module `module_test'
+% and modules. In particular this test checks that in module `module_test'
 % we can use an instance declaration defined in a different module
 % `module_test_m2' that defines an instance of a type class which is
 % defined in yet another module `module_test_m1'.
@@ -18,8 +18,8 @@
 :- import_module module_test_m1.
 :- import_module module_test_m2.
 
-main -->
-    run(a_t1),
-    run("hello world"),
-    run(a_t2),
-    run(123.45).
+main(!IO) :-
+    run(a_t1, !IO),
+    run("hello world", !IO),
+    run(a_t2, !IO),
+    run(123.45, !IO).

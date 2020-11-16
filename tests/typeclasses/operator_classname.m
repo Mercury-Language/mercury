@@ -11,21 +11,21 @@
 :- pred main(io::di, io::uo) is det.
 
 :- typeclass +(T) where [
-    pred p(T::in, io__state::di, io__state::uo) is det
+    pred p(T::in, io::di, io::uo) is det
 ].
 
 :- implementation.
 
 :- instance +(int) where [
-    pred(p/3) is io__write_int
+    pred(p/3) is io.write_int
 ].
 
-main -->
-    foo(1),
-    io__nl.
+main(!IO) :-
+    foo(1, !IO),
+    io.nl(!IO).
 
-:- pred foo(T, io__state, io__state) <= +(T).
+:- pred foo(T, io, io) <= +(T).
 :- mode foo(in, di, uo) is det.
 
-foo(X) -->
-    p(X).
+foo(X, !IO) :-
+    p(X, !IO).

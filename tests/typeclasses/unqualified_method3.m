@@ -12,5 +12,5 @@
 
 :- implementation.
 
-print_modified_int(_) -->
-    io__write_string("This is the right method.\n").
+print_modified_int(_, !IO) :-
+    io.write_string("This is the right method.\n", !IO).

@@ -4,12 +4,13 @@
 %
 % This test case tests the combination of existential types and
 % type classes, i.e. existential type class constraints.
+%
 
 :- module existential_type_classes.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -47,23 +48,27 @@
 :- some [T] func my_exist_t = T => fooable(T).
 
 :- pred int_foo(int::in, int::out) is det.
+
 int_foo(X, 2*X).
 
 :- pred string_foo(string::in, int::out) is det.
-string_foo(S, N) :- string__length(S, N).
 
-main -->
-    do_foo(42),
-    do_foo("blah"),
-    do_foo(my_exist_t),
-    do_foo(call_my_exist_t),
-    do_foo(my_univ_value(my_univ(45))),
-    do_foo(call_my_univ_value(my_univ("something"))).
+string_foo(S, N) :-
+    string.length(S, N).
 
-:- pred do_foo(T::in, io__state::di, state::uo) is det <= fooable(T).
-do_foo(X) -->
-    { foo(X, N) },
-    write(N), nl.
+main(!IO) :-
+    do_foo(42, !IO),
+    do_foo("blah", !IO),
+    do_foo(my_exist_t, !IO),
+    do_foo(call_my_exist_t, !IO),
+    do_foo(my_univ_value(my_univ(45)), !IO),
+    do_foo(call_my_univ_value(my_univ("something")), !IO).
+
+:- pred do_foo(T::in, io::di, io::uo) is det <= fooable(T).
+
+do_foo(X, !IO) :-
+    foo(X, N),
+    io.write_line(N, !IO).
 
 call_my_exist_t = my_exist_t.
 

@@ -32,8 +32,8 @@
     --->    some [B, X] foo(B) => b(B, X).
 
 main(!IO)  :-
-    ( b(1) = b(2) ->
+    ( if b(1) = b(2) then
         write_string("yes\n", !IO)
-    ;
+    else
         write_string("no\n", !IO)
     ).

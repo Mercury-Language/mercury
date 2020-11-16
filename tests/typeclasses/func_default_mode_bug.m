@@ -8,8 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- type term
     --->    parameter(parameter)
@@ -112,5 +111,5 @@ definition_value(X) = value(X, X).
 definition_value(X, Y) = value(X, Y).
 
 main(In, Out) :-
-    io__write(bidon(minus_one), In, Int3),
-    io__nl(Int3, Out).
+    io.write(bidon(minus_one), In, Int3),
+    io.nl(Int3, Out).

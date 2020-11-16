@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -18,7 +18,7 @@
 
 :- type u
     --->    some [T] (u(T) => v(T))
-    %--->   some [T] u(T)
+    % --->  some [T] u(T)
     ;       f.
 
 :- typeclass v(T) where [].
@@ -28,8 +28,7 @@
 
 :- instance v(w) where [].
 
-:- pred p(t, u).
-:- mode p(in, out) is det.
+:- pred p(t::in, u::out) is det.
 
 p(T, V) :-
     (
@@ -40,6 +39,6 @@ p(T, V) :-
         V = 'new u'(f(C))
     ).
 
-main -->
-    { p(a(42), X) },
-    write(X), nl.
+main(!IO) :-
+    p(a(42), X),
+    io.write_line(X, !IO).

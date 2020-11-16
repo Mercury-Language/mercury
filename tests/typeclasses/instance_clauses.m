@@ -27,31 +27,30 @@
 ].
 
 :- instance thisclass(int) where [
-    (c(X, Y) :-
+    ( c(X, Y) :-
         ( X = 1, Y = 1
         ; X = 1, Y = 2
         ; X = 1, Y = 3
         ; X = 2, Y = 4
-        )),
+        )
+    ),
     d(42, 101),
     d(42, 102),
     d(43, 103)
 ].
 
-:- pred mypred(T, T) <= thisclass(T).
-:- mode mypred(in, out) is nondet.
+:- pred mypred(T::in, T::out) is nondet <= thisclass(T).
 
 mypred(A, B) :-
     c(A, B).
 
-:- pred mypred2(T, T) <= thisclass(T).
-:- mode mypred2(in, out) is nondet.
+:- pred mypred2(T::in, T::out) is nondet <= thisclass(T).
 
 mypred2(A, B) :-
     d(A, B).
 
-main -->
-    { solutions(mypred(1), X) },
-    io__write(X), nl,
-    { solutions(mypred2(42), Y) },
-    io__write(Y), nl.
+main(!IO) :-
+    solutions(mypred(1), X),
+    io.write_line(X, !IO),
+    solutions(mypred2(42), Y),
+    io.write_line(Y, !IO).

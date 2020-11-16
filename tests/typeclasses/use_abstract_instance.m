@@ -13,9 +13,9 @@
 :- import_module abstract_instance.
 :- import_module list.
 
-main -->
-    run(42),
-    run("hello world"),
-    run([5, 4, 3, 2, 1]),
-    run(["hello", "world"]),
-    run([[[[0]]]]).
+main(!IO) :-
+    run(42, !IO),
+    run("hello world", !IO),
+    run([5, 4, 3, 2, 1], !IO),
+    run(["hello", "world"], !IO),
+    run([[[[0]]]], !IO).

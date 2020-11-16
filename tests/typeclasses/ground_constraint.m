@@ -6,21 +6,23 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module list.
 
-main -->
-    { S1 = f(0) },
-    io__write_string(S1),
-    io__nl,
-    { p(0, S2) },
-    io__write_string(S2),
-    io__nl,
-    { q([0], S3) },
-    io__write_string(S3),
-    io__nl.
+main(!IO) :-
+    S1 = f(0),
+    io.write_string(S1, !IO),
+    io.nl(!IO),
+
+    p(0, S2),
+    io.write_string(S2, !IO),
+    io.nl(!IO),
+
+    q([0], S3),
+    io.write_string(S3, !IO),
+    io.nl(!IO).
 
 :- typeclass foo(T) where [
     func s(T) = string

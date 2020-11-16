@@ -13,7 +13,7 @@
 :- implementation.
 
 :- typeclass printable(A) where [
-    pred p(A::in, io__state::di, io__state::uo) is det
+    pred p(A::in, io::di, io::uo) is det
 ].
 
 :- typeclass foo(A) <= printable(A) where [
@@ -21,36 +21,35 @@
 ].
 
 :- instance printable(int) where [
-    pred(p/3) is io__write_int
+    pred(p/3) is io.write_int
 ].
 
 :- instance foo(int) where [
     pred(b/1) is foo_b
 ].
 
-main -->
-    p(42),
-    io__write_string("\n"),
-    blah(101),
-    io__write_string("\n").
+main(!IO) :-
+    p(42, !IO),
+    io.write_string("\n", !IO),
+    blah(101, !IO),
+    io.write_string("\n", !IO).
 
 :- pred foo_b(int::in) is semidet.
 
 foo_b(1).
 
-:- pred blah(T, io__state, io__state) <= foo(T).
-:- mode blah(in, di, uo) is det.
+:- pred blah(T::in, io::di, io::uo) is det <= foo(T).
 
-blah(X) -->
-    (
-        % This also tests the semidet class method call mechanism
-        { b(X) }
-    ->
-        io__write_string("true\n")
-    ;
-        io__write_string("false\n")
+blah(X, !IO) :-
+    ( if
+        % This also tests the semidet class method call mechanism.
+        b(X)
+    then
+        io.write_string("true\n", !IO)
+    else
+        io.write_string("false\n", !IO)
     ),
 
-    % at this call to the superclass method, the printable typeclass_info
+    % At this call to the superclass method, the printable typeclass_info
     % gets extracted from the foo typeclass_info.
-    p(X).
+    p(X, !IO).

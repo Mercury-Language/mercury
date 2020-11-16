@@ -16,17 +16,17 @@
 :- import_module list.
 
 :- typeclass printable(A) where [
-    pred p(A::in, io__state::di, io__state::uo) is det,
-    pred foo(A, A),
-    mode foo(in, out) is det
+    pred p(A::in, io::di, io::uo) is det,
+    pred foo(A::in, A::out) is det
 ].
 
 :- instance printable(int) where [
-    pred(p/3) is io__write_int,
+    pred(p/3) is io.write_int,
     pred(foo/2) is foo_int
 ].
 
 :- pred foo_int(int::in, int::out) is det.
+
 foo_int(X, X+1).
 
     % This test case is interesting because the "printable(T)" constraint
@@ -41,26 +41,27 @@ foo_int(X, X+1).
 ].
 
 :- pred foo_list(list(T)::in, list(T)::out) is det.
+
 foo_list(X, Y) :-
-    (
+    ( if
         X = [A, B | _],
-        % Here's where it crashes... rather than the type-info, the
-        % typeclass-info for foo(T) was erroneously passed.
+        % Here is where it crashes... rather than the type-info,
+        % the typeclass-info for foo(T) was erroneously passed.
         A = B
-    ->
+    then
         Y = X
-    ;
+    else
         Y = []
     ).
 
-main -->
-    { zzz(-2, A) },
-    p(A),
-    { zzz([1, 2, 3], X) },
-    p(X),
-    { zzz([1, 1, 2, 3], Y) },
-    p(Y),
-    io__nl.
+main(!IO) :-
+    zzz(-2, A),
+    p(A, !IO),
+    zzz([1, 2, 3], X),
+    p(X, !IO),
+    zzz([1, 1, 2, 3], Y),
+    p(Y, !IO),
+    io.nl(!IO).
 
 :- pred zzz(T, T) <= printable(T).
 :- mode zzz(in, out) is det.

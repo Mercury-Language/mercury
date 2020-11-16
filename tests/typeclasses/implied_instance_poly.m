@@ -15,26 +15,27 @@
 :- import_module list.
 
 :- typeclass f(T) where [
-    pred p(T::in, io__state::di, io__state::uo) is det
+    pred p(T::in, io::di, io::uo) is det
 ].
 
 :- instance f(int) where [
-    pred(p/3) is io__write_int
+    pred(p/3) is io.write_int
 ].
 
 :- instance f(list(T)) <= f(T) where [
     pred(p/3) is my_write_list
 ].
 
-main --> foo(1), io__nl.
+main(!IO) :-
+    foo(1, !IO),
+    io.nl(!IO).
 
-:- pred my_write_list(list(T), io__state, io__state) <= f(T).
-:- mode my_write_list(in, di, uo) is det.
+:- pred my_write_list(list(T)::in, io::di, io::uo) is det <= f(T).
 
-my_write_list(X) --> io__write_list(X, ", ", p).
+my_write_list(X, !IO) :-
+    io.write_list(X, ", ", p, !IO).
 
-:- pred foo(T, io__state, io__state) <= f(T).
-:- mode foo(in, di, uo) is det.
+:- pred foo(T::in, io::di, io::uo) is det <= f(T).
 
-foo(X) -->
-    p([X, X, X]).
+foo(X, !IO) :-
+    p([X, X, X], !IO).

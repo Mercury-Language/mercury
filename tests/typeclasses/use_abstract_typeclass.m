@@ -13,10 +13,10 @@
 :- import_module abstract_typeclass.
 :- import_module list.
 
-main -->
-    p(43),
-    p("Forty-three"),
-    p([43]),
-    p([[[], [43]]]),
-    { q(X) },
-    p(X).
+main(!IO) :-
+    p(43, !IO),
+    p("Forty-three", !IO),
+    p([43], !IO),
+    p([[[], [43]]], !IO),
+    q(X),
+    p(X, !IO).

@@ -12,7 +12,7 @@
 
 :- import_module io.
 
-:- pred main(state::di, state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- typeclass tc(TC) where [
     pred r(TC, int),
@@ -32,25 +32,25 @@
 
 :- import_module int.
 
-main -->
-    { p(X) },
-    (   { X = yes(Y) },
-        (if { r(Y, Z) } then
-            print("r succeeded, Z = "), print(Z), nl
+main(!IO) :-
+    p(X),
+    (
+        X = yes(Y),
+        ( if r(Y, Z) then
+            io.print("r succeeded, Z = ", !IO),
+            io.print_line(Z, !IO)
         else
-            print("r failed"), nl
+            io.print_line("r failed", !IO)
         )
     ;
-        { X = no },
-        print("no"), nl
+        X = no,
+        io.print_line("no", !IO)
     ).
 
 p(X) :-
-    (
-        q(1, Y)
-    ->
+    ( if q(1, Y) then
         X = 'new yes'(Y)
-    ;
+    else
         X = no
     ).
 

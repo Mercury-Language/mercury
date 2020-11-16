@@ -12,8 +12,8 @@
 
 :- implementation.
 
-main -->
-    { p(a(1)) }.
+main(!IO) :-
+    p(a(1)).
 
 :- typeclass c(T) where [
     pred p(T),

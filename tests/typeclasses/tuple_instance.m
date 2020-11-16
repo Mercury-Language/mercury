@@ -15,10 +15,10 @@
 :- import_module int.
 :- import_module string.
 
-main -->
-    { Size = size({"ok", "failed"}) },
-    io__write_int(Size),
-    io__nl.
+main(!IO) :-
+    Size = size({"ok", "failed"}),
+    io.write_int(Size, !IO),
+    io.nl(!IO).
 
 :- typeclass size(T) where [
     func size(T) = int

@@ -13,28 +13,27 @@
 :- implementation.
 
 :- typeclass c1(T) where [
-    pred p1(T::in, io__state::di, io__state::uo) is det
+    pred p1(T::in, io::di, io::uo) is det
 ].
 
 :- instance c1(int) where [
-    pred(p1/3) is io__write_int
+    pred(p1/3) is io.write_int
 ].
 
 :- typeclass c2(T) where [
-    pred p2(T::in, io__state::di, io__state::uo) is det
+    pred p2(T::in, io::di, io::uo) is det
 ].
 
 :- instance c2(int) where [
-    pred(p2/3) is io__write_int
+    pred(p2/3) is io.write_int
 ].
 
-:- pred foo(T, io__state, io__state) <= (c1(T), c2(T)).
-:- mode foo(in, di, uo) is det.
+:- pred foo(T::in, io::di, io::uo) is det <= (c1(T), c2(T)).
 
-foo(X) -->
-    p1(X),
-    p2(X),
-    io__nl.
+foo(X, !IO) :-
+    p1(X, !IO),
+    p2(X, !IO),
+    io.nl(!IO).
 
-main -->
-    foo(42).
+main(!IO) :-
+    foo(42, !IO).

@@ -20,27 +20,29 @@
 :- use_module require.
 
 :- typeclass int_singleton(T) where [
-       func value(T) = int
-   ].
+   func value(T) = int
+].
 
 :- type zero
     --->    zero.
 
 :- instance int_singleton(zero) where [
-       func(value/1) is zero_value
-   ].
+   func(value/1) is zero_value
+].
 
 :- type succ(N)
     --->    succ(N).
 
 :- instance int_singleton(succ(N)) <= int_singleton(N) where [
-       func(value/1) is succ_value
-   ].
+   func(value/1) is succ_value
+].
 
 :- func zero_value(zero) = int.
+
 zero_value(_) = 0.
 
 :- func succ_value(succ(N)) = int <= int_singleton(N).
+
 succ_value(succ(N)) = value(N) + 1.
 
 :- type natural_number
@@ -49,16 +51,15 @@ succ_value(succ(N)) = value(N) + 1.
 :- func to_natural_number(int) = natural_number.
 
 to_natural_number(I) = Result :-
-    ( I = 0 ->
+    ( if I = 0 then
         Result = 'new nat'(zero)
-    ; I > 0 ->
+    else if I > 0 then
         nat(N1) = to_natural_number(I-1),
         Result = 'new nat'(succ(N1))
-    ;
+    else
         require__error("to_natural_number: cannot convert negative integer")
     ).
 
-main -->
-    { nat(N) = to_natural_number(3) },
-    print(value(N)),
-    nl.
+main(!IO) :-
+    nat(N) = to_natural_number(3),
+    io.print_line(value(N), !IO).

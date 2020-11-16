@@ -15,16 +15,15 @@
 :- import_module char.
 :- import_module int.
 
-main -->
-    p(42, 'a').
+main(!IO) :-
+    p(42, 'a', !IO).
 
-:- pred p(T1, T2, io__state, io__state) <= c2(T1, T2).
-:- mode p(in, in, di, uo) is det.
+:- pred p(T1::in, T2::in, io::di, io::uo) is det <= c2(T1, T2).
 
-p(X, _) -->
-    { m1(X, Y) },
-    io__write_int(Y),
-    io__nl.
+p(X, _, !IO) :-
+    m1(X, Y),
+    io.write_int(Y, !IO),
+    io.nl(!IO).
 
 :- typeclass c1(T) where [
     pred m1(T, int),

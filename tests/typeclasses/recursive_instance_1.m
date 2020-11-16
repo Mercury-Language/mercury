@@ -27,15 +27,17 @@
 :- instance foo(list(T), int) <= foo(T, list(int)) where [
     ( bar([X | Xs]) = N + bar(Xs) :-
         bar(X) = B,
-        ( B = [N | _]
-        ; B = [],
+        (
+            B = [N | _]
+        ;
+            B = [],
             N = 1
         )
     ),
     ( bar([]) = 0 )
 ].
 
-main -->
-    { X = bar([0, 1, 2]) },
-    io__write_int(X),
-    io__nl.
+main(!IO) :-
+    X = bar([0, 1, 2]),
+    io.write_int(X, !IO),
+    io.nl(!IO).

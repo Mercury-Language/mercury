@@ -10,13 +10,14 @@
 :- interface.
 
 :- import_module io.
+
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    { p(1, U) },
-    write(U), nl.
+main(!IO) :-
+    p(1, U),
+    io.write_line(U, !IO).
 
 :- typeclass t(T) where [
     some [U] pred p(T::in, U::out) is det

@@ -12,10 +12,10 @@
 :- import_module list.
 
 main(!S) :-
-    ( e = 1 ->
-        write_string("yes\n", !S)
-    ;
-        write_string("no\n", !S)
+    ( if e = 1 then
+        io.write_string("yes\n", !S)
+    else
+        io.write_string("no\n", !S)
     ).
 
 :- typeclass coll(C, E) <= (C -> E) where [

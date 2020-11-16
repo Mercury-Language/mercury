@@ -26,7 +26,7 @@
 :- import_module list.
 
 :- typeclass class(T) where [
-    pred p(U::in, T::in, io__state::di, io__state::uo) is det
+    pred p(U::in, T::in, io::di, io::uo) is det
 ].
 
 :- instance class(list(T)) <= class(T) where [
@@ -37,21 +37,19 @@
     pred(p/4) is p_int
 ].
 
-main -->
-    p("string", [1, 2, 3]).
+main(!IO) :-
+    p("string", [1, 2, 3], !IO).
 
-:- pred p_list(U::in, list(T)::in, io__state::di, io__state::uo) is det
-    <= class(T).
+:- pred p_list(U::in, list(T)::in, io::di, io::uo) is det <= class(T).
 
-p_list(U, List) -->
-    list__foldl(p(U), List),
-    io__write(U),
-    io__nl.
+p_list(U, List, !IO) :-
+    list.foldl(p(U), List, !IO),
+    io.write_line(U, !IO).
 
-:- pred p_int(U::in, int::in, io__state::di, io__state::uo) is det.
+:- pred p_int(U::in, int::in, io::di, io::uo) is det.
 
-p_int(U, Int) -->
-    io__write_int(Int + 1),
-    io__nl,
-    io__write(U),
-    io__nl.
+p_int(U, Int, !IO) :-
+    io.write_int(Int + 1, !IO),
+    io.nl(!IO),
+    io.write(U, !IO),
+    io.nl(!IO).

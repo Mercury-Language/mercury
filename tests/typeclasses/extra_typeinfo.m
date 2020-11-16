@@ -41,29 +41,28 @@
     list(list(U)), list(list(U))) <= foo(T).
 :- mode call_foldl(in, in, out) is semidet.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module std_util.
 
-main -->
-    { L1 = [[1, 2, 3], [4, 5, 6]] },
-    io__write(L1),
-    { L2 = [[7, 8, 9], [10, 11, 12]] },
-    io__write(L2),
-    ( { call_foldl(L1, L2, L) } ->
-        io__write(L),
-        io__nl
-    ;
-        io__write_string("failed\n")
+main(!IO) :-
+    L1 = [[1, 2, 3], [4, 5, 6]],
+    L2 = [[7, 8, 9], [10, 11, 12]],
+    io.write(L1, !IO),
+    io.write(L2, !IO),
+    ( if call_foldl(L1, L2, L) then
+        io.write_line(L, !IO)
+    else
+        io.write_string("failed\n", !IO)
     ).
 
+call_foldl(In, Out0, Out) :-
     % This calls foldl so that the original type variables in foldl
     % get mapped to non-variable types, so higher_order.m needs to add
     % extra argument type_infos for the type variables in the types
     % of the specialised arguments.
-call_foldl(In, Out0, Out) :-
     Pred = (pred(Int::in) is semidet :- Int = 2),
     list_foldl(Pred, [2], In, _, Out0, Out).
 
@@ -91,6 +90,8 @@ test_first_foo([A | _]) :-
     foo_pred(A).
 
 :- pred nothing(int::in) is semidet.
-nothing(_) :- semidet_succeed.
+
+nothing(_) :-
+    semidet_succeed.
 
 %---------------------------------------------------------------------------%

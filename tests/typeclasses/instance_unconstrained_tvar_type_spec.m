@@ -12,23 +12,23 @@
 :- pred main(io::di, io::uo) is det.
 
 :- typeclass p(T) where [
-    pred m(T, io__state, io__state),
+    pred m(T, io, io),
     mode m(in, di, uo) is det
 ].
 
 :- implementation.
 
 :- instance p(list(T)) where [
-    pred(m/3) is io__write
+    pred(m/3) is io.write
 ].
 
-main -->
-    call_m([1, 2, 3]),
-    io__nl.
+main(!IO) :-
+    call_m([1, 2, 3], !IO),
+    io.nl(!IO).
 
-:- pred call_m(T::in, io__state::di, io__state::uo) is det <= p(T).
+:- pred call_m(T::in, io::di, io::uo) is det <= p(T).
 :- pragma type_spec(call_m/3, T = list(U)).
 :- pragma no_inline(call_m/3).
 
-call_m(T) -->
-    m(T).
+call_m(T, !IO) :-
+    m(T, !IO).

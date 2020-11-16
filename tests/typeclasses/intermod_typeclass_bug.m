@@ -15,32 +15,32 @@
 :- import_module char.
 :- import_module intermod_typeclass_bug2.
 
-main -->
-    { p('a', Int1) },
-    ( { char__to_int(Char1, Int1) } ->
-        io__write_string("Test 1 succeeded: "),
-        io__write_char(Char1),
-        io__nl
-    ;
-        io__write_string("Test 1 failed: "),
-        io__write_int(Int1),
-        io__nl
+main(!IO) :-
+    p('a', Int1),
+    ( if char.to_int(Char1, Int1) then
+        io.write_string("Test 1 succeeded: ", !IO),
+        io.write_char(Char1, !IO),
+        io.nl(!IO)
+    else
+        io.write_string("Test 1 failed: ", !IO),
+        io.write_int(Int1, !IO),
+        io.nl(!IO)
     ),
 
-    ( { p(Char2, char__to_int('b')) } ->
-        io__write_string("Test 2 succeeded: "),
-        io__write_char(Char2),
-        io__nl
-    ;
-        io__write_string("Test 2 failed"),
-        io__nl
+    ( if p(Char2, char.to_int('b')) then
+        io.write_string("Test 2 succeeded: ", !IO),
+        io.write_char(Char2, !IO),
+        io.nl(!IO)
+    else
+        io.write_string("Test 2 failed", !IO),
+        io.nl(!IO)
     ),
 
-    ( { Int3 = q('c'), char__to_int(Char3, Int3) } ->
-        io__write_string("Test 3 succeeded: "),
-        io__write_char(Char3),
-        io__nl
-    ;
-        io__write_string("Test 3 failed"),
-        io__nl
+    ( if Int3 = q('c'), char.to_int(Char3, Int3) then
+        io.write_string("Test 3 succeeded: ", !IO),
+        io.write_char(Char3, !IO),
+        io.nl(!IO)
+    else
+        io.write_string("Test 3 failed", !IO),
+        io.nl(!IO)
     ).

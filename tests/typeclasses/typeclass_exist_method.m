@@ -12,8 +12,8 @@
 :- import_module require.
 
 :- typeclass toto(T) where
-  [
-  ].
+[
+].
 
 :- instance toto(float) where [].
 :- instance toto(character) where [].
@@ -40,15 +40,15 @@ gen_toto_char('?').
 :- mode int_gen_toto(in, out) is det.
 
 int_gen_toto(X, Y) :-
-    ( compare(=, X, X) ->
+    ( if compare(=, X, X) then
         gen_toto_float(Y)
-    ;
+    else
         error("oops")
     ).
 
-main -->
-    { gen_toto(42, Y) },
-    write(Y), nl.
+main(!IO) :-
+    gen_toto(42, Y),
+    io.write_line(Y, !IO).
 
 :- end_module typeclass_exist_method.
 

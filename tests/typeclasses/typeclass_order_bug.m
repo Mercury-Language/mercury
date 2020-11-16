@@ -21,7 +21,7 @@
 :- pred main(io::di, io::uo) is det.
 
 :- typeclass p(T, U) where [
-    pred m(U, T, io__state, io__state),
+    pred m(U, T, io, io),
     mode m(in, in, di, uo) is det
 ].
 
@@ -31,15 +31,12 @@
     pred(m/4) is write_maybe_pair
 ].
 
-main -->
-    m(yes("ok"), yes(1)),
-    io__nl.
+main(!IO) :-
+    m(yes("ok"), yes(1), !IO),
+    io.nl(!IO).
 
-:- pred write_maybe_pair(maybe(T), maybe(U), io__state, io__state).
-:- mode write_maybe_pair(in, in, di, uo) is det.
+:- pred write_maybe_pair(maybe(T)::in, maybe(U)::in, io::di, io::uo) is det.
 
-write_maybe_pair(MaybeT, MaybeU) -->
-    io__write(MaybeT),
-    io__nl,
-    io__write(MaybeU),
-    io__nl.
+write_maybe_pair(MaybeT, MaybeU, !IO) :-
+    io.write_line(MaybeT, !IO),
+    io.write_line(MaybeU, !IO).

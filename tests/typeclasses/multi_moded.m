@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -29,18 +29,17 @@
 :- mode p(in, in) is semidet.
 :- mode p(out, in) is semidet.
 :- mode p(in, out) is nondet.
+
 p(1, 1).
 p(1, 2).
 p(1, 3).
 p(2, 4).
 
-:- pred mypred(T, T) <= thisclass(T).
-:- mode mypred(in, out) is nondet.
+:- pred mypred(T::in, T::out) is nondet <= thisclass(T).
 
 mypred(A, B) :-
     c(A, B).
 
-main -->
-    { solutions(mypred(1), X) },
-    io__write(X),
-    nl.
+main(!IO) :-
+    solutions(mypred(1), Solns),
+    io.write_line(Solns, !IO).

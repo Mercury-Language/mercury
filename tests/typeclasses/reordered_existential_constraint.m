@@ -12,9 +12,9 @@
 
 :- implementation.
 
-main -->
-    { foobar },
-    io__write_string("Hi!\n").
+main(!IO) :-
+    foobar,
+    io.write_string("Hi!\n", !IO).
 
 :- typeclass c(T) where [].
 

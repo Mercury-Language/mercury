@@ -31,20 +31,19 @@ foo(4).
 foo(5).
 foo(6).
 
-:- pred b(T) <= c(T).
-:- mode b(out) is multi.
+:- pred b(T::out) is multi <= c(T).
 :- pragma no_inline(b/1).
 
 b(X) :-
     a(X).
 
-main -->
-    (
-        { b(X) },
-        { X > 3 }
-    ->
-        io__write_int(X)
-    ;
-        io__write_string("failed")
+main(!IO) :-
+    ( if
+        b(X),
+        X > 3
+    then
+        io.write_int(X, !IO)
+    else
+        io.write_string("failed", !IO)
     ),
-    io__nl.
+    io.nl(!IO).

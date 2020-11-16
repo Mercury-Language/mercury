@@ -14,7 +14,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -26,30 +26,30 @@
 ].
 
 :- typeclass writeable(T) where [
-    pred write_t(T::in, io__state::di, io__state::uo) is det
+    pred write_t(T::in, io::di, io::uo) is det
 ].
 
 :- instance class(list(T)) <= class(T) where [
-    (p(U, V, List) -->
-        list__foldl(p(U, V), List),
+    ( p(U, V, List) -->
+        list.foldl(p(U, V), List),
         write_t(U),
-        io__nl,
-        io__write(V),
-        io__nl
+        io.nl,
+        io.write(V),
+        io.nl
     )
 ].
 
 :- instance class(int) where [
-    (p(_, _, Int) -->
-        io__write_int(Int + 1),
-        io__nl
+    ( p(_, _, Int) -->
+        io.write_int(Int + 1),
+        io.nl
     )
 ].
 
 :- instance writeable(string) where [
     write_t(String) -->
-        io__write_string(String)
+        io.write_string(String)
 ].
 
-main -->
-    p("string", "string2", [1, 2, 3]).
+main(!IO) :-
+    p("string", "string2", [1, 2, 3], !IO).

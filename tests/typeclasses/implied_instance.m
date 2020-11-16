@@ -6,7 +6,7 @@
 
 :- interface.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- import_module io.
 
@@ -15,38 +15,36 @@
 :- import_module list.
 
 :- typeclass printable(A) where [
-    pred p(A::in, io__state::di, io__state::uo) is det
+    pred p(A::in, io::di, io::uo) is det
 ].
 
 :- instance printable(int) where [
-    pred(p/3) is io__write_int
+    pred(p/3) is io.write_int
 ].
 
 :- instance printable(list(T)) <= printable(T) where [
     pred(p/3) is my_write_list
 ].
 
-main -->
-    p(2),
-    io__write_string("\n"),
-    p([42, 24, 1, 2, 3]),
-    io__write_string("\n").
+main(!IO) :-
+    p(2, !IO),
+    io.nl(!IO),
+    p([42, 24, 1, 2, 3], !IO),
+    io.nl(!IO).
 
-:- pred my_write_list(list(T), io__state, io__state) <= printable(T).
-:- mode my_write_list(in, di, uo) is det.
+:- pred my_write_list(list(T)::in, io::di, io::uo) is det <= printable(T).
 
-my_write_list([]) -->
-    io__write_string("[]").
-my_write_list([X | Xs]) -->
-    io__write_string("[\n"),
-    my_write_list_2([X | Xs]),
-    io__write_string("]").
+my_write_list([], !IO) :-
+    io.write_string("[]", !IO).
+my_write_list([X | Xs], !IO) :-
+    io.write_string("[\n", !IO),
+    my_write_list_2([X | Xs], !IO),
+    io.write_string("]", !IO).
 
-:- pred my_write_list_2(list(T), io__state, io__state) <= printable(T).
-:- mode my_write_list_2(in, di, uo) is det.
+:- pred my_write_list_2(list(T)::in, io::di, io::uo) is det <= printable(T).
 
-my_write_list_2([]) --> [].
-my_write_list_2([X | Xs]) -->
-    p(X),
-    io__write_string("\n"),
-    my_write_list_2(Xs).
+my_write_list_2([], !IO).
+my_write_list_2([X | Xs], !IO) :-
+    p(X, !IO),
+    io.nl(!IO),
+    my_write_list_2(Xs, !IO).

@@ -7,7 +7,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- typeclass c(T) where [
     impure pred m1(T::in) is det,
@@ -39,22 +39,22 @@
 
 :- pragma promise_pure(main/2).
 
-main -->
-    { impure m1(foo) },
-    { impure m1(foo) },
-    { impure m1(foo) },
-    { impure m1(foo) },
-    { semipure m2(foo, X) },
-    io__write_int(X),
-    io__nl,
+main(!IO) :-
+    impure m1(foo),
+    impure m1(foo),
+    impure m1(foo),
+    impure m1(foo),
+    semipure m2(foo, X),
+    io.write_int(X, !IO),
+    io.nl(!IO),
 
-    { impure m1(goo) },
-    { impure m1(goo) },
-    { impure m1(goo) },
-    { impure m1(goo) },
-    { semipure m2(goo, Y) },
-    io__write_int(Y),
-    io__nl.
+    impure m1(goo),
+    impure m1(goo),
+    impure m1(goo),
+    impure m1(goo),
+    semipure m2(goo, Y),
+    io.write_int(Y, !IO),
+    io.nl(!IO).
 
 :- pragma foreign_decl("C", "extern int foo_counter;").
 :- pragma foreign_code("C", "int foo_counter = 0;").

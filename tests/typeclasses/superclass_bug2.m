@@ -18,9 +18,9 @@
 
 :- implementation.
 
-main -->
-    { foobar(t1(1)) },
-    io__write_string("Hi.\n").
+main(!IO) :-
+    foobar(t1(1)),
+    io.write_string("Hi.\n", !IO).
 
 :- typeclass g(T) where [ ].
 :- typeclass h(T) <= g(T) where [ ].

@@ -15,15 +15,15 @@
 
 main(!IO) :-
     write_string("test(1): ", !IO),
-    ( test(1) ->
+    ( if test(1) then
         write_string("yes\n", !IO)
-    ;
+    else
         write_string("no\n", !IO)
     ),
     write_string("test(2): ", !IO),
-    ( test(2) ->
+    ( if test(2) then
         write_string("yes\n", !IO)
-    ;
+    else
         write_string("no\n", !IO)
     ).
 

@@ -70,52 +70,50 @@
     pred(all_zero/1) is is_zero
 ].
 
-main -->
-    { type_spec([1, 2, 3], [3, 4, 5], Result1) },
-    io__write(Result1),
-    io__nl,
-    { typeclass_spec([1, 2, 3], [3, 4, 5], Result2) },
-    io__write(Result2),
-    io__nl,
-    ( { all_zero([0, 1, 2, 3]) } ->
-        io__write_string("Failed\n")
-    ;
-        io__write_string("Succeeded\n")
+main(!IO) :-
+    type_spec([1, 2, 3], [3, 4, 5], Result1),
+    io.write_line(Result1, !IO),
+    typeclass_spec([1, 2, 3], [3, 4, 5], Result2),
+    io.write_line(Result2, !IO),
+    ( if all_zero([0, 1, 2, 3]) then
+        io.write_string("Failed\n", !IO)
+    else
+        io.write_string("Succeeded\n", !IO)
     ),
-    ( { all_zero([0, 0, 0]) } ->
-        io__write_string("Succeeded\n")
-    ;
-        io__write_string("Failed\n")
+    ( if all_zero([0, 0, 0]) then
+        io.write_string("Succeeded\n", !IO)
+    else
+        io.write_string("Failed\n", !IO)
     ),
-    ( { my_unify([1, 2, 3], [1, 2, 3]) } ->
-        io__write_string("Succeeded\n")
-    ;
-        io__write_string("Failed\n")
+    ( if my_unify([1, 2, 3], [1, 2, 3]) then
+        io.write_string("Succeeded\n", !IO)
+    else
+        io.write_string("Failed\n", !IO)
     ),
-    ( { my_unify([1, 2, 3], [1]) } ->
-        io__write_string("Succeeded\n")
-    ;
-        io__write_string("Failed\n")
+    ( if my_unify([1, 2, 3], [1]) then
+        io.write_string("Succeeded\n", !IO)
+    else
+        io.write_string("Failed\n", !IO)
     ),
-    ( { unify_no_tag(no_tag(1), no_tag(1)) } ->
-        io__write_string("Succeeded\n")
-    ;
-        io__write_string("Failed\n")
+    ( if unify_no_tag(no_tag(1), no_tag(1)) then
+        io.write_string("Succeeded\n", !IO)
+    else
+        io.write_string("Failed\n", !IO)
     ),
-    ( { unify_no_tag(no_tag(1), no_tag(2)) } ->
-        io__write_string("Succeeded\n")
-    ;
-        io__write_string("Failed\n")
+    ( if unify_no_tag(no_tag(1), no_tag(2)) then
+        io.write_string("Succeeded\n", !IO)
+    else
+        io.write_string("Failed\n", !IO)
     ),
-    ( { id(1) = 1 } ->
-        io__write_string("Succeeded\n")
-    ;
-        io__write_string("Failed\n")
+    ( if id(1) = 1 then
+        io.write_string("Succeeded\n", !IO)
+    else
+        io.write_string("Failed\n", !IO)
     ),
-    ( { no_type_spec([1, 2, 3], [1, 2, 3]) } ->
-        io__write_string("Succeeded\n")
-    ;
-        io__write_string("Failed\n")
+    ( if no_type_spec([1, 2, 3], [1, 2, 3]) then
+        io.write_string("Succeeded\n", !IO)
+    else
+        io.write_string("Failed\n", !IO)
     ).
 
 type_spec([], [], []).
@@ -123,12 +121,12 @@ type_spec([_ | _], [], []).
 type_spec([], [_ | _], []).
 type_spec([A | As], [B | Bs], Cs) :-
     compare(Result, A, B),
-    ( Result = (<) ->
+    ( if Result = (<) then
         type_spec(As, [B | Bs], Cs)
-    ; Result = (=) ->
+    else if Result = (=) then
         type_spec(As, Bs, Cs1),
         Cs = [A | Cs1]
-    ;
+    else
         type_spec([A | As], Bs, Cs)
     ).
 
@@ -137,21 +135,21 @@ typeclass_spec([_ | _], [], []).
 typeclass_spec([], [_ | _], []).
 typeclass_spec([A | As], [B | Bs], Cs) :-
     compare_t(Result, A, B),
-    ( Result = (<) ->
+    ( if Result = (<) then
         typeclass_spec(As, [B | Bs], Cs)
-    ; Result = (=) ->
+    else if Result = (=) then
         typeclass_spec(As, Bs, Cs1),
         Cs = [A | Cs1]
-    ;
+    else
         typeclass_spec([A | As], Bs, Cs)
     ).
 
 compare_int(Result, Int1, Int2) :-
-    ( Int1 < Int2 ->
+    ( if Int1 < Int2 then
         Result = (<)
-    ; Int1 = Int2 ->
+    else if Int1 = Int2 then
         Result = (=)
-    ;
+    else
         Result = (>)
     ).
 
@@ -170,4 +168,4 @@ unify_no_tag(X, X).
 
 id(X) = X.
 
-type_spec__length(List) = list__length(List).
+length(List) = list.length(List).

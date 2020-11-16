@@ -14,10 +14,10 @@
 
 :- import_module unqualified_method2.
 
-main -->
-    print_modified(1).
+main(!IO) :-
+    print_modified(1, !IO).
 
-:- pred print_modified_int(int::in, io__state::di, io__state::uo) is det.
+:- pred print_modified_int(int::in, io::di, io::uo) is det.
 
-print_modified_int(_) -->
-    io__write_string("This is the wrong method.\n").
+print_modified_int(_, !IO) :-
+    io__write_string("This is the wrong method.\n", !IO).
