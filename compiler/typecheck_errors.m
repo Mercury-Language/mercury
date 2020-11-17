@@ -455,7 +455,7 @@ report_apply_instead_of_pred = Components :-
 
 report_unknown_event_call_error(Context, EventName) = Spec :-
     Pieces = [words("Error: there is no event named"),
-        quote(EventName), suffix(".")],
+        quote(EventName), suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces).
 
@@ -463,7 +463,7 @@ report_event_args_mismatch(Context, EventName, EventArgTypes, Args) = Spec :-
     Pieces =
         [words("Error:")] ++
         error_num_args_to_pieces(no, length(Args), [length(EventArgTypes)]) ++
-        [words("in event"), quote(EventName), suffix(".")],
+        [words("in event"), quote(EventName), suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces).
 
@@ -474,7 +474,7 @@ maybe_report_no_clauses(ModuleInfo, PredId, PredInfo) = Specs :-
         PredPieces = describe_one_pred_name(ModuleInfo,
             should_not_module_qualify, PredId),
         Pieces = [words("Error: no clauses for") | PredPieces] ++
-            [suffix(".")],
+            [suffix("."), nl],
         pred_info_get_context(PredInfo, Context),
         % It is possible (and even likely) that the error that got the exit
         % status set was caused by a syntax error in a clause defining this
@@ -536,7 +536,7 @@ report_non_contiguous_clauses(ModuleInfo, PredId, PredInfo,
     PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
         PredId),
     FrontPieces = [words("Warning: non-contiguous clauses for ") | PredPieces]
-        ++ [suffix(".")],
+        ++ [suffix("."), nl],
     pred_info_get_context(PredInfo, Context),
     FrontMsg = simplest_msg(Context, FrontPieces),
     report_non_contiguous_clause_contexts(PredPieces, 1,
