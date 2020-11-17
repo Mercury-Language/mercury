@@ -526,10 +526,8 @@ check_one_class(ClassTable, ClassId, InstanceDefns0, InstanceDefns,
     then
         (
             MaybeBadDefn = has_no_bad_class_defn,
-            ClassId = class_id(ClassName, ClassArity),
-            ClassSNA = sym_name_arity(ClassName, ClassArity),
             Pieces = [words("Error: no definition for typeclass"),
-                unqual_sym_name_arity(ClassSNA), suffix("."), nl],
+                unqual_class_id(ClassId), suffix("."), nl],
             Spec = simplest_spec($pred, severity_error, phase_type_check,
                 ClassContext, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -594,10 +592,8 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
         !InstanceDefn, !ModuleInfo, !QualInfo, !Specs) :-
     (
         ClassInterface = class_interface_abstract,
-        ClassId = class_id(ClassName, ClassArity),
         Pieces = [words("Error: instance declaration for abstract typeclass"),
-            unqual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
-            suffix("."), nl],
+            unqual_class_id(ClassId), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_type_check,
             TermContext, Pieces),
         !:Specs = [Spec | !.Specs]
@@ -1403,10 +1399,9 @@ report_cyclic_classes(ClassTable, ClassPath) = Spec :-
     ;
         ClassPath = [ClassId | Tail],
         Context = map.lookup(ClassTable, ClassId) ^ classdefn_context,
-        ClassId = class_id(Name, Arity),
         StartPieces =
             [words("Error: cyclic superclass relation detected:"), nl,
-            qual_sym_name_arity(sym_name_arity(Name, Arity)), nl],
+            qual_class_id(ClassId), nl],
         list.foldl(add_path_element, Tail, cord.init, LaterLinesCord),
         Pieces = StartPieces ++ cord.list(LaterLinesCord),
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
@@ -1416,9 +1411,8 @@ report_cyclic_classes(ClassTable, ClassPath) = Spec :-
 :- pred add_path_element(class_id::in,
     cord(format_component)::in, cord(format_component)::out) is det.
 
-add_path_element(class_id(SymName, Arity), !LaterLines) :-
-    Line = [words("<="),
-        qual_sym_name_arity(sym_name_arity(SymName, Arity)), nl],
+add_path_element(ClassId, !LaterLines) :-
+    Line = [words("<="), qual_class_id(ClassId), nl],
     !:LaterLines = !.LaterLines ++ cord.from_list(Line).
 
 %---------------------------------------------------------------------------%
@@ -1608,14 +1602,10 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     = error_spec.
 
 report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
-    ClassId = class_id(SymName, Arity),
     TVarSet = InstanceDefn ^ instdefn_tvarset,
-    Context = InstanceDefn ^ instdefn_context,
-
     VarsStrs = list.map(mercury_var_to_name_only(TVarSet), Vars),
     Pieces = [words("In instance for typeclass"),
-        unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
-        suffix(":"), nl,
+        unqual_class_id(ClassId), suffix(":"), nl,
         words("functional dependency not satisfied:"),
         words(choose_number(Vars, "type variable", "type variables"))]
         ++ list_to_quoted_pieces(VarsStrs) ++
@@ -1623,6 +1613,7 @@ report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
         words("in the range of the functional dependency, but"),
         words(choose_number(Vars, "is", "are")),
         words("not determined by the domain."), nl],
+    Context = InstanceDefn ^ instdefn_context,
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces).
 
@@ -1631,7 +1622,6 @@ report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
 
 report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
         = Spec :-
-    ClassId = class_id(SymName, Arity),
     Params = ClassDefn ^ classdefn_vars,
     TVarSet = ClassDefn ^ classdefn_tvarset,
     ContextA = InstanceA ^ instdefn_context,
@@ -1644,8 +1634,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
     Ranges = mercury_vars_to_name_only(TVarSet, RangeParams),
 
     PiecesA = [words("Inconsistent instance declaration for typeclass"),
-        qual_sym_name_arity(sym_name_arity(SymName, Arity)),
-        words("with functional dependency"),
+        qual_class_id(ClassId), words("with functional dependency"),
         quote("(" ++ Domains ++ " -> " ++ Ranges ++ ")"), suffix("."), nl],
     PiecesB = [words("Here is the conflicting instance."), nl],
 
@@ -1981,33 +1970,32 @@ report_unbound_tvars_explanation =
 
 :- pred find_bad_class_ids_in_constraints(class_table::in,
     list(prog_constraint)::in,
-    set(sym_name_arity)::in, set(sym_name_arity)::out) is det.
+    set(class_id)::in, set(class_id)::out) is det.
 
-find_bad_class_ids_in_constraints(_, [], !BadClassSNAs).
-find_bad_class_ids_in_constraints(ClassTable, [C | Cs], !BadClassSNAs) :-
-    find_bad_class_ids_in_constraint(ClassTable, C, !BadClassSNAs),
-    find_bad_class_ids_in_constraints(ClassTable, Cs, !BadClassSNAs).
+find_bad_class_ids_in_constraints(_, [], !BadClassIds).
+find_bad_class_ids_in_constraints(ClassTable, [C | Cs], !BadClassIds) :-
+    find_bad_class_ids_in_constraint(ClassTable, C, !BadClassIds),
+    find_bad_class_ids_in_constraints(ClassTable, Cs, !BadClassIds).
 
 :- pred find_bad_class_ids_in_constraint(class_table::in,
     prog_constraint::in,
-    set(sym_name_arity)::in, set(sym_name_arity)::out) is det.
+    set(class_id)::in, set(class_id)::out) is det.
 
-find_bad_class_ids_in_constraint(ClassTable, C, !BadClassSNAs) :-
+find_bad_class_ids_in_constraint(ClassTable, C, !BadClassIds) :-
     C = constraint(ClassSymName, ArgTypes),
     list.length(ArgTypes, Arity),
     ClassId = class_id(ClassSymName, Arity),
     ( if map.search(ClassTable, ClassId, _) then
         true
     else
-        ClassSNA = sym_name_arity(ClassSymName, Arity),
-        set.insert(ClassSNA, !BadClassSNAs)
+        set.insert(ClassId, !BadClassIds)
     ).
 
 :- func report_bad_class_ids_in_pred_decl(module_info, pred_info,
-    sym_name_arity, list(sym_name_arity)) = error_spec.
+    class_id, list(class_id)) = error_spec.
 
 report_bad_class_ids_in_pred_decl(ModuleInfo, PredInfo,
-        HeadBadClassSNA, TailBadClassSNAs) = Spec :-
+        HeadBadClassId, TailBadClassIds) = Spec :-
     pred_info_get_context(PredInfo, Context),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredName = pred_info_name(PredInfo),
@@ -2026,39 +2014,39 @@ report_bad_class_ids_in_pred_decl(ModuleInfo, PredInfo,
     StartPieces = [words("In declaration for"),
         unqual_pf_sym_name_orig_arity(PFSymNameArity), suffix(":"), nl],
     Pieces = StartPieces ++
-        report_bad_class_ids(HeadBadClassSNA, TailBadClassSNAs),
+        report_bad_class_ids(HeadBadClassId, TailBadClassIds),
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces).
 
 :- func report_bad_class_ids_in_data_ctor(type_ctor,
-    hlds_type_defn, sym_name_arity, list(sym_name_arity)) = error_spec.
+    hlds_type_defn, class_id, list(class_id)) = error_spec.
 
 report_bad_class_ids_in_data_ctor(TypeCtor, TypeDefn,
-        HeadBadClassSNA, TailBadClassSNAs) = Spec :-
+        HeadBadClassId, TailBadClassIds) = Spec :-
     get_type_defn_context(TypeDefn, Context),
     StartPieces = [words("In declaration for type"), qual_type_ctor(TypeCtor),
         suffix(":"), nl],
     Pieces = StartPieces ++
-        report_bad_class_ids(HeadBadClassSNA, TailBadClassSNAs),
+        report_bad_class_ids(HeadBadClassId, TailBadClassIds),
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces).
 
-:- func report_bad_class_ids(sym_name_arity, list(sym_name_arity))
+:- func report_bad_class_ids(class_id, list(class_id))
     = list(format_component).
 
-report_bad_class_ids(HeadSNA, TailSNAs) = Pieces :-
-    WrapQualSNA = (func(SNA) = qual_sym_name_arity(SNA)),
-    QualHeadSNA = WrapQualSNA(HeadSNA),
+report_bad_class_ids(HeadClassId, TailClassIds) = Pieces :-
+    WrapQualClassId = (func(ClassId) = qual_class_id(ClassId)),
+    QualHeadClassId = WrapQualClassId(HeadClassId),
     (
-        TailSNAs = [],
-        Pieces = [words("error: the type class"), QualHeadSNA,
+        TailClassIds = [],
+        Pieces = [words("error: the type class"), QualHeadClassId,
             words("does not exist."), nl]
     ;
-        TailSNAs = [_ | _],
-        QualTailSNAs = list.map(WrapQualSNA, TailSNAs),
-        QualSNAs = [QualHeadSNA | QualTailSNAs],
+        TailClassIds = [_ | _],
+        QualTailClassIds = list.map(WrapQualClassId, TailClassIds),
+        QualClassIds = [QualHeadClassId | QualTailClassIds],
         Pieces = [words("error: the type classes")] ++
-            component_list_to_pieces("and", QualSNAs) ++
+            component_list_to_pieces("and", QualClassIds) ++
             [words("do not exist."), nl]
     ).
 
@@ -2345,15 +2333,13 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
 
 report_unknown_instance_methods(ClassId, HeadMethod, TailMethods, Context,
         !Specs) :-
-    ClassId = class_id(ClassName, ClassArity),
     (
         TailMethods = [],
         HeadMethod = instance_method(HeadPredOrFunc, HeadMethodName, _Defn,
             HeadArity, _Context),
         adjust_func_arity(HeadPredOrFunc, HeadArity, HeadPredArity),
         Pieces = [words("In instance declaration for"),
-            unqual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
-            suffix(":"), nl,
+            unqual_class_id(ClassId), suffix(":"), nl,
             words("the type class has no"),
             p_or_f(HeadPredOrFunc), words("method named"),
             unqual_sym_name_arity(
@@ -2362,8 +2348,7 @@ report_unknown_instance_methods(ClassId, HeadMethod, TailMethods, Context,
     ;
         TailMethods = [_ | _],
         Pieces1 = [words("In instance declaration for"),
-            unqual_sym_name_arity(sym_name_arity(ClassName, ClassArity)),
-            suffix(":"), nl,
+            unqual_class_id(ClassId), suffix(":"), nl,
             words("the type class has none of these methods:"), nl],
         format_method_names(HeadMethod, TailMethods, Pieces2),
         Pieces = Pieces1 ++ Pieces2

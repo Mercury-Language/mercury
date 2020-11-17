@@ -525,6 +525,11 @@
             % The output should contain the string form of the type_ctor,
             % surrounded by `' quotes, followed by '/' and the arity.
 
+    ;       qual_class_id(class_id)
+    ;       unqual_class_id(class_id)
+            % The output should contain the string form of the class_id,
+            % surrounded by `' quotes, followed by '/' and the arity.
+
     ;       qual_cons_id_and_maybe_arity(cons_id)
     ;       unqual_cons_id_and_maybe_arity(cons_id)
             % If the cons_id is a cons_id for a builtin type, strip the
@@ -2062,13 +2067,20 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
     ;
         (
             Component = qual_type_ctor(TypeCtor),
-            TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity)
+            TypeCtor = type_ctor(SymName, Arity)
         ;
-            Component = unqual_type_ctor(TypeCtor0),
-            TypeCtor0 = type_ctor(TypeCtorSymName0, TypeCtorArity),
-            TypeCtorSymName = unqualified(unqualify_name(TypeCtorSymName0))
+            Component = unqual_type_ctor(TypeCtor),
+            TypeCtor = type_ctor(SymName0, Arity),
+            SymName = unqualified(unqualify_name(SymName0))
+        ;
+            Component = qual_class_id(ClassId),
+            ClassId = class_id(SymName, Arity)
+        ;
+            Component = unqual_class_id(ClassId),
+            ClassId = class_id(SymName0, Arity),
+            SymName = unqualified(unqualify_name(SymName0))
         ),
-        SymNameAndArity = sym_name_arity(TypeCtorSymName, TypeCtorArity),
+        SymNameAndArity = sym_name_arity(SymName, Arity),
         Word = sym_name_arity_to_word(SymNameAndArity),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
@@ -2266,13 +2278,20 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
     ;
         (
             Component = qual_type_ctor(TypeCtor),
-            TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity)
+            TypeCtor = type_ctor(SymName, Arity)
         ;
-            Component = unqual_type_ctor(TypeCtor0),
-            TypeCtor0 = type_ctor(TypeCtorSymName0, TypeCtorArity),
-            TypeCtorSymName = unqualified(unqualify_name(TypeCtorSymName0))
+            Component = unqual_type_ctor(TypeCtor),
+            TypeCtor = type_ctor(SymName0, Arity),
+            SymName = unqualified(unqualify_name(SymName0))
+        ;
+            Component = qual_class_id(ClassId),
+            ClassId = class_id(SymName, Arity)
+        ;
+            Component = unqual_class_id(ClassId),
+            ClassId = class_id(SymName0, Arity),
+            SymName = unqualified(unqualify_name(SymName0))
         ),
-        SymNameAndArity = sym_name_arity(TypeCtorSymName, TypeCtorArity),
+        SymNameAndArity = sym_name_arity(SymName, Arity),
         Word = sym_name_arity_to_word(SymNameAndArity),
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
