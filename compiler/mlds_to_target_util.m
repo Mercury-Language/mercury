@@ -156,7 +156,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred output_array_dimensions(list(int)::in, io::di, io::uo) is det.
+:- pred output_array_dimensions(io.text_output_stream::in, list(int)::in,
+    io::di, io::uo) is det.
 
 :- pred array_dimension_to_string(int::in, string::out) is det.
 
@@ -172,14 +173,15 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred output_generic_tvars(list(tvar)::in, io::di, io::uo) is det.
+:- pred output_generic_tvars(io.text_output_stream::in, list(tvar)::in,
+    io::di, io::uo) is det.
 
 :- pred generic_tvar_to_string(tvar::in, string::out) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_output_pred_proc_id_comment(bool::in, pred_proc_id::in,
-    io::di, io::uo) is det.
+:- pred maybe_output_pred_proc_id_comment(io.text_output_stream::in, bool::in,
+    pred_proc_id::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -188,9 +190,11 @@
     % for each level of indentation.
 :- type indent == int.
 
-:- pred output_n_indents(indent::in, io::di, io::uo) is det.
+:- pred output_n_indents(io.text_output_stream::in, indent::in,
+    io::di, io::uo) is det.
 
-:- pred write_indented_line(indent::in, string::in, io::di, io::uo) is det.
+:- pred write_indented_line(io.text_output_stream::in, indent::in, string::in,
+    io::di, io::uo) is det.
 
 :- pred scope_indent(mlds_stmt::in, int::in, int::out) is det.
 
@@ -199,7 +203,8 @@
     % Output a Java/C# comment saying that the file was automatically
     % generated and give details such as the compiler version.
     %
-:- pred output_auto_gen_comment(string::in, io::di, io::uo) is det.
+:- pred output_auto_gen_comment(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -337,9 +342,9 @@ type_category_is_array(CtorCat) = IsArray :-
 
 %---------------------------------------------------------------------------%
 
-output_array_dimensions(ArrayDims, !IO) :-
+output_array_dimensions(Stream, ArrayDims, !IO) :-
     list.map(array_dimension_to_string, ArrayDims, Strings),
-    list.foldr(io.write_string, Strings, !IO).
+    list.foldr(io.write_string(Stream), Strings, !IO).
 
 array_dimension_to_string(N, String) :-
     ( if N = 0 then
@@ -365,34 +370,28 @@ init_arg_wrappers_cs_java(IsArray, StartWrapper, EndWrapper) :-
 
 %---------------------------------------------------------------------------%
 
-output_generic_tvars(Vars, !IO) :-
+output_generic_tvars(Stream, Vars, !IO) :-
     (
         Vars = []
     ;
         Vars = [_ | _],
-        io.write_string("<", !IO),
-        io.write_list(Vars, ", ", output_generic_tvar, !IO),
-        io.write_string(">", !IO)
+        list.map(generic_tvar_to_string, Vars, VarNames),
+        io.format(Stream, "<%s>",
+            [s(string.join_list(", ", VarNames))], !IO)
     ).
-
-:- pred output_generic_tvar(tvar::in, io::di, io::uo) is det.
-
-output_generic_tvar(Var, !IO) :-
-    generic_tvar_to_string(Var, VarName),
-    io.write_string(VarName, !IO).
 
 generic_tvar_to_string(Var, VarName) :-
     varset.lookup_name(varset.init, Var, "MR_tvar_", VarName).
 
 %---------------------------------------------------------------------------%
 
-maybe_output_pred_proc_id_comment(AutoComments, PredProcId, !IO) :-
+maybe_output_pred_proc_id_comment(Stream, AutoComments, PredProcId, !IO) :-
     (
         AutoComments = yes,
         PredProcId = proc(PredId, ProcId),
         pred_id_to_int(PredId, PredIdNum),
         proc_id_to_int(ProcId, ProcIdNum),
-        io.format("// pred_id: %d, proc_id: %d\n",
+        io.format(Stream, "// pred_id: %d, proc_id: %d\n",
             [i(PredIdNum), i(ProcIdNum)], !IO)
     ;
         AutoComments = no
@@ -400,44 +399,44 @@ maybe_output_pred_proc_id_comment(AutoComments, PredProcId, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-output_n_indents(N, !IO) :-
+output_n_indents(Stream, N, !IO) :-
     ( if N =< 0 then
         true
     else
-        io.write_string("  ", !IO),
-        output_n_indents(N - 1, !IO)
+        io.write_string(Stream, "  ", !IO),
+        output_n_indents(Stream, N - 1, !IO)
     ).
 
-write_indented_line(Indent, Line, !IO) :-
-    output_n_indents(Indent, !IO),
-    io.write_string(Line, !IO),
-    io.nl(!IO).
+write_indented_line(Stream, Indent, Line, !IO) :-
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, Line, !IO),
+    io.nl(Stream, !IO).
 
-scope_indent(Stmt, Indent, ScopeIndent) :-
+scope_indent(Stmt, CurIndent, ScopeIndent) :-
     ( if Stmt = ml_stmt_block(_, _, _, _) then
-        % We want the statements in the block to be indented by Indent + 1;
-        % it is ok for the braces around the block to be indented by Indent.
-        ScopeIndent = Indent
+        % We want the statements in the block to be indented by CurIndent + 1;
+        % it is ok for the braces around the block to be indented by CurIndent.
+        ScopeIndent = CurIndent
     else
-        ScopeIndent = Indent + 1
+        ScopeIndent = CurIndent + 1
     ).
 
 %---------------------------------------------------------------------------%
 
-output_auto_gen_comment(SourceFileName, !IO)  :-
+output_auto_gen_comment(Stream, SourceFileName, !IO)  :-
     library.version(Version, Fullarch),
-    io.write_string("//\n//\n// Automatically generated from ", !IO),
-    io.write_string(SourceFileName, !IO),
-    io.write_string(" by the Mercury Compiler,\n", !IO),
-    io.write_string("// version ", !IO),
-    io.write_string(Version, !IO),
-    io.nl(!IO),
-    io.write_string("// configured for ", !IO),
-    io.write_string(Fullarch, !IO),
-    io.nl(!IO),
-    io.write_string("//\n", !IO),
-    io.write_string("//\n", !IO),
-    io.nl(!IO).
+    io.write_string(Stream, "//\n//\n// Automatically generated from ", !IO),
+    io.write_string(Stream, SourceFileName, !IO),
+    io.write_string(Stream, " by the Mercury Compiler,\n", !IO),
+    io.write_string(Stream, "// version ", !IO),
+    io.write_string(Stream, Version, !IO),
+    io.nl(Stream, !IO),
+    io.write_string(Stream, "// configured for ", !IO),
+    io.write_string(Stream, Fullarch, !IO),
+    io.nl(Stream, !IO),
+    io.write_string(Stream, "//\n", !IO),
+    io.write_string(Stream, "//\n", !IO),
+    io.nl(Stream, !IO).
 
 %---------------------------------------------------------------------------%
 

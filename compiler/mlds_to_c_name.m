@@ -26,8 +26,8 @@
 
 :- func should_module_qualify_global_var_name(mlds_global_var_name) = bool.
 
-:- pred mlds_output_maybe_qualified_global_var_name(mlds_module_name::in,
-    mlds_global_var_name::in, io::di, io::uo) is det.
+:- pred mlds_output_maybe_qualified_global_var_name(io.text_output_stream::in,
+    mlds_module_name::in, mlds_global_var_name::in, io::di, io::uo) is det.
 
 :- func global_var_name(global_var_ref) = string.
 
@@ -36,29 +36,29 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_fully_qualified_function_name(qual_function_name::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_fully_qualified_function_name(io.text_output_stream::in,
+    qual_function_name::in, io::di, io::uo) is det.
 
-:- pred mlds_output_fully_qualified_proc_label(qual_proc_label::in,
-    io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
-:- pred mlds_output_class_name_arity(mlds_class_name::in, arity::in,
-    io::di, io::uo) is det.
-
-:- pred mlds_output_fully_qualified_field_var_name(qual_field_var_name::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_fully_qualified_proc_label(io.text_output_stream::in,
+    qual_proc_label::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_local_var_name(mlds_local_var_name::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_class_name_arity(io.text_output_stream::in,
+    mlds_class_name::in, arity::in, io::di, io::uo) is det.
+
+:- pred mlds_output_fully_qualified_field_var_name(io.text_output_stream::in,
+    qual_field_var_name::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred output_qual_name_prefix_c(mlds_module_name::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_local_var_name(io.text_output_stream::in,
+    mlds_local_var_name::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+:- pred output_qual_name_prefix_c(io.text_output_stream::in,
+    mlds_module_name::in, io::di, io::uo) is det.
 
 :- func qual_name_prefix_c(mlds_module_name) = string.
 
@@ -75,6 +75,7 @@
 :- import_module parse_tree.prog_foreign.
 
 :- import_module int.
+:- import_module list.
 :- import_module maybe.
 :- import_module string.
 
@@ -96,35 +97,37 @@ should_module_qualify_global_var_name(GlobalVarName) = ShouldModuleQual :-
         ShouldModuleQual = yes
     ).
 
-mlds_output_maybe_qualified_global_var_name(ModuleName, GlobalVarName, !IO) :-
+mlds_output_maybe_qualified_global_var_name(Stream, ModuleName, GlobalVarName,
+        !IO) :-
     ShouldModuleQual = should_module_qualify_global_var_name(GlobalVarName),
     (
         ShouldModuleQual = no
     ;
         ShouldModuleQual = yes,
-        output_qual_name_prefix_c(ModuleName, !IO)
+        output_qual_name_prefix_c(Stream, ModuleName, !IO)
     ),
-    mlds_output_global_var_name(GlobalVarName, !IO).
+    mlds_output_global_var_name(Stream, GlobalVarName, !IO).
 
-:- pred mlds_output_global_var_name(mlds_global_var_name::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_global_var_name(io.text_output_stream::in,
+    mlds_global_var_name::in, io::di, io::uo) is det.
 
-mlds_output_global_var_name(GlobalVarName, !IO) :-
+mlds_output_global_var_name(Stream, GlobalVarName, !IO) :-
     (
         GlobalVarName = gvn_const_var(ConstVar, Num),
         MangledGlobalVarName =
             name_mangle(ml_global_const_var_name_to_string(ConstVar, Num)),
-        io.write_string(MangledGlobalVarName, !IO)
+        io.write_string(Stream, MangledGlobalVarName, !IO)
     ;
         GlobalVarName = gvn_rtti_var(RttiId),
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
-        io.write_string(RttiAddrName, !IO)
+        io.write_string(Stream, RttiAddrName, !IO)
     ;
         GlobalVarName = gvn_tabling_var(ProcLabel, TablingId),
-        io.write_string(mlds_tabling_data_name(ProcLabel, TablingId), !IO)
+        io.write_string(Stream, mlds_tabling_data_name(ProcLabel, TablingId),
+            !IO)
     ;
         GlobalVarName = gvn_dummy_var,
-        io.write_string("dummy_var", !IO)
+        io.write_string(Stream, "dummy_var", !IO)
     ).
 
 % The calls to env_var_is_acceptable_char in parse_goal.m ensure that
@@ -139,7 +142,7 @@ mlds_tabling_data_name(ProcLabel, TablingId) =
 
 %---------------------------------------------------------------------------%
 
-mlds_output_fully_qualified_function_name(QualFuncName, !IO) :-
+mlds_output_fully_qualified_function_name(Stream, QualFuncName, !IO) :-
     QualFuncName = qual_function_name(ModuleName, FuncName),
     ( if
         (
@@ -157,14 +160,14 @@ mlds_output_fully_qualified_function_name(QualFuncName, !IO) :-
     then
         true
     else
-        output_qual_name_prefix_c(ModuleName, !IO)
+        output_qual_name_prefix_c(Stream, ModuleName, !IO)
     ),
-    mlds_output_function_name(FuncName, !IO).
+    mlds_output_function_name(Stream, FuncName, !IO).
 
-:- pred mlds_output_function_name(mlds_function_name::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_function_name(io.text_output_stream::in,
+    mlds_function_name::in, io::di, io::uo) is det.
 
-mlds_output_function_name(FunctionName, !IO) :-
+mlds_output_function_name(Stream, FunctionName, !IO) :-
     % XXX We should avoid appending the modenum and seqnum
     % if they are not needed.
     (
@@ -172,19 +175,18 @@ mlds_output_function_name(FunctionName, !IO) :-
         PlainFuncName = mlds_plain_func_name(FuncLabel, _PredId),
         FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
-        mlds_output_pred_label(PredLabel, !IO),
+        mlds_output_pred_label(Stream, PredLabel, !IO),
         proc_id_to_int(ProcId, ModeNum),
-        io.write_char('_', !IO),
-        io.write_int(ModeNum, !IO),
-        io.write_string(mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO)
+        FuncIdSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
+        io.format(Stream, "_%d%s", [i(ModeNum), s(FuncIdSuffix)], !IO)
     ;
         FunctionName = mlds_function_export(Name),
-        io.write_string(Name, !IO)
+        io.write_string(Stream, Name, !IO)
     ).
 
 %---------------------%
 
-mlds_output_fully_qualified_proc_label(QualProcLabel, !IO) :-
+mlds_output_fully_qualified_proc_label(Stream, QualProcLabel, !IO) :-
     QualProcLabel = qual_proc_label(ModuleName, Name),
     Name = mlds_proc_label(PredLabel, _ProcId),
     ( if
@@ -194,17 +196,17 @@ mlds_output_fully_qualified_proc_label(QualProcLabel, !IO) :-
     then
         true
     else
-        output_qual_name_prefix_c(ModuleName, !IO)
+        output_qual_name_prefix_c(Stream, ModuleName, !IO)
     ),
-    mlds_output_proc_label(Name, !IO).
+    mlds_output_proc_label(Stream, Name, !IO).
 
-:- pred mlds_output_proc_label(mlds_proc_label::in, io::di, io::uo) is det.
+:- pred mlds_output_proc_label(io.text_output_stream::in, mlds_proc_label::in,
+    io::di, io::uo) is det.
 
-mlds_output_proc_label(mlds_proc_label(PredLabel, ProcId), !IO) :-
-    mlds_output_pred_label(PredLabel, !IO),
+mlds_output_proc_label(Stream, mlds_proc_label(PredLabel, ProcId), !IO) :-
+    mlds_output_pred_label(Stream, PredLabel, !IO),
     proc_id_to_int(ProcId, ModeNum),
-    io.write_char('_', !IO),
-    io.write_int(ModeNum, !IO).
+    io.format(Stream, "_%d", [i(ModeNum)], !IO).
 
 :- func mlds_proc_label_to_string(mlds_proc_label) = string.
 
@@ -217,9 +219,10 @@ mlds_proc_label_to_string(mlds_proc_label(PredLabel, ProcId)) =
     % mlds_output_pred_label should be kept in sync with
     % mlds_pred_label_to_string and browser/name_mangle.m.
     %
-:- pred mlds_output_pred_label(mlds_pred_label::in, io::di, io::uo) is det.
+:- pred mlds_output_pred_label(io.text_output_stream::in, mlds_pred_label::in,
+    io::di, io::uo) is det.
 
-mlds_output_pred_label(PredLabel, !IO) :-
+mlds_output_pred_label(Stream, PredLabel, !IO) :-
     (
         PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
             Name, PredArity, _CodeModel, _NonOutputFunc),
@@ -233,16 +236,12 @@ mlds_output_pred_label(PredLabel, !IO) :-
             OrigArity = PredArity - 1
         ),
         MangledName = name_mangle(Name),
-        io.write_string(MangledName, !IO),
-        io.write_char('_', !IO),
-        io.write_int(OrigArity, !IO),
-        io.write_char('_', !IO),
-        io.write_string(Suffix, !IO),
+        io.format(Stream, "%s_%d_%s",
+            [s(MangledName), i(OrigArity), s(Suffix)], !IO),
         (
             MaybeDefiningModule = yes(DefiningModule),
-            io.write_string("_in__", !IO),
             MangledDefiningModule = sym_name_mangle(DefiningModule),
-            io.write_string(MangledDefiningModule, !IO)
+            io.format(Stream, "_in__%s", [s(MangledDefiningModule)], !IO)
         ;
             MaybeDefiningModule = no
         )
@@ -251,19 +250,15 @@ mlds_output_pred_label(PredLabel, !IO) :-
             TypeName, TypeArity),
         MangledPredName = name_mangle(PredName),
         MangledTypeName = name_mangle(TypeName),
-        io.write_string(MangledPredName, !IO),
-        io.write_string("__", !IO),
+        io.format(Stream, "%s__", [s(MangledPredName)], !IO),
         (
             MaybeTypeModule = yes(TypeModule),
             MangledTypeModule = sym_name_mangle(TypeModule),
-            io.write_string(MangledTypeModule, !IO),
-            io.write_string("__", !IO)
+            io.format(Stream, "__%s", [s(MangledTypeModule)], !IO)
         ;
             MaybeTypeModule = no
         ),
-        io.write_string(MangledTypeName, !IO),
-        io.write_string("_", !IO),
-        io.write_int(TypeArity, !IO)
+        io.format(Stream, "%s_%d", [s(MangledTypeName), i(TypeArity)], !IO)
     ).
 
     % mlds_pred_label_to_string should be kept in sync with
@@ -313,40 +308,37 @@ mlds_pred_label_to_string(PredLabel) = Str :-
 
 %---------------------------------------------------------------------------%
 
-mlds_output_class_name_arity(ClassName, Arity, !IO) :-
+mlds_output_class_name_arity(Stream, ClassName, Arity, !IO) :-
     % XXX We should avoid appending the arity if it is not needed.
     MangledClassName = name_mangle(ClassName),
-    io.write_string(MangledClassName, !IO),
-    io.write_char('_', !IO),
-    io.write_int(Arity, !IO).
+    io.format(Stream, "%s_%d", [s(MangledClassName), i(Arity)], !IO).
 
-mlds_output_fully_qualified_field_var_name(QualFieldVarName, !IO) :-
+mlds_output_fully_qualified_field_var_name(Stream, QualFieldVarName, !IO) :-
     QualFieldVarName = qual_field_var_name(ModuleName, _, FieldVarName),
-    output_qual_name_prefix_c(ModuleName, !IO),
-    mlds_output_field_var_name(FieldVarName, !IO).
+    output_qual_name_prefix_c(Stream, ModuleName, !IO),
+    mlds_output_field_var_name(Stream, FieldVarName, !IO).
 
-:- pred mlds_output_field_var_name(mlds_field_var_name::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_field_var_name(io.text_output_stream::in,
+    mlds_field_var_name::in, io::di, io::uo) is det.
 
-mlds_output_field_var_name(FieldVarName, !IO) :-
+mlds_output_field_var_name(Stream, FieldVarName, !IO) :-
     MangledFieldVarName =
         name_mangle(ml_field_var_name_to_string(FieldVarName)),
-    io.write_string(MangledFieldVarName, !IO).
+    io.write_string(Stream, MangledFieldVarName, !IO).
 
 %---------------------------------------------------------------------------%
 
-mlds_output_local_var_name(LocalVarName, !IO) :-
+mlds_output_local_var_name(Stream, LocalVarName, !IO) :-
     MangledLocalVarName =
         name_mangle(ml_local_var_name_to_string(LocalVarName)),
-    io.write_string(MangledLocalVarName, !IO).
+    io.write_string(Stream, MangledLocalVarName, !IO).
 
 %---------------------------------------------------------------------------%
 
-output_qual_name_prefix_c(ModuleName, !IO) :-
+output_qual_name_prefix_c(Stream, ModuleName, !IO) :-
     SymName = mlds_module_name_to_sym_name(ModuleName),
     MangledModuleName = sym_name_mangle(SymName),
-    io.write_string(MangledModuleName, !IO),
-    io.write_string("__", !IO).
+    io.format(Stream, "%s__", [s(MangledModuleName)], !IO).
 
 qual_name_prefix_c(ModuleName) = ModuleNamePrefix :-
     SymName = mlds_module_name_to_sym_name(ModuleName),

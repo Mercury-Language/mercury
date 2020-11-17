@@ -25,21 +25,21 @@
 %---------------------------------------------------------------------------%
 
 :- pred output_lval_for_java(java_out_info::in, mlds_lval::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
 :- pred output_call_rval_for_java(java_out_info::in, mlds_rval::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
 :- pred output_bracketed_rval_for_java(java_out_info::in, mlds_rval::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
 :- pred output_rval_for_java(java_out_info::in, mlds_rval::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
 :- pred output_boxed_rval_for_java(java_out_info::in, mlds_type::in,
-    mlds_rval::in, io::di, io::uo) is det.
+    mlds_rval::in, io.text_output_stream::in, io::di, io::uo) is det.
 
     % Output an Rval and if the Rval is an enumeration object append the string
     % ".MR_value", so we can access its value field.
@@ -53,7 +53,7 @@
     % is being used.
     %
 :- pred output_rval_maybe_with_enum_for_java(java_out_info::in, mlds_rval::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -63,16 +63,16 @@
     % The initializer is printed using output_initializer_body_for_java with
     % not_at_start_of_line (see below).
     %
-:- pred output_initializer_for_java(java_out_info::in, output_aux::in,
-    indent::in, mlds_type::in, mlds_initializer::in, string::in,
-    io::di, io::uo) is det.
+:- pred output_initializer_for_java(java_out_info::in,
+    io.text_output_stream::in, output_aux::in, indent::in, mlds_type::in,
+    mlds_initializer::in, string::in, io::di, io::uo) is det.
 
     % Output the allocation part of the given initializer on the rest
     % of the current line.
     %
 :- pred output_initializer_alloc_only_for_java(java_out_info::in,
-    mlds_initializer::in, maybe(mlds_type)::in, string::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, mlds_initializer::in, maybe(mlds_type)::in,
+    string::in, io::di, io::uo) is det.
 
     % Output the given initializer. The formatting depends on whether
     % the caller tells us that it has printed something on the current line
@@ -91,15 +91,17 @@
     % (which will usually be a semicolon or a comma) and a newline.
     %
 :- pred output_initializer_body_for_java(java_out_info::in,
-    initializer_starts::in, indent::in, mlds_initializer::in,
-    maybe(mlds_type)::in, string::in, io::di, io::uo) is det.
+    io.text_output_stream::in, initializer_starts::in, indent::in,
+    mlds_initializer::in, maybe(mlds_type)::in, string::in,
+    io::di, io::uo) is det.
 
     % Output the given list of initializers with commas between them,
     % putting each initializer on its own line with the given indent.
     % Put the given suffix after the last initializer.
     %
 :- pred output_nonempty_initializer_body_list_for_java(java_out_info::in,
-    indent::in, list(mlds_initializer)::in, string::in, io::di, io::uo) is det.
+    io.text_output_stream::in, indent::in, list(mlds_initializer)::in,
+    string::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -148,7 +150,7 @@
 
 %---------------------------------------------------------------------------%
 
-output_lval_for_java(Info, Lval, !IO) :-
+output_lval_for_java(Info, Lval, Stream, !IO) :-
     (
         Lval = ml_field(_MaybeTag, PtrRval, _PtrType, FieldId, FieldType),
         (
@@ -166,69 +168,69 @@ output_lval_for_java(Info, Lval, !IO) :-
             ),
             % XXX We shouldn't need this cast here, but there are cases where
             % it is needed and the MLDS doesn't seem to generate it.
-            io.write_string("((java.lang.Object[]) ", !IO),
-            output_rval_for_java(Info, PtrRval, !IO),
-            io.write_string(")[", !IO),
-            output_rval_for_java(Info, OffsetRval, !IO),
-            io.write_string("]", !IO)
+            io.write_string(Stream, "((java.lang.Object[]) ", !IO),
+            output_rval_for_java(Info, PtrRval, Stream, !IO),
+            io.write_string(Stream, ")[", !IO),
+            output_rval_for_java(Info, OffsetRval, Stream, !IO),
+            io.write_string(Stream, "]", !IO)
         ;
             FieldId = ml_field_named(QualFieldVarName, CtorType),
             QualFieldVarName = qual_field_var_name(_, _, FieldVarName),
             ( if FieldVarName = fvn_data_tag then
                 % If the field we are trying to access is just a `data_tag'
                 % then it is a member of the base class.
-                output_bracketed_rval_for_java(Info, PtrRval, !IO),
-                io.write_string(".", !IO)
+                output_bracketed_rval_for_java(Info, PtrRval, Stream, !IO),
+                io.write_string(Stream, ".", !IO)
             else if PtrRval = ml_self(_) then
                 % Suppress type cast on `this' keyword. This makes a difference
                 % when assigning to `final' member variables in constructor
                 % functions.
-                output_rval_for_java(Info, PtrRval, !IO),
-                io.write_string(".", !IO)
+                output_rval_for_java(Info, PtrRval, Stream, !IO),
+                io.write_string(Stream, ".", !IO)
             else
                 % Otherwise the field we are trying to access may be
                 % in a derived class. Objects are manipulated as instances
                 % of their base class, so we need to downcast to the derived
                 % class to access some fields.
-                io.write_string("((", !IO),
-                output_type_for_java(Info, CtorType, !IO),
-                io.write_string(") ", !IO),
-                output_bracketed_rval_for_java(Info, PtrRval, !IO),
-                io.write_string(").", !IO)
+                io.write_string(Stream, "((", !IO),
+                output_type_for_java(Info, CtorType, Stream, !IO),
+                io.write_string(Stream, ") ", !IO),
+                output_bracketed_rval_for_java(Info, PtrRval, Stream, !IO),
+                io.write_string(Stream, ").", !IO)
             ),
-            output_field_var_name_for_java(FieldVarName, !IO)
+            output_field_var_name_for_java(Stream, FieldVarName, !IO)
         )
     ;
         Lval = ml_mem_ref(Rval, _Type),
-        output_bracketed_rval_for_java(Info, Rval, !IO)
+        output_bracketed_rval_for_java(Info, Rval, Stream, !IO)
     ;
         Lval = ml_target_global_var_ref(GlobalVarRef),
         GlobalVarRef = env_var_ref(EnvVarName),
-        io.write_string("mercury_envvar_", !IO),
-        io.write_string(EnvVarName, !IO)
+        io.write_string(Stream, "mercury_envvar_", !IO),
+        io.write_string(Stream, EnvVarName, !IO)
     ;
         Lval = ml_global_var(QualGlobalVarName, _),
-        output_maybe_qualified_global_var_name_for_java(Info,
+        output_maybe_qualified_global_var_name_for_java(Info, Stream,
             QualGlobalVarName, !IO)
     ;
         Lval = ml_local_var(QualLocalVarName, _),
-        output_local_var_name_for_java(QualLocalVarName, !IO)
+        output_local_var_name_for_java(Stream, QualLocalVarName, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-output_call_rval_for_java(Info, Rval, !IO) :-
+output_call_rval_for_java(Info, Rval, Stream, !IO) :-
     ( if
         Rval = ml_const(Const),
         Const = mlconst_code_addr(CodeAddr)
     then
         IsCall = yes,
-        mlds_output_code_addr_for_java(Info, CodeAddr, IsCall, !IO)
+        mlds_output_code_addr_for_java(Info, Stream, CodeAddr, IsCall, !IO)
     else
-        output_bracketed_rval_for_java(Info, Rval, !IO)
+        output_bracketed_rval_for_java(Info, Rval, Stream, !IO)
     ).
 
-output_bracketed_rval_for_java(Info, Rval, !IO) :-
+output_bracketed_rval_for_java(Info, Rval, Stream, !IO) :-
     ( if
         % If it is just a variable name, then we don't need parentheses.
         ( Rval = ml_lval(ml_local_var(_,_))
@@ -236,38 +238,38 @@ output_bracketed_rval_for_java(Info, Rval, !IO) :-
         ; Rval = ml_const(mlconst_code_addr(_))
         )
     then
-        output_rval_for_java(Info, Rval, !IO)
+        output_rval_for_java(Info, Rval, Stream, !IO)
     else
-        io.write_char('(', !IO),
-        output_rval_for_java(Info, Rval, !IO),
-        io.write_char(')', !IO)
+        io.write_char(Stream, '(', !IO),
+        output_rval_for_java(Info, Rval, Stream, !IO),
+        io.write_char(Stream, ')', !IO)
     ).
 
-output_rval_for_java(Info, Rval, !IO) :-
+output_rval_for_java(Info, Rval, Stream, !IO) :-
     (
         Rval = ml_lval(Lval),
-        output_lval_for_java(Info, Lval, !IO)
+        output_lval_for_java(Info, Lval, Stream, !IO)
     ;
         Rval = ml_mkword(_, _),
         unexpected($pred, "tags not supported in Java")
     ;
         Rval = ml_const(Const),
-        output_rval_const_for_java(Info, Const, !IO)
+        output_rval_const_for_java(Info, Stream, Const, !IO)
     ;
         Rval = ml_cast(Type, SubRval),
-        output_cast_rval_for_java(Info, Type, SubRval, !IO)
+        output_cast_rval_for_java(Info, Type, SubRval, Stream, !IO)
     ;
         Rval = ml_box(Type, SubRval),
-        output_boxed_rval_for_java(Info, Type, SubRval, !IO)
+        output_boxed_rval_for_java(Info, Type, SubRval, Stream, !IO)
     ;
         Rval = ml_unbox(Type, SubRval),
-        output_unboxed_rval_for_java(Info, Type, SubRval, !IO)
+        output_unboxed_rval_for_java(Info, Type, SubRval, Stream, !IO)
     ;
         Rval = ml_unop(Unop, SubRval),
-        output_unop_for_java(Info, Unop, SubRval, !IO)
+        output_unop_for_java(Info, Stream, Unop, SubRval, !IO)
     ;
         Rval = ml_binop(BinOp, RvalA, RvalB),
-        output_binop_for_java(Info, BinOp, RvalA, RvalB, !IO)
+        output_binop_for_java(Info, Stream, BinOp, RvalA, RvalB, !IO)
     ;
         Rval = ml_mem_addr(_Lval),
         unexpected($pred, "mem_addr(_) not supported")
@@ -282,7 +284,7 @@ output_rval_for_java(Info, Rval, !IO) :-
         ModuleSymName = mlds_module_name_to_sym_name(ModuleName),
         mangle_sym_name_for_java(ModuleSymName, module_qual, "__",
             MangledModuleName),
-        io.format("%s.MR_scalar_common_%d[%d]",
+        io.format(Stream, "%s.MR_scalar_common_%d[%d]",
             [s(MangledModuleName),i(TypeNum), i(RowNum)], !IO)
     ;
         Rval = ml_vector_common_row_addr(VectorCommon, RowRval),
@@ -290,19 +292,19 @@ output_rval_for_java(Info, Rval, !IO) :-
             ml_vector_common_type_num(TypeNum), StartRowNum, _NumRows),
         % XXX Why do we print a "MangledModuleName." prefix for scalar common
         % addresses but not for vector common addresses?
-        io.format("MR_vector_common_%d[%d + ",
+        io.format(Stream, "MR_vector_common_%d[%d + ",
             [i(TypeNum), i(StartRowNum)], !IO),
-        output_rval_for_java(Info, RowRval, !IO),
-        io.write_string("]", !IO)
+        output_rval_for_java(Info, RowRval, Stream, !IO),
+        io.write_string(Stream, "]", !IO)
     ;
         Rval = ml_self(_),
-        io.write_string("this", !IO)
+        io.write_string(Stream, "this", !IO)
     ).
 
 :- pred output_cast_rval_for_java(java_out_info::in, mlds_type::in,
-    mlds_rval::in, io::di, io::uo) is det.
+    mlds_rval::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-output_cast_rval_for_java(Info, Type, Expr, !IO) :-
+output_cast_rval_for_java(Info, Type, Expr, Stream, !IO) :-
     % rtti_to_mlds.m generates casts from int to
     % jmercury.runtime.PseudoTypeInfo, but for Java
     % we need to treat these as constructions, not casts.
@@ -311,14 +313,15 @@ output_cast_rval_for_java(Info, Type, Expr, !IO) :-
         Type = mlds_pseudo_type_info_type,
         Expr = ml_const(mlconst_int(N))
     then
-        maybe_output_comment_for_java(Info, "cast", !IO),
+        maybe_output_comment_for_java(Info, Stream, "cast", !IO),
         ( if have_preallocated_pseudo_type_var_for_java(N) then
-            io.write_string("jmercury.runtime.PseudoTypeInfo.K", !IO),
-            io.write_int(N, !IO)
+            io.write_string(Stream, "jmercury.runtime.PseudoTypeInfo.K", !IO),
+            io.write_int(Stream, N, !IO)
         else
-            io.write_string("new jmercury.runtime.PseudoTypeInfo(", !IO),
-            output_rval_for_java(Info, Expr, !IO),
-            io.write_string(")", !IO)
+            io.write_string(Stream,
+                "new jmercury.runtime.PseudoTypeInfo(", !IO),
+            output_rval_for_java(Info, Expr, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
         )
     else if
         ( Type = mercury_nb_type(_, ctor_cat_system(cat_system_type_info))
@@ -329,20 +332,21 @@ output_cast_rval_for_java(Info, Type, Expr, !IO) :-
         % TypeCtorInfo or a TypeInfo. Julien says that's probably going to
         % be rather difficult as the compiler doesn't keep track of where
         % type_ctor_infos are acting as type_infos properly.
-        maybe_output_comment_for_java(Info, "cast", !IO),
-        io.write_string("jmercury.runtime.TypeInfo_Struct.maybe_new(", !IO),
-        output_rval_for_java(Info, Expr, !IO),
-        io.write_string(")", !IO)
+        maybe_output_comment_for_java(Info, Stream, "cast", !IO),
+        io.write_string(Stream,
+            "jmercury.runtime.TypeInfo_Struct.maybe_new(", !IO),
+        output_rval_for_java(Info, Expr, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     else if
         java_builtin_type(Type, "int", _, _)
     then
-        io.write_string("(int) ", !IO),
-        output_rval_maybe_with_enum_for_java(Info, Expr, !IO)
+        io.write_string(Stream, "(int) ", !IO),
+        output_rval_maybe_with_enum_for_java(Info, Expr, Stream, !IO)
     else
-        io.write_string("(", !IO),
-        output_type_for_java(Info, Type, !IO),
-        io.write_string(") ", !IO),
-        output_rval_for_java(Info, Expr, !IO)
+        io.write_string(Stream, "(", !IO),
+        output_type_for_java(Info, Type, Stream, !IO),
+        io.write_string(Stream, ") ", !IO),
+        output_rval_for_java(Info, Expr, Stream, !IO)
     ).
 
 :- pred have_preallocated_pseudo_type_var_for_java(int::in) is semidet.
@@ -352,49 +356,49 @@ have_preallocated_pseudo_type_var_for_java(N) :-
     N >= 1,
     N =< 5.
 
-output_boxed_rval_for_java(Info, Type, Expr, !IO) :-
+output_boxed_rval_for_java(Info, Type, Expr, Stream, !IO) :-
     ( if java_builtin_type(Type, _JavaName, JavaBoxedName, _) then
         % valueOf may return cached instances instead of creating new objects.
-        io.write_string(JavaBoxedName, !IO),
-        io.write_string(".valueOf(", !IO),
-        output_rval_for_java(Info, Expr, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, JavaBoxedName, !IO),
+        io.write_string(Stream, ".valueOf(", !IO),
+        output_rval_for_java(Info, Expr, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     else
-        io.write_string("((java.lang.Object) (", !IO),
-        output_rval_for_java(Info, Expr, !IO),
-        io.write_string("))", !IO)
+        io.write_string(Stream, "((java.lang.Object) (", !IO),
+        output_rval_for_java(Info, Expr, Stream, !IO),
+        io.write_string(Stream, "))", !IO)
     ).
 
 :- pred output_unboxed_rval_for_java(java_out_info::in, mlds_type::in,
-    mlds_rval::in, io::di, io::uo) is det.
+    mlds_rval::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-output_unboxed_rval_for_java(Info, Type, Expr, !IO) :-
+output_unboxed_rval_for_java(Info, Type, Expr, Stream, !IO) :-
     ( if java_builtin_type(Type, _, JavaBoxedName, UnboxMethod) then
-        io.write_string("((", !IO),
-        io.write_string(JavaBoxedName, !IO),
-        io.write_string(") ", !IO),
-        output_bracketed_rval_for_java(Info, Expr, !IO),
-        io.write_string(").", !IO),
-        io.write_string(UnboxMethod, !IO),
-        io.write_string("()", !IO)
+        io.write_string(Stream, "((", !IO),
+        io.write_string(Stream, JavaBoxedName, !IO),
+        io.write_string(Stream, ") ", !IO),
+        output_bracketed_rval_for_java(Info, Expr, Stream, !IO),
+        io.write_string(Stream, ").", !IO),
+        io.write_string(Stream, UnboxMethod, !IO),
+        io.write_string(Stream, "()", !IO)
     else
-        io.write_string("((", !IO),
-        output_type_for_java(Info, Type, !IO),
-        io.write_string(") ", !IO),
-        output_rval_for_java(Info, Expr, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "((", !IO),
+        output_type_for_java(Info, Type, Stream, !IO),
+        io.write_string(Stream, ") ", !IO),
+        output_rval_for_java(Info, Expr, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ).
 
-:- pred output_unop_for_java(java_out_info::in, builtin_ops.unary_op::in,
-    mlds_rval::in, io::di, io::uo) is det.
+:- pred output_unop_for_java(java_out_info::in, io.text_output_stream::in,
+    builtin_ops.unary_op::in, mlds_rval::in, io::di, io::uo) is det.
 
-output_unop_for_java(Info, UnaryOp, Expr, !IO) :-
+output_unop_for_java(Info, Stream, UnaryOp, Expr, !IO) :-
     % For the Java back-end, there are no tags, so all the tagging operators
     % are no-ops, except for `tag', which always returns zero (a tag of zero
     % means there is no tag).
     (
         UnaryOp = tag,
-        io.write_string("/* tag */  0", !IO)
+        io.write_string(Stream, "/* tag */  0", !IO)
     ;
         ( UnaryOp = strip_tag, UnaryOpStr = "/* strip_tag */ "
         ; UnaryOp = mkbody,    UnaryOpStr = "/* mkbody */ "
@@ -413,28 +417,28 @@ output_unop_for_java(Info, UnaryOp, Expr, !IO) :-
         ; UnaryOp = hash_string5, UnaryOpStr = "mercury.String.hash5_1_f_0"
         ; UnaryOp = hash_string6, UnaryOpStr = "mercury.String.hash6_1_f_0"
         ),
-        io.write_string(UnaryOpStr, !IO),
-        io.write_string("(", !IO),
-        output_rval_for_java(Info, Expr, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, UnaryOpStr, !IO),
+        io.write_string(Stream, "(", !IO),
+        output_rval_for_java(Info, Expr, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         ( UnaryOp = bitwise_complement(int_type_int8), UnaryOpStr = "~"
         ; UnaryOp = bitwise_complement(int_type_uint8), UnaryOpStr = "~"
         ),
-        io.write_string("(byte) (", !IO),
-        io.write_string(UnaryOpStr, !IO),
-        io.write_string("(", !IO),
-        output_rval_for_java(Info, Expr, !IO),
-        io.write_string("))", !IO)
+        io.write_string(Stream, "(byte) (", !IO),
+        io.write_string(Stream, UnaryOpStr, !IO),
+        io.write_string(Stream, "(", !IO),
+        output_rval_for_java(Info, Expr, Stream, !IO),
+        io.write_string(Stream, "))", !IO)
     ;
         ( UnaryOp = bitwise_complement(int_type_int16), UnaryOpStr = "~"
         ; UnaryOp = bitwise_complement(int_type_uint16), UnaryOpStr = "~"
         ),
-        io.write_string("(short) (", !IO),
-        io.write_string(UnaryOpStr, !IO),
-        io.write_string("(", !IO),
-        output_rval_for_java(Info, Expr, !IO),
-        io.write_string("))", !IO)
+        io.write_string(Stream, "(short) (", !IO),
+        io.write_string(Stream, UnaryOpStr, !IO),
+        io.write_string(Stream, "(", !IO),
+        output_rval_for_java(Info, Expr, Stream, !IO),
+        io.write_string(Stream, "))", !IO)
     ;
         ( UnaryOp = dword_float_get_word0
         ; UnaryOp = dword_float_get_word1
@@ -446,22 +450,22 @@ output_unop_for_java(Info, UnaryOp, Expr, !IO) :-
         unexpected($pred, "invalid unary operator")
     ).
 
-:- pred output_binop_for_java(java_out_info::in, binary_op::in, mlds_rval::in,
-    mlds_rval::in, io::di, io::uo) is det.
+:- pred output_binop_for_java(java_out_info::in, io.text_output_stream::in,
+    binary_op::in, mlds_rval::in, mlds_rval::in, io::di, io::uo) is det.
 
-output_binop_for_java(Info, Op, X, Y, !IO) :-
+output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
     (
         Op = array_index(_Type),
-        output_bracketed_rval_for_java(Info, X, !IO),
-        io.write_string("[", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string("]", !IO)
+        output_bracketed_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, "[", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, "]", !IO)
     ;
         Op = str_eq,
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(".equals(", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(")", !IO)
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ".equals(", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         ( Op = str_ne, OpStr = "!="
         ; Op = str_lt, OpStr = "<"
@@ -469,27 +473,27 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = str_le, OpStr = "<="
         ; Op = str_ge, OpStr = ">="
         ),
-        io.write_string("(", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(".compareTo(", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(") ", !IO),
-        io.write_string(OpStr, !IO),
-        io.write_string(" 0)", !IO)
+        io.write_string(Stream, "(", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ".compareTo(", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ") ", !IO),
+        io.write_string(Stream, OpStr, !IO),
+        io.write_string(Stream, " 0)", !IO)
     ;
         Op = str_cmp,
-        io.write_string("(", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(".compareTo(", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(")) ", !IO)
+        io.write_string(Stream, "(", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ".compareTo(", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ")) ", !IO)
     ;
         Op = pointer_equal_conservative,
-        io.write_string("(", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(" == ", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(") ", !IO)
+        io.write_string(Stream, "(", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, " == ", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ") ", !IO)
     ;
         % XXX Should we abort for some of these?
         % For shifts, we ignore the distinction between shift_by_int
@@ -593,21 +597,21 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = int_ge(int_type_int16)
         ),
         ( if rval_is_enum_object(X) then
-            io.write_string("(", !IO),
-            output_rval_for_java(Info, X, !IO),
-            io.write_string(".MR_value ", !IO),
-            output_binary_op_for_java(Op, !IO),
-            io.write_string(" ", !IO),
-            output_rval_for_java(Info, Y, !IO),
-            io.write_string(".MR_value)", !IO)
+            io.write_string(Stream, "(", !IO),
+            output_rval_for_java(Info, X, Stream, !IO),
+            io.write_string(Stream, ".MR_value ", !IO),
+            output_binary_op_for_java(Stream, Op, !IO),
+            io.write_string(Stream, " ", !IO),
+            output_rval_for_java(Info, Y, Stream, !IO),
+            io.write_string(Stream, ".MR_value)", !IO)
         else
-            io.write_string("(", !IO),
-            output_rval_for_java(Info, X, !IO),
-            io.write_string(" ", !IO),
-            output_binary_op_for_java(Op, !IO),
-            io.write_string(" ", !IO),
-            output_rval_for_java(Info, Y, !IO),
-            io.write_string(")", !IO)
+            io.write_string(Stream, "(", !IO),
+            output_rval_for_java(Info, X, Stream, !IO),
+            io.write_string(Stream, " ", !IO),
+            output_binary_op_for_java(Stream, Op, !IO),
+            io.write_string(Stream, " ", !IO),
+            output_rval_for_java(Info, Y, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
         )
     ;
         ( Op = unsigned_lt, OpStr = "<"
@@ -618,21 +622,21 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
             % but I (zs) believe that it *could* be possible for a
             % foreign_enum pragma to assign a negative value to
             % a functor in an enum type.
-            io.write_string("((", !IO),
-            output_rval_for_java(Info, X, !IO),
-            io.write_string(".MR_value & 0xffffffffL) ", !IO),
-            io.write_string(OpStr, !IO),
-            io.write_string(" (", !IO),
-            output_rval_for_java(Info, Y, !IO),
-            io.write_string(".MR_value) & 0xffffffffL)", !IO)
+            io.write_string(Stream, "((", !IO),
+            output_rval_for_java(Info, X, Stream, !IO),
+            io.write_string(Stream, ".MR_value & 0xffffffffL) ", !IO),
+            io.write_string(Stream, OpStr, !IO),
+            io.write_string(Stream, " (", !IO),
+            output_rval_for_java(Info, Y, Stream, !IO),
+            io.write_string(Stream, ".MR_value) & 0xffffffffL)", !IO)
         else
-            io.write_string("((", !IO),
-            output_rval_for_java(Info, X, !IO),
-            io.write_string(" & 0xffffffffL) ", !IO),
-            io.write_string(OpStr, !IO),
-            io.write_string(" (", !IO),
-            output_rval_for_java(Info, Y, !IO),
-            io.write_string(" & 0xffffffffL))", !IO)
+            io.write_string(Stream, "((", !IO),
+            output_rval_for_java(Info, X, Stream, !IO),
+            io.write_string(Stream, " & 0xffffffffL) ", !IO),
+            io.write_string(Stream, OpStr, !IO),
+            io.write_string(Stream, " (", !IO),
+            output_rval_for_java(Info, Y, Stream, !IO),
+            io.write_string(Stream, " & 0xffffffffL))", !IO)
         )
     ;
         ( Op = int_lt(int_type_uint)
@@ -644,53 +648,53 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = int_le(int_type_uint32)
         ; Op = int_ge(int_type_uint32)
         ),
-        io.write_string("(((", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(") & 0xffffffffL) ", !IO),
-        output_binary_op_for_java(Op, !IO),
-        io.write_string(" ((", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(") & 0xffffffffL))", !IO)
+        io.write_string(Stream, "(((", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ") & 0xffffffffL) ", !IO),
+        output_binary_op_for_java(Stream, Op, !IO),
+        io.write_string(Stream, " ((", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ") & 0xffffffffL))", !IO)
     ;
         ( Op = int_lt(int_type_uint64), RelOpStr = "<"
         ; Op = int_gt(int_type_uint64), RelOpStr = ">"
         ; Op = int_le(int_type_uint64), RelOpStr = "<="
         ; Op = int_ge(int_type_uint64), RelOpStr = ">="
         ),
-        io.write_string("(java.lang.Long.compareUnsigned(", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(", ", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(") ", !IO),
-        io.write_string(RelOpStr, !IO),
-        io.write_string(" 0)", !IO)
+        io.write_string(Stream, "(java.lang.Long.compareUnsigned(", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ") ", !IO),
+        io.write_string(Stream, RelOpStr, !IO),
+        io.write_string(Stream, " 0)", !IO)
     ;
         ( Op = int_div(int_type_uint)
         ; Op = int_mod(int_type_uint)
         ; Op = int_div(int_type_uint32)
         ; Op = int_mod(int_type_uint32)
         ),
-        io.write_string("((int) (((", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(") & 0xffffffffL) ", !IO),
-        output_binary_op_for_java(Op, !IO),
-        io.write_string(" ((", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(") & 0xffffffffL)))", !IO)
+        io.write_string(Stream, "((int) (((", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ") & 0xffffffffL) ", !IO),
+        output_binary_op_for_java(Stream, Op, !IO),
+        io.write_string(Stream, " ((", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ") & 0xffffffffL)))", !IO)
     ;
         Op = int_div(int_type_uint64),
-        io.write_string("java.lang.Long.divideUnsigned(", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(", ", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "java.lang.Long.divideUnsigned(", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Op = int_mod(int_type_uint64),
-        io.write_string("java.lang.Long.remainderUnsigned(", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(", ", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "java.lang.Long.remainderUnsigned(", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         ( Op = int_add(int_type_int8)
         ; Op = int_sub(int_type_int8)
@@ -710,46 +714,46 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_xor(int_type_uint8)
         ; Op = unchecked_left_shift(int_type_uint8, _)
         ),
-        io.write_string("(byte) (", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(" ", !IO),
-        output_binary_op_for_java(Op, !IO),
-        io.write_string(" ", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "(byte) (", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, " ", !IO),
+        output_binary_op_for_java(Stream, Op, !IO),
+        io.write_string(Stream, " ", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Op = unchecked_right_shift(int_type_uint8, _),
-        io.write_string("(byte) (((", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(") & 0xff) ", !IO),
-        output_binary_op_for_java(Op, !IO),
-        io.write_string(" ", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "(byte) (((", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ") & 0xff) ", !IO),
+        output_binary_op_for_java(Stream, Op, !IO),
+        io.write_string(Stream, " ", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         ( Op = int_lt(int_type_uint8)
         ; Op = int_gt(int_type_uint8)
         ; Op = int_le(int_type_uint8)
         ; Op = int_ge(int_type_uint8)
         ),
-        io.write_string("(((", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(") & 0xff) ", !IO),
-        output_binary_op_for_java(Op, !IO),
-        io.write_string(" ((", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(") & 0xff))", !IO)
+        io.write_string(Stream, "(((", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ") & 0xff) ", !IO),
+        output_binary_op_for_java(Stream, Op, !IO),
+        io.write_string(Stream, " ((", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ") & 0xff))", !IO)
     ;
         ( Op = int_div(int_type_uint8)
         ; Op = int_mod(int_type_uint8)
         ),
-        io.write_string("((byte) (((", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(") & 0xff) ", !IO),
-        output_binary_op_for_java(Op, !IO),
-        io.write_string(" ((", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(") & 0xff)))", !IO)
+        io.write_string(Stream, "((byte) (((", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ") & 0xff) ", !IO),
+        output_binary_op_for_java(Stream, Op, !IO),
+        io.write_string(Stream, " ((", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ") & 0xff)))", !IO)
     ;
         ( Op = int_add(int_type_int16)
         ; Op = int_sub(int_type_int16)
@@ -769,59 +773,60 @@ output_binop_for_java(Info, Op, X, Y, !IO) :-
         ; Op = bitwise_xor(int_type_uint16)
         ; Op = unchecked_left_shift(int_type_uint16, _)
         ),
-        io.write_string("(short) (", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(" ", !IO),
-        output_binary_op_for_java(Op, !IO),
-        io.write_string(" ", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "(short) (", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, " ", !IO),
+        output_binary_op_for_java(Stream, Op, !IO),
+        io.write_string(Stream, " ", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Op = unchecked_right_shift(int_type_uint16, _),
-        io.write_string("(short) (((", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(") & 0xffff) ", !IO),
-        output_binary_op_for_java(Op, !IO),
-        io.write_string(" ", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "(short) (((", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ") & 0xffff) ", !IO),
+        output_binary_op_for_java(Stream, Op, !IO),
+        io.write_string(Stream, " ", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         ( Op = int_lt(int_type_uint16)
         ; Op = int_gt(int_type_uint16)
         ; Op = int_le(int_type_uint16)
         ; Op = int_ge(int_type_uint16)
         ),
-        io.write_string("(((", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(") & 0xffff) ", !IO),
-        output_binary_op_for_java(Op, !IO),
-        io.write_string(" ((", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(") & 0xffff))", !IO)
+        io.write_string(Stream, "(((", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ") & 0xffff) ", !IO),
+        output_binary_op_for_java(Stream, Op, !IO),
+        io.write_string(Stream, " ((", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ") & 0xffff))", !IO)
     ;
         ( Op = int_div(int_type_uint16)
         ; Op = int_mod(int_type_uint16)
         ),
-        io.write_string("((short) (((", !IO),
-        output_rval_for_java(Info, X, !IO),
-        io.write_string(") & 0xffff) ", !IO),
-        output_binary_op_for_java(Op, !IO),
-        io.write_string(" ((", !IO),
-        output_rval_for_java(Info, Y, !IO),
-        io.write_string(") & 0xffff)))", !IO)
+        io.write_string(Stream, "((short) (((", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ") & 0xffff) ", !IO),
+        output_binary_op_for_java(Stream, Op, !IO),
+        io.write_string(Stream, " ((", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ") & 0xffff)))", !IO)
     ).
 
-output_rval_maybe_with_enum_for_java(Info, Rval, !IO) :-
-    output_rval_for_java(Info, Rval, !IO),
+output_rval_maybe_with_enum_for_java(Info, Rval, Stream, !IO) :-
+    output_rval_for_java(Info, Rval, Stream, !IO),
     ( if rval_is_enum_object(Rval) then
-        io.write_string(".MR_value", !IO)
+        io.write_string(Stream, ".MR_value", !IO)
     else
         true
     ).
 
-:- pred output_binary_op_for_java(binary_op::in, io::di, io::uo) is det.
+:- pred output_binary_op_for_java(io.text_output_stream::in,
+    binary_op::in, io::di, io::uo) is det.
 
-output_binary_op_for_java(Op, !IO) :-
+output_binary_op_for_java(Stream, Op, !IO) :-
     (
         ( Op = int_add(_), OpStr = "+"
         ; Op = int_sub(_), OpStr = "-"
@@ -857,7 +862,7 @@ output_binary_op_for_java(Op, !IO) :-
         ; Op = float_mul, OpStr = "*"
         ; Op = float_div, OpStr = "/"
         ),
-        io.write_string(OpStr, !IO)
+        io.write_string(Stream, OpStr, !IO)
     ;
         Op = unchecked_right_shift(IntType, _),
         (
@@ -877,7 +882,7 @@ output_binary_op_for_java(Op, !IO) :-
             ),
             OpStr = ">>>"
         ),
-        io.write_string(OpStr, !IO)
+        io.write_string(Stream, OpStr, !IO)
     ;
         ( Op = array_index(_)
         ; Op = body
@@ -902,130 +907,131 @@ output_binary_op_for_java(Op, !IO) :-
         unexpected($pred, "invalid binary operator")
     ).
 
-:- pred output_rval_const_for_java(java_out_info::in, mlds_rval_const::in,
-    io::di, io::uo) is det.
+:- pred output_rval_const_for_java(java_out_info::in,
+    io.text_output_stream::in, mlds_rval_const::in, io::di, io::uo) is det.
 
-output_rval_const_for_java(Info, Const, !IO) :-
+output_rval_const_for_java(Info, Stream, Const, !IO) :-
     (
         Const = mlconst_true,
-        io.write_string("true", !IO)
+        io.write_string(Stream, "true", !IO)
     ;
         Const = mlconst_false,
-        io.write_string("false", !IO)
+        io.write_string(Stream, "false", !IO)
     ;
         Const = mlconst_int(N),
-        output_int_const_for_java(N, !IO)
+        output_int_const_for_java(Stream, N, !IO)
     ;
         Const = mlconst_uint(U),
         % Java does not have unsigned integer literals.
         % XXX perhaps we should output this in hexadecimal?
-        output_int_const_for_java(uint.cast_to_int(U), !IO)
+        output_int_const_for_java(Stream, uint.cast_to_int(U), !IO)
     ;
         Const = mlconst_int8(I8),
-        io.write_string("(byte) ", !IO),
-        io.write_int8(I8, !IO)
+        io.write_string(Stream, "(byte) ", !IO),
+        io.write_int8(Stream, I8, !IO)
     ;
         Const = mlconst_uint8(U8),
-        io.write_string("(byte) ", !IO),
-        io.write_int8(int8.cast_from_uint8(U8), !IO)
+        io.write_string(Stream, "(byte) ", !IO),
+        io.write_int8(Stream, int8.cast_from_uint8(U8), !IO)
     ;
         Const = mlconst_int16(I16),
-        io.write_string("(short) ", !IO),
-        io.write_int16(I16, !IO)
+        io.write_string(Stream, "(short) ", !IO),
+        io.write_int16(Stream, I16, !IO)
     ;
         Const = mlconst_uint16(U16),
-        io.write_string("(short) ", !IO),
-        io.write_int16(int16.cast_from_uint16(U16), !IO)
+        io.write_string(Stream, "(short) ", !IO),
+        io.write_int16(Stream, int16.cast_from_uint16(U16), !IO)
     ;
         Const = mlconst_int32(I32),
-        io.write_int32(I32, !IO)
+        io.write_int32(Stream, I32, !IO)
     ;
         Const = mlconst_uint32(U32),
-        io.write_int32(int32.cast_from_uint32(U32), !IO)
+        io.write_int32(Stream, int32.cast_from_uint32(U32), !IO)
     ;
         Const = mlconst_int64(I64),
-        io.write_int64(I64, !IO),
-        io.write_string("L", !IO)
+        io.write_int64(Stream, I64, !IO),
+        io.write_string(Stream, "L", !IO)
     ;
         Const = mlconst_uint64(U64),
-        io.write_int64(int64.cast_from_uint64(U64), !IO),
-        io.write_string("L", !IO)
+        io.write_int64(Stream, int64.cast_from_uint64(U64), !IO),
+        io.write_string(Stream, "L", !IO)
     ;
         Const = mlconst_char(N),
-        io.write_string("(", !IO),
-        output_int_const_for_java(N, !IO),
-        io.write_string(")", !IO)
+        io.write_string(Stream, "(", !IO),
+        output_int_const_for_java(Stream, N, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         Const = mlconst_enum(N, EnumType),
-        output_type_for_java(Info, EnumType, !IO),
-        io.write_string(".K", !IO),
-        output_int_const_for_java(N, !IO)
+        output_type_for_java(Info, EnumType, Stream, !IO),
+        io.write_string(Stream, ".K", !IO),
+        output_int_const_for_java(Stream, N, !IO)
     ;
         Const = mlconst_foreign(Lang, Value, _Type),
         expect(unify(Lang, lang_java), $pred, "language other than Java."),
         % XXX Should we parenthesize this?
-        io.write_string(Value, !IO)
+        io.write_string(Stream, Value, !IO)
     ;
         Const = mlconst_float(FloatVal),
-        c_util.output_float_literal_cur_stream(FloatVal, !IO)
+        c_util.output_float_literal(Stream, FloatVal, !IO)
     ;
         Const = mlconst_string(String),
-        io.write_string("""", !IO),
-        c_util.output_quoted_string_lang_cur_stream(literal_java,
+        io.write_string(Stream, """", !IO),
+        c_util.output_quoted_string_lang(Stream, literal_java,
             String, !IO),
-        io.write_string("""", !IO)
+        io.write_string(Stream, """", !IO)
     ;
         Const = mlconst_multi_string(String),
-        io.write_string("""", !IO),
-        c_util.output_quoted_multi_string_lang_cur_stream(literal_java,
+        io.write_string(Stream, """", !IO),
+        c_util.output_quoted_multi_string_lang(Stream, literal_java,
             String, !IO),
-        io.write_string("""", !IO)
+        io.write_string(Stream, """", !IO)
     ;
         Const = mlconst_named_const(TargetPrefixes, NamedConst),
-        io.write_string(TargetPrefixes ^ java_prefix, !IO),
-        io.write_string(NamedConst, !IO)
+        io.write_string(Stream, TargetPrefixes ^ java_prefix, !IO),
+        io.write_string(Stream, NamedConst, !IO)
     ;
         Const = mlconst_code_addr(CodeAddr),
         IsCall = no,
-        mlds_output_code_addr_for_java(Info, CodeAddr, IsCall, !IO)
+        mlds_output_code_addr_for_java(Info, Stream, CodeAddr, IsCall, !IO)
     ;
         Const = mlconst_data_addr_local_var(LocalVarName),
-        output_local_var_name_for_java(LocalVarName, !IO)
+        output_local_var_name_for_java(Stream, LocalVarName, !IO)
     ;
         Const = mlconst_data_addr_global_var(ModuleName, GlobalVarName),
         SymName = mlds_module_name_to_sym_name(ModuleName),
         mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
-        io.write_string(ModuleNameStr, !IO),
-        io.write_string(".", !IO),
-        output_global_var_name_for_java(GlobalVarName, !IO)
+        io.write_string(Stream, ModuleNameStr, !IO),
+        io.write_string(Stream, ".", !IO),
+        output_global_var_name_for_java(Stream, GlobalVarName, !IO)
     ;
         Const = mlconst_data_addr_rtti(ModuleName, RttiId),
         SymName = mlds_module_name_to_sym_name(ModuleName),
         mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
-        io.write_string(ModuleNameStr, !IO),
-        io.write_string(".", !IO),
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
-        io.write_string(RttiAddrName, !IO)
+        io.write_string(Stream, ModuleNameStr, !IO),
+        io.write_string(Stream, ".", !IO),
+        io.write_string(Stream, RttiAddrName, !IO)
     ;
         Const = mlconst_data_addr_tabling(QualProcLabel, TablingId),
         QualProcLabel = qual_proc_label(ModuleName, ProcLabel),
         SymName = mlds_module_name_to_sym_name(ModuleName),
         mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
-        io.write_string(ModuleNameStr, !IO),
-        io.write_string(".", !IO),
+        io.write_string(Stream, ModuleNameStr, !IO),
+        io.write_string(Stream, ".", !IO),
         TablingPrefix = tabling_info_id_str(TablingId) ++ "_",
-        io.write_string(TablingPrefix, !IO),
-        mlds_output_proc_label_for_java(mlds_std_tabling_proc_label(ProcLabel),
-            !IO)
+        io.write_string(Stream, TablingPrefix, !IO),
+        mlds_output_proc_label_for_java(Stream,
+            mlds_std_tabling_proc_label(ProcLabel), !IO)
     ;
         Const = mlconst_null(Type),
         Initializer = get_default_initializer_for_java(Type),
-        io.write_string(Initializer, !IO)
+        io.write_string(Stream, Initializer, !IO)
     ).
 
-:- pred output_int_const_for_java(int::in, io::di, io::uo) is det.
+:- pred output_int_const_for_java(io.text_output_stream::in, int::in,
+    io::di, io::uo) is det.
 
-output_int_const_for_java(N, !IO) :-
+output_int_const_for_java(Stream, N, !IO) :-
     % The Mercury compiler could be using 64-bit integers but Java has 32-bit
     % ints. A literal 0xffffffff in a source file would be interpreted by a
     % 64-bit Mercury compiler as 4294967295. If it is written out in decimal,
@@ -1040,40 +1046,42 @@ output_int_const_for_java(N, !IO) :-
         % The bit pattern fits in 32 bits, but is too large to write as a
         % positive decimal. This branch is unreachable on a 32-bit compiler.
         N32 = uint32.cast_to_int(U32),
-        io.format("0x%x", [i(N32)], !IO)
+        io.format(Stream, "0x%x", [i(N32)], !IO)
     else
-        io.write_int(N, !IO)
+        io.write_int(Stream, N, !IO)
     ).
 
-:- pred mlds_output_code_addr_for_java(java_out_info::in, mlds_code_addr::in,
-    bool::in, io::di, io::uo) is det.
+:- pred mlds_output_code_addr_for_java(java_out_info::in,
+    io.text_output_stream::in, mlds_code_addr::in, bool::in,
+    io::di, io::uo) is det.
 
-mlds_output_code_addr_for_java(Info, CodeAddr, IsCall, !IO) :-
+mlds_output_code_addr_for_java(Info, Stream, CodeAddr, IsCall, !IO) :-
     (
         IsCall = no,
         % Not a function call, so we are taking the address of the
         % wrapper for that function (method).
-        io.write_string("new ", !IO),
+        io.write_string(Stream, "new ", !IO),
         AddrOfMap = Info ^ joi_addrof_map,
         map.lookup(AddrOfMap, CodeAddr, CodeAddrWrapper),
         CodeAddrWrapper = code_addr_wrapper(ClassName, MaybePtrNum),
-        io.write_string(ClassName, !IO),
-        io.write_string("_0(", !IO),
+        io.write_string(Stream, ClassName, !IO),
+        io.write_string(Stream, "_0(", !IO),
         (
             MaybePtrNum = yes(PtrNum),
-            io.write_int(PtrNum, !IO)
+            io.write_int(Stream, PtrNum, !IO)
         ;
             MaybePtrNum = no
         ),
-        io.write_string(")", !IO)
+        io.write_string(Stream, ")", !IO)
     ;
         IsCall = yes,
         CodeAddr = mlds_code_addr(QualFuncLabel, _Signature),
         QualFuncLabel = qual_func_label(ModuleName, FuncLabel),
         FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
-        output_qual_name_prefix_java(ModuleName, module_qual, !IO),
-        mlds_output_proc_label_for_java(ProcLabel, !IO),
-        io.write_string(mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO)
+        output_qual_name_prefix_java(Stream, ModuleName, module_qual, !IO),
+        mlds_output_proc_label_for_java(Stream, ProcLabel, !IO),
+        io.write_string(Stream,
+            mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1106,14 +1114,14 @@ type_is_enum(Type) :-
 
 %---------------------------------------------------------------------------%
 
-output_initializer_for_java(Info, OutputAux, Indent, Type, Initializer,
-        Suffix, !IO) :-
+output_initializer_for_java(Info, Stream, OutputAux, Indent, Type,
+        Initializer, Suffix, !IO) :-
     (
         ( Initializer = init_obj(_)
         ; Initializer = init_struct(_, _)
         ; Initializer = init_array(_)
         ),
-        io.write_string(" = ", !IO),
+        io.write_string(Stream, " = ", !IO),
         % Due to cyclic references, we need to separate the allocation and
         % initialisation steps of RTTI structures. If OutputAux is alloc_only,
         % then we output an initializer to allocate a structure *without*
@@ -1123,11 +1131,12 @@ output_initializer_for_java(Info, OutputAux, Indent, Type, Initializer,
             ; OutputAux = oa_cname(_, _)
             ; OutputAux = oa_force_init
             ),
-            output_initializer_body_for_java(Info, not_at_start_of_line,
-                Indent + 1, Initializer, yes(Type), Suffix, !IO)
+            output_initializer_body_for_java(Info, Stream,
+                not_at_start_of_line, Indent + 1, Initializer, yes(Type),
+                Suffix, !IO)
         ;
             OutputAux = oa_alloc_only,
-            output_initializer_alloc_only_for_java(Info, Initializer,
+            output_initializer_alloc_only_for_java(Info, Stream, Initializer,
                 yes(Type), Suffix, !IO)
         )
     ;
@@ -1135,20 +1144,20 @@ output_initializer_for_java(Info, OutputAux, Indent, Type, Initializer,
         (
             OutputAux = oa_force_init,
             % Local variables need to be initialised to avoid warnings.
-            io.write_string(" = ", !IO),
-            io.write_string(get_default_initializer_for_java(Type), !IO)
+            io.write_string(Stream, " = ", !IO),
+            io.write_string(Stream, get_default_initializer_for_java(Type), !IO)
         ;
             ( OutputAux = oa_none
             ; OutputAux = oa_cname(_, _)
             ; OutputAux = oa_alloc_only
             )
         ),
-        io.format("%s\n", [s(Suffix)], !IO)
+        io.format(Stream, "%s\n", [s(Suffix)], !IO)
     ).
 
 %---------------------%
 
-output_initializer_alloc_only_for_java(Info, Initializer, MaybeType,
+output_initializer_alloc_only_for_java(Info, Stream, Initializer, MaybeType,
         Suffix, !IO) :-
     (
         Initializer = no_initializer,
@@ -1158,43 +1167,44 @@ output_initializer_alloc_only_for_java(Info, Initializer, MaybeType,
         unexpected($pred, "init_obj")
     ;
         Initializer = init_struct(StructType, FieldInits),
-        io.write_string("new ", !IO),
+        io.write_string(Stream, "new ", !IO),
         ( if
             StructType = mercury_nb_type(_, CtorCat),
             type_category_is_array(CtorCat) = is_array
         then
             Size = list.length(FieldInits),
-            io.format("java.lang.Object[%d]%s\n", [i(Size), s(Suffix)], !IO)
+            io.format(Stream, "java.lang.Object[%d]%s\n",
+                [i(Size), s(Suffix)], !IO)
         else
-            output_type_for_java(Info, StructType, !IO),
-            io.format("()%s\n", [s(Suffix)], !IO)
+            output_type_for_java(Info, StructType, Stream, !IO),
+            io.format(Stream, "()%s\n", [s(Suffix)], !IO)
         )
     ;
         Initializer = init_array(ElementInits),
         Size = list.length(ElementInits),
-        io.write_string("new ", !IO),
+        io.write_string(Stream, "new ", !IO),
         (
             MaybeType = yes(Type),
             type_to_string_for_java(Info, Type, String, ArrayDims),
-            io.write_string(String, !IO),
+            io.write_string(Stream, String, !IO),
             % Replace the innermost array dimension by the known size.
             ( if list.split_last(ArrayDims, Heads, 0) then
-                output_array_dimensions(Heads ++ [Size], !IO),
-                io.format("%s\n", [s(Suffix)], !IO)
+                output_array_dimensions(Stream, Heads ++ [Size], !IO),
+                io.format(Stream, "%s\n", [s(Suffix)], !IO)
             else
                 unexpected($pred, "missing array dimension")
             )
         ;
             MaybeType = no,
             % XXX We need to know the type here.
-            io.format("/* XXX init_array */ Object[%d]%s\n",
+            io.format(Stream, "/* XXX init_array */ Object[%d]%s\n",
                 [i(Size), s(Suffix)], !IO)
         )
     ).
 
 %---------------------%
 
-output_initializer_body_for_java(Info, InitStart, Indent, Initializer,
+output_initializer_body_for_java(Info, Stream, InitStart, Indent, Initializer,
         MaybeType, Suffix, !IO) :-
     (
         Initializer = no_initializer,
@@ -1205,89 +1215,89 @@ output_initializer_body_for_java(Info, InitStart, Indent, Initializer,
             InitStart = not_at_start_of_line
         ;
             InitStart = at_start_of_line,
-            output_n_indents(Indent, !IO)
+            output_n_indents(Stream, Indent, !IO)
         ),
-        output_rval_for_java(Info, Rval, !IO),
-        io.format("%s\n", [s(Suffix)], !IO)
+        output_rval_for_java(Info, Rval, Stream, !IO),
+        io.format(Stream, "%s\n", [s(Suffix)], !IO)
     ;
         Initializer = init_struct(StructType, FieldInits),
         (
             InitStart = not_at_start_of_line,
-            io.nl(!IO)
+            io.nl(Stream, !IO)
         ;
             InitStart = at_start_of_line
         ),
-        output_n_indents(Indent, !IO),
-        io.write_string("new ", !IO),
-        output_type_for_java(Info, StructType, !IO),
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "new ", !IO),
+        output_type_for_java(Info, StructType, Stream, !IO),
         IsArray = type_is_array_for_java(StructType),
         init_arg_wrappers_cs_java(IsArray, Start, End),
         (
             FieldInits = [],
-            io.format("%s%s%s\n", [s(Start), s(End), s(Suffix)], !IO)
+            io.format(Stream, "%s%s%s\n", [s(Start), s(End), s(Suffix)], !IO)
         ;
             FieldInits = [HeadFieldInit | TailFieldInits],
-            io.format("%s\n", [s(Start)], !IO),
-            output_initializer_body_list_for_java(Info, Indent + 1,
+            io.format(Stream, "%s\n", [s(Start)], !IO),
+            output_initializer_body_list_for_java(Info, Stream, Indent + 1,
                 HeadFieldInit, TailFieldInits, "", !IO),
-            output_n_indents(Indent, !IO),
-            io.format("%s%s\n", [s(End), s(Suffix)], !IO)
+            output_n_indents(Stream, Indent, !IO),
+            io.format(Stream, "%s%s\n", [s(End), s(Suffix)], !IO)
         )
     ;
         Initializer = init_array(ElementInits),
         (
             InitStart = not_at_start_of_line,
-            io.nl(!IO)
+            io.nl(Stream, !IO)
         ;
             InitStart = at_start_of_line
         ),
-        output_n_indents(Indent, !IO),
-        io.write_string("new ", !IO),
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "new ", !IO),
         (
             MaybeType = yes(Type),
-            output_type_for_java(Info, Type, !IO)
+            output_type_for_java(Info, Type, Stream, !IO)
         ;
             MaybeType = no,
             % XXX We need to know the type here.
-            io.write_string("/* XXX init_array */ Object[]", !IO)
+            io.write_string(Stream, "/* XXX init_array */ Object[]", !IO)
         ),
         (
             ElementInits = [],
-            io.format(" {}%s\n", [s(Suffix)], !IO)
+            io.format(Stream, " {}%s\n", [s(Suffix)], !IO)
         ;
             ElementInits = [HeadElementInit | TailElementInits],
-            io.write_string(" {\n", !IO),
-            output_initializer_body_list_for_java(Info, Indent + 1,
+            io.write_string(Stream, " {\n", !IO),
+            output_initializer_body_list_for_java(Info, Stream, Indent + 1,
                 HeadElementInit, TailElementInits, "", !IO),
-            output_n_indents(Indent, !IO),
-            io.format("}%s\n", [s(Suffix)], !IO)
+            output_n_indents(Stream, Indent, !IO),
+            io.format(Stream, "}%s\n", [s(Suffix)], !IO)
         )
     ).
 
 %---------------------%
 
-output_nonempty_initializer_body_list_for_java(Info, Indent, Inits,
+output_nonempty_initializer_body_list_for_java(Info, Stream, Indent, Inits,
         Suffix, !IO) :-
     list.det_head_tail(Inits, HeadInit, TailInits),
-    output_initializer_body_list_for_java(Info, Indent,
+    output_initializer_body_list_for_java(Info, Stream, Indent,
         HeadInit, TailInits, Suffix, !IO).
 
-:- pred output_initializer_body_list_for_java(java_out_info::in, indent::in,
-    mlds_initializer::in, list(mlds_initializer)::in, string::in,
-    io::di, io::uo) is det.
+:- pred output_initializer_body_list_for_java(java_out_info::in,
+    io.text_output_stream::in, indent::in, mlds_initializer::in,
+    list(mlds_initializer)::in, string::in, io::di, io::uo) is det.
 
-output_initializer_body_list_for_java(Info, Indent,
-        HeadInit, TailInits, Suffix, !IO) :-
+output_initializer_body_list_for_java(Info, Stream,
+        Indent, HeadInit, TailInits, Suffix, !IO) :-
     (
         TailInits = [],
-        output_initializer_body_for_java(Info, at_start_of_line, Indent,
-            HeadInit, no, Suffix, !IO)
+        output_initializer_body_for_java(Info, Stream, at_start_of_line,
+            Indent, HeadInit, no, Suffix, !IO)
     ;
         TailInits = [HeadTailInit | TailTailInits],
-        output_initializer_body_for_java(Info, at_start_of_line, Indent,
-            HeadInit, no, ",", !IO),
-        output_initializer_body_list_for_java(Info, Indent,
-            HeadTailInit, TailTailInits, Suffix, !IO)
+        output_initializer_body_for_java(Info, Stream, at_start_of_line,
+            Indent, HeadInit, no, ",", !IO),
+        output_initializer_body_list_for_java(Info, Stream,
+            Indent, HeadTailInit, TailTailInits, Suffix, !IO)
     ).
 
 %---------------------------------------------------------------------------%

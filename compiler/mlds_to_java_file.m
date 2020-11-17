@@ -130,13 +130,13 @@ output_java_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".java")), ModuleName, JavaSourceFileName, !IO),
     Indent = 0,
-    output_to_file(Globals, JavaSourceFileName,
+    output_to_file_stream(Globals, JavaSourceFileName,
         output_java_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
 
 :- pred output_java_src_file(module_info::in, indent::in, mlds::in,
-    list(string)::out, io::di, io::uo) is det.
+    io.text_output_stream::in, list(string)::out, io::di, io::uo) is det.
 
-output_java_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
+output_java_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
     % Run further transformations on the MLDS.
     MLDS = mlds(ModuleName, Imports, GlobalData,
         TypeDefns0, TableStructDefns0, ProcDefns0,
@@ -224,9 +224,9 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
     % that will get used in the RTTI definitions.
     module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
     Info = init_java_out_info(ModuleInfo, SourceFileName, AddrOfMap),
-    output_src_start_for_java(Info, Indent, ModuleName, Imports,
+    output_src_start_for_java(Info, Stream, Indent, ModuleName, Imports,
         ForeignDeclCodes, ProcDefns, ForeignDeclErrors, !IO),
-    list.map_foldl(output_java_body_code(Info, Indent),
+    list.map_foldl(output_java_body_code(Info, Stream, Indent),
         ForeignBodyCodes, ForeignCodeResults, !IO),
     list.filter_map(maybe_is_error, ForeignCodeResults, ForeignCodeErrors),
 
@@ -234,11 +234,13 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
         RttiDefns = []
     ;
         RttiDefns = [_ | _],
-        io.write_string("\n// RttiDefns\n", !IO),
+        io.write_string(Stream, "\n// RttiDefns\n", !IO),
         list.foldl(
-            output_global_var_defn_for_java(Info, Indent + 1, oa_alloc_only),
+            output_global_var_defn_for_java(Info, Stream, Indent + 1,
+                oa_alloc_only),
             RttiDefns, !IO),
-        output_rtti_assignments_for_java(Info, Indent + 1, RttiDefns, !IO)
+        output_rtti_assignments_for_java(Info, Stream, Indent + 1,
+            RttiDefns, !IO)
     ),
 
     ( if
@@ -247,11 +249,12 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
     then
         true
     else
-        io.write_string("\n// Cell and tabling definitions\n", !IO),
-        output_global_var_decls_for_java(Info, Indent + 1, CellDefns, !IO),
-        output_global_var_decls_for_java(Info, Indent + 1, TableStructDefns,
-            !IO),
-        output_global_var_assignments_for_java(Info, Indent + 1,
+        io.write_string(Stream, "\n// Cell and tabling definitions\n", !IO),
+        output_global_var_decls_for_java(Info, Stream, Indent + 1,
+            CellDefns, !IO),
+        output_global_var_decls_for_java(Info, Stream, Indent + 1,
+            TableStructDefns, !IO),
+        output_global_var_assignments_for_java(Info, Stream, Indent + 1,
             CellDefns ++ TableStructDefns, !IO)
     ),
 
@@ -260,16 +263,16 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
     ( if map.is_empty(ScalarCellGroupMap) then
         true
     else
-        io.write_string("\n// Scalar common data\n", !IO),
-        output_scalar_common_data_for_java(Info, Indent + 1,
+        io.write_string(Stream, "\n// Scalar common data\n", !IO),
+        output_scalar_common_data_for_java(Info, Stream, Indent + 1,
             ScalarCellGroupMap, !IO)
     ),
 
     ( if map.is_empty(VectorCellGroupMap) then
         true
     else
-        io.write_string("\n// Vector common data\n", !IO),
-        output_vector_common_data_for_java(Info, Indent + 1,
+        io.write_string(Stream, "\n// Vector common data\n", !IO),
+        output_vector_common_data_for_java(Info, Stream, Indent + 1,
             VectorCellGroupMap, !IO)
     ),
 
@@ -278,8 +281,9 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
         SortedFuncDefns = []
     ;
         SortedFuncDefns = [_ | _],
-        io.write_string("\n// Function definitions\n", !IO),
-        list.foldl(output_function_defn_for_java(Info, Indent + 1, oa_none),
+        io.write_string(Stream, "\n// Function definitions\n", !IO),
+        list.foldl(
+            output_function_defn_for_java(Info, Stream, Indent + 1, oa_none),
             SortedFuncDefns, !IO)
     ),
 
@@ -288,8 +292,8 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
         SortedClassDefns = []
     ;
         SortedClassDefns = [_ | _],
-        io.write_string("\n// Class definitions\n", !IO),
-        list.foldl(output_class_defn_for_java(Info, Indent + 1),
+        io.write_string(Stream, "\n// Class definitions\n", !IO),
+        list.foldl(output_class_defn_for_java(Info, Stream, Indent + 1),
             SortedClassDefns, !IO)
     ),
 
@@ -297,32 +301,33 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
         ExportDefns = []
     ;
         ExportDefns = [_ | _],
-        io.write_string("\n// ExportDefns\n", !IO),
-        output_exports_for_java(Info, Indent + 1, ExportDefns, !IO)
+        io.write_string(Stream, "\n// ExportDefns\n", !IO),
+        output_exports_for_java(Info, Stream, Indent + 1, ExportDefns, !IO)
     ),
 
     (
         ExportedEnums = []
     ;
         ExportedEnums = [_ | _],
-        io.write_string("\n// ExportedEnums\n", !IO),
-        output_exported_enums_for_java(Info, Indent + 1, ExportedEnums, !IO)
+        io.write_string(Stream, "\n// ExportedEnums\n", !IO),
+        output_exported_enums_for_java(Info, Stream, Indent + 1,
+            ExportedEnums, !IO)
     ),
 
     (
         InitPreds = []
     ;
         InitPreds = [_ | _],
-        io.write_string("\n// InitPreds\n", !IO),
-        output_inits_for_java(Indent + 1, InitPreds, !IO)
+        io.write_string(Stream, "\n// InitPreds\n", !IO),
+        output_inits_for_java(Stream, Indent + 1, InitPreds, !IO)
     ),
 
     (
         FinalPreds = []
     ;
         FinalPreds = [_  | _],
-        io.write_string("\n// FinalPreds\n", !IO),
-        output_finals_for_java(Indent + 1, FinalPreds, !IO)
+        io.write_string(Stream, "\n// FinalPreds\n", !IO),
+        output_finals_for_java(Stream, Indent + 1, FinalPreds, !IO)
     ),
 
     set.init(EnvVarNamesSet0),
@@ -333,12 +338,12 @@ output_java_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
     ( if set.is_empty(EnvVarNamesSet) then
         true
     else
-        io.write_string("\n// EnvVarNames\n", !IO),
-        set.foldl(output_env_var_definition_for_java(Indent + 1),
+        io.write_string(Stream, "\n// EnvVarNames\n", !IO),
+        set.foldl(output_env_var_definition_for_java(Stream, Indent + 1),
             EnvVarNamesSet, !IO)
     ),
 
-    output_src_end_for_java(Info, Indent, ModuleName, !IO),
+    output_src_end_for_java(Info, Stream, Indent, ModuleName, !IO),
     % XXX Need to handle non-Java foreign code at this point.
 
     Errors = ForeignDeclErrors ++ ForeignCodeErrors.
@@ -360,21 +365,22 @@ make_code_addr_map_for_java([CodeAddr | CodeAddrs], !Map) :-
 % Code to output imports.
 %
 
-:- pred output_imports(java_out_info::in, list(mlds_import)::in,
-    io::di, io::uo) is det.
+:- pred output_imports(java_out_info::in, io.text_output_stream::in,
+    list(mlds_import)::in, io::di, io::uo) is det.
 
-output_imports(Info, Imports, !IO) :-
+output_imports(Info, Stream, Imports, !IO) :-
     AutoComments = Info ^ joi_auto_comments,
     (
         AutoComments = yes,
-        list.foldl(output_import, Imports, !IO)
+        list.foldl(output_import(Stream), Imports, !IO)
     ;
         AutoComments = no
     ).
 
-:- pred output_import(mlds_import::in, io::di, io::uo) is det.
+:- pred output_import(io.text_output_stream::in, mlds_import::in,
+    io::di, io::uo) is det.
 
-output_import(Import, !IO) :-
+output_import(Stream, Import, !IO) :-
     Import = mlds_import(ImportType, ModuleName),
     (
         ImportType = user_visible_interface,
@@ -387,21 +393,22 @@ output_import(Import, !IO) :-
     % There are issues related to using import statements and Java's naming
     % conventions. To avoid these problems, we output dependencies as comments
     % only. This is ok, since we always use fully qualified names anyway.
-    io.write_strings(["// import ", ClassFile, ";\n"], !IO).
+    io.format(Stream, "// import %s;\n", [s(ClassFile)], !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Code for working with Java `foreign_code'.
 %
 
-:- pred output_java_decl(java_out_info::in, indent::in, foreign_decl_code::in,
-    maybe_error::out, io::di, io::uo) is det.
+:- pred output_java_decl(java_out_info::in, io.text_output_stream::in,
+    indent::in, foreign_decl_code::in, maybe_error::out,
+    io::di, io::uo) is det.
 
-output_java_decl(Info, Indent, DeclCode, Res, !IO) :-
+output_java_decl(Info, Stream, Indent, DeclCode, Res, !IO) :-
     DeclCode = foreign_decl_code(Lang, _IsLocal, LiteralOrInclude, Context),
     (
         Lang = lang_java,
-        output_java_foreign_literal_or_include(Info, Indent,
+        output_java_foreign_literal_or_include(Info, Stream, Indent,
             LiteralOrInclude, Context, Res, !IO)
     ;
         ( Lang = lang_c
@@ -410,16 +417,17 @@ output_java_decl(Info, Indent, DeclCode, Res, !IO) :-
         sorry($pred, "foreign decl other than Java")
     ).
 
-:- pred output_java_body_code(java_out_info::in, indent::in,
-    foreign_body_code::in, maybe_error::out, io::di, io::uo) is det.
+:- pred output_java_body_code(java_out_info::in, io.text_output_stream::in,
+    indent::in, foreign_body_code::in, maybe_error::out,
+    io::di, io::uo) is det.
 
-output_java_body_code(Info, Indent, ForeignBodyCode, Res, !IO) :-
+output_java_body_code(Info, Stream, Indent, ForeignBodyCode, Res, !IO) :-
     ForeignBodyCode = foreign_body_code(Lang, LiteralOrInclude, Context),
     % Only output Java code.
     (
         Lang = lang_java,
-        output_java_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
-            Context, Res, !IO)
+        output_java_foreign_literal_or_include(Info, Stream, Indent,
+            LiteralOrInclude, Context, Res, !IO)
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
@@ -428,25 +436,26 @@ output_java_body_code(Info, Indent, ForeignBodyCode, Res, !IO) :-
     ).
 
 :- pred output_java_foreign_literal_or_include(java_out_info::in,
-    indent::in, foreign_literal_or_include::in, prog_context::in,
-    maybe_error::out, io::di, io::uo) is det.
+    io.text_output_stream::in, indent::in, foreign_literal_or_include::in,
+    prog_context::in, maybe_error::out, io::di, io::uo) is det.
 
-output_java_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
+output_java_foreign_literal_or_include(Info, Stream, Indent, LiteralOrInclude,
         Context, Res, !IO) :-
     (
         LiteralOrInclude = floi_literal(Code),
-        write_string_with_context_block(Info, Indent, Code, Context, !IO),
+        write_string_with_context_block(Info, Stream, Indent, Code,
+            Context, !IO),
         Res = ok
     ;
         LiteralOrInclude = floi_include_file(IncludeFile),
         SourceFileName = Info ^ joi_source_filename,
         make_include_file_path(SourceFileName, IncludeFile, IncludePath),
-        output_context_for_java(Info ^ joi_foreign_line_numbers,
+        output_context_for_java(Stream, Info ^ joi_foreign_line_numbers,
             marker_begin_block, context(IncludePath, 1), !IO),
-        write_include_file_contents_cur_stream(IncludePath, Res, !IO),
-        io.nl(!IO),
+        write_include_file_contents(Stream, IncludePath, Res, !IO),
+        io.nl(Stream, !IO),
         % We don't have the true end context readily available.
-        output_context_for_java(Info ^ joi_foreign_line_numbers,
+        output_context_for_java(Stream, Info ^ joi_foreign_line_numbers,
             marker_end_block, Context, !IO)
     ).
 
@@ -467,145 +476,149 @@ mlds_get_java_foreign_code(AllForeignCode) = ForeignCode :-
 % Code to output calls to module initialisers.
 %
 
-:- pred output_inits_for_java(int::in, list(string)::in,
-    io::di, io::uo) is det.
+:- pred output_inits_for_java(io.text_output_stream::in, int::in,
+    list(string)::in, io::di, io::uo) is det.
 
-output_inits_for_java(Indent, InitPreds, !IO) :-
+output_inits_for_java(Stream, Indent, InitPreds, !IO) :-
     (
         InitPreds = []
     ;
         InitPreds = [_ | _],
         % We call the initialisation predicates from a static initialisation
         % block.
-        output_n_indents(Indent, !IO),
-        io.write_string("static {\n", !IO),
-        list.foldl(output_init_for_java_2(Indent + 1), InitPreds, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("}\n", !IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "static {\n", !IO),
+        list.foldl(output_init_for_java_2(Stream, Indent + 1), InitPreds, !IO),
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "}\n", !IO)
     ).
 
-:- pred output_init_for_java_2(int::in, string::in, io::di, io::uo) is det.
+:- pred output_init_for_java_2(io.text_output_stream::in, int::in, string::in,
+    io::di, io::uo) is det.
 
-output_init_for_java_2(Indent, InitPred, !IO) :-
-    output_n_indents(Indent, !IO),
-    io.write_string(InitPred, !IO),
-    io.write_string("();\n", !IO).
+output_init_for_java_2(Stream, Indent, InitPred, !IO) :-
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, InitPred, !IO),
+    io.write_string(Stream, "();\n", !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Code to output module finalisers.
 %
 
-:- pred output_finals_for_java(indent::in, list(string)::in,
-    io::di, io::uo) is det.
+:- pred output_finals_for_java(io.text_output_stream::in, indent::in,
+    list(string)::in, io::di, io::uo) is det.
 
-output_finals_for_java(Indent, FinalPreds, !IO) :-
+output_finals_for_java(Stream, Indent, FinalPreds, !IO) :-
     (
         FinalPreds = []
     ;
         FinalPreds = [_ | _],
-        output_n_indents(Indent, !IO),
-        io.write_string("static {\n", !IO),
-        output_n_indents(Indent + 1, !IO),
-        io.write_string("jmercury.runtime.JavaInternal.register_finaliser(\n",
-            !IO),
-        output_n_indents(Indent + 2, !IO),
-        io.write_string("new java.lang.Runnable() {\n", !IO),
-        output_n_indents(Indent + 3, !IO),
-        io.write_string("public void run() {\n", !IO),
-        list.foldl(output_final_pred_call(Indent + 4), FinalPreds, !IO),
-        output_n_indents(Indent + 3, !IO),
-        io.write_string("}\n", !IO),
-        output_n_indents(Indent + 2, !IO),
-        io.write_string("}\n", !IO),
-        output_n_indents(Indent + 1, !IO),
-        io.write_string(");\n", !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("}\n", !IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "static {\n", !IO),
+        output_n_indents(Stream, Indent + 1, !IO),
+        io.write_string(Stream,
+            "jmercury.runtime.JavaInternal.register_finaliser(\n", !IO),
+        output_n_indents(Stream, Indent + 2, !IO),
+        io.write_string(Stream, "new java.lang.Runnable() {\n", !IO),
+        output_n_indents(Stream, Indent + 3, !IO),
+        io.write_string(Stream, "public void run() {\n", !IO),
+        list.foldl(output_final_pred_call(Stream, Indent + 4),
+            FinalPreds, !IO),
+        output_n_indents(Stream, Indent + 3, !IO),
+        io.write_string(Stream, "}\n", !IO),
+        output_n_indents(Stream, Indent + 2, !IO),
+        io.write_string(Stream, "}\n", !IO),
+        output_n_indents(Stream, Indent + 1, !IO),
+        io.write_string(Stream, ");\n", !IO),
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "}\n", !IO)
     ).
 
-:- pred output_final_pred_call(indent::in, string::in, io::di, io::uo) is det.
+:- pred output_final_pred_call(io.text_output_stream::in, indent::in,
+    string::in, io::di, io::uo) is det.
 
-output_final_pred_call(Indent, FinalPred, !IO) :-
-    output_n_indents(Indent, !IO),
-    io.write_string(FinalPred, !IO),
-    io.write_string("();\n", !IO).
+output_final_pred_call(Stream, Indent, FinalPred, !IO) :-
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, FinalPred, !IO),
+    io.write_string(Stream, "();\n", !IO).
+
 %---------------------------------------------------------------------------%
 %
 % Code to output globals for environment variables.
 %
 
-:- pred output_env_var_definition_for_java(indent::in, string::in,
-    io::di, io::uo) is det.
+:- pred output_env_var_definition_for_java(io.text_output_stream::in,
+    indent::in, string::in, io::di, io::uo) is det.
 
-output_env_var_definition_for_java(Indent, EnvVarName, !IO) :-
+output_env_var_definition_for_java(Stream, Indent, EnvVarName, !IO) :-
     % We use int because the generated code compares against zero, and changing
     % that is more trouble than it's worth as it affects the C backends.
-    output_n_indents(Indent, !IO),
-    io.write_string("private static int mercury_envvar_", !IO),
-    io.write_string(EnvVarName, !IO),
-    io.write_string(" =\n", !IO),
-    output_n_indents(Indent + 1, !IO),
-    io.write_string("java.lang.System.getenv(\"", !IO),
-    io.write_string(EnvVarName, !IO),
-    io.write_string("\") == null ? 0 : 1;\n", !IO).
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "private static int mercury_envvar_", !IO),
+    io.write_string(Stream, EnvVarName, !IO),
+    io.write_string(Stream, " =\n", !IO),
+    output_n_indents(Stream, Indent + 1, !IO),
+    io.write_string(Stream, "java.lang.System.getenv(\"", !IO),
+    io.write_string(Stream, EnvVarName, !IO),
+    io.write_string(Stream, "\") == null ? 0 : 1;\n", !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Code to output the start and end of a source file.
 %
 
-:- pred output_src_start_for_java(java_out_info::in, indent::in,
-    mercury_module_name::in, list(mlds_import)::in,
+:- pred output_src_start_for_java(java_out_info::in, io.text_output_stream::in,
+    indent::in, mercury_module_name::in, list(mlds_import)::in,
     list(foreign_decl_code)::in, list(mlds_function_defn)::in,
     list(string)::out, io::di, io::uo) is det.
 
-output_src_start_for_java(Info, Indent, MercuryModuleName, Imports,
+output_src_start_for_java(Info, Stream, Indent, MercuryModuleName, Imports,
         ForeignDecls, FuncDefns, Errors, !IO) :-
-    output_auto_gen_comment(Info ^ joi_source_filename, !IO),
+    output_auto_gen_comment(Stream, Info ^ joi_source_filename, !IO),
     AutoComments = Info ^ joi_auto_comments,
     (
         AutoComments = yes,
-        output_n_indents(Indent, !IO),
-        io.write_string("/* :- module ", !IO),
-        prog_out.write_sym_name_to_cur_stream(MercuryModuleName, !IO),
-        io.write_string(". */\n\n", !IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "/* :- module ", !IO),
+        prog_out.write_sym_name(Stream, MercuryModuleName, !IO),
+        io.write_string(Stream, ". */\n\n", !IO)
     ;
         AutoComments = no
     ),
-    output_n_indents(Indent, !IO),
-    io.write_string("package jmercury;\n", !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "package jmercury;\n", !IO),
 
-    output_imports(Info, Imports, !IO),
-    list.map_foldl(output_java_decl(Info, Indent),
+    output_imports(Info, Stream, Imports, !IO),
+    list.map_foldl(output_java_decl(Info, Stream, Indent),
         ForeignDecls, ForeignDeclResults, !IO),
     list.filter_map(maybe_is_error, ForeignDeclResults, Errors),
 
-    io.write_string("public class ", !IO),
+    io.write_string(Stream, "public class ", !IO),
     mangle_sym_name_for_java(MercuryModuleName, module_qual, "__", ClassName),
-    io.write_string(ClassName, !IO),
-    io.write_string(" {\n", !IO),
+    io.write_string(Stream, ClassName, !IO),
+    io.write_string(Stream, " {\n", !IO),
 
-    output_debug_class_init(Info, MercuryModuleName, "start", !IO),
+    output_debug_class_init(Info, Stream, MercuryModuleName, "start", !IO),
 
     % Check if this module contains a `main' predicate and if it does insert
     % a `main' method in the resulting Java class that calls the `main'
     % predicate.
     ( if func_defns_contain_main(FuncDefns) then
-        write_main_driver_for_java(Indent + 1, ClassName, !IO)
+        write_main_driver_for_java(Stream, Indent + 1, ClassName, !IO)
     else
         true
     ).
 
-:- pred write_main_driver_for_java(indent::in, string::in,
-    io::di, io::uo) is det.
+:- pred write_main_driver_for_java(io.text_output_stream::in, indent::in,
+    string::in, io::di, io::uo) is det.
 
-write_main_driver_for_java(Indent, ClassName, !IO) :-
-    output_n_indents(Indent, !IO),
-    io.write_string("public static void main", !IO),
-    io.write_string("(java.lang.String[] args)\n", !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("{\n", !IO),
+write_main_driver_for_java(Stream, Indent, ClassName, !IO) :-
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "public static void main", !IO),
+    io.write_string(Stream, "(java.lang.String[] args)\n", !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "{\n", !IO),
 
     % Save the progname and command line arguments in the class variables
     % of `jmercury.runtime.JavaInternal', as well as setting the default
@@ -626,42 +639,42 @@ write_main_driver_for_java(Indent, ClassName, !IO) :-
         "io.flush_output_3_p_0(io.stderr_stream_0_f_0());",
         "java.lang.System.exit(jmercury.runtime.JavaInternal.exit_status);"
     ],
-    list.foldl(write_indented_line(Indent + 1), Body, !IO),
+    list.foldl(write_indented_line(Stream, Indent + 1), Body, !IO),
 
-    output_n_indents(Indent, !IO),
-    io.write_string("}\n", !IO).
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "}\n", !IO).
 
-:- pred output_src_end_for_java(java_out_info::in, indent::in,
-        mercury_module_name::in, io::di, io::uo) is det.
+:- pred output_src_end_for_java(java_out_info::in, io.text_output_stream::in,
+    indent::in, mercury_module_name::in, io::di, io::uo) is det.
 
-output_src_end_for_java(Info, Indent, ModuleName, !IO) :-
-    output_debug_class_init(Info, ModuleName, "end", !IO),
-    io.write_string("}\n", !IO),
+output_src_end_for_java(Info, Stream, Indent, ModuleName, !IO) :-
+    output_debug_class_init(Info, Stream, ModuleName, "end", !IO),
+    io.write_string(Stream, "}\n", !IO),
     AutoComments = Info ^ joi_auto_comments,
     (
         AutoComments = yes,
-        output_n_indents(Indent, !IO),
-        io.write_string("// :- end_module ", !IO),
-        prog_out.write_sym_name_to_cur_stream(ModuleName, !IO),
-        io.write_string(".\n", !IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "// :- end_module ", !IO),
+        prog_out.write_sym_name(Stream, ModuleName, !IO),
+        io.write_string(Stream, ".\n", !IO)
     ;
         AutoComments = no
     ).
 
-:- pred output_debug_class_init(java_out_info::in, mercury_module_name::in,
-    string::in, io::di, io::uo) is det.
+:- pred output_debug_class_init(java_out_info::in, io.text_output_stream::in,
+    mercury_module_name::in, string::in, io::di, io::uo) is det.
 
-output_debug_class_init(Info, ModuleName, State, !IO) :-
+output_debug_class_init(Info, Stream, ModuleName, State, !IO) :-
     DebugClassInit = get_debug_class_init(Info),
     (
         DebugClassInit = yes,
-        list.foldl(io.write_string, [
-        "  static {\n",
-        "    if (System.getenv(""MERCURY_DEBUG_CLASS_INIT"") != null) {\n",
-        "      System.out.println(""[", sym_name_mangle(ModuleName),
-        " ", State, " init]"");\n",
-        "    }\n",
-        "  }\n"
+        list.foldl(io.write_string(Stream), [
+            "  static {\n",
+            "    if (System.getenv(""MERCURY_DEBUG_CLASS_INIT"") != null) {\n",
+            "      System.out.println(""[", sym_name_mangle(ModuleName),
+            " ", State, " init]"");\n",
+            "    }\n",
+            "  }\n"
         ], !IO)
     ;
         DebugClassInit = no

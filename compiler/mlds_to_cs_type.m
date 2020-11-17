@@ -28,7 +28,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred output_type_for_csharp(csharp_out_info::in, mlds_type::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, io::di, io::uo) is det.
 
     % type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims)
     %
@@ -91,16 +91,17 @@
 
 %---------------------------------------------------------------------------%
 
-output_type_for_csharp(Info, MLDS_Type, !IO) :-
-    output_type_for_csharp_dims(Info, MLDS_Type, [], !IO).
+output_type_for_csharp(Info, MLDS_Type, Stream, !IO) :-
+    output_type_for_csharp_dims(Info, Stream, MLDS_Type, [], !IO).
 
-:- pred output_type_for_csharp_dims(csharp_out_info::in, mlds_type::in,
-    list(int)::in, io::di, io::uo) is det.
+:- pred output_type_for_csharp_dims(csharp_out_info::in,
+    io.text_output_stream::in, mlds_type::in, list(int)::in,
+    io::di, io::uo) is det.
 
-output_type_for_csharp_dims(Info, MLDS_Type, ArrayDims0, !IO) :-
+output_type_for_csharp_dims(Info, Stream, MLDS_Type, ArrayDims0, !IO) :-
     type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims),
-    io.write_string(String, !IO),
-    output_array_dimensions(ArrayDims ++ ArrayDims0, !IO).
+    io.write_string(Stream, String, !IO),
+    output_array_dimensions(Stream, ArrayDims ++ ArrayDims0, !IO).
 
 type_to_string_for_csharp(Info, MLDS_Type, String, ArrayDims) :-
     (

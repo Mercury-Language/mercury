@@ -51,24 +51,27 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred cs_output_context(bool::in, prog_context::in,
-    io::di, io::uo) is det.
+:- pred cs_output_context(io.text_output_stream::in, bool::in,
+    prog_context::in, io::di, io::uo) is det.
 
-:- pred indent_line_after_context(bool::in, prog_context::in,
-    indent::in, io::di, io::uo) is det.
+:- pred indent_line_after_context(io.text_output_stream::in, bool::in,
+    prog_context::in, indent::in, io::di, io::uo) is det.
 
-:- pred cs_output_default_context(bool::in, io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
-:- pred maybe_output_comment_for_csharp(csharp_out_info::in, string::in,
+:- pred cs_output_default_context(io.text_output_stream::in, bool::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred output_pragma_warning_disable(io::di, io::uo) is det.
+:- pred maybe_output_comment_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, string::in, io::di, io::uo) is det.
 
-:- pred output_pragma_warning_restore(io::di, io::uo) is det.
+%---------------------------------------------------------------------------%
+
+:- pred output_pragma_warning_disable(io.text_output_stream::in,
+    io::di, io::uo) is det.
+
+:- pred output_pragma_warning_restore(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -101,7 +104,7 @@ init_csharp_out_info(ModuleInfo, SourceFileName, CodeAddrs) = Info :-
 
 %---------------------------------------------------------------------------%
 
-cs_output_context(OutputLineNumbers, Context, !IO) :-
+cs_output_context(Stream, OutputLineNumbers, Context, !IO) :-
     (
         OutputLineNumbers = yes,
         Context = term.context(File, Line),
@@ -109,7 +112,7 @@ cs_output_context(OutputLineNumbers, Context, !IO) :-
             Line > 0,
             File \= ""
         then
-            io.format("#line %d ""%s""\n", [i(Line), s(File)], !IO)
+            io.format(Stream, "#line %d ""%s""\n", [i(Line), s(File)], !IO)
         else
             true
         )
@@ -117,43 +120,44 @@ cs_output_context(OutputLineNumbers, Context, !IO) :-
         OutputLineNumbers = no
     ).
 
-indent_line_after_context(OutputLineNumbers, Context, N, !IO) :-
-    cs_output_context(OutputLineNumbers, Context, !IO),
-    output_n_indents(N, !IO).
+indent_line_after_context(Stream, OutputLineNumbers, Context, N, !IO) :-
+    cs_output_context(Stream, OutputLineNumbers, Context, !IO),
+    output_n_indents(Stream, N, !IO).
 
-cs_output_default_context(OutputLineNumbers, !IO) :-
+cs_output_default_context(Stream, OutputLineNumbers, !IO) :-
     (
         OutputLineNumbers = yes,
-        io.write_string("#line default\n", !IO)
+        io.write_string(Stream, "#line default\n", !IO)
     ;
         OutputLineNumbers = no
     ).
 
 %---------------------------------------------------------------------------%
 
-maybe_output_comment_for_csharp(Info, Comment, !IO) :-
+maybe_output_comment_for_csharp(Info, Stream, Comment, !IO) :-
     AutoComments = Info ^ csoi_auto_comments,
     (
         AutoComments = yes,
-        io.write_string("/* ", !IO),
-        io.write_string(Comment, !IO),
-        io.write_string(" */", !IO)
+        io.write_string(Stream, "/* ", !IO),
+        io.write_string(Stream, Comment, !IO),
+        io.write_string(Stream, " */", !IO)
     ;
         AutoComments = no
     ).
 
 %---------------------------------------------------------------------------%
 
-output_pragma_warning_disable(!IO) :-
+output_pragma_warning_disable(Stream, !IO) :-
     % CS0162: Unreachable code detected.
     % CS0168: The variable `foo' is declared but never used.
     % CS0169: The private method `foo' is never used.
     % CS0219: The variable `foo' is assigned but its value is never used.
     % CS1717: Assignment made to same variable.
-    io.write_string("#pragma warning disable 162, 168, 169, 219, 1717\n", !IO).
+    io.write_string(Stream,
+        "#pragma warning disable 162, 168, 169, 219, 1717\n", !IO).
 
-output_pragma_warning_restore(!IO) :-
-    io.write_string("#pragma warning restore\n", !IO).
+output_pragma_warning_restore(Stream, !IO) :-
+    io.write_string(Stream, "#pragma warning restore\n", !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_cs_util.

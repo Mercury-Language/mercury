@@ -72,19 +72,20 @@
             % This marks Mercury generated code for which Java's line numbers
             % should be used, it is just a comment for the Mercury developers.
 
-:- pred output_context_for_java(bool::in, context_marker::in,
-    prog_context::in, io::di, io::uo) is det.
+:- pred output_context_for_java(io.text_output_stream::in, bool::in,
+    context_marker::in, prog_context::in, io::di, io::uo) is det.
 
-:- pred indent_line_after_context(bool::in, context_marker::in,
-    prog_context::in, indent::in, io::di, io::uo) is det.
+:- pred indent_line_after_context(io.text_output_stream::in, bool::in,
+    context_marker::in, prog_context::in, indent::in, io::di, io::uo) is det.
 
-:- pred write_string_with_context_block(java_out_info::in, indent::in,
-    string::in, prog_context::in, io::di, io::uo) is det.
+:- pred write_string_with_context_block(java_out_info::in,
+    io.text_output_stream::in, indent::in, string::in, prog_context::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_output_comment_for_java(java_out_info::in, string::in,
-    io::di, io::uo) is det.
+:- pred maybe_output_comment_for_java(java_out_info::in,
+    io.text_output_stream::in, string::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -131,7 +132,7 @@ get_debug_class_init(Info) = DebugClassInit :-
 :- mutable(last_context, prog_context, context_init, ground,
     [untrailed, attach_to_io_state]).
 
-output_context_for_java(OutputLineNumbers, Marker, ProgContext, !IO) :-
+output_context_for_java(Stream, OutputLineNumbers, Marker, ProgContext, !IO) :-
     (
         OutputLineNumbers = yes,
         get_last_context(LastContext, !IO),
@@ -157,7 +158,7 @@ output_context_for_java(OutputLineNumbers, Marker, ProgContext, !IO) :-
             string.replace_all(File, "\\u", "\\\\u", SafePath),
             % Do not modify this format string without modifying
             % mfilterjavac/mfilterjavac.m.
-            io.format("// %s %s:%d\n",
+            io.format(Stream, "// %s %s:%d\n",
                 [s(marker_string(Marker)), s(SafePath), i(Line)], !IO),
             set_last_context(ProgContext, !IO)
         else
@@ -177,22 +178,22 @@ marker_string(marker_comment) = "".
 
 %---------------------------------------------------------------------------%
 
-indent_line_after_context(OutputLineNumbers, Marker, Context, N, !IO) :-
-    output_context_for_java(OutputLineNumbers, Marker, Context, !IO),
-    output_n_indents(N, !IO).
+indent_line_after_context(Stream, OutputLineNumbers, Marker, Context, N, !IO) :-
+    output_context_for_java(Stream, OutputLineNumbers, Marker, Context, !IO),
+    output_n_indents(Stream, N, !IO).
 
-write_string_with_context_block(Info, Indent, Code, Context, !IO) :-
-    indent_line_after_context(Info ^ joi_foreign_line_numbers,
+write_string_with_context_block(Info, Stream, Indent, Code, Context, !IO) :-
+    indent_line_after_context(Stream, Info ^ joi_foreign_line_numbers,
         marker_begin_block, Context, Indent, !IO),
-    io.write_string(Code, !IO),
-    io.nl(!IO),
+    io.write_string(Stream, Code, !IO),
+    io.nl(Stream, !IO),
     % The num_lines(Code) call is supposed to count the number of lines
     % occupied by Code in the source file. The result will be incorrect if
     % there were any escape sequences representing CR or LF characters --
     % they are expanded out in Code.
     Context = context(File, Lines0),
     ContextEnd = context(File, Lines0 + num_lines(Code)),
-    indent_line_after_context(Info ^ joi_foreign_line_numbers,
+    indent_line_after_context(Stream, Info ^ joi_foreign_line_numbers,
         marker_end_block, ContextEnd, Indent, !IO).
 
 :- func num_lines(string) = int.
@@ -212,10 +213,8 @@ count_new_lines(C, !N, Prev, C) :-
         (
             C = '\r'
         ;
-            (
-                C = '\n',
-                Prev \= '\r'
-            )
+            C = '\n',
+            Prev \= '\r'
         )
     then
         !:N = !.N + 1
@@ -225,13 +224,13 @@ count_new_lines(C, !N, Prev, C) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_output_comment_for_java(Info, Comment, !IO) :-
+maybe_output_comment_for_java(Info, Stream, Comment, !IO) :-
     AutoComments = Info ^ joi_auto_comments,
     (
         AutoComments = yes,
-        io.write_string("/* ", !IO),
-        io.write_string(Comment, !IO),
-        io.write_string(" */", !IO)
+        io.write_string(Stream, "/* ", !IO),
+        io.write_string(Stream, Comment, !IO),
+        io.write_string(Stream, " */", !IO)
     ;
         AutoComments = no
     ).

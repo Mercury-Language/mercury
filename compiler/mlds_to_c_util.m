@@ -85,11 +85,14 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred c_output_stmt_context(bool::in, mlds_stmt::in, io::di, io::uo) is det.
-:- pred c_output_context(bool::in, prog_context::in, io::di, io::uo) is det.
-:- pred c_output_file_line(bool::in, string::in, int::in,
+:- pred c_output_stmt_context(io.text_output_stream::in, bool::in,
+    mlds_stmt::in, io::di, io::uo) is det.
+:- pred c_output_context(io.text_output_stream::in, bool::in,
+    prog_context::in, io::di, io::uo) is det.
+:- pred c_output_file_line(io.text_output_stream::in, bool::in,
+    string::in, int::in, io::di, io::uo) is det.
+:- pred c_reset_context(io.text_output_stream::in, bool::in,
     io::di, io::uo) is det.
-:- pred c_reset_context(bool::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -146,39 +149,39 @@ init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump) = Opts :-
 % source context annotations (#line directives).
 %
 
-c_output_stmt_context(OutputLineNumbers, Stmt, !IO) :-
+c_output_stmt_context(Stream, OutputLineNumbers, Stmt, !IO) :-
     (
         OutputLineNumbers = yes,
         Context = get_mlds_stmt_context(Stmt),
         term.context_file(Context, FileName),
         term.context_line(Context, LineNumber),
-        c_util.always_set_line_num_cur_stream(FileName, LineNumber, !IO)
+        c_util.always_set_line_num(Stream, FileName, LineNumber, !IO)
     ;
         OutputLineNumbers = no
     ).
 
-c_output_context(OutputLineNumbers, Context, !IO) :-
+c_output_context(Stream, OutputLineNumbers, Context, !IO) :-
     (
         OutputLineNumbers = yes,
         term.context_file(Context, FileName),
         term.context_line(Context, LineNumber),
-        c_util.always_set_line_num_cur_stream(FileName, LineNumber, !IO)
+        c_util.always_set_line_num(Stream, FileName, LineNumber, !IO)
     ;
         OutputLineNumbers = no
     ).
 
-c_output_file_line(OutputLineNumbers, FileName, LineNumber, !IO) :-
+c_output_file_line(Stream, OutputLineNumbers, FileName, LineNumber, !IO) :-
     (
         OutputLineNumbers = yes,
-        c_util.always_set_line_num_cur_stream(FileName, LineNumber, !IO)
+        c_util.always_set_line_num(Stream, FileName, LineNumber, !IO)
     ;
         OutputLineNumbers = no
     ).
 
-c_reset_context(OutputLineNumbers, !IO) :-
+c_reset_context(Stream, OutputLineNumbers, !IO) :-
     (
         OutputLineNumbers = yes,
-        c_util.always_reset_line_num_cur_stream(no, !IO)
+        c_util.always_reset_line_num(Stream, no, !IO)
     ;
         OutputLineNumbers = no
     ).

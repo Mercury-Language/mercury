@@ -78,13 +78,13 @@ output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".cs")), ModuleName, SourceFileName, !IO),
     Indent = 0,
-    output_to_file(Globals, SourceFileName,
+    output_to_file_stream(Globals, SourceFileName,
         output_csharp_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
 
 :- pred output_csharp_src_file(module_info::in, indent::in, mlds::in,
-    list(string)::out, io::di, io::uo) is det.
+    io.text_output_stream::in, list(string)::out, io::di, io::uo) is det.
 
-output_csharp_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
+output_csharp_src_file(ModuleInfo, Indent, MLDS, Stream, Errors, !IO) :-
     % Run further transformations on the MLDS.
     MLDS = mlds(ModuleName, Imports, GlobalData,
         TypeDefns, TableStructDefns, ProcDefns,
@@ -121,63 +121,68 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
     % Output transformed MLDS as C# source.
     module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
     Info = init_csharp_out_info(ModuleInfo, SourceFileName, CodeAddrs),
-    output_src_start_for_csharp(Info, Indent, ModuleName, Imports,
+    output_src_start_for_csharp(Info, Stream, Indent, ModuleName, Imports,
         ForeignDeclCodes, ProcDefns, ForeignDeclErrors, !IO),
-    list.map_foldl(output_csharp_body_code(Info, Indent),
+    list.map_foldl(output_csharp_body_code(Info, Stream, Indent),
         ForeignBodyCodes, ForeignCodeResults, !IO),
     list.filter_map(maybe_is_error, ForeignCodeResults, ForeignCodeErrors),
 
-    output_pragma_warning_disable(!IO),
+    output_pragma_warning_disable(Stream, !IO),
 
-    io.write_string("\n// RttiDefns\n", !IO),
+    io.write_string(Stream, "\n// RttiDefns\n", !IO),
     list.foldl(
-        output_global_var_defn_for_csharp(Info, Indent + 1, oa_alloc_only),
+        output_global_var_defn_for_csharp(Info, Stream, Indent + 1,
+            oa_alloc_only),
         RttiDefns, !IO),
-    output_rtti_assignments_for_csharp(Info, Indent + 1, RttiDefns, !IO),
+    output_rtti_assignments_for_csharp(Info, Stream, Indent + 1,
+        RttiDefns, !IO),
 
-    io.write_string("\n// Cell and tabling definitions\n", !IO),
-    output_global_var_decls_for_csharp(Info, Indent + 1, CellDefns, !IO),
-    output_global_var_decls_for_csharp(Info, Indent + 1, TableStructDefns,
-        !IO),
-    output_init_global_var_method_for_csharp(Info, Indent + 1,
+    io.write_string(Stream, "\n// Cell and tabling definitions\n", !IO),
+    output_global_var_decls_for_csharp(Info, Stream, Indent + 1,
+        CellDefns, !IO),
+    output_global_var_decls_for_csharp(Info, Stream, Indent + 1,
+        TableStructDefns, !IO),
+    output_init_global_var_method_for_csharp(Info, Stream, Indent + 1,
         CellDefns ++ TableStructDefns, !IO),
 
     % Scalar common data must appear after the previous data definitions,
     % and the vector common data after that.
-    io.write_string("\n// Scalar common data\n", !IO),
-    output_scalar_common_data_for_csharp(Info, Indent + 1,
+    io.write_string(Stream, "\n// Scalar common data\n", !IO),
+    output_scalar_common_data_for_csharp(Info, Stream, Indent + 1,
         ScalarCellGroupMap, !IO),
 
-    io.write_string("\n// Vector common data\n", !IO),
-    output_vector_common_data_for_csharp(Info, Indent + 1,
+    io.write_string(Stream, "\n// Vector common data\n", !IO),
+    output_vector_common_data_for_csharp(Info, Stream, Indent + 1,
         VectorCellGroupMap, !IO),
 
-    io.write_string("\n// Method pointers\n", !IO),
-    output_method_ptr_constants(Info, Indent + 1, CodeAddrs, !IO),
+    io.write_string(Stream, "\n// Method pointers\n", !IO),
+    output_method_ptr_constants(Info, Stream, Indent + 1, CodeAddrs, !IO),
 
-    io.write_string("\n// Function definitions\n", !IO),
+    io.write_string(Stream, "\n// Function definitions\n", !IO),
     list.sort(ClosureWrapperFuncDefns ++ ProcDefns, SortedFuncDefns),
-    list.foldl(output_function_defn_for_csharp(Info, Indent + 1, oa_none),
+    list.foldl(
+        output_function_defn_for_csharp(Info, Stream, Indent + 1, oa_none),
         SortedFuncDefns, !IO),
 
-    io.write_string("\n// Class definitions\n", !IO),
+    io.write_string(Stream, "\n// Class definitions\n", !IO),
     list.sort(TypeDefns, SortedClassDefns),
-    list.foldl(output_class_defn_for_csharp(Info, Indent + 1),
+    list.foldl(output_class_defn_for_csharp(Info, Stream, Indent + 1),
         SortedClassDefns, !IO),
 
-    io.write_string("\n// ExportDefns\n", !IO),
-    output_exports_for_csharp(Info, Indent + 1, ExportDefns, !IO),
+    io.write_string(Stream, "\n// ExportDefns\n", !IO),
+    output_exports_for_csharp(Info, Stream, Indent + 1, ExportDefns, !IO),
 
-    io.write_string("\n// ExportedEnums\n", !IO),
-    output_exported_enums_for_csharp(Info, Indent + 1, ExportedEnums, !IO),
+    io.write_string(Stream, "\n// ExportedEnums\n", !IO),
+    output_exported_enums_for_csharp(Info, Stream, Indent + 1,
+        ExportedEnums, !IO),
 
-    io.write_string("\n// EnvVarNames\n", !IO),
+    io.write_string(Stream, "\n// EnvVarNames\n", !IO),
     set.init(EnvVarNamesSet0),
     list.foldl(accumulate_env_var_names, ProcDefns,
         EnvVarNamesSet0, EnvVarNamesSet1),
     list.foldl(accumulate_env_var_names, ClosureWrapperFuncDefns,
         EnvVarNamesSet1, EnvVarNamesSet),
-    set.foldl(output_env_var_definition_for_csharp(Indent + 1),
+    set.foldl(output_env_var_definition_for_csharp(Stream, Indent + 1),
         EnvVarNamesSet, !IO),
 
     StaticCtorCalls = [
@@ -187,10 +192,10 @@ output_csharp_src_file(ModuleInfo, Indent, MLDS, Errors, !IO) :-
         "MR_init_vector_common_data"
         | InitPreds
     ],
-    output_static_constructor(ModuleName, Indent + 1, StaticCtorCalls,
+    output_static_constructor(Stream, ModuleName, Indent + 1, StaticCtorCalls,
         FinalPreds, !IO),
 
-    output_src_end_for_csharp(Indent, ModuleName, !IO),
+    output_src_end_for_csharp(Stream, Indent, ModuleName, !IO),
 
     Errors = ForeignDeclErrors ++ ForeignCodeErrors.
 
@@ -209,14 +214,15 @@ make_code_addr_map_for_csharp([SeqNum - CodeAddr | SeqNumsCodeAddrs],
 % Code for working with `foreign_code'.
 %
 
-:- pred output_csharp_decl(csharp_out_info::in, indent::in,
-    foreign_decl_code::in, maybe_error::out, io::di, io::uo) is det.
+:- pred output_csharp_decl(csharp_out_info::in, io.text_output_stream::in,
+    indent::in, foreign_decl_code::in, maybe_error::out,
+    io::di, io::uo) is det.
 
-output_csharp_decl(Info, Indent, DeclCode, Res, !IO) :-
+output_csharp_decl(Info, Stream, Indent, DeclCode, Res, !IO) :-
     DeclCode = foreign_decl_code(Lang, _IsLocal, LiteralOrInclude, Context),
     (
         Lang = lang_csharp,
-        output_csharp_foreign_literal_or_include(Info, Indent,
+        output_csharp_foreign_literal_or_include(Info, Stream, Indent,
             LiteralOrInclude, Context, Res, !IO)
     ;
         ( Lang = lang_c
@@ -225,15 +231,16 @@ output_csharp_decl(Info, Indent, DeclCode, Res, !IO) :-
         sorry($pred, "foreign decl other than C#")
     ).
 
-:- pred output_csharp_body_code(csharp_out_info::in, indent::in,
-    foreign_body_code::in, maybe_error::out, io::di, io::uo) is det.
+:- pred output_csharp_body_code(csharp_out_info::in, io.text_output_stream::in,
+    indent::in, foreign_body_code::in, maybe_error::out,
+    io::di, io::uo) is det.
 
-output_csharp_body_code(Info, Indent, ForeignBodyCode, Res, !IO) :-
+output_csharp_body_code(Info, Stream, Indent, ForeignBodyCode, Res, !IO) :-
     ForeignBodyCode = foreign_body_code(Lang, LiteralOrInclude, Context),
     % Only output C# code.
     (
         Lang = lang_csharp,
-        output_csharp_foreign_literal_or_include(Info, Indent,
+        output_csharp_foreign_literal_or_include(Info, Stream, Indent,
             LiteralOrInclude, Context, Res, !IO)
     ;
         ( Lang = lang_c
@@ -243,27 +250,27 @@ output_csharp_body_code(Info, Indent, ForeignBodyCode, Res, !IO) :-
     ).
 
 :- pred output_csharp_foreign_literal_or_include(csharp_out_info::in,
-    indent::in, foreign_literal_or_include::in, prog_context::in,
-    maybe_error::out, io::di, io::uo) is det.
+    io.text_output_stream::in, indent::in, foreign_literal_or_include::in,
+    prog_context::in, maybe_error::out, io::di, io::uo) is det.
 
-output_csharp_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
-        Context, Res, !IO) :-
+output_csharp_foreign_literal_or_include(Info, Stream, Indent,
+        LiteralOrInclude, Context, Res, !IO) :-
     (
         LiteralOrInclude = floi_literal(Code),
-        indent_line_after_context(Info ^ csoi_foreign_line_numbers, Context,
-            Indent, !IO),
-        io.write_string(Code, !IO),
+        indent_line_after_context(Stream, Info ^ csoi_foreign_line_numbers,
+            Context, Indent, !IO),
+        io.write_string(Stream, Code, !IO),
         Res = ok
     ;
         LiteralOrInclude = floi_include_file(IncludeFileName),
         SourceFileName = Info ^ csoi_source_filename,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
-        cs_output_context(Info ^ csoi_foreign_line_numbers,
+        cs_output_context(Stream, Info ^ csoi_foreign_line_numbers,
             context(IncludePath, 1), !IO),
-        write_include_file_contents_cur_stream(IncludePath, Res, !IO)
+        write_include_file_contents(Stream, IncludePath, Res, !IO)
     ),
-    io.nl(!IO),
-    cs_output_default_context(Info ^ csoi_foreign_line_numbers, !IO).
+    io.nl(Stream, !IO),
+    cs_output_default_context(Stream, Info ^ csoi_foreign_line_numbers, !IO).
 
 :- func mlds_get_csharp_foreign_code(map(foreign_language, mlds_foreign_code))
     = mlds_foreign_code.
@@ -277,81 +284,85 @@ mlds_get_csharp_foreign_code(AllForeignCode) = ForeignCode :-
 
 %---------------------------------------------------------------------------%
 
-:- pred output_method_ptr_constants(csharp_out_info::in, indent::in,
-    map(mlds_code_addr, string)::in, io::di, io::uo) is det.
+:- pred output_method_ptr_constants(csharp_out_info::in,
+    io.text_output_stream::in, indent::in, map(mlds_code_addr, string)::in,
+    io::di, io::uo) is det.
 
-output_method_ptr_constants(Info, Indent, CodeAddrs, !IO) :-
-    map.foldl(output_method_ptr_constant(Info, Indent), CodeAddrs, !IO).
+output_method_ptr_constants(Info, Stream, Indent, CodeAddrs, !IO) :-
+    map.foldl(output_method_ptr_constant(Info, Stream, Indent),
+        CodeAddrs, !IO).
 
-:- pred output_method_ptr_constant(csharp_out_info::in, indent::in,
-    mlds_code_addr::in, string::in, io::di, io::uo) is det.
+:- pred output_method_ptr_constant(csharp_out_info::in,
+    io.text_output_stream::in, indent::in, mlds_code_addr::in, string::in,
+    io::di, io::uo) is det.
 
-output_method_ptr_constant(Info, Indent, CodeAddr, Name, !IO) :-
+output_method_ptr_constant(Info, Stream, Indent, CodeAddr, Name, !IO) :-
     CodeAddr = mlds_code_addr(_QualFuncLabel, Signature),
     Signature = mlds_func_signature(ArgTypes, RetTypes),
     TypeString = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
-    output_n_indents(Indent, !IO),
-    io.format("private static readonly %s %s = ",
+    output_n_indents(Stream, Indent, !IO),
+    io.format(Stream, "private static readonly %s %s = ",
         [s(TypeString), s(Name)], !IO),
     IsCall = no,
-    mlds_output_code_addr_for_csharp(Info, CodeAddr, IsCall, !IO),
-    io.write_string(";\n", !IO).
+    mlds_output_code_addr_for_csharp(Info, Stream, CodeAddr, IsCall, !IO),
+    io.write_string(Stream, ";\n", !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Code to output globals for environment variables.
 %
 
-:- pred output_env_var_definition_for_csharp(indent::in, string::in,
-    io::di, io::uo) is det.
+:- pred output_env_var_definition_for_csharp(io.text_output_stream::in,
+    indent::in, string::in, io::di, io::uo) is det.
 
-output_env_var_definition_for_csharp(Indent, EnvVarName, !IO) :-
+output_env_var_definition_for_csharp(Stream, Indent, EnvVarName, !IO) :-
     % We use int because the generated code compares against zero, and changing
     % that is more trouble than it is worth, as it affects the C backends.
-    output_n_indents(Indent, !IO),
-    io.write_string("private static int mercury_envvar_", !IO),
-    io.write_string(EnvVarName, !IO),
-    io.write_string(" =\n", !IO),
-    output_n_indents(Indent + 1, !IO),
-    io.write_string("System.Environment.GetEnvironmentVariable(\"", !IO),
-    io.write_string(EnvVarName, !IO),
-    io.write_string("\") == null ? 0 : 1;\n", !IO).
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "private static int mercury_envvar_", !IO),
+    io.write_string(Stream, EnvVarName, !IO),
+    io.write_string(Stream, " =\n", !IO),
+    output_n_indents(Stream, Indent + 1, !IO),
+    io.write_string(Stream,
+        "System.Environment.GetEnvironmentVariable(\"", !IO),
+    io.write_string(Stream, EnvVarName, !IO),
+    io.write_string(Stream, "\") == null ? 0 : 1;\n", !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Code to output the start and end of a source file.
 %
 
-:- pred output_src_start_for_csharp(csharp_out_info::in, indent::in,
-    mercury_module_name::in, list(mlds_import)::in,
-    list(foreign_decl_code)::in, list(mlds_function_defn)::in,
-    list(string)::out, io::di, io::uo) is det.
+:- pred output_src_start_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, indent::in, mercury_module_name::in,
+    list(mlds_import)::in, list(foreign_decl_code)::in,
+    list(mlds_function_defn)::in, list(string)::out, io::di, io::uo) is det.
 
-output_src_start_for_csharp(Info, Indent, MercuryModuleName, _Imports,
+output_src_start_for_csharp(Info, Stream, Indent, MercuryModuleName, _Imports,
         ForeignDecls, Defns, Errors, !IO) :-
-    output_auto_gen_comment(Info ^ csoi_source_filename, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("/* :- module ", !IO),
-    prog_out.write_sym_name_to_cur_stream(MercuryModuleName, !IO),
-    io.write_string(". */\n", !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("namespace mercury {\n\n", !IO),
+    output_auto_gen_comment(Stream, Info ^ csoi_source_filename, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "/* :- module ", !IO),
+    prog_out.write_sym_name(Stream, MercuryModuleName, !IO),
+    io.write_string(Stream, ". */\n", !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "namespace mercury {\n\n", !IO),
 
-    list.map_foldl(output_csharp_decl(Info, Indent),
+    list.map_foldl(output_csharp_decl(Info, Stream, Indent),
         ForeignDecls, ForeignDeclResults, !IO),
     list.filter_map(maybe_is_error, ForeignDeclResults, Errors),
 
-    io.write_string("public static class ", !IO),
+    io.write_string(Stream, "public static class ", !IO),
     mangle_sym_name_for_csharp(MercuryModuleName, module_qual, "__",
         ClassName),
-    io.write_string(ClassName, !IO),
-    io.write_string(" {\n", !IO),
+    io.write_string(Stream, ClassName, !IO),
+    io.write_string(Stream, " {\n", !IO),
 
     % Check if this module contains a `main' predicate and if it does insert
     % a `main' method in the resulting source file that calls the `main'
     % predicate.
     ( if func_defns_contain_main(Defns) then
-        write_main_driver_for_csharp(Indent + 1, ClassName, !IO)
+        write_main_driver_for_csharp(Stream, Indent + 1, ClassName, !IO)
     else
         true
     ).
@@ -359,45 +370,46 @@ output_src_start_for_csharp(Info, Indent, MercuryModuleName, _Imports,
     % C# only allows a single static constructor so we just call the real
     % methods that we generated earlier.
     %
-:- pred output_static_constructor(mercury_module_name::in, indent::in,
-    list(string)::in, list(string)::in, io::di, io::uo) is det.
+:- pred output_static_constructor(io.text_output_stream::in,
+    mercury_module_name::in, indent::in, list(string)::in, list(string)::in,
+    io::di, io::uo) is det.
 
-output_static_constructor(MercuryModuleName, Indent, StaticConstructors,
-        FinalPreds, !IO) :-
-    output_n_indents(Indent, !IO),
-    io.write_string("static ", !IO),
+output_static_constructor(Stream, MercuryModuleName, Indent,
+        StaticConstructors, FinalPreds, !IO) :-
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "static ", !IO),
     mangle_sym_name_for_csharp(MercuryModuleName, module_qual, "__",
         ClassName),
-    io.write_string(ClassName, !IO),
-    io.write_string("() {\n", !IO),
+    io.write_string(Stream, ClassName, !IO),
+    io.write_string(Stream, "() {\n", !IO),
     WriteCall =
         ( pred(MethodName::in, !.IO::di, !:IO::uo) is det :-
-            output_n_indents(Indent + 1, !IO),
-            io.write_string(MethodName, !IO),
-            io.write_string("();\n", !IO)
+            output_n_indents(Stream, Indent + 1, !IO),
+            io.write_string(Stream, MethodName, !IO),
+            io.write_string(Stream, "();\n", !IO)
         ),
     list.foldl(WriteCall, StaticConstructors, !IO),
     WriteFinal =
         ( pred(FinalPred::in, !.IO::di, !:IO::uo) is det :-
-            output_n_indents(Indent + 1, !IO),
-            list.foldl(io.write_string, [
+            output_n_indents(Stream, Indent + 1, !IO),
+            list.foldl(io.write_string(Stream), [
                 "System.AppDomain.CurrentDomain.ProcessExit += ",
                 "(sender, ev) => ", FinalPred, "();\n"
             ], !IO)
         ),
     list.foldl(WriteFinal, FinalPreds, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("}\n", !IO).
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "}\n", !IO).
 
-:- pred write_main_driver_for_csharp(indent::in, string::in,
-    io::di, io::uo) is det.
+:- pred write_main_driver_for_csharp(io.text_output_stream::in, indent::in,
+    string::in, io::di, io::uo) is det.
 
-write_main_driver_for_csharp(Indent, ClassName, !IO) :-
-    output_n_indents(Indent, !IO),
-    io.write_string("public static void Main", !IO),
-    io.write_string("(string[] args)\n", !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("{\n", !IO),
+write_main_driver_for_csharp(Stream, Indent, ClassName, !IO) :-
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "public static void Main", !IO),
+    io.write_string(Stream, "(string[] args)\n", !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "{\n", !IO),
     Body = [
         "try {",
         "   library.ML_std_library_init();",
@@ -414,21 +426,21 @@ write_main_driver_for_csharp(Indent, ClassName, !IO) :-
         "   }",
         "}"
     ],
-    list.foldl(write_indented_line(Indent + 1), Body, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("}\n", !IO).
+    list.foldl(write_indented_line(Stream, Indent + 1), Body, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "}\n", !IO).
 
-:- pred output_src_end_for_csharp(indent::in, mercury_module_name::in,
-    io::di, io::uo) is det.
+:- pred output_src_end_for_csharp(io.text_output_stream::in, indent::in,
+    mercury_module_name::in, io::di, io::uo) is det.
 
-output_src_end_for_csharp(Indent, ModuleName, !IO) :-
-    io.write_string("}\n\n", !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("}\n", !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("// :- end_module ", !IO),
-    prog_out.write_sym_name_to_cur_stream(ModuleName, !IO),
-    io.write_string(".\n", !IO).
+output_src_end_for_csharp(Stream, Indent, ModuleName, !IO) :-
+    io.write_string(Stream, "}\n\n", !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "}\n", !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "// :- end_module ", !IO),
+    prog_out.write_sym_name(Stream, ModuleName, !IO),
+    io.write_string(Stream, ".\n", !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_cs_file.

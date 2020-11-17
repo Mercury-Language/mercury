@@ -95,9 +95,6 @@
     % Write to a given filename, giving appropriate status messages
     % and error messages if the file cannot be opened.
     %
-:- pred output_to_file(globals::in, string::in,
-    pred(list(string), io, io)::in(pred(out, di, uo) is det),
-    bool::out, io::di, io::uo) is det.
 :- pred output_to_file_stream(globals::in, string::in,
     pred(io.text_output_stream, list(string), io, io)::
         in(pred(in, out, di, uo) is det),
@@ -337,48 +334,6 @@ make_path_name_noncanon(Dir, FileName, PathName) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-output_to_file(Globals, FileName, Action, Succeeded, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    globals.lookup_bool_option(Globals, statistics, Stats),
-    maybe_write_string(Verbose, "% Writing to file `", !IO),
-    maybe_write_string(Verbose, FileName, !IO),
-    maybe_write_string(Verbose, "'...\n", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_output(FileName, Res, !IO),
-    (
-        Res = ok(FileStream),
-        io.set_output_stream(FileStream, OrigOutputStream, !IO),
-        promise_equivalent_solutions [TryResult, !:IO] (
-            try_io(Action, TryResult, !IO)
-        ),
-        io.set_output_stream(OrigOutputStream, _, !IO),
-        io.close_output(FileStream, !IO),
-        maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_report_stats(Stats, !IO),
-        (
-            TryResult = succeeded(Errors),
-            (
-                Errors = [],
-                Succeeded = yes
-            ;
-                Errors = [_ | _],
-                maybe_write_string(Verbose, "\n", !IO),
-                list.foldl(report_error, Errors, !IO),
-                Succeeded = no
-            )
-        ;
-            TryResult = exception(_),
-            rethrow(TryResult)
-        )
-    ;
-        Res = error(_),
-        maybe_write_string(Verbose, "\n", !IO),
-        ErrorMessage =
-            string.format("can't open file `%s' for output.", [s(FileName)]),
-        report_error(ErrorMessage, !IO),
-        Succeeded = no
-    ).
 
 output_to_file_stream(Globals, FileName, Action0, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),

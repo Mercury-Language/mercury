@@ -21,8 +21,9 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_class_defn(mlds_to_c_opts::in, indent::in,
-    mlds_module_name::in, mlds_class_defn::in, io::di, io::uo) is det.
+:- pred mlds_output_class_defn(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, mlds_module_name::in, mlds_class_defn::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -40,6 +41,7 @@
 :- import_module ml_backend.mlds_to_c_stmt.
 :- import_module ml_backend.mlds_to_c_type.
 :- import_module parse_tree.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -52,11 +54,12 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_class_decl_opts(mlds_to_c_opts::in, indent::in,
-    mlds_module_name::in, mlds_class_defn::in, io::di, io::uo) is det.
-:- pragma consider_used(mlds_output_class_decl_opts/6).
+:- pred mlds_output_class_decl_opts(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, mlds_module_name::in,
+    mlds_class_defn::in, io::di, io::uo) is det.
+:- pragma consider_used(mlds_output_class_decl_opts/7).
 
-mlds_output_class_decl_opts(Opts, Indent, ModuleName, ClassDefn, !IO) :-
+mlds_output_class_decl_opts(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, Arity, Context, Flags, Kind,
         _Imports, _Inherits, _Implements,
         _TypeParams, _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
@@ -66,67 +69,67 @@ mlds_output_class_decl_opts(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     ( if Kind = mlds_enum then
         true
     else
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        mlds_output_class_decl_flags(Opts, Flags, forward_decl, !IO),
-        mlds_output_class_decl(Indent, ModuleName, ClassName, Arity, ClassDefn,
-            !IO),
-        io.write_string(";\n", !IO)
+        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Stream, Indent, !IO),
+        mlds_output_class_decl_flags(Opts, Stream, Flags, forward_decl, !IO),
+        mlds_output_class_decl(Stream, Indent, ModuleName, ClassName,
+            Arity, ClassDefn, !IO),
+        io.write_string(Stream, ";\n", !IO)
     ).
 
-:- pred mlds_output_class_decl(indent::in, mlds_module_name::in,
-    mlds_class_name::in, arity::in, mlds_class_defn::in,
+:- pred mlds_output_class_decl(io.text_output_stream::in, indent::in,
+    mlds_module_name::in, mlds_class_name::in, arity::in, mlds_class_defn::in,
     io::di, io::uo) is det.
 
-mlds_output_class_decl(_Indent, ModuleName, ClassName, Arity,
+mlds_output_class_decl(Stream, _Indent, ModuleName, ClassName, Arity,
         ClassDefn, !IO) :-
     ClassKind = ClassDefn ^ mcd_kind,
     (
         ClassKind = mlds_enum,
-        io.write_string("enum ", !IO),
-        output_qual_name_prefix_c(ModuleName, !IO),
-        mlds_output_class_name_arity(ClassName, Arity, !IO),
-        io.write_string("_e", !IO)
+        io.write_string(Stream, "enum ", !IO),
+        output_qual_name_prefix_c(Stream, ModuleName, !IO),
+        mlds_output_class_name_arity(Stream, ClassName, Arity, !IO),
+        io.write_string(Stream, "_e", !IO)
     ;
         ( ClassKind = mlds_class
         ; ClassKind = mlds_interface
         ; ClassKind = mlds_struct
         ),
-        io.write_string("struct ", !IO),
-        output_qual_name_prefix_c(ModuleName, !IO),
-        mlds_output_class_name_arity(ClassName, Arity, !IO),
-        io.write_string("_s", !IO)
+        io.write_string(Stream, "struct ", !IO),
+        output_qual_name_prefix_c(Stream, ModuleName, !IO),
+        mlds_output_class_name_arity(Stream, ClassName, Arity, !IO),
+        io.write_string(Stream, "_s", !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_class_defns(mlds_to_c_opts::in, indent::in,
-    mlds_module_name::in, list(mlds_class_defn)::in,
+:- pred mlds_output_class_defns(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, mlds_module_name::in, list(mlds_class_defn)::in,
     io::di, io::uo) is det.
 
-mlds_output_class_defns(_Opts, _Indent, _ModuleName, [], !IO).
-mlds_output_class_defns(Opts, Indent, ModuleName,
+mlds_output_class_defns(_, _, _, _, [], !IO).
+mlds_output_class_defns(Opts, Stream, Indent, ModuleName,
         [ClassDefn | ClassDefns], !IO) :-
-    mlds_output_class_defn(Opts, Indent, ModuleName, ClassDefn, !IO),
-    mlds_output_class_defns(Opts, Indent, ModuleName, ClassDefns, !IO).
+    mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO),
+    mlds_output_class_defns(Opts, Stream, Indent, ModuleName, ClassDefns, !IO).
 
-mlds_output_class_defn(Opts, Indent, ModuleName, ClassDefn, !IO) :-
+mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(_ClassName, _Arity, Context, Flags, _Kind,
         _Imports, _Inherits, _Implements, _TypeParams,
         _MemberFields, _MemberClasses, _MemberMethods, _Ctors),
-    io.nl(!IO),
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
-    mlds_output_class_decl_flags(Opts, Flags, definition, !IO),
-    mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO).
+    io.nl(Stream, !IO),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    mlds_output_class_decl_flags(Opts, Stream, Flags, definition, !IO),
+    mlds_output_class(Opts, Stream, Indent, ModuleName, ClassDefn, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_class(mlds_to_c_opts::in, indent::in,
-    mlds_module_name::in, mlds_class_defn::in,
+:- pred mlds_output_class(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, mlds_module_name::in, mlds_class_defn::in,
     io::di, io::uo) is det.
 
-mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
+mlds_output_class(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, ClassArity, Context, _Flags,
         Kind, _Imports, Inherits, _Implements, _TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
@@ -203,14 +206,14 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
     % `target_uses_empty_base_classes' before generating empty structs.)
     % Hence we do not need to check for empty structs here.
 
-    mlds_output_class_decl(Indent, ModuleName, ClassName, ClassArity,
+    mlds_output_class_decl(Stream, Indent, ModuleName, ClassName, ClassArity,
         ClassDefn, !IO),
-    io.write_string(" {\n", !IO),
+    io.write_string(Stream, " {\n", !IO),
     (
         Kind = mlds_enum,
-        mlds_output_enum_constants(Opts, Indent + 1, ClassModuleName,
+        mlds_output_enum_constants(Opts, Stream, Indent + 1, ClassModuleName,
             BaseFieldVarDefns, !IO),
-        mlds_output_enum_constants(Opts, Indent + 1, ClassModuleName,
+        mlds_output_enum_constants(Opts, Stream, Indent + 1, ClassModuleName,
             StructMemberFields, !IO)
     ;
         ( Kind = mlds_class
@@ -219,23 +222,26 @@ mlds_output_class(Opts, Indent, ModuleName, ClassDefn, !IO) :-
         ),
         % XXX Why don't we output all the field vars in one block?
         list.foldl(
-            mlds_output_field_var_defn(Opts, Indent + 1, no, ClassModuleName),
+            mlds_output_field_var_defn(Opts, Stream, Indent + 1, no,
+                ClassModuleName),
             BaseFieldVarDefns, !IO),
         list.foldl(
-            mlds_output_function_defn(Opts, Indent + 1, ClassModuleName),
+            mlds_output_function_defn(Opts, Stream, Indent + 1,
+                ClassModuleName),
             StructCtors, !IO),
         list.foldl(
-            mlds_output_field_var_defn(Opts, Indent + 1, no, ClassModuleName),
+            mlds_output_field_var_defn(Opts, Stream, Indent + 1, no,
+                ClassModuleName),
             StructMemberFields, !IO)
     ),
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("};\n", !IO),
-    mlds_output_function_defns(Opts, Indent, ClassModuleName,
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "};\n", !IO),
+    mlds_output_function_defns(Opts, Stream, Indent, ClassModuleName,
         StaticCtors, !IO),
-    mlds_output_field_var_defns(Opts, Indent, yes, ClassModuleName,
+    mlds_output_field_var_defns(Opts, Stream, Indent, yes, ClassModuleName,
         StaticMemberFields, !IO),
-    mlds_output_class_defns(Opts, Indent, ClassModuleName,
+    mlds_output_class_defns(Opts, Stream, Indent, ClassModuleName,
         MemberClasses, !IO).
 
 %---------------------------------------------------------------------------%
@@ -252,90 +258,98 @@ field_var_defn_is_static_member(FieldVarDefn) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_field_var_decl(mlds_to_c_opts::in, qual_field_var_name::in,
+:- pred mlds_output_field_var_decl(mlds_to_c_opts::in,
+    io.text_output_stream::in, qual_field_var_name::in,
     mlds_type::in, initializer_array_size::in, io::di, io::uo) is det.
 
-mlds_output_field_var_decl(Opts, FieldVarName, Type, InitializerSize, !IO) :-
-    mlds_output_type_prefix(Opts, Type, !IO),
-    io.write_char(' ', !IO),
-    mlds_output_fully_qualified_field_var_name(FieldVarName, !IO),
-    mlds_output_type_suffix(Opts, Type, InitializerSize, !IO).
+mlds_output_field_var_decl(Opts, Stream, FieldVarName, Type,
+        InitializerSize, !IO) :-
+    mlds_output_type_prefix(Opts, Stream, Type, !IO),
+    io.write_char(Stream, ' ', !IO),
+    mlds_output_fully_qualified_field_var_name(Stream, FieldVarName, !IO),
+    mlds_output_type_suffix(Opts, Stream, Type, InitializerSize, !IO).
 
-:- pred mlds_output_field_var_defns(mlds_to_c_opts::in, indent::in, bool::in,
+:- pred mlds_output_field_var_defns(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, bool::in,
     mlds_module_name::in, list(mlds_field_var_defn)::in,
     io::di, io::uo) is det.
 
-mlds_output_field_var_defns(_Opts, _Indent, _Separate, _ModuleName, [], !IO).
-mlds_output_field_var_defns(Opts, Indent, Separate, ModuleName,
+mlds_output_field_var_defns(_, _, _, _, _, [], !IO).
+mlds_output_field_var_defns(Opts, Stream, Indent, Separate, ModuleName,
         [FieldVarDefn | FieldVarDefns], !IO) :-
-    mlds_output_field_var_defn(Opts, Indent, Separate, ModuleName,
+    mlds_output_field_var_defn(Opts, Stream, Indent, Separate, ModuleName,
         FieldVarDefn, !IO),
-    mlds_output_field_var_defns(Opts, Indent, Separate, ModuleName,
+    mlds_output_field_var_defns(Opts, Stream, Indent, Separate, ModuleName,
         FieldVarDefns, !IO).
 
-:- pred mlds_output_field_var_defn(mlds_to_c_opts::in, indent::in, bool::in,
+:- pred mlds_output_field_var_defn(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, bool::in,
     mlds_module_name::in, mlds_field_var_defn::in, io::di, io::uo) is det.
 
-mlds_output_field_var_defn(Opts, Indent, Separate, ModuleName,
+mlds_output_field_var_defn(Opts, Stream, Indent, Separate, ModuleName,
         FieldVarDefn, !IO) :-
     FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, Flags,
         Type, Initializer, GCStmt),
     (
         Separate = yes,
-        io.nl(!IO)
+        io.nl(Stream, !IO)
     ;
         Separate = no
     ),
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
-    mlds_output_field_var_decl_flags(Opts, Flags, definition, !IO),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    mlds_output_field_var_decl_flags(Opts, Stream, Flags, definition, !IO),
     QualFieldVarName =
         qual_field_var_name(ModuleName, module_qual, FieldVarName),
-    mlds_output_field_var_decl(Opts, QualFieldVarName, Type,
+    mlds_output_field_var_decl(Opts, Stream, QualFieldVarName, Type,
         get_initializer_array_size(Initializer), !IO),
-    mlds_output_initializer(Opts, Type, Initializer, !IO),
-    io.write_string(";\n", !IO),
-    mlds_output_gc_statement(Opts, Indent, GCStmt, "", !IO).
+    mlds_output_initializer(Opts, Stream, Type, Initializer, !IO),
+    io.write_string(Stream, ";\n", !IO),
+    mlds_output_gc_statement(Opts, Stream, Indent, GCStmt, "", !IO).
 
 %---------------------------------------------------------------------------%
 
     % Output the definitions of the enumeration constants
     % for an enumeration type.
     %
-:- pred mlds_output_enum_constants(mlds_to_c_opts::in, indent::in,
-    mlds_module_name::in, list(mlds_field_var_defn)::in, io::di, io::uo)
-    is det.
+:- pred mlds_output_enum_constants(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, mlds_module_name::in,
+    list(mlds_field_var_defn)::in, io::di, io::uo) is det.
 
-mlds_output_enum_constants(Opts, Indent, EnumModuleName, MemberFields, !IO) :-
+mlds_output_enum_constants(Opts, Stream, Indent, EnumModuleName,
+        MemberFields, !IO) :-
     % Select the enumeration constants from the list of members
     % for this enumeration type, and output them.
     list.filter(field_var_defn_is_enum_const, MemberFields,
         EnumConstMemberFields),
-    io.write_list(EnumConstMemberFields, ",\n",
-        mlds_output_enum_constant(Opts, Indent, EnumModuleName), !IO),
-    io.nl(!IO).
+    write_out_list(mlds_output_enum_constant(Opts, Indent, EnumModuleName),
+        ",\n", EnumConstMemberFields, Stream, !IO),
+    io.nl(Stream, !IO).
 
     % Output the definition of a single enumeration constant.
     %
 :- pred mlds_output_enum_constant(mlds_to_c_opts::in, indent::in,
-    mlds_module_name::in, mlds_field_var_defn::in, io::di, io::uo) is det.
+    mlds_module_name::in, mlds_field_var_defn::in,
+    io.text_output_stream::in, io::di, io::uo) is det.
 
-mlds_output_enum_constant(Opts, Indent, EnumModuleName, FieldVarDefn, !IO) :-
+mlds_output_enum_constant(Opts, Indent, EnumModuleName, FieldVarDefn,
+        Stream, !IO) :-
     FieldVarDefn = mlds_field_var_defn(FieldVarName, Context, _Flags,
         Type, Initializer, _GCStmt),
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
     QualFieldVarName =
         qual_field_var_name(EnumModuleName, type_qual, FieldVarName),
-    mlds_output_fully_qualified_field_var_name(QualFieldVarName, !IO),
-    mlds_output_initializer(Opts, Type, Initializer, !IO).
+    mlds_output_fully_qualified_field_var_name(Stream, QualFieldVarName, !IO),
+    mlds_output_initializer(Opts, Stream, Type, Initializer, !IO).
 
 %---------------------------------------------------------------------------%
 
 :- pred mlds_output_field_var_decl_flags(mlds_to_c_opts::in,
-    mlds_field_var_decl_flags::in, decl_or_defn::in, io::di, io::uo) is det.
+    io.text_output_stream::in, mlds_field_var_decl_flags::in,
+    decl_or_defn::in, io::di, io::uo) is det.
 
-mlds_output_field_var_decl_flags(Opts, Flags, DeclOrDefn, !IO) :-
+mlds_output_field_var_decl_flags(Opts, Stream, Flags, DeclOrDefn, !IO) :-
     Constness = Flags ^ mfvdf_constness,
     Comments = Opts ^ m2co_auto_comments,
     (
@@ -346,34 +360,35 @@ mlds_output_field_var_decl_flags(Opts, Flags, DeclOrDefn, !IO) :-
         % access flags were always acc_public (which is why we do not need
         % to explicitly store that flag).
         PerInstance = Flags ^ mfvdf_per_instance,
-        mlds_output_per_instance_comment(PerInstance, !IO)
+        mlds_output_per_instance_comment(Stream, PerInstance, !IO)
     ;
         Comments = no
     ),
     (
         DeclOrDefn = forward_decl,
-        io.write_string("extern ", !IO)
+        io.write_string(Stream, "extern ", !IO)
     ;
         DeclOrDefn = definition
     ),
-    mlds_output_constness(Constness, !IO).
+    mlds_output_constness(Stream, Constness, !IO).
 
 :- pred mlds_output_class_decl_flags(mlds_to_c_opts::in,
-    mlds_class_decl_flags::in, decl_or_defn::in, io::di, io::uo) is det.
+    io.text_output_stream::in, mlds_class_decl_flags::in,
+    decl_or_defn::in, io::di, io::uo) is det.
 
-mlds_output_class_decl_flags(Opts, Flags, _DeclOrDefn, !IO) :-
+mlds_output_class_decl_flags(Opts, Stream, Flags, _DeclOrDefn, !IO) :-
     Flags = mlds_class_decl_flags(Access, Overridability, Constness),
     Comments = Opts ^ m2co_auto_comments,
     (
         Comments = yes,
         (
             Access = class_public,
-            io.write_string("/* public: */ ", !IO)
+            io.write_string(Stream, "/* public: */ ", !IO)
         ;
             Access = class_private,
-            io.write_string("/* private: */ ", !IO)
+            io.write_string(Stream, "/* private: */ ", !IO)
         ),
-        io.write_string("/* one_copy */ ", !IO)
+        io.write_string(Stream, "/* one_copy */ ", !IO)
     ;
         Comments = no
     ),
@@ -381,22 +396,23 @@ mlds_output_class_decl_flags(Opts, Flags, _DeclOrDefn, !IO) :-
         Overridability = overridable
     ;
         Overridability = sealed,
-        io.write_string("/* sealed */ ", !IO)
+        io.write_string(Stream, "/* sealed */ ", !IO)
     ),
-    mlds_output_constness(Constness, !IO).
+    mlds_output_constness(Stream, Constness, !IO).
 
-:- pred mlds_output_per_instance_comment(per_instance::in,
+:- pred mlds_output_per_instance_comment(io.text_output_stream::in,
+    per_instance::in, io::di, io::uo) is det.
+
+mlds_output_per_instance_comment(_, per_instance, !IO).
+mlds_output_per_instance_comment(Stream, one_copy, !IO) :-
+    io.write_string(Stream, "/* one_copy */ ", !IO).
+
+:- pred mlds_output_constness(io.text_output_stream::in, constness::in,
     io::di, io::uo) is det.
 
-mlds_output_per_instance_comment(per_instance, !IO).
-mlds_output_per_instance_comment(one_copy, !IO) :-
-    io.write_string("/* one_copy */ ", !IO).
-
-:- pred mlds_output_constness(constness::in, io::di, io::uo) is det.
-
-mlds_output_constness(const, !IO) :-
-    io.write_string("const ", !IO).
-mlds_output_constness(modifiable, !IO).
+mlds_output_constness(Stream, const, !IO) :-
+    io.write_string(Stream, "const ", !IO).
+mlds_output_constness(_, modifiable, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_c_class.

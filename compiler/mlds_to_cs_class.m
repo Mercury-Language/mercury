@@ -22,8 +22,9 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred output_class_defn_for_csharp(csharp_out_info::in, indent::in,
-    mlds_class_defn::in, io::di, io::uo) is det.
+:- pred output_class_defn_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, indent::in, mlds_class_defn::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -41,6 +42,7 @@
 :- import_module ml_backend.mlds_to_cs_name.
 :- import_module ml_backend.mlds_to_cs_type.
 :- import_module parse_tree.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.prog_data.
 
@@ -53,8 +55,8 @@
 
 %---------------------------------------------------------------------------%
 
-output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
-    output_n_indents(Indent, !IO),
+output_class_defn_for_csharp(!.Info, Stream, Indent, ClassDefn, !IO) :-
+    output_n_indents(Stream, Indent, !IO),
     ClassDefn = mlds_class_defn(ClassName, ClassArity, _Context, Flags, Kind,
         _Imports, Inherits, Implements, TypeParams,
         MemberFields, MemberClasses, MemberMethods, Ctors),
@@ -67,109 +69,108 @@ output_class_defn_for_csharp(!.Info, Indent, ClassDefn, !IO) :-
             % `static' not wanted on classes generated for Mercury types.
             Kind = mlds_class
         ),
-        io.write_string("[System.Serializable]\n", !IO),
-        output_n_indents(Indent, !IO)
+        io.write_string(Stream, "[System.Serializable]\n", !IO),
+        output_n_indents(Stream, Indent, !IO)
     ;
         ( Kind = mlds_struct
         ; Kind = mlds_interface
         )
     ),
-    output_class_decl_flags_for_csharp(!.Info, Flags, Kind, !IO),
+    output_class_decl_flags_for_csharp(!.Info, Stream, Flags, Kind, !IO),
 
     !Info ^ csoi_univ_tvars := TypeParams,
 
-    output_class_kind_for_csharp(Kind, !IO),
-    output_unqual_class_name_for_csharp(ClassName, ClassArity, !IO),
+    output_class_kind_for_csharp(Stream, Kind, !IO),
+    output_unqual_class_name_for_csharp(Stream, ClassName, ClassArity, !IO),
     OutputGenerics = !.Info ^ csoi_output_generics,
     (
         OutputGenerics = do_output_generics,
-        output_generic_tvars(TypeParams, !IO)
+        output_generic_tvars(Stream, TypeParams, !IO)
     ;
         OutputGenerics = do_not_output_generics
     ),
-    io.nl(!IO),
+    io.nl(Stream, !IO),
 
-    output_supers_list(!.Info, Indent + 1, Inherits, Implements, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("{\n", !IO),
+    output_supers_list(!.Info, Stream, Indent + 1, Inherits, Implements, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "{\n", !IO),
     (
         ( Kind = mlds_class
         ; Kind = mlds_interface
         ; Kind = mlds_struct
         ),
         list.foldl(
-            output_field_var_defn_for_csharp(!.Info, Indent + 1),
+            output_field_var_defn_for_csharp(!.Info, Stream, Indent + 1),
             MemberFields, !IO),
         list.foldl(
-            output_class_defn_for_csharp(!.Info, Indent + 1),
+            output_class_defn_for_csharp(!.Info, Stream, Indent + 1),
             MemberClasses, !IO)
     ;
         Kind = mlds_enum,
         list.filter(field_var_defn_is_enum_const,
             MemberFields, EnumConstMemberFields),
         % XXX Why +2?
-        output_enum_constants_for_csharp(!.Info, Indent + 2,
+        output_enum_constants_for_csharp(!.Info, Stream, Indent + 2,
             EnumConstMemberFields, !IO)
     ),
-    io.nl(!IO),
+    io.nl(Stream, !IO),
     list.foldl(
-        output_function_defn_for_csharp(!.Info, Indent + 1,
+        output_function_defn_for_csharp(!.Info, Stream, Indent + 1,
             oa_cname(ClassName, ClassArity)),
         Ctors, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("}\n\n", !IO).
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "}\n\n", !IO).
 
-:- pred output_class_kind_for_csharp(mlds_class_kind::in,
-    io::di, io::uo) is det.
+:- pred output_class_kind_for_csharp(io.text_output_stream::in,
+    mlds_class_kind::in, io::di, io::uo) is det.
 
-output_class_kind_for_csharp(Kind, !IO) :-
+output_class_kind_for_csharp(Stream, Kind, !IO) :-
     (
         Kind = mlds_interface,
-        io.write_string("interface ", !IO)
+        io.write_string(Stream, "interface ", !IO)
     ;
         Kind = mlds_class,
-        io.write_string("class ", !IO)
+        io.write_string(Stream, "class ", !IO)
     ;
         Kind = mlds_struct,
-        io.write_string("struct ", !IO)
+        io.write_string(Stream, "struct ", !IO)
     ;
         Kind = mlds_enum,
-        io.write_string("enum ", !IO)
+        io.write_string(Stream, "enum ", !IO)
     ).
 
     % Output superclass that this class extends and interfaces implemented.
     % C# does not support multiple inheritance, so more than one superclass
     % is an error.
     %
-:- pred output_supers_list(csharp_out_info::in, indent::in,
-    mlds_class_inherits::in, list(mlds_interface_id)::in,
+:- pred output_supers_list(csharp_out_info::in, io.text_output_stream::in,
+    indent::in, mlds_class_inherits::in, list(mlds_interface_id)::in,
     io::di, io::uo) is det.
 
-output_supers_list(Info, Indent, Inherits, Interfaces, !IO) :-
-    list.map(interface_to_string, Interfaces, Strings0),
+output_supers_list(Info, Stream, Indent, Inherits, Interfaces, !IO) :-
+    list.map(interface_to_string, Interfaces, AfterColonStrings0),
     (
         Inherits = inherits_nothing,
-        Strings = Strings0
+        AfterColonStrings = AfterColonStrings0
     ;
         Inherits = inherits_class(BaseClassId),
         BaseClassType = mlds_class_type(BaseClassId),
         type_to_string_for_csharp(Info, BaseClassType, BaseClassString,
             _ArrayDims),
-        Strings = [BaseClassString | Strings0]
+        AfterColonStrings = [BaseClassString | AfterColonStrings0]
     ;
         Inherits = inherits_generic_env_ptr_type,
         type_to_string_for_csharp(Info, mlds_generic_env_ptr_type,
             EnvPtrTypeString, _ArrayDims),
-        Strings = [EnvPtrTypeString | Strings0]
+        AfterColonStrings = [EnvPtrTypeString | AfterColonStrings0]
     ),
     (
-        Strings = []
+        AfterColonStrings = []
     ;
-        Strings = [_ | _],
-        output_n_indents(Indent, !IO),
-        io.write_string(": ", !IO),
-        io.write_list(Strings, ", ", io.write_string, !IO),
-        io.nl(!IO)
+        AfterColonStrings = [_ | _],
+        AfterColonString = string.join_list(", ", AfterColonStrings),
+        output_n_indents(Stream, Indent, !IO),
+        io.format(Stream, ": %s\n",  [s(AfterColonString)], !IO)
     ).
 
 :- pred interface_to_string(mlds_interface_id::in, string::out) is det.
@@ -198,64 +199,67 @@ interface_is_special_for_csharp("MercuryType").
 
 %---------------------------------------------------------------------------%
 
-:- pred output_field_var_defn_for_csharp(csharp_out_info::in, indent::in,
-    mlds_field_var_defn::in, io::di, io::uo) is det.
+:- pred output_field_var_defn_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, indent::in, mlds_field_var_defn::in,
+    io::di, io::uo) is det.
 
-output_field_var_defn_for_csharp(Info, Indent, FieldVarDefn, !IO) :-
-    output_n_indents(Indent, !IO),
+output_field_var_defn_for_csharp(Info, Stream, Indent, FieldVarDefn, !IO) :-
+    output_n_indents(Stream, Indent, !IO),
     FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, Flags,
         Type, Initializer, _),
-    output_field_var_decl_flags_for_csharp(Flags, !IO),
-    output_field_var_decl_for_csharp(Info, FieldVarName, Type, !IO),
-    output_initializer_for_csharp(Info, oa_none, Indent + 1,
+    output_field_var_decl_flags_for_csharp(Stream, Flags, !IO),
+    output_field_var_decl_for_csharp(Info, Stream, FieldVarName, Type, !IO),
+    output_initializer_for_csharp(Info, Stream, oa_none, Indent + 1,
         Type, Initializer, ";", !IO).
 
 :- pred output_field_var_decl_for_csharp(csharp_out_info::in,
-    mlds_field_var_name::in, mlds_type::in, io::di, io::uo) is det.
+    io.text_output_stream::in, mlds_field_var_name::in, mlds_type::in,
+    io::di, io::uo) is det.
 
-output_field_var_decl_for_csharp(Info, FieldVarName, Type, !IO) :-
-    output_type_for_csharp(Info, Type, !IO),
-    io.write_char(' ', !IO),
-    output_field_var_name_for_csharp(FieldVarName, !IO).
+output_field_var_decl_for_csharp(Info, Stream, FieldVarName, Type, !IO) :-
+    output_type_for_csharp(Info, Type, Stream, !IO),
+    io.write_char(Stream, ' ', !IO),
+    output_field_var_name_for_csharp(Stream, FieldVarName, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_enum_constants_for_csharp(csharp_out_info::in, indent::in,
-    list(mlds_field_var_defn)::in,
+:- pred output_enum_constants_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, indent::in, list(mlds_field_var_defn)::in,
     io::di, io::uo) is det.
 
-output_enum_constants_for_csharp(Info, Indent, EnumConsts, !IO) :-
-    io.write_list(EnumConsts, "\n",
-        output_enum_constant_for_csharp(Info, Indent), !IO),
-    io.nl(!IO).
+output_enum_constants_for_csharp(Info, Stream, Indent, EnumConsts, !IO) :-
+    write_out_list(output_enum_constant_for_csharp(Info, Indent),
+        "\n", EnumConsts, Stream, !IO),
+    io.nl(Stream, !IO).
 
-:- pred output_enum_constant_for_csharp(csharp_out_info::in, indent::in,
-    mlds_field_var_defn::in, io::di, io::uo) is det.
+:- pred output_enum_constant_for_csharp(csharp_out_info::in,
+    indent::in, mlds_field_var_defn::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-output_enum_constant_for_csharp(Info, Indent, FieldVarDefn, !IO) :-
+output_enum_constant_for_csharp(Info, Indent, FieldVarDefn, Stream, !IO) :-
     FieldVarDefn = mlds_field_var_defn(FieldVarName, _Context, _Flags,
         _Type, Initializer, _GCStmt),
     (
         Initializer = init_obj(Rval),
         % The name might require mangling.
-        output_n_indents(Indent, !IO),
-        output_field_var_name_for_csharp(FieldVarName, !IO),
-        io.write_string(" = ", !IO),
+        output_n_indents(Stream, Indent, !IO),
+        output_field_var_name_for_csharp(Stream, FieldVarName, !IO),
+        io.write_string(Stream, " = ", !IO),
         ( if
             Rval = ml_const(mlconst_enum(N, _))
         then
-            io.write_int(N, !IO)
+            io.write_int(Stream, N, !IO)
         else if
             Rval = ml_const(mlconst_foreign(lang_csharp, String, Type))
         then
-            io.write_string("(", !IO),
-            output_type_for_csharp(Info, Type, !IO),
-            io.write_string(") ", !IO),
-            io.write_string(String, !IO)
+            io.write_string(Stream, "(", !IO),
+            output_type_for_csharp(Info, Type, Stream, !IO),
+            io.write_string(Stream, ") ", !IO),
+            io.write_string(Stream, String, !IO)
         else
             unexpected($pred, string(Rval))
         ),
-        io.write_string(",", !IO)
+        io.write_string(Stream, ",", !IO)
     ;
         ( Initializer = no_initializer
         ; Initializer = init_struct(_, _)
@@ -269,18 +273,19 @@ output_enum_constant_for_csharp(Info, Indent, FieldVarDefn, !IO) :-
 % Code to output declaration specifiers.
 %
 
-:- pred output_field_var_decl_flags_for_csharp(mlds_field_var_decl_flags::in,
-    io::di, io::uo) is det.
+:- pred output_field_var_decl_flags_for_csharp(io.text_output_stream::in,
+    mlds_field_var_decl_flags::in, io::di, io::uo) is det.
 
-output_field_var_decl_flags_for_csharp(Flags, !IO) :-
-    io.write_string("public ", !IO),
-    output_per_instance_for_csharp(Flags ^ mfvdf_per_instance, !IO),
-    output_constness_for_csharp(Flags ^ mfvdf_constness, !IO).
+output_field_var_decl_flags_for_csharp(Stream, Flags, !IO) :-
+    io.write_string(Stream, "public ", !IO),
+    output_per_instance_for_csharp(Stream, Flags ^ mfvdf_per_instance, !IO),
+    output_constness_for_csharp(Stream, Flags ^ mfvdf_constness, !IO).
 
 :- pred output_class_decl_flags_for_csharp(csharp_out_info::in,
-    mlds_class_decl_flags::in, mlds_class_kind::in, io::di, io::uo) is det.
+    io.text_output_stream::in, mlds_class_decl_flags::in, mlds_class_kind::in,
+    io::di, io::uo) is det.
 
-output_class_decl_flags_for_csharp(_Info, Flags, Kind, !IO) :-
+output_class_decl_flags_for_csharp(_Info, Stream, Flags, Kind, !IO) :-
     Flags = mlds_class_decl_flags(Access, Overridability0, Constness),
     (
         (
@@ -304,37 +309,38 @@ output_class_decl_flags_for_csharp(_Info, Flags, Kind, !IO) :-
     ),
     (
         Access = class_public,
-        io.write_string("public ", !IO)
+        io.write_string(Stream, "public ", !IO)
     ;
         Access = class_private,
-        io.write_string("private ", !IO)
+        io.write_string(Stream, "private ", !IO)
     ),
-    output_per_instance_for_csharp(PerInstance, !IO),
+    output_per_instance_for_csharp(Stream, PerInstance, !IO),
     (
         Overridability = sealed,
-        io.write_string("sealed ", !IO)
+        io.write_string(Stream, "sealed ", !IO)
     ;
         Overridability = overridable
     ),
-    output_constness_for_csharp(Constness, !IO).
+    output_constness_for_csharp(Stream, Constness, !IO).
 
-:- pred output_per_instance_for_csharp(per_instance::in,
-    io::di, io::uo) is det.
+:- pred output_per_instance_for_csharp(io.text_output_stream::in,
+    per_instance::in, io::di, io::uo) is det.
 
-output_per_instance_for_csharp(PerInstance, !IO) :-
+output_per_instance_for_csharp(Stream, PerInstance, !IO) :-
     (
         PerInstance = per_instance
     ;
         PerInstance = one_copy,
-        io.write_string("static ", !IO)
+        io.write_string(Stream, "static ", !IO)
     ).
 
-:- pred output_constness_for_csharp(constness::in, io::di, io::uo) is det.
+:- pred output_constness_for_csharp(io.text_output_stream::in, constness::in,
+    io::di, io::uo) is det.
 
-output_constness_for_csharp(Constness, !IO) :-
+output_constness_for_csharp(Stream, Constness, !IO) :-
     (
         Constness = const,
-        io.write_string("readonly ", !IO)
+        io.write_string(Stream, "readonly ", !IO)
     ;
         Constness = modifiable
     ).

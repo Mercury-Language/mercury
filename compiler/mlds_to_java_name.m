@@ -26,45 +26,46 @@
 %---------------------------------------------------------------------------%
 
 :- pred output_maybe_qualified_global_var_name_for_java(java_out_info::in,
-    qual_global_var_name::in, io::di, io::uo) is det.
-
-:- pred output_global_var_name_for_java(mlds_global_var_name::in,
+    io.text_output_stream::in, qual_global_var_name::in,
     io::di, io::uo) is det.
+
+:- pred output_global_var_name_for_java(io.text_output_stream::in,
+    mlds_global_var_name::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
 :- pred output_maybe_qualified_function_name_for_java(java_out_info::in,
-    qual_function_name::in, io::di, io::uo) is det.
+    io.text_output_stream::in, qual_function_name::in, io::di, io::uo) is det.
 
-:- pred output_function_name_for_java(mlds_function_name::in,
-    io::di, io::uo) is det.
+:- pred output_function_name_for_java(io.text_output_stream::in,
+    mlds_function_name::in, io::di, io::uo) is det.
 
-:- pred mlds_output_proc_label_for_java(mlds_proc_label::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_proc_label_for_java(io.text_output_stream::in,
+    mlds_proc_label::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
 :- pred qual_class_name_to_string_for_java(qual_class_name::in, arity::in,
     string::out) is det.
 
-:- pred output_unqual_class_name_for_java(mlds_class_name::in, arity::in,
-    io::di, io::uo) is det.
+:- pred output_unqual_class_name_for_java(io.text_output_stream::in,
+    mlds_class_name::in, arity::in, io::di, io::uo) is det.
 
-:- pred output_class_name_arity_for_java(mlds_class_name::in, arity::in,
-    io::di, io::uo) is det.
+:- pred output_class_name_arity_for_java(io.text_output_stream::in,
+    mlds_class_name::in, arity::in, io::di, io::uo) is det.
 
-:- pred output_field_var_name_for_java(mlds_field_var_name::in,
-    io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
-:- pred output_local_var_name_for_java(mlds_local_var_name::in,
-    io::di, io::uo) is det.
+:- pred output_field_var_name_for_java(io.text_output_stream::in,
+    mlds_field_var_name::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred output_qual_name_prefix_java(mlds_module_name::in, mlds_qual_kind::in,
-    io::di, io::uo) is det.
+:- pred output_local_var_name_for_java(io.text_output_stream::in,
+    mlds_local_var_name::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+:- pred output_qual_name_prefix_java(io.text_output_stream::in,
+    mlds_module_name::in, mlds_qual_kind::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -93,8 +94,8 @@
 
 %---------------------------------------------------------------------------%
 
-output_maybe_qualified_global_var_name_for_java(Info, QualGlobalVarName,
-        !IO) :-
+output_maybe_qualified_global_var_name_for_java(Info, Stream,
+    QualGlobalVarName, !IO) :-
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity.
     QualGlobalVarName = qual_global_var_name(ModuleName, GlobalVarName),
@@ -102,33 +103,34 @@ output_maybe_qualified_global_var_name_for_java(Info, QualGlobalVarName,
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_java(ModuleName, module_qual, !IO)
+        output_qual_name_prefix_java(Stream, ModuleName, module_qual, !IO)
     ),
-    output_global_var_name_for_java(GlobalVarName, !IO).
+    output_global_var_name_for_java(Stream, GlobalVarName, !IO).
 
-output_global_var_name_for_java(GlobalVarName, !IO) :-
+output_global_var_name_for_java(Stream, GlobalVarName, !IO) :-
     (
         GlobalVarName = gvn_const_var(ConstVar, Num),
         NameStr = ml_global_const_var_name_to_string(ConstVar, Num),
-        output_valid_mangled_name_for_java(NameStr, !IO)
+        output_valid_mangled_name_for_java(Stream, NameStr, !IO)
     ;
         GlobalVarName = gvn_rtti_var(RttiId),
         rtti.id_to_c_identifier(RttiId, RttiAddrName),
-        io.write_string(RttiAddrName, !IO)
+        io.write_string(Stream, RttiAddrName, !IO)
     ;
         GlobalVarName = gvn_tabling_var(ProcLabel, Id),
         Prefix = tabling_info_id_str(Id) ++ "_",
-        io.write_string(Prefix, !IO),
-        mlds_output_proc_label_for_java(mlds_std_tabling_proc_label(ProcLabel),
-            !IO)
+        io.write_string(Stream, Prefix, !IO),
+        mlds_output_proc_label_for_java(Stream,
+            mlds_std_tabling_proc_label(ProcLabel), !IO)
     ;
         GlobalVarName = gvn_dummy_var,
-        io.write_string("dummy_var", !IO)
+        io.write_string(Stream, "dummy_var", !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-output_maybe_qualified_function_name_for_java(Info, QualFuncName, !IO) :-
+output_maybe_qualified_function_name_for_java(Info, Stream, QualFuncName,
+        !IO) :-
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity.
     QualFuncName = qual_function_name(ModuleName, FuncName),
@@ -136,30 +138,32 @@ output_maybe_qualified_function_name_for_java(Info, QualFuncName, !IO) :-
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_java(ModuleName, module_qual, !IO)
+        output_qual_name_prefix_java(Stream, ModuleName, module_qual, !IO)
     ),
-    output_function_name_for_java(FuncName, !IO).
+    output_function_name_for_java(Stream, FuncName, !IO).
 
-output_function_name_for_java(FunctionName, !IO) :-
+output_function_name_for_java(Stream, FunctionName, !IO) :-
     (
         FunctionName = mlds_function_name(PlainFuncName),
         PlainFuncName = mlds_plain_func_name(FuncLabel, _PredId),
         FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
-        output_pred_label_for_java(PredLabel, !IO),
+        output_pred_label_for_java(Stream, PredLabel, !IO),
         proc_id_to_int(ProcId, ModeNum),
-        io.format("_%d", [i(ModeNum)], !IO),
-        io.write_string(mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO)
+        io.format(Stream, "_%d", [i(ModeNum)], !IO),
+        io.write_string(Stream,
+            mlds_maybe_aux_func_id_to_suffix(MaybeAux), !IO)
     ;
         FunctionName = mlds_function_export(Name),
-        io.write_string(Name, !IO)
+        io.write_string(Stream, Name, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred output_pred_label_for_java(mlds_pred_label::in, io::di, io::uo) is det.
+:- pred output_pred_label_for_java(io.text_output_stream::in,
+    mlds_pred_label::in, io::di, io::uo) is det.
 
-output_pred_label_for_java(PredLabel, !IO) :-
+output_pred_label_for_java(Stream, PredLabel, !IO) :-
     (
         PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
             PredArity, _, _),
@@ -173,11 +177,12 @@ output_pred_label_for_java(PredLabel, !IO) :-
             OrigArity = PredArity - 1
         ),
         MangledName = name_mangle_no_leading_digit(Name),
-        io.format("%s_%d_%s", [s(MangledName), i(OrigArity), s(Suffix)], !IO),
+        io.format(Stream, "%s_%d_%s",
+            [s(MangledName), i(OrigArity), s(Suffix)], !IO),
         (
             MaybeDefiningModule = yes(DefiningModule),
-            io.write_string("_in__", !IO),
-            output_module_name(DefiningModule, !IO)
+            io.write_string(Stream, "_in__", !IO),
+            output_module_name(Stream, DefiningModule, !IO)
         ;
             MaybeDefiningModule = no
         )
@@ -186,22 +191,23 @@ output_pred_label_for_java(PredLabel, !IO) :-
             TypeName, TypeArity),
         MangledPredName = name_mangle_no_leading_digit(PredName),
         MangledTypeName = name_mangle(TypeName),
-        io.write_string(MangledPredName, !IO),
-        io.write_string("__", !IO),
+        io.write_string(Stream, MangledPredName, !IO),
+        io.write_string(Stream, "__", !IO),
         (
             MaybeTypeModule = yes(TypeModule),
-            output_module_name(TypeModule, !IO),
-            io.write_string("__", !IO)
+            output_module_name(Stream, TypeModule, !IO),
+            io.write_string(Stream, "__", !IO)
         ;
             MaybeTypeModule = no
         ),
-        io.format("%s_%d", [s(MangledTypeName), i(TypeArity)], !IO)
+        io.format(Stream, "%s_%d", [s(MangledTypeName), i(TypeArity)], !IO)
     ).
 
-mlds_output_proc_label_for_java(mlds_proc_label(PredLabel, ProcId), !IO) :-
-    output_pred_label_for_java(PredLabel, !IO),
+mlds_output_proc_label_for_java(Stream, mlds_proc_label(PredLabel, ProcId),
+        !IO) :-
+    output_pred_label_for_java(Stream, PredLabel, !IO),
     proc_id_to_int(ProcId, ModeNum),
-    io.format("_%d", [i(ModeNum)], !IO).
+    io.format(Stream, "_%d", [i(ModeNum)], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -219,12 +225,12 @@ qual_class_name_to_string_for_java(QualClassName, Arity, String) :-
         String = QualString ++ "." ++ UnqualString
     ).
 
-output_unqual_class_name_for_java(Name, Arity, !IO) :-
+output_unqual_class_name_for_java(Stream, Name, Arity, !IO) :-
     unqual_class_name_to_string_for_java(Name, Arity, String),
-    io.write_string(String, !IO).
+    io.write_string(Stream, String, !IO).
 
-output_class_name_arity_for_java(ClassName, ClassArity, !IO) :-
-    output_unqual_class_name_for_java(ClassName, ClassArity, !IO).
+output_class_name_arity_for_java(Stream, ClassName, ClassArity, !IO) :-
+    output_unqual_class_name_for_java(Stream, ClassName, ClassArity, !IO).
 
 :- pred unqual_class_name_to_string_for_java(mlds_class_name::in, arity::in,
     string::out) is det.
@@ -235,23 +241,23 @@ unqual_class_name_to_string_for_java(Name, Arity, String) :-
     UppercaseMangledName = flip_initial_case(MangledName),
     String = UppercaseMangledName ++ "_" ++ string.from_int(Arity).
 
-output_field_var_name_for_java(FieldVarName, !IO) :-
+output_field_var_name_for_java(Stream, FieldVarName, !IO) :-
     NameStr = ml_field_var_name_to_string(FieldVarName),
-    output_valid_mangled_name_for_java(NameStr, !IO).
+    output_valid_mangled_name_for_java(Stream, NameStr, !IO).
 
 %---------------------------------------------------------------------------%
 
-output_local_var_name_for_java(LocalVarName, !IO) :-
+output_local_var_name_for_java(Stream, LocalVarName, !IO) :-
     NameStr = ml_local_var_name_to_string(LocalVarName),
-    output_valid_mangled_name_for_java(NameStr, !IO).
+    output_valid_mangled_name_for_java(Stream, NameStr, !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-output_qual_name_prefix_java(ModuleName, QualKind, !IO) :-
+output_qual_name_prefix_java(Stream, ModuleName, QualKind, !IO) :-
     qualifier_to_string_for_java(ModuleName, QualKind, QualifierString),
-    io.write_string(QualifierString, !IO),
-    io.write_string(".", !IO).
+    io.write_string(Stream, QualifierString, !IO),
+    io.write_string(Stream, ".", !IO).
 
 :- pred qualifier_to_string_for_java(mlds_module_name::in, mlds_qual_kind::in,
     string::out) is det.
@@ -277,17 +283,19 @@ qualifier_to_string_for_java(MLDS_ModuleName, QualKind, String) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred output_module_name(mercury_module_name::in, io::di, io::uo) is det.
+:- pred output_module_name(io.text_output_stream::in, mercury_module_name::in,
+    io::di, io::uo) is det.
 
-output_module_name(ModuleName, !IO) :-
-    io.write_string(sym_name_mangle(ModuleName), !IO).
+output_module_name(Stream, ModuleName, !IO) :-
+    io.write_string(Stream, sym_name_mangle(ModuleName), !IO).
 
-:- pred output_valid_mangled_name_for_java(string::in, io::di, io::uo) is det.
+:- pred output_valid_mangled_name_for_java(io.text_output_stream::in,
+    string::in, io::di, io::uo) is det.
 
-output_valid_mangled_name_for_java(Name, !IO) :-
+output_valid_mangled_name_for_java(Stream, Name, !IO) :-
     MangledName = name_mangle(Name),
     JavaSafeName = make_valid_java_symbol_name(MangledName),
-    io.write_string(JavaSafeName, !IO).
+    io.write_string(Stream, JavaSafeName, !IO).
 
 %---------------------------------------------------------------------------%
 %

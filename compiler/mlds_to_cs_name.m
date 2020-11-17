@@ -28,10 +28,11 @@
 %---------------------------------------------------------------------------%
 
 :- pred output_maybe_qualified_global_var_name_for_csharp(csharp_out_info::in,
-    qual_global_var_name::in, io::di, io::uo) is det.
-
-:- pred output_global_var_name_for_csharp(mlds_global_var_name::in,
+    io.text_output_stream::in, qual_global_var_name::in,
     io::di, io::uo) is det.
+
+:- pred output_global_var_name_for_csharp(io.text_output_stream::in,
+    mlds_global_var_name::in, io::di, io::uo) is det.
 
 :- pred global_var_name_to_string_for_csharp(mlds_global_var_name::in,
     string::out) is det.
@@ -39,48 +40,49 @@
 %---------------------------------------------------------------------------%
 
 :- pred output_maybe_qualified_function_name_for_csharp(csharp_out_info::in,
-    qual_function_name::in, io::di, io::uo) is det.
+    io.text_output_stream::in, qual_function_name::in, io::di, io::uo) is det.
 
-:- pred output_function_name_for_csharp(mlds_function_name::in,
-    io::di, io::uo) is det.
+:- pred output_function_name_for_csharp(io.text_output_stream::in,
+    mlds_function_name::in, io::di, io::uo) is det.
 
-:- pred mlds_output_proc_label(string::in, mlds_proc_label::in, io::di, io::uo)
-    is det.
+:- pred mlds_output_proc_label(io.text_output_stream::in, string::in,
+    mlds_proc_label::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
 :- pred qual_class_name_to_string_for_csharp(qual_class_name::in, arity::in,
     string::out) is det.
 
-:- pred output_unqual_class_name_for_csharp(mlds_class_name::in, arity::in,
-    io::di, io::uo) is det.
+:- pred output_unqual_class_name_for_csharp(io.text_output_stream::in,
+    mlds_class_name::in, arity::in, io::di, io::uo) is det.
 
-:- pred output_class_name_arity_for_csharp(mlds_class_name::in, arity::in,
-    io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
-:- pred output_field_var_name_for_csharp(mlds_field_var_name::in,
-    io::di, io::uo) is det.
+:- pred output_class_name_arity_for_csharp(io.text_output_stream::in,
+    mlds_class_name::in, arity::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred output_local_var_name_for_csharp(mlds_local_var_name::in,
-    io::di, io::uo) is det.
+:- pred output_field_var_name_for_csharp(io.text_output_stream::in,
+    mlds_field_var_name::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+:- pred output_local_var_name_for_csharp(io.text_output_stream::in,
+    mlds_local_var_name::in, io::di, io::uo) is det.
 
 :- pred local_var_name_to_string_for_csharp(mlds_local_var_name::in,
     string::out) is det.
 
 %---------------------------------------------------------------------------%
 
-:- pred output_qual_name_prefix_cs(mlds_module_name::in, mlds_qual_kind::in,
-    io::di, io::uo) is det.
+:- pred output_qual_name_prefix_cs(io.text_output_stream::in,
+    mlds_module_name::in, mlds_qual_kind::in, io::di, io::uo) is det.
 
 :- func strip_mercury_and_mangle_sym_name_for_csharp(sym_name) = string.
 
 %---------------------------------------------------------------------------%
 
-:- pred write_identifier_string_for_csharp(string::in, io::di, io::uo) is det.
+:- pred write_identifier_string_for_csharp(io.text_output_stream::in,
+    string::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -109,8 +111,8 @@
 
 %---------------------------------------------------------------------------%
 
-output_maybe_qualified_global_var_name_for_csharp(Info, QualGlobalVarName,
-        !IO) :-
+output_maybe_qualified_global_var_name_for_csharp(Info, Stream,
+        QualGlobalVarName, !IO) :-
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity.
     QualGlobalVarName = qual_global_var_name(ModuleName, GlobalVarName),
@@ -118,13 +120,13 @@ output_maybe_qualified_global_var_name_for_csharp(Info, QualGlobalVarName,
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_cs(ModuleName, module_qual, !IO)
+        output_qual_name_prefix_cs(Stream, ModuleName, module_qual, !IO)
     ),
-    output_global_var_name_for_csharp(GlobalVarName, !IO).
+    output_global_var_name_for_csharp(Stream, GlobalVarName, !IO).
 
-output_global_var_name_for_csharp(DataName, !IO) :-
+output_global_var_name_for_csharp(Stream, DataName, !IO) :-
     global_var_name_to_string_for_csharp(DataName, DataNameStr),
-    write_identifier_string_for_csharp(DataNameStr, !IO).
+    write_identifier_string_for_csharp(Stream, DataNameStr, !IO).
 
 global_var_name_to_string_for_csharp(GlobalVarName, String) :-
     (
@@ -144,7 +146,8 @@ global_var_name_to_string_for_csharp(GlobalVarName, String) :-
 
 %---------------------------------------------------------------------------%
 
-output_maybe_qualified_function_name_for_csharp(Info, QualFuncName, !IO) :-
+output_maybe_qualified_function_name_for_csharp(Info, Stream,
+        QualFuncName, !IO) :-
     % Don't module qualify names which are defined in the current module.
     % This avoids unnecessary verbosity.
     QualFuncName = qual_function_name(ModuleName, FuncName),
@@ -152,13 +155,13 @@ output_maybe_qualified_function_name_for_csharp(Info, QualFuncName, !IO) :-
     ( if ModuleName = CurrentModuleName then
         true
     else
-        output_qual_name_prefix_cs(ModuleName, module_qual, !IO)
+        output_qual_name_prefix_cs(Stream, ModuleName, module_qual, !IO)
     ),
-    output_function_name_for_csharp(FuncName, !IO).
+    output_function_name_for_csharp(Stream, FuncName, !IO).
 
-output_function_name_for_csharp(FunctionName, !IO) :-
+output_function_name_for_csharp(Stream, FunctionName, !IO) :-
     function_name_to_string_for_csharp(FunctionName, FunctionNameStr),
-    write_identifier_string_for_csharp(FunctionNameStr, !IO).
+    write_identifier_string_for_csharp(Stream, FunctionNameStr, !IO).
 
 :- pred function_name_to_string_for_csharp(mlds_function_name::in, string::out)
     is det.
@@ -228,11 +231,12 @@ pred_label_to_string_for_csharp(PredLabel, String) :-
         )
     ).
 
-mlds_output_proc_label(Suffix, mlds_proc_label(PredLabel, ProcId), !IO) :-
+mlds_output_proc_label(Stream, Suffix, mlds_proc_label(PredLabel, ProcId),
+        !IO) :-
     pred_label_to_string_for_csharp(PredLabel, PredLabelStr),
     proc_id_to_int(ProcId, ModeNum),
     string.format("%s_%d%s", [s(PredLabelStr), i(ModeNum), s(Suffix)], String),
-    write_identifier_string_for_csharp(String, !IO).
+    write_identifier_string_for_csharp(Stream, String, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -251,9 +255,9 @@ qual_class_name_to_string_for_csharp(QualName, Arity, String) :-
         String = QualString ++ "." ++ UnqualString
     ).
 
-output_unqual_class_name_for_csharp(Name, Arity, !IO) :-
+output_unqual_class_name_for_csharp(Stream, Name, Arity, !IO) :-
     unqual_class_name_to_string_for_csharp(Name, Arity, String),
-    write_identifier_string_for_csharp(String, !IO).
+    write_identifier_string_for_csharp(Stream, String, !IO).
 
 :- pred unqual_class_name_to_string_for_csharp(mlds_class_name::in, arity::in,
     string::out) is det.
@@ -264,9 +268,9 @@ unqual_class_name_to_string_for_csharp(Name, Arity, String) :-
     UppercaseMangledName = flip_initial_case(MangledName),
     String = UppercaseMangledName ++ "_" ++ string.from_int(Arity).
 
-output_class_name_arity_for_csharp(ClassName, ClassArity, !IO) :-
+output_class_name_arity_for_csharp(Stream, ClassName, ClassArity, !IO) :-
     class_name_arity_to_string_for_csharp(ClassName, ClassArity, Str),
-    write_identifier_string_for_csharp(Str, !IO).
+    write_identifier_string_for_csharp(Stream, Str, !IO).
 
 :- pred class_name_arity_to_string_for_csharp(mlds_class_name::in, arity::in,
     string::out) is det.
@@ -276,9 +280,9 @@ class_name_arity_to_string_for_csharp(ClassName, ClassArity, String) :-
 
 %---------------------------------------------------------------------------%
 
-output_field_var_name_for_csharp(VarName, !IO) :-
+output_field_var_name_for_csharp(Stream, VarName, !IO) :-
     field_var_name_to_string_for_csharp(VarName, VarNameStr),
-    write_identifier_string_for_csharp(VarNameStr, !IO).
+    write_identifier_string_for_csharp(Stream, VarNameStr, !IO).
 
 :- pred field_var_name_to_string_for_csharp(mlds_field_var_name::in,
     string::out) is det.
@@ -290,9 +294,9 @@ field_var_name_to_string_for_csharp(LocalVarName, String) :-
 
 %---------------------------------------------------------------------------%
 
-output_local_var_name_for_csharp(VarName, !IO) :-
+output_local_var_name_for_csharp(Stream, VarName, !IO) :-
     local_var_name_to_string_for_csharp(VarName, VarNameStr),
-    write_identifier_string_for_csharp(VarNameStr, !IO).
+    write_identifier_string_for_csharp(Stream, VarNameStr, !IO).
 
 local_var_name_to_string_for_csharp(LocalVarName, String) :-
     RawString = ml_local_var_name_to_string(LocalVarName),
@@ -301,10 +305,10 @@ local_var_name_to_string_for_csharp(LocalVarName, String) :-
 
 %---------------------------------------------------------------------------%
 
-output_qual_name_prefix_cs(ModuleName, QualKind, !IO) :-
+output_qual_name_prefix_cs(Stream, ModuleName, QualKind, !IO) :-
     qualifier_to_string_for_csharp(ModuleName, QualKind, QualifierString),
-    io.write_string(QualifierString, !IO),
-    io.write_string(".", !IO).
+    io.write_string(Stream, QualifierString, !IO),
+    io.write_string(Stream, ".", !IO).
 
 :- pred qualifier_to_string_for_csharp(mlds_module_name::in,
     mlds_qual_kind::in, string::out) is det.
@@ -341,7 +345,7 @@ strip_mercury_and_mangle_sym_name_for_csharp(SymName) = MangledSymName :-
 
 %---------------------------------------------------------------------------%
 
-write_identifier_string_for_csharp(String, !IO) :-
+write_identifier_string_for_csharp(Stream, String, !IO) :-
     % Although the C# spec does not limit identifier lengths, the Microsoft
     % compiler restricts identifiers to 511 characters and Mono restricts
     % identifiers to 512 characters.
@@ -351,9 +355,9 @@ write_identifier_string_for_csharp(String, !IO) :-
         Left = string.left(String, 251),
         Middle = c_util.hex_hash32(String),
         Right = string.right(String, 250),
-        io.format("%s_%s_%s", [s(Left), s(Middle), s(Right)], !IO)
+        io.format(Stream, "%s_%s_%s", [s(Left), s(Middle), s(Right)], !IO)
     else
-        io.write_string(String, !IO)
+        io.write_string(Stream, String, !IO)
     ).
 
 %---------------------------------------------------------------------------%

@@ -26,8 +26,8 @@
 :- type func_info_c
     --->    func_info_c(qual_function_name, mlds_func_signature).
 
-:- pred mlds_output_statement(mlds_to_c_opts::in, indent::in, func_info_c::in,
-    mlds_stmt::in, io::di, io::uo) is det.
+:- pred mlds_output_statement(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, func_info_c::in, mlds_stmt::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -35,11 +35,11 @@
     % we are currently located in.
     %
 :- pred mlds_output_time_profile_instr(mlds_to_c_opts::in,
-    prog_context::in, indent::in, qual_function_name::in,
-    io::di, io::uo) is det.
+    io.text_output_stream::in, prog_context::in, indent::in,
+    qual_function_name::in, io::di, io::uo) is det.
 
-:- pred mlds_output_gc_statement(mlds_to_c_opts::in, indent::in,
-    mlds_gc_statement::in, string::in, io::di, io::uo) is det.
+:- pred mlds_output_gc_statement(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, mlds_gc_statement::in, string::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -58,6 +58,7 @@
 :- import_module ml_backend.mlds_to_c_func.
 :- import_module ml_backend.mlds_to_c_name.
 :- import_module ml_backend.mlds_to_c_type.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 
@@ -72,54 +73,55 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_statements(mlds_to_c_opts::in, indent::in, func_info_c::in,
-    list(mlds_stmt)::in, io::di, io::uo) is det.
+:- pred mlds_output_statements(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, func_info_c::in, list(mlds_stmt)::in, io::di, io::uo) is det.
 
-mlds_output_statements(_Opts, _Indent, _FuncInfo, [], !IO).
-mlds_output_statements(Opts, Indent, FuncInfo, [Stmt | Stmts], !IO) :-
-    mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO),
-    mlds_output_statements(Opts, Indent, FuncInfo, Stmts, !IO).
+mlds_output_statements(_, _, _, _, [], !IO).
+mlds_output_statements(Opts, Stream, Indent, FuncInfo, [Stmt | Stmts], !IO) :-
+    mlds_output_statement(Opts, Stream, Indent, FuncInfo, Stmt, !IO),
+    mlds_output_statements(Opts, Stream, Indent, FuncInfo, Stmts, !IO).
 
-mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
-    c_output_stmt_context(Opts ^ m2co_line_numbers, Stmt, !IO),
+mlds_output_statement(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
+    c_output_stmt_context(Stream, Opts ^ m2co_line_numbers, Stmt, !IO),
     (
         Stmt = ml_stmt_block(_LocalVarDefns, _FuncDefns, _SubStmts, _Context),
-        mlds_output_stmt_block(Opts, Indent, FuncInfo, Stmt, !IO)
+        mlds_output_stmt_block(Opts, Stream, Indent, FuncInfo, Stmt, !IO)
     ;
         Stmt = ml_stmt_while(_Kind, _Cond, _BodyStmt, _LoopLocalVars,
             _Context),
-        mlds_output_stmt_while(Opts, Indent, FuncInfo, Stmt, !IO)
+        mlds_output_stmt_while(Opts, Stream, Indent, FuncInfo, Stmt, !IO)
     ;
         Stmt = ml_stmt_if_then_else(_Cond, _Then, _MaybeElse, _Context),
-        mlds_output_stmt_if_then_else(Opts, Indent, FuncInfo, Stmt, !IO)
+        mlds_output_stmt_if_then_else(Opts, Stream, Indent, FuncInfo,
+            Stmt, !IO)
     ;
         Stmt = ml_stmt_switch(_Type, _Val, _Range, _Cases, _Default, _Context),
-        mlds_output_stmt_switch(Opts, Indent, FuncInfo, Stmt, !IO)
+        mlds_output_stmt_switch(Opts, Stream, Indent, FuncInfo, Stmt, !IO)
     ;
         Stmt = ml_stmt_label(_LabelName, _Context),
-        mlds_output_stmt_label(Indent, Stmt, !IO)
+        mlds_output_stmt_label(Stream, Indent, Stmt, !IO)
     ;
         Stmt = ml_stmt_goto(_Target, _Context),
-        mlds_output_stmt_goto(Opts, Indent, Stmt, !IO)
+        mlds_output_stmt_goto(Opts, Stream, Indent, Stmt, !IO)
     ;
         Stmt = ml_stmt_computed_goto(_Expr, _Labels, _Context),
-        mlds_output_stmt_computed_goto(Opts, Indent, Stmt, !IO)
+        mlds_output_stmt_computed_goto(Opts, Stream, Indent, Stmt, !IO)
     ;
         Stmt = ml_stmt_call(_Signature, _FuncRval, _CallArgs,
             _Results, _IsTailCall, _Context),
-        mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO)
+        mlds_output_stmt_call(Opts, Stream, Indent, FuncInfo, Stmt, !IO)
     ;
         Stmt = ml_stmt_return(_Results, _Context),
-        mlds_output_stmt_return(Opts, Indent, Stmt, !IO)
+        mlds_output_stmt_return(Opts, Stream, Indent, Stmt, !IO)
     ;
         Stmt = ml_stmt_do_commit(_Ref, _Context),
-        mlds_output_stmt_do_commit(Opts, Indent, Stmt, !IO)
+        mlds_output_stmt_do_commit(Opts, Stream, Indent, Stmt, !IO)
     ;
         Stmt = ml_stmt_try_commit(_Ref, _BodyStmt0, _HandlerStmt, _Context),
-        mlds_output_stmt_try_commit(Opts, Indent, FuncInfo, Stmt, !IO)
+        mlds_output_stmt_try_commit(Opts, Stream, Indent, FuncInfo, Stmt, !IO)
     ;
         Stmt = ml_stmt_atomic(_AtomicStmt, _Context),
-        mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO)
+        mlds_output_stmt_atomic(Opts, Stream, Indent, Stmt, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -127,16 +129,17 @@ mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO) :-
 % Output blocks.
 %
 
-:- pred mlds_output_stmt_block(mlds_to_c_opts::in, indent::in, func_info_c::in,
-    mlds_stmt::in(ml_stmt_is_block), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_block/6).
+:- pred mlds_output_stmt_block(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, func_info_c::in, mlds_stmt::in(ml_stmt_is_block),
+    io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_block/7).
 
-mlds_output_stmt_block(Opts, Indent, FuncInfo, Stmt, !IO) :-
+mlds_output_stmt_block(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context),
     BraceIndent = Indent,
     BlockIndent = Indent + 1,
-    output_n_indents(BraceIndent, !IO),
-    io.write_string("{\n", !IO),
+    output_n_indents(Stream, BraceIndent, !IO),
+    io.write_string(Stream, "{\n", !IO),
 
     % Output forward declarations for any nested functions defined in
     % this block, in case they are referenced before they are defined.
@@ -153,100 +156,112 @@ mlds_output_stmt_block(Opts, Indent, FuncInfo, Stmt, !IO) :-
         expect(unify(Opts ^ m2co_target_or_dump, tod_dump), $pred,
             "nested functions in target C code"),
         list.foldl(
-            mlds_output_function_decl_opts(Opts, BlockIndent, ModuleName),
+            mlds_output_function_decl_opts(Opts, Stream, BlockIndent,
+                ModuleName),
             FuncDefns, !IO),
-        io.write_string("\n", !IO)
+        io.write_string(Stream, "\n", !IO)
     ;
         FuncDefns = []
     ),
     (
         LocalVarDefns = [_ | _],
-        mlds_output_local_var_defns(Opts, BlockIndent, no, LocalVarDefns, !IO),
-        io.write_string("\n", !IO)
+        mlds_output_local_var_defns(Opts, Stream, BlockIndent, no,
+            LocalVarDefns, !IO),
+        io.write_string(Stream, "\n", !IO)
     ;
         LocalVarDefns = []
     ),
     (
         FuncDefns = [_ | _],
-        mlds_output_function_defns(Opts, BlockIndent, ModuleName,
+        mlds_output_function_defns(Opts, Stream, BlockIndent, ModuleName,
             FuncDefns, !IO),
-        io.write_string("\n", !IO)
+        io.write_string(Stream, "\n", !IO)
     ;
         FuncDefns = []
     ),
-    mlds_output_statements(Opts, BlockIndent, FuncInfo, SubStmts, !IO),
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(BraceIndent, !IO),
-    io.write_string("}\n", !IO).
+    mlds_output_statements(Opts, Stream, BlockIndent, FuncInfo, SubStmts, !IO),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, BraceIndent, !IO),
+    io.write_string(Stream, "}\n", !IO).
 
-:- pred mlds_output_local_var_defns(mlds_to_c_opts::in, indent::in, bool::in,
+:- pred mlds_output_local_var_defns(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, bool::in,
     list(mlds_local_var_defn)::in, io::di, io::uo) is det.
 
-mlds_output_local_var_defns(_Opts, _Indent, _Separate, [], !IO).
-mlds_output_local_var_defns(Opts, Indent, Separate,
+mlds_output_local_var_defns(_, _, _, _, [], !IO).
+mlds_output_local_var_defns(Opts, Stream, Indent, Separate,
         [LocalVarDefn | LocalVarDefns], !IO) :-
-    mlds_output_local_var_defn(Opts, Indent, Separate, LocalVarDefn, !IO),
-    mlds_output_local_var_defns(Opts, Indent, Separate, LocalVarDefns, !IO).
+    mlds_output_local_var_defn(Opts, Stream, Indent, Separate,
+        LocalVarDefn, !IO),
+    mlds_output_local_var_defns(Opts, Stream, Indent, Separate,
+        LocalVarDefns, !IO).
 
-:- pred mlds_output_local_var_defn(mlds_to_c_opts::in, indent::in, bool::in,
+:- pred mlds_output_local_var_defn(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, bool::in,
     mlds_local_var_defn::in, io::di, io::uo) is det.
 
-mlds_output_local_var_defn(Opts, Indent, Separate, LocalVarDefn, !IO) :-
+mlds_output_local_var_defn(Opts, Stream, Indent, Separate, LocalVarDefn,
+        !IO) :-
     LocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
         Type, Initializer, GCStmt),
     (
         Separate = yes,
-        io.nl(!IO)
+        io.nl(Stream, !IO)
     ;
         Separate = no
     ),
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
-    mlds_output_local_var_decl(Opts, LocalVarName, Type,
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    mlds_output_local_var_decl(Opts, Stream, LocalVarName, Type,
         get_initializer_array_size(Initializer), !IO),
-    mlds_output_initializer(Opts, Type, Initializer, !IO),
-    io.write_string(";\n", !IO),
-    mlds_output_gc_statement(Opts, Indent, GCStmt, "", !IO).
+    mlds_output_initializer(Opts, Stream, Type, Initializer, !IO),
+    io.write_string(Stream, ";\n", !IO),
+    mlds_output_gc_statement(Opts, Stream, Indent, GCStmt, "", !IO).
 
-:- pred mlds_output_local_var_decl(mlds_to_c_opts::in, mlds_local_var_name::in,
+:- pred mlds_output_local_var_decl(mlds_to_c_opts::in,
+    io.text_output_stream::in, mlds_local_var_name::in,
     mlds_type::in, initializer_array_size::in, io::di, io::uo) is det.
 
-mlds_output_local_var_decl(Opts, LocalVarName, Type, InitializerSize, !IO) :-
-    mlds_output_type_prefix(Opts, Type, !IO),
-    io.write_char(' ', !IO),
-    mlds_output_local_var_name(LocalVarName, !IO),
-    mlds_output_type_suffix(Opts, Type, InitializerSize, !IO).
+mlds_output_local_var_decl(Opts, Stream, LocalVarName, Type,
+        InitializerSize, !IO) :-
+    mlds_output_type_prefix(Opts, Stream, Type, !IO),
+    io.write_char(Stream, ' ', !IO),
+    mlds_output_local_var_name(Stream, LocalVarName, !IO),
+    mlds_output_type_suffix(Opts, Stream, Type, InitializerSize, !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Output while loops.
 %
 
-:- pred mlds_output_stmt_while(mlds_to_c_opts::in, indent::in, func_info_c::in,
-    mlds_stmt::in(ml_stmt_is_while), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_while/6).
+:- pred mlds_output_stmt_while(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, func_info_c::in, mlds_stmt::in(ml_stmt_is_while),
+    io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_while/7).
 
-mlds_output_stmt_while(Opts, Indent, FuncInfo, Stmt, !IO) :-
+mlds_output_stmt_while(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_while(Kind, Cond, BodyStmt, _LoopLocalVars, Context),
     scope_indent(BodyStmt, Indent, ScopeIndent),
     BodyOpts = Opts ^ m2co_break_context := bc_loop,
     (
         Kind = may_loop_zero_times,
-        output_n_indents(Indent, !IO),
-        io.write_string("while (", !IO),
-        mlds_output_rval(Opts, Cond, !IO),
-        io.write_string(")\n", !IO),
-        mlds_output_statement(BodyOpts, ScopeIndent, FuncInfo, BodyStmt, !IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "while (", !IO),
+        mlds_output_rval(Opts, Cond, Stream, !IO),
+        io.write_string(Stream, ")\n", !IO),
+        mlds_output_statement(BodyOpts, Stream, ScopeIndent, FuncInfo,
+            BodyStmt, !IO)
     ;
         Kind = loop_at_least_once,
-        output_n_indents(Indent, !IO),
-        io.write_string("do\n", !IO),
-        mlds_output_statement(BodyOpts, ScopeIndent, FuncInfo, BodyStmt, !IO),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("while (", !IO),
-        mlds_output_rval(Opts, Cond, !IO),
-        io.write_string(");\n", !IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "do\n", !IO),
+        mlds_output_statement(BodyOpts, Stream, ScopeIndent, FuncInfo,
+            BodyStmt, !IO),
+        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "while (", !IO),
+        mlds_output_rval(Opts, Cond, Stream, !IO),
+        io.write_string(Stream, ");\n", !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -254,12 +269,12 @@ mlds_output_stmt_while(Opts, Indent, FuncInfo, Stmt, !IO) :-
 % Output if-then-elses.
 %
 
-:- pred mlds_output_stmt_if_then_else(mlds_to_c_opts::in, indent::in,
-    func_info_c::in, mlds_stmt::in(ml_stmt_is_if_then_else),
-    io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_if_then_else/6).
+:- pred mlds_output_stmt_if_then_else(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, func_info_c::in,
+    mlds_stmt::in(ml_stmt_is_if_then_else), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_if_then_else/7).
 
-mlds_output_stmt_if_then_else(Opts, Indent, FuncInfo, Stmt, !IO) :-
+mlds_output_stmt_if_then_else(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_if_then_else(Cond, Then0, MaybeElse, Context),
     % We need to take care to avoid problems caused by the dangling else
     % ambiguity.
@@ -301,17 +316,17 @@ mlds_output_stmt_if_then_else(Opts, Indent, FuncInfo, Stmt, !IO) :-
         Then = Then0
     ),
 
-    output_n_indents(Indent, !IO),
-    io.write_string("if (", !IO),
-    mlds_output_rval(Opts, Cond, !IO),
-    io.write_string(")\n", !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "if (", !IO),
+    mlds_output_rval(Opts, Cond, Stream, !IO),
+    io.write_string(Stream, ")\n", !IO),
     scope_indent(Then, Indent, ScopeIndent),
-    mlds_output_statement(Opts, ScopeIndent, FuncInfo, Then, !IO),
+    mlds_output_statement(Opts, Stream, ScopeIndent, FuncInfo, Then, !IO),
     (
         MaybeElse = yes(Else),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("else\n", !IO),
+        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "else\n", !IO),
         ( if Else = ml_stmt_if_then_else(_, _, _, _) then
             % Indent each if-then-else in a if-then-else chain
             % to the same depth.
@@ -319,7 +334,8 @@ mlds_output_stmt_if_then_else(Opts, Indent, FuncInfo, Stmt, !IO) :-
         else
             scope_indent(Else, Indent, ElseScopeIndent)
         ),
-        mlds_output_statement(Opts, ElseScopeIndent, FuncInfo, Else, !IO)
+        mlds_output_statement(Opts, Stream, ElseScopeIndent, FuncInfo,
+            Else, !IO)
     ;
         MaybeElse = no
     ).
@@ -329,86 +345,91 @@ mlds_output_stmt_if_then_else(Opts, Indent, FuncInfo, Stmt, !IO) :-
 % Output switch statements.
 %
 
-:- pred mlds_output_stmt_switch(mlds_to_c_opts::in, indent::in,
-    func_info_c::in, mlds_stmt::in(ml_stmt_is_switch), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_switch/6).
+:- pred mlds_output_stmt_switch(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, func_info_c::in, mlds_stmt::in(ml_stmt_is_switch),
+    io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_switch/7).
 
-mlds_output_stmt_switch(Opts, Indent, FuncInfo, Stmt, !IO) :-
+mlds_output_stmt_switch(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default, Context),
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("switch (", !IO),
-    mlds_output_rval(Opts, Val, !IO),
-    io.write_string(") {\n", !IO),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "switch (", !IO),
+    mlds_output_rval(Opts, Val, Stream, !IO),
+    io.write_string(Stream, ") {\n", !IO),
     CaseOpts = Opts ^ m2co_break_context := bc_switch,
     % We put the default case first, so that if it is unreachable,
     % it will get merged in with the first case.
-    mlds_output_switch_default(CaseOpts, Indent + 1, FuncInfo, Context,
-        Default, !IO),
+    mlds_output_switch_default(CaseOpts, Stream, Indent + 1, FuncInfo,
+        Context, Default, !IO),
     list.foldl(
-        mlds_output_switch_case(CaseOpts, Indent + 1, FuncInfo, Context),
+        mlds_output_switch_case(CaseOpts, Stream, Indent + 1, FuncInfo,
+            Context),
         Cases, !IO),
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("}\n", !IO).
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "}\n", !IO).
 
-:- pred mlds_output_switch_case(mlds_to_c_opts::in, indent::in,
-    func_info_c::in, prog_context::in, mlds_switch_case::in,
+:- pred mlds_output_switch_case(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, func_info_c::in, prog_context::in, mlds_switch_case::in,
     io::di, io::uo) is det.
 
-mlds_output_switch_case(Opts, Indent, FuncInfo, Context, Case, !IO) :-
+mlds_output_switch_case(Opts, Stream, Indent, FuncInfo, Context, Case, !IO) :-
     Case = mlds_switch_case(FirstCond, LaterConds, Stmt),
-    mlds_output_case_cond(Opts, Indent, Context, FirstCond, !IO),
-    list.foldl(mlds_output_case_cond(Opts, Indent, Context), LaterConds, !IO),
-    mlds_output_statement(Opts, Indent + 1, FuncInfo, Stmt, !IO),
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent + 1, !IO),
-    io.write_string("break;\n", !IO).
+    mlds_output_case_cond(Opts, Stream, Indent, Context, FirstCond, !IO),
+    list.foldl(mlds_output_case_cond(Opts, Stream, Indent, Context),
+        LaterConds, !IO),
+    mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, Stmt, !IO),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent + 1, !IO),
+    io.write_string(Stream, "break;\n", !IO).
 
-:- pred mlds_output_case_cond(mlds_to_c_opts::in, indent::in, prog_context::in,
-    mlds_case_match_cond::in, io::di, io::uo) is det.
+:- pred mlds_output_case_cond(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, prog_context::in, mlds_case_match_cond::in,
+    io::di, io::uo) is det.
 
-mlds_output_case_cond(Opts, Indent, Context, Match, !IO) :-
+mlds_output_case_cond(Opts, Stream, Indent, Context, Match, !IO) :-
     (
         Match = match_value(Val),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("case ", !IO),
-        mlds_output_rval(Opts, Val, !IO),
-        io.write_string(":\n", !IO)
+        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "case ", !IO),
+        mlds_output_rval(Opts, Val, Stream, !IO),
+        io.write_string(Stream, ":\n", !IO)
     ;
         Match = match_range(Low, High),
         % This uses the GNU C extension `case <Low> ... <High>:'.
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("case ", !IO),
-        mlds_output_rval(Opts, Low, !IO),
-        io.write_string(" ... ", !IO),
-        mlds_output_rval(Opts, High, !IO),
-        io.write_string(":\n", !IO)
+        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "case ", !IO),
+        mlds_output_rval(Opts, Low, Stream, !IO),
+        io.write_string(Stream, " ... ", !IO),
+        mlds_output_rval(Opts, High, Stream, !IO),
+        io.write_string(Stream, ":\n", !IO)
     ).
 
-:- pred mlds_output_switch_default(mlds_to_c_opts::in, indent::in,
-    func_info_c::in, prog_context::in, mlds_switch_default::in, io::di, io::uo)
-    is det.
+:- pred mlds_output_switch_default(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, func_info_c::in, prog_context::in,
+    mlds_switch_default::in, io::di, io::uo) is det.
 
-mlds_output_switch_default(Opts, Indent, FuncInfo, Context, Default, !IO) :-
+mlds_output_switch_default(Opts, Stream, Indent, FuncInfo, Context,
+        Default, !IO) :-
     (
         Default = default_is_unreachable,
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("default: /*NOTREACHED*/ MR_assert(0);\n", !IO)
+        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "default: /*NOTREACHED*/ MR_assert(0);\n", !IO)
     ;
         Default = default_do_nothing
     ;
         Default = default_case(Stmt),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent, !IO),
-        io.write_string("default:\n", !IO),
-        mlds_output_statement(Opts, Indent + 1, FuncInfo, Stmt, !IO),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent + 1, !IO),
-        io.write_string("break;\n", !IO)
+        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "default:\n", !IO),
+        mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, Stmt, !IO),
+        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Stream, Indent + 1, !IO),
+        io.write_string(Stream, "break;\n", !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -416,48 +437,49 @@ mlds_output_switch_default(Opts, Indent, FuncInfo, Context, Default, !IO) :-
 % Output labels.
 %
 
-:- pred mlds_output_stmt_label(indent::in, mlds_stmt::in(ml_stmt_is_label),
-    io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_label/4).
+:- pred mlds_output_stmt_label(io.text_output_stream::in, indent::in,
+    mlds_stmt::in(ml_stmt_is_label), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_label/5).
 
-mlds_output_stmt_label(Indent, Stmt, !IO) :-
+mlds_output_stmt_label(Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_label(LabelName, _Context),
     % Note: MLDS allows labels at the end of blocks. C does not.
     % Hence we need to insert a semicolon after the colon to ensure that
     % there is a statement to attach the label to.
 
-    output_n_indents(Indent - 1, !IO),
-    mlds_output_label_name(LabelName, !IO),
-    io.write_string(":;\n", !IO).
+    output_n_indents(Stream, Indent - 1, !IO),
+    mlds_output_label_name(Stream, LabelName, !IO),
+    io.write_string(Stream, ":;\n", !IO).
 
-:- pred mlds_output_label_name(mlds_label::in, io::di, io::uo) is det.
+:- pred mlds_output_label_name(io.text_output_stream::in, mlds_label::in,
+    io::di, io::uo) is det.
 
-mlds_output_label_name(LabelName, !IO) :-
-    io.write_string(name_mangle(LabelName), !IO).
+mlds_output_label_name(Stream, LabelName, !IO) :-
+    io.write_string(Stream, name_mangle(LabelName), !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Output gotos.
 %
 
-:- pred mlds_output_stmt_goto(mlds_to_c_opts::in, indent::in,
-    mlds_stmt::in(ml_stmt_is_goto), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_goto/5).
+:- pred mlds_output_stmt_goto(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, mlds_stmt::in(ml_stmt_is_goto), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_goto/6).
 
-mlds_output_stmt_goto(Opts, Indent, Stmt, !IO) :-
+mlds_output_stmt_goto(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_goto(Target, _Context),
-    output_n_indents(Indent, !IO),
+    output_n_indents(Stream, Indent, !IO),
     (
         Target = goto_label(LabelName),
-        io.write_string("goto ", !IO),
-        mlds_output_label_name(LabelName, !IO),
-        io.write_string(";\n", !IO)
+        io.write_string(Stream, "goto ", !IO),
+        mlds_output_label_name(Stream, LabelName, !IO),
+        io.write_string(Stream, ";\n", !IO)
     ;
         Target = goto_break_switch,
         BreakContext = Opts ^ m2co_break_context,
         (
             BreakContext = bc_switch,
-            io.write_string("break;\n", !IO)
+            io.write_string(Stream, "break;\n", !IO)
         ;
             ( BreakContext = bc_none
             ; BreakContext = bc_loop
@@ -469,7 +491,7 @@ mlds_output_stmt_goto(Opts, Indent, Stmt, !IO) :-
         BreakContext = Opts ^ m2co_break_context,
         (
             BreakContext = bc_loop,
-            io.write_string("break;\n", !IO)
+            io.write_string(Stream, "break;\n", !IO)
         ;
             ( BreakContext = bc_none
             ; BreakContext = bc_switch
@@ -478,7 +500,7 @@ mlds_output_stmt_goto(Opts, Indent, Stmt, !IO) :-
         )
     ;
         Target = goto_continue_loop,
-        io.write_string("continue;\n", !IO)
+        io.write_string(Stream, "continue;\n", !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -486,52 +508,55 @@ mlds_output_stmt_goto(Opts, Indent, Stmt, !IO) :-
 % Output computed gotos.
 %
 
-:- pred mlds_output_stmt_computed_goto(mlds_to_c_opts::in, indent::in,
+:- pred mlds_output_stmt_computed_goto(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in,
     mlds_stmt::in(ml_stmt_is_computed_goto), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_computed_goto/5).
+:- pragma inline(mlds_output_stmt_computed_goto/6).
 
-mlds_output_stmt_computed_goto(Opts, Indent, Stmt, !IO) :-
+mlds_output_stmt_computed_goto(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_computed_goto(Expr, Labels, Context),
     % XXX For GNU C, we could output potentially more efficient code
     % by using an array of labels; this would tell the compiler that
     % it did not need to do any range check.
-    output_n_indents(Indent, !IO),
-    io.write_string("switch (", !IO),
-    mlds_output_rval(Opts, Expr, !IO),
-    io.write_string(") {\n", !IO),
-    list.foldl2(mlds_output_computed_goto_label(Opts, Context, Indent),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "switch (", !IO),
+    mlds_output_rval(Opts, Expr, Stream, !IO),
+    io.write_string(Stream, ") {\n", !IO),
+    list.foldl2(mlds_output_computed_goto_label(Opts, Stream, Context, Indent),
         Labels, 0, _FinalCount, !IO),
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent + 1, !IO),
-    io.write_string("default: /*NOTREACHED*/ MR_assert(0);\n", !IO),
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("}\n", !IO).
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent + 1, !IO),
+    io.write_string(Stream, "default: /*NOTREACHED*/ MR_assert(0);\n", !IO),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "}\n", !IO).
 
-:- pred mlds_output_computed_goto_label(mlds_to_c_opts::in, prog_context::in,
-    int::in, mlds_label::in, int::in, int::out, io::di, io::uo) is det.
+:- pred mlds_output_computed_goto_label(mlds_to_c_opts::in,
+    io.text_output_stream::in, prog_context::in, int::in,
+    mlds_label::in, int::in, int::out, io::di, io::uo) is det.
 
-mlds_output_computed_goto_label(Opts, Context, Indent, Label, Count0, Count,
-        !IO) :-
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent + 1, !IO),
-    io.write_string("case ", !IO),
-    io.write_int(Count0, !IO),
-    io.write_string(": goto ", !IO),
-    mlds_output_label_name(Label, !IO),
-    io.write_string(";\n", !IO),
-    Count = Count0 + 1.
+mlds_output_computed_goto_label(Opts, Stream, Context, Indent, Label,
+        !Count, !IO) :-
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent + 1, !IO),
+    io.write_string(Stream, "case ", !IO),
+    io.write_int(Stream, !.Count, !IO),
+    io.write_string(Stream, ": goto ", !IO),
+    mlds_output_label_name(Stream, Label, !IO),
+    io.write_string(Stream, ";\n", !IO),
+    !:Count = !.Count + 1.
 
 %---------------------------------------------------------------------------%
 %
 % Output calls.
 %
 
-:- pred mlds_output_stmt_call(mlds_to_c_opts::in, indent::in, func_info_c::in,
-    mlds_stmt::in(ml_stmt_is_call), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_call/6).
+:- pred mlds_output_stmt_call(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, func_info_c::in, mlds_stmt::in(ml_stmt_is_call),
+    io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_call/7).
 
-mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO) :-
+mlds_output_stmt_call(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_call(Signature, FuncRval, CallArgs, Results,
         IsTailCall, Context),
     FuncInfo = func_info_c(CallerName, CallerSignature),
@@ -556,55 +581,55 @@ mlds_output_stmt_call(Opts, Indent, FuncInfo, Stmt, !IO) :-
         ; CallHasReturn = call_has_return_expr_prefix
         )
     then
-        mlds_output_call(Opts, Context, Indent, CallHasReturn,
+        mlds_output_call(Opts, Stream, Context, Indent, CallHasReturn,
             FuncRval, CallArgs, Results, !IO)
     else
         BodyIndent = Indent + 1,
 
-        output_n_indents(Indent, !IO),
-        io.write_string("{\n", !IO),
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "{\n", !IO),
         (
             ProfileCalls = yes,
-            mlds_output_call_profile_instr(Opts, Context, BodyIndent,
+            mlds_output_call_profile_instr(Opts, Stream, Context, BodyIndent,
                 FuncRval, CallerName, !IO)
         ;
             ProfileCalls = no
         ),
-        mlds_output_call(Opts, Context, BodyIndent, CallHasReturn,
+        mlds_output_call(Opts, Stream, Context, BodyIndent, CallHasReturn,
             FuncRval, CallArgs, Results, !IO),
         (
             CallHasReturn = call_has_return_stmt_suffix,
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(BodyIndent, !IO),
-            io.write_string("return;\n", !IO)
+            c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+            output_n_indents(Stream, BodyIndent, !IO),
+            io.write_string(Stream, "return;\n", !IO)
         ;
             ( CallHasReturn = call_has_no_return
             ; CallHasReturn = call_has_return_expr_prefix
             ),
             (
                 ProfileTime = yes,
-                mlds_output_time_profile_instr(Opts, Context, BodyIndent,
-                    CallerName, !IO)
+                mlds_output_time_profile_instr(Opts, Stream, Context,
+                    BodyIndent, CallerName, !IO)
             ;
                 ProfileTime = no
             )
         ),
-        output_n_indents(Indent, !IO),
-        io.write_string("}\n", !IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "}\n", !IO)
     ).
 
-:- pred mlds_output_call(mlds_to_c_opts::in, prog_context::in, indent::in,
-    maybe_call_has_return::in, mlds_rval::in,
+:- pred mlds_output_call(mlds_to_c_opts::in, io.text_output_stream::in,
+    prog_context::in, indent::in, maybe_call_has_return::in, mlds_rval::in,
     list(mlds_rval)::in, list(mlds_lval)::in, io::di, io::uo) is det.
-:- pragma inline(mlds_output_call/9).
+:- pragma inline(mlds_output_call/10).
 
-mlds_output_call(Opts, Context, Indent, CallHasReturn, FuncRval,
+mlds_output_call(Opts, Stream, Context, Indent, CallHasReturn, FuncRval,
         CallArgs, Results, !IO) :-
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
     (
         CallHasReturn = call_has_return_expr_prefix,
-        io.write_string("return ", !IO)
+        io.write_string(Stream, "return ", !IO)
     ;
         ( CallHasReturn = call_has_no_return
         ; CallHasReturn = call_has_return_stmt_suffix
@@ -614,17 +639,17 @@ mlds_output_call(Opts, Context, Indent, CallHasReturn, FuncRval,
         Results = []
     ;
         Results = [Lval],
-        mlds_output_lval(Opts, Lval, !IO),
-        io.write_string(" = ", !IO)
+        mlds_output_lval(Opts, Lval, Stream, !IO),
+        io.write_string(Stream, " = ", !IO)
     ;
         Results = [_, _ | _],
-        mlds_output_return_list(Results, mlds_output_lval(Opts), !IO),
-        io.write_string(" = ", !IO)
+        mlds_output_return_list(Stream, mlds_output_lval(Opts), Results, !IO),
+        io.write_string(Stream, " = ", !IO)
     ),
-    mlds_output_bracketed_rval(Opts, FuncRval, !IO),
-    io.write_string("(", !IO),
-    io.write_list(CallArgs, ", ", mlds_output_rval(Opts), !IO),
-    io.write_string(");\n", !IO).
+    mlds_output_bracketed_rval(Opts, Stream, FuncRval, !IO),
+    io.write_string(Stream, "(", !IO),
+    write_out_list(mlds_output_rval(Opts), ", ", CallArgs, Stream, !IO),
+    io.write_string(Stream, ");\n", !IO).
 
 :- type maybe_call_has_return
     --->    call_has_no_return
@@ -680,82 +705,84 @@ find_out_if_call_has_return(IsTailCall, Results,
     % between the callee and caller.
     %
 :- pred mlds_output_call_profile_instr(mlds_to_c_opts::in,
-    prog_context::in, indent::in, mlds_rval::in,
+    io.text_output_stream::in, prog_context::in, indent::in, mlds_rval::in,
     qual_function_name::in, io::di, io::uo) is det.
 
-mlds_output_call_profile_instr(Opts, Context, Indent,
+mlds_output_call_profile_instr(Opts, Stream, Context, Indent,
         CalleeFuncRval, CallerName, !IO) :-
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("MR_prof_call_profile(", !IO),
-    mlds_output_bracketed_rval(Opts, CalleeFuncRval, !IO),
-    io.write_string(", ", !IO),
-    mlds_output_fully_qualified_function_name(CallerName, !IO),
-    io.write_string(");\n", !IO).
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "MR_prof_call_profile(", !IO),
+    mlds_output_bracketed_rval(Opts, Stream, CalleeFuncRval, !IO),
+    io.write_string(Stream, ", ", !IO),
+    mlds_output_fully_qualified_function_name(Stream, CallerName, !IO),
+    io.write_string(Stream, ");\n", !IO).
 
-mlds_output_time_profile_instr(Opts, Context, Indent, QualFuncName, !IO) :-
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("MR_set_prof_current_proc(", !IO),
-    mlds_output_fully_qualified_function_name(QualFuncName, !IO),
-    io.write_string(");\n", !IO).
+mlds_output_time_profile_instr(Opts, Stream, Context, Indent,
+        QualFuncName, !IO) :-
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "MR_set_prof_current_proc(", !IO),
+    mlds_output_fully_qualified_function_name(Stream, QualFuncName, !IO),
+    io.write_string(Stream, ");\n", !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Output returns.
 %
 
-:- pred mlds_output_stmt_return(mlds_to_c_opts::in, indent::in,
-    mlds_stmt::in(ml_stmt_is_return), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_return/5).
+:- pred mlds_output_stmt_return(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, mlds_stmt::in(ml_stmt_is_return), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_return/6).
 
-mlds_output_stmt_return(Opts, Indent, Stmt, !IO) :-
+mlds_output_stmt_return(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_return(Results, _Context),
-    output_n_indents(Indent, !IO),
-    io.write_string("return", !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "return", !IO),
     (
         Results = []
     ;
         Results = [Rval],
-        io.write_char(' ', !IO),
-        mlds_output_rval(Opts, Rval, !IO)
+        io.write_char(Stream, ' ', !IO),
+        mlds_output_rval(Opts, Rval, Stream, !IO)
     ;
         Results = [_, _ | _],
-        mlds_output_return_list(Results, mlds_output_rval(Opts), !IO)
+        mlds_output_return_list(Stream, mlds_output_rval(Opts), Results, !IO)
     ),
-    io.write_string(";\n", !IO).
+    io.write_string(Stream, ";\n", !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Output commits.
 %
 
-:- pred mlds_output_stmt_do_commit(mlds_to_c_opts::in, indent::in,
-    mlds_stmt::in(ml_stmt_is_do_commit), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_do_commit/5).
+:- pred mlds_output_stmt_do_commit(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, mlds_stmt::in(ml_stmt_is_do_commit),
+    io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_do_commit/6).
 
-mlds_output_stmt_do_commit(Opts, Indent, Stmt, !IO) :-
+mlds_output_stmt_do_commit(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_do_commit(Ref, _Context),
-    output_n_indents(Indent, !IO),
+    output_n_indents(Stream, Indent, !IO),
     % Output "MR_builtin_longjmp(<Ref>, 1)". This is a macro that expands
     % to either the standard longjmp() or the GNU C's __builtin_longjmp().
     % Note that the second argument to GNU C's __builtin_longjmp()
     % *must* be `1'.
-    io.write_string("MR_builtin_longjmp(", !IO),
-    mlds_output_rval(Opts, Ref, !IO),
-    io.write_string(", 1);\n", !IO).
+    io.write_string(Stream, "MR_builtin_longjmp(", !IO),
+    mlds_output_rval(Opts, Ref, Stream, !IO),
+    io.write_string(Stream, ", 1);\n", !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Output try commits.
 %
 
-:- pred mlds_output_stmt_try_commit(mlds_to_c_opts::in, indent::in,
-    func_info_c::in, mlds_stmt::in(ml_stmt_is_try_commit),
-    io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_try_commit/6).
+:- pred mlds_output_stmt_try_commit(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, func_info_c::in,
+    mlds_stmt::in(ml_stmt_is_try_commit), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_try_commit/7).
 
-mlds_output_stmt_try_commit(Opts, Indent, FuncInfo, Stmt, !IO) :-
+mlds_output_stmt_try_commit(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_try_commit(Ref, BodyStmt0, HandlerStmt, Context),
     % Output the following:
     %
@@ -786,29 +813,29 @@ mlds_output_stmt_try_commit(Opts, Indent, FuncInfo, Stmt, !IO) :-
         BodyStmt = BodyStmt0
     ),
 
-    output_n_indents(Indent, !IO),
-    io.write_string("if (MR_builtin_setjmp(", !IO),
-    mlds_output_lval(Opts, Ref, !IO),
-    io.write_string(") == 0)\n", !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "if (MR_builtin_setjmp(", !IO),
+    mlds_output_lval(Opts, Ref, Stream, !IO),
+    io.write_string(Stream, ") == 0)\n", !IO),
 
-    mlds_output_statement(Opts, Indent + 1, FuncInfo, BodyStmt, !IO),
+    mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, BodyStmt, !IO),
 
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("else\n", !IO),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "else\n", !IO),
 
-    mlds_output_statement(Opts, Indent + 1, FuncInfo, HandlerStmt, !IO).
+    mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, HandlerStmt, !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Output atomic statements.
 %
 
-:- pred mlds_output_stmt_atomic(mlds_to_c_opts::in, indent::in,
-    mlds_stmt::in(ml_stmt_is_atomic), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_atomic/5).
+:- pred mlds_output_stmt_atomic(mlds_to_c_opts::in, io.text_output_stream::in,
+    indent::in, mlds_stmt::in(ml_stmt_is_atomic), io::di, io::uo) is det.
+:- pragma inline(mlds_output_stmt_atomic/6).
 
-mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO) :-
+mlds_output_stmt_atomic(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_atomic(AtomicStmt, Context),
     (
         AtomicStmt = comment(Comment),
@@ -816,54 +843,54 @@ mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO) :-
             true
         else
             CommentLines = split_at_separator(char.is_line_separator, Comment),
-            write_comment_lines(Indent, CommentLines, !IO)
+            write_comment_lines(Stream, Indent, CommentLines, !IO)
         ),
         % If a comment statement somehow ends up constituting
         % the entirety of e.g. an if-then-else statement's then part,
         % then it needs to be a C statement syntactically.
-        output_n_indents(Indent, !IO),
-        io.write_string(";\n", !IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, ";\n", !IO)
     ;
         AtomicStmt = assign(Lval, Rval),
-        output_n_indents(Indent, !IO),
-        mlds_output_lval(Opts, Lval, !IO),
-        io.write_string(" = ", !IO),
-        mlds_output_rval(Opts, Rval, !IO),
-        io.write_string(";\n", !IO)
+        output_n_indents(Stream, Indent, !IO),
+        mlds_output_lval(Opts, Lval, Stream, !IO),
+        io.write_string(Stream, " = ", !IO),
+        mlds_output_rval(Opts, Rval, Stream, !IO),
+        io.write_string(Stream, ";\n", !IO)
     ;
         AtomicStmt = assign_if_in_heap(Lval, Rval),
-        output_n_indents(Indent, !IO),
-        io.write_string("MR_assign_if_in_heap(", !IO),
-        mlds_output_lval(Opts, Lval, !IO),
-        io.write_string(", ", !IO),
-        mlds_output_rval(Opts, Rval, !IO),
-        io.write_string(");\n", !IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "MR_assign_if_in_heap(", !IO),
+        mlds_output_lval(Opts, Lval, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        mlds_output_rval(Opts, Rval, Stream, !IO),
+        io.write_string(Stream, ");\n", !IO)
     ;
         AtomicStmt = delete_object(Rval),
-        output_n_indents(Indent, !IO),
-        io.write_string("MR_free_heap(", !IO),
-        mlds_output_rval(Opts, Rval, !IO),
-        io.write_string(");\n", !IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "MR_free_heap(", !IO),
+        mlds_output_rval(Opts, Rval, Stream, !IO),
+        io.write_string(Stream, ");\n", !IO)
     ;
         AtomicStmt = new_object(_, _, _, _, _, _, _, _, _),
-        mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context,
-            !IO)
+        mlds_output_stmt_atomic_new_object(Opts, Stream, Indent, AtomicStmt,
+            Context, !IO)
     ;
         AtomicStmt = gc_check,
-        output_n_indents(Indent, !IO),
-        io.write_string("MR_GC_check();\n", !IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "MR_GC_check();\n", !IO)
     ;
         AtomicStmt = mark_hp(Lval),
-        output_n_indents(Indent, !IO),
-        io.write_string("MR_mark_hp(", !IO),
-        mlds_output_lval(Opts, Lval, !IO),
-        io.write_string(");\n", !IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "MR_mark_hp(", !IO),
+        mlds_output_lval(Opts, Lval, Stream, !IO),
+        io.write_string(Stream, ");\n", !IO)
     ;
         AtomicStmt = restore_hp(Rval),
-        output_n_indents(Indent, !IO),
-        io.write_string("MR_restore_hp(", !IO),
-        mlds_output_rval(Opts, Rval, !IO),
-        io.write_string(");\n", !IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "MR_restore_hp(", !IO),
+        mlds_output_rval(Opts, Rval, Stream, !IO),
+        io.write_string(Stream, ");\n", !IO)
     ;
         AtomicStmt = trail_op(_TrailOp),
         sorry($pred, "trail_ops not implemented")
@@ -871,7 +898,8 @@ mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO) :-
         AtomicStmt = inline_target_code(TargetLang, Components),
         (
             TargetLang = ml_target_c,
-            list.foldl(mlds_output_target_code_component(Opts, Context),
+            list.foldl(
+                mlds_output_target_code_component(Opts, Stream, Context),
                 Components, !IO)
         ;
             ( TargetLang = ml_target_csharp
@@ -884,30 +912,33 @@ mlds_output_stmt_atomic(Opts, Indent, Stmt, !IO) :-
         unexpected($pred, "outline_foreign_proc is not used in C backend")
     ).
 
-:- pred write_comment_lines(int::in, list(string)::in, io::di, io::uo) is det.
+:- pred write_comment_lines(io.text_output_stream::in, int::in,
+    list(string)::in, io::di, io::uo) is det.
 
-write_comment_lines(_Indent, [], !IO).
-write_comment_lines(Indent, [CommentLine | CommentLines], !IO) :-
+write_comment_lines(_, _, [], !IO).
+write_comment_lines(Stream, Indent, [CommentLine | CommentLines], !IO) :-
     ( if CommentLine = "" then
-        io.nl(!IO)
+        io.nl(Stream, !IO)
     else
-        output_n_indents(Indent, !IO),
-        io.write_string("// ", !IO),
-        io.write_string(CommentLine, !IO),
-        io.nl(!IO)
+        output_n_indents(Stream, Indent, !IO),
+        io.write_string(Stream, "// ", !IO),
+        io.write_string(Stream, CommentLine, !IO),
+        io.nl(Stream, !IO)
     ),
-    write_comment_lines(Indent, CommentLines, !IO).
+    write_comment_lines(Stream, Indent, CommentLines, !IO).
 
-:- pred mlds_output_stmt_atomic_new_object(mlds_to_c_opts::in, indent::in,
+:- pred mlds_output_stmt_atomic_new_object(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in,
     mlds_atomic_statement::in(atomic_stmt_is_new_object), prog_context::in,
     io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_atomic_new_object/6).
+:- pragma inline(mlds_output_stmt_atomic_new_object/7).
 
-mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
+mlds_output_stmt_atomic_new_object(Opts, Stream, Indent, AtomicStmt,
+        Context, !IO) :-
     AtomicStmt = new_object(Target, Ptag, _ExplicitSecTag, Type,
         MaybeSize, _MaybeCtorName, ArgRvalsTypes, MayUseAtomic, MaybeAllocId),
-    output_n_indents(Indent, !IO),
-    io.write_string("{\n", !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "{\n", !IO),
 
     % When filling in the fields of a newly allocated cell, use a fresh
     % local variable as the base address for the field references in
@@ -924,13 +955,13 @@ mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
         % XXX Actually, they do not include "__" anymore.
         BaseVarName = "base",
         Base = ls_string(BaseVarName),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent + 1, !IO),
-        mlds_output_type_prefix(Opts, Type, !IO),
-        io.write_string(" ", !IO),
-        io.write_string(BaseVarName, !IO),
-        mlds_output_type_suffix(Opts, Type, no_size, !IO),
-        io.write_string(";\n", !IO)
+        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Stream, Indent + 1, !IO),
+        mlds_output_type_prefix(Opts, Stream, Type, !IO),
+        io.write_string(Stream, " ", !IO),
+        io.write_string(Stream, BaseVarName, !IO),
+        mlds_output_type_suffix(Opts, Stream, Type, no_size, !IO),
+        io.write_string(Stream, ";\n", !IO)
     ),
 
     % For --gc accurate, we need to insert a call to GC_check()
@@ -938,9 +969,9 @@ mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
     GC_Method = Opts ^ m2co_gc_method,
     (
         GC_Method = gc_accurate,
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent + 1, !IO),
-        io.write_string("MR_GC_check();\n", !IO),
+        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Stream, Indent + 1, !IO),
+        io.write_string(Stream, "MR_GC_check();\n", !IO),
         % For types which hold RTTI that will be traversed by the collector
         % at GC-time, we need to allocate an extra word at the start,
         % to hold the forwarding pointer. Normally we would just overwrite
@@ -950,13 +981,13 @@ mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
         NeedsForwardingSpace = type_needs_forwarding_pointer_space(Type),
         (
             NeedsForwardingSpace = yes,
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Indent + 1, !IO),
-            io.write_string("// reserve space for GC forwarding pointer\n",
+            c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+            output_n_indents(Stream, Indent + 1, !IO),
+            io.write_string(Stream, "// reserve space for GC forwarding pointer\n",
                 !IO),
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-            output_n_indents(Indent + 1, !IO),
-            io.write_string("MR_hp_alloc(1);\n", !IO)
+            c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+            output_n_indents(Stream, Indent + 1, !IO),
+            io.write_string(Stream, "MR_hp_alloc(1);\n", !IO)
         ;
             NeedsForwardingSpace = no
         )
@@ -969,110 +1000,111 @@ mlds_output_stmt_atomic_new_object(Opts, Indent, AtomicStmt, Context, !IO) :-
         )
     ),
 
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent + 1, !IO),
-    write_lval_or_string(Opts, Base, !IO),
-    io.write_string(" = ", !IO),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent + 1, !IO),
+    write_lval_or_string(Opts, Stream, Base, !IO),
+    io.write_string(Stream, " = ", !IO),
     ( if Ptag = ptag(0u8) then
         % XXX We should not need the cast here, but currently the type that
         % we include in the call to MR_new_object() is not always correct.
-        mlds_output_cast(Opts, Type, !IO),
+        mlds_output_cast(Opts, Stream, Type, !IO),
         EndMkword = ""
     else
-        mlds_output_cast(Opts, Type, !IO),
-        io.write_string("MR_mkword(", !IO),
-        mlds_output_ptag(Ptag, !IO),
-        io.write_string(", ", !IO),
+        mlds_output_cast(Opts, Stream, Type, !IO),
+        io.write_string(Stream, "MR_mkword(", !IO),
+        mlds_output_ptag(Stream, Ptag, !IO),
+        io.write_string(Stream, ", ", !IO),
         EndMkword = ")"
     ),
     (
         MayUseAtomic = may_not_use_atomic_alloc,
-        io.write_string("MR_new_object(", !IO)
+        io.write_string(Stream, "MR_new_object(", !IO)
     ;
         MayUseAtomic = may_use_atomic_alloc,
-        io.write_string("MR_new_object_atomic(", !IO)
+        io.write_string(Stream, "MR_new_object_atomic(", !IO)
     ),
-    mlds_output_type(Opts, Type, !IO),
-    io.write_string(", ", !IO),
+    mlds_output_type(Opts, Type, Stream, !IO),
+    io.write_string(Stream, ", ", !IO),
     (
         MaybeSize = yes(Size),
-        io.write_string("(", !IO),
+        io.write_string(Stream, "(", !IO),
         ( if Size = ml_const(mlconst_int(SizeInt)) then
-            io.write_int(SizeInt, !IO)
+            io.write_int(Stream, SizeInt, !IO)
         else
-            mlds_output_rval(Opts, Size, !IO)
+            mlds_output_rval(Opts, Size, Stream, !IO)
         ),
-        io.write_string(" * sizeof(MR_Word))", !IO)
+        io.write_string(Stream, " * sizeof(MR_Word))", !IO)
     ;
         MaybeSize = no,
         % XXX what should we do here?
-        io.write_int(-1, !IO)
+        io.write_int(Stream, -1, !IO)
     ),
-    io.write_string(", ", !IO),
-    mlds_output_maybe_alloc_id(MaybeAllocId, !IO),
-    io.write_string(", NULL)", !IO),
-    io.write_string(EndMkword, !IO),
-    io.write_string(";\n", !IO),
+    io.write_string(Stream, ", ", !IO),
+    mlds_output_maybe_alloc_id(Stream, MaybeAllocId, !IO),
+    io.write_string(Stream, ", NULL)", !IO),
+    io.write_string(Stream, EndMkword, !IO),
+    io.write_string(Stream, ";\n", !IO),
     (
         Base = ls_lval(_)
     ;
         Base = ls_string(BaseVarName1),
-        c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-        output_n_indents(Indent + 1, !IO),
-        mlds_output_lval(Opts, Target, !IO),
-        io.write_string(" = ", !IO),
-        io.write_string(BaseVarName1, !IO),
-        io.write_string(";\n", !IO)
+        c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+        output_n_indents(Stream, Indent + 1, !IO),
+        mlds_output_lval(Opts, Target, Stream, !IO),
+        io.write_string(Stream, " = ", !IO),
+        io.write_string(Stream, BaseVarName1, !IO),
+        io.write_string(Stream, ";\n", !IO)
     ),
-    mlds_output_init_args(ArgRvalsTypes, Context, 0, Base, Ptag,
-        Opts, Indent + 1, !IO),
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("}\n", !IO).
+    mlds_output_init_args(Opts, Stream, ArgRvalsTypes, Context, 0, Base, Ptag,
+        Indent + 1, !IO),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "}\n", !IO).
 
-:- pred mlds_output_maybe_alloc_id(maybe(mlds_alloc_id)::in, io::di, io::uo)
-    is det.
+:- pred mlds_output_maybe_alloc_id(io.text_output_stream::in,
+    maybe(mlds_alloc_id)::in, io::di, io::uo) is det.
 
-mlds_output_maybe_alloc_id(MaybeAllocId, !IO) :-
+mlds_output_maybe_alloc_id(Stream, MaybeAllocId, !IO) :-
     (
         MaybeAllocId = yes(mlds_alloc_id(Num)),
-        io.format("&MR_alloc_sites[%d]", [i(Num)], !IO)
+        io.format(Stream, "&MR_alloc_sites[%d]", [i(Num)], !IO)
     ;
         MaybeAllocId = no,
-        io.write_string("NULL", !IO)
+        io.write_string(Stream, "NULL", !IO)
     ).
 
-:- pred mlds_output_target_code_component(mlds_to_c_opts::in, prog_context::in,
-    target_code_component::in, io::di, io::uo) is det.
+:- pred mlds_output_target_code_component(mlds_to_c_opts::in,
+    io.text_output_stream::in, prog_context::in, target_code_component::in,
+    io::di, io::uo) is det.
 
-mlds_output_target_code_component(Opts, Context, TargetCode, !IO) :-
+mlds_output_target_code_component(Opts, Stream, Context, TargetCode, !IO) :-
     (
         TargetCode = user_target_code(CodeString, MaybeUserContext),
         (
             MaybeUserContext = yes(UserContext),
-            c_output_context(Opts ^ m2co_line_numbers, UserContext, !IO)
+            c_output_context(Stream, Opts ^ m2co_line_numbers, UserContext, !IO)
         ;
             MaybeUserContext = no,
-            c_output_context(Opts ^ m2co_line_numbers, Context, !IO)
+            c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO)
         ),
-        io.write_string(CodeString, !IO),
-        io.write_string("\n", !IO),
-        c_reset_context(Opts ^ m2co_line_numbers, !IO)
+        io.write_string(Stream, CodeString, !IO),
+        io.write_string(Stream, "\n", !IO),
+        c_reset_context(Stream, Opts ^ m2co_line_numbers, !IO)
     ;
         TargetCode = raw_target_code(CodeString),
-        io.write_string(CodeString, !IO)
+        io.write_string(Stream, CodeString, !IO)
     ;
         TargetCode = target_code_input(Rval),
-        mlds_output_rval(Opts, Rval, !IO),
-        io.write_string(" ", !IO)
+        mlds_output_rval(Opts, Rval, Stream, !IO),
+        io.write_string(Stream, " ", !IO)
     ;
         TargetCode = target_code_output(Lval),
-        mlds_output_lval(Opts, Lval, !IO),
-        io.write_string(" ", !IO)
+        mlds_output_lval(Opts, Lval, Stream, !IO),
+        io.write_string(Stream, " ", !IO)
     ;
         TargetCode = target_code_type(Type),
-        mlds_output_type(Opts, Type, !IO),
-        io.write_string(" ", !IO)
+        mlds_output_type(Opts, Type, Stream, !IO),
+        io.write_string(Stream, " ", !IO)
     ;
         % Note: `target_code_name(Name)' target_code_components are used to
         % generate the #define for `MR_PROC_LABEL'.
@@ -1087,11 +1119,11 @@ mlds_output_target_code_component(Opts, Context, TargetCode, !IO) :-
         % (although some compilers, e.g. gcc 3.2, do allow it).
 
         TargetCode = target_code_function_name(FuncName),
-        mlds_output_fully_qualified_function_name(FuncName, !IO),
-        io.write_string("\n", !IO)
+        mlds_output_fully_qualified_function_name(Stream, FuncName, !IO),
+        io.write_string(Stream, "\n", !IO)
     ;
         TargetCode = target_code_alloc_id(AllocId),
-        mlds_output_maybe_alloc_id(yes(AllocId), !IO)
+        mlds_output_maybe_alloc_id(Stream, yes(AllocId), !IO)
     ).
 
 :- func type_needs_forwarding_pointer_space(mlds_type) = bool.
@@ -1144,13 +1176,13 @@ type_needs_forwarding_pointer_space(Type) = NeedsForwardingPtrSpace :-
     --->    ls_lval(mlds_lval)
     ;       ls_string(string).
 
-:- pred mlds_output_init_args(list(mlds_typed_rval)::in,
-    prog_context::in, int::in, lval_or_string::in, ptag::in,
-    mlds_to_c_opts::in, indent::in, io::di, io::uo) is det.
+:- pred mlds_output_init_args(mlds_to_c_opts::in, io.text_output_stream::in,
+    list(mlds_typed_rval)::in, prog_context::in, int::in, lval_or_string::in,
+    ptag::in, indent::in, io::di, io::uo) is det.
 
-mlds_output_init_args([], _, _, _, _, _, _, !IO).
-mlds_output_init_args([ArgRvalType | ArgRvalsTypes], Context,
-        ArgNum, Base, Ptag, Opts, Indent, !IO) :-
+mlds_output_init_args(_, _, [], _, _, _, _, _, !IO).
+mlds_output_init_args(Opts, Stream, [ArgRvalType | ArgRvalsTypes], Context,
+        ArgNum, Base, Ptag, Indent, !IO) :-
     % The MR_hl_field() macro expects its argument to have type MR_Box,
     % so we need to box the arguments if they are not already boxed.
     % Hence the use of mlds_output_boxed_rval below.
@@ -1159,36 +1191,36 @@ mlds_output_init_args([ArgRvalType | ArgRvalsTypes], Context,
     % (or perhaps a call to a constructor function) rather than using the
     % MR_hl_field() macro.
 
-    c_output_context(Opts ^ m2co_line_numbers, Context, !IO),
-    output_n_indents(Indent, !IO),
-    io.write_string("MR_hl_field(", !IO),
-    mlds_output_ptag(Ptag, !IO),
-    io.write_string(", ", !IO),
-    write_lval_or_string(Opts, Base, !IO),
-    io.write_string(", ", !IO),
-    io.write_int(ArgNum, !IO),
-    io.write_string(") = ", !IO),
+    c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
+    output_n_indents(Stream, Indent, !IO),
+    io.write_string(Stream, "MR_hl_field(", !IO),
+    mlds_output_ptag(Stream, Ptag, !IO),
+    io.write_string(Stream, ", ", !IO),
+    write_lval_or_string(Opts, Stream, Base, !IO),
+    io.write_string(Stream, ", ", !IO),
+    io.write_int(Stream, ArgNum, !IO),
+    io.write_string(Stream, ") = ", !IO),
     ArgRvalType = ml_typed_rval(ArgRval, ArgType),
-    mlds_output_boxed_rval(Opts, ArgType, ArgRval, !IO),
-    io.write_string(";\n", !IO),
-    mlds_output_init_args(ArgRvalsTypes, Context,
-        ArgNum + 1, Base, Ptag, Opts, Indent, !IO).
+    mlds_output_boxed_rval(Opts, Stream, ArgType, ArgRval, !IO),
+    io.write_string(Stream, ";\n", !IO),
+    mlds_output_init_args(Opts, Stream, ArgRvalsTypes, Context,
+        ArgNum + 1, Base, Ptag, Indent, !IO).
 
-:- pred write_lval_or_string(mlds_to_c_opts::in, lval_or_string::in,
-    io::di, io::uo) is det.
+:- pred write_lval_or_string(mlds_to_c_opts::in, io.text_output_stream::in,
+    lval_or_string::in, io::di, io::uo) is det.
 
-write_lval_or_string(Opts, Base, !IO) :-
+write_lval_or_string(Opts, Stream, Base, !IO) :-
     (
         Base = ls_lval(Target),
-        mlds_output_lval(Opts, Target, !IO)
+        mlds_output_lval(Opts, Target, Stream, !IO)
     ;
         Base = ls_string(BaseVarName),
-        io.write_string(BaseVarName, !IO)
+        io.write_string(Stream, BaseVarName, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-mlds_output_gc_statement(Opts, Indent, GCStmt, MaybeNewLine, !IO) :-
+mlds_output_gc_statement(Opts, Stream, Indent, GCStmt, MaybeNewLine, !IO) :-
     (
         GCStmt = gc_no_stmt
     ;
@@ -1199,16 +1231,16 @@ mlds_output_gc_statement(Opts, Indent, GCStmt, MaybeNewLine, !IO) :-
             GCStmt = gc_initialiser(Stmt),
             Label = "#if 0 // GC initialiser\n"
         ),
-        io.write_string(MaybeNewLine, !IO),
-        io.write_string(Label, !IO),
+        io.write_string(Stream, MaybeNewLine, !IO),
+        io.write_string(Stream, Label, !IO),
         % XXX This value for FuncInfo is bogus. However, this output is only
         % for debugging anyway, so it does not really matter.
         ModuleName = mercury_module_name_to_mlds(unqualified("")),
         FuncName = mlds_function_export("dummy"),
         QualFuncName = qual_function_name(ModuleName, FuncName),
         FuncInfo = func_info_c(QualFuncName, mlds_func_signature([], [])),
-        mlds_output_statement(Opts, Indent, FuncInfo, Stmt, !IO),
-        io.write_string("#endif\n", !IO)
+        mlds_output_statement(Opts, Stream, Indent, FuncInfo, Stmt, !IO),
+        io.write_string(Stream, "#endif\n", !IO)
     ).
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_c_stmt.
