@@ -146,9 +146,12 @@ Changes to the Mercury standard library
 
 ### Changes to the `string` module
 
-* The following function has been added:
+* The following functions have been added:
 
     - func `add_suffix/2`
+    - func `uint_to_hex_string/1`
+    - func `uint_to_uc_hex_string/1`
+    - func `uint_to_octal_string/1`
 
 * The following function symbols have been added to the type `poly_type`:
 

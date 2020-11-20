@@ -466,6 +466,7 @@ format_float_component(Flags, MaybeWidth, MaybePrec, Kind, Float, String) :-
     %   native_format_int/2
     %   native_format_string/2
     %   native_format_char/2
+    %   native_format_uint/2
     %
 :- pred using_sprintf is semidet.
 
@@ -786,78 +787,54 @@ format_signed_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
     % Format an unsigned int, unsigned octal, or unsigned hexadecimal
     % (u,o,x,X,p).
     %
-    % XXX we should replace most of this with a version that operates directly
-    % on uints.
-    %
 :- func format_unsigned_int(string_format_flags, string_format_maybe_width,
     string_format_maybe_prec, string_format_int_base, int) = string.
 
 format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
-    ( if Int = 0 then
-        % Zero is a special case. The abs_integer_to_decimal function
-        % returns "" for 0, but returning no digits at all is ok
-        % only if our caller explicitly allowed us to do so.
+    UInt = cast_from_int(Int),
+    String = format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt).
+
+%---------------------------------------------------------------------------%
+
+:- func format_uint(string_format_flags, string_format_maybe_width,
+    string_format_maybe_prec, string_format_int_base, uint) = string.
+
+format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt) = String :-
+    ( if UInt = 0u then
+        % Zero is a special case. uint_to_*string functions return "0" for 0,
+        % but we must return "" if our caller explicitly allowed us to do so.
         ( if MaybePrec = specified_prec(0) then
-            AbsIntStr = ""
+            UIntStr = ""
         else
-            AbsIntStr = "0"
+            UIntStr = "0"
         )
     else
-        % If the platform we are running on can't represent the absolute
-        % value of a 16 bit signed number natively, we are in big trouble.
-        %
-        % Our caller wants us to treat Int as unsigned, but Mercury treats it
-        % as signed. We use native arithmetic on ints (as opposed to arbitrary
-        % precision arithmetic on integers) on Int only in cases where
-        % the two notions coincide, i.e. if we know that Int is positive
-        % even when viewed as a signed number, and that is so even on
-        % 16 bit machines.
-        ( if 0 =< Int, Int =< 32767 then
-            (
-                Base = base_octal,
-                AbsIntStr = abs_int_to_octal(Int)
-            ;
-                Base = base_decimal,
-                AbsIntStr = abs_int_to_decimal(Int)
-            ;
-                ( Base = base_hex_lc
-                ; Base = base_hex_p
-                ),
-                AbsIntStr = abs_int_to_hex_lc(Int)
-            ;
-                Base = base_hex_uc,
-                AbsIntStr = abs_int_to_hex_uc(Int)
-            )
-        else
-            Div = integer.pow(integer.two, integer(int.bits_per_int)),
-            UnsignedInteger = integer(Int) mod Div,
-            (
-                Base = base_octal,
-                AbsIntStr = abs_integer_to_octal(UnsignedInteger)
-            ;
-                Base = base_decimal,
-                AbsIntStr = abs_integer_to_decimal(UnsignedInteger)
-            ;
-                ( Base = base_hex_lc
-                ; Base = base_hex_p
-                ),
-                AbsIntStr = abs_integer_to_hex_lc(UnsignedInteger)
-            ;
-                Base = base_hex_uc,
-                AbsIntStr = abs_integer_to_hex_uc(UnsignedInteger)
-            )
+        (
+            Base = base_octal,
+            UIntStr = uint_to_octal_string(UInt)
+        ;
+            Base = base_decimal,
+            UIntStr = uint_to_string(UInt)
+        ;
+            ( Base = base_hex_lc
+            ; Base = base_hex_p
+            ),
+            UIntStr = uint_to_hex_string(UInt)
+        ;
+            Base = base_hex_uc,
+            UIntStr = uint_to_uc_hex_string(UInt)
         )
     ),
-    AbsIntStrLength = string.count_codepoints(AbsIntStr),
+    UIntStrLength = string.count_codepoints(UIntStr),
 
     % Do we need to increase precision?
     ( if
         MaybePrec = specified_prec(Prec),
-        Prec > AbsIntStrLength
+        Prec > UIntStrLength
     then
-        PrecStr = string.pad_left(AbsIntStr, '0', Prec)
+        PrecStr = string.pad_left(UIntStr, '0', Prec)
     else
-        PrecStr = AbsIntStr
+        PrecStr = UIntStr
     ),
 
     % Do we need to increase the precision of an octal?
@@ -888,11 +865,11 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
                 Prefix = "0x"
             ;
                 Base = base_hex_lc,
-                Int \= 0,
+                UInt \= 0u,
                 Prefix = "0x"
             ;
                 Base = base_hex_uc,
-                Int \= 0,
+                UInt \= 0u,
                 Prefix = "0X"
             ;
                 ( Base = base_octal
@@ -919,11 +896,11 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
                 Prefix = "0x"
             ;
                 Base = base_hex_lc,
-                Int \= 0,
+                UInt \= 0u,
                 Prefix = "0x"
             ;
                 Base = base_hex_uc,
-                Int \= 0,
+                UInt \= 0u,
                 Prefix = "0X"
             ;
                 Base = base_octal,
@@ -941,15 +918,6 @@ format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
     ),
 
     String = justify_string(Flags, MaybeWidth, FieldModStr).
-
-%---------------------------------------------------------------------------%
-
-:- func format_uint(string_format_flags, string_format_maybe_width,
-    string_format_maybe_prec, string_format_int_base, uint) = string.
-
-format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt) = String :-
-    Int = cast_to_int(UInt),
-    String = format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int).
 
 %---------------------------------------------------------------------------%
 
@@ -1174,30 +1142,6 @@ justify_string(Flags, MaybeWidth, Str) = JustifiedStr :-
 % is guaranteed not to suffer from either of the problems above,
 % so we process it as an Mercury int, which is a lot faster.
 
-    % Convert a non-negative integer to an octal string.
-    %
-:- func abs_integer_to_octal(integer) = string.
-:- func abs_int_to_octal(int) = string.
-
-abs_integer_to_octal(Num) = NumStr :-
-    ( if Num > integer.zero then
-        Integer8 = integer.eight,
-        FrontDigitsStr = abs_int_to_octal(det_to_int(Num // Integer8)),
-        LastDigitStr = get_octal_digit(det_to_int(Num rem Integer8)),
-        NumStr = append(FrontDigitsStr, LastDigitStr)
-    else
-        NumStr = ""
-    ).
-
-abs_int_to_octal(Num) = NumStr :-
-    ( if Num > 0 then
-        FrontDigitsStr = abs_int_to_octal(Num // 8),
-        LastDigitStr = get_octal_digit(Num rem 8),
-        NumStr = append(FrontDigitsStr, LastDigitStr)
-    else
-        NumStr = ""
-    ).
-
     % Convert a non-negative integer to a decimal string.
     %
 :- func abs_integer_to_decimal(integer) = string.
@@ -1222,65 +1166,7 @@ abs_int_to_decimal(Num) = NumStr :-
         NumStr = ""
     ).
 
-    % Convert a non-negative integer to a hexadecimal string,
-    % using a-f for to_hex_lc and A-F for to_hex_uc.
-    %
-:- func abs_integer_to_hex_lc(integer) = string.
-:- func abs_integer_to_hex_uc(integer) = string.
-:- func abs_int_to_hex_lc(int) = string.
-:- func abs_int_to_hex_uc(int) = string.
-
-abs_integer_to_hex_lc(Num) = NumStr :-
-    ( if Num > integer.zero then
-        Integer16 = integer.sixteen,
-        FrontDigitsStr = abs_int_to_hex_lc(det_to_int(Num // Integer16)),
-        LastDigitStr = get_hex_digit_lc(det_to_int(Num rem Integer16)),
-        NumStr = append(FrontDigitsStr, LastDigitStr)
-    else
-        NumStr = ""
-    ).
-
-abs_integer_to_hex_uc(Num) = NumStr :-
-    ( if Num > integer.zero then
-        Integer16 = integer.sixteen,
-        FrontDigitsStr = abs_int_to_hex_uc(det_to_int(Num // Integer16)),
-        LastDigitStr = get_hex_digit_uc(det_to_int(Num rem Integer16)),
-        NumStr = append(FrontDigitsStr, LastDigitStr)
-    else
-        NumStr = ""
-    ).
-
-abs_int_to_hex_lc(Num) = NumStr :-
-    ( if Num > 0 then
-        FrontDigitsStr = abs_int_to_hex_lc(Num // 16),
-        LastDigitStr = get_hex_digit_lc(Num rem 16),
-        NumStr = append(FrontDigitsStr, LastDigitStr)
-    else
-        NumStr = ""
-    ).
-
-abs_int_to_hex_uc(Num) = NumStr :-
-    ( if Num > 0 then
-        FrontDigitsStr = abs_int_to_hex_uc(Num // 16),
-        LastDigitStr = get_hex_digit_uc(Num rem 16),
-        NumStr = append(FrontDigitsStr, LastDigitStr)
-    else
-        NumStr = ""
-    ).
-
 %---------------------------------------------------------------------------%
-
-    % Given an int between 0 and 7, return the octal digit representing it.
-    %
-:- func get_octal_digit(int) = string.
-:- pragma inline(get_octal_digit/1).
-
-get_octal_digit(Int) = Octal :-
-    ( if octal_digit(Int, OctalPrime) then
-        Octal = OctalPrime
-    else
-        unexpected($pred, "octal_digit failed")
-    ).
 
     % Given an int between 0 and 9, return the decimal digit representing it.
     %
@@ -1294,40 +1180,6 @@ get_decimal_digit(Int) = Decimal :-
         unexpected($pred, "decimal_digit failed")
     ).
 
-    % Given an int between 0 and 15, return the hexadecimal digit
-    % representing it, using a-f for get_hex_digit_lc and
-    % A-F for get_hex_digit_uc.
-    %
-:- func get_hex_digit_lc(int) = string.
-:- func get_hex_digit_uc(int) = string.
-:- pragma inline(get_hex_digit_lc/1).
-:- pragma inline(get_hex_digit_uc/1).
-
-get_hex_digit_lc(Int) = HexLC :-
-    ( if hex_digit(Int, HexLCPrime, _HexUC) then
-        HexLC = HexLCPrime
-    else
-        unexpected($pred, "hex_digit failed")
-    ).
-
-get_hex_digit_uc(Int) = HexUC :-
-    ( if hex_digit(Int, _HexLC, HexUCPrime) then
-        HexUC = HexUCPrime
-    else
-        unexpected($pred, "hex_digit failed")
-    ).
-
-:- pred octal_digit(int::in, string::out) is semidet.
-
-octal_digit(0, "0").
-octal_digit(1, "1").
-octal_digit(2, "2").
-octal_digit(3, "3").
-octal_digit(4, "4").
-octal_digit(5, "5").
-octal_digit(6, "6").
-octal_digit(7, "7").
-
 :- pred decimal_digit(int::in, string::out) is semidet.
 
 decimal_digit(0, "0").
@@ -1340,25 +1192,6 @@ decimal_digit(6, "6").
 decimal_digit(7, "7").
 decimal_digit(8, "8").
 decimal_digit(9, "9").
-
-:- pred hex_digit(int::in, string::out, string::out) is semidet.
-
-hex_digit( 0, "0", "0").
-hex_digit( 1, "1", "1").
-hex_digit( 2, "2", "2").
-hex_digit( 3, "3", "3").
-hex_digit( 4, "4", "4").
-hex_digit( 5, "5", "5").
-hex_digit( 6, "6", "6").
-hex_digit( 7, "7", "7").
-hex_digit( 8, "8", "8").
-hex_digit( 9, "9", "9").
-hex_digit(10, "a", "A").
-hex_digit(11, "b", "B").
-hex_digit(12, "c", "C").
-hex_digit(13, "d", "D").
-hex_digit(14, "e", "E").
-hex_digit(15, "f", "F").
 
 %---------------------------------------------------------------------------%
 

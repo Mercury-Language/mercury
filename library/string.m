@@ -1469,9 +1469,23 @@
 :- func int_to_base_string_group(int, int, int, string) = string.
 :- mode int_to_base_string_group(in, in, in, in) = uo is det.
 
-    % Convert an unsigned integer to a string.
+    % Convert an unsigned integer to a string in base 10.
     %
 :- func uint_to_string(uint::in) = (string::uo) is det.
+
+    % Convert an unsigned integer to a string in base 16.
+    % Alphabetic digits will be lowercase (e.g. a-f).
+    %
+:- func uint_to_hex_string(uint::in) = (string::uo) is det.
+
+    % Convert an unsigned integer to a string in base 16.
+    % Alphabetic digits will be uppercase (e.g. A-F).
+    %
+:- func uint_to_uc_hex_string(uint::in) = (string::uo) is det.
+
+    % Convert an unsigned integer to a string in base 8.
+    %
+:- func uint_to_octal_string(uint::in) = (string::uo) is det.
 
     % Convert a signed/unsigned 8/16/32/64 bit integer to a string.
     %
@@ -5536,7 +5550,7 @@ int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
-    char buffer[21];
+    char buffer[21]; // 20 for digits, 1 for nul.
     sprintf(buffer, ""%"" MR_INTEGER_LENGTH_MODIFIER ""u"", U);
     MR_allocate_aligned_string_msg(Str, strlen(buffer), MR_ALLOC_ID);
     strcpy(Str, buffer);
@@ -5554,6 +5568,81 @@ int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Str = java.lang.Long.toString(U & 0xffffffffL);
+").
+
+:- pragma foreign_proc("C",
+    uint_to_hex_string(U::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    char buffer[17]; // 16 for digits, 1 for nul.
+    sprintf(buffer, ""%"" MR_INTEGER_LENGTH_MODIFIER ""x"", U);
+    MR_allocate_aligned_string_msg(Str, strlen(buffer), MR_ALLOC_ID);
+    strcpy(Str, buffer);
+").
+
+:- pragma foreign_proc("C#",
+    uint_to_hex_string(U::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Str = U.ToString(""x"");
+").
+
+:- pragma foreign_proc("Java",
+    uint_to_hex_string(U::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Str = java.lang.Integer.toHexString(U);
+").
+
+:- pragma foreign_proc("C",
+    uint_to_uc_hex_string(U::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    char buffer[17]; // 16 for digits, 1 for nul.
+    sprintf(buffer, ""%"" MR_INTEGER_LENGTH_MODIFIER ""X"", U);
+    MR_allocate_aligned_string_msg(Str, strlen(buffer), MR_ALLOC_ID);
+    strcpy(Str, buffer);
+").
+
+:- pragma foreign_proc("C#",
+    uint_to_uc_hex_string(U::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Str = U.ToString(""X"");
+").
+
+:- pragma foreign_proc("Java",
+    uint_to_uc_hex_string(U::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Str = java.lang.Integer.toHexString(U).toUpperCase();
+").
+
+:- pragma foreign_proc("C",
+    uint_to_octal_string(U::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    char buffer[23]; // 22 for digits, 1 for nul.
+    sprintf(buffer, ""%"" MR_INTEGER_LENGTH_MODIFIER ""o"", U);
+    MR_allocate_aligned_string_msg(Str, strlen(buffer), MR_ALLOC_ID);
+    strcpy(Str, buffer);
+").
+
+:- pragma foreign_proc("C#",
+    uint_to_octal_string(U::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Str = System.Convert.ToString(U, 8);
+").
+
+:- pragma foreign_proc("Java",
+    uint_to_octal_string(U::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Str = java.lang.Integer.toOctalString(U);
 ").
 
 %---------------------%

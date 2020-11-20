@@ -436,6 +436,7 @@ ORDINARY_PROGS = \
 	type_to_term \
 	type_to_term_bug \
 	uc_export_enum \
+	uint_string_conv \
 	uint16_from_bytes \
 	uint16_switch_test \
 	uint32_from_bytes \
