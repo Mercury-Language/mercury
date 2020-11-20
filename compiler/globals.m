@@ -435,6 +435,21 @@
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
+
+:- pred get_error_output_stream(globals::in, module_name::in,
+    io.text_output_stream::out, io::di, io::uo) is det.
+:- pred get_progress_output_stream(globals::in, module_name::in,
+    io.text_output_stream::out, io::di, io::uo) is det.
+:- pred get_inference_output_stream(globals::in, module_name::in,
+    io.text_output_stream::out, io::di, io::uo) is det.
+:- pred get_debug_output_stream(globals::in, module_name::in,
+    io.text_output_stream::out, io::di, io::uo) is det.
+:- pred get_recompile_output_stream(globals::in, module_name::in,
+    io.text_output_stream::out, io::di, io::uo) is det.
+
+:- pred close_any_specifc_compiler_streams(io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -1070,6 +1085,124 @@ io_get_maybe_source_file_map(MaybeSourceFileMap, !IO) :-
 
 io_set_maybe_source_file_map(MaybeSourceFileMap, !IO) :-
     set_maybe_source_file_map(MaybeSourceFileMap, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- type compiler_output_stream
+    --->    general_stream(io.text_output_stream)
+            % A stream such as stdout or stderr, that is open before
+            % the compiler begins running and does not have to closed.
+    ;       specific_stream(io.text_output_stream)
+            % A stream opened for a specific purpose the first time there was
+            % a need for it. Must be closed before the compiler exits.
+    ;       no_stream.
+            % No stream has been set up for this purpose (yet).
+
+:- mutable(output_stream_error, compiler_output_stream, no_stream, ground,
+    [untrailed, attach_to_io_state]).
+:- mutable(output_stream_progress, compiler_output_stream, no_stream, ground,
+    [untrailed, attach_to_io_state]).
+:- mutable(output_stream_inference, compiler_output_stream, no_stream, ground,
+    [untrailed, attach_to_io_state]).
+:- mutable(output_stream_debug, compiler_output_stream, no_stream, ground,
+    [untrailed, attach_to_io_state]).
+:- mutable(output_stream_recompile, compiler_output_stream, no_stream, ground,
+    [untrailed, attach_to_io_state]).
+
+get_error_output_stream(Globals, ModuleName, Stream, !IO) :-
+    get_output_stream(Globals, ModuleName, error_output_suffix,
+        get_output_stream_error, set_output_stream_error, Stream, !IO).
+
+get_progress_output_stream(Globals, ModuleName, Stream, !IO) :-
+    get_output_stream(Globals, ModuleName, progress_output_suffix,
+        get_output_stream_progress, set_output_stream_progress, Stream, !IO).
+
+get_inference_output_stream(Globals, ModuleName, Stream, !IO) :-
+    get_output_stream(Globals, ModuleName, inference_output_suffix,
+        get_output_stream_inference, set_output_stream_inference, Stream, !IO).
+
+get_debug_output_stream(Globals, ModuleName, Stream, !IO) :-
+    get_output_stream(Globals, ModuleName, debug_output_suffix,
+        get_output_stream_debug, set_output_stream_debug, Stream, !IO).
+
+get_recompile_output_stream(Globals, ModuleName, Stream, !IO) :-
+    get_output_stream(Globals, ModuleName, recompile_output_suffix,
+        get_output_stream_recompile, set_output_stream_recompile, Stream, !IO).
+
+:- pred get_output_stream(globals::in, module_name::in, option::in,
+    pred(compiler_output_stream, io, io)::in(pred(out, di, uo) is det),
+    pred(compiler_output_stream, io, io)::in(pred(in, di, uo) is det),
+    io.text_output_stream::out, io::di, io::uo) is det.
+
+get_output_stream(Globals, ModuleName, Option, Get, Set, Stream, !IO) :-
+    Get(CompilerStream0, !IO),
+    (
+        CompilerStream0 = general_stream(Stream)
+    ;
+        CompilerStream0 = specific_stream(Stream)
+    ;
+        CompilerStream0 = no_stream,
+        globals.lookup_string_option(Globals, Option, Suffix),
+        ( if Suffix = "" then
+            % The user does not want to redirect this kind output
+            % to a module-specific file.
+            io.stderr_stream(StdErr, !IO),
+            Stream = StdErr,
+            CompilerStream = general_stream(Stream)
+        else
+            FileName = sym_name_to_string(ModuleName) ++ "." ++ Suffix,
+            io.open_output(FileName, OpenResult, !IO),
+            (
+                OpenResult = ok(Stream),
+                % The user wants to redirect this kind output
+                % to a module-specific file, and we can and do.
+                CompilerStream = specific_stream(Stream)
+            ;
+                OpenResult = error(Error),
+                % The user wants to redirect this kind output
+                % to a module-specific file, but we can't open it.
+                % Besides reporting the problem, acting as if
+                % the request wasn't made is the best we can do.
+                ErrorMsg = io.error_message(Error),
+                io.stderr_stream(StdErr, !IO),
+                io.format(StdErr, "can't open file `%s' for output: %s\n",
+                    [s(FileName), s(ErrorMsg)], !IO),
+                io.set_exit_status(1, !IO),
+                Stream = StdErr,
+                CompilerStream = general_stream(Stream)
+            )
+        ),
+        Set(CompilerStream, !IO)
+    ).
+
+%---------------------%
+
+close_any_specifc_compiler_streams(!IO) :-
+    get_output_stream_error(ErrorStream, !IO),
+    get_output_stream_progress(ProgresStream, !IO),
+    get_output_stream_inference(InferenceStream, !IO),
+    get_output_stream_debug(DebugStream, !IO),
+    get_output_stream_recompile(RecompileStream, !IO),
+    close_compiler_output_stream(ErrorStream, !IO),
+    close_compiler_output_stream(ProgresStream, !IO),
+    close_compiler_output_stream(InferenceStream, !IO),
+    close_compiler_output_stream(DebugStream, !IO),
+    close_compiler_output_stream(RecompileStream, !IO).
+
+:- pred close_compiler_output_stream(compiler_output_stream::in,
+    io::di, io::uo) is det.
+
+close_compiler_output_stream(CompilerStream, !IO) :-
+    (
+        CompilerStream = general_stream(_Stream)
+        % This stream does not need to be closed.
+    ;
+        CompilerStream = specific_stream(Stream),
+        io.close_output(Stream, !IO)
+    ;
+        CompilerStream = no_stream
+        % There is no stream to close.
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module libs.globals.

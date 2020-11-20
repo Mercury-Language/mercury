@@ -7384,6 +7384,33 @@ class files will be placed.
 @node Auxiliary output options
 @section Auxiliary output options
 @table @code
+
+@c These are commented out until the compiler consistently does
+@c what these options say it should do when specified.
+@c 
+@c @item --error-output-suffix xyz
+@c @findex --error-output-suffix
+@c When compiling module @var{M},
+@c output any error, warning and/or informational messages about the module
+@c to a file named @samp{@var{M}.xyz}.
+@c The default is for such output to go to standard error.
+@c 
+@c @item --progress-output-suffix xyz
+@c @findex --progress-output-suffix
+@c When compiling module @var{M},
+@c output messages about the progress of the compilation
+@c to a file named @samp{@var{M}.xyz}.
+@c This includes any statistics about the performance of compiler passes,
+@c if enabled.
+@c The default is for such output to go to standard error.
+@c 
+@c @item --inference-output-suffix xyz
+@c @findex --inference-output-suffix
+@c When compiling module @var{M},
+@c output the results of any type and/or mode inference
+@c to a file named @samp{@var{M}.xyz}.
+@c The default is for such output to go to standard error.
+
 @item --smart-recompilation
 @findex --smart-recompilation
 When compiling, write program dependency information

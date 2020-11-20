@@ -2513,42 +2513,34 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
         ExistQVars, Context, TypeClassInfoVar - MaybeTCIConstArg, Goals,
         !Info) :-
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-        some [SelectedPred, Level, IndentStr] (
-            promise_pure (
-                semipure get_selected_pred(SelectedPred),
-                semipure get_level(Level),
-                (
-                    SelectedPred = no
-                ;
-                    SelectedPred = yes,
-                    IndentStr = string.duplicate_char(' ', Level * 4),
-                    impure set_level(Level + 1),
+        promise_pure (
+            semipure get_selected_pred(SelectedPred),
+            semipure get_level(Level),
+            (
+                SelectedPred = no
+            ;
+                SelectedPred = yes,
+                poly_info_get_debug_stream(!.Info, Stream, !IO),
+                IndentStr = string.duplicate_char(' ', Level * 4),
+                impure set_level(Level + 1),
 
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("make_typeclass_info_from_subclass", !IO),
-                    io.nl(!IO),
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("Constraint: ", !IO),
-                    io.write(Constraint, !IO),
-                    io.nl(!IO),
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("Seen: ", !IO),
-                    ( if Seen = [Constraint] then
-                        io.write_string("[Constraint]\n", !IO)
-                    else
-                        io.write(Seen, !IO),
-                        io.nl(!IO)
-                    ),
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("SubClassConstraint: ", !IO),
-                    io.write(SubClassConstraint, !IO),
-                    io.nl(!IO),
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("ExistQVars: ", !IO),
-                    io.write(ExistQVars, !IO),
-                    io.nl(!IO),
-                    io.nl(!IO)
-                )
+                io.format(Stream,
+                    "%smake_typeclass_info_from_subclass\n",
+                    [s(IndentStr)], !IO),
+                io.format(Stream, "%sConstraint: ", [s(IndentStr)], !IO),
+                io.write_line(Stream, Constraint, !IO),
+                io.format(Stream, "%sSeen: ", [s(IndentStr)], !IO),
+                ( if Seen = [Constraint] then
+                    io.write_string(Stream, "[Constraint]\n", !IO)
+                else
+                    io.write_line(Stream, Seen, !IO)
+                ),
+                io.format(Stream, "%sSubClassConstraint: ",
+                    [s(IndentStr)], !IO),
+                io.write_line(Stream, SubClassConstraint, !IO),
+                io.format(Stream, "%sExistQVars: ", [s(IndentStr)], !IO),
+                io.write_line(Stream, ExistQVars, !IO),
+                io.nl(Stream, !IO)
             )
         )
     ),
@@ -2618,22 +2610,21 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
         ),
 
         trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-            some [SelectedPred, Level, IndentStr, ResultStr] (
-                promise_pure (
-                    semipure get_selected_pred(SelectedPred),
-                    semipure get_level(Level),
-                    impure set_level(Level - 1),
-                    (
-                        SelectedPred = no
-                    ;
-                        SelectedPred = yes,
-                        IndentStr = string.duplicate_char(' ', (Level-1) * 4),
-                        io.write_string(IndentStr, !IO),
-                        io.write_string("subclass constant result ", !IO),
-                        io.write(TypeClassInfoVar - MaybeTCIConstArg, !IO),
-                        io.nl(!IO),
-                        io.nl(!IO)
-                    )
+            promise_pure (
+                semipure get_selected_pred(SelectedPred),
+                semipure get_level(Level),
+                impure set_level(Level - 1),
+                (
+                    SelectedPred = no
+                ;
+                    SelectedPred = yes,
+                    poly_info_get_debug_stream(!.Info, Stream, !IO),
+                    IndentStr = string.duplicate_char(' ', (Level-1) * 4),
+                    io.format(Stream, "%ssubclass constant result ",
+                        [s(IndentStr)], !IO),
+                    io.write_line(Stream,
+                        TypeClassInfoVar - MaybeTCIConstArg, !IO),
+                    io.nl(Stream, !IO)
                 )
             )
         )
@@ -2654,22 +2645,21 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
         MaybeTCIConstArg = no,
 
         trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-            some [SelectedPred, Level, IndentStr, ResultStr] (
-                promise_pure (
-                    semipure get_selected_pred(SelectedPred),
-                    semipure get_level(Level),
-                    impure set_level(Level - 1),
-                    (
-                        SelectedPred = no
-                    ;
-                        SelectedPred = yes,
-                        IndentStr = string.duplicate_char(' ', (Level-1) * 4),
-                        io.write_string(IndentStr, !IO),
-                        io.write_string("subclass computed result ", !IO),
-                        io.write(TypeClassInfoVar - MaybeTCIConstArg, !IO),
-                        io.nl(!IO),
-                        io.nl(!IO)
-                    )
+            promise_pure (
+                semipure get_selected_pred(SelectedPred),
+                semipure get_level(Level),
+                impure set_level(Level - 1),
+                (
+                    SelectedPred = no
+                ;
+                    SelectedPred = yes,
+                    poly_info_get_debug_stream(!.Info, Stream, !IO),
+                    IndentStr = string.duplicate_char(' ', (Level-1) * 4),
+                    io.format(Stream, "%ssubclass computed result ",
+                        [s(IndentStr)], !IO),
+                    io.write_line(Stream,
+                        TypeClassInfoVar - MaybeTCIConstArg, !IO),
+                    io.nl(Stream, !IO)
                 )
             )
         )
@@ -2683,42 +2673,32 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
 make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
         Context, TypeClassInfoVarMCA, Goals, !Info) :-
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-        some [SelectedPred, Level, IndentStr] (
-            promise_pure (
-                semipure get_selected_pred(SelectedPred),
-                semipure get_level(Level),
-                (
-                    SelectedPred = no
-                ;
-                    SelectedPred = yes,
-                    IndentStr = string.duplicate_char(' ', Level * 4),
-                    impure set_level(Level + 1),
+        promise_pure (
+            semipure get_selected_pred(SelectedPred),
+            semipure get_level(Level),
+            (
+                SelectedPred = no
+            ;
+                SelectedPred = yes,
+                poly_info_get_debug_stream(!.Info, Stream, !IO),
+                IndentStr = string.duplicate_char(' ', Level * 4),
+                impure set_level(Level + 1),
 
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("make_typeclass_info_from_instance", !IO),
-                    io.nl(!IO),
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("Constraint: ", !IO),
-                    io.write(Constraint, !IO),
-                    io.nl(!IO),
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("Seen: ", !IO),
-                    ( if Seen = [Constraint] then
-                        io.write_string("[Constraint]\n", !IO)
-                    else
-                        io.write(Seen, !IO),
-                        io.nl(!IO)
-                    ),
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("InstanceNum: ", !IO),
-                    io.write(InstanceNum, !IO),
-                    io.nl(!IO),
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("ExistQVars: ", !IO),
-                    io.write(ExistQVars, !IO),
-                    io.nl(!IO),
-                    io.nl(!IO)
-                )
+                io.format(Stream, "%smake_typeclass_info_from_instance\n",
+                    [s(IndentStr)], !IO),
+                io.format(Stream, "%sConstraint: ", [s(IndentStr)], !IO),
+                io.write_line(Stream, Constraint, !IO),
+                io.format(Stream, "%sSeen: ", [s(IndentStr)], !IO),
+                ( if Seen = [Constraint] then
+                    io.write_string(Stream, "[Constraint]\n", !IO)
+                else
+                    io.write_line(Stream, Seen, !IO)
+                ),
+                io.format(Stream, "%sInstanceNum: %d\n",
+                    [s(IndentStr), i(InstanceNum)], !IO),
+                io.format(Stream, "%sExistQVars: ", [s(IndentStr)], !IO),
+                io.write_line(Stream, ExistQVars, !IO),
+                io.nl(Stream, !IO)
             )
         )
     ),
@@ -2735,30 +2715,28 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
             TypeClassInfoVar - yes(csa_const_struct(InstanceIdConstNum)),
 
         trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-            some [SelectedPred, Level, IndentStr, ResultStr] (
-                promise_pure (
-                    semipure get_selected_pred(SelectedPred),
-                    semipure get_level(Level),
-                    impure set_level(Level - 1),
+            promise_pure (
+                semipure get_selected_pred(SelectedPred),
+                semipure get_level(Level),
+                impure set_level(Level - 1),
+                (
+                    SelectedPred = no
+                ;
+                    SelectedPred = yes,
+                    poly_info_get_debug_stream(!.Info, Stream, !IO),
+                    IndentStr = string.duplicate_char(' ', (Level-1) * 4),
                     (
-                        SelectedPred = no
+                        Goals = [],
+                        ResultStr = "instance doubly cached result "
                     ;
-                        SelectedPred = yes,
-                        IndentStr = string.duplicate_char(' ', (Level-1) * 4),
-                        (
-                            Goals = [],
-                            ResultStr = "instance doubly cached result "
-                        ;
-                            Goals = [_ | _],
-                            ResultStr = "instance cached result "
-                        ),
+                        Goals = [_ | _],
+                        ResultStr = "instance cached result "
+                    ),
 
-                        io.write_string(IndentStr, !IO),
-                        io.write_string(ResultStr, !IO),
-                        io.write(TypeClassInfoVarMCA, !IO),
-                        io.nl(!IO),
-                        io.nl(!IO)
-                    )
+                    io.format(Stream, "%s%s",
+                        [s(IndentStr), s(ResultStr)], !IO),
+                    io.write_line(Stream, TypeClassInfoVarMCA, !IO),
+                    io.nl(Stream, !IO)
                 )
             )
         )
@@ -2766,41 +2744,35 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
         do_make_typeclass_info_from_instance(InstanceId, ExistQVars,
             Context, TypeClassInfoVarMCA, Goals, !Info),
         trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-            some [SelectedPred, Level, IndentStr] (
-                promise_pure (
-                    semipure get_selected_pred(SelectedPred),
-                    semipure get_level(Level),
-                    impure set_level(Level - 1),
-                    (
-                        SelectedPred = no
-                    ;
-                        SelectedPred = yes,
-                        IndentStr = string.duplicate_char(' ', (Level-1) * 4),
-                        io.write_string(IndentStr, !IO),
-                        io.write_string("instance computed result: ", !IO),
-                        io.write(TypeClassInfoVarMCA, !IO),
-                        io.nl(!IO),
+            promise_pure (
+                semipure get_selected_pred(SelectedPred),
+                semipure get_level(Level),
+                impure set_level(Level - 1),
+                (
+                    SelectedPred = no
+                ;
+                    SelectedPred = yes,
+                    poly_info_get_debug_stream(!.Info, Stream, !IO),
+                    IndentStr = string.duplicate_char(' ', (Level-1) * 4),
+                    io.format(Stream, "%sinstance computed result: ",
+                        [s(IndentStr)], !IO),
+                    io.write_line(Stream, TypeClassInfoVarMCA, !IO),
 
-                        io.write_string(IndentStr, !IO),
-                        io.write_string("type_info_var_map ", !IO),
-                        poly_info_get_type_info_var_map(!.Info,
-                            TypeInfoVarMap),
-                        io.write(TypeInfoVarMap, !IO),
-                        io.nl(!IO),
-                        io.write_string(IndentStr, !IO),
-                        io.write_string("typeclass_info_map ", !IO),
-                        poly_info_get_typeclass_info_map(!.Info,
-                            TypeClassInfoMap),
-                        io.write(TypeClassInfoMap, !IO),
-                        io.nl(!IO),
-                        io.write_string(IndentStr, !IO),
-                        io.write_string("struct_var_map ", !IO),
-                        poly_info_get_const_struct_var_map(!.Info,
-                            ConstStructVarMap),
-                        io.write(ConstStructVarMap, !IO),
-                        io.nl(!IO),
-                        io.nl(!IO)
-                    )
+                    poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap),
+                    poly_info_get_typeclass_info_map(!.Info, TypeClassInfoMap),
+                    poly_info_get_const_struct_var_map(!.Info,
+                        ConstStructVarMap),
+
+                    io.format(Stream, "%stype_info_var_map: ",
+                        [s(IndentStr)], !IO),
+                    io.write_line(Stream, TypeInfoVarMap, !IO),
+                    io.format(Stream, "%stypeclass_info_map: ",
+                        [s(IndentStr)], !IO),
+                    io.write_line(Stream, TypeClassInfoMap, !IO),
+                    io.format(Stream, "%sstricy_var_map: ",
+                        [s(IndentStr)], !IO),
+                    io.write_line(Stream, ConstStructVarMap, !IO),
+                    io.nl(Stream, !IO)
                 )
             )
         )
@@ -4723,25 +4695,23 @@ get_cache_maps_snapshot(Name, CacheMaps, !Info) :-
     !Info ^ poly_snapshot_num := SnapshotNum + 1,
 
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-        some [SelectedPred, Level, IndentStr] (
-            promise_pure (
-                semipure get_selected_pred(SelectedPred),
-                semipure get_level(Level),
-                ( if
-                    SelectedPred = yes,
-                    Name \= ""
-                then
-                    IndentStr = string.duplicate_char(' ', Level * 4),
-                    io.write_string(IndentStr, !IO),
-                    io.format("get_cache_maps_snapshot %d %s\n",
-                        [i(SnapshotNum), s(Name)], !IO),
-                    io.write_string(IndentStr, !IO),
-                    poly_info_get_varset(!.Info, VarSet),
-                    NumVars = varset.num_allocated(VarSet),
-                    io.format("num_allocated vars: %d\n\n", [i(NumVars)], !IO)
-                else
-                    true
-                )
+        promise_pure (
+            semipure get_selected_pred(SelectedPred),
+            semipure get_level(Level),
+            ( if
+                SelectedPred = yes,
+                Name \= ""
+            then
+                poly_info_get_debug_stream(!.Info, Stream, !IO),
+                IndentStr = string.duplicate_char(' ', Level * 4),
+                poly_info_get_varset(!.Info, VarSet),
+                NumVars = varset.num_allocated(VarSet),
+                io.format(Stream, "%sget_cache_maps_snapshot %d %s\n",
+                    [s(IndentStr), i(SnapshotNum), s(Name)], !IO),
+                io.format(Stream, "%snum_allocated vars: %d\n\n",
+                    [s(IndentStr), i(NumVars)], !IO)
+            else
+                true
             )
         )
     ).
@@ -4772,39 +4742,34 @@ set_cache_maps_snapshot(Name, CacheMaps, !Info) :-
     ),
 
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-        some [SelectedPred, Level, IndentStr] (
-            promise_pure (
-                semipure get_selected_pred(SelectedPred),
-                semipure get_level(Level),
-                ( if
-                    SelectedPred = yes,
-                    Name \= ""
-                then
-                    IndentStr = string.duplicate_char(' ', Level * 4),
-                    io.write_string(IndentStr, !IO),
-                    io.format("set_cache_maps_snapshot %d %s\n",
-                        [i(SnapshotNum), s(Name)], !IO),
-                    io.write_string(IndentStr, !IO),
-                    poly_info_get_varset(!.Info, VarSet),
-                    NumVars = varset.num_allocated(VarSet),
-                    io.format("num_allocated vars: %d\n\n", [i(NumVars)], !IO),
+        promise_pure (
+            semipure get_selected_pred(SelectedPred),
+            semipure get_level(Level),
+            ( if
+                SelectedPred = yes,
+                Name \= ""
+            then
+                poly_info_get_debug_stream(!.Info, Stream, !IO),
+                IndentStr = string.duplicate_char(' ', Level * 4),
+                poly_info_get_varset(!.Info, VarSet),
+                NumVars = varset.num_allocated(VarSet),
 
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("type_info_var_map ", !IO),
-                    io.write(CacheMaps ^ cm_type_info_var_map, !IO),
-                    io.nl(!IO),
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("typeclass_info_map ", !IO),
-                    io.write(CacheMaps ^ cm_typeclass_info_map, !IO),
-                    io.nl(!IO),
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("struct_var_map ", !IO),
-                    io.write(CacheMaps ^ cm_const_struct_var_map, !IO),
-                    io.nl(!IO),
-                    io.nl(!IO)
-                else
-                    true
-                )
+                io.format(Stream, "%sset_cache_maps_snapshot %d %s\n",
+                    [s(IndentStr), i(SnapshotNum), s(Name)], !IO),
+                io.format(Stream, "%snum_allocated vars: %d\n\n",
+                    [s(IndentStr), i(NumVars)], !IO),
+
+                io.format(Stream, "%stype_info_var_map ", [s(IndentStr)], !IO),
+                io.write_line(Stream, CacheMaps ^ cm_type_info_var_map, !IO),
+                io.format(Stream, "%stypeclass_info_map ",
+                    [s(IndentStr)], !IO),
+                io.write_line(Stream, CacheMaps ^ cm_typeclass_info_map, !IO),
+                io.format(Stream, "%sstruct_var_map ", [s(IndentStr)], !IO),
+                io.write_line(Stream,
+                    CacheMaps ^ cm_const_struct_var_map, !IO),
+                io.nl(Stream, !IO)
+            else
+                true
             )
         )
     ).
@@ -4838,21 +4803,20 @@ get_var_maps_snapshot(Name, VarMaps, !Info) :-
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps),
 
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-        some [SelectedPred, Level, IndentStr] (
-            promise_pure (
-                semipure get_selected_pred(SelectedPred),
-                semipure get_level(Level),
-                (
-                    SelectedPred = no
-                ;
-                    SelectedPred = yes,
-                    IndentStr = string.duplicate_char(' ', Level * 4),
-                    NumVars = varset.num_allocated(VarSet),
-                    io.format("%sget_var_maps_snapshot %d %s\n",
-                        [s(IndentStr), i(SnapshotNum), s(Name)], !IO),
-                    io.format("%snum_allocated vars: %d\n\n",
-                        [s(IndentStr), i(NumVars)], !IO)
-                )
+        promise_pure (
+            semipure get_selected_pred(SelectedPred),
+            semipure get_level(Level),
+            (
+                SelectedPred = no
+            ;
+                SelectedPred = yes,
+                poly_info_get_debug_stream(!.Info, Stream, !IO),
+                IndentStr = string.duplicate_char(' ', Level * 4),
+                NumVars = varset.num_allocated(VarSet),
+                io.format(Stream, "%sget_var_maps_snapshot %d %s\n",
+                    [s(IndentStr), i(SnapshotNum), s(Name)], !IO),
+                io.format(Stream, "%snum_allocated vars: %d\n\n",
+                    [s(IndentStr), i(NumVars)], !IO)
             )
         )
     ),
@@ -4867,39 +4831,45 @@ set_var_maps_snapshot(Name, VarMaps, !Info) :-
     VarMaps = var_maps(SnapshotNum, VarSet, VarTypes, RttiVarMaps, CacheMaps),
 
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-        some [SelectedPred, Level, IndentStr] (
-            promise_pure (
-                semipure get_selected_pred(SelectedPred),
-                semipure get_level(Level),
-                (
-                    SelectedPred = no
-                ;
-                    SelectedPred = yes,
-                    IndentStr = string.duplicate_char(' ', Level * 4),
-                    io.write_string(IndentStr, !IO),
-                    io.format("set_var_maps_snapshot %d %s\n",
-                        [i(SnapshotNum), s(Name)], !IO),
+        promise_pure (
+            semipure get_selected_pred(SelectedPred),
+            semipure get_level(Level),
+            (
+                SelectedPred = no
+            ;
+                SelectedPred = yes,
+                poly_info_get_debug_stream(!.Info, Stream, !IO),
+                IndentStr = string.duplicate_char(' ', Level * 4),
+                io.format(Stream, "%sset_var_maps_snapshot %d %s\n",
+                    [s(IndentStr), i(SnapshotNum), s(Name)], !IO),
 
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("type_info_var_map ", !IO),
-                    io.write(CacheMaps ^ cm_type_info_var_map, !IO),
-                    io.nl(!IO),
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("typeclass_info_map ", !IO),
-                    io.write(CacheMaps ^ cm_typeclass_info_map, !IO),
-                    io.nl(!IO),
-                    io.write_string(IndentStr, !IO),
-                    io.write_string("struct_var_map ", !IO),
-                    io.write(CacheMaps ^ cm_const_struct_var_map, !IO),
-                    io.nl(!IO),
-                    io.nl(!IO)
-                )
+                io.format(Stream, "%stype_info_var_map ",
+                    [s(IndentStr)], !IO),
+                io.write_line(Stream, CacheMaps ^ cm_type_info_var_map, !IO),
+                io.format(Stream, "%stypeclass_info_map ",
+                    [s(IndentStr)], !IO),
+                io.write_line(Stream, CacheMaps ^ cm_typeclass_info_map, !IO),
+                io.format(Stream, "%sstruct_var_map ", [s(IndentStr)], !IO),
+                io.write_line(Stream,
+                    CacheMaps ^ cm_const_struct_var_map, !IO),
+                io.nl(Stream, !IO)
             )
         )
     ),
 
     poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info),
     set_cache_maps_snapshot("", CacheMaps, !Info).
+
+%---------------------------------------------------------------------------%
+
+:- pred poly_info_get_debug_stream(poly_info::in, io.text_output_stream::out,
+    io::di, io::uo) is det.
+
+poly_info_get_debug_stream(PolyInfo, Stream, !IO) :-
+    poly_info_get_module_info(PolyInfo, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    get_debug_output_stream(Globals, ModuleName, Stream, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.polymorphism.

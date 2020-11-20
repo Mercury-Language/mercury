@@ -306,6 +306,12 @@
     ;       only_opmode_output_class_dir
 
     % Auxiliary output options
+    ;       error_output_suffix
+    ;       progress_output_suffix
+    ;       inference_output_suffix
+    ;       debug_output_suffix
+    ;       recompile_output_suffix
+
     ;       smart_recompilation
             % Even if this option is set to `yes', smart recompilation may
             % have been disabled with io_set_disable_smart_recompilation.
@@ -1252,6 +1258,11 @@ optdef(oc_warn, warn_duplicate_calls,                   bool(no)).
 optdef(oc_warn, warn_implicit_stream_calls,             bool(no)).
 optdef(oc_warn, warn_missing_module_name,               bool(yes)).
 optdef(oc_warn, warn_wrong_module_name,                 bool(yes)).
+optdef(oc_warn, error_output_suffix,                    string("")).
+optdef(oc_warn, progress_output_suffix,                 string("")).
+optdef(oc_warn, inference_output_suffix,                string("")).
+optdef(oc_warn, debug_output_suffix,                    string("")).
+optdef(oc_warn, recompile_output_suffix,                string("")).
 optdef(oc_warn, warn_smart_recompilation,               bool(yes)).
 optdef(oc_warn, warn_undefined_options_variables,       bool(yes)).
 optdef(oc_warn, warn_suspicious_recursion,              bool(no)).
@@ -4640,6 +4651,31 @@ options_help_output -->
 options_help_aux_output -->
     io.write_string("\nAuxiliary Output Options:\n"),
     write_tabbed_lines([
+% These are commented out until the compiler consistently does
+% what these options say it should do when specified.
+%       "--error-output-suffix .xyz",
+%       "\tWhen compiling module M, output any error, warning and/or",
+%       "\tinformational messages about the module to a file named `M.xyz'.",
+%       "\tThe default is for such output to go to standard error.",
+%       "--progress-output-suffix .xyz",
+%       "\tWhen compiling module M, output messages about the progress",
+%       "\tof the compilation to a file named `M.xyz'. This includes any",
+%       "\tstatistics about the performance of compiler passes, if enabled.",
+%       "\tThe default is for such output to go to standard error.",
+%       "--inference-output-suffix .xyz",
+%       "\tWhen compiling module M, output the results of any type and/or",
+%       "\tmode inference to a file named `M.xyz'.",
+%       "\tThe default is for such output to go to standard error.",
+
+% These are commented out because they are intended only for developers.
+%       "--debug-output-suffix .xyz",
+%       "\tWhen compiling module M, direct output that is intended to",
+%       "\thelp debug the compiler to a file named `M.xyz'.",
+%       "\tThe default is for such output to go to standard error.",
+%       "--recompile-output-suffix .xyz",
+%       This is intended to direct the output from the test cases in
+%       tests/reccompilation to file.
+
         "--smart-recompilation",
         "\tWhen compiling, write program dependency information",
         "\tto be used to avoid unnecessary recompilations if an",
