@@ -492,7 +492,7 @@ maybe_output_context_comment(Stream, Indent, Suffix, Context, !IO) :-
         true
     else
         write_indent(Stream, Indent, !IO),
-        io.format(Stream, "%% context: file `%s', line %d%s\n",
+        io.format(Stream, "%% context: file \"%s\", line %d%s\n",
             [s(FileName), i(LineNumber), s(Suffix)], !IO)
     ).
 

@@ -301,10 +301,11 @@ write_type_table_entries(Info, Stream, Indent,
 
     % Write the context.
     io.write_char(Stream, '\n', !IO),
+    maybe_output_context_comment(Stream, Indent, "", Context, !IO),
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'c') then
-        Suffix = ", status " ++ type_import_status_to_string(TypeStatus),
-        maybe_output_context_comment(Stream, Indent, Suffix, Context, !IO)
+        io.format(Stream, "%% status %s\n",
+            [s(type_import_status_to_string(TypeStatus))], !IO)
     else
         true
     ),
@@ -470,9 +471,53 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         TypeBody = hlds_abstract_type(_IsSolverType),
         io.write_string(Stream, ".\n", !IO)
     ;
-        TypeBody = hlds_foreign_type(_),
-        % XXX
-        io.write_string(Stream, " == $foreign_type.\n", !IO)
+        TypeBody = hlds_foreign_type(ForeignTypeBody),
+        ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCsharp),
+        (
+            MaybeC = no,
+            MaybeCStr = "no_c"
+        ;
+            MaybeC = yes(C),
+            C = type_details_foreign(c_type(CTypeName),
+                CCanonical, CAssertions),
+            MaybeCStr = string.format("c(%s, %s, %s)",
+                [s(CTypeName),
+                s(maybe_canonical_to_simple_string(CCanonical)),
+                s(foreign_type_assertions_to_simple_string(CAssertions))])
+        ),
+        (
+            MaybeJava = no,
+            MaybeJavaStr = "no_java"
+        ;
+            MaybeJava = yes(Java),
+            Java = type_details_foreign(java_type(JavaTypeName),
+                JavaCanonical, JavaAssertions),
+            MaybeJavaStr = string.format("java(%s, %s, %s)",
+                [s(JavaTypeName),
+                s(maybe_canonical_to_simple_string(JavaCanonical)),
+                s(foreign_type_assertions_to_simple_string(JavaAssertions))])
+        ),
+        (
+            MaybeCsharp = no,
+            MaybeCsharpStr = "no_csharp"
+        ;
+            MaybeCsharp = yes(Csharp),
+            Csharp = type_details_foreign(csharp_type(CsharpTypeName),
+                CsharpCanonical, CsharpAssertions),
+            MaybeCsharpStr = string.format("csharp(%s, %s, %s)",
+                [s(CsharpTypeName),
+                s(maybe_canonical_to_simple_string(CsharpCanonical)),
+                s(foreign_type_assertions_to_simple_string(CsharpAssertions))])
+        ),
+        % What we output is not valid Mercury syntax, but it is easier
+        % to read than valid Mercury syntax would be.
+        IndentStr = indent_string(Indent),
+        Indent1Str = indent_string(Indent + 1),
+        io.format(Stream, " is foreign_type(\n%s%s,\n%s%s,\n%s%s\n%s).\n",
+            [s(Indent1Str), s(MaybeCStr),
+            s(Indent1Str), s(MaybeJavaStr),
+            s(Indent1Str), s(MaybeCsharpStr),
+            s(IndentStr)], !IO)
     ;
         TypeBody = hlds_solver_type(DetailsSolver),
         DetailsSolver =
@@ -482,6 +527,65 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
             yes(SolverTypeDetails), MaybeUserEqComp, no, Stream, !IO),
         io.write_string(Stream, ".\n", !IO)
     ).
+
+:- func maybe_canonical_to_simple_string(maybe_canonical) = string.
+
+maybe_canonical_to_simple_string(MaybeCanonical) = String :-
+    (
+        MaybeCanonical = canon,
+        String = "canon"
+    ;
+        MaybeCanonical = noncanon(NonCanonical),
+        (
+            NonCanonical = noncanon_uni_cmp(EqSymName, CmpSymName),
+            String = string.format("eq_cmp(%s, %s)",
+                [s(sym_name_to_string(EqSymName)),
+                s(sym_name_to_string(CmpSymName))])
+        ;
+            NonCanonical = noncanon_uni_only(EqSymName),
+            String = string.format("eq(%s)",
+                [s(sym_name_to_string(EqSymName))])
+        ;
+            NonCanonical = noncanon_cmp_only(CmpSymName),
+            String = string.format("cmp(%s)",
+                [s(sym_name_to_string(CmpSymName))])
+        ;
+            NonCanonical = noncanon_abstract(IsSolver),
+            (
+                IsSolver = non_solver_type,
+                String = "noncanon_abstract"
+            ;
+                IsSolver = solver_type,
+                String = "noncanon_abstract_solver"
+            )
+        )
+    ).
+
+:- func foreign_type_assertions_to_simple_string(foreign_type_assertions)
+    = string.
+
+foreign_type_assertions_to_simple_string(ForeignTypeAssertions) = String :-
+    ForeignTypeAssertions = foreign_type_assertions(AssertionSet),
+    Assertions = set.to_sorted_list(AssertionSet),
+    AssertionStrs = list.map(foreign_type_assertion_to_string, Assertions),
+    String = "[" ++ string.join_list(", ", AssertionStrs) ++ "]".
+
+:- func foreign_type_assertion_to_string(foreign_type_assertion)
+    = string.
+
+foreign_type_assertion_to_string(Assertion) = String :-
+    (
+        Assertion = foreign_type_can_pass_as_mercury_type,
+        String = "pass_as_mercury"
+    ;
+        Assertion = foreign_type_word_aligned_pointer,
+        String = "word_aligned_ptr"
+    ;
+        Assertion = foreign_type_stable,
+        String = "stable"
+    ).
+
+%---------------------%
 
 :- pred accumulate_ctor_repns(one_or_more(constructor_repn)::in,
     list(constructor_repn)::in, list(constructor_repn)::out) is det.
