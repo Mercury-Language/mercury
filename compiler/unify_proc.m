@@ -176,109 +176,103 @@ generate_clauses_for_special_pred(SpecDefnInfo, ClauseInfo, !ModuleInfo) :-
     unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
-    TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
+    info_get_module_info(!.Info, ModuleInfo),
+    TypeBody = SpecDefnInfo ^ spdi_type_body,
     Context = SpecDefnInfo ^ spdi_context,
-    IsDummy = is_type_ctor_a_builtin_dummy(TypeCtor),
-    (
-        IsDummy = is_builtin_dummy_type_ctor,
-        generate_unify_proc_body_dummy(Context, X, Y, Clause, !Info),
+    % We used to special-case the type_ctors for which
+    % is_type_ctor_a_builtin_dummy(TypeCtor) = is_builtin_dummy_type_ctor,
+    % but both those types now have user-defined unify and compare preds.
+    ( if
+        type_body_has_user_defined_equality_pred(ModuleInfo,
+            TypeBody, UserEqComp)
+    then
+        generate_unify_proc_body_user(UserEqComp, X, Y, Context,
+            Clause, !Info),
         Clauses = [Clause]
-    ;
-        IsDummy = is_not_builtin_dummy_type_ctor,
-        info_get_module_info(!.Info, ModuleInfo),
-        TypeBody = SpecDefnInfo ^ spdi_type_body,
-        ( if
-            type_body_has_user_defined_equality_pred(ModuleInfo,
-                TypeBody, UserEqComp)
-        then
-            generate_unify_proc_body_user(UserEqComp, X, Y, Context,
+    else
+        (
+            TypeBody = hlds_abstract_type(_),
+            % There is no way we can generate unify, index or compare
+            % predicates for actual abstract types. Having our ancestor
+            % pass hlds_abstract_type here is a special in-band signal
+            % that the type is actually a builtin type.
+            ( if compiler_generated_rtti_for_builtins(ModuleInfo) then
+                generate_unify_proc_body_builtin(SpecDefnInfo, X, Y,
+                    Clause, !Info)
+            else
+                unexpected($pred,
+                    "trying to create unify proc for abstract type")
+            ),
+            Clauses = [Clause]
+        ;
+            TypeBody = hlds_eqv_type(EqvType),
+            EqvIsDummy = is_type_a_dummy(ModuleInfo, EqvType),
+            (
+                EqvIsDummy = is_dummy_type,
+                % Treat this type as if it were a dummy type itself.
+                generate_unify_proc_body_dummy(Context, X, Y,
+                    Clause, !Info)
+            ;
+                EqvIsDummy = is_not_dummy_type,
+                generate_unify_proc_body_eqv(Context, EqvType, X, Y,
+                    Clause, !Info)
+            ),
+            Clauses = [Clause]
+        ;
+            TypeBody = hlds_foreign_type(_),
+            % If no user defined equality predicate is given,
+            % we treat foreign_types as if they were equivalent
+            % to the builtin type c_pointer.
+            generate_unify_proc_body_eqv(Context, c_pointer_type, X, Y,
                 Clause, !Info),
             Clauses = [Clause]
-        else
+        ;
+            TypeBody = hlds_solver_type(_),
+            generate_unify_proc_body_solver(Context, X, Y,
+                Clause, !Info),
+            Clauses = [Clause]
+        ;
+            TypeBody = hlds_du_type(_, _, MaybeRepn, _),
             (
-                TypeBody = hlds_abstract_type(_),
-                % There is no way we can generate unify, index or compare
-                % predicates for actual abstract types. Having our ancestor
-                % pass hlds_abstract_type here is a special in-band signal
-                % that the type is actually a builtin type.
-                ( if compiler_generated_rtti_for_builtins(ModuleInfo) then
-                    generate_unify_proc_body_builtin(SpecDefnInfo, X, Y,
-                        Clause, !Info)
-                else
-                    unexpected($pred,
-                        "trying to create unify proc for abstract type")
-                ),
-                Clauses = [Clause]
+                MaybeRepn = no,
+                unexpected($pred, "MaybeRepn = no")
             ;
-                TypeBody = hlds_eqv_type(EqvType),
-                EqvIsDummy = is_type_a_dummy(ModuleInfo, EqvType),
-                (
-                    EqvIsDummy = is_dummy_type,
-                    % Treat this type as if it were a dummy type itself.
-                    generate_unify_proc_body_dummy(Context, X, Y,
-                        Clause, !Info)
-                ;
-                    EqvIsDummy = is_not_dummy_type,
-                    generate_unify_proc_body_eqv(Context, EqvType, X, Y,
-                        Clause, !Info)
+                MaybeRepn = yes(Repn)
+            ),
+            DuTypeKind = Repn ^ dur_kind,
+            (
+                ( DuTypeKind = du_type_kind_mercury_enum
+                ; DuTypeKind = du_type_kind_foreign_enum(_)
                 ),
-                Clauses = [Clause]
-            ;
-                TypeBody = hlds_foreign_type(_),
-                % If no user defined equality predicate is given,
-                % we treat foreign_types as if they were equivalent
-                % to the builtin type c_pointer.
-                generate_unify_proc_body_eqv(Context, c_pointer_type, X, Y,
+                generate_unify_proc_body_enum(Context, X, Y,
                     Clause, !Info),
                 Clauses = [Clause]
             ;
-                TypeBody = hlds_solver_type(_),
-                generate_unify_proc_body_solver(Context, X, Y,
+                DuTypeKind = du_type_kind_direct_dummy,
+                generate_unify_proc_body_dummy(Context, X, Y,
                     Clause, !Info),
                 Clauses = [Clause]
             ;
-                TypeBody = hlds_du_type(_, _, MaybeRepn, _),
+                DuTypeKind = du_type_kind_notag(_, ArgType, _),
+                ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
                 (
-                    MaybeRepn = no,
-                    unexpected($pred, "MaybeRepn = no")
-                ;
-                    MaybeRepn = yes(Repn)
-                ),
-                DuTypeKind = Repn ^ dur_kind,
-                (
-                    ( DuTypeKind = du_type_kind_mercury_enum
-                    ; DuTypeKind = du_type_kind_foreign_enum(_)
-                    ),
-                    generate_unify_proc_body_enum(Context, X, Y,
-                        Clause, !Info),
-                    Clauses = [Clause]
-                ;
-                    DuTypeKind = du_type_kind_direct_dummy,
+                    ArgIsDummy = is_dummy_type,
+                    % Treat this type as if it were a dummy type
+                    % itself.
                     generate_unify_proc_body_dummy(Context, X, Y,
                         Clause, !Info),
                     Clauses = [Clause]
                 ;
-                    DuTypeKind = du_type_kind_notag(_, ArgType, _),
-                    ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
-                    (
-                        ArgIsDummy = is_dummy_type,
-                        % Treat this type as if it were a dummy type
-                        % itself.
-                        generate_unify_proc_body_dummy(Context, X, Y,
-                            Clause, !Info),
-                        Clauses = [Clause]
-                    ;
-                        ArgIsDummy = is_not_dummy_type,
-                        CtorRepns = Repn ^ dur_ctor_repns,
-                        generate_unify_proc_body_du(SpecDefnInfo,
-                            CtorRepns, X, Y, Clauses, !Info)
-                    )
-                ;
-                    DuTypeKind = du_type_kind_general,
+                    ArgIsDummy = is_not_dummy_type,
                     CtorRepns = Repn ^ dur_ctor_repns,
                     generate_unify_proc_body_du(SpecDefnInfo,
                         CtorRepns, X, Y, Clauses, !Info)
                 )
+            ;
+                DuTypeKind = du_type_kind_general,
+                CtorRepns = Repn ^ dur_ctor_repns,
+                generate_unify_proc_body_du(SpecDefnInfo,
+                    CtorRepns, X, Y, Clauses, !Info)
             )
         )
     ).
@@ -337,6 +331,9 @@ generate_unify_proc_body_user(NonCanonical, X, Y, Context, Clause, !Info) :-
             compare_functor("="), Context, umc_explicit, [], UnifyGoal),
         Goal0 = hlds_goal(conj(plain_conj, [CallGoal, UnifyGoal]), GoalInfo)
     ),
+    % XXX If the user-specified unify (or compare) predicate always aborts,
+    % we should avoid a pretest, since if it accidentally happens to succeeed,
+    % it avoids the requested abort.
     maybe_wrap_with_pretest_equality(Context, X, Y, no, Goal0, Goal, !Info),
     quantify_clause_body(all_modes, [X, Y], Goal, Context, Clause, !Info).
 
@@ -926,100 +923,95 @@ type_contains_existq_tvar(UCParams, Type) :-
     unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
-    TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
+    info_get_module_info(!.Info, ModuleInfo),
+    TypeBody = SpecDefnInfo ^ spdi_type_body,
     Context = SpecDefnInfo ^ spdi_context,
-    IsDummy = is_type_ctor_a_builtin_dummy(TypeCtor),
-    (
-        IsDummy = is_builtin_dummy_type_ctor,
-        generate_compare_proc_body_dummy(Context, Res, X, Y, Clause, !Info)
-    ;
-        IsDummy = is_not_builtin_dummy_type_ctor,
-        info_get_module_info(!.Info, ModuleInfo),
-        TypeBody = SpecDefnInfo ^ spdi_type_body,
-        ( if
-            type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
-                UserEqComp)
-        then
-            generate_compare_proc_body_user(Context, UserEqComp,
-                Res, X, Y, Clause, !Info)
-        else
+    % We used to special-case the type_ctors for which
+    % is_type_ctor_a_builtin_dummy(TypeCtor) = is_builtin_dummy_type_ctor,
+    % but both those types now have user-defined unify and compare preds.
+    ( if
+        type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
+            UserEqComp)
+    then
+        generate_compare_proc_body_user(Context, UserEqComp,
+            Res, X, Y, Clause, !Info)
+    else
+        (
+            TypeBody = hlds_abstract_type(_),
+            % There is no way we can generate unify, index or compare
+            % predicates for actual abstract types. Having our ancestor
+            % pass hlds_abstract_type here is a special in-band signal
+            % that the type is actually a builtin type.
+            ( if compiler_generated_rtti_for_builtins(ModuleInfo) then
+                generate_compare_proc_body_builtin(SpecDefnInfo,
+                    Res, X, Y, Clause, !Info)
+            else
+                unexpected($pred,
+                    "trying to create compare proc for abstract type")
+            )
+        ;
+            TypeBody = hlds_eqv_type(EqvType),
+            EqvIsDummy = is_type_a_dummy(ModuleInfo, EqvType),
             (
-                TypeBody = hlds_abstract_type(_),
-                % There is no way we can generate unify, index or compare
-                % predicates for actual abstract types. Having our ancestor
-                % pass hlds_abstract_type here is a special in-band signal
-                % that the type is actually a builtin type.
-                ( if compiler_generated_rtti_for_builtins(ModuleInfo) then
-                    generate_compare_proc_body_builtin(SpecDefnInfo,
-                        Res, X, Y, Clause, !Info)
-                else
-                    unexpected($pred,
-                        "trying to create compare proc for abstract type")
-                )
+                EqvIsDummy = is_dummy_type,
+                % Treat this type as if it were a dummy type itself.
+                generate_compare_proc_body_dummy(Context, Res, X, Y,
+                    Clause, !Info)
             ;
-                TypeBody = hlds_eqv_type(EqvType),
-                EqvIsDummy = is_type_a_dummy(ModuleInfo, EqvType),
-                (
-                    EqvIsDummy = is_dummy_type,
-                    % Treat this type as if it were a dummy type itself.
-                    generate_compare_proc_body_dummy(Context, Res, X, Y,
-                        Clause, !Info)
-                ;
-                    EqvIsDummy = is_not_dummy_type,
-                    generate_compare_proc_body_eqv(Context, EqvType,
-                        Res, X, Y, Clause, !Info)
-                )
-            ;
-                TypeBody = hlds_foreign_type(_),
-                % If no user defined equality predicate is given,
-                % we treat foreign_types as if they were equivalent
-                % to the builtin type c_pointer.
-                generate_compare_proc_body_eqv(Context, c_pointer_type,
+                EqvIsDummy = is_not_dummy_type,
+                generate_compare_proc_body_eqv(Context, EqvType,
                     Res, X, Y, Clause, !Info)
+            )
+        ;
+            TypeBody = hlds_foreign_type(_),
+            % If no user defined equality predicate is given,
+            % we treat foreign_types as if they were equivalent
+            % to the builtin type c_pointer.
+            generate_compare_proc_body_eqv(Context, c_pointer_type,
+                Res, X, Y, Clause, !Info)
+        ;
+            TypeBody = hlds_solver_type(_),
+            generate_compare_proc_body_solver(Context,
+                Res, X, Y, Clause, !Info)
+        ;
+            TypeBody = hlds_du_type(_, _, MaybeRepn, _),
+            (
+                MaybeRepn = no,
+                unexpected($pred, "MaybeRepn = no")
             ;
-                TypeBody = hlds_solver_type(_),
-                generate_compare_proc_body_solver(Context,
-                    Res, X, Y, Clause, !Info)
-            ;
-                TypeBody = hlds_du_type(_, _, MaybeRepn, _),
-                (
-                    MaybeRepn = no,
-                    unexpected($pred, "MaybeRepn = no")
-                ;
-                    MaybeRepn = yes(Repn)
+                MaybeRepn = yes(Repn)
+            ),
+            DuTypeKind = Repn ^ dur_kind,
+            (
+                ( DuTypeKind = du_type_kind_mercury_enum
+                ; DuTypeKind = du_type_kind_foreign_enum(_)
                 ),
-                DuTypeKind = Repn ^ dur_kind,
+                generate_compare_proc_body_enum(Context,
+                    Res, X, Y, Clause, !Info)
+            ;
+                DuTypeKind = du_type_kind_direct_dummy,
+                generate_compare_proc_body_dummy(Context,
+                    Res, X, Y, Clause, !Info)
+            ;
+                DuTypeKind = du_type_kind_notag(_, ArgType, _),
+                ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
                 (
-                    ( DuTypeKind = du_type_kind_mercury_enum
-                    ; DuTypeKind = du_type_kind_foreign_enum(_)
-                    ),
-                    generate_compare_proc_body_enum(Context,
-                        Res, X, Y, Clause, !Info)
-                ;
-                    DuTypeKind = du_type_kind_direct_dummy,
+                    ArgIsDummy = is_dummy_type,
+                    % Treat this type as if it were a dummy type
+                    % itself.
                     generate_compare_proc_body_dummy(Context,
                         Res, X, Y, Clause, !Info)
                 ;
-                    DuTypeKind = du_type_kind_notag(_, ArgType, _),
-                    ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
-                    (
-                        ArgIsDummy = is_dummy_type,
-                        % Treat this type as if it were a dummy type
-                        % itself.
-                        generate_compare_proc_body_dummy(Context,
-                            Res, X, Y, Clause, !Info)
-                    ;
-                        ArgIsDummy = is_not_dummy_type,
-                        CtorRepns = Repn ^ dur_ctor_repns,
-                        generate_compare_proc_body_du(SpecDefnInfo,
-                            CtorRepns, Res, X, Y, Clause, !Info)
-                    )
-                ;
-                    DuTypeKind = du_type_kind_general,
+                    ArgIsDummy = is_not_dummy_type,
                     CtorRepns = Repn ^ dur_ctor_repns,
                     generate_compare_proc_body_du(SpecDefnInfo,
                         CtorRepns, Res, X, Y, Clause, !Info)
                 )
+            ;
+                DuTypeKind = du_type_kind_general,
+                CtorRepns = Repn ^ dur_ctor_repns,
+                generate_compare_proc_body_du(SpecDefnInfo,
+                    CtorRepns, Res, X, Y, Clause, !Info)
             )
         )
     ).
@@ -1068,6 +1060,9 @@ generate_compare_proc_body_user(Context, NonCanonical, Res, X, Y,
             ComparePredName),
         goal_info_init(Context, GoalInfo),
         Goal0 = hlds_goal(Call, GoalInfo),
+        % XXX If the user-specified compare predicate always aborts,
+        % we should avoid a pretest, since if it accidentally happens
+        % to succeeed, it avoids the requested abort.
         maybe_wrap_with_pretest_equality(Context, X, Y, yes(Res),
             Goal0, Goal, !Info)
     ),

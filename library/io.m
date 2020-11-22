@@ -2190,11 +2190,27 @@
     % The reason this is defined as a foreign type is to prevent attempts
     % to deconstruct values of the type.
 :- pragma foreign_type("C", io.state, "MR_Word",
-    [can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type])
+    where equality is io_state_equal, comparison is io_state_compare.
 :- pragma foreign_type("C#", io.state, "int",
-    [can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type])
+    where equality is io_state_equal, comparison is io_state_compare.
 :- pragma foreign_type("Java", io.state, "java.lang.Object",
-    [can_pass_as_mercury_type]).
+    [can_pass_as_mercury_type])
+    where equality is io_state_equal, comparison is io_state_compare.
+
+:- pred io_state_equal(io.state::in, io.state::in) is semidet.
+
+:- pragma no_determinism_warning(io_state_equal/2).
+io_state_equal(_, _) :-
+    error("attempt to unify two I/O states").
+
+:- pred io_state_compare(comparison_result::uo, io.state::in, io.state::in)
+    is det.
+
+:- pragma no_determinism_warning(io_state_compare/3).
+io_state_compare(_, _, _) :-
+    error("attempt to compare two I/O states").
 
 :- type input_stream
     --->    input_stream(stream).
