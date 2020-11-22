@@ -155,7 +155,7 @@ real_main(!IO) :-
             Result = error(_)
         )
     ),
-    close_any_specifc_compiler_streams(!IO).
+    close_any_specific_compiler_streams(!IO).
 
     % Expand @File arguments.
     % Each argument in the above form is replaced with a list of arguments

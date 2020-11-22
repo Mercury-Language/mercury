@@ -447,7 +447,7 @@
 :- pred get_recompile_output_stream(globals::in, module_name::in,
     io.text_output_stream::out, io::di, io::uo) is det.
 
-:- pred close_any_specifc_compiler_streams(io::di, io::uo) is det.
+:- pred close_any_specific_compiler_streams(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1177,7 +1177,7 @@ get_output_stream(Globals, ModuleName, Option, Get, Set, Stream, !IO) :-
 
 %---------------------%
 
-close_any_specifc_compiler_streams(!IO) :-
+close_any_specific_compiler_streams(!IO) :-
     get_output_stream_error(ErrorStream, !IO),
     get_output_stream_progress(ProgresStream, !IO),
     get_output_stream_inference(InferenceStream, !IO),
