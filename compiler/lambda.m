@@ -33,7 +33,6 @@
 %       solutions(V__1, List),
 %       ...
 %
-%
 % Note that the mode checker requires that lambda expressions
 % not bind any of their non-local variables, such as `X' in the above example.
 %
@@ -45,11 +44,11 @@
 %
 % It might be OK to allow the parameters of the lambda goal to be
 % existentially typed, but currently that is not supported.
-% One difficulty is that it's hard to determine here which type variables
+% One difficulty is that it is hard to determine here which type variables
 % should be existentially quantified. The information is readily
 % available during type inference, and really type inference should save
 % that information in a field in the lambda_goal struct, but currently it
-% doesn't; it saves the head_type_params field in the pred_info, which
+% does not; it saves the head_type_params field in the pred_info, which
 % tells us which type variables were produced by the body, but for
 % any given lambda goal, we don't know whether the type variable was
 % produced by something outside the lambda goal or by something inside
@@ -64,7 +63,7 @@
 % we don't know what `T' is until the predicate is called, and it might
 % be different for each call.
 %
-% Currently we don't support second-order polymorphism, so we can't support
+% Currently we don't support second-order polymorphism, so we cannot support
 % existentially typed lambda expressions either.
 %
 %-----------------------------------------------------------------------------%
@@ -448,12 +447,12 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         % Optimize a special case: replace
         %   `(pred(Y1, Y2, ...) is Detism :-
         %       p(X1, X2, ..., Y1, Y2, ...))'
-        % where `p' has determinism `Detism' with
+        % where `p' has determinism `Detism', with
         %   `p(X1, X2, ...)'
         %
         % This optimization is only valid if the modes of the Xi are input,
-        % since only input arguments can be curried. It's also only valid
-        % if all the inputs in the Yi precede the outputs. It's also not valid
+        % since only input arguments can be curried. It is also only valid
+        % if all the inputs in the Yi precede the outputs. It is also not valid
         % if any of the Xi are in the Yi.
 
         LambdaGoal = hlds_goal(LambdaGoalExpr, _),
@@ -462,7 +461,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
             Call_PredInfo, Call_ProcInfo),
         list.remove_suffix(CallVars, Vars, InitialVars),
 
-        % Check that none of the variables that we're trying to use
+        % Check that none of the variables that we are trying to use
         % as curried arguments are lambda-bound variables.
         not (
             list.member(InitialVar, InitialVars),
@@ -471,10 +470,10 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
 
         % Check that the code models are compatible. Note that det is not
         % compatible with semidet, and semidet is not compatible with nondet,
-        % since the calling conventions are different. If we're using the LLDS
-        % back-end (i.e. not --high-level-code), det is compatible with nondet.
-        % If we're using the MLDS back-end, then predicates and functions have
-        % different calling conventions.
+        % since the calling conventions are different. If we are using the LLDS
+        % backend, det is compatible with nondet. If we are using the MLDS
+        % backend, then predicates and functions have different calling
+        % conventions.
         Call_CodeModel = proc_info_interface_code_model(Call_ProcInfo),
         determinism_to_code_model(Detism, CodeModel),
         module_info_get_globals(ModuleInfo0, Globals),
@@ -533,7 +532,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
             PredOrFunc, OrigPredName, OrigLine, LambdaCount, PredName),
         LambdaContext = goal_info_get_context(LambdaGoalInfo),
         % The TVarSet is a superset of what it really ought be,
-        % but that shouldn't matter.
+        % but that should not matter.
         % Existentially typed lambda expressions are not yet supported
         % (see the documentation at top of this file).
         ExistQVars = [],
@@ -702,8 +701,7 @@ restrict_var_maps(HeadVars, Goal, !VarSet, !VarTypes, !RttiVarMaps) :-
     MaxVarNum = var_to_int(MaxVar),
     % Variable numbers go from 1 to MaxVarNum. Reserve array slots
     % from 0 to MaxVarNum, since wasting the space of one array element
-    % is preferable to having to always to do a subtraction on every array
-    % lookup.
+    % is preferable to having to do a subtraction on every array lookup.
     array.init(MaxVarNum + 1, no, VarUses0),
     mark_vars_as_used(HeadVars, VarUses0, VarUses1),
     find_used_vars_in_goal(Goal, VarUses1, VarUses),
