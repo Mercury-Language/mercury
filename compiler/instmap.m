@@ -1253,14 +1253,23 @@ merge_var_insts_pass(MaybeType, Inst1, Insts2Plus, !MergedInsts, !Error,
 
 %---------------------------------------------------------------------------%
 
-merge_instmap_delta(_, _, _, unreachable, InstMapDelta, InstMapDelta,
-        !ModuleInfo).
-merge_instmap_delta(_, _, _, reachable(InstMapping), unreachable,
-        reachable(InstMapping), !ModuleInfo).
-merge_instmap_delta(InstMap, NonLocals, VarTypes, reachable(InstMappingA),
-        reachable(InstMappingB), reachable(InstMapping), !ModuleInfo) :-
-    merge_instmapping_delta(InstMap, NonLocals, VarTypes,
-        InstMappingA, InstMappingB, InstMapping, !ModuleInfo).
+merge_instmap_delta(InstMap, NonLocals, VarTypes,
+        MaybeInstMappingA, MaybeInstMappingB, MaybeInstMapping, !ModuleInfo) :-
+    (
+        MaybeInstMappingA = unreachable,
+        MaybeInstMapping = MaybeInstMappingB
+    ;
+        MaybeInstMappingA = reachable(InstMappingA),
+        (
+            MaybeInstMappingB = unreachable,
+            MaybeInstMapping = MaybeInstMappingA
+        ;
+            MaybeInstMappingB = reachable(InstMappingB),
+            merge_instmapping_delta(InstMap, NonLocals, VarTypes,
+                InstMappingA, InstMappingB, InstMapping, !ModuleInfo),
+            MaybeInstMapping = reachable(InstMapping)
+        )
+    ).
 
 :- pred merge_instmapping_delta(instmap::in, set_of_progvar::in, vartypes::in,
     instmapping::in, instmapping::in, instmapping::out,
@@ -1271,7 +1280,8 @@ merge_instmapping_delta(InstMap, NonLocals, VarTypes,
     map.keys(InstMappingA, VarsInA),
     map.keys(InstMappingB, VarsInB),
     set_of_var.sorted_list_to_set(VarsInA, SetofVarsInA),
-    set_of_var.insert_list(VarsInB, SetofVarsInA, SetofVars0),
+    set_of_var.sorted_list_to_set(VarsInB, SetofVarsInB),
+    set_of_var.union(SetofVarsInA, SetofVarsInB, SetofVars0),
     set_of_var.intersect(SetofVars0, NonLocals, SetofVars),
     set_of_var.to_sorted_list(SetofVars, ListofVars),
     merge_instmapping_delta_vars(ListofVars, InstMap, VarTypes,
@@ -1295,16 +1305,14 @@ merge_instmapping_delta_vars([Var | Vars], InstMap, VarTypes,
     else
         instmap_lookup_var(InstMap, Var, InstB)
     ),
-    ( if
-        lookup_var_type(VarTypes, Var, VarType),
-        inst_merge(InstA, InstB, yes(VarType), Inst1, !ModuleInfo)
-    then
+    lookup_var_type(VarTypes, Var, VarType),
+    ( if inst_merge(InstA, InstB, yes(VarType), InstAB, !ModuleInfo) then
         % XXX Given instmap_lookup_var(InstMap, Var, OldInst),
-        % we should probably set Inst not directly from Inst1, but
-        % from a conjunction of OldInst and Inst1. If OldInst says that
-        % Var is bound to f, and Inst1 says that it is bound to g,
+        % we should probably set Inst not directly from InstAB, but
+        % from a conjunction of OldInst and InstAB. If OldInst says that
+        % Var is bound to f, and InstAB says that it is bound to g,
         % Inst should be `unreachable', not bound(g). If OldInst says
-        % that Var is bound to f or g, and Inst1 says that it is bound
+        % that Var is bound to f or g, and InstAB says that it is bound
         % to g or h, Inst should say that it is bound(g).
         %
         % If there is an invariant to the effect that such situations
@@ -1315,7 +1323,7 @@ merge_instmapping_delta_vars([Var | Vars], InstMap, VarTypes,
         % arise only after inlining, as in puzzle_detism_bug.m in
         % tests/hard_coded. -zs
 
-        Inst = Inst1,
+        Inst = InstAB,
         map.det_insert(Var, Inst, !InstMapping)
     else
         term.var_to_int(Var, VarInt),
