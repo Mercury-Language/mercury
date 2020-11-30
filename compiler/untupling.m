@@ -426,7 +426,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         !ModuleInfo) :-
     proc_info_get_headvars(ProcInfo, AuxHeadVars),
     proc_info_get_goal(ProcInfo, Goal @ hlds_goal(_GoalExpr, GoalInfo)),
-    proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InitialAuxInstMap),
+    proc_info_get_initial_instmap(!.ModuleInfo, ProcInfo, InitialAuxInstMap),
     pred_info_get_typevarset(PredInfo, TVarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     pred_info_get_class_context(PredInfo, ClassContext),

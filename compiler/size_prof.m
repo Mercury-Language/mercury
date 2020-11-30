@@ -243,7 +243,7 @@ size_prof_process_proc(Transform, proc(PredId, ProcId), !ProcInfo,
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-    proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+    proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     % The with_types are needed to avoid a combinatorial explosion
     % of ambiguity in the type checker.

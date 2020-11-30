@@ -95,7 +95,7 @@ saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
     implicitly_quantify_clause_body_general(ordinary_nonlocals_no_lambda,
         HeadVars, _Warnings, Goal1, Goal2,
         Varset1, Varset, VarTypes1, VarTypes, RttiVarMaps1, RttiVarMaps),
-    proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+    proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
     recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
         Goal2, Goal, VarTypes, InstVarSet, InstMap0, !ModuleInfo),

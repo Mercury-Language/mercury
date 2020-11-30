@@ -1339,7 +1339,7 @@ mode_get_from_to_insts(ModuleInfo, Mode, FromToInsts) :-
     % rerunning mode analysis rather than just recompute_instmap_delta?).
     %
 recompute_instmap_delta_proc(RecomputeAtomic, !ProcInfo, !ModuleInfo) :-
-    proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+    proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet),

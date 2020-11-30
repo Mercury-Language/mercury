@@ -662,7 +662,7 @@ deep_prof_transform_proc(ModuleInfo, PredProcId, !ProcInfo) :-
 make_deep_original_body(ModuleInfo, ProcInfo, DeepOriginalBody) :-
     proc_info_get_goal(ProcInfo, Body),
     proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_initial_instmap(ProcInfo, ModuleInfo, Instmap),
+    proc_info_get_initial_instmap(ModuleInfo, ProcInfo, Instmap),
     proc_info_get_vartypes(ProcInfo, Vartypes),
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     (

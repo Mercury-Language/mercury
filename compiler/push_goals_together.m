@@ -129,7 +129,7 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
             HeadVars, _Warnings, Goal1, Goal2,
             VarSet0, VarSet, VarTypes0, VarTypes,
             RttiVarMaps0, RttiVarMaps),
-        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+        proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
         proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
         recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
             Goal2, Goal, VarTypes, InstVarSet, InstMap0, !ModuleInfo),

@@ -611,7 +611,7 @@ ssdebug_process_proc_det(SSTraceLevel, PredId, ProcId,
 
         % Make a list which records the value for each of the head
         % variables at the call port.
-        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
+        proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
         make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar,
             CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
             !VarTypes, map.init, BoundVarDescsAtCall),
@@ -705,7 +705,7 @@ ssdebug_process_proc_semi(SSTraceLevel, PredId, ProcId,
 
         % Make a list which records the value for each of the head
         % variables at the call port.
-        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
+        proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
         make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar,
             CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
             !VarTypes, map.init, BoundVarDescsAtCall),
@@ -835,7 +835,7 @@ ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
 
         % Make a list which records the value for each of the head
         % variables at the call port.
-        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
+        proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
         make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar,
             CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
             !VarTypes, map.init, BoundVarDescsAtCall),
@@ -935,8 +935,7 @@ ssdebug_process_proc_failure(SSTraceLevel, PredId, ProcId,
 
         % Make a list which records the value for each of the head
         % variables at the call port.
-        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo,
-            InitInstMap),
+        proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
         make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar,
             CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
             !VarTypes, map.init, _BoundVarDescsAtCall),
@@ -1004,8 +1003,7 @@ ssdebug_process_proc_erroneous(SSTraceLevel, PredId, ProcId,
 
         % Make a list which records the value for each of the head
         % variables at the call port.
-        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo,
-            InitInstMap),
+        proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
         make_arg_list(0, InitInstMap, HeadVars, map.init, CallArgListVar,
             CallArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
             !VarTypes, map.init, _BoundVarDescsAtCall),

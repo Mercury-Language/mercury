@@ -265,7 +265,7 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
     ),
     NestedContext0 = simplify_nested_context(InsideDuplForSwitch,
         ProcIsModelNon, NumEnclosingBarriers),
-    proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+    proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     simplify_top_level_goal(Goal0, Goal, NestedContext0, InstMap0,

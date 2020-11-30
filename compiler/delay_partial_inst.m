@@ -231,7 +231,7 @@ delay_partial_inst_proc(ModuleInfo, PredId, ProcTable, ProcId,
         map.lookup(ProcTable, ProcId, !:ProcInfo),
         proc_info_get_varset(!.ProcInfo, VarSet0),
         proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-        proc_info_get_initial_instmap(!.ProcInfo, ModuleInfo, InstMap0),
+        proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
         proc_info_get_goal(!.ProcInfo, Goal0),
 
         Changed0 = no,

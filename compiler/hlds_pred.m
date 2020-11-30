@@ -2429,7 +2429,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- pred proc_info_arglives(proc_info::in, module_info::in,
     list(is_live)::out) is det.
 :- pred proc_info_arg_info(proc_info::in, list(arg_info)::out) is det.
-:- pred proc_info_get_initial_instmap(proc_info::in, module_info::in,
+:- pred proc_info_get_initial_instmap(module_info::in, proc_info::in,
     instmap::out) is det.
 
 :- pred proc_info_ensure_unique_names(proc_info::in, proc_info::out) is det.
@@ -3482,7 +3482,7 @@ proc_info_arg_info(ProcInfo, ArgInfo) :-
         unexpected($pred, "arg_info not set")
     ).
 
-proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
+proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_argmodes(ProcInfo, ArgModes),
     mode_list_get_initial_insts(ModuleInfo, ArgModes, InitialInsts),

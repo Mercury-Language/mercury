@@ -289,7 +289,7 @@ expand_try_goals_in_proc(PredId, ProcId, !ModuleInfo, !Specs) :-
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             !:PredInfo, !:ProcInfo),
         proc_info_get_goal(!.ProcInfo, Goal0),
-        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
+        proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
 
         Info0 = trys_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, no),
         expand_try_goals_in_goal(InitInstMap, Goal0, Goal, Info0, Info),

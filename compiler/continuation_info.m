@@ -798,7 +798,7 @@ generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_arg_info(ProcInfo, ArgInfos),
     pred_info_get_arg_types(PredInfo, ArgTypes),
-    proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
+    proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap),
     map.init(VarLocs0),
     set.init(TypeVars0),
     ( if

@@ -521,7 +521,7 @@ ho_fixup_proc_info(MustRecompute, !.Goal, !Info) :-
             proc_info_set_goal(!.Goal, !ProcInfo),
             requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
             proc_info_get_goal(!.ProcInfo, !:Goal),
-            proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap),
+            proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap),
             proc_info_get_vartypes(!.ProcInfo, VarTypes),
             proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
             recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,

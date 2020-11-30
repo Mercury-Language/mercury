@@ -286,7 +286,7 @@ detect_cse_in_proc_pass(ModuleInfo, Redo, !ProcInfo) :-
     % `detect_cse_in_goal'.
 
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_initial_instmap(!.ProcInfo, ModuleInfo, InstMap0),
+    proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
     proc_info_get_varset(!.ProcInfo, Varset0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),

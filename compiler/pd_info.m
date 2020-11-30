@@ -150,7 +150,7 @@ pd_info_init_unfold_info(PredProcId, PredInfo, ProcInfo, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     proc_info_get_argmodes(ProcInfo, ArgModes),
     get_constrained_inst_vars(ModuleInfo, ArgModes, HeadInstVars),
-    proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
+    proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap),
     CostDelta = 0,
     pd_term.local_term_info_init(LocalTermInfo),
     Parents = set.make_singleton_set(PredProcId),

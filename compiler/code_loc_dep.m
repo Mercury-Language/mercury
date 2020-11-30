@@ -190,7 +190,7 @@ code_loc_dep_init(FollowVars, ResumePoint, !CI, !:CLD) :-
     get_pred_info(!.CI, PredInfo),
     get_proc_info(!.CI, ProcInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
+    proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap),
     proc_info_get_liveness_info(ProcInfo, Liveness),
     CodeModel = proc_info_interface_code_model(ProcInfo),
     build_input_arg_list(ProcInfo, ArgList),

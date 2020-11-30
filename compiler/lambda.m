@@ -231,7 +231,7 @@ expand_lambdas_in_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
             ordinary_nonlocals_no_lambda, HeadVars, _Warnings,
             Goal1, Goal2, VarSet1, VarSet2, VarTypes1, VarTypes2,
             RttiVarMaps1, RttiVarMaps2),
-        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+        proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
         recompute_instmap_delta(recompute_atomic_instmap_deltas,
             Goal2, Goal, VarTypes2, InstVarSet0, InstMap0, !ModuleInfo)
     ;

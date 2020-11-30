@@ -286,7 +286,7 @@ stm_process_proc(PredId, ProcId, !ModuleInfo) :-
 
 stm_process_proc_2(!ProcInfo, PredId, ProcId, !PredInfo, !ModuleInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstmap),
+    proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstmap),
     StmInfo0 = stm_info(!.ModuleInfo, PredId, ProcId, !.ProcInfo,
         !.PredInfo, no, 0),
     stm_process_goal(InitInstmap, Goal0, Goal, StmInfo0, StmInfo),

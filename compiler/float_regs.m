@@ -528,7 +528,7 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
+    proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet0),
     proc_info_get_has_parallel_conj(!.ProcInfo, HasParallelConj),

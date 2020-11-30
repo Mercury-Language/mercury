@@ -1435,7 +1435,7 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
     proc_info_set_varset(VarSet, !VariantProcInfo),
     proc_info_set_vartypes(VarTypes, !VariantProcInfo),
 
-    proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InstMap0),
+    proc_info_get_initial_instmap(!.ModuleInfo, ProcInfo, InstMap0),
     proc_info_get_goal(ProcInfo, Goal0),
     lco_transform_variant_goal(!.ModuleInfo, VariantMap, VarToAddr, InstMap0,
         Goal0, Goal, _Changed, !VariantProcInfo),

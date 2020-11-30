@@ -216,7 +216,7 @@ detect_switches_in_proc(Info, !ProcInfo) :-
         VarTypes, BodyDeletedCallCallees0),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
-    proc_info_get_initial_instmap(!.ProcInfo, ModuleInfo, InstMap0),
+    proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
     detect_switches_in_goal(InstMap0, no, Goal0, Goal, LocalInfo0, LocalInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     LocalInfo = local_switch_detect_info(_ModuleInfo, _AllowMulti, Requant,

@@ -231,7 +231,7 @@ hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
 
         % We need to calculate the initial instmap for the aux proc by applying
         % the instmap_deltas from the InvGoals to InitialInstMap.
-        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo,
+        proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo,
             InitialInstMap),
         InitialAuxInstMap =
             compute_initial_aux_instmap(InvGoals, InitialInstMap),

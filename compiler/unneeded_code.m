@@ -318,7 +318,7 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-    proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
+    proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InitInstMap),
     Goal0 = hlds_goal(_, GoalInfo0),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
     apply_instmap_delta(InstMapDelta, InitInstMap, FinalInstMap),
