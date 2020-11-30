@@ -710,29 +710,29 @@ write_type_assign_hlds_constraints(Stream, TypeVarSet, TypeBindings,
     Constraints =
         hlds_constraints(ConstraintsToProve, AssumedConstraints, _, _),
     write_type_assign_constraints(Stream, TypeVarSet, TypeBindings,
-        "&", AssumedConstraints, no, !IO),
+        AssumedConstraints, "&", !IO),
     write_type_assign_constraints(Stream, TypeVarSet, TypeBindings,
-        "<=", ConstraintsToProve, no, !IO).
+        ConstraintsToProve, "<=", !IO).
 
 :- pred write_type_assign_constraints(io.text_output_stream::in, tvarset::in,
-    tsubst::in, string::in, list(hlds_constraint)::in, bool::in,
-    io::di, io::uo) is det.
+    tsubst::in, list(hlds_constraint)::in, string::in, io::di, io::uo) is det.
 
-write_type_assign_constraints(_, _, _, _, [], _, !IO).
-write_type_assign_constraints(Stream, TypeVarSet, TypeBindings, Operator,
-        [Constraint | Constraints], FoundOne, !IO) :-
-    (
-        FoundOne = no,
-        io.write_strings(Stream, ["\n\t", Operator, " "], !IO)
-    ;
-        FoundOne = yes,
+write_type_assign_constraints(_, _, _, [], _, !IO).
+write_type_assign_constraints(Stream, TypeVarSet, TypeBindings,
+        [Constraint | Constraints], MaybeOperator, !IO) :-
+    % Write & or <= only before the first constraint; put only a comma
+    % before the later constraints.
+    ( if MaybeOperator = "" then
         io.write_string(Stream, ",\n\t   ", !IO)
+    else
+        io.format(Stream, "\n\t%s ", [s(MaybeOperator)], !IO)
     ),
     apply_rec_subst_to_constraint(TypeBindings, Constraint, BoundConstraint),
     retrieve_prog_constraint(BoundConstraint, ProgConstraint),
-    mercury_output_constraint(TypeVarSet, varnums, ProgConstraint, Stream, !IO),
-    write_type_assign_constraints(Stream, TypeVarSet, TypeBindings, Operator,
-        Constraints, yes, !IO).
+    mercury_output_constraint(TypeVarSet, varnums, ProgConstraint,
+        Stream, !IO),
+    write_type_assign_constraints(Stream, TypeVarSet, TypeBindings,
+        Constraints, "", !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.type_assign.
