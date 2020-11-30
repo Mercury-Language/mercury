@@ -345,13 +345,11 @@ write_origin(Stream, ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
             pred_id_to_string(ModuleInfo, OrigPredId), !IO),
         io.nl(Stream, !IO),
         io.write_string(Stream, "% transformation: ", !IO),
-        io.write(Stream, Transformation, !IO),
-        io.nl(Stream, !IO)
+        io.write_line(Stream, Transformation, !IO)
     ;
         Origin = origin_created(Creation),
         io.write_string(Stream, "% created: ", !IO),
-        io.write(Stream, Creation, !IO),
-        io.nl(Stream, !IO)
+        io.write_line(Stream, Creation, !IO)
     ;
         Origin = origin_assertion(_, _),
         io.write_string(Stream, "% assertion\n", !IO)
@@ -433,10 +431,10 @@ write_origin(Stream, ModuleInfo, TVarSet, VarNamePrint, Origin, !IO) :-
             s(MutableModuleNameStr)], !IO)
     ;
         Origin = origin_initialise,
-        io.write_string(Stream, "%% initialise\n", !IO)
+        io.write_string(Stream, "% initialise\n", !IO)
     ;
         Origin = origin_finalise,
-        io.write_string(Stream, "%% finalise\n", !IO)
+        io.write_string(Stream, "% finalise\n", !IO)
     ;
         ( Origin = origin_lambda(_, _, _)
         ; Origin = origin_user(_)
@@ -562,8 +560,7 @@ write_clause(Info, Stream, Lang, ModuleInfo,PredId, PredOrFunc, VarSet,
     ;
         ImplLang = impl_lang_foreign(ForeignLang),
         io.write_string(Stream, "% Language of implementation: ", !IO),
-        io.write(Stream, ForeignLang, !IO),
-        io.nl(Stream, !IO)
+        io.write_line(Stream, ForeignLang, !IO)
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     AllProcIds = pred_info_all_procids(PredInfo),
@@ -1192,8 +1189,7 @@ write_proc_arg_info(Stream, DumpOptions, Indent, VarSet, VarNamePrint,
         MaybeArgLives = yes(ArgLives),
         write_indent(Stream, Indent, !IO),
         io.write_string(Stream, "% arg lives: ", !IO),
-        io.print(Stream, ArgLives, !IO),
-        io.nl(Stream, !IO)
+        io.print_line(Stream, ArgLives, !IO)
     ;
         MaybeArgLives = no
     ),
@@ -1212,8 +1208,7 @@ write_proc_arg_info(Stream, DumpOptions, Indent, VarSet, VarNamePrint,
     then
         write_indent(Stream, Indent, !IO),
         io.write_string(Stream, "% arg_infos: ", !IO),
-        io.print(Stream, ArgInfos, !IO),
-        io.nl(Stream, !IO)
+        io.print_line(Stream, ArgInfos, !IO)
     else
         true
     ).
@@ -1229,8 +1224,7 @@ write_proc_deleted_callee_set(Stream, DeletedCallCalleeSet, !IO) :-
         DeletedCallCallees = [_ | _],
         io.write_string(Stream,
             "% procedures called from deleted goals: ", !IO),
-        io.write(Stream, DeletedCallCallees, !IO),
-        io.nl(Stream, !IO)
+        io.write_line(Stream, DeletedCallCallees, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1247,8 +1241,7 @@ write_hlds_proc_static(Stream, ProcStatic, !IO) :-
     io.format(Stream, "%% proc static filename: %s\n", [s(FileName)], !IO),
     io.format(Stream, "%% proc static line number: %d\n", [i(LineNumber)], !IO),
     io.write_string(Stream, "% proc static is interface: ", !IO),
-    io.write(Stream, InInterface, !IO),
-    io.nl(Stream, !IO),
+    io.write_line(Stream, InInterface, !IO),
     list.foldl2(write_hlds_ps_call_site(Stream),
         CallSiteStatics, 0, _, !IO),
     list.foldl2(write_hlds_ps_coverage_point(Stream),
@@ -1263,8 +1256,7 @@ write_hlds_ps_call_site(Stream, CallSiteStaticData, !SlotNum, !IO) :-
         CallSiteStaticData = normal_call(CalleeRttiProcLabel, TypeSubst,
             FileName, LineNumber, GoalPath),
         io.write_string(Stream, "% normal call to ", !IO),
-        io.write(Stream, CalleeRttiProcLabel, !IO),
-        io.nl(Stream, !IO),
+        io.write_line(Stream, CalleeRttiProcLabel, !IO),
         io.format(Stream, "%% type subst <%s>, goal path <%s>\n",
             [s(TypeSubst), s(goal_path_to_string(GoalPath))], !IO),
         io.format(Stream, "%% filename <%s>, line number <%d>\n",
