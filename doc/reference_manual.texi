@@ -291,6 +291,10 @@ over more than one source line.
 (String literals may also contain embedded newlines.)
 
 @item name
+@c In these paragraphs, we use @code instead of @samp
+@c to wrap examples, because @samp puts quotes around its argument,
+@c and we cannot expect readers to figure out which quotes
+@c are subject matter and which are decoration.
 A name is either an unquoted name or a quoted name.
 An unquoted name is a lowercase letter followed by zero or more letters,
 underscores, and digits.
@@ -300,6 +304,16 @@ Within a quoted name,
 two adjacent single quotes stand for a single single quote.
 Quoted names can also contain
 backslash escapes of the same form as for strings.
+
+Note that if a character is an operator,
+then the result of enclosing that character in single quotes
+is also an operator.
+Since e.g. @code{:} is an operator,
+@code{':'} is an operator as well,
+which means that e.g. @code{Char = ':'} is not valid code.
+To make it valid code, you need to put parentheses around the operator,
+to prevent the scope of the operator from extending to the surrounding code.
+This means that code such as @code{Char = (':')} is valid.
 
 @item variable
 A variable is an uppercase letter or underscore
