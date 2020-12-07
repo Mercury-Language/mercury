@@ -308,9 +308,9 @@ backslash escapes of the same form as for strings.
 Note that if a character is an operator,
 then the result of enclosing that character in single quotes
 is also an operator.
-Since e.g. @code{:} is an operator,
+Since e.g.@: @code{:} is an operator,
 @code{':'} is an operator as well,
-which means that e.g. @code{Char = ':'} is not valid code.
+which means that e.g.@: @code{Char = ':'} is not valid code.
 To make it valid code, you need to put parentheses around the operator,
 to prevent the scope of the operator from extending to the surrounding code.
 This means that code such as @code{Char = (':')} is valid.
@@ -360,7 +360,7 @@ For decimal, binary, octal and hexadecimal literals,
 an arbitrary number of underscores (@samp{_})
 may be inserted between the digits.
 An arbitrary number of underscores may also be inserted
-between the radix prefix (i.e. @samp{0b}, @samp{0o} and @samp{0x})
+between the radix prefix (i.e.@: @samp{0b}, @samp{0o} and @samp{0x})
 and the initial digit.
 Similarly, an arbitrary number of underscores
 may be inserted between the final digit and the signedness suffix.
@@ -379,7 +379,7 @@ The fraction part or the exponent (but not both) may be omitted.
 An arbitrary number of underscores (@samp{_})
 may be inserted between the digits in a floating point literal.
 Underscores may @emph{not} occur adjacent to any non-digit characters
-(i.e. @samp{.}, @samp{e}, @samp{E}, @samp{+} or @samp{-})
+(i.e.@: @samp{.}, @samp{e}, @samp{E}, @samp{+} or @samp{-})
 in a floating point literal.
 The purpose of the underscores is to improve readability,
 and they do not affect the numeric value of the literal.
@@ -1013,7 +1013,7 @@ each of which requires @var{Goal} to have the named determinism.
 A switch completeness check, typically used to enhance the robustness of code.
 If @var{Goal} is a switch on @var{Var}
 and the switch is @emph{complete},
-i.e. the switch has an arm for every function symbol that @var{Var}
+i.e.@: the switch has an arm for every function symbol that @var{Var}
 could be bound to at this point in the code,
 then @code{require_complete_switch [@var{Var}] @var{Goal}}
 is equivalent to @var{Goal}.
@@ -5368,7 +5368,7 @@ The Melbourne Mercury implementation requires that
 @itemize
 @item @emph{either} every module must be in a file
 whose name is the fully qualified module name followed by @samp{.m},
-(so a module named e.g. @samp{foo.bar.baz},
+(so a module named e.g.@: @samp{foo.bar.baz},
 must be in a file named @file{foo.bar.baz.m})
 @item @emph{or} that the programmer tell the implementation
 about which files contain which modules
@@ -5562,7 +5562,7 @@ then no finalisation predicates will be executed.
 @section Module-local mutable variables
 
 Certain special cases require a module to have
-one or more mutable (i.e. destructively updatable) variables,
+one or more mutable (i.e.@: destructively updatable) variables,
 for example to hold the constraint store for a solver type.
 
 A mutable variable is declared using the @samp{mutable} directive:
@@ -5649,9 +5649,9 @@ more than one foreign name attribute for each language.
 For the C backends,
 this attribute allows foreign code to access the mutable variable
 as an external variable called @var{Name}.
-For the low-level C backend, e.g. the asm_fast grades,
+For the low-level C backend, e.g.@: the asm_fast grades,
 the type of this variable will be @code{MR_Word}.
-For the high-level C backend, e.g. the hlc grades,
+For the high-level C backend, e.g.@: the hlc grades,
 the type of this variable depends upon the Mercury type of the mutable.
 For mutables of a Mercury primitive type,
 the corresponding C type is given
@@ -6986,7 +6986,7 @@ and a ``catch_any'' branch is present,
 the exception is bound to @var{CatchAnyVar}
 and the @var{CatchAnyGoal} executed.
 @var{CatchAnyVar} is visible in the @var{CatchAnyGoal} only,
-and is existentially typed, i.e. it has type @samp{some [T] T}.
+and is existentially typed, i.e.@: it has type @samp{some [T] T}.
 
 Finally, if the thrown value did not unify with any ``catch'' term,
 and there is no ``catch_any'' branch, the exception is rethrown.
@@ -7525,7 +7525,7 @@ In compilation grades that do not support minimal model tabling,
 this attribute is ignored.
 These attributes may not be used with procedures
 that do not make calls back to Mercury,
-i.e. that have the @samp{will_not_call_mercury} attribute.
+i.e.@: that have the @samp{will_not_call_mercury} attribute.
 The default for foreign procedures that @samp{may_call_mercury},
 in case none is specified, is
 @samp{may_call_mm_tabled}.
@@ -8275,7 +8275,7 @@ for the integer value in the language @var{Lang}
 that the programmer wants to be used to represent that constructor.
 
 The mapping defined by this list of pairs must form a bijection,
-i.e. the list must map distinct constructors to distinct values,
+i.e.@: the list must map distinct constructors to distinct values,
 and vice versa.
 The Mercury compiler is not required to check this, because it cannot;
 even if two symbolic names (such as C macros) are distinct,
@@ -8384,7 +8384,7 @@ are not affected by this attribute.
 If the @samp{prefix} attribute is also specified,
 then the prefix is added to the symbolic name
 @emph{after} the conversion to uppercase has been performed,
-i.e. the characters in the prefix
+i.e.@: the characters in the prefix
 are not affected by the @samp{uppercase} attribute.
 
 @end table
@@ -8542,7 +8542,7 @@ for the module containing the @samp{pragma foreign_import_module} declaration.
 @c  backend, the foreign languages involved were IL, C# and MC++.
 @c
 @c  I suspect the restriction on foreign_import_module cycles may have
-@c  arisen because C# and MC++ were secondary (i.e. non-target) foreign
+@c  arisen because C# and MC++ were secondary (i.e.@: non-target) foreign
 @c  languages. Compilation of secondary foreign languages is handled by
 @c  hoisting the code out to a separate source file and that requires
 @c  the foreign_import_module graph to be acyclic.
@@ -8780,7 +8780,7 @@ For example, the symbolic name for the Mercury constructor @samp{foo}
 would be @code{foo}.
 
 @c It would be useful if there were some documented way of mapping
-@c these things into [0, N - 1], e.g. for array lookups.
+@c these things into [0, N - 1], e.g.@: for array lookups.
 
 @node Using pragma foreign_proc for C
 @subsubsection Using pragma foreign_proc for C
@@ -9028,7 +9028,7 @@ such as in memory blocks allocated by @samp{malloc},
 the Boehm collector won't see them, and may collect the block prematurely.
 Programmers can avoid this either
 by not storing pointers to Boehm-allocated memory in malloc-allocated blocks,
-or by storing them e.g. on the stack as well.
+or by storing them e.g.@: on the stack as well.
 
 Boehm gc recognizes pointers to the blocks it has allocated
 only if they point either to the start to the block,
@@ -9409,7 +9409,7 @@ on entry to the Java code.
 With our current implementation,
 the Java code must set the values of all output variables,
 even if the procedure fails
-(i.e. sets the @code{SUCCESS_INDICATOR} variable to @code{false}).
+(i.e.@: sets the @code{SUCCESS_INDICATOR} variable to @code{false}).
 @c If the procedure
 @c succeeds, the Java code must set the values of all output arguments
 @c If the procedure fails, the Java code need only
@@ -10438,7 +10438,7 @@ in its own @samp{state} parameter
 Each @samp{state} parameter has two arguments:
 the first gives the name of the mutable,
 while the second must be the name of a state variable prefixed by @samp{!},
-e.g. @samp{!LoggingLevel}.
+e.g.@: @samp{!LoggingLevel}.
 The language implementation supplies
 the initial value of the mutable
 as the value of (in this case) @samp{!.LoggingLevel}
@@ -10996,7 +10996,7 @@ Note that loop checking for nondet and multi predicates assumes that
 calls to these predicates generate all their solutions and then fail.
 If a caller asks them only for some solutions
 and then cuts away all later solutions
-(e.g. via a quantification
+(e.g.@: via a quantification
 that only asks whether a solution satisfying a particular test exists),
 then the cut-away call never gets a chance
 to record the fact that it is not longer active.
@@ -11372,7 +11372,7 @@ then the compiler will quit with an error message.
 @c
 @c The Melbourne Mercury implementation includes some fairly
 @c low-level support for implementing Herbrand constraint solvers
-@c (i.e. Prolog-style logic variables).
+@c (i.e.@: Prolog-style logic variables).
 @c
 @c In particular, you can use the @samp{reserve_tag} pragma
 @c to tell the compiler to reserve a tag in the data representation
@@ -11404,7 +11404,7 @@ then the compiler will quit with an error message.
 @c
 @c Note that neither the @samp{reserve_tag} pragma nor the @samp{--reserve-tag}
 @c compiler option will have any useful effect if the @samp{--high-level-data}
-@c option is used (e.g. for the .NET or Java back-ends).
+@c option is used (e.g.@: for the .NET or Java back-ends).
 
 @c XXX TO DO!
 @c @node Compile-time garbage collection
