@@ -291,15 +291,15 @@ over more than one source line.
 (String literals may also contain embedded newlines.)
 
 @item name
-@c In these paragraphs, we use @code instead of @samp
-@c to wrap examples, because @samp puts quotes around its argument,
+@c In these paragraphs, we use @t instead of @samp or @code
+@c to wrap examples as @t will not put quotes around its argument,
 @c and we cannot expect readers to figure out which quotes
 @c are subject matter and which are decoration.
 A name is either an unquoted name or a quoted name.
 An unquoted name is a lowercase letter followed by zero or more letters,
 underscores, and digits.
 A quoted name is any sequence of zero or more characters
-enclosed in single quotes (@code{'}).
+enclosed in single quotes (@t{'}).
 Within a quoted name,
 two adjacent single quotes stand for a single single quote.
 Quoted names can also contain
@@ -308,12 +308,12 @@ backslash escapes of the same form as for strings.
 Note that if a character is an operator,
 then the result of enclosing that character in single quotes
 is also an operator.
-Since e.g.@: @code{:} is an operator,
-@code{':'} is an operator as well,
-which means that e.g.@: @code{Char = ':'} is not valid code.
+Since e.g.@: @t{:} is an operator,
+@t{':'} is an operator as well,
+which means that e.g.@: @t{Char = ':'} is not valid code.
 To make it valid code, you need to put parentheses around the operator,
 to prevent the scope of the operator from extending to the surrounding code.
-This means that code such as @code{Char = (':')} is valid.
+This means that code such as @t{Char = (':')} is valid.
 
 @item variable
 A variable is an uppercase letter or underscore
@@ -1644,8 +1644,15 @@ or an explicit type qualification.
 @subsection Data-functors
 
 A data-functor is an integer, a float, a string,
-a character literal (any single-character name),
 a name, an implementation-defined literal, or a compound data-term.
+
+Character literals are written as single-character names,
+quoted or unquoted.
+If the character is an operator,
+it will be necessary to enclose the name within parentheses
+in some contexts,
+e.g.@: @t{(':')}.
+
 A compound data-term is a compound term
 which does not match the form of a special data-term (@pxref{Data-terms}),
 and whose arguments are data-terms.
