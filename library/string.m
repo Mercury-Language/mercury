@@ -1498,6 +1498,20 @@
 :- func int64_to_string(int64::in) = (string::uo) is det.
 :- func uint64_to_string(uint64::in) = (string::uo) is det.
 
+    % Convert an unsigned 64-bit integer to a string in base 16.
+    % Alphabetic digits will be lowercase (e.g. a-f).
+    %
+:- func uint64_to_hex_string(uint64::in) = (string::uo) is det.
+
+    % Convert an unsigned 64-bit integer to a string in base 16.
+    % Alphabetic digits will be uppercase (e.g. A-F).
+    %
+:- func uint64_to_uc_hex_string(uint64::in) = (string::uo) is det.
+
+    % Convert an unsigned 64-bit integer to a string in base 8.
+    %
+:- func uint64_to_octal_string(uint64::in) = (string::uo) is det.
+
     % Convert a float to a string.
     % In the current implementation, the resulting float will be in the form
     % that it was printed using the format string "%#.<prec>g".
@@ -5853,6 +5867,86 @@ int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     S = java.lang.Long.toUnsignedString(U64);
+").
+
+%---------------------%
+
+:- pragma foreign_proc("C",
+    uint64_to_hex_string(U64::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    char buffer[17]; // 16 for digits, 1 for nul.
+    sprintf(buffer, ""%"" PRIx64, U64);
+    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
+    strcpy(S, buffer);
+").
+
+:- pragma foreign_proc("C#",
+    uint64_to_hex_string(U64::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = U64.ToString(""x"");
+").
+
+:- pragma foreign_proc("Java",
+    uint64_to_hex_string(U64::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = java.lang.Long.toHexString(U64);
+").
+
+%---------------------%
+
+:- pragma foreign_proc("C",
+    uint64_to_uc_hex_string(U64::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    char buffer[17]; // 16 for digits, 1 for nul.
+    sprintf(buffer, ""%"" PRIX64, U64);
+    MR_allocate_aligned_string_msg(S, strlen(buffer), MR_ALLOC_ID);
+    strcpy(S, buffer);
+").
+
+:- pragma foreign_proc("C#",
+    uint64_to_uc_hex_string(U64::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = U64.ToString(""X"");
+").
+
+:- pragma foreign_proc("Java",
+    uint64_to_uc_hex_string(U64::in) = (S::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    S = java.lang.Long.toHexString(U64).toUpperCase();
+").
+
+:- pragma foreign_proc("C",
+    uint64_to_octal_string(U64::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    char buffer[23]; // 22 for digits, 1 for nul.
+    sprintf(buffer, ""%"" PRIo64, U64);
+    MR_allocate_aligned_string_msg(Str, strlen(buffer), MR_ALLOC_ID);
+    strcpy(Str, buffer);
+").
+
+:- pragma foreign_proc("C#",
+    uint64_to_octal_string(U64::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    // We need to cast to a long here since C# does not provide an overloading
+    // of ToString() for ulongs.  This works since ToString() will use the
+    // unsigned representation for non-decimal bases.
+    Str = System.Convert.ToString((long) U64, 8);
+").
+
+:- pragma foreign_proc("Java",
+    uint64_to_octal_string(U64::in) = (Str::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Str = java.lang.Long.toOctalString(U64);
 ").
 
 %---------------------%

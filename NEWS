@@ -152,6 +152,9 @@ Changes to the Mercury standard library
     - func `uint_to_hex_string/1`
     - func `uint_to_uc_hex_string/1`
     - func `uint_to_octal_string/1`
+    - func `uint64_to_hex_string/1`
+    - func `uint64_to_uc_hex_string/1`
+    - func `uint64_to_octal_string/1`
 
 * The following function symbols have been added to the type `poly_type`:
 
