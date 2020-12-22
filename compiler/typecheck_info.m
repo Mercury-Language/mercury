@@ -44,9 +44,9 @@
 
 :- type typecheck_info.
 
-:- pred typecheck_info_init(module_info::in, pred_id::in, bool::in,
-    prog_varset::in, pred_status::in, pred_markers::in,
-    list(error_spec)::in, typecheck_info::out) is det.
+:- pred typecheck_info_init(module_info::in, pred_id::in, pred_info::in,
+    prog_varset::in, pred_status::in, pred_markers::in, list(error_spec)::in,
+    typecheck_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -277,15 +277,13 @@
 
 %-----------------------------------------------------------------------------%
 
-typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
-        ClauseVarSet, Status, PredMarkers, NonOverloadErrors, Info) :-
+typecheck_info_init(ModuleInfo, PredId, PredInfo, ClauseVarSet, Status,
+        PredMarkers, NonOverloadErrors, Info) :-
     CallsAreFullyQualified = calls_are_fully_qualified(PredMarkers),
-    (
-        IsFieldAccessFunction = no,
-        MaybeFieldAccessFunction = no
-    ;
-        IsFieldAccessFunction = yes,
-        MaybeFieldAccessFunction = yes(Status)
+    ( if pred_info_is_field_access_function(ModuleInfo, PredInfo) then
+        MaybeFieldAccessFunctionStatus = yes(Status)
+    else
+        MaybeFieldAccessFunctionStatus = no
     ),
     OverloadErrors = no,
     module_info_get_globals(ModuleInfo, Globals),
@@ -296,7 +294,7 @@ typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
         AmbiguityErrorLimit),
     NoSuffixIntegerMap = set_tree234.init,
     SubInfo = typecheck_sub_info(Verbose, CallsAreFullyQualified,
-        AmbiguityErrorLimit, MaybeFieldAccessFunction,
+        AmbiguityErrorLimit, MaybeFieldAccessFunctionStatus,
         NonOverloadErrors, OverloadErrors, NoSuffixIntegerMap),
     ClauseNum = 0,
     ClauseContext = type_error_clause_context(ModuleInfo, PredId,

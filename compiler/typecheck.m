@@ -667,15 +667,10 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
         module_info_get_class_table(ModuleInfo, ClassTable),
         make_head_hlds_constraints(ClassTable, TypeVarSet0,
             PredConstraints, Constraints),
-        ( if pred_info_is_field_access_function(ModuleInfo, !.PredInfo) then
-            IsFieldAccessFunction = yes
-        else
-            IsFieldAccessFunction = no
-        ),
-        pred_info_get_markers(!.PredInfo, PredMarkers),
         type_assign_set_init(TypeVarSet0, ExplicitVarTypes0,
             !.ExternalTypeParams, Constraints, !:TypeAssignSet),
-        typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
+        pred_info_get_markers(!.PredInfo, PredMarkers),
+        typecheck_info_init(ModuleInfo, PredId, !.PredInfo,
             ClauseVarSet, PredStatus, PredMarkers, !.Specs, !:Info),
         get_clause_list_for_replacement(ClausesRep0, Clauses0),
         typecheck_clause_list(HeadVars, ArgTypes0, Clauses0, Clauses,
@@ -3094,8 +3089,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
     FunctorConsTypeInfo = cons_type_info(TVarSet0, ExistQVars,
         FunctorType, ConsArgTypes, Constraints0, Source0),
     (
-        Source0 = source_type(SourceTypePrime),
-        SourceType = SourceTypePrime
+        Source0 = source_type(SourceType)
     ;
         ( Source0 = source_builtin_type(_)
         ; Source0 = source_get_field_access(_)
@@ -3112,10 +3106,8 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         Source = source_get_field_access(SourceType),
         RetType = FieldType,
         ArgTypes = [FunctorType],
-        TVarSet = TVarSet0,
-        Constraints = Constraints0,
-        ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
-            RetType, ArgTypes, Constraints, Source))
+        ConsTypeInfo = ok(cons_type_info(TVarSet0, ExistQVars,
+            RetType, ArgTypes, Constraints0, Source))
     ;
         AccessType = set,
         Source = source_set_field_access(SourceType),
@@ -3133,18 +3125,16 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         %   Pair = Pair0 ^ snd := 2.
 
         type_vars(FieldType, TVarsInField),
+        % Most of the time, TVarsInField is [], so provide a fast path
+        % for this case.
         (
             TVarsInField = [],
-            TVarSet = TVarSet0,
             RetType = FunctorType,
             ArgTypes = [FunctorType, FieldType],
-
             % None of the constraints are affected by the updated field,
             % so the constraints are unchanged.
-            Constraints = Constraints0,
-
-            ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
-                RetType, ArgTypes, Constraints, Source))
+            ConsTypeInfo = ok(cons_type_info(TVarSet0, ExistQVars,
+                RetType, ArgTypes, Constraints0, Source))
         ;
             TVarsInField = [_ | _],
 
@@ -3186,7 +3176,6 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
                     RenamedFieldType),
                 apply_variable_renaming_to_type(TVarRenaming, FunctorType,
                     OutputFunctorType),
-
                 % Rename the class constraints, projecting the constraints
                 % onto the set of type variables occurring in the types of the
                 % arguments of the call to `'field :='/2'. Note that we have
@@ -3195,7 +3184,6 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
                 set.list_to_set(CallTVars0, CallTVars),
                 project_and_rename_constraints(ClassTable, TVarSet, CallTVars,
                     TVarRenaming, Constraints0, Constraints),
-
                 RetType = OutputFunctorType,
                 ArgTypes = [FunctorType, RenamedFieldType],
                 ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
