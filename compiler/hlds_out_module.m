@@ -291,14 +291,19 @@ type_table_entry_is_local(_TypeCtor - TypeDefn) :-
     int::in, assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
 
 write_type_table_entries(_, _, _, [], !IO).
-write_type_table_entries(Info, Stream, Indent,
-        [TypeCtor - TypeDefn | Types], !IO) :-
+write_type_table_entries(Info, Stream, Indent, [Type | Types], !IO) :-
+    write_type_table_entry(Info, Stream, Indent, Type, !IO),
+    write_type_table_entries(Info, Stream, Indent, Types, !IO).
+
+:- pred write_type_table_entry(hlds_out_info::in, io.text_output_stream::in,
+    int::in, pair(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
+
+write_type_table_entry(Info, Stream, Indent, TypeCtor - TypeDefn, !IO) :-
     hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet),
     hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     hlds_data.get_type_defn_context(TypeDefn, Context),
-
     % Write the context.
     io.write_char(Stream, '\n', !IO),
     maybe_output_context_comment(Stream, Indent, "", Context, !IO),
@@ -309,7 +314,6 @@ write_type_table_entries(Info, Stream, Indent,
     else
         true
     ),
-
     write_indent(Stream, Indent, !IO),
     ( if
         ( TypeBody = hlds_solver_type(_)
@@ -323,33 +327,34 @@ write_type_table_entries(Info, Stream, Indent,
     write_type_name(Stream, TypeCtor, !IO),
     write_type_params(Stream, TVarSet, TypeParams, !IO),
     write_type_body(Info, Stream, TypeCtor, TypeBody, Indent + 1,
-        TVarSet, !IO),
-
-    write_type_table_entries(Info, Stream, Indent, Types, !IO).
+        TVarSet, !IO).
 
 :- pred write_type_params(io.text_output_stream::in, tvarset::in,
     list(type_param)::in, io::di, io::uo) is det.
 
-write_type_params(_, _, [], !IO).
-write_type_params(Stream, TVarSet, [P], !IO) :-
-    io.write_string(Stream, "(", !IO),
-    mercury_output_var(TVarSet, print_name_only, P, Stream, !IO),
-    io.write_string(Stream, ")", !IO).
-write_type_params(Stream, TVarSet, [P | Ps], !IO) :-
-    Ps = [_ | _],
-    io.write_string(Stream, "(", !IO),
-    mercury_output_var(TVarSet, print_name_only, P, Stream, !IO),
-    write_type_params_loop(Stream, TVarSet, Ps, !IO),
-    io.write_string(Stream, ")", !IO).
+write_type_params(Stream, TVarSet, TypeParams, !IO) :-
+    (
+        TypeParams = []
+    ;
+        TypeParams = [HeadParam | TailParams],
+        io.write_string(Stream, "(", !IO),
+        write_type_params_loop(Stream, TVarSet, HeadParam, TailParams, !IO),
+        io.write_string(Stream, ")", !IO)
+    ).
 
 :- pred write_type_params_loop(io.text_output_stream::in, tvarset::in,
-    list(type_param)::in, io::di, io::uo) is det.
+    type_param::in, list(type_param)::in, io::di, io::uo) is det.
 
-write_type_params_loop(_, _, [], !IO).
-write_type_params_loop(Stream, TVarSet, [P | Ps], !IO) :-
-    io.write_string(Stream, ", ", !IO),
-    mercury_output_var(TVarSet, print_name_only, P, Stream, !IO),
-    write_type_params_loop(Stream, TVarSet, Ps, !IO).
+write_type_params_loop(Stream, TVarSet, HeadParam, TailParams, !IO) :-
+    mercury_output_var(TVarSet, print_name_only, HeadParam, Stream, !IO),
+    (
+        TailParams = []
+    ;
+        TailParams = [HeadTailParam | TailTailParams],
+        io.write_string(Stream, ", ", !IO),
+        write_type_params_loop(Stream, TVarSet,
+            HeadTailParam, TailTailParams, !IO)
+    ).
 
 :- pred write_type_body(hlds_out_info::in, io.text_output_stream::in,
     type_ctor::in, hlds_type_body::in, int::in, tvarset::in,
@@ -383,22 +388,21 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
             ;
                 CheaperTagTest = cheaper_tag_test(ExpConsId, ExpConsTag,
                     CheapConsId, CheapConsTag),
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% cheaper tag test:\n", !IO),
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "%   from ", !IO),
-                io.write_string(Stream,
-                    cons_id_and_arity_to_string(ExpConsId), !IO),
-                io.write_string(Stream, " tag ", !IO),
-                io.print(Stream, ExpConsTag, !IO),
-                io.nl(Stream, !IO),
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "%   to   ", !IO),
-                io.write_string(Stream,
-                    cons_id_and_arity_to_string(CheapConsId), !IO),
-                io.write_string(Stream, " tag ", !IO),
-                io.print(Stream, CheapConsTag, !IO),
-                io.nl(Stream, !IO)
+                ExpConsIdStr = cons_id_and_arity_to_string(
+                    unqual_cons_id(ExpConsId)),
+                CheapConsIdStr = cons_id_and_arity_to_string(
+                    unqual_cons_id(CheapConsId)),
+                IndentStr = indent_string(Indent),
+                io.format(Stream, "%s%% cheaper tag test:\n",
+                    [s(IndentStr)], !IO),
+                io.format(Stream, "%s%%   from %s\n",
+                    [s(IndentStr), s(ExpConsIdStr)], !IO),
+                io.format(Stream, "%s%%      %s\n",
+                    [s(IndentStr), s(du_cons_tag_to_string(ExpConsTag))], !IO),
+                io.format(Stream, "%s%%   to %s\n",
+                    [s(IndentStr), s(CheapConsIdStr)], !IO),
+                io.format(Stream, "%s%%      %s\n",
+                    [s(IndentStr), s(du_cons_tag_to_string(CheapConsTag))], !IO)
             ),
             (
                 DuTypeKind = du_type_kind_mercury_enum,
@@ -528,6 +532,16 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         io.write_string(Stream, ".\n", !IO)
     ).
 
+:- func unqual_cons_id(cons_id) = cons_id.
+
+unqual_cons_id(ConsId) = UnQualConsId :-
+    ( if ConsId = cons(SymName, Arity, TypeCtor) then
+        UnQualConsId =
+            cons(unqualified(unqualify_name(SymName)), Arity, TypeCtor)
+    else
+        UnQualConsId = ConsId
+    ).
+
 :- func maybe_canonical_to_simple_string(maybe_canonical) = string.
 
 maybe_canonical_to_simple_string(MaybeCanonical) = String :-
@@ -585,13 +599,13 @@ foreign_type_assertion_to_string(Assertion) = String :-
         String = "stable"
     ).
 
-%---------------------%
-
 :- pred accumulate_ctor_repns(one_or_more(constructor_repn)::in,
     list(constructor_repn)::in, list(constructor_repn)::out) is det.
 
 accumulate_ctor_repns(one_or_more(HeadCR, TailCRs), !AccCRs) :-
     !:AccCRs = [HeadCR | TailCRs] ++ !.AccCRs.
+
+%---------------------%
 
 :- pred write_constructors(io.text_output_stream::in, tvarset::in, int::in,
     constructor::in, list(constructor)::in, io::di, io::uo) is det.
@@ -615,6 +629,8 @@ write_constructor_repns(Stream, TVarSet, Indent, CtorRepns, !IO) :-
             HeadCtorRepn, TailCtorRepns, !IO)
     ).
 
+%---------------------%
+
 :- pred write_constructors_loop(io.text_output_stream::in, tvarset::in,
     int::in, string::in, constructor::in, list(constructor)::in,
     io::di, io::uo) is det.
@@ -623,19 +639,13 @@ write_constructors_loop(Stream, TVarSet, Indent, ArrowOrSemi0,
         HeadCtor, TailCtors, !IO) :-
     write_indent(Stream, Indent, !IO),
     io.write_string(Stream, ArrowOrSemi0, !IO),
-    ArrowOrSemi = ";       ",
     (
         TailCtors = [],
-        MaybePeriodNL = ".\n"
-    ;
-        TailCtors = [_ | _],
-        MaybePeriodNL = "\n"
-    ),
-    write_ctor(Stream, TVarSet, MaybePeriodNL, HeadCtor, !IO),
-    (
-        TailCtors = []
+        write_ctor(Stream, TVarSet, Indent, HeadCtor, !IO)
     ;
         TailCtors = [HeadTailCtor | TailTailCtors],
+        write_ctor(Stream, TVarSet, Indent, HeadCtor, !IO),
+        ArrowOrSemi = ";       ",
         write_constructors_loop(Stream, TVarSet, Indent, ArrowOrSemi,
             HeadTailCtor, TailTailCtors, !IO)
     ).
@@ -648,88 +658,326 @@ write_constructor_repns_loop(Stream, TVarSet, Indent, ArrowOrSemi0,
         HeadCtorRepn, TailCtorRepns, !IO) :-
     write_indent(Stream, Indent, !IO),
     io.write_string(Stream, ArrowOrSemi0, !IO),
-    ArrowOrSemi = ";       ",
     (
         TailCtorRepns = [],
-        MaybePeriodNL = ".\n"
-    ;
-        TailCtorRepns = [_ | _],
-        MaybePeriodNL = "\n"
-    ),
-    write_ctor_repn(Stream, TVarSet, Indent, MaybePeriodNL, HeadCtorRepn, !IO),
-    (
-        TailCtorRepns = []
+        write_ctor_repn(Stream, TVarSet, Indent, HeadCtorRepn, !IO)
     ;
         TailCtorRepns = [HeadTailCtorRepn | TailTailCtorRepns],
+        write_ctor_repn(Stream, TVarSet, Indent, HeadCtorRepn, !IO),
+        ArrowOrSemi = ";       ",
         write_constructor_repns_loop(Stream, TVarSet, Indent, ArrowOrSemi,
             HeadTailCtorRepn, TailTailCtorRepns, !IO)
     ).
 
-:- pred write_ctor(io.text_output_stream::in, tvarset::in, string::in,
+%---------------------%
+
+:- pred write_ctor(io.text_output_stream::in, tvarset::in, int::in,
     constructor::in, io::di, io::uo) is det.
 
-write_ctor(Stream, TVarSet, MaybePeriodNL, Ctor, !IO) :-
-    mercury_output_ctor(TVarSet, Ctor, Stream, !IO),
-    io.write_string(Stream, MaybePeriodNL, !IO).
+write_ctor(Stream, TVarSet, Indent, Ctor, !IO) :-
+    % NOTE The code of this predicate is almost identical to the code of
+    % write_ctor_repn below and mercury_output_ctor in parse_tree_out.m.
+    % Any changes made here will probably need to be made there as well.
+    Ctor = ctor(_Ordinal, MaybeExistConstraints, SymName, Args, Arity, _Ctxt),
 
-:- pred write_ctor_repn(io.text_output_stream::in, tvarset::in,
-    int::in, string::in, constructor_repn::in, io::di, io::uo) is det.
-
-write_ctor_repn(Stream, TVarSet, Indent, MaybePeriodNL, CtorRepn, !IO) :-
-    CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, Name, Tag, ArgRepns,
-        Arity, Context),
-    Args = list.map(discard_repn_from_ctor_arg, ArgRepns),
-    Ctor = ctor(Ordinal, MaybeExistConstraints, Name, Args, Arity, Context),
-    mercury_output_ctor(TVarSet, Ctor, Stream, !IO),
-    io.write_string(Stream, MaybePeriodNL, !IO),
-    write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, "        ", !IO), % The same width as ArrowOrSemi.
-    io.write_string(Stream, "% tag: ", !IO),
-    io.print(Stream, Tag, !IO),
-    io.nl(Stream, !IO),
+    % The module name in SymName must be the same as the module qualifier
+    % of the type_ctor, so there is no point in printing it.
+    Name = unqualify_name(SymName),
+    NameStr = mercury_bracketed_atom_to_string(not_next_to_graphic_token, Name),
+    % The width of ArrowOrSemi is eight spaces, which is the same as
+    % four indents.
+    ASIndent = 4,
+    maybe_cons_exist_constraints_to_prefix_suffix(TVarSet,
+        indent_string(Indent + ASIndent), "\n", MaybeExistConstraints,
+        ExistConstraintsPrefix, ExistConstraintsSuffix),
+    maybe_brace_for_name_prefix_suffix(Arity, Name, BracePrefix, BraceSuffix),
+    io.write_string(Stream, ExistConstraintsPrefix, !IO),
     (
-        ArgRepns = []
+        Args = [],
+        io.format(Stream, "%s%s%s",
+            [s(BracePrefix), s(NameStr), s(BraceSuffix)], !IO)
     ;
-        ArgRepns = [_ | _],
-        write_indent(Stream, Indent, !IO),
-        io.write_string(Stream, "        ", !IO),
-        io.write_string(Stream, "% packed arg widths:\n", !IO),
-        write_arg_widths(Stream, Indent, 1, ArgRepns, !IO)
+        Args = [HeadArg | TailArgs],
+        io.format(Stream, "%s%s(\n", [s(BracePrefix), s(NameStr)], !IO),
+        AnyFieldName = does_any_arg_have_a_field_name(Args),
+        mercury_output_ctor_args(Stream, TVarSet, Indent + ASIndent + 1,
+            AnyFieldName, HeadArg, TailArgs, !IO),
+        write_indent(Stream, Indent + ASIndent, !IO),
+        io.format(Stream, ")%s\n", [s(BraceSuffix)], !IO)
+    ),
+    io.write_string(Stream, BraceSuffix, !IO),
+    io.write_string(Stream, ExistConstraintsSuffix, !IO),
+    io.write_string(Stream, "\n", !IO).
+
+:- pred write_ctor_repn(io.text_output_stream::in, tvarset::in, int::in,
+    constructor_repn::in, io::di, io::uo) is det.
+
+write_ctor_repn(Stream, TVarSet, Indent, CtorRepn, !IO) :-
+    % NOTE The code of this predicate is almost identical to the code of
+    % write_ctor_repn below and mercury_output_ctor in parse_tree_out.m.
+    % Any changes made here will probably need to be made there as well.
+    CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, SymName,
+        ConsTag, ArgRepns, Arity, _Ctxt),
+
+    % The module name in SymName must be the same as the module qualifier
+    % of the type_ctor, so there is no point in printing it.
+    Name = unqualify_name(SymName),
+    NameStr = mercury_bracketed_atom_to_string(not_next_to_graphic_token, Name),
+    % The width of ArrowOrSemi is eight spaces, which is the same as
+    % four indents.
+    ASIndent = 4,
+    maybe_cons_exist_constraints_to_prefix_suffix(TVarSet,
+        indent_string(Indent + ASIndent), "\n", MaybeExistConstraints,
+        ExistConstraintsPrefix, ExistConstraintsSuffix),
+    maybe_brace_for_name_prefix_suffix(Arity, Name, BracePrefix, BraceSuffix),
+    io.write_string(Stream, ExistConstraintsPrefix, !IO),
+    io.write_string(Stream, BracePrefix, !IO),
+    ConsTagString = string.format("%s%% tag: %s\n",
+        [s(indent_string(Indent + ASIndent)),
+        s(du_cons_tag_to_string(ConsTag))]),
+    (
+        ArgRepns = [],
+        io.format(Stream, "%s%s%s\n%s",
+            [s(BracePrefix), s(NameStr), s(BraceSuffix), s(ConsTagString)], !IO)
+    ;
+        ArgRepns = [HeadArgRepn | TailArgRepns],
+        io.format(Stream, "%s%s(\n%s",
+            [s(BracePrefix), s(NameStr), s(ConsTagString)], !IO),
+        AnyFieldName = does_any_arg_repn_have_a_field_name(ArgRepns),
+        mercury_output_ctor_arg_repns(Stream, TVarSet, Indent + ASIndent + 1,
+            AnyFieldName, 1, HeadArgRepn, TailArgRepns, !IO),
+        write_indent(Stream, Indent + ASIndent, !IO),
+        io.format(Stream, ")%s\n", [s(BraceSuffix)], !IO)
+    ),
+    io.write_string(Stream, ExistConstraintsSuffix, !IO).
+
+%---------------------%
+
+:- pred mercury_output_ctor_args(io.text_output_stream::in, tvarset::in,
+    int::in, bool::in, constructor_arg::in, list(constructor_arg)::in,
+    io::di, io::uo) is det.
+
+mercury_output_ctor_args(Stream, TVarSet, Indent, AnyFieldName,
+        HeadArg, TailArgs, !IO) :-
+    HeadArg = ctor_arg(MaybeFieldName, Type, _Context),
+    write_indent(Stream, Indent, !IO),
+    (
+        AnyFieldName = no
+    ;
+        AnyFieldName = yes,
+        (
+            MaybeFieldName = no,
+            io.format(Stream, "%24s", [s("")], !IO)
+        ;
+            MaybeFieldName = yes(ctor_field_name(FieldName, _Ctxt)),
+            io.format(Stream, "%-20s :: ",
+                [s(unqualify_name(FieldName))], !IO)
+        )
+    ),
+    mercury_output_type(TVarSet, print_name_only, Type, Stream, !IO),
+    (
+        TailArgs = [],
+        io.write_string(Stream, "\n", !IO)
+    ;
+        TailArgs = [HeadTailArg | TailTailArgs],
+        io.write_string(Stream, ",\n", !IO),
+        mercury_output_ctor_args(Stream, TVarSet, Indent, AnyFieldName,
+            HeadTailArg, TailTailArgs, !IO)
     ).
 
-:- func discard_repn_from_ctor_arg(constructor_arg_repn) = constructor_arg.
-
-discard_repn_from_ctor_arg(CtorArgRepn) = CtorArg :-
-    CtorArgRepn = ctor_arg_repn(Name, Type, _Width, Context),
-    CtorArg = ctor_arg(Name, Type, Context).
-
-    % write_arg_widths(Indent, CurArgNum, !.Offset, Args, !IO):
-    %
-    % CurArgNum should be the argument number of the first argument
-    % in Args (if any).
-    %
-    % !.Offset should be the offset within the constructor's heap cell
-    % of the first argument in Args *that begins a word*. If the first
-    % argument in Args does *not* begin a word (i.e. it is
-    % partial_word_shifted), then its storage will be within the word
-    % at offset !.Offset - 1.
-    %
-:- pred write_arg_widths(io.text_output_stream::in, int::in, int::in,
+:- pred mercury_output_ctor_arg_repns(io.text_output_stream::in, tvarset::in,
+    int::in, bool::in, int::in, constructor_arg_repn::in,
     list(constructor_arg_repn)::in, io::di, io::uo) is det.
 
-write_arg_widths(_, _, _, [], !IO).
-write_arg_widths(Stream, Indent, CurArgNum, [Arg | Args], !IO) :-
-    Arg = ctor_arg_repn(_MaybeFieldName, _Type, PosWidth, _Context),
+mercury_output_ctor_arg_repns(Stream, TVarSet, Indent, AnyFieldName,
+        CurArgNum, HeadArgRepn, TailArgRepns, !IO) :-
+    HeadArgRepn = ctor_arg_repn(MaybeFieldName, Type, ArgPosWidth, _Context),
     write_indent(Stream, Indent, !IO),
-    io.write_string(Stream, "        ", !IO),
     (
-        PosWidth = apw_full(ArgOnlyOffset, CellOffset),
+        AnyFieldName = no
+    ;
+        AnyFieldName = yes,
+        (
+            MaybeFieldName = no,
+            io.format(Stream, "%24s", [s("")], !IO)
+        ;
+            MaybeFieldName = yes(ctor_field_name(FieldName, _Ctxt)),
+            io.format(Stream, "%-20s :: ",
+                [s(unqualify_name(FieldName))], !IO)
+        )
+    ),
+    mercury_output_type(TVarSet, print_name_only, Type, Stream, !IO),
+    (
+        TailArgRepns = [],
+        io.write_string(Stream, "\n", !IO),
+        write_arg_pos_width(Stream, Indent, CurArgNum, ArgPosWidth, !IO)
+    ;
+        TailArgRepns = [HeadTailArgRepn | TailTailArgRepns],
+        io.write_string(Stream, ",\n", !IO),
+        write_arg_pos_width(Stream, Indent, CurArgNum, ArgPosWidth, !IO),
+        mercury_output_ctor_arg_repns(Stream, TVarSet, Indent, AnyFieldName,
+            CurArgNum + 1, HeadTailArgRepn, TailTailArgRepns, !IO)
+    ).
+
+%---------------------%
+
+:- func does_any_arg_have_a_field_name(list(constructor_arg)) = bool.
+
+does_any_arg_have_a_field_name([]) = no.
+does_any_arg_have_a_field_name([Arg | Args]) = SomeArgHasFieldName :-
+    Arg = ctor_arg(MaybeFieldName, _, _),
+    (
+        MaybeFieldName = yes(_),
+        SomeArgHasFieldName = yes
+    ;
+        MaybeFieldName = no,
+        SomeArgHasFieldName = does_any_arg_have_a_field_name(Args)
+    ).
+
+:- func does_any_arg_repn_have_a_field_name(list(constructor_arg_repn)) = bool.
+
+does_any_arg_repn_have_a_field_name([]) = no.
+does_any_arg_repn_have_a_field_name([ArgRepn | ArgRepns])
+        = SomeArgHasFieldName :-
+    ArgRepn = ctor_arg_repn(MaybeFieldName, _, _, _),
+    (
+        MaybeFieldName = yes(_),
+        SomeArgHasFieldName = yes
+    ;
+        MaybeFieldName = no,
+        SomeArgHasFieldName = does_any_arg_repn_have_a_field_name(ArgRepns)
+    ).
+
+%---------------------%
+
+:- func du_cons_tag_to_string(cons_tag) = string.
+
+du_cons_tag_to_string(ConsTag) = String :-
+    (
+        ConsTag = shared_local_tag_no_args(ptag(Ptag), LocalSectag, SectagMask),
+        (
+            SectagMask = lsectag_always_rest_of_word,
+            MaskString = "rest of word"
+        ;
+            SectagMask = lsectag_must_be_masked,
+            MaskString = "must be masked"
+        ),
+        String = string.format("ptag %u, local sectag %s, no args, %s",
+            [u8(Ptag), s(local_sectag_to_string(LocalSectag)), s(MaskString)])
+    ;
+        ConsTag = local_args_tag(LocalArgsTagInfo),
+        (
+            LocalArgsTagInfo = local_args_only_functor,
+            String = "ptag 0, local sectag none, only functor"
+        ;
+            LocalArgsTagInfo = local_args_not_only_functor(ptag(Ptag),
+                LocalSectag),
+            String = string.format("ptag %u, local sectag %s",
+                [u8(Ptag), s(local_sectag_to_string(LocalSectag))])
+        )
+    ;
+        ConsTag = remote_args_tag(RemoteArgsTagInfo),
+        (
+            RemoteArgsTagInfo = remote_args_only_functor,
+            String = "ptag 0, remote sectag none, only functor"
+        ;
+            RemoteArgsTagInfo = remote_args_unshared(ptag(Ptag)),
+            String = string.format("ptag %u, remote sectag none, unshared",
+                [u8(Ptag)])
+        ;
+            RemoteArgsTagInfo = remote_args_shared(ptag(Ptag), RemoteSectag),
+            RemoteSectag = remote_sectag(SectagValue, SectagSize),
+            (
+                SectagSize = rsectag_word,
+                String = string.format("ptag %u, remote sectag %u full word",
+                    [u8(Ptag), u(SectagValue)])
+            ;
+                SectagSize = rsectag_subword(SectagBits),
+                SectagBits = sectag_bits(NumRemoteSectagBits, Mask),
+                String = string.format(
+                    "ptag %u, remote sectag %u in %u bits, mask %x",
+                    [u8(Ptag), u(SectagValue), u8(NumRemoteSectagBits),
+                    u(Mask)])
+            )
+        ;
+            RemoteArgsTagInfo = remote_args_ctor(Data),
+            String = string.format("ctor %u", [u(Data)])
+        )
+    ;
+        ConsTag = no_tag,
+        String = "notag"
+    ;
+        ConsTag = direct_arg_tag(ptag(Ptag)),
+        String = string.format("direct arg tag %u", [u8(Ptag)])
+    ;
+        ConsTag = dummy_tag,
+        String = "dummy tag"
+    ;
+        ConsTag = foreign_tag(Lang, ForeignName),
+        String = string.format("foreign %s for %s",
+            [s(ForeignName), s(foreign_language_string(Lang))])
+    ;
+        ConsTag = int_tag(IntTag),
+        (
+            IntTag = int_tag_int(N),
+            String = string.format("enum %d", [i(N)])
+        ;
+            ( IntTag = int_tag_uint(_)
+            ; IntTag = int_tag_int8(_)
+            ; IntTag = int_tag_uint8(_)
+            ; IntTag = int_tag_int16(_)
+            ; IntTag = int_tag_uint16(_)
+            ; IntTag = int_tag_int32(_)
+            ; IntTag = int_tag_uint32(_)
+            ; IntTag = int_tag_int64(_)
+            ; IntTag = int_tag_uint64(_)
+            ),
+            unexpected($pred, "non-du cons_tag")
+        )
+    ;
+        ( ConsTag = float_tag(_)
+        ; ConsTag = string_tag(_)
+        ; ConsTag = ground_term_const_tag(_, _)
+        ; ConsTag = type_info_const_tag(_)
+        ; ConsTag = typeclass_info_const_tag(_)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = deep_profiling_proc_layout_tag(_, _)
+        ; ConsTag = tabling_info_tag(_, _)
+        ; ConsTag = table_io_entry_tag(_, _)
+        ; ConsTag = closure_tag(_, _, _)
+        ),
+        unexpected($pred, "non-du cons_tag")
+    ).
+
+:- func local_sectag_to_string(local_sectag) = string.
+
+local_sectag_to_string(LocalSectag) = String :-
+    % NOTE _PrimSec and _Mask are computable from the other parts
+    % of the cons_tag. This means that printing them would just be clutter,
+    % *except* in the case where they are computed *incorrectly*
+    % from those other parts.
+    LocalSectag = local_sectag(SectagValue, _PrimSec, SectagBits),
+    SectagBits = sectag_bits(NumBits, _Mask),
+    ( if NumBits = 0u8 then
+        String = "none"
+    else
+        String = string.format("%u in %u bits", [u(SectagValue), u8(NumBits)])
+    ).
+
+:- pred write_arg_pos_width(io.text_output_stream::in, int::in, int::in,
+    arg_pos_width::in, io::di, io::uo) is det.
+
+write_arg_pos_width(Stream, Indent, CurArgNum, ArgPosWidth, !IO) :-
+    write_indent(Stream, Indent, !IO),
+    (
+        ArgPosWidth = apw_full(ArgOnlyOffset, CellOffset),
         ArgOnlyOffset = arg_only_offset(AOWordNum),
         CellOffset = cell_offset(CellWordNum),
-        io.format(Stream, "%% arg %d: full word at offset %d/%d\n",
+        io.format(Stream, "%% arg %d: full word, offset %d/%d\n",
             [i(CurArgNum), i(AOWordNum), i(CellWordNum)], !IO)
     ;
-        PosWidth = apw_double(ArgOnlyOffset, CellOffset, DoubleWordKind),
+        ArgPosWidth = apw_double(ArgOnlyOffset, CellOffset, DoubleWordKind),
         ArgOnlyOffset = arg_only_offset(AOWordNum),
         CellOffset = cell_offset(CellWordNum),
         (
@@ -743,18 +991,18 @@ write_arg_widths(Stream, Indent, CurArgNum, [Arg | Args], !IO) :-
             KindStr = "uint64"
         ),
         io.format(Stream,
-            "%% arg %d: double word %s at offsets %d/%d to %d/%d\n",
+            "%% arg %d: double word %s, offsets %d/%d to %d/%d\n",
             [i(CurArgNum), s(KindStr), i(AOWordNum), i(CellWordNum),
-            i(AOWordNum+1), i(CellWordNum + 1)], !IO)
+            i(AOWordNum + 1), i(CellWordNum + 1)], !IO)
     ;
         (
-            PosWidth = apw_partial_first(ArgOnlyOffset, CellOffset, Shift,
+            ArgPosWidth = apw_partial_first(ArgOnlyOffset, CellOffset, Shift,
                 NumBits, Mask, FillKind),
             FirstShifted = "first"
         ;
-            PosWidth = apw_partial_shifted(ArgOnlyOffset, CellOffset, Shift,
+            ArgPosWidth = apw_partial_shifted(ArgOnlyOffset, CellOffset, Shift,
                 NumBits, Mask, FillKind),
-            FirstShifted = "shifted"
+            FirstShifted = "later"
         ),
         ArgOnlyOffset = arg_only_offset(AOWordNum),
         CellOffset = cell_offset(CellWordNum),
@@ -762,32 +1010,31 @@ write_arg_widths(Stream, Indent, CurArgNum, [Arg | Args], !IO) :-
         NumBits = arg_num_bits(NumBitsInt),
         Mask = arg_mask(MaskInt),
         FillStr = fill_kind_to_string(FillKind),
-        io.format(Stream, "%% arg %d: partial word %s " ++
-            "at offset %d/%d, shift %d, #bits %d, mask %x, %s\n",
+        io.format(Stream, "%% arg %d: partial %s, " ++
+            "offset %d/%d, shift %2d #bits %2d mask %x %s\n",
             [i(CurArgNum), s(FirstShifted), i(AOWordNum), i(CellWordNum),
             i(ShiftInt), i(NumBitsInt), i(MaskInt), s(FillStr)], !IO)
     ;
-        PosWidth = apw_none_shifted(ArgOnlyOffset, CellOffset),
+        ArgPosWidth = apw_none_shifted(ArgOnlyOffset, CellOffset),
         ArgOnlyOffset = arg_only_offset(AOWordNum),
         CellOffset = cell_offset(CellWordNum),
-        io.format(Stream, "%% arg %d: none shifted at offset %d/%d\n",
+        io.format(Stream, "%% arg %d: none shifted, offset %d/%d\n",
             [i(CurArgNum), i(AOWordNum), i(CellWordNum)], !IO)
     ;
-        PosWidth = apw_none_nowhere,
+        ArgPosWidth = apw_none_nowhere,
         io.format(Stream, "%% arg %d: none_nowhere\n", [i(CurArgNum)], !IO)
-    ),
-    write_arg_widths(Stream, Indent, CurArgNum + 1, Args, !IO).
+    ).
 
 :- func fill_kind_to_string(fill_kind) = string.
 
-fill_kind_to_string(fill_enum) = "fill enum".
-fill_kind_to_string(fill_int8) = "fill int8".
-fill_kind_to_string(fill_int16) = "fill int16".
-fill_kind_to_string(fill_int32) = "fill int32".
-fill_kind_to_string(fill_uint8) = "fill uint8".
-fill_kind_to_string(fill_uint16) = "fill uint16".
-fill_kind_to_string(fill_uint32) = "fill uint32".
-fill_kind_to_string(fill_char21) = "fill char21".
+fill_kind_to_string(fill_enum) = "enum".
+fill_kind_to_string(fill_int8) = "int8".
+fill_kind_to_string(fill_int16) = "int16".
+fill_kind_to_string(fill_int32) = "int32".
+fill_kind_to_string(fill_uint8) = "uint8".
+fill_kind_to_string(fill_uint16) = "uint16".
+fill_kind_to_string(fill_uint32) = "uint32".
+fill_kind_to_string(fill_char21) = "char21".
 
 %---------------------------------------------------------------------------%
 %

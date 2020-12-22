@@ -128,6 +128,8 @@
 :- pred mercury_format_constraint(tvarset::in, var_name_print::in,
     prog_constraint::in, S::in, U::di, U::uo) is det <= output(S, U).
 
+:- func mercury_prog_constraint_list_to_string(tvarset, var_name_print,
+    string, list(prog_constraint)) = string.
 :- pred mercury_format_prog_constraint_list(tvarset::in, var_name_print::in,
     string::in, list(prog_constraint)::in, S::in, U::di, U::uo) is det
     <= output(S, U).
@@ -470,6 +472,11 @@ mercury_format_constraint(TypeVarSet, VarNamePrint, Constraint, S, !U) :-
     add_list(mercury_format_type(TypeVarSet, VarNamePrint), ", ", Types,
         S, !U),
     add_string(")", S, !U).
+
+mercury_prog_constraint_list_to_string(TypeVarSet, VarNamePrint,
+        Operator, Constraints) = String :-
+    mercury_format_prog_constraint_list(TypeVarSet, VarNamePrint,
+        Operator, Constraints, unit, "", String).
 
 mercury_format_prog_constraint_list(TypeVarSet, VarNamePrint, Operator,
         Constraints, S, !U) :-

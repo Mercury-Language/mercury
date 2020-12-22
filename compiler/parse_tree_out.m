@@ -142,6 +142,13 @@
 :- pred mercury_output_ctor(tvarset::in, constructor::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
+:- pred maybe_cons_exist_constraints_to_prefix_suffix(tvarset::in,
+    string::in, string::in, maybe_cons_exist_constraints::in,
+    string::out, string::out) is det.
+
+:- pred maybe_brace_for_name_prefix_suffix(arity::in, string::in,
+    string::out, string::out) is det.
+
 %---------------------------------------------------------------------------%
 %
 % Output some components of an instance definition.
@@ -1496,6 +1503,12 @@ mercury_output_where_attributes(Info, TypeVarSet, MaybeSolverTypeDetails,
         % the conditions above for printing the commas before them.
     ).
 
+:- pred mercury_output_direct_arg_functors(io.text_output_stream::in,
+    list(sym_name_arity)::in, io::di, io::uo) is det.
+
+mercury_output_direct_arg_functors(Stream, Ctors, !IO) :-
+    add_list(mercury_format_sym_name_arity, ", ", Ctors, Stream, !IO).
+
 :- pred mercury_output_solver_type_details(merc_out_info::in,
     io.text_output_stream::in, tvarset::in, solver_type_details::in,
     io::di, io::uo) is det.
@@ -1564,25 +1577,56 @@ mercury_output_ctors(VarSet, First, HeadCtor, TailCtors, Stream, !IO) :-
             Stream, !IO)
     ).
 
-mercury_output_ctor(TypeVarSet, Ctor, Stream, !IO) :-
+mercury_output_ctor(TVarSet, Ctor, Stream, !IO) :-
+    % NOTE The code of this predicate is almost identical to the
+    % code of write_ctor and write_ctor_repn in hlds_out_module.m.
+    % Any changes made here will probably need to be made there as well.
     Ctor = ctor(_Ordinal, MaybeExistConstraints, SymName, Args, Arity, _Ctxt),
 
-    % We will have attached the module name to the type definition,
-    % so there is no point adding it to the constructor as well.
+    % The module name in SymName must be the same as the module qualifier
+    % of the type_ctor, so there is no point in printing it.
     Name = unqualify_name(SymName),
+    maybe_cons_exist_constraints_to_prefix_suffix(TVarSet, "", "",
+        MaybeExistConstraints, ExistConstraintsPrefix, ExistConstraintsSuffix),
+    maybe_brace_for_name_prefix_suffix(Arity, Name, BracePrefix, BraceSuffix),
+    io.write_string(Stream, ExistConstraintsPrefix, !IO),
+    io.write_string(Stream, BracePrefix, !IO),
+    (
+        Args = [],
+        mercury_output_bracketed_sym_name(unqualified(Name), Stream, !IO),
+        % This space prevents a terminating full stop from being confused
+        % as part of the sym_name if the sym_name contains graphical
+        % characters.
+        io.write_string(Stream, " ", !IO)
+    ;
+        Args = [HeadArg | TailArgs],
+        mercury_output_sym_name(unqualified(Name), Stream, !IO),
+        io.write_string(Stream, "(", !IO),
+        mercury_output_ctor_args(Stream, TVarSet, HeadArg, TailArgs, !IO),
+        io.write_string(Stream, ")", !IO)
+    ),
+    io.write_string(Stream, BraceSuffix, !IO),
+    io.write_string(Stream, ExistConstraintsSuffix, !IO).
+
+maybe_cons_exist_constraints_to_prefix_suffix(TVarSet, SuffixStart, SuffixEnd,
+        MaybeExistConstraints, Prefix, Suffix) :-
     (
         MaybeExistConstraints = no_exist_constraints,
-        Constraints = [],
-        ParenWrap = no
+        Prefix = "",
+        Suffix = ""
     ;
         MaybeExistConstraints = exist_constraints(ExistConstraints),
         ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
             _UnconstrainedQVars, _ConstrainedQVars),
-        mercury_output_quantifier(TypeVarSet, print_name_only, ExistQVars,
-            Stream, !IO),
-        io.write_string(Stream, "(", !IO),
-        ParenWrap = yes
-    ),
+        ExistQVarsStr = mercury_quantifier_to_string(TVarSet,
+            print_name_only, ExistQVars),
+        ConstraintsStr = mercury_prog_constraint_list_to_string(TVarSet,
+            print_name_only, "=>", Constraints),
+        Prefix = ExistQVarsStr ++ "(",
+        Suffix = SuffixStart ++ ConstraintsStr ++ ")" ++ SuffixEnd
+    ).
+
+maybe_brace_for_name_prefix_suffix(Arity, Name, Prefix, Suffix) :-
     % We need to quote ';'/2, '{}'/2, '=>'/2, and 'some'/2.
     % XXX I (zs) think that we should not allow these as constructor names.
     ( if
@@ -1593,39 +1637,25 @@ mercury_output_ctor(TypeVarSet, Ctor, Stream, !IO) :-
         ; Name = "=>"
         )
     then
-        BraceWrap = yes,
-        io.write_string(Stream, "{ ", !IO)
+        Prefix = "{ ",
+        Suffix = " }"
     else
-        BraceWrap = no
-    ),
+        Prefix = "",
+        Suffix = ""
+    ).
+
+:- pred mercury_output_ctor_args(io.text_output_stream::in, tvarset::in,
+    constructor_arg::in, list(constructor_arg)::in, io::di, io::uo) is det.
+
+mercury_output_ctor_args(Stream, TVarSet, HeadArg, TailArgs, !IO) :-
+    mercury_output_ctor_arg(Stream, TVarSet, HeadArg, !IO),
     (
-        Args = [Arg | Rest],
-        mercury_output_sym_name(unqualified(Name), Stream, !IO),
-        io.write_string(Stream, "(", !IO),
-        mercury_output_ctor_arg(Stream, TypeVarSet, Arg, !IO),
-        mercury_output_remaining_ctor_args(Stream, TypeVarSet, Rest, !IO),
-        io.write_string(Stream, ")", !IO)
+        TailArgs = []
     ;
-        Args = [],
-        mercury_output_bracketed_sym_name(unqualified(Name), Stream, !IO),
-        % This space prevents a terminating full stop from being confused
-        % as part of the sym_name if the sym_name contains graphical
-        % characters.
-        io.write_string(Stream, " ", !IO)
-    ),
-    (
-        BraceWrap = yes,
-        io.write_string(Stream, " }", !IO)
-    ;
-        BraceWrap = no
-    ),
-    mercury_format_prog_constraint_list(TypeVarSet, print_name_only, "=>",
-        Constraints, Stream, !IO),
-    (
-        ParenWrap = no
-    ;
-        ParenWrap = yes,
-        io.write_string(Stream, ")", !IO)
+        TailArgs = [HeadTailArg | TailTailArgs],
+        io.write_string(Stream, ", ", !IO),
+        mercury_output_ctor_args(Stream, TVarSet,
+            HeadTailArg, TailTailArgs, !IO)
     ).
 
 :- pred mercury_output_ctor_arg(io.text_output_stream::in, tvarset::in,
@@ -1636,15 +1666,6 @@ mercury_output_ctor_arg(Stream, TVarSet, Arg, !IO) :-
     mercury_output_ctor_arg_name_prefix(Stream, Name, !IO),
     mercury_output_type(TVarSet, print_name_only, Type, Stream, !IO).
 
-:- pred mercury_output_remaining_ctor_args(io.text_output_stream::in,
-    tvarset::in, list(constructor_arg)::in, io::di, io::uo) is det.
-
-mercury_output_remaining_ctor_args(_Stream, _TVarSet, [], !IO).
-mercury_output_remaining_ctor_args(Stream, TVarSet, [Arg | Args], !IO) :-
-    io.write_string(Stream, ", ", !IO),
-    mercury_output_ctor_arg(Stream, TVarSet, Arg, !IO),
-    mercury_output_remaining_ctor_args(Stream, TVarSet, Args, !IO).
-
 :- pred mercury_output_ctor_arg_name_prefix(io.text_output_stream::in,
     maybe(ctor_field_name)::in, io::di, io::uo) is det.
 
@@ -1653,12 +1674,6 @@ mercury_output_ctor_arg_name_prefix(Stream, yes(FieldName), !IO) :-
     FieldName = ctor_field_name(Name, _Ctxt),
     mercury_output_bracketed_sym_name(Name, Stream, !IO),
     io.write_string(Stream, " :: ", !IO).
-
-:- pred mercury_output_direct_arg_functors(io.text_output_stream::in,
-    list(sym_name_arity)::in, io::di, io::uo) is det.
-
-mercury_output_direct_arg_functors(Stream, Ctors, !IO) :-
-    add_list(mercury_format_sym_name_arity, ", ", Ctors, Stream, !IO).
 
 %---------------------------------------------------------------------------%
 

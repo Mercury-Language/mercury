@@ -106,6 +106,7 @@
 
 %---------------------------------------------------------------------------%
 
+:- func mercury_bracketed_atom_to_string(needs_quotes, string) = string.
 :- pred mercury_format_bracketed_atom(needs_quotes::in, string::in, S::in,
     U::di, U::uo) is det <= output(S, U).
 
@@ -481,6 +482,9 @@ mercury_limited_term_nq_to_string(VarSet, VarNamePrint, NextToGraphicToken,
     ).
 
 %---------------------%
+
+mercury_bracketed_atom_to_string(NextToGraphicToken, Name) = String :-
+    mercury_format_bracketed_atom(NextToGraphicToken, Name, unit, "", String).
 
 mercury_format_bracketed_atom(NextToGraphicToken, Name, S, !U) :-
     ( if mercury_op(Name) then
