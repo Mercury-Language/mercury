@@ -247,7 +247,7 @@
             % This is for functors in types that have only a single functor.
             % For these types, we don't need any tags, primary or secondary,
             % to distinguish between function symbols. However, we do have
-            % to decide what to put into bottom two or three bits (on 32-
+            % to decide what to put into the bottom two or three bits (on 32-
             % and 64-bit systems respectively) of the representation of
             % every term, the area reserved for the primary tag. For these
             % functors, we put zeroes there, which is equivalent to having
