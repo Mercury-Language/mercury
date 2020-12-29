@@ -939,39 +939,42 @@ pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap) :-
 
 %---------------------------------------------------------------------------%
 
-compute_instmap_delta(InstMapA, InstMapB, NonLocals, InstMap) :-
+compute_instmap_delta(InstMapA, InstMapB, NonLocals, InstMapDelta) :-
     (
         InstMapA = unreachable,
-        InstMap = unreachable
+        InstMapDelta = unreachable
     ;
         InstMapA = reachable(_),
         InstMapB = unreachable,
-        InstMap = unreachable
+        InstMapDelta = unreachable
     ;
         InstMapA = reachable(InstMappingA),
         InstMapB = reachable(InstMappingB),
         set_of_var.to_sorted_list(NonLocals, NonLocalsList),
         compute_instmap_delta_for_vars(NonLocalsList,
-            InstMappingA, InstMappingB, AssocList),
-        map.from_sorted_assoc_list(AssocList, DeltaInstMap),
-        InstMap = reachable(DeltaInstMap)
+            InstMappingA, InstMappingB, [], InstmappingDeltaRevAL),
+        map.from_rev_sorted_assoc_list(InstmappingDeltaRevAL,
+            InstmappingDelta),
+        InstMapDelta = reachable(InstmappingDelta)
     ).
 
-:- pred compute_instmap_delta_for_vars(list(prog_var)::in, instmapping::in,
-    instmapping::in, assoc_list(prog_var, mer_inst)::out) is det.
+:- pred compute_instmap_delta_for_vars(list(prog_var)::in,
+    instmapping::in, instmapping::in,
+    assoc_list(prog_var, mer_inst)::in,
+    assoc_list(prog_var, mer_inst)::out) is det.
 
-compute_instmap_delta_for_vars([], _, _, []).
+compute_instmap_delta_for_vars([], _, _, !InstmappingDeltaRevAL).
 compute_instmap_delta_for_vars([Var | Vars], InstMappingA, InstMappingB,
-        AssocList) :-
-    compute_instmap_delta_for_vars(Vars, InstMappingA, InstMappingB,
-        AssocListTail),
+        !InstmappingDeltaRevAL) :-
     instmapping_lookup_var(InstMappingA, Var, InstA),
     instmapping_lookup_var(InstMappingB, Var, InstB),
     ( if InstA = InstB then
-        AssocList = AssocListTail
+        true
     else
-        AssocList = [Var - InstB | AssocListTail]
-    ).
+        !:InstmappingDeltaRevAL = [Var - InstB | !.InstmappingDeltaRevAL]
+    ),
+    compute_instmap_delta_for_vars(Vars, InstMappingA, InstMappingB,
+        !InstmappingDeltaRevAL).
 
 %---------------------------------------------------------------------------%
 
