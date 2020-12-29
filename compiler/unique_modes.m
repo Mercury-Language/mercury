@@ -593,9 +593,9 @@ unique_modes_check_goal_generic_call(GenericCall, ArgVars, Modes,
     CallId = mode_call_generic(GenericCallId),
     mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
     ( if determinism_components(Detism, _, at_most_zero) then
-        NeverSucceeds = yes
+        CanProcSucceed = proc_cannot_succeed
     else
-        NeverSucceeds = no
+        CanProcSucceed = proc_can_maybe_succeed
     ),
     (
         GenericCall = higher_order(_, _, _, _),
@@ -614,7 +614,7 @@ unique_modes_check_goal_generic_call(GenericCall, ArgVars, Modes,
         ArgOffset = 0
     ),
     unique_modes_check_call_modes(ArgVars, Modes, ArgOffset, Detism,
-        NeverSucceeds, !ModeInfo),
+        CanProcSucceed, !ModeInfo),
     GoalExpr = generic_call(GenericCall, ArgVars, Modes, MaybeRegTypes,
         Detism),
     mode_info_unset_call_context(!ModeInfo),
@@ -765,9 +765,9 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
     compute_arg_offset(PredInfo, ArgOffset),
     proc_info_get_argmodes(ProcInfo, ProcArgModes0),
     proc_info_interface_determinism(ProcInfo, InterfaceDeterminism),
-    proc_info_never_succeeds(ProcInfo, NeverSucceeds),
+    proc_info_never_succeeds(ProcInfo, CanSucceed),
     unique_modes_check_call_modes(ArgVars, ProcArgModes0, ArgOffset,
-        InterfaceDeterminism, NeverSucceeds, !ModeInfo),
+        InterfaceDeterminism, CanSucceed, !ModeInfo),
     proc_info_get_mode_errors(ProcInfo, ModeErrors),
     (
         ModeErrors = [_ | _],
@@ -836,10 +836,11 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
     % is nondet-live and the required initial inst was unique.
     %
 :- pred unique_modes_check_call_modes(list(prog_var)::in, list(mer_mode)::in,
-    int::in, determinism::in, bool::in, mode_info::in, mode_info::out) is det.
+    int::in, determinism::in, can_proc_succeed::in,
+    mode_info::in, mode_info::out) is det.
 
 unique_modes_check_call_modes(ArgVars, ProcArgModes, ArgOffset, Determinism,
-        NeverSucceeds, !ModeInfo) :-
+        CanProcSucceed, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
     modecheck_var_has_inst_list_no_exact_match(ArgVars, InitialInsts,
@@ -859,11 +860,11 @@ unique_modes_check_call_modes(ArgVars, ProcArgModes, ArgOffset, Determinism,
         unexpected($pred, "call to implied mode?")
     ),
     (
-        NeverSucceeds = yes,
+        CanProcSucceed = proc_cannot_succeed,
         instmap.init_unreachable(InstMap),
         mode_info_set_instmap(InstMap, !ModeInfo)
     ;
-        NeverSucceeds = no,
+        CanProcSucceed = proc_can_maybe_succeed,
         % Check whether we are at a call to a nondet predicate.
         % If so, mark all the currently nondet-live variables
         % whose inst is `unique' as instead being only `mostly_unique'.

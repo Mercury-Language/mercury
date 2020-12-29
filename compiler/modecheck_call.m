@@ -379,13 +379,13 @@ modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0, ArgOffset,
     inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
     modecheck_set_var_inst_list(ArgVars0, InitialInsts, FinalInsts,
         ArgOffset, ArgVars, ExtraGoals, !ModeInfo),
-    proc_info_never_succeeds(ProcInfo, NeverSucceeds),
+    proc_info_never_succeeds(ProcInfo, CanSucceed),
     (
-        NeverSucceeds = yes,
+        CanSucceed = proc_cannot_succeed,
         instmap.init_unreachable(Instmap),
         mode_info_set_instmap(Instmap, !ModeInfo)
     ;
-        NeverSucceeds = no
+        CanSucceed = proc_can_maybe_succeed
     ).
 
 %---------------------------------------------------------------------------%

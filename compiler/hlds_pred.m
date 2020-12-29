@@ -2421,10 +2421,15 @@ marker_list_to_markers(Markers, MarkerSet) :-
 :- pred proc_info_interface_determinism(proc_info::in, determinism::out)
     is det.
 
-    % Return Result = yes if the procedure is known to never succeed
-    % according to the declared determinism.
+:- type can_proc_succeed
+    --->    proc_can_maybe_succeed
+    ;       proc_cannot_succeed.
+
+    % Return whether the procedure can ever succeed according to
+    % its declared determinism. If it has no declared determinism,
+    % return proc_can_maybe_succeed.
     %
-:- pred proc_info_never_succeeds(proc_info::in, bool::out) is det.
+:- pred proc_info_never_succeeds(proc_info::in, can_proc_succeed::out) is det.
 
 :- pred proc_info_arglives(proc_info::in, module_info::in,
     list(is_live)::out) is det.
@@ -3442,23 +3447,23 @@ proc_info_interface_determinism(ProcInfo, Determinism) :-
 
     % Return Result = yes if the called predicate is known to never succeed.
     %
-proc_info_never_succeeds(ProcInfo, NeverSucceeds) :-
+proc_info_never_succeeds(ProcInfo, CanSucceed) :-
     proc_info_get_declared_determinism(ProcInfo, DeclaredDeterminism),
     (
         DeclaredDeterminism = no,
-        NeverSucceeds = no
+        CanSucceed = proc_can_maybe_succeed
     ;
         DeclaredDeterminism = yes(Determinism),
         determinism_components(Determinism, _, MaxSoln),
         (
             MaxSoln = at_most_zero,
-            NeverSucceeds = yes
+            CanSucceed = proc_cannot_succeed
         ;
             ( MaxSoln = at_most_one
             ; MaxSoln = at_most_many
             ; MaxSoln = at_most_many_cc
             ),
-            NeverSucceeds = no
+            CanSucceed = proc_can_maybe_succeed
         )
     ).
 
