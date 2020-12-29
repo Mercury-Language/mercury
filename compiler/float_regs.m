@@ -549,8 +549,8 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
     (
         MustRecomputeNonLocals = yes,
         implicitly_quantify_clause_body_general(ordinary_nonlocals_no_lambda,
-            HeadVars, _Warnings, Goal1, Goal2, VarSet1, VarSet2, VarTypes1,
-            VarTypes2, RttiVarMaps1, RttiVarMaps2)
+            HeadVars, _Warnings, Goal1, Goal2, VarSet1, VarSet2,
+            VarTypes1, VarTypes2, RttiVarMaps1, RttiVarMaps2)
     ;
         MustRecomputeNonLocals = no,
         Goal2 = Goal1,
@@ -563,7 +563,6 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
     % so we only need to recompute instmap deltas for compound goals now.
     recompute_instmap_delta(do_not_recompute_atomic_instmap_deltas,
         Goal2, Goal, VarTypes2, InstVarSet0, InstMap0, !ModuleInfo),
-
     VarSet = VarSet2,
     VarTypes = VarTypes2,
     RttiVarMaps = RttiVarMaps2,
@@ -588,10 +587,8 @@ insert_reg_wrappers_proc_body(HeadVars, ArgModes, Goal0, Goal, InstMap0,
     % Ensure that all arguments match their final insts.
     lambda_info_get_module_info(!.Info, ModuleInfo),
     mode_list_get_final_insts(ModuleInfo, ArgModes, FinalInsts),
-    assoc_list.from_corresponding_lists(HeadVars, FinalInsts,
-        VarsExpectInsts),
-    fix_branching_goal(VarsExpectInsts, Goal1, InstMap1, Goal, !Info,
-        !Specs).
+    assoc_list.from_corresponding_lists(HeadVars, FinalInsts, VarsExpectInsts),
+    fix_branching_goal(VarsExpectInsts, Goal1, InstMap1, Goal, !Info, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -1517,7 +1514,7 @@ report_missing_higher_order_inst(PredInfo, VarSet, Var, Context) = Spec :-
 
 common_instmap_delta(InstMap0, NonLocals, InstMaps, CommonDelta, !Info) :-
     list.filter_map(
-        (pred(InstMap::in, Delta::out) is semidet :-
+        ( pred(InstMap::in, Delta::out) is semidet :-
             instmap_is_reachable(InstMap),
             compute_instmap_delta(InstMap0, InstMap, NonLocals, Delta)
         ), InstMaps, InstMapDeltas),
