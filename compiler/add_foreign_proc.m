@@ -331,7 +331,7 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
     pragma_get_vars(PVars, Args0),
     pragma_get_var_infos(PVars, ArgInfo),
 
-    % If the foreign language not one of the backend languages, we will
+    % If the foreign language is not one of the backend languages, we will
     % have to generate an interface to it in a backend language.
     foreign.extrude_pragma_implementation(BackendForeignLanguages,
         PVars, PredName, PredOrFunc, Context, !ModuleInfo,

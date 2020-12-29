@@ -423,7 +423,7 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         mode_info_lock_vars(var_lock_lambda(PredOrFunc), NonLocals, !ModeInfo),
 
         mode_checkpoint(enter, "lambda goal", !ModeInfo),
-        % If we're being called from unique_modes.m, then we need to
+        % If we are being called from unique_modes.m, then we need to
         % call unique_modes_check_goal rather than modecheck_goal.
         (
             HowToCheckGoal = check_unique_modes,

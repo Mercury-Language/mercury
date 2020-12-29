@@ -716,11 +716,11 @@ modecheck_set_var_inst_call(Var0, InitialInst, FinalInst, Var, !ExtraGoals,
         !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     ( if instmap_is_reachable(InstMap0) then
-        % The new inst must be computed by unifying the old inst
-        % and the proc's final inst.
         instmap_lookup_var(InstMap0, Var0, VarInst0),
         handle_implied_mode(Var0, VarInst0, InitialInst, Var, !ExtraGoals,
             !ModeInfo),
+        % The new inst must be computed by unifying the old inst
+        % and the proc's final inst; modecheck_set_var_inst will do this.
         modecheck_set_var_inst(Var0, FinalInst, no, !ModeInfo),
         ( if Var = Var0 then
             true
@@ -750,8 +750,8 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
     lookup_var_type(VarTypes0, Var0, VarType),
     ( if
         % If the initial inst of the variable matches_final the initial inst
-        % specified in the pred's mode declaration, then it's not a call
-        % to an implied mode, it's an exact match with a genuine mode.
+        % specified in the pred's mode declaration, then it is not a call
+        % to an implied mode, it is an exact match with a genuine mode.
         inst_matches_initial_no_implied_modes_sub(VarInst1, InitialInst,
             VarType, ModuleInfo0, _ModuleInfo, map.init, _Sub)
     then
@@ -882,15 +882,14 @@ compute_goal_instmap_delta(InstMap0, GoalExpr, !GoalInfo, !ModeInfo) :-
         % The code generator and mode_util.recompute_instmap_delta can be
         % confused by references to the dead variable in the instmap_delta,
         % resulting in calls to error/1.
-
-        instmap_delta_init_reachable(DeltaInstMap),
+        instmap_delta_init_reachable(InstMapDelta),
         mode_info_set_instmap(InstMap0, !ModeInfo)
     else
         NonLocals = goal_info_get_nonlocals(!.GoalInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap),
-        compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap)
+        compute_instmap_delta(InstMap0, InstMap, NonLocals, InstMapDelta)
     ),
-    goal_info_set_instmap_delta(DeltaInstMap, !GoalInfo).
+    goal_info_set_instmap_delta(InstMapDelta, !GoalInfo).
 
 %-----------------------------------------------------------------------------%
 

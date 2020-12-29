@@ -44,7 +44,7 @@
     % to the value bound to the variable associated with the future.
     %
     % wait_future/2 doesn't actually have a side effect. However once it has
-    % returned get_future/2 is guaranteed to be safe. Therefore it must be
+    % returned, get_future/2 is guaranteed to be safe. Therefore it must be
     % impure to prevent it from being optimized away, especially in (valid)
     % cases where its output occurs only once in a procedure.
     %
@@ -52,7 +52,7 @@
 
     % get_future(Future, Var):
     %
-    % Like wait_future but assumes that the future has been signalled already.
+    % Like wait_future, but assumes that the future has been signalled already.
     %
 :- pred get_future(future(T)::in, T::out) is det.
 
