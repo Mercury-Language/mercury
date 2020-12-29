@@ -560,10 +560,10 @@ output_instruction(Info, Stream, Instr, LabelOutputInfo, !IO) :-
         % comment. The fact that the code here is not very efficient doesn't
         % matter since we write out comments only with --auto-comments,
         % which we enable only when we want to debug the generated C code.
-        io.write_string(Stream, "/*", !IO),
+        io.write_string(Stream, "/* ", !IO),
         string.to_char_list(Comment, CommentChars),
         output_comment_chars(Stream, '*', CommentChars, !IO),
-        io.write_string(Stream, "*/\n", !IO)
+        io.write_string(Stream, " */\n", !IO)
     ;
         Instr = livevals(LiveVals),
         io.write_string(Stream, "/*\n* Live lvalues:\n", !IO),
