@@ -339,7 +339,6 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ),
             ProcNum = 0, Args = [X, Y],
             Code = test(binary(CmpOp, leaf(X), leaf(Y)))
-
         ;
             PredName = "pointer_equal", ProcNum = 0,
             % The arity of this predicate is two during parsing,
@@ -348,6 +347,9 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ; Args = [_TypeInfo, X, Y]
             ),
             Code = test(binary(pointer_equal_conservative, leaf(X), leaf(Y)))
+        ;
+            PredName = "partial_inst_copy", ProcNum = 0, Args = [X, Y],
+            Code = assign(Y, leaf(X))
         )
     ;
         ModuleName = "term_size_prof_builtin",
