@@ -410,7 +410,8 @@ format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
             int_length_modifier, SpecChar),
         String = native_format_int(FormatStr, Int)
     else
-        String = format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int)
+        UInt = cast_from_int(Int),
+        String = format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt)
     ).
 
 :- pred format_uint_component(string_format_flags::in,
@@ -783,16 +784,6 @@ format_signed_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
     SignedStr = add_sign_like_prefix_to_int_if_needed(Flags, ZeroPadded, Int,
         FieldStr),
     String = justify_string(Flags, MaybeWidth, SignedStr).
-
-    % Format an unsigned int, unsigned octal, or unsigned hexadecimal
-    % (u,o,x,X,p).
-    %
-:- func format_unsigned_int(string_format_flags, string_format_maybe_width,
-    string_format_maybe_prec, string_format_int_base, int) = string.
-
-format_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, Int) = String :-
-    UInt = cast_from_int(Int),
-    String = format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt).
 
 %---------------------------------------------------------------------------%
 
