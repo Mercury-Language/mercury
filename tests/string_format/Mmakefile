@@ -16,12 +16,19 @@ STRING_FORMAT_PROGS = \
 	string_format_e \
 	string_format_f \
 	string_format_g \
+	string_format_int64_d \
+	string_format_int64_o \
+	string_format_int64_u \
+	string_format_int64_x \
 	string_format_o \
 	string_format_s \
 	string_format_u \
 	string_format_uint_o \
 	string_format_uint_u \
 	string_format_uint_x \
+	string_format_uint64_o \
+	string_format_uint64_u \
+	string_format_uint64_x \
 	string_format_x
 
 # The tests don't work in the *.agc grades, because I think they
