@@ -3168,7 +3168,7 @@ long_option("may-ignore-without-warning-2020-08-18",
                                     compiler_sufficiently_recent).
 long_option("prolog-is-2020-08-21",
                                     compiler_sufficiently_recent).
-long_option("partial-inst-copy-2020-12-30",
+long_option("partial-inst-copy-2021-01-04",
                                     compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).

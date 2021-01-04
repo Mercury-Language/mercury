@@ -2075,6 +2075,7 @@ no_type_info_builtin(ModuleName, PredName, Arity) :-
         ; PredName = "compare_remote_uint_bitfields", Arity = 7
         ; PredName = "compare_remote_uint_words", Arity = 5
         ; PredName = "instance_constraint_from_typeclass_info", Arity = 3
+        ; PredName = "partial_inst_copy", Arity = 2
         ; PredName = "store_at_ref_impure", Arity = 2
         ; PredName = "superclass_from_typeclass_info", Arity = 3
         ; PredName = "type_info_from_typeclass_info", Arity = 3
