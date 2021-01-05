@@ -3,17 +3,16 @@
 %---------------------------------------------------------------------------%
 
 :- module string_format_test_2.
-
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 :- import_module string.
 
-main -->
-    io__format("foo\n", [i(42)]).
+main(!IO) :-
+    io.format("foo\n", [i(42)], !IO).
