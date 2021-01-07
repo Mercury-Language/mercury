@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2015-2020 The Mercury team.
+% Copyright (C) 2015-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1866,8 +1866,13 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             !VarSet, !VarTypes),
         maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
             !VarSet, !VarTypes),
+        ( if IntSize = int_size_64 then
+            FormatPredBase = "format_signed_int64_component"
+        else
+            FormatPredBase = "format_signed_int_component"
+        ),
         generate_simple_call(ModuleInfo, mercury_string_format_module,
-            "format_signed_int_component" ++ WidthSuffix ++ PrecSuffix,
+            FormatPredBase ++ WidthSuffix ++ PrecSuffix,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ PrecVars ++ [ValueVar, ResultVar], [],
             instmap_delta_bind_var(ResultVar), Context, CallGoal),
@@ -1888,8 +1893,13 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
         maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
             !VarSet, !VarTypes),
         build_int_base_arg(Base, BaseVar, BaseGoal, !VarSet, !VarTypes),
+        ( if IntSize = int_size_64 then
+            FormatPredBase = "format_unsigned_int64_component"
+        else
+            FormatPredBase = "format_unsigned_int_component"
+        ),
         generate_simple_call(ModuleInfo, mercury_string_format_module,
-            "format_unsigned_int_component" ++ WidthSuffix ++ PrecSuffix,
+            FormatPredBase ++ WidthSuffix ++ PrecSuffix,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ PrecVars ++
                 [BaseVar, ValueVar, ResultVar], [],
@@ -1911,8 +1921,13 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
         maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
             !VarSet, !VarTypes),
         build_int_base_arg(Base, BaseVar, BaseGoal, !VarSet, !VarTypes),
+        ( if UIntSize = uint_size_64 then
+            FormatPredBase = "format_uint64_component"
+        else
+            FormatPredBase = "format_uint_component"
+        ),
         generate_simple_call(ModuleInfo, mercury_string_format_module,
-            "format_uint_component" ++ WidthSuffix ++ PrecSuffix,
+            FormatPredBase ++ WidthSuffix ++ PrecSuffix,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ PrecVars ++
                 [BaseVar, ValueVar, ResultVar], [],
@@ -1945,17 +1960,18 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
     int_size::in, prog_var::in, prog_var::out, list(hlds_goal)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
-cast_int_value_var_if_needed(ModuleInfo, Context, UIntSize,
+cast_int_value_var_if_needed(ModuleInfo, Context, IntSize,
         OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes) :-
     (
-        UIntSize = int_size_word,
+        ( IntSize = int_size_word
+        ; IntSize = int_size_64
+        ),
         ValueVar = OrigValueVar,
         ValueCastGoals = []
     ;
-        ( UIntSize = int_size_8, Size = "8"
-        ; UIntSize = int_size_16, Size = "16"
-        ; UIntSize = int_size_32, Size = "32"
-        ; UIntSize = int_size_64, Size = "64"
+        ( IntSize = int_size_8, Size = "8"
+        ; IntSize = int_size_16, Size = "16"
+        ; IntSize = int_size_32, Size = "32"
         ),
         varset.new_var(ValueVar, !VarSet),
         add_var_type(ValueVar, int_type, !VarTypes),
@@ -1974,14 +1990,15 @@ cast_int_value_var_if_needed(ModuleInfo, Context, UIntSize,
 cast_uint_value_var_if_needed(ModuleInfo, Context, UIntSize,
         OrigValueVar, ValueVar, ValueCastGoals, !VarSet, !VarTypes) :-
     (
-        UIntSize = uint_size_word,
+        ( UIntSize = uint_size_word
+        ; UIntSize = uint_size_64
+        ),
         ValueVar = OrigValueVar,
         ValueCastGoals = []
     ;
         ( UIntSize = uint_size_8, Size = "8"
         ; UIntSize = uint_size_16, Size = "16"
         ; UIntSize = uint_size_32, Size = "32"
-        ; UIntSize = uint_size_64, Size = "64"
         ),
         varset.new_var(ValueVar, !VarSet),
         add_var_type(ValueVar, uint_type, !VarTypes),

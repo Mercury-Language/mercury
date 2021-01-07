@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2017-2020 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2021 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -78,6 +78,35 @@
     int::in, int::in, string_format_int_base::in, uint::in, string::out)
     is det.
 
+:- pred format_signed_int64_component_nowidth_noprec(string_format_flags::in,
+    int64::in, string::out) is det.
+:- pred format_signed_int64_component_nowidth_prec(string_format_flags::in,
+    int::in, int64::in, string::out) is det.
+:- pred format_signed_int64_component_width_noprec(string_format_flags::in,
+    int::in, int64::in, string::out) is det.
+:- pred format_signed_int64_component_width_prec(string_format_flags::in,
+    int::in, int::in, int64::in, string::out) is det.
+
+:- pred format_unsigned_int64_component_nowidth_noprec(string_format_flags::in,
+    string_format_int_base::in, int64::in, string::out) is det.
+:- pred format_unsigned_int64_component_nowidth_prec(string_format_flags::in,
+    int::in, string_format_int_base::in, int64::in, string::out) is det.
+:- pred format_unsigned_int64_component_width_noprec(string_format_flags::in,
+    int::in, string_format_int_base::in, int64::in, string::out) is det.
+:- pred format_unsigned_int64_component_width_prec(string_format_flags::in,
+    int::in, int::in, string_format_int_base::in, int64::in, string::out)
+    is det.
+
+:- pred format_uint64_component_nowidth_noprec(string_format_flags::in,
+    string_format_int_base::in, uint64::in, string::out) is det.
+:- pred format_uint64_component_nowidth_prec(string_format_flags::in,
+    int::in, string_format_int_base::in, uint64::in, string::out) is det.
+:- pred format_uint64_component_width_noprec(string_format_flags::in,
+    int::in, string_format_int_base::in, uint64::in, string::out) is det.
+:- pred format_uint64_component_width_prec(string_format_flags::in,
+    int::in, int::in, string_format_int_base::in, uint64::in, string::out)
+    is det.
+
 :- pred format_float_component_nowidth_noprec(string_format_flags::in,
     string_format_float_kind::in, float::in, string::out) is det.
 :- pred format_float_component_nowidth_prec(string_format_flags::in,
@@ -91,11 +120,9 @@
 :- pred format_cast_int8_to_int(int8::in, int::out) is det.
 :- pred format_cast_int16_to_int(int16::in, int::out) is det.
 :- pred format_cast_int32_to_int(int32::in, int::out) is det.
-:- pred format_cast_int64_to_int(int64::in, int::out) is det.
 :- pred format_cast_uint8_to_uint(uint8::in, uint::out) is det.
 :- pred format_cast_uint16_to_uint(uint16::in, uint::out) is det.
 :- pred format_cast_uint32_to_uint(uint32::in, uint::out) is det.
-:- pred format_cast_uint64_to_uint(uint64::in, uint::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -185,19 +212,36 @@ spec_to_string(Spec, String) :-
     ;
         % Signed int conversion specifiers.
         Spec = spec_signed_int(Flags, MaybeWidth, MaybePrec, SizedInt),
-        Int = sized_int_to_int(SizedInt),
-        format_signed_int_component(Flags, MaybeWidth, MaybePrec, Int, String)
+        ( if SizedInt = sized_int64(Int64) then
+            format_signed_int64_component(Flags, MaybeWidth, MaybePrec, Int64,
+            String)
+        else
+            Int = sized_int_to_int(SizedInt),
+            format_signed_int_component(Flags, MaybeWidth, MaybePrec, Int,
+                String)
+        )
     ;
-        % Unsigned int conversion specifiers.
+        % Unsigned int conversion specifiers (for signed values).
         Spec = spec_unsigned_int(Flags, MaybeWidth, MaybePrec, Base, SizedInt),
-        Int = sized_int_to_int(SizedInt),
-        format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base, Int,
-            String)
+        ( if SizedInt = sized_int64(Int64) then
+            format_unsigned_int64_component(Flags, MaybeWidth, MaybePrec, Base,
+                Int64, String)
+        else
+            Int = sized_int_to_int(SizedInt),
+            format_unsigned_int_component(Flags, MaybeWidth, MaybePrec, Base,
+                Int, String)
+        )
     ;
+        % Unsigned int conversion specifiers (for unsigned values).
         Spec = spec_uint(Flags, MaybeWidth, MaybePrec, Base, SizedUInt),
-        UInt = sized_uint_to_uint(SizedUInt),
-        format_uint_component(Flags, MaybeWidth, MaybePrec, Base, UInt,
-            String)
+        ( if SizedUInt = sized_uint64(UInt64) then
+            format_uint64_component(Flags, MaybeWidth, MaybePrec, Base, UInt64,
+                String)
+        else
+            UInt = sized_uint_to_uint(SizedUInt),
+            format_uint_component(Flags, MaybeWidth, MaybePrec, Base, UInt,
+                String)
+        )
     ;
         % Float conversion specifiers.
         Spec = spec_float(Flags, MaybeWidth, MaybePrec, Kind, Float),
@@ -323,6 +367,89 @@ format_uint_component_width_prec(Flags, Width, Prec, Base, UInt,
 
 %---------------------------------------------------------------------------%
 
+format_signed_int64_component_nowidth_noprec(Flags, Int64, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = no_specified_prec,
+    format_signed_int64_component(Flags, MaybeWidth, MaybePrec, Int64,
+        String).
+
+format_signed_int64_component_nowidth_prec(Flags, Prec, Int64, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = specified_prec(Prec),
+    format_signed_int64_component(Flags, MaybeWidth, MaybePrec, Int64,
+        String).
+
+format_signed_int64_component_width_noprec(Flags, Width, Int64, String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = no_specified_prec,
+    format_signed_int64_component(Flags, MaybeWidth, MaybePrec, Int64,
+        String).
+
+format_signed_int64_component_width_prec(Flags, Width, Prec, Int64,
+        String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = specified_prec(Prec),
+    format_signed_int64_component(Flags, MaybeWidth, MaybePrec, Int64,
+        String).
+
+%---------------------------------------------------------------------------%
+
+format_unsigned_int64_component_nowidth_noprec(Flags, Base, Int64, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = no_specified_prec,
+    format_unsigned_int64_component(Flags, MaybeWidth, MaybePrec, Base, Int64,
+        String).
+
+format_unsigned_int64_component_nowidth_prec(Flags, Prec, Base, Int64,
+        String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = specified_prec(Prec),
+    format_unsigned_int64_component(Flags, MaybeWidth, MaybePrec, Base, Int64,
+        String).
+
+format_unsigned_int64_component_width_noprec(Flags, Width, Base, Int64,
+        String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = no_specified_prec,
+    format_unsigned_int64_component(Flags, MaybeWidth, MaybePrec, Base, Int64,
+        String).
+
+format_unsigned_int64_component_width_prec(Flags, Width, Prec, Base, Int64,
+        String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = specified_prec(Prec),
+    format_unsigned_int64_component(Flags, MaybeWidth, MaybePrec, Base, Int64,
+        String).
+
+%---------------------------------------------------------------------------%
+
+format_uint64_component_nowidth_noprec(Flags, Base, UInt64, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = no_specified_prec,
+    format_uint64_component(Flags, MaybeWidth, MaybePrec, Base, UInt64,
+        String).
+
+format_uint64_component_nowidth_prec(Flags, Prec, Base, UInt64, String) :-
+    MaybeWidth = no_specified_width,
+    MaybePrec = specified_prec(Prec),
+    format_uint64_component(Flags, MaybeWidth, MaybePrec, Base, UInt64,
+        String).
+
+format_uint64_component_width_noprec(Flags, Width, Base, UInt64, String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = no_specified_prec,
+    format_uint64_component(Flags, MaybeWidth, MaybePrec, Base, UInt64,
+        String).
+
+format_uint64_component_width_prec(Flags, Width, Prec, Base, UInt64,
+        String) :-
+    MaybeWidth = specified_width(Width),
+    MaybePrec = specified_prec(Prec),
+    format_uint64_component(Flags, MaybeWidth, MaybePrec, Base, UInt64,
+        String).
+
+%---------------------------------------------------------------------------%
+
 format_float_component_nowidth_noprec(Flags, Kind, Float, String) :-
     MaybeWidth = no_specified_width,
     MaybePrec = no_specified_prec,
@@ -433,6 +560,59 @@ format_uint_component(Flags, MaybeWidth, MaybePrec, Base, UInt, String) :-
         String = format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt)
     ).
 
+:- pred format_signed_int64_component(string_format_flags::in,
+    string_format_maybe_width::in, string_format_maybe_prec::in,
+    int64::in, string::out) is det.
+
+format_signed_int64_component(Flags, MaybeWidth, MaybePrec, Int64, String) :-
+    ( if using_sprintf then
+        FormatStr = make_format_sprintf(Flags, MaybeWidth, MaybePrec,
+            "", int64_decimal_specifier),
+        String = native_format_int64(FormatStr, Int64)
+    else
+        String = format_signed_int64(Flags, MaybeWidth, MaybePrec, Int64)
+    ).
+
+:- pred format_unsigned_int64_component(string_format_flags::in,
+    string_format_maybe_width::in, string_format_maybe_prec::in,
+    string_format_int_base::in, int64::in, string::out) is det.
+
+format_unsigned_int64_component(Flags, MaybeWidth, MaybePrec, Base, Int64,
+        String) :-
+    ( if using_sprintf then
+        ( Base = base_octal,   Spec = uint64_octal_specifier
+        ; Base = base_decimal, Spec = uint64_decimal_specifier
+        ; Base = base_hex_lc,  Spec = uint64_hex_lc_specifier
+        ; Base = base_hex_uc,  Spec = uint64_hex_uc_specifier
+        ; Base = base_hex_p,   Spec = uint64_hex_p_specifier
+        ),
+        FormatStr = make_format_sprintf(Flags, MaybeWidth, MaybePrec,
+            "", Spec),
+        String = native_format_int64(FormatStr, Int64)
+    else
+        UInt64 = uint64.cast_from_int64(Int64),
+        String = format_uint64(Flags, MaybeWidth, MaybePrec, Base, UInt64)
+    ).
+
+:- pred format_uint64_component(string_format_flags::in,
+    string_format_maybe_width::in, string_format_maybe_prec::in,
+    string_format_int_base::in, uint64::in, string::out) is det.
+
+format_uint64_component(Flags, MaybeWidth, MaybePrec, Base, UInt64, String) :-
+    ( if using_sprintf then
+        ( Base = base_octal,   Spec = uint64_octal_specifier
+        ; Base = base_decimal, Spec = uint64_decimal_specifier
+        ; Base = base_hex_lc,  Spec = uint64_hex_lc_specifier
+        ; Base = base_hex_uc,  Spec = uint64_hex_uc_specifier
+        ; Base = base_hex_p,   Spec = uint64_hex_p_specifier
+        ),
+        FormatStr = make_format_sprintf(Flags, MaybeWidth, MaybePrec,
+            "", Spec),
+        String = native_format_uint64(FormatStr, UInt64)
+    else
+        String = format_uint64(Flags, MaybeWidth, MaybePrec, Base, UInt64)
+    ).
+
 :- pred format_float_component(string_format_flags::in,
     string_format_maybe_width::in, string_format_maybe_prec::in,
     string_format_float_kind::in, float::in, string::out) is det.
@@ -468,6 +648,8 @@ format_float_component(Flags, MaybeWidth, MaybePrec, Kind, Float, String) :-
     %   native_format_string/2
     %   native_format_char/2
     %   native_format_uint/2
+    %   native_format_int64/2
+    %   native_format_uint64/2
     %
 :- pred using_sprintf is semidet.
 
@@ -584,6 +766,98 @@ int_length_modifier = _ :-
     % by default.
     error("string.int_length_modifier/0 not defined").
 
+% NOTE: C does not provide a way to determine the length modifier for the
+% intN_t and uintN_t types in isolation.  For int64s, the [oxXup] specifiers
+% are all handled by casting to a uint64.
+
+:- func int64_decimal_specifier = string.
+:- pragma no_determinism_warning(int64_decimal_specifier/0).
+
+:- pragma foreign_proc("C",
+    int64_decimal_specifier = (Spec::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    MR_make_aligned_string(Spec, PRId64);
+").
+
+int64_decimal_specifier = _ :-
+    % This predicate is only called if using_sprintf/0, so we produce an error
+    % by default.
+    error("string.int64_decimal_specifier/0 not defined").
+
+:- func uint64_octal_specifier = string.
+:- pragma no_determinism_warning(uint64_octal_specifier/0).
+
+:- pragma foreign_proc("C",
+    uint64_octal_specifier = (Spec::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    MR_make_aligned_string(Spec, PRIo64);
+").
+
+uint64_octal_specifier = _ :-
+    % This predicate is only called if using_sprintf/0, so we produce an error
+    % by default.
+    error("string.uint64_octal_specifier/0 not defined").
+
+:- func uint64_decimal_specifier = string.
+:- pragma no_determinism_warning(uint64_decimal_specifier/0).
+
+:- pragma foreign_proc("C",
+    uint64_decimal_specifier = (Spec::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    MR_make_aligned_string(Spec, PRIu64);
+").
+
+uint64_decimal_specifier = _ :-
+    % This predicate is only called if using_sprintf/0, so we produce an error
+    % by default.
+    error("string.uint64_decimal_specifier/0 not defined").
+
+:- func uint64_hex_lc_specifier = string.
+:- pragma no_determinism_warning(uint64_hex_lc_specifier/0).
+
+:- pragma foreign_proc("C",
+    uint64_hex_lc_specifier = (Spec::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    MR_make_aligned_string(Spec, PRIx64);
+").
+
+uint64_hex_lc_specifier = _ :-
+    % This predicate is only called if using_sprintf/0, so we produce an error
+    % by default.
+    error("string.uint64_hex_lc_specifier/0 not defined").
+
+:- func uint64_hex_uc_specifier = string.
+:- pragma no_determinism_warning(uint64_hex_uc_specifier/0).
+
+:- pragma foreign_proc("C",
+    uint64_hex_uc_specifier = (Spec::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    MR_make_aligned_string(Spec, PRIX64);
+").
+
+uint64_hex_uc_specifier = _ :-
+    % This predicate is only called if using_sprintf/0, so we produce an error
+    % by default.
+    error("string.uint64_hex_uc_specifier/0 not defined").
+
+    % C does not define the 'p' specifier for uint64_t, so we just treat it as
+    % hexadecimal here. What that specifier does is implementation defined
+    % in C anyway.
+:- func uint64_hex_p_specifier = string.
+
+uint64_hex_p_specifier =
+    uint64_hex_lc_specifier.
+
     % Create a string from a float using the format string.
     % Note it is the responsibility of the caller to ensure that the
     % format string is valid.
@@ -650,6 +924,42 @@ native_format_uint(_, _) = _ :-
     % by default.
     error("string.native_format_uint/2 not defined").
 
+:- func native_format_int64(string, int64) = string.
+:- pragma no_determinism_warning(native_format_int64/2).
+
+:- pragma foreign_proc("C",
+    native_format_int64(FormatStr::in, Val::in) = (Str::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"{
+    MR_save_transient_hp();
+    Str = MR_make_string(MR_ALLOC_ID, FormatStr, Val);
+    MR_restore_transient_hp();
+}").
+
+native_format_int64(_, _) = _ :-
+    % This predicate is only called if using_sprintf/0, so we produce an error
+    % by default.
+    error("string.native_format_int64/2 not defined").
+
+:- func native_format_uint64(string, uint64) = string.
+:- pragma no_determinism_warning(native_format_uint64/2).
+
+:- pragma foreign_proc("C",
+    native_format_uint64(FormatStr::in, Val::in) = (Str::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"{
+    MR_save_transient_hp();
+    Str = MR_make_string(MR_ALLOC_ID, FormatStr, Val);
+    MR_restore_transient_hp();
+}").
+
+native_format_uint64(_, _) = _ :-
+    % This predicate is only called if using_sprintf/0, so we produce an error
+    % by default.
+    error("string.native_format_uint64/2 not defined").
+
     % Create a string from a string using the format string.
     % Note it is the responsibility of the caller to ensure that the
     % format string is valid.
@@ -705,6 +1015,8 @@ format_char(Flags, MaybeWidth, Char) = String :-
     CharStr = string.char_to_string(Char),
     String = justify_string(Flags, MaybeWidth, CharStr).
 
+%---------------------------------------------------------------------------%
+
     % Format a string.
     %
 :- func format_string(string_format_flags, string_format_maybe_width,
@@ -720,6 +1032,10 @@ format_string(Flags, MaybeWidth, MaybePrec, OldStr) = NewStr :-
     ),
     NewStr = justify_string(Flags, MaybeWidth, PrecStr).
 
+%---------------------------------------------------------------------------%
+
+    % Format an int (as a signed value).
+    %
 :- func format_signed_int(string_format_flags, string_format_maybe_width,
     string_format_maybe_prec, int) = string.
 
@@ -787,13 +1103,17 @@ format_signed_int(Flags, MaybeWidth, MaybePrec, Int) = String :-
 
 %---------------------------------------------------------------------------%
 
+    % Format a uint.
+    % Also used for formatting ints as unsigned values.
+    %
 :- func format_uint(string_format_flags, string_format_maybe_width,
     string_format_maybe_prec, string_format_int_base, uint) = string.
 
 format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt) = String :-
     ( if UInt = 0u then
-        % Zero is a special case. uint_to_*string functions return "0" for 0,
-        % but we must return "" if our caller explicitly allowed us to do so.
+        % Zero is a special case, the uint_to_*string functions return "0" for
+        % 0, but we must return "" if our caller explicitly allowed us to do
+        % so.
         ( if MaybePrec = specified_prec(0) then
             UIntStr = ""
         else
@@ -892,6 +1212,190 @@ format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt) = String :-
             ;
                 Base = base_hex_uc,
                 UInt \= 0u,
+                Prefix = "0X"
+            ;
+                Base = base_octal,
+                % We took care of adding the "0" prefix above.
+                fail
+            ;
+                Base = base_decimal,
+                fail
+            )
+        then
+            FieldModStr = Prefix ++ FieldStr
+        else
+            FieldModStr = FieldStr
+        )
+    ),
+
+    String = justify_string(Flags, MaybeWidth, FieldModStr).
+
+%---------------------------------------------------------------------------%
+
+    % Format an int64 (as a signed value).
+    %
+:- func format_signed_int64(string_format_flags, string_format_maybe_width,
+    string_format_maybe_prec, int64) = string.
+
+format_signed_int64(Flags, MaybeWidth, MaybePrec, Int) = String :-
+    ( if Int = 0i64 then
+        % Zero is a special case, int64_to_string returns "0" for 0, but we
+        % must return "" only if our caller explicitly allowed us to do so.
+        ( if MaybePrec = specified_prec(0) then
+            AbsIntStr = ""
+        else
+            AbsIntStr = "0"
+        )
+    else if Int = int64.min_int64 then
+        AbsIntStr = "9223372036854775808"
+    else
+        AbsInt = int64.unchecked_abs(Int),
+        AbsIntStr = int64_to_string(AbsInt)
+    ),
+    AbsIntStrLength = string.count_codepoints(AbsIntStr),
+
+    % Do we need to increase precision?
+    ( if
+        MaybePrec = specified_prec(Prec),
+        Prec > AbsIntStrLength
+    then
+        PrecStr = string.pad_left(AbsIntStr, '0', Prec)
+    else
+        PrecStr = AbsIntStr
+    ),
+
+    % Do we need to pad to the field width?
+    ( if
+        MaybeWidth = specified_width(Width),
+        Width > string.count_codepoints(PrecStr),
+        Flags ^ flag_zero = flag_zero_set,
+        Flags ^ flag_minus = flag_minus_clear,
+        MaybePrec = no_specified_prec
+    then
+        FieldStr = string.pad_left(PrecStr, '0', Width - 1),
+        ZeroPadded = yes
+    else
+        FieldStr = PrecStr,
+        ZeroPadded = no
+    ),
+
+    % Prefix with appropriate sign or zero padding.
+    % The previous step has deliberately left room for this.
+    SignedStr = add_sign_like_prefix_to_int64_if_needed(Flags, ZeroPadded, Int,
+        FieldStr),
+    String = justify_string(Flags, MaybeWidth, SignedStr).
+
+%---------------------------------------------------------------------------%
+
+    % Format a uint64.
+    % Also used for formatting int64s as unsigned values.
+    %
+:- func format_uint64(string_format_flags, string_format_maybe_width,
+    string_format_maybe_prec, string_format_int_base, uint64) = string.
+
+format_uint64(Flags, MaybeWidth, MaybePrec, Base, UInt64) = String :-
+    ( if UInt64 = 0u64 then
+        % Zero is a special case, the uint64_to_*string functions return "0"
+        % for 0, but we must return "" only if our caller explicitly allowed us
+        % to do so.
+        ( if MaybePrec = specified_prec(0) then
+            UInt64Str = ""
+        else
+            UInt64Str = "0"
+        )
+    else
+        (
+            Base = base_octal,
+            UInt64Str = uint64_to_octal_string(UInt64)
+        ;
+            Base = base_decimal,
+            UInt64Str = uint64_to_string(UInt64)
+        ;
+            ( Base = base_hex_lc
+            ; Base = base_hex_p
+            ),
+            UInt64Str = uint64_to_hex_string(UInt64)
+        ;
+            Base = base_hex_uc,
+            UInt64Str = uint64_to_uc_hex_string(UInt64)
+        )
+    ),
+    UInt64StrLength = string.count_codepoints(UInt64Str),
+
+    % Do we need to increase precision?
+    ( if
+        MaybePrec = specified_prec(Prec),
+        Prec > UInt64StrLength
+    then
+        PrecStr = string.pad_left(UInt64Str, '0', Prec)
+    else
+        PrecStr = UInt64Str
+    ),
+
+    % Do we need to increase the precision of an octal?
+    ( if
+        Base = base_octal,
+        Flags ^ flag_hash = flag_hash_set,
+        not string.prefix(PrecStr, "0")
+    then
+        PrecModStr = "0" ++ PrecStr
+    else
+        PrecModStr = PrecStr
+    ),
+
+    % Do we need to pad to the field width?
+    ( if
+        MaybeWidth = specified_width(Width),
+        Width > string.count_codepoints(PrecModStr),
+        Flags ^ flag_zero = flag_zero_set,
+        Flags ^ flag_minus = flag_minus_clear,
+        MaybePrec = no_specified_prec
+    then
+        % Do we need to make room for "0x" or "0X" ?
+        ( if
+            Flags ^ flag_hash = flag_hash_set,
+            require_complete_switch [Base]
+            (
+                Base = base_hex_p,
+                Prefix = "0x"
+            ;
+                Base = base_hex_lc,
+                UInt64 \= 0u64,
+                Prefix = "0x"
+            ;
+                Base = base_hex_uc,
+                UInt64 \= 0u64,
+                Prefix = "0X"
+            ;
+                ( Base = base_octal
+                ; Base = base_decimal
+                ),
+                % These get padded with just zeroes on the left.
+                fail
+            )
+        then
+            FieldStr = string.pad_left(PrecModStr, '0', Width - 2),
+            FieldModStr = Prefix ++ FieldStr
+        else
+            FieldStr = string.pad_left(PrecModStr, '0', Width),
+            FieldModStr = FieldStr
+        )
+    else
+        FieldStr = PrecModStr,
+        % Do we have to prefix "0x" or "0X"?
+        ( if
+            Flags ^ flag_hash = flag_hash_set,
+            require_complete_switch [Base]
+            (
+                Base = base_hex_p,
+                Prefix = "0x"
+            ;
+                Base = base_hex_lc,
+                UInt64 \= 0u64,
+                Prefix = "0x"
+            ;
+                Base = base_hex_uc,
+                UInt64 \= 0u64,
                 Prefix = "0X"
             ;
                 Base = base_octal,
@@ -1020,6 +1524,8 @@ format_float(Flags, MaybeWidth, MaybePrec, Kind, Float) = String :-
     ),
     String = justify_string(Flags, MaybeWidth, SignedStr).
 
+%---------------------------------------------------------------------------%
+
 :- func get_prec_to_use(string_format_maybe_prec) = int.
 :- pragma inline(get_prec_to_use/1).
 
@@ -1058,6 +1564,28 @@ get_prec_to_use_minimum_1(MaybePrec) = Prec :-
 add_sign_like_prefix_to_int_if_needed(Flags, ZeroPadded, Int, FieldStr)
         = SignedStr :-
     ( if Int < 0 then
+        SignedStr = "-" ++ FieldStr
+    else if Flags ^ flag_plus = flag_plus_set then
+        SignedStr = "+" ++ FieldStr
+    else if Flags ^ flag_space = flag_space_set then
+        SignedStr = " " ++ FieldStr
+    else
+        (
+            ZeroPadded = yes,
+            SignedStr = "0" ++ FieldStr
+        ;
+            ZeroPadded = no,
+            SignedStr = FieldStr
+        )
+    ).
+
+:- func add_sign_like_prefix_to_int64_if_needed(string_format_flags, bool,
+    int64, string) = string.
+:- pragma inline(add_sign_like_prefix_to_int64_if_needed/4).
+
+add_sign_like_prefix_to_int64_if_needed(Flags, ZeroPadded, Int64, FieldStr)
+        = SignedStr :-
+    ( if int64.(Int64 < 0i64) then
         SignedStr = "-" ++ FieldStr
     else if Flags ^ flag_plus = flag_plus_set then
         SignedStr = "+" ++ FieldStr
@@ -1593,8 +2121,8 @@ sized_int_to_int(SizedInt) = Int :-
         SizedInt = sized_int32(Int32),
         format_cast_int32_to_int(Int32, Int)
     ;
-        SizedInt = sized_int64(Int64),
-        format_cast_int64_to_int(Int64, Int)
+        SizedInt = sized_int64(_),
+        throw(software_error("formatting int64 via a cast"))
     ).
 
 :- func sized_uint_to_uint(sized_uint) = uint.
@@ -1612,8 +2140,8 @@ sized_uint_to_uint(SizedUInt) = UInt :-
         SizedUInt = sized_uint32(UInt32),
         format_cast_uint32_to_uint(UInt32, UInt)
     ;
-        SizedUInt = sized_uint64(UInt64),
-        format_cast_uint64_to_uint(UInt64, UInt)
+        SizedUInt = sized_uint64(_),
+        throw(software_error("formatting uint64 via a cast"))
     ).
 
 format_cast_int8_to_int(Int8, Int) :-
@@ -1622,12 +2150,6 @@ format_cast_int16_to_int(Int16, Int) :-
     Int = int16.cast_to_int(Int16).
 format_cast_int32_to_int(Int32, Int) :-
     Int = int32.cast_to_int(Int32).
-format_cast_int64_to_int(Int64, Int) :-
-    ( if words_are_64_bit then
-        Int = int64.cast_to_int(Int64)
-    else
-        throw(software_error("casting from int64 to int on 32 bit platform"))
-    ).
 
 format_cast_uint8_to_uint(UInt8, UInt) :-
     UInt = uint8.cast_to_uint(UInt8).
@@ -1635,40 +2157,5 @@ format_cast_uint16_to_uint(UInt16, UInt) :-
     UInt = uint16.cast_to_uint(UInt16).
 format_cast_uint32_to_uint(UInt32, UInt) :-
     UInt = uint32.cast_to_uint(UInt32).
-format_cast_uint64_to_uint(UInt64, UInt) :-
-    ( if words_are_64_bit then
-        UInt = uint64.cast_to_uint(UInt64)
-    else
-        throw(software_error("casting from uint64 to uint on 32 bit platform"))
-    ).
-
-:- pred words_are_64_bit is semidet.
-:- pragma inline(words_are_64_bit/0).
-
-:- pragma foreign_proc("C",
-    words_are_64_bit,
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-    if (MR_BITS_PER_WORD == 64) {
-        SUCCESS_INDICATOR = MR_TRUE;
-    } else {
-        SUCCESS_INDICATOR = MR_FALSE;
-    }
-").
-:- pragma foreign_proc("C#",
-    words_are_64_bit,
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-    SUCCESS_INDICATOR = false;
-").
-:- pragma foreign_proc("Java",
-    words_are_64_bit,
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-    SUCCESS_INDICATOR = false;
-").
 
 %---------------------------------------------------------------------------%

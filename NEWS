@@ -171,9 +171,6 @@ Changes to the Mercury standard library
   on values of not just the word sized integer types `int` and `uint`, but on
   sized versions of them as well.
 
-  For now, the printing of 64 bit ints and uints is supported only
-  on 64 bit platforms.
-
 ### Changes to the `term` module
 
 * The following obsolete predicates and functions have been removed:
