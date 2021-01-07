@@ -2,6 +2,11 @@
 % Test case for io.write (and io.write_line).
 %
 % Author: trd
+%
+% The .exp2 file is for MSVC.
+% The .exp3 file is for the C# grade.
+% The .exp4 file is for the Java grade.
+% The .exp file is for other systems.
 
 :- module write.
 :- interface.
