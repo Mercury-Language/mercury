@@ -281,6 +281,7 @@ ORDINARY_PROGS = \
 	pprint_test \
 	pprint_test2 \
 	pragma_c_code \
+	pragma_export \
 	pragma_foreign_export \
 	pragma_inline \
 	pretty_printing \
@@ -616,7 +617,6 @@ ifeq "$(filter csharp% java%,$(GRADE))" ""
 		factt \
 		factt_sort_test \
 		foreign_type_assertion \
-		pragma_export \
 		runtime_opt \
 		target_mlobjs \
 		weak_ptr
