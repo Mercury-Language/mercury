@@ -22,6 +22,6 @@
 
 deconstruct_univ(Univ, T) :-
     Univ = univ_cons(T0),
-    private_builtin__typed_unify(T0, T).
+    private_builtin.typed_unify(T0, T).
 
 :- end_module existential_error1.
