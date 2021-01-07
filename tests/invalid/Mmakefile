@@ -470,9 +470,9 @@ ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
 else
 
-% XXX: with `mmake --use-mmc-make' the ".DEFAULT:" rule seems to take
+# XXX: with `mmake --use-mmc-make' the ".DEFAULT:" rule seems to take
 # precedence over "%.err: %.m" rules.
-% XXX: the reason we run the $(MCM) command twice is to avoid doubled up
+# XXX: the reason we run the $(MCM) command twice is to avoid doubled up
 # error messages, once while making interface files, then the module proper.
 # The second time the command is run, only one set of error messages
 # should appear.
