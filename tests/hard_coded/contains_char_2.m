@@ -20,16 +20,16 @@
 
 main(!IO) :-
     ( if
-        string__contains_char("cat", 'c'),
-        string__contains_char("cat", 'a'),
-        string__contains_char("cat", 't'),
-        not string__contains_char("cat", 'm'),
-        string__contains_char("aßξ啕𐀀.", 'ß'),
-        string__contains_char("aßξ啕𐀀.", 'ß'),
-        string__contains_char("aßξ啕𐀀.", 'ξ'),
-        string__contains_char("aßξ啕𐀀.", '啕'),
-        string__contains_char("aßξ啕𐀀.", '.'),
-        not string__contains_char("aßξ啕𐀀.", '☿')
+        string.contains_char("cat", 'c'),
+        string.contains_char("cat", 'a'),
+        string.contains_char("cat", 't'),
+        not string.contains_char("cat", 'm'),
+        string.contains_char("aßξ啕𐀀.", 'ß'),
+        string.contains_char("aßξ啕𐀀.", 'ß'),
+        string.contains_char("aßξ啕𐀀.", 'ξ'),
+        string.contains_char("aßξ啕𐀀.", '啕'),
+        string.contains_char("aßξ啕𐀀.", '.'),
+        not string.contains_char("aßξ啕𐀀.", '☿')
     then
         io.write_string("test succeeded\n", !IO)
     else

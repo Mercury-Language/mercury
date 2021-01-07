@@ -18,11 +18,12 @@
 :- import_module univ.
 :- import_module varset.
 
-main -->
-    { X = 4 },
-    { type_to_univ(X, Univ0) },
-    { type_to_univ(Univ0, Univ) },
-    { univ_to_term(Univ, Term) },
-    write(Term), nl,
-    { varset__init(VarSet) },
-    write_term(VarSet, Term), nl.
+main(!IO) :-
+    X = 4,
+    type_to_univ(X, Univ0),
+    type_to_univ(Univ0, Univ),
+    univ_to_term(Univ, Term),
+    io.write_line(Term, !IO),
+    varset.init(VarSet),
+    write_term(VarSet, Term, !IO),
+    io.nl(!IO).

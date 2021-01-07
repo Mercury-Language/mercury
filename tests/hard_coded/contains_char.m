@@ -17,8 +17,8 @@
 
 main(!IO) :-
     ( if
-        char__to_int(Nul, 0),
-        string__contains_char("", Nul)
+        char.to_int(Nul, 0),
+        string.contains_char("", Nul)
     then
         io.write_string("test failed\n", !IO)
     else

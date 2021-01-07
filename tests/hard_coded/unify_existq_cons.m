@@ -3,12 +3,11 @@
 %---------------------------------------------------------------------------%
 %
 :- module unify_existq_cons.
-
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -19,15 +18,15 @@
 :- type tc
     --->    some [T] tc(T) => enum(T).
 
-main -->
-    (
-        { p('new tc'('a'))
+main(!IO) :-
+    ( if
+        ( p('new tc'('a'))
         ; p('new tc'(2))
-        }
-    ->
-        io__write_string("test failed\n")
-    ;
-        io__write_string("test succeeded\n")
+        )
+    then
+        io.write_string("test failed\n", !IO)
+    else
+        io.write_string("test succeeded\n", !IO)
     ).
 
 :- pred p(tc::in) is semidet.

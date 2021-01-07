@@ -25,9 +25,9 @@ main(!IO) :-
 % the unique mode analysis is not smart enough to realize
 % that the disjuncts which update the I/O state won't
 % backtrack over I/O if the code is written like that.
-main --> io__read_line(Res),
-    ( { Res = ok(['y' | _]) }, io__write_string("Yes\n")
-    ; { Res = ok(['n' | _]) }, io__write_string("No\n")
-    ; io__write_string("Huh?\n")
+main --> io.read_line(Res),
+    ( { Res = ok(['y' | _]) }, io.write_string("Yes\n")
+    ; { Res = ok(['n' | _]) }, io.write_string("No\n")
+    ; io.write_string("Huh?\n")
     ).
 ***/

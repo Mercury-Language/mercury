@@ -9,28 +9,27 @@
 % or mode is chosen.
 
 :- module tim_qual1.
-
 :- interface.
 
 :- import_module io.
 :- import_module tim_qual2.
 :- import_module tim_qual3.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io.state::di, io.state::uo) is det.
 
-:- pred test(tim_qual2__test_type::tim_qual3__test_mode) is det.
+:- pred test(tim_qual2.test_type::tim_qual3.test_mode) is det.
 
-:- pred test2(tim_qual2__test_type::test_mode2) is det.
+:- pred test2(tim_qual2.test_type::test_mode2) is det.
 
-:- mode test_mode2 == tim_qual2__inst1 >> tim_qual3__inst1.
+:- mode test_mode2 == tim_qual2.inst1 >> tim_qual3.inst1.
 
 :- implementation.
 
-main -->
-    ( { test(ok), test2(ok) } ->
-        io__write_string("ok\n")
-    ;
-        io__write_string("error\n")
+main(!IO) :-
+    ( if test(ok), test2(ok) then
+        io.write_string("ok\n", !IO)
+    else
+        io.write_string("error\n", !IO)
     ).
 
 test2(ok).

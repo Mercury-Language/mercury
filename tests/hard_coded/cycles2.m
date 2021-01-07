@@ -69,7 +69,7 @@ cycle(StartNode, NodeLs) :-
             AdjNode = d
         )
     then
-       ( if not list__member(AdjNode, NodeLs0) then
+       ( if not list.member(AdjNode, NodeLs0) then
           Status1 = traverse
        else
           Status1 = cycle
@@ -110,7 +110,7 @@ cycles(N, Nodes) :-
 
 cycle1(StartNode, CurrNode, NodeLs0, NodeLs, traverse) :-
     ( if arrow(CurrNode, AdjNode) then
-       ( if not list__member(AdjNode, NodeLs0) then
+       ( if not list.member(AdjNode, NodeLs0) then
           Status1 = traverse
        else
           Status1 = cycle

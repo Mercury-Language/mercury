@@ -8,8 +8,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- type foo.
 :- type bar.
@@ -59,34 +58,34 @@ baz2_val(X) = X.
 bar_foo2_val(bar_foo2(_, foo2(X), _)) = X.
 bar_foo3_val(bar_foo3(_, foo3(foo2(X)), _)) = X.
 
-main -->
-    { Foo = foo(1.0) },
-    print(Foo), nl,
-    print(foo_val(Foo)), nl,
-    { Bar = bar(2, 3.0, 4) },
-    print(Bar), nl,
-    print(bar_val(Bar)), nl,
-    { Baz = 5.0 },
-    print(Baz), nl,
-    print(baz_val(Baz)), nl,
+main(!IO) :-
+    Foo = foo(1.0),
+    io.print_line(Foo, !IO),
+    io.print_line(foo_val(Foo), !IO),
+    Bar = bar(2, 3.0, 4),
+    io.print_line(Bar, !IO),
+    io.print_line(bar_val(Bar), !IO),
+    Baz = 5.0,
+    io.print_line(Baz, !IO),
+    io.print_line(baz_val(Baz), !IO),
 
-    { Foo2 = foo2(1.0) },
-    print(Foo2), nl,
-    print(foo2_val(Foo2)), nl,
-    { Foo3 = foo3(Foo2) },
-    print(Foo3), nl,
-    print(foo3_val(Foo3)), nl,
-    { Bar2 = bar2(2, 3.0, 4) },
-    print(Bar2), nl,
-    print(bar2_val(Bar2)), nl,
-    { Baz2 = 5.0 },
-    print(Baz2), nl,
-    print(baz2_val(Baz2)), nl,
+    Foo2 = foo2(1.0),
+    io.print_line(Foo2, !IO),
+    io.print_line(foo2_val(Foo2), !IO),
+    Foo3 = foo3(Foo2),
+    io.print_line(Foo3, !IO),
+    io.print_line(foo3_val(Foo3), !IO),
+    Bar2 = bar2(2, 3.0, 4),
+    io.print_line(Bar2, !IO),
+    io.print_line(bar2_val(Bar2), !IO),
+    Baz2 = 5.0,
+    io.print_line(Baz2, !IO),
+    io.print_line(baz2_val(Baz2), !IO),
 
-    { BarFoo2 = bar_foo2(6, foo2(7.0), 8) },
-    print(BarFoo2), nl,
-    print(bar_foo2_val(BarFoo2)), nl,
+    BarFoo2 = bar_foo2(6, foo2(7.0), 8),
+    io.print_line(BarFoo2, !IO),
+    io.print_line(bar_foo2_val(BarFoo2), !IO),
 
-    { BarFoo3 = bar_foo3(6, foo3(foo2(7.0)), 8) },
-    print(BarFoo3), nl,
-    print(bar_foo3_val(BarFoo3)), nl.
+    BarFoo3 = bar_foo3(6, foo3(foo2(7.0)), 8),
+    io.print_line(BarFoo3, !IO),
+    io.print_line(bar_foo3_val(BarFoo3), !IO).

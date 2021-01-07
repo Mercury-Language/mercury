@@ -3,11 +3,11 @@
 %---------------------------------------------------------------------------%
 
 :- module erroneous_liveness.
-
 :- interface.
+
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -21,7 +21,7 @@
 
 :- type indexing
     --->    indexed
-    ;   unindexed.
+    ;       unindexed.
 
 :- type cardinality == int. % >= 0
 
@@ -31,7 +31,7 @@
     --->    field(indexing, cardinality, set(entry)).
 
 :- func init_field = field.
-init_field = field(unindexed, 0, S) :- set__init(S).
+init_field = field(unindexed, 0, S) :- set.init(S).
 
 %%%
 
@@ -47,7 +47,7 @@ init_field = field(unindexed, 0, S) :- set__init(S).
                      % supplier, part, job
 
 :- func init_table = table.
-init_table = table(0, 0, init_field, init_field, init_field, S) :- set__init(S).
+init_table = table(0, 0, init_field, init_field, init_field, S) :- set.init(S).
 
 %%%
 :- type column
@@ -64,119 +64,126 @@ init_table = table(0, 0, init_field, init_field, init_field, S) :- set__init(S).
 
 %%%
 
-main -->
-    set_globals(init_table),
-    process_lines,
-    get_globals(table(Cost, _, _, _, _, _)),
-    io__write_string("Total cost was "),
-    io__write_int(Cost),
-    io__nl.
+main(!IO) :-
+    set_globals(init_table, !IO),
+    process_lines(!IO),
+    get_globals(table(Cost, _, _, _, _, _), !IO),
+    io.write_string("Total cost was ", !IO),
+    io.write_int(Cost, !IO),
+    io.nl(!IO).
 
-:- pred set_globals(table::in, io__state::di, io__state::uo) is det.
+:- pred set_globals(table::in, io::di, io::uo) is det.
 
-set_globals(G) -->
-    {copy(G, G1), type_to_univ(G1, G2)}, io__set_globals(G2).
+set_globals(G, !IO) :-
+    copy(G, G1),
+    type_to_univ(G1, G2),
+    io.set_globals(G2, !IO).
 
-:- pred get_globals(table::out, io__state::di, io__state::uo) is det.
+:- pred get_globals(table::out, io::di, io::uo) is det.
 
-get_globals(G) -->
-    io__get_globals(G0),
-    { univ_to_type(G0, G1) ->
+get_globals(G, !IO) :-
+    io.get_globals(G0, !IO),
+    ( if univ_to_type(G0, G1) then
         G = G1
-    ;
+    else
         error("get_globals/3---univ_to_type failed.")
-    }.
+    ).
 
-:- pred process_lines(io__state::di, io__state::uo) is det.
+:- pred process_lines(io::di, io::uo) is det.
 
-process_lines -->
-    io__read_line(Result),
+process_lines(!IO) :-
+    io.read_line(Result, !IO),
     (
-        {Result = ok(CharList)},
-        interpret(strings(CharList))
+        Result = ok(CharList),
+        interpret(strings(CharList), !IO)
     ;
-        {Result = eof}
+        Result = eof
     ;
-        {Result = error(Error),
-        io__error_message(Error, Message)}, abort(Message)
+        Result = error(Error),
+        io.error_message(Error, Message),
+        abort(Message, !IO)
     ).
 
-:- pred interpret(list(string)::in, io__state::di, io__state::uo) is det.
+:- pred interpret(list(string)::in, io::di, io::uo) is det.
 
-interpret([]) -->
-    abort("empty line").
-interpret([H | T]) -->
-    ( {H = "index"} ->
-        oneArg(H, T, Arg),
-        ( {Arg = "supplier"} ->
-            {Column = supplier}
-        ; {Arg = "part"} ->
-            {Column = part}
-        ; {Arg = "job"} ->
-            {Column = job}
-        ;   {string__append("index on unrecognised column---",
-                Arg, Message)},
-            abort(Message)
+interpret([], !IO) :-
+    abort("empty line", !IO).
+interpret([H | T], !IO) :-
+    ( if H = "index" then
+        oneArg(H, T, Arg, !IO),
+        ( if Arg = "supplier" then
+            Column = supplier
+        else if Arg = "part" then
+            Column = part
+        else if Arg = "job" then
+            Column = job
+        else
+            string.append("index on unrecognised column---",
+                Arg, Message),
+            abort(Message, !IO)
         ),
-        operate(index(Column))
-    ; {H = "insert"} ->
-        noArg(H, T),
-        operate(insert)
-    ; {H = "buffer"} ->
-        oneArg(H, T, Arg),
-        ( {string__to_int(Arg, BSize0), BSize0 >= 0} ->
-            {BSize = BSize0}
-        ;   {string__append("buffer size must be non-negative integer---",
-                Arg, Message)},
-            abort(Message)
+        operate(index(Column), !IO)
+    else if H = "insert" then
+        noArg(H, T, !IO),
+        operate(insert, !IO)
+    else if H = "buffer" then
+        oneArg(H, T, Arg, !IO),
+        ( if string.to_int(Arg, BSize0), BSize0 >= 0 then
+            BSize = BSize0
+        else
+            string.append("buffer size must be non-negative integer---",
+                Arg, Message),
+            abort(Message, !IO)
         ),
-        operate(buffer(BSize))
-    ; {H = "supplier"} ->
-        oneArg(H, T, Arg),
-        operate(retrieve(supplier, Arg))
-    ; {H = "part"} ->
-        oneArg(H, T, Arg),
-        operate(retrieve(part, Arg))
-    ; {H = "job"} ->
-        oneArg(H, T, Arg),
-        operate(retrieve(job, Arg))
-    ; {H = "spj"} ->
-        noArg(H, T),
-        operate(retrieve_all)
-    ;   {string__append("unrecognised command---", H, Message)},
-        abort(Message)
+        operate(buffer(BSize), !IO)
+    else if H = "supplier" then
+        oneArg(H, T, Arg, !IO),
+        operate(retrieve(supplier, Arg), !IO)
+    else if H = "part" then
+        oneArg(H, T, Arg, !IO),
+        operate(retrieve(part, Arg), !IO)
+    else if H = "job" then
+        oneArg(H, T, Arg, !IO),
+        operate(retrieve(job, Arg), !IO)
+    else if H = "spj" then
+        noArg(H, T, !IO),
+        operate(retrieve_all, !IO)
+    else
+        string.append("unrecognised command---", H, Message),
+        abort(Message, !IO)
     ).
 
-:- pred operate(operation::in, io__state::di, io__state::uo) is det.
+:- pred operate(operation::in, io::di, io::uo) is det.
 
-operate(_) --> [].
+operate(_, !IO).
 
 :- pred noArg(string::in, list(string)::in, io::di, io::uo) is det.
 
-noArg(_, []) --> [].
-noArg(S, [_ | _]) -->
-    {string__append("no args expected for command---", S, Message)},
-    abort(Message).
+noArg(_, [], !IO).
+noArg(S, [_ | _], !IO) :-
+    string.append("no args expected for command---", S, Message),
+    abort(Message, !IO).
 
 :- pred oneArg(string::in, list(string)::in, string::out,
     io::di, io::uo) is det.
 
-oneArg(S, [], _) -->
-    {string__append("one arg expected for command---", S, Message)},
-    abort(Message).
-oneArg(S, [H | T], H) -->
-    ( {T = []} ->
-        {true}
-    ;   {string__append("only one arg expected for command---",
-                                S, Message)},
-        abort(Message)
+oneArg(S, [], _, !IO) :-
+    string.append("one arg expected for command---", S, Message),
+    abort(Message, !IO).
+oneArg(S, [H | T], H, !IO) :-
+    ( if T = [] then
+        true
+    else
+        string.append("only one arg expected for command---",
+            S, Message),
+        abort(Message, !IO)
     ).
 
 :- func strings(list(char)) = list(string).
 
 strings(CL) = SL :-
     strings(CL, [], [], SL1),
-    list__reverse(SL1, SL).
+    list.reverse(SL1, SL).
 
 :- pred strings(list(char), list(char), list(string), list(string)).
 :- mode strings(in, in, in, out).
@@ -184,9 +191,9 @@ strings(CL) = SL :-
 strings([], SCL, SL0, SL) :-
     addString(SCL, SL0, SL).
 strings([H | T], SCL, SL0, SL) :-
-    ( char__is_whitespace(H) ->
+    ( if char.is_whitespace(H) then
         SCL1 = [], addString(SCL, SL0, SL1)
-    ;
+    else
         SCL1 = [H | SCL], SL1 = SL0
     ),
     strings(T, SCL1, SL1, SL).
@@ -199,20 +206,20 @@ addString(SCL, SL0, SL) :-
         SL = SL0
     ;
         SCL = [_ | _],
-        list__reverse(SCL, SCL1),
-        string__from_char_list(SCL1, S),
+        list.reverse(SCL, SCL1),
+        string.from_char_list(SCL1, S),
         SL = [S | SL0]
     ).
 
-:- pred abort(string::in, io__state::di, io__state::uo) is erroneous.
+:- pred abort(string::in, io::di, io::uo) is erroneous.
 
-abort(Message) -->
-    io__write_string("Error at line "),
-    io__get_line_number(N),
-    io__write_int(N),
-    io__write_string(": "),
-    {error(Message)}.
-%   io__write_string(Message),
-%   io__nl,
-%   io__set_exit_status(1).
+abort(Message, !IO) :-
+    io.write_string("Error at line ", !IO),
+    io.get_line_number(N, !IO),
+    io.write_int(N, !IO),
+    io.write_string(": ", !IO),
+    error(Message).
+%   io.write_string(Message),
+%   io.nl,
+%   io.set_exit_status(1).
 

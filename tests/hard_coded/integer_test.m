@@ -98,7 +98,7 @@ fac(X, F) :-
 :- pred write_message(string::in, integer::in, io::di, io::uo) is det.
 
 write_message(String, Int, !IO) :-
-    io__write_string(String, !IO),
+    io.write_string(String, !IO),
     Str = integer.to_string(Int),
     io.write_string(Str, !IO),
     io.nl(!IO).

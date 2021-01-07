@@ -9,7 +9,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -23,11 +23,11 @@
 :- import_module term.
 :- import_module univ.
 
-:- pred test_builtins(io__state::di, io__state::uo) is det.
-:- pred test_discriminated(io__state::di, io__state::uo) is det.
-:- pred test_polymorphism(io__state::di, io__state::uo) is det.
+:- pred test_builtins(io::di, io::uo) is det.
+:- pred test_discriminated(io::di, io::uo) is det.
+:- pred test_polymorphism(io::di, io::uo) is det.
 
-:- pred newline(io__state::di, io__state::uo) is det.
+:- pred newline(io::di, io::uo) is det.
 
 :- type my_enum
     --->    one
@@ -43,7 +43,7 @@
     from_int(3) = three
 ].
 
-:- pred test_all(T::in, io__state::di, io__state::uo) is det.
+:- pred test_all(T::in, io::di, io::uo) is det.
 
 :- type fruit
     --->    some [T] apple(list(T))
@@ -157,18 +157,18 @@ main -->
 %---------------------------------------------------------------------------%
 
 test_all(T) -->
-    io__write(T),
-    io__write_string("\n"),
+    io.write(T),
+    io.write_string("\n"),
     { copy(T, T1) },
-    io__write(T),
-    io__write_string("\n"),
-    io__write(T1),
+    io.write(T),
+    io.write_string("\n"),
+    io.write(T1),
     newline.
 
 %---------------------------------------------------------------------------%
 
 test_discriminated -->
-    io__write_string("TESTING DISCRIMINATED UNIONS\n"),
+    io.write_string("TESTING DISCRIMINATED UNIONS\n"),
 
         % test no secondary tags
     test_all('new apple'([9, 5, 1])),
@@ -196,7 +196,7 @@ test_discriminated -->
     newline.
 
 test_polymorphism -->
-    io__write_string("TESTING POLYMORPHISM\n"),
+    io.write_string("TESTING POLYMORPHISM\n"),
     test_all('new poly_three'(3.33, 4, poly_one(9.11))),
     test_all('new poly_two'(3)),
     test_all(poly_one([2399.3])),
@@ -204,7 +204,7 @@ test_polymorphism -->
     newline.
 
 test_builtins -->
-    io__write_string("TESTING BUILTINS\n"),
+    io.write_string("TESTING BUILTINS\n"),
 
         % test univ.
     { type_to_univ(["hi! I'm a univ!"], Univ) },
@@ -213,4 +213,4 @@ test_builtins -->
     newline.
 
 newline -->
-    io__write_char('\n').
+    io.write_char('\n').

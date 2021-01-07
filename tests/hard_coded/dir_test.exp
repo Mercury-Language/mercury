@@ -1,125 +1,125 @@
 Directory separator is '\'.
-dir__split_name("\\server\share\foo", "\\server\share", "foo").
+dir.split_name("\\server\share\foo", "\\server\share", "foo").
 "\\server\share"/"foo" = "\\server\share\foo".
-dir__dirname("\\server\share\foo") = "\\server\share".
-dir__basename("\\server\share\foo") = "foo".
-dir__path_name_is_absolute("\\server\share\foo").
-dir__path_name_is_root_directory("\\server\share\foo") failed
+dir.dirname("\\server\share\foo") = "\\server\share".
+dir.basename("\\server\share\foo") = "foo".
+dir.path_name_is_absolute("\\server\share\foo").
+dir.path_name_is_root_directory("\\server\share\foo") failed
 
-dir__split_name("\\server\share", _, _) failed.
-dir__dirname("\\server\share") = "\\server\share".
-dir__basename("\\server\share") = _ failed.
-dir__path_name_is_absolute("\\server\share").
-dir__path_name_is_root_directory("\\server\share").
+dir.split_name("\\server\share", _, _) failed.
+dir.dirname("\\server\share") = "\\server\share".
+dir.basename("\\server\share") = _ failed.
+dir.path_name_is_absolute("\\server\share").
+dir.path_name_is_root_directory("\\server\share").
 
-dir__split_name("\\server\share\\", _, _) failed.
-dir__dirname("\\server\share\\") = "\\server\share\".
-dir__basename("\\server\share\\") = _ failed.
-dir__path_name_is_absolute("\\server\share\\").
-dir__path_name_is_root_directory("\\server\share\\").
+dir.split_name("\\server\share\\", _, _) failed.
+dir.dirname("\\server\share\\") = "\\server\share\".
+dir.basename("\\server\share\\") = _ failed.
+dir.path_name_is_absolute("\\server\share\\").
+dir.path_name_is_root_directory("\\server\share\\").
 
-dir__split_name("C:\foo", "C:\", "foo").
+dir.split_name("C:\foo", "C:\", "foo").
 "C:\"/"foo" = "C:\foo".
-dir__dirname("C:\foo") = "C:\".
-dir__basename("C:\foo") = "foo".
-dir__path_name_is_absolute("C:\foo").
-dir__path_name_is_root_directory("C:\foo") failed
+dir.dirname("C:\foo") = "C:\".
+dir.basename("C:\foo") = "foo".
+dir.path_name_is_absolute("C:\foo").
+dir.path_name_is_root_directory("C:\foo") failed
 
-dir__split_name("C:\foo\", "C:\", "foo").
+dir.split_name("C:\foo\", "C:\", "foo").
 "C:\"/"foo" = "C:\foo".
-dir__dirname("C:\foo\") = "C:\".
-dir__basename("C:\foo\") = "foo".
-dir__path_name_is_absolute("C:\foo\").
-dir__path_name_is_root_directory("C:\foo\") failed
+dir.dirname("C:\foo\") = "C:\".
+dir.basename("C:\foo\") = "foo".
+dir.path_name_is_absolute("C:\foo\").
+dir.path_name_is_root_directory("C:\foo\") failed
 
-dir__split_name("C:\", _, _) failed.
-dir__dirname("C:\") = "C:\".
-dir__basename("C:\") = _ failed.
-dir__path_name_is_absolute("C:\").
-dir__path_name_is_root_directory("C:\").
+dir.split_name("C:\", _, _) failed.
+dir.dirname("C:\") = "C:\".
+dir.basename("C:\") = _ failed.
+dir.path_name_is_absolute("C:\").
+dir.path_name_is_root_directory("C:\").
 
-dir__split_name("C:", _, _) failed.
-dir__dirname("C:") = "C:".
-dir__basename("C:") = _ failed.
-dir__path_name_is_absolute("C:") failed
-dir__path_name_is_root_directory("C:") failed
+dir.split_name("C:", _, _) failed.
+dir.dirname("C:") = "C:".
+dir.basename("C:") = _ failed.
+dir.path_name_is_absolute("C:") failed
+dir.path_name_is_root_directory("C:") failed
 
-dir__split_name("\", _, _) failed.
-dir__dirname("\") = "\".
-dir__basename("\") = _ failed.
-dir__path_name_is_absolute("\").
-dir__path_name_is_root_directory("\").
+dir.split_name("\", _, _) failed.
+dir.dirname("\") = "\".
+dir.basename("\") = _ failed.
+dir.path_name_is_absolute("\").
+dir.path_name_is_root_directory("\").
 
-dir__split_name("", _, _) failed.
-dir__dirname("") = ".".
-dir__basename("") = "".
-dir__path_name_is_absolute("") failed
-dir__path_name_is_root_directory("") failed
+dir.split_name("", _, _) failed.
+dir.dirname("") = ".".
+dir.basename("") = "".
+dir.path_name_is_absolute("") failed
+dir.path_name_is_root_directory("") failed
 
-dir__split_name("foo\\bar\", "foo", "bar").
+dir.split_name("foo\\bar\", "foo", "bar").
 "foo"/"bar" = "foo\bar".
-dir__dirname("foo\\bar\") = "foo".
-dir__basename("foo\\bar\") = "bar".
-dir__path_name_is_absolute("foo\\bar\") failed
-dir__path_name_is_root_directory("foo\\bar\") failed
+dir.dirname("foo\\bar\") = "foo".
+dir.basename("foo\\bar\") = "bar".
+dir.path_name_is_absolute("foo\\bar\") failed
+dir.path_name_is_root_directory("foo\\bar\") failed
 
-dir__split_name("foo\bar\", "foo", "bar").
+dir.split_name("foo\bar\", "foo", "bar").
 "foo"/"bar" = "foo\bar".
-dir__dirname("foo\bar\") = "foo".
-dir__basename("foo\bar\") = "bar".
-dir__path_name_is_absolute("foo\bar\") failed
-dir__path_name_is_root_directory("foo\bar\") failed
+dir.dirname("foo\bar\") = "foo".
+dir.basename("foo\bar\") = "bar".
+dir.path_name_is_absolute("foo\bar\") failed
+dir.path_name_is_root_directory("foo\bar\") failed
 
-dir__split_name("foo", _, _) failed.
-dir__dirname("foo") = ".".
-dir__basename("foo") = "foo".
-dir__path_name_is_absolute("foo") failed
-dir__path_name_is_root_directory("foo") failed
+dir.split_name("foo", _, _) failed.
+dir.dirname("foo") = ".".
+dir.basename("foo") = "foo".
+dir.path_name_is_absolute("foo") failed
+dir.path_name_is_root_directory("foo") failed
 
-dir__split_name("/foo", "\", "foo").
+dir.split_name("/foo", "\", "foo").
 "\"/"foo" = "\foo".
-dir__dirname("/foo") = "\".
-dir__basename("/foo") = "foo".
-dir__path_name_is_absolute("/foo").
-dir__path_name_is_root_directory("/foo") failed
+dir.dirname("/foo") = "\".
+dir.basename("/foo") = "foo".
+dir.path_name_is_absolute("/foo").
+dir.path_name_is_root_directory("/foo") failed
 
-dir__split_name("/foo//bar///", "\foo", "bar").
+dir.split_name("/foo//bar///", "\foo", "bar").
 "\foo"/"bar" = "\foo\bar".
-dir__dirname("/foo//bar///") = "\foo".
-dir__basename("/foo//bar///") = "bar".
-dir__path_name_is_absolute("/foo//bar///").
-dir__path_name_is_root_directory("/foo//bar///") failed
+dir.dirname("/foo//bar///") = "\foo".
+dir.basename("/foo//bar///") = "bar".
+dir.path_name_is_absolute("/foo//bar///").
+dir.path_name_is_root_directory("/foo//bar///") failed
 
-dir__split_name("//foo//bar/", _, _) failed.
-dir__dirname("//foo//bar/") = "\\foo\bar\".
-dir__basename("//foo//bar/") = _ failed.
-dir__path_name_is_absolute("//foo//bar/").
-dir__path_name_is_root_directory("//foo//bar/").
+dir.split_name("//foo//bar/", _, _) failed.
+dir.dirname("//foo//bar/") = "\\foo\bar\".
+dir.basename("//foo//bar/") = _ failed.
+dir.path_name_is_absolute("//foo//bar/").
+dir.path_name_is_root_directory("//foo//bar/").
 
-dir__split_name("//foo//", _, _) failed.
-dir__dirname("//foo//") = "\\foo\".
-dir__basename("//foo//") = _ failed.
-dir__path_name_is_absolute("//foo//").
-dir__path_name_is_root_directory("//foo//").
+dir.split_name("//foo//", _, _) failed.
+dir.dirname("//foo//") = "\\foo\".
+dir.basename("//foo//") = _ failed.
+dir.path_name_is_absolute("//foo//").
+dir.path_name_is_root_directory("//foo//").
 
-dir__split_name("/", _, _) failed.
-dir__dirname("/") = "\".
-dir__basename("/") = _ failed.
-dir__path_name_is_absolute("/").
-dir__path_name_is_root_directory("/").
+dir.split_name("/", _, _) failed.
+dir.dirname("/") = "\".
+dir.basename("/") = _ failed.
+dir.path_name_is_absolute("/").
+dir.path_name_is_root_directory("/").
 
-dir__split_name("//", _, _) failed.
-dir__dirname("//") = "\".
-dir__basename("//") = _ failed.
-dir__path_name_is_absolute("//").
-dir__path_name_is_root_directory("//").
+dir.split_name("//", _, _) failed.
+dir.dirname("//") = "\".
+dir.basename("//") = _ failed.
+dir.path_name_is_absolute("//").
+dir.path_name_is_root_directory("//").
 
-dir__split_name("foo/bar", "foo", "bar").
+dir.split_name("foo/bar", "foo", "bar").
 "foo"/"bar" = "foo\bar".
-dir__dirname("foo/bar") = "foo".
-dir__basename("foo/bar") = "bar".
-dir__path_name_is_absolute("foo/bar") failed
-dir__path_name_is_root_directory("foo/bar") failed
+dir.dirname("foo/bar") = "foo".
+dir.basename("foo/bar") = "bar".
+dir.path_name_is_absolute("foo/bar") failed
+dir.path_name_is_root_directory("foo/bar") failed
 
 "C:"/"foo" = "C:foo".
 "C:\"/"foo" = "C:\foo".
@@ -147,13 +147,13 @@ touching file succeeded
 touching file succeeded
 creating directory with same name as ordinary file failed (as expected).
 symlinks not available on this platform
-dir__foldl2 succeeded
+dir.foldl2 succeeded
 Files in test_dir:
 test_dir\d1, test_dir\d2, test_dir\quark, test_dir\queeg
-dir__recursive_foldl2 (no symlinks) succeeded
+dir.recursive_foldl2 (no symlinks) succeeded
 Files in test_dir (recursive, not following symlinks):
 test_dir\d1, test_dir\d1\baz, test_dir\d1\foo, test_dir\d2, test_dir\d2\d2, test_dir\quark, test_dir\queeg
-dir__recursive_foldl2 (symlinks) succeeded
+dir.recursive_foldl2 (symlinks) succeeded
 Files in test_dir (recursive, following symlinks:
 test_dir\d1, test_dir\d1\baz, test_dir\d1\foo, test_dir\d2, test_dir\d2\d2, test_dir\quark, test_dir\queeg
 dir.recursive_foldl2(list_files, "dir_test.m", ...) failed as expected.

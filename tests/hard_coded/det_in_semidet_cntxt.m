@@ -7,13 +7,11 @@
 % got an internal error for this test case.
 
 :- module det_in_semidet_cntxt.
-
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -41,7 +39,7 @@ main -->
     %
     % D is the list of diseases.
     %
-:- pred read_diseases(list(disease), io__state, io__state).
+:- pred read_diseases(list(disease), io, io).
 :- mode read_diseases(out, di, uo) is det.
 
 read_diseases(D) -->
@@ -55,7 +53,7 @@ read_diseases(D) -->
         { D = [] }
     ).
 
-:- pred read_disease(maybe(disease), io__state, io__state).
+:- pred read_disease(maybe(disease), io, io).
 :- mode read_disease(out, di, uo) is det.
 
 read_disease(MaybeDisease) -->
@@ -70,27 +68,27 @@ read_disease(MaybeDisease) -->
         { MaybeDisease = no }
     ).
 
-:- pred read_name(maybe(string)::out, io__state::di, io__state::uo) is det.
+:- pred read_name(maybe(string)::out, io::di, io::uo) is det.
 
 read_name(MaybeName) -->
-    io__read_word(Result),
+    io.read_word(Result),
     (
         { Result = ok(Name0) },
-        { string__from_char_list(Name0, Name) },
+        { string.from_char_list(Name0, Name) },
         { MaybeName = yes(Name) }
     ;
         { Result = eof },
         { MaybeName = no }
     ;
         { Result = error(Err) },
-        { io__error_message(Err, ErrStr) },
+        { io.error_message(Err, ErrStr) },
         { error(ErrStr) }
     ).
 
-:- pred read_symptons(list(string)::out, io__state::di, io__state::uo) is det.
+:- pred read_symptons(list(string)::out, io::di, io::uo) is det.
 read_symptons([]) --> [].
 
-:- pred read_vaccines(list(string)::out, io__state::di, io__state::uo) is det.
+:- pred read_vaccines(list(string)::out, io::di, io::uo) is det.
 read_vaccines([]) --> [].
 
 %---------------------------------------------------------------------------%

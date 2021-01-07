@@ -3,39 +3,36 @@
 %---------------------------------------------------------------------------%
 
 :- module user_compare.
-
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int.
 
-main -->
-    { compare(Result, foo(1), foo(2)) },
-    io__write(Result),
-    io__nl,
-    ( { unify(foo(1), foo(1)) } ->
-        io__write_string("succeeded\n")
-    ;
-        io__write_string("failed\n")
+main(!IO) :-
+    compare(Result, foo(1), foo(2)),
+    io.write_line(Result, !IO),
+    ( if unify(foo(1), foo(1)) then
+        io.write_string("succeeded\n", !IO)
+    else
+        io.write_string("failed\n", !IO)
     ),
-    ( { foreign(1) = foreign(1) } ->
-        io__write_string("succeeded\n")
-    ;
-        io__write_string("failed\n")
+    ( if foreign(1) = foreign(1) then
+        io.write_string("succeeded\n", !IO)
+    else
+        io.write_string("failed\n", !IO)
     ),
-    ( { foreign(2) = foreign(3) } ->
-        io__write_string("failed\n")
-    ;
-        io__write_string("succeeded\n")
+    ( if foreign(2) = foreign(3) then
+        io.write_string("failed\n", !IO)
+    else
+        io.write_string("succeeded\n", !IO)
     ),
-    { compare(Result2, foreign(3), foreign(2)) },
-    io__write(Result2),
-    io__nl.
+    compare(Result2, foreign(3), foreign(2)),
+    io.write_line(Result2, !IO).
 
 :- type foo
     --->    foo(int)
@@ -96,7 +93,8 @@ foreign_compare(Result, Foreign1, Foreign2) :-
     foreign_compare_2(Result::out, Foreign1::in, Foreign2::in),
     [will_not_call_mercury, promise_pure],
 "
-    Result = (Foreign1 < Foreign2 ? 1 : (Foreign1 == Foreign2 ? 0 : -1));").
+    Result = (Foreign1 < Foreign2 ? 1 : (Foreign1 == Foreign2 ? 0 : -1));
+").
 :- pragma foreign_proc("C#",
     foreign_compare_2(Result::out, Foreign1::in, Foreign2::in),
     [will_not_call_mercury, promise_pure],

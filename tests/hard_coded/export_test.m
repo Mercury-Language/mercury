@@ -7,13 +7,12 @@
 % author: dgj
 
 :- module export_test.
-
 :- interface.
 
 :- import_module int.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- pred foo(int::in, int::out) is det.
 
@@ -21,12 +20,11 @@
 
 :- implementation.
 
-main -->
-    { bar(41, X) },
-    io__write(X),
-    io__write_char('\n').
+main(!IO) :-
+    bar(41, X),
+    io.write_line(X, !IO).
 
-foo(X, X+1).
+foo(X, X + 1).
 
 :- pragma foreign_export("C", foo(in, out), "foo").
 :- pragma foreign_export("C#", foo(in, out), "foo").
@@ -38,11 +36,15 @@ foo(X, X+1).
 "
     foo(X, &Y);
 ").
-:- pragma foreign_proc("C#", bar(X::in, Y::out),
-        [may_call_mercury, promise_pure], "
+:- pragma foreign_proc("C#",
+    bar(X::in, Y::out),
+    [may_call_mercury, promise_pure],
+"
     Y = export_test.foo(X);
 ").
-:- pragma foreign_proc("Java", bar(X::in, Y::out),
-        [may_call_mercury, promise_pure], "
+:- pragma foreign_proc("Java",
+    bar(X::in, Y::out),
+    [may_call_mercury, promise_pure],
+"
     Y = export_test.foo(X);
 ").

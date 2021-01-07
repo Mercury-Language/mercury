@@ -20,7 +20,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 :- import_module list.
@@ -35,33 +35,31 @@
 foo_equal(_, _) :-
     semidet_succeed.
 
-main -->
-    ( { append([bar], [baz], [baz, bar]) } ->
-        io__write_string("yes\n")
-    ;
-        io__write_string("no\n")
+main(!IO) :-
+    ( if append([bar], [baz], [baz, bar]) then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ),
-    perform_comparison_test(comparison_test1),
-    perform_comparison_test(comparison_test2).
+    perform_comparison_test(comparison_test1, !IO),
+    perform_comparison_test(comparison_test2, !IO).
 
-:- pred perform_comparison_test(pred(T), io__state, io__state).
+:- pred perform_comparison_test(pred(T), io.state, io.state).
 :- mode perform_comparison_test(pred(out) is det, di, uo) is cc_multi.
 
-perform_comparison_test(Test) -->
-    { try(Test, TryResult) },
+perform_comparison_test(Test, !IO) :-
+    try(Test, TryResult),
     (
-        { TryResult = failed },
-        io__write_string("failed\n")
+        TryResult = failed,
+        io.write_string("failed\n", !IO)
     ;
-        { TryResult = succeeded(Result) },
-        io__write_string("succeeded: "),
-        io__write(Result),
-        io__write_string("\n")
+        TryResult = succeeded(Result),
+        io.write_string("succeeded: ", !IO),
+        io.write_line(Result, !IO)
     ;
-        { TryResult = exception(Exception) },
-        io__write_string("threw exception: "),
-        io__write(Exception),
-        io__write_string("\n")
+        TryResult = exception(Exception),
+        io.write_string("threw exception: ", !IO),
+        io.write_line(Exception, !IO)
     ).
 
 :- pred comparison_test1(comparison_result::out) is det.

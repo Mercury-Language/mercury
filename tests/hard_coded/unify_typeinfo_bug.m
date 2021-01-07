@@ -8,7 +8,7 @@
 :- import_module io.
 :- import_module list.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- pred unify_bug(list(T)::in, list(T)::in) is semidet.
 
@@ -21,26 +21,26 @@
 
 :- implementation.
 
-main -->
-    ( { unify_bug([1], [1]) } ->
-        io__write_string("Succeeded\n")
-    ;
-        io__write_string("Failed\n")
+main(!IO) :-
+    ( if unify_bug([1], [1]) then
+        io.write_string("Succeeded\n", !IO)
+    else
+        io.write_string("Failed\n", !IO)
     ),
-    ( { exist_unify_bug([1], [1]) } ->
-        io__write_string("Succeeded\n")
-    ;
-        io__write_string("Failed\n")
+    ( if exist_unify_bug([1], [1]) then
+        io.write_string("Succeeded\n", !IO)
+    else
+        io.write_string("Failed\n", !IO)
     ),
-    ( { exist_unify_bug([1], [1]) } ->
-        io__write_string("Succeeded\n")
-    ;
-        io__write_string("Failed\n")
+    ( if exist_unify_bug([1], [1]) then
+        io.write_string("Succeeded\n", !IO)
+    else
+        io.write_string("Failed\n", !IO)
     ),
-    ( { singleton_set(tree([1], 1, empty, empty), [1]) } ->
-        io__write_string("Succeeded\n")
-    ;
-        io__write_string("Failed\n")
+    ( if  singleton_set(tree([1], 1, empty, empty), [1]) then
+        io.write_string("Succeeded\n", !IO)
+    else
+        io.write_string("Failed\n", !IO)
     ).
 
 unify_bug(A, B) :-
@@ -57,6 +57,6 @@ exist_id(A, B, A, B).
 
 :- type set_bbbtree(T)
     --->    empty
-    ;   tree(T, int, set_bbbtree(T), set_bbbtree(T)).
+    ;       tree(T, int, set_bbbtree(T), set_bbbtree(T)).
 
 singleton_set(tree(V, 1, empty, empty), V).

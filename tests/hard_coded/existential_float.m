@@ -27,47 +27,47 @@
 :- some [T] pred my_exist_p_multi(T::out) is multi.
 :- some [T] pred my_exist_p_semi(foo::in, T::out) is semidet.
 
-:- pred main(io__state::di, state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 :- import_module int.
 :- import_module solutions.
 
-main -->
-    foo(univ(my_exist_c)),
-    foo(univ(my_exist_f)),
-    foo(univ(my_exist_fn)),
-    foo(univ(call_my_exist_c)),
-    foo(univ(call_my_exist_f)),
-    foo(univ(call_my_exist_fn)),
-    write(my_exist_c), nl,
-    write(my_exist_f), nl,
-    write(my_exist_fn), nl,
-    write(call_my_exist_c), nl,
-    write(call_my_exist_f), nl,
-    write(call_my_exist_fn), nl,
-    ( { call_my_exist_p_semi(left, X1) } ->
-        write(X1), nl
-    ;
-        print("no."), nl
+main(!IO) :-
+    foo(univ(my_exist_c), !IO),
+    foo(univ(my_exist_f), !IO),
+    foo(univ(my_exist_fn), !IO),
+    foo(univ(call_my_exist_c), !IO),
+    foo(univ(call_my_exist_f), !IO),
+    foo(univ(call_my_exist_fn), !IO),
+    io.write_line(my_exist_c, !IO),
+    io.write_line(my_exist_f, !IO),
+    io.write_line(my_exist_fn, !IO),
+    io.write_line(call_my_exist_c, !IO),
+    io.write_line(call_my_exist_f, !IO),
+    io.write_line(call_my_exist_fn, !IO),
+    ( if call_my_exist_p_semi(left, X1) then
+        io.write_line(X1, !IO)
+    else
+        io.print_line("no.", !IO)
     ),
-    ( { call_my_exist_p_semi(right, X2) } ->
-        write(X2), nl
-    ;
-        print("no."), nl
+    ( if call_my_exist_p_semi(right, X2) then
+        io.write_line(X2, !IO)
+    else
+        io.print_line("no.", !IO)
     ),
-    ( { my_exist_p_semi(left, X3) } ->
-        write(X3), nl
-    ;
-        print("no."), nl
+    ( if my_exist_p_semi(left, X3) then
+        io.write_line(X3, !IO)
+    else
+        io.print_line("no.", !IO)
     ),
-    ( { my_exist_p_semi(right, X4) } ->
-        write(X4), nl
-    ;
-        print("no."), nl
+    ( if my_exist_p_semi(right, X4) then
+        io.write_line(X4, !IO)
+    else
+        io.print_line("no.", !IO)
     ),
-    { unsorted_solutions(my_univ_p_multi, List) },
-    write(List), nl.
+    unsorted_solutions(my_univ_p_multi, List),
+    io.write_line(List, !IO).
 
 my_exist_c = 'c'.
 
@@ -97,10 +97,10 @@ call_my_exist_p_semi(A, B) :-
 my_univ_p_multi(univ(X)) :-
     call_my_exist_p_multi(X).
 
-:- pred foo(univ::in, io__state::di, state::uo) is det.
+:- pred foo(univ::in, io::di, io::uo) is det.
 
-foo(X) -->
-    write(univ_value(X)), nl,
-    write(call_univ_value(X)), nl.
+foo(X, !IO) :-
+    io.write_line(univ_value(X), !IO),
+    io.write_line(call_univ_value(X), !IO).
 
 call_univ_value(Univ) = univ_value(Univ).

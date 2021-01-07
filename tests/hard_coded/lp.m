@@ -32,14 +32,14 @@
     --->    max
     ;       min.
 
-:- type lp__result
+:- type lp.result
     --->    unsatisfiable
     ;       satisfiable(float, map(var, float)).
 
 %---------------------------------------------------------------------------%
 
-:- pred lp_solve(equations, direction, objective, varset, lp__result,
-    io__state, io__state).
+:- pred lp_solve(equations, direction, objective, varset, lp.result,
+    io, io).
 :- mode lp_solve(in, in, in, in, out, di, uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
@@ -64,12 +64,12 @@ lp_solve(Equations, Dir, Objective, Varset0, Result, IO0, IO) :-
         Resolved = yes,
         index(Tableau, N, M, 0, M, ObjVal),
         GetObjVar = (pred(Var::out) is nondet :-
-            list__member(Coeff, Objective),
+            list.member(Coeff, Objective),
             Coeff = Var - _
         ),
         solutions(GetObjVar, ObjVars),
-        map__init(ObjVarVals0),
-        list__foldl(objvarval(Tableau, VarNumbers, N, M), ObjVars,
+        map.init(ObjVarVals0),
+        list.foldl(objvarval(Tableau, VarNumbers, N, M), ObjVars,
             ObjVarVals0, ObjVarVals),
         Result = satisfiable(ObjVal, ObjVarVals)
     ;
@@ -86,16 +86,16 @@ form_tableau(Equations, Dir, Objective, Varset0,
     N = NumNormEqns1,
     M = NumVars1,
     normalize_equations(Equations, [], NormalEquations0, Varset0, _Varset),
-    list__map(simplify, NormalEquations0, NormalEquations1),
-    list__reverse(NormalEquations1, NormalEquations),
-    list__length(NormalEquations, NumNormEqns),
+    list.map(simplify, NormalEquations0, NormalEquations1),
+    list.reverse(NormalEquations1, NormalEquations),
+    list.length(NormalEquations, NumNormEqns),
     collect_vars(NormalEquations, Objective, Vars),
-    set__to_sorted_list(Vars, VarList),
-    list__length(VarList, NumVars),
+    set.to_sorted_list(Vars, VarList),
+    list.length(VarList, NumVars),
     NumVars1 = NumVars,
     NumNormEqns1 = NumNormEqns,
     init_tableau(NumNormEqns1, NumVars1, Tableau0),
-    map__init(VarNumbers0),
+    map.init(VarNumbers0),
     number_vars(VarList, 0, VarNumbers0, VarNumbers),
     (
         Dir = max,
@@ -104,7 +104,7 @@ form_tableau(Equations, Dir, Objective, Varset0,
                 X1 = -X0,
                 Pair = V - (X1)
         ),
-        list__map(Neg, Objective, NegObjective)
+        list.map(Neg, Objective, NegObjective)
     ;
         Dir = min,
         NegObjective = Objective
@@ -125,12 +125,12 @@ normalize_equations([Eqn0 | Eqns], NEqns0, NEqns, Varset0, Varset) :-
         NEqns1 = [Eqn0 | NEqns0]
     ;
         Op0 = (=<),
-        varset__new_var(Var, Varset0, Varset1),
+        varset.new_var(Var, Varset0, Varset1),
         Eqn1 = eqn([Var - 1.0 | Coeffs0], (=), Const0),
         NEqns1 = [Eqn1 | NEqns0]
     ;
         Op0 = (>=),
-        varset__new_var(Var, Varset0, Varset1),
+        varset.new_var(Var, Varset0, Varset1),
         Eqn1 = eqn([Var - (-1.0) | Coeffs0], (=), Const0),
         NEqns1 = [Eqn1 | NEqns0]
     ),
@@ -140,19 +140,19 @@ normalize_equations([Eqn0 | Eqns], NEqns0, NEqns, Varset0, Varset) :-
 :- mode simplify(in, out) is det.
 
 simplify(eqn(Coeffs0, Op, Const), eqn(Coeffs, Op, Const)) :-
-    map__init(CoeffMap0),
+    map.init(CoeffMap0),
     AddCoeff = (pred(Pair::in, Map0::in, Map::out) is det :-
         Pair = Var - Coeff,
-        ( map__search(Map0, Var, Acc0) ->
+        ( if map.search(Map0, Var, Acc0) then
             Acc1 = Acc0
-        ;
+        else
             Acc1 = 0.0
         ),
         Acc = Acc1 + Coeff,
-        map__set(Var, Acc, Map0, Map)
+        map.set(Var, Acc, Map0, Map)
     ),
-    list__foldl(AddCoeff, Coeffs0, CoeffMap0, CoeffMap),
-    map__to_assoc_list(CoeffMap, Coeffs).
+    list.foldl(AddCoeff, Coeffs0, CoeffMap0, CoeffMap),
+    map.to_assoc_list(CoeffMap, Coeffs).
 
 :- pred collect_vars(equations, objective, set(var)).
 :- mode collect_vars(in, in, out) is det.
@@ -160,24 +160,24 @@ simplify(eqn(Coeffs0, Op, Const), eqn(Coeffs, Op, Const)) :-
 collect_vars(Eqns, Obj, Vars) :-
     GetVar = (pred(Var::out) is nondet :-
         (
-            list__member(Eqn, Eqns),
+            list.member(Eqn, Eqns),
             Eqn = eqn(Coeffs, _, _),
-            list__member(Pair, Coeffs),
+            list.member(Pair, Coeffs),
             Pair = Var - _
         ;
-            list__member(Pair, Obj),
+            list.member(Pair, Obj),
             Pair = Var - _
         )
     ),
     solutions(GetVar, VarList),
-    set__list_to_set(VarList, Vars).
+    set.list_to_set(VarList, Vars).
 
 :- pred number_vars(list(var), int, map(var, int), map(var, int)).
 :- mode number_vars(in, in, in, out) is det.
 
 number_vars([], _, VarNumbers, VarNumbers).
 number_vars([Var | Vars], N, VarNumbers0, VarNumbers) :-
-    map__det_insert(Var, N, VarNumbers0, VarNumbers1),
+    map.det_insert(Var, N, VarNumbers0, VarNumbers1),
     N1 = N + 1,
     number_vars(Vars, N1, VarNumbers1, VarNumbers).
 
@@ -202,7 +202,7 @@ insert_equations([Eqn | Eqns], Row, ConstCol, VarNumbers, N, M,
 insert_coeffs([], _Row, _VarNumbers, _N, _M, Tableau, Tableau).
 insert_coeffs([Coeff | Coeffs], Row, VarNumbers, N, M, Tableau0, Tableau) :-
     Coeff = Var - Const,
-    map__lookup(VarNumbers, Var, Col),
+    map.lookup(VarNumbers, Var, Col),
     set_index(Tableau0, N, M, Row, Col, Const, Tableau1),
     insert_coeffs(Coeffs, Row, VarNumbers, N, M, Tableau1, Tableau).
 
@@ -211,7 +211,7 @@ insert_coeffs([Coeff | Coeffs], Row, VarNumbers, N, M, Tableau0, Tableau) :-
 :- mode objvarval(in, in, in, in, in, in, out) is det.
 
 objvarval(Tableau, VarNumbers, N, M, Var, ObjVarVals0, ObjVarVals) :-
-    map__lookup(VarNumbers, Var, Col),
+    map.lookup(VarNumbers, Var, Col),
     SelectRow = (pred(VV::out) is nondet :-
         between(1, N, Row),
         index(Tableau, N, M, Row, Col, V),
@@ -219,17 +219,17 @@ objvarval(Tableau, VarNumbers, N, M, Var, ObjVarVals0, ObjVarVals) :-
         index(Tableau, N, M, Row, M, VV)
     ),
     solutions(SelectRow, ObjVarValList),
-    (
+    ( if
         ObjVarValList = [ObjVarVal | _]
-    ->
-        map__set(Var, ObjVarVal, ObjVarVals0, ObjVarVals)
-    ;
+    then
+        map.set(Var, ObjVarVal, ObjVarVals0, ObjVarVals)
+    else
         error("inconsistent simplex")
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred simplex(int, int, tableau, tableau, bool, io__state, io__state).
+:- pred simplex(int, int, tableau, tableau, bool, io, io).
 :- mode simplex(in, in, in, out, out, di, uo) is cc_multi.
 
 simplex(N, M, A0, A, Result, IO0, IO) :-
@@ -238,17 +238,17 @@ simplex(N, M, A0, A, Result, IO0, IO) :-
         (
             Min0 = no,
             index(A0, N, M, 0, Col, MinVal),
-            ( MinVal < 0.0 ->
+            ( if MinVal < 0.0 then
                 Min = yes(Col - MinVal)
-            ;
+            else
                 Min = no
             )
         ;
             Min0 = yes(_ - MinVal0),
             index(A0, N, M, 0, Col, CellVal),
-            ( CellVal < MinVal0 ->
+            ( if CellVal < MinVal0 then
                 Min = yes(Col - CellVal)
-            ;
+            else
                 Min = Min0
             )
         )
@@ -266,24 +266,24 @@ simplex(N, M, A0, A, Result, IO0, IO) :-
             (
                 Max0 = no,
                 index(A0, N, M, Row, Q, MaxVal),
-                ( MaxVal > 0.0 ->
+                ( if MaxVal > 0.0 then
                     index(A0, N, M, Row, M, MVal),
                     CVal = MVal/MaxVal,
                     Max = yes(Row - CVal)
-                ;
+                else
                     Max = no
                 )
             ;
                 Max0 = yes(_ - MaxVal0),
                 index(A0, N, M, Row, Q, CellVal),
                 index(A0, N, M, Row, M, MVal),
-                (
+                ( if
                     CellVal > 0.0,
                     MaxVal1 = MVal/CellVal,
                     MaxVal1 =< MaxVal0
-                ->
+                then
                     Max = yes(Row - MaxVal1)
-                ;
+                else
                     Max = Max0
                 )
             )
@@ -298,9 +298,9 @@ simplex(N, M, A0, A, Result, IO0, IO) :-
             MaxResult = yes(P - _),
             /*
             index(A0, N, M, P, Q, Apq),
-            string__format("pivot on (%d, %d) = %f\n",
+            string.format("pivot on (%d, %d) = %f\n",
                 [i(P), i(Q), f(Apq)], Str),
-            io__write_string(Str, IO0, IO1),
+            io.write_string(Str, IO0, IO1),
             */
             IO1 = IO0,
             pivot(P, Q, N, M, A0, A1),
@@ -362,7 +362,7 @@ pivot(P, Q, N, M, A0, A) :-
 init_tableau(Rows0, Cols0, Tableau) :-
     Rows = Rows0 + 1, Cols = Cols0 + 1,
     NumCells = Rows*Cols,
-    array__init(NumCells, 0.0, Tableau).
+    array.init(NumCells, 0.0, Tableau).
 
 :- pred index(tableau, int, int, int, int, float).
 :- mode index(in, in, in, in, in, out) is det.
@@ -370,7 +370,7 @@ init_tableau(Rows0, Cols0, Tableau) :-
 index(Tableau, Rows0, Cols0, J, K, R) :-
     _Rows = Rows0 + 1, Cols = Cols0 + 1,
     Index = J * Cols + K,
-    array__lookup(Tableau, Index, R).
+    array.lookup(Tableau, Index, R).
 
 :- pred set_index(tableau, int, int, int, int, float, tableau).
 :- mode set_index(in, in, in, in, in, in, out) is det.
@@ -379,7 +379,7 @@ set_index(Tableau0, Rows0, Cols0, J, K, R, Tableau) :-
     _Rows = Rows0 + 1, Cols = Cols0 + 1,
     Index = J * Cols + K,
     mkuniq(Tableau0, Tableau1),
-    array__set(Index, R, Tableau1, Tableau).
+    array.set(Index, R, Tableau1, Tableau).
 
 :- pred mkuniq(array(float)::in, array(float)::array_uo) is det.
 
@@ -406,31 +406,31 @@ set_index(Tableau0, Rows0, Cols0, J, K, R, Tableau) :-
 
 :- import_module string.
 
-:- pred show_tableau(int, int, tableau, io__state, io__state).
+:- pred show_tableau(int, int, tableau, io, io).
 :- mode show_tableau(in, in, in, di, uo) is det.
 
 show_tableau(_N, _M, _Tableau) --> [].
 
 /*
 show_tableau(N, M, Tableau) -->
-    { string__format("Tableau (%d, %d):\n", [i(N), i(M)], Str) },
-    io__write_string(Str),
+    { string.format("Tableau (%d, %d):\n", [i(N), i(M)], Str) },
+    io.write_string(Str),
     unsorted_aggregate(between(0, N), show_row(Tableau, M)).
 
-:- pred show_row(tableau, int, int, io__state, io__state).
+:- pred show_row(tableau, int, int, io, io).
 :- mode show_row(in, in, in, di, uo) is cc_multi.
 
 show_row(Tableau, M, Row) -->
     unsorted_aggregate(between(0, M), show_cell(Tableau, Row)),
-    io__write_string("\n").
+    io.write_string("\n").
 
-:- pred show_cell(tableau, int, int, io__state, io__state).
+:- pred show_cell(tableau, int, int, io, io).
 :- mode show_cell(in, in, in, di, uo) is cc_multi.
 
 show_cell(Tableau, Row, Col) -->
     { index(Tableau, Row, Col, Val) },
-    { string__format("%2.2f\t", [f(Val)], Str) },
-    io__write_string(Str).
+    { string.format("%2.2f\t", [f(Val)], Str) },
+    io.write_string(Str).
 */
 
 %---------------------------------------------------------------------------%

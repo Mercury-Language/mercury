@@ -3,12 +3,11 @@
 %---------------------------------------------------------------------------%
 
 :- module term_io_test.
-
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -16,18 +15,18 @@
 :- import_module string.
 :- import_module term_io.
 
-main -->
-    read_term(Res0),
+main(!IO) :-
+    read_term(Res0, !IO),
     (
-        { Res0 = term(VarSet, Term) },
-        write_term_nl(VarSet, Term),
-        main
+        Res0 = term(VarSet, Term),
+        write_term_nl(VarSet, Term, !IO),
+        main(!IO)
     ;
-        { Res0 = eof }
+        Res0 = eof
     ;
-        { Res0 = error(Msg, Line) },
-        stderr_stream(StdErr),
-        format(StdErr, "%d: %s\n", [i(Line), s(Msg)]),
-        main
+        Res0 = error(Msg, Line),
+        io.stderr_stream(StdErr, !IO),
+        io.format(StdErr, "%d: %s\n", [i(Line), s(Msg)], !IO),
+        main(!IO)
     ).
 

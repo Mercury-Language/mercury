@@ -10,15 +10,14 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    my_write_string("pragma_export test succeeded\n").
+main(!IO) :-
+    my_write_string("pragma_export test succeeded\n", !IO).
 
-:- pred my_write_string(string::in, io__state::di, io__state::uo) is det.
-
+:- pred my_write_string(string::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     my_write_string(Str::in, _IO0::di, _IO::uo),
     [promise_pure, may_call_mercury, thread_safe],
@@ -33,5 +32,5 @@ main -->
     write_str(Str);
 ").
 
-:- pragma foreign_export("C", io__write_string(in, di, uo), "write_str").
-:- pragma foreign_export("C#", io__write_string(in, di, uo), "write_str").
+:- pragma foreign_export("C", io.write_string(in, di, uo), "write_str").
+:- pragma foreign_export("C#", io.write_string(in, di, uo), "write_str").

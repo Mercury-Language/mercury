@@ -10,51 +10,51 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module int.
 
-main -->
-    (
-        { quot_test(3, 8, 0, 3) },      % 3 / 8 = 0 + 3/8
-        { quot_test(5, 8, 0, 5) },      % 5 / 8 = 0 + 5/8
-        { quot_test(7, 2, 3, 1) },      % 7 / 2 = 3 + 1/2
-        { quot_test(100, 13, 7, 9) }        % 100 / 13 = 7 + 9/13
-    ->
-        io__write_string("`//' test succeeded\n")
-    ;
-        io__write_string("`//' test failed\n")
+main(!IO) :-
+    ( if
+        quot_test(3, 8, 0, 3),      % 3 / 8 = 0 + 3/8
+        quot_test(5, 8, 0, 5),      % 5 / 8 = 0 + 5/8
+        quot_test(7, 2, 3, 1),      % 7 / 2 = 3 + 1/2
+        quot_test(100, 13, 7, 9)    % 100 / 13 = 7 + 9/13
+    then
+        io.write_string("`//' test succeeded\n", !IO)
+    else
+        io.write_string("`//' test failed\n", !IO)
     ),
-    (
-        { rem_test(3, 8, 0, 3) },       % 3 / 8 = 0 + 3/8
-        { rem_test(5, 8, 0, 5) },       % 5 / 8 = 0 + 5/8
-        { rem_test(7, 2, 3, 1) },       % 7 / 2 = 3 + 1/2
-        { rem_test(100, 13, 7, 9) }     % 100 / 13 = 7 + 9/13
-    ->
-        io__write_string("rem test succeeded\n")
-    ;
-        io__write_string("rem test failed\n")
+    ( if
+        rem_test(3, 8, 0, 3),       % 3 / 8 = 0 + 3/8
+        rem_test(5, 8, 0, 5),       % 5 / 8 = 0 + 5/8
+        rem_test(7, 2, 3, 1),       % 7 / 2 = 3 + 1/2
+        rem_test(100, 13, 7, 9)     % 100 / 13 = 7 + 9/13
+    then
+        io.write_string("rem test succeeded\n", !IO)
+    else
+        io.write_string("rem test failed\n", !IO)
     ),
-    (
-        { div_test(3, 8, 0, 3) },       % 3 / 8 = 0 + 3/8
-        { div_test(5, 8, 0, 5) },       % 5 / 8 = 0 + 5/8
-        { div_test(7, 2, 3, 1) },       % 7 / 2 = 3 + 1/2
-        { div_test(100, 13, 7, 9) }     % 100 / 13 = 7 + 9/13
-    ->
-        io__write_string("div test succeeded\n")
-    ;
-        io__write_string("div test failed\n")
+    ( if
+        div_test(3, 8, 0, 3),       % 3 / 8 = 0 + 3/8
+        div_test(5, 8, 0, 5),       % 5 / 8 = 0 + 5/8
+        div_test(7, 2, 3, 1),       % 7 / 2 = 3 + 1/2
+        div_test(100, 13, 7, 9)     % 100 / 13 = 7 + 9/13
+    then
+        io.write_string("div test succeeded\n", !IO)
+    else
+        io.write_string("div test failed\n", !IO)
     ),
-    (
-        { mod_test(3, 8, 0, 3) },       % 3 / 8 = 0 + 3/8
-        { mod_test(5, 8, 0, 5) },       % 5 / 8 = 0 + 5/8
-        { mod_test(7, 2, 3, 1) },       % 7 / 2 = 3 + 1/2
-        { mod_test(100, 13, 7, 9) }     % 100 / 13 = 7 + 9/13
-    ->
-        io__write_string("mod test succeeded\n")
-    ;
-        io__write_string("mod test failed\n")
+    ( if
+        mod_test(3, 8, 0, 3),       % 3 / 8 = 0 + 3/8
+        mod_test(5, 8, 0, 5),       % 5 / 8 = 0 + 5/8
+        mod_test(7, 2, 3, 1),       % 7 / 2 = 3 + 1/2
+        mod_test(100, 13, 7, 9)     % 100 / 13 = 7 + 9/13
+    then
+        io.write_string("mod test succeeded\n", !IO)
+    else
+        io.write_string("mod test failed\n", !IO)
     ).
 
 :- pred quot_test(int::in, int::in, int::in, int::in) is semidet.

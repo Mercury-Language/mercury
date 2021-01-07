@@ -13,21 +13,20 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module list.
 :- import_module univ.
 
-main -->
+main(!IO) :-
     % do something which requires knowing the type of L
-    { L = [] },
-    { Univ = univ(L) },
-    write(Univ),
-    nl,
+    L = [],
+    Univ = univ(L),
+    io.write_line(Univ, !IO),
 
     % now do something which binds the type of L
-    { same_type(L, [my_exist_t]) }.
+    same_type(L, [my_exist_t]).
 
 :- pred same_type(T::unused, T::unused) is det.
 same_type(_, _).

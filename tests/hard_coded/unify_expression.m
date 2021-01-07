@@ -3,12 +3,11 @@
 %---------------------------------------------------------------------------%
 
 :- module unify_expression.
-
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -19,23 +18,22 @@
     --->    f(int, int)
     ;       g(t).
 
-main -->
-    ( { p(g(f(1, 2)), X) } ->
-        io__write(X),
-        io__nl
-    ;
-        io__write_string("Error: p failed\n")
+main(!IO) :-
+    ( if p(g(f(1, 2)), X) then
+        io.write_line(X, !IO)
+    else
+        io.write_string("Error: p failed\n", !IO)
     ),
-    ( { q(1, 2) } ->
-        print("Error: q succeeded"), nl
-    ;
-        print("q failed (as expected)"), nl
+    ( if q(1, 2) then
+        io.print_line("Error: q succeeded", !IO)
+    else
+        io.print_line("q failed (as expected)", !IO)
     ),
 
-    ( { r(1, 2) } ->
-        print("Error: r succeeded"), nl
-    ;
-        print("r failed (as expected)"), nl
+    ( if r(1, 2) then
+        io.print_line("Error: r succeeded", !IO)
+    else
+        io.print_line("r failed (as expected)", !IO)
     ).
 
 :- pred p(t::in, t::out) is semidet.
@@ -53,8 +51,8 @@ r(X, X @ g(1, 2)).
 :- mode g(in, in) = out is semidet.
 :- mode g(out, out) = in is semidet.
 g(1, 2) = X :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         error("g called")
-    ;
+    else
         X = 3
     ).

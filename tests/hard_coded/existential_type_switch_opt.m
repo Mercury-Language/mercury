@@ -16,7 +16,7 @@
 
 :- import_module io.
 
-:- pred main(state::di, state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- type maybe
     --->    e_no
@@ -32,18 +32,16 @@
 
 :- import_module std_util.
 
-main -->
-    { semidet_fail ->
+main(!IO) :-
+    ( if semidet_fail then
         X = 'new e_maybe'(2)
-    ;
+    else
         X = 'new e_yes'(1)
-    },
-    (
-        { p(X) }
-    ->
-        io__write_string("succeeded\n")
-    ;
-        io__write_string("failed\n")
+    ),
+    ( if p(X) then
+        io.write_string("succeeded\n", !IO)
+    else
+        io.write_string("failed\n", !IO)
     ).
 
 :- pragma inline(p/1).

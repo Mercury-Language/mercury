@@ -9,13 +9,13 @@
 :- interface.
 :- import_module io.
 
-:- impure pred main(io__state::di, io__state::uo) is det.
+:- impure pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module string.
 
-:- impure pred test1(io__state::di, io__state::uo) is det.
-:- impure pred test2(io__state::di, io__state::uo) is det.
+:- impure pred test1(io::di, io::uo) is det.
+:- impure pred test2(io::di, io::uo) is det.
 
 main -->
     impure test1,

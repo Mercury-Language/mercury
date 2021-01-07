@@ -70,7 +70,7 @@ format_2q([Achar | As], Vars_in, Ostring) :-
     ;
         format_2q(As, Vars_in, Temp_out),
         first_char(Ostring, Bchar, Temp_out),
-        char__to_upper(Achar, Bchar)
+        char.to_upper(Achar, Bchar)
     ).
 
     % format_top_convert_variable(formated string in, out, var in, out,
@@ -129,8 +129,8 @@ format_mod_conv_char(Precision, Poly_var, Conv_c_out, Conv_c_in) :-
     ; Conv_c_in = 'g' ->            % %g is either %e of %f
         (Poly_var = f(F) ->
             float_abs(F, Ft),
-            int__pow(10, Precision, P),
-            Pe = float__float(P),
+            int.pow(10, Precision, P),
+            Pe = float.float(P),
             (
                 Ft > 0.0001,
                 Pe > Ft
@@ -145,8 +145,8 @@ format_mod_conv_char(Precision, Poly_var, Conv_c_out, Conv_c_in) :-
      ; Conv_c_in = 'G' ->           % %G is either %E of %f
         ( Poly_var = f(F) ->
             float_abs(F, Ft),
-            int__pow(10, Precision, P),
-            Pe = float__float(P),
+            int.pow(10, Precision, P),
+            Pe = float.float(P),
             (
                 Ft > 0.0001,
                 Pe > Ft
@@ -253,7 +253,7 @@ do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags, Mv_width) :-
         ;
             int_to_base_string(I, 8, S),
             format_int_precision(S, SS, Precision, _),
-            ( list__member('#', Flags) ->
+            ( list.member('#', Flags) ->
                 first_char(Ostring, '0', SS),
                 Pfix_len = 1
             ;
@@ -273,7 +273,7 @@ do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags, Mv_width) :-
             int_to_base_string(I, 16, S),
             format_int_precision(S, SS, Precision, _),
             (
-                list__member('#', Flags)
+                list.member('#', Flags)
             ->
                 append("0x", SS, Ostring),
                 Pfix_len = 2
@@ -294,7 +294,7 @@ do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags, Mv_width) :-
             int_to_base_string(I, 16, Otemp),
             to_upper(Otemp, S),
             format_int_precision(S, SS, Precision, _),
-            ( list__member('#', Flags) ->
+            ( list.member('#', Flags) ->
                 append("0X", SS, Ostring),
                 Pfix_len = 2
             ;
@@ -306,7 +306,7 @@ do_conversion_0(Conv_c, Poly_t, Ostring, Precision, Flags, Mv_width) :-
     ;
         Conv_c = 'u' ,
         Poly_t = i(I),
-        int__abs(I, J),
+        int.abs(I, J),
         int_to_string(J, S),
         format_int_precision(S, Ostring, Precision, Mvt),
         Mv_width = Mvt
@@ -513,14 +513,14 @@ format_add_sign(Ostring, Istring, Flags, _V, Mvw1, Mvw2) :-
     ;
         split(Istring, Mvw1, Lstring, Rstring),
         (
-            list__member(('+'), Flags)
+            list.member(('+'), Flags)
         ->
             append("+", Rstring, Astring),
             append(Lstring, Astring, Ostring),
             Mvw2 = Mvw1 + 1
         ;
             (
-                list__member(' ', Flags)
+                list.member(' ', Flags)
             ->
                 append(" ", Rstring, Astring),
                 append(Lstring, Astring, Ostring),
@@ -544,7 +544,7 @@ format_pad_width(Istring, Width, Flags, Out_string, Mv_cs) :-
         % time for some FLAG tests
         Xspace = Width - Len,
         (
-            list__member('0', Flags)
+            list.member('0', Flags)
         ->
             Pad_char = '0'
         ;
@@ -552,12 +552,12 @@ format_pad_width(Istring, Width, Flags, Out_string, Mv_cs) :-
         ),
         duplicate_char(Pad_char, Xspace, Pad_string),
         (
-            list__member('-', Flags)
+            list.member('-', Flags)
         ->
             append(Istring, Pad_string, Out_string)
         ;
             (
-                list__member('0', Flags)
+                list.member('0', Flags)
             ->
                 split(Istring, Mv_cs, B4, After),
                 append(Pad_string, After, Astring),
@@ -594,7 +594,7 @@ format_get_optional_args([A | As], Flags, Width, Precision, Mods) :-
     ->
         format_get_optional_args(As, Oflags, Width, Precision, Mods),
         UFlags = [A | Oflags],
-        list__sort_and_remove_dups(UFlags, Flags)
+        list.sort_and_remove_dups(UFlags, Flags)
     ;
         ( A = (.) ; A = '1' ; A = '2' ; A = '3' ; A = '4' ;
           A = '5' ; A = '6' ; A = '7' ; A = '8' ; A = '9' )
@@ -665,7 +665,7 @@ format_takewhile1([A | As], Rem, Finf) :-
 
 format_string_to_ints([], [], [], [], _).
 format_string_to_ints([A | As], Bs, Int1, Int2, Bool) :-
-    ( char__is_digit(A) ->
+    ( char.is_digit(A) ->
         ( Bool = yes ->
             format_string_to_ints(As, Bs, I1, Int2, yes),
             Int1 = [A | I1]

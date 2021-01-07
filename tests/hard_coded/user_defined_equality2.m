@@ -4,15 +4,15 @@
 %
 % This is a regression test.
 %
-% The Mercury compiler of 27/10/2000 failed this test
-% due to overeager specialization of unifications
-% involving no-tag types with user-defined equality.
+% The Mercury compiler of 27/10/2000 failed this test due to overeager
+% specialization of unifications involving no-tag types with user-defined
+% equality.
 
 :- module user_defined_equality2.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
@@ -26,11 +26,11 @@
 foo_equal(_, _) :-
     semidet_succeed.
 
-main -->
-    ( { unify_no_tag(foo(1), foo(2)) } ->
-        io__write_string("yes\n")
-    ;
-        io__write_string("no\n")
+main(!IO) :-
+    ( if unify_no_tag(foo(1), foo(2)) then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ).
 
 :- pred unify_no_tag(T::in, T::in) is semidet.

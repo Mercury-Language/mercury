@@ -12,8 +12,8 @@
 
 :- import_module trans_intermod_user_equality2.
 
-main -->
-    { make_bar(0, 1, Bar) },
-    { use_bar(Bar, N) },
-    io__write_int(N),
-    io__nl.
+main(!IO) :-
+    make_bar(0, 1, Bar),
+    use_bar(Bar, N),
+    io.write_int(N, !IO),
+    io.nl(!IO).

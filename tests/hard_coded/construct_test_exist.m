@@ -67,18 +67,18 @@ main(!IO) :-
 :- pred test_all(T::in, io::di, io::uo) is det.
 
 test_all(T, !IO) :-
-    TypeInfo = type_desc__type_of(T),
-    ( N = construct__num_functors(TypeInfo) ->
-        io__write_int(N, !IO),
-        io__write_string(" functors in this type", !IO),
-        io__nl(!IO),
+    TypeInfo = type_desc.type_of(T),
+    ( N = construct.num_functors(TypeInfo) ->
+        io.write_int(N, !IO),
+        io.write_string(" functors in this type", !IO),
+        io.nl(!IO),
         test_all_functors(TypeInfo, N, !IO),
-        io__nl(!IO)
+        io.nl(!IO)
     ;
-        io__write_string("no functors in this type\n", !IO)
+        io.write_string("no functors in this type\n", !IO)
     ).
 
-:- pred test_all_functors(type_desc__type_desc::in, int::in, io::di, io::uo)
+:- pred test_all_functors(type_desc.type_desc::in, int::in, io::di, io::uo)
     is det.
 
 test_all_functors(TypeInfo, N, !IO) :-
@@ -89,54 +89,54 @@ test_all_functors(TypeInfo, N, !IO) :-
         test_all_functors(TypeInfo, N - 1, !IO)
     ).
 
-:- pred test_nth_functor(type_desc__type_desc::in, int::in, io::di, io::uo)
+:- pred test_nth_functor(type_desc.type_desc::in, int::in, io::di, io::uo)
     is det.
 
 test_nth_functor(TypeInfo, N, !IO) :-
-    io__write_int(N, !IO),
+    io.write_int(N, !IO),
     (
-        construct__get_functor_with_names(TypeInfo, N, Name, Arity,
+        construct.get_functor_with_names(TypeInfo, N, Name, Arity,
             ArgTypes, Names)
     ->
-        io__write_string(" - ", !IO),
-        io__write_string(Name, !IO),
-        io__write_string("/", !IO),
-        io__write_int(Arity, !IO),
-        io__write_string(" [", !IO),
-        io__write_list(ArgTypes, ", ", print_arg_type, !IO),
-        io__write_string("] ", !IO),
-        io__write_string(" [", !IO),
-        io__write_list(Names, ", ", print_maybe_name, !IO),
-        io__write_string("]\n", !IO)
+        io.write_string(" - ", !IO),
+        io.write_string(Name, !IO),
+        io.write_string("/", !IO),
+        io.write_int(Arity, !IO),
+        io.write_string(" [", !IO),
+        io.write_list(ArgTypes, ", ", print_arg_type, !IO),
+        io.write_string("] ", !IO),
+        io.write_string(" [", !IO),
+        io.write_list(Names, ", ", print_maybe_name, !IO),
+        io.write_string("]\n", !IO)
     ;
-        io__write_string(" failed ", !IO),
-        io__nl(!IO)
+        io.write_string(" failed ", !IO),
+        io.nl(!IO)
     ).
 
-:- pred print_arg_type(type_desc__pseudo_type_desc::in, io::di, io::uo)
+:- pred print_arg_type(type_desc.pseudo_type_desc::in, io::di, io::uo)
     is det.
 
 print_arg_type(PseudoTypeDesc, !IO) :-
     PseudoTypeRep = pseudo_type_desc_to_rep(PseudoTypeDesc),
     (
         PseudoTypeRep = bound(TypeCtorDesc, ArgPseudoTypeInfos),
-        io__write_string(type_desc__type_ctor_name(TypeCtorDesc), !IO),
+        io.write_string(type_desc.type_ctor_name(TypeCtorDesc), !IO),
         (
             ArgPseudoTypeInfos = []
         ;
             ArgPseudoTypeInfos = [_ | _],
-            io__write_string("(", !IO),
-            io__write_list(ArgPseudoTypeInfos, ", ", print_arg_type, !IO),
-            io__write_string(")", !IO)
+            io.write_string("(", !IO),
+            io.write_list(ArgPseudoTypeInfos, ", ", print_arg_type, !IO),
+            io.write_string(")", !IO)
         )
     ;
         PseudoTypeRep = univ_tvar(TypeVarNum),
-        io__write_string("U", !IO),
-        io__write_int(TypeVarNum, !IO)
+        io.write_string("U", !IO),
+        io.write_int(TypeVarNum, !IO)
     ;
         PseudoTypeRep = exist_tvar(TypeVarNum),
-        io__write_string("E", !IO),
-        io__write_int(TypeVarNum, !IO)
+        io.write_string("E", !IO),
+        io.write_int(TypeVarNum, !IO)
     ).
 
 :- pred print_maybe_name(maybe(string)::in, io::di, io::uo) is det.
@@ -144,10 +144,10 @@ print_arg_type(PseudoTypeDesc, !IO) :-
 print_maybe_name(MaybeName, !IO) :-
     (
         MaybeName = yes(FieldName),
-        io__write_string(FieldName, !IO)
+        io.write_string(FieldName, !IO)
     ;
         MaybeName = no,
-        io__write_string("_", !IO)
+        io.write_string("_", !IO)
     ).
 
 %---------------------------------------------------------------------------%

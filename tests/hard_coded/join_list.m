@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% This is a test to check the correctness of the string__join_list predicate.
+% This is a test to check the correctness of the string.join_list predicate.
 
 :- module join_list.
 
@@ -30,15 +30,15 @@ main(!IO) :-
 :- pred test_join_list(list(string)::in, io::di, io::uo) is det.
 
 test_join_list(Pieces, !IO) :-
-    Joined1 = string__join_list(", ", Pieces),
-    io__write_string(Joined1, !IO),
-    io__write_string("\n", !IO),
-    Joined2 = string__join_list(" ", Pieces),
-    io__write_string(Joined2, !IO),
-    io__write_string("\n", !IO),
-    Joined3 = string__join_list(" x ", Pieces),
-    io__write_string(Joined3, !IO),
-    io__write_string("\n", !IO),
-    Joined4 = string__join_list("", Pieces),
-    io__write_string(Joined4, !IO),
-    io__write_string("\n", !IO).
+    Joined1 = string.join_list(", ", Pieces),
+    io.write_string(Joined1, !IO),
+    io.write_string("\n", !IO),
+    Joined2 = string.join_list(" ", Pieces),
+    io.write_string(Joined2, !IO),
+    io.write_string("\n", !IO),
+    Joined3 = string.join_list(" x ", Pieces),
+    io.write_string(Joined3, !IO),
+    io.write_string("\n", !IO),
+    Joined4 = string.join_list("", Pieces),
+    io.write_string(Joined4, !IO),
+    io.write_string("\n", !IO).

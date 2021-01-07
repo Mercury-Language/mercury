@@ -10,7 +10,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -27,7 +27,8 @@ extern const struct MR_TypeCtorInfo_Struct
     mercury_data_type_tables__type_ctor_info_list_0;
 ").
 
-:- pragma foreign_proc("C", main(IO0::di, IO::uo),
+:- pragma foreign_proc("C",
+    main(IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     MR_TypeCtorInfo tc1;

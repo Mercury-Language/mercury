@@ -23,7 +23,7 @@ main(!IO) :-
     _ = my_map(curry2(my_plus), [1, 2, 3]).
 
 :- func my_append(list(T), list(T)) = list(T).
-my_append(A, B) = C :- list__append(A, B, C).
+my_append(A, B) = C :- list.append(A, B, C).
 
 :- inst func1 == (func(in) = out is det).
 

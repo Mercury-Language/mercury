@@ -12,7 +12,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -22,45 +22,42 @@
 :- import_module term.
 :- import_module varset.
 
-main -->
-    test1,
-    test2,
-    test3.
+main(!IO) :-
+    test1(!IO),
+    test2(!IO),
+    test3(!IO).
 
-:- pred test1(io__state::di, io__state::uo) is det.
-test1 -->
-    { Lambda = (pred(X::out) is nondet :-
-        varset__init(Varset0),
-        varset__new_vars(10, Vars, Varset0, _),
-        list__member(X, Vars)
-    ) },
-    { solutions(Lambda, List) },
-    io__write(List),
-    io__write_string("\n").
+:- pred test1(io::di, io::uo) is det.
+test1(!IO) :-
+    Lambda = (pred(X::out) is nondet :-
+        varset.init(Varset0),
+        varset.new_vars(10, Vars, Varset0, _),
+        list.member(X, Vars)
+    ),
+    solutions(Lambda, List),
+    io.write_line(List, !IO).
 
-:- pred test2(io__state::di, io__state::uo) is det.
+:- pred test2(io::di, io::uo) is det.
 test2 -->
     test2b("blahblah").
 
-:- pred test2b(T::in, io__state::di, io__state::uo) is det.
-test2b(S) -->
-    { F = foo(S) },
-    { solutions(F, List) },
-    io__write(List),
-    io__write_string("\n").
+:- pred test2b(T::in, io::di, io::uo) is det.
+test2b(S, !IO) :-
+    F = foo(S),
+    solutions(F, List),
+    io.write_line(List, !IO).
 
 :- pred foo(T, var).
 :- mode foo(in, out) is nondet.
 foo(Blah, X) :-
-    varset__init(Varset0),
-    varset__new_vars(10, Vars, Varset0, _),
-    list__member(X, Vars).
+    varset.init(Varset0),
+    varset.new_vars(10, Vars, Varset0, _),
+    list.member(X, Vars).
 
-:- pred test3(io__state::di, io__state::uo) is det.
-test3 -->
-    { solutions((pred(X::out) is nondet :- bar(X)), List) },
-    io__write(List),
-    io__write_string("\n").
+:- pred test3(io::di, io::uo) is det.
+test3(!IO) :-
+    solutions((pred(X::out) is nondet :- bar(X)), List),
+    io.write_line(List, !IO).
 
 :- pred bar(int).
 :- mode bar(out) is det.

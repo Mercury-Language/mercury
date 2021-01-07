@@ -39,30 +39,30 @@ main(!IO) :-
     A = float_a,
     B = float_b,
     unify("float (boxed)", A, B, !IO),
-    ( A = B ->
-        io__write_string("float (unboxed): true\n", !IO)
-    ;
-        io__write_string("float (unboxed): false\n", !IO)
+    ( if A = B then
+        io.write_string("float (unboxed): true\n", !IO)
+    else
+        io.write_string("float (unboxed): false\n", !IO)
     ),
 
     % Test a simple foreign_type.
     X = create(A),
     Y = create(B),
     unify("foreign_type (boxed)", X, Y, !IO),
-    ( X = Y ->
-        io__write_string("foreign_type (unboxed): true\n", !IO)
-    ;
-        io__write_string("foreign_type (unboxed): false\n", !IO)
+    ( if X = Y then
+        io.write_string("foreign_type (unboxed): true\n", !IO)
+    else
+        io.write_string("foreign_type (unboxed): false\n", !IO)
     ),
 
     % Test a foreign_type which requires a type_info.
     G = create_T(A),
     H = create_T(B),
     unify("foreign_type(T) (boxed)", G, H, !IO),
-    ( G = H ->
-        io__write_string("foreign_type(T) (unboxed): true\n", !IO)
-    ;
-        io__write_string("foreign_type(T) (unboxed): false\n", !IO)
+    ( if G = H then
+        io.write_string("foreign_type(T) (unboxed): true\n", !IO)
+    else
+        io.write_string("foreign_type(T) (unboxed): false\n", !IO)
     ).
 
     % Here we pass in a generic type, so if needed the input
@@ -70,11 +70,11 @@ main(!IO) :-
     % unification pred handles this correctly.
 :- pred unify(string::in, T::in, T::in, io::di, io::uo) is det.
 unify(S, X, Y, !IO) :-
-    io__write_string(S, !IO),
-    ( X = Y ->
-        io__write_string(": true\n", !IO)
-    ;
-        io__write_string(": false\n", !IO)
+    io.write_string(S, !IO),
+    ( if X = Y then
+        io.write_string(": true\n", !IO)
+    else
+        io.write_string(": false\n", !IO)
     ).
 
 :- func create(float) = type_which_needs_boxing.

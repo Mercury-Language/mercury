@@ -73,7 +73,7 @@ tuple_doc_10(D) = to_doc(D, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}).
 
 :- func map_doc(int, int, int) = doc.
 
-map_doc(M, N, D) = to_doc(D, gen_map(1, M, 1 `..` N, map__init)).
+map_doc(M, N, D) = to_doc(D, gen_map(1, M, 1 `..` N, map.init)).
 
 :- func gen_map(int, int, list(int), map(int, list(int))) =
     map(int, list(int)).
@@ -134,7 +134,7 @@ test_string({D, S, W}) = to_string(W, test_doc(D, S, W)).
 test_doc(D, S, W) =
     line `<>`
     line `<>`
-    text(string__format("depth %d, size %d, width %d", [i(D), i(S), i(W)])) `<>`
+    text(string.format("depth %d, size %d, width %d", [i(D), i(S), i(W)])) `<>`
     line `<>`
     list_doc(S, D) `<>` line `<>`
     array_doc(S, 1, D) `<>` line `<>`
@@ -181,7 +181,7 @@ width(80).
 
 %---------------------------------------------------------------------------%
 
-main -->
-    foldl(io__write_string, map(test_string, solutions(depth_size_width))).
+main(!IO) :-
+    foldl(io.write_string, map(test_string, solutions(depth_size_width)), !IO).
 
 %---------------------------------------------------------------------------%

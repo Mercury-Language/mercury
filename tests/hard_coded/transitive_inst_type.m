@@ -12,8 +12,8 @@
 
 :- import_module transitive_inst_type2.
 
-main -->
-    { new_sequence(Seq) },
-    { sequence_length(Seq, Size) },
-    io__write_int(Size),
-    io__nl.
+main(!IO) :-
+    new_sequence(Seq),
+    sequence_length(Seq, Size),
+    io.write_int(Size, !IO),
+    io.nl(!IO).

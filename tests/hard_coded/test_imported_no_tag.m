@@ -10,8 +10,7 @@
 :- import_module imported_no_tag.
 :- import_module io.
 
-:- pred main(io.state, io.state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -19,10 +18,10 @@
 
 test_int(99).
 
-main -->
-    ( { pwrite(class(test_int), 99) } ->
-        io__write_string("ok\n")
-    ;
-        io__write_string("uh oh\n")
+main(!IO) :-
+    ( if pwrite(class(test_int), 99) then
+        io.write_string("ok\n", !IO)
+    else
+        io.write_string("uh oh\n", !IO)
     ).
 

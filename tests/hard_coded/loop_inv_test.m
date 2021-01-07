@@ -20,21 +20,22 @@
 :- import_module int.
 :- import_module string.
 
-main -->
-    io__print("enter three integers, one on each line\n"), io__flush_output,
-    io__read_line_as_string(Res1),
-    io__read_line_as_string(Res2),
-    io__read_line_as_string(Res3),
-    ( { Res1 = ok(L1), Res2 = ok(L2), Res3 = ok(L3) } ->
-        { N1 = string__det_to_int(string__chomp(L1)) },
-        { N2 = string__det_to_int(string__chomp(L2)) },
-        { N3 = string__det_to_int(string__chomp(L3)) },
-        { loop1(N1, N2, N3, R1) },
-        { loop2(N1, N2, N3, R2) },
-        io__print("R1 = "), io__print(R1), io__nl,
-        io__print("R2 = "), io__print(R2), io__nl
-    ;
-        io__print("input error"), io__nl
+main(!IO) :-
+    io.print("enter three integers, one on each line\n", !IO),
+    io.flush_output(!IO),
+    io.read_line_as_string(Res1, !IO),
+    io.read_line_as_string(Res2, !IO),
+    io.read_line_as_string(Res3, !IO),
+    ( if Res1 = ok(L1), Res2 = ok(L2), Res3 = ok(L3) then
+        N1 = string.det_to_int(string.chomp(L1)),
+        N2 = string.det_to_int(string.chomp(L2)),
+        N3 = string.det_to_int(string.chomp(L3)),
+        loop1(N1, N2, N3, R1),
+        loop2(N1, N2, N3, R2),
+        io.print("R1 = ", !IO), io.print_line(R1, !IO),
+        io.print("R2 = ", !IO), io.print_line(R2, !IO)
+    else
+        io.print_line("input error", !IO)
     ).
 
     % Test that we can do ordinary loop hoisting:
@@ -43,9 +44,9 @@ main -->
 :- pred loop1(int::in, int::in, int::in, int::out) is det.
 
 loop1(N, Inv, Acc0, Acc) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         Acc = Acc0
-    ;
+    else
         p(Inv, X),
         Acc1 = Acc0 + X,
         loop1(N - 1, Inv, Acc1, Acc)
@@ -58,9 +59,9 @@ loop1(N, Inv, Acc0, Acc) :-
 :- pred loop2(int::in, int::in, int::in, int::out) is det.
 
 loop2(N, Inv, Acc0, Acc) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         Acc = Acc0
-    ;
+    else
         q(Inv, X),
         Acc1 = Acc0 + X,
         loop2(N - 1, Inv, Acc1, Acc)

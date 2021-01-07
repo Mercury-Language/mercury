@@ -3,7 +3,6 @@
 %---------------------------------------------------------------------------%
 
 :- module tuple_test.
-
 :- interface.
 
 :- import_module io.
@@ -24,85 +23,80 @@
 :- import_module type_desc.
 :- import_module varset.
 
-main -->
-    io__write_string("testing io__write:\n"),
-    { Tuple = {'a', {'b', 1, [1, 2, 3], {}, {1}}, "string"} },
-    io__write(Tuple),
-    io__nl,
-    io__write({}('a', {'b', 1, [1, 2, 3], {}, {1}}, "string")),
-    io__nl,
+main(!IO) :-
+    io.write_string("testing io__write:\n", !IO),
+    Tuple = {'a', {'b', 1, [1, 2, 3], {}, {1}}, "string"},
+    io.write_line(Tuple, !IO),
+    io.write_line({}('a', {'b', 1, [1, 2, 3], {}, {1}}, "string"), !IO),
 
-    io__write_string("testing type_to_term:\n"),
-    { type_to_term(Tuple, TupleTerm) },
-    { is_generic_term(TupleTerm) },
-    { varset__init(VarSet) },
-    term_io__write_term(VarSet, TupleTerm),
-    io__nl,
+    io.write_string("testing type_to_term:\n", !IO),
+    type_to_term(Tuple, TupleTerm),
+    is_generic_term(TupleTerm),
+    varset.init(VarSet),
+    term_io.write_term(VarSet, TupleTerm, !IO),
+    io.nl(!IO),
 
-    io__write_string("testing term_to_type:\n"),
-    (
-        { has_type(NewTuple, type_of(Tuple)) },
-        { term_to_type(TupleTerm, NewTuple) }
-    ->
-        io__write_string("term_to_type succeeded\n"),
-        io__write(NewTuple),
-        io__nl
-    ;
-        io__write_string("term_to_type failed\n")
+    io.write_string("testing term_to_type:\n", !IO),
+    ( if
+        has_type(NewTuple, type_of(Tuple)),
+        term_to_type(TupleTerm, NewTuple)
+    then
+        io.write_string("term_to_type succeeded\n", !IO),
+        io.write_line(NewTuple, !IO)
+    else
+        io.write_string("term_to_type failed\n", !IO)
     ),
 
     % Test in-in unification of tuples.
-    io__write_string("testing unification:\n"),
-    ( { unify_tuple({1, 'a', 1, "string"}, {1, 'a', 1, "string"}) } ->
-        io__write_string("unify test 1 succeeded\n")
-    ;
-        io__write_string("unify test 1 failed\n")
+    io.write_string("testing unification:\n", !IO),
+    ( if unify_tuple({1, 'a', 1, "string"}, {1, 'a', 1, "string"}) then
+        io.write_string("unify test 1 succeeded\n", !IO)
+    else
+        io.write_string("unify test 1 failed\n", !IO)
     ),
-    ( { unify_tuple({2, 'b', 1, "foo"}, {2, 'b', 1, "bar"}) } ->
-        io__write_string("unify test 2 failed\n")
-    ;
-        io__write_string("unify test 2 succeeded\n")
+    ( if unify_tuple({2, 'b', 1, "foo"}, {2, 'b', 1, "bar"}) then
+        io.write_string("unify test 2 failed\n", !IO)
+    else
+        io.write_string("unify test 2 succeeded\n", !IO)
     ),
 
     % Test comparison of tuples.
-    io__write_string("testing comparison:\n"),
-    { compare(Res1, {1, 'a', 1, "string"}, {1, 'a', 1, "string"}) },
-    ( { Res1 = (=) } ->
-        io__write_string("comparison test 1 succeeded\n")
-    ;
-        io__write_string("comparison test 1 failed\n")
+    io.write_string("testing comparison:\n", !IO),
+    compare(Res1, {1, 'a', 1, "string"}, {1, 'a', 1, "string"}),
+    ( if Res1 = (=) then
+        io.write_string("comparison test 1 succeeded\n", !IO)
+    else
+        io.write_string("comparison test 1 failed\n", !IO)
     ),
 
-    { compare(Res2, {2, 'b', 1, "foo"}, {2, 'b', 1, "bar"}) },
-    ( { Res2 = (>) } ->
-        io__write_string("comparison test 2 succeeded\n")
-    ;
-        io__write_string("comparison test 2 failed\n")
+    compare(Res2, {2, 'b', 1, "foo"}, {2, 'b', 1, "bar"}),
+    ( if Res2 = (>) then
+        io.write_string("comparison test 2 succeeded\n", !IO)
+    else
+        io.write_string("comparison test 2 failed\n", !IO)
     ),
 
-    io__write_string("testing tuple switches:\n"),
-    { solutions(tuple_switch_test({1, 2}), Solns1) },
-    io__write(Solns1),
-    io__nl,
+    io.write_string("testing tuple switches:\n", !IO),
+    solutions(tuple_switch_test({1, 2}), Solns1),
+    io.write_line(Solns1, !IO),
 
-    { tuple_switch_test_2({no, 3, 4}, Int) },
-    io__write_int(Int),
-    io__nl,
+    tuple_switch_test_2({no, 3, 4}, Int),
+    io.write_int(Int, !IO),
+    io.nl(!IO),
 
-    %
     % These tests should generate an out-of-line unification
     % predicate for the unification with the output argument.
     %
-    io__write_string("testing complicated unification\n"),
-    ( { choose(yes, {1, "b", 'c'}, {4, "e", 'f'}, {1, _, _}) } ->
-        io__write_string("complicated unification test 1 succeeded\n")
-    ;
-        io__write_string("complicated unification test 1 failed\n")
+    io.write_string("testing complicated unification\n",!IO),
+    ( if choose(yes, {1, "b", 'c'}, {4, "e", 'f'}, {1, _, _}) then
+        io.write_string("complicated unification test 1 succeeded\n", !IO)
+    else
+        io.write_string("complicated unification test 1 failed\n", !IO)
     ),
-    ( { choose(yes, {5, "b", 'c'}, {9, "e", 'f'}, {1, _, _}) } ->
-        io__write_string("complicated unification test 2 failed\n")
-    ;
-        io__write_string("complicated unification test 2 succeeded\n")
+    ( if choose(yes, {5, "b", 'c'}, {9, "e", 'f'}, {1, _, _}) then
+        io.write_string("complicated unification test 2 failed\n", !IO)
+    else
+        io.write_string("complicated unification test 2 succeeded\n", !IO)
     ).
 
 :- pred is_generic_term(term::unused).

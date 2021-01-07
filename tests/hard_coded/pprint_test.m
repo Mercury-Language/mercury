@@ -9,7 +9,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -29,43 +29,43 @@ line_length = 72.
 :- pred get_new_vars(var(int)::out, var(int)::out) is det.
 
 get_new_vars(Var1, Var2) :-
-    varset__init(VarSet0),
-    varset__new_var(Var1, VarSet0, VarSet1),
-    varset__new_var(Var2, VarSet1, _VarSet2).
+    varset.init(VarSet0),
+    varset.new_var(Var1, VarSet0, VarSet1),
+    varset.new_var(Var2, VarSet1, _VarSet2).
 
-main -->
-    { get_new_vars(Var1, Var2) },
-    pprint__write(line_length, to_doc(Var1)),
-    io__nl,
-    pprint__write(line_length, to_doc(Var2)),
-    io__nl,
+main(!IO) :-
+    get_new_vars(Var1, Var2),
+    pprint.write(line_length, to_doc(Var1), !IO),
+    io.nl(!IO),
+    pprint.write(line_length, to_doc(Var2), !IO),
+    io.nl(!IO),
 
-    pprint__write(line_length, to_doc([5, 6])),
-    io__nl,
-    pprint__write(line_length, to_doc(["five", "six", "seven"])),
-    io__nl,
-    pprint__write(line_length, to_doc([Var1, Var2])),
-    io__nl,
+    pprint.write(line_length, to_doc([5, 6]), !IO),
+    io.nl(!IO),
+    pprint.write(line_length, to_doc(["five", "six", "seven"]), !IO),
+    io.nl(!IO),
+    pprint.write(line_length, to_doc([Var1, Var2]), !IO),
+    io.nl(!IO),
 
-    { Set0 = sparse_bitset__init },
-    { sparse_bitset__insert(42, Set0, Set1) },
-    { sparse_bitset__insert(84, Set1, Set2) },
-    pprint__write(line_length, to_doc(Set1)),
-    io__nl,
-    pprint__write(line_length, to_doc(Set2)),
-    io__nl,
+    Set0 = sparse_bitset.init,
+    sparse_bitset.insert(42, Set0, Set1),
+    sparse_bitset.insert(84, Set1, Set2),
+    pprint.write(line_length, to_doc(Set1), !IO),
+    io.nl(!IO),
+    pprint.write(line_length, to_doc(Set2),!IO),
+    io.nl(!IO),
 
-    { Map0 = map__init },
-    { map__det_insert(41, 42, Map0, Map1) },
-    { map__det_insert(82, 83, Map1, Map2) },
-    pprint__write(line_length, to_doc(Map1)),
-    io__nl,
-    pprint__write(line_length, to_doc(Map2)),
-    io__nl,
+    Map0 = map.init,
+    map.det_insert(41, 42, Map0, Map1),
+    map.det_insert(82, 83, Map1, Map2),
+    pprint.write(line_length, to_doc(Map1), !IO),
+    io.nl(!IO),
+    pprint.write(line_length, to_doc(Map2), !IO),
+    io.nl(!IO),
 
-    { array__from_list([1, 2, 3], Array) },
-    pprint__write(line_length, to_doc(Array)),
-    io__nl,
+    array.from_list([1, 2, 3], Array),
+    pprint.write(line_length, to_doc(Array),!IO),
+    io.nl(!IO),
 
-    pprint__write(line_length, to_doc({7, 8, "abc"})),
-    io__nl.
+    pprint.write(line_length, to_doc({7, 8, "abc"}), !IO),
+    io.nl(!IO).

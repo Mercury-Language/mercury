@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % A regression test for a bug with the printing
-% of type_ctor_descs via io__write.
+% of type_ctor_descs via io.write.
 
 :- module type_ctor_desc.
 
@@ -17,13 +17,13 @@
 :- import_module integer.
 :- import_module type_desc.
 
-main -->
-    { Type = type_of(test) },
-    { type_ctor_and_args(Type, TypeCtor, TypeArgs) },
-    io__write(TypeCtor),
-    io__print(" "),
-    io__write(TypeArgs),
-    io__nl.
+main(!IO) :-
+    Type = type_of(test),
+    type_ctor_and_args(Type, TypeCtor, TypeArgs),
+    io.write(TypeCtor, !IO),
+    io.print(" ", !IO),
+    io.write(TypeArgs, !IO),
+    io.nl(!IO).
 
 :- func test(int) = int.
 :- mode test(in) = out is det.

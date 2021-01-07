@@ -21,56 +21,56 @@
 :- import_module string.
 
 main(!IO) :-
-    io__open_input("nonascii.data", Result, !IO),
+    io.open_input("nonascii.data", Result, !IO),
     (
         Result = ok(Stream),
         test1(Stream, !IO),
         test2(Stream, 260, !IO)
     ;
         Result = error(Error),
-        io__error_message(Error, Msg),
-        io__write_string(Msg, !IO),
-        io__nl(!IO)
+        io.error_message(Error, Msg),
+        io.write_string(Msg, !IO),
+        io.nl(!IO)
     ).
 
-:- pred test1(io__input_stream::in, io::di, io::uo) is det.
+:- pred test1(io.input_stream::in, io::di, io::uo) is det.
 
 test1(Stream, !IO) :-
-    io__read_line_as_string(Stream, Result, !IO),
+    io.read_line_as_string(Stream, Result, !IO),
     (
         Result = ok(Line),
-        Chars = string__to_char_list(Line),
-        Ints = list__map(char__to_int, Chars),
-        io__write_list(Ints, ",\n", io__write_int, !IO),
-        io__nl(!IO)
+        Chars = string.to_char_list(Line),
+        Ints = list.map(char.to_int, Chars),
+        io.write_list(Ints, ",\n", io.write_int, !IO),
+        io.nl(!IO)
     ;
         Result = eof,
-        io__write_string("premature EOF\n", !IO)
+        io.write_string("premature EOF\n", !IO)
     ;
         Result = error(Error),
-        io__error_message(Error, Msg),
-        io__write_string(Msg, !IO),
-        io__nl(!IO)
+        io.error_message(Error, Msg),
+        io.write_string(Msg, !IO),
+        io.nl(!IO)
     ).
 
-:- pred test2(io__input_stream::in, int::in, io::di, io::uo) is det.
+:- pred test2(io.input_stream::in, int::in, io::di, io::uo) is det.
 
 test2(Stream, N, !IO) :-
     ( N > 0 ->
-        io__read_char(Stream, Result, !IO),
+        io.read_char(Stream, Result, !IO),
         (
             Result = ok(Char),
-            Int = char__to_int(Char),
-            io__write_int(Int, !IO),
-            io__nl(!IO)
+            Int = char.to_int(Char),
+            io.write_int(Int, !IO),
+            io.nl(!IO)
         ;
             Result = eof,
-            io__write_string("premature EOF\n", !IO)
+            io.write_string("premature EOF\n", !IO)
         ;
             Result = error(Error),
-            io__error_message(Error, Msg),
-            io__write_string(Msg, !IO),
-            io__nl(!IO)
+            io.error_message(Error, Msg),
+            io.write_string(Msg, !IO),
+            io.nl(!IO)
         ),
         test2(Stream, N - 1, !IO)
     ;

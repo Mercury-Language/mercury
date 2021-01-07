@@ -38,7 +38,7 @@ rat2s(Rat) = S :-
 :- func cf2rat(list(int)) = rational.
 
 cf2rat([]) = one.
-cf2rat([N | Ns]) = rational(N, 1) + rational__reciprocal(CF) :-
+cf2rat([N | Ns]) = rational(N, 1) + rational.reciprocal(CF) :-
     CF = cf2rat(Ns).
 
     % Continued fraction expansion of Euler's constant `e'.

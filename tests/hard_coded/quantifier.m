@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -27,15 +27,13 @@ sum([X | L], X + N1) :-
 
 foo(sum([1, 2, 3])).
 
-main -->
-    (
-        {P = (pred(X :: out) is det :- X = 6),
+main(!IO) :-
+    ( if
+        P = (pred(X :: out) is det :- X = 6),
         foo(Q),
-        all [X] (call(P, X) <=> call(Q, X))}
-    ->
-        print("equivalent")
-    ;
-        print("not equivalent")
-    ),
-    nl.
-
+        all [X] (call(P, X) <=> call(Q, X))
+    then
+        io.print_line("equivalent", !IO)
+    else
+        io.print_line("not equivalent", !IO)
+    ).

@@ -5,7 +5,7 @@
 % This is a regression test (extracted from some code in std_util.m).
 % The MLDS back-end in Mercury 0.10.1 generated incorrect code for this
 % test case. In particular, when the float argument is passed to
-% private_builtin__var(T::unused), it generated code which passed a pointer
+% private_builtin.var(T::unused), it generated code which passed a pointer
 % and then tried to unbox the float value returned, even though no value
 % was actually returned, so it ended up dereferencing an uninitialized pointer.
 
@@ -16,7 +16,7 @@
 :- import_module list.
 :- import_module univ.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- type my_functor_tag_info
         --->    my_functor_integer(int)
@@ -37,43 +37,47 @@
 :- implementation.
 :- import_module int.
 
-main -->
-    wipe_stack(200),
-    ( { my_get_functor_info('new my_univ_cons'(42.0), R) } ->
-        print(R), nl
-    ;
-        print("failed"), nl
+main(!IO) :-
+    wipe_stack(200, !IO),
+    ( if my_get_functor_info('new my_univ_cons'(42.0), R) then
+        io.print_line(R, !IO)
+    else
+        io.print_line("failed", !IO)
     ).
 
-:- pred wipe_stack(int, io__state, io__state).
-wipe_stack(N) -->
-    ( if { N =< 0 } then []
-    else wipe_stack(N - 1), wipe_stack(N // 10 - 1)
+:- pred wipe_stack(int, io, io).
+
+wipe_stack(N, !IO) :-
+    ( if N =< 0 then
+        true
+    else
+        wipe_stack(N - 1, !IO),
+        wipe_stack(N // 10 - 1, !IO)
     ).
 
 :- pragma no_inline(my_get_functor_info/2).
 my_get_functor_info(Univ, FunctorInfo) :-
-    ( my_univ_to_type(Univ, Int) ->
+    ( if my_univ_to_type(Univ, Int) then
         FunctorInfo = my_functor_integer(Int)
-    ; my_univ_to_type(Univ, Float) ->
+    else if my_univ_to_type(Univ, Float) then
         FunctorInfo = my_functor_float(Float)
-    ; my_univ_to_type(Univ, String) ->
+    else if my_univ_to_type(Univ, String) then
         FunctorInfo = my_functor_string(String)
-    ; get_enum_functor_info(Univ, Enum) ->
+    else if get_enum_functor_info(Univ, Enum) then
         FunctorInfo = my_functor_enum(Enum)
-    ; get_du_functor_info(Univ, Where, Ptag, Sectag, Args) ->
-        ( Where = 0 ->
+    else if get_du_functor_info(Univ, Where, Ptag, Sectag, Args) then
+        ( if Where = 0 then
             FunctorInfo = my_functor_unshared(Ptag, Args)
-        ; Where > 0 ->
+        else if Where > 0 then
             FunctorInfo = my_functor_remote(Ptag, Sectag, Args)
-        ;
+        else
             FunctorInfo = my_functor_local(Ptag, Sectag)
         )
-    ; get_notag_functor_info(Univ, ExpUniv) ->
+    else if get_notag_functor_info(Univ, ExpUniv) then
         FunctorInfo = my_functor_notag(ExpUniv)
-    ; get_equiv_functor_info(Univ, ExpUniv) ->
+    else if get_equiv_functor_info(Univ, ExpUniv) then
         FunctorInfo = my_functor_equiv(ExpUniv)
-    ;
+    else
         fail
     ).
 
@@ -87,7 +91,7 @@ my_get_functor_info(Univ, FunctorInfo) :-
 }").
 get_notag_functor_info(_, _) :-
     semidet_succeed,
-    private_builtin__sorry("local get_notag_functor_info").
+    private_builtin.sorry("local get_notag_functor_info").
 
     % from the type stored in the univ.)
 :- pred get_equiv_functor_info(Univ::in, ExpUniv::out) is semidet.
@@ -100,7 +104,7 @@ get_notag_functor_info(_, _) :-
 }").
 get_equiv_functor_info(_, _) :-
     semidet_succeed,
-    private_builtin__sorry("local get_equiv_functor_info").
+    private_builtin.sorry("local get_equiv_functor_info").
 
 :- pred get_enum_functor_info(Univ::in, Int::out) is semidet.
 
@@ -112,7 +116,7 @@ get_equiv_functor_info(_, _) :-
 }").
 get_enum_functor_info(_, _) :-
     semidet_succeed,
-    private_builtin__sorry("local get_enum_functor_info").
+    private_builtin.sorry("local get_enum_functor_info").
 
 :- pred get_du_functor_info(my_univ::in, int::out, int::out, int::out,
     list(univ)::out) is semidet.
@@ -125,7 +129,7 @@ get_enum_functor_info(_, _) :-
 }").
 get_du_functor_info(_, _, _, _, _) :-
     semidet_succeed,
-    private_builtin__sorry("local get_du_functor_info").
+    private_builtin.sorry("local get_du_functor_info").
 
 %---------------------------------------------------------------------------%
 
@@ -137,11 +141,11 @@ my_univ_to_type(Univ, X) :-
 
 my_type_to_univ(T, Univ) :-
     (
-        impure private_builtin__var(T),
+        impure private_builtin.var(T),
         Univ = my_univ_cons(T0),
-        private_builtin__typed_unify(T0, T)
+        private_builtin.typed_unify(T0, T)
     ;
-        impure private_builtin__var(Univ),
+        impure private_builtin.var(Univ),
         Univ0 = 'new my_univ_cons'(T),
         unsafe_promise_unique(Univ0, Univ)
     ).

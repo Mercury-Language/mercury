@@ -25,32 +25,32 @@
 :- import_module int.
 :- import_module list.
 
-main -->
-    b(3).
+main(!IO) :-
+    b(3, !IO).
 
-% :- pred b(int, io__state, io__state).
+% :- pred b(int, io, io).
 :- mode b(in, di, uo) is det.
 
-b(X) -->
-    ( {X > 0} ->
-        boyer,
-        {Y = X - 1},
-        b(Y)
-    ;
-        {true}
+b(X, !IO) :-
+    ( if X > 0 then
+        boyer(!IO),
+        Y = X - 1,
+        b(Y, !IO)
+    else
+        true
     ).
 
 :- pred boyer(io::di, io::uo) is det.
 
-boyer -->
-    { wff(Wff) },
-    io__write_string("rewriting..."),
-    { rewrite(Wff, NewWff) },
-    io__write_string("proving..."),
-    ( { tautology(NewWff, [], []) } ->
-        io__write_string("done...\n")
-    ;
-        io__write_string("not done ...")
+boyer(!IO) :-
+    wff(Wff),
+    io.write_string("rewriting...", !IO),
+    rewrite(Wff, NewWff),
+    io.write_string("proving...", !IO),
+    ( if tautology(NewWff, [], []) then
+        io.write_string("done...\n", !IO)
+    else
+        io.write_string("not done ...", !IO)
     ).
 
 :- type type_wff
@@ -97,20 +97,20 @@ wff(implies(and(implies(X, Y),
 :- mode tautology(in, in, in) is semidet.
 
 tautology(Wff, Tlist, Flist) :-
-    ( truep(Wff, Tlist) ->
+    ( if truep(Wff, Tlist) then
         true
-    ; falsep(Wff, Flist) ->
+    else if falsep(Wff, Flist) then
         fail
-    ; Wff = if(If, Then, Else) ->
-        ( truep(If, Tlist) ->
+    else if  Wff = if(If, Then, Else) then
+        ( if truep(If, Tlist) then
             tautology(Then, Tlist, Flist)
-        ; falsep(If, Flist) ->
+        else if falsep(If, Flist) then
             tautology(Else, Tlist, Flist)
-        ;
+        else
             tautology(Then, [If | Tlist], Flist),
             tautology(Else, Tlist, [If | Flist])
         )
-    ;
+    else
         fail
     ).
 
@@ -132,9 +132,9 @@ rewrite(lessp(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
     Mid = lessp(Y1, Y2),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
@@ -142,9 +142,9 @@ rewrite(b_member(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
     Mid = b_member(Y1, Y2),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
@@ -152,9 +152,9 @@ rewrite(remainder(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
     Mid = remainder(Y1, Y2),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
@@ -162,9 +162,9 @@ rewrite(my_plus(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
     Mid = my_plus(Y1, Y2),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
@@ -172,9 +172,9 @@ rewrite(and(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
     Mid = and(Y1, Y2),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
@@ -182,9 +182,9 @@ rewrite(equal1(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
     Mid = equal1(Y1, Y2),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
@@ -192,9 +192,9 @@ rewrite(difference(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
     Mid = difference(Y1, Y2),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
@@ -202,9 +202,9 @@ rewrite(append(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
     Mid = append(Y1, Y2),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
@@ -212,9 +212,9 @@ rewrite(my_times(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
     Mid = my_times(Y1, Y2),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
@@ -222,36 +222,36 @@ rewrite(implies(X1, X2), New) :-
     rewrite(X1, Y1),
     rewrite(X2, Y2),
     Mid = implies(Y1, Y2),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
 rewrite(b_length(X1), New) :-
     rewrite(X1, Y1),
     Mid = b_length(Y1),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
 rewrite(f(X1), New) :-
     rewrite(X1, Y1),
     Mid = f(Y1),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
 rewrite(reverse(X1), New) :-
     rewrite(X1, Y1),
     Mid = reverse(Y1),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
@@ -260,9 +260,9 @@ rewrite(if(X1, X2, X3), New) :-
     rewrite(X2, Y2),
     rewrite(X3, Y3),
     Mid = if(Y1, Y2, Y3),
-    ( equal(Mid, Next) ->
+    ( if equal(Mid, Next) then
         rewrite(Next, New)
-    ;
+    else
         New = Mid
     ).
 
@@ -278,9 +278,9 @@ rewrite_args([A | RA], [B | RB]) :-
 :- mode truep(in, in) is semidet.
 
 truep(Wff, List) :-
-    ( Wff = t1 ->
+    ( if Wff = t1 then
         true
-    ;
+    else
         member_chk(Wff, List)
     ).
 
@@ -288,9 +288,9 @@ truep(Wff, List) :-
 :- mode falsep(in, in) is semidet.
 
 falsep(Wff, List) :-
-    ( Wff = f1 ->
+    ( if Wff = f1 then
         true
-    ;
+    else
         member_chk(Wff, List)
     ).
 
@@ -298,9 +298,9 @@ falsep(Wff, List) :-
 :- mode member_chk(in, in) is semidet.
 
 member_chk(X, [Y | T]) :-
-    ( X = Y ->
+    ( if X = Y then
         true
-    ;
+    else
         member_chk(X, T)
     ).
 
@@ -329,14 +329,14 @@ equal(reverse(append(A, B)), append(reverse(B), reverse(A))).
 :- mode difference1(in, in, out) is semidet.
 
 difference1(X, Y, Z) :-
-    ( X = Y ->
+    ( if X = Y then
         Z = zero
-    ;
-        ( X = my_plus(A, B), Y = my_plus(A, C) ->
+    else
+        ( if X = my_plus(A, B), Y = my_plus(A, C) then
             Z = difference(B, C)
-        ; X = my_plus(B, my_plus(Y, C)) ->
+        else if  X = my_plus(B, my_plus(Y, C)) then
             Z = my_plus(B, C)
-        ;
+        else
             fail
         )
     ).
@@ -366,13 +366,13 @@ plus1(my_plus(X, Y), Z, my_plus(X, my_plus(Y, Z))).
 :- mode remainder1(in, in, out) is semidet.
 
 remainder1(U, V, zero) :-
-    ( U = V ->
+    ( if U = V then
         true
-    ;
+    else
         U = my_times(A, B),
-        ( B = V ->
+        ( if B = V then
             true
-        ;
+        else
             A = V
         )
     ).

@@ -3,12 +3,11 @@
 %---------------------------------------------------------------------------%
 %
 :- module quantifier2.
-
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -28,16 +27,14 @@ testsum([X | L], I, X + N1) :-
 
 foo(testsum([1, 2, 3])).
 
-main -->
-    (
-        {
-            P = (pred(I :: in, X :: out) is semidet :- I > 0, X = 6),
-            foo(Q),
-            J = 1,
-            ( call(P, J, _X) <=> call(Q, J, _Y) )
-        }
-    ->
-        print("yes"), nl
-    ;
-        print("no"), nl
+main(!IO) :-
+    ( if
+        P = (pred(I :: in, X :: out) is semidet :- I > 0, X = 6),
+        foo(Q),
+        J = 1,
+        ( call(P, J, _X) <=> call(Q, J, _Y) )
+    then
+        io.print_line("yes", !IO)
+    else
+        io.print_line("no", !IO)
     ).

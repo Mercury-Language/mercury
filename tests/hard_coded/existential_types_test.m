@@ -20,27 +20,27 @@
 
 :- some [T] func my_exist_t = T.
 
-:- pred main(io__state::di, state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    foo(univ(42)),
-    foo(univ("blah")),
-    foo(univ(my_exist_t)),
-    foo(univ(call_my_exist_t)),
-    write(my_exist_t), nl,
-    write(call_my_exist_t), nl.
+main(!IO) :-
+    foo(univ(42), !IO),
+    foo(univ("blah"), !IO),
+    foo(univ(my_exist_t), !IO),
+    foo(univ(call_my_exist_t), !IO),
+    io.write_line(my_exist_t, !IO),
+    io.write_line(call_my_exist_t, !IO).
 
 my_exist_t = 43.
 
 call_my_exist_t = my_exist_t.
 
-:- pred foo(univ::in, io__state::di, state::uo) is det.
+:- pred foo(univ::in, io::di, io::uo) is det.
 
-foo(X) -->
-    write(my_univ_value(X)), nl,
-    write(call_my_univ_value(X)), nl.
+foo(X, !IO) :-
+    io.write_line(my_univ_value(X), !IO),
+    io.write_line(call_my_univ_value(X), !IO).
 
 call_my_univ_value(Univ) = my_univ_value(Univ).
 

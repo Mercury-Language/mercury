@@ -1,14 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
-:- module eqv_type_bug.
 
+:- module eqv_type_bug.
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -18,13 +17,13 @@
 :- import_module list.
 :- import_module string.
 
-main -->
-    { cqueue__cqueue(CQ0) },
-    { copy(CQ0, CQ0c) },
-    { list__foldl((pred(I::in, Q0::in, Q::out) is det :-
-        cqueue__append(Q0, I, Q)), [1, 2, 3, 4, 5], CQ0c, CQ1) },
-    { copy(CQ1, CQ1c) },
-    write(CQ1c), nl,
-    { cqueue__next(CQ1c, CQ2) },
-    { copy(CQ2, CQ2c) },
-    write(CQ2c), nl.
+main(!IO) :-
+    cqueue.cqueue(CQ0),
+    copy(CQ0, CQ0c),
+    list.foldl((pred(I::in, Q0::in, Q::out) is det :-
+        cqueue.append(Q0, I, Q)), [1, 2, 3, 4, 5], CQ0c, CQ1),
+    copy(CQ1, CQ1c),
+    io.write_line(CQ1c, !IO),
+    cqueue.next(CQ1c, CQ2),
+    copy(CQ2, CQ2c),
+    io.write_line(CQ2c, !IO).

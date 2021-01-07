@@ -10,7 +10,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module require.
@@ -21,11 +21,11 @@
     ;       f3(string)
     ;       f4(string).
 
-main -->
-    show(f1("foo")),
-    show(f2("foo")),
-    show(f1("oo")),
-    show(f2("oo")).
+main(!IO) :-
+    show(f1("foo"), !IO),
+    show(f2("foo"), !IO),
+    show(f1("oo"), !IO),
+    show(f2("oo"), !IO).
 
 :- pred show(t::in, io::di, io::uo) is det.
 
@@ -45,4 +45,3 @@ show(f4(S), !IO) :-
     io.write_string("f4: ", !IO),
     io.write_string(S, !IO),
     io.nl(!IO).
-

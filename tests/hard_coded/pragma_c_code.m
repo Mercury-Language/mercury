@@ -8,7 +8,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -17,20 +17,19 @@
 :- import_module math.
 :- import_module string.
 
-main -->
-    c_write_string("Hello, world\n"),
+main(!IO) :-
+    c_write_string("Hello, world\n", !IO),
     % test integer and multiple output args handling
-    { c_incr_and_decr(42, Y1, Y2) },
-    c_write_integer(Y1),
-    c_write_integer(Y2),
-    { c_get_meaning_of_life(Z) }, % test floats
-    c_write_float(Z),
-    c_write_cosine(Z).      % test c_header_code
+    c_incr_and_decr(42, Y1, Y2),
+    c_write_integer(Y1, !IO),
+    c_write_integer(Y2, !IO),
+    c_get_meaning_of_life(Z), % test floats
+    c_write_float(Z, !IO),
+    c_write_cosine(Z, !IO).   % test c_header_code
 
 :- pragma foreign_decl("C", "#include <stdio.h>").
 
-:- pred c_write_string(string::in, io__state::di, io__state::uo) is det.
-
+:- pred c_write_string(string::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
     c_write_string(Message::in, IO0::di, IO::uo),
     [promise_pure, will_not_call_mercury],
@@ -38,11 +37,10 @@ main -->
     printf(""%s"", Message);
     IO = IO0;
 ").
-c_write_string(Str) -->
-    io__write_string(Str).
+c_write_string(Str, !IO) :-
+    io.write_string(Str, !IO).
 
 :- pred c_incr_and_decr(int::in, int::out, int::out) is det.
-
 :- pragma foreign_proc("C",
     c_incr_and_decr(Int0::in, Int1::out, Int2::out),
     [will_not_call_mercury, promise_pure],
@@ -52,17 +50,15 @@ c_write_string(Str) -->
 ").
 c_incr_and_decr(A, A + 1, A - 1).
 
-:- pred c_write_integer(int::in, io__state::di, io__state::uo) is det.
-
+:- pred c_write_integer(int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    c_write_integer(Int::in, IO0::di, IO::uo),
+    c_write_integer(Int::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     printf(""%ld\\n"", (long) Int);
-    IO = IO0;
 ").
-c_write_integer(Int) -->
-    io__format("%d\n", [i(Int)]).
+c_write_integer(Int, !IO) :-
+    io.format("%d\n", [i(Int)], !IO).
 
 :- pred c_get_meaning_of_life(float::out) is det.
 
@@ -74,28 +70,26 @@ c_write_integer(Int) -->
 ").
 c_get_meaning_of_life(42.0).
 
-:- pred c_write_float(float::in, io__state::di, io__state::uo) is det.
+:- pred c_write_float(float::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    c_write_float(X::in, IO0::di, IO::uo),
+    c_write_float(X::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     printf(""%.1f\\n"", X);
-    IO = IO0;
 ").
-c_write_float(F) -->
-    io__format("%.1f\n", [f(F)]).
+c_write_float(F, !IO) :-
+    io.format("%.1f\n", [f(F)], !IO).
 
 :- pragma foreign_decl("C", "#include <math.h>").
 
-:- pred c_write_cosine(float::in, io__state::di, io__state::uo) is det.
+:- pred c_write_cosine(float::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    c_write_cosine(X::in, IO0::di, IO::uo),
+    c_write_cosine(X::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     printf(""%.3f\\n"", cos(X));
-    IO = IO0;
 ").
-c_write_cosine(F) -->
-    io__format("%.3f\n", [f(cos(F))]).
+c_write_cosine(F, !IO) :-
+    io.format("%.3f\n", [f(cos(F))], !IO).

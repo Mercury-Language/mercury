@@ -3,12 +3,11 @@
 %---------------------------------------------------------------------------%
 %
 :- module type_spec_modes.
-
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -28,20 +27,20 @@
 
 my_unify(X, X).
 
-main -->
-    ( { my_unify(1, 1) } ->
-        io__write_string("yes\n")
-    ;
-        io__write_string("no\n")
+main(!IO) :-
+    ( if my_unify(1, 1) then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ),
-    ( { my_unify([1, 2, 3], [1, 2, 6]) } ->
-        io__write_string("no\n")
-    ;
-        io__write_string("yes\n")
+    ( if my_unify([1, 2, 3], [1, 2, 6]) then
+        io.write_string("no\n", !IO)
+    else
+        io.write_string("yes\n", !IO)
     ),
-    { my_unify(X, [1, 2, 3]) },
-    ( { X = [1, 2, 3] } ->
-        io__write_string("yes\n")
-    ;
-        io__write_string("no\n")
+    my_unify(X, [1, 2, 3]),
+    ( if X = [1, 2, 3] then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ).
