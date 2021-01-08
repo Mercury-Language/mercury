@@ -2419,6 +2419,12 @@ case "$ac_cv_prog_gcc" in yes)
             mercury_cv_asm_labels=no
             mercury_cv_gcc_labels=no
             ;;
+        aarch64*)
+        # The test for GCC labels goes into a loop on AArch64.
+            MERCURY_MSG("gcc labels do not work on AArch64")
+            mercury_cv_asm_labels=no
+            mercury_cv_gcc_labels=no
+            ;;
     esac
     ;;
 esac
@@ -4175,6 +4181,10 @@ if test "$mercury_cv_enable_shared_libs" = "yes"; then
             esac
             ;;
         m68*-linux|m68*-linux-gnu)
+            AC_MSG_RESULT(yes)
+            EXT_FOR_SHARED_LIB=so
+            ;;
+        aarch64*-linux|aarch64*-linux-gnu)
             AC_MSG_RESULT(yes)
             EXT_FOR_SHARED_LIB=so
             ;;
