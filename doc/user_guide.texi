@@ -7621,45 +7621,84 @@ Multiple dump options accumulate.
 @findex --dump-hlds-options
 With @samp{--dump-hlds}, include extra detail in the dump.
 Each type of detail is included in the dump
-if its corresponding letter occurs in the option argument.
+if its corresponding letter occurs in the @var{options} argument.
 These details are:
-a - argument modes in unifications,
-b - builtin flags on calls,
-c - contexts of goals and types,
-d - determinism of goals,
-e - created, removed, carried, allocated into, and used regions,
-f - follow_vars sets of goals,
-g - goal feature lists,
-i - variables whose instantiation changes,
-l - pred/mode ids and unify contexts of called predicates,
-m - mode information about clauses,
-n - nonlocal variables of goals,
-p - pre-birth, post-birth, pre-death and post-death sets of goals,
-r - resume points of goals,
-s - store maps of goals,
-t - results of termination analysis,
-u - unification categories and other implementation details of unifications,
-v - variable numbers in variable names,
-x - predicate type information.
-y - structured insts in the arg-modes of unification
-z - purity annotations on impure and semipure goals
-A - argument passing information,
-B - mode constraint information,
-C - clause information,
-D - instmap deltas of goals (meaningful only with i),
-E - deep profiling information,
-G - compile-time garbage collection information,
-I - imported predicates,
-L - restrict the output of type table entries to local types only,
-M - mode and inst information,
-O - dependency and dependency ordering information,
-P - goal id and path information,
-R - live forward use, live backward use and reuse possibilities,
-S - information about structure sharing,
-T - type and typeclass information,
-U - unify and compare predicates,
-X - constant structures,
-Z - information about globals structs representing call and answer tables.
+@table @asis
+@item @samp{a}
+argument modes in unifications
+@item @samp{b}
+builtin flags on calls
+@item @samp{c}
+contexts of goals and types
+@item @samp{d}
+determinism of goals
+@item @samp{e}
+created, removed, carried, allocated into, and used regions
+@item @samp{f}
+follow_vars sets of goals
+@item @samp{g}
+goal feature lists
+@item @samp{i}
+variables whose instantiation changes
+@item @samp{l}
+pred/mode ids and unify contexts of called predicates
+@item @samp{m}
+mode information about clauses
+@item @samp{n}
+nonlocal variables of goals
+@item @samp{p}
+pre-birth, post-birth, pre-death and post-death sets of goals
+@item @samp{r}
+resume points of goals
+@item @samp{s}
+store maps of goals
+@item @samp{t}
+results of termination analysis
+@item @samp{u}
+unification categories and other implementation details of unifications
+@item @samp{v}
+variable numbers in variable names
+@item @samp{x}
+predicate type information
+@item @samp{y}
+structured insts in the arg-modes of unification
+@item @samp{z}
+purity annotations on impure and semipure goals
+@item @samp{A}
+argument passing information
+@item @samp{B}
+mode constraint information
+@item @samp{C}
+clause information
+@item @samp{D}
+instmap deltas of goals (meaningful only with @samp{i})
+@item @samp{E}
+deep profiling information
+@item @samp{G}
+compile-time garbage collection information
+@item @samp{I}
+imported predicates
+@item @samp{L}
+restrict the output of type table entries to local types only
+@item @samp{M}
+mode and inst information
+@item @samp{O}
+dependency and dependency ordering information
+@item @samp{P}
+goal id and path information
+@item @samp{R}
+live forward use, live backward use and reuse possibilities
+@item @samp{S}
+information about structure sharing
+@item @samp{T}
+type and typeclass information
+@item @samp{U}
+unify and compare predicates
+@item @samp{X}
+constant structures
+@item @samp{Z}
+information about globals structs representing call and answer tables
+@end table
 
 @sp 1
 @item --dump-hlds-pred-id @var{predid}
