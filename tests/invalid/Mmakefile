@@ -173,6 +173,7 @@ SINGLEMODULE= \
 	getopt_io_old \
 	getopt_old \
 	getopt_old_se \
+	gh72_errors \
 	hawkins_mm_fail_reset \
 	higher_order_no_detism \
 	ho_any_inst \

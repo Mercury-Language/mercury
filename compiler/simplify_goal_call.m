@@ -106,7 +106,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.
@@ -1268,15 +1267,9 @@ simplify_make_binary_op_goal_expr(Info, ModuleName, Op, IsBuiltin, X, Y, Z,
     OpSymName = qualified(ModuleSymName, Op),
     simplify_info_get_module_info(Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredTable),
-    predicate_table_lookup_func_sym_arity(PredTable, is_fully_qualified,
-        OpSymName, 2, OpPredIds),
-    ( if OpPredIds = [OpPredIdPrime] then
-        OpPredId = OpPredIdPrime
-    else
-        unexpected($pred, "cannot find " ++ Op)
-    ),
-    OpProcIdInt = 0,
-    proc_id_to_int(OpProcId, OpProcIdInt),
+    predicate_table_lookup_func_sym_arity_one(PredTable, is_fully_qualified,
+        OpSymName, 2, OpPredId),
+    proc_id_to_int(OpProcId, 0),
     OpArgs = [X, Y, Z],
     MaybeUnifyContext = no,
     GoalExpr = plain_call(OpPredId, OpProcId, OpArgs, IsBuiltin,
@@ -1291,15 +1284,9 @@ simplify_make_cmp_goal_expr(Info, ModuleSymName, Op, IsBuiltin, X, Y,
     OpSymName = qualified(ModuleSymName, Op),
     simplify_info_get_module_info(Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredTable),
-    predicate_table_lookup_pred_sym_arity(PredTable, is_fully_qualified,
-        OpSymName, 2, OpPredIds),
-    ( if OpPredIds = [OpPredIdPrime] then
-        OpPredId = OpPredIdPrime
-    else
-        unexpected($pred, "cannot find " ++ Op)
-    ),
-    OpProcIdInt = 0,
-    proc_id_to_int(OpProcId, OpProcIdInt),
+    predicate_table_lookup_pred_sym_arity_one(PredTable, is_fully_qualified,
+        OpSymName, 2, OpPredId),
+    proc_id_to_int(OpProcId, 0),
     OpArgs = [X, Y],
     MaybeUnifyContext = no,
     GoalExpr = plain_call(OpPredId, OpProcId, OpArgs, IsBuiltin,

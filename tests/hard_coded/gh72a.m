@@ -6,7 +6,7 @@
 % with partially instantiated data structures.
 %
 % The bug arises in the call to the type-specific unification predicate
-% for the maybe_reviewed type that the compile generates to unify
+% for the maybe_reviewed type that the compiler generates to unify
 % the first element of S with R, but ONLY when that call is not inlined.
 %
 % In the inlined version, when we fill in the argument of R, we update R.

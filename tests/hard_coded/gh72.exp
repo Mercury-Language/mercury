@@ -1,0 +1,112 @@
+f1(package(fill1, a))
+f2(package(fill2, b))
+f3(package(fill3, c))
+f4(package(start4, d))
+
+disj_test_init(f1)
+10: 10, f1(package(fill1, 110)) | f1(package(fill1, 110))
+10: 10; f1(package(fill1, 110)) | f1(package(fill1, 110))
+11: 11, f1(package(fill1, a11)) | f1(package(fill1, a11))
+12: 12, no_t | f1(package(fill1, 12))
+disj_test_init(f2)
+10: 10, f2(package(fill2, 210)) | f2(package(fill2, 210))
+10: 10; f2(package(fill2, 210)) | f2(package(fill2, 210))
+11: 11, f2(package(fill2, b11)) | f2(package(fill2, b11))
+12: 12, no_t | f2(package(fill2, 12))
+disj_test_init(f3)
+10: 10, f3(package(fill3, 310)) | f3(package(fill3, 310))
+10: 10; f3(package(fill3, 310)) | f3(package(fill3, 310))
+11: 11, f3(package(fill3, b11)) | f3(package(fill3, b11))
+12: 12, no_t | f3(package(fill3, 12))
+end
+
+switch_test_init(10, f1)
+10, f1(package(fill1, 110)) | f1(package(fill1, 110))
+10; f1(package(fill1, 110)) | f1(package(fill1, 110))
+switch_test_init(10, f2)
+10, f2(package(fill2, 210)) | f2(package(fill2, 210))
+10; f2(package(fill2, 210)) | f2(package(fill2, 210))
+switch_test_init(10, f3)
+10, f3(package(fill3, 310)) | f3(package(fill3, 310))
+10; f3(package(fill3, 310)) | f3(package(fill3, 310))
+end
+
+switch_test_init(11, f1)
+11, f1(package(fill1, a11)) | f1(package(fill1, a11))
+switch_test_init(11, f2)
+11, f2(package(fill2, b11)) | f2(package(fill2, b11))
+switch_test_init(11, f3)
+11, f3(package(fill3, b11)) | f3(package(fill3, b11))
+end
+
+switch_test_init(12, f1)
+12, no_t | f1(package(fill1, 12))
+switch_test_init(12, f2)
+12, no_t | f2(package(fill2, 12))
+switch_test_init(12, f3)
+12, no_t | f3(package(fill3, 12))
+end
+
+switch_test_init(13, f1)
+switch_test_init(13, f2)
+switch_test_init(13, f3)
+end
+
+ite_test_init(10, f1)
+10, f1(package(fill1, 110)) | f1(package(fill1, 110))
+ite_test_init(10, f2)
+10, f2(package(fill2, 210)) | f2(package(fill2, 210))
+ite_test_init(10, f3)
+10, f3(package(fill3, 310)) | f3(package(fill3, 310))
+end
+
+ite_test_init(11, f1)
+11, f1(package(fill1, a11)) | f1(package(fill1, a11))
+ite_test_init(11, f2)
+11, f2(package(fill2, b11)) | f2(package(fill2, b11))
+ite_test_init(11, f3)
+11, f3(package(fill3, b11)) | f3(package(fill3, b11))
+end
+
+ite_test_init(12, f1)
+12, no_t | f1(package(fill1, 12))
+ite_test_init(12, f2)
+12, no_t | f2(package(fill2, 12))
+ite_test_init(12, f3)
+12, no_t | f3(package(fill3, 12))
+end
+
+ite_test_init(13, f1)
+ite_test_init(13, f2)
+ite_test_init(13, f3)
+end
+
+higher order test A abc
+f1(package(fill1, abc))
+f2(package(testA2, testA2))
+f3(package(testA3, testA3))
+f4(package(testA4, testA4))
+
+higher order test B xyz
+f1(package(fill1, xyz))
+f2(package(testB2, testB2))
+f3(package(testB3, testB3))
+f4(package(testB4, testB4))
+
+higher order test C 42
+f1(package(fill1, 42))
+f2(package(testC2, testC2))
+f3(package(testC3, testC3))
+f4(package(testC4, testC4))
+
+method test string
+p1 f1(package(fill1, hij))
+p2 f2(package(test2, test2))
+p3 f3(package(test3, test3))
+p4 f4(package(test4, test4))
+
+method test int
+p1 f1(package(fill1, 53))
+p2 f2(package(test2, test2))
+p3 f3(package(test3, test3))
+p4 f4(package(test4, test4))

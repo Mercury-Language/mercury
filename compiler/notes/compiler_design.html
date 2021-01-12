@@ -1248,20 +1248,38 @@ can change the evaluation methods of some procedures to eval_table_io,
 so it should come before any passes
 that require definitive evaluation methods (e.g. inlining).
 <li>
-The next pass of this stage is a code simplification,
-namely removal of lambda expressions.
-lambda.m converts lambda expressions
+The next pass of this stage converts lambda expressions
 into higher-order predicate terms
-that refer to freshly introduced separate predicates.
+that refer to freshly introduced separate predicates (lambda.m).
 This pass needs to come after unique_modes.m
 to ensure that the modes we give to the introduced predicates are correct.
-It also needs to come after polymorphism.m
-since polymorphism.m doesn't handle higher-order predicate constants.
-<p>
-XXX Is there any good reason why lambda.m comes after table_gen.m?
+It also needs to come after table_gen.m
+because it needs the final evaluation method of each predicate,
+and after polymorphism.m,
+because polymorphism.m doesn't handle higher-order predicate constants.
 <li>
-The next pass also simplifies the HLDS by expanding out the atomic goals
-implementing Software Transactional Memory (stm_expand.m).
+The next pass implements a program transformation that solves a rare problem,
+one that arises when a predicate fills in a partially instantiated term,
+and that term's data representation uses direct_arg tags.
+In such cases, the relevant head var(s) need
+not only to be passed from the caller to the callee
+(to tell them the head var's top function symbol)
+but also from the callee back to the caller
+(to tell them the newly-filled-in argument of that function symbol).
+Normally, the second part is not needed,
+because the caller can get
+the value of the function symbol's argument(s) from the heap,
+but in the case of function symbols that use the direct_arg tag,
+that is not the case.
+<p>
+This pass has to come after both
+(a) the simplification pass at the end of semantic analysis, and
+(b) the lambda expansion pass,
+since it is these passes that record for it
+which arguments of which procedures have this problem.
+<li>
+The next pass also simplifies the HLDS by expanding out
+the atomic goals that implement Software Transactional Memory (stm_expand.m).
 <li>
 equiv_type_hlds.m expands type equivalences
 which are not meant to be visible to the user of imported modules.

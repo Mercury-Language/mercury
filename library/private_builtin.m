@@ -1507,6 +1507,42 @@ __Compare__private_builtin__ref_1_0(
 :- pred compare_local_int32_bitfields(T::in, T::in, int::in,
     comparison_result::uo) is det.
 
+    % This builtin is used by direct_arg_in_out.m.
+    %
+    % When we fill in the only argument of a partially-instantiated term
+    % whose top function symbol has a direct_arg_tag representation,
+    % that filling-in updates the non-ptag bits of a local variable.
+    % This local variable of course may (and often will) have a different
+    % value after the filling-in than it did before. When a predicate
+    % is supposed to return the filled-in value, we need to return it
+    % in a separate value, since the initial not-yet-filled-in value
+    % will have been passed using call-by-value. (This is github issue #72.)
+    %
+    % We use separate variables in a procedure body to represent the
+    % before-fill-in and after-fill-in versions of such variables
+    % when the filling-in is done by a call. When the filling-in is done
+    % by a unification, that unification's LHS variable will stand for
+    % both the pre-fill-in and post-fill-in versions of that value,
+    % at the start and end of its execution respectively. This is
+    % different from the call case.
+    %
+    % Arranging for all branches of a branched control structure to have
+    % a consistent view of the fill-in state of such an initially partially
+    % instantiated term is significantly easier when distinct variables
+    % represent distinct stages of filling-in, so we want to adopt that
+    % consistently. This is why, immediately after a unification does
+    % such a fill-in, we put a call to partial_inst_copy, with the
+    % just-filled-in variable as the first argument and a fresh new
+    % variable as the second. Operationally, this call assigns its first
+    % argument to its second, preserving its instantiation state, but its mode
+    % also says that the first argument should never be referenced again.
+    % If direct_arg_in_out.m's transformation of the procedure body ever
+    % violates this rule, the error will be detected when the instmap deltas
+    % are recomputed just after that transformation is completed.
+    %
+:- pred partial_inst_copy(T, T).
+:- mode partial_inst_copy(I >> clobbered, free >> I) is det.
+
 :- implementation.
 
 unused :-
@@ -2114,9 +2150,7 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
 ").
 
 :- pragma foreign_code("Java", "
-    //
     // Type-specific unification and comparison routines.
-    //
 
     public static boolean
     __Unify____ref_1_0(jmercury.runtime.TypeInfo_Struct ti,

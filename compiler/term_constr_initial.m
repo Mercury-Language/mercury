@@ -503,8 +503,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     PredArity  = pred_info_orig_arity(PredInfo),
     make_size_var_map(HeadVars, _SizeVarset, SizeVarMap),
     ( if no_type_info_builtin(PredModule, PredName, PredArity) then
-        Constrs = process_no_type_info_builtin(PredName, HeadVars,
-            SizeVarMap)
+        Constrs = process_no_type_info_builtin(PredName, HeadVars, SizeVarMap)
     else if all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo0) then
         Constrs = []
     else
@@ -531,30 +530,152 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     = constraints.
 
 process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
-    ( if
-        HeadVars = [HVar1, HVar2],
+    % This predicate should handle every predicate listed by
+    % no_type_info_builtin in mdbcomp/program_representation.m.
+    %
+    % NOTE We assume that no PredName occurs in more than one builtin module,
+    % which is a fragile assumption.
+    (
+        HeadVars = [],
+        unexpected($pred, "unrecognised arity-0 no_type_info_builtin")
+    ;
+        HeadVars = [_],
+        unexpected($pred, "unrecognised arity-1 no_type_info_builtin")
+    ;
+        HeadVars = [HeadVar1, HeadVar2],
         ( if
-            ( PredName = "unsafe_type_cast"
-            ; PredName = "unsafe_promise_unique"
-            )
-        then
-            SizeVar1 = prog_var_to_size_var(SizeVarMap, HVar1),
-            SizeVar2 = prog_var_to_size_var(SizeVarMap, HVar2),
-            ConstraintsPrime = [make_vars_eq_constraint(SizeVar1, SizeVar2)]
-        else if
-            ( PredName = "store_at_ref_impure"
-            ; PredName = "builtin_compound_eq"
+            ( PredName = "builtin_compound_eq"
             ; PredName = "builtin_compound_lt"
+            ; PredName = "get_future"
+            ; PredName = "increment_size"
+            ; PredName = "new_future"
+            ; PredName = "partial_inst_copy"
+            ; PredName = "signal_future"
+            ; PredName = "store_at_ref_impure"
+            ; PredName = "unsafe_promise_unique"
+            ; PredName = "unsafe_type_cast"
+            ; PredName = "wait_future"
             )
         then
-            ConstraintsPrime = []
+            (
+                ( PredName = "partial_inst_copy"
+                ; PredName = "unsafe_type_cast"
+                ; PredName = "unsafe_promise_unique"
+                ),
+                SizeVar1 = prog_var_to_size_var(SizeVarMap, HeadVar1),
+                SizeVar2 = prog_var_to_size_var(SizeVarMap, HeadVar2),
+                Constraints = [make_vars_eq_constraint(SizeVar1, SizeVar2)]
+            ;
+                ( PredName = "builtin_compound_eq"
+                ; PredName = "builtin_compound_lt"
+                ; PredName = "get_future"
+                ; PredName = "increment_size"
+                ; PredName = "new_future"
+                ; PredName = "signal_future"
+                ; PredName = "store_at_ref_impure"
+                ; PredName = "wait_future"
+                ),
+                Constraints = []
+            )
         else
-            fail
+            unexpected($pred, "unrecognised arity-2 no_type_info_builtin")
         )
-    then
-        Constraints = ConstraintsPrime
-    else
-        unexpected($pred, "unrecognised predicate")
+    ;
+        HeadVars = [_, _, _],
+        ( if
+            ( PredName = "compare_local_uint_words"
+            ; PredName = "semidet_call_3"
+            ; PredName = "superclass_from_typeclass_info"
+            ; PredName = "table_lookup_insert_typeclassinfo"
+            ; PredName = "table_lookup_insert_typeinfo"
+            ; PredName = "table_restore_any_answer"
+            ; PredName = "type_info_from_typeclass_info"
+            ; PredName = "unconstrained_type_info_from_typeclass_info"
+            )
+        then
+            Constraints = []
+        else
+            unexpected($pred, "unrecognised arity-3 no_type_info_builtin")
+        )
+    ;
+        HeadVars = [_, _, _, _],
+        ( if
+            ( PredName = "compare_local_int16_bitfields"
+            ; PredName = "compare_local_int32_bitfields"
+            ; PredName = "compare_local_int8_bitfields"
+            ; PredName = "instance_constraint_from_typeclass_info"
+            ; PredName = "result_call_4"
+            ; PredName = "semidet_call_4"
+            ; PredName = "table_lookup_insert_enum"
+            ; PredName = "unify_remote_arg_words"
+            )
+        then
+            Constraints = []
+        else
+            unexpected($pred, "unrecognised arity-4 no_type_info_builtin")
+        )
+    ;
+        HeadVars = [_, _, _, _, _],
+        ( if
+            ( PredName = "compare_local_uint_bitfields"
+            ; PredName = "compare_remote_uint_words"
+            ; PredName = "result_call_5"
+            ; PredName = "semidet_call_5"
+            )
+        then
+            Constraints = []
+        else
+            unexpected($pred, "unrecognised arity-5 no_type_info_builtin")
+        )
+    ;
+        HeadVars = [_, _, _, _, _, _],
+        ( if
+            ( PredName = "compare_remote_int16_bitfields"
+            ; PredName = "compare_remote_int32_bitfields"
+            ; PredName = "compare_remote_int8_bitfields"
+            ; PredName = "result_call_6"
+            ; PredName = "semidet_call_6"
+            )
+        then
+            Constraints = []
+        else
+            unexpected($pred, "unrecognised arity-6 no_type_info_builtin")
+        )
+    ;
+        HeadVars = [_, _, _, _, _, _, _],
+        ( if
+            ( PredName = "compare_remote_uint_bitfields"
+            ; PredName = "result_call_7"
+            ; PredName = "semidet_call_7"
+            )
+        then
+            Constraints = []
+        else
+            unexpected($pred, "unrecognised arity-7 no_type_info_builtin")
+        )
+    ;
+        HeadVars = [_, _, _, _, _, _, _, _],
+        ( if
+            ( PredName = "result_call_8"
+            ; PredName = "semidet_call_8"
+            )
+        then
+            Constraints = []
+        else
+            unexpected($pred, "unrecognised arity-8 no_type_info_builtin")
+        )
+    ;
+        HeadVars = [_, _, _, _, _, _, _, _, _],
+        ( if
+            PredName = "result_call_9"
+        then
+            Constraints = []
+        else
+            unexpected($pred, "unrecognised arity-9 no_type_info_builtin")
+        )
+    ;
+        HeadVars = [_, _, _, _, _, _, _, _, _, _ | _],
+        unexpected($pred, "unrecognised arity-10+ no_type_info_builtin")
     ).
 
 %----------------------------------------------------------------------------%

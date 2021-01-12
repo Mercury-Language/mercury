@@ -126,17 +126,21 @@
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
     % Add the given key-value pair to the multi_map.
-    % (`add' is a synonym for `set'.)
+    % (`set' is a synonym for `add'.)
     %
-:- func set(multi_map(K, V), K, V) = multi_map(K, V).
-:- pred set(K::in, V::in,
-    multi_map(K, V)::in, multi_map(K, V)::out) is det.
 :- func add(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred add(K::in, V::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
+:- func set(multi_map(K, V), K, V) = multi_map(K, V).
+:- pred set(K::in, V::in,
+    multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
     % Add the given value-key pair to the multi_map.
+    % (`reverse_set' is a synonym for `reverse_add'.)
     %
+:- func reverse_add(multi_map(K, V), V, K) = multi_map(K, V).
+:- pred reverse_add(V::in, K::in,
+    multi_map(K, V)::in, multi_map(K, V)::out) is det.
 :- func reverse_set(multi_map(K, V), V, K) = multi_map(K, V).
 :- pred reverse_set(V::in, K::in,
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
@@ -151,7 +155,7 @@
     multi_map(K, V)::in, multi_map(K, V)::out) is det.
 
     % Delete the given key-value pair from a multi_map.
-    % If the key is not present, leave the multi_map unchanged.
+    % If the key-value pair is not present, leave the multi_map unchanged.
     %
 :- func delete(multi_map(K, V), K, V) = multi_map(K, V).
 :- pred delete(K::in, V::in,
@@ -401,28 +405,34 @@ det_replace(!.MultiMap, Key, Values) = !:MultiMap :-
 det_replace(Key, Values, !MultiMap) :-
     map.det_update(Key, Values, !MultiMap).
 
-set(!.MultiMap, Key, Value) = !:MultiMap :-
-    multi_map.set(Key, Value, !MultiMap).
+add(!.MultiMap, Key, Value) = !:MultiMap :-
+    multi_map.add(Key, Value, !MultiMap).
 
-set(Key, Value, !MultiMap) :-
+add(Key, Value, !MultiMap) :-
     ( if map.search(!.MultiMap, Key, Values0) then
         Values = [Value | Values0],
-        map.set(Key, Values, !MultiMap)
+        map.det_update(Key, Values, !MultiMap)
     else
         map.det_insert(Key, [Value], !MultiMap)
     ).
 
-add(!.MultiMap, Key, Value) = !:MultiMap :-
-    multi_map.set(Key, Value, !MultiMap).
+set(!.MultiMap, Key, Value) = !:MultiMap :-
+    multi_map.add(Key, Value, !MultiMap).
 
-add(Key, Value, !MultiMap) :-
-    multi_map.set(Key, Value, !MultiMap).
+set(Key, Value, !MultiMap) :-
+    multi_map.add(Key, Value, !MultiMap).
+
+reverse_add(!.MultiMap, Value, Key) = !:MultiMap :-
+    multi_map.add(Key, Value, !MultiMap).
+
+reverse_add(Value, Key, !MultiMap) :-
+    multi_map.add(Key, Value, !MultiMap).
 
 reverse_set(!.MultiMap, Value, Key) = !:MultiMap :-
-    multi_map.reverse_set(Value, Key, !MultiMap).
+    multi_map.add(Key, Value, !MultiMap).
 
 reverse_set(Value, Key, !MultiMap) :-
-    multi_map.set(Key, Value, !MultiMap).
+    multi_map.add(Key, Value, !MultiMap).
 
 %---------------------------------------------------------------------------%
 

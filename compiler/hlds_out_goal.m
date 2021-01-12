@@ -896,6 +896,11 @@ write_goal_expr(Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
 % Write out unifications.
 %
 
+    % write_goal_unify(Info, Stream, ModuleInfo, VarSet, TypeQual,
+    %   VarNamePrint, Indent, Follow, GoalExpr, !IO):
+    %
+    % Write out a unification.
+    %
 :- pred write_goal_unify(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, prog_varset::in, maybe_vartypes::in, var_name_print::in,
     int::in, string::in, hlds_goal_expr::in(goal_expr_unify),
@@ -936,6 +941,13 @@ write_goal_unify(Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
         then
             true
         else
+            % XXX While Follow strings should never contain newlines,
+            % some callers do pass them.
+            ( if string.contains_char(Follow, '\n') then
+                true
+            else
+                io.nl(Stream, !IO)
+            ),
             write_unification(Info, Stream, ModuleInfo, VarSet, InstVarSet,
                 VarNamePrint, Indent, Unification, !IO)
         )
@@ -1314,13 +1326,26 @@ write_goal_plain_call(Info, Stream, ModuleInfo, VarSet, TypeQual,
     ),
     write_indent(Stream, Indent, !IO),
     ( if PredId = invalid_pred_id then
-        % If we don't know then the call must be treated as a predicate.
+        % If we don't know the id of the callee yet, then treat the call
+        % as being to a pure predicate. This may be misleading, but any
+        % other assumption has a significantly higher chance of being
+        % misleading.
         PredOrFunc = pf_predicate
-    else
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_get_purity(PredInfo, Purity),
+    else if
+        module_info_get_preds(ModuleInfo, PredTable),
+        map.search(PredTable, PredId, PredInfo)
+    then
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        pred_info_get_purity(PredInfo, Purity),
         io.write_string(Stream, purity_prefix_to_string(Purity), !IO)
+    else
+        % We should know the id of the callee, but the callee has been
+        % deleted *without* this call to it (and maybe others) being
+        % adjusted accordingly. This is a bug, so we want to draw attention
+        % to it, but we cannot do so effectively if this code aborts
+        % before we finish writing out the HLDS dump.
+        io.write_string(Stream, "CALL TO DELETED ", !IO),
+        PredOrFunc = pf_predicate
     ),
     (
         PredOrFunc = pf_predicate,

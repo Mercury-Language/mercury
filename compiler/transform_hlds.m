@@ -37,14 +37,6 @@
    :- include_module term_norm.
    :- include_module term_util.
 
-:- include_module ssdebug.
-
-:- include_module transform_hlds.ctgc.
-
-:- include_module transform_hlds.rbmm.
-
-:- include_module transform_hlds.smm_common.
-
 :- include_module term_constr_main.
     :- include_module term_constr_initial.
         % Pass 1.
@@ -59,9 +51,16 @@
     :- include_module term_constr_errors.
 
 :- include_module post_term_analysis.
+
 :- include_module exception_analysis.
 :- include_module trailing_analysis.
 :- include_module tabling_analysis.
+
+:- include_module ssdebug.
+
+:- include_module ctgc.
+:- include_module rbmm.
+:- include_module smm_common.
 
 % Mostly optimizations (HLDS -> HLDS)
 :- include_module higher_order.
@@ -82,16 +81,22 @@
 :- include_module const_prop.
 :- include_module loop_inv.
 :- include_module size_prof.
+
 :- include_module tupling.
 :- include_module untupling.
+
+% Parallelism.
 :- include_module distance_granularity.
 :- include_module granularity.
 :- include_module dep_par_conj.
 :- include_module parallel_to_plain_conj.
 :- include_module implicit_parallelism.
 :- include_module par_loop_control.
+
 :- include_module lco.
 :- include_module float_regs.
+
+:- include_module direct_arg_in_out.
 
 :- include_module mmc_analysis.
 

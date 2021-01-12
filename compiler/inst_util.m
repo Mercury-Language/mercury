@@ -186,17 +186,23 @@ inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst) :-
 %---------------------------------------------------------------------------%
 
 abstractly_unify_inst(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
-    % Check whether this pair of insts is already in the unify_insts table.
-    module_info_get_inst_table(!.ModuleInfo, InstTable0),
-    inst_table_get_unify_insts(InstTable0, UnifyInstTable0),
+    % We avoid infinite loops by checking whether the InstA-InstB
+    % pair of insts is already in the unify_insts table.
+    %
     % XXX For code that uses large facts, the deeply nested insts we unify
-    % here means that searching UnifyInsts0 here, and updating it (twice)
-    % in the else case below are *extremely* expensive. In one version of
-    % Doug Auclair's training_cars example, the map search, insert and update
-    % account for 116 out the 120 clock ticks spent in this predicate,
+    % here means that searching the unify_insts table here, and updating it
+    % (twice) in the else case below are *extremely* expensive. In one version
+    % of Doug Auclair's training_cars example, the map search, insert and
+    % update account for 116 out the 120 clock ticks spent in this predicate,
     % i.e. they account for almost 97% of its runtime.
     %
-    % We now combine the lookup with one of the updates.
+    % We reduce the expense of these operations in two ways.
+    %
+    % First, we make each instance of the operation cheaper, by combining
+    % the lookup with one of the updates. We do this by having
+    % search_insert_unify_inst use map.search_insert.
+    %
+    % Second, we avoid some instances of the operation altogether.
     %
     % If either inst is free, then just unifying the two insts is likely
     % to be faster (and maybe *much* faster) than looking them up
@@ -214,6 +220,8 @@ abstractly_unify_inst(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
         abstractly_unify_inst_2(Live, InstA, InstB, Real, Inst, Detism,
             !ModuleInfo)
     else
+        module_info_get_inst_table(!.ModuleInfo, InstTable0),
+        inst_table_get_unify_insts(InstTable0, UnifyInstTable0),
         UnifyInstInfo = unify_inst_info(Live, Real, InstA, InstB),
         UnifyInstName = unify_inst(Live, Real, InstA, InstB),
         search_insert_unify_inst(UnifyInstInfo, MaybeMaybeInst,
@@ -397,8 +405,9 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 Inst = InstA,
                 Detism1 = detism_semi
             ;
-                InstResultsA = inst_test_results(GroundnessResultA, _, _, _,
-                    _, _),
+                InstResultsA = inst_test_results(GroundnessResultA,
+                    _ContainsAny, _ContainsInstNames, _ContainsInstVars,
+                    ContainsTypes, MaybeTypeCtorPropagated),
                 (
                     GroundnessResultA = inst_result_is_ground,
                     Inst = InstA,
@@ -409,13 +418,24 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                     ),
                     make_ground_bound_inst_list(BoundInstsA, Live, UniqB, Real,
                         BoundInsts, Detism1, !ModuleInfo),
-                    Inst = bound(Uniq, InstResultsA, BoundInsts)
+                    InstResults = inst_test_results(inst_result_is_ground,
+                        inst_result_does_not_contain_any,
+                        inst_result_contains_inst_names_unknown,
+                        inst_result_contains_inst_vars_unknown,
+                        ContainsTypes, MaybeTypeCtorPropagated),
+                    Inst = bound(Uniq, InstResults, BoundInsts)
                 )
             ;
                 InstResultsA = inst_test_no_results,
                 make_ground_bound_inst_list(BoundInstsA, Live, UniqB, Real,
                     BoundInsts, Detism1, !ModuleInfo),
-                Inst = bound(Uniq, InstResultsA, BoundInsts)
+                InstResults = inst_test_results(inst_result_is_ground,
+                    inst_result_does_not_contain_any,
+                    inst_result_contains_inst_names_unknown,
+                    inst_result_contains_inst_vars_unknown,
+                    inst_result_contains_types_unknown,
+                    inst_result_no_type_ctor_propagated),
+                Inst = bound(Uniq, InstResults, BoundInsts)
             ),
             det_par_conjunction_detism(Detism1, detism_semi, Detism)
         ;

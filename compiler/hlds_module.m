@@ -57,6 +57,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module set.
 :- import_module set_tree234.
@@ -134,6 +135,28 @@
                 % predicate becomes exported.
                 pragma_map          :: multi_map(pred_id,
                                         pragma_info_type_spec)
+            ).
+
+    % Once filled in by simplify_proc.m (for all non-lambda procedures)
+    % and by lambda.m (for procedures created to implement lambda expressions),
+    % this map should have an entry for every procedure that is of interest to
+    % direct_arg_in_out.m. A procedure may be of interest to that module
+    % because it has one or more arguments that it needs to clone,
+    % or because it has one or more arguments whose modes do not specify
+    % whether they need to be cloned, and for which therefore it should
+    % generate a "sorry, not implemented" message. In both cases, the
+    % one_or_more(int) specify the argument positions involved; in the latter
+    % case, we also record the list of arguments for which we *could* tell
+    % they need to be cloned.
+    %
+:- type direct_arg_proc_map == map(pred_proc_id, direct_arg_proc).
+:- type direct_arg_proc
+    --->    direct_arg_clone_proc(
+                clone_daio_args     :: one_or_more(int)
+            )
+    ;       direct_arg_problem_proc(
+                problem_args        :: one_or_more(int),
+                no_problem_args     :: list(int)
             ).
 
     % Maps the full names of procedures (in the sense of complexity_proc_name
@@ -310,6 +333,8 @@
     has_parallel_conj::out) is det.
 :- pred module_info_get_has_user_event(module_info::in,
     has_user_event::out) is det.
+:- pred module_info_get_direct_arg_proc_map(module_info::in,
+    direct_arg_proc_map::out) is det.
 :- pred module_info_get_foreign_decl_codes_user(module_info::in,
     cord(foreign_decl_code)::out) is det.
 :- pred module_info_get_foreign_decl_codes_aux(module_info::in,
@@ -403,6 +428,8 @@
 :- pred module_info_set_has_parallel_conj(
     module_info::in, module_info::out) is det.
 :- pred module_info_set_has_user_event(
+    module_info::in, module_info::out) is det.
+:- pred module_info_set_direct_arg_proc_map(direct_arg_proc_map::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_foreign_decl_codes_user(cord(foreign_decl_code)::in,
     module_info::in, module_info::out) is det.
@@ -743,7 +770,7 @@
                 % of the program.
                 msi_const_struct_db             :: const_struct_db,
 
-                msi_c_j_cs_fims               :: c_j_cs_fims,
+                msi_c_j_cs_fims                 :: c_j_cs_fims,
 
                 % List of the procs for which there is a
                 % pragma foreign_export(...) declaration.
@@ -762,6 +789,8 @@
                 mri_proc_requests               :: proc_requests,
                 mri_assertion_table             :: assertion_table,
                 mri_exclusive_table             :: exclusive_table,
+
+                mri_direct_arg_proc_map         :: direct_arg_proc_map,
 
                 mri_has_parallel_conj           :: has_parallel_conj,
                 mri_has_user_event              :: has_user_event,
@@ -1026,6 +1055,7 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
     init_requests(ProcRequests),
     assertion_table_init(AssertionTable),
     exclusive_table_init(ExclusiveTable),
+    map.init(DirectArgInOutMap),
     HasParallelConj = has_no_parallel_conj,
     HasUserEvent = has_no_user_event,
     ForeignDeclsUser = cord.init,
@@ -1094,6 +1124,7 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
         ProcRequests,
         AssertionTable,
         ExclusiveTable,
+        DirectArgInOutMap,
         HasParallelConj,
         HasUserEvent,
         ForeignDeclsUser,
@@ -1265,6 +1296,8 @@ module_info_get_has_parallel_conj(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_has_parallel_conj.
 module_info_get_has_user_event(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_has_user_event.
+module_info_get_direct_arg_proc_map(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_direct_arg_proc_map.
 module_info_get_foreign_decl_codes_user(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_foreign_decl_codes_user.
 module_info_get_foreign_decl_codes_aux(MI, X) :-
@@ -1397,6 +1430,8 @@ module_info_set_has_parallel_conj(!MI) :-
 module_info_set_has_user_event(!MI) :-
     X = has_user_event,
     !MI ^ mi_rare_info ^ mri_has_user_event := X.
+module_info_set_direct_arg_proc_map(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_direct_arg_proc_map := X.
 module_info_set_foreign_decl_codes_user(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_foreign_decl_codes_user := X.
 module_info_set_foreign_decl_codes_aux(X, !MI) :-

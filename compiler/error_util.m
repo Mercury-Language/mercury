@@ -192,6 +192,7 @@
     ;       phase_fact_table_check
     ;       phase_oisu_check
     ;       phase_simplify(mode_report_control)
+    ;       phase_direct_arg_in_out
     ;       phase_style
     ;       phase_dead_code
     ;       phase_termination_analysis
@@ -1405,6 +1406,7 @@ get_maybe_mode_report_control(phase_detism_check) = no.
 get_maybe_mode_report_control(phase_fact_table_check) = no.
 get_maybe_mode_report_control(phase_oisu_check) = no.
 get_maybe_mode_report_control(phase_simplify(Control)) = yes(Control).
+get_maybe_mode_report_control(phase_direct_arg_in_out) = no.
 get_maybe_mode_report_control(phase_style) = no.
 get_maybe_mode_report_control(phase_dead_code) = no.
 get_maybe_mode_report_control(phase_termination_analysis) = no.

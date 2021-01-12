@@ -104,7 +104,11 @@
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module transform_hlds.
+:- import_module transform_hlds.direct_arg_in_out.
 
 :- import_module bool.
 :- import_module int.
@@ -281,11 +285,17 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
     list.condense(ElimVarsLists, ElimVars),
     varset.delete_sorted_vars(ElimVars, VarSet0, VarSet1),
     delete_sorted_var_types(ElimVars, VarTypes0, VarTypes),
+    simplify_info_get_module_info(Info, !:ModuleInfo),
     % We only eliminate vars that cannot occur in RttiVarMaps.
     ( if simplify_do_after_front_end(Info) then
         proc_info_get_var_name_remap(!.ProcInfo, VarNameRemap),
         map.foldl(varset.name_var, VarNameRemap, VarSet1, VarSet),
-        proc_info_set_var_name_remap(map.init, !ProcInfo)
+        proc_info_set_var_name_remap(map.init, !ProcInfo),
+
+        proc_info_get_headvars(!.ProcInfo, HeadVars),
+        proc_info_get_argmodes(!.ProcInfo, ArgModes),
+        find_and_record_any_direct_arg_in_out_posns(PredId, ProcId, VarTypes,
+            HeadVars, ArgModes, !ModuleInfo)
     else
         VarSet = VarSet0
     ),
@@ -304,12 +314,10 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
     set.union(CurDeletedCallCallees, DeletedCallCallees0, DeletedCallCallees),
     proc_info_set_deleted_call_callees(DeletedCallCallees, !ProcInfo),
 
-    simplify_info_get_module_info(Info, !:ModuleInfo),
     simplify_info_get_error_specs(Info, !:Specs),
     !:Specs = FormatSpecs ++ !.Specs,
-
-    simplify_proc_maybe_warn_about_duplicates(!.ModuleInfo, PredId, !.ProcInfo,
-        !Specs),
+    simplify_proc_maybe_warn_about_duplicates(!.ModuleInfo, PredId,
+        !.ProcInfo, !Specs),
 
     pred_info_get_status(PredInfo0, Status),
     IsDefinedHere = pred_status_defined_in_this_module(Status),
@@ -516,9 +524,10 @@ simplify_proc_maybe_warn_about_duplicates(ModuleInfo, PredId, ProcInfo,
 
 simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
     % Simplification is done in two passes, which is we have two calls to
-    % do_process_top_level_goal below. The first pass performs common structure
-    % and duplicate call elimination. The second pass performs excess
-    % assignment elimination and cleans up the code after the first pass.
+    % do_simplify_top_level_goal below. The first pass performs common
+    % structure and duplicate call elimination. The second pass performs
+    % excess assignment elimination, and cleans up the code after the
+    % first pass.
     %
     % Two passes are required because some parts of the first pass can
     % obsolete existing nonlocals sets and instmap deltas, while some parts
@@ -537,7 +546,7 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             !SimplifyTasks ^ do_excess_assign := do_not_elim_excess_assigns,
             simplify_info_set_simplify_tasks(!.SimplifyTasks, !Info),
 
-            do_process_top_level_goal(!Goal, NestedContext0, InstMap0,
+            do_simplify_top_level_goal(!Goal, NestedContext0, InstMap0,
                 GoalInfo0, !Info),
             maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
                 !Goal, !Info),
@@ -568,7 +577,7 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
         ),
         % On the second pass do excess assignment elimination and
         % some cleaning up after the common structure pass.
-        do_process_top_level_goal(!Goal, NestedContext0, InstMap0,
+        do_simplify_top_level_goal(!Goal, NestedContext0, InstMap0,
             GoalInfo1, !Info),
         maybe_recompute_fields_after_top_level_goal(GoalInfo1, InstMap0,
             !Goal, !Info),
@@ -586,11 +595,11 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
         % just the fields they *do* look at, but there are many of them.
     ).
 
-:- pred do_process_top_level_goal(hlds_goal::in, hlds_goal::out,
+:- pred do_simplify_top_level_goal(hlds_goal::in, hlds_goal::out,
     simplify_nested_context::in, instmap::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-do_process_top_level_goal(!Goal, NestedContext0, InstMap0, GoalInfo0, !Info) :-
+do_simplify_top_level_goal(!Goal, NestedContext0, InstMap0, GoalInfo0, !Info) :-
     !.Goal = hlds_goal(_, GoalInfo0),
     simplify_goal(!Goal, NestedContext0, InstMap0,
         common_info_init, _Common, !Info).
@@ -825,27 +834,27 @@ simplify_may_introduce_calls(ModuleName, PredName, _Arity) :-
         ModuleName = "private_builtin",
         ( PredName = "builtin_compound_eq"
         ; PredName = "builtin_compound_lt"
-        ; PredName = "state_var_copy"
-        ; PredName = "builtin_int_lt"
-        ; PredName = "builtin_int_gt"
-        ; PredName = "builtin_int8_lt"
-        ; PredName = "builtin_int8_gt"
-        ; PredName = "builtin_int16_lt"
         ; PredName = "builtin_int16_gt"
-        ; PredName = "builtin_int32_lt"
+        ; PredName = "builtin_int16_lt"
         ; PredName = "builtin_int32_gt"
-        ; PredName = "builtin_int64_lt"
+        ; PredName = "builtin_int32_lt"
         ; PredName = "builtin_int64_gt"
-        ; PredName = "builtin_uint_lt"
-        ; PredName = "builtin_uint_gt"
-        ; PredName = "builtin_uint8_lt"
-        ; PredName = "builtin_uint8_gt"
-        ; PredName = "builtin_uint16_lt"
+        ; PredName = "builtin_int64_lt"
+        ; PredName = "builtin_int8_gt"
+        ; PredName = "builtin_int8_lt"
+        ; PredName = "builtin_int_gt"
+        ; PredName = "builtin_int_lt"
         ; PredName = "builtin_uint16_gt"
-        ; PredName = "builtin_uint32_lt"
+        ; PredName = "builtin_uint16_lt"
         ; PredName = "builtin_uint32_gt"
-        ; PredName = "builtin_uint64_lt"
+        ; PredName = "builtin_uint32_lt"
         ; PredName = "builtin_uint64_gt"
+        ; PredName = "builtin_uint64_lt"
+        ; PredName = "builtin_uint8_gt"
+        ; PredName = "builtin_uint8_lt"
+        ; PredName = "builtin_uint_gt"
+        ; PredName = "builtin_uint_lt"
+        ; PredName = "state_var_copy"
         )
     ;
         ( ModuleName = "int"

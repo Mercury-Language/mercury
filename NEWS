@@ -509,10 +509,12 @@ Changes to the Mercury standard library
 
 * The following predicates and functions have been added:
 
-    - func `sorted_keys/1`
-    - pred `sorted_keys/2`
     - func `keys_as_set/1`
     - pred `keys_as_set/2`
+    - func `reverse_add/3`
+    - pred `reverse_add/4`
+    - func `sorted_keys/1`
+    - pred `sorted_keys/2`
 
 ### Changes to the `string` module
 

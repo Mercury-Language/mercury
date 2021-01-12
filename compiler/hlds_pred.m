@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: hlds_pred.m.
 % Main authors: fjh, conway.
@@ -12,7 +12,7 @@
 % This module defines the part of the HLDS that deals with predicates
 % and procedures.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.hlds_pred.
 :- interface.
@@ -82,7 +82,7 @@
 :- import_module unit.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -152,6 +152,13 @@
 :- type pred_info.
 :- type proc_info.
 
+    % These types are abstract exported to permit the proc_info fields
+    % of these types to be part of the argument lists of proc_prepare_to_clone
+    % and proc_create.
+    %
+:- type structure_sharing_info.
+:- type structure_reuse_info.
+
 :- type proc_table == map(proc_id, proc_info).
 
 :- pred next_mode_id(proc_table::in, proc_id::out) is det.
@@ -168,7 +175,7 @@
 
 :- type pred_proc_list == list(pred_proc_id).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type implementation_language
     --->    impl_lang_mercury
@@ -453,7 +460,8 @@
                 int
             )
     ;       transform_structure_reuse
-    ;       transform_source_to_source_debug.
+    ;       transform_source_to_source_debug
+    ;       transform_direct_arg_in_out.
 
 :- type pred_creation
     --->    created_by_deforestation
@@ -481,8 +489,11 @@
             % arguments.
 
     ;       origin_created(pred_creation)
-            % The predicate was created by the compiler, and there is no
-            % information available on where it came from.
+            % The predicate was created by the named compiler pass,
+            % but there is no recorded information available on what original
+            % predicate it was created came from.
+            % XXX This should be fixed, and all origin_created origins
+            % should be replaced with an origin_transformed origin,
 
     ;       origin_assertion(string, int)
             % The predicate represents an assertion.
@@ -572,6 +583,44 @@
     list(mer_type)::in, tvarset::in, existq_tvars::in, prog_constraints::in,
     set(assert_id)::in, map(prog_var, string)::in, proc_info::in,
     proc_id::out, pred_info::out) is det.
+
+%---------------------%
+
+% pred_prepare_to_clone returns all the fields of an existing pred_info,
+% while pred_create constructs a new pred_info putting the supplied values
+% to each field.
+%
+% These predicates exist because we want keep the definition of the pred_info
+% type private (to make future changes easier), but we also want to make it
+% possible to create slightly modified copies of existing predicates
+% with the least amount of programming work. We also want to require
+% (a) programmers writing such cloning code to consider what effect
+% the modification may have on *all* fields of the pred_info, and
+% (b) programmers who add new fields to the pred_info to update
+% all the places in the compiler that do such cloning.
+
+:- pred pred_prepare_to_clone(pred_info::in,
+    module_name::out, string::out, arity::out, pred_or_func::out,
+    pred_origin::out, pred_status::out, pred_markers::out, list(mer_type)::out,
+    tvarset::out, tvarset::out, existq_tvars::out, prog_constraints::out,
+    clauses_info::out, proc_table::out, prog_context::out,
+    maybe(cur_user_decl_info)::out, goal_type::out, tvar_kind_map::out,
+    tsubst::out, external_type_params::out, constraint_proof_map::out,
+    constraint_map::out, list(prog_constraint)::out, inst_graph_info::out,
+    list(arg_modes_map)::out, map(prog_var, string)::out, set(assert_id)::out,
+    maybe(list(sym_name_arity))::out, list(mer_type)::out) is det.
+
+:- pred pred_create(module_name::in, string::in, arity::in, pred_or_func::in,
+    pred_origin::in, pred_status::in, pred_markers::in, list(mer_type)::in,
+    tvarset::in, tvarset::in, existq_tvars::in, prog_constraints::in,
+    clauses_info::in, proc_table::in, prog_context::in,
+    maybe(cur_user_decl_info)::in, goal_type::in, tvar_kind_map::in,
+    tsubst::in, external_type_params::in, constraint_proof_map::in,
+    constraint_map::in, list(prog_constraint)::in, inst_graph_info::in,
+    list(arg_modes_map)::in, map(prog_var, string)::in, set(assert_id)::in,
+    maybe(list(sym_name_arity))::in, list(mer_type)::in, pred_info::out) is det.
+
+%---------------------%
 
     % define_new_pred(Origin, Goal, CallGoal, Args, ExtraArgs,
     %   InstMap, PredName, TVarSet, VarTypes, ClassContext,
@@ -878,8 +927,8 @@
 :- pred marker_list_to_markers(list(pred_marker)::in, pred_markers::out)
     is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -935,7 +984,7 @@ calls_are_fully_qualified(Markers) =
         may_be_partially_qualified
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % Access stats for the pred_info structure, derived on 2014 dec 13:
 %
@@ -1061,7 +1110,7 @@ calls_are_fully_qualified(Markers) =
                 % (b) explicitly by the user, as opposed to by the compiler,
                 % then this records what section the predicate declaration
                 % is in, and whether it is a predmode declaration.
-                psi_cur_user_decl                :: maybe(cur_user_decl_info),
+                psi_cur_user_decl               :: maybe(cur_user_decl_info),
 
                 % Whether the goals seen so far, if any, for this predicate
                 % are clauses or foreign_code(...) pragmas.
@@ -1119,8 +1168,7 @@ calls_are_fully_qualified(Markers) =
                 % (Note that the list of possible replacements may be empty.)
                 % In the usual case where this predicate is NOT marked
                 % as obsolete, this will be "no".
-                psi_obsolete_in_favour_of       :: maybe(list(
-                                                    sym_name_arity)),
+                psi_obsolete_in_favour_of       :: maybe(list(sym_name_arity)),
 
                 % If this predicate is a class method implementation, this
                 % list records the argument types before substituting the type
@@ -1232,6 +1280,38 @@ pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
         Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
+pred_prepare_to_clone(PredInfo, ModuleName, PredName, Arity, PredOrFunc,
+        Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
+        ExistQVars, ClassContext, ClausesInfo, ProcTable, Context,
+        CurUserDecl, GoalType, Kinds, ExistQVarBindings, HeadTypeParams,
+        ClassProofs, ClassConstraintMap, UnprovenBodyConstraints,
+        InstGraphInfo, ArgModesMaps, VarNameRemap, Assertions,
+        ObsoleteInFavourOf, InstanceMethodArgTypes) :-
+    PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
+        Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
+        ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo),
+    PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
+        Kinds, ExistQVarBindings, HeadTypeParams,
+        ClassProofs, ClassConstraintMap,
+        UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
+        VarNameRemap, Assertions, ObsoleteInFavourOf, InstanceMethodArgTypes).
+
+pred_create(ModuleName, PredName, Arity, PredOrFunc,
+        Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
+        ExistQVars, ClassContext, ClausesInfo, ProcTable, Context,
+        CurUserDecl, GoalType, Kinds, ExistQVarBindings, HeadTypeParams,
+        ClassProofs, ClassConstraintMap, UnprovenBodyConstraints,
+        InstGraphInfo, ArgModesMaps, VarNameRemap, Assertions,
+        ObsoleteInFavourOf, InstanceMethodArgTypes, PredInfo) :-
+    PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
+        Kinds, ExistQVarBindings, HeadTypeParams,
+        ClassProofs, ClassConstraintMap,
+        UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
+        VarNameRemap, Assertions, ObsoleteInFavourOf, InstanceMethodArgTypes),
+    PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
+        Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
+        ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
+
 define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
         SymName, TVarSet, VarTypes0, ClassContext, RttiVarMaps,
         VarSet0, InstVarSet, Markers, IsAddressTaken, HasParallelConj,
@@ -1324,7 +1404,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMapInit, InstMapFinal,
     compute_arg_types_modes(Vars, VarTypes, InstMapInit, InstMapFinal,
         Types, Modes).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % The trivial access predicates.
 
@@ -1496,7 +1576,7 @@ pred_info_set_clauses_info(X, !PI) :-
 pred_info_set_proc_table(X, !PI) :-
     !PI ^ pi_proc_table := X.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % The non-trivial access predicates.
 
@@ -1791,7 +1871,7 @@ purity_to_markers(purity_pure, []).
 purity_to_markers(purity_semipure, [marker_is_semipure]).
 purity_to_markers(purity_impure, [marker_is_impure]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -1804,7 +1884,7 @@ pred_info_get_sym_name(PredInfo, SymName) :-
     Name = pred_info_name(PredInfo),
     SymName = qualified(Module, Name).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 init_markers(set.init).
 
@@ -1826,8 +1906,8 @@ markers_to_marker_list(MarkerSet, Markers) :-
 marker_list_to_markers(Markers, MarkerSet) :-
     set.list_to_set(Markers, MarkerSet).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Various predicates for accessing the proc_info data structure,
     % and the types they work with.
@@ -2123,6 +2203,65 @@ marker_list_to_markers(Markers, MarkerSet) :-
     detism_decl::in, determinism::in, hlds_goal::in,
     rtti_varmaps::in, is_address_taken::in, has_parallel_conj::in,
     map(prog_var, string)::in, proc_info::out) is det.
+
+%---------------------%
+
+% proc_prepare_to_clone returns all the fields of an existing proc_info,
+% while proc_create constructs a new proc_info putting the supplied values
+% to each field.
+%
+% These predicates exist because we want keep the definition of the proc_info
+% type private (to make future changes easier), but we also want to make it
+% possible to create slightly modified copies of existing procedures
+% with the least amount of programming work. We also want to require
+% (a) programmers writing such cloning code to consider what effect
+% the modification may have on *all* fields of the proc_info, and
+% (b) programmers who add new fields to the proc_info to update
+% all the places in the compiler that do such cloning.
+
+:- pred proc_prepare_to_clone(proc_info::in, list(prog_var)::out,
+    hlds_goal::out, prog_varset::out, vartypes::out, rtti_varmaps::out,
+    inst_varset::out, maybe(list(mer_mode))::out, list(mer_mode)::out,
+    maybe(list(is_live))::out, maybe(determinism)::out, determinism::out,
+    eval_method::out, list(mode_error_info)::out, prog_context::out, int::out,
+    can_process::out, maybe(mode_constraint)::out, detism_decl::out,
+    list(prog_context)::out, maybe(untuple_proc_info)::out,
+    map(prog_var, string)::out, list(error_spec)::out, set(pred_proc_id)::out,
+    is_address_taken::out, proc_foreign_exports::out, has_parallel_conj::out,
+    has_user_event::out, has_tail_rec_call::out, list(oisu_pred_kind_for)::out,
+    maybe(require_tail_recursion)::out, set_of_progvar::out,
+    maybe(list(arg_info))::out, maybe(special_proc_return)::out,
+    liveness_info::out, stack_slots::out, needs_maxfr_slot::out,
+    maybe(prog_var)::out, maybe(proc_table_io_info)::out,
+    maybe(table_attributes)::out, maybe(list(sym_name_arity))::out,
+    maybe(deep_profile_proc_info)::out, maybe(arg_size_info)::out,
+    maybe(termination_info)::out, termination2_info::out,
+    maybe(proc_exception_info)::out, maybe(proc_trailing_info)::out,
+    maybe(proc_mm_tabling_info)::out, structure_sharing_info::out,
+    structure_reuse_info::out) is det.
+
+:- pred proc_create(list(prog_var)::in,
+    hlds_goal::in, prog_varset::in, vartypes::in, rtti_varmaps::in,
+    inst_varset::in, maybe(list(mer_mode))::in, list(mer_mode)::in,
+    maybe(list(is_live))::in, maybe(determinism)::in, determinism::in,
+    eval_method::in, list(mode_error_info)::in, prog_context::in, int::in,
+    can_process::in, maybe(mode_constraint)::in, detism_decl::in,
+    list(prog_context)::in, maybe(untuple_proc_info)::in,
+    map(prog_var, string)::in, list(error_spec)::in, set(pred_proc_id)::in,
+    is_address_taken::in, proc_foreign_exports::in, has_parallel_conj::in,
+    has_user_event::in, has_tail_rec_call::in, list(oisu_pred_kind_for)::in,
+    maybe(require_tail_recursion)::in, set_of_progvar::in,
+    maybe(list(arg_info))::in, maybe(special_proc_return)::in,
+    liveness_info::in, stack_slots::in, needs_maxfr_slot::in,
+    maybe(prog_var)::in, maybe(proc_table_io_info)::in,
+    maybe(table_attributes)::in, maybe(list(sym_name_arity))::in,
+    maybe(deep_profile_proc_info)::in, maybe(arg_size_info)::in,
+    maybe(termination_info)::in, termination2_info::in,
+    maybe(proc_exception_info)::in, maybe(proc_trailing_info)::in,
+    maybe(proc_mm_tabling_info)::in, structure_sharing_info::in,
+    structure_reuse_info::in, proc_info::out) is det.
+
+%---------------------%
 
 :- pred proc_info_set_body(prog_varset::in, vartypes::in,
     list(prog_var)::in, hlds_goal::in, rtti_varmaps::in,
@@ -2573,6 +2712,10 @@ marker_list_to_markers(Markers, MarkerSet) :-
                 % How should the proc be evaluated.
 /* 12 */        proc_eval_method                :: eval_method,
 
+                % This field is used only by mode analysis and unique mode
+                % analysis. Almost all the time, it contains an empty list.
+                % XXX This info should be stored in a separate data structure
+                % maintained by mode analysis.
 /* 13 */        proc_mode_errors                :: list(mode_error_info),
 
 /* 14 */        proc_sub_info                   :: proc_sub_info
@@ -2598,7 +2741,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
                 % constraint system. Whether it represents the declared
                 % or the actual mode is unclear, but since that constraint
                 % system is obsolete, this does not much matter :-(
-                psi_maybe_head_modes_constr    :: maybe(mode_constraint),
+                psi_maybe_head_modes_constr     :: maybe(mode_constraint),
 
                 % Was the determinism declaration explicit, or was it implicit,
                 % as for functions?
@@ -2945,7 +3088,7 @@ proc_info_init(MainContext, ItemNumber, Arity, Types, DeclaredModes, Modes,
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
     % argument VarNameRemap
     StateVarWarnings = [],
-    set.init(TraceGoalProcs),
+    set.init(DeletedCallees),
     % argument IsAddressTaken
     HasForeignProcExports = no_foreign_exports,
     % argument HasParallelConj
@@ -2984,7 +3127,7 @@ proc_info_init(MainContext, ItemNumber, Arity, Types, DeclaredModes, Modes,
         MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
-        TraceGoalProcs,
+        DeletedCallees,
         IsAddressTaken,
         HasForeignProcExports,
         HasParallelConj,
@@ -3079,7 +3222,7 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
     % argument VarNameRemap
     StateVarWarnings = [],
-    set.init(TraceGoalProcs),
+    set.init(DeletedCallees),
     % argument IsAddressTaken
     HasForeignProcExports = no_foreign_exports,
     % argument HasParallelConj
@@ -3118,7 +3261,7 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
         MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
-        TraceGoalProcs,
+        DeletedCallees,
         IsAddressTaken,
         HasForeignProcExports,
         HasParallelConj,
@@ -3161,6 +3304,137 @@ proc_info_create_with_declared_detism(MainContext, ItemNumber,
     EvalMethod = eval_normal,
     ModeErrors = [],
 
+    ProcInfo = proc_info(
+        HeadVars,
+        Goal,
+        VarSet,
+        VarTypes,
+        RttiVarMaps,
+        InstVarSet,
+        DeclaredModes,
+        Modes,
+        MaybeArgLives,
+        MaybeDeclaredDetism,
+        Detism,
+        EvalMethod,
+        ModeErrors,
+        ProcSubInfo).
+
+proc_prepare_to_clone(ProcInfo, HeadVars, Goal, VarSet, VarTypes, RttiVarMaps,
+        InstVarSet, DeclaredModes, Modes, MaybeArgLives,
+        MaybeDeclaredDetism, Detism, EvalMethod, ModeErrors,
+        MainContext, ItemNumber, CanProcess, MaybeHeadModesConstr, DetismDecl,
+        CseNopullContexts, MaybeUntupleInfo, VarNameRemap, StateVarWarnings,
+        DeletedCallees, IsAddressTaken, HasForeignProcExports, HasParallelConj,
+        HasUserEvent, HasTailCallEvent, OisuKinds, MaybeRequireTailRecursion,
+        RegR_HeadVars, MaybeArgPassInfo, MaybeSpecialReturn, InitialLiveness,
+        StackSlots, NeedsMaxfrSlot, MaybeCallTableTip, MaybeTableIOInfo,
+        MaybeTableAttrs, MaybeObsoleteInFavourOf, MaybeDeepProfProcInfo,
+        MaybeArgSizes, MaybeTermInfo, Term2Info, MaybeExceptionInfo,
+        MaybeTrailingInfo, MaybeMMTablingInfo, SharingInfo, ReuseInfo) :-
+    ProcInfo = proc_info(
+        HeadVars,
+        Goal,
+        VarSet,
+        VarTypes,
+        RttiVarMaps,
+        InstVarSet,
+        DeclaredModes,
+        Modes,
+        MaybeArgLives,
+        MaybeDeclaredDetism,
+        Detism,
+        EvalMethod,
+        ModeErrors,
+        ProcSubInfo),
+    ProcSubInfo = proc_sub_info(
+        MainContext,
+        ItemNumber,
+        CanProcess,
+        MaybeHeadModesConstr,
+        DetismDecl,
+        CseNopullContexts,
+        MaybeUntupleInfo,
+        VarNameRemap,
+        StateVarWarnings,
+        DeletedCallees,
+        IsAddressTaken,
+        HasForeignProcExports,
+        HasParallelConj,
+        HasUserEvent,
+        HasTailCallEvent,
+        OisuKinds,
+        MaybeRequireTailRecursion,
+        RegR_HeadVars,
+        MaybeArgPassInfo,
+        MaybeSpecialReturn,
+        InitialLiveness,
+        StackSlots,
+        NeedsMaxfrSlot,
+        MaybeCallTableTip,
+        MaybeTableIOInfo,
+        MaybeTableAttrs,
+        MaybeObsoleteInFavourOf,
+        MaybeDeepProfProcInfo,
+        MaybeArgSizes,
+        MaybeTermInfo,
+        Term2Info,
+        MaybeExceptionInfo,
+        MaybeTrailingInfo,
+        MaybeMMTablingInfo,
+        SharingInfo,
+        ReuseInfo).
+
+proc_create(HeadVars, Goal, VarSet, VarTypes, RttiVarMaps,
+        InstVarSet, DeclaredModes, Modes, MaybeArgLives,
+        MaybeDeclaredDetism, Detism, EvalMethod, ModeErrors,
+        MainContext, ItemNumber, CanProcess, MaybeHeadModesConstr, DetismDecl,
+        CseNopullContexts, MaybeUntupleInfo, VarNameRemap, StateVarWarnings,
+        DeletedCallees, IsAddressTaken, HasForeignProcExports, HasParallelConj,
+        HasUserEvent, HasTailCallEvent, OisuKinds, MaybeRequireTailRecursion,
+        RegR_HeadVars, MaybeArgPassInfo, MaybeSpecialReturn, InitialLiveness,
+        StackSlots, NeedsMaxfrSlot, MaybeCallTableTip, MaybeTableIOInfo,
+        MaybeTableAttrs, MaybeObsoleteInFavourOf, MaybeDeepProfProcInfo,
+        MaybeArgSizes, MaybeTermInfo, Term2Info, MaybeExceptionInfo,
+        MaybeTrailingInfo, MaybeMMTablingInfo, SharingInfo, ReuseInfo,
+        ProcInfo) :-
+    ProcSubInfo = proc_sub_info(
+        MainContext,
+        ItemNumber,
+        CanProcess,
+        MaybeHeadModesConstr,
+        DetismDecl,
+        CseNopullContexts,
+        MaybeUntupleInfo,
+        VarNameRemap,
+        StateVarWarnings,
+        DeletedCallees,
+        IsAddressTaken,
+        HasForeignProcExports,
+        HasParallelConj,
+        HasUserEvent,
+        HasTailCallEvent,
+        OisuKinds,
+        MaybeRequireTailRecursion,
+        RegR_HeadVars,
+        MaybeArgPassInfo,
+        MaybeSpecialReturn,
+        InitialLiveness,
+        StackSlots,
+        NeedsMaxfrSlot,
+        MaybeCallTableTip,
+        MaybeTableIOInfo,
+        MaybeTableAttrs,
+        MaybeObsoleteInFavourOf,
+        MaybeDeepProfProcInfo,
+        MaybeArgSizes,
+        MaybeTermInfo,
+        Term2Info,
+        MaybeExceptionInfo,
+        MaybeTrailingInfo,
+        MaybeMMTablingInfo,
+        SharingInfo,
+        ReuseInfo),
     ProcInfo = proc_info(
         HeadVars,
         Goal,
@@ -3749,7 +4023,7 @@ var_is_of_non_dummy_type(ModuleInfo, VarTypes, Var) :-
     lookup_var_type(VarTypes, Var, Type),
     is_type_a_dummy(ModuleInfo, Type) = is_not_dummy_type.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Predicates to deal with record syntax.
 
@@ -3830,7 +4104,7 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
     is_field_access_function_name(ModuleInfo, qualified(Module, Name),
         FuncArity, _, _).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Predicates to deal with builtins.
 
@@ -3925,8 +4199,8 @@ is_inline_builtin(ModuleName, PredName, ProcId, Arity) :-
 pred_info_is_promise(PredInfo, PromiseType) :-
     pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType)).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -4092,6 +4366,6 @@ eval_method_change_determinism(eval_memo(_), Detism) = Detism.
 eval_method_change_determinism(eval_minimal(_), Detism0) = Detism :-
     det_conjunction_detism(detism_semi, Detism0, Detism).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.hlds_pred.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

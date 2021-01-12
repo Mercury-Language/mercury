@@ -34,7 +34,7 @@
 
 :- type predicate_table.
 
-:- type pred_table  ==  map(pred_id, pred_info).
+:- type pred_table == map(pred_id, pred_info).
 
     % Various predicates for accessing the predicate_table type.
     % The predicate_table holds information about the predicates
@@ -119,6 +119,20 @@
     is_fully_qualified::in, sym_name::in, arity::in, list(pred_id)::out)
     is det.
 
+    % These do the same job as the predicates without the "_one" suffix,
+    % but they are intended to be used in situations where we know
+    % that there should be exactly one match. If the number of matches
+    % is any number other than one, we throw an exception.
+    %
+    % This works only if we are looking up predicates or functions
+    % in modules whose contents we control, i.e. Mercury standard
+    % library modules.)
+    %
+:- pred predicate_table_lookup_pred_sym_arity_one(predicate_table::in,
+    is_fully_qualified::in, sym_name::in, arity::in, pred_id::out) is det.
+:- pred predicate_table_lookup_func_sym_arity_one(predicate_table::in,
+    is_fully_qualified::in, sym_name::in, arity::in, pred_id::out) is det.
+
     % Search the table for (name) predicates or functions
     % (pred_name) predicates only or (func_name) functions only
     % matching this name.
@@ -158,9 +172,8 @@
     % there could only be one matching pred_id, since each predicate or
     % function could be uniquely identified by its module, name, arity,
     % and category (function/predicate). However this is no longer true,
-    % due to nested modules. (For example, `pred foo.bar/2' might match both
-    % `pred mod1.foo.bar/2' and `pred mod2.foo.bar/2'). I hope it doesn't
-    % break anything too badly...
+    % due to nested modules. For example, `pred foo.bar/2' might match both
+    % `pred mod1.foo.bar/2' and `pred mod2.foo.bar/2'.
     %
 :- pred predicate_table_lookup_m_n_a(predicate_table::in,
     is_fully_qualified::in, module_name::in, string::in, arity::in,
@@ -176,7 +189,7 @@
     % category, module, name, and arity. When searching for functions, the
     % arity used is the arity of the predicate that the function gets converted
     % to, i.e. the arity of the function plus one.
-    % NB. This is opposite to what happens with the search predicates
+    % NB. This is opposite to what happens with the lookup predicates
     % declared above!!
     %
 :- pred predicate_table_lookup_pf_m_n_a(predicate_table::in,
@@ -187,7 +200,7 @@
     % category, name, and arity. When searching for functions, the arity used
     % is the arity of the predicate that the function gets converted to,
     % i.e. the arity of the function plus one.
-    % NB. This is opposite to what happens with the search predicates
+    % NB. This is opposite to what happens with the lookup predicates
     % declared above!!
     %
 :- pred predicate_table_lookup_pf_name_arity(predicate_table::in,
@@ -197,7 +210,7 @@
     % category, sym_name, and arity. When searching for functions, the arity
     % used is the arity of the predicate that the function gets converted to,
     % i.e. the arity of the function plus one.
-    % XXX This is opposite to what happens with the search predicates
+    % XXX This is opposite to what happens with the lookup predicates
     % declared above!!
     %
 :- pred predicate_table_lookup_pf_sym_arity(predicate_table::in,
@@ -215,8 +228,8 @@
     %   NeedQual, PartialQualInfo, PredId, PredTable):
     %
     % Insert PredInfo into PredTable0 and assign it a new pred_id.
-    % You should check beforehand that the pred doesn't already occur
-    % in the table.
+    % You should either check beforehand that the predicate doesn't
+    % already occur in the table, or ensure it by construction.
     %
 :- pred predicate_table_insert_qual(pred_info::in, need_qualifier::in,
     partial_qualifier_info::in, pred_id::out,
@@ -352,11 +365,13 @@
 :- type module_and_name
     --->    module_and_name(module_name, string).
 
-    % First search on module and name, then search on arity. The two levels
-    % are needed because typecheck.m needs to be able to search on module
-    % and name only for higher-order terms.
+    % First search on module and name, then search on arity. We need these
+    % two levels because typecheck.m, when processing higher order terms,
+    % sees only an initial subsequence of the arguments, and does not know
+    % the full arity.
+    %
 :- type module_name_arity_index ==
-    map(module_and_name, map(arity, list(pred_id))).
+    map(module_and_name, multi_map(arity, pred_id)).
 
 predicate_table_init(PredicateTable) :-
     map.init(Preds),
@@ -641,6 +656,34 @@ predicate_table_lookup_func_sym_arity(PredicateTable, IsFullyQualified,
         SymName = qualified(Module, Name),
         predicate_table_lookup_func_m_n_a(PredicateTable,
             IsFullyQualified, Module, Name, Arity, PredIds)
+    ).
+
+predicate_table_lookup_pred_sym_arity_one(PredicateTable, IsFullyQualified,
+        SymName, Arity, PredId) :-
+    predicate_table_lookup_pred_sym_arity(PredicateTable, IsFullyQualified,
+        SymName, Arity, PredIds),
+    (
+        PredIds = [PredId]
+    ;
+        PredIds = [],
+        unexpected($pred, "no match")
+    ;
+        PredIds = [_, _ | _],
+        unexpected($pred, "more than one match")
+    ).
+
+predicate_table_lookup_func_sym_arity_one(PredicateTable, IsFullyQualified,
+        SymName, Arity, PredId) :-
+    predicate_table_lookup_func_sym_arity(PredicateTable, IsFullyQualified,
+        SymName, Arity, PredIds),
+    (
+        PredIds = [PredId]
+    ;
+        PredIds = [],
+        unexpected($pred, "no match")
+    ;
+        PredIds = [_, _ | _],
+        unexpected($pred, "more than one match")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -941,11 +984,11 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
     (
         NeedQual = may_be_unqualified,
         % Insert the unqualified name into the name index.
-        multi_map.set(Name, PredId, !N_Index),
+        multi_map.add(Name, PredId, !N_Index),
 
         % Insert the unqualified name/arity into the name/arity index.
         NA = name_arity(Name, Arity),
-        multi_map.set(NA, PredId, !NA_Index),
+        multi_map.add(NA, PredId, !NA_Index),
 
         AccessibleByUnqualifiedName = yes
     ;
@@ -980,7 +1023,7 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 insert_into_mna_index(Name, Arity, PredId, Module, !MNA_Index) :-
     ModuleAndName = module_and_name(Module, Name),
     ( if map.search(!.MNA_Index, ModuleAndName, MN_Arities0) then
-        multi_map.set(Arity, PredId, MN_Arities0, MN_Arities),
+        multi_map.add(Arity, PredId, MN_Arities0, MN_Arities),
         map.det_update(ModuleAndName, MN_Arities, !MNA_Index)
     else
         MN_Arities = map.singleton(Arity, [PredId]),

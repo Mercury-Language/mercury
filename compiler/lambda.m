@@ -29,7 +29,7 @@
 %   '__LambdaGoal__1'(X, Y) :- q(Y, X).
 %
 %   p(X) :-
-%       V__1 = '__LambdaGoal__1'(X)
+%       V__1 = closure_cons('__LambdaGoal__1')(X)
 %       solutions(V__1, List),
 %       ...
 %
@@ -90,8 +90,9 @@
 
 :- pred expand_lambdas_in_module(module_info::in, module_info::out) is det.
 
-:- pred expand_lambdas_in_pred(pred_id::in, module_info::in, module_info::out)
-    is det.
+%-----------------------------------------------------------------------------%
+
+% The following are exported for float_reg.m.
 
 :- pred expand_lambda(purity::in, ho_groundness::in,
     pred_or_func::in, lambda_eval_method::in, reg_wrapper_proc::in,
@@ -99,10 +100,6 @@
     list(prog_var)::in, hlds_goal::in, prog_var::in, unify_mode::in,
     unification::in, unify_context::in, hlds_goal_expr::out,
     lambda_info::in, lambda_info::out) is det.
-
-%-----------------------------------------------------------------------------%
-
-% The following are exported for float_reg.m.
 
 :- type lambda_info.
 
@@ -152,6 +149,8 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
+:- import_module transform_hlds.
+:- import_module transform_hlds.direct_arg_in_out.
 
 :- import_module assoc_list.
 :- import_module array.
@@ -174,6 +173,9 @@ expand_lambdas_in_module(!ModuleInfo) :-
     list.foldl(expand_lambdas_in_pred, PredIds, !ModuleInfo),
     % Need update the dependency graph to include the lambda predicates.
     module_info_clobber_dependency_info(!ModuleInfo).
+
+:- pred expand_lambdas_in_pred(pred_id::in, module_info::in, module_info::out)
+    is det.
 
 expand_lambdas_in_pred(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
@@ -519,7 +521,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         % arg types, determinism, context, status, etc. for the new predicate.
 
         ArgVars = put_typeinfo_vars_first(ArgVars1, VarTypes),
-        list.append(ArgVars, Vars, AllArgVars),
+        AllArgVars = ArgVars ++ Vars,
 
         module_info_get_name(ModuleInfo0, ModuleName),
         OrigPredName = pred_info_name(OrigPredInfo),
@@ -557,7 +559,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         % Recompute the unify_modes.
         modes_to_unify_modes(ModuleInfo1, ArgModes1, ArgModes1, ArgUnifyModes),
 
-        list.append(ArgModes1, Modes, AllArgModes),
+        AllArgModes = ArgModes1 ++ Modes,
         lookup_var_types(VarTypes, AllArgVars, ArgTypes),
         list.foldl_corresponding(check_lambda_arg_type_and_mode(ModuleInfo1),
             ArgTypes, AllArgModes, 0, _),
@@ -616,7 +618,10 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         predicate_table_insert(PredInfo, PredId,
             PredicateTable0, PredicateTable),
         module_info_set_predicate_table(PredicateTable,
-            ModuleInfo1, ModuleInfo)
+            ModuleInfo1, ModuleInfo2),
+
+        find_and_record_any_direct_arg_in_out_posns(PredId, ProcId,
+            LambdaVarTypes, AllArgVars, AllArgModes, ModuleInfo2, ModuleInfo)
     ),
     ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
     ConsId = closure_cons(ShroudedPredProcId, EvalMethod),

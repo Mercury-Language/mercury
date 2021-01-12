@@ -34,6 +34,7 @@ MCFLAGS-foreign_singleton       = --halt-at-warn
 MCFLAGS-foreign_type            = --compile-only
 MCFLAGS-foreign_type_2          = --no-intermodule-optimization
 MCFLAGS-foreign_type_visibility = --no-intermodule-optimization
+MCFLAGS-gh72_errors             = --no-errorcheck-only
 MCFLAGS-ii_parent               = --no-intermodule-optimization
 MCFLAGS-ii_parent.ii_child      = --no-intermodule-optimization
 MCFLAGS-illtyped_compare        = --no-intermodule-optimization \

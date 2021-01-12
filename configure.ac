@@ -581,7 +581,7 @@ EOF
             --grade none.gc \
             --warn-insts-without-matching-type \
             --warn-known-bad-format-calls \
-            --prolog-is-2020-08-21 \
+            --partial-inst-copy-2021-01-04 \
             --no-detect-libgrades \
             --output-grade-string \
             --shlib-linker-install-name-flag "-dummy_flag" \

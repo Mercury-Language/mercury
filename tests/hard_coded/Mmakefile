@@ -165,6 +165,9 @@ ORDINARY_PROGS = \
 	functor_ho_inst_excp_2 \
 	functor_ho_inst_float_reg \
 	getopt_test \
+	gh72 \
+	gh72a \
+	gh72b \
 	ground_dd \
 	ground_terms \
 	hash_bug \
@@ -687,8 +690,6 @@ CLOSURE_LAYOUT_PROGS = \
 # XXX we fail some of the commented-out tests in write_binary
 #
 # XXX bug441
-# XXX gh72a
-# XXX gh72b
 # XXX test_generic_ref
 
 # The following tests are passed only in some grades.

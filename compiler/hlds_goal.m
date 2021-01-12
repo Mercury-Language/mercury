@@ -960,7 +960,7 @@
 :- type unify_context
     --->    unify_context(
                 unify_main_context,
-                unify_sub_contexts
+                list(unify_sub_context)
             ).
 
     % A unify_main_context describes overall location of the
@@ -1752,8 +1752,17 @@
 :- pred rename_vars_in_goals(must_rename::in, prog_var_renaming::in,
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
-:- pred rename_vars_in_goal_expr(must_rename::in, prog_var_renaming::in,
-    hlds_goal_expr::in, hlds_goal_expr::out) is det.
+:- pred rename_vars_in_goal_expr(must_rename, prog_var_renaming,
+    hlds_goal_expr, hlds_goal_expr).
+:- mode rename_vars_in_goal_expr(in, in,
+    in(goal_expr_unify), out(goal_expr_unify)) is det.
+:- mode rename_vars_in_goal_expr(in, in,
+    in(goal_expr_plain_call), out(goal_expr_plain_call)) is det.
+:- mode rename_vars_in_goal_expr(in, in,
+    in(goal_expr_generic_call), out(goal_expr_generic_call)) is det.
+:- mode rename_vars_in_goal_expr(in, in,
+    in(goal_expr_foreign_proc), out(goal_expr_foreign_proc)) is det.
+:- mode rename_vars_in_goal_expr(in, in, in, out) is det.
 
 :- pred rename_vars_in_goal_info(must_rename::in, prog_var_renaming::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.

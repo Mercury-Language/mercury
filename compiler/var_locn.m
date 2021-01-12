@@ -756,7 +756,17 @@ var_locn_reassign_mkword_hole_var(Var, Ptag, Rval, Code, !VLI) :-
         map.det_remove(Var, _State1, VarStateMap1, VarStateMap),
         var_locn_set_var_state_map(VarStateMap, !VLI),
 
-        var_locn_assign_expr_to_var(Var, Rval, Code, !VLI)
+        % Note that if Var was initially bound to a cons_id with a
+        % direct_arg_tag cons_tag, then
+        %
+        % - the argument we are putting into the mkword hole already
+        %   has a primary tag on it, and
+        %
+        % - now we are putting another primary tag (Ptag) on top of it.
+        %
+        % This works because we use direct_arg_tags only when the
+        % first ptag is guaranteed to be zero.
+        var_locn_assign_expr_to_var(Var, mkword(Ptag, Rval), Code, !VLI)
     else
         unexpected($pred, "unexpected var_state")
     ).

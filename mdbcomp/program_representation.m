@@ -2058,6 +2058,8 @@ read_n_items(Read, N, Items, !Pos) :-
 %---------------------------------------------------------------------------%
 
 no_type_info_builtin(ModuleName, PredName, Arity) :-
+    % NOTE Any predicates listed here should also be handled by
+    % process_no_type_info_builtin in compiler/term_constr_initial.m.
     (
         PredName = "unsafe_promise_unique", Arity = 2,
         ModuleName = mercury_public_builtin_module

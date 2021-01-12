@@ -142,6 +142,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.prog_item.      % undesirable dependency
+:- import_module transform_hlds.direct_arg_in_out.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1479,13 +1480,20 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 % Don't eliminate preds from builtin modules, since later
                 % passes of the compiler may introduce calls to them
                 % (e.g. polymorphism.m needs unify/2 and friends).
+                % XXX This is too broad. The later disjuncts here try to do
+                % a much more precise job.
                 any_mercury_builtin_module(PredModule)
             ;
                 % Simplify can't introduce calls to this predicate or function
                 % if we eliminate it here.
                 is_std_lib_module_name(PredModule, PredModuleName),
-                simplify_may_introduce_calls(PredModuleName, PredName,
-                    PredArity)
+                (
+                    simplify_may_introduce_calls(PredModuleName, PredName,
+                        PredArity)
+                ;
+                    daio_may_introduce_calls(PredModuleName, PredName,
+                        PredArity)
+                )
             ;
                 % Try-goal expansion may introduce calls to predicates in
                 % `exception'.

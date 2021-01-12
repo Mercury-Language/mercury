@@ -87,6 +87,7 @@
 :- import_module transform_hlds.deforest.
 :- import_module transform_hlds.delay_construct.
 :- import_module transform_hlds.dep_par_conj.
+:- import_module transform_hlds.direct_arg_in_out.
 :- import_module transform_hlds.distance_granularity.
 :- import_module transform_hlds.equiv_type_hlds.
 :- import_module transform_hlds.exception_analysis.
@@ -118,6 +119,7 @@
 :- import_module transform_hlds.unused_args.
 
 :- import_module int.
+:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
@@ -138,6 +140,9 @@ middle_pass(!HLDS, !DumpInfo, !Specs, !IO) :-
 
     expand_lambdas(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 110, "lambda", !DumpInfo, !IO),
+
+    maybe_do_direct_arg_in_out_transform(Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_dump_hlds(!.HLDS, 111, "daio", !DumpInfo, !IO),
 
     expand_stm_goals(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 113, "stm", !DumpInfo, !IO),
@@ -571,6 +576,26 @@ expand_lambdas(Verbose, Stats, !HLDS, !IO) :-
     expand_lambdas_in_module(!HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_do_direct_arg_in_out_transform(bool::in, bool::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+maybe_do_direct_arg_in_out_transform(Verbose, Stats, !HLDS, !Specs, !IO) :-
+    module_info_get_direct_arg_proc_map(!.HLDS, DirectArgProcMap),
+    ( if map.is_empty(DirectArgProcMap) then
+        true
+    else
+        maybe_write_string(Verbose,
+            "% Transforming direct arg in out procedures...\n", !IO),
+        do_direct_arg_in_out_transform_in_module(DirectArgProcMap, !HLDS,
+            DirectArgSpecs),
+        !:Specs = DirectArgSpecs ++ !.Specs,
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 
