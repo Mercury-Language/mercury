@@ -4,12 +4,12 @@
 # the resulting executable.
 
 if [ $# -ne 1 ]; then
-    echo "Usage: `basename $0` register-name" 1>&2
+    echo "Usage: $(basename $0) register-name" 1>&2
     exit 1
 fi
 
 CFLAGS=
-PIC_CFLAGS=	$CFLAGS -fpic
+PIC_CFLAGS="${CFLAGS} -fpic"
 
 echo Trying register "$1"...
 if ../../scripts/mgnuc $CFLAGS "-DREG=\"$1\"" regtest.c regtest2.c -o /tmp/regtest$$ -lm &&
