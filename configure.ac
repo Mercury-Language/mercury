@@ -2424,7 +2424,7 @@ case "$ac_cv_prog_gcc" in yes)
             MERCURY_MSG("gcc labels do not work on AArch64")
             mercury_cv_asm_labels=no
             mercury_cv_gcc_labels=no
-            CFLAGS_FOR_REGS="-fno-omit-frame-pointer"
+            CFLAGS_FOR_REGS="-fomit-frame-pointer"
             ;;
     esac
     ;;
