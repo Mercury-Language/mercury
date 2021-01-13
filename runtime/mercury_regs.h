@@ -95,6 +95,8 @@
     #include "machdeps/ia64_regs.h"
   #elif defined(__arm__)
     #include "machdeps/arm_regs.h"
+  #elif defined(__aarch64__)
+    #include "machdeps/aarch64_regs.h"
   #else
     #error "MR_USE_GCC_GLOBAL_REGISTERS not yet supported on this machine."
   #endif

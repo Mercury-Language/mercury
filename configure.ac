@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
-# Copyright (C) 2013-2020 The Mercury team.
+# Copyright (C) 2013-2021 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -2420,10 +2420,11 @@ case "$ac_cv_prog_gcc" in yes)
             mercury_cv_gcc_labels=no
             ;;
         aarch64*)
-        # The test for GCC labels goes into a loop on AArch64.
+            # The test for GCC labels goes into a loop on AArch64.
             MERCURY_MSG("gcc labels do not work on AArch64")
             mercury_cv_asm_labels=no
             mercury_cv_gcc_labels=no
+            CFLAGS_FOR_REGS="-fno-omit-frame-pointer"
             ;;
     esac
     ;;
@@ -4186,6 +4187,9 @@ if test "$mercury_cv_enable_shared_libs" = "yes"; then
             ;;
         aarch64*-linux|aarch64*-linux-gnu)
             AC_MSG_RESULT(yes)
+            # On aarch64 machines we must use -fPIC rather than -fpic in order
+            # to avoid limits on the size of the global offset table.
+            CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
             EXT_FOR_SHARED_LIB=so
             ;;
         *-freebsd*)
