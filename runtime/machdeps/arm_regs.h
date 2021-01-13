@@ -9,7 +9,7 @@
 #define MR_NUM_REAL_REGS 4
 
 /*
-** Machine registers MR_mr0 - MR_mr36 for the ARM architecture.
+** Machine registers MR_mr0 - MR_mr36 for the ARM (ARM32) architecture.
 */
 
 register	MR_Word	MR_mr0 __asm__("r4");	/* sp */
