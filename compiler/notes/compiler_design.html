@@ -84,7 +84,7 @@ by more than one pass.
 <p>
 Taking all this into account, the package structure looks like this:
 
-<ul type=disc>
+<ul type="disc">
 <li>
 At the top of the dependency graph is the top_level.m package,
 which currently contains only the mercury_compile*.m modules,
@@ -93,10 +93,10 @@ which invoke all the different passes in the compiler.
 The next level down is all of the different passes of the compiler.
 In general, we try to stick by the principle that later passes can
 depend on data structures defined in earlier passes, but not vice versa.
-<ul type=disc>
+<ul type="disc">
 <li>
     front-end
-    <ul type=disc>
+    <ul type="disc">
     <li>
         1. parsing (source files -&gt; HLDS)
         <br>
@@ -108,7 +108,7 @@ depend on data structures defined in earlier passes, but not vice versa.
     </ul>
 <li>
     middle-end
-    <ul type=disc>
+    <ul type="disc">
     <li>
         3. high-level transformations (annotated HLDS -&gt; annotated HLDS)
         <br>
@@ -116,12 +116,12 @@ depend on data structures defined in earlier passes, but not vice versa.
     </ul>
 <li>
     back-ends
-    <ul type=disc>
+    <ul type="disc">
     <li>
         a. LLDS back-end
         <br>
         Package: ll_backend.m
-        <ul type=disc>
+        <ul type="disc">
         <li>
             3a. LLDS-back-end-specific HLDS-&gt;HLDS transformations
         <li>
@@ -135,7 +135,7 @@ depend on data structures defined in earlier passes, but not vice versa.
         b. MLDS back-end
         <br>
         Package: ml_backend.m
-        <ul type=disc>
+        <ul type="disc">
         <li>
             4b. code generation (annotated HLDS -&gt; MLDS)
         <li>
@@ -148,7 +148,7 @@ depend on data structures defined in earlier passes, but not vice versa.
         c. bytecode back-end
         <br>
         Package: bytecode_backend.m
-        <ul type=disc>
+        <ul type="disc">
         <li>
             4c. code generation (annotated HLDS -&gt; bytecode)
         </ul>
