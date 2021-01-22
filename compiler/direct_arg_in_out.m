@@ -630,7 +630,7 @@ do_direct_arg_in_out_transform_in_module(DirectArgProcMap,
     module_info_set_pragma_exported_procs(ExportedProcsCord, !ModuleInfo),
 
     % Phase one: for every daio procedure, create a clone procedure
-    % that includes clones every daio argument variable.
+    % that includes a clone for every daio argument variable.
     % Then delete the original procedure, to ensure that later passes
     % detect any references to them that were accidentally left by phase two.
     map.foldl4(make_direct_arg_clone_or_spec, DirectArgProcMap,
@@ -1032,14 +1032,14 @@ transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
     expand_daio_in_goal(Goal0, Goal, InstMap0, VarMap0, VarMap, Info0, Info),
     PredProcId = proc(PredId, ProcId),
     proc_info_get_headvars(!.ProcInfo, HeadVars0),
-    Info = daio_info(_, _, VarSet, VarTypes, SeenForeignProcs),
+    Info = daio_info(_, _, VarSet, VarTypes, CloneForeignProcs),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
     proc_info_set_goal(Goal, !ProcInfo),
 
     ( if
         map.search(CloneInOutMap, PredProcId, OoMInOutArgs),
-        SeenForeignProcs = []
+        CloneForeignProcs = []
     then
         OoMInOutArgs = one_or_more(HeadInOutArg, TailInOutArgs),
         replace_cloned_headvars(VarMap, 1, HeadInOutArg, TailInOutArgs,
@@ -1055,23 +1055,26 @@ transform_direct_arg_in_out_calls_in_proc(DirectArgProcMap,
         true
     ),
     % If any of the foreign_procs we have invoked appears in
-    % DirectArgProcMap, either as a procedure that needs to be cloned,
-    % or as a procedure for which we don't *know* whether it needs to be
-    % cloned, we generate an error message for it, since (a) this is
-    % easier than implementing and then *documenting* an argument passing
-    % mechanism for daio arguments to and from foreign coode, and
-    % (b) we have seen no need so far for *any* passing of
-    % partially-instantiated terms to or from foreign code, let alone
-    % any that involve direct arg tags.
+    % DirectArgProcMap as a procedure that needs to be cloned,
+    % we generate an error message for it, since
+    %
+    % (a) this is easier than implementing and then *documenting*
+    % an argument passing mechanism for daio arguments to and from
+    % foreign coode, and
+    %
+    % (b) we have seen no need so far for *any* passing of partially
+    % instantiated terms to or from foreign code, let alone any that
+    % involve direct arg tags.
     %
     % Since this pass is executed before any pass that does inlining,
     % the only call_foreign_proc goals we should have seen is an
     % invocation of *this* procedure, but we iterate over all the
-    % foreign procs we have seen just in case this changes in the future.
+    % marked-to-be-cloned foreign procs we have seen just in case
+    % this changes in the future.
     list.foldl(
         maybe_add_foreign_proc_error(!.ModuleInfo, DirectArgProcMap,
             DirectArgProcInOutMap),
-        SeenForeignProcs, !Specs),
+        CloneForeignProcs, !Specs),
     requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo),
     recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
         !ProcInfo, !ModuleInfo).
@@ -1172,22 +1175,26 @@ expand_daio_in_goal(Goal0, Goal, InstMap0, !VarMap, !Info) :-
             Args0, ExtraArgs, TraceCond, Impl),
         CalleePredProcId = proc(CalleePredId, CalleeProcId),
         ProcMap = !.Info ^ daio_proc_map,
-        map.lookup(ProcMap, CalleePredProcId, CloneProc),
-        CloneProc = direct_arg_proc_in_out(ClonePredProcId, OoMInOutArgs),
-        ClonePredProcId = proc(ClonePredId, CloneProcId),
-        OoMInOutArgs = one_or_more(HeadInOutArg, TailInOutArgs),
-        ModuleInfo = !.Info ^ daio_module_info,
-        module_info_proc_info(ModuleInfo, ClonePredProcId, CloneProcInfo),
-        proc_info_get_argmodes(CloneProcInfo, CloneArgModes),
-        clone_in_out_args_in_call_foreign_proc(1, HeadInOutArg, TailInOutArgs,
-            Args0, CloneArgModes, Args, !VarMap, !Info),
-        GoalExpr1 = call_foreign_proc(Attrs, ClonePredId, CloneProcId,
-            Args, ExtraArgs, TraceCond, Impl),
-        rename_vars_in_goal_expr(need_not_rename, VarRename,
-            GoalExpr1, GoalExpr),
-        SeenForeignProcs0 = !.Info ^ daio_foreign_procs,
-        SeenForeignProcs = [CalleePredProcId | SeenForeignProcs0],
-        !Info ^ daio_foreign_procs := SeenForeignProcs
+        ( if map.search(ProcMap, CalleePredProcId, CloneProc) then
+            CloneProc = direct_arg_proc_in_out(ClonePredProcId, OoMInOutArgs),
+            ClonePredProcId = proc(ClonePredId, CloneProcId),
+            OoMInOutArgs = one_or_more(HeadInOutArg, TailInOutArgs),
+            ModuleInfo = !.Info ^ daio_module_info,
+            module_info_proc_info(ModuleInfo, ClonePredProcId, CloneProcInfo),
+            proc_info_get_argmodes(CloneProcInfo, CloneArgModes),
+            clone_in_out_args_in_call_foreign_proc(1, HeadInOutArg,
+                TailInOutArgs, Args0, CloneArgModes, Args, !VarMap, !Info),
+            GoalExpr1 = call_foreign_proc(Attrs, ClonePredId, CloneProcId,
+                Args, ExtraArgs, TraceCond, Impl),
+            rename_vars_in_goal_expr(need_not_rename, VarRename,
+                GoalExpr1, GoalExpr),
+            CloneForeignProcs0 = !.Info ^ daio_clone_foreign_procs,
+            CloneForeignProcs = [CalleePredProcId | CloneForeignProcs0],
+            !Info ^ daio_clone_foreign_procs := CloneForeignProcs
+        else
+            rename_vars_in_goal_expr(need_not_rename, VarRename,
+                GoalExpr0, GoalExpr)
+        )
     ;
         GoalExpr0 = unify(LHSVar, RHS0, UnifyMode, Unification0, UnifyContext),
         ( if
@@ -1954,15 +1961,16 @@ transform_class_instance_proc(DirectArgProcInOutMap, PredProcId0, PredProcId) :-
     --->    daio_info(
                 % These two fields remain constant during the traversal
                 % of a procedure body.
-                daio_module_info        :: module_info,
-                daio_proc_map           :: direct_arg_proc_in_out_map,
+                daio_module_info            :: module_info,
+                daio_proc_map               :: direct_arg_proc_in_out_map,
 
                 % We update these two fields as we create new clone variables.
-                daio_varset             :: prog_varset,
-                daio_vartypes           :: vartypes,
+                daio_varset                 :: prog_varset,
+                daio_vartypes               :: vartypes,
 
-                % We update this field as we find call_foreign_proc goals.
-                daio_foreign_procs      :: list(pred_proc_id)
+                % We update this field as we find call_foreign_proc goals
+                % whose procedure is in the daio_proc_map.
+                daio_clone_foreign_procs    :: list(pred_proc_id)
             ).
 
 :- pred get_daio_debug_stream(daio_info::in, io.text_output_stream::out,
