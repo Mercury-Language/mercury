@@ -1477,6 +1477,7 @@
     % Alphabetic digits will be lowercase (e.g. a-f).
     %
 :- func uint_to_hex_string(uint::in) = (string::uo) is det.
+:- func uint_to_lc_hex_string(uint::in) = (string::uo) is det.
 
     % Convert an unsigned integer to a string in base 16.
     % Alphabetic digits will be uppercase (e.g. A-F).
@@ -1502,6 +1503,7 @@
     % Alphabetic digits will be lowercase (e.g. a-f).
     %
 :- func uint64_to_hex_string(uint64::in) = (string::uo) is det.
+:- func uint64_to_lc_hex_string(uint64::in) = (string::uo) is det.
 
     % Convert an unsigned 64-bit integer to a string in base 16.
     % Alphabetic digits will be uppercase (e.g. A-F).
@@ -5584,8 +5586,15 @@ int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
     Str = java.lang.Long.toString(U & 0xffffffffL);
 ").
 
+%---------------------%
+
+uint_to_hex_string(UInt) =
+    uint_to_lc_hex_string(UInt).
+
+:- pragma inline(uint_to_lc_hex_string/1).
+
 :- pragma foreign_proc("C",
-    uint_to_hex_string(U::in) = (Str::uo),
+    uint_to_lc_hex_string(U::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -5596,18 +5605,20 @@ int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
 ").
 
 :- pragma foreign_proc("C#",
-    uint_to_hex_string(U::in) = (Str::uo),
+    uint_to_lc_hex_string(U::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Str = U.ToString(""x"");
 ").
 
 :- pragma foreign_proc("Java",
-    uint_to_hex_string(U::in) = (Str::uo),
+    uint_to_lc_hex_string(U::in) = (Str::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Str = java.lang.Integer.toHexString(U);
 ").
+
+%---------------------%
 
 :- pragma foreign_proc("C",
     uint_to_uc_hex_string(U::in) = (Str::uo),
@@ -5633,6 +5644,8 @@ int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
 "
     Str = java.lang.Integer.toHexString(U).toUpperCase();
 ").
+
+%---------------------%
 
 :- pragma foreign_proc("C",
     uint_to_octal_string(U::in) = (Str::uo),
@@ -5871,8 +5884,13 @@ int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
 
 %---------------------%
 
+uint64_to_hex_string(UInt) =
+    uint64_to_lc_hex_string(UInt).
+
+:- pragma inline(uint64_to_lc_hex_string/1).
+
 :- pragma foreign_proc("C",
-    uint64_to_hex_string(U64::in) = (S::uo),
+    uint64_to_lc_hex_string(U64::in) = (S::uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     char buffer[17]; // 16 for digits, 1 for nul.
@@ -5882,14 +5900,14 @@ int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
 ").
 
 :- pragma foreign_proc("C#",
-    uint64_to_hex_string(U64::in) = (S::uo),
+    uint64_to_lc_hex_string(U64::in) = (S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     S = U64.ToString(""x"");
 ").
 
 :- pragma foreign_proc("Java",
-    uint64_to_hex_string(U64::in) = (S::uo),
+    uint64_to_lc_hex_string(U64::in) = (S::uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     S = java.lang.Long.toHexString(U64);
@@ -5920,6 +5938,8 @@ int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
 "
     S = java.lang.Long.toHexString(U64).toUpperCase();
 ").
+
+%---------------------%
 
 :- pragma foreign_proc("C",
     uint64_to_octal_string(U64::in) = (Str::uo),

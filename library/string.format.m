@@ -1130,7 +1130,7 @@ format_uint(Flags, MaybeWidth, MaybePrec, Base, UInt) = String :-
             ( Base = base_hex_lc
             ; Base = base_hex_p
             ),
-            UIntStr = uint_to_hex_string(UInt)
+            UIntStr = uint_to_lc_hex_string(UInt)
         ;
             Base = base_hex_uc,
             UIntStr = uint_to_uc_hex_string(UInt)
@@ -1314,7 +1314,7 @@ format_uint64(Flags, MaybeWidth, MaybePrec, Base, UInt64) = String :-
             ( Base = base_hex_lc
             ; Base = base_hex_p
             ),
-            UInt64Str = uint64_to_hex_string(UInt64)
+            UInt64Str = uint64_to_lc_hex_string(UInt64)
         ;
             Base = base_hex_uc,
             UInt64Str = uint64_to_uc_hex_string(UInt64)

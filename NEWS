@@ -98,6 +98,11 @@ Changes to the Mercury standard library
 
 ### Changes to the `int` module
 
+* The following functions have been added:
+
+    - func `uint_to_lc_hex_string/2`    (synonym for uint_to_hex_string)
+    - func `uint64_to_lc_hex_string/2`  (synonym for uint64_to_hex_string)
+
 * The following obsolete predicates and functions have been removed:
 
     - pred `is/2`                   (replacement: `=`, i.e. unification)
