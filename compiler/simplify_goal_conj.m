@@ -86,15 +86,13 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
             GoalExpr, GoalInfo, !Info)
     ;
         Goals = [_, _ | _],
-
         % Conjunctions that cannot produce solutions may nevertheless contain
         % nondet and multi goals. If this happens, we put the conjunction
         % inside a commit scope, since the code generators need to know
         % where they should change the code's execution mechanism.
-
         Detism = goal_info_get_determinism(GoalInfo0),
         ( if
-            % Put the condition that we expect to fail most frequently first.
+            % The condition that we expect to fail most frequently is first.
             determinism_components(Detism, CanFail, at_most_zero),
             simplify_do_mark_code_model_changes(!.Info),
             contains_multisoln_goal(Goals)
@@ -103,12 +101,11 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
             goal_info_set_determinism(InnerDetism, GoalInfo0, InnerInfo),
             InnerGoal = hlds_goal(conj(plain_conj, Goals), InnerInfo),
             GoalExpr = scope(commit(dont_force_pruning), InnerGoal),
-            % We may have deleted goals that contain what could be
-            % the last references to variables. This may require
-            % adjustments to the nonlocals sets of not only this goal,
-            % but of the other goals containing it. Likewise, it may
-            % require adjustments of the instmap_deltas of such
-            % containing goals.
+            % We may have deleted goals that contain what could be the
+            % last references to variables. This may require adjustments
+            % to the nonlocals sets of not only this goal, but of the other
+            % goals containing it. Likewise, it may require adjustments
+            % of the instmap_deltas of such containing goals.
             simplify_info_set_rerun_quant_instmap_delta(!Info)
         else
             GoalExpr = conj(plain_conj, Goals)
@@ -215,12 +212,11 @@ simplify_conj(!.PrevGoals, [HeadGoal0 | TailGoals0], Goals, ConjInfo,
                 HeadGoalContext0 = goal_info_get_context(HeadGoalInfo0),
                 delete_tail_unreachable_goals(!.PrevGoals, HeadGoalContext0,
                     HeadGoal1, TailGoals0, Goals, !Info),
-                % We have deleted goals that contain what could be
-                % the last references to variables. This may require
-                % adjustments to the nonlocals sets of not only this goal,
-                % but of the other goals containing it. Likewise, it may
-                % require adjustments of the instmap_deltas of such
-                % containing goals.
+                % We have deleted goals that contain what could be the last
+                % references to variables. This may require adjustments
+                % to the nonlocals sets of not only this goal, but of the
+                % other goals containing it. Likewise, it may require
+                % adjustments of the instmap_deltas of such containing goals.
                 simplify_info_set_rerun_quant_instmap_delta(!Info)
             else
                 try_to_opt_test_after_switch(!PrevGoals, HeadGoal1,
