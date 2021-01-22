@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
+% Copyright (C) 2013, 2015, 2017, 2020-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -713,7 +714,7 @@ make_pipes(FileName, Success, !IO) :-
 
 :- pragma foreign_proc("C",
     check_for_existing_fifos(Fifo1::in, Fifo2::in, FifoCount::out,
-        S0::di, S::uo),
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
 #ifdef  MR_DEEP_PROFILER_ENABLED
@@ -729,8 +730,6 @@ make_pipes(FileName, Success, !IO) :-
     if ((status == 0) && (S_ISFIFO(statbuf.st_mode))) {
         FifoCount++;
     }
-
-    S = S0;
 #else
     MR_fatal_error(""deep profiling not enabled"");
 #endif
@@ -771,7 +770,7 @@ detach_process(Result, !IO) :-
 :- pred raw_detach_process(int::out, io::di, io::uo) is cc_multi.
 
 :- pragma foreign_proc("C",
-    raw_detach_process(ResCode::out, S0::di, S::uo),
+    raw_detach_process(ResCode::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "{
 #ifdef  MR_DEEP_PROFILER_ENABLED
@@ -797,8 +796,6 @@ detach_process(Result, !IO) :-
 #endif
         ResCode = 0;
     }
-
-    S = S0;
 #else
     MR_fatal_error(""deep profiling not enabled"");
 #endif

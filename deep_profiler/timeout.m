@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2002, 2004-2006, 2008 The University of Melbourne.
+% Copyright (C) 2014, 2017, 2019, 2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -618,7 +619,7 @@ MP_do_release_lock(const char *mutex_file)
 ").
 
 :- pragma foreign_proc("C",
-    register_file_for_cleanup(File::in, _S0::di, _S::uo),
+    register_file_for_cleanup(File::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
 #ifdef  MR_DEEP_PROFILER_ENABLED
@@ -629,7 +630,7 @@ MP_do_release_lock(const char *mutex_file)
 ").
 
 :- pragma foreign_proc("C",
-    unregister_file_for_cleanup(File::in, _S0::di, _S::uo),
+    unregister_file_for_cleanup(File::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
 #ifdef  MR_DEEP_PROFILER_ENABLED
@@ -640,7 +641,7 @@ MP_do_release_lock(const char *mutex_file)
 ").
 
 :- pragma foreign_proc("C",
-    unregister_all_files_for_cleanup(_S0::di, _S::uo),
+    unregister_all_files_for_cleanup(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
 #ifdef  MR_DEEP_PROFILER_ENABLED
@@ -651,7 +652,7 @@ MP_do_release_lock(const char *mutex_file)
 ").
 
 :- pragma foreign_proc("C",
-    delete_cleanup_files(_S0::di, _S::uo),
+    delete_cleanup_files(_IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
 #ifdef  MR_DEEP_PROFILER_ENABLED
@@ -662,7 +663,8 @@ MP_do_release_lock(const char *mutex_file)
 ").
 
 :- pragma foreign_proc("C",
-    setup_signals(MutexFile::in, WantDir::in, WantPrefix::in, _S0::di, _S::uo),
+    setup_signals(MutexFile::in, WantDir::in, WantPrefix::in,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
 #ifdef  MR_DEEP_PROFILER_ENABLED
@@ -708,7 +710,7 @@ MP_do_release_lock(const char *mutex_file)
 ").
 
 :- pragma foreign_proc("C",
-    setup_timeout(Minutes::in, _S0::di, _S::uo),
+    setup_timeout(Minutes::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
 #ifdef  MR_DEEP_PROFILER_ENABLED
@@ -754,7 +756,7 @@ release_lock(Debug, MutexFile, !IO) :-
 :- pred do_get_lock(string::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    do_get_lock(MutexFile::in, _S0::di, _S::uo),
+    do_get_lock(MutexFile::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
 #ifdef  MR_DEEP_PROFILER_ENABLED
@@ -767,7 +769,7 @@ release_lock(Debug, MutexFile, !IO) :-
 :- pred do_release_lock(string::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    do_release_lock(MutexFile::in, _S0::di, _S::uo),
+    do_release_lock(MutexFile::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
 #ifdef  MR_DEEP_PROFILER_ENABLED
@@ -778,7 +780,7 @@ release_lock(Debug, MutexFile, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    make_want_file(WantFileName::in, _S0::di, _S::uo),
+    make_want_file(WantFileName::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
 #ifdef  MR_DEEP_PROFILER_ENABLED
@@ -798,7 +800,7 @@ release_lock(Debug, MutexFile, !IO) :-
 ").
 
 :- pragma foreign_proc("C",
-    remove_want_file(WantFileName::in, _S0::di, _S::uo),
+    remove_want_file(WantFileName::in, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
 #ifdef  MR_DEEP_PROFILER_ENABLED
