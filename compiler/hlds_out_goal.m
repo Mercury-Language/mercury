@@ -142,7 +142,6 @@
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data_foreign.
-:- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -1587,12 +1586,14 @@ write_goal_foreign_proc(_Info, Stream, ModuleInfo, VarSet, _TypeQual,
         io.write_string(Stream, ")\n", !IO)
     ),
     write_indent(Stream, Indent, !IO),
-    % XXX We don't have the TypeVarSet available here, but it is only used
-    % for printing out the names of the type variables, which isn't
-    % essential.
+    % XXX We don't have the TypeVarSet or InstVarSet available here,
+    % but it is only used for printing out the names of the type and inst
+    % variables, which isn't essential.
     varset.init(TypeVarSet),
+    varset.init(InstVarSet),
     io.write_string(Stream, "[", !IO),
-    write_foreign_args(Stream, VarSet, TypeVarSet, VarNamePrint, Args, !IO),
+    write_foreign_args(Stream, VarSet, TypeVarSet, InstVarSet,
+        VarNamePrint, Args, !IO),
     io.write_string(Stream, "],\n", !IO),
     (
         ExtraArgs = []
@@ -1600,8 +1601,8 @@ write_goal_foreign_proc(_Info, Stream, ModuleInfo, VarSet, _TypeQual,
         ExtraArgs = [_ | _],
         write_indent(Stream, Indent, !IO),
         io.write_string(Stream, "{", !IO),
-        write_foreign_args(Stream, VarSet, TypeVarSet, VarNamePrint,
-            ExtraArgs, !IO),
+        write_foreign_args(Stream, VarSet, TypeVarSet, InstVarSet,
+            VarNamePrint, ExtraArgs, !IO),
         io.write_string(Stream, "},\n", !IO)
     ),
     PragmaCode = fp_impl_ordinary(Code, _),
@@ -1612,24 +1613,20 @@ write_goal_foreign_proc(_Info, Stream, ModuleInfo, VarSet, _TypeQual,
     io.write_string(Stream, Follow, !IO).
 
 :- pred write_foreign_args(io.text_output_stream::in,
-    prog_varset::in, tvarset::in, var_name_print::in, list(foreign_arg)::in,
-    io::di, io::uo) is det.
+    prog_varset::in, tvarset::in, inst_varset::in, var_name_print::in,
+    list(foreign_arg)::in, io::di, io::uo) is det.
 
-write_foreign_args(_, _, _, _, [], !IO).
-write_foreign_args(Stream, VarSet, TVarSet, VarNamePrint, [Arg | Args], !IO) :-
+write_foreign_args(_, _, _, _, _, [], !IO).
+write_foreign_args(Stream, VarSet, TVarSet, InstVarSet, VarNamePrint,
+        [Arg | Args], !IO) :-
     Arg = foreign_arg(Var, MaybeNameMode, Type, BoxPolicy),
     mercury_output_var(VarSet, VarNamePrint, Var, Stream, !IO),
     (
         MaybeNameMode = yes(foreign_arg_name_mode(Name, Mode)),
-        io.write_string(Stream, "/" ++ Name ++ "(", !IO),
-        ( if Mode = in_mode then
-            io.write_string(Stream, "in", !IO)
-        else if Mode = out_mode then
-            io.write_string(Stream, "out", !IO)
-        else
-            io.write(Stream, Mode, !IO)
-        ),
-        io.write_string(Stream, ")", !IO)
+        % For HLDS dumps, we need clarity mode than round-trippability,
+        % which is why we specify output_debug.
+        ModeStr = mercury_mode_to_string(output_debug, InstVarSet, Mode),
+        io.format(Stream, "/%s(%s)", [s(Name), s(ModeStr)], !IO)
     ;
         MaybeNameMode = no
     ),
@@ -1646,7 +1643,8 @@ write_foreign_args(Stream, VarSet, TVarSet, VarNamePrint, [Arg | Args], !IO) :-
     ;
         Args = [_ | _],
         io.write_string(Stream, ", ", !IO),
-        write_foreign_args(Stream, VarSet, TVarSet, VarNamePrint, Args, !IO)
+        write_foreign_args(Stream, VarSet, TVarSet, InstVarSet, VarNamePrint,
+            Args, !IO)
     ).
 
 %---------------------------------------------------------------------------%
