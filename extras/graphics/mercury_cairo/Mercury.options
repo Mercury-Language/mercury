@@ -6,7 +6,6 @@ include Cairo.options
 MCFLAGS = \
 	--libgrades-exclude csharp					\
 	--libgrades-exclude java 					\
-	--libgrades-exclude erlang 					\
 	--libgrades-exclude spf						\
 	--install-prefix $(INSTALL_PREFIX)				\
 	--cflags $(CAIRO_CFLAGS)					\

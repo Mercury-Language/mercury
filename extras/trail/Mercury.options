@@ -5,7 +5,6 @@ MCFLAGS = \
 	--trail-segments		\
 	--use-grade-subdirs		\
 	--libgrades-exclude java	\
-	--libgrades-exclude erlang	\
 	--libgrades-exclude csharp	\
 	--libgrades-include trseg	\
 	--install-prefix $(TRAIL_INSTALL_PREFIX)

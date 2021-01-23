@@ -4,7 +4,6 @@ include GLFW.options
 #
 MCFLAGS = \
 	--libgrades-exclude java 					\
-	--libgrades-exclude erlang 					\
 	--libgrades-exclude csharp					\
 	--install-prefix $(INSTALL_PREFIX)				\
 	$(GLFW_MCFLAGS)
