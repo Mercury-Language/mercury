@@ -31,13 +31,23 @@
     --->    const_struct(
                 % The constant structured term: the data constructor,
                 % and its arguments.
-                cs_cons_id      :: cons_id,
-                cs_args         :: list(const_struct_arg),
+                cs_cons_id          :: cons_id,
+                cs_args             :: list(const_struct_arg),
 
                 % The type and inst of the term.
-                cs_term_type    :: mer_type,
-                cs_term_inst    :: mer_inst
+                cs_term_type        :: mer_type,
+                cs_term_inst        :: mer_inst,
+
+                % Was the code that led to the creation of this const_struct
+                % in the current module? If not, then unused_imports.m
+                % should *not* consider this const_struct as representing
+                % uses of the modules that are referenced in it.
+                cs_defined_where    :: defined_where
             ).
+
+:- type defined_where
+    --->    defined_in_this_module
+    ;       defined_in_other_module.
 
 :- type const_struct_arg
     --->    csa_const_struct(int)
@@ -186,18 +196,19 @@ lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
         unexpected($pred, "not enabled")
     ;
         Enabled = enable_const_struct,
-        ConstStruct = const_struct(ConsId, Args, Type, Inst),
+        ConstStruct = const_struct(ConsId, Args, Type, Inst, DefinedWhere),
         ( if ConsId = cons(SymName, _, _) then
             Name = unqualify_name(SymName),
             ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId,
                 Type, Inst),
             const_struct_db_get_next_num(!.Db, NextConstNum),
-            const_struct_db_get_cons_proxy_map(!.Db, ConsMap0),
+            const_struct_db_get_cons_proxy_map(!.Db, ConsProxyMap0),
             map.search_insert(ConsProxyStruct, NextConstNum, MaybeOldConstNum,
-                ConsMap0, ConsMap),
+                ConsProxyMap0, ConsProxyMap),
             (
-                MaybeOldConstNum = yes(ConstNum)
-                % ConsMap should be the same as ConsMap0.
+                MaybeOldConstNum = yes(ConstNum),
+                % ConsProxyMap should be the same as ConsProxyMap0.
+                maybe_update_defined_where(DefinedWhere, ConstNum, !Db)
             ;
                 MaybeOldConstNum = no,
                 ConstNum = NextConstNum,
@@ -205,17 +216,20 @@ lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
                 map.det_insert(ConstNum, ConstStruct, NumMap0, NumMap),
 
                 const_struct_db_set_next_num(NextConstNum + 1, !Db),
-                const_struct_db_set_cons_proxy_map(ConsMap, !Db),
+                const_struct_db_set_cons_proxy_map(ConsProxyMap, !Db),
                 const_struct_db_set_num_map(NumMap, !Db)
             )
         else
+            NonConsProxyStruct = noncons_proxy_struct(ConsId, Args,
+                Type, Inst),
             const_struct_db_get_next_num(!.Db, NextConstNum),
-            const_struct_db_get_other_struct_map(!.Db, OtherMap0),
-            map.search_insert(ConstStruct, NextConstNum, MaybeOldConstNum,
-                OtherMap0, OtherMap),
+            const_struct_db_get_noncons_proxy_map(!.Db, NonConsProxyMap0),
+            map.search_insert(NonConsProxyStruct, NextConstNum,
+                MaybeOldConstNum, NonConsProxyMap0, NonConsProxyMap),
             (
-                MaybeOldConstNum = yes(ConstNum)
-                % OtherMap should be the same as OtherMap0.
+                MaybeOldConstNum = yes(ConstNum),
+                % NonConsProxyMap should be the same as NonConsProxyMap0.
+                maybe_update_defined_where(DefinedWhere, ConstNum, !Db)
             ;
                 MaybeOldConstNum = no,
                 ConstNum = NextConstNum,
@@ -223,10 +237,33 @@ lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
                 map.det_insert(ConstNum, ConstStruct, NumMap0, NumMap),
 
                 const_struct_db_set_next_num(NextConstNum + 1, !Db),
-                const_struct_db_set_other_struct_map(OtherMap, !Db),
+                const_struct_db_set_noncons_proxy_map(NonConsProxyMap, !Db),
                 const_struct_db_set_num_map(NumMap, !Db)
             )
         )
+    ).
+
+:- pred maybe_update_defined_where(defined_where::in, int::in,
+    const_struct_db::in, const_struct_db::out) is det.
+
+maybe_update_defined_where(DefinedWhere, ConstNum, !Db) :-
+    const_struct_db_get_num_map(!.Db, NumMap0),
+    map.lookup(NumMap0, ConstNum, ConstStruct0),
+    DefinedWhere0 = ConstStruct0 ^ cs_defined_where,
+    % If the new definition says that this constant is derived from code
+    % in this module, then set the constant accordingly, unless its old
+    % setting already says the same.
+    ( if
+        DefinedWhere = defined_in_this_module,
+        DefinedWhere0 = defined_in_other_module
+    then
+        ConstStruct = ConstStruct0 ^ cs_defined_where
+            := defined_in_this_module,
+        map.det_update(ConstNum, ConstStruct, NumMap0, NumMap),
+        const_struct_db_set_num_map(NumMap, !Db)
+    else
+        % There is nothing to update.
+        true
     ).
 
 lookup_const_struct_num(Db, ConstNum, ConstStruct) :-
@@ -247,17 +284,20 @@ delete_const_struct(ConstNum, !Db) :-
     map.det_remove(ConstNum, ConstStruct, NumMap0, NumMap),
     const_struct_db_set_num_map(NumMap, !Db),
 
-    ConstStruct = const_struct(ConsId, Args, Type, Inst),
+    ConstStruct = const_struct(ConsId, Args, Type, Inst, _DefinedWhere),
     ( if ConsId = cons(SymName, _, _) then
         Name = unqualify_name(SymName),
         ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId, Type, Inst),
-        const_struct_db_get_cons_proxy_map(!.Db, ConsMap0),
-        map.det_remove(ConsProxyStruct, _ConstNum, ConsMap0, ConsMap),
-        const_struct_db_set_cons_proxy_map(ConsMap, !Db)
+        const_struct_db_get_cons_proxy_map(!.Db, ConsProxyMap0),
+        map.det_remove(ConsProxyStruct, _ConstNum,
+            ConsProxyMap0, ConsProxyMap),
+        const_struct_db_set_cons_proxy_map(ConsProxyMap, !Db)
     else
-        const_struct_db_get_other_struct_map(!.Db, OtherMap0),
-        map.det_remove(ConstStruct, _ConstNum, OtherMap0, OtherMap),
-        const_struct_db_set_other_struct_map(OtherMap, !Db)
+        NonConsProxyStruct = noncons_proxy_struct(ConsId, Args, Type, Inst),
+        const_struct_db_get_noncons_proxy_map(!.Db, NonConsProxyMap0),
+        map.det_remove(NonConsProxyStruct, _ConstNum,
+            NonConsProxyMap0, NonConsProxyMap),
+        const_struct_db_set_noncons_proxy_map(NonConsProxyMap, !Db)
     ).
 
 const_struct_db_get_structs(Db, Structs) :-
@@ -282,13 +322,22 @@ const_struct_db_get_structs(Db, Structs) :-
                 cps_term_inst   :: mer_inst
             ).
 
+:- type noncons_proxy_struct
+    --->    noncons_proxy_struct(
+                % All the fields of a const_struct, except defined_where.
+                ncps_cons_id    :: cons_id,
+                ncps_args       :: list(const_struct_arg),
+                ncps_term_type  :: mer_type,
+                ncps_term_inst  :: mer_inst
+            ).
+
 :- type const_struct_db
     --->    const_struct_db(
                 csdb_poly_enabled           :: maybe_enable_const_struct,
                 csdb_ground_term_enabled    :: maybe_enable_const_struct,
                 csdb_next_num               :: int,
                 csdb_cons_proxy_map         :: map(cons_proxy_struct, int),
-                csdb_other_struct_map       :: map(const_struct, int),
+                csdb_noncons_struct_map     :: map(noncons_proxy_struct, int),
                 csdb_num_map                :: map(int, const_struct),
                 csdb_instance_map           :: const_instance_map
             ).
@@ -296,8 +345,8 @@ const_struct_db_get_structs(Db, Structs) :-
 :- pred const_struct_db_get_next_num(const_struct_db::in, int::out) is det.
 :- pred const_struct_db_get_cons_proxy_map(const_struct_db::in,
     map(cons_proxy_struct, int)::out) is det.
-:- pred const_struct_db_get_other_struct_map(const_struct_db::in,
-    map(const_struct, int)::out) is det.
+:- pred const_struct_db_get_noncons_proxy_map(const_struct_db::in,
+    map(noncons_proxy_struct, int)::out) is det.
 :- pred const_struct_db_get_num_map(const_struct_db::in,
     map(int, const_struct)::out) is det.
 :- pred const_struct_db_get_instance_map(const_struct_db::in,
@@ -311,8 +360,8 @@ const_struct_db_get_next_num(Db, X) :-
     X = Db ^ csdb_next_num.
 const_struct_db_get_cons_proxy_map(Db, X) :-
     X = Db ^ csdb_cons_proxy_map.
-const_struct_db_get_other_struct_map(Db, X) :-
-    X = Db ^ csdb_other_struct_map.
+const_struct_db_get_noncons_proxy_map(Db, X) :-
+    X = Db ^ csdb_noncons_struct_map.
 const_struct_db_get_num_map(Db, X) :-
     X = Db ^ csdb_num_map.
 const_struct_db_get_instance_map(Db, X) :-
@@ -322,7 +371,8 @@ const_struct_db_get_instance_map(Db, X) :-
     const_struct_db::in, const_struct_db::out) is det.
 :- pred const_struct_db_set_cons_proxy_map(map(cons_proxy_struct, int)::in,
     const_struct_db::in, const_struct_db::out) is det.
-:- pred const_struct_db_set_other_struct_map(map(const_struct, int)::in,
+:- pred const_struct_db_set_noncons_proxy_map(
+    map(noncons_proxy_struct, int)::in,
     const_struct_db::in, const_struct_db::out) is det.
 :- pred const_struct_db_set_num_map(map(int, const_struct)::in,
     const_struct_db::in, const_struct_db::out) is det.
@@ -331,10 +381,10 @@ const_struct_db_get_instance_map(Db, X) :-
 
 const_struct_db_set_next_num(Num, !Db) :-
     !Db ^ csdb_next_num := Num.
-const_struct_db_set_cons_proxy_map(ConsMap, !Db) :-
-    !Db ^ csdb_cons_proxy_map := ConsMap.
-const_struct_db_set_other_struct_map(OtherMap, !Db) :-
-    !Db ^ csdb_other_struct_map := OtherMap.
+const_struct_db_set_cons_proxy_map(ConsProxyMap, !Db) :-
+    !Db ^ csdb_cons_proxy_map := ConsProxyMap.
+const_struct_db_set_noncons_proxy_map(NonConsProxyMap, !Db) :-
+    !Db ^ csdb_noncons_struct_map := NonConsProxyMap.
 const_struct_db_set_num_map(NumMap, !Db) :-
     !Db ^ csdb_num_map := NumMap.
 const_struct_db_set_instance_map(InstanceMap, !Db) :-

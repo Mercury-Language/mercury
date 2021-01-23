@@ -21,6 +21,7 @@
 
 :- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.
+:- import_module hlds.const_struct.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
@@ -100,7 +101,8 @@
     % Initialise the simplify_info.
     %
 :- pred simplify_info_init(module_info::in, pred_id::in, proc_id::in,
-    proc_info::in, simplify_tasks::in, simplify_info::out) is det.
+    proc_info::in, simplify_tasks::in,
+    simplify_info::out) is det.
 
     % Reinitialise the simplify_info before reprocessing a goal.
     %
@@ -168,6 +170,8 @@
     has_user_event::out) is det.
 :- pred simplify_info_get_deleted_call_callees(simplify_info::in,
     set(pred_proc_id)::out) is det.
+:- pred simplify_info_get_defined_where(simplify_info::in,
+    defined_where::out) is det.
 
 :- pred simplify_info_set_simplify_tasks(simplify_tasks::in,
     simplify_info::in, simplify_info::out) is det.
@@ -232,6 +236,7 @@
 
 :- implementation.
 
+:- import_module hlds.status.
 :- import_module libs.globals.
 :- import_module libs.options.
 
@@ -336,7 +341,10 @@
 
                 % The set of predicates that we deleted calls to while
                 % simplifying the procedure body.
-                ssimp_deleted_call_callees  :: set(pred_proc_id)
+                ssimp_deleted_call_callees  :: set(pred_proc_id),
+
+                % Is the predicate we are simplifying defined in this module?
+                ssimp_defined_where         :: defined_where
             ).
 
 simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
@@ -360,10 +368,16 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
     FoundContainsTrace = no,
     HasUserEvent = has_no_user_event,
     set.init(TraceGoalProcs),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_status(PredInfo, PredStatus),
+    pred_status_defined_in_this_module(PredStatus) = InThisModule,
+    ( InThisModule = yes, DefinedWhere = defined_in_this_module
+    ; InThisModule = no,  DefinedWhere = defined_in_other_module
+    ),
 
     SubInfo = simplify_sub_info(RttiVarMaps, ElimVars, Specs, CostDelta,
         AllowMsgs, HasParallelConj, FoundContainsTrace, HasUserEvent,
-        TraceGoalProcs),
+        TraceGoalProcs, DefinedWhere),
 
     % SimplifyTasks
     % ModuleInfo
@@ -466,6 +480,8 @@ simplify_info_get_has_user_event(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_has_user_event.
 simplify_info_get_deleted_call_callees(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_deleted_call_callees.
+simplify_info_get_defined_where(Info, X) :-
+    X = Info ^ simp_sub_info ^ ssimp_defined_where.
 
 %---------------------%
 

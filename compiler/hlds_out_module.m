@@ -1576,7 +1576,7 @@ write_const_struct_db(Stream, ConstStructDb, !IO) :-
 
 write_const_struct(Stream, N - ConstStruct, !IO) :-
     io.format(Stream, "\nconst_struct %d:\n", [i(N)], !IO),
-    ConstStruct = const_struct(ConsId, ConstArgs, Type, Inst),
+    ConstStruct = const_struct(ConsId, ConstArgs, Type, Inst, DefinedWhere),
     mercury_output_cons_id(does_not_need_brackets, ConsId, Stream, !IO),
     (
         ConstArgs = [],
@@ -1592,7 +1592,14 @@ write_const_struct(Stream, N - ConstStruct, !IO) :-
     io.nl(Stream, !IO),
     io.write_string(Stream, "inst: ", !IO),
     mercury_output_structured_inst(Stream, Inst, 0, output_debug,
-        do_not_incl_addr, varset.init, !IO).
+        do_not_incl_addr, varset.init, !IO),
+    (
+        DefinedWhere = defined_in_this_module,
+        io.write_string(Stream, "defined_in_this_module\n", !IO)
+    ;
+        DefinedWhere = defined_in_other_module,
+        io.write_string(Stream, "defined_in_other_module\n", !IO)
+    ).
 
 :- pred write_const_struct_args(io.text_output_stream::in,
     const_struct_arg::in, list(const_struct_arg)::in, io::di, io::uo) is det.

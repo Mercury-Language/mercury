@@ -1144,7 +1144,7 @@ generate_const_structs(ModuleInfo, ConstStructMap, !GlobalData) :-
 
 generate_const_struct(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         ConstNum - ConstStruct, !ConstStructMap, !StaticCellInfo) :-
-    ConstStruct = const_struct(ConsId, ConstArgs, _, _),
+    ConstStruct = const_struct(ConsId, ConstArgs, _, _, _),
     ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
     associate_cons_id_args_with_widths(ModuleInfo, ConsId,
         ConstArgs, ConsArgsPosWidths),

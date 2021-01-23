@@ -72,6 +72,7 @@
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
+:- import_module pretty_printer.
 :- import_module set.
 :- import_module string.
 :- import_module term.
@@ -375,19 +376,18 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
         ImplicitImports, !UsedModules),
     UsedModulesBuiltin = !.UsedModules,
 
-    trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
+    trace [compile_time(flag("dump_used_modules_summary")), io(!IO)] (
         UsedModulesHistory = [
-            "initial" - UsedModulesInit,
+            "initial"         - UsedModulesInit,
             "type_ctor_defns" - UsedModulesTypeCtor,
-            "user_insts" - UsedModulesUserInst,
-            "modes" - UsedModulesMode,
-            "pred_infos" - UsedModulesPredInfo,
-            "const_structs" - UsedModulesConstStruct,
-            "classes" - UsedModulesClass,
-            "instances" - UsedModulesInstance,
-            "builtin" - UsedModulesBuiltin
+            "user_insts"      - UsedModulesUserInst,
+            "modes"           - UsedModulesMode,
+            "const_structs"   - UsedModulesConstStruct,
+            "pred_infos"      - UsedModulesPredInfo,
+            "classes"         - UsedModulesClass,
+            "instances"       - UsedModulesInstance,
+            "builtin"         - UsedModulesBuiltin
         ],
-
         dump_used_modules_history(set.init, set.init, UsedModulesHistory, !IO)
     ).
 
@@ -405,18 +405,15 @@ dump_used_modules_history(!.IntUsed, !.ImpUsed, [Head | Tail], !IO) :-
     else
         io.write_string("interface:\n", !IO),
         set.to_sorted_list(NewHeadInt, NewHeadIntList),
-        io.write(NewHeadIntList, !IO),
-        io.nl(!IO)
+        io.write_line(NewHeadIntList, !IO)
     ),
     ( if set.is_empty(NewHeadImp) then
         true
     else
         io.write_string("implementation:\n", !IO),
         set.to_sorted_list(NewHeadImp, NewHeadImpList),
-        io.write(NewHeadImpList, !IO),
-        io.nl(!IO)
+        io.write_line(NewHeadImpList, !IO)
     ),
-
     set.union(HeadInt, !IntUsed),
     set.union(HeadImp, !ImpUsed),
     dump_used_modules_history(!.IntUsed, !.ImpUsed, Tail, !IO).
@@ -578,13 +575,14 @@ instance_used_modules(ThisModuleName, ClassId, InstanceDefn, !UsedModules) :-
         Types, _OriginalTypes, InstanceStatus, _Context, Constraints, _Body,
         _MaybePredProcIds, _VarSet, _ProofMap),
 
-    trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
-        io.format("instance_used_modules: class id %s/%d, instance in %s\n",
-            [s(sym_name_to_string(ClassName)), i(ClassArity),
-            s(sym_name_to_string(InstanceModuleName))], !IO)
-    ),
-
     ( if ThisModuleName = InstanceModuleName then
+        trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
+            io.format(
+                "instance_used_modules: class id %s/%d, instance in %s\n",
+                [s(sym_name_to_string(ClassName)), i(ClassArity),
+                s(sym_name_to_string(InstanceModuleName))], !IO)
+        ),
+
         Visibility = instance_visibility(InstanceStatus),
         record_sym_name_module_as_used(Visibility, ClassName, !UsedModules),
         list.foldl(mer_type_used_modules(Visibility), Types, !UsedModules),
@@ -604,15 +602,43 @@ instance_used_modules(ThisModuleName, ClassId, InstanceDefn, !UsedModules) :-
 :- pred const_struct_used_modules(pair(int, const_struct)::in,
     used_modules::in, used_modules::out) is det.
 
-const_struct_used_modules(_ConstNum - ConstStruct, !UsedModules) :-
+const_struct_used_modules(ConstNum - ConstStruct, !UsedModules) :-
     % Every const_struct in the const_struct_db was put there because
     % it is used in module. None of the uses can be in the interface.
 
-    ConstStruct = const_struct(ConsId, ConstStructArgs, Type, Inst),
-    cons_id_used_modules(visibility_private, ConsId, !UsedModules),
-    list.foldl(const_struct_arg_used_modules, ConstStructArgs, !UsedModules),
-    mer_type_used_modules(visibility_private, Type, !UsedModules),
-    mer_inst_used_modules(visibility_private, Inst, !UsedModules).
+    InitUsedModules = !.UsedModules,
+    ConstStruct = const_struct(ConsId, ConstStructArgs, Type, Inst,
+        DefinedWhere),
+    (
+        DefinedWhere = defined_in_this_module,
+        cons_id_used_modules(visibility_private, ConsId, !UsedModules),
+        list.foldl(const_struct_arg_used_modules, ConstStructArgs,
+            !UsedModules),
+        mer_type_used_modules(visibility_private, Type, !UsedModules),
+        mer_inst_used_modules(visibility_private, Inst, !UsedModules),
+
+        trace [compile_time(flag("dump_used_modules_const_struct")), io(!IO)] (
+            FinalUsedModules = !.UsedModules,
+            InitUsedModules = used_modules(_InitIntModules, InitImpModules),
+            FinalUsedModules = used_modules(_FinalIntModules, FinalImpModules),
+            set.difference(FinalImpModules, InitImpModules, NewImpModules),
+            ( if set.is_empty(NewImpModules) then
+                true
+            else
+                % The compiler normally writes to stderr. but without an
+                % explicit stream argument, write_doc writes to stdout.
+                io.output_stream(Stream, !IO),
+                io.format(Stream, "in const_struct #%d\n", [i(ConstNum)], !IO),
+                io.write_string(Stream, "new implementation modules: ", !IO),
+                io.write_line(Stream, NewImpModules, !IO),
+                ConstStructDoc = pretty_printer.format(ConstStruct),
+                pretty_printer.write_doc(Stream, ConstStructDoc, !IO),
+                io.write_string(Stream, "------\n",!IO)
+            )
+        )
+    ;
+        DefinedWhere = defined_in_other_module
+    ).
 
 :- pred const_struct_arg_used_modules(const_struct_arg::in,
     used_modules::in, used_modules::out) is det.
@@ -637,6 +663,7 @@ pred_info_used_modules(PredId, PredInfo, !UsedModules) :-
     DefinedInThisModule = pred_status_defined_in_this_module(PredStatus),
     (
         DefinedInThisModule = yes,
+        InitUsedModules = !.UsedModules,
 
         trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
             io.format("examining pred_info of pred_id %d\n",
@@ -656,11 +683,31 @@ pred_info_used_modules(PredId, PredInfo, !UsedModules) :-
         map.foldl(proc_info_used_modules(Visibility), ProcTable, !UsedModules),
 
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
-        clauses_info_used_modules(ClausesInfo, !UsedModules)
+        clauses_info_used_modules(ClausesInfo, !UsedModules),
+
+        trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
+            FinalUsedModules = !.UsedModules,
+            InitUsedModules = used_modules(InitIntModules, InitImpModules),
+            FinalUsedModules = used_modules(FinalIntModules, FinalImpModules),
+            set.difference(FinalIntModules, InitIntModules, NewIntModules),
+            set.difference(FinalImpModules, InitImpModules, NewImpModules),
+            ( if set.is_empty(NewIntModules) then
+                true
+            else
+                io.write_string("new interface modules:\n", !IO),
+                io.write_line(NewIntModules, !IO)
+            ),
+            ( if set.is_empty(NewImpModules) then
+                true
+            else
+                io.write_string("new implementation modules:\n", !IO),
+                io.write_line(NewImpModules, !IO)
+            )
+        )
     ;
         DefinedInThisModule = no,
 
-        trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
+        trace [compile_time(flag("dump_used_modules_verbose")), io(!IO)] (
             io.format("NOT examining pred_info of pred_id %d\n",
                 [i(pred_id_to_int(PredId))], !IO)
         )

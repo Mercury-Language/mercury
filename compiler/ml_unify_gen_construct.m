@@ -1584,7 +1584,7 @@ ml_generate_const_structs(ModuleInfo, Target, ConstStructMap, !GlobalData) :-
 
 ml_gen_const_struct(Info, ConstNum - ConstStruct, !ConstStructMap,
         !GlobalData) :-
-    ConstStruct = const_struct(ConsId, Args, Type, _Inst),
+    ConstStruct = const_struct(ConsId, Args, Type, _Inst, _DefinedWhere),
     ModuleInfo = Info ^ mcsi_module_info,
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
     ConsTag = cons_id_to_tag(ModuleInfo, ConsId),

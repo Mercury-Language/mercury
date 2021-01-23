@@ -606,7 +606,7 @@ modecheck_unify_const_struct(X, ConsId, ConstNum, UnifyContext,
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     module_info_get_const_struct_db(ModuleInfo0, ConstStructDb),
     lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
-    ConstStruct = const_struct(_, _, _, InstOfY),
+    ConstStruct = const_struct(_, _, _, InstOfY, _),
     ( if inst_is_free(ModuleInfo0, InstOfX) then
         Inst = InstOfY,
         modecheck_set_var_inst(X, Inst, yes(InstOfY), !ModeInfo),

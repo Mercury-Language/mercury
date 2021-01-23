@@ -2204,7 +2204,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
                 lookup_const_struct_num(ConstStructDb, SelectedConstNum,
                     SelectedConstStruct),
                 SelectedConstStruct = const_struct(SelectedConstConsId, _, _,
-                    SelectedConstInst),
+                    SelectedConstInst, _),
                 ( if
                     ( SelectedConstConsId = type_info_cell_constructor(_)
                     ; SelectedConstConsId = type_info_const(_)
@@ -2272,7 +2272,7 @@ find_typeclass_info_components(ModuleInfo, KnownVarMap,
         TypeClassInfoArgs = [],
         module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
         lookup_const_struct_num(ConstStructDb, TCIConstNum, TCIConstStruct),
-        TCIConstStruct = const_struct(TCIConstConsId, TCIConstArgs, _, _),
+        TCIConstStruct = const_struct(TCIConstConsId, TCIConstArgs, _, _, _),
         expect(unify(TCIConstConsId, typeclass_info_cell_constructor), $pred,
             "TCIConstConsId != typeclass_info_cell_constructor"),
         TCIConstArgs = [BaseTypeClassInfoConstArg | OtherConstArgs],

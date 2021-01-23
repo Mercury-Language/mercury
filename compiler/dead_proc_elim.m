@@ -539,7 +539,7 @@ dead_proc_examine_refs([Ref | Refs], !Queue, !Needed) :-
 dead_proc_examine_const_struct(ModuleInfo, ConstNum, !Queue, !Needed) :-
     module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
     lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
-    ConstStruct = const_struct(ConsId, Args, _, _),
+    ConstStruct = const_struct(ConsId, Args, _, _, _),
     ( if ConsId = type_ctor_info_const(Module, TypeName, Arity) then
         Entity = entity_type_ctor(Module, TypeName, Arity),
         queue.put(Entity, !Queue),

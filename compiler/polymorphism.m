@@ -2586,7 +2586,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
             lookup_const_struct_num(ConstStructDb, SubClassConstNum,
                 SubClassConstStruct),
             SubClassConstStruct = const_struct(SubClassConsId, SubClassArgs,
-                _, _),
+                _, _, _),
             ( if
                 SubClassConsId = typeclass_info_cell_constructor,
                 SubClassArgs = [BTCIArg | OtherArgs],
@@ -2983,8 +2983,9 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
         InstConsId = cell_inst_cons_id(typeclass_info_cell, NumArgs),
         StructInst = bound(shared, inst_test_results_fgtc,
             [bound_functor(InstConsId, VarInsts)]),
+        poly_info_get_defined_where(!.Info, DefinedWhere),
         ConstStruct = const_struct(ConsId, StructArgs,
-            TypeClassInfoVarType, StructInst),
+            TypeClassInfoVarType, StructInst, DefinedWhere),
         lookup_insert_const_struct(ConstStruct, ConstNum,
             ConstStructDb0, ConstStructDb),
         poly_info_set_const_struct_db(ConstStructDb, !Info),
@@ -3424,8 +3425,9 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
             StructInst = bound(shared, inst_test_results_fgtc,
                 [bound_functor(InstConsId, StructArgInsts)]),
 
+            poly_info_get_defined_where(!.Info, DefinedWhere),
             ConstStruct = const_struct(ConsId, StructConstArgs,
-                StructType, StructInst),
+                StructType, StructInst, DefinedWhere),
             lookup_insert_const_struct(ConstStruct, ConstNum,
                 ConstStructDb0, ConstStructDb),
             MCA = yes(csa_const_struct(ConstNum)),
@@ -4121,7 +4123,7 @@ get_inst_of_const_struct_arg(ConstStructDb, ConstArg, Inst) :-
     ;
         ConstArg = csa_const_struct(StructNum),
         lookup_const_struct_num(ConstStructDb, StructNum, Struct),
-        Struct = const_struct(_, _, _, Inst)
+        Struct = const_struct(_, _, _, Inst, _)
     ).
 
 %---------------------------------------------------------------------------%
@@ -4293,6 +4295,8 @@ make_const_or_var_arg(Var - MCA, ConstOrVarArg) :-
                 % term, we allocate it in this database.
                 poly_const_struct_db        :: const_struct_db,
 
+                poly_defined_where          :: defined_where,
+
                 % The list of errors we have discovered during the polymorphism
                 % pass.
                 poly_errors                 :: list(error_spec)
@@ -4321,11 +4325,16 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
     NumReuses = 0,
     SnapshotNum = 0,
     module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+    pred_info_get_status(PredInfo, PredStatus),
+    pred_status_defined_in_this_module(PredStatus) = InThisModule,
+    ( InThisModule = yes, DefinedWhere = defined_in_this_module
+    ; InThisModule = no,  DefinedWhere = defined_in_other_module
+    ),
     Specs = [],
     PolyInfo = poly_info(ModuleInfo, VarSet, VarTypes, RttiVarMaps,
         TypeVarSet, TypeVarKinds, ProofMap, ConstraintMap,
         TypeInfoVarMap, TypeClassInfoMap, IntConstMap, ConstStructVarMap,
-        NumReuses, SnapshotNum, ConstStructDb, Specs).
+        NumReuses, SnapshotNum, ConstStructDb, DefinedWhere, Specs).
 
 create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     pred_info_get_typevarset(PredInfo, TypeVarSet),
@@ -4342,17 +4351,22 @@ create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     NumReuses = 0,
     SnapshotNum = 0,
     module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+    pred_info_get_status(PredInfo, PredStatus),
+    pred_status_defined_in_this_module(PredStatus) = InThisModule,
+    ( InThisModule = yes, DefinedWhere = defined_in_this_module
+    ; InThisModule = no,  DefinedWhere = defined_in_other_module
+    ),
     Specs = [],
     PolyInfo = poly_info(ModuleInfo, VarSet, VarTypes, RttiVarMaps,
         TypeVarSet, TypeVarKinds, ProofMap, ConstraintMap,
         TypeInfoVarMap, TypeClassInfoMap, IntConstMap, ConstStructVarMap,
-        NumReuses, SnapshotNum, ConstStructDb, Specs).
+        NumReuses, SnapshotNum, ConstStructDb, DefinedWhere, Specs).
 
 poly_info_extract(Info, Specs, !PredInfo, !ProcInfo, !:ModuleInfo) :-
     Info = poly_info(!:ModuleInfo, VarSet, VarTypes, RttiVarMaps,
         TypeVarSet, TypeVarKinds, _ProofMap, _ConstraintMap,
         _TypeInfoVarMap, _TypeClassInfoMap, _IntConstMap, _ConstStructVarMap,
-        _NumReuses, _SnapshotNum, ConstStructDb, Specs),
+        _NumReuses, _SnapshotNum, ConstStructDb, _DefinedWhere, Specs),
 
     module_info_set_const_struct_db(ConstStructDb, !ModuleInfo),
 
@@ -4393,6 +4407,8 @@ poly_info_extract(Info, Specs, !PredInfo, !ProcInfo, !:ModuleInfo) :-
     int::out) is det.
 :- pred poly_info_get_const_struct_db(poly_info::in,
     const_struct_db::out) is det.
+:- pred poly_info_get_defined_where(poly_info::in,
+    defined_where::out) is det.
 :- pred poly_info_get_errors(poly_info::in,
     list(error_spec)::out) is det.
 
@@ -4440,6 +4456,8 @@ poly_info_get_num_reuses(!.PI, X) :-
     X = !.PI ^ poly_num_reuses.
 poly_info_get_const_struct_db(!.PI, X) :-
     X = !.PI ^ poly_const_struct_db.
+poly_info_get_defined_where(!.PI, X) :-
+    X = !.PI ^ poly_defined_where.
 poly_info_get_errors(!.PI, X) :-
     X = !.PI ^ poly_errors.
 

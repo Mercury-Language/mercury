@@ -338,7 +338,7 @@ functor_norm_filter_args([no | Bools], [_Arg0 | Args0], Args,
 
 const_struct_count_cells(ConstStructDb, ConstNum, !Gamma) :-
     lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
-    ConstStruct = const_struct(_ConsId, Args, _, _),
+    ConstStruct = const_struct(_ConsId, Args, _, _, _),
     !:Gamma = !.Gamma + 1,
     const_struct_count_cells_args(ConstStructDb, Args, !Gamma).
 
@@ -360,7 +360,7 @@ const_struct_count_cells_args(ConstStructDb, [Arg | Args], !Gamma) :-
 
 const_struct_count_cell_arities(ConstStructDb, ConstNum, !Gamma) :-
     lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
-    ConstStruct = const_struct(_ConsId, Args, _, _),
+    ConstStruct = const_struct(_ConsId, Args, _, _, _),
     !:Gamma = !.Gamma + list.length(Args),
     const_struct_count_cell_arities_args(ConstStructDb, Args, !Gamma).
 
@@ -382,7 +382,7 @@ const_struct_count_cell_arities_args(ConstStructDb, [Arg | Args], !Gamma) :-
 
 const_struct_count_cell_weights(ConstStructDb, WeightMap, ConstNum, !Gamma) :-
     lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
-    ConstStruct = const_struct(ConsId, Args, Type, _),
+    ConstStruct = const_struct(ConsId, Args, Type, _, _),
     type_to_ctor_det(Type, TypeCtor),
     ( if search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) then
         WeightInfo = weight(ConsIdGamma, _),
@@ -422,7 +422,7 @@ const_struct_count_cell_weights_args(ConstStructDb, WeightMap,
 const_struct_count_cell_filtered_weights(ConstStructDb, WeightMap,
         ConstNum, !Gamma) :-
     lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
-    ConstStruct = const_struct(ConsId, Args, Type, _),
+    ConstStruct = const_struct(ConsId, Args, Type, _, _),
     type_to_ctor_det(Type, TypeCtor),
     ( if search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) then
         WeightInfo = weight(ConsIdGamma, UseArgs),
