@@ -2420,10 +2420,9 @@ case "$ac_cv_prog_gcc" in yes)
             mercury_cv_gcc_labels=no
             ;;
         aarch64*)
-            # The test for GCC labels goes into a loop on AArch64.
-            MERCURY_MSG("gcc labels do not work on AArch64")
-            mercury_cv_asm_labels=no
-            mercury_cv_gcc_labels=no
+            # On aarch64 GCC labels do not work correctly with
+            # -ftree-dominator-opts.
+            CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS"
             CFLAGS_FOR_REGS="-fomit-frame-pointer"
             ;;
     esac
