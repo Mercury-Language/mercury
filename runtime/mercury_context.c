@@ -600,7 +600,9 @@ MR_setup_num_ws_engines(unsigned num_processors_detected)
     }
 
     if (MR_debug_threads) {
-        fprintf(stderr, "Detected %d processors, will use %d ws engines\n",
+        fprintf(stderr,
+            "Detected %d processors, will use %"
+            MR_INTEGER_LENGTH_MODIFIER "u ws engines\n",
             num_processors_detected, MR_num_ws_engines);
     }
 }
