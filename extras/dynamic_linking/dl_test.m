@@ -36,7 +36,7 @@ main(!IO) :-
     % the file `libhello.so' (`libhello.dylib' on OS X).
     %
     HelloLib = "./libhello." ++ shared_library_extension,
-    dl.open(HelloLib, lazy, local, MaybeHandle, !IO),
+    dl.open(HelloLib, lazy, scope_local, MaybeHandle, !IO),
     (
         MaybeHandle = dl_error(OpenMsg),
         io.format("dlopen failed: %s\n", [s(OpenMsg)], !IO)
