@@ -202,7 +202,7 @@
                 % The number of columns.
                 int,
 
-                % The contents of the 2d array, flattaned out.
+                % The contents of the 2d array, flattened out.
                 % It stores the element at row R and column C at 
                 % index (R * NumColumns) + C in the flattened array.
                 array(T)
