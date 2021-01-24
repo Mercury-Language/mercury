@@ -598,7 +598,7 @@ localtime(time_t(Time), TM, !IO) :-
     // savings time (N = 1), and then again an hour later, during standard
     // time (N = 0). The .NET API does not seem to provide any way to
     // get the right answer in both cases.
-    if (System.TimeZone.CurrentTimeZone.IsDaylightSavingTime(t)) {
+    if (System.TimeZoneInfo.Local.IsDaylightSavingTime(t)) {
         N = 1;
     } else {
         N = 0;
