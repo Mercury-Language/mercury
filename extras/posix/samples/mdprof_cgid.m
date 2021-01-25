@@ -104,7 +104,8 @@ main(!IO) :-
         OptionsResults = ok(OptTable),
         main_2(OptTable, !IO)
     ;
-        OptionsResults = error(OptionErrorString),
+        OptionsResults = error(OptionError),
+        OptionErrorString = option_error_to_string(OptionError),
         io.write_string(OptionErrorString, !IO),
         io.nl(!IO),
         show_usage(!IO),
@@ -114,7 +115,7 @@ main(!IO) :-
 :- pred main_2(option_table(option)::in, io::di, io::uo) is det.
 
 main_2(OptTable, !IO) :-
-    % 
+    %
     % Handle command-line options.
     %
     getopt.lookup_string_option(OptTable, server_name, ServerName),
