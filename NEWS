@@ -100,8 +100,8 @@ Changes to the Mercury standard library
 
 * The following functions have been added:
 
-    - func `uint_to_lc_hex_string/2`    (synonym for uint_to_hex_string)
-    - func `uint64_to_lc_hex_string/2`  (synonym for uint64_to_hex_string)
+    - func `uint_to_lc_hex_string/2`    (synonym for `uint_to_hex_string/2`)
+    - func `uint64_to_lc_hex_string/2`  (synonym for `uint64_to_hex_string/2`)
 
 * The following obsolete predicates and functions have been removed:
 
@@ -163,14 +163,14 @@ Changes to the Mercury standard library
 
 * The following function symbols have been added to the type `poly_type`:
 
-    - i8(int8)
-    - i16(int16)
-    - i32(int32)
-    - i64(int64)
-    - u8(uint8)
-    - u16(uint16)
-    - u32(uint32)
-    - u64(uint64)
+    - `i8(int8)`
+    - `i16(int16)`
+    - `i32(int32)`
+    - `i64(int64)`
+    - `u8(uint8)`
+    - `u16(uint16)`
+    - `u32(uint32)`
+    - `u64(uint64)`
 
   This allows predicates such as `string.format` and `io.format` to operate
   on values of not just the word sized integer types `int` and `uint`, but on
