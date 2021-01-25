@@ -20,7 +20,7 @@
 
 :- implementation.
 
-:- import_module std_util, pair, list, string.
+:- import_module std_util, pair, list.
 
 % automatically generated facts follow:
 

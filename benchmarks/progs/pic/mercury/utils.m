@@ -48,7 +48,7 @@ build_mesh(X, Y, Dummy, F) = mesh(X, Y, A) :-
 map_array2d_with_indices(X, Y, F, !Array) :-
 	(   Y = 0
 	->  true
-	;   Y1 is Y - 1,
+	;   Y1 = Y - 1,
 	    map_array2d_with_indices_row(X, Y1, F, !Array),
 	    map_array2d_with_indices(X, Y1, F, !Array)
 	).

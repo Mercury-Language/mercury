@@ -2491,18 +2491,18 @@ tree234x__count(empty, 0).
 tree234x__count(two(_, _, T0, T1), N) :-
 	tree234x__count(T0, N0),
 	tree234x__count(T1, N1),
-	N is 1 + N0 + N1.
+	N = 1 + N0 + N1.
 tree234x__count(three(_, _, _, _, T0, T1, T2), N) :-
 	tree234x__count(T0, N0),
 	tree234x__count(T1, N1),
 	tree234x__count(T2, N2),
-	N is 2 + N0 + N1 + N2.
+	N = 2 + N0 + N1 + N2.
 tree234x__count(four(_, _, _, _, _, _, T0, T1, T2, T3), N) :-
 	tree234x__count(T0, N0),
 	tree234x__count(T1, N1),
 	tree234x__count(T2, N2),
 	tree234x__count(T3, N3),
-	N is 3 + N0 + N1 + N2 + N3.
+	N = 3 + N0 + N1 + N2 + N3.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
