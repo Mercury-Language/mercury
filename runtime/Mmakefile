@@ -141,13 +141,14 @@ BODY_HDRS = \
 	mercury_unify_compare_body.h
 
 MACHHDRS = \
-	machdeps/no_regs.h			\
+	machdeps/aarch64_regs.h			\
+	machdeps/arm_regs.h			\
 	machdeps/i386_regs.h			\
 	machdeps/ia64_regs.h			\
 	machdeps/mips_regs.h			\
+	machdeps/no_regs.h			\
 	machdeps/pa_regs.h			\
 	machdeps/rs6000_regs.h			\
-	machdeps/arm_regs.h			\
 	machdeps/sparc_regs.h			\
 	machdeps/x86_64_regs.h
 
