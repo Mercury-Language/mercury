@@ -304,6 +304,11 @@ Changes to the Mercury compiler
   keep `opt1` enabled even if `opt1` is not normally enabled at optimization
   level `N`.
 
+Portability improvements
+------------------------
+
+* We have ported Mercury to Linux AArch64 (ARM64) systems.
+
 Changes to the Mercury debugger
 -------------------------------
 

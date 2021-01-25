@@ -1,4 +1,5 @@
 This file documents the Linux/x86 and Linux/x86_64 ports.
+For the Linux/AArch64 (ARM64) port, see REAMDE.Linux-aarch64.
 For the Linux/PowerPC port, see README.Linux-PPC.
 (Ports to Linux on other architectures have not yet
 been attempted, but should not be difficult.)

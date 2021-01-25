@@ -1,0 +1,4 @@
+This file documents the port of Mercury to Linux on AArch64 (ARM64),
+i.e. the `aarch64*-linux*` configuration.
+
+Mercury should build and install "out-of-the-box" on Linux for AArch64.

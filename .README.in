@@ -12,7 +12,7 @@ platform, if there is one:
 	README.FreeBSD		FreeBSD on Intel x86 and x86_64
 	README.HPUX		HPPA systems running HPUX
 	README.Linux		Linux on Intel x86 and x86_64
-	README.Linux-Alpha	Linux on DEC Alpha
+	README.Linux-aarch64    Linux on AArch64 (ARM64)
 	README.Linux-PPC	Linux on PowerPC
 	README.Linux-m68k	Linux on Motorola 68000
 	README.MacOS		Apple Mac systems running Mac OS X
