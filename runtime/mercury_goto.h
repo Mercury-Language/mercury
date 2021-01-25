@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2001, 2003-2007, 2009, 2011-2012 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018-2020 The Mercury team.
+// Copyright (C) 2015-2016, 2018-2021 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_goto.h - definitions for the "portable assembler" non-local gotos
@@ -558,6 +558,22 @@
       goto MR_skip(label);
 
   #endif
+
+#elif defined(__aarch64__)
+
+   #if MR_PIC
+
+     // For Linux-ELF shared libraries, we need to declare that the type of
+     // labels is #function (i.e. code, not data), otherwise the dynamic
+     // linker seems to get confused, and we end up jumping into the data
+     // section. Hence the `.type' directive below.
+
+    #ifdef __ELF__
+      #define MR_INLINE_ASM_ENTRY_LABEL_TYPE(label)                      \
+        " .type _entry_" MR_STRINGIFY(label) ",#function\n"
+    #endif
+
+   #endif
 
 #endif
 
