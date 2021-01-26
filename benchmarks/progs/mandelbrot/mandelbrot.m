@@ -132,7 +132,7 @@ process_options(Table, MaybeOptions) :-
         DepConjs = use_independent_conjunctions
     ),
     getopt.lookup_string_option(Table, parallel, ParallelStr),
-    (
+    ( if
         (
             ParallelStr = "no",
             Parallel0 = sequential
@@ -149,9 +149,9 @@ process_options(Table, MaybeOptions) :-
             ParallelStr = "future",
             Parallel0 = parallel_future
         )
-    ->
+    then
         MaybeParallel = ok(Parallel0)
-    ;
+    else
         MaybeParallel = error(
             "Parallel must be one of ""no"", ""conj"", ""spawn"", " ++
             """spawn_native"" or ""future""")
@@ -339,20 +339,18 @@ component_gradient(Start, End, V, Result) :-
     int::in, int::out) is det.
 
 escape(Nr, Ni, Cr, Ci, MaxIters, !Iters) :-
-    ( MaxIters > 0 ->
+    ( if MaxIters > 0 then
         N2r = Nr * Nr - Ni * Ni,
         N2i = 2.0 * Nr * Ni,
         Rr = N2r + Cr,
         Ri = N2i + Ci,
-        (
-            sqrt(Rr * Rr + Ri * Ri) > 2.0
-        ->
+        ( if sqrt(Rr * Rr + Ri * Ri) > 2.0 then
             true
-        ;
+        else
             !:Iters = !.Iters + 1,
             escape(Rr, Ri, Cr, Ci, MaxIters - 1, !Iters)
         )
-    ;
+    else
         !:Iters = -1
     ).
 
@@ -426,7 +424,8 @@ my_map_par_spawn(M, [X | Xs], Ys) :-
         some [!IO] (
             impure make_io(!:IO),
             mvar.init(YMVar, !IO),
-            spawn((pred(IO0::di, IO::uo) is cc_multi :-
+            spawn(
+                ( pred(IO0::di, IO::uo) is cc_multi :-
                     M(X, Y0),
                     mvar.put(YMVar, Y0, IO0, IO)
                 ), !IO),
@@ -446,7 +445,8 @@ my_map_par_spawn_native(M, [X | Xs], Ys) :-
         some [!IO] (
             impure make_io(!:IO),
             mvar.init(YMVar, !IO),
-            spawn_native((pred(_::in, IO0::di, IO::uo) is cc_multi :-
+            spawn_native(
+                ( pred(_::in, IO0::di, IO::uo) is cc_multi :-
                     M(X, Y0),
                     mvar.put(YMVar, Y0, IO0, IO)
                 ), _, !IO),
@@ -492,7 +492,8 @@ write_ppm(image(Width, Height, Rows), !IO) :-
     (
         Result = ok(Stream),
         format("P6 %d %d 255\n", [i(Width), i(Height)], Header),
-        foldl((pred(C::in, IO0::di, IO::uo) is det :-
+        foldl(
+            ( pred(C::in, IO0::di, IO::uo) is det :-
                 write_byte(Stream, char.to_int(C), IO0, IO)
             ), Header, !IO),
         foldl_pred(write_colour(Stream), Rows, !IO),
@@ -541,4 +542,3 @@ yellow = colour(255, 255, 0).
 :- func black = colour.
 
 black = colour(0, 0, 0).
-

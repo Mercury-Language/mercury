@@ -1,3 +1,4 @@
+% vim: ft=mercury ts=4 sw=4 et
 
 :- module fib_par_plain.
 
@@ -9,7 +10,10 @@
 
 :- implementation.
 
-:- import_module int, list, string, require.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module string.
 
 main(!IO) :-
     N = 46,
@@ -19,11 +23,11 @@ main(!IO) :-
 :- pred fib(int::in, int::out) is det.
 
 fib(N, F) :-
-    ( N < 0 ->
+    ( if N < 0 then
         error("fib(N, _): N must be greater than 0")
-    ; ( N = 0 ; N = 1 ) ->
+    else if ( N = 0 ; N = 1 ) then
         F = 1
-    ;
+    else
         fib(N-1, FA),
         fib(N-2, FB),
         F = FA + FB
