@@ -175,7 +175,7 @@ dump_goal_nl(Stream, ModuleInfo, VarSet, Goal, !IO) :-
 
 write_goal(Info, Stream, ModuleInfo, VarSet, VarNamePrint, Indent, Follow,
         Goal, !IO) :-
-    % Don't type qualify everything.
+    % Do not type qualify everything.
     do_write_goal(Info, Stream, ModuleInfo, VarSet, no_varset_vartypes,
         VarNamePrint, Indent, Follow, Goal, !IO).
 
@@ -931,7 +931,7 @@ write_goal_unify(Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
         )
     then
         ( if
-            % Don't output bogus info if we haven't been through
+            % Don not output bogus info if we haven't been through
             % mode analysis yet.
             Unification = complicated_unify(ComplMode, CanFail, TypeInfoVars),
             CanFail = can_fail,
@@ -1325,7 +1325,7 @@ write_goal_plain_call(Info, Stream, ModuleInfo, VarSet, TypeQual,
     ),
     write_indent(Stream, Indent, !IO),
     ( if PredId = invalid_pred_id then
-        % If we don't know the id of the callee yet, then treat the call
+        % If we do not know the id of the callee yet, then treat the call
         % as being to a pure predicate. This may be misleading, but any
         % other assumption has a significantly higher chance of being
         % misleading.
@@ -1568,7 +1568,12 @@ write_goal_foreign_proc(_Info, Stream, ModuleInfo, VarSet, _TypeQual,
         Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
     ForeignLang = get_foreign_language(Attributes),
     ForeignLangStr = foreign_language_string(ForeignLang),
-    PredStr = pred_id_to_string(ModuleInfo, PredId),
+    PredStr0 = pred_id_to_string(ModuleInfo, PredId),
+    % When you look at HLDS dumps with vim, the unbalanced quote characters
+    % that pred_id_to_string puts around predicate names screws up
+    % syntax highlighting.
+    string.replace_all(PredStr0, "`", "", PredStr1),
+    string.replace_all(PredStr1, "'", "", PredStr),
     pred_id_to_int(PredId, PredIdInt),
     proc_id_to_int(ProcId, ProcIdInt),
 
@@ -1585,15 +1590,15 @@ write_goal_foreign_proc(_Info, Stream, ModuleInfo, VarSet, _TypeQual,
             TraceRuntimeCond, !IO),
         io.write_string(Stream, ")\n", !IO)
     ),
-    write_indent(Stream, Indent, !IO),
-    % XXX We don't have the TypeVarSet or InstVarSet available here,
+    % XXX We do not have the TypeVarSet or InstVarSet available here,
     % but it is only used for printing out the names of the type and inst
-    % variables, which isn't essential.
+    % variables, which is not essential.
     varset.init(TypeVarSet),
     varset.init(InstVarSet),
+    write_indent(Stream, Indent, !IO),
     io.write_string(Stream, "[", !IO),
     write_foreign_args(Stream, VarSet, TypeVarSet, InstVarSet,
-        VarNamePrint, Args, !IO),
+        VarNamePrint, Indent, Args, !IO),
     io.write_string(Stream, "],\n", !IO),
     (
         ExtraArgs = []
@@ -1602,7 +1607,7 @@ write_goal_foreign_proc(_Info, Stream, ModuleInfo, VarSet, _TypeQual,
         write_indent(Stream, Indent, !IO),
         io.write_string(Stream, "{", !IO),
         write_foreign_args(Stream, VarSet, TypeVarSet, InstVarSet,
-            VarNamePrint, ExtraArgs, !IO),
+            VarNamePrint, Indent, ExtraArgs, !IO),
         io.write_string(Stream, "},\n", !IO)
     ),
     PragmaCode = fp_impl_ordinary(Code, _),
@@ -1614,10 +1619,10 @@ write_goal_foreign_proc(_Info, Stream, ModuleInfo, VarSet, _TypeQual,
 
 :- pred write_foreign_args(io.text_output_stream::in,
     prog_varset::in, tvarset::in, inst_varset::in, var_name_print::in,
-    list(foreign_arg)::in, io::di, io::uo) is det.
+    int::in, list(foreign_arg)::in, io::di, io::uo) is det.
 
-write_foreign_args(_, _, _, _, _, [], !IO).
-write_foreign_args(Stream, VarSet, TVarSet, InstVarSet, VarNamePrint,
+write_foreign_args(_, _, _, _, _, _, [], !IO).
+write_foreign_args(Stream, VarSet, TVarSet, InstVarSet, VarNamePrint, Indent,
         [Arg | Args], !IO) :-
     Arg = foreign_arg(Var, MaybeNameMode, Type, BoxPolicy),
     mercury_output_var(VarSet, VarNamePrint, Var, Stream, !IO),
@@ -1642,9 +1647,10 @@ write_foreign_args(Stream, VarSet, TVarSet, InstVarSet, VarNamePrint,
         Args = []
     ;
         Args = [_ | _],
-        io.write_string(Stream, ", ", !IO),
+        io.write_string(Stream, ",\n", !IO),
+        write_indent(Stream, Indent, !IO),
         write_foreign_args(Stream, VarSet, TVarSet, InstVarSet, VarNamePrint,
-            Args, !IO)
+            Indent, Args, !IO)
     ).
 
 %---------------------------------------------------------------------------%
