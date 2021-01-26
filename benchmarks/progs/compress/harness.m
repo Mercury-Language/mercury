@@ -1,10 +1,9 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
 % harness.m
 % Ralph Becket <rbeck@microsoft.com>
 % Mon Nov 13 13:12:09 GMT 2000
-%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module harness.
 :- interface.
@@ -13,25 +12,32 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module bmio, int, list, string, require.
-% :- import_module compress1, compress2, compress3, compress4, compress5.
+:- import_module bmio.
+% :- import_module compress1.
+% :- import_module compress2.
+% :- import_module compress3.
+% :- import_module compress4.
 :- import_module compress5.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module string.
 
 :- func num_iterations = int.
 num_iterations = 10.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     io.command_line_arguments(ArgV, !IO),
     ( if
         ArgV = [FileName, NumBytesStr],
-       string.to_int(NumBytesStr, NumBytes)
+        string.to_int(NumBytesStr, NumBytes)
     then
         bmio.init(FileName, NumBytes, !IO),
         %test("compress1", compress1.go),
@@ -43,18 +49,19 @@ main(!IO) :-
         error("usage: compress <infile> <nbytes>")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred test(string::in, pred(io, io)::in(pred(di, uo) is det),
     io::di, io::uo) is det.
 
 test(_Name, Go, !IO) :-
-    % io.format("\n\n******* %s x %d *******\n", [s(Name), i(num_iterations)], !IO),
+    % io.format("\n\n******* %s x %d *******\n",
+    %   [s(Name), i(num_iterations)], !IO),
     % io.report_stats(!IO),
     test_loop(num_iterations, Go, !IO).
     % io.report_stats(!IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred test_loop(int::in, pred(io, io)::in(pred(di, uo) is det),
     io::di, io::uo) is det.
@@ -68,6 +75,6 @@ test_loop(N, Go, !IO) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module harness.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
