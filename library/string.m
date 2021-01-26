@@ -12,15 +12,16 @@
 %
 % This modules provides basic string handling facilities.
 %
-% Mercury strings are Unicode strings in either UTF-8 or UTF-16 encoding
-% depending on the target language.
+% Mercury strings are Unicode strings. They use either the UTF-8 or UTF-16
+% encoding, depending on the target language.
 %
 % When Mercury is compiled to C, strings are UTF-8 encoded, with a null
 % character as the string terminator. A single code point requires one to four
 % bytes (code units) to encode.
 %
-% When Mercury is compiled to Java or C#, strings are represented using the
-% Java `String' or C# `System.String' types, both using UTF-16 encoding.
+% When Mercury is compiled to Java, strings are represented using the
+% Java `String' type. When Mercury is compiler to C#, strings are represented
+% using C# `System.String' type. Both of these types use the UTF-16 encoding.
 % A single code point requires one or two 16-bit integers (code units)
 % to encode.
 %
@@ -41,8 +42,8 @@
 % dependent. The current implementation performs string comparison using
 %
 % - C's strcmp() function, when compiling to C;
-% - Java's String.compareTo() method, when compiling to Java;
-% - C#'s System.String.CompareOrdinal() method, when compiling to C#; and
+% - Java's String.compareTo() method, when compiling to Java; and
+% - C#'s System.String.CompareOrdinal() method, when compiling to C#.
 %
 %---------------------------------------------------------------------------%
 %
