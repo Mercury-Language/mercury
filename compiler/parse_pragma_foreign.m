@@ -1012,27 +1012,35 @@ parse_backend(term.functor(term.atom(Functor), [], _), Backend) :-
 
 :- pred parse_purity_promise(term::in, purity::out) is semidet.
 
-parse_purity_promise(term.functor(term.atom("promise_pure"), [], _),
-        purity_pure).
-parse_purity_promise(term.functor(term.atom("promise_semipure"), [], _),
-        purity_semipure).
+parse_purity_promise(term.functor(term.atom(Functor), [], _), Purity) :-
+    (
+        Functor = "promise_pure",
+        Purity = purity_pure
+    ;
+        Functor = "promise_semipure",
+        Purity = purity_semipure
+    ).
 
 :- pred parse_terminates(term::in, proc_terminates::out) is semidet.
 
-parse_terminates(term.functor(term.atom("terminates"), [], _),
-        proc_terminates).
-parse_terminates(term.functor(term.atom("does_not_terminate"), [], _),
-        proc_does_not_terminate).
+parse_terminates(term.functor(term.atom(Functor), [], _), Terminates) :-
+    (
+        Functor = "terminates",
+        Terminates = proc_terminates
+    ;
+        Functor = "does_not_terminate",
+        Terminates = proc_does_not_terminate
+    ).
 
 :- pred parse_no_exception_promise(term::in) is semidet.
 
-parse_no_exception_promise(term.functor(
-    term.atom("will_not_throw_exception"), [], _)).
+parse_no_exception_promise(term.functor(term.atom(Functor), [], _)) :-
+    Functor = "will_not_throw_exception".
 
 :- pred parse_ordinary_despite_detism(term::in) is semidet.
 
-parse_ordinary_despite_detism(
-        term.functor(term.atom("ordinary_despite_detism"), [], _)).
+parse_ordinary_despite_detism(term.functor(term.atom(Functor), [], _)) :-
+    Functor = "ordinary_despite_detism".
 
 %---------------------%
 
