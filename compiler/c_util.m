@@ -435,7 +435,7 @@ maybe_reset_line_num_cur_stream(MaybeSetLineNumbers, MaybeFileName, !IO) :-
 always_reset_line_num(Stream, MaybeFileName, !IO) :-
     % We want to generate another #line directive to reset the C compiler's
     % idea of what it is processing back to the file we are generating.
-    io.get_output_line_number(Line, !IO),
+    io.get_output_line_number(Stream, Line, !IO),
     (
         MaybeFileName = yes(FileName)
     ;

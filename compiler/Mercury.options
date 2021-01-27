@@ -99,7 +99,7 @@ MCFLAGS-make.util                         += --no-ansi-c --no-halt-at-warn
 MCFLAGS-transform_hlds.pd_debug           = --no-warn-unknown-format-calls
 MCFLAGS-parse_tree.parse_tree_out_info    = --no-warn-unknown-format-calls
 
-MCFLAGS-backend_lib.c_util                += --warn-implicit-stream-calls
+MCFLAGS-backend_libs.c_util               += --warn-implicit-stream-calls
 MCFLAGS-check_hlds.delay_partial_inst     += --warn-implicit-stream-calls
 MCFLAGS-check_hlds.simplify.format_call   += --warn-implicit-stream-calls
 MCFLAGS-check_hlds.type_assign            += --warn-implicit-stream-calls
