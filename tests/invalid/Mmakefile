@@ -155,6 +155,7 @@ SINGLEMODULE= \
 	foreign_enum_import \
 	foreign_enum_invalid \
 	foreign_include_file_missing \
+	foreign_procs_exist_type \
 	foreign_purity_mismatch \
 	foreign_singleton \
 	foreign_solver_type \

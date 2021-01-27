@@ -2336,7 +2336,18 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                     suffix(":"), nl]
             ;
                 ArgVectorKind = arg_vector_foreign_proc_call(_PredId),
-                unexpected($pred, "arg_vector_foreign_proc_call")
+                % During typechecking, call_foreign_proc goals can occur
+                % only in foreign clauses derived from foreign_proc
+                % "clauses". Any error we report for them is for the
+                % foreign_proc as a whole, not for a "call" to the
+                % foreign_proc.
+                %
+                % Our caller will prefix the Pieces we return here
+                % with the identification of the predicate or function
+                % whose foreign_proc the error is for, which is all
+                % the context that the error needs. So there is nothing
+                % useful we can add here.
+                Pieces = []
             ;
                 ArgVectorKind = arg_vector_event(EventName),
                 Pieces = [words("in argument"),
