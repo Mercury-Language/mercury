@@ -94,6 +94,7 @@
 :- include_module sfc16.
 :- include_module sfc32.
 :- include_module sfc64.
+:- include_module system_rng.
 
 :- import_module array.
 :- import_module io.
