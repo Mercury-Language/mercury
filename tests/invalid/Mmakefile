@@ -184,6 +184,7 @@ SINGLEMODULE= \
 	ho_type_arity_bug \
 	ho_type_mode_bug \
 	ho_unique_error \
+	html \
 	illtyped_compare \
 	impl_def_literal_syntax \
 	impure_method_impl \

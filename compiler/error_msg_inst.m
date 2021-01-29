@@ -633,10 +633,20 @@ have_we_expanded_inst_name(Expansions, InstName, PastPieces) :-
 :- pred record_user_inst_name(inst_name::in, list(format_component)::in,
     expansions_info::in, expansions_info::out) is det.
 
-record_user_inst_name(InstName, NamedNamePieces, !Expansions) :-
+record_user_inst_name(InstName, Pieces, !Expansions) :-
     !.Expansions = expansions_info(ExpansionsMap0, ExpansionsCounter0),
-    map.det_insert(InstName, NamedNamePieces, ExpansionsMap0, ExpansionsMap),
-    !:Expansions = expansions_info(ExpansionsMap, ExpansionsCounter0).
+    ( if map.insert(InstName, Pieces, ExpansionsMap0, ExpansionsMap) then
+        !:Expansions = expansions_info(ExpansionsMap, ExpansionsCounter0)
+    else
+        % An inst_name IN may occur as its own argument, like this:
+        %
+        %   IN(..., IN(...), ...)
+        %
+        % By the time our caller calls us for the outer occurrence of IN,
+        % the code handling an inner occurrence may have already added IN
+        % to !Expansions.
+        true
+    ).
 
 :- pred record_internal_inst_name(inst_name::in, string::in,
     list(format_component)::out,
