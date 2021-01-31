@@ -240,7 +240,7 @@ generate_uint8(_, _, !IO) :-
 "
     byte[] bytes = new byte[2];
     Handle.GetBytes(bytes);
-    U16 = (ushort) System.BitConverter.ToInt16(bytes);
+    U16 = (ushort) (bytes[1] << 8 | (bytes[0] & 0x00ff));
 ").
 
 :- pragma foreign_proc("Java",
@@ -263,7 +263,7 @@ generate_uint16(_, _, !IO) :-
 "
     byte[] bytes = new byte[4];
     Handle.GetBytes(bytes);
-    U32 = (uint) System.BitConverter.ToInt32(bytes);
+    U32 = (uint) (bytes[3] << 24 | bytes[2] << 16 | bytes[1] << 8 | bytes[0]);
 ").
 
 :- pragma foreign_proc("Java",
@@ -272,6 +272,7 @@ generate_uint16(_, _, !IO) :-
 "
     U32 = Handle.nextInt();
 ").
+
 generate_uint32(_, _, !IO) :-
     private_builtin.sorry("No system RNG available").
 
@@ -283,7 +284,15 @@ generate_uint32(_, _, !IO) :-
 "
     byte[] bytes = new byte[8];
     Handle.GetBytes(bytes);
-    U64 = (ulong) System.BitConverter.ToInt64(bytes);
+    U64 = (ulong) (
+        (ulong) bytes[7] << 56 |
+        (ulong) bytes[6] << 48 |
+        (ulong) bytes[5] << 40 |
+        (ulong) bytes[4] << 32 |
+        (ulong) bytes[3] << 24 |
+        (ulong) bytes[2] << 16 |
+        (ulong) bytes[1] << 8  |
+        (ulong) bytes[0]);
 ").
 
 :- pragma foreign_proc("Java",
