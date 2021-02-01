@@ -110,6 +110,12 @@
 #if defined(MR_HAVE_SYS_STAT_H)
     #include <sys/stat.h>
 #endif
+#if defined(MR_HAVE_SYS_PARAM_H)
+    #include <sys/param.h>
+#endif
+#if defined(MR_MAC_OSX)
+    #include <AvailabilityMacros.h>
+#endif
 
 #include <errno.h>
 #include <stdint.h>
@@ -120,11 +126,15 @@
 //
 // Only one of the following must be defined.
 //
-// ML_SYSRAND_IMPL_ARC4RANDOM (NYI)
+// ML_SYSRAND_IMPL_ARC4RANDOM
 //    the system RNG is implemented by calling the arc4random() family of
 //    functions. Note: this for when arc4random() is provided by libc (as on
 //    macOS and the BSDs), not for when it is provided as a separate library
 //    (e.g. libbsd on Linux).
+//
+//    This should only be enabled on systems where arc4random() uses a secure
+//    PRNG, such as ChaCha20; it should _not_ be enabled on systems where
+//    arc4random() still uses RC4.
 //
 // ML_SYSRAND_IMPL_RAND_S (NYI)
 //    the system RNG is implemented by calling the rand_s() function
@@ -142,6 +152,23 @@
 
 #if defined(__linux__) || defined(MR_SOLARIS) || defined(_AIX)
     #define ML_SYSRAND_IMPL_URANDOM
+#elif defined(__OpenBSD__) || defined(__NetBSD__)
+    #define ML_SYSRAND_IMPL_ARC4RANDOM
+#elif __FreeBSD__ >= 12
+    // arc4random() on FreeBSD used RC4 until version 12.
+    #define ML_SYSRAND_IMPL_ARC4RANDOM
+#elif defined(__FreeBSD__)
+    #define ML_SYSRAND_IMPL_URANDOM
+#elif defined(MR_MAC_OSX)
+   // arc4random() on macOS used RC4 until version 10.12.
+   // XXX this will be unnecessary when we stop supporting versions
+   // of macOS before 10.12.
+   #if defined(MAC_OS_X_VERSION_10_12) && \
+        MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12
+      #define ML_SYSRAND_IMPL_ARC4RANDOM
+   #else
+      #define ML_SYSRAND_IMPL_URANDOM
+   #endif
 #else
     #define ML_SYSRAND_IMPL_NONE
 #endif
@@ -158,7 +185,7 @@
 // When succeeded is MR_TRUE, returns a handle through which the system
 // RNG can be accessed; err_msg will point to the empty string in this case.
 // When succeeded is MR_FALSE, the value return is not a valid handle and
-// err_msg will point ot a string (on the Mercury heap) describing why a handle
+// err_msg will point to a string (on the Mercury heap) describing why a handle
 // for the system RNG could not be acquired.
 //
 extern ML_SystemRandomHandle ML_random_open(MR_Bool *succeeded,
@@ -620,6 +647,31 @@ ML_random_generate_bytes(ML_SystemRandomHandle handle,
     }
 
     *err_msg = MR_make_string_const(\"\");
+    return MR_TRUE;
+}
+
+#elif defined(ML_SYSRAND_IMPL_ARC4RANDOM)
+
+ML_SystemRandomHandle
+ML_random_open(MR_Bool *succeeded, MR_String *err_msg)
+{
+    *succeeded = MR_TRUE;
+    *err_msg = MR_make_string_const(\"\");
+    return 0;
+}
+
+MR_Bool
+ML_random_close(ML_SystemRandomHandle handle, MR_String *err_msg)
+{
+    *err_msg = MR_make_string_const(\"\");
+    return MR_TRUE;
+}
+
+MR_Bool
+ML_random_generate_bytes(ML_SystemRandomHandle handle,
+    unsigned char *buffer, size_t len, MR_String *err_msg)
+{
+    arc4random_buf(buffer, len);
     return MR_TRUE;
 }
 
