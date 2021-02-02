@@ -163,7 +163,7 @@
    // arc4random() on macOS used RC4 until version 10.12.
    // XXX this will be unnecessary when we stop supporting versions
    // of macOS before 10.12.
-   #if defined(MAC_OS_X_VERSION_10_12) && \
+   #if defined(MAC_OS_X_VERSION_10_12) && \\
         MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12
       #define ML_SYSRAND_IMPL_ARC4RANDOM
    #else
