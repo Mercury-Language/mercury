@@ -152,7 +152,7 @@
 
 #if defined(__linux__) || defined(MR_SOLARIS) || defined(_AIX)
     #define ML_SYSRAND_IMPL_URANDOM
-#elif defined(__OpenBSD__) || defined(__NetBSD__)
+#elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(MR_CYGWIN)
     #define ML_SYSRAND_IMPL_ARC4RANDOM
 #elif __FreeBSD__ >= 12
     // arc4random() on FreeBSD used RC4 until version 12.
