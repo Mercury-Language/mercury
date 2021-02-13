@@ -119,6 +119,9 @@
 
 #include <errno.h>
 #include <stdint.h>
+
+// On Windows we need to ensure that _CRT_RAND_S is defined before stdlib.h
+// is included but this must be done in runtime/mercury_std.h.
 #include <stdlib.h>
 
 // The following macros define if the system random number exists on this
@@ -136,7 +139,7 @@
 //    PRNG, such as ChaCha20; it should _not_ be enabled on systems where
 //    arc4random() still uses RC4.
 //
-// ML_SYSRAND_IMPL_RAND_S (NYI)
+// ML_SYSRAND_IMPL_RAND_S
 //    the system RNG is implemented by calling the rand_s() function
 //    (Windows only).
 //
@@ -169,6 +172,8 @@
    #else
       #define ML_SYSRAND_IMPL_URANDOM
    #endif
+#elif defined(MR_WIN32)
+    #define ML_SYSRAND_IMPL_RAND_S
 #else
     #define ML_SYSRAND_IMPL_NONE
 #endif
@@ -673,6 +678,58 @@ ML_random_generate_bytes(ML_SystemRandomHandle handle,
 {
     arc4random_buf(buffer, len);
     return MR_TRUE;
+}
+
+#elif defined(ML_SYSRAND_IMPL_RAND_S)
+
+ML_SystemRandomHandle
+ML_random_open(MR_Bool *succeeded, MR_String *err_msg)
+{
+    *succeeded = MR_TRUE;
+    *err_msg = MR_make_string_const(\"\");
+    return 0;
+}
+
+MR_Bool
+ML_random_close(ML_SystemRandomHandle handle, MR_String *err_msg)
+{
+    *err_msg = MR_make_string_const(\"\");
+    return MR_TRUE;
+}
+
+MR_Bool
+ML_random_generate_bytes(ML_SystemRandomHandle handle,
+    unsigned char *buffer, size_t len, MR_String *err_msg)
+{
+    int err;
+    unsigned int n;
+    size_t num_to_read = len;
+
+    while (num_to_read > 0) {
+        if (num_to_read < 4) {
+            err = rand_s(&n);
+            if (err != 0) {
+                goto rand_s_failure_handler;
+            }
+            MR_memcpy(buffer, (unsigned char *) &n, num_to_read);
+            break;
+        } else {
+            err = rand_s((unsigned int *) buffer);
+            if (err != 0) {
+                goto rand_s_failure_handler;
+            }
+            num_to_read -= 4;
+            buffer += 4;
+        }
+    }
+
+    *err_msg = MR_make_string_const(\"\");
+    return MR_TRUE;
+
+rand_s_failure_handler:
+
+    *err_msg = MR_make_string_const(\"rand_s failed\");
+    return MR_FALSE;
 }
 
 #else // ML_SYSRAND_IMPL_NONE

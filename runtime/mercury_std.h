@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1993-1995, 1997-2005, 2011-2012 The University of Melbourne.
-// Copyright (C) 2014, 2016-2018 The Mercury team.
+// Copyright (C) 2014, 2016-2019, 2021 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // std.h - "standard" [sic] definitions for C:
@@ -22,7 +22,14 @@
     #error "Mercury requires a system that provides stdint.h"
 #endif
 
+// On Windows we need to define _CRT_RAND_S *before* stdlib.h is included,
+// otherwise the declaration for rand_s() will not be visible.
+//
+#if defined(MR_WIN32) && !defined(_CRT_RAND_S)
+   #define _CRT_RAND_S
+#endif
 #include <stdlib.h> // for size_t
+
 #include <assert.h> // for assert()
 #include <errno.h>  // for EINTR
 #include <ctype.h>  // for isalnum(), etc.
