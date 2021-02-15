@@ -528,11 +528,11 @@ type_to_ctor_and_args(Type, TypeCtor, Args) :-
         Type = higher_order_type(PorF, Args, _HOInstInfo, Purity, _EvalMethod),
         (
             PorF = pf_predicate,
-            PorFStr = "func",
+            PorFStr = "pred",
             Arity = list.length(Args)
         ;
             PorF = pf_function,
-            PorFStr = "pred",
+            PorFStr = "func",
             Arity = list.length(Args) - 1
         ),
         SymName0 = unqualified(PorFStr),
