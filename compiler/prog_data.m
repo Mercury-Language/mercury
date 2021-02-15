@@ -310,6 +310,9 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
 :- type type_details_du
     --->    type_details_du(
+                % The supertype for a subtype definition.
+                du_supertype        :: maybe(mer_type),
+
                 % The list of data constructors (function symbols) defined
                 % by the type constructor.
                 du_ctors            :: one_or_more(constructor),
@@ -432,6 +435,8 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     --->    ctor(
                 % The ordinal number of the functor. The first functor
                 % in a type definition has ordinal number 0.
+                % XXX SUBTYPE For subtypes, the ordinal number needs to be
+                % retrieved from the base type.
                 cons_ordinal        :: uint32,
 
                 % Existential constraints, if any.
@@ -710,7 +715,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 :- type maybe_canonical
     --->    canon
     ;       noncanon(noncanonical).
-    
+
 :- type noncanonical
     --->    noncanon_uni_cmp(equality_pred, comparison_pred)
     ;       noncanon_uni_only(equality_pred)

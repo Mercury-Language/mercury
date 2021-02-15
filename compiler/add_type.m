@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2011 The University of Melbourne.
+% Copyright (C) 2013-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -36,11 +37,12 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Add the constructors of du types to the constructor table of the HLDS,
-    % and check that Mercury types defined solely by foreign types
-    % have a definition that works for the target backend.
+    % check subtype definitions, and check that Mercury types defined solely
+    % by foreign types have a definition that works for the target backend.
     %
-:- pred add_du_ctors_check_foreign_type_for_cur_backend(type_ctor::in,
-    hlds_type_defn::in, found_invalid_type::in, found_invalid_type::out,
+:- pred add_du_ctors_check_subtype_check_foreign_type(type_table::in,
+    type_ctor::in, hlds_type_defn::in,
+    found_invalid_type::in, found_invalid_type::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -58,10 +60,13 @@
 :- import_module libs.globals.
 :- import_module libs.op_mode.
 :- import_module mdbcomp.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 
 :- import_module bool.
 :- import_module int.
@@ -70,8 +75,13 @@
 :- import_module multi_map.
 :- import_module one_or_more.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module unit.
+
+:- inst hlds_type_body_du for hlds_type_body/0
+    --->    hlds_du_type(ground, ground, ground, ground, ground).
 
 %---------------------------------------------------------------------------%
 %
@@ -101,7 +111,7 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
         (
             Body = hlds_abstract_type(_)
         ;
-            Body = hlds_du_type(_, _, _, _),
+            Body = hlds_du_type(_, _, _, _, _),
             string.suffix(term.context_file(Context), ".int2")
             % If the type definition comes from a .int2 file then we must
             % treat it as abstract. The constructors may only be used
@@ -415,11 +425,12 @@ convert_type_defn_to_hlds(TypeDefn, TypeCtor, HLDSBody, !ModuleInfo) :-
     (
         TypeDefn = parse_tree_du_type(DetailsDu),
         DetailsDu =
-            type_details_du(Ctors, MaybeUserEqComp, MaybeDirectArgCtors),
+            type_details_du(MaybeSuperType, Ctors, MaybeUserEqComp,
+                MaybeDirectArgCtors),
         MaybeRepn = no,
         MaybeForeign = no,
-        HLDSBody = hlds_du_type(Ctors, MaybeUserEqComp, MaybeRepn,
-            MaybeForeign),
+        HLDSBody = hlds_du_type(Ctors, MaybeSuperType, MaybeUserEqComp,
+            MaybeRepn, MaybeForeign),
         (
             MaybeDirectArgCtors = no
         ;
@@ -531,11 +542,11 @@ combine_old_and_new_type_status(OldDefn, NewTypeStatus, CombinedTypeStatus,
 merge_maybe_foreign_type_bodies(Globals, BodyA, BodyB, Body) :-
     (
         BodyA = hlds_foreign_type(ForeignTypeBodyA),
-        BodyB = hlds_du_type(_, _, _, _),
+        BodyB = hlds_du_type(_, _, _, _, _),
         merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, BodyB,
             Body)
     ;
-        BodyA = hlds_du_type(_, _, _, _),
+        BodyA = hlds_du_type(_, _, _, _, _),
         BodyB = hlds_foreign_type(ForeignTypeBodyB),
         merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyB, BodyA,
             Body)
@@ -547,17 +558,15 @@ merge_maybe_foreign_type_bodies(Globals, BodyA, BodyB, Body) :-
         Body = hlds_foreign_type(ForeignTypeBody)
     ).
 
-:- inst hlds_type_body_du for hlds_type_body/0
-    --->    hlds_du_type(ground, ground, ground, ground).
-
 :- pred merge_foreign_and_du_type_bodies(globals::in,
     foreign_type_body::in, hlds_type_body::in(hlds_type_body_du),
     hlds_type_body::out) is semidet.
 
 merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, DuTypeBodyB,
         Body) :-
-    DuTypeBodyB = hlds_du_type(_Ctors, _MaybeUserEq, _MaybeRepn,
-        MaybeForeignTypeBodyB),
+    DuTypeBodyB = hlds_du_type(_Ctors, MaybeSuperTypeB, _MaybeUserEq,
+        _MaybeRepn, MaybeForeignTypeBodyB),
+    MaybeSuperTypeB = no,
     (
         MaybeForeignTypeBodyB = yes(ForeignTypeBodyB)
     ;
@@ -633,7 +642,11 @@ check_for_dummy_type_with_unify_compare(TypeStatus, TypeCtor, DetailsDu,
         % zero-arity constructor are dummy types. Dummy types are not allowed
         % to have user-defined equality or comparison.
 
-        DetailsDu = type_details_du(Ctors, MaybeCanonical, _MaybeDirectArg),
+        % XXX SUBTYPE Do not consider a subtype to be a dummy type
+        % unless the base type is a dummy type.
+
+        DetailsDu = type_details_du(_MaybeSuperType, Ctors, MaybeCanonical,
+            _MaybeDirectArg),
         Ctors = one_or_more(Ctor, []),
         Ctor ^ cons_args = [],
         MaybeCanonical = noncanon(_),
@@ -803,7 +816,7 @@ get_body_is_solver_type(Body, IsSolverType) :-
             IsSolverType = non_solver_type
         )
     ;
-        ( Body = hlds_du_type(_, _, _, _)
+        ( Body = hlds_du_type(_, _, _, _, _)
         ; Body = hlds_eqv_type(_)
         ; Body = hlds_foreign_type(_)
         ),
@@ -896,7 +909,7 @@ do_foreign_type_visibilities_match(OldStatus, NewStatus) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-add_du_ctors_check_foreign_type_for_cur_backend(TypeCtor, TypeDefn,
+add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
         !FoundInvalidType, !ModuleInfo, !Specs) :-
     get_type_defn_context(TypeDefn, Context),
     get_type_defn_tvarset(TypeDefn, TVarSet),
@@ -906,8 +919,20 @@ add_du_ctors_check_foreign_type_for_cur_backend(TypeCtor, TypeDefn,
     get_type_defn_status(TypeDefn, Status),
     get_type_defn_ctors_need_qualifier(TypeDefn, NeedQual),
     (
-        Body = hlds_du_type(OoMCtors, _MaybeUserEqCmp, _MaybeRepn,
-            _MaybeForeign),
+        Body = hlds_du_type(OoMCtors, MaybeSuperType, _MaybeUserEqCmp,
+            _MaybeRepn, _MaybeForeign),
+
+        % Check subtype conditions if this is a subtype definitions.
+        % There is no particular reason to do this here except to
+        % save a pass over the type table.
+        (
+            MaybeSuperType = yes(SuperType),
+            check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, Body,
+                SuperType, !FoundInvalidType, !Specs)
+        ;
+            MaybeSuperType = no
+        ),
+
         module_info_get_cons_table(!.ModuleInfo, CtorMap0),
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
         module_info_get_ctor_field_table(!.ModuleInfo, CtorFieldMap0),
@@ -1181,6 +1206,763 @@ check_foreign_type_for_current_target(TypeCtor, ForeignTypeBody, PrevErrors,
         !:Specs = [Spec | !.Specs],
         FoundInvalidType = found_invalid_type
     ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred check_subtype_defn(type_table::in, tvarset::in, type_ctor::in,
+    hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du), mer_type::in,
+    found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBody, SuperType,
+        !FoundInvalidType, !Specs) :-
+    hlds_data.get_type_defn_status(TypeDefn, OrigTypeStatus),
+    hlds_data.get_type_defn_context(TypeDefn, Context),
+    ( if type_to_ctor_and_args(SuperType, SuperTypeCtor, SuperTypeArgs) then
+        Seen0 = set.make_singleton_set(TypeCtor),
+        search_super_type_ctor_defn(TypeTable, OrigTypeStatus, SuperTypeCtor,
+            SearchRes, Seen0, Seen1),
+        (
+            SearchRes = ok(SuperTypeDefn),
+            check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
+                SuperTypeCtor, SuperTypeDefn, SuperTypeArgs, Seen1,
+                !FoundInvalidType, !Specs)
+        ;
+            SearchRes = error(Error),
+            Pieces = supertype_ctor_defn_error_pieces(SuperTypeCtor, Error),
+            Msg = simplest_msg(Context, Pieces),
+            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+                [Msg]),
+            !:Specs = [Spec | !.Specs],
+            !:FoundInvalidType = found_invalid_type
+        )
+    else
+        SuperTypeStr = mercury_type_to_string(TVarSet, print_name_only,
+            SuperType),
+        Pieces = [words("Error: expected type constructor in"),
+            words("supertype part of subtype definition, got"),
+            quote(SuperTypeStr), nl],
+        Msg = simplest_msg(Context, Pieces),
+        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            [Msg]),
+        !:Specs = [Spec | !.Specs],
+        !:FoundInvalidType = found_invalid_type
+    ).
+
+:- pred check_subtype_defn_2(type_table::in,
+    type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
+    type_ctor::in, hlds_type_defn::in, list(mer_type)::in, set(type_ctor)::in,
+    found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
+        SuperTypeCtor, SuperTypeDefn, SuperTypeArgs, Seen0,
+        !FoundInvalidType, !Specs) :-
+    hlds_data.get_type_defn_context(TypeDefn, Context),
+    hlds_data.get_type_defn_body(SuperTypeDefn, SuperTypeBody),
+    (
+        SuperTypeBody = hlds_du_type(_, _, _, _, IsForeign),
+        (
+            IsForeign = no,
+            check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBody,
+                SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
+                Seen0, !FoundInvalidType, !Specs)
+        ;
+            IsForeign = yes(_),
+            SuperTypeCtor = type_ctor(SymName, Arity),
+            Pieces = [words("Error:"),
+                unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
+                words("cannot be a supertype because it has a"),
+                words("foreign type definition."), nl],
+            Msg = simplest_msg(Context, Pieces),
+            Spec = error_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs],
+            !:FoundInvalidType = found_invalid_type
+        )
+    ;
+        ( SuperTypeBody = hlds_eqv_type(_)
+        ; SuperTypeBody = hlds_foreign_type(_)
+        ; SuperTypeBody = hlds_solver_type(_)
+        ; SuperTypeBody = hlds_abstract_type(_)
+        ),
+        SuperTypeCtor = type_ctor(SymName, Arity),
+        SuperTypeDesc = describe_hlds_type_body(SuperTypeBody),
+        Pieces = [words("Error:"),
+            unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
+            words("cannot be a supertype because it is"),
+            words(SuperTypeDesc), suffix("."), nl],
+        Msg = simplest_msg(Context, Pieces),
+        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            [Msg]),
+        !:Specs = [Spec | !.Specs],
+        !:FoundInvalidType = found_invalid_type
+    ).
+
+:- pred check_subtype_defn_3(type_table::in,
+    type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
+    type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
+    list(mer_type)::in, set(type_ctor)::in,
+    found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBody,
+        SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
+        Seen0, !FoundInvalidType, !Specs) :-
+    hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
+    check_subtype_has_base_type(TypeTable, TypeStatus, SuperTypeCtor,
+        SuperTypeDefn, MaybeBaseTypeError, Seen0, _Seen),
+    (
+        MaybeBaseTypeError = ok(unit),
+        check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBody,
+            SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
+            !FoundInvalidType, !Specs)
+    ;
+        MaybeBaseTypeError = error(Pieces),
+        (
+            Pieces = []
+        ;
+            Pieces = [_ | _],
+            hlds_data.get_type_defn_context(TypeDefn, Context),
+            Msg = simplest_msg(Context, Pieces),
+            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+                [Msg]),
+            !:Specs = [Spec | !.Specs]
+        ),
+        !:FoundInvalidType = found_invalid_type
+    ).
+
+%---------------------%
+
+:- pred check_subtype_has_base_type(type_table::in, type_status::in,
+    type_ctor::in, hlds_type_defn::in,
+    maybe_error(unit, list(format_component))::out,
+    set(type_ctor)::in, set(type_ctor)::out) is det.
+
+check_subtype_has_base_type(TypeTable, OrigTypeStatus, CurTypeCtor,
+        CurTypeDefn, MaybeError, !Seen) :-
+    hlds_data.get_type_defn_body(CurTypeDefn, CurTypeBody),
+    (
+        CurTypeBody = hlds_du_type(_, MaybeSuperType, _, _, IsForeign),
+        (
+            IsForeign = no,
+            MaybeSuperType = no,
+            MaybeError = ok(unit)
+        ;
+            IsForeign = no,
+            MaybeSuperType = yes(SuperType),
+            ( if type_to_ctor_and_args(SuperType, SuperTypeCtor, _) then
+                search_super_type_ctor_defn(TypeTable, OrigTypeStatus,
+                    SuperTypeCtor, SearchRes, !Seen),
+                (
+                    SearchRes = ok(SuperTypeDefn),
+                    check_subtype_has_base_type(TypeTable, OrigTypeStatus,
+                        SuperTypeCtor, SuperTypeDefn, MaybeError, !Seen)
+                ;
+                    SearchRes = error(Error),
+                    Pieces = supertype_ctor_defn_error_pieces(SuperTypeCtor,
+                        Error),
+                    MaybeError = error(Pieces)
+                )
+            else
+                hlds_data.get_type_defn_tvarset(CurTypeDefn, TVarSet),
+                SuperTypeStr = mercury_type_to_string(TVarSet, print_name_only,
+                    SuperType),
+                Pieces = [words("Error:"), quote(SuperTypeStr),
+                    words("is not a discriminated union type."), nl],
+                MaybeError = error(Pieces)
+            )
+        ;
+            IsForeign = yes(_),
+            CurTypeCtor = type_ctor(SymName, Arity),
+            Pieces = [words("Error:"),
+                unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
+                words("has a foreign type definition."), nl],
+            MaybeError = error(Pieces)
+        )
+    ;
+        ( CurTypeBody = hlds_eqv_type(_)
+        ; CurTypeBody = hlds_foreign_type(_)
+        ; CurTypeBody = hlds_solver_type(_)
+        ; CurTypeBody = hlds_abstract_type(_)
+        ),
+        CurTypeCtor = type_ctor(SymName, Arity),
+        CurTypeDesc = describe_hlds_type_body(CurTypeBody),
+        Pieces = [words("Error:"),
+            unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
+            words("is"), words(CurTypeDesc), suffix("."), nl],
+        MaybeError = error(Pieces)
+    ).
+
+:- func describe_hlds_type_body(hlds_type_body) = string.
+
+describe_hlds_type_body(TypeBody) = Desc :-
+    (
+        TypeBody = hlds_du_type(_, _, _, _, _),
+        Desc = "a discriminated union type"
+    ;
+        TypeBody = hlds_eqv_type(_),
+        Desc = "an equivalence type"
+    ;
+        TypeBody = hlds_foreign_type(_),
+        Desc = "a foreign type"
+    ;
+        TypeBody = hlds_solver_type(_),
+        Desc = "a solver type"
+    ;
+        TypeBody = hlds_abstract_type(_),
+        Desc = "an abstract type"
+    ).
+
+%---------------------%
+
+:- type search_type_ctor_defn_error
+    --->    type_is_abstract
+    ;       not_defined
+    ;       circularity_detected.
+
+:- pred search_super_type_ctor_defn(type_table::in, type_status::in,
+    type_ctor::in,
+    maybe_error(hlds_type_defn, search_type_ctor_defn_error)::out,
+    set(type_ctor)::in, set(type_ctor)::out) is det.
+
+search_super_type_ctor_defn(TypeTable, OrigTypeStatus, TypeCtor, Res, !Seen) :-
+    ( if set.insert_new(TypeCtor, !Seen) then
+        ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
+            hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
+            ( if
+                subtype_defn_int_supertype_defn_impl(OrigTypeStatus,
+                    TypeStatus)
+            then
+                Res = error(type_is_abstract)
+            else
+                Res = ok(TypeDefn)
+            )
+        else
+            Res = error(not_defined)
+        )
+    else
+        Res = error(circularity_detected)
+    ).
+
+:- pred subtype_defn_int_supertype_defn_impl(type_status::in, type_status::in)
+    is semidet.
+
+subtype_defn_int_supertype_defn_impl(SubTypeStatus, SuperTypeStatus) :-
+    % If the subtype is defined in the interface section of this module,
+    % then its supertype(s) must not be defined in the implementation section,
+    % i.e. abstractly exported. Other visibility rules are enforced during
+    % module qualification.
+    type_status_defined_in_this_module(SubTypeStatus) = yes,
+    type_status_defined_in_impl_section(SubTypeStatus) = no,
+
+    type_status_defined_in_this_module(SuperTypeStatus) = yes,
+    type_status_defined_in_impl_section(SuperTypeStatus) = yes.
+
+:- func supertype_ctor_defn_error_pieces(type_ctor,
+    search_type_ctor_defn_error) = list(format_component).
+
+supertype_ctor_defn_error_pieces(SuperTypeCtor, Error) = Pieces :-
+    SuperTypeCtor = type_ctor(SymName, Arity),
+    SymNameArity = sym_name_arity(SymName, Arity),
+    (
+        Error = type_is_abstract,
+        Pieces = [words("Error: the type definition for"),
+            unqual_sym_name_arity(SymNameArity),
+            words("is not visible here."), nl]
+    ;
+        Error = not_defined,
+        ( if special_type_ctor_not_du(SuperTypeCtor) then
+            Pieces = [words("Error:"), unqual_sym_name_arity(SymNameArity),
+                words("is not a discriminated union type."), nl]
+        else
+            Pieces = [words("Error: undefined type"),
+                unqual_sym_name_arity(SymNameArity), suffix("."), nl]
+        )
+    ;
+        Error = circularity_detected,
+        Pieces = [words("Error: circularity in subtype definition."), nl]
+    ).
+
+:- pred special_type_ctor_not_du(type_ctor::in) is semidet.
+
+special_type_ctor_not_du(TypeCtor) :-
+    % XXX This could use classify_type_ctor_if_special but that predicate is
+    % currently in check_hlds.
+    (
+        TypeCtor = type_ctor(SymName, Arity),
+        Arity = 0,
+        (
+            SymName = unqualified(TypeName)
+        ;
+            SymName = qualified(mercury_public_builtin_module, TypeName)
+        ),
+        is_builtin_type_name(TypeName)
+    ;
+        type_ctor_is_higher_order(TypeCtor, _, _, _)
+    ;
+        type_ctor_is_tuple(TypeCtor)
+    ).
+
+%---------------------%
+
+:- pred check_subtype_ctors(type_table::in,
+    type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
+    type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
+    list(mer_type)::in, found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_subtype_ctors(TypeTable, _TypeCtor, TypeDefn, TypeBody,
+        SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
+        !FoundInvalidType, !Specs) :-
+    hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet0),
+    hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
+    hlds_data.get_type_defn_tvarset(SuperTypeDefn, SuperTVarSet),
+    hlds_data.get_type_defn_tparams(SuperTypeDefn, SuperTypeParams0),
+
+    % Merge type variables in the subtype and supertype definitions into a
+    % common tvarset.
+    tvarset_merge_renaming(TVarSet0, SuperTVarSet, NewTVarSet, Renaming),
+    apply_variable_renaming_to_tvar_list(Renaming, SuperTypeParams0,
+        SuperTypeParams),
+
+    % Create a substitution from the supertype's type parameters to the
+    % argument types in the declared supertype part of the subtype definition.
+    map.from_corresponding_lists(SuperTypeParams, SuperTypeArgs, TSubst),
+
+    % Apply the type substitution to the supertype constructors' arguments.
+    SuperTypeBody = hlds_du_type(OoMSuperCtors, _, _, _, _),
+    SuperCtors0 = one_or_more_to_list(OoMSuperCtors),
+    list.map(rename_and_rec_subst_in_constructor(Renaming, TSubst),
+        SuperCtors0, SuperCtors),
+
+    % Check each subtype constructor against the supertype's constructors.
+    TypeBody = hlds_du_type(OoMCtors, _, _, _, _),
+    Ctors = one_or_more_to_list(OoMCtors),
+    foldl2(
+        check_subtype_ctor(TypeTable, NewTVarSet, TypeStatus,
+            SuperTypeCtor, SuperCtors),
+        Ctors, !FoundInvalidType, !Specs).
+
+:- pred check_subtype_ctor(type_table::in, tvarset::in, type_status::in,
+    type_ctor::in, list(constructor)::in, constructor::in,
+    found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_subtype_ctor(TypeTable, TVarSet, TypeStatus, SuperTypeCtor, SuperCtors,
+        Ctor, !FoundInvalidType, !Specs) :-
+    Ctor = ctor(_, _, CtorName, _, Arity, Context),
+    UnqualCtorName = unqualify_name(CtorName),
+    ( if
+        search_ctor_by_unqual_name(SuperCtors, UnqualCtorName, Arity,
+            SuperCtor)
+    then
+        check_subtype_ctor_2(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
+            !FoundInvalidType, !Specs)
+    else
+        SuperTypeCtor = type_ctor(SuperTypeCtorName, SuperTypeCtorArity),
+        Pieces = [words("Error:"),
+            unqual_sym_name_arity(sym_name_arity(CtorName, Arity)),
+            words("is not a constructor of the supertype"),
+            unqual_sym_name_arity(
+                sym_name_arity(SuperTypeCtorName, SuperTypeCtorArity)),
+            suffix("."), nl],
+        Msg = simplest_msg(Context, Pieces),
+        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            [Msg]),
+        !:Specs = [Spec | !.Specs],
+        !:FoundInvalidType = found_invalid_type
+    ).
+
+:- pred search_ctor_by_unqual_name(list(constructor)::in, string::in, int::in,
+    constructor::out) is semidet.
+
+search_ctor_by_unqual_name([HeadCtor | TailCtors], UnqualName, Arity, Ctor) :-
+    ( if
+        HeadCtor = ctor(_, _, HeadName, _, Arity, _),
+        unqualify_name(HeadName) = UnqualName
+    then
+        Ctor = HeadCtor
+    else
+        search_ctor_by_unqual_name(TailCtors, UnqualName, Arity, Ctor)
+    ).
+
+:- pred check_subtype_ctor_2(type_table::in, tvarset::in, type_status::in,
+    constructor::in, constructor::in,
+    found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_subtype_ctor_2(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
+        !FoundInvalidType, !Specs) :-
+    Ctor = ctor(_, MaybeExistConstraints, CtorName, Args, Arity, Context),
+    SuperCtor = ctor(_, MaybeSuperExistConstraints, _SuperCtorName, SuperArgs,
+        _SuperArity, _SuperContext),
+    list.foldl3_corresponding(
+        check_subtype_ctor_arg(TypeTable, TVarSet, TypeStatus,
+            MaybeExistConstraints, MaybeSuperExistConstraints),
+        Args, SuperArgs,
+        map.init, ExistQVarsMapping,
+        did_not_find_invalid_type, FoundInvalidType, !Specs),
+    (
+        FoundInvalidType = did_not_find_invalid_type,
+        (
+            MaybeExistConstraints = no_exist_constraints,
+            MaybeSuperExistConstraints = no_exist_constraints
+        ;
+            MaybeExistConstraints = exist_constraints(Constraints),
+            MaybeSuperExistConstraints = exist_constraints(SuperConstraints),
+            CtorSymNameArity = sym_name_arity(CtorName, Arity),
+            check_subtype_ctor_exist_constraints(CtorSymNameArity,
+                Constraints, SuperConstraints, ExistQVarsMapping, Context,
+                !FoundInvalidType, !Specs)
+        ;
+            MaybeExistConstraints = no_exist_constraints,
+            MaybeSuperExistConstraints = exist_constraints(_),
+            unexpected($pred, "exist_constraints mismatch")
+        ;
+            MaybeExistConstraints = exist_constraints(_),
+            MaybeSuperExistConstraints = no_exist_constraints,
+            unexpected($pred, "exist_constraints mismatch")
+        )
+    ;
+        FoundInvalidType = found_invalid_type,
+        !:FoundInvalidType = FoundInvalidType
+    ).
+
+%---------------------%
+
+    % A map from existential type variable in the supertype constructor
+    % to an existential type variable in the subtype constructor.
+    %
+:- type existq_tvar_mapping == map(tvar, tvar).
+
+:- pred check_subtype_ctor_arg(type_table::in, tvarset::in, type_status::in,
+    maybe_cons_exist_constraints::in, maybe_cons_exist_constraints::in,
+    constructor_arg::in, constructor_arg::in,
+    existq_tvar_mapping::in, existq_tvar_mapping::out,
+    found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_subtype_ctor_arg(TypeTable, TVarSet, OrigTypeStatus,
+        MaybeExistConstraints, MaybeSuperExistConstraints,
+        CtorArg, SuperCtorArg,
+        !ExistQVarsMapping, !FoundInvalidType, !Specs) :-
+    CtorArg = ctor_arg(_FieldName, ArgType, Context),
+    SuperCtorArg = ctor_arg(_SuperFieldName, SuperArgType, _SuperContext),
+    ( if
+        check_is_subtype(TypeTable, TVarSet, OrigTypeStatus,
+            ArgType, SuperArgType,
+            MaybeExistConstraints, MaybeSuperExistConstraints,
+            !ExistQVarsMapping)
+    then
+        true
+    else
+        ArgTypeStr =
+            mercury_type_to_string(TVarSet, print_name_only, ArgType),
+        SuperArgTypeStr =
+            mercury_type_to_string(TVarSet, print_name_only, SuperArgType),
+        Pieces = [words("Error:"), quote(ArgTypeStr),
+            words("is not a subtype of the corresponding type"),
+            quote(SuperArgTypeStr), words("in the supertype."), nl],
+        Msg = simplest_msg(Context, Pieces),
+        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            [Msg]),
+        !:Specs = [Spec | !.Specs],
+        !:FoundInvalidType = found_invalid_type
+    ).
+
+%---------------------%
+
+:- pred check_is_subtype(type_table::in, tvarset::in, type_status::in,
+    mer_type::in, mer_type::in,
+    maybe_cons_exist_constraints::in, maybe_cons_exist_constraints::in,
+    existq_tvar_mapping::in, existq_tvar_mapping::out) is semidet.
+
+check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
+        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping) :-
+    require_complete_switch [TypeA]
+    (
+        TypeA = builtin_type(BuiltinType),
+        TypeB = builtin_type(BuiltinType)
+    ;
+        TypeA = type_variable(VarA, Kind),
+        TypeB = type_variable(VarB, Kind),
+        check_is_subtype_var_var(VarA, VarB,
+            MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping)
+    ;
+        TypeA = defined_type(NameA, ArgTypesA, Kind),
+        TypeB = defined_type(NameB, ArgTypesB, Kind),
+        ( if
+            NameA = NameB,
+            list.length(ArgTypesA, Arity),
+            list.length(ArgTypesB, Arity)
+        then
+            % TypeA and TypeB have the same type constructor.
+            % Check their corresponding argument types.
+            check_corresponding_args_are_subtype(TypeTable, TVarSet0,
+                OrigTypeStatus, ArgTypesA, ArgTypesB,
+                MaybeExistConstraintsA, MaybeExistConstraintsB,
+                !ExistQVarsMapping)
+        else
+            % TypeA and TypeB have different type constructors.
+            % Find a subtype definition s(S1, ..., Sn) =< t(T1, ..., Tk)
+            % where s/n is the type constructor of TypeA.
+            list.length(ArgTypesA, ArityA),
+            TypeCtorA = type_ctor(NameA, ArityA),
+            search_type_ctor_defn(TypeTable, TypeCtorA, TypeDefnA),
+            hlds_data.get_type_defn_body(TypeDefnA, TypeBodyA),
+            TypeBodyA = hlds_du_type(_, yes(SuperTypeA), _, _, _),
+
+            hlds_data.get_type_defn_status(TypeDefnA, TypeStatusA),
+            not subtype_defn_int_supertype_defn_impl(OrigTypeStatus,
+                TypeStatusA),
+
+            % The variables S1, ..., Sn must be distinct.
+            % Create a substitution from S1, ..., Sn to the types in ArgTypesA.
+            hlds_data.get_type_defn_tvarset(TypeDefnA, TVarSetA),
+            hlds_data.get_type_defn_tparams(TypeDefnA, TypeParamsA0),
+            tvarset_merge_renaming(TVarSet0, TVarSetA, TVarSet, RenamingA),
+            apply_variable_renaming_to_tvar_list(RenamingA, TypeParamsA0,
+                TypeParamsA),
+            map.from_corresponding_lists(TypeParamsA, ArgTypesA, TSubstA),
+
+            % Apply the substitution to t(T1, ..., Tk) to give
+            % t(T1', ..., Tk').
+            rename_and_rec_subst_in_type(RenamingA, TSubstA, SuperTypeA,
+                NewTypeA),
+
+            % Check that t(T1', ..., Tk') =< TypeB.
+            check_is_subtype(TypeTable, TVarSet, OrigTypeStatus,
+                NewTypeA, TypeB,
+                MaybeExistConstraintsA, MaybeExistConstraintsB,
+                !ExistQVarsMapping)
+        )
+    ;
+        TypeA = tuple_type(ArgTypesA, Kind),
+        TypeB = tuple_type(ArgTypesB, Kind),
+        list.length(ArgTypesA, Arity),
+        list.length(ArgTypesB, Arity),
+        check_corresponding_args_are_subtype(TypeTable, TVarSet0,
+            OrigTypeStatus, ArgTypesA, ArgTypesB,
+            MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping)
+    ;
+        TypeA = higher_order_type(PredOrFunc, ArgTypesA, HOInstInfoA, Purity,
+            EvalMethod),
+        TypeB = higher_order_type(PredOrFunc, ArgTypesB, HOInstInfoB, Purity,
+            EvalMethod),
+        list.length(ArgTypesA, Arity),
+        list.length(ArgTypesB, Arity),
+        (
+            HOInstInfoA = higher_order(PredInfoInfoA),
+            HOInstInfoB = higher_order(PredInfoInfoB),
+            PredInfoInfoA = pred_inst_info(PredOrFunc, ArgModesA, _RegTypesA,
+                Detism),
+            PredInfoInfoB = pred_inst_info(PredOrFunc, ArgModesB, _RegTypesB,
+                Detism),
+            MaybeArgModesA = yes(ArgModesA),
+            MaybeArgModesB = yes(ArgModesB)
+        ;
+            HOInstInfoA = none_or_default_func,
+            HOInstInfoB = none_or_default_func,
+            MaybeArgModesA = no,
+            MaybeArgModesB = no
+        ),
+        check_is_subtype_higher_order(TypeTable, TVarSet0, OrigTypeStatus,
+            ArgTypesA, ArgTypesB, MaybeArgModesA, MaybeArgModesB,
+            MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping)
+    ;
+        TypeA = apply_n_type(_, _, _),
+        fail
+    ;
+        TypeA = kinded_type(TypeA1, Kind),
+        TypeB = kinded_type(TypeB1, Kind),
+        check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA1, TypeB1,
+            MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping)
+    ).
+
+:- pred check_is_subtype_var_var(tvar::in, tvar::in,
+    maybe_cons_exist_constraints::in, maybe_cons_exist_constraints::in,
+    existq_tvar_mapping::in, existq_tvar_mapping::out) is semidet.
+
+check_is_subtype_var_var(VarA, VarB,
+        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping) :-
+    ( if VarA = VarB then
+        true
+    else if map.search(!.ExistQVarsMapping, VarB, VarB1) then
+        VarB1 = VarA
+    else
+        MaybeExistConstraintsA = exist_constraints(ExistConstraintsA),
+        MaybeExistConstraintsB = exist_constraints(ExistConstraintsB),
+        ExistConstraintsA = cons_exist_constraints(_ExistQVarsA,
+            _ConstraintsA, UnconstrainedExistQVarsA, ConstrainedExistQVarsA),
+        ExistConstraintsB = cons_exist_constraints(_ExistQVarsB,
+            _ConstraintsB, UnconstrainedExistQVarsB, ConstrainedExistQVarsB),
+        (
+            list.contains(UnconstrainedExistQVarsA, VarA),
+            list.contains(UnconstrainedExistQVarsB, VarB)
+        ;
+            list.contains(ConstrainedExistQVarsA, VarA),
+            list.contains(ConstrainedExistQVarsB, VarB)
+        ),
+        map.insert(VarB, VarA, !ExistQVarsMapping)
+    ).
+
+:- pred check_corresponding_args_are_subtype(type_table::in, tvarset::in,
+    type_status::in, list(mer_type)::in, list(mer_type)::in,
+    maybe_cons_exist_constraints::in, maybe_cons_exist_constraints::in,
+    existq_tvar_mapping::in, existq_tvar_mapping::out) is semidet.
+
+check_corresponding_args_are_subtype(_TypeTable, _TVarSet, _OrigTypeStatus,
+        [], [],
+        _MaybeExistConstraintsA, _MaybeExistConstraintsB, !ExistQVarsMapping).
+check_corresponding_args_are_subtype(TypeTable, TVarSet, OrigTypeStatus,
+        [TypeA | TypesA], [TypeB | TypesB],
+        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping) :-
+    check_is_subtype(TypeTable, TVarSet, OrigTypeStatus, TypeA, TypeB,
+        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping),
+    check_corresponding_args_are_subtype(TypeTable, TVarSet, OrigTypeStatus,
+        TypesA, TypesB, MaybeExistConstraintsA, MaybeExistConstraintsB,
+        !ExistQVarsMapping).
+
+:- pred check_is_subtype_higher_order(type_table::in, tvarset::in,
+    type_status::in, list(mer_type)::in, list(mer_type)::in,
+    maybe(list(mer_mode))::in, maybe(list(mer_mode))::in,
+    maybe_cons_exist_constraints::in, maybe_cons_exist_constraints::in,
+    existq_tvar_mapping::in, existq_tvar_mapping::out) is semidet.
+
+check_is_subtype_higher_order(_TypeTable, _TVarSet, _OrigTypeStatus,
+        [], [], MaybeModesA, MaybeModesB,
+        _MaybeExistConstraintsA, _MaybeExistConstraintsB, !ExistQVarsMapping)
+        :-
+    (
+        MaybeModesA = no,
+        MaybeModesB = no
+    ;
+        MaybeModesA = yes([]),
+        MaybeModesB = yes([])
+    ).
+check_is_subtype_higher_order(TypeTable, TVarSet, OrigTypeStatus,
+        [TypeA | TypesA], [TypeB | TypesB], MaybeModesA0, MaybeModesB0,
+        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping) :-
+    % Check arguments of higher order term have the same type.
+    % This could be more efficient, but should be rarely used anyway.
+    check_is_subtype(TypeTable, TVarSet, OrigTypeStatus, TypeA, TypeB,
+        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping),
+    check_is_subtype(TypeTable, TVarSet, OrigTypeStatus, TypeB, TypeA,
+        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping),
+
+    % Argument modes, if available, must match exactly.
+    (
+        MaybeModesA0 = no,
+        MaybeModesB0 = no,
+        MaybeModesA = no,
+        MaybeModesB = no
+    ;
+        MaybeModesA0 = yes([ModeA | ModesA]),
+        MaybeModesB0 = yes([ModeB | ModesB]),
+        % XXX Currently we require term equality.
+        ModeA = ModeB,
+        MaybeModesA = yes(ModesA),
+        MaybeModesB = yes(ModesB)
+    ),
+
+    check_is_subtype_higher_order(TypeTable, TVarSet, OrigTypeStatus,
+        TypesA, TypesB, MaybeModesA, MaybeModesB,
+        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping).
+
+%---------------------%
+
+:- pred check_subtype_ctor_exist_constraints(sym_name_arity::in,
+    cons_exist_constraints::in, cons_exist_constraints::in,
+    existq_tvar_mapping::in, prog_context::in,
+    found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_subtype_ctor_exist_constraints(CtorSymNameArity,
+        ExistConstraints, SuperExistConstraints, ExistQVarsMapping, Context,
+        !FoundInvalidType, !Specs) :-
+    ExistConstraints = cons_exist_constraints(_, Constraints, _, _),
+    SuperExistConstraints = cons_exist_constraints(_, SuperConstraints0, _, _),
+    apply_variable_renaming_to_prog_constraint_list(ExistQVarsMapping,
+        SuperConstraints0, SuperConstraints),
+    list.sort(Constraints, SortedConstraints),
+    list.sort(SuperConstraints, SortedSuperConstraints),
+    ( if SortedConstraints = SortedSuperConstraints then
+        true
+    else
+        Pieces = [words("Error: existential class constraints for"),
+            unqual_sym_name_arity(CtorSymNameArity),
+            words("differ in the subtype and supertype."), nl],
+        Msg = simplest_msg(Context, Pieces),
+        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            [Msg]),
+        !:Specs = [Spec | !.Specs],
+        !:FoundInvalidType = found_invalid_type
+    ).
+
+%---------------------%
+
+:- pred rename_and_rec_subst_in_constructor(tvar_renaming::in, tsubst::in,
+    constructor::in, constructor::out) is det.
+
+rename_and_rec_subst_in_constructor(Renaming, TSubst, Ctor0, Ctor) :-
+    Ctor0 = ctor(Ordinal, MaybeExistConstraints0, Name, Args0, NumArgs,
+        Context),
+    (
+        MaybeExistConstraints0 = no_exist_constraints,
+        MaybeExistConstraints = no_exist_constraints
+    ;
+        MaybeExistConstraints0 = exist_constraints(ExistConstraints0),
+        rename_and_rec_subst_in_exist_constraints(Renaming, TSubst,
+            ExistConstraints0, ExistConstraints),
+        MaybeExistConstraints = exist_constraints(ExistConstraints)
+    ),
+    list.map(rename_and_rec_subst_in_constructor_arg(Renaming, TSubst),
+        Args0, Args),
+    Ctor = ctor(Ordinal, MaybeExistConstraints, Name, Args, NumArgs,
+        Context).
+
+:- pred rename_and_rec_subst_in_exist_constraints(tvar_renaming::in,
+    tsubst::in, cons_exist_constraints::in, cons_exist_constraints::out)
+    is det.
+
+rename_and_rec_subst_in_exist_constraints(Renaming, TSubst,
+        ExistConstraints0, ExistConstraints) :-
+    ExistConstraints0 = cons_exist_constraints(ExistQVars0, Constraints0,
+        UnconstrainedExistQVars0, ConstrainedExistQVars0),
+
+    apply_variable_renaming_to_tvar_list(Renaming,
+        ExistQVars0, ExistQVars),
+
+    apply_variable_renaming_to_prog_constraint_list(Renaming,
+        Constraints0, Constraints1),
+    apply_rec_subst_to_prog_constraint_list(TSubst,
+        Constraints1, Constraints),
+
+    apply_variable_renaming_to_tvar_list(Renaming,
+        UnconstrainedExistQVars0, UnconstrainedExistQVars),
+
+    apply_variable_renaming_to_tvar_list(Renaming,
+        ConstrainedExistQVars0, ConstrainedExistQVars),
+
+    ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
+        UnconstrainedExistQVars, ConstrainedExistQVars).
+
+:- pred rename_and_rec_subst_in_constructor_arg(tvar_renaming::in, tsubst::in,
+    constructor_arg::in, constructor_arg::out) is det.
+
+rename_and_rec_subst_in_constructor_arg(Renaming, TSubst, Arg0, Arg) :-
+    Arg0 = ctor_arg(MaybeFieldName, Type0, Context),
+    rename_and_rec_subst_in_type(Renaming, TSubst, Type0, Type),
+    Arg = ctor_arg(MaybeFieldName, Type, Context).
+
+:- pred rename_and_rec_subst_in_type(tvar_renaming::in, tsubst::in,
+    mer_type::in, mer_type::out) is det.
+
+rename_and_rec_subst_in_type(Renaming, TSubst, Type0, Type) :-
+    apply_variable_renaming_to_type(Renaming, Type0, Type1),
+    apply_rec_subst_to_type(TSubst, Type1, Type).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.add_type.

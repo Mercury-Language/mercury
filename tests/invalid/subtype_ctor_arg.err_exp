@@ -1,0 +1,10 @@
+subtype_ctor_arg.m:021: Error:
+subtype_ctor_arg.m:021:   `subtype_ctor_arg.nonempty_list(subtype_ctor_arg.foo)'
+subtype_ctor_arg.m:021:   is not a subtype of the corresponding type
+subtype_ctor_arg.m:021:   `subtype_ctor_arg.list(O)' in the supertype.
+subtype_ctor_arg.m:037: Error: `T' is not a subtype of the corresponding type
+subtype_ctor_arg.m:037:   `U' in the supertype.
+subtype_ctor_arg.m:040: Error: `subtype_ctor_arg.fruit(subtype_ctor_arg.foo)'
+subtype_ctor_arg.m:040:   is not a subtype of the corresponding type
+subtype_ctor_arg.m:040:   `subtype_ctor_arg.citrus(subtype_ctor_arg.foo)' in
+subtype_ctor_arg.m:040:   the supertype.

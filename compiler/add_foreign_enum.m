@@ -204,9 +204,12 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
                 report_not_du_type(Context, ContextPieces,
                     TypeSymName, TypeArity, TypeBody, !Specs)
             ;
-                TypeBody = hlds_du_type(Ctors, _MaybeUserEq, MaybeRepn,
-                    _IsForeignType),
-                expect(unify(MaybeRepn, no), $pred, "MaybeRepn != no"),
+                TypeBody = hlds_du_type(Ctors, MaybeSuperType, _MaybeUserEq,
+                    MaybeRepn, _IsForeignType),
+                expect(unify(MaybeSuperType, no), $pred,
+                    "MaybeSuperType != no"),
+                expect(unify(MaybeRepn, no), $pred,
+                    "MaybeRepn != no"),
 
                 MercuryForeignTagPairs =
                     one_or_more_to_list(OoMMercuryForeignTagPairs),
@@ -339,8 +342,10 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                 report_not_du_type(Context, ContextPieces,
                     TypeSymName, TypeArity, TypeBody, !Specs)
             ;
-                TypeBody = hlds_du_type(Ctors, _MaybeUserEq, MaybeRepn,
-                    _IsForeignType),
+                TypeBody = hlds_du_type(Ctors, MaybeSuperType, _MaybeUserEq,
+                    MaybeRepn, _IsForeignType),
+                expect(unify(MaybeSuperType, no), $pred,
+                    "MaybeSuperType != no"),
                 (
                     MaybeRepn = no,
                     unexpected($pred, "MaybeRepn = no")

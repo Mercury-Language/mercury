@@ -1,0 +1,3 @@
+subtype_circular.m:008: Error: circularity in subtype definition.
+subtype_circular.m:011: Error: circularity in subtype definition.
+subtype_circular.m:014: Error: circularity in subtype definition.

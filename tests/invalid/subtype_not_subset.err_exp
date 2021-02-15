@@ -1,0 +1,6 @@
+subtype_not_subset.m:015: Error: `lemon'/1 is not a constructor of the
+subtype_not_subset.m:015:   supertype `fruit'/0.
+subtype_not_subset.m:016: Error: `pomelo'/0 is not a constructor of the
+subtype_not_subset.m:016:   supertype `fruit'/0.
+subtype_not_subset.m:017: Error: `grapefruit'/0 is not a constructor of the
+subtype_not_subset.m:017:   supertype `fruit'/0.

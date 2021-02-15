@@ -398,7 +398,7 @@ type_documentation(C, type_ctor(TypeName, TypeArity), TypeDefn, !Xmls) :-
 
 :- func type_xml_tag(hlds_type_body) = string.
 
-type_xml_tag(hlds_du_type(_, _, _, _)) = "du_type".
+type_xml_tag(hlds_du_type(_, _, _, _, _)) = "du_type".
 type_xml_tag(hlds_eqv_type(_)) = "eqv_type".
 type_xml_tag(hlds_foreign_type(_)) = "foreign_type".
 type_xml_tag(hlds_solver_type(_)) = "solver_type".
@@ -414,7 +414,7 @@ type_param_to_xml(TVarset, TVar) = Xml :-
 
 type_body_to_xml(C, TVarSet, TypeDefnBody) = Xmls :-
     (
-        TypeDefnBody = hlds_du_type(OoMCtors, _, _, _),
+        TypeDefnBody = hlds_du_type(OoMCtors, _, _, _, _),
         Ctors = one_or_more_to_list(OoMCtors),
         Xmls =
             [xml_list("constructors", constructor_to_xml(C, TVarSet), Ctors)]

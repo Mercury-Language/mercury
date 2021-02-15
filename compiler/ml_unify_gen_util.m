@@ -592,7 +592,8 @@ ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
     (
-        TypeDefnBody = hlds_du_type(_, _, MaybeRepn, _),
+        TypeDefnBody = hlds_du_type(_, _MaybeSuperType, _, MaybeRepn, _),
+        % XXX SUBTYPE Type representation depends on base type.
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")

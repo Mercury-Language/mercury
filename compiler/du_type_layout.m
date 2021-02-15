@@ -250,8 +250,9 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
     (
-        Body0 = hlds_du_type(OoMCtors, MaybeCanonical, MaybeRepn0,
-            MaybeForeign),
+        % XXX SUBTYPE Type representation of subtype depends on base type.
+        Body0 = hlds_du_type(OoMCtors, _MaybeSuperType, MaybeCanonical,
+            MaybeRepn0, MaybeForeign),
         OoMCtors = one_or_more(HeadCtor, TailCtors),
         expect(unify(MaybeRepn0, no), $pred, "MaybeRepn0 != no"),
         ( if
@@ -636,8 +637,9 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
     (
-        Body0 = hlds_du_type(Ctors, _MaybeCanonical, MaybeRepn0,
-            _MaybeForeign),
+        % XXX SUBTYPE Type representation of subtype depends on base type.
+        Body0 = hlds_du_type(Ctors, _MaybeSuperType, _MaybeCanonical,
+            MaybeRepn0, _MaybeForeign),
         (
             MaybeRepn0 = yes(_),
             % We have already decided this type's representation
@@ -1930,9 +1932,10 @@ is_direct_arg_ctor(ComponentTypeMap, TypeCtorModule, TypeStatus,
             % (mercury_deep_copy_body.h), and maybe during some other
             % operations.
 
+            % XXX SUBTYPE Type representation of subtype depends on base type.
             get_type_defn_body(ArgTypeDefn, ArgTypeDefnBody),
-            ArgTypeDefnBody = hlds_du_type(_ArgCtors, _ArgMaybeUserEqComp,
-                _ArgMaybeRepn, ArgMaybeForeign),
+            ArgTypeDefnBody = hlds_du_type(_ArgCtors, _ArgMaybeSuperType,
+                _ArgMaybeUserEqComp, _ArgMaybeRepn, ArgMaybeForeign),
 
             ArgMaybeForeign = no,
 
@@ -2416,7 +2419,7 @@ deref_eqv_types(ModuleInfo, Type0, Type) :-
 %---------------------%
 
 :- inst hlds_du_type for hlds_type_body/0
-    --->    hlds_du_type(ground, ground, ground, ground).
+    --->    hlds_du_type(ground, ground, ground, ground, ground).
 
 :- pred separate_out_constants(list(constructor)::in,
     list(constructor)::out, list(constructor)::out) is det.
@@ -2559,8 +2562,9 @@ show_decisions_if_du_type(Stream, MaybePrimaryTags, ShowWhichTypes,
             ; Body = hlds_solver_type(_)
             )
         ;
-            Body = hlds_du_type(_Ctors, _MaybeCanonical, MaybeRepn,
-                _MaybeForeign),
+            Body = hlds_du_type(_Ctors, _MaybeSuperType, _MaybeCanonical,
+                MaybeRepn, _MaybeForeign),
+            % XXX SUBTYPE Show supertype.
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")

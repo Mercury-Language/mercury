@@ -1331,10 +1331,19 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
         io.write_string(Stream, ".\n", !IO)
     ;
         TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(OoMCtors, MaybeCanonical, MaybeDirectArgs),
+        DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeCanonical,
+            MaybeDirectArgs),
         mercury_output_begin_type_decl(Stream, non_solver_type, !IO),
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm,
             Stream, !IO),
+        (
+            MaybeSuperType = no
+        ;
+            MaybeSuperType = yes(SuperType),
+            io.write_string(Stream, " =< ", !IO),
+            mercury_output_type(TypeVarSet, print_name_only, SuperType,
+                Stream, !IO)
+        ),
         OoMCtors = one_or_more(HeadCtor, TailCtors),
         mercury_output_ctors(TypeVarSet, yes, HeadCtor, TailCtors,
             Stream, !IO),

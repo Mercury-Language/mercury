@@ -169,8 +169,24 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
 
     ContextPieces =
         cord.from_list([words("On the left hand side of type definition:")]),
-    parse_type_defn_head(ContextPieces, ModuleName, VarSet, HeadTerm,
-        MaybeTypeCtorAndArgs),
+    ( if
+        HeadTerm = functor(atom("=<"), HeadArgs, _HeadContext),
+        HeadArgs = [SubTypeTerm, SuperTypeTerm]
+    then
+        parse_type_defn_head(ContextPieces, ModuleName, VarSet, SubTypeTerm,
+            MaybeTypeCtorAndArgs),
+        SuperTypeContextPieces =
+            cord.from_list([words("In the supertype part of a"),
+                words("subtype definition:")]),
+        parse_supertype(VarSet, SuperTypeContextPieces, SuperTypeTerm,
+            MaybeSuperType0),
+        SuperTypeContext = get_term_context(SuperTypeTerm)
+    else
+        parse_type_defn_head(ContextPieces, ModuleName, VarSet, HeadTerm,
+            MaybeTypeCtorAndArgs),
+        MaybeSuperType0 = ok1(no),
+        SuperTypeContext = term.dummy_context_init
+    ),
     du_type_rhs_ctors_and_where_terms(BodyTerm, CtorsTerm, MaybeWhereTerm),
     parse_maybe_exist_quant_constructors(ModuleName, VarSet, CtorsTerm,
         MaybeOneOrMoreCtors),
@@ -185,6 +201,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     ( if
         SolverSpecs = [],
         MaybeTypeCtorAndArgs = ok2(Name, Params),
+        MaybeSuperType0 = ok1(MaybeSuperType),
         MaybeOneOrMoreCtors = ok1(OneOrMoreCtors),
         MaybeWhere = ok3(SolverTypeDetails, MaybeCanonical, MaybeDirectArgIs)
     then
@@ -193,22 +210,31 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         % if SolverTypeDetails is yes(...).
         expect(unify(SolverTypeDetails, no), $pred,
             "discriminated union type has solver type details"),
+        (
+            MaybeSuperType = yes(SuperType),
+            check_supertype_vars(Params, VarSet, SuperType, SuperTypeContext,
+                [], ErrorSpecs0)
+        ;
+            MaybeSuperType = no,
+            ErrorSpecs0 = []
+        ),
         OneOrMoreCtors = one_or_more(HeadCtor, TailCtors),
         Ctors = [HeadCtor | TailCtors],
-        process_du_ctors(Params, VarSet, BodyTerm, Ctors, [], CtorsSpecs),
+        process_du_ctors(Params, VarSet, BodyTerm, Ctors,
+            ErrorSpecs0, ErrorSpecs1),
         (
             MaybeDirectArgIs = yes(DirectArgCtors),
             check_direct_arg_ctors(Ctors, DirectArgCtors, BodyTerm,
-                CtorsSpecs, ErrorSpecs)
+                ErrorSpecs1, ErrorSpecs)
         ;
             MaybeDirectArgIs = no,
-            ErrorSpecs = CtorsSpecs
+            ErrorSpecs = ErrorSpecs1
         ),
         (
             ErrorSpecs = [],
             varset.coerce(VarSet, TypeVarSet),
-            DetailsDu = type_details_du(OneOrMoreCtors, MaybeCanonical,
-                MaybeDirectArgIs),
+            DetailsDu = type_details_du(MaybeSuperType, OneOrMoreCtors,
+                MaybeCanonical, MaybeDirectArgIs),
             TypeDefn = parse_tree_du_type(DetailsDu),
             ItemTypeDefn = item_type_defn_info(Name, Params, TypeDefn,
                 TypeVarSet, Context, SeqNum),
@@ -221,6 +247,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     else
         Specs = SolverSpecs ++
             get_any_errors2(MaybeTypeCtorAndArgs) ++
+            get_any_errors1(MaybeSuperType0) ++
             get_any_errors1(MaybeOneOrMoreCtors) ++
             get_any_errors3(MaybeWhere),
         MaybeIOM = error1(Specs)
@@ -494,6 +521,28 @@ convert_constructor_arg_list_2(ModuleName, VarSet, MaybeCtorFieldName,
     ;
         MaybeType = error1(Specs),
         MaybeArgs = error1(Specs)
+    ).
+
+:- pred check_supertype_vars(list(type_param)::in, varset::in, mer_type::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+check_supertype_vars(Params, VarSet, SuperType, Context, !Specs) :-
+    type_vars(SuperType, VarsInSuperType0),
+    list.sort_and_remove_dups(VarsInSuperType0, VarsInSuperType),
+    list.delete_elems(VarsInSuperType, Params, FreeVars),
+    (
+        FreeVars = []
+    ;
+        FreeVars = [_ | _],
+        varset.coerce(VarSet, GenericVarSet),
+        FreeVarsStr = mercury_vars_to_name_only(GenericVarSet, FreeVars),
+        Pieces = [words("Error: free type"),
+            words(choose_number(FreeVars, "parameter", "parameters")),
+            words(FreeVarsStr),
+            words("in supertype part of subtype definition."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
+        !:Specs = [Spec | !.Specs]
     ).
 
 :- pred process_du_ctors(list(type_param)::in, varset::in, term::in,
@@ -1484,53 +1533,64 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
             MaybeSymNameArgs = ok2(SymName, ArgTerms),
             % Check that SymName is allowed to be a type constructor name.
             check_user_type_name(SymName, Context, NameSpecs),
-            % Check that all the ArgTerms are variables.
-            term_list_to_var_list_and_nonvars(ArgTerms, ParamVars,
-                NonVarArgTerms),
-            (
-                NonVarArgTerms = [],
-                % Check that all the ParamVars are distinct.
-                bag.from_list(ParamVars, ParamsBag),
-                bag.to_list_only_duplicates(ParamsBag, DupParamVars),
+            ( if
+                unqualify_name(SymName) = "=<",
+                list.length(ArgTerms, 2)
+            then
+                % This looks like an incorrect subtype definition so do not
+                % suggest that the arguments must be variables.
+                MaybeTypeCtorAndArgs = error2(NameSpecs)
+            else
+                % Check that all the ArgTerms are variables.
+                term_list_to_var_list_and_nonvars(ArgTerms, ParamVars,
+                    NonVarArgTerms),
                 (
-                    DupParamVars = [],
+                    NonVarArgTerms = [],
+                    % Check that all the ParamVars are distinct.
+                    bag.from_list(ParamVars, ParamsBag),
+                    bag.to_list_only_duplicates(ParamsBag, DupParamVars),
                     (
-                        NameSpecs = [],
-                        list.map(term.coerce_var, ParamVars, PrgParamVars),
-                        MaybeTypeCtorAndArgs = ok2(SymName, PrgParamVars)
+                        DupParamVars = [],
+                        (
+                            NameSpecs = [],
+                            list.map(term.coerce_var, ParamVars, PrgParamVars),
+                            MaybeTypeCtorAndArgs = ok2(SymName, PrgParamVars)
+                        ;
+                            NameSpecs = [_ | _],
+                            MaybeTypeCtorAndArgs = error2(NameSpecs)
+                        )
                     ;
-                        NameSpecs = [_ | _],
-                        MaybeTypeCtorAndArgs = error2(NameSpecs)
+                        DupParamVars = [_ | _],
+                        DupParamVarNames = list.map(
+                            mercury_var_to_name_only(VarSet), DupParamVars),
+                        Params = choose_number(DupParamVars,
+                            "the parameter", "the parameters"),
+                        IsOrAre = is_or_are(DupParamVars),
+                        Pieces = cord.list(ContextPieces) ++
+                            [lower_case_next_if_not_first,
+                            words("Error: type parameters must be unique,"),
+                            words("but"), words(Params)] ++
+                            list_to_pieces(DupParamVarNames) ++
+                            [words(IsOrAre), words("duplicated."), nl],
+                        Spec = simplest_spec($pred, severity_error,
+                            phase_term_to_parse_tree, Context, Pieces),
+                        MaybeTypeCtorAndArgs = error2([Spec | NameSpecs])
                     )
                 ;
-                    DupParamVars = [_ | _],
-                    DupParamVarNames = list.map(
-                        mercury_var_to_name_only(VarSet), DupParamVars),
-                    Params = choose_number(DupParamVars,
-                        "the parameter", "the parameters"),
-                    IsOrAre = is_or_are(DupParamVars),
+                    NonVarArgTerms = [_ | _],
+                    NonVarArgTermStrs = list.map(describe_error_term(VarSet),
+                        NonVarArgTerms),
+                    IsOrAre = is_or_are(NonVarArgTermStrs),
                     Pieces = cord.list(ContextPieces) ++
                         [lower_case_next_if_not_first,
-                        words("Error: type parameters must be unique, but"),
-                        words(Params)] ++ list_to_pieces(DupParamVarNames) ++
-                        [words(IsOrAre), words("duplicated."), nl],
+                        words("Error: type parameters must be variables,"),
+                        words("but")] ++
+                        list_to_quoted_pieces(NonVarArgTermStrs) ++
+                        [words(IsOrAre), words("not."), nl],
                     Spec = simplest_spec($pred, severity_error,
                         phase_term_to_parse_tree, Context, Pieces),
                     MaybeTypeCtorAndArgs = error2([Spec | NameSpecs])
                 )
-            ;
-                NonVarArgTerms = [_ | _],
-                NonVarArgTermStrs = list.map(describe_error_term(VarSet),
-                    NonVarArgTerms),
-                IsOrAre = is_or_are(NonVarArgTermStrs),
-                Pieces = cord.list(ContextPieces) ++
-                    [lower_case_next_if_not_first,
-                    words("Error: type parameters must be variables, but")] ++
-                    list_to_quoted_pieces(NonVarArgTermStrs) ++
-                    [words(IsOrAre), words("not."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, Context, Pieces),
-                MaybeTypeCtorAndArgs = error2([Spec | NameSpecs])
             )
         )
     ).
@@ -1600,6 +1660,34 @@ check_no_free_body_vars(TVarSet, ParamTVars, BodyType, BodyContext, Specs) :-
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             BodyContext, Pieces),
         Specs = [Spec]
+    ).
+
+%-----------------------------------------------------------------------------e
+
+:- pred parse_supertype(varset::in, cord(format_component)::in, term::in,
+    maybe1(maybe(mer_type))::out) is det.
+
+parse_supertype(VarSet, ContextPieces, Term, Result) :-
+    parse_type(no_allow_ho_inst_info(wnhii_supertype), VarSet,
+        ContextPieces, Term, MaybeType),
+    (
+        MaybeType = ok1(Type),
+        ( if type_to_ctor_and_args(Type, _TypeCtor, _Args) then
+            Result = ok1(yes(Type))
+        else
+            Context = get_term_context(Term),
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = cord.list(ContextPieces) ++
+                [lower_case_next_if_not_first,
+                words("Error: expected a type constructor,"),
+                words("got"), quote(TermStr), suffix("."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
+            Result = error1([Spec])
+        )
+    ;
+        MaybeType = error1(Specs),
+        Result = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------e

@@ -140,7 +140,7 @@
     % - figure out which type definitions define exported simple types,
     % - decide their representations, and
     % - generate items recording those decisions, for types that appear
-    %   in the interfac
+    %   in the interface
     %
 :- pred decide_repns_for_simple_types_for_int3(module_name::in,
     type_ctor_checked_map::in, type_ctor_repn_map::out) is det.
@@ -353,7 +353,9 @@ decide_type_repns_stage_1_du_not_all_plain_constants(TypeCtor, DuDefn,
     decide_type_repns_foreign_defns(MaybeDefnCJCsE, ForeignTypeRepns),
     DuDefn = item_type_defn_info(_TypeCtorSymName, TypeParams, DetailsDu,
         TVarSet, _Context, _SeqNum),
-    DetailsDu = type_details_du(OoMCtors, MaybeCanonical, _MaybeDirectArgs),
+    % XXX SUBTYPE Type representation of subtype depends on base type.
+    DetailsDu = type_details_du(_MaybeSuperType, OoMCtors, MaybeCanonical,
+        _MaybeDirectArgs),
     OoMCtors = one_or_more(HeadCtor, TailCtors),
     (
         TailCtors = [],
@@ -752,7 +754,9 @@ decide_type_repns_stage_2_du_gen(BaseParams, EqvMap,
     expect(unify(TypeCtorSymName, SymName), $pred, "sym_name mismatch"),
     expect(unify(NumTypeParams, Arity), $pred, "arity mismatch"),
 
-    DetailsDu = type_details_du(OoMCtors0, MaybeCanonical, _MaybeDirectArgs),
+    % XXX SUBTYPE Type representation of subtype depends on base type.
+    DetailsDu = type_details_du(_MaybeSuperType, OoMCtors0, MaybeCanonical,
+        _MaybeDirectArgs),
     OoMCtors0 = one_or_more(HeadCtor0, TailCtors0),
     expand_eqv_cnotag_types_in_constructor(EqvMap, SimpleDuMap, TVarSet,
         HeadCtor0, HeadCtor, !Specs),

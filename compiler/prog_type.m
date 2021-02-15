@@ -994,7 +994,8 @@ du_type_is_notag(OoMCtors, MaybeCanonical) :-
     MaybeCanonical = canon.
 
 du_type_is_enum(DuDetails, NumFunctors) :-
-    DuDetails = type_details_du(OoMCtors, _MaybeCanonical,
+    % XXX SUBTYPE Whether a subtype is an enum depends on the base type.
+    DuDetails = type_details_du(_MaybeSuperType, OoMCtors, _MaybeCanonical,
         _MaybeDirectArgCtors),
     Ctors = one_or_more_to_list(OoMCtors),
     Ctors = [_, _ | _],
@@ -1016,7 +1017,9 @@ all_functors_are_enum([Ctor | Ctors], !NumFunctors) :-
     all_functors_are_enum(Ctors, !NumFunctors).
 
 du_type_is_dummy(DuDetails) :-
-    DuDetails = type_details_du(Ctors, MaybeCanonical, MaybeDirectArgCtors),
+    % XXX SUBTYPE Whether a subtype is a dummy type depends on the base type.
+    DuDetails = type_details_du(_MaybeSuperType, Ctors, MaybeCanonical,
+        MaybeDirectArgCtors),
     Ctors = one_or_more(Ctor, []),
     Ctor = ctor(_Ordinal, MaybeExistConstraints, _FunctorName, [], 0,
         _Context),

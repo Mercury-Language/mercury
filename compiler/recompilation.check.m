@@ -1265,7 +1265,7 @@ check_type_defn_ambiguity_with_functor(RecompAvail, TypeCtor, TypeDefn,
         )
     ;
         TypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(Ctors, _, _),
+        DetailsDu = type_details_du(_MaybeSuperType, Ctors, _, _),
         list.foldl(check_functor_ambiguities(RecompAvail, TypeCtor),
             one_or_more_to_list(Ctors), !Info)
     ).

@@ -253,7 +253,7 @@ special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn)
 
 get_user_unify_compare(ModuleInfo, TypeBody, MaybeCanonical) :-
     (
-        TypeBody = hlds_du_type(_, MaybeCanonical, _, _)
+        TypeBody = hlds_du_type(_, _, MaybeCanonical, _, _)
     ;
         TypeBody = hlds_solver_type(DetailsSolver),
         DetailsSolver = type_details_solver(_, MaybeCanonical)

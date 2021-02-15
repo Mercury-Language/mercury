@@ -516,7 +516,7 @@ type_has_user_defined_equality_pred(ModuleInfo, Type, UserEqComp) :-
 type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, NonCanonical) :-
     require_complete_switch [TypeBody]
     (
-        TypeBody = hlds_du_type(_, _, _, MaybeForeignType),
+        TypeBody = hlds_du_type(_, _, _, _, MaybeForeignType),
         ( if
             MaybeForeignType = yes(ForeignTypeBody),
             module_info_get_globals(ModuleInfo, Globals),
@@ -597,7 +597,7 @@ type_body_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type,
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        TypeBody = hlds_du_type(_, _, _, _),
+        TypeBody = hlds_du_type(_, _, _, _, _),
         ( if
             TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
             have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
@@ -672,7 +672,7 @@ type_body_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-
         Type = hlds_eqv_type(EqvType),
         type_has_solver_type_details(ModuleInfo, EqvType, SolverTypeDetails)
     ;
-        ( Type = hlds_du_type(_, _, _, _)
+        ( Type = hlds_du_type(_, _, _, _, _)
         ; Type = hlds_foreign_type(_)
         ; Type = hlds_abstract_type(_)
         ),
@@ -728,7 +728,7 @@ type_body_is_solver_type(ModuleInfo, TypeBody) :-
             IsSolverType = non_solver_type
         )
     ;
-        ( TypeBody = hlds_du_type(_, _, _, _)
+        ( TypeBody = hlds_du_type(_, _, _, _, _)
         ; TypeBody = hlds_foreign_type(_)
         ),
         IsSolverType = non_solver_type
@@ -762,7 +762,7 @@ type_body_is_solver_type_from_type_table(TypeTable, TypeBody) :-
             IsSolverType = no
         )
     ;
-        ( TypeBody = hlds_du_type(_, _, _, _)
+        ( TypeBody = hlds_du_type(_, _, _, _, _)
         ; TypeBody = hlds_foreign_type(_)
         ),
         IsSolverType = no
@@ -821,7 +821,7 @@ is_type_a_dummy_loop(TypeTable, Type, CoveredTypes) = IsDummy :-
             ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
                 get_type_defn_body(TypeDefn, TypeBody),
                 (
-                    TypeBody = hlds_du_type(_, _, MaybeTypeRepn, _),
+                    TypeBody = hlds_du_type(_, _, _, MaybeTypeRepn, _),
                     (
                         MaybeTypeRepn = no,
                         unexpected($pred, "MaybeTypeRepn = no")
@@ -874,7 +874,7 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
     ),
     require_complete_switch [Body]
     (
-        Body = hlds_du_type(_, _, _, IsForeignType),
+        Body = hlds_du_type(_, _, _, _, IsForeignType),
         (
             IsForeignType = yes(_),
             HasHandDefinedRtti = no
@@ -1069,7 +1069,7 @@ classify_type_defn_body(TypeBody) = TypeCategory :-
     % XXX Why don't we have a category for solver types?
     % XXX Why do we classify abstract_enum_types as general?
     (
-        TypeBody = hlds_du_type(_, _, MaybeTypeRepn, _),
+        TypeBody = hlds_du_type(_, _, _, MaybeTypeRepn, _),
         (
             MaybeTypeRepn = no,
             unexpected($pred, "MaybeTypeRepn = no")
@@ -1284,7 +1284,7 @@ switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
         module_info_get_type_table(ModuleInfo, TypeTable),
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        TypeBody = hlds_du_type(OoMConstructors, _, _, _),
+        TypeBody = hlds_du_type(OoMConstructors, _, _, _, _),
         OoMConstructors = one_or_more(_HeadCtor, TailCtors),
         NumFunctors = 1 + list.length(TailCtors)
     ).
@@ -1353,7 +1353,7 @@ cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
-    TypeDefnBody = hlds_du_type(OoMCtors, _, _, _),
+    TypeDefnBody = hlds_du_type(OoMCtors, _, _, _, _),
     OoMCtors = one_or_more(HeadCtor, TailCtors),
     ( Ctor = HeadCtor
     ; list.member(Ctor, TailCtors)
@@ -1391,7 +1391,7 @@ get_cons_repn_defn(ModuleInfo, ConsId, ConsIdConsRepn) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, TypeBody),
-    TypeBody = hlds_du_type(_, _, MaybeRepn, _),
+    TypeBody = hlds_du_type(_, _, _, MaybeRepn, _),
     MaybeRepn = yes(Repn),
     Repn = du_type_repn(_, ConsRepnMap, _, _, _),
     ConsName = unqualify_name(ConsSymName),

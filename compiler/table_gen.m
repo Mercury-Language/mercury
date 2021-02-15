@@ -2509,8 +2509,9 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
             lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             ( if
-                TypeBody = hlds_du_type(Ctors, MaybeCanonical, MaybeRepn,
-                    _MaybeForeign),
+                TypeBody = hlds_du_type(Ctors, _MaybeSuperType, MaybeCanonical,
+                    MaybeRepn, _MaybeForeign),
+                % XXX SUBTYPE Anything to do?
                 MaybeCanonical = canon,
                 MaybeRepn = yes(Repn),
                 Repn ^ dur_kind = du_type_kind_mercury_enum

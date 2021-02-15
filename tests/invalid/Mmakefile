@@ -287,6 +287,19 @@ SINGLEMODULE= \
 	state_vars_test3 \
 	state_vars_test4 \
 	state_vars_test5 \
+	subtype_abstract \
+	subtype_circular \
+	subtype_ctor_arg \
+	subtype_eqv \
+	subtype_exist_constraints \
+	subtype_exist_vars \
+	subtype_foreign \
+	subtype_foreign_supertype \
+	subtype_foreign_supertype2 \
+	subtype_ho \
+	subtype_invalid_supertype \
+	subtype_not_subset \
+	subtype_syntax \
 	switch_arm_multi_not_det \
 	tc_err1 \
 	tc_err2 \

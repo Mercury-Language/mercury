@@ -1,0 +1,8 @@
+subtype_exist_vars.m:019: Error: `T' is not a subtype of the corresponding type
+subtype_exist_vars.m:019:   `O' in the supertype.
+subtype_exist_vars.m:022: Error: `T' is not a subtype of the corresponding type
+subtype_exist_vars.m:022:   `int' in the supertype.
+subtype_exist_vars.m:028: Error: `B' is not a subtype of the corresponding type
+subtype_exist_vars.m:028:   `T' in the supertype.
+subtype_exist_vars.m:031: Error: `A' is not a subtype of the corresponding type
+subtype_exist_vars.m:031:   `T' in the supertype.

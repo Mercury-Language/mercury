@@ -1157,8 +1157,8 @@ gather_opt_export_types_in_type_defn(TypeCtor, TypeDefn0, !IntermodInfo) :-
     ( if should_opt_export_type_defn(ModuleName, TypeCtor, TypeDefn0) then
         hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
         (
-            TypeBody0 = hlds_du_type(Ctors, MaybeUserEqComp0, MaybeRepn,
-                MaybeForeign0),
+            TypeBody0 = hlds_du_type(Ctors, MaybeSuperType, MaybeUserEqComp0,
+                MaybeRepn, MaybeForeign0),
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_target(Globals, Target),
 
@@ -1188,8 +1188,8 @@ gather_opt_export_types_in_type_defn(TypeCtor, TypeDefn0, !IntermodInfo) :-
                     MaybeUserEqComp0, MaybeUserEqComp, !IntermodInfo),
                 MaybeForeign = MaybeForeign0
             ),
-            TypeBody = hlds_du_type(Ctors, MaybeUserEqComp, MaybeRepn,
-                MaybeForeign),
+            TypeBody = hlds_du_type(Ctors, MaybeSuperType, MaybeUserEqComp,
+                MaybeRepn, MaybeForeign),
             hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn)
         ;
             TypeBody0 = hlds_foreign_type(ForeignTypeBody0),
@@ -1556,7 +1556,8 @@ intermod_write_type(OutInfo, Stream, TypeCtor - TypeDefn,
     hlds_data.get_type_defn_context(TypeDefn, Context),
     TypeCtor = type_ctor(Name, _Arity),
     (
-        Body = hlds_du_type(Ctors, MaybeUserEqComp, MaybeRepnA, _MaybeForeign),
+        Body = hlds_du_type(Ctors, MaybeSuperType, MaybeUserEqComp,
+            MaybeRepnA, _MaybeForeign),
         (
             MaybeRepnA = no,
             unexpected($pred, "MaybeRepnA = no")
@@ -1566,7 +1567,7 @@ intermod_write_type(OutInfo, Stream, TypeCtor - TypeDefn,
         ),
         % XXX TYPE_REPN We should output information about any direct args
         % as a separate type_repn item.
-        DetailsDu = type_details_du(Ctors, MaybeUserEqComp,
+        DetailsDu = type_details_du(MaybeSuperType, Ctors, MaybeUserEqComp,
             MaybeDirectArgCtors),
         TypeBody = parse_tree_du_type(DetailsDu)
     ;
@@ -1593,7 +1594,7 @@ intermod_write_type(OutInfo, Stream, TypeCtor - TypeDefn,
         (
             Body = hlds_foreign_type(ForeignTypeBody)
         ;
-            Body = hlds_du_type(_, _, _, MaybeForeignTypeBody),
+            Body = hlds_du_type(_, _, _, _, MaybeForeignTypeBody),
             MaybeForeignTypeBody = yes(ForeignTypeBody)
         ),
         ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava,
@@ -1649,7 +1650,7 @@ intermod_write_type(OutInfo, Stream, TypeCtor - TypeDefn,
         true
     ),
     ( if
-        Body = hlds_du_type(_, _, MaybeRepnB, _),
+        Body = hlds_du_type(_, _, _, MaybeRepnB, _),
         MaybeRepnB = yes(RepnB),
         RepnB = du_type_repn(CtorRepns, _, _, DuTypeKind, _),
         DuTypeKind = du_type_kind_foreign_enum(Lang)

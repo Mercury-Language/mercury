@@ -186,7 +186,7 @@ status_implies_type_defn_is_user_visible(Section, TypeStatus) = Visible :-
 get_du_functors_for_type_def(TypeDefn, Functors) :-
     get_type_defn_body(TypeDefn, TypeDefnBody),
     (
-        TypeDefnBody = hlds_du_type(Constructors, _, _, _),
+        TypeDefnBody = hlds_du_type(Constructors, _, _, _, _),
         list.map(constructor_to_functor_name_and_arity,
             one_or_more_to_list(Constructors), Functors)
     ;
@@ -494,7 +494,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
             ForTypeKind = ftk_user(TypeCtor, TypeDefn),
             get_type_defn_body(TypeDefn, TypeDefnBody),
             (
-                TypeDefnBody = hlds_du_type(OoMConstructors, _, _, _),
+                TypeDefnBody = hlds_du_type(OoMConstructors, _, _, _, _),
                 Constructors = one_or_more_to_list(OoMConstructors),
                 (
                     ConsSymName = unqualified(ConsName),
@@ -1196,7 +1196,7 @@ diagnose_mismatches_from_type(BoundInsts, TypeDefnOrBuiltin,
         TypeCtorAndDefn = type_ctor_and_defn(_TypeCtor, TypeDefn),
         get_type_defn_body(TypeDefn, TypeDefnBody),
         (
-            TypeDefnBody = hlds_du_type(Constructors, _, _, _),
+            TypeDefnBody = hlds_du_type(Constructors, _, _, _, _),
             find_mismatches_from_user(one_or_more_to_list(Constructors), 1,
                 BoundInsts, 0, NumMismatches, cord.init, MismatchPiecesCord)
         ;

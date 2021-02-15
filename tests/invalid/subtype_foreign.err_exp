@@ -1,0 +1,9 @@
+subtype_foreign.m:017: Error: type `subtype_foreign.citrus'/0 multiply defined.
+subtype_foreign.m:013: Here is the previous definition of type
+subtype_foreign.m:013:   `subtype_foreign.citrus'/0.
+subtype_foreign.m:018: Error: type `subtype_foreign.citrus'/0 multiply defined.
+subtype_foreign.m:013: Here is the previous definition of type
+subtype_foreign.m:013:   `subtype_foreign.citrus'/0.
+subtype_foreign.m:019: Error: type `subtype_foreign.citrus'/0 multiply defined.
+subtype_foreign.m:013: Here is the previous definition of type
+subtype_foreign.m:013:   `subtype_foreign.citrus'/0.

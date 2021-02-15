@@ -11,5 +11,6 @@ MCFLAGS-import_in_parent.sub    = --no-intermodule-optimization
 MCFLAGS-missing_parent_import   = --no-intermodule-optimization
 MCFLAGS-sub_c                   = --verbose-error-messages \
                                     --no-intermodule-optimization
+MCFLAGS-subtype_submodule       = --no-intermodule-optimization
 MCFLAGS-undef_mod_qual          = --no-intermodule-optimization
 MCFLAGS-unresolved_overloading  = --no-intermodule-optimization

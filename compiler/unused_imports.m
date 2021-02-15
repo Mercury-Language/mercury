@@ -433,7 +433,7 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
         DefinedInThisModule = yes,
         Visibility = type_visibility(TypeStatus),
         (
-            TypeBody = hlds_du_type(Ctors, _, _, _),
+            TypeBody = hlds_du_type(Ctors, _, _, _, _),
             list.foldl(ctor_used_modules(Visibility),
                 one_or_more_to_list(Ctors), !UsedModules)
         ;

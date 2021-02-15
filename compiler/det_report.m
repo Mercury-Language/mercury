@@ -1671,7 +1671,7 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
             ( if
                 det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn),
                 hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-                TypeBody = hlds_du_type(TypeConstructors, _, _, _)
+                TypeBody = hlds_du_type(TypeConstructors, _, _, _, _)
             then
                 SortedTypeConsIds =
                     constructor_cons_ids(VarTypeCtor,
@@ -1686,7 +1686,7 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
         else
             det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-            TypeBody = hlds_du_type(TypeConstructors, _, _, _),
+            TypeBody = hlds_du_type(TypeConstructors, _, _, _, _),
             SortedTypeConsIds =
                 constructor_cons_ids(VarTypeCtor,
                     one_or_more_to_list(TypeConstructors)),

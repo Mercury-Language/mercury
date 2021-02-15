@@ -740,6 +740,9 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 % The ctors for this type.
                 du_type_ctors               :: one_or_more(constructor),
 
+                % The declared supertype for a subtype definition.
+                du_type_supertype           :: maybe(mer_type),
+
                 % Does this type have user-defined equality and comparison
                 % predicates?
                 du_type_canonical           :: maybe_canonical,
@@ -1038,7 +1041,7 @@ set_type_defn_prev_errors(X, !Defn) :-
 
 get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
     (
-        TypeBody = hlds_du_type(_, _, MaybeRepn, _),
+        TypeBody = hlds_du_type(_, _, _, MaybeRepn, _),
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")

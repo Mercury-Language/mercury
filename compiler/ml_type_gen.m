@@ -201,7 +201,9 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !ClassDefns) :-
         % see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
         % The same issue arises for some of the other kinds of types.
     ;
-        TypeBody = hlds_du_type(_Ctors, MaybeUserEqComp, MaybeRepn, _Foreign),
+        TypeBody = hlds_du_type(_Ctors, _MaybeSuperType, MaybeUserEqComp,
+            MaybeRepn, _Foreign),
+        % XXX SUBTYPE
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")

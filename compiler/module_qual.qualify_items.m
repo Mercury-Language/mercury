@@ -648,10 +648,23 @@ qualify_type_defn_eqv(InInt, Context, TypeCtor, DetailsEqv0, DetailsEqv,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_type_defn_du(InInt, _Context, TypeCtor, DetailsDu0, DetailsDu,
+qualify_type_defn_du(InInt, Context, TypeCtor, DetailsDu0, DetailsDu,
         !Info, !Specs) :-
-    DetailsDu0 = type_details_du(OoMCtors0, MaybeUserEqComp0,
+    DetailsDu0 = type_details_du(MaybeSuperType0, OoMCtors0, MaybeUserEqComp0,
         MaybeDirectArgCtors0),
+    (
+        MaybeSuperType0 = yes(SuperType0),
+        ErrorContext = mqec_type_defn(Context, TypeCtor),
+        % Note that this will not prevent a subtype defined in an interface
+        % section from referring to an abstract type as its supertype.
+        % That will be checked while checking other subtype conditions.
+        qualify_type(InInt, ErrorContext, SuperType0, SuperType,
+            !Info, !Specs),
+        MaybeSuperType = yes(SuperType)
+    ;
+        MaybeSuperType0 = no,
+        MaybeSuperType = no
+    ),
     OoMCtors0 = one_or_more(HeadCtor0, TailCtors0),
     qualify_constructor(InInt, TypeCtor, HeadCtor0, HeadCtor, !Info, !Specs),
     qualify_constructors(InInt, TypeCtor, TailCtors0, TailCtors,
@@ -663,7 +676,7 @@ qualify_type_defn_du(InInt, _Context, TypeCtor, DetailsDu0, DetailsDu,
     % Thus we don't module-qualify them here.
     MaybeUserEqComp = MaybeUserEqComp0,
     MaybeDirectArgCtors = MaybeDirectArgCtors0,
-    DetailsDu = type_details_du(OoMCtors, MaybeUserEqComp,
+    DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeUserEqComp,
         MaybeDirectArgCtors).
 
 :- pred qualify_constructors(mq_in_interface::in, type_ctor::in,

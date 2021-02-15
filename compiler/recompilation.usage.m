@@ -1097,7 +1097,13 @@ find_items_used_by_type_and_mode(TypeAndMode, !Info) :-
 
 find_items_used_by_type_body(TypeBody, !Info) :-
     (
-        TypeBody = hlds_du_type(Ctors, _, _, _),
+        TypeBody = hlds_du_type(Ctors, MaybeSuperType, _, _, _),
+        (
+            MaybeSuperType = yes(SuperType),
+            find_items_used_by_type(SuperType, !Info)
+        ;
+            MaybeSuperType = no
+        ),
         list.foldl(find_items_used_by_ctor, one_or_more_to_list(Ctors), !Info)
     ;
         TypeBody = hlds_eqv_type(EqvType),

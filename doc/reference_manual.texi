@@ -99,6 +99,7 @@ into another language, under the above conditions for modified versions.
 * Type classes::      Constrained polymorphism.
 * Existential types:: Support for data abstraction and heterogeneous
                       collections.
+@c * Type conversions::  Converting between subtypes and supertypes.
 * Exception handling:: Catching exceptions to recover from exceptional
                       situations.
 * Semantics::         Declarative and operational semantics of Mercury
@@ -1638,6 +1639,7 @@ or an explicit type qualification.
 * Lambda expressions::
 * Higher-order function applications::
 * Explicit type qualification::
+@c * Type conversion expressions::
 @end menu
 
 @node Data-functors
@@ -1968,6 +1970,19 @@ or equivalently, as it is more commonly written,
 @var{Term} `with_type` @var{Type}
 @end example
 
+@c @node Type conversion expressions
+@c @subsection Type conversion expressions
+
+@c A type conversion expression is a term of the form:
+
+@c @example
+@c coerce(Term)
+@c @end example
+
+@c @var{Term} must be a valid data-term.
+
+@c @xref{Type conversions}.
+
 @node Variable scoping
 @section Variable scoping
 
@@ -2274,6 +2289,7 @@ There are several categories of derived types:
 * Discriminated unions::
 * Equivalence types::
 * Abstract types::
+* Subtypes::
 @end menu
 
 @node Discriminated unions
@@ -2379,6 +2395,7 @@ with the same name, arity, and result type in the same module.
 (There is no particularly good reason for this restriction;
 in the future we may allow several such functors
 as long as they have different argument types.)
+@c XXX Was that restriction already lifted?
 Note that excessive overloading of constructors
 can slow down type checking
 and can make the program confusing for human readers,
@@ -2437,6 +2454,7 @@ character
 string
 @{@}
 =
+=<
 pred
 func
 pure
@@ -2491,6 +2509,147 @@ must give a definition for all of the abstract types
 named in the interface section of the module.
 Abstract types may be defined as either discriminated union types
 or as equivalence types.
+
+@c -----------------------------------------------------------------------
+
+@node Subtypes
+@subsection Subtypes
+
+(This is a new and experimental feature, subject to change.)
+
+A subtype is a discriminated union type
+that is a subset of a supertype,
+in that every term of a subtype is a valid term in the supertype.
+@c It is possible to convert terms between subtype and supertype
+@c using type conversion expressions (@pxref{Type conversions}).
+
+A subtype is defined using the form
+@example
+:- type @var{subtype} =< @var{supertype} ---> @var{body}.
+@end example
+
+@var{subtype} must be a name term
+whose arguments (if any) are distinct variables.
+
+@var{supertype} must be a type (that may contain variables).
+After expanding out equivalences,
+the principal constructor must specify a discriminated union type
+whose @emph{definition} is in scope where the subtype definition occurs,
+by normal module visibility rules.
+
+The discriminated union type specified by @var{supertype}
+may itself be a subtype.
+Following a chain of visible subtype definitions,
+it must be possible to arrive at a @emph{base type},
+which is not a subtype.
+
+Any variable that occurs in @var{supertype} must occur in @var{subtype}.
+
+The @var{body} term is defined as
+a sequence of constructor definitions separated by semicolons.
+Any universally quantified type variable that occurs in @var{body}
+must occur in @var{subtype}.
+
+The constructor definitions must be a
+subset of the constructors of the supertype.
+If the supertype @samp{t} has constructor @samp{f(T1, ..., Tn)} then
+a subtype @samp{s =< t} may have a constructor @samp{f(S1, ..., Sn)}.
+For each @var{Si}, it must be that @samp{Si =< Ti}.
+
+(In the following discussion,
+assume that equivalence types are expanded out
+as required.)
+
+@samp{S =< T} holds
+if @samp{S = f(S1, ..., Sn)}
+and @samp{T = f(T1, ..., Tn)} and
+for each pair of corresponding arguments @samp{Si =< Ti}.
+
+Otherwise, @samp{S =< T} holds
+if @samp{S = f(S1, ..., Sn)}
+and there is a visible definition @w{@samp{:- type f(R1, ..., Rn) =< U}},
+and for each pair of corresponding arguments @w{@samp{Si = Ri}} (unification),
+and @samp{U =< T}.
+In other words,
+any occurrences of @var{Ri} in @var{U} are substituted for @var{Si}
+to give @var{Usub},
+and @samp{Usub =< T} must hold.
+
+@samp{P =< Q} holds for two higher order types @var{P} and @var{Q}
+iff @var{P} and @var{Q} are both @samp{pred} types or both @samp{func} types
+with the same arity,
+and @var{P} and @var{Q} have the same argument types.
+In addition,
+if either of @var{P} and @var{Q} has higher order inst information,
+then @var{P} and @var{Q} must have the same argument modes, determinism,
+and purity.
+(The current implementation does not admit subtyping in
+higher order arguments.)
+
+@samp{P =< Q} holds if @var{P} and @var{Q} are both
+existentially quantified type variables, and @samp{P = Q}.
+
+There must be a one-to-one mapping between
+existentially quantified type variables
+for a constructor in the subtype definition
+and the same constructor in the supertype definition.
+The subtype constructor must repeat exactly the same set of
+existential class constraints on its existentially quantified type variables
+as in the supertype; the subtype constructor cannot add or remove any
+existential class constraints.
+
+Examples:
+
+@example
+:- type list(T)
+    --->    []
+    ;       [T | list(T)].
+
+:- type non_empty_list(T) =< list(T)
+    --->    [T | list(T)].
+
+:- type non_empty_list_of_foo =< list(foo)
+    --->    [foo | list(foo)].
+
+:- type maybe_foo
+    --->    none
+    ;       some [T] foo(T) => fooable(T).
+
+:- type foo =< maybe_foo
+    --->    some [T] foo(T) => fooable(T).
+
+:- type task
+   --->     create(pred(int::in, io::di, io::uo) is det)
+   ;        delete(pred(int::in, io::di, io::uo) is det).
+
+:- type create_task =< task
+   --->     create(pred(int::in, io::di, io::uo) is det).
+@end example
+
+A subtype may be exported as an abstract type
+by declaring only the name of the subtype in the
+interface section of a module (without the @samp{=< @var{supertype}} part).
+Then the subtype definition must be given in the implementation section of
+the same module.
+
+Example:
+
+@example
+:- interface.
+
+:- type non_empty_list(T).  % abstract type
+
+:- implementation.
+
+:- import list.
+
+:- type non_empty_list(T) =< list(T)
+    --->    [T | list(T)].
+@end example
+
+There is no special interaction between subtypes and the type class system.
+
+@c -----------------------------------------------------------------------
 
 @node Predicate and function type declarations
 @section Predicate and function type declarations
@@ -5837,6 +5996,10 @@ These restrictions ensure that there are no overlapping instance declarations,
 i.e.@: for each typeclass there is at most one instance declaration
 that may be applied to any type (or sequence of types).
 
+There is no special interaction between subtypes and the typeclass system.
+A subtype is @emph{not} automatically an instance of a typeclass if
+there is an @samp{instance} declaration for its supertype.
+
 Each @var{methoddefinition} entry
 in the @samp{where [@dots{}]} part of an @code{instance} declaration
 defines the implementation of one of the class methods for this instance.
@@ -6917,6 +7080,122 @@ good_example3(Name, univ_value(Univ)) :-
 good_example3_univ("foo"::in(bound("foo")), univ(42)::out).
 good_example3_univ("bar"::in(bound("bar")), univ("blah")::out).
 @end example
+
+@c -----------------------------------------------------------------------
+
+@c @node Type conversions
+@c @chapter Type conversions
+
+@c A term of type @samp{T1} may be converted to type @samp{T2}
+@c using a type conversion expression:
+
+@c @example
+@c coerce(Term)
+@c @end example
+
+@c XXX disallow coerce/1 as a constructor name?
+
+@c If @var{Term} has type @samp{T1} and the expression has type @samp{T2},
+@c the coercion is type-correct iff
+@c @samp{T1} and @samp{T2} are equivalent after
+@c expanding out equivalence types
+@c and replacing any subtypes with their base types
+@c (@pxref{Subtypes}).
+
+@c For example, if there is a subtype @samp{s =< t} and
+@c a subtype @samp{non_empty_list(T) =< list(T)}
+@c then coercions between these pairs of types are type-correct:
+
+@c @example
+@c s <-> t
+@c list(s) <-> list(t)
+@c non_empty_list(s) <-> non_empty_list(t)
+@c list(s) <-> non_empty_list(s)
+@c list(s) <-> non_empty_list(t)
+@c @end example
+
+@c If a subtype definition is not visible in the module
+@c in which a @samp{coerce} operation occurs,
+@c then the coercion is type-incorrect.
+
+@c Coercions must also be mode-correct.
+@c For a coercion where:
+
+@c @itemize @bullet
+@c @item
+@c the input is @samp{X} with type @samp{s}
+
+@c @item
+@c the result is @samp{Y} with type @samp{t}
+
+@c @item
+@c @samp{Xi}, @samp{Xf} are the initial and final insts of @samp{X}
+
+@c @item
+@c @samp{Yi}, @samp{Yf} are the initial and final insts of @samp{Y}
+@c @end itemize
+
+@c @noindent
+@c the coercion is mode-correct iff:
+
+@c @itemize @bullet
+@c @item
+@c @samp{Xi} is a ground inst
+
+@c @item
+@c @samp{Xf = Xi}
+
+@c @item
+@c @samp{Yi} is free
+
+@c @item
+@c Yf is the greatest lower bound (glb) of @samp{Xi} and
+@c the instantiatedness tree derived from @samp{t}
+@c where all nodes are bound.
+@c The glb must exist,
+@c @samp{Yf} must be be ground,
+@c and @samp{Yf} must be a valid inst of @samp{t}.
+@c @end itemize
+
+@c XXX partial order of insts not used elsewhere in reference manual
+
+@c Intuitively,
+@c coercing a ground term from subtype to supertype is always allowed,
+@c but coercion from supertype to subtype is allowed only if
+@c the term is approximated by an inst that indicates
+@c the term would be a valid in the subtype.
+
+@c Examples:
+
+@c @example
+@c :- type fruit
+@c     --->    apple
+@c     ;       lemon
+@c     ;       orange.
+@c
+@c :- type citrus =< fruit
+@c     --->    lemon
+@c     ;       orange.
+@c
+@c :- inst citrus for fruit/0
+@c     --->    lemon
+@c     ;       orange.
+@c
+@c :- func f1(citrus) = fruit.
+@c
+@c f1(X) = coerce(X).  % correct
+@c
+@c :- func f2(fruit) = citrus.
+@c
+@c f2(X) = coerce(X).  % not mode-correct
+@c
+@c :- func f3(fruit) = citrus.
+@c :- mode f3(in(citrus)) = out is det.
+@c
+@c f3(X) = coerce(X).  % correct
+@c @end example
+
+@c -----------------------------------------------------------------------
 
 @node Exception handling
 @chapter Exception handling
@@ -8101,12 +8380,17 @@ using a declaration of the form
 This defines @var{MercuryTypeName}
 as a synonym for type @var{ForeignTypeDescriptor}
 defined in the foreign language @var{Lang}.
-You must declare @var{MercuryTypeName}
-using a (possibly abstract) @samp{:- type} declaration as usual.
+@var{MercuryTypeName} must be the name of an abstract type,
+or the name of a discriminated union type that is not a subtype.
+In both cases,
+@var{MercuryTypeName} must be declared with @samp{:- type} as usual.
 The @samp{pragma foreign_type} must not have wider visibility
 than the type declaration
 (if the @samp{pragma foreign_type} declaration is in the interface,
 the @samp{:- type} declaration must be also).
+
+The type named by @var{MercuryTypeName}
+cannot be the base type of any subtypes (@pxref{Subtypes}).
 
 @var{ForeignTypeDescriptor} defines
 how the Mercury type is mapped for a particular foreign language.

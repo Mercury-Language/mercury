@@ -120,7 +120,7 @@ add_type_to_eqv_map(TypeCtor, Defn, !TypeEqvMap, !EqvExportTypes) :-
             IsExported = no
         )
     ;
-        ( Body = hlds_du_type(_, _, _, _)
+        ( Body = hlds_du_type(_, _, _, _, _)
         ; Body = hlds_foreign_type(_)
         ; Body = hlds_solver_type(_)
         ; Body = hlds_abstract_type(_)
@@ -169,13 +169,24 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
     maybe_start_recording_expanded_items(ModuleName, TypeCtorSymName,
         !.MaybeRecompInfo, EquivTypeInfo0),
     (
-        Body0 = hlds_du_type(Ctors0, MaybeCanonical, MaybeRepn0, MaybeForeign),
+        Body0 = hlds_du_type(Ctors0, MaybeSuperType0, MaybeCanonical,
+            MaybeRepn0, MaybeForeign),
+        (
+            MaybeSuperType0 = yes(SuperType0),
+            hlds_replace_in_type(TypeEqvMap, SuperType0, SuperType,
+                TVarSet0, TVarSet1),
+            MaybeSuperType = yes(SuperType)
+        ;
+            MaybeSuperType0 = no,
+            MaybeSuperType = no,
+            TVarSet1 = TVarSet0
+        ),
         equiv_type.replace_in_ctors(TypeEqvMap, Ctors0, Ctors,
-            TVarSet0, TVarSet1, EquivTypeInfo0, EquivTypeInfo1),
+            TVarSet1, TVarSet2, EquivTypeInfo0, EquivTypeInfo1),
         (
             MaybeRepn0 = no,
             MaybeRepn = no,
-            TVarSet = TVarSet1,
+            TVarSet = TVarSet2,
             EquivTypeInfo = EquivTypeInfo1
         ;
             MaybeRepn0 = yes(Repn0),
@@ -183,12 +194,13 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
                 CheaperTagTest, DuKind, DirectArgCtors),
             list.map_foldl3(replace_in_ctor_repn(TypeEqvMap),
                 CtorRepns0, CtorRepns, map.init, CtorNameToRepnMap,
-                TVarSet1, TVarSet, EquivTypeInfo1, EquivTypeInfo),
+                TVarSet2, TVarSet, EquivTypeInfo1, EquivTypeInfo),
             Repn = du_type_repn(CtorRepns, CtorNameToRepnMap,
                 CheaperTagTest, DuKind, DirectArgCtors),
             MaybeRepn = yes(Repn)
         ),
-        Body = hlds_du_type(Ctors, MaybeCanonical, MaybeRepn, MaybeForeign)
+        Body = hlds_du_type(Ctors, MaybeSuperType, MaybeCanonical,
+            MaybeRepn, MaybeForeign)
     ;
         Body0 = hlds_eqv_type(Type0),
         equiv_type.replace_in_type(TypeEqvMap, Type0, Type, _,

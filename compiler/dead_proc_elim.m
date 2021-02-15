@@ -1373,7 +1373,8 @@ dead_pred_initialize_referred_preds(ModuleInfo, _TypeCtor - TypeDefn,
         !NeededPreds) :-
     get_type_defn_body(TypeDefn, TypeDefnBody),
     (
-        TypeDefnBody = hlds_du_type(_Ctors, MaybeCanon, _Repn, _IsForeign),
+        TypeDefnBody = hlds_du_type(_Ctors, _MaybeSuperType, MaybeCanon, _Repn,
+            _IsForeign),
         dead_pred_initialize_maybe_canonical(ModuleInfo, MaybeCanon,
             !NeededPreds)
     ;

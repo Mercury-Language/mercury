@@ -1,0 +1,28 @@
+subtype_syntax.m:008: Error: the type name `=<' is reserved for the Mercury
+subtype_syntax.m:008:   implementation.
+subtype_syntax.m:009: Error: the type name `=<' is reserved for the Mercury
+subtype_syntax.m:009:   implementation.
+subtype_syntax.m:011: In the supertype part of a subtype definition: error:
+subtype_syntax.m:011:   `123' is not a type.
+subtype_syntax.m:014: In the supertype part of a subtype definition: error:
+subtype_syntax.m:014:   expected a type constructor, got `T'.
+subtype_syntax.m:017: In the supertype part of a subtype definition: error:
+subtype_syntax.m:017:   `123' is not a type.
+subtype_syntax.m:020: On the left hand side of type definition: error: expected
+subtype_syntax.m:020:   a symbol name, got `123'.
+subtype_syntax.m:021: In constructor definition: error: expected a symbol name,
+subtype_syntax.m:021:   got `1'.
+subtype_syntax.m:022: In constructor definition: error: expected a symbol name,
+subtype_syntax.m:022:   got `Two'.
+subtype_syntax.m:024: On the left hand side of type definition: error: expected
+subtype_syntax.m:024:   a type constructor and zero or more type variables as
+subtype_syntax.m:024:   arguments, got `T'.
+subtype_syntax.m:027: On the left hand side of type definition: error: type
+subtype_syntax.m:027:   parameters must be variables, but `int' is not.
+subtype_syntax.m:030: On the left hand side of type definition: error: type
+subtype_syntax.m:030:   parameters must be unique, but the parameter T is
+subtype_syntax.m:030:   duplicated.
+subtype_syntax.m:033: Error: free type parameters U, _V in supertype part of
+subtype_syntax.m:033:   subtype definition.
+subtype_syntax.m:037: Error: free type parameter U in right hand side of type
+subtype_syntax.m:037:   definition.

@@ -175,7 +175,7 @@ is_this_a_foreign_type(ModuleInfo, Type) = MaybeForeignTypeAssertions :-
             MaybeForeignTypeAssertions =
                 yes(foreign_type_and_assertions(ForeignTypeName, Assertions))
         ;
-            ( TypeBody = hlds_du_type(_, _, _, _)
+            ( TypeBody = hlds_du_type(_, _, _, _, _)
             ; TypeBody = hlds_eqv_type(_)
             ; TypeBody = hlds_solver_type(_)
             ; TypeBody = hlds_abstract_type(_)

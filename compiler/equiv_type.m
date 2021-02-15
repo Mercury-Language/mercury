@@ -1642,10 +1642,21 @@ report_contains_circular_eqv_type(TVarSet, Type, Context,
 replace_in_type_defn_du(MaybeRecord, TypeEqvMap, _InstEqvMap,
         _TypeCtor, _Context, DetailsDu0, DetailsDu,
         !TVarSet, !EquivTypeInfo, !UsedModules, Specs) :-
-    DetailsDu0 = type_details_du(Ctors0, EqPred, DirectArgFunctors),
+    DetailsDu0 = type_details_du(MaybeSuperType0, Ctors0, EqPred,
+        DirectArgFunctors),
+    (
+        MaybeSuperType0 = yes(SuperType0),
+        replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
+            SuperType0, SuperType, _, !TVarSet, !EquivTypeInfo, !UsedModules),
+        MaybeSuperType = yes(SuperType)
+    ;
+        MaybeSuperType0 = no,
+        MaybeSuperType = no
+    ),
     replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors,
         !TVarSet, !EquivTypeInfo, !UsedModules),
-    DetailsDu = type_details_du(Ctors, EqPred, DirectArgFunctors),
+    DetailsDu = type_details_du(MaybeSuperType, Ctors, EqPred,
+        DirectArgFunctors),
     Specs = [].
 
 :- pred replace_in_type_defn_solver(maybe_record_sym_name_use::in,

@@ -237,6 +237,7 @@ OTHER_PROGS = \
 	state_var_mode_bug \
 	state_var_mode_bug2 \
 	static \
+	subtype_basic \
 	subtype_switch \
 	switch_detection_bug \
 	switch_detection_bug2 \

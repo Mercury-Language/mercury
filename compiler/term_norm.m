@@ -152,7 +152,7 @@ find_weights(ModuleInfo, Weights) :-
 find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
-        TypeBody = hlds_du_type(Constructors, _, _, _),
+        TypeBody = hlds_du_type(Constructors, _, _, _, _),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
         list.foldl(find_weights_for_cons(TypeCtor, TypeParams),
             one_or_more_to_list(Constructors), !Weights)

@@ -90,7 +90,7 @@
 %---------------------------------------------------------------------------%
 
 do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
-        TypeEqvMapMap, UsedModules, !:QualInfo,
+        TypeEqvMap, UsedModules, !:QualInfo,
         !:FoundInvalidType, !:FoundInvalidInstOrMode, !:ModuleInfo, !:Specs) :-
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
         ModuleVersionNumbers, _, _, _, _, _, _, _),
@@ -307,9 +307,9 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % would allow us to generate better error messages.
     (
         !.FoundInvalidType = did_not_find_invalid_type,
-        % Add constructors for du types to the HLDS, and check that
-        % Mercury types defined solely by foreign types have a definition
-        % that works for the target backend.
+        % Add constructors for du types to the HLDS, check subtype definitions,
+        % and check that Mercury types defined solely by foreign types have a
+        % definition that works for the target backend.
         %
         % This must be done after adding all type definitions and all
         % `:- pragma foreign_type' declarations. If there were errors
@@ -317,7 +317,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         % a compiler abort.
         module_info_get_type_table(!.ModuleInfo, TypeTable0),
         foldl3_over_type_ctor_defns(
-            add_du_ctors_check_foreign_type_for_cur_backend,
+            add_du_ctors_check_subtype_check_foreign_type(TypeTable0),
             TypeTable0, !FoundInvalidType, !ModuleInfo, !Specs)
     ;
         !.FoundInvalidType = found_invalid_type
@@ -339,7 +339,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     module_info_optimize(!ModuleInfo),
 
     % The old pass 3.
-    init_qual_info(MQInfo0, TypeEqvMapMap, !:QualInfo),
+    init_qual_info(MQInfo0, TypeEqvMap, !:QualInfo),
 
     % Add clauses to their predicates.
     list.foldl3(add_clause, ItemClauses,

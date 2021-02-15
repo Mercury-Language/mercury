@@ -1,0 +1,8 @@
+subtype_exist_constraints.m:020: Error: `L' is not a subtype of the
+subtype_exist_constraints.m:020:   corresponding type `L' in the supertype.
+subtype_exist_constraints.m:023: Error: existential class constraints for
+subtype_exist_constraints.m:023:   `lemon'/1 differ in the subtype and
+subtype_exist_constraints.m:023:   supertype.
+subtype_exist_constraints.m:026: Error: existential class constraints for
+subtype_exist_constraints.m:026:   `lemon'/1 differ in the subtype and
+subtype_exist_constraints.m:026:   supertype.

@@ -232,7 +232,7 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
                 Clause, !Info),
             Clauses = [Clause]
         ;
-            TypeBody = hlds_du_type(_, _, MaybeRepn, _),
+            TypeBody = hlds_du_type(_, _, _, MaybeRepn, _),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")
@@ -974,7 +974,7 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
             generate_compare_proc_body_solver(Context,
                 Res, X, Y, Clause, !Info)
         ;
-            TypeBody = hlds_du_type(_, _, MaybeRepn, _),
+            TypeBody = hlds_du_type(_, _, _, MaybeRepn, _),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")
@@ -2438,7 +2438,7 @@ generate_index_proc_body(SpecDefnInfo, X, Index, Clause, !Info) :-
         TypeBody = hlds_solver_type(_),
         unexpected($pred, "trying to create index proc for a solver type")
     ;
-        TypeBody = hlds_du_type(_, _, MaybeRepn, _),
+        TypeBody = hlds_du_type(_, _, _, MaybeRepn, _),
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")

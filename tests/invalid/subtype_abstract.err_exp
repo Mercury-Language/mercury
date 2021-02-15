@@ -1,0 +1,5 @@
+subtype_abstract.m:012: Error: the type definition for `citrus'/0 is not
+subtype_abstract.m:012:   visible here.
+subtype_abstract.m:019: Error: `subtype_abstract.lemon' is not a subtype of the
+subtype_abstract.m:019:   corresponding type `subtype_abstract.fruit' in the
+subtype_abstract.m:019:   supertype.

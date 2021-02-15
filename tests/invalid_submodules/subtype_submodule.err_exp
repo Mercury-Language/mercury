@@ -1,0 +1,3 @@
+subtype_submodule.m:024: Error: undefined type `fruit2'/0.
+subtype_submodule.m:024: In definition of type `citrus2'/0:
+subtype_submodule.m:024:   error: undefined type `fruit2'/0.

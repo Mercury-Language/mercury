@@ -40,6 +40,7 @@
     ;       wnhii_func_arg
     ;       wnhii_func_return_arg
     ;       wnhii_type_qual             % NYI
+    ;       wnhii_supertype
     ;       wnhii_eqv_type_defn_body
     ;       wnhii_solver_type_defn
     ;       wnhii_class_constraint
@@ -734,7 +735,9 @@ is_known_type_name_args(Name, Args, KnownType) :-
         Name = "{}",
         KnownType = known_type_compound(kctk_tuple(Args))
     ;
-        Name = "=",
+        ( Name = "="
+        ; Name = "=<"
+        ),
         (
             ( Args = []
             ; Args = [_]
@@ -808,6 +811,9 @@ no_ho_inst_allowed_result(ContextPieces, Why, VarSet, Term) = Result :-
     ;
         Why = wnhii_type_qual,
         Place = "a type used for type qualification"
+    ;
+        Why = wnhii_supertype,
+        Place = "a supertype of a subtype"
     ;
         Why = wnhii_eqv_type_defn_body,
         Place = "the definition of an equivalence type"

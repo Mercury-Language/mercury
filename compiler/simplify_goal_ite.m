@@ -419,8 +419,8 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
 
 can_switch_on_type(TypeBody) = CanSwitchOnType :-
     (
-        TypeBody = hlds_du_type(Ctors, _MaybeUserEq, _MaybeRepn,
-            _MaybeForeignType),
+        TypeBody = hlds_du_type(Ctors, _MaybeSuperType, _MaybeUserEq,
+            _MaybeRepn, _MaybeForeignType),
         % We don't care about _MaybeUserEq, since the unification with *any*
         % functor of the type indicates that we are deconstructing the physical
         % representation, not the logical value.

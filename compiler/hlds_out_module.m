@@ -362,8 +362,19 @@ write_type_params_loop(Stream, TVarSet, HeadParam, TailParams, !IO) :-
 
 write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
     (
-        TypeBody = hlds_du_type(Ctors, MaybeUserEqComp, MaybeRepn, Foreign),
+        TypeBody = hlds_du_type(Ctors, MaybeSuperType, MaybeUserEqComp,
+            MaybeRepn, Foreign),
         io.nl(Stream, !IO),
+        (
+            MaybeSuperType = yes(SuperType),
+            write_indent(Stream, Indent, !IO),
+            io.write_string(Stream, "=< ", !IO),
+            mercury_output_type(TVarSet, print_name_only, SuperType,
+                Stream, !IO),
+            io.nl(Stream, !IO)
+        ;
+            MaybeSuperType = no
+        ),
         MaybeSolverTypeDetails = no,
         MercInfo = Info ^ hoi_merc_out_info,
         (

@@ -1,0 +1,39 @@
+subtype_invalid_supertype.m:008: Error: `int'/0 is not a discriminated union
+subtype_invalid_supertype.m:008:   type.
+subtype_invalid_supertype.m:009: Error: `uint'/0 is not a discriminated union
+subtype_invalid_supertype.m:009:   type.
+subtype_invalid_supertype.m:010: Error: `int8'/0 is not a discriminated union
+subtype_invalid_supertype.m:010:   type.
+subtype_invalid_supertype.m:011: Error: `uint8'/0 is not a discriminated union
+subtype_invalid_supertype.m:011:   type.
+subtype_invalid_supertype.m:012: Error: `int16'/0 is not a discriminated union
+subtype_invalid_supertype.m:012:   type.
+subtype_invalid_supertype.m:013: Error: `uint16'/0 is not a discriminated union
+subtype_invalid_supertype.m:013:   type.
+subtype_invalid_supertype.m:014: Error: `int32'/0 is not a discriminated union
+subtype_invalid_supertype.m:014:   type.
+subtype_invalid_supertype.m:015: Error: `uint32'/0 is not a discriminated union
+subtype_invalid_supertype.m:015:   type.
+subtype_invalid_supertype.m:016: Error: `int64'/0 is not a discriminated union
+subtype_invalid_supertype.m:016:   type.
+subtype_invalid_supertype.m:017: Error: `uint64'/0 is not a discriminated union
+subtype_invalid_supertype.m:017:   type.
+subtype_invalid_supertype.m:018: Error: `float'/0 is not a discriminated union
+subtype_invalid_supertype.m:018:   type.
+subtype_invalid_supertype.m:019: Error: `string'/0 is not a discriminated union
+subtype_invalid_supertype.m:019:   type.
+subtype_invalid_supertype.m:020: Error: `character'/0 is not a discriminated
+subtype_invalid_supertype.m:020:   union type.
+subtype_invalid_supertype.m:022: Error: `{}'/0 is not a discriminated union
+subtype_invalid_supertype.m:022:   type.
+subtype_invalid_supertype.m:025: Error: `func'/1 is not a discriminated union
+subtype_invalid_supertype.m:025:   type.
+subtype_invalid_supertype.m:028: Error: `pred'/0 is not a discriminated union
+subtype_invalid_supertype.m:028:   type.
+subtype_invalid_supertype.m:031: Error: undefined type `undefined'/0.
+subtype_invalid_supertype.m:031: In definition of type `s5'/0:
+subtype_invalid_supertype.m:031:   error: undefined type `undefined'/0.
+subtype_invalid_supertype.m:034: In the supertype part of a subtype definition:
+subtype_invalid_supertype.m:034:   error: `1' is not a type.
+subtype_invalid_supertype.m:034: In the supertype part of a subtype definition:
+subtype_invalid_supertype.m:034:   error: `2' is not a type.

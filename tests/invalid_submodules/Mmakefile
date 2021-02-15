@@ -24,6 +24,7 @@ MAKE_DEP_PROGS = \
 	import_in_parent \
 	missing_parent_import \
 	sub_c \
+	subtype_submodule \
 	undef_mod_qual \
 	unresolved_overloading
 

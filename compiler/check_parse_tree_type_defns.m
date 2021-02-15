@@ -531,7 +531,7 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         % we will have to disable users' ability to specify MaybeDirectArgs
         % in source code.
         DetailsDu = DuDefn ^ td_ctor_defn,
-        DetailsDu = type_details_du(OoMCtors, _MaybeCanonical,
+        DetailsDu = type_details_du(_MaybeSuperType, OoMCtors, _MaybeCanonical,
             _MaybeDirectArgs),
         OoMCtors = one_or_more(HeadCtor, TailCtors),
         ( if
@@ -1577,7 +1577,7 @@ add_type_ctor_to_field_name_map(TypeCtor, CheckedDefn, !FieldNameMap) :-
             CheckedStdDefn = std_mer_type_du_not_all_plain_constants(_Status,
                 DuDefn, _MaybeDefnCJCs),
             DetailsDu = DuDefn ^ td_ctor_defn,
-            DetailsDu = type_details_du(OoMCtors,
+            DetailsDu = type_details_du(_MaybeSuperType, OoMCtors,
                 _MaybeCanonical, _MaybeDirectArgs),
             OoMCtors = one_or_more(HeadCtor, TailCtors),
             list.foldl(add_data_ctor_to_field_name_map(TypeCtor),
