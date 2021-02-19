@@ -4080,7 +4080,7 @@ open_binary_output(FileName, Result, !IO) :-
 
 open_append(FileName, Result, !IO) :-
     do_open_text(FileName, "a", OpenCount, NewStream, Error, !IO),
-     is_error(Error, "can't append to file: ", MaybeIOError, !IO),
+    is_error(Error, "can't append to file: ", MaybeIOError, !IO),
     (
         MaybeIOError = yes(IOError),
         Result = error(IOError)
