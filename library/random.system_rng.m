@@ -178,14 +178,14 @@
     #define ML_SYSRAND_IMPL_NONE
 #endif
 
-#if defined(ML_SYSRAND_IMPL_URANDOM)
-    struct ML_SystemRandomHandle_Struct {
+struct ML_SystemRandomHandle_Struct {
+    #if defined(ML_SYSRAND_IMPL_URANDOM)
         int ML_srh_fd;
-    };
-    typedef struct ML_SystemRandomHandle_Struct *ML_SystemRandomHandle;
-#else
-    typedef MR_Unsigned ML_SystemRandomHandle;
-#endif
+    #else
+        MR_Bool ML_srh_is_open;
+    #endif
+};
+typedef struct ML_SystemRandomHandle_Struct *ML_SystemRandomHandle;
 
 // When succeeded is MR_TRUE, returns a handle through which the system
 // RNG can be accessed; err_msg will point to the empty string in this case.
@@ -796,24 +796,40 @@ ML_random_generate_bytes(ML_SystemRandomHandle handle,
 ML_SystemRandomHandle
 ML_random_open(MR_Bool *succeeded, MR_String *err_msg)
 {
+    ML_SystemRandomHandle handle =
+        MR_GC_NEW(struct ML_SystemRandomHandle_Struct);
+    handle->ML_srh_is_open = MR_TRUE;
     *succeeded = MR_TRUE;
     *err_msg = MR_make_string_const(\"\");
-    return 0;
+    return handle;
 }
 
 MR_Bool
 ML_random_close(ML_SystemRandomHandle handle, MR_String *err_msg)
 {
-    *err_msg = MR_make_string_const(\"\");
-    return MR_TRUE;
+    if (handle->ML_srh_is_open) {
+        handle->ML_srh_is_open = MR_FALSE;
+        *err_msg = MR_make_string_const(\"\");
+        return MR_TRUE;
+    } else {
+        *err_msg =
+            MR_make_string_const(\"system RNG handle is already closed\");
+        return MR_FALSE;
+    }
 }
 
 MR_Bool
 ML_random_generate_bytes(ML_SystemRandomHandle handle,
     unsigned char *buffer, size_t len, MR_String *err_msg)
 {
-    arc4random_buf(buffer, len);
-    return MR_TRUE;
+    if (handle->ML_srh_is_open) {
+        arc4random_buf(buffer, len);
+        *err_msg = MR_make_string_const(\"\");
+        return MR_TRUE;
+    } else {
+        *err_msg = MR_make_string_const(\"system RNG handle is closed\");
+        return MR_FALSE;
+    }
 }
 
 #elif defined(ML_SYSRAND_IMPL_RAND_S)
@@ -821,16 +837,26 @@ ML_random_generate_bytes(ML_SystemRandomHandle handle,
 ML_SystemRandomHandle
 ML_random_open(MR_Bool *succeeded, MR_String *err_msg)
 {
+    ML_SystemRandomHandle handle =
+        MR_GC_NEW(struct ML_SystemRandomHandle_Struct);
+    handle->ML_srh_is_open = MR_TRUE;
     *succeeded = MR_TRUE;
     *err_msg = MR_make_string_const(\"\");
-    return 0;
+    return handle;
 }
 
 MR_Bool
 ML_random_close(ML_SystemRandomHandle handle, MR_String *err_msg)
 {
-    *err_msg = MR_make_string_const(\"\");
-    return MR_TRUE;
+    if (handle->MR_srh_is_open) {
+        handle->ML_srh_is_open = MR_FALSE;
+        *err_msg = MR_make_string_const(\"\");
+        return MR_TRUE;
+    } else {
+        *err_msg =
+            MR_make_string_const(\"system RNG handle is already closed\");
+        return MR_FALSE;
+    }
 }
 
 MR_Bool
@@ -840,6 +866,11 @@ ML_random_generate_bytes(ML_SystemRandomHandle handle,
     int err;
     unsigned int n;
     size_t num_to_read = len;
+
+    if (!handle->ML_srh_is_open) {
+        *err_msg = MR_make_string_const(\"system RNG handle is closed\");
+        return MR_FALSE;
+    }
 
     while (num_to_read > 0) {
         if (num_to_read < 4) {
