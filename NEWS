@@ -18,6 +18,11 @@ Changes that may break compatibility
 Changes to the Mercury standard library
 ---------------------------------------
 
+### New module: `random.system_rng`
+
+* This module provides an interface to a platform specific cryptographically
+  secure random number generator that is seeded from the OS entropy pool.
+
 ### Changes to the `array` module
 
 * The following obsolete predicates and functions have been removed:

@@ -17,6 +17,16 @@
 % random number generators. It is not intended for generating large amounts
 % of random material.
 %
+% On the C backends, the system RNG depends on the operating system.
+% For macOS, Cygwin, OpenBSD, NetBSD and versions of FreeBSD from 12 onwards,
+% we use the arc4random() family of functions.
+% For Windows, we use the rand_s() function.
+% For Linux, AIX, Solaris and versions of FreeBSD before 12, we read randomness
+% from /dev/urandom; on these system each open system RNG handle will require
+% an open file descriptor.
+% On other operating systems the system RNG is not available; on these systems
+% attempting to open a system RNG handle will throw an exception.
+%
 % On the C# backend, the system RNG is an instance of the
 % System.Security.Cryptography.RandomNumberGenerator class that uses the
 % default cryptographic random number generator implementation.
@@ -24,8 +34,6 @@
 % On the Java backend, the system RNG is an instance of the
 % java.security.SecureRandom class using the default algorithm random number
 % algorithm.
-%
-% NYI for the C backends.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

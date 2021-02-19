@@ -63,6 +63,7 @@ random.m
 random.sfc16.m
 random.sfc32.m
 random.sfc64.m
+random.system_rng.m
 ranges.m
 rational.m
 rbtree.m
