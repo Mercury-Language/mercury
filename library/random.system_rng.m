@@ -774,7 +774,7 @@ ML_random_open(MR_Bool *succeeded, MR_String *err_msg)
 static MR_Bool
 ML_random_close(ML_SystemRandomHandle handle, MR_String *err_msg)
 {
-    if (handle->MR_srh_is_open) {
+    if (handle->ML_srh_is_open) {
         handle->ML_srh_is_open = MR_FALSE;
         *err_msg = MR_make_string_const(\"\");
         return MR_TRUE;
