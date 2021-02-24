@@ -417,10 +417,18 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
             HOInstInfo = none_or_default_func,
             mode_info_get_var_types(!.ModeInfo, VarTypes),
             lookup_var_type(VarTypes, PredVar, Type),
-            % XXX The following code may be the cause of Mantis bug #529.
-            type_is_higher_order_details(Type, _, pf_function, _, ArgTypes),
-            list.length(ArgTypes, NumArgs),
-            PredInstInfo = pred_inst_info_default_func_mode(NumArgs)
+            strip_kind_annotation(Type) = higher_order_type(TypePredOrFunc,
+                ArgTypes, TypeHOInstInfo, _Purity, _EvalMethod),
+            (
+                TypeHOInstInfo = higher_order(PredInstInfo),
+                PredInstInfo = pred_inst_info(TypeHOPredOrFunc, _, _, _),
+                expect(unify(TypePredOrFunc, TypeHOPredOrFunc), $pred,
+                    "TypePredOrFunc != TypeHOPredOrFunc")
+            ;
+                TypeHOInstInfo = none_or_default_func,
+                list.length(ArgTypes, NumArgs),
+                PredInstInfo = pred_inst_info_default_func_mode(NumArgs)
+            )
         ),
         PredInstInfo = pred_inst_info(PredOrFunc, ModesPrime, _, DetPrime),
         list.length(ModesPrime, Arity)

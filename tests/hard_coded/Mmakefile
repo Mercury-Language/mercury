@@ -117,6 +117,7 @@ ORDINARY_PROGS = \
 	eqvclass_bug \
 	erroneous_liveness \
 	error_func \
+	exist_cons_ho_arg \
 	existential_bound_tvar \
 	existential_float \
 	existential_reordering \
@@ -440,7 +441,6 @@ ORDINARY_PROGS = \
 	type_to_term \
 	type_to_term_bug \
 	uc_export_enum \
-	uint_string_conv \
 	uint16_from_bytes \
 	uint16_switch_test \
 	uint32_from_bytes \
@@ -451,6 +451,7 @@ ORDINARY_PROGS = \
 	uint64_string_conv \
 	uint64_switch_test \
 	uint8_switch_test \
+	uint_string_conv \
 	uint_switch_test \
 	unicode_test \
 	unify_existq_cons \
