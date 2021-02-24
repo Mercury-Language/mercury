@@ -149,6 +149,7 @@
 :- import_module check_hlds.unique_modes.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
@@ -156,15 +157,20 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
+:- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
@@ -173,11 +179,13 @@
 :- import_module io.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module queue.
 :- import_module require.
 :- import_module set_tree234.
 :- import_module string.
 :- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -660,6 +668,66 @@ do_modecheck_pred(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
     maybe_modecheck_procs(WhatToCheck, MayChangeCalledProc, PredId, ProcTable0,
         ProcIds, !ModuleInfo, !Changed, init_error_spec_accumulator, SpecsAcc),
     ProcSpecs = error_spec_accumulator_to_list(SpecsAcc).
+
+    % Return an error for a predicate with no mode declarations
+    % unless mode inference is enabled and the predicate is local.
+    %
+:- func maybe_report_error_no_modes(module_info, pred_id, pred_info)
+    = list(error_spec).
+
+maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
+    pred_info_get_status(PredInfo, PredStatus),
+    % XXX STATUS
+    ( if PredStatus = pred_status(status_local) then
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, infer_modes, InferModesOpt),
+        (
+            InferModesOpt = yes,
+            Specs = []
+        ;
+            InferModesOpt = no,
+            pred_info_get_markers(PredInfo, Markers),
+            ( if check_marker(Markers, marker_no_pred_decl) then
+                % Generate an error_spec that prints nothing.
+                % While we don't want the user to see the error message,
+                % we need the severity_error to stop the compiler
+                % from proceeding to process this predicate further.
+                % For example, to determinism analysis, where it could
+                % generate misleading errors about the determinism declaration
+                % (added implicitly by the compiler) being wrong.
+                % There is no risk of the compilation failing without
+                % *any* error indication, since we generated an error message
+                % when we added the marker.
+                Msgs = []
+            else
+                PredDesc = describe_one_pred_name(ModuleInfo,
+                    should_not_module_qualify, PredId),
+                MainPieces = [words("Error: no mode declaration for")] ++
+                    PredDesc ++ [suffix("."), nl],
+                VerbosePieces =
+                    [words("(Use"), quote("--infer-modes"),
+                    words("to enable mode inference.)"), nl],
+                Msgs =
+                    [simple_msg(Context,
+                        [always(MainPieces),
+                        verbose_only(verbose_once, VerbosePieces)])]
+            ),
+            pred_info_get_context(PredInfo, Context),
+            Spec = error_spec($pred, severity_error,
+                phase_mode_check(report_in_any_mode), Msgs),
+            Specs = [Spec]
+        )
+    else
+        pred_info_get_context(PredInfo, Context),
+        Pieces = [words("Error: no mode declaration for exported")] ++
+            describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)
+            ++ [suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error,
+            phase_mode_check(report_in_any_mode), Context, Pieces),
+        Specs = [Spec]
+    ).
+
+%-----------------------------------------------------------------------------%
 
     % Iterate over the list of modes for a predicate.
     %
@@ -1649,6 +1717,137 @@ report_wrong_mode_for_main(ProcInfo) = Spec :-
         words("must have mode"), quote("(di, uo)"), suffix("."), nl],
     Spec = simplest_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Pieces).
+
+%-----------------------------------------------------------------------------%
+
+:- type include_detism_on_modes
+    --->    include_detism_on_modes
+    ;       do_not_include_detism_on_modes.
+
+    % Generate the inferred `mode' declarations for a list of pred_ids.
+    % The include_detism_on_modes argument indicates whether or not
+    % to write out determinism annotations on the modes. (It should only
+    % be set to `include_detism_on_modes' _after_ determinism analysis.)
+    %
+:- pred report_mode_inference_messages_for_preds(module_info::in,
+    include_detism_on_modes::in, list(pred_id)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_mode_inference_messages_for_preds(_, _, [], !Specs).
+report_mode_inference_messages_for_preds(ModuleInfo, OutputDetism,
+        [PredId | PredIds], !Specs) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_markers(PredInfo, Markers),
+    ( if check_marker(Markers, marker_infer_modes) then
+        ProcIds = pred_info_all_procids(PredInfo),
+        pred_info_get_proc_table(PredInfo, Procs),
+        report_mode_inference_messages_for_procs(ModuleInfo, OutputDetism,
+            PredInfo, Procs, ProcIds, !Specs)
+    else
+        true
+    ),
+    report_mode_inference_messages_for_preds(ModuleInfo, OutputDetism,
+        PredIds, !Specs).
+
+    % Generate the inferred `mode' declarations for a list of proc_ids.
+    %
+:- pred report_mode_inference_messages_for_procs(module_info::in,
+    include_detism_on_modes::in, pred_info::in, proc_table::in,
+    list(proc_id)::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+report_mode_inference_messages_for_procs(_, _, _, _, [], !Specs).
+report_mode_inference_messages_for_procs(ModuleInfo, OutputDetism,
+        PredInfo, Procs, [ProcId | ProcIds], !Specs) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
+    map.lookup(Procs, ProcId, ProcInfo),
+    ( if
+        (
+            % We always output `Inferred :- mode ...'
+            proc_info_is_valid_mode(ProcInfo)
+        ;
+            % We only output `REJECTED :- mode ...'
+            % if --verbose-errors is enabled
+            VerboseErrors = yes
+        )
+    then
+        Spec = report_mode_inference_message(ModuleInfo, OutputDetism,
+            PredInfo, ProcInfo),
+        !:Specs = [Spec | !.Specs]
+    else
+        true
+    ),
+    report_mode_inference_messages_for_procs(ModuleInfo,
+        OutputDetism, PredInfo, Procs, ProcIds, !Specs).
+
+    % Return a description of the inferred mode declaration for the given
+    % predicate or function.
+    %
+:- func report_mode_inference_message(module_info, include_detism_on_modes,
+    pred_info, proc_info) = error_spec.
+
+report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
+        = Spec :-
+    PredName = pred_info_name(PredInfo),
+    Name = unqualified(PredName),
+    pred_info_get_context(PredInfo, Context),
+    PredArity = pred_info_orig_arity(PredInfo),
+    some [!ArgModes, !MaybeDet] (
+        proc_info_get_argmodes(ProcInfo, !:ArgModes),
+
+        % We need to strip off the extra type_info arguments inserted at the
+        % front by polymorphism.m - we only want the last `PredArity' of them.
+        %
+        list.length(!.ArgModes, NumArgModes),
+        NumToDrop = NumArgModes - PredArity,
+        ( if list.drop(NumToDrop, !ArgModes) then
+            true
+        else
+            unexpected($pred, "list.drop failed")
+        ),
+
+        varset.init(VarSet),
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        (
+            OutputDetism = include_detism_on_modes,
+            proc_info_get_inferred_determinism(ProcInfo, Detism),
+            !:MaybeDet = yes(Detism)
+        ;
+            OutputDetism = do_not_include_detism_on_modes,
+            !:MaybeDet = no
+        ),
+        ( if proc_info_is_valid_mode(ProcInfo) then
+            Verb = "Inferred"
+        else
+            Verb = "REJECTED",
+            % Replace the final insts with dummy insts '...', since they
+            % won't be valid anyway -- they are just the results of whatever
+            % partial inference we did before detecting the error.
+            mode_list_get_initial_insts(ModuleInfo, !.ArgModes, InitialInsts),
+            DummyInst = defined_inst(user_inst(unqualified("..."), [])),
+            list.duplicate(PredArity, DummyInst, FinalInsts),
+            !:ArgModes = list.map(func(I - F) = from_to_mode(I, F),
+                assoc_list.from_corresponding_lists(InitialInsts, FinalInsts)),
+            % Likewise delete the determinism.
+            !:MaybeDet = no
+        ),
+        strip_builtin_qualifiers_from_mode_list(!ArgModes),
+        (
+            PredOrFunc = pf_predicate,
+            MaybeWithInst = maybe.no,
+            Detail = mercury_pred_mode_decl_to_string(output_debug, VarSet,
+                Name, !.ArgModes, MaybeWithInst, !.MaybeDet)
+        ;
+            PredOrFunc = pf_function,
+            pred_args_to_func_args(!.ArgModes, FuncArgModes, RetMode),
+            Detail = mercury_func_mode_decl_to_string(output_debug, VarSet,
+                Name, FuncArgModes, RetMode, !.MaybeDet)
+        ),
+        Pieces = [words(Verb), words(Detail), nl],
+        Spec = conditional_spec($pred, inform_inferred_modes, yes,
+            severity_informational, phase_mode_check(report_in_any_mode),
+            [simplest_msg(Context, Pieces)])
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.modes.

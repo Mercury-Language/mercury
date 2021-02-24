@@ -101,6 +101,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
@@ -744,6 +745,35 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
         check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
             ProcIds, Removed, !PredInfo, !Specs)
     ).
+
+    % Report an error for the case when two mode declarations
+    % declare indistinguishable modes.
+    %
+:- func report_indistinguishable_modes_error(module_info, proc_id, proc_id,
+    pred_id, pred_info) = error_spec.
+
+report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
+        PredId, PredInfo) = Spec :-
+    pred_info_get_proc_table(PredInfo, Procs),
+    map.lookup(Procs, OldProcId, OldProcInfo),
+    map.lookup(Procs, NewProcId, NewProcInfo),
+    proc_info_get_context(OldProcInfo, OldContext),
+    proc_info_get_context(NewProcInfo, NewContext),
+
+    MainPieces = [words("In mode declarations for ")] ++
+        describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)
+        ++ [suffix(":"), nl, words("error: duplicate mode declaration."), nl],
+    VerbosePieces = [words("Modes"),
+        words_quote(mode_decl_to_string(output_mercury, OldProcId, PredInfo)),
+        words("and"),
+        words_quote(mode_decl_to_string(output_mercury, NewProcId, PredInfo)),
+        words("are indistinguishable.")],
+    OldPieces = [words("Here is the conflicting mode declaration.")],
+    Spec = error_spec($pred, severity_error,
+        phase_mode_check(report_in_any_mode),
+        [simple_msg(NewContext,
+            [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
+        simplest_msg(OldContext, OldPieces)]).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.post_typecheck.

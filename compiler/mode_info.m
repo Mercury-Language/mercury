@@ -59,6 +59,11 @@
             )
     ;       mode_context_uninitialized.
 
+
+    % Initialize a mode_context.
+    %
+:- pred mode_context_init(mode_context::out) is det.
+
 :- type side
     --->    left
     ;       right.
@@ -528,6 +533,10 @@
                 % duplicate_for_switch feature.
                 msi_in_dupl_for_switch      :: in_dupl_for_switch
             ).
+
+%-----------------------------------------------------------------------------%
+
+mode_context_init(mode_context_uninitialized).
 
 %-----------------------------------------------------------------------------%
 
