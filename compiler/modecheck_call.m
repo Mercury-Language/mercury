@@ -426,6 +426,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
                     "TypePredOrFunc != TypeHOPredOrFunc")
             ;
                 TypeHOInstInfo = none_or_default_func,
+                TypePredOrFunc = pf_function,
                 list.length(ArgTypes, NumArgs),
                 PredInstInfo = pred_inst_info_default_func_mode(NumArgs)
             )
