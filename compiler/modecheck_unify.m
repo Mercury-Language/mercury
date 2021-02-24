@@ -431,13 +431,13 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         % call unique_modes_check_goal rather than modecheck_goal.
         (
             HowToCheckGoal = check_unique_modes,
-            unique_modes_check_goal(Goal0, Goal1, !ModeInfo)
+            unique_modes_check_goal(Goal0, Goal, !ModeInfo)
         ;
             HowToCheckGoal = check_modes,
-            modecheck_goal(Goal0, Goal1, !ModeInfo)
+            modecheck_goal(Goal0, Goal, !ModeInfo)
         ),
         mode_list_get_final_insts(ModuleInfo0, Modes, FinalInsts),
-        modecheck_lambda_final_insts(Vars, FinalInsts, Goal1, Goal, !ModeInfo),
+        modecheck_lambda_final_insts(Vars, FinalInsts, !ModeInfo),
         mode_checkpoint(exit, "lambda goal", !ModeInfo),
 
         mode_info_remove_live_vars(LiveVars, !ModeInfo),
@@ -726,18 +726,18 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         % which does use partial instantiation (in a rather horrible way).
         % This is a hacky solution that gets us most of what we want
         % with respect to solver types.
-        not (
-            inst_is_free(ModuleInfo0, InitInstOfX),
-            some [InitInstOfArgVar] (
-                list.member(InitInstOfArgVar, InitInstsOfArgVars),
-                inst_is_free(ModuleInfo0, InitInstOfArgVar)
-            ),
-            some [ArgVar] (
-                list.member(ArgVar, ArgVars0),
-                lookup_var_type(VarTypes, ArgVar, ArgType),
-                type_is_or_may_contain_solver_type(ModuleInfo0, ArgType)
-            )
-        ),
+
+        % XXX We want to forbid the construction of partially instantiated
+        % structures involving solver types. We would like to forbid all such
+        % constructions, but that causes trouble with the current code of
+        % term_conversion.term_to_univ_special_case, which does use partial
+        % instantiation (in a rather horrible way).
+        %
+        % This is a hacky solution that gets us most of what we want
+        % with respect to solver types.
+        %
+        not would_construct_partial_term_with_solver_type(ModuleInfo0,
+            VarTypes, ArgVars0, InitInstOfX, InitInstsOfArgVars),
         abstractly_unify_inst_functor(LiveX, InitInstOfX, InstConsId,
             InitInstsOfArgVars, LiveArgs, real_unify, TypeOfX,
             UnifiedInst, Detism, ModuleInfo0, ModuleInfo1)
@@ -846,6 +846,23 @@ ensure_exist_constr_is_construction(IsExistConstruction, X0, X,
         InitInstX = InitInstX0,
         mode_info_var_is_live(!.ModeInfo, X, LiveX),
         ExtraGoals = no_extra_goals
+    ).
+
+:- pred would_construct_partial_term_with_solver_type(module_info::in,
+    vartypes::in, list(prog_var)::in,
+    mer_inst::in, list(mer_inst)::in) is semidet.
+
+would_construct_partial_term_with_solver_type(ModuleInfo, VarTypes, ArgVars,
+        InitInstOfX, InitInstsOfArgVars) :-
+    inst_is_free(ModuleInfo, InitInstOfX),
+    some [InitInstOfArgVar] (
+        list.member(InitInstOfArgVar, InitInstsOfArgVars),
+        inst_is_free(ModuleInfo, InitInstOfArgVar)
+    ),
+    some [ArgVar] (
+        list.member(ArgVar, ArgVars),
+        lookup_var_type(VarTypes, ArgVar, ArgType),
+        type_is_or_may_contain_solver_type(ModuleInfo, ArgType)
     ).
 
 :- pred handle_var_functor_mode_error(prog_var::in, cons_id::in,

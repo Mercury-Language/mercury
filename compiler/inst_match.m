@@ -258,12 +258,16 @@ expansion_insert_new(E, S0, S) :-
     --->    inst_match_info(
                 imi_module_info             :: module_info,
                 imi_expansions              :: expansions,
-                imi_maybe_sub               :: maybe(inst_var_sub),
+                imi_maybe_sub               :: maybe_inst_var_sub,
                 imi_calculate_sub           :: calculate_sub,
                 imi_uniqueness_comparison   :: uniqueness_comparison,
-                imi_any_matches_any         :: bool,
+                imi_any_matches_any         :: any_matches_any,
                 imi_ground_matches_bound    :: ground_matches_bound
             ).
+
+:- type maybe_inst_var_sub
+    --->    no_inst_var_sub
+    ;       inst_var_sub(inst_var_sub).
 
     % The calculate_sub type determines how the inst var substitution
     % should be calculated.
@@ -281,8 +285,12 @@ expansion_insert_new(E, S0, S) :-
     ;       cs_none.
             % Do not calculate inst var substitution.
 
-:- func init_inst_match_info(module_info, maybe(inst_var_sub),
-    calculate_sub, uniqueness_comparison, bool, ground_matches_bound) =
+:- type any_matches_any
+    --->    any_does_not_match_any
+    ;       any_does_match_any.
+
+:- func init_inst_match_info(module_info, maybe_inst_var_sub, calculate_sub,
+    uniqueness_comparison, any_matches_any, ground_matches_bound) =
     inst_match_info.
 
 init_inst_match_info(ModuleInfo, MaybeSub, CalculateSub, Comparison,
@@ -389,10 +397,10 @@ handle_inst_var_subs_2(Recurse, Continue, InstA, InstB, Type, !Info) :-
 
 update_inst_var_sub(InstVars, InstA, MaybeType, !Info) :-
     (
-        !.Info ^ imi_maybe_sub = yes(_),
+        !.Info ^ imi_maybe_sub = inst_var_sub(_),
         set.fold(update_inst_var_sub_2(InstA, MaybeType), InstVars, !Info)
     ;
-        !.Info ^ imi_maybe_sub = no
+        !.Info ^ imi_maybe_sub = no_inst_var_sub
     ).
 
 :- pred update_inst_var_sub_2(mer_inst::in, maybe(mer_type)::in, inst_var::in,
@@ -400,7 +408,7 @@ update_inst_var_sub(InstVars, InstA, MaybeType, !Info) :-
 
 update_inst_var_sub_2(InstA, MaybeType, InstVar, !Info) :-
     (
-        !.Info ^ imi_maybe_sub = yes(InstVarSub0),
+        !.Info ^ imi_maybe_sub = inst_var_sub(InstVarSub0),
         ( if map.search(InstVarSub0, InstVar, InstB) then
             % If InstVar already has an inst associated with it, merge
             % the old inst and the new inst. Fail if this merge is not
@@ -410,52 +418,53 @@ update_inst_var_sub_2(InstA, MaybeType, InstVar, !Info) :-
                 ModuleInfo0, ModuleInfo),
             !Info ^ imi_module_info := ModuleInfo,
             map.det_update(InstVar, Inst, InstVarSub0, InstVarSub),
-            !Info ^ imi_maybe_sub := yes(InstVarSub)
+            !Info ^ imi_maybe_sub := inst_var_sub(InstVarSub)
         else
             map.det_insert(InstVar, InstA, InstVarSub0, InstVarSub),
-            !Info ^ imi_maybe_sub := yes(InstVarSub)
+            !Info ^ imi_maybe_sub := inst_var_sub(InstVarSub)
         )
     ;
-        !.Info ^ imi_maybe_sub = no,
+        !.Info ^ imi_maybe_sub = no_inst_var_sub,
         InstVarSub = map.singleton(InstVar, InstA),
-        !Info ^ imi_maybe_sub := yes(InstVarSub)
+        !Info ^ imi_maybe_sub := inst_var_sub(InstVarSub)
     ).
 
 %-----------------------------------------------------------------------------%
 
 inst_matches_initial(InstA, InstB, Type, ModuleInfo) :-
-    inst_matches_initial_1(InstA, InstB, Type, ModuleInfo, _, no, _).
+    inst_matches_initial_1(InstA, InstB, Type, ModuleInfo, _,
+        no_inst_var_sub, _).
 
 inst_matches_initial_sub(InstA, InstB, Type, !ModuleInfo, !Sub) :-
     inst_matches_initial_1(InstA, InstB, Type, !ModuleInfo,
-        yes(!.Sub), MaybeSub),
+        inst_var_sub(!.Sub), MaybeSub),
     (
-        MaybeSub = yes(!:Sub)
+        MaybeSub = inst_var_sub(!:Sub)
     ;
-        MaybeSub = no,
+        MaybeSub = no_inst_var_sub,
         unexpected($pred, "missing inst_var_sub")
     ).
 
 inst_matches_initial_no_implied_modes(InstA, InstB, Type, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_forward, uc_match, yes,
-        ground_matches_bound_if_complete),
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_forward,
+        uc_match, any_does_match_any, ground_matches_bound_if_complete),
     inst_matches_final_mt(InstA, InstB, yes(Type), Info0, _).
 
 inst_matches_initial_no_implied_modes_sub(InstA, InstB, Type, !ModuleInfo,
         !Sub) :-
-    Info0 = init_inst_match_info(!.ModuleInfo, yes(!.Sub), cs_forward,
-        uc_match, yes, ground_matches_bound_if_complete),
+    Info0 = init_inst_match_info(!.ModuleInfo, inst_var_sub(!.Sub), cs_forward,
+        uc_match, any_does_match_any, ground_matches_bound_if_complete),
     inst_matches_final_mt(InstA, InstB, yes(Type), Info0, Info),
     !:ModuleInfo = Info ^ imi_module_info,
-    yes(!:Sub) = Info ^ imi_maybe_sub.
+    inst_var_sub(!:Sub) = Info ^ imi_maybe_sub.
 
 :- pred inst_matches_initial_1(mer_inst::in, mer_inst::in, mer_type::in,
     module_info::in, module_info::out,
-    maybe(inst_var_sub)::in, maybe(inst_var_sub)::out) is semidet.
+    maybe_inst_var_sub::in, maybe_inst_var_sub::out) is semidet.
 
 inst_matches_initial_1(InstA, InstB, Type, !ModuleInfo, !MaybeSub) :-
     Info0 = init_inst_match_info(!.ModuleInfo, !.MaybeSub, cs_forward,
-        uc_match, yes, ground_matches_bound_if_complete),
+        uc_match, any_does_match_any, ground_matches_bound_if_complete),
     inst_matches_initial_mt(InstA, InstB, yes(Type), Info0, Info),
     !:ModuleInfo = Info ^ imi_module_info,
     !:MaybeSub = Info ^ imi_maybe_sub.
@@ -488,7 +497,7 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
     (
         InstA = any(UniqA, HOInstInfoA),
         InstB = any(UniqB, HOInstInfoB),
-        !.Info ^ imi_any_matches_any = yes,
+        !.Info ^ imi_any_matches_any = any_does_match_any,
         compare_uniqueness(!.Info ^ imi_uniqueness_comparison, UniqA, UniqB),
         ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType,
             !Info)
@@ -817,8 +826,8 @@ inst_list_matches_initial_mt([X | Xs], [Y | Ys], [MaybeType | MaybeTypes],
 %-----------------------------------------------------------------------------%
 
 inst_matches_final(InstA, InstB, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
-        ground_matches_bound_if_complete),
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
+        uc_match, any_does_match_any, ground_matches_bound_if_complete),
     inst_matches_final_mt(InstA, InstB, no, Info0, _).
 
 inst_matches_final_typed(InstA, InstB, Type, ModuleInfo) :-
@@ -826,8 +835,8 @@ inst_matches_final_typed(InstA, InstB, Type, ModuleInfo) :-
         ground_matches_bound_if_complete).
 
 inst_matches_final_gmb(InstA, InstB, Type, ModuleInfo, GroundMatchesBound) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
-        GroundMatchesBound),
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
+        uc_match, any_does_match_any, GroundMatchesBound),
     inst_matches_final_mt(InstA, InstB, yes(Type), Info0, _).
 
 :- pred inst_matches_final_mt(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
@@ -1024,20 +1033,21 @@ bound_inst_list_matches_final([X | Xs], [Y | Ys], MaybeType, !Info) :-
     ).
 
 inst_is_at_least_as_instantiated(InstA, InstB, Type, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_instantiated, no,
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
+        uc_instantiated, any_does_not_match_any,
         ground_matches_bound_if_complete),
     inst_matches_initial_mt(InstA, InstB, yes(Type), Info0, _).
 
 %-----------------------------------------------------------------------------%
 
 inst_matches_binding(InstA, InstB, Type, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, no,
-        ground_matches_bound_if_complete),
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
+        uc_match, any_does_not_match_any, ground_matches_bound_if_complete),
     inst_matches_binding_mt(InstA, InstB, yes(Type), Info0, _).
 
 inst_matches_binding_allow_any_any(InstA, InstB, Type, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
-        ground_matches_bound_if_complete),
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
+        uc_match, any_does_match_any, ground_matches_bound_if_complete),
     inst_matches_binding_mt(InstA, InstB, yes(Type), Info0, _).
 
 :- pred inst_matches_binding_mt(mer_inst::in, mer_inst::in,
@@ -1072,11 +1082,11 @@ inst_matches_binding_3(InstA, InstB, MaybeType, !Info) :-
         % (and does not contain any solver types).
         AnyMatchesAny = !.Info ^ imi_any_matches_any,
         (
-            AnyMatchesAny = yes,
+            AnyMatchesAny = any_does_match_any,
             ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType,
                 !Info)
         ;
-            AnyMatchesAny = no,
+            AnyMatchesAny = any_does_not_match_any,
             maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
                 HOInstInfoA, NextInstA),
             maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqB,
@@ -1242,8 +1252,8 @@ unique_matches_final(A, B) :-
 %-----------------------------------------------------------------------------%
 
 inst_contains_nondefault_func_mode(ModuleInfo, Inst) :-
-    Info = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
-        ground_matches_bound_if_complete),
+    Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none, uc_match,
+        any_does_match_any, ground_matches_bound_if_complete),
     inst_contains_nondefault_func_mode_1(Inst, yes, Info, _).
 
 :- pred inst_contains_nondefault_func_mode_1(mer_inst::in, bool::out,
@@ -1355,8 +1365,8 @@ ho_inst_info_matches_ground(ModuleInfo, HOInstInfo) :-
     maybe(mer_type)::in) is semidet.
 
 ho_inst_info_matches_ground_mt(ModuleInfo, HOInstInfo, MaybeType) :-
-    Info = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
-        ground_matches_bound_if_complete),
+    Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none, uc_match,
+        any_does_match_any, ground_matches_bound_if_complete),
     ho_inst_info_matches_ground_2(HOInstInfo, MaybeType, Info, _).
 
 :- pred ho_inst_info_matches_ground_2(ho_inst_info::in, maybe(mer_type)::in,
@@ -1377,8 +1387,8 @@ pred_inst_matches_ground(ModuleInfo, PredInst) :-
     maybe(mer_type)::in) is semidet.
 
 pred_inst_matches_ground_mt(ModuleInfo, PredInst, MaybeType) :-
-    Info = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
-        ground_matches_bound_if_complete),
+    Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none, uc_match,
+        any_does_match_any, ground_matches_bound_if_complete),
     pred_inst_matches_ground_2(PredInst, MaybeType, Info, _).
 
 :- pred pred_inst_matches_ground_2(pred_inst_info::in, maybe(mer_type)::in,
@@ -1404,8 +1414,8 @@ pred_inst_matches(PredInstA, PredInstB, ModuleInfo) :-
     maybe(mer_type)::in, module_info::in) is semidet.
 
 pred_inst_matches_mt(PredInstA, PredInstB, MaybeType, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
-        ground_matches_bound_if_complete),
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
+        uc_match, any_does_match_any, ground_matches_bound_if_complete),
     pred_inst_matches_2(PredInstA, PredInstB, MaybeType, Info0, _).
 
     % pred_inst_matches_2(PredInstA, PredInstB, !Info)
@@ -1462,10 +1472,10 @@ pred_inst_argmodes_matches([ModeA | ModeAs], [ModeB | ModeBs],
 
 maybe_apply_substitution(Info, Inst0, Inst) :-
     (
-        Info ^ imi_maybe_sub = yes(Subst),
+        Info ^ imi_maybe_sub = inst_var_sub(Subst),
         inst_apply_substitution(Subst, Inst0, Inst)
     ;
-        Info ^ imi_maybe_sub = no,
+        Info ^ imi_maybe_sub = no_inst_var_sub,
         Inst = Inst0
     ).
 

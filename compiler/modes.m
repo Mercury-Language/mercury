@@ -66,7 +66,6 @@
 
 :- import_module check_hlds.mode_info.
 :- import_module hlds.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
@@ -123,7 +122,7 @@
     % matches their expected final insts.
     %
 :- pred modecheck_lambda_final_insts(list(prog_var)::in, list(mer_inst)::in,
-    hlds_goal::in, hlds_goal::out, mode_info::in, mode_info::out) is det.
+    mode_info::in, mode_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -150,6 +149,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
@@ -1114,10 +1114,10 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, IsUnifyPred,
         mode_checkpoint(enter, CheckpointMsg, !ModeInfo),
         (
             WhatToCheck = check_modes,
-            modecheck_goal(Body0, Body1, !ModeInfo)
+            modecheck_goal(Body0, Body, !ModeInfo)
         ;
             WhatToCheck = check_unique_modes,
-            unique_modes_check_goal(Body0, Body1, !ModeInfo)
+            unique_modes_check_goal(Body0, Body, !ModeInfo)
         ),
         mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
 
@@ -1130,7 +1130,7 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, IsUnifyPred,
             GroundMatchesBound = ground_matches_bound_always
         ),
         modecheck_final_insts_gmb(InferModes, GroundMatchesBound,
-            HeadVars, ArgFinalInsts0, ArgFinalInsts, Body1, Body, !ModeInfo)
+            HeadVars, ArgFinalInsts0, ArgFinalInsts, !ModeInfo)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1295,12 +1295,12 @@ modecheck_clause_disj(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
         Disjunct0, Disjunct, !ModeInfo) :-
     mode_checkpoint(enter, CheckpointMsg, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    modecheck_goal(Disjunct0, Disjunct1, !ModeInfo),
+    modecheck_goal(Disjunct0, Disjunct, !ModeInfo),
     mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
 
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(do_not_infer_modes, HeadVars,
-        ArgFinalInsts0, _ArgFinalInsts, Disjunct1, Disjunct, !ModeInfo).
+        ArgFinalInsts0, _ArgFinalInsts, !ModeInfo).
 
 :- pred modecheck_clause_switch(string::in, list(prog_var)::in, instmap::in,
     list(mer_inst)::in, prog_var::in, case::in, case::out,
@@ -1328,12 +1328,12 @@ modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
     ),
 
     % Don't lose the information added by the functor test above.
-    fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal1, Goal2),
+    fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal1, Goal),
     mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
 
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(do_not_infer_modes, HeadVars,
-        ArgFinalInsts0, _ArgFinalInsts, Goal2, Goal, !ModeInfo),
+        ArgFinalInsts0, _ArgFinalInsts, !ModeInfo),
     Case = case(MainConsId, OtherConsIds, Goal).
 
 :- pred unique_modecheck_clause_disj(string::in, list(prog_var)::in,
@@ -1349,12 +1349,12 @@ unique_modecheck_clause_disj(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
     mode_info_set_nondet_live_vars(NondetLiveVars0, !ModeInfo),
     unique_modes.prepare_for_disjunct(Disjunct0, DisjDetism, DisjNonLocals,
         !ModeInfo),
-    unique_modes_check_goal(Disjunct0, Disjunct1, !ModeInfo),
+    unique_modes_check_goal(Disjunct0, Disjunct, !ModeInfo),
     mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
 
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(do_not_infer_modes, HeadVars,
-        ArgFinalInsts0, _ArgFinalInsts, Disjunct1, Disjunct, !ModeInfo).
+        ArgFinalInsts0, _ArgFinalInsts, !ModeInfo).
 
 :- pred unique_modecheck_clause_switch(string::in, list(prog_var)::in,
     instmap::in, list(mer_inst)::in, prog_var::in, case::in, case::out,
@@ -1380,41 +1380,41 @@ unique_modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0,
 
     % Don't lose the information added by the functor test above.
     mode_info_get_instmap(!.ModeInfo, InstMap),
-    fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal1, Goal2),
+    fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal1, Goal),
     mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
 
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(do_not_infer_modes, HeadVars,
-        ArgFinalInsts0, _ArgFinalInsts, Goal2, Goal, !ModeInfo),
+        ArgFinalInsts0, _ArgFinalInsts, !ModeInfo),
     Case = case(MainConsId, OtherConsIds, Goal).
 
 %-----------------------------------------------------------------------------%
 
-modecheck_lambda_final_insts(HeadVars, ArgFinalInsts, !Goal, !ModeInfo) :-
+modecheck_lambda_final_insts(HeadVars, ArgFinalInsts, !ModeInfo) :-
     % This is modecheck_final_insts for a lambda expression.
     %
     % For lambda expressions, modes must always be declared;
     % we never infer them.
     modecheck_final_insts(do_not_infer_modes, HeadVars,
-        ArgFinalInsts, _NewFinalInsts, !Goal, !ModeInfo).
+        ArgFinalInsts, _NewFinalInsts, !ModeInfo).
 
     % Check that the final insts of the head vars match their expected insts.
     %
 :- pred modecheck_final_insts(maybe_infer_modes::in, list(prog_var)::in,
-    list(mer_inst)::in, list(mer_inst)::out, hlds_goal::in, hlds_goal::out,
+    list(mer_inst)::in, list(mer_inst)::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_final_insts(InferModes, HeadVars, !FinalInsts, !Body, !ModeInfo) :-
+modecheck_final_insts(InferModes, HeadVars, !FinalInsts, !ModeInfo) :-
     modecheck_final_insts_gmb(InferModes, ground_matches_bound_if_complete,
-        HeadVars, !FinalInsts, !Body, !ModeInfo).
+        HeadVars, !FinalInsts, !ModeInfo).
 
 :- pred modecheck_final_insts_gmb(maybe_infer_modes::in,
     ground_matches_bound::in, list(prog_var)::in,
     list(mer_inst)::in, list(mer_inst)::out,
-    hlds_goal::in, hlds_goal::out, mode_info::in, mode_info::out) is det.
+    mode_info::in, mode_info::out) is det.
 
 modecheck_final_insts_gmb(InferModes, GroundMatchesBound,
-        HeadVars, FinalInsts0, FinalInsts, Body0, Body, !ModeInfo) :-
+        HeadVars, FinalInsts0, FinalInsts, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_errors(!.ModeInfo, Errors),
     % If there were any mode errors, use an unreachable instmap.
@@ -1449,8 +1449,7 @@ modecheck_final_insts_gmb(InferModes, GroundMatchesBound,
         normalise_insts(ModuleInfo, ArgTypes, VarFinalInsts0, VarFinalInsts1),
         maybe_clobber_insts(VarFinalInsts1, ArgLives, VarFinalInsts2),
         check_final_insts(InferModes, GroundMatchesBound,
-            HeadVars, VarFinalInsts2, FinalInsts0, 1, Body0, Body,
-            no, Changed1, !ModeInfo),
+            HeadVars, VarFinalInsts2, FinalInsts0, 1, no, Changed1, !ModeInfo),
         FinalInsts = VarFinalInsts2,
         mode_info_get_changed_flag(!.ModeInfo, Changed2),
         bool.or_list([Changed0, Changed1, Changed2], Changed),
@@ -1458,7 +1457,7 @@ modecheck_final_insts_gmb(InferModes, GroundMatchesBound,
     ;
         InferModes = do_not_infer_modes,
         check_final_insts(InferModes, GroundMatchesBound,
-            HeadVars, VarFinalInsts0, FinalInsts0, 1, Body0, Body,
+            HeadVars, VarFinalInsts0, FinalInsts0, 1,
             no, _Changed1, !ModeInfo),
         FinalInsts = FinalInsts0
     ).
@@ -1483,11 +1482,10 @@ maybe_clobber_insts([Inst0 | Insts0], [IsLive | IsLives], [Inst | Insts]) :-
 
 :- pred check_final_insts(maybe_infer_modes::in, ground_matches_bound::in,
     list(prog_var)::in, list(mer_inst)::in, list(mer_inst)::in, int::in,
-    hlds_goal::in, hlds_goal::out, bool::in, bool::out,
-    mode_info::in, mode_info::out) is det.
+    bool::in, bool::out, mode_info::in, mode_info::out) is det.
 
 check_final_insts(InferModes, GroundMatchesBound,
-        Vars, VarInsts, ExpectedInsts, ArgNum, !Goal, !Changed, !ModeInfo) :-
+        Vars, VarInsts, ExpectedInsts, ArgNum, !Changed, !ModeInfo) :-
     ( if
         Vars = [],
         VarInsts = [],
@@ -1499,65 +1497,73 @@ check_final_insts(InferModes, GroundMatchesBound,
         VarInsts = [HeadVarInst | TailVarInsts],
         ExpectedInsts = [HeadExpectedInst | TailExpectedInsts]
     then
-        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-        mode_info_get_var_types(!.ModeInfo, VarTypes),
-        lookup_var_type(VarTypes, HeadVar, Type),
-        ( if
-            inst_matches_final_gmb(HeadVarInst, HeadExpectedInst, Type,
-                ModuleInfo, GroundMatchesBound)
-        then
-            true
-        else
-            !:Changed = yes,
-            (
-                % If we are inferring the mode, then don't report an error,
-                % just set changed to yes to make sure that we will do
-                % another fixpoint pass.
-                InferModes = do_infer_modes
-            ;
-                InferModes = do_not_infer_modes,
-                % XXX This might need to be reconsidered now we have
-                % unique modes.
-                ( if
-                    inst_matches_initial(HeadVarInst, HeadExpectedInst,
-                        Type, ModuleInfo)
-                then
-                    Reason = too_instantiated
-                else if
-                    % The only reason why VarInst is not good enough
-                    % if the expected Inst is simply `ground' is that
-                    % it is not instantiated enough. Unfortunately,
-                    % we need to test separately for this, because the call
-                    % to inst_matches_initial below can fail, even if
-                    % Inst is `ground', because VarInst contains parts
-                    % that are too unique, or because it does not cover
-                    % all the function symbols in Type.
-                    % This is a side effect of having an inst representation
-                    % that entangles uniqueness information and which-functor
-                    % information with information about how bound a variable
-                    % is. In the extremely common case that Inst is `ground',
-                    % we need only the latter, but we can't get it by itself.
-                    ( HeadExpectedInst = ground(shared, none_or_default_func)
-                    ; inst_matches_initial(HeadExpectedInst, HeadVarInst,
-                        Type, ModuleInfo)
-                    )
-                then
-                    Reason = not_instantiated_enough
-                else
-                    % I don't think this can happen. But just in case...
-                    Reason = wrongly_instantiated
-                ),
-                set_of_var.init(WaitingVars),
-                ModeError = mode_error_unexpected_final_inst(ArgNum, HeadVar,
-                    HeadVarInst, HeadExpectedInst, Reason),
-                mode_info_error(WaitingVars, ModeError, !ModeInfo)
-            )
-        ),
+        check_final_inst(InferModes, GroundMatchesBound,
+            HeadVar, HeadVarInst, HeadExpectedInst, ArgNum,
+            !Changed, !ModeInfo),
         check_final_insts(InferModes, GroundMatchesBound,
             TailVars, TailVarInsts, TailExpectedInsts, ArgNum + 1,
-            !Goal, !Changed, !ModeInfo)
+            !Changed, !ModeInfo)
     else
         unexpected($pred, "length mismatch")
+    ).
+
+:- pred check_final_inst(maybe_infer_modes::in, ground_matches_bound::in,
+    prog_var::in, mer_inst::in, mer_inst::in, int::in,
+    bool::in, bool::out, mode_info::in, mode_info::out) is det.
+
+check_final_inst(InferModes, GroundMatchesBound,
+        Var, VarInst, ExpectedInst, ArgNum, !Changed, !ModeInfo) :-
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+    mode_info_get_var_types(!.ModeInfo, VarTypes),
+    lookup_var_type(VarTypes, Var, Type),
+    ( if
+        inst_matches_final_gmb(VarInst, ExpectedInst, Type,
+            ModuleInfo, GroundMatchesBound)
+    then
+        true
+    else
+        !:Changed = yes,
+        (
+            % If we are inferring the mode, then don't report an error,
+            % just set changed to yes to make sure that we will do
+            % another fixpoint pass.
+            InferModes = do_infer_modes
+        ;
+            InferModes = do_not_infer_modes,
+            % XXX This might need to be reconsidered now we have
+            % unique modes.
+            ( if
+                inst_matches_initial(VarInst, ExpectedInst, Type, ModuleInfo)
+            then
+                Reason = too_instantiated
+            else if
+                % The only reason why VarInst is not good enough
+                % if the expected Inst is simply `ground' is that
+                % it is not instantiated enough. Unfortunately,
+                % we need to test separately for this, because the call
+                % to inst_matches_initial below can fail, even if
+                % Inst is `ground', because VarInst contains parts
+                % that are too unique, or because it does not cover
+                % all the function symbols in Type.
+                % This is a side effect of having an inst representation
+                % that entangles uniqueness information and which-functor
+                % information with information about how bound a variable
+                % is. In the extremely common case that Inst is `ground',
+                % we need only the latter, but we can't get it by itself.
+                ( ExpectedInst = ground(shared, none_or_default_func)
+                ; inst_matches_initial(ExpectedInst, VarInst, Type, ModuleInfo)
+                )
+            then
+                Reason = not_instantiated_enough
+            else
+                % I don't think this can happen. But just in case...
+                Reason = wrongly_instantiated
+            ),
+            set_of_var.init(WaitingVars),
+            ModeError = mode_error_unexpected_final_inst(ArgNum, Var,
+                VarInst, ExpectedInst, Reason),
+            mode_info_error(WaitingVars, ModeError, !ModeInfo)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
