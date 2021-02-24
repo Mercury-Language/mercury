@@ -373,14 +373,14 @@ modecheck_var_list_is_live_no_exact_match([Var | Vars], [IsLive | IsLives],
 :- pred modecheck_var_is_live_no_exact_match(prog_var::in, is_live::in,
     mode_info::in, mode_info::out) is det.
 
-modecheck_var_is_live_no_exact_match(VarId, ExpectedIsLive, !ModeInfo) :-
-    mode_info_var_is_live(!.ModeInfo, VarId, VarIsLive),
+modecheck_var_is_live_no_exact_match(Var, ExpectedIsLive, !ModeInfo) :-
+    mode_info_var_is_live(!.ModeInfo, Var, VarIsLive),
     ( if
         ExpectedIsLive = is_dead,
         VarIsLive = is_live
     then
-        WaitingVars = set_of_var.make_singleton(VarId),
-        ModeError = mode_error_var_is_live(VarId),
+        WaitingVars = set_of_var.make_singleton(Var),
+        ModeError = mode_error_clobbered_var_is_live(Var),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     else
         true
@@ -391,13 +391,13 @@ modecheck_var_is_live_no_exact_match(VarId, ExpectedIsLive, !ModeInfo) :-
 :- pred modecheck_var_is_live_exact_match(prog_var::in, is_live::in,
     mode_info::in, mode_info::out) is det.
 
-modecheck_var_is_live_exact_match(VarId, ExpectedIsLive, !ModeInfo) :-
-    mode_info_var_is_live(!.ModeInfo, VarId, VarIsLive),
+modecheck_var_is_live_exact_match(Var, ExpectedIsLive, !ModeInfo) :-
+    mode_info_var_is_live(!.ModeInfo, Var, VarIsLive),
     ( if VarIsLive = ExpectedIsLive then
         true
     else
-        WaitingVars = set_of_var.make_singleton(VarId),
-        ModeError = mode_error_var_is_live(VarId),
+        WaitingVars = set_of_var.make_singleton(Var),
+        ModeError = mode_error_clobbered_var_is_live(Var),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
@@ -470,15 +470,16 @@ modecheck_var_has_inst_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
     then
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     else
-        mode_info_get_pred_var_multimode_map(!.ModeInfo, MultiModeMap),
-        ( if map.search(MultiModeMap, Var, MultiModeError) then
+        mode_info_get_pred_var_multimode_error_map(!.ModeInfo,
+            MultiModeErrorMap),
+        ( if map.search(MultiModeErrorMap, Var, MultiModeError) then
             MaybeMultiModeError = yes(MultiModeError)
         else
             MaybeMultiModeError = no
         ),
         WaitingVars = set_of_var.make_singleton(Var),
-        ModeError = mode_error_var_has_inst(Var, VarInst, Inst,
-            MaybeMultiModeError),
+        ModeError = mode_error_var_is_not_sufficiently_instantiated(Var,
+            VarInst, Inst, MaybeMultiModeError),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
@@ -500,15 +501,16 @@ modecheck_var_has_inst_no_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
     then
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     else
-        mode_info_get_pred_var_multimode_map(!.ModeInfo, MultiModeMap),
-        ( if map.search(MultiModeMap, Var, MultiModeError) then
+        mode_info_get_pred_var_multimode_error_map(!.ModeInfo,
+            MultiModeErrorMap),
+        ( if map.search(MultiModeErrorMap, Var, MultiModeError) then
             MaybeMultiModeError = yes(MultiModeError)
         else
             MaybeMultiModeError = no
         ),
         WaitingVars = set_of_var.make_singleton(Var),
-        ModeError = mode_error_var_has_inst(Var, VarInst, Inst,
-            MaybeMultiModeError),
+        ModeError = mode_error_var_is_not_sufficiently_instantiated(Var,
+            VarInst, Inst, MaybeMultiModeError),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
@@ -524,7 +526,8 @@ modecheck_introduced_type_info_var_has_inst_no_exact_match(Var, Type, Inst,
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     else
         WaitingVars = set_of_var.make_singleton(Var),
-        ModeError = mode_error_var_has_inst(Var, VarInst, Inst, no),
+        ModeError = mode_error_var_is_not_sufficiently_instantiated(Var,
+            VarInst, Inst, no),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
@@ -581,7 +584,7 @@ get_var_inst(ModeInfo, Var, Inst) :-
 
 %-----------------------------------------------------------------------------%
 
-modecheck_set_var_inst(Var0, NewInst, MaybeUInst, !ModeInfo) :-
+modecheck_set_var_inst(Var0, NewInst0, MaybeUInst, !ModeInfo) :-
     % Note that there are two versions of modecheck_set_var_inst,
     % one with arity 8 (suffixed with _call) and one with arity 5.
     % The former is used for predicate calls, where we may need
@@ -599,16 +602,16 @@ modecheck_set_var_inst(Var0, NewInst, MaybeUInst, !ModeInfo) :-
         % execution time slightly in normal cases, but should reduce it
         % greatly in the worst cases.
         ( if
-            OldInst = NewInst
+            OldInst = NewInst0
         then
             ModuleInfo = ModuleInfo0,
-            Inst = OldInst
+            NewInst = NewInst0
         else if
-            abstractly_unify_inst(is_dead, OldInst, NewInst,
+            abstractly_unify_inst(is_dead, OldInst, NewInst0,
                 fake_unify, UnifyInst, _Det, ModuleInfo0, ModuleInfo1)
         then
             ModuleInfo = ModuleInfo1,
-            Inst = UnifyInst
+            NewInst = UnifyInst
         else
             unexpected($pred, "unify_inst failed")
         ),
@@ -618,7 +621,7 @@ modecheck_set_var_inst(Var0, NewInst, MaybeUInst, !ModeInfo) :-
         ( if
             % If the top-level inst of the variable is not_reached,
             % then the instmap as a whole must be unreachable.
-            inst_expand(ModuleInfo, Inst, not_reached)
+            inst_expand(ModuleInfo, NewInst, not_reached)
         then
             instmap.init_unreachable(InstMap),
             mode_info_set_instmap(InstMap, !ModeInfo)
@@ -626,16 +629,16 @@ modecheck_set_var_inst(Var0, NewInst, MaybeUInst, !ModeInfo) :-
             % If we haven't added any information and
             % we haven't bound any part of the var, then
             % the only thing we can have done is lose uniqueness.
-            inst_matches_initial(OldInst, Inst, Type, ModuleInfo)
+            inst_matches_initial(OldInst, NewInst, Type, ModuleInfo)
         then
-            instmap_set_var(Var0, Inst, InstMap0, InstMap),
+            instmap_set_var(Var0, NewInst, InstMap0, InstMap),
             mode_info_set_instmap(InstMap, !ModeInfo)
         else if
             % We must have either added some information,
             % lost some uniqueness, or bound part of the var.
             % The call to inst_matches_binding will succeed
             % only if we haven't bound any part of the var.
-            not inst_matches_binding(Inst, OldInst, Type, ModuleInfo),
+            not inst_matches_binding(NewInst, OldInst, Type, ModuleInfo),
 
             % We have bound part of the var. If the var was locked,
             % then we need to report an error ...
@@ -644,21 +647,22 @@ modecheck_set_var_inst(Var0, NewInst, MaybeUInst, !ModeInfo) :-
                 % ... unless the goal is a unification and the var was unified
                 % with something no more instantiated than itself. This allows
                 % for the case of `any = free', for example. The call to
-                % inst_matches_binding, above will fail for the var with
-                % mode `any >> any' however, it should be allowed because
+                % inst_matches_binding above will fail for the var with
+                % mode `any >> any', however it should be allowed because
                 % it has only been unified with a free variable.
                 MaybeUInst = yes(UInst),
-                inst_is_at_least_as_instantiated(Inst, UInst, Type,
+                inst_is_at_least_as_instantiated(NewInst, UInst, Type,
                     ModuleInfo),
-                inst_matches_binding_allow_any_any(Inst, OldInst, Type,
+                inst_matches_binding_allow_any_any(NewInst0, OldInst, Type,
                     ModuleInfo)
             )
         then
             WaitingVars = set_of_var.make_singleton(Var0),
-            ModeError = mode_error_bind_var(Reason0, Var0, OldInst, Inst),
+            ModeError = mode_error_bind_locked_var(Reason0, Var0,
+                OldInst, NewInst),
             mode_info_error(WaitingVars, ModeError, !ModeInfo)
         else
-            instmap_set_var(Var0, Inst, InstMap0, InstMap),
+            instmap_set_var(Var0, NewInst, InstMap0, InstMap),
             mode_info_set_instmap(InstMap, !ModeInfo),
             mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
             delay_info_bind_var(Var0, DelayInfo0, DelayInfo),
@@ -740,8 +744,8 @@ modecheck_set_var_inst_call(Var0, InitialInst, FinalInst, Var, !ExtraGoals,
     prog_var::out, extra_goals::in, extra_goals::out,
     mode_info::in, mode_info::out) is det.
 
-handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
-        !ModeInfo) :-
+handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
+        !ExtraGoals, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     inst_expand(ModuleInfo0, InitialInst0, InitialInst),
     inst_expand(ModuleInfo0, VarInst0, VarInst1),
@@ -756,51 +760,57 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
             VarType, ModuleInfo0, _ModuleInfo, map.init, _Sub)
     then
         Var = Var0
-    else if
-        % This is the implied mode case. We do not yet handle implied modes
-        % for partially instantiated vars, since that would require doing
-        % a partially instantiated deep copy, and we don't know how to do
-        % that yet.
-
-        InitialInst = any(_, _),
-        inst_is_free(ModuleInfo0, VarInst1)
-    then
-        % This is the simple case of implied `any' modes, where the declared
-        % mode was `any -> ...' and the argument passed was `free'.
-        Var = Var0,
-
-        % If the variable's type is not a solver type (in which case inst `any'
-        % means the same as inst `ground') then this is an implied mode that we
-        % don't yet know how to handle.
-        WaitingVars = set_of_var.make_singleton(Var0),
-        ModeError = mode_error_implied_mode(Var0, VarInst0, InitialInst),
-        mode_info_error(WaitingVars, ModeError, !ModeInfo)
-    else if
-        inst_is_bound(ModuleInfo0, InitialInst)
-    then
-        % This is the case we can't handle.
-        Var = Var0,
-        WaitingVars = set_of_var.make_singleton(Var0),
-        ModeError = mode_error_implied_mode(Var0, VarInst0, InitialInst),
-        mode_info_error(WaitingVars, ModeError, !ModeInfo)
     else
-        % This is the simple case of implied modes,
-        % where the declared mode was free -> ...
+        % This is the implied mode case.
+        ( if
+            InitialInst = any(_, _),
+            inst_is_free(ModuleInfo0, VarInst1)
+        then
+            % This is the simple case of implied `any' modes, where
+            % the declared mode was `any -> ...' and the argument passed
+            % was `free'.
+            Var = Var0,
 
-        % Introduce a new variable.
-        mode_info_get_varset(!.ModeInfo, VarSet0),
-        varset.new_var(Var, VarSet0, VarSet),
-        add_var_type(Var, VarType, VarTypes0, VarTypes),
-        mode_info_set_varset(VarSet, !ModeInfo),
-        mode_info_set_var_types(VarTypes, !ModeInfo),
+            % If the variable's type is not a solver type (in which case
+            % inst `any' means the same as inst `ground') then this is
+            % an implied mode that we don't yet know how to handle.
+            % XXX I (zs) see no test for solver types here.
+            WaitingVars = set_of_var.make_singleton(Var0),
+            ModeError = mode_error_cannot_create_implied_mode(cannot_init_any,
+                Var0, VarInst0, InitialInst),
+            mode_info_error(WaitingVars, ModeError, !ModeInfo)
+        else if
+            inst_is_bound(ModuleInfo0, InitialInst)
+        then
+            % We do not yet handle implied modes for partially instantiated
+            % vars, since that would require doing a partially instantiated
+            % deep copy, and we don't know how to do that yet.
+            Var = Var0,
+            WaitingVars = set_of_var.make_singleton(Var0),
+            Reason = cannot_deep_copy_partial_term,
+            ModeError = mode_error_cannot_create_implied_mode(Reason,
+                Var0, VarInst0, InitialInst),
+            mode_info_error(WaitingVars, ModeError, !ModeInfo)
+        else
+            % This is the simple case of implied modes,
+            % where the declared mode was free -> ...
 
-        % Construct the code to do the unification.
-        create_var_var_unification(Var0, Var, VarType, !.ModeInfo, ExtraGoal),
+            % Introduce a new variable.
+            mode_info_get_varset(!.ModeInfo, VarSet0),
+            varset.new_var(Var, VarSet0, VarSet),
+            add_var_type(Var, VarType, VarTypes0, VarTypes),
+            mode_info_set_varset(VarSet, !ModeInfo),
+            mode_info_set_var_types(VarTypes, !ModeInfo),
 
-        % Append the goals together in the appropriate order:
-        % ExtraGoals0, then NewUnify.
-        NewUnifyExtraGoal = extra_goals([], [ExtraGoal]),
-        append_extra_goals(!.ExtraGoals, NewUnifyExtraGoal, !:ExtraGoals)
+            % Construct the code to do the unification.
+            create_var_var_unification(Var0, Var, VarType, !.ModeInfo,
+                ExtraGoal),
+
+            % Append the goals together in the appropriate order:
+            % ExtraGoals0, then NewUnify.
+            NewUnifyExtraGoal = extra_goals([], [ExtraGoal]),
+            append_extra_goals(!.ExtraGoals, NewUnifyExtraGoal, !:ExtraGoals)
+        )
     ).
 
 %-----------------------------------------------------------------------------%

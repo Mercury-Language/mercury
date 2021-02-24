@@ -110,7 +110,11 @@ modecheck_call_pred(PredId, MaybeDetism, ProcId0, TheProcId,
         not check_marker(Markers, marker_infer_modes)
     then
         set_of_var.init(WaitingVars),
-        mode_info_error(WaitingVars, mode_error_no_mode_decl, !ModeInfo),
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        expect(unify(PredOrFunc, pf_predicate), $pred,
+            "function with no mode, not even the default"),
+        mode_info_error(WaitingVars, mode_error_callee_pred_has_no_mode_decl,
+            !ModeInfo),
         TheProcId = invalid_proc_id,
         ArgVars = ArgVars0,
         ExtraGoals = no_extra_goals
@@ -392,8 +396,8 @@ modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0, ArgOffset,
 
 modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
         ExtraGoals, !ModeInfo) :-
-    % First, check that `PredVar' has a higher-order pred inst
-    % (of the appropriate arity).
+    % First, check that `PredVar' has a higher-order inst,
+    % with the right pred_or_func and the appropriate arity.
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     instmap_lookup_var(InstMap0, PredVar, PredVarInst0),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
@@ -413,9 +417,10 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
             HOInstInfo = none_or_default_func,
             mode_info_get_var_types(!.ModeInfo, VarTypes),
             lookup_var_type(VarTypes, PredVar, Type),
+            % XXX The following code may be the cause of Mantis bug #529.
             type_is_higher_order_details(Type, _, pf_function, _, ArgTypes),
-            PredInstInfo = pred_inst_info_default_func_mode(
-                list.length(ArgTypes))
+            list.length(ArgTypes, NumArgs),
+            PredInstInfo = pred_inst_info_default_func_mode(NumArgs)
         ),
         PredInstInfo = pred_inst_info(PredOrFunc, ModesPrime, _, DetPrime),
         list.length(ModesPrime, Arity)
@@ -428,8 +433,9 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
         then
             BetterPredVarInst = ground(A, B),
             WaitingVars = set_of_var.make_singleton(PredVar),
-            mode_info_error(WaitingVars, mode_error_bind_var(Reason, PredVar,
-                PredVarInst, BetterPredVarInst), !ModeInfo),
+            ModeError = mode_error_bind_locked_var(Reason, PredVar,
+                PredVarInst, BetterPredVarInst),
+            mode_info_error(WaitingVars, ModeError, !ModeInfo),
             Modes = [],
             Det = detism_erroneous,
             Args = Args0,
@@ -452,10 +458,9 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
         % The error occurred in argument 1, i.e. the pred term.
         mode_info_set_call_arg_context(1, !ModeInfo),
         WaitingVars = set_of_var.make_singleton(PredVar),
-        mode_info_error(WaitingVars,
-            mode_error_higher_order_pred_var(PredOrFunc, PredVar, PredVarInst,
-                Arity),
-            !ModeInfo),
+        ModeError = mode_error_bad_higher_order_inst(PredVar, PredVarInst,
+            PredOrFunc, Arity),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo),
         Modes = [],
         Det = detism_erroneous,
         Args = Args0,

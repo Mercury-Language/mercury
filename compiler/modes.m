@@ -1480,8 +1480,8 @@ check_final_insts(InferModes, GroundMatchesBound,
                     Reason = wrongly_instantiated
                 ),
                 set_of_var.init(WaitingVars),
-                ModeError = mode_error_final_inst(ArgNum, HeadVar, HeadVarInst,
-                    HeadExpectedInst, Reason),
+                ModeError = mode_error_unexpected_final_inst(ArgNum, HeadVar,
+                    HeadVarInst, HeadExpectedInst, Reason),
                 mode_info_error(WaitingVars, ModeError, !ModeInfo)
             )
         ),

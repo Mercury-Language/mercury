@@ -150,9 +150,6 @@
     mer_inst::out) is det.
 
 %---------------------------------------------------------------------------%
-% ZZZ instmap_insert_var
-% ZZZ instmap_delta_set_vars
-% ZZZ instmap_delta_set_vars_corresponding
 
     % Set an entry in an instmap.
     %
@@ -251,7 +248,6 @@
     is det.
 
 %---------------------------------------------------------------------------%
-% ZZZ
 
 :- func instmap_delta_bind_no_var = instmap_delta.
 :- func instmap_delta_bind_var(prog_var) = instmap_delta.
@@ -412,6 +408,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module std_util.
@@ -1062,16 +1059,17 @@ instmap_merge(NonLocals, ArmInstMaps, MergeContext, !ModeInfo) :-
         set_of_var.to_sorted_list(NonLocals, NonLocalsList),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
         merge_insts_of_vars(NonLocalsList, ArmInstMaps, VarTypes,
-            InstMapping0, InstMapping, ModuleInfo0, ModuleInfo, ErrorList),
+            InstMapping0, InstMapping, ModuleInfo0, ModuleInfo, Errors),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
         (
-            ErrorList = [FirstError | _],
-            FirstError = merge_error(Var, _),
+            Errors = [HeadError | TailErrors],
+            OoMErrors = one_or_more(HeadError, TailErrors),
+            HeadError = merge_error(Var, _),
             WaitingVars = set_of_var.make_singleton(Var),
-            mode_info_error(WaitingVars,
-                mode_error_disj(MergeContext, ErrorList), !ModeInfo)
+            ModeError = mode_error_merge_disj(MergeContext, OoMErrors),
+            mode_info_error(WaitingVars, ModeError, !ModeInfo)
         ;
-            ErrorList = []
+            Errors = []
         ),
         InstMap = reachable(InstMapping)
     else

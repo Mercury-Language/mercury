@@ -45,6 +45,7 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
+:- import_module one_or_more.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -88,19 +89,21 @@ modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo) :-
         Errors6 = Errors5 ++ ImpurityErrors,
         mode_info_set_errors(Errors6, !ModeInfo)
     ;
-        DelayedGoals = [FirstDelayedGoal | MoreDelayedGoals],
+        DelayedGoals = [HeadDelayedGoal | TailDelayedGoals],
         % The variables in the delayed goals should no longer be considered
         % live (the conjunction itself will delay, and its nonlocals will be
         % made live).
         mode_info_set_live_vars(LiveVars1, !ModeInfo),
         (
-            MoreDelayedGoals = [],
-            FirstDelayedGoal = delayed_goal(_DVars, Error, _DGoal),
+            TailDelayedGoals = [],
+            HeadDelayedGoal = delayed_goal(_DVars, Error, _DGoal),
             mode_info_add_error(Error, !ModeInfo)
         ;
-            MoreDelayedGoals = [_ | _],
+            TailDelayedGoals = [_ | _],
             get_all_waiting_vars(DelayedGoals, Vars),
-            ModeError = mode_error_conj(DelayedGoals, conj_floundered),
+            OoMDelayedGoals = one_or_more(HeadDelayedGoal, TailDelayedGoals),
+            ModeError = mode_error_unschedulable_conjuncts(OoMDelayedGoals,
+                conj_floundered),
             mode_info_error(Vars, ModeError, !ModeInfo)
         )
     ).
@@ -181,9 +184,9 @@ modecheck_conj_list_flatten_and_schedule_acc(ConjType, [Goal0 | Goals0],
             (
                 Impure = yes,
                 FirstErrorInfo = mode_error_info(Vars, _, _, _),
-                ImpureError = mode_error_conj(
-                    [delayed_goal(Vars, FirstErrorInfo, Goal0)],
-                    goal_itself_was_impure),
+                DelayedError = delayed_goal(Vars, FirstErrorInfo, Goal0),
+                ImpureError = mode_error_unschedulable_conjuncts(
+                    one_or_more(DelayedError, []), goal_itself_was_impure),
                 mode_info_get_context(!.ModeInfo, Context),
                 mode_info_get_mode_context(!.ModeInfo, ModeContext),
                 ImpureErrorInfo = mode_error_info(Vars, ImpureError,
@@ -324,9 +327,11 @@ check_for_impurity_error(Goal, Goals, !ImpurityErrors, !ModeInfo) :-
     (
         NonHeadVarUnificationGoals = []
     ;
-        NonHeadVarUnificationGoals = [_ | _],
+        NonHeadVarUnificationGoals = [HeadGoal | TailGoals],
         get_all_waiting_vars(NonHeadVarUnificationGoals, Vars),
-        ModeError = mode_error_conj(NonHeadVarUnificationGoals,
+        OoMNonHeadVarUnificationGoals = one_or_more(HeadGoal, TailGoals),
+        ModeError = mode_error_unschedulable_conjuncts(
+            OoMNonHeadVarUnificationGoals,
             goals_followed_by_impure_goal(Goal)),
         mode_info_get_context(!.ModeInfo, Context),
         mode_info_get_mode_context(!.ModeInfo, ModeContext),

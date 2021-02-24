@@ -36,6 +36,7 @@
 :- import_module assoc_list.
 :- import_module bag.
 :- import_module bool.
+:- import_module getopt.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -149,7 +150,8 @@
                 par_conj_bound      :: set_of_progvar
             ).
 
-:- type pred_var_multimode_map == map(prog_var, pred_var_multimode_pred_error).
+:- type pred_var_multimode_error_map
+    == map(prog_var, pred_id_var_multimode_error).
 
 %-----------------------------------------------------------------------------%
 
@@ -202,8 +204,8 @@
     make_ground_terms_unique::out) is det.
 :- pred mode_info_get_in_dupl_for_switch(mode_info::in,
     in_dupl_for_switch::out) is det.
-:- pred mode_info_get_pred_var_multimode_map(mode_info::in,
-    pred_var_multimode_map::out) is det.
+:- pred mode_info_get_pred_var_multimode_error_map(mode_info::in,
+    pred_var_multimode_error_map::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -267,7 +269,8 @@
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_in_dupl_for_switch(in_dupl_for_switch::in,
     mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_pred_var_multimode_map(pred_var_multimode_map::in,
+:- pred mode_info_set_pred_var_multimode_error_map(
+    pred_var_multimode_error_map::in,
     mode_info::in, mode_info::out) is det.
 
     % We keep track of the live variables and the nondet-live variables
@@ -343,10 +346,12 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.error_util.
 
 :- import_module int.
 :- import_module pair.
 :- import_module require.
+:- import_module string.
 :- import_module term.
 :- import_module varset.
 
@@ -475,7 +480,8 @@
                 % of the value of this map at the start of each branched
                 % control structure, and to reset it to that snapshot
                 % at the start of each branch.
-                msi_pred_var_multimode_map  :: pred_var_multimode_map,
+                msi_pred_var_multimode_error_map
+                                            :: pred_var_multimode_error_map,
 
                 % All the arguments from here on are sub-word-sized,
                 % which should allow the compiler to pack them together.
@@ -490,9 +496,9 @@
                 msi_changed_flag            :: bool,
 
                 % Are we rechecking a goal after introducing unifications
-                % for complicated sub-unifications or an implied mode? If so,
-                % redoing the mode check should not introduce more extra
-                % unifications.
+                % for complicated sub-unifications or an implied mode?
+                % If so, redoing the mode check should not introduce more
+                % extra unifications.
                 msi_checking_extra_goals    :: bool,
 
                 % Says whether we need to requantify the procedure body
@@ -656,8 +662,8 @@ mode_info_get_make_ground_terms_unique(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_make_ground_terms_unique.
 mode_info_get_in_dupl_for_switch(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_in_dupl_for_switch.
-mode_info_get_pred_var_multimode_map(MI, X) :-
-    X = MI ^ mi_sub_info ^ msi_pred_var_multimode_map.
+mode_info_get_pred_var_multimode_error_map(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_pred_var_multimode_error_map.
 
 mode_info_set_module_info(X, !MI) :-
     ( if private_builtin.pointer_equal(X, !.MI ^ mi_module_info) then
@@ -749,14 +755,14 @@ mode_info_set_make_ground_terms_unique(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_make_ground_terms_unique := X.
 mode_info_set_in_dupl_for_switch(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_in_dupl_for_switch := X.
-mode_info_set_pred_var_multimode_map(X, !MI) :-
+mode_info_set_pred_var_multimode_error_map(X, !MI) :-
     ( if
         private_builtin.pointer_equal(X,
-            !.MI ^ mi_sub_info ^ msi_pred_var_multimode_map)
+            !.MI ^ mi_sub_info ^ msi_pred_var_multimode_error_map)
     then
         true
     else
-        !MI ^ mi_sub_info ^ msi_pred_var_multimode_map := X
+        !MI ^ mi_sub_info ^ msi_pred_var_multimode_error_map := X
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1029,7 +1035,24 @@ mode_info_error(Vars, ModeError, !ModeInfo) :-
 mode_info_add_error(ModeErrorInfo, !ModeInfo) :-
     mode_info_get_errors(!.ModeInfo, Errors0),
     list.append(Errors0, [ModeErrorInfo], Errors),
-    mode_info_set_errors(Errors, !ModeInfo).
+    mode_info_set_errors(Errors, !ModeInfo),
+    mode_info_get_debug_modes(!.ModeInfo, DebugModes),
+    (
+        DebugModes = no
+    ;
+        DebugModes = yes(_DebugFlags),
+        trace [io(!IO)] (
+            list.length(Errors, ErrorNum),
+            io.format("Adding error_spec %d\n", [i(ErrorNum)], !IO),
+            Spec = mode_error_info_to_spec(!.ModeInfo, ModeErrorInfo),
+            mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+            module_info_get_globals(ModuleInfo, Globals0),
+            globals.set_option(print_error_spec_id, bool(yes),
+                Globals0, Globals),
+            write_error_spec(Globals, Spec, 0, _, 0, _, !IO),
+            io.flush_output(!IO)
+        )
+    ).
 
 mode_info_warning(ModeWarning, !ModeInfo) :-
     mode_info_get_context(!.ModeInfo, Context),

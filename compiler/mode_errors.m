@@ -33,76 +33,67 @@
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
+:- import_module one_or_more.
 
 %---------------------------------------------------------------------------%
 
-:- type merge_context
-    --->    merge_disj
-    ;       merge_if_then_else
-    ;       merge_stm_atomic.
-
-:- type merge_error
-    --->    merge_error(prog_var, assoc_list(prog_context, mer_inst)).
-
-:- type delayed_goal
-    --->    delayed_goal(
-                set_of_progvar,     % The vars the goal is waiting on.
-                mode_error_info,    % The reason the goal can't be scheduled.
-                hlds_goal           % The goal itself.
-            ).
-
-:- type var_multimode_pred_error
-    --->    no_matching_mode(list(prog_var))
-    ;       more_than_one_matching_mode(list(prog_var))
-    ;       some_ho_args_non_ground(list(prog_var)).
-
-:- type pred_var_multimode_pred_error
-    --->    pred_var_multimode_pred_error(pred_id, var_multimode_pred_error).
-
 :- type mode_error
-    --->    mode_error_disj(merge_context, list(merge_error))
+    --->    mode_error_merge_disj(merge_context, one_or_more(merge_error))
             % Different arms of a disjunction result in different insts
             % for some non-local variables.
 
-    ;       mode_error_par_conj(list(merge_error))
+    ;       mode_error_merge_par_conj(one_or_more(merge_error))
             % Different arms of a parallel conj result in mutually exclusive
-            % bindings - i.e. the process of unifying the instmaps from the end
-            % of each branch failed.
+            % bindings, which means that the process of unifying the instmaps
+            % from the end of each conjunct has failed.
 
-    ;       mode_error_higher_order_pred_var(pred_or_func, prog_var, mer_inst,
-                arity)
-            % The predicate variable in a higher-order predicate or function
-            % call didn't have a higher-order predicate or function inst
-            % of the appropriate arity.
+    ;       mode_error_bad_higher_order_inst(prog_var, mer_inst,
+                pred_or_func, arity)
+            % The variable has the given inst, which does not match
+            % the expected higher order inst with the given pred_or_func
+            % and the given arity.
+            % XXX We should generate a different error message for
+            % a pred_or_func mismatch than for an arity mismatch,
+            % so we should have an arg specifying the mismatch kind
+            % (since the code that constructs this term has to know that).
 
-    ;       mode_error_poly_unify(prog_var, mer_inst)
-            % A variable in a polymorphic unification with unknown
-            % type has inst other than `ground' or `any'.
+    ;       mode_error_unify_var_poly(prog_var, mer_inst)
+            % A variable in a polymorphic unification with unknown type
+            % has inst other than `ground' or `any'.
 
-    ;       mode_error_var_is_live(prog_var)
-            % Call to a predicate which will clobber its argument,
-            % but the argument is still live.
+    ;       mode_error_clobbered_var_is_live(prog_var)
+            % A call will clobber this variable, but it is still live.
 
-    ;       mode_error_var_has_inst(prog_var, mer_inst, mer_inst,
-                maybe(pred_var_multimode_pred_error))
-            % Call to a predicate with an insufficiently
-            % instantiated variable (for preds with one mode).
+    ;       mode_error_var_is_not_sufficiently_instantiated(prog_var,
+                mer_inst, mer_inst, maybe(pred_id_var_multimode_error))
+            % An argument in a call to a predicate or function with one mode
+            % is not sufficiently instantiated.
+            % The first inst is the var's actual inst, the second is its
+            % expected inst.
+            % XXX The "with one mode" part may be a lie.
+            % XXX Document the last arg.
 
-    ;       mode_error_unify_pred(prog_var, mode_error_unify_rhs, mer_type,
-                pred_or_func)
-            % An attempt was made to unify two higher-order
-            % predicate or function variables.
+    ;       mode_error_higher_order_unify(prog_var, mode_error_unify_rhs,
+                mer_type, pred_or_func)
+            % An attempt to unify two higher-order terms. The first term
+            % is a variable, the second term may be anything that can occur
+            % on a right hand side of a unification.
 
-    ;       mode_error_implied_mode(prog_var, mer_inst, mer_inst)
+    ;       mode_error_cannot_create_implied_mode(cannot_create_reason,
+                prog_var, mer_inst, mer_inst)
             % A call to a predicate with an overly instantiated variable
             % would use an implied mode of the predicate, but we can't
-            % introduce a simple unification after calling the predicate in a
-            % principal mode because the relevant variable has complex inst
-            % (such as any).
+            % introduce a simple unification after calling the predicate
+            % for the reason given by the first argument.
+            % The first inst is the current inst of the variable, while
+            % the second is the expected initial inst in the original,
+            % non-implied mode.
 
-    ;       mode_error_no_mode_decl
+    ;       mode_error_callee_pred_has_no_mode_decl
             % A call to a predicate for which there are no mode declarations
-            % (and mode inference is not enabled).
+            % (and mode inference is not enabled). Note that there are no
+            % *functions* without mode declarations: if the user does not
+            % provide one, the compiler will.
 
     ;       mode_error_no_matching_mode(list(prog_var), list(mer_inst),
                 list(list(mer_inst)))
@@ -115,6 +106,7 @@
             % If the third argument is a nonempty list, then every member
             % of that list gives the list of the required initial insts
             % of the argument vars.
+            % XXX And if it is empty?
             %
             % All the lists of insts must have exactly one inst for
             % each var in the list of vars.
@@ -123,54 +115,145 @@
                 pred_id, proc_id, list(mode_error_info))
             % Call to a predicate with initial argument insts for which mode
             % inference gave a mode error in the callee.
+            % XXX I (zs) see nothing in either the code that generates
+            % this kind of error, or in the message we generate for it,
+            % that restricts it to occur only in the presence of mode
+            % inference.
 
-    ;       mode_error_bind_var(var_lock_reason, prog_var, mer_inst, mer_inst)
+    ;       mode_error_bind_locked_var(var_lock_reason, prog_var,
+                mer_inst, mer_inst)
             % Attempt to bind a non-local variable inside a negated context,
             % or attempt to re-bind a variable in a parallel conjunct.
+            % The two insts are the insts of the variable before and after
+            % *something*, but the code that creates this error is not clear
+            % on what that "something" is :-( Presumably, the identity of that
+            % "something" may depend on the reason for the lock.
 
-    ;       mode_error_non_local_lambda_var(prog_var, mer_inst)
+    ;       mode_error_non_ground_non_local_lambda_var(prog_var, mer_inst)
             % Attempt to pass a live non-ground var as a non-local variable
             % to a lambda goal.
 
     ;       mode_error_unify_var_var(prog_var, prog_var, mer_inst, mer_inst)
-            % Attempt to unify two free variables.
+            % Attempt to unify two variables whose initial insts *cannot*
+            % be unified.
+            % XXX But see also the comment on the code that constructs these
+            % kinds of errors.
 
-    ;       mode_error_unify_var_functor(prog_var, cons_id,
-                list(prog_var), mer_inst, list(mer_inst))
-            % Attempt to unify a free var with a functor containing
-            % free arguments.
+    ;       mode_error_unify_var_functor(prog_var, cons_id, list(prog_var),
+                mer_inst, list(mer_inst))
+            % Attempt to unify a var with a structured term, where their
+            % initial insts *cannot* be unified.
+            % XXX But see also the comment in modecheck_unify_functor.
 
     ;       mode_error_unify_var_lambda(prog_var, mer_inst, mer_inst)
-            % Some sort of error in attempt to unify a variable with lambda
-            % expression.
+            % Attempt to unify a var with a lambda expression, where their
+            % initial insts *cannot* be unified.
 
-    ;       mode_error_unify_var_multimode_pred(prog_var, pred_id,
-                var_multimode_pred_error)
-            % Some sort of error in attempt to take address of a multi-moded
-            % predicate.
+    ;       mode_error_unify_var_multimode_pf(prog_var,
+                pred_id_var_multimode_error)
+            % Attempt to construct a closure using a multi-moded predicate or
+            % function.
 
-    ;       mode_error_conj(list(delayed_goal), schedule_culprit)
+    ;       mode_error_unschedulable_conjuncts(one_or_more(delayed_goal),
+                schedule_culprit)
             % A conjunction contains one or more unscheduleable goals;
             % schedule_culprit gives the reason why they couldn't be scheduled.
 
-    ;       mode_error_final_inst(int, prog_var, mer_inst, mer_inst,
+    ;       mode_error_unexpected_final_inst(int, prog_var, mer_inst, mer_inst,
                 final_inst_error)
-            % One of the head variables did not have the expected final inst
-            % on exit from the proc.
+            % The head variable in the given argument position did not have
+            % the expected final inst on exit from the proc.
+            % The first inst gives its actual final inst,
+            % the second inst gives its expected final inst.
+            % The last argument specifies the nature of the discrepancy
+            % between these two insts.
 
     ;       purity_error_should_be_in_promise_purity_scope(
                 negated_context_desc, prog_var)
             % The condition of an if-then-else or the body of a negation
-            % contained an inst any non-local, but was not inside a
-            % promise_purity scope.
+            % contains a nonlocal variable with inst `any', but is not
+            % inside a promise_purity scope.
 
-    ;       purity_error_lambda_should_be_any(list(prog_var)).
-            % A ground lambda term contains inst any non-locals, and is not
-            % marked impure.
+    ;       purity_error_lambda_should_be_any(one_or_more(prog_var)).
+            % A ground lambda term contains the given nonlocal variables
+            % that have inst `any', but is not marked impure.
 
-:- type negated_context_desc
-    --->    if_then_else
-    ;       negation.
+% XXX Proposed new order for the above function symbols,
+% going from simple to complex and putting related issues together:
+
+% errors in var/var unifications
+%   mode_error_unify_var_var
+%   mode_error_unify_var_poly
+% errors in var/functor unifications
+%   mode_error_unify_var_functor
+% errors in var/lambda unifications
+%   mode_error_unify_var_lambda
+%   mode_error_unify_var_multimode_pf
+%   mode_error_non_ground_non_local_lambda_var
+% errors in any kind of unification
+%   mode_error_higher_order_unify
+
+% errors in plain calls
+%   mode_error_var_is_not_sufficiently_instantiated
+%   mode_error_clobbered_var_is_live
+%   mode_error_callee_pred_has_no_mode_decl
+%   mode_error_no_matching_mode
+
+% errors in higher order calls
+%   mode_error_bad_higher_order_inst
+
+% errors in conjunctions
+%   mode_error_unschedulable_conjuncts
+%   mode_error_merge_par_conj
+
+% errors in disjunctions (of various kinds)
+%   mode_error_merge_disj
+
+% errors that can happen in more than one kind of goal
+%   mode_error_bind_locked_var
+
+% errors in procedure as a whole
+%   mode_error_unexpected_final_inst
+
+% limitations of the current mode analyser
+%   mode_error_in_callee
+%   mode_error_cannot_create_implied_mode
+
+% purity errors
+%   purity_error_should_be_in_promise_purity_scope
+%   purity_error_lambda_should_be_any
+
+%---------------------%
+
+:- type merge_context
+    --->    merge_disj
+    ;       merge_if_then_else
+    ;       merge_stm_atomic.
+
+:- type merge_error
+    --->    merge_error(prog_var, assoc_list(prog_context, mer_inst)).
+            % The given variable had incompatible insts in different branches.
+            % The second arg effectively maps the context of each branch
+            % with inst of the variable in that branch.
+
+%---------------------%
+
+:- type var_multimode_error
+    --->    no_matching_mode(list(prog_var))
+    ;       more_than_one_matching_mode(list(prog_var))
+    ;       some_ho_args_non_ground(list(prog_var)).
+
+:- type pred_id_var_multimode_error
+    --->    pred_id_var_multimode_error(pred_id, var_multimode_error).
+
+%---------------------%
+
+:- type delayed_goal
+    --->    delayed_goal(
+                set_of_progvar,     % The vars the goal is waiting on.
+                mode_error_info,    % The reason the goal can't be scheduled.
+                hlds_goal           % The goal itself.
+            ).
 
 :- type schedule_culprit
     --->    goal_itself_was_impure
@@ -178,16 +261,34 @@
     ;       conj_floundered.        % We have reached the end of a conjunction
                                     % and there were still delayed goals.
 
+%---------------------%
+
+:- type negated_context_desc
+    --->    if_then_else
+    ;       negation.
+
+%---------------------%
+
 :- type final_inst_error
     --->    too_instantiated
     ;       not_instantiated_enough
     ;       wrongly_instantiated.   % A catchall for anything that does not
                                     % fit into the above two categories.
 
+%---------------------%
+
 :- type mode_error_unify_rhs
     --->    error_at_var(prog_var)
     ;       error_at_functor(cons_id, list(prog_var))
     ;       error_at_lambda(list(prog_var), list(from_to_insts)).
+
+%---------------------%
+
+:- type cannot_create_reason
+    --->    cannot_init_any
+    ;       cannot_deep_copy_partial_term.
+
+%---------------------%
 
 :- type mode_error_info
     --->    mode_error_info(
@@ -199,6 +300,8 @@
                 prog_context,       % Where the error occurred.
                 mode_context        % Where the error occurred.
             ).
+
+%---------------------------------------------------------------------------%
 
 :- type mode_warning
     --->    cannot_succeed_var_var(prog_var, prog_var, mer_inst, mer_inst)
@@ -522,43 +625,49 @@ mode_error_info_to_spec(ModeInfo0, ModeErrorInfo) = Spec :-
 
 mode_error_to_spec(ModeInfo, ModeError) = Spec :-
     (
-        ModeError = mode_error_disj(MergeContext, MergeErrors),
-        Spec = mode_error_disj_to_spec(ModeInfo, MergeContext, MergeErrors)
+        ModeError = mode_error_merge_disj(MergeContext, MergeErrors),
+        Spec = mode_error_merge_disj_to_spec(ModeInfo, MergeContext,
+            MergeErrors)
     ;
-        ModeError = mode_error_par_conj(MergeErrors),
-        Spec = mode_error_par_conj_to_spec(ModeInfo, MergeErrors)
+        ModeError = mode_error_merge_par_conj(MergeErrors),
+        Spec = mode_error_merge_par_conj_to_spec(ModeInfo, MergeErrors)
     ;
-        ModeError = mode_error_higher_order_pred_var(PredOrFunc, Var, Inst,
-            Arity),
-        Spec = mode_error_higher_order_pred_var_to_spec(ModeInfo, PredOrFunc,
-            Var, Inst, Arity)
+        ModeError = mode_error_bad_higher_order_inst(Var, Inst,
+            ExpectedPredOrFunc, ExpectedArity),
+        Spec = mode_error_bad_higher_order_inst_to_spec(ModeInfo, Var, Inst,
+            ExpectedPredOrFunc, ExpectedArity)
     ;
-        ModeError = mode_error_poly_unify(Var, Inst),
-        Spec = mode_error_poly_unify_to_spec(ModeInfo, Var, Inst)
+        ModeError = mode_error_unify_var_poly(Var, Inst),
+        Spec = mode_error_unify_var_poly_to_spec(ModeInfo, Var, Inst)
     ;
-        ModeError = mode_error_var_is_live(Var),
-        Spec = mode_error_var_is_live_to_spec(ModeInfo, Var)
+        ModeError = mode_error_clobbered_var_is_live(Var),
+        Spec = mode_error_clobbered_var_is_live_to_spec(ModeInfo, Var)
     ;
-        ModeError = mode_error_var_has_inst(Var, InstA, InstB, MaybeMultiMode),
-        Spec = mode_error_var_has_inst_to_spec(ModeInfo, Var, InstA, InstB,
-            MaybeMultiMode)
+        ModeError = mode_error_var_is_not_sufficiently_instantiated(Var,
+            % ZZZ
+            InstA, InstB, MaybeMultiMode),
+        Spec = mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo,
+            Var, InstA, InstB, MaybeMultiMode)
     ;
-        ModeError = mode_error_unify_pred(Var, RHS, Type, PredOrFunc),
-        Spec = mode_error_unify_pred_to_spec(ModeInfo, Var, RHS, Type,
+        ModeError = mode_error_higher_order_unify(Var, RHS, Type, PredOrFunc),
+        Spec = mode_error_higher_order_unify_to_spec(ModeInfo, Var, RHS, Type,
             PredOrFunc)
     ;
-        ModeError = mode_error_implied_mode(Var, InstA, InstB),
-        Spec = mode_error_implied_mode_to_spec(ModeInfo, Var, InstA, InstB)
+        ModeError = mode_error_cannot_create_implied_mode(Reason,
+            Var, ActualInst, NonImpliedInitialInst),
+        Spec = mode_error_cannot_create_implied_mode_to_spec(ModeInfo, Reason,
+            Var, ActualInst, NonImpliedInitialInst)
     ;
-        ModeError = mode_error_no_mode_decl,
-        Spec = mode_error_no_mode_decl_to_spec(ModeInfo)
+        ModeError = mode_error_callee_pred_has_no_mode_decl,
+        Spec = mode_error_callee_pred_has_no_mode_decl_to_spec(ModeInfo)
     ;
-        ModeError = mode_error_bind_var(Reason, Var, InstA, InstB),
-        Spec = mode_error_bind_var_to_spec(ModeInfo, Reason, Var,
+        ModeError = mode_error_bind_locked_var(Reason, Var, InstA, InstB),
+        Spec = mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var,
             InstA, InstB)
     ;
-        ModeError = mode_error_non_local_lambda_var(Var, Inst),
-        Spec = mode_error_non_local_lambda_var_to_spec(ModeInfo, Var, Inst)
+        ModeError = mode_error_non_ground_non_local_lambda_var(Var, Inst),
+        Spec = mode_error_non_ground_non_local_lambda_var_to_spec(ModeInfo,
+            Var, Inst)
     ;
         ModeError = mode_error_unify_var_var(VarA, VarB, InstA, InstB),
         Spec = mode_error_unify_var_var_to_spec(ModeInfo, VarA, VarB,
@@ -568,18 +677,19 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
         Spec = mode_error_unify_var_lambda_to_spec(ModeInfo, VarA,
             InstA, InstB)
     ;
-        ModeError = mode_error_unify_var_multimode_pred(VarA, PredId,
-            MultiModeError),
-        Spec = mode_error_unify_var_multimode_pred_to_spec(ModeInfo, VarA,
-            PredId, MultiModeError)
+        ModeError = mode_error_unify_var_multimode_pf(Var,
+            PredMultiModeError),
+        Spec = mode_error_unify_var_multimode_pf_to_spec(ModeInfo, Var,
+            PredMultiModeError)
     ;
         ModeError = mode_error_unify_var_functor(Var, Name, Args, Inst,
             ArgInsts),
         Spec = mode_error_unify_var_functor_to_spec(ModeInfo, Var, Name,
             Args, Inst, ArgInsts)
     ;
-        ModeError = mode_error_conj(Errors, Culprit),
-        Spec = mode_error_conj_to_spec(ModeInfo, Errors, Culprit)
+        ModeError = mode_error_unschedulable_conjuncts(OoMErrors, Culprit),
+        Spec = mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors,
+            Culprit)
     ;
         ModeError = mode_error_no_matching_mode(Vars, Insts, InitialInsts),
         Spec = mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts,
@@ -590,9 +700,10 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
         Spec = mode_error_in_callee_to_spec(ModeInfo, Vars, Insts,
             CalleePredId, CalleeProcId, CalleeErrors)
     ;
-        ModeError = mode_error_final_inst(ArgNum, Var, VarInst, Inst, Reason),
-        Spec = mode_error_final_inst_to_spec(ModeInfo, ArgNum, Var, VarInst,
-            Inst, Reason)
+        ModeError = mode_error_unexpected_final_inst(ArgNum, Var,
+            ActualInst, ExpectedInst, Reason),
+        Spec = mode_error_unexpected_final_inst_to_spec(ModeInfo, ArgNum, Var,
+            ActualInst, ExpectedInst, Reason)
     ;
         ModeError = purity_error_should_be_in_promise_purity_scope(NegCtxt,
             Var),
@@ -623,25 +734,25 @@ mode_warning_info_to_spec(!.ModeInfo, Warning) = Spec :-
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_conj_to_spec(mode_info, list(delayed_goal),
-    schedule_culprit) = error_spec.
+:- func mode_error_unschedulable_conjuncts_to_spec(mode_info,
+    one_or_more(delayed_goal), schedule_culprit) = error_spec.
 
-mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
+mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors, Culprit)
+        = Spec :-
     mode_info_get_context(ModeInfo, Context),
+    OoMErrors = one_or_more(HeadError, TailErrors),
     (
-        Errors = [],
-        unexpected($pred, "no errors")
+        TailErrors = [],
+        Msgs1 = mode_error_conjunct_to_msgs(Context, ModeInfo, HeadError)
     ;
-        Errors = [Error],
-        Msgs1 = mode_error_conjunct_to_msgs(Context, ModeInfo, Error)
-    ;
-        Errors = [_, _ | _],
+        TailErrors = [_ | _],
         % If there is more than one error, we use the setting of
-        % --verbose-errors to decide between reporting just one and
-        % reporting them all. Unfortunately, We can't use the
+        % --verbose-errors to decide between reporting just one,
+        % and reporting them all. Unfortunately, We can't use the
         % verbose_and_nonverbose functor of the error_msg_component type
         % to package up the two cases, because we need to package up
         % multiple messages, each with its own context.
+        Errors = [HeadError | TailErrors],
         list.filter(is_error_important, Errors, ImportantErrors, OtherErrors),
         mode_info_get_module_info(ModeInfo, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
@@ -727,7 +838,7 @@ is_error_important(Error) :-
 
         % Except that errors in lambda goals are important even if the
         % unification that creates the lambda goal is an implicit one.
-        ModeError \= mode_error_non_local_lambda_var(_, _)
+        ModeError \= mode_error_non_ground_non_local_lambda_var(_, _)
     then
         fail
     else
@@ -793,25 +904,26 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_disj_to_spec(mode_info, merge_context, list(merge_error))
-    = error_spec.
+:- func mode_error_merge_disj_to_spec(mode_info, merge_context,
+    one_or_more(merge_error)) = error_spec.
 
-mode_error_disj_to_spec(ModeInfo, MergeContext, MergeErrors) = Spec :-
+mode_error_merge_disj_to_spec(ModeInfo, MergeContext, MergeErrors) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     MainPieces = [words("mode mismatch in "),
         words(merge_context_to_string(MergeContext)), suffix("."), nl],
     MergeMsgLists = list.map(
         merge_error_to_msgs(ModeInfo, Context, is_disjunctive),
-        MergeErrors),
+        one_or_more_to_list(MergeErrors)),
     list.condense(MergeMsgLists, MergeMsgs),
     Spec = error_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode),
         [simplest_msg(Context, Preamble ++ MainPieces) | MergeMsgs]).
 
-:- func mode_error_par_conj_to_spec(mode_info, list(merge_error)) = error_spec.
+:- func mode_error_merge_par_conj_to_spec(mode_info, one_or_more(merge_error))
+    = error_spec.
 
-mode_error_par_conj_to_spec(ModeInfo, MergeErrors) = Spec :-
+mode_error_merge_par_conj_to_spec(ModeInfo, MergeErrors) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     MainPieces = [words("mode error: mutually exclusive bindings"),
@@ -820,7 +932,7 @@ mode_error_par_conj_to_spec(ModeInfo, MergeErrors) = Spec :-
         words("parallel conjunctions to fail.)"), nl],
     MergeMsgLists = list.map(
         merge_error_to_msgs(ModeInfo, Context, is_not_disjunctive),
-        MergeErrors),
+        one_or_more_to_list(MergeErrors)),
     list.condense(MergeMsgLists, MergeMsgs),
     Spec = error_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode),
@@ -1026,10 +1138,11 @@ report_inst_in_branch_detail(ModeInfo, IntroPieces, Inst) = Pieces :-
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_bind_var_to_spec(mode_info, var_lock_reason,
+:- func mode_error_bind_locked_var_to_spec(mode_info, var_lock_reason,
     prog_var, mer_inst, mer_inst) = error_spec.
 
-mode_error_bind_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst) = Spec :-
+mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
+        = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
@@ -1104,10 +1217,11 @@ mode_error_bind_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst) = Spec :-
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_non_local_lambda_var_to_spec(mode_info, prog_var, mer_inst)
-    = error_spec.
+:- func mode_error_non_ground_non_local_lambda_var_to_spec(mode_info, prog_var,
+    mer_inst) = error_spec.
 
-mode_error_non_local_lambda_var_to_spec(ModeInfo, Var, VarInst) = Spec :-
+mode_error_non_ground_non_local_lambda_var_to_spec(ModeInfo, Var, VarInst)
+        = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
@@ -1149,9 +1263,9 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
 
     CalleePredIdPieces = describe_one_pred_name(ModuleInfo,
         should_module_qualify, CalleePredId),
-    VerboseCalleePieces = [words("the callee"), prefix("(")] ++
-        CalleePredIdPieces ++
-        [suffix(")"), nl, words("because of the following error."), nl],
+    VerboseCalleePieces = [words("the callee"),
+        prefix("(")] ++ CalleePredIdPieces ++ [suffix(")"), nl,
+        words("because of the following error."), nl],
     VerbosePieces = MainPieces ++ NoMatchPieces ++ VerboseCalleePieces,
     NonVerboseCalleePieces =
         [words("the callee, because of the following error."), nl],
@@ -1160,7 +1274,6 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
     InitMsg = simple_msg(Context,
         [always(Preamble),
         verbose_and_nonverbose(VerbosePieces, NonVerbosePieces)]),
-
     (
         CalleeModeErrors = [First | _],
         First = mode_error_info(_, CalleeModeError,
@@ -1462,24 +1575,24 @@ report_any_never_matching_args(ModeInfo, ArgNumMatchedProcs, NumExtra,
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_higher_order_pred_var_to_spec(mode_info, pred_or_func,
-    prog_var, mer_inst, arity) = error_spec.
+:- func mode_error_bad_higher_order_inst_to_spec(mode_info, prog_var, mer_inst,
+    pred_or_func, arity) = error_spec.
 
-mode_error_higher_order_pred_var_to_spec(ModeInfo, PredOrFunc, Var, VarInst,
-        Arity) = Spec :-
+mode_error_bad_higher_order_inst_to_spec(ModeInfo, Var, VarInst,
+        ExpectedPredOrFunc, ExpectedArity) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     % Don't let the specification of the expected arity be broken up,
     % since that would make the error message harder to read.
     (
-        PredOrFunc = pf_predicate,
+        ExpectedPredOrFunc = pf_predicate,
         ExpectingPieces = [words("expecting higher-order pred inst"),
-            fixed("of arity " ++ int_to_string(Arity) ++ "."), nl]
+            fixed("of arity " ++ int_to_string(ExpectedArity) ++ "."), nl]
     ;
-        PredOrFunc = pf_function,
+        ExpectedPredOrFunc = pf_function,
         ExpectingPieces = [words("expecting higher-order func inst"),
-            fixed("of arity " ++ int_to_string(Arity - 1) ++ "."), nl]
+            fixed("of arity " ++ int_to_string(ExpectedArity - 1) ++ "."), nl]
     ),
     Pieces = [words("mode error: variable"),
         quote(mercury_var_to_name_only(VarSet, Var)) |
@@ -1488,10 +1601,10 @@ mode_error_higher_order_pred_var_to_spec(ModeInfo, PredOrFunc, Var, VarInst,
     Spec = simplest_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
-:- func mode_error_poly_unify_to_spec(mode_info, prog_var, mer_inst)
+:- func mode_error_unify_var_poly_to_spec(mode_info, prog_var, mer_inst)
     = error_spec.
 
-mode_error_poly_unify_to_spec(ModeInfo, Var, VarInst) = Spec :-
+mode_error_unify_var_poly_to_spec(ModeInfo, Var, VarInst) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
@@ -1512,9 +1625,10 @@ mode_error_poly_unify_to_spec(ModeInfo, Var, VarInst) = Spec :-
             [always(Preamble ++ MainPieces),
             verbose_only(verbose_once, VerbosePieces)])]).
 
-:- func mode_error_var_is_live_to_spec(mode_info, prog_var) = error_spec.
+:- func mode_error_clobbered_var_is_live_to_spec(mode_info, prog_var)
+        = error_spec.
 
-mode_error_var_is_live_to_spec(ModeInfo, Var) = Spec :-
+mode_error_clobbered_var_is_live_to_spec(ModeInfo, Var) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
@@ -1525,75 +1639,88 @@ mode_error_var_is_live_to_spec(ModeInfo, Var) = Spec :-
     Spec = simplest_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
-:- func mode_error_var_has_inst_to_spec(mode_info, prog_var,
-    mer_inst, mer_inst, maybe(pred_var_multimode_pred_error)) = error_spec.
+:- func mode_error_var_is_not_sufficiently_instantiated_to_spec(mode_info,
+    prog_var, mer_inst, mer_inst, maybe(pred_id_var_multimode_error))
+    = error_spec.
 
-mode_error_var_has_inst_to_spec(ModeInfo, Var, VarInst, Inst,
-        MaybeMultiModeError) = Spec :-
+mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
+        VarInst, ExpectedInst, MaybeMultiModeError) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     MainPieces = [words("mode error: variable"),
         quote(mercury_var_to_name_only(VarSet, Var)) |
-        has_inst_expected_inst_was(ModeInfo, VarInst, Inst)],
+        has_inst_expected_inst_was(ModeInfo, VarInst, ExpectedInst)],
     MainMsgs = [simplest_msg(Context, Preamble ++ MainPieces)],
+    Phase = phase_mode_check(report_in_any_mode),
     (
         MaybeMultiModeError = no,
-        Spec = error_spec($pred, severity_error,
-            phase_mode_check(report_in_any_mode), MainMsgs)
+        Spec = error_spec($pred, severity_error, Phase, MainMsgs)
     ;
-        MaybeMultiModeError = yes(MultiModeError),
+        MaybeMultiModeError = yes(PredMultiModeError),
         ConnectPieces = [words("This may have been caused by"),
             words("the following error."), nl],
         ConnectMsgs = [simplest_msg(Context, ConnectPieces)],
-        MultiModeError = pred_var_multimode_pred_error(PredId, MultiMode),
-        SubSpec0 = mode_error_unify_var_multimode_pred_to_spec(ModeInfo,
-            Var, PredId, MultiMode),
+        SubSpec0 = mode_error_unify_var_multimode_pf_to_spec(ModeInfo, Var,
+            PredMultiModeError),
         mode_info_get_module_info(ModeInfo, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
         extract_spec_msgs(Globals, SubSpec0, SubMsgs),
-        Spec = error_spec($pred, severity_error,
-            phase_mode_check(report_in_any_mode),
+        Spec = error_spec($pred, severity_error, Phase,
             MainMsgs ++ ConnectMsgs ++ SubMsgs)
     ).
 
-:- func mode_error_implied_mode_to_spec(mode_info, prog_var,
-    mer_inst, mer_inst) = error_spec.
+:- func mode_error_cannot_create_implied_mode_to_spec(mode_info,
+    cannot_create_reason, prog_var, mer_inst, mer_inst) = error_spec.
 
-mode_error_implied_mode_to_spec(ModeInfo, Var, VarInst, Inst) = Spec :-
+mode_error_cannot_create_implied_mode_to_spec(ModeInfo, Reason, Var, VarInst,
+        NonImpliedInitialInst) = Spec :-
     % This "error" message is really a "sorry, not implemented" message.
     % We only print the message if we will actually generate code.
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_op_mode(Globals, OpMode),
     mode_info_get_context(ModeInfo, Context),
+    Phase = phase_mode_check(report_in_any_mode),
     ( if OpMode = opm_top_args(opma_augment(opmau_generate_code(_))) then
         Preamble = mode_info_context_preamble(ModeInfo),
         mode_info_get_varset(ModeInfo, VarSet),
-        Pieces = [words("sorry, implied modes not implemented."), nl,
+        (
+            Reason = cannot_init_any,
+            ReasonPieces = [words("initializing a solver variable")]
+        ;
+            Reason = cannot_deep_copy_partial_term,
+            ReasonPieces = [words("copying a partially instantiated term")]
+        ),
+        Pieces = [words("sorry, the compiler currently"),
+            words("cannot implement implied modes that require")] ++
+            ReasonPieces ++ [suffix("."), nl,
             words("Variable"), quote(mercury_var_to_name_only(VarSet, Var)) |
-            has_inst_expected_inst_was(ModeInfo, VarInst, Inst)],
-        Spec = simplest_spec($pred, severity_error,
-            phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces)
+            has_inst_expected_inst_was(ModeInfo, VarInst,
+                NonImpliedInitialInst)],
+        Spec = simplest_spec($pred, severity_error, Phase, Context,
+            Preamble ++ Pieces)
     else
-        Spec = error_spec($pred, severity_informational,
-            phase_mode_check(report_in_any_mode),
+        Spec = error_spec($pred, severity_informational, Phase,
             [simple_msg(Context, [])])
     ).
 
-:- func mode_error_no_mode_decl_to_spec(mode_info) = error_spec.
+:- func mode_error_callee_pred_has_no_mode_decl_to_spec(mode_info)
+    = error_spec.
 
-mode_error_no_mode_decl_to_spec(ModeInfo) = Spec :-
+mode_error_callee_pred_has_no_mode_decl_to_spec(ModeInfo) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
+    % Functions have a default mode, so they do not need a mode declaration,
     Pieces = [words("no mode declaration for called predicate."), nl],
     Spec = simplest_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
-:- func mode_error_unify_pred_to_spec(mode_info, prog_var,
+:- func mode_error_higher_order_unify_to_spec(mode_info, prog_var,
     mode_error_unify_rhs, mer_type, pred_or_func) = error_spec.
 
-mode_error_unify_pred_to_spec(ModeInfo, X, RHS, Type, PredOrFunc) = Spec :-
+mode_error_higher_order_unify_to_spec(ModeInfo, X, RHS, Type, PredOrFunc)
+        = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
@@ -1631,8 +1758,8 @@ mode_error_unify_pred_to_spec(ModeInfo, X, RHS, Type, PredOrFunc) = Spec :-
         words("and so this is not allowed by the Mercury mode system."),
         words("In some cases, you can achieve the same effect by"),
         words("writing an explicit universal quantification, e.g."),
-        quote("all [X] call(P, X) <=> call(Q, X)"), suffix(","),
-        words("instead of"), quote("P = Q"), suffix(".")],
+        quote("all [X] call(PredA, X) <=> call(PredB, X)"), suffix(","),
+        words("instead of"), quote("PredA = PredB"), suffix("."), nl],
     Spec = error_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
@@ -1679,11 +1806,12 @@ mode_error_unify_var_lambda_to_spec(ModeInfo, X, InstX, InstY) = Spec :-
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_unify_var_multimode_pred_to_spec(mode_info, prog_var,
-    pred_id, var_multimode_pred_error) = error_spec.
+:- func mode_error_unify_var_multimode_pf_to_spec(mode_info, prog_var,
+    pred_id_var_multimode_error) = error_spec.
 
-mode_error_unify_var_multimode_pred_to_spec(ModeInfo, X, PredId,
-        MultiModeError) = Spec :-
+mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
+        = Spec :-
+    PredMultiModeError = pred_id_var_multimode_error(PredId, MultiModeError),
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
@@ -1898,11 +2026,11 @@ mode_context_to_pieces(ModeInfo, ModeContext, Markers) = Pieces :-
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_final_inst_to_spec(mode_info, int, prog_var,
+:- func mode_error_unexpected_final_inst_to_spec(mode_info, int, prog_var,
     mer_inst, mer_inst, final_inst_error) = error_spec.
 
-mode_error_final_inst_to_spec(ModeInfo, ArgNum, Var, VarInst, ExpInst, Reason)
-        = Spec :-
+mode_error_unexpected_final_inst_to_spec(ModeInfo, ArgNum, Var,
+        ActualInst, ExpectedInst, Reason) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
@@ -1923,11 +2051,11 @@ mode_error_final_inst_to_spec(ModeInfo, ArgNum, Var, VarInst, ExpInst, Reason)
         quote(mercury_var_to_name_only(VarSet, Var)), words("was") |
         report_inst(ModeInfo, quote_short_inst, [suffix(","), nl],
             [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
-            VarInst)] ++
+            ActualInst)] ++
         [words("expected final instantiatedness was") |
         report_inst(ModeInfo, quote_short_inst, [suffix("."), nl],
             [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)],
-            ExpInst)],
+            ExpectedInst)],
     Spec = simplest_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
@@ -1961,18 +2089,18 @@ purity_error_should_be_in_promise_purity_scope_to_spec(NegCtxtDesc,
 
 %---------------------------------------------------------------------------%
 
-:- func purity_error_lambda_should_be_any_to_spec(mode_info, list(prog_var))
-    = error_spec.
+:- func purity_error_lambda_should_be_any_to_spec(mode_info,
+    one_or_more(prog_var)) = error_spec.
 
-purity_error_lambda_should_be_any_to_spec(ModeInfo, Vars) = Spec :-
+purity_error_lambda_should_be_any_to_spec(ModeInfo, OoMVars) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
+    Vars = one_or_more_to_list(OoMVars),
     Pieces = [words("purity error: lambda is"), quote("ground"),
         words("but contains the following non-local variables"),
         words("whose insts contain"), quote("any"), suffix(":"),
-        words(mercury_vars_to_name_only(VarSet, Vars)),
-        suffix("."), nl],
+        words(mercury_vars_to_name_only(VarSet, Vars)), suffix("."), nl],
     Always = always(Preamble ++ Pieces),
     VerboseOnly = verbose_only(verbose_once, [words("Predicate expressions"),
         words("with inst"), quote("any"), words("can be written"),
