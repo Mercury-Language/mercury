@@ -106,14 +106,18 @@
 
 :- type debug_flags
     --->    debug_flags(
+                % The empty string when mode checking, and a prefix to put
+                % in front of goal kind names when unique mode checking.
+                unique_prefix   :: string,
+
                 % The value --debug-modes-verbose.
-                verbose     :: bool,
+                verbose         :: bool,
 
                 % The value --debug-modes-minimal.
-                minimal     :: bool,
+                minimal         :: bool,
 
                 % The value --debug-modes-statistics.
-                statistics  :: bool
+                statistics      :: bool
             ).
 
     % Initialize the mode_info.
@@ -544,18 +548,25 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
         InstMap0, HowToCheck, MayChangeProc, ModeInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_modes, DebugModes),
-    globals.lookup_int_option(Globals, debug_modes_pred_id,
-        DebugModesPredId),
+    globals.lookup_int_option(Globals, debug_modes_pred_id, DebugModesPredId),
     pred_id_to_int(PredId, PredIdInt),
     ( if
         DebugModes = yes,
         ( DebugModesPredId >= 0 => DebugModesPredId = PredIdInt )
     then
+        (
+            HowToCheck = check_modes,
+            UniquePrefix = ""
+        ;
+            HowToCheck = check_unique_modes,
+            UniquePrefix = "unique "
+        ),
         globals.lookup_bool_option(Globals, debug_modes_verbose, DebugVerbose),
         globals.lookup_bool_option(Globals, debug_modes_minimal, DebugMinimal),
         globals.lookup_bool_option(Globals, debug_modes_statistics,
             Statistics),
-        Flags = debug_flags(DebugVerbose, DebugMinimal, Statistics),
+        Flags = debug_flags(UniquePrefix, DebugVerbose, DebugMinimal,
+            Statistics),
         MaybeDebug = yes(Flags)
     else
         MaybeDebug = no

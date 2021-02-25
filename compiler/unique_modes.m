@@ -286,12 +286,10 @@ unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
             PragmaCode0, GoalInfo0, GoalExpr, !ModeInfo)
     ;
         GoalExpr0 = conj(GoalType0, Goals0),
-        unique_modes_check_goal_conj(GoalType0, Goals0, GoalExpr,
-            !ModeInfo)
+        unique_modes_check_goal_conj(GoalType0, Goals0, GoalExpr, !ModeInfo)
     ;
         GoalExpr0 = disj(Goals0),
-        unique_modes_check_goal_disj(Goals0, GoalInfo0, GoalExpr,
-            !ModeInfo)
+        unique_modes_check_goal_disj(Goals0, GoalInfo0, GoalExpr, !ModeInfo)
     ;
         GoalExpr0 = switch(Var0, CanFail0, Cases0),
         unique_modes_check_goal_switch(Var0, CanFail0, Cases0, GoalInfo0,
@@ -334,7 +332,7 @@ unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     hlds_goal_expr::out, mode_info::in, mode_info::out) is det.
 
 unique_modes_check_goal_conj(ConjType, Goals0, GoalExpr, !ModeInfo) :-
-    mode_checkpoint(enter, "*conj", !ModeInfo),
+    mode_checkpoint(enter, "conj", !ModeInfo),
     (
         Goals0 = [],
         % For efficiency, optimize common case.
@@ -345,7 +343,7 @@ unique_modes_check_goal_conj(ConjType, Goals0, GoalExpr, !ModeInfo) :-
         unique_modes_check_conj(ConjType, Goals0, Goals, !ModeInfo)
     ),
     GoalExpr = conj(ConjType, Goals),
-    mode_checkpoint(exit, "*conj", !ModeInfo).
+    mode_checkpoint(exit, "conj", !ModeInfo).
 
 :- pred unique_modes_check_goal_disj(list(hlds_goal)::in,
     hlds_goal_info::in, hlds_goal_expr::out,

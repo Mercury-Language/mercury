@@ -51,6 +51,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
+:- import_module string.
 :- import_module term.
 :- import_module varset.
 
@@ -61,8 +62,7 @@ mode_checkpoint(Port, Msg, !ModeInfo) :-
     (
         DebugModes = no
     ;
-        DebugModes = yes(debug_flags(Verbose, Minimal, Statistics)),
-        mode_info_get_errors(!.ModeInfo, Errors),
+        DebugModes = yes(DebugFlags),
         (
             Port = enter,
             PortStr = "Enter ",
@@ -73,6 +73,7 @@ mode_checkpoint(Port, Msg, !ModeInfo) :-
             Detail = no
         ;
             Port = exit,
+            mode_info_get_errors(!.ModeInfo, Errors),
             (
                 Errors = [],
                 PortStr = "Exit ",
@@ -83,13 +84,13 @@ mode_checkpoint(Port, Msg, !ModeInfo) :-
                 Detail = no
             )
         ),
-        mode_info_get_instmap(!.ModeInfo, InstMap),
-        trace [io(!IO)] (
-            io.write_string(PortStr, !IO),
-            io.write_string(Msg, !IO),
-            (
-                Detail = yes,
-                io.write_string(":\n", !IO),
+        DebugFlags = debug_flags(UniquePrefix, Verbose, Minimal, Statistics),
+        (
+            Detail = yes,
+            mode_info_get_instmap(!.ModeInfo, InstMap),
+            trace [io(!IO)] (
+                io.format("%s%s%s:\n",
+                    [s(PortStr), s(UniquePrefix), s(Msg)], !IO),
                 maybe_report_stats(Statistics, !IO),
                 maybe_flush_output(Statistics, !IO),
                 ( if instmap_is_reachable(InstMap) then
@@ -102,18 +103,18 @@ mode_checkpoint(Port, Msg, !ModeInfo) :-
                         Verbose, Minimal, !IO)
                 else
                     io.write_string("\tUnreachable\n", !IO)
-                )
-            ;
-                Detail = no
+                ),
+                io.write_string("\n", !IO),
+                io.flush_output(!IO)
             ),
-            io.write_string("\n", !IO),
-            io.flush_output(!IO)
-        ),
-        (
-            Detail = yes,
             mode_info_set_last_checkpoint_insts(InstMap, !ModeInfo)
         ;
-            Detail = no
+            Detail = no,
+            trace [io(!IO)] (
+                io.format("%s%s%s:\n",
+                    [s(PortStr), s(UniquePrefix), s(Msg)], !IO),
+                io.flush_output(!IO)
+            )
         )
     ).
 
