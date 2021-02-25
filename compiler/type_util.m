@@ -345,17 +345,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % If possible, get the argument types for the cons_id. We need to pass in
-    % the arity rather than using the arity from the cons_id because the arity
-    % in the cons_id will not include any extra type_info arguments for
-    % existentially quantified types.
-    %
-:- pred maybe_get_cons_id_arg_types(module_info::in, maybe(mer_type)::in,
-    cons_id::in, arity::in, list(maybe(mer_type))::out) is det.
-
-:- pred maybe_get_higher_order_arg_types(maybe(mer_type)::in, arity::in,
-    list(maybe(mer_type))::out) is det.
-
     % Given a list of variables, return the permutation
     % of that list which has all the type_info-related variables
     % preceding the non-type_info-related variables (with the relative
@@ -1518,42 +1507,6 @@ type_not_stored_in_region(Type, ModuleInfo) :-
 is_region_var(VarTypes, Var)  :-
     lookup_var_type(VarTypes, Var, Type),
     Type = region_type.
-
-%-----------------------------------------------------------------------------%
-
-maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId, Arity,
-        MaybeTypes) :-
-    ( if
-        ( ConsId = cons(_SymName, _, _)
-        ; ConsId = tuple_cons(_)
-        )
-    then
-        ( if
-            MaybeType = yes(Type),
-
-            % XXX get_cons_id_non_existential_arg_types will fail
-            % for ConsIds with existentially typed arguments.
-            get_cons_id_non_existential_arg_types(ModuleInfo, Type,
-                ConsId, Types),
-            list.length(Types, Arity)
-        then
-            MaybeTypes = list.map(func(T) = yes(T), Types)
-        else
-            list.duplicate(Arity, no, MaybeTypes)
-        )
-    else
-        MaybeTypes = []
-    ).
-
-maybe_get_higher_order_arg_types(MaybeType, Arity, MaybeTypes) :-
-    ( if
-        MaybeType = yes(Type),
-        type_is_higher_order_details(Type, _, _, _, ArgTypes)
-    then
-        MaybeTypes = list.map(func(T) = yes(T), ArgTypes)
-    else
-        list.duplicate(Arity, no, MaybeTypes)
-    ).
 
 %-----------------------------------------------------------------------------%
 

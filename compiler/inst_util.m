@@ -141,6 +141,31 @@
 :- func inst_may_restrict_cons_ids(module_info, mer_inst) = bool.
 
 %---------------------------------------------------------------------------%
+
+    % This utility predicate on types is in this module because it is needed
+    % *only* by code that manipulates insts.
+    %
+    % XXX This predicates returns the types of the arguments, but
+    % loses any ho_inst_info for the arguments.
+    %
+:- pred maybe_get_higher_order_arg_types(maybe(mer_type)::in, arity::in,
+    list(maybe(mer_type))::out) is det.
+
+    % If possible, get the argument types for the cons_id. We need to pass in
+    % the arity rather than using the arity from the cons_id because the arity
+    % in the cons_id will not include any extra type_info arguments for
+    % existentially quantified types.
+    %
+    % This utility predicate on types is in this module because it is needed
+    % *only* by code that manipulates insts.
+    %
+    % XXX This predicates returns the types of the arguments, but
+    % loses any ho_inst_info for the arguments.
+    %
+:- pred maybe_get_cons_id_arg_types(module_info::in, maybe(mer_type)::in,
+    cons_id::in, arity::in, list(maybe(mer_type))::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -2531,6 +2556,41 @@ inst_may_restrict_cons_ids(ModuleInfo, Inst) = MayRestrict :-
         Inst = defined_inst(InstName),
         inst_lookup(ModuleInfo, InstName, NewInst),
         MayRestrict = inst_may_restrict_cons_ids(ModuleInfo, NewInst)
+    ).
+
+%---------------------------------------------------------------------------%
+
+maybe_get_higher_order_arg_types(MaybeType, Arity, MaybeTypes) :-
+    ( if
+        MaybeType = yes(Type),
+        type_is_higher_order_details(Type, _, _, _, ArgTypes)
+    then
+        MaybeTypes = list.map(func(T) = yes(T), ArgTypes)
+    else
+        list.duplicate(Arity, no, MaybeTypes)
+    ).
+
+maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId, Arity,
+        MaybeTypes) :-
+    ( if
+        ( ConsId = cons(_SymName, _, _)
+        ; ConsId = tuple_cons(_)
+        )
+    then
+        ( if
+            MaybeType = yes(Type),
+            % XXX get_cons_id_non_existential_arg_types will fail
+            % for ConsIds with existentially typed arguments.
+            get_cons_id_non_existential_arg_types(ModuleInfo, Type,
+                ConsId, Types),
+            list.length(Types, Arity)
+        then
+            MaybeTypes = list.map(func(T) = yes(T), Types)
+        else
+            list.duplicate(Arity, no, MaybeTypes)
+        )
+    else
+        MaybeTypes = []
     ).
 
 %---------------------------------------------------------------------------%

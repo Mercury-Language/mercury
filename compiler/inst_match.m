@@ -1049,12 +1049,12 @@ inst_list_matches_final([ArgA | ArgsA], [ArgB | ArgsB],
 
 bound_inst_list_matches_final([], _, _, !Info).
 bound_inst_list_matches_final([X | Xs], [Y | Ys], MaybeType, !Info) :-
-    X = bound_functor(ConsIdX, ArgsX),
-    Y = bound_functor(ConsIdY, ArgsY),
+    X = bound_functor(ConsIdX, ArgInstsX),
+    Y = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         maybe_get_cons_id_arg_types(!.Info ^ imi_module_info, MaybeType,
-            ConsIdX, list.length(ArgsX), MaybeTypes),
-        inst_list_matches_final(ArgsX, ArgsY, MaybeTypes, !Info),
+            ConsIdX, list.length(ArgInstsX), MaybeTypes),
+        inst_list_matches_final(ArgInstsX, ArgInstsY, MaybeTypes, !Info),
         bound_inst_list_matches_final(Xs, Ys, MaybeType, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
@@ -1469,7 +1469,8 @@ pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info) :-
     % to match here.
     PredInstA = pred_inst_info(PredOrFunc, ModesA, _MaybeArgRegsA, Det),
     PredInstB = pred_inst_info(PredOrFunc, ModesB, _MaybeArgRegsB, Det),
-    maybe_get_higher_order_arg_types(MaybeType, length(ModesA), MaybeTypes),
+    maybe_get_higher_order_arg_types(MaybeType, list.length(ModesA),
+        MaybeTypes),
     pred_inst_argmodes_matches(ModesA, ModesB, MaybeTypes, !Info).
 
     % pred_inst_argmodes_matches(ModesA, ModesB, MaybeTypes, !Info):
