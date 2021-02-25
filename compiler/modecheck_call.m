@@ -412,8 +412,10 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
         (
             HOInstInfo = higher_order(PredInstInfo)
         ;
-            % If PredVar has no higher-order inst information, but is
-            % a function type, then assume the default function mode.
+            % If PredVarInst has no higher-order inst information,
+            % then look for higher-order inst information in the type.
+            % Otherwise, if PredVar has a function type, assume the default
+            % function mode.
             HOInstInfo = none_or_default_func,
             mode_info_get_var_types(!.ModeInfo, VarTypes),
             lookup_var_type(VarTypes, PredVar, Type),
