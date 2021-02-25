@@ -411,11 +411,9 @@ update_inst_var_sub_2(InstA, MaybeType, InstVar, !Info) :-
         !.Info ^ imi_maybe_sub = inst_var_sub(InstVarSub0),
         ( if map.search(InstVarSub0, InstVar, InstB) then
             % If InstVar already has an inst associated with it, merge
-            % the old inst and the new inst. Fail if this merge is not
-            % possible.
+            % the old and new insts. Fail if this merge is not possible.
             ModuleInfo0 = !.Info ^ imi_module_info,
-            inst_merge(InstA, InstB, MaybeType, Inst,
-                ModuleInfo0, ModuleInfo),
+            inst_merge(InstA, InstB, MaybeType, Inst, ModuleInfo0, ModuleInfo),
             !Info ^ imi_module_info := ModuleInfo,
             map.det_update(InstVar, Inst, InstVarSub0, InstVarSub),
             !Info ^ imi_maybe_sub := inst_var_sub(InstVarSub)
@@ -496,119 +494,126 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
     % in some places.
     (
         InstA = any(UniqA, HOInstInfoA),
-        InstB = any(UniqB, HOInstInfoB),
-        !.Info ^ imi_any_matches_any = any_does_match_any,
-        compare_uniqueness(!.Info ^ imi_uniqueness_comparison, UniqA, UniqB),
-        ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType,
-            !Info)
-    ;
-        InstA = any(_, _),
-        InstB = free
-    ;
-        InstA = any(UniqA, HOInstInfoA),
-        InstB = ground(_, _),
-        maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
-            HOInstInfoA, NextInstA),
-        inst_matches_initial_mt(NextInstA, InstB, MaybeType, !Info)
-    ;
-        InstA = any(UniqA, HOInstInfoA),
-        InstB = bound(_, _, _),
-        maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
-            HOInstInfoA, NextInstA),
-        inst_matches_initial_mt(NextInstA, InstB, MaybeType, !Info)
+        (
+            InstB = any(UniqB, HOInstInfoB),
+            !.Info ^ imi_any_matches_any = any_does_match_any,
+            compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
+                UniqA, UniqB),
+            ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType,
+                !Info)
+        ;
+            InstB = free
+        ;
+            InstB = ground(_, _),
+            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
+                HOInstInfoA, NextInstA),
+            inst_matches_initial_mt(NextInstA, InstB, MaybeType, !Info)
+        ;
+            InstB = bound(_, _, _),
+            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
+                HOInstInfoA, NextInstA),
+            inst_matches_initial_mt(NextInstA, InstB, MaybeType, !Info)
+        )
     ;
         InstA = free,
         InstB = free
     ;
         InstA = bound(UniqA, _InstResultsA, BoundInstsA),
-        InstB = any(UniqB, none_or_default_func),
-        compare_uniqueness(!.Info ^ imi_uniqueness_comparison, UniqA, UniqB),
-        compare_bound_inst_list_uniq(!.Info ^ imi_uniqueness_comparison,
-            BoundInstsA, UniqB, !.Info ^ imi_module_info),
-        inst_contains_nondefault_func_mode_1(InstA, no, !Info)
-    ;
-        InstA = bound(_, _, _),
-        InstB = free
-    ;
-        InstA = bound(UniqA, InstResultsA, BoundInstsA),
-        InstB = bound(UniqB, _InstResultsB, BoundInstsB),
-        ( if
-            same_addr_insts(InstA, InstB),
-            InstResultsA = inst_test_results_fgtc
-        then
-            true
-        else
+        (
+            InstB = any(UniqB, none_or_default_func),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            bound_inst_list_matches_initial_mt(BoundInstsA, BoundInstsB,
-                MaybeType, !Info)
+            compare_bound_inst_list_uniq(!.Info ^ imi_uniqueness_comparison,
+                BoundInstsA, UniqB, !.Info ^ imi_module_info),
+            inst_contains_nondefault_func_mode_1(InstA, no, !Info)
+        ;
+            InstB = free
         )
     ;
         InstA = bound(UniqA, InstResultsA, BoundInstsA),
-        InstB = ground(UniqB, none_or_default_func),
-        compare_uniqueness(!.Info ^ imi_uniqueness_comparison, UniqA, UniqB),
-        inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
-            MaybeType, !.Info ^ imi_module_info),
-        compare_bound_inst_list_uniq(!.Info ^ imi_uniqueness_comparison,
-            BoundInstsA, UniqB, !.Info ^ imi_module_info),
-        inst_contains_nondefault_func_mode_1(InstA, no, !Info)
-    ;
-        InstA = bound(Uniq, InstResultsA, BoundInstsA),
-        InstB = abstract_inst(_,_),
-        inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
-            no, !.Info ^ imi_module_info),
         (
-            Uniq = unique,
-            bound_inst_list_is_unique(BoundInstsA, !.Info ^ imi_module_info)
+            InstB = bound(UniqB, _InstResultsB, BoundInstsB),
+            ( if
+                same_addr_insts(InstA, InstB),
+                InstResultsA = inst_test_results_fgtc
+            then
+                true
+            else
+                compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
+                    UniqA, UniqB),
+                bound_inst_list_matches_initial_mt(BoundInstsA, BoundInstsB,
+                    MaybeType, !Info)
+            )
         ;
-            Uniq = mostly_unique,
-            bound_inst_list_is_mostly_unique(BoundInstsA,
-                !.Info ^ imi_module_info)
-        ),
-        inst_contains_nondefault_func_mode_1(InstA, no, !Info)
+            InstB = ground(UniqB, none_or_default_func),
+            compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
+                UniqA, UniqB),
+            inst_results_bound_inst_list_is_ground_mt(InstResultsA,
+                BoundInstsA, MaybeType, !.Info ^ imi_module_info),
+            compare_bound_inst_list_uniq(!.Info ^ imi_uniqueness_comparison,
+                BoundInstsA, UniqB, !.Info ^ imi_module_info),
+            inst_contains_nondefault_func_mode_1(InstA, no, !Info)
+        ;
+            InstB = abstract_inst(_,_),
+            inst_results_bound_inst_list_is_ground_mt(InstResultsA,
+                BoundInstsA, no, !.Info ^ imi_module_info),
+            (
+                UniqA = unique,
+                bound_inst_list_is_unique(BoundInstsA,
+                    !.Info ^ imi_module_info)
+            ;
+                UniqA = mostly_unique,
+                bound_inst_list_is_mostly_unique(BoundInstsA,
+                    !.Info ^ imi_module_info)
+            ),
+            inst_contains_nondefault_func_mode_1(InstA, no, !Info)
+        )
     ;
         InstA = ground(UniqA, HOInstInfoA),
-        InstB = any(UniqB, HOInstInfoB),
-        compare_uniqueness(!.Info ^ imi_uniqueness_comparison, UniqA, UniqB),
-        ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType,
-            !Info)
-    ;
-        InstA = ground(_Uniq, _PredInst),
-        InstB = free
-    ;
-        InstA = ground(UniqA, _GII_A),
-        InstB = bound(UniqB, _InstResultsB, BoundInstsB),
-        MaybeType = yes(Type),
-        % We can only check this case properly if the type is known.
-        compare_uniqueness(!.Info ^ imi_uniqueness_comparison, UniqA, UniqB),
-        bound_inst_list_is_complete_for_type(set.init,
-            !.Info ^ imi_module_info, BoundInstsB, Type),
-        ground_matches_initial_bound_inst_list(UniqA, BoundInstsB, yes(Type),
-            !Info)
-    ;
-        InstA = ground(UniqA, HOInstInfoA),
-        InstB = ground(UniqB, HOInstInfoB),
-        compare_uniqueness(!.Info ^ imi_uniqueness_comparison, UniqA, UniqB),
-        ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType,
-            !Info)
-    ;
-        InstA = ground(_UniqA, none_or_default_func),
-        InstB = abstract_inst(_,_),
-        % I don't know what this should do.
-        % Abstract insts aren't really supported.
-        unexpected($pred, "inst_matches_initial(ground, abstract_inst) == ??")
-    ;
-        InstA = abstract_inst(_,_),
-        InstB = any(shared, none_or_default_func)
-    ;
-        InstA = abstract_inst(_,_),
-        InstB = free
+        (
+            InstB = any(UniqB, HOInstInfoB),
+            compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
+                UniqA, UniqB),
+            ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType,
+                !Info)
+        ;
+            InstB = free
+        ;
+            InstB = bound(UniqB, _InstResultsB, BoundInstsB),
+            MaybeType = yes(Type),
+            % We can only check this case properly if the type is known.
+            compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
+                UniqA, UniqB),
+            bound_inst_list_is_complete_for_type(set.init,
+                !.Info ^ imi_module_info, BoundInstsB, Type),
+            ground_matches_initial_bound_inst_list(UniqA, BoundInstsB,
+                yes(Type), !Info)
+        ;
+            InstB = ground(UniqB, HOInstInfoB),
+            compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
+                UniqA, UniqB),
+            ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType,
+                !Info)
+        ;
+            InstB = abstract_inst(_,_),
+            HOInstInfoA = none_or_default_func,
+            % I don't know what this should do.
+            % Abstract insts aren't really supported.
+            unexpected($pred,
+                "inst_matches_initial(ground, abstract_inst) == ??")
+        )
     ;
         InstA = abstract_inst(Name, ArgsA),
-        InstB = abstract_inst(Name, ArgsB),
-        list.duplicate(length(ArgsA), no, MaybeTypes),
-        % XXX how do we get the argument types for an abstract inst?
-        inst_list_matches_initial_mt(ArgsA, ArgsB, MaybeTypes, !Info)
+        (
+            InstB = any(shared, none_or_default_func)
+        ;
+            InstB = free
+        ;
+            InstB = abstract_inst(Name, ArgsB),
+            list.duplicate(length(ArgsA), no, MaybeTypes),
+            % XXX how do we get the argument types for an abstract inst?
+            inst_list_matches_initial_mt(ArgsA, ArgsB, MaybeTypes, !Info)
+        )
     ;
         InstA = not_reached
     ).
@@ -680,8 +685,9 @@ bound_inst_list_is_complete_for_type(Expansions, ModuleInfo, BoundInsts,
     mer_inst::in, mer_type::in) is semidet.
 
 inst_is_complete_for_type(Expansions, ModuleInfo, Inst, Type) :-
-    % XXX This should be a switch on Inst.
-    ( if Inst = defined_inst(Name) then
+    require_complete_switch [Inst]
+    (
+        Inst = defined_inst(Name),
         ( if set.member(Name, Expansions) then
             true
         else
@@ -689,20 +695,40 @@ inst_is_complete_for_type(Expansions, ModuleInfo, Inst, Type) :-
             inst_is_complete_for_type(set.insert(Expansions, Name),
                 ModuleInfo, ExpandedInst, Type)
         )
-    else if Inst = bound(_, _, BoundInsts) then
+    ;
+        Inst = bound(_, _, BoundInsts),
         bound_inst_list_is_complete_for_type(Expansions, ModuleInfo,
             BoundInsts, Type)
-    else
-        Inst \= not_reached
+    ;
+        % XXX This switch was originally an if-then-else chain, with explicit
+        % tests for defined_inst and bound, and the final else case being
+        % simply "Inst \= not_reached". However, several of the Inst values
+        % for which this succeeds look extremely dodgy. For example, I (zs)
+        % am pretty much certain that constrained_inst_vars should recurse
+        % on its sub-inst instead of succeeding.
+        %
+        % On the other hand, it is possible that some or all of the Inst values
+        % for which we do the wrong thing here will never be given to us
+        % by our callers.
+        ( Inst = free
+        ; Inst = free(_)
+        ; Inst = any(_, _)
+        ; Inst = ground(_, _)
+        ; Inst = inst_var(_)
+        ; Inst = constrained_inst_vars(_, _)
+        ; Inst = abstract_inst(_, _)
+        )
+    ;
+        Inst = not_reached,
+        fail
     ).
 
-    % Check that the first cons_id is lexically greater than the
-    % second, after all module qualifiers have been removed.
+    % Check that the first cons_id is lexically greater than the second,
+    % after all module qualifiers have been removed.
     %
-:- pred greater_than_disregard_module_qual(cons_id::in, cons_id::in)
-    is semidet.
+:- pred first_unqual_cons_id_is_greater(cons_id::in, cons_id::in) is semidet.
 
-greater_than_disregard_module_qual(ConsIdA, ConsIdB) :-
+first_unqual_cons_id_is_greater(ConsIdA, ConsIdB) :-
     ( if
         ConsIdA = cons(QNameA, ArityA, _),
         ConsIdB = cons(QNameB, ArityB, _)
@@ -737,16 +763,17 @@ ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
         HOInstInfoB = none_or_default_func,
         ho_inst_info_matches_ground_2(HOInstInfoA, MaybeType, !Info)
     ;
-        HOInstInfoA = none_or_default_func,
         HOInstInfoB = higher_order(PredInstB),
-        PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
-        Arity = list.length(ArgModes),
-        PredInstA = pred_inst_info_default_func_mode(Arity),
-        pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
-    ;
-        HOInstInfoA = higher_order(PredInstA),
-        HOInstInfoB = higher_order(PredInstB),
-        pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
+        (
+            HOInstInfoA = none_or_default_func,
+            PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
+            Arity = list.length(ArgModes),
+            PredInstA = pred_inst_info_default_func_mode(Arity),
+            pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
+        ;
+            HOInstInfoA = higher_order(PredInstA),
+            pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -805,7 +832,7 @@ bound_inst_list_matches_initial_mt([X | Xs], [Y | Ys], MaybeType, !Info) :-
         inst_list_matches_initial_mt(ArgsX, ArgsY, MaybeTypes, !Info),
         bound_inst_list_matches_initial_mt(Xs, Ys, MaybeType, !Info)
     else
-        greater_than_disregard_module_qual(ConsIdX, ConsIdY),
+        first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdY does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_initial Y. We just
@@ -865,100 +892,105 @@ inst_matches_final_mt(InstA, InstB, MaybeType, !Info) :-
 inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
     (
         InstA = any(UniqA, HOInstInfoA),
-        InstB = any(UniqB, HOInstInfoB),
-        ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType, !Info),
-        unique_matches_final(UniqA, UniqB)
-    ;
-        InstA = any(UniqA, HOInstInfoA),
-        InstB = ground(_, _),
-        maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
-            HOInstInfoA, NextInstA),
-        inst_matches_final_mt(NextInstA, InstB, MaybeType, !Info)
-    ;
-        InstA = any(UniqA, HOInstInfoA),
-        InstB = bound(_, _, _),
-        maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
-            HOInstInfoA, NextInstA),
-        inst_matches_final_mt(NextInstA, InstB, MaybeType, !Info)
-    ;
-        InstA = free,
-        InstB = any(Uniq, _),
-        % We do not yet allow `free' to match `any',
-        % unless the `any' is `clobbered_any' or `mostly_clobbered_any'.
-        % Among other things, changing this would break compare_inst
-        % in modecheck_call.m.
-        ( Uniq = clobbered ; Uniq = mostly_clobbered )
-    ;
-        InstA = free,
-        InstB = free
-    ;
-        InstA = bound(UniqA, InstResultsA, BoundInstsA),
-        InstB = any(UniqB, none_or_default_func),
-        unique_matches_final(UniqA, UniqB),
-        bound_inst_list_matches_uniq(BoundInstsA, UniqB,
-            !.Info ^ imi_module_info),
-        % We do not yet allow `free' to match `any'.
-        % Among other things, changing this would break compare_inst
-        % in modecheck_call.m.
-        inst_results_bound_inst_list_is_ground_or_any(InstResultsA,
-            BoundInstsA, !.Info ^ imi_module_info),
-        inst_contains_nondefault_func_mode_1(InstA, no, !Info)
-    ;
-        InstA = bound(UniqA, _InstResultsA, BoundInstsA),
-        InstB = bound(UniqB, _InstResultsB, BoundInstsB),
-        unique_matches_final(UniqA, UniqB),
-        bound_inst_list_matches_final(BoundInstsA, BoundInstsB, MaybeType,
-            !Info)
-    ;
-        InstA = bound(UniqA, InstResultsA, BoundInstsA),
-        InstB = ground(UniqB, none_or_default_func),
-        unique_matches_final(UniqA, UniqB),
-        inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
-            MaybeType, !.Info ^ imi_module_info),
-        bound_inst_list_matches_uniq(BoundInstsA, UniqB,
-            !.Info ^ imi_module_info),
-        inst_contains_nondefault_func_mode_1(InstA, no, !Info)
-    ;
-        InstA = ground(UniqA, HOInstInfoA),
-        InstB = any(UniqB, HOInstInfoB),
-        ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType, !Info),
-        unique_matches_final(UniqA, UniqB)
-    ;
-        InstA = ground(UniqA, HOInstInfoA),
-        InstB = bound(UniqB, InstResultsB, BoundInstsB),
-        ho_inst_info_matches_ground_2(HOInstInfoA, MaybeType, !Info),
-        unique_matches_final(UniqA, UniqB),
-        ModuleInfo = !.Info ^ imi_module_info,
-        inst_results_bound_inst_list_is_ground_mt(InstResultsB, BoundInstsB,
-            MaybeType, ModuleInfo),
-        uniq_matches_bound_inst_list(UniqA, BoundInstsB, ModuleInfo),
-        inst_contains_nondefault_func_mode_1(InstB, no, !Info),
         (
-            MaybeType = yes(Type),
-            % We can only do this check if the type is known.
-            bound_inst_list_is_complete_for_type(set.init, ModuleInfo,
-                BoundInstsB, Type)
+            InstB = any(UniqB, HOInstInfoB),
+            ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType,
+                !Info),
+            unique_matches_final(UniqA, UniqB)
         ;
-            % XXX the check for bound_inst_list_is_complete_for_type makes the
-            % mode checker too conservative in the absence of alias tracking.
-            % Bypass the check if instructed.
-            GroundMatchesBound = !.Info ^ imi_ground_matches_bound,
-            GroundMatchesBound = ground_matches_bound_always
+            InstB = ground(_, _),
+            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
+                HOInstInfoA, NextInstA),
+            inst_matches_final_mt(NextInstA, InstB, MaybeType, !Info)
+        ;
+            InstB = bound(_, _, _),
+            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
+                HOInstInfoA, NextInstA),
+            inst_matches_final_mt(NextInstA, InstB, MaybeType, !Info)
+        )
+    ;
+        InstA = free,
+        (
+            InstB = any(Uniq, _),
+            % We do not yet allow `free' to match `any',
+            % unless the `any' is `clobbered_any' or `mostly_clobbered_any'.
+            % Among other things, changing this would break compare_inst
+            % in modecheck_call.m.
+            ( Uniq = clobbered ; Uniq = mostly_clobbered )
+        ;
+            InstB = free
+        )
+    ;
+        InstA = bound(UniqA, InstResultsA, BoundInstsA),
+        (
+            InstB = any(UniqB, none_or_default_func),
+            unique_matches_final(UniqA, UniqB),
+            bound_inst_list_matches_uniq(BoundInstsA, UniqB,
+                !.Info ^ imi_module_info),
+            % We do not yet allow `free' to match `any'.
+            % Among other things, changing this would break compare_inst
+            % in modecheck_call.m.
+            inst_results_bound_inst_list_is_ground_or_any(InstResultsA,
+                BoundInstsA, !.Info ^ imi_module_info),
+            inst_contains_nondefault_func_mode_1(InstA, no, !Info)
+        ;
+            InstB = bound(UniqB, _InstResultsB, BoundInstsB),
+            unique_matches_final(UniqA, UniqB),
+            bound_inst_list_matches_final(BoundInstsA, BoundInstsB, MaybeType,
+                !Info)
+        ;
+            InstB = ground(UniqB, none_or_default_func),
+            unique_matches_final(UniqA, UniqB),
+            inst_results_bound_inst_list_is_ground_mt(InstResultsA,
+                BoundInstsA, MaybeType, !.Info ^ imi_module_info),
+            bound_inst_list_matches_uniq(BoundInstsA, UniqB,
+                !.Info ^ imi_module_info),
+            inst_contains_nondefault_func_mode_1(InstA, no, !Info)
         )
     ;
         InstA = ground(UniqA, HOInstInfoA),
-        InstB = ground(UniqB, HOInstInfoB),
-        ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType, !Info),
-        unique_matches_final(UniqA, UniqB)
-    ;
-        InstA = abstract_inst(_, _),
-        InstB = any(shared, none_or_default_func)
+        (
+            InstB = any(UniqB, HOInstInfoB),
+            ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType,
+                !Info),
+            unique_matches_final(UniqA, UniqB)
+        ;
+            InstB = bound(UniqB, InstResultsB, BoundInstsB),
+            ho_inst_info_matches_ground_2(HOInstInfoA, MaybeType, !Info),
+            unique_matches_final(UniqA, UniqB),
+            ModuleInfo = !.Info ^ imi_module_info,
+            inst_results_bound_inst_list_is_ground_mt(InstResultsB,
+                BoundInstsB, MaybeType, ModuleInfo),
+            uniq_matches_bound_inst_list(UniqA, BoundInstsB, ModuleInfo),
+            inst_contains_nondefault_func_mode_1(InstB, no, !Info),
+            (
+                MaybeType = yes(Type),
+                % We can only do this check if the type is known.
+                bound_inst_list_is_complete_for_type(set.init, ModuleInfo,
+                    BoundInstsB, Type)
+            ;
+                % XXX the check for bound_inst_list_is_complete_for_type
+                % makes the mode checker too conservative in the absence
+                % of alias tracking. Bypass the check if instructed.
+                GroundMatchesBound = !.Info ^ imi_ground_matches_bound,
+                GroundMatchesBound = ground_matches_bound_always
+            )
+        ;
+            InstB = ground(UniqB, HOInstInfoB),
+            ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType,
+                !Info),
+            unique_matches_final(UniqA, UniqB)
+        )
     ;
         InstA = abstract_inst(Name, ArgsA),
-        InstB = abstract_inst(Name, ArgsB),
-        list.duplicate(length(ArgsA), no, MaybeTypes),
-        % XXX how do we get the argument types for an abstract inst?
-        inst_list_matches_final(ArgsA, ArgsB, MaybeTypes, !Info)
+        (
+            InstB = any(shared, none_or_default_func)
+        ;
+            InstB = abstract_inst(Name, ArgsB),
+            list.duplicate(list.length(ArgsA), no, MaybeTypes),
+            % XXX how do we get the argument types for an abstract inst?
+            inst_list_matches_final(ArgsA, ArgsB, MaybeTypes, !Info)
+        )
     ;
         InstA = not_reached
     ;
@@ -981,16 +1013,17 @@ ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
         HOInstInfoB = none_or_default_func,
         ho_inst_info_matches_ground_2(HOInstInfoA, MaybeType, !Info)
     ;
-        HOInstInfoA = none_or_default_func,
         HOInstInfoB = higher_order(PredInstB),
-        PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
-        Arity = list.length(ArgModes),
-        PredInstA = pred_inst_info_default_func_mode(Arity),
-        pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
-    ;
-        HOInstInfoA = higher_order(PredInstA),
-        HOInstInfoB = higher_order(PredInstB),
-        pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
+        (
+            HOInstInfoA = none_or_default_func,
+            PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
+            list.length(ArgModes, Arity),
+            PredInstA = pred_inst_info_default_func_mode(Arity),
+            pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
+        ;
+            HOInstInfoA = higher_order(PredInstA),
+            pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
+        )
     ).
 
 :- pred inst_list_matches_final(list(mer_inst)::in, list(mer_inst)::in,
@@ -1024,7 +1057,7 @@ bound_inst_list_matches_final([X | Xs], [Y | Ys], MaybeType, !Info) :-
         inst_list_matches_final(ArgsX, ArgsY, MaybeTypes, !Info),
         bound_inst_list_matches_final(Xs, Ys, MaybeType, !Info)
     else
-        greater_than_disregard_module_qual(ConsIdX, ConsIdY),
+        first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdY does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_final Y. We just
@@ -1076,35 +1109,35 @@ inst_matches_binding_3(InstA, InstB, MaybeType, !Info) :-
         InstB = free
     ;
         InstA = any(UniqA, HOInstInfoA),
-        InstB = any(UniqB, HOInstInfoB),
-        % Note that `any' is *not* considered to match `any' unless
-        % Info ^ any_matches_any = yes or the type is not a solver type
-        % (and does not contain any solver types).
-        AnyMatchesAny = !.Info ^ imi_any_matches_any,
         (
-            AnyMatchesAny = any_does_match_any,
-            ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType,
-                !Info)
+            InstB = any(UniqB, HOInstInfoB),
+            % Note that `any' is *not* considered to match `any' unless
+            % Info ^ any_matches_any = yes or the type is not a solver type
+            % (and does not contain any solver types).
+            AnyMatchesAny = !.Info ^ imi_any_matches_any,
+            (
+                AnyMatchesAny = any_does_match_any,
+                ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType,
+                    !Info)
+            ;
+                AnyMatchesAny = any_does_not_match_any,
+                maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
+                    HOInstInfoA, NextInstA),
+                maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqB,
+                    HOInstInfoB, NextInstB),
+                inst_matches_binding_mt(NextInstA, NextInstB, MaybeType, !Info)
+            )
         ;
-            AnyMatchesAny = any_does_not_match_any,
+            InstB = ground(_, _),
             maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
                 HOInstInfoA, NextInstA),
-            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqB,
-                HOInstInfoB, NextInstB),
-            inst_matches_binding_mt(NextInstA, NextInstB, MaybeType, !Info)
+            inst_matches_binding_mt(NextInstA, InstB, MaybeType, !Info)
+        ;
+            InstB = bound(_, _, _),
+            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
+                HOInstInfoA, NextInstA),
+            inst_matches_binding_mt(NextInstA, InstB, MaybeType, !Info)
         )
-    ;
-        InstA = any(UniqA, HOInstInfoA),
-        InstB = ground(_, _),
-        maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
-            HOInstInfoA, NextInstA),
-        inst_matches_binding_mt(NextInstA, InstB, MaybeType, !Info)
-    ;
-        InstA = any(UniqA, HOInstInfoA),
-        InstB = bound(_, _, _),
-        maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
-            HOInstInfoA, NextInstA),
-        inst_matches_binding_mt(NextInstA, InstB, MaybeType, !Info)
     ;
         InstA = ground(_, _),
         InstB = any(UniqB, HOInstInfoB),
@@ -1112,42 +1145,43 @@ inst_matches_binding_3(InstA, InstB, MaybeType, !Info) :-
             HOInstInfoB, NextInstB),
         inst_matches_binding_mt(InstA, NextInstB, MaybeType, !Info)
     ;
-        InstA = bound(_, _, _),
-        InstB = any(UniqB, HOInstInfoB),
-        maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqB,
-            HOInstInfoB, NextInstB),
-        inst_matches_binding_mt(InstA, NextInstB, MaybeType, !Info)
-    ;
-        InstA = bound(_UniqA, _InstResultA, BoundInstsA),
-        InstB = bound(_UniqB, _InstResultB, BoundInstsB),
-        bound_inst_list_matches_binding(BoundInstsA, BoundInstsB, MaybeType,
-            !Info)
-    ;
         InstA = bound(_UniqA, InstResultsA, BoundInstsA),
-        InstB = ground(_UniqB, none_or_default_func),
-        inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
-            MaybeType, !.Info ^ imi_module_info),
-        inst_contains_nondefault_func_mode_1(InstA, no, !Info)
-    ;
-        InstA = ground(_UniqA, _),
-        InstB = bound(_UniqB, InstResultsB, BoundInstsB),
-        inst_results_bound_inst_list_is_ground_mt(InstResultsB, BoundInstsB,
-            MaybeType, !.Info ^ imi_module_info),
-        inst_contains_nondefault_func_mode_1(InstB, no, !Info),
         (
-            MaybeType = yes(Type),
-            % We can only do this check if the type is known.
-            bound_inst_list_is_complete_for_type(set.init,
-                !.Info ^ imi_module_info, BoundInstsB, Type)
+            InstB = any(UniqB, HOInstInfoB),
+            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqB,
+                HOInstInfoB, NextInstB),
+            inst_matches_binding_mt(InstA, NextInstB, MaybeType, !Info)
         ;
-            MaybeType = no,
-            fail
+            InstB = bound(_UniqB, _InstResultB, BoundInstsB),
+            bound_inst_list_matches_binding(BoundInstsA, BoundInstsB,
+                MaybeType, !Info)
+        ;
+            InstB = ground(_UniqB, none_or_default_func),
+            inst_results_bound_inst_list_is_ground_mt(InstResultsA,
+                BoundInstsA, MaybeType, !.Info ^ imi_module_info),
+            inst_contains_nondefault_func_mode_1(InstA, no, !Info)
         )
     ;
         InstA = ground(_UniqA, HOInstInfoA),
-        InstB = ground(_UniqB, HOInstInfoB),
-        ho_inst_info_matches_binding(HOInstInfoA, HOInstInfoB, MaybeType,
-            !.Info ^ imi_module_info)
+        (
+            InstB = bound(_UniqB, InstResultsB, BoundInstsB),
+            inst_results_bound_inst_list_is_ground_mt(InstResultsB,
+                BoundInstsB, MaybeType, !.Info ^ imi_module_info),
+            inst_contains_nondefault_func_mode_1(InstB, no, !Info),
+            (
+                MaybeType = yes(Type),
+                % We can only do this check if the type is known.
+                bound_inst_list_is_complete_for_type(set.init,
+                    !.Info ^ imi_module_info, BoundInstsB, Type)
+            ;
+                MaybeType = no,
+                fail
+            )
+        ;
+            InstB = ground(_UniqB, HOInstInfoB),
+            ho_inst_info_matches_binding(HOInstInfoA, HOInstInfoB, MaybeType,
+                !.Info ^ imi_module_info)
+        )
     ;
         InstA = abstract_inst(Name, ArgsA),
         InstB = abstract_inst(Name, ArgsB),
@@ -1167,16 +1201,17 @@ ho_inst_info_matches_binding(HOInstInfoA, HOInstInfoB, MaybeType,
         HOInstInfoB = none_or_default_func,
         ho_inst_info_matches_ground_mt(ModuleInfo, HOInstInfoA, MaybeType)
     ;
-        HOInstInfoA = none_or_default_func,
         HOInstInfoB = higher_order(PredInstB),
-        PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
-        Arity = list.length(ArgModes),
-        PredInstA = pred_inst_info_default_func_mode(Arity),
-        pred_inst_matches_mt(PredInstA, PredInstB, MaybeType, ModuleInfo)
-    ;
-        HOInstInfoA = higher_order(PredInstA),
-        HOInstInfoB = higher_order(PredInstB),
-        pred_inst_matches_mt(PredInstA, PredInstB, MaybeType, ModuleInfo)
+        (
+            HOInstInfoA = none_or_default_func,
+            PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
+            Arity = list.length(ArgModes),
+            PredInstA = pred_inst_info_default_func_mode(Arity),
+            pred_inst_matches_mt(PredInstA, PredInstB, MaybeType, ModuleInfo)
+        ;
+            HOInstInfoA = higher_order(PredInstA),
+            pred_inst_matches_mt(PredInstA, PredInstB, MaybeType, ModuleInfo)
+        )
     ).
 
 :- pred inst_list_matches_binding(list(mer_inst)::in, list(mer_inst)::in,
@@ -1210,7 +1245,7 @@ bound_inst_list_matches_binding([X | Xs], [Y | Ys], MaybeType, !Info) :-
         inst_list_matches_binding(ArgsX, ArgsY, MaybeTypes, !Info),
         bound_inst_list_matches_binding(Xs, Ys, MaybeType, !Info)
     else
-        greater_than_disregard_module_qual(ConsIdX, ConsIdY),
+        first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdX does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_binding Y. We just
