@@ -719,15 +719,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
                 InitInstOfX, InitInstsOfArgVars, [X], GoalExpr, !ModeInfo)
         )
     else if
-        % XXX We forbid the construction of partially instantiated structures
-        % involving solver types. We would like to forbid all such
-        % constructions here, but that causes trouble with the current
-        % implementation of term_conversion.term_to_univ_special_case,
-        % which does use partial instantiation (in a rather horrible way).
-        % This is a hacky solution that gets us most of what we want
-        % with respect to solver types.
-
-        % XXX We want to forbid the construction of partially instantiated
+        % XXX We forbid the construction of partially instantiated
         % structures involving solver types. We would like to forbid all such
         % constructions, but that causes trouble with the current code of
         % term_conversion.term_to_univ_special_case, which does use partial
@@ -735,7 +727,6 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         %
         % This is a hacky solution that gets us most of what we want
         % with respect to solver types.
-        %
         not would_construct_partial_term_with_solver_type(ModuleInfo0,
             VarTypes, ArgVars0, InitInstOfX, InitInstsOfArgVars),
         abstractly_unify_inst_functor(LiveX, InitInstOfX, InstConsId,
