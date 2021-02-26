@@ -68,6 +68,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.      % undesirable dependency
 :- import_module parse_tree.prog_out.
@@ -1453,11 +1454,11 @@ record_arity_mismatch(CurNum, FunctorName, ActualArity, ExpectedAritiesSet,
 record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord) :-
     !:NumMismatches = !.NumMismatches + 1,
     BoundInst = bound_functor(ConsId, SubInsts),
+    ConsIdStr = mercury_cons_id_to_string(output_mercury,
+        does_not_need_brackets, ConsId),
     string.format("In bound functor #%d:", [i(CurNum)], InFunctorStr),
     string.format("function symbol is %s/%d.",
-        [s(mercury_cons_id_to_string(does_not_need_brackets, ConsId)),
-            i(list.length(SubInsts))],
-        ActualStr),
+        [s(ConsIdStr), i(list.length(SubInsts))], ActualStr),
     Pieces = [words(InFunctorStr), nl, words(ActualStr), nl],
     !:PiecesCord = !.PiecesCord ++ cord.from_list(Pieces).
 

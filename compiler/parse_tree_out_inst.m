@@ -199,10 +199,10 @@ mercury_format_bound_insts(Lang, InstVarSet, [BoundInst | BoundInsts],
     BoundInst = bound_functor(ConsId, Args),
     (
         Args = [],
-        mercury_format_cons_id(needs_brackets, ConsId, S, !U)
+        mercury_format_cons_id(Lang, needs_brackets, ConsId, S, !U)
     ;
         Args = [_ | _],
-        mercury_format_cons_id(does_not_need_brackets, ConsId, S, !U),
+        mercury_format_cons_id(Lang, does_not_need_brackets, ConsId, S, !U),
         add_string("(", S, !U),
         mercury_format_inst_list(Lang, InstVarSet, Args, S, !U),
         add_string(")", S, !U)

@@ -182,6 +182,7 @@
 
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_type_name.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -531,7 +532,7 @@ selector_to_string(TVarSet, Selector) = String :-
 
 unit_selector_to_string(_, termsel(ConsId, Index)) =
     string.append_list(["sel(",
-        mercury_cons_id_to_string(needs_brackets, ConsId),
+        mercury_cons_id_to_string(output_mercury, needs_brackets, ConsId),
         ",",
         int_to_string(cons_id_arity(ConsId)),
         ",",

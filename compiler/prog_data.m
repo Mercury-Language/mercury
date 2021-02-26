@@ -114,6 +114,22 @@
             % resolve_unify_functor.m has been run as part of the
             % post-typecheck pass. Until then, they are represented as
             % cons(unqualified("{}"), ...).
+            %
+            % XXX Unfortunately, the above is not quite true. The utility
+            % predicate type_constructors in type_util.m return the cons_ids
+            % of a type, but it does not know what the current pass is.
+            % When called on a tuple type, it can therefore either *always*
+            % return cons(unqualified("{}"), ...), or it can *always* return
+            % tuple_cons(Arity). It does the former, which means that any code
+            % that deals with its output, directly or indirectly, which
+            % certainly includes code that uses inst_match.m and probably
+            % includes other modules as well, has to be prepared for this.
+            %
+            % XXX I (zs) also strongly suspect that while post-typecheck.m.
+            % may replace occurrences of cons(unqualified("{}"), ...) in a
+            % procedure's body goal with tuple_cons(Arity), it won't replace
+            % similar occurrences in bound_insts in those procedures' mode
+            % declarations.
 
     ;       closure_cons(shrouded_pred_proc_id, lambda_eval_method)
             % Note that a closure_cons represents a closure, not just

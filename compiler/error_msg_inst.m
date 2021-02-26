@@ -69,6 +69,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_mode.
@@ -385,8 +386,8 @@ bound_insts_to_pieces(Info, !Expansions, HeadBoundInst, TailBoundInsts,
     else
         ConsId = ConsId0
     ),
-    mercury_format_cons_id(does_not_need_brackets, ConsId, unit,
-        "", ConsIdStr),
+    ConsIdStr = mercury_cons_id_to_string(output_mercury,
+        does_not_need_brackets, ConsId),
     name_and_arg_insts_to_pieces(Info, !Expansions, ConsIdStr, ArgInsts,
         HeadSuffix, Pieces).
 
@@ -418,8 +419,8 @@ bound_insts_to_inline_pieces(Info, !Expansions, HeadBoundInst, TailBoundInsts,
     else
         ConsId = ConsId0
     ),
-    mercury_format_cons_id(does_not_need_brackets, ConsId, unit,
-        "", ConsIdStr),
+    ConsIdStr = mercury_cons_id_to_string(output_mercury,
+        does_not_need_brackets, ConsId),
     name_and_arg_insts_to_inline_pieces(Info, !Expansions, ConsIdStr, ArgInsts,
         HeadSuffix, Pieces).
 

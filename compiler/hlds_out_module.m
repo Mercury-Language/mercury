@@ -1577,7 +1577,8 @@ write_const_struct_db(Stream, ConstStructDb, !IO) :-
 write_const_struct(Stream, N - ConstStruct, !IO) :-
     io.format(Stream, "\nconst_struct %d:\n", [i(N)], !IO),
     ConstStruct = const_struct(ConsId, ConstArgs, Type, Inst, DefinedWhere),
-    mercury_output_cons_id(does_not_need_brackets, ConsId, Stream, !IO),
+    mercury_output_cons_id(output_debug, does_not_need_brackets, ConsId,
+        Stream, !IO),
     (
         ConstArgs = [],
         io.nl(Stream, !IO)
@@ -1611,7 +1612,8 @@ write_const_struct_args(Stream, HeadConstArg, TailConstArgs, !IO) :-
         io.format(Stream, "cs(%d)", [i(N)], !IO)
     ;
         HeadConstArg = csa_constant(ConsId, Type),
-        mercury_output_cons_id(does_not_need_brackets, ConsId, Stream, !IO),
+        mercury_output_cons_id(output_debug, does_not_need_brackets, ConsId,
+            Stream, !IO),
         io.write_string(Stream, "\n        with type ", !IO),
         mercury_output_type(varset.init, print_name_only, Type, Stream, !IO)
     ),
