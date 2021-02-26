@@ -429,15 +429,20 @@ find_slot(HT, K) = HashSlot :-
 
 find_slot_2(HashPred, K, NumBuckets, HashSlot) :-
     HashPred(K, Hash),
-    % Since NumBuckets is a power of two we can avoid mod.
+    % Since NumBuckets is a power of two, we can avoid mod.
     HashSlot = Hash /\ (NumBuckets - 1).
 
 :- pred update_item_in_bucket(K, V, hash_bucket(K, V), hash_bucket(K, V)).
-:- mode update_item_in_bucket(in(hb_two_plus), in, in, out) is semidet.
+:- mode update_item_in_bucket(in, in, in(hb_two_plus), out) is semidet.
 :- mode update_item_in_bucket(in, in, in, out) is semidet.
 
 update_item_in_bucket(Key, Value, HB0, HB) :-
-    require_complete_switch [HB0]
+    % The procedure body here is a NOT switch on HB0 in the first mode.
+    % This is because mode analysis eliminates the first two disjuncts,
+    % since they cannot possibly generate any solutions, and then removes
+    % the disj() wrapper around what has become a one-disjunct disjunction.
+    %
+    % require_complete_switch [HB0]
     (
         HB0 = hb_zero,
         fail

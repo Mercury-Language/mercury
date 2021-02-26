@@ -1156,14 +1156,14 @@ select_op_info_and_print(Stream, NonCanon, OpInfo, OtherOpInfos, Priority,
     list(univ), State, State)
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
-:- mode select_remaining_op_info_and_print(in, in(do_not_allow), in, in, in,
-    in, di, uo) is det.
-:- mode select_remaining_op_info_and_print(in, in(canonicalize), in, in, in,
-    in, di, uo) is det.
-:- mode select_remaining_op_info_and_print(in(include_details_cc), in, in, in,
+:- mode select_remaining_op_info_and_print(in, in(do_not_allow), in, in,
+    in, in, di, uo) is det.
+:- mode select_remaining_op_info_and_print(in, in(canonicalize), in, in,
+    in, in, di, uo) is det.
+:- mode select_remaining_op_info_and_print(in, in(include_details_cc), in, in,
     in, in, di, uo) is cc_multi.
-:- mode select_remaining_op_info_and_print(in, in, in, in, in, in, di, uo)
-    is cc_multi.
+:- mode select_remaining_op_info_and_print(in, in, in, in,
+    in, in, di, uo) is cc_multi.
 :- pragma type_spec(select_remaining_op_info_and_print/8,
     (Stream = io.output_stream, State = io.state)).
 
