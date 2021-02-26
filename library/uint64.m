@@ -333,7 +333,6 @@
 
 :- import_module exception.
 :- import_module int.
-:- import_module math.
 :- import_module require.
 :- import_module string.
 :- import_module uint.
