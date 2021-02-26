@@ -174,10 +174,10 @@
     %
     % Note that pred and func types are considered solver types, since
     % higher-order terms that contain non-local solver variables are
-    % themselves not ground -- they only become ground when all non-locals
-    % do. However, functions with the default inst can still be treated as
-    % ground, since they are det and therefore cannot bind any non-local
-    % solver variables that may be present.
+    % themselves not ground -- they only become ground when all non-locals do.
+    % However, functions with the default inst can still be treated as ground,
+    % since they are det and therefore cannot bind any non-local solver
+    % variables that may be present.
     %
 :- pred maybe_any_to_bound(maybe(mer_type)::in, module_info::in,
     uniqueness::in, ho_inst_info::in, mer_inst::out) is semidet.
