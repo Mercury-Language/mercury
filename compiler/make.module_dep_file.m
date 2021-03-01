@@ -449,7 +449,7 @@ write_foreign_include_file_info(ForeignInclude, Stream, !IO) :-
     ForeignInclude = foreign_include_file_info(Lang, FileName),
     mercury_output_foreign_language_string(Lang, Stream, !IO),
     io.write_string(Stream, " - ", !IO),
-    term_io.quote_string(FileName, !IO).
+    term_io.quote_string(Stream, FileName, !IO).
 
 :- pred contains_foreign_export_to_string(contains_foreign_export, string).
 :- mode contains_foreign_export_to_string(in, out) is det.

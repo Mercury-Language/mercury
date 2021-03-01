@@ -43,7 +43,8 @@ complex_test.log: install_libs
 include_file2.runtest: include_file
 	sleep 1 && touch inc/code.c inc/code.java inc/code.cs
 	$(MCM) --verbose-make include_file > include_file2.err 2>&1
-	grep '^Making Mercury/.*/include_file[.]' include_file2.err
+	! grep -qi 'error' include_file2.err && \
+		grep '^Making Mercury/.*/include_file[.]' include_file2.err
 
 linkage_test.log: install_libs_linkage_test2
 
@@ -51,7 +52,8 @@ linkage_test.log: install_libs_linkage_test2
 rebuild.runtest:
 	$(MCM) --rebuild rebuild
 	$(MCM) --rebuild --verbose-make rebuild > rebuild.err2 2>&1
-	grep '^Making rebuild\($$\|\.\)' rebuild.err2
+	! grep -qi 'error' rebuild.err2 && \
+		grep '^Making rebuild\($$\|\.\)' rebuild.err2
 
 # The compiler used to fail when invoked as `mmc --make build_object.o'.
 build_object.runtest: build_object.o
