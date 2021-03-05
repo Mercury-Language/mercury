@@ -266,43 +266,62 @@ generate_code_for_pred(ModuleInfo, ConstStructMap, VeryVerbose, Statistics,
     (
         ProcIds = []
     ;
-        ProcIds = [_ | _],
+        ProcIds = [_ | TailProcIds],
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Generating code for ", !IO),
-                io.write_string(pred_id_to_string(ModuleInfo, PredId), !IO),
-                io.write_string("\n", !IO)
+                io.format("%% Generating code for %s\n",
+                    [s(pred_id_to_string(ModuleInfo, PredId))], !IO)
+            ),
+            (
+                TailProcIds = [],
+                PrintProcProgress = no
+            ;
+                TailProcIds = [_ | _],
+                PrintProcProgress = yes
             ),
             generate_code_for_procs(ModuleInfo, ConstStructMap,
-                PredId, PredInfo, ProcIds, !CProcsCord, !GlobalData),
+                PredId, PredInfo, ProcIds, PrintProcProgress,
+                !CProcsCord, !GlobalData),
             trace [io(!IO)] (
                 maybe_report_stats(Statistics, !IO)
             )
         ;
             VeryVerbose = no,
+            DontPrintProcProgress = no,
             generate_code_for_procs(ModuleInfo, ConstStructMap,
-                PredId, PredInfo, ProcIds, !CProcsCord, !GlobalData)
+                PredId, PredInfo, ProcIds, DontPrintProcProgress,
+                !CProcsCord, !GlobalData)
         )
     ).
 
     % Translate all the procedures of a HLDS predicate to LLDS.
     %
 :- pred generate_code_for_procs(module_info::in, const_struct_map::in,
-    pred_id::in, pred_info::in, list(proc_id)::in,
+    pred_id::in, pred_info::in, list(proc_id)::in, bool::in,
     cord(c_procedure)::in, cord(c_procedure)::out,
     global_data::in, global_data::out) is det.
 
-generate_code_for_procs(_, _, _, _, [], !CProcsCord, !GlobalData).
+generate_code_for_procs(_, _, _, _, [], _, !CProcsCord, !GlobalData).
 generate_code_for_procs(ModuleInfo, ConstStructMap, PredId, PredInfo,
-        [ProcId | ProcIds], !CProcsCord, !GlobalData) :-
+        [ProcId | ProcIds], PrintProcProgress, !CProcsCord, !GlobalData) :-
+    (
+        PrintProcProgress = yes,
+        trace [io(!IO)] (
+            ProcIdInt = proc_id_to_int(ProcId),
+            io.format("%% Generating code for %s proc %d\n",
+                [s(pred_id_to_string(ModuleInfo, PredId)), i(ProcIdInt)], !IO)
+        )
+    ;
+        PrintProcProgress = no
+    ),
     pred_info_get_proc_table(PredInfo, ProcInfos),
     map.lookup(ProcInfos, ProcId, ProcInfo),
     generate_proc_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
         ProcId, ProcInfo, CProc, !GlobalData),
     !:CProcsCord = cord.snoc(!.CProcsCord, CProc),
     generate_code_for_procs(ModuleInfo, ConstStructMap, PredId, PredInfo,
-        ProcIds, !CProcsCord, !GlobalData).
+        ProcIds, PrintProcProgress, !CProcsCord, !GlobalData).
 
 %---------------------------------------------------------------------------%
 
