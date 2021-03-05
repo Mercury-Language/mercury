@@ -204,8 +204,8 @@
 
 :- type user_state
     --->    user_state(
-                instr               :: io.input_stream,
-                outstr              :: io.output_stream,
+                instream            :: io.input_stream,
+                outstream           :: io.output_stream,
                 browser             :: browser_persistent_state,
 
                 % Control whether the question should be displayed
@@ -320,7 +320,7 @@ handle_command(Cmd, UserQuestion, Response, !User, !IO) :-
             ;
                 % Tracking the entire atom doesn't make sense.
                 MaybeTrack = track(_, _, []),
-                io.write_string(!.User ^ outstr,
+                io.write_string(!.User ^ outstream,
                     "Cannot track the entire atom. " ++
                     "Please select a subterm to track.\n", !IO),
                 query_user(UserQuestion, Response, !User, !IO)
@@ -337,8 +337,8 @@ handle_command(Cmd, UserQuestion, Response, !User, !IO) :-
         Browser0 = !.User ^ browser,
         DummyTerm = synthetic_term("", [], no),
         Info0 = browser_info(DummyTerm, [], print, no, Browser0, no_track, no),
-        run_param_command(debugger_internal, ParamCommand, no,
-            Info0, Info, !IO),
+        run_param_command(debugger_internal(!.User ^ outstream), ParamCommand,
+            no, Info0, Info, !IO),
         Info = browser_info(_, _, _, _, Browser, _, _),
         !User ^ browser := Browser,
         query_user(UserQuestion, Response, !User, !IO)
@@ -352,7 +352,7 @@ handle_command(Cmd, UserQuestion, Response, !User, !IO) :-
         Response = user_response_trust_module(Question)
     ;
         Cmd = user_cmd_info,
-        Response = user_response_show_info(!.User ^ outstr)
+        Response = user_response_show_info(!.User ^ outstream)
     ;
         Cmd = user_cmd_undo,
         Response = user_response_undo
@@ -394,13 +394,13 @@ handle_command(Cmd, UserQuestion, Response, !User, !IO) :-
             MaybeCmd = no,
             Path = ["concepts", "decl_debug"]
         ),
-        help.print_help_node_at_path(!.User ^ outstr, !.User ^ help_system,
+        help.print_help_node_at_path(!.User ^ outstream, !.User ^ help_system,
             Path, Res, !IO),
         (
             Res = help_ok
         ;
             Res = help_error(Message),
-            io.write_strings([Message, "\n"], !IO)
+            io.format(!.User ^ outstream, "%s\n", [s(Message)], !IO)
         ),
         query_user(UserQuestion, Response, !User, !IO)
     ;
@@ -424,7 +424,7 @@ handle_command(Cmd, UserQuestion, Response, !User, !IO) :-
         handle_command(Command, UserQuestion, Response, !User, !IO)
     ;
         Cmd = user_cmd_illegal,
-        io.write_string(!.User ^ outstr, "Unknown command, 'h' for help.\n",
+        io.write_string(!.User ^ outstream, "Unknown command, 'h' for help.\n",
             !IO),
         query_user(UserQuestion, Response, !User, !IO)
     ).
@@ -531,7 +531,7 @@ browse_chosen_io_action(MaybeIoActions, ActionNum, MaybeTrack, !User, !IO) :-
         )
     ;
         MaybeIoActions = no,
-        io.write_string("No such IO action.\n", !IO),
+        io.write_string(!.User ^ outstream, "No such IO action.\n", !IO),
         MaybeTrack = no_track
     ).
 
@@ -586,12 +586,12 @@ print_chosen_io_action(MaybeIoActions, ActionNum, User0, OK, !IO) :-
             OK = yes
         ;
             MaybeIoAction = no,
-            io.write_string("No such IO action.\n", !IO),
+            io.write_string(User0 ^ outstream, "No such IO action.\n", !IO),
             OK = no
         )
     ;
         MaybeIoActions = no,
-        io.write_string("No such IO action.\n", !IO),
+        io.write_string(User0 ^ outstream, "No such IO action.\n", !IO),
         OK = no
     ).
 
@@ -600,11 +600,11 @@ print_chosen_io_action(MaybeIoActions, ActionNum, User0, OK, !IO) :-
 
 browse_io_action(IoAction, no_track, !User, !IO) :-
     Term = io_action_to_browser_term(IoAction),
-    browse_browser_term(Term, !.User ^ instr, !.User ^ outstr, no,
-        MaybeTrackDirs, !.User ^ browser, Browser, !IO),
+    browse_browser_term(!.User ^ instream, !.User ^ outstream, no,
+        Term, MaybeTrackDirs, !.User ^ browser, Browser, !IO),
     (
         MaybeTrackDirs = track(_, _, _),
-        io.write_string(!.User ^ outstr,
+        io.write_string(!.User ^ outstream,
             "Sorry, tracking of I/O actions is not yet supported.\n", !IO),
         browse_io_action(IoAction, _, !User, !IO)
     ;
@@ -638,16 +638,16 @@ browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeTrack, !User, !IO) :-
         MaybeArg = yes(ArgRep),
         term_rep.rep_to_univ(ArgRep, Arg)
     then
-        browse_browser_term(univ_to_browser_term(Arg),
-            !.User ^ instr, !.User ^ outstr,
-            yes(get_subterm_mode_from_atoms_for_arg(ArgNum,
-                InitAtom, FinalAtom)),
-            MaybeTrackDirs, !.User ^ browser, Browser, !IO),
+        SubTermMode = get_subterm_mode_from_atoms_for_arg(ArgNum,
+            InitAtom, FinalAtom),
+        browse_browser_term(!.User ^ instream, !.User ^ outstream,
+            yes(SubTermMode), univ_to_browser_term(Arg), MaybeTrackDirs,
+            !.User ^ browser, Browser, !IO),
         convert_maybe_track_dirs_to_term_path_from_arg(ArgRep,
             MaybeTrackDirs, MaybeTrack),
         !User ^ browser := Browser
     else
-        io.write_string(!.User ^ outstr, "Invalid argument number\n", !IO),
+        io.write_string(!.User ^ outstream, "Invalid argument number\n", !IO),
         MaybeTrack = no_track
     ).
 
@@ -664,9 +664,9 @@ browse_atom(InitAtom, FinalAtom, MaybeTrack, !User, !IO) :-
     ModuleStr = sym_name_to_string(Module),
     BrowserTerm = synthetic_term_to_browser_term(ModuleStr ++ "." ++ Name,
         ArgValues, IsFunction),
-    browse_browser_term(BrowserTerm, !.User ^ instr, !.User ^ outstr,
+    browse_browser_term(!.User ^ instream, !.User ^ outstream,
         yes(get_subterm_mode_from_atoms(InitAtom, FinalAtom)),
-        MaybeTrackDirs, !.User ^ browser, Browser, !IO),
+        BrowserTerm, MaybeTrackDirs, !.User ^ browser, Browser, !IO),
     convert_maybe_track_dirs_to_term_path_from_atom(FinalAtom,
         MaybeTrackDirs, MaybeTrack),
     !User ^ browser := Browser.
@@ -755,11 +755,11 @@ print_atom_argument(Atom, ArgNum, User, OK, !IO) :-
         MaybeArg = yes(ArgRep),
         term_rep.rep_to_univ(ArgRep, Arg)
     then
-        print_browser_term(univ_to_browser_term(Arg), User ^ outstr,
-            decl_caller_type, User ^ browser, !IO),
+        print_browser_term(User ^ outstream, decl_caller_type,
+            univ_to_browser_term(Arg), User ^ browser, !IO),
         OK = yes
     else
-        io.write_string(User ^ outstr, "Invalid argument number\n", !IO),
+        io.write_string(User ^ outstream, "Invalid argument number\n", !IO),
         OK = no
     ).
 
@@ -788,7 +788,7 @@ convert_maybe_track_dirs_to_term_path_from_arg(Term, TrackDirs, TrackPath) :-
 :- pred user_confirm_bug_help(user_state::in, io::di, io::uo) is det.
 
 user_confirm_bug_help(User, !IO) :-
-    io.write_strings(User ^ outstr, [
+    io.write_strings(User ^ outstream, [
         "Answer one of:\n",
         "\ty\tyes\t\tconfirm that the suspect is a bug\n",
         "\tn\tno\t\tdo not accept that the suspect is a bug\n",
@@ -802,7 +802,7 @@ user_confirm_bug_help(User, !IO) :-
     user_state::in, user_state::out, io::di, io::uo) is det.
 
 get_command(Prompt, Command, User, User, !IO) :-
-    util.trace_getline(Prompt, Result, User ^ instr, User ^ outstr, !IO),
+    util.trace_getline(User ^ instream, User ^ outstream, Prompt, Result, !IO),
     (
         Result = ok(String),
         Words = string.words_separator(char.is_whitespace, String),
@@ -823,8 +823,7 @@ get_command(Prompt, Command, User, User, !IO) :-
     ;
         Result = error(Error),
         io.error_message(Error, Msg),
-        io.write_string(User ^ outstr, Msg, !IO),
-        io.nl(User ^ outstr, !IO),
+        io.format(User ^ outstream, "%s\n", [s(Msg)], !IO),
         Command = user_cmd_quit
     ;
         Result = eof,
@@ -1066,18 +1065,18 @@ write_decl_question(Question, User, !IO) :-
             Solns = []
         ;
             Solns = [_ | _],
-            io.write_string(User ^ outstr, "Solutions:\n", !IO),
+            io.write_string(User ^ outstream, "Solutions:\n", !IO),
             list.foldl(write_decl_final_atom(User, "\t", print_all), Solns,
                 !IO)
         )
     ;
         Question = unexpected_exception(_, Call, ExceptionRep),
         write_decl_init_atom(User, "Call ", decl_caller_type, Call, !IO),
-        io.write_string(User ^ outstr, "Throws ", !IO),
+        io.write_string(User ^ outstream, "Throws ", !IO),
         term_rep.rep_to_univ(ExceptionRep, Exception),
-        io.write(User ^ outstr, include_details_cc, univ_value(Exception),
+        io.write(User ^ outstream, include_details_cc, univ_value(Exception),
             !IO),
-        io.nl(User ^ outstr, !IO)
+        io.nl(User ^ outstream, !IO)
     ).
 
 :- pred write_decl_bug(decl_bug::in, user_state::in, io::di, io::uo)
@@ -1086,29 +1085,29 @@ write_decl_question(Question, User, !IO) :-
 write_decl_bug(e_bug(EBug), User, !IO) :-
     (
         EBug = incorrect_contour(_, Atom, Contour, _),
-        io.write_string(User ^ outstr, "Found incorrect contour:\n", !IO),
-        io.write_list(Contour, "",
-            write_decl_final_atom(User, "", decl_caller_type), !IO),
+        io.write_string(User ^ outstream, "Found incorrect contour:\n", !IO),
+        list.foldl(write_decl_final_atom(User, "", decl_caller_type),
+            Contour, !IO),
         write_decl_final_atom(User, "", decl_caller_type, Atom, !IO)
     ;
         EBug = partially_uncovered_atom(Atom, _),
-        io.write_string(User ^ outstr,
+        io.write_string(User ^ outstream,
             "Found partially uncovered atom:\n", !IO),
         write_decl_init_atom(User, "", decl_caller_type, Atom, !IO)
     ;
         EBug = unhandled_exception(Atom, ExceptionRep, _),
-        io.write_string(User ^ outstr,
+        io.write_string(User ^ outstream,
             "Found unhandled or incorrect exception:\n", !IO),
         write_decl_init_atom(User, "", decl_caller_type, Atom, !IO),
         term_rep.rep_to_univ(ExceptionRep, Exception),
-        io.write(User ^ outstr, include_details_cc,
+        io.write(User ^ outstream, include_details_cc,
             univ_value(Exception), !IO),
-        io.nl(User ^ outstr, !IO)
+        io.nl(User ^ outstream, !IO)
     ).
 
 write_decl_bug(i_bug(IBug), User, !IO) :-
     IBug = inadmissible_call(Parent, _, Call, _),
-    io.write_string(User ^ outstr, "Found inadmissible call:\n", !IO),
+    io.write_string(User ^ outstream, "Found inadmissible call:\n", !IO),
     write_decl_atom(User, "Parent ", decl_caller_type, init(Parent), !IO),
     write_decl_atom(User, "Call ", decl_caller_type, init(Call), !IO).
 
@@ -1130,7 +1129,7 @@ write_decl_final_atom(User, Indent, CallerType, FinalAtom, !IO) :-
     some_decl_atom::in, io::di, io::uo) is cc_multi.
 
 write_decl_atom(User, Indent, CallerType, DeclAtom, !IO) :-
-    io.write_string(User ^ outstr, Indent, !IO),
+    io.write_string(User ^ outstream, Indent, !IO),
     unravel_decl_atom(DeclAtom, TraceAtom, MaybeIoActions),
     TraceAtom = atom(ProcLayout, Args0),
     ProcLabel = get_proc_label_from_layout(ProcLayout),
@@ -1142,7 +1141,7 @@ write_decl_atom(User, Indent, CallerType, DeclAtom, !IO) :-
     % a size limit) as a goal.
     BrowserTerm = synthetic_term_to_browser_term(Functor, Args,
         is_function(PredOrFunc)),
-    browse.print_browser_term(BrowserTerm, User ^ outstr, CallerType,
+    browse.print_browser_term(User ^ outstream, CallerType, BrowserTerm,
         User ^ browser, !IO),
     write_maybe_tabled_io_actions(User, MaybeIoActions, !IO).
 
@@ -1155,7 +1154,7 @@ write_maybe_tabled_io_actions(User, MaybeIoActions, !IO) :-
         count_tabled_io_actions(IoActions, NumTabled, NumUntabled, !IO),
         write_io_actions(User, NumTabled, IoActions, !IO),
         ( if NumUntabled > 0 then
-            io.write_string(User ^ outstr, "Warning: some IO " ++
+            io.write_string(User ^ outstream, "Warning: some IO " ++
                 "actions for this atom are not tabled.\n", !IO)
         else
             true
@@ -1216,18 +1215,18 @@ write_io_actions(User, NumTabled, IoActions, !IO) :-
         true
     else
         ( if NumTabled = 1 then
-            io.write_string(User ^ outstr, "1 tabled IO action:", !IO)
+            io.write_string(User ^ outstream, "1 tabled IO action:", !IO)
         else
-            io.write_int(User ^ outstr, NumTabled, !IO),
-            io.write_string(User ^ outstr, " tabled IO actions:", !IO)
+            io.write_int(User ^ outstream, NumTabled, !IO),
+            io.write_string(User ^ outstream, " tabled IO actions:", !IO)
         ),
         NumPrinted = get_num_printed_io_actions(User ^ browser),
         ( if NumTabled =< NumPrinted then
-            io.nl(User ^ outstr, !IO),
+            io.nl(User ^ outstream, !IO),
             print_tabled_io_actions(User, IoActions, !IO)
         else
-            io.write_string(User ^ outstr, " too many to show", !IO),
-            io.nl(User ^ outstr, !IO)
+            io.write_string(User ^ outstream, " too many to show", !IO),
+            io.nl(User ^ outstream, !IO)
         )
     ).
 
@@ -1256,7 +1255,7 @@ print_tabled_io_actions_2(User, Cur, End, !IO) :-
 print_tabled_io_action(_, untabled, !IO).
 print_tabled_io_action(User, tabled(IoAction), !IO) :-
     Term = io_action_to_browser_term(IoAction),
-    browse.print_browser_term(Term, User ^ outstr, print_all,
+    browse.print_browser_term(User ^ outstream, print_all, Term,
         User ^ browser, !IO).
 
 %---------------------------------------------------------------------------%
@@ -1266,9 +1265,9 @@ get_browser_state(User) = User ^ browser.
 set_browser_state(Browser, !User) :-
     !User ^ browser := Browser.
 
-get_user_output_stream(User) = User ^ outstr.
+get_user_output_stream(User) = User ^ outstream.
 
-get_user_input_stream(User) = User ^ instr.
+get_user_input_stream(User) = User ^ instream.
 
 set_user_testing_flag(Testing, User, User ^ testing := Testing).
 

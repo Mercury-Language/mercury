@@ -100,9 +100,20 @@ link_collect(ObjectFile, Filter, Initialize, PostProcess, SendResult,
     dl.open(ObjectFile, lazy, scope_local, MaybeHandle, !IO),
     (
         MaybeHandle = dl_error(Msg),
-        print("dlopen failed: ", !IO),
-        print(Msg, !IO),
-        nl(!IO),
+        % XXX Our caller should tell us on what stream we should print
+        % any error messages, but
+        %
+        % - since link_collect is exported to C, that would require changes
+        %   to the relevant C code, and
+        %
+        % - that C code has not been used in a long time, so there is
+        %   no good way to test such changes.
+        %
+        % The code here preserves old behavior.
+        io.output_stream(Stream, !IO),
+        io.print(Stream, "dlopen failed: ", !IO),
+        io.print(Stream, Msg, !IO),
+        io.nl(Stream, !IO),
         set_to_null_pointer(Initialize),
         set_to_null_pointer(Filter),
         set_to_null_pointer(PostProcess),
@@ -170,12 +181,15 @@ unlink_collect(MaybeHandle, !IO) :-
     ;
         MaybeHandle = dl_ok(Handle),
         dl.close(Handle, Result, !IO),
-        display_close_result(Result, !IO)
+        % XXX See the comment in link_collect about streams.
+        io.output_stream(Stream, !IO),
+        display_close_result(Stream, Result, !IO)
     ).
 
-:- pred display_close_result(dl_result::in, io::di, io::uo) is det.
+:- pred display_close_result(io.text_output_stream::in, dl_result::in,
+    io::di, io::uo) is det.
 
-display_close_result(dl_ok, !IO).
-display_close_result(dl_error(String), !IO) :-
-    print(String, !IO),
-    nl(!IO).
+display_close_result(_Stream, dl_ok, !IO).
+display_close_result(Stream, dl_error(String), !IO) :-
+    io.print(Stream, String, !IO),
+    io.nl(Stream, !IO).

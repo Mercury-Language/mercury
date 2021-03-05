@@ -1384,9 +1384,10 @@ remove_leading_exit_fail_events(Contour0, Contour) :-
     %
 :- func match_atomic_goal_to_contour_event(S, string, int,
     list(var_rep), atomic_goal_rep, list(var_rep), reverse_goal_path,
-    list(goal_and_path), assoc_list(R, trace_node(R)), maybe(reverse_goal_path),
-    int, int, list(var_rep), bool, list(annotated_primitive(R))) =
-    maybe(primitive_list_and_var(R)) <= annotated_trace(S, R).
+    list(goal_and_path), assoc_list(R, trace_node(R)),
+    maybe(reverse_goal_path), int, int, list(var_rep), bool,
+    list(annotated_primitive(R))) = maybe(primitive_list_and_var(R))
+    <= annotated_trace(S, R).
 
 match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
         AtomicGoalArgs, Path, GoalPaths, Contour, MaybeEnd, ArgNum,

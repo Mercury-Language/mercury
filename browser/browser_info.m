@@ -160,7 +160,7 @@
     % Initialise a new browser_info. The optional portray_format
     % overrides the default format.
     %
-:- func init(browser_term, browse_caller_type,
+:- func browser_info_init(browser_term, browse_caller_type,
     maybe(portray_format), maybe(browser_mode_func),
     browser_persistent_state) = browser_info.
 
@@ -250,8 +250,8 @@
     ;       print_params.
 
 :- type debugger
-    --->    debugger_internal
-    ;       debugger_external.
+    --->    debugger_internal(io.text_output_stream)
+    ;       debugger_external(io.text_output_stream).
 
 % If the term browser is called from the internal debugger, input is
 % done via a call to the readline library (if available), using streams
@@ -290,7 +290,8 @@
 :- pred write_down_path(debugger::in, list(down_dir)::in,
     io::di, io::uo) is det.
 
-:- pred send_term_to_socket(term_browser_response::in, io::di, io::uo) is det.
+:- pred send_term_to_socket(io.text_output_stream::in,
+    term_browser_response::in, io::di, io::uo) is det.
 
 :- pred browser_params_to_string(browser_persistent_state::in, string::out)
     is det.
@@ -374,7 +375,7 @@ convert_dirs_to_term_path(Term, Dirs, TermPath) :-
 
 %---------------------------------------------------------------------------%
 
-init(BrowserTerm, CallerType, MaybeFormat, MaybeModeFunc, State) =
+browser_info_init(BrowserTerm, CallerType, MaybeFormat, MaybeModeFunc, State) =
     browser_info(BrowserTerm, [], CallerType, MaybeFormat, State, no_track,
         MaybeModeFunc).
 
@@ -921,36 +922,36 @@ size_len      = 10.
 width_len     = 10.
 lines_len     = 10.
 
-nl_debugger(debugger_internal, !IO) :-
-    io.nl(!IO).
-nl_debugger(debugger_external, !IO) :-
-    send_term_to_socket(browser_nl, !IO).
+nl_debugger(debugger_internal(Stream), !IO) :-
+    io.nl(Stream, !IO).
+nl_debugger(debugger_external(Stream), !IO) :-
+    send_term_to_socket(Stream, browser_nl, !IO).
 
-write_string_debugger(debugger_internal, String, !IO) :-
-    io.write_string(String, !IO).
-write_string_debugger(debugger_external, String, !IO) :-
-    send_term_to_socket(browser_str(String), !IO).
+write_string_debugger(debugger_internal(Stream), String, !IO) :-
+    io.write_string(Stream, String, !IO).
+write_string_debugger(debugger_external(Stream), String, !IO) :-
+    send_term_to_socket(Stream, browser_str(String), !IO).
 
-write_int_debugger(debugger_internal, Int, !IO) :-
-    io.write_int(Int, !IO).
-write_int_debugger(debugger_external, Int, !IO) :-
-    send_term_to_socket(browser_int(Int), !IO).
+write_int_debugger(debugger_internal(Stream), Int, !IO) :-
+    io.write_int(Stream, Int, !IO).
+write_int_debugger(debugger_external(Stream), Int, !IO) :-
+    send_term_to_socket(Stream, browser_int(Int), !IO).
 
-print_format_debugger(debugger_internal, X, !IO) :-
-    io.print(X, !IO).
-print_format_debugger(debugger_external, X, !IO) :-
+print_format_debugger(debugger_internal(Stream), X, !IO) :-
+    io.print(Stream, X, !IO).
+print_format_debugger(debugger_external(Stream), X, !IO) :-
     (
         X = flat,
-        send_term_to_socket(browser_str("flat"), !IO)
+        send_term_to_socket(Stream, browser_str("flat"), !IO)
     ;
         X = raw_pretty,
-        send_term_to_socket(browser_str("raw_pretty"), !IO)
+        send_term_to_socket(Stream, browser_str("raw_pretty"), !IO)
     ;
         X = verbose,
-        send_term_to_socket(browser_str("verbose"), !IO)
+        send_term_to_socket(Stream, browser_str("verbose"), !IO)
     ;
         X = pretty,
-        send_term_to_socket(browser_str("pretty"), !IO)
+        send_term_to_socket(Stream, browser_str("pretty"), !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -995,10 +996,10 @@ write_down_step(Debugger, Dir, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-send_term_to_socket(Term, !IO) :-
-    write(Term, !IO),
-    print(".\n", !IO),
-    flush_output(!IO).
+send_term_to_socket(Stream, Term, !IO) :-
+    io.write(Stream, Term, !IO),
+    io.print(Stream, ".\n", !IO),
+    io.flush_output(Stream, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1007,10 +1008,10 @@ send_term_to_socket(Term, !IO) :-
 ].
 
 :- instance stream.output(debugger, io) where [
-    (flush(debugger_internal, !IO) :-
-        io.flush_output(!IO)
+    (flush(debugger_internal(Stream), !IO) :-
+        io.flush_output(Stream, !IO)
     ),
-    (flush(debugger_external, !IO) :-
+    (flush(debugger_external(_), !IO) :-
         % XXX
         true
     )

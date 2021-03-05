@@ -227,7 +227,7 @@ print_help_for_name(Stream, Sys, Name, !IO) :-
     search_node_list(Sys, Name, [], RevMatchedNodes),
     (
         RevMatchedNodes = [],
-        io.write_string("There is no such help topic.\n", !IO),
+        io.write_string(Stream, "There is no such help topic.\n", !IO),
         print_top_level_help_nodes(Stream, Sys, !IO)
     ;
         RevMatchedNodes = [_ | _],

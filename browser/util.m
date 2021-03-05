@@ -18,39 +18,26 @@
 
 %---------------------------------------------------------------------------%
 
-:- func is_predicate(pred_or_func) = bool.
 :- func is_function(pred_or_func) = bool.
 
 :- type line_number == int.
 
     % Get user input via the same method used by the internal debugger.
     %
-:- pred trace_getline(string::in, io.result(string)::out,
-    io::di, io::uo) is det.
+:- pred trace_getline(io.input_stream::in, io.output_stream::in,
+    string::in, io.result(string)::out, io::di, io::uo) is det.
 
-:- pred trace_getline(string::in, io.result(string)::out,
-    io.input_stream::in, io.output_stream::in, io::di, io::uo) is det.
-
-    % trace_get_command is similar to trace_getline except that it
-    % breaks lines into semicolon separated commands, and replaces
-    % EOF with the command 'quit'.
+    % trace_get_command is similar to trace_getline except that
+    % it breaks lines into semicolon separated commands, and
+    % replaces EOF with the command 'quit'.
     %
-:- pred trace_get_command(string::in, string::out, io::di, io::uo)
-    is det.
-
-:- pred trace_get_command(string::in, string::out,
-    io.input_stream::in, io.output_stream::in, io::di, io::uo) is det.
+:- pred trace_get_command(io.input_stream::in, io.output_stream::in,
+    string::in, string::out, io::di, io::uo) is det.
 
 :- pred zip_with(pred(T1, T2, T3)::in(pred(in, in, out) is det),
     list(T1)::in, list(T2)::in, list(T3)::out) is det.
 
-    % Apply predicate to argument repeatedly until the result
-    % remains the same.
-    %
-:- pred limit(pred(list(T), list(T))::in(pred(in, out) is det),
-    list(T)::in, list(T)::out) is det.
-
-%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------e
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -59,18 +46,10 @@
 
 %---------------------------------------------------------------------------%
 
-is_predicate(pf_predicate) = yes.
-is_predicate(pf_function) = no.
-
 is_function(pf_predicate) = no.
 is_function(pf_function) = yes.
 
-trace_getline(Prompt, Result, !IO) :-
-    io.input_stream(MdbIn, !IO),
-    io.output_stream(MdbOut, !IO),
-    trace_getline(Prompt, Result, MdbIn, MdbOut, !IO).
-
-trace_getline(Prompt, Result, MdbIn, MdbOut, !IO) :-
+trace_getline(MdbIn, MdbOut, Prompt, Result, !IO) :-
     call_trace_getline(MdbIn, MdbOut, Prompt, Line, Success, !IO),
     ( if Success = 0 then
         Result = eof
@@ -102,7 +81,7 @@ trace_getline(Prompt, Result, MdbIn, MdbOut, !IO) :-
 
     if (MR_address_of_trace_getline != NULL) {
         line = (*MR_address_of_trace_getline)((char *) Prompt,
-                MR_file(*mdb_in), MR_file(*mdb_out));
+            MR_file(*mdb_in), MR_file(*mdb_out));
     } else {
         MR_tracing_not_enabled();
         /* not reached */
@@ -135,14 +114,9 @@ call_trace_getline(MdbIn, MdbOut, Prompt, Line, Success, !IO) :-
         unexpected($pred, io.error_message(Error))
     ).
 
-trace_get_command(Prompt, Result, !IO) :-
-    io.input_stream(MdbIn, !IO),
-    io.output_stream(MdbOut, !IO),
-    trace_get_command(Prompt, Result, MdbIn, MdbOut, !IO).
-
 :- pragma foreign_proc("C",
-    trace_get_command(Prompt::in, Line::out, MdbIn::in,
-        MdbOut::in, _IO0::di, _IO::uo),
+    trace_get_command(MdbIn::in, MdbOut::in, Prompt::in, Line::out,
+        _IO0::di, _IO::uo),
     [may_call_mercury, promise_pure, tabled_for_io],
 "
     char        *line;
@@ -150,32 +124,29 @@ trace_get_command(Prompt, Result, !IO) :-
     MercuryFile *mdb_out = (MercuryFile *) MdbOut;
 
     if (MR_address_of_trace_getline != NULL) {
-        line = (*MR_address_of_trace_get_command)(
-                (char *) Prompt,
-                MR_file(*mdb_in), MR_file(*mdb_out));
-
+        line = (*MR_address_of_trace_get_command)((char *) Prompt,
+            MR_file(*mdb_in), MR_file(*mdb_out));
         MR_make_aligned_string_copy(Line, line);
         MR_free(line);
-
     } else {
-        ML_BROWSER_trace_get_command_fallback(Prompt, &Line, MdbIn, MdbOut);
+        ML_BROWSER_trace_get_command_fallback(MdbIn, MdbOut, Prompt, &Line);
     }
 ").
 
-trace_get_command(Prompt, Line, MdbIn, MdbOut, !IO) :-
-    trace_get_command_fallback(Prompt, Line, MdbIn, MdbOut, !IO).
+trace_get_command(MdbIn, MdbOut, Prompt, Line, !IO) :-
+    trace_get_command_fallback(MdbIn, MdbOut, Prompt, Line, !IO).
 
     % This is called by trace_get_command when the trace library is not linked
     % in.
     %
-:- pred trace_get_command_fallback(string::in, string::out, io.input_stream::in,
-    io.output_stream::in, io::di, io::uo) is det.
+:- pred trace_get_command_fallback(io.input_stream::in, io.output_stream::in,
+    string::in, string::out, io::di, io::uo) is det.
 
 :- pragma foreign_export("C",
-    trace_get_command_fallback(in, out, in, in, di, uo),
+    trace_get_command_fallback(in, in, in, out, di, uo),
     "ML_BROWSER_trace_get_command_fallback").
 
-trace_get_command_fallback(Prompt, String, MdbIn, MdbOut, !IO) :-
+trace_get_command_fallback(MdbIn, MdbOut, Prompt, String, !IO) :-
     io.write_string(MdbOut, Prompt, !IO),
     io.flush_output(MdbOut, !IO),
     io.read_line_as_string(MdbIn, Result, !IO),
@@ -189,24 +160,14 @@ trace_get_command_fallback(Prompt, String, MdbIn, MdbOut, !IO) :-
         unexpected($pred, io.error_message(Error))
     ).
 
-zip_with(Pred, XXs, YYs, Zipped) :-
-    ( if XXs = [], YYs = [] then
-        Zipped = []
-    else if XXs = [X | Xs], YYs = [Y | Ys] then
-        Pred(X, Y, PXY),
-        zip_with(Pred, Xs, Ys, ZippedTail),
-        Zipped = [PXY | ZippedTail]
-    else
-        unexpected($pred, "list arguments are of unequal length")
-    ).
+zip_with(_Pred, [], [], []).
+zip_with(_Pred, [], [_ | _], _) :-
+    unexpected($pred, "list length mismatch").
+zip_with(_Pred, [_ | _], [], _) :-
+    unexpected($pred, "list length mismatch").
+zip_with(Pred, [X | Xs], [Y | Ys], XYs) :-
+    Pred(X, Y, HeadXY),
+    zip_with(Pred, Xs, Ys, TailXYs),
+    XYs = [HeadXY | TailXYs].
 
-limit(Pred, Xs, Ys) :-
-    Pred(Xs, Zs),
-    ( if Xs = Zs then
-        Ys = Zs
-    else
-        limit(Pred, Zs, Ys)
-    ).
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

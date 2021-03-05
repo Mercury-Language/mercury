@@ -1231,7 +1231,8 @@ reason_to_string(Reason) = Str :-
             MaybePath = yes(Path),
             PathStrings = list.map(int_to_string, Path),
             PathStr = string.join_list("/", PathStrings),
-            PathSent = "The path to the subterm in the atom is " ++ PathStr ++ "."
+            PathSent =
+                "The path to the subterm in the atom is " ++ PathStr ++ "."
         ;
             MaybePath = no,
             PathSent = ""

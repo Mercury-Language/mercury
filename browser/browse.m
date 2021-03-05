@@ -39,14 +39,14 @@
     % `print' or `print_all'. The default portray format for that
     % caller type is used.
     %
-:- pred print_browser_term(browser_term::in,
-    io.output_stream::in, browse_caller_type::in,
-    browser_persistent_state::in, io::di, io::uo) is cc_multi.
+:- pred print_browser_term(io.output_stream::in, browse_caller_type::in,
+    browser_term::in, browser_persistent_state::in,
+    io::di, io::uo) is cc_multi.
 
     % As above, except that the supplied format will override the default.
     %
-:- pred print_browser_term_format(browser_term::in,
-    io.output_stream::in, browse_caller_type::in, portray_format::in,
+:- pred print_browser_term_format(io.output_stream::in,
+    browse_caller_type::in, portray_format::in, browser_term::in,
     browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
@@ -56,18 +56,17 @@
     % this predicate is exported to be used by C code, no browser term
     % mode function can be supplied.
     %
-:- pred browse_browser_term_no_modes(browser_term::in,
-    io.input_stream::in, io.output_stream::in,
-    maybe_track_subterm(list(down_dir))::out,
+:- pred browse_browser_term_no_modes(io.input_stream::in, io.output_stream::in,
+    browser_term::in, maybe_track_subterm(list(down_dir))::out,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
     % The interactive term browser. The caller type will be `browse' and
     % the default format for the `browse' caller type will be used.
     %
-:- pred browse_browser_term(browser_term::in,
-    io.input_stream::in, io.output_stream::in,
-    maybe(browser_mode_func)::in, maybe_track_subterm(list(down_dir))::out,
+:- pred browse_browser_term(io.input_stream::in, io.output_stream::in,
+    maybe(browser_mode_func)::in, browser_term::in,
+    maybe_track_subterm(list(down_dir))::out,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
@@ -75,16 +74,15 @@
     % Again, this is exported to C code, so the browser term mode function
     % can't be supplied.
     %
-:- pred browse_browser_term_format_no_modes(browser_term::in,
-    io.input_stream::in, io.output_stream::in, portray_format::in,
+:- pred browse_browser_term_format_no_modes(io.input_stream::in,
+    io.output_stream::in, portray_format::in, browser_term::in,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
     % As above, except that the supplied format will override the default.
     %
-:- pred browse_browser_term_format(browser_term::in,
-    io.input_stream::in, io.output_stream::in, portray_format::in,
-    maybe(browser_mode_func)::in,
+:- pred browse_browser_term_format(io.input_stream::in, io.output_stream::in,
+    portray_format::in, maybe(browser_mode_func)::in, browser_term::in,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
@@ -93,16 +91,15 @@
     % This version is exported for use in C code, so no browser term mode
     % function can be supplied.
     %
-:- pred browse_external_no_modes(T::in, io.input_stream::in,
-    io.output_stream::in,
-    browser_persistent_state::in, browser_persistent_state::out,
+:- pred browse_external_no_modes(io.input_stream::in, io.output_stream::in,
+    T::in, browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
     % The browser interface for the external debugger. The caller type
     % will be `browse', and the default format will be used.
     %
-:- pred browse_external(T::in, io.input_stream::in,
-    io.output_stream::in, maybe(browser_mode_func)::in,
+:- pred browse_external(io.input_stream::in, io.output_stream::in,
+    maybe(browser_mode_func)::in, T::in,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
@@ -127,30 +124,30 @@
 
 %---------------------------------------------------------------------------%
 
-    % save_term_to_file(FileName, Format, BrowserTerm, Out, !IO):
+    % save_term_to_file(OutputStream, FileName, Format, BrowserTerm, !IO):
     %
     % Save BrowserTerm to the file FileName. If there is an error,
-    % print an error message to Out.
+    % print an error message to OutputStream.
     %
     % The format of the saved term can be influenced by the Format
     % argument, but how this works is not specified.
     %
-:- pred save_term_to_file(string::in, string::in, browser_term::in,
-    io.output_stream::in, io::di, io::uo) is cc_multi.
+:- pred save_term_to_file(io.output_stream::in, string::in, string::in,
+    browser_term::in, io::di, io::uo) is cc_multi.
 
     % save_term_to_file_xml(FileName, BrowserTerm, Out, !IO):
     %
     % Save BrowserTerm to FileName as an XML document. If there is an error,
     % print an error message to Out.
     %
-:- pred save_term_to_file_xml(string::in, browser_term::in,
-    io.output_stream::in, io::di, io::uo) is cc_multi.
+:- pred save_term_to_file_xml(io.output_stream::in, string::in,
+    browser_term::in, io::di, io::uo) is cc_multi.
 
     % Save BrowserTerm in an HTML file and launch the web browser specified
     % by the web_browser_cmd field in the browser_persistent_state.
     %
-:- pred save_and_browse_browser_term_web(browser_term::in,
-    io.output_stream::in, io.output_stream::in,
+:- pred save_and_browse_browser_term_web(io.output_stream::in,
+    io.output_stream::in, browser_term::in,
     browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
     % Exported for term_to_html.
@@ -210,13 +207,13 @@
 
 :- pragma foreign_export("C",
     browse_browser_term_no_modes(in, in, in, out, in, out, di, uo),
-    "ML_BROWSE_browse_browser_term").
+    "ML_BROWSE_browse_browser_term_no_modes").
 :- pragma foreign_export("C",
     browse_browser_term_format_no_modes(in, in, in, in, in, out, di, uo),
-    "ML_BROWSE_browse_browser_term_format").
+    "ML_BROWSE_browse_browser_term_format_no_modes").
 :- pragma foreign_export("C",
     browse_external_no_modes(in, in, in, in, out, di, uo),
-    "ML_BROWSE_browse_external").
+    "ML_BROWSE_browse_external_no_modes").
 :- pragma foreign_export("C", print_browser_term(in, in, in, in, di, uo),
     "ML_BROWSE_print_browser_term").
 :- pragma foreign_export("C",
@@ -231,27 +228,29 @@
 
 :- pragma foreign_export("C",
     save_and_browse_browser_term_web(in, in, in, in, di, uo),
-    "ML_BROWSE_browse_term_web").
+    "ML_BROWSE_save_and_browse_browser_term_web").
 
 %---------------------------------------------------------------------------%
 %
 % Non-interactive display.
 %
 
-print_browser_term(Term, OutputStream, Caller, State, !IO) :-
-    print_common(Term, OutputStream, Caller, no, State, !IO).
+print_browser_term(OutputStream, CallerType, Term, State, !IO) :-
+    print_common(OutputStream, CallerType, no, Term, State, !IO).
 
-print_browser_term_format(Term, OutputStream, Caller, Format, State, !IO):-
-    print_common(Term, OutputStream, Caller, yes(Format), State, !IO).
+print_browser_term_format(OutputStream, CallerType, Format, Term, State,
+        !IO) :-
+    print_common(OutputStream, CallerType, yes(Format), Term, State, !IO).
 
-:- pred print_common(browser_term::in, io.output_stream::in,
-    browse_caller_type::in, maybe(portray_format)::in,
+:- pred print_common(io.output_stream::in, browse_caller_type::in,
+    maybe(portray_format)::in, browser_term::in,
     browser_persistent_state::in, io::di, io::uo) is cc_multi.
 
-print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State, !IO):-
-    Info = browser_info.init(BrowserTerm, Caller, MaybeFormat, no, State),
-    io.set_output_stream(OutputStream, OldStream, !IO),
-    browser_info.get_format(Info, Caller, MaybeFormat, Format),
+print_common(OutputStream, CallerType, MaybeFormat, BrowserTerm, State, !IO) :-
+    MaybeModeFunc = no,
+    Info = browser_info_init(BrowserTerm, CallerType, MaybeFormat,
+        MaybeModeFunc, State),
+    browser_info.get_format(Info, CallerType, MaybeFormat, Format),
 
     % For plain terms, we assume that the variable name has been printed
     % on the first part of the line. If the format is something other than
@@ -260,88 +259,93 @@ print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State, !IO):-
         BrowserTerm = plain_term(_),
         Format \= flat
     then
-        io.nl(!IO)
+        io.nl(OutputStream, !IO)
     else
         true
     ),
-    portray(debugger_internal, Caller, no, Info, !IO),
-    io.set_output_stream(OldStream, _, !IO).
+    % XXX why different from MaybeFormat?
+    PortrayMaybeFormat = no,
+    portray(debugger_internal(OutputStream), CallerType, PortrayMaybeFormat,
+        Info, !IO).
 
 %---------------------------------------------------------------------------%
 %
 % Interactive display.
 %
 
-browse_browser_term_no_modes(Term, InputStream, OutputStream,
-        MaybeTrack, !State, !IO) :-
-    browse_common(debugger_internal, Term, InputStream, OutputStream,
-        no, no, MaybeTrack, !State, !IO).
+browse_browser_term_no_modes(InputStream, OutputStream, Term, MaybeTrack,
+        !State, !IO) :-
+    MaybeFormat = no,
+    MaybeModeFunc = no,
+    browse_common(InputStream, debugger_internal(OutputStream),
+        MaybeFormat, MaybeModeFunc, Term, MaybeTrack, !State, !IO).
 
-browse_browser_term(Term, InputStream, OutputStream, MaybeModeFunc,
-        MaybeTrack, !State, !IO) :-
-    browse_common(debugger_internal, Term, InputStream, OutputStream,
-        no, MaybeModeFunc, MaybeTrack, !State, !IO).
+browse_browser_term(InputStream, OutputStream, MaybeModeFunc, Term, MaybeTrack,
+        !State, !IO) :-
+    MaybeFormat = no,
+    browse_common(InputStream, debugger_internal(OutputStream),
+        MaybeFormat, MaybeModeFunc, Term, MaybeTrack, !State, !IO).
 
-browse_browser_term_format_no_modes(Term, InputStream, OutputStream,
-        Format, !State, !IO) :-
-    browse_common(debugger_internal, Term, InputStream, OutputStream,
-        yes(Format), no, _, !State, !IO).
+browse_browser_term_format_no_modes(InputStream, OutputStream, Format, Term,
+        !State, !IO) :-
+    MaybeModeFunc = no,
+    browse_common(InputStream, debugger_internal(OutputStream),
+        yes(Format), MaybeModeFunc, Term, _, !State, !IO).
 
-browse_browser_term_format(Term, InputStream, OutputStream,
-        Format, MaybeModeFunc, !State, !IO) :-
-    browse_common(debugger_internal, Term, InputStream, OutputStream,
-        yes(Format), MaybeModeFunc, _, !State, !IO).
+browse_browser_term_format(InputStream, OutputStream, Format, MaybeModeFunc,
+        Term, !State, !IO) :-
+    browse_common(InputStream, debugger_internal(OutputStream),
+        yes(Format), MaybeModeFunc, Term, _, !State, !IO).
 
-browse_external_no_modes(Term, InputStream, OutputStream, !State, !IO) :-
-    browse_common(debugger_external, plain_term(univ(Term)),
-        InputStream, OutputStream, no, no, _, !State, !IO).
+browse_external_no_modes(InputStream, OutputStream, Term, !State, !IO) :-
+    MaybeFormat = no,
+    MaybeModeFunc = no,
+    browse_common(InputStream, debugger_external(OutputStream),
+        MaybeFormat, MaybeModeFunc, plain_term(univ(Term)), _, !State, !IO).
 
-browse_external(Term, InputStream, OutputStream, MaybeModeFunc, !State, !IO) :-
-    browse_common(debugger_external, plain_term(univ(Term)),
-        InputStream, OutputStream, no, MaybeModeFunc, _, !State, !IO).
+browse_external(InputStream, OutputStream, MaybeModeFunc, Term, !State, !IO) :-
+    MaybeFormat = no,
+    browse_common(InputStream, debugger_external(OutputStream),
+        MaybeFormat, MaybeModeFunc, plain_term(univ(Term)), _, !State, !IO).
 
-:- pred browse_common(debugger::in, browser_term::in, io.input_stream::in,
-    io.output_stream::in, maybe(portray_format)::in,
-    maybe(browser_mode_func)::in, maybe_track_subterm(list(down_dir))::out,
+:- pred browse_common(io.input_stream::in, debugger::in,
+    maybe(portray_format)::in, maybe(browser_mode_func)::in, browser_term::in,
+    maybe_track_subterm(list(down_dir))::out,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
-browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
-        MaybeModeFunc, MaybeTrack, !State, !IO) :-
-    Info0 = browser_info.init(Object, browse, MaybeFormat, MaybeModeFunc,
+browse_common(InputStream, Debugger, MaybeFormat, MaybeModeFunc, Object,
+        MaybeTrack, !State, !IO) :-
+    Info0 = browser_info_init(Object, browse, MaybeFormat, MaybeModeFunc,
         !.State),
-    io.set_input_stream(InputStream, OldInputStream, !IO),
-    io.set_output_stream(OutputStream, OldOutputStream, !IO),
-    browse_main_loop(Debugger, Info0, Info, !IO),
-    io.set_input_stream(OldInputStream, _, !IO),
-    io.set_output_stream(OldOutputStream, _, !IO),
+    browse_main_loop(InputStream, Debugger, Info0, Info, !IO),
     MaybeTrack = Info ^ bri_maybe_track,
     !:State = Info ^ bri_state.
 
-:- pred browse_main_loop(debugger::in, browser_info::in, browser_info::out,
-    io::di, io::uo) is cc_multi.
+:- pred browse_main_loop(io.text_input_stream::in, debugger::in,
+    browser_info::in, browser_info::out, io::di, io::uo) is cc_multi.
 
-browse_main_loop(Debugger, !Info, !IO) :-
+browse_main_loop(InputStream, Debugger, !Info, !IO) :-
     (
-        Debugger = debugger_internal,
-        parse.read_command(prompt, Command, !IO)
+        Debugger = debugger_internal(OutputStream),
+        parse.read_command(InputStream, OutputStream, prompt, Command, !IO)
     ;
-        Debugger = debugger_external,
-        parse.read_command_external(Command, !IO)
+        Debugger = debugger_external(OutputStream),
+        parse.read_command_external(InputStream, Command, !IO)
     ),
     run_command(Debugger, Command, Quit, !Info, !IO),
     (
         Quit = yes,
         % write_string_debugger(Debugger, "quitting...\n", !IO)
         (
-            Debugger = debugger_external,
-            send_term_to_socket(browser_quit, !IO)
+            Debugger = debugger_external(_),
+            send_term_to_socket(OutputStream, browser_quit, !IO)
         ;
-            Debugger = debugger_internal
+            Debugger = debugger_internal(_)
         )
     ;
         Quit = no,
-        browse_main_loop(Debugger, !Info, !IO)
+        browse_main_loop(InputStream, Debugger, !Info, !IO)
     ).
 
 :- func prompt = string.
@@ -452,10 +456,10 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
         Quit = no
     ),
     (
-        Debugger = debugger_external,
-        send_term_to_socket(browser_end_command, !IO)
+        Debugger = debugger_external(OutputStream),
+        send_term_to_socket(OutputStream, browser_end_command, !IO)
     ;
-        Debugger = debugger_internal
+        Debugger = debugger_internal(_)
     ).
 
 :- pred do_portray(debugger::in, browse_caller_type::in,
@@ -705,25 +709,30 @@ portray_flat(Debugger, BrowserTerm, Params, !IO) :-
     <= (stream.writer(Stream, string, State),
         stream.writer(Stream, character, State)).
 
-portray_flat_write_browser_term(Stream, plain_term(Univ), !IO) :-
-    string_writer.write_univ(Stream, include_details_cc, Univ, !IO).
-portray_flat_write_browser_term(Stream, synthetic_term(Functor, Args, MaybeReturn),
-        !IO) :-
-    put(Stream, Functor, !IO),
+portray_flat_write_browser_term(OutputStream, BrowserTerm, !IO) :-
     (
-        Args = []
+        BrowserTerm = plain_term(Univ),
+        string_writer.write_univ(OutputStream, include_details_cc, Univ, !IO)
     ;
-        Args = [_ | _],
-        put(Stream, "(", !IO),
-        put_list(Stream, write_univ_or_unbound, put_comma_space, Args, !IO),
-        put(Stream, ")", !IO)
-    ),
-    (
-        MaybeReturn = yes(Return),
-        put(Stream, " = ", !IO),
-        string_writer.write_univ(Stream, include_details_cc, Return, !IO)
-    ;
-        MaybeReturn = no
+        BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
+        put(OutputStream, Functor, !IO),
+        (
+            Args = []
+        ;
+            Args = [_ | _],
+            put(OutputStream, "(", !IO),
+            put_list(OutputStream, write_univ_or_unbound, put_comma_space,
+                Args, !IO),
+            put(OutputStream, ")", !IO)
+        ),
+        (
+            MaybeReturn = yes(Return),
+            put(OutputStream, " = ", !IO),
+            string_writer.write_univ(OutputStream, include_details_cc,
+                Return, !IO)
+        ;
+            MaybeReturn = no
+        )
     ).
 
 :- pred put_comma_space(Stream::in, State::di, State::uo) is det
@@ -1003,24 +1012,15 @@ bracket_string_list(Args) = Str :-
         Args = [],
         Str = ""
     ;
-        Args = [_ | _],
-        string.append_list(["(", comma_string_list(Args), ")"], Str)
+        Args = [HeadArg | TailArgs],
+        Str = "(" ++ HeadArg ++ comma_string_list(TailArgs) ++ ")"
     ).
 
 :- func comma_string_list(list(string)) = string.
 
-comma_string_list(Args) = Str :-
-    (
-        Args = [],
-        Str = ""
-    ;
-        Args = [S],
-        Str = S
-    ;
-        Args = [S1, S2 | Ss],
-        Rest = comma_string_list([S2 | Ss]),
-        string.append_list([S1, ", ", Rest], Str)
-    ).
+comma_string_list([]) = "".
+comma_string_list([HeadArg | TailArgs]) =
+    ", " ++ HeadArg ++ comma_string_list(TailArgs).
 
 :- pred browser_term_compress(browser_db::in, browser_term::in, string::out)
     is cc_multi.
@@ -1030,13 +1030,12 @@ browser_term_compress(BrowserDb, BrowserTerm, Str) :-
     ( if Arity = 0 then
         Str = Functor
     else
-        int_to_string(Arity, ArityStr),
         (
             IsFunc = yes,
-            append_list([Functor, "/", ArityStr, "+1"], Str)
+            string.format("%s/%d+1", [s(Functor), i(Arity)], Str)
         ;
             IsFunc = no,
-            append_list([Functor, "/", ArityStr], Str)
+            string.format("%s/%d", [s(Functor), i(Arity)], Str)
         )
     ).
 
@@ -1293,40 +1292,38 @@ change_dir(PwdDirs, Path, RootRelDirs) :-
 % Saving terms to files.
 %
 
-save_term_to_file(FileName, _Format, BrowserTerm, OutStream, !IO) :-
+save_term_to_file(OutputStream, FileName, _Format, BrowserTerm, !IO) :-
     trace [compile_time(flag("debug_save_term_to_file")), io(!TIO)] (
-        io.write_string(FileName, !TIO),
-        io.nl(!TIO),
-        io.write(BrowserTerm, !TIO),
-        io.nl(!TIO)
+        io.format(OutputStream, "%s\n", [s(FileName)], !TIO),
+        io.write_line(OutputStream, BrowserTerm, !TIO)
     ),
-    io.tell(FileName, FileStreamRes, !IO),
+    io.open_output(FileName, FileStreamRes, !IO),
     (
-        FileStreamRes = ok,
+        FileStreamRes = ok(FileStream),
         (
             BrowserTerm = plain_term(Term),
-            save_univ(0, Term, !IO),
-            io.nl(!IO)
+            save_univ(FileStream, 0, Term, !IO),
+            io.nl(FileStream, !IO)
         ;
             BrowserTerm = synthetic_term(Functor, Args, MaybeRes),
-            io.write_string(Functor, !IO),
-            io.write_string("(\n", !IO),
-            save_args(1, Args, !IO),
-            io.write_string("\n)\n", !IO),
+            io.write_string(FileStream, Functor, !IO),
+            io.write_string(FileStream, "(\n", !IO),
+            save_args(FileStream, 1, Args, !IO),
+            io.write_string(FileStream, "\n)\n", !IO),
             (
                 MaybeRes = no
             ;
                 MaybeRes = yes(Result),
-                io.write_string("=\n", !IO),
-                save_univ(1, Result, !IO),
-                io.write_string("\n", !IO)
+                io.write_string(FileStream, "=\n", !IO),
+                save_univ(FileStream, 1, Result, !IO),
+                io.write_string(FileStream, "\n", !IO)
             )
         ),
-        io.told(!IO)
+        io.close_output(FileStream, !IO)
     ;
         FileStreamRes = error(Error),
         io.error_message(Error, Msg),
-        io.write_string(OutStream, Msg, !IO)
+        io.write_string(OutputStream, Msg, !IO)
     ).
 
 :- type xml_predicate_wrapper
@@ -1342,15 +1339,14 @@ save_term_to_file(FileName, _Format, BrowserTerm, OutStream, !IO) :-
                 return_value        :: univ
             ).
 
-save_term_to_file_xml(FileName, BrowserTerm, OutStream, !IO) :-
+save_term_to_file_xml(OutputStream, FileName, BrowserTerm, !IO) :-
     maybe_save_term_to_file_xml(FileName, BrowserTerm, Result, !IO),
     (
         Result = ok(_)
     ;
         Result = error(Error),
         io.error_message(Error, Msg),
-        io.write_string(OutStream, Msg, !IO),
-        io.nl(!IO)
+        io.format(OutputStream, "%s\n", [s(Msg)], !IO)
     ).
 
 :- pred maybe_save_term_to_file_xml(string::in, browser_term::in,
@@ -1386,7 +1382,8 @@ maybe_save_term_to_file_xml(FileName, BrowserTerm, FileStreamRes, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-save_and_browse_browser_term_web(Term, OutStream, ErrStream, State, !IO) :-
+save_and_browse_browser_term_web(OutputStream, ErrorStream, Term, State,
+        !IO) :-
     get_mdb_dir(MaybeMdbDir, !IO),
     (
         MaybeMdbDir = yes(MdbDir),
@@ -1410,33 +1407,32 @@ save_and_browse_browser_term_web(Term, OutStream, ErrStream, State, !IO) :-
                     SaveResult = ok(_),
                     % We should actually quote the file name.
                     CommandStr = BrowserCmd ++ " " ++ TmpFileName,
-                    launch_web_browser(OutStream, ErrStream, CommandStr, !IO)
+                    launch_web_browser(OutputStream, ErrorStream,
+                        CommandStr, !IO)
                 ;
                     SaveResult = error(Error),
                     io.error_message(Error, Msg),
-                    io.write_string(ErrStream,
-                        "Error opening file `" ++ TmpFileName ++ "': ", !IO),
-                    io.write_string(ErrStream, Msg, !IO),
-                    io.nl(!IO)
+                    io.format(ErrorStream,
+                        "Error opening file `%s': %s\n",
+                        [s(TmpFileName), s(Msg)], !IO)
                 )
             ;
                 TmpResult = error(Error),
                 io.error_message(Error, Msg),
-                io.write_string(ErrStream, "Error opening temporary file: ",
-                    !IO),
-                io.write_string(ErrStream, Msg, !IO),
-                io.nl(!IO)
+                io.format(ErrorStream,
+                    "Error opening temporary file: %s\n",
+                    [s(Msg)], !IO)
             )
         ;
             MaybeBrowserCmd = no,
-            io.write_string(ErrStream,
+            io.write_string(ErrorStream,
                 "mdb: You need to specify the shell command that launches " ++
                 "your preferred web browser, by issuing an mdb command " ++
                 "\"web_browser_cmd <command>\".\n", !IO)
         )
     ;
         MaybeMdbDir = no,
-        io.write_string(ErrStream,
+        io.write_string(ErrorStream,
             "Could not determine directory containing mdb files.\n", !IO)
     ).
 
@@ -1471,9 +1467,9 @@ save_term_to_file_web(FileName, BrowserTerm, MdbDir, FileStreamRes,
 :- pred launch_web_browser(io.output_stream::in, io.output_stream::in,
     string::in, io::di, io::uo) is det.
 
-launch_web_browser(OutStream, ErrStream, CommandStr, !IO) :-
-    io.write_string(OutStream, "Launching web browser...\n", !IO),
-    io.flush_output(OutStream, !IO),
+launch_web_browser(OutputStream, ErrorStream, CommandStr, !IO) :-
+    io.write_string(OutputStream, "Launching web browser...\n", !IO),
+    io.flush_output(OutputStream, !IO),
     io.call_system_return_signal(CommandStr, Result, !IO),
     (
         Result = ok(ExitStatus),
@@ -1482,18 +1478,19 @@ launch_web_browser(OutStream, ErrStream, CommandStr, !IO) :-
             ( if ExitCode = 0 then
                 true
             else
-                io.write_string(ErrStream,
-                    "mdb: The command `" ++ CommandStr ++
-                    "' terminated with a non-zero exit code.\n", !IO)
+                io.format(ErrorStream,
+                    "mdb: The command `%s' terminated with " ++
+                    "a non-zero exit code.\n",
+                    [s(CommandStr)], !IO)
             )
         ;
             ExitStatus = signalled(_),
-            io.write_string(ErrStream, "mdb: The browser was killed.\n", !IO)
+            io.write_string(ErrorStream, "mdb: The browser was killed.\n", !IO)
         )
     ;
         Result = error(Error),
-        io.write_string(ErrStream, "mdb: Error launching browser: "
-            ++ string.string(Error) ++ ".\n", !IO)
+        io.format(ErrorStream, "mdb: Error launching browser: %s.\n",
+            [s(string.string(Error))], !IO)
     ).
 
 browser_term_to_html_flat_string(BrowserTerm, Str, Elided, !IO) :-
@@ -1517,19 +1514,21 @@ browser_term_to_html_flat_string(BrowserTerm, Str, Elided, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred save_univ(int::in, univ::in, io::di, io::uo) is cc_multi.
+:- pred save_univ(io.text_output_stream::in, int::in, univ::in,
+    io::di, io::uo) is cc_multi.
 
-save_univ(Indent, Univ, !IO) :-
-    save_term(Indent, univ_value(Univ), !IO).
+save_univ(OutputStream, Indent, Univ, !IO) :-
+    save_term(OutputStream, Indent, univ_value(Univ), !IO).
 
-:- pred save_term(int::in, T::in, io::di, io::uo) is cc_multi.
+:- pred save_term(io.text_output_stream::in, int::in, T::in,
+    io::di, io::uo) is cc_multi.
 
-save_term(Indent, Term, !IO) :-
+save_term(OutputStream, Indent, Term, !IO) :-
     ( if dynamic_cast_to_list(Term, List) then
         (
             List = [],
-            write_indent(Indent, !IO),
-            io.write_string("[]", !IO)
+            write_indent(OutputStream, Indent, !IO),
+            io.write_string(OutputStream, "[]", !IO)
         ;
             List = [_ | _],
             MakeUniv =
@@ -1537,27 +1536,52 @@ save_term(Indent, Term, !IO) :-
                     ElementUniv = univ(Element)
                 ),
             Univs = list.map(MakeUniv, List),
-            write_indent(Indent, !IO),
-            io.write_string("[\n", !IO),
-            save_args(Indent + 1, Univs, !IO),
-            io.write_string("\n", !IO),
-            write_indent(Indent, !IO),
-            io.write_string("]", !IO)
+            write_indent(OutputStream, Indent, !IO),
+            io.write_string(OutputStream, "[\n", !IO),
+            save_args(OutputStream, Indent + 1, Univs, !IO),
+            io.write_string(OutputStream, "\n", !IO),
+            write_indent(OutputStream, Indent, !IO),
+            io.write_string(OutputStream, "]", !IO)
         )
     else
         deconstruct(Term, include_details_cc, Functor, _Arity, Args),
-        write_indent(Indent, !IO),
-        io.write_string(Functor, !IO),
+        write_indent(OutputStream, Indent, !IO),
+        io.write_string(OutputStream, Functor, !IO),
         (
             Args = []
         ;
             Args = [_ | _],
-            io.write_string("(\n", !IO),
-            save_args(Indent + 1, Args, !IO),
-            io.write_string("\n", !IO),
-            write_indent(Indent, !IO),
-            io.write_string(")", !IO)
+            io.write_string(OutputStream, "(\n", !IO),
+            save_args(OutputStream, Indent + 1, Args, !IO),
+            io.write_string(OutputStream, "\n", !IO),
+            write_indent(OutputStream, Indent, !IO),
+            io.write_string(OutputStream, ")", !IO)
         )
+    ).
+
+:- pred save_args(io.text_output_stream::in, int::in, list(univ)::in,
+    io::di, io::uo) is cc_multi.
+
+save_args(_OutputStream, _Indent, [], !IO).
+save_args(OutputStream, Indent, [Univ | Univs], !IO) :-
+    save_univ(OutputStream, Indent, Univ, !IO),
+    (
+        Univs = []
+    ;
+        Univs = [_ | _],
+        io.write_string(OutputStream, ",\n", !IO),
+        save_args(OutputStream, Indent, Univs, !IO)
+    ).
+
+:- pred write_indent(io.text_output_stream::in, int::in, io::di, io::uo)
+    is det.
+
+write_indent(OutputStream, Indent, !IO) :-
+    ( if Indent =< 0 then
+        true
+    else
+        io.write_char(OutputStream, ' ', !IO),
+        write_indent(OutputStream, Indent - 1, !IO)
     ).
 
 :- some [T2] pred dynamic_cast_to_list(T1::in, list(T2)::out) is semidet.
@@ -1567,29 +1591,6 @@ dynamic_cast_to_list(X, L) :-
     [ArgTypeDesc] = type_args(type_of(X)),
     (_ `with_type` ArgType) `has_type` ArgTypeDesc,
     dynamic_cast(X, L `with_type` list(ArgType)).
-
-:- pred save_args(int::in, list(univ)::in, io::di, io::uo) is cc_multi.
-
-save_args(_Indent, [], !IO).
-save_args(Indent, [Univ | Univs], !IO) :-
-    save_univ(Indent, Univ, !IO),
-    (
-        Univs = []
-    ;
-        Univs = [_ | _],
-        io.write_string(",\n", !IO),
-        save_args(Indent, Univs, !IO)
-    ).
-
-:- pred write_indent(int::in, io::di, io::uo) is det.
-
-write_indent(Indent, !IO) :-
-    ( if Indent =< 0 then
-        true
-    else
-        io.write_char(' ', !IO),
-        write_indent(Indent - 1, !IO)
-    ).
 
 %---------------------------------------------------------------------------%
 %

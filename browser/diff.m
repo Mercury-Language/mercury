@@ -18,8 +18,8 @@
 :- import_module io.
 :- import_module univ.
 
-:- pred report_diffs(int::in, int::in, univ::in, univ::in, io::di, io::uo)
-    is cc_multi.
+:- pred report_diffs(io.text_output_stream::in, int::in, int::in,
+    univ::in, univ::in, io::di, io::uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -37,10 +37,10 @@
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_export("C", report_diffs(in, in, in, in, di, uo),
+:- pragma foreign_export("C", report_diffs(in, in, in, in, in, di, uo),
     "ML_report_diffs").
 
-report_diffs(Drop, Max, Univ1, Univ2, !IO) :-
+report_diffs(OutputStream, Drop, Max, Univ1, Univ2, !IO) :-
     ( if
         Type1 = univ_type(Univ1),
         Type2 = univ_type(Univ2),
@@ -56,25 +56,29 @@ report_diffs(Drop, Max, Univ1, Univ2, !IO) :-
             FirstShown = Drop + 1,
             LastShown = min(Drop + Max, NumAllDiffs),
             ( if FirstShown = LastShown then
-                io.format("There are %d diffs, showing diff %d:\n",
+                io.format(OutputStream,
+                    "There are %d diffs, showing diff %d:\n",
                     [i(NumAllDiffs), i(FirstShown)], !IO)
             else
-                io.format("There are %d diffs, showing diffs %d-%d:\n",
+                io.format(OutputStream,
+                    "There are %d diffs, showing diffs %d-%d:\n",
                     [i(NumAllDiffs), i(FirstShown), i(LastShown)], !IO)
             ),
             list.take_upto(Max, Diffs, ShowDiffs),
-            list.foldl2(show_diff, ShowDiffs, Drop, _, !IO)
+            list.foldl2(show_diff(OutputStream), ShowDiffs, Drop, _, !IO)
         else
             ( if NumAllDiffs = 0 then
-                io.write_string("There are no diffs.\n", !IO)
+                io.write_string(OutputStream, "There are no diffs.\n", !IO)
             else if NumAllDiffs = 1 then
-                io.write_string("There is only one diff.\n", !IO)
+                io.write_string(OutputStream, "There is only one diff.\n", !IO)
             else
-                io.format("There are only %d diffs.\n", [i(NumAllDiffs)], !IO)
+                io.format(OutputStream, "There are only %d diffs.\n",
+                    [i(NumAllDiffs)], !IO)
             )
         )
     else
-        io.write_string("The two values are of different types.\n", !IO)
+        io.write_string(OutputStream,
+            "The two values are of different types.\n", !IO)
     ).
 
 :- type term_path_diff
@@ -106,31 +110,23 @@ compute_arg_diffs([Arg1 | Args1], [Arg2 | Args2], !.RevPath, ArgNum,
     compute_diffs(Arg1, Arg2, [ArgNum | !.RevPath], !RevDiffs),
     compute_arg_diffs(Args1, Args2, !.RevPath, ArgNum + 1, !RevDiffs).
 
-:- pred show_diff(term_path_diff::in, int::in, int::out, io::di, io::uo)
-    is cc_multi.
+:- pred show_diff(io.text_output_stream::in, term_path_diff::in,
+    int::in, int::out, io::di, io::uo) is cc_multi.
 
-show_diff(Diff, !DiffNum, !IO) :-
+show_diff(OutputStream, Diff, !DiffNum, !IO) :-
     !:DiffNum = !.DiffNum + 1,
-    io.format("%d: ", [i(!.DiffNum)], !IO),
-    Diff = term_path_diff(Path, Univ1, Univ2),
-    (
-        Path = [],
-        io.write_string("mismatch at root", !IO)
-    ;
-        Path = [Posn | Posns],
-        io.write_int(Posn, !IO),
-        show_path_rest(Posns, !IO)
-    ),
-    io.write_string(": ", !IO),
-    functor(univ_value(Univ1), include_details_cc, Functor1, Arity1),
-    functor(univ_value(Univ2), include_details_cc, Functor2, Arity2),
-    io.format("%s/%d vs %s/%d\n",
-        [s(Functor1), i(Arity1), s(Functor2), i(Arity2)], !IO).
+    Diff = term_path_diff(Path, UnivA, UnivB),
+    PathStr = path_to_string(Path),
+    functor(univ_value(UnivA), include_details_cc, FunctorA, ArityA),
+    functor(univ_value(UnivB), include_details_cc, FunctorB, ArityB),
+    io.format(OutputStream, "%d: mismatch at %s: %s/%d vs %s/%d\n",
+        [i(!.DiffNum), s(PathStr),
+        s(FunctorA), i(ArityA), s(FunctorB), i(ArityB)], !IO).
 
-:- pred show_path_rest(list(int)::in, io::di, io::uo) is det.
+:- func path_to_string(list(int)) = string.
 
-show_path_rest([], !IO).
-show_path_rest([Posn | Posns], !IO) :-
-    io.write_string("/", !IO),
-    io.write_int(Posn, !IO),
-    show_path_rest(Posns, !IO).
+path_to_string([]) = "root".
+path_to_string([Posn | Posns]) = Str :-
+    PosnStr = string.int_to_string(Posn),
+    PosnsStrs = list.map(string.int_to_string, Posns),
+    Str = string.join_list("/", [PosnStr | PosnsStrs]).

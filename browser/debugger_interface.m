@@ -576,7 +576,8 @@ read_request_from_socket(SocketStream, Request, RequestType, !IO) :-
     % io.stderr_stream(StdErr, !IO),
     % io.print(StdErr, "debugger_interface: Receive the Request:+", !IO),
     % io.print(StdErr, Request, !IO),
-    % io.print(StdErr, "+ from opium\ndebugger_interface: RequestType = ", !IO),
+    % io.print(StdErr, "+ from opium\ndebugger_interface: RequestType = ",
+    %   !IO),
     % io.print(StdErr, RequestType, !IO),
     % io.print(StdErr, ".\n", !IO).
 

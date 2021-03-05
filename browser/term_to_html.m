@@ -237,7 +237,8 @@ write_browser_term_args_in_script(Stream, BrowserTerm, !IO) :-
         )
     ;
         BrowserTerm = synthetic_term(_Function, Args, MaybeResult),
-        list.foldl2(write_numbered_arg_in_script(Stream), Args, 1, ArgNum, !IO),
+        list.foldl2(write_numbered_arg_in_script(Stream),
+            Args, 1, ArgNum, !IO),
         (
             MaybeResult = no
         ;
@@ -367,7 +368,8 @@ js_string(Stream, String, !IO) :-
     string.foldl(escape_and_put_char(Stream), String, !IO),
     io.write_char(Stream, '"', !IO).
 
-:- pred escape_and_put_char(io.output_stream::in, char::in, io::di, io::uo) is det.
+:- pred escape_and_put_char(io.output_stream::in, char::in,
+    io::di, io::uo) is det.
 
 escape_and_put_char(Stream, Char, !IO) :-
     ( if escape_char(Char, EscapedCharStr) then

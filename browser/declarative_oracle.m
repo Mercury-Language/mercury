@@ -130,8 +130,8 @@
     % Revise a question in the oracle's knowledge base so that the oracle
     % will get an answer to the question from the user.
     %
-:- pred revise_oracle(decl_question(T)::in, oracle_state::in, oracle_state::out)
-    is det.
+:- pred revise_oracle(decl_question(T)::in,
+    oracle_state::in, oracle_state::out) is det.
 
     % update_revised_knowledge_base(Oracle1, Oracle2, Oracle3):
     %
@@ -153,11 +153,11 @@
 
     % Return the output stream used for interacting with the user.
     %
-:- func get_user_output_stream(oracle_state) = io.output_stream.
+:- func get_oracle_user_output_stream(oracle_state) = io.output_stream.
 
     % Return the input stream used for interacting with the user.
     %
-:- func get_user_input_stream(oracle_state) = io.input_stream.
+:- func get_oracle_user_input_stream(oracle_state) = io.input_stream.
 
     % Set the testing flag of the user_state in the given oracle.
     %
@@ -708,7 +708,8 @@ retract_oracle_kb(Question, !KB) :-
         ExceptionsMap0 = !.KB ^ kb_exceptions_map,
         ( if
             map.search(ExceptionsMap0, InitAtom, KnownExceptions0),
-            KnownExceptions0 = known_excp(Possible0, Impossible0, Inadmissible0)
+            KnownExceptions0 =
+                known_excp(Possible0, Impossible0, Inadmissible0)
         then
             set.delete(Exception, Possible0, Possible),
             set.delete(Exception, Impossible0, Impossible),
@@ -750,10 +751,10 @@ set_browser_state(Browser, !Oracle) :-
     declarative_user.set_browser_state(Browser, !.Oracle ^ user_state, User),
     !Oracle ^ user_state := User.
 
-get_user_output_stream(Oracle) =
+get_oracle_user_output_stream(Oracle) =
     declarative_user.get_user_output_stream(Oracle ^ user_state).
 
-get_user_input_stream(Oracle) =
+get_oracle_user_input_stream(Oracle) =
     declarative_user.get_user_input_stream(Oracle ^ user_state).
 
 set_oracle_testing_flag(Testing, !Oracle) :-

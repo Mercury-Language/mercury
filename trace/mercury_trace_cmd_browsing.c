@@ -743,6 +743,7 @@ MR_trace_cmd_diff(char **words, int word_count, MR_TraceCmdInfo *cmd,
     const char  *problem2;
     MR_bool     bad_subterm1;
     MR_bool     bad_subterm2;
+    MercuryFile mdb_out;
 
     start = 0;
     max = 20;
@@ -773,10 +774,12 @@ MR_trace_cmd_diff(char **words, int word_count, MR_TraceCmdInfo *cmd,
         return KEEP_INTERACTING;
     }
 
+    MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
     MR_TRACE_CALL_MERCURY(
         MR_new_univ_on_hp(univ1, type_info1, value1);
         MR_new_univ_on_hp(univ2, type_info2, value2);
-        ML_report_diffs(start, max, univ1, univ2);
+        ML_report_diffs(MR_wrap_output_stream(&mdb_out), start, max,
+            univ1, univ2);
     );
 
     return KEEP_INTERACTING;
@@ -928,7 +931,8 @@ MR_trace_cmd_list(char **words, int word_count,
         );
     } else {
         MR_TRACE_CALL_MERCURY(
-            ML_LISTING_list_file(MR_mdb_out, MR_mdb_err, (char *) aligned_filename,
+            ML_LISTING_list_file(MR_mdb_out, MR_mdb_err,
+                (char *) aligned_filename,
                 first_lineno, last_lineno, lineno, MR_listing_path);
         );
     }

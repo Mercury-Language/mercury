@@ -176,9 +176,11 @@
 :- type external_request
     ---> external_request(string).
 
-:- pred read_command(string::in, command::out, io::di, io::uo) is det.
+:- pred read_command(io.text_input_stream::in, io.text_output_stream::in,
+    string::in, command::out, io::di, io::uo) is det.
 
-:- pred read_command_external(command::out, io::di, io::uo) is det.
+:- pred read_command_external(io.text_input_stream::in, command::out,
+    io::di, io::uo) is det.
 
     % parse(Words, Command):
     %
@@ -210,8 +212,8 @@
     ;       token_arg(string)
     ;       token_unknown(char).
 
-read_command(Prompt, Command, !IO) :-
-    util.trace_get_command(Prompt, Line, !IO),
+read_command(MdbIn, MdbOut, Prompt, Command, !IO) :-
+    util.trace_get_command(MdbIn, MdbOut, Prompt, Line, !IO),
     string.words_separator(char.is_whitespace, Line) = Words,
     ( if parse(Words, CommandPrime) then
         Command = CommandPrime
@@ -219,8 +221,8 @@ read_command(Prompt, Command, !IO) :-
         Command = cmd_unknown
     ).
 
-read_command_external(Command, !IO) :-
-    io.read(Result, !IO),
+read_command_external(InputStream, Command, !IO) :-
+    io.read(InputStream, Result, !IO),
     (
         Result = ok(external_request(StringToParse)),
         string.words_separator(char.is_whitespace, StringToParse) = Words,

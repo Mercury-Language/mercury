@@ -3163,11 +3163,11 @@ print_browser_term(MaybeFormat, CallerType, Term, !IO) :-
     promise_equivalent_solutions [!:IO] (
         (
             MaybeFormat = yes(Format),
-            print_browser_term_format(Term, StdOut, CallerType, Format, State,
-                !IO)
+            print_browser_term_format(StdOut, CallerType, Format, Term,
+                State, !IO)
         ;
             MaybeFormat = no,
-            print_browser_term(Term, StdOut, CallerType, State, !IO)
+            print_browser_term(StdOut, CallerType, Term, State, !IO)
         )
     ).
 
@@ -3218,7 +3218,7 @@ browse_term(Term, !IO) :-
     io.output_stream(StdOut, !IO),
     get_browser_state(State0, !IO),
     promise_equivalent_solutions [State, !:IO] (
-        browse.browse_browser_term_no_modes(Term, StdIn, StdOut, _,
+        browse.browse_browser_term_no_modes(StdIn, StdOut, Term, _,
             State0, State, !IO)
     ),
     set_browser_state(State, !IO).

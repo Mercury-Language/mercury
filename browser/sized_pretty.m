@@ -849,15 +849,17 @@ add_size_count(line_count(A), line_count(B), _) = line_count(A + B).
     % But this requires you to determine which case likely to happen
     % before hand. For example if a term is to be on one line, you should
     % do subtract_size_count(character_count(LineLength),
-    % character_count(arglength)) rather than subtract_size_count(line_count(1),
-    % character_count(arglength)). The reason that this situation cannot
-    % be detected in this code is: A term can be printed on a single line
-    % only if all of its arguments can be printed on the same line. And you
-    % cannot determine which case is likely to happen in this code using
-    % the information it has. Therefore size_count_split determines
-    % which case is true, and changes the limit accordingly.
+    % character_count(arglength)) rather than
+    % subtract_size_count(line_count(1), character_count(arglength)).
+    % The reason that this situation cannot be detected in this code is:
+    % A term can be printed on a single line only if all of its arguments
+    % can be printed on the same line. And you cannot determine which case
+    % is likely to happen in this code using the information it has.
+    % Therefore size_count_split determines which case is true,
+    % and changes the limit accordingly.
     %
-:- func subtract_size_count(size_count, size_count,measure_params) = size_count.
+:- func subtract_size_count(size_count, size_count,measure_params)
+    = size_count.
 
 subtract_size_count(character_count(A), character_count(B), _) = Result :-
     CharDiff = A - B,

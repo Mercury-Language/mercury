@@ -107,7 +107,8 @@
 
 :- type decl_e_bug
     --->    incorrect_contour(
-                % The head of the clause, in its initial state of instantiation.
+                % The head of the clause, in its initial state of
+                % instantiation.
                 init_decl_atom,
 
                 % The head of the clause, in its final state of instantiation.
@@ -384,9 +385,10 @@ unravel_decl_atom(DeclAtom, TraceAtom, MaybeIoActions) :-
                 previous_diagnoser      :: maybe(diagnoser_state(R))
             ).
 
-diagnoser_state_init(InStr, OutStr, Browser, HelpSystem, Diagnoser) :-
+diagnoser_state_init(InputStream, OutputStream, Browser, HelpSystem,
+        Diagnoser) :-
     analyser_state_init(Analyser),
-    oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle),
+    oracle_state_init(InputStream, OutputStream, Browser, HelpSystem, Oracle),
     Diagnoser = diagnoser(Analyser, Oracle, yes, no).
 
 :- pred push_diagnoser(diagnoser_state(R)::in, diagnoser_state(R)::out) is det.
@@ -447,7 +449,9 @@ handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
     (
         AnalyserResponse = analyser_response_no_suspects,
         DiagnoserResponse = no_bug_found,
-        io.write_string("No bug found.\n", !IO)
+        OutputStream =
+            get_oracle_user_output_stream(!.Diagnoser ^ oracle_state),
+        io.write_string(OutputStream, "No bug found.\n", !IO)
     ;
         AnalyserResponse = analyser_response_bug_found(Bug, Evidence),
         confirm_bug(Store, Bug, Evidence, DiagnoserResponse, !Diagnoser, !IO)
@@ -459,9 +463,10 @@ handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
             MaybeOrigin = yes(Origin),
             Flag > 0
         then
-            io.write_string("Origin: ", !IO),
-            write_origin(wrap(Store), Origin, !IO),
-            io.nl(!IO)
+            OutputStream = get_oracle_user_output_stream(Oracle0),
+            io.write_string(OutputStream, "Origin: ", !IO),
+            write_origin(OutputStream, wrap(Store), Origin, !IO),
+            io.nl(OutputStream, !IO)
         else
             true
         ),
@@ -499,14 +504,18 @@ handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
             DiagnoserResponse = require_supertree(Event, Seqno)
         ;
             !.Diagnoser ^ warn_if_searching_supertree = yes,
-            Out = get_user_output_stream(!.Diagnoser ^ oracle_state),
-            io.write_string(Out, "All descendent calls are trusted.\n" ++
+            OutputStream =
+                get_oracle_user_output_stream(!.Diagnoser ^ oracle_state),
+            io.write_string(OutputStream,
+                "All descendent calls are trusted.\n" ++
                 "Shall I continue searching in ancestor calls?\n", !IO),
             read_search_supertree_response(!.Diagnoser, Response, !IO),
-            ( Response = yes,
+            (
+                Response = yes,
                 DiagnoserResponse = require_supertree(Event, Seqno)
-            ; Response = no,
-                io.write_string(Out, "Diagnosis aborted.\n", !IO),
+            ;
+                Response = no,
+                io.write_string(OutputStream, "Diagnosis aborted.\n", !IO),
                 DiagnoserResponse = no_bug_found
             ),
             % We only want to issue the warning once, so set the flag to no.
@@ -526,10 +535,10 @@ handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
     bool::out, io::di, io::uo) is det.
 
 read_search_supertree_response(Diagnoser, Response, !IO) :-
-    In = get_user_input_stream(Diagnoser ^ oracle_state),
-    Out = get_user_output_stream(Diagnoser ^ oracle_state),
+    InputStream = get_oracle_user_input_stream(Diagnoser ^ oracle_state),
+    OutputStream = get_oracle_user_output_stream(Diagnoser ^ oracle_state),
     Prompt = "> ",
-    util.trace_getline(Prompt, Result, In, Out, !IO),
+    util.trace_getline(InputStream, OutputStream, Prompt, Result, !IO),
     (
         Result = ok(Line),
         UpperLine = string.to_upper(Line),
@@ -538,17 +547,17 @@ read_search_supertree_response(Diagnoser, Response, !IO) :-
         else if (UpperLine = "NO" ; UpperLine = "N") then
             Response = no
         else
-            io.write_string(Out, "Please answer yes or no.\n", !IO),
+            io.write_string(OutputStream, "Please answer yes or no.\n", !IO),
             read_search_supertree_response(Diagnoser, Response, !IO)
         )
     ;
         Result = error(ErrNo),
-        io.write_string(Out, "Error reading input: " ++
-            io.error_message(ErrNo) ++ ". Aborting.\n", !IO),
+        io.format(OutputStream, "Error reading input: %s. Aborting.\n",
+            [s(io.error_message(ErrNo))], !IO),
         Response = no
     ;
         Result = eof,
-        io.write_string(Out, "Unexpected EOF. Aborting.\n", !IO),
+        io.write_string(OutputStream, "Unexpected EOF. Aborting.\n", !IO),
         Response = no
     ).
 
@@ -569,9 +578,9 @@ handle_oracle_response(Store, OracleResponse, DiagnoserResponse, !Diagnoser,
         handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
             DiagnoserResponse, !Diagnoser, !IO)
     ;
-        OracleResponse = oracle_response_show_info(OutStream),
+        OracleResponse = oracle_response_show_info(OutputStream),
         Analyser = !.Diagnoser ^ analyser_state,
-        show_info(wrap(Store), OutStream, Analyser, !IO),
+        show_info(wrap(Store), OutputStream, Analyser, !IO),
         ( if reask_last_question(wrap(Store), Analyser, AnalyserResponse0) then
             AnalyserResponse = AnalyserResponse0
         else
@@ -596,9 +605,9 @@ handle_oracle_response(Store, OracleResponse, DiagnoserResponse, !Diagnoser,
         ( if pop_diagnoser(!.Diagnoser, PoppedDiagnoser) then
             !:Diagnoser = PoppedDiagnoser
         else
-            OutStream = mdb.declarative_oracle.get_user_output_stream(
-                !.Diagnoser ^ oracle_state),
-            io.write_string(OutStream, "Undo stack empty.\n", !IO)
+            OutputStream =
+                get_oracle_user_output_stream(!.Diagnoser ^ oracle_state),
+            io.write_string(OutputStream, "Undo stack empty.\n", !IO)
         ),
         ( if
             reask_last_question(wrap(Store), !.Diagnoser ^ analyser_state,
@@ -619,7 +628,9 @@ handle_oracle_response(Store, OracleResponse, DiagnoserResponse, !Diagnoser,
     ;
         OracleResponse = oracle_response_abort_diagnosis,
         DiagnoserResponse = no_bug_found,
-        io.write_string("Diagnosis aborted.\n", !IO)
+        OutputStream =
+            get_oracle_user_output_stream(!.Diagnoser ^ oracle_state),
+        io.write_string(OutputStream, "Diagnosis aborted.\n", !IO)
     ).
 
 :- pred confirm_bug(S::in, decl_bug::in, decl_evidence(T)::in,
@@ -657,8 +668,8 @@ overrule_bug(Store, Response, Diagnoser0, Diagnoser, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-    % Export a monomorphic version of diagnosis_state_init/4, to
-    % make it easier to call from C code.
+    % Export a monomorphic version of diagnosis_state_init/4,
+    % to make it easier to call from C code.
     %
 :- pred diagnoser_state_init_store(io.input_stream::in, io.output_stream::in,
     browser_info.browser_persistent_state::in, help_system::in,
@@ -667,8 +678,10 @@ overrule_bug(Store, Response, Diagnoser0, Diagnoser, !IO) :-
 :- pragma foreign_export("C", diagnoser_state_init_store(in, in, in, in, out),
     "MR_DD_decl_diagnosis_state_init").
 
-diagnoser_state_init_store(InStr, OutStr, Browser, HelpSystem, Diagnoser) :-
-    diagnoser_state_init(InStr, OutStr, Browser, HelpSystem, Diagnoser).
+diagnoser_state_init_store(InputStream, OutputStream, Browser, HelpSystem,
+        Diagnoser) :-
+    diagnoser_state_init(InputStream, OutputStream, Browser, HelpSystem,
+        Diagnoser).
 
     % This is called when the user starts a new declarative
     % debugging session with the dd command (and the --resume option
@@ -945,9 +958,12 @@ handle_diagnoser_exception(io_error(Loc, Msg), Response, !Diagnoser, !IO) :-
 
 handle_diagnoser_exception(unimplemented_feature(Feature), Response,
         !Diagnoser, !IO) :-
-    io.write_string("Sorry, the diagnosis cannot continue because " ++
-        "it requires support for\n" ++
-        "the following: " ++ Feature ++ ".\n" ++
+    OutputStream =
+        get_oracle_user_output_stream(!.Diagnoser ^ oracle_state),
+    io.write_string(OutputStream,
+        "Sorry, the diagnosis cannot continue " ++
+        "because it requires support for the following: \n" ++
+        Feature ++ ".\n" ++
         "The debugger is a work in progress, and this is not " ++
         "supported in the\ncurrent version.\n", !IO),
     % Reset the analyser, in case it was left in an inconsistent state.
@@ -972,24 +988,23 @@ decl_bug_get_event_number(i_bug(IBug), Event) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred write_origin(wrap(S)::in, subterm_origin(edt_node(R))::in,
-    io::di, io::uo) is det <= annotated_trace(S, R).
+:- pred write_origin(io.text_output_stream::in,
+    wrap(S)::in, subterm_origin(edt_node(R))::in, io::di, io::uo) is det
+    <= annotated_trace(S, R).
 
-write_origin(wrap(Store), Origin, !IO) :-
+write_origin(Stream, wrap(Store), Origin, !IO) :-
     ( if Origin = origin_output(dynamic(NodeId), ArgPos, TermPath) then
         exit_node_from_id(Store, NodeId, ExitNode),
         ProcLayout = get_proc_layout_from_label_layout(ExitNode ^ exit_label),
         ProcLabel = get_proc_label_from_layout(ProcLayout),
         ProcName = get_proc_name(ProcLabel),
-        io.write_string("output(", !IO),
-        io.write_string(ProcName, !IO),
-        io.write_string(", ", !IO),
-        io.write(ArgPos, !IO),
-        io.write_string(", ", !IO),
-        io.write(TermPath, !IO),
-        io.write_string(")", !IO)
+        io.format(Stream, "output(%s, ", [s(ProcName)], !IO),
+        io.write(Stream, ArgPos, !IO),
+        io.write_string(Stream, ", ", !IO),
+        io.write(Stream, TermPath, !IO),
+        io.write_string(Stream, ")", !IO)
     else
-        io.write(Origin, !IO)
+        io.write(Stream, Origin, !IO)
     ).
 
 :- pragma foreign_code("C",
