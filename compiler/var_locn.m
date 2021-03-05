@@ -1495,10 +1495,8 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
                     string.append("Placing ", VarName, Msg)
                 ;
                     ForbiddenLvals = [_ | _],
-                    string.int_to_string(list.length(ForbiddenLvals),
-                        LengthStr),
-                    string.append_list(["Placing ", VarName,
-                        " (depth ", LengthStr, ")"], Msg)
+                    string.format("Placing %s (depth %d)",
+                        [s(VarName), i(list.length(ForbiddenLvals))], Msg)
                 ),
                 var_locn_get_dummy_map(!.VLI, DummyMap),
                 map.lookup(DummyMap, Var, IsDummy),
@@ -1516,8 +1514,14 @@ actually_place_var(Var, Target, ForbiddenLvals, Code, !VLI) :-
     else
         var_locn_get_dummy_map(!.VLI, DummyMap),
         map.lookup(DummyMap, Var, IsDummy),
-        expect(unify(IsDummy, is_dummy_type), $pred,
-            "placing nondummy var which has no state"),
+        (
+            IsDummy = is_dummy_type
+        ;
+            IsDummy = is_not_dummy_type,
+            unexpected($pred, "placing nondummy var " ++
+                string.int_to_string(var_to_int(Var)) ++
+                " which has no state")
+        ),
         Code = empty
     ).
 
