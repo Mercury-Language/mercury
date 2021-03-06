@@ -45,6 +45,7 @@
 :- import_module getopt.
 :- import_module library.
 :- import_module list.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -93,19 +94,18 @@ postprocess_options(Args, !IO) :-
 usage_error(ErrorMessage, !IO) :-
     io.progname_base("mercury_profile", ProgName, !IO),
     io.stderr_stream(StdErr, !IO),
-    io.write_strings(StdErr, [ProgName, ": ", ErrorMessage, "\n"], !IO),
+    io.format(StdErr, "%s: %s\n", [s(ProgName), s(ErrorMessage)], !IO),
     io.set_exit_status(1, !IO),
-    usage(!IO).
+    usage(StdErr, !IO).
 
     % Display usage message.
     %
-:- pred usage(io::di, io::uo) is det.
+:- pred usage(io.text_output_stream::in, io::di, io::uo) is det.
 
-usage(!IO) :-
+usage(OutputStream, !IO) :-
     io.progname_base("mprof", ProgName, !IO),
-    io.stderr_stream(StdErr, !IO),
     library.version(Version, Fullarch),
-    io.write_strings(StdErr, [
+    io.write_strings(OutputStream, [
         "mprof - Mercury profiler, version ", Version, ", on ", Fullarch, "\n",
         "Copyright (C) 1995-2012 The University of Melbourne\n",
         "Copyright (C) 2013-2021 The Mercury team\n",
@@ -113,12 +113,12 @@ usage(!IO) :-
         "Use `", ProgName, " --help' for more information.\n"
     ], !IO).
 
-:- pred long_usage(io::di, io::uo) is det.
+:- pred long_usage(io.text_output_stream::in, io::di, io::uo) is det.
 
-long_usage(!IO) :-
+long_usage(OutputStream, !IO) :-
     io.progname_base("mprof", ProgName, !IO),
     library.version(Version, Fullarch),
-    io.write_strings([
+    io.write_strings(OutputStream, [
         "Name: mprof - Mercury profiler, version ", Version, ", on ",
         Fullarch, "\n",
         "Copyright (C) 1995-2012 The University of Melbourne\n",
@@ -141,7 +141,7 @@ long_usage(!IO) :-
         "\n",
         "Options:\n"
         ], !IO),
-    options_help(!IO).
+    options_help(OutputStream, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -150,15 +150,16 @@ long_usage(!IO) :-
 main_2(Args, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.lookup_bool_option(Globals, help, Help),
+    io.stdout_stream(StdOut, !IO),
     (
         Help = yes,
-        long_usage(!IO)
+        long_usage(StdOut, !IO)
     ;
         Help = no,
         globals.lookup_bool_option(Globals, snapshots, Snapshots),
         (
             Snapshots = yes,
-            show_snapshots(!IO)
+            show_snapshots(StdOut, !IO)
         ;
             Snapshots = no,
             main_3(Args, !IO)
@@ -169,35 +170,44 @@ main_2(Args, !IO) :-
 
 main_3(Args, !IO) :-
     io.stderr_stream(StdErr, !IO),
-    io.set_output_stream(StdErr, StdOut, !IO),
+    % ZZZ io.set_output_stream(StdErr, StdOut, !IO),
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
 
-    maybe_write_string(Verbose, "% Processing input files...", !IO),
-    process_profiling_data_files(Prof0, CallGraph0, !IO),
-    maybe_write_string(Verbose, " done\n", !IO),
+    ProgressStream = StdErr,
+    maybe_write_string(ProgressStream, Verbose,
+        "% Processing input files...", !IO),
+    process_profiling_data_files(ProgressStream, StdErr,
+        Prof0, CallGraph0, !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        " done\n", !IO),
 
     globals.io_lookup_bool_option(call_graph, CallGraphOpt, !IO),
     (
         CallGraphOpt = yes,
-        maybe_write_string(Verbose, "% Building call graph...", !IO),
-        build_call_graph(Args, CallGraph0, CallGraph, !IO),
-        maybe_write_string(Verbose, " done\n", !IO),
+        maybe_write_string(ProgressStream, Verbose,
+            "% Building call graph...", !IO),
+        build_call_graph(ProgressStream, Args, CallGraph0, CallGraph, !IO),
+        maybe_write_string(ProgressStream, Verbose,
+            " done\n", !IO),
 
-        maybe_write_string(Verbose, "% Propagating counts...", !IO),
+        maybe_write_string(ProgressStream, Verbose,
+            "% Propagating counts...", !IO),
         propagate_counts(CallGraph, Prof0, Prof, !IO),
-        maybe_write_string(Verbose, " done\n", !IO)
+        maybe_write_string(ProgressStream, Verbose,
+            " done\n", !IO)
     ;
         CallGraphOpt = no,
         Prof = Prof0
     ),
 
-    maybe_write_string(Verbose, "% Generating output...", !IO),
-    generate_prof_output(Prof, IndexMap, OutputProf, !IO),
-    maybe_write_string(Verbose, " done\n", !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        "% Generating output...", !IO),
+    generate_prof_output(ProgressStream, Prof, IndexMap, ProfilerOutput, !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        " done\n", !IO),
 
-    io.set_output_stream(StdOut, _, !IO),
-    output_profile(OutputProf, IndexMap, !IO),
-    io.nl(!IO).
+    io.stdout_stream(StdOut, !IO),
+    output_profile(StdOut, ProfilerOutput, IndexMap, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module mercury_profile.

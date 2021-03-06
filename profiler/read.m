@@ -24,21 +24,27 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_read_label_addr(maybe(int)::out, io::di, io::uo) is det.
+:- pred maybe_read_label_addr(io.text_input_stream::in, maybe(int)::out,
+    io::di, io::uo) is det.
 
-:- pred maybe_read_label_name(maybe(string)::out, io::di, io::uo) is det.
+:- pred maybe_read_label_name(io.text_input_stream::in, maybe(string)::out,
+    io::di, io::uo) is det.
 
-:- pred read_label_addr(int::out, io::di, io::uo) is det.
+:- pred read_label_addr(io.text_input_stream::in, int::out,
+    io::di, io::uo) is det.
 
-:- pred read_label_name(string::out, io::di, io::uo) is det.
+:- pred read_label_name(io.text_input_stream::in, string::out,
+    io::di, io::uo) is det.
 
-:- pred read_string(string::out, io::di, io::uo) is det.
+:- pred read_string(io.text_input_stream::in, string::out,
+    io::di, io::uo) is det.
 
-:- pred read_int(int::out, io::di, io::uo) is det.
+:- pred read_int(io.text_input_stream::in, int::out, io::di, io::uo) is det.
 
-:- pred read_float(float::out, io::di, io::uo) is det.
+:- pred read_float(io.text_input_stream::in, float::out, io::di, io::uo) is det.
 
-:- pred read_what_to_profile(what_to_profile::out, io::di, io::uo) is det.
+:- pred read_what_to_profile(io.text_input_stream::in, what_to_profile::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -55,8 +61,8 @@
 
 %---------------------------------------------------------------------------%
 
-maybe_read_label_addr(MaybeLabelAddr, !IO) :-
-    io.read_word(WordResult, !IO),
+maybe_read_label_addr(InputStream, MaybeLabelAddr, !IO) :-
+    io.read_word(InputStream, WordResult, !IO),
     (
         WordResult = ok(CharList),
         string.from_char_list(CharList, LabelAddrStr),
@@ -77,9 +83,9 @@ maybe_read_label_addr(MaybeLabelAddr, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_read_label_name(MaybeLabelName, !IO) :-
+maybe_read_label_name(InputStream, MaybeLabelName, !IO) :-
     globals.io_lookup_bool_option(demangle, Demangle, !IO),
-    io.read_word(WordResult, !IO),
+    io.read_word(InputStream, WordResult, !IO),
     (
         WordResult = ok(CharList0),
         string.from_char_list(CharList0, MangledLabelName),
@@ -101,8 +107,8 @@ maybe_read_label_name(MaybeLabelName, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-read_label_addr(LabelAddr, !IO) :-
-    io.read_word(WordResult, !IO),
+read_label_addr(InputStream, LabelAddr, !IO) :-
+    io.read_word(InputStream, WordResult, !IO),
     (
         WordResult = ok(CharList),
         string.from_char_list(CharList, LabelAddrStr),
@@ -123,9 +129,9 @@ read_label_addr(LabelAddr, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-read_label_name(LabelName, !IO) :-
+read_label_name(InputStream, LabelName, !IO) :-
     globals.io_lookup_bool_option(demangle, Demangle, !IO),
-    io.read_word(WordResult, !IO),
+    io.read_word(InputStream, WordResult, !IO),
     (
         WordResult = ok(CharList0),
         string.from_char_list(CharList0, MangledLabelName),
@@ -146,8 +152,8 @@ read_label_name(LabelName, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-read_string(String, !IO) :-
-    io.read_word(WordResult, !IO),
+read_string(InputStream, String, !IO) :-
+    io.read_word(InputStream, WordResult, !IO),
     (
         WordResult = ok(CharList),
         string.from_char_list(CharList, String)
@@ -161,8 +167,8 @@ read_string(String, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-read_int(Int, !IO) :-
-    read_string(IntStr, !IO),
+read_int(InputStream, Int, !IO) :-
+    read_string(InputStream, IntStr, !IO),
     ( if string.to_int(IntStr, Int0) then
         Int = Int0
     else
@@ -172,8 +178,8 @@ read_int(Int, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-read_float(Float, !IO) :-
-    read_string(FloatStr, !IO),
+read_float(InputStream, Float, !IO) :-
+    read_string(InputStream, FloatStr, !IO),
     ( if string.to_float(FloatStr, Float0) then
         Float = Float0
     else
@@ -183,8 +189,8 @@ read_float(Float, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-read_what_to_profile(WhatToProfile, !IO) :-
-    read_string(Str, !IO),
+read_what_to_profile(InputStream, WhatToProfile, !IO) :-
+    read_string(InputStream, Str, !IO),
     ( if what_to_profile(Str, WhatToProfile0) then
         WhatToProfile = WhatToProfile0
     else

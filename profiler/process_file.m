@@ -26,7 +26,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred process_profiling_data_files(prof::out, digraph(string)::out,
+:- pred process_profiling_data_files(io.text_output_stream::in,
+    io.text_output_stream::in, prof::out, digraph(string)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -49,7 +50,8 @@
 
 %---------------------------------------------------------------------------%
 
-process_profiling_data_files(Prof, DynamicCallGraph, !IO) :-
+process_profiling_data_files(ProgressStream, ErrorStream,
+        Prof, DynamicCallGraph, !IO) :-
     globals.io_lookup_bool_option(very_verbose, VVerbose, !IO),
     globals.io_lookup_string_option(declfile, DeclFile, !IO),
     globals.io_lookup_string_option(countfile, CountFile, !IO),
@@ -58,27 +60,27 @@ process_profiling_data_files(Prof, DynamicCallGraph, !IO) :-
     globals.io_lookup_bool_option(dynamic_cg, Dynamic, !IO),
 
     % process the decl file
-    maybe_write_string(VVerbose, "\n\t% Processing ", !IO),
-    maybe_write_string(VVerbose, DeclFile, !IO),
-    maybe_write_string(VVerbose, "...", !IO),
+    maybe_write_string(ProgressStream, VVerbose, "\n\t% Processing ", !IO),
+    maybe_write_string(ProgressStream, VVerbose, DeclFile, !IO),
+    maybe_write_string(ProgressStream, VVerbose, "...", !IO),
     process_addr_decl(AddrDeclMap0, ProfNodeMap0, !IO),
-    maybe_write_string(VVerbose, " done.\n", !IO),
+    maybe_write_string(ProgressStream, VVerbose, " done.\n", !IO),
 
     % process the timing counts file
-    maybe_write_string(VVerbose, "\t% Processing ", !IO),
-    maybe_write_string(VVerbose, CountFile, !IO),
-    maybe_write_string(VVerbose, "...", !IO),
-    process_addr(ProfNodeMap0, ProfNodeMap1, WhatToProfile, Scale, Units,
-        TotalCounts, !IO),
-    maybe_write_string(VVerbose, " done.\n", !IO),
+    maybe_write_string(ProgressStream, VVerbose, "\t% Processing ", !IO),
+    maybe_write_string(ProgressStream, VVerbose, CountFile, !IO),
+    maybe_write_string(ProgressStream, VVerbose, "...", !IO),
+    process_addr(ErrorStream, WhatToProfile, Scale, Units, TotalCounts,
+        ProfNodeMap0, ProfNodeMap1, !IO),
+    maybe_write_string(ProgressStream, VVerbose, " done.\n", !IO),
 
     % Process the call pair counts file.
-    maybe_write_string(VVerbose, "\t% Processing ", !IO),
-    maybe_write_string(VVerbose, PairFile, !IO),
-    maybe_write_string(VVerbose, "...", !IO),
-    process_addr_pair(ProfNodeMap1, ProfNodeMap,
-        AddrDeclMap0, AddrDeclMap, DynamicCallGraph, !IO),
-    maybe_write_string(VVerbose, " done.\n", !IO),
+    maybe_write_string(ProgressStream, VVerbose, "\t% Processing ", !IO),
+    maybe_write_string(ProgressStream, VVerbose, PairFile, !IO),
+    maybe_write_string(ProgressStream, VVerbose, "...", !IO),
+    process_addr_pair(DynamicCallGraph,
+        ProfNodeMap1, ProfNodeMap, AddrDeclMap0, AddrDeclMap, !IO),
+    maybe_write_string(ProgressStream, VVerbose, " done.\n", !IO),
 
     map.init(CycleMap),
     prof_set_entire(Scale, Units, TotalCounts, AddrDeclMap,
@@ -89,11 +91,11 @@ process_profiling_data_files(Prof, DynamicCallGraph, !IO) :-
 
     (
         Dynamic = no
-        % maybe_write_string(VVerbose, "\t% Processing "),
-        % maybe_write_string(VVerbose, LibFile),
-        % maybe_write_string(VVerbose, "..."),
+        % maybe_write_string(ProgressStream, VVerbose, "\t% Processing "),
+        % maybe_write_string(ProgressStream, VVerbose, LibFile),
+        % maybe_write_string(ProgressStream, VVerbose, "..."),
         % process_library_callgraph(_, _),
-        % maybe_write_string(VVerbose, " done.\n"),
+        % maybe_write_string(ProgressStream, VVerbose, " done.\n"),
     ;
         Dynamic = yes
     ).
@@ -114,26 +116,28 @@ process_profiling_data_files(Prof, DynamicCallGraph, !IO) :-
 
 process_addr_decl(AddrDeclMap, ProfNodeMap, !IO) :-
     globals.io_lookup_string_option(declfile, DeclFile, !IO),
-    io.see(DeclFile, Result, !IO),
+    io.open_input(DeclFile, DeclResult, !IO),
     (
-        Result = ok,
-        process_addr_decl_2(map.init, AddrDeclMap, map.init, ProfNodeMap, !IO),
-        io.seen(!IO)
+        DeclResult = ok(DeclFileStream),
+        process_addr_decl_2(DeclFileStream,
+            map.init, AddrDeclMap, map.init, ProfNodeMap, !IO),
+        io.close_input(DeclFileStream, !IO)
     ;
-        Result = error(Error),
+        DeclResult = error(Error),
         ErrorStr = "error opening declaration file `" ++ DeclFile ++
             "': " ++ io.error_message(Error) ++ "\n",
         error(ErrorStr)
     ).
 
-:- pred process_addr_decl_2(addrdecl::in, addrdecl::out, prof_node_map::in,
-    prof_node_map::out, io::di, io::uo) is det.
+:- pred process_addr_decl_2(io.text_input_stream::in,
+    addrdecl::in, addrdecl::out, prof_node_map::in, prof_node_map::out,
+    io::di, io::uo) is det.
 
-process_addr_decl_2(!AddrDecl, !ProfNodeMap, !IO) :-
-    maybe_read_label_addr(MaybeLabelAddr, !IO),
+process_addr_decl_2(InputStream, !AddrDecl, !ProfNodeMap, !IO) :-
+    maybe_read_label_addr(InputStream, MaybeLabelAddr, !IO),
     (
         MaybeLabelAddr = yes(LabelAddr),
-        read_label_name(LabelName, !IO),
+        read_label_name(InputStream, LabelName, !IO),
         ProfNode = prof_node_init(LabelName),
         map.det_insert(LabelName, LabelAddr, !AddrDecl),
 
@@ -145,7 +149,7 @@ process_addr_decl_2(!AddrDecl, !ProfNodeMap, !IO) :-
             prof_node_concat_to_name_list(LabelName, ProfNode0, NewProfNode),
             map.det_update(LabelAddr, NewProfNode, !ProfNodeMap)
         ),
-        process_addr_decl_2(!AddrDecl, !ProfNodeMap, !IO)
+        process_addr_decl_2(InputStream, !AddrDecl, !ProfNodeMap, !IO)
     ;
         MaybeLabelAddr = no
     ).
@@ -158,30 +162,29 @@ process_addr_decl_2(!AddrDecl, !ProfNodeMap, !IO) :-
     % Reads in the Prof.Counts file and stores all the counts in the prof_node
     % structure. Also sums the total counts at the same time.
     %
-:- pred process_addr(prof_node_map::in, prof_node_map::out,
+:- pred process_addr(io.text_output_stream::in,
     what_to_profile::out, float::out, string::out, int::out,
-    io::di, io::uo) is det.
+    prof_node_map::in, prof_node_map::out, io::di, io::uo) is det.
 
-process_addr(!ProfNodeMap, WhatToProfile, Scale, Units, TotalCounts, !IO) :-
+process_addr(ErrorStream, WhatToProfile, Scale, Units, TotalCounts,
+        !ProfNodeMap, !IO) :-
     globals.io_lookup_string_option(countfile, CountFile, !IO),
-    io.see(CountFile, Result, !IO),
+    io.open_input(CountFile, CountResult, !IO),
     (
-        Result = ok,
-        read_what_to_profile(WhatToProfile, !IO),
-        read_float(Scale, !IO),
-        read_string(Units, !IO),
-        process_addr_2(0, TotalCounts, !ProfNodeMap, !IO),
-        io.seen(!IO)
+        CountResult = ok(CountFileStream),
+        read_what_to_profile(CountFileStream, WhatToProfile, !IO),
+        read_float(CountFileStream, Scale, !IO),
+        read_string(CountFileStream, Units, !IO),
+        process_addr_2(CountFileStream, ErrorStream,
+            0, TotalCounts, !ProfNodeMap, !IO),
+        io.close_input(CountFileStream, !IO)
     ;
-        Result = error(Error),
+        CountResult = error(Error),
         io.error_message(Error, ErrorMsg),
-        io.write_string("\nWarning: error opening `", !IO),
-        io.write_string(CountFile, !IO),
-        io.write_string("': ", !IO),
-        io.write_string(ErrorMsg, !IO),
-        io.write_string("\n", !IO),
-        io.write_string("The generated profile will only include ", !IO),
-        io.write_string("call counts.\n\n", !IO),
+        io.format(ErrorStream, "\nWarning: error opening `%s': %s\n",
+            [s(CountFile), s(ErrorMsg)], !IO),
+        io.write_string(ErrorStream,
+            "The generated profile will only include call counts.\n\n", !IO),
         TotalCounts = 0,
         % We can use any arbitrary values for WhatToProfile and Scale;
         % the values specified here won't be used,
@@ -191,14 +194,15 @@ process_addr(!ProfNodeMap, WhatToProfile, Scale, Units, TotalCounts, !IO) :-
         Units = ""
     ).
 
-:- pred process_addr_2(int::in, int::out,
-    prof_node_map::in, prof_node_map::out, io::di, io::uo) is det.
+:- pred process_addr_2(io.text_input_stream::in, io.text_output_stream::in,
+    int::in, int::out, prof_node_map::in, prof_node_map::out,
+    io::di, io::uo) is det.
 
-process_addr_2(!TotalCounts, !ProfNodeMap, !IO) :-
-    maybe_read_label_addr(MaybeLabelAddr, !IO),
+process_addr_2(InputStream, ErrorStream, !TotalCounts, !ProfNodeMap, !IO) :-
+    maybe_read_label_addr(InputStream, MaybeLabelAddr, !IO),
     (
         MaybeLabelAddr = yes(LabelAddr),
-        read_int(Count, !IO),
+        read_int(InputStream, Count, !IO),
 
         % Add to initial counts if we have a ProfNode structure
         % for the address otherwise ignore it.
@@ -209,11 +213,13 @@ process_addr_2(!TotalCounts, !ProfNodeMap, !IO) :-
             map.set(LabelAddr, ProfNode, !ProfNodeMap),
             !:TotalCounts = !.TotalCounts + Count
         else
-            io.format("\nWarning address %d not found!  " ++
+            io.format(ErrorStream,
+                "\nWarning address %d not found!  " ++
                 "Ignoring address and continuing computation.\n",
                 [i(LabelAddr)], !IO)
         ),
-        process_addr_2(!TotalCounts, !ProfNodeMap, !IO)
+        process_addr_2(InputStream, ErrorStream,
+            !TotalCounts, !ProfNodeMap, !IO)
     ;
         MaybeLabelAddr = no
     ).
@@ -226,19 +232,19 @@ process_addr_2(!TotalCounts, !ProfNodeMap, !IO) :-
     % lists of the prof_node structure.  Also calculates the number of
     % times a predicate is called.
     %
-:- pred process_addr_pair(prof_node_map::in, prof_node_map::out,
-    addrdecl::in, addrdecl::out, digraph(string)::out, io::di, io::uo)
-    is det.
+:- pred process_addr_pair(digraph(string)::out,
+    prof_node_map::in, prof_node_map::out, addrdecl::in, addrdecl::out,
+    io::di, io::uo) is det.
 
-process_addr_pair(!ProfNodeMap, !AddrDecl, DynamicCallGraph, !IO) :-
+process_addr_pair(DynamicCallGraph, !ProfNodeMap, !AddrDecl, !IO) :-
     globals.io_lookup_bool_option(dynamic_cg, Dynamic, !IO),
     globals.io_lookup_string_option(pairfile, PairFile, !IO),
-    io.see(PairFile, Result, !IO),
+    io.open_input(PairFile, Result, !IO),
     (
-        Result = ok,
-        process_addr_pair_2(Dynamic, digraph.init, DynamicCallGraph,
-            !ProfNodeMap, !AddrDecl, !IO),
-        io.seen(!IO)
+        Result = ok(PairFileStream),
+        process_addr_pair_2(PairFileStream, Dynamic,
+            digraph.init, DynamicCallGraph, !ProfNodeMap, !AddrDecl, !IO),
+        io.close_input(PairFileStream, !IO)
     ;
         Result = error(Error),
         ErrorStr = "error opening pair file `" ++ PairFile  ++
@@ -246,18 +252,18 @@ process_addr_pair(!ProfNodeMap, !AddrDecl, DynamicCallGraph, !IO) :-
         error(ErrorStr)
     ).
 
-:- pred process_addr_pair_2(bool::in,
+:- pred process_addr_pair_2(io.text_input_stream::in, bool::in,
     digraph(string)::in, digraph(string)::out,
     prof_node_map::in, prof_node_map::out,
     addrdecl::in, addrdecl::out, io::di, io::uo) is det.
 
-process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap, !AddrDecl,
-        !IO) :-
-    maybe_read_label_addr(MaybeLabelAddr, !IO),
+process_addr_pair_2(InputStream, Dynamic, !DynamicCallGraph,
+        !ProfNodeMap, !AddrDecl, !IO) :-
+    maybe_read_label_addr(InputStream, MaybeLabelAddr, !IO),
     (
         MaybeLabelAddr = yes(CallerAddr),
-        read_label_addr(CalleeAddr, !IO),
-        read_int(Count, !IO),
+        read_label_addr(InputStream, CalleeAddr, !IO),
+        read_int(InputStream, Count, !IO),
 
         % Get child and parent information.
         lookup_addr(CallerAddr, CallerProfNode0, !AddrDecl, !ProfNodeMap),
@@ -294,8 +300,8 @@ process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap, !AddrDecl,
         ;
             Dynamic = no
         ),
-        process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap,
-            !AddrDecl, !IO)
+        process_addr_pair_2(InputStream, Dynamic, !DynamicCallGraph,
+            !ProfNodeMap, !AddrDecl, !IO)
     ;
         MaybeLabelAddr = no
     ).
@@ -311,33 +317,35 @@ process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap, !AddrDecl,
 
 process_library_callgraph(LibraryATSort, LibPredMap, !IO) :-
     globals.io_lookup_string_option(libraryfile, LibFile, !IO),
+    LibraryATSort0 = [],
     map.init(LibPredMap0),
-    io.see(LibFile, Result, !IO),
+    io.open_input(LibFile, Result, !IO),
     (
-        Result = ok,
-        process_library_callgraph_2([], LibraryATSort, LibPredMap0,
-            LibPredMap, !IO),
-        io.seen(!IO)
+        Result = ok(LibFileStream),
+        process_library_callgraph_2(LibFileStream,
+            LibraryATSort0, LibraryATSort, LibPredMap0, LibPredMap, !IO),
+        io.close_input(LibFileStream, !IO)
     ;
         Result = error(Error),
         io.error_message(Error, ErrorMsg),
         io.stderr_stream(StdErr, !IO),
-        io.write_strings(StdErr, ["mprof: error opening pair file `",
-            LibFile, "': ", ErrorMsg, "\n"], !IO),
-        LibraryATSort = [],
+        io.format(StdErr, "mprof: error opening pair file `%s': %s\n",
+            [s(LibFile), s(ErrorMsg)], !IO),
+        LibraryATSort = LibraryATSort0,
         LibPredMap = LibPredMap0
     ).
 
-:- pred process_library_callgraph_2(list(string)::in, list(string)::out,
+:- pred process_library_callgraph_2(io.text_input_stream::in,
+    list(string)::in, list(string)::out,
     map(string, unit)::in, map(string, unit)::out, io::di, io::uo) is det.
 
-process_library_callgraph_2(!LibATSort, !LibPredMap, !IO) :-
-    maybe_read_label_name(MaybeLabelName, !IO),
+process_library_callgraph_2(InputStream, !LibATSort, !LibPredMap, !IO) :-
+    maybe_read_label_name(InputStream, MaybeLabelName, !IO),
     (
         MaybeLabelName = yes(LabelName),
         map.det_insert(LabelName, unit, !LibPredMap),
         list.cons(LabelName, !LibATSort),
-        process_library_callgraph_2(!LibATSort, !LibPredMap, !IO)
+        process_library_callgraph_2(InputStream, !LibATSort, !LibPredMap, !IO)
     ;
         MaybeLabelName = no
     ).

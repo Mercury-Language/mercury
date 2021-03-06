@@ -25,7 +25,7 @@
 %---------------------------------------------------------------------------%
 
 
-:- pred build_call_graph(list(string)::in,
+:- pred build_call_graph(io.text_output_stream::in, list(string)::in,
     digraph(string)::in, digraph(string)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -39,10 +39,11 @@
 
 :- import_module bool.
 :- import_module maybe.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
-build_call_graph(Args, !StaticCallGraph, !IO) :-
+build_call_graph(ProgressStream, Args, !StaticCallGraph, !IO) :-
     globals.io_lookup_bool_option(dynamic_cg, Dynamic, !IO),
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     %
@@ -54,57 +55,61 @@ build_call_graph(Args, !StaticCallGraph, !IO) :-
         Dynamic = yes
     ;
         Dynamic = no,
-        build_static_call_graph(Args, VeryVerbose, !StaticCallGraph, !IO)
+        build_static_call_graph(ProgressStream, Args, VeryVerbose,
+            !StaticCallGraph, !IO)
     ).
 
     % build_static_call_graph:
     %
     % Builds the static call graph located in the *.prof files.
     %
-:- pred build_static_call_graph(list(string)::in, bool::in,
-    digraph(string)::in, digraph(string)::out, io::di, io::uo) is det.
+:- pred build_static_call_graph(io.text_output_stream::in, list(string)::in,
+    bool::in, digraph(string)::in, digraph(string)::out,
+    io::di, io::uo) is det.
 
-build_static_call_graph(Files, VeryVerbose, !StaticCallGraph, !IO) :-
-    list.foldl2(process_prof_file(VeryVerbose), Files, !StaticCallGraph, !IO).
+build_static_call_graph(ProgressStream, Files, VeryVerbose,
+        !StaticCallGraph, !IO) :-
+    list.foldl2(process_prof_file(ProgressStream, VeryVerbose), Files,
+        !StaticCallGraph, !IO).
 
     % process_prof_file:
     %
     % Puts all the Caller and Callee label pairs from File into the
     % static call graph.
     %
-:- pred process_prof_file(bool::in, string::in,
+:- pred process_prof_file(io.text_output_stream::in, bool::in, string::in,
     digraph(string)::in, digraph(string)::out, io::di, io::uo) is det.
 
-process_prof_file(VeryVerbose, File, !StaticCallGraph, !IO) :-
-    maybe_write_string(VeryVerbose, "\n\tProcessing ", !IO),
-    maybe_write_string(VeryVerbose, File, !IO),
-    maybe_write_string(VeryVerbose, "...", !IO),
-    io.see(File, Result, !IO),
+process_prof_file(ProgressStream, VeryVerbose, File, !StaticCallGraph, !IO) :-
+    maybe_write_string(ProgressStream, VeryVerbose, "\n\tProcessing ", !IO),
+    maybe_write_string(ProgressStream, VeryVerbose, File, !IO),
+    maybe_write_string(ProgressStream, VeryVerbose, "...", !IO),
+    io.open_input(File, Result, !IO),
     (
-        Result = ok,
-        process_prof_file_2(!StaticCallGraph, !IO),
-        io.seen(!IO)
+        Result = ok(FileStream),
+        process_prof_file_2(FileStream, !StaticCallGraph, !IO),
+        io.close_input(FileStream, !IO)
     ;
         Result = error(Error),
         io.error_message(Error, ErrorMsg),
         io.stderr_stream(StdErr, !IO),
-        io.write_strings(StdErr, ["mprof: error opening file `",
-            File, "': ", ErrorMsg, "\n"], !IO)
+        io.format(StdErr, "mprof: error opening file `%s': %s\n",
+            [s(File), s(ErrorMsg)], !IO)
     ),
-    maybe_write_string(VeryVerbose, " done", !IO).
+    maybe_write_string(ProgressStream, VeryVerbose, " done", !IO).
 
-:- pred process_prof_file_2(digraph(string)::in, digraph(string)::out,
-    io::di, io::uo) is det.
+:- pred process_prof_file_2(io.text_input_stream::in,
+    digraph(string)::in, digraph(string)::out, io::di, io::uo) is det.
 
-process_prof_file_2(!StaticCallGraph, !IO) :-
-    maybe_read_label_name(MaybeLabelName, !IO),
+process_prof_file_2(InputStream, !StaticCallGraph, !IO) :-
+    maybe_read_label_name(InputStream, MaybeLabelName, !IO),
     (
         MaybeLabelName = yes(CallerLabel),
-        read_label_name(CalleeLabel, !IO),
+        read_label_name(InputStream, CalleeLabel, !IO),
         digraph.lookup_key(!.StaticCallGraph, CallerLabel, CallerKey),
         digraph.lookup_key(!.StaticCallGraph, CalleeLabel, CalleeKey),
         digraph.add_edge(CallerKey, CalleeKey, !StaticCallGraph),
-        process_prof_file_2(!StaticCallGraph, !IO)
+        process_prof_file_2(InputStream, !StaticCallGraph, !IO)
     ;
         MaybeLabelName = no
     ).

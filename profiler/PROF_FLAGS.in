@@ -8,6 +8,7 @@
 --warn-unused-imports
 --warn-insts-with-functors-without-type
 --warn-suspicious-foreign-code
+--warn-implicit-stream-calls
 --halt-at-warn
 --no-warn-inferred-erroneous
 --no-mercury-stdlib-dir

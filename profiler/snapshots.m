@@ -19,7 +19,7 @@
 
 :- import_module io.
 
-:- pred show_snapshots(io::di, io::uo) is det.
+:- pred show_snapshots(io.text_output_stream::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -97,7 +97,7 @@
 
 %---------------------------------------------------------------------------%
 
-show_snapshots(!IO) :-
+show_snapshots(OutputStream, !IO) :-
     globals.io_lookup_string_option(snapshots_file, SnapshotsFile, !IO),
     globals.io_lookup_bool_option(snapshots_by_type, ByType, !IO),
     globals.io_lookup_bool_option(snapshots_brief, Brief, !IO),
@@ -114,7 +114,8 @@ show_snapshots(!IO) :-
     io.open_input(SnapshotsFile, OpenDeclRes, !IO),
     (
         OpenDeclRes = ok(DeclStream),
-        parse_alloc_site_decls(DeclStream, AllocSiteMap, SizeMap, !IO),
+        read_and_parse_alloc_site_decls(DeclStream, AllocSiteMap, SizeMap,
+            !IO),
         io.close_input(DeclStream, !IO)
     ;
         OpenDeclRes = error(DeclError),
@@ -124,9 +125,10 @@ show_snapshots(!IO) :-
     ),
     io.open_input(SnapshotsFile, OpenRes, !IO),
     (
-        OpenRes = ok(Stream),
-        show_all_snapshots(Stream, Options, AllocSiteMap, SizeMap, !IO),
-        io.close_input(Stream, !IO)
+        OpenRes = ok(SnapshotStream),
+        show_all_snapshots(SnapshotStream, OutputStream, Options,
+            AllocSiteMap, SizeMap, !IO),
+        io.close_input(SnapshotStream, !IO)
     ;
         OpenRes = error(Error),
         ErrorStr = "error opening file `" ++ SnapshotsFile ++
@@ -136,20 +138,22 @@ show_snapshots(!IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_alloc_site_decls(io.input_stream::in,
+:- pred read_and_parse_alloc_site_decls(io.text_input_stream::in,
     alloc_site_map::out, size_map::out, io::di, io::uo) is det.
 
-parse_alloc_site_decls(Stream, AllocSiteMap, SizeMap, !IO) :-
-    io.read_line_as_string(Stream, LineRes, !IO),
+read_and_parse_alloc_site_decls(InputStream, AllocSiteMap, SizeMap, !IO) :-
+    io.read_line_as_string(InputStream, LineRes, !IO),
     (
         LineRes = ok(Line),
         % Search for the size_map, which indicates the start of allocation site
         % declarations.
         ( if string.prefix(Line, "size_map ") then
             parse_size_map(Line, SizeMap),
-            parse_alloc_site_lines(Stream, map.init, AllocSiteMap, !IO)
+            read_and_parse_alloc_site_lines(InputStream,
+                map.init, AllocSiteMap, !IO)
         else
-            parse_alloc_site_decls(Stream, AllocSiteMap, SizeMap, !IO)
+            read_and_parse_alloc_site_decls(InputStream, AllocSiteMap, SizeMap,
+                !IO)
         )
     ;
         LineRes = eof,
@@ -171,15 +175,15 @@ parse_size_map(Line, SizeMap) :-
         unexpected($pred, "format error: bad size_map line")
     ).
 
-:- pred parse_alloc_site_lines(io.input_stream::in,
+:- pred read_and_parse_alloc_site_lines(io.input_stream::in,
     alloc_site_map::in, alloc_site_map::out, io::di, io::uo) is det.
 
-parse_alloc_site_lines(Stream, !AllocSiteMap, !IO) :-
-    io.read_line_as_string(Stream, LineRes, !IO),
+read_and_parse_alloc_site_lines(InputStream, !AllocSiteMap, !IO) :-
+    io.read_line_as_string(InputStream, LineRes, !IO),
     (
         LineRes = ok(Line),
-        parse_alloc_site_line(Line, !AllocSiteMap, !IO),
-        parse_alloc_site_lines(Stream, !AllocSiteMap, !IO)
+        parse_alloc_site_line(Line, !AllocSiteMap),
+        read_and_parse_alloc_site_lines(InputStream, !AllocSiteMap, !IO)
     ;
         LineRes = eof
     ;
@@ -188,9 +192,9 @@ parse_alloc_site_lines(Stream, !AllocSiteMap, !IO) :-
     ).
 
 :- pred parse_alloc_site_line(string::in,
-    alloc_site_map::in, alloc_site_map::out, io::di, io::uo) is det.
+    alloc_site_map::in, alloc_site_map::out) is det.
 
-parse_alloc_site_line(Line0, !AllocSiteMap, !IO) :-
+parse_alloc_site_line(Line0, !AllocSiteMap) :-
     Line = string.chomp(Line0),
     Words = string.split_at_char('\t', Line),
     ( if
@@ -209,18 +213,22 @@ parse_alloc_site_line(Line0, !AllocSiteMap, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred show_all_snapshots(io.input_stream::in, snapshot_options::in,
-    alloc_site_map::in, size_map::in, io::di, io::uo) is det.
+:- pred show_all_snapshots(io.text_input_stream::in, io.text_output_stream::in,
+    snapshot_options::in, alloc_site_map::in, size_map::in,
+    io::di, io::uo) is det.
 
-show_all_snapshots(Stream, Options, AllocSiteMap, SizeMap, !IO) :-
-    io.read_line_as_string(Stream, LineRes, !IO),
+show_all_snapshots(InputStream, OutputStream, Options, AllocSiteMap, SizeMap,
+        !IO) :-
+    io.read_line_as_string(InputStream, LineRes, !IO),
     (
         LineRes = ok(Line),
         ( if string.remove_prefix("start ", Line, SnapshotName0) then
             SnapshotName = string.chomp(SnapshotName0),
-            output_snapshot_title(SnapshotName, !IO),
-            show_single_snapshot(Stream, Options, AllocSiteMap, SizeMap, !IO),
-            show_all_snapshots(Stream, Options, AllocSiteMap, SizeMap, !IO)
+            output_snapshot_title(OutputStream, SnapshotName, !IO),
+            show_single_snapshot(InputStream, OutputStream, Options,
+                AllocSiteMap, SizeMap, !IO),
+            show_all_snapshots(InputStream, OutputStream, Options,
+                AllocSiteMap, SizeMap, !IO)
         else
             true
         )
@@ -231,21 +239,25 @@ show_all_snapshots(Stream, Options, AllocSiteMap, SizeMap, !IO) :-
         unexpected($pred, io.error_message(Error))
     ).
 
-:- pred show_single_snapshot(io.input_stream::in, snapshot_options::in,
+:- pred show_single_snapshot(
+    io.text_input_stream::in, io.text_output_stream::in, snapshot_options::in,
     alloc_site_map::in, size_map::in, io::di, io::uo) is det.
 
-show_single_snapshot(Stream, Options, AllocSiteMap, SizeMap, !IO) :-
-    parse_snapshot(Stream, Options, AllocSiteMap, SizeMap, AllocCounts, !IO),
+show_single_snapshot(InputStream, OutputStream, Options,
+        AllocSiteMap, SizeMap, !IO) :-
+    read_and_parse_snapshot(InputStream, Options, AllocSiteMap, SizeMap,
+        AllocCounts, !IO),
     MajorAxis = Options ^ major_axis,
     make_sorted_groups(MajorAxis, AllocCounts, Groups),
-    output_snapshot(Options, Groups, !IO).
+    output_snapshot(OutputStream, Options, Groups, !IO).
 
-:- pred parse_snapshot(io.input_stream::in, snapshot_options::in,
+:- pred read_and_parse_snapshot(io.input_stream::in, snapshot_options::in,
     alloc_site_map::in, size_map::in, list(alloc_site_counts)::out,
     io::di, io::uo) is det.
 
-parse_snapshot(Stream, Options, AllocSiteMap, SizeMap, AllocCounts, !IO) :-
-    io.read_line_as_string(Stream, LineRes, !IO),
+read_and_parse_snapshot(InputStream, Options, AllocSiteMap, SizeMap,
+        AllocCounts, !IO) :-
+    io.read_line_as_string(InputStream, LineRes, !IO),
     (
         LineRes = ok(Line),
         ( if
@@ -255,12 +267,12 @@ parse_snapshot(Stream, Options, AllocSiteMap, SizeMap, AllocCounts, !IO) :-
         else if
             parse_alloc_site(Options, AllocSiteMap, SizeMap, Line, Counts)
         then
-            parse_snapshot(Stream, Options, AllocSiteMap, SizeMap,
-                RestCounts, !IO),
+            read_and_parse_snapshot(InputStream, Options,
+                AllocSiteMap, SizeMap, RestCounts, !IO),
             AllocCounts = [Counts | RestCounts]
         else
-            parse_snapshot(Stream, Options, AllocSiteMap, SizeMap,
-                AllocCounts, !IO)
+            read_and_parse_snapshot(InputStream, Options,
+                AllocSiteMap, SizeMap, AllocCounts, !IO)
         )
     ;
         LineRes = eof,
@@ -361,34 +373,36 @@ make_group(Counts, Group) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred output_snapshot_title(string::in, io::di, io::uo) is det.
+:- pred output_snapshot_title(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-output_snapshot_title(SnapshotName, !IO) :-
-    io.write_string("------ ", !IO),
-    io.write_string(SnapshotName, !IO),
-    io.write_string(" ------\n", !IO).
+output_snapshot_title(OutputStream, SnapshotName, !IO) :-
+    io.write_string(OutputStream, "------ ", !IO),
+    io.write_string(OutputStream, SnapshotName, !IO),
+    io.write_string(OutputStream, " ------\n", !IO).
 
-:- pred output_snapshot(snapshot_options::in, list(group)::in, io::di, io::uo)
-    is det.
+:- pred output_snapshot(io.text_output_stream::in, snapshot_options::in,
+    list(group)::in, io::di, io::uo) is det.
 
-output_snapshot(Options, Grouped, !IO) :-
-    output_column_names(Options, !IO),
+output_snapshot(OutputStream, Options, Grouped, !IO) :-
+    output_column_names(OutputStream, Options, !IO),
     list.foldl2(sum_groups, Grouped, 0, TotalCells, 0, TotalWords),
-    io.format(" %7d%17d%14s  %s\n",
+    io.format(OutputStream, " %7d%17d%14s  %s\n",
         [i(TotalCells), i(TotalWords), s(""), s("total")], !IO),
     Brief = Options ^ brief,
     (
         Brief = yes
     ;
         Brief = no,
-        io.nl(!IO)
+        io.nl(OutputStream, !IO)
     ),
-    list.foldl2(output_group(Options, TotalCells, TotalWords),
+    list.foldl2(output_group(OutputStream, Options, TotalCells, TotalWords),
         Grouped, 0, _CumulWords, !IO).
 
-:- pred output_column_names(snapshot_options::in, io::di, io::uo) is det.
+:- pred output_column_names(io.text_output_stream::in, snapshot_options::in,
+    io::di, io::uo) is det.
 
-output_column_names(Options, !IO) :-
+output_column_names(OutputStream, Options, !IO) :-
     MajorAxis = Options ^ major_axis,
     (
         MajorAxis = major_axis_proc,
@@ -397,16 +411,14 @@ output_column_names(Options, !IO) :-
         MajorAxis = major_axis_type,
         RightLabel = "type / procedure (location)"
     ),
-    io.format(" %7s%17s%14s  %s\n",
-        [s("cells"),
-        s("words"),
-        s("cumul"),
-        s(RightLabel)], !IO).
+    io.format(OutputStream, " %7s%17s%14s  %s\n",
+        [s("cells"), s("words"), s("cumul"), s(RightLabel)], !IO).
 
-:- pred output_group(snapshot_options::in, int::in, int::in, group::in,
-    int::in, int::out, io::di, io::uo) is det.
+:- pred output_group(io.text_output_stream::in, snapshot_options::in,
+    int::in, int::in, group::in, int::in, int::out, io::di, io::uo) is det.
 
-output_group(Options, TotalCells, TotalWords, Group, !CumulWords, !IO) :-
+output_group(OutputStream, Options, TotalCells, TotalWords, Group,
+        !CumulWords, !IO) :-
     Group = group(NumCells, NumWords, AllocSite, Counts),
     !:CumulWords = !.CumulWords + NumWords,
     CellsPercent = percentage(NumCells, TotalCells),
@@ -434,7 +446,7 @@ output_group(Options, TotalCells, TotalWords, Group, !CumulWords, !IO) :-
             Brief = no,
             Star = ('*')
         ),
-        io.format("%c%7d/%5.1f%% %9d/%5.1f%% %5.1f%%  %s\n",
+        io.format(OutputStream, "%c%7d/%5.1f%% %9d/%5.1f%% %5.1f%%  %s\n",
             [c(Star),
             i(NumCells), f(CellsPercent),
             i(NumWords), f(WordsPercent), f(CumulPercent),
@@ -444,16 +456,19 @@ output_group(Options, TotalCells, TotalWords, Group, !CumulWords, !IO) :-
         ;
             Brief = no,
             Single = ( if Counts = [_] then yes else no ),
-            list.foldl(output_site(MajorAxis, TotalCells, TotalWords, Single),
+            list.foldl(
+                output_site(OutputStream, MajorAxis, TotalCells, TotalWords,
+                    Single),
                 Counts, !IO),
-            io.nl(!IO)
+            io.nl(OutputStream, !IO)
         )
     ).
 
-:- pred output_site(major_axis::in, int::in, int::in, bool::in,
-    alloc_site_counts::in, io::di, io::uo) is det.
+:- pred output_site(io.text_output_stream::in, major_axis::in,
+    int::in, int::in, bool::in, alloc_site_counts::in, io::di, io::uo) is det.
 
-output_site(MajorAxis, TotalCells, TotalWords, Single, AllocCounts, !IO) :-
+output_site(OutputStream, MajorAxis, TotalCells, TotalWords, Single,
+        AllocCounts, !IO) :-
     AllocCounts = alloc_site_counts(AllocSite, NumCells, NumWords),
     AllocSite = alloc_site(Proc, Type, File, LineNum, _),
     CellsPercent = percentage(NumCells, TotalCells),
@@ -467,7 +482,8 @@ output_site(MajorAxis, TotalCells, TotalWords, Single, AllocCounts, !IO) :-
     ),
     (
         Single = yes,
-        io.format(" %38s  %s (%s:%d)\n",
+        io.format(OutputStream,
+            " %38s  %s (%s:%d)\n",
             [s(""), s(RightLabel), s(File), i(LineNum)], !IO)
     ;
         Single = no,
@@ -477,11 +493,11 @@ output_site(MajorAxis, TotalCells, TotalWords, Single, AllocCounts, !IO) :-
         then
             true
         else
-            io.format(" %7d/%5.1f%% %9d/%5.1f%%  %5s  %s (%s:%d)\n", [
-                i(NumCells), f(CellsPercent),
+            io.format(OutputStream,
+                " %7d/%5.1f%% %9d/%5.1f%%  %5s  %s (%s:%d)\n",
+                [i(NumCells), f(CellsPercent),
                 i(NumWords), f(WordsPercent), s(""),
-                s(RightLabel), s(File), i(LineNum)
-            ], !IO)
+                s(RightLabel), s(File), i(LineNum)], !IO)
         )
     ).
 

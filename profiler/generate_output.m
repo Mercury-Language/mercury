@@ -25,8 +25,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_prof_output(prof::in, map(string, int)::out,
-    profiler_output::out, io::di, io::uo) is det.
+:- pred generate_prof_output(io.text_output_stream::in, prof::in,
+    map(string, int)::out, profiler_output::out, io::di, io::uo) is det.
 
 :- func checked_float_divide(float, float) = float.
 
@@ -68,14 +68,14 @@
 
 %---------------------------------------------------------------------------%
 
-generate_prof_output(Prof, IndexMap, Output, !IO) :-
+generate_prof_output(ProgressStream, Prof, IndexMap, Output, !IO) :-
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
 
     % Get intitial values of use.
     prof_get_entire(Prof, _, _, _IntTotalCounts, _, ProfNodeMap, _),
     ProfNodeList = map.values(ProfNodeMap),
     OutputProf0 = profiling_init,
-    process_prof_node_list(ProfNodeList, Prof, VeryVerbose,
+    process_prof_node_list(ProgressStream, ProfNodeList, Prof, VeryVerbose,
         OutputProf0, OutputProf, !IO),
 
     OutputProf = profiling(InfoMap, CallTree, FlatTree),
@@ -86,20 +86,23 @@ generate_prof_output(Prof, IndexMap, Output, !IO) :-
     FlatList = list.reverse(FlatList0),
     Output = profiler_output(InfoMap, CallList, FlatList).
 
-:- pred process_prof_node_list(list(prof_node)::in, prof::in, bool::in,
+:- pred process_prof_node_list(io.text_output_stream::in,
+    list(prof_node)::in, prof::in, bool::in,
     profiling::in, profiling::out, io::di, io::uo) is det.
 
-process_prof_node_list([], _, _, !OutputProf, !IO).
-process_prof_node_list([PN | PNs], Prof, VeryVerbose, !OutputProf, !IO) :-
+process_prof_node_list(_, [], _, _, !OutputProf, !IO).
+process_prof_node_list(ProgressStream, [PN | PNs], Prof, VeryVerbose,
+        !OutputProf, !IO) :-
     (
         VeryVerbose = yes,
         prof_node_get_pred_name(PN, LabelName),
-        io.write_string("\n\t% Processing " ++ LabelName, !IO)
+        io.write_string(ProgressStream, "\n\t% Processing " ++ LabelName, !IO)
     ;
         VeryVerbose = no
     ),
     process_prof_node(PN, Prof, !OutputProf),
-    process_prof_node_list(PNs, Prof, VeryVerbose, !OutputProf, !IO).
+    process_prof_node_list(ProgressStream, PNs, Prof, VeryVerbose,
+        !OutputProf, !IO).
 
     % process_prof_node(ProfNode, Prof, !OutputProf):
     %

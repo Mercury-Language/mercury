@@ -59,18 +59,21 @@
 :- pred special_handler(option::in, special_data::in, option_table::in,
     maybe_option_table(option)::out) is semidet.
 
-:- pred options_help(io::di, io::uo) is det.
+:- pred options_help(io.text_output_stream::in, io::di, io::uo) is det.
 
 % A couple of misc utilities
 
-:- pred maybe_write_string(bool::input, string::input, io::di, io::uo) is det.
-:- pred maybe_flush_output(bool::in, io::di, io::uo) is det.
+:- pred maybe_write_string(io.text_output_stream::in, bool::in, string::in,
+    io::di, io::uo) is det.
+:- pred maybe_flush_output(io.text_output_stream::in, bool::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module list.
 :- import_module map.
 
 %---------------------------------------------------------------------------%
@@ -162,69 +165,70 @@ valid_profile_option("memory-words", "Prof.MemoryWords").
 valid_profile_option("memory-cells", "Prof.MemoryCells").
 valid_profile_option("time", "Prof.Counts").
 
-options_help -->
-    io.write_string("\t-h, --help\n"),
-    io.write_string("\t\tPrint this usage message.\n"),
-
-    io.write_string("\nProfiler Options:\n"),
-    io.write_string("\t-c, --call-graph\n"),
-    io.write_string("\t\tInclude the call graph profile.\n"),
-    io.write_string("\t-d, --use-dynamic\n"),
-    io.write_string("\t\tBuild the call graph dynamically.\n"),
-    io.write_string("\t-p, --profile {time, memory-words, memory-cells}\n"),
-    io.write_string("\t\tSelect what to profile: time, amount of memory allocated, or\n"),
-    io.write_string("\t\tnumber of memory allocations (regardless of size).\n"),
-    io.write_string("\t-m\n"),
-    io.write_string("\t\tSame as `--profile memory-words'\n"),
-    io.write_string("\t-M\n"),
-    io.write_string("\t\tSame as `--profile memory-cells'.\n"),
-    io.write_string("\t-t\n"),
-    io.write_string("\t\tSame as `--profile time'.\n"),
-    io.write_string("\t--no-demangle\n"),
-    io.write_string("\t\tOutput the mangled predicate and function names.\n"),
-
-    io.write_string("\nFilename Options:\n"),
-    io.write_string("\t-C <file>, --count-file <file>\n"),
-    io.write_string("\t\tName of the count file. Usually `Prof.Counts',\n"),
-    io.write_string("\t\t`Prof.MemoryWords', or `Prof.MemoryCells'.\n"),
-    io.write_string("\t-D <file>, --declaration-file <file>\n"),
-    io.write_string("\t\tName of the declaration file. Usually `Prof.Decl'.\n"),
-    io.write_string("\t-P <file>, --call-pair-file <file>\n"),
-    io.write_string("\t\tName of the call-pair file. Usually `Prof.CallPair'.\n"),
-    io.write_string("\t-L <file>, --library-callgraph <file>\n"),
-    io.write_string("\t\tName of the file which contains the call graph for\n"),
-    io.write_string("\t\tthe library modules.\n"),
-
-    io.write_string("\nSnapshot options:\n"),
-    io.write_string("\t-s, --snapshots\n"),
-    io.write_string("\t\tShow summary of heap objects at the times\n"),
-    io.write_string("\t\t`benchmarking.report_memory_attribution' was called.\n"),
-    io.write_string("\t\tThis overrides other profiler modes.\n"),
-    io.write_string("\t--snapshots-file <file>\n"),
-    io.write_string("\t\tName of the snapshots file. Usually `Prof.Snapshots'.\n"),
-    io.write_string("\t-T, --snapshots-by-type\n"),
-    io.write_string("\t\tGroup results by type.\n"),
-    io.write_string("\t-b, --snapshots-brief\n"),
-    io.write_string("\t\tGenerate a brief profile.\n"),
-    io.write_string("\t-r, --snapshots-include-runtime\n"),
-    io.write_string("\t\tInclude internal Mercury runtime structures in the\n"),
-    io.write_string("\t\tprofile. These are excluded by default.\n"),
-
-    io.write_string("\nVerbosity Options:\n"),
-    io.write_string("\t-v, --verbose\n"),
-    io.write_string("\t\tOutput progress messages at each stage.\n"),
-    io.write_string("\t-V, --very-verbose\n"),
-    io.write_string("\t\tOutput very verbose progress messages.\n").
+options_help(OutputStream, !IO) :-
+    io.write_strings(OutputStream, [
+        "-h, --help\n",
+        "\t\tPrint this usage message.\n",
+        "\n",
+        "Profiler Options:\n",
+        "\t-c, --call-graph\n",
+        "\t\tInclude the call graph profile.\n",
+        "\t-d, --use-dynamic\n",
+        "\t\tBuild the call graph dynamically.\n",
+        "\t-p, --profile {time, memory-words, memory-cells}\n",
+        "\t\tSelect what to profile: time, amount of memory allocated, or\n",
+        "\t\tnumber of memory allocations (regardless of size).\n",
+        "\t-m\n",
+        "\t\tSame as `--profile memory-words'\n",
+        "\t-M\n",
+        "\t\tSame as `--profile memory-cells'.\n",
+        "\t-t\n",
+        "\t\tSame as `--profile time'.\n",
+        "\t--no-demangle\n",
+        "\t\tOutput the mangled predicate and function names.\n",
+        "\n",
+        "Filename Options:\n",
+        "\t-C <file>, --count-file <file>\n",
+        "\t\tName of the count file. Usually `Prof.Counts',\n",
+        "\t\t`Prof.MemoryWords', or `Prof.MemoryCells'.\n",
+        "\t-D <file>, --declaration-file <file>\n",
+        "\t\tName of the declaration file. Usually `Prof.Decl'.\n",
+        "\t-P <file>, --call-pair-file <file>\n",
+        "\t\tName of the call-pair file. Usually `Prof.CallPair'.\n",
+        "\t-L <file>, --library-callgraph <file>\n",
+        "\t\tName of the file which contains the call graph for\n",
+        "\t\tthe library modules.\n",
+        "\n",
+        "Snapshot options:\n",
+        "\t-s, --snapshots\n",
+        "\t\tShow summary of heap objects at the times\n",
+        "\t\t`benchmarking.report_memory_attribution' was called.\n",
+        "\t\tThis overrides other profiler modes.\n",
+        "\t--snapshots-file <file>\n",
+        "\t\tName of the snapshots file. Usually `Prof.Snapshots'.\n",
+        "\t-T, --snapshots-by-type\n",
+        "\t\tGroup results by type.\n",
+        "\t-b, --snapshots-brief\n",
+        "\t\tGenerate a brief profile.\n",
+        "\t-r, --snapshots-include-runtime\n",
+        "\t\tInclude internal Mercury runtime structures in the\n",
+        "\t\tprofile. These are excluded by default.\n",
+        "\n",
+        "Verbosity Options:\n",
+        "\t-v, --verbose\n",
+        "\t\tOutput progress messages at each stage.\n",
+        "\t-V, --very-verbose\n",
+        "\t\tOutput very verbose progress messages.\n"], !IO).
 
 %---------------------------------------------------------------------------%
 
-maybe_write_string(yes, String, !IO) :-
-    io.write_string(String, !IO).
-maybe_write_string(no, _, !IO).
+maybe_write_string(OutputStream, yes, String, !IO) :-
+    io.write_string(OutputStream, String, !IO).
+maybe_write_string(_OutputStream, no, _, !IO).
 
-maybe_flush_output(yes, !IO) :-
-    io.flush_output(!IO).
-maybe_flush_output(no, !IO).
+maybe_flush_output(OutputStream, yes, !IO) :-
+    io.flush_output(OutputStream, !IO).
+maybe_flush_output(_OutputStream, no, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module options.
