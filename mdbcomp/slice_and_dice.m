@@ -186,6 +186,7 @@
 :- import_module mdbcomp.rtti_access.
 :- import_module mdbcomp.sym_name.
 
+:- import_module cord.
 :- import_module float.
 :- import_module int.
 :- import_module list.
@@ -329,8 +330,8 @@ read_dice(PassFile, FailFile, Result, !IO) :-
         read_trace_counts_source(FailFile, ReadFailResult, !IO),
         (
             ReadFailResult = list_ok(FailFileType, FailTraceCounts),
-            dice_merge_trace_counts(pass_slice, PassTraceCounts, map.init,
-                PassDiceProcMap),
+            dice_merge_trace_counts(pass_slice, PassTraceCounts,
+                map.init, PassDiceProcMap),
             dice_merge_trace_counts(fail_slice, FailTraceCounts,
                 PassDiceProcMap, DiceProcMap),
             TotalPassTests = num_tests_for_file_type(PassFileType),
@@ -586,16 +587,18 @@ slice_sort_string_is_valid(Str0) :-
 :- func slice_to_label_counts(slice_proc_map) = list(slice_label_count).
 
 slice_to_label_counts(SliceProcMap) = LabelCounts :-
-    map.foldl(append_slice_label_counts, SliceProcMap, [], LabelCounts).
+    map.foldl(append_slice_label_counts, SliceProcMap,
+        cord.init, LabelCountsCord),
+    LabelCounts = cord.list(LabelCountsCord).
 
 :- pred append_slice_label_counts(proc_label::in, proc_slice::in,
-    list(slice_label_count)::in, list(slice_label_count)::out) is det.
+    cord(slice_label_count)::in, cord(slice_label_count)::out) is det.
 
 append_slice_label_counts(ProcLabel, ProcSlice, !LabelCounts) :-
     map.to_assoc_list(ProcSlice, ProcExecCounts),
-    list.map(make_slice_label_count(ProcLabel), ProcExecCounts,
-        NewLabelCounts),
-    append(!.LabelCounts, NewLabelCounts, !:LabelCounts).
+    list.map(make_slice_label_count(ProcLabel),
+        ProcExecCounts, NewLabelCounts),
+    !:LabelCounts = !.LabelCounts ++ cord.from_list(NewLabelCounts).
 
 :- pred make_slice_label_count(proc_label::in,
     pair(path_port, slice_exec_count)::in, slice_label_count::out) is det.
@@ -624,7 +627,6 @@ format_slice_label_counts(LabelCounts, TotalTests,
     (
         % All events were executed in one test. Don't include the redundant
         % column containing "(1)" at the end of each line.
-        %
         OtherTests = [],
         Columns = AlwaysColumns
     ;
@@ -966,27 +968,41 @@ proc_label_is_for_module(Module, ProcLabel) :-
 
 format_proc_label(ProcLabel) = Str :-
     (
-        ProcLabel = ordinary_proc_label(_, PredOrFunc, SymModule, Name, Arity,
-            ModeNo),
+        ProcLabel = ordinary_proc_label(_, PredOrFunc, SymModule, Name, Arity0,
+            ModeNum),
         Module = sym_name_to_string(SymModule),
         (
             PredOrFunc = pf_function,
-            ArityStr = int_to_string(Arity - 1),
-            PredOrFuncStr = "func"
+            PredOrFuncStr = "func",
+            Arity = Arity0 - 1
         ;
             PredOrFunc = pf_predicate,
-            ArityStr = int_to_string(Arity),
-            PredOrFuncStr = "pred"
+            PredOrFuncStr = "pred",
+            Arity = Arity0
         ),
-        Str = PredOrFuncStr ++ " " ++ Module ++ "." ++ Name ++
-            "/" ++ ArityStr ++ "-" ++ int_to_string(ModeNo)
+        Str = string.format("%s %s.%s/%d-%d",
+            [s(PredOrFuncStr), s(Module), s(Name), i(Arity), i(ModeNum)])
     ;
         ProcLabel = special_proc_label(_, SpecialPredId, SymModule, TypeName,
-            _, _),
+            TypeArity, ModeNum),
         Module = sym_name_to_string(SymModule),
-        special_pred_name_arity(SpecialPredId, Name, _, Arity),
-        Str = Name ++ " for " ++ Module ++ "." ++ TypeName ++ "/" ++
-            int_to_string(Arity)
+        special_pred_name_arity(SpecialPredId, OpName, _, _OpArity),
+        % XXX We used to print the arity of the operation here, but that
+        % is extremely non-informative, always being 2 for unify and index
+        % operations, and 3 for compares.
+        %
+        % Str = string.format("%s for %s.%s/%d",
+        %     [s(OpName), s(Module), s(TypeName), i(OpArity)])
+        %
+        % We now instead print two pieces of information the user
+        % may actually need: the arity of the type constructor
+        % (since knowing that e.g. the compare predicate for t/2
+        % is called more often than the compare predicate for t/1
+        % may be useful), and the mode number (again, because
+        % differences in trace counts for different modes
+        % may help indicate hotspots).
+        Str = string.format("%s for %s.%s/%d-%d",
+            [s(OpName), s(Module), s(TypeName), i(TypeArity), i(ModeNum)])
     ).
 
 :- func format_path_port(path_port) = string.
