@@ -1183,6 +1183,8 @@
 :- mode write_line(in, in, in, di, uo) is cc_multi.
 
 :- pred write_line_cc(T::in, io::di, io::uo) is cc_multi.
+:- pred write_line_cc(io.text_output_stream::in, T::in, io::di, io::uo)
+    is cc_multi.
 
     % Writes a binary representation of a term to the current binary output
     % stream or to the specified stream, in a format suitable for reading in
@@ -8847,6 +8849,10 @@ write_line(Stream, NonCanon, X, !IO) :-
 write_line_cc(X, !IO) :-
     io.write_cc(X, !IO),
     io.nl(!IO).
+
+write_line_cc(Stream, X, !IO) :-
+    io.write_cc(Stream, X, !IO),
+    io.nl(Stream, !IO).
 
 %---------------------%
 

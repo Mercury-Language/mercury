@@ -124,6 +124,9 @@ Changes to the Mercury standard library
 
 ### Changes to the `io` module
 
+* The following predicate has been added to this module:
+    - pred `write_line_cc/4`
+
 * The following obsolete predicates have been removed:
 
     - pred `make_temp/3`            (replacement: `make_temp_file/3`)

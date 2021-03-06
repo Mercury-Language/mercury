@@ -940,8 +940,7 @@ write_binding(OutputStream, Bindings, Output, !IO) :-
 
 report_exception(OutputStream, Excp, !IO) :-
     io.write_string(OutputStream, "*** caught exception: ", !IO),
-    io.write_cc(OutputStream, Excp, !IO),
-    io.nl(OutputStream, !IO).
+    io.write_line_cc(OutputStream, Excp, !IO).
 
 %---------------------------------------------------------------------------%
 %
