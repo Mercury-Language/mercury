@@ -519,11 +519,12 @@ lookup_multi_sites([RestArray | RestArrays], SlotNum, [CSDList | CSDLists]) :-
 
 record_pd_redirect(RestPDPtrs, PrimePDPtr, !Redirect) :-
     trace [compiletime(flag("pd_redirect")), io(!IO)] (
-        io.write_string("pd redirect: ", !IO),
-        io.print(RestPDPtrs, !IO),
-        io.write_string(" -> ", !IO),
-        io.print(PrimePDPtr, !IO),
-        io.nl(!IO)
+        io.output_stream(OutputStream, !IO),
+        io.write_string(OutputStream, "pd redirect: ", !IO),
+        io.print(OutputStream, RestPDPtrs, !IO),
+        io.write_string(OutputStream, " -> ", !IO),
+        io.print(OutputStream, PrimePDPtr, !IO),
+        io.nl(OutputStream, !IO)
     ),
 
     lookup_pd_redirect(!.Redirect ^ pd_redirect, PrimePDPtr, OldRedirect),
@@ -554,11 +555,12 @@ record_pd_redirect_2([RestPDPtr | RestPDPtrs], PrimePDPtr, !Redirect) :-
 
 record_csd_redirect(RestCSDPtrs, PrimeCSDPtr, !Redirect) :-
     trace [compiletime(flag("csd_redirect")), io(!IO)] (
-        io.write_string("csd redirect: ", !IO),
-        io.print(RestCSDPtrs, !IO),
-        io.write_string(" -> ", !IO),
-        io.print(PrimeCSDPtr, !IO),
-        io.nl(!IO)
+        io.output_stream(OutputStream, !IO),
+        io.write_string(OutputStream, "csd redirect: ", !IO),
+        io.print(OutputStream, RestCSDPtrs, !IO),
+        io.write_string(OutputStream, " -> ", !IO),
+        io.print(OutputStream, PrimeCSDPtr, !IO),
+        io.nl(OutputStream, !IO)
     ),
 
     lookup_csd_redirect(!.Redirect ^ csd_redirect, PrimeCSDPtr, OldRedirect),

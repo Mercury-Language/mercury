@@ -24,7 +24,8 @@
 :- import_module cord.
 :- import_module io.
 
-:- pred print_feedback_report(feedback_info::in, io::di, io::uo) is det.
+:- pred print_feedback_report(io.text_output_stream::in, feedback_info::in,
+    io::di, io::uo) is det.
 
 :- pred create_candidate_parallel_conj_report(var_name_table::in,
     candidate_par_conjunction(pard_goal)::in, cord(string)::out) is det.
@@ -52,7 +53,7 @@
 
 %---------------------------------------------------------------------------%
 
-print_feedback_report(FeedbackInfo, !IO) :-
+print_feedback_report(OutputStream, FeedbackInfo, !IO) :-
     get_all_feedback_info(FeedbackInfo, ProfiledProgramName,
         MaybeCandidateParConjs),
     % This code is structured like this to make it easy to add
@@ -76,7 +77,7 @@ print_feedback_report(FeedbackInfo, !IO) :-
         Reports = [_ | _],
         string.append_list(Reports, Report)
     ),
-    io.format("Feedback report for %s:\n\n%s",
+    io.format(OutputStream, "Feedback report for %s:\n\n%s",
         [s(ProfiledProgramName), s(Report)], !IO).
 
 %---------------------------------------------------------------------------%

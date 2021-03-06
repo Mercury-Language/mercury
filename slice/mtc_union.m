@@ -54,7 +54,14 @@ main(!IO) :-
             OutputFile \= ""
         then
             lookup_bool_option(OptionTable, verbose, Verbose),
-            read_and_union_trace_counts(Verbose, Args, NumTests, Kinds,
+            (
+                Verbose = yes,
+                ShowProgress = yes(StdOutStream)
+            ;
+                Verbose = no,
+                ShowProgress = no
+            ),
+            read_and_union_trace_counts(ShowProgress, Args, NumTests, Kinds,
                 TraceCounts, MaybeReadError, !IO),
             (
                 MaybeReadError = yes(ReadErrorMsg),

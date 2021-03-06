@@ -57,12 +57,14 @@
 % from the command line for debugging.
 
 main(!IO) :-
-    write_html_header(!IO),
+    io.stdin_stream(StdIn, !IO),
+    io.stdout_stream(StdOut, !IO),
+    write_html_header(StdOut, !IO),
     io.get_environment_var("QUERY_STRING", MaybeQueryString, !IO),
     (
         MaybeQueryString = yes(QueryString0),
-        getopt.process_options(
-            option_ops_multi(short, long, defaults), [], _, MaybeOptions),
+        OptionOps = option_ops_multi(short, long, defaults),
+        getopt.process_options(OptionOps, [], _, MaybeOptions),
         (
             MaybeOptions = ok(Options)
         ;
@@ -79,27 +81,28 @@ main(!IO) :-
                 MaybeCmd = no,
                 Cmd = default_command
             ),
-            process_query(Cmd, DeepFileName, MaybePrefs, Options, !IO)
+            process_query(StdOut, Cmd, DeepFileName, MaybePrefs, Options, !IO)
         ;
             MaybeDeepQuery = no,
             io.set_exit_status(1, !IO),
             % Give the simplest URL in the error message.
-            io.write_string("Bad URL; expected filename \n", !IO)
+            io.write_string(StdOut, "Bad URL; expected filename\n", !IO)
         )
     ;
         MaybeQueryString = no,
-        process_command_line(!IO)
+        process_command_line(StdIn, StdOut, !IO)
     ).
 
-:- pred process_command_line(io::di, io::uo) is cc_multi.
+:- pred process_command_line(io.text_input_stream::in,
+    io.text_output_stream::in, io::di, io::uo) is cc_multi.
 
-process_command_line(!IO) :-
+process_command_line(InputStream, OutputStream, !IO) :-
     io.progname_base(mdprof_cgi_progname, ProgName, !IO),
     io.command_line_arguments(Args0, !IO),
     trace [compiletime(flag("debug-args")), io(!DIO)] (
-        io.write_string("command line: ", !DIO),
-        io.write_list(Args0, " ", write_bracketed_string, !DIO),
-        io.nl(!DIO)
+        BracketedArgs0 = list.map(bracket_string, Args0),
+        io.format(OutputStream, "command line: %s\n",
+            [s(string.join_list(" ", BracketedArgs0))], !DIO)
     ),
     getopt.process_options(option_ops_multi(short, long, defaults),
         Args0, Args, MaybeOptions),
@@ -112,13 +115,13 @@ process_command_line(!IO) :-
         lookup_bool_option(Options, decode_prefs, DecodePrefs),
         (
             Help = yes,
-            write_help_message(ProgName, !IO)
+            write_help_message(OutputStream, ProgName, !IO)
         ;
             Help = no
         ),
         (
             Version = yes,
-            write_version_message(ProgName, !IO)
+            write_version_message(OutputStream, ProgName, !IO)
         ;
             Version = no
         ),
@@ -129,7 +132,8 @@ process_command_line(!IO) :-
         then
             true
         else
-            decode_input_lines(Decode, DecodeCmd, DecodePrefs, !IO)
+            decode_input_lines(InputStream, OutputStream,
+                Decode, DecodeCmd, DecodePrefs, !IO)
         ),
         ( if
             Help = no,
@@ -138,7 +142,7 @@ process_command_line(!IO) :-
             DecodeCmd = no,
             DecodePrefs = no
         then
-            process_args(ProgName, Args, Options, !IO)
+            process_args(OutputStream, ProgName, Args, Options, !IO)
         else
             true
         )
@@ -146,76 +150,80 @@ process_command_line(!IO) :-
         MaybeOptions = error(Error),
         Msg = option_error_to_string(Error),
         io.set_exit_status(1, !IO),
-        io.format("%s: error parsing options: %s\n",
+        io.format(OutputStream, "%s: error parsing options: %s\n",
             [s(ProgName), s(Msg)], !IO)
     ).
 
-:- pred decode_input_lines(bool::in, bool::in, bool::in, io::di, io::uo)
-    is det.
+:- pred decode_input_lines(io.text_input_stream::in, io.text_output_stream::in,
+    bool::in, bool::in, bool::in, io::di, io::uo) is det.
 
-decode_input_lines(Decode, DecodeCmd, DecodePrefs, !IO) :-
-    io.read_line_as_string(LineResult, !IO),
+decode_input_lines(InputStream, OutputStream, Decode, DecodeCmd, DecodePrefs,
+        !IO) :-
+    io.read_line_as_string(InputStream, LineResult, !IO),
     (
         LineResult = ok(LineStr),
         (
             Decode = no
         ;
             Decode = yes,
-            io.write_string("considering as query string:\n", !IO),
+            io.write_string(OutputStream,
+                "considering as query string:\n", !IO),
             string_to_maybe_query(LineStr) = MaybeQuery,
             (
                 MaybeQuery = yes(deep_query(MaybeCmd, DeepFileName,
                     MaybePrefs)),
-                io.write_string("Maybe Command:\n", !IO),
-                io.write(MaybeCmd, !IO),
-                io.nl(!IO),
-                io.format("Deep File Name: %s\n", [s(DeepFileName)], !IO),
+                io.write_string(OutputStream, "Maybe Command:\n", !IO),
+                io.write_line(OutputStream, MaybeCmd, !IO),
+                io.format(OutputStream, "Deep File Name: %s\n",
+                    [s(DeepFileName)], !IO),
                 % The preferences may fail to parse, in this case no
                 % preferences are assumed.
-                io.write_string("Maybe Preferences:\n", !IO),
-                io.write(MaybePrefs, !IO),
-                io.nl(!IO)
+                io.write_string(OutputStream, "Maybe Preferences:\n", !IO),
+                io.write_line(OutputStream, MaybePrefs, !IO)
             ;
                 MaybeQuery = no,
-                io.write_string("invalid query string: " ++
-                    "cannot split into components\n", !IO)
+                io.write_string(OutputStream,
+                    "invalid query string: cannot split into components\n",
+                    !IO)
             )
         ),
         (
             DecodeCmd = no
         ;
             DecodeCmd = yes,
-            io.write_string("considering as cmd string:\n", !IO),
+            io.write_string(OutputStream, "considering as cmd string:\n", !IO),
             MaybeCmd1 = string_to_maybe_cmd(LineStr),
             (
                 MaybeCmd1 = no,
-                io.format("invalid command string %s\n", [s(LineStr)], !IO)
+                io.format(OutputStream, "invalid command string %s\n",
+                    [s(LineStr)], !IO)
             ;
                 MaybeCmd1 = yes(Cmd),
-                io.write(Cmd, !IO),
-                io.nl(!IO)
+                io.write_line(OutputStream, Cmd, !IO)
             )
         ),
         (
             DecodePrefs = no
         ;
             DecodePrefs = yes,
-            io.write_string("considering as preference string:\n", !IO),
+            io.write_string(OutputStream,
+                "considering as preference string:\n", !IO),
             MaybePref = string_to_maybe_pref(LineStr),
             (
                 MaybePref = no,
-                io.format("invalid preferences string %s\n", [s(LineStr)], !IO)
+                io.format(OutputStream,
+                    "invalid preferences string %s\n", [s(LineStr)], !IO)
             ;
                 MaybePref = yes(Pref),
-                io.write(Pref, !IO),
-                io.nl(!IO)
+                io.write_line(OutputStream, Pref, !IO)
             )
         ),
-        decode_input_lines(Decode, DecodeCmd, DecodePrefs, !IO)
+        decode_input_lines(InputStream, OutputStream,
+            Decode, DecodeCmd, DecodePrefs, !IO)
     ;
         LineResult = error(Error),
         io.error_message(Error, Msg),
-        io.format("%s\n", [s(Msg)], !IO)
+        io.format(OutputStream, "%s\n", [s(Msg)], !IO)
     ;
         LineResult = eof
     ).
@@ -224,60 +232,62 @@ decode_input_lines(Decode, DecodeCmd, DecodePrefs, !IO) :-
 
 mdprof_cgi_progname = "mdprof_cgi".
 
-:- pred write_version_message(string::in, io::di, io::uo) is det.
+:- pred write_version_message(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-write_version_message(ProgName, !IO) :-
+write_version_message(OutputStream, ProgName, !IO) :-
     library.version(Version, Fullarch),
-    io.format("%s: Mercury deep profiler\n", [s(ProgName)], !IO),
-    io.format("version: %s, on %s.\n",
+    io.format(OutputStream, "%s: Mercury deep profiler\n", [s(ProgName)], !IO),
+    io.format(OutputStream, "version: %s, on %s.\n",
         [s(Version), s(Fullarch)], !IO).
 
-:- pred write_help_message(string::in, io::di, io::uo) is det.
+:- pred write_help_message(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-write_help_message(ProgName, !IO) :-
-    % The options are deliberately not documented; they change
+write_help_message(OutputStream, ProgName, !IO) :-
+    % The options are deliberately not documented; they can change
     % quite rapidly, based on the debugging needs of the moment.
     % The optional filename argument is also for implementors only.
-    io.format("Usage: %s\n", [s(ProgName)], !IO),
-    io.format("This program doesn't expect any arguments;\n", [], !IO),
-    io.format("instead it decides what to do based on the\n", [], !IO),
-    io.format("QUERY_STRING environment variable.\n", [], !IO).
+    io.format(OutputStream, "Usage: %s\n", [s(ProgName)], !IO),
+    io.write_strings(OutputStream,
+        ["This program doesn't expect any arguments;\n",
+        "instead it decides what to do based on the\n",
+        "QUERY_STRING environment variable.\n"], !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred process_args(string::in, list(string)::in, option_table::in,
-    io::di, io::uo) is cc_multi.
+:- pred process_args(io.text_output_stream::in, string::in, list(string)::in,
+    option_table::in, io::di, io::uo) is cc_multi.
 
-process_args(ProgName, Args, Options, !IO) :-
+process_args(OutputStream, ProgName, Args, Options, !IO) :-
     ( if Args = [DeepFileName] then
         % Although this mode of usage is not intended for production use,
         % allowing the filename and a limited range of commands to be supplied
         % on the command line makes debugging very much easier.
-        process_query(default_cmd(Options), DeepFileName, no, Options, !IO)
+        process_query(OutputStream, default_cmd(Options), DeepFileName,
+            no, Options, !IO)
     else
         io.set_exit_status(1, !IO),
-        write_help_message(ProgName, !IO),
+        write_help_message(OutputStream, ProgName, !IO),
         trace [compiletime(flag("debug-args")), io(!DIO)] (
-            io.write_string("processed args: ", !DIO),
-            io.write_list(Args, " ", write_bracketed_string, !DIO)
+            BracketedArgs = list.map(bracket_string, Args),
+            io.format(OutputStream, "processed args: %s\n",
+                [s(string.join_list(" ", BracketedArgs))], !DIO)
         )
     ).
 
 % This predicate is for debugging the command line given to mdprof_cgi by the
 % web server, should that be necessary.
 
-:- pred write_bracketed_string(string::in, io::di, io::uo) is det.
+:- func bracket_string(string) = string.
 
-write_bracketed_string(S, !IO) :-
-    io.write_string("<", !IO),
-    io.write_string(S, !IO),
-    io.write_string(">", !IO).
+bracket_string(S) = "<" ++ S ++ ">".
 
-:- pred write_html_header(io::di, io::uo) is det.
+:- pred write_html_header(io.text_output_stream::in, io::di, io::uo) is det.
 
-write_html_header(!IO) :-
-    io.write_string(html_header_text, !IO),
-    io.flush_output(!IO).
+write_html_header(OutputStream, !IO) :-
+    io.write_string(OutputStream, html_header_text, !IO),
+    io.flush_output(OutputStream, !IO).
 
 :- func html_header_text = string.
 
@@ -285,10 +295,10 @@ html_header_text = "Content-type: text/html\n\n".
 
 %---------------------------------------------------------------------------%
 
-:- pred process_query(cmd::in, string::in, maybe(preferences)::in,
-    option_table::in, io::di, io::uo) is cc_multi.
+:- pred process_query(io.text_output_stream::in, cmd::in, string::in,
+    maybe(preferences)::in, option_table::in, io::di, io::uo) is cc_multi.
 
-process_query(Cmd0, DeepFileName0, MaybePref, Options0, !IO) :-
+process_query(OutputStream, Cmd0, DeepFileName0, MaybePref, Options0, !IO) :-
     ( if Cmd0 = deep_cmd_restart then
         % This process got started because there was no server, and this
         % process will become the new server, so the user just got the freshly
@@ -335,9 +345,9 @@ process_query(Cmd0, DeepFileName0, MaybePref, Options0, !IO) :-
         ),
         check_for_existing_fifos(ToServerPipe, FromServerPipe, FifoCount, !IO),
         ( if FifoCount = 0 then
-            handle_query_from_new_server(Cmd, PrefInd, DeepFileName,
-                ToServerPipe, FromServerPipe, StartupFile, MutexFile, WantFile,
-                Options, !IO)
+            handle_query_from_new_server(OutputStream, Cmd, PrefInd,
+                DeepFileName, ToServerPipe, FromServerPipe,
+                StartupFile, MutexFile, WantFile, Options, !IO)
         else if FifoCount = 2 then
             handle_query_from_existing_server(Cmd, PrefInd,
                 ToServerPipe, FromServerPipe, MutexFile, WantFile, Options,
@@ -346,13 +356,14 @@ process_query(Cmd0, DeepFileName0, MaybePref, Options0, !IO) :-
             release_lock(Debug, MutexFile, !IO),
             remove_want_file(WantFile, !IO),
             io.set_exit_status(1, !IO),
-            io.write_string("mdprof internal error: bad fifo count", !IO)
+            io.write_string(OutputStream,
+                "mdprof internal error: bad fifo count\n", !IO)
         )
     else
         io.set_exit_status(1, !IO),
-        io.format("<h3> Invalid file name %s.<h3>\n\n",
+        io.format(OutputStream, "<h3> Invalid file name %s.<h3>\n\n",
             [s(DeepFileName)], !IO),
-        io.write_string(
+        io.write_string(OutputStream,
             "Deep profiling data files must have a .data suffix, " ++
             "to allow the deep profiler to locate any related files.\n", !IO)
     ).
@@ -415,12 +426,14 @@ handle_query_from_existing_server(Cmd, PrefInd, ToServerPipe, FromServerPipe,
     % Handle the given query and then become the new server. Delete the mutex
     % and want files when we get out of the critical region.
     %
-:- pred handle_query_from_new_server(cmd::in, preferences_indication::in,
-    string::in, string::in, string::in, string::in, string::in, string::in,
+:- pred handle_query_from_new_server(io.text_output_stream::in, cmd::in,
+    preferences_indication::in, string::in,
+    string::in, string::in, string::in, string::in, string::in,
     option_table::in, io::di, io::uo) is cc_multi.
 
-handle_query_from_new_server(Cmd, PrefInd, FileName, ToServerPipe,
-        FromServerPipe, StartupFile, MutexFile, WantFile, Options, !IO) :-
+handle_query_from_new_server(OutputStream, Cmd, PrefInd, FileName,
+        ToServerPipe, FromServerPipe, StartupFile, MutexFile, WantFile,
+        Options, !IO) :-
     lookup_bool_option(Options, localhost, LocalHost),
     (
         LocalHost = no,
@@ -469,14 +482,14 @@ handle_query_from_new_server(Cmd, PrefInd, FileName, ToServerPipe,
             % --no-server-process should be specified only during debugging.
             release_lock(Debug, MutexFile, !IO),
             remove_want_file(WantFile, !IO),
-            io.write_string(HTML, !IO)
+            io.write_string(OutputStream, HTML, !IO)
         ;
             ServerProcess = yes,
             make_pipes(FileName, Success, !IO),
             (
                 Success = yes,
-                io.write_string(HTML, !IO),
-                io.flush_output(!IO),
+                io.write_string(OutputStream, HTML, !IO),
+                io.flush_output(OutputStream, !IO),
                 start_server(Options, ToServerPipe, FromServerPipe,
                     MaybeStartupStream, MutexFile, WantFile, Deep, !IO)
             ;
@@ -484,7 +497,7 @@ handle_query_from_new_server(Cmd, PrefInd, FileName, ToServerPipe,
                 release_lock(Debug, MutexFile, !IO),
                 remove_want_file(WantFile, !IO),
                 io.set_exit_status(1, !IO),
-                io.write_string("could not make pipes\n", !IO)
+                io.write_string(OutputStream, "could not make pipes\n", !IO)
             )
         )
     ;
@@ -492,7 +505,7 @@ handle_query_from_new_server(Cmd, PrefInd, FileName, ToServerPipe,
         release_lock(Debug, MutexFile, !IO),
         remove_want_file(WantFile, !IO),
         io.set_exit_status(1, !IO),
-        io.format("%s\n", [s(Error)], !IO)
+        io.format(OutputStream, "%s\n", [s(Error)], !IO)
     ).
 
     % Become the new server. Delete the mutex and want files when we get out

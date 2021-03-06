@@ -79,8 +79,8 @@ main(!IO) :-
     ;
         MaybeOptions = error(Error),
         Msg = option_error_to_string(Error),
-        io.stderr_stream(Stderr, !IO),
-        io.format(Stderr, "%s: %s\n", [s(ProgName), s(Msg)], !IO),
+        io.stderr_stream(StdErr, !IO),
+        io.format(StdErr, "%s: %s\n", [s(ProgName), s(Msg)], !IO),
         io.set_exit_status(1, !IO)
     ).
 
@@ -90,10 +90,13 @@ main_2(DumpOptions, FileName, !IO) :-
     read_call_graph(FileName, MaybeInitialDeep, !IO),
     (
         MaybeInitialDeep = ok(InitialDeep),
-        dump_initial_deep(InitialDeep, DumpOptions, !IO)
+        io.stdout_stream(StdOut, !IO),
+        dump_initial_deep(InitialDeep, DumpOptions, StdOut, !IO)
     ;
         MaybeInitialDeep = error(Msg),
-        io.format("Cannot read %s: %s\n", [s(Msg), s(FileName)], !IO)
+        io.stderr_stream(StdErr, !IO),
+        io.format(StdErr, "Cannot read %s: %s\n",
+            [s(FileName), s(Msg)], !IO)
     ).
 
 %---------------------------------------------------------------------------%

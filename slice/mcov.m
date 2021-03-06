@@ -79,8 +79,15 @@ do_coverage_testing(OptionTable, Args, !IO) :-
     (
         Args = [_ | _],
         lookup_bool_option(OptionTable, verbose, Verbose),
-        read_and_union_trace_counts(Verbose, Args, _NumTests, FileTypes,
-            TraceCounts, MaybeReadError, !IO),
+        (
+            Verbose = yes,
+            ShowProgress = yes(StdOutStream)
+        ;
+            Verbose = no,
+            ShowProgress = no
+        ),
+        read_and_union_trace_counts(ShowProgress, Args, _NumTests,
+            FileTypes, TraceCounts, MaybeReadError, !IO),
         (
             MaybeReadError = yes(ReadErrorMsg),
             write_error_message(ReadErrorMsg, !IO)

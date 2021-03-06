@@ -52,7 +52,7 @@ main(!IO) :-
         Msg = option_error_to_string(Error),
         io.format(StdErr, "%s: error parsing options: %s\n",
             [s(ProgName), s(Msg)], !IO),
-        io.write_string(help_message(ProgName), !IO),
+        io.write_string(StdErr, help_message(ProgName), !IO),
         io.set_exit_status(1, !IO)
     ;
         MaybeOptions = ok(Options),
@@ -61,7 +61,7 @@ main(!IO) :-
         (
             ProgRepRes = error(Error),
             io.error_message(Error, Msg),
-            io.format("%s: %s\n", [s(ProgName), s(Msg)], !IO)
+            io.format(StdErr, "%s: %s\n", [s(ProgName), s(Msg)], !IO)
         ;
             ProgRepRes = ok(ProgRep),
             ProgRep = prog_rep(ModuleReps),
@@ -72,7 +72,8 @@ main(!IO) :-
                 Args = [_ | _],
                 MaybeModules = yes(Args)
             ),
-            print_selected_modules(ModuleReps, MaybeModules, !IO)
+            io.stdout_stream(StdOut, !IO),
+            print_selected_modules(StdOut, ModuleReps, MaybeModules, !IO)
         )
     ).
 
@@ -103,33 +104,34 @@ defaults(dummy, string("dummy")).
 
 %---------------------------------------------------------------------------%
 
-:- pred print_selected_modules(module_map::in, maybe(list(string))::in,
-    io::di, io::uo) is det.
+:- pred print_selected_modules(io.text_output_stream::in, module_map::in,
+    maybe(list(string))::in, io::di, io::uo) is det.
 
-print_selected_modules(ModuleReps, MaybeModules, !IO) :-
+print_selected_modules(OutputStream, ModuleReps, MaybeModules, !IO) :-
     (
         MaybeModules = no,
         map.foldl(
-            (pred(_::in, ModuleRep::in, IO0::di, IO::uo) is det :-
-                print_module(ModuleRep, IO0, IO)
+            ( pred(_::in, ModuleRep::in, IO0::di, IO::uo) is det :-
+                print_module(OutputStream, ModuleRep, IO0, IO)
             ), ModuleReps, !IO)
     ;
         MaybeModules = yes(Modules),
         list.foldl(
             ( pred(ModuleName::in, IO0::di, IO::uo) is det :-
                 ( if map.search(ModuleReps, ModuleName, ModuleRep) then
-                    print_module(ModuleRep, IO0, IO)
+                    print_module(OutputStream, ModuleRep, IO0, IO)
                 else
                     IO = IO0
                 )
             ), Modules, !IO)
         ).
 
-:- pred print_module(module_rep::in, io::di, io::uo) is det.
+:- pred print_module(io.text_output_stream::in, module_rep::in,
+    io::di, io::uo) is det.
 
-print_module(ModuleRep, !IO) :-
+print_module(OutputStream, ModuleRep, !IO) :-
     print_module_to_strings(ModuleRep, Strings),
-    io.write_string(string.append_list(cord.list(Strings)), !IO).
+    io.write_string(OutputStream, string.append_list(cord.list(Strings)), !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module mdprof_procrep.

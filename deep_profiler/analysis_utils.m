@@ -269,7 +269,7 @@ build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr, RecursionType,
                 get_recursive_calls_and_counts(Deep, CliquePtr, PDPtr,
                     CallCountsMap),
                 RecursiveCallSiteCostMap = map_values_only(
-                    (func(Count) =
+                    ( func(Count) =
                             build_cs_cost_csq_percall(float(Count),
                                 CostFn(DepthI)) :-
                         DepthI = round_to_int(MaxDepth / float(Count))
@@ -282,11 +282,12 @@ build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr, RecursionType,
                     format_recursive_call_site_cost_map(
                         RecursiveCallSiteCostMap, PrettyCostMapCord),
                     PrettyCostMap = append_list(cord.list(PrettyCostMapCord)),
-                    io.format(
+                    io.output_stream(OutputStream, !IO),
+                    io.format(OutputStream,
                         "D: In clique %s recursive call site cost map is:" ++
                             "\n%s\n",
                         [s(string(CliquePtr)), s(PrettyCostMap)], !IO),
-                    io.flush_output(!IO)
+                    io.flush_output(OutputStream, !IO)
                 )
             )
         ;

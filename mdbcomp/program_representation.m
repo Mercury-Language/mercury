@@ -1215,9 +1215,8 @@ read_module_reps(ExpectNewFormat, ByteCode, !ModuleReps, !Pos) :-
 read_module_rep(ExpectNewFormat, ByteCode, ModuleRep, !Pos) :-
     read_len_string(ByteCode, ModuleName, !Pos),
     trace [io(!IO), compiletime(flag("debug_oisu_bytecode"))] (
-        io.write_string("module rep for ", !IO),
-        io.write_string(ModuleName, !IO),
-        io.nl(!IO)
+        io.output_stream(OutputStream, !IO),
+        io.format(OutputStream, "module rep for %s\n", [s(ModuleName)], !IO)
     ),
     read_string_table(ByteCode, StringTable, !Pos),
     (
@@ -1231,12 +1230,11 @@ read_module_rep(ExpectNewFormat, ByteCode, ModuleRep, !Pos) :-
             OISUStartPos = !.Pos,
             read_int32(ByteCode, OISUSize, !Pos),
             trace [io(!IO), compiletime(flag("debug_oisu_bytecode"))] (
-                io.write_string("OISU num types ", !IO),
-                io.write_int(NumOISUTypes, !IO),
-                io.nl(!IO),
-                io.write_string("OISU bytecode size ", !IO),
-                io.write_int(OISUSize, !IO),
-                io.nl(!IO)
+                io.output_stream(OutputStream, !IO),
+                io.format(OutputStream, "OISU num types %d\n",
+                    [i(NumOISUTypes)], !IO),
+                io.format(OutputStream, "OISU bytecode size %d\n",
+                    [i(OISUSize)], !IO)
             ),
             read_n_items(read_oisu_type_procs(ByteCode), NumOISUTypes,
                 OISUTypes, !Pos),
@@ -1250,12 +1248,11 @@ read_module_rep(ExpectNewFormat, ByteCode, ModuleRep, !Pos) :-
             TypeStartPos = !.Pos,
             read_int32(ByteCode, TypeSize, !Pos),
             trace [io(!IO), compiletime(flag("debug_oisu_bytecode"))] (
-                io.write_string("num types ", !IO),
-                io.write_int(NumOISUTypes, !IO),
-                io.nl(!IO),
-                io.write_string("type bytecode size ", !IO),
-                io.write_int(TypeSize, !IO),
-                io.nl(!IO)
+                io.output_stream(OutputStream, !IO),
+                io.format(OutputStream, "num types %d\n",
+                    [i(NumOISUTypes)], !IO),
+                io.format(OutputStream, "type bytecode size %d\n",
+                    [i(TypeSize)], !IO)
             ),
             read_n_encoded_types(ByteCode, StringTable, 0, NumTableTypes,
                 map.init, TypeTable, !Pos),

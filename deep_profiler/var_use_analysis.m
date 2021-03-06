@@ -223,7 +223,7 @@ pessimistic_var_use_time(VarUseType, ProcCost, CostUntilUse) :-
 get_call_site_dynamic_var_use_info(CSDPtr, ArgNum, RecursionType, Cost,
         VarUseOptions, MaybeVarUseInfo) :-
     % XXX If the CSD represents a closure then the argument position will be
-    % incorrect. This is not currently important as we assume that the
+    % incorrect. This is not currently important, as we assume that the
     % compiler will not push signals and waits into higher order calls.
     % Therefore this should never be called for a higher order call site.
     Deep = VarUseOptions ^ vuo_deep,
@@ -481,14 +481,13 @@ proc_dynamic_recursive_var_use_info(CliquePtr, PDPtr, ArgNum,
             BaseTotalTime * probability_to_float(not_probability(RecProb)),
         MaybeVarUseInfo = ok(var_use_info(VarUseTime, Cost,
             VarUseOptions ^ vuo_var_use_type)),
-        trace [compile_time(flag("debug_first_var_use")),
-                io(!IO)] (
-            nl(!IO),
-            write_string("UseTime = BaseUseTime + " ++
-                "RecUseTime * Depth\n", !IO),
-            format("%f = %f + %f * %f\n",
+        trace [compile_time(flag("debug_first_var_use")), io(!IO)] (
+            io.output_stream(OutputStream, !IO),
+            io.write_string(OutputStream,
+                "\nUseTime = BaseUseTime + RecUseTime * Depth\n", !IO),
+            io.format(OutputStream, "%f = %f + %f * %f\n",
                 [f(VarUseTime), f(VarUseTimeBase),
-                 f(VarUseTimeRec), f(DepthF)], !IO)
+                f(VarUseTimeRec), f(DepthF)], !IO)
         )
     ;
         Info = error(Error),
@@ -539,7 +538,7 @@ prepare_for_proc_var_first_use(CliquePtr, PDPtr, ArgNum, RecursionType, Depth,
 
             % Prepare callsite information.
             proc_dynamic_paired_call_site_slots(Deep, PDPtr, Slots),
-            foldl(build_dynamic_call_site_cost_and_callee_map(Deep),
+            list.foldl(build_dynamic_call_site_cost_and_callee_map(Deep),
                 Slots, map.init, CallSiteCostMap),
 
             build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr,
@@ -562,7 +561,7 @@ prepare_for_proc_var_first_use(CliquePtr, PDPtr, ArgNum, RecursionType, Depth,
                 MaybeCoveragePointsArray = no,
                 unexpected($pred, "Couldn't get coverage info")
             ),
-            foldl2(add_coverage_point_to_map, CoveragePoints,
+            list.foldl2(add_coverage_point_to_map, CoveragePoints,
                 map.init, SolnsCoveragePointMap,
                 map.init, BranchCoveragePointMap),
             deep_lookup_pd_own(Deep, PDPtr, Own),
@@ -754,7 +753,8 @@ goal_var_first_use(RevGoalPath, Goal, StaticInfo, !CostSoFar, FoundFirstUse) :-
         )
     ),
     trace [compile_time(flag("debug_first_var_use")), io(!IO)] (
-        io.format("Trace: goal_var_first_use: %s\n",
+        io.output_stream(OutputStream, !IO),
+        io.format(OutputStream, "Trace: goal_var_first_use: %s\n",
             [s(rev_goal_path_to_string(RevGoalPath))], !IO)
     ).
 
@@ -1212,7 +1212,8 @@ ite_var_first_use(RevGoalPath, Cond, Then, Else, StaticInfo,
                 VarUseTime),
             FoundFirstUse = found_first_use(VarUseTime),
             trace [compile_time(flag("debug_first_var_use")), io(!IO)] (
-                io.format(
+                io.output_stream(OutputStream, !IO),
+                io.format(OutputStream,
                     "Trace: ITE: Weights: %s, Then: %f, Else: %f, " ++
                     "VarUseTime: %f\n",
                     [s(string(Weights)), f(ThenVarUseTime), f(ElseVarUseTime),
@@ -1243,7 +1244,7 @@ ffu_to_float(_, found_first_use(UseTime), UseTime).
 build_recursive_call_sites_list(Map, List) :-
     List0 = to_assoc_list(Map),
     list.map(
-        (pred((RevGoalPath - Cost)::in, (GoalPath - Calls)::out) is det :-
+        ( pred((RevGoalPath - Cost)::in, (GoalPath - Calls)::out) is det :-
             Calls = cs_cost_get_calls(Cost),
             rgp_to_fgp(RevGoalPath, GoalPath)
         ), List0, List).
@@ -1355,7 +1356,8 @@ rec_goal_var_first_use(Goal, RecCalls, Info, FoundFirstUse,
             ContainingGoalMap = Info ^ fui_containing_goal_map,
             RevGoalPath =
                 goal_id_to_reverse_path(ContainingGoalMap, GoalId),
-            io.format("Trace: goal_var_first_use: %s\n",
+            io.output_stream(OutputStream, !IO),
+            io.format(OutputStream, "Trace: goal_var_first_use: %s\n",
                 [s(rev_goal_path_to_string(RevGoalPath))], !IO)
         )
     ).
@@ -1594,8 +1596,8 @@ rec_ite_var_first_use(Cond, Then, Else, RecCalls, Info, FoundFirstUse,
                 ),
                 Default = CostAfterCond
             ),
-            map(ffu_to_float(Default), [ThenFoundFirstUse, ElseFoundFirstUse],
-                UseTimes),
+            list.map(ffu_to_float(Default),
+                [ThenFoundFirstUse, ElseFoundFirstUse], UseTimes),
             weighted_average(Weights, UseTimes, UseTime),
             FoundFirstUse = found_first_use(UseTime)
         )

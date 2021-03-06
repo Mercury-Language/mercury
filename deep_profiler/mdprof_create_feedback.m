@@ -63,16 +63,17 @@ main(!IO) :-
     io.command_line_arguments(Args0, !IO),
     getopt.process_options(option_ops_multi(short, long, defaults),
         Args0, Args, MaybeOptions),
-    io.stderr_stream(Stderr, !IO),
+    io.stderr_stream(StdErr, !IO),
+    io.stdout_stream(StdOut, !IO),
     (
         MaybeOptions = ok(Options0),
         post_process_options(ProgName, Options0, Options, !IO),
         lookup_bool_option(Options, help, Help),
         lookup_bool_option(Options, version, Version),
         ( if Version = yes then
-            write_version_message(ProgName, !IO)
+            write_version_message(StdOut, ProgName, !IO)
         else if Help = yes then
-            write_help_message(ProgName, !IO)
+            write_help_message(StdOut, ProgName, !IO)
         else
             (
                 Args = [InputFileName, OutputFileName],
@@ -81,8 +82,8 @@ main(!IO) :-
                 (
                     FoundError = have_not_found_error,
                     generate_requested_feedback(ProgName, Options,
-                        InputFileName, OutputFileName, RequestedFeedbackInfo,
-                        !IO)
+                        InputFileName, OutputFileName,
+                        RequestedFeedbackInfo, !IO)
                 ;
                     FoundError = found_error
                     % The error message have already been printed.
@@ -92,16 +93,16 @@ main(!IO) :-
                 ; Args = [_]
                 ; Args = [_, _, _ | _]
                 ),
-                write_help_message(ProgName, !IO),
+                write_help_message(StdErr, ProgName, !IO),
                 io.set_exit_status(1, !IO)
             )
         )
     ;
         MaybeOptions = error(Error),
         Msg = option_error_to_string(Error),
-        io.format(Stderr, "%s: error parsing options: %s\n",
+        io.format(StdErr, "%s: error parsing options: %s\n",
             [s(ProgName), s(Msg)], !IO),
-        write_help_message(ProgName, !IO),
+        write_help_message(StdErr, ProgName, !IO),
         io.set_exit_status(1, !IO)
     ).
 
@@ -111,7 +112,7 @@ main(!IO) :-
 
 generate_requested_feedback(ProgName, Options, InputFileName, OutputFileName,
         RequestedFeedbackInfo, !IO) :-
-    io.stderr_stream(Stderr, !IO),
+    io.stderr_stream(StdErr, !IO),
     RequestedFeedbackInfo = requested_feedback_info(MaybeParallelize),
     (
         MaybeParallelize = yes(_),
@@ -132,7 +133,8 @@ generate_requested_feedback(ProgName, Options, InputFileName, OutputFileName,
                         Deep, Messages, Feedback0, Feedback),
                     (
                         Report = yes,
-                        print_feedback_report(Feedback, !IO)
+                        io.stdout_stream(StdOut, !IO),
+                        print_feedback_report(StdOut, Feedback, !IO)
                     ;
                         Report = no
                     ),
@@ -145,33 +147,33 @@ generate_requested_feedback(ProgName, Options, InputFileName, OutputFileName,
                         ; WriteResult = fwr_write_error(Error)
                         ),
                         io.error_message(Error, ErrorMessage),
-                        io.format(Stderr, "%s: %s: %s\n",
+                        io.format(StdErr, "%s: %s: %s\n",
                             [s(ProgName), s(OutputFileName), s(ErrorMessage)],
                             !IO),
                         io.set_exit_status(1, !IO)
                     ),
-                    write_out_messages(Stderr, Messages, !IO)
+                    write_out_messages(StdErr, Messages, !IO)
                 ;
                     FeedbackReadResult = error(FeedbackReadError),
                     feedback_read_error_message_string(OutputFileName,
                         FeedbackReadError, Message),
-                    io.write_string(Stderr, Message, !IO),
+                    io.write_string(StdErr, Message, !IO),
                     io.set_exit_status(1, !IO)
                 )
             ;
                 MaybeProgRep = error(Error),
                 io.set_exit_status(1, !IO),
-                io.format(Stderr, "%s: %s\n", [s(ProgName), s(Error)], !IO)
+                io.format(StdErr, "%s: %s\n", [s(ProgName), s(Error)], !IO)
             )
         ;
             MaybeDeep = error(Error),
             io.set_exit_status(1, !IO),
-            io.format(Stderr, "%s: error reading %s: %s\n",
+            io.format(StdErr, "%s: error reading %s: %s\n",
                 [s(ProgName), s(InputFileName), s(Error)], !IO)
         )
     ;
         MaybeParallelize = no,
-        io.format(Stderr, "%s: options do not request any form of feedback\n",
+        io.format(StdErr, "%s: options do not request any form of feedback\n",
             [s(ProgName)], !IO)
     ).
 
@@ -284,17 +286,19 @@ help_message(ProgName) = HelpMessage :-
 ",
     HelpMessage = string.format(FormatStr, [s(ProgName)]).
 
-:- pred write_help_message(string::in, io::di, io::uo) is det.
+:- pred write_help_message(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-write_help_message(ProgName, !IO) :-
-    io.write_string(help_message(ProgName), !IO).
+write_help_message(OutputStream, ProgName, !IO) :-
+    io.write_string(OutputStream, help_message(ProgName), !IO).
 
-:- pred write_version_message(string::in, io::di, io::uo) is det.
+:- pred write_version_message(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-write_version_message(ProgName, !IO) :-
+write_version_message(OutputStream, ProgName, !IO) :-
     library.version(Version, Fullarch),
-    io.format("%s: Mercury deep profiler\n", [s(ProgName)], !IO),
-    io.format("version %s, on %s.\n",
+    io.format(OutputStream, "%s: Mercury deep profiler\n", [s(ProgName)], !IO),
+    io.format(OutputStream, "version %s, on %s.\n",
         [s(Version), s(Fullarch)], !IO).
 
     % Read a deep profiling data file.
@@ -302,7 +306,7 @@ write_version_message(ProgName, !IO) :-
 :- pred read_deep_file(string::in, bool::in, maybe_error(deep)::out,
     io::di, io::uo) is det.
 
-read_deep_file(Input, Debug, MaybeDeep, !IO) :-
+read_deep_file(DataFileName, Debug, MaybeDeep, !IO) :-
     % XXX the server_name_port and script_name fields of the deep/0
     % structure are only required by the CGI program.  (They probably
     % shouldn't be part of that structure since not all tools that operate
@@ -317,8 +321,8 @@ read_deep_file(Input, Debug, MaybeDeep, !IO) :-
         Debug = no,
         MaybeOutput = no
     ),
-    read_and_startup_default_deep_options(Machine, ScriptName, Input, no,
-        MaybeOutput, [], MaybeDeep, !IO).
+    read_and_startup_default_deep_options(Machine, ScriptName, DataFileName,
+        no, MaybeOutput, [], MaybeDeep, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -480,14 +484,14 @@ construct_measure("median", stat_median).
 
 post_process_options(ProgName, !Options, !IO) :-
     lookup_int_option(!.Options, verbosity, VerbosityLevel),
-    io.stderr_stream(Stderr, !IO),
+    io.stderr_stream(StdErr, !IO),
     ( if VerbosityLevel < 0 then
-        io.format(Stderr,
+        io.format(StdErr,
             "%s: warning: verbosity level should not be negative.\n",
             [s(ProgName)], !IO),
         set_option(verbosity, int(0), !Options)
     else if VerbosityLevel > 4 then
-        io.format(Stderr,
+        io.format(StdErr,
             "%s: warning: verbosity level should not exceed 4.\n",
             [s(ProgName)], !IO),
         set_option(verbosity, int(4), !Options)
@@ -524,7 +528,7 @@ post_process_options(ProgName, !Options, !IO) :-
     io::di, io::uo) is det.
 
 get_feedback_requests(ProgName, Options, !:Error, Requested, !IO) :-
-    io.stderr_stream(Stderr, !IO),
+    io.stderr_stream(StdErr, !IO),
     !:Error = have_not_found_error,
     % For each feedback type, determine if it is requested, and fill in the
     % corresponding field in the RequestedFeedbackInfo structure.
@@ -541,13 +545,13 @@ get_feedback_requests(ProgName, Options, !:Error, Requested, !IO) :-
             ( if DesiredParallelism > 1.0 then
                 true
             else
-                io.format(Stderr,
+                io.format(StdErr,
                     "%s: error: desired parallelism level should be > 1.\n",
                     [s(ProgName)], !IO),
                 !:Error = found_error
             )
         else
-            io.format(Stderr,
+            io.format(StdErr,
                 "%s: error: desired parallelism level should be a number.\n",
                 [s(ProgName)], !IO),
             !:Error = found_error,
@@ -560,13 +564,13 @@ get_feedback_requests(ProgName, Options, !:Error, Requested, !IO) :-
             ( if SpeedupThreshold >= 1.0 then
                 true
             else
-                io.format(Stderr,
+                io.format(StdErr,
                     "%s: error: speedup threshold should be >= 1.\n",
                     [s(ProgName)], !IO),
                 !:Error = found_error
             )
         else
-            io.format(Stderr,
+            io.format(StdErr,
                 "%s: error: speedup threshold should be a number.\n",
                 [s(ProgName)], !IO),
             !:Error = found_error,
@@ -593,7 +597,7 @@ get_feedback_requests(ProgName, Options, !:Error, Requested, !IO) :-
         then
             SpeedupAlg = SpeedupAlgPrime
         else
-            io.format(Stderr,
+            io.format(StdErr,
                 "%s: error: %s is not a speedup estimate algorithm.\n",
                 [s(ProgName), s(SpeedupAlgString)], !IO),
             !:Error = found_error,
@@ -609,13 +613,13 @@ get_feedback_requests(ProgName, Options, !:Error, Requested, !IO) :-
             MaybeAlgForFindingBestPar = error(MaybeMessage, _Line, _Col),
             (
                 MaybeMessage = yes(Message),
-                io.format(Stderr,
+                io.format(StdErr,
                     "%s: error: %s is not an algorithm for " ++
                         "finding the best parallelisation: %s\n",
                     [s(ProgName), s(AlgForFindingBestParStr), s(Message)], !IO)
             ;
                 MaybeMessage = no,
-                io.format(Stderr,
+                io.format(StdErr,
                     "%s: error: %s is not an algorithm for " ++
                         "finding the best parallelisation.\n",
                     [s(ProgName), s(AlgForFindingBestParStr)], !IO)

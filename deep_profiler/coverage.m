@@ -373,11 +373,13 @@ goal_annotate_coverage(Goal, Info, Before, After, !Array) :-
     update_goal_attribute(GoalId, GoalCoverage, !Array),
 
     trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
-        io.write_string("goal_annotate_coverage: done\n", !IO),
-        io.format("\tGoalPath: %s\n\tDetism %s\n\tCoverage; %s\n",
-            [s(rev_goal_path_to_string(RevGoalPath)),
-             s(string(Detism)),
-             s(string(GoalCoverage))], !IO)
+        io.output_stream(OutputStream, !IO),
+        io.write_string(OutputStream,
+            "goal_annotate_coverage: done\n", !IO),
+        io.format(OutputStream,
+            "\tGoalPath: %s\n\tDetism %s\n\tCoverage; %s\n",
+            [s(rev_goal_path_to_string(RevGoalPath)), s(string(Detism)),
+            s(string(GoalCoverage))], !IO)
     ),
     trace [compile_time(not flag("no_coverage_propagation_assertions"))] (
         ( if check_coverage_complete(GoalCoverage, GoalExpr) then
@@ -508,7 +510,9 @@ disj_annotate_coverage([Disj | Disjs], Info, Solutions, Before0, !SumAfter,
 
 switch_annotate_coverage(Cases, Info, CanFail, Before, After, !Array) :-
     trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
-        io.format("Switch: Before0: %s\n", [s(string(Before))], !IO)
+        io.output_stream(OutputStream, !IO),
+        io.format(OutputStream, "Switch: Before0: %s\n",
+            [s(string(Before))], !IO)
     ),
 
     switch_annotate_coverage_2(Cases, Info, CanFail, Before,
@@ -682,7 +686,9 @@ ite_annotate_coverage(Cond, Then, Else, Info, RevGoalPath, Before, After,
     ),
 
     trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
-        io.format("ITE Coverage inferred before then and else branches:\n" ++
+        io.output_stream(OutputStream, !IO),
+        io.format(OutputStream,
+            "ITE Coverage inferred before then and else branches:\n" ++
             "\tWhole: %s \n\tThen: %s\n\tElse: %s\n" ++
             "\tGoalPath %s\n",
             [s(string(Before)), s(string(BeforeThen)), s(string(BeforeElse)),
@@ -771,7 +777,9 @@ negation_annotate_coverage(Goal, Info, Before, After, !Array) :-
     % The coverage after a negation is always unknown.
     After = after_unknown,
     trace [compile_time(flag("debug_coverage_propagation")), io(!IO)] (
-        io.format("Negation: setting negation: before %s, after %s\n",
+        io.output_stream(OutputStream, !IO),
+        io.format(OutputStream,
+            "Negation: setting negation: before %s, after %s\n",
             [s(string(Before)), s(string(After))], !IO)
     ).
 

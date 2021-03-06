@@ -22,7 +22,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module map.
@@ -128,10 +127,10 @@
     %
     % Read the trace_counts in the files whose names appear in FileName.
     % The result is a union of all the trace counts.
-    % If ShowProgress is yes then print the name of each file to the current
-    % output stream just before it is read.
+    % If ShowProgress is yes(Stream) then print to Stream the name of
+    % each file just before it is read.
     %
-:- pred read_trace_counts_list(bool::in, string::in,
+:- pred read_trace_counts_list(maybe(io.text_output_stream)::in, string::in,
     read_trace_counts_list_result::out, io::di, io::uo) is det.
 
     % read_and_union_trace_counts(ShowProgress, FileNames, NumTests, TestKinds,
@@ -148,9 +147,9 @@
     % the name of each file read will be printed to the current output
     % stream just before it is read.
     %
-:- pred read_and_union_trace_counts(bool::in, list(string)::in, int::out,
-    set(trace_count_file_type)::out, trace_counts::out, maybe(string)::out,
-    io::di, io::uo) is det.
+:- pred read_and_union_trace_counts(maybe(io.text_output_stream)::in,
+    list(string)::in, int::out, set(trace_count_file_type)::out,
+    trace_counts::out, maybe(string)::out, io::di, io::uo) is det.
 
     % write_trace_counts_to_file(FileType, TraceCounts, FileName, Result, !IO):
     %
@@ -162,7 +161,8 @@
 
     % Write out the given proc_label.
     %
-:- pred write_proc_label(proc_label::in, io::di, io::uo) is det.
+:- pred write_proc_label(io.text_output_stream::in, proc_label::in,
+    io::di, io::uo) is det.
 
 :- pred restrict_trace_counts_to_module(module_name::in, trace_counts::in,
     trace_counts::out) is det.
@@ -378,19 +378,17 @@ read_trace_counts(FileName, ReadResult, !IO) :-
     io.open_input(ActualFileName, Result, !IO),
     (
         Result = ok(FileStream),
-        io.set_input_stream(FileStream, OldInputStream, !IO),
-        io.read_line_as_string(IdReadResult, !IO),
+        io.read_line_as_string(FileStream, IdReadResult, !IO),
         ( if
             IdReadResult = ok(FirstLine),
             string.rstrip(FirstLine) = trace_count_file_id
         then
             promise_equivalent_solutions [ReadResult, !:IO] (
-                read_trace_counts_from_cur_stream(ReadResult, !IO)
+                read_trace_counts_from_stream(FileStream, ReadResult, !IO)
             )
         else
             ReadResult = syntax_error("no trace count file id")
         ),
-        io.set_input_stream(OldInputStream, _, !IO),
         io.close_input(FileStream, !IO)
     ;
         Result = error(IOError),
@@ -402,16 +400,17 @@ read_trace_counts(FileName, ReadResult, !IO) :-
         io.call_system(GzipCmd, _ZipResult, !IO)
     ).
 
-:- pred read_trace_counts_from_cur_stream(read_trace_counts_result::out,
-    io::di, io::uo) is cc_multi.
+:- pred read_trace_counts_from_stream(io.text_input_stream::in,
+    read_trace_counts_result::out, io::di, io::uo) is cc_multi.
 
-read_trace_counts_from_cur_stream(ReadResult, !IO) :-
-    io.read(FileTypeResult, !IO),
+read_trace_counts_from_stream(InputStream, ReadResult, !IO) :-
+    io.read(InputStream, FileTypeResult, !IO),
     (
         FileTypeResult = ok(FileType),
-        io.read_line_as_string(NewlineResult, !IO),
+        io.read_line_as_string(InputStream, NewlineResult, !IO),
         ( if NewlineResult = ok("\n") then
-            try_io(read_trace_counts_setup(map.init), Result, !IO),
+            try_io(read_trace_counts_setup(InputStream, map.init),
+                Result, !IO),
             (
                 Result = succeeded(TraceCounts),
                 ReadResult = ok(FileType, TraceCounts)
@@ -438,12 +437,12 @@ read_trace_counts_from_cur_stream(ReadResult, !IO) :-
         ReadResult = syntax_error("no info on trace count file type")
     ).
 
-:- pred read_trace_counts_setup(trace_counts::in, trace_counts::out,
-    io::di, io::uo) is det.
+:- pred read_trace_counts_setup(io.text_input_stream::in,
+    trace_counts::in, trace_counts::out, io::di, io::uo) is det.
 
-read_trace_counts_setup(!TraceCounts, !IO) :-
-    io.get_line_number(LineNumber, !IO),
-    io.read_line_as_string(Result, !IO),
+read_trace_counts_setup(InputStream, !TraceCounts, !IO) :-
+    io.get_line_number(InputStream, LineNumber, !IO),
+    io.read_line_as_string(InputStream, Result, !IO),
     (
         Result = ok(Line),
         % The code in mercury_trace_counts.c always generates output that will
@@ -451,8 +450,8 @@ read_trace_counts_setup(!TraceCounts, !IO) :-
         % and file names before they are referenced.
         CurModuleNameSym = unqualified(""),
         CurFileName = "",
-        read_proc_trace_counts(LineNumber, Line, CurModuleNameSym, CurFileName,
-            !TraceCounts, !IO)
+        read_proc_trace_counts(InputStream, LineNumber, Line,
+            CurModuleNameSym, CurFileName, !TraceCounts, !IO)
     ;
         Result = eof
     ;
@@ -463,11 +462,12 @@ read_trace_counts_setup(!TraceCounts, !IO) :-
 :- type trace_count_syntax_error
     --->    trace_count_syntax_error(string).
 
-:- pred read_proc_trace_counts(int::in, string::in, sym_name::in, string::in,
-    trace_counts::in, trace_counts::out, io::di, io::uo) is det.
+:- pred read_proc_trace_counts(io.text_input_stream::in, int::in, string::in,
+    sym_name::in, string::in, trace_counts::in, trace_counts::out,
+    io::di, io::uo) is det.
 
-read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
-        CurFileName, !TraceCounts, !IO) :-
+read_proc_trace_counts(InputStream, HeaderLineNumber, HeaderLine,
+        CurModuleNameSym, CurFileName, !TraceCounts, !IO) :-
     lexer.string_get_token_list_max(HeaderLine, string.length(HeaderLine),
         TokenList, posn(HeaderLineNumber, 1, 0), _),
     ( if TokenList = token_cons(name(TokenName), _, TokenListRest) then
@@ -478,11 +478,11 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                 token_nil)
         then
             NextModuleNameSym = string_to_sym_name(NextModuleName),
-            io.read_line_as_string(Result, !IO),
+            io.read_line_as_string(InputStream, Result, !IO),
             (
                 Result = ok(Line),
-                io.get_line_number(LineNumber, !IO),
-                read_proc_trace_counts(LineNumber, Line,
+                io.get_line_number(InputStream, LineNumber, !IO),
+                read_proc_trace_counts(InputStream, LineNumber, Line,
                     NextModuleNameSym, CurFileName, !TraceCounts, !IO)
             ;
                 Result = eof
@@ -496,11 +496,11 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                 token_cons(name(NextFileName), _,
                 token_nil)
         then
-            io.read_line_as_string(Result, !IO),
+            io.read_line_as_string(InputStream, Result, !IO),
             (
                 Result = ok(Line),
-                io.get_line_number(LineNumber, !IO),
-                read_proc_trace_counts(LineNumber, Line,
+                io.get_line_number(InputStream, LineNumber, !IO),
+                read_proc_trace_counts(InputStream, LineNumber, Line,
                     CurModuleNameSym, NextFileName, !TraceCounts, !IO)
             ;
                 Result = eof
@@ -571,8 +571,8 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
             else
                 StartCounts = map.init
             ),
-            read_proc_trace_counts_2(ProcLabelInContext, StartCounts,
-                !TraceCounts, !IO)
+            read_proc_trace_counts_2(InputStream, ProcLabelInContext,
+                StartCounts, !TraceCounts, !IO)
         else
             string.format("parse error on line %d of execution trace",
                 [i(HeaderLineNumber)], Message),
@@ -584,30 +584,31 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
         throw(trace_count_syntax_error(Message))
     ).
 
-:- pred read_proc_trace_counts_2(proc_label_in_context::in,
-    proc_trace_counts::in, trace_counts::in, trace_counts::out,
-    io::di, io::uo) is det.
+:- pred read_proc_trace_counts_2(io.text_input_stream::in,
+    proc_label_in_context::in, proc_trace_counts::in,
+    trace_counts::in, trace_counts::out, io::di, io::uo) is det.
 
-read_proc_trace_counts_2(ProcLabelInContext, ProcCounts0, !TraceCounts, !IO) :-
-    io.read_line_as_string(Result, !IO),
+read_proc_trace_counts_2(InputStream, ProcLabelInContext,
+        ProcCounts0, !TraceCounts, !IO) :-
+    io.read_line_as_string(InputStream, Result, !IO),
     (
         Result = ok(Line),
         ( if
             parse_path_port_line(Line, PathPort, LineNumber, ExecCount,
                 NumTests)
         then
-            LineNoAndCount = line_no_and_count(LineNumber, ExecCount,
-                NumTests),
+            LineNoAndCount =
+                line_no_and_count(LineNumber, ExecCount, NumTests),
             map.det_insert(PathPort, LineNoAndCount, ProcCounts0, ProcCounts),
-            read_proc_trace_counts_2(ProcLabelInContext, ProcCounts,
-                !TraceCounts, !IO)
+            read_proc_trace_counts_2(InputStream, ProcLabelInContext,
+                ProcCounts, !TraceCounts, !IO)
         else
             map.det_insert(ProcLabelInContext, ProcCounts0, !TraceCounts),
-            io.get_line_number(LineNumber, !IO),
+            io.get_line_number(InputStream, LineNumber, !IO),
             CurModuleNameSym = ProcLabelInContext ^ context_module_symname,
             CurFileName = ProcLabelInContext ^ context_filename,
-            read_proc_trace_counts(LineNumber, Line, CurModuleNameSym,
-                CurFileName, !TraceCounts, !IO)
+            read_proc_trace_counts(InputStream, LineNumber, Line,
+                CurModuleNameSym, CurFileName, !TraceCounts, !IO)
         )
     ;
         Result = eof,
@@ -698,6 +699,7 @@ read_trace_counts_list(ShowProgress, FileName, Result, !IO) :-
         OpenResult = ok(FileStream),
         read_trace_counts_list_stream(ShowProgress, union_file(0, []),
             map.init, FileName, FileStream, Result, !IO)
+        % XXX Is there some reason why we do not close FileStream?
     ;
         OpenResult = error(IOError),
         Result = list_error_message("Error opening file `" ++ FileName ++
@@ -708,9 +710,10 @@ read_trace_counts_list(ShowProgress, FileName, Result, !IO) :-
     % the trace_counts from the given stream. MainFileName is the
     % name of the file being read and is only used for error messages.
     %
-:- pred read_trace_counts_list_stream(bool::in, trace_count_file_type::in,
-    trace_counts::in, string::in, io.input_stream::in,
-    read_trace_counts_list_result::out, io::di, io::uo) is det.
+:- pred read_trace_counts_list_stream(maybe(io.text_output_stream)::in,
+    trace_count_file_type::in, trace_counts::in, string::in,
+    io.input_stream::in, read_trace_counts_list_result::out,
+    io::di, io::uo) is det.
 
 read_trace_counts_list_stream(ShowProgress, FileType0, TraceCounts0,
         MainFileName, Stream, Result, !IO) :-
@@ -727,9 +730,9 @@ read_trace_counts_list_stream(ShowProgress, FileType0, TraceCounts0,
                 TraceCounts0, MainFileName, Stream, Result, !IO)
         else
             (
-                ShowProgress = yes,
-                io.write_string(FileName, !IO),
-                io.nl(!IO)
+                ShowProgress = yes(ProgressStream),
+                io.write_string(ProgressStream, FileName, !IO),
+                io.nl(ProgressStream, !IO)
             ;
                 ShowProgress = no
             ),
@@ -802,7 +805,7 @@ read_and_union_trace_counts(ShowProgress, Files, NumTests, TestKinds,
         error("read_and_union_trace_counts: diff_file")
     ).
 
-:- pred read_and_union_trace_counts_2(bool::in,
+:- pred read_and_union_trace_counts_2(maybe(io.text_output_stream)::in,
     list(string)::in, trace_count_file_type::in, trace_count_file_type::out,
     trace_counts::in, trace_counts::out, maybe(string)::out,
     io::di, io::uo) is det.
@@ -811,9 +814,9 @@ read_and_union_trace_counts_2(_, [], !FileType, !TraceCounts, no, !IO).
 read_and_union_trace_counts_2(ShowProgress, [FileName | FileNames],
         !FileType, !TraceCounts, MaybeError, !IO) :-
     (
-        ShowProgress = yes,
-        io.write_string(FileName, !IO),
-        io.nl(!IO)
+        ShowProgress = yes(ProgressStream),
+        io.write_string(ProgressStream, FileName, !IO),
+        io.nl(ProgressStream, !IO)
     ;
         ShowProgress = no
     ),
@@ -839,61 +842,61 @@ trace_count_file_id = "Mercury trace counts file".
 %---------------------------------------------------------------------------%
 
 write_trace_counts_to_file(FileType, TraceCounts, FileName, Result, !IO) :-
-    io.tell(FileName, TellResult, !IO),
+    io.open_output(FileName, FileResult, !IO),
     (
-        TellResult = ok,
+        FileResult = ok(FileStream),
         Result = ok,
-        io.write_string(trace_count_file_id, !IO),
-        io.nl(!IO),
-        write_trace_counts(FileType, TraceCounts, !IO),
-        io.told(!IO)
+        io.write_string(FileStream, trace_count_file_id, !IO),
+        io.nl(FileStream, !IO),
+        write_trace_counts(FileStream, FileType, TraceCounts, !IO),
+        io.close_output(FileStream, !IO)
     ;
-        TellResult = error(Error),
+        FileResult = error(Error),
         Result = error(Error)
     ).
 
-:- pred write_trace_counts(trace_count_file_type::in,
-    trace_counts::in, io::di, io::uo) is det.
+:- pred write_trace_counts(io.text_output_stream::in,
+    trace_count_file_type::in, trace_counts::in, io::di, io::uo) is det.
 
-write_trace_counts(FileType, TraceCounts, !IO) :-
-    io.write(FileType, !IO),
-    io.write_string(".", !IO),
-    io.nl(!IO),
-    map.foldl3(write_proc_label_and_file_trace_counts, TraceCounts,
-        unqualified(""), _, "", _, !IO).
+write_trace_counts(OutputStream, FileType, TraceCounts, !IO) :-
+    io.write(OutputStream, FileType, !IO),
+    io.write_string(OutputStream, ".\n", !IO),
+    map.foldl3(write_proc_label_and_file_trace_counts(OutputStream),
+        TraceCounts, unqualified(""), _, "", _, !IO).
 
-:- pred write_proc_label_and_file_trace_counts(proc_label_in_context::in,
-    proc_trace_counts::in, sym_name::in, sym_name::out,
-    string::in, string::out, io::di, io::uo) is det.
+:- pred write_proc_label_and_file_trace_counts(io.text_output_stream::in,
+    proc_label_in_context::in, proc_trace_counts::in,
+    sym_name::in, sym_name::out, string::in, string::out,
+    io::di, io::uo) is det.
 
-write_proc_label_and_file_trace_counts(ProcLabelInContext, PathPortCounts,
-        !CurModuleNameSym, !CurFileName, !IO) :-
+write_proc_label_and_file_trace_counts(OutputStream, ProcLabelInContext,
+        PathPortCounts, !CurModuleNameSym, !CurFileName, !IO) :-
     ProcLabelInContext = proc_label_in_context(ModuleNameSym, FileName,
         ProcLabel),
     ( if ModuleNameSym = !.CurModuleNameSym then
         true
     else
         ModuleName = sym_name_to_string(ModuleNameSym),
-        io.write_string("module ", !IO),
-        term_io.quote_atom(ModuleName, !IO),
-        io.write_string("\n", !IO),
+        io.write_string(OutputStream, "module ", !IO),
+        term_io.quote_atom(OutputStream, ModuleName, !IO),
+        io.write_string(OutputStream, "\n", !IO),
         !:CurModuleNameSym = ModuleNameSym
     ),
     ( if FileName = !.CurFileName then
         true
     else
-        io.write_string("file ", !IO),
-        term_io.quote_atom(FileName, !IO),
-        io.write_string("\n", !IO),
+        io.write_string(OutputStream, "file ", !IO),
+        term_io.quote_atom(OutputStream, FileName, !IO),
+        io.write_string(OutputStream, "\n", !IO),
         !:CurFileName = FileName
     ),
-    write_proc_label_and_check(ModuleNameSym, ProcLabel, !IO),
-    map.foldl(write_path_port_count, PathPortCounts, !IO).
+    write_proc_label_and_check(OutputStream, ModuleNameSym, ProcLabel, !IO),
+    map.foldl(write_path_port_count(OutputStream), PathPortCounts, !IO).
 
-:- pred write_proc_label_and_check(sym_name::in, proc_label::in,
-    io::di, io::uo) is det.
+:- pred write_proc_label_and_check(io.text_output_stream::in, sym_name::in,
+    proc_label::in, io::di, io::uo) is det.
 
-write_proc_label_and_check(ModuleNameSym, ProcLabel, !IO) :-
+write_proc_label_and_check(OutputStream, ModuleNameSym, ProcLabel, !IO) :-
     (
         ProcLabel = ordinary_proc_label(DefModuleSym, _, _, _, _, _),
         require(unify(ModuleNameSym, DefModuleSym),
@@ -903,71 +906,63 @@ write_proc_label_and_check(ModuleNameSym, ProcLabel, !IO) :-
         ProcLabel = special_proc_label(_, _, _, _, _, _),
         error("write_proc_label: special_pred")
     ),
-    write_proc_label(ProcLabel, !IO).
+    write_proc_label(OutputStream, ProcLabel, !IO).
 
-write_proc_label(ProcLabel, !IO) :-
+write_proc_label(OutputStream, ProcLabel, !IO) :-
     (
         ProcLabel = ordinary_proc_label(DefModuleSym, PredOrFunc,
             DeclModuleSym, Name, Arity, Mode),
         (
             PredOrFunc = pf_predicate,
             ( if DeclModuleSym = DefModuleSym then
-                io.write_string("pproc ", !IO)
+                io.write_string(OutputStream, "pproc ", !IO)
             else
                 DeclModule = sym_name_to_string(DeclModuleSym),
-                io.write_string("pprocdecl ", !IO),
-                term_io.quote_atom(DeclModule, !IO),
-                io.write_string(" ", !IO)
+                io.write_string(OutputStream, "pprocdecl ", !IO),
+                term_io.quote_atom(OutputStream, DeclModule, !IO),
+                io.write_string(OutputStream, " ", !IO)
             )
         ;
             PredOrFunc = pf_function,
             ( if DeclModuleSym = DefModuleSym then
-                io.write_string("fproc ", !IO)
+                io.write_string(OutputStream, "fproc ", !IO)
             else
                 DeclModule = sym_name_to_string(DeclModuleSym),
-                io.write_string("fprocdecl ", !IO),
-                term_io.quote_atom(DeclModule, !IO),
-                io.write_string(" ", !IO)
+                io.write_string(OutputStream, "fprocdecl ", !IO),
+                term_io.quote_atom(OutputStream, DeclModule, !IO),
+                io.write_string(OutputStream, " ", !IO)
             )
         ),
-        term_io.quote_atom(Name, !IO),
-        io.write_string(" ", !IO),
-        io.write_int(Arity, !IO),
-        io.write_string(" ", !IO),
-        io.write_int(Mode, !IO),
-        io.nl(!IO)
+        term_io.quote_atom(OutputStream, Name, !IO),
+        io.format(OutputStream, " %d %d\n", [i(Arity), i(Mode)], !IO)
     ;
         % We don't record trace counts in special preds.
         ProcLabel = special_proc_label(_, _, _, _, _, _),
         error("write_proc_label: special_pred")
     ).
 
-:- pred write_path_port_count(path_port::in, line_no_and_count::in,
-    io::di, io::uo) is det.
+:- pred write_path_port_count(io.text_output_stream::in,
+    path_port::in, line_no_and_count::in, io::di, io::uo) is det.
 
-write_path_port_count(port_only(Port),
-        line_no_and_count(LineNo, ExecCount, NumTests), !IO) :-
-    string_to_trace_port(PortStr, Port),
-    io.write_strings([
-        PortStr, " ",
-        int_to_string(LineNo), " ",
-        int_to_string(ExecCount), " ",
-        int_to_string(NumTests), "\n"], !IO).
-write_path_port_count(path_only(Path),
-        line_no_and_count(LineNo, ExecCount, NumTests), !IO) :-
-    io.write_strings([
-        "<", rev_goal_path_to_string(Path), "> ",
-        int_to_string(LineNo), " ",
-        int_to_string(ExecCount), " ",
-        int_to_string(NumTests), "\n"], !IO).
-write_path_port_count(port_and_path(Port, Path),
-        line_no_and_count(LineNo, ExecCount, NumTests), !IO) :-
-    string_to_trace_port(PortStr, Port),
-    io.write_strings([
-        PortStr, " <", rev_goal_path_to_string(Path), "> ",
-        int_to_string(LineNo), " ",
-        int_to_string(ExecCount), " ",
-        int_to_string(NumTests), "\n"], !IO).
+write_path_port_count(OutputStream, PathPort, LineNoAndCount, !IO) :-
+    LineNoAndCount = line_no_and_count(LineNo, ExecCount, NumTests),
+    (
+        PathPort = port_only(Port),
+        string_to_trace_port(PortStr, Port),
+        io.format(OutputStream, "%s %d %d %d\n",
+            [s(PortStr), i(LineNo), i(ExecCount), i(NumTests)], !IO)
+    ;
+        PathPort = path_only(Path),
+        io.format(OutputStream, "<%s> %d %d %d\n",
+            [s(rev_goal_path_to_string(Path)),
+            i(LineNo), i(ExecCount), i(NumTests)], !IO)
+    ;
+        PathPort = port_and_path(Port, Path),
+        string_to_trace_port(PortStr, Port),
+        io.format(OutputStream, "%s <%s> %d %d %d\n",
+            [s(PortStr), s(rev_goal_path_to_string(Path)),
+            i(LineNo), i(ExecCount), i(NumTests)], !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 

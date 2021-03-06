@@ -31,6 +31,7 @@
 
 :- import_module array.
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -150,7 +151,10 @@
                 % MaybeProcRepFile = ok(ProcRepFile). The other case is
                 % MaybeProcRepFile = error(ErrorMsg), which shows that the
                 % proc representation file was malformed.
-                procrep_file            :: maybe(maybe_error(prog_rep))
+                procrep_file            :: maybe(maybe_error(prog_rep)),
+
+                % Contains a stream for progress messages, if desired.
+                progress_stream         :: maybe(io.text_output_stream)
             ).
 
 :- type compensation_table == map(proc_static_ptr, inherit_prof_info).

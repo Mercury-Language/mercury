@@ -738,6 +738,7 @@ pardgoals_build_candidate_conjunction(Info, Location, RevGoalPath,
                 io(!IO)
             ]
             (
+                io.output_stream(OutputStream, !IO),
                 (
                     ( Location = pl_proc(ProcLabel)
                     ; Location = pl_goal(ProcLabel, _)
@@ -756,11 +757,13 @@ pardgoals_build_candidate_conjunction(Info, Location, RevGoalPath,
                 create_candidate_parallel_conj_report(VarTable,
                     FBCandidate, Report),
                 print_proc_label_to_string(ProcLabel, ProcLabelString),
-                io.format("Not parallelising conjunction in %s, " ++
+                io.format(OutputStream,
+                    "Not parallelising conjunction in %s, " ++
                     "insufficient speedup or too dependent:\n",
                     [s(ProcLabelString)], !IO),
-                io.write_string(append_list(cord.list(Report)), !IO),
-                io.flush_output(!IO)
+                io.write_string(OutputStream, append_list(cord.list(Report)),
+                    !IO),
+                io.flush_output(OutputStream, !IO)
             )
         )
     ;

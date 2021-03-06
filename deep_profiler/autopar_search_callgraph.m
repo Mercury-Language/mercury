@@ -270,13 +270,16 @@ candidate_parallel_conjunctions_callee(Opts, Deep, CliquePtr, CliqueCandidates,
                 AnalyzeChild = yes
             else
                 trace [compile_time(flag("debug_cpc_search")), io(!IO)] (
-                    debug_cliques_exceeded_parallelism(!.Callee, !IO)
+                    io.output_stream(OutputStream, !IO),
+                    debug_cliques_exceeded_parallelism(OutputStream,
+                        !.Callee, !IO)
                 ),
                 AnalyzeChild = no
             )
         else
             trace [compile_time(flag("debug_cpc_search")), io(!IO)] (
-                debug_cliques_below_threshold(!.Callee, !IO)
+                io.output_stream(OutputStream, !IO),
+                debug_cliques_below_threshold(OutputStream, !.Callee, !IO)
             ),
             AnalyzeChild = no
         )
@@ -650,27 +653,27 @@ pardgoal_consumed_vars_accum(Goal, !Vars) :-
 % Useful utility predicates.
 %
 
-:- pred debug_cliques_below_threshold(candidate_child_clique::in,
-    io::di, io::uo) is det.
+:- pred debug_cliques_below_threshold(io.text_output_stream::in,
+    candidate_child_clique::in, io::di, io::uo) is det.
 
-debug_cliques_below_threshold(Clique, !IO) :-
+debug_cliques_below_threshold(OutputStream, Clique, !IO) :-
     CliquePtr = Clique ^ ccc_clique,
     CliquePtr = clique_ptr(CliqueNum),
     Calls = cs_cost_get_calls(Clique ^ ccc_cs_cost),
     PercallCost = cs_cost_get_percall(Clique ^ ccc_cs_cost),
-    io.format(
+    io.format(OutputStream,
         "D: Not entering clique: %d, " ++
         "it is below the clique threshold\n  " ++
         "It has per-call cost %f and is called %f times\n\n",
         [i(CliqueNum), f(PercallCost), f(Calls)], !IO).
 
-:- pred debug_cliques_exceeded_parallelism(candidate_child_clique::in,
-    io::di, io::uo) is det.
+:- pred debug_cliques_exceeded_parallelism(io.text_output_stream::in,
+    candidate_child_clique::in, io::di, io::uo) is det.
 
-debug_cliques_exceeded_parallelism(Clique, !IO) :-
+debug_cliques_exceeded_parallelism(OutputStream, Clique, !IO) :-
     CliquePtr = Clique ^ ccc_clique,
     CliquePtr = clique_ptr(CliqueNum),
-    io.format(
+    io.format(OutputStream,
         "D: Not entering clique %d, " ++
         "no more parallelisation resources available at this context\n\n",
         [i(CliqueNum)], !IO).

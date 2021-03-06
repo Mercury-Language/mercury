@@ -147,7 +147,8 @@ add_csd_arcs(InitDeep, FromPDI, CSDPtr, !Graph) :-
         ToPDPtr = CSD ^ csd_callee,
         ToPDPtr = proc_dynamic_ptr(ToPDI),
         trace [compiletime(flag("add_csd_arcs")), io(!IO)] (
-            write_arc(FromPDI, ToPDI, CSDI, !IO)
+            io.output_stream(OutputStream, !IO),
+            write_arc(OutputStream, FromPDI, ToPDI, CSDI, !IO)
         ),
         add_arc(!.Graph, FromPDI, ToPDI, !:Graph)
     else
@@ -177,7 +178,8 @@ index_clique(CliqueNum, CliqueMembers, !CliqueIndex) :-
 index_clique_member(CliqueNum, PDPtr, !CliqueIndex) :-
     PDPtr = proc_dynamic_ptr(PDI),
     trace [compiletime(flag("index_clique_member")), io(!IO)] (
-        write_pdi_cn(PDI, CliqueNum, !IO)
+        io.output_stream(OutputStream, !IO),
+        write_pdi_cn(OutputStream, PDI, CliqueNum, !IO)
     ),
     array.set(PDI, clique_ptr(CliqueNum), !CliqueIndex).
 
@@ -186,21 +188,19 @@ index_clique_member(CliqueNum, PDPtr, !CliqueIndex) :-
 % Predicates for use in debugging.
 %
 
-:- pred write_arc(int::in, int::in, int::in, io::di, io::uo) is det.
+:- pred write_arc(io.text_output_stream::in, int::in, int::in, int::in,
+    io::di, io::uo) is det.
 
-write_arc(FromPDI, ToPDI, CSDI, !IO) :-
-    io.format("arc from pd %d to pd %d through csd %d\n",
+write_arc(OutputStream, FromPDI, ToPDI, CSDI, !IO) :-
+    io.format(OutputStream, "arc from pd %d to pd %d through csd %d\n",
         [i(FromPDI), i(ToPDI), i(CSDI)], !IO).
 
-:- pred write_pdi_cn(int::in, int::in, io::di, io::uo) is det.
+:- pred write_pdi_cn(io.text_output_stream::in, int::in, int::in,
+    io::di, io::uo) is det.
 
-write_pdi_cn(PDI, CN, !IO) :-
-    io.write_string("pdi ", !IO),
-    io.write_int(PDI, !IO),
-    io.write_string(" -> clique ", !IO),
-    io.write_int(CN, !IO),
-    io.nl(!IO),
-    io.flush_output(!IO).
+write_pdi_cn(OutputStream, PDI, CN, !IO) :-
+    io.format(OutputStream, "pdi %d -> clique %d\n", [i(PDI), i(CN)], !IO),
+    io.flush_output(OutputStream, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module callgraph.

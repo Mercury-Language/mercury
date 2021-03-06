@@ -822,8 +822,15 @@ create_recursion_types_frequency_report(Deep, MaybeReport) :-
 
 rec_types_freq_build_histogram(Deep, _, CliquePtr, !Histogram) :-
     trace [io(!IO)] (
-        clique_ptr(CliqueNum) = CliquePtr,
-        io.format("Analyzing clique: %d\n", [i(CliqueNum)], !IO)
+        MaybeProgressStream = Deep ^ progress_stream,
+        (
+            MaybeProgressStream = no
+        ;
+            MaybeProgressStream = yes(ProgressStream),
+            clique_ptr(CliqueNum) = CliquePtr,
+            io.format(ProgressStream, "Analyzing clique: %d\n",
+                [i(CliqueNum)], !IO)
+        )
     ),
     create_clique_recursion_costs_report(Deep, CliquePtr,
         MaybeCliqueRecursionReport),

@@ -53,6 +53,8 @@ main(!IO) :-
     io.command_line_arguments(Args0, !IO),
     getopt.process_options(option_ops_multi(short, long, defaults),
         Args0, Args, MaybeOptions),
+    io.stdout_stream(StdOut, !IO),
+    io.stderr_stream(StdErr, !IO),
     (
         MaybeOptions = ok(Options),
         lookup_bool_option(Options, help, Help),
@@ -60,13 +62,13 @@ main(!IO) :-
         lookup_bool_option(Options, verify_profile, Verify),
         (
             Help = yes,
-            write_help_message(ProgName, !IO)
+            write_help_message(StdOut, ProgName, !IO)
         ;
             Help = no
         ),
         (
             Version = yes,
-            write_version_message(ProgName, !IO)
+            write_version_message(StdOut, ProgName, !IO)
         ;
             Version = no
         ),
@@ -76,10 +78,10 @@ main(!IO) :-
         then
             (
                 Verify = no,
-                main2(ProgName, Args, Options, !IO)
+                main_2(StdErr, ProgName, Args, Options, !IO)
             ;
                 Verify = yes,
-                verify_profile(ProgName, Args, Options, !IO)
+                verify_profile(StdErr, ProgName, Args, Options, !IO)
             )
         else
             true
@@ -88,16 +90,16 @@ main(!IO) :-
         MaybeOptions = error(Error),
         Msg = option_error_to_string(Error),
         io.set_exit_status(1, !IO),
-        io.format("%s: error parsing options: %s\n",
+        io.format(StdErr, "%s: error parsing options: %s\n",
             [s(ProgName), s(Msg)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred main2(string::in, list(string)::in, option_table::in,
-    io::di, io::uo) is cc_multi.
+:- pred main_2(io.text_output_stream::in, string::in, list(string)::in,
+    option_table::in, io::di, io::uo) is cc_multi.
 
-main2(ProgName, Args, Options, !IO) :-
+main_2(ErrorStream, ProgName, Args, Options, !IO) :-
     ( if Args = [FileName] then
         lookup_bool_option(Options, canonical_clique, Canonical),
         lookup_bool_option(Options, verbose, Verbose),
@@ -128,14 +130,13 @@ main2(ProgName, Args, Options, !IO) :-
         ;
             StartupResult = error(Error),
             io.set_exit_status(1, !IO),
-            io.format("%s: error reading %s: %s\n",
+            io.format(ErrorStream, "%s: error reading %s: %s\n",
                 [s(ProgName), s(FileName), s(Error)], !IO)
         )
     else
         io.set_exit_status(1, !IO),
-        write_help_message(ProgName, !IO)
+        write_help_message(ErrorStream, ProgName, !IO)
     ).
-
 
 %---------------------------------------------------------------------------%
 %
@@ -147,10 +148,10 @@ main2(ProgName, Args, Options, !IO) :-
 % it needs to up to the point where we normally start querying a profile.
 % This mode does not cause a server to be started.
 
-:- pred verify_profile(string::in, list(string)::in, option_table::in,
-    io::di, io::uo) is det.
+:- pred verify_profile(io.text_output_stream::in, string::in, list(string)::in,
+    option_table::in, io::di, io::uo) is det.
 
-verify_profile(ProgName, Args0, Options, !IO) :-
+verify_profile(ErrorStream, ProgName, Args0, Options, !IO) :-
     (
         Args0 = [],
         Args  = ["Deep.data"]
@@ -158,12 +159,12 @@ verify_profile(ProgName, Args0, Options, !IO) :-
         Args0 = [_ | _],
         Args = Args0
     ),
-    list.foldl(verify_profile_2(ProgName, Options), Args, !IO).
+    list.foldl(verify_profile_2(ErrorStream, ProgName, Options), Args, !IO).
 
-:- pred verify_profile_2(string::in, option_table::in, string::in,
-    io::di, io::uo) is det.
+:- pred verify_profile_2(io.text_output_stream::in, string::in,
+    option_table::in, string::in, io::di, io::uo) is det.
 
-verify_profile_2(ProgName, Options, FileName, !IO) :-
+verify_profile_2(ErrorStream, ProgName, Options, FileName, !IO) :-
     lookup_bool_option(Options, canonical_clique, Canonical),
     Machine = "dummy_server",      % For verification this doesn't matter.
     script_name(ScriptName, !IO),
@@ -174,25 +175,28 @@ verify_profile_2(ProgName, Options, FileName, !IO) :-
     ;
         Res = error(Error),
         io.set_exit_status(1, !IO),
-        io.format("%s: error reading %s: %s\n",
+        io.format(ErrorStream, "%s: error reading %s: %s\n",
             [s(ProgName), s(FileName), s(Error)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_version_message(string::in, io::di, io::uo) is det.
+:- pred write_version_message(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-write_version_message(ProgName, !IO) :-
+write_version_message(OutputStream, ProgName, !IO) :-
     library.version(Version, Fullarch),
-    io.format("%s: Mercury deep profiler\n", [s(ProgName)], !IO),
-    io.format("version: %s, on %s.\n",
+    io.format(OutputStream, "%s: Mercury deep profiler\n", [s(ProgName)], !IO),
+    io.format(OutputStream, "version: %s, on %s.\n",
         [s(Version), s(Fullarch)], !IO).
 
-:- pred write_help_message(string::in, io::di, io::uo) is det.
+:- pred write_help_message(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-write_help_message(ProgName) -->
-    io.format("Usage: %s [<options>] <filename>\n", [s(ProgName)]),
-    io.write_string(
+write_help_message(OutputStream, ProgName, !IO) :-
+    io.format(OutputStream,
+        "Usage: %s [<options>] <filename>\n", [s(ProgName)], !IO),
+    io.write_string(OutputStream,
         "<filename> must name a deep profiling data file.\n" ++
         "You should specify one of the following options:\n" ++
         "--help      Generate this help message.\n" ++
@@ -212,7 +216,7 @@ write_help_message(ProgName) -->
         "--procrep-coverage\n" ++
         "\t\t\tRun the procrep coverage query on every static procedure\n" ++
         "--recursion-types-histogram\n" ++
-        "\t\t\tRun the recursion types histogram query\n").
+        "\t\t\tRun the recursion types histogram query\n", !IO).
     % --canonical-clique is not documented because it is not yet supported
 
 %---------------------------------------------------------------------------%

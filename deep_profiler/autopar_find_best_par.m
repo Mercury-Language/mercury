@@ -408,7 +408,9 @@ preprocess_conjunction_into_groups(Index, Goal, !RevGoalGroups) :-
 find_best_parallelisation_complete_bnb(Info, Location, Algorithm,
         PreprocessedGoals, MaybeBestParallelisation) :-
     trace [compile_time(flag("debug_branch_and_bound")), io(!IO)] (
-        io.format("D: Find best parallelisation for:\n%s\n",
+        io.output_stream(OutputStream, !IO),
+        io.format(OutputStream,
+            "D: Find best parallelisation for:\n%s\n",
             [s(LocationString)], !IO),
         location_to_string(1, Location, LocationCord),
         string.append_list(cord.list(LocationCord), LocationString),
@@ -417,9 +419,10 @@ find_best_parallelisation_complete_bnb(Info, Location, Algorithm,
         NumGoalsAfter = NumGoals -
             PreprocessedGoals ^ gfp_last_costly_goal - 1,
         NumGoalsMiddle = NumGoals - NumGoalsBefore - NumGoalsAfter,
-        io.format("D: Problem size (before, middle, after): %d,%d,%d\n",
+        io.format(OutputStream,
+            "D: Problem size (before, middle, after): %d,%d,%d\n",
             [i(NumGoalsBefore), i(NumGoalsMiddle), i(NumGoalsAfter)], !IO),
-        io.flush_output(!IO)
+        io.flush_output(OutputStream, !IO)
     ),
 
     promise_equivalent_solutions [GenParTime, EqualBestSolns, Profile] (
@@ -429,13 +432,14 @@ find_best_parallelisation_complete_bnb(Info, Location, Algorithm,
     ),
 
     trace [compile_time(flag("debug_branch_and_bound")), io(!IO)] (
-        io.format("D: Solutions: %d\n",
+        io.output_stream(OutputStream, !IO),
+        io.format(OutputStream, "D: Solutions: %d\n",
             [i(list.length(EqualBestSolns))], !IO),
-        io.format("D: Branch and bound profile: %s\n",
+        io.format(OutputStream, "D: Branch and bound profile: %s\n",
             [s(string(Profile))], !IO),
-        io.format("D: Time: %d ms\n\n",
+        io.format(OutputStream, "D: Time: %d ms\n\n",
             [i(GenParTime)], !IO),
-        io.flush_output(!IO)
+        io.flush_output(OutputStream, !IO)
     ),
 
     (

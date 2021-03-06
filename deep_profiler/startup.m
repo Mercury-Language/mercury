@@ -109,7 +109,7 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
         DumpStages, DumpOptions, InitDeep0, !:Deep, !IO) :-
     InitDeep0 = initial_deep(InitStats, Root,
         CallSiteDynamics0, ProcDynamics, CallSiteStatics0, ProcStatics0),
-    maybe_dump(DataFileName, DumpStages, 0,
+    maybe_dump(MaybeOutputStream, DataFileName, DumpStages, 0,
         dump_initial_deep(InitDeep0, default_dump_options), !IO),
 
     maybe_report_msg(MaybeOutputStream,
@@ -131,7 +131,7 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
 
     InitDeep1 = initial_deep(InitStats, Root,
         CallSiteDynamics, ProcDynamics, CallSiteStatics, ProcStatics),
-    maybe_dump(DataFileName, DumpStages, 10,
+    maybe_dump(MaybeOutputStream, DataFileName, DumpStages, 10,
         dump_initial_deep(InitDeep1, DumpOptions), !IO),
     (
         Canonical = no,
@@ -145,7 +145,7 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
             "% Done.\n", !IO),
         maybe_report_stats(MaybeOutputStream, !IO)
     ),
-    maybe_dump(DataFileName, DumpStages, 20,
+    maybe_dump(MaybeOutputStream, DataFileName, DumpStages, 20,
         dump_initial_deep(InitDeep, DumpOptions), !IO),
 
     array.max(InitDeep ^ init_proc_dynamics, PDMax),
@@ -318,14 +318,14 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
         PDOwn, PDDesc0, CSDDesc0,
         PSOwn0, PSDesc0, CSSOwn0, CSSDesc0,
         PDCompTable0, CSDCompTable0, ModuleDataMap, MaybeStaticCoverage0,
-        ExcludeFile, MaybeProcRepFile),
+        ExcludeFile, MaybeProcRepFile, MaybeOutputStream),
 
     array_foldl_from_1(propagate_to_clique, Cliques, !Deep),
     maybe_report_msg(MaybeOutputStream,
         "% Done.\n", !IO),
     maybe_report_stats(MaybeOutputStream, !IO),
 
-    maybe_dump(DataFileName, DumpStages, 30,
+    maybe_dump(MaybeOutputStream, DataFileName, DumpStages, 30,
         dump_deep(!.Deep, DumpOptions), !IO),
 
     maybe_report_msg(MaybeOutputStream,
@@ -361,7 +361,7 @@ startup(Machine, ScriptName, DataFileName, Canonical, MaybeOutputStream,
         "% Done.\n", !IO),
     maybe_report_stats(MaybeOutputStream, !IO),
 
-    maybe_dump(DataFileName, DumpStages, 40,
+    maybe_dump(MaybeOutputStream, DataFileName, DumpStages, 40,
         dump_deep(!.Deep, DumpOptions), !IO).
 
 :- func contour_file_name(string) = string.
@@ -394,28 +394,35 @@ ensure_module_has_module_data(Module, !ModuleDataMap) :-
         map.det_insert(Module, Data, !ModuleDataMap)
     ).
 
-:- pred maybe_dump(string::in, list(string)::in, int::in,
-    pred(io, io)::in(pred(di, uo) is det), io::di, io::uo) is det.
+:- pred maybe_dump(maybe(io.text_output_stream)::in,
+    string::in, list(string)::in, int::in,
+    pred(io.text_output_stream, io, io)::in(pred(in, di, uo) is det),
+    io::di, io::uo) is det.
 
-maybe_dump(BaseName, DumpStages, ThisStageNum, Action, !IO) :-
-    string.int_to_string(ThisStageNum, ThisStage),
+maybe_dump(MaybeOutputStream, BaseName, DumpStages, ThisStageNum,
+        Action, !IO) :-
+    string.int_to_string(ThisStageNum, ThisStageStr),
     ( if
         ( list.member("all", DumpStages)
-        ; list.member(ThisStage, DumpStages)
+        ; list.member(ThisStageStr, DumpStages)
         )
     then
-        string.append_list([BaseName, ".deepdump.", ThisStage], FileName),
+        FileName = BaseName ++ ".deepdump." ++ ThisStageStr,
         io.open_output(FileName, OpenRes, !IO),
         (
             OpenRes = ok(FileStream),
-            io.set_output_stream(FileStream, CurStream, !IO),
-            Action(!IO),
-            io.close_output(FileStream, !IO),
-            io.set_output_stream(CurStream, _, !IO)
+            Action(FileStream, !IO),
+            io.close_output(FileStream, !IO)
         ;
             OpenRes = error(Error),
             io.error_message(Error, Msg),
-            io.format("%s: %s\n", [s(FileName), s(Msg)], !IO)
+            (
+                MaybeOutputStream = yes(OutputStream)
+            ;
+                MaybeOutputStream = no,
+                io.stderr_stream(OutputStream, !IO)
+            ),
+            io.format(OutputStream, "%s: %s\n", [s(FileName), s(Msg)], !IO)
         )
     else
         true

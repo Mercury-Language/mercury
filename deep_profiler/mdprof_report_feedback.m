@@ -51,16 +51,17 @@ main(!IO) :-
     io.command_line_arguments(Args0, !IO),
     getopt.process_options(option_ops_multi(short, long, defaults),
         Args0, Args, MaybeOptions),
-    io.stderr_stream(Stderr, !IO),
+    io.stdout_stream(StdOut, !IO),
+    io.stderr_stream(StdErr, !IO),
     (
         MaybeOptions = ok(Options0),
         post_process_options(ProgName, Options0, Options, !IO),
         lookup_bool_option(Options, help, Help),
         lookup_bool_option(Options, version, Version),
         ( if Version = yes then
-            write_version_message(ProgName, !IO)
+            write_version_message(StdOut, ProgName, !IO)
         else if Help = yes then
-            write_help_message(ProgName, !IO)
+            write_help_message(StdOut, ProgName, !IO)
         else
             (
                 Args = [FeedbackFileName],
@@ -68,12 +69,12 @@ main(!IO) :-
                     FeedbackResult, !IO),
                 (
                     FeedbackResult = ok(Feedback),
-                    print_feedback_report(Feedback, !IO)
+                    print_feedback_report(StdOut, Feedback, !IO)
                 ;
                     FeedbackResult = error(FeedbackError),
                     feedback_read_error_message_string(FeedbackFileName,
                         FeedbackError, Message),
-                    io.format(Stderr, "%s: %s\n",
+                    io.format(StdErr, "%s: %s\n",
                         [s(ProgName), s(Message)], !IO),
                     io.set_exit_status(1, !IO)
                 )
@@ -81,16 +82,16 @@ main(!IO) :-
                 ( Args = []
                 ; Args = [_, _ | _]
                 ),
-                write_help_message(ProgName, !IO),
+                write_help_message(StdErr, ProgName, !IO),
                 io.set_exit_status(1, !IO)
             )
         )
     ;
         MaybeOptions = error(Error),
         Msg = option_error_to_string(Error),
-        io.format(Stderr, "%s: error parsing options: %s\n",
+        io.format(StdErr, "%s: error parsing options: %s\n",
             [s(ProgName), s(Msg)], !IO),
-        write_help_message(ProgName, !IO),
+        write_help_message(StdErr, ProgName, !IO),
         io.set_exit_status(1, !IO)
     ).
 
@@ -113,17 +114,21 @@ help_message(ProgName) = HelpMessage :-
 ",
     HelpMessage = string.format(FormatStr, [s(ProgName)]).
 
-:- pred write_help_message(string::in, io::di, io::uo) is det.
+:- pred write_help_message(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-write_help_message(ProgName, !IO) :-
-    io.write_string(help_message(ProgName), !IO).
+write_help_message(OutputStream, ProgName, !IO) :-
+    io.write_string(OutputStream, help_message(ProgName), !IO).
 
-:- pred write_version_message(string::in, io::di, io::uo) is det.
+:- pred write_version_message(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-write_version_message(ProgName, !IO) :-
+write_version_message(OutputStream, ProgName, !IO) :-
     library.version(Version, Fullarch),
-    io.format("%s: Mercury deep profiler\n", [s(ProgName)], !IO),
-    io.format("version: %s, on %s.\n", [s(Version), s(Fullarch)], !IO).
+    io.format(OutputStream, "%s: Mercury deep profiler\n",
+        [s(ProgName)], !IO),
+    io.format(OutputStream, "version: %s, on %s.\n",
+        [s(Version), s(Fullarch)], !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -168,14 +173,14 @@ defaults(version,   bool(no)).
 
 post_process_options(ProgName, !Options, !IO) :-
     lookup_int_option(!.Options, verbosity, VerbosityLevel),
-    io.stderr_stream(Stderr, !IO),
+    io.stderr_stream(StdErr, !IO),
     ( if VerbosityLevel < 0 then
-        io.format(Stderr,
+        io.format(StdErr,
             "%s: warning: verbosity level should not be negative.\n",
             [s(ProgName)], !IO),
         set_option(verbosity, int(0), !Options)
     else if VerbosityLevel > 4 then
-        io.format(Stderr,
+        io.format(StdErr,
             "%s: warning: verbosity level should not exceed 4.\n",
             [s(ProgName)], !IO),
         set_option(verbosity, int(4), !Options)

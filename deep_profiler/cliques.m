@@ -103,28 +103,28 @@ mklist(N, Acc0, Acc) :-
 
 topological_sort(Graph, Cliques) :-
     trace [compiletime(flag("tsort")), io(!IO)] (
-        io.nl(!IO),
-        io.write_string("the graph:\n", !IO),
-        write_graph(Graph, !IO),
-        io.nl(!IO)
+        io.output_stream(OutputStream, !IO),
+        io.write_string(OutputStream, "\nthe graph:\n", !IO),
+        write_graph(OutputStream, Graph, !IO),
+        io.nl(OutputStream, !IO)
     ),
 
     dfs_graph(Graph, Dfs),
 
     trace [compiletime(flag("tsort")), io(!IO)] (
-        io.nl(!IO),
-        io.write_string("the dfs:\n", !IO),
-        write_dfs(Dfs, !IO),
-        io.nl(!IO)
+        io.output_stream(OutputStream, !IO),
+        io.write_string(OutputStream, "\nthe dfs:\n", !IO),
+        write_dfs(OutputStream, Dfs, !IO),
+        io.nl(OutputStream, !IO)
     ),
 
     inverse(Graph, InvGraph),
 
     trace [compiletime(flag("tsort")), io(!IO)] (
-        io.nl(!IO),
-        io.write_string("the inverse graph:\n", !IO),
-        write_graph(InvGraph, !IO),
-        io.nl(!IO)
+        io.output_stream(OutputStream, !IO),
+        io.write_string(OutputStream, "\nthe inverse graph:\n", !IO),
+        write_graph(OutputStream, InvGraph, !IO),
+        io.nl(OutputStream, !IO)
     ),
 
     Visit = dense_bitset.init,
@@ -132,11 +132,10 @@ topological_sort(Graph, Cliques) :-
     reverse(Cliques0, [], Cliques),
 
     trace [compiletime(flag("tsort")), io(!IO)] (
-        io.nl(!IO),
-        io.write_string("the cliques:\n", !IO),
-        write_cliques(Cliques, !IO),
-        io.nl(!IO),
-        io.nl(!IO)
+        io.output_stream(OutputStream, !IO),
+        io.write_string(OutputStream, "\nthe cliques:\n", !IO),
+        write_cliques(OutputStream, Cliques, !IO),
+        io.nl(OutputStream, !IO)
     ).
 
     % This is a copy of list.reverse_2, we copy it here so that it can be
@@ -155,35 +154,30 @@ reverse([X | Xs], L0, L) :-
 tsort([], _InvGraph, _Visit, !Cliques).
 tsort([Node | Nodes], InvGraph, !.Visited, !Cliques) :-
     trace [compiletime(flag("tsort_loop")), io(!IO)] (
-        io.write_string("tsort check ", !IO),
-        io.write_int(Node, !IO),
-        io.nl(!IO)
+        io.output_stream(OutputStream, !IO),
+        io.format(OutputStream, "tsort check %d\n", [i(Node)], !IO)
     ),
 
     ( if dense_bitset.member(Node, !.Visited) then
         trace [compiletime(flag("tsort_old")), io(!IO)] (
-            io.write_string("tsort old ", !IO),
-            io.write_int(Node, !IO),
-            io.nl(!IO)
+            io.output_stream(OutputStream, !IO),
+            io.format(OutputStream, "tsort old %d\n", [i(Node)], !IO)
         )
     else
         trace [compiletime(flag("tsort_new")), io(!IO)] (
-            io.write_string("tsort new ", !IO),
-            io.write_int(Node, !IO),
-            io.nl(!IO)
+            io.output_stream(OutputStream, !IO),
+            io.format(OutputStream, "tsort new %d\n", [i(Node)], !IO)
         ),
 
         dfs([Node], InvGraph, !.Visited, [], !:Visited, CliqueList),
+        set.list_to_set(CliqueList, Clique),
 
         trace [compiletime(flag("tsort_clique")), io(!IO)] (
-            io.write_string("tsort clique ", !IO),
-            io.write_int(Node, !IO),
-            io.write_string(" -> ", !IO),
-            write_clique(CliqueList, !IO),
-            io.nl(!IO)
+            io.output_stream(OutputStream, !IO),
+            io.format(OutputStream, "tsort clique %d -> ", [i(Node)], !IO),
+            write_clique_nl(OutputStream, Clique, !IO)
         ),
 
-        set.list_to_set(CliqueList, Clique),
         !:Cliques = [Clique | !.Cliques]
     ),
     tsort(Nodes, InvGraph, !.Visited, !Cliques).
@@ -224,17 +218,15 @@ dfs([], _Graph, Visit, Dfs, Visit, Dfs).
 dfs([Node | Nodes], Graph, Visit0, Dfs0, Visit, Dfs) :-
     ( if dense_bitset.member(Node, Visit0) then
         trace [compiletime(flag("dfs_old")), io(!IO)] (
-            io.write_string("dfs old ", !IO),
-            io.write_int(Node, !IO),
-            io.nl(!IO)
+            io.output_stream(OutputStream, !IO),
+            io.format(OutputStream, "dfs old %d\n", [i(Node)], !IO)
         ),
 
         dfs(Nodes, Graph, Visit0, Dfs0, Visit, Dfs)
     else
         trace [compiletime(flag("dfs_new")), io(!IO)] (
-            io.write_string("dfs new ", !IO),
-            io.write_int(Node, !IO),
-            io.nl(!IO)
+            io.output_stream(OutputStream, !IO),
+            io.format(OutputStream, "dfs new %d\n", [i(Node)], !IO)
         ),
 
         Visit1 = dense_bitset.insert(Visit0, Node),
@@ -275,42 +267,56 @@ add_arcs_to([From | FromList], To, Graph0, Graph) :-
 
 % Predicates to use in debugging.
 
-:- pred write_graph(graph::in, io::di, io::uo) is det.
-
-write_graph(Graph, !IO) :-
-    Graph = graph(Size, Array),
-    io.format("graph size: %d\n", [i(Size)], !IO),
-    write_graph_nodes(0, Size, Array, !IO).
-
-:- pred write_graph_nodes(int::in, int::in, array(set(int))::in,
+:- pred write_graph(io.text_output_stream::in, graph::in,
     io::di, io::uo) is det.
 
-write_graph_nodes(Cur, Max, Array, !IO) :-
+write_graph(OutputStream, Graph, !IO) :-
+    Graph = graph(Size, Array),
+    io.format(OutputStream, "graph size: %d\n", [i(Size)], !IO),
+    write_graph_nodes(OutputStream, 0, Size, Array, !IO).
+
+:- pred write_graph_nodes(io.text_output_stream::in, int::in, int::in,
+    array(set(int))::in, io::di, io::uo) is det.
+
+write_graph_nodes(OutputStream, Cur, Max, Array, !IO) :-
     ( if Cur =< Max then
-        io.format("%d -> ", [i(Cur)], !IO),
         array.lookup(Array, Cur, SuccSet),
         set.to_sorted_list(SuccSet, Succs),
-        io.write_list(Succs, ", ", io.write_int, !IO),
-        io.nl(!IO),
-        write_graph_nodes(Cur + 1, Max, Array, !IO)
+        io.format(OutputStream, "%d -> ", [i(Cur)], !IO),
+        io.write_line(OutputStream, Succs, !IO),
+        write_graph_nodes(OutputStream, Cur + 1, Max, Array, !IO)
     else
         true
     ).
 
-:- pred write_dfs(list(int)::in, io::di, io::uo) is det.
+:- pred write_dfs(io.text_output_stream::in, list(int)::in,
+    io::di, io::uo) is det.
 
-write_dfs(Dfs, !IO) :-
-    io.write_list(Dfs, "\n", io.write_int, !IO).
+write_dfs(OutputStream, Dfs, !IO) :-
+    io.write_string(OutputStream, "dfs(\n", !IO),
+    list.foldl(io.write_line(OutputStream), Dfs, !IO),
+    io.write_string(OutputStream, ")\n", !IO).
 
-:- pred write_cliques(list(set(int))::in, io::di, io::uo) is det.
+:- pred write_cliques(io.text_output_stream::in, list(set(int))::in,
+    io::di, io::uo) is det.
 
-write_cliques(Cliques, !IO) :-
-    io.write_list(Cliques, "\n", io.write, !IO).
+write_cliques(OutputStream, Cliques, !IO) :-
+    list.foldl(write_clique_nl(OutputStream), Cliques, !IO).
 
-:- pred write_clique(list(int)::in, io::di, io::uo) is det.
+:- pred write_clique(io.text_output_stream::in, set(int)::in,
+    io::di, io::uo) is det.
 
-write_clique(Nodes, !IO) :-
-    io.write_list(Nodes, "\n", io.write_int, !IO).
+write_clique(OutputStream, Nodes, !IO) :-
+    list.map(string.int_to_string, set.to_sorted_list(Nodes), NodeStrs),
+    NodesStr = string.join_list(", ", NodeStrs),
+    io.format(OutputStream, "clique(%s)", [s(NodesStr)], !IO).
+
+:- pred write_clique_nl(io.text_output_stream::in, set(int)::in,
+    io::di, io::uo) is det.
+
+write_clique_nl(OutputStream, Nodes, !IO) :-
+    write_clique(OutputStream, Nodes, !IO),
+    io.nl(OutputStream, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module cliques.
