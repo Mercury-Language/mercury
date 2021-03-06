@@ -341,10 +341,10 @@ feedback_read_error_message_string(File, Error, Message) :-
 % Reading feedback files.
 %
 
-read_or_create_feedback_file(Path, ExpectedProfiledProgramName, FeedbackResult,
-        !IO) :-
-    read_feedback_file(Path, yes(ExpectedProfiledProgramName), ReadResult,
-        !IO),
+read_or_create_feedback_file(Path, ExpectedProfiledProgramName,
+        FeedbackResult, !IO) :-
+    read_feedback_file(Path, yes(ExpectedProfiledProgramName),
+        ReadResult, !IO),
     (
         ReadResult = ok(_Feedback),
         FeedbackResult = ReadResult
@@ -372,9 +372,9 @@ read_or_create_feedback_file(Path, ExpectedProfiledProgramName, FeedbackResult,
 
 read_feedback_file(Path, MaybeExpectedProfiledProgramName,
         ResultFeedbackInfo, !IO) :-
-    io.open_input(Path, IOResStream, !IO),
+    io.open_input(Path, PathResult, !IO),
     (
-        IOResStream = ok(Stream),
+        PathResult = ok(PathStream),
         some [!Result] (
             % Read each part of the file. The calls that actually do the
             % reading are wrapped inside calls to maybe_read, which guarantees
@@ -386,21 +386,21 @@ read_feedback_file(Path, MaybeExpectedProfiledProgramName,
             % then into the feedback_info after read_all_feedback_data.
 
             read_check_line(feedback_first_line, fre_incorrect_first_line,
-                Stream, unit, !:Result, !IO),
+                PathStream, unit, !:Result, !IO),
             maybe_read(
                 read_check_line(feedback_version,
-                    fre_incorrect_version(feedback_version), Stream),
+                    fre_incorrect_version(feedback_version), PathStream),
                 !Result, !IO),
             maybe_read(
                 read_profiled_program_name(MaybeExpectedProfiledProgramName,
-                    Stream),
+                    PathStream),
                 !Result, !IO),
-            maybe_read(read_all_feedback_data(Stream), !Result, !IO),
+            maybe_read(read_all_feedback_data(PathStream), !Result, !IO),
             ResultFeedbackInfo = !.Result
         ),
-        io.close_input(Stream, !IO)
+        io.close_input(PathStream, !IO)
     ;
-        IOResStream = error(ErrorCode),
+        PathResult = error(ErrorCode),
         ResultFeedbackInfo = error(fre_open_error(ErrorCode))
     ).
 
@@ -409,8 +409,7 @@ read_feedback_file(Path, MaybeExpectedProfiledProgramName,
     % Otherwise, return the previous error result without calling the closure.
     %
 :- pred maybe_read(
-    pred(A, feedback_read_result(B), io, io)::
-        in(pred(in, out, di, uo) is det),
+    pred(A, feedback_read_result(B), io, io)::in(pred(in, out, di, uo) is det),
     feedback_read_result(A)::in, feedback_read_result(B)::out,
     io::di, io::uo) is det.
 
@@ -430,9 +429,9 @@ maybe_read(Pred, Result0, Result, !IO) :-
     io::di, io::uo) is det.
 
 read_check_line(TestLine, NotMatchError, Stream, _, Result, !IO) :-
-    io.read_line_as_string(Stream, IOResultLine, !IO),
+    io.read_line_as_string(Stream, LineResult, !IO),
     (
-        IOResultLine = ok(Line),
+        LineResult = ok(Line),
         ( if
             ( Line = TestLine
             ; Line = TestLine ++ "\n"
@@ -443,10 +442,10 @@ read_check_line(TestLine, NotMatchError, Stream, _, Result, !IO) :-
             Result = error(NotMatchError)
         )
     ;
-        IOResultLine = eof,
+        LineResult = eof,
         Result = error(fre_unexpected_eof)
     ;
-        IOResultLine = error(Error),
+        LineResult = error(Error),
         Result = error(fre_read_error(Error))
     ).
 
@@ -455,9 +454,9 @@ read_check_line(TestLine, NotMatchError, Stream, _, Result, !IO) :-
 
 read_profiled_program_name(MaybeExpectedProfiledProgramName, Stream,
         _, Result, !IO) :-
-    io.read_line_as_string(Stream, IOResultLine, !IO),
+    io.read_line_as_string(Stream, LineResult, !IO),
     (
-        IOResultLine = ok(String),
+        LineResult = ok(String),
         ActualProfiledProgramName = string.strip(String),
         (
             MaybeExpectedProfiledProgramName = no,
@@ -474,10 +473,10 @@ read_profiled_program_name(MaybeExpectedProfiledProgramName, Stream,
             )
         )
     ;
-        IOResultLine = eof,
+        LineResult = eof,
         Result = error(fre_unexpected_eof)
     ;
-        IOResultLine = error(Error),
+        LineResult = error(Error),
         Result = error(fre_read_error(Error))
     ).
 
@@ -534,13 +533,15 @@ add_feedback_components([Wrapper | Wrappers], !.Info, Result) :-
 %
 
 write_feedback_file(Path, Feedback, Result, !IO) :-
-    io.open_output(Path, OpenResult, !IO),
+    io.open_output(Path, PathResult, !IO),
     (
-        OpenResult = ok(Stream),
+        PathResult = ok(PathStream),
         promise_equivalent_solutions [!:IO, ExcpResult] (
-            try_io(actually_write_feedback_file(Stream, Feedback),
+            try_io(actually_write_feedback_file(PathStream, Feedback),
                 ExcpResult, !IO)
         ),
+        % XXX PathStream ought to be closed here.
+        % io.close_output(PathStream, !IO),
         (
             ExcpResult = succeeded(_),
             Result = fwr_ok
@@ -555,7 +556,7 @@ write_feedback_file(Path, Feedback, Result, !IO) :-
             )
         )
     ;
-        OpenResult = error(ErrorCode),
+        PathResult = error(ErrorCode),
         Result = fwr_open_error(ErrorCode)
     ).
 
@@ -569,12 +570,9 @@ write_feedback_file(Path, Feedback, Result, !IO) :-
 actually_write_feedback_file(Stream, FeedbackInfo, unit, !IO) :-
     FeedbackInfo = feedback_info(ProfiledProgramName,
         MaybeCandidateParallelConjs),
-    io.write_string(Stream, feedback_first_line, !IO),
-    io.nl(Stream, !IO),
-    io.write_string(Stream, feedback_version, !IO),
-    io.nl(Stream, !IO),
-    io.write_string(Stream, ProfiledProgramName, !IO),
-    io.nl(Stream, !IO),
+    io.format(Stream, "%s\n%s\n%s\n",
+        [s(feedback_first_line), s(feedback_version), s(ProfiledProgramName)],
+        !IO),
     % In the future, we expect to support more than one kind of feedback.
     some [!RevComponents] (
         !:RevComponents = [],
