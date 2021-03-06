@@ -11,6 +11,3 @@ MCFLAGS-mer_mdbcomp = --no-warn-nothing-exported --no-warn-unused-imports
 # Operations on symnames don't have deep enough recursion to pay back
 # the overheads of duplicating the recursive procedure.
 MCFLAGS-mdbcomp.sym_name = --no-optimize-constructor-last-call
-
-MCFLAGS-mdbcomp.trace_counts = --warn-implicit-stream-calls
-MCFLAGS-mdbcomp.program_representation = --warn-implicit-stream-calls
