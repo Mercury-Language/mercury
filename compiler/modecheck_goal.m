@@ -293,10 +293,13 @@ modecheck_goal_disj(Disjuncts0, GoalInfo0, GoalExpr, !ModeInfo) :-
             MultiModeErrorMap0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
         LargeFlatConstructs0 = NonLocals,
-        modecheck_disj_list(MultiModeErrorMap0, Disjuncts0, Disjuncts1,
-            InstMaps, LargeFlatConstructs0, LargeFlatConstructs, !ModeInfo),
+        mode_info_get_instmap(!.ModeInfo, InstMap0),
+        modecheck_disjuncts(MultiModeErrorMap0, InstMap0,
+            Disjuncts0, Disjuncts1, ArmInstMaps,
+            LargeFlatConstructs0, LargeFlatConstructs, !ModeInfo),
+        mode_info_set_instmap(InstMap0, !ModeInfo),
         merge_disj_branches(NonLocals, LargeFlatConstructs,
-            Disjuncts1, Disjuncts2, InstMaps, !ModeInfo),
+            Disjuncts1, Disjuncts2, ArmInstMaps, !ModeInfo),
         % Since merge_disj_branches depends on each disjunct in Disjuncts2
         % having a corresponding instmap in InstMaps, we can flatten disjuncts
         % only *after* merge_disj_branches has done its job.
@@ -305,32 +308,34 @@ modecheck_goal_disj(Disjuncts0, GoalInfo0, GoalExpr, !ModeInfo) :-
     ),
     mode_checkpoint(exit, "disj", !ModeInfo).
 
-:- pred modecheck_disj_list(pred_var_multimode_error_map::in,
-    list(hlds_goal)::in, list(hlds_goal)::out, list(instmap)::out,
+:- pred modecheck_disjuncts(pred_var_multimode_error_map::in, instmap::in,
+    list(hlds_goal)::in, list(hlds_goal)::out, list(arm_instmap)::out,
     set_of_progvar::in, set_of_progvar::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_disj_list(_, [], [], [], !LargeFlatConstructs, !ModeInfo).
-modecheck_disj_list(MultiModeErrorMap0, [Goal0 | Goals0], [Goal | Goals],
-        [InstMap | InstMaps], !LargeFlatConstructs, !ModeInfo) :-
+modecheck_disjuncts(_, _, [], [], [], !LargeFlatConstructs, !ModeInfo).
+modecheck_disjuncts(MultiModeErrorMap0, InstMap0,
+        [Disjunct0 | Disjuncts0], [Disjunct | Disjuncts],
+        [ArmInstMap | ArmInstMaps], !LargeFlatConstructs, !ModeInfo) :-
     mode_info_set_pred_var_multimode_error_map(MultiModeErrorMap0, !ModeInfo),
-    mode_info_get_instmap(!.ModeInfo, InstMap0),
-    modecheck_goal(Goal0, Goal, !ModeInfo),
-    accumulate_large_flat_constructs(Goal, !LargeFlatConstructs),
-    mode_info_get_instmap(!.ModeInfo, InstMap),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    modecheck_disj_list(MultiModeErrorMap0, Goals0, Goals, InstMaps,
-        !LargeFlatConstructs, !ModeInfo).
+    modecheck_goal(Disjunct0, Disjunct, !ModeInfo),
+    accumulate_large_flat_constructs(Disjunct, !LargeFlatConstructs),
+    mode_info_get_instmap(!.ModeInfo, InstMap),
+    Context = goal_info_get_context(Disjunct ^ hg_info),
+    ArmInstMap = arm_instmap(Context, InstMap),
+    modecheck_disjuncts(MultiModeErrorMap0, InstMap0, Disjuncts0, Disjuncts,
+        ArmInstMaps, !LargeFlatConstructs, !ModeInfo).
 
 :- pred merge_disj_branches(set_of_progvar::in, set_of_progvar::in,
-    list(hlds_goal)::in, list(hlds_goal)::out, list(instmap)::in,
+    list(hlds_goal)::in, list(hlds_goal)::out, list(arm_instmap)::in,
     mode_info::in, mode_info::out) is det.
 
 merge_disj_branches(NonLocals, LargeFlatConstructs, Disjuncts0, Disjuncts,
-        InstMaps0, !ModeInfo) :-
+        ArmInstMaps0, !ModeInfo) :-
     ( if set_of_var.is_empty(LargeFlatConstructs) then
         Disjuncts = Disjuncts0,
-        InstMaps = InstMaps0
+        ArmInstMaps = ArmInstMaps0
     else
         % The instmaps will each map every var in LargeFlatConstructs
         % to a very big inst. This means that instmap_merge will take a long
@@ -355,12 +360,19 @@ merge_disj_branches(NonLocals, LargeFlatConstructs, Disjuncts0, Disjuncts,
         LargeFlatConstructList =
             set_of_var.to_sorted_list(LargeFlatConstructs),
         list.map(
-            instmap_set_vars_same(ground(shared, none_or_default_func),
+            arm_instmap_set_vars_same(ground(shared, none_or_default_func),
                 LargeFlatConstructList),
-            InstMaps0, InstMaps)
+            ArmInstMaps0, ArmInstMaps)
     ),
-    make_arm_instmaps_for_goals(Disjuncts, InstMaps, ArmInstMaps),
     instmap_merge(NonLocals, ArmInstMaps, merge_disj, !ModeInfo).
+
+:- pred arm_instmap_set_vars_same(mer_inst::in, list(prog_var)::in,
+    arm_instmap::in, arm_instmap::out) is det.
+
+arm_instmap_set_vars_same(Inst, Vars, ArmInstMap0, ArmInstMap) :-
+    ArmInstMap0 = arm_instmap(Context, InstMap0),
+    instmap_set_vars_same(Inst, Vars, InstMap0, InstMap),
+    ArmInstMap = arm_instmap(Context, InstMap).
 
 %-----------------------------------------------------------------------------%
 %
