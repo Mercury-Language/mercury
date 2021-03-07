@@ -3169,12 +3169,8 @@ ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
         public  int                         line_number = 1;
 
         public MR_TextInputFile(java.io.InputStream stream) {
-            try {
-                input = new java.io.InputStreamReader(stream, ""UTF-8"");
-            } catch (java.io.UnsupportedEncodingException e) {
-                // This will never happen.
-                throw new Error(e.toString());
-            }
+            input = new java.io.InputStreamReader(stream,
+                java.nio.charset.StandardCharsets.UTF_8);
         }
 
         // refill_buffer():
@@ -3347,14 +3343,9 @@ ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
         public  int                     line_number = 1;
 
         public MR_TextOutputFile(java.io.OutputStream stream) {
-            try {
-                output = new java.io.BufferedWriter(
-                    new java.io.OutputStreamWriter(stream, ""UTF-8""));
-            }
-            catch (java.io.UnsupportedEncodingException e) {
-                // This will never happen.
-                throw new Error(e.toString());
-            }
+            output = new java.io.BufferedWriter(
+                new java.io.OutputStreamWriter(stream,
+                    java.nio.charset.StandardCharsets.UTF_8));
         }
 
         public void put(char c)
