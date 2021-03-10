@@ -1110,7 +1110,9 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
             count_load_stores_for_call(CountInfo, Inputs, Outputs,
                 MaybeNeedAcrossCall, GoalInfo, !CountState)
         ;
-            GenericCall = cast(_),
+            ( GenericCall = cast(_)
+            ; GenericCall = subtype_coerce
+            ),
             % Casts are generated inline.
             cls_require_in_regs(CountInfo, InputArgs, !CountState),
             cls_put_in_regs(OutputArgs, !CountState)

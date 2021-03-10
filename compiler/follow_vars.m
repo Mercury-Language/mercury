@@ -253,7 +253,9 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
         GoalExpr0 = generic_call(GenericCall, Args, Modes, MaybeArgRegs, Det),
         GoalExpr = GoalExpr0,
         (
-            GenericCall = cast(_)
+            ( GenericCall = cast(_)
+            ; GenericCall = subtype_coerce
+            )
             % Casts are generated inline.
         ;
             ( GenericCall = higher_order(_, _, _, _)

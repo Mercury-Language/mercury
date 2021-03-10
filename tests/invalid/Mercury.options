@@ -19,6 +19,9 @@ MCFLAGS-bug214                  = --allow-stubs --no-warn-stubs
 # Mantis bug 238 shows up in bug238.m only with --constraint-propagation.
 MCFLAGS-bug238                  = --constraint-propagation
 MCFLAGS-children                = --no-intermodule-optimization
+MCFLAGS-coerce_implied_mode     = --halt-at-warn
+MCFLAGS-coerce_infer            = --infer-all
+MCFLAGS-coerce_void             = --halt-at-warn
 MCFLAGS-duplicate_modes         = --verbose-error-messages
 MCFLAGS-ee_invalid              = --verbose-error-messages
 MCFLAGS-empty_interface         = --halt-at-warn -E

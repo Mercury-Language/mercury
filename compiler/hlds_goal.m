@@ -700,7 +700,12 @@
                 % A cast generic_call with two arguments, Input and Output,
                 % assigns `Input' to `Output', performing a cast of this kind.
                 cast_kind       :: cast_kind
-            ).
+            )
+
+    ;       subtype_coerce.
+            % A coerce expression with two arguments, Input and Output,
+            % assigns `Input' to `Output'. (We could merge this into cast_kind
+            % eventually.)
 
     % The various kinds of casts that we can do.
     %
@@ -1926,6 +1931,9 @@ generic_call_to_id(GenericCall, GenericCallId) :-
     ;
         GenericCall = cast(CastType),
         GenericCallId = gcid_cast(CastType)
+    ;
+        GenericCall = subtype_coerce,
+        GenericCallId = gcid_coerce
     ).
 
 generic_call_pred_or_func(GenericCall) = PredOrFunc :-
@@ -1937,6 +1945,7 @@ generic_call_pred_or_func(GenericCall) = PredOrFunc :-
     ;
         ( GenericCall = event_call(_)
         ; GenericCall = cast(_)
+        ; GenericCall = subtype_coerce
         ),
         PredOrFunc = pf_predicate
     ).
@@ -3264,6 +3273,7 @@ rename_generic_call(Must, Subn, Call0, Call) :-
     ;
         ( Call0 = event_call(_EventName)
         ; Call0 = cast(_CastKind)
+        ; Call0 = subtype_coerce
         ),
         Call = Call0
     ).

@@ -711,6 +711,7 @@ insert_reg_wrappers_goal_2(Goal0, Goal, !InstMap, !Info, !Specs) :-
         ;
             ( GenericCall = event_call(_)
             ; GenericCall = cast(_)
+            ; GenericCall = subtype_coerce
             ),
             Goal = Goal0,
             update_instmap(Goal, !InstMap)

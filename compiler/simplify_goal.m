@@ -434,6 +434,9 @@ will_flush(GoalExpr, BeforeAfter) = WillFlush :-
         ;
             GenericCall = cast(_),
             WillFlush0 = no
+        ;
+            GenericCall = subtype_coerce,
+            WillFlush0 = no
         ),
         (
             BeforeAfter = before,

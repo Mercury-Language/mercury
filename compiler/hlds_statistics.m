@@ -183,6 +183,9 @@ accumulate_proc_stats_in_goal(Goal, !UsedVars, !Stats) :-
         ;
             CallKind = cast(_),
             !Stats ^ ps_casts := !.Stats ^ ps_casts + 1
+        ;
+            CallKind = subtype_coerce,
+            !Stats ^ ps_coerces := !.Stats ^ ps_coerces + 1
         )
     ;
         GoalExpr = conj(ConjType, Conjs),
@@ -299,6 +302,7 @@ accumulate_proc_stats_in_switch([Case | Cases], !UsedVars, !Stats) :-
                 ps_method_calls         :: int,
                 ps_event_calls          :: int,
                 ps_casts                :: int,
+                ps_coerces              :: int,
 
                 ps_plain_conjs          :: int,
                 ps_plain_conjuncts      :: int,
@@ -325,7 +329,7 @@ accumulate_proc_stats_in_switch([Case | Cases], !UsedVars, !Stats) :-
 :- func init_proc_stats = proc_stats.
 
 init_proc_stats = Stats :-
-    Stats = proc_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    Stats = proc_stats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).
 
 :- pred write_proc_stat_components(io.output_stream::in, string::in,
@@ -336,7 +340,7 @@ write_proc_stat_components(OutStream, Msg, Name, PredId, ProcId, Stats, !IO) :-
     Stats = proc_stats(UnifyConstructs, UnifyDeconstructs,
         UnifyAssigns, UnifyTests, UnifyComplicateds,
         PlainCalls, ForeignCalls, HOCalls, MethodCalls, EventCalls, Casts,
-        PlainConjs, PlainConjuncts, ParallelConjs, ParallelConjuncts,
+        Coerces, PlainConjs, PlainConjuncts, ParallelConjs, ParallelConjuncts,
         Disjs, Disjuncts, Switches, SwitchArms,
         IfThenElses, Negations, Scopes, BiImplications, AtomicGoals, TryGoals),
 
@@ -344,7 +348,7 @@ write_proc_stat_components(OutStream, Msg, Name, PredId, ProcId, Stats, !IO) :-
         UnifyConstructs + UnifyDeconstructs +
         UnifyAssigns + UnifyTests + UnifyComplicateds +
         PlainCalls + ForeignCalls +
-        HOCalls + MethodCalls + EventCalls + Casts +
+        HOCalls + MethodCalls + EventCalls + Casts + Coerces +
         PlainConjs + ParallelConjs +
         Disjs + Switches +
         IfThenElses + Negations + Scopes +
@@ -373,6 +377,8 @@ write_proc_stat_components(OutStream, Msg, Name, PredId, ProcId, Stats, !IO) :-
         "event_calls", EventCalls, !IO),
     output_proc_stat_component(OutStream, Msg, Name, PredId, ProcId,
         "casts", Casts, !IO),
+    output_proc_stat_component(OutStream, Msg, Name, PredId, ProcId,
+        "coerces", Coerces, !IO),
 
     output_proc_stat_component(OutStream, Msg, Name, PredId, ProcId,
         "plain_conjs", PlainConjs, !IO),

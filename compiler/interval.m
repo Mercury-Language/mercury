@@ -313,6 +313,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             ( GenericCall = higher_order(_, _, _, _)
             ; GenericCall = class_method(_, _, _, _)
             ; GenericCall = event_call(_)
+            ; GenericCall = subtype_coerce  % XXX SUBTYPE revisit this later
             ),
             module_info_get_globals(ModuleInfo, Globals),
             call_gen.generic_call_info(Globals, GenericCall,
@@ -995,6 +996,10 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         (
             GenericCall = cast(_),
             MustHaveMap = no
+        ;
+            GenericCall = subtype_coerce,
+            % XXX SUBTYPE
+            sorry($pred, "coerce")
         ;
             ( GenericCall = higher_order(_, _, _, _)
             ; GenericCall = class_method(_, _, _, _)

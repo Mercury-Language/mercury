@@ -363,6 +363,7 @@ generic_call_arg_reg_types(ModuleInfo, _VarTypes, GenericCall, ArgVars,
         ( GenericCall = class_method(_, _, _, _)
         ; GenericCall = event_call(_)
         ; GenericCall = cast(_)
+        ; GenericCall = subtype_coerce
         ),
         list.duplicate(length(ArgVars), reg_r, ArgRegTypes)
     ).

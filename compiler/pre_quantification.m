@@ -202,6 +202,8 @@ build_vars_to_zones_in_goal(CurZone, Goal, !TraceCounter, !VarsToZones) :-
             GenericCall = event_call(_)
         ;
             GenericCall = cast(_)
+        ;
+            GenericCall = subtype_coerce
         )
     ;
         GoalExpr = call_foreign_proc(_Attrs, _PredId, _ProcId,

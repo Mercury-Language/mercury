@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2014-2019, 2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,6 +114,7 @@
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_call.
+:- import_module check_hlds.modecheck_coerce.
 :- import_module check_hlds.modecheck_conj.
 :- import_module check_hlds.modecheck_unify.
 :- import_module check_hlds.modecheck_util.
@@ -1353,6 +1354,14 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
             Modes = Modes0
         ),
         modecheck_builtin_cast(Modes, Args0, Args, Det, ExtraGoals, !ModeInfo),
+        GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
+            Det),
+        handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, Args0, Args,
+            InstMap0, GoalExpr, !ModeInfo)
+    ;
+        GenericCall = subtype_coerce,
+        modecheck_coerce(Args0, Args, Modes0, Modes, Det, ExtraGoals,
+            !ModeInfo),
         GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
             Det),
         handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, Args0, Args,

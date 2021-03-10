@@ -235,6 +235,7 @@ determine_dead_deconstructions_generic_call(ModuleInfo, ProcInfo,
     ;
         ( GenDetails = event_call(_) % XXX too conservative
         ; GenDetails = cast(_)
+        ; GenDetails = subtype_coerce
         ),
         SetToTop = yes
     ),

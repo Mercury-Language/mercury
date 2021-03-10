@@ -125,6 +125,10 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     ;
         GenericCall = cast(_),
         ml_gen_cast(Context, ArgVars, LocalVarDefns, FuncDefns, Stmts, !Info)
+    ;
+        GenericCall = subtype_coerce,
+        % XXX SUBTYPE
+        sorry($pred, "coerce")
     ).
 
 :- inst main_generic_call for generic_call/0

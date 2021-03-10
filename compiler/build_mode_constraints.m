@@ -478,6 +478,9 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId, GoalExpr,
         ;
             % No mode constraints
             Details = cast(_)
+        ;
+            Details = subtype_coerce,
+            sorry($pred, "coerce generic_call")
         )
     ;
         GoalExpr = switch(_, _, _),

@@ -515,6 +515,8 @@ generic_call_id_to_string(gcid_event_call(EventName)) =
     "event " ++ EventName.
 generic_call_id_to_string(gcid_cast(CastType)) =
     cast_type_to_string(CastType).
+generic_call_id_to_string(gcid_coerce) =
+    "coerce".
 
 cast_type_to_string(unsafe_type_cast) = "unsafe_type_cast".
 cast_type_to_string(unsafe_type_inst_cast) = "unsafe_type_inst_cast".
@@ -599,6 +601,13 @@ arg_number_to_string(CallId, ArgNum) = Str :-
             ; GenericCallId = gcid_cast(_)
             ),
             Str = "argument " ++ int_to_string(ArgNum)
+        ;
+            GenericCallId = gcid_coerce,
+            ( if ArgNum = 2 then
+                Str = "the result"
+            else
+                Str = "the argument"
+            )
         )
     ).
 

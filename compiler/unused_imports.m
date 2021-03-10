@@ -794,6 +794,7 @@ hlds_goal_used_modules(Goal, !UsedModules) :-
             ( Call = higher_order(_, _, _, _)
             ; Call = event_call(_)
             ; Call = cast(_)
+            ; Call = subtype_coerce
             )
         )
     ;

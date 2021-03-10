@@ -224,6 +224,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
             ( GenericCallType = class_method(_, _, _, _)
             ; GenericCallType = cast(_)
             ; GenericCallType = event_call(_)
+            ; GenericCallType = subtype_coerce
             ),
             % XXX
             % string.append_list([

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2014 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2020-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -46,6 +46,9 @@
                 % Type bindings.
                 ta_type_bindings        :: tsubst,
 
+                % The list of coerce constraints collected so far.
+                ta_coerce_constraints   :: list(coerce_constraint),
+
                 % The set of class constraints collected so far.
                 ta_class_constraints    :: hlds_constraints,
 
@@ -56,6 +59,19 @@
                 ta_constraint_map       :: constraint_map
             ).
 
+:- type coerce_constraint
+    --->    coerce_constraint(
+                % One or both sides should be a type_variable.
+                coerce_from     :: mer_type,
+                coerce_to       :: mer_type,
+                coerce_context  :: prog_context,
+                coerce_status   :: coerce_constraint_status
+            ).
+
+:- type coerce_constraint_status
+    --->    need_to_check
+    ;       unsatisfiable.
+
 :- pred type_assign_get_var_types(type_assign::in,
     vartypes::out) is det.
 :- pred type_assign_get_typevarset(type_assign::in,
@@ -64,6 +80,8 @@
     external_type_params::out) is det.
 :- pred type_assign_get_type_bindings(type_assign::in,
     tsubst::out) is det.
+:- pred type_assign_get_coerce_constraints(type_assign::in,
+    list(coerce_constraint)::out) is det.
 :- pred type_assign_get_typeclass_constraints(type_assign::in,
     hlds_constraints::out) is det.
 :- pred type_assign_get_constraint_proof_map(type_assign::in,
@@ -78,6 +96,8 @@
 :- pred type_assign_set_external_type_params(external_type_params::in,
     type_assign::in, type_assign::out) is det.
 :- pred type_assign_set_type_bindings(tsubst::in,
+    type_assign::in, type_assign::out) is det.
+:- pred type_assign_set_coerce_constraints(list(coerce_constraint)::in,
     type_assign::in, type_assign::out) is det.
 :- pred type_assign_set_typeclass_constraints(hlds_constraints::in,
     type_assign::in, type_assign::out) is det.
@@ -212,6 +232,8 @@ type_assign_get_external_type_params(TA, X) :-
     X = TA ^ ta_external_type_params.
 type_assign_get_type_bindings(TA, X) :-
     X = TA ^ ta_type_bindings.
+type_assign_get_coerce_constraints(TA, X) :-
+    X = TA ^ ta_coerce_constraints.
 type_assign_get_typeclass_constraints(TA, X) :-
     X = TA ^ ta_class_constraints.
 type_assign_get_constraint_proof_map(TA, X) :-
@@ -227,6 +249,8 @@ type_assign_set_external_type_params(X, !TA) :-
     !TA ^ ta_external_type_params := X.
 type_assign_set_type_bindings(X, !TA) :-
     !TA ^ ta_type_bindings := X.
+type_assign_set_coerce_constraints(X, !TA) :-
+    !TA ^ ta_coerce_constraints := X.
 type_assign_set_typeclass_constraints(X, !TA) :-
     !TA ^ ta_class_constraints := X.
 type_assign_set_constraint_proof_map(X, !TA) :-
@@ -236,19 +260,21 @@ type_assign_set_constraint_map(X, !TA) :-
 
 type_assign_set_reduce_results(TVarSet, Bindings, Constraints, ProofMap,
         ConstraintMap, TypeAssign0, TypeAssign) :-
-    TypeAssign0 = type_assign(VarTypes, _, ExternalTypeParams, _, _, _, _),
+    TypeAssign0 = type_assign(VarTypes, _, ExternalTypeParams, _,
+        Coercions, _, _, _),
     TypeAssign = type_assign(VarTypes, TVarSet, ExternalTypeParams, Bindings,
-        Constraints, ProofMap, ConstraintMap).
+        Coercions, Constraints, ProofMap, ConstraintMap).
 
 %-----------------------------------------------------------------------------%
 
 type_assign_set_init(TypeVarSet, VarTypes, ExternalTypeParams, Constraints,
         TypeAssignSet) :-
     map.init(TypeBindings),
+    Coercions = [],
     map.init(ProofMap),
     map.init(ConstraintMap),
     TypeAssignSet = [type_assign(VarTypes, TypeVarSet, ExternalTypeParams,
-        TypeBindings, Constraints, ProofMap, ConstraintMap)].
+        TypeBindings, Coercions, Constraints, ProofMap, ConstraintMap)].
 
 type_assign_set_get_final_info(TypeAssignSet,
         OldExternalTypeParams, OldExistQVars,
@@ -264,7 +290,7 @@ type_assign_set_get_final_info(TypeAssignSet,
     ),
 
     TypeAssign = type_assign(VarTypes0, OldTypeVarSet, ExternalTypeParams,
-        TypeBindings, HLDSTypeConstraints, ConstraintProofMap0,
+        TypeBindings, _Coercions0, HLDSTypeConstraints, ConstraintProofMap0,
         ConstraintMap0),
 
     ( if map.is_empty(TypeBindings) then

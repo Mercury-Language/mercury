@@ -1,0 +1,6 @@
+coerce_disambig.m:037: In clause for `member(out, in)':
+coerce_disambig.m:037:   mode mismatch in disjunction.
+coerce_disambig.m:037:   The variable `X' is ground in some branches but not
+coerce_disambig.m:037:   others.
+coerce_disambig.m:028:     In this branch, `X' is free.
+coerce_disambig.m:032:     In this branch, `X' is ground.

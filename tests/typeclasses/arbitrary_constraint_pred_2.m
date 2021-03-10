@@ -27,7 +27,7 @@
 
 mg(S0, S) :-
     ( semidet_succeed ->
-        S = coerce([S0])
+        S = (coerce)([S0])
     ;
         S = S0
     ).

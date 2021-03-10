@@ -7085,114 +7085,198 @@ good_example3_univ("bar"::in(bound("bar")), univ("blah")::out).
 
 @c @node Type conversions
 @c @chapter Type conversions
-
-@c A term of type @samp{T1} may be converted to type @samp{T2}
-@c using a type conversion expression:
-
+@c
+@c A term may be converted from one type @var{FromType}
+@c to another type @var{ToType}
+@c using a type conversion expression of the form:
+@c
 @c @example
-@c coerce(Term)
+@c coerce(@var{Term})
 @c @end example
-
-@c XXX disallow coerce/1 as a constructor name?
-
-@c If @var{Term} has type @samp{T1} and the expression has type @samp{T2},
-@c the coercion is type-correct iff
-@c @samp{T1} and @samp{T2} are equivalent after
-@c expanding out equivalence types
-@c and replacing any subtypes with their base types
-@c (@pxref{Subtypes}).
-
-@c For example, if there is a subtype @samp{s =< t} and
-@c a subtype @samp{non_empty_list(T) =< list(T)}
-@c then coercions between these pairs of types are type-correct:
-
-@c @example
-@c s <-> t
-@c list(s) <-> list(t)
-@c non_empty_list(s) <-> non_empty_list(t)
-@c list(s) <-> non_empty_list(s)
-@c list(s) <-> non_empty_list(t)
-@c @end example
-
-@c If a subtype definition is not visible in the module
-@c in which a @samp{coerce} operation occurs,
-@c then the coercion is type-incorrect.
-
-@c Coercions must also be mode-correct.
-@c For a coercion where:
-
+@c
+@c The expression is type-correct iff
+@c @var{FromType} and @var{ToType} are both discriminated union types,
+@c and after replacing the principal type constructors with base types
+@c (@pxref{Subtypes})
+@c the two types have the same type constructor,
+@c and the arguments of the common type constructor
+@c satisfy the type parameter variance restrictions below.
+@c
+@c Let @var{FromType} expand out to @samp{base(S1, ..., Sn)}
+@c and @var{ToType} expand out to @samp{base(T1, ..., Tn)},
+@c where @samp{base(B1, ..., Bn)} is the common base type,
+@c and @var{Bi} is the i'th type parameter,
+@c which is bound to @var{Si} in @var{FromType}
+@c and @var{Ti} in @var{ToType}.
+@c
+@c For each pair of corresponding type arguments,
+@c one of the following must be true:
+@c @itemize
+@c @item
+@c @samp{Si = Ti}
+@c if the two types are the same
+@c
+@c @item
+@c @samp{Si < Ti}
+@c if @var{Si} is a subtype of @var{Ti},
+@c according to visible subtype definitions
+@c
+@c @item
+@c @samp{Ti < Si}
+@c if @var{Ti} is a subtype of @var{Si},
+@c according to visible subtype definitions
+@c @end itemize
+@c
+@c Otherwise, the coerce expression is not type-correct.
+@c @c NOTE: we deliberately disallow coercion between arbitrary phantom types.
+@c
+@c Furthermore,
+@c @samp{Si = Ti} must be true
+@c if @var{Bi} occurs in one or more of these locations
+@c in the @samp{base/n} type definition:
+@c
+@c @itemize
+@c @item
+@c in a higher order type
+@c
+@c @item
+@c in a foreign type
+@c
+@c @item
+@c in an abstract type
+@c
+@c @item
+@c in a solver type
+@c
+@c @item
+@c in a discriminated union type,
+@c other than a recursive type of the exact form @samp{base(B1, ..., Bn)}
+@c @end itemize
+@c
+@c @heading Mode checking
+@c
+@c Type conversion expressions must also be mode-correct.
+@c For an expression where:
+@c
 @c @itemize @bullet
 @c @item
-@c the input is @samp{X} with type @samp{s}
-
+@c the input has type @samp{s},
+@c initial inst @var{InitialX},
+@c and final inst @var{FinalX}
+@c
 @c @item
-@c the result is @samp{Y} with type @samp{t}
-
-@c @item
-@c @samp{Xi}, @samp{Xf} are the initial and final insts of @samp{X}
-
-@c @item
-@c @samp{Yi}, @samp{Yf} are the initial and final insts of @samp{Y}
+@c the result has type @samp{t},
+@c initial inst @var{InitialY},
+@c and final inst @var{FinalY}
 @c @end itemize
-
+@c
 @c @noindent
-@c the coercion is mode-correct iff:
-
+@c the type conversion expression is mode-correct iff:
+@c
 @c @itemize @bullet
 @c @item
-@c @samp{Xi} is a ground inst
-
+@c @var{InitialX} is a ground inst
+@c
 @c @item
-@c @samp{Xf = Xi}
-
+@c @var{InitialY} is free
+@c
 @c @item
-@c @samp{Yi} is free
-
+@c @var{FinalX} is @var{InitialX} but without uniqueness
+@c
 @c @item
-@c Yf is the greatest lower bound (glb) of @samp{Xi} and
-@c the instantiatedness tree derived from @samp{t}
-@c where all nodes are bound.
-@c The glb must exist,
-@c @samp{Yf} must be be ground,
-@c and @samp{Yf} must be a valid inst of @samp{t}.
+@c @var{FinalY} is
+@c the abstract unification of
+@c @var{InitialX} and the
+@c @code{bound} instantiatedness tree derived from @samp{t},
+@c and @var{FinalY} does not approximate any term
+@c that is invalid in @samp{t}.
 @c @end itemize
-
-@c XXX partial order of insts not used elsewhere in reference manual
-
+@c
+@c The @code{bound} instantiatedness tree for @samp{t}
+@c is derived by producing a @code{bound} node
+@c containing each possible constructor of @samp{t},
+@c where the arguments of each bound functor
+@c are also @code{bound} instantiatedness trees.
+@c Where a constructor argument type is not a discriminated union or tuple type,
+@c or if the argument is a recursive node in the type tree,
+@c the inst of the argument is replaced with @code{ground}.
+@c
+@c The abstract unification of two instantiation states
+@c is the abstract equivalent of the unification on terms.
+@c It is defined in
+@c @cite{Precise and Expressive Mode Systems for Typed Logic Programming
+@c Languages} by David Overton. @xref{[6]}.
+@c
 @c Intuitively,
-@c coercing a ground term from subtype to supertype is always allowed,
-@c but coercion from supertype to subtype is allowed only if
-@c the term is approximated by an inst that indicates
-@c the term would be a valid in the subtype.
-
-@c Examples:
-
+@c coercing a ground term from a subtype to a supertype is safe,
+@c but coercing a term from a supertype to a subtype
+@c is safe only if
+@c the inst of the term being coerced
+@c indicates that the term would also be valid in the subtype.
+@c
+@c @heading Examples
+@c
+@c Assume we have:
+@c
 @c @example
 @c :- type fruit
-@c     --->    apple
-@c     ;       lemon
-@c     ;       orange.
+@c    --->    apple
+@c    ;       lemon
+@c    ;       orange.
 @c
 @c :- type citrus =< fruit
-@c     --->    lemon
-@c     ;       orange.
+@c    --->    lemon
+@c    ;       orange.
+@c @end example
 @c
+@c This function is type and mode-correct:
+@c
+@c @example
+@c :- func f1(citrus) = fruit.
+@c
+@c f1(X) = coerce(X).
+@c @end example
+@c
+@c This function is type-correct but not mode-correct
+@c because some @code{fruit}s are not @code{citrus}:
+@c
+@c @example
+@c :- func f2(fruit) = citrus.
+@c
+@c f2(X) = coerce(X).  % incorrect
+@c @end example
+@c
+@c This function is mode-correct
+@c because the initial inst of the input argument
+@c limits the range of @code{fruit} values
+@c to those that would also be valid in @code{citrus}:
+@c
+@c @example
 @c :- inst citrus for fruit/0
 @c     --->    lemon
 @c     ;       orange.
 @c
-@c :- func f1(citrus) = fruit.
-@c
-@c f1(X) = coerce(X).  % correct
-@c
-@c :- func f2(fruit) = citrus.
-@c
-@c f2(X) = coerce(X).  % not mode-correct
-@c
 @c :- func f3(fruit) = citrus.
 @c :- mode f3(in(citrus)) = out is det.
 @c
-@c f3(X) = coerce(X).  % correct
+@c f3(X) = coerce(X).
+@c @end example
+@c
+@c Finally,
+@c this function is type-incorrect because
+@c in the coerce expression,
+@c the type parameter @var{T} of @code{wrap/1}
+@c is bound to @code{fruit} in the input type,
+@c but @code{citrus} in the result type.
+@c
+@c @example
+@c :- type wrap(T)
+@c     --->    wrap(T).
+@c
+@c :- func f4(func(fruit) = int) = (func(citrus) = int).
+@c
+@c f4(X) = Y :-
+@c     wrap(Y) = coerce(wrap(X)).  % incorrect
 @c @end example
 
 @c -----------------------------------------------------------------------
@@ -12327,6 +12411,8 @@ typedef struct @{
 * [4]::         Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
                 for Well-Founded Evaluation of Normal Logic Programs}.
 * [5]::         Demoen and Sagonas, @cite{CAT: the copying approach to tabling}.
+* [6]::         Overton, @cite{Precise and Expressive Mode Systems for
+                Typed Logic Programming Languages}.
 @end menu
 
 @node [1]
@@ -12367,4 +12453,10 @@ Declarative Programming, 10th International Symposium, PLILP'98},
 Lecture Notes in Computer Science, Springer, 1998.
 Available form @uref{http://user.it.uu.se/~kostis/Papers/cat.ps.gz}.
 
+@node [6]
+@unnumberedsec [6]
+David Overton, @cite{Precise and Expressive Mode Systems for
+Typed Logic Programming Languages},
+PhD thesis, The University of Melbourne, 2003. Available from
+@uref{http://mercurylang.org/documentation/papers/dmo-thesis.ps.gz}
 @bye

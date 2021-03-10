@@ -171,7 +171,8 @@
     --->    gcid_higher_order(purity, pred_or_func, arity)
     ;       gcid_class_method(class_id, pf_sym_name_arity)
     ;       gcid_event_call(string)
-    ;       gcid_cast(cast_kind).
+    ;       gcid_cast(cast_kind)
+    ;       gcid_coerce.
 
 :- type pred_proc_list == list(pred_proc_id).
 

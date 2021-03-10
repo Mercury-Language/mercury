@@ -854,6 +854,9 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     ;
         % Casts do not contain any type information.
         Details = cast(_)
+    ;
+        Details = subtype_coerce,
+        sorry($pred, "coerce")
     ).
 
     % Creates a constraint from the information stored in a predicate

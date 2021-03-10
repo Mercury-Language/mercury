@@ -596,6 +596,7 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
         ;
             ( GenericCall = event_call(_)
             ; GenericCall = cast(_)
+            ; GenericCall = subtype_coerce
             ),
             Goal = Goal0
         )

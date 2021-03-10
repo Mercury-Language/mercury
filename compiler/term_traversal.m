@@ -308,6 +308,8 @@ term_traverse_goal(ModuleInfo, Params, Goal, !Info) :-
             Details = event_call(_)
         ;
             Details = cast(_)
+        ;
+            Details = subtype_coerce
         )
     ;
         GoalExpr = conj(_, Goals),

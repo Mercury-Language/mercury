@@ -782,6 +782,8 @@ find_used_vars_in_goal(Goal, !VarUses) :-
             GenericCall = event_call(_)
         ;
             GenericCall = cast(_)
+        ;
+            GenericCall = subtype_coerce
         ),
         mark_vars_as_used(ArgVars, !VarUses)
     ;

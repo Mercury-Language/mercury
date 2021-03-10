@@ -181,8 +181,8 @@ find_unproven_body_constraints(ModuleInfo, PredId, PredInfo,
         list.sort_and_remove_dups(UnprovenConstraints0, UnprovenConstraints),
         report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo,
             UnprovenConstraints, !NoTypeErrorSpecs),
-        list.length(UnprovenConstraints, NumUmprovenConstraints),
-        !:NumBadErrors = !.NumBadErrors + NumUmprovenConstraints
+        list.length(UnprovenConstraints, NumUnprovenConstraints),
+        !:NumBadErrors = !.NumBadErrors + NumUnprovenConstraints
     ;
         UnprovenConstraints0 = []
     ).
@@ -342,6 +342,7 @@ describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
     ;
         ( GoalExpr = generic_call(event_call(_), _, _, _, _)
         ; GoalExpr = generic_call(cast(_), _, _, _, _)
+        ; GoalExpr = generic_call(subtype_coerce, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = conj(_, _)
         ; GoalExpr = disj(_)

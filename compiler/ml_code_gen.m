@@ -783,10 +783,10 @@ goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals) :-
                 _Name),
             SubGoalNonLocals = set_of_var.list_to_set([MethodVar | ArgVars])
         ;
-            GenericCall = event_call(_Eventname),
-            SubGoalNonLocals = set_of_var.list_to_set(ArgVars)
-        ;
-            GenericCall = cast(_CastKind),
+            ( GenericCall = event_call(_Eventname)
+            ; GenericCall = cast(_CastKind)
+            ; GenericCall = subtype_coerce
+            ),
             SubGoalNonLocals = set_of_var.list_to_set(ArgVars)
         )
     ;

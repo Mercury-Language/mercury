@@ -17,6 +17,11 @@ Changes that may break compatibility
 
 * We have reserved `=<`/2 as a type name.
 
+* A term with a top-level functor `coerce/1` is now treated as a
+  type conversion expression. To call a function named `coerce/1`,
+  you can module qualify the name at the call site,
+  or wrap parentheses around the name, e.g. `(coerce)(Arg)`.
+
 Changes to the Mercury standard library
 ---------------------------------------
 

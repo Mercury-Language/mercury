@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -142,6 +142,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -681,6 +682,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
         perform_context_reduction(Context, !TypeAssignSet, !Info),
         typecheck_check_for_ambiguity(Context, whole_pred, HeadVars,
             !.TypeAssignSet, !Info),
+        typecheck_check_for_unsatisfied_coercions(!.TypeAssignSet, !Info),
         type_assign_set_get_final_info(!.TypeAssignSet,
             !.ExternalTypeParams, ExistQVars0, ExplicitVarTypes0, TypeVarSet,
             !:ExternalTypeParams, InferredVarTypes0, InferredTypeConstraints0,
@@ -750,7 +752,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
                     pred_info_get_tvar_kind_map(!.PredInfo, TVarKindMap),
                     argtypes_identical_up_to_renaming(TVarKindMap, ExistQVars0,
                         ArgTypes0, OldTypeConstraints, ExistQVars, ArgTypes,
-                    InferredTypeConstraints)
+                        InferredTypeConstraints)
                 ;
                     % Promises cannot be called from anywhere. Therefore
                     % even if the types of their arguments have changed,
@@ -1161,6 +1163,7 @@ typecheck_clause(HeadVars, ArgTypes, !Clause, !TypeAssignSet, !Info) :-
         type_checkpoint("end of clause", ModuleInfo, VarSet, !.TypeAssignSet,
             !IO)
     ),
+    typecheck_prune_coerce_constraints(!TypeAssignSet, !Info),
     !Clause ^ clause_body := Body,
     typecheck_check_for_ambiguity(Context, clause_only, HeadVars,
         !.TypeAssignSet, !Info).
@@ -1243,6 +1246,50 @@ typecheck_check_for_ambiguity(Context, StuffToCheck, HeadVars,
             true
         )
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred typecheck_check_for_unsatisfied_coercions(type_assign_set::in,
+    typecheck_info::in, typecheck_info::out) is det.
+
+typecheck_check_for_unsatisfied_coercions(TypeAssignSet, !Info) :-
+    (
+        TypeAssignSet = [],
+        unexpected($pred, "no type-assignment")
+    ;
+        TypeAssignSet = [TypeAssign],
+        type_assign_get_coerce_constraints(TypeAssign, Coercions),
+        (
+            Coercions = []
+        ;
+            Coercions = [_ | _],
+            % All valid coercion constraints have been removed from the
+            % type assignment already.
+            list.foldl(report_invalid_coercion(TypeAssign), Coercions, !Info)
+        )
+    ;
+        TypeAssignSet = [_, _ | _]
+        % If there are multple type assignments then there is a type ambiguity
+        % error anyway. Reporting invalid coercions from different type
+        % assignments would be confusing.
+    ).
+
+:- pred report_invalid_coercion(type_assign::in, coerce_constraint::in,
+    typecheck_info::in, typecheck_info::out) is det.
+
+report_invalid_coercion(TypeAssign, Coercion, !Info) :-
+    % XXX When inferring types for a predicate/function with no declared type,
+    % we should not report coercions as invalid until the argument types have
+    % been inferred.
+    Coercion = coerce_constraint(FromType0, ToType0, Context, _Status),
+    type_assign_get_typevarset(TypeAssign, TVarSet),
+    type_assign_get_type_bindings(TypeAssign, TypeBindings),
+    apply_rec_subst_to_type(TypeBindings, FromType0, FromType),
+    apply_rec_subst_to_type(TypeBindings, ToType0, ToType),
+    typecheck_info_get_error_clause_context(!.Info, ClauseContext),
+    Spec = report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
+        FromType, ToType),
+    typecheck_info_add_error(Spec, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -1411,8 +1458,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             GenericCall = higher_order(PredVar, Purity, _, _),
             trace [compiletime(flag("type_checkpoint")), io(!IO)] (
                 type_checkpoint("higher-order call", ModuleInfo, VarSet,
-                    !.TypeAssignSet,
-                    !IO)
+                    !.TypeAssignSet, !IO)
             ),
             hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
             typecheck_higher_order_call(GenericCallId, Context,
@@ -1432,6 +1478,13 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             GenericCall = cast(_)
             % A cast imposes no restrictions on its argument types,
             % so nothing needs to be done here.
+        ;
+            GenericCall = subtype_coerce,
+            trace [compiletime(flag("type_checkpoint")), io(!IO)] (
+                type_checkpoint("coerce", ModuleInfo, VarSet,
+                    !.TypeAssignSet, !IO)
+            ),
+            typecheck_coerce(Context, Args, !TypeAssignSet, !Info)
         ),
         GoalExpr = GoalExpr0
     ;
@@ -2765,15 +2818,22 @@ type_assign_get_types_of_vars([Var | Vars], [Type | Types], !TypeAssign) :-
     else
         % Otherwise, introduce a fresh type variable with kind `star' to use
         % as the type of that variable.
-        type_assign_get_typevarset(!.TypeAssign, TypeVarSet0),
-        varset.new_var(TypeVar, TypeVarSet0, TypeVarSet),
-        type_assign_set_typevarset(TypeVarSet, !TypeAssign),
-        Type = type_variable(TypeVar, kind_star),
-        add_var_type(Var, Type, VarTypes0, VarTypes1),
-        type_assign_set_var_types(VarTypes1, !TypeAssign)
+        type_assign_fresh_type_var(Var, Type, !TypeAssign)
     ),
     % Recursively process the rest of the variables.
     type_assign_get_types_of_vars(Vars, Types, !TypeAssign).
+
+:- pred type_assign_fresh_type_var(prog_var::in, mer_type::out,
+    type_assign::in, type_assign::out) is det.
+
+type_assign_fresh_type_var(Var, Type, !TypeAssign) :-
+    type_assign_get_var_types(!.TypeAssign, VarTypes0),
+    type_assign_get_typevarset(!.TypeAssign, TypeVarSet0),
+    varset.new_var(TypeVar, TypeVarSet0, TypeVarSet),
+    type_assign_set_typevarset(TypeVarSet, !TypeAssign),
+    Type = type_variable(TypeVar, kind_star),
+    add_var_type(Var, Type, VarTypes0, VarTypes1),
+    type_assign_set_var_types(VarTypes1, !TypeAssign).
 
 %---------------------------------------------------------------------------%
 
@@ -2788,6 +2848,102 @@ type_assign_unify_type(X, Y, TypeAssign0, TypeAssign) :-
     type_assign_get_type_bindings(TypeAssign0, TypeBindings0),
     type_unify(X, Y, HeadTypeParams, TypeBindings0, TypeBindings),
     type_assign_set_type_bindings(TypeBindings, TypeAssign0, TypeAssign).
+
+%---------------------------------------------------------------------------%
+
+:- pred typecheck_coerce(prog_context::in, list(prog_var)::in,
+    type_assign_set::in, type_assign_set::out,
+    typecheck_info::in, typecheck_info::out) is det.
+
+typecheck_coerce(Context, Args, TypeAssignSet0, TypeAssignSet, !Info) :-
+    ( if Args = [FromVar0, ToVar0] then
+        FromVar = FromVar0,
+        ToVar = ToVar0
+    else
+        unexpected($pred, "coerce requires two arguments")
+    ),
+    list.foldl2(typecheck_coerce_2(Context, FromVar, ToVar),
+        TypeAssignSet0, [], TypeAssignSet1, !Info),
+    ( if
+        TypeAssignSet1 = [],
+        TypeAssignSet0 = [_ | _]
+    then
+        TypeAssignSet = TypeAssignSet0
+    else
+        TypeAssignSet = TypeAssignSet1
+    ).
+
+:- pred typecheck_coerce_2(prog_context::in, prog_var::in, prog_var::in,
+    type_assign::in, type_assign_set::in, type_assign_set::out,
+    typecheck_info::in, typecheck_info::out) is det.
+
+typecheck_coerce_2(Context, FromVar, ToVar, TypeAssign0,
+        !TypeAssignSet, !Info) :-
+    type_assign_get_var_types(TypeAssign0, VarTypes),
+    type_assign_get_typevarset(TypeAssign0, TVarSet),
+    type_assign_get_external_type_params(TypeAssign0, ExternalTypeParams),
+    type_assign_get_type_bindings(TypeAssign0, TypeBindings),
+
+    ( if search_var_type(VarTypes, FromVar, FromType0) then
+        apply_rec_subst_to_type(TypeBindings, FromType0, FromType1),
+        MaybeFromType = yes(FromType1)
+    else
+        MaybeFromType = no
+    ),
+    ( if search_var_type(VarTypes, ToVar, ToType0) then
+        apply_rec_subst_to_type(TypeBindings, ToType0, ToType1),
+        MaybeToType = yes(ToType1)
+    else
+        MaybeToType = no
+    ),
+
+    ( if
+        MaybeFromType = yes(FromType),
+        MaybeToType = yes(ToType),
+        type_is_ground_except_vars(FromType, ExternalTypeParams),
+        type_is_ground_except_vars(ToType, ExternalTypeParams)
+    then
+        % We can compare the types on both sides immediately.
+        typecheck_info_get_type_table(!.Info, TypeTable),
+        ( if
+            typecheck_coerce_between_types(TypeTable, TVarSet,
+                FromType, ToType, TypeAssign0, TypeAssign1)
+        then
+            TypeAssign = TypeAssign1
+        else
+            type_assign_get_coerce_constraints(TypeAssign0, Coercions0),
+            Coercion = coerce_constraint(FromType, ToType, Context,
+                unsatisfiable),
+            Coercions = [Coercion | Coercions0],
+            type_assign_set_coerce_constraints(Coercions,
+                TypeAssign0, TypeAssign)
+        ),
+        !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
+    else
+        % One or both of the types is not known yet. Add a coercion constraint
+        % on the type assignment to be checked after typechecking the clause.
+        (
+            MaybeFromType = yes(FromType),
+            TypeAssign1 = TypeAssign0
+        ;
+            MaybeFromType = no,
+            type_assign_fresh_type_var(FromVar, FromType,
+                TypeAssign0, TypeAssign1)
+        ),
+        (
+            MaybeToType = yes(ToType),
+            TypeAssign2 = TypeAssign1
+        ;
+            MaybeToType = no,
+            type_assign_fresh_type_var(ToVar, ToType,
+                TypeAssign1, TypeAssign2)
+        ),
+        type_assign_get_coerce_constraints(TypeAssign2, Coercions0),
+        Coercion = coerce_constraint(FromType, ToType, Context, need_to_check),
+        Coercions = [Coercion | Coercions0],
+        type_assign_set_coerce_constraints(Coercions, TypeAssign2, TypeAssign),
+        !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3564,6 +3720,401 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
         ConsTypeInfo = ok(cons_type_info(ConsTypeVarSet, ExistQVars,
             ConsType, ArgTypes, Constraints, source_type(TypeCtor)))
     ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred typecheck_coerce_between_types(type_table::in, tvarset::in,
+    mer_type::in, mer_type::in, type_assign::in, type_assign::out)
+    is semidet.
+
+typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
+        !TypeAssign) :-
+    % Type bindings must have been aplpied to FromType and ToType already.
+    replace_principal_type_ctor_with_base(TypeTable, TVarSet,
+        FromType, FromBaseType),
+    replace_principal_type_ctor_with_base(TypeTable, TVarSet,
+        ToType, ToBaseType),
+    type_to_ctor_and_args(FromBaseType, FromBaseTypeCtor, FromBaseTypeArgs),
+    type_to_ctor_and_args(ToBaseType, ToBaseTypeCtor, ToBaseTypeArgs),
+
+    % The input type and result type must share a base type constructor.
+    BaseTypeCtor = FromBaseTypeCtor,
+    BaseTypeCtor = ToBaseTypeCtor,
+
+    % Check the variance of type arguments.
+    hlds_data.search_type_ctor_defn(TypeTable, BaseTypeCtor, BaseTypeDefn),
+    hlds_data.get_type_defn_tparams(BaseTypeDefn, BaseTypeParams),
+    build_type_param_variance_restrictions(TypeTable, BaseTypeCtor,
+        InvariantSet),
+    check_coerce_type_params(TypeTable, TVarSet, InvariantSet,
+        BaseTypeParams, FromBaseTypeArgs, ToBaseTypeArgs, !TypeAssign).
+
+:- pred replace_principal_type_ctor_with_base(type_table::in, tvarset::in,
+    mer_type::in, mer_type::out) is det.
+
+replace_principal_type_ctor_with_base(TypeTable, TVarSet, Type0, Type) :-
+    ( if
+        type_to_ctor_and_args(Type0, TypeCtor, Args),
+        get_supertype(TypeTable, TVarSet, TypeCtor, Args, SuperType)
+    then
+        replace_principal_type_ctor_with_base(TypeTable, TVarSet,
+            SuperType, Type)
+    else
+        Type = Type0
+    ).
+
+:- pred get_supertype(type_table::in, tvarset::in, type_ctor::in,
+    list(mer_type)::in, mer_type::out) is semidet.
+
+get_supertype(TypeTable, TVarSet, TypeCtor, Args, SuperType) :-
+    hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+    TypeBody = hlds_du_type(_, yes(SuperType0), _, _, _),
+    require_det (
+        % Create substitution from type parameters to Args.
+        hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet0),
+        hlds_data.get_type_defn_tparams(TypeDefn, TypeParams0),
+        tvarset_merge_renaming(TVarSet, TVarSet0, _NewTVarSet, Renaming),
+        apply_variable_renaming_to_tvar_list(Renaming,
+            TypeParams0, TypeParams),
+        map.from_corresponding_lists(TypeParams, Args, TSubst),
+
+        % Apply substitution to the declared supertype.
+        apply_variable_renaming_to_type(Renaming, SuperType0, SuperType1),
+        apply_rec_subst_to_type(TSubst, SuperType1, SuperType)
+    ).
+
+%---------------------%
+
+:- type invariant_set == set(tvar).
+
+:- pred build_type_param_variance_restrictions(type_table::in,
+    type_ctor::in, invariant_set::out) is det.
+
+build_type_param_variance_restrictions(TypeTable, TypeCtor, InvariantSet) :-
+    ( if
+        hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+        TypeBody = hlds_du_type(OoMCtors, _MaybeSuperType, _MaybeCanonical,
+            _MaybeTypeRepn, _IsForeignType)
+    then
+        Ctors = one_or_more_to_list(OoMCtors),
+        list.foldl(
+            build_type_param_variance_restrictions_in_ctor(TypeTable,
+                TypeCtor, TypeParams),
+            Ctors, set.init, InvariantSet)
+    else
+        unexpected($pred, "not du type")
+    ).
+
+:- pred build_type_param_variance_restrictions_in_ctor(type_table::in,
+    type_ctor::in, list(tvar)::in, constructor::in,
+    invariant_set::in, invariant_set::out) is det.
+
+build_type_param_variance_restrictions_in_ctor(TypeTable, CurTypeCtor,
+        CurTypeParams, Ctor, !InvariantSet) :-
+    Ctor = ctor(_Ordinal, _MaybeExistConstraints, _CtorName, CtorArgs, _Arity,
+        _Context),
+    list.foldl(
+        build_type_param_variance_restrictions_in_ctor_arg(TypeTable,
+            CurTypeCtor, CurTypeParams),
+        CtorArgs, !InvariantSet).
+
+:- pred build_type_param_variance_restrictions_in_ctor_arg(type_table::in,
+    type_ctor::in, list(tvar)::in, constructor_arg::in,
+    invariant_set::in, invariant_set::out) is det.
+
+build_type_param_variance_restrictions_in_ctor_arg(TypeTable, CurTypeCtor,
+        CurTypeParams, CtorArg, !InvariantSet) :-
+    CtorArg = ctor_arg(_MaybeFieldName, CtorArgType, _Context),
+    build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable,
+        CurTypeCtor, CurTypeParams, CtorArgType, !InvariantSet).
+
+:- pred build_type_param_variance_restrictions_in_ctor_arg_type(type_table::in,
+    type_ctor::in, list(tvar)::in, mer_type::in,
+    invariant_set::in, invariant_set::out) is det.
+
+build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable, CurTypeCtor,
+        CurTypeParams, CtorArgType, !InvariantSet) :-
+    (
+        CtorArgType = builtin_type(_)
+    ;
+        CtorArgType = type_variable(_TypeVar, _Kind)
+    ;
+        CtorArgType = defined_type(_SymName, ArgTypes, _Kind),
+        ( if
+            type_to_ctor_and_args(CtorArgType, TypeCtor, TypeArgs),
+            hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn)
+        then
+            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+            require_complete_switch [TypeBody]
+            (
+                TypeBody = hlds_du_type(_, _, _, _, _),
+                ( if
+                    TypeCtor = CurTypeCtor,
+                    type_list_to_var_list(TypeArgs, CurTypeParams)
+                then
+                    % A recursive type that matches exactly the current type
+                    % head does not impose any restrictions on the type
+                    % parameters.
+                    true
+                else
+                    type_vars_list(ArgTypes, TypeVars),
+                    set.insert_list(TypeVars, !InvariantSet)
+                )
+            ;
+                ( TypeBody = hlds_foreign_type(_)
+                ; TypeBody = hlds_abstract_type(_)
+                ; TypeBody = hlds_solver_type(_)
+                ),
+                type_vars_list(ArgTypes, TypeVars),
+                set.insert_list(TypeVars, !InvariantSet)
+            ;
+                TypeBody = hlds_eqv_type(_),
+                unexpected($pred, "hlds_eqv_type")
+            )
+        else
+            unexpected($pred, "undefined type")
+        )
+    ;
+        CtorArgType = tuple_type(ArgTypes, _Kind),
+        list.foldl(
+            build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable,
+                CurTypeCtor, CurTypeParams),
+            ArgTypes, !InvariantSet)
+    ;
+        CtorArgType = higher_order_type(_PredOrFunc, ArgTypes, _HOInstInfo,
+            _Purity, _EvalMethod),
+        type_vars_list(ArgTypes, TypeVars),
+        set.insert_list(TypeVars, !InvariantSet)
+    ;
+        CtorArgType = apply_n_type(_, _, _),
+        sorry($pred, "apply_n_type")
+    ;
+        CtorArgType = kinded_type(CtorArgType1, _Kind),
+        build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable,
+            CurTypeCtor, CurTypeParams, CtorArgType1, !InvariantSet)
+    ).
+
+%---------------------%
+
+:- pred check_coerce_type_params(type_table::in, tvarset::in,
+    invariant_set::in, list(tvar)::in, list(mer_type)::in, list(mer_type)::in,
+    type_assign::in, type_assign::out) is semidet.
+
+check_coerce_type_params(TypeTable, TVarSet, InvariantSet,
+        TypeParams, FromTypeArgs, ToTypeArgs, !TypeAssign) :-
+    (
+        TypeParams = [],
+        FromTypeArgs = [],
+        ToTypeArgs = []
+    ;
+        TypeParams = [TypeVar | TailTypeParams],
+        FromTypeArgs = [FromType | TailFromTypes],
+        ToTypeArgs = [ToType | TailToTypes],
+        check_coerce_type_param(TypeTable, TVarSet, InvariantSet,
+            TypeVar, FromType, ToType, !TypeAssign),
+        check_coerce_type_params(TypeTable, TVarSet, InvariantSet,
+            TailTypeParams, TailFromTypes, TailToTypes, !TypeAssign)
+    ).
+
+:- pred check_coerce_type_param(type_table::in, tvarset::in, invariant_set::in,
+    tvar::in, mer_type::in, mer_type::in, type_assign::in, type_assign::out)
+    is semidet.
+
+check_coerce_type_param(TypeTable, TVarSet, InvariantSet,
+        TypeVar, FromType, ToType, !TypeAssign) :-
+    ( if set.contains(InvariantSet, TypeVar) then
+        compare_types(TypeTable, TVarSet, compare_equal, FromType, ToType,
+            !TypeAssign)
+    else
+        ( if
+            compare_types(TypeTable, TVarSet, compare_equal_lt,
+                FromType, ToType, !TypeAssign)
+        then
+            true
+        else
+            compare_types(TypeTable, TVarSet, compare_equal_lt,
+                ToType, FromType, !TypeAssign)
+        )
+    ).
+
+%---------------------%
+
+:- type types_comparison
+    --->    compare_equal
+    ;       compare_equal_lt.
+
+    % Succeed if TypeA unifies with TypeB (possibly binding type vars).
+    % If Comparison is compare_equal_lt, then also succeed if TypeA =< TypeB
+    % by subtype definitions.
+    %
+:- pred compare_types(type_table::in, tvarset::in,
+    types_comparison::in, mer_type::in, mer_type::in,
+    type_assign::in, type_assign::out) is semidet.
+
+compare_types(TypeTable, TVarSet, Comparison, TypeA, TypeB,
+        !TypeAssign) :-
+    ( if
+        ( TypeA = type_variable(_, _)
+        ; TypeB = type_variable(_, _)
+        )
+    then
+        type_assign_unify_type(TypeA, TypeB, !TypeAssign)
+    else
+        compare_types_nonvar(TypeTable, TVarSet, Comparison, TypeA, TypeB,
+            !TypeAssign)
+    ).
+
+:- pred compare_types_nonvar(type_table::in, tvarset::in, types_comparison::in,
+    mer_type::in, mer_type::in, type_assign::in, type_assign::out) is semidet.
+
+compare_types_nonvar(TypeTable, TVarSet, Comparison, TypeA, TypeB,
+        !TypeAssign) :-
+    require_complete_switch [TypeA]
+    (
+        TypeA = builtin_type(BuiltinType),
+        TypeB = builtin_type(BuiltinType)
+    ;
+        TypeA = type_variable(_, _),
+        TypeB = type_variable(_, _),
+        unexpected($pred, "type_variable")
+    ;
+        TypeA = defined_type(_, _, _),
+        type_to_ctor_and_args(TypeA, TypeCtorA, ArgsA),
+        type_to_ctor_and_args(TypeB, TypeCtorB, ArgsB),
+        ( if TypeCtorA = TypeCtorB then
+            compare_types_corresponding(TypeTable, TVarSet, Comparison,
+                ArgsA, ArgsB, !TypeAssign)
+        else
+            Comparison = compare_equal_lt,
+            get_supertype(TypeTable, TVarSet, TypeCtorA, ArgsA, SuperTypeA),
+            compare_types(TypeTable, TVarSet, Comparison, SuperTypeA, TypeB,
+                !TypeAssign)
+        )
+    ;
+        TypeA = tuple_type(ArgsA, Kind),
+        TypeB = tuple_type(ArgsB, Kind),
+        compare_types_corresponding(TypeTable, TVarSet, Comparison,
+            ArgsA, ArgsB, !TypeAssign)
+    ;
+        TypeA = higher_order_type(PredOrFunc, ArgsA, _HOInstInfoA,
+            Purity, EvalMethod),
+        TypeB = higher_order_type(PredOrFunc, ArgsB, _HOInstInfoB,
+            Purity, EvalMethod),
+        % We do not allow subtyping in higher order argument types.
+        compare_types_corresponding(TypeTable, TVarSet, compare_equal,
+            ArgsA, ArgsB, !TypeAssign)
+    ;
+        TypeA = apply_n_type(_, _, _),
+        sorry($pred, "apply_n_type")
+    ;
+        TypeA = kinded_type(TypeA1, Kind),
+        TypeB = kinded_type(TypeB1, Kind),
+        compare_types(TypeTable, TVarSet, Comparison, TypeA1, TypeB1,
+            !TypeAssign)
+    ).
+
+:- pred compare_types_corresponding(type_table::in, tvarset::in,
+    types_comparison::in, list(mer_type)::in, list(mer_type)::in,
+    type_assign::in, type_assign::out) is semidet.
+
+compare_types_corresponding(_TypeTable, _TVarSet, _Comparison,
+        [], [], !TypeAssign).
+compare_types_corresponding(TypeTable, TVarSet, Comparison,
+        [TypeA | TypesA], [TypeB | TypesB], !TypeAssign) :-
+    compare_types(TypeTable, TVarSet, Comparison, TypeA, TypeB, !TypeAssign),
+    compare_types_corresponding(TypeTable, TVarSet, Comparison, TypesA, TypesB,
+        !TypeAssign).
+
+%---------------------------------------------------------------------------%
+
+    % Remove satisfied coerce constraints from each type assignment,
+    % then drop any type assignments with unsatisfied coerce constraints
+    % if there is at least one type assignment that does satisfy coerce
+    % constraints.
+    %
+:- pred typecheck_prune_coerce_constraints(type_assign_set::in,
+    type_assign_set::out, typecheck_info::in, typecheck_info::out) is det.
+
+typecheck_prune_coerce_constraints(TypeAssignSet0, TypeAssignSet, !Info) :-
+    typecheck_info_get_type_table(!.Info, TypeTable),
+    list.map(type_assign_prune_coerce_constraints(TypeTable),
+        TypeAssignSet0, TypeAssignSet1),
+    list.filter(type_assign_has_no_coerce_constraints,
+        TypeAssignSet1, SatisfiedTypeAssignSet, UnsatisfiedTypeAssignSet),
+    (
+        SatisfiedTypeAssignSet = [_ | _],
+        TypeAssignSet = SatisfiedTypeAssignSet
+    ;
+        SatisfiedTypeAssignSet = [],
+        TypeAssignSet = UnsatisfiedTypeAssignSet
+    ).
+
+:- pred type_assign_prune_coerce_constraints(type_table::in,
+    type_assign::in, type_assign::out) is det.
+
+type_assign_prune_coerce_constraints(TypeTable, !TypeAssign) :-
+    type_assign_get_coerce_constraints(!.TypeAssign, Coercions0),
+    (
+        Coercions0 = []
+    ;
+        Coercions0 = [_ | _],
+        check_and_drop_coerce_constraints(TypeTable, Coercions0, Coercions,
+            !TypeAssign),
+        type_assign_set_coerce_constraints(Coercions, !TypeAssign)
+    ).
+
+:- pred check_and_drop_coerce_constraints(type_table::in,
+    list(coerce_constraint)::in, list(coerce_constraint)::out,
+    type_assign::in, type_assign::out) is det.
+
+check_and_drop_coerce_constraints(_TypeTable, [], [], !TypeAssign).
+check_and_drop_coerce_constraints(TypeTable, [Coercion0 | Coercions0],
+        KeepCoercions, !TypeAssign) :-
+    check_coerce_constraint(TypeTable, Coercion0, !.TypeAssign, Satisfied),
+    (
+        Satisfied = yes(!:TypeAssign),
+        check_and_drop_coerce_constraints(TypeTable, Coercions0,
+            KeepCoercions, !TypeAssign)
+    ;
+        Satisfied = no,
+        check_and_drop_coerce_constraints(TypeTable, Coercions0,
+            TailKeepCoercions, !TypeAssign),
+        KeepCoercions = [Coercion0 | TailKeepCoercions]
+    ).
+
+:- pred check_coerce_constraint(type_table::in, coerce_constraint::in,
+    type_assign::in, maybe(type_assign)::out) is det.
+
+check_coerce_constraint(TypeTable, Coercion, TypeAssign0, Satisfied) :-
+    Coercion = coerce_constraint(FromType0, ToType0, _Context, Status),
+    (
+        Status = need_to_check,
+        type_assign_get_type_bindings(TypeAssign0, TypeBindings),
+        type_assign_get_typevarset(TypeAssign0, TVarSet),
+        apply_rec_subst_to_type(TypeBindings, FromType0, FromType),
+        apply_rec_subst_to_type(TypeBindings, ToType0, ToType),
+        ( if
+            typecheck_coerce_between_types(TypeTable, TVarSet,
+                FromType, ToType, TypeAssign0, TypeAssign)
+        then
+            Satisfied = yes(TypeAssign)
+        else
+            Satisfied = no
+        )
+    ;
+        Status = unsatisfiable,
+        Satisfied = no
+    ).
+
+:- pred type_assign_has_no_coerce_constraints(type_assign::in)
+    is semidet.
+
+type_assign_has_no_coerce_constraints(TypeAssign) :-
+    type_assign_get_coerce_constraints(TypeAssign, []).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck.

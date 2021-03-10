@@ -85,6 +85,11 @@
     %
 :- pred type_is_ground(mer_type::in) is semidet.
 
+    % Succeeds iff the given type contains no type variables except
+    % for those in the given list.
+    %
+:- pred type_is_ground_except_vars(mer_type::in, list(tvar)::in) is semidet.
+
     % Succeeds iff the given type is not ground.
     %
 :- pred type_is_nonground(mer_type::in) is semidet.
@@ -476,6 +481,13 @@ strip_kind_annotation(Type0) = Type :-
 
 type_is_ground(Type) :-
     not type_contains_var(Type, _).
+
+type_is_ground_except_vars(Type, Except) :-
+    all [TVar] (
+        type_contains_var(Type, TVar)
+    =>
+        list.contains(Except, TVar)
+    ).
 
 type_is_nonground(Type) :-
     type_contains_var(Type, _).

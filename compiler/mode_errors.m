@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -158,6 +159,15 @@
     ;       mode_error_merge_disj(merge_context, one_or_more(merge_error))
             % Different arms of a disjunction result in different insts
             % for some non-local variables.
+
+    % Mode errors in coerce expressions.
+
+    ;       mode_error_coerce_input_not_ground(prog_var, mer_inst)
+            % The argument in a coerce expression has a non-ground inst.
+
+    ;       mode_error_coerce_bad_result_inst(mer_inst, mer_type)
+            % The result of a coercion would have an inst that is not valid
+            % for the type.
 
     % Mode errors that can happen in more than one kind of goal.
 
@@ -460,6 +470,12 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
         ModeError = mode_error_merge_disj(MergeContext, MergeErrors),
         Spec = mode_error_merge_disj_to_spec(ModeInfo, MergeContext,
             MergeErrors)
+    ;
+        ModeError = mode_error_coerce_input_not_ground(Var, VarInst),
+        Spec = mode_error_coerce_input_not_ground(ModeInfo, Var, VarInst)
+    ;
+        ModeError = mode_error_coerce_bad_result_inst(Inst, Type),
+        Spec = mode_error_coerce_bad_result_inst_to_spec(ModeInfo, Inst, Type)
     ;
         ModeError = mode_error_bind_locked_var(Reason, Var, InstA, InstB),
         Spec = mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var,
@@ -815,6 +831,7 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts, InitialInsts)
             ;
                 ( GenericCallId = gcid_event_call(_)
                 ; GenericCallId = gcid_cast(_)
+                ; GenericCallId = gcid_coerce
                 ),
                 PredOrFunc = pf_predicate
             ),
@@ -1288,6 +1305,41 @@ mode_error_merge_disj_to_spec(ModeInfo, MergeContext, MergeErrors) = Spec :-
 merge_context_to_string(merge_disj) = "disjunction".
 merge_context_to_string(merge_if_then_else) = "if-then-else".
 merge_context_to_string(merge_stm_atomic) = "atomic".
+
+%---------------------------------------------------------------------------%
+
+:- func mode_error_coerce_input_not_ground(mode_info, prog_var, mer_inst) =
+    error_spec.
+
+mode_error_coerce_input_not_ground(ModeInfo, Var, VarInst) = Spec :-
+    Preamble = mode_info_context_preamble(ModeInfo),
+    mode_info_get_context(ModeInfo, Context),
+    mode_info_get_varset(ModeInfo, VarSet),
+    Pieces = [words("mode error:"),
+        quote(mercury_var_to_name_only(VarSet, Var))] ++
+        has_instantiatedness(ModeInfo, VarInst, ",") ++
+        [words("but it must be ground."), nl],
+    Spec = simplest_spec($pred, severity_error,
+        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+
+%---------------------------------------------------------------------------%
+
+:- func mode_error_coerce_bad_result_inst_to_spec(mode_info, mer_inst,
+    mer_type) = error_spec.
+
+mode_error_coerce_bad_result_inst_to_spec(ModeInfo, Inst, Type) = Spec :-
+    Preamble = mode_info_context_preamble(ModeInfo),
+    mode_info_get_context(ModeInfo, Context),
+    varset.init(TypeVarSet),
+    Pieces = [words("mode error: the result would have instantiatedness")] ++
+        report_inst(ModeInfo, quote_short_inst, [suffix(","), nl],
+            [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
+            Inst) ++
+        [words("which is not valid for the type"),
+        quote(mercury_type_to_string(TypeVarSet, print_name_only, Type)),
+        suffix("."), nl],
+    Spec = simplest_spec($pred, severity_error,
+        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
 

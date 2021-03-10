@@ -1,0 +1,3 @@
+coerce_unify_tvars.m:063: In clause for predicate `head_type_params'/2:
+coerce_unify_tvars.m:063:   cannot coerce from `list.list(V_1)' to
+coerce_unify_tvars.m:063:   `list.list(V_2)'.

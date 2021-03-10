@@ -1,0 +1,11 @@
+coerce_non_du.m:015: In clause for function `f1'/1:
+coerce_non_du.m:015:   cannot coerce from `int' to `int'.
+coerce_non_du.m:019: In clause for function `f2'/1:
+coerce_non_du.m:019:   cannot coerce from `float' to `float'.
+coerce_non_du.m:023: In clause for function `f3'/1:
+coerce_non_du.m:023:   cannot coerce from `{}' to `{}'.
+coerce_non_du.m:027: In clause for function `f4'/1:
+coerce_non_du.m:027:   cannot coerce from `((func int) = int)' to
+coerce_non_du.m:027:   `((func int) = int)'.
+coerce_non_du.m:031: In clause for function `f5'/1:
+coerce_non_du.m:031:   cannot coerce from `pred(int, int)' to `pred(int, int)'.

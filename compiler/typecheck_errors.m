@@ -179,6 +179,9 @@
 :- func report_missing_tvar_in_foreign_code(type_error_clause_context,
     prog_context, string) = error_spec.
 
+:- func report_invalid_coerce_from_to(type_error_clause_context, prog_context,
+    tvarset, mer_type, mer_type) = error_spec.
+
 :- pred construct_pred_decl_diff(module_info::in,
     list(mer_type)::in, maybe(mer_type)::in, pred_id::in,
     list(format_component)::out) is det.
@@ -1986,6 +1989,18 @@ report_missing_tvar_in_foreign_code(ClauseContext, Context, VarName) = Spec :-
         [words("should define the variable"), quote(VarName), suffix(".")],
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces).
+
+%---------------------------------------------------------------------------%
+
+report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
+        FromType, ToType) = Spec :-
+    InClauseForPieces = in_clause_for_pieces(ClauseContext),
+    FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
+    ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
+    Pieces = [words("cannot coerce from"), quote(FromTypeStr),
+        words("to"), quote(ToTypeStr), suffix("."), nl],
+    Msg = simplest_msg(Context, InClauseForPieces ++ Pieces),
+    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
 

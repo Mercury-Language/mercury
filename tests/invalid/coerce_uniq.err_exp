@@ -1,0 +1,12 @@
+coerce_uniq.m:024: In clause for `coerce_ui(ui, out)':
+coerce_uniq.m:024:   mode error: argument 1 did not get sufficiently
+coerce_uniq.m:024:   instantiated.
+coerce_uniq.m:024:   Final instantiatedness of `X' was
+coerce_uniq.m:024:   `bound(apple ; lemon ; orange)',
+coerce_uniq.m:024:   expected final instantiatedness was `unique'.
+coerce_uniq.m:029: In clause for `coerce_di(di, uo)':
+coerce_uniq.m:029:   mode error: argument 2 did not get sufficiently
+coerce_uniq.m:029:   instantiated.
+coerce_uniq.m:029:   Final instantiatedness of `Y' was
+coerce_uniq.m:029:   `bound(apple ; lemon ; orange)',
+coerce_uniq.m:029:   expected final instantiatedness was `unique'.

@@ -116,6 +116,19 @@ SINGLEMODULE= \
 	circ_type2 \
 	circ_type3 \
 	circ_type5 \
+	coerce_ambig \
+	coerce_clobbered \
+	coerce_disambig \
+	coerce_implied_mode \
+	coerce_infer \
+	coerce_instvar \
+	coerce_mode_error \
+	coerce_non_du \
+	coerce_syntax \
+	coerce_type_error \
+	coerce_unify_tvars \
+	coerce_uniq \
+	coerce_void \
 	combined_ho_type_inst \
 	combined_ho_type_inst_2 \
 	comparison \

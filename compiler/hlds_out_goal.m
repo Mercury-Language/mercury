@@ -1508,8 +1508,13 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarSet, _TypeQual,
         mercury_output_term(VarSet, VarNamePrint, Term, Stream, !IO),
         io.write_string(Stream, Follow, !IO)
     ;
-        GenericCall = cast(CastType),
-        CastTypeString = cast_type_to_string(CastType),
+        (
+            GenericCall = cast(CastType),
+            CastTypeString = cast_type_to_string(CastType)
+        ;
+            GenericCall = subtype_coerce,
+            CastTypeString = "coerce"
+        ),
         ( if string.contains_char(DumpOptions, 'l') then
             write_indent(Stream, Indent, !IO),
             io.write_strings(Stream, ["% ", CastTypeString, "\n"], !IO),

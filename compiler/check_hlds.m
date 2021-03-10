@@ -59,9 +59,10 @@
    :- include_module mode_errors.
    :- include_module mode_info.
    :- include_module mode_util.
-   :- include_module modecheck_goal.
-   :- include_module modecheck_conj.
    :- include_module modecheck_call.
+   :- include_module modecheck_coerce.
+   :- include_module modecheck_conj.
+   :- include_module modecheck_goal.
    :- include_module modecheck_unify.
    :- include_module modecheck_util.
    :- include_module modes.

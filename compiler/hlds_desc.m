@@ -113,6 +113,9 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
         ;
             GCall = cast(_),
             Desc = "cast " ++ describe_args(VarSet, Args)
+        ;
+            GCall = subtype_coerce,
+            Desc = "coerce " ++ describe_args(VarSet, Args)
         )
     ;
         GoalExpr = call_foreign_proc(_, PredId, _, Args, ExtraArgs, _, _),

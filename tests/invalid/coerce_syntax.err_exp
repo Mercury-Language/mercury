@@ -1,0 +1,8 @@
+coerce_syntax.m:024: In clause for predicate `module_qualify_coerce'/0:
+coerce_syntax.m:024:   error: undefined symbol `coerce_syntax.coerce'/1.
+coerce_syntax.m:029: In clause for predicate `apply_coerce'/0:
+coerce_syntax.m:029:   in argument 1 of functor `apply/2':
+coerce_syntax.m:029:   error: undefined symbol `coerce'/0.
+coerce_syntax.m:034: In clause for predicate `empty_apply_coerce'/0:
+coerce_syntax.m:034:   in argument 1 of functor `/2':
+coerce_syntax.m:034:   error: undefined symbol `coerce'/0.

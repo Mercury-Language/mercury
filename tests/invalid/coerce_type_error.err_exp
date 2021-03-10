@@ -1,0 +1,22 @@
+coerce_type_error.m:045: In clause for predicate `bad_unrelated'/2:
+coerce_type_error.m:045:   cannot coerce from
+coerce_type_error.m:045:   `coerce_type_error.orange_non_fruit' to
+coerce_type_error.m:045:   `coerce_type_error.citrus'.
+coerce_type_error.m:070: In clause for predicate `bad_phantom'/2:
+coerce_type_error.m:070:   cannot coerce from `coerce_type_error.phantom(int)'
+coerce_type_error.m:070:   to `coerce_type_error.phantom(float)'.
+coerce_type_error.m:091: In clause for predicate `bad_higher_order'/2:
+coerce_type_error.m:091:   cannot coerce from
+coerce_type_error.m:091:   `coerce_type_error.wrap_ho(coerce_type_error.citrus)'
+coerce_type_error.m:091:   to
+coerce_type_error.m:091:   `coerce_type_error.wrap_ho(coerce_type_error.fruit)'.
+coerce_type_error.m:106: In clause for predicate `bad_foreign_type'/2:
+coerce_type_error.m:106:   cannot coerce from
+coerce_type_error.m:106:   `coerce_type_error.wrap_ft(coerce_type_error.citrus)'
+coerce_type_error.m:106:   to
+coerce_type_error.m:106:   `coerce_type_error.wrap_ft(coerce_type_error.fruit)'.
+coerce_type_error.m:118: In clause for predicate `bad_abs_type'/2:
+coerce_type_error.m:118:   cannot coerce from
+coerce_type_error.m:118:   `coerce_type_error.wrap_abs(coerce_type_error.citrus)'
+coerce_type_error.m:118:   to
+coerce_type_error.m:118:   `coerce_type_error.wrap_abs(coerce_type_error.fruit)'.

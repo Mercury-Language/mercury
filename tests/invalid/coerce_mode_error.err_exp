@@ -1,0 +1,40 @@
+coerce_mode_error.m:035: In clause for `bad_coerce_free_input(in(free), out)':
+coerce_mode_error.m:035:   in coerce:
+coerce_mode_error.m:035:   mode error: `X' has instantiatedness `free',
+coerce_mode_error.m:035:   but it must be ground.
+coerce_mode_error.m:046: In clause for `bad_fruit_to_citrus(in, out)':
+coerce_mode_error.m:046:   in coerce:
+coerce_mode_error.m:046:   mode error: the result would have instantiatedness
+coerce_mode_error.m:046:   `bound(apple ; lemon ; orange)',
+coerce_mode_error.m:046:   which is not valid for the type
+coerce_mode_error.m:046:   `coerce_mode_error.citrus'.
+coerce_mode_error.m:052: In clause for `bad_nelist_f_to_list_c(in, out)':
+coerce_mode_error.m:052:   in coerce:
+coerce_mode_error.m:052:   mode error: the result would have instantiatedness
+coerce_mode_error.m:052:     bound(
+coerce_mode_error.m:052:       '[|]'(
+coerce_mode_error.m:052:         bound(
+coerce_mode_error.m:052:           apple
+coerce_mode_error.m:052:         ;
+coerce_mode_error.m:052:           lemon
+coerce_mode_error.m:052:         ;
+coerce_mode_error.m:052:           orange
+coerce_mode_error.m:052:         ),
+coerce_mode_error.m:052:         bound(
+coerce_mode_error.m:052:           []
+coerce_mode_error.m:052:         ;
+coerce_mode_error.m:052:           '[|]'(
+coerce_mode_error.m:052:             bound(
+coerce_mode_error.m:052:               apple
+coerce_mode_error.m:052:             ;
+coerce_mode_error.m:052:               lemon
+coerce_mode_error.m:052:             ;
+coerce_mode_error.m:052:               orange
+coerce_mode_error.m:052:             ),
+coerce_mode_error.m:052:             ground
+coerce_mode_error.m:052:           )
+coerce_mode_error.m:052:         )
+coerce_mode_error.m:052:       )
+coerce_mode_error.m:052:     ),
+coerce_mode_error.m:052:   which is not valid for the type
+coerce_mode_error.m:052:   `coerce_mode_error.list(coerce_mode_error.citrus)'.

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1083,6 +1083,34 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
 %           !:Specs = [Spec | !.Specs],
 %           qual_info_set_found_syntax_error(yes, !QualInfo),
 %           Expansion = expansion(not_fgti, cord.empty)
+        )
+    ;
+        % Handle coerce expressions.
+        YAtom = "coerce",
+        YArgTerms = [RValTerm0],
+        require_det (
+            (
+                RValTerm0 = term.variable(RValTermVar, _),
+                RValGoalCord = cord.empty
+            ;
+                RValTerm0 = term.functor(_, _, _),
+                substitute_state_var_mapping(RValTerm0, RValTerm,
+                    !VarSet, !SVarState, !Specs),
+                make_fresh_arg_var_no_svar(RValTerm0, RValTermVar, [],
+                    !VarSet),
+                do_unravel_var_unification(RValTermVar, RValTerm, Context,
+                    MainContext, SubContext, Purity, Order, RValTermExpansion,
+                    !SVarState, !SVarStore, !VarSet,
+                    !ModuleInfo, !QualInfo, !Specs),
+                RValTermExpansion = expansion(_, RValGoalCord)
+            ),
+            CoerceGoalExpr = generic_call(subtype_coerce,
+                [RValTermVar, XVar], [in_mode, out_mode],
+                arg_reg_types_unset, detism_det),
+            goal_info_init(Context, CoerceGoalInfo),
+            CoerceGoal = hlds_goal(CoerceGoalExpr, CoerceGoalInfo),
+            CoerceGoalCord = cord.singleton(CoerceGoal),
+            Expansion = expansion(not_fgti, RValGoalCord ++ CoerceGoalCord)
         )
     ;
         % Handle if-then-else expressions.

@@ -1,0 +1,2 @@
+coerce_infer.m:026: In clause for function `f'/1:
+coerce_infer.m:026:   cannot coerce from `V_1' to `V_2'.
