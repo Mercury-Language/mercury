@@ -7181,7 +7181,7 @@ good_example3_univ("bar"::in(bound("bar")), univ("blah")::out).
 @c @var{InitialY} is free
 @c
 @c @item
-@c @var{FinalX} is @var{InitialX} but without uniqueness
+@c @var{FinalX} is @var{InitialX}
 @c
 @c @item
 @c @var{FinalY} is

@@ -4,4 +4,4 @@ coerce_implied_mode.m:036:   in coerce:
 coerce_implied_mode.m:036:   warning: unification of `Y' and `V_4' cannot
 coerce_implied_mode.m:036:   succeed.
 coerce_implied_mode.m:036:   `Y' has instantiatedness `bound(orange)',
-coerce_implied_mode.m:036:   `V_4' has instantiatedness `bound(lemon)'.
+coerce_implied_mode.m:036:   `V_4' has instantiatedness `unique(lemon)'.

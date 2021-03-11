@@ -117,13 +117,16 @@ modecheck_coerce_vars(ModuleInfo0, X, Y, InstX, InstY, Res, !ModeInfo) :-
     mode_info_var_is_live(!.ModeInfo, X, LiveX),
     mode_info_var_is_live(!.ModeInfo, Y, LiveY),
     ( if LiveX = is_live, LiveY = is_live then
-        BothLive = is_live
+        BothLive = is_live,
+        Uniq = shared
     else
-        BothLive = is_dead
+        BothLive = is_dead,
+        Uniq = unique
     ),
 
     set.init(Seen0),
-    make_bound_inst_for_type(ModuleInfo0, Seen0, TypeX, BoundInstForTypeX),
+    make_bound_inst_for_type(ModuleInfo0, Seen0, Uniq, TypeX,
+        BoundInstForTypeX),
     ( if
         abstractly_unify_inst(BothLive, BoundInstForTypeX, InstX, real_unify,
             UnifyInstForTypeX, _Det, ModuleInfo0, ModuleInfo)
@@ -133,8 +136,6 @@ modecheck_coerce_vars(ModuleInfo0, X, Y, InstX, InstY, Res, !ModeInfo) :-
                 UnifyInstForTypeX, UnifyInstForTypeY)
         then
             mode_info_set_module_info(ModuleInfo, !ModeInfo),
-            % Y aliases X, so X loses uniqueness.
-            % (but if X becomes dead, Y could be unique?)
             modecheck_set_var_inst(X, UnifyInstForTypeX, no, !ModeInfo),
             ModeX = from_to_mode(InstX, UnifyInstForTypeX),
             ( if inst_is_free(ModuleInfo0, InstY) then
@@ -175,15 +176,15 @@ modecheck_coerce_vars(ModuleInfo0, X, Y, InstX, InstY, Res, !ModeInfo) :-
     % If the given type is not a du or tuple type, simply return ground.
     %
 :- pred make_bound_inst_for_type(module_info::in, set(type_ctor)::in,
-    mer_type::in, mer_inst::out) is det.
+    uniqueness::in, mer_type::in, mer_inst::out) is det.
 
-make_bound_inst_for_type(ModuleInfo, Seen0, Type, Inst) :-
+make_bound_inst_for_type(ModuleInfo, Seen0, Uniq, Type, Inst) :-
     (
         Type = type_variable(_, _),
-        Inst = ground_inst
+        Inst = ground_or_unique_inst(Uniq)
     ;
         Type = builtin_type(_),
-        Inst = ground_inst
+        Inst = ground_or_unique_inst(Uniq)
     ;
         Type = defined_type(_SymName, _ArgTypes, _Kind),
         % XXX the seen set should probably include type arguments, not only the
@@ -193,7 +194,7 @@ make_bound_inst_for_type(ModuleInfo, Seen0, Type, Inst) :-
             % type_constructors substitutes type args into constructors.
             ( if type_constructors(ModuleInfo, Type, Constructors) then
                 constructors_to_bound_insts_rec(ModuleInfo, Seen, TypeCtor,
-                    Constructors, BoundInsts0),
+                    Uniq, Constructors, BoundInsts0),
                 list.sort_and_remove_dups(BoundInsts0, BoundInsts),
                 % XXX A better approximation of InstResults is probably
                 % possible.
@@ -205,20 +206,20 @@ make_bound_inst_for_type(ModuleInfo, Seen0, Type, Inst) :-
                     inst_result_contains_types_unknown,
                     inst_result_no_type_ctor_propagated
                 ),
-                Inst = bound(shared, InstResults, BoundInsts)
+                Inst = bound(Uniq, InstResults, BoundInsts)
             else
                 % Type with no definition, e.g. void
-                Inst = ground_inst
+                Inst = ground_or_unique_inst(Uniq)
             )
         else
             % Does typed_ground help?
-            Inst = defined_inst(typed_ground(shared, Type))
+            Inst = defined_inst(typed_ground(Uniq, Type))
         )
     ;
         Type = tuple_type(ArgTypes, _Kind),
         list.length(ArgTypes, Arity),
         ConsId = tuple_cons(Arity),
-        list.map(make_bound_inst_for_type(ModuleInfo, Seen0),
+        list.map(make_bound_inst_for_type(ModuleInfo, Seen0, Uniq),
             ArgTypes, ArgInsts),
         BoundInst = bound_functor(ConsId, ArgInsts),
         % XXX A better approximation of InstResults is probably possible.
@@ -230,54 +231,64 @@ make_bound_inst_for_type(ModuleInfo, Seen0, Type, Inst) :-
             inst_result_contains_types_unknown,
             inst_result_no_type_ctor_propagated
         ),
-        Inst = bound(shared, InstResults, [BoundInst])
+        Inst = bound(Uniq, InstResults, [BoundInst])
     ;
         Type = higher_order_type(_PredOrFunc, _ArgTypes, _HOInstInfo, _Purity,
             _EvalMethod),
-        Inst = ground_inst
+        Inst = ground_or_unique_inst(Uniq)
     ;
         Type = apply_n_type(_, _, _),
         sorry($pred, "apply_n_type")
     ;
         Type = kinded_type(Type1, _),
-        make_bound_inst_for_type(ModuleInfo, Seen0, Type1, Inst)
+        make_bound_inst_for_type(ModuleInfo, Seen0, Uniq, Type1, Inst)
     ).
 
     % Similar to mode_util.constructors_to_bound_insts but also produces
     % bound() insts for the constructor arguments, recursively.
     %
 :- pred constructors_to_bound_insts_rec(module_info::in, set(type_ctor)::in,
-    type_ctor::in, list(constructor)::in, list(bound_inst)::out) is det.
+    type_ctor::in, uniqueness::in, list(constructor)::in,
+    list(bound_inst)::out) is det.
 
-constructors_to_bound_insts_rec(ModuleInfo, Seen, TypeCtor, Constructors,
-        BoundInsts) :-
+constructors_to_bound_insts_rec(ModuleInfo, Seen, TypeCtor, Uniq,
+        Constructors, BoundInsts) :-
     constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Seen, TypeCtor,
-        Constructors, BoundInsts).
+        Uniq, Constructors, BoundInsts).
 
 :- pred constructors_to_bound_insts_loop_over_ctors(module_info::in,
-    set(type_ctor)::in, type_ctor::in, list(constructor)::in,
+    set(type_ctor)::in, type_ctor::in, uniqueness::in, list(constructor)::in,
     list(bound_inst)::out) is det.
 
 constructors_to_bound_insts_loop_over_ctors(_ModuleInfo, _Seen, _TypeCtor,
-        [], []).
+        _Uniq, [], []).
 constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Seen, TypeCtor,
-        [Ctor | Ctors], [BoundInst | BoundInsts]) :-
+        Uniq, [Ctor | Ctors], [BoundInst | BoundInsts]) :-
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, Name, Args, _Arity, _Ctxt),
-    ctor_arg_list_to_inst_list(ModuleInfo, Seen, Args, ArgInsts),
+    ctor_arg_list_to_inst_list(ModuleInfo, Seen, Uniq, Args, ArgInsts),
     list.length(ArgInsts, Arity),
     BoundInst = bound_functor(cons(Name, Arity, TypeCtor), ArgInsts),
     constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Seen, TypeCtor,
-        Ctors, BoundInsts).
+        Uniq, Ctors, BoundInsts).
 
 :- pred ctor_arg_list_to_inst_list(module_info::in, set(type_ctor)::in,
-    list(constructor_arg)::in, list(mer_inst)::out) is det.
+    uniqueness::in, list(constructor_arg)::in, list(mer_inst)::out) is det.
 
-ctor_arg_list_to_inst_list(_ModuleInfo, _Seen, [], []).
-ctor_arg_list_to_inst_list(ModuleInfo, Seen,
+ctor_arg_list_to_inst_list(_ModuleInfo, _Seen, _Uniq, [], []).
+ctor_arg_list_to_inst_list(ModuleInfo, Seen, Uniq,
         [Arg | Args], [ArgInst | ArgInsts]) :-
     Arg = ctor_arg(_MaybeFieldName, ArgType, _Context),
-    make_bound_inst_for_type(ModuleInfo, Seen, ArgType, ArgInst),
-    ctor_arg_list_to_inst_list(ModuleInfo, Seen, Args, ArgInsts).
+    make_bound_inst_for_type(ModuleInfo, Seen, Uniq, ArgType, ArgInst),
+    ctor_arg_list_to_inst_list(ModuleInfo, Seen, Uniq, Args, ArgInsts).
+
+:- func ground_or_unique_inst(uniqueness) = mer_inst.
+
+ground_or_unique_inst(Uniq) =
+    ( if Uniq = shared then
+        ground_inst
+    else
+        ground(Uniq, none_or_default_func)
+    ).
 
 %---------------------------------------------------------------------------%
 
