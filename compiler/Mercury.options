@@ -101,7 +101,6 @@ MCFLAGS-parse_tree.parse_tree_out_info    = --no-warn-unknown-format-calls
 
 MCFLAGS-backend_libs.c_util               += --warn-implicit-stream-calls
 MCFLAGS-backend_libs.export               += --warn-implicit-stream-calls
-MCFLAGS-check_hlds.deforst                += --warn-implicit-stream-calls
 MCFLAGS-check_hlds.delay_partial_inst     += --warn-implicit-stream-calls
 MCFLAGS-check_hlds.simplify.format_call   += --warn-implicit-stream-calls
 MCFLAGS-check_hlds.simplify.simplify_goal_conj += --warn-implicit-stream-calls
@@ -171,6 +170,7 @@ MCFLAGS-parse_tree.write_module_interface_files += --warn-implicit-stream-calls
 MCFLAGS-recompilation                     += --warn-implicit-stream-calls
 MCFLAGS-recompilation.usage               += --warn-implicit-stream-calls
 MCFLAGS-recompilation.version             += --warn-implicit-stream-calls
+MCFLAGS-transform_hlds.deforest           += --warn-implicit-stream-calls
 MCFLAGS-transform_hlds.intermod           += --warn-implicit-stream-calls
 MCFLAGS-transform_hlds.unneeded_code      += --warn-implicit-stream-calls
 
