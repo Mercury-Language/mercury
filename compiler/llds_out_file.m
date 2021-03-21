@@ -118,8 +118,8 @@ output_llds(Globals, CFile, Succeeded, !IO) :-
     ModuleName = CFile ^ cfile_modulename,
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".c")), ModuleName, FileName, !IO),
-    output_to_file_stream(Globals, FileName, output_llds_2(Globals, CFile),
-        Succeeded, !IO).
+    output_to_file_stream(Globals, ModuleName, FileName,
+        output_llds_2(Globals, CFile), Succeeded, !IO).
 
 :- pred output_llds_2(globals::in, c_file::in, io.text_output_stream::in,
     list(string)::out, io::di, io::uo) is det.

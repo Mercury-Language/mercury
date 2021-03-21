@@ -535,7 +535,7 @@ create_and_write_opt_file(IntermodAnalysis, Globals, !HLDS, !DumpInfo,
         ),
         io.close_output(TmpOptStream, !IO),
 
-        update_interface(Globals, OptFileName, !IO),
+        update_interface(Globals, ModuleName, OptFileName, !IO),
         touch_interface_datestamp(Globals, ModuleName,
             other_ext(".optdate"), !IO),
 

@@ -632,8 +632,7 @@ do_type_checkpoint(Stream, Msg, ModuleInfo, VarSet, TypeAssignSet, !IO) :-
     io.format(Stream, "At %s:", [s(Msg)], !IO),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
-    % XXX should pass Stream
-    maybe_report_stats(Statistics, !IO),
+    maybe_report_stats(Stream, Statistics, !IO),
     io.nl(Stream, !IO),
     ( if
         Statistics = yes,

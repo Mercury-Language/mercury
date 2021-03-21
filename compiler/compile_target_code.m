@@ -1108,8 +1108,8 @@ make_library_init_file_2(Globals, ErrorStream, MainModuleName, AllModules,
         ),
 
         io.close_output(InitFileStream, !IO),
-        update_interface_return_succeeded(Globals, InitFileName, Succeeded1,
-            !IO),
+        update_interface_return_succeeded(Globals, MainModuleName,
+            InitFileName, Succeeded1, !IO),
         Succeeded2 = Succeeded0 `and` Succeeded1,
         (
             Succeeded2 = yes,
@@ -1364,13 +1364,13 @@ make_init_target_file(Globals, ErrorStream, MkInit, ModuleName, ModuleNames,
     maybe_report_stats(Stats, !IO),
     (
         MkInitOk = yes,
-        update_interface_return_succeeded(Globals, InitTargetFileName,
-            UpdateOk, !IO),
+        update_interface_return_succeeded(Globals, ModuleName,
+            InitTargetFileName, UpdateResult, !IO),
         (
-            UpdateOk = yes,
+            UpdateResult = yes,
             MaybeInitTargetFile = yes(InitTargetFileName)
         ;
-            UpdateOk = no,
+            UpdateResult = no,
             MaybeInitTargetFile = no
         )
     ;

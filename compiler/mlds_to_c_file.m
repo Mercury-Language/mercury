@@ -137,7 +137,7 @@ output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
         ext_other(other_ext(".c")), ModuleName, SourceFileName0, !IO),
     SourceFileName = SourceFileName0 ++ Suffix,
     Indent = 0,
-    output_to_file_stream(Globals, SourceFileName,
+    output_to_file_stream(Globals, ModuleName, SourceFileName,
         mlds_output_src_file(Opts, Indent, MLDS), Succeeded, !IO).
 
 :- pred output_c_header_file_opts(mlds::in, mlds_to_c_opts::in, string::in,
@@ -161,11 +161,11 @@ output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
         ^ m2co_line_numbers := LineNumbersForCHdrs)
         ^ m2co_foreign_line_numbers := LineNumbersForCHdrs),
     Indent = 0,
-    output_to_file_stream(Globals, TmpHeaderFileName,
+    output_to_file_stream(Globals, ModuleName, TmpHeaderFileName,
         mlds_output_hdr_file(HdrOpts, Indent, MLDS), Succeeded, !IO),
     (
         Succeeded = yes,
-        update_interface(Globals, HeaderFileName, !IO)
+        update_interface(Globals, ModuleName, HeaderFileName, !IO)
     ;
         Succeeded = no
     ).
@@ -181,7 +181,7 @@ output_c_dump_preds(MLDS, Globals, TargetOrDump, Suffix, DumpPredNames, !IO) :-
     DumpFileName = DumpBaseName ++ Suffix,
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ProcDefns = MLDS ^ mlds_proc_defns,
-    output_to_file_stream(Globals, DumpFileName,
+    output_to_file_stream(Globals, ModuleName, DumpFileName,
         mlds_output_named_function_defns(Opts, DumpPredNames, MLDS_ModuleName,
             ProcDefns),
         _Succeeded, !IO).

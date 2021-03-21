@@ -141,25 +141,32 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
         ext_other(other_ext(".d")), ModuleName, DependencyFileName, !IO),
     io.make_temp_file(dir.dirname(DependencyFileName), "tmp_d",
         "", TmpDependencyFileNameRes, !IO),
+    get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
     (
         TmpDependencyFileNameRes = error(Error),
         Message = "Could not create temporary file: " ++ error_message(Error),
-        report_error(Message, !IO)
+        report_error(ErrorStream, Message, !IO)
     ;
         TmpDependencyFileNameRes = ok(TmpDependencyFileName),
-        maybe_write_string(Verbose, "% Writing auto-dependency file `", !IO),
-        maybe_write_string(Verbose, DependencyFileName, !IO),
-        maybe_write_string(Verbose, "'...", !IO),
-        maybe_flush_output(Verbose, !IO),
+        (
+            Verbose = no
+        ;
+            Verbose = yes,
+            io.format(ProgressStream,
+                "%% Writing auto-dependency file `%s'...",
+                [s(DependencyFileName)], !IO),
+            io.flush_output(ProgressStream, !IO)
+        ),
         io.open_output(TmpDependencyFileName, Result, !IO),
         (
             Result = error(IOError),
-            maybe_write_string(Verbose, " failed.\n", !IO),
-            maybe_flush_output(Verbose, !IO),
+            maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
+            maybe_flush_output(ProgressStream, Verbose, !IO),
             io.error_message(IOError, IOErrorMessage),
             string.format("error opening temporary file `%s' for output: %s",
                 [s(TmpDependencyFileName), s(IOErrorMessage)], Message),
-            report_error(Message, !IO)
+            report_error(ErrorStream, Message, !IO)
         ;
             Result = ok(DepStream),
             generate_d_file(Globals, ModuleAndImports,
@@ -176,33 +183,36 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
                 io.remove_file(DependencyFileName, RemoveResult, !IO),
                 (
                     RemoveResult = error(Error4),
-                    maybe_write_string(Verbose, " failed.\n", !IO),
-                    maybe_flush_output(Verbose, !IO),
+                    maybe_write_string(ProgressStream, Verbose,
+                        " failed.\n", !IO),
+                    maybe_flush_output(ProgressStream, Verbose, !IO),
                     io.error_message(Error4, ErrorMsg),
                     string.format("can't remove file `%s': %s",
                         [s(DependencyFileName), s(ErrorMsg)], Message),
-                    report_error(Message, !IO)
+                    report_error(ErrorStream, Message, !IO)
                 ;
                     RemoveResult = ok,
                     io.rename_file(TmpDependencyFileName, DependencyFileName,
                         SecondRenameResult, !IO),
                     (
                         SecondRenameResult = error(Error5),
-                        maybe_write_string(Verbose, " failed.\n", !IO),
-                        maybe_flush_output(Verbose, !IO),
+                        maybe_write_string(ProgressStream, Verbose,
+                            " failed.\n", !IO),
+                        maybe_flush_output(ProgressStream, Verbose, !IO),
                         io.error_message(Error5, ErrorMsg),
                         string.format("can't rename file `%s' as `%s': %s",
                             [s(TmpDependencyFileName), s(DependencyFileName),
                             s(ErrorMsg)], Message),
-                        report_error(Message, !IO)
+                        report_error(ErrorStream, Message, !IO)
                     ;
                         SecondRenameResult = ok,
-                        maybe_write_string(Verbose, " done.\n", !IO)
+                        maybe_write_string(ProgressStream, Verbose,
+                            " done.\n", !IO)
                     )
                 )
             ;
                 FirstRenameResult = ok,
-                maybe_write_string(Verbose, " done.\n", !IO)
+                maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
             )
         )
     ).
@@ -1349,9 +1359,10 @@ generate_dependencies_write_dv_file(Globals, SourceFileName, ModuleName,
     globals.lookup_bool_option(Globals, verbose, Verbose),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".dv")), ModuleName, DvFileName, !IO),
-    maybe_write_string(Verbose, "% Creating auto-dependency file `", !IO),
-    maybe_write_string(Verbose, DvFileName, !IO),
-    maybe_write_string(Verbose, "'...\n", !IO),
+    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
+    string.format("%% Creating auto-dependency file `%s'...\n",
+        [s(DvFileName)], CreatingMsg),
+    maybe_write_string(ProgressStream, Verbose, CreatingMsg, !IO),
     io.open_output(DvFileName, DvResult, !IO),
     (
         DvResult = ok(DvStream),
@@ -1359,15 +1370,16 @@ generate_dependencies_write_dv_file(Globals, SourceFileName, ModuleName,
             MmakeFile, !IO),
         write_mmakefile(DvStream, MmakeFile, !IO),
         io.close_output(DvStream, !IO),
-        maybe_write_string(Verbose, "% done.\n", !IO)
+        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
     ;
         DvResult = error(IOError),
-        maybe_write_string(Verbose, " failed.\n", !IO),
-        maybe_flush_output(Verbose, !IO),
+        maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
+        maybe_flush_output(ProgressStream, Verbose, !IO),
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
         io.error_message(IOError, IOErrorMessage),
         string.format("error opening file `%s' for output: %s",
             [s(DvFileName), s(IOErrorMessage)], DepMessage),
-        report_error(DepMessage, !IO)
+        report_error(ErrorStream, DepMessage, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1724,9 +1736,10 @@ generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
     globals.lookup_bool_option(Globals, verbose, Verbose),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".dep")), ModuleName, DepFileName, !IO),
-    maybe_write_string(Verbose, "% Creating auto-dependency file `", !IO),
-    maybe_write_string(Verbose, DepFileName, !IO),
-    maybe_write_string(Verbose, "'...\n", !IO),
+    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
+    string.format("%% Creating auto-dependency file `%s'...\n",
+        [s(DepFileName)], CreatingMsg),
+    maybe_write_string(ProgressStream, Verbose, CreatingMsg, !IO),
     io.open_output(DepFileName, DepResult, !IO),
     (
         DepResult = ok(DepStream),
@@ -1734,15 +1747,16 @@ generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
             MmakeFile, !IO),
         write_mmakefile(DepStream, MmakeFile, !IO),
         io.close_output(DepStream, !IO),
-        maybe_write_string(Verbose, "% done.\n", !IO)
+        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
     ;
         DepResult = error(IOError),
-        maybe_write_string(Verbose, " failed.\n", !IO),
-        maybe_flush_output(Verbose, !IO),
+        maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
+        maybe_flush_output(ProgressStream, Verbose, !IO),
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
         io.error_message(IOError, IOErrorMessage),
         string.format("error opening file `%s' for output: %s",
             [s(DepFileName), s(IOErrorMessage)], DepMessage),
-        report_error(DepMessage, !IO)
+        report_error(ErrorStream, DepMessage, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -2404,31 +2418,33 @@ get_source_file(DepsMap, ModuleName, FileName) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_output_module_order(Globals, Module, DepsOrdering, !IO) :-
+maybe_output_module_order(Globals, ModuleName, DepsOrdering, !IO) :-
     globals.lookup_bool_option(Globals, generate_module_order, Order),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         Order = yes,
         module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".order")), Module, OrdFileName, !IO),
-        maybe_write_string(Verbose, "% Creating module order file `", !IO),
-        maybe_write_string(Verbose, OrdFileName, !IO),
-        maybe_write_string(Verbose, "'...", !IO),
+            ext_other(other_ext(".order")), ModuleName, OrdFileName, !IO),
+        get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
+        globals.lookup_bool_option(Globals, verbose, Verbose),
+        string.format("%% Creating module order file `%s'...",
+            [s(OrdFileName)], CreatingMsg),
+        maybe_write_string(ProgressStream, Verbose, CreatingMsg, !IO),
         io.open_output(OrdFileName, OrdResult, !IO),
         (
             OrdResult = ok(OrdStream),
             io.write_list(OrdStream, DepsOrdering, "\n\n",
                 write_module_scc(OrdStream), !IO),
             io.close_output(OrdStream, !IO),
-            maybe_write_string(Verbose, " done.\n", !IO)
+            maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
         ;
             OrdResult = error(IOError),
-            maybe_write_string(Verbose, " failed.\n", !IO),
-            maybe_flush_output(Verbose, !IO),
+            maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
+            maybe_flush_output(ProgressStream, Verbose, !IO),
+            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             io.error_message(IOError, IOErrorMessage),
             string.format("error opening file `%s' for output: %s",
                 [s(OrdFileName), s(IOErrorMessage)], OrdMessage),
-            report_error(OrdMessage, !IO)
+            report_error(ErrorStream, OrdMessage, !IO)
         )
     ;
         Order = no

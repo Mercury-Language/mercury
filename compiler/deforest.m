@@ -1092,8 +1092,14 @@ call_call_2(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal,
         pd_info_get_module_info(!.PDInfo, ModuleInfo0),
         FoldPredName = predicate_name(ModuleInfo0, VersionPredId),
         trace [io(!IO)] (
-            pd_debug_message(DebugPD, "Folded with %s\n", [s(FoldPredName)],
-                !IO)
+            (
+                DebugPD = no
+            ;
+                DebugPD = yes,
+                module_info_get_name(ModuleInfo, ModuleName),
+                get_debug_output_stream(Globals, ModuleName, Stream, !IO),
+                io.format(Stream, "Folded with %s\n", [s(FoldPredName)], !IO)
+            )
         ),
         ( if set.member(VersionPredProcId, Parents) then
             FoldCostDelta = cost_of_recursive_fold
@@ -1112,9 +1118,16 @@ call_call_2(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal,
         pd_info_get_parent_versions(!.PDInfo, ParentVersions0),
 
         trace [io(!IO)] (
-            pd_debug_do_io(DebugPD, io.write_string("Parents: "), !IO),
-            pd_debug_write(DebugPD, ParentVersions0, !IO),
-            pd_debug_do_io(DebugPD, io.nl, !IO)
+            (
+                DebugPD = no
+            ;
+                DebugPD = yes,
+                module_info_get_name(ModuleInfo, ModuleName),
+                get_debug_output_stream(Globals, ModuleName, Stream, !IO),
+                io.write_string(Stream, "Parents: ", !IO),
+                io.write_line(Stream, ParentVersions0, !IO),
+                io.flush_output(Stream, !IO)
+            )
         ),
 
         pd_info_get_versions(!.PDInfo, Versions),

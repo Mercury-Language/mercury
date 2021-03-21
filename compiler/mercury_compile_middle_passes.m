@@ -412,7 +412,7 @@ output_trans_opt_file(!.HLDS, !Specs, !DumpInfo, !IO) :-
         write_trans_opt_file(TmpOptStream, !.HLDS, ParseTreeTransOpt, !IO),
         io.close_output(TmpOptStream, !IO),
 
-        update_interface(Globals, OptFileName, !IO),
+        update_interface(Globals, ModuleName, OptFileName, !IO),
         touch_interface_datestamp(Globals, ModuleName,
             other_ext(".trans_opt_date"), !IO),
 

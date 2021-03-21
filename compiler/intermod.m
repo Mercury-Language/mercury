@@ -220,6 +220,7 @@
 :- import_module hlds.hlds_out.hlds_out_pred.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_promise.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
@@ -3589,14 +3590,16 @@ maybe_opt_export_entities(!ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     trace [io(!IO)] (
-        maybe_write_string(VeryVerbose,
+        get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+        maybe_write_string(ProgressStream, VeryVerbose,
             "% Adjusting import status of predicates in the `.opt' file...",
             !IO)
     ),
     decide_what_to_opt_export(!.ModuleInfo, IntermodInfo),
     maybe_opt_export_listed_entities(IntermodInfo, !ModuleInfo),
     trace [io(!IO)] (
-        maybe_write_string(VeryVerbose, " done\n", !IO)
+        get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+        maybe_write_string(ProgressStream, VeryVerbose, " done\n", !IO)
     ).
 
 maybe_opt_export_listed_entities(IntermodInfo, !ModuleInfo) :-

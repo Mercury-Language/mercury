@@ -18,6 +18,8 @@
 :- interface.
 
 :- import_module libs.globals.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 
 :- import_module bool.
 :- import_module io.
@@ -95,7 +97,7 @@
     % Write to a given filename, giving appropriate status messages
     % and error messages if the file cannot be opened.
     %
-:- pred output_to_file_stream(globals::in, string::in,
+:- pred output_to_file_stream(globals::in, module_name::in, string::in,
     pred(io.text_output_stream, list(string), io, io)::
         in(pred(in, out, di, uo) is det),
     bool::out, io::di, io::uo) is det.
@@ -122,11 +124,21 @@
 %---------------------------------------------------------------------------%
 
 :- pred maybe_report_stats(bool::in, io::di, io::uo) is det.
+:- pred maybe_report_stats(io.text_output_stream::in, bool::in,
+    io::di, io::uo) is det.
+
 :- pred maybe_write_string(bool::in, string::in, io::di, io::uo) is det.
+:- pred maybe_write_string(io.text_output_stream::in, bool::in, string::in,
+    io::di, io::uo) is det.
+
 :- pred maybe_flush_output(bool::in, io::di, io::uo) is det.
+:- pred maybe_flush_output(io.text_output_stream::in, bool::in,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 
 :- pred report_error(string::in, io::di, io::uo) is det.
-:- pred report_error_to_stream(io.output_stream::in, string::in,
+:- pred report_error(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -335,13 +347,15 @@ make_path_name_noncanon(Dir, FileName, PathName) :-
 
 %---------------------------------------------------------------------------%
 
-output_to_file_stream(Globals, FileName, Action0, Succeeded, !IO) :-
+output_to_file_stream(Globals, ModuleName, FileName, Action0,
+        Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
-    maybe_write_string(Verbose, "% Writing to file `", !IO),
-    maybe_write_string(Verbose, FileName, !IO),
-    maybe_write_string(Verbose, "'...\n", !IO),
-    maybe_flush_output(Verbose, !IO),
+
+    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
+    string.format("%% Writing to file `%s'...\n", [s(FileName)], WritingMsg),
+    maybe_write_string(ProgressStream, Verbose, WritingMsg, !IO),
+    maybe_flush_output(ProgressStream, Verbose, !IO),
     io.open_output(FileName, Res, !IO),
     (
         Res = ok(FileStream),
@@ -353,9 +367,9 @@ output_to_file_stream(Globals, FileName, Action0, Succeeded, !IO) :-
             try_io(Action, TryResult, !IO)
         ),
         io.close_output(FileStream, !IO),
-        maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_report_stats(Stats, !IO),
-        maybe_flush_output(Verbose, !IO),
+        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
+        maybe_report_stats(ProgressStream, Stats, !IO),
+        maybe_flush_output(ProgressStream, Verbose, !IO),
         (
             TryResult = succeeded(Errors),
             (
@@ -363,8 +377,9 @@ output_to_file_stream(Globals, FileName, Action0, Succeeded, !IO) :-
                 Succeeded = yes
             ;
                 Errors = [_ | _],
-                maybe_write_string(Verbose, "\n", !IO),
-                list.foldl(report_error, Errors, !IO),
+                maybe_write_string(ProgressStream, Verbose, "\n", !IO),
+                get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+                list.foldl(report_error(ErrorStream), Errors, !IO),
                 Succeeded = no
             )
         ;
@@ -373,10 +388,11 @@ output_to_file_stream(Globals, FileName, Action0, Succeeded, !IO) :-
         )
     ;
         Res = error(_),
-        maybe_write_string(Verbose, "\n", !IO),
+        maybe_write_string(ProgressStream, Verbose, "\n", !IO),
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
         ErrorMessage =
             string.format("can't open file `%s' for output.", [s(FileName)]),
-        report_error(ErrorMessage, !IO),
+        report_error(ErrorStream, ErrorMessage, !IO),
         Succeeded = no
     ).
 
@@ -484,29 +500,40 @@ get_install_name_option(Globals, OutputFileName, InstallNameOpt) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_report_stats(yes, !IO) :-
-    io.report_standard_stats(!IO).
-maybe_report_stats(no, !IO).
+maybe_report_stats(Statistics, !IO) :-
+    io.output_stream(Stream, !IO),
+    maybe_report_stats(Stream, Statistics, !IO).
 
-maybe_write_string(yes, String, !IO) :-
-    io.write_string(String, !IO).
-maybe_write_string(no, _, !IO).
+maybe_report_stats(Stream, yes, !IO) :-
+    io.report_standard_stats(Stream, !IO).
+maybe_report_stats(_Stream, no, !IO).
 
-maybe_flush_output(yes, !IO) :-
-    io.flush_output(!IO).
-maybe_flush_output(no, !IO).
+maybe_write_string(Verbose, String, !IO) :-
+    io.output_stream(Stream, !IO),
+    maybe_write_string(Stream, Verbose, String, !IO).
+
+maybe_write_string(Stream, yes, String, !IO) :-
+    io.write_string(Stream, String, !IO).
+maybe_write_string(_Stream, no, _, !IO).
+
+maybe_flush_output(Verbose, !IO) :-
+    io.output_stream(Stream, !IO),
+    maybe_flush_output(Stream, Verbose, !IO).
+
+maybe_flush_output(Stream, yes, !IO) :-
+    io.flush_output(Stream, !IO).
+maybe_flush_output(_Stream, no, !IO).
+
+%---------------------------------------------------------------------------%
 
 report_error(ErrorMessage, !IO) :-
-    io.write_string("Error: ", !IO),
-    io.write_string(ErrorMessage, !IO),
-    io.write_string("\n", !IO),
-    io.flush_output(!IO),
-    io.set_exit_status(1, !IO).
+    io.output_stream(Stream, !IO),
+    report_error(Stream, ErrorMessage, !IO).
 
-report_error_to_stream(Stream, ErrorMessage, !IO) :-
-    io.set_output_stream(Stream, OldStream, !IO),
-    report_error(ErrorMessage, !IO),
-    io.set_output_stream(OldStream, _, !IO).
+report_error(Stream, ErrorMessage, !IO) :-
+    io.format(Stream, "Error: %s\n", [s(ErrorMessage)], !IO),
+    io.flush_output(Stream, !IO),
+    io.set_exit_status(1, !IO).
 
 %---------------------------------------------------------------------------%
 

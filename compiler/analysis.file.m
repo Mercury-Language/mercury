@@ -331,11 +331,11 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
                     UnpickleResult = ok(ModuleResults)
                 ;
                     UnpickleResult = error(Error),
-                    io.write_string("Error reading ", !IO),
-                    io.write_string(CacheFileName, !IO),
-                    io.write_string(": ", !IO),
-                    io.write_string(io.error_message(Error), !IO),
-                    io.nl(!IO),
+                    get_error_output_stream(Globals, ModuleName,
+                        ErrorStream, !IO),
+                    io.error_message(Error, ErrorMsg),
+                    io.format(ErrorStream, "Error reading %s: %s\n",
+                        [s(CacheFileName), s(ErrorMsg)], !IO),
                     read_module_analysis_results_2(Compiler, AnalysisFileName,
                         ModuleResults, !IO),
                     write_analysis_cache_file(CacheFileName, ModuleResults,
@@ -364,9 +364,8 @@ read_module_analysis_results_2(Compiler, AnalysisFileName, ModuleResults,
         OpenResult = ok(Stream),
         debug_msg(
             ( pred(!.IO::di, !:IO::uo) is det :-
-                io.write_string("% Reading analysis registry file ", !IO),
-                io.write_string(AnalysisFileName, !IO),
-                io.nl(!IO)
+                io.format("%% Reading analysis registry file %s\n",
+                    [s(AnalysisFileName)], !IO)
             ), !IO),
 
         check_analysis_file_version_number(Stream, !IO),
@@ -385,10 +384,8 @@ read_module_analysis_results_2(Compiler, AnalysisFileName, ModuleResults,
         OpenResult = error(_),
         debug_msg(
             ( pred(!.IO::di, !:IO::uo) is det :-
-                io.write_string("% Error reading analysis registry file: ",
-                    !IO),
-                io.write_string(AnalysisFileName, !IO),
-                io.nl(!IO)
+                io.format("%% Error reading analysis registry file: %s\n",
+                    [s(AnalysisFileName)], !IO)
             ), !IO),
         ModuleResults = ModuleResults0
     ).
@@ -444,21 +441,21 @@ parse_result_entry(Compiler, Term, !Results) :-
 write_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
     debug_msg(
         ( pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("% Writing module analysis results for ", !IO),
-            io.write(ModuleName, !IO),
-            io.nl(!IO)
+            io.format("%%s Writing module analysis results for %s\n",
+                [s(sym_name_to_string(ModuleName))], !IO)
         ), !IO),
     find_and_write_analysis_file(Info ^ compiler, Globals,
         add_dot_temp, write_result_entry,
         analysis_registry_ext, ModuleName, ModuleResults, FileName, !IO),
-    update_interface_return_changed(Globals, FileName, Result, !IO),
+    update_interface_return_changed(Globals, ModuleName, FileName,
+        UpdateResult, !IO),
 
     % If analysis file caching is turned on, write the internal represention of
     % the module results to disk right now.
     globals.lookup_string_option(Globals, analysis_file_cache_dir, CacheDir),
     ( if
         CacheDir \= "",
-        Result = interface_new_or_changed
+        UpdateResult = interface_new_or_changed
     then
         CacheFileName = make_cache_filename(CacheDir, FileName),
         write_analysis_cache_file(CacheFileName, ModuleResults, !IO)
@@ -474,18 +471,14 @@ write_result_entry(AnalysisName, FuncId, Result, !IO) :-
     VersionNumber = analysis_version_number(Call, Answer),
     analysis_status_to_string(Status, StatusString),
 
-    io.write_string(AnalysisName, !IO),
-    io.write_char('(', !IO),
-    io.write_int(VersionNumber, !IO),
-    io.write_string(", ", !IO),
-    write_func_id(FuncId, !IO),
-    io.write_string(", ", !IO),
+    FuncIdStr = func_id_to_string(FuncId),
+    io.format("%s(%d, %s, ",
+        [s(AnalysisName), i(VersionNumber), s(FuncIdStr)], !IO),
     term_io.write_term(varset.init, to_term(Call), !IO),
     io.write_string(", ", !IO),
     term_io.write_term(varset.init, to_term(Answer), !IO),
-    io.write_string(", ", !IO),
-    io.write_string(StatusString, !IO),
-    io.write_string(").\n", !IO).
+    io.format(", %s).\n",
+        [s(StatusString)], !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -608,14 +601,10 @@ write_request_entry(Compiler, AnalysisName, FuncId, Request, !IO) :-
         unexpected($pred, "unknown analysis type")
     ),
 
+    FuncIdStr = func_id_to_string(FuncId),
     write_quoted_module_name(CallerModule, !IO),
-    io.write_string(" -> ", !IO),
-    io.write_string(AnalysisName, !IO),
-    io.write_string("(", !IO),
-    io.write_int(VersionNumber, !IO),
-    io.write_string(", ", !IO),
-    write_func_id(FuncId, !IO),
-    io.write_string(", ", !IO),
+    io.format(" -> %s(%i, %s, ",
+        [s(AnalysisName), i(VersionNumber), s(FuncIdStr)], !IO),
     term_io.write_term(varset.init, to_term(Call), !IO),
     io.write_string(").\n", !IO).
 
@@ -694,14 +683,10 @@ write_imdg_arc(Compiler, AnalysisName, FuncId, Arc, !IO) :-
         unexpected($pred, "unknown analysis type")
     ),
 
+    FuncIdStr = func_id_to_string(FuncId),
     write_quoted_module_name(DependentModule, !IO),
-    io.write_string(" -> ", !IO),
-    io.write_string(AnalysisName, !IO),
-    io.write_char('(', !IO),
-    io.write_int(VersionNumber, !IO),
-    io.write_string(", ", !IO),
-    write_func_id(FuncId, !IO),
-    io.write_string(", ", !IO),
+    io.format(" -> %s(%d, %s, ",
+        [s(AnalysisName), i(VersionNumber), s(FuncIdStr)], !IO),
     term_io.write_term(varset.init, to_term(Call), !IO),
     io.write_string(").\n", !IO).
 
@@ -752,13 +737,10 @@ find_and_read_analysis_file(Compiler, Globals, ParseEntry,
         MaybeAnalysisFileName = error(Message),
         debug_msg(
             ( pred(!.IO::di, !:IO::uo) is det :-
-                io.write_string("Couldn't open ", !IO),
-                io.write_string(other_extension_to_string(OtherExt), !IO),
-                io.write_string(" for module ", !IO),
-                io.write(ModuleName, !IO),
-                io.write_string(": ", !IO),
-                io.write_string(Message, !IO),
-                io.nl(!IO)
+                OtherExtStr = other_extension_to_string(OtherExt),
+                io.format("Couldn't open %s for module %s: %s\n",
+                    [s(OtherExtStr), s(sym_name_to_string(ModuleName)),
+                    s(Message)], !IO)
             ), !IO),
         ModuleResults = ModuleResults0
     ).
@@ -773,9 +755,8 @@ read_analysis_file(AnalysisFileName, ParseEntry,
         OpenResult = ok(Stream),
         debug_msg(
             ( pred(!.IO::di, !:IO::uo) is det :-
-                io.write_string("% Reading analysis file ", !IO),
-                io.write_string(AnalysisFileName, !IO),
-                io.nl(!IO)
+                io.format("%% Reading analysis file %s\n",
+                    [s(AnalysisFileName)], !IO)
             ), !IO),
 
         promise_equivalent_solutions [Result, !:IO] (
@@ -797,9 +778,8 @@ read_analysis_file(AnalysisFileName, ParseEntry,
         OpenResult = error(_),
         debug_msg(
             ( pred(!.IO::di, !:IO::uo) is det :-
-                io.write_string("Error reading analysis file: ", !IO),
-                io.write_string(AnalysisFileName, !IO),
-                io.nl(!IO)
+                io.format("Error reading analysis file: %s\n",
+                    [s(AnalysisFileName)], !IO)
             ), !IO),
         ModuleResults = ModuleResults0
     ).
@@ -841,22 +821,19 @@ read_analysis_file_2(Stream, ParseEntry, Results0, Results, !IO) :-
 % Common code for reading.
 %
 
-:- pred write_func_id(func_id::in, io::di, io::uo) is det.
+:- func func_id_to_string(func_id) = string.
 
-write_func_id(func_id(PredOrFunc, Name, Arity, ProcId), !IO) :-
+func_id_to_string(func_id(PredOrFunc, Name, Arity, ProcId)) = String :-
     (
         PredOrFunc = pf_predicate,
-        io.write_string("p(", !IO)
+        PFStr = "p"
     ;
         PredOrFunc = pf_function,
-        io.write_string("f(", !IO)
+        PFStr = "f"
     ),
-    term_io.quote_atom(Name, !IO),
-    io.write_string(", ", !IO),
-    io.write_int(Arity, !IO),
-    io.write_string(", ", !IO),
-    io.write_int(proc_id_to_int(ProcId), !IO),
-    io.write_char(')', !IO).
+    NameStr = term_io.quoted_atom(Name),
+    string.format("%s(%s, %d, %d)",
+        [s(PFStr), s(NameStr), i(Arity), i(proc_id_to_int(ProcId))], String).
 
 :- pred write_quoted_module_name(module_name::in, io::di, io::uo) is det.
 

@@ -50,6 +50,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_goal.
+:- import_module hlds.passes_aux.
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.trace_params.
@@ -113,8 +114,8 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
         GoalInfo = GoalInfo0
     ),
     trace [compile_time(flag("debug_simplify_conj")), io(!IO)] (
-        io.output_stream(Stream, !IO),
         simplify_info_get_module_info(!.Info, ModuleInfo),
+        get_debug_output_stream(ModuleInfo, Stream, !IO),
         simplify_info_get_varset(!.Info, VarSet),
         io.write_string(Stream, "\n------------------------\n", !IO),
         io.write_string(Stream, "\nBEFORE SIMPLIFY_GOAL_PLAIN_CONJ\n\n", !IO),
@@ -123,7 +124,7 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
         list.foldl(dump_goal_nl(Stream, ModuleInfo, VarSet), Goals1, !IO),
         io.write_string(Stream, "\nAFTER SIMPLIFY_CONJ\n\n", !IO),
         list.foldl(dump_goal_nl(Stream, ModuleInfo, VarSet), Goals, !IO),
-        io.flush_output(!IO)
+        io.flush_output(Stream, !IO)
     ).
 
 :- pred contains_multisoln_goal(list(hlds_goal)::in) is semidet.

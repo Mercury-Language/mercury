@@ -732,17 +732,19 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
         (
             Errors = [],
             % Rename "<ModuleName>.mh.tmp" to "<ModuleName>.mh".
-            update_interface(Globals, FileName, !IO)
+            update_interface(Globals, ModuleName, FileName, !IO)
         ;
             Errors = [_ | _],
             io.remove_file(TmpFileName, _, !IO),
+            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             % report_error sets the exit status.
-            list.foldl(report_error, Errors, !IO)
+            list.foldl(report_error(ErrorStream), Errors, !IO)
         )
     ;
         Result = error(_),
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
         io.progname_base("export.m", ProgName, !IO),
-        io.format("\n%s: can't open `%s' for output\n",
+        io.format(ErrorStream, "\n%s: can't open `%s' for output\n",
             [s(ProgName), s(TmpFileName)], !IO),
         io.set_exit_status(1, !IO)
     ).
@@ -756,12 +758,8 @@ write_export_decls(Stream, [ExportDecl | ExportDecls], !IO) :-
     (
         Lang = lang_c,
         % Output the function header.
-        io.write_string(Stream, CRetType, !IO),
-        io.write_string(Stream, " ", !IO),
-        io.write_string(Stream, CFunction, !IO),
-        io.write_string(Stream, "(", !IO),
-        io.write_string(Stream, ArgDecls, !IO),
-        io.write_string(Stream, ");\n", !IO)
+        io.format(Stream, "%s %s(%s);\n",
+            [s(CRetType), s(CFunction), s(ArgDecls)], !IO)
     ;
         ( Lang = lang_csharp
         ; Lang = lang_java

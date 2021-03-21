@@ -130,7 +130,7 @@ output_java_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".java")), ModuleName, JavaSourceFileName, !IO),
     Indent = 0,
-    output_to_file_stream(Globals, JavaSourceFileName,
+    output_to_file_stream(Globals, ModuleName, JavaSourceFileName,
         output_java_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
 
 :- pred output_java_src_file(module_info::in, indent::in, mlds::in,

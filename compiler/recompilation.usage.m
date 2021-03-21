@@ -128,7 +128,10 @@ write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestampMap, !IO) :-
     then
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, verbose, Verbose),
-        maybe_write_string(Verbose,
+        % XXX We should output to progress stream and error stream,
+        % not CurStream.
+        io.output_stream(CurStream, !IO),
+        maybe_write_string(CurStream, Verbose,
             "% Writing recompilation compilation dependency information\n",
             !IO),
 
@@ -145,7 +148,6 @@ write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestampMap, !IO) :-
         ;
             FileResult = error(IOError),
             io.error_message(IOError, IOErrorMessage),
-            io.output_stream(CurStream, !IO),
             io.format(CurStream, "\nError opening `%s' for output: %s.\n",
                 [s(FileName), s(IOErrorMessage)], !IO),
             io.set_exit_status(1, !IO)

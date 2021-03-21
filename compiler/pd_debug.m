@@ -93,23 +93,24 @@ pd_debug_search_version_result(PDInfo, MaybeVersion, !IO) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
-    pd_debug_do_io(DebugPD,
-        pd_debug_search_version_result_2(ModuleInfo, MaybeVersion), !IO).
-
-:- pred pd_debug_search_version_result_2(module_info::in, maybe_version::in,
-    io::di, io::uo) is det.
-
-pd_debug_search_version_result_2(ModuleInfo, MaybeVersion, !IO) :-
     (
-        MaybeVersion = no_version,
-        io.write_string("Specialised version not found.\n", !IO)
+        DebugPD = no
     ;
-        MaybeVersion = version(exact, _, _, _, _),
-        io.write_string("Exact match found.\n", !IO)
-    ;
-        MaybeVersion = version(more_general, PredProcId, Version, _, _),
-        io.write_string("More general version.\n", !IO),
-        pd_debug_output_version(ModuleInfo, PredProcId, Version, no, !IO)
+        DebugPD = yes,
+        module_info_get_name(ModuleInfo, ModuleName),
+        get_debug_output_stream(Globals, ModuleName, Stream, !IO),
+        (
+            MaybeVersion = no_version,
+            io.write_string(Stream, "Specialised version not found.\n", !IO)
+        ;
+            MaybeVersion = version(exact, _, _, _, _),
+            io.write_string(Stream, "Exact match found.\n", !IO)
+        ;
+            MaybeVersion = version(more_general, PredProcId, Version, _, _),
+            io.write_string(Stream, "More general version.\n", !IO),
+            pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
+                no, !IO)
+        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -118,24 +119,25 @@ pd_debug_register_version(PDInfo, PredProcId, Version, !IO) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
-    pd_debug_do_io(DebugPD,
-        pd_debug_register_version_2(ModuleInfo, PredProcId, Version), !IO).
+    (
+        DebugPD = no
+    ;
+        DebugPD = yes,
+        module_info_get_name(ModuleInfo, ModuleName),
+        get_debug_output_stream(Globals, ModuleName, Stream, !IO),
 
-:- pred pd_debug_register_version_2(module_info::in, pred_proc_id::in,
-    version_info::in, io::di, io::uo) is det.
-
-pd_debug_register_version_2(ModuleInfo, PredProcId, Version, !IO) :-
-    io.write_string("Registering version:\n", !IO),
-    pd_debug_output_version(ModuleInfo, PredProcId, Version, no, !IO).
+        io.write_string(Stream, "Registering version:\n", !IO),
+        pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
+            no, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred pd_debug_output_version(module_info::in, pred_proc_id::in,
-    version_info::in, bool::in, io::di, io::uo) is det.
+:- pred pd_debug_output_version(io.text_output_stream::in, module_info::in,
+    pred_proc_id::in, version_info::in, bool::in, io::di, io::uo) is det.
 
-pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
-        !IO) :-
-    io.output_stream(Stream, !IO),
+pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
+        WriteUnfoldedGoal, !IO) :-
     Version = version_info(Goal, _, Args, _, InstMap,
         InitialCost, CostDelta, Parents, _),
     Goal = hlds_goal(_GoalExpr, GoalInfo),
@@ -165,6 +167,7 @@ pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
     ParentStrs = list.map(pred_proc_id_to_string(ModuleInfo), ParentsList),
     ParentsStr = string.join_list(", ", ParentStrs),
     io.format(Stream, "Parents: %s\n", [s(ParentsStr)], !IO),
+    % XXX Neither of our callers specify WriteUnfoldedGoal = yes.
     (
         WriteUnfoldedGoal = yes,
         proc_info_get_goal(ProcInfo, ProcGoal),
@@ -195,17 +198,16 @@ pd_debug_write_pred_proc_id_list(PDInfo, PredProcIds, !IO) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
-    pd_debug_do_io(DebugPD,
-        pd_debug_write_pred_proc_id_list_2(ModuleInfo, PredProcIds),
-        !IO).
-
-:- pred pd_debug_write_pred_proc_id_list_2(module_info::in,
-    list(pred_proc_id)::in, io::di, io::uo) is det.
-
-pd_debug_write_pred_proc_id_list_2(ModuleInfo, PredProcIds, !IO) :-
-    ProcStrs = list.map(pred_proc_id_to_string(ModuleInfo), PredProcIds),
-    ProcsStr = string.join_list(", ", ProcStrs),
-    io.write_string(ProcsStr, !IO).
+    (
+        DebugPD = no
+    ;
+        DebugPD = yes,
+        module_info_get_name(ModuleInfo, ModuleName),
+        get_debug_output_stream(Globals, ModuleName, Stream, !IO),
+        ProcStrs = list.map(pred_proc_id_to_string(ModuleInfo), PredProcIds),
+        ProcsStr = string.join_list(", ", ProcStrs),
+        io.write_string(Stream, ProcsStr, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -213,29 +215,29 @@ pd_debug_output_goal(PDInfo, Msg, Goal, !IO) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_pd, DebugPD),
-    pd_debug_do_io(DebugPD, pd_debug_output_goal_2(PDInfo, Msg, Goal), !IO).
+    (
+        DebugPD = no
+    ;
+        DebugPD = yes,
+        module_info_get_name(ModuleInfo, ModuleName),
+        get_debug_output_stream(Globals, ModuleName, Stream, !IO),
 
-:- pred pd_debug_output_goal_2(pd_info::in, string::in, hlds_goal::in,
-    io::di, io::uo) is det.
+        Goal = hlds_goal(GoalExpr, GoalInfo),
+        pd_info_get_proc_info(PDInfo, ProcInfo),
+        proc_info_get_varset(ProcInfo, VarSet),
+        pd_info_get_instmap(PDInfo, InstMap),
+        goal_util.goal_vars(hlds_goal(GoalExpr, GoalInfo), Vars),
+        instmap_restrict(Vars, InstMap, VarsInstMap),
 
-pd_debug_output_goal_2(PDInfo, Msg, Goal, !IO) :-
-    io.output_stream(Stream, !IO),
-    Goal = hlds_goal(GoalExpr, GoalInfo),
-    pd_info_get_proc_info(PDInfo, ProcInfo),
-    proc_info_get_varset(ProcInfo, VarSet),
-    pd_info_get_instmap(PDInfo, InstMap),
-    pd_info_get_module_info(PDInfo, ModuleInfo),
-    io.write_string(Msg, !IO),
-    goal_util.goal_vars(hlds_goal(GoalExpr, GoalInfo), Vars),
-    instmap_restrict(Vars, InstMap, InstMap1),
-    write_instmap(Stream, VarSet, print_name_and_num, 1, InstMap1, !IO),
-    io.nl(Stream, !IO),
-    module_info_get_globals(ModuleInfo, Globals),
-    OutInfo = init_hlds_out_info(Globals, output_debug),
-    write_goal(OutInfo, Stream, ModuleInfo, VarSet, print_name_and_num,
-        1, "\n", Goal, !IO),
-    io.nl(Stream, !IO),
-    io.flush_output(Stream, !IO).
+        OutInfo = init_hlds_out_info(Globals, output_debug),
+        io.write_string(Stream, Msg, !IO),
+        write_instmap(Stream, VarSet, print_name_and_num, 1, VarsInstMap, !IO),
+        io.nl(Stream, !IO),
+        write_goal(OutInfo, Stream, ModuleInfo, VarSet, print_name_and_num,
+            1, "\n", Goal, !IO),
+        io.nl(Stream, !IO),
+        io.flush_output(Stream, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 

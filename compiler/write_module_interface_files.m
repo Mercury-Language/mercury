@@ -199,7 +199,8 @@ write_private_interface_file_int0(Globals, SourceFileName,
                 [], GenerateSpecs),
             filter_interface_generation_specs(Globals,
                 EffectiveGetQualSpecs ++ GenerateSpecs, Specs, !IO),
-            write_error_specs_ignore(Globals, Specs, !IO),
+            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+            write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
             % Write out the `.int0' file.
             actually_write_interface_file0(Globals, ParseTreeInt0, "",
                 MaybeTimestamp, !IO),
@@ -253,7 +254,8 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
                 ParseTreeInt1, ParseTreeInt2, [], GenerateSpecs),
             filter_interface_generation_specs(Globals,
                 EffectiveGetQualSpecs ++ GenerateSpecs, Specs, !IO),
-            write_error_specs_ignore(Globals, Specs, !IO),
+            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+            write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
             % Write out the `.int' and `.int2' files.
             actually_write_interface_file1(Globals, ParseTreeInt1, "",
                 MaybeTimestamp, !IO),
@@ -290,7 +292,7 @@ actually_write_interface_file0(Globals, ParseTreeInt0, ExtraSuffix,
         := MaybeVersionNumbers,
     output_parse_tree_int0(NoLineNumGlobals, TmpOutputFileName,
         ParseTreeInt0V, !IO),
-    update_interface(Globals, OutputFileName, !IO).
+    update_interface(Globals, ModuleName, OutputFileName, !IO).
 
 :- pred actually_write_interface_file1(globals::in, parse_tree_int1::in,
     string::in, maybe(timestamp)::in, io::di, io::uo) is det.
@@ -308,7 +310,7 @@ actually_write_interface_file1(Globals, ParseTreeInt1, ExtraSuffix,
         := MaybeVersionNumbers,
     output_parse_tree_int1(NoLineNumGlobals, TmpOutputFileName,
         ParseTreeInt1V, !IO),
-    update_interface(Globals, OutputFileName, !IO).
+    update_interface(Globals, ModuleName, OutputFileName, !IO).
 
 :- pred actually_write_interface_file2(globals::in, parse_tree_int2::in,
     string::in, maybe(timestamp)::in, io::di, io::uo) is det.
@@ -326,7 +328,7 @@ actually_write_interface_file2(Globals, ParseTreeInt2, ExtraSuffix,
         := MaybeVersionNumbers,
     output_parse_tree_int2(NoLineNumGlobals, TmpOutputFileName,
         ParseTreeInt2V, !IO),
-    update_interface(Globals, OutputFileName, !IO).
+    update_interface(Globals, ModuleName, OutputFileName, !IO).
 
 :- pred actually_write_interface_file3(globals::in, parse_tree_int3::in,
     string::in, maybe(timestamp)::in, io::di, io::uo) is det.
@@ -339,7 +341,7 @@ actually_write_interface_file3(Globals, ParseTreeInt3, ExtraSuffix,
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     output_parse_tree_int3(NoLineNumGlobals, TmpOutputFileName,
         ParseTreeInt3, !IO),
-    update_interface(Globals, OutputFileName, !IO).
+    update_interface(Globals, ModuleName, OutputFileName, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -444,12 +446,13 @@ insist_on_timestamp(MaybeTimestamp, Timestamp) :-
 
 report_file_not_written(Globals, Specs, MaybePrefixMsg,
         ModuleName, OtherExtA, MaybeOtherExtB, !IO) :-
-    write_error_specs_ignore(Globals, Specs, !IO),
+    get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+    write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
     (
         MaybePrefixMsg = no
     ;
         MaybePrefixMsg = yes(PrefixMsg),
-        io.write_string(PrefixMsg, !IO)
+        io.write_string(ErrorStream, PrefixMsg, !IO)
     ),
     % We use write_error_spec to print the message the interface file or
     % files not being written in order to wrap the message if it is
@@ -470,7 +473,7 @@ report_file_not_written(Globals, Specs, MaybePrefixMsg,
         [always(NotWrittenPieces)]),
     NotWrittenSpec = error_spec($pred, severity_informational,
         phase_read_files, [NotWrittenMsg]),
-    write_error_spec_ignore(Globals, NotWrittenSpec, !IO).
+    write_error_spec_ignore(ErrorStream, Globals, NotWrittenSpec, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.write_module_interface_files.

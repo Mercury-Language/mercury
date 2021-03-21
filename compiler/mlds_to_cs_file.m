@@ -78,7 +78,7 @@ output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".cs")), ModuleName, SourceFileName, !IO),
     Indent = 0,
-    output_to_file_stream(Globals, SourceFileName,
+    output_to_file_stream(Globals, ModuleName, SourceFileName,
         output_csharp_src_file(ModuleInfo, Indent, MLDS), Succeeded, !IO).
 
 :- pred output_csharp_src_file(module_info::in, indent::in, mlds::in,

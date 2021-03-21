@@ -35,17 +35,19 @@
     ;       interface_unchanged
     ;       interface_error.
 
-    % update_interface_return_changed(Globals, FileName, Result, !IO):
+    % update_interface_return_changed(Globals, ModuleName, FileName,
+    %   Result, !IO):
     %
     % Update the interface file FileName from FileName.tmp if it has changed.
     %
-:- pred update_interface_return_changed(globals::in, file_name::in,
-    update_interface_result::out, io::di, io::uo) is det.
+:- pred update_interface_return_changed(globals::in, module_name::in,
+    file_name::in, update_interface_result::out, io::di, io::uo) is det.
 
-:- pred update_interface_return_succeeded(globals::in, file_name::in,
-    bool::out, io::di, io::uo) is det.
+:- pred update_interface_return_succeeded(globals::in, module_name::in,
+    file_name::in, bool::out, io::di, io::uo) is det.
 
-:- pred update_interface(globals::in, file_name::in, io::di, io::uo) is det.
+:- pred update_interface(globals::in, module_name::in, file_name::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -206,9 +208,13 @@
 
 %-----------------------------------------------------------------------------%
 
-update_interface_return_changed(Globals, OutputFileName, Result, !IO) :-
+update_interface_return_changed(Globals, ModuleName, OutputFileName,
+        Result, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Updating interface:\n", !IO),
+    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
+    get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        "% Updating interface:\n", !IO),
     TmpOutputFileName = OutputFileName ++ ".tmp",
     io.open_binary_input(OutputFileName, OutputFileRes, !IO),
     (
@@ -223,46 +229,47 @@ update_interface_return_changed(Globals, OutputFileName, Result, !IO) :-
             (
                 FilesDiffer = ok(ok(no)),
                 Result = interface_unchanged,
-                maybe_write_string(Verbose, "% ", !IO),
-                maybe_write_string(Verbose, OutputFileName, !IO),
-                maybe_write_string(Verbose, "' has not changed.\n", !IO),
+                string.format("%% `%s' has not changed.\n",
+                    [s(OutputFileName)], NoChangeMsg),
+                maybe_write_string(ProgressStream, Verbose, NoChangeMsg, !IO),
                 io.remove_file(TmpOutputFileName, _, !IO)
             ;
                 FilesDiffer = ok(ok(yes)),
-                update_interface_create_file(Globals, "CHANGED",
+                update_interface_create_file(Globals,
+                    ProgressStream, ErrorStream, "CHANGED",
                     OutputFileName, TmpOutputFileName, Result, !IO)
             ;
                 FilesDiffer = ok(error(TmpFileError)),
+                io.error_message(TmpFileError, TmpFileErrorMsg),
                 Result = interface_error,
-                io.write_string("Error reading `", !IO),
-                io.write_string(TmpOutputFileName, !IO),
-                io.write_string("': ", !IO),
-                io.write_string(io.error_message(TmpFileError), !IO),
-                io.nl(!IO)
+                io.format(ErrorStream, "Error reading `%s': %s\n",
+                    [s(TmpOutputFileName), s(TmpFileErrorMsg)], !IO)
             ;
                 FilesDiffer = error(_, _),
-                update_interface_create_file(Globals, "been CREATED",
+                update_interface_create_file(Globals,
+                    ProgressStream, ErrorStream, "been CREATED",
                     OutputFileName, TmpOutputFileName, Result, !IO)
             )
         ;
 
             TmpOutputFileRes = error(TmpOutputFileError),
+            io.error_message(TmpOutputFileError, TmpOutputFileErrorMsg),
             Result = interface_error,
             io.close_binary_input(OutputFileStream, !IO),
-            io.write_string("Error creating `", !IO),
-            io.write_string(OutputFileName, !IO),
-            io.write_string("': ", !IO),
-            io.write_string(io.error_message(TmpOutputFileError), !IO),
-            io.nl(!IO)
+            io.format(ErrorStream, "Error creating `%s': %s\n",
+                [s(OutputFileName), s(TmpOutputFileErrorMsg)], !IO)
         )
     ;
         OutputFileRes = error(_),
-        update_interface_create_file(Globals, "been CREATED",
+        update_interface_create_file(Globals,
+            ProgressStream, ErrorStream, "been CREATED",
             OutputFileName, TmpOutputFileName, Result, !IO)
     ).
 
-update_interface_return_succeeded(Globals, OutputFileName, Succeeded, !IO) :-
-    update_interface_return_changed(Globals, OutputFileName, Result, !IO),
+update_interface_return_succeeded(Globals, ModuleName, OutputFileName,
+        Succeeded, !IO) :-
+    update_interface_return_changed(Globals, ModuleName, OutputFileName,
+        Result, !IO),
     (
         ( Result = interface_new_or_changed
         ; Result = interface_unchanged
@@ -273,8 +280,9 @@ update_interface_return_succeeded(Globals, OutputFileName, Succeeded, !IO) :-
         Succeeded = no
     ).
 
-update_interface(Globals, OutputFileName, !IO) :-
-    update_interface_return_succeeded(Globals, OutputFileName, Succeeded, !IO),
+update_interface(Globals, ModuleName, OutputFileName, !IO) :-
+    update_interface_return_succeeded(Globals, ModuleName, OutputFileName,
+        Succeeded, !IO),
     (
         Succeeded = no,
         report_error("problem updating interface files.", !IO)
@@ -284,14 +292,17 @@ update_interface(Globals, OutputFileName, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred update_interface_create_file(globals::in, string::in, string::in,
-    string::in, update_interface_result::out, io::di, io::uo) is det.
+:- pred update_interface_create_file(globals::in,
+    io.text_output_stream::in, io.text_output_stream::in,
+    string::in, string::in, string::in, update_interface_result::out,
+    io::di, io::uo) is det.
 
-update_interface_create_file(Globals, Msg, OutputFileName, TmpOutputFileName,
-        Result, !IO) :-
+update_interface_create_file(Globals, ProgressStream, ErrorStream,
+        ChangedStr, OutputFileName, TmpOutputFileName, Result, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose,
-        "% `" ++ OutputFileName ++ "' has " ++ Msg ++ ".\n", !IO),
+    string.format("%% `%s' has %s.\n", [s(OutputFileName), s(ChangedStr)],
+        ChangedMsg),
+    maybe_write_string(ProgressStream, Verbose, ChangedMsg, !IO),
     copy_file(Globals, TmpOutputFileName, OutputFileName, MoveRes, !IO),
     (
         MoveRes = ok,
@@ -299,9 +310,8 @@ update_interface_create_file(Globals, Msg, OutputFileName, TmpOutputFileName,
     ;
         MoveRes = error(MoveError),
         Result = interface_error,
-        io.write_string("Error creating `" ++ OutputFileName ++ "': " ++
-            io.error_message(MoveError), !IO),
-        io.nl(!IO)
+        io.format(ErrorStream, "Error creating `%s': %s\n",
+            [s(OutputFileName), s(io.error_message(MoveError))], !IO)
     ),
     io.remove_file(TmpOutputFileName, _, !IO).
 
@@ -468,15 +478,9 @@ make_symlink_or_copy_dir(Globals, SourceDirName, DestinationDirName,
             Result = error(Error),
             Succeeded = no,
             io.progname_base("mercury_compile", ProgName, !IO),
-            io.write_string(ProgName, !IO),
-            io.write_string(": error linking", !IO),
-            io.write_string(" `", !IO),
-            io.write_string(SourceDirName, !IO),
-            io.write_string("' to `", !IO),
-            io.write_string(DestinationDirName, !IO),
-            io.write_string("': ", !IO),
-            io.write_string(io.error_message(Error), !IO),
-            io.nl(!IO),
+            io.format("%s: error linking `%s' to `%s': %s\n",
+                [s(ProgName), s(SourceDirName), s(DestinationDirName),
+                s(io.error_message(Error))], !IO),
             io.flush_output(!IO)
         )
     ;
@@ -487,13 +491,8 @@ make_symlink_or_copy_dir(Globals, SourceDirName, DestinationDirName,
         ;
             Succeeded = no,
             io.progname_base("mercury_compile", ProgName, !IO),
-            io.write_string(ProgName, !IO),
-            io.write_string(": error copying directory", !IO),
-            io.write_string(" `", !IO),
-            io.write_string(SourceDirName, !IO),
-            io.write_string("' to `", !IO),
-            io.write_string(DestinationDirName, !IO),
-            io.nl(!IO),
+            io.format("%s: error copying directory `%s' to `%s'\n",
+                [s(ProgName), s(SourceDirName), s(DestinationDirName)], !IO),
             io.flush_output(!IO)
         )
     ).
@@ -519,8 +518,8 @@ touch_datestamp(Globals, OutputFileName, !IO) :-
     ;
         Result = error(IOError),
         io.error_message(IOError, IOErrorMessage),
-        io.write_string("\nError opening `" ++ OutputFileName
-            ++ "' for output: " ++ IOErrorMessage ++ ".\n", !IO)
+        io.format("\nError opening `%s' for output: %s.\n",
+            [s(OutputFileName), s(IOErrorMessage)], !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -550,9 +549,7 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
     ),
     (
         PrintCommand = yes,
-        io.write_string("% Invoking system command `", !IO),
-        io.write_string(Command, !IO),
-        io.write_string("'...\n", !IO),
+        io.format("%%s Invoking system command `%s'...\n", [s(Command)], !IO),
         io.flush_output(!IO)
     ;
         PrintCommand = no
@@ -590,14 +587,13 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
             )
         ;
             Result = ok(signalled(Signal)),
-            report_error_to_stream(ErrorStream,
-                "system command received signal "
-                ++ int_to_string(Signal) ++ ".", !IO),
+            string.format("system command received signal %d.", [i(Signal)],
+                ErrorMsg),
+            report_error(ErrorStream, ErrorMsg, !IO),
             % Also report the error to standard output, because if we raise the
-            % signal this error may not ever been seen, the process stops and
+            % signal, this error may not ever been seen, the process stops, and
             % the user is confused.
-            report_error("system command received signal "
-                ++ int_to_string(Signal) ++ ".", !IO),
+            report_error(ErrorMsg, !IO),
 
             % Make sure the current process gets the signal. Some systems (e.g.
             % Linux) ignore SIGINT during a call to system().
@@ -605,12 +601,12 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
             CommandSucceeded = no
         ;
             Result = error(Error),
-            report_error_to_stream(ErrorStream, io.error_message(Error), !IO),
+            report_error(ErrorStream, io.error_message(Error), !IO),
             CommandSucceeded = no
         )
     ;
         TmpFileResult = error(Error),
-        report_error_to_stream(ErrorStream,
+        report_error(ErrorStream,
             "Could not create temporary file: " ++ error_message(Error), !IO),
         TmpFile = "",
         CommandSucceeded = no
@@ -663,19 +659,19 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
                 % systems (e.g. Linux) ignore SIGINT during a call to
                 % system().
                 raise_signal(ProcessOutputSignal, !IO),
-                report_error_to_stream(ErrorStream,
+                report_error(ErrorStream,
                     "system command received signal "
                     ++ int_to_string(ProcessOutputSignal) ++ ".", !IO),
                 ProcessOutputSucceeded = no
             ;
                 ProcessOutputResult = error(ProcessOutputError),
-                report_error_to_stream(ErrorStream,
+                report_error(ErrorStream,
                     io.error_message(ProcessOutputError), !IO),
                 ProcessOutputSucceeded = no
             )
         ;
             ProcessedTmpFileResult = error(ProcessTmpError),
-            report_error_to_stream(ErrorStream,
+            report_error(ErrorStream,
                 io.error_message(ProcessTmpError), !IO),
             ProcessOutputSucceeded = no,
             ProcessedTmpFile = ""
@@ -697,14 +693,14 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
             Res = ok
         ;
             Res = error(TmpFileReadError),
-            report_error_to_stream(ErrorStream,
+            report_error(ErrorStream,
                 "error reading command output: " ++
                 io.error_message(TmpFileReadError), !IO)
         ),
         io.close_input(TmpFileStream, !IO)
     ;
         TmpFileRes = error(TmpFileError),
-        report_error_to_stream(ErrorStream,
+        report_error(ErrorStream,
             "error opening command output: " ++ io.error_message(TmpFileError),
             !IO)
     ),

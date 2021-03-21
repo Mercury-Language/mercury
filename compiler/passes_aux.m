@@ -20,10 +20,8 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_data.
 
 :- import_module io.
 :- import_module list.
@@ -160,22 +158,12 @@
 
 :- pred maybe_report_sizes(module_info::in, io::di, io::uo) is det.
 
-    % Prints the id of the given procedure via report_pred_name_mode,
-    % preceded by "In: " and the context.
-    % In new code, use describe_one_pred_name_mode in hlds_error_util instead.
-    %
-:- pred report_pred_proc_id(module_info::in, pred_id::in, proc_id::in,
-    maybe(prog_context)::in, prog_context::out, io::di, io::uo) is det.
-
-    % report_pred_name_mode(PredOrFunc, Name, ArgModes):
-    % Depending on PredOrFunc, prints either
-    %   Name(ArgMode1, ..., ArgModeN)
-    % or
-    %   Name(ArgMode1, ..., ArgModeN-1) = ArgModeN
-    % In new code, use describe_one_pred_name_mode in hlds_error_util instead.
-    %
-:- pred report_pred_name_mode(pred_or_func::in, string::in, list(mer_mode)::in,
-    io::di, io::uo) is det.
+:- pred get_error_output_stream(module_info::in,
+    io.text_output_stream::out, io::di, io::uo) is det.
+:- pred get_progress_output_stream(module_info::in,
+    io.text_output_stream::out, io::di, io::uo) is det.
+:- pred get_debug_output_stream(module_info::in,
+    io.text_output_stream::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -215,11 +203,6 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.parse_tree_out_info.
-:- import_module parse_tree.parse_tree_out_inst.
-:- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module benchmarking.
@@ -229,7 +212,6 @@
 :- import_module pair.
 :- import_module set_tree234.
 :- import_module string.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -417,8 +399,10 @@ write_pred_progress_message(Message, PredId, ModuleInfo, !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
+        module_info_get_name(ModuleInfo, ModuleName),
+        globals.get_progress_output_stream(Globals, ModuleName, Stream, !IO),
         PredStr = pred_id_to_string(ModuleInfo, PredId),
-        io.format("%s%s\n", [s(Message), s(PredStr)], !IO)
+        io.format(Stream, "%s%s\n", [s(Message), s(PredStr)], !IO)
     ;
         VeryVerbose = no
     ).
@@ -431,8 +415,10 @@ write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
+        module_info_get_name(ModuleInfo, ModuleName),
+        globals.get_progress_output_stream(Globals, ModuleName, Stream, !IO),
         ProcStr = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
-        io.format("%s%s\n", [s(Message), s(ProcStr)], !IO)
+        io.format(Stream, "%s%s\n", [s(Message), s(ProcStr)], !IO)
     ;
         VeryVerbose = no
     ).
@@ -452,77 +438,38 @@ maybe_report_sizes(HLDS, !IO) :-
 :- pred report_sizes(module_info::in, io::di, io::uo) is det.
 
 report_sizes(ModuleInfo, !IO) :-
+    get_debug_output_stream(ModuleInfo, Stream, !IO),
+
     module_info_get_preds(ModuleInfo, PredTable),
-    io.format("Pred table size = %d\n", [i(map.count(PredTable))], !IO),
+    io.format(Stream, "Pred table size = %d\n",
+        [i(map.count(PredTable))], !IO),
 
     module_info_get_type_table(ModuleInfo, TypeTable),
     get_all_type_ctor_defns(TypeTable, TypeCtorDefns),
-    io.format("Type table size = %d\n", [i(list.length(TypeCtorDefns))], !IO),
+    io.format(Stream, "Type table size = %d\n",
+        [i(list.length(TypeCtorDefns))], !IO),
 
     module_info_get_cons_table(ModuleInfo, CtorTable),
     get_all_cons_defns(CtorTable, CtorDefns),
-    io.format("Constructor table size = %d\n",
+    io.format(Stream, "Constructor table size = %d\n",
         [i(list.length(CtorDefns))], !IO).
 
 %---------------------------------------------------------------------------%
 
-report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context, !IO) :-
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-        PredInfo, ProcInfo),
-    PredName = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    proc_info_get_context(ProcInfo, Context),
-    proc_info_get_argmodes(ProcInfo, ArgModes0),
+get_error_output_stream(ModuleInfo, Stream, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    globals.get_error_output_stream(Globals, ModuleName, Stream, !IO).
 
-    % We need to strip off the extra type_info arguments inserted at the
-    % front by polymorphism.m - we only want the last `PredArity' of them.
-    list.length(ArgModes0, NumArgModes),
-    NumToDrop = NumArgModes - Arity,
-    list.det_drop(NumToDrop, ArgModes0, ArgModes),
-    (
-        MaybeContext = yes(OutContext)
-    ;
-        MaybeContext = no,
-        OutContext = Context
-    ),
-    prog_out.write_context_to_cur_stream(OutContext, !IO),
-    io.write_string("In `", !IO),
-    report_pred_name_mode(PredOrFunc, PredName, ArgModes, !IO),
-    io.write_string("':\n", !IO).
+get_progress_output_stream(ModuleInfo, Stream, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    globals.get_progress_output_stream(Globals, ModuleName, Stream, !IO).
 
-report_pred_name_mode(pf_predicate, PredName, ArgModes, !IO) :-
-    io.write_string(PredName, !IO),
-    (
-        ArgModes = [_ | _],
-        varset.init(InstVarSet),   % XXX inst var names
-        io.write_string("(", !IO),
-        strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes),
-        io.output_stream(Stream, !IO),
-        mercury_output_mode_list(Stream, output_debug, InstVarSet,
-            StrippedArgModes, !IO),
-        io.write_string(")", !IO)
-    ;
-        ArgModes = []
-    ).
-
-report_pred_name_mode(pf_function, FuncName, ArgModes, !IO) :-
-    varset.init(InstVarSet),   % XXX inst var names
-    strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes),
-    pred_args_to_func_args(StrippedArgModes, FuncArgModes, FuncRetMode),
-    io.write_string(FuncName, !IO),
-    io.output_stream(Stream, !IO),
-    (
-        FuncArgModes = [_ | _],
-        io.write_string("(", !IO),
-        mercury_output_mode_list(Stream, output_debug, InstVarSet,
-            FuncArgModes, !IO),
-        io.write_string(")", !IO)
-    ;
-        FuncArgModes = []
-    ),
-    io.write_string(" = ", !IO),
-    mercury_output_mode(Stream, output_debug, InstVarSet, FuncRetMode, !IO).
+get_debug_output_stream(ModuleInfo, Stream, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    globals.get_debug_output_stream(Globals, ModuleName, Stream, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -570,15 +517,20 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
             HLDS = PrevHLDS
         then
             globals.lookup_bool_option(Globals, dump_same_hlds, DumpSameHLDS),
+            get_progress_output_stream(HLDS, ProgressStream, !IO),
             (
                 DumpSameHLDS = no,
                 % Don't create a dump file for this stage, and keep the records
                 % about previously dumped stages as they are. We do print a
                 % message (if asked to) about *why* we don't create this file.
-                maybe_write_string(Verbose, "% HLDS dump `", !IO),
-                maybe_write_string(Verbose, DumpFileName, !IO),
-                maybe_write_string(Verbose, "' would be identical ", !IO),
-                maybe_write_string(Verbose, "to previous dump.\n", !IO),
+                (
+                    Verbose = no
+                ;
+                    Verbose = yes,
+                    io.format(ProgressStream, "%% HLDS dump `%s' would be " ++
+                        "identical to previous dump.\n",
+                        [s(DumpFileName)], !IO)
+                ),
 
                 % If a previous dump exists with this name, leaving it around
                 % would be quite misleading. However, there is nothing useful
@@ -590,15 +542,18 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
                 io.open_output(DumpFileName, Res, !IO),
                 (
                     Res = ok(FileStream),
-                    io.write_string(FileStream, "This stage is identical " ++
-                        "to the stage in " ++ PrevDumpFileName ++ ".\n", !IO),
+                    io.format(FileStream,
+                        "This stage is identical to the stage in %s.\n",
+                        [s(PrevDumpFileName)], !IO),
                     io.close_output(FileStream, !IO)
                 ;
                     Res = error(IOError),
-                    maybe_write_string(Verbose, "\n", !IO),
-                    Msg = "can't open file `" ++ DumpFileName ++
-                        "' for output: " ++ io.error_message(IOError),
-                    report_error(Msg, !IO)
+                    maybe_write_string(ProgressStream, Verbose, "\n", !IO),
+                    IOErrorMsg = io.error_message(IOError),
+                    string.format("can't open file `%s' for output: %s\n",
+                        [s(DumpFileName), s(IOErrorMsg)], Msg),
+                    get_error_output_stream(HLDS, ErrorStream, !IO),
+                    report_error(ErrorStream, Msg, !IO)
                 ),
                 !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
             )
@@ -615,18 +570,21 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
             ".trace_counts." ++ StageNumStr ++ "-" ++ StageName ++
             UserFileSuffix,
         write_out_trace_counts(DumpFileName, MaybeTraceCountsError, !IO),
+        get_progress_output_stream(HLDS, ProgressStream, !IO),
         (
             MaybeTraceCountsError = no,
-            maybe_write_string(Verbose, "% Dumped trace counts to `", !IO),
-            maybe_write_string(Verbose, DumpFileName, !IO),
-            maybe_write_string(Verbose, "'\n", !IO),
-            maybe_flush_output(Verbose, !IO)
+            (
+                Verbose = no
+            ;
+                Verbose = yes,
+                io.format(ProgressStream, "%% Dumped trace counts to `%s'\n",
+                    [s(DumpFileName)], !IO),
+                io.flush_output(ProgressStream, !IO)
+            )
         ;
             MaybeTraceCountsError = yes(TraceCountsError),
-            io.write_string("% ", !IO),
-            io.write_string(TraceCountsError, !IO),
-            io.nl(!IO),
-            io.flush_output(!IO)
+            io.format(ProgressStream, "%% %s\n", [s(TraceCountsError)], !IO),
+            io.flush_output(ProgressStream, !IO)
         )
     else
         true
@@ -638,23 +596,29 @@ dump_hlds(DumpFile, HLDS, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
-    maybe_write_string(Verbose, "% Dumping out HLDS to `", !IO),
-    maybe_write_string(Verbose, DumpFile, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_output(DumpFile, Res, !IO),
+    get_progress_output_stream(HLDS, ProgressStream, !IO),
     (
-        Res = ok(FileStream),
-        write_hlds(FileStream, 0, HLDS, !IO),
-        io.close_output(FileStream, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
+        Verbose = no
     ;
-        Res = error(IOError),
-        maybe_write_string(Verbose, "\n", !IO),
-        Msg = "can't open file `" ++ DumpFile ++ "' for output: " ++
-            io.error_message(IOError),
-        report_error(Msg, !IO)
+        Verbose = yes,
+        io.format(ProgressStream, "%% Dumping out HLDS to `%s'...",
+            [s(DumpFile)], !IO),
+        io.flush_output(ProgressStream, !IO)
+    ),
+    io.open_output(DumpFile, DumpFileResult, !IO),
+    (
+        DumpFileResult = ok(DumpFileStream),
+        write_hlds(DumpFileStream, 0, HLDS, !IO),
+        io.close_output(DumpFileStream, !IO),
+        maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
+        maybe_report_stats(ProgressStream, Stats, !IO)
+    ;
+        DumpFileResult = error(IOError),
+        maybe_write_string(ProgressStream, Verbose, "\n", !IO),
+        get_error_output_stream(HLDS, ErrorStream, !IO),
+        string.format("can't open file `%s' for output: %s",
+            [s(DumpFile), s(io.error_message(IOError))], Msg),
+        report_error(ErrorStream, Msg, !IO)
     ).
 
 %---------------------------------------------------------------------------%
