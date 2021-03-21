@@ -12132,7 +12132,6 @@ report_standard_stats(!IO) :-
 ").
 
 report_standard_stats_2(_Stream, !IO) :-
-    impure private_builtin.imp,
     private_builtin.sorry("report_standard_stats").
 
 %---------------------%
@@ -12154,7 +12153,6 @@ report_full_memory_stats(!IO) :-
 ").
 
 report_full_memory_stats_2(_Stream, !IO) :-
-    impure private_builtin.imp,
     private_builtin.sorry("report_full_memory_stats").
 
 %---------------------%
@@ -12176,7 +12174,6 @@ report_tabling_statistics(!IO) :-
 ").
 
 report_tabling_statistics_2(_Stream, !IO) :-
-    impure private_builtin.imp,
     private_builtin.sorry("report_tabling_statistics").
 
 %---------------------------------------------------------------------------%
