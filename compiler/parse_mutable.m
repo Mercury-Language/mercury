@@ -321,40 +321,44 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
         mutable_attr_constant(mutable_constant) -
             mutable_attr_thread_local(mutable_thread_local)
     ],
-    ( if
-        list_term_to_term_list(MutAttrsTerm, MutAttrTerms),
+    ( if list_term_to_term_list(MutAttrsTerm, MutAttrTerms) then
         map_parser(parse_mutable_attr(VarSet), MutAttrTerms, MaybeAttrList),
-        MaybeAttrList = ok1(CollectedMutAttrs)
-    then
-        % We check for trailed/untrailed, constant/trailed,
-        % trailed/thread_local, constant/attach_to_io_state,
-        % constant/thread_local conflicts here and deal with conflicting
-        % foreign_name attributes in make_hlds_passes.m.
-        ( if
-            list.member(Conflict1 - Conflict2, ConflictingAttributes),
-            list.member(Conflict1, CollectedMutAttrs),
-            list.member(Conflict2, CollectedMutAttrs)
-        then
-            % XXX Should generate more specific error message.
-            MutAttrsStr = mercury_term_to_string(VarSet, print_name_only,
-                MutAttrsTerm),
-            Pieces = [words("Error: conflicting attributes"),
-                words("in attribute list:"), nl,
-                words(MutAttrsStr), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree,
-                get_term_context(MutAttrsTerm), Pieces),
-            MaybeMutAttrs = error1([Spec])
-        else
-            list.foldl(process_mutable_attribute, CollectedMutAttrs,
-                Attributes0, Attributes),
-            MaybeMutAttrs = ok1(Attributes)
+        (
+            MaybeAttrList = ok1(CollectedMutAttrs),
+            % We check for trailed/untrailed, constant/trailed,
+            % trailed/thread_local, constant/attach_to_io_state,
+            % constant/thread_local conflicts here and deal with conflicting
+            % foreign_name attributes in make_hlds_passes.m.
+            ( if
+                list.member(Conflict1 - Conflict2, ConflictingAttributes),
+                list.member(Conflict1, CollectedMutAttrs),
+                list.member(Conflict2, CollectedMutAttrs)
+            then
+                % XXX Should generate more specific error message.
+                MutAttrsStr = mercury_term_to_string(VarSet, print_name_only,
+                    MutAttrsTerm),
+                Pieces = [words("Error: conflicting attributes"),
+                    words("in attribute list:"), nl,
+                    words(MutAttrsStr), suffix("."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree,
+                    get_term_context(MutAttrsTerm), Pieces),
+                MaybeMutAttrs = error1([Spec])
+            else
+                list.foldl(process_mutable_attribute, CollectedMutAttrs,
+                    Attributes0, Attributes),
+                MaybeMutAttrs = ok1(Attributes)
+            )
+        ;
+            MaybeAttrList = error1(Specs),
+            MaybeMutAttrs = error1(Specs)
         )
     else
         MutAttrsStr = mercury_term_to_string(VarSet, print_name_only,
             MutAttrsTerm),
-        Pieces = [words("Error: malformed attribute list"),
-            words("in"), decl("mutable"), words("declaration:"),
+        Pieces = [words("In fifth argument of"),
+            decl("mutable"), words("declaration:"),
+            words("error: expected a list of attributes, got"),
             words(MutAttrsStr), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(MutAttrsTerm), Pieces),

@@ -37,3 +37,5 @@
     --->    f1(ground, unique).
 
 :- mutable(non_ground, t1, f1(41, 43), t1, [untrailed]).
+
+:- mutable(non_list_attr, int, 0, ground, thread_local).

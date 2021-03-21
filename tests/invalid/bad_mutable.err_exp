@@ -4,8 +4,8 @@ bad_mutable.m:017:   error: undefined type `no_type'/0.
 bad_mutable.m:019: Error: the inst `special_ground' is not defined.
 bad_mutable.m:019: In declaration for mutable `not_an_inst':
 bad_mutable.m:019:   error: undefined inst `special_ground'/0.
-bad_mutable.m:021: Error: malformed attribute list in `:- mutable' declaration:
-bad_mutable.m:021:   [untrailed, bad_attrib].
+bad_mutable.m:021: Error in `:- mutable' declaration:
+bad_mutable.m:021:   unrecognised attribute `bad_attrib'.
 bad_mutable.m:023: Error: the type in a `:- mutable' declaration cannot contain
 bad_mutable.m:023:   variables: list(T).
 bad_mutable.m:025: Error: conflicting attributes in attribute list:
@@ -20,3 +20,5 @@ bad_mutable.m:039: Error: in the expansion of the named inst
 bad_mutable.m:039:   `bad_mutable.t1'/0:
 bad_mutable.m:039:   the inst `unique' may not appear in `:- mutable'
 bad_mutable.m:039:   declarations.
+bad_mutable.m:041: In fifth argument of `:- mutable' declaration: error:
+bad_mutable.m:041:   expected a list of attributes, got thread_local.
