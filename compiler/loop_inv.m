@@ -1197,13 +1197,13 @@ goal_inputs(ModuleInfo, Goal) = Inputs :-
             % The LHS is always an output var in constructions.
             Kind = construct(_, _, RHSArgs, ArgModes, _, _, _),
             list.filter_map_corresponding(is_input_arg(ModuleInfo),
-                RHSArgs, list.map(unify_modes_to_rhs_mode, ArgModes),
+                RHSArgs, list.map(unify_mode_to_rhs_mode, ArgModes),
                 Inputs)
         ;
             % The LHS is always in input var in deconstructions.
             Kind = deconstruct(_, _, RHSArgs, ArgModes, _, _),
             list.filter_map_corresponding(is_input_arg(ModuleInfo),
-                RHSArgs, list.map(unify_modes_to_rhs_mode, ArgModes),
+                RHSArgs, list.map(unify_mode_to_rhs_mode, ArgModes),
                 RHSInputs),
             Inputs = [LHS | RHSInputs]
         ;
@@ -1271,7 +1271,7 @@ goal_outputs(ModuleInfo, Goal) = Outputs :-
             % The LHS is always in input in deconstructions.
             Kind = deconstruct(_, _, RHSArgs, ArgModes, _, _),
             list.filter_map_corresponding(is_output_arg(ModuleInfo),
-                RHSArgs, list.map(unify_modes_to_rhs_mode, ArgModes),
+                RHSArgs, list.map(unify_mode_to_rhs_mode, ArgModes),
                 Outputs)
         ;
             % The LHS is the only output in an assignment.

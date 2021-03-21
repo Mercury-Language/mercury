@@ -179,6 +179,22 @@
     head_inst_vars::out) is det.
 
 %-----------------------------------------------------------------------------%
+
+    % Given the switched on variable and the instmaps before the switch
+    % and after a branch make sure that any information added by the
+    % functor test gets added to the instmap for the case.
+    %
+:- pred fixup_instmap_switch_var(prog_var::in, instmap::in, instmap::in,
+    hlds_goal::in, hlds_goal::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- pred normalise_inst(module_info::in, mer_type::in,
+    mer_inst::in, mer_inst::out) is det.
+:- pred normalise_insts(module_info::in, list(mer_type)::in,
+    list(mer_inst)::in, list(mer_inst)::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -194,6 +210,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.vartypes.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
@@ -1053,6 +1070,73 @@ add_constrained_inst(SubInst, InstVar, !Map) :-
     else
         map.det_insert(InstVar, SubInst, !Map)
     ).
+
+%---------------------------------------------------------------------------%
+
+fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
+    InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
+    instmap_lookup_var(InstMap0, Var, Inst0),
+    instmap_lookup_var(InstMap, Var, Inst),
+    ( if Inst = Inst0 then
+        GoalInfo = GoalInfo0
+    else
+        instmap_delta_set_var(Var, Inst, InstMapDelta0, InstMapDelta),
+        goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo)
+    ),
+    Goal = hlds_goal(GoalExpr, GoalInfo).
+
+%---------------------------------------------------------------------------%
+
+normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
+    % This is a bit of a hack.
+    % The aim is to avoid non-termination due to the creation
+    % of ever-expanding insts.
+    % XXX should also normalise partially instantiated insts.
+
+    inst_expand(ModuleInfo, Inst0, Inst),
+    ( if Inst = bound(_, _, _) then
+        ( if
+            % Don't infer unique modes for introduced type_info arguments,
+            % because that leads to an increase in the number of inferred modes
+            % without any benefit.
+            not is_introduced_type_info_type(Type),
+
+            inst_is_ground(ModuleInfo, Inst),
+            ( if inst_is_unique(ModuleInfo, Inst) then
+                Uniq = unique
+            else if inst_is_mostly_unique(ModuleInfo, Inst) then
+                Uniq = mostly_unique
+            else
+                fail
+            ),
+            not inst_contains_nondefault_func_mode(ModuleInfo, Inst)
+        then
+            NormalisedInst = ground(Uniq, none_or_default_func)
+        else if
+            inst_is_ground(ModuleInfo, Inst),
+            not inst_is_clobbered(ModuleInfo, Inst),
+            not inst_contains_nondefault_func_mode(ModuleInfo, Inst)
+        then
+            NormalisedInst = ground(shared, none_or_default_func)
+        else
+            % XXX We need to limit the potential size of insts here
+            % in order to avoid infinite loops in mode inference.
+            NormalisedInst = Inst
+        )
+    else
+        NormalisedInst = Inst
+    ).
+
+normalise_insts(_, [], [], []).
+normalise_insts(_, [], [_ | _], _) :-
+    unexpected($pred, "length mismatch").
+normalise_insts(_, [_ | _], [], _) :-
+    unexpected($pred, "length mismatch").
+normalise_insts(ModuleInfo, [Type | Types],
+        [Inst0 | Insts0], [Inst | Insts]) :-
+    normalise_inst(ModuleInfo, Type, Inst0, Inst),
+    normalise_insts(ModuleInfo, Types, Insts0, Insts).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.modecheck_util.

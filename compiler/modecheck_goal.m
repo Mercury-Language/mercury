@@ -112,7 +112,6 @@
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_call.
 :- import_module check_hlds.modecheck_coerce.
 :- import_module check_hlds.modecheck_conj.
