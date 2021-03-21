@@ -82,6 +82,7 @@ HDRS = \
 	mercury_reg_workarounds.h		\
 	mercury_region.h			\
 	mercury_regs.h				\
+	mercury_report_stats.h			\
 	mercury_runtime_util.h			\
 	mercury_signal.h			\
 	mercury_stack_layout.h			\
@@ -197,6 +198,7 @@ CFILES = \
 	mercury_reg_workarounds.c		\
 	mercury_region.c			\
 	mercury_regs.c				\
+	mercury_report_stats.c			\
 	mercury_runtime_util.c			\
 	mercury_signal.c			\
 	mercury_stack_layout.c			\

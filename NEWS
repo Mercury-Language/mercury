@@ -139,6 +139,10 @@ Changes to the Mercury standard library
     - pred `make_temp/3`            (replacement: `make_temp_file/3`)
     - pred `make_temp/5`            (replacement: `make_temp_file/5`)
 
+* The following predicate has been renamed:
+
+    - pred `report_stats/2' to `report_standard_stats'/2.
+
 ### Changes to the `list` module
 
 * The following obsolete predicate has been removed:

@@ -1864,14 +1864,10 @@
 % Predicates that report statistics about the current program execution.
 %
 
-    % Write memory/time usage statistics to stderr.
-    %
-:- pred report_stats(io::di, io::uo) is det.
-
-    % Write statistics to stderr; what statistics will be written
-    % is controlled by the first argument, which acts a selector.
-    % What selector values cause what statistics to be printed
-    % is implementation defined.
+    % Write selected statistics to the specified stream, or (if none)
+    % to stderr. What statistics will be written is controlled by
+    % the first argument, which acts a selector. What selector values
+    % cause what statistics to be printed is implementation defined.
     %
     % The Melbourne implementation supports the following selectors:
     %
@@ -1888,7 +1884,38 @@
     %   Requires the runtime to have been compiled with the macro
     %   MR_TABLE_STATISTICS defined.
     %
+    % XXX For now, these predicates work only with the C backend.
+    %
+:- pred report_stats(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 :- pred report_stats(string::in, io::di, io::uo) is det.
+
+    % Write standard memory/time usage statistics to the specified stream,
+    % or (if none) to stderr.
+    %
+    % XXX For now, these predicates work only with the C backend.
+    %
+:- pred report_standard_stats(io.text_output_stream::in,
+    io::di, io::uo) is det.
+:- pred report_standard_stats(io::di, io::uo) is det.
+
+    % `report_full_memory_stats/3' reports a full memory profile
+    % to the specified output stream, or (if none) to stderr.
+    %
+    % XXX For now, these predicates work only with the C backend.
+    %
+:- pred report_full_memory_stats(io.text_output_stream::in,
+    io::di, io::uo) is det.
+:- pred report_full_memory_stats(io::di, io::uo) is det.
+
+    % `report_tabling_statistics/3', as its name says, reports statistics
+    % about tabling to the specified output stream, or (if none) to stderr.
+    %
+    % XXX For now, these predicates work only with the C backend.
+    %
+:- pred report_tabling_statistics(io.text_output_stream::in,
+    io::di, io::uo) is det.
+:- pred report_tabling_statistics(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -2156,7 +2183,6 @@
 
 :- implementation.
 
-:- import_module benchmarking.
 :- import_module dir.
 :- import_module exception.
 :- import_module int.
@@ -2218,6 +2244,12 @@ io_state_compare(_, _, _) :-
     --->    input_stream(stream).
 :- type output_stream
     --->    output_stream(stream).
+% While these definitions of the input_stream and output_stream types
+% are visible only in io.m for Mercury code, you can access the underlying
+% stdio streams using MR_file(*MR_unwrap_{input,output}_stream(Stream))
+% in C code.
+%
+% XXX Document any equivalent mechanisms for Java and C#.
 
 :- type binary_input_stream
     --->    binary_input_stream(stream).
@@ -2627,6 +2659,7 @@ res_to_stream_res(error(E)) = error(E).
 #include ""mercury_heap.h""
 #include ""mercury_misc.h""
 #include ""mercury_runtime_util.h""
+#include ""mercury_report_stats.h""
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -2683,36 +2716,36 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
 ").
 
 :- pragma foreign_decl("C", "
-    extern MR_Word      ML_io_stream_db;
-    extern MR_Word      ML_io_user_globals;
+extern MR_Word          ML_io_stream_db;
+extern MR_Word          ML_io_user_globals;
 
-    extern int          ML_next_stream_id;
-    #if 0
-      extern MR_Word    ML_io_ops_table;
-    #endif
+extern int              ML_next_stream_id;
+#if 0
+    extern MR_Word      ML_io_ops_table;
+#endif
 
-    #ifdef MR_THREAD_SAFE
-        extern MercuryLock ML_io_stream_db_lock;
-        extern MercuryLock ML_io_user_globals_lock;
-        extern MercuryLock ML_io_next_stream_id_lock;
-    #endif
+#ifdef MR_THREAD_SAFE
+    extern MercuryLock  ML_io_stream_db_lock;
+    extern MercuryLock  ML_io_user_globals_lock;
+    extern MercuryLock  ML_io_next_stream_id_lock;
+#endif
 ").
 
 :- pragma foreign_code("C", "
-    MR_Word         ML_io_stream_db;
-    MR_Word         ML_io_user_globals;
+MR_Word         ML_io_stream_db;
+MR_Word         ML_io_user_globals;
 
-    // A counter used to generate unique stream ids.
-    int             ML_next_stream_id;
-    #if 0
-      MR_Word       ML_io_ops_table;
-    #endif
+// A counter used to generate unique stream ids.
+int             ML_next_stream_id;
+#if 0
+    MR_Word     ML_io_ops_table;
+#endif
 
-    #ifdef MR_THREAD_SAFE
-        MercuryLock ML_io_stream_db_lock;
-        MercuryLock ML_io_user_globals_lock;
-        MercuryLock ML_io_next_stream_id_lock;
-    #endif
+#ifdef MR_THREAD_SAFE
+    MercuryLock ML_io_stream_db_lock;
+    MercuryLock ML_io_user_globals_lock;
+    MercuryLock ML_io_next_stream_id_lock;
+#endif
 ").
 
 :- pragma foreign_code("C", "
@@ -3857,9 +3890,9 @@ MR_MercuryFileStruct mercury_open(string filename, string openmode,
 ").
 
 :- pragma foreign_code("C#", "
-// Any changes here should also be reflected in the code for
-// io.write_char, which (for efficiency) uses its own inline
-// code, rather than calling this function.
+// Any changes here should also be reflected in the code for io.write_char,
+// which (for efficiency) uses its own inline code, rather than calling
+// this function.
 public static void
 mercury_print_string(MR_MercuryFileStruct mf, string s)
 {
@@ -12063,22 +12096,88 @@ unlock_globals :-
 % Predicates that report statistics about the current program execution.
 %
 
-report_stats(!IO) :-
-    report_stats("standard", !IO).
-
-:- pragma promise_pure(io.report_stats/3).
-report_stats(Selector, !IO) :-
+report_stats(Stream, Selector, !IO) :-
     ( if Selector = "standard" then
-        impure report_stats
+        report_standard_stats(Stream, !IO)
     else if Selector = "full_memory_stats" then
-        impure report_full_memory_stats
+        report_full_memory_stats(Stream, !IO)
     else if Selector = "tabling" then
-        impure table_builtin.table_report_statistics
+        report_tabling_statistics(Stream, !IO)
     else
         string.format("io.report_stats: selector `%s' not understood",
             [s(Selector)], Message),
         error(Message)
     ).
+
+report_stats(Selector, !IO) :-
+    io.stderr_stream(StdErr, !IO),
+    report_stats(StdErr, Selector, !IO).
+
+%---------------------%
+
+report_standard_stats(output_stream(Stream), !IO) :-
+    report_standard_stats_2(Stream, !IO).
+
+report_standard_stats(!IO) :-
+    io.stderr_stream(StdErr, !IO),
+    report_standard_stats(StdErr, !IO).
+
+:- pred report_standard_stats_2(io.stream::in, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    report_standard_stats_2(Stream::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_report_standard_stats(MR_file(*Stream));
+").
+
+report_standard_stats_2(_Stream, !IO) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("report_standard_stats").
+
+%---------------------%
+
+report_full_memory_stats(output_stream(Stream), !IO) :-
+    report_full_memory_stats_2(Stream, !IO).
+
+report_full_memory_stats(!IO) :-
+    io.stderr_stream(StdErr, !IO),
+    report_full_memory_stats(StdErr, !IO).
+
+:- pred report_full_memory_stats_2(io.stream::in, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    report_full_memory_stats_2(Stream::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_report_full_memory_stats(MR_file(*Stream));
+").
+
+report_full_memory_stats_2(_Stream, !IO) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("report_full_memory_stats").
+
+%---------------------%
+
+report_tabling_statistics(output_stream(Stream), !IO) :-
+    report_tabling_statistics_2(Stream, !IO).
+
+report_tabling_statistics(!IO) :-
+    io.stderr_stream(StdErr, !IO),
+    report_tabling_statistics(StdErr, !IO).
+
+:- pred report_tabling_statistics_2(io.stream::in, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    report_tabling_statistics_2(Stream::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, does_not_affect_liveness],
+"
+    MR_table_report_statistics(MR_file(*Stream));
+").
+
+report_tabling_statistics_2(_Stream, !IO) :-
+    impure private_builtin.imp,
+    private_builtin.sorry("report_tabling_statistics").
 
 %---------------------------------------------------------------------------%
 %

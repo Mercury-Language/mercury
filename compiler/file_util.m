@@ -485,7 +485,7 @@ get_install_name_option(Globals, OutputFileName, InstallNameOpt) :-
 %---------------------------------------------------------------------------%
 
 maybe_report_stats(yes, !IO) :-
-    io.report_stats(!IO).
+    io.report_standard_stats(!IO).
 maybe_report_stats(no, !IO).
 
 maybe_write_string(yes, String, !IO) :-
