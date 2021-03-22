@@ -42,6 +42,9 @@
 % Polymorphism transformation.
 :- include_module introduce_exists_casts.
 :- include_module polymorphism.
+:- include_module polymorphism_info.
+:- include_module polymorphism_lambda.
+:- include_module polymorphism_type_info.
 
 % Preprocessing user insts in the inst table for mode analysis.
 :- include_module inst_user.

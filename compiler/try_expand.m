@@ -220,7 +220,7 @@
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.det_report.
 :- import_module check_hlds.modes.
-:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.polymorphism_type_info.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -887,12 +887,8 @@ detism_to_try_lambda_detism(detism_failure, detism_semi).
 
 make_try_call(PredName, LambdaVar, ResultVar, ExtraArgs, OutputTupleType,
         GoalPurity, Context, OverallGoal, !PredInfo, !ProcInfo, !ModuleInfo) :-
-    create_poly_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, PolyInfo0),
-    polymorphism_make_type_info_var(OutputTupleType, Context,
-        TypeInfoVar, MakeTypeInfoGoals, PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, PolySpecs, !PredInfo, !ProcInfo, !:ModuleInfo),
-    expect(unify(PolySpecs, []), $pred,
-        "got errors while making type_info_var"),
+    polymorphism_make_type_info_var_raw(OutputTupleType, Context,
+        TypeInfoVar, MakeTypeInfoGoals, !ModuleInfo, !PredInfo, !ProcInfo),
 
     % The mode will be fixed up by a later analysis.
     Mode = mode_no(0),

@@ -932,16 +932,23 @@ doesn't do the wrong thing
 for goals whose only output is the type_info
 for an existentially quantified type parameter.)
 <p>
+polymorphism_info.m defines the main data structures
+used by the polymorphism transformation,
+and provides basic operations on them.
+These are used only by polymorphism.m and polymorphism_type_info.m.
+<p>
+polymorphism_type_info.m provides predicates to construct new type_infos
+and to extract existing type_infos from typeclass_infos.
+Most of these operations are used only by polymorphism.m,
+but some are also used by other modules.
+<p>
 polymorphism.m subcontracts parts of its job to introduce_exists_casts.m,
-which sometimes is also invoked from modes.m.
+which is sometimes also invoked from modes.m.
 <p>
-This phase also converts higher-order predicate terms into lambda expressions,
-and copies the clauses to the proc_infos in preparation for mode analysis.
-<p>
-The polymorphism.m module also exports some utility routines that
-are used by other modules. These include some routines for generating
-code to create type_infos, which are used by simplify.m and magic.m
-when those modules introduce new calls to polymorphic procedures.
+The polymorphism phase
+also converts higher-order predicate terms into lambda expressions.
+This is done in polymorphism_lambda.m,
+which is also invoked from modecheck_unify.m.
 <p>
 When it has done most of its work,
 polymorphism.m calls clause_to_proc.m
@@ -951,8 +958,8 @@ all later stages work on procedures, not predicates.
 is done after copying clauses to procedures,
 though it is not clear whether this is by design or by accident.)
 <li>
-The mode analyser consist of several analysis modules
-and a whole bunch of service modules
+The mode analyser consists of several analysis modules
+and a whole bunch of service modules.
 <p>
     These are the analysis modules.
     <ul>

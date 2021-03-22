@@ -182,14 +182,12 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module maybe.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -234,61 +232,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Given a list of types, create a list of variables to hold the type_info
-    % for those types, and create a list of goals to initialize those type_info
-    % variables to the appropriate type_info structures for the types.
-    % Update the varset and vartypes accordingly.
-    %
-:- pred polymorphism_make_type_info_vars(list(mer_type)::in, term.context::in,
-    list(prog_var)::out, list(hlds_goal)::out, poly_info::in, poly_info::out)
-    is det.
-
-    % Likewise, but for a single type.
-    %
-:- pred polymorphism_make_type_info_var(mer_type::in, term.context::in,
-    prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
-
-%---------------------------------------------------------------------------%
-
-:- type int_or_var
-    --->    iov_int(int)
-    ;       iov_var(prog_var).
-
-    % gen_extract_type_info(ModuleInfo, TypeVar, Kind,
-    %   TypeClassInfoVar, IndexIntOrVar, Context, Goals, TypeInfoVar,
-    %   !VarSet, !VarTypes, !RttiVarMaps):
-    %
-    % Generate code to extract a type_info variable from a given slot of a
-    % typeclass_info variable, by calling type_info_from_typeclass_info from
-    % private_builtin. TypeVar is the type variable to which this type_info
-    % variable corresponds. Kind is the kind of the type variable.
-    % TypeClassInfoVar is the variable holding the type_class_info.
-    % IndexIntOrVar specifies which slot it is. The procedure returns
-    % TypeInfoVar, which is a fresh variable holding the type_info,
-    % and Goals, which is the code generated to initialize TypeInfoVar.
-    % The context of these goals will be Context.
-    %
-:- pred gen_extract_type_info(module_info::in, tvar::in, kind::in,
-    prog_var::in, int_or_var::in, prog_context::in,
-    list(hlds_goal)::out, prog_var::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    rtti_varmaps::in, rtti_varmaps::out) is det.
-
-:- type poly_info.
-
-    % Extract some fields from a pred_info and proc_info and use them to
-    % create a poly_info, for use by the polymorphism transformation.
-    %
-:- pred create_poly_info(module_info::in, pred_info::in,
-    proc_info::in, poly_info::out) is det.
-
-    % Update the fields in a pred_info and proc_info with
-    % the values in a poly_info.
-    %
-:- pred poly_info_extract(poly_info::in, list(error_spec)::out,
-    pred_info::in, pred_info::out, proc_info::in, proc_info::out,
-    module_info::out) is det.
-
     % Build the type describing the typeclass_info for the
     % given prog_constraint.
     %
@@ -307,76 +250,6 @@
     %
 :- pred build_type_info_type(mer_type::in, mer_type::out) is det.
 
-    % Convert a higher order pred term to a lambda goal.
-    %
-:- pred convert_pred_to_lambda_goal(purity::in, lambda_eval_method::in,
-    prog_var::in, pred_id::in, proc_id::in, list(prog_var)::in,
-    list(mer_type)::in, unify_context::in, hlds_goal_info::in, context::in,
-    module_info::in, maybe1(unify_rhs)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
-
-    % fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, Functor0, Functor)
-    %
-    % This is called by mode checking when it figures out which mode that a
-    % lambda goal converted from a higher order pred term should call.
-    % Functor0 must have been produced by `convert_pred_to_lambda_goal'.
-    %
-:- pred fix_undetermined_mode_lambda_goal(module_info::in, proc_id::in,
-    unify_rhs::in(rhs_lambda_goal),
-    maybe1(unify_rhs)::out(maybe1(rhs_lambda_goal))) is det.
-
-    % init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal,
-    %   !VarSet, !VarTypes) :-
-    %
-    % Create the unification the constructs the second cell of a type_info
-    % for Type. ArgVars should contain the arguments of this unification.
-    %
-    % This unification WILL lead to the creation of cells on the heap
-    % at runtime.
-    %
-    % The first variable in ArgVars should be bound to the type_ctor_info
-    % for Type's principal type constructor. If that type constructor is
-    % variable arity, the next variable in ArgVars should be bound to an
-    % integer giving Type's actual arity. The remaining variables in
-    % ArgVars should be bound to the type_infos or type_ctor_infos giving
-    % Type's argument types.
-    %
-:- pred init_type_info_var(mer_type::in, list(prog_var)::in,
-    maybe(prog_var)::in, prog_var::out, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    rtti_varmaps::in, rtti_varmaps::out) is det.
-
-    % init_const_type_ctor_info_var(Type, TypeCtor,
-    %   TypeCtorInfoVar, TypeCtorConsId, TypeCtorInfoGoal,
-    %   !VarSet, !VarTypes, !RttiVarMaps):
-    %
-    % Create the unification (returned as TypeCtorInfoGoal) that binds a
-    % new variable (returned as TypeCtorInfoVar) to the type_ctor_info
-    % representing TypeCtor. This will be the constant represented by
-    % TypeCtorConsId.
-    %
-    % This unification WILL NOT lead to the creation of a cell on the
-    % heap at runtime; it will cause TypeCtorInfoVar to refer to the
-    % statically allocated type_ctor_info cell for the type, allocated
-    % in the module that defines the type.
-    %
-    % We take Type as input for historical reasons: we record Type as
-    % the type whose type constructor TypeCtor is, in the type of
-    % TypeCtorInfoVar.
-    %
-:- pred init_const_type_ctor_info_var(mer_type::in, type_ctor::in,
-    prog_var::out, cons_id::out, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    rtti_varmaps::in, rtti_varmaps::out) is det.
-
-:- type type_info_kind
-    --->    type_info
-    ;       type_ctor_info.
-
-:- pred new_type_info_var_raw(mer_type::in, type_info_kind::in,
-    prog_var::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
-
 %---------------------------------------------------------------------------%
 
     % Do the parts of the polymorphism transformation that need to be done
@@ -392,6 +265,9 @@
 
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.introduce_exists_casts.
+:- import_module check_hlds.polymorphism_info.
+:- import_module check_hlds.polymorphism_lambda.
+:- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.type_util.
 :- import_module hlds.const_struct.
 :- import_module hlds.from_ground_term_util.
@@ -406,6 +282,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
+:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -418,7 +295,6 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
@@ -428,6 +304,7 @@
 :- import_module int.
 :- import_module io.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -443,6 +320,7 @@
 % the pred_info argtypes. The reason we need two passes is that the first pass
 % looks at the argtypes of the called predicates, and so we need to make
 % sure we don't muck them up before we have finished the first pass.
+%
 
 polymorphism_process_module(!ModuleInfo, ExistsCastPredIds,
         SafeToContinue, Specs) :-
@@ -571,22 +449,17 @@ polymorphism_process_generated_pred(PredId, !ModuleInfo) :-
     copy_clauses_to_procs_for_pred_in_module_info(PredId, !ModuleInfo),
     list.foldl(introduce_exists_casts_poly, ExistsPredIds, !ModuleInfo).
 
-:- mutable(selected_pred, bool, no, ground, [untrailed]).
-:- mutable(level, int, 0, ground, [untrailed]).
-
 :- pred polymorphism_process_pred(pred_id::in, maybe_safe_to_continue::out,
     list(error_spec)::in, list(error_spec)::out,
     module_info::in, module_info::out) is det.
 
 polymorphism_process_pred(PredId, SafeToContinue, !Specs, !ModuleInfo) :-
-    trace [compiletime(flag("debug_poly_caches"))] (
-        promise_pure (
-            % Replace 99999 with the id of the predicate you want to debug.
-            ( if pred_id_to_int(PredId) = 99999 then
-                impure set_selected_pred(yes)
-            else
-                true
-            )
+    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+        % Replace 99999 with the id of the predicate you want to debug.
+        ( if pred_id_to_int(PredId) = 99999 then
+            poly_info_set_selected_pred(is_selected_pred, !IO)
+        else
+            true
         )
     ),
 
@@ -624,10 +497,8 @@ polymorphism_process_pred(PredId, SafeToContinue, !Specs, !ModuleInfo) :-
         ProcMap0, ProcMap),
     pred_info_set_proc_table(ProcMap, PredInfo2, PredInfo),
 
-    trace [compiletime(flag("debug_poly_caches"))] (
-        promise_pure (
-            impure set_selected_pred(no)
-        )
+    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
+        poly_info_set_selected_pred(is_not_selected_pred, !IO)
     ),
 
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
@@ -771,7 +642,6 @@ setup_headvars_instance_method(PredInfo,
         InstanceMethodConstraints, !HeadVars,
         UnconstrainedTVars, ExtraHeadTypeInfoVars,
         ExistHeadTypeClassInfoVars, !ExtraArgModes, !Info) :-
-
     InstanceMethodConstraints = instance_method_constraints(_,
         InstanceTypes, InstanceConstraints, ClassContext),
 
@@ -824,7 +694,6 @@ setup_headvars_2(PredInfo, ClassContext,
         HeadVars, AllUnconstrainedTVars,
         AllExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars,
         !ExtraArgModes, !Info) :-
-
     % Grab the appropriate fields from the pred_info.
     pred_info_get_arg_types(PredInfo, ArgTypeVarSet, ExistQVars, ArgTypes),
 
@@ -939,34 +808,32 @@ setup_headvars_2(PredInfo, ClassContext,
     % Add the locations of the typeinfos for unconstrained, universally
     % quantified type variables to the initial rtti_varmaps. Also add the
     % locations of typeclass_infos.
-    %
     some [!RttiVarMaps] (
         poly_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
 
-        ToLocn =
-            ( pred(TheVar::in, TheLocn::out) is det :-
-                TheLocn = type_info(TheVar)
-            ),
-
-        list.map(ToLocn, UnivHeadTypeInfoVars, UnivTypeLocns),
+        list.map(var_as_type_info_locn, UnivHeadTypeInfoVars, UnivTypeLocns),
         list.foldl_corresponding(rtti_det_insert_type_info_locn,
             UnconstrainedUnivTVars, UnivTypeLocns, !RttiVarMaps),
 
-        list.map(ToLocn, ExistHeadTypeInfoVars, ExistTypeLocns),
+        list.map(var_as_type_info_locn, ExistHeadTypeInfoVars, ExistTypeLocns),
         list.foldl_corresponding(rtti_det_insert_type_info_locn,
             UnconstrainedExistTVars, ExistTypeLocns, !RttiVarMaps),
 
-        list.map(ToLocn, UnconstrainedInstanceTypeInfoVars,
-            UnconstrainedInstanceTypeLocns),
+        list.map(var_as_type_info_locn,
+            UnconstrainedInstanceTypeInfoVars, UnconstrainedInstanceTypeLocns),
         list.foldl_corresponding(rtti_det_insert_type_info_locn,
-            UnconstrainedInstanceTVars,
-            UnconstrainedInstanceTypeLocns, !RttiVarMaps),
+            UnconstrainedInstanceTVars, UnconstrainedInstanceTypeLocns,
+            !RttiVarMaps),
 
-        list.foldl(rtti_reuse_typeclass_info_var,
-            UnivHeadTypeClassInfoVars, !RttiVarMaps),
+        list.foldl(rtti_reuse_typeclass_info_var, UnivHeadTypeClassInfoVars,
+            !RttiVarMaps),
 
         poly_info_set_rtti_varmaps(!.RttiVarMaps, !Info)
     ).
+
+:- pred var_as_type_info_locn(prog_var::in, type_info_locn::out) is det.
+
+var_as_type_info_locn(Var, type_info(Var)).
 
     % Generate code to produce the values of type_infos and typeclass_infos
     % for existentially quantified type variables in the head.
@@ -1467,8 +1334,8 @@ unification_typeinfos(Type, !Unification, !GoalInfo, Changed, !Info) :-
         Changed = yes
     ).
 
-unification_typeinfos_rtti_varmaps(Type, RttiVarMaps, !Unification,
-        !GoalInfo) :-
+unification_typeinfos_rtti_varmaps(Type, RttiVarMaps,
+        !Unification, !GoalInfo) :-
     % This variant is for use by modecheck_unify.m. During mode checking,
     % all the type_infos should appear in the type_info_varmap.
 
@@ -1652,142 +1519,6 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ).
 
-convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
-        ArgVars0, PredArgTypes, UnifyContext, GoalInfo0, Context,
-        ModuleInfo0, MaybeRHS, !VarSet, !VarTypes) :-
-    % Create the new lambda-quantified variables.
-    create_fresh_vars(PredArgTypes, LambdaVars, !VarSet, !VarTypes),
-    Args = ArgVars0 ++ LambdaVars,
-
-    % Build up the hlds_goal_expr for the call that will form the lambda goal.
-    module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
-        PredInfo, ProcInfo),
-
-    PredModule = pred_info_module(PredInfo),
-    PredName = pred_info_name(PredInfo),
-    QualifiedPName = qualified(PredModule, PredName),
-
-    % The ConsId's type_ctor shouldn't matter in a call_unify_context.
-    ConsId = cons(QualifiedPName, list.length(ArgVars0),
-        cons_id_dummy_type_ctor),
-    RHS0 = rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
-    CallUnifyContext = call_unify_context(X0, RHS0, UnifyContext),
-    LambdaGoalExpr = plain_call(PredId, ProcId, Args, not_builtin,
-        yes(CallUnifyContext), QualifiedPName),
-
-    % Construct a goal_info for the lambda goal, making sure to set up
-    % the nonlocals field in the goal_info correctly. The goal_id is needed
-    % to compute constraint_ids correctly.
-
-    NonLocals = goal_info_get_nonlocals(GoalInfo0),
-    set_of_var.insert_list(LambdaVars, NonLocals, OutsideVars),
-    set_of_var.list_to_set(Args, InsideVars),
-    set_of_var.intersect(OutsideVars, InsideVars, LambdaNonLocals),
-    GoalId = goal_info_get_goal_id(GoalInfo0),
-
-    instmap_delta_init_unreachable(DummyInstMapDelta),
-    DummyDetism = detism_erroneous,
-    goal_info_init(LambdaNonLocals, DummyInstMapDelta, DummyDetism, Purity,
-        Context, LambdaGoalInfo0),
-    goal_info_set_goal_id(GoalId, LambdaGoalInfo0, LambdaGoalInfo),
-    LambdaGoal = hlds_goal(LambdaGoalExpr, LambdaGoalInfo),
-
-    % Work out the modes of the introduced lambda variables and the determinism
-    % of the lambda goal.
-    lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars,
-        MaybeLambdaModesDet),
-
-    (
-        MaybeLambdaModesDet = ok2(LambdaModes, LambdaDet),
-        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        % Higher-order values created in this fashion are always ground.
-        Groundness = ho_ground,
-        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal),
-        MaybeRHS = ok1(RHS)
-    ;
-        MaybeLambdaModesDet = error2(Specs),
-        MaybeRHS = error1(Specs)
-    ).
-
-fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, RHS0, MaybeRHS) :-
-    RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-        ArgVars0, LambdaVars, _LambdaModes0, _LambdaDet0, LambdaGoal0),
-    LambdaGoal0 = hlds_goal(_, LambdaGoalInfo),
-    goal_to_conj_list(LambdaGoal0, LambdaGoalList0),
-    ( if
-        list.split_last(LambdaGoalList0, LambdaGoalButLast0, LastGoal0),
-        LastGoal0 = hlds_goal(LastGoalExpr0, LastGoalInfo0),
-        LastGoalExpr0 = plain_call(PredId0, _DummyProcId, Args0, not_builtin,
-            MaybeCallUnifyContext0, QualifiedPName0)
-    then
-        PredId = PredId0,
-        % Build up LambdaGoal. It is the same as LambdaGoal0, but with the
-        % given ProcId.
-        LastGoalExpr = plain_call(PredId0, ProcId, Args0, not_builtin,
-            MaybeCallUnifyContext0, QualifiedPName0),
-        LastGoal = hlds_goal(LastGoalExpr, LastGoalInfo0),
-        conj_list_to_goal(LambdaGoalButLast0 ++ [LastGoal], LambdaGoalInfo,
-            LambdaGoal),
-        Context = goal_info_get_context(LastGoalInfo0)
-    else
-        unexpected($pred, "unmatched lambda goal")
-    ),
-
-    % Work out the modes of the introduced lambda variables and the determinism
-    % of the lambda goal.
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
-    lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars,
-        MaybeLambdaModesDet),
-    (
-        MaybeLambdaModesDet = ok2(LambdaModes, LambdaDet),
-
-        % Construct the lambda expression.
-        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal),
-        MaybeRHS = ok1(RHS)
-    ;
-        MaybeLambdaModesDet = error2(Specs),
-        MaybeRHS = error1(Specs)
-    ).
-
-:- pred lambda_modes_and_det(pred_info::in, proc_info::in, prog_context::in,
-    list(prog_var)::in, maybe2(list(mer_mode), determinism)::out) is det.
-
-lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars, MaybeResult) :-
-    proc_info_get_argmodes(ProcInfo, ArgModes),
-    list.length(ArgModes, NumArgModes),
-    list.length(LambdaVars, NumLambdaVars),
-    list.det_drop(NumArgModes - NumLambdaVars, ArgModes, LambdaModes),
-    proc_info_get_declared_determinism(ProcInfo, MaybeDet),
-    (
-        MaybeDet = yes(Det),
-        MaybeResult = ok2(LambdaModes, Det)
-    ;
-        MaybeDet = no,
-        pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-        PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
-        pred_info_get_module_name(PredInfo, PredModuleName),
-        pred_info_get_name(PredInfo, PredName),
-        PredSymName = qualified(PredModuleName, PredName),
-        Pieces = [words("Error: the"), words(PredOrFuncStr),
-            qual_sym_name(PredSymName), words("has no declared determinism,"),
-            words("so a curried call to it"),
-            words("may not be used as a lambda expression."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_polymorphism,
-            Context, Pieces),
-        MaybeResult = error2([Spec])
-    ).
-
-:- pred create_fresh_vars(list(mer_type)::in, list(prog_var)::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
-
-create_fresh_vars([], [], !VarSet, !VarTypes).
-create_fresh_vars([Type | Types], [Var | Vars], !VarSet, !VarTypes) :-
-    varset.new_var(Var, !VarSet),
-    add_var_type(Var, Type, !VarTypes),
-    create_fresh_vars(Types, Vars, !VarSet, !VarTypes).
-
 %---------------------------------------------------------------------------%
 
     % Compute the extra arguments that we need to add to a unification with
@@ -1941,10 +1672,8 @@ polymorphism_process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
         UnivCs, UnivTypeClassArgInfos),
     TypeClassArgInfos = UnivTypeClassArgInfos ++ ExistTypeClassArgInfos,
 
-    list.filter(
-        ( pred(X::in) is semidet :-
-            list.member(X, ExistQVars)
-        ), PredTypeVars, ExistUnconstrainedVars, UnivUnconstrainedVars),
+    list.filter(list.contains(ExistQVars), PredTypeVars,
+        ExistUnconstrainedVars, UnivUnconstrainedVars),
 
     list.map_foldl(foreign_proc_add_typeinfo("Out", Out, Impl, PredTypeVarSet),
         ExistUnconstrainedVars, ExistTypeArgInfos, 1, _),
@@ -2513,35 +2242,33 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
         ExistQVars, Context, TypeClassInfoVar - MaybeTCIConstArg, Goals,
         !Info) :-
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-        promise_pure (
-            semipure get_selected_pred(SelectedPred),
-            semipure get_level(Level),
-            (
-                SelectedPred = no
-            ;
-                SelectedPred = yes,
-                poly_info_get_debug_stream(!.Info, Stream, !IO),
-                IndentStr = string.duplicate_char(' ', Level * 4),
-                impure set_level(Level + 1),
+        poly_info_get_selected_pred(SelectedPred, !IO),
+        poly_info_get_indent_level(Level, !IO),
+        (
+            SelectedPred = is_not_selected_pred
+        ;
+            SelectedPred = is_selected_pred,
+            poly_info_get_debug_stream(!.Info, Stream, !IO),
+            IndentStr = string.duplicate_char(' ', Level * 4),
+            poly_info_set_indent_level(Level + 1, !IO),
 
-                io.format(Stream,
-                    "%smake_typeclass_info_from_subclass\n",
-                    [s(IndentStr)], !IO),
-                io.format(Stream, "%sConstraint: ", [s(IndentStr)], !IO),
-                io.write_line(Stream, Constraint, !IO),
-                io.format(Stream, "%sSeen: ", [s(IndentStr)], !IO),
-                ( if Seen = [Constraint] then
-                    io.write_string(Stream, "[Constraint]\n", !IO)
-                else
-                    io.write_line(Stream, Seen, !IO)
-                ),
-                io.format(Stream, "%sSubClassConstraint: ",
-                    [s(IndentStr)], !IO),
-                io.write_line(Stream, SubClassConstraint, !IO),
-                io.format(Stream, "%sExistQVars: ", [s(IndentStr)], !IO),
-                io.write_line(Stream, ExistQVars, !IO),
-                io.nl(Stream, !IO)
-            )
+            io.format(Stream,
+                "%smake_typeclass_info_from_subclass\n",
+                [s(IndentStr)], !IO),
+            io.format(Stream, "%sConstraint: ", [s(IndentStr)], !IO),
+            io.write_line(Stream, Constraint, !IO),
+            io.format(Stream, "%sSeen: ", [s(IndentStr)], !IO),
+            ( if Seen = [Constraint] then
+                io.write_string(Stream, "[Constraint]\n", !IO)
+            else
+                io.write_line(Stream, Seen, !IO)
+            ),
+            io.format(Stream, "%sSubClassConstraint: ",
+                [s(IndentStr)], !IO),
+            io.write_line(Stream, SubClassConstraint, !IO),
+            io.format(Stream, "%sExistQVars: ", [s(IndentStr)], !IO),
+            io.write_line(Stream, ExistQVars, !IO),
+            io.nl(Stream, !IO)
         )
     ),
 
@@ -2610,22 +2337,20 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
         ),
 
         trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-            promise_pure (
-                semipure get_selected_pred(SelectedPred),
-                semipure get_level(Level),
-                impure set_level(Level - 1),
-                (
-                    SelectedPred = no
-                ;
-                    SelectedPred = yes,
-                    poly_info_get_debug_stream(!.Info, Stream, !IO),
-                    IndentStr = string.duplicate_char(' ', (Level-1) * 4),
-                    io.format(Stream, "%ssubclass constant result ",
-                        [s(IndentStr)], !IO),
-                    io.write_line(Stream,
-                        TypeClassInfoVar - MaybeTCIConstArg, !IO),
-                    io.nl(Stream, !IO)
-                )
+            poly_info_get_selected_pred(SelectedPred, !IO),
+            poly_info_get_indent_level(Level, !IO),
+            poly_info_set_indent_level(Level - 1, !IO),
+            (
+                SelectedPred = is_not_selected_pred
+            ;
+                SelectedPred = is_selected_pred,
+                poly_info_get_debug_stream(!.Info, Stream, !IO),
+                IndentStr = string.duplicate_char(' ', (Level-1) * 4),
+                io.format(Stream, "%ssubclass constant result ",
+                    [s(IndentStr)], !IO),
+                io.write_line(Stream,
+                    TypeClassInfoVar - MaybeTCIConstArg, !IO),
+                io.nl(Stream, !IO)
             )
         )
     ;
@@ -2645,22 +2370,20 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
         MaybeTCIConstArg = no,
 
         trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-            promise_pure (
-                semipure get_selected_pred(SelectedPred),
-                semipure get_level(Level),
-                impure set_level(Level - 1),
-                (
-                    SelectedPred = no
-                ;
-                    SelectedPred = yes,
-                    poly_info_get_debug_stream(!.Info, Stream, !IO),
-                    IndentStr = string.duplicate_char(' ', (Level-1) * 4),
-                    io.format(Stream, "%ssubclass computed result ",
-                        [s(IndentStr)], !IO),
-                    io.write_line(Stream,
-                        TypeClassInfoVar - MaybeTCIConstArg, !IO),
-                    io.nl(Stream, !IO)
-                )
+            poly_info_get_selected_pred(SelectedPred, !IO),
+            poly_info_get_indent_level(Level, !IO),
+            poly_info_set_indent_level(Level - 1, !IO),
+            (
+                SelectedPred = is_not_selected_pred
+            ;
+                SelectedPred = is_selected_pred,
+                poly_info_get_debug_stream(!.Info, Stream, !IO),
+                IndentStr = string.duplicate_char(' ', (Level-1) * 4),
+                io.format(Stream, "%ssubclass computed result ",
+                    [s(IndentStr)], !IO),
+                io.write_line(Stream,
+                    TypeClassInfoVar - MaybeTCIConstArg, !IO),
+                io.nl(Stream, !IO)
             )
         )
     ).
@@ -2673,33 +2396,31 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
 make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
         Context, TypeClassInfoVarMCA, Goals, !Info) :-
     trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-        promise_pure (
-            semipure get_selected_pred(SelectedPred),
-            semipure get_level(Level),
-            (
-                SelectedPred = no
-            ;
-                SelectedPred = yes,
-                poly_info_get_debug_stream(!.Info, Stream, !IO),
-                IndentStr = string.duplicate_char(' ', Level * 4),
-                impure set_level(Level + 1),
+        poly_info_get_selected_pred(SelectedPred, !IO),
+        poly_info_get_indent_level(Level, !IO),
+        (
+            SelectedPred = is_not_selected_pred
+        ;
+            SelectedPred = is_selected_pred,
+            poly_info_get_debug_stream(!.Info, Stream, !IO),
+            IndentStr = string.duplicate_char(' ', Level * 4),
+            poly_info_set_indent_level(Level + 1, !IO),
 
-                io.format(Stream, "%smake_typeclass_info_from_instance\n",
-                    [s(IndentStr)], !IO),
-                io.format(Stream, "%sConstraint: ", [s(IndentStr)], !IO),
-                io.write_line(Stream, Constraint, !IO),
-                io.format(Stream, "%sSeen: ", [s(IndentStr)], !IO),
-                ( if Seen = [Constraint] then
-                    io.write_string(Stream, "[Constraint]\n", !IO)
-                else
-                    io.write_line(Stream, Seen, !IO)
-                ),
-                io.format(Stream, "%sInstanceNum: %d\n",
-                    [s(IndentStr), i(InstanceNum)], !IO),
-                io.format(Stream, "%sExistQVars: ", [s(IndentStr)], !IO),
-                io.write_line(Stream, ExistQVars, !IO),
-                io.nl(Stream, !IO)
-            )
+            io.format(Stream, "%smake_typeclass_info_from_instance\n",
+                [s(IndentStr)], !IO),
+            io.format(Stream, "%sConstraint: ", [s(IndentStr)], !IO),
+            io.write_line(Stream, Constraint, !IO),
+            io.format(Stream, "%sSeen: ", [s(IndentStr)], !IO),
+            ( if Seen = [Constraint] then
+                io.write_string(Stream, "[Constraint]\n", !IO)
+            else
+                io.write_line(Stream, Seen, !IO)
+            ),
+            io.format(Stream, "%sInstanceNum: %d\n",
+                [s(IndentStr), i(InstanceNum)], !IO),
+            io.format(Stream, "%sExistQVars: ", [s(IndentStr)], !IO),
+            io.write_line(Stream, ExistQVars, !IO),
+            io.nl(Stream, !IO)
         )
     ),
 
@@ -2715,65 +2436,61 @@ make_typeclass_info_from_instance(Constraint, Seen, InstanceNum, ExistQVars,
             TypeClassInfoVar - yes(csa_const_struct(InstanceIdConstNum)),
 
         trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-            promise_pure (
-                semipure get_selected_pred(SelectedPred),
-                semipure get_level(Level),
-                impure set_level(Level - 1),
+            poly_info_get_selected_pred(SelectedPred, !IO),
+            poly_info_get_indent_level(Level, !IO),
+            poly_info_set_indent_level(Level - 1, !IO),
+            (
+                SelectedPred = is_not_selected_pred
+            ;
+                SelectedPred = is_selected_pred,
+                poly_info_get_debug_stream(!.Info, Stream, !IO),
+                IndentStr = string.duplicate_char(' ', (Level-1) * 4),
                 (
-                    SelectedPred = no
+                    Goals = [],
+                    ResultStr = "instance doubly cached result "
                 ;
-                    SelectedPred = yes,
-                    poly_info_get_debug_stream(!.Info, Stream, !IO),
-                    IndentStr = string.duplicate_char(' ', (Level-1) * 4),
-                    (
-                        Goals = [],
-                        ResultStr = "instance doubly cached result "
-                    ;
-                        Goals = [_ | _],
-                        ResultStr = "instance cached result "
-                    ),
+                    Goals = [_ | _],
+                    ResultStr = "instance cached result "
+                ),
 
-                    io.format(Stream, "%s%s",
-                        [s(IndentStr), s(ResultStr)], !IO),
-                    io.write_line(Stream, TypeClassInfoVarMCA, !IO),
-                    io.nl(Stream, !IO)
-                )
+                io.format(Stream, "%s%s",
+                    [s(IndentStr), s(ResultStr)], !IO),
+                io.write_line(Stream, TypeClassInfoVarMCA, !IO),
+                io.nl(Stream, !IO)
             )
         )
     else
         do_make_typeclass_info_from_instance(InstanceId, ExistQVars,
             Context, TypeClassInfoVarMCA, Goals, !Info),
         trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-            promise_pure (
-                semipure get_selected_pred(SelectedPred),
-                semipure get_level(Level),
-                impure set_level(Level - 1),
-                (
-                    SelectedPred = no
-                ;
-                    SelectedPred = yes,
-                    poly_info_get_debug_stream(!.Info, Stream, !IO),
-                    IndentStr = string.duplicate_char(' ', (Level-1) * 4),
-                    io.format(Stream, "%sinstance computed result: ",
-                        [s(IndentStr)], !IO),
-                    io.write_line(Stream, TypeClassInfoVarMCA, !IO),
+            poly_info_get_selected_pred(SelectedPred, !IO),
+            poly_info_get_indent_level(Level, !IO),
+            poly_info_set_indent_level(Level - 1, !IO),
+            (
+                SelectedPred = is_not_selected_pred
+            ;
+                SelectedPred = is_selected_pred,
+                poly_info_get_debug_stream(!.Info, Stream, !IO),
+                IndentStr = string.duplicate_char(' ', (Level-1) * 4),
+                io.format(Stream, "%sinstance computed result: ",
+                    [s(IndentStr)], !IO),
+                io.write_line(Stream, TypeClassInfoVarMCA, !IO),
 
-                    poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap),
-                    poly_info_get_typeclass_info_map(!.Info, TypeClassInfoMap),
-                    poly_info_get_const_struct_var_map(!.Info,
-                        ConstStructVarMap),
+                poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap),
+                poly_info_get_typeclass_info_map(!.Info, TypeClassInfoMap),
+                poly_info_get_const_struct_var_map(!.Info,
+                    ConstStructVarMap),
 
-                    io.format(Stream, "%stype_info_var_map: ",
-                        [s(IndentStr)], !IO),
-                    io.write_line(Stream, TypeInfoVarMap, !IO),
-                    io.format(Stream, "%stypeclass_info_map: ",
-                        [s(IndentStr)], !IO),
-                    io.write_line(Stream, TypeClassInfoMap, !IO),
-                    io.format(Stream, "%sstricy_var_map: ",
-                        [s(IndentStr)], !IO),
-                    io.write_line(Stream, ConstStructVarMap, !IO),
-                    io.nl(Stream, !IO)
-                )
+                io.format(Stream, "%stype_info_var_map: ",
+                    [s(IndentStr)], !IO),
+                io.write_line(Stream, TypeInfoVarMap, !IO),
+                io.format(Stream, "%stypeclass_info_map: ",
+                    [s(IndentStr)], !IO),
+                io.write_line(Stream, TypeClassInfoMap, !IO),
+                io.format(Stream, "%sstricy_var_map: ",
+                    [s(IndentStr)], !IO),
+                io.write_line(Stream, ConstStructVarMap, !IO),
+                io.nl(Stream, !IO)
             )
         )
     ).
@@ -2945,6 +2662,18 @@ do_make_typeclass_info_from_instance(InstanceId, ExistQVars, Context,
         poly_info_set_const_struct_db(ConstStructDb, !Info)
     else
         true
+    ).
+
+:- pred make_const_or_var_arg(pair(prog_var, maybe(const_struct_arg))::in,
+    const_or_var_arg::out) is det.
+
+make_const_or_var_arg(Var - MCA, ConstOrVarArg) :-
+    (
+        MCA = no,
+        ConstOrVarArg = cova_var(Var)
+    ;
+        MCA = yes(ConstArg),
+        ConstOrVarArg = cova_const(ConstArg)
     ).
 
 :- pred construct_typeclass_info(prog_constraint::in,
@@ -3168,424 +2897,6 @@ polymorphism_maybe_extract_type_info(OldRttiVarMaps, Context, TVar,
 
 %---------------------------------------------------------------------------%
 
-polymorphism_make_type_info_vars(Types, Context, ExtraVars,
-        ExtraGoals, !Info) :-
-    polymorphism_do_make_type_info_vars(Types, Context, ExtraVarsMCAs,
-        ExtraGoals, !Info),
-    assoc_list.keys(ExtraVarsMCAs, ExtraVars).
-
-polymorphism_make_type_info_var(Type, Context, ExtraVar, ExtraGoals, !Info) :-
-    polymorphism_do_make_type_info_var(Type, Context, ExtraVarMCA,
-        ExtraGoals, !Info),
-    ExtraVarMCA = ExtraVar - _.
-
-:- pred polymorphism_do_make_type_info_vars(list(mer_type)::in,
-    term.context::in,
-    assoc_list(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
-    poly_info::in, poly_info::out) is det.
-
-polymorphism_do_make_type_info_vars([], _, [], [], !Info).
-polymorphism_do_make_type_info_vars([Type | Types], Context,
-        VarsMCAs, Goals, !Info) :-
-    polymorphism_do_make_type_info_var(Type, Context, HeadVarMCA,
-        HeadGoals, !Info),
-    polymorphism_do_make_type_info_vars(Types, Context, TailVarsMCAs,
-        TailGoals, !Info),
-    VarsMCAs = [HeadVarMCA | TailVarsMCAs],
-    Goals = HeadGoals ++ TailGoals.
-
-:- pred polymorphism_do_make_type_info_var(mer_type::in, term.context::in,
-    pair(prog_var, maybe(const_struct_arg))::out, list(hlds_goal)::out,
-    poly_info::in, poly_info::out) is det.
-
-polymorphism_do_make_type_info_var(Type, Context, VarMCA, ExtraGoals, !Info) :-
-    % First handle statically known types (i.e. types which are not
-    % type variables).
-    ( if type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs) then
-        % This occurs for code where a predicate calls a polymorphic predicate
-        % with a type whose type constructor is of variable arity. The
-        % transformation we perform is basically the same as in the usual case
-        % below, except that we map pred types to pred/0, func types to func/0
-        % and tuple types to tuple/0 for the purposes of creating type_infos.
-        % To allow univ_to_type to check the type_infos correctly, the actual
-        % arity is added to the type_info we create.
-        %
-        % XXX FIXME (RTTI for higher order impure code)
-        % we should not ignore the purity of higher order procs;
-        % it should get included in the RTTI.
-        polymorphism_make_type_info(Type, TypeCtor, TypeArgs, yes,
-            Context, VarMCA, ExtraGoals, !Info)
-    else
-        (
-            ( Type = defined_type(_, _, _)
-            ; Type = builtin_type(_)
-            ; Type = tuple_type(_, _)
-            ; Type = higher_order_type(_,_, _, _, _)
-            ; Type = apply_n_type(_, _, _)
-            ; Type = kinded_type(_, _)
-            ),
-            type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),
-            % This occurs for code where a predicate calls a polymorphic
-            % predicate with a known value of the type variable. The
-            % transformation we perform is shown in the comment at the top
-            % of the module.
-            polymorphism_make_type_info(Type, TypeCtor, TypeArgs, no,
-                Context, VarMCA, ExtraGoals, !Info)
-        ;
-            % Now handle the cases of types which are not known statically,
-            % i.e. type variables.
-            Type = type_variable(TypeVar, _),
-            get_type_info_locn(TypeVar, TypeInfoLocn, !Info),
-            get_type_info_from_locn(TypeVar, TypeInfoLocn, Context,
-                Var, ExtraGoals, !Info),
-            VarMCA = Var - no
-        )
-    ).
-
-:- pred polymorphism_make_type_info(mer_type::in, type_ctor::in,
-    list(mer_type)::in, bool::in, prog_context::in,
-    pair(prog_var, maybe(const_struct_arg))::out,
-    list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
-
-polymorphism_make_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
-        Context, TypeInfoVarMCA, ExtraGoals, !Info) :-
-    poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap0),
-    ( if
-        map.search(TypeInfoVarMap0, TypeCtor, TypeCtorVarMap0),
-        map.search(TypeCtorVarMap0, TypeArgs, OldTypeInfoVarMCA)
-    then
-        poly_info_get_num_reuses(!.Info, NumReuses),
-        poly_info_set_num_reuses(NumReuses + 1, !Info),
-        TypeInfoVarMCA = OldTypeInfoVarMCA,
-        ExtraGoals = []
-    else
-        polymorphism_construct_type_info(Type, TypeCtor, TypeArgs,
-            TypeCtorIsVarArity, Context, TypeInfoVar, TypeInfoConstArg,
-            ExtraGoals, !Info),
-        TypeInfoVarMCA = TypeInfoVar - TypeInfoConstArg,
-        % We have to get the type_info_var_map again since the call just above
-        % could have added relevant new entries to it.
-        poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap1),
-        ( if map.search(TypeInfoVarMap1, TypeCtor, TypeCtorVarMap1) then
-            map.det_insert(TypeArgs, TypeInfoVarMCA,
-                TypeCtorVarMap1, TypeCtorVarMap),
-            map.det_update(TypeCtor, TypeCtorVarMap,
-                TypeInfoVarMap1, TypeInfoVarMap)
-        else
-            TypeCtorVarMap = map.singleton(TypeArgs, TypeInfoVarMCA),
-            map.det_insert(TypeCtor, TypeCtorVarMap,
-                TypeInfoVarMap1, TypeInfoVarMap)
-        ),
-        poly_info_set_type_info_var_map(TypeInfoVarMap, !Info)
-    ).
-
-:- pred polymorphism_construct_type_info(mer_type::in, type_ctor::in,
-    list(mer_type)::in, bool::in, prog_context::in,
-    prog_var::out, maybe(const_struct_arg)::out,
-    list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
-
-polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
-        Context, Var, MCA, ExtraGoals, !Info) :-
-    get_var_maps_snapshot("polymorphism_construct_type_info",
-        InitialVarMapsSnapshot, !Info),
-
-    % Create the typeinfo vars for the arguments.
-    polymorphism_do_make_type_info_vars(TypeArgs, Context,
-        ArgTypeInfoVarsMCAs, ArgTypeInfoGoals, !Info),
-
-    poly_info_get_varset(!.Info, VarSet0),
-    poly_info_get_var_types(!.Info, VarTypes0),
-    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-
-    TypeCtorConsId = type_ctor_info_cons_id(TypeCtor),
-    TypeCtorConsIdConstArg = csa_constant(TypeCtorConsId, type_info_type),
-    poly_info_get_const_struct_var_map(!.Info, ConstStructVarMap0),
-    ( if
-        map.search(ConstStructVarMap0, TypeCtorConsIdConstArg, OldTypeCtorVar)
-    then
-        poly_info_get_num_reuses(!.Info, NumReuses),
-        poly_info_set_num_reuses(NumReuses + 1, !Info),
-        TypeCtorVar = OldTypeCtorVar,
-        TypeCtorGoals = [],
-        VarSet1 = VarSet0,
-        VarTypes1 = VarTypes0,
-        RttiVarMaps1 = RttiVarMaps0
-    else
-        init_const_type_ctor_info_var_from_cons_id(Type, TypeCtorConsId,
-            TypeCtorVar, TypeCtorGoal, VarSet0, VarSet1, VarTypes0, VarTypes1,
-            RttiVarMaps0, RttiVarMaps1),
-        TypeCtorGoals = [TypeCtorGoal],
-        map.det_insert(TypeCtorConsIdConstArg, TypeCtorVar,
-            ConstStructVarMap0, ConstStructVarMap1),
-        poly_info_set_const_struct_var_map(ConstStructVarMap1, !Info)
-    ),
-
-    poly_info_set_varset_types_rtti(VarSet1, VarTypes1, RttiVarMaps1, !Info),
-
-    % The rest of this predicate create code that constructs the second cell
-    % of a type_info for Type if we need a second cell for Type. This cell
-    % will usually be of the form:
-    %
-    %   TypeInfoVar = type_info(TypeCtorVar, ArgTypeInfoVars...)
-    %
-    % However, if TypeCtorIsVarArity is true and we are not compiling for
-    % the Java backend, then it will be of the form
-    %
-    %   TypeInfoVar = type_info(TypeCtorVar, Arity, ArgTypeInfoVars...)
-    %
-    % TypeCtorVar should be the variable holding the type_ctor_info for the
-    % principal type constructor of Type, and TypeCtorIsVarArity should be
-    % true iff the type constructor it represents has a variable arity.
-    %
-    % ArgTypeInfoVars should be variables holding the type_infos (or
-    % type_ctor_infos for zero-arity types) of the argument types of Type.
-    %
-    % The returned Var will be bound to the type_info cell of Type if such
-    % a cell had to be allocated, and to the type_ctor_info of Type's only
-    % type constructor if it didn't.
-    %
-    % NOTE: the special handling for the java backend must be kept
-    % consistent with:
-    %   rtti_to_mlds.gen_type_info_defn/6
-    %   java/runtime/TypeInfo_Struct.java
-
-    % Determine if we need to explicitly pass the arity.
-    (
-        TypeCtorIsVarArity = no,
-        PassArity = no
-    ;
-        TypeCtorIsVarArity = yes,
-        poly_info_get_module_info(!.Info, ModuleInfo),
-        module_info_get_globals(ModuleInfo, Globals),
-        get_target(Globals, Target),
-        (
-            Target = target_java,
-            PassArity = no
-        ;
-            ( Target = target_c
-            ; Target = target_csharp
-            ),
-            PassArity = yes
-        )
-    ),
-
-    ( if
-        % Unfortunately, if the type's type constructor has variable arity,
-        % we cannot use a one-cell representation for that type.
-        PassArity = no,
-        ArgTypeInfoVarsMCAs = []
-    then
-        % We do not need a second cell for a separate typeinfo; we will use
-        % the type_ctor_info as the type_info.
-
-        % Since this type_ctor_info is pretending to be a type_info,
-        % we need to adjust its type. We handle type_ctor_info_const cons_ids
-        % specially to make sure that this causes no problems.
-        TypeInfoType = type_info_type,
-        Var = TypeCtorVar,
-        TypeCtorConstArg = csa_constant(TypeCtorConsId, type_info_type),
-        MCA = yes(TypeCtorConstArg),
-        ExtraGoals = ArgTypeInfoGoals ++ TypeCtorGoals,
-        update_var_type(TypeCtorVar, TypeInfoType, VarTypes1, VarTypes),
-        poly_info_set_varset_types(VarSet1, VarTypes, !Info)
-    else
-        % We do need a second cell for a separate typeinfo.
-        Cell = type_info_cell(TypeCtor),
-        ConsId = cell_cons_id(Cell),
-
-        poly_info_get_const_struct_db(!.Info, ConstStructDb0),
-        const_struct_db_get_poly_enabled(ConstStructDb0, Enabled),
-        ( if
-            Enabled = enable_const_struct,
-            all_are_const_struct_args(ArgTypeInfoVarsMCAs,
-                ArgTypeInfoConstArgs)
-        then
-            TypeCtorConstArg = csa_constant(TypeCtorConsId, type_info_type),
-            TypeCtorInst = bound(shared, inst_test_results_fgtc,
-                [bound_functor(TypeCtorConsId, [])]),
-            list.map(get_inst_of_const_struct_arg(ConstStructDb0),
-                ArgTypeInfoConstArgs, ArgTypeInfoInsts),
-            (
-                PassArity = yes,
-                list.length(ArgTypeInfoVarsMCAs, ActualArity),
-                ArityConstArg = csa_constant(int_const(ActualArity), int_type),
-                ArityInst = bound(shared, inst_test_results_fgtc,
-                    [bound_functor(int_const(ActualArity), [])]),
-                StructConstArgs =
-                    [TypeCtorConstArg, ArityConstArg | ArgTypeInfoConstArgs],
-                StructArgInsts = [TypeCtorInst, ArityInst | ArgTypeInfoInsts]
-            ;
-                PassArity = no,
-                StructConstArgs = [TypeCtorConstArg | ArgTypeInfoConstArgs],
-                StructArgInsts = [TypeCtorInst | ArgTypeInfoInsts]
-            ),
-            StructType = type_info_type,
-            list.length(StructConstArgs, NumArgs),
-            InstConsId = cell_inst_cons_id(Cell, NumArgs),
-            StructInst = bound(shared, inst_test_results_fgtc,
-                [bound_functor(InstConsId, StructArgInsts)]),
-
-            poly_info_get_defined_where(!.Info, DefinedWhere),
-            ConstStruct = const_struct(ConsId, StructConstArgs,
-                StructType, StructInst, DefinedWhere),
-            lookup_insert_const_struct(ConstStruct, ConstNum,
-                ConstStructDb0, ConstStructDb),
-            MCA = yes(csa_const_struct(ConstNum)),
-            poly_info_set_const_struct_db(ConstStructDb, !Info),
-
-            set_var_maps_snapshot("maybe_init_second_cell",
-                InitialVarMapsSnapshot, !Info),
-
-            new_type_info_var(Type, type_info, Var, !Info),
-            Unification = construct(Var, type_info_const(ConstNum),
-                [], [], construct_statically, cell_is_shared,
-                no_construct_sub_info),
-            Ground = ground(shared, none_or_default_func),
-            UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
-            % XXX The UnifyContext is wrong.
-            UnifyContext = unify_context(umc_explicit, []),
-            TypeInfoRHS = rhs_functor(type_info_const(ConstNum),
-                is_not_exist_constr, []),
-            Unify = unify(Var, TypeInfoRHS, UnifyMode, Unification,
-                UnifyContext),
-
-            % Create a goal_info for the unification.
-            NonLocals = set_of_var.make_singleton(Var),
-            % Note that we could be more accurate than `ground(shared)',
-            % but it shouldn't make any difference.
-            VarInst = bound(shared, inst_test_results_fgtc,
-                [bound_functor(InstConsId, [])]),
-            InstMapDelta = instmap_delta_from_assoc_list([Var - VarInst]),
-            goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
-                GoalInfo),
-            TypeInfoGoal = hlds_goal(Unify, GoalInfo),
-            ExtraGoals = [TypeInfoGoal]
-        else
-            assoc_list.keys(ArgTypeInfoVarsMCAs, ArgTypeInfoVars),
-            (
-                PassArity = yes,
-                list.length(ArgTypeInfoVars, ActualArity),
-                get_poly_const(ActualArity, ArityVar, ArityGoals, !Info),
-                % The call get_poly_const may (and probably will) allocate
-                % a variable, so VarSet1, VarTypes1 and RttiVarMaps1 are
-                % all out of date.
-                poly_info_get_varset(!.Info, VarSet2),
-                poly_info_get_var_types(!.Info, VarTypes2),
-                poly_info_get_rtti_varmaps(!.Info, RttiVarMaps2),
-                init_type_info_var(Type,
-                    [TypeCtorVar, ArityVar | ArgTypeInfoVars],
-                    no, Var, TypeInfoGoal,
-                    VarSet2, VarSet, VarTypes2, VarTypes,
-                    RttiVarMaps2, RttiVarMaps),
-                ExtraGoals = TypeCtorGoals ++ ArityGoals ++ ArgTypeInfoGoals
-                    ++ [TypeInfoGoal]
-            ;
-                PassArity = no,
-                init_type_info_var(Type, [TypeCtorVar | ArgTypeInfoVars],
-                    no, Var, TypeInfoGoal,
-                    VarSet1, VarSet, VarTypes1, VarTypes,
-                    RttiVarMaps1, RttiVarMaps),
-                ExtraGoals = TypeCtorGoals ++ ArgTypeInfoGoals ++
-                    [TypeInfoGoal]
-            ),
-            poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps,
-                !Info),
-            MCA = no
-        )
-    ).
-
-init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
-        !VarSet, !VarTypes, !RttiVarMaps) :-
-    type_to_ctor_det(Type, TypeCtor),
-    Cell = type_info_cell(TypeCtor),
-    ConsId = cell_cons_id(Cell),
-    do_init_type_info_var(Type, Cell, ConsId, ArgVars, MaybePreferredVar,
-        TypeInfoVar, TypeInfoGoal, !VarSet, !VarTypes, !RttiVarMaps).
-
-:- pred do_init_type_info_var(mer_type::in, polymorphism_cell::in, cons_id::in,
-    list(prog_var)::in, maybe(prog_var)::in, prog_var::out, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    rtti_varmaps::in, rtti_varmaps::out) is det.
-
-do_init_type_info_var(Type, Cell, ConsId, ArgVars, MaybePreferredVar,
-        TypeInfoVar, TypeInfoGoal, !VarSet, !VarTypes, !RttiVarMaps) :-
-    TypeInfoRHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
-    % Introduce a new variable.
-    (
-        MaybePreferredVar = yes(TypeInfoVar)
-    ;
-        MaybePreferredVar = no,
-        new_type_info_var_raw(Type, type_info, TypeInfoVar,
-            !VarSet, !VarTypes, !RttiVarMaps)
-    ),
-
-    % Create the construction unification to initialize the variable.
-    Ground = ground(shared, none_or_default_func),
-    ArgMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
-    list.length(ArgVars, NumArgVars),
-    list.duplicate(NumArgVars, ArgMode, ArgModes),
-    Unification = construct(TypeInfoVar, ConsId, ArgVars, ArgModes,
-        construct_dynamically, cell_is_unique, no_construct_sub_info),
-    UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
-    % XXX The UnifyContext is wrong.
-    UnifyContext = unify_context(umc_explicit, []),
-    Unify = unify(TypeInfoVar, TypeInfoRHS, UnifyMode, Unification,
-        UnifyContext),
-
-    % Create a goal_info for the unification.
-    set_of_var.list_to_set([TypeInfoVar | ArgVars], NonLocals),
-    list.duplicate(NumArgVars, Ground, ArgInsts),
-    % Note that we could perhaps be more accurate than `ground(shared)',
-    % but it shouldn't make any difference.
-    InstConsId = cell_inst_cons_id(Cell, NumArgVars),
-    InstResults = inst_test_results(inst_result_is_ground,
-        inst_result_does_not_contain_any,
-        inst_result_contains_inst_names_known(set.init),
-        inst_result_contains_inst_vars_unknown,
-        inst_result_contains_types_unknown,
-        inst_result_no_type_ctor_propagated),
-    TypeInfoVarInst = bound(unique, InstResults,
-        [bound_functor(InstConsId, ArgInsts)]),
-    InstMapDelta = instmap_delta_from_assoc_list(
-        [TypeInfoVar - TypeInfoVarInst]),
-    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
-    TypeInfoGoal = hlds_goal(Unify, GoalInfo).
-
-init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
-        ConsId, TypeCtorInfoGoal, !VarSet, !VarTypes, !RttiVarMaps) :-
-    ConsId = type_ctor_info_cons_id(TypeCtor),
-    init_const_type_ctor_info_var_from_cons_id(Type, ConsId,
-        TypeCtorInfoVar, TypeCtorInfoGoal, !VarSet, !VarTypes, !RttiVarMaps).
-
-:- pred init_const_type_ctor_info_var_from_cons_id(mer_type::in, cons_id::in,
-    prog_var::out, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
-
-init_const_type_ctor_info_var_from_cons_id(Type, ConsId,
-        TypeCtorInfoVar, TypeCtorInfoGoal, !VarSet, !VarTypes, !RttiVarMaps) :-
-    % Introduce a new variable.
-    new_type_info_var_raw(Type, type_ctor_info, TypeCtorInfoVar,
-        !VarSet, !VarTypes, !RttiVarMaps),
-
-    % Create the construction unification to initialize the variable.
-    TypeInfoRHS = rhs_functor(ConsId, is_not_exist_constr, []),
-    Unification = construct(TypeCtorInfoVar, ConsId, [], [],
-        construct_dynamically, cell_is_shared, no_construct_sub_info),
-    Ground = ground(shared, none_or_default_func),
-    UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
-    % XXX The UnifyContext is wrong.
-    UnifyContext = unify_context(umc_explicit, []),
-    Unify = unify(TypeCtorInfoVar, TypeInfoRHS, UnifyMode,
-        Unification, UnifyContext),
-
-    % Create a goal_info for the unification.
-    NonLocals = set_of_var.make_singleton(TypeCtorInfoVar),
-    InstmapDelta = instmap_delta_bind_var(TypeCtorInfoVar),
-    goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure, GoalInfo),
-    TypeCtorInfoGoal = hlds_goal(Unify, GoalInfo).
-
-%---------------------------------------------------------------------------%
-
 :- pred make_head_vars(list(tvar)::in, tvarset::in,
     list(prog_var)::out, poly_info::in, poly_info::out) is det.
 
@@ -3605,160 +2916,6 @@ make_head_vars([TypeVar | TypeVars], TypeVarSet, TypeInfoVars, !Info) :-
     ),
     make_head_vars(TypeVars, TypeVarSet, TypeInfoVars1, !Info),
     TypeInfoVars = [Var | TypeInfoVars1].
-
-:- pred new_type_info_var(mer_type::in, type_info_kind::in,
-    prog_var::out, poly_info::in, poly_info::out) is det.
-
-new_type_info_var(Type, Kind, Var, !Info) :-
-    poly_info_get_varset(!.Info, VarSet0),
-    poly_info_get_var_types(!.Info, VarTypes0),
-    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    new_type_info_var_raw(Type, Kind, Var, VarSet0, VarSet,
-        VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
-    poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info).
-
-new_type_info_var_raw(Type, Kind, Var, !VarSet, !VarTypes, !RttiVarMaps) :-
-    % Introduce new variable.
-    varset.new_var(Var, !VarSet),
-    term.var_to_int(Var, VarNum),
-    string.int_to_string(VarNum, VarNumStr),
-    (
-        Kind = type_info,
-        Prefix = "TypeInfo_",
-        rtti_det_insert_type_info_type(Var, Type, !RttiVarMaps)
-    ;
-        Kind = type_ctor_info,
-        Prefix = "TypeCtorInfo_"
-
-        % XXX Perhaps we should record the variables holding
-        % type_ctor_infos in the rtti_varmaps somewhere.
-    ),
-    Name = Prefix ++ VarNumStr,
-    varset.name_var(Var, Name, !VarSet),
-    add_var_type(Var, type_info_type, !VarTypes).
-
-%---------------------------------------------------------------------------%
-
-:- pred get_type_info_locn(tvar::in, type_info_locn::out, poly_info::in,
-    poly_info::out) is det.
-
-get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
-    % If we have already allocated a location for this type_info, then all
-    % we need to do is to extract the type_info variable from its location.
-    ( if
-        poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-        rtti_search_type_info_locn(RttiVarMaps0, TypeVar, TypeInfoLocnPrime)
-    then
-        TypeInfoLocn = TypeInfoLocnPrime
-    else
-        % Otherwise, we need to create a new type_info variable, and set the
-        % location for this type variable to be that type_info variable.
-        %
-        % This is wrong if the type variable is one of the existentially
-        % quantified variables of a called predicate and the variable occurs
-        % in an existential typeclass constraint. In that case the type_info
-        % will be stored in the typeclass_info variable produced by the
-        % predicate, not in a type_info variable. maybe_extract_type_info
-        % will fix this up when the typeclass_info is created.
-
-        poly_info_get_tvar_kind_map(!.Info, TVarKindMap),
-        get_tvar_kind(TVarKindMap, TypeVar, Kind),
-        Type = type_variable(TypeVar, Kind),
-        new_type_info_var(Type, type_info, Var, !Info),
-        TypeInfoLocn = type_info(Var),
-        % Since the call to new_type_info_var above may update the rtti
-        % varmaps, we have to get them again here; we can't use RttiVarMaps0.
-        poly_info_get_rtti_varmaps(!.Info, RttiVarMaps1),
-        rtti_det_insert_type_info_locn(TypeVar, TypeInfoLocn,
-            RttiVarMaps1, RttiVarMaps),
-        poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
-    ).
-
-    % Generate code to get the value of a type variable.
-    %
-:- pred get_type_info_from_locn(tvar::in, type_info_locn::in, prog_context::in,
-    prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
-
-get_type_info_from_locn(TypeVar, TypeInfoLocn, Context, Var, ExtraGoals,
-        !Info) :-
-    (
-        % If the typeinfo is available in a variable, just use it.
-        TypeInfoLocn = type_info(TypeInfoVar),
-        Var = TypeInfoVar,
-        ExtraGoals = []
-    ;
-        % If the typeinfo is in a typeclass_info, then we need to extract it
-        % before using it.
-        TypeInfoLocn = typeclass_info(TypeClassInfoVar, Index),
-        polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index,
-            Context, ExtraGoals, Var, !Info)
-    ).
-
-:- pred polymorphism_extract_type_info(tvar::in, prog_var::in, int::in,
-    prog_context::in, list(hlds_goal)::out, prog_var::out,
-    poly_info::in, poly_info::out) is det.
-
-polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index, Context,
-        Goals, TypeInfoVar, !Info) :-
-    get_poly_const(Index, IndexVar, IndexGoals, !Info),
-    poly_info_get_varset(!.Info, VarSet0),
-    poly_info_get_var_types(!.Info, VarTypes0),
-    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    poly_info_get_module_info(!.Info, ModuleInfo),
-    poly_info_get_tvar_kind_map(!.Info, TVarKindMap),
-    get_tvar_kind(TVarKindMap, TypeVar, Kind),
-    IndexIntOrVar = iov_var(IndexVar),
-    gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
-        IndexIntOrVar, Context, ExtractGoals, TypeInfoVar,
-        VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
-    Goals = IndexGoals ++ ExtractGoals,
-    poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info).
-
-gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
-        IndexIntOrVar, Context, Goals, TypeInfoVar,
-        !VarSet, !VarTypes, !RttiVarMaps) :-
-    (
-        IndexIntOrVar = iov_int(Index),
-        % We cannot call get_poly_const since we don't have a poly_info.
-        make_int_const_construction_alloc(Index, yes("TypeInfoIndex"),
-            IndexGoal, IndexVar, !VarSet, !VarTypes),
-        IndexGoals = [IndexGoal]
-    ;
-        IndexIntOrVar = iov_var(IndexVar),
-        IndexGoals = []
-    ),
-    Type = type_variable(TypeVar, Kind),
-    new_type_info_var_raw(Type, type_info, TypeInfoVar,
-        !VarSet, !VarTypes, !RttiVarMaps),
-    generate_simple_call(ModuleInfo, mercury_private_builtin_module,
-        "type_info_from_typeclass_info", pf_predicate, only_mode,
-        detism_det, purity_pure, [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
-        instmap_delta_bind_var(TypeInfoVar), Context,
-        CallGoal),
-    Goals = IndexGoals ++ [CallGoal].
-
-:- pred get_poly_const(int::in, prog_var::out, list(hlds_goal)::out,
-    poly_info::in, poly_info::out) is det.
-
-get_poly_const(IntConst, IntVar, Goals, !Info) :-
-    poly_info_get_varset(!.Info, VarSet0),
-    poly_info_get_var_types(!.Info, VarTypes0),
-
-    poly_info_get_int_const_map(!.Info, IntConstMap0),
-    ( if map.search(IntConstMap0, IntConst, IntVarPrime) then
-        poly_info_get_num_reuses(!.Info, NumReuses),
-        poly_info_set_num_reuses(NumReuses + 1, !Info),
-        IntVar = IntVarPrime,
-        Goals = []
-    else
-        make_int_const_construction_alloc(IntConst,
-            yes("PolyConst" ++ string.int_to_string(IntConst)),
-            Goal, IntVar, VarSet0, VarSet, VarTypes0, VarTypes),
-        map.det_insert(IntConst, IntVar, IntConstMap0, IntConstMap),
-        poly_info_set_int_const_map(IntConstMap, !Info),
-        poly_info_set_varset_types(VarSet, VarTypes, !Info),
-        Goals = [Goal]
-    ).
 
 %---------------------------------------------------------------------------%
 
@@ -3784,8 +2941,8 @@ get_poly_const(IntConst, IntVar, Goals, !Info) :-
 
 make_typeclass_info_head_vars(RecordLocns, Constraints, ExtraHeadVars,
         !Info) :-
-    list.map_foldl(make_typeclass_info_head_var(RecordLocns), Constraints,
-        ExtraHeadVars, !Info).
+    list.map_foldl(make_typeclass_info_head_var(RecordLocns),
+        Constraints, ExtraHeadVars, !Info).
 
 :- pred make_typeclass_info_head_var(record_type_info_locns::in,
     prog_constraint::in, prog_var::out, poly_info::in, poly_info::out) is det.
@@ -4102,32 +3259,6 @@ get_constrained_vars(Constraint) = CVars :-
 
 %---------------------------------------------------------------------------%
 
-:- pred all_are_const_struct_args(
-    assoc_list(prog_var, maybe(const_struct_arg))::in,
-    list(const_struct_arg)::out) is semidet.
-
-all_are_const_struct_args([], []).
-all_are_const_struct_args([VarMCA | VarsMCAs], [ConstArg | ConstArgs]) :-
-    VarMCA = _Var - MCA,
-    MCA = yes(ConstArg),
-    all_are_const_struct_args(VarsMCAs, ConstArgs).
-
-:- pred get_inst_of_const_struct_arg(const_struct_db::in, const_struct_arg::in,
-    mer_inst::out) is det.
-
-get_inst_of_const_struct_arg(ConstStructDb, ConstArg, Inst) :-
-    (
-        ConstArg = csa_constant(ConsId, _),
-        Inst = bound(shared, inst_test_results_fgtc,
-            [bound_functor(ConsId, [])])
-    ;
-        ConstArg = csa_const_struct(StructNum),
-        lookup_const_struct_num(ConstStructDb, StructNum, Struct),
-        Struct = const_struct(_, _, _, Inst, _)
-    ).
-
-%---------------------------------------------------------------------------%
-
 :- pred materialize_base_typeclass_info_var(prog_constraint::in, cons_id::in,
     prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
@@ -4202,692 +3333,6 @@ materialize_typeclass_info_var(Constraint, InstanceIdConstNum, Var, Goals,
         Goals = [Goal]
     ).
 
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- type const_or_var_arg
-    --->    cova_const(const_struct_arg)
-    ;       cova_var(prog_var).
-
-:- pred make_const_or_var_arg(pair(prog_var, maybe(const_struct_arg))::in,
-    const_or_var_arg::out) is det.
-
-make_const_or_var_arg(Var - MCA, ConstOrVarArg) :-
-    (
-        MCA = no,
-        ConstOrVarArg = cova_var(Var)
-    ;
-        MCA = yes(ConstArg),
-        ConstOrVarArg = cova_const(ConstArg)
-    ).
-
-:- type type_info_var_map ==
-    map(type_ctor,
-        map(list(mer_type), pair(prog_var, maybe(const_struct_arg)))).
-
-:- type typeclass_info_map_entry
-    --->    typeclass_info_map_entry(
-                % The cons_id representing the base_typeclass_info.
-                cons_id,
-
-                % Maps the arguments of the typeclass_info_cell_constructor
-                % after the base_typeclass_info to the variable that holds the
-                % typeclass_info for that cell.
-                map(list(const_or_var_arg),
-                    pair(prog_var, maybe(const_struct_arg)))
-            ).
-
-:- type typeclass_info_map ==
-    map(class_name, map(list(mer_type), typeclass_info_map_entry)).
-
-:- type int_const_map == map(int, prog_var).
-
-    % If the value that can be a constant structure argument is currently
-    % available in a variable, give the id of that variable.
-    %
-:- type const_struct_var_map == map(const_struct_arg, prog_var).
-
-:- type poly_info
-    --->    poly_info(
-                poly_module_info            :: module_info,
-
-                poly_varset                 :: prog_varset,
-                poly_vartypes               :: vartypes,
-                poly_rtti_varmaps           :: rtti_varmaps,
-
-                poly_typevarset             :: tvarset,
-                poly_tvar_kind_map          :: tvar_kind_map,
-
-                % Specifies why each constraint that was eliminated from the
-                % pred was able to be eliminated (this allows us to efficiently
-                % construct the dictionary).
-                % Note that the rtti_varmaps is separate from the
-                % constraint_proof_map, since the second is the information
-                % calculated by typecheck.m, while the first is the information
-                % calculated here in polymorphism.m.
-                poly_proof_map              :: constraint_proof_map,
-
-                % Specifies the constraints at each location in the goal.
-                poly_constraint_map         :: constraint_map,
-
-                % The next four maps hold information about what
-                % type_ctor_infos, type_infos, base_typeclass_infos,
-                % typeclass_infos and ints are guaranteed to be available
-                % (i.e. created by previous code on all execution paths)
-                % at the current point in the code, so they can be reused.
-                % The fifth field counts the number of times that one of these
-                % variables has in fact been reused.
-                %
-                % The type_infos and typeclass_infos are in the first two maps.
-                % The type_ctor_infos and base_typeclass_infos are in the
-                % fourth map. The integers are in the third map.
-                % The fourth map also caches typeclass_infos for instance ids.
-                poly_type_info_var_map      :: type_info_var_map,
-                poly_typeclass_info_map     :: typeclass_info_map,
-                poly_int_const_map          :: int_const_map,
-                poly_const_struct_var_map   :: const_struct_var_map,
-                poly_num_reuses             :: int,
-
-                poly_snapshot_num           :: int,
-
-                % The database of constant structures of the module.
-                % If a type_info or typeclass_info we construct is a constant
-                % term, we allocate it in this database.
-                poly_const_struct_db        :: const_struct_db,
-
-                poly_defined_where          :: defined_where,
-
-                % The list of errors we have discovered during the polymorphism
-                % pass.
-                poly_errors                 :: list(error_spec)
-            ).
-
-%---------------------------------------------------------------------------%
-
-    % Init_poly_info initializes a poly_info from a pred_info and clauses_info.
-    % (See also create_poly_info.)
-    %
-:- pred init_poly_info(module_info::in, pred_info::in, clauses_info::in,
-    poly_info::out) is det.
-
-init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
-    clauses_info_get_varset(ClausesInfo, VarSet),
-    clauses_info_get_vartypes(ClausesInfo, VarTypes),
-    pred_info_get_typevarset(PredInfo, TypeVarSet),
-    pred_info_get_tvar_kind_map(PredInfo, TypeVarKinds),
-    pred_info_get_constraint_proof_map(PredInfo, ProofMap),
-    pred_info_get_constraint_map(PredInfo, ConstraintMap),
-    rtti_varmaps_init(RttiVarMaps),
-    map.init(TypeInfoVarMap),
-    map.init(TypeClassInfoMap),
-    map.init(IntConstMap),
-    map.init(ConstStructVarMap),
-    NumReuses = 0,
-    SnapshotNum = 0,
-    module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
-    pred_info_get_status(PredInfo, PredStatus),
-    pred_status_defined_in_this_module(PredStatus) = InThisModule,
-    ( InThisModule = yes, DefinedWhere = defined_in_this_module
-    ; InThisModule = no,  DefinedWhere = defined_in_other_module
-    ),
-    Specs = [],
-    PolyInfo = poly_info(ModuleInfo, VarSet, VarTypes, RttiVarMaps,
-        TypeVarSet, TypeVarKinds, ProofMap, ConstraintMap,
-        TypeInfoVarMap, TypeClassInfoMap, IntConstMap, ConstStructVarMap,
-        NumReuses, SnapshotNum, ConstStructDb, DefinedWhere, Specs).
-
-create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
-    pred_info_get_typevarset(PredInfo, TypeVarSet),
-    pred_info_get_tvar_kind_map(PredInfo, TypeVarKinds),
-    pred_info_get_constraint_proof_map(PredInfo, ProofMap),
-    pred_info_get_constraint_map(PredInfo, ConstraintMap),
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-    map.init(TypeInfoVarMap),
-    map.init(TypeClassInfoMap),
-    map.init(IntConstMap),
-    map.init(ConstStructVarMap),
-    NumReuses = 0,
-    SnapshotNum = 0,
-    module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
-    pred_info_get_status(PredInfo, PredStatus),
-    pred_status_defined_in_this_module(PredStatus) = InThisModule,
-    ( InThisModule = yes, DefinedWhere = defined_in_this_module
-    ; InThisModule = no,  DefinedWhere = defined_in_other_module
-    ),
-    Specs = [],
-    PolyInfo = poly_info(ModuleInfo, VarSet, VarTypes, RttiVarMaps,
-        TypeVarSet, TypeVarKinds, ProofMap, ConstraintMap,
-        TypeInfoVarMap, TypeClassInfoMap, IntConstMap, ConstStructVarMap,
-        NumReuses, SnapshotNum, ConstStructDb, DefinedWhere, Specs).
-
-poly_info_extract(Info, Specs, !PredInfo, !ProcInfo, !:ModuleInfo) :-
-    Info = poly_info(!:ModuleInfo, VarSet, VarTypes, RttiVarMaps,
-        TypeVarSet, TypeVarKinds, _ProofMap, _ConstraintMap,
-        _TypeInfoVarMap, _TypeClassInfoMap, _IntConstMap, _ConstStructVarMap,
-        _NumReuses, _SnapshotNum, ConstStructDb, _DefinedWhere, Specs),
-
-    module_info_set_const_struct_db(ConstStructDb, !ModuleInfo),
-
-    % Set the new values of the fields in proc_info and pred_info.
-    proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo),
-    proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
-    pred_info_set_typevarset(TypeVarSet, !PredInfo),
-    pred_info_set_tvar_kind_map(TypeVarKinds, !PredInfo).
-
-%---------------------------------------------------------------------------%
-
-:- pred poly_info_get_module_info(poly_info::in,
-    module_info::out) is det.
-:- pred poly_info_get_varset(poly_info::in,
-    prog_varset::out) is det.
-:- pred poly_info_get_var_types(poly_info::in,
-    vartypes::out) is det.
-:- pred poly_info_get_rtti_varmaps(poly_info::in,
-    rtti_varmaps::out) is det.
-:- pred poly_info_get_typevarset(poly_info::in,
-    tvarset::out) is det.
-:- pred poly_info_get_tvar_kind_map(poly_info::in,
-    tvar_kind_map::out) is det.
-:- pred poly_info_get_proof_map(poly_info::in,
-    constraint_proof_map::out) is det.
-:- pred poly_info_get_constraint_map(poly_info::in,
-    constraint_map::out) is det.
-:- pred poly_info_get_type_info_var_map(poly_info::in,
-    type_info_var_map::out) is det.
-:- pred poly_info_get_typeclass_info_map(poly_info::in,
-    typeclass_info_map::out) is det.
-:- pred poly_info_get_int_const_map(poly_info::in,
-    int_const_map::out) is det.
-:- pred poly_info_get_const_struct_var_map(poly_info::in,
-    const_struct_var_map::out) is det.
-:- pred poly_info_get_num_reuses(poly_info::in,
-    int::out) is det.
-:- pred poly_info_get_const_struct_db(poly_info::in,
-    const_struct_db::out) is det.
-:- pred poly_info_get_defined_where(poly_info::in,
-    defined_where::out) is det.
-:- pred poly_info_get_errors(poly_info::in,
-    list(error_spec)::out) is det.
-
-:- pragma inline(poly_info_get_module_info/2).
-:- pragma inline(poly_info_get_varset/2).
-:- pragma inline(poly_info_get_var_types/2).
-:- pragma inline(poly_info_get_rtti_varmaps/2).
-:- pragma inline(poly_info_get_typevarset/2).
-:- pragma inline(poly_info_get_tvar_kind_map/2).
-:- pragma inline(poly_info_get_proof_map/2).
-:- pragma inline(poly_info_get_constraint_map/2).
-:- pragma inline(poly_info_get_type_info_var_map/2).
-:- pragma inline(poly_info_get_typeclass_info_map/2).
-:- pragma inline(poly_info_get_const_struct_var_map/2).
-:- pragma inline(poly_info_get_int_const_map/2).
-:- pragma inline(poly_info_get_num_reuses/2).
-:- pragma inline(poly_info_get_const_struct_db/2).
-:- pragma inline(poly_info_get_errors/2).
-
-poly_info_get_module_info(!.PI, X) :-
-    X = !.PI ^ poly_module_info.
-poly_info_get_varset(!.PI, X) :-
-    X = !.PI ^ poly_varset.
-poly_info_get_var_types(!.PI, X) :-
-    X = !.PI ^ poly_vartypes.
-poly_info_get_rtti_varmaps(!.PI, X) :-
-    X = !.PI ^ poly_rtti_varmaps.
-poly_info_get_typevarset(!.PI, X) :-
-    X = !.PI ^ poly_typevarset.
-poly_info_get_tvar_kind_map(!.PI, X) :-
-    X = !.PI ^ poly_tvar_kind_map.
-poly_info_get_proof_map(!.PI, X) :-
-    X = !.PI ^ poly_proof_map.
-poly_info_get_constraint_map(!.PI, X) :-
-    X = !.PI ^ poly_constraint_map.
-poly_info_get_type_info_var_map(!.PI, X) :-
-    X = !.PI ^ poly_type_info_var_map.
-poly_info_get_typeclass_info_map(!.PI, X) :-
-    X = !.PI ^ poly_typeclass_info_map.
-poly_info_get_int_const_map(!.PI, X) :-
-    X = !.PI ^ poly_int_const_map.
-poly_info_get_const_struct_var_map(!.PI, X) :-
-    X = !.PI ^ poly_const_struct_var_map.
-poly_info_get_num_reuses(!.PI, X) :-
-    X = !.PI ^ poly_num_reuses.
-poly_info_get_const_struct_db(!.PI, X) :-
-    X = !.PI ^ poly_const_struct_db.
-poly_info_get_defined_where(!.PI, X) :-
-    X = !.PI ^ poly_defined_where.
-poly_info_get_errors(!.PI, X) :-
-    X = !.PI ^ poly_errors.
-
-:- pred poly_info_set_varset(prog_varset::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_varset_types(prog_varset::in, vartypes::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_varset_types_rtti(prog_varset::in, vartypes::in,
-    rtti_varmaps::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_rtti_varmaps(rtti_varmaps::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_typevarset(tvarset::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_proof_map(constraint_proof_map::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_type_info_var_map(type_info_var_map::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_typeclass_info_map(typeclass_info_map::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_int_const_map(int_const_map::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_const_struct_var_map(const_struct_var_map::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_num_reuses(int::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_const_struct_db(const_struct_db::in,
-    poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_errors(list(error_spec)::in,
-    poly_info::in, poly_info::out) is det.
-
-:- pragma inline(poly_info_set_varset/3).
-:- pragma inline(poly_info_set_varset_types/4).
-:- pragma inline(poly_info_set_varset_types_rtti/5).
-:- pragma inline(poly_info_set_rtti_varmaps/3).
-:- pragma inline(poly_info_set_typevarset/3).
-:- pragma inline(poly_info_set_proof_map/3).
-:- pragma inline(poly_info_set_type_info_var_map/3).
-:- pragma inline(poly_info_set_typeclass_info_map/3).
-:- pragma inline(poly_info_set_int_const_map/3).
-:- pragma inline(poly_info_set_const_struct_var_map/3).
-:- pragma inline(poly_info_set_num_reuses/3).
-:- pragma inline(poly_info_set_const_struct_db/3).
-:- pragma inline(poly_info_set_errors/3).
-
-poly_info_set_varset(X, !PI) :-
-    !PI ^ poly_varset := X.
-poly_info_set_varset_types(X, Y, !PI) :-
-    !:PI = ((!.PI
-        ^ poly_varset := X)
-        ^ poly_vartypes := Y).
-poly_info_set_varset_types_rtti(X, Y, Z, !PI) :-
-    !:PI = (((!.PI
-        ^ poly_varset := X)
-        ^ poly_vartypes := Y)
-        ^ poly_rtti_varmaps := Z).
-poly_info_set_rtti_varmaps(X, !PI) :-
-    ( if private_builtin.pointer_equal(X, !.PI ^ poly_rtti_varmaps) then
-        true
-    else
-        !PI ^ poly_rtti_varmaps := X
-    ).
-poly_info_set_typevarset(X, !PI) :-
-    !PI ^ poly_typevarset := X.
-poly_info_set_proof_map(X, !PI) :-
-    ( if private_builtin.pointer_equal(X, !.PI ^ poly_proof_map) then
-        true
-    else
-        !PI ^ poly_proof_map := X
-    ).
-poly_info_set_type_info_var_map(X, !PI) :-
-    ( if private_builtin.pointer_equal(X, !.PI ^ poly_type_info_var_map) then
-        true
-    else
-        !PI ^ poly_type_info_var_map := X
-    ).
-poly_info_set_typeclass_info_map(X, !PI) :-
-    ( if private_builtin.pointer_equal(X, !.PI ^ poly_typeclass_info_map) then
-        true
-    else
-        !PI ^ poly_typeclass_info_map := X
-    ).
-poly_info_set_int_const_map(X, !PI) :-
-    ( if private_builtin.pointer_equal(X, !.PI ^ poly_int_const_map) then
-        true
-    else
-        !PI ^ poly_int_const_map := X
-    ).
-poly_info_set_const_struct_var_map(X, !PI) :-
-    ( if
-        private_builtin.pointer_equal(X, !.PI ^ poly_const_struct_var_map)
-    then
-        true
-    else
-        !PI ^ poly_const_struct_var_map := X
-    ).
-poly_info_set_num_reuses(X, !PI) :-
-    ( if X = !.PI ^ poly_num_reuses then
-        true
-    else
-        !PI ^ poly_num_reuses := X
-    ).
-poly_info_set_const_struct_db(X, !PI) :-
-    ( if private_builtin.pointer_equal(X, !.PI ^ poly_const_struct_db) then
-        true
-    else
-        !PI ^ poly_const_struct_db := X
-    ).
-poly_info_set_errors(X, !PI) :-
-    !PI ^ poly_errors := X.
-
-%  i      read      same      diff   same%
-%  0   6245285         0   1560789   0.000% varset
-%  1   6662703         0         0          vartypes
-%  2         0      1110    129008   0.853% varset, vartypes
-% 17         0    131468   1961967   6.280% varset, vartypes, rtti_varmaps
-%  3   3052707         4    245972   0.002% typevarset
-%  4   1578929         0         0          tvar_kind_map
-%  5   8959328   2116731    988195  68.173% rtti_varmaps
-%  6     14812      3980      4058  49.515% proof_map
-%  7   3030093         0         0          constraint_map
-%  8    811687    776589    288951  72.882% type_info_var_map
-%  9    385071    863384      6104  99.298% typeclass_info_map
-% 10    385706    863310      8464  99.029% int_const_map
-% 11    253310    331092     41528  88.855% num_reuses
-% 12   2559364     25821     15631  62.291% const_struct_db
-% 13    583633    780835    286464  73.160% const_struct_var_map
-% 14         0         0         0          pred_info
-% 15   3933469         0         0          module_info
-% 16         0    431065     87104  83.190% cache_maps_snapshot
-
-% :- pragma foreign_decl("C", local,
-% "
-% #define MR_NUM_INFO_STATS    18
-% unsigned long MR_stats_read[MR_NUM_INFO_STATS];
-% unsigned long MR_stats_same[MR_NUM_INFO_STATS];
-% unsigned long MR_stats_diff[MR_NUM_INFO_STATS];
-% ").
-%
-% :- pred gather_poly_info_read_stats(int::in,
-%     poly_info::in, poly_info::out) is det.
-%
-% :- pragma foreign_proc("C",
-%     gather_poly_info_read_stats(N::in, PI0::in, PI::out),
-%     [will_not_call_mercury, promise_pure],
-% "
-%     ++MR_stats_read[N];
-%     PI = PI0;
-% ").
-%
-% :- pred gather_poly_info_write_stats(int::in, T::in, T::in,
-%     poly_info::in, poly_info::out) is det.
-%
-% :- pragma foreign_proc("C",
-%     gather_poly_info_write_stats(N::in, Old::in, New::in,
-%         PI0::in, PI::out),
-%     [will_not_call_mercury, promise_pure],
-% "
-%     if (((MR_Unsigned) Old) == ((MR_Unsigned) New)) {
-%         ++MR_stats_same[N];
-%     } else {
-%         ++MR_stats_diff[N];
-%     }
-%
-%     PI = PI0;
-% ").
-%
-% :- pred gather_poly_info_write_stats_2(int::in, T::in, T::in, U::in, U::in,
-%     poly_info::in, poly_info::out) is det.
-%
-% :- pragma foreign_proc("C",
-%     gather_poly_info_write_stats_2(N::in, OldA::in, NewA::in,
-%         OldB::in, NewB::in, PI0::in, PI::out),
-%     [will_not_call_mercury, promise_pure],
-% "
-%     if ((((MR_Unsigned) OldA) == ((MR_Unsigned) NewA)) &&
-%         (((MR_Unsigned) OldB) == ((MR_Unsigned) NewB)))
-%     {
-%         ++MR_stats_same[N];
-%     } else {
-%         ++MR_stats_diff[N];
-%     }
-%
-%     PI = PI0;
-% ").
-%
-% :- pred gather_poly_info_write_stats_3(int::in, T::in, T::in, U::in, U::in,
-%     V::in, V::in, poly_info::in, poly_info::out) is det.
-%
-% :- pragma foreign_proc("C",
-%     gather_poly_info_write_stats_3(N::in, OldA::in, NewA::in,
-%         OldB::in, NewB::in, OldC::in, NewC::in, PI0::in, PI::out),
-%     [will_not_call_mercury, promise_pure],
-% "
-%     if ((((MR_Unsigned) OldA) == ((MR_Unsigned) NewA)) &&
-%         (((MR_Unsigned) OldB) == ((MR_Unsigned) NewB)) &&
-%         (((MR_Unsigned) OldC) == ((MR_Unsigned) NewC)))
-%     {
-%         ++MR_stats_same[N];
-%     } else {
-%         ++MR_stats_diff[N];
-%     }
-%
-%     PI = PI0;
-% ").
-%
-% :- interface.
-% :- import_module io.
-% :- pred write_poly_info_stats(io::di, io::uo) is det.
-% :- implementation.
-%
-% :- pragma foreign_proc("C",
-%     write_poly_info_stats(IO0::di, IO::uo),
-%     [will_not_call_mercury, promise_pure],
-% "
-%     FILE *fp;
-%
-%     fp = fopen(""/tmp/POLY_INFO_STATS"", ""a"");
-%     if (fp != NULL) {
-%         int i;
-%         for (i = 0; i < MR_NUM_INFO_STATS; i++) {
-%             fprintf(fp, ""stat_rsd %d %lu %lu %lu\\n"",
-%                 i, MR_stats_read[i], MR_stats_same[i], MR_stats_diff[i]);
-%         }
-%     }
-%
-%     IO = IO0;
-% ").
-
-%---------------------------------------------------------------------------%
-
-:- type cache_maps
-    --->    cache_maps(
-                cm_snapshot_num             :: int,
-                cm_type_info_var_map        :: type_info_var_map,
-                cm_typeclass_info_map       :: typeclass_info_map,
-                cm_int_const_map            :: int_const_map,
-                cm_const_struct_var_map     :: const_struct_var_map
-            ).
-
-:- pred get_cache_maps_snapshot(string::in, cache_maps::out,
-    poly_info::in, poly_info::out) is det.
-
-get_cache_maps_snapshot(Name, CacheMaps, !Info) :-
-    poly_info_get_type_info_var_map(!.Info, TypeInfoVarMap),
-    poly_info_get_typeclass_info_map(!.Info, TypeClassInfoMap),
-    poly_info_get_int_const_map(!.Info, IntConstMap),
-    poly_info_get_const_struct_var_map(!.Info, ConstStructVarMap),
-
-    SnapshotNum = !.Info ^ poly_snapshot_num,
-    CacheMaps = cache_maps(SnapshotNum, TypeInfoVarMap, TypeClassInfoMap,
-        IntConstMap, ConstStructVarMap),
-    !Info ^ poly_snapshot_num := SnapshotNum + 1,
-
-    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-        promise_pure (
-            semipure get_selected_pred(SelectedPred),
-            semipure get_level(Level),
-            ( if
-                SelectedPred = yes,
-                Name \= ""
-            then
-                poly_info_get_debug_stream(!.Info, Stream, !IO),
-                IndentStr = string.duplicate_char(' ', Level * 4),
-                poly_info_get_varset(!.Info, VarSet),
-                NumVars = varset.num_allocated(VarSet),
-                io.format(Stream, "%sget_cache_maps_snapshot %d %s\n",
-                    [s(IndentStr), i(SnapshotNum), s(Name)], !IO),
-                io.format(Stream, "%snum_allocated vars: %d\n\n",
-                    [s(IndentStr), i(NumVars)], !IO)
-            else
-                true
-            )
-        )
-    ).
-
-:- pred set_cache_maps_snapshot(string::in, cache_maps::in,
-    poly_info::in, poly_info::out) is det.
-
-set_cache_maps_snapshot(Name, CacheMaps, !Info) :-
-    CacheMaps = cache_maps(SnapshotNum, TypeInfoVarMap, TypeClassInfoMap,
-        IntConstMap, ConstStructVarMap),
-    ( if
-        private_builtin.pointer_equal(TypeInfoVarMap,
-            !.Info ^ poly_type_info_var_map),
-        private_builtin.pointer_equal(TypeClassInfoMap,
-            !.Info ^ poly_typeclass_info_map),
-        private_builtin.pointer_equal(IntConstMap,
-            !.Info ^ poly_int_const_map),
-        private_builtin.pointer_equal(ConstStructVarMap,
-            !.Info ^ poly_const_struct_var_map)
-    then
-        true
-    else
-        !:Info = ((((!.Info
-            ^ poly_type_info_var_map := TypeInfoVarMap)
-            ^ poly_typeclass_info_map := TypeClassInfoMap)
-            ^ poly_int_const_map := IntConstMap)
-            ^ poly_const_struct_var_map := ConstStructVarMap)
-    ),
-
-    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-        promise_pure (
-            semipure get_selected_pred(SelectedPred),
-            semipure get_level(Level),
-            ( if
-                SelectedPred = yes,
-                Name \= ""
-            then
-                poly_info_get_debug_stream(!.Info, Stream, !IO),
-                IndentStr = string.duplicate_char(' ', Level * 4),
-                poly_info_get_varset(!.Info, VarSet),
-                NumVars = varset.num_allocated(VarSet),
-
-                io.format(Stream, "%sset_cache_maps_snapshot %d %s\n",
-                    [s(IndentStr), i(SnapshotNum), s(Name)], !IO),
-                io.format(Stream, "%snum_allocated vars: %d\n\n",
-                    [s(IndentStr), i(NumVars)], !IO),
-
-                io.format(Stream, "%stype_info_var_map ", [s(IndentStr)], !IO),
-                io.write_line(Stream, CacheMaps ^ cm_type_info_var_map, !IO),
-                io.format(Stream, "%stypeclass_info_map ",
-                    [s(IndentStr)], !IO),
-                io.write_line(Stream, CacheMaps ^ cm_typeclass_info_map, !IO),
-                io.format(Stream, "%sstruct_var_map ", [s(IndentStr)], !IO),
-                io.write_line(Stream,
-                    CacheMaps ^ cm_const_struct_var_map, !IO),
-                io.nl(Stream, !IO)
-            else
-                true
-            )
-        )
-    ).
-
-:- pred empty_cache_maps(poly_info::in, poly_info::out) is det.
-
-empty_cache_maps(!Info) :-
-    poly_info_set_type_info_var_map(map.init, !Info),
-    poly_info_set_typeclass_info_map(map.init, !Info),
-    poly_info_set_int_const_map(map.init, !Info),
-    poly_info_set_const_struct_var_map(map.init, !Info).
-
-%---------------------------------------------------------------------------%
-
-:- type var_maps
-    --->    var_maps(
-                vm_snapshot_num             :: int,
-                vm_varset                   :: prog_varset,
-                vm_vartypes                 :: vartypes,
-                vm_rtti_varmaps             :: rtti_varmaps,
-                vm_cache_maps               :: cache_maps
-            ).
-
-:- pred get_var_maps_snapshot(string::in, var_maps::out,
-    poly_info::in, poly_info::out) is det.
-
-get_var_maps_snapshot(Name, VarMaps, !Info) :-
-    SnapshotNum = !.Info ^ poly_snapshot_num,
-    poly_info_get_varset(!.Info, VarSet),
-    poly_info_get_var_types(!.Info, VarTypes),
-    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps),
-
-    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-        promise_pure (
-            semipure get_selected_pred(SelectedPred),
-            semipure get_level(Level),
-            (
-                SelectedPred = no
-            ;
-                SelectedPred = yes,
-                poly_info_get_debug_stream(!.Info, Stream, !IO),
-                IndentStr = string.duplicate_char(' ', Level * 4),
-                NumVars = varset.num_allocated(VarSet),
-                io.format(Stream, "%sget_var_maps_snapshot %d %s\n",
-                    [s(IndentStr), i(SnapshotNum), s(Name)], !IO),
-                io.format(Stream, "%snum_allocated vars: %d\n\n",
-                    [s(IndentStr), i(NumVars)], !IO)
-            )
-        )
-    ),
-
-    get_cache_maps_snapshot("", CacheMaps, !Info),
-    VarMaps = var_maps(SnapshotNum, VarSet, VarTypes, RttiVarMaps, CacheMaps).
-
-:- pred set_var_maps_snapshot(string::in, var_maps::in,
-    poly_info::in, poly_info::out) is det.
-
-set_var_maps_snapshot(Name, VarMaps, !Info) :-
-    VarMaps = var_maps(SnapshotNum, VarSet, VarTypes, RttiVarMaps, CacheMaps),
-
-    trace [compiletime(flag("debug_poly_caches")), io(!IO)] (
-        promise_pure (
-            semipure get_selected_pred(SelectedPred),
-            semipure get_level(Level),
-            (
-                SelectedPred = no
-            ;
-                SelectedPred = yes,
-                poly_info_get_debug_stream(!.Info, Stream, !IO),
-                IndentStr = string.duplicate_char(' ', Level * 4),
-                io.format(Stream, "%sset_var_maps_snapshot %d %s\n",
-                    [s(IndentStr), i(SnapshotNum), s(Name)], !IO),
-
-                io.format(Stream, "%stype_info_var_map ",
-                    [s(IndentStr)], !IO),
-                io.write_line(Stream, CacheMaps ^ cm_type_info_var_map, !IO),
-                io.format(Stream, "%stypeclass_info_map ",
-                    [s(IndentStr)], !IO),
-                io.write_line(Stream, CacheMaps ^ cm_typeclass_info_map, !IO),
-                io.format(Stream, "%sstruct_var_map ", [s(IndentStr)], !IO),
-                io.write_line(Stream,
-                    CacheMaps ^ cm_const_struct_var_map, !IO),
-                io.nl(Stream, !IO)
-            )
-        )
-    ),
-
-    poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info),
-    set_cache_maps_snapshot("", CacheMaps, !Info).
-
-%---------------------------------------------------------------------------%
-
-:- pred poly_info_get_debug_stream(poly_info::in, io.text_output_stream::out,
-    io::di, io::uo) is det.
-
-poly_info_get_debug_stream(PolyInfo, Stream, !IO) :-
-    poly_info_get_module_info(PolyInfo, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    get_debug_output_stream(Globals, ModuleName, Stream, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.polymorphism.

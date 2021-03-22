@@ -51,6 +51,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
+:- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.type_util.
 :- import_module hlds.add_special_pred.
 :- import_module hlds.const_struct.
@@ -1222,7 +1223,6 @@ instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
 
 get_arg_typeclass_infos(ModuleInfo, TypeClassInfoVar, InstanceConstraints,
         Index, Goals, Vars, !ProcInfo) :-
-
     MakeResultType = polymorphism.build_typeclass_info_type,
     get_typeclass_info_args(ModuleInfo, TypeClassInfoVar,
         "instance_constraint_from_typeclass_info", MakeResultType,
@@ -1880,14 +1880,10 @@ construct_extra_type_infos(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
     ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
     PredInfo0 = !.Info ^ hoi_pred_info,
     ProcInfo0 = !.Info ^ hoi_proc_info,
-    create_poly_info(ModuleInfo0, PredInfo0, ProcInfo0, PolyInfo0),
     term.context_init(Context),
-    polymorphism_make_type_info_vars(Types, Context,
-        TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
-        ProcInfo0, ProcInfo, ModuleInfo),
-    expect(unify(PolySpecs, []), $pred,
-        "got errors while making type_info_vars"),
+    polymorphism_make_type_info_vars_raw(Types, Context,
+        TypeInfoVars, TypeInfoGoals, ModuleInfo0, ModuleInfo,
+        PredInfo0, PredInfo, ProcInfo0, ProcInfo),
     !Info ^ hoi_pred_info := PredInfo,
     !Info ^ hoi_proc_info := ProcInfo,
     !Info ^ hoi_global_info ^ hogi_module_info := ModuleInfo.

@@ -176,7 +176,6 @@ MCFLAGS-transform_hlds.unneeded_code      += --warn-implicit-stream-calls
 
 # Keep all modules' contents in a consistent order, except these (for now).
 MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-check_hlds.polymorphism += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-hlds.goal_util          += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-hlds.inst_graph         += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-libs.options            += --no-warn-inconsistent-pred-order-clauses

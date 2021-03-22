@@ -109,7 +109,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.simplify.simplify_tasks.
@@ -899,7 +899,7 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
                 VarTypes1 = VarTypes0
             else
                 RttiVarMaps0 = !.Info ^ spi_rtti_varmaps,
-                polymorphism.new_type_info_var_raw(Type, type_info,
+                new_type_info_var_raw(Type, type_info,
                     TypeInfoVar, VarSet0, VarSet1, VarTypes0, VarTypes1,
                     RttiVarMaps0, RttiVarMaps),
                 !Info ^ spi_rtti_varmaps := RttiVarMaps
@@ -964,7 +964,7 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
     else
         MaybePreferredVar = no
     ),
-    polymorphism.init_type_info_var(Type, ArgVars, MaybePreferredVar,
+    init_type_info_var(Type, ArgVars, MaybePreferredVar,
         TypeInfoVar, TypeInfoGoal, VarSet2, VarSet, VarTypes2, VarTypes,
         RttiVarMaps0, RttiVarMaps),
     !Info ^ spi_varset := VarSet,
@@ -998,7 +998,7 @@ make_type_ctor_info(TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals, !Info) :-
         VarSet0 = !.Info ^ spi_varset,
         VarTypes0 = !.Info ^ spi_vartypes,
         RttiVarMaps0 = !.Info ^ spi_rtti_varmaps,
-        polymorphism.init_const_type_ctor_info_var(Type, TypeCtor,
+        init_const_type_ctor_info_var(Type, TypeCtor,
             TypeCtorVar, _, TypeCtorGoal, VarSet0, VarSet, VarTypes0, VarTypes,
             RttiVarMaps0, RttiVarMaps),
         TypeCtorGoals = [TypeCtorGoal],

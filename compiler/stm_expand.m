@@ -171,7 +171,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.polymorphism_type_info.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -2421,13 +2421,8 @@ create_plain_conj(GoalsInConj, ConjGoal) :-
 make_type_info(Type, Var, Goals, NewPredInfo0, NewPredInfo) :-
     NewPredInfo0 = stm_new_pred_info(ModuleInfo0, PredId, ProcId,
         PredInfo0, ProcInfo0, Context, VarCnt),
-    create_poly_info(ModuleInfo0, PredInfo0, ProcInfo0, PolyInfo0),
-    polymorphism_make_type_info_var(Type, Context, Var, Goals,
-        PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
-        ProcInfo0, ProcInfo, ModuleInfo),
-    expect(unify(PolySpecs, []), $pred,
-        "got errors while making type_info_var"),
+    polymorphism_make_type_info_var_raw(Type, Context, Var, Goals,
+        ModuleInfo0, ModuleInfo, PredInfo0, PredInfo, ProcInfo0, ProcInfo),
     NewPredInfo = stm_new_pred_info(ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo, Context, VarCnt).
 

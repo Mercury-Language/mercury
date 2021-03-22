@@ -210,7 +210,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.purity.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
@@ -1427,15 +1427,10 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         % some[T] bound_head_var(string, int, T) ---->
         %   some[T] bound_head_var(type_of_T, string, int, T)
 
-        create_poly_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, PolyInfo0),
         term.context_init(Context),
         lookup_var_type(!.VarTypes, VarToInspect, MerType),
-        polymorphism_make_type_info_var(MerType, Context, TypeInfoVar,
-            TypeInfoGoals0, PolyInfo0, PolyInfo),
-        poly_info_extract(PolyInfo, PolySpecs, !PredInfo, !ProcInfo,
-            !:ModuleInfo),
-        expect(unify(PolySpecs, []), $pred,
-            "got errors while making type_info_var"),
+        polymorphism_make_type_info_var_raw(MerType, Context,
+            TypeInfoVar, TypeInfoGoals0, !ModuleInfo, !PredInfo, !ProcInfo),
 
         proc_info_get_varset(!.ProcInfo, !:VarSet),
         proc_info_get_vartypes(!.ProcInfo, !:VarTypes),

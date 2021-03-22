@@ -61,7 +61,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.polymorphism_type_info.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
@@ -585,13 +585,9 @@ is_active_type = Type :-
 make_type_info_var(Type, Context, PredId, !ProcInfo, !ModuleInfo,
         TypeInfoVar, TypeInfoGoals) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    create_poly_info(!.ModuleInfo, PredInfo0, !.ProcInfo, PolyInfo0),
-    polymorphism_make_type_info_var(Type, Context, TypeInfoVar,
-        TypeInfoGoals, PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
-        !ProcInfo, !:ModuleInfo),
-    expect(unify(PolySpecs, []), $pred,
-        "got errors while making type_info_var"),
+    polymorphism_make_type_info_var_raw(Type, Context,
+        TypeInfoVar, TypeInfoGoals, !ModuleInfo,
+        PredInfo0, PredInfo, !ProcInfo),
     expect(unify(PredInfo0, PredInfo), $pred, "modified pred_info").
 
 %-----------------------------------------------------------------------------%

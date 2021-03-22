@@ -80,7 +80,7 @@
 
 :- import_module backend_libs.
 :- import_module check_hlds.
-:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.polymorphism_type_info.
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
@@ -108,7 +108,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
-:- import_module require.
 
 %---------------------------------------------------------------------------%
 %
@@ -402,21 +401,14 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStmt) :-
 ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo0),
     ml_gen_info_get_pred_proc_id(!.Info, PredProcId),
-    module_info_pred_proc_info(ModuleInfo0, PredProcId,
-        PredInfo0, ProcInfo0),
-
-    % Call polymorphism.m to generate the HLDS code to create the type_infos.
-    create_poly_info(ModuleInfo0, PredInfo0, ProcInfo0, PolyInfo0),
-    polymorphism_make_type_info_var(Type, Context,
-        TypeInfoVar, TypeInfoGoals, PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
-        ProcInfo0, ProcInfo, ModuleInfo1),
-    expect(unify(PolySpecs, []), $pred,
-        "got errors while making type_info_var"),
-
-    % Save the new information back in the ml_gen_info.
+    module_info_pred_proc_info(ModuleInfo0, PredProcId, PredInfo0, ProcInfo0),
+    % Generate the HLDS code to create the type_infos.
+    polymorphism_make_type_info_var_raw(Type, Context,
+        TypeInfoVar, TypeInfoGoals, ModuleInfo0, ModuleInfo1,
+        PredInfo0, PredInfo, ProcInfo0, ProcInfo),
     module_info_set_pred_proc_info(PredProcId, PredInfo, ProcInfo,
         ModuleInfo1, ModuleInfo),
+    % Save the new information back in the ml_gen_info.
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     ml_gen_info_set_module_info(ModuleInfo, !Info),

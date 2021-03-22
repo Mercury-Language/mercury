@@ -35,7 +35,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
@@ -1616,7 +1616,6 @@ replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
             ProcInfo0 = !.Info ^ ethri_proc_info,
             TVarSet0 = !.Info ^ ethri_tvarset,
             pred_info_set_typevarset(TVarSet0, PredInfo0, PredInfo1),
-            create_poly_info(ModuleInfo0, PredInfo1, ProcInfo0, PolyInfo0),
             rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo),
             (
                 VarInfo = type_info_var(TypeInfoType0),
@@ -1627,12 +1626,10 @@ replace_in_goal_expr(TypeEqvMap, GoalExpr0, GoalExpr, Changed, !Info) :-
                 ),
                 unexpected($pred, "info not found")
             ),
-            polymorphism_make_type_info_var(TypeInfoType,
-                term.context_init, TypeInfoVar, Goals0, PolyInfo0, PolyInfo),
-            poly_info_extract(PolyInfo, PolySpecs, PredInfo1, PredInfo,
-                ProcInfo0, ProcInfo, ModuleInfo),
-            expect(unify(PolySpecs, []), $pred,
-                "got errors while making type_info_var"),
+            polymorphism_make_type_info_var_raw(TypeInfoType,
+                term.context_init, TypeInfoVar, Goals0,
+                ModuleInfo0, ModuleInfo,
+                PredInfo1, PredInfo, ProcInfo0, ProcInfo),
             pred_info_get_typevarset(PredInfo, TVarSet),
             !Info ^ ethri_module_info := ModuleInfo,
             !Info ^ ethri_pred_info := PredInfo,

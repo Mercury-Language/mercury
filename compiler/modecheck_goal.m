@@ -117,7 +117,7 @@
 :- import_module check_hlds.modecheck_conj.
 :- import_module check_hlds.modecheck_unify.
 :- import_module check_hlds.modecheck_util.
-:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
@@ -1001,17 +1001,10 @@ modecheck_make_type_info_var_for_type(Type, Context, TypeInfoVar,
     mode_info_get_varset(!.ModeInfo, VarSet0),
     proc_info_set_varset(VarSet0, ProcInfo0, ProcInfo1),
     proc_info_set_vartypes(VarTypes0, ProcInfo1, ProcInfo2),
-    polymorphism.create_poly_info(ModuleInfo0, PredInfo0, ProcInfo2,
-        PolyInfo0),
 
-    polymorphism_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals,
-        PolyInfo0, PolyInfo),
-
-    % Update the information in the predicate table.
-    polymorphism.poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
-        ProcInfo2, ProcInfo, ModuleInfo1),
-    expect(unify(PolySpecs, []), $pred,
-        "got errors while making type_info_var"),
+    polymorphism_make_type_info_var_raw(Type, Context,
+        TypeInfoVar, TypeInfoGoals, ModuleInfo0, ModuleInfo1,
+        PredInfo0, PredInfo, ProcInfo2, ProcInfo),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
         ModuleInfo1, ModuleInfo),
 

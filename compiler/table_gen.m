@@ -58,7 +58,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.polymorphism.
+:- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.purity.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
@@ -3823,14 +3823,10 @@ table_gen_make_type_info_vars(Types, Context, !VarSet, !VarTypes,
     proc_info_set_vartypes(!.VarTypes, ProcInfo0, ProcInfo1),
     proc_info_set_varset(!.VarSet, ProcInfo1, ProcInfo2),
 
-    % Call polymorphism.m to create the type_infos.
-    create_poly_info(ModuleInfo0, PredInfo0, ProcInfo2, PolyInfo0),
-    polymorphism_make_type_info_vars(Types, Context,
-        TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
-        ProcInfo0, ProcInfo, ModuleInfo),
-    expect(unify(PolySpecs, []), $pred,
-        "got errors while making type_info_vars"),
+    % Generate the code that creates the type_infos.
+    polymorphism_make_type_info_vars_raw(Types, Context,
+        TypeInfoVars, TypeInfoGoals, ModuleInfo0, ModuleInfo,
+        PredInfo0, PredInfo, ProcInfo2, ProcInfo),
 
     % Get the new varset and vartypes from the proc_info.
     proc_info_get_vartypes(ProcInfo, !:VarTypes),
