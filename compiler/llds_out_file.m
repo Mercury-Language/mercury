@@ -602,7 +602,7 @@ output_c_module_init_list(Info, Stream, ModuleName, AnnotatedModules,
         MangledModuleName = Info ^ lout_mangled_module_name,
         output_layout_array_name(Stream, use_layout_macro, MangledModuleName,
             threadscope_string_table_array, !IO),
-        io.format(", %d);\n", [i(TSStringTableSize)], !IO)
+        io.format(Stream, ", %d);\n", [i(TSStringTableSize)], !IO)
     ),
     io.write_string(Stream, "}\n", !IO),
     io.write_string(Stream, "\n#endif\n\n", !IO),

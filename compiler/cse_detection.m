@@ -165,9 +165,10 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            io.write_string("% Detecting common deconstructions for ", !IO),
-            io.write_string(pred_id_to_string(!.ModuleInfo, PredId), !IO),
-            io.write_string("\n", !IO)
+            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+            io.format(ProgressStream,
+                "%% Detecting common deconstructions for %s\n",
+                [s(pred_id_to_string(!.ModuleInfo, PredId))], !IO)
         )
     ;
         VeryVerbose = no
@@ -189,7 +190,8 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
 
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     trace [io(!IO)] (
-        maybe_report_stats(Statistics, !IO)
+        get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+        maybe_report_stats(ProgressStream, Statistics, !IO)
     ),
     (
         Redo = no
@@ -198,16 +200,18 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Repeating mode check for ", !IO),
-                io.write_string(pred_id_to_string(!.ModuleInfo, PredId), !IO),
-                io.write_string("\n", !IO)
+                get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+                io.format(ProgressStream,
+                    "%% Repeating mode check for %s\n",
+                    [s(pred_id_to_string(!.ModuleInfo, PredId))], !IO)
             )
         ;
             VeryVerbose = no
         ),
         modecheck_proc(PredId, ProcId, !ModuleInfo, _Changed, ModeSpecs),
         trace [io(!IO)] (
-            maybe_report_stats(Statistics, !IO)
+            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+            maybe_report_stats(ProgressStream, Statistics, !IO)
         ),
         ContainsErrors = contains_errors(Globals, ModeSpecs),
         (
@@ -215,7 +219,8 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
             trace [io(!IO)] (
                 maybe_dump_hlds(!.ModuleInfo, 46, "cse_repeat_modecheck",
                     no_prev_dump, _DumpInfo, !IO),
-                write_error_specs_ignore(Globals, ModeSpecs, !IO)
+                get_error_output_stream(!.ModuleInfo, ErrorStream, !IO),
+                write_error_specs_ignore(ErrorStream, Globals, ModeSpecs, !IO)
             ),
             unexpected($pred, "mode check fails when repeated")
         ;
@@ -227,9 +232,10 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Repeating switch detection for ", !IO),
-                io.write_string(pred_id_to_string(!.ModuleInfo, PredId), !IO),
-                io.write_string("\n", !IO)
+                get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+                io.format(ProgressStream,
+                    "%% Repeating switch detection for %s\n",
+                    [s(pred_id_to_string(!.ModuleInfo, PredId))], !IO)
             )
         ;
             VeryVerbose = no
@@ -249,15 +255,16 @@ detect_cse_in_proc(PredId, ProcId, !ModuleInfo) :-
         module_info_set_preds(PredTable3, !ModuleInfo),
 
         trace [io(!IO)] (
-            maybe_report_stats(Statistics, !IO)
+            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+            maybe_report_stats(ProgressStream, Statistics, !IO)
         ),
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Repeating common " ++
-                    "deconstruction detection for ", !IO),
-                io.write_string(pred_id_to_string(!.ModuleInfo, PredId), !IO),
-                io.write_string("\n", !IO)
+                get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+                io.format(ProgressStream,
+                    "%% Repeating common deconstruction detection for %s\n",
+                    [s(pred_id_to_string(!.ModuleInfo, PredId))], !IO)
             )
         ;
             VeryVerbose = no

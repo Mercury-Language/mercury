@@ -95,10 +95,14 @@ optimize_in_function_body(OptInfo, !Body) :-
         !.Body = body_defined_here(Stmt0),
         optimize_in_stmt(OptInfo, Stmt0, Stmt),
         trace [compile_time(flag("debug_ml_optimize")), io(!IO)] (
-            io.write_string("\nfunction body before\n\n", !IO),
-            dump_mlds_stmt(1, Stmt0, !IO),
-            io.write_string("\nfunction body after\n\n", !IO),
-            dump_mlds_stmt(1, Stmt, !IO)
+            Globals = OptInfo ^ oi_globals,
+            ModuleName =
+                mlds_module_name_to_sym_name(OptInfo ^ oi_module_name),
+            get_debug_output_stream(Globals, ModuleName, Stream, !IO),
+            io.write_string(Stream, "\nfunction body before\n\n", !IO),
+            dump_mlds_stmt(Stream, 1, Stmt0, !IO),
+            io.write_string(Stream, "\nfunction body after\n\n", !IO),
+            dump_mlds_stmt(Stream, 1, Stmt, !IO)
         ),
         !:Body = body_defined_here(Stmt)
     ).

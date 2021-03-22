@@ -147,6 +147,7 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.vartypes.
 :- import_module libs.
@@ -187,23 +188,28 @@ determinism_pass(!ModuleInfo, Specs) :-
     ;
         UndeclaredProcs = [_ | _],
         trace [io(!IO)] (
-            maybe_write_string(Verbose, "% Doing determinism inference...\n",
-                !IO)
+            get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
+            maybe_write_string(ProgressStream, Verbose,
+                "% Doing determinism inference...\n", !IO)
         ),
         global_inference_pass(!ModuleInfo, UndeclaredProcs, Debug,
             InferenceSpecs),
         trace [io(!IO)] (
-            maybe_write_string(Verbose, "% done.\n", !IO)
+            get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
+            maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
         )
     ),
     trace [io(!IO)] (
-        maybe_write_string(Verbose, "% Doing determinism checking...\n", !IO)
+        get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
+        maybe_write_string(ProgressStream, Verbose,
+            "% Doing determinism checking...\n", !IO)
     ),
     global_final_pass(!ModuleInfo, UndeclaredProcs, DeclaredProcs, Debug,
         FinalSpecs),
     Specs = InferenceSpecs ++ FinalSpecs,
     trace [io(!IO)] (
-        maybe_write_string(Verbose, "% done.\n", !IO)
+        get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
+        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
     ).
 
 determinism_check_proc(ProcId, PredId, !ModuleInfo, Specs) :-
@@ -225,7 +231,9 @@ global_inference_pass(!ModuleInfo, ProcList, Debug, Specs) :-
     global_inference_single_pass(ProcList, Debug, !ModuleInfo, [], Specs1,
         unchanged, Changed),
     trace [io(!IO)] (
-        maybe_write_string(Debug, "% Inference pass complete\n", !IO)
+        get_debug_output_stream(!.ModuleInfo,  DebugStream, !IO),
+        maybe_write_string(DebugStream, Debug,
+            "% Inference pass complete\n", !IO)
     ),
     (
         Changed = changed,
@@ -263,9 +271,10 @@ global_inference_single_pass([proc(PredId, ProcId) | PredProcs], Debug,
     (
         Debug = yes,
         trace [io(!IO)] (
+            get_debug_output_stream(!.ModuleInfo,  DebugStream, !IO),
             NewDetismStr = mercury_det_to_string(NewDetism),
             ProcStr = pred_proc_id_pair_to_string(!.ModuleInfo, PredId, ProcId),
-            io.format("%% Inferred %s detism %s for %s\n",
+            io.format(DebugStream, "%% Inferred %s detism %s for %s\n",
                 [s(ChangeStr), s(NewDetismStr), s(ProcStr)], !IO)
         )
     ;
@@ -330,11 +339,11 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     ),
 
     trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
-        io.write_string("inferring procedure ", !IO),
-        io.write(PredId, !IO),
-        io.write_string("/", !IO),
-        io.write(ProcId, !IO),
-        io.nl(!IO)
+        get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
+        io.write_string(ProgressStream, "inferring procedure ", !IO),
+        io.write(ProgressStream, PredId, !IO),
+        io.write_string(ProgressStream, "/", !IO),
+        io.write_line(ProgressStream, ProcId, !IO)
     ),
 
     % Infer the determinism of the goal.
@@ -697,17 +706,17 @@ det_infer_goal_expr(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
             det_info_set_has_incomplete_switch(!DetInfo)
         ),
         trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
-            io.write_string("inferring switch on ", !IO),
-            io.write(Var, !IO),
-            io.nl(!IO)
+            get_det_debug_output_stream(!.DetInfo, DebugStream, !IO),
+            io.write_string(DebugStream, "inferring switch on ", !IO),
+            io.write_line(DebugStream, Var, !IO)
         ),
         det_infer_switch(Var, SwitchCanFail, Cases0, Cases, GoalInfo, InstMap0,
             SolnContext, RightFailingContexts, MaybePromiseEqvSolutionSets,
             Detism, GoalFailingContexts, !DetInfo),
         trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
-            io.write_string("done inferring switch on ", !IO),
-            io.write(Var, !IO),
-            io.nl(!IO)
+            get_det_debug_output_stream(!.DetInfo, DebugStream, !IO),
+            io.write_string(DebugStream, "done inferring switch on ", !IO),
+            io.write_line(DebugStream, Var, !IO)
         ),
         GoalExpr = switch(Var, SwitchCanFail, Cases)
     ;
@@ -1062,11 +1071,11 @@ det_infer_switch_cases([Case0 | Cases0], [Case | Cases], Var, InstMap0,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
     det_info_set_module_info(ModuleInfo, !DetInfo),
     trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
-        io.write_string("inferring switch case for ", !IO),
-        io.write(Var, !IO),
-        io.write_string(" with main cons id ", !IO),
-        io.write(MainConsId, !IO),
-        io.nl(!IO)
+        get_det_debug_output_stream(!.DetInfo, DebugStream, !IO),
+        io.write_string(DebugStream, "inferring switch case for ", !IO),
+        io.write(DebugStream, Var, !IO),
+        io.write_string(DebugStream, " with main cons id ", !IO),
+        io.write_line(DebugStream, MainConsId, !IO)
     ),
     det_infer_goal(Goal0, Goal, InstMap1, SolnContext, RightFailingContexts,
         MaybePromiseEqvSolutionSets, FirstDetism, GoalFailingContexts,
@@ -1304,13 +1313,12 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
         SolnContext, RightFailingContexts, Detism, GoalFailingContexts,
         !DetInfo) :-
     trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
-        io.write_string("inferring unification ", !IO),
-        io.write(LHS, !IO),
-        io.write_string(" = ", !IO),
-        io.write(RHS0, !IO),
-        io.nl(!IO),
-        io.write(Unify, !IO),
-        io.nl(!IO)
+        get_det_debug_output_stream(!.DetInfo, DebugStream, !IO),
+        io.write_string(DebugStream, "inferring unification ", !IO),
+        io.write(DebugStream, LHS, !IO),
+        io.write_string(DebugStream, " = ", !IO),
+        io.write_line(DebugStream, RHS0, !IO),
+        io.write_line(DebugStream, Unify, !IO)
     ),
     % Unifications are either deterministic or semideterministic.
     (
@@ -1397,7 +1405,8 @@ det_infer_if_then_else(Cond0, Cond, Then0, Then, Else0, Else, InstMap0,
 
     % First process the `then' part.
     trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
-        io.write_string("inferring condition\n", !IO)
+        get_det_debug_output_stream(!.DetInfo, DebugStream, !IO),
+        io.write_string(DebugStream, "inferring condition\n", !IO)
     ),
     update_instmap(Cond0, InstMap0, InstMap1),
     det_infer_goal(Then0, Then, InstMap1, SolnContext, RightFailingContexts,
@@ -1418,7 +1427,8 @@ det_infer_if_then_else(Cond0, Cond, Then0, Then, Else0, Else, InstMap0,
     ),
     % Process the `condition' part,
     trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
-        io.write_string("inferring then-part\n", !IO)
+        get_det_debug_output_stream(!.DetInfo, DebugStream, !IO),
+        io.write_string(DebugStream, "inferring then-part\n", !IO)
     ),
     det_infer_goal(Cond0, Cond, InstMap0, CondSolnContext,
         ThenFailingContexts ++ RightFailingContexts,
@@ -1428,7 +1438,8 @@ det_infer_if_then_else(Cond0, Cond, Then0, Then, Else0, Else, InstMap0,
 
     % Process the `else' part.
     trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
-        io.write_string("inferring else-part\n", !IO)
+        get_det_debug_output_stream(!.DetInfo, DebugStream, !IO),
+        io.write_string(DebugStream, "inferring else-part\n", !IO)
     ),
     det_infer_goal(Else0, Else, InstMap0, SolnContext, RightFailingContexts,
         MaybePromiseEqvSolutionSets, ElseDetism, ElseFailingContexts,
@@ -2209,6 +2220,15 @@ set_non_inferred_proc_determinism(proc(PredId, ProcId), !ModuleInfo) :-
     ;
         MaybeDet = no
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred get_det_debug_output_stream(det_info::in, io.text_output_stream::out,
+    io::di, io::uo) is det.
+
+get_det_debug_output_stream(DetInfo, DebugStream, !IO) :-
+    det_info_get_module_info(DetInfo, ModuleInfo),
+    get_debug_output_stream(ModuleInfo, DebugStream, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.det_analysis.

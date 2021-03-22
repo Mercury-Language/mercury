@@ -20,15 +20,17 @@
 :- import_module libs.globals.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
-:- pred optimize_procs(globals::in, global_data::in,
+:- pred optimize_procs(globals::in, module_name::in, global_data::in,
     list(c_procedure)::in, list(c_procedure)::out) is det.
 
-:- pred optimize_proc(globals::in, global_data::in,
+:- pred optimize_proc(globals::in, module_name::in, global_data::in,
     c_procedure::in, c_procedure::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -55,7 +57,6 @@
 :- import_module ll_backend.reassign.
 :- import_module ll_backend.use_local_vars.
 :- import_module ll_backend.wrap_blocks.
-:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
 :- import_module bool.
@@ -72,13 +73,14 @@
 
 %-----------------------------------------------------------------------------%
 
-optimize_procs(_, _, [], []).
-optimize_procs(Globals, GlobalData, [Proc0 | Procs0], [Proc | Procs]) :-
-    optimize_proc(Globals, GlobalData, Proc0, Proc),
-    optimize_procs(Globals, GlobalData, Procs0, Procs).
+optimize_procs(_, _, _, [], []).
+optimize_procs(Globals, ModuleName, GlobalData,
+        [Proc0 | Procs0], [Proc | Procs]) :-
+    optimize_proc(Globals, ModuleName, GlobalData, Proc0, Proc),
+    optimize_procs(Globals, ModuleName, GlobalData, Procs0, Procs).
 
-optimize_proc(Globals, GlobalData, CProc0, CProc) :-
-    Info = init_llds_opt_info(Globals),
+optimize_proc(Globals, ModuleName, GlobalData, CProc0, CProc) :-
+    Info = init_llds_opt_info(Globals, ModuleName),
     some [!OptDebugInfo, !LabelNumCounter, !Instrs] (
         CProc0 = c_procedure(Name, Arity, PredProcId, ProcLabel, CodeModel,
             !:Instrs, !:LabelNumCounter, MayAlterRtti, CGlobalVars),
@@ -116,17 +118,20 @@ optimize_proc(Globals, GlobalData, CProc0, CProc) :-
         optimize_repeat(Info, Repeat, LayoutLabelSet, ProcLabel,
             MayAlterRtti, !LabelNumCounter, !OptDebugInfo, !Instrs),
         trace [io(!IO)] (
-            maybe_report_stats(Statistics, !IO)
+            get_opt_progress_output_stream(Info, ProgressStream, !IO),
+            maybe_report_stats(ProgressStream, Statistics, !IO)
         ),
         optimize_middle(Info, yes, LayoutLabelSet, ProcLabel, CodeModel,
             MayAlterRtti, !LabelNumCounter, !OptDebugInfo, !Instrs),
         trace [io(!IO)] (
-            maybe_report_stats(Statistics, !IO)
+            get_opt_progress_output_stream(Info, ProgressStream, !IO),
+            maybe_report_stats(ProgressStream, Statistics, !IO)
         ),
         optimize_last(Info, LayoutLabelSet, ProcLabel,
             !LabelNumCounter, !.OptDebugInfo, !Instrs),
         trace [io(!IO)] (
-            maybe_report_stats(Statistics, !IO)
+            get_opt_progress_output_stream(Info, ProgressStream, !IO),
+            maybe_report_stats(ProgressStream, Statistics, !IO)
         ),
         CProc = c_procedure(Name, Arity, PredProcId, ProcLabel, CodeModel,
             !.Instrs, !.LabelNumCounter, MayAlterRtti, CGlobalVars)
@@ -282,7 +287,8 @@ maybe_opt_debug(Info, Instrs, Counter, Suffix, Msg, ProcLabel,
                 opt_debug.msg(FileStream, yes, NextLabel, Msg, !IO),
                 (
                     Same = yes,
-                    io.write_string("same as previous version\n", !IO)
+                    io.write_string(FileStream,
+                        "same as previous version\n", !IO)
                 ;
                     Same = no,
                     AutoComments = Info ^ lopt_auto_comments,
@@ -330,9 +336,10 @@ optimize_initial(Info, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Optimizing nondet frames for ", !IO),
-                io.write_string(LabelStr, !IO),
-                io.write_string("\n", !IO)
+                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                io.format(ProgressStream,
+                    "%% Optimizing nondet frames for %s\n",
+                    [s(LabelStr)], !IO)
             )
         ;
             VeryVerbose = no
@@ -396,9 +403,9 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Optimizing jumps for ", !IO),
-                io.write_string(LabelStr, !IO),
-                io.write_string("\n", !IO)
+                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                io.format(ProgressStream, "%% Optimizing jumps for %s\n",
+                    [s(LabelStr)], !IO)
             )
         ;
             VeryVerbose = no
@@ -418,9 +425,9 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Optimizing locally for ", !IO),
-                io.write_string(LabelStr, !IO),
-                io.write_string("\n", !IO)
+                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                io.format(ProgressStream, "%% Optimizing locally for %s\n",
+                    [s(LabelStr)], !IO)
             )
         ;
             VeryVerbose = no
@@ -440,9 +447,9 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Optimizing labels for ", !IO),
-                io.write_string(LabelStr, !IO),
-                io.write_string("\n", !IO)
+                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                io.format(ProgressStream, "%% Optimizing labels for %s\n",
+                    [s(LabelStr)], !IO)
             )
         ;
             VeryVerbose = no
@@ -460,9 +467,9 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Optimizing duplicates for ", !IO),
-                io.write_string(LabelStr, !IO),
-                io.write_string("\n", !IO)
+                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                io.format(ProgressStream, "%% Optimizing duplicates for %s\n",
+                    [s(LabelStr)], !IO)
             )
         ;
             VeryVerbose = no
@@ -479,8 +486,9 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         Mod = yes
     ),
     trace [io(!IO)] (
+        get_opt_progress_output_stream(Info, ProgressStream, !IO),
         Statistics = Info ^ lopt_detailed_statistics,
-        maybe_report_stats(Statistics, !IO)
+        maybe_report_stats(ProgressStream, Statistics, !IO)
     ).
 
 :- pred optimize_middle(llds_opt_info::in, bool::in, set_tree234(label)::in,
@@ -499,9 +507,9 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Optimizing frames for ", !IO),
-                io.write_string(LabelStr, !IO),
-                io.write_string("\n", !IO)
+                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                io.format(ProgressStream, "%% Optimizing frames for %s\n",
+                    [s(LabelStr)], !IO)
             )
         ;
             VeryVerbose = no
@@ -522,7 +530,8 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
             "frame", "after frame opt", ProcLabel, !OptDebugInfo),
         Statistics = Info ^ lopt_detailed_statistics,
         trace [io(!IO)] (
-            maybe_report_stats(Statistics, !IO)
+            get_opt_progress_output_stream(Info, ProgressStream, !IO),
+            maybe_report_stats(ProgressStream, Statistics, !IO)
         ),
 
         OptFullJump = Info ^ lopt_opt_fulljumps,
@@ -536,9 +545,9 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
             (
                 VeryVerbose = yes,
                 trace [io(!IO)] (
-                    io.write_string("% Optimizing jumps for ", !IO),
-                    io.write_string(LabelStr, !IO),
-                    io.write_string("\n", !IO)
+                    get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                    io.format(ProgressStream, "%% Optimizing jumps for %s\n",
+                        [s(LabelStr)], !IO)
                 )
             ;
                 VeryVerbose = no
@@ -556,9 +565,9 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
             (
                 VeryVerbose = yes,
                 trace [io(!IO)] (
-                    io.write_string("% Optimizing labels for ", !IO),
-                    io.write_string(LabelStr, !IO),
-                    io.write_string("\n", !IO)
+                    get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                    io.format(ProgressStream, "%% Optimizing labels for %s\n",
+                        [s(LabelStr)], !IO)
                 )
             ;
                 VeryVerbose = no
@@ -574,9 +583,9 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
             (
                 VeryVerbose = yes,
                 trace [io(!IO)] (
-                    io.write_string("% Optimizing locally for ", !IO),
-                    io.write_string(LabelStr, !IO),
-                    io.write_string("\n", !IO)
+                    get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                    io.format(ProgressStream, "%% Optimizing locally for %s\n",
+                        [s(LabelStr)], !IO)
                 )
             ;
                 VeryVerbose = no
@@ -598,9 +607,9 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Optimizing local vars for ", !IO),
-                io.write_string(LabelStr, !IO),
-                io.write_string("\n", !IO)
+                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                io.format(ProgressStream, "%% Optimizing local vars for %s\n",
+                    [s(LabelStr)], !IO)
             )
         ;
             VeryVerbose = no
@@ -641,9 +650,9 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Optimizing labels for ", !IO),
-                io.write_string(LabelStr, !IO),
-                io.write_string("\n", !IO)
+                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                io.format(ProgressStream, "%% Optimizing labels for %s\n",
+                    [s(LabelStr)], !IO)
             )
         ;
             VeryVerbose = no
@@ -659,9 +668,9 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Optimizing reassign for ", !IO),
-                io.write_string(LabelStr, !IO),
-                io.write_string("\n", !IO)
+                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                io.format(ProgressStream, "%% Optimizing reassign for %s\n",
+                    [s(LabelStr)], !IO)
             )
         ;
             VeryVerbose = no
@@ -677,9 +686,9 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Optimizing delay slot for ", !IO),
-                io.write_string(LabelStr, !IO),
-                io.write_string("\n", !IO)
+                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                io.format(ProgressStream, "%% Optimizing delay slot for %s\n",
+                    [s(LabelStr)], !IO)
             )
         ;
             VeryVerbose = no
@@ -693,9 +702,9 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            io.write_string("% Optimizing returns for ", !IO),
-            io.write_string(LabelStr, !IO),
-            io.write_string("\n", !IO)
+            get_opt_progress_output_stream(Info, ProgressStream, !IO),
+            io.format(ProgressStream, "%% Optimizing returns for %s\n",
+                [s(LabelStr)], !IO)
         )
     ;
         VeryVerbose = no
@@ -708,9 +717,9 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Standardizing labels for ", !IO),
-                io.write_string(LabelStr, !IO),
-                io.write_string("\n", !IO)
+                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                io.format(ProgressStream, "%% Standardizing labels for %s\n",
+                    [s(LabelStr)], !IO)
             )
         ;
             VeryVerbose = no
@@ -726,9 +735,9 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% Wrapping blocks for ", !IO),
-                io.write_string(LabelStr, !IO),
-                io.write_string("\n", !IO)
+                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                io.format(ProgressStream, "%% Wrapping blocks for %s\n",
+                    [s(LabelStr)], !IO)
             )
         ;
             VeryVerbose = no
@@ -768,6 +777,8 @@ escape_dir_char(Char, !Str) :-
                 lopt_num_real_r_regs            :: int,
                 lopt_local_vars_access_threshold :: int,
                 lopt_opt_repeat                 :: int,
+                lopt_globals                    :: globals,
+                lopt_module_name                :: module_name,
 
                 lopt_gc_method                  :: gc_method,
 
@@ -794,9 +805,9 @@ escape_dir_char(Char, !Str) :-
                 lopt_use_local_vars             :: maybe_use_local_vars
             ).
 
-:- func init_llds_opt_info(globals) = llds_opt_info.
+:- func init_llds_opt_info(globals, module_name) = llds_opt_info.
 
-init_llds_opt_info(Globals) = Info :-
+init_llds_opt_info(Globals, ModuleName) = Info :-
     globals.lookup_accumulating_option(Globals, debug_opt_pred_id,
         DebugOptPredIdStrs),
     globals.lookup_accumulating_option(Globals, debug_opt_pred_name,
@@ -834,12 +845,20 @@ init_llds_opt_info(Globals) = Info :-
     UseLocalVars = OptTuple ^ ot_use_local_vars,
 
     Info = llds_opt_info(DebugOptPredIdStrs, DebugOptPredNames,
-        NumRealRRegs, LocalVarAccessThreshold, OptRepeat, GCMethod,
-        DebugOpt, AutoComments, FrameOptComments,
+        NumRealRRegs, LocalVarAccessThreshold, OptRepeat, Globals, ModuleName,
+        GCMethod, DebugOpt, AutoComments, FrameOptComments,
         DetailedStatistics, VeryVerbose,
         CheckedNondetTailCalls, OptDelaySlots, OptDups, OptFrames,
         OptJumps, OptFullJumps, OptLabels, OptPeep, OptPeepMkword, OptReassign,
         PessimizeTailCalls, StdLabels, UseLocalVars).
+
+:- pred get_opt_progress_output_stream(llds_opt_info::in,
+    io.text_output_stream::out, io::di, io::uo) is det.
+
+get_opt_progress_output_stream(Info, ProgressStream, !IO) :-
+    Globals = Info ^ lopt_globals,
+    ModuleName = Info ^ lopt_module_name,
+    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.optimize.

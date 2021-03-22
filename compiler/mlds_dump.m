@@ -27,7 +27,8 @@
 
 :- import_module io.
 
-:- pred dump_mlds_stmt(int::in, mlds_stmt::in, io::di, io::uo) is det.
+:- pred dump_mlds_stmt(io.text_output_stream::in, int::in, mlds_stmt::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -65,9 +66,9 @@ strcord_to_string(Cord) = string.append_list(cord.to_list(Cord)).
 
 %---------------------------------------------------------------------------%
 
-dump_mlds_stmt(Indent, Stmt, !IO) :-
+dump_mlds_stmt(Stream, Indent, Stmt, !IO) :-
     Cord = mlds_stmt_to_strcord(Indent, Stmt),
-    io.write_string(strcord_to_string(Cord), !IO).
+    io.write_string(Stream, strcord_to_string(Cord), !IO).
 
 %---------------------------------------------------------------------------%
 

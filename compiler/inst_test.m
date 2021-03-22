@@ -190,6 +190,7 @@
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.passes_aux.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
@@ -208,14 +209,16 @@ inst_is_ground(ModuleInfo, Inst) :-
         (
             Found = yes,
             trace [compiletime(flag("inst-is-ground-perf")), io(!IO)] (
-                io.write_string("inst_is_ground hit\n", !IO)
+                get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+                io.write_string(DebugStream, "inst_is_ground hit\n", !IO)
             ),
             % Succeed if OldIsGround = yes, fail if OldIsGround = no.
             OldIsGround = yes
         ;
             Found = no,
             trace [compiletime(flag("inst-is-ground-perf")), io(!IO)] (
-                io.write_string("inst_is_ground miss\n", !IO)
+                get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+                io.write_string(DebugStream, "inst_is_ground miss\n", !IO)
             ),
             ( if inst_is_ground_mt(ModuleInfo, no, Inst) then
                 impure record_inst_is_ground(Inst, yes)

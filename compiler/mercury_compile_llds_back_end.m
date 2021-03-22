@@ -444,7 +444,8 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
     Optimize = OptTuple ^ ot_optimize,
     (
         Optimize = optimize,
-        optimize_proc(Globals, !.GlobalData, CProc0, CProc)
+        module_info_get_name(!.HLDS, ModuleName),
+        optimize_proc(Globals, ModuleName, !.GlobalData, CProc0, CProc)
     ;
         Optimize = do_not_optimize,
         CProc = CProc0
@@ -609,7 +610,8 @@ maybe_optimize_llds(HLDS, GlobalData, Verbose, Stats, !LLDS, !IO) :-
         Optimize = optimize,
         maybe_write_string(Verbose, "% Doing optimizations...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        optimize_procs(Globals, GlobalData, !LLDS),
+        module_info_get_name(HLDS, ModuleName),
+        optimize_procs(Globals, ModuleName, GlobalData, !LLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
