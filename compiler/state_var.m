@@ -7,7 +7,8 @@
 %-----------------------------------------------------------------------------%
 %
 % File: state_var.m.
-% Main author: rafe.
+% Main author of original version: rafe.
+% Main author of the current version, rewritten in 2011: zs.
 %
 %-----------------------------------------------------------------------------%
 
@@ -684,14 +685,11 @@ svar_finish_clause_body(Globals, Context, FinalMap, HeadGoal0, BodyGoal0,
                 map.to_assoc_list(FinalMap, FinalList),
                 map.to_assoc_list(DelayedRenamings, DelayedList),
                 io.write_string("\nFINISH CLAUSE BODY in context ", !IO),
-                io.write(Context, !IO),
-                io.nl(!IO),
+                io.write_line(Context, !IO),
                 io.write_string("applying subn\n", !IO),
-                io.write(FinalList, !IO),
-                io.nl(!IO),
+                io.write_line(FinalList, !IO),
                 io.write_string("with incremental subn\n", !IO),
-                io.write(DelayedList, !IO),
-                io.nl(!IO)
+                io.write_line(DelayedList, !IO)
             )
         ),
         incremental_rename_vars_in_goal(map.init, DelayedRenamings,
@@ -797,11 +795,9 @@ svar_finish_body(Context, FinalMap, Goals0, Goal,
         trace [compiletime(flag("state-var-lambda")), io(!IO)] (
             io.write_string("\nfinishing body, ", !IO),
             io.write_string("attaching subn to existing goal_id ", !IO),
-            io.write(GoalId1, !IO),
-            io.nl(!IO),
+            io.write_line(GoalId1, !IO),
             io.write_string("subn is ", !IO),
-            io.write(FinalSVarSubn, !IO),
-            io.nl(!IO)
+            io.write_line(FinalSVarSubn, !IO)
         ),
 
         map.det_update(GoalId1, DelayedRenaming0 ++ FinalSVarSubn,
@@ -822,11 +818,9 @@ svar_finish_body(Context, FinalMap, Goals0, Goal,
             trace [compiletime(flag("state-var-lambda")), io(!IO)] (
                 io.write_string("\nfinishing body, ", !IO),
                 io.write_string("attaching subn to new goal_id ", !IO),
-                io.write(GoalId, !IO),
-                io.nl(!IO),
+                io.write_line(GoalId, !IO),
                 io.write_string("subn is ", !IO),
-                io.write(FinalSVarSubn, !IO),
-                io.nl(!IO)
+                io.write_line(FinalSVarSubn, !IO)
             ),
 
             map.det_insert(GoalId, FinalSVarSubn,
@@ -949,14 +943,11 @@ svar_finish_local_state_vars(StateVars, StateBeforeOutside, StateAfterInside,
         map.to_assoc_list(StatusMapAfterInside, AfterInsideStatuses),
         io.write_string("Finish of scope\n", !IO),
         io.write_string("quantified state vars\n", !IO),
-        io.write(StateVars, !IO),
-        io.nl(!IO),
+        io.write_line(StateVars, !IO),
         io.write_string("status before outside\n", !IO),
-        io.write_list(BeforeOutsideStatuses, "\n", io.write, !IO),
-        io.nl(!IO),
+        list.foldl(io.write_line, BeforeOutsideStatuses, !IO),
         io.write_string("status after inside\n", !IO),
-        io.write_list(AfterInsideStatuses, "\n", io.write, !IO),
-        io.nl(!IO)
+        list.foldl(io.write_line, AfterInsideStatuses, !IO)
     ),
     % Remove access to the state vars introduced in the scope.
     % Leave the status of all other state vars unaffected.
@@ -1423,20 +1414,15 @@ handle_state_var_in_ite(LocKind, SVar, StatusBefore,
 
     trace [compiletime(flag("state-var-ite")), io(!IO)] (
         io.write_string("state variable ", !IO),
-        io.write(SVar, !IO),
-        io.nl(!IO),
+        io.write_line(SVar, !IO),
         io.write_string("status before: ", !IO),
-        io.write(StatusBefore, !IO),
-        io.nl(!IO),
+        io.write_line(StatusBefore, !IO),
         io.write_string("status after cond: ", !IO),
-        io.write(StatusAfterCond, !IO),
-        io.nl(!IO),
+        io.write_line(StatusAfterCond, !IO),
         io.write_string("status after then: ", !IO),
-        io.write(StatusAfterThen, !IO),
-        io.nl(!IO),
+        io.write_line(StatusAfterThen, !IO),
         io.write_string("status after else: ", !IO),
-        io.write(StatusAfterElse, !IO),
-        io.nl(!IO)
+        io.write_line(StatusAfterElse, !IO)
     ),
 
     ( if StatusAfterCond = StatusBefore then
