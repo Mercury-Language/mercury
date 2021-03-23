@@ -183,7 +183,7 @@
     report_stats,
     [may_call_mercury, terminates],
 "
-    MR_report_standard_stats();
+    ML_report_standard_stats(io.mercury_stderr);
 ").
 
 :- pragma foreign_proc("Java",
@@ -206,7 +206,7 @@
     report_full_memory_stats,
     [will_not_call_mercury],
 "
-    MR_report_full_memory_stats();
+    ML_report_full_memory_stats(io.mercury_stderr);
 ").
 
 :- pragma foreign_proc("Java",
@@ -258,8 +258,8 @@ private static long real_time_at_start
     = real_time_at_last_stat = System.DateTime.Now.Ticks;
 private static long real_time_at_last_stat;
 
-private static void
-MR_report_standard_stats()
+public static void
+ML_report_standard_stats(io.MR_MercuryFileStruct stream)
 {
     double user_time_at_prev_stat = user_time_at_last_stat;
     user_time_at_last_stat = System.Diagnostics.Process.GetCurrentProcess()
@@ -268,30 +268,37 @@ MR_report_standard_stats()
     long real_time_at_prev_stat = real_time_at_last_stat;
     real_time_at_last_stat = System.DateTime.Now.Ticks;
 
-    System.Console.WriteLine(System.String.Format(
-        ""[User time: +{0:F2}s, {1:F2}s Real time: +{2:F2}s, {3:F2}s]"",
-        (user_time_at_last_stat - user_time_at_prev_stat),
-        (user_time_at_last_stat - user_time_at_start),
-        ((real_time_at_last_stat - real_time_at_prev_stat)
-            / (double) System.TimeSpan.TicksPerSecond),
-        ((real_time_at_last_stat - real_time_at_start)
-            / (double) System.TimeSpan.TicksPerSecond)
-    ));
-
-    // XXX At this point there should be a whole bunch of memory usage
-    // statistics.
+    try {
+        io.mercury_print_string(stream, System.String.Format(
+            ""[User time: +{0:F2}s, {1:F2}s Real time: +{2:F2}s, {3:F2}s]\\n"",
+            (user_time_at_last_stat - user_time_at_prev_stat),
+            (user_time_at_last_stat - user_time_at_start),
+            ((real_time_at_last_stat - real_time_at_prev_stat)
+                / (double) System.TimeSpan.TicksPerSecond),
+            ((real_time_at_last_stat - real_time_at_start)
+                / (double) System.TimeSpan.TicksPerSecond)
+        ));
+        // XXX At this point there should be a whole bunch of memory usage
+        // statistics.
+    } catch (System.SystemException e) {
+        // XXX how should we handle I/O errors when printing statistics?
+    }
 }
 
-private static void
-MR_report_full_memory_stats()
+public static void
+ML_report_full_memory_stats(io.MR_MercuryFileStruct stream)
 {
     // XXX The support for this predicate is even worse. Since we don't have
     // access to memory usage statistics, all you get here is an apology.
     // But at least it doesn't just crash with an error.
 
-    System.Console.Error.WriteLine(
-        ""Sorry, report_full_memory_stats is not yet "" +
-        ""implemented for the C# back-end."");
+    try {
+        io.mercury_print_string(stream,
+            ""Sorry, report_full_memory_stats is not yet "" +
+            ""implemented for the C# back-end.\\n"");
+    } catch (System.SystemException e) {
+        // XXX how should we handle I/O errors when printing statistics?
+    }
 }
 ").
 

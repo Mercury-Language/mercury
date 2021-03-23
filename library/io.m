@@ -1884,8 +1884,6 @@
     %   Requires the runtime to have been compiled with the macro
     %   MR_TABLE_STATISTICS defined.
     %
-    % XXX For now, these predicates work only with the C backend.
-    %
 :- pred report_stats(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
 :- pred report_stats(string::in, io::di, io::uo) is det.
@@ -1893,16 +1891,12 @@
     % Write standard memory/time usage statistics to the specified stream,
     % or (if none) to stderr.
     %
-    % XXX For now, these predicates work only with the C backend.
-    %
 :- pred report_standard_stats(io.text_output_stream::in,
     io::di, io::uo) is det.
 :- pred report_standard_stats(io::di, io::uo) is det.
 
     % `report_full_memory_stats/3' reports a full memory profile
     % to the specified output stream, or (if none) to stderr.
-    %
-    % XXX For now, these predicates work only with the C backend.
     %
 :- pred report_full_memory_stats(io.text_output_stream::in,
     io::di, io::uo) is det.
@@ -12132,6 +12126,13 @@ report_standard_stats(!IO) :-
     MR_report_standard_stats(MR_file(*Stream));
 ").
 
+:- pragma foreign_proc("C#",
+    report_standard_stats_2(Stream::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
+"
+    benchmarking.ML_report_standard_stats(Stream);
+").
+
 :- pragma foreign_proc("Java",
     report_standard_stats_2(Stream::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
@@ -12139,9 +12140,6 @@ report_standard_stats(!IO) :-
     jmercury.benchmarking.ML_report_standard_stats(
         (jmercury.io.MR_TextOutputFile) Stream);
 ").
-
-report_standard_stats_2(_Stream, !IO) :-
-    private_builtin.sorry("report_standard_stats").
 
 %---------------------%
 
@@ -12162,6 +12160,13 @@ report_full_memory_stats(!IO) :-
     MR_report_full_memory_stats(MR_file(*Stream));
 ").
 
+:- pragma foreign_proc("C#",
+    report_full_memory_stats_2(Stream::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
+"
+    benchmarking.ML_report_full_memory_stats(Stream);
+").
+
 :- pragma foreign_proc("Java",
     report_full_memory_stats_2(Stream::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
@@ -12169,9 +12174,6 @@ report_full_memory_stats(!IO) :-
     jmercury.benchmarking.ML_report_full_memory_stats(
         (jmercury.io.MR_TextOutputFile) Stream);
 ").
-
-report_full_memory_stats_2(_Stream, !IO) :-
-    private_builtin.sorry("report_full_memory_stats").
 
 %---------------------%
 
