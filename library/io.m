@@ -12126,7 +12126,8 @@ report_standard_stats(!IO) :-
 
 :- pragma foreign_proc("C",
     report_standard_stats_2(Stream::in, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, does_not_affect_liveness],
+    [promise_pure, will_not_call_mercury, tabled_for_io,
+        does_not_affect_liveness],
 "
     MR_report_standard_stats(MR_file(*Stream));
 ").
@@ -12155,7 +12156,8 @@ report_full_memory_stats(!IO) :-
 
 :- pragma foreign_proc("C",
     report_full_memory_stats_2(Stream::in, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, does_not_affect_liveness],
+    [promise_pure, will_not_call_mercury, tabled_for_io,
+        does_not_affect_liveness],
 "
     MR_report_full_memory_stats(MR_file(*Stream));
 ").
@@ -12184,7 +12186,8 @@ report_tabling_statistics(!IO) :-
 
 :- pragma foreign_proc("C",
     report_tabling_statistics_2(Stream::in, _IO0::di, _IO::uo),
-    [promise_pure, will_not_call_mercury, does_not_affect_liveness],
+    [promise_pure, will_not_call_mercury, tabled_for_io,
+        does_not_affect_liveness],
 "
     MR_table_report_statistics(MR_file(*Stream));
 ").
