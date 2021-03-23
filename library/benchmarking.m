@@ -190,7 +190,7 @@
     report_stats,
     [may_call_mercury, terminates],
 "
-    MR_report_standard_stats();
+    ML_report_standard_stats(io.mercury_stderr);
 ").
 
 %---------------------%
@@ -213,7 +213,7 @@
     report_full_memory_stats,
     [will_not_call_mercury],
 "
-    MR_report_full_memory_stats();
+    ML_report_full_memory_stats(io.mercury_stderr);
 ").
 
 %---------------------------------------------------------------------------%
@@ -312,8 +312,8 @@ ML_initialise()
     real_time_at_last_stat = real_time_at_start;
 }
 
-private static void
-MR_report_standard_stats()
+public static void
+ML_report_standard_stats(jmercury.io.MR_TextOutputFile stream)
 {
     int user_time_at_prev_stat = user_time_at_last_stat;
     user_time_at_last_stat = ML_get_user_cpu_milliseconds();
@@ -321,36 +321,44 @@ MR_report_standard_stats()
     long real_time_at_prev_stat = real_time_at_last_stat;
     real_time_at_last_stat = System.currentTimeMillis();
 
-    System.err.print(
-        ""[User time: +"" +
-        ((user_time_at_last_stat - user_time_at_prev_stat) / 1000.0) +
-        ""s, "" +
-        ((user_time_at_last_stat - user_time_at_start) / 1000.0) +
-        ""s"");
+    try {
+        stream.write(
+            ""[User time: +"" +
+            ((user_time_at_last_stat - user_time_at_prev_stat) / 1000.0) +
+            ""s, "" +
+            ((user_time_at_last_stat - user_time_at_start) / 1000.0) +
+            ""s"");
 
-    System.err.print(
-        "" Real time: +"" +
-        ((real_time_at_last_stat - real_time_at_prev_stat) / 1000.0) +
-        ""s, "" +
-        ((real_time_at_last_stat - real_time_at_start) / 1000.0) +
-        ""s"");
+        stream.write(
+            "" Real time: +"" +
+            ((real_time_at_last_stat - real_time_at_prev_stat) / 1000.0) +
+            ""s, "" +
+            ((real_time_at_last_stat - real_time_at_start) / 1000.0) +
+            ""s"");
 
-    // XXX At this point there should be a whole bunch of memory usage
-    // statistics. Unfortunately the Java back-end does not yet support
-    // this amount of profiling, so cpu time is all you get.
+        // XXX At this point there should be a whole bunch of memory usage
+        // statistics. Unfortunately the Java back-end does not yet support
+        // this amount of profiling, so cpu time is all you get.
 
-    System.err.println(""]"");
+        stream.write(""]\\n"");
+    } catch (java.io.IOException e) {
+        // XXX how should we handle I/O errors when printing statistics?
+    }
 }
 
-private static void
-MR_report_full_memory_stats()
+public static void
+ML_report_full_memory_stats(jmercury.io.MR_TextOutputFile stream)
 {
     // XXX The support for this predicate is even worse. Since we don't have
     // access to memory usage statistics, all you get here is an apology.
     // But at least it doesn't just crash with an error.
 
-    System.err.println(""Sorry, report_full_memory_stats is not yet "" +
-        ""implemented for the Java back-end."");
+    try {
+        stream.write(""Sorry, report_full_memory_stats is not yet "" +
+            ""implemented for the Java back-end."");
+    } catch (java.io.IOException e) {
+        // XXX how should we handle I/O errors when printing statistics?
+    }
 }
 ").
 

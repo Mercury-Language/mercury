@@ -12131,6 +12131,14 @@ report_standard_stats(!IO) :-
     MR_report_standard_stats(MR_file(*Stream));
 ").
 
+:- pragma foreign_proc("Java",
+    report_standard_stats_2(Stream::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
+"
+    jmercury.benchmarking.ML_report_standard_stats(
+        (jmercury.io.MR_TextOutputFile) Stream);
+").
+
 report_standard_stats_2(_Stream, !IO) :-
     private_builtin.sorry("report_standard_stats").
 
@@ -12150,6 +12158,14 @@ report_full_memory_stats(!IO) :-
     [promise_pure, will_not_call_mercury, does_not_affect_liveness],
 "
     MR_report_full_memory_stats(MR_file(*Stream));
+").
+
+:- pragma foreign_proc("Java",
+    report_full_memory_stats_2(Stream::in, _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury],
+"
+    jmercury.benchmarking.ML_report_full_memory_stats(
+        (jmercury.io.MR_TextOutputFile) Stream);
 ").
 
 report_full_memory_stats_2(_Stream, !IO) :-
