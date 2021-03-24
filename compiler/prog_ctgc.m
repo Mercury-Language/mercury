@@ -120,12 +120,16 @@
 :- pred dump_structure_sharing_domain(io.text_output_stream::in,
     prog_varset::in, tvarset::in, structure_sharing_domain::in,
     io::di, io::uo) is det.
-:- pred dump_structure_reuse_domain(io.text_output_stream::in,
-    prog_varset::in, tvarset::in, structure_reuse_domain::in,
-    io::di, io::uo) is det.
 
 :- pred print_interface_structure_sharing_domain(io.text_output_stream::in,
     prog_varset::in, tvarset::in, maybe(structure_sharing_domain)::in,
+    io::di, io::uo) is det.
+
+    % Print structure sharing or reuse information as a Mercury comment.
+    % This is used in HLDS dumps.
+    %
+:- pred dump_structure_reuse_domain(io.text_output_stream::in,
+    prog_varset::in, tvarset::in, structure_reuse_domain::in,
     io::di, io::uo) is det.
 
 :- pred print_interface_maybe_structure_reuse_domain(io.text_output_stream::in,

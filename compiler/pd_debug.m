@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1998-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: pd_debug_m
 % Main author: stayl.
 %
 % Debugging routines for partial deduction.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.pd_debug.
 :- interface.
@@ -28,13 +28,20 @@
 :- import_module list.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred pd_debug_write(bool::in, T::in, io::di, io::uo) is det.
 
 :- pred pd_debug_do_io(bool::in, pred(io, io)::pred(di, uo) is det,
     io::di, io::uo) is det.
 
-:- pred pd_debug_output_goal(pd_info::in, string::in, hlds_goal::in,
+:- pred pd_debug_message(bool::in, string::in, list(string.poly_type)::in,
     io::di, io::uo) is det.
+
+:- pred pd_debug_message_context(bool::in, prog_context::in, string::in,
+    list(string.poly_type)::in, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 
 :- pred pd_debug_search_version_result(pd_info::in, maybe_version::in,
     io::di, io::uo) is det.
@@ -44,19 +51,14 @@
 
 :- pred pd_debug_write_instmap(pd_info::in, io::di, io::uo) is det.
 
-:- pred pd_debug_message(bool::in, string::in,
-    list(string.poly_type)::in, io::di, io::uo) is det.
-
-:- pred pd_debug_message_context(bool::in, prog_context::in, string::in,
-    list(string.poly_type)::in, io::di, io::uo) is det.
-
-:- pred pd_debug_write(bool::in, T::in, io::di, io::uo) is det.
-
 :- pred pd_debug_write_pred_proc_id_list(pd_info::in, list(pred_proc_id)::in,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+:- pred pd_debug_output_goal(pd_info::in, string::in, hlds_goal::in,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -76,7 +78,12 @@
 
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+pd_debug_write(DebugPD, Thing, !IO) :-
+    pd_debug_do_io(DebugPD, io.write(Thing), !IO).
+
+%------------%
 
 pd_debug_do_io(DebugPD, Pred, !IO) :-
     (
@@ -87,7 +94,17 @@ pd_debug_do_io(DebugPD, Pred, !IO) :-
         DebugPD = no
     ).
 
-%-----------------------------------------------------------------------------%
+%------------%
+
+pd_debug_message(DebugPD, Fmt, Args, !IO) :-
+    pd_debug_do_io(DebugPD, io.format(Fmt, Args), !IO).
+
+pd_debug_message_context(DebugPD, Context, Fmt, Args, !IO) :-
+    pd_debug_do_io(DebugPD,
+        prog_out.write_context_to_cur_stream(Context), !IO),
+    pd_debug_do_io(DebugPD, io.format(Fmt, Args), !IO).
+
+%---------------------------------------------------------------------------%
 
 pd_debug_search_version_result(PDInfo, MaybeVersion, !IO) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
@@ -113,7 +130,7 @@ pd_debug_search_version_result(PDInfo, MaybeVersion, !IO) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%------------%
 
 pd_debug_register_version(PDInfo, PredProcId, Version, !IO) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
@@ -131,7 +148,7 @@ pd_debug_register_version(PDInfo, PredProcId, Version, !IO) :-
             no, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred pd_debug_output_version(io.text_output_stream::in, module_info::in,
     pred_proc_id::in, version_info::in, bool::in, io::di, io::uo) is det.
@@ -179,7 +196,7 @@ pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
         WriteUnfoldedGoal = no
     ).
 
-%-----------------------------------------------------------------------------%
+%------------%
 
 pd_debug_write_instmap(PDInfo, !IO) :-
     io.output_stream(Stream, !IO),
@@ -192,7 +209,7 @@ pd_debug_write_instmap(PDInfo, !IO) :-
     pd_debug_do_io(DebugPD,
         write_instmap(Stream, VarSet, print_name_and_num, 1, InstMap), !IO).
 
-%-----------------------------------------------------------------------------%
+%------------%
 
 pd_debug_write_pred_proc_id_list(PDInfo, PredProcIds, !IO) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
@@ -209,7 +226,7 @@ pd_debug_write_pred_proc_id_list(PDInfo, PredProcIds, !IO) :-
         io.write_string(Stream, ProcsStr, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%------------%
 
 pd_debug_output_goal(PDInfo, Msg, Goal, !IO) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
@@ -239,21 +256,6 @@ pd_debug_output_goal(PDInfo, Msg, Goal, !IO) :-
         io.flush_output(Stream, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
-
-pd_debug_message(DebugPD, Fmt, Args, !IO) :-
-    pd_debug_do_io(DebugPD, io.format(Fmt, Args), !IO).
-
-pd_debug_message_context(DebugPD, Context, Fmt, Args, !IO) :-
-    pd_debug_do_io(DebugPD,
-        prog_out.write_context_to_cur_stream(Context), !IO),
-    pd_debug_do_io(DebugPD, io.format(Fmt, Args), !IO).
-
-%-----------------------------------------------------------------------------%
-
-pd_debug_write(DebugPD, Thing, !IO) :-
-    pd_debug_do_io(DebugPD, io.write(Thing), !IO).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.pd_debug.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

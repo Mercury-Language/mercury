@@ -1,18 +1,18 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1998-2012 University of Melbourne.
 % Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File pd_util.m.
 % Main author: stayl.
 %
 % Utility predicates for deforestation and partial evaluation.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.pd_util.
 :- interface.
@@ -36,7 +36,7 @@
 :- import_module map.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Pick out the pred_proc_ids of the calls in a list of atomic goals.
     %
@@ -154,8 +154,8 @@
 :- pred pd_can_reorder_goals(module_info::in, bool::in,
     hlds_goal::in, hlds_goal::in) is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -198,7 +198,7 @@ goal_get_calls(Goal0, CalledPreds) :-
         ),
     list.filter_map(GetCalls, GoalList, CalledPreds).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 propagate_constraints(!Goal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
@@ -250,7 +250,7 @@ propagate_constraints(!Goal, !PDInfo) :-
         ConstraintProp = do_not_prop_local_constraints
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pd_simplify_goal(SimplifyTasks, !Goal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
@@ -265,7 +265,7 @@ pd_simplify_goal(SimplifyTasks, !Goal, !PDInfo) :-
     pd_info_set_proc_info(ProcInfo, !PDInfo),
     pd_info_incr_cost_delta(CostDelta, !PDInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 unique_modecheck_goal(Goal0, Goal, Errors, !PDInfo) :-
     get_goal_live_vars(!.PDInfo, Goal0, LiveVars),
@@ -352,7 +352,7 @@ get_goal_live_vars_2(ModuleInfo, [NonLocal | NonLocals],
     ),
     get_goal_live_vars_2(ModuleInfo, NonLocals, InstMap, InstMapDelta, !Vars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred rerun_det_analysis(hlds_goal::in, hlds_goal::out,
     pd_info::in, pd_info::out) is det.
@@ -389,34 +389,7 @@ rerun_det_analysis(Goal0, Goal, !PDInfo) :-
     ContainsErrors = contains_errors(GlobalsToUse, Specs),
     expect(unify(ContainsErrors, no), $pred, "determinism errors").
 
-%-----------------------------------------------------------------------------%
-
-convert_branch_info(ArgInfo, Args, VarInfo) :-
-    ArgInfo = pd_branch_info(ArgMap, LeftArgs, OpaqueArgs),
-    map.to_assoc_list(ArgMap, ArgList),
-    map.init(BranchVarMap0),
-    convert_branch_info_2(ArgList, Args, BranchVarMap0, BranchVarMap),
-
-    set.to_sorted_list(LeftArgs, LeftArgNos),
-    list.map(list.det_index1(Args), LeftArgNos, LeftVars0),
-    set.list_to_set(LeftVars0, LeftVars),
-
-    set.to_sorted_list(OpaqueArgs, OpaqueArgNos),
-    list.map(list.det_index1(Args), OpaqueArgNos, OpaqueVars0),
-    set.list_to_set(OpaqueVars0, OpaqueVars),
-
-    VarInfo = pd_branch_info(BranchVarMap, LeftVars, OpaqueVars).
-
-:- pred convert_branch_info_2(assoc_list(int, set(int))::in,
-    prog_vars::in, pd_var_info::in, pd_var_info::out) is det.
-
-convert_branch_info_2([], _, !VarInfo).
-convert_branch_info_2([ArgNo - Branches | ArgInfos], Args, !VarInfo) :-
-    list.det_index1(Args, ArgNo, Arg),
-    map.set(Arg, Branches, !VarInfo),
-    convert_branch_info_2(ArgInfos, Args, !VarInfo).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type pd_var_info ==  branch_info_map(prog_var).
 
@@ -509,7 +482,7 @@ get_extra_info_headvars([HeadVar | HeadVars], ArgNo,
     get_extra_info_headvars(HeadVars, NextArgNo,
         LeftVars, VarInfo, !ThisProcArgs, !ThisProcLeftVars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
@@ -787,7 +760,7 @@ combine_vars(BranchNo, [ExtraVar | ExtraVars], !Vars) :-
     ),
     combine_vars(BranchNo, ExtraVars, !Vars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pd_requantify_goal(NonLocals, Goal0, Goal, !PDInfo) :-
     some [!ProcInfo] (
@@ -814,7 +787,34 @@ pd_recompute_instmap_delta(Goal0, Goal, !PDInfo) :-
         Goal0, Goal, VarTypes, InstVarSet, InstMap, ModuleInfo0, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+convert_branch_info(ArgInfo, Args, VarInfo) :-
+    ArgInfo = pd_branch_info(ArgMap, LeftArgs, OpaqueArgs),
+    map.to_assoc_list(ArgMap, ArgList),
+    map.init(BranchVarMap0),
+    convert_branch_info_2(ArgList, Args, BranchVarMap0, BranchVarMap),
+
+    set.to_sorted_list(LeftArgs, LeftArgNos),
+    list.map(list.det_index1(Args), LeftArgNos, LeftVars0),
+    set.list_to_set(LeftVars0, LeftVars),
+
+    set.to_sorted_list(OpaqueArgs, OpaqueArgNos),
+    list.map(list.det_index1(Args), OpaqueArgNos, OpaqueVars0),
+    set.list_to_set(OpaqueVars0, OpaqueVars),
+
+    VarInfo = pd_branch_info(BranchVarMap, LeftVars, OpaqueVars).
+
+:- pred convert_branch_info_2(assoc_list(int, set(int))::in,
+    prog_vars::in, pd_var_info::in, pd_var_info::out) is det.
+
+convert_branch_info_2([], _, !VarInfo).
+convert_branch_info_2([ArgNo - Branches | ArgInfos], Args, !VarInfo) :-
+    list.det_index1(Args, ArgNo, Arg),
+    map.set(Arg, Branches, !VarInfo),
+    convert_branch_info_2(ArgInfos, Args, !VarInfo).
+
+%---------------------------------------------------------------------------%
 
 inst_MSG(InstA, InstB, ModuleInfo, Inst) :-
     set.init(Expansions),
@@ -950,7 +950,7 @@ bound_inst_list_MSG(Xs, Ys, Expansions, ModuleInfo, Uniq, BoundInsts, Inst) :-
         Inst = ground(Uniq, none_or_default_func)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 inst_size(ModuleInfo, Inst, Size) :-
     set.init(Expansions),
@@ -1010,7 +1010,7 @@ inst_list_size(ModuleInfo, [Inst | Insts], Expansions, !Size) :-
     !:Size = !.Size + InstSize,
     inst_list_size(ModuleInfo, Insts, Expansions, !Size).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
         NewGoal, NewVarTypes, OldNewRenaming, TypeSubn) :-
@@ -1160,7 +1160,7 @@ match_generic_call(GenericCallA, GenericCallB) :-
         GenericCallB = class_method(_, MethodNum, ClassId, CallId)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pd_can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, LaterGoal) :-
     % The logic here is mostly duplicated in can_reorder_goals and
@@ -1211,6 +1211,6 @@ goal_depends_on_goal(hlds_goal(_, GoalInfo1), hlds_goal(_, GoalInfo2)) :-
     set_of_var.intersect(ChangedVars1, NonLocals2, Intersection),
     set_of_var.is_non_empty(Intersection).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.pd_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

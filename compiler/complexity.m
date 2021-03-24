@@ -146,6 +146,14 @@ read_spec_file_lines(Stream, CurLineNum, NumLines, MaybeError, !ProcMap,
 
 %-----------------------------------------------------------------------------%
 
+is_in_complexity_proc_map(ProcMap, ModuleInfo, PredId, ProcId) = IsInMap :-
+    FullName = complexity_proc_name(ModuleInfo, PredId, ProcId),
+    ( if map.search(ProcMap, FullName, ProcNum) then
+        IsInMap = yes(ProcNum)
+    else
+        IsInMap = no
+    ).
+
 complexity_proc_name(ModuleInfo, PredId, ProcId) = FullName :-
     module_info_get_name(ModuleInfo, ModuleSymName),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -156,14 +164,6 @@ complexity_proc_name(ModuleInfo, PredId, ProcId) = FullName :-
         sym_name_arity_to_string(sym_name_arity(QualifiedName, Arity)),
     proc_id_to_int(ProcId, ProcIdInt),
     FullName = NameAndArity ++ "-" ++ int_to_string(ProcIdInt).
-
-is_in_complexity_proc_map(ProcMap, ModuleInfo, PredId, ProcId) = IsInMap :-
-    FullName = complexity_proc_name(ModuleInfo, PredId, ProcId),
-    ( if map.search(ProcMap, FullName, ProcNum) then
-        IsInMap = yes(ProcNum)
-    else
-        IsInMap = no
-    ).
 
 %-----------------------------------------------------------------------------%
 

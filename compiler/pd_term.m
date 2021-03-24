@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1998-2001, 2003-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: pd_term.m.
 % Main author: stayl.
@@ -35,7 +35,7 @@
 %   the papers on partial deduction from K.U. Leuven. This will be
 %   useful (necessary?) if we start propagating equality constraints.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.pd_term.
 :- interface.
@@ -51,18 +51,16 @@
 :- import_module maybe.
 :- import_module pair.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % global_check(Module, CallGoal1, BetweenGoals, CallGoal2,
-    %   InstMap, Versions, Info0, Info, Result):
+:- type global_term_info.
+:- pred global_term_info_init(global_term_info::out) is det.
+
+    % Update the global termination information when we find out the
+    % pred_proc_id that has been assigned to a version.
     %
-    % Check whether a new version can be created for the conjunction
-    % (CallGoal1, BetweenGoals, CallGoal2) without the deforestation
-    % process looping.
-    %
-:- pred global_check(module_info::in, hlds_goal::in, list(hlds_goal)::in,
-    maybe(hlds_goal)::in, instmap::in, version_index::in, global_term_info::in,
-    global_term_info::out, global_check_result::out) is det.
+:- pred update_global_term_info(proc_pair::in, pred_proc_id::in, int::in,
+    global_term_info::in, global_term_info::out) is det.
 
     % A proc_pair holds the pred_proc_ids of the procedures called at
     % the ends of a conjunction to be deforested.
@@ -75,31 +73,30 @@
     ;       possible_loop(proc_pair, int, pred_proc_id)
     ;       loop.
 
+    % global_check(Module, CallGoal1, BetweenGoals, CallGoal2,
+    %   InstMap, Versions, Info0, Info, Result):
+    %
+    % Check whether a new version can be created for the conjunction
+    % (CallGoal1, BetweenGoals, CallGoal2) without the deforestation
+    % process looping.
+    %
+:- pred global_check(module_info::in, hlds_goal::in, list(hlds_goal)::in,
+    maybe(hlds_goal)::in, instmap::in, version_index::in, global_term_info::in,
+    global_term_info::out, global_check_result::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- type local_term_info.
+:- pred local_term_info_init(local_term_info::out) is det.
+
     % Check whether a call can be unfolded without the
     % unfolding process looping.
     %
 :- pred local_check(module_info::in, hlds_goal::in, instmap::in,
     local_term_info::in, local_term_info::out) is semidet.
 
-:- pred global_term_info_init(global_term_info::out) is det.
-
-:- pred local_term_info_init(local_term_info::out) is det.
-
-:- pred get_proc_term_info(local_term_info::in, pred_proc_id::in,
-    pd_proc_term_info::out) is semidet.
-
-    % Update the global termination information when we find out the
-    % pred_proc_id that has been assigned to a version.
-    %
-:- pred update_global_term_info(proc_pair::in, pred_proc_id::in,
-    int::in, global_term_info::in,global_term_info::out) is det.
-
-:- type global_term_info.
-:- type local_term_info.
-:- type pd_proc_term_info.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -113,7 +110,7 @@
 :- import_module map.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type global_term_info
     --->    global_term_info(
@@ -131,25 +128,22 @@
     % to be deforested and the most recent ancestor with this pair
     % of goals.
 :- type multiple_covering_goals ==
-        map(proc_pair, pair(int, maybe(pred_proc_id))).
+    map(proc_pair, pair(int, maybe(pred_proc_id))).
 
     % Mapping from argument to size.
-:- type pd_proc_term_info   ==  assoc_list(int, int).
+:- type pd_proc_term_info == assoc_list(int, int).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 global_term_info_init(TermInfo) :-
     map.init(SingleGoals),
     map.init(MultipleGoals),
     TermInfo = global_term_info(SingleGoals, MultipleGoals).
 
-local_term_info_init(TermInfo) :-
-    map.init(TermInfo).
-
-get_proc_term_info(TermInfo, PredProcId, ProcTermInfo) :-
-    map.search(TermInfo, PredProcId, ProcTermInfo).
-
-%-----------------------------------------------------------------------------%
+update_global_term_info(ProcPair, PredProcId, Size, !TermInfo) :-
+    !.TermInfo = global_term_info(Single, Multiple0),
+    map.set(ProcPair, Size - yes(PredProcId), Multiple0, Multiple),
+    !:TermInfo = global_term_info(Single, Multiple).
 
 global_check(_ModuleInfo, EarlierGoal, BetweenGoals, MaybeLaterGoal,
         _InstMap, Versions, !Info, Result) :-
@@ -235,7 +229,10 @@ expand_calls(GetEnd, Versions, PredProcId0, PredProcId) :-
         PredProcId = PredProcId0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+local_term_info_init(TermInfo) :-
+    map.init(TermInfo).
 
 local_check(ModuleInfo, Goal1, InstMap, !Cover) :-
     Goal1 = hlds_goal(plain_call(PredId, ProcId, Args, _, _, _), _),
@@ -260,15 +257,6 @@ do_local_check(ModuleInfo, InstMap, Args, OldSizes, NewSizes) :-
         split_out_non_increasing(OldSizes, NewSizes1, yes, NewSizes)
     ).
 
-%-----------------------------------------------------------------------------%
-
-update_global_term_info(ProcPair, PredProcId, Size, !TermInfo) :-
-    !.TermInfo = global_term_info(Single, Multiple0),
-    map.set(ProcPair, Size - yes(PredProcId), Multiple0, Multiple),
-    !:TermInfo = global_term_info(Single, Multiple).
-
-%-----------------------------------------------------------------------------%
-
 :- pred initial_sizes(module_info::in, instmap::in,
     list(prog_var)::in, int::in, assoc_list(int, int)::out) is det.
 
@@ -279,8 +267,6 @@ initial_sizes(ModuleInfo, InstMap, [Arg | Args], ArgNo,
     initial_sizes(ModuleInfo, InstMap, Args, NextArgNo, Sizes),
     instmap_lookup_var(InstMap, Arg, ArgInst),
     pd_util.inst_size(ModuleInfo, ArgInst, Size).
-
-%-----------------------------------------------------------------------------%
 
 :- pred get_matching_sizes(module_info::in, instmap::in,
     list(prog_var)::in, assoc_list(int, int)::in,
@@ -297,8 +283,6 @@ get_matching_sizes(ModuleInfo, InstMap, Args,
     pd_util.inst_size(ModuleInfo, ArgInst, NewSize),
     OldTotal = OldTotal1 + OldSize,
     NewTotal = NewTotal1 + NewSize.
-
-%-----------------------------------------------------------------------------%
 
 :- pred split_out_non_increasing(assoc_list(int, int)::in,
     assoc_list(int, int)::in, bool::out, assoc_list(int, int)::out) is semidet.
@@ -323,6 +307,6 @@ split_out_non_increasing([Arg - OldSize | Args0],
         FoundDecreasing = FoundDecreasing1
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.pd_term.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

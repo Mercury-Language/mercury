@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et
+% vim: ft=mercury ts=4 sw=4 et wm=0
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
 % Copyright (C) 2013-2020 The Mercury team.
@@ -74,9 +74,9 @@
 
 %---------------------------------------------------------------------------%
 
+:- pred option_defaults(option::out, option_data::out) is nondet.
 :- pred short_option(char::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
-:- pred option_defaults(option::out, option_data::out) is nondet.
 
     % special_handler(Option, ValueForThatOption, OptionTableIn,
     %   MaybeOptionTableOut):
@@ -106,10 +106,7 @@
     %
 :- pred inconsequential_options(set(option)::out) is det.
 
-:- pred options_help(io::di, io::uo) is det.
-
-:- type option_table == option_table(option).
-:- type maybe_option_table == maybe_option_table(option).
+%---------------------------------------------------------------------------%
 
     % Add a directory to search for Mercury libraries. This
     % adds `--search-directory', `--c-include-directory',
@@ -134,6 +131,12 @@
     % Quote an argument to a shell command.
     %
 :- func quote_arg(string) = string.
+
+%---------------------------------------------------------------------------%
+
+:- pred options_help(io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 
     % NOTE: ALL OPTIONS SHOULD BE DOCUMENTED!
     %
@@ -1153,6 +1156,9 @@
     ;       feedback_file
     ;       par_loop_control
     ;       par_loop_control_preserve_tail_recursion.
+
+:- type option_table == option_table(option).
+:- type maybe_option_table == maybe_option_table(option).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -4022,6 +4028,18 @@ non_style_warning_options = [
     inform_inferred_types
 ].
 
+inconsequential_options(InconsequentialOptions) :-
+    option_defaults_2(oc_warn, WarningOptions),
+    option_defaults_2(oc_verbosity, VerbosityOptions),
+    option_defaults_2(oc_internal, InternalUseOptions),
+    option_defaults_2(oc_buildsys, BuildSystemOptions),
+    assoc_list.keys(WarningOptions, WarningKeys),
+    assoc_list.keys(VerbosityOptions, VerbosityKeys),
+    assoc_list.keys(InternalUseOptions, InternalUseKeys),
+    assoc_list.keys(BuildSystemOptions, BuildSystemKeys),
+    Keys = WarningKeys ++ VerbosityKeys ++ InternalUseKeys ++ BuildSystemKeys,
+    InconsequentialOptions = set.list_to_set(Keys).
+
 %---------------------------------------------------------------------------%
 
 option_table_add_mercury_library_directory(Dir, !OptionTable) :-
@@ -4141,47 +4159,33 @@ quote_char_unix('$').
 
 %---------------------------------------------------------------------------%
 
-inconsequential_options(InconsequentialOptions) :-
-    option_defaults_2(oc_warn, WarningOptions),
-    option_defaults_2(oc_verbosity, VerbosityOptions),
-    option_defaults_2(oc_internal, InternalUseOptions),
-    option_defaults_2(oc_buildsys, BuildSystemOptions),
-    assoc_list.keys(WarningOptions, WarningKeys),
-    assoc_list.keys(VerbosityOptions, VerbosityKeys),
-    assoc_list.keys(InternalUseOptions, InternalUseKeys),
-    assoc_list.keys(BuildSystemOptions, BuildSystemKeys),
-    Keys = WarningKeys ++ VerbosityKeys ++ InternalUseKeys ++ BuildSystemKeys,
-    InconsequentialOptions = set.list_to_set(Keys).
-
-%---------------------------------------------------------------------------%
-
-options_help -->
-    io.write_string("\t-?, -h, --help\n"),
-    io.write_string("\t\tPrint this usage message.\n"),
-    options_help_warning,
-    options_help_verbosity,
-    options_help_output,
-    options_help_aux_output,
-    options_help_semantics,
-    options_help_termination,
-    options_help_ctgc,
-    options_help_compilation_model,
-    options_help_code_generation,
-    options_help_optimization,
-    options_help_hlds_hlds_optimization,
-    options_help_hlds_llds_optimization,
-    options_help_llds_llds_optimization,
-    options_help_mlds_mlds_optimization,
-    options_help_output_optimization,
-    options_help_target_code_compilation,
-    options_help_link,
-    options_help_build_system,
-    options_help_misc.
+options_help(!IO) :-
+    io.write_string("\t-?, -h, --help\n", !IO),
+    io.write_string("\t\tPrint this usage message.\n", !IO),
+    options_help_warning(!IO),
+    options_help_verbosity(!IO),
+    options_help_output(!IO),
+    options_help_aux_output(!IO),
+    options_help_semantics(!IO),
+    options_help_termination(!IO),
+    options_help_ctgc(!IO),
+    options_help_compilation_model(!IO),
+    options_help_code_generation(!IO),
+    options_help_optimization(!IO),
+    options_help_hlds_hlds_optimization(!IO),
+    options_help_hlds_llds_optimization(!IO),
+    options_help_llds_llds_optimization(!IO),
+    options_help_mlds_mlds_optimization(!IO),
+    options_help_output_optimization(!IO),
+    options_help_target_code_compilation(!IO),
+    options_help_link(!IO),
+    options_help_build_system(!IO),
+    options_help_misc(!IO).
 
 :- pred options_help_warning(io::di, io::uo) is det.
 
-options_help_warning -->
-    io.write_string("\nWarning Options:\n"),
+options_help_warning(!IO) :-
+    io.write_string("\nWarning Options:\n", !IO),
     write_tabbed_lines([
         "-w, --inhibit-warnings",
         "\tDisable all warning messages.",
@@ -4397,12 +4401,12 @@ options_help_warning -->
 %       "--print-error-spec-id",
 %       "\tAfter each error message printed, print its id, which",
 %       "\tby convention is the $pred of the code that constructs it."
-    ]).
+    ], !IO).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.
 
-options_help_verbosity -->
-    io.write_string("\nVerbosity Options:\n"),
+options_help_verbosity(!IO) :-
+    io.write_string("\nVerbosity Options:\n", !IO),
     write_tabbed_lines([
         "-v, --verbose",
         "\tOutput progress messages at each stage in the compilation.",
@@ -4526,12 +4530,12 @@ options_help_verbosity -->
 %         "--debug-mode-constraints",
 %         "\tOutput detailed debugging traces of the `--prop-mode-constraints'",
 %         "\toption."
-    ]).
+    ], !IO).
 
 :- pred options_help_output(io::di, io::uo) is det.
 
-options_help_output -->
-    io.write_string("\nOutput Options:\n"),
+options_help_output(!IO) :-
+    io.write_string("\nOutput Options:\n", !IO),
     write_tabbed_lines([
         "These options are mutually exclusive.",
         "Only the first one specified will apply.",
@@ -4648,12 +4652,12 @@ options_help_output -->
         "--output-class-dir, --output-class-directory",
         "\tPrint to standard output the name of the directory in which",
         "\tgenerated Java class files will be placed."
-    ]).
+    ], !IO).
 
 :- pred options_help_aux_output(io::di, io::uo) is det.
 
-options_help_aux_output -->
-    io.write_string("\nAuxiliary Output Options:\n"),
+options_help_aux_output(!IO) :-
+    io.write_string("\nAuxiliary Output Options:\n", !IO),
     write_tabbed_lines([
 % These are commented out until the compiler consistently does
 % what these options say it should do when specified.
@@ -4939,13 +4943,13 @@ options_help_aux_output -->
 %       "\tof the unneeded code elimination algorithm.",
 %       "--common-struct-preds <predids>",
 %       "\tLimit common struct optimization to the preds with the given ids.",
-    ]).
+    ], !IO).
 
 :- pred options_help_semantics(io::di, io::uo) is det.
 
-options_help_semantics -->
-    io.write_string("\nLanguage semantics options:\n"),
-    io.write_string("(See the Mercury language reference manual for detailed explanations.)\n"),
+options_help_semantics(!IO) :-
+    io.write_string("\nLanguage semantics options:\n", !IO),
+    io.write_string("(See the Mercury language reference manual for detailed explanations.)\n", !IO),
     write_tabbed_lines([
         "--no-reorder-conj",
         "\tExecute conjunctions left-to-right except where the modes imply",
@@ -4979,12 +4983,12 @@ options_help_semantics -->
         "\tPerform at most <n> passes of mode inference (default: 30).",
         "--event-set-file-name <filename>",
         "\tGet the specification of user-defined events from <filename>."
-    ]).
+    ], !IO).
 
 :- pred options_help_ctgc(io::di, io::uo) is det.
 
-options_help_ctgc -->
-    io.write_string("\nCompile Time Garbage Collection Options:\n"),
+options_help_ctgc(!IO) :-
+    io.write_string("\nCompile Time Garbage Collection Options:\n", !IO),
     write_tabbed_lines([
         "--structure-sharing",
         "\tPerform structure sharing analysis.",
@@ -5018,12 +5022,12 @@ options_help_ctgc -->
 %       "--structure-reuse-free-cells",
 %       "\tImmediately free cells which are known to be dead but which",
 %       "\tcannot be reused."
-    ]).
+    ], !IO).
 
 :- pred options_help_termination(io::di, io::uo) is det.
 
-options_help_termination -->
-    io.write_string("\nTermination Analysis Options:\n"),
+options_help_termination(!IO) :-
+    io.write_string("\nTermination Analysis Options:\n", !IO),
     write_tabbed_lines([
         "--enable-term, --enable-termination",
         "\tAnalyse each predicate to discover if it terminates.",
@@ -5096,20 +5100,20 @@ options_help_termination -->
 %       "--term2-argument-size-analysis-only, --term2-arg-size-analysis-only",
 %       "\tPerform argument size analysis on each SCC but do not",
 %       "\tattempt to infer termination,"
-    ]).
+    ], !IO).
 
 :- pred options_help_compilation_model(io::di, io::uo) is det.
 
-options_help_compilation_model -->
-    io.write_string("\nCompilation model options:\n"),
+options_help_compilation_model(!IO) :-
+    io.write_string("\nCompilation model options:\n", !IO),
     write_tabbed_lines([
         "The following compilation options affect the generated",
         "code in such a way that the entire program must be",
         "compiled with the same setting of these options,",
         "and it must be linked to a version of the Mercury",
         "library which has been compiled with the same setting."
-    ]),
-    io.write_string("\n"),
+    ], !IO),
+    io.write_string("\n", !IO),
     write_tabbed_lines([
         "-s <grade>, --grade <grade>",
         "\tSelect the compilation model. The <grade> should be one of",
@@ -5136,9 +5140,9 @@ options_help_compilation_model -->
         "\tof these possible grades will have been installed.",
         "\tAttempting to use a grade which has not been installed",
         "\twill result in an error at link time."
-    ]),
+    ], !IO),
 
-    io.write_string("\n    Target selection compilation model options:\n"),
+    io.write_string("\n    Target selection compilation model options:\n", !IO),
     write_tabbed_lines([
         %"--target c\t\t\t(grades: none, reg, jump, fast,",
         %"\t\t\t\t\tasm_jump, asm_fast, hl, hlc)",
@@ -5167,10 +5171,10 @@ options_help_compilation_model -->
         "\tAn abbreviation for `--target c --target-code-only'.",
         "\tGenerate C code in `<module>.c', but do not generate object",
         "\tcode."
-    ]),
+    ], !IO),
 
-    io.write_string("\n    Optional feature compilation model options:\n"),
-    io.write_string("\n      Debugging\n"),
+    io.write_string("\n    Optional feature compilation model options:\n", !IO),
+    io.write_string("\n      Debugging\n", !IO),
     write_tabbed_lines([
         "--debug\t\t\t\t(grade modifier: `.debug')",
         "\tEnable Mercury-level debugging.",
@@ -5190,8 +5194,8 @@ options_help_compilation_model -->
 % consumption.
 %       "--ss-debug\t\t\t\t(grade modifier: `.ssdebug')",
 %       "\tEnable the source-to-source debugging transform."
-    ]),
-    io.write_string("\n      Profiling\n"),
+    ], !IO),
+    io.write_string("\n      Profiling\n", !IO),
     write_tabbed_lines([
         "-p, --profiling, --time-profiling",
         "\t\t\t\t(grade modifier: `.prof')",
@@ -5296,9 +5300,9 @@ options_help_compilation_model -->
         "\tEnable support for profiling parallel execution.",
         "\tThis option is supported by the low-level C back-end parallel",
         "\tgrades on some processors, See README.ThreadScope for details."
-    ]),
+    ], !IO),
 
-    io.write_string("\n      Miscellaneous optional features\n"),
+    io.write_string("\n      Miscellaneous optional features\n", !IO),
     write_tabbed_lines([
         "--gc {none, boehm, hgc, accurate, automatic}",
         "--garbage-collection {none, boehm, hgc, accurate, automatic}",
@@ -5351,9 +5355,9 @@ options_help_compilation_model -->
         %"--use-alloc-regions",
         %"\tCompute and use the exact set of regions",
         %"\t that may be allocated into by a call."
-    ]),
+    ], !IO),
 
-    io.write_string("\n    LLDS back-end compilation model options:\n"),
+    io.write_string("\n    LLDS back-end compilation model options:\n", !IO),
     write_tabbed_lines([
 
         %"--gcc-global-registers\t\t(grades: reg, fast, asm_fast)",
@@ -5390,9 +5394,9 @@ options_help_compilation_model -->
 %       "--use-float-registers",
 %       "(This option is not for general use.)",
 %       "\tUse float registers for argument passing."
-    ]),
+    ], !IO),
 
-    io.write_string("\n    MLDS back-end compilation model options:\n"),
+    io.write_string("\n    MLDS back-end compilation model options:\n", !IO),
     write_tabbed_lines([
         "-H, --high-level-code\t\t\t(grades: hlc, csharp, java)",
         "\tUse an alternative back-end that generates high-level code",
@@ -5435,10 +5439,10 @@ options_help_compilation_model -->
 %       "\tnondeterministic Mercury procedures on the heap,",
 %       "\trather than on the stack."
 %   ])
-    ]),
+    ], !IO),
 
-    io.write_string("\n    Developer compilation model options:\n"),
-    io.write_string("\n      Data representation\n"),
+    io.write_string("\n    Developer compilation model options:\n", !IO),
+    io.write_string("\n      Data representation\n", !IO),
     write_tabbed_lines([
         "--num-ptag-bits <n>           (This option is not for general use.)",
         "\tUse <n> primary tag bits."
@@ -5500,8 +5504,8 @@ options_help_compilation_model -->
 %       "(This option is not for general use.)",
 %       "\tDisallow storing a single constructor argument in two words"
 %       "(namely, double-precision floats).",
-    ]),
-    io.write_string("\n      Developer optional features\n"),
+    ], !IO),
+    io.write_string("\n      Developer optional features\n", !IO),
     write_tabbed_lines([
         "--use-minimal-model-stack-copy",
         "(This option is not for general use.)",
@@ -5613,12 +5617,12 @@ options_help_compilation_model -->
 %       "--type-check-constraints",
 %       "(This option is not for general use.)",
 %       Use the constraint based type checker instead of the old one.
-    ]).
+    ], !IO).
 
 :- pred options_help_code_generation(io::di, io::uo) is det.
 
-options_help_code_generation -->
-    io.write_string("\nCode generation options:\n"),
+options_help_code_generation(!IO) :-
+    io.write_string("\nCode generation options:\n", !IO),
     write_tabbed_lines([
 %       "--low-level-debug",
 %       "\tEnables various low-level debugging stuff, that was in",
@@ -5716,9 +5720,9 @@ options_help_code_generation -->
 %        "\tIn Java grades, generate code that causes a trace of class",
 %        "\tinitialization to be printed to the standard output when the",
 %        "\tenvironment variable MERCURY_DEBUG_CLASS_INIT is defined."
-    ]),
+    ], !IO),
 
-    io.write_string("\n    Code generation target options:\n"),
+    io.write_string("\n    Code generation target options:\n", !IO),
     write_tabbed_lines([
         "--branch-delay-slot    \t(This option is not for general use.)",
         "\tAssume that branch instructions have a delay slot.",
@@ -5734,12 +5738,12 @@ options_help_code_generation -->
         "--num-real-f-temps <n> \t(This option is not for general use.)",
         "\tAssume that <n> float temporaries will fit into",
         "\treal machine registers."
-    ]).
+    ], !IO).
 
 :- pred options_help_optimization(io::di, io::uo) is det.
 
-options_help_optimization -->
-    io.write_string("\nOptimization Options:\n"),
+options_help_optimization(!IO) :-
+    io.write_string("\nOptimization Options:\n", !IO),
     write_tabbed_lines([
         "-O <n>, --opt-level <n>, --optimization-level <n>",
         "\tSet optimization level to <n>.",
@@ -5788,12 +5792,12 @@ options_help_optimization -->
 %       "--analysis-file-cache",
 %       "\tEnable caching of parsed analysis files. This may",
 %       "\timprove compile times with `--intermodule-analysis'."
-    ]).
+    ], !IO).
 
 :- pred options_help_hlds_hlds_optimization(io::di, io::uo) is det.
 
-options_help_hlds_hlds_optimization -->
-    io.write_string("\n    High-level (HLDS -> HLDS) optimizations:\n"),
+options_help_hlds_hlds_optimization(!IO) :-
+    io.write_string("\n    High-level (HLDS -> HLDS) optimizations:\n", !IO),
     write_tabbed_lines([
         "--no-inlining",
         "\tDisable all forms of inlining.",
@@ -6038,15 +6042,15 @@ options_help_hlds_hlds_optimization -->
 % '--region-analysis' is not documented because it is still experimental.
 %        "--region-analysis",
 %        "\tEnable the analysis for region-based memory management."
-    ]).
+    ], !IO).
 
     % XXX This is out-of-date. --smart-indexing also affects the
     % MLDS backend.
     %
 :- pred options_help_hlds_llds_optimization(io::di, io::uo) is det.
 
-options_help_hlds_llds_optimization -->
-    io.write_string("\n    Medium-level (HLDS -> LLDS) optimizations:\n"),
+options_help_hlds_llds_optimization(!IO) :-
+    io.write_string("\n    Medium-level (HLDS -> LLDS) optimizations:\n", !IO),
     write_tabbed_lines([
         "--no-smart-indexing",
         "\tGenerate switches as simple if-then-else chains;",
@@ -6116,12 +6120,12 @@ options_help_hlds_llds_optimization -->
 %       "\tDo not generate code in which a procedure hijacks",
 %       "\ta nondet stack frame that possibly belongs to",
 %       "\tanother procedure invocation".
-    ]).
+    ], !IO).
 
 :- pred options_help_llds_llds_optimization(io::di, io::uo) is det.
 
-options_help_llds_llds_optimization -->
-    io.write_string("\n    Low-level (LLDS -> LLDS) optimizations:\n"),
+options_help_llds_llds_optimization(!IO) :-
+    io.write_string("\n    Low-level (LLDS -> LLDS) optimizations:\n", !IO),
     write_tabbed_lines([
         "--no-common-data",
         "\tDisable optimization of common data structures.",
@@ -6174,12 +6178,12 @@ options_help_llds_llds_optimization -->
         "\tAttempt to compress the layout structures used by the debugger",
         "\tonly as long as the arrays involved have at most <n> elements",
         "\t(default: 4000)."
-    ]).
+    ], !IO).
 
 :- pred options_help_mlds_mlds_optimization(io::di, io::uo) is det.
 
-options_help_mlds_mlds_optimization -->
-    io.write_string("\n    MLDS -> MLDS optimizations:\n"),
+options_help_mlds_mlds_optimization(!IO) :-
+    io.write_string("\n    MLDS -> MLDS optimizations:\n", !IO),
     write_tabbed_lines([
         "--no-mlds-optimize",
         "\tDisable the MLDS->MLDS optimization passes.",
@@ -6202,12 +6206,12 @@ options_help_mlds_mlds_optimization -->
         "\tDo not generate trailing operations inline,",
         "\tbut instead insert calls to the versions of these operations",
         "\tin the standard library."
-]).
+    ], !IO).
 
 :- pred options_help_output_optimization(io::di, io::uo) is det.
 
-options_help_output_optimization -->
-    io.write_string("\n    Output-level (LLDS -> C) optimizations:\n"),
+options_help_output_optimization(!IO) :-
+    io.write_string("\n    Output-level (LLDS -> C) optimizations:\n", !IO),
     write_tabbed_lines([
         "--use-macro-for-redo-fail",
         "\tEmit the fail or redo macro instead of a branch",
@@ -6230,12 +6234,12 @@ options_help_output_optimization -->
         "\tinto local variables. This option only affects low-level",
         "\tparallel grades not using the GNU C global register variables",
         "\textension."
-    ]).
+    ], !IO).
 
 :- pred options_help_target_code_compilation(io::di, io::uo) is det.
 
-options_help_target_code_compilation -->
-    io.write_string("\n    Target code compilation:\n"),
+options_help_target_code_compilation(!IO) :-
+    io.write_string("\n    Target code compilation:\n", !IO),
     write_tabbed_lines([
         "\tNote that if you are using Mmake, you need to pass these",
         "\toptions to the target code compiler (e.g. `mgnuc')",
@@ -6326,12 +6330,12 @@ options_help_target_code_compilation -->
         "--cli-interpreter <prog>",
         "\tSpecify the program that implements the Common Language",
         "\tInfrastructure (CLI) execution environment, e.g. `mono'."
-    ]).
+    ], !IO).
 
 :- pred options_help_link(io::di, io::uo) is det.
 
-options_help_link -->
-    io.write_string("\nLink Options:\n"),
+options_help_link(!IO) :-
+    io.write_string("\nLink Options:\n", !IO),
     write_tabbed_lines([
         "-o <filename>, --output-file <filename>",
         "\tSpecify the name of the final executable.",
@@ -6500,12 +6504,12 @@ options_help_link -->
         % --shlib-linker-use-install-name,
         % options are reserved for use by the `Mercury.config' file;
         % they are deliberately not documented.
-    ]).
+    ], !IO).
 
 :- pred options_help_build_system(io::di, io::uo) is det.
 
-options_help_build_system -->
-    io.write_string("\nBuild System Options:\n"),
+options_help_build_system(!IO) :-
+    io.write_string("\nBuild System Options:\n", !IO),
     write_tabbed_lines([
         % `--invoked-by-mmc-make' is for internal use by the
         % compiler. `mmc --make' passes it as the first argument
@@ -6664,12 +6668,12 @@ options_help_build_system -->
         "--target-env-type <type>",
         "\tSpecify the environment type in which generated programs will be",
         "\tinvoked."
-    ]).
+    ], !IO).
 
 :- pred options_help_misc(io::di, io::uo) is det.
 
-options_help_misc -->
-    io.write_string("\nMiscellaneous Options:\n"),
+options_help_misc(!IO) :-
+    io.write_string("\nMiscellaneous Options:\n", !IO),
     write_tabbed_lines([
         "--filenames-from-stdin",
         "\tRead then compile a newline terminated module name or",
@@ -6722,7 +6726,7 @@ options_help_misc -->
         "--feedback-file <file>",
         "\tUse the specified profiling feedback file which may currently",
         "\tonly be processed for implicit parallelism."
-    ]).
+    ], !IO).
 
 :- pred write_tabbed_lines(list(string)::in, io::di, io::uo) is det.
 

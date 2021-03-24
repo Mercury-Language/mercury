@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1998-2001, 2003-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: pd_info.m.
 % Main author: stayl.
 %
 % Types for deforestation.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.pd_info.
 :- interface.
@@ -33,7 +33,7 @@
 :- import_module pair.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type pd_info
     --->    pd_info(
@@ -87,6 +87,8 @@
     pd_info::in, pd_info::out) is det.
 :- pred pd_info_set_unfold_info(unfold_info::in,
     pd_info::in, pd_info::out) is det.
+:- pred pd_info_unset_unfold_info(
+    pd_info::in, pd_info::out) is det.
 :- pred pd_info_set_goal_version_index(goal_version_index::in,
     pd_info::in, pd_info::out) is det.
 :- pred pd_info_set_versions(version_index::in,
@@ -111,10 +113,8 @@
 :- pred pd_info_bind_var_to_functors(prog_var::in,
     cons_id::in, list(cons_id)::in, pd_info::in, pd_info::out) is det.
 
-:- pred pd_info_unset_unfold_info(pd_info::in, pd_info::out) is det.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -133,7 +133,7 @@
 :- import_module require.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pd_info_init(ModuleInfo, ProcArgInfos, PDInfo) :-
     map.init(GoalVersionIndex),
@@ -219,7 +219,7 @@ pd_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !PDInfo) :-
     pd_info_set_instmap(InstMap, !PDInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -308,16 +308,17 @@ pd_info_bind_var_to_functors(Var, MainConsId, OtherConsIds, !PDInfo) :-
     pd_info::in, pd_info::out) is det.
 :- pred pd_info_set_size_delta(int::in,
     pd_info::in, pd_info::out) is det.
-:- pred pd_info_incr_cost_delta(int::in,
-    pd_info::in, pd_info::out) is det.
-:- pred pd_info_incr_size_delta(int::in,
-    pd_info::in, pd_info::out) is det.
 :- pred pd_info_set_changed(bool::in,
     pd_info::in, pd_info::out) is det.
 :- pred pd_info_set_rerun_det(bool::in,
     pd_info::in, pd_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+:- pred pd_info_incr_cost_delta(int::in,
+    pd_info::in, pd_info::out) is det.
+:- pred pd_info_incr_size_delta(int::in,
+    pd_info::in, pd_info::out) is det.
+
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -395,8 +396,8 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
     Delta = Delta0 + Delta1,
     pd_info_set_size_delta(Delta, !PDInfo).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- interface.
 
@@ -477,7 +478,7 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
                 version_source      :: maybe(pred_proc_id)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -505,7 +506,7 @@ pd_info.search_version(PDInfo, Goal, MaybeVersion) :-
         pd_debug_search_version_result(PDInfo, MaybeVersion, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred pd_info.get_matching_version(module_info::in, hlds_goal::in,
     instmap::in, vartypes::in, list(pred_proc_id)::in,
@@ -543,7 +544,7 @@ pd_info.get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
             VarTypes, VersionIds, Versions, MaybeVersion)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Choose between two versions.
     %
@@ -570,7 +571,7 @@ pd_info.pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
             Version2, Renaming2, TSubn2)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The aim of this is to check whether the first goal can be used
     % instead of the second if specialisation on the second goal does
@@ -607,7 +608,7 @@ pd_info.goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
     MaybeVersion = version(Exact, PredProcId, Version,
         OldNewRenaming, TypeRenaming).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Check that all the insts in the old version are at least as
     % general as the insts in the new version.
@@ -642,7 +643,7 @@ pd_info.check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
     pd_info.check_insts(ModuleInfo, Vars, VarRenaming, OldInstMap,
         NewInstMap, VarTypes, !ExactSoFar).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pd_info.define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap),
@@ -679,7 +680,7 @@ pd_info.define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
         VarNameRemap, ModuleInfo0, ModuleInfo, PredProcId),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pd_info.register_version(PredProcId, Version, !PDInfo) :-
     trace [io(!IO)] (
@@ -703,7 +704,7 @@ pd_info.register_version(PredProcId, Version, !PDInfo) :-
     set.insert(PredProcId, CreatedVersions0, CreatedVersions),
     pd_info_set_created_versions(CreatedVersions, !PDInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pd_info.invalidate_version(PredProcId, !PDInfo) :-
     pd_info_get_versions(!.PDInfo, Versions0),
@@ -750,6 +751,6 @@ pd_info.remove_version(PredProcId, !PDInfo) :-
     module_info_remove_predicate(PredId, ModuleInfo0, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.pd_info.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
