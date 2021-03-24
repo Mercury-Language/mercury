@@ -1833,12 +1833,10 @@ maybe_make_grade_clean(Globals, Clean, ModuleName, AllModules, !Info, !IO) :-
 make_grade_clean(Globals, ModuleName, AllModules, !Info, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("Cleaning up grade-dependent files for `", !IO),
-            write_sym_name_to_cur_stream(ModuleName, !IO),
-            io.write_string("'in grade ", !IO),
             grade_directory_component(Globals, Grade),
-            io.write_string(Grade, !IO),
-            io.write_string(".\n", !IO)
+            io.format(
+                "Cleaning up grade-dependent files for `%s' in grade %s.\n",
+                [s(sym_name_to_escaped_string(ModuleName)), s(Grade)], !IO)
         ), !IO),
 
     make_main_module_realclean(Globals, ModuleName, !Info, !IO),
@@ -1850,10 +1848,8 @@ make_grade_clean(Globals, ModuleName, AllModules, !Info, !IO) :-
 make_main_module_realclean(Globals, ModuleName, !Info, !IO) :-
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("Removing executable and library files for `",
-                !IO),
-            write_sym_name_to_cur_stream(ModuleName, !IO),
-            io.write_string("'.\n", !IO)
+            io.format("Removing executable and library files for `%s'.\n",
+                [s(sym_name_to_escaped_string(ModuleName))], !IO)
         ), !IO),
 
     LinkedTargetTypes = [
@@ -1904,9 +1900,8 @@ remove_init_files(Globals, Verbose, ModuleName, !Info, !IO) :-
 make_module_clean(Globals, ModuleName, !Info, !IO) :-
     verbose_make_msg_option(Globals, verbose_make,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("Cleaning up target files for module `", !IO),
-            write_sym_name_to_cur_stream(ModuleName, !IO),
-            io.write_string("'.\n", !IO)
+            io.format("Cleaning up target files for module `%s'.\n",
+                [s(sym_name_to_escaped_string(ModuleName))], !IO)
         ), !IO),
 
     list.foldl2(
@@ -1987,9 +1982,8 @@ make_module_realclean(Globals, ModuleName, !Info, !IO) :-
 
     verbose_make_msg_option(Globals, verbose_make,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("Cleaning up interface files for module `", !IO),
-            write_sym_name_to_cur_stream(ModuleName, !IO),
-            io.write_string("'.\n", !IO)
+            io.format("Cleaning up interface files for module `%s'\n",
+                [s(sym_name_to_escaped_string(ModuleName))], !IO)
         ), !IO),
     Targets = [module_target_int0, module_target_int1, module_target_int2,
         module_target_int3, module_target_opt,

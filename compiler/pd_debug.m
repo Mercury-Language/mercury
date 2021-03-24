@@ -101,7 +101,7 @@ pd_debug_message(DebugPD, Fmt, Args, !IO) :-
 
 pd_debug_message_context(DebugPD, Context, Fmt, Args, !IO) :-
     pd_debug_do_io(DebugPD,
-        prog_out.write_context_to_cur_stream(Context), !IO),
+        prog_out.write_context(Context), !IO),
     pd_debug_do_io(DebugPD, io.format(Fmt, Args), !IO).
 
 %---------------------------------------------------------------------------%

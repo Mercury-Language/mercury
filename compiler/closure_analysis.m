@@ -492,8 +492,7 @@ dump_ho_values(GoalInfo, Varset, !IO) :-
     ( if map.is_empty(HO_Values) then
         true
     else
-        prog_out.write_context_to_cur_stream(
-            goal_info_get_context(GoalInfo), !IO),
+        prog_out.write_context(goal_info_get_context(GoalInfo), !IO),
         io.nl(!IO),
         map.foldl(dump_ho_value(Varset), HO_Values, !IO)
     ).
@@ -504,11 +503,11 @@ dump_ho_values(GoalInfo, Varset, !IO) :-
 dump_ho_value(Varset, ProgVar, Values, !IO) :-
     VarName = varset.lookup_name(Varset, ProgVar),
     io.format("%s =\n", [s(VarName)], !IO),
-    WritePPIds = (pred(PPId::in, !.IO::di, !:IO::uo) is det :-
-        io.write_string("\t", !IO),
-        io.write(PPId, !IO),
-        io.nl(!IO)
-    ),
+    WritePPIds =
+        ( pred(PPId::in, !.IO::di, !:IO::uo) is det :-
+            io.write_string("\t", !IO),
+            io.write_line(PPId, !IO)
+        ),
     set.fold(WritePPIds, Values, !IO).
 
 %----------------------------------------------------------------------------%

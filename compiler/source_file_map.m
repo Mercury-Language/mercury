@@ -270,10 +270,8 @@ write_source_file_map_2(Globals, MapStream, FileName,
             true
         else
             io.set_output_stream(MapStream, OldStream, !IO),
-            prog_out.write_sym_name_to_cur_stream(ModuleName, !IO),
-            io.write_string("\t", !IO),
-            io.write_string(FileName, !IO),
-            io.nl(!IO),
+            io.format("%s\t%s\n",
+                [s(sym_name_to_escaped_string(ModuleName)), s(FileName)], !IO),
             io.set_output_stream(OldStream, _, !IO)
         )
     ;

@@ -37,19 +37,19 @@
     % Write out the information in term context (at the moment, just the
     % line number) in a form suitable for the beginning of an error message.
     %
-:- pred write_context_to_cur_stream(prog_context::in, io::di, io::uo) is det.
+:- pred write_context(prog_context::in, io::di, io::uo) is det.
 :- pred write_context(io.text_output_stream::in, prog_context::in,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-:- func sym_name_to_escaped_string(sym_name) = string.
-
-    % Write out a symbol name, with special characters escaped, but without
-    % any quotes. This is suitable for use in error messages, where the
-    % caller should print out an enclosing forward/backward-quote pair (`...').
+    % Return or write out a symbol name, with special characters escaped,
+    % but without any quotes. This is suitable for use in error messages,
+    % where the caller should print out an enclosing forward/backward-quote
+    % pair (`...').
     %
-:- pred write_sym_name_to_cur_stream(sym_name::in, io::di, io::uo) is det.
+:- func sym_name_to_escaped_string(sym_name) = string.
+:- pred write_sym_name(sym_name::in, io::di, io::uo) is det.
 :- pred write_sym_name(io.text_output_stream::in, sym_name::in,
     io::di, io::uo) is det.
 
@@ -57,7 +57,9 @@
     % and with any special characters escaped.
     % The output should be a syntactically valid Mercury term.
     %
-:- pred write_quoted_sym_name_to_cur_stream(sym_name::in,
+:- pred write_quoted_sym_name(sym_name::in,
+    io::di, io::uo) is det.
+:- pred write_quoted_sym_name(io.text_output_stream::in, sym_name::in,
     io::di, io::uo) is det.
 
     % sym_name_arity_to_string(SymName, String):
@@ -67,7 +69,7 @@
     % qualifier operator.
     %
 :- func sym_name_arity_to_string(sym_name_arity) = string.
-:- pred write_sym_name_arity_to_cur_stream(sym_name_arity::in,
+:- pred write_sym_name_arity(sym_name_arity::in,
     io::di, io::uo) is det.
 :- pred write_sym_name_arity(io.text_output_stream::in, sym_name_arity::in,
     io::di, io::uo) is det.
@@ -138,7 +140,8 @@
 
     % Print "predicate" or "function" depending on the given value.
     %
-:- pred write_pred_or_func_to_cur_stream(pred_or_func::in,
+:- pred write_pred_or_func(pred_or_func::in, io::di, io::uo) is det.
+:- pred write_pred_or_func(io.text_output_stream::in, pred_or_func::in,
     io::di, io::uo) is det.
 
     % Get a purity name as a string.
@@ -198,7 +201,7 @@ context_to_string(Context, ContextMessage) :-
             ContextMessage)
     ).
 
-write_context_to_cur_stream(Context, !IO) :-
+write_context(Context, !IO) :-
     io.output_stream(Stream, !IO),
     write_context(Stream, Context, !IO).
 
@@ -209,13 +212,13 @@ write_context(Stream, Context, !IO) :-
 %-----------------------------------------------------------------------------%
 
 sym_name_to_escaped_string(qualified(Module, Name)) =
-    module_name_to_escaped_string(Module)
+    sym_name_to_escaped_string(Module)
     ++ "."
     ++ term_io.escaped_string(Name).
 sym_name_to_escaped_string(unqualified(Name)) =
     term_io.escaped_string(Name).
 
-write_sym_name_to_cur_stream(SymName, !IO) :-
+write_sym_name(SymName, !IO) :-
     io.output_stream(Stream, !IO),
     write_sym_name(Stream, SymName, !IO).
 
@@ -226,17 +229,21 @@ write_sym_name(Stream, qualified(Module, Name), !IO) :-
 write_sym_name(Stream, unqualified(Name), !IO) :-
     term_io.write_escaped_string(Stream, Name, !IO).
 
-write_quoted_sym_name_to_cur_stream(SymName, !IO) :-
-    io.write_string("'", !IO),
-    write_sym_name_to_cur_stream(SymName, !IO),
-    io.write_string("'", !IO).
+write_quoted_sym_name(SymName, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_quoted_sym_name(Stream, SymName, !IO).
+
+write_quoted_sym_name(Stream, SymName, !IO) :-
+    io.write_string(Stream, "'", !IO),
+    write_sym_name(Stream, SymName, !IO),
+    io.write_string(Stream, "'", !IO).
 
 sym_name_arity_to_string(sym_name_arity(SymName, Arity)) = String :-
     SymNameString = sym_name_to_string(SymName),
     string.int_to_string(Arity, ArityString),
     string.append_list([SymNameString, "/", ArityString], String).
 
-write_sym_name_arity_to_cur_stream(SNA, !IO) :-
+write_sym_name_arity(SNA, !IO) :-
     io.output_stream(Stream, !IO),
     write_sym_name_arity(Stream, SNA, !IO).
 
@@ -452,8 +459,12 @@ pred_or_func_to_full_str(pf_function) = "function".
 pred_or_func_to_str(pf_predicate) = "pred".
 pred_or_func_to_str(pf_function) = "func".
 
-write_pred_or_func_to_cur_stream(PorF, !IO) :-
-    io.write_string(pred_or_func_to_full_str(PorF), !IO).
+write_pred_or_func(PorF, !IO) :-
+    io.output_stream(Stream, !IO),
+    write_pred_or_func(Stream, PorF, !IO).
+
+write_pred_or_func(Stream, PorF, !IO) :-
+    io.write_string(Stream, pred_or_func_to_full_str(PorF), !IO).
 
 purity_name(purity_pure, "pure").
 purity_name(purity_semipure, "semipure").

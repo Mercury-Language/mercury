@@ -376,13 +376,13 @@ add_clause_progress_msg(ModuleInfo, PredInfo, PredOrFunc, PredName,
         NumClauses = num_clauses_in_clauses_rep(MsgClauses ^ cli_rep),
         io.format("%% Processing clause %d for ",
             [i(NumClauses + 1)], !IO),
-        write_pred_or_func_to_cur_stream(PredOrFunc, !IO),
+        write_pred_or_func(PredOrFunc, !IO),
         io.write_string(" `", !IO),
         list.length(MaybeAnnotatedArgTerms, PredArity0),
         PredArity = PredArity0 + ArityAdjustment,
         adjust_func_arity(PredOrFunc, OrigArity, PredArity),
         SNA = sym_name_arity(PredName, OrigArity),
-        prog_out.write_sym_name_arity_to_cur_stream(SNA, !IO),
+        prog_out.write_sym_name_arity(SNA, !IO),
         io.write_string("'...\n", !IO)
     ;
         VeryVerbose = no

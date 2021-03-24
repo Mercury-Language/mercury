@@ -946,11 +946,9 @@ cleanup_module_dep_file(Globals, ModuleName, !Info, !IO) :-
 
 maybe_write_importing_module(_, no, !IO).
 maybe_write_importing_module(ModuleName, yes(ImportingModuleName), !IO) :-
-    io.write_string("** Module `", !IO),
-    write_sym_name_to_cur_stream(ModuleName, !IO),
-    io.write_string("' is imported or included by module `", !IO),
-    write_sym_name_to_cur_stream(ImportingModuleName, !IO),
-    io.write_string("'.\n", !IO).
+    io.format("** Module `%s' is imported or included by module `%s'.\n",
+        [s(sym_name_to_escaped_string(ModuleName)),
+        s(sym_name_to_escaped_string(ImportingModuleName))], !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module make.module_dep_file.

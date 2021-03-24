@@ -602,7 +602,7 @@ write_request_entry(Compiler, AnalysisName, FuncId, Request, !IO) :-
     ),
 
     FuncIdStr = func_id_to_string(FuncId),
-    write_quoted_module_name(CallerModule, !IO),
+    write_quoted_sym_name(CallerModule, !IO),
     io.format(" -> %s(%i, %s, ",
         [s(AnalysisName), i(VersionNumber), s(FuncIdStr)], !IO),
     term_io.write_term(varset.init, to_term(Call), !IO),
@@ -684,7 +684,7 @@ write_imdg_arc(Compiler, AnalysisName, FuncId, Arc, !IO) :-
     ),
 
     FuncIdStr = func_id_to_string(FuncId),
-    write_quoted_module_name(DependentModule, !IO),
+    write_quoted_sym_name(DependentModule, !IO),
     io.format(" -> %s(%d, %s, ",
         [s(AnalysisName), i(VersionNumber), s(FuncIdStr)], !IO),
     term_io.write_term(varset.init, to_term(Call), !IO),
@@ -834,11 +834,6 @@ func_id_to_string(func_id(PredOrFunc, Name, Arity, ProcId)) = String :-
     NameStr = term_io.quoted_atom(Name),
     string.format("%s(%s, %d, %d)",
         [s(PFStr), s(NameStr), i(Arity), i(proc_id_to_int(ProcId))], String).
-
-:- pred write_quoted_module_name(module_name::in, io::di, io::uo) is det.
-
-write_quoted_module_name(ModuleName, !IO) :-
-    write_quoted_sym_name_to_cur_stream(ModuleName, !IO).
 
 %---------------------%
 

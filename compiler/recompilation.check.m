@@ -193,9 +193,8 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
 :- pred write_not_recompiling_message(module_name::in, io::di, io::uo) is det.
 
 write_not_recompiling_message(ModuleName, !IO) :-
-    io.write_string("Not recompiling module ", !IO),
-    prog_out.write_sym_name_to_cur_stream(ModuleName, !IO),
-    io.write_string(".\n", !IO).
+    io.format("Not recompiling module %s.\n",
+        [s(sym_name_to_escaped_string(ModuleName))], !IO).
 
 :- pred write_reasons_message(globals::in, module_name::in,
     list(recompile_reason)::in, io::di, io::uo) is det.

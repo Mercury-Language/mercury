@@ -2939,10 +2939,9 @@ maybe_write_request(no, _, _, _, _, _, _, _, _, !IO).
 maybe_write_request(yes, ModuleInfo, Msg, SymName, PredArity, ActualArity,
         MaybeNewName, HOArgs, Context, !IO) :-
     OldName = sym_name_to_string(SymName),
-    string.int_to_string(PredArity, ArStr),
     io.write_string("% ", !IO),
-    prog_out.write_context_to_cur_stream(Context, !IO),
-    io.write_strings([Msg, " `", OldName, "'/", ArStr], !IO),
+    prog_out.write_context(Context, !IO),
+    io.format("%s `%s'/%d", [s(Msg), s(OldName), i(PredArity)], !IO),
     (
         MaybeNewName = yes(NewName),
         io.write_string(" into ", !IO),
@@ -2958,8 +2957,8 @@ maybe_write_request(yes, ModuleInfo, Msg, SymName, PredArity, ActualArity,
     list(higher_order_arg)::in, io::di, io::uo) is det.
 
 output_higher_order_args(_, _, _, [], !IO).
-output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs],
-        !IO) :-
+output_higher_order_args(ModuleInfo, NumToDrop, Indent,
+        [HOArg | HOArgs], !IO) :-
     HOArg = higher_order_arg(ConsId, ArgNo, NumArgs, _, _, _,
         CurriedHOArgs, IsConst),
     io.write_string("% ", !IO),
@@ -2985,17 +2984,13 @@ output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs],
         io.write_string("'/", !IO),
         io.write_int(PredArity, !IO)
     else if ConsId = type_ctor_info_const(TypeModule, TypeName, TypeArity) then
-        io.write_string("type_ctor_info for `", !IO),
-        prog_out.write_sym_name_to_cur_stream(
-            qualified(TypeModule, TypeName), !IO),
-        io.write_string("'/", !IO),
-        io.write_int(TypeArity, !IO)
+        io.format("type_ctor_info for `%s'/%d",
+            [s(sym_name_to_escaped_string(qualified(TypeModule, TypeName))),
+            i(TypeArity)], !IO)
     else if ConsId = base_typeclass_info_const(_, ClassId, _, _) then
-        io.write_string("base_typeclass_info for `", !IO),
-        ClassId = class_id(ClassName, ClassArity),
-        prog_out.write_sym_name_to_cur_stream(ClassName, !IO),
-        io.write_string("'/", !IO),
-        io.write_int(ClassArity, !IO)
+        ClassId = class_id(ClassSymName, ClassArity),
+        io.format("base_typeclass_info for `%s'/%d",
+            [s(sym_name_to_escaped_string(ClassSymName)), i(ClassArity)], !IO)
     else
         % XXX output the type.
         io.write_string("type_info/typeclass_info ", !IO)
