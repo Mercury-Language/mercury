@@ -59,6 +59,7 @@
 
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.lp_rational.
@@ -103,7 +104,7 @@ do_fixpoint_calculation(Options, SCC, Iteration, [], !ModuleInfo) :-
     % but the code ends up being a horrible mess.
     %
     set.foldl(
-        term_iterate_over_abstract_proc(Iteration, Options, !.ModuleInfo),
+        term_iterate_over_abstract_proc(!.ModuleInfo, Options, Iteration),
         AbstractSCC, [], IterationInfos),
     ChangeFlag = or_flags(IterationInfos),
     (
@@ -123,10 +124,11 @@ do_fixpoint_calculation(Options, SCC, Iteration, [], !ModuleInfo) :-
             list.member(OneInfo, IterationInfos),
             polyhedron.is_empty(OneInfo ^ ii_arg_size_poly)
         then
-            ChangePoly = (func(Info0) = Info :-
-                Identity = polyhedron.universe,
-                Info = Info0 ^ ii_arg_size_poly := Identity
-            ),
+            ChangePoly =
+                ( func(Info0) = Info :-
+                    Identity = polyhedron.universe,
+                    Info = Info0 ^ ii_arg_size_poly := Identity
+                ),
             list.foldl(update_size_info, list.map(ChangePoly, IterationInfos),
                 !ModuleInfo)
         else
@@ -148,11 +150,11 @@ update_size_info(Info, !ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred term_iterate_over_abstract_proc(int::in, fixpoint_options::in,
-    module_info::in, abstract_proc::in,
+:- pred term_iterate_over_abstract_proc(module_info::in, fixpoint_options::in,
+    int::in, abstract_proc::in,
     iteration_infos::in, iteration_infos::out) is det.
 
-term_iterate_over_abstract_proc(Iteration, Options, ModuleInfo, Proc,
+term_iterate_over_abstract_proc(ModuleInfo, Options, Iteration, Proc,
         !IterationInfo) :-
     WideningInfo = Options ^ fo_widening,
     MaxMatrixSize = Options ^ fo_max_size,
@@ -168,14 +170,13 @@ term_iterate_over_abstract_proc(Iteration, Options, ModuleInfo, Proc,
     (
         DebugTerm = yes,
         trace [io(!IO)] (
+            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
             PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
-            io.write(PPId, !IO),
-            io.write_string(": ", !IO),
-            io.write_string(PPIdStr, !IO),
-            io.write_string(" ", !IO),
-            write_size_vars(SizeVarSet, HeadVars, !IO),
-            io.format("\nIteration %d:\n", [i(Iteration)], !IO),
-            io.flush_output(!IO)
+            io.write(DebugStream, PPId, !IO),
+            io.format(DebugStream, ": %s ", [s(PPIdStr)], !IO),
+            write_size_vars(DebugStream, SizeVarSet, HeadVars, !IO),
+            io.format(DebugStream, "\nIteration %d:\n", [i(Iteration)], !IO),
+            io.flush_output(DebugStream, !IO)
         )
     ;
         DebugTerm = no
@@ -200,7 +201,7 @@ term_iterate_over_abstract_proc(Iteration, Options, ModuleInfo, Proc,
         HeadVarSet = set.list_to_set(HeadVars),
         BadVarsSet = set.difference(ConstrVarsSet, HeadVarSet),
         BadVars = set.to_sorted_list(BadVarsSet),
-        !:Polyhedron = polyhedron.project(BadVars, SizeVarSet, !.Polyhedron),
+        polyhedron.project_polyhedron(SizeVarSet, BadVars, !Polyhedron),
         polyhedron.optimize(SizeVarSet, !Polyhedron),
         % XXX End of bug workaround.
 
@@ -208,9 +209,11 @@ term_iterate_over_abstract_proc(Iteration, Options, ModuleInfo, Proc,
         (
             DebugTerm = yes,
             trace [io(!IO)] (
-                polyhedron.write_polyhedron(!.Polyhedron, SizeVarSet, !IO),
-                io.nl(!IO),
-                io.flush_output(!IO)
+                get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+                polyhedron.write_polyhedron(DebugStream, SizeVarSet,
+                    !.Polyhedron, !IO),
+                io.nl(DebugStream, !IO),
+                io.flush_output(DebugStream, !IO)
             )
         ;
             DebugTerm = no
@@ -352,8 +355,8 @@ post_process_abstract_goal(Locals, Info, GoalPolyhedron0, !Polyhedron) :-
     ( if polyhedron.is_empty(GoalPolyhedron0) then
         GoalPolyhedron = polyhedron.empty
     else
-        GoalPolyhedron = polyhedron.project(Locals, Info ^ tcfi_varset,
-            GoalPolyhedron0)
+        project_polyhedron(Info ^ tcfi_varset, Locals,
+            GoalPolyhedron0, GoalPolyhedron)
     ),
     polyhedron.intersection(GoalPolyhedron, !Polyhedron).
 
@@ -381,7 +384,7 @@ term_traverse_abstract_disj_linearly(Goals, Locals, Info, !Polyhedron) :-
 term_traverse_abstract_disj_linearly_2(Info, Locals, Goal, !Polyhedron) :-
     SizeVarSet = Info ^ tcfi_varset,
     term_traverse_abstract_goal(Info, Goal, polyhedron.universe, Polyhedron0),
-    Polyhedron1 = polyhedron.project(Locals, SizeVarSet, Polyhedron0),
+    project_polyhedron(SizeVarSet, Locals, Polyhedron0, Polyhedron1),
     polyhedron.convex_union(SizeVarSet, yes(Info ^ tcfi_max_matrix_size),
         Polyhedron1, !Polyhedron).
 
@@ -400,17 +403,19 @@ term_traverse_abstract_disj_pairwise(Goals, Locals, Info, !Polyhedron) :-
     PolyToLeft = polyhedron.universe,
 
     % First convert the list of goals into their corresponding polyhedra.
-    ToPoly = (func(Goal) = Poly :-
-        term_traverse_abstract_goal(Info, Goal, PolyToLeft, Poly0),
-        Poly = polyhedron.project(Locals, SizeVarSet, Poly0)
-    ),
+    ToPoly =
+        ( func(Goal) = Poly :-
+            term_traverse_abstract_goal(Info, Goal, PolyToLeft, Poly0),
+            polyhedron.project_polyhedron(SizeVarSet, Locals, Poly0, Poly)
+        ),
     Polyhedra0 = list.map(ToPoly, Goals),
 
     % Now pairwise convex hull them.
-    HullOp = (func(A, B) = C :-
-        polyhedron.convex_union(SizeVarSet, yes(Info ^ tcfi_max_matrix_size),
-            A, B, C)
-    ),
+    HullOp =
+        ( func(A, B) = C :-
+            polyhedron.convex_union(SizeVarSet,
+                yes(Info ^ tcfi_max_matrix_size), A, B, C)
+        ),
     ConvexUnion = pairwise_map(HullOp, [ polyhedron.empty | Polyhedra0]),
     polyhedron.intersection(ConvexUnion, !Polyhedron).
 

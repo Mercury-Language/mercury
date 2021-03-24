@@ -155,9 +155,10 @@ check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
 
-    trace [io(!IO1)] (
-        maybe_write_string(Verbose,
-            "% Checking instance declaration types...\n", !IO1)
+    trace [io(!IO)] (
+        get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+        maybe_write_string(ProgressStream, Verbose,
+            "% Checking instance declaration types...\n", !IO)
     ),
     check_instance_declaration_types(!ModuleInfo, !Specs),
 
@@ -175,33 +176,38 @@ check_typeclasses(!ModuleInfo, !QualInfo, !Specs) :-
 
     (
         !.Specs = [],
-        trace [io(!IO2)] (
-            maybe_write_string(Verbose,
-                "% Checking typeclass instances...\n", !IO2)
+        trace [io(!IO)] (
+            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+            maybe_write_string(ProgressStream, Verbose,
+                "% Checking typeclass instances...\n", !IO)
         ),
         check_instance_decls(!ModuleInfo, !QualInfo, !Specs),
 
-        trace [io(!IO3)] (
-            maybe_write_string(Verbose,
-                "% Checking for cyclic classes...\n", !IO3)
+        trace [io(!IO)] (
+            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+            maybe_write_string(ProgressStream, Verbose,
+                "% Checking for cyclic classes...\n", !IO)
         ),
         check_for_cyclic_classes(!ModuleInfo, !Specs),
 
-        trace [io(!IO4)] (
-            maybe_write_string(Verbose,
-                "% Checking for missing concrete instances...\n", !IO4)
+        trace [io(!IO)] (
+            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+            maybe_write_string(ProgressStream, Verbose,
+                "% Checking for missing concrete instances...\n", !IO)
         ),
         check_for_missing_concrete_instances(!.ModuleInfo, !Specs),
 
-        trace [io(!IO5)] (
-            maybe_write_string(Verbose,
-                "% Checking functional dependencies on instances...\n", !IO5)
+        trace [io(!IO)] (
+            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+            maybe_write_string(ProgressStream, Verbose,
+                "% Checking functional dependencies on instances...\n", !IO)
         ),
         check_functional_dependencies(!.ModuleInfo, !Specs),
 
-        trace [io(!IO6)] (
-            maybe_write_string(Verbose,
-                "% Checking typeclass constraints...\n", !IO6)
+        trace [io(!IO)] (
+            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+            maybe_write_string(ProgressStream, Verbose,
+                "% Checking typeclass constraints...\n", !IO)
         ),
         check_typeclass_constraints(!.ModuleInfo, !Specs)
     ;

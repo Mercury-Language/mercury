@@ -129,7 +129,7 @@
     %
 :- func bounding_box(polyhedron, lp_varset) = polyhedron.
 
-    % polyhedron.widen(A, B, Varset) = C.
+    % polyhedron.widen(A, B, VarSet) = C.
     % Remove faces from the polyhedron `A' to form the polyhedron `C'
     % according to the rules that the smallest number of faces
     % should be removed and that `C' must be a superset of `B'.
@@ -137,15 +137,14 @@
     %
 :- func widen(polyhedron, polyhedron, lp_varset) = polyhedron.
 
-    % project_all(Varset, Variables, Polyhedra) returns a list
+    % project_all(VarSet, Variables, Polyhedra) returns a list
     % of polyhedra in which the variables listed have been eliminated
     % from each polyhedron.
     %
 :- func project_all(lp_varset, lp_vars, polyhedra) = polyhedra.
 
-:- func project(lp_vars, lp_varset, polyhedron) = polyhedron.
-:- pred project(lp_vars::in, lp_varset::in, polyhedron::in, polyhedron::out)
-    is det.
+:- pred project_polyhedron(lp_varset::in, lp_vars::in,
+    polyhedron::in, polyhedron::out) is det.
 
     % XXX It might be nicer to think of this as relabelling the axes.
     % Conceptually it alters the names of the variables in the polyhedron
@@ -169,7 +168,8 @@
 
     % Print out the polyhedron using the names of the variables in the varset.
     %
-:- pred write_polyhedron(polyhedron::in, lp_varset::in, io::di, io::uo) is det.
+:- pred write_polyhedron(io.text_output_stream::in, lp_varset::in,
+    polyhedron::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -227,9 +227,9 @@ is_universe(eqns(Constraints)) :-
     list.all_true(lp_rational.nonneg_constr, Constraints).
 
 optimize(_, empty_poly, empty_poly).
-optimize(Varset, eqns(Constraints0), Result) :-
+optimize(VarSet, eqns(Constraints0), Result) :-
     Constraints = simplify_constraints(Constraints0),
-    ( if inconsistent(Varset, Constraints) then
+    ( if inconsistent(VarSet, Constraints) then
         Result = empty_poly
     else
         Result = eqns(Constraints)
@@ -259,23 +259,23 @@ intersection(PolyA, PolyB, polyhedron.intersection(PolyA, PolyB)).
 % bounding box approximation instead.
 %
 
-convex_union(Varset, PolyhedronA, PolyhedronB) = Polyhedron :-
-    convex_union(Varset, no, PolyhedronA, PolyhedronB, Polyhedron).
+convex_union(VarSet, PolyhedronA, PolyhedronB) = Polyhedron :-
+    convex_union(VarSet, no, PolyhedronA, PolyhedronB, Polyhedron).
 
-convex_union(Varset, PolyhedronA, PolyhedronB, Polyhedron) :-
-    convex_union(Varset, no, PolyhedronA, PolyhedronB, Polyhedron).
+convex_union(VarSet, PolyhedronA, PolyhedronB, Polyhedron) :-
+    convex_union(VarSet, no, PolyhedronA, PolyhedronB, Polyhedron).
 
-convex_union(Varset, MaxMatrixSize, PolyhedronA, PolyhedronB) = Polyhedron :-
-    convex_union(Varset, MaxMatrixSize, PolyhedronA, PolyhedronB, Polyhedron).
+convex_union(VarSet, MaxMatrixSize, PolyhedronA, PolyhedronB) = Polyhedron :-
+    convex_union(VarSet, MaxMatrixSize, PolyhedronA, PolyhedronB, Polyhedron).
 
 convex_union(_, _, empty_poly, empty_poly, empty_poly).
 convex_union(_, _, eqns(Constraints), empty_poly,
     eqns(Constraints)).
 convex_union(_, _, empty_poly, eqns(Constraints),
     eqns(Constraints)).
-convex_union(Varset, MaybeMaxSize, eqns(ConstraintsA),
+convex_union(VarSet, MaybeMaxSize, eqns(ConstraintsA),
         eqns(ConstraintsB), Hull) :-
-    convex_hull([ConstraintsA, ConstraintsB], Hull, MaybeMaxSize, Varset).
+    convex_hull([ConstraintsA, ConstraintsB], Hull, MaybeMaxSize, VarSet).
 
 %-----------------------------------------------------------------------------%
 %
@@ -343,12 +343,12 @@ convex_union(Varset, MaybeMaxSize, eqns(ConstraintsA),
 convex_hull([], _, _, _) :-
     unexpected($pred, "empty list").
 convex_hull([Poly], eqns(Poly), _, _).
-convex_hull(Polys @ [_, _ | _], ConvexHull, MaybeMaxSize, Varset0) :-
+convex_hull(Polys @ [_, _ | _], ConvexHull, MaybeMaxSize, VarSet0) :-
     % Perform the matrix transformation from the paper by Benoy and King.
     % Rename variables and add sigma constraints as necessary.
-    PolyInfo0 = polyhedra_info([], [], Varset0),
+    PolyInfo0 = polyhedra_info([], [], VarSet0),
     transform_polyhedra(Polys, Matrix0, PolyInfo0, PolyInfo),
-    PolyInfo = polyhedra_info(VarMaps, Sigmas, Varset),
+    PolyInfo = polyhedra_info(VarMaps, Sigmas, VarSet),
     add_sigma_constraints(Sigmas, Matrix0, Matrix1),
     Matrix   = add_last_constraints(Matrix1, VarMaps),
     AppendValues =
@@ -362,8 +362,8 @@ convex_hull(Polys @ [_, _ | _], ConvexHull, MaybeMaxSize, Varset0) :-
     % variables (ie. eliminate all the sigma and temporary variables).
     % Since the resulting matrix tends to contain a large number of redundant
     % constraints, we need to do a redundancy check after this.
-    lp_rational.project(VarsToEliminate, Varset, MaybeMaxSize, Matrix,
-        ProjectionResult),
+    project_constraints_maybe_size_limit(VarSet, MaybeMaxSize, VarsToEliminate,
+        Matrix, ProjectionResult),
     (
         % XXX We should try using a bounding box first.
         ProjectionResult = pr_res_aborted,
@@ -378,7 +378,7 @@ convex_hull(Polys @ [_, _ | _], ConvexHull, MaybeMaxSize, Varset0) :-
             % XXX We should try removing this call to simplify constraints.
             %     It seems unnecessary.
             !:Hull = simplify_constraints(!.Hull),
-            ( if remove_some_entailed_constraints(Varset, !Hull)
+            ( if remove_some_entailed_constraints(VarSet, !Hull)
             then ConvexHull = eqns(!.Hull)
             else ConvexHull = empty_poly
             )
@@ -395,14 +395,14 @@ transform_polyhedra(Polys, Eqns, !PolyInfo) :-
     constraints::out, polyhedra_info::in, polyhedra_info::out) is det.
 
 transform_polyhedron(Poly, Polys0, Polys, !PolyInfo) :-
-    some [!Varset] (
-        !.PolyInfo = polyhedra_info(VarMaps, Sigmas, !:Varset),
-        varset.new_var(Sigma, !Varset),
+    some [!VarSet] (
+        !.PolyInfo = polyhedra_info(VarMaps, Sigmas, !:VarSet),
+        varset.new_var(Sigma, !VarSet),
         list.map_foldl2(transform_constraint(Sigma), Poly, NewEqns,
-            map.init, VarMap, !Varset),
+            map.init, VarMap, !VarSet),
         Polys = NewEqns ++ Polys0,
         !:PolyInfo = polyhedra_info([VarMap | VarMaps], [Sigma | Sigmas],
-            !.Varset)
+            !.VarSet)
     ).
 
     % transform_constraint: takes a constraint (with original variables) and
@@ -413,10 +413,10 @@ transform_polyhedron(Poly, Polys0, Polys, !PolyInfo) :-
 :- pred transform_constraint(lp_var::in, constraint::in, constraint::out,
     var_map::in, var_map::out, lp_varset::in, lp_varset::out) is det.
 
-transform_constraint(Sigma, !Constraint, !VarMap, !Varset) :-
+transform_constraint(Sigma, !Constraint, !VarMap, !VarSet) :-
     some [!Terms] (
         deconstruct_constraint(!.Constraint, !:Terms, Op, Const),
-        list.map_foldl2(change_var, !Terms, !VarMap, !Varset),
+        list.map_foldl2(change_var, !Terms, !VarMap, !VarSet),
         list.cons(Sigma - (-Const), !Terms),
         !:Constraint = construct_constraint(!.Terms, Op, zero)
     ).
@@ -428,7 +428,7 @@ transform_constraint(Sigma, !Constraint, !VarMap, !Varset) :-
 :- pred change_var(lp_term::in, lp_term::out, var_map::in, var_map::out,
     lp_varset::in, lp_varset::out) is det.
 
-change_var(!Term, !VarMap, !Varset) :-
+change_var(!Term, !VarMap, !VarSet) :-
     some [!Var] (
         !.Term = !:Var - Coefficient,
 
@@ -436,7 +436,7 @@ change_var(!Term, !VarMap, !Varset) :-
         ( if map.search(!.VarMap, !.Var, !:Var) then
             true
         else
-            varset.new_var(NewVar, !Varset),
+            varset.new_var(NewVar, !VarSet),
             map.det_insert(!.Var, NewVar, !VarMap),
             !:Var = NewVar
         ),
@@ -495,8 +495,8 @@ make_last_terms(OriginalVar, VarMap, !Terms) :-
 %
 
 bounding_box(empty_poly, _) = empty_poly.
-bounding_box(eqns(Constraints), Varset) =
-    eqns(lp_rational.bounding_box(Varset, Constraints)).
+bounding_box(eqns(Constraints), VarSet) =
+    eqns(lp_rational.bounding_box(VarSet, Constraints)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -508,20 +508,20 @@ widen(eqns(_), empty_poly, _) =
     unexpected($pred, "empty polyhedron").
 widen(empty_poly, eqns(_), _) =
     unexpected($pred, "empty polyhedron").
-widen(eqns(Poly1), eqns(Poly2), Varset) = eqns(WidenedEqns) :-
-    WidenedEqns = list.filter(entailed(Varset, Poly2), Poly1).
+widen(eqns(Poly1), eqns(Poly2), VarSet) = eqns(WidenedEqns) :-
+    WidenedEqns = list.filter(entailed(VarSet, Poly2), Poly1).
 
 %-----------------------------------------------------------------------------%
 %
 % Projection.
 %
 
-project_all(Varset, Locals, Polyhedra) =
+project_all(VarSet, Locals, Polyhedra) =
     list.map(
         ( func(Poly0) = Poly :-
             (
                 Poly0 = eqns(Constraints0),
-                lp_rational.project(Locals, Varset, Constraints0,
+                project_constraints(VarSet, Locals, Constraints0,
                     ProjectionResult),
                 (
                     ProjectionResult = pr_res_aborted,
@@ -540,12 +540,10 @@ project_all(Varset, Locals, Polyhedra) =
             )
         ), Polyhedra).
 
-project(Vars, Varset, Polyhedron0) = Polyhedron :-
-    project(Vars, Varset, Polyhedron0, Polyhedron).
-
-project(_, _, empty_poly, empty_poly).
-project(Vars, Varset, eqns(Constraints0), Result) :-
-    lp_rational.project(Vars, Varset, Constraints0, ProjectionResult),
+project_polyhedron(_, _, empty_poly, empty_poly).
+project_polyhedron(VarSet, Vars, eqns(Constraints0), Result) :-
+    lp_rational.project_constraints(VarSet, Vars,
+        Constraints0, ProjectionResult),
     (
         ProjectionResult = pr_res_aborted,
         unexpected($pred, "abort from project")
@@ -587,12 +585,20 @@ zero_vars(Vars, eqns(Constraints0)) = eqns(Constraints) :-
 % Printing.
 %
 
-write_polyhedron(empty_poly, _, !IO) :-
-    io.write_string("\tEmpty\n", !IO).
-write_polyhedron(eqns([]),   _, !IO) :-
-    io.write_string("\tUniverse\n", !IO).
-write_polyhedron(eqns(Constraints @ [_ | _]), Varset, !IO) :-
-    lp_rational.write_constraints(Constraints, Varset, !IO).
+write_polyhedron(Stream, VarSet, Polyhedron, !IO) :-
+    (
+        Polyhedron = empty_poly,
+        io.write_string(Stream, "\tEmpty\n", !IO)
+    ;
+        Polyhedron = eqns(Constraints),
+        (
+            Constraints = [],
+            io.write_string(Stream, "\tUniverse\n", !IO)
+        ;
+            Constraints = [_ | _],
+            lp_rational.write_constraints(Stream, VarSet, Constraints, !IO)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module libs.polyhedron.

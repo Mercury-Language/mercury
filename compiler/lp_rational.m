@@ -221,7 +221,7 @@
     ;       pr_res_inconsistent     % matrix was inconsistent.
     ;       pr_res_aborted.         % ran out of time/space and backed out.
 
-    % project(Constraints0, Vars, Varset) = Result:
+    % project(Constraints0, Vars, VarSet, Result):
     %
     % Takes a list of constraints, `Constraints0', and eliminates the
     % variables in the list `Vars' using Fourier elimination.
@@ -232,22 +232,23 @@
     % intermediate matrices grow too large while performing Fourier
     % elimination.
     %
-    % NOTE: this does not always detect that a constraint
-    % set is inconsistent, so callers to this procedure may need
-    % to do a consistency check on the result if they require
-    % the resulting system of constraints to be consistent.
+    % NOTE: this does not always detect that a constraint set is inconsistent,
+    % so if callers of this procedure require the resulting system of
+    % constraints to be consistent, they will need to do a consistency check
+    % on the result themselves.
     %
-:- func project(lp_vars, lp_varset, constraints) = projection_result.
-:- pred project(lp_vars::in, lp_varset::in, constraints::in,
-    projection_result::out) is det.
-
-    % project(Vars, Varset, maybe(MaxMatrixSize), Matrix, Result):
-    %
-    % Same as above but if the size of the matrix ever exceeds
-    % `MaxMatrixSize' we back out of the computation.
-    %
-:- pred project(lp_vars::in, lp_varset::in, maybe(int)::in,
+:- pred project_constraints(lp_varset::in, lp_vars::in,
     constraints::in, projection_result::out) is det.
+
+    % project_constraints_maybe_size_limit(VarSet, MaybeMaxMatrixSize, Vars,
+    %   Matrix, Result):
+    %
+    % Same as above, but if MaybeMaxMatrixSize = yes(MaxMatrixSize), then
+    % if the size of the matrix ever exceeds `MaxMatrixSize', we back out
+    % of the computation.
+    %
+:- pred project_constraints_maybe_size_limit(lp_varset::in, maybe(int)::in,
+    lp_vars::in, constraints::in, projection_result::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -259,7 +260,7 @@
     ;       not_entailed
     ;       inconsistent.
 
-    % entailed(Varset, Cs, C):
+    % entailed(VarSet, Cs, C):
     %
     % Determines if the constraint `C' is implied by the set of
     % constraints `Cs'. Uses the simplex method to find the point `P'
@@ -272,7 +273,7 @@
     %
 :- func entailed(lp_varset, constraints, constraint) = entailment_result.
 
-    % entailed(Varset, Cs, C):
+    % entailed(VarSet, Cs, C):
     %
     % As above but fails if `C' is not implied by `Cs' and
     % throws an exception if `Cs' is inconsistent.
@@ -311,19 +312,19 @@
 % Debugging predicates.
 %
 
-    % Print out the constraints using the names in the varset. If the variable
-    % has no name it will be given the name Temp<n>, where <n> is the
-    % variable number.
-    %
-:- pred write_constraints(constraints::in, lp_varset::in, io::di, io::uo)
-    is det.
-
     % Return the set of variables that are present in a list of constraints.
     %
     % XXX This shouldn't be exported but it is currently needed by the
     % workaround for the problem with head variables in term_constr_fixpoint.m.
     %
 :- func get_vars_from_constraints(constraints) = set(lp_var).
+
+    % Print out the constraints using the names in the varset. If the variable
+    % has no name it will be given the name Temp<n>, where <n> is the
+    % variable number.
+    %
+:- pred write_constraints(io.text_output_stream::in, lp_varset::in,
+    constraints::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -645,12 +646,9 @@ inconsistent(Vars, Constraints @ [Constraint | _]) :-
     (
         is_false(Constraint)
     ;
-        (
-            Constraint = lte([Term | _], _)
-        ;
-            Constraint = eq([Term | _],  _)
-        ;
-            Constraint = gte([Term | _], _)
+        ( Constraint = lte([Term | _], _)
+        ; Constraint = eq([Term | _],  _)
+        ; Constraint = gte([Term | _], _)
         ),
         DummyObjective = [Term],
         lp_rational.solve(Constraints, max, DummyObjective, Vars) =
@@ -664,7 +662,7 @@ simplify_constraints(Constraints) = remove_weaker(remove_trivial(Constraints)).
 remove_trivial([]) = [].
 remove_trivial([Constraint | Constraints]) = Result :-
     ( if is_false(Constraint) then
-        Result = [ false_constraint ]
+        Result = [false_constraint]
     else
         Result0 = remove_trivial(Constraints),
         ( if
@@ -778,11 +776,11 @@ set_terms_to_zero(Vars, Terms0) = Terms :-
 % Bounding boxes and other weaker approximations of the convex union.
 %
 
-bounding_box(Varset, Constraints) = BoundingBox :-
+bounding_box(VarSet, Constraints) = BoundingBox :-
     Vars = set.to_sorted_list(get_vars_from_constraints(Constraints)),
     CallProject =
-        (func(Var, Constrs0) = Constrs :-
-            Result = project([Var], Varset, Constrs0),
+        ( func(Var, Constrs0) = Constrs :-
+            project_constraints(VarSet, [Var], Constrs0, Result),
             (
                 Result = pr_res_inconsistent,
                 Constrs = [false_constraint]
@@ -825,8 +823,8 @@ nonneg_box(VarsToIgnore, Constraints) = NonNegConstraints :-
                 lpr_art_vars   :: lp_vars
             ).
 
-solve(Constraints, Direction, Objective, Varset) = Result :-
-    Info0 = lpr_info_init(Varset),
+solve(Constraints, Direction, Objective, VarSet) = Result :-
+    Info0 = lpr_info_init(VarSet),
     solve_2(Constraints, Direction, Objective, Result, Info0, _).
 
     % solve_2(Eqns, Dir, Obj, Res, LPRInfo0, LPRInfo) takes
@@ -1449,21 +1447,21 @@ get_basis_vars(Tableau) = Vars :-
 
 :- func lpr_info_init(lp_varset) = lpr_info.
 
-lpr_info_init(Varset) = lpr_info(Varset, [], []).
+lpr_info_init(VarSet) = lpr_info(VarSet, [], []).
 
 :- pred new_slack_var(lp_var::out, lpr_info::in, lpr_info::out) is det.
 
 new_slack_var(Var, !LPRInfo) :-
-    varset.new_var(Var, !.LPRInfo ^ lpr_varset, Varset),
-    !LPRInfo ^ lpr_varset := Varset,
+    varset.new_var(Var, !.LPRInfo ^ lpr_varset, VarSet),
+    !LPRInfo ^ lpr_varset := VarSet,
     Vars = !.LPRInfo ^ lpr_slack_vars,
     !LPRInfo ^ lpr_slack_vars := [Var | Vars].
 
 :- pred new_art_var(lp_var::out, lpr_info::in, lpr_info::out) is det.
 
 new_art_var(Var, !LPRInfo) :-
-    varset.new_var(Var, !.LPRInfo ^ lpr_varset, Varset),
-    !LPRInfo ^ lpr_varset := Varset,
+    varset.new_var(Var, !.LPRInfo ^ lpr_varset, VarSet),
+    !LPRInfo ^ lpr_varset := VarSet,
     Vars = !.LPRInfo ^ lpr_art_vars,
     !LPRInfo ^ lpr_art_vars := [Var | Vars].
 
@@ -1523,36 +1521,34 @@ between(Min, Max, I) :-
 
 :- type matrix == list(vector).
 
-project(Vars, Varset, Constraints) = Result :-
-    project(Vars, Varset, no, Constraints, Result).
+project_constraints(VarSet, Vars, Constraints, Result) :-
+    project_constraints_maybe_size_limit(VarSet, no, Vars,
+        Constraints, Result).
 
-project(Vars, Varset, Constraints, Result) :-
-    project(Vars, Varset, no, Constraints, Result).
-
-    % For the first branch of this switch the `Constraints' may actually
-    % be an inconsistent system - we don't bother checking that here though.
+    % For the first clause, the `Constraints' may actually be
+    % an inconsistent system - we don't bother checking that here though.
     % We instead delay that until we need to perform an entailment check.
-    %
-project([], _, _, Constraints, pr_res_ok(Constraints)).
-project(!.Vars @ [_ | _], Varset, MaybeThreshold, Constraints0, Result) :-
+project_constraints_maybe_size_limit(_, _, [],
+    Constraints, pr_res_ok(Constraints)).
+project_constraints_maybe_size_limit(VarSet, MaybeThreshold,
+        !.Vars @ [_ | _], Constraints0, Result) :-
     eliminate_equations(!Vars, Constraints0, EqlResult),
     (
         EqlResult = pr_res_inconsistent,
         Result = pr_res_inconsistent
     ;
-        % Elimination of equations should not cause an abort since we always
+        % Elimination of equations should not cause an abort, since we always
         % make the matrix smaller.
         EqlResult = pr_res_aborted,
         unexpected($pred, "abort from eliminate_equations")
     ;
         EqlResult = pr_res_ok(Constraints1),
-
         % Skip the call to fourier_elimination/6 if there are no variables to
         % project - this avoids the transformation to vector form.
         (
             !.Vars = [_ | _],
             Matrix0 = constraints_to_matrix(Constraints1),
-            fourier_elimination(!.Vars, Varset, MaybeThreshold, 0,
+            fourier_elimination(!.Vars, VarSet, MaybeThreshold, 0,
                 Matrix0, FourierResult),
             (
                 FourierResult = yes(Matrix),
@@ -1789,7 +1785,7 @@ substitute_into_constraint(Var, SubCoeffs, SubConst, !Constraint, Flag) :-
     int::in, matrix::in, maybe(matrix)::out) is det.
 
 fourier_elimination([], _, _, _, Matrix, yes(Matrix)).
-fourier_elimination(Vars @ [Var0 | Vars0], Varset, MaybeThreshold, !.Step,
+fourier_elimination(Vars @ [Var0 | Vars0], VarSet, MaybeThreshold, !.Step,
         Matrix0, Result) :-
     % Use Duffin's heuristic to try and find a "nice" variable to eliminate.
     %
@@ -1829,7 +1825,7 @@ fourier_elimination(Vars @ [Var0 | Vars0], Varset, MaybeThreshold, !.Step,
     ),
     (
         NewMatrix = yes(Matrix),
-        fourier_elimination(OtherVars, Varset, MaybeThreshold, !.Step,
+        fourier_elimination(OtherVars, VarSet, MaybeThreshold, !.Step,
             Matrix, Result)
     ;
         NewMatrix = no,
@@ -2218,8 +2214,8 @@ add_vectors(TermsA, ConstA, TermsB, ConstB, Terms, ConstA + ConstB) :-
 % Entailment test.
 %
 
-entailed(Varset, Constraints, lte(Objective, Constant)) = Result :-
-    SolverResult = lp_rational.solve(Constraints, max, Objective, Varset),
+entailed(VarSet, Constraints, lte(Objective, Constant)) = Result :-
+    SolverResult = lp_rational.solve(Constraints, max, Objective, VarSet),
     (
         SolverResult = lp_res_satisfiable(MaxVal, _),
         Result = ( if MaxVal =< Constant then entailed else not_entailed )
@@ -2230,19 +2226,19 @@ entailed(Varset, Constraints, lte(Objective, Constant)) = Result :-
         SolverResult = lp_res_inconsistent,
         Result = inconsistent
     ).
-entailed(Varset, Constraints, eq(Objective, Constant)) = Result :-
-    Result0 = entailed(Varset, Constraints, lte(Objective, Constant)),
+entailed(VarSet, Constraints, eq(Objective, Constant)) = Result :-
+    Result0 = entailed(VarSet, Constraints, lte(Objective, Constant)),
     (
         Result0 = entailed,
-        Result  = entailed(Varset, Constraints, gte(Objective, Constant))
+        Result  = entailed(VarSet, Constraints, gte(Objective, Constant))
     ;
         ( Result0 = not_entailed
         ; Result0 = inconsistent
         ),
         Result0 = Result
     ).
-entailed(Varset, Constraints, gte(Objective, Constant)) = Result :-
-    SolverResult = lp_rational.solve(Constraints, min, Objective, Varset),
+entailed(VarSet, Constraints, gte(Objective, Constant)) = Result :-
+    SolverResult = lp_rational.solve(Constraints, min, Objective, VarSet),
     (
         SolverResult = lp_res_satisfiable(MinVal, _),
         Result = ( if MinVal >= Constant then entailed else not_entailed )
@@ -2254,8 +2250,8 @@ entailed(Varset, Constraints, gte(Objective, Constant)) = Result :-
         Result = inconsistent
     ).
 
-entailed(Varset, Constraints, Constraint) :-
-    Result = entailed(Varset, Constraints, Constraint),
+entailed(VarSet, Constraints, Constraint) :-
+    Result = entailed(VarSet, Constraints, Constraint),
     (
         Result = entailed
     ;
@@ -2274,8 +2270,8 @@ entailed(Varset, Constraints, Constraint) :-
     % Check if each constraint in the set is entailed by all the others.
     % XXX It would be preferable not to use this as it can be very slow.
     %
-remove_some_entailed_constraints(Varset, Constraints0, Constraints) :-
-    remove_some_entailed_constraints_2(Varset, Constraints0, [], Constraints).
+remove_some_entailed_constraints(VarSet, Constraints0, Constraints) :-
+    remove_some_entailed_constraints_2(VarSet, Constraints0, [], Constraints).
 
 :- pred remove_some_entailed_constraints_2(lp_varset::in, constraints::in,
     constraints::in, constraints::out) is semidet.
@@ -2283,12 +2279,12 @@ remove_some_entailed_constraints(Varset, Constraints0, Constraints) :-
 remove_some_entailed_constraints_2(_, [], !Constraints).
 remove_some_entailed_constraints_2(_, [ E ], !Constraints) :-
     list.cons(E, !Constraints).
-remove_some_entailed_constraints_2(Varset, [E, X | Es], !Constraints) :-
+remove_some_entailed_constraints_2(VarSet, [E, X | Es], !Constraints) :-
     ( if obvious_constraint(E) then
         true
     else
         RestOfMatrix = [X | Es] ++ !.Constraints,
-        Result = entailed(Varset, RestOfMatrix, E),
+        Result = entailed(VarSet, RestOfMatrix, E),
         (
             Result = entailed
         ;
@@ -2299,35 +2295,7 @@ remove_some_entailed_constraints_2(Varset, [E, X | Es], !Constraints) :-
             fail
         )
     ),
-    remove_some_entailed_constraints_2(Varset, [X | Es], !Constraints).
-
-%-----------------------------------------------------------------------------%
-%
-% Printing constraints.
-%
-
-    % Write out a term - outputs the empty string if the term
-    % has a coefficient of zero.
-    %
-:- pred write_term(lp_varset::in, lp_term::in, io::di, io::uo) is det.
-:- pragma consider_used(write_term/4).
-
-write_term(Varset, Var - Coefficient, !IO) :-
-    ( if Coefficient > zero then
-        io.write_char('+', !IO)
-    else
-        io.write_char('-', !IO)
-    ),
-    io.write_string(" (", !IO),
-    Num = abs(numer(Coefficient)),
-    io.write_string(int_to_string(Num), !IO),
-    ( if denom(Coefficient) = 1 then
-        true
-    else
-        io.format("/%s", [s(int_to_string(denom(Coefficient)))], !IO)
-    ),
-    io.write_char(')', !IO),
-    io.write_string(varset.lookup_name(Varset, Var), !IO).
+    remove_some_entailed_constraints_2(VarSet, [X | Es], !Constraints).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2384,79 +2352,6 @@ output_term(OutputVar, Var - Coefficient, Stream, !IO) :-
     io.write_char(Stream, ')', !IO).
 
 %-----------------------------------------------------------------------------%
-%
-% Debugging predicates for writing out constraints.
-%
-
-write_constraints(Constraints, Varset, !IO) :-
-    list.foldl(write_constraint(Varset), Constraints, !IO).
-
-:- pred write_constraint(lp_varset::in, constraint::in, io::di, io::uo) is det.
-
-write_constraint(Varset, Constr, !IO) :-
-    deconstruct_constraint(Constr, Coeffs, Operator, Constant),
-    io.write_char('\t', !IO),
-    list.foldl(write_constr_term(Varset), Coeffs, !IO),
-    io.format("%s %s\n",
-        [s(operator_to_string(Operator)), s(rat.to_string(Constant))], !IO).
-
-:- pred write_constr_term(lp_varset::in, lp_term::in, io::di, io::uo) is det.
-
-write_constr_term(Varset, Var - Coeff, !IO) :-
-    VarName = varset.lookup_name(Varset, Var),
-    io.format("%s%s ", [s(rat.to_string(Coeff)), s(VarName)], !IO).
-
-:- func operator_to_string(lp_operator) = string.
-
-operator_to_string(lp_lt_eq) = "=<".
-operator_to_string(lp_eq )   = "=".
-operator_to_string(lp_gt_eq) = ">=".
-
-:- pred write_vars(varset::in, lp_vars::in, io::di, io::uo) is det.
-:- pragma consider_used(write_vars/4).
-
-write_vars(Varset, Vars, !IO) :-
-    io.write_string("[ ", !IO),
-    write_vars_2(Varset, Vars, !IO),
-    io.write_string(" ]", !IO).
-
-:- pred write_vars_2(lp_varset::in, lp_vars::in, io::di, io::uo) is det.
-
-write_vars_2(_, [], !IO).
-write_vars_2(Varset, [V | Vs], !IO) :-
-    io.write_string(var_to_string(Varset, V), !IO),
-    (
-        Vs = []
-    ;
-        Vs = [_ | _],
-        io.write_string(", ", !IO)
-    ),
-    write_vars_2(Varset, Vs, !IO).
-
-:- func var_to_string(lp_varset, lp_var) = string.
-
-var_to_string(Varset, Var) = varset.lookup_name(Varset, Var, "Unnamed").
-
-    % Write out the matrix used during fourier elimination.
-    % If `Labels' is `yes' then write out the label for each vector as well.
-    %
-:- pred write_matrix(lp_varset::in, bool::in, matrix::in, io::di, io::uo)
-    is det.
-:- pragma consider_used(write_matrix/5).
-
-write_matrix(Varset, Labels, Matrix, !IO) :-
-    io.write_list(Matrix, "\n", write_vector(Varset, Labels), !IO).
-
-:- pred write_vector(lp_varset::in, bool::in, vector::in, io::di,
-    io::uo) is det.
-
-write_vector(Varset, _WriteLabels, vector(_Label, Terms0, Constant), !IO) :-
-    Terms = map.to_assoc_list(Terms0),
-    list.foldl(write_constr_term(Varset), Terms, !IO),
-    io.write_string(" (=<) ", !IO),
-    io.write_string(rat.to_string(Constant), !IO).
-
-%-----------------------------------------------------------------------------%
 
 get_vars_from_constraints(Constraints) = Vars :-
     list.foldl(get_vars_from_constraint, Constraints, set.init, Vars).
@@ -2474,6 +2369,93 @@ get_vars_from_terms([], !SetVar).
 get_vars_from_terms([Var - _ | Coeffs], !SetVar) :-
     set.insert(Var, !SetVar),
     get_vars_from_terms(Coeffs, !SetVar).
+
+%-----------------------------------------------------------------------------%
+%
+% Debugging predicates for writing out constraints.
+%
+
+write_constraints(Stream, VarSet, Constraints, !IO) :-
+    list.foldl(write_constraint(Stream, VarSet), Constraints, !IO).
+
+:- pred write_constraint(io.text_output_stream::in, lp_varset::in,
+    constraint::in, io::di, io::uo) is det.
+
+write_constraint(Stream, VarSet, Constr, !IO) :-
+    deconstruct_constraint(Constr, Coeffs, Operator, Constant),
+    io.write_char(Stream, '\t', !IO),
+    list.foldl(write_constr_term(Stream, VarSet), Coeffs, !IO),
+    io.format(Stream, "%s %s\n",
+        [s(operator_to_string(Operator)), s(rat.to_string(Constant))], !IO).
+
+:- pred write_constr_term(io.text_output_stream::in, lp_varset::in,
+    lp_term::in, io::di, io::uo) is det.
+
+write_constr_term(Stream, VarSet, Var - Coeff, !IO) :-
+    VarName = varset.lookup_name(VarSet, Var),
+    io.format(Stream, "%s%s ", [s(rat.to_string(Coeff)), s(VarName)], !IO).
+
+:- func operator_to_string(lp_operator) = string.
+
+operator_to_string(lp_lt_eq) = "=<".
+operator_to_string(lp_eq )   = "=".
+operator_to_string(lp_gt_eq) = ">=".
+
+:- pred write_vars(io.text_output_stream::in, varset::in, lp_vars::in,
+    io::di, io::uo) is det.
+:- pragma consider_used(write_vars/5).
+
+write_vars(Stream, VarSet, Vars, !IO) :-
+    VarStrs = list.map(var_to_string(VarSet), Vars),
+    VarsStr = string.join_list(", ", VarStrs),
+    io.format(Stream, "[%s]", [s(VarsStr)], !IO).
+
+:- func var_to_string(lp_varset, lp_var) = string.
+
+var_to_string(VarSet, Var) = varset.lookup_name(VarSet, Var, "Unnamed").
+
+    % Write out the matrix used during fourier elimination.
+    % If `Labels' is `yes' then write out the label for each vector as well.
+    %
+:- pred write_matrix(io.text_output_stream::in, lp_varset::in,
+    bool::in, matrix::in, io::di, io::uo) is det.
+:- pragma consider_used(write_matrix/6).
+
+write_matrix(Stream, VarSet, WriteLabels, Matrix, !IO) :-
+    list.foldl(write_vector(Stream, VarSet, WriteLabels), Matrix, !IO).
+
+:- pred write_vector(io.text_output_stream::in, lp_varset::in, bool::in,
+    vector::in, io::di, io::uo) is det.
+
+write_vector(Stream, VarSet, _WriteLabels, Vector, !IO) :-
+    Vector = vector(_Label, Terms0, Constant),
+    Terms = map.to_assoc_list(Terms0),
+    list.foldl(write_constr_term(Stream, VarSet), Terms, !IO),
+    io.format(Stream, " (=<) %s\n", [s(rat.to_string(Constant))], !IO).
+
+    % Write out a term - outputs the empty string if the term
+    % has a coefficient of zero.
+    %
+:- pred write_term(io.text_output_stream::in, lp_varset::in, lp_term::in,
+    io::di, io::uo) is det.
+:- pragma consider_used(write_term/5).
+
+write_term(Stream, VarSet, Var - Coefficient, !IO) :-
+    ( if Coefficient > zero then
+        Sign = "+"
+    else
+        Sign = "-"
+    ),
+    Numerator = abs(numer(Coefficient)),
+    ( if denom(Coefficient) = 1 then
+        MaybeDenumerator = ""
+    else
+        MaybeDenumerator =
+            string.format("/%s", [s(int_to_string(denom(Coefficient)))])
+    ),
+    varset.lookup_name(VarSet, Var, VarName),
+    io.format(Stream, "%s (%d%s) %s",
+        [s(Sign), i(Numerator), s(MaybeDenumerator), s(VarName)], !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module libs.lp_rational.

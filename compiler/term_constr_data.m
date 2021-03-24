@@ -358,23 +358,23 @@
 
     % Dump a representation of the AR to stdout.
     %
-:- pred dump_abstract_scc(module_info::in, abstract_scc::in, io::di,
-    io::uo) is det.
+:- pred dump_abstract_scc(io.text_output_stream::in, module_info::in,
+    abstract_scc::in, io::di, io::uo) is det.
 
     % As above. The extra argument specifies the indentation level.
     %
-:- pred dump_abstract_scc(module_info::in, int::in, abstract_scc::in, io::di,
-    io::uo) is det.
+:- pred dump_abstract_scc(io.text_output_stream::in, module_info::in,
+    int::in, abstract_scc::in, io::di, io::uo) is det.
 
     % Write an abstract_proc to stdout.
     %
-:- pred dump_abstract_proc(module_info::in, int::in, abstract_proc::in,
-    io::di, io::uo) is det.
+:- pred dump_abstract_proc(io.text_output_stream::in, module_info::in,
+    int::in, abstract_proc::in, io::di, io::uo) is det.
 
     % Write an abstract_goal to stdout.
     %
-:- pred dump_abstract_goal(module_info::in, size_varset::in, int::in,
-    abstract_goal::in, io::di, io::uo) is det.
+:- pred dump_abstract_goal(io.text_output_stream::in, module_info::in,
+    size_varset::in, int::in, abstract_goal::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -662,24 +662,25 @@ simplify_conjuncts(Goals0, Goals) :-
 % (These are for debugging only.)
 %
 
-dump_abstract_scc(ModuleInfo, SCC, !IO) :-
-    dump_abstract_scc(ModuleInfo, 0, SCC, !IO).
+dump_abstract_scc(Stream, ModuleInfo, SCC, !IO) :-
+    dump_abstract_scc(Stream, ModuleInfo, 0, SCC, !IO).
 
-dump_abstract_scc(ModuleInfo, Indent, SCC, !IO) :-
-    set.foldl(dump_abstract_proc(ModuleInfo, Indent), SCC, !IO).
+dump_abstract_scc(Stream, ModuleInfo, Indent, SCC, !IO) :-
+    set.foldl(dump_abstract_proc(Stream, ModuleInfo, Indent), SCC, !IO).
 
-dump_abstract_proc(ModuleInfo, Indent, Proc, !IO) :-
+dump_abstract_proc(Stream, ModuleInfo, Indent, Proc, !IO) :-
     AbstractPPId = Proc ^ ap_ppid,
     HeadVars = Proc ^ ap_head_vars,
     Body = Proc ^ ap_body,
     SizeVarSet = Proc ^ ap_size_varset,
-    indent_line(Indent, !IO),
     AbstractPPId = real(PPId),
     PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
     HeadVarSizeStrs = list.map(size_var_to_string(SizeVarSet), HeadVars),
     HeadVarSizesStr = string.join_list(", ", HeadVarSizeStrs),
-    io.format("%s : [ %s ] :- \n", [s(PPIdStr), s(HeadVarSizesStr)], !IO),
-    dump_abstract_goal(ModuleInfo, SizeVarSet, Indent + 1, Body, !IO).
+    indent_line(Stream, Indent, !IO),
+    io.format(Stream, "%s : [ %s ] :- \n",
+        [s(PPIdStr), s(HeadVarSizesStr)], !IO),
+    dump_abstract_goal(Stream, ModuleInfo, SizeVarSet, Indent + 1, Body, !IO).
 
 :- func size_var_to_string(size_varset, size_var) = string.
 
@@ -695,69 +696,72 @@ recursion_type_to_string(direct_only) = "direct recursion only".
 recursion_type_to_string(mutual_only) = "mutual recursion only".
 recursion_type_to_string(both)        = "mutual and direct recursion".
 
-:- pred dump_abstract_disjuncts(module_info::in, size_varset::in, int::in,
-    list(abstract_goal)::in, io::di, io::uo) is det.
+:- pred dump_abstract_disjuncts(io.text_output_stream::in, module_info::in,
+    size_varset::in, int::in, list(abstract_goal)::in, io::di, io::uo) is det.
 
-dump_abstract_disjuncts(_, _, _, [], !IO).
-dump_abstract_disjuncts(ModuleInfo, VarSet, Indent, [Goal | Goals], !IO) :-
-    dump_abstract_goal(ModuleInfo, VarSet, Indent + 1, Goal, !IO),
+dump_abstract_disjuncts(_, _, _, _, [], !IO).
+dump_abstract_disjuncts(Stream, ModuleInfo, VarSet, Indent,
+        [Goal | Goals], !IO) :-
+    dump_abstract_goal(Stream, ModuleInfo, VarSet, Indent + 1, Goal, !IO),
     (
         Goals = [_ | _],
-        indent_line(Indent, !IO),
-        io.write_string(";\n", !IO)
+        indent_line(Stream, Indent, !IO),
+        io.write_string(Stream, ";\n", !IO)
     ;
         Goals = []
     ),
-    dump_abstract_disjuncts(ModuleInfo, VarSet, Indent, Goals, !IO).
+    dump_abstract_disjuncts(Stream, ModuleInfo, VarSet, Indent, Goals, !IO).
 
-dump_abstract_goal(ModuleInfo, VarSet, Indent, AbstractGoal, !IO) :-
+dump_abstract_goal(Stream, ModuleInfo, VarSet, Indent, AbstractGoal, !IO) :-
     (
         AbstractGoal = term_disj(Goals, Size, Locals, NonLocals),
-        indent_line(Indent, !IO),
-        io.format("disj[%d](\n", [i(Size)], !IO),
-        dump_abstract_disjuncts(ModuleInfo, VarSet, Indent, Goals, !IO),
+        indent_line(Stream, Indent, !IO),
+        io.format(Stream, "disj[%d](\n", [i(Size)], !IO),
+        dump_abstract_disjuncts(Stream, ModuleInfo, VarSet, Indent,
+            Goals, !IO),
         LocalVarNamesStr = var_names_to_string(VarSet, Locals),
         NonLocalVarNamesStr = var_names_to_string(VarSet, NonLocals),
-        indent_line(Indent, !IO),
-        io.format(" Locals: %s\n", [s(LocalVarNamesStr)], !IO),
-        indent_line(Indent, !IO),
-        io.format(" Non-Locals: %s\n", [s(NonLocalVarNamesStr)], !IO),
-        indent_line(Indent, !IO),
-        io.write_string(")\n", !IO)
+        indent_line(Stream, Indent, !IO),
+        io.format(Stream, " Locals: %s\n", [s(LocalVarNamesStr)], !IO),
+        indent_line(Stream, Indent, !IO),
+        io.format(Stream, " Non-Locals: %s\n", [s(NonLocalVarNamesStr)], !IO),
+        indent_line(Stream, Indent, !IO),
+        io.write_string(Stream, ")\n", !IO)
     ;
         AbstractGoal = term_conj(Goals, Locals, NonLocals),
-        indent_line(Indent, !IO),
-        io.write_string("conj(\n", !IO),
-        list.foldl(dump_abstract_goal(ModuleInfo, VarSet, Indent + 1), Goals,
-            !IO),
+        indent_line(Stream, Indent, !IO),
+        io.write_string(Stream, "conj(\n", !IO),
+        list.foldl(
+            dump_abstract_goal(Stream, ModuleInfo, VarSet, Indent + 1),
+            Goals, !IO),
         LocalVarNamesStr = var_names_to_string(VarSet, Locals),
         NonLocalVarNamesStr = var_names_to_string(VarSet, NonLocals),
-        indent_line(Indent, !IO),
-        io.format(" Locals: %s\n", [s(LocalVarNamesStr)], !IO),
-        indent_line(Indent, !IO),
-        io.format(" Non-Locals: %s\n", [s(NonLocalVarNamesStr)], !IO),
-        indent_line(Indent, !IO),
-        io.write_string(")\n", !IO)
+        indent_line(Stream, Indent, !IO),
+        io.format(Stream, " Locals: %s\n", [s(LocalVarNamesStr)], !IO),
+        indent_line(Stream, Indent, !IO),
+        io.format(Stream, " Non-Locals: %s\n", [s(NonLocalVarNamesStr)], !IO),
+        indent_line(Stream, Indent, !IO),
+        io.write_string(Stream, ")\n", !IO)
     ;
         AbstractGoal = term_call(PPId0, _, CallVars, _, _, _, CallPoly),
-        indent_line(Indent, !IO),
         PPId0 = real(PPId),
         PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
         CallVarNamesStr = var_names_to_string(VarSet, CallVars),
-        io.format("call: %s : [%s]\n",
+        indent_line(Stream, Indent, !IO),
+        io.format(Stream, "call: %s : [%s]\n",
             [s(PPIdStr), s(CallVarNamesStr)], !IO),
-        indent_line(Indent, !IO),
-        io.write_string("Other call constraints:[\n", !IO),
-        polyhedron.write_polyhedron(CallPoly, VarSet, !IO),
-        indent_line(Indent, !IO),
-        io.write_string("]\n", !IO)
+        indent_line(Stream, Indent, !IO),
+        io.write_string(Stream, "Other call constraints:[\n", !IO),
+        polyhedron.write_polyhedron(Stream, VarSet, CallPoly, !IO),
+        indent_line(Stream, Indent, !IO),
+        io.write_string(Stream, "]\n", !IO)
     ;
         AbstractGoal = term_primitive(Poly, _, _),
-        indent_line(Indent, !IO),
-        io.write_string("[\n", !IO),
-        polyhedron.write_polyhedron(Poly, VarSet, !IO),
-        indent_line(Indent, !IO),
-        io.write_string("]\n", !IO)
+        indent_line(Stream, Indent, !IO),
+        io.write_string(Stream, "[\n", !IO),
+        polyhedron.write_polyhedron(Stream, VarSet, Poly, !IO),
+        indent_line(Stream, Indent, !IO),
+        io.write_string(Stream, "]\n", !IO)
     ).
 
 :- func var_names_to_string(size_varset, list(size_var)) = string.
@@ -766,12 +770,12 @@ var_names_to_string(VarSet, Vars) = Str :-
     list.map(varset.lookup_name(VarSet), Vars, VarNames),
     Str = string.join_list(", ", VarNames).
 
-:- pred indent_line(int::in, io::di, io::uo) is det.
+:- pred indent_line(io.text_output_stream::in, int::in, io::di, io::uo) is det.
 
-indent_line(N, !IO) :-
+indent_line(Stream, N, !IO) :-
     ( if N > 0 then
-        io.write_string("  ", !IO),
-        indent_line(N - 1, !IO)
+        io.write_string(Stream, "  ", !IO),
+        indent_line(Stream, N - 1, !IO)
     else
         true
     ).

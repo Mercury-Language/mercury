@@ -20,7 +20,10 @@
 :- interface.
 
 :- import_module libs.
+:- import_module libs.globals.
 :- import_module libs.optimization_options.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
@@ -63,8 +66,9 @@
 :- type benefit_node.
 :- type cost_node.
 
-    % find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
-    %   BeforeFlush, AfterFlush, MatchingParams,
+    % find_via_cell_vars(Globals, ModuleName, MatchingParams,
+    %   CellVar, CandidateFieldVars, CellVarFlushedLater,
+    %   BeforeFlush, AfterFlush,
     %   RealizedBenefitNodes, RealizedCostNodes, ViaCellVars):
     %
     % CellVar gives a variable that corresponds to a memory cell, while
@@ -79,10 +83,13 @@
     % and RealizedCostNodes give the benefit and cost nodes realized
     % by this choice.
     %
-:- pred find_via_cell_vars(prog_var::in, set_of_progvar::in, bool::in,
-    set_of_progvar::in, list(set_of_progvar)::in, matching_params::in,
-    set(benefit_node)::out, set(cost_node)::out, set_of_progvar::out)
-    is det.
+    % The Globals and ModuleName arguments are needed only so that
+    % we can get the right debug output stream.
+    %
+:- pred find_via_cell_vars(globals::in, module_name::in, matching_params::in,
+    prog_var::in, set_of_progvar::in, bool::in, set_of_progvar::in,
+    list(set_of_progvar)::in,
+    set(benefit_node)::out, set(cost_node)::out, set_of_progvar::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -96,6 +103,7 @@
 :- import_module pair.
 :- import_module queue.
 :- import_module require.
+:- import_module string.
 :- import_module term.
 
     % The stack optimization graph is a bipartite graph, whose two node types
@@ -148,8 +156,8 @@
 
 %-----------------------------------------------------------------------------%
 
-find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
-        BeforeFlush, AfterFlush, MatchingParams,
+find_via_cell_vars(Globals, ModuleName, MatchingParams, CellVar,
+        CandidateFieldVars, CellVarFlushedLater, BeforeFlush, AfterFlush,
         RealizedBenefitNodes, RealizedCostNodes, ViaCellVars) :-
     InclAllCand = MatchingParams ^ include_all_candidates,
     (
@@ -218,7 +226,8 @@ find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
         NonOccurringCandidateFieldVars),
     % Enable if you want to dump performance information into the .err file.
     trace [compile_time(flag("debug_matching")), io(!IO)] (
-        dump_results(CellVar, CandidateFieldVars,
+        get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+        dump_results(DebugStream, CellVar, CandidateFieldVars,
             OccurringCandidateFieldVarList, ViaCellOccurringVars0,
             Nullified, BeforeFlush, NumberedAfterFlush,
             RealizedBenefitNodeList, RealizedBenefitOpList,
@@ -670,13 +679,15 @@ get_unmatched_cost_nodes([Node | Nodes], MatchingCB) = UnmatchedNodes :-
     % the call to dump_results, and two lines computing one of the arguments of
     % that call.
     %
-:- pred dump_results(prog_var::in, set_of_progvar::in, list(prog_var)::in,
+:- pred dump_results(io.text_output_stream::in,
+    prog_var::in, set_of_progvar::in, list(prog_var)::in,
     set_of_progvar::in, bool::in, set_of_progvar::in,
     assoc_list(int, set_of_progvar)::in,
     list(benefit_node)::in, list(benefit_operation)::in,
     list(cost_node)::in, list(cost_operation)::in, io::di, io::uo) is det.
 
-dump_results(CellVar, CandidateFieldVars, OccurringCandidateFieldVarList,
+dump_results(Stream, CellVar,
+        CandidateFieldVars, OccurringCandidateFieldVarList,
         ViaCellOccurringVars, Nullified, BeforeFlush, AfterFlush,
         BenefitNodes, BenefitOps, CostNodes, CostOps, !IO) :-
     term.var_to_int(CellVar, CellVarInt),
@@ -689,56 +700,52 @@ dump_results(CellVar, CandidateFieldVars, OccurringCandidateFieldVarList,
         OccurringCandidateFieldVarInts),
     list.map(term.var_to_int, ViaCellVarList, ViaCellVarInts),
     list.map(term.var_to_int, BeforeFlushList, BeforeFlushInts),
-    io.write_string("%\n% FIND_VIA_CELL_VARS ", !IO),
-    io.write_int(CellVarInt, !IO),
-    io.write_string(" => f(", !IO),
-    io.write_list(CandidateFieldVarInts, ", ", io.write_int, !IO),
-    io.write_string(")\n", !IO),
-    io.write_string("% occurring [", !IO),
-    io.write_list(OccurringCandidateFieldVarInts, ", ", io.write_int, !IO),
-    io.write_string("]\n", !IO),
-    io.write_string("% via cell [", !IO),
-    io.write_list(ViaCellVarInts, ", ", io.write_int, !IO),
-    io.write_string("]", !IO),
+    CandidateFieldVarsStr = string.join_list(", ",
+        list.map(string.int_to_string, CandidateFieldVarInts)),
+    OccurringCandidateFieldVarsStr = string.join_list(", ",
+        list.map(string.int_to_string, OccurringCandidateFieldVarInts)),
+    ViaCellVarsStr = string.join_list(", ",
+        list.map(string.int_to_string, ViaCellVarInts)),
     (
         Nullified = no,
-        io.write_string("\n", !IO)
+        NullifiedSuffix = ""
     ;
         Nullified = yes,
-        io.write_string(" nullified\n", !IO)
+        NullifiedSuffix = " nullified"
     ),
-    io.write_string("% before flush, segment 1: [", !IO),
-    io.write_list(BeforeFlushInts, ", ", io.write_int, !IO),
-    io.write_string("]\n", !IO),
-    list.foldl(dump_after_flush, AfterFlush, !IO),
-    io.write_string("% realized benefits: ", !IO),
-    io.write_int(list.length(BenefitOps), !IO),
-    io.write_string(" ops, ", !IO),
-    io.write_int(list.length(BenefitNodes), !IO),
-    io.write_string(" nodes:\n", !IO),
-    io.write_string("% ", !IO),
-    io.write(BenefitOps, !IO),
-    io.write_string("\n", !IO),
-    io.write_string("% realized costs: ", !IO),
-    io.write_int(list.length(CostOps), !IO),
-    io.write_string(" ops, ", !IO),
-    io.write_int(list.length(CostNodes), !IO),
-    io.write_string(" nodes:\n", !IO),
-    io.write_string("% ", !IO),
-    io.write(CostOps, !IO),
-    io.write_string("\n%\n", !IO).
+    BeforeFlushIntsStr = string.join_list(", ",
+        list.map(string.int_to_string, BeforeFlushInts)),
 
-:- pred dump_after_flush(pair(int, set_of_progvar)::in,
-    io::di, io::uo) is det.
+    io.format(Stream, "%%\n%% FIND_VIA_CELL_VARS %d => f(%s)\n",
+        [i(CellVarInt), s(CandidateFieldVarsStr)], !IO),
+    io.format(Stream, "%% occurring [%s]\n",
+        [s(OccurringCandidateFieldVarsStr)], !IO),
+    io.format(Stream, "%% via cell [%s]%s\n",
+        [s(ViaCellVarsStr), s(NullifiedSuffix)], !IO),
+    io.format(Stream, "%% before flush, segment 1: [%s]\n",
+        [s(BeforeFlushIntsStr)], !IO),
+    list.foldl(dump_after_flush(Stream), AfterFlush, !IO),
+    io.format(Stream, "%% realized benefits: %d ops, %d nodes:\n",
+        [i(list.length(BenefitOps)), i(list.length(BenefitNodes))], !IO),
+    io.write_string(Stream, "% ", !IO),
+    io.write_line(Stream, BenefitOps, !IO),
 
-dump_after_flush(SegmentNum - SegmentVars, !IO) :-
+    io.format(Stream, "%% realized costs: %d ops, %d nodes:",
+        [i(list.length(CostOps)), i(list.length(CostNodes))], !IO),
+    io.write_string(Stream, "% ", !IO),
+    io.write_line(Stream, CostOps, !IO),
+    io.write_string(Stream, "%\n", !IO).
+
+:- pred dump_after_flush(io.text_output_stream::in,
+    pair(int, set_of_progvar)::in, io::di, io::uo) is det.
+
+dump_after_flush(Stream, SegmentNum - SegmentVars, !IO) :-
     SegmentVarList = set_of_var.to_sorted_list(SegmentVars),
     list.map(term.var_to_int, SegmentVarList, SegmentVarInts),
-    io.write_string("% after flush, segment ", !IO),
-    io.write_int(SegmentNum, !IO),
-    io.write_string(": [", !IO),
-    io.write_list(SegmentVarInts, ", ", io.write_int, !IO),
-    io.write_string("]\n", !IO).
+    list.map(string.int_to_string, SegmentVarInts, SegmentVarStrs),
+    SegmentVarsStr = string.join_list(", ", SegmentVarStrs),
+    io.format(Stream, "%% after flush, segment %d: [%s]\n",
+        [i(SegmentNum), s(SegmentVarsStr)], !IO).
 
 %-----------------------------------------------------------------------------%
 

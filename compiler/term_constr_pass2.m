@@ -70,6 +70,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module term.
 :- import_module varset.
 
@@ -237,8 +238,9 @@ find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
                     MaxMatrixSize),
                 Goals, !Calls, !Polyhedron, !Edges, !Continue),
             (
-                !.Continue = yes, polyhedron.project(Locals,
-                    Proc ^ ap_size_varset, !Polyhedron)
+                !.Continue = yes,
+                polyhedron.project_polyhedron(Proc ^ ap_size_varset, Locals,
+                    !Polyhedron)
             ;
                 !.Continue = no
             )
@@ -416,9 +418,10 @@ search_for_cycles_3(Start, SoFar, Map, Visited, Edge, !Cycles) :-
         list.cons(Cycle, !Cycles)
     else
         ( if map.search(Map, Edge ^ tcge_callee, MoreEdges0) then
-            NotVisited = (pred(E::in) is semidet :-
-                not list.member(E ^ tcge_caller, Visited)
-            ),
+            NotVisited =
+                ( pred(E::in) is semidet :-
+                    not list.member(E ^ tcge_caller, Visited)
+                ),
             MoreEdges = list.filter(NotVisited, MoreEdges0),
             list.foldl(
                 search_for_cycles_3(Start, [Edge | SoFar], Map,
@@ -658,49 +661,45 @@ subst_size_var(Map, Old) = (if bimap.search(Map, Old, New) then New else Old).
 % Predicates for printing out debugging traces.
 %
 
-:- pred write_cycles(module_info::in, size_varset::in, cycles::in,
-    io::di, io::uo) is det.
-:- pragma consider_used(write_cycles/5).
+:- pred write_cycles(io.text_output_stream::in, module_info::in,
+    size_varset::in, cycles::in, io::di, io::uo) is det.
+:- pragma consider_used(write_cycles/6).
 
-write_cycles(_, _, [], !IO).
-write_cycles(ModuleInfo, SizeVarSet, [Cycle | Cycles], !IO) :-
-    io.write_string("Cycle in SCC:\n", !IO),
-    write_cycle(ModuleInfo, Cycle ^ tcgc_nodes, !IO),
-    io.write_list(Cycle ^ tcgc_edges, "\n",
-        write_edge(ModuleInfo, SizeVarSet), !IO),
-    io.nl(!IO),
-    write_cycles(ModuleInfo, SizeVarSet, Cycles, !IO).
+write_cycles(_, _, _, [], !IO).
+write_cycles(Stream, ModuleInfo, SizeVarSet, [Cycle | Cycles], !IO) :-
+    io.write_string(Stream, "Cycle in SCC:\n", !IO),
+    write_cycle(Stream, ModuleInfo, Cycle ^ tcgc_nodes, !IO),
+    list.foldl(write_edge(Stream, ModuleInfo, SizeVarSet),
+        Cycle ^ tcgc_edges, !IO),
+    io.nl(Stream, !IO),
+    write_cycles(Stream, ModuleInfo, SizeVarSet, Cycles, !IO).
 
-:- pred write_cycle(module_info::in, list(abstract_ppid)::in, io::di, io::uo)
-    is det.
+:- pred write_cycle(io.text_output_stream::in, module_info::in,
+    list(abstract_ppid)::in, io::di, io::uo) is det.
 
-write_cycle(_, [], !IO).
-write_cycle(ModuleInfo, [Proc | Procs], !IO) :-
-    io.write_string("\t- ", !IO),
+write_cycle(_, _, [], !IO).
+write_cycle(Stream, ModuleInfo, [Proc | Procs], !IO) :-
     Proc = real(PredProcId),
-    io.write_string(pred_proc_id_to_string(ModuleInfo, PredProcId), !IO),
-    io.nl(!IO),
-    write_cycle(ModuleInfo, Procs, !IO).
+    io.format(Stream, "\t- %s\n",
+        [s(pred_proc_id_to_string(ModuleInfo, PredProcId))], !IO),
+    write_cycle(Stream, ModuleInfo, Procs, !IO).
 
-:- pred write_edge(module_info::in, size_varset::in, edge::in,
-    io::di, io::uo) is det.
+:- pred write_edge(io.text_output_stream::in, module_info::in,
+    size_varset::in, edge::in, io::di, io::uo) is det.
 
-write_edge(ModuleInfo, SizeVarSet, Edge, !IO) :-
-    io.write_string("Edge is:\n\tHead: ", !IO),
+write_edge(Stream, ModuleInfo, SizeVarSet, Edge, !IO) :-
     Edge ^ tcge_caller = real(PredProcId),
-    io.write_string(pred_proc_id_to_string(ModuleInfo, PredProcId), !IO),
-    io.write_string(" : ", !IO),
-    write_size_vars(SizeVarSet, Edge ^ tcge_head_args, !IO),
-    io.write_string(" :- \n", !IO),
-    io.write_string("\tConstraints are:  \n", !IO),
-    write_polyhedron(Edge ^ tcge_label, SizeVarSet, !IO),
-    io.write_string("\n\tCall is:  ", !IO),
     Edge ^ tcge_callee = real(CallPredProcId),
-    io.write_string(pred_proc_id_to_string(ModuleInfo, CallPredProcId), !IO),
-    io.write_string(" : ", !IO),
-    write_size_vars(SizeVarSet, Edge ^ tcge_call_args, !IO),
-    io.write_string(" :- \n", !IO),
-    io.nl(!IO).
+    io.format(Stream, "Edge is:\n\tHead: %s : ",
+        [s(pred_proc_id_to_string(ModuleInfo, PredProcId))], !IO),
+    write_size_vars(Stream, SizeVarSet, Edge ^ tcge_head_args, !IO),
+    io.write_string(Stream, " :- \n", !IO),
+    io.write_string(Stream, "\tConstraints are:  \n", !IO),
+    write_polyhedron(Stream, SizeVarSet, Edge ^ tcge_label, !IO),
+    io.format(Stream, "\n\tCall is:  %s : ",
+        [s(pred_proc_id_to_string(ModuleInfo, CallPredProcId))], !IO),
+    write_size_vars(Stream, SizeVarSet, Edge ^ tcge_call_args, !IO),
+    io.write_string(Stream, " :- \n\n", !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_pass2.

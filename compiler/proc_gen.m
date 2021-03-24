@@ -85,6 +85,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
+:- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -139,11 +140,14 @@ generate_module_code(ModuleInfo, CProcs, !GlobalData) :-
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            io.write_string("% Generating constant structures\n", !IO)
+            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+            io.write_string(ProgressStream,
+                "% Generating constant structures\n", !IO)
         ),
         generate_const_structs(ModuleInfo, ConstStructMap, !GlobalData),
         trace [io(!IO)] (
-            maybe_report_stats(Statistics, !IO)
+            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+            maybe_report_stats(ProgressStream, Statistics, !IO)
         )
     ;
         VeryVerbose = no,
@@ -270,7 +274,8 @@ generate_code_for_pred(ModuleInfo, ConstStructMap, VeryVerbose, Statistics,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.format("%% Generating code for %s\n",
+                get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+                io.format(ProgressStream, "%% Generating code for %s\n",
                     [s(pred_id_to_string(ModuleInfo, PredId))], !IO)
             ),
             (
@@ -284,7 +289,8 @@ generate_code_for_pred(ModuleInfo, ConstStructMap, VeryVerbose, Statistics,
                 PredId, PredInfo, ProcIds, PrintProcProgress,
                 !CProcsCord, !GlobalData),
             trace [io(!IO)] (
-                maybe_report_stats(Statistics, !IO)
+                get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+                maybe_report_stats(ProgressStream, Statistics, !IO)
             )
         ;
             VeryVerbose = no,
@@ -308,8 +314,9 @@ generate_code_for_procs(ModuleInfo, ConstStructMap, PredId, PredInfo,
     (
         PrintProcProgress = yes,
         trace [io(!IO)] (
+            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
             ProcIdInt = proc_id_to_int(ProcId),
-            io.format("%% Generating code for %s proc %d\n",
+            io.format(ProgressStream, "%% Generating code for %s proc %d\n",
                 [s(pred_id_to_string(ModuleInfo, PredId)), i(ProcIdInt)], !IO)
         )
     ;

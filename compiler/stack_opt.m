@@ -114,6 +114,7 @@
 :- import_module ll_backend.store_alloc.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
@@ -155,6 +156,11 @@
 
 :- type stack_opt_params
     --->    stack_opt_params(
+                % These two fields are used to find the appropriate
+                % debug output stream.
+                sop_globals             :: globals,
+                sop_module_name         :: module_name,
+
                 sop_matching_params     :: matching_params,
                 sop_all_path_node_ratio :: int,
                 sop_fixpoint_loop       :: maybe_opt_svcell_loop,
@@ -299,8 +305,9 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
         set.make_singleton_set(CurIntervalId),
         map.init, set.init, StartMap0, EndMap0,
         SuccMap0, VarsMap0, map.init),
-    StackOptParams = stack_opt_params(MatchingParams, AllPathNodeRatio,
-        FixpointLoop, FullPath, OnStack, NonCandidateVars),
+    module_info_get_name(ModuleInfo, ModuleName),
+    StackOptParams = stack_opt_params(Globals, ModuleName, MatchingParams,
+        AllPathNodeRatio, FixpointLoop, FullPath, OnStack, NonCandidateVars),
     StackOptInfo0 = stack_opt_info(StackOptParams, InsertMap0, []),
     build_interval_info_in_goal(Goal0, IntervalInfo0, IntervalInfo,
         StackOptInfo0, StackOptInfo),
@@ -524,9 +531,10 @@ apply_matching(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
 apply_matching_loop(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
         PathInfos, CandidateArgVars0, BenefitNodeSets, CostNodeSets,
         ViaCellVars) :-
-    list.map3(apply_matching_for_path(CellVar, CellVarFlushedLater,
-        StackOptParams, CandidateArgVars0), PathInfos,
-        BenefitNodeSets0, CostNodeSets0, PathViaCellVars),
+    list.map3(
+        apply_matching_for_path(StackOptParams,
+            CellVar, CellVarFlushedLater, CandidateArgVars0),
+        PathInfos, BenefitNodeSets0, CostNodeSets0, PathViaCellVars),
     ( if list.all_same(PathViaCellVars) then
         BenefitNodeSets = BenefitNodeSets0,
         CostNodeSets = CostNodeSets0,
@@ -552,11 +560,11 @@ apply_matching_loop(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
         )
     ).
 
-:- pred apply_matching_for_path(prog_var::in, bool::in, stack_opt_params::in,
+:- pred apply_matching_for_path(stack_opt_params::in, prog_var::in, bool::in,
     set_of_progvar::in, match_path_info::in,
     set(benefit_node)::out, set(cost_node)::out, set_of_progvar::out) is det.
 
-apply_matching_for_path(CellVar, CellVarFlushedLater, StackOptParams,
+apply_matching_for_path(StackOptParams, CellVar, CellVarFlushedLater,
         CandidateArgVars, PathInfo, BenefitNodes, CostNodes, ViaCellVars) :-
     ( if set_of_var.is_empty(CandidateArgVars) then
         BenefitNodes = set.init,
@@ -564,9 +572,11 @@ apply_matching_for_path(CellVar, CellVarFlushedLater, StackOptParams,
         ViaCellVars = set_of_var.init
     else
         PathInfo = match_path_info(FirstSegment, LaterSegments),
+        Globals = StackOptParams ^ sop_globals,
+        ModuleName = StackOptParams ^ sop_module_name,
         MatchingParams = StackOptParams ^ sop_matching_params,
-        find_via_cell_vars(CellVar, CandidateArgVars, CellVarFlushedLater,
-            FirstSegment, LaterSegments, MatchingParams,
+        find_via_cell_vars(Globals, ModuleName, MatchingParams, CellVar,
+            CandidateArgVars, CellVarFlushedLater, FirstSegment, LaterSegments,
             BenefitNodes, CostNodes, ViaCellVars)
     ).
 

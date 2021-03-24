@@ -130,35 +130,6 @@
     = constraints.
 
 %-----------------------------------------------------------------------------%
-%
-% Predicates for printing out debugging traces. The first boolean argument
-% of these predicates should be the value of the --debug-term option.
-%
-
-    % Call the specified predicate.
-    %
-:- pred maybe_write_trace(bool::in, pred(io, io)::in(pred(di, uo) is det),
-    io::di, io::uo) is det.
-
-    % As above but if the boolean argument is `yes', print a newline
-    % to stdout before flushing the output.
-    %
-:- pred maybe_write_trace_nl(bool::in, pred(io, io)::in(pred(di, uo) is det),
-    bool::in, io::di, io::uo) is det.
-
-:- pred maybe_write_scc_procs(list(pred_proc_id)::in, module_info::in,
-    int::in, io::di, io::uo) is det.
-
-:- pred maybe_write_proc_name(pred_proc_id::in, string::in, module_info::in,
-    int::in, io::di, io::uo) is det.
-
-:- pred write_size_vars(size_varset::in, size_vars::in, io::di, io::uo) is det.
-
-:- pred dump_size_vars(size_vars::in, size_varset::in, io::di, io::uo) is det.
-
-:- pred dump_size_varset(size_varset::in, io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
 
 :- pred update_arg_size_info(pred_proc_id::in, polyhedron::in, module_info::in,
     module_info::out) is det.
@@ -187,6 +158,46 @@
     %
 :- pred change_procs_constr_arg_size_info(list(proc_id)::in, bool::in,
     constr_arg_size_info::in, proc_table::in, proc_table::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Predicates for printing out debugging traces. The first boolean argument
+% of these predicates should be the value of the --debug-term option.
+%
+
+    % Call the specified predicate.
+    %
+    % XXX This predicate is currently unused.
+    % If it is ever used again, give it a better name.
+    %
+:- pred maybe_write_trace(io.text_output_stream::in, bool::in,
+    pred(io.text_output_stream, io, io)::in(pred(in, di, uo) is det),
+    io::di, io::uo) is det.
+
+    % As above but if the boolean argument is `yes', print a newline
+    % to stdout before flushing the output.
+    %
+    % XXX This predicate is currently unused.
+    % If it is ever used again, give it a better name.
+    %
+:- pred maybe_write_trace_nl(io.text_output_stream::in, bool::in,
+    pred(io.text_output_stream, io, io)::in(pred(in, di, uo) is det),
+    bool::in, io::di, io::uo) is det.
+
+:- pred maybe_write_scc_procs(io.text_output_stream::in, module_info::in,
+    list(pred_proc_id)::in, io::di, io::uo) is det.
+
+:- pred maybe_write_proc_name(io.text_output_stream::in, module_info::in,
+    string::in, pred_proc_id::in, io::di, io::uo) is det.
+
+:- pred write_size_vars(io.text_output_stream::in, size_varset::in,
+    size_vars::in, io::di, io::uo) is det.
+
+:- pred dump_size_vars(io.text_output_stream::in, size_varset::in,
+    size_vars::in, io::di, io::uo) is det.
+
+:- pred dump_size_varset(io.text_output_stream::in, size_varset::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -250,18 +261,18 @@ get_abstract_proc(ModuleInfo, PPId) = AbstractProc :-
 
 %-----------------------------------------------------------------------------%
 
-make_size_var_map(ProgVars, SizeVarset, SizeVarMap) :-
-    make_size_var_map(ProgVars, varset.init, SizeVarset, SizeVarMap).
+make_size_var_map(ProgVars, SizeVarSet, SizeVarMap) :-
+    make_size_var_map(ProgVars, varset.init, SizeVarSet, SizeVarMap).
 
-make_size_var_map(ProgVars, !SizeVarset, SizeVarMap) :-
+make_size_var_map(ProgVars, !SizeVarSet, SizeVarMap) :-
     list.foldl2(make_size_var_map_2, ProgVars,
-        map.init, SizeVarMap, !SizeVarset).
+        map.init, SizeVarMap, !SizeVarSet).
 
 :- pred make_size_var_map_2(prog_var::in, size_var_map::in, size_var_map::out,
     size_varset::in, size_varset::out) is det.
 
-make_size_var_map_2(ProgVar, !SizeVarMap, !SizeVarset) :-
-    varset.new_var(SizeVar, !SizeVarset),
+make_size_var_map_2(ProgVar, !SizeVarMap, !SizeVarSet) :-
+    varset.new_var(SizeVar, !SizeVarSet),
     map.set(ProgVar, SizeVar, !SizeVarMap).
 
 prog_vars_to_size_vars(SizeVarMap, Vars)
@@ -364,75 +375,6 @@ substitute_size_vars(Constraints0, SubstMap) = Constraints :-
     Constraints = list.map(SubVarInEqn, Constraints0).
 
 %-----------------------------------------------------------------------------%
-%
-% Predicates for printing out debugging traces ...
-%
-
-maybe_write_trace(DebugTerm, TracePred, !IO) :-
-    maybe_write_trace_nl(DebugTerm, TracePred, no, !IO).
-
-maybe_write_trace_nl(DebugTerm, TracePred, NewLine, !IO) :-
-    (
-        DebugTerm = yes,
-        TracePred(!IO),
-        (
-            NewLine = yes,
-            io.nl(!IO)
-        ;
-            NewLine = no
-        ),
-        io.flush_output(!IO)
-    ;
-        DebugTerm = no
-    ).
-
-maybe_write_scc_procs(SCC, ModuleInfo, _, !IO) :-
-    write_scc_procs_2(SCC, ModuleInfo, !IO),
-    io.nl(!IO).
-
-:- pred write_scc_procs_2(list(pred_proc_id)::in, module_info::in,
-    io::di, io::uo) is det.
-
-write_scc_procs_2([], _, !IO).
-write_scc_procs_2([PPId | PPIds], ModuleInfo, !IO) :-
-    PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
-    io.format("\t%s\n", [s(PPIdStr)], !IO),
-    write_scc_procs_2(PPIds, ModuleInfo, !IO).
-
-maybe_write_proc_name(PPId, String, ModuleInfo, _, !IO) :-
-    PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
-    io.format("%s%s\n", [s(String), s(PPIdStr)], !IO).
-
-write_size_vars(Varset, Vars, !IO) :-
-    WriteSizeVar =
-        ( pred(Var::in, !.IO::di, !:IO::uo) is det :-
-            varset.lookup_name(Varset, Var, Name),
-            io.write_string(Name, !IO)
-        ),
-    io.write_char('[', !IO),
-    io.write_list(Vars, ", ", WriteSizeVar, !IO),
-    io.write_char(']', !IO).
-
-%-----------------------------------------------------------------------------%
-
-dump_size_vars(Vars, Varset, !IO) :-
-    dump_size_varset_2(Vars, Varset, !IO).
-
-dump_size_varset(Varset, !IO) :-
-    Vars = varset.vars(Varset),
-    dump_size_varset_2(Vars, Varset, !IO).
-
-:- pred dump_size_varset_2(size_vars::in, size_varset::in, io::di, io::uo)
-    is det.
-
-dump_size_varset_2([], _, !IO).
-dump_size_varset_2([Var | Vars], Varset, !IO) :-
-    Name = varset.lookup_name(Varset, Var),
-    io.write(Var, !IO),
-    io.format(" = %s\n", [s(Name)], !IO),
-    dump_size_varset_2(Vars, Varset, !IO).
-
-%-----------------------------------------------------------------------------%
 
 update_arg_size_info(PPID, Polyhedron, !ModuleInfo) :-
     set_pred_proc_ids_constr_arg_size_info([PPID], Polyhedron, !ModuleInfo).
@@ -475,6 +417,69 @@ change_procs_constr_arg_size_info([ProcId | ProcIds], Override, ArgSize,
         true
     ),
     change_procs_constr_arg_size_info(ProcIds, Override, ArgSize, !ProcTable).
+
+%-----------------------------------------------------------------------------%
+%
+% Predicates for printing out debugging traces ...
+%
+
+maybe_write_trace(Stream, DebugTerm, TracePred, !IO) :-
+    maybe_write_trace_nl(Stream, DebugTerm, TracePred, no, !IO).
+
+maybe_write_trace_nl(Stream, DebugTerm, TracePred, NewLine, !IO) :-
+    (
+        DebugTerm = yes,
+        TracePred(Stream, !IO),
+        (
+            NewLine = yes,
+            io.nl(Stream, !IO)
+        ;
+            NewLine = no
+        ),
+        io.flush_output(Stream, !IO)
+    ;
+        DebugTerm = no
+    ).
+
+maybe_write_scc_procs(Stream, ModuleInfo, SCC, !IO) :-
+    write_scc_procs_loop(Stream, ModuleInfo, SCC, !IO),
+    io.nl(Stream, !IO).
+
+:- pred write_scc_procs_loop(io.text_output_stream::in,  module_info::in,
+    list(pred_proc_id)::in, io::di, io::uo) is det.
+
+write_scc_procs_loop(_, _, [], !IO).
+write_scc_procs_loop(Stream, ModuleInfo, [PPId | PPIds], !IO) :-
+    PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+    io.format(Stream, "\t%s\n", [s(PPIdStr)], !IO),
+    write_scc_procs_loop(Stream, ModuleInfo, PPIds, !IO).
+
+maybe_write_proc_name(Stream, ModuleInfo, Prefix, PPId, !IO) :-
+    PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
+    io.format(Stream, "%s%s\n", [s(Prefix), s(PPIdStr)], !IO).
+
+write_size_vars(Stream, VarSet, Vars, !IO) :-
+    list.map(varset.lookup_name(VarSet), Vars, VarNames),
+    io.format(Stream, "[%s]", [s(string.join_list(", ", VarNames))], !IO).
+
+%-----------------------------------------------------------------------------%
+
+dump_size_vars(Stream, VarSet, Vars, !IO) :-
+    dump_size_varset_loop(Stream, VarSet, Vars, !IO).
+
+dump_size_varset(Stream, VarSet, !IO) :-
+    Vars = varset.vars(VarSet),
+    dump_size_varset_loop(Stream, VarSet, Vars, !IO).
+
+:- pred dump_size_varset_loop(io.text_output_stream::in, size_varset::in,
+    size_vars::in, io::di, io::uo) is det.
+
+dump_size_varset_loop(_, _, [], !IO).
+dump_size_varset_loop(Stream, VarSet, [Var | Vars], !IO) :-
+    Name = varset.lookup_name(VarSet, Var),
+    io.write(Stream, Var, !IO),
+    io.format(Stream, " = %s\n", [s(Name)], !IO),
+    dump_size_varset_loop(Stream, VarSet, Vars, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_util.

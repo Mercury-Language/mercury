@@ -54,6 +54,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.passes_aux.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.
@@ -347,16 +348,15 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
     UsedModulesConstStruct = !.UsedModules,
 
     module_info_get_preds(ModuleInfo, PredTable),
-    map.foldl(pred_info_used_modules, PredTable, !UsedModules),
+    map.foldl(pred_info_used_modules(ModuleInfo), PredTable, !UsedModules),
     UsedModulesPredInfo = !.UsedModules,
 
     module_info_get_class_table(ModuleInfo, ClassTable),
     map.foldl(class_used_modules, ClassTable, !UsedModules),
     UsedModulesClass = !.UsedModules,
 
-    module_info_get_name(ModuleInfo, ThisModuleName),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
-    map.foldl(class_instances_used_modules(ThisModuleName),
+    map.foldl(class_instances_used_modules(ModuleInfo),
         InstanceTable, !UsedModules),
     UsedModulesInstance = !.UsedModules,
 
@@ -377,6 +377,7 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
     UsedModulesBuiltin = !.UsedModules,
 
     trace [compile_time(flag("dump_used_modules_summary")), io(!IO)] (
+        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         UsedModulesHistory = [
             "initial"         - UsedModulesInit,
             "type_ctor_defns" - UsedModulesTypeCtor,
@@ -388,35 +389,38 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
             "instances"       - UsedModulesInstance,
             "builtin"         - UsedModulesBuiltin
         ],
-        dump_used_modules_history(set.init, set.init, UsedModulesHistory, !IO)
+        dump_used_modules_history(ProgressStream, set.init, set.init,
+            UsedModulesHistory, !IO)
     ).
 
-:- pred dump_used_modules_history(set(module_name)::in, set(module_name)::in,
+:- pred dump_used_modules_history(io.text_output_stream::in,
+    set(module_name)::in, set(module_name)::in,
     assoc_list(string, used_modules)::in, io::di, io::uo) is det.
 
-dump_used_modules_history(_, _, [], !IO).
-dump_used_modules_history(!.IntUsed, !.ImpUsed, [Head | Tail], !IO) :-
+dump_used_modules_history(_, _, _, [], !IO).
+dump_used_modules_history(ProgressStream, !.IntUsed, !.ImpUsed,
+        [Head | Tail], !IO) :-
     Head = HeadStr - used_modules(HeadInt, HeadImp),
     set.difference(HeadInt, !.IntUsed, NewHeadInt),
     set.difference(HeadImp, !.ImpUsed, NewHeadImp),
-    io.format("modules added at stage %s\n", [s(HeadStr)], !IO),
+    io.format(ProgressStream, "modules added at stage %s\n", [s(HeadStr)], !IO),
     ( if set.is_empty(NewHeadInt) then
         true
     else
-        io.write_string("interface:\n", !IO),
         set.to_sorted_list(NewHeadInt, NewHeadIntList),
-        io.write_line(NewHeadIntList, !IO)
+        io.write_string(ProgressStream, "interface:\n", !IO),
+        io.write_line(ProgressStream, NewHeadIntList, !IO)
     ),
     ( if set.is_empty(NewHeadImp) then
         true
     else
-        io.write_string("implementation:\n", !IO),
         set.to_sorted_list(NewHeadImp, NewHeadImpList),
-        io.write_line(NewHeadImpList, !IO)
+        io.write_string(ProgressStream, "implementation:\n", !IO),
+        io.write_line(ProgressStream, NewHeadImpList, !IO)
     ),
     set.union(HeadInt, !IntUsed),
     set.union(HeadImp, !ImpUsed),
-    dump_used_modules_history(!.IntUsed, !.ImpUsed, Tail, !IO).
+    dump_used_modules_history(ProgressStream, !.IntUsed, !.ImpUsed, Tail, !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -556,20 +560,22 @@ class_used_modules(class_id(Name, _Arity), ClassDefn, !UsedModules) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred class_instances_used_modules(module_name::in,
+:- pred class_instances_used_modules(module_info::in,
     class_id::in, list(hlds_instance_defn)::in,
     used_modules::in, used_modules::out) is det.
 
-class_instances_used_modules(ThisModuleName,
-        ClassId, InstanceDefns, !UsedModules) :-
-    list.foldl(instance_used_modules(ThisModuleName, ClassId),
+class_instances_used_modules(ModuleInfo, ClassId, InstanceDefns,
+        !UsedModules) :-
+    module_info_get_name(ModuleInfo, ThisModuleName),
+    list.foldl(instance_used_modules(ModuleInfo, ThisModuleName, ClassId),
         InstanceDefns, !UsedModules).
 
-:- pred instance_used_modules(module_name::in,
+:- pred instance_used_modules(module_info::in, module_name::in,
     class_id::in, hlds_instance_defn::in,
     used_modules::in, used_modules::out) is det.
 
-instance_used_modules(ThisModuleName, ClassId, InstanceDefn, !UsedModules) :-
+instance_used_modules(ModuleInfo, ThisModuleName, ClassId, InstanceDefn,
+        !UsedModules) :-
     ClassId = class_id(ClassName, ClassArity),
     InstanceDefn = hlds_instance_defn(InstanceModuleName,
         Types, _OriginalTypes, InstanceStatus, _Context, Constraints, _Body,
@@ -577,7 +583,8 @@ instance_used_modules(ThisModuleName, ClassId, InstanceDefn, !UsedModules) :-
 
     ( if ThisModuleName = InstanceModuleName then
         trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
-            io.format(
+            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+            io.format(ProgressStream,
                 "instance_used_modules: class id %s/%d, instance in %s\n",
                 [s(sym_name_to_string(ClassName)), i(ClassArity),
                 s(sym_name_to_string(InstanceModuleName))], !IO)
@@ -655,10 +662,10 @@ const_struct_arg_used_modules(ConstStructArg, !UsedModules) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred pred_info_used_modules(pred_id::in, pred_info::in,
+:- pred pred_info_used_modules(module_info::in, pred_id::in, pred_info::in,
     used_modules::in, used_modules::out) is det.
 
-pred_info_used_modules(PredId, PredInfo, !UsedModules) :-
+pred_info_used_modules(ModuleInfo, PredId, PredInfo, !UsedModules) :-
     pred_info_get_status(PredInfo, PredStatus),
     DefinedInThisModule = pred_status_defined_in_this_module(PredStatus),
     (
@@ -666,7 +673,8 @@ pred_info_used_modules(PredId, PredInfo, !UsedModules) :-
         InitUsedModules = !.UsedModules,
 
         trace [compile_time(flag("dump_used_modules_history")), io(!IO)] (
-            io.format("examining pred_info of pred_id %d\n",
+            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+            io.format(ProgressStream, "examining pred_info of pred_id %d\n",
                 [i(pred_id_to_int(PredId))], !IO)
         ),
 
@@ -691,24 +699,29 @@ pred_info_used_modules(PredId, PredInfo, !UsedModules) :-
             FinalUsedModules = used_modules(FinalIntModules, FinalImpModules),
             set.difference(FinalIntModules, InitIntModules, NewIntModules),
             set.difference(FinalImpModules, InitImpModules, NewImpModules),
+            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
             ( if set.is_empty(NewIntModules) then
                 true
             else
-                io.write_string("new interface modules:\n", !IO),
-                io.write_line(NewIntModules, !IO)
+                io.write_string(ProgressStream,
+                    "new interface modules:\n", !IO),
+                io.write_line(ProgressStream, NewIntModules, !IO)
             ),
             ( if set.is_empty(NewImpModules) then
                 true
             else
-                io.write_string("new implementation modules:\n", !IO),
-                io.write_line(NewImpModules, !IO)
+                io.write_string(ProgressStream,
+                    "new implementation modules:\n", !IO),
+                io.write_line(ProgressStream, NewImpModules, !IO)
             )
         )
     ;
         DefinedInThisModule = no,
 
         trace [compile_time(flag("dump_used_modules_verbose")), io(!IO)] (
-            io.format("NOT examining pred_info of pred_id %d\n",
+            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+            io.format(ProgressStream,
+                "NOT examining pred_info of pred_id %d\n",
                 [i(pred_id_to_int(PredId))], !IO)
         )
     ).

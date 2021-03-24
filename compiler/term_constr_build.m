@@ -69,6 +69,7 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
 :- import_module libs.
@@ -204,8 +205,10 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
         !SizeVarset, !AbstractInfo) :-
     trace [io(!DebugIO), compiletime(flag("term_constr_build"))] (
         PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
-        io.format("Building procedure: %s\n", [s(PPIdStr)], !DebugIO),
-        io.flush_output(!DebugIO)
+        get_debug_output_stream(ModuleInfo, DebugStream, !DebugIO),
+        io.format(DebugStream,
+            "Building procedure: %s\n", [s(PPIdStr)], !DebugIO),
+        io.flush_output(DebugStream, !DebugIO)
     ),
 
     module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
@@ -264,9 +267,10 @@ term_constr_build_abstract_proc(ModuleInfo, Options, SCC, EntryProcs, PPId,
     list.cons(ThisProcInfo, !AbstractInfo),
 
     trace [io(!DebugIO), compiletime(flag("term_constr_build"))] (
-        io.write_string("Abstract proc is:\n", !DebugIO),
-        dump_abstract_proc(ModuleInfo, 0, AbstractProc, !DebugIO),
-        io.nl(!DebugIO)
+        get_debug_output_stream(ModuleInfo, DebugStream, !DebugIO),
+        io.write_string(DebugStream, "Abstract proc is:\n", !DebugIO),
+        dump_abstract_proc(DebugStream, ModuleInfo, 0, AbstractProc, !DebugIO),
+        io.nl(DebugStream, !DebugIO)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -305,6 +305,8 @@
 
 :- implementation.
 
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -1108,7 +1110,9 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
                     nl],
                 Spec = simplest_spec($pred, severity_error, phase_type_check,
                     Context, Pieces),
-                write_error_spec_ignore(Globals, Spec, !IO)
+                module_info_get_name(ModuleInfo, ModuleName),
+                get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+                write_error_spec_ignore(ErrorStream, Globals, Spec, !IO)
             ),
             unexpected($pred, "unresolvable predicate overloading")
         else
