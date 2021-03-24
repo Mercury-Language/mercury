@@ -9,6 +9,7 @@
 --warn-insts-with-functors-without-type
 --warn-suspicious-foreign-code
 --warn-dead-preds
+--warn-implicit-stream-calls
 --halt-at-warn
 --no-mercury-stdlib-dir
 --no-detect-libgrades
