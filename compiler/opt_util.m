@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: opt_util.m.
 % Main author: zs.
 %
 % Utilities for LLDS to LLDS optimization.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ll_backend.opt_util.
 :- interface.
@@ -25,15 +25,25 @@
 :- import_module map.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type instrmap == map(label, instruction).
 :- type lvalmap == map(label, maybe(instruction)).
 :- type tailmap == map(label, list(instruction)).
 :- type succmap == map(label, bool).
 
+%---------------------------------------------------------------------------%
+%
+% Finding the prologue.
+%
+
 :- pred get_prologue(list(instruction)::in, instruction::out,
     list(instruction)::out, list(instruction)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Gathering and skipping comments.
+%
 
 :- pred gather_comments(list(instruction)::in,
     list(instruction)::out, list(instruction)::out) is det.
@@ -56,36 +66,10 @@
 :- pred skip_comments_livevals_labels(list(instruction)::in,
     list(instruction)::out) is det.
 
-    % Find the next assignment to the redoip of the frame whose address
-    % is given by the base addresses in the second argument, provided
-    % it is guaranteed to be reached from here, and guaranteed not to be
-    % reached from anywhere else by a jump.
-    %
-:- pred next_assign_to_redoip(list(instruction)::in, list(lval)::in,
-    list(instruction)::in, code_addr::out, list(instruction)::out,
-    list(instruction)::out) is semidet.
-
-    % See if these instructions touch nondet stack controls, i.e.
-    % the virtual machine registers that point to the nondet stack
-    % (curfr and maxfr) and the fixed slots in nondet stack frames.
-    %
-:- func touches_nondet_ctrl(list(instruction)) = bool.
-
-    % Find the instructions up to and including the next one that
-    % cannot fall through.
-    %
-:- pred find_no_fallthrough(list(instruction)::in,
-    list(instruction)::out) is det.
-
-    % Find the first label in the instruction stream.
-    %
-:- pred find_first_label(list(instruction)::in, label::out) is det.
-
-    % Skip to the next label, returning the code before the label,
-    % and the label together with the code after the label.
-    %
-:- pred skip_to_next_label(list(instruction)::in,
-    list(instruction)::out, list(instruction)::out) is det.
+%---------------------------------------------------------------------------%
+%
+% Tests of instruction list prefixes.
+%
 
     % Check whether the named label follows without any intervening code.
     % If yes, return the instructions after the label.
@@ -132,11 +116,6 @@
 :- pred is_forkproceed_next(list(instruction)::in, tailmap::in,
     list(instruction)::out) is semidet.
 
-    % Remove the assignment to r1 from the list returned by is_sdproceed_next.
-    %
-:- pred filter_out_r1(list(instruction)::in, maybe(rval_const)::out,
-    list(instruction)::out) is det.
-
     % Does the following code consist of straighline instructions that do not
     % modify nondet frame linkages, plus possibly if_val(..., dofail), and then
     % a succeed? If yes, then return all the instructions up to the succeed,
@@ -145,11 +124,43 @@
 :- pred straight_alternative(list(instruction)::in,
     list(instruction)::out, list(instruction)::out) is semidet.
 
+%---------------------------------------------------------------------------%
+%
+% Finding things in instruction lists.
+%
+
+    % Find the first label in the instruction stream.
+    %
+:- pred find_first_label(list(instruction)::in, label::out) is det.
+
+    % Skip to the next label, returning the code before the label,
+    % and the label together with the code after the label.
+    %
+:- pred skip_to_next_label(list(instruction)::in,
+    list(instruction)::out, list(instruction)::out) is det.
+
+    % Find the instructions up to and including the next one that
+    % cannot fall through.
+    %
+:- pred find_no_fallthrough(list(instruction)::in,
+    list(instruction)::out) is det.
+
     % Find and return the initial sequence of instructions that do not
     % refer to stackvars and do not branch.
     %
 :- pred no_stack_straight_line(list(instruction)::in,
     list(instruction)::out, list(instruction)::out) is det.
+
+%---------------------%
+
+    % Find the next assignment to the redoip of the frame whose address
+    % is given by the base addresses in the second argument, provided
+    % it is guaranteed to be reached from here, and guaranteed not to be
+    % reached from anywhere else by a jump.
+    %
+:- pred next_assign_to_redoip(list(instruction)::in, list(lval)::in,
+    list(instruction)::in, code_addr::out, list(instruction)::out,
+    list(instruction)::out) is semidet.
 
     % Check whether the given instruction sequence consist of an initial
     % sequence of instructions that do not refer to stackvars and do not
@@ -161,10 +172,30 @@
 :- pred may_replace_succeed_with_succeed_discard(list(instruction)::in,
     list(instruction)::out, string::out, list(instruction)::out) is semidet.
 
+    % See whether instructions until the next decr_sp (if any) refer to
+    % any stackvars or branch away. If not, return the instructions up to
+    % the decr_sp. A restoration of succip from the bottom stack slot
+    % is allowed; this instruction is not returned in the output.
+    % The same thing applies to assignments to detstackvars; these are
+    % not useful if we throw away the stack frame.
+    %
+:- pred no_stackvars_til_decr_sp(list(instruction)::in, int::in,
+    list(instruction)::out, list(instruction)::out) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Filtering instruction lists.
+%
+
     % Remove the labels from a block of code for jumpopt.
     %
 :- pred filter_out_labels(list(instruction)::in, list(instruction)::out)
     is det.
+
+    % Remove the assignment to r1 from the list returned by is_sdproceed_next.
+    %
+:- pred filter_out_r1(list(instruction)::in, maybe(rval_const)::out,
+    list(instruction)::out) is det.
 
     % Remove any livevals instructions that do not precede an instruction
     % that needs one.
@@ -183,10 +214,31 @@
 :- pred filter_in_livevals(list(instruction)::in,
     list(instruction)::out) is det.
 
-    % See if the condition of an if-then-else is constant, and if yes,
-    % whether the branch will be taken or not.
+%---------------------%
+
+    % Whenever the input list of instructions contains two livevals pseudo-ops
+    % without an intervening no-fall-through instruction, ensure that the
+    % first of these registers as live every lval that is live in the second,
+    % except those that are assigned to by intervening instructions. This makes
+    % the shadowing of the second livevals by the first benign.
     %
-:- pred is_const_condition(rval::in, bool::out) is semidet.
+:- pred propagate_livevals(list(instruction)::in, list(instruction)::out)
+    is det.
+
+%---------------------------------------------------------------------------%
+%
+% Simple tests.
+%
+
+    % See if these instructions touch nondet stack controls, i.e.
+    % the virtual machine registers that point to the nondet stack
+    % (curfr and maxfr) and the fixed slots in nondet stack frames.
+    %
+:- func touches_nondet_ctrl(list(instruction)) = bool.
+
+    % Find out if an instruction sequence has both incr_sp and decr_sp.
+    %
+:- pred has_both_incr_decr_sp(list(instruction)::in) is semidet.
 
     % Check whether an instruction can possibly branch away.
     %
@@ -197,11 +249,38 @@
     %
 :- func can_instr_fall_through(instr) = bool.
 
+    % See if the condition of an if-then-else is constant, and if yes,
+    % whether the branch will be taken or not.
+    %
+:- pred is_const_condition(rval::in, bool::out) is semidet.
+
     % Check whether a code_addr, when the target of a goto, represents either
     % a call or a proceed/succeed; if so, it is the end of an extended basic
     % block and needs a livevals in front of it.
     %
 :- func livevals_addr(code_addr) = bool.
+
+%---------------------------------------------------------------------------%
+%
+% Counting.
+%
+
+    % Update the maximum R and F temp variable numbers used.
+    %
+:- pred count_temps_instr_list(list(instruction)::in,
+    int::in, int::out, int::in, int::out) is det.
+
+:- pred count_temps_instr(instr::in,
+    int::in, int::out, int::in, int::out) is det.
+
+    % Count the number of hp increments in a block of code.
+    %
+:- pred count_incr_hp(list(instruction)::in, int::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Finding possible jump targets.
+%
 
     % Determine all the labels and code addresses which are referenced
     % by an instruction. The code addresses that are labels are returned
@@ -217,13 +296,10 @@
 :- pred possible_targets(instr::in, list(label)::out, list(code_addr)::out)
     is det.
 
-    % Find the maximum temp variable number used.
-    %
-:- pred count_temps_instr_list(list(instruction)::in, int::in, int::out,
-    int::in, int::out) is det.
-
-:- pred count_temps_instr(instr::in, int::in, int::out,
-    int::in, int::out) is det.
+%---------------------------------------------------------------------------%
+%
+% Finding stack references.
+%
 
     % See whether a (list of) instructions or instruction components
     % references the current stack frame (on either stack).
@@ -233,41 +309,14 @@
 :- func instr_refers_to_stack(instruction) = bool.
 :- func block_refers_to_stack(list(instruction)) = bool.
 
-    % See whether instructions until the next decr_sp (if any) refer to
-    % any stackvars or branch away. If not, return the instructions up to
-    % the decr_sp. A restoration of succip from the bottom stack slot
-    % is allowed; this instruction is not returned in the output.
-    % The same thing applies to assignments to detstackvars; these are
-    % not useful if we throw away the stack frame.
-    %
-:- pred no_stackvars_til_decr_sp(list(instruction)::in, int::in,
-    list(instruction)::out, list(instruction)::out) is semidet.
-
-    % Format a label or proc_label for verbose messages during compilation.
-    %
-:- func format_label(label) = string.
-:- func format_proc_label(proc_label) = string.
-
-    % Find out if an instruction sequence has both incr_sp and decr_sp.
-    %
-:- pred has_both_incr_decr_sp(list(instruction)::in) is semidet.
-
     % Find out what rvals, if any, are needed to access an lval.
     %
 :- pred lval_access_rvals(lval::in, list(rval)::out) is det.
 
-    % Count the number of hp increments in a block of code.
-    %
-:- pred count_incr_hp(list(instruction)::in, int::out) is det.
-
-    % Whenever the input list of instructions contains two livevals pseudo-ops
-    % without an intervening no-fall-through instruction, ensure that the
-    % first of these registers as live every lval that is live in the second,
-    % except those that are assigned to by intervening instructions. This makes
-    % the shadowing of the second livevals by the first benign.
-    %
-:- pred propagate_livevals(list(instruction)::in, list(instruction)::out)
-    is det.
+%---------------------------------------------------------------------------%
+%
+% Substitutions.
+%
 
     % Replace references to one set of local labels with references to another
     % set, in one instruction or a list of instructions. Control references
@@ -279,15 +328,15 @@
     % With replace_labels_instruction_list, the last arg says whether
     % it is OK to replace a label in a label instruction itself.
     %
-:- pred replace_labels_instr(instr::in, instr::out,
-    map(label, label)::in, bool::in) is det.
+:- pred replace_labels_instruction_list(
+    list(instruction)::in, list(instruction)::out,
+    map(label, label)::in, bool::in, bool::in) is det.
 
 :- pred replace_labels_instruction(instruction::in, instruction::out,
     map(label, label)::in, bool::in) is det.
 
-:- pred replace_labels_instruction_list(
-    list(instruction)::in, list(instruction)::out,
-    map(label, label)::in, bool::in, bool::in) is det.
+:- pred replace_labels_instr(instr::in, instr::out,
+    map(label, label)::in, bool::in) is det.
 
 :- pred replace_labels_comps(
     list(foreign_proc_component)::in, list(foreign_proc_component)::out,
@@ -302,8 +351,18 @@
 :- pred replace_labels_label(label::in, label::out, map(label, label)::in)
     is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Printing.
+%
+
+    % Format a label or proc_label for verbose messages during compilation.
+    %
+:- func format_label(label) = string.
+:- func format_proc_label(proc_label) = string.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -325,7 +384,10 @@
 :- import_module set.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Finding the prologue.
+%
 
 get_prologue(Instrs0, LabelInstr, Comments, Instrs) :-
     gather_comments(Instrs0, Comments1, Instrs1),
@@ -339,6 +401,11 @@ get_prologue(Instrs0, LabelInstr, Comments, Instrs) :-
     else
         unexpected($pred, "procedure does not begin with label")
     ).
+
+%---------------------------------------------------------------------------%
+%
+% Gathering and skipping comments.
+%
 
 gather_comments(Instrs0, Comments, Instrs) :-
     ( if
@@ -403,68 +470,10 @@ skip_comments_livevals_labels(Instrs0, Instrs) :-
         Instrs = Instrs0
     ).
 
-next_assign_to_redoip([Instr | Instrs], AllowedBases, RevSkip,
-        Redoip, Skip, Rest) :-
-    Instr = llds_instr(Uinstr, _Comment),
-    ( if
-        Uinstr = assign(redoip_slot(lval(Fr)),
-            const(llconst_code_addr(Redoip0))),
-        list.member(Fr, AllowedBases)
-    then
-        Redoip = Redoip0,
-        list.reverse(RevSkip, Skip),
-        Rest = Instrs
-    else if
-        Uinstr = mkframe(_, _)
-    then
-        fail
-
-    else if
-        Uinstr = label(_)
-    then
-        fail
-    else
-        CanBranchAway = can_instr_branch_away(Uinstr),
-        (
-            CanBranchAway = no,
-            next_assign_to_redoip(Instrs, AllowedBases, [Instr | RevSkip],
-                Redoip, Skip, Rest)
-        ;
-            CanBranchAway = yes,
-            fail
-        )
-    ).
-
-find_no_fallthrough([], []).
-find_no_fallthrough([Instr0 | Instrs0], Instrs) :-
-    ( if
-        Instr0 = llds_instr(Uinstr0, _),
-        can_instr_fall_through(Uinstr0) = no
-    then
-        Instrs = [Instr0]
-    else
-        find_no_fallthrough(Instrs0, Instrs1),
-        Instrs = [Instr0 | Instrs1]
-    ).
-
-find_first_label([], _) :-
-    unexpected($pred, "cannot find first label").
-find_first_label([Instr0 | Instrs0], Label) :-
-    ( if Instr0 = llds_instr(label(LabelPrime), _) then
-        Label = LabelPrime
-    else
-        find_first_label(Instrs0, Label)
-    ).
-
-skip_to_next_label([], [], []).
-skip_to_next_label([Instr0 | Instrs0], Before, Remain) :-
-    ( if Instr0 = llds_instr(label(_), _) then
-        Before = [],
-        Remain = [Instr0 | Instrs0]
-    else
-        skip_to_next_label(Instrs0, Before1, Remain),
-        Before = [Instr0 | Before1]
-    ).
+%---------------------------------------------------------------------------%
+%
+% Tests of instruction list prefixes.
+%
 
 is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
     Instr = llds_instr(Uinstr, _Comment),
@@ -582,25 +591,15 @@ is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
         fail
     ).
 
-filter_out_r1([], no, []).
-filter_out_r1([Instr0 | Instrs0], Success, Instrs) :-
-    filter_out_r1(Instrs0, Success0, Instrs1),
-    ( if Instr0 = llds_instr(assign(reg(reg_r, 1), const(Success1)), _) then
-        Instrs = Instrs1,
-        Success = yes(Success1)
-    else
-        Instrs = [Instr0 | Instrs1],
-        Success = Success0
-    ).
-
 straight_alternative(Instrs0, Between, After) :-
-    straight_alternative_2(Instrs0, [], BetweenRev, After),
+    straight_alternative_acc(Instrs0, [], BetweenRev, After),
     list.reverse(BetweenRev, Between).
 
-:- pred straight_alternative_2(list(instruction)::in, list(instruction)::in,
-    list(instruction)::out, list(instruction)::out) is semidet.
+:- pred straight_alternative_acc(list(instruction)::in,
+    list(instruction)::in, list(instruction)::out,
+    list(instruction)::out) is semidet.
 
-straight_alternative_2([Instr0 | Instrs0], !Between, After) :-
+straight_alternative_acc([Instr0 | Instrs0], !Between, After) :-
     Instr0 = llds_instr(Uinstr0, _),
     ( if
         Uinstr0 = label(_)
@@ -620,20 +619,57 @@ straight_alternative_2([Instr0 | Instrs0], !Between, After) :-
         )
     then
         !:Between = [Instr0 | !.Between],
-        straight_alternative_2(Instrs0, !Between, After)
+        straight_alternative_acc(Instrs0, !Between, After)
     else
         fail
     ).
 
+%---------------------------------------------------------------------------%
+%
+% Finding things in instruction lists.
+%
+
+find_first_label([], _) :-
+    unexpected($pred, "cannot find first label").
+find_first_label([Instr0 | Instrs0], Label) :-
+    ( if Instr0 = llds_instr(label(LabelPrime), _) then
+        Label = LabelPrime
+    else
+        find_first_label(Instrs0, Label)
+    ).
+
+skip_to_next_label([], [], []).
+skip_to_next_label([Instr0 | Instrs0], Before, Remain) :-
+    ( if Instr0 = llds_instr(label(_), _) then
+        Before = [],
+        Remain = [Instr0 | Instrs0]
+    else
+        skip_to_next_label(Instrs0, Before1, Remain),
+        Before = [Instr0 | Before1]
+    ).
+
+find_no_fallthrough([], []).
+find_no_fallthrough([Instr0 | Instrs0], Instrs) :-
+    ( if
+        Instr0 = llds_instr(Uinstr0, _),
+        can_instr_fall_through(Uinstr0) = no
+    then
+        Instrs = [Instr0]
+    else
+        find_no_fallthrough(Instrs0, Instrs1),
+        Instrs = [Instr0 | Instrs1]
+    ).
+
 no_stack_straight_line(Instrs0, StraightLine, Instrs) :-
-    no_stack_straight_line_2(Instrs0, [], RevStraightLine, Instrs),
+    no_stack_straight_line_acc(Instrs0, [], RevStraightLine, Instrs),
     list.reverse(RevStraightLine, StraightLine).
 
-:- pred no_stack_straight_line_2(list(instruction)::in, list(instruction)::in,
-    list(instruction)::out, list(instruction)::out) is det.
+:- pred no_stack_straight_line_acc(list(instruction)::in,
+    list(instruction)::in, list(instruction)::out,
+    list(instruction)::out) is det.
 
-no_stack_straight_line_2([], !RevStraightLine, []).
-no_stack_straight_line_2([Instr0 | Instrs0], !RevStraightLine, Instrs) :-
+no_stack_straight_line_acc([], !RevStraightLine, []).
+no_stack_straight_line_acc([Instr0 | Instrs0], !RevStraightLine, Instrs) :-
     Instr0 = llds_instr(Uinstr, _),
     ( if
         (
@@ -647,22 +683,55 @@ no_stack_straight_line_2([Instr0 | Instrs0], !RevStraightLine, Instrs) :-
         )
     then
         !:RevStraightLine = [Instr0 | !.RevStraightLine],
-        no_stack_straight_line_2(Instrs0, !RevStraightLine, Instrs)
+        no_stack_straight_line_acc(Instrs0, !RevStraightLine, Instrs)
     else
         Instrs = [Instr0 | Instrs0]
     ).
 
+%---------------------%
+
+next_assign_to_redoip([Instr | Instrs], AllowedBases, RevSkip,
+        Redoip, Skip, Rest) :-
+    Instr = llds_instr(Uinstr, _Comment),
+    ( if
+        Uinstr = assign(redoip_slot(lval(Fr)),
+            const(llconst_code_addr(Redoip0))),
+        list.member(Fr, AllowedBases)
+    then
+        Redoip = Redoip0,
+        list.reverse(RevSkip, Skip),
+        Rest = Instrs
+    else if
+        Uinstr = mkframe(_, _)
+    then
+        fail
+    else if
+        Uinstr = label(_)
+    then
+        fail
+    else
+        CanBranchAway = can_instr_branch_away(Uinstr),
+        (
+            CanBranchAway = no,
+            next_assign_to_redoip(Instrs, AllowedBases, [Instr | RevSkip],
+                Redoip, Skip, Rest)
+        ;
+            CanBranchAway = yes,
+            fail
+        )
+    ).
+
 may_replace_succeed_with_succeed_discard(Instrs0, UntilSucceed, SucceedComment,
         Remain) :-
-    may_replace_succeed_with_succeed_discard_2(Instrs0, [], RevUntilSucceed,
+    may_replace_succeed_with_succeed_discard_acc(Instrs0, [], RevUntilSucceed,
         SucceedComment, Remain),
     list.reverse(RevUntilSucceed, UntilSucceed).
 
-:- pred may_replace_succeed_with_succeed_discard_2(list(instruction)::in,
+:- pred may_replace_succeed_with_succeed_discard_acc(list(instruction)::in,
     list(instruction)::in, list(instruction)::out, string::out,
     list(instruction)::out) is semidet.
 
-may_replace_succeed_with_succeed_discard_2([Instr0 | Instrs0],
+may_replace_succeed_with_succeed_discard_acc([Instr0 | Instrs0],
         !RevUntilSucceed, SucceedComment, Remain) :-
     Instr0 = llds_instr(Uinstr, Comment),
     ( if
@@ -694,76 +763,11 @@ may_replace_succeed_with_succeed_discard_2([Instr0 | Instrs0],
         )
     then
         !:RevUntilSucceed = [Instr0 | !.RevUntilSucceed],
-        may_replace_succeed_with_succeed_discard_2(Instrs0, !RevUntilSucceed,
+        may_replace_succeed_with_succeed_discard_acc(Instrs0, !RevUntilSucceed,
             SucceedComment, Remain)
     else
         fail
     ).
-
-lval_refers_stackvars(reg(_, _)) = no.
-lval_refers_stackvars(stackvar(_)) = yes.
-lval_refers_stackvars(parent_stackvar(_)) = yes.
-lval_refers_stackvars(framevar(_)) = yes.
-lval_refers_stackvars(double_stackvar(_, _)) = yes.
-lval_refers_stackvars(succip) = no.
-lval_refers_stackvars(maxfr) = no.
-lval_refers_stackvars(curfr) = no.
-lval_refers_stackvars(succfr_slot(_)) = yes.
-lval_refers_stackvars(prevfr_slot(_)) = yes.
-lval_refers_stackvars(redofr_slot(_)) = yes.
-lval_refers_stackvars(redoip_slot(_)) = yes.
-lval_refers_stackvars(succip_slot(_)) = yes.
-lval_refers_stackvars(hp) = no.
-lval_refers_stackvars(sp) = no.
-lval_refers_stackvars(parent_sp) = no.
-lval_refers_stackvars(field(_, Rval, FieldNum)) =
-    bool.or(
-        rval_refers_stackvars(Rval),
-        rval_refers_stackvars(FieldNum)).
-lval_refers_stackvars(lvar(_)) = _ :-
-    unexpected($pred, "lvar").
-lval_refers_stackvars(temp(_, _)) = no.
-lval_refers_stackvars(mem_ref(Rval)) =
-    rval_refers_stackvars(Rval).
-lval_refers_stackvars(global_var_ref(_)) = no.
-
-:- func mem_ref_refers_stackvars(mem_ref) = bool.
-
-mem_ref_refers_stackvars(stackvar_ref(_)) = yes.
-mem_ref_refers_stackvars(framevar_ref(_)) = yes.
-mem_ref_refers_stackvars(heap_ref(Rval1, _, Rval2)) =
-    bool.or(rval_refers_stackvars(Rval1), rval_refers_stackvars(Rval2)).
-
-rval_refers_stackvars(lval(Lval)) =
-    lval_refers_stackvars(Lval).
-rval_refers_stackvars(var(_)) = _ :-
-    unexpected($pred, "var").
-rval_refers_stackvars(mkword(_, Rval)) =
-    rval_refers_stackvars(Rval).
-rval_refers_stackvars(mkword_hole(_)) = no.
-rval_refers_stackvars(const(_)) = no.
-rval_refers_stackvars(cast(_, Rval)) =
-    rval_refers_stackvars(Rval).
-rval_refers_stackvars(unop(_, Rval)) =
-    rval_refers_stackvars(Rval).
-rval_refers_stackvars(binop(_, Rval1, Rval2)) =
-    bool.or(rval_refers_stackvars(Rval1), rval_refers_stackvars(Rval2)).
-rval_refers_stackvars(mem_addr(MemRef)) =
-    mem_ref_refers_stackvars(MemRef).
-
-:- func code_addr_refers_to_stack(code_addr) = bool.
-
-code_addr_refers_to_stack(code_label(_)) = no.
-code_addr_refers_to_stack(code_imported_proc(_)) = no.
-code_addr_refers_to_stack(code_succip) = no.
-code_addr_refers_to_stack(do_succeed(_)) = yes.
-code_addr_refers_to_stack(do_redo) = yes.
-code_addr_refers_to_stack(do_fail) = yes.
-code_addr_refers_to_stack(do_trace_redo_fail_shallow) = yes.
-code_addr_refers_to_stack(do_trace_redo_fail_deep) = yes.
-code_addr_refers_to_stack(do_call_closure(_)) = no.
-code_addr_refers_to_stack(do_call_class_method(_)) = no.
-code_addr_refers_to_stack(do_not_reached) = no.
 
 no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize, Between, Remain) :-
     Instr0 = llds_instr(Uinstr0, _),
@@ -827,171 +831,10 @@ no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize, Between, Remain) :-
         Remain = Instrs0
     ).
 
-block_refers_to_stack([]) = no.
-block_refers_to_stack([Instr | Instrs]) = Refers :-
-    instr_refers_to_stack(Instr) = InstrRefers,
-    (
-        InstrRefers = yes,
-        Refers = yes
-    ;
-        InstrRefers = no,
-        Instr = llds_instr(Uinstr, _),
-        CanFallThrough = can_instr_fall_through(Uinstr),
-        (
-            CanFallThrough = yes,
-            Refers = block_refers_to_stack(Instrs)
-        ;
-            CanFallThrough = no,
-            Refers = no
-        )
-    ).
-
-instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
-    (
-        ( Uinstr = comment(_)
-        ; Uinstr = livevals(_)
-        ; Uinstr = label(_)
-        ; Uinstr = arbitrary_c_code(_, _, _)
-        ; Uinstr = discard_ticket
-        ; Uinstr = prune_ticket
-        ; Uinstr = lc_join_and_terminate(_, _)
-        ),
-        Refers = no
-    ;
-        ( Uinstr = llcall(_, _, _, _, _, _)
-        ; Uinstr = mkframe(_, _)
-        ; Uinstr = push_region_frame(_, _)
-        ; Uinstr = region_fill_frame(_, _, _, _, _)
-        ; Uinstr = region_set_fixed_slot(_, _, _)
-        ; Uinstr = use_and_maybe_pop_region_frame(_, _)
-        ; Uinstr = incr_sp(_, _, _)
-        ; Uinstr = decr_sp(_)
-        ; Uinstr = decr_sp_and_return(_)
-        ; Uinstr = init_sync_term(_, _, _)
-        ; Uinstr = fork_new_child(_, _)
-        ; Uinstr = join_and_continue(_, _)
-        ; Uinstr = lc_spawn_off(_, _, _)
-        ),
-        Refers = yes
-    ;
-        Uinstr = block(_, _, BlockInstrs),
-        Refers = block_refers_to_stack(BlockInstrs)
-    ;
-        ( Uinstr = assign(Lval, Rval)
-        ; Uinstr = keep_assign(Lval, Rval)
-        ),
-        Refers = bool.or(
-            lval_refers_stackvars(Lval),
-            rval_refers_stackvars(Rval))
-    ;
-        Uinstr = goto(CodeAddr),
-        Refers = code_addr_refers_to_stack(CodeAddr)
-    ;
-        Uinstr = if_val(Rval, CodeAddr),
-        Refers = bool.or(
-            rval_refers_stackvars(Rval),
-            code_addr_refers_to_stack(CodeAddr))
-    ;
-        ( Uinstr = save_maxfr(Lval)
-        ; Uinstr = restore_maxfr(Lval)
-        ; Uinstr = mark_hp(Lval)
-        ; Uinstr = store_ticket(Lval)
-        ; Uinstr = mark_ticket_stack(Lval)
-        ; Uinstr = lc_create_loop_control(_, Lval)
-        ),
-        Refers = lval_refers_stackvars(Lval)
-    ;
-        ( Uinstr = computed_goto(Rval, _Labels)
-        ; Uinstr = restore_hp(Rval)
-        ; Uinstr = free_heap(Rval)
-        ; Uinstr = reset_ticket(Rval, _Reason)
-        ; Uinstr = prune_tickets_to(Rval)
-        ),
-        Refers = rval_refers_stackvars(Rval)
-    ;
-        Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval,
-            MaybeReuse),
-        some [!Refers] (
-            !:Refers = bool.or(
-                lval_refers_stackvars(Lval),
-                rval_refers_stackvars(Rval)),
-            (
-                MaybeRegionRval = yes(RegionRval),
-                bool.or(rval_refers_stackvars(RegionRval), !Refers)
-            ;
-                MaybeRegionRval = no
-            ),
-            (
-                MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
-                bool.or(rval_refers_stackvars(ReuseRval), !Refers),
-                (
-                    MaybeFlagLval = yes(FlagLval),
-                    bool.or(lval_refers_stackvars(FlagLval), !Refers)
-                ;
-                    MaybeFlagLval = no
-                )
-            ;
-                MaybeReuse = no_llds_reuse
-            ),
-            Refers = !.Refers
-        )
-    ;
-        Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _, _),
-        Refers = bool.or_list(list.map(foreign_proc_component_refers_stackvars,
-            Components))
-    ;
-        Uinstr = lc_wait_free_slot(Rval, Lval, _),
-        Refers = bool.or(
-            rval_refers_stackvars(Rval),
-            lval_refers_stackvars(Lval))
-    ).
-
-:- func foreign_proc_component_refers_stackvars(foreign_proc_component) = bool.
-
-foreign_proc_component_refers_stackvars(Component) = Refers :-
-    (
-        Component = foreign_proc_inputs(Inputs),
-        bool.or_list(list.map(foreign_proc_input_refers_stackvars, Inputs),
-            Refers)
-    ;
-        Component = foreign_proc_outputs(Outputs),
-        bool.or_list(list.map(foreign_proc_output_refers_stackvars, Outputs),
-            Refers)
-    ;
-        ( Component = foreign_proc_user_code(_, _, _)
-        ; Component = foreign_proc_raw_code(_, _, _, _)
-        ; Component = foreign_proc_fail_to(_)
-        ; Component = foreign_proc_alloc_id(_)
-        ; Component = foreign_proc_noop
-        ),
-        Refers = no
-    ).
-
-:- func foreign_proc_input_refers_stackvars(foreign_proc_input) = bool.
-
-foreign_proc_input_refers_stackvars(Input) = Refers :-
-    Input = foreign_proc_input(_Name, _Type, IsDummy, _OrigType, Rval,
-        _MaybeForeign, _BoxPolicy),
-    (
-        IsDummy = is_dummy_type,
-        Refers = no
-    ;
-        IsDummy = is_not_dummy_type,
-        Refers = rval_refers_stackvars(Rval)
-    ).
-
-:- func foreign_proc_output_refers_stackvars(foreign_proc_output) = bool.
-
-foreign_proc_output_refers_stackvars(Input) = Refers :-
-    Input = foreign_proc_output(Lval, _Type, IsDummy, _OrigType, _Name,
-        _MaybeForeign, _BoxPolicy),
-    (
-        IsDummy = is_dummy_type,
-        Refers = no
-    ;
-        IsDummy = is_not_dummy_type,
-        Refers = lval_refers_stackvars(Lval)
-    ).
+%---------------------------------------------------------------------------%
+%
+% Filtering instruction lists.
+%
 
 filter_out_labels([], []).
 filter_out_labels([Instr0 | Instrs0], Instrs) :-
@@ -1000,6 +843,17 @@ filter_out_labels([Instr0 | Instrs0], Instrs) :-
         Instrs = Instrs1
     else
         Instrs = [Instr0 | Instrs1]
+    ).
+
+filter_out_r1([], no, []).
+filter_out_r1([Instr0 | Instrs0], Success, Instrs) :-
+    filter_out_r1(Instrs0, Success0, Instrs1),
+    ( if Instr0 = llds_instr(assign(reg(reg_r, 1), const(Success1)), _) then
+        Instrs = Instrs1,
+        Success = yes(Success1)
+    else
+        Instrs = [Instr0 | Instrs1],
+        Success = Success0
     ).
 
 filter_out_bad_livevals([], []).
@@ -1034,26 +888,258 @@ filter_in_livevals([Instr0 | Instrs0], Instrs) :-
         Instrs = Instrs1
     ).
 
-    % We recognize only a subset of all constant conditions.
-    % The time to extend this predicate is when the rest of the compiler
-    % generates more complicated constant conditions.
-is_const_condition(const(Const), Taken) :-
-    ( if Const = llconst_true then
-        Taken = yes
-    else if Const = llconst_false then
-        Taken = no
-    else
-        unexpected($pred, "non-boolean constant as if-then-else condition")
-    ).
-is_const_condition(unop(Op, Rval1), Taken) :-
-    Op = logical_not,
-    is_const_condition(Rval1, Taken1),
-    bool.not(Taken1, Taken).
-is_const_condition(binop(Op, Rval1, Rval2), Taken) :-
-    Op = eq(_),
-    Rval1 = Rval2,
-    Taken = yes.
+%---------------------%
 
+propagate_livevals(Instrs0, Instrs) :-
+    list.reverse(Instrs0, RevInstrs0),
+    set.init(Livevals),
+    propagate_livevals_acc(RevInstrs0, Livevals, RevInstrs),
+    list.reverse(RevInstrs, Instrs).
+
+:- pred propagate_livevals_acc(list(instruction)::in, set(lval)::in,
+    list(instruction)::out) is det.
+
+propagate_livevals_acc([], _, []).
+propagate_livevals_acc([Instr0 | Instrs0], Livevals0,
+        [Instr | Instrs]) :-
+    Instr0 = llds_instr(Uinstr0, Comment),
+    ( if Uinstr0 = livevals(ThisLivevals) then
+        set.union(Livevals0, ThisLivevals, Livevals),
+        Instr = llds_instr(livevals(Livevals), Comment)
+    else
+        Instr = Instr0,
+        ( if Uinstr0 = assign(Lval, _) then
+            set.delete(Lval, Livevals0, Livevals)
+        else if can_instr_fall_through(Uinstr0) = no then
+            set.init(Livevals)
+        else
+            Livevals = Livevals0
+        )
+    ),
+    propagate_livevals_acc(Instrs0, Livevals, Instrs).
+
+%---------------------------------------------------------------------------%
+%
+% Simple tests.
+%
+
+touches_nondet_ctrl([]) = no.
+touches_nondet_ctrl([llds_instr(Uinstr, _) | Instrs]) = !:Touch :-
+    !:Touch = touches_nondet_ctrl_instr(Uinstr),
+    (
+        !.Touch = yes
+    ;
+        !.Touch = no,
+        !:Touch = touches_nondet_ctrl(Instrs)
+    ).
+
+:- func touches_nondet_ctrl_instr(instr) = bool.
+
+touches_nondet_ctrl_instr(Uinstr) = Touch :-
+    (
+        ( Uinstr = comment(_)
+        ; Uinstr = livevals(_)
+        ; Uinstr = label(_)
+        ; Uinstr = prune_ticket
+        ; Uinstr = discard_ticket
+        ; Uinstr = incr_sp(_, _, _)
+        ; Uinstr = decr_sp(_)
+        ; Uinstr = decr_sp_and_return(_)
+        ; Uinstr = push_region_frame(_, _)
+        ; Uinstr = use_and_maybe_pop_region_frame(_, _)
+        ),
+        Touch = no
+    ;
+        ( Uinstr = mkframe(_, _)
+        ; Uinstr = goto(_)
+        ; Uinstr = computed_goto(_, _)
+        ; Uinstr = llcall(_, _, _, _, _, _) % This is a safe approximation.
+        ; Uinstr = if_val(_, _)
+        ; Uinstr = arbitrary_c_code(_, _, _)
+        ; Uinstr = save_maxfr(_)
+        ; Uinstr = restore_maxfr(_)
+        ; Uinstr = init_sync_term(_, _, _)  % This is a safe approximation.
+        ; Uinstr = fork_new_child(_, _)     % This is a safe approximation.
+        ; Uinstr = join_and_continue(_, _)  % This is a safe approximation.
+        ),
+        Touch = yes
+    ;
+        ( Uinstr = mark_hp(Lval)
+        ; Uinstr = store_ticket(Lval)
+        ; Uinstr = mark_ticket_stack(Lval)
+        ; Uinstr = lc_create_loop_control(_, Lval)
+        ),
+        Touch = touches_nondet_ctrl_lval(Lval)
+    ;
+        ( Uinstr = restore_hp(Rval)
+        ; Uinstr = free_heap(Rval)
+        ; Uinstr = region_set_fixed_slot(_SetOp, _EmbeddedStackFrame, Rval)
+        ; Uinstr = reset_ticket(Rval, _)
+        ; Uinstr = prune_tickets_to(Rval)
+        ),
+        Touch = touches_nondet_ctrl_rval(Rval)
+    ;
+        ( Uinstr = assign(Lval, Rval)
+        ; Uinstr = keep_assign(Lval, Rval)
+        ; Uinstr = lc_wait_free_slot(Rval, Lval, _)
+        ),
+        TouchLval = touches_nondet_ctrl_lval(Lval),
+        TouchRval = touches_nondet_ctrl_rval(Rval),
+        bool.or(TouchLval, TouchRval, Touch)
+    ;
+        ( Uinstr = lc_spawn_off(LCRval, LCSRval, _)
+        ; Uinstr = lc_join_and_terminate(LCRval, LCSRval)
+        ),
+        TouchLC = touches_nondet_ctrl_rval(LCRval),
+        TouchLCS = touches_nondet_ctrl_rval(LCSRval),
+        bool.or(TouchLC, TouchLCS, Touch)
+    ;
+        Uinstr = block(_, _, _),
+        % Blocks aren't introduced until after the last user of this predicate.
+        unexpected($pred, "block")
+    ;
+        Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval,
+            MaybeReuse),
+        some [!Touch] (
+            !:Touch = bool.or(
+                touches_nondet_ctrl_lval(Lval),
+                touches_nondet_ctrl_rval(Rval)),
+            (
+                MaybeRegionRval = yes(RegionRval),
+                bool.or(touches_nondet_ctrl_rval(RegionRval), !Touch)
+            ;
+                MaybeRegionRval = no
+            ),
+            (
+                MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
+                bool.or(touches_nondet_ctrl_rval(ReuseRval), !Touch),
+                (
+                    MaybeFlagLval = yes(FlagLval),
+                    bool.or(touches_nondet_ctrl_lval(FlagLval), !Touch)
+                ;
+                    MaybeFlagLval = no
+                )
+            ;
+                MaybeReuse = no_llds_reuse
+            ),
+            Touch = !.Touch
+        )
+    ;
+        Uinstr = region_fill_frame(_FillOp, _EmbeddedStackFrame, IdRval,
+            NumLval, AddrLval),
+        Touch = bool.or(
+            touches_nondet_ctrl_rval(IdRval),
+            bool.or(
+                touches_nondet_ctrl_lval(NumLval),
+                touches_nondet_ctrl_lval(AddrLval)))
+    ;
+        Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _, _),
+        Touch = touches_nondet_ctrl_components(Components)
+    ).
+
+:- func touches_nondet_ctrl_lval(lval) = bool.
+
+touches_nondet_ctrl_lval(reg(_, _)) = no.
+touches_nondet_ctrl_lval(stackvar(_)) = no.
+touches_nondet_ctrl_lval(parent_stackvar(_)) = no.
+touches_nondet_ctrl_lval(framevar(_)) = no.
+touches_nondet_ctrl_lval(double_stackvar(_, _)) = no.
+touches_nondet_ctrl_lval(succip) = no.
+touches_nondet_ctrl_lval(maxfr) = yes.
+touches_nondet_ctrl_lval(curfr) = yes.
+touches_nondet_ctrl_lval(succfr_slot(_)) = yes.
+touches_nondet_ctrl_lval(prevfr_slot(_)) = yes.
+touches_nondet_ctrl_lval(redofr_slot(_)) = yes.
+touches_nondet_ctrl_lval(redoip_slot(_)) = yes.
+touches_nondet_ctrl_lval(succip_slot(_)) = yes.
+touches_nondet_ctrl_lval(hp) = no.
+touches_nondet_ctrl_lval(sp) = no.
+touches_nondet_ctrl_lval(parent_sp) = no.
+touches_nondet_ctrl_lval(field(_, Rval1, Rval2)) = Touch :-
+    Touch1 = touches_nondet_ctrl_rval(Rval1),
+    Touch2 = touches_nondet_ctrl_rval(Rval2),
+    bool.or(Touch1, Touch2, Touch).
+touches_nondet_ctrl_lval(lvar(_)) = no.
+touches_nondet_ctrl_lval(temp(_, _)) = no.
+touches_nondet_ctrl_lval(mem_ref(Rval)) =
+    touches_nondet_ctrl_rval(Rval).
+touches_nondet_ctrl_lval(global_var_ref(_)) = no.
+
+:- func touches_nondet_ctrl_rval(rval) = bool.
+
+touches_nondet_ctrl_rval(lval(Lval)) =
+    touches_nondet_ctrl_lval(Lval).
+touches_nondet_ctrl_rval(var(_)) = no.
+touches_nondet_ctrl_rval(mkword(_, Rval)) =
+    touches_nondet_ctrl_rval(Rval).
+touches_nondet_ctrl_rval(mkword_hole(_)) = no.
+touches_nondet_ctrl_rval(const(_)) = no.
+touches_nondet_ctrl_rval(cast(_, Rval)) =
+    touches_nondet_ctrl_rval(Rval).
+touches_nondet_ctrl_rval(unop(_, Rval)) =
+    touches_nondet_ctrl_rval(Rval).
+touches_nondet_ctrl_rval(binop(_, Rval1, Rval2)) = Touch :-
+    Touch1 = touches_nondet_ctrl_rval(Rval1),
+    Touch2 = touches_nondet_ctrl_rval(Rval2),
+    bool.or(Touch1, Touch2, Touch).
+touches_nondet_ctrl_rval(mem_addr(MemRef)) =
+    touches_nondet_ctrl_mem_ref(MemRef).
+
+:- func touches_nondet_ctrl_mem_ref(mem_ref) = bool.
+
+touches_nondet_ctrl_mem_ref(stackvar_ref(_)) = no.
+touches_nondet_ctrl_mem_ref(framevar_ref(_)) = no.
+touches_nondet_ctrl_mem_ref(heap_ref(Rval, _, _)) =
+    touches_nondet_ctrl_rval(Rval).
+
+:- func touches_nondet_ctrl_components(list(foreign_proc_component)) = bool.
+
+touches_nondet_ctrl_components([]) = no.
+touches_nondet_ctrl_components([Comp | Comps]) = Touch :-
+    Touch1 = touches_nondet_ctrl_component(Comp),
+    Touch2 = touches_nondet_ctrl_components(Comps),
+    bool.or(Touch1, Touch2, Touch).
+
+    % The inputs and outputs components get emitted as simple straight-line
+    % code that do not refer to control slots. The compiler does not generate
+    % raw_code that refers to control slots. User code shouldn't either, but
+    % until we have prohibited the use of ordinary pragma C codes for model_non
+    % procedures, some user code will need to ignore this restriction.
+    %
+:- func touches_nondet_ctrl_component(foreign_proc_component) = bool.
+
+touches_nondet_ctrl_component(foreign_proc_inputs(_)) = no.
+touches_nondet_ctrl_component(foreign_proc_outputs(_)) = no.
+touches_nondet_ctrl_component(foreign_proc_raw_code(_, _, _, _)) = no.
+touches_nondet_ctrl_component(foreign_proc_user_code(_, _, _)) = yes.
+touches_nondet_ctrl_component(foreign_proc_fail_to(_)) = no.
+touches_nondet_ctrl_component(foreign_proc_alloc_id(_)) = no.
+touches_nondet_ctrl_component(foreign_proc_noop) = no.
+
+%---------------------%
+
+has_both_incr_decr_sp(Instrs) :-
+    has_both_incr_decr_sp_acc(Instrs, no, yes, no, yes).
+
+:- pred has_both_incr_decr_sp_acc(list(instruction)::in,
+    bool::in, bool::out, bool::in, bool::out) is det.
+
+has_both_incr_decr_sp_acc([], !HasIncr, !HasDecr).
+has_both_incr_decr_sp_acc([llds_instr(Uinstr, _) | Instrs],
+        !HasIncr, !HasDecr) :-
+    ( if Uinstr = incr_sp(_, _, _) then
+        !:HasIncr = yes
+    else
+        true
+    ),
+    ( if Uinstr = decr_sp(_) then
+        !:HasDecr = yes
+    else
+        true
+    ),
+    has_both_incr_decr_sp_acc(Instrs, !HasIncr, !HasDecr).
+
+%---------------------%
 
 can_instr_branch_away(Uinstr) = CanBranchAway :-
     (
@@ -1146,6 +1232,8 @@ can_component_branch_away(foreign_proc_user_code(_, _, _)) = no.
 can_component_branch_away(foreign_proc_fail_to(_)) = yes.
 can_component_branch_away(foreign_proc_alloc_id(_)) = no.
 can_component_branch_away(foreign_proc_noop) = no.
+
+%---------------------%
 
 can_instr_fall_through(comment(_)) = yes.
 can_instr_fall_through(livevals(_)) = yes.
@@ -1242,6 +1330,313 @@ can_use_livevals(lc_create_loop_control(_, _), no).
 can_use_livevals(lc_wait_free_slot(_, _, _), no).
 can_use_livevals(lc_spawn_off(_, _, _), yes).
 can_use_livevals(lc_join_and_terminate(_, _), no).
+
+%---------------------%
+
+is_const_condition(TestRval, Taken) :-
+    % We recognize only a subset of all constant conditions.
+    % The time to extend this predicate is when the rest of the compiler
+    % generates more complicated constant conditions.
+    (
+        TestRval = const(Const),
+        ( if Const = llconst_true then
+            Taken = yes
+        else if Const = llconst_false then
+            Taken = no
+        else
+            unexpected($pred, "non-boolean constant as if-then-else condition")
+        )
+    ;
+        TestRval = unop(Op, SubRvalA),
+        Op = logical_not,
+        is_const_condition(SubRvalA, SubTaken),
+        bool.not(SubTaken, Taken)
+    ;
+        TestRval = binop(Op, SubRvalA, SubRvalB),
+        Op = eq(_),
+        SubRvalA = SubRvalB,
+        Taken = yes
+    ).
+
+%---------------------%
+
+livevals_addr(code_label(Label)) = Result :-
+    (
+        Label = internal_label(_, _),
+        Result = no
+    ;
+        Label = entry_label(_, _),
+        Result = yes
+    ).
+livevals_addr(code_imported_proc(_)) = yes.
+livevals_addr(code_succip) = yes.
+livevals_addr(do_succeed(_)) = yes.
+livevals_addr(do_redo) = no.
+livevals_addr(do_fail) = no.
+livevals_addr(do_trace_redo_fail_shallow) = no.
+livevals_addr(do_trace_redo_fail_deep) = no.
+livevals_addr(do_call_closure(_)) = yes.
+livevals_addr(do_call_class_method(_)) = yes.
+livevals_addr(do_not_reached) = no.
+
+%---------------------------------------------------------------------------%
+%
+% Counting.
+%
+
+count_temps_instr_list([], !R, !F).
+count_temps_instr_list([llds_instr(Uinstr, _Comment) | Instrs], !R, !F) :-
+    count_temps_instr(Uinstr, !R, !F),
+    count_temps_instr_list(Instrs, !R, !F).
+
+count_temps_instr(comment(_), !R, !F).
+count_temps_instr(livevals(_), !R, !F).
+count_temps_instr(block(_, _, _), !R, !F).
+count_temps_instr(assign(Lval, Rval), !R, !F) :-
+    count_temps_lval(Lval, !R, !F),
+    count_temps_rval(Rval, !R, !F).
+count_temps_instr(keep_assign(Lval, Rval), !R, !F) :-
+    count_temps_lval(Lval, !R, !F),
+    count_temps_rval(Rval, !R, !F).
+count_temps_instr(llcall(_, _, _, _, _, _), !R, !F).
+count_temps_instr(mkframe(_, _), !R, !F).
+count_temps_instr(label(_), !R, !F).
+count_temps_instr(goto(_), !R, !F).
+count_temps_instr(computed_goto(Rval, _), !R, !F) :-
+    count_temps_rval(Rval, !R, !F).
+count_temps_instr(if_val(Rval, _), !R, !F) :-
+    count_temps_rval(Rval, !R, !F).
+count_temps_instr(arbitrary_c_code(_, _, _), !R, !F).
+count_temps_instr(save_maxfr(Lval), !R, !F) :-
+    count_temps_lval(Lval, !R, !F).
+count_temps_instr(restore_maxfr(Lval), !R, !F) :-
+    count_temps_lval(Lval, !R, !F).
+count_temps_instr(incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval,
+        MaybeReuse), !R, !F) :-
+    count_temps_lval(Lval, !R, !F),
+    count_temps_rval(Rval, !R, !F),
+    (
+        MaybeRegionRval = yes(RegionRval),
+        count_temps_rval(RegionRval, !R, !F)
+    ;
+        MaybeRegionRval = no
+    ),
+    (
+        MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
+        count_temps_rval(ReuseRval, !R, !F),
+        (
+            MaybeFlagLval = yes(FlagLval),
+            count_temps_lval(FlagLval, !R, !F)
+        ;
+            MaybeFlagLval = no
+        )
+    ;
+        MaybeReuse = no_llds_reuse
+    ).
+count_temps_instr(mark_hp(Lval), !R, !F) :-
+    count_temps_lval(Lval, !R, !F).
+count_temps_instr(restore_hp(Rval), !R, !F) :-
+    count_temps_rval(Rval, !R, !F).
+count_temps_instr(free_heap(Rval), !R, !F) :-
+    count_temps_rval(Rval, !R, !F).
+count_temps_instr(push_region_frame(_StackId, _EmbeddedStackFrame), !R, !F).
+count_temps_instr(region_fill_frame(_FillOp, _EmbeddedStackFrame, IdRval,
+        NumLval, AddrLval), !R, !F) :-
+    count_temps_rval(IdRval, !R, !F),
+    count_temps_lval(NumLval, !R, !F),
+    count_temps_lval(AddrLval, !R, !F).
+count_temps_instr(region_set_fixed_slot(_SetlOp, _EmbeddedStackFrame,
+        ValueRval), !R, !F) :-
+    count_temps_rval(ValueRval, !R, !F).
+count_temps_instr(use_and_maybe_pop_region_frame(_UseOp, _EmbeddedStackFrame),
+        !R, !F).
+count_temps_instr(store_ticket(Lval), !R, !F) :-
+    count_temps_lval(Lval, !R, !F).
+count_temps_instr(reset_ticket(Rval, _Reason), !R, !F) :-
+    count_temps_rval(Rval, !R, !F).
+count_temps_instr(discard_ticket, !R, !F).
+count_temps_instr(prune_ticket, !R, !F).
+count_temps_instr(mark_ticket_stack(Lval), !R, !F) :-
+    count_temps_lval(Lval, !R, !F).
+count_temps_instr(prune_tickets_to(Rval), !R, !F) :-
+    count_temps_rval(Rval, !R, !F).
+count_temps_instr(incr_sp(_, _, _), !R, !F).
+count_temps_instr(decr_sp(_), !R, !F).
+count_temps_instr(decr_sp_and_return(_), !R, !F).
+count_temps_instr(foreign_proc_code(_, Comps, _, _, _, _, _, _, _, _),
+        !R, !F) :-
+    count_temps_components(Comps, !R, !F).
+count_temps_instr(init_sync_term(Lval, _, _), !R, !F) :-
+    count_temps_lval(Lval, !R, !F).
+count_temps_instr(fork_new_child(Lval, _), !R, !F) :-
+    count_temps_lval(Lval, !R, !F).
+count_temps_instr(join_and_continue(Lval, _), !R, !F) :-
+    count_temps_lval(Lval, !R, !F).
+count_temps_instr(lc_create_loop_control(_, Lval), !R, !F) :-
+    count_temps_lval(Lval, !R, !F).
+count_temps_instr(lc_wait_free_slot(Rval, Lval, _), !R, !F) :-
+    count_temps_rval(Rval, !R, !F),
+    count_temps_lval(Lval, !R, !F).
+count_temps_instr(lc_spawn_off(LCRval, LCSRval, _), !R, !F) :-
+    count_temps_rval(LCRval, !R, !F),
+    count_temps_rval(LCSRval, !R, !F).
+count_temps_instr(lc_join_and_terminate(LCRval, LCSRval), !R, !F) :-
+    count_temps_rval(LCRval, !R, !F),
+    count_temps_rval(LCSRval, !R, !F).
+
+:- pred count_temps_components(list(foreign_proc_component)::in,
+    int::in, int::out, int::in, int::out) is det.
+
+count_temps_components([], !R, !F).
+count_temps_components([Comp | Comps], !R, !F) :-
+    count_temps_component(Comp, !R, !F),
+    count_temps_components(Comps, !R, !F).
+
+:- pred count_temps_component(foreign_proc_component::in,
+    int::in, int::out, int::in, int::out) is det.
+
+count_temps_component(Comp, !R, !F) :-
+    (
+        Comp = foreign_proc_inputs(Inputs),
+        count_temps_inputs(Inputs, !R, !F)
+    ;
+        Comp = foreign_proc_outputs(Outputs),
+        count_temps_outputs(Outputs, !R, !F)
+    ;
+        ( Comp = foreign_proc_user_code(_, _, _)
+        ; Comp = foreign_proc_raw_code(_, _, _, _)
+        ; Comp = foreign_proc_fail_to(_)
+        ; Comp = foreign_proc_alloc_id(_)
+        ; Comp = foreign_proc_noop
+        )
+    ).
+
+:- pred count_temps_inputs(list(foreign_proc_input)::in,
+    int::in, int::out, int::in, int::out) is det.
+
+count_temps_inputs([], !R, !F).
+count_temps_inputs([Input | Inputs], !R, !F) :-
+    Input = foreign_proc_input(_VarName, _VarType, _IsDummy, _OrigType,
+        ArgRval, _MaybeForeignType, _BoxPolicy),
+    count_temps_rval(ArgRval, !R, !F),
+    count_temps_inputs(Inputs, !R, !F).
+
+:- pred count_temps_outputs(list(foreign_proc_output)::in,
+    int::in, int::out, int::in, int::out) is det.
+
+count_temps_outputs([], !R, !F).
+count_temps_outputs([Output | Outputs], !R, !F) :-
+    Output = foreign_proc_output(DestLval, _VarType, _IsDummy, _OrigType,
+        _VarName, _MaybeForeignType, _BoxPolicy),
+    count_temps_lval(DestLval, !R, !F),
+    count_temps_outputs(Outputs, !R, !F).
+
+:- pred count_temps_lval(lval::in, int::in, int::out, int::in, int::out)
+    is det.
+
+count_temps_lval(Lval, !R, !F) :-
+    (
+        ( Lval = reg(_, _)
+        ; Lval = succip
+        ; Lval = maxfr
+        ; Lval = curfr
+        ; Lval = hp
+        ; Lval = sp
+        ; Lval = parent_sp
+        ; Lval = stackvar(_)
+        ; Lval = framevar(_)
+        ; Lval = parent_stackvar(_)
+        ; Lval = double_stackvar(_, _)
+        ; Lval = global_var_ref(_)
+        )
+    ;
+        Lval = temp(reg_r, N),
+        int.max(N, !R)
+    ;
+        Lval = temp(reg_f, N),
+        int.max(N, !F)
+    ;
+        Lval = field(_, BaseAddrRval, FieldNumRval),
+        count_temps_rval(BaseAddrRval, !R, !F),
+        count_temps_rval(FieldNumRval, !R, !F)
+    ;
+        ( Lval = succip_slot(Rval)
+        ; Lval = succfr_slot(Rval)
+        ; Lval = redoip_slot(Rval)
+        ; Lval = redofr_slot(Rval)
+        ; Lval = prevfr_slot(Rval)
+        ; Lval = mem_ref(Rval)
+        ),
+        count_temps_rval(Rval, !R, !F)
+    ;
+        Lval = lvar(_),
+        unexpected($pred, "lvar")
+    ).
+
+:- pred count_temps_rval(rval::in, int::in, int::out, int::in, int::out)
+    is det.
+
+count_temps_rval(Rval, !R, !F) :-
+    (
+        Rval = lval(Lval),
+        count_temps_lval(Lval, !R, !F)
+    ;
+        Rval = var(_),
+        unexpected($pred, "var")
+    ;
+        Rval = mkword_hole(_Tag)
+    ;
+        Rval = const(_Const)
+    ;
+        ( Rval = mkword(_Tag, SubRval)
+        ; Rval = cast(_Type, SubRval)
+        ; Rval = unop(_Unop, SubRval)
+        ),
+        count_temps_rval(SubRval, !R, !F)
+    ;
+        Rval = binop(_Binop, SubRvalA, SubRvalB),
+        count_temps_rval(SubRvalA, !R, !F),
+        count_temps_rval(SubRvalB, !R, !F)
+    ;
+        Rval = mem_addr(MemRef),
+        count_temps_mem_ref(MemRef, !R, !F)
+    ).
+
+:- pred count_temps_mem_ref(mem_ref::in, int::in, int::out, int::in, int::out)
+    is det.
+
+count_temps_mem_ref(MemRef, !R, !F) :-
+    (
+        ( MemRef = stackvar_ref(Rval)
+        ; MemRef = framevar_ref(Rval)
+        ),
+        count_temps_rval(Rval, !R, !F)
+    ;
+        MemRef = heap_ref(CellRval, _MaybeTag, FieldNumRval),
+        count_temps_rval(CellRval, !R, !F),
+        count_temps_rval(FieldNumRval, !R, !F)
+    ).
+
+%---------------------%
+
+count_incr_hp(Instrs, N) :-
+    count_incr_hp_acc(Instrs, 0, N).
+
+:- pred count_incr_hp_acc(list(instruction)::in, int::in, int::out) is det.
+
+count_incr_hp_acc([], !N).
+count_incr_hp_acc([llds_instr(Uinstr0, _) | Instrs], !N) :-
+    ( if Uinstr0 = incr_hp(_, _, _, _, _, _, _, _) then
+        !:N = !.N + 1
+    else
+        true
+    ),
+    count_incr_hp_acc(Instrs, !N).
+
+%---------------------------------------------------------------------------%
+%
+% Finding possible jump targets.
+%
 
 instr_labels(Instr, Labels, CodeAddrs) :-
     instr_labels_2(Instr, Labels0, CodeAddrs1),
@@ -1501,489 +1896,241 @@ instr_list_labels([llds_instr(Uinstr, _) | Instrs], Labels, CodeAddrs) :-
     Labels = HeadLabels ++ TailLabels,
     CodeAddrs = HeadCodeAddrs ++ TailCodeAddrs.
 
-livevals_addr(code_label(Label)) = Result :-
-    (
-        Label = internal_label(_, _),
-        Result = no
-    ;
-        Label = entry_label(_, _),
-        Result = yes
-    ).
-livevals_addr(code_imported_proc(_)) = yes.
-livevals_addr(code_succip) = yes.
-livevals_addr(do_succeed(_)) = yes.
-livevals_addr(do_redo) = no.
-livevals_addr(do_fail) = no.
-livevals_addr(do_trace_redo_fail_shallow) = no.
-livevals_addr(do_trace_redo_fail_deep) = no.
-livevals_addr(do_call_closure(_)) = yes.
-livevals_addr(do_call_class_method(_)) = yes.
-livevals_addr(do_not_reached) = no.
+%---------------------------------------------------------------------------%
+%
+% Finding stack references.
+%
 
-count_temps_instr_list([], !R, !F).
-count_temps_instr_list([llds_instr(Uinstr, _Comment) | Instrs], !R, !F) :-
-    count_temps_instr(Uinstr, !R, !F),
-    count_temps_instr_list(Instrs, !R, !F).
+lval_refers_stackvars(reg(_, _)) = no.
+lval_refers_stackvars(stackvar(_)) = yes.
+lval_refers_stackvars(parent_stackvar(_)) = yes.
+lval_refers_stackvars(framevar(_)) = yes.
+lval_refers_stackvars(double_stackvar(_, _)) = yes.
+lval_refers_stackvars(succip) = no.
+lval_refers_stackvars(maxfr) = no.
+lval_refers_stackvars(curfr) = no.
+lval_refers_stackvars(succfr_slot(_)) = yes.
+lval_refers_stackvars(prevfr_slot(_)) = yes.
+lval_refers_stackvars(redofr_slot(_)) = yes.
+lval_refers_stackvars(redoip_slot(_)) = yes.
+lval_refers_stackvars(succip_slot(_)) = yes.
+lval_refers_stackvars(hp) = no.
+lval_refers_stackvars(sp) = no.
+lval_refers_stackvars(parent_sp) = no.
+lval_refers_stackvars(field(_, Rval, FieldNum)) =
+    bool.or(
+        rval_refers_stackvars(Rval),
+        rval_refers_stackvars(FieldNum)).
+lval_refers_stackvars(lvar(_)) = _ :-
+    unexpected($pred, "lvar").
+lval_refers_stackvars(temp(_, _)) = no.
+lval_refers_stackvars(mem_ref(Rval)) =
+    rval_refers_stackvars(Rval).
+lval_refers_stackvars(global_var_ref(_)) = no.
 
-count_temps_instr(comment(_), !R, !F).
-count_temps_instr(livevals(_), !R, !F).
-count_temps_instr(block(_, _, _), !R, !F).
-count_temps_instr(assign(Lval, Rval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F),
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(keep_assign(Lval, Rval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F),
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(llcall(_, _, _, _, _, _), !R, !F).
-count_temps_instr(mkframe(_, _), !R, !F).
-count_temps_instr(label(_), !R, !F).
-count_temps_instr(goto(_), !R, !F).
-count_temps_instr(computed_goto(Rval, _), !R, !F) :-
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(if_val(Rval, _), !R, !F) :-
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(arbitrary_c_code(_, _, _), !R, !F).
-count_temps_instr(save_maxfr(Lval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(restore_maxfr(Lval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval,
-        MaybeReuse), !R, !F) :-
-    count_temps_lval(Lval, !R, !F),
-    count_temps_rval(Rval, !R, !F),
-    (
-        MaybeRegionRval = yes(RegionRval),
-        count_temps_rval(RegionRval, !R, !F)
-    ;
-        MaybeRegionRval = no
-    ),
-    (
-        MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
-        count_temps_rval(ReuseRval, !R, !F),
-        (
-            MaybeFlagLval = yes(FlagLval),
-            count_temps_lval(FlagLval, !R, !F)
-        ;
-            MaybeFlagLval = no
-        )
-    ;
-        MaybeReuse = no_llds_reuse
-    ).
-count_temps_instr(mark_hp(Lval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(restore_hp(Rval), !R, !F) :-
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(free_heap(Rval), !R, !F) :-
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(push_region_frame(_StackId, _EmbeddedStackFrame), !R, !F).
-count_temps_instr(region_fill_frame(_FillOp, _EmbeddedStackFrame, IdRval,
-        NumLval, AddrLval), !R, !F) :-
-    count_temps_rval(IdRval, !R, !F),
-    count_temps_lval(NumLval, !R, !F),
-    count_temps_lval(AddrLval, !R, !F).
-count_temps_instr(region_set_fixed_slot(_SetlOp, _EmbeddedStackFrame,
-        ValueRval), !R, !F) :-
-    count_temps_rval(ValueRval, !R, !F).
-count_temps_instr(use_and_maybe_pop_region_frame(_UseOp, _EmbeddedStackFrame),
-        !R, !F).
-count_temps_instr(store_ticket(Lval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(reset_ticket(Rval, _Reason), !R, !F) :-
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(discard_ticket, !R, !F).
-count_temps_instr(prune_ticket, !R, !F).
-count_temps_instr(mark_ticket_stack(Lval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(prune_tickets_to(Rval), !R, !F) :-
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(incr_sp(_, _, _), !R, !F).
-count_temps_instr(decr_sp(_), !R, !F).
-count_temps_instr(decr_sp_and_return(_), !R, !F).
-count_temps_instr(foreign_proc_code(_, Comps, _, _, _, _, _, _, _, _),
-        !R, !F) :-
-    count_temps_components(Comps, !R, !F).
-count_temps_instr(init_sync_term(Lval, _, _), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(fork_new_child(Lval, _), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(join_and_continue(Lval, _), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(lc_create_loop_control(_, Lval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(lc_wait_free_slot(Rval, Lval, _), !R, !F) :-
-    count_temps_rval(Rval, !R, !F),
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(lc_spawn_off(LCRval, LCSRval, _), !R, !F) :-
-    count_temps_rval(LCRval, !R, !F),
-    count_temps_rval(LCSRval, !R, !F).
-count_temps_instr(lc_join_and_terminate(LCRval, LCSRval), !R, !F) :-
-    count_temps_rval(LCRval, !R, !F),
-    count_temps_rval(LCSRval, !R, !F).
+:- func mem_ref_refers_stackvars(mem_ref) = bool.
 
-:- pred count_temps_components(list(foreign_proc_component)::in,
-    int::in, int::out, int::in, int::out) is det.
+mem_ref_refers_stackvars(stackvar_ref(_)) = yes.
+mem_ref_refers_stackvars(framevar_ref(_)) = yes.
+mem_ref_refers_stackvars(heap_ref(Rval1, _, Rval2)) =
+    bool.or(rval_refers_stackvars(Rval1), rval_refers_stackvars(Rval2)).
 
-count_temps_components([], !R, !F).
-count_temps_components([Comp | Comps], !R, !F) :-
-    count_temps_component(Comp, !R, !F),
-    count_temps_components(Comps, !R, !F).
+rval_refers_stackvars(lval(Lval)) =
+    lval_refers_stackvars(Lval).
+rval_refers_stackvars(var(_)) = _ :-
+    unexpected($pred, "var").
+rval_refers_stackvars(mkword(_, Rval)) =
+    rval_refers_stackvars(Rval).
+rval_refers_stackvars(mkword_hole(_)) = no.
+rval_refers_stackvars(const(_)) = no.
+rval_refers_stackvars(cast(_, Rval)) =
+    rval_refers_stackvars(Rval).
+rval_refers_stackvars(unop(_, Rval)) =
+    rval_refers_stackvars(Rval).
+rval_refers_stackvars(binop(_, Rval1, Rval2)) =
+    bool.or(rval_refers_stackvars(Rval1), rval_refers_stackvars(Rval2)).
+rval_refers_stackvars(mem_addr(MemRef)) =
+    mem_ref_refers_stackvars(MemRef).
 
-:- pred count_temps_component(foreign_proc_component::in,
-    int::in, int::out, int::in, int::out) is det.
+:- func code_addr_refers_to_stack(code_addr) = bool.
 
-count_temps_component(Comp, !R, !F) :-
-    (
-        Comp = foreign_proc_inputs(Inputs),
-        count_temps_inputs(Inputs, !R, !F)
-    ;
-        Comp = foreign_proc_outputs(Outputs),
-        count_temps_outputs(Outputs, !R, !F)
-    ;
-        Comp = foreign_proc_user_code(_, _, _)
-    ;
-        Comp = foreign_proc_raw_code(_, _, _, _)
-    ;
-        Comp = foreign_proc_fail_to(_)
-    ;
-        Comp = foreign_proc_alloc_id(_)
-    ;
-        Comp = foreign_proc_noop
-    ).
+code_addr_refers_to_stack(code_label(_)) = no.
+code_addr_refers_to_stack(code_imported_proc(_)) = no.
+code_addr_refers_to_stack(code_succip) = no.
+code_addr_refers_to_stack(do_succeed(_)) = yes.
+code_addr_refers_to_stack(do_redo) = yes.
+code_addr_refers_to_stack(do_fail) = yes.
+code_addr_refers_to_stack(do_trace_redo_fail_shallow) = yes.
+code_addr_refers_to_stack(do_trace_redo_fail_deep) = yes.
+code_addr_refers_to_stack(do_call_closure(_)) = no.
+code_addr_refers_to_stack(do_call_class_method(_)) = no.
+code_addr_refers_to_stack(do_not_reached) = no.
 
-:- pred count_temps_inputs(list(foreign_proc_input)::in,
-    int::in, int::out, int::in, int::out) is det.
-
-count_temps_inputs([], !R, !F).
-count_temps_inputs([Input | Inputs], !R, !F) :-
-    Input = foreign_proc_input(_VarName, _VarType, _IsDummy, _OrigType,
-        ArgRval, _MaybeForeignType, _BoxPolicy),
-    count_temps_rval(ArgRval, !R, !F),
-    count_temps_inputs(Inputs, !R, !F).
-
-:- pred count_temps_outputs(list(foreign_proc_output)::in,
-    int::in, int::out, int::in, int::out) is det.
-
-count_temps_outputs([], !R, !F).
-count_temps_outputs([Output | Outputs], !R, !F) :-
-    Output = foreign_proc_output(DestLval, _VarType, _IsDummy, _OrigType,
-        _VarName, _MaybeForeignType, _BoxPolicy),
-    count_temps_lval(DestLval, !R, !F),
-    count_temps_outputs(Outputs, !R, !F).
-
-:- pred count_temps_lval(lval::in, int::in, int::out, int::in, int::out)
-    is det.
-
-count_temps_lval(Lval, !R, !F) :-
-    (
-        ( Lval = reg(_, _)
-        ; Lval = succip
-        ; Lval = maxfr
-        ; Lval = curfr
-        ; Lval = hp
-        ; Lval = sp
-        ; Lval = parent_sp
-        ; Lval = stackvar(_)
-        ; Lval = framevar(_)
-        ; Lval = parent_stackvar(_)
-        ; Lval = double_stackvar(_, _)
-        ; Lval = global_var_ref(_)
-        )
-    ;
-        Lval = temp(reg_r, N),
-        int.max(N, !R)
-    ;
-        Lval = temp(reg_f, N),
-        int.max(N, !F)
-    ;
-        Lval = field(_, BaseAddrRval, FieldNumRval),
-        count_temps_rval(BaseAddrRval, !R, !F),
-        count_temps_rval(FieldNumRval, !R, !F)
-    ;
-        ( Lval = succip_slot(Rval)
-        ; Lval = succfr_slot(Rval)
-        ; Lval = redoip_slot(Rval)
-        ; Lval = redofr_slot(Rval)
-        ; Lval = prevfr_slot(Rval)
-        ; Lval = mem_ref(Rval)
-        ),
-        count_temps_rval(Rval, !R, !F)
-    ;
-        Lval = lvar(_),
-        unexpected($pred, "lvar")
-    ).
-
-:- pred count_temps_rval(rval::in, int::in, int::out, int::in, int::out)
-    is det.
-
-count_temps_rval(Rval, !R, !F) :-
-    (
-        Rval = lval(Lval),
-        count_temps_lval(Lval, !R, !F)
-    ;
-        Rval = var(_),
-        unexpected($pred, "var")
-    ;
-        Rval = mkword_hole(_Tag)
-    ;
-        Rval = const(_Const)
-    ;
-        ( Rval = mkword(_Tag, SubRval)
-        ; Rval = cast(_Type, SubRval)
-        ; Rval = unop(_Unop, SubRval)
-        ),
-        count_temps_rval(SubRval, !R, !F)
-    ;
-        Rval = binop(_Binop, SubRvalA, SubRvalB),
-        count_temps_rval(SubRvalA, !R, !F),
-        count_temps_rval(SubRvalB, !R, !F)
-    ;
-        Rval = mem_addr(MemRef),
-        count_temps_mem_ref(MemRef, !R, !F)
-    ).
-
-:- pred count_temps_mem_ref(mem_ref::in, int::in, int::out, int::in, int::out)
-    is det.
-
-count_temps_mem_ref(MemRef, !R, !F) :-
-    (
-        ( MemRef = stackvar_ref(Rval)
-        ; MemRef = framevar_ref(Rval)
-        ),
-        count_temps_rval(Rval, !R, !F)
-    ;
-        MemRef = heap_ref(CellRval, _MaybeTag, FieldNumRval),
-        count_temps_rval(CellRval, !R, !F),
-        count_temps_rval(FieldNumRval, !R, !F)
-    ).
-
-format_label(internal_label(_, ProcLabel)) = format_proc_label(ProcLabel).
-format_label(entry_label(_, ProcLabel)) = format_proc_label(ProcLabel).
-
-format_proc_label(ordinary_proc_label(_Module, _PredOrFunc, _, Name,
-        Arity, Mode)) =
-    Name ++ "/" ++ int_to_string(Arity) ++ " mode " ++ int_to_string(Mode).
-format_proc_label(special_proc_label(_Module, SpecialPredId, TypeModule,
-        TypeName, TypeArity, Mode)) =
-        PredName ++ "_" ++ TypeName ++ "/" ++ int_to_string(TypeArity)
-            ++ " mode " ++ int_to_string(Mode) :-
-    TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
-    PredName = special_pred_name(SpecialPredId, TypeCtor).
-
-has_both_incr_decr_sp(Instrs) :-
-    has_both_incr_decr_sp_2(Instrs, no, yes, no, yes).
-
-:- pred has_both_incr_decr_sp_2(list(instruction)::in,
-    bool::in, bool::out, bool::in, bool::out) is det.
-
-has_both_incr_decr_sp_2([], !HasIncr, !HasDecr).
-has_both_incr_decr_sp_2([llds_instr(Uinstr, _) | Instrs],
-        !HasIncr, !HasDecr) :-
-    ( if Uinstr = incr_sp(_, _, _) then
-        !:HasIncr = yes
-    else
-        true
-    ),
-    ( if Uinstr = decr_sp(_) then
-        !:HasDecr = yes
-    else
-        true
-    ),
-    has_both_incr_decr_sp_2(Instrs, !HasIncr, !HasDecr).
-
-touches_nondet_ctrl([]) = no.
-touches_nondet_ctrl([llds_instr(Uinstr, _) | Instrs]) = !:Touch :-
-    !:Touch = touches_nondet_ctrl_instr(Uinstr),
-    (
-        !.Touch = yes
-    ;
-        !.Touch = no,
-        !:Touch = touches_nondet_ctrl(Instrs)
-    ).
-
-:- func touches_nondet_ctrl_instr(instr) = bool.
-
-touches_nondet_ctrl_instr(Uinstr) = Touch :-
+instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
     (
         ( Uinstr = comment(_)
         ; Uinstr = livevals(_)
         ; Uinstr = label(_)
-        ; Uinstr = prune_ticket
+        ; Uinstr = arbitrary_c_code(_, _, _)
         ; Uinstr = discard_ticket
+        ; Uinstr = prune_ticket
+        ; Uinstr = lc_join_and_terminate(_, _)
+        ),
+        Refers = no
+    ;
+        ( Uinstr = llcall(_, _, _, _, _, _)
+        ; Uinstr = mkframe(_, _)
+        ; Uinstr = push_region_frame(_, _)
+        ; Uinstr = region_fill_frame(_, _, _, _, _)
+        ; Uinstr = region_set_fixed_slot(_, _, _)
+        ; Uinstr = use_and_maybe_pop_region_frame(_, _)
         ; Uinstr = incr_sp(_, _, _)
         ; Uinstr = decr_sp(_)
         ; Uinstr = decr_sp_and_return(_)
-        ; Uinstr = push_region_frame(_, _)
-        ; Uinstr = use_and_maybe_pop_region_frame(_, _)
+        ; Uinstr = init_sync_term(_, _, _)
+        ; Uinstr = fork_new_child(_, _)
+        ; Uinstr = join_and_continue(_, _)
+        ; Uinstr = lc_spawn_off(_, _, _)
         ),
-        Touch = no
+        Refers = yes
     ;
-        ( Uinstr = mkframe(_, _)
-        ; Uinstr = goto(_)
-        ; Uinstr = computed_goto(_, _)
-        ; Uinstr = llcall(_, _, _, _, _, _) % This is a safe approximation.
-        ; Uinstr = if_val(_, _)
-        ; Uinstr = arbitrary_c_code(_, _, _)
-        ; Uinstr = save_maxfr(_)
-        ; Uinstr = restore_maxfr(_)
-        ; Uinstr = init_sync_term(_, _, _)  % This is a safe approximation.
-        ; Uinstr = fork_new_child(_, _)     % This is a safe approximation.
-        ; Uinstr = join_and_continue(_, _)  % This is a safe approximation.
+        Uinstr = block(_, _, BlockInstrs),
+        Refers = block_refers_to_stack(BlockInstrs)
+    ;
+        ( Uinstr = assign(Lval, Rval)
+        ; Uinstr = keep_assign(Lval, Rval)
         ),
-        Touch = yes
+        Refers = bool.or(
+            lval_refers_stackvars(Lval),
+            rval_refers_stackvars(Rval))
     ;
-        ( Uinstr = mark_hp(Lval)
+        Uinstr = goto(CodeAddr),
+        Refers = code_addr_refers_to_stack(CodeAddr)
+    ;
+        Uinstr = if_val(Rval, CodeAddr),
+        Refers = bool.or(
+            rval_refers_stackvars(Rval),
+            code_addr_refers_to_stack(CodeAddr))
+    ;
+        ( Uinstr = save_maxfr(Lval)
+        ; Uinstr = restore_maxfr(Lval)
+        ; Uinstr = mark_hp(Lval)
         ; Uinstr = store_ticket(Lval)
         ; Uinstr = mark_ticket_stack(Lval)
         ; Uinstr = lc_create_loop_control(_, Lval)
         ),
-        Touch = touches_nondet_ctrl_lval(Lval)
+        Refers = lval_refers_stackvars(Lval)
     ;
-        ( Uinstr = restore_hp(Rval)
+        ( Uinstr = computed_goto(Rval, _Labels)
+        ; Uinstr = restore_hp(Rval)
         ; Uinstr = free_heap(Rval)
-        ; Uinstr = region_set_fixed_slot(_SetOp, _EmbeddedStackFrame, Rval)
-        ; Uinstr = reset_ticket(Rval, _)
+        ; Uinstr = reset_ticket(Rval, _Reason)
         ; Uinstr = prune_tickets_to(Rval)
         ),
-        Touch = touches_nondet_ctrl_rval(Rval)
-    ;
-        ( Uinstr = assign(Lval, Rval)
-        ; Uinstr = keep_assign(Lval, Rval)
-        ; Uinstr = lc_wait_free_slot(Rval, Lval, _)
-        ),
-        TouchLval = touches_nondet_ctrl_lval(Lval),
-        TouchRval = touches_nondet_ctrl_rval(Rval),
-        bool.or(TouchLval, TouchRval, Touch)
-    ;
-        ( Uinstr = lc_spawn_off(LCRval, LCSRval, _)
-        ; Uinstr = lc_join_and_terminate(LCRval, LCSRval)
-        ),
-        TouchLC = touches_nondet_ctrl_rval(LCRval),
-        TouchLCS = touches_nondet_ctrl_rval(LCSRval),
-        bool.or(TouchLC, TouchLCS, Touch)
-    ;
-        Uinstr = block(_, _, _),
-        % Blocks aren't introduced until after the last user of this predicate.
-        unexpected($pred, "block")
+        Refers = rval_refers_stackvars(Rval)
     ;
         Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval,
             MaybeReuse),
-        some [!Touch] (
-            !:Touch = bool.or(
-                touches_nondet_ctrl_lval(Lval),
-                touches_nondet_ctrl_rval(Rval)),
+        some [!Refers] (
+            !:Refers = bool.or(
+                lval_refers_stackvars(Lval),
+                rval_refers_stackvars(Rval)),
             (
                 MaybeRegionRval = yes(RegionRval),
-                bool.or(touches_nondet_ctrl_rval(RegionRval), !Touch)
+                bool.or(rval_refers_stackvars(RegionRval), !Refers)
             ;
                 MaybeRegionRval = no
             ),
             (
                 MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
-                bool.or(touches_nondet_ctrl_rval(ReuseRval), !Touch),
+                bool.or(rval_refers_stackvars(ReuseRval), !Refers),
                 (
                     MaybeFlagLval = yes(FlagLval),
-                    bool.or(touches_nondet_ctrl_lval(FlagLval), !Touch)
+                    bool.or(lval_refers_stackvars(FlagLval), !Refers)
                 ;
                     MaybeFlagLval = no
                 )
             ;
                 MaybeReuse = no_llds_reuse
             ),
-            Touch = !.Touch
+            Refers = !.Refers
         )
     ;
-        Uinstr = region_fill_frame(_FillOp, _EmbeddedStackFrame, IdRval,
-            NumLval, AddrLval),
-        Touch = bool.or(
-            touches_nondet_ctrl_rval(IdRval),
-            bool.or(
-                touches_nondet_ctrl_lval(NumLval),
-                touches_nondet_ctrl_lval(AddrLval)))
-    ;
         Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _, _),
-        Touch = touches_nondet_ctrl_components(Components)
+        Refers = bool.or_list(list.map(foreign_proc_component_refers_stackvars,
+            Components))
+    ;
+        Uinstr = lc_wait_free_slot(Rval, Lval, _),
+        Refers = bool.or(
+            rval_refers_stackvars(Rval),
+            lval_refers_stackvars(Lval))
     ).
 
-:- func touches_nondet_ctrl_lval(lval) = bool.
+:- func foreign_proc_component_refers_stackvars(foreign_proc_component) = bool.
 
-touches_nondet_ctrl_lval(reg(_, _)) = no.
-touches_nondet_ctrl_lval(stackvar(_)) = no.
-touches_nondet_ctrl_lval(parent_stackvar(_)) = no.
-touches_nondet_ctrl_lval(framevar(_)) = no.
-touches_nondet_ctrl_lval(double_stackvar(_, _)) = no.
-touches_nondet_ctrl_lval(succip) = no.
-touches_nondet_ctrl_lval(maxfr) = yes.
-touches_nondet_ctrl_lval(curfr) = yes.
-touches_nondet_ctrl_lval(succfr_slot(_)) = yes.
-touches_nondet_ctrl_lval(prevfr_slot(_)) = yes.
-touches_nondet_ctrl_lval(redofr_slot(_)) = yes.
-touches_nondet_ctrl_lval(redoip_slot(_)) = yes.
-touches_nondet_ctrl_lval(succip_slot(_)) = yes.
-touches_nondet_ctrl_lval(hp) = no.
-touches_nondet_ctrl_lval(sp) = no.
-touches_nondet_ctrl_lval(parent_sp) = no.
-touches_nondet_ctrl_lval(field(_, Rval1, Rval2)) = Touch :-
-    Touch1 = touches_nondet_ctrl_rval(Rval1),
-    Touch2 = touches_nondet_ctrl_rval(Rval2),
-    bool.or(Touch1, Touch2, Touch).
-touches_nondet_ctrl_lval(lvar(_)) = no.
-touches_nondet_ctrl_lval(temp(_, _)) = no.
-touches_nondet_ctrl_lval(mem_ref(Rval)) =
-    touches_nondet_ctrl_rval(Rval).
-touches_nondet_ctrl_lval(global_var_ref(_)) = no.
+foreign_proc_component_refers_stackvars(Component) = Refers :-
+    (
+        Component = foreign_proc_inputs(Inputs),
+        bool.or_list(list.map(foreign_proc_input_refers_stackvars, Inputs),
+            Refers)
+    ;
+        Component = foreign_proc_outputs(Outputs),
+        bool.or_list(list.map(foreign_proc_output_refers_stackvars, Outputs),
+            Refers)
+    ;
+        ( Component = foreign_proc_user_code(_, _, _)
+        ; Component = foreign_proc_raw_code(_, _, _, _)
+        ; Component = foreign_proc_fail_to(_)
+        ; Component = foreign_proc_alloc_id(_)
+        ; Component = foreign_proc_noop
+        ),
+        Refers = no
+    ).
 
-:- func touches_nondet_ctrl_rval(rval) = bool.
+:- func foreign_proc_input_refers_stackvars(foreign_proc_input) = bool.
 
-touches_nondet_ctrl_rval(lval(Lval)) =
-    touches_nondet_ctrl_lval(Lval).
-touches_nondet_ctrl_rval(var(_)) = no.
-touches_nondet_ctrl_rval(mkword(_, Rval)) =
-    touches_nondet_ctrl_rval(Rval).
-touches_nondet_ctrl_rval(mkword_hole(_)) = no.
-touches_nondet_ctrl_rval(const(_)) = no.
-touches_nondet_ctrl_rval(cast(_, Rval)) =
-    touches_nondet_ctrl_rval(Rval).
-touches_nondet_ctrl_rval(unop(_, Rval)) =
-    touches_nondet_ctrl_rval(Rval).
-touches_nondet_ctrl_rval(binop(_, Rval1, Rval2)) = Touch :-
-    Touch1 = touches_nondet_ctrl_rval(Rval1),
-    Touch2 = touches_nondet_ctrl_rval(Rval2),
-    bool.or(Touch1, Touch2, Touch).
-touches_nondet_ctrl_rval(mem_addr(MemRef)) =
-    touches_nondet_ctrl_mem_ref(MemRef).
+foreign_proc_input_refers_stackvars(Input) = Refers :-
+    Input = foreign_proc_input(_Name, _Type, IsDummy, _OrigType, Rval,
+        _MaybeForeign, _BoxPolicy),
+    (
+        IsDummy = is_dummy_type,
+        Refers = no
+    ;
+        IsDummy = is_not_dummy_type,
+        Refers = rval_refers_stackvars(Rval)
+    ).
 
-:- func touches_nondet_ctrl_mem_ref(mem_ref) = bool.
+:- func foreign_proc_output_refers_stackvars(foreign_proc_output) = bool.
 
-touches_nondet_ctrl_mem_ref(stackvar_ref(_)) = no.
-touches_nondet_ctrl_mem_ref(framevar_ref(_)) = no.
-touches_nondet_ctrl_mem_ref(heap_ref(Rval, _, _)) =
-    touches_nondet_ctrl_rval(Rval).
+foreign_proc_output_refers_stackvars(Input) = Refers :-
+    Input = foreign_proc_output(Lval, _Type, IsDummy, _OrigType, _Name,
+        _MaybeForeign, _BoxPolicy),
+    (
+        IsDummy = is_dummy_type,
+        Refers = no
+    ;
+        IsDummy = is_not_dummy_type,
+        Refers = lval_refers_stackvars(Lval)
+    ).
 
-:- func touches_nondet_ctrl_components(list(foreign_proc_component)) = bool.
-
-touches_nondet_ctrl_components([]) = no.
-touches_nondet_ctrl_components([Comp | Comps]) = Touch :-
-    Touch1 = touches_nondet_ctrl_component(Comp),
-    Touch2 = touches_nondet_ctrl_components(Comps),
-    bool.or(Touch1, Touch2, Touch).
-
-    % The inputs and outputs components get emitted as simple straight-line
-    % code that do not refer to control slots. The compiler does not generate
-    % raw_code that refers to control slots. User code shouldn't either, but
-    % until we have prohibited the use of ordinary pragma C codes for model_non
-    % procedures, some user code will need to ignore this restriction.
-    %
-:- func touches_nondet_ctrl_component(foreign_proc_component) = bool.
-
-touches_nondet_ctrl_component(foreign_proc_inputs(_)) = no.
-touches_nondet_ctrl_component(foreign_proc_outputs(_)) = no.
-touches_nondet_ctrl_component(foreign_proc_raw_code(_, _, _, _)) = no.
-touches_nondet_ctrl_component(foreign_proc_user_code(_, _, _)) = yes.
-touches_nondet_ctrl_component(foreign_proc_fail_to(_)) = no.
-touches_nondet_ctrl_component(foreign_proc_alloc_id(_)) = no.
-touches_nondet_ctrl_component(foreign_proc_noop) = no.
-
-%-----------------------------------------------------------------------------%
+block_refers_to_stack([]) = no.
+block_refers_to_stack([Instr | Instrs]) = Refers :-
+    instr_refers_to_stack(Instr) = InstrRefers,
+    (
+        InstrRefers = yes,
+        Refers = yes
+    ;
+        InstrRefers = no,
+        Instr = llds_instr(Uinstr, _),
+        CanFallThrough = can_instr_fall_through(Uinstr),
+        (
+            CanFallThrough = yes,
+            Refers = block_refers_to_stack(Instrs)
+        ;
+            CanFallThrough = no,
+            Refers = no
+        )
+    ).
 
 lval_access_rvals(reg(_, _), []).
 lval_access_rvals(stackvar(_), []).
@@ -2008,56 +2155,10 @@ lval_access_rvals(lvar(_), _) :-
 lval_access_rvals(mem_ref(Rval), [Rval]).
 lval_access_rvals(global_var_ref(_), []).
 
-%-----------------------------------------------------------------------------%
-
-count_incr_hp(Instrs, N) :-
-    count_incr_hp_2(Instrs, 0, N).
-
-:- pred count_incr_hp_2(list(instruction)::in, int::in, int::out) is det.
-
-count_incr_hp_2([], !N).
-count_incr_hp_2([llds_instr(Uinstr0, _) | Instrs], !N) :-
-    ( if Uinstr0 = incr_hp(_, _, _, _, _, _, _, _) then
-        !:N = !.N + 1
-    else
-        true
-    ),
-    count_incr_hp_2(Instrs, !N).
-
-%-----------------------------------------------------------------------------%
-
-propagate_livevals(Instrs0, Instrs) :-
-    list.reverse(Instrs0, RevInstrs0),
-    set.init(Livevals),
-    propagate_livevals_2(RevInstrs0, Livevals, RevInstrs),
-    list.reverse(RevInstrs, Instrs).
-
-:- pred propagate_livevals_2(list(instruction)::in, set(lval)::in,
-    list(instruction)::out) is det.
-
-propagate_livevals_2([], _, []).
-propagate_livevals_2([Instr0 | Instrs0], Livevals0,
-        [Instr | Instrs]) :-
-    Instr0 = llds_instr(Uinstr0, Comment),
-    ( if Uinstr0 = livevals(ThisLivevals) then
-        set.union(Livevals0, ThisLivevals, Livevals),
-        Instr = llds_instr(livevals(Livevals), Comment)
-    else
-        Instr = Instr0,
-        ( if Uinstr0 = assign(Lval, _) then
-            set.delete(Lval, Livevals0, Livevals)
-        else if can_instr_fall_through(Uinstr0) = no then
-            set.init(Livevals)
-        else
-            Livevals = Livevals0
-        )
-    ),
-    propagate_livevals_2(Instrs0, Livevals, Instrs).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
-% The code in this section is concerned with replacing all references
-% to one given label with a reference to another given label.
+% Substitutions.
+%
 
 replace_labels_instruction_list([], [], _, _, _).
 replace_labels_instruction_list([Instr0 | Instrs0], [Instr | Instrs],
@@ -2673,6 +2774,24 @@ replace_labels_label(Label0, Label, ReplMap) :-
         Label = Label0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Printing.
+%
+
+format_label(internal_label(_, ProcLabel)) = format_proc_label(ProcLabel).
+format_label(entry_label(_, ProcLabel)) = format_proc_label(ProcLabel).
+
+format_proc_label(ordinary_proc_label(_Module, _PredOrFunc, _, Name,
+        Arity, Mode)) =
+    Name ++ "/" ++ int_to_string(Arity) ++ " mode " ++ int_to_string(Mode).
+format_proc_label(special_proc_label(_Module, SpecialPredId, TypeModule,
+        TypeName, TypeArity, Mode)) =
+        PredName ++ "_" ++ TypeName ++ "/" ++ int_to_string(TypeArity)
+            ++ " mode " ++ int_to_string(Mode) :-
+    TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
+    PredName = special_pred_name(SpecialPredId, TypeCtor).
+
+%---------------------------------------------------------------------------%
 :- end_module ll_backend.opt_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
