@@ -519,15 +519,7 @@ realclean_local:
 
 #-----------------------------------------------------------------------------#
 
-ifeq ($(LIBRARY_INTERMODULE),yes)
-
 # Installation targets
-
-# LIBRARY_INTERMODULE should be turned off only during development.
-# A full install requires the library's .opt and .trans_opt files.
-
-# If you add a new target below, please add a parallel target for the
-# case LIBRARY_INTERMODULE != yes.
 
 .PHONY: install
 install: install_mercury
@@ -561,39 +553,5 @@ install_mercury: install_library
 install_library: install_mer_rt lib$(STD_LIB_NAME).install
 
 endif	#ifneq ($(MMAKE_USE_MMC_MAKE),yes)
-
-else
-
-.PHONY: install
-install:
-	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
-	exit 1
-
-.PHONY: install_all
-install_all:
-	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
-	exit 1
-
-.PHONY: install_mercury
-install_mercury:
-	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
-	exit 1
-
-.PHONY: install_ints
-install_ints:
-	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
-	exit 1
-
-.PHONY: install_hdrs
-install_hdrs:
-	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
-	exit 1
-
-.PHONY: install_library
-install_library:
-	echo "Can't do make install without LIBRARY_INTERMODULE=yes"
-	exit 1
-
-endif
 
 #-----------------------------------------------------------------------------#
