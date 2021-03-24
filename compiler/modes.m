@@ -435,10 +435,15 @@ modecheck_to_fixpoint(PredIds, NumIterationsLeft, WhatToCheck,
                         do_not_include_detism_on_modes, PredIds,
                         [], InferenceSpecs),
                     trace [io(!IO)] (
-                        io.write_string("Inferences by current iteration:\n",
-                            !IO),
-                        write_error_specs_ignore(Globals, InferenceSpecs, !IO),
-                        io.write_string("End of inferences.\n", !IO)
+                        module_info_get_name(!.ModuleInfo, ModuleName),
+                        get_debug_output_stream(Globals, ModuleName,
+                            DebugStream, !IO),
+                        io.write_string(DebugStream,
+                            "Inferences by current iteration:\n", !IO),
+                        write_error_specs_ignore(DebugStream, Globals,
+                            InferenceSpecs, !IO),
+                        io.write_string(DebugStream,
+                            "End of inferences.\n", !IO)
                     )
                 ;
                     DebugModes = no
@@ -603,7 +608,10 @@ maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
 
         globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
         trace [io(!IO)] (
-            maybe_report_stats(Statistics, !IO)
+            module_info_get_name(!.ModuleInfo, ModuleName),
+            get_progress_output_stream(Globals, ModuleName,
+                ProgressStream, !IO),
+            maybe_report_stats(ProgressStream, Statistics, !IO)
         )
     ).
 
@@ -1191,13 +1199,17 @@ queued_proc_progress_message(ModuleInfo, PredProcId, HowToCheckGoal, !IO) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
+        module_info_get_name(ModuleInfo, ModuleName),
+        get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
         ProcStr = pred_proc_id_to_string(ModuleInfo, PredProcId),
         (
             HowToCheckGoal = check_modes,
-            io.format("%% Mode-analysing %s\n", [s(ProcStr)], !IO)
+            io.format(ProgressStream, "%% Mode-analysing %s\n",
+                [s(ProcStr)], !IO)
         ;
             HowToCheckGoal = check_unique_modes,
-            io.format("%% Analysing unique modes for\n%% %s", [s(ProcStr)], !IO)
+            io.format(ProgressStream, "%% Analysing unique modes for\n%% %s",
+                [s(ProcStr)], !IO)
         )
     ;
         VeryVerbose = no

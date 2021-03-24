@@ -177,9 +177,10 @@
 :- pred apply_headvar_correction(set_of_progvar::in, rename_map::in,
     hlds_goal::in, hlds_goal::out) is det.
 
-:- pred dump_interval_info(interval_info::in, io::di, io::uo) is det.
+:- pred dump_interval_info(io.text_output_stream::in, interval_info::in,
+    io::di, io::uo) is det.
 
-:- pred write_int_list(list(int)::in, io::di, io::uo) is det.
+:- func int_list_to_string(list(int)) = string.
 
 :- func interval_id_to_int(interval_id) = int.
 
@@ -202,6 +203,7 @@
 :- import_module assoc_list.
 :- import_module pair.
 :- import_module require.
+:- import_module string.
 :- import_module term.
 :- import_module varset.
 
@@ -1259,93 +1261,88 @@ construct_anchors(Construct, Goal, StartAnchor, EndAnchor) :-
 
 % For debugging purposes.
 
-dump_interval_info(IntervalInfo, !IO) :-
+dump_interval_info(Stream, IntervalInfo, !IO) :-
     map.keys(IntervalInfo ^ ii_interval_start, StartIds),
     map.keys(IntervalInfo ^ ii_interval_end, EndIds),
     map.keys(IntervalInfo ^ ii_interval_vars, VarsIds),
     map.keys(IntervalInfo ^ ii_interval_succ, SuccIds),
     list.condense([StartIds, EndIds, VarsIds, SuccIds], IntervalIds0),
     list.sort_and_remove_dups(IntervalIds0, IntervalIds),
-    io.write_string("INTERVALS:\n", !IO),
-    list.foldl(dump_interval_info_id(IntervalInfo), IntervalIds, !IO),
+    io.write_string(Stream, "INTERVALS:\n", !IO),
+    list.foldl(dump_interval_info_id(Stream, IntervalInfo), IntervalIds, !IO),
 
     map.to_assoc_list(IntervalInfo ^ ii_anchor_follow_map, AnchorFollows),
-    io.write_string("\nANCHOR FOLLOW:\n", !IO),
-    list.foldl(dump_anchor_follow, AnchorFollows, !IO).
+    io.write_string(Stream, "\nANCHOR FOLLOW:\n", !IO),
+    list.foldl(dump_anchor_follow(Stream), AnchorFollows, !IO).
 
-:- pred dump_interval_info_id(interval_info::in, interval_id::in,
-    io::di, io::uo) is det.
+:- pred dump_interval_info_id(io.text_output_stream::in, interval_info::in,
+    interval_id::in, io::di, io::uo) is det.
 
-dump_interval_info_id(IntervalInfo, IntervalId, !IO) :-
-    io.write_string("\ninterval ", !IO),
-    io.write_int(interval_id_to_int(IntervalId), !IO),
-    io.write_string(": ", !IO),
+dump_interval_info_id(Stream, IntervalInfo, IntervalId, !IO) :-
+    io.format(Stream, "\ninterval %d:",
+        [i(interval_id_to_int(IntervalId))], !IO),
     ( if map.search(IntervalInfo ^ ii_interval_succ, IntervalId, SuccIds) then
         SuccNums = list.map(interval_id_to_int, SuccIds),
-        io.write_string("succ [", !IO),
-        write_int_list(SuccNums, !IO),
-        io.write_string("]\n", !IO)
+        io.format(Stream, "succ [%s]\n",
+            [s(int_list_to_string(SuccNums))], !IO)
     else
-        io.write_string("no succ\n", !IO)
+        io.write_string(Stream, "no succ\n", !IO)
     ),
     ( if map.search(IntervalInfo ^ ii_interval_start, IntervalId, Start) then
-        io.write_string("start ", !IO),
-        io.write(Start, !IO),
-        io.write_string("\n", !IO)
+        io.write_string(Stream, "start ", !IO),
+        io.write_line(Stream, Start, !IO)
     else
-        io.write_string("no start\n", !IO)
+        io.write_string(Stream, "no start\n", !IO)
     ),
     ( if map.search(IntervalInfo ^ ii_interval_end, IntervalId, End) then
-        io.write_string("end ", !IO),
-        io.write(End, !IO),
-        io.write_string("\n", !IO)
+        io.write_string(Stream, "end ", !IO),
+        io.write_line(Stream, End, !IO)
     else
-        io.write_string("no end\n", !IO)
+        io.write_string(Stream, "no end\n", !IO)
     ),
     ( if map.search(IntervalInfo ^ ii_interval_vars, IntervalId, Vars) then
         list.map(term.var_to_int, set_of_var.to_sorted_list(Vars), VarNums),
-        io.write_string("vars [", !IO),
-        write_int_list(VarNums, !IO),
-        io.write_string("]\n", !IO)
+        io.format(Stream, "vars [%s]\n",
+            [s(int_list_to_string(VarNums))], !IO)
     else
-        io.write_string("no vars\n", !IO)
+        io.write_string(Stream, "no vars\n", !IO)
     ),
     ( if
         map.search(IntervalInfo ^ ii_interval_delvars, IntervalId, Deletions)
     then
-        io.write_string("deletions", !IO),
-        list.foldl(dump_deletion, Deletions, !IO),
-        io.write_string("\n", !IO)
+        io.write_string(Stream, "deletions", !IO),
+        list.foldl(dump_deletion(Stream), Deletions, !IO),
+        io.write_string(Stream, "\n", !IO)
     else
         true
     ).
 
-:- pred dump_deletion(set_of_progvar::in, io::di, io::uo) is det.
-
-dump_deletion(Vars, !IO) :-
-    list.map(term.var_to_int, set_of_var.to_sorted_list(Vars), VarNums),
-    io.write_string(" [", !IO),
-    write_int_list(VarNums, !IO),
-    io.write_string("]", !IO).
-
-:- pred dump_anchor_follow(pair(anchor, anchor_follow_info)::in,
+:- pred dump_deletion(io.text_output_stream::in, set_of_progvar::in,
     io::di, io::uo) is det.
 
-dump_anchor_follow(Anchor - AnchorFollowInfo, !IO) :-
-    AnchorFollowInfo = anchor_follow_info(Vars, Intervals),
-    io.write_string("\n", !IO),
-    io.write(Anchor, !IO),
-    io.write_string(" =>\n", !IO),
+dump_deletion(Stream, Vars, !IO) :-
     list.map(term.var_to_int, set_of_var.to_sorted_list(Vars), VarNums),
-    io.write_string("vars [", !IO),
-    write_int_list(VarNums, !IO),
-    io.write_string("]\nintervals: ", !IO),
-    set.to_sorted_list(Intervals, IntervalList),
-    write_int_list(list.map(interval_id_to_int, IntervalList), !IO),
-    io.write_string("\n", !IO).
+    io.format(Stream, " [%s]", [s(int_list_to_string(VarNums))], !IO).
 
-write_int_list(List, !IO) :-
-    io.write_list(List, ", ", io.write_int, !IO).
+:- pred dump_anchor_follow(io.text_output_stream::in,
+    pair(anchor, anchor_follow_info)::in, io::di, io::uo) is det.
+
+dump_anchor_follow(Stream, Anchor - AnchorFollowInfo, !IO) :-
+    AnchorFollowInfo = anchor_follow_info(Vars, Intervals),
+    list.map(term.var_to_int, set_of_var.to_sorted_list(Vars), VarNums),
+    set.to_sorted_list(Intervals, IntervalList),
+    IntervalIntList = list.map(interval_id_to_int, IntervalList),
+    io.write_string(Stream, "\n", !IO),
+    io.write(Stream, Anchor, !IO),
+    io.write_string(Stream, " =>\n", !IO),
+    io.format(Stream, "vars [%s]\n",
+        [s(int_list_to_string(VarNums))], !IO),
+    io.format(Stream, "intervals: %s\n",
+        [s(int_list_to_string(IntervalIntList))], !IO).
+
+int_list_to_string(Ints) = IntsStr :-
+    IntStrs = list.map(string.int_to_string, Ints),
+    IntsStr = string.join_list(", ", IntStrs).
 
 interval_id_to_int(interval_id(Num)) = Num.
 

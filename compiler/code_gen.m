@@ -48,6 +48,7 @@
 :- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.call_gen.
@@ -89,8 +90,10 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
             GoalDesc = describe_goal(ModuleInfo, VarSet, Goal),
 
             ( if should_trace_code_gen(!.CI) then
-                io.format("\nGOAL START: %s\n", [s(GoalDesc)], !IO),
-                io.flush_output(!IO)
+                get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+                io.format(DebugStream, "\nGOAL START: %s\n",
+                    [s(GoalDesc)], !IO),
+                io.flush_output(DebugStream, !IO)
             else
                 true
             )
@@ -194,11 +197,12 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
             GoalDesc = describe_goal(ModuleInfo, VarSet, Goal),
 
             ( if should_trace_code_gen(!.CI) then
-                io.format("\nGOAL FINISH: %s\n", [s(GoalDesc)], !IO),
+                get_debug_output_stream(ModuleInfo, DebugStream, !IO),
                 Instrs = cord.list(Code),
-                io.output_stream(Stream, !IO),
-                write_instrs(Stream, Instrs, no, auto_comments, !IO),
-                io.flush_output(Stream, !IO)
+                io.format(DebugStream, "\nGOAL FINISH: %s\n",
+                    [s(GoalDesc)], !IO),
+                write_instrs(DebugStream, Instrs, no, auto_comments, !IO),
+                io.flush_output(DebugStream, !IO)
             else
                 true
             )

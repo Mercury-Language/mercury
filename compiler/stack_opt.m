@@ -102,6 +102,7 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
 :- import_module libs.
@@ -131,6 +132,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -304,8 +306,9 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
         StackOptInfo0, StackOptInfo),
     ( if DebugStackOpt = PredIdInt then
         trace [io(!IO)] (
-            dump_interval_info(IntervalInfo, !IO),
-            dump_stack_opt_info(StackOptInfo, !IO)
+            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+            dump_interval_info(DebugStream, IntervalInfo, !IO),
+            dump_stack_opt_info(DebugStream, StackOptInfo, !IO)
         )
     else
         true
@@ -1058,89 +1061,84 @@ maybe_write_progress_message(Message, DebugStackOpt, PredIdInt, ProcInfo,
     % This predicate (along with dump_interval_info) can help debug the
     % performance of the transformation.
     %
-:- pred dump_stack_opt_info(stack_opt_info::in, io::di, io::uo) is det.
-
-dump_stack_opt_info(StackOptInfo, !IO) :-
-    map.to_assoc_list(StackOptInfo ^ soi_left_anchor_inserts, Inserts),
-    io.write_string("\nANCHOR INSERT:\n", !IO),
-    list.foldl(dump_anchor_inserts, Inserts, !IO),
-
-    io.write_string("\nMATCHING RESULTS:\n", !IO),
-    list.foldl(dump_matching_result, StackOptInfo ^ soi_matching_results, !IO),
-    io.write_string("\n", !IO).
-
-:- pred dump_anchor_inserts(pair(anchor, list(insert_spec))::in,
+:- pred dump_stack_opt_info(io.text_output_stream::in, stack_opt_info::in,
     io::di, io::uo) is det.
 
-dump_anchor_inserts(Anchor - InsertSpecs, !IO) :-
-    io.write_string("\ninsertions after ", !IO),
-    io.write(Anchor, !IO),
-    io.write_string(":\n", !IO),
-    list.foldl(dump_insert, InsertSpecs, !IO).
+dump_stack_opt_info(Stream, StackOptInfo, !IO) :-
+    map.to_assoc_list(StackOptInfo ^ soi_left_anchor_inserts, Inserts),
+    io.write_string(Stream, "\nANCHOR INSERT:\n", !IO),
+    list.foldl(dump_anchor_inserts(Stream), Inserts, !IO),
 
-:- pred dump_insert(insert_spec::in, io::di, io::uo) is det.
+    io.write_string(Stream, "\nMATCHING RESULTS:\n", !IO),
+    list.foldl(dump_matching_result(Stream),
+        StackOptInfo ^ soi_matching_results, !IO),
+    io.write_string(Stream, "\n", !IO).
 
-dump_insert(insert_spec(Goal, Vars), !IO) :-
+:- pred dump_anchor_inserts(io.text_output_stream::in,
+    pair(anchor, list(insert_spec))::in, io::di, io::uo) is det.
+
+dump_anchor_inserts(Stream, Anchor - InsertSpecs, !IO) :-
+    io.write_string(Stream, "\ninsertions after ", !IO),
+    io.write(Stream, Anchor, !IO),
+    io.write_string(Stream, ":\n", !IO),
+    list.foldl(dump_insert(Stream), InsertSpecs, !IO).
+
+:- pred dump_insert(io.text_output_stream::in, insert_spec::in,
+    io::di, io::uo) is det.
+
+dump_insert(Stream, insert_spec(Goal, Vars), !IO) :-
     list.map(term.var_to_int, set_of_var.to_sorted_list(Vars), VarNums),
-    io.write_string("vars [", !IO),
-    write_int_list(VarNums, !IO),
-    io.write_string("]: ", !IO),
+    io.format(Stream, "vars [%s]:", [s(int_list_to_string(VarNums))], !IO),
     ( if
         Goal = hlds_goal(unify(_, _, _, Unification, _), _),
         Unification = deconstruct(CellVar, ConsId, ArgVars, _,_,_)
     then
         term.var_to_int(CellVar, CellVarNum),
-        io.write_int(CellVarNum, !IO),
-        io.write_string(" => ", !IO),
-        io.write_string(cons_id_and_arity_to_string(ConsId), !IO),
-        io.write_string("(", !IO),
         list.map(term.var_to_int, ArgVars, ArgVarNums),
-        write_int_list(ArgVarNums, !IO),
-        io.write_string(")\n", !IO)
+        io.format(Stream, "%d => %s(%s)\n",
+            [i(CellVarNum), s(cons_id_and_arity_to_string(ConsId)),
+            s(int_list_to_string(ArgVarNums))], !IO)
     else
-        io.write_string("BAD INSERT GOAL\n", !IO)
+        io.write_string(Stream, "BAD INSERT GOAL\n", !IO)
     ).
 
-:- pred dump_matching_result(matching_result::in,
+:- pred dump_matching_result(io.text_output_stream::in, matching_result::in,
     io::di, io::uo) is det.
 
-dump_matching_result(MatchingResult, !IO) :-
+dump_matching_result(Stream, MatchingResult, !IO) :-
     MatchingResult = matching_result(CellVar, ConsId, ArgVars, ViaCellVars,
         GoalId, PotentialIntervals, InsertIntervals,
         PotentialAnchors, InsertAnchors),
-    io.write_string("\nmatching result at ", !IO),
-    io.write(GoalId, !IO),
-    io.write_string("\n", !IO),
+    io.write_string(Stream, "\nmatching result at ", !IO),
+    io.write_line(Stream, GoalId, !IO),
     term.var_to_int(CellVar, CellVarNum),
     list.map(term.var_to_int, ArgVars, ArgVarNums),
     list.map(term.var_to_int, set_of_var.to_sorted_list(ViaCellVars),
         ViaCellVarNums),
-    io.write_int(CellVarNum, !IO),
-    io.write_string(" => ", !IO),
-    io.write_string(cons_id_and_arity_to_string(ConsId), !IO),
-    io.write_string("(", !IO),
-    write_int_list(ArgVarNums, !IO),
-    io.write_string("): via cell ", !IO),
-    write_int_list(ViaCellVarNums, !IO),
-    io.write_string("\n", !IO),
+    io.format(Stream, "%d => %s(%s): via cell %s\n",
+        [i(CellVarNum), s(cons_id_and_arity_to_string(ConsId)),
+        s(int_list_to_string(ArgVarNums)),
+        s(int_list_to_string(ViaCellVarNums))], !IO),
 
-    io.write_string("potential intervals: ", !IO),
     PotentialIntervalNums = list.map(interval_id_to_int,
         set.to_sorted_list(PotentialIntervals)),
-    write_int_list(PotentialIntervalNums, !IO),
-    io.write_string("\n", !IO),
-    io.write_string("insert intervals: ", !IO),
     InsertIntervalNums = list.map(interval_id_to_int,
         set.to_sorted_list(InsertIntervals)),
-    write_int_list(InsertIntervalNums, !IO),
-    io.write_string("\n", !IO),
+    io.format(Stream, "potential intervals: %s\n",
+        [s(int_list_to_string(PotentialIntervalNums))], !IO),
+    io.format(Stream, "insert intervals: %s\n",
+        [s(int_list_to_string(InsertIntervalNums))], !IO),
 
-    io.write_string("potential anchors: ", !IO),
-    io.write_list(set.to_sorted_list(PotentialAnchors), " ", io.write, !IO),
-    io.write_string("\n", !IO),
-    io.write_string("insert anchors: ", !IO),
-    io.write_list(set.to_sorted_list(InsertAnchors), " ", io.write, !IO),
-    io.write_string("\n", !IO).
+    PotentialAnchorStrs = list.map(string.string,
+        set.to_sorted_list(PotentialAnchors)),
+    InsertAnchorStrs = list.map(string.string,
+        set.to_sorted_list(InsertAnchors)),
+    PotentialAnchorsStr = string.join_list(" ", PotentialAnchorStrs),
+    InsertAnchorsStr = string.join_list(" ", InsertAnchorStrs),
+    io.format(Stream, "potential anchors: %s\n",
+        [s(PotentialAnchorsStr)], !IO),
+    io.format(Stream, "insert anchors: %s\n",
+        [s(InsertAnchorsStr)], !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.stack_opt.

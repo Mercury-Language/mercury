@@ -1102,15 +1102,18 @@ mode_info_add_error(ModeErrorInfo, !ModeInfo) :-
     ;
         DebugModes = yes(_DebugFlags),
         trace [io(!IO)] (
-            list.length(Errors, ErrorNum),
-            io.format("Adding error_spec %d\n", [i(ErrorNum)], !IO),
-            Spec = mode_error_info_to_spec(!.ModeInfo, ModeErrorInfo),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
             module_info_get_globals(ModuleInfo, Globals0),
+            module_info_get_name(ModuleInfo, ModuleName),
+            get_debug_output_stream(Globals0, ModuleName, DebugStream, !IO),
+            list.length(Errors, ErrorNum),
+            io.format(DebugStream, "Adding error_spec %d\n",
+                [i(ErrorNum)], !IO),
+            Spec = mode_error_info_to_spec(!.ModeInfo, ModeErrorInfo),
             globals.set_option(print_error_spec_id, bool(yes),
                 Globals0, Globals),
-            write_error_spec(Globals, Spec, 0, _, 0, _, !IO),
-            io.flush_output(!IO)
+            write_error_spec(DebugStream, Globals, Spec, 0, _, 0, _, !IO),
+            io.flush_output(DebugStream, !IO)
         )
     ).
 

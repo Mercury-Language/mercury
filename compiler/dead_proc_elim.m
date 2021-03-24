@@ -590,14 +590,13 @@ dead_proc_examine_proc(proc(PredId, ProcId), AnalyzeTraceGoalProcs,
         map.lookup(ProcTable, ProcId, ProcInfo)
     then
         trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-            io.write_string("examining proc ", !IO),
-            io.write_int(pred_id_to_int(PredId), !IO),
-            io.write_string(" ", !IO),
-            io.write_int(proc_id_to_int(ProcId), !IO),
-            io.nl(!IO)
+            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+            io.format(DebugStream, "examining proc %d %d\n",
+                [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))], !IO)
         ),
         proc_info_get_goal(ProcInfo, Goal),
-        dead_proc_examine_goal(Goal, proc(PredId, ProcId), !Queue, !Needed),
+        dead_proc_examine_goal(Goal, proc(PredId, ProcId),
+            ModuleInfo, !Queue, !Needed),
         (
             AnalyzeTraceGoalProcs = do_not_analyze_link_deleted_calls
         ;
@@ -615,11 +614,10 @@ dead_proc_examine_proc(proc(PredId, ProcId), AnalyzeTraceGoalProcs,
         ;
             HasPerProcTablingPtr = yes,
             trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-                io.write_string("need table struct for proc ", !IO),
-                io.write_int(pred_id_to_int(PredId), !IO),
-                io.write_string(" ", !IO),
-                io.write_int(proc_id_to_int(ProcId), !IO),
-                io.nl(!IO)
+                get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+                io.format(DebugStream, "need table struct for proc %d %d\n",
+                    [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))],
+                    !IO)
             ),
             TableStructEntity = entity_table_struct(PredId, ProcId),
             map.set(TableStructEntity, not_eliminable, !Needed)
@@ -633,11 +631,9 @@ dead_proc_examine_proc(proc(PredId, ProcId), AnalyzeTraceGoalProcs,
         )
     else
         trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-            io.write_string("not examining proc ", !IO),
-            io.write_int(pred_id_to_int(PredId), !IO),
-            io.write_string(" ", !IO),
-            io.write_int(proc_id_to_int(ProcId), !IO),
-            io.nl(!IO)
+            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+            io.format(DebugStream, "not examining proc %d %d\n",
+                [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))], !IO)
         )
     ).
 
@@ -658,41 +654,42 @@ need_trace_goal_proc(TraceGoalProc, !Queue, !Needed) :-
 %-----------------------------------------------------------------------------%
 
 :- pred dead_proc_examine_goals(list(hlds_goal)::in, pred_proc_id::in,
-    entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
-    is det.
+    module_info::in, entity_queue::in, entity_queue::out,
+    needed_map::in, needed_map::out) is det.
 
-dead_proc_examine_goals([], _, !Queue, !Needed).
-dead_proc_examine_goals([Goal | Goals], CurrProc, !Queue, !Needed) :-
-    dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed),
-    dead_proc_examine_goals(Goals, CurrProc, !Queue, !Needed).
+dead_proc_examine_goals([], _, _, !Queue, !Needed).
+dead_proc_examine_goals([Goal | Goals], CurrProc, ModuleInfo,
+        !Queue, !Needed) :-
+    dead_proc_examine_goal(Goal, CurrProc, ModuleInfo, !Queue, !Needed),
+    dead_proc_examine_goals(Goals, CurrProc, ModuleInfo, !Queue, !Needed).
 
 :- pred dead_proc_examine_cases(list(case)::in, pred_proc_id::in,
-    entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
-    is det.
+    module_info::in, entity_queue::in, entity_queue::out,
+    needed_map::in, needed_map::out) is det.
 
-dead_proc_examine_cases([], _CurrProc, !Queue, !Needed).
+dead_proc_examine_cases([], _, _, !Queue, !Needed).
 dead_proc_examine_cases([case(_, _, Goal) | Cases], CurrProc,
-        !Queue, !Needed) :-
-    dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed),
-    dead_proc_examine_cases(Cases, CurrProc, !Queue, !Needed).
+        ModuleInfo, !Queue, !Needed) :-
+    dead_proc_examine_goal(Goal, CurrProc, ModuleInfo, !Queue, !Needed),
+    dead_proc_examine_cases(Cases, CurrProc, ModuleInfo, !Queue, !Needed).
 
 :- pred dead_proc_examine_goal(hlds_goal::in, pred_proc_id::in,
-    entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
-    is det.
+    module_info::in, entity_queue::in, entity_queue::out,
+    needed_map::in, needed_map::out) is det.
 
-dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
+dead_proc_examine_goal(Goal, CurrProc, ModuleInfo, !Queue, !Needed) :-
     Goal = hlds_goal(GoalExpr, _),
     (
         ( GoalExpr = conj(_ConjType, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        dead_proc_examine_goals(Goals, CurrProc, !Queue, !Needed)
+        dead_proc_examine_goals(Goals, CurrProc, ModuleInfo, !Queue, !Needed)
     ;
         GoalExpr = switch(_Var, _CanFail, Cases),
-        dead_proc_examine_cases(Cases, CurrProc, !Queue, !Needed)
+        dead_proc_examine_cases(Cases, CurrProc, ModuleInfo, !Queue, !Needed)
     ;
         GoalExpr = negation(SubGoal),
-        dead_proc_examine_goal(SubGoal, CurrProc, !Queue, !Needed)
+        dead_proc_examine_goal(SubGoal, CurrProc, ModuleInfo, !Queue, !Needed)
     ;
         GoalExpr = scope(Reason, SubGoal),
         ( if
@@ -704,13 +701,14 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
             % The scope has no references to procedures at all.
             true
         else
-            dead_proc_examine_goal(SubGoal, CurrProc, !Queue, !Needed)
+            dead_proc_examine_goal(SubGoal, CurrProc, ModuleInfo,
+                !Queue, !Needed)
         )
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
-        dead_proc_examine_goal(Cond, CurrProc, !Queue, !Needed),
-        dead_proc_examine_goal(Then, CurrProc, !Queue, !Needed),
-        dead_proc_examine_goal(Else, CurrProc, !Queue, !Needed)
+        dead_proc_examine_goal(Cond, CurrProc, ModuleInfo, !Queue, !Needed),
+        dead_proc_examine_goal(Then, CurrProc, ModuleInfo, !Queue, !Needed),
+        dead_proc_examine_goal(Else, CurrProc, ModuleInfo, !Queue, !Needed)
     ;
         GoalExpr = generic_call(_, _, _, _, _)
     ;
@@ -719,11 +717,10 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
         queue.put(Entity, !Queue),
         ( if proc(PredId, ProcId) = CurrProc then
             trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-                io.write_string("plain_call recursive ", !IO),
-                io.write_int(pred_id_to_int(PredId), !IO),
-                io.write_string(" ", !IO),
-                io.write_int(proc_id_to_int(ProcId), !IO),
-                io.nl(!IO)
+                get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+                io.format(DebugStream, "plain_call recursive %d %d\n",
+                    [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))],
+                    !IO)
             ),
             % If it is reachable and recursive, then we cannot eliminate it
             % or inline it.
@@ -734,31 +731,31 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                 OldNotation = not_eliminable,
                 NewNotation = not_eliminable,
                 trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-                    io.write_string("plain_call old not_eliminable ", !IO),
-                    io.write_int(pred_id_to_int(PredId), !IO),
-                    io.write_string(" ", !IO),
-                    io.write_int(proc_id_to_int(ProcId), !IO),
-                    io.nl(!IO)
+                    get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+                    io.format(DebugStream,
+                        "plain_call old not_eliminable %d %d\n",
+                        [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))],
+                        !IO)
                 )
             ;
                 OldNotation = maybe_eliminable(Count),
                 NewNotation = maybe_eliminable(Count + 1),
                 trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-                    io.write_string("plain_call incr maybe_eliminable ", !IO),
-                    io.write_int(pred_id_to_int(PredId), !IO),
-                    io.write_string(" ", !IO),
-                    io.write_int(proc_id_to_int(ProcId), !IO),
-                    io.nl(!IO)
+                    get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+                    io.format(DebugStream,
+                        "plain_call incr maybe_eliminable %d %d\n",
+                        [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))],
+                        !IO)
                 )
             ),
             map.det_update(Entity, NewNotation, !Needed)
         else
             trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-                io.write_string("plain_call init maybe_eliminable ", !IO),
-                io.write_int(pred_id_to_int(PredId), !IO),
-                io.write_string(" ", !IO),
-                io.write_int(proc_id_to_int(ProcId), !IO),
-                io.nl(!IO)
+                get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+                io.format(DebugStream,
+                    "plain_call init maybe_eliminable %d %d\n",
+                    [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))],
+                    !IO)
             ),
             NewNotation = maybe_eliminable(1),
             map.det_insert(Entity, NewNotation, !Needed)
@@ -767,11 +764,9 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
         GoalExpr = call_foreign_proc(_, PredId, ProcId, _, _, _, _),
         Entity = entity_proc(PredId, ProcId),
         trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-            io.write_string("foreign_proc ", !IO),
-            io.write_int(pred_id_to_int(PredId), !IO),
-            io.write_string(" ", !IO),
-            io.write_int(proc_id_to_int(ProcId), !IO),
-            io.nl(!IO)
+            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+            io.format(DebugStream, "foreign_proc %d %d\n",
+                [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))], !IO)
         ),
         queue.put(Entity, !Queue),
         map.set(Entity, not_eliminable, !Needed)
@@ -786,11 +781,10 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                         unshroud_pred_proc_id(ShroudedPredProcId),
                     Entity = entity_proc(PredId, ProcId),
                     trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-                        io.write_string("pred_const ", !IO),
-                        io.write_int(pred_id_to_int(PredId), !IO),
-                        io.write_string(" ", !IO),
-                        io.write_int(proc_id_to_int(ProcId), !IO),
-                        io.nl(!IO)
+                        get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+                        io.format(DebugStream, "pred_const %d %d\n",
+                            [i(pred_id_to_int(PredId)),
+                            i(proc_id_to_int(ProcId))], !IO)
                     )
                 ;
                     ConsId = type_ctor_info_const(Module, TypeName, Arity),
@@ -801,11 +795,10 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                         unshroud_pred_proc_id(ShroudedPredProcId),
                     Entity = entity_table_struct(PredId, ProcId),
                     trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
-                        io.write_string("table struct const ", !IO),
-                        io.write_int(pred_id_to_int(PredId), !IO),
-                        io.write_string(" ", !IO),
-                        io.write_int(proc_id_to_int(ProcId), !IO),
-                        io.nl(!IO)
+                        get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+                        io.format(DebugStream, "table struct const %d %d\n",
+                            [i(pred_id_to_int(PredId)),
+                            i(proc_id_to_int(ProcId))], !IO)
                     )
                 ),
                 queue.put(Entity, !Queue),

@@ -36,7 +36,9 @@
 
 :- import_module libs.
 :- import_module libs.file_util.
+:- import_module libs.globals.
 :- import_module hlds.
+:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.instmap.
@@ -89,44 +91,52 @@ mode_checkpoint(Port, Msg, !ModeInfo) :-
             Detail = yes,
             mode_info_get_instmap(!.ModeInfo, InstMap),
             trace [io(!IO)] (
-                io.format("%s%s%s:\n",
+                mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+                module_info_get_globals(ModuleInfo, Globals),
+                module_info_get_name(ModuleInfo, ModuleName),
+                get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+                io.format(DebugStream, "%s%s%s:\n",
                     [s(PortStr), s(UniquePrefix), s(Msg)], !IO),
-                maybe_report_stats(Statistics, !IO),
-                maybe_flush_output(Statistics, !IO),
+                maybe_report_stats(DebugStream, Statistics, !IO),
+                maybe_flush_output(DebugStream, Statistics, !IO),
                 ( if instmap_is_reachable(InstMap) then
                     instmap_to_assoc_list(InstMap, NewInsts),
                     mode_info_get_last_checkpoint_insts(!.ModeInfo,
                         OldInstMap),
                     mode_info_get_varset(!.ModeInfo, VarSet),
                     mode_info_get_instvarset(!.ModeInfo, InstVarSet),
-                    write_var_insts(NewInsts, OldInstMap, VarSet, InstVarSet,
-                        Verbose, Minimal, !IO)
+                    write_var_insts(DebugStream, NewInsts, OldInstMap,
+                        VarSet, InstVarSet, Verbose, Minimal, !IO)
                 else
-                    io.write_string("\tUnreachable\n", !IO)
+                    io.write_string(DebugStream, "\tUnreachable\n", !IO)
                 ),
-                io.write_string("\n", !IO),
-                io.flush_output(!IO)
+                io.write_string(DebugStream, "\n", !IO),
+                io.flush_output(DebugStream, !IO)
             ),
             mode_info_set_last_checkpoint_insts(InstMap, !ModeInfo)
         ;
             Detail = no,
             trace [io(!IO)] (
-                io.format("%s%s%s:\n",
+                mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+                module_info_get_globals(ModuleInfo, Globals),
+                module_info_get_name(ModuleInfo, ModuleName),
+                get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+                io.format(DebugStream, "%s%s%s:\n",
                     [s(PortStr), s(UniquePrefix), s(Msg)], !IO),
-                io.flush_output(!IO)
+                io.flush_output(DebugStream, !IO)
             )
         )
     ).
 
-:- pred write_var_insts(assoc_list(prog_var, mer_inst)::in, instmap::in,
+:- pred write_var_insts(io.text_output_stream::in,
+    assoc_list(prog_var, mer_inst)::in, instmap::in,
     prog_varset::in, inst_varset::in, bool::in, bool::in,
     io::di, io::uo) is det.
 
-write_var_insts([], _, _, _, _, _, !IO).
-write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
-        Verbose, Minimal, !IO) :-
+write_var_insts(_, [], _, _, _, _, _, !IO).
+write_var_insts(Stream, [Var - Inst | VarInsts], OldInstMap,
+        VarSet, InstVarSet, Verbose, Minimal, !IO) :-
     instmap_lookup_var(OldInstMap, Var, OldInst),
-    io.output_stream(Stream, !IO),
     ( if
         (
             identical_insts(Inst, OldInst)
@@ -138,26 +148,24 @@ write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
             Verbose = yes,
             io.write_string(Stream, "\t", !IO),
             mercury_output_var(VarSet, print_name_only, Var, Stream, !IO),
-            io.write_string(Stream, " ::", !IO),
-            io.write_string(Stream, " unchanged\n", !IO)
+            io.write_string(Stream, " :: unchanged", !IO)
         ;
             Verbose = no
         )
     else
         io.write_string(Stream, "\t", !IO),
         mercury_output_var(VarSet, print_name_only, Var, Stream, !IO),
-        io.write_string(Stream, " ::", !IO),
         (
             Minimal = yes,
-            io.write_string(Stream, " changed\n", !IO)
+            io.write_string(Stream, " :: changed\n", !IO)
         ;
             Minimal = no,
-            io.write_string(Stream, "\n", !IO),
+            io.write_string(Stream, " ::\n", !IO),
             mercury_output_structured_inst(Stream, Inst, 2,
                 output_debug, do_not_incl_addr, InstVarSet, !IO)
         )
     ),
-    write_var_insts(VarInsts, OldInstMap, VarSet, InstVarSet,
+    write_var_insts(Stream, VarInsts, OldInstMap, VarSet, InstVarSet,
         Verbose, Minimal, !IO).
 
     % In the usual case of a C backend, this predicate allows us to conclude

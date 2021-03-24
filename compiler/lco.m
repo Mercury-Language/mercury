@@ -182,6 +182,7 @@
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
@@ -490,13 +491,11 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
         Changed = proc_changed
     then
         trace [compiletime(flag("lco")), io(!IO)] (
-            io.output_stream(Stream, !IO),
-            io.write_string(Stream, "\ngoal before lco:\n", !IO),
-            dump_goal(Stream, !.ModuleInfo, VarSet, Goal0, !IO),
-            io.nl(Stream, !IO),
-            io.write_string(Stream, "\ngoal after lco:\n", !IO),
-            dump_goal(Stream, !.ModuleInfo, VarSet, Goal, !IO),
-            io.nl(Stream, !IO)
+            get_lco_debug_output_stream(Info, DebugStream, !IO),
+            io.write_string(DebugStream, "\ngoal before lco:\n", !IO),
+            dump_goal_nl(DebugStream, !.ModuleInfo, VarSet, Goal0, !IO),
+            io.write_string(DebugStream, "\ngoal after lco:\n", !IO),
+            dump_goal_nl(DebugStream, !.ModuleInfo, VarSet, Goal, !IO)
         ),
         some [!ProcInfo] (
             !:ProcInfo = ProcInfo0,
@@ -732,9 +731,9 @@ potentially_transformable_recursive_call(Info, ConstInfo, Goal, OutArgs) :-
     UnusedArgs = [],
 
     trace [compiletime(flag("lco")), io(!IO)] (
-        io.write_string("call output args: ", !IO),
-        io.write(OutArgs, !IO),
-        io.nl(!IO)
+        get_lco_debug_output_stream(Info, DebugStream, !IO),
+        io.write_string(DebugStream, "call output args: ", !IO),
+        io.write_line(DebugStream, OutArgs, !IO)
     ),
     list.length(OutArgs, NumOutArgs),
     CurrProcOutArgs = ConstInfo ^ lci_cur_proc_outputs,
@@ -843,26 +842,23 @@ acceptable_construct_unification(DelayForVars, Goal, !UnifyInputVars, !Info) :-
     all_delayed_arg_vars_are_full_words(ConstructArgVars, CtorRepn ^ cr_args,
         DelayForVars),
     require_det (
-        trace [compiletime(flag("lco")), io(!IO)] (
-            io.write_string("processing unification ", !IO),
-            io.write(ConstructedVar, !IO),
-            io.write_string(" <= ", !IO),
-            io.write(ConsId, !IO),
-            io.write_string("(", !IO),
-            io.write(ConstructArgVars, !IO),
-            io.write_string(")\n", !IO)
-        ),
-        trace [compiletime(flag("lco")), io(!IO)] (
-            io.write_string("initial UnifyInputVars: ", !IO),
-            io.write(!.UnifyInputVars, !IO),
-            io.nl(!IO)
-        ),
         bag.delete(ConstructedVar, !UnifyInputVars),
         bag.insert_list(ConstructArgVars, !UnifyInputVars),
         trace [compiletime(flag("lco")), io(!IO)] (
-            io.write_string("updated UnifyInputVars: ", !IO),
-            io.write(!.UnifyInputVars, !IO),
-            io.nl(!IO)
+            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+            io.write_string(DebugStream, "processing unification ", !IO),
+            io.write(DebugStream, ConstructedVar, !IO),
+            io.write_string(DebugStream, " <= ", !IO),
+            io.write(DebugStream, ConsId, !IO),
+            io.write_string(DebugStream, "(", !IO),
+            io.write(DebugStream, ConstructArgVars, !IO),
+            io.write_string(DebugStream, ")\n", !IO),
+
+            io.write_string(DebugStream, "initial UnifyInputVars: ", !IO),
+            io.write_line(DebugStream, !.UnifyInputVars, !IO),
+
+            io.write_string(DebugStream, "updated UnifyInputVars: ", !IO),
+            io.write_line(DebugStream, !.UnifyInputVars, !IO)
         )
     ).
 
@@ -922,20 +918,17 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
         find_args_to_pass_by_addr(ConstInfo, UnifyInputVars, CallHeadPairs,
             1, Mismatches, UpdatedCallOutArgs, map.init, Subst, !Info),
         trace [compiletime(flag("lco")), io(!IO)] (
-            io.write_string("find_args_to_pass_by_addr:\n", !IO),
-            io.write_string("call head pairs: ", !IO),
-            io.write(CallHeadPairs, !IO),
-            io.nl(!IO),
-            io.write_string("mismatches: ", !IO),
-            io.write(Mismatches, !IO),
-            io.nl(!IO),
-            io.write_string("updated call out args: ", !IO),
-            io.write(UpdatedCallOutArgs, !IO),
-            io.nl(!IO),
-            io.write_string("substitution: ", !IO),
-            io.write(Subst, !IO),
-            io.nl(!IO),
-            io.nl(!IO)
+            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+            io.write_string(DebugStream, "find_args_to_pass_by_addr:\n", !IO),
+            io.write_string(DebugStream, "call head pairs: ", !IO),
+            io.write_line(DebugStream, CallHeadPairs, !IO),
+            io.write_string(DebugStream, "mismatches: ", !IO),
+            io.write_line(DebugStream, Mismatches, !IO),
+            io.write_string(DebugStream, "updated call out args: ", !IO),
+            io.write_line(DebugStream, UpdatedCallOutArgs, !IO),
+            io.write_string(DebugStream, "substitution: ", !IO),
+            io.write_line(DebugStream, Subst, !IO),
+            io.nl(DebugStream, !IO)
         ),
         % If there are no mismatches, we would create an identical "variant".
         % Such cases should be optimized using other means.
@@ -948,17 +941,16 @@ transform_call_and_unifies(CallGoal, CallOutArgVars, UnifyGoals,
         list.map_foldl2(update_construct(ConstInfo, Subst),
             UnifyGoals, UpdatedUnifyGoals, map.init, AddrFieldIds, !Info),
         trace [compiletime(flag("lco")), io(!IO)] (
+            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
             VarSet = !.Info ^ lco_var_set,
-            io.output_stream(Stream, !IO),
-            io.write_string(Stream, "original unifies:\n", !IO),
-            list.foldl(dump_goal_nl(Stream, ModuleInfo, VarSet),
+            io.write_string(DebugStream, "original unifies:\n", !IO),
+            list.foldl(dump_goal_nl(DebugStream, ModuleInfo, VarSet),
                 UnifyGoals, !IO),
-            io.write_string("updated unifies:\n", !IO),
-            list.foldl(dump_goal_nl(Stream, ModuleInfo, VarSet),
+            io.write_string(DebugStream, "updated unifies:\n", !IO),
+            list.foldl(dump_goal_nl(DebugStream, ModuleInfo, VarSet),
                 UpdatedUnifyGoals, !IO),
-            io.write_string(Stream, "addr field ids:\n", !IO),
-            io.write(Stream, AddrFieldIds, !IO),
-            io.nl(Stream, !IO)
+            io.write_string(DebugStream, "addr field ids:\n", !IO),
+            io.write_line(DebugStream, AddrFieldIds, !IO)
         ),
         HighLevelData = ConstInfo ^ lci_highlevel_data,
         make_variant_args(HighLevelData, AddrFieldIds, Mismatches,
@@ -1874,6 +1866,15 @@ make_unification_arg(GroundVar, TargetArgNum, CurArgNum, ArgType,
         UnifyMode = unify_modes_li_lf_ri_rf(ground_inst, ground_inst,
             free_inst, ground_inst)
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred get_lco_debug_output_stream(lco_info::in, io.text_output_stream::out,
+    io::di, io::uo) is det.
+
+get_lco_debug_output_stream(Info, DebugStream, !IO) :-
+    ModuleInfo = Info ^ lco_module_info,
+    get_debug_output_stream(ModuleInfo, DebugStream, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.lco.
