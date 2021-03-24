@@ -60,7 +60,10 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.quantification.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module mdbcomp.goal_path.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
@@ -78,35 +81,36 @@
 
 :- type push_info
     --->    push_info(
-                pi_rtti_varmaps         ::  rtti_varmaps
+                pi_globals              :: globals,
+                pi_module_name          :: module_name,
+                pi_rtti_varmaps         :: rtti_varmaps
             ).
 
 push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    module_info_get_name(!.ModuleInfo, ModuleName),
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
-    PushInfo = push_info(RttiVarMaps0),
-    module_info_get_globals(!.ModuleInfo, Globals),
+    PushInfo = push_info(Globals, ModuleName, RttiVarMaps0),
     OutInfo = init_hlds_out_info(Globals, output_debug),
     trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-        io.output_stream(Stream, !IO),
-        io.write_string(Stream, "Goal before pushes:\n", !IO),
-        write_goal(OutInfo, Stream, !.ModuleInfo, VarSet0, print_name_and_num,
-            0, "", Goal0, !IO),
-        io.nl(Stream, !IO)
+        get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+        io.write_string(DebugStream, "Goal before pushes:\n", !IO),
+        write_goal_nl(OutInfo, DebugStream, !.ModuleInfo, VarSet0,
+            print_name_and_num, 0, "", Goal0, !IO)
     ),
-    do_push_list(PushGoals, PushInfo, OverallResult, Goal0, Goal1),
+    do_push_list(PushInfo, PushGoals, OverallResult, Goal0, Goal1),
     (
         OverallResult = push_failed
     ;
         OverallResult = push_succeeded,
         trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-            io.output_stream(Stream, !IO),
-            io.write_string(Stream, "Goal after pushes:\n", !IO),
-            write_goal(OutInfo, Stream, !.ModuleInfo, VarSet0,
-                print_name_and_num, 0, "", Goal1, !IO),
-            io.nl(Stream, !IO)
+            get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+            io.write_string(DebugStream, "Goal after pushes:\n", !IO),
+            write_goal_nl(OutInfo, DebugStream, !.ModuleInfo, VarSet0,
+                print_name_and_num, 0, "", Goal1, !IO)
         ),
 
         % We need to fix up the goal_infos of the goals touched directly or
@@ -138,153 +142,166 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
         proc_info_set_vartypes(VarTypes, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-            io.output_stream(Stream, !IO),
-            io.write_string(Stream, "Goal after fixups:\n", !IO),
-            write_goal(OutInfo, Stream, !.ModuleInfo, VarSet,
-                print_name_and_num, 0, "", Goal, !IO),
-            io.nl(Stream, !IO)
+            get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+            io.write_string(DebugStream, "Goal after fixups:\n", !IO),
+            write_goal_nl(OutInfo, DebugStream, !.ModuleInfo, VarSet,
+                print_name_and_num, 0, "", Goal, !IO)
         )
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred do_push_list(list(push_goal)::in, push_info::in,
+:- pred do_push_list(push_info::in, list(push_goal)::in,
     push_result::out, hlds_goal::in, hlds_goal::out) is det.
 
-do_push_list([], _, push_succeeded, !Goal).
-do_push_list([PushGoal | PushGoals], PushInfo, OverallResult, !Goal) :-
-    do_one_push(PushGoal, PushInfo, Result, !Goal),
+do_push_list(_, [], push_succeeded, !Goal).
+do_push_list(PushInfo, [PushGoal | PushGoals], OverallResult, !Goal) :-
+    do_one_push(PushInfo, PushGoal, Result, !Goal),
     (
         Result = push_succeeded,
-        do_push_list(PushGoals, PushInfo, OverallResult, !Goal)
+        do_push_list(PushInfo, PushGoals, OverallResult, !Goal)
     ;
         Result = push_failed,
         OverallResult = push_failed
     ).
 
-:- pred do_one_push(push_goal::in, push_info::in,
+:- pred do_one_push(push_info::in, push_goal::in,
     push_result::out, hlds_goal::in, hlds_goal::out) is det.
 
-do_one_push(PushGoal, PushInfo, Result, !Goal) :-
+do_one_push(PushInfo, PushGoal, Result, !Goal) :-
     PushGoal = push_goal(GoalPathStr, _Lo, _Hi, _PushedInto),
     ( if goal_path_from_string(GoalPathStr, GoalPath) then
-        do_push_in_goal(GoalPath, PushGoal, PushInfo, Result, !Goal)
+        do_push_in_goal(PushInfo, GoalPath, PushGoal, Result, !Goal)
     else
         Result = push_failed,
         trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-            io.write_string("push_failed: cannot translate goal path\n", !IO)
+            get_push_debug_output_stream(PushInfo, DebugStream, !IO),
+            io.write_string(DebugStream,
+                "push_failed: cannot translate goal path\n", !IO)
         )
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred do_push_in_goal(forward_goal_path::in, push_goal::in, push_info::in,
+:- pred do_push_in_goal(push_info::in, forward_goal_path::in, push_goal::in,
     push_result::out, hlds_goal::in, hlds_goal::out) is det.
 
-do_push_in_goal(fgp_nil, PushGoal, PushInfo, Result, !Goal) :-
+do_push_in_goal(PushInfo, fgp_nil, PushGoal, Result, !Goal) :-
     % We have arrives at the goal in which the push should take place.
-    perform_push_transform(PushGoal, PushInfo, Result, !Goal).
-do_push_in_goal(fgp_cons(Step, Path), PushGoal, PushInfo, Result, !Goal) :-
+    perform_push_transform(PushInfo, PushGoal, Result, !Goal).
+do_push_in_goal(PushInfo, fgp_cons(Step, Path), PushGoal, Result, !Goal) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     (
         Step = step_conj(N),
         ( if GoalExpr0 = conj(ConjType, Goals0) then
-            do_push_in_goals(N, Path, PushGoal, PushInfo, Result,
+            do_push_in_goals(PushInfo, N, Path, PushGoal, Result,
                 Goals0, Goals),
             GoalExpr = conj(ConjType, Goals),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         else
             Result = push_failed,
             trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-                io.write_string("push_failed: not conj\n", !IO)
+                get_push_debug_output_stream(PushInfo, DebugStream, !IO),
+                io.write_string(DebugStream, "push_failed: not conj\n", !IO)
             )
         )
     ;
         Step = step_disj(N),
         ( if GoalExpr0 = disj(Goals0) then
-            do_push_in_goals(N, Path, PushGoal, PushInfo, Result,
+            do_push_in_goals(PushInfo, N, Path, PushGoal, Result,
                 Goals0, Goals),
             GoalExpr = disj(Goals),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         else
             Result = push_failed,
             trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-                io.write_string("push_failed: not disj\n", !IO)
+                get_push_debug_output_stream(PushInfo, DebugStream, !IO),
+                io.write_string(DebugStream, "push_failed: not disj\n", !IO)
             )
         )
     ;
         Step = step_switch(N, _),
         ( if GoalExpr0 = switch(Var, CanFail, Cases0) then
-            do_push_in_cases(N, Path, PushGoal, PushInfo, Result,
+            do_push_in_cases(PushInfo, N, Path, PushGoal, Result,
                 Cases0, Cases),
             GoalExpr = switch(Var, CanFail, Cases),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         else
             Result = push_failed,
             trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-                io.write_string("push_failed: not switch\n", !IO)
+                get_push_debug_output_stream(PushInfo, DebugStream, !IO),
+                io.write_string(DebugStream, "push_failed: not switch\n", !IO)
             )
         )
     ;
         Step = step_ite_cond,
         ( if GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0) then
-            do_push_in_goal(Path, PushGoal, PushInfo, Result, Cond0, Cond),
+            do_push_in_goal(PushInfo, Path, PushGoal, Result, Cond0, Cond),
             GoalExpr = if_then_else(Vars0, Cond, Then0, Else0),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         else
             Result = push_failed,
             trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-                io.write_string("push_failed: not if_then_else\n", !IO)
+                get_push_debug_output_stream(PushInfo, DebugStream, !IO),
+                io.write_string(DebugStream,
+                    "push_failed: not if_then_else\n", !IO)
             )
         )
     ;
         Step = step_ite_then,
         ( if GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0) then
-            do_push_in_goal(Path, PushGoal, PushInfo, Result, Then0, Then),
+            do_push_in_goal(PushInfo, Path, PushGoal, Result, Then0, Then),
             GoalExpr = if_then_else(Vars0, Cond0, Then, Else0),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         else
             Result = push_failed,
             trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-                io.write_string("push_failed: not if_then_else\n", !IO)
+                get_push_debug_output_stream(PushInfo, DebugStream, !IO),
+                io.write_string(DebugStream,
+                    "push_failed: not if_then_else\n", !IO)
             )
         )
     ;
         Step = step_ite_else,
         ( if GoalExpr0 = if_then_else(Vars0, Cond0, Then0, Else0) then
-            do_push_in_goal(Path, PushGoal, PushInfo, Result, Else0, Else),
+            do_push_in_goal(PushInfo, Path, PushGoal, Result, Else0, Else),
             GoalExpr = if_then_else(Vars0, Cond0, Then0, Else),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         else
             Result = push_failed,
             trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-                io.write_string("push_failed: not if_then_else\n", !IO)
+                get_push_debug_output_stream(PushInfo, DebugStream, !IO),
+                io.write_string(DebugStream,
+                    "push_failed: not if_then_else\n", !IO)
             )
         )
     ;
         Step = step_neg,
         ( if GoalExpr0 = negation(SubGoal0) then
-            do_push_in_goal(Path, PushGoal, PushInfo, Result,
+            do_push_in_goal(PushInfo, Path, PushGoal, Result,
                 SubGoal0, SubGoal),
             GoalExpr = negation(SubGoal),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         else
             Result = push_failed,
             trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-                io.write_string("push_failed: not negation\n", !IO)
+                get_push_debug_output_stream(PushInfo, DebugStream, !IO),
+                io.write_string(DebugStream,
+                    "push_failed: not negation\n", !IO)
             )
         )
     ;
         Step = step_scope(_),
         ( if GoalExpr0 = scope(Reason, SubGoal0) then
-            do_push_in_goal(Path, PushGoal, PushInfo, Result,
+            do_push_in_goal(PushInfo, Path, PushGoal, Result,
                 SubGoal0, SubGoal),
             GoalExpr = scope(Reason, SubGoal),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         else
             Result = push_failed,
             trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-                io.write_string("push_failed: not scope\n", !IO)
+                get_push_debug_output_stream(PushInfo, DebugStream, !IO),
+                io.write_string(DebugStream, "push_failed: not scope\n", !IO)
             )
         )
     ;
@@ -297,55 +314,61 @@ do_push_in_goal(fgp_cons(Step, Path), PushGoal, PushInfo, Result, !Goal) :-
         % expanded out by now.
         Result = push_failed,
         trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-            io.write_string("push_failed: unexpected goal path step\n", !IO)
+            get_push_debug_output_stream(PushInfo, DebugStream, !IO),
+            io.write_string(DebugStream,
+                "push_failed: unexpected goal path step\n", !IO)
         )
     ).
 
-:- pred do_push_in_goals(int::in, forward_goal_path::in, push_goal::in,
-    push_info::in, push_result::out,
+:- pred do_push_in_goals(push_info::in, int::in, forward_goal_path::in,
+    push_goal::in, push_result::out,
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
-do_push_in_goals(_N, _Path, _PushGoal, _PushInfo, push_failed, [], []) :-
+do_push_in_goals(PushInfo, _N, _Path, _PushGoal, push_failed, [], []) :-
     trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-        io.write_string("push_failed: couldn't find indicated disjunct\n", !IO)
+        get_push_debug_output_stream(PushInfo, DebugStream, !IO),
+        io.write_string(DebugStream,
+            "push_failed: couldn't find indicated disjunct\n", !IO)
     ).
-do_push_in_goals(N, Path, PushGoal, PushInfo, Result,
+do_push_in_goals(PushInfo, N, Path, PushGoal, Result,
         [Goal0 | Goals0], [Goal | Goals]) :-
     ( if N = 1 then
-        do_push_in_goal(Path, PushGoal, PushInfo, Result, Goal0, Goal),
+        do_push_in_goal(PushInfo, Path, PushGoal, Result, Goal0, Goal),
         Goals = Goals0
     else
         Goal = Goal0,
-        do_push_in_goals(N - 1, Path, PushGoal, PushInfo, Result,
+        do_push_in_goals(PushInfo, N - 1, Path, PushGoal, Result,
             Goals0, Goals)
     ).
 
-:- pred do_push_in_cases(int::in, forward_goal_path::in, push_goal::in,
-    push_info::in, push_result::out, list(case)::in, list(case)::out) is det.
+:- pred do_push_in_cases(push_info::in, int::in, forward_goal_path::in,
+    push_goal::in, push_result::out, list(case)::in, list(case)::out) is det.
 
-do_push_in_cases(_N, _Path, _PushGoal, _PushInfo, push_failed, [], []) :-
+do_push_in_cases(PushInfo, _N, _Path, _PushGoal, push_failed, [], []) :-
     trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-        io.write_string("push_failed: couldn't find indicated case\n", !IO)
+        get_push_debug_output_stream(PushInfo, DebugStream, !IO),
+        io.write_string(DebugStream,
+            "push_failed: couldn't find indicated case\n", !IO)
     ).
-do_push_in_cases(N, Path, PushGoal, PushInfo, Result,
+do_push_in_cases(PushInfo, N, Path, PushGoal, Result,
         [Case0 | Cases0], [Case | Cases]) :-
     ( if N = 1 then
         Case0 = case(MainConsId, OtherConsIds, Goal0),
-        do_push_in_goal(Path, PushGoal, PushInfo, Result, Goal0, Goal),
+        do_push_in_goal(PushInfo, Path, PushGoal, Result, Goal0, Goal),
         Case = case(MainConsId, OtherConsIds, Goal),
         Cases = Cases0
     else
         Case = Case0,
-        do_push_in_cases(N - 1, Path, PushGoal, PushInfo, Result,
+        do_push_in_cases(PushInfo, N - 1, Path, PushGoal, Result,
             Cases0, Cases)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred perform_push_transform(push_goal::in, push_info::in,
+:- pred perform_push_transform(push_info::in, push_goal::in,
     push_result::out, hlds_goal::in, hlds_goal::out) is det.
 
-perform_push_transform(PushGoal, PushInfo, Result, !Goal) :-
+perform_push_transform(PushInfo, PushGoal, Result, !Goal) :-
     PushGoal = push_goal(GoalPathStr, Lo, Hi, PushedInto),
     goal_path_from_string_det(GoalPathStr, GoalPath),
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
@@ -373,7 +396,9 @@ perform_push_transform(PushGoal, PushInfo, Result, !Goal) :-
     else
         Result = push_failed,
         trace [compiletime(flag("debug_push_goals")), io(!IO)] (
-            io.write_string("push_failed: perform_push_transform\n", !IO)
+            get_push_debug_output_stream(PushInfo, DebugStream, !IO),
+            io.write_string(DebugStream,
+                "push_failed: perform_push_transform\n", !IO)
         )
     ).
 
@@ -973,6 +998,15 @@ find_relative_paths(GoalPath, [HeadStr | TailStrs],
     forward_goal_path::in, forward_goal_path::out) is semidet.
 
 maybe_steps_after(Step, fgp_cons(Step, Tail), Tail).
+
+%-----------------------------------------------------------------------------%
+
+:- pred get_push_debug_output_stream(push_info::in, io.text_output_stream::out,
+    io::di, io::uo) is det.
+
+get_push_debug_output_stream(PushInfo, DebugStream, !IO) :-
+    get_debug_output_stream(PushInfo ^ pi_globals, PushInfo ^ pi_module_name,
+        DebugStream, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.implicit_parallelism.push_goals_together.

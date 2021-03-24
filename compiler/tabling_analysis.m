@@ -83,6 +83,7 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.passes_aux.
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.dependency_graph.
@@ -189,7 +190,8 @@ analyse_mm_tabling_in_scc(Debug, Pass1Only, SCC, !ModuleInfo) :-
     (
         Debug = yes,
         trace [io(!IO)] (
-            dump_mm_tabling_analysis_debug_info(!.ModuleInfo, SCC,
+            get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
+            dump_mm_tabling_analysis_debug_info(DebugStream, !.ModuleInfo, SCC,
                 TablingStatus, !IO)
         )
     ;
@@ -963,28 +965,28 @@ lookup_proc_mm_tabling_info(ModuleInfo, PPId, Status, ResultStatus) :-
 % Code for printing out debugging traces.
 %
 
-:- pred dump_mm_tabling_analysis_debug_info(module_info::in, scc::in,
-    mm_tabling_status::in, io::di, io::uo) is det.
+:- pred dump_mm_tabling_analysis_debug_info(io.text_output_stream::in,
+    module_info::in, scc::in, mm_tabling_status::in, io::di, io::uo) is det.
 
-dump_mm_tabling_analysis_debug_info(ModuleInfo, SCC, Status, !IO) :-
-    io.write_string("SCC: ", !IO),
-    io.write(Status, !IO),
-    io.nl(!IO),
-    output_proc_names(ModuleInfo, SCC, !IO),
-    io.nl(!IO).
+dump_mm_tabling_analysis_debug_info(Stream, ModuleInfo, SCC, Status, !IO) :-
+    io.write_string(Stream, "SCC: ", !IO),
+    io.write_line(Stream, Status, !IO),
+    output_proc_names(Stream, ModuleInfo, SCC, !IO),
+    io.nl(Stream, !IO).
 
-:- pred output_proc_names(module_info::in, scc::in, io::di, io::uo) is det.
+:- pred output_proc_names(io.text_output_stream::in, module_info::in,
+    scc::in, io::di, io::uo) is det.
 
-output_proc_names(ModuleInfo, SCC, !IO) :-
-    set.foldl(output_proc_name(ModuleInfo), SCC, !IO).
+output_proc_names(Stream, ModuleInfo, SCC, !IO) :-
+    set.foldl(output_proc_name(Stream, ModuleInfo), SCC, !IO).
 
-:- pred output_proc_name(module_info::in, pred_proc_id::in, io::di, io::uo)
-    is det.
+:- pred output_proc_name(io.text_output_stream::in, module_info::in,
+    pred_proc_id::in, io::di, io::uo) is det.
 
-output_proc_name(Moduleinfo, PPId, !IO) :-
+output_proc_name(Stream, Moduleinfo, PPId, !IO) :-
    Pieces = describe_one_proc_name(Moduleinfo, should_module_qualify, PPId),
    Str = error_pieces_to_string(Pieces),
-   io.format("\t%s\n", [s(Str)], !IO).
+   io.format(Stream, "\t%s\n", [s(Str)], !IO).
 
 %----------------------------------------------------------------------------%
 :- end_module transform_hlds.tabling_analysis.

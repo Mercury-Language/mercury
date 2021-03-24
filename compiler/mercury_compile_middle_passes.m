@@ -908,11 +908,20 @@ maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO) :-
         ImplicitParallelism),
     (
         ImplicitParallelism = yes,
-        maybe_write_string(Verbose, "% Applying implicit " ++
-            "parallelism...\n", !IO),
+        io_get_maybe_source_file_map(MaybeSourceFileMap, !IO),
+        (
+            MaybeSourceFileMap = yes(SourceFileMap)
+        ;
+            MaybeSourceFileMap = no,
+            unexpected($pred, "could not retrieve the source file map")
+        ),
+        maybe_write_string(Verbose,
+            "% Applying implicit parallelism...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        apply_implicit_parallelism_transformation(!HLDS, !IO),
+        apply_implicit_parallelism_transformation(SourceFileMap, Specs, !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
+        % XXX This is a bit late for printing errors.
+        write_error_specs_ignore(Globals, Specs, !IO),
         maybe_report_stats(Stats, !IO)
     ;
         % The user hasn't asked for implicit parallelism.

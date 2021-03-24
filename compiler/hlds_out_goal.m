@@ -61,6 +61,12 @@
     module_info::in, prog_varset::in, var_name_print::in, int::in,
     string::in, hlds_goal::in, io::di, io::uo) is det.
 
+    % As write_goal, but add a newline at the end.
+    %
+:- pred write_goal_nl(hlds_out_info::in, io.text_output_stream::in,
+    module_info::in, prog_varset::in, var_name_print::in, int::in,
+    string::in, hlds_goal::in, io::di, io::uo) is det.
+
     % TypeQual is yes(TVarset, VarTypes) if all constructors should be
     % module qualified.
     %
@@ -178,6 +184,12 @@ write_goal(Info, Stream, ModuleInfo, VarSet, VarNamePrint, Indent, Follow,
     % Do not type qualify everything.
     do_write_goal(Info, Stream, ModuleInfo, VarSet, no_varset_vartypes,
         VarNamePrint, Indent, Follow, Goal, !IO).
+
+write_goal_nl(Info, Stream, ModuleInfo, VarSet, VarNamePrint, Indent, Follow,
+        Goal, !IO) :-
+    write_goal(Info, Stream, ModuleInfo, VarSet, VarNamePrint, Indent, Follow,
+        Goal, !IO),
+    io.nl(Stream, !IO).
 
 do_write_goal(Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
         Indent, Follow, Goal, !IO) :-

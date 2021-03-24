@@ -19,10 +19,14 @@
 :- module transform_hlds.implicit_parallelism.introduce_parallelism.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
+:- import_module parse_tree.error_util.
 
-:- import_module io.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
@@ -31,8 +35,8 @@
     % Apply the implicit parallelism transformation using the specified
     % feedback file.
     %
-:- pred apply_implicit_parallelism_transformation(
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred apply_implicit_parallelism_transformation(source_file_map::in,
+    list(error_spec)::out, module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -44,8 +48,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module ll_backend.
 :- import_module ll_backend.prog_rep.
 :- import_module ll_backend.stack_layout.
@@ -56,36 +58,17 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module mdbcomp.program_representation.
-:- import_module parse_tree.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.implicit_parallelism.push_goals_together.
 
 :- import_module assoc_list.
 :- import_module bimap.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module term.
-
-%-----------------------------------------------------------------------------%
-
-apply_implicit_parallelism_transformation(!ModuleInfo, !IO) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    io_get_maybe_source_file_map(MaybeSourceFileMap, !IO),
-    (
-        MaybeSourceFileMap = yes(SourceFileMap)
-    ;
-        MaybeSourceFileMap = no,
-        unexpected($pred, "could not retrieve the source file map")
-    ),
-    do_apply_implicit_parallelism_transformation(SourceFileMap, Specs,
-        !ModuleInfo),
-    write_error_specs(Globals, Specs, 0, _, 0, NumErrors, !IO),
-    module_info_incr_num_errors(NumErrors, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -96,11 +79,7 @@ apply_implicit_parallelism_transformation(!ModuleInfo, !IO) :-
     --->    have_not_introduced_parallelism
     ;       introduced_parallelism.
 
-:- pred do_apply_implicit_parallelism_transformation(source_file_map::in,
-    list(error_spec)::out, module_info::in, module_info::out) is det.
-
-do_apply_implicit_parallelism_transformation(SourceFileMap, Specs,
-        !ModuleInfo) :-
+apply_implicit_parallelism_transformation(SourceFileMap, Specs, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals0),
     globals.get_maybe_feedback_info(Globals0, MaybeFeedbackInfo),
     module_info_get_name(!.ModuleInfo, ModuleName),

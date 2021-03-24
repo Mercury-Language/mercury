@@ -113,6 +113,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_goal.
+:- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
 :- import_module libs.
@@ -270,7 +271,13 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
             SccStrSet = set.map(pred_proc_id_to_string(!.ModuleInfo), SCC),
             SccStrs = set.to_sorted_list(SccStrSet),
             SccStr = string.join_list(", ", SccStrs),
-            io.format("%% Considering tupling in %s...\n", [s(SccStr)], !IO)
+            % XXX Here and in other trace goals, the output we generate
+            % seems to fall in the overlap between progress messages
+            % and debug messages. They mostly report progress, but much
+            % of the info they print is of interest only to developers.
+            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+            io.format(ProgressStream,
+                "%% Considering tupling in %s...\n", [s(SccStr)], !IO)
         )
     ;
         VeryVerbose = no
@@ -288,7 +295,10 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
             (
                 VeryVerbose = yes,
                 trace [io(!IO)] (
-                    io.write_string("% Too few candidate headvars.\n", !IO)
+                    get_progress_output_stream(!.ModuleInfo,
+                        ProgressStream, !IO),
+                    io.write_string(ProgressStream,
+                        "% Too few candidate headvars.\n", !IO)
                 )
             ;
                 VeryVerbose = no
@@ -307,7 +317,9 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.write_string("% SCC has no local callers.\n", !IO)
+                get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+                io.write_string(ProgressStream,
+                    "% SCC has no local callers.\n", !IO)
             )
         ;
             VeryVerbose = no
@@ -349,7 +361,9 @@ maybe_tuple_scc_2(TraceCounts, TuningParams, PredProcIds, CandidateHeadVars,
         VeryVerbose = yes,
         CostsWithoutTupling = costs(LoadsWoTupling, StoresWoTupling),
         trace [io(!IO)] (
-            io.format("%% SCC costs without tupling = {%g, %g}\n",
+            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+            io.format(ProgressStream,
+                "%% SCC costs without tupling = {%g, %g}\n",
                 [f(LoadsWoTupling), f(StoresWoTupling)], !IO)
         )
     ;
@@ -383,7 +397,9 @@ maybe_tuple_scc_3(TraceCounts, TuningParams, ReverseGoalPathMapMap,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                io.format("%% SCC costs with tupling = {%g, %g}\n",
+                get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+                io.format(ProgressStream,
+                    "%% SCC costs with tupling = {%g, %g}\n",
                     [f(LoadsWithTupling), f(StoresWithTupling)], !IO)
             )
         ;
@@ -396,7 +412,10 @@ maybe_tuple_scc_3(TraceCounts, TuningParams, ReverseGoalPathMapMap,
             (
                 VeryVerbose = yes,
                 trace [io(!IO)] (
-                    io.print("% Proceeding with tupling\n", !IO)
+                    get_progress_output_stream(!.ModuleInfo,
+                        ProgressStream, !IO),
+                    io.write_string(ProgressStream,
+                        "% Proceeding with tupling\n", !IO)
                 )
             ;
                 VeryVerbose = no

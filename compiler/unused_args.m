@@ -99,6 +99,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
@@ -871,9 +872,10 @@ unused_args_pass(PassNum, ModuleInfo, LocalPredProcIds, !VarUsage) :-
     (
         Changed = yes,
         trace [compile_time(flag("unused_args_var_usage")), io(!IO)] (
-            io.format("\nVARIABLE USAGE MAP AFTER PASS %d\n", [i(PassNum)],
-                !IO),
-            write_var_usage_map(ModuleInfo, !.VarUsage, !IO)
+            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+            io.format(DebugStream,
+                "\nVARIABLE USAGE MAP AFTER PASS %d\n", [i(PassNum)], !IO),
+            write_var_usage_map(DebugStream, ModuleInfo, !.VarUsage, !IO)
         ),
         unused_args_pass(PassNum + 1, ModuleInfo, LocalPredProcIds, !VarUsage)
     ;
@@ -1313,17 +1315,13 @@ unused_args_fixup_proc(VeryVerbose, VarUsage, ProcCallInfo, PredProcId,
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
+            get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
             PredProcId = proc(PredId, ProcId),
-            io.write_string("% Fixing up `", !IO),
             Name = predicate_name(!.ModuleInfo, PredId),
             Arity = predicate_arity(!.ModuleInfo, PredId),
             proc_id_to_int(ProcId, ProcInt),
-            io.write_string(Name, !IO),
-            io.write_string("/", !IO),
-            io.write_int(Arity, !IO),
-            io.write_string("' in mode ", !IO),
-            io.write_int(ProcInt, !IO),
-            io.write_char('\n', !IO)
+            io.format(DebugStream, "%% Fixing up `%s/%d in mode %d\n",
+                [s(Name), i(Arity), i(ProcInt)], !IO)
         )
     ;
         VeryVerbose = no
@@ -2006,23 +2004,23 @@ record_intermod_dependencies_2(ModuleInfo, CalleePredProcId, !AnalysisInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_var_usage_map(module_info::in, var_usage::in, io::di, io::uo)
-    is det.
+:- pred write_var_usage_map(io.text_output_stream::in, module_info::in,
+    var_usage::in, io::di, io::uo) is det.
 
-write_var_usage_map(ModuleInfo, VarUsageMap, !IO) :-
+write_var_usage_map(Stream, ModuleInfo, VarUsageMap, !IO) :-
     map.to_assoc_list(VarUsageMap, VarUsageList),
-    list.foldl(write_var_usage(ModuleInfo), VarUsageList, !IO).
+    list.foldl(write_var_usage(Stream, ModuleInfo), VarUsageList, !IO).
 
-:- pred write_var_usage(module_info::in, pair(pred_proc_id, var_dep)::in,
-    io::di, io::uo) is det.
+:- pred write_var_usage(io.text_output_stream::in, module_info::in,
+    pair(pred_proc_id, var_dep)::in, io::di, io::uo) is det.
 
-write_var_usage(ModuleInfo, PredProcId - VarDepMap, !IO) :-
+write_var_usage(Stream, ModuleInfo, PredProcId - VarDepMap, !IO) :-
     PredProcIdStr = pred_proc_id_to_string(ModuleInfo, PredProcId),
-    io.format("\n%s:\n", [s(PredProcIdStr)], !IO),
+    io.format(Stream, "\n%s:\n", [s(PredProcIdStr)], !IO),
     map.to_assoc_list(VarDepMap, VarDepList),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
-    list.foldl2(write_usage_info(ModuleInfo, VarSet), VarDepList,
+    list.foldl2(write_usage_info(Stream, ModuleInfo, VarSet), VarDepList,
         [], RevNoDependVars, !IO),
     list.reverse(RevNoDependVars, NoDependVars),
     (
@@ -2031,14 +2029,15 @@ write_var_usage(ModuleInfo, PredProcId - VarDepMap, !IO) :-
         NoDependVars = [_ | _],
         NoDependVarsStr =
             mercury_vars_to_string(VarSet, print_name_and_num, NoDependVars),
-        io.format("nodepend vars: %s\n", [s(NoDependVarsStr)], !IO)
+        io.format(Stream, "nodepend vars: %s\n", [s(NoDependVarsStr)], !IO)
     ).
 
-:- pred write_usage_info(module_info::in, prog_varset::in,
-    pair(prog_var, usage_info)::in, list(prog_var)::in, list(prog_var)::out,
-    io::di, io::uo) is det.
+:- pred write_usage_info(io.text_output_stream::in, module_info::in,
+    prog_varset::in, pair(prog_var, usage_info)::in,
+    list(prog_var)::in, list(prog_var)::out, io::di, io::uo) is det.
 
-write_usage_info(ModuleInfo, VarSet, Var - UsageInfo, !RevNoDependVars, !IO) :-
+write_usage_info(Stream, ModuleInfo, VarSet, Var - UsageInfo,
+        !RevNoDependVars, !IO) :-
     UsageInfo = unused(Vars, Args),
     set.to_sorted_list(Vars, VarList),
     set.to_sorted_list(Args, ArgList),
@@ -2046,34 +2045,34 @@ write_usage_info(ModuleInfo, VarSet, Var - UsageInfo, !RevNoDependVars, !IO) :-
         !:RevNoDependVars = [Var | !.RevNoDependVars]
     else
         VarStr = mercury_var_to_string(VarSet, print_name_and_num, Var),
-        io.format("dependencies of %s:\n", [s(VarStr)], !IO),
+        io.format(Stream, "dependencies of %s:\n", [s(VarStr)], !IO),
         (
             VarList = []
         ;
             VarList = [_ | _],
             VarListStr =
                 mercury_vars_to_string(VarSet, print_name_and_num, VarList),
-            io.format("on variables: %s\n", [s(VarListStr)], !IO)
+            io.format(Stream, "on variables: %s\n", [s(VarListStr)], !IO)
         ),
         (
             ArgList = []
         ;
             ArgList = [_ | _],
-            io.write_string("on arguments:\n", !IO),
-            list.foldl(write_arg_var_in_proc(ModuleInfo), ArgList, !IO)
+            io.write_string(Stream, "on arguments:\n", !IO),
+            list.foldl(write_arg_var_in_proc(Stream, ModuleInfo), ArgList, !IO)
         )
     ).
 
-:- pred write_arg_var_in_proc(module_info::in, arg_var_in_proc::in,
-    io::di, io::uo) is det.
+:- pred write_arg_var_in_proc(io.text_output_stream::in, module_info::in,
+    arg_var_in_proc::in, io::di, io::uo) is det.
 
-write_arg_var_in_proc(ModuleInfo, ArgVarInProc, !IO) :-
+write_arg_var_in_proc(Stream, ModuleInfo, ArgVarInProc, !IO) :-
     ArgVarInProc = arg_var_in_proc(PredProcId, Var),
     PredProcIdStr = pred_proc_id_to_string(ModuleInfo, PredProcId),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     VarStr = mercury_var_to_string(VarSet, print_name_and_num, Var),
-    io.format("%s: %s\n", [s(PredProcIdStr), s(VarStr)], !IO).
+    io.format(Stream, "%s: %s\n", [s(PredProcIdStr), s(VarStr)], !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.unused_args.

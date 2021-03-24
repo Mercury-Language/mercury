@@ -34,6 +34,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_goal.
+:- import_module hlds.passes_aux.
 
 :- import_module io.
 :- import_module list.
@@ -42,7 +43,7 @@
 
 %-----------------------------------------------------------------------------%
 
-parallel_to_plain_conjs(_ModuleInfo, PredProcId, !ProcInfo) :-
+parallel_to_plain_conjs(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_get_has_parallel_conj(!.ProcInfo, HasParallelConj),
     trace [compiletime(flag("debug_par_to_plain_conj")), io(!IO)] (
         PredProcId = proc(PredId, ProcId),
@@ -53,7 +54,9 @@ parallel_to_plain_conjs(_ModuleInfo, PredProcId, !ProcInfo) :-
             HasParallelConj = has_parallel_conj,
             HasParallelConjStr = "has"
         ),
-        io.format("PAR_TO_PLAIN_CONJ: pred %d proc %d: %s par conj\n",
+        get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+        io.format(DebugStream,
+            "PAR_TO_PLAIN_CONJ: pred %d proc %d: %s par conj\n",
             [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId)),
             s(HasParallelConjStr)], !IO)
     ),
