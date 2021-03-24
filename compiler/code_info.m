@@ -184,6 +184,12 @@
 
 :- implementation.
 
+:- func init_exprn_opts(globals) = exprn_opts.
+
+:- pred init_maybe_trace_info(trace_level::in, globals::in,
+    module_info::in, pred_info::in, proc_info::in, trace_slot_info::out,
+    code_info::in, code_info::out) is det.
+
 :- pred get_closure_seq_counter(code_info::in, counter::out) is det.
 
 :- pred set_maybe_trace_info(maybe(trace_info)::in,
@@ -195,9 +201,9 @@
     code_info::in, code_info::out) is det.
 :- pred set_layout_info(proc_label_layout_info::in,
     code_info::in, code_info::out) is det.
-:- pred set_closure_layouts(list(closure_proc_id_data)::in,
-    code_info::in, code_info::out) is det.
 :- pred set_closure_seq_counter(counter::in,
+    code_info::in, code_info::out) is det.
+:- pred set_closure_layouts(list(closure_proc_id_data)::in,
     code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -494,8 +500,6 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     init_maybe_trace_info(TraceLevel, Globals, ModuleInfo,
         PredInfo, ProcInfo, TraceSlotInfo, CodeInfo0, CodeInfo).
 
-:- func init_exprn_opts(globals) = exprn_opts.
-
 init_exprn_opts(Globals) = ExprnOpts :-
     globals.lookup_bool_option(Globals, gcc_non_local_gotos, OptNLG),
     (
@@ -580,37 +584,6 @@ init_exprn_opts(Globals) = ExprnOpts :-
     ),
     ExprnOpts = exprn_opts(NLG, ASM, UBF, UseFloatRegs, DetStackFloatWidth,
         UBI64s, SGCell, SGFloat, SGInt64s, StaticCodeAddrs).
-
-:- pred max_var_slot(stack_slots::in, int::out) is det.
-
-max_var_slot(StackSlots, SlotCount) :-
-    map.values(StackSlots, StackSlotList),
-    max_var_slot_2(StackSlotList, 0, SlotCount).
-
-:- pred max_var_slot_2(list(stack_slot)::in, int::in, int::out) is det.
-
-max_var_slot_2([], !Max).
-max_var_slot_2([Slot | Slots], !Max) :-
-    (
-        Slot = det_slot(N, Width)
-    ;
-        Slot = parent_det_slot(N, Width)
-    ;
-        Slot = nondet_slot(N),
-        Width = single_width
-    ),
-    (
-        Width = single_width,
-        int.max(N, !Max)
-    ;
-        Width = double_width,
-        int.max(N + 1, !Max)
-    ),
-    max_var_slot_2(Slots, !Max).
-
-:- pred init_maybe_trace_info(trace_level::in, globals::in,
-    module_info::in, pred_info::in, proc_info::in, trace_slot_info::out,
-    code_info::in, code_info::out) is det.
 
 init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
         ProcInfo, TraceSlotInfo, !CI) :-
@@ -754,6 +727,33 @@ set_alloc_sites(X, !CI) :-
     !CI ^ code_info_persistent ^ cip_alloc_sites := X.
 set_used_env_vars(X, !CI) :-
     !CI ^ code_info_persistent ^ cip_used_env_vars := X.
+
+:- pred max_var_slot(stack_slots::in, int::out) is det.
+
+max_var_slot(StackSlots, SlotCount) :-
+    map.values(StackSlots, StackSlotList),
+    max_var_slot_loop(StackSlotList, 0, SlotCount).
+
+:- pred max_var_slot_loop(list(stack_slot)::in, int::in, int::out) is det.
+
+max_var_slot_loop([], !Max).
+max_var_slot_loop([Slot | Slots], !Max) :-
+    (
+        Slot = det_slot(N, Width)
+    ;
+        Slot = parent_det_slot(N, Width)
+    ;
+        Slot = nondet_slot(N),
+        Width = single_width
+    ),
+    (
+        Width = single_width,
+        int.max(N, !Max)
+    ;
+        Width = double_width,
+        int.max(N + 1, !Max)
+    ),
+    max_var_slot_loop(Slots, !Max).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1022,6 +1022,11 @@ add_trace_layout_for_label(Label, Context, Port, IsHidden, GoalPath,
     ),
     set_layout_info(Internals, !CI).
 
+get_next_closure_seq_no(SeqNo, !CI) :-
+    get_closure_seq_counter(!.CI, C0),
+    counter.allocate(SeqNo, C0, C),
+    set_closure_seq_counter(C, !CI).
+
 add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
     get_layout_info(!.CI, Internals0),
     Resume = yes(LayoutInfo),
@@ -1046,11 +1051,6 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
         map.det_insert(LabelNum, Internal, Internals0, Internals)
     ),
     set_layout_info(Internals, !CI).
-
-get_next_closure_seq_no(SeqNo, !CI) :-
-    get_closure_seq_counter(!.CI, C0),
-    counter.allocate(SeqNo, C0, C),
-    set_closure_seq_counter(C, !CI).
 
 add_closure_layout(ClosureLayout, !CI) :-
     get_closure_layouts(!.CI, ClosureLayouts),

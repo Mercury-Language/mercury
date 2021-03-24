@@ -287,16 +287,16 @@
     %
 :- pred flatten_disj(list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
-    % Create a conjunction of the specified type using the specified goals,
-    % This fills in the hlds_goal_info.
-    %
-:- pred create_conj_from_list(list(hlds_goal)::in, conj_type::in,
-    hlds_goal::out) is det.
-
     % Create a conjunction of the specified type using the specified two goals.
     % This fills in the hlds_goal_info.
     %
 :- pred create_conj(hlds_goal::in, hlds_goal::in, conj_type::in,
+    hlds_goal::out) is det.
+
+    % Create a conjunction of the specified type using the specified goals,
+    % This fills in the hlds_goal_info.
+    %
+:- pred create_conj_from_list(list(hlds_goal)::in, conj_type::in,
     hlds_goal::out) is det.
 
     % can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
@@ -1629,6 +1629,69 @@ direct_subgoal(switch(_, _, CaseList), Goal) :-
 
 %-----------------------------------------------------------------------------%
 
+pred_ids_called_from_goals(Goals, PredIds) :-
+    (
+        Goals = [],
+        PredIds = []
+    ;
+        Goals = [HeadGoal | TailGoals],
+        pred_ids_called_from_goal(HeadGoal, HeadPredIds),
+        pred_ids_called_from_goals(TailGoals, TailPredIds),
+        PredIds = HeadPredIds ++ TailPredIds
+    ).
+
+pred_ids_called_from_goal(Goal, PredIds) :-
+    % Explicit lambda expression needed since goal_calls_pred_id
+    % has multiple modes.
+    P = ( pred(PredId::out) is nondet :-
+            goal_contains_goal(Goal, SubGoal),
+            SubGoal = hlds_goal(SubGoalExpr, _),
+            SubGoalExpr = plain_call(PredId, _, _, _, _, _)
+        ),
+    solutions.solutions(P, PredIds).
+
+pred_ids_args_called_from_goal(Goal, List) :-
+    P = ( pred({PredId, Args}::out) is nondet :-
+            goal_contains_goal(Goal, SubGoal),
+            SubGoal = hlds_goal(SubGoalExpr, _),
+            SubGoalExpr = plain_call(PredId, _, Args, _, _, _)
+        ),
+    solutions(P, List).
+
+pred_proc_ids_called_from_goal(Goal, PredProcIds) :-
+    P = ( pred(PredProcId::out) is nondet :-
+            goal_contains_goal(Goal, SubGoal),
+            SubGoal = hlds_goal(SubGoalExpr, _),
+            SubGoalExpr = plain_call(PredId, ProcId, _, _, _, _),
+            PredProcId = proc(PredId, ProcId)
+        ),
+    solutions.solutions(P, PredProcIds).
+
+goal_is_atomic(Goal, GoalIsAtomic) :-
+    Goal = hlds_goal(GoalExpr, _),
+    (
+        ( GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        GoalIsAtomic = goal_is_atomic
+    ;
+        ( GoalExpr = conj(_, _)
+        ; GoalExpr = disj(_)
+        ; GoalExpr = switch(_, _, _)
+        ; GoalExpr = negation(_)
+        ; GoalExpr = scope(_, _)
+        ; GoalExpr = if_then_else(_, _, _, _)
+        ),
+        GoalIsAtomic = goal_is_nonatomic
+    ;
+        GoalExpr = shorthand(_),
+        unexpected($pred, "shorthand")
+    ).
+
+%-----------------------------------------------------------------------------%
+
 switch_to_disjunction(_, [], _, [], !VarSet, !VarTypes, !ModuleInfo).
 switch_to_disjunction(Var, [Case | Cases], InstMap, Goals,
         !VarSet, !VarTypes, !ModuleInfo) :-
@@ -2005,69 +2068,6 @@ generate_cast_with_insts(CastType, InArg, OutArg, InInst, OutInst, Context,
     GoalExpr = generic_call(cast(CastType), [InArg, OutArg],
         [in_mode(InInst), out_mode(OutInst)], arg_reg_types_unset, detism_det),
     Goal = hlds_goal(GoalExpr, GoalInfo).
-
-%-----------------------------------------------------------------------------%
-
-pred_ids_called_from_goals(Goals, PredIds) :-
-    (
-        Goals = [],
-        PredIds = []
-    ;
-        Goals = [HeadGoal | TailGoals],
-        pred_ids_called_from_goal(HeadGoal, HeadPredIds),
-        pred_ids_called_from_goals(TailGoals, TailPredIds),
-        PredIds = HeadPredIds ++ TailPredIds
-    ).
-
-pred_ids_called_from_goal(Goal, PredIds) :-
-    % Explicit lambda expression needed since goal_calls_pred_id
-    % has multiple modes.
-    P = ( pred(PredId::out) is nondet :-
-            goal_contains_goal(Goal, SubGoal),
-            SubGoal = hlds_goal(SubGoalExpr, _),
-            SubGoalExpr = plain_call(PredId, _, _, _, _, _)
-        ),
-    solutions.solutions(P, PredIds).
-
-pred_ids_args_called_from_goal(Goal, List) :-
-    P = ( pred({PredId, Args}::out) is nondet :-
-            goal_contains_goal(Goal, SubGoal),
-            SubGoal = hlds_goal(SubGoalExpr, _),
-            SubGoalExpr = plain_call(PredId, _, Args, _, _, _)
-        ),
-    solutions(P, List).
-
-pred_proc_ids_called_from_goal(Goal, PredProcIds) :-
-    P = ( pred(PredProcId::out) is nondet :-
-            goal_contains_goal(Goal, SubGoal),
-            SubGoal = hlds_goal(SubGoalExpr, _),
-            SubGoalExpr = plain_call(PredId, ProcId, _, _, _, _),
-            PredProcId = proc(PredId, ProcId)
-        ),
-    solutions.solutions(P, PredProcIds).
-
-goal_is_atomic(Goal, GoalIsAtomic) :-
-    Goal = hlds_goal(GoalExpr, _),
-    (
-        ( GoalExpr = unify(_, _, _, _, _)
-        ; GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _, _)
-        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
-        ),
-        GoalIsAtomic = goal_is_atomic
-    ;
-        ( GoalExpr = conj(_, _)
-        ; GoalExpr = disj(_)
-        ; GoalExpr = switch(_, _, _)
-        ; GoalExpr = negation(_)
-        ; GoalExpr = scope(_, _)
-        ; GoalExpr = if_then_else(_, _, _, _)
-        ),
-        GoalIsAtomic = goal_is_nonatomic
-    ;
-        GoalExpr = shorthand(_),
-        unexpected($pred, "shorthand")
-    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -180,13 +180,9 @@ MCFLAGS-transform_hlds.unused_args           += --no-warn-implicit-stream-calls
 
 # Keep all modules' contents in a consistent order, except these (for now).
 MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-hlds.goal_util          += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-hlds.inst_graph         += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-libs.options            += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-ll_backend.code_info    += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-ll_backend.code_loc_dep += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-ll_backend.opt_util     += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-ll_backend.var_locn     += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-mode_robdd.tfeirn       += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-parse_tree.prog_ctgc    += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-transform_hlds.complexity += --no-warn-inconsistent-pred-order-clauses

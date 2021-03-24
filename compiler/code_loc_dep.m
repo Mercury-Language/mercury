@@ -2463,12 +2463,12 @@ maybe_restore_trail_info(MaybeTrailSlots, CommitCode, RestoreCode,
 
 :- interface.
 
-:- pred add_forward_live_vars(set_of_progvar::in,
-    code_loc_dep::in, code_loc_dep::out) is det.
-
 :- pred get_known_variables(code_loc_dep::in, list(prog_var)::out) is det.
 
 :- pred variable_is_forward_live(code_loc_dep::in, prog_var::in) is semidet.
+
+:- pred add_forward_live_vars(set_of_progvar::in,
+    code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred make_vars_forward_dead(set_of_progvar::in,
     code_loc_dep::in, code_loc_dep::out) is det.
@@ -3277,9 +3277,6 @@ clear_r1(empty, !CLD) :-
 
 %---------------------------------------------------------------------------%
 
-setup_return(VarArgInfos, OutLocs, Code, !CLD) :-
-    setup_call_args(VarArgInfos, callee, OutLocs, Code, !CLD).
-
 setup_call(GoalInfo, ArgInfos, LiveLocs, Code, CI, !CLD) :-
     partition_args(ArgInfos, InArgInfos, OutArgInfos, _UnusedArgInfos),
     assoc_list.keys(OutArgInfos, OutVars),
@@ -3329,6 +3326,9 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, CI, !CLD) :-
     set_var_locn_info(VarLocnInfo, !CLD),
     assoc_list.values(AllRealLocs, LiveLocList),
     set.list_to_set(LiveLocList, LiveLocs).
+
+setup_return(VarArgInfos, OutLocs, Code, !CLD) :-
+    setup_call_args(VarArgInfos, callee, OutLocs, Code, !CLD).
 
 :- pred key_var_is_of_non_dummy_type(module_info::in, vartypes::in,
     pair(prog_var, arg_info)::in) is semidet.
@@ -3624,12 +3624,6 @@ maybe_generate_resume_layout(Label, ResumeMap, !CI, CLD) :-
     lval::out, code_info::in, code_info::out,
     code_loc_dep::in, code_loc_dep::out) is det.
 
-    % Release a stack slot acquired earlier for a temporary value.
-    % The persistence argument should match the acquire operation.
-    %
-:- pred release_temp_slot(lval::in, temp_slot_persistence::in,
-    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
-
     % acquire_several_temp_slots(Items, Persistence, StackVars,
     %   StackId, N, M, !Info):
     %
@@ -3643,6 +3637,12 @@ maybe_generate_resume_layout(Label, ResumeMap, !CI, CLD) :-
 :- pred acquire_several_temp_slots(list(slot_contents)::in,
     temp_slot_persistence::in, list(lval)::out,
     main_stack::out, int::out, int::out,
+    code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
+
+    % Release a stack slot acquired earlier for a temporary value.
+    % The persistence argument should match the acquire operation.
+    %
+:- pred release_temp_slot(lval::in, temp_slot_persistence::in,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
     % Release the stack slots acquired by an earlier acquire_several_temp_slots
