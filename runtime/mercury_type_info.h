@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2007, 2009, 2011-2012 The University of Melbourne.
-// Copyright (C) 2015-2018 The Mercury team.
+// Copyright (C) 2015-2018, 2021 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // Definitions of the types defining the type_ctor_infos, type_infos,
@@ -70,7 +70,7 @@
 // This number should be kept in sync with type_ctor_info_rtti_version in
 // compiler/type_ctor_info.m.
 
-#define MR_RTTI_VERSION                     MR_RTTI_VERSION__UINT
+#define MR_RTTI_VERSION                     MR_RTTI_VERSION__SUBTYPES
 #define MR_RTTI_VERSION__INITIAL            2
 #define MR_RTTI_VERSION__USEREQ             3
 #define MR_RTTI_VERSION__CLEAN_LAYOUT       4
@@ -87,6 +87,7 @@
 #define MR_RTTI_VERSION__ARG_WIDTHS         15
 #define MR_RTTI_VERSION__FUNCTOR_SUBTYPE    16
 #define MR_RTTI_VERSION__UINT               17
+#define MR_RTTI_VERSION__SUBTYPES           18
 
 // Check that the RTTI version is in a sensible range.
 // The lower bound should be the lowest currently supported version number.
@@ -94,10 +95,11 @@
 // If you increase the lower bound, you should also increase the binary
 // compatibility version number in runtime/mercury_grade.h (MR_GRADE_PART_0).
 //
-// Note that the definition of this macro matters only if it used, and (for
+// Note that the definition of this macro matters only if it is used, and (for
 // efficiency) it shouldn't be used except if a period of transition between
 // different versions requires different treatment of RTTI structures generated
 // by different compiler versions.
+// XXX SUBTYPE set this to MR_RTTI_VERSION__SUBTYPES later
 
 #define MR_TYPE_CTOR_INFO_CHECK_RTTI_VERSION_RANGE(typector)            \
     assert((typector)->MR_type_ctor_version >= MR_RTTI_VERSION__ARG_WIDTHS)
@@ -955,7 +957,9 @@ typedef struct {
     // would probably also require extra space.
 } MR_DuArgLocn;
 
-// This type describes the subtype constraints on the arguments of a functor.
+// This type describes the subtype constraints on the arguments of a functor
+// due to inst information provided in a type definition
+// (unrelated to subtypes introduced by type definitions).
 // Currently, we only record whether any such constraints exist.
 
 typedef enum {
@@ -1018,7 +1022,10 @@ typedef const MR_DuFunctorDesc              *MR_DuFunctorDescPtr;
 
 typedef struct {
     MR_ConstString      MR_enum_functor_name;
-    MR_int_least32_t    MR_enum_functor_ordinal;    // XXX MAKE_FIELD_UNSIGNED
+    // The functor value is the same as the functor ordinal number for
+    // non-subtype enum types (the k'th functor is represented by the value k),
+    // but that is not true for subtype enums.
+    MR_int_least32_t    MR_enum_functor_value;      // XXX MAKE_FIELD_UNSIGNED
 } MR_EnumFunctorDesc;
 
 typedef const MR_EnumFunctorDesc            *MR_EnumFunctorDescPtr;
@@ -1060,11 +1067,14 @@ typedef const MR_NotagFunctorDesc           *MR_NotagFunctorDescPtr;
 // interpret, you compute its primary tag and find its MR_DuPtagLayout.
 // You then look at the locn field. If it is MR_SECTAG_NONE{,_DIRECT_ARG}, you
 // index the alternatives field with zero; if it is MR_SECTAG_{LOCAL,REMOTE},
-// you compute the secondary tag and index the alternatives field with that.
+// you compute the secondary tag and look in the alternatives array with that.
+// The ptag_flags tells if the alternatives array can be indexed, or if it must
+// be searched.
 //
 // A value of type MR_DuTypeLayout points to an array of MR_DuPtagLayout
-// structures. The element at index k gives information about primary tag
-// value k. The size of the array is recorded in the num_ptags field of the
+// structures. If the type_ctor_info has the LAYOUT_INDEXABLE flag then the
+// element at index k gives information about primary tag value k.
+// The size of the array is recorded in the num_ptags field of the
 // type_ctor_info.
 
 typedef struct {
@@ -1082,8 +1092,25 @@ typedef struct {
     // compute it potentially millions of times. It could be stored either as
     // a MR_uint_least32_t or as a MR_uint_least16_t, depending on how
     // conservative we want to be.
+
+    // ptag holds the primary tag that this layout describes.
+    // ptag_flags contains the flags listed below.
+    // XXX ARG_PACK Move these fields at the same time as other fields.
+    MR_uint_least8_t		    MR_du_ptag;
+    MR_uint_least8_t		    MR_du_ptag_flags;
 } MR_DuPtagLayout;
 
+// The flag bits here must agree with the ones in encode_du_ptag_layout_flag
+// in compiler/rtti.m, and with constants in java/runtime and
+// mercury_dotnet.cs.in.
+//
+// The sectag_indexable flag is set if the sectag_alternatives array
+// can be indexed using a secondary tag value.
+#define MR_DU_PTAG_FLAG_SECTAG_ALTERNATIVES_INDEXABLE	0x1
+
+// An array of ptag layouts, ordered by ptag value.
+// Whether or not it is indexable by ptag value is indicated by the
+// MR_TYPE_CTOR_FLAG_LAYOUT_INDEXABLE flag.
 typedef const MR_DuPtagLayout *MR_DuTypeLayout;
 
 ////////////////////////////////////////////////////////////////////////////
@@ -1269,7 +1296,8 @@ struct MR_TypeCtorInfo_Struct {
     ((tci)->MR_type_ctor_num_functors)
 
 // The flag bits here must agree with the ones in encode_type_ctor_flag
-// in compiler/rtti.m.
+// in compiler/rtti.m, and with constants in java/runtime and
+// mercury_dotnet.cs.in.
 //
 // We used to have a "reserve tag" flag whose representation was 0x1,
 // but we don't supported reserving tags anymore.
@@ -1280,16 +1308,24 @@ struct MR_TypeCtorInfo_Struct {
 // The kind of du flag is set for all discriminated union types, even if
 // their representation is specialized (as enumerations, notag types etc).
 //
+// The layout indexable flag is set for enumerations where the enum layout
+// array is indexable by the enum value, and for discriminated union types
+// where the layout array is indexable by the ptag value.
+//
 // The dummy flag must be set for type constructors whose values are not
 // actually passed around.
+// XXX no such flag exists
 
 #define MR_TYPE_CTOR_FLAG_VARIABLE_ARITY        0x2
 #define MR_TYPE_CTOR_FLAG_KIND_OF_DU            0x4
+#define MR_TYPE_CTOR_FLAG_LAYOUT_INDEXABLE      0x8
 
 #define MR_type_ctor_has_variable_arity(tci)                                \
     ((tci)->MR_type_ctor_flags & MR_TYPE_CTOR_FLAG_VARIABLE_ARITY)
 #define MR_type_ctor_is_kind_of_du(tci)                                     \
     ((tci)->MR_type_ctor_flags & MR_TYPE_CTOR_FLAG_KIND_OF_DU)
+#define MR_type_ctor_is_layout_indexable(tci)                               \
+    ((tci)->MR_type_ctor_flags & MR_TYPE_CTOR_FLAG_LAYOUT_INDEXABLE)
 
 ////////////////////////////////////////////////////////////////////////////
 

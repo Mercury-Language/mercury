@@ -1,0 +1,262 @@
+--------------------
+term
+	dummy
+deconstruct.functor
+	name:		dummy
+	arity:		0
+deconstruct.functor_number_cc
+	functor lex:	0
+	arity:		0
+deconstruct.deconstruct
+	functor name:	dummy
+	arity:		0
+	args:		[]
+deconstruct.deconstruct_du
+	functor lex:	0
+construct.get_functor_ordinal
+	functor ord:	0
+construct.get_functor_lex
+	functor lex:	0
+construct.num_functors
+	num functors:	1
+construct.get_functor_with_names
+	functor lex:	0
+	functor name:	dummy
+	arity:		0
+	arg types:	[]
+	arg names:	[]
+construct.find_functor
+	arg type descs:	[]
+construct.construct
+	dummy
+unify ok
+
+--------------------
+term
+	notag(notag0(orange))
+deconstruct.functor
+	name:		notag
+	arity:		1
+deconstruct.functor_number_cc
+	functor lex:	0
+	arity:		1
+deconstruct.deconstruct
+	functor name:	notag
+	arity:		1
+	args:		[univ_cons(notag0(orange))]
+deconstruct.deconstruct_du
+	functor lex:	0
+construct.get_functor_ordinal
+	functor ord:	0
+construct.get_functor_lex
+	functor lex:	0
+construct.num_functors
+	num functors:	1
+construct.get_functor_with_names
+	functor lex:	0
+	functor name:	notag
+	arity:		1
+	arg types:	[some_pseudo_type_desc]
+	arg names:	[no]
+construct.find_functor
+	arg type descs:	[subtype_rtti.sub_notag0(subtype_rtti.sub_color)]
+construct.construct
+	notag(notag0(orange))
+unify ok
+
+--------------------
+term
+	f1(42)
+deconstruct.functor
+	name:		f1
+	arity:		1
+deconstruct.functor_number_cc
+	functor lex:	0
+	arity:		1
+deconstruct.deconstruct
+	functor name:	f1
+	arity:		1
+	args:		[univ_cons(42)]
+deconstruct.deconstruct_du
+	functor lex:	0
+construct.get_functor_ordinal
+	functor ord:	0
+construct.get_functor_lex
+	functor lex:	0
+construct.num_functors
+	num functors:	1
+construct.get_functor_with_names
+	functor lex:	0
+	functor name:	f1
+	arity:		1
+	arg types:	[some_pseudo_type_desc]
+	arg names:	[no]
+construct.find_functor
+	arg type descs:	[int]
+construct.construct skipped
+
+--------------------
+term
+	blue
+deconstruct.functor
+	name:		blue
+	arity:		0
+deconstruct.functor_number_cc
+	functor lex:	0
+	arity:		0
+deconstruct.deconstruct
+	functor name:	blue
+	arity:		0
+	args:		[]
+deconstruct.deconstruct_du
+	functor lex:	0
+construct.get_functor_ordinal
+	functor ord:	1
+construct.get_functor_lex
+	functor lex:	0
+construct.num_functors
+	num functors:	3
+construct.get_functor_with_names
+	functor lex:	0
+	functor name:	blue
+	arity:		0
+	arg types:	[]
+	arg names:	[]
+construct.find_functor
+	arg type descs:	[]
+construct.construct
+	blue
+unify ok
+
+--------------------
+term
+	f0_a
+deconstruct.functor
+	name:		f0_a
+	arity:		0
+deconstruct.functor_number_cc
+	functor lex:	0
+	arity:		0
+deconstruct.deconstruct
+	functor name:	f0_a
+	arity:		0
+	args:		[]
+deconstruct.deconstruct_du
+	functor lex:	0
+construct.get_functor_ordinal
+	functor ord:	5
+construct.get_functor_lex
+	functor lex:	0
+construct.num_functors
+	num functors:	6
+construct.get_functor_with_names
+	functor lex:	0
+	functor name:	f0_a
+	arity:		0
+	arg types:	[]
+	arg names:	[]
+construct.find_functor
+	arg type descs:	[]
+construct.construct
+	f0_a
+unify ok
+
+--------------------
+term
+	f0_b(flag_set, blue, banana)
+deconstruct.functor
+	name:		f0_b
+	arity:		3
+deconstruct.functor_number_cc
+	functor lex:	1
+	arity:		3
+deconstruct.deconstruct
+	functor name:	f0_b
+	arity:		3
+	args:		[univ_cons(flag_set), univ_cons(blue), univ_cons(banana)]
+deconstruct.deconstruct_du
+	functor lex:	1
+construct.get_functor_ordinal
+	functor ord:	4
+construct.get_functor_lex
+	functor lex:	1
+construct.num_functors
+	num functors:	6
+construct.get_functor_with_names
+	functor lex:	1
+	functor name:	f0_b
+	arity:		3
+	arg types:	[some_pseudo_type_desc, some_pseudo_type_desc, some_pseudo_type_desc]
+	arg names:	[no, no, no]
+construct.find_functor
+	arg type descs:	[subtype_rtti.sub_flag, subtype_rtti.sub_color, subtype_rtti.fruit]
+construct.construct
+	f0_b(flag_set, blue, banana)
+unify ok
+
+--------------------
+term
+	f2(42)
+deconstruct.functor
+	name:		f2
+	arity:		1
+deconstruct.functor_number_cc
+	functor lex:	2
+	arity:		1
+deconstruct.deconstruct
+	functor name:	f2
+	arity:		1
+	args:		[univ_cons(42)]
+deconstruct.deconstruct_du
+	functor lex:	2
+construct.get_functor_ordinal
+	functor ord:	3
+construct.get_functor_lex
+	functor lex:	2
+construct.num_functors
+	num functors:	6
+construct.get_functor_with_names
+	functor lex:	2
+	functor name:	f2
+	arity:		1
+	arg types:	[some_pseudo_type_desc]
+	arg names:	[no]
+construct.find_functor
+	arg type descs:	[int]
+construct.construct
+	f2(42)
+unify ok
+
+--------------------
+term
+	f7_b(flag_set, blue, banana, 3.14)
+deconstruct.functor
+	name:		f7_b
+	arity:		4
+deconstruct.functor_number_cc
+	functor lex:	4
+	arity:		4
+deconstruct.deconstruct
+	functor name:	f7_b
+	arity:		4
+	args:		[univ_cons(flag_set), univ_cons(blue), univ_cons(banana), univ_cons(3.14)]
+deconstruct.deconstruct_du
+	functor lex:	4
+construct.get_functor_ordinal
+	functor ord:	1
+construct.get_functor_lex
+	functor lex:	4
+construct.num_functors
+	num functors:	6
+construct.get_functor_with_names
+	functor lex:	4
+	functor name:	f7_b
+	arity:		4
+	arg types:	[some_pseudo_type_desc, some_pseudo_type_desc, some_pseudo_type_desc, some_pseudo_type_desc]
+	arg names:	[yes("sub_f7_b1"), yes("sub_f7_b2"), yes("sub_f7_b3"), yes("sub_f7_b4")]
+construct.find_functor
+	arg type descs:	[subtype_rtti.sub_flag, subtype_rtti.sub_color, subtype_rtti.fruit, float]
+construct.construct
+	f7_b(flag_set, blue, banana, 3.14)
+unify ok
+

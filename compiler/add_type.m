@@ -638,11 +638,17 @@ check_for_dummy_type_with_unify_compare(TypeStatus, TypeCtor, DetailsDu,
         % Discriminated unions whose definition consists of a single
         % zero-arity constructor are dummy types. Dummy types are not allowed
         % to have user-defined equality or comparison.
-        %
-        % XXX SUBTYPE Do not consider a subtype to be a dummy type
-        % unless the base type is a dummy type.
-        DetailsDu = type_details_du(_MaybeSuperType, Ctors, MaybeCanonical,
+        DetailsDu = type_details_du(MaybeSuperType, Ctors, MaybeCanonical,
             _MaybeDirectArg),
+        (
+            MaybeSuperType = no
+        ;
+            MaybeSuperType = yes(_)
+            % XXX SUBTYPE A subtype with a single zero-arity constructor
+            % is not necessarily a dummy type, so this check will incorrectly
+            % prevent such a subtype from having user-defined equality or
+            % comparison (however unlikely that would be).
+        ),
         Ctors = one_or_more(Ctor, []),
         Ctor ^ cons_args = [],
         MaybeCanonical = noncanon(_),
@@ -803,6 +809,7 @@ get_body_is_solver_type(Body, IsSolverType) :-
             ; Details = abstract_dummy_type
             ; Details = abstract_notag_type
             ; Details = abstract_type_fits_in_n_bits(_)
+            ; Details = abstract_subtype(_)
             ),
             IsSolverType = non_solver_type
         )

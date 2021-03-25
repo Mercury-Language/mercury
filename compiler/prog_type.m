@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -341,26 +341,26 @@
     %
 :- pred type_constructors_are_type_info(list(constructor)::in) is semidet.
 
-    % Is the discriminated union type with the given list of constructors
-    % a notag type?
+    % Is the discriminated union type (not a subtype) with the given list of
+    % constructors a notag type?
     %
-:- pred du_type_is_notag(one_or_more(constructor)::in, maybe_canonical::in)
-    is semidet.
+:- pred non_sub_du_type_is_notag(one_or_more(constructor)::in,
+    maybe_canonical::in) is semidet.
 
-    % Is the discriminated union type with the given list of constructors
-    % an enum? Is yes, return the number of enum values.
+    % Is the discriminated union type (not a subtype) with the given list of
+    % constructors an enum? If yes, return the number of enum values.
     %
-:- pred du_type_is_enum(type_details_du::in, int::out) is semidet.
+:- pred non_sub_du_type_is_enum(type_details_du::in, int::out) is semidet.
 
     % Return the number of bits required to represent
-    % the given number of values.
+    % the given number of values, 0 to n-1.
     %
-:- pred num_bits_needed_for_n_values(int::in, int::out) is det.
+:- pred num_bits_needed_for_n_dense_values(int::in, int::out) is det.
 
-    % Is the discriminated union type with the given list of constructors
-    % a dummy type?
+    % Is the discriminated union type (not a subtype) with the given list of
+    % constructors a dummy type?
     %
-:- pred du_type_is_dummy(type_details_du::in) is semidet.
+:- pred non_sub_du_type_is_dummy(type_details_du::in) is semidet.
 
     % Unify (with occurs check) two types with respect to a type substitution
     % and update the type bindings. The third argument is a list of type
@@ -998,40 +998,42 @@ name_is_type_info("base_typeclass_info").
 
 %-----------------------------------------------------------------------------%
 
-du_type_is_notag(OoMCtors, MaybeCanonical) :-
+non_sub_du_type_is_notag(OoMCtors, MaybeCanonical) :-
     OoMCtors = one_or_more(Ctor, []),
     Ctor = ctor(_Ordinal, MaybeExistConstraints, _FunctorName, [_CtorArg], 1,
         _Context),
     MaybeExistConstraints = no_exist_constraints,
     MaybeCanonical = canon.
 
-du_type_is_enum(DuDetails, NumFunctors) :-
-    % XXX SUBTYPE Whether a subtype is an enum depends on the base type.
-    DuDetails = type_details_du(_MaybeSuperType, OoMCtors, _MaybeCanonical,
+non_sub_du_type_is_enum(DuDetails, NumFunctors) :-
+    DuDetails = type_details_du(MaybeSuperType, OoMCtors, _MaybeCanonical,
         _MaybeDirectArgCtors),
+    expect(unify(MaybeSuperType, no), $pred,
+        "cannot determine if subtype is enum"),
     Ctors = one_or_more_to_list(OoMCtors),
     Ctors = [_, _ | _],
-    all_functors_are_enum(Ctors, 0, NumFunctors).
+    all_functors_are_constants(Ctors, 0, NumFunctors).
 
-num_bits_needed_for_n_values(NumValues, NumBits) :-
+num_bits_needed_for_n_dense_values(NumValues, NumBits) :-
     int.log2(NumValues, NumBits).
 
-:- pred all_functors_are_enum(list(constructor)::in,
+:- pred all_functors_are_constants(list(constructor)::in,
     int::in, int::out) is semidet.
 
-all_functors_are_enum([], !NumFunctors).
-all_functors_are_enum([Ctor | Ctors], !NumFunctors) :-
+all_functors_are_constants([], !NumFunctors).
+all_functors_are_constants([Ctor | Ctors], !NumFunctors) :-
     Ctor = ctor(_Ordinal, MaybeExistConstraints, _Name, Args, _Arity,
         _Context),
     Args = [],
     MaybeExistConstraints = no_exist_constraints,
     !:NumFunctors = !.NumFunctors + 1,
-    all_functors_are_enum(Ctors, !NumFunctors).
+    all_functors_are_constants(Ctors, !NumFunctors).
 
-du_type_is_dummy(DuDetails) :-
-    % XXX SUBTYPE Whether a subtype is a dummy type depends on the base type.
-    DuDetails = type_details_du(_MaybeSuperType, Ctors, MaybeCanonical,
+non_sub_du_type_is_dummy(DuDetails) :-
+    DuDetails = type_details_du(MaybeSuperType, Ctors, MaybeCanonical,
         MaybeDirectArgCtors),
+    expect(unify(MaybeSuperType, no), $pred,
+        "cannot determine if subtype is dummy"),
     Ctors = one_or_more(Ctor, []),
     Ctor = ctor(_Ordinal, MaybeExistConstraints, _FunctorName, [], 0,
         _Context),

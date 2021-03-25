@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2020-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -83,6 +83,14 @@ mercury_output_item_type_repn(Info, Stream, ItemTypeRepn, !IO) :-
         RepnInfo = tcrepn_is_eqv_to(EqvType),
         io.write_string(Stream, " is_eqv_to(", !IO),
         mercury_output_type(TVarSet, print_num_only, EqvType, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
+    ;
+        RepnInfo = tcrepn_is_subtype_of(SuperTypeCtor),
+        io.write_string(Stream, " is_subtype_of(", !IO),
+        SuperTypeCtor = type_ctor(SuperTypeCtorSymName, SuperTypeArity),
+        mercury_output_sym_name(SuperTypeCtorSymName, Stream, !IO),
+        io.write_string(Stream, "/", !IO),
+        io.write_int(Stream, SuperTypeArity, !IO),
         io.write_string(Stream, ")", !IO)
     ;
         RepnInfo = tcrepn_is_word_aligned_ptr,

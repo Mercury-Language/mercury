@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -48,6 +48,9 @@
 :- pred generate_hlds(module_info::in, module_info::out) is det.
 
 :- pred generate_rtti(module_info::in, list(rtti_data)::out) is det.
+
+:- pred compute_du_ptag_layout_flags(sectag_table::in,
+    du_ptag_layout_flags::out) is det.
 
     % Compute the "contains var" bit vector. The input is a list describing
     % the types of the arguments of a function symbol. The output is an
@@ -97,6 +100,8 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
+:- import_module uint8.
 :- import_module uint16.
 :- import_module uint32.
 :- import_module univ.
@@ -316,12 +321,14 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
         ModuleName = unqualified(ModuleStr1),
         builtin_type_ctor(ModuleStr1, TypeName, TypeArity, BuiltinCtor)
     then
-        Details = tcd_builtin(BuiltinCtor)
+        Details = tcd_builtin(BuiltinCtor),
+        LayoutIndexable = no
     else if
         ModuleName = unqualified(ModuleStr),
         impl_type_ctor(ModuleStr, TypeName, TypeArity, ImplCtor)
     then
-        Details = tcd_impl_artifact(ImplCtor)
+        Details = tcd_impl_artifact(ImplCtor),
+        LayoutIndexable = no
     else
         (
             TypeBody = hlds_abstract_type(_),
@@ -339,7 +346,8 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             ExistTVars = [],
             pseudo_type_info.construct_maybe_pseudo_type_info(RepnType,
                 UnivTVars, ExistTVars, MaybePseudoTypeInfo),
-            Details = tcd_eqv(MaybePseudoTypeInfo)
+            Details = tcd_eqv(MaybePseudoTypeInfo),
+            LayoutIndexable = no
         ;
             TypeBody = hlds_foreign_type(ForeignBody),
             foreign_type_body_to_exported_type(ModuleInfo, ForeignBody, _, _,
@@ -349,7 +357,8 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             else
                 IsStable = is_not_stable
             ),
-            Details = tcd_foreign(IsStable)
+            Details = tcd_foreign(IsStable),
+            LayoutIndexable = no
         ;
             TypeBody = hlds_eqv_type(Type),
             % There can be no existentially typed args to an equivalence.
@@ -357,9 +366,10 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             ExistTVars = [],
             pseudo_type_info.construct_maybe_pseudo_type_info(Type,
                 UnivTVars, ExistTVars, MaybePseudoTypeInfo),
-            Details = tcd_eqv(MaybePseudoTypeInfo)
+            Details = tcd_eqv(MaybePseudoTypeInfo),
+            LayoutIndexable = no
         ;
-            TypeBody = hlds_du_type(_Ctors, _MaybeSuperType, MaybeCanonical,
+            TypeBody = hlds_du_type(_Ctors, MaybeSuperType, MaybeCanonical,
                 MaybeRepn, _IsForeignType),
             (
                 MaybeRepn = no,
@@ -378,25 +388,32 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             ),
             (
                 DuTypeKind = du_type_kind_mercury_enum,
-                make_mercury_enum_details(CtorRepns, enum_is_not_dummy,
-                    EqualityAxioms, Details)
+                make_mercury_enum_details(MaybeSuperType, CtorRepns,
+                    enum_is_not_dummy, EqualityAxioms, Details,
+                    IndexableByEnumValue),
+                LayoutIndexable = IndexableByEnumValue
             ;
                 DuTypeKind = du_type_kind_foreign_enum(Lang),
                 make_foreign_enum_details(Lang, CtorRepns, EqualityAxioms,
-                    Details)
+                    Details),
+                LayoutIndexable = no
             ;
                 DuTypeKind = du_type_kind_direct_dummy,
-                make_mercury_enum_details(CtorRepns, enum_is_dummy,
-                    EqualityAxioms, Details)
+                make_mercury_enum_details(MaybeSuperType, CtorRepns,
+                    enum_is_dummy, EqualityAxioms, Details,
+                    IndexableByEnumValue),
+                LayoutIndexable = IndexableByEnumValue
             ;
                 DuTypeKind = du_type_kind_notag(FunctorName, ArgType,
                     MaybeArgName),
                 make_notag_details(TypeArity, FunctorName, ArgType,
-                    MaybeArgName, EqualityAxioms, Details)
+                    MaybeArgName, EqualityAxioms, Details),
+                LayoutIndexable = no
             ;
                 DuTypeKind = du_type_kind_general,
                 make_du_details(ModuleInfo, CtorRepns, TypeArity,
-                    EqualityAxioms, Details)
+                    EqualityAxioms, Details, IndexableByPtag),
+                LayoutIndexable = IndexableByPtag
             )
         )
     ),
@@ -411,6 +428,12 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             ; TypeBody = hlds_solver_type(_)
             ; TypeBody = hlds_abstract_type(_)
             )
+        ),
+        (
+            LayoutIndexable = yes,
+            set.insert(layout_indexable_flag, !Flags)
+        ;
+            LayoutIndexable = no
         ),
         TypeCtorData = type_ctor_data(Version, ModuleName, TypeName,
             uint16.det_from_int(TypeArity), UnifyUniv, CompareUniv,
@@ -488,7 +511,7 @@ impl_type_ctor("table_builtin", "ml_subgoal", 0, impl_ctor_subgoal).
     %
 :- func type_ctor_info_rtti_version = uint8.
 
-type_ctor_info_rtti_version = 17u8.
+type_ctor_info_rtti_version = 18u8.
 
 %---------------------------------------------------------------------------%
 
@@ -520,29 +543,43 @@ make_notag_details(TypeArity, SymName, ArgType, MaybeArgName, EqualityAxioms,
 
     % Make the functor and layout tables for an enum type.
     %
-:- pred make_mercury_enum_details(list(constructor_repn)::in,
-    enum_maybe_dummy::in, equality_axioms::in, type_ctor_details::out) is det.
+:- pred make_mercury_enum_details(maybe(mer_type)::in,
+    list(constructor_repn)::in, enum_maybe_dummy::in, equality_axioms::in,
+    type_ctor_details::out, bool::out) is det.
 
-make_mercury_enum_details(CtorRepns, IsDummy, EqualityAxioms, Details) :-
+make_mercury_enum_details(MaybeSuperType, CtorRepns, IsDummy, EqualityAxioms,
+        Details, IndexableByEnumValue) :-
     (
         CtorRepns = [],
         unexpected($pred, "enum with no ctors")
     ;
         CtorRepns = [_],
-        expect(unify(IsDummy, enum_is_dummy), $pred, "one ctor but not dummy")
+        (
+            MaybeSuperType = no,
+            expect(unify(IsDummy, enum_is_dummy), $pred, "one ctor but not dummy")
+        ;
+            MaybeSuperType = yes(_)
+            % A subtype with one constructor is not necessarily a dummy type.
+        )
     ;
         CtorRepns = [_, _ | _],
         expect(unify(IsDummy, enum_is_not_dummy), $pred,
             "more than one ctor but dummy")
     ),
-    make_enum_functors(CtorRepns, IsDummy, 0u32, EnumFunctors),
-    ValueMap0 = map.init,
+    make_enum_functors(MaybeSuperType, CtorRepns, IsDummy, 0u32, EnumFunctors),
+    OrdinalMap0 = map.init,
     NameMap0 = map.init,
-    list.foldl2(make_enum_maps, EnumFunctors,
-        ValueMap0, ValueMap, NameMap0, NameMap),
+    list.foldl3(make_enum_maps, EnumFunctors,
+        OrdinalMap0, OrdinalMap, NameMap0, NameMap,
+        yes, AllValueEqualsOrdinal),
+    ( if is_enum_value_map_indexable(OrdinalMap, AllValueEqualsOrdinal) then
+        IndexableByEnumValue = yes
+    else
+        IndexableByEnumValue = no
+    ),
     FunctorNumberMap = make_functor_number_map(CtorRepns),
     Details = tcd_enum(EqualityAxioms, IsDummy, EnumFunctors,
-        ValueMap, NameMap, FunctorNumberMap).
+        OrdinalMap, NameMap, FunctorNumberMap).
 
     % Create an enum_functor structure for each functor in an enum type.
     % The functors are given to us in ordinal order (since that's how the HLDS
@@ -552,12 +589,12 @@ make_mercury_enum_details(CtorRepns, IsDummy, EqualityAxioms, Details) :-
     % sort this list on functor name, which is how the type functors structure
     % is constructed.
     %
-:- pred make_enum_functors(list(constructor_repn)::in, enum_maybe_dummy::in,
-    uint32::in, list(enum_functor)::out) is det.
+:- pred make_enum_functors(maybe(mer_type)::in, list(constructor_repn)::in,
+    enum_maybe_dummy::in, uint32::in, list(enum_functor)::out) is det.
 
-make_enum_functors([], _, _, []).
-make_enum_functors([FunctorRepn | FunctorRepns], IsDummy, CurOrdinal,
-        [EnumFunctor | EnumFunctors]) :-
+make_enum_functors(_, [], _, _, []).
+make_enum_functors(MaybeSuperType, [FunctorRepn | FunctorRepns], IsDummy,
+        CurOrdinal, [EnumFunctor | EnumFunctors]) :-
     FunctorRepn = ctor_repn(Ordinal, MaybeExistConstraints, SymName, ConsTag,
         _FunctorArgRepns, Arity, _Context),
     % XXX ARG_PACK We should not need CurOrdinal.
@@ -567,26 +604,54 @@ make_enum_functors([FunctorRepn | FunctorRepns], IsDummy, CurOrdinal,
     expect(unify(Arity, 0), $pred, "functor in enum has nonzero arity"),
     (
         IsDummy = enum_is_not_dummy,
-        CurOrdinalInt = uint32.cast_to_int(CurOrdinal),
-        expect(unify(ConsTag, int_tag(int_tag_int(CurOrdinalInt))), $pred,
-            "enum functor's tag is not the expected int_tag")
+        ( if ConsTag = int_tag(int_tag_int(ConsTagInt)) then
+            ConsTagUint32 = uint32.det_from_int(ConsTagInt)
+        else
+            unexpected($pred, "enum functor's tag is not int_tag")
+        ),
+        (
+            MaybeSuperType = no,
+            expect(unify(ConsTagUint32, CurOrdinal), $pred,
+                "enum functor's tag is not the expected int_tag")
+        ;
+            MaybeSuperType = yes(_)
+        ),
+        EnumValue = enum_value(ConsTagUint32)
     ;
         IsDummy = enum_is_dummy,
         expect(unify(ConsTag, dummy_tag), $pred,
-            "dummy functor's tag is not dummy_tag")
+            "dummy functor's tag is not dummy_tag"),
+        EnumValue = enum_value(CurOrdinal)
     ),
     FunctorName = unqualify_name(SymName),
-    EnumFunctor = enum_functor(FunctorName, CurOrdinal),
-    make_enum_functors(FunctorRepns, IsDummy, CurOrdinal + 1u32, EnumFunctors).
+    EnumFunctor = enum_functor(FunctorName, Ordinal, EnumValue),
+    make_enum_functors(MaybeSuperType, FunctorRepns, IsDummy,
+        CurOrdinal + 1u32, EnumFunctors).
 
 :- pred make_enum_maps(enum_functor::in,
     map(uint32, enum_functor)::in, map(uint32, enum_functor)::out,
-    map(string, enum_functor)::in, map(string, enum_functor)::out) is det.
+    map(string, enum_functor)::in, map(string, enum_functor)::out,
+    bool::in, bool::out) is det.
 
-make_enum_maps(EnumFunctor, !ValueMap, !NameMap) :-
-    EnumFunctor = enum_functor(FunctorName, Ordinal),
-    map.det_insert(Ordinal, EnumFunctor, !ValueMap),
-    map.det_insert(FunctorName, EnumFunctor, !NameMap).
+make_enum_maps(EnumFunctor, !OrdinalMap, !NameMap, !ValueEqualsOrdinal) :-
+    EnumFunctor = enum_functor(FunctorName, Ordinal, Value),
+    map.det_insert(Ordinal, EnumFunctor, !OrdinalMap),
+    map.det_insert(FunctorName, EnumFunctor, !NameMap),
+    ( if Value = enum_value(Ordinal) then
+        true
+    else
+        !:ValueEqualsOrdinal = no
+    ).
+
+:- pred is_enum_value_map_indexable(map(uint32, enum_functor)::in, bool::in)
+    is semidet.
+
+is_enum_value_map_indexable(OrdinalMap, AllValueEqualsOrdinal) :-
+    AllValueEqualsOrdinal = yes,
+    map.min_key(OrdinalMap) = 0u32,
+    map.max_key(OrdinalMap) = MaxOrdinal,
+    map.count(OrdinalMap, Count),
+    uint32.from_int(Count - 1, MaxOrdinal).
 
 %---------------------------------------------------------------------------%
 
@@ -684,11 +749,17 @@ make_foreign_enum_maps(ForeignEnumFunctor, !OrdinalMap, !NameMap) :-
     % (including reserved_addr types).
     %
 :- pred make_du_details(module_info::in, list(constructor_repn)::in,
-    int::in, equality_axioms::in, type_ctor_details::out) is det.
+    int::in, equality_axioms::in, type_ctor_details::out, bool::out) is det.
 
-make_du_details(ModuleInfo, Ctors, TypeArity, EqualityAxioms, Details) :-
+make_du_details(ModuleInfo, Ctors, TypeArity, EqualityAxioms, Details,
+        IndexableByPtag) :-
     make_du_functors(ModuleInfo, Ctors, 0u32, TypeArity, DuFunctors),
     list.foldl(make_du_ptag_ordered_table, DuFunctors, map.init, DuPtagTable),
+    ( if is_ptag_table_indexable(DuPtagTable) then
+        IndexableByPtag = yes
+    else
+        IndexableByPtag = no
+    ),
     FunctorNumberMap = make_functor_number_map(Ctors),
     list.foldl(make_du_name_ordered_table, DuFunctors,
         map.init, DuNameOrderedMap),
@@ -995,6 +1066,14 @@ make_du_name_ordered_table(DuFunctor, !NameTable) :-
         map.det_insert(Name, NameMap, !NameTable)
     ).
 
+:- pred is_ptag_table_indexable(map(ptag, sectag_table)::in) is semidet.
+
+is_ptag_table_indexable(PtagTable) :-
+    map.min_key(PtagTable) = ptag(0u8),
+    map.max_key(PtagTable) = ptag(MaxPtagUint8),
+    map.count(PtagTable, Count),
+    uint8.from_int(Count - 1, MaxPtagUint8).
+
 %---------------------------------------------------------------------------%
 
     % Construct the array mapping ordinal constructor numbers
@@ -1021,6 +1100,26 @@ ctor_name_arity(Ctor) = {Ctor ^ cr_name, list.length(Ctor ^ cr_args)}.
 lookup_functor_number(CtorNameToSeqNumMap, CtorName, SeqNumUint32) :-
     map.lookup(CtorNameToSeqNumMap, CtorName, SeqNum),
     SeqNumUint32 = uint32.det_from_int(SeqNum).
+
+%---------------------------------------------------------------------------%
+
+compute_du_ptag_layout_flags(SectagTable, Flags) :-
+    ( if is_sectag_table_indexable(SectagTable) then
+        SectagAltsIndexable = yes
+    else
+        SectagAltsIndexable = no
+    ),
+    Flags = du_ptag_layout_flags(SectagAltsIndexable).
+
+:- pred is_sectag_table_indexable(sectag_table::in) is semidet.
+
+is_sectag_table_indexable(SectagTable) :-
+    SectagTable = sectag_table(_Locn, _NumSectagBits, NumSharers, SectagMap),
+    map.min_key(SectagMap) = 0u,
+    map.max_key(SectagMap) = MaxSectag,
+    map.count(SectagMap, Count),
+    uint.from_int(Count - 1, MaxSectag),
+    uint32.from_int(Count, NumSharers).
 
 %---------------------------------------------------------------------------%
 

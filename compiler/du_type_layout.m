@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
+% Copyright (C) 2015, 2017-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -132,6 +133,7 @@
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module uint.
@@ -153,19 +155,36 @@ decide_type_repns(!ModuleInfo, !Specs, !IO) :-
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
     get_all_type_ctor_defns(TypeTable0, TypeCtorsTypeDefns0),
 
+    % Pass 1.
     map.init(ComponentTypeMap0),
     map.init(NoTagTypeMap0),
-    list.map_foldl3(
+    list.foldl5(
         decide_if_simple_du_type(!.ModuleInfo, Params,
             TypeCtorToForeignEnumMap),
-        TypeCtorsTypeDefns0, TypeCtorsTypeDefns1,
-        ComponentTypeMap0, ComponentTypeMap,
-        NoTagTypeMap0, NoTagTypeMap, !Specs),
+        TypeCtorsTypeDefns0,
+        [], NonSubTypeCtorsTypeDefns1,
+        [], SubTypeCtorsTypeDefns1,
+        ComponentTypeMap0, ComponentTypeMap1,
+        NoTagTypeMap0, NoTagTypeMap1, !Specs),
+
+    % Pass 1b.
+    list.foldl2(add_if_subtype_of_simple_du_type_to_maps(TypeTable0),
+        SubTypeCtorsTypeDefns1,
+        ComponentTypeMap1, ComponentTypeMap,
+        NoTagTypeMap1, NoTagTypeMap),
+
     module_info_set_no_tag_types(NoTagTypeMap, !ModuleInfo),
 
+    % Pass 2.
     list.map_foldl(
         decide_if_complex_du_type(!.ModuleInfo, Params, ComponentTypeMap),
-        TypeCtorsTypeDefns1, TypeCtorsTypeDefns, !Specs),
+        NonSubTypeCtorsTypeDefns1, NonSubTypeCtorsTypeDefns2, !Specs),
+
+    % Pass 2b.
+    list.map_foldl(decide_if_subtype(TypeTable0, NonSubTypeCtorsTypeDefns2),
+        SubTypeCtorsTypeDefns1, SubTypeCtorsTypeDefns2, !Specs),
+
+    TypeCtorsTypeDefns = SubTypeCtorsTypeDefns2 ++ NonSubTypeCtorsTypeDefns2,
     set_all_type_ctor_defns(TypeCtorsTypeDefns, SortedTypeCtorsTypeDefns,
         TypeTable),
     module_info_set_type_table(TypeTable, !ModuleInfo),
@@ -239,62 +258,73 @@ add_special_pred_decl_defns_for_types_maybe_lazily(
 
 :- pred decide_if_simple_du_type(module_info::in, decide_du_params::in,
     type_ctor_to_foreign_enums_map::in,
-    pair(type_ctor, hlds_type_defn)::in, pair(type_ctor, hlds_type_defn)::out,
+    pair(type_ctor, hlds_type_defn)::in,
+    assoc_list(type_ctor, hlds_type_defn)::in,
+    assoc_list(type_ctor, hlds_type_defn)::out,
+    assoc_list(type_ctor, hlds_type_defn)::in,
+    assoc_list(type_ctor, hlds_type_defn)::out,
     component_type_map::in, component_type_map::out,
     no_tag_type_table::in, no_tag_type_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
-        TypeCtorTypeDefn0, TypeCtorTypeDefn,
+        TypeCtorTypeDefn0, !NonSubTypeCtorTypeDefns, !SubTypeCtorsTypeDefns,
         !ComponentTypeMap, !NoTagTypeMap, !Specs) :-
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
     (
-        % XXX SUBTYPE Type representation of subtype depends on base type.
-        Body0 = hlds_du_type(OoMCtors, _MaybeSuperType, MaybeCanonical,
+        Body0 = hlds_du_type(OoMCtors, MaybeSuperType, MaybeCanonical,
             MaybeRepn0, MaybeForeign),
         OoMCtors = one_or_more(HeadCtor, TailCtors),
         expect(unify(MaybeRepn0, no), $pred, "MaybeRepn0 != no"),
-        ( if
-            map.search(TypeCtorToForeignEnumMap, TypeCtor, TCFE),
-            TCFE = type_ctor_foreign_enums(_LangContextMap,
-                MaybeForeignEnumTagMap),
-            MaybeForeignEnumTagMap = yes(ForeignEnumTagMap)
-        then
-            decide_simple_type_foreign_enum(ModuleInfo, Params,
-                TypeCtor, TypeDefn0, Body0, OoMCtors, ForeignEnumTagMap,
-                TypeCtorTypeDefn, !Specs)
-        else if
-            ctors_are_all_constants([HeadCtor | TailCtors], _)
-        then
-            decide_simple_type_dummy_or_mercury_enum(ModuleInfo, Params,
-                TypeCtor, TypeDefn0, Body0, OoMCtors, TypeCtorTypeDefn,
-                !ComponentTypeMap, !Specs)
-        else if
-            TailCtors = []
-        then
-            SingleCtor = HeadCtor,
+        (
+            MaybeSuperType = no,
             ( if
-                SingleCtor = ctor(_Ordinal, no_exist_constraints,
-                    SingleCtorSymName, [SingleArg], 1, SingleCtorContext),
-                MaybeCanonical = canon,
-                Params ^ ddp_unboxed_no_tag_types = use_unboxed_no_tag_types
+                map.search(TypeCtorToForeignEnumMap, TypeCtor, TCFE),
+                TCFE = type_ctor_foreign_enums(_LangContextMap,
+                    MaybeForeignEnumTagMap),
+                MaybeForeignEnumTagMap = yes(ForeignEnumTagMap)
             then
-                decide_simple_type_notag(ModuleInfo, Params,
-                    TypeCtor, TypeDefn0, Body0,
-                    SingleCtorSymName, SingleArg, SingleCtorContext,
-                    TypeCtorTypeDefn, !NoTagTypeMap, !Specs)
-            else
-                add_du_if_single_ctor_is_word_aligned_ptr(Params, TypeCtor,
-                    TypeDefn0, MaybeForeign, !ComponentTypeMap),
+                decide_simple_type_foreign_enum(ModuleInfo, Params,
+                    TypeCtor, TypeDefn0, Body0, OoMCtors, ForeignEnumTagMap,
+                    TypeCtorTypeDefn, !Specs)
+            else if
+                ctors_are_all_constants([HeadCtor | TailCtors], _)
+            then
+                decide_simple_type_dummy_or_mercury_enum(ModuleInfo, Params,
+                    TypeCtor, TypeDefn0, Body0, OoMCtors, TypeCtorTypeDefn,
+                    !ComponentTypeMap, !Specs)
+            else if
+                TailCtors = []
+            then
+                SingleCtor = HeadCtor,
+                ( if
+                    SingleCtor = ctor(_Ordinal, no_exist_constraints,
+                        SingleCtorSymName, [SingleArg], 1, SingleCtorContext),
+                    MaybeCanonical = canon,
+                    Params ^ ddp_unboxed_no_tag_types = use_unboxed_no_tag_types
+                then
+                    decide_simple_type_notag(ModuleInfo, Params,
+                        TypeCtor, TypeDefn0, Body0,
+                        SingleCtorSymName, SingleArg, SingleCtorContext,
+                        TypeCtorTypeDefn, !NoTagTypeMap, !Specs)
+                else
+                    add_du_if_single_ctor_is_word_aligned_ptr(Params, TypeCtor,
+                        TypeDefn0, MaybeForeign, !ComponentTypeMap),
 
-                % Figure out the representation of these types
-                % in the second pass.
+                    % Figure out the representation of these types
+                    % in the second pass.
+                    TypeCtorTypeDefn = TypeCtorTypeDefn0
+                )
+            else
+                % Figure out the representation of these types in the second pass.
                 TypeCtorTypeDefn = TypeCtorTypeDefn0
-            )
-        else
-            % Figure out the representation of these types in the second pass.
-            TypeCtorTypeDefn = TypeCtorTypeDefn0
+            ),
+            cons(TypeCtorTypeDefn, !NonSubTypeCtorTypeDefns)
+        ;
+            MaybeSuperType = yes(_),
+            % Figure out the representation of subtypes in later passes.
+            cons(TypeCtorTypeDefn0, !SubTypeCtorsTypeDefns)
         )
     ;
         Body0 = hlds_foreign_type(ForeignType),
@@ -302,18 +332,30 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
             ForeignType, !ComponentTypeMap, !Specs),
 
         % There are no questions of representation to figure out.
-        TypeCtorTypeDefn = TypeCtorTypeDefn0
+        cons(TypeCtorTypeDefn0, !NonSubTypeCtorTypeDefns)
     ;
         Body0 = hlds_abstract_type(AbstractDetails),
-        add_abstract_if_packable(TypeCtor, AbstractDetails, !ComponentTypeMap),
-        TypeCtorTypeDefn = TypeCtorTypeDefn0
+        (
+            ( AbstractDetails = abstract_type_fits_in_n_bits(_)
+            ; AbstractDetails = abstract_dummy_type
+            ; AbstractDetails = abstract_notag_type
+            ; AbstractDetails = abstract_type_general
+            ; AbstractDetails = abstract_solver_type
+            ),
+            add_abstract_if_packable(TypeCtor, AbstractDetails,
+                !ComponentTypeMap),
+            cons(TypeCtorTypeDefn0, !NonSubTypeCtorTypeDefns)
+        ;
+            AbstractDetails = abstract_subtype(_),
+            cons(TypeCtorTypeDefn0, !SubTypeCtorsTypeDefns)
+        )
     ;
         % XXX TYPE_REPN Enter type equivalences into ComponentTypeMap.
         ( Body0 = hlds_eqv_type(_)
         ; Body0 = hlds_solver_type(_)
         ),
         % There are no questions of representation to figure out.
-        TypeCtorTypeDefn = TypeCtorTypeDefn0
+        cons(TypeCtorTypeDefn0, !NonSubTypeCtorTypeDefns)
     ).
 
 %---------------------%
@@ -615,10 +657,200 @@ add_abstract_if_packable(TypeCtor, AbstractDetails, !ComponentTypeMap) :-
         ComponentKind = packable(packable_dummy),
         map.det_insert(TypeCtor, ComponentKind, !ComponentTypeMap)
     ;
+        AbstractDetails = abstract_notag_type,
+        % XXX Enter information into NoTagTypeMap?
+        % We do not yet generate "where type_is_abstract_notag_type" so I think
+        % this is unreachable. The `where' block mechanism, along with this
+        % module (du_type_layout.m) are intended to be replaced by the
+        % `:- type_representation' mechanism anyway.
+        sorry($pred, "abstract_notag_type")
+    ;
         ( AbstractDetails = abstract_type_general
-        ; AbstractDetails = abstract_notag_type
+        ; AbstractDetails = abstract_subtype(_)
         ; AbstractDetails = abstract_solver_type
         )
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Pass 1b.
+%
+
+    % After deciding the representation of simple du types, transfer
+    % information in component_type_map and no_tag_type_table to
+    % any subtypes of those simple du types.
+    %
+:- pred add_if_subtype_of_simple_du_type_to_maps(type_table::in,
+    pair(type_ctor, hlds_type_defn)::in,
+    component_type_map::in, component_type_map::out,
+    no_tag_type_table::in, no_tag_type_table::out) is det.
+
+add_if_subtype_of_simple_du_type_to_maps(OldTypeTable, TypeCtorTypeDefn,
+        !ComponentTypeMap, !NoTagTypeMap) :-
+    TypeCtorTypeDefn = TypeCtor - TypeDefn,
+    get_type_defn_body(TypeDefn, Body),
+    (
+        Body = hlds_du_type(Ctors, MaybeSuperType, _MaybeCanonical,
+            MaybeRepn, _MaybeForeign),
+        (
+            MaybeSuperType = yes(SuperType),
+            expect(unify(MaybeRepn, no), $pred, "MaybeRepn != no"),
+            ( if
+                type_to_ctor(SuperType, SuperTypeCtor),
+                get_base_type_ctor(OldTypeTable, SuperTypeCtor, BaseTypeCtor)
+            then
+                maybe_copy_component_kind_from_base(BaseTypeCtor, TypeCtor,
+                    !ComponentTypeMap),
+                get_type_defn_tparams(TypeDefn, TypeParams),
+                maybe_copy_no_tag_type_from_base(BaseTypeCtor,
+                    TypeCtor, TypeParams, yes(Ctors), !NoTagTypeMap)
+            else
+                true
+            )
+        ;
+            MaybeSuperType = no,
+            unexpected($pred, "not subtype")
+        )
+    ;
+        Body = hlds_abstract_type(AbstractDetails),
+        (
+            AbstractDetails = abstract_subtype(SuperTypeCtor),
+            ( if
+                get_base_type_ctor(OldTypeTable, SuperTypeCtor, BaseTypeCtor)
+            then
+                maybe_copy_component_kind_from_base(BaseTypeCtor, TypeCtor,
+                    !ComponentTypeMap),
+                get_type_defn_tparams(TypeDefn, TypeParams),
+                maybe_copy_no_tag_type_from_base(BaseTypeCtor, TypeCtor,
+                    TypeParams, no, !NoTagTypeMap)
+            else
+                true
+            )
+        ;
+            ( AbstractDetails = abstract_type_general
+            ; AbstractDetails = abstract_type_fits_in_n_bits(_)
+            ; AbstractDetails = abstract_dummy_type
+            ; AbstractDetails = abstract_notag_type
+            ; AbstractDetails = abstract_solver_type
+            ),
+            unexpected($pred, "not subtype")
+        )
+    ;
+        ( Body = hlds_foreign_type(_)
+        ; Body = hlds_eqv_type(_)
+        ; Body = hlds_solver_type(_)
+        ),
+        unexpected($pred, "not subtype")
+    ).
+
+:- pred get_base_type_ctor(type_table::in, type_ctor::in, type_ctor::out)
+    is semidet.
+
+get_base_type_ctor(TypeTable, TypeCtor, BaseTypeCtor) :-
+    set.init(Seen0),
+    get_base_type_ctor_loop(TypeTable, TypeCtor, BaseTypeCtor, Seen0).
+
+:- pred get_base_type_ctor_loop(type_table::in, type_ctor::in, type_ctor::out,
+    set(type_ctor)::in) is semidet.
+
+get_base_type_ctor_loop(TypeTable, TypeCtor, BaseTypeCtor, Seen0) :-
+    % Check for circularities.
+    set.insert_new(TypeCtor, Seen0, Seen1),
+    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+    get_type_defn_body(TypeDefn, TypeBody),
+    require_complete_switch [TypeBody]
+    (
+        TypeBody = hlds_du_type(_, MaybeSuperType, _, _, _),
+        (
+            MaybeSuperType = no,
+            BaseTypeCtor = TypeCtor
+        ;
+            MaybeSuperType = yes(SuperType),
+            type_to_ctor(SuperType, SuperTypeCtor),
+            get_base_type_ctor_loop(TypeTable, SuperTypeCtor, BaseTypeCtor,
+                Seen1)
+        )
+    ;
+        TypeBody = hlds_abstract_type(AbstractDetails),
+        require_complete_switch [AbstractDetails]
+        (
+            ( AbstractDetails = abstract_type_general
+            ; AbstractDetails = abstract_type_fits_in_n_bits(_)
+            ; AbstractDetails = abstract_dummy_type
+            ; AbstractDetails = abstract_notag_type
+            ),
+            BaseTypeCtor = TypeCtor
+        ;
+            AbstractDetails = abstract_subtype(SuperTypeCtor),
+            get_base_type_ctor_loop(TypeTable, SuperTypeCtor, BaseTypeCtor,
+                Seen1)
+        ;
+            AbstractDetails = abstract_solver_type,
+            unexpected($pred, "base type is abstract solver type")
+        )
+    ;
+        TypeBody = hlds_eqv_type(EqvType),
+        type_to_ctor(EqvType, EqvTypeCtor),
+        get_base_type_ctor_loop(TypeTable, EqvTypeCtor, BaseTypeCtor, Seen1)
+    ;
+        TypeBody = hlds_foreign_type(_),
+        unexpected($pred, "base type is foreign type")
+    ;
+        TypeBody = hlds_solver_type(_),
+        unexpected($pred, "base type is solver type")
+    ).
+
+:- pred maybe_copy_component_kind_from_base(type_ctor::in, type_ctor::in,
+    component_type_map::in, component_type_map::out) is det.
+
+maybe_copy_component_kind_from_base(BaseTypeCtor, TypeCtor,
+        !ComponentTypeMap) :-
+    ( if map.search(!.ComponentTypeMap, BaseTypeCtor, ComponentKind) then
+        map.det_insert(TypeCtor, ComponentKind, !ComponentTypeMap)
+    else
+        true
+    ).
+
+:- pred maybe_copy_no_tag_type_from_base(type_ctor::in,
+    type_ctor::in, list(type_param)::in, maybe(one_or_more(constructor))::in,
+    no_tag_type_table::in, no_tag_type_table::out) is det.
+
+maybe_copy_no_tag_type_from_base(BaseTypeCtor, TypeCtor, TypeParams0,
+        MaybeCtors, !NoTagTypeMap) :-
+    ( if map.search(!.NoTagTypeMap, BaseTypeCtor, BaseNoTagType) then
+        BaseNoTagType = no_tag_type(BaseTypeParams, BaseCtorName, BaseArgType),
+        (
+            MaybeCtors = no,
+            % A subtype must have the same constructor name as the base type,
+            % but possibly a different module name.
+            TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
+            det_sym_name_get_module_name(TypeCtorSymName, ModuleName),
+            UnqualCtorName = unqualify_name(BaseCtorName),
+            CtorName = qualified(ModuleName, UnqualCtorName),
+            % We do not have the actual argument type in the abstract subtype
+            % so just use the argument type from the base type.
+            TypeParams = BaseTypeParams,
+            ArgType = BaseArgType
+        ;
+            MaybeCtors = yes(Ctors),
+            Ctors = one_or_more(Ctor, TailCtors),
+            expect(unify(TailCtors, []), $pred,
+                "subtype of notag type has multiple ctors"),
+            Ctor = ctor(_Ordinal, _MaybeExist, CtorName, CtorArgs, _NumArgs,
+                _Context),
+            ( if CtorArgs = [CtorArgPrime] then
+                CtorArg = CtorArgPrime
+            else
+                unexpected($pred,
+                    "subtype of notag type has wrong number of ctor args")
+            ),
+            CtorArg = ctor_arg(_MaybeFieldName, ArgType, _ArgContext),
+            TypeParams = TypeParams0
+        ),
+        NoTagType = no_tag_type(TypeParams, CtorName, ArgType),
+        map.det_insert(TypeCtor, NoTagType, !NoTagTypeMap)
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%
@@ -637,9 +869,9 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
     (
-        % XXX SUBTYPE Type representation of subtype depends on base type.
-        Body0 = hlds_du_type(Ctors, _MaybeSuperType, _MaybeCanonical,
+        Body0 = hlds_du_type(Ctors, MaybeSuperType, _MaybeCanonical,
             MaybeRepn0, _MaybeForeign),
+        expect(unify(MaybeSuperType, no), $pred, "subtype not separated out"),
         (
             MaybeRepn0 = yes(_),
             % We have already decided this type's representation
@@ -1425,6 +1657,7 @@ may_pack_arg_type(Params, ComponentTypeMap, ArgType, PackableKind) :-
     % XXX ARG_PACK Make this code dereference eqv types,
     % subject to all types involved having the same visibility.
     type_to_ctor(ArgType, ArgTypeCtor),
+
     ( if map.search(ComponentTypeMap, ArgTypeCtor, ComponentKind) then
         ComponentKind = packable(PackableKind),
         (
@@ -1878,6 +2111,205 @@ take_local_packable_functors_constant_sectag_bits(ArgPackBits,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
+% Pass 2b.
+%
+
+    % After deciding the representation of simple and complex du types,
+    % use that to derive the representation of subtypes.
+    %
+:- pred decide_if_subtype(type_table::in,
+    assoc_list(type_ctor, hlds_type_defn)::in,
+    pair(type_ctor, hlds_type_defn)::in, pair(type_ctor, hlds_type_defn)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+decide_if_subtype(OldTypeTable, NonSubTypeCtorsTypeDefns,
+        TypeCtorTypeDefn0, TypeCtorTypeDefn, !Specs) :-
+    TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
+    get_type_defn_body(TypeDefn0, Body0),
+    (
+        Body0 = hlds_du_type(Ctors, MaybeSuperType, _MaybeCanonical,
+            MaybeRepn0, _MaybeForeign),
+        (
+            MaybeSuperType = yes(SuperType),
+            expect(unify(MaybeRepn0, no), $pred,
+                "type representation already decided for subtype"),
+            ( if
+                type_to_ctor(SuperType, SuperTypeCtor),
+                get_base_type_ctor(OldTypeTable, SuperTypeCtor, BaseTypeCtor),
+                search_du_type_repn(NonSubTypeCtorsTypeDefns,
+                    BaseTypeCtor, BaseRepn)
+            then
+                make_subtype_type_repn(TypeCtor, Ctors, BaseRepn, Repn),
+                Body = Body0 ^ du_type_repn := yes(Repn),
+                set_type_defn_body(Body, TypeDefn0, TypeDefn),
+                TypeCtorTypeDefn = TypeCtor - TypeDefn
+            else
+                unexpected($pred, "missing base type representation")
+            )
+        ;
+            MaybeSuperType = no,
+            unexpected($pred, "not subtype")
+        )
+    ;
+        Body0 = hlds_abstract_type(AbstractDetails),
+        (
+            AbstractDetails = abstract_subtype(_),
+            TypeCtorTypeDefn = TypeCtorTypeDefn0
+        ;
+            ( AbstractDetails = abstract_type_fits_in_n_bits(_)
+            ; AbstractDetails = abstract_dummy_type
+            ; AbstractDetails = abstract_notag_type
+            ; AbstractDetails = abstract_type_general
+            ; AbstractDetails = abstract_solver_type
+            ),
+            unexpected($pred, "not subtype")
+        )
+    ;
+        ( Body0 = hlds_foreign_type(_)
+        ; Body0 = hlds_eqv_type(_)
+        ; Body0 = hlds_solver_type(_)
+        ),
+        unexpected($pred, "not subtype")
+    ).
+
+:- pred search_du_type_repn(assoc_list(type_ctor, hlds_type_defn)::in,
+    type_ctor::in, du_type_repn::out) is semidet.
+
+search_du_type_repn(TypeDefns, TypeCtor, DuTypeRepn) :-
+    assoc_list.search(TypeDefns, TypeCtor, TypeRepn),
+    get_type_defn_body(TypeRepn, TypeBody),
+    TypeBody ^ du_type_repn = yes(DuTypeRepn).
+
+:- pred make_subtype_type_repn(type_ctor::in, one_or_more(constructor)::in,
+    du_type_repn::in, du_type_repn::out) is det.
+
+make_subtype_type_repn(TypeCtor, OoMCtors, BaseRepn, Repn) :-
+    BaseRepn = du_type_repn(BaseCtorRepns, _BaseCtorRepnMap,
+        _BaseCheaperTagTest, BaseDuTypeKind, MaybeBaseDirectArgFunctors),
+
+    Ctors = one_or_more_to_list(OoMCtors),
+    list.map_foldl(make_subtype_ctor_repn(BaseCtorRepns),
+        Ctors, CtorRepns, map.init, CtorRepnMap),
+
+    compute_cheaper_tag_test(TypeCtor, CtorRepns, CheaperTagTest),
+
+    (
+        BaseDuTypeKind = du_type_kind_mercury_enum,
+        % The subtype must be an enum even if it has only one constructor as
+        % the term may be upcast. This breaks an assumption for non-subtypes.
+        DuTypeKind = du_type_kind_mercury_enum
+    ;
+        BaseDuTypeKind = du_type_kind_foreign_enum(_),
+        unexpected($pred, "du_type_kind_foreign_enum")
+    ;
+        BaseDuTypeKind = du_type_kind_direct_dummy,
+        DuTypeKind = du_type_kind_direct_dummy
+    ;
+        BaseDuTypeKind = du_type_kind_notag(SingleFunctorName, _BaseArgType,
+            _MaybeBaseArgName),
+        ( if
+            CtorRepns = [SingleCtorRepn],
+            SingleCtorRepn = ctor_repn(_Ordinal, _MaybeExist,
+                SingleFunctorName, _ConsTag, [SingleArgRepn], 1, _Context)
+        then
+            SingleArgRepn = ctor_arg_repn(MaybeSingleArgFieldName,
+                SingleArgType, _SingleArgPosWidth, _SingleArgContext),
+            (
+                MaybeSingleArgFieldName = no,
+                MaybeSingleArgName = no
+            ;
+                MaybeSingleArgFieldName =
+                    yes(ctor_field_name(SingleArgSymName, _FieldContext)),
+                MaybeSingleArgName = yes(unqualify_name(SingleArgSymName))
+            ),
+            DuTypeKind = du_type_kind_notag(SingleFunctorName, SingleArgType,
+                MaybeSingleArgName)
+        else
+            unexpected($pred, "wrong ctor for notag subtype")
+        )
+    ;
+        BaseDuTypeKind = du_type_kind_general,
+        DuTypeKind = du_type_kind_general
+    ),
+
+    (
+        MaybeBaseDirectArgFunctors = no,
+        MaybeDirectArgFunctors = no
+    ;
+        MaybeBaseDirectArgFunctors = yes(BaseDirectArgFunctors),
+        list.filter(has_matching_constructor(Ctors),
+            BaseDirectArgFunctors, DirectArgFunctors),
+        MaybeDirectArgFunctors = yes(DirectArgFunctors)
+    ),
+
+    Repn = du_type_repn(CtorRepns, CtorRepnMap, CheaperTagTest, DuTypeKind,
+        MaybeDirectArgFunctors).
+
+:- pred make_subtype_ctor_repn(list(constructor_repn)::in,
+    constructor::in, constructor_repn::out,
+    ctor_name_to_repn_map::in, ctor_name_to_repn_map::out) is det.
+
+make_subtype_ctor_repn(BaseCtorRepns, Ctor, CtorRepn, !CtorRepnMap) :-
+    Ctor = ctor(Ordinal, MaybeExistConstraints, CtorName, CtorArgs, CtorArity,
+        Context),
+    UnqualCtorName = unqualify_name(CtorName),
+    ( if
+        search_ctor_repn_by_unqual_name(BaseCtorRepns, UnqualCtorName,
+            CtorArity, BaseCtorRepn)
+    then
+        BaseCtorRepn = ctor_repn(_BaseOrdinal, _BaseMaybeExistConstraints,
+            _BaseCtorName, BaseCtorTag, BaseCtorArgRepns, _BaseCtorArity,
+            _BaseContext),
+        CtorTag = BaseCtorTag,
+        list.map_corresponding(make_subtype_constructor_arg_repn,
+            CtorArgs, BaseCtorArgRepns, CtorArgRepns),
+        CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorName,
+            CtorTag, CtorArgRepns, CtorArity, Context),
+        insert_ctor_repn_into_map(CtorRepn, !CtorRepnMap)
+    else
+        unexpected($pred, "missing base ctor type repn")
+    ).
+
+:- pred search_ctor_repn_by_unqual_name(list(constructor_repn)::in,
+    string::in, int::in, constructor_repn::out) is semidet.
+
+search_ctor_repn_by_unqual_name([CtorRepn | CtorRepns], UnqualName, Arity,
+        MatchingCtorRepn) :-
+    ( if
+        unqualify_name(CtorRepn ^ cr_name) = UnqualName,
+        CtorRepn ^ cr_num_args = Arity
+    then
+        MatchingCtorRepn = CtorRepn
+    else
+        search_ctor_repn_by_unqual_name(CtorRepns, UnqualName, Arity,
+            MatchingCtorRepn)
+    ).
+
+:- pred make_subtype_constructor_arg_repn(constructor_arg::in,
+    constructor_arg_repn::in, constructor_arg_repn::out) is det.
+
+make_subtype_constructor_arg_repn(CtorArg, BaseCtorArgRepn, CtorArgRepn) :-
+    CtorArg = ctor_arg(MaybeFieldName, ArgType, Context),
+    BaseCtorArgRepn = ctor_arg_repn(_MaybeBaseFieldName, _BaseArgType,
+        ArgPosWidth, _BaseContext),
+    CtorArgRepn = ctor_arg_repn(MaybeFieldName, ArgType, ArgPosWidth, Context).
+
+:- pred has_matching_constructor(list(constructor)::in, sym_name_arity::in)
+    is semidet.
+
+has_matching_constructor(Ctors, SymNameArity) :-
+    list.any_true(is_matching_constructor(SymNameArity), Ctors).
+
+:- pred is_matching_constructor(sym_name_arity::in, constructor::in)
+    is semidet.
+
+is_matching_constructor(SymNameArity, Ctor) :-
+    SymNameArity = sym_name_arity(SymName, Arity),
+    Ctor = ctor(_Ordinal, _MaybeExist, SymName, _Args, Arity, _Context).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
 % Utility predicates.
 % XXX TYPE_REPN Rationalise the order of the predicates from here onwards.
 %
@@ -1932,7 +2364,6 @@ is_direct_arg_ctor(ComponentTypeMap, TypeCtorModule, TypeStatus,
             % (mercury_deep_copy_body.h), and maybe during some other
             % operations.
 
-            % XXX SUBTYPE Type representation of subtype depends on base type.
             get_type_defn_body(ArgTypeDefn, ArgTypeDefnBody),
             ArgTypeDefnBody = hlds_du_type(_ArgCtors, _ArgMaybeSuperType,
                 _ArgMaybeUserEqComp, _ArgMaybeRepn, ArgMaybeForeign),

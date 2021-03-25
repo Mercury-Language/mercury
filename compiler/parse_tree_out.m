@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1292,6 +1292,7 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
             ; DetailsAbstract = abstract_dummy_type
             ; DetailsAbstract = abstract_notag_type
             ; DetailsAbstract = abstract_type_fits_in_n_bits(_)
+            ; DetailsAbstract = abstract_subtype(_)
             ),
             IsSolverType = non_solver_type
         ;
@@ -1314,6 +1315,9 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
             % XXX TYPE_REPN The same concern applies here, but these
             % kinds of abstract types are not yet generated anywhere,
             % so we don't have anything to do for them.
+        ;
+            DetailsAbstract = abstract_subtype(SuperTypeCtor),
+            mercury_output_where_abstract_subtype(Stream, SuperTypeCtor, !IO)
         ;
             ( DetailsAbstract = abstract_type_general
             ; DetailsAbstract = abstract_solver_type
@@ -1558,6 +1562,18 @@ mercury_output_where_abstract_enum_type(Stream, NumBits, !IO) :-
     % XXX TYPE_REPN
     % io.write_string(Stream, "type_is_representable_in_n_bits(", !IO),
     io.write_int(Stream, NumBits, !IO),
+    io.write_string(Stream, ")", !IO).
+
+:- pred mercury_output_where_abstract_subtype(io.text_output_stream::in,
+    type_ctor::in, io::di, io::uo) is det.
+
+mercury_output_where_abstract_subtype(Stream, TypeCtor, !IO) :-
+    io.write_string(Stream, "\n\twhere\t", !IO),
+    io.write_string(Stream, "type_is_abstract_subtype(", !IO),
+    TypeCtor = type_ctor(SymName, Arity),
+    mercury_output_sym_name(SymName, Stream, !IO),
+    io.write_string(Stream, "/", !IO),
+    io.write_int(Stream, Arity, !IO),
     io.write_string(Stream, ")", !IO).
 
 %---------------------%

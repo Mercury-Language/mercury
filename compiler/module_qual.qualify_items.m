@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -560,6 +560,14 @@ module_qualify_item_type_repn(ModuleName, InInt,
         ErrorContext = mqec_type_repn(Context, TypeCtor),
         qualify_type(InInt, ErrorContext, EqvType0, EqvType, !Info, !Specs),
         RepInfo = tcrepn_is_eqv_to(EqvType)
+    ;
+        RepInfo0 = tcrepn_is_subtype_of(SuperTypeCtor0),
+        list.length(ArgTVars, TypeCtorArity),
+        TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+        ErrorContext = mqec_type_repn(Context, TypeCtor),
+        qualify_type_ctor(InInt, ErrorContext, SuperTypeCtor0, SuperTypeCtor,
+            !Info, !Specs),
+        RepInfo = tcrepn_is_subtype_of(SuperTypeCtor)
     ),
     ItemTypeRepnInfo = item_type_repn_info(TypeCtorSymName, ArgTVars,
         RepInfo, TVarSet, Context, SeqNum).

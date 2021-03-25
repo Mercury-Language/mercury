@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2002-2005, 2007 The University of Melbourne.
-// Copyright (C) 2014, 2016-2018 The Mercury team.
+// Copyright (C) 2014, 2016-2018, 2021 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_construct.c
@@ -18,8 +18,42 @@
 #include "mercury_univ.h"
 #include "mercury_misc.h"   // for MR_fatal_error()
 
-static  int  MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
-                MR_Construct_Info *construct_info);
+// MR_get_enum_functor_ordinal:
+//
+// Return the functor ordinal number for an enum functor.
+//
+// If you update this you will need to update index_or_search_enum_functor in
+// mercury_ml_expand_body.h.
+
+static MR_Integer
+MR_get_enum_functor_ordinal(MR_TypeCtorInfo type_ctor_info,
+    const MR_EnumFunctorDesc *functor_desc)
+{
+    MR_Integer  value;
+
+    value = functor_desc->MR_enum_functor_value;
+
+    // XXX SUBTYPE Remove version check after some time.
+    if ((type_ctor_info->MR_type_ctor_version < MR_RTTI_VERSION__SUBTYPES)
+          || MR_type_ctor_is_layout_indexable(type_ctor_info))
+    {
+        return value;
+    } else {
+        MR_EnumTypeLayout   enum_layout;
+        int                 num_functors;
+        int                 i;
+
+        enum_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_enum;
+        num_functors = MR_type_ctor_num_functors(type_ctor_info);
+        for (i = 0; i < num_functors; i++) {
+            if (enum_layout[i]->MR_enum_functor_value == value) {
+                return i;
+            }
+        }
+
+        MR_fatal_error("MR_get_enum_functor_ordinal: unknown value");
+    }
+}
 
 // MR_get_functor_info:
 //
@@ -32,7 +66,7 @@ static  int  MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
 
 static int
 MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
-    MR_Construct_Info *construct_info)
+    MR_bool compute_ordinal, MR_Construct_Info *construct_info)
 {
     MR_TypeCtorInfo     type_ctor_info;
 
@@ -61,6 +95,8 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
                 MR_functors_du[functor_number];
             construct_info->functor_info.du_functor_desc = functor_desc;
             construct_info->functor_name = functor_desc->MR_du_functor_name;
+            construct_info->functor_ordinal =
+                functor_desc->MR_du_functor_ordinal;
             construct_info->arity = functor_desc->MR_du_functor_orig_arity;
             construct_info->arg_pseudo_type_infos =
                 functor_desc->MR_du_functor_arg_types;
@@ -86,6 +122,10 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
                 MR_functors_enum[functor_number];
             construct_info->functor_info.enum_functor_desc = functor_desc;
             construct_info->functor_name = functor_desc->MR_enum_functor_name;
+            construct_info->functor_ordinal =
+                (compute_ordinal)
+                    ? MR_get_enum_functor_ordinal(type_ctor_info, functor_desc)
+                    : -1;
             construct_info->arity = 0;
             construct_info->arg_pseudo_type_infos = NULL;
             construct_info->arg_names = NULL;
@@ -109,6 +149,8 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
                 = functor_desc;
             construct_info->functor_name =
                 functor_desc->MR_foreign_enum_functor_name;
+            construct_info->functor_ordinal =
+                functor_desc->MR_foreign_enum_functor_ordinal;
             construct_info->arity = 0;
             construct_info->arg_pseudo_type_infos = NULL;
             construct_info->arg_names = NULL;
@@ -131,6 +173,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
                 MR_functors_notag;
             construct_info->functor_info.notag_functor_desc = functor_desc;
             construct_info->functor_name = functor_desc->MR_notag_functor_name;
+            construct_info->functor_ordinal = 0;
             construct_info->arity = 1;
             construct_info->arg_pseudo_type_infos =
                 &functor_desc->MR_notag_functor_arg_type;
@@ -145,10 +188,11 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
             MR_create_type_info(
                 MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                 MR_type_ctor_layout(type_ctor_info).MR_layout_equiv),
-            functor_number, construct_info);
+            functor_number, compute_ordinal, construct_info);
 
     case MR_TYPECTOR_REP_TUPLE:
         construct_info->functor_name = "{}";
+        construct_info->functor_ordinal = 0;
         construct_info->arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
 
         // Tuple types don't have pseudo-type_infos for the functors.
@@ -271,12 +315,13 @@ MR_typecheck_arguments(MR_TypeInfo type_info, int arity, MR_Word arg_list,
 
 MR_bool
 MR_get_functors_check_range(int functor_number, MR_TypeInfo type_info,
-    MR_Construct_Info *construct_info)
+    MR_bool compute_ordinal, MR_Construct_Info *construct_info)
 {
     // Check range of functor_number, get functors vector.
     return functor_number < MR_get_num_functors(type_info) &&
         functor_number >= 0 &&
-        MR_get_functor_info(type_info, functor_number, construct_info);
+        MR_get_functor_info(type_info, functor_number, compute_ordinal,
+            construct_info);
 }
 
 // MR_get_num_functors:

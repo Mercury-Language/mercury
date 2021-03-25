@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
 % Copyright (C) 2008-2011 The University of Melbourne.
+% Copyright (C) 2016-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -798,8 +799,9 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     % This can be
     %
     % - an abstract enumeration type,
-    % - an abstract dummy type,
-    % - an abstract notag type, or
+    % - an abstract dummy type (NYI),
+    % - an abstract notag type (NYI),
+    % - an abstract subtype, or
     % - a solver type.
     %
 :- pred parse_where_block_type_defn(module_name::in, varset::in, term::in,
@@ -865,6 +867,30 @@ parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
             else
                 Pieces = [words("Error: the argument of"), quote(AttrName),
                     words("is not a positive integer."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, Context, Pieces),
+                MaybeTypeDefn = error1([Spec])
+            )
+        else
+            Pieces = [words("Error:"), quote(AttrName),
+                words("should have exactly one argument."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
+            MaybeTypeDefn = error1([Spec])
+        )
+    else if
+        BodyTerm = term.functor(term.atom(AttrName), Args, _),
+        AttrName = "type_is_abstract_subtype"
+    then
+        ( if Args = [Arg] then
+            ( if parse_unqualified_name_and_arity(Arg, SymName, Arity) then
+                TypeCtor = type_ctor(SymName, Arity),
+                TypeDefn0 = parse_tree_abstract_type(
+                    abstract_subtype(TypeCtor)),
+                MaybeTypeDefn = ok1(TypeDefn0)
+            else
+                Pieces = [words("Error: the argument of"), quote(AttrName),
+                    words("is not a symbol name and arity."), nl],
                 Spec = simplest_spec($pred, severity_error,
                     phase_term_to_parse_tree, Context, Pieces),
                 MaybeTypeDefn = error1([Spec])

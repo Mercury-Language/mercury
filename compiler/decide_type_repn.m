@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019 The University of Melbourne.
+% Copyright (C) 2019-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -42,27 +42,33 @@
 %
 % .int3 now:
 %   input:  type_defns in source module
-%   output: type_repns for simple types in interface and all? eqv types
+%   output: type_repns for simple types in interface, subtypes in interface,
+%           and all? eqv types
 %
 % .int2 now:
 %   input:  type_defns in source module
-%   output: type_repns for simple types in interface and all? eqv types
+%   output: type_repns for simple types in interface, subtypes in interface,
+%           and all? eqv types
 %
 % .int2 later:
 %   input:  type_defns in source module
-%           type_repns for simple/eqv types in direct/indirect imported .int3s
-%   output: type_repns for simple types in interface and all? eqv types
+%           type_repns for simple/eqv/subtypes types in direct/indirect
+%           imported .int3s
+%   output: type_repns for simple types in interface, subtypes in interface,
+%           and all? eqv types
 %
 % .int1 later:
 %   input:  type_defns in source module
-%           type_repns for simple/eqv types in direct/indirect imported .int3s 
+%           type_repns for simple/eqv/subtypes types in direct/indirect
+%           imported .int3s
 %   output: type_repns for all types that appear in interface
 %           (possibly for all types, in the interface or not, since
 %           .opt files may expose private types)
 %
 % .int0 later:
 %   input:  type_defns in source module
-%           type_repns for simple/eqv types in direct/indirect imported .int3s
+%           type_repns for simple/eqv/subtypes types in direct/indirect
+%           imported .int3s
 %   output: type_repns for all types
 %
 %---------------------------------------------------------------------------%
@@ -186,16 +192,21 @@
 decide_repns_for_simple_types_for_int3(_ModuleName, TypeCtorCheckedMap,
         !:Int3RepnMap) :-
     map.init(EqvRepnMap0),
+    map.init(SubtypeMap0),
     map.init(SimpleDuMap0),
     WordAlignedTypeCtorsC0 = set_tree234.init,
     ExportedTypes0 = set_tree234.init,
-    map.foldl4(decide_simple_type_repns_stage_1, TypeCtorCheckedMap,
-        EqvRepnMap0, EqvRepnMap, SimpleDuMap0, SimpleDuMap,
+    map.foldl5(decide_simple_type_repns_stage_1, TypeCtorCheckedMap,
+        EqvRepnMap0, EqvRepnMap,
+        SubtypeMap0, SubtypeMap,
+        SimpleDuMap0, SimpleDuMap,
         WordAlignedTypeCtorsC0, WordAlignedTypeCtorsC,
         ExportedTypes0, ExportedTypes),
 
     map.init(!:Int3RepnMap),
     map.foldl(add_eqv_repn_item, EqvRepnMap, !Int3RepnMap),
+    map.foldl(maybe_add_subtype_repn_item(ExportedTypes),
+        SubtypeMap, !Int3RepnMap),
     map.foldl(maybe_add_simple_du_repn_item(ExportedTypes),
         SimpleDuMap, !Int3RepnMap),
     set_tree234.foldl(maybe_add_word_aligned_repn_item(ExportedTypes),
@@ -204,6 +215,8 @@ decide_repns_for_simple_types_for_int3(_ModuleName, TypeCtorCheckedMap,
 %---------------------------------------------------------------------------%
 
 :- type eqv_repn_map == map(type_ctor, item_type_repn_info_eqv).
+
+:- type subtype_repn_map == map(type_ctor, item_type_repn_info_subtype).
 
 :- type simple_du_map == map(type_ctor, simple_du_repn).
 
@@ -222,12 +235,15 @@ decide_repns_for_simple_types_for_int3(_ModuleName, TypeCtorCheckedMap,
 
 :- pred decide_simple_type_repns_stage_1(
     type_ctor::in, type_ctor_checked_defn::in,
-    eqv_repn_map::in, eqv_repn_map::out, simple_du_map::in, simple_du_map::out,
+    eqv_repn_map::in, eqv_repn_map::out,
+    subtype_repn_map::in, subtype_repn_map::out,
+    simple_du_map::in, simple_du_map::out,
     word_aligned_type_ctors_c::in, word_aligned_type_ctors_c::out,
     set_tree234(type_ctor)::in, set_tree234(type_ctor)::out) is det.
 
 decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
-        !EqvRepnMap, !SimpleDuMap, !WordAlignedTypeCtorsC, !ExportedTypes) :-
+        !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC,
+        !ExportedTypes) :-
     % The structure of this logic must match the structure of the logic
     % in decide_all_type_repns_stage_2.
     (
@@ -253,6 +269,32 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
                 EqvType, TVarSet, term.dummy_context_init, -1),
             map.det_insert(TypeCtor, EqvRepnItem, !EqvRepnMap)
         ;
+            StdDefn = std_mer_type_du_subtype(DuStatus, DuDefn),
+            (
+                ( DuStatus = std_du_type_mer_exported
+                ; DuStatus = std_du_type_abstract_exported
+                ),
+                set_tree234.insert(TypeCtor, !ExportedTypes)
+            ;
+                DuStatus = std_du_type_mer_ft_exported,
+                unexpected($pred, "subtype with foreign type")
+            ;
+                DuStatus = std_du_type_all_private
+            ),
+            DuDefn = item_type_defn_info(TypeCtorSymName, TypeParams,
+                DetailsDu, TVarSet, _Context, _SeqNum),
+            DetailsDu = type_details_du(MaybeSuperType, _, _, _),
+            (
+                MaybeSuperType = yes(SuperType),
+                type_to_ctor_det(SuperType, SuperTypeCtor)
+            ;
+                MaybeSuperType = no,
+                unexpected($pred, "no supertype")
+            ),
+            SubtypeRepnItem = item_type_repn_info(TypeCtorSymName, TypeParams,
+                SuperTypeCtor, TVarSet, term.dummy_context_init, -1),
+            map.det_insert(TypeCtor, SubtypeRepnItem, !SubtypeMap)
+        ;
             StdDefn = std_mer_type_du_all_plain_constants(DuStatus, DuDefn,
                 HeadName, TailNames, MaybeDefnOrEnumCJCsE),
             (
@@ -264,6 +306,7 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
             ;
                 DuStatus = std_du_type_all_private
             ),
+            expect_not(du_defn_is_subtype(DuDefn), $pred, "type is subtype"),
             decide_type_repns_stage_1_du_all_plain_constants(TypeCtor, DuDefn,
                 HeadName, TailNames, MaybeDefnOrEnumCJCsE, !SimpleDuMap)
         ;
@@ -278,6 +321,7 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
             ;
                 DuStatus = std_du_type_all_private
             ),
+            expect_not(du_defn_is_subtype(DuDefn), $pred, "type is subtype"),
             decide_type_repns_stage_1_du_not_all_plain_constants(TypeCtor,
                 DuDefn, MaybeDefnCJCsE, !SimpleDuMap, !WordAlignedTypeCtorsC)
         ;
@@ -318,6 +362,13 @@ maybe_mark_type_ctor_as_word_aligned_for_c(TypeCtor, MaybeDefnCJCsE,
 
 %---------------------%
 
+:- pred du_defn_is_subtype(item_type_defn_info_du::in) is semidet.
+
+du_defn_is_subtype(DuDefn) :-
+    DuDefn = item_type_defn_info(_, _, DetailsDu, _, _, _),
+    DetailsDu = type_details_du(MaybeSuperType, _, _, _),
+    MaybeSuperType = yes(_).
+
 :- pred decide_type_repns_stage_1_du_all_plain_constants(type_ctor::in,
     item_type_defn_info_du::in, string::in, list(string)::in,
     c_j_cs_maybe_defn_or_enum::in,
@@ -327,21 +378,29 @@ decide_type_repns_stage_1_du_all_plain_constants(TypeCtor, DuDefn,
         HeadName, TailNames, MaybeDefnOrEnumCJCsE, !SimpleDuMap) :-
     decide_type_repns_foreign_defns_or_enums(MaybeDefnOrEnumCJCsE,
         EnumForeignRepns),
-    DuDefn = item_type_defn_info(_TypeCtorSymName, TypeParams, _DetailsDu,
+    DuDefn = item_type_defn_info(_TypeCtorSymName, TypeParams, DetailsDu,
         TVarSet, _Context, _SeqNum),
+    DetailsDu = type_details_du(MaybeSuperType, _, _, _),
     (
-        TailNames = [],
-        % The type has exactly one data constructor.
-        DirectDummyRepn = direct_dummy_repn(HeadName, EnumForeignRepns),
-        SimpleDuRepn = sdr_direct_dummy(TypeParams, TVarSet, DirectDummyRepn)
+        MaybeSuperType = no,
+        (
+            TailNames = [],
+            % The type has exactly one data constructor.
+            DirectDummyRepn = direct_dummy_repn(HeadName, EnumForeignRepns),
+            SimpleDuRepn = sdr_direct_dummy(TypeParams, TVarSet, DirectDummyRepn)
+        ;
+            TailNames = [HeadTailName | TailTailNames],
+            % The type has at least two data constructors.
+            EnumRepn = enum_repn(HeadName, HeadTailName, TailTailNames,
+                EnumForeignRepns),
+            SimpleDuRepn = sdr_enum(TypeParams, TVarSet, EnumRepn)
+        ),
+        map.det_insert(TypeCtor, SimpleDuRepn, !SimpleDuMap)
     ;
-        TailNames = [HeadTailName | TailTailNames],
-        % The type has at least two data constructors.
-        EnumRepn = enum_repn(HeadName, HeadTailName, TailTailNames,
-            EnumForeignRepns),
-        SimpleDuRepn = sdr_enum(TypeParams, TVarSet, EnumRepn)
-    ),
-    map.det_insert(TypeCtor, SimpleDuRepn, !SimpleDuMap).
+        MaybeSuperType = yes(_)
+        % We cannot decide the representation of a subtype independently
+        % of its base type, which may not even be in the same module.
+    ).
 
 :- pred decide_type_repns_stage_1_du_not_all_plain_constants(type_ctor::in,
     item_type_defn_info_du::in, c_j_cs_maybe_defn::in,
@@ -353,48 +412,54 @@ decide_type_repns_stage_1_du_not_all_plain_constants(TypeCtor, DuDefn,
     decide_type_repns_foreign_defns(MaybeDefnCJCsE, ForeignTypeRepns),
     DuDefn = item_type_defn_info(_TypeCtorSymName, TypeParams, DetailsDu,
         TVarSet, _Context, _SeqNum),
-    % XXX SUBTYPE Type representation of subtype depends on base type.
-    DetailsDu = type_details_du(_MaybeSuperType, OoMCtors, MaybeCanonical,
+    DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeCanonical,
         _MaybeDirectArgs),
-    OoMCtors = one_or_more(HeadCtor, TailCtors),
     (
-        TailCtors = [],
-        % The type has exactly one data constructor.
-        SingleCtor = HeadCtor,
-        SingleCtor = ctor(_Ordinal, MaybeExistConstraints,
-            SingleCtorSymName, Args, Arity, _SingleCtorContext),
-        ( if
-            one_constructor_non_constant_is_notag(MaybeExistConstraints,
-                Args, Arity, MaybeCanonical, OneArg)
-        then
-            SingleCtorName = unqualify_name(SingleCtorSymName),
-            OneArgType = OneArg ^ arg_type,
-            NotagRepn =
-                notag_repn(SingleCtorName, OneArgType, ForeignTypeRepns),
-            SimpleDuRepn = sdr_notag(TypeParams, TVarSet, NotagRepn),
-            map.det_insert(TypeCtor, SimpleDuRepn, !SimpleDuMap)
-        else
-            % NOTE We currently do not apply the direct arg optimization
-            % to polymorphic argument types.
-            % We could let the argument's type to have a set of type params
-            % that is a subset of the type params of the containing type,
-            % but that would require the runtime system to be able
-            % to handle variables in the argument type, during unification
-            % and comparison (mercury_unify_compare_body.h),
-            % during deconstruction (mercury_ml_expand_body.h),
-            % during deep copying (mercury_deep_copy_body.h), and maybe
-            % during some other operations.
-            TypeCtor = type_ctor(_, TypeCtorArity),
-            ( if TypeCtorArity = 0 then
-                set_tree234.insert(TypeCtor, !WordAlignedTypeCtorsC)
+        MaybeSuperType = no,
+        OoMCtors = one_or_more(HeadCtor, TailCtors),
+        (
+            TailCtors = [],
+            % The type has exactly one data constructor.
+            SingleCtor = HeadCtor,
+            SingleCtor = ctor(_Ordinal, MaybeExistConstraints,
+                SingleCtorSymName, Args, Arity, _SingleCtorContext),
+            ( if
+                one_constructor_non_constant_is_notag(MaybeExistConstraints,
+                    Args, Arity, MaybeCanonical, OneArg)
+            then
+                SingleCtorName = unqualify_name(SingleCtorSymName),
+                OneArgType = OneArg ^ arg_type,
+                NotagRepn =
+                    notag_repn(SingleCtorName, OneArgType, ForeignTypeRepns),
+                SimpleDuRepn = sdr_notag(TypeParams, TVarSet, NotagRepn),
+                map.det_insert(TypeCtor, SimpleDuRepn, !SimpleDuMap)
             else
-                true
+                % NOTE We currently do not apply the direct arg optimization
+                % to polymorphic argument types.
+                % We could let the argument's type to have a set of type params
+                % that is a subset of the type params of the containing type,
+                % but that would require the runtime system to be able
+                % to handle variables in the argument type, during unification
+                % and comparison (mercury_unify_compare_body.h),
+                % during deconstruction (mercury_ml_expand_body.h),
+                % during deep copying (mercury_deep_copy_body.h), and maybe
+                % during some other operations.
+                TypeCtor = type_ctor(_, TypeCtorArity),
+                ( if TypeCtorArity = 0 then
+                    set_tree234.insert(TypeCtor, !WordAlignedTypeCtorsC)
+                else
+                    true
+                )
             )
+        ;
+            TailCtors = [_ | _]
+            % The type has two or more data constructors.
+            % This means that it need not be word aligned.
         )
     ;
-        TailCtors = [_ | _]
-        % The type has exactly two or more data constructors.
-        % This means that it need not be word aligned.
+        MaybeSuperType = yes(_)
+        % We cannot decide the representation of a subtype independently
+        % of its base type, which may not even be in the same module.
     ).
 
 %---------------------------------------------------------------------------%
@@ -498,6 +563,33 @@ add_eqv_repn_item(TypeCtor, EqvRepnItem, !RepnMap) :-
         tcrepn_is_eqv_to(EqvType), TVarSet, term.dummy_context_init, -1),
     map.det_insert(TypeCtor, RepnItem, !RepnMap).
 
+%------------------%
+
+:- pred maybe_add_subtype_repn_item(set_tree234(type_ctor)::in,
+    type_ctor::in, item_type_repn_info_subtype::in,
+    type_ctor_repn_map::in, type_ctor_repn_map::out) is det.
+
+maybe_add_subtype_repn_item(ExportedTypes, TypeCtor, SubtypeRepnItem,
+        !RepnMap) :-
+    ( if set_tree234.member(TypeCtor, ExportedTypes) then
+        add_subtype_repn_item(TypeCtor, SubtypeRepnItem, !RepnMap)
+    else
+        true
+    ).
+
+:- pred add_subtype_repn_item(type_ctor::in, item_type_repn_info_subtype::in,
+    type_ctor_repn_map::in, type_ctor_repn_map::out) is det.
+
+add_subtype_repn_item(TypeCtor, SubtypeRepnItem, !RepnMap) :-
+    SubtypeRepnItem = item_type_repn_info(TypeCtorSymName, TypeParams,
+        SuperTypeCtor, TVarSet, _Context, _SeqNum),
+    RepnItem = item_type_repn_info(TypeCtorSymName, TypeParams,
+        tcrepn_is_subtype_of(SuperTypeCtor), TVarSet,
+        term.dummy_context_init, -1),
+    map.det_insert(TypeCtor, RepnItem, !RepnMap).
+
+%------------------%
+
 :- pred maybe_add_simple_du_repn_item(set_tree234(type_ctor)::in,
     type_ctor::in, simple_du_repn::in,
     type_ctor_repn_map::in, type_ctor_repn_map::out) is det.
@@ -530,6 +622,8 @@ add_simple_du_repn_item(TypeCtor, SimpleDuRepn, !RepnMap) :-
         tcrepn_du(DuRepn), TVarSet, term.context_init, -1),
     map.det_insert(TypeCtor, Item, !RepnMap).
 
+%------------------%
+
 :- pred maybe_add_word_aligned_repn_item(set_tree234(type_ctor)::in,
     type_ctor::in, type_ctor_repn_map::in, type_ctor_repn_map::out) is det.
 
@@ -553,14 +647,19 @@ maybe_add_word_aligned_repn_item(ExportedTypes, TypeCtor, !RepnMap) :-
 
 decide_repns_for_all_types_for_int1(Globals, _ModuleName, TypeCtorCheckedMap,
         DirectSpecMap, IndirectSpecMap, !:Int1RepnMap, Specs) :-
-    map.foldl3_values(record_type_repns_in_direct_int_spec,
-        DirectSpecMap, map.init, EqvRepnMap0, map.init, SimpleDuMap0,
-        set_tree234.init, WordAlignedTypeCtorsC0),
-    map.foldl3_values(record_type_repns_in_indirect_int_spec,
-        IndirectSpecMap, EqvRepnMap0, EqvRepnMap1, SimpleDuMap0, SimpleDuMap1,
+    map.foldl4_values(record_type_repns_in_direct_int_spec,
+        DirectSpecMap, map.init, EqvRepnMap0, map.init, SubtypeMap0,
+        map.init, SimpleDuMap0, set_tree234.init, WordAlignedTypeCtorsC0),
+    map.foldl4_values(record_type_repns_in_indirect_int_spec,
+        IndirectSpecMap,
+        EqvRepnMap0, EqvRepnMap1,
+        SubtypeMap0, SubtypeMap1,
+        SimpleDuMap0, SimpleDuMap1,
         WordAlignedTypeCtorsC0, WordAlignedTypeCtorsC1),
-    map.foldl4(decide_simple_type_repns_stage_1, TypeCtorCheckedMap,
-        EqvRepnMap1, EqvRepnMap, SimpleDuMap1, SimpleDuMap,
+    map.foldl5(decide_simple_type_repns_stage_1, TypeCtorCheckedMap,
+        EqvRepnMap1, EqvRepnMap,
+        SubtypeMap1, SubtypeMap,
+        SimpleDuMap1, SimpleDuMap,
         WordAlignedTypeCtorsC1, WordAlignedTypeCtorsC,
         set_tree234.init, _ExportedTypes),
 
@@ -570,7 +669,7 @@ decide_repns_for_all_types_for_int1(Globals, _ModuleName, TypeCtorCheckedMap,
         EqvRepnMap, EqvMap),
     map.foldl2(
         decide_all_type_repns_stage_2(BaseParams, EqvRepnMap, EqvMap,
-            WordAlignedTypeCtorsC, SimpleDuMap),
+            SubtypeMap, WordAlignedTypeCtorsC, SimpleDuMap),
         TypeCtorCheckedMap, !Int1RepnMap, [], Specs).
 
 :- pred item_type_repn_info_eqv_to_eqv_type_body(item_type_repn_info_eqv::in,
@@ -584,53 +683,61 @@ item_type_repn_info_eqv_to_eqv_type_body(ItemTypeRepnInfoEqv, EqvBody) :-
 %---------------------------------------------------------------------------%
 
 :- pred record_type_repns_in_direct_int_spec(direct_int_spec::in,
-    eqv_repn_map::in, eqv_repn_map::out, simple_du_map::in, simple_du_map::out,
+    eqv_repn_map::in, eqv_repn_map::out,
+    subtype_repn_map::in, subtype_repn_map::out,
+    simple_du_map::in, simple_du_map::out,
     word_aligned_type_ctors_c::in, word_aligned_type_ctors_c::out) is det.
 
 record_type_repns_in_direct_int_spec(DirectIntSpec,
-        !SimpleDuMap, !EqvRepnMap, !WordAlignedTypeCtorsC) :-
+        !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC) :-
     (
         DirectIntSpec = direct_int1(_, _),
         unexpected($pred, "direct_int1")
     ;
         DirectIntSpec = direct_int3(ParseTreeInt3, _ReadWhy3),
         record_type_repns_in_parse_tree_int3(ParseTreeInt3,
-            !SimpleDuMap, !EqvRepnMap, !WordAlignedTypeCtorsC)
+            !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC)
     ).
 
 :- pred record_type_repns_in_indirect_int_spec(indirect_int_spec::in,
-    eqv_repn_map::in, eqv_repn_map::out, simple_du_map::in, simple_du_map::out,
+    eqv_repn_map::in, eqv_repn_map::out,
+    subtype_repn_map::in, subtype_repn_map::out,
+    simple_du_map::in, simple_du_map::out,
     word_aligned_type_ctors_c::in, word_aligned_type_ctors_c::out) is det.
 
 record_type_repns_in_indirect_int_spec(IndirectIntSpec,
-        !SimpleDuMap, !EqvRepnMap, !WordAlignedTypeCtorsC) :-
+        !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC) :-
     (
         IndirectIntSpec = indirect_int2(_, _),
         unexpected($pred, "direct_int2")
     ;
         IndirectIntSpec = indirect_int3(ParseTreeInt3, _ReadWhy3),
         record_type_repns_in_parse_tree_int3(ParseTreeInt3,
-            !SimpleDuMap, !EqvRepnMap, !WordAlignedTypeCtorsC)
+            !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC)
     ).
 
 :- pred record_type_repns_in_parse_tree_int3(parse_tree_int3::in,
-    eqv_repn_map::in, eqv_repn_map::out, simple_du_map::in, simple_du_map::out,
+    eqv_repn_map::in, eqv_repn_map::out,
+    subtype_repn_map::in, subtype_repn_map::out,
+    simple_du_map::in, simple_du_map::out,
     word_aligned_type_ctors_c::in, word_aligned_type_ctors_c::out) is det.
 
 record_type_repns_in_parse_tree_int3(ParseTreeInt3,
-        !SimpleDuMap, !EqvRepnMap, !WordAlignedTypeCtorsC) :-
+        !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC) :-
     ModuleName = ParseTreeInt3 ^ pti3_module_name,
     TypeRepns = ParseTreeInt3 ^ pti3_int_type_repns,
-    map.foldl3(record_type_repn_in_parse_tree_int3(ModuleName),
-        TypeRepns, !SimpleDuMap, !EqvRepnMap, !WordAlignedTypeCtorsC).
+    map.foldl4(record_type_repn_in_parse_tree_int3(ModuleName),
+        TypeRepns, !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC).
 
 :- pred record_type_repn_in_parse_tree_int3(module_name::in,
     type_ctor::in, item_type_repn_info::in,
-    eqv_repn_map::in, eqv_repn_map::out, simple_du_map::in, simple_du_map::out,
+    eqv_repn_map::in, eqv_repn_map::out,
+    subtype_repn_map::in, subtype_repn_map::out,
+    simple_du_map::in, simple_du_map::out,
     word_aligned_type_ctors_c::in, word_aligned_type_ctors_c::out) is det.
 
 record_type_repn_in_parse_tree_int3(ModuleName, TypeCtor0, ItemTypeRepnInfo,
-        !EqvRepnMap, !SimpleDuMap, !WordAlignedTypeCtorsC) :-
+        !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC) :-
     ItemTypeRepnInfo = item_type_repn_info(TypeCtorSymName0, TypeParams,
         RepnInfo, TVarSet, _Context, _SeqNum),
     TypeCtor0 = type_ctor(SymName0, Arity),
@@ -671,6 +778,16 @@ record_type_repn_in_parse_tree_int3(ModuleName, TypeCtor0, ItemTypeRepnInfo,
             EqvType, TVarSet, term.dummy_context_init, -1),
         map.det_insert(TypeCtor, EqvRepnItem, !EqvRepnMap)
     ;
+        RepnInfo = tcrepn_is_subtype_of(SuperType),
+        TypeCtorName = unqualify_name(TypeCtorSymName0),
+        TypeCtorSymName = qualified(ModuleName, TypeCtorName),
+        RepnTypeCtor = type_ctor(TypeCtorSymName, list.length(TypeParams)),
+        expect(unify(TypeCtor, RepnTypeCtor), $pred,
+            "TypeCtor != RepnTypeCtor"),
+        SubtypeRepnItem = item_type_repn_info(TypeCtorSymName, TypeParams,
+            SuperType, TVarSet, term.dummy_context_init, -1),
+        map.det_insert(TypeCtor, SubtypeRepnItem, !SubtypeMap)
+    ;
         RepnInfo = tcrepn_foreign(_),
         unexpected($pred, "unexpected tc_repn_foreign")
     ).
@@ -683,17 +800,18 @@ record_type_repn_in_parse_tree_int3(ModuleName, TypeCtor0, ItemTypeRepnInfo,
     % generate a type_repn item for every type defined in the module.
     %
     % - dereference all eqv types
+    % - generate type repns for subtypes
     % - convert simple du types to generic type repns
     % - decide all complex types and generate type repns
     %
 :- pred decide_all_type_repns_stage_2(base_params::in,
-    eqv_repn_map::in, type_eqv_map::in,
+    eqv_repn_map::in, type_eqv_map::in, subtype_repn_map::in,
     set_tree234(type_ctor)::in, simple_du_map::in,
     type_ctor::in, type_ctor_checked_defn::in,
     type_ctor_repn_map::in, type_ctor_repn_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_all_type_repns_stage_2(BaseParams, EqvRepnMap, EqvMap,
+decide_all_type_repns_stage_2(BaseParams, EqvRepnMap, EqvMap, SubtypeMap,
         WordAlignedTypeCtorsC, SimpleDuMap, TypeCtor, CheckedDefn,
         !Int1RepnMap, !Specs) :-
     % The structure of this logic must match the structure of the logic
@@ -712,13 +830,17 @@ decide_all_type_repns_stage_2(BaseParams, EqvRepnMap, EqvMap,
                 EqvRepnItem0, EqvRepnItem, !Specs),
             add_eqv_repn_item(TypeCtor, EqvRepnItem, !Int1RepnMap)
         ;
+            StdDefn = std_mer_type_du_subtype(_, _),
+            map.lookup(SubtypeMap, TypeCtor, SubtypeRepnItem),
+            add_subtype_repn_item(TypeCtor, SubtypeRepnItem, !Int1RepnMap)
+        ;
             StdDefn = std_mer_type_du_all_plain_constants(_, _, _, _, _),
             map.lookup(SimpleDuMap, TypeCtor, SimpleDuRepn),
             add_simple_du_repn_item(TypeCtor, SimpleDuRepn, !Int1RepnMap)
         ;
             StdDefn = std_mer_type_du_not_all_plain_constants(_DuStatus,
                 DuDefn, MaybeDefnCJCsE),
-            decide_type_repns_stage_2_du_gen(BaseParams, EqvMap,
+            decide_type_repns_stage_2_du_gen(BaseParams, EqvMap, SubtypeMap,
                 WordAlignedTypeCtorsC, SimpleDuMap, TypeCtor,
                 DuDefn, MaybeDefnCJCsE, !Int1RepnMap, !Specs)
         ;
@@ -737,12 +859,12 @@ decide_all_type_repns_stage_2(BaseParams, EqvRepnMap, EqvMap,
 %---------------------------------------------------------------------------%
 
 :- pred decide_type_repns_stage_2_du_gen(base_params::in, type_eqv_map::in,
-    set_tree234(type_ctor)::in, simple_du_map::in, type_ctor::in,
-    item_type_defn_info_du::in, c_j_cs_maybe_defn::in,
+    subtype_repn_map::in, set_tree234(type_ctor)::in, simple_du_map::in,
+    type_ctor::in, item_type_defn_info_du::in, c_j_cs_maybe_defn::in,
     type_ctor_repn_map::in, type_ctor_repn_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_type_repns_stage_2_du_gen(BaseParams, EqvMap,
+decide_type_repns_stage_2_du_gen(BaseParams, EqvMap, SubtypeMap,
         WordAlignedTypeCtorsC, SimpleDuMap, TypeCtor, DuDefn, MaybeDefnCJCsE,
         !Int1RepnMap, !Specs) :-
     decide_type_repns_foreign_defns(MaybeDefnCJCsE, RepnCJCsE),
@@ -754,12 +876,12 @@ decide_type_repns_stage_2_du_gen(BaseParams, EqvMap,
     expect(unify(TypeCtorSymName, SymName), $pred, "sym_name mismatch"),
     expect(unify(NumTypeParams, Arity), $pred, "arity mismatch"),
 
-    % XXX SUBTYPE Type representation of subtype depends on base type.
-    DetailsDu = type_details_du(_MaybeSuperType, OoMCtors0, MaybeCanonical,
+    DetailsDu = type_details_du(MaybeSuperType, OoMCtors0, MaybeCanonical,
         _MaybeDirectArgs),
+    expect(unify(MaybeSuperType, no), $pred, "type is subtype"),
     OoMCtors0 = one_or_more(HeadCtor0, TailCtors0),
-    expand_eqv_cnotag_types_in_constructor(EqvMap, SimpleDuMap, TVarSet,
-        HeadCtor0, HeadCtor, !Specs),
+    expand_eqv_sub_of_notag_types_in_constructor(EqvMap, SubtypeMap,
+        SimpleDuMap, TVarSet, HeadCtor0, HeadCtor, !Specs),
     (
         TailCtors0 = [],
         % The type has exactly one data constructor.
@@ -769,8 +891,8 @@ decide_type_repns_stage_2_du_gen(BaseParams, EqvMap,
     ;
         TailCtors0 = [_ | _],
         % The type has two or more data constructors.
-        expand_eqv_cnotag_types_in_constructors(EqvMap, SimpleDuMap, TVarSet,
-            TailCtors0, TailCtors, !Specs),
+        expand_eqv_sub_of_notag_types_in_constructors(EqvMap, SubtypeMap,
+            SimpleDuMap, TVarSet, TailCtors0, TailCtors, !Specs),
         decide_type_repns_stage_2_du_gen_more_functors(BaseParams,
             WordAlignedTypeCtorsC, SimpleDuMap, TypeCtor, TypeParams,
             TVarSet, [HeadCtor | TailCtors], RepnCJCsE, !Int1RepnMap)
@@ -2186,32 +2308,32 @@ is_direct_arg_ctor_for_c(WordAlignedTypeCtorsC, ClassifiedCtor) :-
 
 %---------------------------------------------------------------------------%
 
-    % XXX ARG_PACK Think about whether visibility differences hould limit
+    % XXX ARG_PACK Think about whether visibility differences should limit
     % the type expansion process.
     %
-:- pred expand_eqv_cnotag_types_in_constructors(type_eqv_map::in,
-    simple_du_map::in, tvarset::in,
+:- pred expand_eqv_sub_of_notag_types_in_constructors(type_eqv_map::in,
+    subtype_repn_map::in, simple_du_map::in, tvarset::in,
     list(constructor)::in, list(constructor)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-expand_eqv_cnotag_types_in_constructors(_, _, _, [], [], !Specs).
-expand_eqv_cnotag_types_in_constructors(EqvMap, SimpleDuMap, TVarSet,
-        [Ctor0 | Ctors0], [Ctor | Ctors], !Specs) :-
-    expand_eqv_cnotag_types_in_constructor(EqvMap, SimpleDuMap, TVarSet,
-        Ctor0, Ctor, !Specs),
-    expand_eqv_cnotag_types_in_constructors(EqvMap, SimpleDuMap, TVarSet,
-        Ctors0, Ctors, !Specs).
+expand_eqv_sub_of_notag_types_in_constructors(_, _, _, _, [], [], !Specs).
+expand_eqv_sub_of_notag_types_in_constructors(EqvMap, SubtypeMap, SimpleDuMap,
+        TVarSet, [Ctor0 | Ctors0], [Ctor | Ctors], !Specs) :-
+    expand_eqv_sub_of_notag_types_in_constructor(EqvMap, SubtypeMap,
+        SimpleDuMap, TVarSet, Ctor0, Ctor, !Specs),
+    expand_eqv_sub_of_notag_types_in_constructors(EqvMap, SubtypeMap,
+        SimpleDuMap, TVarSet, Ctors0, Ctors, !Specs).
 
-:- pred expand_eqv_cnotag_types_in_constructor(type_eqv_map::in,
-    simple_du_map::in, tvarset::in,
+:- pred expand_eqv_sub_of_notag_types_in_constructor(type_eqv_map::in,
+    subtype_repn_map::in, simple_du_map::in, tvarset::in,
     constructor::in, constructor::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-expand_eqv_cnotag_types_in_constructor(EqvMap, SimpleDuMap, TVarSet,
-        Ctor0, Ctor, !Specs) :-
+expand_eqv_sub_of_notag_types_in_constructor(EqvMap, SubtypeMap, SimpleDuMap,
+        TVarSet, Ctor0, Ctor, !Specs) :-
     Args0 = Ctor0 ^ cons_args,
-    expand_eqv_cnotag_types_in_constructor_args(EqvMap, SimpleDuMap, TVarSet,
-        Args0, Args, no_change, Changed, !Specs),
+    expand_eqv_sub_of_notag_types_in_constructor_args(EqvMap, SubtypeMap,
+        SimpleDuMap, TVarSet, Args0, Args, no_change, Changed, !Specs),
     % Don't allocate memory if we don't have to. Many constructors
     % have no constructors containing no equivalence types.
     (
@@ -2222,20 +2344,21 @@ expand_eqv_cnotag_types_in_constructor(EqvMap, SimpleDuMap, TVarSet,
         Ctor = Ctor0 ^ cons_args := Args
     ).
 
-:- pred expand_eqv_cnotag_types_in_constructor_args(type_eqv_map::in,
-    simple_du_map::in, tvarset::in,
+:- pred expand_eqv_sub_of_notag_types_in_constructor_args(type_eqv_map::in,
+    subtype_repn_map::in, simple_du_map::in, tvarset::in,
     list(constructor_arg)::in, list(constructor_arg)::out,
     maybe_changed::in, maybe_changed::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-expand_eqv_cnotag_types_in_constructor_args(_, _, _, [], [], !Changed, !Specs).
-expand_eqv_cnotag_types_in_constructor_args(TypeEqvMap, SimpleDuMap,
-        TVarSet, [Arg0 | Args0], [Arg | Args], !Changed, !Specs) :-
+expand_eqv_sub_of_notag_types_in_constructor_args(_, _, _, _, [], [],
+        !Changed, !Specs).
+expand_eqv_sub_of_notag_types_in_constructor_args(TypeEqvMap, SubtypeMap,
+        SimpleDuMap, TVarSet, [Arg0 | Args0], [Arg | Args], !Changed, !Specs) :-
     Arg0 = ctor_arg(MaybeFieldName, ArgType0, Context),
-    expand_eqv_cnotag_type_fixpoint(TypeEqvMap, SimpleDuMap,
+    expand_eqv_sub_of_notag_type_fixpoint(TypeEqvMap, SubtypeMap, SimpleDuMap,
         TVarSet, Context, 100, ArgType0, ArgType, ArgTypeChanged, !Specs),
     % Don't allocate memory if we don't have to. Most argument types
-    % contain no equivalence types.
+    % need no expansion.
     (
         ArgTypeChanged = no_change,
         Arg = Arg0
@@ -2244,22 +2367,23 @@ expand_eqv_cnotag_types_in_constructor_args(TypeEqvMap, SimpleDuMap,
         !:Changed = changed,
         Arg = ctor_arg(MaybeFieldName, ArgType, Context)
     ),
-    expand_eqv_cnotag_types_in_constructor_args(TypeEqvMap, SimpleDuMap,
-        TVarSet, Args0, Args, !Changed, !Specs).
+    expand_eqv_sub_of_notag_types_in_constructor_args(TypeEqvMap, SubtypeMap,
+        SimpleDuMap, TVarSet, Args0, Args, !Changed, !Specs).
 
-:- pred expand_eqv_cnotag_type_fixpoint(type_eqv_map::in, simple_du_map::in,
-    tvarset::in, prog_context::in, int::in, mer_type::in, mer_type::out,
-    maybe_changed::out, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred expand_eqv_sub_of_notag_type_fixpoint(type_eqv_map::in,
+    subtype_repn_map::in, simple_du_map::in, tvarset::in, prog_context::in,
+    int::in, mer_type::in, mer_type::out, maybe_changed::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-expand_eqv_cnotag_type_fixpoint(TypeEqvMap, SimpleDuMap, TVarSet0, Context,
-        IterationsLeft, Type0, Type, Changed, !Specs) :-
+expand_eqv_sub_of_notag_type_fixpoint(TypeEqvMap, SubtypeMap, SimpleDuMap,
+        TVarSet0, Context, IterationsLeft, Type0, Type, Changed, !Specs) :-
     % Each fixpoint iteration, we try to expand Type0 as either
-    % a notag type or as an equivalence type. If we succeed with either,
-    % we may not have arrived at a fixpoint yet, so we recurse.
-    % If we succeed with neither, then we *have* arrived at a fixpoint,
+    % a notag type, an equivalence type, or subtype. If we succeed with any
+    % of the three, we may not have arrived at a fixpoint yet, so we recurse.
+    % If we succeed with none, then we *have* arrived at a fixpoint,
     % and therefore we stop.
     %
-    % It is possible to construct pairs of notag types and equivalence types
+    % It is possible to construct notag types, equivalence types and subtypes
     % that would cause us to never find the fixpoint, instead of iterating
     % forever. This should never happen with natural inputs, but only with
     % with inputs that has been specially crafted for this purpose,
@@ -2271,9 +2395,8 @@ expand_eqv_cnotag_type_fixpoint(TypeEqvMap, SimpleDuMap, TVarSet0, Context,
         Changed = no_change,
         Type = Type0
     else if
-        type_to_ctor_and_args(Type0, TypeCtor0, ArgTypes0),
-
         % Is the Mercury definition of Type0 a notag type?
+        type_to_ctor_and_args(Type0, TypeCtor0, ArgTypes0),
         map.search(SimpleDuMap, TypeCtor0, SimpleDuRepn),
         SimpleDuRepn = sdr_notag(NotagParams0, NotagTVarSet0, NotagRepn),
         % Is the Mercury definition of Type0 overridden by a foreign
@@ -2294,16 +2417,39 @@ expand_eqv_cnotag_type_fixpoint(TypeEqvMap, SimpleDuMap, TVarSet0, Context,
         % an internal compiler error, not a user error.
         map.from_corresponding_lists(NotagParams1, ArgTypes0, ParamsSubst),
         apply_subst_to_type(ParamsSubst, NotagFunctorArgType1, Type1),
-        expand_eqv_cnotag_type_fixpoint(TypeEqvMap, SimpleDuMap, TVarSet1,
-            Context, IterationsLeft - 1, Type1, Type, _Changed, !Specs),
+        expand_eqv_sub_of_notag_type_fixpoint(TypeEqvMap, SubtypeMap,
+            SimpleDuMap, TVarSet1, Context, IterationsLeft - 1, Type1, Type,
+            _Changed, !Specs),
+        Changed = changed
+    else if
+        % Is the Mercury definition of Type0 a subtype?
+        type_to_ctor_and_args(Type0, TypeCtor0, _ArgTypes0),
+        map.search(SubtypeMap, TypeCtor0, SubtypeRepn0),
+        SubtypeRepn0 =
+            item_type_repn_info(_TypeCtorSymName, _TypeParams, SuperTypeCtor,
+                _TypeTVarSet, _Context, _SeqNum)
+    then
+        % We do not have the arguments of the super type, only the type ctor.
+        % However, we can just substitute new type variables for the type
+        % parameters because the result (Type) is only going to be used for
+        % deciding type representations, and the representation of a type ctor
+        % does not depend on the types bound to its parameters.
+        SuperTypeCtor = type_ctor(_, SuperTypeCtorArity),
+        varset.new_vars(SuperTypeCtorArity, NewTypeVars, TVarSet0, TVarSet1),
+        var_list_to_type_list(map.init, NewTypeVars, NewTypeArgs),
+        construct_type(SuperTypeCtor, NewTypeArgs, SuperType),
+        expand_eqv_sub_of_notag_type_fixpoint(TypeEqvMap, SubtypeMap,
+        SimpleDuMap, TVarSet1, Context, IterationsLeft - 1, SuperType, Type,
+            _Changed, !Specs),
         Changed = changed
     else
         replace_in_type_report_circular_eqvs(TypeEqvMap, TVarSet0, Context,
             Type0, Type1, Changed, !Specs),
         (
             Changed = changed,
-            expand_eqv_cnotag_type_fixpoint(TypeEqvMap, SimpleDuMap, TVarSet0,
-                Context, IterationsLeft - 1, Type1, Type, _Changed, !Specs)
+            expand_eqv_sub_of_notag_type_fixpoint(TypeEqvMap, SubtypeMap,
+                SimpleDuMap, TVarSet0, Context, IterationsLeft - 1,
+                Type1, Type, _Changed, !Specs)
         ;
             Changed = no_change,
             Type = Type0

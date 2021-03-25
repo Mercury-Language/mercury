@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -639,16 +639,16 @@ gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
     module_info_get_name(ModuleInfo, ModuleName),
     (
         TypeCtorDetails = tcd_enum(_, _IsDummy, EnumFunctors,
-            EnumByValue, EnumByName, FunctorNumberMap),
+            EnumByOrd, EnumByName, FunctorNumberMap),
         list.foldl(gen_enum_functor_desc(ModuleInfo, RttiTypeCtor),
             EnumFunctors, !GlobalData),
-        gen_enum_value_ordered_table(ModuleInfo, RttiTypeCtor,
-            EnumByValue, !GlobalData),
+        gen_enum_ordinal_ordered_table(ModuleInfo, RttiTypeCtor,
+            EnumByOrd, !GlobalData),
         gen_enum_name_ordered_table(ModuleInfo, RttiTypeCtor,
             EnumByName, !GlobalData),
         gen_functor_number_map(RttiTypeCtor, FunctorNumberMap, !GlobalData),
         LayoutInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_enum_value_ordered_table),
+            type_ctor_enum_ordinal_ordered_table),
         FunctorInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_enum_name_ordered_table),
         NumberMapInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
@@ -723,14 +723,14 @@ gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
     enum_functor::in, ml_global_data::in, ml_global_data::out) is det.
 
 gen_enum_functor_desc(_ModuleInfo, RttiTypeCtor, EnumFunctor, !GlobalData) :-
-    EnumFunctor = enum_functor(FunctorName, Ordinal),
+    EnumFunctor = enum_functor(FunctorName, Ordinal, enum_value(Value)),
     RttiName = type_ctor_enum_functor_desc(Ordinal),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         % MR_enum_functor_name
         gen_init_string(FunctorName),
-        % MR_enum_functor_ordinal -- XXX MAKE_FIELD_UNSIGNED
-        gen_init_int32(int32.cast_from_uint32(Ordinal))
+        % MR_enum_functor_value -- XXX MAKE_FIELD_UNSIGNED
+        gen_init_int32(int32.cast_from_uint32(Value))
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
@@ -895,7 +895,7 @@ gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor, DuFunctor,
         ArgLocnsInitializer,            % MR_du_functor_arg_locns
         ExistInfoInitializer,           % MR_du_functor_exist_info
         gen_init_functor_subtype_info(FunctorSubtypeInfo),
-                                        % MR_du_functor_subtype
+                                        % MR_du_functor_subtype_constraints
         gen_init_uint8(NumSectagBits)   % MR_du_functor_num_sectag_bits
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
@@ -1142,18 +1142,18 @@ gen_field_locn(RttiId, ArgInfo, ArgLocnInitializer) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_enum_value_ordered_table(module_info::in, rtti_type_ctor::in,
+:- pred gen_enum_ordinal_ordered_table(module_info::in, rtti_type_ctor::in,
     map(uint32, enum_functor)::in,
     ml_global_data::in, ml_global_data::out) is det.
 
-gen_enum_value_ordered_table(ModuleInfo, RttiTypeCtor, EnumByValue,
+gen_enum_ordinal_ordered_table(ModuleInfo, RttiTypeCtor, EnumByOrd,
         !GlobalData) :-
-    map.values(EnumByValue, Functors),
+    map.values(EnumByOrd, Functors),
     module_info_get_name(ModuleInfo, ModuleName),
     FunctorRttiNames = list.map(enum_functor_rtti_name, Functors),
     Initializer = gen_init_rtti_names_array(ModuleName, RttiTypeCtor,
         FunctorRttiNames),
-    RttiName = type_ctor_enum_value_ordered_table,
+    RttiName = type_ctor_enum_ordinal_ordered_table,
     rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer,
         !GlobalData).
 
@@ -1212,17 +1212,13 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap, !GlobalData) :-
     list.foldl(gen_du_stag_ordered_table(ModuleName, RttiTypeCtor), PtagList,
         !GlobalData),
     (
-        PtagList = [],
-        FirstPtag = ptag(0u8)
-    ;
         PtagList = [FirstPtag - _ | _],
-        ( if FirstPtag = ptag(0u8) then
-            true
-        else
-            unexpected($pred, "bad ptag list")
-        )
+        FirstPtag = ptag(LeastPtag)
+    ;
+        PtagList = [],
+        unexpected($pred, "bad ptag list")
     ),
-    gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, FirstPtag,
+    gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, LeastPtag,
         PtagList, PtagInitializers),
     RttiName = type_ctor_du_ptag_ordered_table,
     Initializer = init_array(PtagInitializers),
@@ -1230,17 +1226,20 @@ gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor, PtagMap, !GlobalData) :-
         !GlobalData).
 
 :- pred gen_du_ptag_ordered_table_body(module_name::in, rtti_type_ctor::in,
-    ptag::in, assoc_list(ptag, sectag_table)::in, list(mlds_initializer)::out)
+    uint8::in, assoc_list(ptag, sectag_table)::in, list(mlds_initializer)::out)
     is det.
 
 gen_du_ptag_ordered_table_body(_, _, _, [], []).
-gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, CurPtag,
+gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, LeastPtag,
         [Ptag - SectagTable | PtagTail], [Initializer | Initializers]) :-
-    expect(unify(Ptag, CurPtag), $pred, "ptag mismatch"),
+    Ptag = ptag(PtagUint8),
+    % ptags for a subtype may start higher than zero, and may skip values.
+    expect(LeastPtag =< PtagUint8, $pred, "ptag mismatch"),
     SectagTable = sectag_table(SectagLocn, NumSectagBits, NumSharers,
         _SectagMap),
     RttiName = type_ctor_du_ptag_layout(Ptag),
     RttiId = ctor_rtti_id(RttiTypeCtor, RttiName),
+    compute_du_ptag_layout_flags(SectagTable, Flags),
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         % MR_sectag_sharers
         gen_init_uint32(NumSharers),
@@ -1250,11 +1249,14 @@ gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, CurPtag,
         gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_du_stag_ordered_table(Ptag)),
         % MR_sectag_numbits
-        gen_init_int8(NumSectagBits)
+        gen_init_int8(NumSectagBits),
+        % MR_du_ptag,
+        gen_init_uint8(PtagUint8),
+        % MR_du_ptag_flags
+        gen_init_uint8(encode_du_ptag_layout_flags(Flags))
     ]),
-    CurPtag = ptag(CurPtagUint8),
-    NextPtag = ptag(CurPtagUint8 + 1u8),
-    gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, NextPtag,
+    NextLeastPtag = PtagUint8 + 1u8,
+    gen_du_ptag_ordered_table_body(ModuleName, RttiTypeCtor, NextLeastPtag,
         PtagTail, Initializers).
 
 :- pred gen_du_stag_ordered_table(module_name::in, rtti_type_ctor::in,
@@ -1694,8 +1696,8 @@ gen_init_sectag_locn(Locn) = Initializer :-
 
 :- func gen_init_functor_subtype_info(functor_subtype_info) = mlds_initializer.
 
-gen_init_functor_subtype_info(FunctorSubtypeInfo) = Initializer :-
-    rtti.functor_subtype_info_to_string(FunctorSubtypeInfo, TargetPrefixes,
+gen_init_functor_subtype_info(Info) = Initializer :-
+    rtti.functor_subtype_info_to_string(Info, TargetPrefixes,
         Name),
     Initializer = gen_init_builtin_const(TargetPrefixes, Name).
 

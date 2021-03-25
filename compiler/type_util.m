@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -160,8 +160,10 @@
     % A type cannot be a dummy type if it is the subject of a foreign_enum
     % pragma, or if it has a reserved tag or user defined equality.
     %
+    % A subtype is only a dummy type if its base type is a dummy type.
+    %
     % NOTE: changes here may require changes to
-    % `constructor_list_represents_dummy_argument_type'.
+    % `non_sub_du_constructor_list_represents_dummy_type'.
     %
 :- func is_type_a_dummy(module_info, mer_type) = is_dummy_type.
 
@@ -715,6 +717,7 @@ type_body_is_solver_type(ModuleInfo, TypeBody) :-
             ; AbstractType = abstract_dummy_type
             ; AbstractType = abstract_notag_type
             ; AbstractType = abstract_type_fits_in_n_bits(_)
+            ; AbstractType = abstract_subtype(_)
             ),
             IsSolverType = non_solver_type
         )
@@ -751,6 +754,7 @@ type_body_is_solver_type_from_type_table(TypeTable, TypeBody) :-
             ; AbstractType = abstract_dummy_type
             ; AbstractType = abstract_notag_type
             ; AbstractType = abstract_type_fits_in_n_bits(_)
+            ; AbstractType = abstract_subtype(_)
             ),
             IsSolverType = no
         )
@@ -810,6 +814,7 @@ is_type_a_dummy_loop(TypeTable, Type, CoveredTypes) = IsDummy :-
     else if type_to_ctor_and_args(Type, TypeCtor, ArgTypes) then
         % Keep this in sync with is_dummy_argument_type_with_constructors
         % above.
+        % XXX gone since 097b45acec46527f1485419e66ce28d5ba224846
         IsBuiltinDummy = is_type_ctor_a_builtin_dummy(TypeCtor),
         (
             IsBuiltinDummy = is_builtin_dummy_type_ctor,
@@ -1098,6 +1103,8 @@ classify_type_defn_body(TypeBody) = TypeCategory :-
         (
             ( AbstractDetails = abstract_type_general
             ; AbstractDetails = abstract_type_fits_in_n_bits(_)
+            ; AbstractDetails = abstract_subtype(_)
+            % XXX SUBTYPE is cat_user_general ok for subtypes?
             ; AbstractDetails = abstract_solver_type
             ),
             TypeCategory = ctor_cat_user(cat_user_general)

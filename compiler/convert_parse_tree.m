@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019 The Mercury team.
+% Copyright (C) 2019-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1767,6 +1767,7 @@ add_type_defn_to_map(TypeDefnInfo, !TypeDefnMap) :-
                 ; DetailsAbstract = abstract_type_fits_in_n_bits(_)
                 ; DetailsAbstract = abstract_dummy_type
                 ; DetailsAbstract = abstract_notag_type
+                ; DetailsAbstract = abstract_subtype(_)
                 ),
                 !:AbstractStdDefns = !.AbstractStdDefns ++ [AbstractDefnInfo]
             )

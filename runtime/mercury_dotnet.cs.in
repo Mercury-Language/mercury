@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=cs
 //
 // Copyright (C) 2003-2004, 2010-2011 The University of Melbourne.
-// Copyright (C) 2014-2018 The Mercury team.
+// Copyright (C) 2014-2018, 2021 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 //
 
@@ -383,6 +383,8 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
     public ushort           type_ctor_flags;
     public int[]            type_functor_number_map;
 
+    private const ushort MR_TYPE_CTOR_FLAG_LAYOUT_INDEXABLE = 0x8;
+
     // This attribute is also to prevent cyclic copying in deep_copy.
     [System.NonSerialized]
     private TypeInfo_Struct cached_type_info;
@@ -418,7 +420,7 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
         string module,
         string name,
         object name_ordered_functor_descs,  // TypeFunctors
-        object value_ordered_functor_descs, // TypeLayout
+        object ordinal_ordered_functor_descs, // TypeLayout
         int num_functors,
         ushort flags,
         int[] functor_number_map)
@@ -432,7 +434,7 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
         type_ctor_module_name = module;
         type_ctor_name = name;
         type_functors = (TypeFunctors) name_ordered_functor_descs;
-        type_layout = (TypeLayout) value_ordered_functor_descs;
+        type_layout = (TypeLayout) ordinal_ordered_functor_descs;
         type_ctor_num_functors = num_functors;
         type_ctor_flags = flags;
         type_functor_number_map = functor_number_map;
@@ -473,6 +475,40 @@ public class TypeCtorInfo_Struct : PseudoTypeInfo {
             cached_type_info = new TypeInfo_Struct(this);
         }
         return cached_type_info;
+    }
+
+    public int index_or_search_enum_functor_ordinal(int enum_value) {
+        if (flags_is_layout_indexable()) {
+            return enum_value; // same as ordinal
+        }
+
+        EnumFunctorDesc[] layout_enum = type_layout.layout_enum();
+        for (int i = 0; i < layout_enum.Length; i++) {
+            if (layout_enum[i].enum_functor_value == enum_value) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    // Return the ptag layout with the given ptag, or null if not found.
+    public DuPtagLayout index_or_search_ptag_layout(byte ptag) {
+        DuPtagLayout[] layout_du = type_layout.layout_du();
+
+        if (flags_is_layout_indexable()) {
+            return layout_du[ptag];
+        }
+
+        foreach (DuPtagLayout ptag_layout in layout_du) {
+            if (ptag_layout.du_ptag == ptag) {
+                return ptag_layout;
+            }
+        }
+        return null;
+    }
+
+    private bool flags_is_layout_indexable() {
+        return (type_ctor_flags & MR_TYPE_CTOR_FLAG_LAYOUT_INDEXABLE) != 0;
     }
 }
 
@@ -742,26 +778,59 @@ public class DuPtagLayout {
     public Sectag_Locn  sectag_locn;
     public /* final */ DuFunctorDesc[] sectag_alternatives;
     public sbyte        sectag_numbits;     // unused in C# grades
+    public byte         du_ptag;
+    public byte         du_ptag_flags;
+
+    private const byte MR_DU_PTAG_FLAG_SECTAG_ALTERNATIVES_INDEXABLE = 0x1;
 
     public DuPtagLayout(
-        uint sharers,
-        Sectag_Locn locn,
-        DuFunctorDesc[] alts,
-        sbyte numbits)
+        uint sectag_sharers,
+        Sectag_Locn sectag_locn,
+        DuFunctorDesc[] sectag_alts,
+        sbyte sectag_numbits,
+        byte du_ptag,
+        byte du_ptag_flags)
     {
-        sectag_sharers = sharers;
-        sectag_locn = locn;
-        sectag_alternatives = alts;
-        sectag_numbits = numbits;
+        this.sectag_sharers = sectag_sharers;
+        this.sectag_locn = sectag_locn;
+        this.sectag_alternatives = sectag_alts;
+        this.sectag_numbits = sectag_numbits;
+        this.du_ptag = du_ptag;
+        this.du_ptag_flags = du_ptag_flags;
     }
 
     public DuPtagLayout(
-        uint sharers,
-        int locn,
-        DuFunctorDesc[] alts,
-        sbyte numbits)
-        : this(sharers, (Sectag_Locn) locn, alts, numbits)
+        uint sectag_sharers,
+        int sectag_locn,
+        DuFunctorDesc[] sectag_alts,
+        sbyte sectag_numbits,
+        byte du_ptag,
+        byte du_ptag_flags)
+        : this(sectag_sharers,
+            (Sectag_Locn) sectag_locn,
+            sectag_alts,
+            sectag_numbits,
+            du_ptag,
+            du_ptag_flags)
     {
+    }
+
+    public DuFunctorDesc index_or_search_sectag_functor(int sectag) {
+        if (flags_is_sectag_alternatives_indexable()) {
+            return sectag_alternatives[sectag];
+        }
+
+        foreach (DuFunctorDesc desc in sectag_alternatives) {
+            if (desc.du_functor_secondary == sectag) {
+                return desc;
+            }
+        }
+        return null;
+    }
+
+    private bool flags_is_sectag_alternatives_indexable() {
+        return (du_ptag_flags & MR_DU_PTAG_FLAG_SECTAG_ALTERNATIVES_INDEXABLE)
+                != 0;
     }
 }
 
@@ -901,14 +970,14 @@ public class TypeClassMethod {
 
 public class EnumFunctorDesc {
     public string   enum_functor_name;
-    public int      enum_functor_ordinal;
+    public int      enum_functor_value;
 
     public EnumFunctorDesc() {
     }
 
-    public void init(string name, int ordinal) {
+    public void init(string name, int val) {
         enum_functor_name = name;
-        enum_functor_ordinal = ordinal;
+        enum_functor_value = val;
     }
 }
 

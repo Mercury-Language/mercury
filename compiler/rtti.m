@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -135,7 +135,8 @@
     %
 :- type type_ctor_flag
     --->    variable_arity_flag
-    ;       kind_of_du_flag.
+    ;       kind_of_du_flag
+    ;       layout_indexable_flag.
 
     % A type_ctor_details structure contains all the information that the
     % runtime system needs to know about the data representation scheme
@@ -170,7 +171,7 @@
                 enum_axioms         :: equality_axioms,
                 enum_is_dummy       :: enum_maybe_dummy,
                 enum_functors       :: list(enum_functor),
-                enum_value_table    :: map(uint32, enum_functor),
+                enum_ordinal_table  :: map(uint32, enum_functor),
                 enum_name_table     :: map(string, enum_functor),
                 enum_functor_number_mapping
                                     :: list(uint32)
@@ -228,8 +229,12 @@
 :- type enum_functor
     --->    enum_functor(
                 enum_name           :: string,
-                enum_ordinal        :: uint32
+                enum_ordinal        :: uint32,
+                enum_value          :: enum_value
             ).
+
+:- type enum_value
+    --->    enum_value(uint32).
 
     % Descriptor for a functor in a foreign enum type.
     %
@@ -320,16 +325,25 @@
     % These tables let the runtime system interpret values in memory
     % of general discriminated union types.
     %
-    % The runtime system should first use the primary tag to index into
+    % The runtime system should first use the primary tag to index/search into
     % the type's ptag_map. It can then find the location (if any) of the
     % secondary tag, and use the secondary tag (or zero if there isn't one)
-    % to index into the stag_map to find the functor descriptor.
+    % to index/search into the stag_map to find the functor descriptor.
     %
     % The type sectag_table corresponds to the C type MR_DuPtagLayout.
     % The two maps are implemented in C as simple arrays.
     %
 :- type ptag_map == map(ptag, sectag_table).  % key is primary tag
 :- type stag_map == map(uint, du_functor).    % key is secondary tag
+
+    % Each of the following fields corresponds to one of the
+    % MR_DU_PTAG_FLAG_* macros in runtime/mercury_type_info.h.
+    % Their meanings are documented there.
+    %
+:- type du_ptag_layout_flags
+    --->    du_ptag_layout_flags(
+                sectag_alternatives_indexable :: bool
+            ).
 
 :- type sectag_table
     --->    sectag_table(
@@ -370,7 +384,13 @@
                 du_arg_pos_width    :: arg_pos_width
             ).
 
-    % Information about subtypes in the arguments of a functor.
+    % Information about subtype constraints on the arguments of a functor
+    % due to inst information provided in the type definition. This is not
+    % related to the subtypes introduced by ':- type SUBTYPE =< SUPERTYPE'
+    % definitions.
+    %
+    % XXX rename this type and constants to avoid confusion with subtype
+    % type definitions
     %
 :- type functor_subtype_info
     --->    functor_subtype_none
@@ -624,7 +644,7 @@
     ;       type_ctor_notag_functor_desc
     ;       type_ctor_du_functor_desc(uint32)           % functor ordinal
     ;       type_ctor_enum_name_ordered_table
-    ;       type_ctor_enum_value_ordered_table
+    ;       type_ctor_enum_ordinal_ordered_table
     ;       type_ctor_foreign_enum_name_ordered_table
     ;       type_ctor_foreign_enum_ordinal_ordered_table
     ;       type_ctor_du_name_ordered_table
@@ -669,6 +689,8 @@
 %
 
 :- func encode_type_ctor_flags(set(type_ctor_flag)) = uint16.
+
+:- func encode_du_ptag_layout_flags(du_ptag_layout_flags) = uint8.
 
     % Convert a rtti_data to an rtti_id.
     % This calls error/1 if the argument is a type_var/1 rtti_data,
@@ -762,7 +784,7 @@
     target_prefixes::out, string::out)
     is det.
 
-    % Return the C representation of a functor's subtype info.
+    % Return the C representation of a functor's subtype constraints info.
     %
 :- pred functor_subtype_info_to_string(functor_subtype_info::in,
     target_prefixes::out, string::out) is det.
@@ -983,6 +1005,21 @@ encode_type_ctor_flag(variable_arity_flag, !Encoding) :-
     !:Encoding = !.Encoding + 2u16.
 encode_type_ctor_flag(kind_of_du_flag, !Encoding) :-
     !:Encoding = !.Encoding + 4u16.
+encode_type_ctor_flag(layout_indexable_flag, !Encoding) :-
+    !:Encoding = !.Encoding + 8u16.
+
+    % NOTE: the encoding here must match the one in
+    % runtime/mercury_type_info.h.
+    %
+encode_du_ptag_layout_flags(Flags) = Encoding :-
+    Flags = du_ptag_layout_flags(SectagAltsIndexable),
+    (
+        SectagAltsIndexable = yes,
+        Encoding = 1u8
+    ;
+        SectagAltsIndexable = no,
+        Encoding = 0u8
+    ).
 
 rtti_data_to_id(RttiData, RttiId) :-
     (
@@ -1086,7 +1123,7 @@ ctor_rtti_name_is_exported(CtorRttiName) = IsExported :-
         ; CtorRttiName = type_ctor_notag_functor_desc
         ; CtorRttiName = type_ctor_du_functor_desc(_)
         ; CtorRttiName = type_ctor_enum_name_ordered_table
-        ; CtorRttiName = type_ctor_enum_value_ordered_table
+        ; CtorRttiName = type_ctor_enum_ordinal_ordered_table
         ; CtorRttiName = type_ctor_foreign_enum_name_ordered_table
         ; CtorRttiName = type_ctor_foreign_enum_ordinal_ordered_table
         ; CtorRttiName = type_ctor_du_name_ordered_table
@@ -1231,8 +1268,8 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
         string.append_list([ModuleName, "__enum_name_ordered_",
             TypeName, "_", A_str], Str)
     ;
-        RttiName = type_ctor_enum_value_ordered_table,
-        string.append_list([ModuleName, "__enum_value_ordered_",
+        RttiName = type_ctor_enum_ordinal_ordered_table,
+        string.append_list([ModuleName, "__enum_ordinal_ordered_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = type_ctor_foreign_enum_name_ordered_table,
@@ -1826,7 +1863,7 @@ ctor_rtti_name_would_include_code_addr(RttiName) = InclCodeAddr :-
         ; RttiName = type_ctor_notag_functor_desc
         ; RttiName = type_ctor_du_functor_desc(_)
         ; RttiName = type_ctor_enum_name_ordered_table
-        ; RttiName = type_ctor_enum_value_ordered_table
+        ; RttiName = type_ctor_enum_ordinal_ordered_table
         ; RttiName = type_ctor_foreign_enum_name_ordered_table
         ; RttiName = type_ctor_foreign_enum_ordinal_ordered_table
         ; RttiName = type_ctor_du_name_ordered_table
@@ -2090,7 +2127,7 @@ ctor_rtti_name_type(type_ctor_du_functor_desc(_),
         "DuFunctorDesc", not_array).
 ctor_rtti_name_type(type_ctor_enum_name_ordered_table,
         "EnumFunctorDescPtr", is_array).
-ctor_rtti_name_type(type_ctor_enum_value_ordered_table,
+ctor_rtti_name_type(type_ctor_enum_ordinal_ordered_table,
         "EnumFunctorDescPtr", is_array).
 ctor_rtti_name_type(type_ctor_foreign_enum_name_ordered_table,
         "ForeignEnumFunctorDescPtr", is_array).

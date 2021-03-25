@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -368,6 +368,9 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;       abstract_notag_type
             % The abstract type is a no_tag type.
 
+    ;       abstract_subtype(type_ctor)
+            % The abstract type is a subtype of this super type ctor.
+
     ;       abstract_solver_type.
             % An abstract solver type.
 
@@ -449,8 +452,8 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     --->    ctor(
                 % The ordinal number of the functor. The first functor
                 % in a type definition has ordinal number 0.
-                % XXX SUBTYPE For subtypes, the ordinal number needs to be
-                % retrieved from the base type.
+                % A subtype's functors are numbered independently
+                % from its supertypes and base type.
                 cons_ordinal        :: uint32,
 
                 % Existential constraints, if any.

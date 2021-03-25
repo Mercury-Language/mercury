@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -201,7 +201,7 @@ get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
     // If this is a discriminated union type and if the functor number
     // is in range, we succeed.
     MR_save_transient_registers();
-    success = MR_get_functors_check_range(FunctorNumber, type_info,
+    success = MR_get_functors_check_range(FunctorNumber, type_info, MR_FALSE,
         &construct_info);
     MR_restore_transient_registers();
 
@@ -265,7 +265,7 @@ get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
     // If this is a discriminated union type and if the functor number
     // is in range, we succeed.
     MR_save_transient_registers();
-    success = MR_get_functors_check_range(FunctorNumber, type_info,
+    success = MR_get_functors_check_range(FunctorNumber, type_info, MR_FALSE,
         &construct_info);
     MR_restore_transient_registers();
 
@@ -354,88 +354,14 @@ get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
     // If this is a discriminated union type and if the functor number is
     // in range, we succeed.
     MR_save_transient_registers();
-    success = MR_get_functors_check_range(FunctorNumber, type_info,
+    success = MR_get_functors_check_range(FunctorNumber, type_info, MR_TRUE,
         &construct_info);
     MR_restore_transient_registers();
 
     if (success) {
-        switch (construct_info.type_ctor_rep) {
-
-        case MR_TYPECTOR_REP_ENUM:
-        case MR_TYPECTOR_REP_ENUM_USEREQ:
-            Ordinal = construct_info.functor_info.
-                enum_functor_desc->MR_enum_functor_ordinal;
-            break;
-
-        case MR_TYPECTOR_REP_FOREIGN_ENUM:
-        case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
-            Ordinal = construct_info.functor_info.
-                foreign_enum_functor_desc->MR_foreign_enum_functor_ordinal;
-            break;
-
-        case MR_TYPECTOR_REP_DUMMY:
-        case MR_TYPECTOR_REP_NOTAG:
-        case MR_TYPECTOR_REP_NOTAG_USEREQ:
-        case MR_TYPECTOR_REP_NOTAG_GROUND:
-        case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
-        case MR_TYPECTOR_REP_TUPLE:
-            Ordinal = 0;
-            break;
-
-        case MR_TYPECTOR_REP_DU:
-        case MR_TYPECTOR_REP_DU_USEREQ:
-            Ordinal = construct_info.functor_info.
-                du_functor_desc->MR_du_functor_ordinal;
-            break;
-
-        case MR_TYPECTOR_REP_EQUIV:
-        case MR_TYPECTOR_REP_EQUIV_GROUND:
-        case MR_TYPECTOR_REP_FUNC:
-        case MR_TYPECTOR_REP_PRED:
-        case MR_TYPECTOR_REP_INT:
-        case MR_TYPECTOR_REP_UINT:
-        case MR_TYPECTOR_REP_INT8:
-        case MR_TYPECTOR_REP_UINT8:
-        case MR_TYPECTOR_REP_INT16:
-        case MR_TYPECTOR_REP_UINT16:
-        case MR_TYPECTOR_REP_INT32:
-        case MR_TYPECTOR_REP_UINT32:
-        case MR_TYPECTOR_REP_INT64:
-        case MR_TYPECTOR_REP_UINT64:
-        case MR_TYPECTOR_REP_FLOAT:
-        case MR_TYPECTOR_REP_CHAR:
-        case MR_TYPECTOR_REP_STRING:
-        case MR_TYPECTOR_REP_BITMAP:
-        case MR_TYPECTOR_REP_SUBGOAL:
-        case MR_TYPECTOR_REP_VOID:
-        case MR_TYPECTOR_REP_C_POINTER:
-        case MR_TYPECTOR_REP_STABLE_C_POINTER:
-        case MR_TYPECTOR_REP_TYPEINFO:
-        case MR_TYPECTOR_REP_TYPECTORINFO:
-        case MR_TYPECTOR_REP_TYPECLASSINFO:
-        case MR_TYPECTOR_REP_BASETYPECLASSINFO:
-        case MR_TYPECTOR_REP_TYPEDESC:
-        case MR_TYPECTOR_REP_TYPECTORDESC:
-        case MR_TYPECTOR_REP_PSEUDOTYPEDESC:
-        case MR_TYPECTOR_REP_ARRAY:
-        case MR_TYPECTOR_REP_REFERENCE:
-        case MR_TYPECTOR_REP_SUCCIP:
-        case MR_TYPECTOR_REP_HP:
-        case MR_TYPECTOR_REP_CURFR:
-        case MR_TYPECTOR_REP_MAXFR:
-        case MR_TYPECTOR_REP_REDOFR:
-        case MR_TYPECTOR_REP_REDOIP:
-        case MR_TYPECTOR_REP_TRAIL_PTR:
-        case MR_TYPECTOR_REP_TICKET:
-        case MR_TYPECTOR_REP_FOREIGN:
-        case MR_TYPECTOR_REP_STABLE_FOREIGN:
-        case MR_TYPECTOR_REP_UNUSED1:
-        case MR_TYPECTOR_REP_UNUSED2:
-        case MR_TYPECTOR_REP_UNKNOWN:
-            success = MR_FALSE;
-            Ordinal = 0;
-            break;
-        }
+        Ordinal = construct_info.functor_ordinal;
+    } else {
+        Ordinal = 0;
     }
     SUCCESS_INDICATOR = success;
 }").
@@ -811,9 +737,13 @@ ML_copy_tagword_args(MR_Word *arg_list_ptr, const MR_Word ptag,
     // Check range of FunctorNum, get info for this functor.
     MR_save_transient_registers();
     success =
-        MR_get_functors_check_range(FunctorNumber, type_info, &construct_info)
-        && MR_typecheck_arguments(type_info, construct_info.arity, ArgList,
-            construct_info.arg_pseudo_type_infos);
+        MR_get_functors_check_range(FunctorNumber, type_info, MR_FALSE,
+            &construct_info);
+    if (success) {
+        success =
+            MR_typecheck_arguments(type_info, construct_info.arity, ArgList,
+                construct_info.arg_pseudo_type_infos);
+    }
     MR_restore_transient_registers();
 
     // Build the new term in `new_data'.
@@ -829,7 +759,7 @@ ML_copy_tagword_args(MR_Word *arg_list_ptr, const MR_Word ptag,
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
             new_data = construct_info.functor_info.enum_functor_desc->
-                MR_enum_functor_ordinal;
+                MR_enum_functor_value;
             break;
 
         case MR_TYPECTOR_REP_FOREIGN_ENUM:

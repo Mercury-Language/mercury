@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -161,13 +162,14 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -1124,6 +1126,28 @@ replace_in_type_repn_info(ModuleName, MaybeRecord, TypeEqvMap,
             CircTypes = []
         ),
         TypeRepn = tcrepn_is_eqv_to(Type)
+    ;
+        TypeRepn0 = tcrepn_is_subtype_of(SuperTypeCtor0),
+        % Construct a type from the type ctor, substituting 'void' for any type
+        % parameters, so that we can call replace_in_type_maybe_record_use_2.
+        % We do not care about the type arguments so we can drop them again
+        % afterwards.
+        SuperTypeCtor0 = type_ctor(_, SuperTypeCtorArity),
+        list.duplicate(SuperTypeCtorArity, void_type, VoidTypes),
+        construct_type(SuperTypeCtor0, VoidTypes, SuperType0),
+        TypeCtor = type_ctor(SymName, Arity),
+        replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap, [TypeCtor],
+            SuperType0, SuperType, _, Circ, TVarSet0, TVarSet,
+            UsedTypeCtors0, UsedTypeCtors, !UsedModules),
+        type_to_ctor_det(SuperType, SuperTypeCtor),
+        set.to_sorted_list(Circ, CircTypes),
+        (
+            CircTypes = [_ | _],
+            !:Specs = [report_circular_eqv_type(TypeCtor, Context) | !.Specs]
+        ;
+            CircTypes = []
+        ),
+        TypeRepn = tcrepn_is_subtype_of(SuperTypeCtor)
     ;
         ( TypeRepn0 = tcrepn_is_word_aligned_ptr
         ; TypeRepn0 = tcrepn_du(_)

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2017 The Mercury team.
+% Copyright (C) 2017-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -68,6 +68,7 @@ parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
         ( if
             RepnTerm = term.functor(term.atom(AtomStr), RepnArgs, RepnContext),
             ( AtomStr = "is_eqv_to"
+            ; AtomStr = "is_subtype_of"
             ; AtomStr = "is_word_aligned_ptr"
             ; AtomStr = "du_repn"
             ; AtomStr = "foreign_type_repn"
@@ -77,6 +78,10 @@ parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 AtomStr = "is_eqv_to",
                 parse_type_repn_eqv_to(VarSet, AtomStr, RepnArgs,
                     RepnContext, MaybeRepn)
+            ;
+                AtomStr = "is_subtype_of",
+                parse_type_repn_subtype_of(AtomStr, RepnArgs, RepnContext,
+                    MaybeRepn)
             ;
                 AtomStr = "is_word_aligned_ptr",
                 parse_no_arg_type_repn(AtomStr, RepnArgs, RepnContext,
@@ -119,6 +124,7 @@ parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 quote("is_direct_dummy"), suffix(","),
                 quote("is_notag"), suffix(","),
                 quote("is_eqv_to"), suffix(","),
+                quote("is_subtype_of"), suffix(","),
                 quote("fits_in_n_bits"), suffix(","),
                 quote("is_word_aligned_ptr"), suffix(","),
                 quote("has_direct_arg_functors"), suffix(","),
@@ -195,6 +201,36 @@ parse_type_repn_eqv_to(VarSet, RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
         ;
             MaybeEqvType = error1(Specs),
             MaybeRepn = error1(Specs)
+        )
+    ;
+        ( RepnArgs = []
+        ; RepnArgs = [_, _ | _]
+        ),
+        Pieces = [words("Error:"), quote(RepnStr),
+            words("should have one argument, a type."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            RepnContext, Pieces),
+        MaybeRepn = error1([Spec])
+    ).
+
+%-----------------------------------------------------------------------------e
+
+:- pred parse_type_repn_subtype_of(string::in, list(term)::in,
+    term.context::in, maybe1(type_ctor_repn_info)::out) is det.
+
+parse_type_repn_subtype_of(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
+    (
+        RepnArgs = [RepnArg],
+        ( if parse_unqualified_name_and_arity(RepnArg, SymName, Arity) then
+            SuperTypeCtor = type_ctor(SymName, Arity),
+            MaybeRepn = ok1(tcrepn_is_subtype_of(SuperTypeCtor))
+        else
+            Pieces = [words("Error:"), quote(RepnStr),
+                words("should have one argument, a symbol name and arity."),
+                nl],
+            Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+                RepnContext, Pieces),
+            MaybeRepn = error1([Spec])
         )
     ;
         ( RepnArgs = []

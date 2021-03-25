@@ -335,8 +335,7 @@ is_direct_arg_in_out_posn(ModuleInfo, VarTypes, Var, Mode, IsDAIO) :-
     then
         get_type_defn_body(TypeDefn, TypeBody),
         (
-            TypeBody = hlds_du_type(_, _MaybeSuperType, _, MaybeRepn, _),
-            % XXX SUBTYPE Type representation of subtype depends on base type.
+            TypeBody = hlds_du_type(_, _, _, MaybeRepn, _),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")

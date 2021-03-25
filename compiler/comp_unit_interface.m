@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2016, 2018-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -129,6 +129,7 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mutable.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 
 :- import_module bool.
 :- import_module cord.
@@ -1115,16 +1116,25 @@ accumulate_modules_from_type(Type, !Modules) :-
     %   XXX TYPE_REPN Shouldn't boxing make the size of the foreign type
     %   immaterial?
     %
-    % - If the definition defines an enum type, and there is a definition
-    %   of the same type_ctor in the interface, we include the type_ctor in
-    %   AbsExpEnumTypeCtors. This is so that when we abstract export
-    %   the type_ctor, we can record that its size is less than one word.
+    % - If the definition defines a subtype, and there are any definitions of
+    %   that same type_ctor in the interface, then include the type_ctor in
+    %   AbsExpEqvLhsTypeCtors, and the type_ctors of any supertype or
+    %   equivalence types up to the base type. We include these type_ctors in
+    %   NeededImpTypeCtors because the representation of subtypes must be the
+    %   same as that of their base types.
+    %
+    % - If the definition defines an enum type (not a subtype), and there is a
+    %   definition of the same type_ctor in the interface, we include the
+    %   type_ctor in AbsExpEnumTypeCtors. This is so that when we abstract
+    %   export the type_ctor, we can record that its size is less than one
+    %   word.
     %   XXX TYPE_REPN Again, this info should be in a type_repn item.
     %
-    % - If the definition defines a dummy type, we include the type_ctor in
-    %   DirectDummyTypeCtors. XXX ITEM_LIST Presumably (by me -zs) this is
-    %   so that when we abstract export them, we can record that it needs
-    %   no storage. XXX However, we currently include dummy types in the
+    % - If the definition defines a dummy type (not a subtype), we include the
+    %   type_ctor in DirectDummyTypeCtors.
+    %   XXX ITEM_LIST Presumably (by me -zs) this is so that when we abstract
+    %   export them, we can record that it needs no storage.
+    %   XXX However, we currently include dummy types in the
     %   implementation section of the .int file unchanged, and we do so
     %   even if the type is not mentioned in the interface section at all.
     %   XXX TYPE_REPN Again, this info should be in a type_repn item.
@@ -1132,9 +1142,9 @@ accumulate_modules_from_type(Type, !Modules) :-
     % The first pass ignores all other type definitions.
     %
     % The second pass processes the type_ctors in AbsExpEqvLhsTypeCtors,
-    % i.e. the abstract exported type_ctors which have an equivalence type
-    % or foreign type definition in the implementation section. Its job
-    % is to compute three sets.
+    % i.e. the abstract exported type_ctors which have an equivalence type,
+    % foreign type, or subtype definition in the implementation section.
+    % Its job is to compute three sets.
     %
     % - The first set is AbsExpEqvRhsTypeCtors, the set of type_ctors
     %   that occur in any (partial or full) expansion of an equivalence type
@@ -1152,10 +1162,11 @@ accumulate_modules_from_type(Type, !Modules) :-
     % - The second set is DuArgTypeCtors, the set of type_ctors that occur
     %   on the right hand side (i.e. among the field argument types) of
     %   a discriminated union definition of a type_ctor that is in
-    %   AbsExpEqvLhsTypeCtors, which should happen only that type_ctor
-    %   also has foreign language definitions (since we put a type_ctor
-    %   into AbsExpEqvLhsTypeCtors only if it has either an equivalence
-    %   or a foreign language definition). If these type_ctors are not
+    %   AbsExpEqvLhsTypeCtors, which should happen only when that type_ctor
+    %   also has foreign language definitions or a subtype definition
+    %   (since we put a type_ctor into AbsExpEqvLhsTypeCtors only if it has
+    %   either an equivalence definition, foreign language definition,
+    %   or subtype definition). If these type_ctors are not
     %   otherwise included in the .int file, this will cause our caller
     %   to include an abstract declaration of these type_ctors in the
     %   .int file, to disambiguate the references to these types
@@ -1196,13 +1207,18 @@ accumulate_modules_from_type(Type, !Modules) :-
 
 get_requirements_of_imp_exported_types(IntTypesMap, ImpTypesMap,
         BothTypesMap, NeededImpTypeCtors, ModulesNeededByTypeDefns) :-
+    % XXX may want to rename AbsExpEqvLhsTypeCtors as it also includes
+    % foreign types and subtypes
     map.foldl3(
         accumulate_abs_imp_exported_type_lhs(IntTypesMap, BothTypesMap),
-        ImpTypesMap, set.init, AbsExpEqvLhsTypeCtors,
-        set.init, AbsExpEnumTypeCtors, set.init, DirectDummyTypeCtors),
+        ImpTypesMap,
+        set.init, AbsExpEqvLhsTypeCtors,
+        set.init, AbsExpEnumTypeCtors,
+        set.init, DirectDummyTypeCtors),
     set.fold3(accumulate_abs_imp_exported_type_rhs(ImpTypesMap),
         AbsExpEqvLhsTypeCtors,
-        set.init, AbsExpEqvRhsTypeCtors, set.init, DuArgTypeCtors,
+        set.init, AbsExpEqvRhsTypeCtors,
+        set.init, DuArgTypeCtors,
         set.init, ModulesNeededByTypeDefns),
     NeededImpTypeCtors = set.union_list([AbsExpEqvLhsTypeCtors,
         AbsExpEqvRhsTypeCtors, AbsExpEnumTypeCtors, DirectDummyTypeCtors,
@@ -1251,7 +1267,8 @@ accumulate_abs_imp_exported_type_lhs(IntTypesMap, BothTypesMap,
 accumulate_abs_imp_exported_type_lhs_in_defn(IntTypesMap, BothTypesMap,
         TypeCtor, ImpItemTypeDefnInfo, !AbsExpEqvLhsTypeCtors,
         !AbsExpEnumTypeCtors, !DirectDummyTypeCtors) :-
-    ImpItemTypeDefnInfo = item_type_defn_info(_, _, ImpTypeDefn, _, _, _),
+    ImpItemTypeDefnInfo = item_type_defn_info(_, _, ImpTypeDefn, TVarSet,
+        _, _),
     (
         ImpTypeDefn = parse_tree_eqv_type(_),
         ( if map.search(IntTypesMap, TypeCtor, _) then
@@ -1278,34 +1295,113 @@ accumulate_abs_imp_exported_type_lhs_in_defn(IntTypesMap, BothTypesMap,
         )
     ;
         ImpTypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(_MaybeSuperType, OoMCtors, MaybeEqCmp,
+        DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeEqCmp,
             MaybeDirectArgCtors),
-        % XXX SUBTYPE Type representation of subtype depends on base type.
-        ( if
-            map.search(IntTypesMap, TypeCtor, _),
-            du_type_is_enum(DetailsDu, _NumFunctors)
-        then
-            set.insert(TypeCtor, !AbsExpEnumTypeCtors)
-        else if
-            % XXX ITEM_LIST Why don't we insist that TypeCtor occurs
-            % in IntTypesMap?
-            % XXX ITEM_LIST If a type has one function symbol with arity one
-            % and the argument type is equivalent to a dummy type that is
-            % defined in another module, we will NOT include TypeCtor in
-            % !DirectDummyTypeCtors, since we won't know enough about
-            % the contents of the other module.
-            % XXX SUBTYPE Do not consider a subtype to be a dummy type
-            % unless the base type is a dummy type.
-            constructor_list_represents_dummy_type(BothTypesMap, OoMCtors,
-                MaybeEqCmp, MaybeDirectArgCtors)
-        then
-            set.insert(TypeCtor, !DirectDummyTypeCtors)
-        else
-            true
+        (
+            MaybeSuperType = no,
+            ( if
+                map.search(IntTypesMap, TypeCtor, _),
+                non_sub_du_type_is_enum(DetailsDu, _NumFunctors)
+            then
+                set.insert(TypeCtor, !AbsExpEnumTypeCtors)
+            else if
+                % XXX ITEM_LIST Why don't we insist that TypeCtor occurs
+                % in IntTypesMap?
+                % XXX ITEM_LIST If a type has one function symbol with arity one
+                % and the argument type is equivalent to a dummy type that is
+                % defined in another module, we will NOT include TypeCtor in
+                % !DirectDummyTypeCtors, since we won't know enough about
+                % the contents of the other module.
+                non_sub_du_constructor_list_represents_dummy_type(BothTypesMap,
+                    TVarSet, OoMCtors, MaybeEqCmp, MaybeDirectArgCtors)
+            then
+                set.insert(TypeCtor, !DirectDummyTypeCtors)
+            else
+                true
+            )
+        ;
+            MaybeSuperType = yes(SuperType),
+            ( if map.search(IntTypesMap, TypeCtor, _) then
+                set.insert(TypeCtor, !AbsExpEqvLhsTypeCtors),
+                ( if type_to_ctor(SuperType, SuperTypeCtor) then
+                    set.singleton_set(TypeCtor, Seen0),
+                    accumulate_eqv_and_supertypes(BothTypesMap,
+                        SuperTypeCtor, !AbsExpEqvLhsTypeCtors, Seen0, _Seen)
+                else
+                    true
+                )
+            else
+                true
+            )
         )
     ;
         ( ImpTypeDefn = parse_tree_abstract_type(_)
         ; ImpTypeDefn = parse_tree_solver_type(_)
+        )
+    ).
+
+    % Accumulate all supertype and equivalence type ctors leading to the
+    % base type ctor. The base type ctor does not need to be included.
+    %
+:- pred accumulate_eqv_and_supertypes(type_defn_map::in, type_ctor::in,
+    set(type_ctor)::in, set(type_ctor)::out,
+    set(type_ctor)::in, set(type_ctor)::out) is det.
+
+accumulate_eqv_and_supertypes(BothTypesMap, TypeCtor, !AbsExpEqvLhsTypeCtors,
+        !Seen) :-
+    % Check for circular types.
+    ( if set.insert_new(TypeCtor, !Seen) then
+        set.insert(TypeCtor, !AbsExpEqvLhsTypeCtors),
+        ( if map.search(BothTypesMap, TypeCtor, ItemTypeDefnInfos) then
+            one_or_more.foldl2(
+                accumulate_eqv_and_supertypes_in_defn(BothTypesMap, TypeCtor),
+                ItemTypeDefnInfos, !AbsExpEqvLhsTypeCtors, !Seen)
+        else
+            true
+        )
+    else
+        true
+    ).
+
+:- pred accumulate_eqv_and_supertypes_in_defn(type_defn_map::in,
+    type_ctor::in, item_type_defn_info::in,
+    set(type_ctor)::in, set(type_ctor)::out,
+    set(type_ctor)::in, set(type_ctor)::out) is det.
+
+accumulate_eqv_and_supertypes_in_defn(BothTypesMap, TypeCtor, ItemTypeDefnInfo,
+        !AbsExpEqvLhsTypeCtors, !Seen) :-
+    ItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
+    (
+        TypeDefn = parse_tree_eqv_type(DetailsEqv),
+        set.insert(TypeCtor, !AbsExpEqvLhsTypeCtors),
+        DetailsEqv = type_details_eqv(RhsType),
+        ( if type_to_ctor(RhsType, RhsTypeCtor) then
+            accumulate_eqv_and_supertypes(BothTypesMap, RhsTypeCtor,
+                !AbsExpEqvLhsTypeCtors, !Seen)
+        else
+            true
+        )
+    ;
+        TypeDefn = parse_tree_du_type(DetailsDu),
+        DetailsDu = type_details_du(MaybeSuperType, _, _, _),
+        (
+            MaybeSuperType = no
+            % This is the base type.
+        ;
+            MaybeSuperType = yes(SuperType),
+            % Not yet at the base type.
+            set.insert(TypeCtor, !AbsExpEqvLhsTypeCtors),
+            ( if type_to_ctor(SuperType, SuperTypeCtor) then
+                accumulate_eqv_and_supertypes(BothTypesMap, SuperTypeCtor,
+                    !AbsExpEqvLhsTypeCtors, !Seen)
+            else
+                true
+            )
+        )
+    ;
+        ( TypeDefn = parse_tree_foreign_type(_)
+        ; TypeDefn = parse_tree_abstract_type(_)
+        ; TypeDefn = parse_tree_solver_type(_)
         )
     ).
 
@@ -1363,7 +1459,7 @@ accumulate_abs_eqv_type_rhs_in_defn(ImpTypesMap, ImpItemTypeDefnInfo,
             !AbsExpEqvRhsTypeCtors, set.init, _, !ModulesNeededByTypeDefns)
     ;
         ImpTypeDefn = parse_tree_du_type(DetailsDu),
-        DetailsDu = type_details_du(MaybeSuperType, OoMCtors, _, _),
+        DetailsDu = type_details_du(_MaybeSuperType, OoMCtors, _, _),
         % There must exist a foreign type alternative to this type.
         % XXX ITEM_LIST I (zs) would like to see a proof argument for that,
         % since I don't think it is true. Unfortunately, we cannot check it
@@ -1373,17 +1469,7 @@ accumulate_abs_eqv_type_rhs_in_defn(ImpTypesMap, ImpItemTypeDefnInfo,
         % inside all the argument types of all the data constructors, and the
         % modules that define them.
         ctors_to_user_type_ctor_set(one_or_more_to_list(OoMCtors),
-            set.init, RhsTypeCtors0),
-        (
-            MaybeSuperType = no,
-            RhsTypeCtors = RhsTypeCtors0
-        ;
-            MaybeSuperType = yes(SuperType),
-            % If the type is a subtype then we also require the type_ctor of
-            % the supertype, and all the type_ctors inside the argument types
-            % of the supertype, and the modules that define them.
-            type_to_user_type_ctor_set(SuperType, RhsTypeCtors0, RhsTypeCtors)
-        ),
+            set.init, RhsTypeCtors),
         set.union(RhsTypeCtors, !DuArgTypeCtors),
         set.fold(accumulate_modules_used_by_type_ctor, RhsTypeCtors,
             !ModulesNeededByTypeDefns)
@@ -1471,26 +1557,28 @@ ctor_args_to_user_type_ctor_set([Arg | Args], !TypeCtors) :-
     % and so when importing or exporting procedures to/from C, we don't include
     % arguments with these types.
     %
-    % See the documentation for `type_util.check_dummy_type' for the definition
+    % See the documentation for `type_util.is_type_a_dummy' for the definition
     % of a dummy type.
     %
-    % NOTE: changes here may require changes to `type_util.check_dummy_type'.
+    % NOTE: changes here may require changes to `type_util.is_type_a_dummy'.
     %
-:- pred constructor_list_represents_dummy_type(type_defn_map::in,
-    one_or_more(constructor)::in, maybe_canonical::in,
+    % This predicate can only be used to test non-subtype du types.
+    %
+:- pred non_sub_du_constructor_list_represents_dummy_type(type_defn_map::in,
+    tvarset::in, one_or_more(constructor)::in, maybe_canonical::in,
     maybe(list(sym_name_arity))::in) is semidet.
 
-constructor_list_represents_dummy_type(TypeDefnMap,
+non_sub_du_constructor_list_represents_dummy_type(TypeDefnMap, TVarSet,
         OoMCtors, MaybeCanonical, MaybeDirectArgCtors) :-
-    constructor_list_represents_dummy_type_2(TypeDefnMap,
+    non_sub_du_constructor_list_represents_dummy_type_2(TypeDefnMap, TVarSet,
         OoMCtors, MaybeCanonical, MaybeDirectArgCtors, []).
 
-:- pred constructor_list_represents_dummy_type_2(type_defn_map::in,
-    one_or_more(constructor)::in, maybe_canonical::in,
+:- pred non_sub_du_constructor_list_represents_dummy_type_2(type_defn_map::in,
+    tvarset::in, one_or_more(constructor)::in, maybe_canonical::in,
     maybe(list(sym_name_arity))::in, list(mer_type)::in) is semidet.
 
-constructor_list_represents_dummy_type_2(TypeDefnMap, OoMCtors,
-        canon, no, CoveredTypes) :-
+non_sub_du_constructor_list_represents_dummy_type_2(TypeDefnMap, TVarSet,
+        OoMCtors, canon, no, CoveredTypes) :-
     OoMCtors = one_or_more(Ctor, []),
     Ctor = ctor(_Ordinal, MaybeExistConstraints, _Name, CtorArgs, _Arity,
         _Context),
@@ -1501,12 +1589,15 @@ constructor_list_represents_dummy_type_2(TypeDefnMap, OoMCtors,
     ;
         % A constructor with a single dummy argument.
         CtorArgs = [ctor_arg(_, ArgType, _)],
-        ctor_arg_is_dummy_type(TypeDefnMap, ArgType, CoveredTypes) = yes
+        ctor_arg_is_dummy_type(TypeDefnMap, TVarSet, ArgType, CoveredTypes)
+            = yes
     ).
 
-:- func ctor_arg_is_dummy_type(type_defn_map, mer_type, list(mer_type)) = bool.
+:- func ctor_arg_is_dummy_type(type_defn_map, tvarset, mer_type,
+    list(mer_type)) = bool.
 
-ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
+ctor_arg_is_dummy_type(TypeDefnMap, TVarSet, Type, CoveredTypes0)
+        = IsDummyType :-
     (
         Type = defined_type(SymName, TypeArgs, _Kind),
         ( if list.member(Type, CoveredTypes0) then
@@ -1522,18 +1613,8 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
                 ;
                     % Can we find a definition of the type that tells us
                     % it is a dummy type?
-                    one_or_more_map.search(TypeDefnMap, TypeCtor,
-                        ItemTypeDefnInfos),
-                    one_or_more.member(ItemTypeDefnInfo, ItemTypeDefnInfos),
-                    TypeDefn = ItemTypeDefnInfo ^ td_ctor_defn,
-                    TypeDefn = parse_tree_du_type(DetailsDu),
-                    % XXX SUBTYPE Do not consider a subtype to be a dummy type
-                    % unless the base type is a dummy type.
-                    DetailsDu = type_details_du(_MaybeSuperType, OoMCtors,
-                        MaybeEqCmp, MaybeDirectArgCtors),
-                    constructor_list_represents_dummy_type_2(TypeDefnMap,
-                        OoMCtors, MaybeEqCmp, MaybeDirectArgCtors,
-                        [Type | CoveredTypes0])
+                    ctor_arg_is_dummy_type_by_some_type_defn(TypeDefnMap,
+                        TVarSet, Type, TypeCtor, TypeArgs, CoveredTypes0)
                 )
             then
                 IsDummyType = yes
@@ -1552,6 +1633,71 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
     ;
         Type = kinded_type(_, _),
         unexpected($pred, "kinded_type")
+    ).
+
+:- pred ctor_arg_is_dummy_type_by_some_type_defn(type_defn_map::in,
+    tvarset::in, mer_type::in, type_ctor::in, list(mer_type)::in,
+    list(mer_type)::in) is semidet.
+
+ctor_arg_is_dummy_type_by_some_type_defn(TypeDefnMap, TVarSet, Type, TypeCtor,
+        TypeArgs, CoveredTypes0) :-
+    one_or_more_map.search(TypeDefnMap, TypeCtor, ItemTypeDefnInfos),
+    one_or_more.member(ItemTypeDefnInfo, ItemTypeDefnInfos),
+    ItemTypeDefnInfo = item_type_defn_info(_TypeCtor, TypeDefnTypeParams,
+        TypeDefn, TypeDefnTVarSet, _Context, _SeqNum),
+    TypeDefn = parse_tree_du_type(DetailsDu),
+    DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeEqCmp,
+        MaybeDirectArgCtors),
+    (
+        MaybeSuperType = no,
+        non_sub_du_constructor_list_represents_dummy_type_2(TypeDefnMap,
+            TVarSet, OoMCtors, MaybeEqCmp, MaybeDirectArgCtors,
+            [Type | CoveredTypes0])
+    ;
+        MaybeSuperType = yes(SuperType0),
+        % A subtype can only be a dummy type if the base type is a dummy type.
+        merge_tvarsets_and_subst_type_args(TVarSet, TypeArgs, TypeDefnTVarSet,
+            TypeDefnTypeParams, SuperType0, SuperType),
+        get_base_type(TypeDefnMap, TVarSet, SuperType, BaseType, set.init),
+        ctor_arg_is_dummy_type(TypeDefnMap, TVarSet, BaseType, CoveredTypes0)
+            = yes
+    ).
+
+:- pred merge_tvarsets_and_subst_type_args(tvarset::in, list(mer_type)::in,
+    tvarset::in, list(type_param)::in, mer_type::in, mer_type::out) is det.
+
+merge_tvarsets_and_subst_type_args(TVarSet, TypeArgs,
+        TVarSet0, TypeParams0, Type0, Type) :-
+    tvarset_merge_renaming(TVarSet, TVarSet0, _MergedTVarSet, Renaming),
+    apply_variable_renaming_to_tvar_list(Renaming, TypeParams0, TypeParams),
+    map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
+    apply_variable_renaming_to_type(Renaming, Type0, Type1),
+    apply_rec_subst_to_type(TSubst, Type1, Type).
+
+:- pred get_base_type(type_defn_map::in, tvarset::in, mer_type::in,
+    mer_type::out, set(mer_type)::in) is nondet.
+
+get_base_type(TypeDefnMap, TVarSet, Type, BaseType, SeenTypes0):-
+    Type = defined_type(SymName, TypeArgs, _Kind),
+    % Check for circular types.
+    set.insert_new(Type, SeenTypes0, SeenTypes1),
+    Arity = list.length(TypeArgs),
+    TypeCtor = type_ctor(SymName, Arity),
+    one_or_more_map.search(TypeDefnMap, TypeCtor, ItemTypeDefnInfos),
+    one_or_more.member(ItemTypeDefnInfo, ItemTypeDefnInfos),
+    ItemTypeDefnInfo = item_type_defn_info(_TypeCtor, TypeDefnTypeParams,
+        TypeDefn, TypeDefnTVarSet, _Context, _SeqNum),
+    TypeDefn = parse_tree_du_type(DetailsDu),
+    DetailsDu = type_details_du(MaybeSuperType, _OoMCtors, _MaybeEqCmp,
+        _MaybeDirectArgCtors),
+    (
+        MaybeSuperType = no,
+        BaseType = Type
+    ;
+        MaybeSuperType = yes(SuperType0),
+        merge_tvarsets_and_subst_type_args(TVarSet, TypeArgs,
+            TypeDefnTVarSet, TypeDefnTypeParams, SuperType0, SuperType),
+        get_base_type(TypeDefnMap, TVarSet, SuperType, BaseType, SeenTypes1)
     ).
 
 %---------------------%
@@ -1622,9 +1768,23 @@ maybe_add_maybe_abstract_type_defns(BothTypesMap, IntTypesMap, NeededTypeCtors,
 
 is_pure_abstract_type_defn(ImpItemTypeDefnInfo) :-
     ImpItemTypeDefnInfo ^ td_ctor_defn = parse_tree_abstract_type(Details),
-    % XXX ITEM_LIST This test may do the wrong thing for
-    % abstract_{dummy,notag,solver}_types, once we start generating them.
-    Details \= abstract_type_fits_in_n_bits(_).
+    require_complete_switch [Details]
+    (
+        Details = abstract_type_general
+    ;
+        Details = abstract_type_fits_in_n_bits(_),
+        fail
+    ;
+        Details = abstract_subtype(_),
+        fail
+    ;
+        ( Details = abstract_dummy_type
+        ; Details = abstract_notag_type
+        ; Details = abstract_solver_type
+        )
+        % XXX ITEM_LIST This test may do the wrong thing for
+        % abstract_{dummy,notag,solver}_types, once we start generating them.
+    ).
 
 :- pred make_imp_types_abstract(type_defn_map::in,
     one_or_more(item_type_defn_info)::in,
@@ -1661,26 +1821,34 @@ make_imp_type_abstract(BothTypesMap, !ImpItemTypeDefnInfo) :-
     % that are relevant to type representation (such as "is dummy",
     % "fits in n bits", "is equivalent to ...") in a type_repn item,
     % and then make the type definition abstract.
-    !.ImpItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn0, _, _, _),
+    !.ImpItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn0, TVarSet,
+        _, _),
     (
         TypeDefn0 = parse_tree_du_type(DetailsDu0),
-        DetailsDu0 = type_details_du(_MaybeSuperType, OoMCtors, MaybeEqCmp,
+        DetailsDu0 = type_details_du(MaybeSuperType, OoMCtors, MaybeEqCmp,
             MaybeDirectArgCtors),
-        ( if
-            % XXX SUBTYPE Do not consider a subtype to be a dummy type unless
-            % the base type is a dummy type.
-            constructor_list_represents_dummy_type(BothTypesMap,
-                OoMCtors, MaybeEqCmp, MaybeDirectArgCtors)
-        then
-            % Leave dummy types alone.
-            true
-        else
-            ( if du_type_is_enum(DetailsDu0, NumFunctors) then
-                num_bits_needed_for_n_values(NumFunctors, NumBits),
-                DetailsAbs = abstract_type_fits_in_n_bits(NumBits)
+        (
+            MaybeSuperType = no,
+            ( if
+                non_sub_du_constructor_list_represents_dummy_type(BothTypesMap,
+                    TVarSet, OoMCtors, MaybeEqCmp, MaybeDirectArgCtors)
+            then
+                % Leave dummy types alone.
+                true
             else
-                DetailsAbs = abstract_type_general
-            ),
+                ( if non_sub_du_type_is_enum(DetailsDu0, NumFunctors) then
+                    num_bits_needed_for_n_dense_values(NumFunctors, NumBits),
+                    DetailsAbs = abstract_type_fits_in_n_bits(NumBits)
+                else
+                    DetailsAbs = abstract_type_general
+                ),
+                TypeDefn = parse_tree_abstract_type(DetailsAbs),
+                !ImpItemTypeDefnInfo ^ td_ctor_defn := TypeDefn
+            )
+        ;
+            MaybeSuperType = yes(SuperType),
+            type_to_ctor_det(SuperType, SuperTypeCtor),
+            DetailsAbs = abstract_subtype(SuperTypeCtor),
             TypeDefn = parse_tree_abstract_type(DetailsAbs),
             !ImpItemTypeDefnInfo ^ td_ctor_defn := TypeDefn
         )
@@ -2281,18 +2449,24 @@ dummy_solver_type = DetailsSolver :-
     is det.
 
 make_du_type_abstract(DetailsDu, DetailsAbstract) :-
-    % XXX SUBTYPE Type representation of subtype depends on base type.
-    DetailsDu = type_details_du(_MaybeSuperType, Ctors, MaybeCanonical,
+    DetailsDu = type_details_du(MaybeSuperType, Ctors, MaybeCanonical,
         _MaybeDirectArgCtors),
-    ( if du_type_is_enum(DetailsDu, NumFunctors) then
-        num_bits_needed_for_n_values(NumFunctors, NumBits),
-        DetailsAbstract = abstract_type_fits_in_n_bits(NumBits)
-    else if du_type_is_notag(Ctors, MaybeCanonical) then
-        DetailsAbstract = abstract_notag_type
-    else if du_type_is_dummy(DetailsDu) then
-        DetailsAbstract = abstract_dummy_type
-    else
-        DetailsAbstract = abstract_type_general
+    (
+        MaybeSuperType = no,
+        ( if non_sub_du_type_is_enum(DetailsDu, NumFunctors) then
+            num_bits_needed_for_n_dense_values(NumFunctors, NumBits),
+            DetailsAbstract = abstract_type_fits_in_n_bits(NumBits)
+        else if non_sub_du_type_is_notag(Ctors, MaybeCanonical) then
+            DetailsAbstract = abstract_notag_type
+        else if non_sub_du_type_is_dummy(DetailsDu) then
+            DetailsAbstract = abstract_dummy_type
+        else
+            DetailsAbstract = abstract_type_general
+        )
+    ;
+        MaybeSuperType = yes(SuperType),
+        type_to_ctor_det(SuperType, SuperTypeCtor),
+        DetailsAbstract = abstract_subtype(SuperTypeCtor)
     ).
 
 :- pred delete_uc_preds_from_du_type(type_details_du::in,

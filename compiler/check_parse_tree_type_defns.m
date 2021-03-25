@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 2019-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -40,7 +41,7 @@
     %
     % Given the type and foreign enum definitions in both the interface
     % and implementation sections of a module, and the type constructors
-    % are is defined in that module, check for each type constructors
+    % that are defined in that module, check for each type constructor
     % whether the definitions of that type constructor are consistent
     % with one another.
     %
@@ -115,19 +116,25 @@
                 % The equivalence type definition.
                 item_type_defn_info_eqv
             )
+    ;       std_mer_type_du_subtype(
+                std_du_type_status,
+
+                % The discriminated union type definition, which is a subtype.
+                item_type_defn_info_du
+            )
     ;       std_mer_type_du_all_plain_constants(
                 std_du_type_status,
 
-                % The discriminated union type definition, which represents
-                % either a direct dummy type or an enum.
+                % The discriminated union type definition (not a subtype),
+                % which represents either a direct dummy type or an enum.
                 item_type_defn_info_du,
 
                 % The first functor name in the type, and any later functor
                 % names. If there are no later functor names, then the type
                 % is a direct dummy type, and must satisfy the requirements
-                % of du_type_is_dummy; if there are, then the type is an
+                % of non_sub_du_type_is_dummy; if there are, then the type is an
                 % enum type, and must satisfy the requirements of
-                % du_type_is_enum. (Function symbols that do not meet
+                % non_sub_du_type_is_enum. (Function symbols that do not meet
                 % the relevant requirements may be constants but we
                 % don't consider them *plain* constants.)
                 string,
@@ -146,8 +153,9 @@
     ;       std_mer_type_du_not_all_plain_constants(
                 std_du_type_status,
 
-                % The discriminated union type definition, which represents
-                % a type *other* than a direct dummy type or an enum.
+                % The discriminated union type definition (not a subtype),
+                % which represents a type *other* than a direct dummy type or
+                % an enum.
                 item_type_defn_info_du,
 
                 % For each of our target foreign languages, this field
@@ -158,7 +166,7 @@
     ;       std_mer_type_abstract(
                 std_abs_type_status,
 
-                % The abstract declaration of the type.
+                % The abstract declaration of the type (not a subtype).
                 item_type_defn_info_abstract,
 
                 % For each of our target foreign languages, this field
@@ -179,8 +187,8 @@
     --->    std_du_type_mer_ft_exported
             % Both the Mercury and any foreign type definitions are exported.
             % Any foreign enum definitions are private, as they have to be.
-            % This status is not applicable to equivalence types, since they
-            % may not have foreign type definitions.
+            % This status is not applicable to equivalence types or subtypes,
+            % since they may not have foreign type definitions.
     ;       std_du_type_mer_exported
             % The Mercury definition is exported. Any foreign type definitions
             % and/or foreign enum definitions are private.
@@ -531,46 +539,59 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         % we will have to disable users' ability to specify MaybeDirectArgs
         % in source code.
         DetailsDu = DuDefn ^ td_ctor_defn,
-        DetailsDu = type_details_du(_MaybeSuperType, OoMCtors, _MaybeCanonical,
+        DetailsDu = type_details_du(MaybeSuperType, OoMCtors, _MaybeCanonical,
             _MaybeDirectArgs),
         OoMCtors = one_or_more(HeadCtor, TailCtors),
-        ( if
-            ctor_is_constant(HeadCtor, HeadName0),
-            ctors_are_all_constants(TailCtors, TailNames0)
-        then
-            (
-                TailNames0 = [],
-                ( if du_type_is_dummy(DetailsDu) then
-                    MaybeOnlyConstants = only_plain_constants(HeadName0, [])
-                else
-                    MaybeOnlyConstants = not_only_plain_constants
-                )
-            ;
-                TailNames0 = [_ | _],
-                ( if du_type_is_enum(DetailsDu, _NumFunctors) then
-                    MaybeOnlyConstants =
-                        only_plain_constants(HeadName0, TailNames0)
-                else
-                    MaybeOnlyConstants = not_only_plain_constants
-                )
-            )
-        else
-            MaybeOnlyConstants = not_only_plain_constants
-        ),
         (
-            MaybeOnlyConstants = not_only_plain_constants,
+            MaybeSuperType = no,
+            ( if
+                ctor_is_constant(HeadCtor, HeadName0),
+                ctors_are_all_constants(TailCtors, TailNames0)
+            then
+                (
+                    TailNames0 = [],
+                    ( if non_sub_du_type_is_dummy(DetailsDu) then
+                        MaybeOnlyConstants =
+                            only_plain_constants(HeadName0, [])
+                    else
+                        MaybeOnlyConstants = not_only_plain_constants
+                    )
+                ;
+                    TailNames0 = [_ | _],
+                    ( if non_sub_du_type_is_enum(DetailsDu, _NumFunctors) then
+                        MaybeOnlyConstants =
+                            only_plain_constants(HeadName0, TailNames0)
+                    else
+                        MaybeOnlyConstants = not_only_plain_constants
+                    )
+                )
+            else
+                MaybeOnlyConstants = not_only_plain_constants
+            ),
+            (
+                MaybeOnlyConstants = not_only_plain_constants,
+                list.foldl(
+                    non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn),
+                    ImpEnums, !Specs),
+                CheckedStdDefn =
+                    std_mer_type_du_not_all_plain_constants(Status, DuDefn,
+                        ChosenMaybeDefnCJCs)
+            ;
+                MaybeOnlyConstants = only_plain_constants(HeadName, TailNames),
+                decide_du_repn_foreign_only_constants(TypeCtor,
+                    [HeadName | TailNames], ChosenMaybeDefnCJCs,
+                    ImpMaybeEnumCJCs, ImpLeftOverEnumsCJCs,
+                    MaybeDefnOrEnumCJCs, !Specs),
+                CheckedStdDefn = std_mer_type_du_all_plain_constants(Status,
+                    DuDefn, HeadName, TailNames, MaybeDefnOrEnumCJCs)
+            )
+        ;
+            MaybeSuperType = yes(_),
+            % A subtype's representation depends on its base type, not only on
+            % its own constructors.
             list.foldl(non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn),
                 ImpEnums, !Specs),
-            CheckedStdDefn = std_mer_type_du_not_all_plain_constants(Status,
-                DuDefn, ChosenMaybeDefnCJCs)
-        ;
-            MaybeOnlyConstants = only_plain_constants(HeadName, TailNames),
-            decide_du_repn_foreign_only_constants(TypeCtor,
-                [HeadName | TailNames], ChosenMaybeDefnCJCs,
-                ImpMaybeEnumCJCs, ImpLeftOverEnumsCJCs,
-                MaybeDefnOrEnumCJCs, !Specs),
-            CheckedStdDefn = std_mer_type_du_all_plain_constants(Status,
-                DuDefn, HeadName, TailNames, MaybeDefnOrEnumCJCs)
+            CheckedStdDefn = std_mer_type_du_subtype(Status, DuDefn)
         ),
 
         CheckedDefn = checked_defn_std(CheckedStdDefn),
@@ -1574,8 +1595,13 @@ add_type_ctor_to_field_name_map(TypeCtor, CheckedDefn, !FieldNameMap) :-
                 _, _, _)
             )
         ;
-            CheckedStdDefn = std_mer_type_du_not_all_plain_constants(_Status,
-                DuDefn, _MaybeDefnCJCs),
+            (
+                CheckedStdDefn =
+                    std_mer_type_du_not_all_plain_constants(_Status,
+                        DuDefn, _MaybeDefnCJCs)
+            ;
+                CheckedStdDefn = std_mer_type_du_subtype(_Status, DuDefn)
+            ),
             DetailsDu = DuDefn ^ td_ctor_defn,
             DetailsDu = type_details_du(_MaybeSuperType, OoMCtors,
                 _MaybeCanonical, _MaybeDirectArgs),

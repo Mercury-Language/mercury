@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2009-2011 The University of Melbourne.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -902,16 +903,16 @@ output_type_ctor_details_defn(Info, Stream, RttiTypeCtor, TypeCtorDetails,
         !DeclSet, !IO) :-
     (
         TypeCtorDetails = tcd_enum(_, _IsDummy, EnumFunctors,
-            EnumByRep, EnumByName, FunctorNumberMap),
+            EnumByOrd, EnumByName, FunctorNumberMap),
         list.foldl2(output_enum_functor_defn(Info, Stream, RttiTypeCtor),
             EnumFunctors, !DeclSet, !IO),
-        output_enum_value_ordered_table(Info, Stream, RttiTypeCtor, EnumByRep,
-            !DeclSet, !IO),
+        output_enum_ordinal_ordered_table(Info, Stream, RttiTypeCtor,
+            EnumByOrd, !DeclSet, !IO),
         output_enum_name_ordered_table(Info, Stream, RttiTypeCtor, EnumByName,
             !DeclSet, !IO),
         output_functor_number_map(Info, Stream, RttiTypeCtor, FunctorNumberMap,
             !DeclSet, !IO),
-        MaybeLayoutName = yes(type_ctor_enum_value_ordered_table),
+        MaybeLayoutName = yes(type_ctor_enum_ordinal_ordered_table),
         MaybeFunctorsName = yes(type_ctor_enum_name_ordered_table),
         HaveFunctorNumberMap = yes
     ;
@@ -989,7 +990,7 @@ output_type_ctor_details_defn(Info, Stream, RttiTypeCtor, TypeCtorDetails,
 
 output_enum_functor_defn(Info, Stream, RttiTypeCtor, EnumFunctor,
         !DeclSet, !IO) :-
-    EnumFunctor = enum_functor(FunctorName, Ordinal),
+    EnumFunctor = enum_functor(FunctorName, Ordinal, enum_value(Value)),
     output_generic_rtti_data_defn_start(Info, Stream,
         ctor_rtti_id(RttiTypeCtor, type_ctor_enum_functor_desc(Ordinal)),
         !DeclSet, !IO),
@@ -997,8 +998,8 @@ output_enum_functor_defn(Info, Stream, RttiTypeCtor, EnumFunctor,
     % MR_enum_functor_name
     c_util.output_quoted_string(Stream, FunctorName, !IO),
     io.write_string(Stream, """,\n\t", !IO),
-    % MR_enum_functor_ordinal -- XXX MAKE_FIELD_UNSIGNED
-    io.write_int32(Stream, int32.cast_from_uint32(Ordinal), !IO),
+    % MR_enum_functor_value -- XXX MAKE_FIELD_UNSIGNED
+    io.write_int32(Stream, int32.cast_from_uint32(Value), !IO),
     io.write_string(Stream, "\n};\n", !IO).
 
 :- pred output_foreign_enum_functor_defn(llds_out_info::in,
@@ -1465,17 +1466,17 @@ output_du_arg_locns_loop(Stream, [ArgInfo | ArgInfos], !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_enum_value_ordered_table(llds_out_info::in,
+:- pred output_enum_ordinal_ordered_table(llds_out_info::in,
     io.text_output_stream::in, rtti_type_ctor::in,
     map(uint32, enum_functor)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_enum_value_ordered_table(Info, Stream, RttiTypeCtor, FunctorMap,
+output_enum_ordinal_ordered_table(Info, Stream, RttiTypeCtor, FunctorMap,
         !DeclSet, !IO) :-
     Functors = map.values(FunctorMap),
     FunctorRttiNames = list.map(enum_functor_rtti_name, Functors),
     output_generic_rtti_data_defn_start(Info, Stream,
-        ctor_rtti_id(RttiTypeCtor, type_ctor_enum_value_ordered_table),
+        ctor_rtti_id(RttiTypeCtor, type_ctor_enum_ordinal_ordered_table),
         !DeclSet, !IO),
     io.write_string(Stream, " = {\n", !IO),
     output_addr_of_ctor_rtti_names(RttiTypeCtor, FunctorRttiNames,
@@ -1582,25 +1583,30 @@ output_du_ptag_ordered_table(Info, Stream, RttiTypeCtor, PtagMap,
         ctor_rtti_id(RttiTypeCtor, type_ctor_du_ptag_ordered_table),
         !DeclSet, !IO),
     io.write_string(Stream, " = {\n", !IO),
-    ( if PtagList = [ptag(0u8) - _ | _] then
-        FirstPtag = ptag(0u8)
-    else
+    (
+        PtagList = [FirstPtag - _ | _],
+        FirstPtag = ptag(LeastPtag)
+    ;
+        PtagList = [],
         unexpected($pred, "bad ptag list")
     ),
     output_du_ptag_ordered_table_body(Stream, RttiTypeCtor, PtagList,
-        FirstPtag, !IO),
+        LeastPtag, !IO),
     io.write_string(Stream, "\n};\n", !IO).
 
 :- pred output_du_ptag_ordered_table_body(io.text_output_stream::in,
-    rtti_type_ctor::in, assoc_list(ptag, sectag_table)::in, ptag::in,
+    rtti_type_ctor::in, assoc_list(ptag, sectag_table)::in, uint8::in,
     io::di, io::uo) is det.
 
-output_du_ptag_ordered_table_body(_, _, [], _CurPtag, !IO).
+output_du_ptag_ordered_table_body(_, _, [], _, !IO).
 output_du_ptag_ordered_table_body(Stream, RttiTypeCtor,
-        [Ptag - SectagTable | PtagTail], CurPtag, !IO) :-
-    expect(unify(Ptag, CurPtag), $pred, "ptag mismatch"),
+        [Ptag - SectagTable | PtagTail], LeastPtag, !IO) :-
+    Ptag = ptag(PtagUint8),
+    % ptags for a subtype may start higher than zero, and may skip values.
+    expect(LeastPtag =< PtagUint8, $pred, "ptag mismatch"),
     SectagTable = sectag_table(SectagLocn, NumSectagBits, NumSharers,
         _SectagMap),
+    compute_du_ptag_layout_flags(SectagTable, Flags),
     io.write_string(Stream, "\t{ ", !IO),
     % MR_sectag_sharers
     io.write_uint32(Stream, NumSharers, !IO),
@@ -1615,16 +1621,21 @@ output_du_ptag_ordered_table_body(Stream, RttiTypeCtor,
     io.write_string(Stream, ",\n\t", !IO),
     % MR_sectag_numbits
     io.write_int8(Stream, NumSectagBits, !IO),
+    io.write_string(Stream, ",\n\t", !IO),
+    % MR_du_ptag
+    io.write_uint8(Stream, PtagUint8, !IO),
+    io.write_string(Stream, ",\n\t", !IO),
+    % MR_du_ptag_flags
+    io.write_uint8(Stream, encode_du_ptag_layout_flags(Flags), !IO),
     (
         PtagTail = [],
         io.write_string(Stream, " }\n", !IO)
     ;
         PtagTail = [_ | _],
         io.write_string(Stream, " },\n", !IO),
-        CurPtag = ptag(CurPtagUint8),
-        NextPtag = ptag(CurPtagUint8 + 1u8),
+        NextLeastPtag = PtagUint8 + 1u8,
         output_du_ptag_ordered_table_body(Stream, RttiTypeCtor, PtagTail,
-            NextPtag, !IO)
+            NextLeastPtag, !IO)
     ).
 
 %-----------------------------------------------------------------------------%

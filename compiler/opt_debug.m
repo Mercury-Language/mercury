@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -590,8 +590,8 @@ dump_rtti_name(RttiName) = Str :-
         RttiName = type_ctor_enum_name_ordered_table,
         Str = "enum_name_ordered_table"
     ;
-        RttiName = type_ctor_enum_value_ordered_table,
-        Str = "enum_value_ordered_table"
+        RttiName = type_ctor_enum_ordinal_ordered_table,
+        Str = "enum_ordinal_ordered_table"
     ;
         RttiName = type_ctor_foreign_enum_name_ordered_table,
         Str = "foreign_enum_name_ordered_table"

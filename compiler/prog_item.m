@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1629,6 +1630,8 @@
 
 :- type item_type_repn_info_eqv
     == item_type_repn_info_general(mer_type).
+:- type item_type_repn_info_subtype
+    == item_type_repn_info_general(type_ctor).
 :- type item_type_repn_info
     == item_type_repn_info_general(type_ctor_repn_info).
 
@@ -1935,6 +1938,7 @@
 :- type type_ctor_repn_info
     --->    tcrepn_is_word_aligned_ptr
     ;       tcrepn_is_eqv_to(mer_type)
+    ;       tcrepn_is_subtype_of(type_ctor)
     ;       tcrepn_du(du_repn)
     ;       tcrepn_foreign(c_j_cs_repn).
 
@@ -2016,7 +2020,7 @@
 :- type enum_repn
     --->    enum_repn(
                 % The type is an enum type that satisfies the requirements
-                % of du_type_is_enum.
+                % of non_sub_du_type_is_enum.
 
                 % The list of the functor names (all arity 0). We store
                 % the first two separately to enforce the structural invariant

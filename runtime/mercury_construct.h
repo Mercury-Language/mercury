@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2002, 2005, 2007 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2021 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_construct.h
@@ -25,6 +25,7 @@ union MR_Construct_Functor_Union {
 
 typedef struct MR_Construct_Info_Struct {
     MR_ConstString                      functor_name;
+    MR_Integer                          functor_ordinal;
     MR_Integer                          arity;
     const MR_PseudoTypeInfo             *arg_pseudo_type_infos;
     const MR_ConstString                *arg_names;
@@ -52,7 +53,7 @@ extern  int     MR_get_num_functors(MR_TypeInfo type_info);
 // calls to this function.
 
 extern  MR_bool MR_get_functors_check_range(int functor_number,
-                    MR_TypeInfo type_info,
+                    MR_TypeInfo type_info, MR_bool compute_ordinal,
                     MR_Construct_Info *construct_info);
 
 // MR_typecheck_arguments:
