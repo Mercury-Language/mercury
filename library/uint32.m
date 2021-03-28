@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2021 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -341,6 +341,34 @@
     % representation of A.
     %
 :- func reverse_bits(uint32) = uint32.
+
+    % rotate_left(U, D) = N:
+    %
+    % N is the value obtained by rotating the binary representation of U
+    % left by D bits. Throws an exception if D is not in [0, 31].
+    %
+:- func rotate_left(uint32, uint) = uint32.
+
+    % unchecked_rotate_left(U, D) = N:
+    %
+    % N is the value obtained by rotating the binary representation of U
+    % left by an amount given by the lowest 5 bits of D.
+    %
+:- func unchecked_rotate_left(uint32, uint) = uint32.
+
+    % rotate_right(U, D) = N:
+    %
+    % N is the value obtained by rotating the binary representation of U
+    % right by D bits. Throws an exception if D is not in [0, 31].
+    %
+:- func rotate_right(uint32, uint) = uint32.
+
+    % unchecked_rotate_left(U, D) = N:
+    %
+    % N is the value obtained by rotating the binary representation of U
+    % right by an amount given by the lowest 5 bits of D.
+    %
+:- func unchecked_rotate_right(uint32, uint) = uint32.
 
 %---------------------------------------------------------------------------%
 %
@@ -869,6 +897,76 @@ reverse_bytes(A) = B :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     B = java.lang.Integer.reverse(A);
+").
+
+%---------------------------------------------------------------------------%
+
+rotate_left(X, N) =
+    ( if N < 32u then
+        unchecked_rotate_left(X, N)
+    else
+        func_error($pred, "rotate amount exceeds 31 bits")
+    ).
+
+:- pragma foreign_proc("C",
+    unchecked_rotate_left(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 31;
+    // This implementation is from https://blog.regehr.org/archives/1063.
+    // It is intended to avoid undefined behaviour in C and be recognisable by
+    // C compilers as a rotate operation. (On architectures that have a rotate
+    // instruction, some C compilers can recognise this formulation and replace
+    // it with the appropriate machine instruction.)
+    // XXX clang has intrinsics for rotation -- we should use those instead.
+    Result = (X << N) | (X >> (-N & 31));
+").
+
+:- pragma foreign_proc("C#",
+    unchecked_rotate_left(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 31;
+    Result = (X << (int) N) | (X >> (int) (-N & 31));
+").
+
+:- pragma foreign_proc("Java",
+    unchecked_rotate_left(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Result = java.lang.Integer.rotateLeft(X, N);
+").
+
+%---------------------------------------------------------------------------%
+
+rotate_right(X, N) =
+    ( if N < 32u then
+        unchecked_rotate_right(X, N)
+    else
+        func_error($pred, "rotate amount exceeds 31 bits")
+    ).
+
+:- pragma foreign_proc("C",
+    unchecked_rotate_right(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 31;
+    Result = (X >> N) | (X << (-N & 31));
+").
+
+:- pragma foreign_proc("C#",
+    unchecked_rotate_right(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 31;
+    Result = (X >> (int) N) | (X << (int) (-N & 31));
+").
+
+:- pragma foreign_proc("Java",
+    unchecked_rotate_right(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Result = java.lang.Integer.rotateRight(X, N);
 ").
 
 %---------------------------------------------------------------------------%
