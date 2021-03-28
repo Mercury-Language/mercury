@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018-2021 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -309,6 +309,34 @@
     % in the binary representation of A.
     %
 :- func reverse_bits(uint64) = uint64.
+
+    % rotate_left(U, D) = N:
+    %
+    % N is the value obtained by rotating the binary representation of U
+    % left by D bits. Throws an exception if D is not in [0, 63].
+    %
+:- func rotate_left(uint64, uint) = uint64.
+
+    % unchecked_rotate_left(U, D) = N:
+    %
+    % N is the value obtained by rotating the binary representation of U
+    % left by an amount given by the lowest 6 bits of D.
+    %
+:- func unchecked_rotate_left(uint64, uint) = uint64.
+
+    % rotate_right(U, D) = N:
+    %
+    % N is the value obtained by rotating the binary representation of U
+    % right by D bits. Throws an exception if D is not in [0, 63].
+    %
+:- func rotate_right(uint64, uint) = uint64.
+
+    % unchecked_rotate_left(U, D) = N:
+    %
+    % N is the value obtained by rotating the binary representation of U
+    % right by an amount given by the lowest 6 bits of D.
+    %
+:- func unchecked_rotate_right(uint64, uint) = uint64.
 
 %---------------------------------------------------------------------------%
 %
@@ -796,6 +824,71 @@ reverse_bits(!.A) = B :-
     !:A = (!.A << 48) \/ ((!.A /\ 0x_ffff_0000_u64) << 16) \/
         ((!.A >> 16) /\ 0x_ffff_0000_u64) \/ (!.A >> 48),
     B = !.A.
+
+%---------------------------------------------------------------------------%
+
+rotate_left(X, N) =
+    ( if N < 64u then
+        unchecked_rotate_left(X, N)
+    else
+        func_error($pred, "rotate amount exceeds 63 bits")
+    ).
+
+:- pragma foreign_proc("C",
+    unchecked_rotate_left(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 63;
+    // XXX clang has intrinsics for rotation -- we should use those instead.
+    Result = (X << N) | (X >> (-N & 63));
+").
+
+:- pragma foreign_proc("C#",
+    unchecked_rotate_left(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 63;
+    Result = (X << (int) N) | (X >> (int) (-N & 63));
+").
+
+:- pragma foreign_proc("Java",
+    unchecked_rotate_left(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Result = java.lang.Long.rotateLeft(X, N);
+").
+
+%---------------------------------------------------------------------------%
+
+rotate_right(X, N) =
+    ( if N < 64u then
+        unchecked_rotate_right(X, N)
+    else
+        func_error($pred, "rotate amount exceeds 63 bits")
+    ).
+
+:- pragma foreign_proc("C",
+    unchecked_rotate_right(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 63;
+    Result = (X >> N) | (X << (-N & 63));
+").
+
+:- pragma foreign_proc("C#",
+    unchecked_rotate_right(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 63;
+    Result = (X >> (int) N) | (X << (int) (-N & 63));
+").
+
+:- pragma foreign_proc("Java",
+    unchecked_rotate_right(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Result = java.lang.Long.rotateRight(X, N);
+").
 
 %---------------------------------------------------------------------------%
 

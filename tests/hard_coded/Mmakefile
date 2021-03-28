@@ -329,6 +329,7 @@ ORDINARY_PROGS = \
 	reverse_arith \
 	rnd \
 	rotate_uint32 \
+	rotate_uint64 \
 	rtree_test \
 	rtti_strings \
 	sectag_bits \
