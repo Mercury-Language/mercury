@@ -1,0 +1,88 @@
+*** Test 'rotate_left' ***
+
+          rotate_left(00000001, 0) = 00000001
+unchecked_rotate_left(00000001, 0) = 00000001
+
+          rotate_left(00000001, 1) = 00000010
+unchecked_rotate_left(00000001, 1) = 00000010
+
+          rotate_left(00000001, 2) = 00000100
+unchecked_rotate_left(00000001, 2) = 00000100
+
+          rotate_left(00000001, 7) = 10000000
+unchecked_rotate_left(00000001, 7) = 10000000
+
+          rotate_left(00000001, 8) = <<exception>>
+unchecked_rotate_left(00000001, 8) = 00000001
+
+          rotate_left(00000001, 15) = <<exception>>
+unchecked_rotate_left(00000001, 15) = 10000000
+
+          rotate_left(00000001, 16) = <<exception>>
+unchecked_rotate_left(00000001, 16) = 00000001
+
+          rotate_left(00001111, 0) = 00001111
+unchecked_rotate_left(00001111, 0) = 00001111
+
+          rotate_left(00001111, 1) = 00011110
+unchecked_rotate_left(00001111, 1) = 00011110
+
+          rotate_left(00001111, 2) = 00111100
+unchecked_rotate_left(00001111, 2) = 00111100
+
+          rotate_left(00001111, 7) = 10000111
+unchecked_rotate_left(00001111, 7) = 10000111
+
+          rotate_left(00001111, 8) = <<exception>>
+unchecked_rotate_left(00001111, 8) = 00001111
+
+          rotate_left(00001111, 15) = <<exception>>
+unchecked_rotate_left(00001111, 15) = 10000111
+
+          rotate_left(00001111, 16) = <<exception>>
+unchecked_rotate_left(00001111, 16) = 00001111
+
+*** Test 'rotate_right' ***
+
+          rotate_right(00000001, 0) = 00000001
+unchecked_rotate_right(00000001, 0) = 00000001
+
+          rotate_right(00000001, 1) = 10000000
+unchecked_rotate_right(00000001, 1) = 10000000
+
+          rotate_right(00000001, 2) = 01000000
+unchecked_rotate_right(00000001, 2) = 01000000
+
+          rotate_right(00000001, 7) = 00000010
+unchecked_rotate_right(00000001, 7) = 00000010
+
+          rotate_right(00000001, 8) = <<exception>>
+unchecked_rotate_right(00000001, 8) = 00000001
+
+          rotate_right(00000001, 15) = <<exception>>
+unchecked_rotate_right(00000001, 15) = 00000010
+
+          rotate_right(00000001, 16) = <<exception>>
+unchecked_rotate_right(00000001, 16) = 00000001
+
+          rotate_right(00001111, 0) = 00001111
+unchecked_rotate_right(00001111, 0) = 00001111
+
+          rotate_right(00001111, 1) = 10000111
+unchecked_rotate_right(00001111, 1) = 10000111
+
+          rotate_right(00001111, 2) = 11000011
+unchecked_rotate_right(00001111, 2) = 11000011
+
+          rotate_right(00001111, 7) = 00011110
+unchecked_rotate_right(00001111, 7) = 00011110
+
+          rotate_right(00001111, 8) = <<exception>>
+unchecked_rotate_right(00001111, 8) = 00001111
+
+          rotate_right(00001111, 15) = <<exception>>
+unchecked_rotate_right(00001111, 15) = 00011110
+
+          rotate_right(00001111, 16) = <<exception>>
+unchecked_rotate_right(00001111, 16) = 00001111
+

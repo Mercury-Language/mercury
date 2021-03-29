@@ -772,8 +772,10 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		map_merge_test \
 		mutable_excp \
 		null_char \
+		rotate_uint16 \
 		rotate_uint32 \
 		rotate_uint64 \
+		rotate_uint8 \
 		shift_test \
 		string_append_pieces \
 		string_first_char_ilseq \

@@ -338,6 +338,34 @@
     %
 :- func reverse_bits(uint16) = uint16.
 
+    % rotate_left(U, D) = N:
+    %
+    % N is the value obtained by rotating the binary representation of U
+    % left by D bits. Throws an exception if D is not in [0, 15].
+    %
+:- func rotate_left(uint16, uint) = uint16.
+
+    % unchecked_rotate_left(U, D) = N:
+    %
+    % N is the value obtained by rotating the binary representation of U
+    % left by an amount given by the lowest 4 bits of D.
+    %
+:- func unchecked_rotate_left(uint16, uint) = uint16.
+
+    % rotate_right(U, D) = N:
+    %
+    % N is the value obtained by rotating the binary representation of U
+    % right by D bits. Throws an exception if D is not in [0, 15].
+    %
+:- func rotate_right(uint16, uint) = uint16.
+
+    % unchecked_rotate_left(U, D) = N:
+    %
+    % N is the value obtained by rotating the binary representation of U
+    % right by an amount given by the lowest 4 bits of D.
+    %
+:- func unchecked_rotate_right(uint16, uint) = uint16.
+
 %---------------------------------------------------------------------------%
 %
 % Limits.
@@ -761,6 +789,73 @@ reverse_bits(!.A) = B :-
     !:A = (((\ 0x0f0fu16) /\ !.A) >> 4) \/ ((0x0f0fu16 /\ !.A) << 4),
     !:A = (((\ 0x00ffu16) /\ !.A) >> 8) \/ ((0x00ffu16 /\ !.A) << 8),
     B = !.A.
+
+%---------------------------------------------------------------------------%
+
+rotate_left(X, N) =
+    ( if N < 16u then
+        unchecked_rotate_left(X, N)
+    else
+        func_error($pred, "rotate amount exceeds 15 bits")
+    ).
+
+:- pragma foreign_proc("C",
+    unchecked_rotate_left(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 15;
+    // XXX clang has intrinsics for rotation -- we should use those instead.
+    Result = (X << N) | (X >> (-N & 15));
+").
+
+:- pragma foreign_proc("C#",
+    unchecked_rotate_left(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 15;
+    Result = (ushort) ((X << (int) N) | (X >> (int) (-N & 15)));
+").
+
+:- pragma foreign_proc("Java",
+    unchecked_rotate_left(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 15;
+    Result = (short) ((X << (int) N) | (X >>> (int) (-N & 15)));
+").
+
+%---------------------------------------------------------------------------%
+
+rotate_right(X, N) =
+    ( if N < 16u then
+        unchecked_rotate_right(X, N)
+    else
+        func_error($pred, "rotate amount exceeds 15 bits")
+    ).
+
+:- pragma foreign_proc("C",
+    unchecked_rotate_right(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 15;
+    Result = (X >> N) | (X << (-N & 15));
+").
+
+:- pragma foreign_proc("C#",
+    unchecked_rotate_right(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 15;
+    Result = (ushort) ((X >> (int) N) | (X << (int) (-N & 15)));
+").
+
+:- pragma foreign_proc("Java",
+    unchecked_rotate_right(X::in, N::in) = (Result::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    N &= 15;
+    Result = (short) ((X >>> (int) N) | (X << (int) (-N & 15)));
+").
 
 %---------------------------------------------------------------------------%
 
