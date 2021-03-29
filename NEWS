@@ -288,6 +288,42 @@ Changes to the Mercury standard library
     - func `localtime/1`            (replacement: `localtime/4`)
     - func `mktime/1`               (replacement: `mktime/4`)
 
+### Changes to the `uint16` module
+
+* The following functions have been added:
+
+    - func `rotate_left/2`
+    - func `rotate_right/2`
+    - func `unchecked_rotate_left/2`
+    - func `unchecked_rotate_right/2`
+
+### Changes to the `uint32` module
+
+* The following functions have been added:
+
+    - func `rotate_left/2`
+    - func `rotate_right/2`
+    - func `unchecked_rotate_left/2`
+    - func `unchecked_rotate_right/2`
+
+### Changes to the `uint64` module
+
+* The following functions have been added:
+
+    - func `rotate_left/2`
+    - func `rotate_right/2`
+    - func `unchecked_rotate_left/2`
+    - func `unchecked_rotate_right/2`
+
+### Changes to the `uint8` module
+
+* The following functions have been added:
+
+    - func `rotate_left/2`
+    - func `rotate_right/2`
+    - func `unchecked_rotate_left/2`
+    - func `unchecked_rotate_right/2`
+
 ### Changes to the `varset` module
 
 * The following obsolete predicates have been removed:
