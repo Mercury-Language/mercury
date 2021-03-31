@@ -736,62 +736,77 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
                 ConsId, !Specs),
             MaybeQualifiedYArgTerms = YArgTerms
         ),
-        % At this point, we have done state variable name expansion
-        % at the top level of MaybeQualifiedYArgTerms.
+        build_var_cons_id_unification(XVar, ConsId, MaybeQualifiedYArgTerms,
+            YFunctorContext, Context, MainContext, SubContext, Purity,
+            !.AncestorVarMap, Expansion,
+            !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs)
+    ).
+
+:- pred build_var_cons_id_unification(prog_var::in, cons_id::in,
+    list(prog_term)::in, term.context::in, prog_context::in,
+    unify_main_context::in, unify_sub_contexts::in, purity::in,
+    ancestor_var_map::in, expansion::out,
+    svar_state::in, svar_state::out, svar_store::in, svar_store::out,
+    prog_varset::in, prog_varset::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+build_var_cons_id_unification(XVar, ConsId, MaybeQualifiedYArgTerms,
+        YFunctorContext, Context, MainContext, SubContext, Purity,
+        !.AncestorVarMap, Expansion,
+        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
+    % Our caller has done state variable name expansion
+    % at the top level of MaybeQualifiedYArgTerms.
+    (
+        MaybeQualifiedYArgTerms = [],
+        RHS = rhs_functor(ConsId, is_not_exist_constr, []),
+        make_atomic_unification(XVar, RHS, YFunctorContext,
+            MainContext, SubContext, Purity, FunctorGoal, !QualInfo),
+        goal_set_purity(Purity, FunctorGoal, Goal),
+        Expansion = expansion(fgti_var_size(XVar, 1), cord.singleton(Goal))
+    ;
+        MaybeQualifiedYArgTerms = [_ | _],
+        ArgContext = ac_functor(ConsId, MainContext, SubContext),
+        maybe_add_to_ancestor_var_map(!.ModuleInfo, XVar, ConsId, Context,
+            !AncestorVarMap),
         (
-            MaybeQualifiedYArgTerms = [],
-            make_atomic_unification(XVar,
-                rhs_functor(ConsId, is_not_exist_constr, []),
-                YFunctorContext, MainContext, SubContext, Purity, FunctorGoal,
-                !QualInfo),
-            goal_set_purity(Purity, FunctorGoal, Goal),
-            Expansion = expansion(fgti_var_size(XVar, 1), cord.singleton(Goal))
+            Purity = purity_pure,
+            % If we can, we want to add the unifications for the arguments
+            % AFTER the unification of the top level function symbol,
+            % because otherwise we get efficiency problems during
+            % type-checking.
+            do_arg_unifications_with_fresh_vars(MaybeQualifiedYArgTerms,
+                YFunctorContext, ArgContext, deconstruct_top_down, 1,
+                [], !.AncestorVarMap, YVars, ArgExpansions,
+                !SVarState, !SVarStore, !VarSet,
+                !ModuleInfo, !QualInfo, !Specs),
+            RHS = rhs_functor(ConsId, is_not_exist_constr, YVars),
+            make_atomic_unification(XVar, RHS, YFunctorContext,
+                MainContext, SubContext, Purity, FunctorGoal, !QualInfo),
+            goal_info_init(Context, GoalInfo),
+            append_expansions_after_goal_top_ftgi(GoalInfo, XVar,
+                FunctorGoal, 1, ArgExpansions, Expansion)
         ;
-            MaybeQualifiedYArgTerms = [_ | _],
-            ArgContext = ac_functor(ConsId, MainContext, SubContext),
-            maybe_add_to_ancestor_var_map(!.ModuleInfo, XVar, ConsId, Context,
-                !AncestorVarMap),
-            (
-                Purity = purity_pure,
-                % If we can, we want to add the unifications for the arguments
-                % AFTER the unification of the top level function symbol,
-                % because otherwise we get efficiency problems during
-                % type-checking.
-                do_arg_unifications_with_fresh_vars(MaybeQualifiedYArgTerms,
-                    YFunctorContext, ArgContext, deconstruct_top_down, 1,
-                    [], !.AncestorVarMap, YVars, ArgExpansions,
-                    !SVarState, !SVarStore, !VarSet,
-                    !ModuleInfo, !QualInfo, !Specs),
-                make_atomic_unification(XVar,
-                    rhs_functor(ConsId, is_not_exist_constr, YVars),
-                    YFunctorContext, MainContext, SubContext, Purity,
-                    FunctorGoal, !QualInfo),
-                goal_info_init(Context, GoalInfo),
-                append_expansions_after_goal_top_ftgi(GoalInfo, XVar,
-                    FunctorGoal, 1, ArgExpansions, Expansion)
-            ;
-                ( Purity = purity_semipure
-                ; Purity = purity_impure
-                ),
-                % For impure unifications, we need to put the unifications
-                % for the arguments BEFORE the unification of the top level
-                % function symbol, because mode reordering can't reorder
-                % code around that unification.
-                do_arg_unifications_with_fresh_vars(MaybeQualifiedYArgTerms,
-                    YFunctorContext, ArgContext, construct_bottom_up, 1,
-                    [], !.AncestorVarMap, YVars, ArgExpansions,
-                    !SVarState, !SVarStore, !VarSet,
-                    !ModuleInfo, !QualInfo, !Specs),
-                make_atomic_unification(XVar,
-                    rhs_functor(ConsId, is_not_exist_constr, YVars),
-                    YFunctorContext, MainContext, SubContext, Purity,
-                    FunctorGoal, !QualInfo),
-                goal_info_init(Context, GoalInfo),
-                insert_expansions_before_goal_top_not_fgti(GoalInfo,
-                    ArgExpansions, FunctorGoal, Goal0),
-                goal_set_purity(Purity, Goal0, Goal),
-                Expansion = expansion(not_fgti, cord.singleton(Goal))
-            )
+            ( Purity = purity_semipure
+            ; Purity = purity_impure
+            ),
+            % For impure unifications, we need to put the unifications
+            % for the arguments BEFORE the unification of the top level
+            % function symbol, because mode reordering can't reorder
+            % code around that unification.
+            do_arg_unifications_with_fresh_vars(MaybeQualifiedYArgTerms,
+                YFunctorContext, ArgContext, construct_bottom_up, 1,
+                [], !.AncestorVarMap, YVars, ArgExpansions,
+                !SVarState, !SVarStore, !VarSet,
+                !ModuleInfo, !QualInfo, !Specs),
+            RHS = rhs_functor(ConsId, is_not_exist_constr, YVars),
+            make_atomic_unification(XVar, RHS, YFunctorContext,
+                MainContext, SubContext, Purity, FunctorGoal, !QualInfo),
+            goal_info_init(Context, GoalInfo),
+            insert_expansions_before_goal_top_not_fgti(GoalInfo,
+                ArgExpansions, FunctorGoal, Goal0),
+            goal_set_purity(Purity, Goal0, Goal),
+            Expansion = expansion(not_fgti, cord.singleton(Goal))
         )
     ).
 
