@@ -157,7 +157,7 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
         then
             SolverPieces = [words("Error: the definition"),
                 words("(as opposed to the name) of a solver type such as"),
-                unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
+                unqual_type_ctor(TypeCtor),
                 words("must not be exported from its defining module."), nl],
             SolverSpec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, SolverPieces),
@@ -249,12 +249,11 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
             type_status_is_exported_to_non_submodules(FirstStatus),
         SecondIsExported =
             type_status_is_exported_to_non_submodules(SecondStatus),
-        TypeCtor = type_ctor(SymName, Arity),
-        SNA = unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
+        UTC = unqual_type_ctor(TypeCtor),
         ( if FirstIsExported = SecondIsExported then
             Severity = severity_warning,
-            DupPieces = [words("Warning: duplicate declaration for type "),
-                SNA, suffix("."), nl]
+            DupPieces = [words("Warning: duplicate declaration for type"),
+                UTC, suffix("."), nl]
         else
             Severity = severity_error,
             !:FoundInvalidType = found_invalid_type,
@@ -267,13 +266,13 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
             % for every type_ctor.
             (
                 SecondIsExported = yes,
-                DupPieces = [words("Error: This declaration for type "),
-                    SNA, words("says it is exported, while"),
+                DupPieces = [words("Error: This declaration for type"),
+                    UTC, words("says it is exported, while"),
                     words("the previous declaration says it is private."), nl]
             ;
                 SecondIsExported = no,
-                DupPieces = [words("Error: This declaration for type "),
-                    SNA, words("says it is private, while"),
+                DupPieces = [words("Error: This declaration for type"),
+                    UTC, words("says it is private, while"),
                     words("the previous declaration says it is exported."), nl]
             )
         ),
@@ -352,7 +351,6 @@ module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
 
 module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
         Body, TypeDefn0, Context, !ModuleInfo, !FoundInvalidType, !Specs) :-
-    TypeCtor = type_ctor(SymName, Arity),
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
     ( if search_type_ctor_defn(TypeTable0, TypeCtor, OldDefn) then
         % Since make_hlds_passes.m adds all abstract definitions first,
@@ -404,8 +402,7 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
             )
         )
     else
-        ForeignDeclPieces = [words("Error: type "),
-            unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
+        ForeignDeclPieces = [words("Error: type"), unqual_type_ctor(TypeCtor),
             words("defined as foreign_type without being declared."), nl],
         ForeignDeclSpec = simplest_spec($pred, severity_error,
             phase_parse_tree_to_hlds, Context, ForeignDeclPieces),
@@ -641,10 +638,9 @@ check_for_dummy_type_with_unify_compare(TypeStatus, TypeCtor, DetailsDu,
         % Discriminated unions whose definition consists of a single
         % zero-arity constructor are dummy types. Dummy types are not allowed
         % to have user-defined equality or comparison.
-
+        %
         % XXX SUBTYPE Do not consider a subtype to be a dummy type
         % unless the base type is a dummy type.
-
         DetailsDu = type_details_du(_MaybeSuperType, Ctors, MaybeCanonical,
             _MaybeDirectArg),
         Ctors = one_or_more(Ctor, []),
@@ -653,14 +649,12 @@ check_for_dummy_type_with_unify_compare(TypeStatus, TypeCtor, DetailsDu,
         % Only report errors for types defined in this module.
         type_status_defined_in_this_module(TypeStatus) = yes
     then
-        TypeCtor = type_ctor(SymName, Arity),
         DummyMainPieces = [words("Error: the type"),
-            unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
-            words("contains no information,"),
+            unqual_type_ctor(TypeCtor), words("contains no information,"),
             words("and as such it is not allowed to have"),
             words("user-defined equality or comparison."), nl],
-        DummyVerbosePieces = [words("Discriminated unions whose body"),
-            words("consists of a single zero-arity constructor"),
+        DummyVerbosePieces = [words("Discriminated union types"),
+            words("whose body consists of a single zero-arity constructor"),
             words("cannot have user-defined equality or comparison."), nl],
         DummyMsg = simple_msg(Context,
             [always(DummyMainPieces),
@@ -694,9 +688,7 @@ check_for_polymorphic_eqv_type_with_monomorphic_body(TypeStatus, TypeCtor,
             not type_contains_var(EqvType, Var)
         )
     then
-        TypeCtor = type_ctor(SymName, Arity),
-        PolyEqvPieces = [words("Error: the type"),
-            unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
+        PolyEqvPieces = [words("Error: the type"), unqual_type_ctor(TypeCtor),
             words("is a polymorphic equivalence type"),
             words("with a monomorphic definition."),
             words("The export of such types as abstract types"),
@@ -778,10 +770,9 @@ check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn, NewBody,
                 )
             )
         ),
-        TypeCtor = type_ctor(SymName, Arity),
-        SNA = unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
         MainPieces = [words("Error:"), words(ThisDeclOrDefn),
-            words("of type"), SNA, words(ThisIsOrIsnt), suffix(","),
+            words("of type"), unqual_type_ctor(TypeCtor),
+            words(ThisIsOrIsnt), suffix(","),
             words("but its"), words(OldDeclOrDefn),
             words(OldIsOrIsnt), suffix("."), nl],
         OldPieces = [words("The"), words(OldDeclOrDefn), words("is here."),
@@ -849,17 +840,16 @@ check_for_inconsistent_foreign_type_visibility(TypeCtor,
             not do_foreign_type_visibilities_match(OldStatus, NewStatus)
         )
     then
-        TypeCtor = type_ctor(SymName, Arity),
-        SNA = unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
+        UTC = unqual_type_ctor(TypeCtor),
         (
             OldIsAbstract = old_defn_is_abstract,
             Pieces = [words("Error: the definition of the foreign type"),
-                SNA, words("must have the same visibility"),
+                UTC, words("must have the same visibility"),
                 words("as its declaration."), nl]
         ;
             OldIsAbstract = old_defn_is_not_abstract,
             Pieces = [words("Error: all definitions of the foreign type"),
-                SNA, words("must have the same visibility."), nl]
+                UTC, words("must have the same visibility."), nl]
         ),
         % The flattening of source item blocks by modules.m puts
         % all items in a given section together. Since the original
@@ -1178,7 +1168,6 @@ do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
 
 check_foreign_type_for_current_target(TypeCtor, ForeignTypeBody, PrevErrors,
         Context, FoundInvalidType, !ModuleInfo, !Specs) :-
-    TypeCtor = type_ctor(Name, Arity),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     ( if have_foreign_type_for_backend(Target, ForeignTypeBody, yes) then
@@ -1190,8 +1179,7 @@ check_foreign_type_for_current_target(TypeCtor, ForeignTypeBody, PrevErrors,
         FoundInvalidType = found_invalid_type
     else
         LangStr = compilation_target_string(Target),
-        MainPieces = [words("Error: the type"),
-            unqual_sym_name_arity(sym_name_arity(Name, Arity)),
+        MainPieces = [words("Error: the type"), unqual_type_ctor(TypeCtor),
             words("has no definition that is valid when targeting"),
             fixed(LangStr), suffix(";"),
             words("neither a Mercury definition,"),
@@ -1231,9 +1219,8 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBody, SuperType,
         ;
             SearchRes = error(Error),
             Pieces = supertype_ctor_defn_error_pieces(SuperTypeCtor, Error),
-            Msg = simplest_msg(Context, Pieces),
-            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-                [Msg]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs],
             !:FoundInvalidType = found_invalid_type
         )
@@ -1243,9 +1230,8 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBody, SuperType,
         Pieces = [words("Error: expected type constructor in"),
             words("supertype part of subtype definition, got"),
             quote(SuperTypeStr), nl],
-        Msg = simplest_msg(Context, Pieces),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [Msg]),
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
     ).
@@ -1270,14 +1256,11 @@ check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
                 Seen0, !FoundInvalidType, !Specs)
         ;
             IsForeign = yes(_),
-            SuperTypeCtor = type_ctor(SymName, Arity),
-            Pieces = [words("Error:"),
-                unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
-                words("cannot be a supertype because it has a"),
-                words("foreign type definition."), nl],
-            Msg = simplest_msg(Context, Pieces),
-            Spec = error_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, [Msg]),
+            Pieces = [words("Error:"), unqual_type_ctor(SuperTypeCtor),
+                words("cannot be a supertype"),
+                words("because it has a foreign type definition."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs],
             !:FoundInvalidType = found_invalid_type
         )
@@ -1287,15 +1270,12 @@ check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
         ; SuperTypeBody = hlds_solver_type(_)
         ; SuperTypeBody = hlds_abstract_type(_)
         ),
-        SuperTypeCtor = type_ctor(SymName, Arity),
         SuperTypeDesc = describe_hlds_type_body(SuperTypeBody),
-        Pieces = [words("Error:"),
-            unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
+        Pieces = [words("Error:"), unqual_type_ctor(SuperTypeCtor),
             words("cannot be a supertype because it is"),
             words(SuperTypeDesc), suffix("."), nl],
-        Msg = simplest_msg(Context, Pieces),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [Msg]),
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
     ).
@@ -1325,9 +1305,8 @@ check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBody,
         ;
             Pieces = [_ | _],
             hlds_data.get_type_defn_context(TypeDefn, Context),
-            Msg = simplest_msg(Context, Pieces),
-            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-                [Msg]),
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ),
         !:FoundInvalidType = found_invalid_type
@@ -1375,9 +1354,7 @@ check_subtype_has_base_type(TypeTable, OrigTypeStatus, CurTypeCtor,
             )
         ;
             IsForeign = yes(_),
-            CurTypeCtor = type_ctor(SymName, Arity),
-            Pieces = [words("Error:"),
-                unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
+            Pieces = [words("Error:"), unqual_type_ctor(CurTypeCtor),
                 words("has a foreign type definition."), nl],
             MaybeError = error(Pieces)
         )
@@ -1387,10 +1364,8 @@ check_subtype_has_base_type(TypeTable, OrigTypeStatus, CurTypeCtor,
         ; CurTypeBody = hlds_solver_type(_)
         ; CurTypeBody = hlds_abstract_type(_)
         ),
-        CurTypeCtor = type_ctor(SymName, Arity),
         CurTypeDesc = describe_hlds_type_body(CurTypeBody),
-        Pieces = [words("Error:"),
-            unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
+        Pieces = [words("Error:"), unqual_type_ctor(CurTypeCtor),
             words("is"), words(CurTypeDesc), suffix("."), nl],
         MaybeError = error(Pieces)
     ).
@@ -1464,21 +1439,19 @@ subtype_defn_int_supertype_defn_impl(SubTypeStatus, SuperTypeStatus) :-
     search_type_ctor_defn_error) = list(format_component).
 
 supertype_ctor_defn_error_pieces(SuperTypeCtor, Error) = Pieces :-
-    SuperTypeCtor = type_ctor(SymName, Arity),
-    SymNameArity = sym_name_arity(SymName, Arity),
     (
         Error = type_is_abstract,
         Pieces = [words("Error: the type definition for"),
-            unqual_sym_name_arity(SymNameArity),
+            unqual_type_ctor(SuperTypeCtor),
             words("is not visible here."), nl]
     ;
         Error = not_defined,
         ( if special_type_ctor_not_du(SuperTypeCtor) then
-            Pieces = [words("Error:"), unqual_sym_name_arity(SymNameArity),
+            Pieces = [words("Error:"), unqual_type_ctor(SuperTypeCtor),
                 words("is not a discriminated union type."), nl]
         else
             Pieces = [words("Error: undefined type"),
-                unqual_sym_name_arity(SymNameArity), suffix("."), nl]
+                unqual_type_ctor(SuperTypeCtor), suffix("."), nl]
         )
     ;
         Error = circularity_detected,
@@ -1561,16 +1534,12 @@ check_subtype_ctor(TypeTable, TVarSet, TypeStatus, SuperTypeCtor, SuperCtors,
         check_subtype_ctor_2(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
             !FoundInvalidType, !Specs)
     else
-        SuperTypeCtor = type_ctor(SuperTypeCtorName, SuperTypeCtorArity),
         Pieces = [words("Error:"),
             unqual_sym_name_arity(sym_name_arity(CtorName, Arity)),
             words("is not a constructor of the supertype"),
-            unqual_sym_name_arity(
-                sym_name_arity(SuperTypeCtorName, SuperTypeCtorArity)),
-            suffix("."), nl],
-        Msg = simplest_msg(Context, Pieces),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [Msg]),
+            unqual_type_ctor(SuperTypeCtor), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
     ).
@@ -1665,9 +1634,8 @@ check_subtype_ctor_arg(TypeTable, TVarSet, OrigTypeStatus,
         Pieces = [words("Error:"), quote(ArgTypeStr),
             words("is not a subtype of the corresponding type"),
             quote(SuperArgTypeStr), words("in the supertype."), nl],
-        Msg = simplest_msg(Context, Pieces),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [Msg]),
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
     ).
@@ -1894,9 +1862,8 @@ check_subtype_ctor_exist_constraints(CtorSymNameArity,
         Pieces = [words("Error: existential class constraints for"),
             unqual_sym_name_arity(CtorSymNameArity),
             words("differ in the subtype and supertype."), nl],
-        Msg = simplest_msg(Context, Pieces),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [Msg]),
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
     ).
