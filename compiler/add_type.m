@@ -69,6 +69,7 @@
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module bool.
+:- import_module edit_seq.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -1493,7 +1494,7 @@ special_type_ctor_not_du(TypeCtor) :-
     list(mer_type)::in, found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_subtype_ctors(TypeTable, _TypeCtor, TypeDefn, TypeBody,
+check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBody,
         SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
         !FoundInvalidType, !Specs) :-
     hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet0),
@@ -1523,7 +1524,12 @@ check_subtype_ctors(TypeTable, _TypeCtor, TypeDefn, TypeBody,
     foldl2(
         check_subtype_ctor(TypeTable, NewTVarSet, TypeStatus,
             SuperTypeCtor, SuperCtors),
-        Ctors, !FoundInvalidType, !Specs).
+        Ctors, !FoundInvalidType, !Specs),
+
+    % Check order of subtype constructors relative to supertype constructors.
+    hlds_data.get_type_defn_context(TypeDefn, Context),
+    check_subtype_ctors_order(TypeCtor, Ctors, SuperTypeCtor, SuperCtors,
+        Context, !Specs).
 
 :- pred check_subtype_ctor(type_table::in, tvarset::in, type_status::in,
     type_ctor::in, list(constructor)::in, constructor::in,
@@ -1873,6 +1879,76 @@ check_subtype_ctor_exist_constraints(CtorSymNameArity,
             Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
+    ).
+
+%---------------------%
+
+:- pred check_subtype_ctors_order(type_ctor::in, list(constructor)::in,
+    type_ctor::in, list(constructor)::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_subtype_ctors_order(TypeCtor, Ctors, SuperTypeCtor, SuperCtors, Context,
+        !Specs) :-
+    compute_subtype_ctors_out_of_order(Ctors, SuperCtors, CtorsOutOfOrder),
+    (
+        CtorsOutOfOrder = []
+    ;
+        CtorsOutOfOrder = [_ | _],
+        CtorsOutOfOrderPieces =
+            list.map(func(SNA) = [unqual_sym_name_arity(SNA)],
+                CtorsOutOfOrder),
+        Pieces = [words("Warning:"), unqual_type_ctor(TypeCtor),
+            words("declares the following constructors in a"),
+            words("different order to the supertype"),
+            unqual_type_ctor(SuperTypeCtor), suffix(":"),
+            nl_indent_delta(1)] ++
+            component_list_to_line_pieces(CtorsOutOfOrderPieces, []) ++
+            [nl_indent_delta(-1)],
+        Spec = simplest_spec($pred, severity_warning,
+            phase_parse_tree_to_hlds, Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+:- pred compute_subtype_ctors_out_of_order(list(constructor)::in,
+    list(constructor)::in, list(sym_name_arity)::out) is det.
+
+compute_subtype_ctors_out_of_order(Ctors, SuperCtors, CtorsOutOfOrder) :-
+    (
+        Ctors = [],
+        CtorsOutOfOrder = []
+    ;
+        Ctors = [_],
+        CtorsOutOfOrder = []
+    ;
+        Ctors = [_, _ | _],
+        list.map(ctor_to_unqual_sym_name_arity, Ctors, CtorNames0),
+        list.map(ctor_to_unqual_sym_name_arity, SuperCtors, SuperCtorNames),
+        list.filter(list.contains(SuperCtorNames), CtorNames0, CtorNames),
+        EditParams = edit_params(1, 1, 1),
+        find_shortest_edit_seq(EditParams, SuperCtorNames, CtorNames, EditSeq),
+        list.filter_map(edit_to_ctor_out_of_order, EditSeq, CtorsOutOfOrder)
+    ).
+
+:- pred ctor_to_unqual_sym_name_arity(constructor::in, sym_name_arity::out)
+    is det.
+
+ctor_to_unqual_sym_name_arity(Ctor, UnqualNameArity) :-
+    Ctor = ctor(_, _, SymName, _, Arity, _),
+    UnqualName = unqualify_name(SymName),
+    UnqualNameArity = sym_name_arity(unqualified(UnqualName), Arity).
+
+:- pred edit_to_ctor_out_of_order(edit(sym_name_arity)::in,
+    sym_name_arity::out) is semidet.
+
+edit_to_ctor_out_of_order(Edit, CtorName) :-
+    require_complete_switch [Edit]
+    (
+        Edit = delete(_),
+        fail
+    ;
+        Edit = insert(_, CtorName)
+    ;
+        Edit = replace(_, CtorName)
     ).
 
 %---------------------%

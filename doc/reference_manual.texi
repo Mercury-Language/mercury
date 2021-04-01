@@ -2551,7 +2551,9 @@ Any universally quantified type variable that occurs in @var{body}
 must occur in @var{subtype}.
 
 The constructor definitions must be a
-subset of the constructors of the supertype.
+subset of the constructors of the supertype;
+we recommend they appear in the same relative order
+as in the supertype definition.
 If the supertype @samp{t} has constructor @samp{f(T1, ..., Tn)} then
 a subtype @samp{s =< t} may have a constructor @samp{f(S1, ..., Sn)}.
 For each @var{Si}, it must be that @samp{Si =< Ti}.
@@ -3055,7 +3057,7 @@ For tuple types, corresponding arguments are compared,
 with the first argument being the most significant,
 then the second, and so on.
 
-For discriminated union types,
+For discriminated union types (other than subtypes),
 if both values have the same principal constructor
 then corresponding arguments are compared in order,
 with the first argument being the most significant,
@@ -3069,6 +3071,11 @@ in types that are subject to a @code{foreign_enum} pragma,
 the outcomes of comparisons are decided
 by user's chosen foreign language representations,
 using the rules of the foreign language.
+
+For subtypes, the two values compare as though
+converted to the base type.
+The ordering of constructors in a subtype definition
+does not affect the standard ordering.
 
 @node Modes
 @chapter Modes

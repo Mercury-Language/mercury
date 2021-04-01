@@ -242,12 +242,12 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
             ),
             ( if
                 MaybeSuperType = yes(SuperType),
-                compilation_target_uses_high_level_data(ModuleInfo),
                 TVarSet = SpecDefnInfo ^ spdi_tvarset,
                 get_du_base_type(ModuleInfo, TVarSet, SuperType, BaseType)
             then
-                % In high-level data grades, subtypes use the same class
-                % as their base type constructor.
+                % Unify after casting to base type.
+                % This is necessary in high-level data grades,
+                % and saves some code in low-level data grades.
                 generate_unify_proc_body_eqv(Context, BaseType, X, Y, Clause,
                     !Info),
                 Clauses = [Clause]
@@ -997,19 +997,10 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
             ),
             ( if
                 MaybeSuperType = yes(SuperType),
-                compilation_target_uses_high_level_data(ModuleInfo),
                 TVarSet = SpecDefnInfo ^ spdi_tvarset,
                 get_du_base_type(ModuleInfo, TVarSet, SuperType, BaseType)
             then
-                % In high-level data grades, subtypes use the same class
-                % as their base type constructor.
-                %
-                % XXX SUBTYPE This produces the wrong ordering for subtypes
-                % whose functors are declared in a different order from their
-                % base types. However, it is probably better to define the
-                % standard ordering on subtypes to be the same as their base
-                % types, and report a warning if the functor order in a
-                % subtype definition differs.
+                % Compare after casting to base type.
                 generate_compare_proc_body_eqv(Context, BaseType, Res, X, Y,
                     Clause, !Info)
             else
@@ -2563,13 +2554,6 @@ generate_index_du_case(SpecDefnInfo, X, Index, CtorRepn, Goal, !N, !Info) :-
 %
 % Utility predicates.
 %
-
-:- pred compilation_target_uses_high_level_data(module_info::in) is semidet.
-
-compilation_target_uses_high_level_data(ModuleInfo) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
-    compilation_target_high_level_data(Target) = yes.
 
 :- pred get_du_base_type(module_info::in, tvarset::in, mer_type::in,
     mer_type::out) is det.

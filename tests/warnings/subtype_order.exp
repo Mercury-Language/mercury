@@ -1,0 +1,5 @@
+subtype_order.m:030: Warning: `citrus'/0 declares the following constructors in
+subtype_order.m:030:   a different order to the supertype `fruit'/0:
+subtype_order.m:030:     `pomelo'/0,
+subtype_order.m:030:     `orange'/1,
+subtype_order.m:030:     `lemon'/0

@@ -393,6 +393,7 @@ ORDINARY_PROGS = \
 	string_well_formed \
 	string_well_formed_utf8 \
 	subtype_abstract \
+	subtype_order \
 	subtype_pack \
 	subtype_rtti \
 	sv_nested_closures \
