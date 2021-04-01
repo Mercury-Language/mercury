@@ -341,6 +341,25 @@ Changes to the Mercury standard library
 Changes to the Mercury language
 -------------------------------
 
+* The type system now supports subtypes, which work in tandem with
+  type conversion expressions ("coerce"). For example, the following
+  defines a subtype `real_color` of a discriminated union type `color`:
+
+        :- type color
+            --->    rgb(float, float, float)
+            ;       cmyk(float, float, float, float)
+            ;       named(string).
+
+        :- type real_color =< color
+            --->    rgb(float, float, float)
+            ;       cmyk(float, float, float, float).
+
+  A term of type `real_color` can be converted to a term of type `color`
+  with `coerce(Term)`. A term of type `color` can be converted to a term of
+  type `real_color` if it has an appropriate inst. Subtypes share a common
+  data representation with their base types so the type conversions do not
+  cost anything at runtime.
+
 * The compiler can implement tabling only when generating C code.
   When compiling a predicate that has a `pragma memo` specified for it
   in a non-C grade, it necessarily ignores the pragma, but normally

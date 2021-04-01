@@ -99,7 +99,7 @@ into another language, under the above conditions for modified versions.
 * Type classes::      Constrained polymorphism.
 * Existential types:: Support for data abstraction and heterogeneous
                       collections.
-@c * Type conversions::  Converting between subtypes and supertypes.
+* Type conversions::  Converting between subtypes and supertypes.
 * Exception handling:: Catching exceptions to recover from exceptional
                       situations.
 * Semantics::         Declarative and operational semantics of Mercury
@@ -1639,7 +1639,7 @@ or an explicit type qualification.
 * Lambda expressions::
 * Higher-order function applications::
 * Explicit type qualification::
-@c * Type conversion expressions::
+* Type conversion expressions::
 @end menu
 
 @node Data-functors
@@ -1970,18 +1970,18 @@ or equivalently, as it is more commonly written,
 @var{Term} `with_type` @var{Type}
 @end example
 
-@c @node Type conversion expressions
-@c @subsection Type conversion expressions
+@node Type conversion expressions
+@subsection Type conversion expressions
 
-@c A type conversion expression is a term of the form:
+A type conversion expression is a term of the form:
 
-@c @example
-@c coerce(Term)
-@c @end example
+@example
+coerce(Term)
+@end example
 
-@c @var{Term} must be a valid data-term.
+@var{Term} must be a valid data-term.
 
-@c @xref{Type conversions}.
+@xref{Type conversions}.
 
 @node Variable scoping
 @section Variable scoping
@@ -2520,8 +2520,8 @@ or as equivalence types.
 A subtype is a discriminated union type
 that is a subset of a supertype,
 in that every term of a subtype is a valid term in the supertype.
-@c It is possible to convert terms between subtype and supertype
-@c using type conversion expressions (@pxref{Type conversions}).
+It is possible to convert terms between subtype and supertype
+using type conversion expressions (@pxref{Type conversions}).
 
 A subtype is defined using the form
 @example
@@ -7083,201 +7083,203 @@ good_example3_univ("bar"::in(bound("bar")), univ("blah")::out).
 
 @c -----------------------------------------------------------------------
 
-@c @node Type conversions
-@c @chapter Type conversions
-@c
-@c A term may be converted from one type @var{FromType}
-@c to another type @var{ToType}
-@c using a type conversion expression of the form:
-@c
-@c @example
-@c coerce(@var{Term})
-@c @end example
-@c
-@c The expression is type-correct iff
-@c @var{FromType} and @var{ToType} are both discriminated union types,
-@c and after replacing the principal type constructors with base types
-@c (@pxref{Subtypes})
-@c the two types have the same type constructor,
-@c and the arguments of the common type constructor
-@c satisfy the type parameter variance restrictions below.
-@c
-@c Let @var{FromType} expand out to @samp{base(S1, ..., Sn)}
-@c and @var{ToType} expand out to @samp{base(T1, ..., Tn)},
-@c where @samp{base(B1, ..., Bn)} is the common base type,
-@c and @var{Bi} is the i'th type parameter,
-@c which is bound to @var{Si} in @var{FromType}
-@c and @var{Ti} in @var{ToType}.
-@c
-@c For each pair of corresponding type arguments,
-@c one of the following must be true:
-@c @itemize
-@c @item
-@c @samp{Si = Ti}
-@c if the two types are the same
-@c
-@c @item
-@c @samp{Si < Ti}
-@c if @var{Si} is a subtype of @var{Ti},
-@c according to visible subtype definitions
-@c
-@c @item
-@c @samp{Ti < Si}
-@c if @var{Ti} is a subtype of @var{Si},
-@c according to visible subtype definitions
-@c @end itemize
-@c
-@c Otherwise, the coerce expression is not type-correct.
-@c @c NOTE: we deliberately disallow coercion between arbitrary phantom types.
-@c
-@c Furthermore,
-@c @samp{Si = Ti} must be true
-@c if @var{Bi} occurs in one or more of these locations
-@c in the @samp{base/n} type definition:
-@c
-@c @itemize
-@c @item
-@c in a higher order type
-@c
-@c @item
-@c in a foreign type
-@c
-@c @item
-@c in an abstract type
-@c
-@c @item
-@c in a solver type
-@c
-@c @item
-@c in a discriminated union type,
-@c other than a recursive type of the exact form @samp{base(B1, ..., Bn)}
-@c @end itemize
-@c
-@c @heading Mode checking
-@c
-@c Type conversion expressions must also be mode-correct.
-@c For an expression where:
-@c
-@c @itemize @bullet
-@c @item
-@c the input has type @samp{s},
-@c initial inst @var{InitialX},
-@c and final inst @var{FinalX}
-@c
-@c @item
-@c the result has type @samp{t},
-@c initial inst @var{InitialY},
-@c and final inst @var{FinalY}
-@c @end itemize
-@c
-@c @noindent
-@c the type conversion expression is mode-correct iff:
-@c
-@c @itemize @bullet
-@c @item
-@c @var{InitialX} is a ground inst
-@c
-@c @item
-@c @var{InitialY} is free
-@c
-@c @item
-@c @var{FinalX} is @var{InitialX}
-@c
-@c @item
-@c @var{FinalY} is
-@c the abstract unification of
-@c @var{InitialX} and the
-@c @code{bound} instantiatedness tree derived from @samp{t},
-@c and @var{FinalY} does not approximate any term
-@c that is invalid in @samp{t}.
-@c @end itemize
-@c
-@c The @code{bound} instantiatedness tree for @samp{t}
-@c is derived by producing a @code{bound} node
-@c containing each possible constructor of @samp{t},
-@c where the arguments of each bound functor
-@c are also @code{bound} instantiatedness trees.
-@c Where a constructor argument type is not a discriminated union or tuple type,
-@c or if the argument is a recursive node in the type tree,
-@c the inst of the argument is replaced with @code{ground}.
-@c
-@c The abstract unification of two instantiation states
-@c is the abstract equivalent of the unification on terms.
-@c It is defined in
-@c @cite{Precise and Expressive Mode Systems for Typed Logic Programming
-@c Languages} by David Overton. @xref{[6]}.
-@c
-@c Intuitively,
-@c coercing a ground term from a subtype to a supertype is safe,
-@c but coercing a term from a supertype to a subtype
-@c is safe only if
-@c the inst of the term being coerced
-@c indicates that the term would also be valid in the subtype.
-@c
-@c @heading Examples
-@c
-@c Assume we have:
-@c
-@c @example
-@c :- type fruit
-@c    --->    apple
-@c    ;       lemon
-@c    ;       orange.
-@c
-@c :- type citrus =< fruit
-@c    --->    lemon
-@c    ;       orange.
-@c @end example
-@c
-@c This function is type and mode-correct:
-@c
-@c @example
-@c :- func f1(citrus) = fruit.
-@c
-@c f1(X) = coerce(X).
-@c @end example
-@c
-@c This function is type-correct but not mode-correct
-@c because some @code{fruit}s are not @code{citrus}:
-@c
-@c @example
-@c :- func f2(fruit) = citrus.
-@c
-@c f2(X) = coerce(X).  % incorrect
-@c @end example
-@c
-@c This function is mode-correct
-@c because the initial inst of the input argument
-@c limits the range of @code{fruit} values
-@c to those that would also be valid in @code{citrus}:
-@c
-@c @example
-@c :- inst citrus for fruit/0
-@c     --->    lemon
-@c     ;       orange.
-@c
-@c :- func f3(fruit) = citrus.
-@c :- mode f3(in(citrus)) = out is det.
-@c
-@c f3(X) = coerce(X).
-@c @end example
-@c
-@c Finally,
-@c this function is type-incorrect because
-@c in the coerce expression,
-@c the type parameter @var{T} of @code{wrap/1}
-@c is bound to @code{fruit} in the input type,
-@c but @code{citrus} in the result type.
-@c
-@c @example
-@c :- type wrap(T)
-@c     --->    wrap(T).
-@c
-@c :- func f4(func(fruit) = int) = (func(citrus) = int).
-@c
-@c f4(X) = Y :-
-@c     wrap(Y) = coerce(wrap(X)).  % incorrect
-@c @end example
+@node Type conversions
+@chapter Type conversions
+
+(This is a new and experimental feature, subject to change.)
+
+A term may be converted from one type @var{FromType}
+to another type @var{ToType}
+using a type conversion expression of the form:
+
+@example
+coerce(@var{Term})
+@end example
+
+The expression is type-correct iff
+@var{FromType} and @var{ToType} are both discriminated union types,
+and after replacing the principal type constructors with base types
+(@pxref{Subtypes})
+the two types have the same type constructor,
+and the arguments of the common type constructor
+satisfy the type parameter variance restrictions below.
+
+Let @var{FromType} expand out to @samp{base(S1, ..., Sn)}
+and @var{ToType} expand out to @samp{base(T1, ..., Tn)},
+where @samp{base(B1, ..., Bn)} is the common base type,
+and @var{Bi} is the i'th type parameter,
+which is bound to @var{Si} in @var{FromType}
+and @var{Ti} in @var{ToType}.
+
+For each pair of corresponding type arguments,
+one of the following must be true:
+@itemize
+@item
+@samp{Si = Ti}
+if the two types are the same
+
+@item
+@samp{Si < Ti}
+if @var{Si} is a subtype of @var{Ti},
+according to visible subtype definitions
+
+@item
+@samp{Ti < Si}
+if @var{Ti} is a subtype of @var{Si},
+according to visible subtype definitions
+@end itemize
+
+Otherwise, the coerce expression is not type-correct.
+@c NOTE: we deliberately disallow coercion between arbitrary phantom types.
+
+Furthermore,
+@samp{Si = Ti} must be true
+if @var{Bi} occurs in one or more of these locations
+in the @samp{base/n} type definition:
+
+@itemize
+@item
+in a higher order type
+
+@item
+in a foreign type
+
+@item
+in an abstract type
+
+@item
+in a solver type
+
+@item
+in a discriminated union type,
+other than a recursive type of the exact form @samp{base(B1, ..., Bn)}
+@end itemize
+
+@heading Mode checking
+
+Type conversion expressions must also be mode-correct.
+For an expression where:
+
+@itemize @bullet
+@item
+the input has type @samp{s},
+initial inst @var{InitialX},
+and final inst @var{FinalX}
+
+@item
+the result has type @samp{t},
+initial inst @var{InitialY},
+and final inst @var{FinalY}
+@end itemize
+
+@noindent
+the type conversion expression is mode-correct iff:
+
+@itemize @bullet
+@item
+@var{InitialX} is a ground inst
+
+@item
+@var{InitialY} is free
+
+@item
+@var{FinalX} is @var{InitialX}
+
+@item
+@var{FinalY} is
+the abstract unification of
+@var{InitialX} and the
+@code{bound} instantiatedness tree derived from @samp{t},
+and @var{FinalY} does not approximate any term
+that is invalid in @samp{t}.
+@end itemize
+
+The @code{bound} instantiatedness tree for @samp{t}
+is derived by producing a @code{bound} node
+containing each possible constructor of @samp{t},
+where the arguments of each bound functor
+are also @code{bound} instantiatedness trees.
+Where a constructor argument type is not a discriminated union or tuple type,
+or if the argument is a recursive node in the type tree,
+the inst of the argument is replaced with @code{ground}.
+
+The abstract unification of two instantiation states
+is the abstract equivalent of the unification on terms.
+It is defined in
+@cite{Precise and Expressive Mode Systems for Typed Logic Programming
+Languages} by David Overton. @xref{[6]}.
+
+Intuitively,
+coercing a ground term from a subtype to a supertype is safe,
+but coercing a term from a supertype to a subtype
+is safe only if
+the inst of the term being coerced
+indicates that the term would also be valid in the subtype.
+
+@heading Examples
+
+Assume we have:
+
+@example
+:- type fruit
+   --->    apple
+   ;       lemon
+   ;       orange.
+
+:- type citrus =< fruit
+   --->    lemon
+   ;       orange.
+@end example
+
+This function is type and mode-correct:
+
+@example
+:- func f1(citrus) = fruit.
+
+f1(X) = coerce(X).
+@end example
+
+This function is type-correct but not mode-correct
+because some @code{fruit}s are not @code{citrus}:
+
+@example
+:- func f2(fruit) = citrus.
+
+f2(X) = coerce(X).  % incorrect
+@end example
+
+This function is mode-correct
+because the initial inst of the input argument
+limits the range of @code{fruit} values
+to those that would also be valid in @code{citrus}:
+
+@example
+:- inst citrus for fruit/0
+    --->    lemon
+    ;       orange.
+
+:- func f3(fruit) = citrus.
+:- mode f3(in(citrus)) = out is det.
+
+f3(X) = coerce(X).
+@end example
+
+Finally,
+this function is type-incorrect because
+in the coerce expression,
+the type parameter @var{T} of @code{wrap/1}
+is bound to @code{fruit} in the input type,
+but @code{citrus} in the result type.
+
+@example
+:- type wrap(T)
+    --->    wrap(T).
+
+:- func f4(func(fruit) = int) = (func(citrus) = int).
+
+f4(X) = Y :-
+    wrap(Y) = coerce(wrap(X)).  % incorrect
+@end example
 
 @c -----------------------------------------------------------------------
 
