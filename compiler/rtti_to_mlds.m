@@ -230,7 +230,7 @@ gen_init_rtti_data_defn(ModuleInfo, Target, RttiData, !GlobalData) :-
 
         gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor,
             TypeCtorDetails, FunctorsInfo, LayoutInfo, NumberMapInfo,
-            !GlobalData),
+            BaseTypeCtorInitializer, !GlobalData),
 
         % Note that gen_init_special_pred will by necessity add an extra
         % level of indirection to calling the special preds. However, the
@@ -274,7 +274,9 @@ gen_init_rtti_data_defn(ModuleInfo, Target, RttiData, !GlobalData) :-
             % MR_type_ctor_flags
             gen_init_uint16(encode_type_ctor_flags(Flags)),
             % MR_type_ctor_functor_number_map
-            NumberMapInfo
+            NumberMapInfo,
+            % MR_type_ctor_base
+            BaseTypeCtorInitializer
 
             % These two are commented out while the corresponding fields of the
             % MR_TypeCtorInfo_Struct type are commented out.
@@ -631,15 +633,15 @@ gen_pseudo_type_info_defn(ModuleInfo, Target, RttiPseudoTypeInfo, Name, RttiId,
 :- pred gen_functors_layout_info(module_info::in, mlds_target_lang::in,
     rtti_type_ctor::in, type_ctor_details::in,
     mlds_initializer::out, mlds_initializer::out, mlds_initializer::out,
-    ml_global_data::in, ml_global_data::out) is det.
+    mlds_initializer::out, ml_global_data::in, ml_global_data::out) is det.
 
 gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
         FunctorInitializer, LayoutInitializer, NumberMapInitializer,
-        !GlobalData) :-
+        BaseTypeCtorInitializer, !GlobalData) :-
     module_info_get_name(ModuleInfo, ModuleName),
     (
         TypeCtorDetails = tcd_enum(_, _IsDummy, EnumFunctors,
-            EnumByOrd, EnumByName, FunctorNumberMap),
+            EnumByOrd, EnumByName, FunctorNumberMap, MaybeBaseTypeCtor),
         list.foldl(gen_enum_functor_desc(ModuleInfo, RttiTypeCtor),
             EnumFunctors, !GlobalData),
         gen_enum_ordinal_ordered_table(ModuleInfo, RttiTypeCtor,
@@ -652,7 +654,9 @@ gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
         FunctorInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_enum_name_ordered_table),
         NumberMapInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_functor_number_map)
+            type_ctor_functor_number_map),
+        BaseTypeCtorInitializer = gen_init_base_type_ctor(ModuleName, Target,
+            MaybeBaseTypeCtor)
     ;
         TypeCtorDetails = tcd_foreign_enum(ForeignEnumLang, _,
             ForeignEnumFunctors, ForeignEnumByOrdinal, ForeignEnumByName,
@@ -671,10 +675,12 @@ gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
         FunctorInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_foreign_enum_name_ordered_table),
         NumberMapInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_functor_number_map)
+            type_ctor_functor_number_map),
+        BaseTypeCtorInitializer = gen_init_base_type_ctor(ModuleName, Target,
+            no)
     ;
         TypeCtorDetails = tcd_du(_, DuFunctors, DuByPtag, DuByName,
-            FunctorNumberMap),
+            FunctorNumberMap, MaybeBaseTypeCtor),
         list.foldl(gen_du_functor_desc(ModuleInfo, Target, RttiTypeCtor),
             DuFunctors, !GlobalData),
         gen_du_ptag_ordered_table(ModuleInfo, RttiTypeCtor,
@@ -687,9 +693,11 @@ gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
         FunctorInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_du_name_ordered_table),
         NumberMapInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
-            type_ctor_functor_number_map)
+            type_ctor_functor_number_map),
+        BaseTypeCtorInitializer = gen_init_base_type_ctor(ModuleName, Target,
+            MaybeBaseTypeCtor)
     ;
-        TypeCtorDetails = tcd_notag(_, NotagFunctor),
+        TypeCtorDetails = tcd_notag(_, NotagFunctor, MaybeBaseTypeCtor),
         gen_functor_number_map(RttiTypeCtor, [0u32], !GlobalData),
         LayoutInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_notag_functor_desc),
@@ -698,7 +706,9 @@ gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
         NumberMapInitializer = gen_init_rtti_name(ModuleName, RttiTypeCtor,
             type_ctor_functor_number_map),
         gen_notag_functor_desc(ModuleInfo, Target, RttiTypeCtor, NotagFunctor,
-            !GlobalData)
+            !GlobalData),
+        BaseTypeCtorInitializer = gen_init_base_type_ctor(ModuleName, Target,
+            MaybeBaseTypeCtor)
     ;
         TypeCtorDetails = tcd_eqv(EqvType),
         TypeRttiData = maybe_pseudo_type_info_to_rtti_data(EqvType),
@@ -706,7 +716,9 @@ gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
             LayoutInitializer, !GlobalData),
         % The type is a lie, but a safe one.
         FunctorInitializer = gen_init_null_pointer(mlds_generic_type),
-        NumberMapInitializer = gen_init_null_pointer(mlds_generic_type)
+        NumberMapInitializer = gen_init_null_pointer(mlds_generic_type),
+        BaseTypeCtorInitializer = gen_init_base_type_ctor(ModuleName, Target,
+            no)
     ;
         ( TypeCtorDetails = tcd_builtin(_)
         ; TypeCtorDetails = tcd_impl_artifact(_)
@@ -714,7 +726,9 @@ gen_functors_layout_info(ModuleInfo, Target, RttiTypeCtor, TypeCtorDetails,
         ),
         LayoutInitializer = gen_init_null_pointer(mlds_generic_type),
         FunctorInitializer = gen_init_null_pointer(mlds_generic_type),
-        NumberMapInitializer = gen_init_null_pointer(mlds_generic_type)
+        NumberMapInitializer = gen_init_null_pointer(mlds_generic_type),
+        BaseTypeCtorInitializer = gen_init_base_type_ctor(ModuleName, Target,
+            no)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1310,6 +1324,36 @@ gen_init_functor_number(NumUint32) = Init :-
 
 %-----------------------------------------------------------------------------%
 
+:- func gen_init_base_type_ctor(module_name, mlds_target_lang,
+    maybe(type_ctor)) = mlds_initializer.
+
+gen_init_base_type_ctor(ModuleName, Target, MaybeBaseTypeCtor) = Initializer :-
+    % The MR_type_ctor_base field is only required in high-level data grades.
+    ( if mlds_target_high_level_data(Target) = yes then
+        (
+            MaybeBaseTypeCtor = yes(BaseTypeCtor),
+            BaseTypeCtor = type_ctor(SymName, Arity),
+            (
+                SymName = qualified(TypeModule, TypeName)
+            ;
+                SymName = unqualified(_),
+                unexpected($pred, "base type ctor is not module qualified")
+            ),
+            RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName,
+                uint16.det_from_int(Arity)),
+            RttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
+            Initializer = gen_init_rtti_id(ModuleName, RttiId)
+        ;
+            MaybeBaseTypeCtor = no,
+            % The type is a lie, but a safe one.
+            Initializer = gen_init_null_pointer(mlds_generic_type)
+        )
+    else
+        Initializer = no_initializer
+    ).
+
+%-----------------------------------------------------------------------------%
+
 :- func gen_init_rtti_names_array(module_name, rtti_type_ctor,
     list(ctor_rtti_name)) = mlds_initializer.
 
@@ -1706,6 +1750,8 @@ gen_init_functor_subtype_info(Info) = Initializer :-
 gen_init_type_ctor_rep(TypeCtorData) = Initializer :-
     rtti.type_ctor_rep_to_string(TypeCtorData, TargetPrefixes, Name),
     Initializer = gen_init_builtin_const(TargetPrefixes, Name).
+
+%-----------------------------------------------------------------------------%
 
 %-----------------------------------------------------------------------------%
 %

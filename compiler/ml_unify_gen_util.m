@@ -509,13 +509,24 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, Ptag, FieldGen) :-
         % except for tuple types.
         ( if type_is_tuple(VarType, _) then
             FieldVia = field_via_offset
-        else if ConsId = cons(ConsSymName, ConsArity, TypeCtor) then
+        else if ConsId = cons(ConsSymName, ConsArity, ConsTypeCtor) then
+            ml_gen_info_get_module_info(Info, ModuleInfo),
             ml_gen_info_get_target(Info, Target),
             % XXX ARG_PACK Delete this sanity test after it has been tested
             % for a while.
             type_to_ctor_det(VarType, VarTypeCtor),
-            expect(unify(TypeCtor, VarTypeCtor), $pred,
-                "TypeCtor != VarTypeCtor"),
+            expect(unify(ConsTypeCtor, VarTypeCtor), $pred,
+                "ConsTypeCtor != VarTypeCtor"),
+            % With the high-level data representation, subtypes use the same
+            % class as their base type constructor, whose field names are
+            % derived from the base type constructor.
+            module_info_get_type_table(ModuleInfo, TypeTable),
+            ( if get_base_type_ctor(TypeTable, ConsTypeCtor, BaseTypeCtor) then
+                TypeCtor = BaseTypeCtor
+            else
+                TypeCtor = ConsTypeCtor
+            ),
+
             ml_gen_type_name(TypeCtor, QualTypeName, TypeArity),
             QualTypeName = qual_class_name(MLDS_Module, QualKind, TypeName),
             TypeQualifier = mlds_append_class_qualifier(Target, MLDS_Module,
@@ -592,8 +603,7 @@ ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
     (
-        TypeDefnBody = hlds_du_type(_, _MaybeSuperType, _, MaybeRepn, _),
-        % XXX SUBTYPE Type representation depends on base type.
+        TypeDefnBody = hlds_du_type(_, _, _, MaybeRepn, _),
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")

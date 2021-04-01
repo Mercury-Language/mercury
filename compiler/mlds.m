@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2011 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2478,6 +2478,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module mdbcomp.builtin_modules.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.java_names.
 
@@ -2606,6 +2607,205 @@ mlds_get_func_signature(Params) = Signature :-
     ParamTypes = mlds_get_arg_types(Parameters),
     Signature = mlds_func_signature(ParamTypes, RetTypes).
 
+%---------------------------------------------------------------------------%
+
+% There is some special-case handling for arrays, foreign types, subtypes, and
+% some other types here, but apart from that, currently we return mlds_types
+% that are just the same as Mercury types, except that we also store the type
+% category, so that we can tell if the type is an enumeration or not, without
+% needing to refer to the HLDS type_table.
+% XXX It might be a better idea to get rid of the mercury_nb_type/2 MLDS type
+% and instead fully convert all Mercury types to MLDS types.
+
+mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
+    ( if type_to_ctor_and_args(Type, TypeCtor, TypeArgs) then
+        ( if
+            TypeCtor = type_ctor(qualified(unqualified("array"), "array"), 1),
+            TypeArgs = [ElemType]
+        then
+            MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
+            MLDSType = mlds_mercury_array_type(MLDSElemType)
+        else if
+            TypeCtor = type_ctor(qualified(mercury_private_builtin_module,
+                "store_at_ref_type"), 1),
+            TypeArgs = [RefType]
+        then
+            MLDSRefType = mercury_type_to_mlds_type(ModuleInfo, RefType),
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.get_target(Globals, Target),
+            (
+                Target = target_csharp,
+                % `mlds_ptr_type' confuses the C# backend because it is also
+                % used for `out' parameters. `store_at_ref_type' is not
+                % applicable on that backend anyway.
+                MLDSType = MLDSRefType
+            ;
+                ( Target = target_c
+                ; Target = target_java
+                ),
+                MLDSType = mlds_ptr_type(MLDSRefType)
+            )
+        else
+            module_info_get_type_table(ModuleInfo, TypeTable),
+            ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
+                MLDSType = mercury_type_ctor_defn_to_mlds_type(ModuleInfo,
+                    Type, TypeCtor, TypeDefn)
+            else
+                CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
+                MLDSType = type_and_category_to_mlds_type(Type, CtorCat)
+            )
+        )
+    else
+        Category = ctor_cat_variable,
+        MLDSType = mercury_nb_type(Type, Category)
+    ).
+
+:- func mercury_type_ctor_defn_to_mlds_type(module_info, mer_type,
+    type_ctor, hlds_type_defn) = mlds_type.
+
+mercury_type_ctor_defn_to_mlds_type(ModuleInfo, Type, TypeCtor, TypeDefn) =
+        MLDSType :-
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+    (
+        TypeBody = hlds_du_type(_, MaybeSuperType, _, _, _),
+        ( if
+            MaybeSuperType = yes(SuperType),
+            compilation_target_uses_high_level_data(ModuleInfo)
+        then
+            % In high-level data grades, a subtype is represented with the
+            % same class as its base type ctor.
+            type_to_ctor_det(SuperType, SuperTypeCtor),
+            get_base_type_maybe_phony_arg_types(ModuleInfo, SuperTypeCtor,
+                BaseType),
+            CtorCat = classify_type(ModuleInfo, BaseType),
+            MLDSType = type_and_category_to_mlds_type(BaseType, CtorCat)
+        else
+            CtorCat = classify_type_defn_body(TypeBody),
+            MLDSType = type_and_category_to_mlds_type(Type, CtorCat)
+        )
+    ;
+        TypeBody = hlds_abstract_type(DetailsAbstract),
+        (
+            ( DetailsAbstract = abstract_type_general
+            ; DetailsAbstract = abstract_type_fits_in_n_bits(_)
+            ; DetailsAbstract = abstract_dummy_type
+            ; DetailsAbstract = abstract_notag_type
+            ; DetailsAbstract = abstract_solver_type
+            ),
+            CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
+            MLDSType = type_and_category_to_mlds_type(Type, CtorCat)
+        ;
+            DetailsAbstract = abstract_subtype(SuperTypeCtor),
+            ( if compilation_target_uses_high_level_data(ModuleInfo) then
+                % In high-level data grades, a subtype is represented with the
+                % same class as its base type ctor.
+                get_base_type_maybe_phony_arg_types(ModuleInfo, SuperTypeCtor,
+                    BaseType),
+                CtorCat = classify_type(ModuleInfo, BaseType),
+                MLDSType = type_and_category_to_mlds_type(BaseType, CtorCat)
+            else
+                CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
+                MLDSType = type_and_category_to_mlds_type(Type, CtorCat)
+            )
+        )
+    ;
+        TypeBody = hlds_foreign_type(ForeignTypeBody),
+        MLDSType = foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody)
+    ;
+        ( TypeBody = hlds_eqv_type(_)
+        ; TypeBody = hlds_solver_type(_)
+        ),
+        CtorCat = classify_type_defn_body(TypeBody),
+        MLDSType = type_and_category_to_mlds_type(Type, CtorCat)
+    ).
+
+:- func type_and_category_to_mlds_type(mer_type, type_ctor_category)
+    = mlds_type.
+
+type_and_category_to_mlds_type(Type, CtorCat) = MLDSType :-
+    ( if CtorCat = ctor_cat_builtin(BuiltinTypeCat) then
+        (
+            BuiltinTypeCat = cat_builtin_int(IntType),
+            MLDSType = mlds_builtin_type_int(IntType)
+        ;
+            BuiltinTypeCat = cat_builtin_float,
+            MLDSType = mlds_builtin_type_float
+        ;
+            BuiltinTypeCat = cat_builtin_string,
+            MLDSType = mlds_builtin_type_string
+        ;
+            BuiltinTypeCat = cat_builtin_char,
+            MLDSType = mlds_builtin_type_char
+        )
+    else
+        MLDSType = mercury_nb_type(Type, CtorCat)
+    ).
+
+%---------------------%
+
+:- pred compilation_target_uses_high_level_data(module_info::in) is semidet.
+
+compilation_target_uses_high_level_data(ModuleInfo) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    compilation_target_high_level_data(Target) = yes.
+
+:- pred get_base_type_maybe_phony_arg_types(module_info::in, type_ctor::in,
+    mer_type::out) is det.
+
+get_base_type_maybe_phony_arg_types(ModuleInfo, SuperTypeCtor, BaseType) :-
+    %
+    % XXX If a type is a subtype of a subtype, we should substitute the type
+    % arguments into the supertype recursively until we get to the base type.
+    % This requires that the tvarset containing the variables of the original
+    % type be passed into mercury_type_to_mlds_type. But that would still not
+    % solve the next problem.
+    %
+    % XXX If a type is a subtype of an abstract supertype, we will only know
+    % the type ctor of the supertype, as supertype arguments are not written to
+    % interface files (we may need to revisit that decision).
+    %
+    % Instead, we find the base type ctor of a type ctor and simply apply
+    % `c_pointer' for all its type parameters. `c_pointer' corresponds to
+    % `Object' in Java and `object' in C#.
+    %
+    % In almost all cases, only the type ctor in a mercury_nb_type is used,
+    % not the type arguments. The phony type arguments only makes a difference
+    % when generating the Java class corresponding to a Mercury type, e.g. for
+    %
+    %   :- type mytype(T)
+    %       --->    mytype(abs(T)).     % abstract subtype
+    %
+    % we generate
+    %
+    %   public static class Mytype_1<MR_tvar_1>
+    %       implements jmercury.runtime.MercuryType
+    %   {
+    %       public Abs_1<Object> F1;
+    %
+    %       public Mytype_1(Abs_1<Object> F1)
+    %       {
+    %           this.F1 = F1;
+    %       }
+    %   }
+    %
+    % The member F1 and constructor argument has type Abs_1<Object> instead of
+    % Abs_1<MR_tvar_1>. The Java code will still compile and run, but there is
+    % a slight loss of type information for hand written code that uses the F1
+    % member. This is a very minor problem and does not seem worth fixing
+    % unless other problems arise.
+    %
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    ( if get_base_type_ctor(TypeTable, SuperTypeCtor, BaseTypeCtor) then
+        BaseTypeCtor = type_ctor(_, Arity),
+        list.duplicate(Arity, c_pointer_type, PhonyTypeArgs),
+        construct_type(BaseTypeCtor, PhonyTypeArgs, BaseType)
+    else
+        unexpected($pred, "cannot get base type ctor")
+    ).
+
+%---------------------%
+
 :- func foreign_type_to_mlds_type(module_info, foreign_type_body) = mlds_type.
 
 foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
@@ -2650,90 +2850,6 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
         )
     ),
     MLDSType = mlds_foreign_type(ForeignType).
-
-%---------------------------------------------------------------------------%
-
-% There is some special-case handling for arrays, foreign types and some
-% other types here, but apart from that, currently we return mlds_types
-% that are just the same as Mercury types, except that we also store the type
-% category, so that we can tell if the type is an enumeration or not, without
-% needing to refer to the HLDS type_table.
-% XXX It might be a better idea to get rid of the mercury_type/2 MLDS type
-% and instead fully convert all Mercury types to MLDS types.
-
-mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
-    ( if type_to_ctor_and_args(Type, TypeCtor, TypeArgs) then
-        ( if
-            TypeCtor = type_ctor(qualified(unqualified("array"), "array"), 1),
-            TypeArgs = [ElemType]
-        then
-            MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
-            MLDSType = mlds_mercury_array_type(MLDSElemType)
-        else if
-            TypeCtor = type_ctor(qualified(mercury_private_builtin_module,
-                "store_at_ref_type"), 1),
-            TypeArgs = [RefType]
-        then
-            MLDSRefType = mercury_type_to_mlds_type(ModuleInfo, RefType),
-            module_info_get_globals(ModuleInfo, Globals),
-            globals.get_target(Globals, Target),
-            (
-                Target = target_csharp,
-                % `mlds_ptr_type' confuses the C# backend because it is also
-                % used for `out' parameters. `store_at_ref_type' is not
-                % applicable on that backend anyway.
-                MLDSType = MLDSRefType
-            ;
-                ( Target = target_c
-                ; Target = target_java
-                ),
-                MLDSType = mlds_ptr_type(MLDSRefType)
-            )
-        else
-            module_info_get_type_table(ModuleInfo, TypeTable),
-            ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
-                hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-                ( if TypeBody = hlds_foreign_type(ForeignTypeBody) then
-                    MLDSType = foreign_type_to_mlds_type(ModuleInfo,
-                        ForeignTypeBody)
-                else if TypeBody = hlds_abstract_type(_) then
-                    CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
-                    MLDSType = type_and_category_to_mlds_type(Type, CtorCat)
-                else
-                    CtorCat = classify_type_defn_body(TypeBody),
-                    MLDSType = type_and_category_to_mlds_type(Type, CtorCat)
-                )
-            else
-                CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
-                MLDSType = type_and_category_to_mlds_type(Type, CtorCat)
-            )
-        )
-    else
-        Category = ctor_cat_variable,
-        MLDSType = mercury_nb_type(Type, Category)
-    ).
-
-:- func type_and_category_to_mlds_type(mer_type, type_ctor_category)
-    = mlds_type.
-
-type_and_category_to_mlds_type(Type, CtorCat) = MLDSType :-
-    ( if CtorCat = ctor_cat_builtin(BuiltinTypeCat) then
-        (
-            BuiltinTypeCat = cat_builtin_int(IntType),
-            MLDSType = mlds_builtin_type_int(IntType)
-        ;
-            BuiltinTypeCat = cat_builtin_float,
-            MLDSType = mlds_builtin_type_float
-        ;
-            BuiltinTypeCat = cat_builtin_string,
-            MLDSType = mlds_builtin_type_string
-        ;
-            BuiltinTypeCat = cat_builtin_char,
-            MLDSType = mlds_builtin_type_char
-        )
-    else
-        MLDSType = mercury_nb_type(Type, CtorCat)
-    ).
 
 %---------------------------------------------------------------------------%
 

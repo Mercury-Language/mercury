@@ -133,7 +133,6 @@
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module uint.
@@ -705,7 +704,7 @@ add_if_subtype_of_simple_du_type_to_maps(OldTypeTable, TypeCtorTypeDefn,
                 maybe_copy_no_tag_type_from_base(BaseTypeCtor,
                     TypeCtor, TypeParams, yes(Ctors), !NoTagTypeMap)
             else
-                true
+                unexpected($pred, "cannot get base type")
             )
         ;
             MaybeSuperType = no,
@@ -724,7 +723,7 @@ add_if_subtype_of_simple_du_type_to_maps(OldTypeTable, TypeCtorTypeDefn,
                 maybe_copy_no_tag_type_from_base(BaseTypeCtor, TypeCtor,
                     TypeParams, no, !NoTagTypeMap)
             else
-                true
+                unexpected($pred, "cannot get base type")
             )
         ;
             ( AbstractDetails = abstract_type_general
@@ -741,63 +740,6 @@ add_if_subtype_of_simple_du_type_to_maps(OldTypeTable, TypeCtorTypeDefn,
         ; Body = hlds_solver_type(_)
         ),
         unexpected($pred, "not subtype")
-    ).
-
-:- pred get_base_type_ctor(type_table::in, type_ctor::in, type_ctor::out)
-    is semidet.
-
-get_base_type_ctor(TypeTable, TypeCtor, BaseTypeCtor) :-
-    set.init(Seen0),
-    get_base_type_ctor_loop(TypeTable, TypeCtor, BaseTypeCtor, Seen0).
-
-:- pred get_base_type_ctor_loop(type_table::in, type_ctor::in, type_ctor::out,
-    set(type_ctor)::in) is semidet.
-
-get_base_type_ctor_loop(TypeTable, TypeCtor, BaseTypeCtor, Seen0) :-
-    % Check for circularities.
-    set.insert_new(TypeCtor, Seen0, Seen1),
-    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-    get_type_defn_body(TypeDefn, TypeBody),
-    require_complete_switch [TypeBody]
-    (
-        TypeBody = hlds_du_type(_, MaybeSuperType, _, _, _),
-        (
-            MaybeSuperType = no,
-            BaseTypeCtor = TypeCtor
-        ;
-            MaybeSuperType = yes(SuperType),
-            type_to_ctor(SuperType, SuperTypeCtor),
-            get_base_type_ctor_loop(TypeTable, SuperTypeCtor, BaseTypeCtor,
-                Seen1)
-        )
-    ;
-        TypeBody = hlds_abstract_type(AbstractDetails),
-        require_complete_switch [AbstractDetails]
-        (
-            ( AbstractDetails = abstract_type_general
-            ; AbstractDetails = abstract_type_fits_in_n_bits(_)
-            ; AbstractDetails = abstract_dummy_type
-            ; AbstractDetails = abstract_notag_type
-            ),
-            BaseTypeCtor = TypeCtor
-        ;
-            AbstractDetails = abstract_subtype(SuperTypeCtor),
-            get_base_type_ctor_loop(TypeTable, SuperTypeCtor, BaseTypeCtor,
-                Seen1)
-        ;
-            AbstractDetails = abstract_solver_type,
-            unexpected($pred, "base type is abstract solver type")
-        )
-    ;
-        TypeBody = hlds_eqv_type(EqvType),
-        type_to_ctor(EqvType, EqvTypeCtor),
-        get_base_type_ctor_loop(TypeTable, EqvTypeCtor, BaseTypeCtor, Seen1)
-    ;
-        TypeBody = hlds_foreign_type(_),
-        unexpected($pred, "base type is foreign type")
-    ;
-        TypeBody = hlds_solver_type(_),
-        unexpected($pred, "base type is solver type")
     ).
 
 :- pred maybe_copy_component_kind_from_base(type_ctor::in, type_ctor::in,

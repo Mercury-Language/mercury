@@ -1261,10 +1261,13 @@ struct MR_TypeCtorInfo_Struct {
     MR_uint_least16_t   MR_type_ctor_flags;
     MR_FunctorNumberMap MR_type_ctor_functor_number_map;
 
-// The following fields will be added later, once we can exploit them:
-//  MR_TrieNodePtr      MR_type_ctor_std_table;
-//  MR_ProcAddr         MR_type_ctor_prettyprinter;
+    // The following field is required when using high-level data
+    // (Java and C#) but not for low-level data (both C backends):
+    //  MR_TypeCtorInfo_Struct  *MR_type_ctor_base;
 
+    // The following fields will be added later, once we can exploit them:
+    //  MR_TrieNodePtr  MR_type_ctor_std_table;
+    //  MR_ProcAddr     MR_type_ctor_prettyprinter;
 };
 
 // Check whether an MR_TypeCtorRepInt is a valid MR_TypeCtorRep value.

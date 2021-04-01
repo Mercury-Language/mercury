@@ -174,7 +174,8 @@
                 enum_ordinal_table  :: map(uint32, enum_functor),
                 enum_name_table     :: map(string, enum_functor),
                 enum_functor_number_mapping
-                                    :: list(uint32)
+                                    :: list(uint32),
+                enum_base_type_ctor :: maybe(type_ctor)
             )
     ;       tcd_foreign_enum(
                 foreign_enum_language      :: foreign_language,
@@ -192,11 +193,14 @@
                 du_value_table      :: ptag_map,
                 du_name_table       :: map(string, map(uint16, du_functor)),
                 du_functor_number_mapping
-                                    :: list(uint32)
+                                    :: list(uint32),
+                du_base_type_ctor   :: maybe(type_ctor)
             )
     ;       tcd_notag(
                 notag_axioms        :: equality_axioms,
-                notag_functor       :: notag_functor
+                notag_functor       :: notag_functor,
+                notag_base_type_ctor
+                                    :: maybe(type_ctor)
             )
     ;       tcd_eqv(
                 eqv_type            :: rtti_maybe_pseudo_type_info
@@ -1483,7 +1487,7 @@ type_ctor_rep_to_string(TypeCtorData, TargetPrefixes, RepStr) :-
         "runtime.TypeCtorRep."),
     TypeCtorDetails = TypeCtorData ^ tcr_rep_details,
     (
-        TypeCtorDetails = tcd_enum(TypeCtorUserEq, IsDummy, _, _, _, _),
+        TypeCtorDetails = tcd_enum(TypeCtorUserEq, IsDummy, _, _, _, _, _),
         (
             IsDummy = enum_is_dummy,
             expect(unify(TypeCtorUserEq, standard), $pred,
@@ -1509,7 +1513,7 @@ type_ctor_rep_to_string(TypeCtorData, TargetPrefixes, RepStr) :-
             RepStr = "MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ"
         )
     ;
-        TypeCtorDetails = tcd_du(TypeCtorUserEq, _, _, _, _),
+        TypeCtorDetails = tcd_du(TypeCtorUserEq, _, _, _, _, _),
         (
             TypeCtorUserEq = standard,
             RepStr = "MR_TYPECTOR_REP_DU"
@@ -1518,7 +1522,7 @@ type_ctor_rep_to_string(TypeCtorData, TargetPrefixes, RepStr) :-
             RepStr = "MR_TYPECTOR_REP_DU_USEREQ"
         )
     ;
-        TypeCtorDetails = tcd_notag(TypeCtorUserEq, NotagFunctor),
+        TypeCtorDetails = tcd_notag(TypeCtorUserEq, NotagFunctor, _),
         NotagEqvType = NotagFunctor ^ nt_arg_type,
         (
             TypeCtorUserEq = standard,
@@ -1785,9 +1789,9 @@ maybe_pseudo_type_info_or_self_to_rtti_data(self) =
 
 type_ctor_details_num_ptags(TypeCtorDetails) = MaybeNumPtags :-
     (
-        ( TypeCtorDetails = tcd_enum(_, _, _, _, _, _)
+        ( TypeCtorDetails = tcd_enum(_, _, _, _, _, _, _)
         ; TypeCtorDetails = tcd_foreign_enum(_, _, _, _, _, _)
-        ; TypeCtorDetails = tcd_notag(_, _)
+        ; TypeCtorDetails = tcd_notag(_, _, _)
         ; TypeCtorDetails = tcd_eqv(_)
         ; TypeCtorDetails = tcd_builtin(_)
         ; TypeCtorDetails = tcd_impl_artifact(_)
@@ -1795,7 +1799,7 @@ type_ctor_details_num_ptags(TypeCtorDetails) = MaybeNumPtags :-
         ),
         MaybeNumPtags = no
     ;
-        TypeCtorDetails = tcd_du(_, _, PtagMap, _, _),
+        TypeCtorDetails = tcd_du(_, _, PtagMap, _, _, _),
         map.keys(PtagMap, Ptags),
         list.det_last(Ptags, LastPtag),
         LastPtag = ptag(LastPtagUint8),
@@ -1806,16 +1810,16 @@ type_ctor_details_num_ptags(TypeCtorDetails) = MaybeNumPtags :-
 type_ctor_details_num_functors(TypeCtorDetails) = MaybeNumFunctors :-
     (
         (
-            TypeCtorDetails = tcd_enum(_, _, EnumFunctors, _, _, _),
+            TypeCtorDetails = tcd_enum(_, _, EnumFunctors, _, _, _, _),
             list.length(EnumFunctors, NumFunctors)
         ;
             TypeCtorDetails = tcd_foreign_enum(_, _, ForeignFunctors, _, _, _),
             list.length(ForeignFunctors, NumFunctors)
         ;
-            TypeCtorDetails = tcd_du(_, DuFunctors, _, _, _),
+            TypeCtorDetails = tcd_du(_, DuFunctors, _, _, _, _),
             list.length(DuFunctors, NumFunctors)
         ;
-            TypeCtorDetails = tcd_notag(_, _),
+            TypeCtorDetails = tcd_notag(_, _, _),
             NumFunctors = 1
         ),
         MaybeNumFunctors = yes(NumFunctors)

@@ -456,15 +456,7 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
     proc_info_get_inferred_determinism(ProcInfo0, CurProcDetism),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, Target),
-    (
-        Target = target_c,
-        HighLevelData = no
-    ;
-        ( Target = target_java
-        ; Target = target_csharp
-        ),
-        HighLevelData = yes
-    ),
+    HighLevelData = compilation_target_high_level_data(Target),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloat),
     (
         UnboxedFloat = no,

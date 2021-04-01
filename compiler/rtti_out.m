@@ -903,7 +903,8 @@ output_type_ctor_details_defn(Info, Stream, RttiTypeCtor, TypeCtorDetails,
         !DeclSet, !IO) :-
     (
         TypeCtorDetails = tcd_enum(_, _IsDummy, EnumFunctors,
-            EnumByOrd, EnumByName, FunctorNumberMap),
+            EnumByOrd, EnumByName, FunctorNumberMap, _MaybeBaseTypeCtor),
+        % MaybeBaseTypeCtor is not required for low-level data.
         list.foldl2(output_enum_functor_defn(Info, Stream, RttiTypeCtor),
             EnumFunctors, !DeclSet, !IO),
         output_enum_ordinal_ordered_table(Info, Stream, RttiTypeCtor,
@@ -933,8 +934,9 @@ output_type_ctor_details_defn(Info, Stream, RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName = yes(type_ctor_foreign_enum_name_ordered_table),
         HaveFunctorNumberMap = yes
     ;
-        TypeCtorDetails = tcd_du(_, DuFunctors, DuByRep,
-            DuByName, FunctorNumberMap),
+        TypeCtorDetails = tcd_du(_, DuFunctors, DuByRep, DuByName,
+            FunctorNumberMap, _MaybeBaseTypeCtor),
+        % MaybeBaseTypeCtor is not required for low-level data.
         list.foldl2(output_du_functor_defn(Info, Stream, RttiTypeCtor),
             DuFunctors, !DeclSet, !IO),
         output_du_ptag_ordered_table(Info, Stream, RttiTypeCtor, DuByRep,
@@ -947,7 +949,8 @@ output_type_ctor_details_defn(Info, Stream, RttiTypeCtor, TypeCtorDetails,
         MaybeFunctorsName = yes(type_ctor_du_name_ordered_table),
         HaveFunctorNumberMap = yes
     ;
-        TypeCtorDetails = tcd_notag(_, NotagFunctor),
+        TypeCtorDetails = tcd_notag(_, NotagFunctor, _MaybeBaseTypeCtor),
+        % MaybeBaseTypeCtor is not required for low-level data.
         output_notag_functor_defn(Info, Stream, RttiTypeCtor, NotagFunctor,
             !DeclSet, !IO),
         output_functor_number_map(Info, Stream, RttiTypeCtor, [0u32],

@@ -388,8 +388,8 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             ),
             (
                 DuTypeKind = du_type_kind_mercury_enum,
-                make_mercury_enum_details(MaybeSuperType, CtorRepns,
-                    enum_is_not_dummy, EqualityAxioms, Details,
+                make_mercury_enum_details(ModuleInfo, MaybeSuperType,
+                    CtorRepns, enum_is_not_dummy, EqualityAxioms, Details,
                     IndexableByEnumValue),
                 LayoutIndexable = IndexableByEnumValue
             ;
@@ -399,20 +399,21 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                 LayoutIndexable = no
             ;
                 DuTypeKind = du_type_kind_direct_dummy,
-                make_mercury_enum_details(MaybeSuperType, CtorRepns,
-                    enum_is_dummy, EqualityAxioms, Details,
+                make_mercury_enum_details(ModuleInfo, MaybeSuperType,
+                    CtorRepns, enum_is_dummy, EqualityAxioms, Details,
                     IndexableByEnumValue),
                 LayoutIndexable = IndexableByEnumValue
             ;
                 DuTypeKind = du_type_kind_notag(FunctorName, ArgType,
                     MaybeArgName),
-                make_notag_details(TypeArity, FunctorName, ArgType,
-                    MaybeArgName, EqualityAxioms, Details),
+                make_notag_details(ModuleInfo, TypeArity, MaybeSuperType,
+                    FunctorName, ArgType, MaybeArgName, EqualityAxioms,
+                    Details),
                 LayoutIndexable = no
             ;
                 DuTypeKind = du_type_kind_general,
-                make_du_details(ModuleInfo, CtorRepns, TypeArity,
-                    EqualityAxioms, Details, IndexableByPtag),
+                make_du_details(ModuleInfo, MaybeSuperType, CtorRepns,
+                    TypeArity, EqualityAxioms, Details, IndexableByPtag),
                 LayoutIndexable = IndexableByPtag
             )
         )
@@ -517,11 +518,12 @@ type_ctor_info_rtti_version = 18u8.
 
     % Make the functor and layout tables for a notag type.
     %
-:- pred make_notag_details(int::in, sym_name::in, mer_type::in,
-    maybe(string)::in, equality_axioms::in, type_ctor_details::out) is det.
+:- pred make_notag_details(module_info::in, int::in, maybe(mer_type)::in,
+    sym_name::in, mer_type::in, maybe(string)::in, equality_axioms::in,
+    type_ctor_details::out) is det.
 
-make_notag_details(TypeArity, SymName, ArgType, MaybeArgName, EqualityAxioms,
-        Details) :-
+make_notag_details(ModuleInfo, TypeArity, MaybeSuperType, SymName, ArgType,
+        MaybeArgName, EqualityAxioms, Details) :-
     FunctorName = unqualify_name(SymName),
     NumUnivTVars = TypeArity,
     % There can be no existentially typed args to the functor in a notag type.
@@ -535,7 +537,8 @@ make_notag_details(TypeArity, SymName, ArgType, MaybeArgName, EqualityAxioms,
     ),
     Functor = notag_functor(FunctorName, MaybePseudoTypeInfo, MaybeArgName,
         FunctorSubtypeInfo),
-    Details = tcd_notag(EqualityAxioms, Functor).
+    maybe_get_base_type_ctor(ModuleInfo, MaybeSuperType, MaybeBaseTypeCtor),
+    Details = tcd_notag(EqualityAxioms, Functor, MaybeBaseTypeCtor).
 
 %---------------------------------------------------------------------------%
 
@@ -543,12 +546,12 @@ make_notag_details(TypeArity, SymName, ArgType, MaybeArgName, EqualityAxioms,
 
     % Make the functor and layout tables for an enum type.
     %
-:- pred make_mercury_enum_details(maybe(mer_type)::in,
+:- pred make_mercury_enum_details(module_info::in, maybe(mer_type)::in,
     list(constructor_repn)::in, enum_maybe_dummy::in, equality_axioms::in,
     type_ctor_details::out, bool::out) is det.
 
-make_mercury_enum_details(MaybeSuperType, CtorRepns, IsDummy, EqualityAxioms,
-        Details, IndexableByEnumValue) :-
+make_mercury_enum_details(ModuleInfo, MaybeSuperType, CtorRepns, IsDummy,
+        EqualityAxioms, Details, IndexableByEnumValue) :-
     (
         CtorRepns = [],
         unexpected($pred, "enum with no ctors")
@@ -578,8 +581,9 @@ make_mercury_enum_details(MaybeSuperType, CtorRepns, IsDummy, EqualityAxioms,
         IndexableByEnumValue = no
     ),
     FunctorNumberMap = make_functor_number_map(CtorRepns),
+    maybe_get_base_type_ctor(ModuleInfo, MaybeSuperType, MaybeBaseTypeCtor),
     Details = tcd_enum(EqualityAxioms, IsDummy, EnumFunctors,
-        OrdinalMap, NameMap, FunctorNumberMap).
+        OrdinalMap, NameMap, FunctorNumberMap, MaybeBaseTypeCtor).
 
     % Create an enum_functor structure for each functor in an enum type.
     % The functors are given to us in ordinal order (since that's how the HLDS
@@ -745,14 +749,14 @@ make_foreign_enum_maps(ForeignEnumFunctor, !OrdinalMap, !NameMap) :-
 :- type tag_list == assoc_list(int,
     pair(sectag_locn, map(int, ctor_rtti_name))).
 
-    % Make the functor and layout tables for a du type
-    % (including reserved_addr types).
+    % Make the functor and layout tables for a du type.
     %
-:- pred make_du_details(module_info::in, list(constructor_repn)::in,
-    int::in, equality_axioms::in, type_ctor_details::out, bool::out) is det.
+:- pred make_du_details(module_info::in, maybe(mer_type)::in,
+    list(constructor_repn)::in, int::in, equality_axioms::in,
+    type_ctor_details::out, bool::out) is det.
 
-make_du_details(ModuleInfo, Ctors, TypeArity, EqualityAxioms, Details,
-        IndexableByPtag) :-
+make_du_details(ModuleInfo, MaybeSuperType, Ctors, TypeArity, EqualityAxioms,
+        Details, IndexableByPtag) :-
     make_du_functors(ModuleInfo, Ctors, 0u32, TypeArity, DuFunctors),
     list.foldl(make_du_ptag_ordered_table, DuFunctors, map.init, DuPtagTable),
     ( if is_ptag_table_indexable(DuPtagTable) then
@@ -763,8 +767,9 @@ make_du_details(ModuleInfo, Ctors, TypeArity, EqualityAxioms, Details,
     FunctorNumberMap = make_functor_number_map(Ctors),
     list.foldl(make_du_name_ordered_table, DuFunctors,
         map.init, DuNameOrderedMap),
+    maybe_get_base_type_ctor(ModuleInfo, MaybeSuperType, MaybeBaseTypeCtor),
     Details = tcd_du(EqualityAxioms, DuFunctors, DuPtagTable,
-        DuNameOrderedMap, FunctorNumberMap).
+        DuNameOrderedMap, FunctorNumberMap, MaybeBaseTypeCtor).
 
     % Create a du_functor_desc structure for each functor in a du type.
     % Besides returning a list of the rtti names of their du_functor_desc
@@ -1100,6 +1105,28 @@ ctor_name_arity(Ctor) = {Ctor ^ cr_name, list.length(Ctor ^ cr_args)}.
 lookup_functor_number(CtorNameToSeqNumMap, CtorName, SeqNumUint32) :-
     map.lookup(CtorNameToSeqNumMap, CtorName, SeqNum),
     SeqNumUint32 = uint32.det_from_int(SeqNum).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_get_base_type_ctor(module_info::in, maybe(mer_type)::in,
+    maybe(type_ctor)::out) is det.
+
+maybe_get_base_type_ctor(ModuleInfo, MaybeSuperType, MaybeBaseTypeCtor) :-
+    (
+        MaybeSuperType = yes(SuperType),
+        module_info_get_type_table(ModuleInfo, TypeTable),
+        ( if
+            type_to_ctor(SuperType, SuperTypeCtor),
+            get_base_type_ctor(TypeTable, SuperTypeCtor, BaseTypeCtor)
+        then
+            MaybeBaseTypeCtor = yes(BaseTypeCtor)
+        else
+            unexpected($pred, "cannot get base type ctor")
+        )
+    ;
+        MaybeSuperType = no,
+        MaybeBaseTypeCtor = no
+    ).
 
 %---------------------------------------------------------------------------%
 

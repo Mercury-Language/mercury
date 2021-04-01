@@ -93,7 +93,9 @@ construct.get_functor_with_names
 	arg names:	[no]
 construct.find_functor
 	arg type descs:	[int]
-construct.construct skipped
+construct.construct
+	f1(42)
+unify ok
 
 --------------------
 term

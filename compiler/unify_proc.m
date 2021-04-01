@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2018, 2020-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -105,6 +105,7 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
@@ -232,47 +233,60 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
                 Clause, !Info),
             Clauses = [Clause]
         ;
-            TypeBody = hlds_du_type(_, _, _, MaybeRepn, _),
+            TypeBody = hlds_du_type(_, MaybeSuperType, _, MaybeRepn, _),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")
             ;
                 MaybeRepn = yes(Repn)
             ),
-            DuTypeKind = Repn ^ dur_kind,
-            (
-                ( DuTypeKind = du_type_kind_mercury_enum
-                ; DuTypeKind = du_type_kind_foreign_enum(_)
-                ),
-                generate_unify_proc_body_enum(Context, X, Y,
-                    Clause, !Info),
+            ( if
+                MaybeSuperType = yes(SuperType),
+                compilation_target_uses_high_level_data(ModuleInfo),
+                TVarSet = SpecDefnInfo ^ spdi_tvarset,
+                get_du_base_type(ModuleInfo, TVarSet, SuperType, BaseType)
+            then
+                % In high-level data grades, subtypes use the same class
+                % as their base type constructor.
+                generate_unify_proc_body_eqv(Context, BaseType, X, Y, Clause,
+                    !Info),
                 Clauses = [Clause]
-            ;
-                DuTypeKind = du_type_kind_direct_dummy,
-                generate_unify_proc_body_dummy(Context, X, Y,
-                    Clause, !Info),
-                Clauses = [Clause]
-            ;
-                DuTypeKind = du_type_kind_notag(_, ArgType, _),
-                ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
+            else
+                DuTypeKind = Repn ^ dur_kind,
                 (
-                    ArgIsDummy = is_dummy_type,
-                    % Treat this type as if it were a dummy type
-                    % itself.
+                    ( DuTypeKind = du_type_kind_mercury_enum
+                    ; DuTypeKind = du_type_kind_foreign_enum(_)
+                    ),
+                    generate_unify_proc_body_enum(Context, X, Y,
+                        Clause, !Info),
+                    Clauses = [Clause]
+                ;
+                    DuTypeKind = du_type_kind_direct_dummy,
                     generate_unify_proc_body_dummy(Context, X, Y,
                         Clause, !Info),
                     Clauses = [Clause]
                 ;
-                    ArgIsDummy = is_not_dummy_type,
+                    DuTypeKind = du_type_kind_notag(_, ArgType, _),
+                    ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
+                    (
+                        ArgIsDummy = is_dummy_type,
+                        % Treat this type as if it were a dummy type
+                        % itself.
+                        generate_unify_proc_body_dummy(Context, X, Y,
+                            Clause, !Info),
+                        Clauses = [Clause]
+                    ;
+                        ArgIsDummy = is_not_dummy_type,
+                        CtorRepns = Repn ^ dur_ctor_repns,
+                        generate_unify_proc_body_du(SpecDefnInfo,
+                            CtorRepns, X, Y, Clauses, !Info)
+                    )
+                ;
+                    DuTypeKind = du_type_kind_general,
                     CtorRepns = Repn ^ dur_ctor_repns,
                     generate_unify_proc_body_du(SpecDefnInfo,
                         CtorRepns, X, Y, Clauses, !Info)
                 )
-            ;
-                DuTypeKind = du_type_kind_general,
-                CtorRepns = Repn ^ dur_ctor_repns,
-                generate_unify_proc_body_du(SpecDefnInfo,
-                    CtorRepns, X, Y, Clauses, !Info)
             )
         )
     ).
@@ -974,44 +988,63 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
             generate_compare_proc_body_solver(Context,
                 Res, X, Y, Clause, !Info)
         ;
-            TypeBody = hlds_du_type(_, _, _, MaybeRepn, _),
+            TypeBody = hlds_du_type(_, MaybeSuperType, _, MaybeRepn, _),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")
             ;
                 MaybeRepn = yes(Repn)
             ),
-            DuTypeKind = Repn ^ dur_kind,
-            (
-                ( DuTypeKind = du_type_kind_mercury_enum
-                ; DuTypeKind = du_type_kind_foreign_enum(_)
-                ),
-                generate_compare_proc_body_enum(Context,
-                    Res, X, Y, Clause, !Info)
-            ;
-                DuTypeKind = du_type_kind_direct_dummy,
-                generate_compare_proc_body_dummy(Context,
-                    Res, X, Y, Clause, !Info)
-            ;
-                DuTypeKind = du_type_kind_notag(_, ArgType, _),
-                ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
+            ( if
+                MaybeSuperType = yes(SuperType),
+                compilation_target_uses_high_level_data(ModuleInfo),
+                TVarSet = SpecDefnInfo ^ spdi_tvarset,
+                get_du_base_type(ModuleInfo, TVarSet, SuperType, BaseType)
+            then
+                % In high-level data grades, subtypes use the same class
+                % as their base type constructor.
+                %
+                % XXX SUBTYPE This produces the wrong ordering for subtypes
+                % whose functors are declared in a different order from their
+                % base types. However, it is probably better to define the
+                % standard ordering on subtypes to be the same as their base
+                % types, and report a warning if the functor order in a
+                % subtype definition differs.
+                generate_compare_proc_body_eqv(Context, BaseType, Res, X, Y,
+                    Clause, !Info)
+            else
+                DuTypeKind = Repn ^ dur_kind,
                 (
-                    ArgIsDummy = is_dummy_type,
-                    % Treat this type as if it were a dummy type
-                    % itself.
+                    ( DuTypeKind = du_type_kind_mercury_enum
+                    ; DuTypeKind = du_type_kind_foreign_enum(_)
+                    ),
+                    generate_compare_proc_body_enum(Context,
+                        Res, X, Y, Clause, !Info)
+                ;
+                    DuTypeKind = du_type_kind_direct_dummy,
                     generate_compare_proc_body_dummy(Context,
                         Res, X, Y, Clause, !Info)
                 ;
-                    ArgIsDummy = is_not_dummy_type,
+                    DuTypeKind = du_type_kind_notag(_, ArgType, _),
+                    ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
+                    (
+                        ArgIsDummy = is_dummy_type,
+                        % Treat this type as if it were a dummy type
+                        % itself.
+                        generate_compare_proc_body_dummy(Context,
+                            Res, X, Y, Clause, !Info)
+                    ;
+                        ArgIsDummy = is_not_dummy_type,
+                        CtorRepns = Repn ^ dur_ctor_repns,
+                        generate_compare_proc_body_du(SpecDefnInfo,
+                            CtorRepns, Res, X, Y, Clause, !Info)
+                    )
+                ;
+                    DuTypeKind = du_type_kind_general,
                     CtorRepns = Repn ^ dur_ctor_repns,
                     generate_compare_proc_body_du(SpecDefnInfo,
                         CtorRepns, Res, X, Y, Clause, !Info)
                 )
-            ;
-                DuTypeKind = du_type_kind_general,
-                CtorRepns = Repn ^ dur_ctor_repns,
-                generate_compare_proc_body_du(SpecDefnInfo,
-                    CtorRepns, Res, X, Y, Clause, !Info)
             )
         )
     ).
@@ -2530,6 +2563,68 @@ generate_index_du_case(SpecDefnInfo, X, Index, CtorRepn, Goal, !N, !Info) :-
 %
 % Utility predicates.
 %
+
+:- pred compilation_target_uses_high_level_data(module_info::in) is semidet.
+
+compilation_target_uses_high_level_data(ModuleInfo) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    compilation_target_high_level_data(Target) = yes.
+
+:- pred get_du_base_type(module_info::in, tvarset::in, mer_type::in,
+    mer_type::out) is det.
+
+get_du_base_type(ModuleInfo, TVarSet, Type, BaseType) :-
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    get_du_base_type_loop(TypeTable, TVarSet, Type, BaseType).
+
+:- pred get_du_base_type_loop(type_table::in, tvarset::in, mer_type::in,
+    mer_type::out) is det.
+
+get_du_base_type_loop(TypeTable, TVarSet, Type, BaseType) :-
+    % Circular subtype definitions are assumed to have been detected by now.
+    type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),
+    hlds_data.lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+    (
+        TypeBody = hlds_du_type(_, MaybeSuperType, _, _MaybeRepn, _),
+        (
+            MaybeSuperType = no,
+            BaseType = Type
+        ;
+            MaybeSuperType = yes(SuperType0),
+            hlds_data.get_type_defn_tvarset(TypeDefn, TypeDefnTVarSet),
+            hlds_data.get_type_defn_tparams(TypeDefn, TypeDefnTypeParams),
+            merge_tvarsets_and_subst_type_args(TVarSet, TypeArgs,
+                TypeDefnTVarSet, TypeDefnTypeParams, SuperType0, SuperType),
+            get_du_base_type_loop(TypeTable, TVarSet, SuperType, BaseType)
+        )
+    ;
+        TypeBody = hlds_abstract_type(_),
+        unexpected($pred, "abstract type")
+    ;
+        TypeBody = hlds_eqv_type(_),
+        unexpected($pred, "eqv type")
+    ;
+        TypeBody = hlds_foreign_type(_),
+        unexpected($pred, "foreign type")
+    ;
+        TypeBody = hlds_solver_type(_),
+        unexpected($pred, "solver type")
+    ).
+
+:- pred merge_tvarsets_and_subst_type_args(tvarset::in, list(mer_type)::in,
+    tvarset::in, list(type_param)::in, mer_type::in, mer_type::out) is det.
+
+merge_tvarsets_and_subst_type_args(TVarSet, TypeArgs,
+        TVarSet0, TypeParams0, Type0, Type) :-
+    tvarset_merge_renaming(TVarSet, TVarSet0, _MergedTVarSet, Renaming),
+    apply_variable_renaming_to_tvar_list(Renaming, TypeParams0, TypeParams),
+    map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
+    apply_variable_renaming_to_type(Renaming, Type0, Type1),
+    apply_rec_subst_to_type(TSubst, Type1, Type).
+
+%---------------------------------------------------------------------------%
 
 :- pred build_simple_call(module_info::in, module_name::in, string::in,
     list(prog_var)::in, prog_context::in, hlds_goal::out) is det.

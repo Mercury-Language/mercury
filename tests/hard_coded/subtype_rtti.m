@@ -235,15 +235,7 @@ test(Term, !IO) :-
             io.write_string("construct.find_functor failed\n", !IO)
         ),
 
-        % XXX SUBTYPE construct of sub_tagged currently does not work on
-        % Java/C# backends (see ML_construct_du in rtti_implementation.m).
-        % Revisit this after updating high-level data backends.
-        ( if
-            is_java_or_csharp,
-            dynamic_cast(Term, _ : sub_tagged)
-        then
-            io.write_string("construct.construct skipped\n", !IO)
-        else if construct.construct(TypeDesc, FunctorLex, Args) = Univ then
+        ( if construct.construct(TypeDesc, FunctorLex, Args) = Univ then
             io.write_string("construct.construct\n\t", !IO),
             io.print_line(Univ, !IO),
             ( if univ_to_type(Univ, Term) then
@@ -276,10 +268,3 @@ print_value(Label, Value, !IO) :-
     ),
     io.print(Value, !IO),
     io.nl(!IO).
-
-:- pred is_java_or_csharp is semidet.
-
-is_java_or_csharp :-
-    ( string.sub_string_search($grade, "java", _)
-    ; string.sub_string_search($grade, "csharp", _)
-    ).

@@ -201,38 +201,45 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !ClassDefns) :-
         % see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
         % The same issue arises for some of the other kinds of types.
     ;
-        TypeBody = hlds_du_type(_Ctors, _MaybeSuperType, MaybeUserEqComp,
+        TypeBody = hlds_du_type(_Ctors, MaybeSuperType, MaybeUserEqComp,
             MaybeRepn, _Foreign),
-        % XXX SUBTYPE
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")
         ;
             MaybeRepn = yes(Repn)
         ),
-        Repn = du_type_repn(CtorRepns, _ConsCtorMap, _CheaperTagTest,
-            DuTypeKind, _MaybeDirectArgCtors),
-        ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),
         (
-            ( DuTypeKind = du_type_kind_mercury_enum
-            ; DuTypeKind = du_type_kind_foreign_enum(_)
-            ),
-            ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
-                MaybeEqualityMembers, ClassDefn)
+            MaybeSuperType = yes(_)
+            % In high-level data grades, a subtype uses the same class as its
+            % base type ctor.
         ;
-            DuTypeKind = du_type_kind_direct_dummy,
-            % XXX We shouldn't have to generate an MLDS type for these types,
-            % but it is not easy to ensure that we never refer to that type.
-            ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
-                MaybeEqualityMembers, ClassDefn)
-        ;
-            ( DuTypeKind = du_type_kind_notag(_, _, _)
-            ; DuTypeKind = du_type_kind_general
+            MaybeSuperType = no,
+            Repn = du_type_repn(CtorRepns, _ConsCtorMap, _CheaperTagTest,
+                DuTypeKind, _MaybeDirectArgCtors),
+            ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),
+            (
+                ( DuTypeKind = du_type_kind_mercury_enum
+                ; DuTypeKind = du_type_kind_foreign_enum(_)
+                ),
+                ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
+                    MaybeEqualityMembers, ClassDefn)
+            ;
+                DuTypeKind = du_type_kind_direct_dummy,
+                % XXX We shouldn't have to generate an MLDS type for these
+                % types, but it is not easy to ensure that we never refer to
+                % that type.
+                ml_gen_hld_enum_type(Target, TypeCtor, TypeDefn, CtorRepns,
+                    MaybeEqualityMembers, ClassDefn)
+            ;
+                ( DuTypeKind = du_type_kind_notag(_, _, _)
+                ; DuTypeKind = du_type_kind_general
+                ),
+                ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn,
+                    CtorRepns, MaybeEqualityMembers, ClassDefn)
             ),
-            ml_gen_hld_du_type(ModuleInfo, Target, TypeCtor, TypeDefn,
-                CtorRepns, MaybeEqualityMembers, ClassDefn)
-        ),
-        !:ClassDefns = [ClassDefn | !.ClassDefns]
+            !:ClassDefns = [ClassDefn | !.ClassDefns]
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -250,7 +257,7 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !ClassDefns) :-
     %   };
     %
     % It is marked as an mlds_enum so that the MLDS -> target code generator
-    % can treat it specially if need be (e.g. generating a C enum rather than
+    % can treat it specially if need be (e.g. generating a C# enum rather than
     % a class).
     %
     % Note that for Java the MR_value field is inherited from the

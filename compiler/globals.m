@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2017 The Mercury Team.
+% Copyright (C) 2013-2021 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -66,13 +66,17 @@
     ;       lang_csharp
     ;       lang_java.
 
-:- func target_lang_to_foreign_export_lang(compilation_target)
-    = foreign_language.
-
     % A string representation of the compilation target suitable
     % for use in human-readable error messages.
     %
 :- func compilation_target_string(compilation_target) = string.
+
+    % Return if the compilation target uses high-level data.
+    %
+:- func compilation_target_high_level_data(compilation_target) = bool.
+
+:- func target_lang_to_foreign_export_lang(compilation_target)
+    = foreign_language.
 
     % A string representation of the foreign language suitable
     % for use in human-readable error messages.
@@ -461,13 +465,17 @@
 
 %---------------------------------------------------------------------------%
 
-target_lang_to_foreign_export_lang(target_c) = lang_c.
-target_lang_to_foreign_export_lang(target_csharp) = lang_csharp.
-target_lang_to_foreign_export_lang(target_java) = lang_java.
-
 compilation_target_string(target_c) = "C".
 compilation_target_string(target_csharp) = "C#".
 compilation_target_string(target_java) = "Java".
+
+compilation_target_high_level_data(target_c) = no.
+compilation_target_high_level_data(target_csharp) = yes.
+compilation_target_high_level_data(target_java) = yes.
+
+target_lang_to_foreign_export_lang(target_c) = lang_c.
+target_lang_to_foreign_export_lang(target_csharp) = lang_csharp.
+target_lang_to_foreign_export_lang(target_java) = lang_java.
 
 foreign_language_string(lang_c) = "C".
 foreign_language_string(lang_csharp) = "C#".

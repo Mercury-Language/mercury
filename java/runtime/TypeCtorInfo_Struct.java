@@ -26,6 +26,7 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo
     public int                  type_ctor_num_functors;
     public short                type_ctor_flags;
     public int[]                type_functor_number_map;
+    public TypeCtorInfo_Struct  type_ctor_base; // null unless subtype
 
     private final short MR_TYPE_CTOR_FLAG_LAYOUT_INDEXABLE = 0x8;
 
@@ -50,7 +51,8 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo
             other.type_layout,
             other.type_ctor_num_functors,
             other.type_ctor_flags,
-            other.type_functor_number_map
+            other.type_functor_number_map,
+            other.type_ctor_base
         );
     }
 
@@ -67,21 +69,23 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo
         java.lang.Object ordinal_ordered_functor_descs, // TypeLayout
         int num_functors,
         short flags,
-        int[] functor_number_map)
+        int[] functor_number_map,
+        TypeCtorInfo_Struct base_type_ctor)
     {
-        arity = type_arity;
-        type_ctor_version = version;
-        type_ctor_num_ptags = num_ptags;
-        type_ctor_rep = new TypeCtorRep(rep);
-        unify_pred = (MethodPtr) unify_proc;
-        compare_pred = (MethodPtr) compare_proc;
-        type_ctor_module_name = module;
-        type_ctor_name = name;
-        type_functors = (TypeFunctors) name_ordered_functor_descs;
-        type_layout = (TypeLayout) ordinal_ordered_functor_descs;
-        type_ctor_num_functors = num_functors;
-        type_ctor_flags = flags;
-        type_functor_number_map = functor_number_map;
+        this.arity = type_arity;
+        this.type_ctor_version = version;
+        this.type_ctor_num_ptags = num_ptags;
+        this.type_ctor_rep = new TypeCtorRep(rep);
+        this.unify_pred = (MethodPtr) unify_proc;
+        this.compare_pred = (MethodPtr) compare_proc;
+        this.type_ctor_module_name = module;
+        this.type_ctor_name = name;
+        this.type_functors = (TypeFunctors) name_ordered_functor_descs;
+        this.type_layout = (TypeLayout) ordinal_ordered_functor_descs;
+        this.type_ctor_num_functors = num_functors;
+        this.type_ctor_flags = flags;
+        this.type_functor_number_map = functor_number_map;
+        this.type_ctor_base = base_type_ctor;
     }
 
     // XXX this should be renamed `equals'

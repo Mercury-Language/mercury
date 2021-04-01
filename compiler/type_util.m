@@ -188,6 +188,13 @@
 :- pred type_ctor_has_hand_defined_rtti(type_ctor::in, hlds_type_body::in)
     is semidet.
 
+    % Return the base type ctor for a given type ctor.
+    % This predicate must only be called with a type ctor that is known
+    % to be a subtype or supertype type ctor, not with arbitrary type ctors.
+    %
+:- pred get_base_type_ctor(type_table::in, type_ctor::in, type_ctor::out)
+    is semidet.
+
     % Given a type, determine what category its principal constructor
     % falls into.
     %
@@ -899,6 +906,52 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
         HasHandDefinedRtti = yes
     ),
     HasHandDefinedRtti = yes.
+
+%-----------------------------------------------------------------------------%
+
+get_base_type_ctor(TypeTable, TypeCtor, BaseTypeCtor) :-
+    % Circular subtype definitions are assumed to have been detected by now.
+    hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+    require_complete_switch [TypeBody]
+    (
+        TypeBody = hlds_du_type(_, MaybeSuperType, _, _, _),
+        (
+            MaybeSuperType = no,
+            BaseTypeCtor = TypeCtor
+        ;
+            MaybeSuperType = yes(SuperType),
+            type_to_ctor(SuperType, SuperTypeCtor),
+            get_base_type_ctor(TypeTable, SuperTypeCtor, BaseTypeCtor)
+        )
+    ;
+        TypeBody = hlds_abstract_type(AbstractDetails),
+        require_complete_switch [AbstractDetails]
+        (
+            ( AbstractDetails = abstract_type_general
+            ; AbstractDetails = abstract_type_fits_in_n_bits(_)
+            ; AbstractDetails = abstract_dummy_type
+            ; AbstractDetails = abstract_notag_type
+            ),
+            BaseTypeCtor = TypeCtor
+        ;
+            AbstractDetails = abstract_subtype(SuperTypeCtor),
+            get_base_type_ctor(TypeTable, SuperTypeCtor, BaseTypeCtor)
+        ;
+            AbstractDetails = abstract_solver_type,
+            unexpected($pred, "abstract solver type")
+        )
+    ;
+        TypeBody = hlds_eqv_type(EqvType),
+        type_to_ctor(EqvType, EqvTypeCtor),
+        get_base_type_ctor(TypeTable, EqvTypeCtor, BaseTypeCtor)
+    ;
+        TypeBody = hlds_foreign_type(_),
+        unexpected($pred, "foreign type")
+    ;
+        TypeBody = hlds_solver_type(_),
+        unexpected($pred, "solver type")
+    ).
 
 %-----------------------------------------------------------------------------%
 

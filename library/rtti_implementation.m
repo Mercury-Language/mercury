@@ -396,9 +396,9 @@ unify_tuple_pos(Loc, TupleArity, TypeInfo, TermA, TermB) :-
         true
     else
         ArgTypeInfo = var_arity_type_info_index_as_ti(TypeInfo, Loc),
-
-        SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
-        SubTermB = get_tuple_subterm(ArgTypeInfo, TermB, Loc - 1),
+        % XXX just count from 0
+        get_tuple_subterm(TermA, Loc - 1, ArgTypeInfo, SubTermA),
+        get_tuple_subterm(TermB, Loc - 1, ArgTypeInfo, SubTermB),
 
         private_builtin.unsafe_type_cast(SubTermB, CastSubTermB),
         generic_unify(SubTermA, CastSubTermB),
@@ -423,9 +423,9 @@ compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
         Result = (=)
     else
         ArgTypeInfo = var_arity_type_info_index_as_ti(TypeInfo, Loc),
-
-        SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
-        SubTermB = get_tuple_subterm(ArgTypeInfo, TermB, Loc - 1),
+        % XXX just count from 0
+        get_tuple_subterm(TermA, Loc - 1, ArgTypeInfo, SubTermA),
+        get_tuple_subterm(TermB, Loc - 1, ArgTypeInfo, SubTermB),
 
         private_builtin.unsafe_type_cast(SubTermB, CastSubTermB),
         generic_compare(SubResult, SubTermA, CastSubTermB),
@@ -2035,12 +2035,34 @@ is_exist_pseudo_type_info(_, _) :-
     ML_construct_du(runtime.TypeCtorInfo_Struct tc,
         runtime.DuFunctorDesc functor_desc, list.List_1 arg_list)
     {
+        TypeCtorInfo_Struct base_tc = tc.type_ctor_base;
+        if (base_tc != null) {
+            // For subtypes, we must derive the class and field names from the
+            // base type ctor.
+            byte ptag = functor_desc.du_functor_primary;
+            DuPtagLayout ptag_layout =
+                base_tc.index_or_search_ptag_layout(ptag);
+
+            int sectag = functor_desc.du_functor_secondary;
+            if (sectag == -1) {
+                sectag = 0;
+            }
+            DuFunctorDesc base_functor_desc =
+                ptag_layout.index_or_search_sectag_functor(sectag);
+
+            return ML_construct_du_2(base_tc, base_functor_desc, arg_list);
+        } else {
+            return ML_construct_du_2(tc, functor_desc, arg_list);
+        }
+    }
+
+    private static object
+    ML_construct_du_2(runtime.TypeCtorInfo_Struct tc,
+        runtime.DuFunctorDesc functor_desc, list.List_1 arg_list)
+    {
         string typename;
         System.Type type;
 
-        // XXX SUBTYPE A subtype may have only one functor without being a
-        // notag type. We may need to look at this again after changing the
-        // data representation of subtypes in high-level data grades.
         if (tc.type_ctor_num_functors == 1) {
             typename =
                 ""mercury."" + ML_name_mangle(tc.type_ctor_module_name)
@@ -2091,6 +2113,11 @@ is_exist_pseudo_type_info(_, _) :-
     private static object
     ML_construct_static_member(runtime.TypeCtorInfo_Struct tc, int i)
     {
+        // For subtypes, we must derive the class name from the base type ctor.
+        if (tc.type_ctor_base != null) {
+            tc = tc.type_ctor_base;
+        }
+
         string typename =
             ""mercury."" + ML_name_mangle(tc.type_ctor_module_name)
             + ""+"" + ML_flipInitialCase(ML_name_mangle(tc.type_ctor_name))
@@ -2099,7 +2126,8 @@ is_exist_pseudo_type_info(_, _) :-
         return System.Enum.ToObject(type, i);
     }
 
-    private static System.Type ML_search_type(string typename)
+    private static System.Type
+    ML_search_type(string typename)
     {
         // Do we need to optimise this?  e.g. search the current assembly,
         // then that which contains the standard library, or cache old results.
@@ -2114,6 +2142,7 @@ is_exist_pseudo_type_info(_, _) :-
         return null;
     }
 
+    // XXX fix name
     private static string
     ML_flipInitialCase(string s)
     {
@@ -2481,16 +2510,42 @@ is_exist_pseudo_type_info(_, _) :-
 
     private static Object
     ML_construct_du(TypeCtorInfo_Struct tc, DuFunctorDesc functor_desc,
-            list.List_1<univ.Univ_0> arg_list)
+        list.List_1<univ.Univ_0> arg_list)
         throws ClassNotFoundException, NoSuchFieldException,
+            IllegalAccessException, InstantiationException,
+            InvocationTargetException
+    {
+        final jmercury.runtime.TypeCtorInfo_Struct base_tc = tc.type_ctor_base;
+        if (base_tc != null) {
+            // For subtypes, we must derive the class and field names from the
+            // base type ctor.
+            byte ptag = functor_desc.du_functor_primary;
+            jmercury.runtime.DuPtagLayout ptag_layout =
+                base_tc.index_or_search_ptag_layout(ptag);
+
+            int sectag = functor_desc.du_functor_secondary;
+            if (sectag == -1) {
+                sectag = 0;
+            }
+            jmercury.runtime.DuFunctorDesc base_functor_desc =
+                ptag_layout.index_or_search_sectag_functor(sectag);
+
+            return ML_construct_du_2(base_tc, base_functor_desc, arg_list);
+        } else {
+            return ML_construct_du_2(tc, functor_desc, arg_list);
+        }
+    }
+
+    private static Object
+    ML_construct_du_2(TypeCtorInfo_Struct tc, DuFunctorDesc functor_desc,
+        list.List_1<univ.Univ_0> arg_list)
+        throws
+            ClassNotFoundException, NoSuchFieldException,
             IllegalAccessException, InstantiationException,
             InvocationTargetException
     {
         String clsname;
 
-        // XXX SUBTYPE A subtype may have only one functor without being a
-        // notag type. We may need to look at this again after changing the
-        // data representation of subtypes in high-level data grades.
         if (tc.type_ctor_num_functors == 1) {
             clsname = ""jmercury."" + ML_name_mangle(tc.type_ctor_module_name)
                 + ""$"" + ML_flipInitialCase(ML_name_mangle(tc.type_ctor_name))
@@ -2569,6 +2624,11 @@ is_exist_pseudo_type_info(_, _) :-
         throws ClassNotFoundException, NoSuchFieldException,
             IllegalAccessException
     {
+        // For subtypes, we must derive the class name from the base type ctor.
+        if (tc.type_ctor_base != null) {
+            tc = tc.type_ctor_base;
+        }
+
         Class<?> cls = Class.forName(
             ""jmercury."" + ML_name_mangle(tc.type_ctor_module_name)
             + ""$"" + ML_flipInitialCase(ML_name_mangle(tc.type_ctor_name))
@@ -2580,6 +2640,7 @@ is_exist_pseudo_type_info(_, _) :-
         return field.get(cls);
     }
 
+    // XXX fix name
     private static String
     ML_flipInitialCase(String s)
     {
@@ -2824,7 +2885,7 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Ordinal = int32.to_int(FunctorDesc ^ du_functor_ordinal),
             Arity = int16.to_int(FunctorDesc ^ du_functor_arity),
             Arguments = iterate(0, Arity - 1,
-                get_arg_univ(Term, SecTagLocn, FunctorDesc, TypeInfo))
+                get_arg_univ(Term, TypeInfo, SecTagLocn, FunctorDesc))
         ;
             SecTagLocn = stag_local_rest_of_word,
             Functor = "some_du_local_sectag",
@@ -3012,9 +3073,9 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Ordinal = 0,
         Arity = get_var_arity_typeinfo_arity(TypeInfo),
         list.map_foldl(
-            (pred(TI::in, U::out, Index::in, Next::out) is det :-
-                SubTerm = get_tuple_subterm(TI, Term, Index),
-                U = univ(SubTerm),
+            ( pred(ArgTypeInfo::in, Univ::out, Index::in, Next::out) is det :-
+                get_tuple_subterm(Term, Index, ArgTypeInfo, SubTerm),
+                Univ = univ(SubTerm),
                 Next = Index + 1
             ), TypeArgs, Arguments, 0, _)
     ;
@@ -3218,7 +3279,7 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
                 get_du_functor_arg_names(FunctorDesc, Names),
                 search_arg_names(Names, 0, Arity, Name, Index)
             then
-                ArgUniv = get_arg_univ(Term, SecTagLocn, FunctorDesc, TypeInfo,
+                ArgUniv = get_arg_univ(Term, TypeInfo, SecTagLocn, FunctorDesc,
                     Index),
                 MaybeArgument = yes(ArgUniv)
             else
@@ -3405,20 +3466,21 @@ expand_type_name(TypeCtorInfo, Wrap) = Name :-
 
     % Retrieve an argument number from a term, given the functor descriptor.
     %
-:- some [T] pred get_arg(U::in, sectag_locn::in, du_functor_desc::in,
-    type_info::in, int::in, T::out) is det.
+:- some [ArgT] pred get_arg(T::in, type_info::in, sectag_locn::in,
+    du_functor_desc::in, int::in, ArgT::out) is det.
 
-get_arg(Term, SecTagLocn, FunctorDesc, TypeInfo, Index, Arg) :-
+get_arg(Term, TypeInfo, SecTagLocn, FunctorDesc, Index, Arg) :-
     ( if get_du_functor_exist_info(FunctorDesc, ExistInfo) then
-        ExtraArgs = int16.to_int(exist_info_typeinfos_plain(ExistInfo)) +
+        NumExtraArgs0 =
+            int16.to_int(exist_info_typeinfos_plain(ExistInfo)) +
             int16.to_int(exist_info_tcis(ExistInfo))
     else
-        ExtraArgs = 0
+        NumExtraArgs0 = 0
     ),
 
     ArgTypes = FunctorDesc ^ du_functor_arg_types,
     PseudoTypeInfo = get_pti_from_arg_types(ArgTypes, Index),
-    get_arg_type_info(TypeInfo, PseudoTypeInfo, Term, FunctorDesc,
+    get_arg_type_info(Term, TypeInfo, FunctorDesc, PseudoTypeInfo,
         ArgTypeInfo),
     ( if
         ( SecTagLocn = stag_none
@@ -3426,25 +3488,25 @@ get_arg(Term, SecTagLocn, FunctorDesc, TypeInfo, Index, Arg) :-
         ; high_level_data
         )
     then
-        TagOffset = 0
+        NumExtraArgs = NumExtraArgs0
     else
-        TagOffset = 1
+        NumExtraArgs = NumExtraArgs0 + 1
     ),
-    RealArgsOffset = TagOffset + ExtraArgs,
-    Arg = get_subterm(FunctorDesc, ArgTypeInfo, Term, Index, RealArgsOffset).
+    get_subterm(Term, TypeInfo, FunctorDesc, Index, NumExtraArgs,
+        ArgTypeInfo, Arg).
 
-:- func get_arg_univ(U, sectag_locn, du_functor_desc, type_info, int) = univ.
+:- func get_arg_univ(T, type_info, sectag_locn, du_functor_desc, int) = univ.
 
-get_arg_univ(Term, SecTagLocn, FunctorDesc, TypeInfo, Index) = Univ :-
-    get_arg(Term, SecTagLocn, FunctorDesc, TypeInfo, Index, Arg),
+get_arg_univ(Term, TypeInfo, SecTagLocn, FunctorDesc, Index) = Univ :-
+    get_arg(Term, TypeInfo, SecTagLocn, FunctorDesc, Index, Arg),
     type_to_univ(Arg, Univ).
 
 %---------------------%
 
-:- pred get_arg_type_info(type_info::in, pseudo_type_info::in, T::in,
-    du_functor_desc::in, type_info::out) is det.
+:- pred get_arg_type_info(T::in, type_info::in, du_functor_desc::in,
+    pseudo_type_info::in, type_info::out) is det.
 
-get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
+get_arg_type_info(Term, TypeInfoParams, FunctorDesc, PseudoTypeInfo,
         ArgTypeInfo) :-
     ( if pseudo_type_info_is_variable(PseudoTypeInfo, VarNum) then
         get_type_info_for_var(TypeInfoParams, VarNum, Term,
@@ -3472,7 +3534,7 @@ get_arg_type_info_2(TypeInfoParams, TypeInfo, Term, FunctorDesc,
         Offset, I, Max, !ArgTypeInfo) :-
     ( if I < Max then
         get_pti_from_type_info_index(TypeInfo, Offset, I, PTI),
-        get_arg_type_info(TypeInfoParams, PTI, Term, FunctorDesc, ETypeInfo),
+        get_arg_type_info(Term, TypeInfoParams, FunctorDesc, PTI, ETypeInfo),
         set_type_info_index(Offset, I, ETypeInfo, !ArgTypeInfo),
         get_arg_type_info_2(TypeInfoParams, TypeInfo, Term, FunctorDesc,
             Offset, I + 1, Max, !ArgTypeInfo)
@@ -3647,124 +3709,240 @@ type_info_from_pseudo_type_info(PseudoTypeInfo) = TypeInfo :-
 
 %---------------------%
 
-    % Get a subterm T, given its type_info, the original term U, its index
-    % and the start region size.
-    %
-:- some [T] func get_subterm(du_functor_desc, type_info, U, int, int) = T.
+:- some [ArgT] pred get_subterm(T::in, type_info::in, du_functor_desc::in,
+    int::in, int::in, type_info::in, ArgT::out) is det.
 
-get_subterm(_, _, _, _, _) = -1 :-
+get_subterm(_, _, _, _, _, _, -1) :-
     det_unimplemented("get_subterm").
 
 :- pragma foreign_proc("C#",
-    get_subterm(FunctorDesc::in, SubTermTypeInfo::in, Term::in,
-        Index::in, ExtraArgs::in) = (Arg::out),
+    get_subterm(Term::in, TypeInfo::in, FunctorDesc::in,
+        Index::in, NumExtraArgs::in, ArgTypeInfo::in, Arg::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
     // Mention TypeInfo_for_U to avoid a warning.
 
-    if (Term is object[]) {
-        int i = Index + ExtraArgs;
-        Arg = ((object[]) Term)[i];
-    } else {
-        string fieldName = null;
-        if (FunctorDesc.du_functor_arg_names != null) {
-            fieldName = FunctorDesc.du_functor_arg_names[Index];
-        }
-        if (fieldName != null) {
-            fieldName = ML_name_mangle(fieldName);
-        } else {
-            // The F<i> field variables are numbered from 1.
-            int i = 1 + Index + ExtraArgs;
-            fieldName = ""F"" + i;
-        }
-
-        System.Reflection.FieldInfo f = Term.GetType().GetField(fieldName);
-        if (f == null) {
-            throw new System.Exception(""no such field: "" + fieldName);
-        }
-        Arg = f.GetValue(Term);
-    }
-
-    TypeInfo_for_T = SubTermTypeInfo;
+    Arg = ML_get_subterm(Term, TypeInfo, FunctorDesc, Index, NumExtraArgs);
+    TypeInfo_for_ArgT = ArgTypeInfo;
 ").
 
 :- pragma foreign_proc("Java",
-    get_subterm(FunctorDesc::in, SubTermTypeInfo::in, Term::in,
-        Index::in, ExtraArgs::in) = (Arg::out),
+    get_subterm(Term::in, TypeInfo::in, FunctorDesc::in,
+        Index::in, NumExtraArgs::in, ArgTypeInfo::in, Arg::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
-    // Mention TypeInfo_for_U to avoid a warning.
+    // Mention TypeInfo_for_T to avoid a warning.
 
     // Currently we use reflection to extract the field.
     // It probably would be more efficient to generate
     // a method for each class to return its n'th field.
+    Arg = ML_get_subterm(Term, TypeInfo, FunctorDesc, Index, NumExtraArgs);
+    assert Arg != null;
 
-    if (Term instanceof Object[]) {
-        int i = Index + ExtraArgs;
-        Arg = ((Object[]) Term)[i];
-    } else {
+    TypeInfo_for_ArgT = ArgTypeInfo;
+").
+
+:- pragma foreign_code("C#",
+"
+    private static object
+    ML_get_subterm(object term,
+        TypeInfo_Struct type_info,
+        DuFunctorDesc functor_desc,
+        int index, int num_extra_args)
+    {
+        if (term is object[]) {
+            int i = index + num_extra_args;
+            return ((object[]) term)[i];
+        } else {
+            return ML_get_subterm_non_array(term, type_info, functor_desc,
+                index, num_extra_args);
+        }
+    }
+
+    private static object
+    ML_get_subterm_non_array(object term,
+        TypeInfo_Struct type_info,
+        DuFunctorDesc functor_desc,
+        int index, int num_extra_args)
+    {
+        TypeCtorInfo_Struct base_tc = type_info.type_ctor.type_ctor_base;
+        string field_name;
+
+        if (base_tc != null) {
+            // For subtypes, we need to get the corresponding DuFunctorDesc
+            // from the base type ctor.
+            DuFunctorDesc base_functor_desc =
+                ML_get_functor_desc_by_tags(base_tc,
+                    functor_desc.du_functor_primary,
+                    functor_desc.du_functor_secondary);
+            field_name =
+                ML_get_field_name_by_index(base_functor_desc,
+                    index, num_extra_args);
+        } else {
+            field_name =
+                ML_get_field_name_by_index(functor_desc,
+                    index, num_extra_args);
+        }
+
+        return ML_get_subterm_by_field_name(term, field_name);
+    }
+
+    private static DuFunctorDesc
+    ML_get_functor_desc_by_tags(TypeCtorInfo_Struct base_tc,
+        byte ptag, int sectag)
+    {
+        DuPtagLayout ptag_layout = base_tc.index_or_search_ptag_layout(ptag);
+        if (sectag == -1) {
+            sectag = 0;
+        }
+        return ptag_layout.index_or_search_sectag_functor(sectag);
+    }
+
+    private static string
+    ML_get_field_name_by_index(DuFunctorDesc functor_desc,
+        int index, int num_extra_args)
+    {
         // Look up the field name if it exists, otherwise recreate the field
         // name that would have been used.
-        String fieldName = null;
-        if (FunctorDesc.du_functor_arg_names != null) {
-            fieldName = FunctorDesc.du_functor_arg_names[Index];
+        string field_name = null;
+        if (functor_desc.du_functor_arg_names != null) {
+            field_name = functor_desc.du_functor_arg_names[index];
         }
-        if (fieldName != null) {
-            fieldName = ML_name_mangle(fieldName);
+        if (field_name != null) {
+            field_name = ML_name_mangle(field_name);
         } else {
             // The F<i> field variables are numbered from 1.
-            int i = 1 + Index + ExtraArgs;
-            fieldName = ""F"" + i;
+            int i = 1 + index + num_extra_args;
+            field_name = ""F"" + i;
+        }
+        return field_name;
+    }
+
+    private static object
+    ML_get_subterm_by_field_name(object term, string field_name)
+    {
+        System.Reflection.FieldInfo f = term.GetType().GetField(field_name);
+        if (f == null) {
+            throw new System.Exception(""no such field: "" + field_name);
+        }
+        return f.GetValue(term);
+    }
+").
+
+:- pragma foreign_code("Java",
+"
+    private static Object
+    ML_get_subterm(Object term,
+        jmercury.runtime.TypeInfo_Struct type_info,
+        jmercury.runtime.DuFunctorDesc functor_desc,
+        int index, int num_extra_args)
+    {
+        if (term instanceof Object[]) {
+            int i = index + num_extra_args;
+            return ((Object[]) term)[i];
+        } else {
+            return ML_get_subterm_non_array(term, type_info, functor_desc,
+                index, num_extra_args);
+        }
+    }
+
+    private static Object
+    ML_get_subterm_non_array(Object term,
+        jmercury.runtime.TypeInfo_Struct type_info,
+        jmercury.runtime.DuFunctorDesc functor_desc,
+        int index, int num_extra_args)
+    {
+        jmercury.runtime.TypeCtorInfo_Struct base_tc =
+            type_info.type_ctor.type_ctor_base;
+        String field_name;
+
+        if (base_tc != null) {
+            // For subtypes, we need to get the corresponding DuFunctorDesc in
+            // the base type ctor.
+            jmercury.runtime.DuFunctorDesc base_functor_desc =
+                ML_get_functor_desc_by_tags(base_tc,
+                    functor_desc.du_functor_primary,
+                    functor_desc.du_functor_secondary);
+            field_name =
+                ML_get_field_name_by_index(base_functor_desc,
+                    index, num_extra_args);
+        } else {
+            field_name =
+                ML_get_field_name_by_index(functor_desc,
+                    index, num_extra_args);
         }
 
+        return ML_get_subterm_by_field_name(term, field_name);
+    }
+
+    private static jmercury.runtime.DuFunctorDesc
+    ML_get_functor_desc_by_tags(jmercury.runtime.TypeCtorInfo_Struct base_tc,
+        byte ptag, int sectag)
+    {
+        jmercury.runtime.DuPtagLayout ptag_layout =
+            base_tc.index_or_search_ptag_layout(ptag);
+        if (sectag == -1) {
+            sectag = 0;
+        }
+        return ptag_layout.index_or_search_sectag_functor(sectag);
+    }
+
+    private static String
+    ML_get_field_name_by_index(jmercury.runtime.DuFunctorDesc functor_desc,
+        int index, int num_extra_args)
+    {
+        // Look up the field name if it exists, otherwise recreate the field
+        // name that would have been used.
+        String field_name = null;
+        if (functor_desc.du_functor_arg_names != null) {
+            field_name = functor_desc.du_functor_arg_names[index];
+        }
+        if (field_name != null) {
+            field_name = ML_name_mangle(field_name);
+        } else {
+            // The F<i> field variables are numbered from 1.
+            int i = 1 + index + num_extra_args;
+            field_name = ""F"" + i;
+        }
+        return field_name;
+    }
+
+    private static Object
+    ML_get_subterm_by_field_name(Object term, String field_name)
+    {
         try {
-            Field f = Term.getClass().getDeclaredField(fieldName);
-            Arg = f.get(Term);
+            Field f = term.getClass().getDeclaredField(field_name);
+            return f.get(term);
         } catch (IllegalAccessException e) {
             throw new Error(e);
         } catch (NoSuchFieldException e) {
             throw new Error(e);
         }
     }
-
-    assert Arg != null;
-
-    TypeInfo_for_T = SubTermTypeInfo;
 ").
 
 %---------------------%
 
-    % Same as above, but for tuples instead of du types.
-    %
-:- some [T] func get_tuple_subterm(type_info, U, int) = T.
+:- some [ArgT] pred get_tuple_subterm(T::in, int::in, type_info::in, ArgT::out)
+    is det.
 
-get_tuple_subterm(TypeInfo, Term, Index) = SubTerm :-
-    % Reuse the code in get_subterm.
-    % Passing null for FunctorDesc is okay because the C# implementation
-    % doesn't use it, and the Java implementation doesn't use it if
-    % the Term is an array (true of tuples).
-    SubTerm = get_subterm(null_functor_desc, TypeInfo, Term, Index, 0).
+get_tuple_subterm(_, _, _, -1) :-
+    private_builtin.sorry("get_tuple_subterm").
 
-%---------------------%
-
-:- func null_functor_desc = du_functor_desc.
 :- pragma foreign_proc("C#",
-    null_functor_desc = (NullFunctorDesc::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    get_tuple_subterm(Term::in, Index::in, ArgTypeInfo::in, Arg::out),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    NullFunctorDesc = null;
+    Arg = ((object[]) Term)[Index];
+    TypeInfo_for_ArgT = ArgTypeInfo;
 ").
+
 :- pragma foreign_proc("Java",
-    null_functor_desc = (NullFunctorDesc::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    get_tuple_subterm(Term::in, Index::in, ArgTypeInfo::in, Arg::out),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    NullFunctorDesc = null;
-").
-:- pragma foreign_proc("C",
-    null_functor_desc = (NullFunctorDesc::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    NullFunctorDesc = (MR_Word) NULL;
+    Arg = ((Object[]) Term)[Index];
+    TypeInfo_for_ArgT = ArgTypeInfo;
 ").
 
 %---------------------%
