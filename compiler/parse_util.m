@@ -38,6 +38,7 @@
 
 :- import_module cord.
 :- import_module list.
+:- import_module integer.
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
@@ -172,6 +173,14 @@
 
 %---------------------------------------------------------------------------%
 
+    % Given the arguments of the term.integer function symbol and a context,
+    % return the corresponding cons_id, if there is one.
+    %
+:- pred parse_integer_cons_id(integer_base::in, integer::in, signedness::in,
+    integer_size::in, term.context::in, maybe1(cons_id)::out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- pred parse_decimal_int(cord(format_component)::in, varset::in, term::in,
     maybe1(int)::out) is det.
 
@@ -184,8 +193,11 @@
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_util.
 
 :- import_module int.
+:- import_module string.
+:- import_module term_io.
 
 %---------------------------------------------------------------------------%
 
@@ -549,6 +561,98 @@ accumulate_conflict_specs(Context, ConflictingWhatInWhat, Specified,
         !:Specs = [Spec | !.Specs]
     else
         true
+    ).
+
+%---------------------------------------------------------------------------%
+
+parse_integer_cons_id(Base, Integer, Signedness, Size, Context, MaybeConsId) :-
+    (
+        Size = size_word,
+        (
+            Signedness = signed,
+            parse_integer_const(Context, Base, Integer,
+                "", "", source_integer_to_int(Base),
+                (func(I) = int_const(I)), MaybeConsId)
+        ;
+            Signedness = unsigned,
+            parse_integer_const(Context, Base, Integer,
+                "unsigned", "u", integer.to_uint,
+                (func(I) = uint_const(I)), MaybeConsId)
+        )
+    ;
+        Size = size_8_bit,
+        (
+            Signedness = signed,
+            parse_integer_const(Context, Base, Integer,
+                "8-bit", "i8", integer.to_int8,
+                (func(I) = int8_const(I)), MaybeConsId)
+        ;
+            Signedness = unsigned,
+            parse_integer_const(Context, Base, Integer,
+                "unsigned 8-bit", "u8", integer.to_uint8,
+                (func(I) = uint8_const(I)), MaybeConsId)
+        )
+    ;
+        Size = size_16_bit,
+        (
+            Signedness = signed,
+            parse_integer_const(Context, Base, Integer,
+                "16-bit", "i16", integer.to_int16,
+                (func(I) = int16_const(I)), MaybeConsId)
+        ;
+            Signedness = unsigned,
+            parse_integer_const(Context, Base, Integer,
+                "unsigned 16-bit", "u16", integer.to_uint16,
+                (func(I) = uint16_const(I)), MaybeConsId)
+        )
+    ;
+        Size = size_32_bit,
+        (
+            Signedness = signed,
+            parse_integer_const(Context, Base, Integer,
+                "32-bit", "i32", integer.to_int32,
+                (func(I) = int32_const(I)), MaybeConsId)
+        ;
+            Signedness = unsigned,
+            parse_integer_const(Context, Base, Integer,
+                "unsigned 32-bit", "u32", integer.to_uint32,
+                (func(I) = uint32_const(I)), MaybeConsId)
+        )
+    ;
+        Size = size_64_bit,
+        (
+            Signedness = signed,
+            parse_integer_const(Context, Base, Integer,
+                "64-bit", "i64", integer.to_int64,
+                (func(I) = int64_const(I)), MaybeConsId)
+        ;
+            Signedness = unsigned,
+            parse_integer_const(Context, Base, Integer,
+                "unsigned 64-bit", "u64", integer.to_uint64,
+                (func(I) = uint64_const(I)), MaybeConsId)
+        )
+    ).
+
+:- pred parse_integer_const(term.context::in, integer_base::in,
+    integer::in, string::in, string::in,
+    pred(integer, T)::in(pred(in, out) is semidet), (func(T) = cons_id)::in,
+    maybe1(cons_id)::out) is det.
+
+parse_integer_const(Context, Base, Integer, IntTypeDesc, IntSuffixStr,
+        ConvPred, ToConsIdPred, MaybeConsId) :-
+    ( if ConvPred(Integer, Int) then
+        ConsId = ToConsIdPred(Int),
+        MaybeConsId = ok1(ConsId)
+    else
+        BasePrefix = integer_base_prefix(Base),
+        IntStr = integer.to_base_string(Integer, integer_base_int(Base)),
+        LiteralStr = BasePrefix ++ IntStr ++ IntSuffixStr,
+        Pieces = [words("Error: the"),
+            words(IntTypeDesc), words("integer literal"), quote(LiteralStr),
+            words("is outside the range of that type."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
+        MaybeConsId = error1([Spec])
     ).
 
 %---------------------------------------------------------------------------%

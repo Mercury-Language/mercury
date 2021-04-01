@@ -388,13 +388,13 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, ConsId)
         ConsId = string_const(StringConst),
         String = term_io.quoted_string(StringConst)
     ;
-        ConsId = impl_defined_const(Name),
+        ConsId = impl_defined_const(IDCKind),
         (
             QuoteCons = dont_quote_cons,
-            String = "$" ++ Name
+            String = impl_defined_const_kind_to_str(IDCKind)
         ;
             QuoteCons = quote_cons,
-            String = "`$" ++ Name ++ "'"
+            String = "`" ++ impl_defined_const_kind_to_str(IDCKind) ++ "'"
         )
     ;
         ConsId = closure_cons(PredProcId, _),

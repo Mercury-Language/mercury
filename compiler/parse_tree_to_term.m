@@ -703,9 +703,10 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         SymName = unqualified(string.from_char(Char)),
         construct_qualified_term(SymName, [], Term)
     ;
-        ConsId = impl_defined_const(String),
+        ConsId = impl_defined_const(IDCKind),
         term.context_init(Context),
-        FunctorName = "ImplDefinedConst: " ++ String,
+        FunctorName = "ImplDefinedConst: " ++
+            impl_defined_const_kind_to_str(IDCKind),
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
         ConsId = type_ctor_info_const(ModuleName, TypeCtorName, Arity),

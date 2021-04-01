@@ -150,10 +150,7 @@
     ;       char_const(char)
     ;       string_const(string)
 
-    ;       impl_defined_const(string)
-            % $file, $line, $module, $pred, or $grade; the string gives
-            % the part after the dollar sign. (Any string other than
-            % these five are unrecognized and will yield type errors.)
+    ;       impl_defined_const(impl_defined_const_kind)
 
     ;       type_ctor_info_const(
                 module_name,
@@ -205,6 +202,15 @@
 :- type lambda_eval_method
     --->    lambda_normal.
 
+:- type impl_defined_const_kind
+    --->    idc_file        % $file
+    ;       idc_line        % $line
+    ;       idc_module      % $module
+    ;       idc_pred        % $pred
+    ;       idc_grade.      % $grade
+
+:- func impl_defined_const_kind_to_str(impl_defined_const_kind) = string.
+
 :- func cons_id_dummy_type_ctor = type_ctor.
 
     % Are the two cons_ids equivalent, modulo any module qualifications?
@@ -214,6 +220,14 @@
 :- pred cons_id_is_const_struct(cons_id::in, int::out) is semidet.
 
 :- implementation.
+
+impl_defined_const_kind_to_str(IDCKind) = Str :-
+    ( IDCKind = idc_file, Str = "$file"
+    ; IDCKind = idc_line, Str = "$line"
+    ; IDCKind = idc_module, Str = "$module"
+    ; IDCKind = idc_pred, Str = "$pred"
+    ; IDCKind = idc_grade, Str = "$grade"
+    ).
 
 cons_id_dummy_type_ctor = type_ctor(unqualified(""), -1).
 

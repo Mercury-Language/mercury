@@ -44,7 +44,6 @@
 
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module term.
 
 :- type subst_literals_info
@@ -93,9 +92,9 @@ subst_literals_in_goal(Info, Goal0, Goal) :-
         (
             RHS0 = rhs_functor(ConsId, _, _),
             (
-                ConsId = impl_defined_const(Name),
+                ConsId = impl_defined_const(IDCKind),
                 Context = goal_info_get_context(GoalInfo0),
-                make_impl_defined_literal(Var, Name, Context, Info, Goal1),
+                make_impl_defined_literal(Var, IDCKind, Context, Info, Goal1),
                 Goal1 = hlds_goal(GoalExpr, _),
                 Goal = hlds_goal(GoalExpr, GoalInfo0)
             ;
@@ -213,30 +212,32 @@ subst_literals_in_case(Info, Case0, Case) :-
     subst_literals_in_goal(Info, Goal0, Goal),
     Case = case(MainConsId, OtherConsIds, Goal).
 
-:- pred make_impl_defined_literal(prog_var::in, string::in,
+:- pred make_impl_defined_literal(prog_var::in, impl_defined_const_kind::in,
     term.context::in, subst_literals_info::in, hlds_goal::out) is det.
 
-make_impl_defined_literal(Var, Name, Context, Info, Goal) :-
+make_impl_defined_literal(Var, IDCKind, Context, Info, Goal) :-
     Context = term.context(File, Line),
     Info = subst_literals_info(ModuleInfo, PredInfo, PredId),
-    ( if Name = "file" then
+    (
+        IDCKind = idc_file,
         make_string_const_construction(Context, Var, File, Goal)
-    else if Name = "line" then
+    ;
+        IDCKind = idc_line,
         make_int_const_construction(Context, Var, Line, Goal)
-    else if Name = "module" then
+    ;
+        IDCKind = idc_module,
         ModuleName = pred_info_module(PredInfo),
         Str = sym_name_to_string(ModuleName),
         make_string_const_construction(Context, Var, Str, Goal)
-    else if Name = "pred" then
+    ;
+        IDCKind = idc_pred,
         Str = pred_id_to_string(ModuleInfo, PredId),
         make_string_const_construction(Context, Var, Str, Goal)
-    else if Name = "grade" then
+    ;
+        IDCKind = idc_grade,
         module_info_get_globals(ModuleInfo, Globals),
         grade_directory_component(Globals, Grade),
         make_string_const_construction(Context, Var, Grade, Goal)
-    else
-        % These should have been caught during type checking.
-        unexpected($pred, "unknown literal")
     ).
 
 %-----------------------------------------------------------------------------%

@@ -2980,16 +2980,16 @@ builtin_atomic_type(cons(unqualified(String), 0, _), "character") :-
     % for character constants, which should be converted to char_consts
     % during the term to item translation.
     string.char_to_string(_, String).
-builtin_atomic_type(impl_defined_const(Name), Type) :-
+builtin_atomic_type(impl_defined_const(IDCKind), Type) :-
     (
-        ( Name = "file"
-        ; Name = "module"
-        ; Name = "pred"
-        ; Name = "grade"
+        ( IDCKind = idc_file
+        ; IDCKind = idc_module
+        ; IDCKind = idc_pred
+        ; IDCKind = idc_grade
         ),
         Type = "string"
     ;
-        Name = "line",
+        IDCKind = idc_line,
         Type = "int"
     ).
 

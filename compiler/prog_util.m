@@ -133,12 +133,6 @@
     %
 :- func cons_id_maybe_arity(cons_id) = maybe(arity).
 
-    % The reverse conversion - make a cons_id for a functor.
-    % Given a const and an arity for the functor, create a cons_id.
-    %
-:- pred make_functor_cons_id(const::in, arity::in, cons_id::out) is semidet.
-:- pred det_make_functor_cons_id(const::in, arity::in, cons_id::out) is det.
-
     % source_integer_to_int(Base, Integer, Int):
     %
     % Convert an arbitrary precision integer to a native int. For base 10, this
@@ -713,81 +707,6 @@ cons_id_maybe_arity(ground_term_const(_, ConsId)) =
 cons_id_maybe_arity(tabling_info_const(_)) = no.
 cons_id_maybe_arity(deep_profiling_proc_layout(_)) = no.
 cons_id_maybe_arity(table_io_entry_desc(_)) = no.
-
-make_functor_cons_id(Functor, Arity, ConsId) :-
-    % The logic of this predicate is duplicated, with minor differences,
-    % by parse_ordinary_cons_id in superhomogeneous.m.
-    % Any change here may need a corresponding change there.
-    require_complete_switch [Functor]
-    (
-        Functor = term.atom(Name),
-        ConsId = cons(unqualified(Name), Arity, cons_id_dummy_type_ctor)
-    ;
-        Functor = term.integer(Base, Integer, Signedness, Size),
-        (
-            Signedness = signed,
-            require_complete_switch [Size] (
-                Size = size_word,
-                source_integer_to_int(Base, Integer, Int),
-                ConsId = int_const(Int)
-            ;
-                Size = size_8_bit,
-                integer.to_int8(Integer, Int8),
-                ConsId = int8_const(Int8)
-            ;
-                Size = size_16_bit,
-                integer.to_int16(Integer, Int16),
-                ConsId = int16_const(Int16)
-            ;
-                Size = size_32_bit,
-                integer.to_int32(Integer, Int32),
-                ConsId = int32_const(Int32)
-            ;
-                Size = size_64_bit,
-                integer.to_int64(Integer, Int64),
-                ConsId = int64_const(Int64)
-            )
-        ;
-            Signedness = unsigned,
-            require_complete_switch [Size] (
-                Size = size_word,
-                integer.to_uint(Integer, UInt),
-                ConsId = uint_const(UInt)
-            ;
-                Size = size_8_bit,
-                integer.to_uint8(Integer, UInt8),
-                ConsId = uint8_const(UInt8)
-            ;
-                Size = size_16_bit,
-                integer.to_uint16(Integer, UInt16),
-                ConsId = uint16_const(UInt16)
-            ;
-                Size = size_32_bit,
-                integer.to_uint32(Integer, UInt32),
-                ConsId = uint32_const(UInt32)
-            ;
-                Size = size_64_bit,
-                integer.to_uint64(Integer, UInt64),
-                ConsId = uint64_const(UInt64)
-            )
-        )
-    ;
-        Functor = term.string(String),
-        ConsId = string_const(String)
-    ;
-        Functor = term.float(Float),
-        ConsId = float_const(Float)
-    ;
-        Functor = term.implementation_defined(Name),
-        ConsId = impl_defined_const(Name)
-    ).
-
-det_make_functor_cons_id(Functor, Arity, ConsId) :-
-    ( if make_functor_cons_id(Functor, Arity, ConsIdPrime) then
-        ConsId = ConsIdPrime
-    else
-        unexpected($pred, "make_functor_cons_id failed")
-    ).
 
 source_integer_to_int(Base, Integer, Int) :-
     require_complete_switch [Base]

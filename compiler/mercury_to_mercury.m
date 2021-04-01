@@ -328,9 +328,8 @@ mercury_format_cons_id(Lang, NeedsBrackets, ConsId, S, !U) :-
         ConsId = string_const(Str),
         add_quoted_string(Str, S, !U)
     ;
-        ConsId = impl_defined_const(Name),
-        add_string("$", S, !U),
-        add_string(Name, S, !U)
+        ConsId = impl_defined_const(IDCKind),
+        add_string(impl_defined_const_kind_to_str(IDCKind), S, !U)
     ;
         ConsId = closure_cons(ShroudedPredProcId, _EvalMethod),
         % XXX Should probably print this out in name/arity form.

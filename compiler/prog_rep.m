@@ -887,7 +887,8 @@ cons_id_rep(uint64_const(UInt64)) = string.uint64_to_string(UInt64).
 cons_id_rep(float_const(Float)) = string.float_to_string(Float).
 cons_id_rep(char_const(Char)) = string.char_to_string(Char).
 cons_id_rep(string_const(String)) = """" ++ String ++ """".
-cons_id_rep(impl_defined_const(Name)) = "$" ++ Name.
+cons_id_rep(impl_defined_const(IDCKind)) =
+    impl_defined_const_kind_to_str(IDCKind).
 cons_id_rep(closure_cons(_, _)) = "$closure_cons".
 cons_id_rep(type_ctor_info_const(_, _, _)) = "$type_ctor_info_const".
 cons_id_rep(base_typeclass_info_const(_, _, _, _)) =

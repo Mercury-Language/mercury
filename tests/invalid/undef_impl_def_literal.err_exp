@@ -1,4 +1,5 @@
-undef_impl_def_literal.m:015: In clause for predicate `main'/2:
-undef_impl_def_literal.m:015:   in argument 1 of call to predicate
-undef_impl_def_literal.m:015:   `io.write'/3:
-undef_impl_def_literal.m:015:   error: undefined symbol `$nosuchthing'.
+undef_impl_def_literal.m:015: Error: unexpected implementation defined literal
+undef_impl_def_literal.m:015:   `$nosuchthing'.
+undef_impl_def_literal.m:015:   The only valid implementation defined literals
+undef_impl_def_literal.m:015:   are `$line', `$file', `$module', `$pred' and
+undef_impl_def_literal.m:015:   `$grade'.

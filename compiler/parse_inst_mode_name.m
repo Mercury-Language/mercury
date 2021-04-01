@@ -76,7 +76,6 @@
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_util.
-:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module set.
@@ -928,32 +927,61 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
                 phase_term_to_parse_tree, Context, Pieces),
             MaybeBoundInst = error1([Spec])
         ;
-            ( Functor = term.integer(_, _, _, _)
-            ; Functor = term.float(_)
-            ; Functor = term.string(_)
+            Functor = term.integer(Base, Integer, Signedness, Size),
+            (
+                ArgTerms0 = [],
+                parse_integer_cons_id(Base, Integer, Signedness, Size, Context,
+                    MaybeConsId),
+                (
+                    MaybeConsId = ok1(ConsId),
+                    BoundInst = bound_functor(ConsId, []),
+                    MaybeBoundInst = ok1(BoundInst)
+                ;
+                    MaybeConsId = error1(Specs),
+                    MaybeBoundInst = error1(Specs)
+                )
+            ;
+                ArgTerms0 = [_ | _],
+                generate_error_for_unexpected_arg(VarSet, Context,
+                    ContextPieces, Term, "an integer", MaybeBoundInst)
+            )
+        ;
+            (
+                Functor = term.float(Float),
+                ConsId = float_const(Float)
+            ;
+                Functor = term.string(Str),
+                ConsId = string_const(Str)
             ),
             (
                 ArgTerms0 = [],
-                det_make_functor_cons_id(Functor, 0, ConsId),
                 BoundInst = bound_functor(ConsId, []),
                 MaybeBoundInst = ok1(BoundInst)
             ;
                 ArgTerms0 = [_ | _],
-                ( Functor = term.integer(_, _, _, _), FunctorStr = "an integer"
-                ; Functor = term.float(_),            FunctorStr = "a float"
+                ( Functor = term.float(_),            FunctorStr = "a float"
                 ; Functor = term.string(_),           FunctorStr = "a string"
                 ),
-                TermStr = describe_error_term(VarSet, Term),
-                Pieces = cord.list(ContextPieces) ++
-                    [lower_case_next_if_not_first, words("Error:"),
-                    words(FunctorStr), words("such as"),
-                    quote(TermStr), words("may not have any arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, Context, Pieces),
-                MaybeBoundInst = error1([Spec])
+                generate_error_for_unexpected_arg(VarSet, Context,
+                    ContextPieces, Term, FunctorStr, MaybeBoundInst)
             )
         )
     ).
+
+:- pred generate_error_for_unexpected_arg(varset::in, term.context::in,
+    cord(format_component)::in, term::in, string::in,
+    maybe1(bound_inst)::out) is det.
+
+generate_error_for_unexpected_arg(VarSet, Context, ContextPieces,
+        Term, FunctorStr, MaybeBoundInst) :-
+    TermStr = describe_error_term(VarSet, Term),
+    Pieces = cord.list(ContextPieces) ++
+        [lower_case_next_if_not_first, words("Error:"),
+        words(FunctorStr), words("such as"), quote(TermStr),
+        words("may not have any arguments."), nl],
+    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Context, Pieces),
+    MaybeBoundInst = error1([Spec]).
 
 %---------------------------------------------------------------------------%
 

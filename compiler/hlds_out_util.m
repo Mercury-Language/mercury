@@ -709,8 +709,8 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
         Str = functor_to_string(VarSet, VarNamePrint,
             term.string(String), ArgVars)
     ;
-        ConsId = impl_defined_const(Name),
-        Str = "$" ++ Name
+        ConsId = impl_defined_const(IDCKind),
+        Str = impl_defined_const_kind_to_str(IDCKind)
     ;
         ConsId = closure_cons(ShroudedPredProcId, _),
         proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
@@ -726,14 +726,14 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
         ConsId = type_ctor_info_const(Module, Name, Arity),
         Str = "type_ctor_info("""
             ++ prog_out.sym_name_to_escaped_string(Module)
-            ++ """, """ ++ Name ++ """, " ++ int_to_string(Arity) ++ ")"
+            ++ """, """ ++ Name ++ """, " ++ string.int_to_string(Arity) ++ ")"
     ;
         ConsId = base_typeclass_info_const(Module, ClassId, _, Instance),
         ClassId = class_id(Name, Arity),
         Str = "base_typeclass_info("""
             ++ prog_out.sym_name_to_escaped_string(Module) ++ """, "
             ++ "class_id(" ++ prog_out.sym_name_to_escaped_string(Name)
-            ++ ", " ++ int_to_string(Arity) ++ "), " ++ Instance ++ ")"
+            ++ ", " ++ string.int_to_string(Arity) ++ "), " ++ Instance ++ ")"
     ;
         ConsId = type_info_cell_constructor(_),
         Str = functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint,
@@ -876,8 +876,8 @@ cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
         ConsId = string_const(StringConst),
         String = term_io.quoted_string(StringConst)
     ;
-        ConsId = impl_defined_const(Name),
-        String = "$" ++ Name
+        ConsId = impl_defined_const(IDCKind),
+        String = impl_defined_const_kind_to_str(IDCKind)
     ;
         ConsId = closure_cons(PredProcId, _),
         PredProcId = shrouded_pred_proc_id(PredId, ProcId),

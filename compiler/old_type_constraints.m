@@ -1039,16 +1039,16 @@ builtin_atomic_type(float_const(_), builtin_type_float).
 builtin_atomic_type(string_const(_), builtin_type_string).
 builtin_atomic_type(cons(unqualified(String), 0, _), builtin_type_char) :-
     string.char_to_string(_, String).
-builtin_atomic_type(impl_defined_const(Name), Type) :-
+builtin_atomic_type(impl_defined_const(IDCKind), Type) :-
     (
-        ( Name = "file"
-        ; Name = "module"
-        ; Name = "pred"
-        ; Name = "grade"
+        ( IDCKind = idc_file
+        ; IDCKind = idc_module
+        ; IDCKind = idc_pred
+        ; IDCKind = idc_grade
         ),
         Type = builtin_type_string
     ;
-        Name = "line",
+        IDCKind = idc_line,
         Type = builtin_type_int(int_type_int)
     ).
 

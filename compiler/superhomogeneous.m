@@ -153,6 +153,7 @@
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_type_name.
+:- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
@@ -169,7 +170,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
-:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -732,8 +732,8 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
             % have no arguments. If it nevertheless does, we still record
             % its arguments, and let the error be caught later during
             % typechecking.
-            parse_ordinary_cons_id(YFunctor, YArgTerms, YFunctorContext,
-                ConsId, !Specs),
+            parse_ordinary_cons_id(!.VarSet, YFunctor, YArgTerms,
+                YFunctorContext, ConsId, !Specs),
             MaybeQualifiedYArgTerms = YArgTerms
         ),
         build_var_cons_id_unification(XVar, ConsId, MaybeQualifiedYArgTerms,
@@ -871,86 +871,26 @@ maybe_add_to_ancestor_var_map(ModuleInfo, XVar, ConsId, Context,
         true
     ).
 
-:- pred parse_ordinary_cons_id(term.const::in, list(prog_term)::in,
-    term.context::in, cons_id::out,
+:- pred parse_ordinary_cons_id(prog_varset::in, term.const::in,
+    list(prog_term)::in, term.context::in, cons_id::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !Specs) :-
-    % The logic of this predicate duplicates the logic of make_functor_cons_id
-    % in prog_util, with the difference that we generate an error message
-    % for big_integers that are too big.
-    % Any change here may need a corresponding change there.
+parse_ordinary_cons_id(VarSet, Functor, ArgTerms, Context, ConsId, !Specs) :-
     (
         Functor = term.atom(Name),
         list.length(ArgTerms, Arity),
         ConsId = cons(unqualified(Name), Arity, cons_id_dummy_type_ctor)
     ;
         Functor = term.integer(Base, Integer, Signedness, Size),
+        parse_integer_cons_id(Base, Integer, Signedness, Size, Context,
+            MaybeConsId),
         (
-            Size = size_word,
-            (
-                Signedness = signed,
-                parse_integer_cons_id(Context, Base, Integer, "", "",
-                    source_integer_to_int(Base), (func(I) = int_const(I)),
-                    ConsId, !Specs)
-            ;
-                Signedness = unsigned,
-                parse_integer_cons_id(Context, Base, Integer, "unsigned", "u",
-                    integer.to_uint, (func(I) = uint_const(I)),
-                    ConsId, !Specs)
-            )
+            MaybeConsId = ok1(ConsId)
         ;
-            Size = size_8_bit,
-            (
-                Signedness = signed,
-                parse_integer_cons_id(Context, Base, Integer,
-                    "8-bit", "i8", integer.to_int8,
-                    (func(I) = int8_const(I)), ConsId, !Specs)
-            ;
-                Signedness = unsigned,
-                parse_integer_cons_id(Context, Base, Integer,
-                    "unsigned 8-bit", "u8", integer.to_uint8,
-                    (func(I) = uint8_const(I)), ConsId, !Specs)
-            )
-        ;
-            Size = size_16_bit,
-            (
-                Signedness = signed,
-                parse_integer_cons_id(Context, Base, Integer,
-                    "16-bit", "i16", integer.to_int16,
-                    (func(I) = int16_const(I)), ConsId, !Specs)
-            ;
-                Signedness = unsigned,
-                parse_integer_cons_id(Context, Base, Integer,
-                    "unsigned 16-bit", "u16", integer.to_uint16,
-                    (func(I) = uint16_const(I)), ConsId, !Specs)
-            )
-        ;
-            Size = size_32_bit,
-            (
-                Signedness = signed,
-                parse_integer_cons_id(Context, Base, Integer,
-                    "32-bit", "i32", integer.to_int32,
-                    (func(I) = int32_const(I)), ConsId, !Specs)
-            ;
-                Signedness = unsigned,
-                parse_integer_cons_id(Context, Base, Integer,
-                    "unsigned 32-bit", "u32", integer.to_uint32,
-                    (func(I) = uint32_const(I)), ConsId, !Specs)
-            )
-        ;
-            Size = size_64_bit,
-            (
-                Signedness = signed,
-                parse_integer_cons_id(Context, Base, Integer,
-                    "64-bit", "i64", integer.to_int64,
-                    (func(I) = int64_const(I)), ConsId, !Specs)
-            ;
-                Signedness = unsigned,
-                parse_integer_cons_id(Context, Base, Integer,
-                    "unsigned 64-bit", "u64", integer.to_uint64,
-                    (func(I) = uint64_const(I)), ConsId, !Specs)
-            )
+            MaybeConsId = error1(ConsIdSpecs),
+            % This is a dummy.
+            ConsId = int_const(0),
+            !:Specs = ConsIdSpecs ++ !.Specs
         )
     ;
         Functor = term.string(String),
@@ -960,31 +900,31 @@ parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !Specs) :-
         ConsId = float_const(Float)
     ;
         Functor = term.implementation_defined(Name),
-        ConsId = impl_defined_const(Name)
-    ).
-
-:- pred parse_integer_cons_id(term.context::in, integer_base::in,
-    integer::in, string::in, string::in,
-    pred(integer, T)::in(pred(in, out) is semidet), (func(T) = cons_id)::in,
-    cons_id::out, list(error_spec)::in, list(error_spec)::out) is det.
-
-parse_integer_cons_id(Context, Base, Integer, IntDesc, IntSuffixStr, ConvPred,
-        ToConsIdPred, ConsId, !Specs) :-
-    ( if ConvPred(Integer, Int) then
-        ConsId = ToConsIdPred(Int)
-    else
-        BasePrefix = integer_base_prefix(Base),
-        IntString = integer.to_base_string(Integer,
-            integer_base_int(Base)),
-        Pieces = [words("Error: the"), words(IntDesc),
-            words("integer literal"),
-            quote(BasePrefix ++ IntString ++ IntSuffixStr),
-            words("is outside the range of that type."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
-        !:Specs = [Spec | !.Specs],
-        % This is a dummy.
-        ConsId = int_const(0)
+        ( if
+            ( Name = "line",   IDCKind = idc_line
+            ; Name = "file",   IDCKind = idc_file
+            ; Name = "module", IDCKind = idc_module
+            ; Name = "pred",   IDCKind = idc_pred
+            ; Name = "grade",  IDCKind = idc_grade
+            )
+        then
+            ConsId = impl_defined_const(IDCKind)
+        else
+            ErrorTerm = functor(Functor, ArgTerms, Context),
+            TermStr = describe_error_term(VarSet, ErrorTerm),
+            Pieces = [words("Error:"),
+                words("unexpected implementation defined literal"),
+                quote(TermStr), suffix("."), nl,
+                words("The only valid implementation defined literals are"),
+                quote("$line"), suffix(","), quote("$file"), suffix(","),
+                quote("$module"), suffix(","), quote("$pred"), words("and"),
+                quote("$grade"), suffix("."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, Pieces),
+            !:Specs = [Spec | !.Specs],
+            % This is a dummy.
+            ConsId = impl_defined_const(idc_line)
+        )
     ).
 
     % See whether Atom indicates a term with special syntax.
