@@ -123,7 +123,5 @@ main(!IO) :-
             make_sub_abs_notag
         ),
     io.print_line(Sub : substruct, !IO),
-    % XXX SUBTYPE enable with coerce
-    %Base = coerce(Sub) : struct(_, _),
-    Base = Sub,
+    Base = coerce(Sub) : struct(_, _),
     io.print_line(Base, !IO).

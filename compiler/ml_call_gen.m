@@ -123,12 +123,10 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         FuncDefns = [],
         Stmts = []
     ;
-        GenericCall = cast(_),
+        ( GenericCall = cast(_)
+        ; GenericCall = subtype_coerce
+        ),
         ml_gen_cast(Context, ArgVars, LocalVarDefns, FuncDefns, Stmts, !Info)
-    ;
-        GenericCall = subtype_coerce,
-        % XXX SUBTYPE
-        sorry($pred, "coerce")
     ).
 
 :- inst main_generic_call for generic_call/0
@@ -281,8 +279,8 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     FuncDefns = FuncDefns0,
     Stmts = [AssignFuncVar | Stmts0].
 
-    % Generate MLDS code for a cast. The list of argument variables
-    % must have only two elements, the input and the output.
+    % Generate MLDS code for a cast (including coerce). The list of argument
+    % variables must have only two elements, the input and the output.
     %
 :- pred ml_gen_cast(prog_context::in, list(prog_var)::in,
     list(mlds_local_var_defn)::out, list(mlds_function_defn)::out,

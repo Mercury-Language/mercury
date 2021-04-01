@@ -996,12 +996,10 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         GoalExpr0 = generic_call(GenericCall, _, _, _, _),
         % Casts are generated inline.
         (
-            GenericCall = cast(_),
+            ( GenericCall = cast(_)
+            ; GenericCall = subtype_coerce
+            ),
             MustHaveMap = no
-        ;
-            GenericCall = subtype_coerce,
-            % XXX SUBTYPE
-            sorry($pred, "coerce")
         ;
             ( GenericCall = higher_order(_, _, _, _)
             ; GenericCall = class_method(_, _, _, _)

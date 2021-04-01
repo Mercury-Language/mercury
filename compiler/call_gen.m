@@ -193,7 +193,9 @@ generate_generic_call(OuterCodeModel, GenericCall, Args, Modes,
         GenericCall = event_call(EventName),
         generate_event_call(EventName, Args, GoalInfo, Code, !CI, !CLD)
     ;
-        GenericCall = cast(_),
+        ( GenericCall = cast(_)
+        ; GenericCall = subtype_coerce
+        ),
         ( if Args = [InputArg, OutputArg] then
             get_module_info(!.CI, ModuleInfo),
             get_proc_info(!.CI, ProcInfo),
@@ -212,10 +214,6 @@ generate_generic_call(OuterCodeModel, GenericCall, Args, Modes,
         else
             unexpected($pred, "invalid type/inst cast call")
         )
-    ;
-        GenericCall = subtype_coerce,
-        % XXX SUBTYPE
-        sorry($pred, "coerce")
     ).
 
 :- pred generate_main_generic_call(code_model::in, generic_call::in,
@@ -441,15 +439,12 @@ generic_call_info(Globals, GenericCall, NumInputArgsR, NumInputArgsF,
         % Events and casts are generated inline.
         ( GenericCall = event_call(_)
         ; GenericCall = cast(_)
+        ; GenericCall = subtype_coerce
         ),
         CodeAddr = do_not_reached,
         SpecifierArgInfos = [],
         FirstImmediateInputReg = 1,
         HoCallVariant = ho_call_unknown     % dummy; not used
-    ;
-        GenericCall = subtype_coerce,
-        % XXX SUBTYPE
-        sorry($pred, "coerce")
     ).
 
     % Some of the values that generic call passes to the dispatch routine
