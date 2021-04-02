@@ -449,6 +449,9 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !TokensLeft, !PS) :-
             )
         then
             parser_get_term_context(!.PS, Context, TermContext),
+            % The fact that in terms constructed by this module,
+            % the argument list of an integer or float is guaranteed to be []
+            % is documented in term.m, and the compiler relies on it.
             Term = ok(term.functor(NewFunctor, [], TermContext)),
             OpPriority = 0
         else if
@@ -750,21 +753,33 @@ parse_simple_term(Token, Context, Prec, TermParse, !TokensLeft, !PS) :-
         Signedness = lexer_signedness_to_term_signedness(LexerSignedness),
         Size = lexer_size_to_term_size(LexerSize),
         parser_get_term_context(!.PS, Context, TermContext),
+        % The fact that in terms constructed by this module,
+        % the argument list of an integer is guaranteed to be []
+        % is documented in term.m, and the compiler relies on it.
         BaseTerm = functor(integer(Base, Integer, Signedness, Size), [],
             TermContext),
         BaseTermParse = ok(BaseTerm)
     ;
         Token = float(Float),
+        % The fact that in terms constructed by this module,
+        % the argument list of a float is guaranteed to be []
+        % is documented in term.m, and the compiler relies on it.
         parser_get_term_context(!.PS, Context, TermContext),
         BaseTerm = functor(float(Float), [], TermContext),
         BaseTermParse = ok(BaseTerm)
     ;
         Token = string(String),
+        % The fact that in terms constructed by this module,
+        % the argument list of a string is guaranteed to be []
+        % is documented in term.m, and the compiler relies on it.
         parser_get_term_context(!.PS, Context, TermContext),
         BaseTerm = functor(string(String), [], TermContext),
         BaseTermParse = ok(BaseTerm)
     ;
         Token = implementation_defined(Name),
+        % The fact that in terms constructed by this module,
+        % the argument list of an implementation_defined is guaranteed to be []
+        % is documented in term.m, and the compiler relies on it.
         parser_get_term_context(!.PS, Context, TermContext),
         BaseTerm = functor(implementation_defined(Name), [], TermContext),
         BaseTermParse = ok(BaseTerm)

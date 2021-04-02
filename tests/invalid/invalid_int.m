@@ -34,7 +34,7 @@ main(!IO) :-
         9223372036854775807,
         9223372036854775808
     },
-    io.write(X, !IO),
+    io.write_line(X, !IO),
 
     I8 = {
         -129_i8,
@@ -42,13 +42,13 @@ main(!IO) :-
          127_i8,
          128_i8
     },
-    io.write(I8, !IO),
+    io.write_line(I8, !IO),
 
     U8 = {
         256_u8,
         257_u8
     },
-    io.write(U8, !IO),
+    io.write_line(U8, !IO),
 
     I16 = {
         -32_769_i16,
@@ -56,13 +56,13 @@ main(!IO) :-
          32_767_i16,
          32_768_i16
     },
-    io.write(I16, !IO),
+    io.write_line(I16, !IO),
 
     U16 = {
          65_535_u16,
          65_536_u16
     },
-    io.write(U16, !IO),
+    io.write_line(U16, !IO),
 
     I32 = {
         -2_147_483_649_i32,
@@ -70,10 +70,10 @@ main(!IO) :-
          2_147_483_647_i32,
          2_147_483_648_i32
     },
-    io.write(I32, !IO),
+    io.write_line(I32, !IO),
 
     U32 = {
          4_294_967_295_u32,
          4_294_967_296_u32
     },
-    io.write(U32, !IO).
+    io.write_line(U32, !IO).

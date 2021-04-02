@@ -91,7 +91,7 @@
     %
     % XXX We should consider making both fields of line_context into uint32s,
     % to allow them to fit into a single 64 bit word. Simplicity would then
-    % require line_posn's argumeny being a uint32 as well.
+    % require line_posn's argument being a uint32 as well.
 
 :- type line_context
     --->    line_context(

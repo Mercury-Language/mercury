@@ -891,7 +891,7 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
             Context, Pieces),
         MaybeBoundInst = error1([Spec])
     ;
-        Term = term.functor(Functor, ArgTerms0, Context),
+        Term = term.functor(Functor, _ArgTerms0, Context),
         require_complete_switch [Functor]
         (
             Functor = term.atom(_),
@@ -916,6 +916,9 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
             )
         ;
             Functor = term.implementation_defined(_),
+%           expect(unify(ArgTerms0, []), $pred,
+%               "parse_simple_term has given " ++
+%               "an implementation_defined arguments"),
             % Implementation-defined literals should not appear in inst
             % definitions.
             TermStr = describe_error_term(VarSet, Term),
@@ -928,60 +931,34 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
             MaybeBoundInst = error1([Spec])
         ;
             Functor = term.integer(Base, Integer, Signedness, Size),
+%           expect(unify(ArgTerms0, []), $pred,
+%               "parse_simple_term has given an integer arguments"),
+            parse_integer_cons_id(Base, Integer, Signedness, Size, Context,
+                MaybeConsId),
             (
-                ArgTerms0 = [],
-                parse_integer_cons_id(Base, Integer, Signedness, Size, Context,
-                    MaybeConsId),
-                (
-                    MaybeConsId = ok1(ConsId),
-                    BoundInst = bound_functor(ConsId, []),
-                    MaybeBoundInst = ok1(BoundInst)
-                ;
-                    MaybeConsId = error1(Specs),
-                    MaybeBoundInst = error1(Specs)
-                )
+                MaybeConsId = ok1(ConsId),
+                BoundInst = bound_functor(ConsId, []),
+                MaybeBoundInst = ok1(BoundInst)
             ;
-                ArgTerms0 = [_ | _],
-                generate_error_for_unexpected_arg(VarSet, Context,
-                    ContextPieces, Term, "an integer", MaybeBoundInst)
+                MaybeConsId = error1(Specs),
+                MaybeBoundInst = error1(Specs)
             )
         ;
             (
                 Functor = term.float(Float),
+%               expect(unify(ArgTerms0, []), $pred,
+%                   "parse_simple_term has given a float arguments"),
                 ConsId = float_const(Float)
             ;
                 Functor = term.string(Str),
+%               expect(unify(ArgTerms0, []), $pred,
+%                   "parse_simple_term has given a string arguments"),
                 ConsId = string_const(Str)
             ),
-            (
-                ArgTerms0 = [],
-                BoundInst = bound_functor(ConsId, []),
-                MaybeBoundInst = ok1(BoundInst)
-            ;
-                ArgTerms0 = [_ | _],
-                ( Functor = term.float(_),            FunctorStr = "a float"
-                ; Functor = term.string(_),           FunctorStr = "a string"
-                ),
-                generate_error_for_unexpected_arg(VarSet, Context,
-                    ContextPieces, Term, FunctorStr, MaybeBoundInst)
-            )
+            BoundInst = bound_functor(ConsId, []),
+            MaybeBoundInst = ok1(BoundInst)
         )
     ).
-
-:- pred generate_error_for_unexpected_arg(varset::in, term.context::in,
-    cord(format_component)::in, term::in, string::in,
-    maybe1(bound_inst)::out) is det.
-
-generate_error_for_unexpected_arg(VarSet, Context, ContextPieces,
-        Term, FunctorStr, MaybeBoundInst) :-
-    TermStr = describe_error_term(VarSet, Term),
-    Pieces = cord.list(ContextPieces) ++
-        [lower_case_next_if_not_first, words("Error:"),
-        words(FunctorStr), words("such as"), quote(TermStr),
-        words("may not have any arguments."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-        Context, Pieces),
-    MaybeBoundInst = error1([Spec]).
 
 %---------------------------------------------------------------------------%
 

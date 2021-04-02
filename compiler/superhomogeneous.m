@@ -882,6 +882,8 @@ parse_ordinary_cons_id(VarSet, Functor, ArgTerms, Context, ConsId, !Specs) :-
         ConsId = cons(unqualified(Name), Arity, cons_id_dummy_type_ctor)
     ;
         Functor = term.integer(Base, Integer, Signedness, Size),
+%       expect(unify(ArgTerms, []), $pred,
+%           "parse_simple_term has given an integer arguments"),
         parse_integer_cons_id(Base, Integer, Signedness, Size, Context,
             MaybeConsId),
         (
@@ -893,13 +895,19 @@ parse_ordinary_cons_id(VarSet, Functor, ArgTerms, Context, ConsId, !Specs) :-
             !:Specs = ConsIdSpecs ++ !.Specs
         )
     ;
-        Functor = term.string(String),
-        ConsId = string_const(String)
-    ;
         Functor = term.float(Float),
+%       expect(unify(ArgTerms, []), $pred,
+%           "parse_simple_term has given a float arguments"),
         ConsId = float_const(Float)
     ;
+        Functor = term.string(String),
+%       expect(unify(ArgTerms, []), $pred,
+%           "parse_simple_term has given a string arguments"),
+        ConsId = string_const(String)
+    ;
         Functor = term.implementation_defined(Name),
+%       expect(unify(ArgTerms, []), $pred,
+%           "parse_simple_term has given an implementation_defined arguments"),
         ( if
             ( Name = "line",   IDCKind = idc_line
             ; Name = "file",   IDCKind = idc_file
