@@ -13,8 +13,8 @@
 #include "mercury_timing.h"
 #include "mercury_heap.h"
 
-extern void MR_report_standard_stats(FILE *fp);
+extern void MR_report_standard_stats(FILE *fp, int *line_number);
 
-extern void MR_report_full_memory_stats(FILE *fp);
+extern void MR_report_full_memory_stats(FILE *fp, int *line_number);
 
 #endif  // not MERCURY_REPORT_STATS_H

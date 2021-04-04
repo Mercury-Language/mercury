@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2011 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018 The Mercury team.
+% Copyright (C) 2014-2016, 2018-2021 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -172,48 +172,68 @@
 
 %---------------------%
 
+report_stats :-
+    impure do_report_stats(io.stderr_stream).
+
+:- impure pred do_report_stats(io.text_output_stream::in) is det.
+
 :- pragma foreign_proc("C",
-    report_stats,
+    do_report_stats(S::in),
     [will_not_call_mercury],
 "
-    MR_report_standard_stats(stderr);
+    MercuryFile mf = *(MR_unwrap_output_stream(S));
+    MR_report_standard_stats(MR_file(mf), &MR_line_number(mf));
 ").
 
 :- pragma foreign_proc("C#",
-    report_stats,
+    do_report_stats(Stream::in),
     [may_call_mercury, terminates],
 "
-    ML_report_standard_stats(io.mercury_stderr);
+    // The field F1 is the first field of io.output_stream/1
+    // functor.
+    ML_report_standard_stats(Stream.F1);
 ").
 
 :- pragma foreign_proc("Java",
-    report_stats,
+    do_report_stats(Stream::in),
     [may_call_mercury, terminates],
 "
-    ML_report_standard_stats(io.mercury_stderr);
+    // The field F1 is the first field of io.output_stream/1
+    // functor.  The downcast is required because streams are
+    // passed around as MR_MercuryFileStructs.
+    ML_report_standard_stats((io.MR_TextOutputFile) Stream.F1);
 ").
 
 %---------------------%
 
+report_full_memory_stats :-
+    impure do_report_full_memory_stats(io.stderr_stream).
+
+:- impure pred do_report_full_memory_stats(io.text_output_stream::in) is det.
+
 :- pragma foreign_proc("C",
-    report_full_memory_stats,
+    do_report_full_memory_stats(Stream::in),
     [will_not_call_mercury],
 "
-    MR_report_full_memory_stats(stderr);
+    MercuryFile mf = *(MR_unwrap_output_stream(Stream));
+    MR_report_full_memory_stats(MR_file(mf), &MR_line_number(mf));
 ").
 
 :- pragma foreign_proc("C#",
-    report_full_memory_stats,
+    do_report_full_memory_stats(Stream::in),
     [will_not_call_mercury],
 "
-    ML_report_full_memory_stats(io.mercury_stderr);
+    // See above for an explanation of what F1 does.
+    ML_report_full_memory_stats(Stream.F1);
 ").
 
 :- pragma foreign_proc("Java",
-    report_full_memory_stats,
+    do_report_full_memory_stats(Stream::in),
     [will_not_call_mercury],
 "
-    ML_report_full_memory_stats(io.mercury_stderr);
+    // See above for an explanation of what F1 does and why
+    // the downcast is necessary here.
+    ML_report_full_memory_stats((io.MR_TextOutputFile) Stream.F1);
 ").
 
 %---------------------------------------------------------------------------%

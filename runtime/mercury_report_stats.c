@@ -57,7 +57,7 @@
   static    int     MR_memory_profile_fill_table(MR_memprof_record *node,
                         MR_memprof_report_entry *table, int next_slot);
 
-  static    void    MR_memory_profile_report(FILE *fp,
+  static    void    MR_memory_profile_report(FILE *fp, int *line_number,
                         const MR_memprof_report_entry *,
                         int num_entries, MR_bool complete);
 
@@ -67,7 +67,7 @@
 #endif // MR_MPROF_PROFILE_MEMORY
 
 void
-MR_report_standard_stats(FILE *fp)
+MR_report_standard_stats(FILE *fp, int *line_number)
 {
     int                 user_time_at_prev_stat;
     int                 real_time_at_prev_stat;
@@ -153,11 +153,13 @@ MR_report_standard_stats(FILE *fp)
         GC_get_bytes_since_gc() / 1024.0,
         GC_get_heap_size() / 1024.0
     );
+    (*line_number)++;
   #endif
 #else // !MR_CONSERVATIVE_GC
     fprintf(fp, "\nHeap: %.3fk",
         ((char *) MR_hp - (char *) eng->MR_eng_heap_zone->MR_zone_min) / 1024.0
     );
+    (*line_number)++;
 #endif // !MR_CONSERVATIVE_GC
 
 #ifdef  MR_MPROF_PROFILE_MEMORY
@@ -170,13 +172,17 @@ MR_report_standard_stats(FILE *fp)
     num_table_entries = MR_memory_profile_top_table(MR_memprof_procs.root,
         table, MEMORY_PROFILE_SIZE, 0);
     fprintf(fp, "\nMemory profile by procedure\n");
-    MR_memory_profile_report(fp, table, num_table_entries, MR_FALSE);
+    *line_number += 2;
+    MR_memory_profile_report(fp, line_number, table, num_table_entries,
+        MR_FALSE);
 
     // Print out the per-type memory profile (top N entries).
     num_table_entries = MR_memory_profile_top_table(MR_memprof_types.root,
         table, MEMORY_PROFILE_SIZE, 0);
     fprintf(fp, "\nMemory profile by type\n");
-    MR_memory_profile_report(fp, table, num_table_entries, MR_FALSE);
+    *line_number += 2;
+    MR_memory_profile_report(fp, line_number, table, num_table_entries,
+        MR_FALSE);
 
     // Print out the overall memory usage.
     fprintf(fp, "Overall memory usage:"
@@ -186,17 +192,20 @@ MR_report_standard_stats(FILE *fp)
         MR_overall_memprof_counter.words_since_period_start,
         MR_overall_memprof_counter.words_at_period_end
     );
+    (*line_number)++;
 
 #endif // MR_MPROF_PROFILE_MEMORY
 
     fprintf(fp, "]\n");
+    (*line_number)++;
 }
 
 void
-MR_report_full_memory_stats(FILE *fp)
+MR_report_full_memory_stats(FILE *fp, int *line_number)
 {
 #ifndef MR_MPROF_PROFILE_MEMORY
     fprintf(fp, "\nMemory profiling is not enabled.\n");
+    *line_number += 2;
 #else
     int                     num_table_entries;
     int                     table_size;
@@ -220,9 +229,12 @@ MR_report_full_memory_stats(FILE *fp)
     qsort(table, MR_memprof_procs.num_entries, sizeof(MR_memprof_report_entry),
         MR_memory_profile_compare_final);
     fprintf(fp, "\nMemory profile by procedure\n");
+    *line_number += 2;
     fprintf(fp, "%14s %14s  %s\n",
         "Cells", "Words", "Procedure label");
-    MR_memory_profile_report(fp, table, num_table_entries, MR_TRUE);
+    (*line_number)++;
+    MR_memory_profile_report(fp, line_number, table, num_table_entries,
+        MR_TRUE);
 
     // Print the by-type memory profile.
     num_table_entries = MR_memory_profile_fill_table(MR_memprof_types.root,
@@ -230,9 +242,12 @@ MR_report_full_memory_stats(FILE *fp)
     qsort(table, MR_memprof_types.num_entries, sizeof(MR_memprof_report_entry),
         MR_memory_profile_compare_final);
     fprintf(fp, "\nMemory profile by type\n");
+    *line_number += 2;
     fprintf(fp, "%14s %14s  %s\n",
         "Cells", "Words", "Procedure label");
-    MR_memory_profile_report(fp, table, num_table_entries, MR_TRUE);
+    (*line_number)++;
+    MR_memory_profile_report(fp, line_number, table, num_table_entries,
+        MR_TRUE);
 
     // Deallocate space for the table.
     MR_GC_free(table);
@@ -242,6 +257,7 @@ MR_report_full_memory_stats(FILE *fp)
         MR_overall_memprof_counter.cells_at_period_end,
         MR_overall_memprof_counter.words_at_period_end
     );
+    *line_number += 2;
 #endif // MR_MPROF_PROFILE_MEMORY
 }
 
@@ -394,13 +410,13 @@ MR_memory_profile_fill_table(MR_memprof_record *node,
     return next_slot;
 }
 
-// MR_memory_profile_report(fp, table, num_entries, complete):
+// MR_memory_profile_report(fp, line_number, table, num_entries, complete):
 //
 // Print out a profiling report for the specified table.
 
 static void
-MR_memory_profile_report(FILE *fp, const MR_memprof_report_entry *table,
-    int num_entries, MR_bool complete)
+MR_memory_profile_report(FILE *fp, int *line_number,
+    const MR_memprof_report_entry *table, int num_entries, MR_bool complete)
 {
     int         i;
     const char  *name;
@@ -410,6 +426,7 @@ MR_memory_profile_report(FILE *fp, const MR_memprof_report_entry *table,
         ||  MR_overall_memprof_counter.words_at_period_end < 1.0)
         {
             fprintf(fp, "no allocations to report\n");
+            (*line_number)++;
             return;
         }
     } else {
@@ -417,6 +434,7 @@ MR_memory_profile_report(FILE *fp, const MR_memprof_report_entry *table,
         ||  MR_overall_memprof_counter.words_since_period_start < 1.0)
         {
             fprintf(fp, "no allocations to report\n");
+            (*line_number)++;
             return;
         }
     }
@@ -436,6 +454,7 @@ MR_memory_profile_report(FILE *fp, const MR_memprof_report_entry *table,
                     MR_overall_memprof_counter.words_at_period_end,
                 table[i].name
             );
+            (*line_number)++;
         } else {
             fprintf(fp, "%8.8g/%4.1f%% %8.8g/%4.1f%%  %s\n",
                 table[i].counter.cells_since_period_start,
@@ -446,6 +465,7 @@ MR_memory_profile_report(FILE *fp, const MR_memprof_report_entry *table,
                    MR_overall_memprof_counter.words_since_period_start,
                 table[i].name
             );
+            (*line_number)++;
         }
     }
 }

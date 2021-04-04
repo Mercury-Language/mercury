@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2020 The Mercury team.
+% Copyright (C) 2013-2021 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -12123,7 +12123,7 @@ report_standard_stats(!IO) :-
     [promise_pure, will_not_call_mercury, tabled_for_io,
         does_not_affect_liveness],
 "
-    MR_report_standard_stats(MR_file(*Stream));
+    MR_report_standard_stats(MR_file(*Stream), &MR_line_number(*Stream));
 ").
 
 :- pragma foreign_proc("C#",
@@ -12157,7 +12157,7 @@ report_full_memory_stats(!IO) :-
     [promise_pure, will_not_call_mercury, tabled_for_io,
         does_not_affect_liveness],
 "
-    MR_report_full_memory_stats(MR_file(*Stream));
+    MR_report_full_memory_stats(MR_file(*Stream), &MR_line_number(*Stream));
 ").
 
 :- pragma foreign_proc("C#",
