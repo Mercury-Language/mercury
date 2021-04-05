@@ -10,6 +10,7 @@
 ////////////////////////////////////////////////////////////////////////////
 
 #include <stdlib.h>
+#include <errno.h>
 #include "mercury_prof_mem.h"
 #include "mercury_heap_profile.h"
 #include "mercury_wrapper.h"        // for MR_user_time_at_last_stat
@@ -57,7 +58,7 @@
   static    int     MR_memory_profile_fill_table(MR_memprof_record *node,
                         MR_memprof_report_entry *table, int next_slot);
 
-  static    void    MR_memory_profile_report(FILE *fp, int *line_number,
+  static    int     MR_memory_profile_report(FILE *fp, int *line_number,
                         const MR_memprof_report_entry *,
                         int num_entries, MR_bool complete);
 
@@ -66,7 +67,7 @@
 
 #endif // MR_MPROF_PROFILE_MEMORY
 
-void
+int
 MR_report_standard_stats(FILE *fp, int *line_number)
 {
     int                 user_time_at_prev_stat;
@@ -78,6 +79,7 @@ MR_report_standard_stats(FILE *fp, int *line_number)
     int                 num_table_entries;
     MR_memprof_report_entry table[MEMORY_PROFILE_SIZE];
 #endif
+    int                 result;
 
     // Print timing and stack usage information.
 
@@ -91,23 +93,32 @@ MR_report_standard_stats(FILE *fp, int *line_number)
     eng = MR_get_engine();
 #endif
 
-    fprintf(fp, "[User time: +%.3fs, %.3fs,",
+    result = fprintf(fp, "[User time: +%.3fs, %.3fs,",
         (MR_user_time_at_last_stat - user_time_at_prev_stat) / 1000.0,
         (MR_user_time_at_last_stat - MR_user_time_at_start) / 1000.0
     );
+    if (result < 0) {
+        return errno;
+    }
 
-    fprintf(fp, " Real time: +%.3fs, %.3fs,",
+    result = fprintf(fp, " Real time: +%.3fs, %.3fs,",
         (MR_real_time_at_last_stat - real_time_at_prev_stat) / 1000.0,
         (MR_real_time_at_last_stat - MR_real_time_at_start) / 1000.0
     );
+    if (result < 0) {
+        return errno;
+    }
 
 #ifndef MR_HIGHLEVEL_CODE
-    fprintf(fp, " D Stack: %.3fk, ND Stack: %.3fk,",
+    result = fprintf(fp, " D Stack: %.3fk, ND Stack: %.3fk,",
         ((char *) MR_sp - (char *)
             eng->MR_eng_context.MR_ctxt_detstack_zone->MR_zone_min) / 1024.0,
         ((char *) MR_maxfr - (char *)
             eng->MR_eng_context.MR_ctxt_nondetstack_zone->MR_zone_min) / 1024.0
     );
+    if (result < 0) {
+        return errno;
+    }
 #endif
 
 #ifdef MR_BOEHM_GC
@@ -116,25 +127,38 @@ MR_report_standard_stats(FILE *fp, int *line_number)
         struct GC_stack_base base;
 
         if (GC_SUCCESS == GC_get_stack_base(&base)) {
-            fprintf(fp, " C Stack: %.3fk,",
-                labs(&local_var - (char *)base.mem_base) / 1024.0);
+            result = fprintf(fp, " C Stack: %.3fk,",
+                labs(&local_var - (char *) base.mem_base) / 1024.0
+            );
+            if (result < 0) {
+                return errno;
+            }
         } else {
-            fprintf(fp, " Cannot locate C stack base.");
+            result = fprintf(fp, " Cannot locate C stack base.");
+            if (result < 0) {
+                return errno;
+            }
         }
     }
 #endif
 
 #ifdef MR_USE_TRAIL
     #ifdef MR_THREAD_SAFE
-        fprintf(fp, ", Trail: %.3fk,",
+        result = fprintf(fp, ", Trail: %.3fk,",
             ((char *) MR_trail_ptr -
             (char *) MR_CONTEXT(MR_ctxt_trail_zone)->MR_zone_min) / 1024.0
         );
+        if (result < 0) {
+            return errno;
+        }
     #else
-        fprintf(fp, " Trail: %.3fk,",
+        result = fprintf(fp, " Trail: %.3fk,",
             ((char *) MR_trail_ptr -
             (char *) MR_trail_zone->MR_zone_min) / 1024.0
         );
+        if (result < 0) {
+            return errno;
+        }
    #endif // !MR_THREAD_SAFE
 #endif // !MR_USE_TRAIL
 
@@ -142,23 +166,36 @@ MR_report_standard_stats(FILE *fp, int *line_number)
 
 #ifdef MR_CONSERVATIVE_GC
   #ifdef MR_BOEHM_GC
-    fprintf(fp, "\n#GCs: %lu, ",
+    result = fprintf(fp, "\n#GCs: %lu, ",
         (unsigned long) GC_get_gc_no());
+    if (result < 0) {
+        return errno;
+    }
     if (GC_mercury_calc_gc_time) {
         // Convert from unsigned long milliseconds to float seconds.
-        fprintf(fp, "total GC time: %.2fs, ",
-            (float) GC_total_gc_time / (float) 1000);
+        result = fprintf(fp, "total GC time: %.2fs, ",
+            (float) GC_total_gc_time / (float) 1000
+        );
+        if (result < 0) { 
+            return errno;
+        }
     }
-    fprintf(fp, "Heap used since last GC: %.3fk, Total used: %.3fk",
+    result = fprintf(fp, "Heap used since last GC: %.3fk, Total used: %.3fk",
         GC_get_bytes_since_gc() / 1024.0,
         GC_get_heap_size() / 1024.0
     );
+    if (result < 0) {
+        return errno;
+    }
     (*line_number)++;
   #endif
 #else // !MR_CONSERVATIVE_GC
-    fprintf(fp, "\nHeap: %.3fk",
+    result = fprintf(fp, "\nHeap: %.3fk",
         ((char *) MR_hp - (char *) eng->MR_eng_heap_zone->MR_zone_min) / 1024.0
     );
+    if (result < 0) {
+        return errno;
+    }
     (*line_number)++;
 #endif // !MR_CONSERVATIVE_GC
 
@@ -171,45 +208,67 @@ MR_report_standard_stats(FILE *fp, int *line_number)
     // Print out the per-procedure memory profile (top N entries).
     num_table_entries = MR_memory_profile_top_table(MR_memprof_procs.root,
         table, MEMORY_PROFILE_SIZE, 0);
-    fprintf(fp, "\nMemory profile by procedure\n");
+    if (fprintf(fp, "\nMemory profile by procedure\n") < 0) {
+        return errno;
+    }
     *line_number += 2;
-    MR_memory_profile_report(fp, line_number, table, num_table_entries,
-        MR_FALSE);
+    result = MR_memory_profile_report(fp, line_number, table,
+        num_table_entries, MR_FALSE);
+    if (result != 0) {
+        return result;
+    }
 
     // Print out the per-type memory profile (top N entries).
     num_table_entries = MR_memory_profile_top_table(MR_memprof_types.root,
         table, MEMORY_PROFILE_SIZE, 0);
-    fprintf(fp, "\nMemory profile by type\n");
+    result = fprintf(fp, "\nMemory profile by type\n");
+    if (result < 0) {
+        return errno;
+    }
     *line_number += 2;
-    MR_memory_profile_report(fp, line_number, table, num_table_entries,
-        MR_FALSE);
+    result = MR_memory_profile_report(fp, line_number, table,
+        num_table_entries, MR_FALSE);
+    if (result != 0) {
+        return result;
+    }
 
     // Print out the overall memory usage.
-    fprintf(fp, "Overall memory usage:"
+    result = fprintf(fp, "Overall memory usage:"
         "+%8.8g %8.8g cells, +%8.8g %8.8g words\n",
         MR_overall_memprof_counter.cells_since_period_start,
         MR_overall_memprof_counter.cells_at_period_end,
         MR_overall_memprof_counter.words_since_period_start,
         MR_overall_memprof_counter.words_at_period_end
     );
+    if (result < 0) {
+        return errno;
+    }
     (*line_number)++;
 
 #endif // MR_MPROF_PROFILE_MEMORY
 
-    fprintf(fp, "]\n");
+    result = fprintf(fp, "]\n");
+    if (result < 0) {
+        return errno;
+    }
     (*line_number)++;
+
+    return 0;
 }
 
-void
+int
 MR_report_full_memory_stats(FILE *fp, int *line_number)
 {
 #ifndef MR_MPROF_PROFILE_MEMORY
-    fprintf(fp, "\nMemory profiling is not enabled.\n");
+    if (fprintf(fp, "\nMemory profiling is not enabled.\n") < 0) {
+        return errno;
+    }
     *line_number += 2;
 #else
     int                     num_table_entries;
     int                     table_size;
     MR_memprof_report_entry *table;
+    int                     result;
 
     // Update the overall counter (this needs to be done first,
     // so that the percentages come out right).
@@ -228,37 +287,60 @@ MR_report_full_memory_stats(FILE *fp, int *line_number)
         table, 0);
     qsort(table, MR_memprof_procs.num_entries, sizeof(MR_memprof_report_entry),
         MR_memory_profile_compare_final);
-    fprintf(fp, "\nMemory profile by procedure\n");
+    result = fprintf(fp, "\nMemory profile by procedure\n");
+    if (result < 0) {
+        return errno;
+    }
     *line_number += 2;
-    fprintf(fp, "%14s %14s  %s\n",
+    result = fprintf(fp, "%14s %14s  %s\n",
         "Cells", "Words", "Procedure label");
+    if (result < 0) {
+        return errno;
+    }
     (*line_number)++;
-    MR_memory_profile_report(fp, line_number, table, num_table_entries,
-        MR_TRUE);
+    result = MR_memory_profile_report(fp, line_number, table,
+        num_table_entries, MR_TRUE);
+    if (result != 0) {
+        return result;
+    }
 
     // Print the by-type memory profile.
     num_table_entries = MR_memory_profile_fill_table(MR_memprof_types.root,
         table, 0);
     qsort(table, MR_memprof_types.num_entries, sizeof(MR_memprof_report_entry),
         MR_memory_profile_compare_final);
-    fprintf(fp, "\nMemory profile by type\n");
+    result = fprintf(fp, "\nMemory profile by type\n");
+    if (result < 0) {
+        return errno;
+    }
     *line_number += 2;
-    fprintf(fp, "%14s %14s  %s\n",
+    result = fprintf(fp, "%14s %14s  %s\n",
         "Cells", "Words", "Procedure label");
+    if (result < 0) {
+        return errno;
+    }
     (*line_number)++;
-    MR_memory_profile_report(fp, line_number, table, num_table_entries,
-        MR_TRUE);
+    result = MR_memory_profile_report(fp, line_number, table,
+        num_table_entries, MR_TRUE);
+    if (result != 0) {
+        return result;
+    }
 
     // Deallocate space for the table.
     MR_GC_free(table);
 
     // Print the overall memory usage.
-    fprintf(fp, "\nOverall memory usage: %8.8g cells, %8.8g words\n",
+    result = fprintf(fp, "\nOverall memory usage: %8.8g cells, %8.8g words\n",
         MR_overall_memprof_counter.cells_at_period_end,
         MR_overall_memprof_counter.words_at_period_end
     );
+    if (result < 0) {
+        return errno;
+    }
     *line_number += 2;
 #endif // MR_MPROF_PROFILE_MEMORY
+
+    return 0;
 }
 
 #ifdef MR_MPROF_PROFILE_MEMORY
@@ -413,29 +495,37 @@ MR_memory_profile_fill_table(MR_memprof_record *node,
 // MR_memory_profile_report(fp, line_number, table, num_entries, complete):
 //
 // Print out a profiling report for the specified table.
+// Returns zero on success, or errno if an error occurs.
 
-static void
+static int
 MR_memory_profile_report(FILE *fp, int *line_number,
     const MR_memprof_report_entry *table, int num_entries, MR_bool complete)
 {
     int         i;
     const char  *name;
+    int         result;
 
     if (complete) {
         if (MR_overall_memprof_counter.cells_at_period_end < 1.0
         ||  MR_overall_memprof_counter.words_at_period_end < 1.0)
         {
-            fprintf(fp, "no allocations to report\n");
+            result = fprintf(fp, "no allocations to report\n");
+            if (result < 0) {
+                return errno;
+            }
             (*line_number)++;
-            return;
+            return 0;
         }
     } else {
         if (MR_overall_memprof_counter.cells_since_period_start < 1.0
         ||  MR_overall_memprof_counter.words_since_period_start < 1.0)
         {
-            fprintf(fp, "no allocations to report\n");
+            result = fprintf(fp, "no allocations to report\n");
+            if (result < 0) {
+                return errno;
+            }
             (*line_number)++;
-            return;
+            return 0;
         }
     }
 
@@ -445,7 +535,7 @@ MR_memory_profile_report(FILE *fp, int *line_number,
 
     for (i = 0; i < num_entries; i++) {
         if (complete) {
-            fprintf(fp, "%8.8g/%4.1f%% %8.8g/%4.1f%%  %s\n",
+            result =  fprintf(fp, "%8.8g/%4.1f%% %8.8g/%4.1f%%  %s\n",
                 table[i].counter.cells_at_period_end,
                 100 * table[i].counter.cells_at_period_end /
                     MR_overall_memprof_counter.cells_at_period_end,
@@ -454,20 +544,28 @@ MR_memory_profile_report(FILE *fp, int *line_number,
                     MR_overall_memprof_counter.words_at_period_end,
                 table[i].name
             );
+            if (result < 0) {
+                return errno;
+            }
             (*line_number)++;
         } else {
-            fprintf(fp, "%8.8g/%4.1f%% %8.8g/%4.1f%%  %s\n",
+            result = fprintf(fp, "%8.8g/%4.1f%% %8.8g/%4.1f%%  %s\n",
                 table[i].counter.cells_since_period_start,
                 100 * table[i].counter.cells_since_period_start /
-                   MR_overall_memprof_counter.cells_since_period_start,
+                    MR_overall_memprof_counter.cells_since_period_start,
                 table[i].counter.words_since_period_start,
                 100 * table[i].counter.words_since_period_start /
-                   MR_overall_memprof_counter.words_since_period_start,
+                    MR_overall_memprof_counter.words_since_period_start,
                 table[i].name
             );
+            if (result < 0) {
+                return errno;
+            }
             (*line_number)++;
         }
     }
+
+    return 0;
 }
 
 // Comparison routine used for qsort().

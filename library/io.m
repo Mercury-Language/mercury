@@ -12110,69 +12110,95 @@ report_stats(Selector, !IO) :-
 %---------------------%
 
 report_standard_stats(output_stream(Stream), !IO) :-
-    report_standard_stats_2(Stream, !IO).
+    report_standard_stats_2(Stream, Error, !IO),
+    throw_on_output_error(Error, !IO).
 
 report_standard_stats(!IO) :-
     io.stderr_stream(StdErr, !IO),
     report_standard_stats(StdErr, !IO).
 
-:- pred report_standard_stats_2(io.stream::in, io::di, io::uo) is det.
+:- pred report_standard_stats_2(io.stream::in, system_error::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    report_standard_stats_2(Stream::in, _IO0::di, _IO::uo),
+    report_standard_stats_2(Stream::in, Error::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io,
         does_not_affect_liveness],
 "
-    MR_report_standard_stats(MR_file(*Stream), &MR_line_number(*Stream));
+    Error = MR_report_standard_stats(MR_file(*Stream),
+        &MR_line_number(*Stream));
 ").
 
 :- pragma foreign_proc("C#",
-    report_standard_stats_2(Stream::in, _IO0::di, _IO::uo),
+    report_standard_stats_2(Stream::in, Error::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-    benchmarking.ML_report_standard_stats(Stream);
+    try {
+        benchmarking.ML_report_standard_stats(Stream);
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
 ").
 
 :- pragma foreign_proc("Java",
-    report_standard_stats_2(Stream::in, _IO0::di, _IO::uo),
+    report_standard_stats_2(Stream::in, Error::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-    jmercury.benchmarking.ML_report_standard_stats(
-        (jmercury.io.MR_TextOutputFile) Stream);
+    try {
+        jmercury.benchmarking.ML_report_standard_stats(
+            (jmercury.io.MR_TextOutputFile) Stream);
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
 ").
 
 %---------------------%
 
 report_full_memory_stats(output_stream(Stream), !IO) :-
-    report_full_memory_stats_2(Stream, !IO).
+    report_full_memory_stats_2(Stream, Error, !IO),
+    throw_on_output_error(Error, !IO).
 
 report_full_memory_stats(!IO) :-
     io.stderr_stream(StdErr, !IO),
     report_full_memory_stats(StdErr, !IO).
 
-:- pred report_full_memory_stats_2(io.stream::in, io::di, io::uo) is det.
+:- pred report_full_memory_stats_2(io.stream::in, system_error::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    report_full_memory_stats_2(Stream::in, _IO0::di, _IO::uo),
+    report_full_memory_stats_2(Stream::in, Error::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io,
         does_not_affect_liveness],
 "
-    MR_report_full_memory_stats(MR_file(*Stream), &MR_line_number(*Stream));
+    Error = MR_report_full_memory_stats(MR_file(*Stream),
+        &MR_line_number(*Stream));
 ").
 
 :- pragma foreign_proc("C#",
-    report_full_memory_stats_2(Stream::in, _IO0::di, _IO::uo),
+    report_full_memory_stats_2(Stream::in, Error::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-    benchmarking.ML_report_full_memory_stats(Stream);
+    try {
+        benchmarking.ML_report_full_memory_stats(Stream);
+        Error = null;
+    } catch (System.SystemException e) {
+        Error = e;
+    }
 ").
 
 :- pragma foreign_proc("Java",
-    report_full_memory_stats_2(Stream::in, _IO0::di, _IO::uo),
+    report_full_memory_stats_2(Stream::in, Error::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury],
 "
-    jmercury.benchmarking.ML_report_full_memory_stats(
-        (jmercury.io.MR_TextOutputFile) Stream);
+    try {
+        jmercury.benchmarking.ML_report_full_memory_stats(
+            (jmercury.io.MR_TextOutputFile) Stream);
+        Error = null;
+    } catch (java.io.IOException e) {
+        Error = e;
+    }
 ").
 
 %---------------------%

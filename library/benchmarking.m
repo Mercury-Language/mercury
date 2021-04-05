@@ -173,68 +173,18 @@
 %---------------------%
 
 report_stats :-
-    impure do_report_stats(io.stderr_stream).
-
-:- impure pred do_report_stats(io.text_output_stream::in) is det.
-
-:- pragma foreign_proc("C",
-    do_report_stats(S::in),
-    [will_not_call_mercury],
-"
-    MercuryFile mf = *(MR_unwrap_output_stream(S));
-    MR_report_standard_stats(MR_file(mf), &MR_line_number(mf));
-").
-
-:- pragma foreign_proc("C#",
-    do_report_stats(Stream::in),
-    [may_call_mercury, terminates],
-"
-    // The field F1 is the first field of io.output_stream/1
-    // functor.
-    ML_report_standard_stats(Stream.F1);
-").
-
-:- pragma foreign_proc("Java",
-    do_report_stats(Stream::in),
-    [may_call_mercury, terminates],
-"
-    // The field F1 is the first field of io.output_stream/1
-    // functor.  The downcast is required because streams are
-    // passed around as MR_MercuryFileStructs.
-    ML_report_standard_stats((io.MR_TextOutputFile) Stream.F1);
-").
+    trace [io(!IO)] (
+        io.report_standard_stats(!IO)
+    ),
+    impure impure_true.
 
 %---------------------%
 
 report_full_memory_stats :-
-    impure do_report_full_memory_stats(io.stderr_stream).
-
-:- impure pred do_report_full_memory_stats(io.text_output_stream::in) is det.
-
-:- pragma foreign_proc("C",
-    do_report_full_memory_stats(Stream::in),
-    [will_not_call_mercury],
-"
-    MercuryFile mf = *(MR_unwrap_output_stream(Stream));
-    MR_report_full_memory_stats(MR_file(mf), &MR_line_number(mf));
-").
-
-:- pragma foreign_proc("C#",
-    do_report_full_memory_stats(Stream::in),
-    [will_not_call_mercury],
-"
-    // See above for an explanation of what F1 does.
-    ML_report_full_memory_stats(Stream.F1);
-").
-
-:- pragma foreign_proc("Java",
-    do_report_full_memory_stats(Stream::in),
-    [will_not_call_mercury],
-"
-    // See above for an explanation of what F1 does and why
-    // the downcast is necessary here.
-    ML_report_full_memory_stats((io.MR_TextOutputFile) Stream.F1);
-").
+    trace [io(!IO)] (
+        io.report_full_memory_stats(!IO)
+    ),
+    impure impure_true.
 
 %---------------------------------------------------------------------------%
 
@@ -288,21 +238,17 @@ ML_report_standard_stats(io.MR_MercuryFileStruct stream)
     long real_time_at_prev_stat = real_time_at_last_stat;
     real_time_at_last_stat = System.DateTime.Now.Ticks;
 
-    try {
-        io.mercury_print_string(stream, System.String.Format(
-            ""[User time: +{0:F2}s, {1:F2}s Real time: +{2:F2}s, {3:F2}s]\\n"",
-            (user_time_at_last_stat - user_time_at_prev_stat),
-            (user_time_at_last_stat - user_time_at_start),
-            ((real_time_at_last_stat - real_time_at_prev_stat)
-                / (double) System.TimeSpan.TicksPerSecond),
-            ((real_time_at_last_stat - real_time_at_start)
-                / (double) System.TimeSpan.TicksPerSecond)
-        ));
-        // XXX At this point there should be a whole bunch of memory usage
-        // statistics.
-    } catch (System.SystemException e) {
-        // XXX how should we handle I/O errors when printing statistics?
-    }
+    io.mercury_print_string(stream, System.String.Format(
+        ""[User time: +{0:F2}s, {1:F2}s Real time: +{2:F2}s, {3:F2}s]\\n"",
+        (user_time_at_last_stat - user_time_at_prev_stat),
+        (user_time_at_last_stat - user_time_at_start),
+        ((real_time_at_last_stat - real_time_at_prev_stat)
+            / (double) System.TimeSpan.TicksPerSecond),
+        ((real_time_at_last_stat - real_time_at_start)
+           / (double) System.TimeSpan.TicksPerSecond)
+    ));
+    // XXX At this point there should be a whole bunch of memory usage
+    // statistics.
 }
 
 public static void
@@ -311,14 +257,9 @@ ML_report_full_memory_stats(io.MR_MercuryFileStruct stream)
     // XXX The support for this predicate is even worse. Since we don't have
     // access to memory usage statistics, all you get here is an apology.
     // But at least it doesn't just crash with an error.
-
-    try {
-        io.mercury_print_string(stream,
-            ""Sorry, report_full_memory_stats is not yet "" +
+    io.mercury_print_string(stream,
+        ""Sorry, report_full_memory_stats is not yet "" +
             ""implemented for the C# back-end.\\n"");
-    } catch (System.SystemException e) {
-        // XXX how should we handle I/O errors when printing statistics?
-    }
 }
 ").
 
@@ -341,6 +282,7 @@ ML_initialise()
 
 public static void
 ML_report_standard_stats(jmercury.io.MR_TextOutputFile stream)
+    throws java.io.IOException
 {
     int user_time_at_prev_stat = user_time_at_last_stat;
     user_time_at_last_stat = ML_get_user_cpu_milliseconds();
@@ -348,44 +290,35 @@ ML_report_standard_stats(jmercury.io.MR_TextOutputFile stream)
     long real_time_at_prev_stat = real_time_at_last_stat;
     real_time_at_last_stat = System.currentTimeMillis();
 
-    try {
-        stream.write(
-            ""[User time: +"" +
-            ((user_time_at_last_stat - user_time_at_prev_stat) / 1000.0) +
-            ""s, "" +
-            ((user_time_at_last_stat - user_time_at_start) / 1000.0) +
-            ""s"");
+    stream.write(
+        ""[User time: +"" +
+        ((user_time_at_last_stat - user_time_at_prev_stat) / 1000.0) +
+        ""s, "" +
+        ((user_time_at_last_stat - user_time_at_start) / 1000.0) +
+        ""s"");
 
-        stream.write(
-            "" Real time: +"" +
-            ((real_time_at_last_stat - real_time_at_prev_stat) / 1000.0) +
-            ""s, "" +
-            ((real_time_at_last_stat - real_time_at_start) / 1000.0) +
-            ""s"");
+    stream.write(
+        "" Real time: +"" +
+        ((real_time_at_last_stat - real_time_at_prev_stat) / 1000.0) +
+        ""s, "" +
+        ((real_time_at_last_stat - real_time_at_start) / 1000.0) +
+        ""s"");
 
-        // XXX At this point there should be a whole bunch of memory usage
-        // statistics. Unfortunately the Java back-end does not yet support
-        // this amount of profiling, so cpu time is all you get.
-
-        stream.write(""]\\n"");
-    } catch (java.io.IOException e) {
-        // XXX how should we handle I/O errors when printing statistics?
-    }
+    // XXX At this point there should be a whole bunch of memory usage
+    // statistics. Unfortunately the Java back-end does not yet support
+    // this amount of profiling, so cpu time is all you get.
 }
 
 public static void
 ML_report_full_memory_stats(jmercury.io.MR_TextOutputFile stream)
+    throws java.io.IOException
 {
     // XXX The support for this predicate is even worse. Since we don't have
     // access to memory usage statistics, all you get here is an apology.
     // But at least it doesn't just crash with an error.
 
-    try {
-        stream.write(""Sorry, report_full_memory_stats is not yet "" +
-            ""implemented for the Java back-end."");
-    } catch (java.io.IOException e) {
-        // XXX how should we handle I/O errors when printing statistics?
-    }
+    stream.write(""Sorry, report_full_memory_stats is not yet "" +
+        ""implemented for the Java back-end."");
 }
 ").
 
