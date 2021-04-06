@@ -862,10 +862,31 @@ is_type_a_dummy_loop(TypeTable, Type, CoveredTypes) = IsDummy :-
                             SingleArgType, [Type | CoveredTypes])
                     )
                 ;
+                    TypeBody = hlds_abstract_type(AbstractDetails),
+                    (
+                        ( AbstractDetails = abstract_type_general
+                        ; AbstractDetails = abstract_type_fits_in_n_bits(_)
+                        ; AbstractDetails = abstract_notag_type
+                        ; AbstractDetails = abstract_solver_type
+                        ),
+                        IsDummy = is_not_dummy_type
+                    ;
+                        AbstractDetails = abstract_dummy_type,
+                        IsDummy = is_dummy_type
+                    ;
+                        AbstractDetails = abstract_subtype(SuperTypeCtor),
+                        % It does not matter what the supertype type parameters
+                        % are bound to, only that they are not dummy types.
+                        SuperTypeCtor = type_ctor(_, Arity),
+                        list.duplicate(Arity, int_type, FakeArgTypes),
+                        construct_type(SuperTypeCtor, FakeArgTypes, SuperType),
+                        IsDummy = is_type_a_dummy_loop(TypeTable, SuperType,
+                            [Type | CoveredTypes])
+                    )
+                ;
                     ( TypeBody = hlds_eqv_type(_)
                     ; TypeBody = hlds_foreign_type(_)
                     ; TypeBody = hlds_solver_type(_)
-                    ; TypeBody = hlds_abstract_type(_)
                     ),
                     IsDummy = is_not_dummy_type
                 )

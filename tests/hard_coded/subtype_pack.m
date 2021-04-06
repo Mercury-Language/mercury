@@ -82,10 +82,7 @@
                 f6      :: U,               % word
                 f7_1    :: sub_abs_enum,    % 3 bits (packed)
                 f7_2    :: sub_abs_enum,    % 3 bits (packed)
-                % XXX SUBTYPE
-                % This currently results in an abort in the LLDS backend, and
-                % the MLDS backends generate code that won't compile.
-                %f8_0   :: sub_abs_dummy,   % 0 bits
+                f8_0    :: sub_abs_dummy,   % 0 bits
                 f8      :: sub_abs_notag    % word
             ).
 
@@ -102,7 +99,7 @@
                 s_f6    :: float,           % differs from base
                 s_f7_1  :: sub_abs_enum,
                 s_f7_2  :: sub_abs_enum,
-                %s_f8_0 :: sub_abs_dummy,
+                s_f8_0  :: sub_abs_dummy,
                 s_f8    :: sub_abs_notag
             ).
 
@@ -119,7 +116,7 @@ main(!IO) :-
             3.14159,
             make_sub_abs_enum,
             make_sub_abs_enum,
-            % make_sub_abs_dummy,
+            make_sub_abs_dummy,
             make_sub_abs_notag
         ),
     io.print_line(Sub : substruct, !IO),

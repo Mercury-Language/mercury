@@ -1,2 +1,2 @@
-struct(orange, lemon, dummy, notag(notag0(orange)), notag(notag0(lemon)), tagged(42), tagged(4242), lemon, 3.14159, dog, dog, abs_notag(42))
-struct(orange, lemon, dummy, notag(notag0(orange)), notag(notag0(lemon)), tagged(42), tagged(4242), lemon, 3.14159, dog, dog, abs_notag(42))
+struct(orange, lemon, dummy, notag(notag0(orange)), notag(notag0(lemon)), tagged(42), tagged(4242), lemon, 3.14159, dog, dog, dummy, abs_notag(42))
+struct(orange, lemon, dummy, notag(notag0(orange)), notag(notag0(lemon)), tagged(42), tagged(4242), lemon, 3.14159, dog, dog, dummy, abs_notag(42))
