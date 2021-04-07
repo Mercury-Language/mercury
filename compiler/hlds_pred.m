@@ -2070,8 +2070,10 @@ marker_list_to_markers(Markers, MarkerSet) :-
     ;       table_trie_step_string
     ;       table_trie_step_float
     ;       table_trie_step_enum(
-                % The int gives the number of alternatives in the enum type,
+                % The int gives the maximum enum value in the enum type + 1,
                 % and thus the size of the corresponding trie node.
+                % If the enum type is not a subtype, then the value is equal to
+                % the number of alternatives in the type.
                 int
             )
     ;       table_trie_step_foreign_enum

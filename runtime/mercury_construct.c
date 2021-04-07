@@ -22,8 +22,8 @@
 //
 // Return the functor ordinal number for an enum functor.
 //
-// If you update this you will need to update index_or_search_enum_functor in
-// mercury_ml_expand_body.h.
+// If you update this you will need to update MR_index_or_search_enum_functor
+// in mercury_deconstruct_macros.h.
 
 static MR_Integer
 MR_get_enum_functor_ordinal(MR_TypeCtorInfo type_ctor_info,

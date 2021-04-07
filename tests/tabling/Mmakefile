@@ -41,6 +41,8 @@ SIMPLE_NONLOOP_PROGS = \
 	specified_hidden_arg \
 	table_foreign_enum \
 	table_foreign_output \
+	table_subtype_du \
+	table_subtype_enum \
 	test_enum \
 	test_packed \
 	unused_args

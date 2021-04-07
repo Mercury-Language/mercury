@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2506,20 +2506,8 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
             CtorCat = ctor_cat_enum(cat_enum_mercury),
             type_to_ctor_det(Type, TypeCtor),
             module_info_get_type_table(ModuleInfo, TypeTable),
-            lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-            ( if
-                TypeBody = hlds_du_type(Ctors, _MaybeSuperType, MaybeCanonical,
-                    MaybeRepn, _MaybeForeign),
-                % XXX SUBTYPE Anything to do?
-                MaybeCanonical = canon,
-                MaybeRepn = yes(Repn),
-                Repn ^ dur_kind = du_type_kind_mercury_enum
-            then
-                list.length(one_or_more_to_list(Ctors), EnumRange)
-            else
-                unexpected($pred, "enum type is not du_type?")
-            ),
+            get_enum_max_int_tag(TypeTable, TypeCtor, MaxIntTag),
+            EnumRange = MaxIntTag + 1,
             LookupMacroName = "MR_tbl_lookup_insert_enum",
             Step = table_trie_step_enum(EnumRange),
             PrefixGoals = [],
@@ -3713,6 +3701,48 @@ type_save_category(CtorCat, Name) :-
         ; CtorCat = ctor_cat_void
         ),
         unexpected($pred, "unexpected category")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred get_enum_max_int_tag(type_table::in, type_ctor::in, int::out) is det.
+
+get_enum_max_int_tag(TypeTable, TypeCtor, MaxIntTag) :-
+    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+    ( if
+        TypeBody = hlds_du_type(_Ctors, MaybeSuperType, MaybeCanonical,
+            MaybeRepn, _MaybeForeign),
+        MaybeCanonical = canon,
+        MaybeRepn = yes(Repn),
+        Repn ^ dur_kind = du_type_kind_mercury_enum
+    then
+        CtorRepns = Repn ^ dur_ctor_repns,
+        (
+            MaybeSuperType = no,
+            list.det_last(CtorRepns, LastCtorRepn),
+            max_enum_int_tag(LastCtorRepn, 0, MaxIntTag)
+        ;
+            MaybeSuperType = yes(_),
+            % Subtype enums do not necessary use all values from 0 to
+            % MaxIntTag, so this will create a trie node that may be larger
+            % than necessary. We could subtract the lowest possible enum value
+            % to reduce the range, or switch to a different step type if the
+            % range of values is sparsely populated.
+            list.foldl(max_enum_int_tag, CtorRepns, 0, MaxIntTag)
+        )
+    else
+        unexpected($pred, "enum type is not du_type?")
+    ).
+
+:- pred max_enum_int_tag(constructor_repn::in, int::in, int::out) is det.
+
+max_enum_int_tag(CtorRepn, !MaxIntTag) :-
+    ConsTag = CtorRepn ^ cr_tag,
+    ( if ConsTag = int_tag(int_tag_int(IntTagVal)) then
+        !:MaxIntTag = int.max(!.MaxIntTag, IntTagVal)
+    else
+        unexpected($pred, "enum has non-int tag")
     ).
 
 %-----------------------------------------------------------------------------%

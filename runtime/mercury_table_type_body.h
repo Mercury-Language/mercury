@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2006-2007, 2011 The University of Melbourne.
-// Copyright (C) 2016-2018 The Mercury team.
+// Copyright (C) 2016-2018, 2021 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This files defines the bodies of the various variants of the
@@ -11,7 +11,6 @@
 // in the places listed in mercury_type_info.h.
 
     MR_TypeCtorInfo type_ctor_info;
-    MR_DuTypeLayout du_type_layout;
     MR_TrieNode     table_next;
 
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
@@ -36,7 +35,7 @@
 
     case MR_TYPECTOR_REP_FOREIGN_ENUM:
     case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
-         MR_TABLE_FOREIGN_ENUM(STATS, DEBUG, BACK, table_next, table,
+        MR_TABLE_FOREIGN_ENUM(STATS, DEBUG, BACK, table_next, table,
             data);
         table = table_next;
         return table;
@@ -78,13 +77,13 @@
         int                     meta_args;
         int                     i;
 
-        du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
         ptag = MR_tag(data);
-        ptag_layout = &du_type_layout[ptag];
+        MR_index_or_search_ptag_layout(ptag, ptag_layout);
 
         switch (ptag_layout->MR_sectag_locn) {
 
         case MR_SECTAG_NONE:
+            // We can index MR_sectag_alternatives for MR_SECTAG_NONE.
             functor_desc = ptag_layout->MR_sectag_alternatives[0];
             full_arity = functor_desc->MR_du_functor_orig_arity;
             tagword_arity = 0;
@@ -92,6 +91,8 @@
             break;
 
         case MR_SECTAG_NONE_DIRECT_ARG:
+            // We can index MR_sectag_alternatives for
+            // MR_SECTAG_NONE_DIRECT_ARG.
             functor_desc = ptag_layout->MR_sectag_alternatives[0];
             full_arity = functor_desc->MR_du_functor_orig_arity;
             tagword_arity = 0;
@@ -101,7 +102,8 @@
 
         case MR_SECTAG_LOCAL_REST_OF_WORD:
             sectag = MR_unmkbody(data);
-            functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
+            MR_index_or_search_sectag_functor(ptag_layout, sectag,
+                functor_desc);
             full_arity = functor_desc->MR_du_functor_orig_arity;
             tagword_arity = 0;
             tagword = data;
@@ -112,7 +114,8 @@
         case MR_SECTAG_LOCAL_BITS:
             sectag = MR_unmkbody(data) &
                 ((1 << ptag_layout->MR_sectag_numbits) - 1);
-            functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
+            MR_index_or_search_sectag_functor(ptag_layout, sectag,
+                functor_desc);
             full_arity = functor_desc->MR_du_functor_orig_arity;
             tagword_arity = full_arity;
             tagword = data;
@@ -121,7 +124,8 @@
 
         case MR_SECTAG_REMOTE_FULL_WORD:
             sectag = MR_field(ptag, data, 0);
-            functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
+            MR_index_or_search_sectag_functor(ptag_layout, sectag,
+                functor_desc);
             full_arity = functor_desc->MR_du_functor_orig_arity;
             tagword_arity = 0;
             arg_vector = (MR_Word *) MR_body(data, ptag) + 1;
@@ -131,7 +135,8 @@
             tagword = MR_field(ptag, data, 0);
             sectag = tagword &
                 ((1 << ptag_layout->MR_sectag_numbits) - 1);
-            functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
+            MR_index_or_search_sectag_functor(ptag_layout, sectag,
+                functor_desc);
             full_arity = functor_desc->MR_du_functor_orig_arity;
             if (functor_desc->MR_du_functor_arg_locns == NULL) {
                 tagword_arity = 0;
@@ -401,7 +406,7 @@
     }
 
     case MR_TYPECTOR_REP_TUPLE:
-   {
+    {
         MR_Word     *data_value;
         MR_TypeInfo *arg_type_info_vector;
         int         arity;
