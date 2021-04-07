@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2003-2005, 2007, 2009, 2011 The University of Melbourne.
-// Copyright (C) 2014, 2016-2018 The Mercury team.
+// Copyright (C) 2014, 2016-2018, 2021 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_term_size.c
@@ -9,6 +9,7 @@
 // This module defines a function for measuring the sizes of terms.
 
 #include "mercury_imp.h"
+#include "mercury_deconstruct_macros.h"
 #include "mercury_runtime_util.h" // For MR_STRERROR_BUF_SIZE.
 #include <stdio.h>
 #include <sys/types.h>
@@ -33,8 +34,8 @@ MR_Unsigned
 MR_term_size(MR_TypeInfo type_info, MR_Word term)
 {
     MR_TypeCtorInfo         type_ctor_info;
-    MR_DuTypeLayout         du_type_layout;
     const MR_DuPtagLayout   *ptag_layout;
+    const MR_DuFunctorDesc  *functor_desc;
     int                     ptag;
     int                     sectag;
     int                     arity;
@@ -48,17 +49,10 @@ try_again:
     }
 
     switch (MR_type_ctor_rep(type_ctor_info)) {
-        case MR_TYPECTOR_REP_RESERVED_ADDR:
-        case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
-            // XXX The code to handle these cases hasn't been written yet.
-            MR_fatal_error("MR_term_size: RESERVED_ADDR");
-
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
-            // XXX SUBTYPE cannot index MR_layout_du for subtypes
-            du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
             ptag = MR_tag(term);
-            ptag_layout = &du_type_layout[ptag];
+            MR_index_or_search_ptag_layout(ptag, ptag_layout);
 
             switch (ptag_layout->MR_sectag_locn) {
                 case MR_SECTAG_NONE:
@@ -99,16 +93,14 @@ try_again:
 #endif
                     return 0;
 
-                case MR_SECTAG_REMOTE_WORD:         // fall-through
+                case MR_SECTAG_REMOTE_FULL_WORD:    // fall-through
                 case MR_SECTAG_REMOTE_BITS:
 #ifdef MR_DEBUG_TERM_SIZES
                     sectag = MR_field(MR_mktag(ptag), term, 0);
 
-                    // XXX SUBTYPE cannot index MR_sectag_alternatives
-                    // for subtypes
-                    if (ptag_layout->MR_sectag_alternatives[sectag]->
-                        MR_du_functor_orig_arity <= 0)
-                    {
+                    MR_index_or_search_sectag_functor(ptag_layout,
+                        sectag, functor_desc);
+                    if (functor_desc->MR_du_functor_orig_arity <= 0) {
                         MR_fatal_error("MR_term_size: zero arity ptag remote");
                     }
 
@@ -120,8 +112,7 @@ try_again:
                             type_ctor_info->MR_type_ctor_module_name,
                             type_ctor_info->MR_type_ctor_name,
                             type_ctor_info->MR_type_ctor_arity,
-                            ptag_layout->MR_sectag_alternatives[sectag]->
-                                MR_du_functor_name);
+                            functor_desc->MR_du_functor_name);
                     }
 #endif
                     return MR_field(MR_mktag(ptag), term, -1);
