@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2006 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2021 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module defines the MR_deep_copy() functions.
@@ -18,6 +18,7 @@
 #include "mercury_layout_util.h"
 #include "mercury_memory.h"
 #include "mercury_accurate_gc.h"
+#include "mercury_deconstruct_macros.h"
 
 // MR_deep_copy(): see mercury_deep_copy.h for documentation.
 

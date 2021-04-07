@@ -207,6 +207,7 @@ start_label:
                     int                     ptag;                             \
                     int                     sectag;                           \
                                                                               \
+                    /* XXX SUBTYPE cannot index MR_layout_du for subtypes */  \
                     ptag = MR_tag(data);                                      \
                     ptag_layout = &MR_type_ctor_layout(type_ctor_info).       \
                         MR_layout_du[ptag];                                   \
@@ -241,6 +242,8 @@ start_label:
                                 "unrecognised sectag locn");                  \
                     }                                                         \
                                                                               \
+                    /* XXX SUBTYPE cannot index MR_sectag_alternatives */     \
+                    /* for subtypes */                                        \
                     functor_desc =                                            \
                         ptag_layout->MR_sectag_alternatives[sectag];          \
                 } while (0)
@@ -345,6 +348,7 @@ start_label:
                             "attempt get functor desc of variable");
                 }
 
+                /* XXX SUBTYPE cannot index MR_sectag_alternatives */
                 functor_desc = ptag_layout->MR_sectag_alternatives[x_sectag];
   #endif // select_compare_code
 

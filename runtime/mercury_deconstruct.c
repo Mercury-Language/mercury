@@ -149,29 +149,36 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
             data = *term_ptr;
             du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
             ptag = MR_tag(data);
+            // XXX SUBTYPE cannot index du_type_layout for subtypes
             ptag_layout = &du_type_layout[ptag];
 
             switch (ptag_layout->MR_sectag_locn) {
                 case MR_SECTAG_NONE:
                 case MR_SECTAG_NONE_DIRECT_ARG:
+                    // We can index MR_sectag_alternatives for
+                    // MR_SECTAG_NONE_*.
                     functor_desc = ptag_layout->MR_sectag_alternatives[0];
                     break;
                 case MR_SECTAG_LOCAL_REST_OF_WORD:
                     sectag = MR_unmkbody(data);
+                    // XXX SUBTYPE cannot index MR_sectag_alternatives
                     functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
                     break;
                 case MR_SECTAG_LOCAL_BITS:
                     sectag = MR_unmkbody(data) &
                         ((1 << ptag_layout->MR_sectag_numbits) - 1);
+                    // XXX SUBTYPE cannot index MR_sectag_alternatives
                     functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
                     break;
                 case MR_SECTAG_REMOTE_FULL_WORD:
                     sectag = MR_field(ptag, data, 0);
+                    // XXX SUBTYPE cannot index MR_sectag_alternatives
                     functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
                     break;
                 case MR_SECTAG_REMOTE_BITS:
                     sectag = MR_field(ptag, data, 0) &
                         ((1 << ptag_layout->MR_sectag_numbits) - 1);
+                    // XXX SUBTYPE cannot index MR_sectag_alternatives
                     functor_desc = ptag_layout->MR_sectag_alternatives[sectag];
                     break;
                 case MR_SECTAG_VARIABLE:

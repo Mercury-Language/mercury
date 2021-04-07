@@ -249,6 +249,15 @@ test(Term, !IO) :-
     else
         io.write_string("deconstruct_du failed\n", !IO)
     ),
+
+    % Deep copy.
+    copy(Term, TermCopy),
+    ( if Term = TermCopy then
+        io.write_string("copy ok\n", !IO)
+    else
+        io.write_string("copied term does not unify\n", !IO)
+    ),
+
     io.nl(!IO).
 
 :- pred print_value(string::in, T::in, io::di, io::uo) is det.

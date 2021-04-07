@@ -55,6 +55,7 @@ try_again:
 
         case MR_TYPECTOR_REP_DU:
         case MR_TYPECTOR_REP_DU_USEREQ:
+            // XXX SUBTYPE cannot index MR_layout_du for subtypes
             du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
             ptag = MR_tag(term);
             ptag_layout = &du_type_layout[ptag];
@@ -62,6 +63,7 @@ try_again:
             switch (ptag_layout->MR_sectag_locn) {
                 case MR_SECTAG_NONE:
 #ifdef MR_DEBUG_TERM_SIZES
+                    // We can index MR_sectag_alternatives for MR_SECTAG_NONE.
                     if (ptag_layout->MR_sectag_alternatives[0]->
                         MR_du_functor_orig_arity <= 0)
                     {
@@ -102,6 +104,8 @@ try_again:
 #ifdef MR_DEBUG_TERM_SIZES
                     sectag = MR_field(MR_mktag(ptag), term, 0);
 
+                    // XXX SUBTYPE cannot index MR_sectag_alternatives
+                    // for subtypes
                     if (ptag_layout->MR_sectag_alternatives[sectag]->
                         MR_du_functor_orig_arity <= 0)
                     {

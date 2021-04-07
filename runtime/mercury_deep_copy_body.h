@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2005, 2007, 2012 The University of Melbourne.
-// Copyright (C) 2014-2018 The Mercury team.
+// Copyright (C) 2014-2018, 2021 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // The internals of deep copy.
@@ -84,7 +84,6 @@ copy(MR_Word data, MR_TypeInfo type_info,
 {
     MR_Word             new_data;
     MR_TypeCtorInfo     type_ctor_info;
-    MR_DuTypeLayout     du_type_layout;
 
 try_again:
     type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
@@ -115,9 +114,8 @@ try_again:
         int                   sectag_word;
         int                   sectag;
 
-        du_type_layout = MR_type_ctor_layout(type_ctor_info).MR_layout_du;
         ptag = MR_tag(data);
-        ptag_layout = &du_type_layout[ptag];
+        MR_index_or_search_ptag_layout(ptag, ptag_layout);
 
         switch (ptag_layout->MR_sectag_locn) {
 
@@ -189,7 +187,8 @@ try_again:
             cell_size = 0;                                                  \
         }                                                                   \
                                                                             \
-        functor_desc = ptag_layout->MR_sectag_alternatives[sectag];         \
+        MR_index_or_search_sectag_functor(ptag_layout, sectag,              \
+            functor_desc);                                                  \
         arity = functor_desc->MR_du_functor_orig_arity;                     \
         arg_locns = functor_desc->MR_du_functor_arg_locns;                  \
         exist_info = functor_desc->MR_du_functor_exist_info;                \
@@ -362,6 +361,8 @@ try_again:
                 const MR_DuExistInfo    *exist_info;
                 int                     arity;
 
+                // We can index MR_sectag_alternatives for
+                // MR_SECTAG_NONE_DIRECT_ARG.
                 functor_desc = ptag_layout->MR_sectag_alternatives[0];
                 arity = functor_desc->MR_du_functor_orig_arity;
                 arg_locns = functor_desc->MR_du_functor_arg_locns;

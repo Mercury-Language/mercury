@@ -648,6 +648,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         switch (ptag_layout->MR_sectag_locn) {
 
         case MR_SECTAG_NONE:
+            // We can index MR_sectag_alternatives for MR_SECTAG_NONE.
             functor_desc = ptag_layout->MR_sectag_alternatives[0];
             handle_functor_name_number_arity(expand_info, type_ctor_info,
                 functor_desc);
@@ -657,6 +658,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             break;
 
         case MR_SECTAG_NONE_DIRECT_ARG:
+            // We can index MR_sectag_alternatives for
+            // MR_SECTAG_NONE_DIRECT_ARG.
             functor_desc = ptag_layout->MR_sectag_alternatives[0];
             handle_functor_name_number_arity(expand_info, type_ctor_info,
                 functor_desc);

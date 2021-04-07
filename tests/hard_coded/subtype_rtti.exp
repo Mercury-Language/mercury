@@ -30,6 +30,7 @@ construct.find_functor
 construct.construct
 	dummy
 unify ok
+copy ok
 
 --------------------
 term
@@ -63,6 +64,7 @@ construct.find_functor
 construct.construct
 	notag(notag0(orange))
 unify ok
+copy ok
 
 --------------------
 term
@@ -96,6 +98,7 @@ construct.find_functor
 construct.construct
 	f1(42)
 unify ok
+copy ok
 
 --------------------
 term
@@ -129,6 +132,7 @@ construct.find_functor
 construct.construct
 	blue
 unify ok
+copy ok
 
 --------------------
 term
@@ -162,6 +166,7 @@ construct.find_functor
 construct.construct
 	f0_a
 unify ok
+copy ok
 
 --------------------
 term
@@ -195,6 +200,7 @@ construct.find_functor
 construct.construct
 	f0_b(flag_set, blue, banana)
 unify ok
+copy ok
 
 --------------------
 term
@@ -228,6 +234,7 @@ construct.find_functor
 construct.construct
 	f2(42)
 unify ok
+copy ok
 
 --------------------
 term
@@ -261,4 +268,5 @@ construct.find_functor
 construct.construct
 	f7_b(flag_set, blue, banana, 3.14)
 unify ok
+copy ok
 
