@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2000-2005, 2007, 2011 The University of Melbourne.
-// Copyright (C) 2014-2018 The Mercury team.
+// Copyright (C) 2014-2018, 2021 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This file contains a piece of code that is included by mercury_ho_call.c
@@ -207,10 +207,8 @@ start_label:
                     int                     ptag;                             \
                     int                     sectag;                           \
                                                                               \
-                    /* XXX SUBTYPE cannot index MR_layout_du for subtypes */  \
                     ptag = MR_tag(data);                                      \
-                    ptag_layout = &MR_type_ctor_layout(type_ctor_info).       \
-                        MR_layout_du[ptag];                                   \
+                    MR_index_or_search_ptag_layout(ptag, ptag_layout);        \
                     data_value = (MR_Word *) MR_body(data, ptag);             \
                                                                               \
                     switch (ptag_layout->MR_sectag_locn) {                    \
@@ -242,10 +240,8 @@ start_label:
                                 "unrecognised sectag locn");                  \
                     }                                                         \
                                                                               \
-                    /* XXX SUBTYPE cannot index MR_sectag_alternatives */     \
-                    /* for subtypes */                                        \
-                    functor_desc =                                            \
-                        ptag_layout->MR_sectag_alternatives[sectag];          \
+                    MR_index_or_search_sectag_functor(ptag_layout, sectag,    \
+                        functor_desc);                                        \
                 } while (0)
 
                 MR_find_du_functor_desc(x, x_data_value, x_functor_desc);
@@ -276,8 +272,7 @@ start_label:
                     return_unify_answer(builtin, user_by_rtti, 0, MR_FALSE);
                 }
 
-                ptag_layout = &MR_type_ctor_layout(type_ctor_info).
-                    MR_layout_du[x_ptag];
+                MR_index_or_search_ptag_layout(x_ptag, ptag_layout);
                 x_data_value = (MR_Word *) MR_body(x, x_ptag);
                 y_data_value = (MR_Word *) MR_body(y, y_ptag);
 
@@ -348,8 +343,8 @@ start_label:
                             "attempt get functor desc of variable");
                 }
 
-                /* XXX SUBTYPE cannot index MR_sectag_alternatives */
-                functor_desc = ptag_layout->MR_sectag_alternatives[x_sectag];
+                MR_index_or_search_sectag_functor(ptag_layout, x_sectag,
+                    functor_desc);
   #endif // select_compare_code
 
                 switch (functor_desc->MR_du_functor_sectag_locn) {

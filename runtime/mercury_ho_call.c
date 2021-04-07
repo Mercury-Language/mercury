@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2007 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2021 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module provides much of the functionality for doing higher order
@@ -24,6 +24,7 @@ ENDINIT
 #include "mercury_imp.h"
 #include "mercury_ho_call.h"
 #include "mercury_type_desc.h"
+#include "mercury_deconstruct_macros.h"
 #include "mercury_deep_profiling.h"
 #include "mercury_deep_profiling_hand.h"
 #include "mercury_layout_util.h"
