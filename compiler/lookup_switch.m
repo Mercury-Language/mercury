@@ -400,7 +400,9 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
         generate_bitvec_test(IndexRval, CaseValues, StartVal, EndVal,
             CheckBitVecCode, !CI, !CLD)
     ;
-        NeedBitVecCheck = dont_need_bit_vec_check,
+        ( NeedBitVecCheck = dont_need_bit_vec_check_no_gaps
+        ; NeedBitVecCheck = dont_need_bit_vec_check_with_gaps
+        ),
         CheckBitVecCode = empty
     ),
 

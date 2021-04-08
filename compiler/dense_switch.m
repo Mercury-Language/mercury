@@ -100,14 +100,14 @@ tagged_case_list_is_dense_switch(CI, VarType, TaggedCases,
         get_module_info(CI, ModuleInfo),
         classify_type(ModuleInfo, VarType) = TypeCategory,
         ( if
-            type_range(ModuleInfo, TypeCategory, VarType, _Min, _Max,
-                TypeRange),
+            type_range(ModuleInfo, TypeCategory, VarType,
+                TypeMin, TypeMax, TypeRange),
             DetDensity = switch_density(NumValues, TypeRange),
             DetDensity > ReqDensity
         then
             CanFail = cannot_fail,
-            FirstVal = 0,
-            LastVal = TypeRange - 1
+            FirstVal = TypeMin,
+            LastVal = TypeMax
         else
             CanFail = CanFail0,
             FirstVal = LowerLimit,

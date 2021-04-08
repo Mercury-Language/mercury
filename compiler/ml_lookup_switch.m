@@ -334,8 +334,14 @@ ml_gen_simple_atomic_lookup_switch(IndexRval, OutVars, OutTypes, CaseValues,
         CodeModel = model_det,
         expect(unify(NeedRangeCheck, dont_need_range_check), $pred,
             "model_det need_range_check"),
-        expect(unify(NeedBitVecCheck, dont_need_bit_vec_check), $pred,
-            "model_det need_bit_vec_check"),
+        (
+            NeedBitVecCheck = need_bit_vec_check,
+            unexpected($pred, "model_det need_bit_vec_check")
+        ;
+            ( NeedBitVecCheck = dont_need_bit_vec_check_no_gaps
+            ; NeedBitVecCheck = dont_need_bit_vec_check_with_gaps
+            )
+        ),
         Stmt = ml_stmt_block([], [], LookupStmts, Context)
     ;
         CodeModel = model_semi,
@@ -346,7 +352,9 @@ ml_gen_simple_atomic_lookup_switch(IndexRval, OutVars, OutTypes, CaseValues,
         (
             NeedRangeCheck = dont_need_range_check,
             (
-                NeedBitVecCheck = dont_need_bit_vec_check,
+                ( NeedBitVecCheck = dont_need_bit_vec_check_no_gaps
+                ; NeedBitVecCheck = dont_need_bit_vec_check_with_gaps
+                ),
                 Stmt = LookupSucceedStmt
             ;
                 NeedBitVecCheck = need_bit_vec_check,
@@ -367,7 +375,9 @@ ml_gen_simple_atomic_lookup_switch(IndexRval, OutVars, OutTypes, CaseValues,
             ml_gen_set_success(ml_const(mlconst_false), Context,
                 SetSuccessFalseStmt, !Info),
             (
-                NeedBitVecCheck = dont_need_bit_vec_check,
+                ( NeedBitVecCheck = dont_need_bit_vec_check_no_gaps
+                ; NeedBitVecCheck = dont_need_bit_vec_check_with_gaps
+                ),
                 RangeCheckSuccessStmt = LookupSucceedStmt
             ;
                 NeedBitVecCheck = need_bit_vec_check,
@@ -442,8 +452,13 @@ ml_gen_several_soln_atomic_lookup_switch(IndexRval, OutVars, OutTypes,
     ml_gen_info_set_global_data(GlobalData, !Info),
 
     (
-        NeedBitVecCheck = dont_need_bit_vec_check,
-        expect(unify(HadDummyRows, no), $pred, "bad dont_need_bit_vec_check")
+        NeedBitVecCheck = dont_need_bit_vec_check_no_gaps,
+        expect(unify(HadDummyRows, no), $pred,
+            "bad dont_need_bit_vec_check_no_gaps")
+    ;
+        NeedBitVecCheck = dont_need_bit_vec_check_with_gaps,
+        expect(unify(HadDummyRows, yes), $pred,
+            "bad dont_need_bit_vec_check_with_gaps")
     ;
         NeedBitVecCheck = need_bit_vec_check,
         expect(unify(HadDummyRows, yes), $pred, "bad need_bit_vec_check")
@@ -527,7 +542,9 @@ ml_gen_several_soln_lookup_code(Context, SlotVarRval,
     OneOrMoreSolnsStmts = [FirstLookupSucceedStmt, LaterSlotVarAssignStmt,
         LimitAssignStmt, MoreSolnsLoopStmt],
     (
-        NeedBitVecCheck = dont_need_bit_vec_check,
+        ( NeedBitVecCheck = dont_need_bit_vec_check_no_gaps
+        ; NeedBitVecCheck = dont_need_bit_vec_check_with_gaps
+        ),
         Stmts = [NumLaterSolnsAssignStmt | OneOrMoreSolnsStmts]
     ;
         NeedBitVecCheck = need_bit_vec_check,

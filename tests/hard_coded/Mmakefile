@@ -91,7 +91,9 @@ ORDINARY_PROGS = \
 	dense_lookup_switch \
 	dense_lookup_switch2 \
 	dense_lookup_switch3 \
+	dense_lookup_switch4 \
 	dense_lookup_switch_non \
+	dense_lookup_switch_non2 \
 	det_in_semidet_cntxt \
 	dir_fold \
 	direct_arg_partial_inst \

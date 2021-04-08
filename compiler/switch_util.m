@@ -174,9 +174,14 @@
     --->    need_range_check
     ;       dont_need_range_check.
 
+    % dont_need_bit_vec_check_with_gaps should be used if the
+    % generated lookup table is expected to contain dummy rows.
+    % Otherwise, dont_need_bit_vec_check_no_gaps should be used.
+    %
 :- type need_bit_vec_check
     --->    need_bit_vec_check
-    ;       dont_need_bit_vec_check.
+    ;       dont_need_bit_vec_check_no_gaps
+    ;       dont_need_bit_vec_check_with_gaps.
 
 :- pred filter_out_failing_cases_if_needed(code_model::in,
     list(tagged_case)::in, list(tagged_case)::out,
@@ -401,6 +406,7 @@
 :- import_module io.
 :- import_module maybe.
 :- import_module one_or_more.
+:- import_module ranges.
 :- import_module require.
 :- import_module string.
 :- import_module uint.
@@ -926,18 +932,36 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
         target_char_range(Target, Min, Max)
     ;
         TypeCtorCat = ctor_cat_enum(cat_enum_mercury),
-        Min = 0,
         type_to_ctor_det(Type, TypeCtor),
         module_info_get_type_table(ModuleInfo, TypeTable),
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
-            TypeBody = hlds_du_type(Constructors, _, _, _, _),
-            Constructors = one_or_more(_HeadCtor, TailCtors),
-            list.length(TailCtors, NumTailConstructors),
-            % NumConstructors = 1 + NumTailConstructors
-            % Max = NumConstructors - 1
-            Max = NumTailConstructors
+            TypeBody = hlds_du_type(OoMCtors, MaybeSuperType, _, MaybeRepn, _),
+            (
+                MaybeRepn = yes(Repn)
+            ;
+                MaybeRepn = no,
+                unexpected($pred, "MaybeRepn = no")
+            ),
+            (
+                MaybeSuperType = no,
+                Min = 0,
+                OoMCtors = one_or_more(_HeadCtor, TailCtors),
+                list.length(TailCtors, NumTailConstructors),
+                % NumConstructors = 1 + NumTailConstructors
+                % Max = NumConstructors - 1
+                Max = NumTailConstructors
+            ;
+                MaybeSuperType = yes(_),
+                % A subtype enum does not necessarily use all values from 0 to
+                % the max.
+                CtorRepns = Repn ^ dur_ctor_repns,
+                Ranges0 = ranges.empty,
+                list.foldl(insert_enum_cons_tag, CtorRepns, Ranges0, Ranges),
+                % XXX SUBTYPE make callers not expect one contiguous range
+                ranges.is_contiguous(Ranges, Min, Max)
+            )
         ;
             ( TypeBody = hlds_eqv_type(_)
             ; TypeBody = hlds_foreign_type(_)
@@ -948,6 +972,14 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
         )
     ),
     NumValues = Max - Min + 1.
+
+:- pred insert_enum_cons_tag(constructor_repn::in, ranges::in, ranges::out)
+    is det.
+
+insert_enum_cons_tag(CtorRepn, !Ranges) :-
+    ConsTag = CtorRepn ^ cr_tag,
+    get_int_tag(ConsTag, Int),
+    ranges.insert(Int, !Ranges).
 
 switch_density(NumCases, Range) = Density :-
     Density = (NumCases * 100) // Range.
@@ -1016,20 +1048,20 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
         % won't need a bitvector test to see if this switch has a value
         % for this case.
         ( if NumValues = Range then
-            NeedBitVecCheck0 = dont_need_bit_vec_check
+            NeedBitVecCheck0 = dont_need_bit_vec_check_no_gaps
         else
             NeedBitVecCheck0 = need_bit_vec_check
         ),
         ( if
-            type_range(ModuleInfo, TypeCategory, SwitchVarType, _, _,
-                TypeRange),
+            type_range(ModuleInfo, TypeCategory, SwitchVarType,
+                TypeMin, TypeMax, TypeRange),
             DetDensity = switch_density(NumValues, TypeRange),
             DetDensity > ReqDensity
         then
             NeedRangeCheck = dont_need_range_check,
             NeedBitVecCheck = need_bit_vec_check,
-            FirstVal = 0,
-            LastVal = TypeRange - 1
+            FirstVal = TypeMin,
+            LastVal = TypeMax
         else
             NeedRangeCheck = need_range_check,
             NeedBitVecCheck = NeedBitVecCheck0,
@@ -1038,11 +1070,17 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
         )
     ;
         SwitchCanFail = cannot_fail,
-        % Even if NumValues \= Range, the cannot_fail guarantees that
-        % the values that are in range but are not covered by any of the cases
-        % won't actually be reached.
+        % The cannot_fail guarantees that the values that are in range
+        % but are not covered by any of the cases won't actually be reached.
         NeedRangeCheck = dont_need_range_check,
-        NeedBitVecCheck = dont_need_bit_vec_check,
+        % There may be gaps in the lookup table if switching on a variable of
+        % a subtype which does not use some values between the min and max
+        % values.
+        ( if NumValues = Range then
+            NeedBitVecCheck = dont_need_bit_vec_check_no_gaps
+        else
+            NeedBitVecCheck = dont_need_bit_vec_check_with_gaps
+        ),
         FirstVal = LowerLimit,
         LastVal = UpperLimit
     ).
