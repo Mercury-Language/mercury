@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017-2018 The Mercury team.
+% Copyright (C) 2017-2021 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -341,7 +341,7 @@
     % rotate_left(U, D) = N:
     %
     % N is the value obtained by rotating the binary representation of U
-    % left by D bits. Throws an exception if D is not in [0, 15].
+    % left by D bits. Throws an exception if D is not in the range [0, 15].
     %
 :- func rotate_left(uint16, uint) = uint16.
 
@@ -355,7 +355,7 @@
     % rotate_right(U, D) = N:
     %
     % N is the value obtained by rotating the binary representation of U
-    % right by D bits. Throws an exception if D is not in [0, 15].
+    % right by D bits. Throws an exception if D is not in the range [0, 15].
     %
 :- func rotate_right(uint16, uint) = uint16.
 
@@ -365,6 +365,66 @@
     % right by an amount given by the lowest 4 bits of D.
     %
 :- func unchecked_rotate_right(uint16, uint) = uint16.
+
+    % set_bit(U, I) = N:
+    % N is the value obtained by setting the I'th bit (the bit worth 2^I) of U
+    % to one. An exception is thrown if I is not in the range [0, 15].
+    %
+:- func set_bit(uint16, uint) = uint16.
+
+    % unchecked_set_bit(U, I) = N:
+    % As above, but the behaviour is undefined if I is not in the range
+    % [0, 15].
+    %
+:- func unchecked_set_bit(uint16, uint) = uint16.
+
+    % clear_bit(U, I) = N:
+    % N is the value obtained by setting the I'th bit (the bit worth 2^I) of U
+    % to zero. An exception is thrown if I is not in the range [0, 15].
+    %
+:- func clear_bit(uint16, uint) = uint16.
+
+    % unchecked_clear_bit(U, I) = N:
+    % As above, but the behaviour is undefined if I is not in the range
+    % [0, 15].
+    %
+:- func unchecked_clear_bit(uint16, uint) = uint16.
+
+    % flip_bit(U, I) = N:
+    % N is the value obtained by flipping the I'th bit (the bit worth 2^I) of
+    % U. An exception is thrown if I is not in the range [0, 15].
+    %
+:- func flip_bit(uint16, uint) = uint16.
+
+    % unchecked_flip_bit(U, I) = N:
+    % As above, but the behaviour is undefined if I is not in the range
+    % [0, 15].
+    %
+:- func unchecked_flip_bit(uint16, uint) = uint16.
+
+    % bit_is_set(U, I):
+    % True iff the I'th bit (the bit worth 2^I) of U is one.
+    % An exception is thrown if I is not in the range [0, 15].
+    %
+:- pred bit_is_set(uint16::in, uint::in) is semidet.
+
+    % unchecked_bit_is_set(U, I):
+    % As above, but the behaviour is undefined if I is not in the range
+    % [0, 15].
+    %
+:- pred unchecked_bit_is_set(uint16::in, uint::in) is semidet.
+
+    % bit_is_clear(U, I):
+    % True iff the I'th bit (the bit worth 2^I) of U is zero.
+    % An exception is thrown if I is not in the range [0, 15].
+    %
+:- pred bit_is_clear(uint16::in, uint::in) is semidet.
+
+    % unchecked_bit_is_clear(U, I):
+    % As above, but the behaviour is undefined if I is not in the range
+    % [0, 15].
+    %
+:- pred unchecked_bit_is_clear(uint16::in, uint::in) is semidet.
 
 %---------------------------------------------------------------------------%
 %
@@ -856,6 +916,58 @@ rotate_right(X, N) =
     N &= 15;
     Result = (short) ((X >>> (int) N) | (X << (int) (-N & 15)));
 ").
+
+%---------------------------------------------------------------------------%
+
+set_bit(U, I) =
+    ( if I < 16u then
+        unchecked_set_bit(U, I)
+    else
+        func_error($pred, "bit index exceeds 15 bits")
+    ).
+
+unchecked_set_bit(U, I) =
+    U \/ (1u16 `unchecked_left_shift` cast_to_int(I)).
+
+clear_bit(U, I) =
+    ( if I < 16u then
+        unchecked_clear_bit(U, I)
+    else
+        func_error($pred, "bit index exceeds 15 bits")
+    ).
+
+unchecked_clear_bit(U, I) =
+    U /\ (\ (1u16 `unchecked_left_shift` cast_to_int(I))).
+
+flip_bit(U, I) =
+    ( if I < 16u then
+        unchecked_flip_bit(U, I)
+    else
+        func_error($pred, "bit index exceeds 15 bits")
+    ).
+
+unchecked_flip_bit(U, I) =
+    U `xor` (1u16 `unchecked_left_shift` cast_to_int(I)).
+
+bit_is_set(U, I) :-
+    ( if I < 16u then
+        unchecked_bit_is_set(U, I)
+    else
+        error($pred, "bit index exceeds 15 bits")
+    ).
+
+unchecked_bit_is_set(U, I) :-
+    U /\ (1u16 `unchecked_left_shift` cast_to_int(I)) \= 0u16.
+
+bit_is_clear(U, I) :-
+    ( if I < 16u then
+        unchecked_bit_is_clear(U, I)
+    else
+        error($pred, "bit index exceeds 15 bits")
+    ).
+
+unchecked_bit_is_clear(U, I) :-
+    U /\ (1u16 `unchecked_left_shift` cast_to_int(I)) = 0u16.
 
 %---------------------------------------------------------------------------%
 

@@ -746,7 +746,10 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		arith_uint32 \
 		arith_uint64 \
 		arith_uint8 \
+		bit_access_uint16 \
 		bit_access_uint32 \
+		bit_access_uint64 \
+		bit_access_uint8 \
 		bitmap_bytes \
 		bitmap_empty \
 		bitmap_test \
