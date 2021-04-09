@@ -305,6 +305,16 @@ Changes to the Mercury standard library
     - func `rotate_right/2`
     - func `unchecked_rotate_left/2`
     - func `unchecked_rotate_right/2`
+    - func `set_bit/2`
+    - func `unchecked_set_bit/2`
+    - func `clear_bit/2`
+    - func `unchecked_clear_bit/2`
+    - func `flip_bit/2`
+    - func `unchecked_flip_bit/2`
+    - func `bit_is_set/2`
+    - func `unchecked_bit_is_set/2`
+    - func `bit_is_clear/2`
+    - func `unchecked_bit_is_clear/2`
 
 ### Changes to the `uint64` module
 
