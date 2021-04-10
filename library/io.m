@@ -3080,7 +3080,7 @@ mercury_close(MercuryFilePtr mf)
     } else {
         // For the accurate GC or no GC cases, we need to explicitly deallocate
         // the memory here, to avoid a memory leak. Note that the accurate
-        // collector won't reclaim io_streams, since the io.stream type
+        // collector will not reclaim io_streams, since the io.stream type
         // is defined as a foreign_type.
         MR_GC_free(mf);
     }
@@ -9545,7 +9545,7 @@ resize_buffer(_OldSize, NewSize, buffer(Array0), buffer(Array)) :-
     Str = Buffer;
     Str[Len] = '\\0';
 
-    // Check that the string doesn't contain null characters.
+    // Check that the string does not contain null characters.
     if (strlen(Str) != Len) {
         SUCCESS_INDICATOR = MR_FALSE;
     } else {
@@ -10457,7 +10457,7 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     int access_result;
 
   #if !defined(MR_WIN32) || defined(MR_CYGWIN)
-    // Earlier versions of MSVCRT ignored flags it doesn't support,
+    // Earlier versions of MSVCRT ignored flags it does not support,
     // later versions return an error (e.g. on Vista).
     if (CheckExecute) {
         mode |= MODE_EXECUTE;
