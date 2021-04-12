@@ -723,7 +723,10 @@ add_if_subtype_of_simple_du_type_to_maps(OldTypeTable, TypeCtorTypeDefn,
                 maybe_copy_no_tag_type_from_base(BaseTypeCtor, TypeCtor,
                     TypeParams, no, !NoTagTypeMap)
             else
-                unexpected($pred, "cannot get base type")
+                % This is reachable if there was an error in the module that
+                % defines the imported subtype. The subtype definition would
+                % not have been checked when the interface file is created.
+                true
             )
         ;
             ( AbstractDetails = abstract_type_general
