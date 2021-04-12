@@ -580,7 +580,7 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
 
 #else
 
-    #pragma error "Please implement memory fence operations "               \
+    #error "Please implement memory fence operations " \
         "for this compiler/architecture"
 
 #endif
