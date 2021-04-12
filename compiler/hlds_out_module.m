@@ -583,6 +583,9 @@ maybe_canonical_to_simple_string(MaybeCanonical) = String :-
                 IsSolver = solver_type,
                 String = "noncanon_abstract_solver"
             )
+        ;
+            NonCanonical = noncanon_subtype,
+            String = "noncanon_subtype"
         )
     ).
 

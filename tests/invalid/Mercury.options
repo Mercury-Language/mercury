@@ -71,6 +71,7 @@ MCFLAGS-string_format_bad       = --halt-at-warn --warn-known-bad-format-calls \
                                     --warn-unknown-format-calls
 MCFLAGS-string_format_unknown   = --halt-at-warn --warn-known-bad-format-calls \
                                     --warn-unknown-format-calls
+MCFLAGS-subtype_user_compare    = --verbose-error-messages
 MCFLAGS-synth_attr_error        = --event-set-file-name synth_attr_error_spec
 MCFLAGS-syntax_error_event      = --event-set-file-name syntax_error_event_spec
 

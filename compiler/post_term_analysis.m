@@ -239,6 +239,9 @@ special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn)
         ;
             NonCanonical = noncanon_abstract(_),
             unexpected($pred, "type is local yet it is noncanon_abstract")
+        ;
+            NonCanonical = noncanon_subtype,
+            NeedsTermCheck = no
         )
     ;
         MaybeCanonical = canon,

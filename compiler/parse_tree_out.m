@@ -1430,7 +1430,9 @@ mercury_output_where_attributes(Info, TypeVarSet, MaybeSolverTypeDetails,
         MaybeCanonical, MaybeDirectArgs, Stream, !IO) :-
     ( if
         MaybeSolverTypeDetails = no,
-        MaybeCanonical = canon,
+        ( MaybeCanonical = canon
+        ; MaybeCanonical = noncanon(noncanon_subtype)
+        ),
         MaybeDirectArgs = no
     then
         true
@@ -1441,6 +1443,10 @@ mercury_output_where_attributes(Info, TypeVarSet, MaybeSolverTypeDetails,
             MaybeUniPred = no,
             MaybeCmpPred = no,
             io.write_string(Stream, "type_is_abstract_noncanonical", !IO)
+        ;
+            MaybeCanonical = noncanon(noncanon_subtype),
+            MaybeUniPred = no,
+            MaybeCmpPred = no
         ;
             (
                 MaybeCanonical = canon,

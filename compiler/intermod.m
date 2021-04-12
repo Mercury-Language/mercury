@@ -1297,7 +1297,9 @@ resolve_unify_compare_overloading(ModuleInfo, TypeCtor,
     ;
         MaybeCanonical0 = noncanon(NonCanonical0),
         (
-            NonCanonical0 = noncanon_abstract(_IsSolverType),
+            ( NonCanonical0 = noncanon_abstract(_IsSolverType)
+            ; NonCanonical0 = noncanon_subtype
+            ),
             MaybeCanonical = MaybeCanonical0
         ;
             NonCanonical0 = noncanon_uni_cmp(Uni0, Cmp0),

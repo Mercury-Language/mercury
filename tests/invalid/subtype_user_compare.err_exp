@@ -1,0 +1,4 @@
+subtype_user_compare.m:015: Error: the subtype `citrus'/0 is not allowed to
+subtype_user_compare.m:015:   have user-defined equality or comparison.
+subtype_user_compare.m:015:   Only base types are allowed to have user-defined
+subtype_user_compare.m:015:   equality or comparison.

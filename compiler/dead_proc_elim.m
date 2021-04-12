@@ -1434,6 +1434,8 @@ dead_pred_initialize_maybe_canonical(ModuleInfo, MaybeCanon, !NeededPreds) :-
             set_tree234.insert_list(CmpPredIds, !NeededPreds)
         ;
             NonCanonical = noncanon_abstract(_IsSolverType)
+        ;
+            NonCanonical = noncanon_subtype
         )
     ).
 

@@ -1,0 +1,4 @@
+compare fruit (local):  '>'
+compare citrus (local): '>'
+compare fruit (abstract): '>'
+compare citrus (abstract): '>'

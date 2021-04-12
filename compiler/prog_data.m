@@ -722,12 +722,17 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 :- func arg_pos_width_to_width_only(arg_pos_width) = arg_width.
 
     % The noncanon functor gives the user-defined unification and/or comparison
-    % predicates for a noncanonical type, if they are known. The value
-    % noncanon_abstract represents a type whose definition uses the syntax
-    % `where type_is_abstract_noncanonical' and has been read from an
+    % predicates for a noncanonical type, if they are known.
+    %
+    % The value noncanon_abstract represents a type whose definition uses the
+    % syntax `where type_is_abstract_noncanonical' and has been read from an
     % .int2 file. This means we know that the type has a noncanonical
     % representation, but we don't know what the unification or comparison
     % predicates are.
+    %
+    % The value noncanon_subtype represents a subtype whose base type has
+    % user-defined unification and/or comparison predicates. Subtypes cannot
+    % have their own user-defined unification/comparison predicates.
     %
 :- type maybe_canonical
     --->    canon
@@ -737,7 +742,8 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     --->    noncanon_uni_cmp(equality_pred, comparison_pred)
     ;       noncanon_uni_only(equality_pred)
     ;       noncanon_cmp_only(comparison_pred)
-    ;       noncanon_abstract(is_solver_type).
+    ;       noncanon_abstract(is_solver_type)
+    ;       noncanon_subtype.
 
     % The `where' attributes of a solver type definition must begin
     % with

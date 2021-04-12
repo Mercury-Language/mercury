@@ -180,10 +180,20 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
     TypeBody = SpecDefnInfo ^ spdi_type_body,
     Context = SpecDefnInfo ^ spdi_context,
-    % We used to special-case the type_ctors for which
-    % is_type_ctor_a_builtin_dummy(TypeCtor) = is_builtin_dummy_type_ctor,
-    % but both those types now have user-defined unify and compare preds.
     ( if
+        TypeBody = hlds_du_type(_, yes(SuperType), _, _, _)
+    then
+        % Unify subtype terms after casting to base type.
+        % This is necessary in high-level data grades,
+        % and saves some code in low-level data grades.
+        TVarSet = SpecDefnInfo ^ spdi_tvarset,
+        get_du_base_type(ModuleInfo, TVarSet, SuperType, BaseType),
+        generate_unify_proc_body_eqv(Context, BaseType, X, Y, Clause, !Info),
+        Clauses = [Clause]
+    else if
+        % We used to special-case the type_ctors for which
+        % is_type_ctor_a_builtin_dummy(TypeCtor) = is_builtin_dummy_type_ctor,
+        % but both those types now have user-defined unify and compare preds.
         type_body_has_user_defined_equality_pred(ModuleInfo,
             TypeBody, UserEqComp)
     then
@@ -234,59 +244,47 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
             Clauses = [Clause]
         ;
             TypeBody = hlds_du_type(_, MaybeSuperType, _, MaybeRepn, _),
+            expect(unify(MaybeSuperType, no), $pred, "MaybeSuperType != no"),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")
             ;
                 MaybeRepn = yes(Repn)
             ),
-            ( if
-                MaybeSuperType = yes(SuperType),
-                TVarSet = SpecDefnInfo ^ spdi_tvarset,
-                get_du_base_type(ModuleInfo, TVarSet, SuperType, BaseType)
-            then
-                % Unify after casting to base type.
-                % This is necessary in high-level data grades,
-                % and saves some code in low-level data grades.
-                generate_unify_proc_body_eqv(Context, BaseType, X, Y, Clause,
-                    !Info),
+            DuTypeKind = Repn ^ dur_kind,
+            (
+                ( DuTypeKind = du_type_kind_mercury_enum
+                ; DuTypeKind = du_type_kind_foreign_enum(_)
+                ),
+                generate_unify_proc_body_enum(Context, X, Y,
+                    Clause, !Info),
                 Clauses = [Clause]
-            else
-                DuTypeKind = Repn ^ dur_kind,
+            ;
+                DuTypeKind = du_type_kind_direct_dummy,
+                generate_unify_proc_body_dummy(Context, X, Y,
+                    Clause, !Info),
+                Clauses = [Clause]
+            ;
+                DuTypeKind = du_type_kind_notag(_, ArgType, _),
+                ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
                 (
-                    ( DuTypeKind = du_type_kind_mercury_enum
-                    ; DuTypeKind = du_type_kind_foreign_enum(_)
-                    ),
-                    generate_unify_proc_body_enum(Context, X, Y,
-                        Clause, !Info),
-                    Clauses = [Clause]
-                ;
-                    DuTypeKind = du_type_kind_direct_dummy,
+                    ArgIsDummy = is_dummy_type,
+                    % Treat this type as if it were a dummy type
+                    % itself.
                     generate_unify_proc_body_dummy(Context, X, Y,
                         Clause, !Info),
                     Clauses = [Clause]
                 ;
-                    DuTypeKind = du_type_kind_notag(_, ArgType, _),
-                    ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
-                    (
-                        ArgIsDummy = is_dummy_type,
-                        % Treat this type as if it were a dummy type
-                        % itself.
-                        generate_unify_proc_body_dummy(Context, X, Y,
-                            Clause, !Info),
-                        Clauses = [Clause]
-                    ;
-                        ArgIsDummy = is_not_dummy_type,
-                        CtorRepns = Repn ^ dur_ctor_repns,
-                        generate_unify_proc_body_du(SpecDefnInfo,
-                            CtorRepns, X, Y, Clauses, !Info)
-                    )
-                ;
-                    DuTypeKind = du_type_kind_general,
+                    ArgIsDummy = is_not_dummy_type,
                     CtorRepns = Repn ^ dur_ctor_repns,
                     generate_unify_proc_body_du(SpecDefnInfo,
                         CtorRepns, X, Y, Clauses, !Info)
                 )
+            ;
+                DuTypeKind = du_type_kind_general,
+                CtorRepns = Repn ^ dur_ctor_repns,
+                generate_unify_proc_body_du(SpecDefnInfo,
+                    CtorRepns, X, Y, Clauses, !Info)
             )
         )
     ).
@@ -312,6 +310,9 @@ generate_unify_proc_body_user(NonCanonical, X, Y, Context, Clause, !Info) :-
         NonCanonical = noncanon_abstract(_IsSolverType),
         unexpected($pred,
             "trying to create unify proc for abstract noncanonical type")
+    ;
+        NonCanonical = noncanon_subtype,
+        unexpected($pred, "trying to create unify proc for subtype")
     ;
         ( NonCanonical = noncanon_uni_cmp(UnifyPredName, _)
         ; NonCanonical = noncanon_uni_only(UnifyPredName)
@@ -940,10 +941,18 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
     TypeBody = SpecDefnInfo ^ spdi_type_body,
     Context = SpecDefnInfo ^ spdi_context,
-    % We used to special-case the type_ctors for which
-    % is_type_ctor_a_builtin_dummy(TypeCtor) = is_builtin_dummy_type_ctor,
-    % but both those types now have user-defined unify and compare preds.
     ( if
+        TypeBody = hlds_du_type(_, yes(SuperType), _, _, _)
+    then
+        % Compare subtype terms after casting to base type.
+        TVarSet = SpecDefnInfo ^ spdi_tvarset,
+        get_du_base_type(ModuleInfo, TVarSet, SuperType, BaseType),
+        generate_compare_proc_body_eqv(Context, BaseType, Res, X, Y,
+            Clause, !Info)
+    else if
+        % We used to special-case the type_ctors for which
+        % is_type_ctor_a_builtin_dummy(TypeCtor) = is_builtin_dummy_type_ctor,
+        % but both those types now have user-defined unify and compare preds.
         type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
             UserEqComp)
     then
@@ -989,53 +998,44 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
                 Res, X, Y, Clause, !Info)
         ;
             TypeBody = hlds_du_type(_, MaybeSuperType, _, MaybeRepn, _),
+            expect(unify(MaybeSuperType, no), $pred, "MaybeSuperType != no"),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")
             ;
                 MaybeRepn = yes(Repn)
             ),
-            ( if
-                MaybeSuperType = yes(SuperType),
-                TVarSet = SpecDefnInfo ^ spdi_tvarset,
-                get_du_base_type(ModuleInfo, TVarSet, SuperType, BaseType)
-            then
-                % Compare after casting to base type.
-                generate_compare_proc_body_eqv(Context, BaseType, Res, X, Y,
-                    Clause, !Info)
-            else
-                DuTypeKind = Repn ^ dur_kind,
+            DuTypeKind = Repn ^ dur_kind,
+            (
+                ( DuTypeKind = du_type_kind_mercury_enum
+                ; DuTypeKind = du_type_kind_foreign_enum(_)
+                ),
+                generate_compare_proc_body_enum(Context,
+                    Res, X, Y, Clause, !Info)
+            ;
+                DuTypeKind = du_type_kind_direct_dummy,
+                generate_compare_proc_body_dummy(Context,
+                    Res, X, Y, Clause, !Info)
+            ;
+                DuTypeKind = du_type_kind_notag(_, ArgType, _),
+                ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
                 (
-                    ( DuTypeKind = du_type_kind_mercury_enum
-                    ; DuTypeKind = du_type_kind_foreign_enum(_)
-                    ),
-                    generate_compare_proc_body_enum(Context,
-                        Res, X, Y, Clause, !Info)
-                ;
-                    DuTypeKind = du_type_kind_direct_dummy,
+                    ArgIsDummy = is_dummy_type,
+                    % Treat this type as if it were a dummy type
+                    % itself.
                     generate_compare_proc_body_dummy(Context,
                         Res, X, Y, Clause, !Info)
                 ;
-                    DuTypeKind = du_type_kind_notag(_, ArgType, _),
-                    ArgIsDummy = is_type_a_dummy(ModuleInfo, ArgType),
-                    (
-                        ArgIsDummy = is_dummy_type,
-                        % Treat this type as if it were a dummy type
-                        % itself.
-                        generate_compare_proc_body_dummy(Context,
-                            Res, X, Y, Clause, !Info)
-                    ;
-                        ArgIsDummy = is_not_dummy_type,
-                        CtorRepns = Repn ^ dur_ctor_repns,
-                        generate_compare_proc_body_du(SpecDefnInfo,
-                            CtorRepns, Res, X, Y, Clause, !Info)
-                    )
-                ;
-                    DuTypeKind = du_type_kind_general,
+                    ArgIsDummy = is_not_dummy_type,
                     CtorRepns = Repn ^ dur_ctor_repns,
                     generate_compare_proc_body_du(SpecDefnInfo,
                         CtorRepns, Res, X, Y, Clause, !Info)
                 )
+            ;
+                DuTypeKind = du_type_kind_general,
+                CtorRepns = Repn ^ dur_ctor_repns,
+                generate_compare_proc_body_du(SpecDefnInfo,
+                    CtorRepns, Res, X, Y, Clause, !Info)
             )
         )
     ).
@@ -1062,6 +1062,9 @@ generate_compare_proc_body_user(Context, NonCanonical, Res, X, Y,
         NonCanonical = noncanon_abstract(_),
         unexpected($pred,
             "trying to create compare proc for abstract noncanonical type")
+    ;
+        NonCanonical = noncanon_subtype,
+        unexpected($pred, "trying to create compare proc for subtype")
     ;
         NonCanonical = noncanon_uni_only(_),
         % Just generate code that will call error/1.

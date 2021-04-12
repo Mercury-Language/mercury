@@ -2649,6 +2649,11 @@ Example:
     --->    [T | list(T)].
 @end example
 
+Subtypes must not have user-defined equality or comparison predicates.
+The base type of a subtype may have user-defined equality or comparison.
+In that case, values of the subtype will be tested for equality or
+or compared using those predicates.
+
 There is no special interaction between subtypes and the type class system.
 
 @c -----------------------------------------------------------------------
@@ -4557,7 +4562,8 @@ the standard definition of equality is not the desired one;
 we want equality on sets to mean equality of the abstract values,
 not equality of their representations.
 To support such types, Mercury allows programmers to specify
-a user-defined equality predicate for user-defined types:
+a user-defined equality predicate for user-defined types
+(not including subtypes):
 
 @example
 :- type set(T)

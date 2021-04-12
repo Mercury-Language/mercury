@@ -313,6 +313,7 @@ SINGLEMODULE= \
 	subtype_invalid_supertype \
 	subtype_not_subset \
 	subtype_syntax \
+	subtype_user_compare \
 	switch_arm_multi_not_det \
 	tc_err1 \
 	tc_err2 \

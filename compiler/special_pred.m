@@ -339,7 +339,9 @@ special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, TypeBody) :-
                 ; NonCanonical = noncanon_cmp_only(_)
                 )
             ;
-                NonCanonical = noncanon_abstract(_),
+                ( NonCanonical = noncanon_abstract(_)
+                ; NonCanonical = noncanon_subtype
+                ),
                 fail
             )
         ;
@@ -354,6 +356,7 @@ special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, TypeBody) :-
             ;
                 ( NonCanonical = noncanon_uni_only(_)
                 ; NonCanonical = noncanon_abstract(_)
+                ; NonCanonical = noncanon_subtype
                 ),
                 fail
             )

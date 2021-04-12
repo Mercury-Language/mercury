@@ -79,7 +79,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
-:- import_module unit.
 
 :- inst hlds_type_body_du for hlds_type_body/0
     --->    hlds_du_type(ground, ground, ground, ground, ground).
@@ -331,8 +330,8 @@ module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
     ),
     (
         ParseTreeTypeDefn = parse_tree_du_type(DetailsDu),
-        check_for_dummy_type_with_unify_compare(TypeStatus, TypeCtor,
-            DetailsDu, Context, !FoundInvalidType, !Specs)
+        check_for_invalid_user_defined_unify_compare(TypeStatus,
+            TypeCtor, DetailsDu, Context, !FoundInvalidType, !Specs)
     ;
         ParseTreeTypeDefn = parse_tree_eqv_type(DetailsEqv),
         check_for_polymorphic_eqv_type_with_monomorphic_body(TypeStatus,
@@ -628,47 +627,53 @@ maybe_report_multiple_def_error(TypeStatus, TypeCtor, Context, OldDefn,
 
 %---------------------%
 
-:- pred check_for_dummy_type_with_unify_compare(type_status::in,
+:- pred check_for_invalid_user_defined_unify_compare(type_status::in,
     type_ctor::in, type_details_du::in, prog_context::in,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_dummy_type_with_unify_compare(TypeStatus, TypeCtor, DetailsDu,
+check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
         Context, !FoundInvalidType, !Specs) :-
     ( if
-        % Discriminated unions whose definition consists of a single
-        % zero-arity constructor are dummy types. Dummy types are not allowed
-        % to have user-defined equality or comparison.
         DetailsDu = type_details_du(MaybeSuperType, Ctors, MaybeCanonical,
             _MaybeDirectArg),
+        MaybeCanonical = noncanon(_),
         (
-            MaybeSuperType = no
+            MaybeSuperType = no,
+            % Discriminated unions whose definition consists of a single
+            % zero-arity constructor are dummy types. Dummy types are not
+            % allowed to have user-defined equality or comparison.
+            Ctors = one_or_more(Ctor, []),
+            Ctor ^ cons_args = []
         ;
             MaybeSuperType = yes(_)
-            % XXX SUBTYPE A subtype with a single zero-arity constructor
-            % is not necessarily a dummy type, so this check will incorrectly
-            % prevent such a subtype from having user-defined equality or
-            % comparison (however unlikely that would be).
         ),
-        Ctors = one_or_more(Ctor, []),
-        Ctor ^ cons_args = [],
-        MaybeCanonical = noncanon(_),
         % Only report errors for types defined in this module.
         type_status_defined_in_this_module(TypeStatus) = yes
     then
-        DummyMainPieces = [words("Error: the type"),
-            unqual_type_ctor(TypeCtor), words("contains no information,"),
-            words("and as such it is not allowed to have"),
-            words("user-defined equality or comparison."), nl],
-        DummyVerbosePieces = [words("Discriminated union types"),
-            words("whose body consists of a single zero-arity constructor"),
-            words("cannot have user-defined equality or comparison."), nl],
-        DummyMsg = simple_msg(Context,
-            [always(DummyMainPieces),
-            verbose_only(verbose_once, DummyVerbosePieces)]),
-        DummySpec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [DummyMsg]),
-        !:Specs = [DummySpec | !.Specs],
+        (
+            MaybeSuperType = no,
+            MainPieces = [words("Error: the type"),
+                unqual_type_ctor(TypeCtor), words("contains no information,"),
+                words("and as such it is not allowed to have"),
+                words("user-defined equality or comparison."), nl],
+            VerbosePieces = [words("Discriminated union types"),
+                words("whose body consists of a single zero-arity constructor"),
+                words("cannot have user-defined equality or comparison."), nl]
+        ;
+            MaybeSuperType = yes(_),
+            MainPieces = [words("Error: the subtype"),
+                unqual_type_ctor(TypeCtor),
+                words("is not allowed to have"),
+                words("user-defined equality or comparison."), nl],
+            VerbosePieces = [words("Only base types are allowed to have"),
+                words("user-defined equality or comparison."), nl]
+        ),
+        Msg = simple_msg(Context, [always(MainPieces),
+            verbose_only(verbose_once, VerbosePieces)]),
+        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            [Msg]),
+        !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
     else
         true
@@ -926,7 +931,21 @@ add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
         (
             MaybeSuperType = yes(SuperType),
             check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, Body,
-                SuperType, !FoundInvalidType, !Specs)
+                SuperType, MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs),
+            (
+                MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
+            ;
+                MaybeSetSubtypeNoncanon = set_subtype_noncanon,
+                % Set noncanonical flag on subtype definition if the base type
+                % is noncanonical.
+                NoncanonBody = Body ^ du_type_canonical :=
+                    noncanon(noncanon_subtype),
+                set_type_defn_body(NoncanonBody, TypeDefn, NoncanonTypeDefn),
+                module_info_get_type_table(!.ModuleInfo, TypeTable0),
+                replace_type_ctor_defn(TypeCtor, NoncanonTypeDefn,
+                    TypeTable0, TypeTable1),
+                module_info_set_type_table(TypeTable1, !ModuleInfo)
+            )
         ;
             MaybeSuperType = no
         ),
@@ -1206,13 +1225,18 @@ check_foreign_type_for_current_target(TypeCtor, ForeignTypeBody, PrevErrors,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+:- type maybe_set_subtype_noncanonical
+    --->    do_not_set_subtype_noncanon
+    ;       set_subtype_noncanon.
+
 :- pred check_subtype_defn(type_table::in, tvarset::in, type_ctor::in,
     hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du), mer_type::in,
+    maybe_set_subtype_noncanonical::out,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBody, SuperType,
-        !FoundInvalidType, !Specs) :-
+        MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs) :-
     hlds_data.get_type_defn_status(TypeDefn, OrigTypeStatus),
     hlds_data.get_type_defn_context(TypeDefn, Context),
     ( if type_to_ctor_and_args(SuperType, SuperTypeCtor, SuperTypeArgs) then
@@ -1223,14 +1247,15 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBody, SuperType,
             SearchRes = ok(SuperTypeDefn),
             check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
                 SuperTypeCtor, SuperTypeDefn, SuperTypeArgs, Seen1,
-                !FoundInvalidType, !Specs)
+                MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs)
         ;
             SearchRes = error(Error),
             Pieces = supertype_ctor_defn_error_pieces(SuperTypeCtor, Error),
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs],
-            !:FoundInvalidType = found_invalid_type
+            !:FoundInvalidType = found_invalid_type,
+            MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
         )
     else
         SuperTypeStr = mercury_type_to_string(TVarSet, print_name_only,
@@ -1241,18 +1266,20 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBody, SuperType,
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),
         !:Specs = [Spec | !.Specs],
-        !:FoundInvalidType = found_invalid_type
+        !:FoundInvalidType = found_invalid_type,
+        MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
     ).
 
 :- pred check_subtype_defn_2(type_table::in,
     type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
     type_ctor::in, hlds_type_defn::in, list(mer_type)::in, set(type_ctor)::in,
+    maybe_set_subtype_noncanonical::out,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
         SuperTypeCtor, SuperTypeDefn, SuperTypeArgs, Seen0,
-        !FoundInvalidType, !Specs) :-
+        MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
     hlds_data.get_type_defn_body(SuperTypeDefn, SuperTypeBody),
     (
@@ -1261,7 +1288,7 @@ check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
             IsForeign = no,
             check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBody,
                 SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
-                Seen0, !FoundInvalidType, !Specs)
+                Seen0, MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs)
         ;
             IsForeign = yes(_),
             Pieces = [words("Error:"), unqual_type_ctor(SuperTypeCtor),
@@ -1270,7 +1297,8 @@ check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs],
-            !:FoundInvalidType = found_invalid_type
+            !:FoundInvalidType = found_invalid_type,
+            MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
         )
     ;
         ( SuperTypeBody = hlds_eqv_type(_)
@@ -1285,24 +1313,33 @@ check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),
         !:Specs = [Spec | !.Specs],
-        !:FoundInvalidType = found_invalid_type
+        !:FoundInvalidType = found_invalid_type,
+        MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
     ).
 
 :- pred check_subtype_defn_3(type_table::in,
     type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
     type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
     list(mer_type)::in, set(type_ctor)::in,
+    maybe_set_subtype_noncanonical::out,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBody,
         SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
-        Seen0, !FoundInvalidType, !Specs) :-
+        Seen0, MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs) :-
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     check_subtype_has_base_type(TypeTable, TypeStatus, SuperTypeCtor,
         SuperTypeDefn, MaybeBaseTypeError, Seen0, _Seen),
     (
-        MaybeBaseTypeError = ok(unit),
+        MaybeBaseTypeError = ok(BaseMaybeCanonical),
+        (
+            BaseMaybeCanonical = canon,
+            MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
+        ;
+            BaseMaybeCanonical = noncanon(_),
+            MaybeSetSubtypeNoncanon = set_subtype_noncanon
+        ),
         check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBody,
             SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
             !FoundInvalidType, !Specs)
@@ -1317,25 +1354,27 @@ check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBody,
                 phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ),
-        !:FoundInvalidType = found_invalid_type
+        !:FoundInvalidType = found_invalid_type,
+        MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
     ).
 
 %---------------------%
 
 :- pred check_subtype_has_base_type(type_table::in, type_status::in,
     type_ctor::in, hlds_type_defn::in,
-    maybe_error(unit, list(format_component))::out,
+    maybe_error(maybe_canonical, list(format_component))::out,
     set(type_ctor)::in, set(type_ctor)::out) is det.
 
 check_subtype_has_base_type(TypeTable, OrigTypeStatus, CurTypeCtor,
         CurTypeDefn, MaybeError, !Seen) :-
     hlds_data.get_type_defn_body(CurTypeDefn, CurTypeBody),
     (
-        CurTypeBody = hlds_du_type(_, MaybeSuperType, _, _, IsForeign),
+        CurTypeBody = hlds_du_type(_, MaybeSuperType, MaybeCanonical, _,
+            IsForeign),
         (
             IsForeign = no,
             MaybeSuperType = no,
-            MaybeError = ok(unit)
+            MaybeError = ok(MaybeCanonical)
         ;
             IsForeign = no,
             MaybeSuperType = yes(SuperType),
