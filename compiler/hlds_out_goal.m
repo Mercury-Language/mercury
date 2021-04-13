@@ -1522,10 +1522,12 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarSet, _TypeQual,
     ;
         (
             GenericCall = cast(CastType),
-            CastTypeString = cast_type_to_string(CastType)
+            CastTypeString = cast_type_to_string(CastType),
+            PredOrFunc = pf_predicate
         ;
             GenericCall = subtype_coerce,
-            CastTypeString = "coerce"
+            CastTypeString = "coerce",
+            PredOrFunc = pf_function
         ),
         ( if string.contains_char(DumpOptions, 'l') then
             write_indent(Stream, Indent, !IO),
@@ -1544,12 +1546,25 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarSet, _TypeQual,
         else
             true
         ),
-        Functor = term.atom(CastTypeString),
-        term.var_list_to_term_list(ArgVars, ArgTerms),
-        term.context_init(Context),
-        Term = term.functor(Functor, ArgTerms, Context),
-        write_indent(Stream, Indent, !IO),
-        mercury_output_term(VarSet, VarNamePrint, Term, Stream, !IO),
+        (
+            PredOrFunc = pf_predicate,
+            Functor = term.atom(CastTypeString),
+            term.var_list_to_term_list(ArgVars, ArgTerms),
+            term.context_init(Context),
+            Term = term.functor(Functor, ArgTerms, Context),
+            write_indent(Stream, Indent, !IO),
+            mercury_output_term(VarSet, VarNamePrint, Term, Stream, !IO)
+        ;
+            PredOrFunc = pf_function,
+            pred_args_to_func_args(ArgVars, FuncArgVars, FuncRetVar),
+            write_indent(Stream, Indent, !IO),
+            mercury_output_var(VarSet, VarNamePrint, FuncRetVar, Stream, !IO),
+            io.write_string(Stream, " = ", !IO),
+            io.write_string(Stream,
+                functor_to_string(VarSet, VarNamePrint,
+                    term.atom(CastTypeString), FuncArgVars),
+                !IO)
+        ),
         io.write_string(Stream, Follow, !IO)
     ).
 

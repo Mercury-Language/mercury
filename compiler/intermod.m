@@ -628,8 +628,7 @@ gather_entities_to_opt_export_in_goal_expr(GoalExpr, DoWrite,
             DoWrite = no
         ;
             CallType = subtype_coerce,
-            % XXX SUBTYPE consider this later
-            DoWrite = no
+            DoWrite = yes
         )
     ;
         GoalExpr = call_foreign_proc(Attrs, _, _, _, _, _, _),
