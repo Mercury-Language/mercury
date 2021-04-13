@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -306,16 +306,17 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             _OutputArgsR, _OutputArgsF),
         list.append(InputArgsR, InputArgsF, InputArgs),
 
-        % Casts are generated inline.
         (
-            GenericCall = cast(_),
+            ( GenericCall = cast(_)
+            ; GenericCall = subtype_coerce
+            ),
+            % Casts are generated inline.
             require_in_regs(InputArgs, !IntervalInfo),
             require_access(InputArgs, !IntervalInfo)
         ;
             ( GenericCall = higher_order(_, _, _, _)
             ; GenericCall = class_method(_, _, _, _)
             ; GenericCall = event_call(_)
-            ; GenericCall = subtype_coerce  % XXX SUBTYPE revisit this later
             ),
             module_info_get_globals(ModuleInfo, Globals),
             call_gen.generic_call_info(Globals, GenericCall,
