@@ -76,13 +76,13 @@
 
 :- type dense_switch_info
     --->    dense_switch_info(
-                first_value     :: int,
-                last_value      :: int,
-                new_can_fail    :: can_fail
+                first_value         :: int,
+                last_value          :: int,
+                need_range_check    :: need_range_check
             ).
 
 tagged_case_list_is_dense_switch(CI, VarType, TaggedCases,
-        LowerLimit, UpperLimit, NumValues, ReqDensity, CanFail0,
+        LowerLimit, UpperLimit, NumValues, ReqDensity, CanFail,
         DenseSwitchInfo) :-
     list.length(TaggedCases, NumCases),
     NumCases > 2,
@@ -92,7 +92,7 @@ tagged_case_list_is_dense_switch(CI, VarType, TaggedCases,
     Density = switch_density(NumValues, Range),
     Density > ReqDensity,
     (
-        CanFail0 = can_fail,
+        CanFail = can_fail,
         % For semidet switches, we normally need to check that the variable
         % is in range before we index into the jump table. However, if the
         % range of the type is sufficiently small, we can make the jump table
@@ -105,21 +105,21 @@ tagged_case_list_is_dense_switch(CI, VarType, TaggedCases,
             DetDensity = switch_density(NumValues, TypeRange),
             DetDensity > ReqDensity
         then
-            CanFail = cannot_fail,
+            NeedRangeCheck = dont_need_range_check,
             FirstVal = TypeMin,
             LastVal = TypeMax
         else
-            CanFail = CanFail0,
+            NeedRangeCheck = need_range_check,
             FirstVal = LowerLimit,
             LastVal = UpperLimit
         )
     ;
-        CanFail0 = cannot_fail,
         CanFail = cannot_fail,
+        NeedRangeCheck = dont_need_range_check,
         FirstVal = LowerLimit,
         LastVal = UpperLimit
     ),
-    DenseSwitchInfo = dense_switch_info(FirstVal, LastVal, CanFail).
+    DenseSwitchInfo = dense_switch_info(FirstVal, LastVal, NeedRangeCheck).
 
 %---------------------------------------------------------------------------%
 
@@ -128,23 +128,23 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
     % Evaluate the variable which we are going to be switching on.
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
-    DenseSwitchInfo = dense_switch_info(FirstVal, LastVal, CanFail),
+    DenseSwitchInfo = dense_switch_info(FirstVal, LastVal, NeedRangeCheck),
     ( if FirstVal = 0 then
         IndexRval = VarRval
     else
         IndexRval = binop(int_sub(int_type_int), VarRval,
             const(llconst_int(FirstVal)))
     ),
-    % If the switch is not locally deterministic, we need to check that
-    % the value of the variable lies within the appropriate range.
+    % Check that the value of the variable lies within the appropriate range
+    % if necessary.
     (
-        CanFail = can_fail,
+        NeedRangeCheck = need_range_check,
         Difference = LastVal - FirstVal,
         fail_if_rval_is_false(
             binop(unsigned_le, IndexRval, const(llconst_int(Difference))),
             RangeCheckCode, !CI, !CLD)
     ;
-        CanFail = cannot_fail,
+        NeedRangeCheck = dont_need_range_check,
         RangeCheckCode = empty
     ),
 

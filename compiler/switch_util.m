@@ -126,16 +126,20 @@
 % Stuff for dense switches.
 %
 
-    % type_range(ModuleInfo, TypeCtorCategory, Type, Min, Max, NumValues):
+    % type_range(ModuleInfo, TypeCtorCategory, Type, Min, Max,
+    %   NumValuesInRange):
     %
     % Determine the range [Min..Max] of an atomic type, and the number of
-    % values in that range (including both endpoints).
+    % values in that range (including both endpoints). Values within the range
+    % are not necessarily used by the type.
     % Fail if the type isn't the sort of type that has a range
     % or if the type's range is too big to switch on (e.g. int).
     %
 :- pred type_range(module_info::in, type_ctor_category::in, mer_type::in,
     int::out, int::out, int::out) is semidet.
 
+    % switch_density(NumCases, NumValuesInRange):
+    %
     % Calculate the percentage density given the range and the number of cases.
     %
 :- func switch_density(int, int) = int.
@@ -406,7 +410,6 @@
 :- import_module io.
 :- import_module maybe.
 :- import_module one_or_more.
-:- import_module ranges.
 :- import_module require.
 :- import_module string.
 :- import_module uint.
@@ -922,7 +925,7 @@ is_smart_indexing_allowed_for_category(Globals, SwitchCategory) = Allowed :-
 % Stuff for dense switches.
 %
 
-type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
+type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValuesInRange) :-
     (
         TypeCtorCat = ctor_cat_builtin(cat_builtin_char),
         % Note also that some code in both dense_switch.m and in
@@ -957,10 +960,7 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
                 % A subtype enum does not necessarily use all values from 0 to
                 % the max.
                 CtorRepns = Repn ^ dur_ctor_repns,
-                Ranges0 = ranges.empty,
-                list.foldl(insert_enum_cons_tag, CtorRepns, Ranges0, Ranges),
-                % XXX SUBTYPE make callers not expect one contiguous range
-                ranges.is_contiguous(Ranges, Min, Max)
+                ctor_repns_int_tag_range(CtorRepns, Min, Max)
             )
         ;
             ( TypeBody = hlds_eqv_type(_)
@@ -971,18 +971,27 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValues) :-
             unexpected($pred, "enum type is not d.u. type?")
         )
     ),
-    NumValues = Max - Min + 1.
+    NumValuesInRange = Max - Min + 1.
 
-:- pred insert_enum_cons_tag(constructor_repn::in, ranges::in, ranges::out)
-    is det.
+:- pred ctor_repns_int_tag_range(list(constructor_repn)::in,
+    int::out, int::out) is semidet.
 
-insert_enum_cons_tag(CtorRepn, !Ranges) :-
+ctor_repns_int_tag_range([CtorRepn | CtorRepns], Min, Max) :-
     ConsTag = CtorRepn ^ cr_tag,
     get_int_tag(ConsTag, Int),
-    ranges.insert(Int, !Ranges).
+    list.foldl2(add_to_ctor_repn_int_tag_range, CtorRepns, Int, Min, Int, Max).
 
-switch_density(NumCases, Range) = Density :-
-    Density = (NumCases * 100) // Range.
+:- pred add_to_ctor_repn_int_tag_range(constructor_repn::in,
+    int::in, int::out, int::in, int::out) is det.
+
+add_to_ctor_repn_int_tag_range(CtorRepn, !Min, !Max) :-
+    ConsTag = CtorRepn ^ cr_tag,
+    get_int_tag(ConsTag, Int),
+    int.min(Int, !Min),
+    int.max(Int, !Max).
+
+switch_density(NumCases, NumValuesInRange) = Density :-
+    Density = (NumCases * 100) // NumValuesInRange.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1041,17 +1050,9 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
         % For can_fail switches, we normally need to check that the variable
         % is in range before we index into the jump table. However, if the
         % range of the type is sufficiently small, we can make the jump table
-        % large enough to hold all of the values for the type, but then we
-        % will need to do the bitvector test.
+        % large enough to hold all of the values for the type (with gaps),
+        % but then we will need to do the bitvector test.
         classify_type(ModuleInfo, SwitchVarType) = TypeCategory,
-        % If there are going to be no gaps in the lookup table, then we
-        % won't need a bitvector test to see if this switch has a value
-        % for this case.
-        ( if NumValues = Range then
-            NeedBitVecCheck0 = dont_need_bit_vec_check_no_gaps
-        else
-            NeedBitVecCheck0 = need_bit_vec_check
-        ),
         ( if
             type_range(ModuleInfo, TypeCategory, SwitchVarType,
                 TypeMin, TypeMax, TypeRange),
@@ -1063,8 +1064,15 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
             FirstVal = TypeMin,
             LastVal = TypeMax
         else
+            % First check the variable is in range.
             NeedRangeCheck = need_range_check,
-            NeedBitVecCheck = NeedBitVecCheck0,
+            % We will need to perform the bitvector test if the lookup table
+            % is going to contain any gaps.
+            ( if NumValues = Range then
+                NeedBitVecCheck = dont_need_bit_vec_check_no_gaps
+            else
+                NeedBitVecCheck = need_bit_vec_check
+            ),
             FirstVal = LowerLimit,
             LastVal = UpperLimit
         )
@@ -1074,8 +1082,7 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
         % but are not covered by any of the cases won't actually be reached.
         NeedRangeCheck = dont_need_range_check,
         % There may be gaps in the lookup table if switching on a variable of
-        % a subtype which does not use some values between the min and max
-        % values.
+        % a subtype which does not use some values in the range.
         ( if NumValues = Range then
             NeedBitVecCheck = dont_need_bit_vec_check_no_gaps
         else

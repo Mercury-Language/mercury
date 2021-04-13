@@ -127,9 +127,6 @@ p1(h, "p1_eight", f1, 8.0).
 :- pragma no_inline(p2/4).
 
 % This predicate needs a bitvec check but not a range check.
-% XXX SUBTYPE But a range check will be be generated because the presence of
-% base_only_2 breaks the values of foo into two ranges, and currently
-% type_range will only succeed of a single contiguous range.
 p2(a, "p2_one", f1, 1.1).
 p2(c, "p2_three", f1, 3.3).
 p2(d, "p2_four", f1, 4.4).

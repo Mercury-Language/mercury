@@ -206,7 +206,7 @@ is_dense_switch(Cases, ReqDensity) :-
     %
 :- pred maybe_eliminate_default(mlds_switch_range::in,
     list(mlds_switch_case)::in, mlds_switch_default::in, int::in,
-    int::out, int::out, bool::out) is det.
+    int::out, int::out, need_range_check::out) is det.
 
 maybe_eliminate_default(Range, Cases, Default, ReqDensity,
         FirstVal, LastVal, NeedRangeCheck) :-
@@ -218,18 +218,18 @@ maybe_eliminate_default(Range, Cases, Default, ReqDensity,
         NoDefaultDensity = switch_density(NumCases, TypeRange),
         NoDefaultDensity > ReqDensity
     then
-        NeedRangeCheck = no,
+        NeedRangeCheck = dont_need_range_check,
         FirstVal = Min,
         LastVal = Max
     else
         (
             Default = default_is_unreachable,
-            NeedRangeCheck = no
+            NeedRangeCheck = dont_need_range_check
         ;
             ( Default = default_do_nothing
             ; Default = default_case(_)
             ),
-            NeedRangeCheck = yes
+            NeedRangeCheck = need_range_check
         ),
         find_min_and_max_in_cases(Cases, FirstCaseVal, LastCaseVal),
         FirstVal = FirstCaseVal,
@@ -283,7 +283,7 @@ find_min_and_max_in_case_cond(match_range(MinRval, MaxRval), !Min, !Max) :-
     % Generate code for a switch using a dense jump table.
     %
 :- pred generate_dense_switch(list(mlds_switch_case)::in,
-    mlds_switch_default::in, int::in, int::in, bool::in,
+    mlds_switch_default::in, int::in, int::in, need_range_check::in,
     mlds_type::in, mlds_rval::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -329,7 +329,7 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
     % We may need to check that the value of the variable lies within the
     % appropriate range.
     (
-        NeedRangeCheck = yes,
+        NeedRangeCheck = need_range_check,
         Difference = LastVal - FirstVal,
         InRange = ml_binop(unsigned_le,
             Index, ml_const(mlconst_int(Difference))),
@@ -338,7 +338,7 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
         DoSwitch = ml_stmt_if_then_else(InRange, SwitchBody, Else, Context),
         Stmts = [StartComment, DoSwitch, EndLabelStmt, EndComment]
     ;
-        NeedRangeCheck = no,
+        NeedRangeCheck = dont_need_range_check,
         Stmts =
             [StartComment, DoJump | CasesCode] ++
             DefaultStmts ++
