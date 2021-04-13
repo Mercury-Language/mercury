@@ -6,6 +6,9 @@
 
 // mercury_atomic.h - defines atomic operations and other primitives used by
 // the parallel runtime.
+//
+// XXX we should have a version of this module that uses C11 atomics
+// where possible.
 
 #ifndef MERCURY_ATOMIC_OPS_H
 #define MERCURY_ATOMIC_OPS_H
@@ -566,7 +569,7 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
             __asm__ __volatile__("mfence");                                 \
         } while (0)
 
-#elif MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)
+#elif defined(MR_CLANG) || MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)
 
     // Our memory fences are better than GCC's. GCC only implements a full
     // fence.
@@ -580,8 +583,9 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
 
 #else
 
-    #error "Please implement memory fence operations " \
-        "for this compiler/architecture"
+    // Do not break this string literal; doing so produces an unreadable
+    // mess with clang.
+    #error "Please implement memory fence operations for this compiler/architecture"
 
 #endif
 
