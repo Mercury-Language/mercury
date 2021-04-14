@@ -2938,9 +2938,8 @@ show_decisions_if_du_type(Stream, MaybePrimaryTags, ShowWhichTypes,
             ; Body = hlds_solver_type(_)
             )
         ;
-            Body = hlds_du_type(_Ctors, _MaybeSuperType, _MaybeCanonical,
+            Body = hlds_du_type(_Ctors, MaybeSuperType, _MaybeCanonical,
                 MaybeRepn, _MaybeForeign),
-            % XXX SUBTYPE Show supertype.
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")
@@ -2949,19 +2948,8 @@ show_decisions_if_du_type(Stream, MaybePrimaryTags, ShowWhichTypes,
             ),
             Repn = du_type_repn(CtorRepns, _CtorRepnMap, _MaybeCheaperTagTest,
                 DuTypeKind, _MaybeDirectArgFunctors),
-            TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
-            (
-                TypeCtorSymName = qualified(TypeCtorModuleName, TypeCtorName),
-                TypeCtorStr = string.format("%s.%s/%d",
-                    [s(sym_name_to_string_sep(TypeCtorModuleName, ".")),
-                    s(TypeCtorName), i(TypeCtorArity)])
-            ;
-                TypeCtorSymName = unqualified(TypeCtorName),
-                TypeCtorStr = string.format("%s/%d",
-                    [s(TypeCtorName), i(TypeCtorArity)])
-            ),
-            io.format(Stream, "\ntype constructor %s: ",
-                [s(TypeCtorStr)], !IO),
+            TypeCtorStr = show_type_ctor_string(TypeCtor),
+            io.format(Stream, "\ntype constructor %s: ", [s(TypeCtorStr)], !IO),
             (
                 DuTypeKind = du_type_kind_direct_dummy,
                 io.write_string(Stream, "dummy type\n", !IO)
@@ -2981,13 +2969,41 @@ show_decisions_if_du_type(Stream, MaybePrimaryTags, ShowWhichTypes,
             ;
                 DuTypeKind = du_type_kind_general,
                 io.write_string(Stream, "general discriminated union type\n",
-                    !IO),
+                    !IO)
+            ),
+            (
+                MaybeSuperType = yes(SuperType),
+                type_to_ctor_det(SuperType, SuperTypeCtor),
+                SuperTypeCtorStr = show_type_ctor_string(SuperTypeCtor),
+                io.format(Stream, "super type constructor: %s\n",
+                    [s(SuperTypeCtorStr)], !IO)
+            ;
+                MaybeSuperType = no
+            ),
+            ( if DuTypeKind = du_type_kind_general then
                 list.foldl(
                     show_decisions_for_ctor(Stream, MaybePrimaryTags,
                         ForDevelopers, TypeCtorStr),
                     CtorRepns, !IO)
+            else
+                true
             )
         )
+    ).
+
+:- func show_type_ctor_string(type_ctor) = string.
+
+show_type_ctor_string(TypeCtor) = TypeCtorStr :-
+    TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+    (
+        TypeCtorSymName = qualified(TypeCtorModuleName, TypeCtorName),
+        TypeCtorStr = string.format("%s.%s/%d",
+            [s(sym_name_to_string_sep(TypeCtorModuleName, ".")),
+            s(TypeCtorName), i(TypeCtorArity)])
+    ;
+        TypeCtorSymName = unqualified(TypeCtorName),
+        TypeCtorStr = string.format("%s/%d",
+            [s(TypeCtorName), i(TypeCtorArity)])
     ).
 
 :- pred show_decisions_for_ctor(io.text_output_stream::in,
