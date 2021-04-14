@@ -432,7 +432,6 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             MaybeAnalysisStatus = yes(optimal)
         ;
             ( Details = cast(_)
-            ; Details = subtype_coerce
             ; Details = event_call(_)
             ),
             Result = trail_will_not_modify,
@@ -958,9 +957,6 @@ trail_annotate_goal_2(VarTypes, GoalInfo, !GoalExpr, Status, !ModuleInfo) :-
             Status = trail_will_not_modify
         ;
             GenericCall = cast(_),
-            Status = trail_will_not_modify
-        ;
-            GenericCall = subtype_coerce,
             Status = trail_will_not_modify
         )
     ;

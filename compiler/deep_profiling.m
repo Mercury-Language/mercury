@@ -1067,7 +1067,6 @@ deep_prof_transform_goal(Goal0, Goal, AddedImpurity, !DeepInfo) :-
         ;
             ( GenericCall = event_call(_)
             ; GenericCall = cast(_)
-            ; GenericCall = subtype_coerce
             ),
             Goal = Goal1,
             AddedImpurity = no
@@ -1348,9 +1347,6 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
         ;
             Generic = cast(_),
             unexpected($pred, "cast")
-        ;
-            Generic = subtype_coerce,
-            unexpected($pred, "coerce")
         ),
         GoalCodeModel = goal_info_get_code_model(GoalInfo0),
         module_info_get_globals(ModuleInfo, Globals),

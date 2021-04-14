@@ -250,7 +250,6 @@ coverage_prof_second_pass_goal(Goal0, Goal,
                 GathersCoverageAfter = yes
             ;
                 ( GenericCall = cast(_)
-                ; GenericCall = subtype_coerce
                 ; GenericCall = event_call(_)
                 ),
                 GathersCoverageAfter = no
@@ -913,7 +912,6 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, PortCountsCoverageAfterBefore,
             PortCountsCoverageAfterDirect = port_counts_give_coverage_after
         ;
             ( GenericCall = cast(_)
-            ; GenericCall = subtype_coerce
             ; GenericCall = event_call(_)
             ),
             Trivial0 = goal_is_trivial,

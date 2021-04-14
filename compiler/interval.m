@@ -307,9 +307,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         list.append(InputArgsR, InputArgsF, InputArgs),
 
         (
-            ( GenericCall = cast(_)
-            ; GenericCall = subtype_coerce
-            ),
+            GenericCall = cast(_),
             % Casts are generated inline.
             require_in_regs(InputArgs, !IntervalInfo),
             require_access(InputArgs, !IntervalInfo)
@@ -997,9 +995,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         GoalExpr0 = generic_call(GenericCall, _, _, _, _),
         % Casts are generated inline.
         (
-            ( GenericCall = cast(_)
-            ; GenericCall = subtype_coerce
-            ),
+            GenericCall = cast(_),
             MustHaveMap = no
         ;
             ( GenericCall = higher_order(_, _, _, _)

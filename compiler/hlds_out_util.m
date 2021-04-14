@@ -515,13 +515,12 @@ generic_call_id_to_string(gcid_event_call(EventName)) =
     "event " ++ EventName.
 generic_call_id_to_string(gcid_cast(CastType)) =
     cast_type_to_string(CastType).
-generic_call_id_to_string(gcid_coerce) =
-    "coerce".
 
 cast_type_to_string(unsafe_type_cast) = "unsafe_type_cast".
 cast_type_to_string(unsafe_type_inst_cast) = "unsafe_type_inst_cast".
 cast_type_to_string(equiv_type_cast) = "equiv_type_cast".
 cast_type_to_string(exists_cast) = "exists_cast".
+cast_type_to_string(subtype_coerce) = "coerce".
 
 call_arg_id_to_string(CallId, ArgNum, PredMarkers) = Str :-
     ( if ArgNum =< 0 then
@@ -598,11 +597,14 @@ arg_number_to_string(CallId, ArgNum) = Str :-
         ;
             ( GenericCallId = gcid_class_method(_, _)
             ; GenericCallId = gcid_event_call(_)
-            ; GenericCallId = gcid_cast(_)
+            ; GenericCallId = gcid_cast(unsafe_type_cast)
+            ; GenericCallId = gcid_cast(unsafe_type_inst_cast)
+            ; GenericCallId = gcid_cast(equiv_type_cast)
+            ; GenericCallId = gcid_cast(exists_cast)
             ),
             Str = "argument " ++ int_to_string(ArgNum)
         ;
-            GenericCallId = gcid_coerce,
+            GenericCallId = gcid_cast(subtype_coerce),
             ( if ArgNum = 2 then
                 Str = "the result"
             else

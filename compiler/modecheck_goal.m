@@ -1314,7 +1314,12 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
         GoalExpr = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,
             detism_det)
     ;
-        GenericCall = cast(_CastType),
+        GenericCall = cast(CastType),
+        ( CastType = unsafe_type_cast
+        ; CastType = unsafe_type_inst_cast
+        ; CastType = equiv_type_cast
+        ; CastType = exists_cast
+        ),
         ( if
             goal_info_has_feature(GoalInfo0, feature_keep_constant_binding),
             mode_info_get_instmap(!.ModeInfo, InstMap),
@@ -1351,7 +1356,7 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
         handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, Args0, Args,
             InstMap0, GoalExpr, !ModeInfo)
     ;
-        GenericCall = subtype_coerce,
+        GenericCall = cast(subtype_coerce),
         modecheck_coerce(Args0, Args, Modes0, Modes, Det, ExtraGoals,
             !ModeInfo),
         GoalExpr1 = generic_call(GenericCall, Args, Modes, arg_reg_types_unset,

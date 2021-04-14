@@ -1520,15 +1520,8 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarSet, _TypeQual,
         mercury_output_term(VarSet, VarNamePrint, Term, Stream, !IO),
         io.write_string(Stream, Follow, !IO)
     ;
-        (
-            GenericCall = cast(CastType),
-            CastTypeString = cast_type_to_string(CastType),
-            PredOrFunc = pf_predicate
-        ;
-            GenericCall = subtype_coerce,
-            CastTypeString = "coerce",
-            PredOrFunc = pf_function
-        ),
+        GenericCall = cast(CastType),
+        CastTypeString = cast_type_to_string(CastType),
         ( if string.contains_char(DumpOptions, 'l') then
             write_indent(Stream, Indent, !IO),
             io.write_strings(Stream, ["% ", CastTypeString, "\n"], !IO),
@@ -1546,6 +1539,7 @@ write_goal_generic_call(Info, Stream, _ModuleInfo, VarSet, _TypeQual,
         else
             true
         ),
+        PredOrFunc = write_cast_as_pred_or_func(CastType),
         (
             PredOrFunc = pf_predicate,
             Functor = term.atom(CastTypeString),
@@ -1591,6 +1585,21 @@ ho_arg_reg_to_string(ArgReg) = Str :-
     ;
         ArgReg = ho_arg_reg_f,
         Str = "reg_f"
+    ).
+
+:- func write_cast_as_pred_or_func(cast_kind) = pred_or_func.
+
+write_cast_as_pred_or_func(CastType) = PredOrFunc :-
+    (
+        ( CastType = unsafe_type_cast
+        ; CastType = unsafe_type_inst_cast
+        ; CastType = equiv_type_cast
+        ; CastType = exists_cast
+        ),
+        PredOrFunc = pf_predicate
+    ;
+        CastType = subtype_coerce,
+        PredOrFunc = pf_function
     ).
 
 %---------------------------------------------------------------------------%

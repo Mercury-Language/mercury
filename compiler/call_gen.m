@@ -193,9 +193,7 @@ generate_generic_call(OuterCodeModel, GenericCall, Args, Modes,
         GenericCall = event_call(EventName),
         generate_event_call(EventName, Args, GoalInfo, Code, !CI, !CLD)
     ;
-        ( GenericCall = cast(_)
-        ; GenericCall = subtype_coerce
-        ),
+        GenericCall = cast(_),
         ( if Args = [InputArg, OutputArg] then
             get_module_info(!.CI, ModuleInfo),
             get_proc_info(!.CI, ProcInfo),
@@ -439,7 +437,6 @@ generic_call_info(Globals, GenericCall, NumInputArgsR, NumInputArgsF,
         % Events and casts are generated inline.
         ( GenericCall = event_call(_)
         ; GenericCall = cast(_)
-        ; GenericCall = subtype_coerce
         ),
         CodeAddr = do_not_reached,
         SpecifierArgInfos = [],
@@ -512,8 +509,6 @@ generic_call_nonvar_setup(event_call(_), _, _, _, _, !CLD) :-
     unexpected($pred, "event_call").
 generic_call_nonvar_setup(cast(_), _, _, _, _, !CLD) :-
     unexpected($pred, "cast").
-generic_call_nonvar_setup(subtype_coerce, _, _, _, _, !CLD) :-
-    unexpected($pred, "coerce").
 
 %---------------------------------------------------------------------------%
 

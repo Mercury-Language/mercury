@@ -608,10 +608,8 @@ unique_modes_check_goal_generic_call(GenericCall, ArgVars, Modes,
         ArgOffset = 0
     ;
         % Casts are introduced by the compiler and should be mode correct.
+        % Coercions are mode checked.
         GenericCall = cast(_),
-        ArgOffset = 0
-    ;
-        GenericCall = subtype_coerce,
         ArgOffset = 0
     ),
     unique_modes_check_call_modes(ArgVars, Modes, ArgOffset, Detism,

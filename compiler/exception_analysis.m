@@ -558,8 +558,6 @@ check_goal_for_exceptions_generic_call(VarTypes, Details, Args, GoalInfo,
         Details = event_call(_)
     ;
         Details = cast(_)
-    ;
-        Details = subtype_coerce
     ).
 
 :- pred check_goals_for_exceptions(scc::in, vartypes::in,

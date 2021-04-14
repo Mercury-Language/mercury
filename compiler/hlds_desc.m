@@ -111,11 +111,9 @@ describe_goal(ModuleInfo, VarSet, Goal) = FullDesc :-
             GCall = event_call(Event),
             Desc = "event " ++ Event ++ describe_args(VarSet, Args)
         ;
-            GCall = cast(_),
-            Desc = "cast " ++ describe_args(VarSet, Args)
-        ;
-            GCall = subtype_coerce,
-            Desc = "coerce " ++ describe_args(VarSet, Args)
+            GCall = cast(CastType),
+            Desc = describe_cast(CastType) ++ " " ++
+                describe_args(VarSet, Args)
         )
     ;
         GoalExpr = call_foreign_proc(_, PredId, _, Args, ExtraArgs, _, _),
@@ -237,6 +235,23 @@ arg_type_ctor_name_to_string(TypeCtor) = TypeCtorStr :-
     TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
     TypeCtorStr = string.format("%s_%d",
         [s(sym_name_to_string(TypeCtorSymName)), i(TypeCtorArity)]).
+
+%---------------------------------------------------------------------------%
+
+:- func describe_cast(cast_kind) = string.
+
+describe_cast(CastType) = Desc :-
+    (
+        ( CastType = unsafe_type_cast
+        ; CastType = unsafe_type_inst_cast
+        ; CastType = equiv_type_cast
+        ; CastType = exists_cast
+        ),
+        Desc = "cast"
+    ;
+        CastType = subtype_coerce,
+        Desc = "coerce"
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_desc.

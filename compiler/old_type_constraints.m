@@ -852,11 +852,18 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
             add_message_to_spec(ErrMsg, !TCInfo)
         )
     ;
-        % Casts do not contain any type information.
-        Details = cast(_)
-    ;
-        Details = subtype_coerce,
-        sorry($pred, "coerce")
+        Details = cast(CastType),
+        (
+            ( CastType = unsafe_type_cast
+            ; CastType = unsafe_type_inst_cast
+            ; CastType = equiv_type_cast
+            ; CastType = exists_cast
+            )
+            % Casts do not contain any type information.
+        ;
+            CastType = subtype_coerce,
+            sorry($pred, "subtype_coerce")
+        )
     ).
 
     % Creates a constraint from the information stored in a predicate

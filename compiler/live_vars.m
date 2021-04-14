@@ -467,9 +467,7 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         GoalExpr0 = generic_call(GenericCall, ArgVars, Modes, _, _),
         GoalExpr = GoalExpr0,
         (
-            ( GenericCall = cast(_)
-            ; GenericCall = subtype_coerce
-            ),
+            GenericCall = cast(_),
             GoalInfo = GoalInfo0
         ;
             ( GenericCall = higher_order(_, _, _, _)

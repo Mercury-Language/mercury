@@ -831,7 +831,6 @@ mode_error_no_matching_mode_to_spec(ModeInfo, Vars, Insts, InitialInsts)
             ;
                 ( GenericCallId = gcid_event_call(_)
                 ; GenericCallId = gcid_cast(_)
-                ; GenericCallId = gcid_coerce
                 ),
                 PredOrFunc = pf_predicate
             ),

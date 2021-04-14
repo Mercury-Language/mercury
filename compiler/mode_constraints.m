@@ -1363,10 +1363,7 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
             sorry($pred, "event_call NYI")
         ;
             GenericCall = cast(_),
-            sorry($pred, "type/inst cast call NYI")
-        ;
-            GenericCall = subtype_coerce,
-            sorry($pred, "coerce NYI")
+            sorry($pred, "type/inst cast or coerce NYI")
         ),
         GoalExpr = GoalExpr0
     ;

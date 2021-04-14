@@ -677,7 +677,6 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             Purity = purity_pure                        % XXX this is wrong!
         ;
             ( GenericCall0 = cast(_)
-            ; GenericCall0 = subtype_coerce
             ; GenericCall0 = event_call(_)
             ),
             Purity = purity_pure

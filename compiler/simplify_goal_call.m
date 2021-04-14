@@ -262,7 +262,6 @@ simplify_goal_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo,
     ;
         ( GenericCall = class_method(_, _, _, _)
         ; GenericCall = cast(_)
-        ; GenericCall = subtype_coerce
         ),
         GoalExpr = GoalExpr0,
         Common = Common0

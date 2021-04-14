@@ -123,9 +123,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
         FuncDefns = [],
         Stmts = []
     ;
-        ( GenericCall = cast(_)
-        ; GenericCall = subtype_coerce
-        ),
+        GenericCall = cast(_),
         ml_gen_cast(Context, ArgVars, LocalVarDefns, FuncDefns, Stmts, !Info)
     ).
 

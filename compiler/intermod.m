@@ -621,14 +621,24 @@ gather_entities_to_opt_export_in_goal_expr(GoalExpr, DoWrite,
             CallType = higher_order(_, _, _, _),
             DoWrite = yes
         ;
-            ( CallType = class_method(_, _, _, _)
-            ; CallType = event_call(_)
-            ; CallType = cast(_)
-            ),
+            CallType = class_method(_, _, _, _),
             DoWrite = no
         ;
-            CallType = subtype_coerce,
-            DoWrite = yes
+            CallType = event_call(_),
+            DoWrite = no
+        ;
+            CallType = cast(CastType),
+            (
+                ( CastType = unsafe_type_cast
+                ; CastType = unsafe_type_inst_cast
+                ; CastType = equiv_type_cast
+                ; CastType = exists_cast
+                ),
+                DoWrite = no
+            ;
+                CastType = subtype_coerce,
+                DoWrite = yes
+            )
         )
     ;
         GoalExpr = call_foreign_proc(Attrs, _, _, _, _, _, _),

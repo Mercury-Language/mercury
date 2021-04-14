@@ -1479,16 +1479,23 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             typecheck_event_call(Context, EventName, Args,
                 !TypeAssignSet, !Info)
         ;
-            GenericCall = cast(_)
-            % A cast imposes no restrictions on its argument types,
-            % so nothing needs to be done here.
-        ;
-            GenericCall = subtype_coerce,
-            trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-                type_checkpoint("coerce", ModuleInfo, VarSet,
-                    !.TypeAssignSet, !IO)
-            ),
-            typecheck_coerce(Context, Args, !TypeAssignSet, !Info)
+            GenericCall = cast(CastType),
+            (
+                ( CastType = unsafe_type_cast
+                ; CastType = unsafe_type_inst_cast
+                ; CastType = equiv_type_cast
+                ; CastType = exists_cast
+                )
+                % A cast imposes no restrictions on its argument types,
+                % so nothing needs to be done here.
+            ;
+                CastType = subtype_coerce,
+                trace [compiletime(flag("type_checkpoint")), io(!IO)] (
+                    type_checkpoint("coerce", ModuleInfo, VarSet,
+                        !.TypeAssignSet, !IO)
+                ),
+                typecheck_coerce(Context, Args, !TypeAssignSet, !Info)
+            )
         ),
         GoalExpr = GoalExpr0
     ;

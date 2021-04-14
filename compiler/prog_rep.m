@@ -571,15 +571,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                 ( if ArgsRep = [InputArgRep, OutputArgRep] then
                     AtomicGoalRep = cast_rep(OutputArgRep, InputArgRep)
                 else
-                    unexpected($pred, "cast arity != 2")
-                )
-            ;
-                GenericCall = subtype_coerce,
-                ( if ArgsRep = [InputArgRep, OutputArgRep] then
-                    % XXX SUBTYPE add coerce_rep
-                    AtomicGoalRep = cast_rep(OutputArgRep, InputArgRep)
-                else
-                    unexpected($pred, "coerce arity != 2")
+                    unexpected($pred, "cast/coerce arity != 2")
                 )
             )
         ;

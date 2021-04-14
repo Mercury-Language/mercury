@@ -770,7 +770,6 @@ analyse_generic_call(ModuleInfo, ProcInfo, GenDetails, CallArgs, Modes,
     ;
         ( GenDetails = event_call(_) % XXX too conservative
         ; GenDetails = cast(_)
-        ; GenDetails = subtype_coerce
         ),
         SetToTop = yes
     ),

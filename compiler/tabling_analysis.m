@@ -345,9 +345,6 @@ check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
         ;
             Details = cast(_),
             Result = mm_tabled_will_not_call
-        ;
-            Details = subtype_coerce,
-            Result = mm_tabled_will_not_call
         ),
         MaybeAnalysisStatus = yes(optimal)
     ;
@@ -639,9 +636,6 @@ mm_tabling_annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
             Status = mm_tabled_will_not_call
         ;
             GenericCall = cast(_),
-            Status = mm_tabled_will_not_call
-        ;
-            GenericCall = subtype_coerce,
             Status = mm_tabled_will_not_call
         )
     ;

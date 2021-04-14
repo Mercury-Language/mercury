@@ -1067,7 +1067,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                     !ModuleInfo, !QualInfo, !Specs),
                 RValTermExpansion = expansion(_, RValGoalCord)
             ),
-            CoerceGoalExpr = generic_call(subtype_coerce,
+            CoerceGoalExpr = generic_call(cast(subtype_coerce),
                 [RValTermVar, XVar], [in_mode, out_mode],
                 arg_reg_types_unset, detism_det),
             goal_info_init(Context, CoerceGoalInfo),

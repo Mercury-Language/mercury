@@ -342,7 +342,6 @@ describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
     ;
         ( GoalExpr = generic_call(event_call(_), _, _, _, _)
         ; GoalExpr = generic_call(cast(_), _, _, _, _)
-        ; GoalExpr = generic_call(subtype_coerce, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ; GoalExpr = conj(_, _)
         ; GoalExpr = disj(_)

@@ -700,12 +700,7 @@
                 % A cast generic_call with two arguments, Input and Output,
                 % assigns `Input' to `Output', performing a cast of this kind.
                 cast_kind       :: cast_kind
-            )
-
-    ;       subtype_coerce.
-            % A coerce expression with two arguments, Input and Output,
-            % assigns `Input' to `Output'. (We could merge this into cast_kind
-            % eventually.)
+            ).
 
     % The various kinds of casts that we can do.
     %
@@ -719,7 +714,7 @@
     ;       equiv_type_cast
             % A safe type cast between equivalent types, in either direction.
 
-    ;       exists_cast.
+    ;       exists_cast
             % A safe cast between an internal type_info or typeclass_info
             % variable, for which the bindings of existential type variables
             % are known statically, to an external type_info or typeclass_info
@@ -727,6 +722,9 @@
             % assignments so that the simplification pass does not attempt
             % to merge the two variables, which could lead to inconsistencies
             % in the rtti_varmaps.
+
+    ;       subtype_coerce.
+            % A coerce expression.
 
     % Get a description of a generic_call goal.
     %
@@ -1931,9 +1929,6 @@ generic_call_to_id(GenericCall, GenericCallId) :-
     ;
         GenericCall = cast(CastType),
         GenericCallId = gcid_cast(CastType)
-    ;
-        GenericCall = subtype_coerce,
-        GenericCallId = gcid_coerce
     ).
 
 generic_call_pred_or_func(GenericCall) = PredOrFunc :-
@@ -1945,7 +1940,6 @@ generic_call_pred_or_func(GenericCall) = PredOrFunc :-
     ;
         ( GenericCall = event_call(_)
         ; GenericCall = cast(_)
-        ; GenericCall = subtype_coerce
         ),
         PredOrFunc = pf_predicate
     ).
@@ -3273,7 +3267,6 @@ rename_generic_call(Must, Subn, Call0, Call) :-
     ;
         ( Call0 = event_call(_EventName)
         ; Call0 = cast(_CastKind)
-        ; Call0 = subtype_coerce
         ),
         Call = Call0
     ).
