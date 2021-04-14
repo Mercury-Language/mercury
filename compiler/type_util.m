@@ -1178,7 +1178,6 @@ classify_type_defn_body(TypeBody) = TypeCategory :-
             ( AbstractDetails = abstract_type_general
             ; AbstractDetails = abstract_type_fits_in_n_bits(_)
             ; AbstractDetails = abstract_subtype(_)
-            % XXX SUBTYPE is cat_user_general ok for subtypes?
             ; AbstractDetails = abstract_solver_type
             ),
             TypeCategory = ctor_cat_user(cat_user_general)
