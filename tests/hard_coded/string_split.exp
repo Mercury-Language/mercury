@@ -6,3 +6,13 @@ user<tab>group<tab>id1<tab>id2
 x<tab>ay<tab>az
 x<tab>a <tab>aax <tab> x
 col1<tab>col2:val2<tab>col3<tab>
+
+"line1"
+"line2"
+"line3"
+"line4"
+
+"line1"
+"line2"
+"line3"
+"line4nonl"

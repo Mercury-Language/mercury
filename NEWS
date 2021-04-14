@@ -131,7 +131,10 @@ Changes to the Mercury standard library
 
 ### Changes to the `io` module
 
-* The following predicate has been added to this module:
+* The following predicates have been added to this module:
+
+    - pred `read_named_file_as_string/4`
+    - pred `read_named_file_as_lines/4`
     - pred `write_line_cc/4`
 
 * The following obsolete predicates have been removed:
@@ -173,6 +176,7 @@ Changes to the Mercury standard library
 * The following functions have been added:
 
     - func `add_suffix/2`
+    - func `split_into_lines/1`
     - func `uint_to_hex_string/1`
     - func `uint_to_uc_hex_string/1`
     - func `uint_to_octal_string/1`

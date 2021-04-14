@@ -11,6 +11,7 @@
 :- implementation.
 
 :- import_module char.
+:- import_module list.
 :- import_module string.
 
 main(!IO) :-
@@ -46,4 +47,11 @@ main(!IO) :-
         split_at_string(":::", "col1:::col2:val2:::col3:::"),
         "<tab>", io.write_string, !IO),
     io.nl(!IO),
+
+    io.nl(!IO),
+    list.foldl(io.write_line,
+        split_into_lines("line1\nline2\nline3\nline4\n"), !IO),
+    io.nl(!IO),
+    list.foldl(io.write_line,
+        split_into_lines("line1\nline2\nline3\nline4nonl"), !IO),
     true.

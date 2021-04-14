@@ -1299,6 +1299,32 @@
 % Whole file input predicates.
 %
 
+    % Open and read the named file, and if successful, return its contents
+    % as a string. If either the opening or the reading fails, return
+    % an error message describing the failure.
+    %
+    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
+    % or UTF-16.
+    %
+:- pred read_named_file_as_string(string::in, io.res(string)::out,
+    io::di, io::uo) is det.
+
+    % Open and read the named file, and if successful, return its contents
+    % as a list of lines. If either the opening or the reading fails, return
+    % an error message describing the failure.
+    %
+    % This predicate views files as consisting of a sequence of lines,
+    % with each line consisting of a possibly empty sequence of non-newline
+    % characters, followed either by a newline character, or by the
+    % end of the file. The string returned for each line will not contain
+    % the newline character.
+    %
+    % WARNING: the returned string is NOT guaranteed to be valid UTF-8
+    % or UTF-16.
+    %
+:- pred read_named_file_as_lines(string::in, io.res(list(string))::out,
+    io::di, io::uo) is det.
+
     % Read all the characters (code points) from the current input stream
     % or from the specified stream, until eof or error.
     %
@@ -9131,6 +9157,45 @@ flush_binary_output(binary_output_stream(Stream), !IO) :-
 %
 % Whole file input predicates.
 %
+
+read_named_file_as_string(FileName, Result, !IO) :-
+    io.open_input(FileName, OpenResult, !IO),
+    (
+        OpenResult = ok(FileStream),
+        io.read_file_as_string(FileStream, ReadResult, !IO),
+        (
+            ReadResult = ok(String),
+            Result = ok(String)
+        ;
+            ReadResult = error(_PartialString, Error),
+            Result = error(Error)
+        ),
+        io.close_input(FileStream, !IO)
+    ;
+        OpenResult = error(Error),
+        Result = error(Error)
+    ).
+
+read_named_file_as_lines(FileName, Result, !IO) :-
+    io.open_input(FileName, OpenResult, !IO),
+    (
+        OpenResult = ok(FileStream),
+        io.read_file_as_string(FileStream, ReadResult, !IO),
+        (
+            ReadResult = ok(String),
+            Lines = split_into_lines(String),
+            Result = ok(Lines)
+        ;
+            ReadResult = error(_PartialString, Error),
+            Result = error(Error)
+        ),
+        io.close_input(FileStream, !IO)
+    ;
+        OpenResult = error(Error),
+        Result = error(Error)
+    ).
+
+%---------------------%
 
 read_file(Result, !IO) :-
     input_stream(Stream, !IO),

@@ -69,8 +69,8 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module bimap.
-:- import_module char.
 :- import_module dir.
+:- import_module int.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -136,84 +136,73 @@ get_source_file_map(SourceFileMap, !IO) :-
         SourceFileMap = SourceFileMap0
     ;
         MaybeSourceFileMap0 = no,
-        io.open_input(modules_file_name, OpenRes, !IO),
+        ModulesFileName = modules_file_name,
+        io.read_named_file_as_lines(ModulesFileName, ReadResult, !IO),
         (
-            OpenRes = ok(Stream),
-            io.set_input_stream(Stream, OldStream, !IO),
-            read_source_file_map([], bimap.init, SourceFileMap, !IO),
-            io.set_input_stream(OldStream, _, !IO),
-            io.close_input(Stream, !IO)
+            ReadResult = ok(FileLines),
+            bimap.init(SourceFileMap0),
+            parse_source_file_map(FileLines, ModulesFileName, 1, ErrorMsg,
+                SourceFileMap0, SourceFileMap1),
+            ( if ErrorMsg = "" then
+                SourceFileMap = SourceFileMap1
+            else
+                % If the file does exist but is malformed, then
+                % we *should* generate an error, but pretending that
+                % the file exists and is empty preserves old behavior.
+                bimap.init(SourceFileMap)
+            )
         ;
-            OpenRes = error(_),
+            ReadResult = error(_),
             % If the file doesn't exist, then the mapping is empty.
+            % XXX ReadResult can be error/1 even when the file *does* exist.
+            % For example, the open could fail due to a permission problem.
             SourceFileMap = bimap.init
         ),
         globals.io_set_maybe_source_file_map(yes(SourceFileMap), !IO)
     ).
 
-:- pred read_source_file_map(list(char)::in,
-    source_file_map::in, source_file_map::out, io::di, io::uo) is det.
+:- pred parse_source_file_map(list(string)::in, string::in, int::in,
+    string::out, source_file_map::in, source_file_map::out) is det.
 
-read_source_file_map(ModuleChars, !Map, !IO) :-
-    read_until_char('\t', [], ModuleCharsResult, !IO),
+parse_source_file_map(Lines, ModulesFileName, CurLineNumber, ErrorMsg,
+        !SourceFileMap) :-
     (
-        ModuleCharsResult = ok(RevModuleChars),
-        string.from_rev_char_list(RevModuleChars, ModuleStr),
-        ModuleName = string_to_sym_name(ModuleStr),
-        read_until_char('\n', [], FileNameCharsResult, !IO),
-        (
-            FileNameCharsResult = ok(FileNameChars),
-            string.from_rev_char_list(FileNameChars, FileName),
-            bimap.set(ModuleName, FileName, !Map),
-            read_source_file_map(ModuleChars, !Map, !IO)
-        ;
-            FileNameCharsResult = eof,
-            io.set_exit_status(1, !IO),
-            io.write_string("mercury_compile: unexpected end " ++
-                "of file in Mercury.modules file.\n", !IO)
-        ;
-            FileNameCharsResult = error(Error),
-            io.set_exit_status(1, !IO),
-            io.write_string("mercury_compile: error in " ++
-                "Mercury.modules file: ", !IO),
-            io.write_string(io.error_message(Error), !IO),
-            io.nl(!IO)
-        )
-    ;
-        ModuleCharsResult = eof
-    ;
-        ModuleCharsResult = error(Error),
-        io.set_exit_status(1, !IO),
-        io.write_string("mercury_compile: error in " ++
-            "Mercury.modules file: ", !IO),
-        io.write_string(io.error_message(Error), !IO),
-        io.nl(!IO)
-    ).
-
-:- pred read_until_char(char::in, list(char)::in, io.result(list(char))::out,
-    io::di, io::uo) is det.
-
-read_until_char(EndChar, Chars0, Result, !IO) :-
-    io.read_char(CharRes, !IO),
-    (
-        CharRes = ok(Char),
-        ( if Char = EndChar then
-            Result = ok(Chars0)
+        Lines = [HeadLine | TailLines],
+        ( if string.sub_string_search(HeadLine, "\t", TabIndex) then
+            string.length(HeadLine, LineLength),
+            string.unsafe_between(HeadLine, 0, TabIndex, ModuleNameStr),
+            string.unsafe_between(HeadLine, TabIndex + 1, LineLength,
+                FileName),
+            ModuleName = string_to_sym_name(ModuleNameStr),
+            % XXX A module cannot be contained in two files, which means that
+            % ModuleName should be a unique key in the forward map.
+            % However, with nested modules, a single file may contain
+            % more than one module, so FileName may *not* be a unique key
+            % in the backward map.
+            % XXX However, if Mercury.modules contains more than one line
+            % with the same filename, then this code has a bug, because
+            % the call sequence
+            %
+            %   bimap.set("module_a", "filename", !SourceFileMap)
+            %   bimap.set("module_a.sub1", "filename", !SourceFileMap)
+            %   bimap.set("module_a.sub2", "filename", !SourceFileMap)
+            %
+            % will leave only one key that maps to the value "filename",
+            % which will be the last one added ("module_a.sub2" in this case).
+            %
+            % XXX We should call bimap.det_insert here to abort in such
+            % situations, but I (zs) am not sure that output generated by
+            % write_source_file_map is guaranteed to be a bijection.
+            bimap.set(ModuleName, FileName, !SourceFileMap),
+            parse_source_file_map(TailLines,
+                ModulesFileName, CurLineNumber + 1, ErrorMsg, !SourceFileMap)
         else
-            read_until_char(EndChar, [Char | Chars0], Result, !IO)
+            string.format("line %d of %s is missing a tab character",
+                [i(CurLineNumber), s(ModulesFileName)], ErrorMsg)
         )
     ;
-        CharRes = eof,
-        (
-            Chars0 = [],
-            Result = eof
-        ;
-            Chars0 = [_ | _],
-            Result = ok(Chars0)
-        )
-    ;
-        CharRes = error(Error),
-        Result = error(Error)
+        Lines = [],
+        ErrorMsg = ""
     ).
 
 write_source_file_map(Globals, FileNames, !IO) :-
@@ -269,10 +258,8 @@ write_source_file_map_2(Globals, MapStream, FileName,
         then
             true
         else
-            io.set_output_stream(MapStream, OldStream, !IO),
-            io.format("%s\t%s\n",
-                [s(sym_name_to_escaped_string(ModuleName)), s(FileName)], !IO),
-            io.set_output_stream(OldStream, _, !IO)
+            io.format(MapStream, "%s\t%s\n",
+                [s(sym_name_to_escaped_string(ModuleName)), s(FileName)], !IO)
         )
     ;
         MaybeModuleName = no,

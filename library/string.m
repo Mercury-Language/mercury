@@ -956,6 +956,14 @@
     %
 :- func split_at_string(string, string) = list(string).
 
+    % split_into_lines(String) breaks String into a sequence of lines,
+    % with each line consisting of a possibly empty sequence of non-newline
+    % characters, followed either by a newline character, or by the end
+    % of the string. The string returned for a line will not contain
+    % the newline character.
+    %
+:- func split_into_lines(string) = list(string).
+
 %---------------------------------------------------------------------------%
 %
 % Dealing with prefixes and suffixes.
@@ -4338,21 +4346,59 @@ split_at_separator_loop(DelimP, Str, CurPos, PastSegEnd, !Segments) :-
 split_at_char(C, String) =
     split_at_separator(unify(C), String).
 
-split_at_string(Needle, Total) = Out :-
-    split_at_string_loop(Total, Needle, length(Needle), 0, Out).
+%---------------------%
 
-:- pred split_at_string_loop(string::in, string::in, int::in, int::in,
+split_at_string(Separator, Str) = Segments :-
+    split_at_string_loop(Separator, string.length(Separator), Str, 0,
+        Segments).
+
+:- pred split_at_string_loop(string::in, int::in, string::in, int::in,
     list(string)::out) is det.
 
-split_at_string_loop(Total, Needle, NeedleLen, StartAt, Out) :-
-    ( if unsafe_sub_string_search_start(Total, Needle, StartAt, NeedlePos) then
-        BeforeNeedle = unsafe_between(Total, StartAt, NeedlePos),
-        split_at_string_loop(Total, Needle, NeedleLen, NeedlePos + NeedleLen,
-            Tail),
-        Out = [BeforeNeedle | Tail]
+split_at_string_loop(Separator, SeparatorLen, Str, CurPos, Segments) :-
+    ( if unsafe_sub_string_search_start(Str, Separator, CurPos, SepPos) then
+        HeadSegment = unsafe_between(Str, CurPos, SepPos),
+        % This call is tail recursive when targeting C because we compile
+        % all library modules with --optimize-constructor-last-call.
+        %
+        % When targeting languages other than C, that option has no effect,
+        % but that is ok, because in the vast majority of cases, Str is
+        % not very long.
+        split_at_string_loop(Separator, SeparatorLen,
+            Str, SepPos + SeparatorLen, TailSegments),
+        Segments = [HeadSegment | TailSegments]
     else
-        unsafe_between(Total, StartAt, length(Total), Last),
-        Out = [Last]
+        unsafe_between(Str, CurPos, string.length(Str), LastSegment),
+        Segments = [LastSegment]
+    ).
+
+%---------------------%
+
+split_into_lines(Str) = Lines :-
+    split_into_lines_loop(Str, 0, [], RevLines),
+    list.reverse(RevLines, Lines).
+
+:- pred split_into_lines_loop(string::in, int::in,
+    list(string)::in, list(string)::out) is det.
+
+split_into_lines_loop(Str, CurPos, !RevLines) :-
+    ( if unsafe_sub_string_search_start(Str, "\n", CurPos, SepPos) then
+        Line = unsafe_between(Str, CurPos, SepPos),
+        !:RevLines = [Line | !.RevLines],
+        % Unlike split_at_string, split_into_lines can absolutely be expected
+        % to be invoked on huge strings fairly frequently, so we want this
+        % to be tail recursive even if we are not targeting C. This is why
+        % this is a tail call. The price of making this a tail call is
+        % the call to list.reverse in our parent.
+        split_into_lines_loop(Str, SepPos + 1, !RevLines)
+    else
+        StrLen = string.length(Str),
+        ( if CurPos = StrLen then
+            true
+        else
+            unsafe_between(Str, CurPos, StrLen, LastLine),
+            !:RevLines = [LastLine | !.RevLines]
+        )
     ).
 
 %---------------------------------------------------------------------------%
