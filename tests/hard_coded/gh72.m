@@ -37,8 +37,6 @@ main(!IO) :-
     ite_test_init(12, !IO), 
     ite_test_init(13, !IO), 
 
-    higher_order_tests("abc", "xyz", "42", !IO),
-
     method_tests("string", "hij", !IO),
     method_tests("int", 53, !IO).
 
@@ -285,42 +283,6 @@ ite_init(N, T, StrA ++ " | " ++ StrB) :-
     % Test that the most up-to-date version of T reaches the code
     % after the if-then-else.
     StrB = dump_t_nl(T).
-
-%-----------------------------------------------------------------------------%
-
-:- pred higher_order_tests(string::in, string::in, string::in,
-    io::di, io::uo) is det.
-
-higher_order_tests(StrA, StrB, StrC, !IO) :-
-    ClosureA = fill1(StrA),
-    ClosureB = fill1(StrB),
-    ClosureC = fill1(StrC),
-
-    io.format("\nhigher order test A %s\n", [s(StrA)], !IO),
-    higher_order_test(ClosureA, f1(_), !IO),
-    higher_order_test(ClosureA, f2(package("testA2", "testA2")), !IO),
-    higher_order_test(ClosureA, f3(package("testA3", "testA3")), !IO),
-    higher_order_test(ClosureA, f4(package("testA4", "testA4")), !IO),
-
-    io.format("\nhigher order test B %s\n", [s(StrB)], !IO),
-    higher_order_test(ClosureB, f1(_), !IO),
-    higher_order_test(ClosureB, f2(package("testB2", "testB2")), !IO),
-    higher_order_test(ClosureB, f3(package("testB3", "testB3")), !IO),
-    higher_order_test(ClosureB, f4(package("testB4", "testB4")), !IO),
-
-    io.format("\nhigher order test C %s\n", [s(StrC)], !IO),
-    higher_order_test(ClosureC, f1(_), !IO),
-    higher_order_test(ClosureC, f2(package("testC2", "testC2")), !IO),
-    higher_order_test(ClosureC, f3(package("testC3", "testC3")), !IO),
-    higher_order_test(ClosureC, f4(package("testC4", "testC4")), !IO).
-
-:- pred higher_order_test((pred(t)), t, io, io).
-:- mode higher_order_test((pred(t234 >> ground) is det), t234 >> ground,
-    di, uo) is det.
-
-higher_order_test(Closure, T, !IO) :-
-    Closure(T),
-    io.write_string(dump_t_nl(T), !IO).
 
 %-----------------------------------------------------------------------------%
 

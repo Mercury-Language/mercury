@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2020 The Mercury team.
+% Copyright (C) 2020-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -142,13 +142,8 @@
 % (using the same predicate, find_and_record_any_direct_arg_in_out_posns)
 % on the procedures it creates.
 %
-% This optimization is one reason why mercury_compile_middle_passes.m invokes
-% this module after the lambda expansion transformation. Another reason is that
-% it allows us to transform higher order calls the same way as we do plain
-% calls, provided we transform every reference to a daio procedure in
-% unifications that create closures to the clone of that daio procedure.
-% (The arguments that we put inside closures cannot be daio arguments,
-% since such arguments must be ground.)
+% This optimization is why mercury_compile_middle_passes.m invokes
+% this module after the lambda expansion transformation.
 %
 %---------------------------------------------------------------------------%
 
@@ -1196,33 +1191,26 @@ expand_daio_in_goal(Goal0, Goal, InstMap0, !VarMap, !Info) :-
                 GoalExpr0, GoalExpr)
         )
     ;
-        GoalExpr0 = unify(LHSVar, RHS0, UnifyMode, Unification0, UnifyContext),
+        GoalExpr0 = unify(_, _, _, Unification, _),
         ( if
-            Unification0 = construct(_, ConsId0, _, _, _, _, _),
-            ConsId0 = closure_cons(ShroudedPredProcId0, EvalMethod),
-            ClosurePredProcId0 = unshroud_pred_proc_id(ShroudedPredProcId0),
+            Unification = construct(_, ConsId, _, _, _, _, _),
+            ConsId = closure_cons(ShroudedPredProcId, _EvalMethod),
+            ClosurePredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
             ProcMap = !.Info ^ daio_proc_map,
-            map.search(ProcMap, ClosurePredProcId0, CloneProc)
+            map.contains(ProcMap, ClosurePredProcId)
         then
-            CloneProc = direct_arg_proc_in_out(ClonePredProcId, _OoMInOutArgs),
-            ShroudedPredProcId = shroud_pred_proc_id(ClonePredProcId),
-            ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
-            Unification = Unification0 ^ construct_cons_id := ConsId,
-            (
-                RHS0 = rhs_functor(RHSConsId0, MaybeExistConstr0, ArgVars0),
-                expect(unify(RHSConsId0, ConsId0), $pred,
-                    "closure construct cons_id mismatch"),
-                expect(unify(MaybeExistConstr0, is_not_exist_constr), $pred,
-                    "closure construct is_exist_constr"),
-                RHS = rhs_functor(ConsId, MaybeExistConstr0, ArgVars0)
-            ;
-                ( RHS0 = rhs_var(_)
-                ; RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
-                ),
-                unexpected($pred, "closure construct is not rhs_functor")
-            ),
-            GoalExpr1 = unify(LHSVar, RHS, UnifyMode, Unification,
-                UnifyContext)
+            % We did allow a closure to be constructed from a clone procedure,
+            % but that leaves the HLDS in an inconsistent state, e.g. the type
+            % and inst of the closure variable needs to be updated for the
+            % extra arguments, and it gets a lot more complicated than that.
+            % While the float registers pass is the only part of the compiler
+            % known to break on the inconsistency, that may only be due to the
+            % the rarity of higher order terms with daio arguments. Leaving the
+            % HLDS in an inconsistent state is a bad idea anyway.
+            % See discussion on m-rev on 2021 Jan 25.
+            sorry($pred,
+                "cannot construct closure with partially-instantiated " ++
+                "direct_arg arguments")
         else
             GoalExpr1 = GoalExpr0
         ),
