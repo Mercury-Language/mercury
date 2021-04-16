@@ -139,7 +139,7 @@ process(Options, !IO) :-
     lookup_bool_option(Options, verbose, Verbose),
     (
         Verbose = yes,
-        report_stats(!IO)
+        io.report_standard_stats(!IO)
     ;
         Verbose = no
     ),
@@ -181,7 +181,7 @@ process_2(Options, Module, Parser, Decls0, Clauses0, XFormList, !IO) :-
     lookup_bool_option(Options, verbose, Verbose),
     (
         Verbose = yes,
-        report_stats(!IO)
+        io.report_standard_stats(!IO)
     ;
         Verbose = no
     ),
