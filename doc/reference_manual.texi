@@ -2652,7 +2652,7 @@ Example:
 Subtypes must not have user-defined equality or comparison predicates.
 The base type of a subtype may have user-defined equality or comparison.
 In that case, values of the subtype will be tested for equality or
-or compared using those predicates.
+compared using those predicates.
 
 There is no special interaction between subtypes and the type class system.
 
@@ -5145,10 +5145,15 @@ For example:
 
 @example
 :- pred foo(pred(int)).
-:- mode foo(free >> pred(out) is det) is det.
+:- mode foo(free >> (pred(out) is det)) is det.
 
 foo(sum([1,2,3])).
 @end example
+
+In the above mode declaration, the current Mercury implementation
+requires parentheses around the higher-order inst.
+(This is because the operator @samp{>>} binds more tightly then the operator
+@samp{is}.)
 
 Note that in Mercury it is an error to attempt to unify two higher-order terms.
 This is because equivalence of higher-order terms
