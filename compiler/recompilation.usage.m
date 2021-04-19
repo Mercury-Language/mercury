@@ -82,7 +82,7 @@
     % this number. recompilation_check.m should recompile if the version number
     % is out of date.
     %
-:- func usage_file_version_number = int.
+:- func used_file_version_number = int.
 
 %-----------------------------------------------------------------------------%
 
@@ -162,7 +162,7 @@ write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestampMap, !IO) :-
 
 write_usage_file_2(Stream, ModuleInfo, NestedSubModules, RecompInfo,
         TimestampMap, !IO) :-
-    io.write_int(Stream, usage_file_version_number, !IO),
+    io.write_int(Stream, used_file_version_number, !IO),
     io.write_string(Stream, ",", !IO),
     io.write_int(Stream, version_numbers_version_number, !IO),
     io.write_string(Stream, ".\n\n", !IO),
@@ -526,7 +526,7 @@ write_resolved_functor(ResolvedFunctor, Stream, !IO) :-
         io.write_string(Stream, ")", !IO)
     ).
 
-usage_file_version_number = 2.
+used_file_version_number = 2.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
