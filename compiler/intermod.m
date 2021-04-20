@@ -645,17 +645,14 @@ gather_entities_to_opt_export_in_goal_expr(GoalExpr, DoWrite,
         % Inlineable exported pragma_foreign_code goals cannot use any
         % non-exported types, so we just write out the clauses.
         MaybeMayDuplicate = get_may_duplicate(Attrs),
-        (
-            MaybeMayDuplicate = yes(MayDuplicate),
-            (
-                MayDuplicate = proc_may_duplicate,
-                DoWrite = yes
-            ;
-                MayDuplicate = proc_may_not_duplicate,
-                DoWrite = no
+        MaybeMayExportBody = get_may_export_body(Attrs),
+        ( if
+            ( MaybeMayDuplicate = yes(proc_may_not_duplicate)
+            ; MaybeMayExportBody = yes(proc_may_not_export_body)
             )
-        ;
-            MaybeMayDuplicate = no,
+        then
+            DoWrite = no
+        else
             DoWrite = yes
         )
     ;

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 expandtab
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 2020-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -253,7 +254,7 @@ parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
                 MaybeForeignLangType = ok1(ForeignLangType)
             )
         ;
-            % NOTE: if we get here then MaybeFooreignLang will be an error and
+            % NOTE: if we get here then MaybeForeignLang will be an error and
             % will give the user the required error message.
             MaybeLanguage = error1(_),
             MaybeForeignLangType = error1([])   % Dummy value.
@@ -680,7 +681,8 @@ parse_pragma_foreign_proc_varlist(VarSet, ContextPieces,
     ;       coll_affects_liveness(proc_affects_liveness)
     ;       coll_allocates_memory(proc_allocates_memory)
     ;       coll_registers_roots(proc_registers_roots)
-    ;       coll_may_duplicate(proc_may_duplicate).
+    ;       coll_may_duplicate(proc_may_duplicate)
+    ;       coll_may_export_body(proc_may_export_body).
 
 :- pred parse_and_check_pragma_foreign_proc_attributes_term(
     foreign_language::in, varset::in, term::in, cord(format_component)::in,
@@ -736,7 +738,11 @@ parse_and_check_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
         coll_registers_roots(proc_registers_roots) -
             coll_registers_roots(proc_does_not_have_roots),
         coll_may_duplicate(proc_may_duplicate) -
-            coll_may_duplicate(proc_may_not_duplicate)
+            coll_may_duplicate(proc_may_not_duplicate),
+        coll_may_export_body(proc_may_export_body) -
+            coll_may_export_body(proc_may_not_export_body),
+        coll_may_duplicate(proc_may_not_duplicate) -
+            coll_may_export_body(proc_may_export_body)
     ],
     parse_pragma_foreign_proc_attributes_term(ContextPieces, VarSet, Term,
         MaybeAttrList),
@@ -870,6 +876,8 @@ parse_single_pragma_foreign_proc_attribute(VarSet, Term, Flag) :-
         Flag = coll_registers_roots(RegistersRoots)
     else if parse_may_duplicate(Term, MayDuplicate) then
         Flag = coll_may_duplicate(MayDuplicate)
+    else if parse_may_export_body(Term, MayExport) then
+        Flag = coll_may_export_body(MayExport)
     else
         fail
     ).
@@ -972,14 +980,26 @@ parse_registers_roots(Term, RegistersRoots) :-
 
 :- pred parse_may_duplicate(term::in, proc_may_duplicate::out) is semidet.
 
-parse_may_duplicate(Term, RegistersRoots) :-
+parse_may_duplicate(Term, MayDuplicate) :-
     Term = term.functor(term.atom(Functor), [], _),
     (
         Functor = "may_duplicate",
-        RegistersRoots = proc_may_duplicate
+        MayDuplicate = proc_may_duplicate
     ;
         Functor = "may_not_duplicate",
-        RegistersRoots = proc_may_not_duplicate
+        MayDuplicate = proc_may_not_duplicate
+    ).
+
+:- pred parse_may_export_body(term::in, proc_may_export_body::out) is semidet.
+
+parse_may_export_body(Term, MayExportBody) :-
+    Term = term.functor(term.atom(Functor), [], _),
+    (
+        Functor = "may_export_body",
+        MayExportBody = proc_may_export_body
+    ;
+        Functor = "may_not_export_body",
+        MayExportBody = proc_may_not_export_body
     ).
 
 :- pred parse_tabled_for_io(term::in, proc_tabled_for_io::out) is semidet.
@@ -1083,6 +1103,8 @@ process_attribute(coll_registers_roots(RegistersRoots), !Attrs) :-
     set_registers_roots(RegistersRoots, !Attrs).
 process_attribute(coll_may_duplicate(MayDuplicate), !Attrs) :-
     set_may_duplicate(yes(MayDuplicate), !Attrs).
+process_attribute(coll_may_export_body(MayExport), !Attrs) :-
+    set_may_export_body(yes(MayExport), !Attrs).
 
 %---------------------%
 

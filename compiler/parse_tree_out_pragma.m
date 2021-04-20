@@ -595,6 +595,7 @@ foreign_proc_attributes_to_strings(Attrs, VarSet) = StringList :-
     AllocatesMemory = get_allocates_memory(Attrs),
     RegistersRoots = get_registers_roots(Attrs),
     MaybeMayDuplicate = get_may_duplicate(Attrs),
+    MaybeMayExportBody = get_may_export_body(Attrs),
     ExtraAttributes = get_extra_attributes(Attrs),
     (
         MayCallMercury = proc_may_call_mercury,
@@ -741,13 +742,26 @@ foreign_proc_attributes_to_strings(Attrs, VarSet) = StringList :-
         MaybeMayDuplicate = no,
         MayDuplicateStrList = []
     ),
+    (
+        MaybeMayExportBody = yes(MayExportBody),
+        (
+            MayExportBody = proc_may_export_body,
+            MayExportBodyStrList = ["may_export_body"]
+        ;
+            MayExportBody = proc_may_not_export_body,
+            MayExportBodyStrList = ["may_not_export_body"]
+        )
+    ;
+        MaybeMayExportBody = no,
+        MayExportBodyStrList = []
+    ),
     StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr |
         PurityStrList] ++ TerminatesStrList ++ UserSharingStrList ++
         ExceptionsStrList ++
         OrdinaryDespiteDetismStrList ++ MayModifyTrailStrList ++
         MayCallMM_TabledStrList ++ BoxPolicyStrList ++
         AffectsLivenessStrList ++ AllocatesMemoryStrList ++
-        RegistersRootsStrList ++ MayDuplicateStrList ++
+        RegistersRootsStrList ++ MayDuplicateStrList ++ MayExportBodyStrList ++
         list.map(extra_attribute_to_string, ExtraAttributes).
 
 :- func user_annotated_sharing_to_string(prog_varset, structure_sharing_domain,

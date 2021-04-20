@@ -316,7 +316,7 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
 
     simplify_info_get_error_specs(Info, !:Specs),
     !:Specs = FormatSpecs ++ !.Specs,
-    simplify_proc_maybe_warn_about_duplicates(!.ModuleInfo, PredId,
+    simplify_proc_maybe_warn_attribute_conflict(!.ModuleInfo, PredId,
         !.ProcInfo, !Specs),
 
     pred_info_get_status(PredInfo0, Status),
@@ -469,10 +469,11 @@ simplify_proc_analyze_and_format_calls(!ModuleInfo, ImplicitStreamWarnings,
 
 %-----------------------------------------------------------------------------%
 
-:- pred simplify_proc_maybe_warn_about_duplicates(module_info::in, pred_id::in,
-    proc_info::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred simplify_proc_maybe_warn_attribute_conflict(module_info::in,
+    pred_id::in, proc_info::in, list(error_spec)::in, list(error_spec)::out)
+    is det.
 
-simplify_proc_maybe_warn_about_duplicates(ModuleInfo, PredId, ProcInfo,
+simplify_proc_maybe_warn_attribute_conflict(ModuleInfo, PredId, ProcInfo,
         !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
@@ -480,40 +481,81 @@ simplify_proc_maybe_warn_about_duplicates(ModuleInfo, PredId, ProcInfo,
     % The alternate goal by definition cannot be a call_foreign_proc.
     proc_info_get_goal(ProcInfo, Goal),
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    ( if
-        GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
+    ( if GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _) then
+        Context = goal_info_get_context(GoalInfo),
         MaybeMayDuplicate = get_may_duplicate(Attributes),
-        MaybeMayDuplicate = yes(MayDuplicate)
-    then
         (
-            MayDuplicate = proc_may_duplicate,
-            ( if check_marker(Markers, marker_user_marked_no_inline) then
-                Context = goal_info_get_context(GoalInfo),
-                Pieces = [words("Error: the"), quote("may_duplicate"),
-                    words("attribute on the foreign_proc contradicts the"),
-                    quote("no_inline"), words("pragma on the predicate.")],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_simplify(report_in_any_mode), Context, Pieces),
-                !:Specs = [Spec | !.Specs]
-            else
-                true
-            )
+            MaybeMayDuplicate = yes(MayDuplicate),
+            maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers,
+                Context, !Specs)
         ;
-            MayDuplicate = proc_may_not_duplicate,
-            ( if check_marker(Markers, marker_user_marked_inline) then
-                Context = goal_info_get_context(GoalInfo),
-                Pieces = [words("Error: the"), quote("may_not_duplicate"),
-                    words("attribute on the foreign_proc contradicts the"),
-                    quote("inline"), words("pragma on the predicate.")],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_simplify(report_in_any_mode), Context, Pieces),
-                !:Specs = [Spec | !.Specs]
-            else
-                true
-            )
+            MaybeMayDuplicate = no
+        ),
+        MaybeMayExportBody = get_may_export_body(Attributes),
+        (
+            MaybeMayExportBody = yes(MayExportBody),
+            maybe_warn_about_may_export_body_attribute(MayExportBody, Markers,
+                Context, !Specs)
+        ;
+            MaybeMayExportBody = no
         )
     else
         true
+    ).
+
+:- pred maybe_warn_about_may_duplicate_attributes(proc_may_duplicate::in,
+    pred_markers::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
+        !Specs) :-
+    (
+        MayDuplicate = proc_may_duplicate,
+        ( if check_marker(Markers, marker_user_marked_no_inline) then
+            Pieces = [words("Error: the"), quote("may_duplicate"),
+                words("attribute on the foreign_proc contradicts the"),
+                quote("no_inline"), words("pragma on the predicate.")],
+            Spec = simplest_spec($pred, severity_error,
+                phase_simplify(report_in_any_mode), Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        else
+            true
+        )
+    ;
+        MayDuplicate = proc_may_not_duplicate,
+        ( if check_marker(Markers, marker_user_marked_inline) then
+            Pieces = [words("Error: the"), quote("may_not_duplicate"),
+                words("attribute on the foreign_proc contradicts the"),
+                quote("inline"), words("pragma on the predicate.")],
+            Spec = simplest_spec($pred, severity_error,
+                phase_simplify(report_in_any_mode), Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        else
+            true
+        )
+    ).
+
+:- pred maybe_warn_about_may_export_body_attribute(proc_may_export_body::in,
+    pred_markers::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_warn_about_may_export_body_attribute(MayExportBody, Markers, Context,
+        !Specs) :-
+    (
+        MayExportBody = proc_may_export_body,
+        ( if check_marker(Markers, marker_user_marked_no_inline) then
+            Pieces = [words("Error: the"), quote("may_export_body"),
+                words("attribute on the foreign_proc contradicts the"),
+                quote("no_inline"), words("pragma on the predicate.")],
+            Spec = simplest_spec($pred, severity_error,
+                phase_simplify(report_in_any_mode), Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        else
+            true
+        )
+    ;
+        MayExportBody = proc_may_not_export_body
+        % Inlining is allowed within the same target file.
     ).
 
 %-----------------------------------------------------------------------------%

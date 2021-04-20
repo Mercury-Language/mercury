@@ -2,7 +2,7 @@
 " Language:     Mercury
 " Maintainer:   Sebastian Godelet <sebastian.godelet@outlook.com>
 " Extensions:   *.m *.moo
-" Last Change:  2020-10-30
+" Last Change:  2021-04-15
 
 " for documentation, please use :help mercury-syntax
 
@@ -116,6 +116,7 @@ syn keyword mercuryForeignMod   attach_to_io_state
 syn keyword mercuryForeignMod   can_pass_as_mercury_type word_aligned_pointer stable
 syn keyword mercuryForeignMod   may_call_mercury will_not_call_mercury
 syn keyword mercuryForeignMod   may_duplicate may_not_duplicate
+syn keyword mercuryForeignMod   may_export_body may_not_export_body
 syn keyword mercuryForeignMod   may_modify_trail will_not_modify_trail
 syn keyword mercuryForeignMod   no_sharing unknown_sharing sharing
 syn keyword mercuryForeignMod   promise_pure promise_semipure

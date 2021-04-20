@@ -414,6 +414,15 @@ Changes to the Mercury language
 
         :- pragma memo(predname/arity, [disable_warning_if_ignored])]).
 
+* A `pragma foreign_proc` declaration can now include an attribute
+  `may_not_export_body` that prevents its body (i.e. the foreign code)
+  from being duplicated outside of the target file for that module
+  by intermodule optimization. This is useful when the foreign code
+  refers to types, functions, etc. that should be kept local to the
+  target file of that module. Unlike the `may_not_duplicate` attribute,
+  `may_not_export_body` does not prevent inlining of the foreign procedure
+  into other procedures in the same module.
+
 Changes to the Mercury compiler
 -------------------------------
 

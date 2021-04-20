@@ -319,6 +319,7 @@ SINGLEMODULE= \
 	tc_err2 \
 	test_feature_set \
 	test_may_duplicate \
+	test_may_export_body \
 	tricky_assert1 \
 	try_bad_params \
 	try_detism \

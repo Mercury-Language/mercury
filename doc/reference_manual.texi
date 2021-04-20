@@ -7936,10 +7936,19 @@ This attribute tells the compiler
 whether it is allowed to duplicate the foreign code fragment
 through optimizations such as inlining.
 The @samp{may_duplicate} attribute says that it may;
-The @samp{may_not_duplicate} attribute says that it may not.
+the @samp{may_not_duplicate} attribute says that it may not.
 In the absence of either attribute,
 the compiler is allowed make its own judgement in the matter,
 based on factors such as the size of the code fragment.
+
+@item @samp{may_export_body/may_not_export_body}
+This attribute tells the compiler
+whether it is allowed to duplicate the foreign code fragment
+outside of the target file for the module that
+defines the foreign procedure.
+The @samp{may_export_body} attribute says that it may;
+the @samp{may_not_export_body} attribute says that it may not.
+The default is @samp{may_export_body}.
 
 @c @item
 @c @samp{does_not_allocate_memory/allocates_bounded_memory/allocates_unbounded_memory}

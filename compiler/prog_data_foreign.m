@@ -271,6 +271,8 @@ default_export_enum_attributes =
     proc_registers_roots.
 :- func get_may_duplicate(pragma_foreign_proc_attributes) =
     maybe(proc_may_duplicate).
+:- func get_may_export_body(pragma_foreign_proc_attributes) =
+    maybe(proc_may_export_body).
 :- func get_extra_attributes(pragma_foreign_proc_attributes)
     = pragma_foreign_proc_extra_attributes.
 
@@ -320,6 +322,9 @@ default_export_enum_attributes =
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 :- pred set_may_duplicate(maybe(proc_may_duplicate)::in,
+    pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_attributes::out) is det.
+:- pred set_may_export_body(maybe(proc_may_export_body)::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 :- pred add_extra_attribute(pragma_foreign_proc_extra_attribute::in,
@@ -427,6 +432,10 @@ default_export_enum_attributes =
     --->    proc_may_duplicate
     ;       proc_may_not_duplicate.
 
+:- type proc_may_export_body
+    --->    proc_may_export_body
+    ;       proc_may_not_export_body.
+
     % This type specifies the termination property of a procedure
     % defined using pragma foreign_proc.
     %
@@ -497,6 +506,7 @@ default_export_enum_attributes =
                 attr_allocates_memory           :: proc_allocates_memory,
                 attr_registers_roots            :: proc_registers_roots,
                 attr_may_duplicate              :: maybe(proc_may_duplicate),
+                attr_may_export_body            :: maybe(proc_may_export_body),
                 attr_extra_attributes ::
                     list(pragma_foreign_proc_extra_attribute)
             ).
@@ -508,7 +518,7 @@ default_attributes(Language) =
         no, proc_may_modify_trail, proc_default_calls_mm_tabled,
         bp_native_if_possible, proc_default_affects_liveness,
         proc_default_allocates_memory, proc_default_registers_roots,
-        no, []).
+        no, no, []).
 
 get_foreign_language(Attrs) = Attrs ^ attr_foreign_language.
 get_may_call_mercury(Attrs) = Attrs ^ attr_may_call_mercury.
@@ -526,6 +536,7 @@ get_affects_liveness(Attrs) = Attrs ^ attr_affects_liveness.
 get_allocates_memory(Attrs) = Attrs ^ attr_allocates_memory.
 get_registers_roots(Attrs) = Attrs ^ attr_registers_roots.
 get_may_duplicate(Attrs) = Attrs ^ attr_may_duplicate.
+get_may_export_body(Attrs) = Attrs ^ attr_may_export_body.
 get_extra_attributes(Attrs) = Attrs ^ attr_extra_attributes.
 
 set_may_call_mercury(MayCallMercury, !Attrs) :-
@@ -560,6 +571,8 @@ set_registers_roots(RegistersRoots, !Attrs) :-
     !Attrs ^ attr_registers_roots := RegistersRoots.
 set_may_duplicate(MayDuplicate, !Attrs) :-
     !Attrs ^ attr_may_duplicate := MayDuplicate.
+set_may_export_body(MayExport, !Attrs) :-
+    !Attrs ^ attr_may_export_body := MayExport.
 
 add_extra_attribute(NewAttribute, !Attrs) :-
     !Attrs ^ attr_extra_attributes :=

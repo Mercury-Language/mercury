@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1028,7 +1028,8 @@ define_aux_preds_for_mutable(TargetParams, ItemMutable, TargetMutableName,
         % it must not be exported to `.opt' files. We could add the
         % qualification but it would be better to move the mutable code
         % generation into the backends first.
-        set_may_duplicate(yes(proc_may_not_duplicate), Attrs0, Attrs)
+        % (Would we really want to opt-export mutable variables anyway?)
+        set_may_export_body(yes(proc_may_not_export_body), Attrs0, Attrs)
     ),
 
     % The logic of this code should match the logic of

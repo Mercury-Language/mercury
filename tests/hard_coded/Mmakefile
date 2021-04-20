@@ -215,6 +215,7 @@ ORDINARY_PROGS = \
 	integer_uint_conv \
 	intermod_c_code \
 	intermod_foreign_type \
+	intermod_may_export_body \
 	intermod_multimode_main \
 	intermod_poly_mode \
 	intermod_pragma_clause \
