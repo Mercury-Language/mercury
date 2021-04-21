@@ -2813,7 +2813,7 @@ Every clause in a Mercury program must be type-correct.
 
 Fields of constructors of discriminated union types may be labelled
 (@pxref{Discriminated unions}).
-These labels cause the compiler to generate function
+These labels cause the compiler to generate functions
 which can be used to select and update fields of a term
 in a manner independent of the definition of the type.
 
