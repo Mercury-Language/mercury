@@ -2577,16 +2577,16 @@ any occurrences of @var{Ri} in @var{U} are substituted for @var{Si}
 to give @var{Usub},
 and @samp{Usub =< T} must hold.
 
-@samp{P =< Q} holds for two higher order types @var{P} and @var{Q}
+@samp{P =< Q} holds for two higher-order types @var{P} and @var{Q}
 iff @var{P} and @var{Q} are both @samp{pred} types or both @samp{func} types
 with the same arity,
 and @var{P} and @var{Q} have the same argument types.
 In addition,
-if either of @var{P} and @var{Q} has higher order inst information,
+if either of @var{P} and @var{Q} has higher-order inst information,
 then @var{P} and @var{Q} must have the same argument modes, determinism,
 and purity.
 (The current implementation does not admit subtyping in
-higher order arguments.)
+higher-order arguments.)
 
 @samp{P =< Q} holds if @var{P} and @var{Q} are both
 existentially quantified type variables, and @samp{P = Q}.
@@ -7157,7 +7157,7 @@ in the @samp{base/n} type definition:
 
 @itemize
 @item
-in a higher order type
+in a higher-order type
 
 @item
 in a foreign type
@@ -11917,8 +11917,8 @@ then the compiler will quit with an error message.
 @c @end table
 @c
 @c Note that the compiler cannot analyse recursion across module boundaries
-@c or through higher order calls.
-@c Therefore inter-module and higher order calls are considered to be
+@c or through higher-order calls.
+@c Therefore inter-module and higher-order calls are considered to be
 @c non-recursive.
 @c
 @c This pragma has no effect with @samp{--no-optimize-tailcalls}.
