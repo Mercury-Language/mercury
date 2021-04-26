@@ -124,6 +124,7 @@ MCFLAGS-require_tailrec_invalid = --allow-stubs --no-warn-stubs
 # with the features in the test require_feature_set pragma.
 MCFLAGS-test_feature_set        = --grade java --verbose-error-messages
 MCFLAGS-tricky_assert1          = --verbose-error-messages
+MCFLAGS-type_error_use_module   = --verbose-error-messages
 MCFLAGS-typeclass_dup_method_mode = --verbose-error-messages
 MCFLAGS-typeclass_constraint_extra_var = --verbose-error-messages
 MCFLAGS-typeclass_missing_det_3 = --verbose-error-messages

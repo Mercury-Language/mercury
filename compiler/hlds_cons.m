@@ -136,6 +136,9 @@
 
 :- pred cons_table_optimize(cons_table::in, cons_table::out) is det.
 
+:- pred return_cons_defns_with_given_name(cons_table::in, string::in,
+    list(hlds_cons_defn)::out) is det.
+
 %---------------------------------------------------------------------------%
 %
 % The table for field names.
@@ -441,6 +444,23 @@ replace_cons_defns_in_inner_cons_entry(Replace, !Entry) :-
 
 cons_table_optimize(!ConsTable) :-
     map.optimize(!ConsTable).
+
+%---------------------------------------------------------------------------%
+
+return_cons_defns_with_given_name(ConsTable, Name, ConsDefns) :-
+    ( if map.search(ConsTable, Name, InnerConsTable) then
+        accumulate_hlds_cons_defns(InnerConsTable, [], ConsDefns)
+    else
+        ConsDefns = []
+    ).
+
+:- pred accumulate_hlds_cons_defns(list(inner_cons_entry)::in,
+    list(hlds_cons_defn)::in, list(hlds_cons_defn)::out) is det.
+
+accumulate_hlds_cons_defns([], !ConsDefns).
+accumulate_hlds_cons_defns([Entry | Entries], !ConsDefns) :-
+    !:ConsDefns = [Entry ^ ice_cons_defn | !.ConsDefns],
+    accumulate_hlds_cons_defns(Entries, !ConsDefns).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_cons.

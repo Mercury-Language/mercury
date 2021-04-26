@@ -120,9 +120,16 @@ errors2.m:074:     B_4: int
 errors2.m:074:     C_5: string
 errors2.m:080: In clause for predicate `type_error_8'/0:
 errors2.m:080:   error: undefined predicate `from_char_list'/2.
+errors2.m:080:   That predicate is defined in module `string', which does not
+errors2.m:080:   have an `:- import_module' declaration.
+errors2.m:080:   Note that symbols defined in modules accessed via
+errors2.m:080:   `:- use_module' declarations must always be fully module
+errors2.m:080:   qualified.
 errors2.m:080: In clause for predicate `type_error_8'/0:
 errors2.m:080:   in argument 1 of call to predicate `from_char_list'/2:
 errors2.m:080:   error: undefined symbol `[]'/0.
+errors2.m:080:   That symbol is defined in module `list', which does not have
+errors2.m:080:   an `:- import_module' declaration.
 errors2.m:087: In clause for predicate `type_error_9'/0:
 errors2.m:087:   type error in unification of variable `X'
 errors2.m:087:   and variable `Y'.

@@ -288,6 +288,15 @@
 
 %---------------------------------------------------------------------------%
 
+    % Return a list of the predicates or functions with the given name
+    % regardless of whether they are supposed to be accessible without
+    % module qualification.
+    %
+:- pred predicate_table_lookup_pf_raw_name(predicate_table::in,
+    pred_or_func::in, string::in, list(pred_id)::out) is det.
+
+%---------------------------------------------------------------------------%
+
     % Find a predicate which matches the given name and argument types.
     % Abort if there is no matching pred.
     % Abort if there are multiple matching preds.
@@ -1089,6 +1098,43 @@ predicate_table_lookup_pf_sym(PredicateTable, IsFullyQualified, PredOrFunc,
         PredOrFunc = pf_function,
         predicate_table_lookup_func_sym(PredicateTable, IsFullyQualified,
             SymName, PredIds)
+    ).
+
+%---------------------------------------------------------------------------%
+
+predicate_table_lookup_pf_raw_name(PredicateTable, PredOrFunc, Name,
+        PredIds) :-
+    % We add *all* pred_ids to the {pred,func}_module_name_arity_index.
+    % We do *not* a pred_id to the other indexes if it comes from a module
+    % that the current module got access to via a "use_module" declaration.
+    % Since we want to return all pred_ids with the given name,
+    % the only indexes we can use are {pred,func}_module_name_arity_index.
+    (
+        PredOrFunc = pf_predicate,
+        MNAIndex = PredicateTable ^ pred_module_name_arity_index
+    ;
+        PredOrFunc = pf_function,
+        MNAIndex = PredicateTable ^ func_module_name_arity_index
+    ),
+    module_name_arity_index_search(MNAIndex, Name, PredIds).
+
+:- pred module_name_arity_index_search(module_name_arity_index::in,
+    string::in, list(pred_id)::out) is det.
+
+module_name_arity_index_search(MNAIndex, Name, PredIds) :-
+    map.foldl(add_pred_ids_to_list_if_name_matches(Name), MNAIndex,
+        [], PredIds).
+
+:- pred add_pred_ids_to_list_if_name_matches(string::in,
+    module_and_name::in, multi_map(arity, pred_id)::in,
+    list(pred_id)::in, list(pred_id)::out) is det.
+
+add_pred_ids_to_list_if_name_matches(Name, KeyMN, ArityMap, !PredIds) :-
+    KeyMN = module_and_name(_KeyModuleName, KeyName),
+    ( if Name = KeyName then
+        !:PredIds = multi_map.values(ArityMap) ++ !.PredIds
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%

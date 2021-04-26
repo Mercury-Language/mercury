@@ -167,7 +167,7 @@
     = error_spec.
 
 :- func report_error_undef_cons(type_error_clause_context,
-    type_error_goal_context, prog_context, list(cons_error), cons_id, int)
+    type_error_goal_context, prog_context, list(cons_error), cons_id, arity)
     = error_spec.
 
 :- func report_ambiguity_error(type_error_clause_context, prog_context,
@@ -240,20 +240,31 @@ report_pred_call_error(ClauseContext, Context, SymNameArity) = Spec :-
             PFSymNameArity, Arities)
     ;
         OtherIds = [],
-        UndefMsg = report_error_undef_pred(ClauseContext, Context,
-            PFSymNameArity),
-        predicate_table_lookup_pf_sym(PredicateTable, IsFullyQualified,
-            pf_function, SymName, FuncOtherIds),
+        report_error_undef_pred(ClauseContext, Context,
+            PFSymNameArity, UndefMsg, MissingImportModules),
+        predicate_table_lookup_pf_sym(PredicateTable,
+            may_be_partially_qualified, pf_function, SymName, FuncOtherIds),
         (
             FuncOtherIds = [_ | _],
             KindMsg = report_error_func_instead_of_pred(Context),
-            Msgs = [UndefMsg, KindMsg]
+            KindMsgs = [KindMsg]
         ;
             FuncOtherIds = [],
-            Msgs = [UndefMsg]
+            KindMsgs = []
         ),
+        PossibleModuleQuals =
+            find_possible_pf_missing_module_qualifiers(PredicateTable,
+                pf_predicate, SymName),
+        set.list_to_set(PossibleModuleQuals, PossibleModuleQualsSet0),
+        set.delete_list(MissingImportModules,
+            PossibleModuleQualsSet0, PossibleModuleQualsSet),
+        QualMsgs = report_any_missing_module_qualifiers(ClauseContext, Context,
+            "predicate", PossibleModuleQualsSet),
+        Msgs = [UndefMsg] ++ KindMsgs ++ QualMsgs,
         Spec = error_spec($pred, severity_error, phase_type_check, Msgs)
     ).
+
+%---------------------%
 
 :- func report_error_pred_num_args(type_error_clause_context, prog_context,
     pf_sym_name_arity, list(int)) = error_spec.
@@ -302,18 +313,14 @@ report_error_pred_num_args(ClauseContext, Context, PFSymNameArity, Arities)
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, MainPieces ++ SpecialPieces).
 
-:- func report_error_func_instead_of_pred(prog_context) = error_msg.
+%---------------------%
 
-report_error_func_instead_of_pred(Context) = Msg :-
-    Pieces = [words("(There is a *function* with that name, however."), nl,
-        words("Perhaps you forgot to add"), quote(" = ..."),
-        suffix("?)"), nl],
-    Msg = simplest_msg(Context, Pieces).
+:- pred report_error_undef_pred(type_error_clause_context::in,
+    prog_context::in, pf_sym_name_arity::in,
+    error_msg::out, list(module_name)::out) is det.
 
-:- func report_error_undef_pred(type_error_clause_context, prog_context,
-    pf_sym_name_arity) = error_msg.
-
-report_error_undef_pred(ClauseContext, Context, PFSymNameArity) = Msg :-
+report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
+        Msg, MissingImportModules) :-
     PFSymNameArity = pf_sym_name_arity(_PredOrFunc, PredSymName, Arity),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     InClauseForComponent = always(InClauseForPieces),
@@ -328,20 +335,23 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity) = Msg :-
             [words("Note: the else part is not optional."), nl,
             words("Every if-then must have an else."), nl],
         VerboseComponent = verbose_only(verbose_once, VerbosePieces),
-        Components = [MainComponent, VerboseComponent]
+        Components = [MainComponent, VerboseComponent],
+        MissingImportModules = []
     else if
         PredSymName = unqualified("else"),
         ( Arity = 2 ; Arity = 4 )
     then
         Components = [always([words("error: unmatched"), quote("else"),
-            suffix("."), nl])]
+            suffix("."), nl])],
+        MissingImportModules = []
     else if
         PredSymName = unqualified("if"),
         ( Arity = 2 ; Arity = 4 )
     then
         Pieces = [words("error:"), quote("if"), words("without"),
             quote("then"), words("or"), quote("else"), suffix("."), nl],
-        Components = [always(Pieces)]
+        Components = [always(Pieces)],
+        MissingImportModules = []
     else if
         PredSymName = unqualified("then"),
         ( Arity = 2 ; Arity = 4 )
@@ -354,12 +364,14 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity) = Msg :-
             nl, words("Every if-then must have an"),
             quote("else"), suffix("."), nl],
         VerboseComponent = verbose_only(verbose_once, VerbosePieces),
-        Components = [MainComponent, VerboseComponent]
+        Components = [MainComponent, VerboseComponent],
+        MissingImportModules = []
     else if
         PredSymName = unqualified("apply"),
         Arity >= 1
     then
-        Components = report_apply_instead_of_pred
+        Components = report_apply_instead_of_pred,
+        MissingImportModules = []
     else if
         PredSymName = unqualified(PurityString),
         Arity = 1,
@@ -371,7 +383,8 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity) = Msg :-
         VerbosePieces =
             [words("Such markers only belong before predicate calls."), nl],
         VerboseComponent = verbose_only(verbose_once, VerbosePieces),
-        Components = [MainComponent, VerboseComponent]
+        Components = [MainComponent, VerboseComponent],
+        MissingImportModules = []
     else if
         PredSymName = unqualified("some"),
         Arity = 2
@@ -379,18 +392,20 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity) = Msg :-
         Pieces = [words("syntax error in existential quantification:"),
             words("first argument of"), quote("some"),
             words("should be a list of variables."), nl],
-        Components = [always(Pieces)]
+        Components = [always(Pieces)],
+        MissingImportModules = []
     else
         MainPieces = [words("error: undefined"),
             qual_pf_sym_name_orig_arity(PFSymNameArity)],
         (
             PredSymName = qualified(ModuleQualifier, _),
-            OrdinaryPieces = MainPieces ++
-                maybe_report_missing_import_addendum(ClauseContext,
-                    ModuleQualifier)
+            maybe_report_missing_import_addendum(ClauseContext,
+                ModuleQualifier, AddeddumPices, MissingImportModules),
+            OrdinaryPieces = MainPieces ++ AddeddumPices
         ;
             PredSymName = unqualified(_),
-            OrdinaryPieces = MainPieces ++ [suffix("."), nl]
+            OrdinaryPieces = MainPieces ++ [suffix("."), nl],
+            MissingImportModules = []
         ),
         ( if
             % A call to process_options_se or to process_options_track_se
@@ -453,6 +468,100 @@ report_apply_instead_of_pred = Components :-
         quote("my_apply(Func, X, Y) :- apply(Func, X, Y).")],
     VerboseComponent = verbose_only(verbose_always, VerbosePieces),
     Components = [MainComponent, VerboseComponent].
+
+%---------------------%
+
+:- func report_error_func_instead_of_pred(prog_context) = error_msg.
+
+report_error_func_instead_of_pred(Context) = Msg :-
+    Pieces = [words("(There is a *function* with that name, however."), nl,
+        words("Perhaps you forgot to add"), quote(" = ..."),
+        suffix("?)"), nl],
+    Msg = simplest_msg(Context, Pieces).
+
+%---------------------%
+
+:- func find_possible_pf_missing_module_qualifiers(predicate_table,
+    pred_or_func, sym_name) = list(module_name).
+
+find_possible_pf_missing_module_qualifiers(PredicateTable, 
+        PredOrFunc, SymName) = ModuleNames :-
+    predicate_table_lookup_pf_raw_name(PredicateTable, PredOrFunc,
+        unqualify_name(SymName), PredIds),
+    list.foldl(accumulate_matching_pf_module_names(PredicateTable, SymName),
+        PredIds, [], ModuleNames).
+
+:- func report_any_missing_module_qualifiers(type_error_clause_context,
+    prog_context, string, set(module_name)) = list(error_msg).
+
+report_any_missing_module_qualifiers(ClauseContext, Context,
+        ItemName, ModuleNamesSet0) = Msgs :-
+    % We take a set of module names instead of a list, because we want
+    % to report the name of each module just once, even if it defines
+    % more than entity with the name that got the error.
+    % (Our caller can put the module name into the set more than once:
+    % once for each such entity.)
+
+    % For entities defined in the current module and in its ancestors,
+    % access via use_module vs import_module is irrelevant.
+    ModuleInfo = ClauseContext ^ tecc_module_info,
+    module_info_get_name(ModuleInfo, ModuleName),
+    set.delete_list([ModuleName | get_ancestors(ModuleName)],
+        ModuleNamesSet0, ModuleNamesSet1),
+    % Users are not supposed to know about private_builtin.m at all.
+    set.delete(mercury_private_builtin_module,
+        ModuleNamesSet1, ModuleNamesSet),
+    set.to_sorted_list(ModuleNamesSet, ModuleNames),
+    (
+        ModuleNames = [],
+        Msgs = []
+    ;
+        ModuleNames = [HeadModuleName | TailModuleNames],
+        (
+            TailModuleNames = [],
+            MainPieces = [words("That"), words(ItemName), words("is defined"),
+                words("in module"), qual_sym_name(HeadModuleName), suffix(","),
+                words("which does not have an"),
+                decl("import_module"), words("declaration."), nl]
+        ;
+            TailModuleNames = [_ | _],
+            ModuleNamePieces =
+                list.map(func(MN) = qual_sym_name(MN), ModuleNames),
+            ModuleNamesPieces =
+                component_list_to_pieces("and", ModuleNamePieces),
+            MainPieces = [words("That"), words(ItemName), words("is defined"),
+                words("in modules")] ++ ModuleNamesPieces ++ [suffix(","),
+                words("none of which have"),
+                decl("import_module"), words("declarations."), nl]
+        ),
+        MainMsg = simplest_msg(Context, MainPieces),
+        VerbosePieces = [words("Note that symbols defined in modules"),
+            words("accessed via"), decl("use_module"), words("declarations"),
+            words("must always be fully module qualified."), nl],
+        VerboseMsg = simple_msg(Context,
+            [verbose_only(verbose_once, VerbosePieces)]),
+        Msgs = [MainMsg, VerboseMsg]
+    ).
+
+:- pred accumulate_matching_pf_module_names(predicate_table::in, sym_name::in,
+    pred_id::in, list(module_name)::in, list(module_name)::out) is det.
+
+accumulate_matching_pf_module_names(PredicateTable, SymName, PredId,
+        !ModuleNames) :-
+    predicate_table_get_preds(PredicateTable, PredTable),
+    map.lookup(PredTable, PredId, PredInfo),
+    pred_info_get_module_name(PredInfo, ModuleName),
+    (
+        SymName = unqualified(_),
+        !:ModuleNames = [ModuleName | !.ModuleNames]
+    ;
+        SymName = qualified(SymModuleName, _),
+        ( if partial_sym_name_matches_full(SymModuleName, ModuleName) then
+            !:ModuleNames = [ModuleName | !.ModuleNames]
+        else
+            true
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1574,7 +1683,21 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
     InitComp = always(InClauseForPieces ++ GoalContextPieces),
+    % Check for some special cases, so that we can give clearer error messages.
+    ( if
+        report_error_undef_cons_special(Functor, Arity, InitComp, Context,
+            SpecPrime)
+    then
+        Spec = SpecPrime
+    else
+        report_error_undef_cons_std(ClauseContext, Context, InitComp,
+            ConsErrors, Functor, Arity, Spec)
+    ).
 
+:- pred report_error_undef_cons_special(cons_id::in, arity::in,
+    error_msg_component::in, prog_context::in, error_spec::out) is semidet.
+
+report_error_undef_cons_special(Functor, Arity, InitComp, Context, Spec) :-
     % Check for some special cases, so that we can give clearer error messages.
     ( if
         Functor = cons(unqualified(FunctorName), FunctorArity, _),
@@ -1583,23 +1706,33 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
             language_builtin_functor_components(FunctorName, Arity,
                 FunctorComps0)
         then
-            FunctorComps1 = FunctorComps0
+            FunctorComps = FunctorComps0
         else if
             syntax_functor_components(FunctorName, FunctorArity, FunctorComps0)
         then
-            FunctorComps1 = FunctorComps0
+            FunctorComps = FunctorComps0
         else
             fail
         )
     then
-        FunctorComps = FunctorComps1,
-        ReportConsErrors = no
-    else if
+        Spec = error_spec($pred, severity_error, phase_type_check,
+            [simple_msg(Context, [InitComp | FunctorComps])])
+    else
+        fail
+    ).
+
+:- pred report_error_undef_cons_std(type_error_clause_context::in,
+    prog_context::in, error_msg_component::in, list(cons_error)::in,
+    cons_id::in, arity::in, error_spec::out) is det.
+
+report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
+        Functor, Arity, Spec) :-
+    ModuleInfo = ClauseContext ^ tecc_module_info,
+    module_info_get_cons_table(ModuleInfo, ConsTable),
+    ( if
         Functor = cons(Constructor, FunctorArity, _),
         expect(unify(Arity, FunctorArity), $pred, "arity mismatch"),
-        ModuleInfo = ClauseContext ^ tecc_module_info,
 
-        module_info_get_cons_table(ModuleInfo, ConsTable),
         return_cons_arities(ConsTable, Constructor, ConsArities),
 
         module_info_get_predicate_table(ModuleInfo, PredTable),
@@ -1611,10 +1744,12 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
         list.delete_all(AllArities, Arity, OtherArities),
         OtherArities = [_ | _]
     then
-        FunctorPieces = wrong_arity_constructor_to_pieces(Constructor, Arity,
-            OtherArities),
+        FunctorPieces = wrong_arity_constructor_to_pieces(Constructor,
+            Arity, OtherArities),
         FunctorComps = [always(FunctorPieces)],
-        ReportConsErrors = yes
+        % The code that constructs QualMsgs below uses wording that
+        % can be misleading in the presence of arity mismatches.
+        QualMsgs = []
     else
         Pieces1 = [words("error: undefined symbol"),
             qual_cons_id_and_maybe_arity(Functor)],
@@ -1622,30 +1757,72 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
             Functor = cons(Constructor, _, _),
             Constructor = qualified(ModQual, _)
         then
-            Pieces2 = maybe_report_missing_import_addendum(ClauseContext,
-                ModQual)
+            maybe_report_missing_import_addendum(ClauseContext, ModQual,
+                Pieces2, MissingImportModules)
         else if
             Functor = cons(unqualified("[|]"), 2, _)
         then
-            Pieces2 = maybe_report_missing_import_addendum(ClauseContext,
-                unqualified("list"))
+            maybe_report_missing_import_addendum(ClauseContext,
+                unqualified("list"), Pieces2, MissingImportModules)
         else
-            Pieces2 = [suffix("."), nl]
+            Pieces2 = [suffix("."), nl],
+            MissingImportModules = []
         ),
         FunctorComps = [always(Pieces1 ++ Pieces2)],
-        ReportConsErrors = yes
+        ( if Functor = cons(FunctorName, _, _) then
+            return_cons_defns_with_given_name(ConsTable,
+                unqualify_name(FunctorName), ConsDefns),
+            list.foldl(accumulate_matching_cons_module_names(FunctorName),
+                ConsDefns, [], ConsModuleNames),
+            module_info_get_predicate_table(ModuleInfo, PredicateTable),
+            PredModuleNames =
+                find_possible_pf_missing_module_qualifiers(PredicateTable,
+                    pf_predicate, FunctorName),
+            FuncModuleNames =
+                find_possible_pf_missing_module_qualifiers(PredicateTable,
+                    pf_function, FunctorName),
+            ModuleNames =
+                ConsModuleNames ++ PredModuleNames ++ FuncModuleNames,
+            set.list_to_set(ModuleNames, ModuleNamesSet0),
+            set.delete_list(MissingImportModules,
+                ModuleNamesSet0, ModuleNamesSet),
+            QualMsgs = report_any_missing_module_qualifiers(ClauseContext,
+                Context, "symbol", ModuleNamesSet)
+        else
+            QualMsgs = []
+        )
     ),
-    ( if
-        ReportConsErrors = yes,
-        ConsErrors = [_ | _]
-    then
+    (
+        ConsErrors = [],
+        ConsMsgs = []
+    ;
+        ConsErrors = [_ | _],
         ConsMsgLists = list.map(report_cons_error(Context), ConsErrors),
         list.condense(ConsMsgLists, ConsMsgs)
-    else
-        ConsMsgs = []
     ),
     Spec = error_spec($pred, severity_error, phase_type_check,
-        [simple_msg(Context, [InitComp | FunctorComps]) | ConsMsgs]).
+        [simple_msg(Context,
+            [InitComp | FunctorComps]) | ConsMsgs] ++ QualMsgs).
+
+:- pred accumulate_matching_cons_module_names(sym_name::in, hlds_cons_defn::in,
+    list(module_name)::in, list(module_name)::out) is det.
+
+accumulate_matching_cons_module_names(FunctorSymName, ConsDefn, !ModuleNames) :-
+    type_ctor(TypeCtorSymName, _) = ConsDefn ^ cons_type_ctor,
+    (
+        TypeCtorSymName = unqualified(_)
+        % There can be no problem with use_module replacing import_module
+        % if the hlds_cons_defn is for a builtin data constructor.
+    ;
+        TypeCtorSymName = qualified(TypeCtorModuleName, _),
+        FunctorName = unqualify_name(FunctorSymName),
+        FullSymName = qualified(TypeCtorModuleName, FunctorName),
+        ( if partial_sym_name_matches_full(FunctorSymName, FullSymName) then
+            !:ModuleNames = [TypeCtorModuleName | !.ModuleNames]
+        else
+            true
+        )
+    ).
 
 :- pred language_builtin_functor_components(string::in, arity::in,
     list(error_msg_component)::out) is semidet.
@@ -1660,21 +1837,20 @@ language_builtin_functor_components(Name, Arity, Components) :-
         words_quote("if <goal> then yes else no"), words("instead."), nl],
     ( if Name = "call" then
         VerboseCallPieces =
-            [words("If you are trying to invoke"),
-            words("a higher-order function,"),
+            [words("If you are trying to invoke a higher-order function,"),
             words("you should use"), quote("apply"), suffix(","),
             words("not"), quote("call"), suffix("."), nl,
-            words("If you're trying to curry"),
-            words("a higher-order predicate,"),
-            words("see the ""Creating higher-order terms"" section of"),
-            words("the Mercury Language Reference Manual."), nl,
-            words("If you really are trying to use"), quote("call"),
-            words("as an expression and not as an application of"),
-            words("the language builtin call/N, make sure that"),
-            words("you have the arity correct, and that the functor"),
-            quote("call"), words("is actually defined (if it is defined"),
-            words("in a separate module, check that the module is"),
-            words("correctly imported)."), nl]
+            words("If you are trying to curry a higher-order function,"),
+            words("see the ""Creating higher-order terms"" section"),
+            words("of the Mercury Language Reference Manual."), nl,
+            words("If you really are trying to use"),
+            quote("call"), words("as an expression"),
+            words("and not as an application of the language builtin call/N,"),
+            words("make sure that you have the arity correct,"),
+            words("and that the functor"), quote("call"),
+            words("is actually defined."),
+            words("(If it is defined in a separate module,"),
+            words("check that the module is correctly imported.)"), nl]
     else
         VerboseCallPieces = []
     ),
@@ -1791,12 +1967,9 @@ wrong_arity_constructor_to_pieces(Name, Arity, ActualArities) = Pieces :-
 report_cons_error(Context, ConsError) = Msgs :-
     (
         ConsError = foreign_type_constructor(TypeCtor, _),
-        TypeCtor = type_ctor(TypeName, TypeArity),
         Pieces = [words("There are"),
-            pragma_decl("foreign_type"),
-            words("declarations for type"),
-            qual_sym_name_arity(sym_name_arity(TypeName, TypeArity)),
-            suffix(","),
+            pragma_decl("foreign_type"), words("declarations"),
+            words("for type"), qual_type_ctor(TypeCtor), suffix(","),
             words("so it is treated as an abstract type"),
             words("in all predicates and functions"),
             words("which are not implemented"),
@@ -1834,10 +2007,8 @@ report_cons_error(Context, ConsError) = Msgs :-
         Msgs = [simplest_msg(DefnContext, Pieces)]
     ;
         ConsError = new_on_non_existential_type(TypeCtor),
-        TypeCtor = type_ctor(TypeName, TypeArity),
         Pieces = [words("Invalid use of"), quote("new"),
-            words("on a constructor of type"),
-            qual_sym_name_arity(sym_name_arity(TypeName, TypeArity)),
+            words("on a constructor of type"), qual_type_ctor(TypeCtor),
             words("which is not existentially typed."), nl],
         Msgs = [simplest_msg(Context, Pieces)]
     ).
@@ -2250,11 +2421,12 @@ bound_type_to_pieces(TVarSet, InstVarSet, TypeBindings, ExternalTypeParams,
 
 %---------------------------------------------------------------------------%
 
-:- func maybe_report_missing_import_addendum(type_error_clause_context,
-    module_name) = list(format_component).
+:- pred maybe_report_missing_import_addendum(type_error_clause_context::in,
+    module_name::in, list(format_component)::out, list(module_name)::out)
+    is det.
 
-maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier)
-        = Pieces :-
+maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier,
+        Pieces, MissingImportModules) :-
     % First check if this module wasn't imported.
     ModuleInfo = ClauseContext ^ tecc_module_info,
     module_info_get_visible_modules(ModuleInfo, VisibleModules),
@@ -2265,7 +2437,8 @@ maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier)
         % The module qualifier does not match any of the visible modules,
         % so we report that the module has not been imported.
         Pieces = [nl, words("(the module"), qual_sym_name(ModuleQualifier),
-            words("has not been imported)."), nl]
+            words("has not been imported)."), nl],
+        MissingImportModules = [ModuleQualifier]
     else
         % The module qualifier matches one or more of the visible modules.
         % But maybe the user forgot to import the parent module(s) of that
@@ -2275,10 +2448,22 @@ maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier)
             UnimportedParents),
         (
             UnimportedParents = [_ | _],
-            Pieces = [nl | report_unimported_parents(UnimportedParents)]
+            Pieces = [nl | report_unimported_parents(UnimportedParents)],
+            % Since ModuleQualifier has unimported parents, its own import,
+            % if any, has no effect.
+            ModuleQualifierList = sym_name_to_list(ModuleQualifier),
+            AddParent =
+                ( func(ParentMN) = MN :-
+                    ParentMNList = sym_name_to_list(ParentMN),
+                    FullList = ParentMNList ++ ModuleQualifierList,
+                    det_list_to_sym_name(FullList, MN)
+                ),
+            MissingImportModules =
+                [ModuleQualifier | list.map(AddParent, UnimportedParents)]
         ;
             UnimportedParents = [],
-            Pieces = [suffix("."), nl]
+            Pieces = [suffix("."), nl],
+            MissingImportModules = []
         )
     ).
 
@@ -2290,6 +2475,7 @@ maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier)
    module_name::out) is nondet.
 
 get_unimported_parent(VisibleModules, MatchingModuleNames, UnimportedParent) :-
+    % ZZZ set.map get_ancestors_set, power union, difference
     set.member(MatchingModuleName, MatchingModuleNames),
     ParentModules = get_ancestors(MatchingModuleName),
     list.member(UnimportedParent, ParentModules),

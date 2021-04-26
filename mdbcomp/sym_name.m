@@ -82,6 +82,24 @@
 :- pred sym_name_to_qualifier_list_and_name(sym_name::in,
     list(string)::out, string::out) is det.
 
+    % list_to_sym_name(List, SymName):
+    %
+    % The inverse of sym_name_to_list(SymName) = List.
+    %
+    % Convert a list of component strings (qualifiers first, actual name last)
+    % to a sym_name. Fail if the list is empty.
+    %
+:- pred list_to_sym_name(list(string)::in, sym_name::out) is semidet.
+
+    % det_list_to_sym_name(List, SymName):
+    %
+    % The inverse of sym_name_to_list(SymName) = List.
+    %
+    % Convert a list of component strings (qualifiers first, actual name last)
+    % to a sym_name. Abort if the list is empty.
+    %
+:- pred det_list_to_sym_name(list(string)::in, sym_name::out) is det.
+
     % is_submodule(SymName1, SymName2):
     %
     % True iff SymName1 is a submodule of SymName2.
@@ -260,6 +278,36 @@ sym_name_to_qualifier_list_and_name(unqualified(Name), [], Name).
 sym_name_to_qualifier_list_and_name(qualified(Module, Name),
         Qualifiers, Name) :-
     Qualifiers = sym_name_to_list(Module).
+
+%---------------------------------------------------------------------------%
+
+list_to_sym_name(Names, SymName) :-
+    list.reverse(Names, RevNames),
+    list_to_sym_name_loop(RevNames, SymName).
+
+det_list_to_sym_name(Names, SymName) :-
+    list.reverse(Names, RevNames),
+    ( if list_to_sym_name_loop(RevNames, SymNamePrime) then
+        SymName = SymNamePrime
+    else
+        unexpected($pred, "the list of names is empty")
+    ).
+
+:- pred list_to_sym_name_loop(list(string)::in, sym_name::out) is semidet.
+
+list_to_sym_name_loop(RevNames, SymName) :-
+    (
+        RevNames = [],
+        fail
+    ;
+        RevNames = [Name],
+        SymName = unqualified(Name)
+    ;
+        RevNames = [LastName | PrevNames],
+        PrevNames = [_ | _],
+        list_to_sym_name_loop(PrevNames, ModuleQualifier),
+        SymName = qualified(ModuleQualifier, LastName)
+    ).
 
 %---------------------------------------------------------------------------%
 

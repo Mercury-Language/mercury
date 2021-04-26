@@ -1,0 +1,15 @@
+type_error_use_module.m:018: In clause for predicate `main'/2:
+type_error_use_module.m:018:   in argument 1 of call to predicate
+type_error_use_module.m:018:   `io.write_line'/3:
+type_error_use_module.m:018:   error: undefined symbol `init'/0.
+type_error_use_module.m:018:   That symbol is defined in modules `map' and
+type_error_use_module.m:018:   `type_error_use_module_2', none of which have
+type_error_use_module.m:018:   `:- import_module' declarations.
+type_error_use_module.m:018:   Note that symbols defined in modules accessed
+type_error_use_module.m:018:   via `:- use_module' declarations must always be
+type_error_use_module.m:018:   fully module qualified.
+type_error_use_module.m:019: In clause for predicate `main'/2:
+type_error_use_module.m:019:   error: undefined predicate `do_main'/2.
+type_error_use_module.m:019:   That predicate is defined in module
+type_error_use_module.m:019:   `type_error_use_module_2', which does not have
+type_error_use_module.m:019:   an `:- import_module' declaration.
