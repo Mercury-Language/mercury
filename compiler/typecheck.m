@@ -102,6 +102,7 @@
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.typecheck_errors.
 :- import_module check_hlds.typecheck_info.
+:- import_module check_hlds.typecheck_msgs.
 :- import_module check_hlds.typeclasses.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.
@@ -129,7 +130,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.         % undesirable dependency
-:- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_event.
 :- import_module parse_tree.prog_data_foreign.
@@ -230,109 +230,6 @@ typecheck_to_fixpoint(Iteration, MaxIterations, !ModuleInfo,
             ExceededIterationLimit = yes
         )
     ).
-
-    % Write out the inferred `pred' or `func' declarations for a list of
-    % predicates. Don't write out the inferred types for assertions.
-    %
-:- pred construct_type_inference_messages(module_info::in,
-    set_tree234(pred_id)::in, list(pred_id)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-construct_type_inference_messages(_, _, [], !Specs).
-construct_type_inference_messages(ModuleInfo, ValidPredIdSet,
-        [PredId | PredIds], !Specs) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_markers(PredInfo, Markers),
-    ( if
-        check_marker(Markers, marker_infer_type),
-        set_tree234.contains(ValidPredIdSet, PredId),
-        not pred_info_is_promise(PredInfo, _)
-    then
-        Spec = construct_type_inference_message(ModuleInfo, PredId, PredInfo),
-        !:Specs = [Spec | !.Specs]
-    else
-        true
-    ),
-    construct_type_inference_messages(ModuleInfo, ValidPredIdSet,
-        PredIds, !Specs).
-
-    % Construct a message containing the inferred `pred' or `func' declaration
-    % for a single predicate.
-    %
-:- func construct_type_inference_message(module_info, pred_id, pred_info)
-    = error_spec.
-
-construct_type_inference_message(ModuleInfo, PredId, PredInfo) = Spec :-
-    PredName = pred_info_name(PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    UnqualPredSymName = unqualified(PredName),
-    pred_info_get_context(PredInfo, Context),
-    pred_info_get_arg_types(PredInfo, VarSet, ExistQVars, Types0),
-    strip_builtin_qualifiers_from_type_list(Types0, Types),
-    pred_info_get_class_context(PredInfo, ClassContext),
-    pred_info_get_purity(PredInfo, Purity),
-    MaybeDet = no,
-    VarNamePrint = print_name_only,
-    (
-        PredOrFunc = pf_predicate,
-        ArgTypes = Types,
-        MaybeReturnType = no,
-        TypeStr = mercury_pred_type_to_string(VarSet, VarNamePrint, ExistQVars,
-            UnqualPredSymName, Types, MaybeDet, Purity, ClassContext)
-    ;
-        PredOrFunc = pf_function,
-        pred_args_to_func_args(Types, ArgTypes, ReturnType),
-        MaybeReturnType = yes(ReturnType),
-        TypeStr = mercury_func_type_to_string(VarSet, VarNamePrint, ExistQVars,
-            UnqualPredSymName, ArgTypes, ReturnType, MaybeDet, Purity,
-            ClassContext)
-    ),
-    InferredPieces = [invis_order_default_start(2),
-        words("Inferred"), words(TypeStr), nl],
-
-    module_info_get_predicate_table(ModuleInfo, PredicateTable),
-    ModuleName = pred_info_module(PredInfo),
-    QualPredSymName = qualified(ModuleName, PredName),
-    predicate_table_lookup_pf_sym(PredicateTable, is_fully_qualified,
-        PredOrFunc, QualPredSymName, AllPredIds),
-    list.delete_all(AllPredIds, PredId, AllOtherPredIds),
-    PredIsDeclared =
-        ( pred(OtherPredId::in) is semidet :-
-            module_info_pred_info(ModuleInfo, OtherPredId, OtherPredInfo),
-            pred_info_get_markers(OtherPredInfo, OtherPredMarkers),
-            not check_marker(OtherPredMarkers, marker_infer_type)
-        ),
-    list.filter(PredIsDeclared, AllOtherPredIds, AllOtherDeclaredPredIds),
-    (
-        AllOtherDeclaredPredIds = [],
-        Spec = conditional_spec($pred, inform_inferred_types, yes,
-            severity_informational, phase_type_check,
-            [simplest_msg(Context, InferredPieces)])
-    ;
-        AllOtherDeclaredPredIds = [_ | _],
-        list.map(
-            construct_pred_decl_diff(ModuleInfo, ArgTypes, MaybeReturnType),
-            AllOtherDeclaredPredIds, DiffPieceLists),
-        Pieces = [invis_order_default_start(2)] ++ InferredPieces ++
-            list.condense(DiffPieceLists),
-        Spec = simplest_spec($pred, severity_informational, phase_type_check,
-            Context, Pieces)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- func typecheck_report_max_iterations_exceeded(int) = error_spec.
-
-typecheck_report_max_iterations_exceeded(MaxIterations) = Spec :-
-    Pieces = [words("Type inference iteration limit exceeded."),
-        words("This probably indicates that your program has a type error."),
-        words("You should declare the types explicitly."),
-        words("(The current limit is"), int_fixed(MaxIterations),
-        words("iterations."),
-        words("You can use the"), quote("--type-inference-iteration-limit"),
-        words("option to increase the limit).")],
-    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
 
@@ -523,25 +420,8 @@ typecheck_predicate_if_stub(ModuleInfo, PredId, !PredInfo, FoundSyntaxError,
     ;
         ClausesRep0IsEmpty = no,
         % There are clauses, so there can be no need to add stub clauses.
-        globals.lookup_bool_option(Globals, warn_non_contiguous_foreign_procs,
-            WarnNonContiguousForeignProcs),
-        (
-            WarnNonContiguousForeignProcs = yes,
-            !:Specs = report_any_non_contiguous_clauses(ModuleInfo,
-                PredId, !.PredInfo, ItemNumbers0, clauses_and_foreign_procs)
-        ;
-            WarnNonContiguousForeignProcs = no,
-            globals.lookup_bool_option(Globals, warn_non_contiguous_clauses,
-                WarnNonContiguousClauses),
-            (
-                WarnNonContiguousClauses = yes,
-                !:Specs = report_any_non_contiguous_clauses(ModuleInfo,
-                    PredId, !.PredInfo, ItemNumbers0, only_clauses)
-            ;
-                WarnNonContiguousClauses = no,
-                !:Specs = []
-            )
-        )
+        maybe_check_for_and_report_any_non_contiguous_clauses(ModuleInfo,
+            PredId, !.PredInfo, ItemNumbers0, !:Specs)
     ),
 
     % The above code may add stub clauses to the predicate, which would
@@ -605,22 +485,6 @@ typecheck_predicate_if_stub(ModuleInfo, PredId, !PredInfo, FoundSyntaxError,
             MaybeNeedTypecheck = do_not_need_typecheck(ContainsErrors,
                 next_iteration_is_not_needed)
         )
-    ).
-
-:- func report_any_non_contiguous_clauses(module_info, pred_id, pred_info,
-    clause_item_numbers, clause_item_number_types) = list(error_spec).
-
-report_any_non_contiguous_clauses(ModuleInfo, PredId, PredInfo, ItemNumbers,
-        Type) = Specs :-
-    ( if
-        clauses_are_non_contiguous(ItemNumbers, Type,
-            FirstRegion, SecondRegion, LaterRegions)
-    then
-        Spec = report_non_contiguous_clauses(ModuleInfo, PredId,
-            PredInfo, FirstRegion, SecondRegion, LaterRegions),
-        Specs = [Spec]
-    else
-        Specs = []
     ).
 
 %---------------------------------------------------------------------------%

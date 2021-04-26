@@ -30,6 +30,7 @@
     :- include_module typecheck.
     :- include_module typecheck_errors.
     :- include_module typecheck_info.
+    :- include_module typecheck_msgs.
     :- include_module typeclasses.
 %:- end_module type_analysis.
 

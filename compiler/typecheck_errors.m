@@ -19,7 +19,6 @@
 :- import_module check_hlds.type_assign.
 :- import_module check_hlds.typecheck_info.
 :- import_module hlds.
-:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -93,10 +92,6 @@
 
 :- func maybe_report_no_clauses_stub(module_info, pred_id, pred_info)
     = list(error_spec).
-
-:- func report_non_contiguous_clauses(module_info, pred_id, pred_info,
-    clause_item_number_region, clause_item_number_region,
-    list(clause_item_number_region)) = error_spec.
 
 :- func report_warning_too_much_overloading(type_error_clause_context,
     prog_context, overloaded_symbol_map) = error_spec.
@@ -182,10 +177,6 @@
 :- func report_invalid_coerce_from_to(type_error_clause_context, prog_context,
     tvarset, mer_type, mer_type) = error_spec.
 
-:- pred construct_pred_decl_diff(module_info::in,
-    list(mer_type)::in, maybe(mer_type)::in, pred_id::in,
-    list(format_component)::out) is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -209,7 +200,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module edit_seq.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
@@ -590,64 +580,6 @@ should_report_no_clauses(ModuleInfo, PredInfo) :-
         false
     else
         true
-    ).
-
-%---------------------------------------------------------------------------%
-
-report_non_contiguous_clauses(ModuleInfo, PredId, PredInfo,
-        FirstRegion, SecondRegion, LaterRegions) = Spec :-
-    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
-        PredId),
-    FrontPieces = [words("Warning: non-contiguous clauses for ") | PredPieces]
-        ++ [suffix("."), nl],
-    pred_info_get_context(PredInfo, Context),
-    FrontMsg = simplest_msg(Context, FrontPieces),
-    report_non_contiguous_clause_contexts(PredPieces, 1,
-        FirstRegion, SecondRegion, LaterRegions, ContextMsgs),
-    Msgs = [FrontMsg | ContextMsgs],
-    Spec = error_spec($pred, severity_warning, phase_type_check, Msgs).
-
-:- pred report_non_contiguous_clause_contexts(list(format_component)::in,
-    int::in, clause_item_number_region::in, clause_item_number_region::in,
-    list(clause_item_number_region)::in, list(error_msg)::out) is det.
-
-report_non_contiguous_clause_contexts(PredPieces, GapNumber,
-        FirstRegion, SecondRegion, LaterRegions, Msgs) :-
-    FirstRegion =
-        clause_item_number_region(_FirstLowerNumber, _FirstUpperNumber,
-        _FirstLowerContext, FirstUpperContext),
-    SecondRegion =
-        clause_item_number_region(_SecondLowerNumber, _SecondUpperNumber,
-        SecondLowerContext, _SecondUpperContext),
-    ( if
-        GapNumber = 1,
-        LaterRegions = []
-    then
-        % There is only one gap, so don't number it.
-        GapPieces = []
-    else
-        GapPieces = [int_fixed(GapNumber)]
-    ),
-    % The wording here is chosen be non-confusing even if a clause has a gap
-    % both before and after it, so that gaps both end and start at the context
-    % of that clause. We could do better if we had separate contexts for the
-    % start and the end of the clause, but we don't.
-    FirstPieces = [words("Gap") | GapPieces] ++
-        [words("in clauses of") | PredPieces] ++
-        [words("starts after this clause."), nl],
-    SecondPieces = [words("Gap") | GapPieces] ++
-        [words("in clauses of") | PredPieces] ++
-        [words("ends with this clause."), nl],
-    FirstMsg = simplest_msg(FirstUpperContext, FirstPieces),
-    SecondMsg = simplest_msg(SecondLowerContext, SecondPieces),
-    (
-        LaterRegions = [],
-        Msgs = [FirstMsg, SecondMsg]
-    ;
-        LaterRegions = [FirstLaterRegion | LaterLaterRegions],
-        report_non_contiguous_clause_contexts(PredPieces, GapNumber + 1,
-            SecondRegion, FirstLaterRegion, LaterLaterRegions, LaterMsgs),
-        Msgs = [FirstMsg, SecondMsg | LaterMsgs]
     ).
 
 %---------------------------------------------------------------------------%
@@ -2104,104 +2036,6 @@ report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
         words("to"), quote(ToTypeStr), suffix("."), nl],
     Msg = simplest_msg(Context, InClauseForPieces ++ Pieces),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
-
-%---------------------------------------------------------------------------%
-
-construct_pred_decl_diff(ModuleInfo, ActualArgTypes, MaybeActualReturnType,
-        OtherPredId, Pieces) :-
-    module_info_pred_info(ModuleInfo, OtherPredId, OtherPredInfo),
-    pred_info_get_arg_types(OtherPredInfo, OtherTypes),
-    % It would be nice if we could print the names of type variables,
-    % but there are two problems. The lesser problem is that the names
-    % may be different in the varsets of the two predicates, which may be
-    % confusing. The more deadly problem is that a type variable that
-    % exists in one of the varsets may not exist in the other.
-    % Therefore printing variable numbers is the best thing we can do,
-    % as a general case. (We *could* do better in the special case
-    % where neither problem arises.)
-    varset.init(TVarSet),
-    (
-        MaybeActualReturnType = no,
-        list.length(OtherTypes, OtherArity),
-        pred_decl_lines(TVarSet, ActualArgTypes, ActualLines),
-        pred_decl_lines(TVarSet, OtherTypes, OtherLines)
-    ;
-        MaybeActualReturnType = yes(ActualReturnType),
-        pred_args_to_func_args(OtherTypes, OtherArgTypes, OtherReturnType),
-        list.length(OtherArgTypes, OtherArity),
-        func_decl_lines(TVarSet, ActualArgTypes, ActualReturnType,
-            ActualLines),
-        func_decl_lines(TVarSet, OtherArgTypes, OtherReturnType,
-            OtherLines)
-    ),
-    EditParams = edit_params(1, 1, 2), % cost(replace) = cost(delete + insert).
-    find_shortest_edit_seq(EditParams, OtherLines, ActualLines, EditSeq),
-    find_diff_seq(OtherLines, EditSeq, DiffSeq),
-    DiffPieceLists = list.map(diff_to_pieces, DiffSeq),
-    list.condense(DiffPieceLists, DiffPieces),
-    Pieces = [words("The argument list difference from the arity"),
-        int_fixed(OtherArity), words("version is"), nl] ++ DiffPieces.
-
-:- func diff_to_pieces(diff(string)) = list(format_component).
-
-diff_to_pieces(Diff) = Pieces :-
-    (
-        Diff = unchanged(Line),
-        Char = " "
-    ;
-        Diff = deleted(Line),
-        Char = "-"
-    ;
-        Diff = inserted(Line),
-        Char = "+"
-    ),
-    Pieces = [fixed(Char ++ " " ++ Line), nl].
-
-:- pred pred_decl_lines(tvarset::in, list(mer_type)::in,
-    list(string)::out) is det.
-
-pred_decl_lines(TVarSet, ArgTypes, Lines) :-
-    ( if list.split_last(ArgTypes, NonLastArgTypes, LastArgType) then
-        arg_decl_lines("pred", TVarSet, NonLastArgTypes, LastArgType, "",
-            Lines)
-    else
-        Lines = ["pred"]
-    ).
-
-:- pred func_decl_lines(tvarset::in, list(mer_type)::in, mer_type::in,
-    list(string)::out) is det.
-
-func_decl_lines(TVarSet, ArgTypes, ReturnType, Lines) :-
-    ReturnTypeStr =
-        mercury_type_to_string(TVarSet, print_num_only, ReturnType),
-    ReturnTypeSuffix = " = " ++ ReturnTypeStr,
-    ( if list.split_last(ArgTypes, NonLastArgTypes, LastArgType) then
-        arg_decl_lines("func", TVarSet, NonLastArgTypes, LastArgType,
-            ReturnTypeSuffix, Lines)
-    else
-        Lines = ["func" ++ ReturnTypeSuffix]
-    ).
-
-:- pred arg_decl_lines(string::in, tvarset::in,
-    list(mer_type)::in, mer_type::in, string::in, list(string)::out) is det.
-
-arg_decl_lines(PredOrFuncStr, TVarSet, NonLastArgTypes, LastArgType, Suffix,
-        Lines) :-
-    NonLastArgTypeStrs = list.map(
-        mercury_type_to_string(TVarSet, print_num_only), NonLastArgTypes),
-    AddComma =
-        (func(NonLastArgTypeStr) = one_indent ++ NonLastArgTypeStr ++ ","),
-    NonLastArgTypeLines = list.map(AddComma, NonLastArgTypeStrs),
-    LastArgTypeStr =
-        mercury_type_to_string(TVarSet, print_num_only, LastArgType),
-    Lines = [PredOrFuncStr ++ "("] ++
-        NonLastArgTypeLines ++
-        [one_indent ++ LastArgTypeStr,
-        ")" ++ Suffix].
-
-:- func one_indent = string.
-
-one_indent = "    ".
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

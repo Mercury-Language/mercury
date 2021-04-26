@@ -862,7 +862,11 @@ The type checker consists of several modules.
     type_assign.m and typecheck_info.m define
     the main data structures used by typechecking.
     <li>
-    typecheck_errors.m handles outputting of type errors.
+    typecheck_errors.m generates error messages for type errors.
+    <li>
+    typecheck_msgs.m generates other kinds of messages from the type checker,
+    such as those containing inferred type declarations,
+    and diagnostics for non-contiguous clauses.
     <li>
     typeclasses.m checks typeclass constraints,
     and any redundant constraints that are eliminated are recorded
