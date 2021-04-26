@@ -9,7 +9,7 @@
 % File: typecheck_errors.m.
 % Main author: fjh.
 %
-% This file contains predicates to report errors for typechecking.
+% This file contains predicates to report type errors.
 %
 %---------------------------------------------------------------------------%
 
@@ -456,10 +456,10 @@ report_apply_instead_of_pred = Components :-
     MainComponent = always(MainPieces),
     VerbosePieces =
         [words("Perhaps you forgot to add"), quote(" = ..."), suffix("?)"), nl,
-        words("If you're trying to invoke a higher-order predicate,"),
-        words("use"), quote("call"), suffix(","), words("not"),
-            quote("apply"), suffix("."), nl,
-        words("If you're trying to curry a higher-order function,"),
+        words("If you are trying to invoke a higher-order predicate,"),
+        words("use"), quote("call"), suffix(","),
+            words("not"), quote("apply"), suffix("."), nl,
+        words("If you are trying to curry a higher-order function,"),
         words("use a forwarding function:"), nl,
         words("e.g. instead of "), quote("NewFunc = apply(OldFunc, X)"),
         words("use"), quote("NewFunc = my_apply(OldFunc, X)"),
@@ -491,58 +491,6 @@ find_possible_pf_missing_module_qualifiers(PredicateTable,
     list.foldl(accumulate_matching_pf_module_names(PredicateTable, SymName),
         PredIds, [], ModuleNames).
 
-:- func report_any_missing_module_qualifiers(type_error_clause_context,
-    prog_context, string, set(module_name)) = list(error_msg).
-
-report_any_missing_module_qualifiers(ClauseContext, Context,
-        ItemName, ModuleNamesSet0) = Msgs :-
-    % We take a set of module names instead of a list, because we want
-    % to report the name of each module just once, even if it defines
-    % more than entity with the name that got the error.
-    % (Our caller can put the module name into the set more than once:
-    % once for each such entity.)
-
-    % For entities defined in the current module and in its ancestors,
-    % access via use_module vs import_module is irrelevant.
-    ModuleInfo = ClauseContext ^ tecc_module_info,
-    module_info_get_name(ModuleInfo, ModuleName),
-    set.delete_list([ModuleName | get_ancestors(ModuleName)],
-        ModuleNamesSet0, ModuleNamesSet1),
-    % Users are not supposed to know about private_builtin.m at all.
-    set.delete(mercury_private_builtin_module,
-        ModuleNamesSet1, ModuleNamesSet),
-    set.to_sorted_list(ModuleNamesSet, ModuleNames),
-    (
-        ModuleNames = [],
-        Msgs = []
-    ;
-        ModuleNames = [HeadModuleName | TailModuleNames],
-        (
-            TailModuleNames = [],
-            MainPieces = [words("That"), words(ItemName), words("is defined"),
-                words("in module"), qual_sym_name(HeadModuleName), suffix(","),
-                words("which does not have an"),
-                decl("import_module"), words("declaration."), nl]
-        ;
-            TailModuleNames = [_ | _],
-            ModuleNamePieces =
-                list.map(func(MN) = qual_sym_name(MN), ModuleNames),
-            ModuleNamesPieces =
-                component_list_to_pieces("and", ModuleNamePieces),
-            MainPieces = [words("That"), words(ItemName), words("is defined"),
-                words("in modules")] ++ ModuleNamesPieces ++ [suffix(","),
-                words("none of which have"),
-                decl("import_module"), words("declarations."), nl]
-        ),
-        MainMsg = simplest_msg(Context, MainPieces),
-        VerbosePieces = [words("Note that symbols defined in modules"),
-            words("accessed via"), decl("use_module"), words("declarations"),
-            words("must always be fully module qualified."), nl],
-        VerboseMsg = simple_msg(Context,
-            [verbose_only(verbose_once, VerbosePieces)]),
-        Msgs = [MainMsg, VerboseMsg]
-    ).
-
 :- pred accumulate_matching_pf_module_names(predicate_table::in, sym_name::in,
     pred_id::in, list(module_name)::in, list(module_name)::out) is det.
 
@@ -571,10 +519,13 @@ report_unknown_event_call_error(Context, EventName) = Spec :-
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces).
 
+%---------------------------------------------------------------------------%
+
 report_event_args_mismatch(Context, EventName, EventArgTypes, Args) = Spec :-
-    Pieces =
-        [words("Error:")] ++
-        error_num_args_to_pieces(no, length(Args), [length(EventArgTypes)]) ++
+    list.length(Args, NumArgs),
+    list.length(EventArgTypes, NumArgTypes),
+    Pieces = [words("Error:")] ++
+        error_num_args_to_pieces(no, NumArgs, [NumArgTypes]) ++
         [words("in event"), quote(EventName), suffix("."), nl],
     Spec = simplest_spec($pred, severity_error, phase_type_check,
         Context, Pieces).
@@ -838,24 +789,18 @@ context_to_error_msg(Pieces, Context) = simplest_msg(Context, Pieces).
 describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
     (
         Source = source_type(TypeCtor),
-        TypeCtor = type_ctor(SymName, Arity),
-        Pieces = [words("the type constructor"),
-            qual_sym_name_arity(sym_name_arity(SymName, Arity))]
+        Pieces = [words("the type constructor"), qual_type_ctor(TypeCtor)]
     ;
         Source = source_builtin_type(TypeCtorName),
         Pieces = [words("the builtin type constructor"), quote(TypeCtorName)]
     ;
         Source = source_get_field_access(TypeCtor),
-        TypeCtor = type_ctor(SymName, Arity),
         Pieces = [words("a"), quote("get"), words("field access function"),
-            words("for the type constructor"),
-            qual_sym_name_arity(sym_name_arity(SymName, Arity))]
+            words("for the type constructor"), qual_type_ctor(TypeCtor)]
     ;
         Source = source_set_field_access(TypeCtor),
-        TypeCtor = type_ctor(SymName, Arity),
         Pieces = [words("a"), quote("set"), quote("field access function"),
-            words("for the type constructor"),
-            qual_sym_name_arity(sym_name_arity(SymName, Arity))]
+            words("for the type constructor"), qual_type_ctor(TypeCtor)]
     ;
         Source = source_pred(PredId),
         Pieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
@@ -1075,7 +1020,6 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
         type_assign_set_msg_to_verbose_pieces(Info, TypeAssignSet, VarSet,
             VerboseComponents)
     ),
-
     (
         MaybeNumMismatches = no,
         Arguments = "argument(s)"
@@ -1092,7 +1036,6 @@ report_error_functor_arg_types(Info, ClauseContext, UnifyContext, Context, Var,
         words_quote(StrippedFunctorStr), suffix(":"), nl,
         words("type error in"), words(Arguments), words("of")] ++
         functor_name_to_pieces(StrippedFunctor, Arity) ++ [suffix("."), nl],
-
     Msg = simple_msg(Context,
         [always(ContextPieces), always(VarAndTermPieces),
         always(ErrorPieces) | VerboseComponents]),
@@ -1366,7 +1309,7 @@ report_possible_expected_actual_types(CurrPossNum, [Mismatch | Mismatches])
         Mismatches),
     Pieces = HeadPieces ++ TailPieces.
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 :- pred gather_special_type_mismatches(list(type_mismatch)::in,
     set(type_mismatch_special)::out) is det.
@@ -1685,41 +1628,141 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
     InitComp = always(InClauseForPieces ++ GoalContextPieces),
     % Check for some special cases, so that we can give clearer error messages.
     ( if
-        report_error_undef_cons_special(Functor, Arity, InitComp, Context,
-            SpecPrime)
+        Functor = cons(unqualified(FunctorName), FunctorArity, _),
+        expect(unify(Arity, FunctorArity), $pred, "arity mismatch"),
+        language_builtin_functor(FunctorName, FunctorArity)
     then
-        Spec = SpecPrime
+        language_builtin_functor_components(FunctorName, FunctorArity,
+            FunctorComps),
+        Spec = error_spec($pred, severity_error, phase_type_check,
+            [simple_msg(Context, [InitComp | FunctorComps])])
+    else if
+        Functor = cons(unqualified(FunctorName), FunctorArity, _),
+        expect(unify(Arity, FunctorArity), $pred, "arity mismatch"),
+        syntax_functor_components(FunctorName, FunctorArity, FunctorComps)
+    then
+        Spec = error_spec($pred, severity_error, phase_type_check,
+            [simple_msg(Context, [InitComp | FunctorComps])])
     else
         report_error_undef_cons_std(ClauseContext, Context, InitComp,
             ConsErrors, Functor, Arity, Spec)
     ).
 
-:- pred report_error_undef_cons_special(cons_id::in, arity::in,
-    error_msg_component::in, prog_context::in, error_spec::out) is semidet.
+%---------------------%
 
-report_error_undef_cons_special(Functor, Arity, InitComp, Context, Spec) :-
-    % Check for some special cases, so that we can give clearer error messages.
-    ( if
-        Functor = cons(unqualified(FunctorName), FunctorArity, _),
-        expect(unify(Arity, FunctorArity), $pred, "arity mismatch"),
-        ( if
-            language_builtin_functor_components(FunctorName, Arity,
-                FunctorComps0)
-        then
-            FunctorComps = FunctorComps0
-        else if
-            syntax_functor_components(FunctorName, FunctorArity, FunctorComps0)
-        then
-            FunctorComps = FunctorComps0
-        else
-            fail
-        )
-    then
-        Spec = error_spec($pred, severity_error, phase_type_check,
-            [simple_msg(Context, [InitComp | FunctorComps])])
+    % language_builtin_functor(Name, Arity) is true iff Name/Arity is the name
+    % of a builtin language construct that should be used as a goal,
+    % not as an expression.
+    %
+:- pred language_builtin_functor(string::in, arity::in) is semidet.
+
+language_builtin_functor("=", 2).
+language_builtin_functor("\\=", 2).
+language_builtin_functor(",", 2).
+language_builtin_functor(";", 2).
+language_builtin_functor("\\+", 1).
+language_builtin_functor("not", 1).
+language_builtin_functor("<=>", 2).
+language_builtin_functor("=>", 2).
+language_builtin_functor("<=", 2).
+language_builtin_functor("call", _).
+language_builtin_functor("impure", 1).
+language_builtin_functor("semipure", 1).
+language_builtin_functor("all", 2).
+language_builtin_functor("some", 2).
+
+:- pred language_builtin_functor_components(string::in, arity::in,
+    list(error_msg_component)::out) is det.
+
+language_builtin_functor_components(Name, Arity, Components) :-
+    MainPieces = [words("error: the language construct"),
+        unqual_sym_name_arity(sym_name_arity(unqualified(Name), Arity)),
+        words("should be used as a goal, not as an expression."), nl],
+    VerbosePieces = [words("If you are trying to use a goal"),
+        words("as a boolean function, you should write"),
+        words_quote("if <goal> then yes else no"), words("instead."), nl],
+    ( if Name = "call" then
+        VerboseCallPieces =
+            [words("If you are trying to invoke a higher-order function,"),
+            words("you should use"), quote("apply"), suffix(","),
+            words("not"), quote("call"), suffix("."), nl,
+            words("If you are trying to curry a higher-order function,"),
+            words("see the ""Creating higher-order terms"" section"),
+            words("of the Mercury Language Reference Manual."), nl,
+            words("If you really are trying to use"),
+            quote("call"), words("as an expression"),
+            words("and not as an application of the language builtin call/N,"),
+            words("make sure that you have the arity correct,"),
+            words("and that the functor"), quote("call"),
+            words("is actually defined."),
+            words("(If it is defined in a separate module,"),
+            words("check that the module is correctly imported.)"), nl]
     else
-        fail
-    ).
+        VerboseCallPieces = []
+    ),
+    Components = [always(MainPieces),
+        verbose_only(verbose_always, VerbosePieces),
+        verbose_only(verbose_once, VerboseCallPieces)].
+
+%---------------------%
+
+:- pred syntax_functor_components(string::in, arity::in,
+    list(error_msg_component)::out) is semidet.
+
+syntax_functor_components("else", 2, Components) :-
+    Pieces = [words("error: unmatched"), quote("else"), suffix("."), nl],
+    Components = [always(Pieces)].
+syntax_functor_components("if", 2, Components) :-
+    Pieces = [words("error:"), quote("if"), words("without"), quote("then"),
+         words("or"), quote("else"), suffix("."), nl],
+    Components = [always(Pieces)].
+syntax_functor_components("then", 2, Components) :-
+    Pieces1 = [words("error:"), quote("then"), words("without"),
+        quote("if"), words("or"), quote("else"), suffix("."), nl],
+    Pieces2 = [words("Note: the"), quote("else"),
+        words("part is not optional."),
+        words("Every if-then must have an"), quote("else"), suffix("."), nl],
+    Components = [always(Pieces1), verbose_only(verbose_once, Pieces2)].
+syntax_functor_components("->", 2, Components) :-
+    Pieces1 = [words("error:"), quote("->"), words("without"),
+        quote(";"), suffix("."), nl],
+    Pieces2 = [words("Note: the else part is not optional."),
+        words("Every if-then must have an else."), nl],
+    Components = [always(Pieces1), verbose_only(verbose_once, Pieces2)].
+syntax_functor_components("^", 2, Components) :-
+    Pieces1 = [words("error: invalid use of field selection operator"),
+        prefix("("), quote("^"), suffix(")."), nl],
+    Pieces2 = [words("This is probably some kind of syntax error."),
+        words("The field name must be an atom,"),
+        words("not a variable or other term."), nl],
+    Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)].
+syntax_functor_components(":=", 2, Components) :-
+    Pieces1 = [words("error: invalid use of field update operator"),
+        prefix("("), quote(":="), suffix(")."), nl],
+    Pieces2 = [words("This is probably some kind of syntax error."), nl],
+    Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)].
+syntax_functor_components(":-", 2, Components) :-
+    Pieces = [words("syntax error in lambda expression"),
+         prefix("("), quote(":-"), suffix(")."), nl],
+    Components = [always(Pieces)].
+syntax_functor_components("-->", 2, Components) :-
+    Pieces = [words("syntax error in DCG lambda expression"),
+        prefix("("), quote("-->"), suffix(")."), nl],
+    Components = [always(Pieces)].
+syntax_functor_components(".", 2, Components) :-
+    Pieces = [words("error: the list constructor is now"),
+        unqual_sym_name_arity(sym_name_arity(unqualified("[|]"), 2)),
+        suffix(","), words("not"), quote("./2"),
+        suffix("."), nl],
+    Components = [always(Pieces)].
+syntax_functor_components("!", 1, Components) :-
+    Pieces1 = [words("error: invalid use of"), quote("!"),
+        words("state variable operator."), nl],
+    Pieces2 = [words("You probably meant to use"), quote("!."),
+        words("or"), quote("!:"), suffix("."), nl],
+    Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)].
+
+%---------------------%
 
 :- pred report_error_undef_cons_std(type_error_clause_context::in,
     prog_context::in, error_msg_component::in, list(cons_error)::in,
@@ -1804,137 +1847,6 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
         [simple_msg(Context,
             [InitComp | FunctorComps]) | ConsMsgs] ++ QualMsgs).
 
-:- pred accumulate_matching_cons_module_names(sym_name::in, hlds_cons_defn::in,
-    list(module_name)::in, list(module_name)::out) is det.
-
-accumulate_matching_cons_module_names(FunctorSymName, ConsDefn, !ModuleNames) :-
-    type_ctor(TypeCtorSymName, _) = ConsDefn ^ cons_type_ctor,
-    (
-        TypeCtorSymName = unqualified(_)
-        % There can be no problem with use_module replacing import_module
-        % if the hlds_cons_defn is for a builtin data constructor.
-    ;
-        TypeCtorSymName = qualified(TypeCtorModuleName, _),
-        FunctorName = unqualify_name(FunctorSymName),
-        FullSymName = qualified(TypeCtorModuleName, FunctorName),
-        ( if partial_sym_name_matches_full(FunctorSymName, FullSymName) then
-            !:ModuleNames = [TypeCtorModuleName | !.ModuleNames]
-        else
-            true
-        )
-    ).
-
-:- pred language_builtin_functor_components(string::in, arity::in,
-    list(error_msg_component)::out) is semidet.
-
-language_builtin_functor_components(Name, Arity, Components) :-
-    language_builtin_functor(Name, Arity),
-    MainPieces = [words("error: the language construct"),
-        unqual_sym_name_arity(sym_name_arity(unqualified(Name), Arity)),
-        words("should be used as a goal, not as an expression."), nl],
-    VerbosePieces = [words("If you are trying to use a goal"),
-        words("as a boolean function, you should write"),
-        words_quote("if <goal> then yes else no"), words("instead."), nl],
-    ( if Name = "call" then
-        VerboseCallPieces =
-            [words("If you are trying to invoke a higher-order function,"),
-            words("you should use"), quote("apply"), suffix(","),
-            words("not"), quote("call"), suffix("."), nl,
-            words("If you are trying to curry a higher-order function,"),
-            words("see the ""Creating higher-order terms"" section"),
-            words("of the Mercury Language Reference Manual."), nl,
-            words("If you really are trying to use"),
-            quote("call"), words("as an expression"),
-            words("and not as an application of the language builtin call/N,"),
-            words("make sure that you have the arity correct,"),
-            words("and that the functor"), quote("call"),
-            words("is actually defined."),
-            words("(If it is defined in a separate module,"),
-            words("check that the module is correctly imported.)"), nl]
-    else
-        VerboseCallPieces = []
-    ),
-    Components = [always(MainPieces),
-        verbose_only(verbose_always, VerbosePieces),
-        verbose_only(verbose_once, VerboseCallPieces)].
-
-    % language_builtin_functor(Name, Arity) is true iff Name/Arity is the name
-    % of a builtin language construct that should be used as a goal,
-    % not as an expression.
-    %
-:- pred language_builtin_functor(string::in, arity::in) is semidet.
-
-language_builtin_functor("=", 2).
-language_builtin_functor("\\=", 2).
-language_builtin_functor(",", 2).
-language_builtin_functor(";", 2).
-language_builtin_functor("\\+", 1).
-language_builtin_functor("not", 1).
-language_builtin_functor("<=>", 2).
-language_builtin_functor("=>", 2).
-language_builtin_functor("<=", 2).
-language_builtin_functor("call", _).
-language_builtin_functor("impure", 1).
-language_builtin_functor("semipure", 1).
-language_builtin_functor("all", 2).
-language_builtin_functor("some", 2).
-
-:- pred syntax_functor_components(string::in, arity::in,
-    list(error_msg_component)::out) is semidet.
-
-syntax_functor_components("else", 2, Components) :-
-    Pieces = [words("error: unmatched"), quote("else"), suffix("."), nl],
-    Components = [always(Pieces)].
-syntax_functor_components("if", 2, Components) :-
-    Pieces = [words("error:"), quote("if"), words("without"), quote("then"),
-         words("or"), quote("else"), suffix("."), nl],
-    Components = [always(Pieces)].
-syntax_functor_components("then", 2, Components) :-
-    Pieces1 = [words("error:"), quote("then"), words("without"),
-        quote("if"), words("or"), quote("else"), suffix("."), nl],
-    Pieces2 = [words("Note: the"), quote("else"),
-        words("part is not optional."),
-        words("Every if-then must have an"), quote("else"), suffix("."), nl],
-    Components = [always(Pieces1), verbose_only(verbose_once, Pieces2)].
-syntax_functor_components("->", 2, Components) :-
-    Pieces1 = [words("error:"), quote("->"), words("without"),
-        quote(";"), suffix("."), nl],
-    Pieces2 = [words("Note: the else part is not optional."),
-        words("Every if-then must have an else."), nl],
-    Components = [always(Pieces1), verbose_only(verbose_once, Pieces2)].
-syntax_functor_components("^", 2, Components) :-
-    Pieces1 = [words("error: invalid use of field selection operator"),
-        prefix("("), quote("^"), suffix(")."), nl],
-    Pieces2 = [words("This is probably some kind of syntax error."),
-        words("The field name must be an atom,"),
-        words("not a variable or other term."), nl],
-    Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)].
-syntax_functor_components(":=", 2, Components) :-
-    Pieces1 = [words("error: invalid use of field update operator"),
-        prefix("("), quote(":="), suffix(")."), nl],
-    Pieces2 = [words("This is probably some kind of syntax error."), nl],
-    Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)].
-syntax_functor_components(":-", 2, Components) :-
-    Pieces = [words("syntax error in lambda expression"),
-         prefix("("), quote(":-"), suffix(")."), nl],
-    Components = [always(Pieces)].
-syntax_functor_components("-->", 2, Components) :-
-    Pieces = [words("syntax error in DCG lambda expression"),
-        prefix("("), quote("-->"), suffix(")."), nl],
-    Components = [always(Pieces)].
-syntax_functor_components(".", 2, Components) :-
-    Pieces = [words("error: the list constructor is now"),
-        unqual_sym_name_arity(sym_name_arity(unqualified("[|]"), 2)),
-        suffix(","), words("not"), quote("./2"),
-        suffix("."), nl],
-    Components = [always(Pieces)].
-syntax_functor_components("!", 1, Components) :-
-    Pieces1 = [words("error: invalid use of"), quote("!"),
-        words("state variable operator."), nl],
-    Pieces2 = [words("You probably meant to use"), quote("!."),
-        words("or"), quote("!:"), suffix("."), nl],
-    Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)].
-
 :- pred return_function_arities(module_info::in, list(pred_id)::in,
     list(int)::in, list(int)::out) is det.
 
@@ -1961,6 +1873,26 @@ wrong_arity_constructor_to_pieces(Name, Arity, ActualArities) = Pieces :-
         ActualArities),
     Pieces = [words("error: ")] ++ NumArgsPieces ++
         [words("in use of constructor"), qual_sym_name(Name), suffix(".")].
+
+:- pred accumulate_matching_cons_module_names(sym_name::in, hlds_cons_defn::in,
+    list(module_name)::in, list(module_name)::out) is det.
+
+accumulate_matching_cons_module_names(FunctorSymName, ConsDefn, !ModuleNames) :-
+    type_ctor(TypeCtorSymName, _) = ConsDefn ^ cons_type_ctor,
+    (
+        TypeCtorSymName = unqualified(_)
+        % There can be no problem with use_module replacing import_module
+        % if the hlds_cons_defn is for a builtin data constructor.
+    ;
+        TypeCtorSymName = qualified(TypeCtorModuleName, _),
+        FunctorName = unqualify_name(FunctorSymName),
+        FullSymName = qualified(TypeCtorModuleName, FunctorName),
+        ( if partial_sym_name_matches_full(FunctorSymName, FullSymName) then
+            !:ModuleNames = [TypeCtorModuleName | !.ModuleNames]
+        else
+            true
+        )
+    ).
 
 :- func report_cons_error(prog_context, cons_error) = list(error_msg).
 
@@ -2174,6 +2106,109 @@ report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 %---------------------------------------------------------------------------%
+
+construct_pred_decl_diff(ModuleInfo, ActualArgTypes, MaybeActualReturnType,
+        OtherPredId, Pieces) :-
+    module_info_pred_info(ModuleInfo, OtherPredId, OtherPredInfo),
+    pred_info_get_arg_types(OtherPredInfo, OtherTypes),
+    % It would be nice if we could print the names of type variables,
+    % but there are two problems. The lesser problem is that the names
+    % may be different in the varsets of the two predicates, which may be
+    % confusing. The more deadly problem is that a type variable that
+    % exists in one of the varsets may not exist in the other.
+    % Therefore printing variable numbers is the best thing we can do,
+    % as a general case. (We *could* do better in the special case
+    % where neither problem arises.)
+    varset.init(TVarSet),
+    (
+        MaybeActualReturnType = no,
+        list.length(OtherTypes, OtherArity),
+        pred_decl_lines(TVarSet, ActualArgTypes, ActualLines),
+        pred_decl_lines(TVarSet, OtherTypes, OtherLines)
+    ;
+        MaybeActualReturnType = yes(ActualReturnType),
+        pred_args_to_func_args(OtherTypes, OtherArgTypes, OtherReturnType),
+        list.length(OtherArgTypes, OtherArity),
+        func_decl_lines(TVarSet, ActualArgTypes, ActualReturnType,
+            ActualLines),
+        func_decl_lines(TVarSet, OtherArgTypes, OtherReturnType,
+            OtherLines)
+    ),
+    EditParams = edit_params(1, 1, 2), % cost(replace) = cost(delete + insert).
+    find_shortest_edit_seq(EditParams, OtherLines, ActualLines, EditSeq),
+    find_diff_seq(OtherLines, EditSeq, DiffSeq),
+    DiffPieceLists = list.map(diff_to_pieces, DiffSeq),
+    list.condense(DiffPieceLists, DiffPieces),
+    Pieces = [words("The argument list difference from the arity"),
+        int_fixed(OtherArity), words("version is"), nl] ++ DiffPieces.
+
+:- func diff_to_pieces(diff(string)) = list(format_component).
+
+diff_to_pieces(Diff) = Pieces :-
+    (
+        Diff = unchanged(Line),
+        Char = " "
+    ;
+        Diff = deleted(Line),
+        Char = "-"
+    ;
+        Diff = inserted(Line),
+        Char = "+"
+    ),
+    Pieces = [fixed(Char ++ " " ++ Line), nl].
+
+:- pred pred_decl_lines(tvarset::in, list(mer_type)::in,
+    list(string)::out) is det.
+
+pred_decl_lines(TVarSet, ArgTypes, Lines) :-
+    ( if list.split_last(ArgTypes, NonLastArgTypes, LastArgType) then
+        arg_decl_lines("pred", TVarSet, NonLastArgTypes, LastArgType, "",
+            Lines)
+    else
+        Lines = ["pred"]
+    ).
+
+:- pred func_decl_lines(tvarset::in, list(mer_type)::in, mer_type::in,
+    list(string)::out) is det.
+
+func_decl_lines(TVarSet, ArgTypes, ReturnType, Lines) :-
+    ReturnTypeStr =
+        mercury_type_to_string(TVarSet, print_num_only, ReturnType),
+    ReturnTypeSuffix = " = " ++ ReturnTypeStr,
+    ( if list.split_last(ArgTypes, NonLastArgTypes, LastArgType) then
+        arg_decl_lines("func", TVarSet, NonLastArgTypes, LastArgType,
+            ReturnTypeSuffix, Lines)
+    else
+        Lines = ["func" ++ ReturnTypeSuffix]
+    ).
+
+:- pred arg_decl_lines(string::in, tvarset::in,
+    list(mer_type)::in, mer_type::in, string::in, list(string)::out) is det.
+
+arg_decl_lines(PredOrFuncStr, TVarSet, NonLastArgTypes, LastArgType, Suffix,
+        Lines) :-
+    NonLastArgTypeStrs = list.map(
+        mercury_type_to_string(TVarSet, print_num_only), NonLastArgTypes),
+    AddComma =
+        (func(NonLastArgTypeStr) = one_indent ++ NonLastArgTypeStr ++ ","),
+    NonLastArgTypeLines = list.map(AddComma, NonLastArgTypeStrs),
+    LastArgTypeStr =
+        mercury_type_to_string(TVarSet, print_num_only, LastArgType),
+    Lines = [PredOrFuncStr ++ "("] ++
+        NonLastArgTypeLines ++
+        [one_indent ++ LastArgTypeStr,
+        ")" ++ Suffix].
+
+:- func one_indent = string.
+
+one_indent = "    ".
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% The rest of this module contains utility predicates and functions
+% for use by the code above.
+%
 
 :- func types_of_vars_to_pieces(prog_varset, inst_varset, list(prog_var),
     type_assign_set) = list(format_component).
@@ -2492,6 +2527,60 @@ report_unimported_parents(UnimportedParents) = Pieces :-
     else
         Pieces = [words("(the possible parent modules")]
             ++ AllUnimportedParents ++ [words("have not been imported)."), nl]
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- func report_any_missing_module_qualifiers(type_error_clause_context,
+    prog_context, string, set(module_name)) = list(error_msg).
+
+report_any_missing_module_qualifiers(ClauseContext, Context,
+        ItemName, ModuleNamesSet0) = Msgs :-
+    % We take a set of module names instead of a list, because we want
+    % to report the name of each module just once, even if it defines
+    % more than entity with the name that got the error.
+    % (Our caller can put the module name into the set more than once:
+    % once for each such entity.)
+
+    % For entities defined in the current module and in its ancestors,
+    % access via use_module vs import_module is irrelevant.
+    ModuleInfo = ClauseContext ^ tecc_module_info,
+    module_info_get_name(ModuleInfo, ModuleName),
+    set.delete_list([ModuleName | get_ancestors(ModuleName)],
+        ModuleNamesSet0, ModuleNamesSet1),
+    % Users are not supposed to know about private_builtin.m at all.
+    set.delete(mercury_private_builtin_module,
+        ModuleNamesSet1, ModuleNamesSet),
+    set.to_sorted_list(ModuleNamesSet, ModuleNames),
+    (
+        ModuleNames = [],
+        Msgs = []
+    ;
+        ModuleNames = [HeadModuleName | TailModuleNames],
+        (
+            TailModuleNames = [],
+            MainPieces = [words("That"), words(ItemName), words("is defined"),
+                words("in module"), qual_sym_name(HeadModuleName), suffix(","),
+                words("which does not have an"),
+                decl("import_module"), words("declaration."), nl]
+        ;
+            TailModuleNames = [_ | _],
+            ModuleNamePieces =
+                list.map(func(MN) = qual_sym_name(MN), ModuleNames),
+            ModuleNamesPieces =
+                component_list_to_pieces("and", ModuleNamePieces),
+            MainPieces = [words("That"), words(ItemName), words("is defined"),
+                words("in modules")] ++ ModuleNamesPieces ++ [suffix(","),
+                words("none of which have"),
+                decl("import_module"), words("declarations."), nl]
+        ),
+        MainMsg = simplest_msg(Context, MainPieces),
+        VerbosePieces = [words("Note that symbols defined in modules"),
+            words("accessed via"), decl("use_module"), words("declarations"),
+            words("must always be fully module qualified."), nl],
+        VerboseMsg = simple_msg(Context,
+            [verbose_only(verbose_once, VerbosePieces)]),
+        Msgs = [MainMsg, VerboseMsg]
     ).
 
 %---------------------------------------------------------------------------%
@@ -2866,104 +2955,6 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
     else
         ArgTypeStuffs = [ArgTypeStuff | TailArgTypeStuffs]
     ).
-
-%---------------------------------------------------------------------------%
-
-construct_pred_decl_diff(ModuleInfo, ActualArgTypes, MaybeActualReturnType,
-        OtherPredId, Pieces) :-
-    module_info_pred_info(ModuleInfo, OtherPredId, OtherPredInfo),
-    pred_info_get_arg_types(OtherPredInfo, OtherTypes),
-    % It would be nice if we could print the names of type variables,
-    % but there are two problems. The lesser problem is that the names
-    % may be different in the varsets of the two predicates, which may be
-    % confusing. The more deadly problem is that a type variable that
-    % exists in one of the varsets may not exist in the other.
-    % Therefore printing variable numbers is the best thing we can do,
-    % as a general case. (We *could* do better in the special case
-    % where neither problem arises.)
-    varset.init(TVarSet),
-    (
-        MaybeActualReturnType = no,
-        list.length(OtherTypes, OtherArity),
-        pred_decl_lines(TVarSet, ActualArgTypes, ActualLines),
-        pred_decl_lines(TVarSet, OtherTypes, OtherLines)
-    ;
-        MaybeActualReturnType = yes(ActualReturnType),
-        pred_args_to_func_args(OtherTypes, OtherArgTypes, OtherReturnType),
-        list.length(OtherArgTypes, OtherArity),
-        func_decl_lines(TVarSet, ActualArgTypes, ActualReturnType,
-            ActualLines),
-        func_decl_lines(TVarSet, OtherArgTypes, OtherReturnType,
-            OtherLines)
-    ),
-    EditParams = edit_params(1, 1, 2), % cost(replace) = cost(delete + insert).
-    find_shortest_edit_seq(EditParams, OtherLines, ActualLines, EditSeq),
-    find_diff_seq(OtherLines, EditSeq, DiffSeq),
-    DiffPieceLists = list.map(diff_to_pieces, DiffSeq),
-    list.condense(DiffPieceLists, DiffPieces),
-    Pieces = [words("The argument list difference from the arity"),
-        int_fixed(OtherArity), words("version is"), nl] ++ DiffPieces.
-
-:- func diff_to_pieces(diff(string)) = list(format_component).
-
-diff_to_pieces(Diff) = Pieces :-
-    (
-        Diff = unchanged(Line),
-        Char = " "
-    ;
-        Diff = deleted(Line),
-        Char = "-"
-    ;
-        Diff = inserted(Line),
-        Char = "+"
-    ),
-    Pieces = [fixed(Char ++ " " ++ Line), nl].
-
-:- pred pred_decl_lines(tvarset::in, list(mer_type)::in,
-    list(string)::out) is det.
-
-pred_decl_lines(TVarSet, ArgTypes, Lines) :-
-    ( if list.split_last(ArgTypes, NonLastArgTypes, LastArgType) then
-        arg_decl_lines("pred", TVarSet, NonLastArgTypes, LastArgType, "",
-            Lines)
-    else
-        Lines = ["pred"]
-    ).
-
-:- pred func_decl_lines(tvarset::in, list(mer_type)::in, mer_type::in,
-    list(string)::out) is det.
-
-func_decl_lines(TVarSet, ArgTypes, ReturnType, Lines) :-
-    ReturnTypeStr =
-        mercury_type_to_string(TVarSet, print_num_only, ReturnType),
-    ReturnTypeSuffix = " = " ++ ReturnTypeStr,
-    ( if list.split_last(ArgTypes, NonLastArgTypes, LastArgType) then
-        arg_decl_lines("func", TVarSet, NonLastArgTypes, LastArgType,
-            ReturnTypeSuffix, Lines)
-    else
-        Lines = ["func" ++ ReturnTypeSuffix]
-    ).
-
-:- pred arg_decl_lines(string::in, tvarset::in,
-    list(mer_type)::in, mer_type::in, string::in, list(string)::out) is det.
-
-arg_decl_lines(PredOrFuncStr, TVarSet, NonLastArgTypes, LastArgType, Suffix,
-        Lines) :-
-    NonLastArgTypeStrs = list.map(
-        mercury_type_to_string(TVarSet, print_num_only), NonLastArgTypes),
-    AddComma =
-        (func(NonLastArgTypeStr) = one_indent ++ NonLastArgTypeStr ++ ","),
-    NonLastArgTypeLines = list.map(AddComma, NonLastArgTypeStrs),
-    LastArgTypeStr =
-        mercury_type_to_string(TVarSet, print_num_only, LastArgType),
-    Lines = [PredOrFuncStr ++ "("] ++
-        NonLastArgTypeLines ++
-        [one_indent ++ LastArgTypeStr,
-        ")" ++ Suffix].
-
-:- func one_indent = string.
-
-one_indent = "    ".
 
 %---------------------------------------------------------------------------%
 
