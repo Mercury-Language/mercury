@@ -1,17 +1,18 @@
 #!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
 # Given N arguments, print the first N/2 arguments, rounding down.
 
 if test -x /usr/ucb/echo
 then
-	ECHO=/usr/ucb/echo
+    ECHO=/usr/ucb/echo
 else
-	ECHO=echo
+    ECHO=echo
 fi
 
 take=`expr $# / 2`
 while test $take -gt 0
 do
-	$ECHO -n "$1 "
-	shift
-	take=`expr $take - 1`
+    $ECHO -n "$1 "
+    shift
+    take=`expr $take - 1`
 done

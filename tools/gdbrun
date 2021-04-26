@@ -1,4 +1,5 @@
 #!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
 #---------------------------------------------------------------------------#
 # Copyright (C) 2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -8,6 +9,7 @@
 # Usage: gdbrun <program> <arguments>
 # Invokes gdb on <program>, and runs the program with the given <arguments>.
 #
+
 program="$1"
 tmpfile=/tmp/gdbrun.$$
 trap "rm -f $tmpfile" 0 1 2 3 13 15
@@ -16,17 +18,15 @@ shift
 runargs=""
 for arg in "$@"
 do
-	# This quotes spaces properly, which is necessary to handle some of
-	# the arguments created by lmc. We do not quote other special
-	# characters (e.g. #, >, and \) properly. At the moment there is
-	# no need to do so, since lmc does not pass us strings containing
-	# such characters (in the usual case that the workspace name has no
-	# such characters).
-
-	case "$arg" in
-	*" "*)	runargs="$runargs \"$arg\"" ;;
-	*)	runargs="$runargs $arg" ;;
-	esac
+    # This quotes spaces properly, which is necessary to handle some of
+    # the arguments created by lmc. We do not quote other special characters
+    # (e.g. #, >, and \) properly. At the moment there is no need to do so,
+    # since lmc does not pass us strings containing such characters
+    # (in the usual case that the workspace name has no such characters).
+    case "$arg" in
+        *" "*)  runargs="$runargs \"$arg\"" ;;
+        *)      runargs="$runargs $arg" ;;
+    esac
 done
 echo "set args $runargs" > "$tmpfile"
 

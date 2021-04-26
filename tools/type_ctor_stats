@@ -1,40 +1,41 @@
 #!/usr/bin/awk -f
-NF == 3	{
-		rep[$2] = 1;
-		all_rep += $3;
-		pred_rep[$1] += $3;
-		kind_rep[$1 "-" $2] += $3;
-	}
-NF == 5	{
-		qualified = $2 ":" $3;
-		type[qualified] = 1;
-		ctor_rep[qualified] = $4;
-		all_name += $5;
-		pred_name[$1] += $5;
-		kind_name[$1 "-" qualified] += $5;
-	}
-END	{
-		if (all_rep == all_name) {
-			printf "total %15.0f\n\n", all_rep;
-		} else {
-			printf "total %15.0f rep, %15.0f name\n\n", all_rep, all_name;
-		}
+# vim: ft=awk ts=4 sw=4 et
+NF == 3 {
+        rep[$2] = 1;
+        all_rep += $3;
+        pred_rep[$1] += $3;
+        kind_rep[$1 "-" $2] += $3;
+    }
+NF == 5 {
+        qualified = $2 ":" $3;
+        type[qualified] = 1;
+        ctor_rep[qualified] = $4;
+        all_name += $5;
+        pred_name[$1] += $5;
+        kind_name[$1 "-" qualified] += $5;
+    }
+END {
+        if (all_rep == all_name) {
+            printf "total %15.0f\n\n", all_rep;
+        } else {
+            printf "total %15.0f rep, %15.0f name\n\n", all_rep, all_name;
+        }
 
-		for (p in pred_rep) {
-			for (r in rep) {
-				printf "%-9s %-20s %15.0f (%7.2f%%, %5.2f%%)\n", p, r, kind_rep[p "-" r], (100 * kind_rep[p "-" r]) / pred_rep[p], (100 * kind_rep[p "-" r]) / all_rep;
-			}
+        for (p in pred_rep) {
+            for (r in rep) {
+                printf "%-9s %-20s %15.0f (%7.2f%%, %5.2f%%)\n", p, r, kind_rep[p "-" r], (100 * kind_rep[p "-" r]) / pred_rep[p], (100 * kind_rep[p "-" r]) / all_rep;
+            }
 
-			printf "%-30s %15.0f (%9s %5.2f%%)\n\n", p ":", pred_rep[p], "", (100 * pred_rep[p]) / all_rep;
-		}
+            printf "%-30s %15.0f (%9s %5.2f%%)\n\n", p ":", pred_rep[p], "", (100 * pred_rep[p]) / all_rep;
+        }
 
-		for (p in pred_name) {
-			for (t in type) {
-				if (kind_name[p "-" t] > 0) {
-					printf "%-9s %-32s %12.0f (%7.2f%%, %5.2f%%)\n", p, ctor_rep[t] " " t, kind_name[p "-" t], (100 * kind_name[p "-" t]) / pred_name[p], (100 * kind_name[p "-" t]) / all_name;
-				}
-			}
+        for (p in pred_name) {
+            for (t in type) {
+                if (kind_name[p "-" t] > 0) {
+                    printf "%-9s %-32s %12.0f (%7.2f%%, %5.2f%%)\n", p, ctor_rep[t] " " t, kind_name[p "-" t], (100 * kind_name[p "-" t]) / pred_name[p], (100 * kind_name[p "-" t]) / all_name;
+                }
+            }
 
-			printf "%-42s %12.0f (%9s %5.2f%%)\n\n", p ":", pred_name[p], "", (100 * pred_name[p]) / all_name;
-		}
-	}
+            printf "%-42s %12.0f (%9s %5.2f%%)\n\n", p ":", pred_name[p], "", (100 * pred_name[p]) / all_name;
+        }
+    }

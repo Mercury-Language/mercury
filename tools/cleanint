@@ -1,5 +1,5 @@
 #!/bin/sh
-#
+# vim: ft=sh ts=4 sw=4 et
 # Check whether there are any Mercury-compiler generated files in this
 # directory that do not belong to Mercury modules in this directory.
 # Report their names.
@@ -11,42 +11,42 @@
 prefix=
 while getopts p: flag
 do
-	case $flag in
-	p)	prefix="$OPTARG/"
-		;;
-	*)	echo "usage: cleanint [-p prefix]"
-		exit 1
-		;;
-	esac
+    case $flag in
+    p)  prefix="$OPTARG/"
+        ;;
+    *)  echo "usage: cleanint [-p prefix]"
+        exit 1
+        ;;
+    esac
 done
 
 shift `expr $OPTIND - 1`
 if test $# -gt 0
 then
-	echo "usage: cleanint [-p prefix]"
-	exit 1
+    echo "usage: cleanint [-p prefix]"
+    exit 1
 fi
 
 for suffix in d dep int int2 int3 date date3 opt optdate trans_opt trans_opt_date err
 do
-	for file in *.$suffix
-	do
-		# If there are no files with a given suffix,
-		# then avoid the ill-formed call to basename.
+    for file in *.$suffix
+    do
+        # If there are no files with a given suffix,
+        # then avoid the ill-formed call to basename.
 
-		if test -f "$file"
-		then
-			base=`basename $file .$suffix`
-			if test ! -f "$base.m"
-			then
-				basebase=`echo $base | sed -e 's/.*\.//'`
-				if test ! -f "$basebase.m"
-				then
-					echo $prefix$file
-				fi
-			fi
-		fi
-	done
+        if test -f "$file"
+        then
+            base=`basename $file .$suffix`
+            if test ! -f "$base.m"
+            then
+                basebase=`echo $base | sed -e 's/.*\.//'`
+                if test ! -f "$basebase.m"
+                then
+                    echo $prefix$file
+                fi
+            fi
+        fi
+    done
 done
 
 exit 0

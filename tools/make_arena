@@ -1,17 +1,18 @@
 #!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
 #
 # Create and populate an arena directory for use in speed tests.
 
 if test ! -d boehm_gc
 then
-	echo "make_arena should be executed at the top level of a workspace"
-	exit 1
+    echo "make_arena should be executed at the top level of a workspace"
+    exit 1
 fi
 
 if test -d arena
 then
-	echo "make_arena: arena directory already exists"
-	exit 1
+    echo "make_arena: arena directory already exists"
+    exit 1
 fi
 
 mkdir arena
@@ -22,8 +23,8 @@ cp compiler/*.m arena
 # Copy the interface files and possibly optimization files they will need.
 for dir in library mdbcomp compiler
 do
-	cp $dir/*.int* arena
-	cp $dir/*.*opt arena > /dev/null 2>&1
+    cp $dir/*.int* arena
+    cp $dir/*.*opt arena > /dev/null 2>&1
 done
 
 # Copy all the auxiliary files.

@@ -1,4 +1,5 @@
 #!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
 # Assemble a C source file from its component parts.
 # The parts are stage2.{$base,$trial}/$testeddir/$module.c.part.{1,2,...$count}.
 # Assemble uses the parts from stage2.$trial for the parts whose numbers are
@@ -7,8 +8,8 @@
 
 if test $# -le 5
 then
-	echo "Usage: assemble base trial testeddir module count testedparts ..."
-	exit 1
+    echo "Usage: assemble base trial testeddir module count testedparts ..."
+    exit 1
 fi
 
 base="$1"
@@ -23,12 +24,13 @@ cat /dev/null > stage2/$testeddir/$module.c
 i=0
 while test $i -le $cnt
 do
-	if appears $i $tested
-	then
-		which="$trial"
-	else
-		which="$base"
-	fi
-	cat stage2.$which/$testeddir/$module.c.part.$i >> stage2/$testeddir/$module.c
-	i=`expr $i + 1`
+    if appears $i $tested
+    then
+        which="$trial"
+    else
+        which="$base"
+    fi
+    cat stage2.$which/$testeddir/$module.c.part.$i \
+        >> stage2/$testeddir/$module.c
+    i=`expr $i + 1`
 done

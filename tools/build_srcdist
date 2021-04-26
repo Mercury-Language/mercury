@@ -1,4 +1,5 @@
 #!/bin/bash
+# vim: ft=sh ts=4 sw=4 et
 # Copyright (C) 2013-2015 The Mercury team.
 #
 # This script builds the Mercury source distribution.

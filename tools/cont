@@ -1,4 +1,5 @@
 #!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
 # This script add a backslash to the end of every line in its input except
 # the last. The input can come either from a list of files named on the
 # command line or from standard input.

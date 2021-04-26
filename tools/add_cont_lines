@@ -1,4 +1,5 @@
 #!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
 # This script add a backslash to the end of every line in its input.
 # The input can come either from a list of files named on the command line
 # or from standard input.
@@ -6,10 +7,10 @@
 # This script assumes that there are no tabs in the input.
 
 awk '
-	{
-		printf "%s", $0;
-		for (i = length($0); i < 78; i++)
-			printf " ";
+    {
+        printf "%s", $0;
+        for (i = length($0); i < 78; i++)
+            printf " ";
 
-		printf "\\\n";
-	}' "$@"
+        printf "\\\n";
+    }' "$@"

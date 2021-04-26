@@ -1,4 +1,5 @@
 #!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
 #---------------------------------------------------------------------------#
 # Copyright (C) 2012 The University of Melbourne.
 # Copyright (C) 2014, 2018 The Mercury team.

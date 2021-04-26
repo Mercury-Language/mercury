@@ -1,20 +1,21 @@
 #!/bin/sh
-# See if the first argument appears among the following arguments.
-# If yes, return true (0), otherwise, return false (1).
+# vim: ft=sh ts=4 sw=4 et
+# See whether the first argument appears among the following arguments.
+# If yes, return true (0); otherwise, return false (1).
 
 if test $# -lt 1
 then
-	echo "Usage: appears word word1 ..."
-	exit 2
+    echo "Usage: appears word word1 ..."
+    exit 2
 fi
 
 word=$1
 shift
 for arg in "$@"
 do
-	if test "$word" = "$arg"
-	then
-		exit 0
-	fi
+    if test "$word" = "$arg"
+    then
+        exit 0
+    fi
 done
 exit 1

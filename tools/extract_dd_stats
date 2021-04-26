@@ -1,4 +1,5 @@
 #!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
 #---------------------------------------------------------------------------#
 # Copyright (C) 2005 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -25,105 +26,105 @@
 
 awk '
 BEGIN {
-	FS = " = "
-	printf("%6s %11s %10s %7s %7s %7s %7s\n", \
-		"reexec", "nodes", "ratio", "CPU", \
-		"WC", "RSS", "VSZ");
+    FS = " = "
+    printf("%6s %11s %10s %7s %7s %7s %7s\n", \
+        "reexec", "nodes", "ratio", "CPU", \
+        "WC", "RSS", "VSZ");
 }
 
 /^START / {
-	reset_per_run();
-	num_runs = 0; 
-	total_time = 0; 
-	total_wc_time = 0; 
-	last_time = 0;
+    reset_per_run();
+    num_runs = 0; 
+    total_time = 0; 
+    total_wc_time = 0; 
+    last_time = 0;
 
-	start = 1;
-	final = 0;
-	during = 0;
+    start = 1;
+    final = 0;
+    during = 0;
 
-	match($0, /START (.*)$/, a);
-	dd_opts = a[1];
-	printf("Options = %s\n", dd_opts);
+    match($0, /START (.*)$/, a);
+    dd_opts = a[1];
+    printf("Options = %s\n", dd_opts);
 }
 /^DURING/ {
-	reset_per_run();
-	num_runs++; 
-	if (start != 1) {
-		total_time += last_time;
-	}
+    reset_per_run();
+    num_runs++; 
+    if (start != 1) {
+        total_time += last_time;
+    }
 
-	start = 0;
-	final = 0;
-	during = 1;
+    start = 0;
+    final = 0;
+    during = 1;
 
-	last_time = 0;
+    last_time = 0;
 }
 /^FINAL/ {
-	reset_per_run();
-	total_time += last_time;
+    reset_per_run();
+    total_time += last_time;
 
-	start = 0;
-	final = 1;
-	during = 0;
+    start = 0;
+    final = 1;
+    during = 0;
 }
 /^END$/ {
-	# discard the first and last re-execution.
-	reexec -= 2;
-	total_nodes = actual_nodes_for_run - nodes_in_first_reexecution \
-		- last_nodes_constructed_in_run;
+    # discard the first and last re-execution.
+    reexec -= 2;
+    total_nodes = actual_nodes_for_run - nodes_in_first_reexecution \
+        - last_nodes_constructed_in_run;
 
-	if (out_of_memory == 1){
-		mem = "Out of Memory";
-		out_of_memory = 0;
-	} else {
-		mem = sprintf("%.1f", rss/1024);
-	}
-	printf("%6i %11i %10d %7.1f %7.1f %7s %7.1f\n", \
-		reexec, \
-		total_nodes, total_nodes/reexec, \
-		total_time/num_runs, total_wc_time/num_runs, \
-		mem, vsz/1024);
+    if (out_of_memory == 1){
+        mem = "Out of Memory";
+        out_of_memory = 0;
+    } else {
+        mem = sprintf("%.1f", rss/1024);
+    }
+    printf("%6i %11i %10d %7.1f %7.1f %7s %7.1f\n", \
+        reexec, \
+        total_nodes, total_nodes/reexec, \
+        total_time/num_runs, total_wc_time/num_runs, \
+        mem, vsz/1024);
 }
 
 /Total CPU time/ {last_time = $2}
 
 /Nodes constructed in this run/ {
-	if (start_of_run) {
-		nodes_in_first_reexecution = $2;
-		start_of_run = 0;
-	}
-	actual_nodes_for_run += $2
-	last_nodes_constructed_in_run = $2;
+    if (start_of_run) {
+        nodes_in_first_reexecution = $2;
+        start_of_run = 0;
+    }
+    actual_nodes_for_run += $2
+    last_nodes_constructed_in_run = $2;
 }
 /Total reexecutions so far/ {
-	reexec = $2
+    reexec = $2
 }
 
 /RSS =/ {
-	rss = $2
+    rss = $2
 }
 /VSZ =/ {
-	vsz = $2
+    vsz = $2
 }
 /Out of Memory/ {
-	out_of_memory = 1;
+    out_of_memory = 1;
 }
 
 /^STARTWCTIME/ {
-	start_wc_time = $2;
+    start_wc_time = $2;
 }
 
 /^ENDWCTIME/ {
-	if (during == 1) {
-		total_wc_time += ($2 - start_wc_time);
-	}
+    if (during == 1) {
+        total_wc_time += ($2 - start_wc_time);
+    }
 }
 
 function reset_per_run() {
-	actual_nodes_for_run = 0;
-	nodes_in_first_reexecution = 0;
-	start_of_run = 1;
-	last_nodes_constructed_in_run = 0;
+    actual_nodes_for_run = 0;
+    nodes_in_first_reexecution = 0;
+    start_of_run = 1;
+    last_nodes_constructed_in_run = 0;
 }
 ' "$@"

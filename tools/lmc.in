@@ -1,4 +1,5 @@
 #!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
 #---------------------------------------------------------------------------#
 # Copyright (C) 2001,2003,2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -48,8 +49,8 @@
 #
 # If you want to track down some low level bug, you can ask this script to
 # execute the Mercury compiler under gdb by setting the environment variable
-# MMC_UNDER_GDB to the string "true".  
-# 
+# MMC_UNDER_GDB to the string "true".
+#
 # You can ask this script to run the Mercury compiler under valgrind by
 # setting MMC_UNDER_VALGRIND to "true".  Valgrind options can be placed in
 # the environment variable MMC_VALGRIND_OPTIONS.
@@ -62,118 +63,118 @@
 
 if test ! -d $WORKSPACE
 then
-	echo "workspace $WORKSPACE does not exist"
+    echo "workspace $WORKSPACE does not exist"
 fi
 
 if test "$MERCURY_COMPILER_OVERRIDE" != ""
 then
-	MERCURY_COMPILER=$MERCURY_COMPILER_OVERRIDE
+    MERCURY_COMPILER=$MERCURY_COMPILER_OVERRIDE
 else
-	MERCURY_COMPILER=$WORKSPACE/compiler/mercury_compile
+    MERCURY_COMPILER=$WORKSPACE/compiler/mercury_compile
 fi
 export MERCURY_COMPILER
 
 if test "$MMC_USE_SHARED_LIBS" != ""
 then
-	O="$MMC_USE_SHARED_LIBS"
+    O="$MMC_USE_SHARED_LIBS"
 else
-	O="a"
+    O="a"
 fi
 
 if test -s $WORKSPACE/boehm_gc/libgc.$O
 then
-	gclib="$WORKSPACE/boehm_gc/libgc.$O"
+    gclib="$WORKSPACE/boehm_gc/libgc.$O"
 elif test -s $WORKSPACE/boehm_gc/libpar_gc.$O
 then
-	gclib="$WORKSPACE/boehm_gc/libpar_gc.$O"
+    gclib="$WORKSPACE/boehm_gc/libpar_gc.$O"
 elif test -s $WORKSPACE/boehm_gc/libgc_prof.$O
 then
-	gclib="$WORKSPACE/boehm_gc/libgc_prof.$O"
+    gclib="$WORKSPACE/boehm_gc/libgc_prof.$O"
 elif test -s $WORKSPACE/boehm_gc/libgc_ll_debug.$O
 then
-	gclib="$WORKSPACE/boehm_gc/libgc_ll_debug.$O"
+    gclib="$WORKSPACE/boehm_gc/libgc_ll_debug.$O"
 elif test -s $WORKSPACE/boehm_gc/libpar_gc_ll_debug.$O
 then
-	gclib="$WORKSPACE/boehm_gc/libpar_gc_ll_debug.$O"
+    gclib="$WORKSPACE/boehm_gc/libpar_gc_ll_debug.$O"
 else
-	echo "$WORKSPACE/boehm_gc does not have a gc library"
+    echo "$WORKSPACE/boehm_gc does not have a gc library"
 fi
 
 LIB_FLAGS="\
-	--link-object $WORKSPACE/trace/libmer_trace.$O \
-	--link-object $WORKSPACE/trace/libmer_eventspec.$O \
-	--link-object $WORKSPACE/ssdb/libmer_ssdb.$O \
-	--link-object $WORKSPACE/browser/libmer_browser.$O \
-	--link-object $WORKSPACE/mdbcomp/libmer_mdbcomp.$O \
-	--link-object $WORKSPACE/library/libmer_std.$O \
-	--link-object $WORKSPACE/runtime/libmer_rt.$O \
-	--link-object $gclib \
-	-lm @TRACE_BASE_LIBS_SYSTEM@ @READLINE_LIBRARIES@"
+    --link-object $WORKSPACE/trace/libmer_trace.$O \
+    --link-object $WORKSPACE/trace/libmer_eventspec.$O \
+    --link-object $WORKSPACE/ssdb/libmer_ssdb.$O \
+    --link-object $WORKSPACE/browser/libmer_browser.$O \
+    --link-object $WORKSPACE/mdbcomp/libmer_mdbcomp.$O \
+    --link-object $WORKSPACE/library/libmer_std.$O \
+    --link-object $WORKSPACE/runtime/libmer_rt.$O \
+    --link-object $gclib \
+    -lm @TRACE_BASE_LIBS_SYSTEM@ @READLINE_LIBRARIES@"
 
 # ssdb.init is not included here because it breaks deep profiling programs
 # built with lmc.
 INIT_FLAGS="\
-	--trace-init-file $WORKSPACE/browser/mer_browser.init \
-	--trace-init-file $WORKSPACE/mdbcomp/mer_mdbcomp.init \
-	--init-file $WORKSPACE/library/mer_std.init \
-	--init-file $WORKSPACE/runtime/mer_rt.init"
+    --trace-init-file $WORKSPACE/browser/mer_browser.init \
+    --trace-init-file $WORKSPACE/mdbcomp/mer_mdbcomp.init \
+    --init-file $WORKSPACE/library/mer_std.init \
+    --init-file $WORKSPACE/runtime/mer_rt.init"
 
 LINK_FLAGS=""
 
 if test "$MMC_CDEBUG" != ""
 then
-	CDEBUG_FLAGS="--target-debug --cflags -O0"
+    CDEBUG_FLAGS="--target-debug --cflags -O0"
 else
-	CDEBUG_FLAGS=""
+    CDEBUG_FLAGS=""
 fi
 
 if test "$MMC_LOWLEVEL_DEBUG" != ""
 then
-	CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags -DMR_LOWLEVEL_DEBUG"
+    CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags -DMR_LOWLEVEL_DEBUG"
 fi
 
 if test "$MMC_TABLE_DEBUG" != ""
 then
-	CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags -DMR_TABLE_DEBUG"
+    CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags -DMR_TABLE_DEBUG"
 fi
 
 if test "$MMC_GPROF" != ""
 then
-	CDEBUG_FLAGS="$CDEBUG_FLAGS --target-debug --cflags -pg --cflags --no-omit-frame-pointer"
-	LINK_FLAGS="--ld-flags -pg"
+    CDEBUG_FLAGS="$CDEBUG_FLAGS --target-debug --cflags -pg --cflags --no-omit-frame-pointer"
+    LINK_FLAGS="--ld-flags -pg"
 fi
 
 if test "$MMC_ADDED_CFLAGS" != ""
 then
-	CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags \"$MMC_ADDED_CFLAGS\""
+    CDEBUG_FLAGS="$CDEBUG_FLAGS --cflags \"$MMC_ADDED_CFLAGS\""
 fi
 
 C_FLAGS="--c-include-directory $WORKSPACE/trace \
-	--c-include-directory $WORKSPACE/library \
-	--c-include-directory $WORKSPACE/library/Mercury/mihs \
-	--c-include-directory $WORKSPACE/ssdb \
-	--c-include-directory $WORKSPACE/ssdb/Mercury/mihs \
-	--c-include-directory $WORKSPACE/runtime \
-	--c-include-directory $WORKSPACE/boehm_gc \
-	--c-include-directory $WORKSPACE/boehm_gc/include"
+    --c-include-directory $WORKSPACE/library \
+    --c-include-directory $WORKSPACE/library/Mercury/mihs \
+    --c-include-directory $WORKSPACE/ssdb \
+    --c-include-directory $WORKSPACE/ssdb/Mercury/mihs \
+    --c-include-directory $WORKSPACE/runtime \
+    --c-include-directory $WORKSPACE/boehm_gc \
+    --c-include-directory $WORKSPACE/boehm_gc/include"
 
 if test "$MMC_UNDER_GDB" != ""
 then
-	MERCURY_COMPILER="$WORKSPACE/tools/gdbrun $MERCURY_COMPILER"
-	export MERCURY_COMPILER
+    MERCURY_COMPILER="$WORKSPACE/tools/gdbrun $MERCURY_COMPILER"
+    export MERCURY_COMPILER
 fi
 
 if test "$MMC_UNDER_VALGRIND" != ""
 then
-	MERCURY_COMPILER="valgrind $MMC_VALGRIND_OPTIONS $MERCURY_COMPILER"
-	export MERCURY_COMPILER
+    MERCURY_COMPILER="valgrind $MMC_VALGRIND_OPTIONS $MERCURY_COMPILER"
+    export MERCURY_COMPILER
 fi
 
 PATH="$WORKSPACE/scripts:$WORKSPACE/util:$PATH"
 export PATH
 exec mmc --no-mercury-stdlib-dir \
-	--config-file $WORKSPACE/scripts/Mercury.config \
-	-I $WORKSPACE/library \
-	-I $WORKSPACE/mdbcomp \
-	-I $WORKSPACE/ssdb \
-	$CDEBUG_FLAGS $C_FLAGS $INIT_FLAGS $LIB_FLAGS $LINK_FLAGS "$@"
+    --config-file $WORKSPACE/scripts/Mercury.config \
+    -I $WORKSPACE/library \
+    -I $WORKSPACE/mdbcomp \
+    -I $WORKSPACE/ssdb \
+    $CDEBUG_FLAGS $C_FLAGS $INIT_FLAGS $LIB_FLAGS $LINK_FLAGS "$@"

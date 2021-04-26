@@ -1,4 +1,5 @@
 #!/usr/bin/awk -f
+# vim: ft=awk ts=4 sw=4 et
 	{
 		rep[$2] = 1;
 		all += $3;

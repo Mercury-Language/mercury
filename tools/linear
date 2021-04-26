@@ -1,4 +1,5 @@
 #!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
 # This script finds miscompiled procedures.
 #
 # Given a stage2 directory that works (stage2.ok) and one that doesn't
@@ -17,30 +18,30 @@
 usage="\
 Usage: $0 [options]
 Options:
-	-b-, --no-bootcheck
-		Do not perform a bootcheck; check only the tests directory.
-	-c, --compile-only
-		Compile only. Do not compare stage2.ok and stage3.
-	-d <dirname>, --dir <dirname>
-		Confine the search to one directory, library or compiler.
-		(Usually useful only after a previous search.)
-	-f <filename>, --file <filename>
-		Confine the search to the named file(s).
-		(Usually useful only after a previous search.)
-	-h, --help
-		Display this usage message.
-	-j <num-jobs>, --jobs <num-jobs>
-		Run using <num-jobs> different parallel processes.
-	-m <mmake-args>, --mmake-args <mmake-args>
-		Pass <mmake-args> as options to \`mmake'.
-	-n, --negative-search
-		Look for the module that suppresses the bug, not causes it.
-	-o <filename>, --output-file <filename>
-		Output results to <filename>.
-	-r, --copy-runtime
-		Copy the runtime directory instead of linking it.
-	-t <testdir>, --test-dir <testdir>
-		Execute runtests from the named subdirectory of tests.
+    -b-, --no-bootcheck
+        Do not perform a bootcheck; check only the tests directory.
+    -c, --compile-only
+        Compile only. Do not compare stage2.ok and stage3.
+    -d <dirname>, --dir <dirname>
+        Confine the search to one directory, library or compiler.
+        (Usually useful only after a previous search.)
+    -f <filename>, --file <filename>
+        Confine the search to the named file(s).
+        (Usually useful only after a previous search.)
+    -h, --help
+        Display this usage message.
+    -j <num-jobs>, --jobs <num-jobs>
+        Run using <num-jobs> different parallel processes.
+    -m <mmake-args>, --mmake-args <mmake-args>
+        Pass <mmake-args> as options to \`mmake'.
+    -n, --negative-search
+        Look for the module that suppresses the bug, not causes it.
+    -o <filename>, --output-file <filename>
+        Output results to <filename>.
+    -r, --copy-runtime
+        Copy the runtime directory instead of linking it.
+    -t <testdir>, --test-dir <testdir>
+        Execute runtests from the named subdirectory of tests.
 "
 
 # If you change this, you will also need to change the files indicated
@@ -59,83 +60,83 @@ alldirs="library compiler"
 allmodules=""
 
 while [ $# -gt 0 ]; do
-	case "$1" in
+    case "$1" in
 
-	-b-|--no-bootcheck)
-		bootcheck="-b-" ;;
+    -b-|--no-bootcheck)
+        bootcheck="-b-" ;;
 
-	-c|--compile-only)
-		compile_only="-c" ;;
+    -c|--compile-only)
+        compile_only="-c" ;;
 
-	-d|--dir)
-		alldirs="$2"; shift ;;
-	-d*)
-		alldirs="` expr $1 : '-d\(.*\)' `"; ;;
+    -d|--dir)
+        alldirs="$2"; shift ;;
+    -d*)
+        alldirs="` expr $1 : '-d\(.*\)' `"; ;;
 
-	-f|--file)
-		allmodules="$2"; shift ;;
-	-f*)
-		allmodules="` expr $1 : '-f\(.*\)' `"; ;;
+    -f|--file)
+        allmodules="$2"; shift ;;
+    -f*)
+        allmodules="` expr $1 : '-f\(.*\)' `"; ;;
 
-	-h|--help)
-		echo "$usage"
-		exit 0 ;;
+    -h|--help)
+        echo "$usage"
+        exit 0 ;;
 
-	-j|--jobs)
-		jfactor="-j$2"; shift ;;
-	-j*)
-		jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
-	--jobs*)
-		jfactor="--jobs ` expr $1 : '--jobs\(.*\)' `" ;;
+    -j|--jobs)
+        jfactor="-j$2"; shift ;;
+    -j*)
+        jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
+    --jobs*)
+        jfactor="--jobs ` expr $1 : '--jobs\(.*\)' `" ;;
 
-	-m|--mmake)
-		mmake_opts="$mmake_opts $2"; shift ;;
+    -m|--mmake)
+        mmake_opts="$mmake_opts $2"; shift ;;
 
-	-n|--negative-search)
-		negative=true ;;
+    -n|--negative-search)
+        negative=true ;;
 
-	-o|--output-file)
-		outfile="-o $2"; shift ;;
-	-o*)
-		outfile="-o ` expr $1 : '-o\(.*\)' `"; ;;
+    -o|--output-file)
+        outfile="-o $2"; shift ;;
+    -o*)
+        outfile="-o ` expr $1 : '-o\(.*\)' `"; ;;
 
-	-r|--copy-runtime)
-		copy_runtime=true ;;
+    -r|--copy-runtime)
+        copy_runtime=true ;;
 
-	-t|--test-dir)
-		testdirs="$testdirs -t$2"; shift ;;
-	-t*)
-		testdirs="$testdirs ` expr $1 : '-t\(.*\)' `" ;;
+    -t|--test-dir)
+        testdirs="$testdirs -t$2"; shift ;;
+    -t*)
+        testdirs="$testdirs ` expr $1 : '-t\(.*\)' `" ;;
 
-	-*)
-		echo "$0: unknown option \`$1'" 1>&2
-		echo "$usage" 1>&2
-		exit 1 ;;
+    -*)
+        echo "$0: unknown option \`$1'" 1>&2
+        echo "$usage" 1>&2
+        exit 1 ;;
 
-	*)
-		echo "$usage" 1>&2
-		exit 1 ;;
-	esac
-	shift
+    *)
+        echo "$usage" 1>&2
+        exit 1 ;;
+    esac
+    shift
 done
 
 if test "$negative" = true
 then
-	base=bad
-	trial=ok
-	expected=failure
+    base=bad
+    trial=ok
+    expected=failure
 else
-	base=ok
-	trial=bad
-	expected=success
+    base=ok
+    trial=bad
+    expected=success
 fi
 
 if test -d stage2.ok -a -d stage2.bad
 then
-	echo "stage2.ok and stage2.bad both present"
+    echo "stage2.ok and stage2.bad both present"
 else
-	echo "at least one of stage2.ok and stage2.bad is missing"
-	exit 1
+    echo "at least one of stage2.ok and stage2.bad is missing"
+    exit 1
 fi
 
 echo "starting at `date`"
@@ -161,17 +162,17 @@ cp $root/library/Mmake* .
 cd $root/stage2
 if test "$copy_runtime" = "true"
 then
-	mkdir runtime
-	cd runtime
-	ln -s $root/runtime/*.h .
-	ln -s $root/runtime/*.c .
-	ln -s $root/runtime/*.mod .
-	ln -s $root/runtime/*.in .
-	ln -s $root/runtime/machdeps .
-	cp $root/runtime/Mmake* .
-	cd $root/stage2
+    mkdir runtime
+    cd runtime
+    ln -s $root/runtime/*.h .
+    ln -s $root/runtime/*.c .
+    ln -s $root/runtime/*.mod .
+    ln -s $root/runtime/*.in .
+    ln -s $root/runtime/machdeps .
+    cp $root/runtime/Mmake* .
+    cd $root/stage2
 else
-	ln -s $root/runtime .
+    ln -s $root/runtime .
 fi
 ln -s $root/boehm_gc .
 ln -s $root/browser .
@@ -205,13 +206,13 @@ cp stage2.$base/compiler/*.[co] stage2/compiler
 
 if test "$copy_runtime" = "true"
 then
-	if (cd stage2 ; mmake $mmake_opts $jfactor runtime)
-	then
-		echo "building of stage 2 runtime successful"
-	else
-		echo "building of stage 2 runtime not successful"
-		exit 1
-	fi
+    if (cd stage2 ; mmake $mmake_opts $jfactor runtime)
+    then
+        echo "building of stage 2 runtime successful"
+    else
+        echo "building of stage 2 runtime not successful"
+        exit 1
+    fi
 fi
 
 set -x
@@ -222,95 +223,95 @@ unusualparts=
 
 for testeddir in $alldirs
 do
-	# find the set of modules to search, if not given on command line
-	if test "$allmodules" = ""
-	then
-		cd stage2/$testeddir
-		allmodules=`sub X.c X *.c`
-		cd $root
-	fi
+    # find the set of modules to search, if not given on command line
+    if test "$allmodules" = ""
+    then
+        cd stage2/$testeddir
+        allmodules=`sub X.c X *.c`
+        cd $root
+    fi
 
-	for testedmodule in $allmodules
-	do
-		# at this point, all the files in stage2
-		# should be from stage2.$base
+    for testedmodule in $allmodules
+    do
+        # at this point, all the files in stage2
+        # should be from stage2.$base
 
-		echo "testing module: $testedmodule"
+        echo "testing module: $testedmodule"
 
-		cp stage2.$trial/$testeddir/$testedmodule.[co] stage2/$testeddir
+        cp stage2.$trial/$testeddir/$testedmodule.[co] stage2/$testeddir
 
-		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs
-		then
-			echo "test succeeded"
-			lasttest=success
-		else
-			echo "test failed"
-			lasttest=failure
-		fi
+        if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs
+        then
+            echo "test succeeded"
+            lasttest=success
+        else
+            echo "test failed"
+            lasttest=failure
+        fi
 
-		if test "$lasttest" = "$expected"
-		then
-			normal="$normal $testeddir/$testedmodule"
-		else
-			unusual="$unusual $testeddir/$testedmodule"
+        if test "$lasttest" = "$expected"
+        then
+            normal="$normal $testeddir/$testedmodule"
+        else
+            unusual="$unusual $testeddir/$testedmodule"
 
-			basecnt=`egrep '^MR_END_MODULE' stage2.$base/$testeddir/$testedmodule.c | wc -l`
-			trialcnt=`egrep '^MR_END_MODULE' stage2.$trial/$testeddir/$testedmodule.c | wc -l`
+            basecnt=`egrep '^MR_END_MODULE' stage2.$base/$testeddir/$testedmodule.c | wc -l`
+            trialcnt=`egrep '^MR_END_MODULE' stage2.$trial/$testeddir/$testedmodule.c | wc -l`
 
-			if test $basecnt -ne $trialcnt
-			then
-				basecnt=`echo $basecnt | tr -d ' '`
-				trialcnt=`echo $trialcnt | tr -d ' '`
+            if test $basecnt -ne $trialcnt
+            then
+                basecnt=`echo $basecnt | tr -d ' '`
+                trialcnt=`echo $trialcnt | tr -d ' '`
 
-				echo "the two versions of the unusual module"
-				echo "differ in the number of C modules they have"
-				echo "$base version: $basecnt vs $trial version: $trialcnt"
-				exit 1
-			fi
+                echo "the two versions of the unusual module"
+                echo "differ in the number of C modules they have"
+                echo "$base version: $basecnt vs $trial version: $trialcnt"
+                exit 1
+            fi
 
-			for dir in $base $trial
-			do
-				cd stage2.$dir/$testeddir
-				divide $testedmodule.c $basecnt
-				cd $root
-			done
+            for dir in $base $trial
+            do
+                cd stage2.$dir/$testeddir
+                divide $testedmodule.c $basecnt
+                cd $root
+            done
 
-			allparts=
-			i=0
-			while test $i -le $basecnt
-			do
-				allparts="$allparts $i"
-				i=`expr $i + 1`
-			done
+            allparts=
+            i=0
+            while test $i -le $basecnt
+            do
+                allparts="$allparts $i"
+                i=`expr $i + 1`
+            done
 
-			for testedpart in $allparts
-			do
-				echo testing part $testedpart in `/bin/pwd`
-				assemble $base $trial $testeddir $testedmodule $basecnt $testedpart
+            for testedpart in $allparts
+            do
+                echo testing part $testedpart in `/bin/pwd`
+                assemble $base $trial $testeddir $testedmodule $basecnt $testedpart
 
-				cd stage2/$testeddir
-				/bin/rm $testedmodule.o
-				mmake $testedmodule.o
-				cd $root
+                cd stage2/$testeddir
+                /bin/rm $testedmodule.o
+                mmake $testedmodule.o
+                cd $root
 
-				if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs
-				then
-					echo "test succeeded"
-					lasttest=success
-				else
-					echo "test failed"
-					lasttest=failure
-				fi
+                if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs
+                then
+                    echo "test succeeded"
+                    lasttest=success
+                else
+                    echo "test failed"
+                    lasttest=failure
+                fi
 
-				if test "$lasttest" != "$expected"
-				then
-					unusualparts="$unusualparts $testeddir/$testedmodule.part.$testedpart"
-				fi
-			done
-		fi
+                if test "$lasttest" != "$expected"
+                then
+                    unusualparts="$unusualparts $testeddir/$testedmodule.part.$testedpart"
+                fi
+            done
+        fi
 
-		cp stage2.$base/$testeddir/$testedmodule.[co] stage2/$testeddir
-	done
+        cp stage2.$base/$testeddir/$testedmodule.[co] stage2/$testeddir
+    done
 done
 
 echo "modules whose stage.$trial versions behave as expected:"

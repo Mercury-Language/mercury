@@ -1,4 +1,5 @@
 #!/usr/bin/awk -f
+# vim: ft=awk ts=4 sw=4 et
 BEGIN   {
             NUM_FIELDS = 100;
             for (i = 0; i < NUM_FIELDS ; i++)

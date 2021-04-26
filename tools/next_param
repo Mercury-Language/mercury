@@ -1,4 +1,5 @@
 #!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
 #
 # The scripts cur_param and next_param allow their callers to cycle through
 # circular lists of parameters. Both scripts take two parameters, a directory
@@ -18,8 +19,8 @@ usage="next_param dir counter"
 
 if test $# != 2
 then
-	echo $usage
-	exit 1
+    echo $usage
+    exit 1
 fi
 
 dir=$1
@@ -27,22 +28,22 @@ counter=$2
 
 if test ! -f $dir/next.$counter
 then
-	echo 0 > $dir/next.$counter
+    echo 0 > $dir/next.$counter
 fi
 
 if test -s $dir/list.$counter
 then
-	prev=`cat $dir/next.$counter`
-	next=`expr $prev + 1`
-	length=`wc -l $dir/list.$counter`
-	if test "$next" -gt "$length"
-	then
-		next=1
-	fi
-	echo "$next" > $dir/next.$counter
+    prev=`cat $dir/next.$counter`
+    next=`expr $prev + 1`
+    length=`wc -l $dir/list.$counter`
+    if test "$next" -gt "$length"
+    then
+        next=1
+    fi
+    echo "$next" > $dir/next.$counter
 else
-	echo "$dir/list.$counter doesn't exist or is empty"
-	exit 1
+    echo "$dir/list.$counter doesn't exist or is empty"
+    exit 1
 fi
 
 exit 0
