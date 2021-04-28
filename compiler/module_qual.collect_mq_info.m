@@ -314,15 +314,15 @@ collect_mq_info_in_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Info) :-
     mq_info_set_types(Types, !Info),
 
     mq_info_get_insts(!.Info, Insts0),
-    IntInstIds = list.map(sym_name_arity_to_mq_id, map.keys(IntInstDefnMap)),
-    ImpInstIds = list.map(sym_name_arity_to_mq_id, map.keys(ImpInstDefnMap)),
+    IntInstIds = list.map(inst_ctor_to_mq_id, map.keys(IntInstDefnMap)),
+    ImpInstIds = list.map(inst_ctor_to_mq_id, map.keys(ImpInstDefnMap)),
     list.foldl(id_set_insert(IntPermissions), IntInstIds, Insts0, Insts1),
     list.foldl(id_set_insert(ImpPermissions), ImpInstIds, Insts1, Insts),
     mq_info_set_insts(Insts, !Info),
 
     mq_info_get_modes(!.Info, Modes0),
-    IntModeIds = list.map(sym_name_arity_to_mq_id, map.keys(IntModeDefnMap)),
-    ImpModeIds = list.map(sym_name_arity_to_mq_id, map.keys(ImpModeDefnMap)),
+    IntModeIds = list.map(mode_ctor_to_mq_id, map.keys(IntModeDefnMap)),
+    ImpModeIds = list.map(mode_ctor_to_mq_id, map.keys(ImpModeDefnMap)),
     list.foldl(id_set_insert(IntPermissions), IntModeIds, Modes0, Modes1),
     list.foldl(id_set_insert(ImpPermissions), ImpModeIds, Modes1, Modes),
     mq_info_set_modes(Modes, !Info),
@@ -400,12 +400,12 @@ collect_mq_info_in_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Info) :-
     mq_info_set_types(Types, !Info),
 
     mq_info_get_insts(!.Info, Insts0),
-    IntInstIds = list.map(sym_name_arity_to_mq_id, map.keys(IntInstDefnMap)),
+    IntInstIds = list.map(inst_ctor_to_mq_id, map.keys(IntInstDefnMap)),
     list.foldl(id_set_insert(IntPermissions), IntInstIds, Insts0, Insts),
     mq_info_set_insts(Insts, !Info),
 
     mq_info_get_modes(!.Info, Modes0),
-    IntModeIds = list.map(sym_name_arity_to_mq_id, map.keys(IntModeDefnMap)),
+    IntModeIds = list.map(mode_ctor_to_mq_id, map.keys(IntModeDefnMap)),
     list.foldl(id_set_insert(IntPermissions), IntModeIds, Modes0, Modes),
     mq_info_set_modes(Modes, !Info),
 
@@ -482,12 +482,12 @@ collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info) :-
     mq_info_set_types(Types, !Info),
 
     mq_info_get_insts(!.Info, Insts0),
-    InstIds = list.map(sym_name_arity_to_mq_id, map.keys(IntInstDefnMap)),
+    InstIds = list.map(inst_ctor_to_mq_id, map.keys(IntInstDefnMap)),
     list.foldl(id_set_insert(Permissions), InstIds, Insts0, Insts),
     mq_info_set_insts(Insts, !Info),
 
     mq_info_get_modes(!.Info, Modes0),
-    ModeIds = list.map(sym_name_arity_to_mq_id, map.keys(IntModeDefnMap)),
+    ModeIds = list.map(mode_ctor_to_mq_id, map.keys(IntModeDefnMap)),
     list.foldl(id_set_insert(Permissions), ModeIds, Modes0, Modes),
     mq_info_set_modes(Modes, !Info),
 
@@ -503,10 +503,16 @@ type_ctor_to_mq_id(TypeCtor) = Id :-
     TypeCtor = type_ctor(SymName, Arity),
     Id = mq_id(SymName, Arity).
 
-:- func sym_name_arity_to_mq_id(sym_name_arity) = mq_id.
+:- func inst_ctor_to_mq_id(inst_ctor) = mq_id.
 
-sym_name_arity_to_mq_id(SNA) = Id :-
-    SNA = sym_name_arity(SymName, Arity),
+inst_ctor_to_mq_id(InstCtor) = Id :-
+    InstCtor = inst_ctor(SymName, Arity),
+    Id = mq_id(SymName, Arity).
+
+:- func mode_ctor_to_mq_id(mode_ctor) = mq_id.
+
+mode_ctor_to_mq_id(ModeCtor) = Id :-
+    ModeCtor = mode_ctor(SymName, Arity),
     Id = mq_id(SymName, Arity).
 
 %---------------------------------------------------------------------------%

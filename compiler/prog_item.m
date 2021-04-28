@@ -764,18 +764,14 @@
 :- type c_j_cs_enum_repn ==
     c_java_csharp(maybe(enum_foreign_repn)).
 
-% The map key is sym_name_arity because we don't have an inst_ctor type.
-% XXX CLEANUP We should add one.
-:- type inst_ctor_defn_map == map(sym_name_arity, inst_ctor_all_defns).
+:- type inst_ctor_defn_map == map(inst_ctor, inst_ctor_all_defns).
 :- type inst_ctor_all_defns
     --->    inst_ctor_all_defns(
                 icad_abstract               :: list(item_inst_defn_info),
                 icad_eqv                    :: list(item_inst_defn_info)
             ).
 
-% The map key is sym_name_arity because we don't have a mode_ctor type.
-% XXX CLEANUP We should add one.
-:- type mode_ctor_defn_map == map(sym_name_arity, mode_ctor_all_defns).
+:- type mode_ctor_defn_map == map(mode_ctor, mode_ctor_all_defns).
 :- type mode_ctor_all_defns
     --->    mode_ctor_all_defns(
                 mcad_abstract               :: list(item_mode_defn_info),

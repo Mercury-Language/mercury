@@ -1816,8 +1816,8 @@ add_inst_defn_to_map(InstDefnInfo, !InstDefnMap) :-
     InstDefnInfo = item_inst_defn_info(SymName, Params, _MaybeForTypeCtor,
         MaybeAbstractInstDefn, _InstVarSet, _Context, _SeqNum),
     list.length(Params, Arity),
-    SNA = sym_name_arity(SymName, Arity),
-    ( if map.search(!.InstDefnMap, SNA, AllDefns0) then
+    InstCtor = inst_ctor(SymName, Arity),
+    ( if map.search(!.InstDefnMap, InstCtor, AllDefns0) then
         AllDefns0 = inst_ctor_all_defns(AbstractDefns0, NonAbstractDefns0),
         (
             MaybeAbstractInstDefn = abstract_inst_defn,
@@ -1828,7 +1828,7 @@ add_inst_defn_to_map(InstDefnInfo, !InstDefnMap) :-
             NonAbstractDefns = [InstDefnInfo | NonAbstractDefns0],
             AllDefns = inst_ctor_all_defns(AbstractDefns0, NonAbstractDefns)
         ),
-        map.det_update(SNA, AllDefns, !InstDefnMap)
+        map.det_update(InstCtor, AllDefns, !InstDefnMap)
     else
         (
             MaybeAbstractInstDefn = abstract_inst_defn,
@@ -1837,7 +1837,7 @@ add_inst_defn_to_map(InstDefnInfo, !InstDefnMap) :-
             MaybeAbstractInstDefn = nonabstract_inst_defn(_),
             AllDefns = inst_ctor_all_defns([], [InstDefnInfo])
         ),
-        map.det_insert(SNA, AllDefns, !InstDefnMap)
+        map.det_insert(InstCtor, AllDefns, !InstDefnMap)
     ).
 
 mode_ctor_defn_items_to_map(ModeDefnInfos) = ModeDefnMap :-
@@ -1850,8 +1850,8 @@ add_mode_defn_to_map(ModeDefnInfo, !ModeDefnMap) :-
     ModeDefnInfo = item_mode_defn_info(SymName, Params, MaybeAbstractModeDefn,
         _InstVarSet, _Context, _SeqNum),
     list.length(Params, Arity),
-    SNA = sym_name_arity(SymName, Arity),
-    ( if map.search(!.ModeDefnMap, SNA, AllDefns0) then
+    ModeCtor = mode_ctor(SymName, Arity),
+    ( if map.search(!.ModeDefnMap, ModeCtor, AllDefns0) then
         AllDefns0 = mode_ctor_all_defns(AbstractDefns0, NonAbstractDefns0),
         (
             MaybeAbstractModeDefn = abstract_mode_defn,
@@ -1862,7 +1862,7 @@ add_mode_defn_to_map(ModeDefnInfo, !ModeDefnMap) :-
             NonAbstractDefns = [ModeDefnInfo | NonAbstractDefns0],
             AllDefns = mode_ctor_all_defns(AbstractDefns0, NonAbstractDefns)
         ),
-        map.det_update(SNA, AllDefns, !ModeDefnMap)
+        map.det_update(ModeCtor, AllDefns, !ModeDefnMap)
     else
         (
             MaybeAbstractModeDefn = abstract_mode_defn,
@@ -1871,7 +1871,7 @@ add_mode_defn_to_map(ModeDefnInfo, !ModeDefnMap) :-
             MaybeAbstractModeDefn = nonabstract_mode_defn(_),
             AllDefns = mode_ctor_all_defns([], [ModeDefnInfo])
         ),
-        map.det_insert(SNA, AllDefns, !ModeDefnMap)
+        map.det_insert(ModeCtor, AllDefns, !ModeDefnMap)
     ).
 
 type_ctor_repn_items_to_map(TypeRepnInfos) = TypeRepnMap :-
