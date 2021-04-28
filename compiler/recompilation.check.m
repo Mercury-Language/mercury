@@ -73,10 +73,10 @@
                                     % type pred_id.
 :- import_module libs.options.
 :- import_module libs.timestamp.
+:- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_imports.
@@ -1045,29 +1045,30 @@ check_imported_module(Globals, UsedModule, MaybeStoppingReason, !Info, !IO) :-
         unexpected($pred, "fk_opt")
     ),
     HaveReadModuleMaps = !.Info ^ rci_have_read_module_maps,
-    HaveReadModuleMapInt = HaveReadModuleMaps ^ hrmm_int,
     ( if
-        % If we are checking a submodule, don't re-read interface files
+        % If we are checking a nested submodule, don't re-read interface files
         % read for other modules checked during this compilation.
+        % XXX We restrict this optimization to nested submodules?
         !.Info ^ rci_is_inline_sub_module = yes,
-        IntKey = have_read_module_key(ImportedModuleName, IntFileKind),
-        find_read_module_int(HaveReadModuleMapInt, IntKey,
+        find_read_module_some_int(HaveReadModuleMaps,
+            ImportedModuleName, IntFileKind,
             do_return_timestamp, FileNamePrime, MaybeNewTimestampPrime,
-            ParseTreeIntPrime, SpecsPrime, ErrorsPrime)
+            ParseTreeSomeIntPrime, SpecsPrime, ErrorsPrime)
     then
+        Recorded = bool.yes,
         FileName = FileNamePrime,
         MaybeNewTimestamp = MaybeNewTimestampPrime,
-        ParseTreeInt = ParseTreeIntPrime,
+        ParseTreeSomeInt = ParseTreeSomeIntPrime,
         Specs = SpecsPrime,
-        Errors = ErrorsPrime,
-        Recorded = bool.yes
+        Errors = ErrorsPrime
     else
         Recorded = bool.no,
-        read_module_int(Globals, "Reading interface file for module",
-            do_not_ignore_errors, do_search,
-            ImportedModuleName, IntFileKind, FileName,
-            dont_read_module_if_match(RecordedTimestamp), MaybeNewTimestamp,
-            ParseTreeInt, Specs, Errors, !IO)
+        int_file_kind_to_extension(IntFileKind, IntFileExt, _OtherExt),
+        read_module_some_int(Globals,
+            "Reading " ++ IntFileExt ++ " file for module",
+            do_not_ignore_errors, do_search, ImportedModuleName, IntFileKind,
+            FileName, dont_read_module_if_match(RecordedTimestamp),
+            MaybeNewTimestamp, ParseTreeSomeInt, Specs, Errors, !IO)
     ),
     ( if set.is_empty(Errors) then
         ( if
@@ -1076,27 +1077,20 @@ check_imported_module(Globals, UsedModule, MaybeStoppingReason, !Info, !IO) :-
         then
             (
                 Recorded = no,
-                record_read_file_int(ImportedModuleName, IntFileKind, FileName,
+                record_read_file_some_int(ImportedModuleName, FileName,
                     ModuleTimestamp ^ mts_timestamp := NewTimestamp,
-                    ParseTreeInt, Specs, Errors, !Info)
+                    ParseTreeSomeInt, Specs, Errors, !Info)
             ;
                 Recorded = yes
             ),
             ( if
                 MaybeUsedVersionNumbers = yes(UsedVersionNumbers),
-                ParseTreeInt = parse_tree_int(ParseTreeModuleName, _, _,
-                    MaybeVersionNumbers, IntIncls, ImpIncls,
-                    IntAvails, ImpAvails, IntFIMs, ImpFIMs,
-                    IntItems, ImplItems),
-                MaybeVersionNumbers = version_numbers(VersionNumbers)
+                get_version_numbers_from_parse_tree_some_int(ParseTreeSomeInt,
+                    VersionNumbers)
             then
-                int_imp_items_to_item_blocks(ParseTreeModuleName,
-                    ms_interface, ms_implementation,
-                    IntIncls, ImpIncls, IntAvails, ImpAvails,
-                    IntFIMs, ImpFIMs, IntItems, ImplItems, RawItemBlocks),
                 check_module_used_items(ImportedModuleName, RecompAvail,
                     RecordedTimestamp, UsedVersionNumbers, VersionNumbers,
-                    RawItemBlocks, MaybeStoppingReason, !Info)
+                    ParseTreeSomeInt, MaybeStoppingReason, !Info)
             else
                 Reason = recompile_for_module_changed(FileName),
                 record_recompilation_reason(Reason, MaybeStoppingReason, !Info)
@@ -1109,19 +1103,21 @@ check_imported_module(Globals, UsedModule, MaybeStoppingReason, !Info, !IO) :-
     else
         % We are throwing away Specs, even though some of its elements
         % could illuminate the cause of the problem. XXX Is this OK?
-        Pieces = [words("error reading file"), quote(FileName), suffix("."),
-            nl],
+        Pieces = [words("error reading file"), quote(FileName),
+            suffix("."), nl],
         Reason = recompile_for_file_error(FileName, Pieces),
         MaybeStoppingReason = yes(Reason)
     ).
 
+%---------------------------------------------------------------------------%
+
 :- pred check_module_used_items(module_name::in, recomp_avail::in,
     timestamp::in, version_numbers::in, version_numbers::in,
-    list(raw_item_block)::in, maybe(recompile_reason)::out,
+    parse_tree_some_int::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_module_used_items(ModuleName, RecompAvail, OldTimestamp,
-        UsedVersionNumbers, NewVersionNumbers, RawItemBlocks,
+        UsedVersionNumbers, NewVersionNumbers, ParseTreeSomeInt,
         !:MaybeStoppingReason, !Info) :-
     UsedVersionNumbers = version_numbers(UsedItemVersionNumbers,
         UsedInstanceVersionNumbers),
@@ -1139,10 +1135,30 @@ check_module_used_items(ModuleName, RecompAvail, OldTimestamp,
 
     % Check whether added or modified items could cause name resolution
     % ambiguities with items which were used.
-    list.foldl2(
-        check_raw_item_block_for_ambiguities(RecompAvail,
-            OldTimestamp, UsedItemVersionNumbers),
-        RawItemBlocks, !MaybeStoppingReason, !Info),
+    get_ambiguity_checkables_parse_tree_some_int(ParseTreeSomeInt,
+        Checkables),
+    Checkables = ambiguity_checkables(ItemTypeDefns,
+        ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls),
+    check_items_for_ambiguities(
+        check_type_defn_info_for_ambiguities(RecompAvail, OldTimestamp,
+            UsedItemVersionNumbers),
+        ItemTypeDefns, !MaybeStoppingReason, !Info),
+    check_items_for_ambiguities(
+        check_inst_defn_info_for_ambiguities(RecompAvail, OldTimestamp,
+            UsedItemVersionNumbers),
+        ItemInstDefns, !MaybeStoppingReason, !Info),
+    check_items_for_ambiguities(
+        check_mode_defn_info_for_ambiguities(RecompAvail, OldTimestamp,
+            UsedItemVersionNumbers),
+        ItemModeDefns, !MaybeStoppingReason, !Info),
+    check_items_for_ambiguities(
+        check_typeclass_info_for_ambiguities(RecompAvail, OldTimestamp,
+            UsedItemVersionNumbers),
+        ItemTypeClasses, !MaybeStoppingReason, !Info),
+    check_items_for_ambiguities(
+        check_pred_decl_info_for_ambiguities(RecompAvail, OldTimestamp,
+            UsedItemVersionNumbers),
+        ItemPredDecls, !MaybeStoppingReason, !Info),
 
     % Check whether any instances of used typeclasses have been added,
     % removed or changed.
@@ -1270,122 +1286,105 @@ check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
 
 %---------------------------------------------------------------------------%
 
-    % For each item which has changed since the last time we read the interface
-    % file, check whether it introduces ambiguities with items which were used
-    % when the current module was last compiled.
-    %
-:- pred check_raw_item_block_for_ambiguities(recomp_avail::in,
-    timestamp::in, item_version_numbers::in, raw_item_block::in,
+:- pred check_items_for_ambiguities(
+    pred(T, maybe(recompile_reason), maybe(recompile_reason),
+        recompilation_check_info, recompilation_check_info)
+    ::in(pred(in, in, out, in, out) is det),
+    list(T)::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_raw_item_block_for_ambiguities(RecompAvail, OldTimestamp,
-        VersionNumbers, RawItemBlock, !MaybeStoppingReason, !Info) :-
-    RawItemBlock = item_block(_, _, _Incls, _Avails, _FIMs, Items),
-    check_items_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
-        Items, !MaybeStoppingReason, !Info).
-
-:- pred check_items_for_ambiguities(recomp_avail::in, timestamp::in,
-    item_version_numbers::in, list(item)::in,
-    maybe(recompile_reason)::in, maybe(recompile_reason)::out,
-    recompilation_check_info::in, recompilation_check_info::out) is det.
-
-check_items_for_ambiguities(_, _, _, [], !MaybeStoppingReason, !Info).
-check_items_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
-        [HeadItem | TailItems], !MaybeStoppingReason, !Info) :-
+check_items_for_ambiguities(_CheckPred, [], !MaybeStoppingReason, !Info).
+check_items_for_ambiguities(CheckPred, [HeadItem | TailItems],
+        !MaybeStoppingReason, !Info) :-
     (
         !.MaybeStoppingReason = yes(_)
     ;
         !.MaybeStoppingReason = no,
-        check_item_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
-            HeadItem, no, !:MaybeStoppingReason, !Info),
-        check_items_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
-            TailItems, !MaybeStoppingReason, !Info)
+        CheckPred(HeadItem, no, !:MaybeStoppingReason, !Info),
+        check_items_for_ambiguities(CheckPred, TailItems,
+            !MaybeStoppingReason, !Info)
     ).
 
-:- pred check_item_for_ambiguities(recomp_avail::in, timestamp::in,
-    item_version_numbers::in, item::in,
+%---------------------%
+
+:- pred check_type_defn_info_for_ambiguities(recomp_avail::in, timestamp::in,
+    item_version_numbers::in, item_type_defn_info::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_item_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers, Item,
-        !MaybeStoppingReason, !Info) :-
+check_type_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
+        ItemTypeDefn, !MaybeStoppingReason, !Info) :-
+    ItemTypeDefn = item_type_defn_info(TypeSymName, TypeParams, TypeBody,
+        _, _, _),
+    list.length(TypeParams, TypeArity),
+    check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
+        VersionNumbers, type_abstract_item, TypeSymName, TypeArity,
+        NeedsCheck, !MaybeStoppingReason, !Info),
     (
-        Item = item_clause(_),
-        unexpected($pred, "clause")
+        NeedsCheck = yes,
+        TypeCtor = type_ctor(TypeSymName, TypeArity),
+        check_type_defn_ambiguity_with_functor(RecompAvail,
+            TypeCtor, TypeBody, !MaybeStoppingReason, !Info)
     ;
-        Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(TypeSymName, TypeParams, TypeBody,
-            _, _, _),
-        list.length(TypeParams, TypeArity),
-        check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-            VersionNumbers, type_abstract_item, TypeSymName, TypeArity,
-            NeedsCheck, !MaybeStoppingReason, !Info),
-        (
-            NeedsCheck = yes,
-            check_type_defn_ambiguity_with_functor(RecompAvail,
-                type_ctor(TypeSymName, TypeArity), TypeBody,
-                !MaybeStoppingReason, !Info)
-        ;
-            NeedsCheck = no
-        )
-    ;
-        Item = item_inst_defn(ItemInstDefn),
-        % XXX IFTC Do we need to check _MaybeForTypeCtor?
-        ItemInstDefn = item_inst_defn_info(InstSymName, InstParams,
-            _MaybeForTypeCtor, _, _, _, _),
-        list.length(InstParams, InstArity),
-        check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-            VersionNumbers, inst_item, InstSymName, InstArity, _,
-            !MaybeStoppingReason, !Info)
-    ;
-        Item = item_mode_defn(ItemModeDefn),
-        ItemModeDefn = item_mode_defn_info(ModeSymName, ModeParams,
-            _, _, _, _),
-        list.length(ModeParams, ModeArity),
-        check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-            VersionNumbers, mode_item, ModeSymName, ModeArity, _,
-            !MaybeStoppingReason, !Info)
-    ;
-        Item = item_typeclass(ItemTypeClass),
-        ItemTypeClass = item_typeclass_info(TypeClassSymName, TypeClassParams,
-            _, _, Interface, _, _, _),
-        list.length(TypeClassParams, TypeClassArity),
-        check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
-            VersionNumbers, typeclass_item, TypeClassSymName, TypeClassArity,
-            NeedsCheck, !MaybeStoppingReason, !Info),
-        ( if
-            NeedsCheck = yes,
-            Interface = class_interface_concrete(ClassDecls)
-        then
-            list.foldl2(
-                check_class_decl_for_ambiguities(RecompAvail,
-                    OldTimestamp, VersionNumbers),
-                ClassDecls, !MaybeStoppingReason, !Info)
-        else
-            true
-        )
-    ;
-        Item = item_pred_decl(ItemPredDecl),
-        ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, Args,
-            WithType, _, _, _, _, _, _, _, _, _, _),
-        check_for_pred_or_func_item_ambiguity(no, RecompAvail, OldTimestamp,
-            VersionNumbers, PredOrFunc, PredSymName, Args, WithType,
-            !MaybeStoppingReason, !Info)
-    ;
-        ( Item = item_mode_decl(_)
-        ; Item = item_foreign_enum(_)
-        ; Item = item_foreign_export_enum(_)
-        ; Item = item_decl_pragma(_)
-        ; Item = item_impl_pragma(_)
-        ; Item = item_generated_pragma(_)
-        ; Item = item_promise(_)
-        ; Item = item_instance(_)
-        ; Item = item_initialise(_)
-        ; Item = item_finalise(_)
-        ; Item = item_mutable(_)
-        ; Item = item_type_repn(_)
-        )
+        NeedsCheck = no
+    ).
+
+%---------------------%
+
+:- pred check_inst_defn_info_for_ambiguities(recomp_avail::in, timestamp::in,
+    item_version_numbers::in, item_inst_defn_info::in,
+    maybe(recompile_reason)::in, maybe(recompile_reason)::out,
+    recompilation_check_info::in, recompilation_check_info::out) is det.
+
+check_inst_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
+        ItemInstDefn, !MaybeStoppingReason, !Info) :-
+    % XXX IFTC Do we need to check _MaybeForTypeCtor?
+    ItemInstDefn = item_inst_defn_info(InstSymName, InstParams,
+        _MaybeForTypeCtor, _, _, _, _),
+    list.length(InstParams, InstArity),
+    check_for_simple_item_ambiguity(RecompAvail, OldTimestamp, VersionNumbers,
+        inst_item, InstSymName, InstArity, _, !MaybeStoppingReason, !Info).
+
+%---------------------%
+
+:- pred check_mode_defn_info_for_ambiguities(recomp_avail::in, timestamp::in,
+    item_version_numbers::in, item_mode_defn_info::in,
+    maybe(recompile_reason)::in, maybe(recompile_reason)::out,
+    recompilation_check_info::in, recompilation_check_info::out) is det.
+
+check_mode_defn_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
+        ItemModeDefn, !MaybeStoppingReason, !Info) :-
+    ItemModeDefn = item_mode_defn_info(ModeSymName, ModeParams, _, _, _, _),
+    list.length(ModeParams, ModeArity),
+    check_for_simple_item_ambiguity(RecompAvail, OldTimestamp, VersionNumbers,
+        mode_item, ModeSymName, ModeArity, _, !MaybeStoppingReason, !Info).
+
+%---------------------%
+
+:- pred check_typeclass_info_for_ambiguities(recomp_avail::in,
+    timestamp::in, item_version_numbers::in, item_typeclass_info::in,
+    maybe(recompile_reason)::in, maybe(recompile_reason)::out,
+    recompilation_check_info::in, recompilation_check_info::out) is det.
+
+check_typeclass_info_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
+        ItemTypeClass, !MaybeStoppingReason, !Info) :-
+    ItemTypeClass = item_typeclass_info(TypeClassSymName, TypeClassParams,
+        _, _, Interface, _, _, _),
+    list.length(TypeClassParams, TypeClassArity),
+    check_for_simple_item_ambiguity(RecompAvail, OldTimestamp,
+        VersionNumbers, typeclass_item, TypeClassSymName, TypeClassArity,
+        NeedsCheck, !MaybeStoppingReason, !Info),
+    ( if
+        NeedsCheck = yes,
+        Interface = class_interface_concrete(ClassDecls)
+    then
+        list.foldl2(
+            check_class_decl_for_ambiguities(RecompAvail, OldTimestamp,
+                VersionNumbers),
+            ClassDecls, !MaybeStoppingReason, !Info)
+    else
+        true
     ).
 
 :- pred check_class_decl_for_ambiguities(recomp_avail::in,
@@ -1406,21 +1405,22 @@ check_class_decl_for_ambiguities(RecompAvail, OldTimestamp, VersionNumbers,
         Decl = class_decl_mode(_)
     ).
 
-:- pred item_is_new_or_changed(timestamp::in, item_version_numbers::in,
-    item_type::in, sym_name::in, arity::in) is semidet.
+%---------------------%
 
-item_is_new_or_changed(UsedFileTimestamp, UsedVersionNumbers,
-        ItemType, SymName, Arity) :-
-    Name = unqualify_name(SymName),
-    ( if
-        map.search(extract_ids(UsedVersionNumbers, ItemType), Name - Arity,
-            UsedVersionNumber)
-    then
-        % XXX This assumes that version numbers are timestamps.
-        compare((>), UsedVersionNumber, UsedFileTimestamp)
-    else
-        true
-    ).
+:- pred check_pred_decl_info_for_ambiguities(recomp_avail::in,
+    timestamp::in, item_version_numbers::in, item_pred_decl_info::in,
+    maybe(recompile_reason)::in, maybe(recompile_reason)::out,
+    recompilation_check_info::in, recompilation_check_info::out) is det.
+
+check_pred_decl_info_for_ambiguities(RecompAvail, OldTimestamp,
+        VersionNumbers, ItemPredDecl, !MaybeStoppingReason, !Info) :-
+    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, Args,
+        WithType, _, _, _, _, _, _, _, _, _, _),
+    check_for_pred_or_func_item_ambiguity(no, RecompAvail, OldTimestamp,
+        VersionNumbers, PredOrFunc, PredSymName, Args, WithType,
+        !MaybeStoppingReason, !Info).
+
+%---------------------------------------------------------------------------%
 
 :- pred check_for_simple_item_ambiguity(recomp_avail::in,
     timestamp::in, item_version_numbers::in, item_type::in(simple_item),
@@ -1499,6 +1499,22 @@ check_for_simple_item_ambiguity_2(ItemType, RecompAvail, SymName, Arity,
         else
             !:MaybeStoppingReason = no
         )
+    ).
+
+:- pred item_is_new_or_changed(timestamp::in, item_version_numbers::in,
+    item_type::in, sym_name::in, arity::in) is semidet.
+
+item_is_new_or_changed(UsedFileTimestamp, UsedVersionNumbers,
+        ItemType, SymName, Arity) :-
+    Name = unqualify_name(SymName),
+    ( if
+        map.search(extract_ids(UsedVersionNumbers, ItemType), Name - Arity,
+            UsedVersionNumber)
+    then
+        % XXX This assumes that version numbers are timestamps.
+        compare((>), UsedVersionNumber, UsedFileTimestamp)
+    else
+        true
     ).
 
 :- pred check_for_pred_or_func_item_ambiguity(bool::in,
@@ -1918,22 +1934,44 @@ record_read_file_src(ModuleName, FileName, ModuleTimestamp,
         HaveReadModuleMaps0 ^ hrmm_src := HaveReadModuleMapSrc,
     !Info ^ rci_have_read_module_maps := HaveReadModuleMaps.
 
-:- pred record_read_file_int(module_name::in, int_file_kind::in, file_name::in,
-    module_timestamp::in, parse_tree_int::in, list(error_spec)::in,
+:- pred record_read_file_some_int(module_name::in, file_name::in,
+    module_timestamp::in, parse_tree_some_int::in, list(error_spec)::in,
     read_module_errors::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-record_read_file_int(ModuleName, IntFileKind, FileName, ModuleTimestamp,
-        ParseTree, Specs, Errors, !Info) :-
-    HaveReadModuleMaps0 = !.Info ^ rci_have_read_module_maps,
-    HaveReadModuleMapInt0 = HaveReadModuleMaps0 ^ hrmm_int,
+record_read_file_some_int(ModuleName, FileName, ModuleTimestamp,
+        ParseTreeSomeInt, Specs, Errors, !Info) :-
     ModuleTimestamp = module_timestamp(_, Timestamp, _),
-    map.set(have_read_module_key(ModuleName, IntFileKind),
-        have_successfully_read_module(FileName, yes(Timestamp),
-            ParseTree, Specs, Errors),
-        HaveReadModuleMapInt0, HaveReadModuleMapInt),
-    HaveReadModuleMaps =
-        HaveReadModuleMaps0 ^ hrmm_int := HaveReadModuleMapInt,
+    HaveReadModuleMaps0 = !.Info ^ rci_have_read_module_maps,
+    (
+        ParseTreeSomeInt = parse_tree_some_int0(ParseTreeInt0),
+        HRMM0 = HaveReadModuleMaps0 ^ hrmm_int0,
+        ReadResult = have_successfully_read_module(FileName, yes(Timestamp),
+            ParseTreeInt0, Specs, Errors),
+        map.set(ModuleName, ReadResult, HRMM0, HRMM),
+        HaveReadModuleMaps = HaveReadModuleMaps0 ^ hrmm_int0 := HRMM
+    ;
+        ParseTreeSomeInt = parse_tree_some_int1(ParseTreeInt1),
+        HRMM0 = HaveReadModuleMaps0 ^ hrmm_int1,
+        ReadResult = have_successfully_read_module(FileName, yes(Timestamp),
+            ParseTreeInt1, Specs, Errors),
+        map.set(ModuleName, ReadResult, HRMM0, HRMM),
+        HaveReadModuleMaps = HaveReadModuleMaps0 ^ hrmm_int1 := HRMM
+    ;
+        ParseTreeSomeInt = parse_tree_some_int2(ParseTreeInt2),
+        HRMM0 = HaveReadModuleMaps0 ^ hrmm_int2,
+        ReadResult = have_successfully_read_module(FileName, yes(Timestamp),
+            ParseTreeInt2, Specs, Errors),
+        map.set(ModuleName, ReadResult, HRMM0, HRMM),
+        HaveReadModuleMaps = HaveReadModuleMaps0 ^ hrmm_int2 := HRMM
+    ;
+        ParseTreeSomeInt = parse_tree_some_int3(ParseTreeInt3),
+        HRMM0 = HaveReadModuleMaps0 ^ hrmm_int3,
+        ReadResult = have_successfully_read_module(FileName, yes(Timestamp),
+            ParseTreeInt3, Specs, Errors),
+        map.set(ModuleName, ReadResult, HRMM0, HRMM),
+        HaveReadModuleMaps = HaveReadModuleMaps0 ^ hrmm_int3 := HRMM
+    ),
     !Info ^ rci_have_read_module_maps := HaveReadModuleMaps.
 
 %---------------------------------------------------------------------------%
@@ -2131,6 +2169,170 @@ record_recompilation_reason(Reason, MaybeStoppingReason, !Info) :-
         CollectAllReasons = no,
         MaybeStoppingReason = yes(Reason)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred get_version_numbers_from_parse_tree_some_int(parse_tree_some_int::in,
+    version_numbers::out) is semidet.
+
+get_version_numbers_from_parse_tree_some_int(ParseTreeSomeInt,
+        VersionNumbers) :-
+    (
+        ParseTreeSomeInt = parse_tree_some_int0(ParseTreeInt0),
+        MaybeVersionNumbers = ParseTreeInt0 ^ pti0_maybe_version_numbers
+    ;
+        ParseTreeSomeInt = parse_tree_some_int1(ParseTreeInt1),
+        MaybeVersionNumbers = ParseTreeInt1 ^ pti1_maybe_version_numbers
+    ;
+        ParseTreeSomeInt = parse_tree_some_int2(ParseTreeInt2),
+        MaybeVersionNumbers = ParseTreeInt2 ^ pti2_maybe_version_numbers
+    ;
+        ParseTreeSomeInt = parse_tree_some_int3(_ParseTreeInt3),
+        % .int3 files never contain version numbers.
+        fail
+    ),
+    MaybeVersionNumbers = version_numbers(VersionNumbers).
+
+%---------------------------------------------------------------------------%
+
+:- type ambiguity_checkables
+    --->    ambiguity_checkables(
+                % NOTE We should consider making the types of the first
+                % three fields type_ctor_defn_map, inst_ctor_defn_map and
+                % mode_ctor_defn_map respectively. However, before we do that,
+                % we need to decide exactly how we want to handle any entries
+                % in the implementation section versions of those maps.
+                % I (zs) think it is quite likely that the original code
+                % of this module did not consider the treatment of such entries
+                % thoroughly enough.
+                %
+                % Consider that the original motivation to put type
+                % definitions into the implementation sections of .int files
+                % was to give the compiler the information it needs to decide
+                % on the correct representation of values of the type,
+                % especially in the context of equivalence types involving
+                % floats, which at the time were stored in two words
+                % (as 64 bit entities on a 32 bit platform). However,
+                % such type definition items specify non-user-visible
+                % information, and as such should not be able to affect
+                % which type names are ambiguous and which are not.
+                % And yet the code of this module has always processed
+                % type definition items without regard to which section
+                % of an interface file they occurred in. (It is possible
+                % that the reason for this is that when this code was first
+                % written, interface files did not *have* implementation
+                % sections.)
+                list(item_type_defn_info),
+                list(item_inst_defn_info),
+                list(item_mode_defn_info),
+                list(item_typeclass_info),
+                list(item_pred_decl_info)
+            ).
+
+:- pred get_ambiguity_checkables_parse_tree_some_int(parse_tree_some_int::in,
+    ambiguity_checkables::out) is det.
+
+get_ambiguity_checkables_parse_tree_some_int(ParseTreeSomeInt, Checkables) :-
+    (
+        ParseTreeSomeInt = parse_tree_some_int0(ParseTreeInt0),
+        get_ambiguity_checkables_parse_tree_int0(ParseTreeInt0, Checkables)
+    ;
+        ParseTreeSomeInt = parse_tree_some_int1(ParseTreeInt1),
+        get_ambiguity_checkables_parse_tree_int1(ParseTreeInt1, Checkables)
+    ;
+        ParseTreeSomeInt = parse_tree_some_int2(ParseTreeInt2),
+        get_ambiguity_checkables_parse_tree_int2(ParseTreeInt2, Checkables)
+    ;
+        ParseTreeSomeInt = parse_tree_some_int3(ParseTreeInt3),
+        get_ambiguity_checkables_parse_tree_int3(ParseTreeInt3, Checkables)
+    ).
+
+:- pred get_ambiguity_checkables_parse_tree_int0(parse_tree_int0::in,
+    ambiguity_checkables::out) is det.
+
+get_ambiguity_checkables_parse_tree_int0(ParseTreeInt0, Checkables) :-
+    ParseTreeInt0 = parse_tree_int0(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _IntIncls, _ImpIncls, _InclMap,
+        _IntImports, _IntUses, _ImpImports, _ImpUses, _ImportUseMap,
+        _IntFIMs, _ImpFIMs,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, _IntInstances,
+        IntPredDecls, _IntModeDecls, _IntForeignEnums,
+        _IntDeclPragmas, _IntPromises,
+        ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
+        ImpTypeClasses, _ImpInstances,
+        ImpPredDecls, _ImpModeDecls, _ImpForeignEnums,
+        _ImpDeclPragmas, _ImpPromises),
+    ItemTypeDefns =
+        type_ctor_defn_map_to_type_defns(IntTypeDefnMap) ++
+        type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
+    ItemInstDefns =
+        inst_ctor_defn_map_to_inst_defns(IntInstDefnMap) ++
+        inst_ctor_defn_map_to_inst_defns(ImpInstDefnMap),
+    ItemModeDefns =
+        mode_ctor_defn_map_to_mode_defns(IntModeDefnMap) ++
+        mode_ctor_defn_map_to_mode_defns(ImpModeDefnMap),
+    ItemTypeClasses = IntTypeClasses ++ ImpTypeClasses,
+    ItemPredDecls = IntPredDecls ++ ImpPredDecls,
+    Checkables = ambiguity_checkables(ItemTypeDefns,
+        ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls).
+
+:- pred get_ambiguity_checkables_parse_tree_int1(parse_tree_int1::in,
+    ambiguity_checkables::out) is det.
+
+get_ambiguity_checkables_parse_tree_int1(ParseTreeInt1, Checkables) :-
+    ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _IntIncls, _ImpIncls, _InclMap,
+        _IntUses, _ImpUses, _ImportUseMap, _IntFIMs, _ImpFIMs,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntTypeClasses, _IntItemInstances,
+        IntPredDecls, _IntModeDecls, _IntFEEs, _IntDeclPragmas, _IntPromises,
+        _IntTypeRepnMap,
+        ImpTypeDefnMap, _ImpFEEs, ImpTypeClasses),
+    ItemTypeDefns =
+        type_ctor_defn_map_to_type_defns(IntTypeDefnMap) ++
+        type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
+    ItemInstDefns = inst_ctor_defn_map_to_inst_defns(IntInstDefnMap),
+    ItemModeDefns = mode_ctor_defn_map_to_mode_defns(IntModeDefnMap),
+    ItemTypeClasses = IntTypeClasses ++ ImpTypeClasses,
+    ItemPredDecls = IntPredDecls,
+    Checkables = ambiguity_checkables(ItemTypeDefns,
+        ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls).
+
+:- pred get_ambiguity_checkables_parse_tree_int2(parse_tree_int2::in,
+    ambiguity_checkables::out) is det.
+
+get_ambiguity_checkables_parse_tree_int2(ParseTreeInt2, Checkables) :-
+    ParseTreeInt2 = parse_tree_int2(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _IntIncls, _InclMap,
+        _IntUses, _ImportUseMap, _IntFIMs, _ImpFIMs,
+        IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
+        IntItemTypeClasses, _IntItemInstances, _IntTypeRepnMap,
+        ImpTypeDefnMap),
+    ItemTypeDefns =
+        type_ctor_defn_map_to_type_defns(IntTypeDefnMap) ++
+        type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
+    ItemInstDefns = inst_ctor_defn_map_to_inst_defns(IntInstDefnMap),
+    ItemModeDefns = mode_ctor_defn_map_to_mode_defns(IntModeDefnMap),
+    ItemTypeClasses = IntItemTypeClasses,
+    ItemPredDecls = [],
+    Checkables = ambiguity_checkables(ItemTypeDefns,
+        ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls).
+
+:- pred get_ambiguity_checkables_parse_tree_int3(parse_tree_int3::in,
+    ambiguity_checkables::out) is det.
+
+get_ambiguity_checkables_parse_tree_int3(ParseTreeInt3, Checkables) :-
+    ParseTreeInt3 = parse_tree_int3(_ModuleName, _ModuleNameContext,
+        _Incls, _InclMap, _Avails, _AvailMap,
+        TypeDefnMap, InstDefnMap, ModeDefnMap,
+        ItemTypeClasses, _ItemInstances, _TypeRepnMap),
+    ItemTypeDefns = type_ctor_defn_map_to_type_defns(TypeDefnMap),
+    ItemInstDefns = inst_ctor_defn_map_to_inst_defns(InstDefnMap),
+    ItemModeDefns = mode_ctor_defn_map_to_mode_defns(ModeDefnMap),
+    ItemPredDecls = [],
+    Checkables = ambiguity_checkables(ItemTypeDefns,
+        ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls).
 
 %---------------------------------------------------------------------------%
 :- end_module recompilation.check.

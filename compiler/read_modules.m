@@ -55,9 +55,8 @@
     --->    have_read_module_maps(
                 hrmm_src                :: have_read_module_src_map,
 
-                % XXX CLEANUP We should stop using and delete these two fields
-                % as soon as we can, using the last six fields instead.
-                hrmm_int                :: have_read_module_int_map,
+                % XXX CLEANUP We should stop using and delete this field
+                % as soon as we can, using the last two fields instead.
                 hrmm_opt                :: have_read_module_opt_map,
 
                 % XXX CLEANUP We should store parse_tree_module_srcs,
@@ -77,8 +76,6 @@
 
 :- type have_read_module_src_map ==
     have_read_module_map(module_name, parse_tree_src).
-:- type have_read_module_int_map ==
-    have_read_module_map(have_read_module_key(int_file_kind), parse_tree_int).
 :- type have_read_module_opt_map ==
     have_read_module_map(have_read_module_key(opt_file_kind), parse_tree_opt).
 
@@ -224,6 +221,13 @@
     parse_tree_int::out, list(error_spec)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
+:- pred read_module_some_int(globals::in, string::in,
+    maybe_ignore_errors::in, maybe_search::in,
+    module_name::in, int_file_kind::in, file_name::out,
+    read_module_and_timestamps::in, maybe(timestamp)::out,
+    parse_tree_some_int::out, list(error_spec)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+
     % Versions of read_module_int that read and return a non-generic
     % parse tree.
     %
@@ -300,10 +304,11 @@
     maybe_return_timestamp::in, file_name::out, maybe(timestamp)::out,
     parse_tree_src::out, list(error_spec)::out, read_module_errors::out)
     is semidet.
-:- pred find_read_module_int(have_read_module_int_map::in,
-    have_read_module_key(int_file_kind)::in,
+
+:- pred find_read_module_some_int(have_read_module_maps::in,
+    module_name::in, int_file_kind::in,
     maybe_return_timestamp::in, file_name::out, maybe(timestamp)::out,
-    parse_tree_int::out, list(error_spec)::out, read_module_errors::out)
+    parse_tree_some_int::out, list(error_spec)::out, read_module_errors::out)
     is semidet.
 
     % Versions of find_read_module_int that return a non-generic parse tree.
@@ -345,7 +350,7 @@
 %-----------------------------------------------------------------------------%
 
 init_have_read_module_maps = 
-    have_read_module_maps(map.init, map.init, map.init,
+    have_read_module_maps(map.init, map.init,
         map.init, map.init, map.init, map.init, map.init, map.init, map.init).
 
 %-----------------------------------------------------------------------------%
@@ -404,6 +409,35 @@ read_module_int(Globals, Descr, IgnoreErrors, Search, ModuleName, IntFileKind,
     read_module_end_module(Globals, IgnoreErrors, VeryVerbose,
         MaybeFileNameAndStream, FileName0, FileName,
         MaybeTimestampRes, MaybeTimestamp, ModuleSpecs, Specs, Errors, !IO).
+
+read_module_some_int(Globals, Descr, IgnoreErrors, Search, ModuleName,
+        IntFileKind, FileName, ReadModuleAndTimestamps, MaybeTimestamp,
+        ParseTreeSomeInt, Specs, Errors, !IO) :-
+    (
+        IntFileKind = ifk_int0,
+        read_module_int0(Globals, Descr, IgnoreErrors, Search, ModuleName,
+            FileName, ReadModuleAndTimestamps, MaybeTimestamp,
+            ParseTreeInt0, Specs, Errors, !IO),
+        ParseTreeSomeInt = parse_tree_some_int0(ParseTreeInt0)
+    ;
+        IntFileKind = ifk_int1,
+        read_module_int1(Globals, Descr, IgnoreErrors, Search, ModuleName,
+            FileName, ReadModuleAndTimestamps, MaybeTimestamp,
+            ParseTreeInt1, Specs, Errors, !IO),
+        ParseTreeSomeInt = parse_tree_some_int1(ParseTreeInt1)
+    ;
+        IntFileKind = ifk_int2,
+        read_module_int2(Globals, Descr, IgnoreErrors, Search, ModuleName,
+            FileName, ReadModuleAndTimestamps, MaybeTimestamp,
+            ParseTreeInt2, Specs, Errors, !IO),
+        ParseTreeSomeInt = parse_tree_some_int2(ParseTreeInt2)
+    ;
+        IntFileKind = ifk_int3,
+        read_module_int3(Globals, Descr, IgnoreErrors, Search, ModuleName,
+            FileName, ReadModuleAndTimestamps, MaybeTimestamp,
+            ParseTreeInt3, Specs, Errors, !IO),
+        ParseTreeSomeInt = parse_tree_some_int3(ParseTreeInt3)
+    ).
 
 read_module_int0(Globals, Descr, IgnoreErrors, Search, ModuleName,
         FileName, ReadModuleAndTimestamps, MaybeTimestamp,
@@ -765,14 +799,34 @@ find_read_module_src(HaveReadModuleMapSrc, ModuleName, ReturnTimestamp,
     return_timestamp_if_needed(ReturnTimestamp, MaybeTimestamp0,
         MaybeTimestamp).
 
-find_read_module_int(HaveReadModuleMapInt, Key,
+find_read_module_some_int(HaveReadModuleMaps, ModuleName, IntFileKind,
         ReturnTimestamp, FileName, MaybeTimestamp,
-        ParseTreeInt, Specs, Errors) :-
-    map.search(HaveReadModuleMapInt, Key, HaveReadModule),
-    HaveReadModule = have_successfully_read_module(FileName, MaybeTimestamp0,
-        ParseTreeInt, Specs, Errors),
-    return_timestamp_if_needed(ReturnTimestamp, MaybeTimestamp0,
-        MaybeTimestamp).
+        ParseTreeSomeInt, Specs, Errors) :-
+    (
+        IntFileKind = ifk_int0,
+        find_read_module_int0(HaveReadModuleMaps ^ hrmm_int0, ModuleName,
+            ReturnTimestamp, FileName, MaybeTimestamp,
+            ParseTreeInt0, Specs, Errors),
+        ParseTreeSomeInt = parse_tree_some_int0(ParseTreeInt0)
+    ;
+        IntFileKind = ifk_int1,
+        find_read_module_int1(HaveReadModuleMaps ^ hrmm_int1, ModuleName,
+            ReturnTimestamp, FileName, MaybeTimestamp,
+            ParseTreeInt1, Specs, Errors),
+        ParseTreeSomeInt = parse_tree_some_int1(ParseTreeInt1)
+    ;
+        IntFileKind = ifk_int2,
+        find_read_module_int2(HaveReadModuleMaps ^ hrmm_int2, ModuleName,
+            ReturnTimestamp, FileName, MaybeTimestamp,
+            ParseTreeInt2, Specs, Errors),
+        ParseTreeSomeInt = parse_tree_some_int2(ParseTreeInt2)
+    ;
+        IntFileKind = ifk_int3,
+        find_read_module_int3(HaveReadModuleMaps ^ hrmm_int3, ModuleName,
+            ReturnTimestamp, FileName, MaybeTimestamp,
+            ParseTreeInt3, Specs, Errors),
+        ParseTreeSomeInt = parse_tree_some_int3(ParseTreeInt3)
+    ).
 
 find_read_module_int0(HaveReadModuleMapInt0, ModuleName,
         ReturnTimestamp, FileName, MaybeTimestamp,
