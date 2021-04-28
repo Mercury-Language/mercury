@@ -252,205 +252,62 @@ gather_in_section(Section, [Item | Items], !Info) :-
     gather_in_item(Section, Item, !Info),
     gather_in_section(Section, Items, !Info).
 
+%---------------------%
+
 :- pred gather_in_item(module_section::in, item::in,
     gathered_item_info::in, gathered_item_info::out) is det.
 
 gather_in_item(Section, Item, !Info) :-
     (
         Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(Name, Args, Body,
-            VarSet, Context, SeqNum),
-        (
-            Body = parse_tree_abstract_type(_),
-            NameItem = Item,
-            % The body of an abstract type can be recorded as used when
-            % generating a call to the automatically generated unification
-            % procedure.
-            BodyItem = Item
-        ;
-            Body = parse_tree_du_type(_),
-            % XXX does the abstract_details matter here?
-            % XXX TYPE_REPN zs: yes, it should, when it changes in a way that
-            % affects decisions about the representations of other types
-            % that include the abstract type. That means that *assuming*
-            % this value for AbstractDetails is a BUG.
-            AbstractDetails = abstract_type_general,
-            AbstractBody = parse_tree_abstract_type(AbstractDetails),
-            NameItemTypeDefn = item_type_defn_info(Name, Args, AbstractBody,
-                VarSet, Context, SeqNum),
-            NameItem = item_type_defn(NameItemTypeDefn),
-            BodyItem = Item
-        ;
-            Body = parse_tree_eqv_type(_),
-            % When we use an equivalence type we always use the body.
-            NameItem = Item,
-            BodyItem = Item
-        ;
-            Body = parse_tree_solver_type(_),
-            NameItem = Item,
-            BodyItem = Item
-        ;
-            Body = parse_tree_foreign_type(_),
-            NameItem = Item,
-            BodyItem = Item
-        ),
-        TypeCtorItem = item_name(Name, list.length(Args)),
-        GatheredItems0 = !.Info ^ gii_gathered_items,
-        add_gathered_item(NameItem, item_id(type_abstract_item, TypeCtorItem),
-            Section, GatheredItems0, GatheredItems1),
-        add_gathered_item(BodyItem, item_id(type_body_item, TypeCtorItem),
-            Section, GatheredItems1, GatheredItems),
-        !Info ^ gii_gathered_items := GatheredItems
+        gather_in_type_defn(Section, ItemTypeDefn, !Info)
     ;
-        % For predicates or functions defined using `with_inst` annotations
-        % the pred_or_func and arity here won't be correct, but equiv_type.m
-        % will record the dependency on the version number with the `incorrect'
-        % pred_or_func and arity, so this will work.
+        Item = item_inst_defn(ItemInstDefn),
+        gather_in_inst_defn(Section, ItemInstDefn, !Info)
+    ;
+        Item = item_mode_defn(ItemModeDefn),
+        gather_in_mode_defn(Section, ItemModeDefn, !Info)
+    ;
+        Item = item_pred_decl(ItemPredDecl),
+        gather_in_pred_decl(Section, ItemPredDecl, !Info)
+    ;
         Item = item_mode_decl(ItemModeDecl),
-        ItemModeDecl = item_mode_decl_info(SymName, MaybePredOrFunc, Modes,
-            WithInst, _, _, _, _),
-        ( if
-            MaybePredOrFunc = no,
-            WithInst = yes(_)
-        then
-            GatheredItems0 = !.Info ^ gii_gathered_items,
-            ItemName = item_name(SymName, list.length(Modes)),
-            add_gathered_item(Item, item_id(predicate_item, ItemName),
-                Section, GatheredItems0, GatheredItems1),
-            add_gathered_item(Item, item_id(function_item, ItemName),
-                Section, GatheredItems1, GatheredItems),
-            !Info ^ gii_gathered_items := GatheredItems
-        else
-            (
-                MaybePredOrFunc = yes(PredOrFunc),
-                adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
-                ItemType = pred_or_func_to_item_type(PredOrFunc),
-                ItemId = item_id(ItemType, item_name(SymName, Arity)),
-                GatheredItems0 = !.Info ^ gii_gathered_items,
-                add_gathered_item(Item, ItemId, Section,
-                    GatheredItems0, GatheredItems),
-                !Info ^ gii_gathered_items := GatheredItems
-            ;
-                MaybePredOrFunc = no
-                % We don't have an item_id, so we cannot gather the item.
-                % XXX Does this lead to missing some needed recompilations?
-            )
-        )
+        gather_in_mode_decl(Section, ItemModeDecl, !Info)
+    ;
+        Item = item_typeclass(ItemTypeClass),
+        gather_in_typeclass(Section, ItemTypeClass, !Info)
     ;
         Item = item_instance(ItemInstance),
-        ItemInstance = item_instance_info(ClassName, ClassArgs,
-            _, _, _, _, _, _, _),
-        Instances0 = !.Info ^ gii_instances,
-        ClassArity = list.length(ClassArgs),
-        ClassItemName = item_name(ClassName, ClassArity),
-        NewInstanceItem = Section - Item,
-        ( if map.search(Instances0, ClassItemName, OldInstanceItems) then
-            NewInstanceItems = [NewInstanceItem | OldInstanceItems],
-            map.det_update(ClassItemName, NewInstanceItems,
-                Instances0, Instances)
-        else
-            map.det_insert(ClassItemName, [NewInstanceItem],
-                Instances0, Instances)
-        ),
-        !Info ^ gii_instances := Instances
-    ;
-        ( Item = item_foreign_enum(_)
-        ; Item = item_foreign_export_enum(_)
-        )
-        % Do nothing.
+        gather_in_instance(Section, ItemInstance, !Info)
     ;
         Item = item_decl_pragma(ItemDeclPragma),
-        ItemDeclPragma = item_pragma_info(DeclPragma, _, _),
-        ( if is_pred_decl_pragma(DeclPragma, yes(PredOrFuncId)) then
-            PragmaItems0 = !.Info ^ gii_pragma_items,
-            PragmaItems = cord.snoc(PragmaItems0,
-                {PredOrFuncId, Item, Section}),
-            !Info ^ gii_pragma_items := PragmaItems
-        else
-            true
-        )
+        gather_in_decl_pragma(Section, ItemDeclPragma, !Info)
     ;
         Item = item_impl_pragma(ItemImplPragma),
-        ItemImplPragma = item_pragma_info(ImplPragma, _, _),
-        ( if is_pred_impl_pragma(ImplPragma, yes(PredOrFuncId)) then
-            PragmaItems0 = !.Info ^ gii_pragma_items,
-            PragmaItems = cord.snoc(PragmaItems0,
-                {PredOrFuncId, Item, Section}),
-            !Info ^ gii_pragma_items := PragmaItems
-        else
-            true
-        )
+        gather_in_impl_pragma(Section, ItemImplPragma, !Info)
     ;
         Item = item_generated_pragma(ItemGenPragma),
-        ItemGenPragma = item_pragma_info(GenPragma, _, _),
-        ( if is_pred_gen_pragma(GenPragma, yes(PredOrFuncId)) then
-            PragmaItems0 = !.Info ^ gii_pragma_items,
-            PragmaItems = cord.snoc(PragmaItems0,
-                {PredOrFuncId, Item, Section}),
-            !Info ^ gii_pragma_items := PragmaItems
-        else
-            true
-        )
+        gather_in_generated_pragma(Section, ItemGenPragma, !Info)
     ;
-        (
-            Item = item_inst_defn(ItemInstDefn),
-            ItemInstDefn = item_inst_defn_info(Name, Params, _, _, _, _, _),
-            list.length(Params, Arity),
-            ItemId = item_id(inst_item, item_name(Name, Arity))
-        ;
-            Item = item_mode_defn(ItemModeDefn),
-            ItemModeDefn = item_mode_defn_info(Name, Params, _, _, _, _),
-            list.length(Params, Arity),
-            ItemId = item_id(mode_item, item_name(Name, Arity))
-        ;
-            Item = item_pred_decl(ItemPredDecl),
-            ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc,
-                TypesAndModes, WithType, _, _, _, _, _, _, _, _, _, _),
-            % For predicates or functions defined using `with_type` annotations
-            % the arity here won't be correct, but equiv_type.m will record
-            % the dependency on the version number with the `incorrect' arity,
-            % so this will work.
-            (
-                WithType = no,
-                adjust_func_arity(PredOrFunc, Arity,
-                    list.length(TypesAndModes))
-            ;
-                WithType = yes(_),
-                Arity = list.length(TypesAndModes)
-            ),
-            ItemType = pred_or_func_to_item_type(PredOrFunc),
-            ItemId = item_id(ItemType, item_name(SymName, Arity))
-        ;
-            Item = item_typeclass(ItemTypeClass),
-            ItemTypeClass = item_typeclass_info(ClassName, ClassVars, _, _,
-                _, _, _, _),
-            list.length(ClassVars, ClassArity),
-            ItemId = item_id(typeclass_item, item_name(ClassName, ClassArity))
-        ),
-        GatheredItems0 = !.Info ^ gii_gathered_items,
-        add_gathered_item(Item, ItemId, Section,
-            GatheredItems0, GatheredItems),
-        !Info ^ gii_gathered_items := GatheredItems
+        Item = item_type_repn(ItemTypeRepn),
+        gather_in_type_repn(Section, ItemTypeRepn, !Info)
     ;
         Item = item_promise(_)
         % Do nothing; don't gather the item.
         % XXX This is likely to be a bug. If the old version of an interface
         % file makes a promise that the new version of that interface file
-        % doesn't, then any importing module whose compilation made use
+        % does not, then any importing module whose compilation made use
         % of that promise *needs* to be recompiled, but we don't detect
         % that need. The only reason why we haven't come across this bug
         % in real life is that (a) promises are very rare, and (b) when
         % they *do* occur, they tend to be very stable.
     ;
-        Item = item_type_repn(ItemTypeRepn),
-        ItemTypeRepn =
-            item_type_repn_info(TypeCtorSymName, TypeCtorArgs, _, _, _, _),
-        list.length(TypeCtorArgs, TypeCtorArity),
-        TypeCtorItem = item_name(TypeCtorSymName, TypeCtorArity),
-        GatheredItems0 = !.Info ^ gii_gathered_items,
-        add_gathered_item(Item, item_id(type_body_item, TypeCtorItem),
-            Section, GatheredItems0, GatheredItems),
-        !Info ^ gii_gathered_items := GatheredItems
+        ( Item = item_foreign_enum(_)
+        ; Item = item_foreign_export_enum(_)
+        )
+        % Do nothing.
+        % XXX I (zs) am not sure whether doing nothing here is a bug,
+        % for reasons pretty similar to the reasons for item_promise.
     ;
         ( Item = item_clause(_)
         ; Item = item_initialise(_)
@@ -460,6 +317,230 @@ gather_in_item(Section, Item, !Info) :-
         % Such items should not appear in interfaces.
         unexpected($pred, "unexpected item in interface")
     ).
+
+%---------------------%
+
+:- pred gather_in_type_defn(module_section::in, item_type_defn_info::in,
+    gathered_item_info::in, gathered_item_info::out) is det.
+
+gather_in_type_defn(Section, ItemTypeDefn, !Info) :-
+    ItemTypeDefn = item_type_defn_info(Name, Args, Body,
+        VarSet, Context, SeqNum),
+    Item = item_type_defn(ItemTypeDefn),
+    (
+        Body = parse_tree_du_type(_),
+        % XXX does the abstract_details matter here?
+        % XXX TYPE_REPN zs: yes, it should, when it changes in a way that
+        % affects decisions about the representations of other types
+        % that include the abstract type. That means that *assuming*
+        % this value for AbstractDetails is a BUG.
+        AbstractDetails = abstract_type_general,
+        AbstractBody = parse_tree_abstract_type(AbstractDetails),
+        NameItemTypeDefn = item_type_defn_info(Name, Args, AbstractBody,
+            VarSet, Context, SeqNum),
+        NameItem = item_type_defn(NameItemTypeDefn),
+        BodyItem = Item
+    ;
+        Body = parse_tree_abstract_type(_),
+        NameItem = Item,
+        % The body of an abstract type can be recorded as used when
+        % generating a call to the automatically generated unification
+        % procedure.
+        BodyItem = Item
+    ;
+        Body = parse_tree_eqv_type(_),
+        % When we use an equivalence type we always use the body.
+        NameItem = Item,
+        BodyItem = Item
+    ;
+        Body = parse_tree_solver_type(_),
+        NameItem = Item,
+        BodyItem = Item
+    ;
+        Body = parse_tree_foreign_type(_),
+        NameItem = Item,
+        BodyItem = Item
+    ),
+    TypeCtorItem = item_name(Name, list.length(Args)),
+    GatheredItems0 = !.Info ^ gii_gathered_items,
+    add_gathered_item(NameItem, item_id(type_abstract_item, TypeCtorItem),
+        Section, GatheredItems0, GatheredItems1),
+    add_gathered_item(BodyItem, item_id(type_body_item, TypeCtorItem),
+        Section, GatheredItems1, GatheredItems),
+    !Info ^ gii_gathered_items := GatheredItems.
+
+:- pred gather_in_inst_defn(module_section::in, item_inst_defn_info::in,
+    gathered_item_info::in, gathered_item_info::out) is det.
+
+gather_in_inst_defn(Section, ItemInstDefn, !Info) :-
+    ItemInstDefn = item_inst_defn_info(Name, Params, _, _, _, _, _),
+    Item = item_inst_defn(ItemInstDefn),
+    list.length(Params, Arity),
+    ItemId = item_id(inst_item, item_name(Name, Arity)),
+    add_gathered_item_to_info(Item, ItemId, Section, !Info).
+
+:- pred gather_in_mode_defn(module_section::in, item_mode_defn_info::in,
+    gathered_item_info::in, gathered_item_info::out) is det.
+
+gather_in_mode_defn(Section, ItemModeDefn, !Info) :-
+    ItemModeDefn = item_mode_defn_info(Name, Params, _, _, _, _),
+    Item = item_mode_defn(ItemModeDefn),
+    list.length(Params, Arity),
+    ItemId = item_id(mode_item, item_name(Name, Arity)),
+    add_gathered_item_to_info(Item, ItemId, Section, !Info).
+
+:- pred gather_in_pred_decl(module_section::in, item_pred_decl_info::in,
+    gathered_item_info::in, gathered_item_info::out) is det.
+
+gather_in_pred_decl(Section, ItemPredDecl, !Info) :-
+    ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc, TypesAndModes,
+        WithType, _, _, _, _, _, _, _, _, _, _),
+    Item = item_pred_decl(ItemPredDecl),
+    % For predicates or functions defined using `with_type` annotations
+    % the arity here won't be correct, but equiv_type.m will record
+    % the dependency on the version number with the `incorrect' arity,
+    % so this will work.
+    (
+        WithType = no,
+        adjust_func_arity(PredOrFunc, Arity, list.length(TypesAndModes))
+    ;
+        WithType = yes(_),
+        Arity = list.length(TypesAndModes)
+    ),
+    ItemType = pred_or_func_to_item_type(PredOrFunc),
+    ItemId = item_id(ItemType, item_name(SymName, Arity)),
+    add_gathered_item_to_info(Item, ItemId, Section, !Info).
+
+:- pred gather_in_mode_decl(module_section::in, item_mode_decl_info::in,
+    gathered_item_info::in, gathered_item_info::out) is det.
+
+gather_in_mode_decl(Section, ItemModeDecl, !Info) :-
+    % For predicates or functions defined using `with_inst` annotations
+    % the pred_or_func and arity here won't be correct, but equiv_type.m
+    % will record the dependency on the version number with the `incorrect'
+    % pred_or_func and arity, so this will work.
+    ItemModeDecl = item_mode_decl_info(SymName, MaybePredOrFunc, Modes,
+        WithInst, _, _, _, _),
+    Item = item_mode_decl(ItemModeDecl),
+    ( if
+        MaybePredOrFunc = no,
+        WithInst = yes(_)
+    then
+        GatheredItems0 = !.Info ^ gii_gathered_items,
+        ItemName = item_name(SymName, list.length(Modes)),
+        add_gathered_item(Item, item_id(predicate_item, ItemName),
+            Section, GatheredItems0, GatheredItems1),
+        add_gathered_item(Item, item_id(function_item, ItemName),
+            Section, GatheredItems1, GatheredItems),
+        !Info ^ gii_gathered_items := GatheredItems
+    else
+        (
+            MaybePredOrFunc = yes(PredOrFunc),
+            adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
+            ItemType = pred_or_func_to_item_type(PredOrFunc),
+            ItemId = item_id(ItemType, item_name(SymName, Arity)),
+            add_gathered_item_to_info(Item, ItemId, Section, !Info)
+        ;
+            MaybePredOrFunc = no
+            % We don't have an item_id, so we cannot gather the item.
+            % XXX Does this lead to missing some needed recompilations?
+        )
+    ).
+
+:- pred gather_in_typeclass(module_section::in, item_typeclass_info::in,
+    gathered_item_info::in, gathered_item_info::out) is det.
+
+gather_in_typeclass(Section, ItemTypeClass, !Info) :-
+    ItemTypeClass = item_typeclass_info(ClassName, ClassVars, _, _,
+        _, _, _, _),
+    Item = item_typeclass(ItemTypeClass),
+    list.length(ClassVars, ClassArity),
+    ItemId = item_id(typeclass_item, item_name(ClassName, ClassArity)),
+    add_gathered_item_to_info(Item, ItemId, Section, !Info).
+
+:- pred gather_in_instance(module_section::in, item_instance_info::in,
+    gathered_item_info::in, gathered_item_info::out) is det.
+
+gather_in_instance(Section, ItemInstance, !Info) :-
+    ItemInstance = item_instance_info(ClassName, ClassArgs,
+        _, _, _, _, _, _, _),
+    Item = item_instance(ItemInstance),
+    Instances0 = !.Info ^ gii_instances,
+    ClassArity = list.length(ClassArgs),
+    ClassItemName = item_name(ClassName, ClassArity),
+    NewInstanceItem = Section - Item,
+    ( if map.search(Instances0, ClassItemName, OldInstanceItems) then
+        NewInstanceItems = [NewInstanceItem | OldInstanceItems],
+        map.det_update(ClassItemName, NewInstanceItems, Instances0, Instances)
+    else
+        map.det_insert(ClassItemName, [NewInstanceItem], Instances0, Instances)
+    ),
+    !Info ^ gii_instances := Instances.
+
+:- pred gather_in_decl_pragma(module_section::in, item_decl_pragma_info::in,
+    gathered_item_info::in, gathered_item_info::out) is det.
+
+gather_in_decl_pragma(Section, ItemDeclPragma, !Info) :-
+    ItemDeclPragma = item_pragma_info(DeclPragma, _, _),
+    ( if is_pred_decl_pragma(DeclPragma, yes(PredOrFuncId)) then
+        Item = item_decl_pragma(ItemDeclPragma),
+        PragmaItems0 = !.Info ^ gii_pragma_items,
+        PragmaItems = cord.snoc(PragmaItems0, {PredOrFuncId, Item, Section}),
+        !Info ^ gii_pragma_items := PragmaItems
+    else
+        true
+    ).
+
+:- pred gather_in_impl_pragma(module_section::in, item_impl_pragma_info::in,
+    gathered_item_info::in, gathered_item_info::out) is det.
+
+gather_in_impl_pragma(Section, ItemImplPragma, !Info) :-
+    ItemImplPragma = item_pragma_info(ImplPragma, _, _),
+    ( if is_pred_impl_pragma(ImplPragma, yes(PredOrFuncId)) then
+        Item = item_impl_pragma(ItemImplPragma),
+        PragmaItems0 = !.Info ^ gii_pragma_items,
+        PragmaItems = cord.snoc(PragmaItems0, {PredOrFuncId, Item, Section}),
+        !Info ^ gii_pragma_items := PragmaItems
+    else
+        true
+    ).
+
+:- pred gather_in_generated_pragma(module_section::in,
+    item_generated_pragma_info::in,
+    gathered_item_info::in, gathered_item_info::out) is det.
+
+gather_in_generated_pragma(Section, ItemGenPragma, !Info) :-
+    ItemGenPragma = item_pragma_info(GenPragma, _, _),
+    ( if is_pred_gen_pragma(GenPragma, yes(PredOrFuncId)) then
+        Item = item_generated_pragma(ItemGenPragma),
+        PragmaItems0 = !.Info ^ gii_pragma_items,
+        PragmaItems = cord.snoc(PragmaItems0, {PredOrFuncId, Item, Section}),
+        !Info ^ gii_pragma_items := PragmaItems
+    else
+        true
+    ).
+
+:- pred gather_in_type_repn(module_section::in, item_type_repn_info::in,
+    gathered_item_info::in, gathered_item_info::out) is det.
+
+gather_in_type_repn(Section, ItemTypeRepn, !Info) :-
+    ItemTypeRepn = item_type_repn_info(TypeCtorSymName, TypeCtorArgs,
+        _, _, _, _),
+    Item = item_type_repn(ItemTypeRepn),
+    list.length(TypeCtorArgs, TypeCtorArity),
+    TypeCtorItem = item_name(TypeCtorSymName, TypeCtorArity),
+    ItemId = item_id(type_body_item, TypeCtorItem),
+    add_gathered_item_to_info(Item, ItemId, Section, !Info).
+
+%---------------------%
+
+:- pred add_gathered_item_to_info(item::in, item_id::in, module_section::in,
+    gathered_item_info::in, gathered_item_info::out) is det.
+
+add_gathered_item_to_info(Item, ItemId, Section, !Info) :-
+    GatheredItems0 = !.Info ^ gii_gathered_items,
+    add_gathered_item(Item, ItemId, Section, GatheredItems0, GatheredItems),
+    !Info ^ gii_gathered_items := GatheredItems.
 
 :- pred add_gathered_item(item::in, item_id::in, module_section::in,
     gathered_items::in, gathered_items::out) is det.
