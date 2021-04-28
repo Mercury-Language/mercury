@@ -369,6 +369,8 @@ gather_in_type_defn(Section, ItemTypeDefn, !Info) :-
         Section, GatheredItems1, GatheredItems),
     !Info ^ gii_gathered_items := GatheredItems.
 
+%---------------------%
+
 :- pred gather_in_inst_defn(module_section::in, item_inst_defn_info::in,
     gathered_item_info::in, gathered_item_info::out) is det.
 
@@ -378,6 +380,8 @@ gather_in_inst_defn(Section, ItemInstDefn, !Info) :-
     list.length(Params, Arity),
     ItemId = item_id(inst_item, item_name(Name, Arity)),
     add_gathered_item_to_info(Item, ItemId, Section, !Info).
+
+%---------------------%
 
 :- pred gather_in_mode_defn(module_section::in, item_mode_defn_info::in,
     gathered_item_info::in, gathered_item_info::out) is det.
@@ -389,13 +393,15 @@ gather_in_mode_defn(Section, ItemModeDefn, !Info) :-
     ItemId = item_id(mode_item, item_name(Name, Arity)),
     add_gathered_item_to_info(Item, ItemId, Section, !Info).
 
+%---------------------%
+
 :- pred gather_in_pred_decl(module_section::in, item_pred_decl_info::in,
     gathered_item_info::in, gathered_item_info::out) is det.
 
 gather_in_pred_decl(Section, ItemPredDecl, !Info) :-
-    ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc, TypesAndModes,
-        WithType, _, _, _, _, _, _, _, _, _, _),
-    Item = item_pred_decl(ItemPredDecl),
+    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
+        WithType, WithInst, MaybeDetism, Origin, TypeVarSet, InstVarSet,
+        ExistQVars, Purity, Constraints, Context, SeqNum),
     % For predicates or functions defined using `with_type` annotations
     % the arity here won't be correct, but equiv_type.m will record
     % the dependency on the version number with the `incorrect' arity,
@@ -408,8 +414,50 @@ gather_in_pred_decl(Section, ItemPredDecl, !Info) :-
         Arity = list.length(TypesAndModes)
     ),
     ItemType = pred_or_func_to_item_type(PredOrFunc),
-    ItemId = item_id(ItemType, item_name(SymName, Arity)),
-    add_gathered_item_to_info(Item, ItemId, Section, !Info).
+    ItemId = item_id(ItemType, item_name(PredSymName, Arity)),
+
+    split_types_and_modes(TypesAndModes, Types, MaybeModes),
+    % The code that generates interface files splits combined pred and mode
+    % declarations. It does this to allow the interface file to remain
+    % unchanged if/when that programmer doing this splitting manually,
+    % without making any other changes to the module's interface.
+    % The code here has to be prepared to compare such the pred_decl/mode_decl
+    % pair resulting from such as split against a still combined predmode_decl
+    % item in the source file.
+    ( if
+        MaybeModes = yes(Modes),
+        ( Modes = [_ | _]
+        ; WithInst = yes(_)
+        )
+    then
+        TypesWithoutModes = list.map((func(Type) = type_only(Type)), Types),
+        varset.init(EmptyInstVarSet),
+        ItemPredOnlyDecl = item_pred_decl_info(PredSymName, PredOrFunc,
+            TypesWithoutModes, WithType, no, no, Origin,
+            TypeVarSet, EmptyInstVarSet, ExistQVars, Purity, Constraints,
+            Context, SeqNum),
+        PredOnlyItem = item_pred_decl(ItemPredOnlyDecl),
+        (
+            WithInst = yes(_),
+            % MaybePredOrFunc needs to be `no' here because when the item
+            % is read from the interface file we won't know whether it is
+            % a predicate or a function mode.
+            MaybePredOrFunc = no
+        ;
+            WithInst = no,
+            MaybePredOrFunc = yes(PredOrFunc)
+        ),
+        ModeItemModeDecl = item_mode_decl_info(PredSymName, MaybePredOrFunc,
+            Modes, WithInst, MaybeDetism, InstVarSet, Context, SeqNum),
+        ModeItem = item_mode_decl(ModeItemModeDecl),
+        add_gathered_item_to_info(PredOnlyItem, ItemId, Section, !Info),
+        add_gathered_item_to_info(ModeItem, ItemId, Section, !Info)
+    else
+        PredItem = item_pred_decl(ItemPredDecl),
+        add_gathered_item_to_info(PredItem, ItemId, Section, !Info)
+    ).
+
+%---------------------%
 
 :- pred gather_in_mode_decl(module_section::in, item_mode_decl_info::in,
     gathered_item_info::in, gathered_item_info::out) is det.
@@ -447,16 +495,88 @@ gather_in_mode_decl(Section, ItemModeDecl, !Info) :-
         )
     ).
 
+%---------------------%
+
 :- pred gather_in_typeclass(module_section::in, item_typeclass_info::in,
     gathered_item_info::in, gathered_item_info::out) is det.
 
 gather_in_typeclass(Section, ItemTypeClass, !Info) :-
     ItemTypeClass = item_typeclass_info(ClassName, ClassVars, _, _,
         _, _, _, _),
-    Item = item_typeclass(ItemTypeClass),
     list.length(ClassVars, ClassArity),
     ItemId = item_id(typeclass_item, item_name(ClassName, ClassArity)),
+    Interface = ItemTypeClass ^ tc_class_methods,
+    (
+        Interface = class_interface_abstract,
+        Item = item_typeclass(ItemTypeClass),
+        add_gathered_item_to_info(Item, ItemId, Section, !Info)
+    ;
+        Interface = class_interface_concrete(Decls0),
+        % See the comment in gather_in_pred_decl for why we split
+        % any combined predmode declarations here.
+        DeclsList = list.map(split_class_method_types_and_modes, Decls0),
+        list.condense(DeclsList, Decls),
+        SplitItemTypeClass = ItemTypeClass ^ tc_class_methods
+            := class_interface_concrete(Decls),
+        Item = item_typeclass(SplitItemTypeClass)
+    ),
     add_gathered_item_to_info(Item, ItemId, Section, !Info).
+
+:- func split_class_method_types_and_modes(class_decl) = list(class_decl).
+
+split_class_method_types_and_modes(Decl0) = Decls :-
+    % Always strip the context from the item -- this is needed
+    % so the items can be easily tested for equality.
+    (
+        Decl0 = class_decl_pred_or_func(PredOrFuncInfo0),
+        PredOrFuncInfo0 = class_pred_or_func_info(SymName, PredOrFunc,
+            TypesAndModes, WithType, WithInst, MaybeDetism,
+            TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints, _Context),
+        ( if
+            split_types_and_modes(TypesAndModes, Types, MaybeModes),
+            MaybeModes = yes(Modes),
+            ( Modes = [_ | _]
+            ; WithInst = yes(_)
+            )
+        then
+            TypesWithoutModes =
+                list.map((func(Type) = type_only(Type)), Types),
+            (
+                WithInst = yes(_),
+                % MaybePredOrFunc needs to be `no' here because when the item
+                % is read in from the interface file, we won't know whether
+                % it is a mode for a predicate or a function.
+                MaybePredOrFunc = no
+            ;
+                WithInst = no,
+                MaybePredOrFunc = yes(PredOrFunc)
+            ),
+            ModeInfo = class_mode_info(SymName, MaybePredOrFunc,
+                Modes, WithInst, MaybeDetism,
+                InstVarSet, term.context_init),
+            ModeDecl = class_decl_mode(ModeInfo),
+            ModeDecls = [ModeDecl]
+        else
+            TypesWithoutModes = TypesAndModes,
+            ModeDecls = []
+        ),
+        varset.init(EmptyInstVarSet),
+        PredOrFuncInfo = class_pred_or_func_info(SymName, PredOrFunc,
+            TypesWithoutModes, WithType, no, no, TypeVarSet, EmptyInstVarSet,
+            ExistQVars, Purity, Constraints, term.context_init),
+        PredOrFuncDecl = class_decl_pred_or_func(PredOrFuncInfo),
+        Decls = [PredOrFuncDecl | ModeDecls]
+    ;
+        Decl0 = class_decl_mode(ModeInfo0),
+        ModeInfo0 = class_mode_info(SymName, MaybePredOrFunc,
+            Modes, WithInst, MaybeDetism, InstVarSet, _Context),
+        ModeInfo = class_mode_info(SymName, MaybePredOrFunc,
+            Modes, WithInst, MaybeDetism, InstVarSet, term.context_init),
+        Decl = class_decl_mode(ModeInfo),
+        Decls = [Decl]
+    ).
+
+%---------------------%
 
 :- pred gather_in_instance(module_section::in, item_instance_info::in,
     gathered_item_info::in, gathered_item_info::out) is det.
@@ -477,18 +597,22 @@ gather_in_instance(Section, ItemInstance, !Info) :-
     ),
     !Info ^ gii_instances := Instances.
 
+%---------------------%
+
 :- pred gather_in_decl_pragma(module_section::in, item_decl_pragma_info::in,
     gathered_item_info::in, gathered_item_info::out) is det.
 
 gather_in_decl_pragma(Section, ItemDeclPragma, !Info) :-
     ItemDeclPragma = item_pragma_info(DeclPragma, _, _),
-    ( if is_pred_decl_pragma(DeclPragma, yes(PredOrFuncId)) then
+    gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId),
+    (
+        MaybePredOrFuncId = yes(PredOrFuncId),
         Item = item_decl_pragma(ItemDeclPragma),
         PragmaItems0 = !.Info ^ gii_pragma_items,
         PragmaItems = cord.snoc(PragmaItems0, {PredOrFuncId, Item, Section}),
         !Info ^ gii_pragma_items := PragmaItems
-    else
-        true
+    ;
+        MaybePredOrFuncId = no
     ).
 
 :- pred gather_in_impl_pragma(module_section::in, item_impl_pragma_info::in,
@@ -496,13 +620,15 @@ gather_in_decl_pragma(Section, ItemDeclPragma, !Info) :-
 
 gather_in_impl_pragma(Section, ItemImplPragma, !Info) :-
     ItemImplPragma = item_pragma_info(ImplPragma, _, _),
-    ( if is_pred_impl_pragma(ImplPragma, yes(PredOrFuncId)) then
+    gather_impl_pragma_for_what_pf_id(ImplPragma, MaybePredOrFuncId),
+    (
+        MaybePredOrFuncId = yes(PredOrFuncId),
         Item = item_impl_pragma(ItemImplPragma),
         PragmaItems0 = !.Info ^ gii_pragma_items,
         PragmaItems = cord.snoc(PragmaItems0, {PredOrFuncId, Item, Section}),
         !Info ^ gii_pragma_items := PragmaItems
-    else
-        true
+    ;
+        MaybePredOrFuncId = no
     ).
 
 :- pred gather_in_generated_pragma(module_section::in,
@@ -511,14 +637,13 @@ gather_in_impl_pragma(Section, ItemImplPragma, !Info) :-
 
 gather_in_generated_pragma(Section, ItemGenPragma, !Info) :-
     ItemGenPragma = item_pragma_info(GenPragma, _, _),
-    ( if is_pred_gen_pragma(GenPragma, yes(PredOrFuncId)) then
-        Item = item_generated_pragma(ItemGenPragma),
-        PragmaItems0 = !.Info ^ gii_pragma_items,
-        PragmaItems = cord.snoc(PragmaItems0, {PredOrFuncId, Item, Section}),
-        !Info ^ gii_pragma_items := PragmaItems
-    else
-        true
-    ).
+    gather_generated_pragma_for_what_pf_id(GenPragma, PredOrFuncId),
+    Item = item_generated_pragma(ItemGenPragma),
+    PragmaItems0 = !.Info ^ gii_pragma_items,
+    PragmaItems = cord.snoc(PragmaItems0, {PredOrFuncId, Item, Section}),
+    !Info ^ gii_pragma_items := PragmaItems.
+
+%---------------------%
 
 :- pred gather_in_type_repn(module_section::in, item_type_repn_info::in,
     gathered_item_info::in, gathered_item_info::out) is det.
@@ -550,117 +675,13 @@ add_gathered_item(Item, ItemId, Section, !GatheredItems) :-
     ItemName = item_name(SymName, Arity),
     Name = unqualify_name(SymName),
     NameArity = Name - Arity,
-    % mercury_to_mercury.m splits combined pred and mode declarations.
-    % XXX ITEM_LIST Maybe that should be fixed, instead of this workaround.
-    % That needs to be done here as well the item list read from the interface
-    % file will match the item list generated here.
-    ( if
-        Item = item_pred_decl(ItemPredDecl),
-        ItemPredDecl = item_pred_decl_info( PredName, PredOrFunc,
-            TypesAndModes, WithType, WithInst, MaybeDetism,
-            Origin, TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints,
-            Context, SeqNum),
-        split_types_and_modes(TypesAndModes, Types, MaybeModes),
-        MaybeModes = yes(Modes),
-        ( Modes = [_ | _]
-        ; WithInst = yes(_)
-        )
-    then
-        TypesWithoutModes = list.map((func(Type) = type_only(Type)), Types),
-        varset.init(EmptyInstVarSet),
-        PredItemPredDecl = item_pred_decl_info(PredName, PredOrFunc,
-            TypesWithoutModes, WithType, no, no, Origin,
-            TypeVarSet, EmptyInstVarSet, ExistQVars, Purity, Constraints,
-            Context, SeqNum),
-        PredItem = item_pred_decl(PredItemPredDecl),
-        (
-            WithInst = yes(_),
-            % MaybePredOrFunc needs to be `no' here because when the item
-            % is read from the interface file we won't know whether it is
-            % a predicate or a function mode.
-            MaybePredOrFunc = no
-        ;
-            WithInst = no,
-            MaybePredOrFunc = yes(PredOrFunc)
-        ),
-        ModeItemModeDecl = item_mode_decl_info(PredName, MaybePredOrFunc,
-            Modes, WithInst, MaybeDetism, InstVarSet, Context, SeqNum),
-        ModeItem = item_mode_decl(ModeItemModeDecl),
-        AddedItems = [Section - PredItem, Section - ModeItem]
-    else if
-        Item = item_typeclass(ItemTypeClass),
-        ItemTypeClass ^ tc_class_methods = class_interface_concrete(Decls0)
-    then
-        DeclsList = list.map(split_class_method_types_and_modes, Decls0),
-        list.condense(DeclsList, Decls),
-        NewItemTypeClass = ItemTypeClass ^ tc_class_methods
-            := class_interface_concrete(Decls),
-        NewItem = item_typeclass(NewItemTypeClass),
-        AddedItems = [Section - NewItem]
-    else
-        AddedItems = [Section - Item]
-    ),
     IdMap0 = extract_ids(!.GatheredItems, ItemType),
     ( if map.search(IdMap0, NameArity, OldItems) then
-        map.det_update(NameArity, AddedItems ++ OldItems, IdMap0, IdMap)
+        map.det_update(NameArity, [Section - Item | OldItems], IdMap0, IdMap)
     else
-        map.det_insert(NameArity, AddedItems, IdMap0, IdMap)
+        map.det_insert(NameArity, [Section - Item], IdMap0, IdMap)
     ),
     update_ids(ItemType, IdMap, !GatheredItems).
-
-:- func split_class_method_types_and_modes(class_decl) = list(class_decl).
-
-split_class_method_types_and_modes(Decl0) = Decls :-
-    % Always strip the context from the item -- this is needed
-    % so the items can be easily tested for equality.
-    (
-        Decl0 = class_decl_pred_or_func(PredOrFuncInfo0),
-        PredOrFuncInfo0 = class_pred_or_func_info(SymName, PredOrFunc,
-            TypesAndModes, WithType, WithInst, MaybeDetism,
-            TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints, _Context),
-        ( if
-            split_types_and_modes(TypesAndModes, Types, MaybeModes),
-            MaybeModes = yes(Modes),
-            ( Modes = [_ | _]
-            ; WithInst = yes(_)
-            )
-        then
-            TypesWithoutModes =
-                list.map((func(Type) = type_only(Type)), Types),
-            (
-                WithInst = yes(_),
-                % MaybePredOrFunc needs to be `no' here because when the item
-                % is read from the interface file we won't know whether it is
-                % a predicate or a function mode.
-                MaybePredOrFunc = no
-            ;
-                WithInst = no,
-                MaybePredOrFunc = yes(PredOrFunc)
-            ),
-            ModeInfo = class_mode_info(SymName, MaybePredOrFunc,
-                Modes, WithInst, MaybeDetism,
-                InstVarSet, term.context_init),
-            ModeDecl = class_decl_mode(ModeInfo),
-            ModeDecls = [ModeDecl]
-        else
-            TypesWithoutModes = TypesAndModes,
-            ModeDecls = []
-        ),
-        varset.init(EmptyInstVarSet),
-        PredOrFuncInfo = class_pred_or_func_info(SymName, PredOrFunc,
-            TypesWithoutModes, WithType, no, no, TypeVarSet, EmptyInstVarSet,
-            ExistQVars, Purity, Constraints, term.context_init),
-        PredOrFuncDecl = class_decl_pred_or_func(PredOrFuncInfo),
-        Decls = [PredOrFuncDecl | ModeDecls]
-    ;
-        Decl0 = class_decl_mode(ModeInfo0),
-        ModeInfo0 = class_mode_info(SymName, MaybePredOrFunc,
-            Modes, WithInst, MaybeDetism, InstVarSet, _Context),
-        ModeInfo = class_mode_info(SymName, MaybePredOrFunc,
-            Modes, WithInst, MaybeDetism, InstVarSet, term.context_init),
-        Decl = class_decl_mode(ModeInfo),
-        Decls = [Decl]
-    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -738,10 +759,10 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
 
 :- type maybe_pred_or_func_id == pair(maybe(pred_or_func), sym_name_arity).
 
-:- pred is_pred_decl_pragma(decl_pragma::in,
+:- pred gather_decl_pragma_for_what_pf_id(decl_pragma::in,
     maybe(maybe_pred_or_func_id)::out) is det.
 
-is_pred_decl_pragma(DeclPragma, MaybePredOrFuncId) :-
+gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId) :-
     (
         DeclPragma = decl_pragma_type_spec(TypeSpecInfo),
         TypeSpecInfo = pragma_info_type_spec(Name, _, Arity, MaybePredOrFunc,
@@ -759,7 +780,13 @@ is_pred_decl_pragma(DeclPragma, MaybePredOrFuncId) :-
         PredNameArity = pred_name_arity(Name, Arity),
         MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
     ;
-        DeclPragma = decl_pragma_oisu(_),              % XXX
+        DeclPragma = decl_pragma_oisu(_),
+        % XXX Unlike all the other decl_pragmas, the oisu (order-independent
+        % state update) pragma is about a type, not a predicate or function.
+        %
+        % We don't have to handle it here, because it is not yet implemented.
+        % When it *is* implemented, we will need to tell our caller to record
+        % this pragma for the type_ctor named in the pragma.
         MaybePredOrFuncId = no
     ;
         ( DeclPragma = decl_pragma_terminates(PredNameArity)
@@ -789,10 +816,10 @@ is_pred_decl_pragma(DeclPragma, MaybePredOrFuncId) :-
         MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ).
 
-:- pred is_pred_impl_pragma(impl_pragma::in,
+:- pred gather_impl_pragma_for_what_pf_id(impl_pragma::in,
     maybe(maybe_pred_or_func_id)::out) is det.
 
-is_pred_impl_pragma(ImplPragma, MaybePredOrFuncId) :-
+gather_impl_pragma_for_what_pf_id(ImplPragma, MaybePredOrFuncId) :-
     (
         ( ImplPragma = impl_pragma_foreign_decl(_)
         ; ImplPragma = impl_pragma_foreign_code(_)
@@ -839,10 +866,10 @@ is_pred_impl_pragma(ImplPragma, MaybePredOrFuncId) :-
         MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ).
 
-:- pred is_pred_gen_pragma(generated_pragma::in,
-    maybe(maybe_pred_or_func_id)::out) is det.
+:- pred gather_generated_pragma_for_what_pf_id(generated_pragma::in,
+    maybe_pred_or_func_id::out) is det.
 
-is_pred_gen_pragma(GenPragma, MaybePredOrFuncId) :-
+gather_generated_pragma_for_what_pf_id(GenPragma, MaybePredOrFuncId) :-
     (
         GenPragma = gen_pragma_unused_args(UnusedArgsInfo),
         UnusedArgsInfo = pragma_info_unused_args(PredNameArityPFMn, _)
@@ -857,7 +884,7 @@ is_pred_gen_pragma(GenPragma, MaybePredOrFuncId) :-
         MMTablingOnfo = pragma_info_mm_tabling_info(PredNameArityPFMn, _)
     ),
     PredNameArityPFMn = pred_name_arity_pf_mn(Name, Arity, PredOrFunc, _),
-    MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity)).
+    MaybePredOrFuncId = yes(PredOrFunc) - sym_name_arity(Name, Arity).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1253,8 +1280,8 @@ is_item_changed(Item1, Item2, Changed) :-
     % We can't just assume that the varsets will be identical for
     % identical declarations because mercury_to_mercury.m splits
     % combined type and mode declarations into separate declarations.
-    % When they are read back in the variable numbers will be different
-    % because parser stores the type and inst variables for a combined
+    % When they are read back in, the variable numbers will be different,
+    % because the parser stores the type and inst variables for a combined
     % declaration in a single varset (it doesn't know which are which).
     %
 :- pred pred_or_func_type_is_unchanged(tvarset::in, existq_tvars::in,
