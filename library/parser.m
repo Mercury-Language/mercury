@@ -269,8 +269,8 @@ check_for_errors(Parse, VarSet, Tokens, LeftOverTokens, Result) :-
             (
                 ErrorTokens = token_cons(ErrorTok, ErrorTokLineNum, _),
                 lexer.token_to_string(ErrorTok, TokString),
-                Message =
-                    "Syntax error at " ++ TokString ++ ": " ++ ErrorMessage,
+                string.format("Syntax error at %s: %s",
+                    [s(TokString), s(ErrorMessage)], Message),
                 LineNum = ErrorTokLineNum
             ;
                 ErrorTokens = token_nil,
@@ -280,7 +280,7 @@ check_for_errors(Parse, VarSet, Tokens, LeftOverTokens, Result) :-
                     Tokens = token_nil,
                     error("check_for_errors")
                 ),
-                Message = "Syntax error: " ++ ErrorMessage
+                string.format("Syntax error: %s", [s(ErrorMessage)], Message)
             )
         ),
         Result = error(Message, LineNum)
@@ -292,7 +292,8 @@ check_for_errors(Parse, VarSet, Tokens, LeftOverTokens, Result) :-
             (
                 LeftOverTokens = token_cons(Token, LineNum, _),
                 lexer.token_to_string(Token, TokString),
-                Message = "Syntax error: unexpected " ++ TokString,
+                string.format("Syntax error: unexpected %s",
+                    [s(TokString)], Message),
                 Result = error(Message, LineNum)
             ;
                 LeftOverTokens = token_nil,
@@ -308,19 +309,19 @@ check_for_bad_token(token_cons(Token, LineNum0, Tokens), Message, LineNum) :-
     (
         Token = io_error(IO_Error),
         io.error_message(IO_Error, IO_ErrorMessage),
-        string.append("I/O error: ", IO_ErrorMessage, Message),
+        string.format("I/O error: %s", [s(IO_ErrorMessage)], Message),
         LineNum = LineNum0
     ;
         Token = junk(Char),
         char.to_int(Char, Code),
         string.int_to_base_string(Code, 10, Decimal),
         string.int_to_base_string(Code, 16, Hex),
-        string.append_list(["Syntax error: Illegal character 0x", Hex,
-            " (", Decimal, ") in input"], Message),
+        string.format("Syntax error: Illegal character 0x%s (%s) in input",
+            [s(Hex), s(Decimal)], Message),
         LineNum = LineNum0
     ;
         Token = error(ErrorMessage),
-        string.append("Syntax error: ", ErrorMessage, Message),
+        string.format("Syntax error: %s", [s(ErrorMessage)], Message),
         LineNum = LineNum0
     ;
         ( Token = name(_)
@@ -434,8 +435,7 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !TokensLeft, !PS) :-
             % Check for unary minus of an integer or a float.
             Token = name(TokenName),
             TokenName = "-",
-            !.TokensLeft =
-                token_cons(NextToken, _NextContext, !:TokensLeft),
+            !.TokensLeft = token_cons(NextToken, _NextContext, !:TokensLeft),
             (
                 NextToken = integer(LexerBase, X, signed, LexerSize),
                 NegX = -X,
@@ -470,7 +470,6 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !TokensLeft, !PS) :-
                 !.TokensLeft = token_cons(NextToken, _, _),
                 could_start_term(NextToken, yes),
                 NextToken \= open_ct
-
             then
                 OpPriority = BinOpPriority,
                 adjust_priority_for_assoc(OpPriority,

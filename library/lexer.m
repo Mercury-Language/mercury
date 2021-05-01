@@ -2763,8 +2763,8 @@ get_source_line_number(Stream, !.RevChars, Token, HaveToken, !IO) :-
                     do_not_have_token(Token, HaveToken)
                 else
                     have_token(Stream, HaveToken, !IO),
-                    string.append_list(["invalid line number `", String,
-                        "' in `#' line number directive"], Message),
+                    string.format("invalid line number `%s' " ++
+                        "in `#' line number directive", [s(String)], Message),
                     Token = error(Message)
                 )
             else
@@ -2778,8 +2778,8 @@ get_source_line_number(Stream, !.RevChars, Token, HaveToken, !IO) :-
             else
                 string.from_char_list([Char], String)
             ),
-            string.append_list(["invalid character `", String,
-                "' in `#' line number directive"], Message),
+            string.format("invalid character `%s' " ++
+                "in `#' line number directive", [s(String)], Message),
             Token = error(Message)
         )
     ).
@@ -2805,8 +2805,9 @@ string_get_source_line_number(String, Len, Posn1, Token, HaveToken, !Posn) :-
                 do_not_have_token(Token, HaveToken)
             else
                 string_have_token(Posn1, HaveToken),
-                Message = "invalid line number `" ++ LineNumString ++
-                    "' in `#' line number directive",
+                string.format("invalid line number `%s' " ++
+                    "in `#' line number directive", [s(LineNumString)],
+                    Message),
                 Token = error(Message)
             )
         else
@@ -2816,8 +2817,8 @@ string_get_source_line_number(String, Len, Posn1, Token, HaveToken, !Posn) :-
             else
                 string.from_char_list([Char], DirectiveString)
             ),
-            Message = "invalid character `" ++ DirectiveString ++
-                "' in `#' line number directive",
+            string.format("invalid character `%s' " ++
+                "in `#' line number directive", [s(DirectiveString)], Message),
             Token = error(Message)
         )
     else
@@ -2850,8 +2851,9 @@ linestr_get_source_line_number(String, Len, LineContext1, LinePosn1,
                 do_not_have_token(Token, HaveToken)
             else
                 linestr_have_token(LineContext1, HaveToken),
-                Message = "invalid line number `" ++ LineNumString ++
-                    "' in `#' line number directive",
+                string.format("invalid line number `%s' " ++
+                    "in `#' line number directive", [s(LineNumString)],
+                    Message),
                 Token = error(Message)
             )
         else
@@ -2861,8 +2863,8 @@ linestr_get_source_line_number(String, Len, LineContext1, LinePosn1,
             else
                 string.from_char_list([Char], DirectiveString)
             ),
-            Message = "invalid character `" ++ DirectiveString ++
-                "' in `#' line number directive",
+            string.format("invalid character `%s' " ++
+                "in `#' line number directive", [s(DirectiveString)], Message),
             Token = error(Message)
         )
     else
