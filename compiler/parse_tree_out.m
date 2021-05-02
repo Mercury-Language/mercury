@@ -82,50 +82,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_raw_compilation_unit(merc_out_info::in,
-    io.text_output_stream::in, raw_compilation_unit::in,
-    io::di, io::uo) is det.
-
-:- pred mercury_output_aug_compilation_unit(merc_out_info::in,
-    io.text_output_stream::in, aug_compilation_unit::in,
-    io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
-:- pred mercury_output_raw_item_blocks(merc_out_info::in,
-    io.text_output_stream::in, list(raw_item_block)::in,
-    io::di, io::uo) is det.
-:- pred mercury_output_raw_item_block(merc_out_info::in,
-    io.text_output_stream::in, raw_item_block::in,
-    io::di, io::uo) is det.
-
-:- pred mercury_output_src_item_blocks(merc_out_info::in,
-    io.text_output_stream::in, list(src_item_block)::in,
-    io::di, io::uo) is det.
-:- pred mercury_output_src_item_block(merc_out_info::in,
-    io.text_output_stream::in,
-    src_item_block::in, io::di, io::uo) is det.
-:- pred mercury_output_int_item_blocks(merc_out_info::in,
-    io.text_output_stream::in, list(int_item_block)::in,
-    io::di, io::uo) is det.
-:- pred mercury_output_int_item_block(merc_out_info::in,
-    io.text_output_stream::in, int_item_block::in,
-    io::di, io::uo) is det.
-:- pred mercury_output_opt_item_blocks(merc_out_info::in,
-    io.text_output_stream::in, list(opt_item_block)::in,
-    io::di, io::uo) is det.
-:- pred mercury_output_opt_item_block(merc_out_info::in,
-    io.text_output_stream::in, opt_item_block::in,
-    io::di, io::uo) is det.
-:- pred mercury_output_int_for_opt_item_blocks(merc_out_info::in,
-    io.text_output_stream::in, list(int_for_opt_item_block)::in,
-    io::di, io::uo) is det.
-:- pred mercury_output_int_for_opt_item_block(merc_out_info::in,
-    io.text_output_stream::in, int_for_opt_item_block::in,
-    io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
 :- pred mercury_output_item(merc_out_info::in, io.text_output_stream::in,
     item::in, io::di, io::uo) is det.
 
@@ -175,7 +131,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.canonicalize_interface.
-:- import_module parse_tree.file_kind.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.mercury_to_mercury.
@@ -197,7 +152,6 @@
 :- import_module map.
 :- import_module one_or_more.
 :- import_module pair.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.
@@ -806,47 +760,6 @@ mercury_output_parse_tree_trans_opt(Info, Stream, ParseTree, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-mercury_output_raw_compilation_unit(Info, Stream, CompUnit, !IO) :-
-    CompUnit = raw_compilation_unit(ModuleName, _Context, ItemBlocks),
-    io.write_string(Stream, "% raw compilation unit\n", !IO),
-    mercury_output_module_decl(Stream, "module", ModuleName, !IO),
-    mercury_output_raw_item_blocks(Info, Stream, ItemBlocks, !IO).
-
-mercury_output_aug_compilation_unit(Info, Stream, AugCompUnit, !IO) :-
-    AugCompUnit = aug_compilation_unit(ModuleName, _Context,
-        ModuleVersionNumbers, ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOptSpecs, TransOptSpecs, IntForOptSpecs),
-    io.write_string(Stream, "% augmented compilation unit\n", !IO),
-    mercury_output_module_decl(Stream, "module", ModuleName, !IO),
-    io.write_string(Stream, "% The module version numbers.\n", !IO),
-    map.foldl(mercury_output_module_version_numbers(Stream),
-        ModuleVersionNumbers, !IO),
-    io.write_string(Stream, "% The main module.\n", !IO),
-    mercury_output_parse_tree_module_src(Info, Stream,
-        ParseTreeModuleSrc, !IO),
-    io.write_string(Stream, "% The ancestor interfaces.\n", !IO),
-    map.foldl_values(mercury_output_ancestor_int_spec(Info, Stream),
-        AncestorIntSpecs, !IO),
-    io.write_string(Stream, "% The directly imported interfaces.\n", !IO),
-    map.foldl_values(mercury_output_direct_int_spec(Info, Stream),
-        DirectIntSpecs, !IO),
-    io.write_string(Stream, "% The indirectly imported interfaces.\n", !IO),
-    map.foldl_values(mercury_output_indirect_int_spec(Info, Stream),
-        IndirectIntSpecs, !IO),
-    io.write_string(Stream, "% The plain optimization files.\n", !IO),
-    map.foldl_values(mercury_output_parse_tree_plain_opt(Info, Stream),
-        PlainOptSpecs, !IO),
-    io.write_string(Stream, "% The transitive optimization files.\n", !IO),
-    map.foldl_values(mercury_output_parse_tree_trans_opt(Info, Stream),
-        TransOptSpecs, !IO),
-    io.write_string(Stream, "% The interface item blocks for optimization.\n",
-        !IO),
-    map.foldl_values(mercury_output_int_for_opt_spec(Info, Stream),
-        IntForOptSpecs, !IO).
-
-%---------------------------------------------------------------------------%
-
 :- pred mercury_output_maybe_module_version_numbers(io.text_output_stream::in,
     module_name::in, maybe_version_numbers::in, io::di, io::uo) is det.
 
@@ -928,84 +841,6 @@ mercury_output_module_components(Info, Stream, MaybePrevSectionKind,
 
 %---------------------------------------------------------------------------%
 
-mercury_output_raw_item_blocks(_, _, [], !IO).
-mercury_output_raw_item_blocks(Info, Stream,
-        [RawItemBlock | RawItemBlocks], !IO) :-
-    mercury_output_raw_item_block(Info, Stream, RawItemBlock, !IO),
-    mercury_output_raw_item_blocks(Info, Stream, RawItemBlocks, !IO).
-
-mercury_output_raw_item_block(Info, Stream, RawItemBlock, !IO) :-
-    RawItemBlock = item_block(_, SectionKind, Incls, Avails, FIMs, Items),
-    mercury_output_section_marker(Stream, SectionKind, !IO),
-    list.foldl(mercury_output_item_include(Info, Stream), Incls, !IO),
-    list.foldl(mercury_output_item_avail(Info, Stream), Avails, !IO),
-    list.foldl(mercury_output_item_foreign_import_module(Stream), FIMs, !IO),
-    mercury_output_items(Info, Stream, Items, !IO).
-
-%---------------------------------------------------------------------------%
-
-mercury_output_src_item_blocks(_, _, [], !IO).
-mercury_output_src_item_blocks(Info, Stream,
-        [SrcItemBlock | SrcItemBlocks], !IO) :-
-    mercury_output_src_item_block(Info, Stream, SrcItemBlock, !IO),
-    mercury_output_src_item_blocks(Info, Stream, SrcItemBlocks, !IO).
-
-mercury_output_src_item_block(Info, Stream, SrcItemBlock, !IO) :-
-    SrcItemBlock = item_block(_, SrcSectionKind, Incls, Avails, FIMs, Items),
-    mercury_output_src_section_marker(Stream, SrcSectionKind, !IO),
-    list.foldl(mercury_output_item_include(Info, Stream), Incls, !IO),
-    list.foldl(mercury_output_item_avail(Info, Stream), Avails, !IO),
-    list.foldl(mercury_output_item_foreign_import_module(Stream), FIMs, !IO),
-    mercury_output_items(Info, Stream, Items, !IO).
-
-mercury_output_int_item_blocks(_, _, [], !IO).
-mercury_output_int_item_blocks(Info, Stream,
-        [IntItemBlock | IntItemBlocks], !IO) :-
-    mercury_output_int_item_block(Info, Stream, IntItemBlock, !IO),
-    mercury_output_int_item_blocks(Info, Stream, IntItemBlocks, !IO).
-
-mercury_output_int_item_block(Info, Stream, IntItemBlock, !IO) :-
-    IntItemBlock = item_block(_, IntSectionKind, Incls, Avails, FIMs, Items),
-    mercury_output_int_section_marker(Stream, IntSectionKind, !IO),
-    list.foldl(mercury_output_item_include(Info, Stream), Incls, !IO),
-    list.foldl(mercury_output_item_avail(Info, Stream), Avails, !IO),
-    list.foldl(mercury_output_item_foreign_import_module(Stream), FIMs, !IO),
-    mercury_output_items(Info, Stream, Items, !IO).
-
-mercury_output_opt_item_blocks(_, _, [], !IO).
-mercury_output_opt_item_blocks(Info, Stream,
-        [OptItemBlock | OptItemBlocks], !IO) :-
-    mercury_output_opt_item_block(Info, Stream, OptItemBlock, !IO),
-    mercury_output_opt_item_blocks(Info, Stream, OptItemBlocks, !IO).
-
-mercury_output_opt_item_block(Info, Stream, OptItemBlock, !IO) :-
-    OptItemBlock = item_block(_, OptSectionKind, Incls, Avails, FIMs, Items),
-    mercury_output_opt_section_marker(Stream, OptSectionKind, !IO),
-    expect(unify(Incls, []), $pred, "Incls != []"),
-    list.foldl(mercury_output_item_avail(Info, Stream), Avails, !IO),
-    list.foldl(mercury_output_item_foreign_import_module(Stream), FIMs, !IO),
-    mercury_output_items(Info, Stream, Items, !IO).
-
-mercury_output_int_for_opt_item_blocks(_, _, [], !IO).
-mercury_output_int_for_opt_item_blocks(Info, Stream,
-        [IntForOptItemBlock | IntForOptItemBlocks], !IO) :-
-    mercury_output_int_for_opt_item_block(Info, Stream,
-        IntForOptItemBlock, !IO),
-    mercury_output_int_for_opt_item_blocks(Info, Stream,
-        IntForOptItemBlocks, !IO).
-
-mercury_output_int_for_opt_item_block(Info, Stream, IntForOptItemBlock, !IO) :-
-    IntForOptItemBlock = item_block(_, IntForOptSectionKind,
-        Incls, Avails, FIMs, Items),
-    mercury_output_int_for_opt_section_marker(Stream,
-        IntForOptSectionKind, !IO),
-    list.foldl(mercury_output_item_include(Info, Stream), Incls, !IO),
-    list.foldl(mercury_output_item_avail(Info, Stream), Avails, !IO),
-    list.foldl(mercury_output_item_foreign_import_module(Stream), FIMs, !IO),
-    mercury_output_items(Info, Stream, Items, !IO).
-
-%---------------------------------------------------------------------------%
-
 :- pred mercury_output_section_marker(io.text_output_stream::in,
     module_section::in, io::di, io::uo) is det.
 
@@ -1016,84 +851,6 @@ mercury_output_section_marker(Stream, Section, !IO) :-
     ;
         Section = ms_implementation,
         io.write_string(Stream, ":- implementation.\n", !IO)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred mercury_output_src_section_marker(io.text_output_stream::in,
-    src_module_section::in, io::di, io::uo) is det.
-
-mercury_output_src_section_marker(Stream, SrcSection, !IO) :-
-    (
-        SrcSection = sms_interface,
-        io.write_string(Stream, ":- interface.\n", !IO)
-    ;
-        SrcSection = sms_implementation,
-        io.write_string(Stream, ":- implementation.\n", !IO)
-    ;
-        SrcSection = sms_impl_but_exported_to_submodules,
-        io.write_string(Stream,
-            ":- ams_impl_but_exported_to_submodules.\n", !IO)
-    ).
-
-:- pred mercury_output_int_section_marker(io.text_output_stream::in,
-    int_module_section::in, io::di, io::uo) is det.
-
-mercury_output_int_section_marker(Stream, IntSection, !IO) :-
-    (
-        IntSection = ims_imported_or_used(ModuleName, IntFileKind,
-            ImportLocn, ImportedOrUsed),
-        int_file_kind_to_extension(IntFileKind, ExtStr, _Ext),
-        (
-            ImportedOrUsed = iou_imported,
-            io.write_string(Stream, ":- ims_imported", !IO)
-        ;
-            ImportedOrUsed = iou_used,
-            io.write_string(Stream, ":- ims_used", !IO)
-        ;
-            ImportedOrUsed = iou_used_and_imported,
-            io.write_string(Stream, ":- ims_used_and_imported", !IO)
-        ),
-        io.write_string(Stream, "(", !IO),
-        io.write_string(Stream, sym_name_to_string(ModuleName), !IO),
-        io.write_string(Stream, ExtStr, !IO),
-        io.write_string(Stream, ", ", !IO),
-        io.write(Stream, ImportLocn, !IO),
-        io.write_string(Stream, ").\n", !IO)
-    ;
-        IntSection = ims_abstract_imported(ModuleName, IntFileKind),
-        int_file_kind_to_extension(IntFileKind, ExtStr, _Ext),
-        io.write_string(Stream, ":- ims_abstract_imported(", !IO),
-        io.write_string(Stream, sym_name_to_string(ModuleName), !IO),
-        io.write_string(Stream, ExtStr, !IO),
-        io.write_string(Stream, ").\n", !IO)
-    ).
-
-:- pred mercury_output_opt_section_marker(io.text_output_stream::in,
-    opt_module_section::in, io::di, io::uo) is det.
-
-mercury_output_opt_section_marker(Stream, OptSection, !IO) :-
-    (
-        OptSection = oms_opt_imported(ModuleName, OptFileKind),
-        opt_file_kind_to_extension(OptFileKind, ExtStr, _Ext),
-        io.write_string(Stream, ":- oms_opt_imported(", !IO),
-        io.write_string(Stream, sym_name_to_string(ModuleName), !IO),
-        io.write_string(Stream, ExtStr, !IO),
-        io.write_string(Stream, ").\n", !IO)
-    ).
-
-:- pred mercury_output_int_for_opt_section_marker(
-    io.text_output_stream::in, int_for_opt_module_section::in,
-    io::di, io::uo) is det.
-
-mercury_output_int_for_opt_section_marker(Stream, IntForOptSection, !IO) :-
-    (
-        IntForOptSection = ioms_opt_imported(ModuleName, IntFileKind),
-        int_file_kind_to_extension(IntFileKind, ExtStr, _Ext),
-        io.write_string(Stream, ":- ioms_opt_imported(", !IO),
-        io.write_string(Stream, sym_name_to_string(ModuleName), !IO),
-        io.write_string(Stream, ExtStr, !IO),
-        io.write_string(Stream, ").\n", !IO)
     ).
 
 %---------------------------------------------------------------------------%
