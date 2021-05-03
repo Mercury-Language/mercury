@@ -9,7 +9,7 @@
 %
 % File: unify_proc.m.
 %
-% This module generates the bodies of the unify, compare and indexpredicates
+% This module generates the bodies of the unify, compare and index predicates
 % that the compiler automatically creates for each type definition.
 %
 % We can sometimes do this without knowing the representation of the type.
