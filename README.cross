@@ -75,22 +75,18 @@ ADAPTING THE MERCURY INSTALLATION FOR USE ON THE HOST SYSTEM
 To use the cross-compiled Mercury installation on the host system,
 you need to copy executables from a native Mercury installation's `bin`
 directory to the cross-compiled Mercury installation's `bin` directory.
-The two Mercury versions should be of the same (or least similar) versions.
+This can be done using the `tools/copy_mercury_binaries` script,
+which is called like this:
 
-If the Mercury installation was built for a Windows target, the executables
-are easily identified: they will have a `.exe` extension. Simply supply a
-native substitute for each `.exe` file.
+    tools/copy_mercury_binaries SRC DEST
 
-Otherwise, use the `file` command to identify binaries for the target system
-and replace them with binaries for the host system. At a minimum, you must
-replace `mercury_compile`, `mkinit`, `mdemangle` and `mfiltercc`.
+where SRC is the path to the native Mercury installation,
+and DEST is the path to the cross-compiled Mercury installation.
+The versions of the two Mercury installations should be the same,
+or at least very similar.
 
-Do *not* overwrite any shell scripts in the `bin` directory, since they include
-hard-coded paths to the Mercury installation.
-
-Once you have provided native substitutes for the binary files, you can use the
-`mmc` script from the cross-compiled Mercury installation to compile Mercury
-programs for the target system, e.g.
+Once that is done, you can use the `mmc` script from the cross-compiled Mercury
+installation to compile Mercury programs for the target system, e.g.
 
     % /usr/local/mercury-x86_64-w64-mingw32/bin/mmc -m hello
     Making Mercury/int3s/hello.int3

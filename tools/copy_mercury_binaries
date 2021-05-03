@@ -1,0 +1,69 @@
+#!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
+#---------------------------------------------------------------------------#
+# Copyright (C) 2021 The Mercury team.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# This script copies the binaries from one Mercury installation to another.
+# Please see README.cross for details.
+#
+#---------------------------------------------------------------------------#
+
+set -eu
+
+if test $# != 2
+then
+    echo "usage: copy_mercury_binaries SRC DEST"
+    echo "where SRC and DEST are paths to Mercury installations."
+    exit 1
+fi
+
+srcdir=$1/bin
+destdir=$2/bin
+
+if ! test -f "$srcdir/mercury_compile"
+then
+    echo "Missing $srcdir/mercury_compile"
+    exit 1
+fi
+if ! test -d "$destdir"
+then
+    echo "$destdir is not a directory."
+    exit 1
+fi
+
+echo "Copying files from $srcdir to $destdir..."
+
+for file in \
+    info_to_mdb \
+    mcov \
+    mdemangle \
+    mdice \
+    mdprof_cgi \
+    mdprof_create_feedback \
+    mdprof_dump \
+    mdprof_report_feedback \
+    mdprof_test \
+    mercury_compile \
+    mercury_profile \
+    mfiltercc \
+    mfilterjavac \
+    mkinit \
+    mslice \
+    mtc_diff \
+    mtc_union
+do
+    # The deep profiler binaries are not always installed.
+    if test -f "$srcdir/$file"
+    then
+        # Make a backup just in case.
+        if test -e "$destdir/$file"
+        then
+            mv "$destdir/$file" "$destdir/$file.bak"
+        fi
+
+        cp -v "$srcdir/$file" "$destdir"
+    fi
+done
