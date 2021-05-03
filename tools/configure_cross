@@ -1,0 +1,132 @@
+#!/bin/sh
+# vim: ft=sh ts=4 sw=4 et
+#---------------------------------------------------------------------------#
+# Copyright (C) 2012 The University of Melbourne.
+# Copyright (C) 2014, 2018, 2021 The Mercury team.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+#
+# This script prepares the Mercury source tree for building with a
+# C cross-compiler. Please see README.cross for details.
+#
+#---------------------------------------------------------------------------#
+
+set -eu
+
+host=
+hostcc=
+
+for arg
+do
+    case $arg in
+        --host=*)
+            host=${arg#--host=}
+            shift 1
+            ;;
+        --with-cc=*)
+            hostcc=${arg#--with-cc=}
+            shift 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if test -z "$host"
+then
+    echo "You must pass --host=HOST, e.g. x86_64-w64-mingw32"
+    exit 1
+fi
+
+hostcc=${hostcc:-"${host}-gcc"}
+
+if command -v "$hostcc" >/dev/null
+then
+    true
+else
+    echo "You need $hostcc in your PATH."
+    exit 1
+fi
+
+if command -v mmc >/dev/null && mmc -v 2>&1 | grep -q Mercury
+then
+    true
+else
+    echo "You need a working native mmc in your PATH."
+    exit 2
+fi
+
+if test configure -ot configure.ac
+then
+    aclocal -I m4 && autoconf
+fi
+
+if ! test -f configure.ac
+then
+    echo "You need to run this script at the top of the Mercury source tree."
+    exit 3
+fi
+
+# Set values which would otherwise be determined with AC_TRY_RUN.
+case $host in
+    i686-*-mingw32 | x86_64-*-mingw32)
+        # Taken from the config.cache file after running configure -C in msys.
+        mercury_cv_cc_type=gcc
+        mercury_cv_siginfo_t=no
+        mercury_cv_pc_access=no
+        mercury_cv_is_bigender=no
+        mercury_cv_is_littleender=yes
+        mercury_cv_normal_system_retval=no
+        mercury_cv_can_do_pending_io=no
+        mercury_cv_gcc_labels=yes
+        mercury_cv_asm_labels=yes
+        mercury_cv_gcc_model_fast=yes
+        mercury_cv_gcc_model_reg=yes
+        mercury_cv_cannot_use_structure_assignment=yes
+        ;;
+    aarch64-linux-gnu)
+        # Taken from the config.cache file after running configure -C
+        # in a Debian 10 arm64 environment.
+        mercury_cv_cc_type=gcc
+        mercury_cv_siginfo_t=yes
+        mercury_cv_pc_access=no
+        mercury_cv_is_bigender=no
+        mercury_cv_is_littleender=yes
+        mercury_cv_normal_system_retval=yes
+        mercury_cv_can_do_pending_io=yes
+        mercury_cv_gcc_labels=yes
+        mercury_cv_asm_labels=yes
+        mercury_cv_gcc_model_fast=yes
+        mercury_cv_gcc_model_reg=yes
+        mercury_cv_cannot_use_structure_assignment=no
+        ;;
+    *)
+        echo "unknown host: $host" >&2
+        exit 1
+        ;;
+esac
+
+mercury_cv_cc_type=$mercury_cv_cc_type \
+mercury_cv_siginfo_t=$mercury_cv_siginfo_t \
+mercury_cv_pc_access=$mercury_cv_pc_access \
+mercury_cv_is_bigender=$mercury_cv_is_bigender \
+mercury_cv_is_littleender=$mercury_cv_is_littleender \
+mercury_cv_normal_system_retval=$mercury_cv_normal_system_retval \
+mercury_cv_can_do_pending_io=$mercury_cv_can_do_pending_io \
+mercury_cv_gcc_labels=$mercury_cv_gcc_labels \
+mercury_cv_asm_labels=$mercury_cv_asm_labels \
+mercury_cv_gcc_model_fast=$mercury_cv_gcc_model_fast \
+mercury_cv_gcc_model_reg=$mercury_cv_gcc_model_reg \
+mercury_cv_cannot_use_structure_assignment=$mercury_cv_cannot_use_structure_assignment \
+sh configure "$@" \
+    --host="$host" \
+    --with-cc="$hostcc"
+
+echo
+echo "If you wish to run mmake in the subdirectories, you will need to set"
+echo "MMAKE_DIR=$(pwd)/scripts"
+echo
+
+exit

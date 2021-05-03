@@ -52,7 +52,7 @@ Specific information is contained in individual README files:
 
   * Cross compilation
 
-      * [MinGW](README.MinGW-cross)
+      * [README.cross]
 
 ## Other information
 

@@ -29,7 +29,6 @@ README.Linux-m68k
 README.Linux-PPC
 README.MacOS
 README.MinGW
-README.MinGW-cross
 README.MS-VisualC
 README.MS-Windows
 README.OSF1
@@ -38,3 +37,4 @@ README.Solaris
 README.ssdebug
 README.CSharp
 README.clang
+README.cross
