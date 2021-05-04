@@ -47,7 +47,7 @@ INSTRUCTIONS
 
     The `--host` option is required. HOST is the "host triplet" of your
     cross-compiler, e.g. x86_64-w64-mingw32, i686-w64-mingw32, or
-    aarch64-linux-gnu-gcc.
+    aarch64-linux-gnu.
 
     The `--with-cc` option can be used to pass the path of your C
     cross-compiler. It is required if your cross-compiler is not called
