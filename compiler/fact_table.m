@@ -237,8 +237,15 @@ fact_table_compile_facts(ModuleInfo, PredName, UserArity, FileName, Context,
             PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
             user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
             fact_table_compile_facts_2(ModuleInfo, PredName, PredFormArity,
-                FileName, Context, OutputFileName, OutputStream,
-                C_HeaderCode, PrimaryProcID, !PredInfo, !IO)
+                FileName, Context, OutputStream, C_HeaderCode, PrimaryProcID,
+                MaybeDataFileName, !PredInfo, !IO),
+            io.close_output(OutputStream, !IO),
+            (
+                MaybeDataFileName = no
+            ;
+                MaybeDataFileName = yes(DataFileName),
+                append_data_table(Globals, OutputFileName, DataFileName, !IO)
+            )
         ;
             OpenResult = error(Error),
             print_file_open_error(Globals, yes(Context), FileName, "output",
@@ -256,12 +263,12 @@ fact_table_compile_facts(ModuleInfo, PredName, UserArity, FileName, Context,
 
 :- pred fact_table_compile_facts_2( module_info::in,
     sym_name::in, pred_form_arity::in, string::in, prog_context::in,
-    string::in, io.output_stream::in, string::out, proc_id::out,
-    pred_info::in, pred_info::out, io::di, io::uo) is det.
+    io.output_stream::in, string::out, proc_id::out,
+    maybe(string)::out, pred_info::in, pred_info::out, io::di, io::uo) is det.
 
 fact_table_compile_facts_2(ModuleInfo, PredName, PredFormArity, FileName,
-        Context, OutputFileName, OutputStream, C_HeaderCode, PrimaryProcID,
-        !PredInfo, !IO) :-
+        Context, OutputStream, C_HeaderCode, PrimaryProcID,
+        MaybeDataFileName, !PredInfo, !IO) :-
     pred_info_get_arg_types(!.PredInfo, Types),
     init_fact_arg_infos(Types, FactArgInfos0),
     infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
@@ -329,23 +336,24 @@ fact_table_compile_facts_2(ModuleInfo, PredName, PredFormArity, FileName,
                 write_fact_table_numfacts(OutputStream, PredName, NumFacts,
                     C_HeaderCode3, !IO),
                 string.append_list([C_HeaderCode0, C_HeaderCode1,
-                    C_HeaderCode2, C_HeaderCode3], C_HeaderCode)
+                    C_HeaderCode2, C_HeaderCode3], C_HeaderCode),
+                MaybeDataFileName = yes(DataFileName)
             ;
                 DataFileNameResult = error(Error),
-                ErrorReport = no - [
-                    words("Could not create temporary file:"),
+                ErrorReport = no -
+                    [words("Could not create temporary file:"),
                     quote(error_message(Error)), nl],
                 print_error_report(Globals, ErrorReport, !IO),
                 C_HeaderCode = C_HeaderCode0,
                 PrimaryProcID = invalid_proc_id,
-                DataFileName = ""
+                MaybeDataFileName = no
             )
         ;
             OpenCompileErrors = [_ | _],
             print_error_reports(Globals, OpenCompileErrors, !IO),
             C_HeaderCode = C_HeaderCode0,
             PrimaryProcID = invalid_proc_id,
-            DataFileName = ""
+            MaybeDataFileName = no
         )
     ;
         Pass1HeaderErrors = [_ | _],
@@ -356,13 +364,8 @@ fact_table_compile_facts_2(ModuleInfo, PredName, PredFormArity, FileName,
         print_error_reports(Globals, Pass1HeaderErrors, !IO),
         C_HeaderCode = C_HeaderCode0,
         PrimaryProcID = invalid_proc_id,
-        WriteDataAfterSorting = no,
-        DataFileName = ""
-    ),
-    % XXX Move to caller.
-    io.close_output(OutputStream, !IO),
-    maybe_append_data_table(Globals, WriteDataAfterSorting, OutputFileName,
-        DataFileName, !IO).
+        MaybeDataFileName = no
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1392,11 +1395,10 @@ write_fact_args(OutputStream, [Arg | Args], !IO) :-
     % If a data table has been created in a separate file, append it to the
     % end of the main output file and then delete it.
     %
-:- pred maybe_append_data_table(globals::in, bool::in, string::in, string::in,
+:- pred append_data_table(globals::in, string::in, string::in,
     io::di, io::uo) is det.
 
-maybe_append_data_table(_Globals, no, _, _, !IO).
-maybe_append_data_table(Globals, yes, OutputFileName, DataFileName, !IO) :-
+append_data_table(Globals, OutputFileName, DataFileName, !IO) :-
     make_command_string(string.format("cat %s >>%s",
         [s(DataFileName), s(OutputFileName)]), forward, Command),
     globals.lookup_bool_option(Globals, verbose, Verbose),
