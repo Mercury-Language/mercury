@@ -1840,7 +1840,7 @@ check_typeclass_constraints_on_data_ctor(ModuleInfo, TypeCtor, TypeDefn,
             %
             % Any ambiguity errors can be reported *after* the programmer
             % fixes the references to nonexistent typeclasses.
-            ArgTypes = list.map(func(ctor_arg(_, T, _)) = T, CtorArgs),
+            get_ctor_arg_types(CtorArgs, ArgTypes),
             type_vars_list(ArgTypes, ArgTVars),
             list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),
                 ArgTVars, ExistQArgTVars),

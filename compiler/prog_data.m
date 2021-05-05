@@ -516,6 +516,9 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 prog_context        % The context of the name in the source.
             ).
 
+:- pred get_ctor_arg_types(list(constructor_arg)::in, list(mer_type)::out)
+    is det.
+
     % The arg_pos_width type and its components specify how much space
     % does a constructor argument occupy in the memory that represents
     % a term with that constructor, and where. This memory will usually be
@@ -910,6 +913,13 @@ ctors_are_all_constants([], []).
 ctors_are_all_constants([Ctor | Ctors], [Name | Names]) :-
     ctor_is_constant(Ctor, Name),
     ctors_are_all_constants(Ctors, Names).
+
+get_ctor_arg_types(CtorArgs, CtorArgTypes) :-
+    list.map(get_ctor_arg_type, CtorArgs, CtorArgTypes).
+
+:- pred get_ctor_arg_type(constructor_arg::in, mer_type::out) is det.
+
+get_ctor_arg_type(ctor_arg(_, Type, _), Type).
 
 fill_kind_string(fill_enum, "fill_enum").
 fill_kind_string(fill_int8, "fill_int8").

@@ -655,7 +655,7 @@ modecheck_coerce_from_ground_make_bound_functor(ModuleInfo, TVarSet,
     % Get the argument types for the constructors of both types,
     % with type arguments substituted in.
     % type_constructors already substituted type args into CtorArgsX.
-    list.map(get_ctor_arg_type, CtorArgsX, ArgTypesX),
+    get_ctor_arg_types(CtorArgsX, ArgTypesX),
     ( if
         get_ctor_arg_types_do_subst(ModuleInfo, TypeY, ConsIdY, ArgTypesY0)
     then
@@ -715,7 +715,7 @@ get_ctor_arg_types_do_subst(ModuleInfo, Type, ConsId, CtorArgTypes) :-
     search_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn),
     ConsDefn = hlds_cons_defn(_TypeCtor, _TVarSet, TypeParams, _KindMap,
         _MaybeExistConstraints, CtorArgs, _Context),
-    list.map(get_ctor_arg_type, CtorArgs, CtorArgTypes0),
+    get_ctor_arg_types(CtorArgs, CtorArgTypes0),
     (
         TypeParams = [],
         CtorArgTypes = CtorArgTypes0
@@ -724,11 +724,6 @@ get_ctor_arg_types_do_subst(ModuleInfo, Type, ConsId, CtorArgTypes) :-
         map.from_corresponding_lists(TypeParams, TypeArgs, Subst),
         apply_subst_to_type_list(Subst, CtorArgTypes0, CtorArgTypes)
     ).
-
-    % XXX move this to prog_data.m and reuse in other modules
-:- pred get_ctor_arg_type(constructor_arg::in, mer_type::out) is det.
-
-get_ctor_arg_type(ctor_arg(_, Type, _), Type).
 
 %---------------------------------------------------------------------------%
 

@@ -692,7 +692,7 @@ functor_unif_constraint(LTVar, ArgTVars, Info, ConsDefn, Constraints,
     GoalId = goal_info_get_goal_id(Info),
     % Find the types of each argument and the result type, given a renaming
     % of type variables.
-    list.map(get_ctor_arg_type, FuncArgs, FuncArgTypes0),
+    get_ctor_arg_types(FuncArgs, FuncArgTypes0),
     prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
         FunctorTVarSet, NewTVarSet, TVarRenaming),
     !TCInfo ^ tconstr_tvarset := NewTVarSet,
@@ -1125,10 +1125,6 @@ create_stconstr(TVar, Type) = stconstr(TVar, Type).
 :- pred get_case_goal(case::in, hlds_goal::out) is det.
 
 get_case_goal(Case, Case ^ case_goal).
-
-:- pred get_ctor_arg_type(constructor_arg::in, mer_type::out) is det.
-
-get_ctor_arg_type(ctor_arg(_, Type, _), Type).
 
 :- func tvar_to_type(tvar) = mer_type.
 
