@@ -35,6 +35,6 @@ main(!IO) :-
     --->    bar(int, int).
 
 :- pred quux(foo::in, foo::out) is det.
-:- pragma no_inline(quux/2).
+:- pragma no_inline(pred(quux/2)).
 
 quux(foo(A, bar(B, C)), foo(C, bar(A, B))).

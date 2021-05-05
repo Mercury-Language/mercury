@@ -10,9 +10,9 @@
 :- type db.
 
 :- pragma oisu(db/0,
-        creators([create_db1/1, create_db2/2]),
-        mutators([mutate_db1/3, mutate_db2/3]),
-        destructors([destroy_db/3])
+        creators([pred(create_db1/1), pred(create_db2/2)]),
+        mutators([pred(mutate_db1/3), pred(mutate_db2/3)]),
+        destructors([pred(destroy_db/3)])
     ).
 
 :- pred create_db1(db::out) is det.

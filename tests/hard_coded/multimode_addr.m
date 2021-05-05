@@ -74,7 +74,7 @@ my_foldl_silly(F, L, A0) = A :-
 :- mode f2p(in(func(in, in) = out is det), in, in, out) is det.
 :- mode f2p(in(func(in, in) = out is semidet), in, in, out) is semidet.
 
-:- pragma promise_equivalent_clauses(f2p/4).
+:- pragma promise_equivalent_clauses(pred(f2p/4)).
 
 f2p(F::in(func(in, di) = uo is det), L::in, A0::di, A::uo) :-
     trace [io(!IO)] io.write_string("f2p: det, unique\n", !IO),

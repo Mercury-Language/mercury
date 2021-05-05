@@ -662,7 +662,7 @@ acc_implicit_avail_needs_in_impl_pragma(ItemImplPragma,
     ItemImplPragma = item_pragma_info(ImplPragma, _Context, _SeqNum),
     (
         ImplPragma = impl_pragma_tabled(TableInfo),
-        TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes),
+        TableInfo = pragma_info_tabled(_, _, MaybeAttributes),
         !ImplicitAvailNeeds ^ ian_tabling := do_need_tabling,
         (
             MaybeAttributes = no
@@ -1210,7 +1210,7 @@ get_implicits_foreigns_fact_tables_acc([Item | Items],
             !Contents ^ ic_fact_tables := FactTables
         ;
             ImplPragma = impl_pragma_tabled(TableInfo),
-            TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes),
+            TableInfo = pragma_info_tabled(_, _, MaybeAttributes),
             !ImplicitAvailNeeds ^ ian_tabling := do_need_tabling,
             (
                 MaybeAttributes = no

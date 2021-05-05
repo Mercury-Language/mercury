@@ -31,9 +31,9 @@ p(X, Y) :-
     test(X).
 
 :- pred q(int::ui, int::out) is det.
-:- pragma promise_pure(q/2).
-:- pragma no_inline(q/2).
-:- pragma terminates(q/2).
+:- pragma promise_pure(pred(q/2)).
+:- pragma no_inline(pred(q/2)).
+:- pragma terminates(pred(q/2)).
 
 q(_, 1) :-
     impure puts("call to q").

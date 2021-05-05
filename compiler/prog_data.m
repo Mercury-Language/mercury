@@ -1955,7 +1955,51 @@ valid_trace_grade_name(GradeName) :-
 :- type pf_sym_name_arity
     --->    pf_sym_name_arity(pred_or_func, sym_name, arity).
 
+    % This type is part of a family of related types, the rest of which are
+    % in prog_item.m. Its name fits in with those types.
+    %
+:- type pred_pf_name_arity
+    --->    pred_pf_name_arity(pred_or_func, sym_name, user_arity).
+
+    % XXX ARITY While the concept of arity seems simple, it is not, because
+    % the compiler has to juggle several different notions of arity.
+    %
+    % Consider a function declaration as simple as
+    %
+    %   :- func length(list(T)) = int.
+    %
+    % This function has three different arities for three different purposes.
+    %
+    % - It has one user visible argument, so if arity counts these, then
+    %   its arity is 1.
+    %
+    % - Its initial form in the compiler adds the return value to the argument
+    %   list, so if arity counts these, then its arity is 2.
+    %
+    % - The polymorphism transformation then adds a typeinfo arg for T,
+    %   so if arity counts these as well, then its arity is 3.
+    %
+    % We might call these different kinds arities something like
+    % "user arity", "pred form arity" and "extended arity" respectively.
+    % (Better names welcome.)
+    %
+    % We should replace this single equivalence type with three separate
+    % notag types, one for each of these kinds of arities, and all uses
+    % of the plain just "arity" type should be replaced by these.
+    % The user_arity and pred_form_arity types below are a start on this.
+    %
+    % XXX ARITY We should eventually replace these ints with uint16, since
+    % an arity can never be negative, and we do not support arities higher
+    % than "about 1000" according to the LIMITATIONS file. (The main reason
+    % for the upper limit is that the abstract machine we use as the target
+    % in LLDS grades has 1024 registers, some of which are needed for
+    % purposes such as the semidet success indicator, and the type_info
+    % and/or typeclass_info arguments added by polymorphism.)
 :- type arity == int.
+:- type user_arity
+    --->    user_arity(int).
+:- type pred_form_arity
+    --->    pred_form_arity(int).
 
     % Describes whether an item can be used without an explicit module
     % qualifier.

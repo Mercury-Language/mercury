@@ -55,41 +55,64 @@
 %-----------------------------------------------------------------------------%
 
 add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
-    TSInfo = pragma_info_type_spec(SymName, _, Arity, MaybePredOrFunc,
-        _, _, _, _),
+    TSInfo = pragma_info_type_spec(PFUMM, SymName, _, _, _, _),
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     (
+        (
+            PFUMM = pfumm_predicate(ModesOrArity),
+            PredOrFunc = pf_predicate
+        ;
+            PFUMM = pfumm_function(ModesOrArity),
+            PredOrFunc = pf_function
+        ),
         MaybePredOrFunc = yes(PredOrFunc),
-        adjust_func_arity(PredOrFunc, Arity, PredArity),
+        (
+            ModesOrArity = moa_modes(Modes),
+            list.length(Modes, PredArityInt),
+            user_arity_pred_form_arity(PredOrFunc, UserArity, 
+                pred_form_arity(PredArityInt)),
+            MaybeModes = yes(Modes)
+        ;
+            ModesOrArity = moa_arity(UserArity),
+            user_arity_pred_form_arity(PredOrFunc, UserArity, 
+                pred_form_arity(PredArityInt)),
+            MaybeModes = no
+        ),
         predicate_table_lookup_pf_sym_arity(Preds, is_fully_qualified,
-            PredOrFunc, SymName, PredArity, PredIds)
+            PredOrFunc, SymName, PredArityInt, PredIds),
+        UserArity = user_arity(UserArityInt)
     ;
+        PFUMM = pfumm_unknown(UserArity),
+        UserArity = user_arity(UserArityInt),
         MaybePredOrFunc = no,
+        MaybeModes = no,
         predicate_table_lookup_sym_arity(Preds, is_fully_qualified,
-            SymName, Arity, PredIds)
+            SymName, UserArityInt, PredIds)
     ),
     (
         PredIds = [],
         % XXX We should compute a valid value for OtherArities.
         OtherArities = [],
-        report_undefined_pred_or_func_error(MaybePredOrFunc, SymName, Arity,
-            OtherArities, Context,
+        report_undefined_pred_or_func_error(MaybePredOrFunc, SymName,
+            UserArityInt, OtherArities, Context,
             [pragma_decl("type_spec"), words("declaration")], !Specs)
     ;
         PredIds = [_ | _],
-        list.foldl3(add_pragma_type_spec_for_pred(TSInfo, Context), PredIds,
-            !ModuleInfo, !QualInfo, !Specs)
+        list.foldl3(
+            add_pragma_type_spec_for_pred(TSInfo, UserArity, MaybeModes,
+                Context),
+            PredIds, !ModuleInfo, !QualInfo, !Specs)
     ).
 
 :- pred add_pragma_type_spec_for_pred(pragma_info_type_spec::in,
-    prog_context::in, pred_id::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+    user_arity::in, maybe(list(mer_mode))::in, prog_context::in, pred_id::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
-        !Specs) :-
-    TSInfo0 = pragma_info_type_spec(SymName, SpecName, Arity, _, MaybeModes,
-        Subst, TVarSet0, ExpandedItems),
+add_pragma_type_spec_for_pred(TSInfo0, UserArity, MaybeModes, Context, PredId,
+        !ModuleInfo, !QualInfo, !Specs) :-
+    TSInfo0 = pragma_info_type_spec(_PFUMM, SymName, SpecName, Subst,
+        TVarSet0, ExpandedItems),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     handle_pragma_type_spec_subst(Context, Subst, PredInfo0,
         TVarSet0, TVarSet, Types, ExistQVars, ClassContext, SubstOk,
@@ -97,7 +120,7 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
     (
         SubstOk = yes(RenamedSubst),
         pred_info_get_proc_table(PredInfo0, Procs0),
-        handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes,
+        handle_pragma_type_spec_modes(SymName, UserArity, Context, MaybeModes,
             MaybeProcIds, Procs0, Procs1, !ModuleInfo, !Specs),
         % Remove any imported structure sharing and reuse information for the
         % original procedure as they won't be (directly) applicable.
@@ -129,9 +152,10 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
             % the creation of the proper interface.
             %
             PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
-            adjust_func_arity(PredOrFunc, Arity, PredArity),
             varset.init(ArgVarSet0),
-            make_n_fresh_vars("HeadVar__", PredArity, Args,
+            user_arity_pred_form_arity(PredOrFunc, UserArity,
+                pred_form_arity(PredArityInt)),
+            make_n_fresh_vars("HeadVar__", PredArityInt, Args,
                 ArgVarSet0, ArgVarSet),
             % XXX We could use explicit type qualifications here for the
             % argument types, but explicit type qualification doesn't work
@@ -181,7 +205,7 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
                 transform_type_specialization(SubstDesc), OrigOrigin, PredId),
             CurUserDecl = maybe.no,
             pred_info_get_var_name_remap(PredInfo0, VarNameRemap),
-            pred_info_init(ModuleName, SpecName, PredArity, PredOrFunc,
+            pred_info_init(ModuleName, SpecName, PredArityInt, PredOrFunc,
                 Context, Origin, PredStatus, CurUserDecl, goal_type_none,
                 Markers, Types, TVarSet, ExistQVars, ClassContext, Proofs,
                 ConstraintMap, Clauses, VarNameRemap, NewPredInfo0),
@@ -195,7 +219,8 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
             module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo0),
             TypeSpecInfo0 = type_spec_info(ProcsToSpec0,
                 ForceVersions0, SpecMap0, PragmaMap0),
-            list.map((pred(ProcId::in, PredProcId::out) is det :-
+            list.map(
+                ( pred(ProcId::in, PredProcId::out) is det :-
                     PredProcId = proc(PredId, ProcId)
                 ), ProcIds, PredProcIds),
             set.insert_list(PredProcIds, ProcsToSpec0, ProcsToSpec),
@@ -209,9 +234,22 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
             else
                 SpecMap = SpecMap0
             ),
-            TSInfo = pragma_info_type_spec(SymName, SpecName, Arity,
-                yes(PredOrFunc), MaybeModes, map.to_assoc_list(RenamedSubst),
-                TVarSet, ExpandedItems),
+            (
+                MaybeModes = no,
+                ModesOrArity = moa_arity(UserArity)
+            ;
+                MaybeModes = yes(Modes),
+                ModesOrArity = moa_modes(Modes)
+            ),
+            (
+                PredOrFunc = pf_predicate,
+                PFUMM = pfumm_predicate(ModesOrArity)
+            ;
+                PredOrFunc = pf_function,
+                PFUMM = pfumm_function(ModesOrArity)
+            ),
+            TSInfo = pragma_info_type_spec(PFUMM, SymName, SpecName,
+                map.to_assoc_list(RenamedSubst), TVarSet, ExpandedItems),
             multi_map.set(PredId, TSInfo, PragmaMap0, PragmaMap),
             TypeSpecInfo = type_spec_info(ProcsToSpec, ForceVersions, SpecMap,
                 PragmaMap),
@@ -221,9 +259,10 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
             (
                 IsImported = yes,
                 ItemType = pred_or_func_to_item_type(PredOrFunc),
+                UserArity = user_arity(UserArityInt),
                 apply_to_recompilation_info(
                     recompilation.record_expanded_items(
-                        item_id(ItemType, item_name(SymName, Arity)),
+                        item_id(ItemType, item_name(SymName, UserArityInt)),
                         ExpandedItems),
                     !QualInfo)
             ;
@@ -309,9 +348,10 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
                     map.apply_to_list(VarsToSub, TVarRenaming,
                         RenamedVarsToSub),
                     pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars),
-                    list.filter((pred(RenamedVar::in) is semidet :-
-                        list.member(RenamedVar, ExistQVars)
-                    ), RenamedVarsToSub, SubExistQVars),
+                    list.filter(
+                        ( pred(RenamedVar::in) is semidet :-
+                            list.member(RenamedVar, ExistQVars)
+                        ), RenamedVarsToSub, SubExistQVars),
                     (
                         SubExistQVars = [],
                         map.init(TypeSubst0),
@@ -460,13 +500,13 @@ report_variables(SubExistQVars, VarSet) =
     % Check that the mode list for a `:- pragma type_spec' declaration
     % specifies a known procedure.
     %
-:- pred handle_pragma_type_spec_modes(sym_name::in, arity::in,
+:- pred handle_pragma_type_spec_modes(sym_name::in, user_arity::in,
     prog_context::in, maybe(list(mer_mode))::in,
     maybe(list(proc_id))::out, proc_table::in, proc_table::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes,
+handle_pragma_type_spec_modes(SymName, UserArity, Context, MaybeModes,
         MaybeProcIds, !Procs, !ModuleInfo, !Specs) :-
     (
         MaybeModes = yes(Modes),
@@ -480,9 +520,10 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes,
             ProcIds = [ProcId],
             MaybeProcIds = yes(ProcIds)
         else
-            module_info_incr_errors(!ModuleInfo),
-            report_undefined_mode_error(SymName, Arity, Context,
+            UserArity = user_arity(UserArityInt),
+            report_undefined_mode_error(SymName, UserArityInt, Context,
                 [pragma_decl("type_spec"), words("declaration")], !Specs),
+            module_info_incr_errors(!ModuleInfo),
             MaybeProcIds = no
         )
     ;

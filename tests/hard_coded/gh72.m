@@ -106,7 +106,7 @@ disj_init_f3(Str) :-
 :- pred disj_init(int, t, string).
 :- mode disj_init(out, t4 >> ground, out) is nondet.
 :- pragma no_inline(disj_init/3).
-:- pragma no_determinism_warning(disj_init/3).
+:- pragma no_determinism_warning(pred(disj_init/3)).
 
 disj_init(N, T, Str) :-
     (

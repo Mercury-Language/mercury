@@ -88,13 +88,13 @@ following in the defining module:
     into code that puts a value into the global variable, and unlocks the main
     mutex.
 
--   turn the code in witer predicates that accept and return values of
+-   turn the code in writer predicates that accept and return values of
     oisu types into code to execute respectively the pre- and post-
     critical-region parts of the standard readers/writers solution for writers.
 
 -   turn the code in reader predicates that accept values of oisu types,
     and the ends of those predicates, into code to execute respectively the
-    pre- and post- critical-region parts of the standard readers/writers
+    pre- and post-critical-region parts of the standard readers/writers
     solution for readers.
 
     XXX should not be used for intermediate results, only final ones;

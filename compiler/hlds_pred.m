@@ -1051,6 +1051,7 @@ calls_are_fully_qualified(Markers) =
                 %
                 % For functions, the original arity *includes* the return
                 % value, so that e.g. the original arity of int.+ would be 3.
+                % XXX ARITY Make the type pred_form_arity.
 /*  3 */        pi_orig_arity           :: arity,
 
                 % Is this "predicate" really a predicate or a function?

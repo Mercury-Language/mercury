@@ -153,89 +153,54 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         (
             PragmaName = "terminates",
             MakePragma =
-                ( pred(Name::in, Arity::in, Pragma::out) is det :-
-                    PredNameArity = pred_name_arity(Name, Arity),
-                    Pragma = decl_pragma_terminates(PredNameArity)
-                )
+                (func(PredSpec) = decl_pragma_terminates(PredSpec))
         ;
             PragmaName = "does_not_terminate",
             MakePragma =
-                ( pred(Name::in, Arity::in, Pragma::out) is det :-
-                    PredNameArity = pred_name_arity(Name, Arity),
-                    Pragma = decl_pragma_does_not_terminate(PredNameArity)
-                )
+                (func(PredSpec) = decl_pragma_does_not_terminate(PredSpec))
         ;
             PragmaName = "check_termination",
             MakePragma =
-                ( pred(Name::in, Arity::in, Pragma::out) is det :-
-                    PredNameArity = pred_name_arity(Name, Arity),
-                    Pragma = decl_pragma_check_termination(PredNameArity)
-                )
+                (func(PredSpec) = decl_pragma_check_termination(PredSpec))
         ),
-        parse_name_arity_decl_pragma(ModuleName, PragmaName,
-            "predicate or function", MakePragma, PragmaTerms, ErrorTerm,
-            VarSet, Context, SeqNum, MaybeIOM)
+        parse_name_arity_decl_pragma(ModuleName, PragmaName, MakePragma,
+            VarSet, ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
         (
             PragmaName = "inline",
             MakePragma =
-                ( pred(Name::in, Arity::in, Pragma::out) is det :-
-                    PredNameArity = pred_name_arity(Name, Arity),
-                    Pragma = impl_pragma_inline(PredNameArity)
-                )
+                (func(PredSpec) = impl_pragma_inline(PredSpec))
         ;
             PragmaName = "no_inline",
             MakePragma =
-                ( pred(Name::in, Arity::in, Pragma::out) is det :-
-                    PredNameArity = pred_name_arity(Name, Arity),
-                    Pragma = impl_pragma_no_inline(PredNameArity)
-                )
+                (func(PredSpec) = impl_pragma_no_inline(PredSpec))
         ;
             PragmaName = "consider_used",
             MakePragma =
-                ( pred(Name::in, Arity::in, Pragma::out) is det :-
-                    PredNameArity = pred_name_arity(Name, Arity),
-                    Pragma = impl_pragma_consider_used(PredNameArity)
-                )
+                (func(PredSpec) = impl_pragma_consider_used(PredSpec))
         ;
             PragmaName = "no_determinism_warning",
             MakePragma =
-                ( pred(Name::in, Arity::in, Pragma::out) is det :-
-                    PredNameArity = pred_name_arity(Name, Arity),
-                    Pragma = impl_pragma_no_detism_warning(PredNameArity)
-                )
+                (func(PredSpec) = impl_pragma_no_detism_warning(PredSpec))
         ;
             PragmaName = "mode_check_clauses",
             MakePragma =
-                ( pred(Name::in, Arity::in, Pragma::out) is det :-
-                    PredNameArity = pred_name_arity(Name, Arity),
-                    Pragma = impl_pragma_mode_check_clauses(PredNameArity)
-                )
+                (func(PredSpec) = impl_pragma_mode_check_clauses(PredSpec))
         ;
             PragmaName = "promise_pure",
             MakePragma =
-                ( pred(Name::in, Arity::in, Pragma::out) is det :-
-                    PredNameArity = pred_name_arity(Name, Arity),
-                    Pragma = impl_pragma_promise_pure(PredNameArity)
-                )
+                (func(PredSpec) = impl_pragma_promise_pure(PredSpec))
         ;
             PragmaName = "promise_semipure",
             MakePragma =
-                ( pred(Name::in, Arity::in, Pragma::out) is det :-
-                    PredNameArity = pred_name_arity(Name, Arity),
-                    Pragma = impl_pragma_promise_semipure(PredNameArity)
-                )
+                (func(PredSpec) = impl_pragma_promise_semipure(PredSpec))
         ;
             PragmaName = "promise_equivalent_clauses",
             MakePragma =
-                ( pred(Name::in, Arity::in, Pragma::out) is det :-
-                    PredNameArity = pred_name_arity(Name, Arity),
-                    Pragma = impl_pragma_promise_eqv_clauses(PredNameArity)
-                )
+                (func(PredSpec) = impl_pragma_promise_eqv_clauses(PredSpec))
         ),
-        parse_name_arity_impl_pragma(ModuleName, PragmaName,
-            "predicate or function", MakePragma, PragmaTerms, ErrorTerm,
-            VarSet, Context, SeqNum, MaybeIOM)
+        parse_name_arity_impl_pragma(ModuleName, PragmaName, MakePragma,
+            VarSet, ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM)
     ;
         PragmaName = "require_tail_recursion",
         parse_pragma_require_tail_recursion(ModuleName, PragmaName,
@@ -341,25 +306,25 @@ report_unrecognized_pragma(Context) = Spec :-
 % a symbol name / arity pair.
 %
 
-:- pred parse_name_arity_decl_pragma(module_name::in, string::in, string::in,
-    pred(sym_name, int, decl_pragma)::(pred(in, in, out) is det),
-    list(term)::in, term::in, varset::in, prog_context::in, int::in,
+:- pred parse_name_arity_decl_pragma(module_name::in, string::in,
+    (func(pred_pfu_name_arity) = decl_pragma)::in(func(in) = out is det),
+    varset::in, term::in, list(term)::in, prog_context::in, int::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_name_arity_decl_pragma(ModuleName, PragmaName, NameKind, MakePragma,
-        PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeIOM) :-
+parse_name_arity_decl_pragma(ModuleName, PragmaName, MakePragma,
+        VarSet, ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM) :-
     (
-        PragmaTerms = [NameAndArityTerm],
-        parse_simple_name_and_arity(ModuleName, PragmaName, NameKind,
-            NameAndArityTerm, NameAndArityTerm, VarSet, MaybeNameAndArity),
+        PragmaTerms = [PragmaTerm],
+        parse_pred_pfu_name_arity(ModuleName, PragmaName, VarSet,
+            PragmaTerm, MaybePredSpec),
         (
-            MaybeNameAndArity = ok2(Name, Arity),
-            MakePragma(Name, Arity, Pragma),
+            MaybePredSpec = ok1(PredSpec),
+            Pragma = MakePragma(PredSpec),
             ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
             Item = item_decl_pragma(ItemPragma),
             MaybeIOM = ok1(iom_item(Item))
         ;
-            MaybeNameAndArity = error2(Specs),
+            MaybePredSpec = error1(Specs),
             MaybeIOM = error1(Specs)
         )
     ;
@@ -373,25 +338,25 @@ parse_name_arity_decl_pragma(ModuleName, PragmaName, NameKind, MakePragma,
         MaybeIOM = error1([Spec])
    ).
 
-:- pred parse_name_arity_impl_pragma(module_name::in, string::in, string::in,
-    pred(sym_name, int, impl_pragma)::(pred(in, in, out) is det),
-    list(term)::in, term::in, varset::in, prog_context::in, int::in,
+:- pred parse_name_arity_impl_pragma(module_name::in, string::in,
+    (func(pred_pfu_name_arity) = impl_pragma)::in(func(in) = out is det),
+    varset::in, term::in, list(term)::in, prog_context::in, int::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_name_arity_impl_pragma(ModuleName, PragmaName, NameKind, MakePragma,
-        PragmaTerms, ErrorTerm, VarSet, Context, SeqNum, MaybeIOM) :-
+parse_name_arity_impl_pragma(ModuleName, PragmaName, MakePragma,
+        VarSet, ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM) :-
     (
-        PragmaTerms = [NameAndArityTerm],
-        parse_simple_name_and_arity(ModuleName, PragmaName, NameKind,
-            NameAndArityTerm, NameAndArityTerm, VarSet, MaybeNameAndArity),
+        PragmaTerms = [PragmaTerm],
+        parse_pred_pfu_name_arity(ModuleName, PragmaName, VarSet,
+            PragmaTerm, MaybePredSpec),
         (
-            MaybeNameAndArity = ok2(Name, Arity),
-            MakePragma(Name, Arity, Pragma),
+            MaybePredSpec = ok1(PredSpec),
+            Pragma = MakePragma(PredSpec),
             ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
             Item = item_impl_pragma(ItemPragma),
             MaybeIOM = ok1(iom_item(Item))
         ;
-            MaybeNameAndArity = error2(Specs),
+            MaybePredSpec = error1(Specs),
             MaybeIOM = error1(Specs)
         )
     ;
@@ -410,8 +375,7 @@ parse_name_arity_impl_pragma(ModuleName, PragmaName, NameKind, MakePragma,
 % The predicates in the rest of this module are to be clustered together
 % into groups of related predicates. All groups but the last contain
 % the main predicate for parsing one kind of pragma, followed by its
-% dedicated helper predicates. The last group contains helper predicates
-% needed for the parsing of more than one kind of pragma.
+% dedicated helper predicates.
 
 %---------------------------------------------------------------------------%
 %
@@ -477,8 +441,10 @@ parse_pragma_external(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
             BaseName = unqualify_name(SymName),
             FullSymName = qualified(ModuleName, BaseName),
             ( if partial_sym_name_is_part_of_full(SymName, FullSymName) then
-                ExternalInfo = pragma_info_external_proc(FullSymName, Arity,
-                    PorF, MaybeBackend),
+                PFNameArity = pred_pf_name_arity(PorF, FullSymName,
+                    user_arity(Arity)),
+                ExternalInfo =
+                    pragma_info_external_proc(PFNameArity, MaybeBackend),
                 Pragma = impl_pragma_external_proc(ExternalInfo),
                 PragmaInfo = item_pragma_info(Pragma, Context, SeqNum),
                 Item = item_impl_pragma(PragmaInfo),
@@ -597,30 +563,28 @@ parse_pragma_obsolete(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         Context, SeqNum, MaybeIOM) :-
     (
         (
-            PragmaTerms = [NameAndArityTerm],
+            PragmaTerms = [PredSpecTerm],
             MaybeObsoleteInFavourOf = ok1([])
         ;
-            PragmaTerms = [NameAndArityTerm, ObsoleteInFavourOfTerm],
+            PragmaTerms = [PredSpecTerm, ObsoleteInFavourOfTerm],
             parse_pragma_obsolete_in_favour_of(ObsoleteInFavourOfTerm,
                 VarSet, MaybeObsoleteInFavourOf)
         ),
-        parse_simple_name_and_arity(ModuleName, "obsolete",
-            "predicate or function", NameAndArityTerm, NameAndArityTerm,
-            VarSet, MaybeNameAndArity),
+        parse_pred_pfu_name_arity(ModuleName, "obsolete",
+            VarSet, PredSpecTerm, MaybePredSpec),
         ( if
-            MaybeNameAndArity = ok2(PredName, PredArity),
+            MaybePredSpec = ok1(PredSpec),
             MaybeObsoleteInFavourOf = ok1(ObsoleteInFavourOf)
         then
-            PredNameArity = pred_name_arity(PredName, PredArity),
             ObsoletePragma =
-                pragma_info_obsolete_pred(PredNameArity, ObsoleteInFavourOf),
+                pragma_info_obsolete_pred(PredSpec, ObsoleteInFavourOf),
             Pragma = decl_pragma_obsolete_pred(ObsoletePragma),
             ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
             Item = item_decl_pragma(ItemPragma),
             MaybeIOM = ok1(iom_item(Item))
         else
             Specs =
-                get_any_errors2(MaybeNameAndArity) ++
+                get_any_errors1(MaybePredSpec) ++
                 get_any_errors1(MaybeObsoleteInFavourOf),
             MaybeIOM = error1(Specs)
         )
@@ -652,13 +616,14 @@ parse_pragma_obsolete_proc(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         PredAndModesContextPieces = cord.from_list(
             [words("In the first  argument of"), pragma_decl("obsolete_proc"),
             words("declaration:"), nl]),
-        parse_pred_or_func_and_arg_modes(yes(ModuleName), VarSet,
-            PredAndModesContextPieces, PredAndModesTerm, MaybePredAndModes),
+        parse_pred_or_func_and_arg_modes(yes(ModuleName),
+            PredAndModesContextPieces, VarSet, PredAndModesTerm,
+            MaybePredAndModes),
         ( if
             MaybePredAndModes = ok3(PredName, PredOrFunc, Modes),
             MaybeObsoleteInFavourOf = ok1(ObsoleteInFavourOf)
         then
-            PredNameModesPF = pred_name_modes_pf(PredName, Modes, PredOrFunc),
+            PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredName, Modes),
             ObsoletePragma =
                 pragma_info_obsolete_proc(PredNameModesPF, ObsoleteInFavourOf),
             Pragma = decl_pragma_obsolete_proc(ObsoletePragma),
@@ -744,17 +709,17 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
         _ErrorTerm, VarSet, Context, SeqNum, MaybeIOM) :-
     (
         (
-            PragmaTerms = [PredAndModesTerm],
+            PragmaTerms = [PredOrProcSpecTerm],
             MaybeOptionsTerm = no
         ;
-            PragmaTerms = [PredAndModesTerm, OptionsTermPrime],
+            PragmaTerms = [PredOrProcSpecTerm, OptionsTermPrime],
             MaybeOptionsTerm = yes(OptionsTermPrime)
         ),
         % Parse the procedure name.
         ContextPieces = cord.from_list([words("In the first argument of"),
             pragma_decl(PragmaName), words("declaration:"), nl]),
-        parse_arity_or_modes(ModuleName, PredAndModesTerm,
-            PredAndModesTerm, VarSet, ContextPieces, MaybeProc),
+        parse_pred_pfu_name_arity_maybe_modes(ModuleName, ContextPieces,
+            VarSet, PredOrProcSpecTerm, MaybePredOrProcSpec),
         % Parse the options.
         (
             MaybeOptionsTerm = yes(OptionsTerm),
@@ -779,15 +744,15 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
                 both_self_and_mutual_recursion_must_be_tail, Context))
         ),
         ( if
-            MaybeProc = ok1(Proc),
+            MaybePredOrProcSpec = ok1(PredOrProcSpec),
             MaybeOptions = ok1(Options)
         then
             PragmaType = impl_pragma_require_tail_rec(
-                pragma_info_require_tail_rec(Proc, Options)),
+                pragma_info_require_tail_rec(PredOrProcSpec, Options)),
             PragmaInfo = item_pragma_info(PragmaType, Context, SeqNum),
             MaybeIOM = ok1(iom_item(item_impl_pragma(PragmaInfo)))
         else
-            Specs = get_any_errors1(MaybeProc) ++
+            Specs = get_any_errors1(MaybePredOrProcSpec) ++
                 get_any_errors1(MaybeOptions),
             MaybeIOM = error1(Specs)
         )
@@ -1029,87 +994,28 @@ parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
    ).
 
 :- pred parse_oisu_preds_term(module_name::in, varset::in, string::in,
-    string::in, term::in, maybe1(list(pred_name_arity))::out) is det.
+    string::in, term::in, maybe1(list(pred_pf_name_arity))::out) is det.
 
 parse_oisu_preds_term(ModuleName, VarSet, ArgNum, ExpectedFunctor, Term,
-        MaybeNamesArities) :-
+        MaybePredSpecs) :-
     ( if
-        Term = term.functor(term.atom(Functor), Args, _),
+        Term = term.functor(term.atom(Functor), ArgTerms, _),
         Functor = ExpectedFunctor,
-        Args = [Arg]
+        ArgTerms = [ArgTerm]
     then
-        parse_name_and_arity_list(ModuleName, VarSet, ExpectedFunctor,
-            Arg, MaybeNamesArities)
+        parse_list_elements("a list of predicate or function names/arities",
+            parse_pred_pf_name_arity(ModuleName, "oisu"), VarSet,
+            ArgTerm, MaybePredSpecs)
     else
         Pieces = [words("Error:"), words(ArgNum), words("argument of"),
             pragma_decl("oisu"), words("declaration"),
             words("should have the form"),
-            quote(ExpectedFunctor ++ "([pred1/arity1, ..., predn/arityn])"),
+            quote(ExpectedFunctor ++
+                "([pred(name1/arity1), ..., pred(namen/arityn)])"),
             suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
-        MaybeNamesArities = error1([Spec])
-    ).
-
-:- pred parse_name_and_arity_list(module_name::in, varset::in, string::in,
-    term::in, maybe1(list(pred_name_arity))::out) is det.
-
-parse_name_and_arity_list(ModuleName, VarSet, Wrapper, Term,
-        MaybeNamesArities) :-
-    (
-        Term = term.functor(Functor, Args, _),
-        ( if
-            Functor = term.atom("[]"),
-            Args = []
-        then
-            MaybeNamesArities = ok1([])
-        else if
-            Functor = term.atom("[|]"),
-            Args = [Arg1, Arg2]
-        then
-            ( if
-                parse_implicitly_qualified_name_and_arity(ModuleName,
-                    Arg1, Arg1Name, Arg1Arity)
-            then
-                MaybeHeadNameArity = ok1(pred_name_arity(Arg1Name, Arg1Arity))
-            else
-                Arg1Str = describe_error_term(VarSet, Arg1),
-                Pieces = [words("Error: expected predname/arity,"),
-                    words("got"), quote(Arg1Str), suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, get_term_context(Arg1), Pieces),
-                MaybeHeadNameArity = error1([Spec])
-            ),
-            parse_name_and_arity_list(ModuleName, VarSet, Wrapper, Arg2,
-                MaybeTailNamesArities),
-            ( if
-                MaybeHeadNameArity = ok1(HeadNameArity),
-                MaybeTailNamesArities = ok1(TailNamesArities)
-            then
-                MaybeNamesArities = ok1([HeadNameArity | TailNamesArities])
-            else
-                HeadSpecs = get_any_errors1(MaybeHeadNameArity),
-                TailSpecs = get_any_errors1(MaybeTailNamesArities),
-                MaybeNamesArities = error1(HeadSpecs ++ TailSpecs)
-            )
-        else
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error: expected a list as the argument of"),
-                words(Wrapper), suffix(","),
-                words("got"), quote(TermStr), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(Term), Pieces),
-            MaybeNamesArities = error1([Spec])
-        )
-    ;
-        Term = term.variable(_, _),
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error: expected a list as the argument of"),
-            words(Wrapper), suffix(","),
-            words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(Term), Pieces),
-        MaybeNamesArities = error1([Spec])
+        MaybePredSpecs = error1([Spec])
     ).
 
 %---------------------------------------------------------------------------%
@@ -1126,7 +1032,7 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
     ( if
         (
             PragmaTerms = [PredAndModesTerm, TypeSubnTerm],
-            MaybeName = no
+            MaybeSpecName = no
         ;
             PragmaTerms = [PredAndModesTerm, TypeSubnTerm, SpecNameTerm],
 
@@ -1136,39 +1042,37 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             not string.remove_suffix(FileName, ".m", _),
 
             try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
-                SpecNameTerm, SpecName),
-            MaybeName = yes(SpecName)
+                SpecNameTerm, SpecializedName),
+            MaybeSpecName = yes(SpecializedName)
         )
     then
         ArityOrModesContextPieces = cord.from_list(
             [words("In the first argument"), pragma_decl("type_spec"),
             words("declaration:"), nl]),
-        parse_arity_or_modes(ModuleName, PredAndModesTerm, ErrorTerm,
-            VarSet, ArityOrModesContextPieces, MaybeArityOrModes),
+        parse_pred_pfu_name_arity_maybe_modes(ModuleName,
+            ArityOrModesContextPieces, VarSet, PredAndModesTerm,
+            MaybePredOrProcSpec),
         (
-            MaybeArityOrModes = ok1(ArityOrModes),
-            ArityOrModes = pred_name_arity_mpf_mmode(PredName, Arity,
-                MaybePredOrFunc, MaybeModes),
+            MaybePredOrProcSpec = ok1(PredOrProcSpec),
+            PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, PredName),
             conjunction_to_list(TypeSubnTerm, TypeSubnTerms),
 
             % The varset is actually a tvarset.
             varset.coerce(VarSet, TVarSet),
-            ( if
-                list.map(parse_type_spec_pair, TypeSubnTerms, TypeSubns)
-            then
+            ( if list.map(parse_type_spec_pair, TypeSubnTerms, TypeSubns) then
                 (
-                    MaybeName = yes(SpecializedName0),
-                    SpecializedName = SpecializedName0
+                    MaybeSpecName = yes(SpecName)
                 ;
-                    MaybeName = no,
+                    MaybeSpecName = no,
                     UnqualName = unqualify_name(PredName),
+                    pfumm_to_maybe_pf_arity_maybe_modes(PFUMM, MaybePredOrFunc,
+                        _Arity, _MaybeModes),
                     make_pred_name(ModuleName, "TypeSpecOf", MaybePredOrFunc,
                         UnqualName, newpred_type_subst(TVarSet, TypeSubns),
-                        SpecializedName)
+                        SpecName)
                 ),
-                TypeSpecInfo = pragma_info_type_spec(PredName, SpecializedName,
-                    Arity, MaybePredOrFunc, MaybeModes, TypeSubns, TVarSet,
-                    set.init),
+                TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName,
+                    SpecName, TypeSubns, TVarSet, set.init),
                 Pragma = decl_pragma_type_spec(TypeSpecInfo),
                 ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
                 Item = item_decl_pragma(ItemPragma),
@@ -1185,7 +1089,7 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                 MaybeIOM = error1([Spec])
             )
         ;
-            MaybeArityOrModes = error1(Specs),
+            MaybePredOrProcSpec = error1(Specs),
             MaybeIOM = error1(Specs)
         )
     else
@@ -1220,14 +1124,12 @@ parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         Context, SeqNum, MaybeIOM) :-
     (
         PragmaTerms = [PredAndArityTerm, FileNameTerm],
-        parse_pred_name_and_arity(ModuleName, "fact_table",
-            PredAndArityTerm, ErrorTerm, VarSet, MaybeNameAndArity),
+        parse_pred_pfu_name_arity(ModuleName, "fact_table",
+            VarSet, PredAndArityTerm, MaybePredSpec),
         (
-            MaybeNameAndArity = ok2(PredName, Arity),
+            MaybePredSpec = ok1(PredSpec),
             ( if FileNameTerm = term.functor(term.string(FileName), [], _) then
-                PredNameArity = pred_name_arity(PredName, Arity),
-                FactTableInfo = pragma_info_fact_table(PredNameArity,
-                    FileName),
+                FactTableInfo = pragma_info_fact_table(PredSpec, FileName),
                 Pragma = impl_pragma_fact_table(FactTableInfo),
                 ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
                 Item = item_impl_pragma(ItemPragma),
@@ -1244,7 +1146,7 @@ parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                 MaybeIOM = error1([Spec])
             )
         ;
-            MaybeNameAndArity = error2(Specs),
+            MaybePredSpec = error1(Specs),
             MaybeIOM = error1(Specs)
         )
     ;
@@ -1258,15 +1160,6 @@ parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
-
-:- pred parse_pred_name_and_arity(module_name::in, string::in, term::in,
-    term::in, varset::in, maybe2(sym_name, arity)::out) is det.
-
-parse_pred_name_and_arity(ModuleName, PragmaName, NameAndArityTerm, ErrorTerm,
-        VarSet, MaybeNameAndArity) :-
-    parse_simple_name_and_arity(ModuleName, PragmaName,
-        "predicate or function", NameAndArityTerm, ErrorTerm, VarSet,
-        MaybeNameAndArity).
 
 %---------------------------------------------------------------------------%
 %
@@ -1365,33 +1258,6 @@ string_to_required_feature("parallel_conj",     reqf_parallel_conj).
 string_to_required_feature("trailing",          reqf_trailing).
 string_to_required_feature("strict_sequential", reqf_strict_sequential).
 string_to_required_feature("conservative_gc",   reqf_conservative_gc).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-%
-% Helper predicates used for parsing more than one kind of pragma.
-%
-
-:- pred parse_simple_name_and_arity(module_name::in, string::in, string::in,
-    term::in, term::in, varset::in, maybe2(sym_name, arity)::out) is det.
-
-parse_simple_name_and_arity(ModuleName, PragmaName, NameKind,
-        NameAndArityTerm, ErrorTerm, VarSet, MaybeNameAndArity) :-
-    ( if
-        parse_implicitly_qualified_name_and_arity(ModuleName,
-            NameAndArityTerm, Name, Arity)
-    then
-        MaybeNameAndArity = ok2(Name, Arity)
-    else
-        NameAndArityTermStr = describe_error_term(VarSet, NameAndArityTerm),
-        Pieces = [words("Error: expected"), words(NameKind),
-            words("name/arity for"), pragma_decl(PragmaName),
-            words("declaration, got"), quote(NameAndArityTermStr),
-            suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            get_term_context(ErrorTerm), Pieces),
-        MaybeNameAndArity = error2([Spec])
-    ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_pragma.

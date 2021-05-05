@@ -63,6 +63,6 @@ dump_maybe_reviewed(reviewed(P)) = "reviewed " ++ dump_package(P).
 dump_maybe_reviewed(unreviewed(P)) = "unreviewed " ++ dump_package(P).
 
 :- func dump_package(package) = string.
-:- pragma no_inline(dump_package/1).
+:- pragma no_inline(func(dump_package/1)).
 
 dump_package(package(A, B)) = A ++ B.

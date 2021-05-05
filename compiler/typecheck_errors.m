@@ -225,7 +225,9 @@ report_pred_call_error(ClauseContext, Context, SymNameArity) = Spec :-
     (
         OtherIds = [_ | _],
         predicate_table_get_preds(PredicateTable, Preds),
-        find_pred_arities(Preds, OtherIds, Arities),
+        % XXX ARITY This code should use user_arities, not pred_form_arities.
+        find_pred_arities(Preds, OtherIds, PredArities),
+        Arities = list.map(project_pred_form_arity_int, PredArities),
         Spec = report_error_pred_num_args(ClauseContext, Context,
             PFSymNameArity, Arities)
     ;

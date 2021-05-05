@@ -1904,13 +1904,15 @@ maybe_gather_unused_args_pragma(PredInfo, ProcId, UnusedArgs,
         UnusedArgs = [_ | _]
     then
         ModuleName = pred_info_module(PredInfo),
-        PredName = pred_info_name(PredInfo),
-        PredArity = pred_info_orig_arity(PredInfo),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        proc_id_to_int(ProcId, ModeNum),
+        PredName = pred_info_name(PredInfo),
         PredSymName = qualified(ModuleName, PredName),
-        PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
-            PredOrFunc, ModeNum),
+        PredFormArity = pred_info_orig_arity(PredInfo),
+        user_arity_pred_form_arity(PredOrFunc, UserArity,
+            pred_form_arity(PredFormArity)),
+        proc_id_to_int(ProcId, ModeNum),
+        PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, PredSymName,
+            UserArity, ModeNum),
         UnusedArgInfo =
             pragma_info_unused_args(PredNameArityPFMn, UnusedArgs),
         set.insert(UnusedArgInfo, !UnusedArgInfos)

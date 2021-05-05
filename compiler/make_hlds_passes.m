@@ -1029,7 +1029,7 @@ make_and_add_pragma_foreign_proc_export(SymName, HeadModes, CName,
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, CompilationTarget),
     ExportLang = target_lang_to_foreign_export_lang(CompilationTarget),
-    PredNameModesPF = pred_name_modes_pf(SymName, HeadModes, pf_predicate),
+    PredNameModesPF = proc_pf_name_modes(pf_predicate, SymName, HeadModes),
     FPEInfo = pragma_info_foreign_proc_export(PEOrigin, ExportLang,
         PredNameModesPF, CName),
     add_pragma_foreign_proc_export(FPEInfo, Context, !ModuleInfo, !Specs).

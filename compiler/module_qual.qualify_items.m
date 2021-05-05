@@ -1357,22 +1357,41 @@ qualify_instance_method(DefaultModuleName, InstanceMethod0, InstanceMethod) :-
 qualify_decl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
     (
         Pragma0 = decl_pragma_type_spec(TypeSpecInfo0),
-        TypeSpecInfo0 = pragma_info_type_spec(PredName, SpecializedPredName,
-            Arity, PredOrFunc, MaybeModes0, Subst0, TVarSet, Items),
+        TypeSpecInfo0 = pragma_info_type_spec(PFUMM0, PredName, SpecPredName,
+            Subst0, TVarSet, Items),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
         (
-            MaybeModes0 = yes(Modes0),
-            qualify_mode_list(InInt, ErrorContext, Modes0, Modes,
-                !Info, !Specs),
-            MaybeModes = yes(Modes)
+            PFUMM0 = pfumm_predicate(ModesOrArity0),
+            (
+                ModesOrArity0 = moa_modes(Modes0),
+                qualify_mode_list(InInt, ErrorContext, Modes0, Modes,
+                    !Info, !Specs),
+                ModesOrArity = moa_modes(Modes),
+                PFUMM = pfumm_predicate(ModesOrArity)
+            ;
+                ModesOrArity0 = moa_arity(_Arity),
+                PFUMM = PFUMM0
+            )
         ;
-            MaybeModes0 = no,
-            MaybeModes = no
+            PFUMM0 = pfumm_function(ModesOrArity0),
+            (
+                ModesOrArity0 = moa_modes(Modes0),
+                qualify_mode_list(InInt, ErrorContext, Modes0, Modes,
+                    !Info, !Specs),
+                ModesOrArity = moa_modes(Modes),
+                PFUMM = pfumm_function(ModesOrArity)
+            ;
+                ModesOrArity0 = moa_arity(_Arity),
+                PFUMM = PFUMM0
+            )
+        ;
+            PFUMM0 = pfumm_unknown(_Arity),
+            PFUMM = PFUMM0
         ),
         qualify_type_spec_subst(InInt, ErrorContext, Subst0, Subst,
             !Info, !Specs),
-        TypeSpecInfo = pragma_info_type_spec(PredName, SpecializedPredName,
-            Arity, PredOrFunc, MaybeModes, Subst, TVarSet, Items),
+        TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName, SpecPredName,
+            Subst, TVarSet, Items),
         Pragma = decl_pragma_type_spec(TypeSpecInfo)
     ;
         Pragma0 = decl_pragma_oisu(OISUInfo0),
@@ -1388,22 +1407,20 @@ qualify_decl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
     ;
         Pragma0 = decl_pragma_termination_info(TermInfo0),
         TermInfo0 = pragma_info_termination_info(PredNameModesPF0, Args, Term),
-        PredNameModesPF0 = pred_name_modes_pf(SymName, ModeList0, PredOrFunc),
+        PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, SymName, Modes0),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
-        qualify_mode_list(InInt, ErrorContext, ModeList0, ModeList,
-            !Info, !Specs),
-        PredNameModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
         TermInfo = pragma_info_termination_info(PredNameModesPF, Args, Term),
         Pragma = decl_pragma_termination_info(TermInfo)
     ;
         Pragma0 = decl_pragma_termination2_info(Term2Info0),
         Term2Info0 = pragma_info_termination2_info(PredNameModesPF0,
             SuccessArgs, FailureArgs, Term),
-        PredNameModesPF0 = pred_name_modes_pf(SymName, ModeList0, PredOrFunc),
+        PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, SymName, Modes0),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
-        qualify_mode_list(InInt, ErrorContext, ModeList0, ModeList,
-            !Info, !Specs),
-        PredNameModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
         Term2Info = pragma_info_termination2_info(PredNameModesPF,
             SuccessArgs, FailureArgs, Term),
         Pragma = decl_pragma_termination2_info(Term2Info)
@@ -1411,11 +1428,10 @@ qualify_decl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
         Pragma0 = decl_pragma_structure_sharing(SharingInfo0),
         SharingInfo0 = pragma_info_structure_sharing(PredNameModesPF0,
             HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeSharing),
-        PredNameModesPF0 = pred_name_modes_pf(SymName, ModeList0, PredOrFunc),
+        PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, SymName, Modes0),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
-        qualify_mode_list(InInt, ErrorContext, ModeList0, ModeList,
-            !Info, !Specs),
-        PredNameModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
         SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
             HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeSharing),
         Pragma = decl_pragma_structure_sharing(SharingInfo)
@@ -1423,11 +1439,10 @@ qualify_decl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
         Pragma0 = decl_pragma_structure_reuse(ReuseInfo0),
         ReuseInfo0 = pragma_info_structure_reuse(PredNameModesPF0,
             HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeReuse),
-        PredNameModesPF0 = pred_name_modes_pf(SymName, ModeList0, PredOrFunc),
+        PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, SymName, Modes0),
         ErrorContext = mqec_pragma_decl(Context, Pragma0),
-        qualify_mode_list(InInt, ErrorContext, ModeList0, ModeList,
-            !Info, !Specs),
-        PredNameModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        PredNameModesPF = proc_pf_name_modes(PredOrFunc, SymName, Modes),
         ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
             HeadVars, HeadVarTypes, VarSet, TVarSet, MaybeReuse),
         Pragma = decl_pragma_structure_reuse(ReuseInfo)
@@ -1480,30 +1495,50 @@ qualify_impl_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
         Pragma = impl_pragma_foreign_proc(FPInfo)
     ;
         Pragma0 = impl_pragma_tabled(TabledInfo0),
-        TabledInfo0 = pragma_info_tabled(EvalMethod, PredNameArityPF,
-            MModes0, Attrs),
+        TabledInfo0 = pragma_info_tabled(EvalMethod, PredOrProcSpec0, Attrs),
+        PredOrProcSpec0 = pred_or_proc_pfumm_name(PFUMM0, PredSymName),
         (
-            MModes0 = yes(Modes0),
-            ErrorContext = mqec_pragma_impl(Context, Pragma0),
-            qualify_mode_list(InInt, ErrorContext, Modes0, Modes,
-                !Info, !Specs),
-            MModes = yes(Modes)
+            PFUMM0 = pfumm_predicate(ModesOrArity0),
+            (
+                ModesOrArity0 = moa_modes(Modes0),
+                ErrorContext = mqec_pragma_impl(Context, Pragma0),
+                qualify_mode_list(InInt, ErrorContext, Modes0, Modes,
+                    !Info, !Specs),
+                ModesOrArity = moa_modes(Modes),
+                PFUMM = pfumm_predicate(ModesOrArity)
+            ;
+                ModesOrArity0 = moa_arity(_Arity),
+                PFUMM = PFUMM0
+            )
         ;
-            MModes0 = no,
-            MModes = no
+            PFUMM0 = pfumm_function(ModesOrArity0),
+            (
+                ModesOrArity0 = moa_modes(Modes0),
+                ErrorContext = mqec_pragma_impl(Context, Pragma0),
+                qualify_mode_list(InInt, ErrorContext, Modes0, Modes,
+                    !Info, !Specs),
+                ModesOrArity = moa_modes(Modes),
+                PFUMM = pfumm_function(ModesOrArity)
+            ;
+                ModesOrArity0 = moa_arity(_Arity),
+                PFUMM = PFUMM0
+            )
+        ;
+            PFUMM0 = pfumm_unknown(_Arity),
+            PFUMM = PFUMM0
         ),
-        TabledInfo = pragma_info_tabled(EvalMethod, PredNameArityPF,
-            MModes, Attrs),
+        PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, PredSymName),
+        TabledInfo = pragma_info_tabled(EvalMethod, PredOrProcSpec, Attrs),
         Pragma = impl_pragma_tabled(TabledInfo)
     ;
         Pragma0 = impl_pragma_foreign_proc_export(FPEInfo0),
         FPEInfo0 = pragma_info_foreign_proc_export(Origin, Lang,
             PredNameModesPF0, CFunc),
-        PredNameModesPF0 = pred_name_modes_pf(Name, Modes0, PredOrFunc),
+        PredNameModesPF0 = proc_pf_name_modes(PredOrFunc, Name, Modes0),
         ErrorContext = mqec_pragma_impl(Context, Pragma0),
         qualify_mode_list(InInt, ErrorContext, Modes0, Modes,
             !Info, !Specs),
-        PredNameModesPF = pred_name_modes_pf(Name, Modes, PredOrFunc),
+        PredNameModesPF = proc_pf_name_modes(PredOrFunc, Name, Modes),
         FPEInfo = pragma_info_foreign_proc_export(Origin, Lang,
             PredNameModesPF, CFunc),
         Pragma = impl_pragma_foreign_proc_export(FPEInfo)

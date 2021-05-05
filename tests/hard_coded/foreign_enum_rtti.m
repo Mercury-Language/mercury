@@ -118,8 +118,8 @@ test_get_functor(TypeDesc, LexFunctorNum, !IO) :-
     ;       bar
     ;       baz.
 
-:- pragma foreign_decl("C", "
-
+:- pragma foreign_decl("C",
+"
     #define CONSTANT1 300
     #define CONSTANT2 400
     #define CONSTANT3 500

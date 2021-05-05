@@ -66,17 +66,18 @@
 
 %-----------------------------------------------------------------------------%
 
-    % fact_table_compile_facts(PredName, Arity, FileName, PredInfo0,
-    %   PredInfo, Context, ModuleInfo, C_HeaderCode, PrimaryProcID):
+    % fact_table_compile_facts(ModuleInfo, PredName, Arity, FileName, Context,
+    %   C_HeaderCode, PrimaryProcID, !PredInfo, !IO):
     %
     % Compile the fact table into a separate .c file.
     %
-:- pred fact_table_compile_facts(sym_name::in, arity::in, string::in,
-    pred_info::in, pred_info::out, prog_context::in, module_info::in,
-    string::out, proc_id::out, io::di, io::uo) is det.
+:- pred fact_table_compile_facts(module_info::in, sym_name::in, user_arity::in,
+    string::in, prog_context::in, string::out, proc_id::out,
+    pred_info::in, pred_info::out, io::di, io::uo) is det.
 
-    % fact_table_generate_c_code(PredName, PragmaVars, ProcID,
-    %   PrimaryProcID, ProcInfo, ArgTypes, C_ProcCode, C_ExtraCode):
+    % fact_table_generate_c_code(ModuleInfo, PredName, PragmaVars,
+    %    ProcID, PrimaryProcID, ProcInfo, ArgTypes, C_ProcCode, C_ExtraCode,
+    %    !IO):
     %
     % Generate c code to lookup a fact table in a given mode. C_ProcCode is the
     % C code for the procedure, C_ExtraCode is extra C code that should be
@@ -90,9 +91,9 @@
     % with the required number of framevars. It then does all the work required
     % to look up the fact table.
     %
-:- pred fact_table_generate_c_code(sym_name::in, list(pragma_var)::in,
-    proc_id::in, proc_id::in, proc_info::in, list(mer_type)::in,
-    module_info::in, string::out, string::out, io::di, io::uo) is det.
+:- pred fact_table_generate_c_code(module_info::in, sym_name::in,
+    list(pragma_var)::in, proc_id::in, proc_id::in, proc_info::in,
+    list(mer_type)::in, string::out, string::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -222,8 +223,8 @@ fact_table_size(Globals, FactTableSize) :-
 
 %---------------------------------------------------------------------------%
 
-fact_table_compile_facts(PredName, Arity, FileName, !PredInfo, Context,
-        ModuleInfo, C_HeaderCode, PrimaryProcID, !IO) :-
+fact_table_compile_facts(ModuleInfo, PredName, UserArity, FileName, Context,
+        C_HeaderCode, PrimaryProcID, !PredInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     io.see(FileName, SeeResult, !IO),
     (
@@ -233,9 +234,9 @@ fact_table_compile_facts(PredName, Arity, FileName, !PredInfo, Context,
         io.open_output(OutputFileName, OpenResult, !IO),
         (
             OpenResult = ok(OutputStream),
-            fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo,
-                Context, ModuleInfo, C_HeaderCode, PrimaryProcID,
-                OutputFileName, OutputStream, !IO)
+            fact_table_compile_facts_2(ModuleInfo, PredName, UserArity,
+                FileName, Context, OutputFileName, OutputStream,
+                C_HeaderCode, PrimaryProcID, !PredInfo, !IO)
         ;
             OpenResult = error(Error),
             print_file_open_error(Globals, yes(Context), FileName, "output",
@@ -251,14 +252,14 @@ fact_table_compile_facts(PredName, Arity, FileName, !PredInfo, Context,
         PrimaryProcID = invalid_proc_id
     ).
 
-:- pred fact_table_compile_facts_2(sym_name::in, arity::in, string::in,
-    pred_info::in, pred_info::out, prog_context::in, module_info::in,
-    string::out, proc_id::out, string::in, io.output_stream::in,
-    io::di, io::uo) is det.
+:- pred fact_table_compile_facts_2( module_info::in,
+    sym_name::in, user_arity::in, string::in, prog_context::in,
+    string::in, io.output_stream::in, string::out, proc_id::out,
+    pred_info::in, pred_info::out, io::di, io::uo) is det.
 
-fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
-        ModuleInfo, C_HeaderCode, PrimaryProcID, OutputFileName, OutputStream,
-        !IO) :-
+fact_table_compile_facts_2(ModuleInfo, PredName, UserArity, FileName, Context,
+        OutputFileName, OutputStream, C_HeaderCode, PrimaryProcID,
+        !PredInfo, !IO) :-
     pred_info_get_arg_types(!.PredInfo, Types),
     init_fact_arg_infos(Types, FactArgInfos0),
     infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
@@ -290,8 +291,11 @@ fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
             MaybeOutput = no,
             WriteDataAfterSorting = no
         ),
-        compile_facts(PredName, Arity, !.PredInfo, ModuleInfo, FactArgInfos,
-            ProcStreams, MaybeOutput, 0, NumFacts, [], CompileErrors, !IO),
+        NumFacts0 = 0,
+        CompileErrors0 = [],
+        compile_facts(ModuleInfo, !.PredInfo, PredName, UserArity,
+            FactArgInfos, ProcStreams, MaybeOutput,
+            NumFacts0, NumFacts, CompileErrors0, CompileErrors, !IO),
         io.seen(!IO),
         (
             MaybeOutput = yes(_),
@@ -353,6 +357,7 @@ fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
         WriteDataAfterSorting = no,
         DataFileName = ""
     ),
+    % XXX Move to caller.
     io.close_output(OutputStream, !IO),
     maybe_append_data_table(Globals, WriteDataAfterSorting, OutputFileName,
         DataFileName, !IO).
@@ -361,13 +366,14 @@ fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
 
     % Read in facts one by one and check and compile them.
     %
-:- pred compile_facts(sym_name::in, arity::in, pred_info::in, module_info::in,
+:- pred compile_facts(module_info::in, pred_info::in, sym_name::in,
+    user_arity::in,
     list(fact_arg_info)::in, list(proc_stream)::in,
     maybe(pair(io.output_stream, string))::in, int::in, int::out,
     error_reports::in, error_reports::out, io::di, io::uo) is det.
 
-compile_facts(PredName, Arity, PredInfo, ModuleInfo, FactArgInfos, ProcStreams,
-        MaybeOutput, !NumFacts, !Errors, !IO) :-
+compile_facts(ModuleInfo, PredInfo, PredName, UserArity, FactArgInfos,
+        ProcStreams, MaybeOutput, !NumFacts, !Errors, !IO) :-
     parser.read_term(Result0, !IO),
     (
         Result0 = eof
@@ -392,7 +398,7 @@ compile_facts(PredName, Arity, PredInfo, ModuleInfo, FactArgInfos, ProcStreams,
             true
         ),
 
-        check_fact_term(PredName, Arity, PredInfo, ModuleInfo, Term,
+        check_fact_term(ModuleInfo, PredInfo, PredName, UserArity, Term,
             FactArgInfos, ProcStreams, MaybeOutput, !.NumFacts, Result,
             !Errors, !IO),
         (
@@ -401,53 +407,57 @@ compile_facts(PredName, Arity, PredInfo, ModuleInfo, FactArgInfos, ProcStreams,
         ;
             Result = error
         ),
-        compile_facts(PredName, Arity, PredInfo, ModuleInfo, FactArgInfos,
+        compile_facts(ModuleInfo, PredInfo, PredName, UserArity, FactArgInfos,
             ProcStreams, MaybeOutput, !NumFacts, !Errors, !IO)
     ).
 
     % Do syntactic and semantic checks on a fact term.
     %
-:- pred check_fact_term(sym_name::in, arity::in, pred_info::in,
-    module_info::in, prog_term::in, list(fact_arg_info)::in,
+:- pred check_fact_term(module_info::in, pred_info::in,
+    sym_name::in, user_arity::in, prog_term::in, list(fact_arg_info)::in,
     list(proc_stream)::in, maybe(pair(io.output_stream, string))::in,
     int::in, fact_result::out, error_reports::in, error_reports::out,
     io::di, io::uo) is det.
 
 check_fact_term(_, _, _, _, term.variable(_V, _), _, _, _, _, error,
         !Errors, !IO) :-
-    io.get_line_number(LineNum, !IO),
     io.input_stream_name(FileName, !IO),
+    io.get_line_number(LineNum, !IO),
     Context = term.context(FileName, LineNum),
     Msg = "Error: term is not a fact.",
     add_error_report(Context, [words(Msg)], !Errors).
-check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
+check_fact_term(ModuleInfo, PredInfo, PredName, UserArity,
         term.functor(Const, Terms0, Context), FactArgInfos,
         ProcStreams, MaybeOutput, FactNum, Result, !Errors, !IO) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredString = unqualify_name(PredName),
     ( if Const = term.atom(TopLevel) then
+        % XXX ARITY The conversion from UserArity to PredFromArity
+        % should be done once per pred_info, not once per term read in.
+        UserArity = user_arity(UserArityInt),
         ( if
             (
                 PredOrFunc = pf_predicate,
                 TopLevel = PredString,
                 Terms = Terms0,
-                Arity = Arity0
+                PredFormArityInt = UserArityInt
             ;
                 PredOrFunc = pf_function,
                 TopLevel = "=",
-                Terms0 = [FuncHeadTerm, FuncResultTerm],
-                FuncHeadTerm = term.functor(term.atom(PredString), Terms1, _),
-                list.append(Terms1, [FuncResultTerm], Terms),
-                Arity = Arity0 + 1
+                Terms0 = [BeforeEqualTerm, ResultTerm],
+                BeforeEqualTerm =
+                    term.functor(term.atom(PredString), BeforeEqualTerms, _),
+                Terms = BeforeEqualTerms ++ [ResultTerm],
+                PredFormArityInt = UserArityInt + 1
             )
         then
-            check_fact_term_2(PredOrFunc, Arity, PredInfo, ModuleInfo, Terms,
-                Context, FactArgInfos, ProcStreams, MaybeOutput, FactNum,
-                Result, !Errors, !IO)
+            check_fact_term_2(ModuleInfo, PredInfo, PredOrFunc,
+                PredFormArityInt, Terms, Context, FactArgInfos,
+                ProcStreams, MaybeOutput, FactNum, Result, !Errors, !IO)
         else
             PFStr = pred_or_func_to_full_str(PredOrFunc),
             string.format("Error: invalid clause for %s `%s/%d'.",
-                [s(PFStr), s(PredString), i(Arity0)], Msg),
+                [s(PFStr), s(PredString), i(UserArityInt)], Msg),
             add_error_report(Context, [words(Msg)], !Errors),
             Result = error
         )
@@ -457,18 +467,19 @@ check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
         Result = error
     ).
 
-:- pred check_fact_term_2(pred_or_func::in, arity::in, pred_info::in,
-    module_info::in, list(prog_term)::in, context::in, list(fact_arg_info)::in,
+:- pred check_fact_term_2(module_info::in, pred_info::in,
+    pred_or_func::in, arity::in,
+    list(prog_term)::in, context::in, list(fact_arg_info)::in,
     list(proc_stream)::in, maybe(pair(io.output_stream, string))::in,
     int::in, fact_result::out, error_reports::in, error_reports::out,
     io::di, io::uo) is det.
 
-check_fact_term_2(PredOrFunc, Arity, PredInfo, ModuleInfo, Terms, Context,
-        FactArgInfos, ProcStreams, MaybeOutput, FactNum, Result,
-        !Errors, !IO) :-
+check_fact_term_2(ModuleInfo, PredInfo, PredOrFunc, PredFormArity,
+        Terms, Context, FactArgInfos, ProcStreams, MaybeOutput,
+        FactNum, Result, !Errors, !IO) :-
     % Check that arity of the fact is correct.
-    list.length(Terms, Len),
-    ( if Len = Arity then
+    list.length(Terms, NumTerms),
+    ( if NumTerms = PredFormArity then
         pred_info_get_arg_types(PredInfo, Types),
         check_fact_type_and_mode(Types, Terms, 0, PredOrFunc, Context,
             Result, !Errors),
@@ -482,10 +493,11 @@ check_fact_term_2(PredOrFunc, Arity, PredInfo, ModuleInfo, Terms, Context,
         % written out later on after being sorted on the first input mode.
         ( if
             MaybeOutput = yes(OutputStream - StructName),
-            TermToArg = (
-                pred(Term::in, FactArg::out) is semidet :-
-                    Term = term.functor(FactArg, _, _)
-            ),
+            TermToArg =
+                (
+                    pred(Term::in, FactArg::out) is semidet :-
+                        Term = term.functor(FactArg, _, _)
+                ),
             list.map(TermToArg, Terms, FactArgs)
         then
             module_info_get_globals(ModuleInfo, Globals),
@@ -501,7 +513,7 @@ check_fact_term_2(PredOrFunc, Arity, PredInfo, ModuleInfo, Terms, Context,
     else
         Msg1 = "Error: fact has wrong number of arguments.",
         string.format("Expecting %d arguments, but fact has %d arguments.",
-            [i(Arity), i(Len)], Msg2),
+            [i(PredFormArity), i(NumTerms)], Msg2),
         add_error_report(Context, [words(Msg1), words(Msg2)], !Errors),
         Result = error
     ).
@@ -2354,8 +2366,8 @@ make_fact_table_identifier(SymName, Identifier) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
-        ProcInfo, ArgTypes, ModuleInfo, ProcCode, ExtraCode, !IO) :-
+fact_table_generate_c_code(ModuleInfo, PredName, PragmaVars,
+        ProcID, PrimaryProcID, ProcInfo, ArgTypes, ProcCode, ExtraCode, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     fact_table_size(Globals, FactTableSize),
 

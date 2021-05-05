@@ -31,7 +31,7 @@ main(!IO) :-
     io.nl(!IO).
 
 :- func magnitude(length) = float.
-:- pragma no_inline(magnitude/1).
+:- pragma no_inline(func(magnitude/1)).
 
 % dupelim.m will combine the following cases, which differ only in the tag to
 % remove, into a single code sequence. We must be careful to mask off the tag

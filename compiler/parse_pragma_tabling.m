@@ -40,7 +40,6 @@
 
 :- implementation.
 
-:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_item.
@@ -59,26 +58,22 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         Context, SeqNum, EvalMethod0, MaybeIOM) :-
     (
         (
-            PragmaTerms = [PredAndModesTerm0],
+            PragmaTerms = [PredOrProcSpecTerm0],
             MaybeAttrs = no
         ;
-            PragmaTerms = [PredAndModesTerm0, AttrListTerm0],
+            PragmaTerms = [PredOrProcSpecTerm0, AttrListTerm0],
             MaybeAttrs = yes(AttrListTerm0)
         ),
         ContextPieces = cord.from_list([words("In the first argument of"),
             pragma_decl(PragmaName), words("declaration:"), nl]),
-        parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm,
-            VarSet, ContextPieces, MaybeArityOrModes),
+        parse_pred_pfu_name_arity_maybe_modes(ModuleName, ContextPieces,
+            VarSet, PredOrProcSpecTerm0, MaybePredOrProcSpec),
         (
-            MaybeArityOrModes = ok1(ArityOrModes),
-            ArityOrModes = pred_name_arity_mpf_mmode(PredName, Arity,
-                MaybePredOrFunc, MaybeModes),
+            MaybePredOrProcSpec = ok1(PredOrProcSpec),
             (
                 MaybeAttrs = no,
-                PredNameArityMPF = pred_name_arity_mpf(PredName, Arity,
-                    MaybePredOrFunc),
-                TabledInfo = pragma_info_tabled(EvalMethod0, PredNameArityMPF,
-                    MaybeModes, no),
+                TabledInfo =
+                    pragma_info_tabled(EvalMethod0, PredOrProcSpec, no),
                 Pragma = impl_pragma_tabled(TabledInfo),
                 ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
                 Item = item_impl_pragma(ItemPragma),
@@ -121,10 +116,8 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                                 unexpected($pred, "non-pragma eval method")
                             )
                         ),
-                        PredNameArityMPF = pred_name_arity_mpf(PredName,
-                            Arity, MaybePredOrFunc),
                         TabledInfo = pragma_info_tabled(EvalMethod,
-                            PredNameArityMPF, MaybeModes, yes(Attributes)),
+                            PredOrProcSpec, yes(Attributes)),
                         Pragma = impl_pragma_tabled(TabledInfo),
                         ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
                         Item = item_impl_pragma(ItemPragma),
@@ -139,7 +132,7 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                 )
             )
         ;
-            MaybeArityOrModes = error1(Specs),
+            MaybePredOrProcSpec = error1(Specs),
             MaybeIOM = error1(Specs)
         )
     ;

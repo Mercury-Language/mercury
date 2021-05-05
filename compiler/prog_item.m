@@ -2249,9 +2249,9 @@
     ;       decl_pragma_obsolete_proc(pragma_info_obsolete_proc)
     ;       decl_pragma_type_spec(pragma_info_type_spec)
     ;       decl_pragma_oisu(pragma_info_oisu)
-    ;       decl_pragma_terminates(pred_name_arity)
-    ;       decl_pragma_does_not_terminate(pred_name_arity)
-    ;       decl_pragma_check_termination(pred_name_arity)
+    ;       decl_pragma_terminates(pred_pfu_name_arity)
+    ;       decl_pragma_does_not_terminate(pred_pfu_name_arity)
+    ;       decl_pragma_check_termination(pred_pfu_name_arity)
     ;       decl_pragma_termination_info(pragma_info_termination_info)
     ;       decl_pragma_termination2_info(pragma_info_termination2_info)
     ;       decl_pragma_structure_sharing(pragma_info_structure_sharing)
@@ -2265,15 +2265,15 @@
     ;       impl_pragma_external_proc(pragma_info_external_proc)
     ;       impl_pragma_fact_table(pragma_info_fact_table)
     ;       impl_pragma_tabled(pragma_info_tabled)
-    ;       impl_pragma_inline(pred_name_arity)
-    ;       impl_pragma_no_inline(pred_name_arity)
-    ;       impl_pragma_consider_used(pred_name_arity)
-    ;       impl_pragma_mode_check_clauses(pred_name_arity)
-    ;       impl_pragma_no_detism_warning(pred_name_arity)
+    ;       impl_pragma_inline(pred_pfu_name_arity)
+    ;       impl_pragma_no_inline(pred_pfu_name_arity)
+    ;       impl_pragma_consider_used(pred_pfu_name_arity)
+    ;       impl_pragma_mode_check_clauses(pred_pfu_name_arity)
+    ;       impl_pragma_no_detism_warning(pred_pfu_name_arity)
     ;       impl_pragma_require_tail_rec(pragma_info_require_tail_rec)
-    ;       impl_pragma_promise_pure(pred_name_arity)
-    ;       impl_pragma_promise_semipure(pred_name_arity)
-    ;       impl_pragma_promise_eqv_clauses(pred_name_arity)
+    ;       impl_pragma_promise_pure(pred_pfu_name_arity)
+    ;       impl_pragma_promise_semipure(pred_pfu_name_arity)
+    ;       impl_pragma_promise_eqv_clauses(pred_pfu_name_arity)
     ;       impl_pragma_require_feature_set(pragma_info_require_feature_set).
 
 :- type generated_pragma
@@ -2294,7 +2294,7 @@
 
 :- type pragma_info_pred_marker
     --->    pragma_info_pred_marker(
-                pred_name_arity,
+                pred_pf_name_arity,
                 pred_marker_pragma_kind
             ).
 
@@ -2348,9 +2348,9 @@
     --->    pragma_info_foreign_proc_export(
                 exp_maybe_attrs         :: item_maybe_attrs,
 
-                % Predname, Predicate/function, Modes, foreign function name.
                 exp_language            :: foreign_language,
-                exp_pred_id             :: pred_name_modes_pf,
+                % Predname, Predicate/function, Modes, foreign function name.
+                exp_pred_id             :: proc_pf_name_modes,
                 exp_foreign_name        :: string
             ).
 
@@ -2359,9 +2359,7 @@
                 % The specified procedure(s) is/are implemented outside
                 % of Mercury code, for the named backend if there is one,
                 % or if there isn't a named backend, then for all backends.
-                external_pred_name      :: sym_name,
-                external_pred_arity     :: arity,
-                external_p_or_f         :: pred_or_func,
+                external_name           :: pred_pf_name_arity,
                 external_maybe_backend  :: maybe(backend)
             ).
 
@@ -2369,56 +2367,60 @@
 
 :- type pragma_info_type_spec
     --->    pragma_info_type_spec(
-                % PredName, SpecializedPredName, Arity, PredOrFunc,
-                % Modes if a specific procedure was specified, type
-                % substitution (using the variable names from the pred
-                % declaration), TVarSet, Equivalence types used
+                tspec_pfumm             :: pred_func_or_unknown_maybe_modes,
+
+                % The existing predicate name.
                 tspec_pred_name         :: sym_name,
+
+                % The name of the specialized predicate.
                 tspec_new_name          :: sym_name,
-                tspec_arity             :: arity,
-                tspec_p_or_f            :: maybe(pred_or_func),
-                tspec_modes             :: maybe(list(mer_mode)),
+
+                % The type substitution (using the variable names
+                % from the pred declaration).
                 tspec_tsubst            :: type_subst,
+
                 tspec_tvarset           :: tvarset,
+
+                % The equivalence types used.
                 tspec_items             :: set(item_id)
             ).
 
 :- type pragma_info_unused_args
     --->    pragma_info_unused_args(
-                % PredName, Arity, Mode number, Removed arguments.
-                % Used for intermodule unused argument removal. Should only
-                % appear in .opt files.
-                unused_proc_id          :: pred_name_arity_pf_mn,
+                % This pragma Should only appear in .opt files.
+                unused_proc_id          :: proc_pf_name_arity_mn,
+
+                % The argument positions of the unused arguments.
+                % Used for intermodule unused argument removal.
                 unused_args             :: list(int)
             ).
 
 :- type pragma_info_exceptions
     --->    pragma_info_exceptions(
-                % PredName, Arity, Mode number, Exception status.
-                % Should only appear in `.opt' or `.trans_opt' files.
-                exceptions_proc_id      :: pred_name_arity_pf_mn,
+                % This pragma should only appear in `.opt' and
+                % `.trans_opt' files.
+                exceptions_proc_id      :: proc_pf_name_arity_mn,
                 exceptions_status       :: exception_status
             ).
 
 :- type pragma_info_trailing_info
     --->    pragma_info_trailing_info(
-                % PredName, Arity, Mode number, Trailing status.
-                % Should on appear in `.opt' or `.trans_opt' files.
-                trailing_info_proc_id   :: pred_name_arity_pf_mn,
+                % This pragma should only appear in `.trans_opt' files.
+                trailing_info_proc_id   :: proc_pf_name_arity_mn,
                 trailing_info_status    :: trailing_status
             ).
 
 :- type pragma_info_mm_tabling_info
     --->    pragma_info_mm_tabling_info(
-                % PredName, Arity, Mode number, MM Tabling status.
-                % Should on appear in `.opt' or `.trans_opt' files.
-                mm_tabling_info_proc_id :: pred_name_arity_pf_mn,
+                % This pragma should only appear in `.opt' and
+                % `.trans_opt' files.
+                mm_tabling_info_proc_id :: proc_pf_name_arity_mn,
                 mm_tabling_info_status  :: mm_tabling_status
             ).
 
 :- type pragma_info_require_tail_rec
     --->    pragma_info_require_tail_rec(
-                rtr_proc_id             :: pred_name_arity_mpf_mmode,
+                rtr_proc_id             :: pred_or_proc_pfumm_name,
                 rtr_require_tailrec     :: require_tail_recursion
 
                 % This parameter only makes sense when options contains
@@ -2428,7 +2430,7 @@
                 % http://www.mercurylang.org/list-archives/developers/
                 %   2015-November/016482.html
                 % rtr_maybe_scc           :: maybe(list(
-                %                             pred_name_arity_mpf_mmode))
+                %                             pred_or_proc_pfumm_name))
             ).
 
     % Evaluation method pragmas.
@@ -2437,24 +2439,23 @@
     --->    pragma_info_tabled(
                 % Tabling type, Predname, Arity, PredOrFunc?, Mode?
                 tabled_method           :: eval_method,
-                tabled_name             :: pred_name_arity_mpf,
-                tabled_mode             :: maybe(list(mer_mode)),
+                tabled_name             :: pred_or_proc_pfumm_name,
                 tabled_attributes       :: maybe(table_attributes)
             ).
 
 :- type pragma_info_fact_table
     --->    pragma_info_fact_table(
                 % Predname and Arity, Fact file name.
-                fact_table_pred         :: pred_name_arity,
+                fact_table_pred         :: pred_pfu_name_arity,
                 fact_table_filename     :: string
             ).
 
 :- type pragma_info_oisu
     --->    pragma_info_oisu(
                 oisu_type_ctor          :: type_ctor,
-                oisu_creator_preds      :: list(pred_name_arity),
-                oisu_transformer_preds  :: list(pred_name_arity),
-                oisu_destroyer_preds    :: list(pred_name_arity)
+                oisu_creator_preds      :: list(pred_pf_name_arity),
+                oisu_transformer_preds  :: list(pred_pf_name_arity),
+                oisu_destroyer_preds    :: list(pred_pf_name_arity)
             ).
 
     % Termination analysis pragmas.
@@ -2470,14 +2471,14 @@
                 % predicate. This includes c_code, and imported predicates.
                 % termination_info pragmas are used in opt and trans_opt
                 % files.
-                terminfo_pred_id        :: pred_name_modes_pf,
+                terminfo_pred_id        :: proc_pf_name_modes,
                 terminfo_args           :: maybe(pragma_arg_size_info),
                 terminfo_term           :: maybe(pragma_termination_info)
             ).
 
 :- type pragma_info_termination2_info
     --->    pragma_info_termination2_info(
-                terminfo2_pred_id       :: pred_name_modes_pf,
+                terminfo2_pred_id       :: proc_pf_name_modes,
                 terminfo2_args          :: maybe(pragma_constr_arg_size_info),
                 terminfo2_args2         :: maybe(pragma_constr_arg_size_info),
                 terminfo2_term          :: maybe(pragma_termination_info)
@@ -2493,7 +2494,7 @@
                 %
                 % The list of modes consists of the declared argmodes
                 % (or inferred argmodes if there are no declared ones).
-                sharing_pred_id         :: pred_name_modes_pf,
+                sharing_pred_id         :: proc_pf_name_modes,
                 sharing_headvars        :: list(prog_var),
                 sharing_headvar_types   :: list(mer_type),
 
@@ -2523,7 +2524,7 @@
                 % of the optimised version of the exported predicate.
                 % XXX As of 2019 10 29, the word "reuse_optimised_name"
                 % appears nowhere in the compiler apart from this comment.
-                reuse_pred_id           :: pred_name_modes_pf,
+                reuse_pred_id           :: proc_pf_name_modes,
                 reuse_headvars          :: list(prog_var),
                 reuse_headvar_types     :: list(mer_type),
 
@@ -2544,13 +2545,13 @@
 
 :- type pragma_info_obsolete_pred
     --->    pragma_info_obsolete_pred(
-                pred_name_arity,
+                pred_pfu_name_arity,
                 list(sym_name_arity)
             ).
 
 :- type pragma_info_obsolete_proc
     --->    pragma_info_obsolete_proc(
-                pred_name_modes_pf,
+                proc_pf_name_modes,
                 list(sym_name_arity)
             ).
 
@@ -2559,50 +2560,56 @@
                 rfs_feature_set         :: set(required_feature)
             ).
 
-    % These types identify procedures in pragmas.
+    % These types identify predicates, functions and/or procedures in pragmas.
 
-:- type pred_name_arity
-    --->    pred_name_arity(
-                pna_pred_name           :: sym_name,
-                pna_arity               :: arity
+:- type pred_pfu_name_arity
+    --->    pred_pfu_name_arity(
+                ppfuna_pfu              :: pred_func_or_unknown,
+                ppfuna_pred_name        :: sym_name,
+                ppfuna_arity            :: user_arity
             ).
 
-:- type pred_name_arity_pf
-    --->    pred_name_arity_pf(
-                pnap_pred_name          :: sym_name,
-                pnap_arity              :: arity,
-                pnap_pf                 :: pred_or_func
+:- type proc_pf_name_arity_mn
+    --->    proc_pf_name_arity_mn(
+                ppfnamn_pf              :: pred_or_func,
+                ppfnamn_pred_name       :: sym_name,
+                ppfnamn_arity           :: user_arity,
+                ppfnamn_mode_num        :: mode_num
             ).
 
-:- type pred_name_arity_pf_mn
-    --->    pred_name_arity_pf_mn(
-                pnapm_pred_name         :: sym_name,
-                pnapm_arity             :: arity,
-                pnapm_pf                :: pred_or_func,
-                pnapm_mode_num          :: mode_num
+:- type proc_pf_name_modes
+    --->    proc_pf_name_modes(
+                ppfnm_pf                :: pred_or_func,
+                ppfnm_pred_name         :: sym_name,
+                ppfnm_arity             :: list(mer_mode)
             ).
 
-:- type pred_name_arity_mpf_mmode
-    --->    pred_name_arity_mpf_mmode(
-                pnampm_pred_name        :: sym_name,
-                pnampm_arity            :: arity,
-                pnampm_maybe_pf         :: maybe(pred_or_func),
-                pnampm_maybe_mode       :: maybe(list(mer_mode))
+:- type pred_or_proc_pfumm_name
+    --->    pred_or_proc_pfumm_name(
+                ppfummn_pfumm           :: pred_func_or_unknown_maybe_modes,
+                ppfummn_pred_name       :: sym_name
             ).
 
-:- type pred_name_modes_pf
-    --->    pred_name_modes_pf(
-                pnmp_pred_name          :: sym_name,
-                pnmp_arity              :: list(mer_mode),
-                pnmp_pf                 :: pred_or_func
-            ).
+:- type pred_func_or_unknown
+    --->    pfu_predicate
+    ;       pfu_function
+    ;       pfu_unknown.
 
-:- type pred_name_arity_mpf
-    --->    pred_name_arity_mpf(
-                pnam_pred_name          :: sym_name,
-                pnam_arity              :: arity,
-                pnam_maybe_pf           :: maybe(pred_or_func)
-            ).
+:- type pred_func_or_unknown_maybe_modes
+    --->    pfumm_predicate(modes_or_arity)
+    ;       pfumm_function(modes_or_arity)
+    ;       pfumm_unknown(user_arity).
+
+:- type modes_or_arity
+    --->    moa_modes(list(mer_mode))
+    ;       moa_arity(user_arity).
+
+:- func pfu_to_maybe_pred_or_func(pred_func_or_unknown) = maybe(pred_or_func).
+:- func maybe_pred_or_func_to_pfu(maybe(pred_or_func)) = pred_func_or_unknown.
+
+:- pred pfumm_to_maybe_pf_arity_maybe_modes(
+    pred_func_or_unknown_maybe_modes::in, maybe(pred_or_func)::out,
+    user_arity::out, maybe(list(mer_mode))::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -2830,6 +2837,8 @@
 
 :- implementation.
 
+:- import_module parse_tree.prog_util.
+
 :- import_module term.
 :- import_module varset.
 
@@ -2920,6 +2929,43 @@ fill_kind_size_num_bits(FillKindSize) = NumBits :-
     ;
         FillKindSize = fk_char21,
         NumBits = 21u
+    ).
+
+%---------------------------------------------------------------------------%
+
+pfu_to_maybe_pred_or_func(pfu_predicate) = yes(pf_predicate).
+pfu_to_maybe_pred_or_func(pfu_function) = yes(pf_function).
+pfu_to_maybe_pred_or_func(pfu_unknown) = no.
+
+maybe_pred_or_func_to_pfu(yes(pf_predicate)) = pfu_predicate.
+maybe_pred_or_func_to_pfu(yes(pf_function)) = pfu_function.
+maybe_pred_or_func_to_pfu(no) = pfu_unknown.
+
+pfumm_to_maybe_pf_arity_maybe_modes(PFUMM, MaybePredOrFunc, UserArity,
+        MaybeModes) :-
+    (
+        (
+            PFUMM = pfumm_predicate(ModesOrArity),
+            PredOrFunc = pf_predicate
+        ;
+            PFUMM = pfumm_function(ModesOrArity),
+            PredOrFunc = pf_function
+        ),
+        MaybePredOrFunc = yes(PredOrFunc),
+        (
+            ModesOrArity = moa_modes(Modes),
+            list.length(Modes, NumModes),
+            PredFormArity = pred_form_arity(NumModes),
+            user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+            MaybeModes = yes(Modes)
+        ;
+            ModesOrArity = moa_arity(UserArity),
+            MaybeModes = no
+        )
+    ;
+        PFUMM = pfumm_unknown(UserArity),
+        MaybePredOrFunc = no,
+        MaybeModes = no
     ).
 
 %---------------------------------------------------------------------------%

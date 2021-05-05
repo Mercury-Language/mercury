@@ -9,33 +9,33 @@
 :- type baz.
 
 :- pragma oisu(foo/0,
-        creators([create_foo/1]),
-        mutators([mutate_foo/3])
+        creators([pred(create_foo/1)]),
+        mutators([pred(mutate_foo/3)])
     ).
 
 :- pragma oisu(foo/0,
-        creators([create_foo/1]),
-        mutators([mutate_foo/3]),
-        destructors([destroy_foo/3])
+        creators([pred(create_foo/1)]),
+        mutators([pred(mutate_foo/3)]),
+        destructors([pred(destroy_foo/3)])
     ).
 
 :- pragma oisu(quux/0,
-        creators([create_quux/1]),
-        mutators([mutate_quux/3]),
-        destructors([destroy_quux/2])
+        creators([pred(create_quux/1)]),
+        mutators([pred(mutate_quux/3)]),
+        destructors([pred(destroy_quux/2)])
     ).
 
 :- implementation.
 
 :- pragma oisu(bar/0,
-        creators([create_bar/1]),
-        mutators([mutate_bar/3]),
-        destructors([destroy_bar/3])
+        creators([pred(create_bar/1)]),
+        mutators([pred(mutate_bar/3)]),
+        destructors([pred(destroy_bar/3)])
     ).
 
 :- pragma oisu(baz/0,
-        creators([create_baz/1]),
-        mutators([mutate_baz/3])
+        creators([pred(create_baz/1)]),
+        mutators([pred(mutate_baz/3)])
     ).
 
 :- type foo

@@ -12,7 +12,7 @@
 :- module float_consistency.
 :- interface.
 :- import_module io.
-:- pred main(state::di, state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -22,18 +22,21 @@
 main(!IO) :-
     Lit_one = 1.0,
     Calc_one = same_as(Lit_one),
-    print("Calc_one     = Lit_one:     " ++
-        (if Calc_one = Lit_one then "true" else "false"), !IO),
-    nl(!IO),
-    print("Calc_one/9.0 = Lit_one/9.0: " ++
-        ( if
-            unchecked_quotient(Calc_one, 9.0)
-                = unchecked_quotient(Lit_one, 9.0)
-        then
-            "true"
-        else
-            "false"), !IO),
-    nl(!IO).
+    ( if Calc_one = Lit_one then
+        CalcEqLit = "true"
+    else
+        CalcEqLit = "false"
+    ),
+    ( if
+        unchecked_quotient(Calc_one, 9.0)
+            = unchecked_quotient(Lit_one, 9.0)
+    then
+        CalcQEqLitQ = "true"
+    else
+        CalcQEqLitQ = "false"
+    ),
+    io.format("Calc_one     = Lit_one:     %s\n", [s(CalcEqLit)], !IO),
+    io.format("Calc_one/9.0 = Lit_one/9.0: %s\n", [s(CalcQEqLitQ)], !IO).
 
 :- func same_as(float) = float.
 :- pragma no_inline(same_as/1).

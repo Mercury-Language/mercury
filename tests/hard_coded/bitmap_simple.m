@@ -311,7 +311,7 @@ resize(BM, NewSize, InitializerBit) =
 % Use the underlying version_array's bounds checking.
 %
 % in_range(BM, I) :- 0 =< I, I < num_bits(BM).
-:- pragma no_determinism_warning(in_range/2).
+:- pragma no_determinism_warning(pred(in_range/2)).
 in_range(_, _) :-
     true.
 

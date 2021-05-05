@@ -129,7 +129,7 @@ test_a_3x(C, Str) :-
 :- mode table_a(in, out, out) is semidet.
 :- mode table_a(out, in, out) is semidet.
 :- mode table_a(out, out, in) is nondet.
-:- pragma fact_table(table_a/3, "fact_table_test_1_table_a").
+:- pragma fact_table(pred(table_a/3), "fact_table_test_1_table_a").
 
 %---------------------------------------------------------------------------%
 

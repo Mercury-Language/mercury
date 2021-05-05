@@ -1261,12 +1261,19 @@ find_items_used_by_proc_arg_modes(_ProcId, ProcInfo, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_type_spec(TypeSpecInfo, !Info) :-
-    TypeSpecInfo = pragma_info_type_spec(_, _, _, _, MaybeModes, Subst, _, _),
+    TypeSpecInfo = pragma_info_type_spec(PFUMM, _, _, Subst, _, _),
     (
-        MaybeModes = yes(Modes),
-        find_items_used_by_modes(Modes, !Info)
+        ( PFUMM = pfumm_predicate(ModesOrArity)
+        ; PFUMM = pfumm_function(ModesOrArity)
+        ),
+        (
+            ModesOrArity = moa_modes(Modes),
+            find_items_used_by_modes(Modes, !Info)
+        ;
+            ModesOrArity = moa_arity(_Arity)
+        )
     ;
-        MaybeModes = no
+        PFUMM = pfumm_unknown(_Arity)
     ),
     assoc_list.values(Subst, SubstTypes),
     find_items_used_by_types(SubstTypes, !Info).

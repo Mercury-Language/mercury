@@ -88,6 +88,12 @@
 :- func pf_sym_name_orig_arity_to_string(pred_or_func, sym_name, arity)
     = string.
 
+:- func pf_sym_name_user_arity_to_string(pred_pf_name_arity) = string.
+:- func pf_sym_name_user_arity_to_string(pred_or_func, sym_name_arity)
+    = string.
+:- func pf_sym_name_user_arity_to_string(pred_or_func, sym_name, arity)
+    = string.
+
 %-----------------------------------------------------------------------------%
 
 :- func type_ctor_to_string(type_ctor) = string.
@@ -272,6 +278,22 @@ pf_sym_name_orig_arity_to_string(PredOrFunc, SymName, Arity) = Str :-
     Str = pred_or_func_to_string(PredOrFunc) ++ " " ++
         add_quotes(sym_name_to_string(SymName)) ++ "/" ++
         string.int_to_string(OrigArity).
+
+%-----------------------------------------------------------------------------%
+
+pf_sym_name_user_arity_to_string(PFSymNameArity) = Str :-
+    PFSymNameArity =
+        pred_pf_name_arity(PredOrFunc, SymName, user_arity(Arity)),
+    Str = pf_sym_name_user_arity_to_string(PredOrFunc, SymName, Arity).
+
+pf_sym_name_user_arity_to_string(PredOrFunc, SNA) = Str :-
+    SNA = sym_name_arity(SymName, Arity),
+    Str = pf_sym_name_user_arity_to_string(PredOrFunc, SymName, Arity).
+
+pf_sym_name_user_arity_to_string(PredOrFunc, SymName, Arity) = Str :-
+    Str = pred_or_func_to_string(PredOrFunc) ++ " " ++
+        add_quotes(sym_name_to_string(SymName)) ++ "/" ++
+        string.int_to_string(Arity).
 
 %-----------------------------------------------------------------------------%
 

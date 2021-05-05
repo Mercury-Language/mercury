@@ -70,14 +70,21 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_arity_or_modes(module_name::in, term::in, term::in, varset::in,
-    cord(format_component)::in, maybe1(pred_name_arity_mpf_mmode)::out) is det.
+:- pred parse_pred_pf_name_arity(module_name::in, string::in,
+    varset::in, term::in, maybe1(pred_pf_name_arity)::out) is det.
+
+:- pred parse_pred_pfu_name_arity(module_name::in, string::in,
+    varset::in, term::in, maybe1(pred_pfu_name_arity)::out) is det.
+
+:- pred parse_pred_pfu_name_arity_maybe_modes(module_name::in,
+    cord(format_component)::in, varset::in, term::in, 
+    maybe1(pred_or_proc_pfumm_name)::out) is det.
 
 :- type maybe_pred_or_func_modes ==
     maybe3(sym_name, pred_or_func, list(mer_mode)).
 
 :- pred parse_pred_or_func_and_arg_modes(maybe(module_name)::in,
-    varset::in, cord(format_component)::in, term::in,
+    cord(format_component)::in, varset::in, term::in,
     maybe_pred_or_func_modes::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -195,7 +202,6 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
 
-:- import_module int.
 :- import_module string.
 :- import_module term_io.
 
@@ -270,50 +276,135 @@ parse_pred_or_func_and_args_general(MaybeModuleName, PredAndArgsTerm,
 
 %---------------------------------------------------------------------------%
 
-parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
-        ContextPieces, MaybeArityOrModes) :-
+parse_pred_pf_name_arity(ModuleName, PragmaName, VarSet,
+        Term, MaybePredSpec) :-
     ( if
-        % Is this a simple pred/arity pragma.
-        PredAndModesTerm0 = term.functor(term.atom("/"),
-            [PredNameTerm, ArityTerm], _)
+        Term = term.functor(term.atom(Functor), [SubTerm], _),
+        ( Functor = "pred", PorF = pf_predicate
+        ; Functor = "func", PorF = pf_function
+        ),
+        parse_implicitly_qualified_name_and_arity(ModuleName, SubTerm,
+            SymName, Arity)
     then
-        ( if
-            try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
-                PredNameTerm, PredName),
-            decimal_term_to_int(ArityTerm, Arity)
-        then
-            MaybeArityOrModes = ok1(pred_name_arity_mpf_mmode(PredName,
-                Arity, no, no))
-        else
-            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: expected predname/arity."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(ErrorTerm), Pieces),
-            MaybeArityOrModes = error1([Spec])
-        )
+        PredSpec = pred_pf_name_arity(PorF, SymName, user_arity(Arity)),
+        MaybePredSpec = ok1(PredSpec)
     else
-        parse_pred_or_func_and_arg_modes(yes(ModuleName), VarSet,
-            ContextPieces, PredAndModesTerm0, MaybePredAndModes),
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error in"),
+            pragma_decl(PragmaName), words("declaration:"), nl,
+            words("expected one of"), nl,
+            quote("pred(name/arity)"), words("and"), nl,
+            quote("func(name/arity)"), suffix(","), nl,
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybePredSpec = error1([Spec])
+    ).
+
+parse_pred_pfu_name_arity(ModuleName, PragmaName, VarSet,
+        Term, MaybePredSpec) :-
+    ( if is_term_symname_arity_maybe_pf(ModuleName, Term, PredSpec) then
+        MaybePredSpec = ok1(PredSpec)
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error in"),
+            pragma_decl(PragmaName), words("declaration:"),
+            words("expected one of"),
+            quote("pred(name/arity)"), suffix(","), nl,
+            quote("func(name/arity)"), words("and"), nl,
+            quote("name/arity"), suffix(","), nl,
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybePredSpec = error1([Spec])
+    ).
+
+parse_pred_pfu_name_arity_maybe_modes(ModuleName, ContextPieces, VarSet,
+        Term, MaybePredOrProcSpec) :-
+    ( if
+        is_term_symname_arity_maybe_pf(ModuleName, Term, PredSpec)
+    then
+        PredSpec = pred_pfu_name_arity(PFU, SymName, Arity),
         (
-            MaybePredAndModes = ok3(PredName, PredOrFunc, Modes),
-            list.length(Modes, Arity0),
-            (
-                PredOrFunc = pf_function,
-                Arity = Arity0 - 1
-            ;
-                PredOrFunc = pf_predicate,
-                Arity = Arity0
-            ),
-            ArityOrModes = pred_name_arity_mpf_mmode(PredName, Arity,
-                yes(PredOrFunc), yes(Modes)),
-            MaybeArityOrModes = ok1(ArityOrModes)
+            PFU = pfu_unknown,
+            PFUMM = pfumm_unknown(Arity)
         ;
-            MaybePredAndModes = error3(Specs),
-            MaybeArityOrModes = error1(Specs)
+            PFU = pfu_predicate,
+            PFUMM = pfumm_predicate(moa_arity(Arity))
+        ;
+            PFU = pfu_function,
+            PFUMM = pfumm_function(moa_arity(Arity))
+        ),
+        PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, SymName),
+        MaybePredOrProcSpec = ok1(PredOrProcSpec)
+    else
+        parse_pred_or_func_and_arg_modes(yes(ModuleName), ContextPieces,
+            VarSet, Term, MaybePredAndModes),
+        (
+            MaybePredAndModes = ok3(SymName, PredOrFunc, Modes),
+            (
+                PredOrFunc = pf_predicate,
+                PFUMM = pfumm_predicate(moa_modes(Modes))
+            ;
+                PredOrFunc = pf_function,
+                PFUMM = pfumm_function(moa_modes(Modes))
+            ),
+            PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, SymName),
+            MaybePredOrProcSpec = ok1(PredOrProcSpec)
+        ;
+            MaybePredAndModes = error3(PredAndModeSpecs),
+            % XXX We should try to
+            %
+            % - return the expected/got error message if Term *does not*
+            %   look to like an attempt to specify argument modes, but
+            % - return PredAndModeSpecs if Term *does* look to be
+            %   such an attempt.
+            %
+            % Our heuristic for trying to pick between the two is very crude.
+            ( if Term = term.functor(term.atom("/"), _, _) then
+                TermStr = describe_error_term(VarSet, Term),
+                Pieces = cord.list(ContextPieces) ++
+                    [lower_case_next_if_not_first,
+                    words("Error: expected one of"), nl_indent_delta(1),
+                    quote("name/arity"), suffix(","), nl,
+                    quote("pred(name/arity)"), suffix(","), nl,
+                    quote("func(name/arity)"), suffix(","), nl,
+                    quote("pred(mode1, mode2, ..., moden)"), words("or"), nl,
+                    quote("func(mode1, mode2, ..., moden) = retmode"),
+                        suffix(","), nl,
+                    words("got"), quote(TermStr), suffix("."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
+                MaybePredOrProcSpec = error1([Spec])
+            else
+                MaybePredOrProcSpec = error1(PredAndModeSpecs)
+            )
         )
     ).
 
-parse_pred_or_func_and_arg_modes(MaybeModuleName, VarSet, ContextPieces,
+:- pred is_term_symname_arity_maybe_pf(module_name::in, term::in,
+    pred_pfu_name_arity::out) is semidet.
+
+is_term_symname_arity_maybe_pf(ModuleName, Term, PredSpec) :-
+    ( if
+        Term = term.functor(term.atom(Functor), [SubTerm], _),
+        ( Functor = "pred", PFU = pfu_predicate
+        ; Functor = "func", PFU = pfu_function
+        ),
+        parse_implicitly_qualified_name_and_arity(ModuleName, SubTerm,
+            SymName, Arity)
+    then
+        PredSpec = pred_pfu_name_arity(PFU, SymName, user_arity(Arity))
+    else if
+        parse_implicitly_qualified_name_and_arity(ModuleName, Term,
+            SymName, Arity)
+    then
+        PredSpec = pred_pfu_name_arity(pfu_unknown, SymName, user_arity(Arity))
+    else
+        fail
+    ).
+
+parse_pred_or_func_and_arg_modes(MaybeModuleName, ContextPieces, VarSet,
         PredAndModesTerm, MaybeNameAndModes) :-
     parse_pred_or_func_and_args_general(MaybeModuleName, PredAndModesTerm,
         VarSet, ContextPieces, MaybePredAndArgs),

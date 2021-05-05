@@ -11,18 +11,18 @@
 :- type bar.
 
 :- pragma oisu(foo/0,
-        creators([create_foo1/2, create_foo2/1, create_foo3/2,
-            destroy_foo4/3]),
-        mutators([mutate_foo1/3, mutate_foo2/3, create_bar1/2,
-            mutate_foobar1/5]),
-        destructors([destroy_foo1/3, destroy_foo2/3, destroy_foo3/4,
-            destroy_bar1/3])
+        creators([pred(create_foo1/2), pred(create_foo2/1),
+            pred(create_foo3/2), pred(destroy_foo4/3)]),
+        mutators([pred(mutate_foo1/3), pred(mutate_foo2/3),
+            pred(create_bar1/2), pred(mutate_foobar1/5)]),
+        destructors([pred(destroy_foo1/3), pred(destroy_foo2/3),
+            pred(destroy_foo3/4), pred(destroy_bar1/3)])
     ).
 
 :- pragma oisu(bar/0,
-        creators([create_bar1/2, create_foobar1/3]),
-        mutators([mutate_bar1/3, mutate_foobar1/5]),
-        destructors([destroy_bar1/3, destroy_foo1/3])
+        creators([pred(create_bar1/2), pred(create_foobar1/3)]),
+        mutators([pred(mutate_bar1/3), pred(mutate_foobar1/5)]),
+        destructors([pred(destroy_bar1/3), pred(destroy_foo1/3)])
     ).
 
 :- pred create_foo1(int::in, foo::out) is semidet.

@@ -36,7 +36,7 @@ main(!IO) :-
     io.nl(!IO).
 
 :- func mk = (sym_name::uo).
-:- pragma no_inline(mk/0).
+:- pragma no_inline(func(mk/0)).
 
 mk = SymName :-
     copy(unqualified("builder"), SymName).

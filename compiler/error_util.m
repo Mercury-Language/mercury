@@ -519,7 +519,15 @@
             % surrounded by `' quotes, followed by '/' and the arity, but
             % - precede them with either "predicate" or "function", and
             % - for functions, use their *original* arity, which does not
-            %   count the function result.
+            %   count the function result, unlike the arity in the arg,
+            %   which does count it.
+
+    ;       qual_pf_sym_name_user_arity(pred_pf_name_arity)
+    ;       unqual_pf_sym_name_user_arity(pred_pf_name_arity)
+            % The output should contain the string form of the sym_name,
+            % surrounded by `' quotes, followed by '/' and the arity, but
+            % - precede them with either "predicate" or "function", and
+            % - use the specified arity for both predicates and functions.
 
     ;       qual_type_ctor(type_ctor)
     ;       unqual_type_ctor(type_ctor)
@@ -2050,11 +2058,22 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
             Component = qual_pf_sym_name_orig_arity(PFSymNameArity)
         ;
             Component = unqual_pf_sym_name_orig_arity(PFSymNameArity0),
-            PFSymNameArity0 = pf_sym_name_arity(PF, SymName0, Arity),
+            PFSymNameArity0 = pf_sym_name_arity(PF, SymName0, PredFormArity),
             SymName = unqualified(unqualify_name(SymName0)),
-            PFSymNameArity = pf_sym_name_arity(PF, SymName, Arity)
+            PFSymNameArity = pf_sym_name_arity(PF, SymName, PredFormArity)
         ),
         Word = pf_sym_name_orig_arity_to_string(PFSymNameArity),
+        Str = join_string_and_tail(Word, Components, TailStr)
+    ;
+        (
+            Component = qual_pf_sym_name_user_arity(PFSymNameArity)
+        ;
+            Component = unqual_pf_sym_name_user_arity(PFSymNameArity0),
+            PFSymNameArity0 = pred_pf_name_arity(PF, SymName0, UserArity),
+            SymName = unqualified(unqualify_name(SymName0)),
+            PFSymNameArity = pred_pf_name_arity(PF, SymName, UserArity)
+        ),
+        Word = pf_sym_name_user_arity_to_string(PFSymNameArity),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
         (
@@ -2261,11 +2280,22 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
             Component = qual_pf_sym_name_orig_arity(PFSymNameArity)
         ;
             Component = unqual_pf_sym_name_orig_arity(PFSymNameArity0),
-            PFSymNameArity0 = pf_sym_name_arity(PF, SymName0, Arity),
+            PFSymNameArity0 = pf_sym_name_arity(PF, SymName0, PredFormArity),
             SymName = unqualified(unqualify_name(SymName0)),
-            PFSymNameArity = pf_sym_name_arity(PF, SymName, Arity)
+            PFSymNameArity = pf_sym_name_arity(PF, SymName, PredFormArity)
         ),
         WordsStr = pf_sym_name_orig_arity_to_string(PFSymNameArity),
+        break_into_words(WordsStr, RevWords0, RevWords1)
+    ;
+        (
+            Component = qual_pf_sym_name_user_arity(PFSymNameArity)
+        ;
+            Component = unqual_pf_sym_name_user_arity(PFSymNameArity0),
+            PFSymNameArity0 = pred_pf_name_arity(PF, SymName0, UserArity),
+            SymName = unqualified(unqualify_name(SymName0)),
+            PFSymNameArity = pred_pf_name_arity(PF, SymName, UserArity)
+        ),
+        WordsStr = pf_sym_name_user_arity_to_string(PFSymNameArity),
         break_into_words(WordsStr, RevWords0, RevWords1)
     ;
         (

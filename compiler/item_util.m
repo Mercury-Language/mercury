@@ -1616,7 +1616,8 @@ impl_pragma_desc_pieces(Pragma) = Pieces :-
         Pieces = [pragma_decl("foreign_proc"), words("declaration")]
     ;
         Pragma = impl_pragma_external_proc(External),
-        External = pragma_info_external_proc(_, _, PorF, _),
+        External = pragma_info_external_proc(PFNameArity, _),
+        PFNameArity = pred_pf_name_arity(PorF, _, _),
         (
             PorF = pf_predicate,
             Pieces = [pragma_decl("external_pred"), words("declaration")]
@@ -1644,7 +1645,7 @@ impl_pragma_desc_pieces(Pragma) = Pieces :-
         Pieces = [pragma_decl("fact_table"), words("declaration")]
     ;
         Pragma = impl_pragma_tabled(Tabled),
-        Tabled = pragma_info_tabled(EvalMethod, _, _, _),
+        Tabled = pragma_info_tabled(EvalMethod, _, _),
         (
             EvalMethod = eval_memo(_),
             Pieces = [pragma_decl("memo"), words("declaration")]
@@ -1827,36 +1828,41 @@ wrap_mm_tabling_pragma_item(X) = Item :-
 
 wrap_marker_pragma_item(X) = Item :-
     X = item_pragma_info(MarkerInfo, Context, SeqNum),
-    MarkerInfo = pragma_info_pred_marker(SymNameArity, Kind),
+    MarkerInfo = pragma_info_pred_marker(SymNameArityPF, Kind),
+    SymNameArityPF = pred_pf_name_arity(PrefOrFunc, SymName, Arity),
+    ( PrefOrFunc = pf_predicate, PFU = pfu_predicate
+    ; PrefOrFunc = pf_function, PFU = pfu_function
+    ),
+    SymNameArityMaybePF = pred_pfu_name_arity(PFU, SymName, Arity),
     (
         (
             Kind = pmpk_inline,
-            ImplPragma = impl_pragma_inline(SymNameArity)
+            ImplPragma = impl_pragma_inline(SymNameArityMaybePF)
         ;
             Kind = pmpk_noinline,
-            ImplPragma = impl_pragma_no_inline(SymNameArity)
+            ImplPragma = impl_pragma_no_inline(SymNameArityMaybePF)
         ;
             Kind = pmpk_promise_pure,
-            ImplPragma = impl_pragma_promise_pure(SymNameArity)
+            ImplPragma = impl_pragma_promise_pure(SymNameArityMaybePF)
         ;
             Kind = pmpk_promise_semipure,
-            ImplPragma = impl_pragma_promise_semipure(SymNameArity)
+            ImplPragma = impl_pragma_promise_semipure(SymNameArityMaybePF)
         ;
             Kind = pmpk_promise_eqv_clauses,
-            ImplPragma = impl_pragma_promise_eqv_clauses(SymNameArity)
+            ImplPragma = impl_pragma_promise_eqv_clauses(SymNameArityMaybePF)
         ;
             Kind = pmpk_mode_check_clauses,
-            ImplPragma = impl_pragma_mode_check_clauses(SymNameArity)
+            ImplPragma = impl_pragma_mode_check_clauses(SymNameArityMaybePF)
         ),
         Pragma = item_pragma_info(ImplPragma, Context, SeqNum),
         Item = item_impl_pragma(Pragma)
     ;
         (
             Kind = pmpk_terminates,
-            DeclPragma = decl_pragma_terminates(SymNameArity)
+            DeclPragma = decl_pragma_terminates(SymNameArityMaybePF)
         ;
             Kind = pmpk_does_not_terminate,
-            DeclPragma = decl_pragma_does_not_terminate(SymNameArity)
+            DeclPragma = decl_pragma_does_not_terminate(SymNameArityMaybePF)
         ),
         Pragma = item_pragma_info(DeclPragma, Context, SeqNum),
         Item = item_decl_pragma(Pragma)

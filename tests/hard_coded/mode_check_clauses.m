@@ -561,7 +561,7 @@ cycle500_base(500, 0).
 :- mode cycle500_pragma(in, out) is semidet.
 :- mode cycle500_pragma(out, out) is multi.
 
-:- pragma mode_check_clauses(cycle500_pragma/2).
+:- pragma mode_check_clauses(pred(cycle500_pragma/2)).
 
 cycle500_pragma(0, 1).
 cycle500_pragma(1, 2).

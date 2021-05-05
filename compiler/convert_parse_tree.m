@@ -1109,13 +1109,28 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
             !:TypeSpecs = [ItemTypeSpec | !.TypeSpecs]
         ;
             (
-                DeclPragma = decl_pragma_terminates(SymNameArity),
+                DeclPragma = decl_pragma_terminates(SymNameArityMaybePF),
                 Kind = pmpk_terminates
             ;
-                DeclPragma = decl_pragma_does_not_terminate(SymNameArity),
+                DeclPragma =
+                    decl_pragma_does_not_terminate(SymNameArityMaybePF),
                 Kind = pmpk_does_not_terminate
             ),
-            PredMarker = pragma_info_pred_marker(SymNameArity, Kind),
+            SymNameArityMaybePF =
+                pred_pfu_name_arity(PFU, SymName, Arity),
+            (
+                PFU = pfu_predicate,
+                PredOrFunc = pf_predicate
+            ;
+                PFU = pfu_function,
+                PredOrFunc = pf_function
+            ;
+                PFU = pfu_unknown,
+                % When we create .opt files, we always specify PredOrFunc.
+                unexpected($pred, "PFU = pfu_unknown")
+            ),
+            SymNameArityPF = pred_pf_name_arity(PredOrFunc, SymName, Arity),
+            PredMarker = pragma_info_pred_marker(SymNameArityPF, Kind),
             ItemPredMarker = item_pragma_info(PredMarker, Context, SeqNum),
             !:PredMarkers = [ItemPredMarker | !.PredMarkers]
         ;
@@ -1151,25 +1166,40 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
         ItemImplPragma = item_pragma_info(ImplPragma, Context, SeqNum),
         (
             (
-                ImplPragma = impl_pragma_inline(SymNameArity),
+                ImplPragma = impl_pragma_inline(SymNameArityMaybePF),
                 Kind = pmpk_inline
             ;
-                ImplPragma = impl_pragma_no_inline(SymNameArity),
+                ImplPragma = impl_pragma_no_inline(SymNameArityMaybePF),
                 Kind = pmpk_noinline
             ;
-                ImplPragma = impl_pragma_promise_eqv_clauses(SymNameArity),
+                ImplPragma =
+                    impl_pragma_promise_eqv_clauses(SymNameArityMaybePF),
                 Kind = pmpk_promise_eqv_clauses
             ;
-                ImplPragma = impl_pragma_promise_pure(SymNameArity),
+                ImplPragma = impl_pragma_promise_pure(SymNameArityMaybePF),
                 Kind = pmpk_promise_pure
             ;
-                ImplPragma = impl_pragma_promise_semipure(SymNameArity),
+                ImplPragma = impl_pragma_promise_semipure(SymNameArityMaybePF),
                 Kind = pmpk_promise_semipure
             ;
-                ImplPragma = impl_pragma_mode_check_clauses(SymNameArity),
+                ImplPragma =
+                    impl_pragma_mode_check_clauses(SymNameArityMaybePF),
                 Kind = pmpk_mode_check_clauses
             ),
-            PredMarker = pragma_info_pred_marker(SymNameArity, Kind),
+            SymNameArityMaybePF = pred_pfu_name_arity(PFU, SymName, Arity),
+            (
+                PFU = pfu_predicate,
+                PredOrFunc = pf_predicate
+            ;
+                PFU = pfu_function,
+                PredOrFunc = pf_function
+            ;
+                PFU = pfu_unknown,
+                % When we create .opt files, we always specify PredOrFunc.
+                unexpected($pred, "PFU = pfu_unknown")
+            ),
+            SymNameArityPF = pred_pf_name_arity(PredOrFunc, SymName, Arity),
+            PredMarker = pragma_info_pred_marker(SymNameArityPF, Kind),
             ItemPredMarker = item_pragma_info(PredMarker, Context, SeqNum),
             !:PredMarkers = [ItemPredMarker | !.PredMarkers]
         ;
@@ -2399,8 +2429,9 @@ classify_src_items_int([Item | Items],
                 list.length(Vars, Arity)
             ;
                 ImplPragma = impl_pragma_external_proc(ExternalProcInfo),
-                ExternalProcInfo = pragma_info_external_proc(SymName, Arity,
-                    PredOrFunc, _)
+                ExternalProcInfo = pragma_info_external_proc(PFNameArity, _),
+                PFNameArity = pred_pf_name_arity(PredOrFunc, SymName,
+                    user_arity(Arity))
             ),
             set.insert(pf_sym_name_arity(PredOrFunc, SymName, Arity),
                 !BadClausePreds)
@@ -2625,7 +2656,7 @@ classify_src_items_imp([Item | Items],
             !Contents ^ ic_fact_tables := FactTables
         ;
             ImplPragma = impl_pragma_tabled(TableInfo),
-            TableInfo = pragma_info_tabled(_, _, _, MaybeAttributes),
+            TableInfo = pragma_info_tabled(_, _, MaybeAttributes),
             !ImplicitAvailNeeds ^ ian_tabling := do_need_tabling,
             (
                 MaybeAttributes = no

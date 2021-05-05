@@ -18,7 +18,8 @@
 
 :- import_module std_util.
 
-:- type foo ---> foo(int)
+:- type foo
+    --->    foo(int)
     where equality is foo_equal.
 
 :- pred foo_equal(foo::in, foo::in) is semidet.

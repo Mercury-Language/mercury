@@ -1369,8 +1369,8 @@ replace_in_item_type_spec(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
 replace_in_pragma_info_type_spec(ModuleName, MaybeRecord,
         TypeEqvMap, _InstEqvMap, TypeSpecInfo0, TypeSpecInfo,
         !RecompInfo, !UsedModules, []) :-
-    TypeSpecInfo0 = pragma_info_type_spec(PredName, NewName, Arity,
-        PorF, Modes, Subst0, TVarSet0, ItemIds0),
+    TypeSpecInfo0 = pragma_info_type_spec(PFUMM, PredName, NewName,
+        Subst0, TVarSet0, ItemIds0),
     ( if
         ( !.RecompInfo = no
         ; PredName = qualified(ModuleName, _)
@@ -1388,8 +1388,8 @@ replace_in_pragma_info_type_spec(ModuleName, MaybeRecord,
     ;
         ExpandedItems = yes(eqv_expanded_item_set(_, ItemIds))
     ),
-    TypeSpecInfo = pragma_info_type_spec(PredName, NewName, Arity,
-        PorF, Modes, Subst, TVarSet, ItemIds).
+    TypeSpecInfo = pragma_info_type_spec(PFUMM, PredName, NewName,
+        Subst, TVarSet, ItemIds).
 
 :- pred replace_in_impl_pragma_info(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,

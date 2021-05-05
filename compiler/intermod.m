@@ -1888,7 +1888,8 @@ intermod_write_instance(OutInfo, Stream, ClassId - InstanceDefn,
 %---------------------------------------------------------------------------%
 
 :- type order_pred_info
-    --->    order_pred_info(string, arity, pred_or_func, pred_id, pred_info).
+    --->    order_pred_info(string, user_arity, pred_or_func,
+                pred_id, pred_info).
 
 :- pred generate_order_pred_infos(module_info::in, list(pred_id)::in,
     list(order_pred_info)::out) is det.
@@ -1904,10 +1905,12 @@ generate_order_pred_infos_acc(_, [], !OrderPredInfos).
 generate_order_pred_infos_acc(ModuleInfo, [PredId | PredIds],
         !OrderPredInfos) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    PredName = pred_info_name(PredInfo),
-    PredArity = pred_info_orig_arity(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
+    PredName = pred_info_name(PredInfo),
+    PredFormArity = pred_info_orig_arity(PredInfo),
+    user_arity_pred_form_arity(PredOrFunc, UserArity,
+        pred_form_arity(PredFormArity)),
+    OrderPredInfo = order_pred_info(PredName, UserArity, PredOrFunc,
         PredId, PredInfo),
     !:OrderPredInfos = [OrderPredInfo | !.OrderPredInfos],
     generate_order_pred_infos_acc(ModuleInfo, PredIds,
@@ -2046,24 +2049,26 @@ intermod_write_pred_mode(Stream, PredOrFunc, PredSymName, ProcInfo, !IO) :-
 intermod_write_pred_marker_pragmas(Stream, PredInfo,
         !PredMarkerPragmasCord, !IO) :-
     ModuleName = pred_info_module(PredInfo),
-    PredName = pred_info_name(PredInfo),
-    PredArity = pred_info_orig_arity(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    PredName = pred_info_name(PredInfo),
     PredSymName = qualified(ModuleName, PredName),
+    PredFormArity = pred_info_orig_arity(PredInfo),
+    user_arity_pred_form_arity(PredOrFunc, UserArity,
+        pred_form_arity(PredFormArity)),
     pred_info_get_markers(PredInfo, Markers),
     markers_to_marker_list(Markers, MarkerList),
     intermod_write_pred_marker_pragmas_loop(Stream, PredOrFunc,
-        PredSymName, PredArity, MarkerList, !PredMarkerPragmasCord, !IO).
+        PredSymName, UserArity, MarkerList, !PredMarkerPragmasCord, !IO).
 
 :- pred intermod_write_pred_marker_pragmas_loop(io.text_output_stream::in,
-    pred_or_func::in, sym_name::in, int::in, list(pred_marker)::in,
+    pred_or_func::in, sym_name::in, user_arity::in, list(pred_marker)::in,
     cord(item_pred_marker)::in, cord(item_pred_marker)::out,
     io::di, io::uo) is det.
 
 intermod_write_pred_marker_pragmas_loop(_, _, _, _,
         [], !PredMarkerPragmasCord, !IO).
 intermod_write_pred_marker_pragmas_loop(Stream, PredOrFunc, PredSymName,
-        PredArity, [Marker | Markers], !PredMarkerPragmasCord, !IO) :-
+        UserArity, [Marker | Markers], !PredMarkerPragmasCord, !IO) :-
     (
         % We do not output these markers.
         ( Marker = marker_stub
@@ -2122,18 +2127,17 @@ intermod_write_pred_marker_pragmas_loop(Stream, PredOrFunc, PredSymName,
             Marker = marker_mode_check_clauses,
             PragmaKind = pmpk_mode_check_clauses
         ),
-        adjust_func_arity(PredOrFunc, Arity, PredArity),
-        PredNameArity = pred_name_arity(PredSymName, Arity),
-        PredMarkerInfo = pragma_info_pred_marker(PredNameArity, PragmaKind),
+        PredSpec = pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
+        PredMarkerInfo = pragma_info_pred_marker(PredSpec, PragmaKind),
         PragmaInfo = item_pragma_info(PredMarkerInfo, term.context_init, -1),
         cord.snoc(PragmaInfo, !PredMarkerPragmasCord),
 
         marker_name(Marker, MarkerName),
-        mercury_output_pragma_decl(Stream, PredSymName, PredArity, PredOrFunc,
-            MarkerName, no, !IO)
+        mercury_output_pragma_decl_pred_pf_name_arity(Stream, MarkerName,
+            PredSpec, "", !IO)
     ),
     intermod_write_pred_marker_pragmas_loop(Stream, PredOrFunc, PredSymName,
-        PredArity, Markers, !PredMarkerPragmasCord, !IO).
+        UserArity, Markers, !PredMarkerPragmasCord, !IO).
 
 :- pred intermod_write_pred_type_spec_pragmas(io.text_output_stream::in,
     module_info::in, pred_id::in,
@@ -2646,7 +2650,7 @@ maybe_write_pragma_termination_for_proc(Stream, OrderPredInfo,
         proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination),
         maybe_write_nl(Stream, !First, !IO),
         PredNameModesPF =
-            pred_name_modes_pf(PredSymName, ArgModes, PredOrFunc),
+            proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
         MaybeParseTreeArgSize =
             maybe_arg_size_info_to_parse_tree(MaybeArgSize),
         MaybeParseTreeTermination =
@@ -2758,7 +2762,7 @@ maybe_write_pragma_termination2_for_proc(Stream, OrderPredInfo,
         % NOTE: If this predicate is changed, then parse_pragma.m must also
         % be changed, so that it can parse the resulting pragmas.
         PredNameModesPF =
-            pred_name_modes_pf(PredSymName, ArgModes, PredOrFunc),
+            proc_pf_name_modes(PredOrFunc, PredSymName, ArgModes),
         (
             MaybeTermination = no,
             MaybePragmaTermination = no
@@ -2919,7 +2923,7 @@ write_pragma_exceptions_for_pred(Stream, ModuleInfo, OrderPredInfo,
 
 maybe_write_pragma_exceptions_for_proc(Stream, ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !ExceptionsCord, !First, !IO) :-
-    OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
+    OrderPredInfo = order_pred_info(PredName, UserArity, PredOrFunc,
         PredId, PredInfo),
     ( if
         proc_info_is_valid_mode(ProcInfo),
@@ -2943,8 +2947,8 @@ maybe_write_pragma_exceptions_for_proc(Stream, ModuleInfo, OrderPredInfo,
         ModuleName = pred_info_module(PredInfo),
         PredSymName = qualified(ModuleName, PredName),
         proc_id_to_int(ProcId, ModeNum),
-        PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
-            PredOrFunc, ModeNum),
+        PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
+            PredSymName, UserArity, ModeNum),
         ProcExceptionInfo = proc_exception_info(Status, _),
         ExceptionInfo = pragma_info_exceptions(PredNameArityPFMn, Status),
         ItemException = item_pragma_info(ExceptionInfo, term.context_init, -1),
@@ -2980,7 +2984,7 @@ write_pragma_trailing_info_for_pred(Stream, ModuleInfo, OrderPredInfo,
 
 maybe_write_pragma_trailing_info_for_proc(Stream, ModuleInfo, OrderPredInfo,
         ProcId, ProcInfo, !TrailingInfosCord, !First, !IO) :-
-    OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
+    OrderPredInfo = order_pred_info(PredName, UserArity, PredOrFunc,
         PredId, PredInfo),
     proc_info_get_trailing_info(ProcInfo, MaybeProcTrailingInfo),
     ( if
@@ -2993,8 +2997,8 @@ maybe_write_pragma_trailing_info_for_proc(Stream, ModuleInfo, OrderPredInfo,
         ModuleName = pred_info_module(PredInfo),
         PredSymName = qualified(ModuleName, PredName),
         proc_id_to_int(ProcId, ModeNum),
-        PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
-            PredOrFunc, ModeNum),
+        PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
+            PredSymName, UserArity, ModeNum),
         ProcTrailingInfo = proc_trailing_info(Status, _),
         TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn, Status),
         ItemTrailing = item_pragma_info(TrailingInfo, term.context_init, -1),
@@ -3043,8 +3047,8 @@ maybe_write_pragma_mm_tabling_info_for_proc(Stream, ModuleInfo, OrderPredInfo,
         ModuleName = pred_info_module(PredInfo),
         PredSymName = qualified(ModuleName, PredName),
         proc_id_to_int(ProcId, ModeNum),
-        PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
-            PredOrFunc, ModeNum),
+        PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc,
+            PredSymName, PredArity, ModeNum),
         ProcMMTablingInfo = proc_mm_tabling_info(Status, _),
         MMTablingInfo = pragma_info_mm_tabling_info(PredNameArityPFMn,
             Status),
@@ -3095,8 +3099,8 @@ maybe_write_pragma_structure_sharing_for_proc(Stream, ModuleInfo,
         ModuleName = pred_info_module(PredInfo),
         PredSymName = qualified(ModuleName, PredName),
         proc_info_declared_argmodes(ProcInfo, ArgModes),
-        PredNameModesPF = pred_name_modes_pf(PredSymName, ArgModes,
-            PredOrFunc),
+        PredNameModesPF = proc_pf_name_modes(PredOrFunc,
+            PredSymName, ArgModes),
         proc_info_get_headvars(ProcInfo, HeadVars),
         proc_info_get_vartypes(ProcInfo, VarTypes),
         lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
@@ -3150,8 +3154,8 @@ maybe_write_pragma_structure_reuse_for_proc(Stream, ModuleInfo, OrderPredInfo,
         ModuleName = pred_info_module(PredInfo),
         PredSymName = qualified(ModuleName, PredName),
         proc_info_declared_argmodes(ProcInfo, ArgModes),
-        PredNameModesPF = pred_name_modes_pf(PredSymName, ArgModes,
-            PredOrFunc),
+        PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredSymName,
+            ArgModes),
         proc_info_get_headvars(ProcInfo, HeadVars),
         proc_info_get_vartypes(ProcInfo, VarTypes),
         lookup_var_types(VarTypes, HeadVars, HeadVarTypes),

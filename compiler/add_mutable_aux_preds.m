@@ -1589,7 +1589,7 @@ add_initialise_for_mutable(ModuleName, MutableName, SymName, Arity,
         MutableName, mutable_pred_init)),
     Origin = item_origin_compiler(Attrs),
     module_info_new_user_init_pred(SymName, Arity, CName, !ModuleInfo),
-    PredNameModesPF = pred_name_modes_pf(SymName, [], pf_predicate),
+    PredNameModesPF = proc_pf_name_modes(pf_predicate, SymName, []),
     FPEInfo = pragma_info_foreign_proc_export(Origin, Lang,
         PredNameModesPF, CName),
     add_pragma_foreign_proc_export(FPEInfo, Context, !ModuleInfo, !Specs).

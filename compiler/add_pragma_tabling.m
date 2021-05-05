@@ -65,43 +65,69 @@
 
 module_add_pragma_tabled(TabledInfo, Context, Status,
         !ModuleInfo, !QualInfo, !Specs) :-
-    TabledInfo = pragma_info_tabled(EvalMethod, PredNameArityMPF,
-        MaybeModes, MaybeAttributes),
-    PredNameArityMPF = pred_name_arity_mpf(PredName, Arity, MaybePredOrFunc),
+    TabledInfo = pragma_info_tabled(EvalMethod, PredOrProcSpec,
+        MaybeAttributes),
+    PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, PredName),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     EvalMethodStr = eval_method_to_string(EvalMethod),
     (
-        MaybePredOrFunc = yes(PredOrFunc0),
-        PredOrFunc = PredOrFunc0,
-
-        % Lookup the pred declaration in the predicate table.
+        (
+            PFUMM = pfumm_predicate(ModesOrArity),
+            PredOrFunc = pf_predicate
+        ;
+            PFUMM = pfumm_function(ModesOrArity),
+            PredOrFunc = pf_function
+        ),
+        (
+            ModesOrArity = moa_modes(Modes),
+            % The arity needed by predicate_table_lookup_pf_sym_arity
+            % includes the return type for functions.
+            list.length(Modes, PredFormArityInt),
+            user_arity_pred_form_arity(PredOrFunc, UserArity,
+                pred_form_arity(PredFormArityInt))
+        ;
+            ModesOrArity = moa_arity(UserArity),
+            user_arity_pred_form_arity(PredOrFunc, UserArity,
+                pred_form_arity(PredFormArityInt))
+        ),
+        UserArity = user_arity(UserArityInt),
+        % Lookup the pred or func declaration in the predicate table.
         % If it is not there, print an error message and insert
-        % a dummy declaration for the predicate.
+        % a dummy declaration for it.
         predicate_table_lookup_pf_sym_arity(PredicateTable0,
-            is_fully_qualified, PredOrFunc, PredName, Arity, PredIds0),
+            is_fully_qualified, PredOrFunc, PredName, PredFormArityInt,
+            PredIds0),
         (
             PredIds0 = [],
             module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [pragma_decl(EvalMethodStr), words("declaration")],
             preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-                PredName, Arity, PredOrFunc, Status, is_not_a_class_method,
-                Context, origin_user(PredName), DescPieces, PredId, !Specs),
+                PredName, PredFormArityInt, PredOrFunc, Status,
+                is_not_a_class_method, Context, origin_user(PredName),
+                DescPieces, PredId, !Specs),
             PredIds = [PredId]
         ;
             PredIds0 = [_ | _],
             PredIds = PredIds0
         )
     ;
-        MaybePredOrFunc = no,
+        PFUMM = pfumm_unknown(UserArity),
+        UserArity = user_arity(UserArityInt),
         predicate_table_lookup_sym_arity(PredicateTable0,
-            is_fully_qualified, PredName, Arity, PredIds0),
+            is_fully_qualified, PredName, UserArityInt, PredIds0),
         (
             PredIds0 = [],
             module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [pragma_decl(EvalMethodStr), words("declaration")],
+            % XXX The pragma does not say whether the user intends to table
+            % a predicate or a function, so adding a predicate here is
+            % only a guess.
+            user_arity_pred_form_arity(pf_predicate, UserArity,
+                pred_form_arity(PredFormArityInt)),
             preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-                PredName, Arity, pf_predicate, Status, is_not_a_class_method,
-                Context, origin_user(PredName), DescPieces, PredId, !Specs),
+                PredName, PredFormArityInt, pf_predicate, Status,
+                is_not_a_class_method, Context, origin_user(PredName),
+                DescPieces, PredId, !Specs),
             PredIds = [PredId]
         ;
             PredIds0 = [_ | _],
@@ -120,7 +146,8 @@ module_add_pragma_tabled(TabledInfo, Context, Status,
                 Statistics = table_gather_statistics,
                 StatsPieces = [words("Error: cannot request statistics"),
                     words("for the ambiguous name"),
-                    qual_sym_name_arity(sym_name_arity(PredName, Arity)),
+                    qual_sym_name_arity(
+                        sym_name_arity(PredName, UserArityInt)),
                     suffix(","),
                     words("since the compiler-generated statistics predicate"),
                     words("would have an ambiguous name too."), nl],
@@ -134,7 +161,8 @@ module_add_pragma_tabled(TabledInfo, Context, Status,
                 AllowReset = table_allow_reset,
                 ResetPieces = [words("Error: cannot request allow_reset"),
                     words("for the ambiguous name"),
-                    qual_sym_name_arity(sym_name_arity(PredName, Arity)),
+                    qual_sym_name_arity(
+                        sym_name_arity(PredName, UserArityInt)),
                     suffix(","),
                     words("since the compiler-generated reset predicate"),
                     words("would have an ambiguous name too."), nl],
@@ -149,20 +177,20 @@ module_add_pragma_tabled(TabledInfo, Context, Status,
         MaybeAttributes = no
     ),
     list.foldl3(
-        module_add_pragma_tabled_for_pred(EvalMethod, PredName, Arity,
-            MaybePredOrFunc, MaybeModes, MaybeAttributes, Context, Status),
+        module_add_pragma_tabled_for_pred(EvalMethod, PFUMM, PredName,
+            MaybeAttributes, Context, Status),
         PredIds, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred module_add_pragma_tabled_for_pred(eval_method::in,
-    sym_name::in, int::in, maybe(pred_or_func)::in, maybe(list(mer_mode))::in,
+    pred_func_or_unknown_maybe_modes::in, sym_name::in,
     maybe(table_attributes)::in, prog_context::in, pred_status::in,
     pred_id::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
-        MaybePredOrFunc, MaybeModes, MaybeAttributes, Context, PredStatus,
-        PredId, !ModuleInfo, !QualInfo, !Specs) :-
+module_add_pragma_tabled_for_pred(EvalMethod0, PFUMM, PredName,
+        MaybeAttributes, Context, PredStatus, PredId,
+        !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     ( if EvalMethod0 = eval_minimal(_) then
         globals.lookup_bool_option(Globals, use_minimal_model_own_stacks,
@@ -181,14 +209,25 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
     predicate_table_get_preds(PredicateTable, Preds),
     map.lookup(Preds, PredId, PredInfo0),
+    pfumm_to_maybe_pf_arity_maybe_modes(PFUMM, MaybePredOrFunc, UserArity,
+        MaybeModes),
     (
-        MaybePredOrFunc = yes(PredOrFunc0),
-        PredOrFunc = PredOrFunc0
+        MaybePredOrFunc = yes(PredOrFunc)
     ;
         MaybePredOrFunc = no,
         PredOrFunc = pred_info_is_pred_or_func(PredInfo0)
     ),
-    adjust_func_arity(PredOrFunc, Arity0, Arity),
+
+    % The places that later use PFSymNameArity all assume that Arity
+    % includes the return value for functions, and then make the appropriate
+    % correction for this, i.e. they take PredFormArityInt, even though
+    % they want UserArity. It would be simpler to just pass UserArity to them,
+    % but would require more extensive changes, including splitting
+    % pf_sym_name_arity into two types, one for user_arity and one for
+    % pred_form_arity.
+    user_arity_pred_form_arity(PredOrFunc, UserArity,
+        pred_form_arity(PredFormArityInt)),
+    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredName, PredFormArityInt),
 
     EvalMethodStr = eval_method_to_string(EvalMethod),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -196,7 +235,7 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
         VeryVerbose = yes,
         trace [io(!IO)] (
             IdStr = pf_sym_name_orig_arity_to_string(PredOrFunc,
-                PredName, Arity),
+                PredName, PredFormArityInt),
             io.format("%% Processing `:- pragma %s' for %s...\n",
                 [s(EvalMethodStr), s(IdStr)], !IO)
         )
@@ -207,7 +246,6 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
     % Issue a warning if this predicate/function has a pragma inline
     % declaration. Tabled procedures cannot be inlined.
     pred_info_get_markers(PredInfo0, Markers),
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredName, Arity),
     ( if
         check_marker(Markers, marker_user_marked_inline),
         globals.lookup_bool_option(Globals, warn_table_with_inline,

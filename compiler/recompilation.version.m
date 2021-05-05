@@ -765,20 +765,22 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
 gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId) :-
     (
         DeclPragma = decl_pragma_type_spec(TypeSpecInfo),
-        TypeSpecInfo = pragma_info_type_spec(Name, _, Arity, MaybePredOrFunc,
-            _, _, _, _),
+        TypeSpecInfo = pragma_info_type_spec(PFUMM, Name, _, _, _, _),
+        pfumm_to_maybe_pf_arity_maybe_modes(PFUMM, MaybePredOrFunc,
+            user_arity(Arity), _MaybeModes),
         MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
     ;
         DeclPragma = decl_pragma_obsolete_proc(ObsoleteProcInfo),
         ObsoleteProcInfo = pragma_info_obsolete_proc(PredNameModesPF, _),
-        PredNameModesPF = pred_name_modes_pf(Name, Modes, PredOrFunc),
+        PredNameModesPF = proc_pf_name_modes(PredOrFunc, Name, Modes),
         adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
         MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ;
         DeclPragma = decl_pragma_obsolete_pred(ObsoletePredInfo),
         ObsoletePredInfo = pragma_info_obsolete_pred(PredNameArity, _),
-        PredNameArity = pred_name_arity(Name, Arity),
-        MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
+        PredNameArity = pred_pfu_name_arity(PFU, Name, user_arity(Arity)),
+        MaybePredOrFunc = pfu_to_maybe_pred_or_func(PFU),
+        MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
     ;
         DeclPragma = decl_pragma_oisu(_),
         % XXX Unlike all the other decl_pragmas, the oisu (order-independent
@@ -793,8 +795,9 @@ gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId) :-
         ; DeclPragma = decl_pragma_does_not_terminate(PredNameArity)
         ; DeclPragma = decl_pragma_check_termination(PredNameArity)
         ),
-        PredNameArity = pred_name_arity(Name, Arity),
-        MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
+        PredNameArity = pred_pfu_name_arity(PFU, Name, user_arity(Arity)),
+        MaybePredOrFunc = pfu_to_maybe_pred_or_func(PFU),
+        MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
     ;
         (
             DeclPragma = decl_pragma_termination_info(TermInfo),
@@ -811,7 +814,7 @@ gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId) :-
             ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
                 _, _, _, _, _)
         ),
-        PredNameModesPF = pred_name_modes_pf(Name, Modes, PredOrFunc),
+        PredNameModesPF = proc_pf_name_modes(PredOrFunc, Name, Modes),
         adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
         MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ).
@@ -837,17 +840,21 @@ gather_impl_pragma_for_what_pf_id(ImplPragma, MaybePredOrFuncId) :-
         ; ImplPragma = impl_pragma_promise_eqv_clauses(PredNameArity)
         ; ImplPragma = impl_pragma_mode_check_clauses(PredNameArity)
         ),
-        PredNameArity = pred_name_arity(Name, Arity),
-        MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
+        PredNameArity = pred_pfu_name_arity(PFU, Name, user_arity(Arity)),
+        MaybePredOrFunc = pfu_to_maybe_pred_or_func(PFU),
+        MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
     ;
         ImplPragma = impl_pragma_fact_table(FTInfo),
         FTInfo = pragma_info_fact_table(PredNameArity, _),
-        PredNameArity = pred_name_arity(Name, Arity),
-        MaybePredOrFuncId = yes(no - sym_name_arity(Name, Arity))
+        PredNameArity = pred_pfu_name_arity(PFU, Name, user_arity(Arity)),
+        MaybePredOrFunc = pfu_to_maybe_pred_or_func(PFU),
+        MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
     ;
         ImplPragma = impl_pragma_tabled(TabledInfo),
-        TabledInfo = pragma_info_tabled(_, PredNameArityMPF, _, _),
-        PredNameArityMPF = pred_name_arity_mpf(Name, Arity, MaybePredOrFunc),
+        TabledInfo = pragma_info_tabled(_, PredNameArityMPFMaybeModes, _),
+        PredNameArityMPFMaybeModes = pred_or_proc_pfumm_name(PFUMM, Name),
+        pfumm_to_maybe_pf_arity_maybe_modes(PFUMM, MaybePredOrFunc,
+            user_arity(Arity), _MaybeModes),
         MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
     ;
         ImplPragma = impl_pragma_foreign_proc(FPInfo),
@@ -856,12 +863,13 @@ gather_impl_pragma_for_what_pf_id(ImplPragma, MaybePredOrFuncId) :-
         MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ;
         ImplPragma = impl_pragma_external_proc(ExternalInfo),
-        ExternalInfo = pragma_info_external_proc(Name, Arity, PredOrFunc, _),
+        ExternalInfo = pragma_info_external_proc(PFNameArity, _),
+        PFNameArity = pred_pf_name_arity(PredOrFunc, Name, user_arity(Arity)),
         MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ;
         ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
         FPEInfo = pragma_info_foreign_proc_export(_, _, PredNameModesPF, _),
-        PredNameModesPF = pred_name_modes_pf(Name, Modes, PredOrFunc),
+        PredNameModesPF = proc_pf_name_modes(PredOrFunc, Name, Modes),
         adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
         MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))
     ).
@@ -883,7 +891,8 @@ gather_generated_pragma_for_what_pf_id(GenPragma, MaybePredOrFuncId) :-
         GenPragma = gen_pragma_mm_tabling_info(MMTablingOnfo),
         MMTablingOnfo = pragma_info_mm_tabling_info(PredNameArityPFMn, _)
     ),
-    PredNameArityPFMn = pred_name_arity_pf_mn(Name, Arity, PredOrFunc, _),
+    PredNameArityPFMn = proc_pf_name_arity_mn(PredOrFunc, Name,
+        user_arity(Arity), _),
     MaybePredOrFuncId = yes(PredOrFunc) - sym_name_arity(Name, Arity).
 
 %-----------------------------------------------------------------------------%
@@ -1138,10 +1147,10 @@ is_item_changed(Item1, Item2, Changed) :-
             ( if
                 DeclPragma1 = decl_pragma_type_spec(TypeSpecInfo1),
                 DeclPragma2 = decl_pragma_type_spec(TypeSpecInfo2),
-                TypeSpecInfo1 = pragma_info_type_spec(Name, SpecName, Arity,
-                    MaybePredOrFunc, MaybeModes, TypeSubst1, TVarSet1, _),
-                TypeSpecInfo2 = pragma_info_type_spec(Name, SpecName, Arity,
-                    MaybePredOrFunc, MaybeModes, TypeSubst2, TVarSet2, _)
+                TypeSpecInfo1 = pragma_info_type_spec(PFUMM, Name, SpecName,
+                    TypeSubst1, TVarSet1, _),
+                TypeSpecInfo2 = pragma_info_type_spec(PFUMM, Name, SpecName,
+                    TypeSubst2, TVarSet2, _)
             then
                 assoc_list.keys_and_values(TypeSubst1, TVars1, Types1),
                 assoc_list.keys_and_values(TypeSubst2, TVars2, Types2),

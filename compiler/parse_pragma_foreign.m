@@ -1141,7 +1141,7 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         PredAndModesContextPieces =
             cord.from_list([words("In the second argument of"),
             pragma_decl("foreign_export"), words("declaration:"), nl]),
-        parse_pred_or_func_and_arg_modes(no, VarSet, PredAndModesContextPieces,
+        parse_pred_or_func_and_arg_modes(no, PredAndModesContextPieces, VarSet,
             PredAndModesTerm, MaybePredAndModes),
         ForeignFunctionContextPieces =
             cord.from_list([words("In the third argument of"),
@@ -1153,7 +1153,7 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             MaybePredAndModes = ok3(PredName, PredOrFunc, Modes),
             MaybeFunction = ok1(Function)
         then
-            PredNameModesPF = pred_name_modes_pf(PredName, Modes, PredOrFunc),
+            PredNameModesPF = proc_pf_name_modes(PredOrFunc, PredName, Modes),
             FPEInfo = pragma_info_foreign_proc_export(item_origin_user,
                 ForeignLang, PredNameModesPF, Function),
             Pragma = impl_pragma_foreign_proc_export(FPEInfo),

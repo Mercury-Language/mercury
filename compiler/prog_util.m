@@ -48,9 +48,13 @@
     % including the return value, which is one more than the arity
     % of the function reported in error messages.
     %
-:- pred adjust_func_arity(pred_or_func, int, int).
+:- pred adjust_func_arity(pred_or_func, arity, arity).
 :- mode adjust_func_arity(in, in, out) is det.
 :- mode adjust_func_arity(in, out, in) is det.
+
+:- pred user_arity_pred_form_arity(pred_or_func, user_arity, pred_form_arity).
+:- mode user_arity_pred_form_arity(in, in, out) is det.
+:- mode user_arity_pred_form_arity(in, out, in) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -248,6 +252,9 @@ construct_qualified_term_with_context(SymName, ArgTerms, Context, Term) :-
 
 adjust_func_arity(pf_predicate, Arity, Arity).
 adjust_func_arity(pf_function, Arity - 1, Arity).
+
+user_arity_pred_form_arity(pf_predicate, user_arity(A), pred_form_arity(A)).
+user_arity_pred_form_arity(pf_function, user_arity(A - 1), pred_form_arity(A)).
 
 %-----------------------------------------------------------------------------%
 
