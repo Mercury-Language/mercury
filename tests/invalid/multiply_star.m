@@ -2,6 +2,8 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
+% The .exp file file is for compiling without intermodule optimization.
+% The .err_exp2 file is for compiling with intermodule optimization.
 
 :- module multiply_star.
 

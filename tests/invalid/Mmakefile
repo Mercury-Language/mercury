@@ -608,7 +608,8 @@ REDIRECT_OPT_ERROR_MODULES = \
 	bug521 \
 	bug521_sub \
 	int_impl_imports \
-	test_feature_set
+	test_feature_set \
+	type_error_use_module
 endif
 
 define OVERRIDE_OPT_RULE
