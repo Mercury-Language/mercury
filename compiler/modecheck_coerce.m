@@ -582,7 +582,7 @@ modecheck_coerce_from_ground_make_inst(ModuleInfo, TVarSet, LiveX, UniqX,
         MaybeInstY = yes(InstY)
     else if check_is_subtype(ModuleInfo, TVarSet, TypeX, TypeY) then
         set.init(SeenTypes0),
-        modecheck_coerce_from_ground_make_inst_2(ModuleInfo, TVarSet,
+        modecheck_coerce_from_ground_make_inst_for_subtype(ModuleInfo, TVarSet,
             LiveX, UniqX, SeenTypes0, TypeX, TypeY, InstY),
         MaybeInstY = yes(InstY)
     else
@@ -591,12 +591,12 @@ modecheck_coerce_from_ground_make_inst(ModuleInfo, TVarSet, LiveX, UniqX,
 
     % Precondition: TypeX =< TypeY.
     %
-:- pred modecheck_coerce_from_ground_make_inst_2(module_info::in, tvarset::in,
-    is_live::in, uniqueness::in, set(mer_type)::in, mer_type::in, mer_type::in,
-    mer_inst::out) is det.
+:- pred modecheck_coerce_from_ground_make_inst_for_subtype(module_info::in,
+    tvarset::in, is_live::in, uniqueness::in, set(mer_type)::in,
+    mer_type::in, mer_type::in, mer_inst::out) is det.
 
-modecheck_coerce_from_ground_make_inst_2(ModuleInfo, TVarSet, LiveX, UniqX,
-        SeenTypes0, TypeX, TypeY, InstY) :-
+modecheck_coerce_from_ground_make_inst_for_subtype(ModuleInfo, TVarSet,
+        LiveX, UniqX, SeenTypes0, TypeX, TypeY, InstY) :-
     % We can preserve more information by creating a `bound' inst from the
     % constructors in TypeX. This is only worth doing if the types differ,
     % and if it would not lead to an infinite loop.
@@ -666,8 +666,10 @@ modecheck_coerce_from_ground_make_bound_functor(ModuleInfo, TVarSet,
     ),
 
     % Make the argument insts for the bound functor.
+    % Since TypeX =< TypeY, it must be that case each type in ArgTypesX is a
+    % subtype of the corresponding type in ArgTypesY.
     list.map_corresponding(
-        modecheck_coerce_from_ground_make_inst_2(ModuleInfo, TVarSet,
+        modecheck_coerce_from_ground_make_inst_for_subtype(ModuleInfo, TVarSet,
             LiveX, UniqX, SeenTypes),
         ArgTypesX, ArgTypesY, ArgInstsY),
 
