@@ -435,8 +435,6 @@ check_fact_term(ModuleInfo, PredInfo, PredName, PredFormArity,
         ProcStreams, MaybeOutput, FactNum, Result, !Errors, !IO) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     ( if Functor = term.atom(FunctorAtom) then
-        % XXX ARITY The conversion from UserArity to PredFromArity
-        % should be done once per pred_info, not once per term read in.
         ( if
             (
                 PredOrFunc = pf_predicate,
