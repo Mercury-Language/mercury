@@ -1,19 +1,7 @@
 coerce_instvar.m:043: In clause for `bad(in((I =< ground)), out((I =<
 coerce_instvar.m:043:   ground)))':
 coerce_instvar.m:043:   in coerce:
-coerce_instvar.m:043:   mode error: the result would have instantiatedness
-coerce_instvar.m:043:     ( I =< bound(
-coerce_instvar.m:043:       apple
-coerce_instvar.m:043:     ;
-coerce_instvar.m:043:       lemon(
-coerce_instvar.m:043:         bound(
-coerce_instvar.m:043:           bar
-coerce_instvar.m:043:         ;
-coerce_instvar.m:043:           foo
-coerce_instvar.m:043:         )
-coerce_instvar.m:043:       )
-coerce_instvar.m:043:     ;
-coerce_instvar.m:043:       orange
-coerce_instvar.m:043:     ) ),
-coerce_instvar.m:043:   which is not valid for the type
+coerce_instvar.m:043:   mode error: the input term has instantiatedness
+coerce_instvar.m:043:   `( I =< ground )',
+coerce_instvar.m:043:   and cannot be converted to the type
 coerce_instvar.m:043:   `coerce_instvar.citrus'.

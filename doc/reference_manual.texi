@@ -7147,7 +7147,7 @@ if @var{Ti} is a subtype of @var{Si},
 according to visible subtype definitions
 @end itemize
 
-Otherwise, the coerce expression is not type-correct.
+Otherwise, the @code{coerce} expression is not type-correct.
 @c NOTE: we deliberately disallow coercion between arbitrary phantom types.
 
 Furthermore,
@@ -7176,63 +7176,87 @@ other than a recursive type of the exact form @samp{base(B1, ..., Bn)}
 @heading Mode checking
 
 Type conversion expressions must also be mode-correct.
-For an expression where:
+Intuitively, conversion from a subtype to its supertype is safe,
+but a conversion from a supertype to one of its subtypes is safe only if
+the inst approximating the input term
+indicates that the result would also be valid in the subtype.
 
-@itemize @bullet
+Mode checking proceeds by simultaneously traversing
+the inst tree of the input term,
+the type tree of the input term,
+and the type tree of the result term,
+and producing the inst tree of the result term
+if the conversion is valid.
+Let
+@itemize
 @item
-the input has type @samp{s},
-initial inst @var{InitialX},
-and final inst @var{FinalX}
-
+@var{InstX} be the current node in the input inst tree,
 @item
-the result has type @samp{t},
-initial inst @var{InitialY},
-and final inst @var{FinalY}
+@var{InstY} be the current node in the result inst tree,
+@item
+@var{TypeX} be the current node in the input type tree,
+@item
+@var{TypeY} be the current node in the result type tree,
+@item
+@var{TypeCtorX} be the principal type constructor of @var{TypeX},
+@item
+@var{TypeCtorY} be the principal type constructor of @var{TypeY}.
 @end itemize
 
-@noindent
-the type conversion expression is mode-correct iff:
+In the following, @var{X} < @var{Y} means
+@var{X} is a subtype of @var{Y}
+by visible subtype definitions.
 
-@itemize @bullet
+For each node @var{InstX}:
+@itemize
 @item
-@var{InitialX} is a ground inst
+If @var{InstX} is a recursive node in the inst tree
+(i.e. it is its own ancestor),
+then we require @var{TypeX} =< @var{TypeY}.
+Let @var{InstY} = @var{InstX}.
 
 @item
-@var{InitialY} is free
+Otherwise, if @var{InstX} is a @code{bound} node,
+then each of the function symbols listed in the @code{bound} inst
+must name a constructor in @var{TypeCtorY}.
+Let @var{InstY} be a @code{bound} inst containing the same
+function symbols;
+the insts for the arguments of each function symbol
+are then checked and constructed recursively.
 
 @item
-@var{FinalX} is @var{InitialX}
+Otherwise, if @var{InstX} is a @code{ground} node
+and @var{TypeX} = @var{TypeY},
+then @var{InstY} = @var{InstX}.
+@c This includes higher-order types.
 
 @item
-@var{FinalY} is
-the abstract unification of
-@var{InitialX} and the
-@code{bound} instantiatedness tree derived from @samp{t},
-and @var{FinalY} does not approximate any term
-that is invalid in @samp{t}.
+Otherwise, if @var{InstX} is a @code{ground} node
+and @var{TypeX} < @var{TypeY}, then
+let @var{InstY} be the @code{bound} node constructed
+using the process below.
+
+@item
+Otherwise,
+the @code{coerce} expression is not mode-correct.
 @end itemize
 
-The @code{bound} instantiatedness tree for @samp{t}
-is derived by producing a @code{bound} node
-containing each possible constructor of @samp{t},
-where the arguments of each bound functor
-are also @code{bound} instantiatedness trees.
-Where a constructor argument type is not a discriminated union or tuple type,
-or if the argument is a recursive node in the type tree,
-the inst of the argument is replaced with @code{ground}.
+To construct a @samp{bound} node @var{InstY}
+from a @samp{ground} node @var{InstX}:
 
-The abstract unification of two instantiation states
-is the abstract equivalent of the unification on terms.
-It is defined in
-@cite{Precise and Expressive Mode Systems for Typed Logic Programming
-Languages} by David Overton. @xref{[6]}.
+@itemize
+@item
+If @var{TypeX} = @var{TypeY}
+or if @var{TypeX} is a recursive node in the type tree
+(i.e. it is its own ancestor),
+then let @var{InstY} be @code{ground}.
 
-Intuitively,
-coercing a ground term from a subtype to a supertype is safe,
-but coercing a term from a supertype to a subtype
-is safe only if
-the inst of the term being coerced
-indicates that the term would also be valid in the subtype.
+@item
+Otherwise, let @var{InstY} be a @code{bound} inst
+containing all of the constructors in @var{TypeCtorX};
+the insts for the arguments of each function symbol
+are constructed recursively.
+@end itemize
 
 @heading Examples
 
@@ -12440,8 +12464,6 @@ typedef struct @{
 * [4]::         Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
                 for Well-Founded Evaluation of Normal Logic Programs}.
 * [5]::         Demoen and Sagonas, @cite{CAT: the copying approach to tabling}.
-* [6]::         Overton, @cite{Precise and Expressive Mode Systems for
-                Typed Logic Programming Languages}.
 @end menu
 
 @node [1]
@@ -12481,11 +12503,4 @@ In C. Palamidessi, H. Glaser and K. Meinke, editors, @cite{Principles of
 Declarative Programming, 10th International Symposium, PLILP'98},
 Lecture Notes in Computer Science, Springer, 1998.
 Available form @uref{http://user.it.uu.se/~kostis/Papers/cat.ps.gz}.
-
-@node [6]
-@unnumberedsec [6]
-David Overton, @cite{Precise and Expressive Mode Systems for
-Typed Logic Programming Languages},
-PhD thesis, The University of Melbourne, 2003. Available from
-@uref{http://mercurylang.org/documentation/papers/dmo-thesis.ps.gz}
 @bye

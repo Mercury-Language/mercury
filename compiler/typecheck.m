@@ -3639,27 +3639,6 @@ replace_principal_type_ctor_with_base(TypeTable, TVarSet, Type0, Type) :-
         Type = Type0
     ).
 
-:- pred get_supertype(type_table::in, tvarset::in, type_ctor::in,
-    list(mer_type)::in, mer_type::out) is semidet.
-
-get_supertype(TypeTable, TVarSet, TypeCtor, Args, SuperType) :-
-    hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-    TypeBody = hlds_du_type(_, yes(SuperType0), _, _, _),
-    require_det (
-        % Create substitution from type parameters to Args.
-        hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet0),
-        hlds_data.get_type_defn_tparams(TypeDefn, TypeParams0),
-        tvarset_merge_renaming(TVarSet, TVarSet0, _NewTVarSet, Renaming),
-        apply_variable_renaming_to_tvar_list(Renaming,
-            TypeParams0, TypeParams),
-        map.from_corresponding_lists(TypeParams, Args, TSubst),
-
-        % Apply substitution to the declared supertype.
-        apply_variable_renaming_to_type(Renaming, SuperType0, SuperType1),
-        apply_rec_subst_to_type(TSubst, SuperType1, SuperType)
-    ).
-
 %---------------------%
 
 :- type invariant_set == set(tvar).
@@ -3826,9 +3805,11 @@ check_coerce_type_param(TypeTable, TVarSet, InvariantSet,
     % If Comparison is compare_equal_lt, then also succeed if TypeA =< TypeB
     % by subtype definitions.
     %
-:- pred compare_types(type_table::in, tvarset::in,
-    types_comparison::in, mer_type::in, mer_type::in,
-    type_assign::in, type_assign::out) is semidet.
+    % Note: changes here may need to be made to compare_types in
+    % modecheck_coerce.m
+    %
+:- pred compare_types(type_table::in, tvarset::in, types_comparison::in,
+    mer_type::in, mer_type::in, type_assign::in, type_assign::out) is semidet.
 
 compare_types(TypeTable, TVarSet, Comparison, TypeA, TypeB,
         !TypeAssign) :-

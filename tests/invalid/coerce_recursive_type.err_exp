@@ -1,0 +1,72 @@
+coerce_recursive_type.m:045: In clause for `bad(in) = out':
+coerce_recursive_type.m:045:   in coerce:
+coerce_recursive_type.m:045:   mode error: the input term has instantiatedness
+coerce_recursive_type.m:045:   `ground',
+coerce_recursive_type.m:045:   and cannot be converted to the type
+coerce_recursive_type.m:045:   `coerce_recursive_type.rec(coerce_recursive_type.citrus)'.
+coerce_recursive_type.m:051: In clause for
+coerce_recursive_type.m:051:   `bad2(in((coerce_recursive_type.cons_apple3))) =
+coerce_recursive_type.m:051:   out':
+coerce_recursive_type.m:051:   in coerce:
+coerce_recursive_type.m:051:   mode error: the input term has instantiatedness
+coerce_recursive_type.m:051:     named inst cons_apple3,
+coerce_recursive_type.m:051:     which expands to
+coerce_recursive_type.m:051:       bound(
+coerce_recursive_type.m:051:         cons(
+coerce_recursive_type.m:051:           ground,
+coerce_recursive_type.m:051:           named inst cons_apple2,
+coerce_recursive_type.m:051:           which expands to
+coerce_recursive_type.m:051:             bound(
+coerce_recursive_type.m:051:               cons(
+coerce_recursive_type.m:051:                 ground,
+coerce_recursive_type.m:051:                 named inst cons_apple,
+coerce_recursive_type.m:051:                 which expands to
+coerce_recursive_type.m:051:                   bound(
+coerce_recursive_type.m:051:                     cons(
+coerce_recursive_type.m:051:                       named inst apple,
+coerce_recursive_type.m:051:                       which expands to
+coerce_recursive_type.m:051:                         bound(
+coerce_recursive_type.m:051:                           apple
+coerce_recursive_type.m:051:                         ),
+coerce_recursive_type.m:051:                         ground
+coerce_recursive_type.m:051:                     )
+coerce_recursive_type.m:051:                   )
+coerce_recursive_type.m:051:               )
+coerce_recursive_type.m:051:             )
+coerce_recursive_type.m:051:         )
+coerce_recursive_type.m:051:       ),
+coerce_recursive_type.m:051:   and cannot be converted to the type
+coerce_recursive_type.m:051:   `coerce_recursive_type.rec(coerce_recursive_type.citrus)'.
+coerce_recursive_type.m:058: In clause for
+coerce_recursive_type.m:058:   `bad3(in((coerce_recursive_type.cons_apple3))) =
+coerce_recursive_type.m:058:   out':
+coerce_recursive_type.m:058:   in coerce:
+coerce_recursive_type.m:058:   mode error: the input term has instantiatedness
+coerce_recursive_type.m:058:     named inst cons_apple3,
+coerce_recursive_type.m:058:     which expands to
+coerce_recursive_type.m:058:       bound(
+coerce_recursive_type.m:058:         cons(
+coerce_recursive_type.m:058:           ground,
+coerce_recursive_type.m:058:           named inst cons_apple2,
+coerce_recursive_type.m:058:           which expands to
+coerce_recursive_type.m:058:             bound(
+coerce_recursive_type.m:058:               cons(
+coerce_recursive_type.m:058:                 ground,
+coerce_recursive_type.m:058:                 named inst cons_apple,
+coerce_recursive_type.m:058:                 which expands to
+coerce_recursive_type.m:058:                   bound(
+coerce_recursive_type.m:058:                     cons(
+coerce_recursive_type.m:058:                       named inst apple,
+coerce_recursive_type.m:058:                       which expands to
+coerce_recursive_type.m:058:                         bound(
+coerce_recursive_type.m:058:                           apple
+coerce_recursive_type.m:058:                         ),
+coerce_recursive_type.m:058:                         ground
+coerce_recursive_type.m:058:                     )
+coerce_recursive_type.m:058:                   )
+coerce_recursive_type.m:058:               )
+coerce_recursive_type.m:058:             )
+coerce_recursive_type.m:058:         )
+coerce_recursive_type.m:058:       ),
+coerce_recursive_type.m:058:   and cannot be converted to the type
+coerce_recursive_type.m:058:   `coerce_recursive_type.rec(coerce_recursive_type.fruit)'.

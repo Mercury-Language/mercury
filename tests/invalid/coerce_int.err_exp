@@ -1,0 +1,46 @@
+coerce_int.m:026: In clause for `bad(in(coerce_int.wrap(bound(1 ; 2)))) =
+coerce_int.m:026:   out(coerce_int.wrap(bound(1 ; 3)))':
+coerce_int.m:026:   mode error: argument 2 had the wrong instantiatedness.
+coerce_int.m:026:   Final instantiatedness of `HeadVar__2' was
+coerce_int.m:026:   `bound(wrap(bound(1 ; 2)))',
+coerce_int.m:026:   expected final instantiatedness was
+coerce_int.m:026:     named inst wrap(
+coerce_int.m:026:       bound(
+coerce_int.m:026:         1
+coerce_int.m:026:       ;
+coerce_int.m:026:         3
+coerce_int.m:026:       )
+coerce_int.m:026:     ),
+coerce_int.m:026:     which expands to
+coerce_int.m:026:       bound(
+coerce_int.m:026:         wrap(
+coerce_int.m:026:           bound(
+coerce_int.m:026:             1
+coerce_int.m:026:           ;
+coerce_int.m:026:             3
+coerce_int.m:026:           )
+coerce_int.m:026:         )
+coerce_int.m:026:       ).
+coerce_int.m:032: In clause for `bad_wrong_type(in(coerce_int.wrap(bound(1 ;
+coerce_int.m:032:   2)))) = out(coerce_int.wrap(bound(1 ; 2)))':
+coerce_int.m:032:   in coerce:
+coerce_int.m:032:   mode error: the input term has instantiatedness
+coerce_int.m:032:     named inst wrap(
+coerce_int.m:032:       bound(
+coerce_int.m:032:         1
+coerce_int.m:032:       ;
+coerce_int.m:032:         2
+coerce_int.m:032:       )
+coerce_int.m:032:     ),
+coerce_int.m:032:     which expands to
+coerce_int.m:032:       bound(
+coerce_int.m:032:         wrap(
+coerce_int.m:032:           bound(
+coerce_int.m:032:             1
+coerce_int.m:032:           ;
+coerce_int.m:032:             2
+coerce_int.m:032:           )
+coerce_int.m:032:         )
+coerce_int.m:032:       ),
+coerce_int.m:032:   and cannot be converted to the type
+coerce_int.m:032:   `coerce_int.wrap(uint)'.

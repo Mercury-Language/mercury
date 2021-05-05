@@ -165,9 +165,9 @@
     ;       mode_error_coerce_input_not_ground(prog_var, mer_inst)
             % The argument in a coerce expression has a non-ground inst.
 
-    ;       mode_error_coerce_bad_result_inst(mer_inst, mer_type)
-            % The result of a coercion would have an inst that is not valid
-            % for the type.
+    ;       mode_error_coerce_ground_invalid(mer_inst, mer_type)
+            % The argument in a coerce expression has a ground inst
+            % that is not valid for the result type.
 
     % Mode errors that can happen in more than one kind of goal.
 
@@ -472,10 +472,11 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
             MergeErrors)
     ;
         ModeError = mode_error_coerce_input_not_ground(Var, VarInst),
-        Spec = mode_error_coerce_input_not_ground(ModeInfo, Var, VarInst)
+        Spec = mode_error_coerce_input_not_ground_to_spec(ModeInfo, Var,
+            VarInst)
     ;
-        ModeError = mode_error_coerce_bad_result_inst(Inst, Type),
-        Spec = mode_error_coerce_bad_result_inst_to_spec(ModeInfo, Inst, Type)
+        ModeError = mode_error_coerce_ground_invalid(Inst, Type),
+        Spec = mode_error_coerce_ground_invalid_to_spec(ModeInfo, Inst, Type)
     ;
         ModeError = mode_error_bind_locked_var(Reason, Var, InstA, InstB),
         Spec = mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var,
@@ -1307,10 +1308,10 @@ merge_context_to_string(merge_stm_atomic) = "atomic".
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_coerce_input_not_ground(mode_info, prog_var, mer_inst) =
-    error_spec.
+:- func mode_error_coerce_input_not_ground_to_spec(mode_info, prog_var,
+    mer_inst) = error_spec.
 
-mode_error_coerce_input_not_ground(ModeInfo, Var, VarInst) = Spec :-
+mode_error_coerce_input_not_ground_to_spec(ModeInfo, Var, VarInst) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
@@ -1323,18 +1324,18 @@ mode_error_coerce_input_not_ground(ModeInfo, Var, VarInst) = Spec :-
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_coerce_bad_result_inst_to_spec(mode_info, mer_inst,
-    mer_type) = error_spec.
+:- func mode_error_coerce_ground_invalid_to_spec(mode_info, mer_inst, mer_type)
+    = error_spec.
 
-mode_error_coerce_bad_result_inst_to_spec(ModeInfo, Inst, Type) = Spec :-
+mode_error_coerce_ground_invalid_to_spec(ModeInfo, Inst, Type) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     varset.init(TypeVarSet),
-    Pieces = [words("mode error: the result would have instantiatedness")] ++
+    Pieces = [words("mode error: the input term has instantiatedness")] ++
         report_inst(ModeInfo, quote_short_inst, [suffix(","), nl],
             [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
             Inst) ++
-        [words("which is not valid for the type"),
+        [words("and cannot be converted to the type"),
         quote(mercury_type_to_string(TypeVarSet, print_name_only, Type)),
         suffix("."), nl],
     Spec = simplest_spec($pred, severity_error,

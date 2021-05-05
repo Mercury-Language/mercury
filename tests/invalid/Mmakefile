@@ -123,8 +123,11 @@ SINGLEMODULE= \
 	coerce_implied_mode \
 	coerce_infer \
 	coerce_instvar \
+	coerce_int \
 	coerce_mode_error \
 	coerce_non_du \
+	coerce_recursive_inst \
+	coerce_recursive_type \
 	coerce_syntax \
 	coerce_type_error \
 	coerce_unify_tvars \
