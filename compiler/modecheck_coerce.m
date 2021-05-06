@@ -681,16 +681,11 @@ modecheck_coerce_from_ground_make_bound_functor(ModuleInfo, TVarSet,
     cons_id::out(cons)) is det.
 
 make_cons_id_for_type_ctor(TypeCtor, ConsId0, ConsId) :-
-    ConsId0 = cons(SymName0, Arity, TypeCtor0),
+    % TypeCtor0 should not be cons_id_dummy_type_ctor after post-typecheck.
+    ConsId0 = cons(SymName0, Arity, _TypeCtor0),
     ModuleName = type_ctor_module(TypeCtor),
     maybe_change_module_qualifier(ModuleName, SymName0, SymName),
-    ( if TypeCtor0 = cons_id_dummy_type_ctor then
-        % Keep the dummy type_ctor from the original cons_id.
-        % XXX TypeCtor0 should not be a dummy after post-typecheck.
-        ConsId = cons(SymName, Arity, TypeCtor0)
-    else
-        ConsId = cons(SymName, Arity, TypeCtor)
-    ).
+    ConsId = cons(SymName, Arity, TypeCtor).
 
 :- pred maybe_change_module_qualifier(sym_name::in, sym_name::in,
     sym_name::out) is det.

@@ -923,12 +923,11 @@ qualify_cons_id(Args, ConsId0, ConsId, InstConsId) :-
         ( if TypeCtor = type_ctor(qualified(TypeModule, _), _) then
             UnqualName = unqualify_name(Name0),
             Name = qualified(TypeModule, UnqualName),
-            ConsId = cons(Name, OrigArity, TypeCtor),
-            InstConsId = cons(Name, OrigArity, cons_id_dummy_type_ctor)
+            ConsId = cons(Name, OrigArity, TypeCtor)
         else
-            ConsId = ConsId0,
-            InstConsId = cons(Name0, OrigArity, cons_id_dummy_type_ctor)
-        )
+            ConsId = ConsId0
+        ),
+        InstConsId = ConsId
     ;
         ConsId0 = type_info_cell_constructor(CellCtor),
         ConsId = ConsId0,
