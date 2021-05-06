@@ -49,10 +49,7 @@ Specific information is contained in individual README files:
         ([Visual C](README.MS-VisualC),
         [MinGW](README.MinGW),
         [Cygwin](README.Cygwin))
-
-  * Cross compilation
-
-      * [README.cross]
+      * [Cross compilation](README.cross)
 
 ## Other information
 
