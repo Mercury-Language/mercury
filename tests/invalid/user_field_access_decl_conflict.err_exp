@@ -1,0 +1,10 @@
+user_field_access_decl_conflict.m:023: Error: func
+user_field_access_decl_conflict.m:023:   `user_field_access_decl_conflict.f1'/1
+user_field_access_decl_conflict.m:023:   multiply defined.
+user_field_access_decl_conflict.m:022: Here is the previous definition of func
+user_field_access_decl_conflict.m:022:   `user_field_access_decl_conflict.f1'/1.
+user_field_access_decl_conflict.m:026: Error: func
+user_field_access_decl_conflict.m:026:   `user_field_access_decl_conflict.f1 :='/2
+user_field_access_decl_conflict.m:026:   multiply defined.
+user_field_access_decl_conflict.m:025: Here is the previous definition of func
+user_field_access_decl_conflict.m:025:   `user_field_access_decl_conflict.f1 :='/2.

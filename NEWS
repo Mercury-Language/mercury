@@ -404,6 +404,8 @@ Changes to the Mercury language
   data representation with their base types so the type conversions do not
   cost anything at runtime.
 
+* Field names no longer need to be unique within a module.
+
 * The compiler can implement tabling only when generating C code.
   When compiling a predicate that has a `pragma memo` specified for it
   in a non-C grade, it necessarily ignores the pragma, but normally

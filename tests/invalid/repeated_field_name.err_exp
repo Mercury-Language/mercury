@@ -10,15 +10,7 @@ repeated_field_name.m:015: Error: field `repeated_field_name.f1' multiply
 repeated_field_name.m:015:   defined.
 repeated_field_name.m:009:   Here is the previous definition of field
 repeated_field_name.m:009:   `repeated_field_name.f1'.
-repeated_field_name.m:020: Error: field `repeated_field_name.f1' multiply
-repeated_field_name.m:020:   defined.
-repeated_field_name.m:009:   Here is the previous definition of field
-repeated_field_name.m:009:   `repeated_field_name.f1'.
 repeated_field_name.m:021: Error: field `repeated_field_name.f1' multiply
 repeated_field_name.m:021:   defined.
-repeated_field_name.m:009:   Here is the previous definition of field
-repeated_field_name.m:009:   `repeated_field_name.f1'.
-repeated_field_name.m:022: Error: field `repeated_field_name.f2' multiply
-repeated_field_name.m:022:   defined.
-repeated_field_name.m:010:   Here is the previous definition of field
-repeated_field_name.m:010:   `repeated_field_name.f2'.
+repeated_field_name.m:020:   Here is the previous definition of field
+repeated_field_name.m:020:   `repeated_field_name.f1'.

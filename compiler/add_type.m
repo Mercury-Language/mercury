@@ -1135,17 +1135,13 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         FieldName = unqualified(_),
         unexpected($pred, "unqualified field name")
     ),
-    % Field names must be unique within a module, not just within a type,
-    % because the function names for user-defined override functions
-    % for the builtin field access functions must be unique within a
-    % module.
-    ( if map.search(!.FieldNameTable, FieldName, ConflictingDefns) then
-        ( if ConflictingDefns = [ConflictingDefn] then
-            ConflictingDefn = hlds_ctor_field_defn(OrigContext, _, _, _, _)
-        else
-            unexpected($pred, "multiple conflicting fields")
-        ),
-
+    % Field names must be unique within a type.
+    ( if
+        map.search(!.FieldNameTable, FieldName, ExistingDefns),
+        list.find_first_match(is_conflicting_field_defn(FieldDefn),
+            ExistingDefns, ConflictingDefn)
+    then
+        ConflictingDefn = hlds_ctor_field_defn(OrigContext, _, _, _, _),
         FieldDefn = hlds_ctor_field_defn(Context, _, _, _, _),
         FieldString = sym_name_to_string(FieldName),
         Pieces = [words("Error: field"), quote(FieldString),
@@ -1174,6 +1170,15 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         list.foldl(do_add_ctor_field(UnqualFieldName, FieldDefn),
             [FieldModule | PartialQuals], !FieldNameTable)
     ).
+
+:- pred is_conflicting_field_defn(hlds_ctor_field_defn::in,
+    hlds_ctor_field_defn::in) is semidet.
+
+is_conflicting_field_defn(FieldDefnA, FieldDefnB) :-
+    FieldDefnA = hlds_ctor_field_defn(_ContextA, _TypeStatusA, TypeCtor,
+        _ConsIdA, _FieldNumberA),
+    FieldDefnB = hlds_ctor_field_defn(_ContextB, _TypeStatusB, TypeCtor,
+        _ConsIdB, _FieldNumberB).
 
 :- pred do_add_ctor_field(string::in, hlds_ctor_field_defn::in,
     module_name::in, ctor_field_table::in, ctor_field_table::out) is det.

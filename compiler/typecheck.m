@@ -3068,11 +3068,12 @@ get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
     FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, ConsId, _),
     TypeCtor = type_ctor(qualified(TypeModule, _), _),
 
-    % If the user has supplied a declaration, we use that instead
-    % of the automatically generated version, unless we are typechecking
-    % the clause introduced for the user-supplied declaration.
+    % If the user has supplied a declaration for a field access function
+    % of the same name and arity, operating on the same type constructor,
+    % we use that instead of the automatically generated version,
+    % unless we are typechecking the clause introduced for the
+    % user-supplied declaration itself.
     % The user-declared version will be picked up by builtin_pred_type.
-
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredTable),
     UnqualFuncName = unqualify_name(FuncName),
@@ -3081,7 +3082,10 @@ get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
         IsFieldAccessFunc = no,
         predicate_table_lookup_func_m_n_a(PredTable, is_fully_qualified,
             TypeModule, UnqualFuncName, Arity, PredIds),
-        PredIds = []
+        list.all_false(
+            is_field_access_function_for_type_ctor(ModuleInfo, AccessType,
+                TypeCtor),
+            PredIds)
     ;
         IsFieldAccessFunc = yes(_)
     ),
@@ -3105,6 +3109,25 @@ get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
         ConsAction = flip_constraints_for_field_set,
         convert_cons_defn(Info, GoalId, ConsAction, ConsDefn,
             FunctorConsTypeInfo)
+    ).
+
+:- pred is_field_access_function_for_type_ctor(module_info::in,
+    field_access_type::in, type_ctor::in, pred_id::in) is semidet.
+
+is_field_access_function_for_type_ctor(ModuleInfo, AccessType, TypeCtor,
+        PredId) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    require_complete_switch [AccessType]
+    (
+        AccessType = get,
+        ArgTypes = [ArgType, _ResultType],
+        type_to_ctor(ArgType, TypeCtor)
+    ;
+        AccessType = set,
+        ArgTypes = [ArgType, _FieldType, ResultType],
+        type_to_ctor(ArgType, TypeCtor),
+        type_to_ctor(ResultType, TypeCtor)
     ).
 
 :- type maybe_cons_type_info

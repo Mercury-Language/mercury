@@ -1,0 +1,22 @@
+user_field_access_decl_override2.m:028: In clause for function `get_foo_f1'/1:
+user_field_access_decl_override2.m:028:   in unification of variable `X'
+user_field_access_decl_override2.m:028:   and term `f1(Foo)':
+user_field_access_decl_override2.m:028:   type error in argument of functor
+user_field_access_decl_override2.m:028:   `f1'/1.
+user_field_access_decl_override2.m:028:   Argument 1 (Foo) has type `(some [T]
+user_field_access_decl_override2.m:028:   user_field_access_decl_override2.foo(T))',
+user_field_access_decl_override2.m:028:   expected type was
+user_field_access_decl_override2.m:028:   `user_field_access_decl_override2.foo(int)'.
+user_field_access_decl_override2.m:035: In clause for predicate `set_foo_f1'/3:
+user_field_access_decl_override2.m:035:   type error in unification of variable
+user_field_access_decl_override2.m:035:   `STATE_VARIABLE_Foo'
+user_field_access_decl_override2.m:035:   and functor `f1 :='/2.
+user_field_access_decl_override2.m:035:   variable `STATE_VARIABLE_Foo' has
+user_field_access_decl_override2.m:035:   type `(some [T]
+user_field_access_decl_override2.m:035:   user_field_access_decl_override2.foo(T))',
+user_field_access_decl_override2.m:035:   functor `f1 :='/2 has type
+user_field_access_decl_override2.m:035:   `'f1
+user_field_access_decl_override2.m:035:   :='(user_field_access_decl_override2.foo(int),
+user_field_access_decl_override2.m:035:   int):
+user_field_access_decl_override2.m:035:   user_field_access_decl_override2.foo(int)'.
+For more information, recompile with `-E'.

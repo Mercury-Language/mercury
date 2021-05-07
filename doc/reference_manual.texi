@@ -2326,7 +2326,7 @@ which can be used to conveniently select and update fields of a term
 in a manner independent of the definition of the type
 (@pxref{Field access functions}).
 A labelled argument has the form @w{@code{@var{fieldname} :: @var{Type}}}.
-It is an error for two fields in the same module to have the same label.
+It is an error for two fields in the same type to have the same label.
 
 Here are some examples of discriminated union definitions:
 
@@ -2907,6 +2907,8 @@ by a single expression to avoid this problem.
 Type and mode declarations for compiler-generated field access functions
 for fields of constructors local to a module
 may be placed in the interface section of the module.
+The user-supplied declarations will be used instead of
+any automatically generated declarations.
 This allows the implementation of a type to be hidden
 while still allowing client modules to use record syntax
 to manipulate values of the type.
@@ -2916,6 +2918,12 @@ from a field access function without using explicit lambda expressions.
 
 Declarations for field access functions for fields occurring in the interface
 section of a module must also occur in the interface section.
+
+If there are multiple fields with the same label in the same module,
+only one of those fields can have user-supplied declarations
+for its selection function.
+Similarly, only one of those fields can have user-supplied declarations
+for its update function.
 
 Declarations and clauses for field access functions can also be supplied
 for fields which are not a part of any type.

@@ -388,6 +388,9 @@ SINGLEMODULE= \
 	unsatisfiable_super \
 	unterminated_octal_escape \
 	user_eq_dummy \
+	user_field_access_decl_conflict \
+	user_field_access_decl_override \
+	user_field_access_decl_override2 \
 	uu_type \
 	var_as_class_name \
 	var_as_pred_name \

@@ -1563,12 +1563,18 @@ get_maybe_type_defn_contexts([MaybeTypeDefn | MaybeTypeDefns]) = Contexts :-
 
     % This type maps a field name to the locations where it occurs.
     %
-:- type field_name_map == map(string, one_or_more(field_name_locn)).
+:- type field_name_map ==
+    map(field_name_of_type_ctor, one_or_more(field_name_locn)).
+
+:- type field_name_of_type_ctor
+    --->    field_name_of_type_ctor(
+                string,
+                type_ctor
+            ).
 
     % The info we have about each location where a field name occurs:
     %
-    % - the context where it occurs,
-    % - the type constructor in which it occurs, and
+    % - the context where it occurs, and
     % - the data constructor in which it occurs.
     %
     % The context is first to make sorting easier. This is relevant
@@ -1577,7 +1583,7 @@ get_maybe_type_defn_contexts([MaybeTypeDefn | MaybeTypeDefns]) = Contexts :-
     % as the duplicates.
     %
 :- type field_name_locn
-    --->    field_name_locn(prog_context, type_ctor, string).
+    --->    field_name_locn(prog_context, string).
 
 :- pred add_type_ctor_to_field_name_map(
     type_ctor::in, type_ctor_checked_defn::in,
@@ -1633,22 +1639,23 @@ add_data_ctor_arg_to_field_name_map(TypeCtor, CtorName, CtorArg,
         MaybeCtorFieldName = yes(CtorFieldName),
         CtorFieldName = ctor_field_name(FieldSymName, FieldNameContext),
         FieldName = unqualify_name(FieldSymName),
-        FNLocn = field_name_locn(FieldNameContext, TypeCtor, CtorName),
-        ( if map.search(!.FieldNameMap, FieldName, OoMFNLocns0) then
+        FieldNameTypeCtor = field_name_of_type_ctor(FieldName, TypeCtor),
+        FNLocn = field_name_locn(FieldNameContext, CtorName),
+        ( if map.search(!.FieldNameMap, FieldNameTypeCtor, OoMFNLocns0) then
             OoMFNLocns0 = one_or_more(HeadFNLocn, TailFNLocns),
             OoMFNLocns = one_or_more(FNLocn, [HeadFNLocn | TailFNLocns]),
-            map.det_update(FieldName, OoMFNLocns, !FieldNameMap)
+            map.det_update(FieldNameTypeCtor, OoMFNLocns, !FieldNameMap)
         else
             OoMFNLocns = one_or_more(FNLocn, []),
-            map.det_insert(FieldName, OoMFNLocns, !FieldNameMap)
+            map.det_insert(FieldNameTypeCtor, OoMFNLocns, !FieldNameMap)
         )
     ).
 
-:- pred report_any_duplicate_field_names(string::in,
+:- pred report_any_duplicate_field_names(field_name_of_type_ctor::in,
     one_or_more(field_name_locn)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_any_duplicate_field_names(FieldName, OoMFNLocns, !Specs) :-
+report_any_duplicate_field_names(FieldNameTypeCtor, OoMFNLocns, !Specs) :-
     FNLocns = one_or_more_to_list(OoMFNLocns),
     list.sort(FNLocns, SortedFNLocns),
     (
@@ -1660,30 +1667,28 @@ report_any_duplicate_field_names(FieldName, OoMFNLocns, !Specs) :-
     ;
         SortedFNLocns = [HeadFNLocn | TailFNLocns],
         TailFNLocns = [_ | _],
-        % The case we are looking for; FieldName is defined *more* than once.
-        list.foldl(report_duplicate_field_name(FieldName, HeadFNLocn),
+        % The case we are looking for; FieldName is defined *more* than once
+        % in the same type.
+        list.foldl(report_duplicate_field_name(FieldNameTypeCtor, HeadFNLocn),
             TailFNLocns, !Specs)
     ).
 
-:- pred report_duplicate_field_name(string::in,
+:- pred report_duplicate_field_name(field_name_of_type_ctor::in,
     field_name_locn::in, field_name_locn::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_duplicate_field_name(FieldName, FirstFNLocn, FNLocn, !Specs) :-
-    FirstFNLocn = field_name_locn(FirstContext, FirstTypeCtor, FirstCtorName),
-    FNLocn = field_name_locn(Context, TypeCtor, CtorName),
+report_duplicate_field_name(FieldNameTypeCtor, FirstFNLocn, FNLocn, !Specs) :-
+    FieldNameTypeCtor = field_name_of_type_ctor(FieldName, TypeCtor),
+    FirstFNLocn = field_name_locn(FirstContext, FirstCtorName),
+    FNLocn = field_name_locn(Context, CtorName),
     InitPieces = [words("Error: duplicate occurrence of the field name"),
         quote(FieldName)],
-    ( if TypeCtor = FirstTypeCtor then
-        ( if CtorName = FirstCtorName then
-            MainPieces = InitPieces ++ [words("in the function symbol"),
-                quote(CtorName), suffix("."), nl]
-        else
-            MainPieces = InitPieces ++ [words("in the definition of"),
-                unqual_type_ctor(TypeCtor), suffix("."), nl]
-        )
+    ( if CtorName = FirstCtorName then
+        MainPieces = InitPieces ++ [words("in the function symbol"),
+            quote(CtorName), suffix("."), nl]
     else
-        MainPieces = InitPieces ++ [suffix("."), nl]
+        MainPieces = InitPieces ++ [words("in the definition of"),
+            unqual_type_ctor(TypeCtor), suffix("."), nl]
     ),
     FirstPieces = [words("The first occurrence of this field name"),
         words("is here."), nl],
