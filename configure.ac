@@ -1543,6 +1543,11 @@ AC_TRY_RUN(
             exit(0);
         }
         void handler(int signum, siginfo_t *info, void *context) {
+            if (save_signum == signum) {
+                // We are stuck in a loop! Seen on Ubuntu 18.04.5 amd64
+                // when using gcc -m32 to target x86.
+                exit(2);
+            }
             save_signum = signum;
             save_cause = info->si_code;
         }
