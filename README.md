@@ -50,6 +50,7 @@ Specific information is contained in individual README files:
         [MinGW](README.MinGW),
         [Cygwin](README.Cygwin))
       * [Cross compilation](README.cross)
+      * [x86](README.x86)
 
 ## Other information
 

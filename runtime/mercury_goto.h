@@ -401,6 +401,10 @@
 
     #if defined(__i386__)
 
+      #if defined(MR_USE_GCC_NONLOCAL_GOTOS) && (__GNUC__ >= 5)
+          #error "Non-local jumps into x86 PIC will not work with GCC 5+"
+      #endif
+
       #define MR_EBX "%%ebx"
 
       #define MR_INLINE_ASM_FIXUP_REGS                                   \

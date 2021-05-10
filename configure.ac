@@ -2339,7 +2339,7 @@ case "$ac_cv_prog_gcc" in yes)
         mips-*)
             CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
             ;;
-        i*86-*)
+        i*86-*|x86_64*)
             # On x86-64 and x86, GCC labels do not work correctly with
             # -ftree-dominator-opts.
             CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS"
@@ -2354,32 +2354,47 @@ case "$ac_cv_prog_gcc" in yes)
             # libraries, accepting whatever drawbacks that entails.
             #
             # XXX Not all platforms use PIC for dynamic linking, so this should
-            # be contingent on CFLAGS_FOR_PIC which is set further down. 
+            # be contingent on CFLAGS_FOR_PIC which is set further down.
             #
+            allow_pic_nonlocal_gotos=no
             case $C_COMPILER_TYPE in
-                gcc_3_*|gcc_4_*) ;;
-                gcc_*)
-                    if test "$mercury_cv_enable_shared_libs" = yes
-                    then
-                        # XXX Make an exception for Windows since it doesn't use
-                        # PIC and we don't yet support DLLs anyway.
-                        case "$host" in
-                            *cygwin*|*mingw*)
-                                ;;
-                            *)
-                                mercury_cv_asm_labels=no
-                                mercury_cv_gcc_labels=no
-                                ;;
-                        esac
-                    fi
+                gcc_3_*|gcc_4_*)
+                    allow_pic_nonlocal_gotos=yes
                     ;;
             esac
-            ;;
-        x86_64*)
-            # On x86-64 and x86, GCC labels do not work correctly with
-            # -ftree-dominator-opts.
-            CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS $CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS"
-            CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
+            case "$host" in
+                *cygwin*|*mingw*)
+                    # Windows doesn't use PIC and we don't yet support DLLs
+                    # anyway.
+                    allow_pic_nonlocal_gotos=yes
+                    ;;
+                *)
+                    # Run the compiler to check what it is targeting.
+                    # Even if $host is x86_64, gcc -m32 or gcc -mx32
+                    # may be used to target x86.
+                    AC_MSG_CHECKING(whether C compiler targets x86_64)
+                    AC_CACHE_VAL(mercury_cv_target_x86_64,
+                        AC_TRY_COMPILE(
+                            [],
+                            [
+                                #ifndef __x86_64__
+                                #error "Target is not x86_64"
+                                #endif
+                            ],
+                            [mercury_cv_target_x86_64=yes],
+                            [mercury_cv_target_x86_64=no])
+                    )
+                    AC_MSG_RESULT($mercury_cv_target_x86_64)
+                    allow_pic_nonlocal_gotos="$mercury_cv_target_x86_64"
+                    ;;
+            esac
+            if test "$mercury_cv_enable_shared_libs" = yes && \
+                test "$allow_pic_nonlocal_gotos" = no
+            then
+                MERCURY_MSG("gcc labels do not work with PIC on x86")
+                mercury_cv_asm_labels=no
+                mercury_cv_gcc_labels=no
+            fi
             ;;
         rs6000-*)
             MERCURY_MSG("gcc labels do not work on the RS/6000")
