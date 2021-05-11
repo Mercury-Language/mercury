@@ -475,7 +475,71 @@ output_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
         output_rval_for_csharp(Info, Y, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
+        ( Op = int_add(_)
+        ; Op = int_sub(_)
+        ; Op = int_mul(_)
+        ; Op = int_div(_)
+        ; Op = int_mod(_)
+        ; Op = unchecked_left_shift(_, _)
+        ; Op = unchecked_right_shift(_, _)
+        ; Op = bitwise_and(_)
+        ; Op = bitwise_or(_)
+        ; Op = bitwise_xor(_)
+        ; Op = int_lt(_)
+        ; Op = int_gt(_)
+        ; Op = int_le(_)
+        ; Op = int_ge(_)
+        ),
+        output_int_binop_for_csharp(Info, Stream, Op, X, Y, !IO)
+    ;
+        Op = unsigned_lt,
+        io.write_string(Stream, "((uint) ", !IO),
+        output_rval_for_csharp(Info, X, Stream, !IO),
+        io.write_string(Stream, " < (uint) ", !IO),
+        output_rval_for_csharp(Info, Y, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
+    ;
+        Op = unsigned_le,
+        io.write_string(Stream, "((uint) ", !IO),
+        output_rval_for_csharp(Info, X, Stream, !IO),
+        io.write_string(Stream, " <= (uint) ", !IO),
+        output_rval_for_csharp(Info, Y, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
+    ;
         % XXX Should we abort for some of these?
+        ( Op = logical_and
+        ; Op = logical_or
+        ; Op = eq(_)
+        ; Op = ne(_)
+        ; Op = body
+        ; Op = string_unsafe_index_code_unit
+        ; Op = offset_str_eq(_)
+        ; Op = float_add
+        ; Op = float_sub
+        ; Op = float_mul
+        ; Op = float_div
+        ; Op = float_eq
+        ; Op = float_ne
+        ; Op = float_lt
+        ; Op = float_gt
+        ; Op = float_le
+        ; Op = float_ge
+        ; Op = float_from_dword
+        ; Op = int64_from_dword
+        ; Op = uint64_from_dword
+        ; Op = compound_eq
+        ; Op = compound_lt
+        ),
+        output_basic_binop_for_csharp(Info, Stream, Op, X, Y, !IO)
+    ).
+
+:- pred output_int_binop_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, binary_op::in(int_binary_op),
+    mlds_rval::in, mlds_rval::in, io::di, io::uo) is det.
+:- pragma no_inline(output_int_binop_for_csharp/7).
+
+output_int_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
+    (
         ( Op = int_add(int_type_int)
         ; Op = int_sub(int_type_int)
         ; Op = int_mul(int_type_int)
@@ -484,13 +548,6 @@ output_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
         ; Op = bitwise_and(int_type_int)
         ; Op = bitwise_or(int_type_int)
         ; Op = bitwise_xor(int_type_int)
-        ; Op = logical_and
-        ; Op = logical_or
-        ; Op = eq(_)
-        ; Op = ne(_)
-        ; Op = body
-        ; Op = string_unsafe_index_code_unit
-        ; Op = offset_str_eq(_)
         ; Op = int_lt(_)
         ; Op = int_gt(_)
         ; Op = int_le(_)
@@ -535,43 +592,8 @@ output_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
         ; Op = bitwise_and(int_type_uint64)
         ; Op = bitwise_or(int_type_uint64)
         ; Op = bitwise_xor(int_type_uint64)
-        ; Op = float_add
-        ; Op = float_sub
-        ; Op = float_mul
-        ; Op = float_div
-        ; Op = float_eq
-        ; Op = float_ne
-        ; Op = float_lt
-        ; Op = float_gt
-        ; Op = float_le
-        ; Op = float_ge
-        ; Op = float_from_dword
-        ; Op = int64_from_dword
-        ; Op = uint64_from_dword
-        ; Op = compound_eq
-        ; Op = compound_lt
         ),
-        io.write_string(Stream, "(", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_binary_op_for_csharp(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        Op = unsigned_lt,
-        io.write_string(Stream, "((uint) ", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " < (uint) ", !IO),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        Op = unsigned_le,
-        io.write_string(Stream, "((uint) ", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " <= (uint) ", !IO),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
+        output_basic_binop_for_csharp(Info, Stream, Op, X, Y, !IO)
     ;
         ( Op = unchecked_left_shift(IntType, ShiftType)
         ; Op = unchecked_right_shift(IntType, ShiftType)
@@ -747,6 +769,19 @@ output_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
         output_rval_for_csharp(Info, Y, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ).
+
+:- pred output_basic_binop_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, binary_op::in, mlds_rval::in, mlds_rval::in,
+    io::di, io::uo) is det.
+
+output_basic_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
+    io.write_string(Stream, "(", !IO),
+    output_rval_for_csharp(Info, X, Stream, !IO),
+    io.write_string(Stream, " ", !IO),
+    output_binary_op_for_csharp(Stream, Op, !IO),
+    io.write_string(Stream, " ", !IO),
+    output_rval_for_csharp(Info, Y, Stream, !IO),
+    io.write_string(Stream, ")", !IO).
 
 :- pred output_binary_op_for_csharp(io.text_output_stream::in, binary_op::in,
     io::di, io::uo) is det.

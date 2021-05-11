@@ -495,6 +495,84 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
         output_rval_for_java(Info, Y, Stream, !IO),
         io.write_string(Stream, ") ", !IO)
     ;
+        ( Op = int_add(_)
+        ; Op = int_sub(_)
+        ; Op = int_mul(_)
+        ; Op = int_div(_)
+        ; Op = int_mod(_)
+        ; Op = unchecked_left_shift(_, _)
+        ; Op = unchecked_right_shift(_, _)
+        ; Op = bitwise_and(_)
+        ; Op = bitwise_or(_)
+        ; Op = bitwise_xor(_)
+        ; Op = int_lt(_)
+        ; Op = int_gt(_)
+        ; Op = int_le(_)
+        ; Op = int_ge(_)
+        ),
+        % Handle these in a separate switch to reduce gcc memory requirements,
+        % particularly when building in deep profiling grades.
+        output_int_binop_for_java(Info, Stream, Op, X, Y, !IO)
+    ;
+        ( Op = unsigned_lt, OpStr = "<"
+        ; Op = unsigned_le, OpStr = "<="
+        ),
+        ( if rval_is_enum_object(X) then
+            % The bit masking won't be needed in the vast majority of cases,
+            % but I (zs) believe that it *could* be possible for a
+            % foreign_enum pragma to assign a negative value to
+            % a functor in an enum type.
+            io.write_string(Stream, "((", !IO),
+            output_rval_for_java(Info, X, Stream, !IO),
+            io.write_string(Stream, ".MR_value & 0xffffffffL) ", !IO),
+            io.write_string(Stream, OpStr, !IO),
+            io.write_string(Stream, " (", !IO),
+            output_rval_for_java(Info, Y, Stream, !IO),
+            io.write_string(Stream, ".MR_value) & 0xffffffffL)", !IO)
+        else
+            io.write_string(Stream, "((", !IO),
+            output_rval_for_java(Info, X, Stream, !IO),
+            io.write_string(Stream, " & 0xffffffffL) ", !IO),
+            io.write_string(Stream, OpStr, !IO),
+            io.write_string(Stream, " (", !IO),
+            output_rval_for_java(Info, Y, Stream, !IO),
+            io.write_string(Stream, " & 0xffffffffL))", !IO)
+        )
+    ;
+        ( Op = logical_and
+        ; Op = logical_or
+        ; Op = eq(_)
+        ; Op = ne(_)
+        ; Op = body
+        ; Op = string_unsafe_index_code_unit
+        ; Op = offset_str_eq(_)
+        ; Op = float_add
+        ; Op = float_sub
+        ; Op = float_mul
+        ; Op = float_div
+        ; Op = float_eq
+        ; Op = float_ne
+        ; Op = float_lt
+        ; Op = float_gt
+        ; Op = float_le
+        ; Op = float_ge
+        ; Op = float_from_dword
+        ; Op = int64_from_dword
+        ; Op = uint64_from_dword
+        ; Op = compound_eq
+        ; Op = compound_lt
+        ),
+        output_basic_binop_maybe_with_enum_for_java(Info, Stream, Op, X, Y,
+            !IO)
+    ).
+
+:- pred output_int_binop_for_java(java_out_info::in, io.text_output_stream::in,
+    binary_op::in(int_binary_op), mlds_rval::in, mlds_rval::in, io::di, io::uo)
+    is det.
+:- pragma no_inline(output_int_binop_for_java/7).
+
+output_int_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
+    (
         % XXX Should we abort for some of these?
         % For shifts, we ignore the distinction between shift_by_int
         % and shift_by_uint, since when targeting Java, we represent
@@ -561,32 +639,10 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
         ; Op = bitwise_xor(int_type_uint64)
         ; Op = unchecked_left_shift(int_type_uint64, _)
         ; Op = unchecked_right_shift(int_type_uint64, _)
-        ; Op = logical_and
-        ; Op = logical_or
-        ; Op = eq(_)
-        ; Op = ne(_)
-        ; Op = body
-        ; Op = string_unsafe_index_code_unit
-        ; Op = offset_str_eq(_)
         ; Op = int_lt(int_type_int)
         ; Op = int_gt(int_type_int)
         ; Op = int_le(int_type_int)
         ; Op = int_ge(int_type_int)
-        ; Op = float_add
-        ; Op = float_sub
-        ; Op = float_mul
-        ; Op = float_div
-        ; Op = float_eq
-        ; Op = float_ne
-        ; Op = float_lt
-        ; Op = float_gt
-        ; Op = float_le
-        ; Op = float_ge
-        ; Op = float_from_dword
-        ; Op = int64_from_dword
-        ; Op = uint64_from_dword
-        ; Op = compound_eq
-        ; Op = compound_lt
         ; Op = int_lt(int_type_int8)
         ; Op = int_gt(int_type_int8)
         ; Op = int_le(int_type_int8)
@@ -596,48 +652,8 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
         ; Op = int_le(int_type_int16)
         ; Op = int_ge(int_type_int16)
         ),
-        ( if rval_is_enum_object(X) then
-            io.write_string(Stream, "(", !IO),
-            output_rval_for_java(Info, X, Stream, !IO),
-            io.write_string(Stream, ".MR_value ", !IO),
-            output_binary_op_for_java(Stream, Op, !IO),
-            io.write_string(Stream, " ", !IO),
-            output_rval_for_java(Info, Y, Stream, !IO),
-            io.write_string(Stream, ".MR_value)", !IO)
-        else
-            io.write_string(Stream, "(", !IO),
-            output_rval_for_java(Info, X, Stream, !IO),
-            io.write_string(Stream, " ", !IO),
-            output_binary_op_for_java(Stream, Op, !IO),
-            io.write_string(Stream, " ", !IO),
-            output_rval_for_java(Info, Y, Stream, !IO),
-            io.write_string(Stream, ")", !IO)
-        )
-    ;
-        ( Op = unsigned_lt, OpStr = "<"
-        ; Op = unsigned_le, OpStr = "<="
-        ),
-        ( if rval_is_enum_object(X) then
-            % The bit masking won't be needed in the vast majority of cases,
-            % but I (zs) believe that it *could* be possible for a
-            % foreign_enum pragma to assign a negative value to
-            % a functor in an enum type.
-            io.write_string(Stream, "((", !IO),
-            output_rval_for_java(Info, X, Stream, !IO),
-            io.write_string(Stream, ".MR_value & 0xffffffffL) ", !IO),
-            io.write_string(Stream, OpStr, !IO),
-            io.write_string(Stream, " (", !IO),
-            output_rval_for_java(Info, Y, Stream, !IO),
-            io.write_string(Stream, ".MR_value) & 0xffffffffL)", !IO)
-        else
-            io.write_string(Stream, "((", !IO),
-            output_rval_for_java(Info, X, Stream, !IO),
-            io.write_string(Stream, " & 0xffffffffL) ", !IO),
-            io.write_string(Stream, OpStr, !IO),
-            io.write_string(Stream, " (", !IO),
-            output_rval_for_java(Info, Y, Stream, !IO),
-            io.write_string(Stream, " & 0xffffffffL))", !IO)
-        )
+        output_basic_binop_maybe_with_enum_for_java(Info, Stream, Op, X, Y,
+            !IO)
     ;
         ( Op = int_lt(int_type_uint)
         ; Op = int_gt(int_type_uint)
@@ -813,6 +829,29 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
         io.write_string(Stream, " ((", !IO),
         output_rval_for_java(Info, Y, Stream, !IO),
         io.write_string(Stream, ") & 0xffff)))", !IO)
+    ).
+
+:- pred output_basic_binop_maybe_with_enum_for_java(java_out_info::in,
+    io.text_output_stream::in, binary_op::in, mlds_rval::in, mlds_rval::in,
+    io::di, io::uo) is det.
+
+output_basic_binop_maybe_with_enum_for_java(Info, Stream, Op, X, Y, !IO) :-
+    ( if rval_is_enum_object(X) then
+        io.write_string(Stream, "(", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, ".MR_value ", !IO),
+        output_binary_op_for_java(Stream, Op, !IO),
+        io.write_string(Stream, " ", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ".MR_value)", !IO)
+    else
+        io.write_string(Stream, "(", !IO),
+        output_rval_for_java(Info, X, Stream, !IO),
+        io.write_string(Stream, " ", !IO),
+        output_binary_op_for_java(Stream, Op, !IO),
+        io.write_string(Stream, " ", !IO),
+        output_rval_for_java(Info, Y, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ).
 
 output_rval_maybe_with_enum_for_java(Info, Rval, Stream, !IO) :-

@@ -139,6 +139,22 @@
             % XXX The only backend that used these was erlang, which
             % has been deleted.
 
+:- inst int_binary_op for binary_op/0
+    --->    int_add(ground)
+    ;       int_sub(ground)
+    ;       int_mul(ground)
+    ;       int_div(ground)
+    ;       int_mod(ground)
+    ;       unchecked_left_shift(ground, ground)
+    ;       unchecked_right_shift(ground, ground)
+    ;       bitwise_and(ground)
+    ;       bitwise_or(ground)
+    ;       bitwise_xor(ground)
+    ;       int_lt(ground)
+    ;       int_gt(ground)
+    ;       int_le(ground)
+    ;       int_ge(ground).
+
     % For the MLDS back-end, we need to know the element type for each
     % array_index operation.
     %
