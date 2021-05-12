@@ -14,10 +14,10 @@
 %
 % Note that the predicates and functions in this module change directory
 % separators in paths passed to them to the normal separator for the platform,
-% if that doesn't change the meaning of the path name.
+% if that does not change the meaning of the path name.
 %
 % Duplicate directory separators and trailing separators are also removed
-% where that doesn't change the meaning of the path name.
+% where that does not change the meaning of the path name.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -31,7 +31,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Predicates to isolate system dependencies
+% Predicates to isolate system dependencies.
 %
 
     % Returns the default separator between components of a pathname --
@@ -66,16 +66,16 @@
     % directory information.
     %
     % Trailing slashes are removed from PathName before splitting,
-    % if that doesn't change the meaning of PathName.
+    % if that does not change the meaning of PathName.
     %
     % Trailing slashes are removed from DirName after splitting,
-    % if that doesn't change the meaning of DirName.
+    % if that does not change the meaning of DirName.
     %
     % On Windows, drive current directories are handled correctly,
     % for example `split_name("C:foo", "C:", "foo")'.
     % (`X:' is the current directory on drive `X').
-    % Note that Cygwin doesn't support drive current directories,
-    % so `split_name("C:foo, _, _)' will fail when running under Cygwin.
+    % Note that Cygwin does not support drive current directories,
+    % so `split_name("C:foo", _, _)' will fail when running under Cygwin.
     %
 :- pred split_name(string::in, string::out, string::out) is semidet.
 
@@ -87,7 +87,7 @@
     % such as "X:".
     %
     % Trailing slashes are removed from PathName before splitting,
-    % if that doesn't change the meaning of PathName.
+    % if that does not change the meaning of PathName.
     %
 :- func basename(string) = string is semidet.
 :- pred basename(string::in, string::out) is semidet.
@@ -107,11 +107,11 @@
     % Returns `this_directory' when given a filename
     % without any directory information (e.g. "foo").
     %
-    % Trailing slashes in PathName are removed first, if that doesn't change
+    % Trailing slashes in PathName are removed first, if that does not change
     % the meaning of PathName.
     %
     % Trailing slashes are removed from DirName after splitting,
-    % if that doesn't change the meaning of DirName.
+    % if that does not change the meaning of DirName.
     %
 :- func dirname(string) = string.
 :- pred dirname(string::in, string::out) is det.
@@ -134,7 +134,7 @@
     % path_name_is_absolute(PathName)
     %
     % Is the path name syntactically an absolute path
-    % (this doesn't check whether the path exists).
+    % (this does not check whether the path exists).
     %
     % An path is absolute iff it begins with a root directory
     % (see path_name_is_root_directory).
@@ -181,7 +181,8 @@
 :- pred make_directory(string::in, io.res::out, io::di, io::uo) is det.
 
     % Make only the given directory.
-    % Fails if the directory already exists, or the parent directory doesn't.
+    % Fails if the directory already exists, or the parent directory
+    % does not exist.
     %
 :- pred make_single_directory(string::in, io.res::out, io::di, io::uo)
     is det.
@@ -380,7 +381,7 @@ split_name_3(FileNameChars, DirName, BaseName) :-
         RevDirName0 = [_ | _]
     then
         % Strip the trailing separator off the directory name
-        % if doing so doesn't change the meaning.
+        % if doing so does not change the meaning.
         ( if
             RevDirName0 = [Sep | RevDirName1],
             not (
@@ -528,7 +529,7 @@ canonicalize_path_chars(FileName0) = FileName :-
         ),
         FileName2 = canonicalize_path_chars_2(FileName1, []),
 
-        % "\\" isn't a UNC path name, so it is equivalent to "\".
+        % "\\" is not a UNC path name, so it is equivalent to "\".
         ( if
             FileName2 = [Char2],
             is_directory_separator(Char2)
@@ -547,10 +548,10 @@ canonicalize_path_chars_2([], RevFileName) = reverse(RevFileName).
 canonicalize_path_chars_2([C0 | FileName0], RevFileName0) =
         canonicalize_path_chars_2(FileName0, RevFileName) :-
     % Convert all directory separators to the standard separator
-    % for the platform, if that doesn't change the meaning.
+    % for the platform, if that does not change the meaning.
     % On Cygwin, "\foo\bar" (relative to root of current drive)
     % is different to "/foo/bar" (relative to Cygwin root directory),
-    % so we can't convert separators.
+    % so we cannot convert separators.
     ( if
         not io.have_cygwin,
         is_directory_separator(C0)
@@ -627,7 +628,7 @@ strip_leading_win32_root_directory(!FileName) :-
     % Check for `X:\'.
     % XXX On Cygwin `C:' is treated as being identical to `C:\'.
     % The comments in the Cygwin source imply that this behaviour may change,
-    % and it's pretty awful anyway (`C:foo' isn't the same as `C:\foo'),
+    % and it is pretty awful anyway (`C:foo' is not the same as `C:\foo'),
     % so we don't support it here.
     %
 :- pred strip_leading_win32_drive_root_directory(list(char)::in,
@@ -817,7 +818,7 @@ DirName0/FileName0 = PathName :-
             char.is_alpha(string.unsafe_index(DirName, 0)),
             string.unsafe_index(DirName, 1) = (':')
         ;
-            % Don't introduce duplicate directory separators.
+            % Do not introduce duplicate directory separators.
             % On Windows \\foo (a UNC server specification) is
             % not equivalent to \foo (the directory X:\foo, where
             % X is the current drive).
@@ -938,7 +939,8 @@ make_directory(PathName, Result, !IO) :-
     else
         DirName = dir.dirname(PathName),
         ( if PathName = DirName then
-            % We've been asked to make a root directory -- the mkdir will fail.
+            % We have been asked to make a root directory
+            % -- the mkdir will fail.
             make_directory_or_check_exists(PathName, Result, !IO)
         else if DirName = dir.this_directory then
             % Just go ahead and attempt to make the directory -- if the
@@ -1257,8 +1259,9 @@ make_single_directory(DirName, Result, !IO) :-
 %---------------------------------------------------------------------------%
 
 foldl2(P, DirName, Data0, Res, !IO) :-
-    dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], no,
-        no, _, Res0, Data0, Data, !IO),
+    Recursive = do_not_enter_subdirs,
+    dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], Recursive,
+        _Continue, Res0, Data0, Data, !IO),
     (
         Res0 = ok,
         Res = ok(Data)
@@ -1267,9 +1270,13 @@ foldl2(P, DirName, Data0, Res, !IO) :-
         Res = error(Data, Error)
     ).
 
-recursive_foldl2(P, DirName, FollowLinks, Data0, Res, !IO) :-
-    dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], yes,
-        FollowLinks, _, Res0, Data0, Data, !IO),
+recursive_foldl2(P, DirName, FollowLinks0, Data0, Res, !IO) :-
+    ( FollowLinks0 = no,  FollowLinks = do_not_follow_links
+    ; FollowLinks0 = yes, FollowLinks = follow_links
+    ),
+    Recursive = enter_subdirs(FollowLinks),
+    dir.foldl2_process_dir(no, P, fixup_dirname(DirName), [], Recursive,
+        _Continue, Res0, Data0, Data, !IO),
     (
         Res0 = ok,
         Res = ok(Data)
@@ -1295,15 +1302,22 @@ fixup_dirname(Dir0) = Dir :-
         Dir = string.from_char_list(remove_trailing_dir_separator(DirChars))
     ).
 
+:- type maybe_subdirs
+    --->    do_not_enter_subdirs
+    ;       enter_subdirs(maybe_follow_links).
+
+:- type maybe_follow_links
+    --->    do_not_follow_links
+    ;       follow_links.
+
 :- pred foldl2_process_dir(bool::in, dir.foldl_pred(T)::in(dir.foldl_pred),
-    string::in, list(file_id)::in, bool::in, bool::in, bool::out, io.res::out,
-    T::in, T::out, io::di, io::uo) is det.
+    string::in, list(file_id)::in, maybe_subdirs::in,
+    bool::out, io.res::out, T::in, T::out, io::di, io::uo) is det.
 
 foldl2_process_dir(SymLinkParent, P, DirName, ParentIds0, Recursive,
-        FollowLinks, Continue, Result, !Data, !IO) :-
+        Continue, Result, !Data, !IO) :-
     ( if
-        Recursive = yes,
-        FollowLinks = yes
+        Recursive = enter_subdirs(follow_links)
     then
         check_for_symlink_loop(SymLinkParent, DirName, LoopRes,
             ParentIds0, ParentIds, !IO)
@@ -1319,7 +1333,7 @@ foldl2_process_dir(SymLinkParent, P, DirName, ParentIds0, Recursive,
             promise_equivalent_solutions [!:IO, TryResult] (
                 try_io(
                     foldl2_process_dir_aux(Dir, SymLinkParent, P, DirName,
-                        ParentIds, Recursive, FollowLinks, !.Data),
+                        ParentIds, Recursive, !.Data),
                     TryResult, !IO)
             ),
             dir.close(Dir, CloseRes, !IO),
@@ -1357,20 +1371,20 @@ foldl2_process_dir(SymLinkParent, P, DirName, ParentIds0, Recursive,
 
 :- pred foldl2_process_dir_aux(dir.stream::in, bool::in,
     dir.foldl_pred(T)::in(dir.foldl_pred), string::in, list(file_id)::in,
-    bool::in, bool::in, T::in, {bool, io.res, T}::out, io::di, io::uo) is det.
+    maybe_subdirs::in, T::in, {bool, io.res, T}::out, io::di, io::uo) is det.
 
 foldl2_process_dir_aux(Dir, SymLinkParent, P, DirName, ParentIds,
-        Recursive, FollowLinks, !.Data, {Continue, Res, !:Data}, !IO) :-
+        Recursive, !.Data, {Continue, Res, !:Data}, !IO) :-
     foldl2_process_dir_entries(Dir, SymLinkParent, P, DirName, ParentIds,
-        Recursive, FollowLinks, Continue, Res, !Data, !IO).
+        Recursive, Continue, Res, !Data, !IO).
 
 :- pred foldl2_process_dir_entries(dir.stream::in, bool::in,
     dir.foldl_pred(T)::in(dir.foldl_pred), string::in, list(file_id)::in,
-    bool::in, bool::in, bool::out, io.res::out, T::in, T::out,
+    maybe_subdirs::in, bool::out, io.res::out, T::in, T::out,
     io::di, io::uo) is det.
 
 foldl2_process_dir_entries(Dir, SymLinkParent, P, DirName, ParentIds,
-        Recursive, FollowLinks, Continue, Res, !Data, !IO) :-
+        Recursive, Continue, Res, !Data, !IO) :-
     dir.read_entry(Dir, ReadRes, !IO),
     (
         ReadRes = ok(FileName),
@@ -1382,16 +1396,15 @@ foldl2_process_dir_entries(Dir, SymLinkParent, P, DirName, ParentIds,
             (
                 Continue0 = yes,
                 ( if
-                    Recursive = yes,
-                    FileType = directory
+                    FileType = directory,
+                    Recursive = enter_subdirs(_)
                 then
                     % XXX SymLinkParent?
                     foldl2_process_dir(SymLinkParent, P, PathName, ParentIds,
-                        Recursive, FollowLinks, Continue1, Res1, !Data, !IO)
+                        Recursive, Continue1, Res1, !Data, !IO)
                 else if
-                    Recursive = yes,
                     FileType = symbolic_link,
-                    FollowLinks = yes
+                    Recursive = enter_subdirs(follow_links)
                 then
                     io.file_type(yes, PathName, TargetTypeRes, !IO),
                     (
@@ -1399,8 +1412,7 @@ foldl2_process_dir_entries(Dir, SymLinkParent, P, DirName, ParentIds,
                         (
                             TargetType = directory,
                             foldl2_process_dir(yes, P, PathName, ParentIds,
-                                Recursive, FollowLinks, Continue1, Res1,
-                                !Data, !IO)
+                                Recursive, Continue1, Res1, !Data, !IO)
                         ;
                             ( TargetType = regular_file
                             ; TargetType = symbolic_link
@@ -1430,8 +1442,7 @@ foldl2_process_dir_entries(Dir, SymLinkParent, P, DirName, ParentIds,
                     Res1 = ok
                 then
                     foldl2_process_dir_entries(Dir, SymLinkParent, P, DirName,
-                        ParentIds, Recursive, FollowLinks, Continue, Res,
-                        !Data, !IO)
+                        ParentIds, Recursive, Continue, Res, !Data, !IO)
                 else
                     Continue = no,
                     Res = Res1
@@ -1456,7 +1467,7 @@ foldl2_process_dir_entries(Dir, SymLinkParent, P, DirName, ParentIds,
         Res = error(Error)
     ).
 
-    % Check whether we've seen this directory before in this branch of the
+    % Check whether we have seen this directory before in this branch of the
     % directory tree. This only works if the system can provide a unique
     % identifier for each file. Returns `ok(DetectedLoop : bool)' on success.
     %
@@ -1486,8 +1497,8 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
         LoopRes = ok(no)
     ).
 
-:- pragma foreign_decl("C", local, "
-
+:- pragma foreign_decl("C", local,
+"
 #include ""mercury_string.h""
 #include ""mercury_types.h""
 
