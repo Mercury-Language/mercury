@@ -539,31 +539,34 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
             io.write_string(Stream, " & 0xffffffffL))", !IO)
         )
     ;
-        ( Op = logical_and
-        ; Op = logical_or
-        ; Op = eq(_)
-        ; Op = ne(_)
-        ; Op = body
+        ( Op = logical_and,     OpStr = "&&"
+        ; Op = logical_or,      OpStr = "||"
+        ; Op = eq(_),           OpStr = "=="
+        ; Op = ne(_),           OpStr = "!="
+        ; Op = float_add,       OpStr = "+"
+        ; Op = float_sub,       OpStr = "-"
+        ; Op = float_mul,       OpStr = "*"
+        ; Op = float_div,       OpStr = "/"
+        ; Op = float_eq,        OpStr = "=="
+        ; Op = float_ne,        OpStr = "!="
+        ; Op = float_lt,        OpStr = "<"
+        ; Op = float_gt,        OpStr = ">"
+        ; Op = float_le,        OpStr = "<="
+        ; Op = float_ge,        OpStr = ">="
+        ),
+        output_basic_binop_maybe_with_enum_for_java(Info, Stream,
+            OpStr, X, Y, !IO)
+    ;
+        ( Op = body
         ; Op = string_unsafe_index_code_unit
         ; Op = offset_str_eq(_)
-        ; Op = float_add
-        ; Op = float_sub
-        ; Op = float_mul
-        ; Op = float_div
-        ; Op = float_eq
-        ; Op = float_ne
-        ; Op = float_lt
-        ; Op = float_gt
-        ; Op = float_le
-        ; Op = float_ge
         ; Op = float_from_dword
         ; Op = int64_from_dword
         ; Op = uint64_from_dword
         ; Op = compound_eq
         ; Op = compound_lt
         ),
-        output_basic_binop_maybe_with_enum_for_java(Info, Stream, Op, X, Y,
-            !IO)
+        unexpected($pred, "invalid binary operator")
     ).
 
 :- pred output_int_binop_for_java(java_out_info::in, io.text_output_stream::in,
@@ -573,286 +576,259 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
 
 output_int_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
     (
-        % XXX Should we abort for some of these?
-        % For shifts, we ignore the distinction between shift_by_int
-        % and shift_by_uint, since when targeting Java, we represent
+        ( Op = int_add(Type),   OpStr = "+"
+        ; Op = int_sub(Type),   OpStr = "-"
+        ; Op = int_mul(Type),   OpStr = "*"
+        ),
+        (
+            ( Type = int_type_int
+            ; Type = int_type_int32
+            ; Type = int_type_int64
+            ; Type = int_type_uint
+            ; Type = int_type_uint32
+            ; Type = int_type_uint64
+            ),
+            output_basic_binop_maybe_with_enum_for_java(Info, Stream,
+                OpStr, X, Y, !IO)
+        ;
+            ( Type = int_type_int8,     Cast = "(byte) "
+            ; Type = int_type_int16,    Cast = "(short) "
+            ; Type = int_type_uint8,    Cast = "(byte) "
+            ; Type = int_type_uint16,   Cast = "(short) "
+            ),
+            io.write_string(Stream, Cast, !IO),
+            % XXX Document why we aren't calling
+            % output_basic_binop_maybe_with_enum_for_java here.
+            output_basic_binop_for_java(Info, Stream,
+                OpStr, X, Y, !IO)
+        )
+    ;
+        ( Op = int_div(Type),   OpStr = "/"
+        ; Op = int_mod(Type),   OpStr = "%"
+        ),
+        (
+            ( Type = int_type_int
+            ; Type = int_type_int32
+            ; Type = int_type_int64
+            ),
+            output_basic_binop_maybe_with_enum_for_java(Info, Stream,
+                OpStr, X, Y, !IO)
+        ;
+            ( Type = int_type_int8,     Cast = "(byte) "
+            ; Type = int_type_int16,    Cast = "(short) "
+            ),
+            io.write_string(Stream, Cast, !IO),
+            output_basic_binop_for_java(Info, Stream,
+                OpStr, X, Y, !IO)
+        ;
+            ( Type = int_type_uint8,    Cast = "(byte)",    Mask = "0xff"
+            ; Type = int_type_uint16,   Cast = "(short)",   Mask = "0xffff"
+            ; Type = int_type_uint32,   Cast = "(int)",     Mask = "0xffffffff"
+            ; Type = int_type_uint,     Cast = "(int)",     Mask = "0xffffffff"
+            ),
+            io.format(Stream, "(%s ", [s(Cast)], !IO),
+            output_basic_binop_with_mask_for_java(Info, Stream,
+                OpStr, Mask, X, Y, !IO),
+            io.write_string(Stream, ")", !IO)
+        ;
+            Type = int_type_uint64,
+            % We could compute FuncName along with OpStr above,
+            % but uint64 operands are rare enough that it is better
+            % not to burden the non-uint64 code path with recording FuncName.
+            ( Op = int_div(_), FuncName = "java.lang.Long.divideUnsigned"
+            ; Op = int_mod(_), FuncName = "java.lang.Long.remainderUnsigned"
+            ),
+            output_binop_func_call_for_java(Info, Stream,
+                FuncName, X, Y, !IO)
+        )
+    ;
+        ( Op = int_lt(Type),    OpStr = "<"
+        ; Op = int_gt(Type),    OpStr = ">"
+        ; Op = int_le(Type),    OpStr = "<="
+        ; Op = int_ge(Type),    OpStr = ">="
+        ),
+        (
+            ( Type = int_type_int
+            ; Type = int_type_int8
+            ; Type = int_type_int16
+            ; Type = int_type_int32
+            ; Type = int_type_int64
+            ),
+            output_basic_binop_maybe_with_enum_for_java(Info, Stream,
+                OpStr, X, Y, !IO)
+        ;
+            ( Type = int_type_uint8,    Mask = "0xff"
+            ; Type = int_type_uint16,   Mask = "0xffff"
+            ; Type = int_type_uint32,   Mask = "0xffffffffL"
+            ; Type = int_type_uint,     Mask = "0xffffffffL"
+            ),
+            output_basic_binop_with_mask_for_java(Info, Stream,
+                OpStr, Mask, X, Y, !IO)
+        ;
+            Type = int_type_uint64,
+            io.write_string(Stream, "(", !IO),
+            output_binop_func_call_for_java(Info, Stream,
+                "java.lang.Long.compareUnsigned", X, Y, !IO),
+            io.format(Stream, " %s 0)", [s(OpStr)], !IO)
+        )
+    ;
+        ( Op = bitwise_and(Type),   OpStr = "&"
+        ; Op = bitwise_or(Type),    OpStr = "|"
+        ; Op = bitwise_xor(Type),   OpStr = "^"
+        ),
+        (
+            ( Type = int_type_int
+            ; Type = int_type_int32
+            ; Type = int_type_int64
+            ; Type = int_type_uint
+            ; Type = int_type_uint32
+            ; Type = int_type_uint64
+            ),
+            output_basic_binop_maybe_with_enum_for_java(Info, Stream,
+                OpStr, X, Y, !IO)
+        ;
+            ( Type = int_type_int8,     Cast = "(byte) "
+            ; Type = int_type_int16,    Cast = "(short) "
+            ; Type = int_type_uint8,    Cast = "(byte) "
+            ; Type = int_type_uint16,   Cast = "(short) "
+            ),
+            io.write_string(Stream, Cast, !IO),
+            output_basic_binop_for_java(Info, Stream,
+                OpStr, X, Y, !IO)
+        )
+    ;
+        (
+            Op = unchecked_left_shift(Type, _ShiftByType),
+            OpStr = "<<"
+        ;
+            Op = unchecked_right_shift(Type, _ShiftByType),
+            (
+                ( Type = int_type_int
+                ; Type = int_type_int8
+                ; Type = int_type_int16
+                ; Type = int_type_int32
+                ; Type = int_type_int64
+                ),
+                OpStr = ">>"
+            ;
+                ( Type = int_type_uint
+                ; Type = int_type_uint8
+                ; Type = int_type_uint16
+                ; Type = int_type_uint32
+                ; Type = int_type_uint64
+                ),
+                OpStr = ">>>"
+            )
+        ),
+        % We ignore the distinction between shift_by_int and
+        % shift_by_uint, because when targeting Java, we represent
         % Mercury uints as Java ints anyway.
-        ( Op = int_add(int_type_int)
-        ; Op = int_sub(int_type_int)
-        ; Op = int_mul(int_type_int)
-        ; Op = int_div(int_type_int)
-        ; Op = int_mod(int_type_int)
-        ; Op = unchecked_left_shift(int_type_int, _)
-        ; Op = unchecked_right_shift(int_type_int, _)
-        ; Op = bitwise_and(int_type_int)
-        ; Op = bitwise_or(int_type_int)
-        ; Op = bitwise_xor(int_type_int)
-        ; Op = int_lt(int_type_int32)
-        ; Op = int_gt(int_type_int32)
-        ; Op = int_le(int_type_int32)
-        ; Op = int_ge(int_type_int32)
-        ; Op = int_add(int_type_int32)
-        ; Op = int_sub(int_type_int32)
-        ; Op = int_mul(int_type_int32)
-        ; Op = int_div(int_type_int32)
-        ; Op = int_mod(int_type_int32)
-        ; Op = bitwise_and(int_type_int32)
-        ; Op = bitwise_or(int_type_int32)
-        ; Op = bitwise_xor(int_type_int32)
-        ; Op = unchecked_left_shift(int_type_int32, _)
-        ; Op = unchecked_right_shift(int_type_int32, _)
-        ; Op = int_add(int_type_uint)
-        ; Op = int_sub(int_type_uint)
-        ; Op = int_mul(int_type_uint)
-        ; Op = bitwise_and(int_type_uint)
-        ; Op = bitwise_or(int_type_uint)
-        ; Op = bitwise_xor(int_type_uint)
-        ; Op = unchecked_left_shift(int_type_uint, _)
-        ; Op = unchecked_right_shift(int_type_uint, _)
-        ; Op = int_add(int_type_uint32)
-        ; Op = int_sub(int_type_uint32)
-        ; Op = int_mul(int_type_uint32)
-        ; Op = bitwise_and(int_type_uint32)
-        ; Op = bitwise_or(int_type_uint32)
-        ; Op = bitwise_xor(int_type_uint32)
-        ; Op = unchecked_left_shift(int_type_uint32, _)
-        ; Op = unchecked_right_shift(int_type_uint32, _)
-        ; Op = int_lt(int_type_int64)
-        ; Op = int_gt(int_type_int64)
-        ; Op = int_le(int_type_int64)
-        ; Op = int_ge(int_type_int64)
-        ; Op = int_add(int_type_int64)
-        ; Op = int_sub(int_type_int64)
-        ; Op = int_mul(int_type_int64)
-        ; Op = int_div(int_type_int64)
-        ; Op = int_mod(int_type_int64)
-        ; Op = bitwise_and(int_type_int64)
-        ; Op = bitwise_or(int_type_int64)
-        ; Op = bitwise_xor(int_type_int64)
-        ; Op = unchecked_left_shift(int_type_int64, _)
-        ; Op = unchecked_right_shift(int_type_int64, _)
-        ; Op = int_add(int_type_uint64)
-        ; Op = int_sub(int_type_uint64)
-        ; Op = int_mul(int_type_uint64)
-        ; Op = bitwise_and(int_type_uint64)
-        ; Op = bitwise_or(int_type_uint64)
-        ; Op = bitwise_xor(int_type_uint64)
-        ; Op = unchecked_left_shift(int_type_uint64, _)
-        ; Op = unchecked_right_shift(int_type_uint64, _)
-        ; Op = int_lt(int_type_int)
-        ; Op = int_gt(int_type_int)
-        ; Op = int_le(int_type_int)
-        ; Op = int_ge(int_type_int)
-        ; Op = int_lt(int_type_int8)
-        ; Op = int_gt(int_type_int8)
-        ; Op = int_le(int_type_int8)
-        ; Op = int_ge(int_type_int8)
-        ; Op = int_lt(int_type_int16)
-        ; Op = int_gt(int_type_int16)
-        ; Op = int_le(int_type_int16)
-        ; Op = int_ge(int_type_int16)
-        ),
-        output_basic_binop_maybe_with_enum_for_java(Info, Stream, Op, X, Y,
-            !IO)
-    ;
-        ( Op = int_lt(int_type_uint)
-        ; Op = int_gt(int_type_uint)
-        ; Op = int_le(int_type_uint)
-        ; Op = int_ge(int_type_uint)
-        ; Op = int_lt(int_type_uint32)
-        ; Op = int_gt(int_type_uint32)
-        ; Op = int_le(int_type_uint32)
-        ; Op = int_ge(int_type_uint32)
-        ),
-        io.write_string(Stream, "(((", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ") & 0xffffffffL) ", !IO),
-        output_binary_op_for_java(Stream, Op, !IO),
-        io.write_string(Stream, " ((", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ") & 0xffffffffL))", !IO)
-    ;
-        ( Op = int_lt(int_type_uint64), RelOpStr = "<"
-        ; Op = int_gt(int_type_uint64), RelOpStr = ">"
-        ; Op = int_le(int_type_uint64), RelOpStr = "<="
-        ; Op = int_ge(int_type_uint64), RelOpStr = ">="
-        ),
-        io.write_string(Stream, "(java.lang.Long.compareUnsigned(", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ", ", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ") ", !IO),
-        io.write_string(Stream, RelOpStr, !IO),
-        io.write_string(Stream, " 0)", !IO)
-    ;
-        ( Op = int_div(int_type_uint)
-        ; Op = int_mod(int_type_uint)
-        ; Op = int_div(int_type_uint32)
-        ; Op = int_mod(int_type_uint32)
-        ),
-        io.write_string(Stream, "((int) (((", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ") & 0xffffffffL) ", !IO),
-        output_binary_op_for_java(Stream, Op, !IO),
-        io.write_string(Stream, " ((", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ") & 0xffffffffL)))", !IO)
-    ;
-        Op = int_div(int_type_uint64),
-        io.write_string(Stream, "java.lang.Long.divideUnsigned(", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ", ", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        Op = int_mod(int_type_uint64),
-        io.write_string(Stream, "java.lang.Long.remainderUnsigned(", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ", ", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ( Op = int_add(int_type_int8)
-        ; Op = int_sub(int_type_int8)
-        ; Op = int_mul(int_type_int8)
-        ; Op = int_div(int_type_int8)
-        ; Op = int_mod(int_type_int8)
-        ; Op = bitwise_and(int_type_int8)
-        ; Op = bitwise_or(int_type_int8)
-        ; Op = bitwise_xor(int_type_int8)
-        ; Op = unchecked_left_shift(int_type_int8, _)
-        ; Op = unchecked_right_shift(int_type_int8, _)
-        ; Op = int_add(int_type_uint8)
-        ; Op = int_sub(int_type_uint8)
-        ; Op = int_mul(int_type_uint8)
-        ; Op = bitwise_and(int_type_uint8)
-        ; Op = bitwise_or(int_type_uint8)
-        ; Op = bitwise_xor(int_type_uint8)
-        ; Op = unchecked_left_shift(int_type_uint8, _)
-        ),
-        io.write_string(Stream, "(byte) (", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_binary_op_for_java(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        Op = unchecked_right_shift(int_type_uint8, _),
-        io.write_string(Stream, "(byte) (((", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ") & 0xff) ", !IO),
-        output_binary_op_for_java(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ( Op = int_lt(int_type_uint8)
-        ; Op = int_gt(int_type_uint8)
-        ; Op = int_le(int_type_uint8)
-        ; Op = int_ge(int_type_uint8)
-        ),
-        io.write_string(Stream, "(((", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ") & 0xff) ", !IO),
-        output_binary_op_for_java(Stream, Op, !IO),
-        io.write_string(Stream, " ((", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ") & 0xff))", !IO)
-    ;
-        ( Op = int_div(int_type_uint8)
-        ; Op = int_mod(int_type_uint8)
-        ),
-        io.write_string(Stream, "((byte) (((", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ") & 0xff) ", !IO),
-        output_binary_op_for_java(Stream, Op, !IO),
-        io.write_string(Stream, " ((", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ") & 0xff)))", !IO)
-    ;
-        ( Op = int_add(int_type_int16)
-        ; Op = int_sub(int_type_int16)
-        ; Op = int_mul(int_type_int16)
-        ; Op = int_div(int_type_int16)
-        ; Op = int_mod(int_type_int16)
-        ; Op = bitwise_and(int_type_int16)
-        ; Op = bitwise_or(int_type_int16)
-        ; Op = bitwise_xor(int_type_int16)
-        ; Op = unchecked_left_shift(int_type_int16, _)
-        ; Op = unchecked_right_shift(int_type_int16, _)
-        ; Op = int_add(int_type_uint16)
-        ; Op = int_sub(int_type_uint16)
-        ; Op = int_mul(int_type_uint16)
-        ; Op = bitwise_and(int_type_uint16)
-        ; Op = bitwise_or(int_type_uint16)
-        ; Op = bitwise_xor(int_type_uint16)
-        ; Op = unchecked_left_shift(int_type_uint16, _)
-        ),
-        io.write_string(Stream, "(short) (", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_binary_op_for_java(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        Op = unchecked_right_shift(int_type_uint16, _),
-        io.write_string(Stream, "(short) (((", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ") & 0xffff) ", !IO),
-        output_binary_op_for_java(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ( Op = int_lt(int_type_uint16)
-        ; Op = int_gt(int_type_uint16)
-        ; Op = int_le(int_type_uint16)
-        ; Op = int_ge(int_type_uint16)
-        ),
-        io.write_string(Stream, "(((", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ") & 0xffff) ", !IO),
-        output_binary_op_for_java(Stream, Op, !IO),
-        io.write_string(Stream, " ((", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ") & 0xffff))", !IO)
-    ;
-        ( Op = int_div(int_type_uint16)
-        ; Op = int_mod(int_type_uint16)
-        ),
-        io.write_string(Stream, "((short) (((", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ") & 0xffff) ", !IO),
-        output_binary_op_for_java(Stream, Op, !IO),
-        io.write_string(Stream, " ((", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ") & 0xffff)))", !IO)
+        (
+            ( Type = int_type_int
+            ; Type = int_type_int32
+            ; Type = int_type_int64
+            ; Type = int_type_uint
+            ; Type = int_type_uint32
+            ; Type = int_type_uint64
+            ),
+            output_basic_binop_maybe_with_enum_for_java(Info, Stream,
+                OpStr, X, Y, !IO)
+        ;
+            ( Type = int_type_int8,     Cast = "(byte) ",   Mask = ""
+            ; Type = int_type_int16,    Cast = "(short) ",  Mask = ""
+            ; Type = int_type_uint8,    Cast = "(byte) ",   Mask = "0xff"
+            ; Type = int_type_uint16,   Cast = "(short) ",  Mask = "0xffff"
+            ),
+            io.write_string(Stream, Cast, !IO),
+            % This special case is needed because we represent
+            % Mercury unsigned integers using signed Java integers.
+            % When operating on a sub-word-sized integer we want to treat
+            % as unsigned, we need to tell Java not to sign extend it
+            % if the sign extension could interfere with the operation.
+            % For left shifts, sign extension is irrelevant, since
+            % the shifted-in bits come from the bottom of the word.
+            % For right shifts, sign extension is relevant, since
+            % the shifted-in bits come from the top of the word.
+            ( if
+                Op = unchecked_right_shift(_, _),
+                Mask \= ""
+            then
+                % Unlike output_basic_binop_with_mask_for_java,
+                % this code applies the mask *only* to X, not to Y.
+                % (As the shift amount, Y should already be in the range
+                % 0 .. 63.)
+                io.write_string(Stream, "(((", !IO),
+                output_rval_for_java(Info, X, Stream, !IO),
+                io.format(Stream, ") & %s) ", [s(Mask)], !IO),
+                io.write_string(Stream, OpStr, !IO),
+                io.write_string(Stream, " ", !IO),
+                output_rval_for_java(Info, Y, Stream, !IO),
+                io.write_string(Stream, ")", !IO)
+            else
+                output_basic_binop_for_java(Info, Stream,
+                    OpStr, X, Y, !IO)
+            )
+        )
     ).
 
 :- pred output_basic_binop_maybe_with_enum_for_java(java_out_info::in,
-    io.text_output_stream::in, binary_op::in, mlds_rval::in, mlds_rval::in,
+    io.text_output_stream::in, string::in, mlds_rval::in, mlds_rval::in,
     io::di, io::uo) is det.
+:- pragma no_inline(output_basic_binop_maybe_with_enum_for_java/7).
 
-output_basic_binop_maybe_with_enum_for_java(Info, Stream, Op, X, Y, !IO) :-
+output_basic_binop_maybe_with_enum_for_java(Info, Stream, OpStr, X, Y, !IO) :-
     ( if rval_is_enum_object(X) then
         io.write_string(Stream, "(", !IO),
         output_rval_for_java(Info, X, Stream, !IO),
         io.write_string(Stream, ".MR_value ", !IO),
-        output_binary_op_for_java(Stream, Op, !IO),
+        io.write_string(Stream, OpStr, !IO),
         io.write_string(Stream, " ", !IO),
         output_rval_for_java(Info, Y, Stream, !IO),
         io.write_string(Stream, ".MR_value)", !IO)
     else
-        io.write_string(Stream, "(", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_binary_op_for_java(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
+        output_basic_binop_for_java(Info, Stream, OpStr, X, Y, !IO)
     ).
+
+:- pred output_basic_binop_for_java(java_out_info::in,
+    io.text_output_stream::in, string::in, mlds_rval::in, mlds_rval::in,
+    io::di, io::uo) is det.
+:- pragma no_inline(output_basic_binop_for_java/7).
+
+output_basic_binop_for_java(Info, Stream, OpStr, X, Y, !IO) :-
+    io.write_string(Stream, "(", !IO),
+    output_rval_for_java(Info, X, Stream, !IO),
+    io.write_string(Stream, " ", !IO),
+    io.write_string(Stream, OpStr, !IO),
+    io.write_string(Stream, " ", !IO),
+    output_rval_for_java(Info, Y, Stream, !IO),
+    io.write_string(Stream, ")", !IO).
+
+:- pred output_basic_binop_with_mask_for_java(java_out_info::in,
+    io.text_output_stream::in, string::in, string::in,
+    mlds_rval::in, mlds_rval::in, io::di, io::uo) is det.
+:- pragma no_inline(output_basic_binop_with_mask_for_java/8).
+
+output_basic_binop_with_mask_for_java(Info, Stream, OpStr, Mask, X, Y, !IO) :-
+    io.write_string(Stream, "(((", !IO),
+    output_rval_for_java(Info, X, Stream, !IO),
+    io.format(Stream, ") & %s) ", [s(Mask)], !IO),
+    io.write_string(Stream, OpStr, !IO),
+    io.write_string(Stream, " ((", !IO),
+    output_rval_for_java(Info, Y, Stream, !IO),
+    io.format(Stream, ") & %s))", [s(Mask)], !IO).
+
+:- pred output_binop_func_call_for_java(java_out_info::in,
+    io.text_output_stream::in, string::in, mlds_rval::in, mlds_rval::in,
+    io::di, io::uo) is det.
+:- pragma no_inline(output_binop_func_call_for_java/7).
+
+output_binop_func_call_for_java(Info, Stream, FuncName, X, Y, !IO) :-
+    io.write_string(Stream, FuncName, !IO),
+    io.write_string(Stream, "(", !IO),
+    output_rval_for_java(Info, X, Stream, !IO),
+    io.write_string(Stream, ", ", !IO),
+    output_rval_for_java(Info, Y, Stream, !IO),
+    io.write_string(Stream, ")", !IO).
 
 output_rval_maybe_with_enum_for_java(Info, Rval, Stream, !IO) :-
     output_rval_for_java(Info, Rval, Stream, !IO),
@@ -860,90 +836,6 @@ output_rval_maybe_with_enum_for_java(Info, Rval, Stream, !IO) :-
         io.write_string(Stream, ".MR_value", !IO)
     else
         true
-    ).
-
-:- pred output_binary_op_for_java(io.text_output_stream::in,
-    binary_op::in, io::di, io::uo) is det.
-
-output_binary_op_for_java(Stream, Op, !IO) :-
-    (
-        ( Op = int_add(_), OpStr = "+"
-        ; Op = int_sub(_), OpStr = "-"
-        ; Op = int_mul(_), OpStr = "*"
-        % NOTE: unsigned div and mod require special handling in Java.
-        % See output_binop/6 above.
-        ; Op = int_div(_), OpStr = "/"
-        ; Op = int_mod(_), OpStr = "%"
-        ; Op = unchecked_left_shift(_, _), OpStr = "<<"
-        ; Op = bitwise_and(_), OpStr = "&"
-        ; Op = bitwise_or(_), OpStr = "|"
-        ; Op = bitwise_xor(_), OpStr = "^"
-        ; Op = logical_and, OpStr = "&&"
-        ; Op = logical_or, OpStr = "||"
-        % NOTE: unsigned comparisons require special handling in Java.
-        % See output_binop/6 above.
-        ; Op = eq(_), OpStr = "=="
-        ; Op = ne(_), OpStr = "!="
-        ; Op = int_lt(_), OpStr = "<"
-        ; Op = int_gt(_), OpStr = ">"
-        ; Op = int_le(_), OpStr = "<="
-        ; Op = int_ge(_), OpStr = ">="
-
-        ; Op = float_eq, OpStr = "=="
-        ; Op = float_ne, OpStr = "!="
-        ; Op = float_le, OpStr = "<="
-        ; Op = float_ge, OpStr = ">="
-        ; Op = float_lt, OpStr = "<"
-        ; Op = float_gt, OpStr = ">"
-
-        ; Op = float_add, OpStr = "+"
-        ; Op = float_sub, OpStr = "-"
-        ; Op = float_mul, OpStr = "*"
-        ; Op = float_div, OpStr = "/"
-        ),
-        io.write_string(Stream, OpStr, !IO)
-    ;
-        Op = unchecked_right_shift(IntType, _),
-        (
-            ( IntType = int_type_int
-            ; IntType = int_type_int8
-            ; IntType = int_type_int16
-            ; IntType = int_type_int32
-            ; IntType = int_type_int64
-            ),
-            OpStr = ">>"
-        ;
-            ( IntType = int_type_uint
-            ; IntType = int_type_uint8
-            ; IntType = int_type_uint16
-            ; IntType = int_type_uint32
-            ; IntType = int_type_uint64
-            ),
-            OpStr = ">>>"
-        ),
-        io.write_string(Stream, OpStr, !IO)
-    ;
-        ( Op = array_index(_)
-        ; Op = body
-        ; Op = float_from_dword
-        ; Op = int64_from_dword
-        ; Op = uint64_from_dword
-        ; Op = offset_str_eq(_)
-        ; Op = str_cmp
-        ; Op = str_eq
-        ; Op = str_ge
-        ; Op = str_gt
-        ; Op = str_le
-        ; Op = str_lt
-        ; Op = str_ne
-        ; Op = string_unsafe_index_code_unit
-        ; Op = pointer_equal_conservative
-        ; Op = unsigned_lt
-        ; Op = unsigned_le
-        ; Op = compound_eq
-        ; Op = compound_lt
-        ),
-        unexpected($pred, "invalid binary operator")
     ).
 
 :- pred output_rval_const_for_java(java_out_info::in,

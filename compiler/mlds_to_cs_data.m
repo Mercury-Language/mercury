@@ -492,45 +492,42 @@ output_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
         ),
         output_int_binop_for_csharp(Info, Stream, Op, X, Y, !IO)
     ;
-        Op = unsigned_lt,
+        ( Op = unsigned_lt, OpStr = "<"
+        ; Op = unsigned_le, OpStr = "<="
+        ),
         io.write_string(Stream, "((uint) ", !IO),
         output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " < (uint) ", !IO),
+        io.format(Stream, " %s (uint) ", [s(OpStr)], !IO),
         output_rval_for_csharp(Info, Y, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        Op = unsigned_le,
-        io.write_string(Stream, "((uint) ", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " <= (uint) ", !IO),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
+        ( Op = logical_and, OpStr = "&&"
+        ; Op = logical_or,  OpStr = "||"
+        ; Op = eq(_),       OpStr = "=="
+        ; Op = ne(_),       OpStr = "!="
+        ; Op = float_add,   OpStr = "+"
+        ; Op = float_sub,   OpStr = "-"
+        ; Op = float_mul,   OpStr = "*"
+        ; Op = float_div,   OpStr = "/"
+        ; Op = float_eq,    OpStr = "=="
+        ; Op = float_ne,    OpStr = "!="
+        ; Op = float_lt,    OpStr = "<"
+        ; Op = float_gt,    OpStr = ">"
+        ; Op = float_le,    OpStr = "<="
+        ; Op = float_ge,    OpStr = ">="
+        ),
+        output_basic_binop_for_csharp(Info, Stream, OpStr, X, Y, !IO)
     ;
-        % XXX Should we abort for some of these?
-        ( Op = logical_and
-        ; Op = logical_or
-        ; Op = eq(_)
-        ; Op = ne(_)
-        ; Op = body
+        ( Op = body
         ; Op = string_unsafe_index_code_unit
         ; Op = offset_str_eq(_)
-        ; Op = float_add
-        ; Op = float_sub
-        ; Op = float_mul
-        ; Op = float_div
-        ; Op = float_eq
-        ; Op = float_ne
-        ; Op = float_lt
-        ; Op = float_gt
-        ; Op = float_le
-        ; Op = float_ge
         ; Op = float_from_dword
         ; Op = int64_from_dword
         ; Op = uint64_from_dword
         ; Op = compound_eq
         ; Op = compound_lt
         ),
-        output_basic_binop_for_csharp(Info, Stream, Op, X, Y, !IO)
+        unexpected($pred, "invalid binary operator")
     ).
 
 :- pred output_int_binop_for_csharp(csharp_out_info::in,
@@ -540,309 +537,119 @@ output_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
 
 output_int_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
     (
-        ( Op = int_add(int_type_int)
-        ; Op = int_sub(int_type_int)
-        ; Op = int_mul(int_type_int)
-        ; Op = int_div(int_type_int)
-        ; Op = int_mod(int_type_int)
-        ; Op = bitwise_and(int_type_int)
-        ; Op = bitwise_or(int_type_int)
-        ; Op = bitwise_xor(int_type_int)
-        ; Op = int_lt(_)
-        ; Op = int_gt(_)
-        ; Op = int_le(_)
-        ; Op = int_ge(_)
-        ; Op = int_add(int_type_uint)
-        ; Op = int_sub(int_type_uint)
-        ; Op = int_mul(int_type_uint)
-        ; Op = int_div(int_type_uint)
-        ; Op = int_mod(int_type_uint)
-        ; Op = bitwise_and(int_type_uint)
-        ; Op = bitwise_or(int_type_uint)
-        ; Op = bitwise_xor(int_type_uint)
-        ; Op = int_add(int_type_int32)
-        ; Op = int_sub(int_type_int32)
-        ; Op = int_mul(int_type_int32)
-        ; Op = int_div(int_type_int32)
-        ; Op = int_mod(int_type_int32)
-        ; Op = bitwise_and(int_type_int32)
-        ; Op = bitwise_or(int_type_int32)
-        ; Op = bitwise_xor(int_type_int32)
-        ; Op = int_add(int_type_uint32)
-        ; Op = int_sub(int_type_uint32)
-        ; Op = int_mul(int_type_uint32)
-        ; Op = int_div(int_type_uint32)
-        ; Op = int_mod(int_type_uint32)
-        ; Op = bitwise_and(int_type_uint32)
-        ; Op = bitwise_or(int_type_uint32)
-        ; Op = bitwise_xor(int_type_uint32)
-        ; Op = int_add(int_type_int64)
-        ; Op = int_sub(int_type_int64)
-        ; Op = int_mul(int_type_int64)
-        ; Op = int_div(int_type_int64)
-        ; Op = int_mod(int_type_int64)
-        ; Op = bitwise_and(int_type_int64)
-        ; Op = bitwise_or(int_type_int64)
-        ; Op = bitwise_xor(int_type_int64)
-        ; Op = int_add(int_type_uint64)
-        ; Op = int_sub(int_type_uint64)
-        ; Op = int_mul(int_type_uint64)
-        ; Op = int_div(int_type_uint64)
-        ; Op = int_mod(int_type_uint64)
-        ; Op = bitwise_and(int_type_uint64)
-        ; Op = bitwise_or(int_type_uint64)
-        ; Op = bitwise_xor(int_type_uint64)
+        ( Op = int_add(Type),       OpStr = "+"
+        ; Op = int_sub(Type),       OpStr = "-"
+        ; Op = int_mul(Type),       OpStr = "*"
+        ; Op = int_div(Type),       OpStr = "/"
+        ; Op = int_mod(Type),       OpStr = "%"
+        ; Op = bitwise_and(Type),   OpStr = "&"
+        ; Op = bitwise_xor(Type),   OpStr = "^"
         ),
-        output_basic_binop_for_csharp(Info, Stream, Op, X, Y, !IO)
+        ( Type = int_type_int,      Cast = ""
+        ; Type = int_type_int8,     Cast = "(sbyte) "
+        ; Type = int_type_int16,    Cast = "(short) "
+        ; Type = int_type_int32,    Cast = ""
+        ; Type = int_type_int64,    Cast = ""
+        ; Type = int_type_uint,     Cast = ""
+        ; Type = int_type_uint8,    Cast = "(byte) "
+        ; Type = int_type_uint16,   Cast = "(ushort) "
+        ; Type = int_type_uint32,   Cast = ""
+        ; Type = int_type_uint64,   Cast = ""
+        ),
+        io.write_string(Stream, Cast, !IO),
+        output_basic_binop_for_csharp(Info, Stream, OpStr, X, Y, !IO)
     ;
-        ( Op = unchecked_left_shift(IntType, ShiftType)
-        ; Op = unchecked_right_shift(IntType, ShiftType)
+        Op = bitwise_or(Type),
+        OpStr = "|",
+        (
+            ( Type = int_type_int,      Cast = ""
+            ; Type = int_type_int16,    Cast = "(short) "
+            ; Type = int_type_int32,    Cast = ""
+            ; Type = int_type_int64,    Cast = ""
+            ; Type = int_type_uint,     Cast = ""
+            ; Type = int_type_uint8,    Cast = "(byte) "
+            ; Type = int_type_uint16,   Cast = "(ushort) "
+            ; Type = int_type_uint32,   Cast = ""
+            ; Type = int_type_uint64,   Cast = ""
+            ),
+            io.write_string(Stream, Cast, !IO),
+            output_basic_binop_for_csharp(Info, Stream, OpStr, X, Y, !IO)
+        ;
+            Type = int_type_int8,
+            % The special treatment of bitwise-or for int8 is necessary
+            % to avoid warning CS0675 from the C# compiler.
+            % XXX The Microsoft C# reference manual' section on compiler
+            % messages says that this warning is for a "bitwise OR operator
+            % used on a sign extended operand". I (zs) understand why this
+            % deserves a warning, but do not understand why the same warning
+            % does not apply to bitwise AND and bitwise XOR.
+            % Unfortunately, the chance that a maintainer of the C# compiler
+            % will read this comment is zero :-(
+            io.write_string(Stream, "(sbyte) ((byte) ", !IO),
+            output_rval_for_csharp(Info, X, Stream, !IO),
+            io.write_string(Stream, " ", !IO),
+            io.write_string(Stream, OpStr, !IO),
+            io.write_string(Stream, " (byte) ", !IO),
+            output_rval_for_csharp(Info, Y, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
+        )
+    ;
+        ( Op = int_lt(_Type),   OpStr = "<"
+        ; Op = int_gt(_Type),   OpStr = ">"
+        ; Op = int_le(_Type),   OpStr = "<="
+        ; Op = int_ge(_Type),   OpStr = ">="
         ),
-        ( IntType = int_type_int
-        ; IntType = int_type_uint
-        ; IntType = int_type_int32
-        ; IntType = int_type_uint32
-        ; IntType = int_type_int64
-        ; IntType = int_type_uint64
+        output_basic_binop_for_csharp(Info, Stream, OpStr, X, Y, !IO)
+    ;
+        ( Op = unchecked_left_shift(Type, ShiftType),  OpStr = "<<"
+        ; Op = unchecked_right_shift(Type, ShiftType), OpStr = ">>"
         ),
-        io.write_string(Stream, "(", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_binary_op_for_csharp(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
         % C# does not automatically promote uints to ints, since
         % half of all uints are too big to be represented as ints.
         % However, the only valid shift amounts are very small,
         % so for valid shift amounts, the cast cannot lose information.
         (
-            ShiftType = shift_by_int
+            ShiftType = shift_by_int,
+            CastY = ""
         ;
             ShiftType = shift_by_uint,
-            io.write_string(Stream, "(int) ", !IO)
+            CastY = "(int) "
         ),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ( Op = int_add(int_type_int8)
-        ; Op = int_sub(int_type_int8)
-        ; Op = int_mul(int_type_int8)
-        ; Op = int_div(int_type_int8)
-        ; Op = int_mod(int_type_int8)
-        ; Op = bitwise_and(int_type_int8)
-        ; Op = bitwise_xor(int_type_int8)
+        ( Type = int_type_int,      Cast = ""
+        ; Type = int_type_uint,     Cast = ""
+        ; Type = int_type_int32,    Cast = ""
+        ; Type = int_type_uint32,   Cast = ""
+        ; Type = int_type_int64,    Cast = ""
+        ; Type = int_type_uint64,   Cast = ""
+        ; Type = int_type_int8,     Cast = "(sbyte) "
+        ; Type = int_type_uint8,    Cast = "(byte) "
+        ; Type = int_type_int16,    Cast = "(short) "
+        ; Type = int_type_uint16,   Cast = "(ushort) "
         ),
-        io.write_string(Stream, "(sbyte) (", !IO),
+        io.write_string(Stream, Cast, !IO),
+        io.write_string(Stream, "(", !IO),
         output_rval_for_csharp(Info, X, Stream, !IO),
         io.write_string(Stream, " ", !IO),
-        output_binary_op_for_csharp(Stream, Op, !IO),
+        io.write_string(Stream, OpStr, !IO),
         io.write_string(Stream, " ", !IO),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ( Op = unchecked_left_shift(int_type_int8, ShiftType)
-        ; Op = unchecked_right_shift(int_type_int8, ShiftType)
-        ),
-        io.write_string(Stream, "(sbyte) (", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_binary_op_for_csharp(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
-        (
-            ShiftType = shift_by_int
-        ;
-            ShiftType = shift_by_uint,
-            io.write_string(Stream, "(int) ", !IO)
-        ),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        % The special treatment of bitwise-or here is necessary to avoid
-        % warning CS0675 from the C# compiler.
-        Op = bitwise_or(int_type_int8),
-        io.write_string(Stream, "(sbyte) ((byte) ", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_binary_op_for_csharp(Stream, Op, !IO),
-        io.write_string(Stream, " (byte) ", !IO),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ( Op = int_add(int_type_uint8)
-        ; Op = int_sub(int_type_uint8)
-        ; Op = int_mul(int_type_uint8)
-        ; Op = int_div(int_type_uint8)
-        ; Op = int_mod(int_type_uint8)
-        ; Op = bitwise_and(int_type_uint8)
-        ; Op = bitwise_or(int_type_uint8)
-        ; Op = bitwise_xor(int_type_uint8)
-        ),
-        io.write_string(Stream, "(byte) (", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_binary_op_for_csharp(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ( Op = unchecked_left_shift(int_type_uint8, ShiftType)
-        ; Op = unchecked_right_shift(int_type_uint8, ShiftType)
-        ),
-        io.write_string(Stream, "(byte) (", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_binary_op_for_csharp(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
-        (
-            ShiftType = shift_by_int
-        ;
-            ShiftType = shift_by_uint,
-            io.write_string(Stream, "(int) ", !IO)
-        ),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ( Op = int_add(int_type_int16)
-        ; Op = int_sub(int_type_int16)
-        ; Op = int_mul(int_type_int16)
-        ; Op = int_div(int_type_int16)
-        ; Op = int_mod(int_type_int16)
-        ; Op = bitwise_and(int_type_int16)
-        ; Op = bitwise_or(int_type_int16)
-        ; Op = bitwise_xor(int_type_int16)
-        ),
-        io.write_string(Stream, "(short) (", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_binary_op_for_csharp(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ( Op = unchecked_left_shift(int_type_int16, ShiftType)
-        ; Op = unchecked_right_shift(int_type_int16, ShiftType)
-        ),
-        io.write_string(Stream, "(short) (", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_binary_op_for_csharp(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
-        (
-            ShiftType = shift_by_int
-        ;
-            ShiftType = shift_by_uint,
-            io.write_string(Stream, "(int) ", !IO)
-        ),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ( Op = int_add(int_type_uint16)
-        ; Op = int_sub(int_type_uint16)
-        ; Op = int_mul(int_type_uint16)
-        ; Op = int_div(int_type_uint16)
-        ; Op = int_mod(int_type_uint16)
-        ; Op = bitwise_and(int_type_uint16)
-        ; Op = bitwise_or(int_type_uint16)
-        ; Op = bitwise_xor(int_type_uint16)
-        ),
-        io.write_string(Stream, "(ushort) (", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_binary_op_for_csharp(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ( Op = unchecked_left_shift(int_type_uint16, ShiftType)
-        ; Op = unchecked_right_shift(int_type_uint16, ShiftType)
-        ),
-        io.write_string(Stream, "(ushort) (", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        output_binary_op_for_csharp(Stream, Op, !IO),
-        io.write_string(Stream, " ", !IO),
-        (
-            ShiftType = shift_by_int
-        ;
-            ShiftType = shift_by_uint,
-            io.write_string(Stream, "(int) ", !IO)
-        ),
+        io.write_string(Stream, CastY, !IO),
         output_rval_for_csharp(Info, Y, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ).
 
 :- pred output_basic_binop_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, binary_op::in, mlds_rval::in, mlds_rval::in,
+    io.text_output_stream::in, string::in, mlds_rval::in, mlds_rval::in,
     io::di, io::uo) is det.
+:- pragma no_inline(output_basic_binop_for_csharp/7).
 
-output_basic_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
+output_basic_binop_for_csharp(Info, Stream, OpStr, X, Y, !IO) :-
     io.write_string(Stream, "(", !IO),
     output_rval_for_csharp(Info, X, Stream, !IO),
     io.write_string(Stream, " ", !IO),
-    output_binary_op_for_csharp(Stream, Op, !IO),
+    io.write_string(Stream, OpStr, !IO),
     io.write_string(Stream, " ", !IO),
     output_rval_for_csharp(Info, Y, Stream, !IO),
     io.write_string(Stream, ")", !IO).
-
-:- pred output_binary_op_for_csharp(io.text_output_stream::in, binary_op::in,
-    io::di, io::uo) is det.
-
-output_binary_op_for_csharp(Stream, Op, !IO) :-
-    (
-        ( Op = int_add(_), OpStr = "+"
-        ; Op = int_sub(_), OpStr = "-"
-        ; Op = int_mul(_), OpStr = "*"
-        ; Op = int_div(_), OpStr = "/"
-        ; Op = int_mod(_), OpStr = "%"
-        ; Op = unchecked_left_shift(_, _), OpStr = "<<"
-        ; Op = unchecked_right_shift(_, _), OpStr = ">>"
-        ; Op = bitwise_and(_), OpStr = "&"
-        ; Op = bitwise_or(_), OpStr = "|"
-        ; Op = bitwise_xor(_), OpStr = "^"
-        ; Op = logical_and, OpStr = "&&"
-        ; Op = logical_or, OpStr = "||"
-        ; Op = eq(_), OpStr = "=="
-        ; Op = ne(_), OpStr = "!="
-        ; Op = int_lt(_), OpStr = "<"
-        ; Op = int_gt(_), OpStr = ">"
-        ; Op = int_le(_), OpStr = "<="
-        ; Op = int_ge(_), OpStr = ">="
-
-        ; Op = float_eq, OpStr = "=="
-        ; Op = float_ne, OpStr = "!="
-        ; Op = float_le, OpStr = "<="
-        ; Op = float_ge, OpStr = ">="
-        ; Op = float_lt, OpStr = "<"
-        ; Op = float_gt, OpStr = ">"
-
-        ; Op = float_add, OpStr = "+"
-        ; Op = float_sub, OpStr = "-"
-        ; Op = float_mul, OpStr = "*"
-        ; Op = float_div, OpStr = "/"
-        ),
-        io.write_string(Stream, OpStr, !IO)
-    ;
-        ( Op = array_index(_)
-        ; Op = body
-        ; Op = float_from_dword
-        ; Op = int64_from_dword
-        ; Op = uint64_from_dword
-        ; Op = offset_str_eq(_)
-        ; Op = str_cmp
-        ; Op = str_eq
-        ; Op = str_ge
-        ; Op = str_gt
-        ; Op = str_le
-        ; Op = str_lt
-        ; Op = str_ne
-        ; Op = string_unsafe_index_code_unit
-        ; Op = pointer_equal_conservative
-        ; Op = unsigned_lt
-        ; Op = unsigned_le
-        ; Op = compound_eq
-        ; Op = compound_lt
-        ),
-        unexpected($pred, "invalid binary operator")
-    ).
 
 %---------------------------------------------------------------------------%
 
