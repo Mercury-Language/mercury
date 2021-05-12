@@ -17,22 +17,22 @@
 :- impure pred test1(io::di, io::uo) is det.
 :- impure pred test2(io::di, io::uo) is det.
 
-main -->
-    impure test1,
-    impure test2.
+main(!IO) :-
+    impure test1(!IO),
+    impure test2(!IO).
 
-test1 -->
-    { impure next_x(X0) },
-    { impure next_x(X1) },
-    print(X0), nl,
-    print(X1), nl.
+test1(!IO) :-
+    impure next_x(X0),
+    impure next_x(X1),
+    io.print_line(X0, !IO),
+    io.print_line(X1, !IO).
 
-test2 -->
-    { semipure get_x(X0) },
-    { impure incr_x },
-    { semipure get_x(X1) },
-    print(X0), nl,
-    print(X1), nl.
+test2(!IO) :-
+    semipure get_x(X0),
+    impure incr_x,
+    semipure get_x(X1),
+    io.print_line(X0, !IO),
+    io.print_line(X1, !IO).
 
 :- semipure pred get_x(int::out) is det.
 :- impure pred next_x(int::out) is det.
@@ -65,7 +65,7 @@ test2 -->
 :- pragma foreign_code("C#", "static int my_global;").
 
 :- pragma foreign_proc("C#", get_x(X::out),
-        [promise_semipure], "X = my_global;").
+    [promise_semipure], "X = my_global;").
 :- pragma foreign_proc("C#", next_x(X::out), [], "X = my_global++;").
 :- pragma foreign_proc("C#", incr_x, [], "my_global++;").
 
@@ -75,19 +75,19 @@ test2 -->
     get_x(X::out),
     [will_not_call_mercury, promise_semipure],
 "
-        X = my_global;
+    X = my_global;
 ").
 
 :- pragma foreign_proc("Java",
     next_x(X::out),
     [will_not_call_mercury],
 "
-        X = my_global++;
+    X = my_global++;
 ").
 
 :- pragma foreign_proc("Java",
     incr_x,
     [will_not_call_mercury],
 "
-        my_global++;
+    my_global++;
 ").
