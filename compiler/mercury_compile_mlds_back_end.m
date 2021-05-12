@@ -34,9 +34,6 @@
     list(error_spec)::out, dump_info::in, dump_info::out, io::di, io::uo)
     is det.
 
-:- pred maybe_mark_static_terms(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
 :- pred mlds_to_high_level_c(globals::in, mlds::in, bool::out,
     io::di, io::uo) is det.
 
@@ -211,21 +208,6 @@ mlds_backend(!HLDS, !:MLDS, !:Specs, !DumpInfo, !IO) :-
     maybe_dump_mlds(Globals, !.MLDS, 99, "final", !IO).
 
 %---------------------------------------------------------------------------%
-
-maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
-    globals.get_opt_tuple(Globals, OptTuple),
-    SGCells = OptTuple ^ ot_use_static_ground_cells,
-    (
-        SGCells = use_static_ground_cells,
-        maybe_write_string(Verbose, "% Marking static ground terms...\n", !IO),
-        maybe_flush_output(Verbose, !IO),
-        process_valid_nonimported_procs(update_proc(mark_static_terms), !HLDS),
-        maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
-    ;
-        SGCells = do_not_use_static_ground_cells
-    ).
 
 :- pred maybe_add_trail_ops(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.

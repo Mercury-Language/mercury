@@ -25,11 +25,13 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
+:- import_module bool.
+:- import_module io.
+
 %-----------------------------------------------------------------------------%
 
-
-:- pred mark_static_terms(module_info::in, proc_info::in, proc_info::out)
-    is det.
+:- pred maybe_mark_static_terms(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -37,6 +39,11 @@
 :- implementation.
 
 :- import_module hlds.hlds_goal.
+:- import_module hlds.passes_aux.
+:- import_module libs.
+:- import_module libs.file_util.
+:- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -46,10 +53,34 @@
 
 %-----------------------------------------------------------------------------%
 
+maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO) :-
+    module_info_get_globals(!.HLDS, Globals),
+    globals.get_opt_tuple(Globals, OptTuple),
+    SGCells = OptTuple ^ ot_use_static_ground_cells,
+    (
+        SGCells = use_static_ground_cells,
+        module_info_get_name(!.HLDS, ModuleName),
+        get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
+        maybe_write_string(ProgressStream, Verbose,
+            "% Marking static ground terms...\n", !IO),
+        maybe_flush_output(ProgressStream, Verbose, !IO),
+        process_valid_nonimported_procs(update_proc(mark_static_terms), !HLDS),
+        maybe_write_string(ProgressStream, Verbose,
+            "% done.\n", !IO),
+        maybe_report_stats(ProgressStream, Stats, !IO)
+    ;
+        SGCells = do_not_use_static_ground_cells
+    ).
+
+%-----------------------------------------------------------------------------%
+
     % As we traverse the goal, we keep track of which variables are static at
     % the current program point.
     %
 :- type static_info == set_tree234(prog_var).
+
+:- pred mark_static_terms(module_info::in, proc_info::in, proc_info::out)
+    is det.
 
 mark_static_terms(_ModuleInfo, !Proc) :-
     % The ModuleInfo argument is there just for passes_aux.

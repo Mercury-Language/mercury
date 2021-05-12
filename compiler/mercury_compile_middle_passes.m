@@ -59,6 +59,7 @@
 :- import_module bytecode_backend.bytecode.
 :- import_module bytecode_backend.bytecode_gen.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.mark_static_terms.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -72,7 +73,6 @@
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
-:- import_module top_level.mercury_compile_mlds_back_end.
 :- import_module transform_hlds.
 :- import_module transform_hlds.accumulator.
 :- import_module transform_hlds.closure_analysis.
