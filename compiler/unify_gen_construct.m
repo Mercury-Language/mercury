@@ -725,7 +725,7 @@ generate_direct_arg_construct(Var, ArgVar, Ptag, ArgMode, Type, Code,
 
 pack_how_to_construct(ArgVarsWidths, !HowToConstruct) :-
     (
-        ( !.HowToConstruct = construct_statically
+        ( !.HowToConstruct = construct_statically(_)
         ; !.HowToConstruct = construct_dynamically
         ; !.HowToConstruct = construct_in_region(_)
         )

@@ -342,26 +342,36 @@ common_optimise_unification(Unification0, UnifyMode, !GoalExpr, !GoalInfo,
             UnifyMode = unify_modes_li_lf_ri_rf(_, LVarFinalInst, _, _),
             inst_is_ground(ModuleInfo, LVarFinalInst),
 
-            % The third test is that mark_static_terms.m should not have
-            % already decided that we construct Var statically. This is because
-            % if it has, then it may have *also* decided that a term where
-            % Var occurs on the right hand side should *also* be constructed
-            % statically. If we replace the static construction of Var with an
-            % assign to Var from a coincidentally-guaranteed-to-be-identical
-            % term from somewhere else, as in tests/valid/bug493.m, then Var
+            % The third test, applied specifically to the MLDS backend,
+            % is that mark_static_terms.m should not have already decided
+            % that we construct Var statically. This is because if it has,
+            % then it may have *also* decided that a term where Var occurs
+            % on the right hand side should *also* be constructed statically.
+            % If we replace the static construction of Var with an assign
+            % to Var from a coincidentally-guaranteed-to-be-identical term
+            % from somewhere else, as in tests/valid/bug493.m, then Var
             % won't be marked as a static term in the MLDS code generator
-            % (the only backend that invokes mark_static_terms.m.), and
-            % we get a compiler abort when we get to the occurrence of Var
-            % on the right hand side of the later term.
+            % (the only backend that gets its info about what terms should be
+            % static from mark_static_terms.m.), and we get a compiler abort
+            % when we get to the occurrence of Var on the right hand side
+            % of the later term.
             %
-            % Note that the problem cannot happen in the LLDS code generator,
-            % since that backend does not use mark_static_terms.m, which means
-            % that if we replace the construction of Var by an assignment,
-            % it won't try to put terms containing Var into static data.
+            % The LLDS backend decides what terms it can allocate statically
+            % in var_locn.m, during code generation; it does not pay attention
+            % to the construct_how field. When targeting this backend, the
+            % compiler does not invoke the mark_static_terms pass at the
+            % default optimization level, but it does invoke it when the
+            % --loop-invariants option is set. To reflect the fact that
+            % the LLDS code generator will treat construction unifications
+            % marked static by mark_static_terms.m the same way it would treat
+            % construction unifications with construct_dynamically, we set
+            % the maybe_ignore_marked_static field of the simplify_info to 
+            % ignore_marked_static when targeting the LLDS backend.
             %
-            % Note also that this can happen *only* in procedure bodies
-            % that have been modified after semantic analysis, e.g. by
-            % inlining. This is because
+            % Note also that the problem we have described above for the
+            % MLDS backend can happen *only* in procedure bodies that
+            % have been modified after semantic analysis, e.g. by inlining.
+            % This is because
             %
             % - we can see How = construct_statically only *after* the
             %   mark_static_terms pass has been run, which is way after
@@ -388,7 +398,13 @@ common_optimise_unification(Unification0, UnifyMode, !GoalExpr, !GoalInfo,
             % only if X and Y are supposed to be allocated from the *same*
             % region; and (b) common_optimise_deconstruct does not record
             % anything about Y, so we cannot possibly test for that here.
-            How = construct_dynamically
+            (
+                How = construct_dynamically
+            ;
+                How = construct_statically(_),
+                simplify_info_get_ignore_marked_static(!.Info,
+                    ignore_marked_static)
+            )
         then
             common_optimise_construct(Var, ConsId, ArgVars, LVarFinalInst,
                 !GoalExpr, !GoalInfo, !Common, !Info)

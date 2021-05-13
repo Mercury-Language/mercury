@@ -189,3 +189,5 @@ MCFLAGS-constant_prop_1 = --optimize-constant-propagation \
 MCFLAGS-constant_prop_2 = --optimize-constant-propagation \
 		--optimize-dead-procs --trace-optimized
 MCFLAGS-constant_prop_int = --optimize-constant-propagation
+MCFLAGS-constant_prop_loop_inv = --optimize-constant-propagation \
+		--optimize-dead-procs --trace-optimized --loop-invariants

@@ -77,11 +77,9 @@
 % We adjust the definition of f such that the recursive calls to f
 % at the end of the recursive paths are replaced with calls to f2.
 %
-%
-%
 % NOTE that this version of the optimization does not perform
 % variable renaming, so the two calls to i/1 in the code below
-% will not be hoisted because they have different output variables:
+% will not be hoisted, because they have different output variables:
 %
 %     f(X, Y, R) :-
 %         if      p(X, Y) then g(X, Y, R)
@@ -106,8 +104,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % hoist_loop_invariants(PredProcId, PredInfo,
-    %       ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo)
+    % hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo)
     %
     % Analyze the procedure identified by PredProcId and, if appropriate,
     % split it into two applying the loop invariant hoisting optimization.
@@ -150,7 +147,6 @@
 
 hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
     ( if
-
         % We only want to apply this optimization to pure preds (e.g.
         % not benchmark_det_loop).
         pred_info_get_purity(PredInfo, purity_pure),
@@ -624,9 +620,9 @@ do_not_hoist(ModuleInfo, InvGoals, DontHoistGoals, DontHoistVars) :-
 
 do_not_hoist_2(ModuleInfo, Goal, !DHGs, !DHVs) :-
     ( if
-        ( const_construction(Goal)
-        ; deconstruction(Goal)
-        ; impure_goal(Goal)
+        ( is_const_construction(Goal)
+        ; is_deconstruction(Goal)
+        ; is_impure_goal(Goal)
         ; cannot_succeed(Goal)
         ; call_has_inst_any(ModuleInfo, Goal)
         )
@@ -639,30 +635,29 @@ do_not_hoist_2(ModuleInfo, Goal, !DHGs, !DHVs) :-
 
 %-----------------------------------------------------------------------------%
 
-    % A constant construction is a construction unification with no
-    % arguments or which is constructed from a statically initialized
-    % constant.
+    % A constant construction is a construction unification with no arguments,
+    % or one which is constructed from a statically initialized constant.
     %
-:- pred const_construction(hlds_goal::in) is semidet.
+:- pred is_const_construction(hlds_goal::in) is semidet.
 
-const_construction(hlds_goal(GoalExpr, _GoalInfo)) :-
+is_const_construction(hlds_goal(GoalExpr, _GoalInfo)) :-
     Construction = GoalExpr ^ unify_kind,
     ( Construction ^ construct_args = []
-    ; Construction ^ construct_how = construct_statically
+    ; Construction ^ construct_how = construct_statically(_)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred deconstruction(hlds_goal::in) is semidet.
+:- pred is_deconstruction(hlds_goal::in) is semidet.
 
-deconstruction(hlds_goal(GoalExpr, _GoalInfo)) :-
+is_deconstruction(hlds_goal(GoalExpr, _GoalInfo)) :-
     GoalExpr ^ unify_kind = deconstruct(_, _, _, _, _, _).
 
 %-----------------------------------------------------------------------------%
 
-:- pred impure_goal(hlds_goal::in) is semidet.
+:- pred is_impure_goal(hlds_goal::in) is semidet.
 
-impure_goal(Goal) :-
+is_impure_goal(Goal) :-
     goal_get_purity(Goal) = purity_impure.
 
 %-----------------------------------------------------------------------------%

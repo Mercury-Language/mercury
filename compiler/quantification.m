@@ -405,7 +405,7 @@ implicitly_quantify_goal_quant_info_unify(GoalExpr0, GoalExpr, GoalInfo0,
                 MaybeSetArgs = no,
                 set_of_var.insert(RegionVar, !GoalVars)
             ;
-                ( How = construct_statically
+                ( How = construct_statically(_)
                 ; How = construct_dynamically
                 ),
                 MaybeSetArgs = no
@@ -1761,7 +1761,7 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
                 How = construct_in_region(RegionVar),
                 set_of_var.insert(RegionVar, !Set)
             ;
-                ( How = construct_statically
+                ( How = construct_statically(_)
                 ; How = construct_dynamically
                 )
             ),
@@ -1936,7 +1936,7 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
                 How = construct_in_region(RegionVar),
                 set_of_var.insert(RegionVar, !Set)
             ;
-                ( How = construct_statically
+                ( How = construct_statically(_)
                 ; How = construct_dynamically
                 )
             ),
@@ -2100,7 +2100,7 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
                 MaybeSetArgs = no,
                 set_of_var.insert(RegionVar, !Set)
             ;
-                ( How = construct_statically
+                ( How = construct_statically(_)
                 ; How = construct_dynamically
                 ),
                 MaybeSetArgs = no

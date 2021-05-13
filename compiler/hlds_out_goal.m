@@ -1203,9 +1203,15 @@ write_unification(Info, Stream, ModuleInfo, ProgVarSet, InstVarSet,
             (
                 ConstructHow = construct_dynamically
             ;
-                ConstructHow = construct_statically,
+                ConstructHow = construct_statically(born_static),
                 write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% construct statically\n", !IO)
+                io.write_string(Stream,
+                    "% construct statically (born static)\n", !IO)
+            ;
+                ConstructHow = construct_statically(marked_static),
+                write_indent(Stream, Indent, !IO),
+                io.write_string(Stream,
+                    "% construct statically (marked static)\n", !IO)
             ;
                 ConstructHow = reuse_cell(CellToReuse),
                 CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsIds,

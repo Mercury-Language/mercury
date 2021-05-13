@@ -634,7 +634,8 @@ detect_liveness_in_fgt_construct_goal_loop([Goal0 | Goals0], [Goal | Goals],
     ( if
         GoalExpr = unify(_, _, _, Unification, _),
         Unification = construct(LHSVar, _ConsId, RHSVars, _ArgModes,
-            construct_statically, cell_is_shared, no_construct_sub_info)
+            construct_statically(born_static), cell_is_shared,
+            no_construct_sub_info)
     then
         ( if set_of_var.remove_list(RHSVars, !LocalLiveVars) then
             set_of_var.insert(LHSVar, !LocalLiveVars),

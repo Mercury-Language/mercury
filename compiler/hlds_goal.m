@@ -1021,23 +1021,57 @@
             ).
 
     % Information on how to construct the cell for a construction unification.
-    % The `construct_statically' alternative is set by the mark_static_terms.m
-    % pass, and is used for the MLDS back-end. For the LLDS back-end, the same
-    % optimization is handled by var_locn.m but mark_static_terms.m may be run
-    % to support the loop invariant hoisting pass.
-    %
+    % It is meaningful only if the argument list is not empty.
 :- type how_to_construct
-    --->    construct_statically
-            % Create a static constant in the target language.
+    --->    construct_dynamically
+            % Allocate a new term on the heap. This is the default.
 
-    ;       construct_dynamically
-            % Allocate a new term on the heap.
+    ;       construct_statically(static_how)
+            % Create a static constant in the target language.
 
     ;       construct_in_region(prog_var)
             % Allocate a new term in a region.
 
     ;       reuse_cell(cell_to_reuse).
             % Reuse an existing heap cell.
+
+:- type static_how
+    --->    born_static
+            % A compiler pass intentionally created this term as a static term.
+            % Examples include terms inside from_ground_term scopes, type_info
+            % and typeclass_info structures constructed by polymorphism, and
+            % some deep profiling data structures.
+
+    ;       marked_static.
+            % The term was not born static, but was marked as static by
+            % the mark_static_terms pass.
+            %
+            % That pass is used by the MLDS backend to discover terms that
+            % can be put into static storage. It is not used by the LLDS
+            % backend, because that backend predates the creation of
+            % mark_static_terms.m, and so in that backend, the same
+            % optimization is handled as part of code generation by
+            % code in var_locn.m.
+            %
+            % However, even the LLDS backend may get marked_static construction
+            % unifications, because the loop invariant hoisting pass invokes
+            % mark_static_terms.m to help it do its job. (Ironically, it helps
+            % by identifying construction unifications that should *not* be
+            % hoisted out of loops, because they take no time at all at runtime
+            % anyway.)
+            %
+            % Note that after the how_to_construct field of a construction
+            % unification is set to construct_dynamically(marked_static),
+            % that information remains valid *only* until the next compiler
+            % pass modifies any of the information that mark_static_terms.m
+            % used to arrive at that decision. When targeting the MLDS backend,
+            % the simplification pass, and common.m in particular, carefully
+            % refrain from making invalidating changes. When targeting the LLDS
+            % backend, they can and sometimes do make such invalidating
+            % changes, so if any later pass needs to make a distinction between
+            % construct_dynamically and construct_statically, it would need
+            % to rerun mark_static_terms.m. As of this writing, there is
+            % no such later pass.
 
     % Information used to perform structure reuse on a cell.
     %
@@ -3194,15 +3228,15 @@ rename_unify(Must, Subn, Unify0, Unify) :-
         rename_var(Must, Subn, Var0, Var),
         rename_var_list(Must, Subn, Vars0, Vars),
         (
-            How0 = reuse_cell(cell_to_reuse(ReuseVar0, B, C)),
-            rename_var(Must, Subn, ReuseVar0, ReuseVar),
-            How = reuse_cell(cell_to_reuse(ReuseVar, B, C))
-        ;
             How0 = construct_dynamically,
             How = How0
         ;
-            How0 = construct_statically,
+            How0 = construct_statically(_),
             How = How0
+        ;
+            How0 = reuse_cell(cell_to_reuse(ReuseVar0, B, C)),
+            rename_var(Must, Subn, ReuseVar0, ReuseVar),
+            How = reuse_cell(cell_to_reuse(ReuseVar, B, C))
         ;
             How0 = construct_in_region(RegVar0),
             rename_var(Must, Subn, RegVar0, RegVar),
@@ -3275,24 +3309,24 @@ rename_generic_call(Must, Subn, Call0, Call) :-
 %
 % :- pred rename_var_maps(must_rename::in, prog_var_renaming::in,
 %     map(prog_var, T)::in, map(prog_var, T)::out) is det.
-% 
+%
 % rename_var_maps(Must, Subn, Map0, Map) :-
 %     map.to_assoc_list(Map0, AssocList0),
 %     rename_var_maps_2(Must, Subn, AssocList0, AssocList),
 %     map.from_assoc_list(AssocList, Map).
-% 
+%
 % :- pred rename_var_maps_2(must_rename::in, map(var(V), var(V))::in,
 %     assoc_list(var(V), T)::in, assoc_list(var(V), T)::out) is det.
-% 
+%
 % rename_var_maps_2(_Must, _Subn, [], []).
 % rename_var_maps_2(Must, Subn,
 %         [Var - Item | VarItems], [NewVar - Item | NewVarItems]) :-
 %     rename_var(Must, Subn, Var, NewVar),
 %     rename_var_maps_2(Must, Subn, VarItems, NewVarItems).
-% 
+%
 % :- pred rename_var_pair_list(must_rename::in, prog_var_renaming::in,
 %     assoc_list(prog_var, T)::in, list(pair(prog_var, T))::out) is det.
-% 
+%
 % rename_var_pair_list(_Must, _Subn, [], []).
 % rename_var_pair_list(Must, Subn,
 %         [Var - Item | VarItems], [NewVar - Item | NewVarItems]) :-

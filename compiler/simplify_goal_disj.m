@@ -319,7 +319,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals,
             ;
                 % Only remove disjuncts that might loop
                 % or call error/1 if --no-fully-strict.
-                simplify_info_get_fully_strict(!.Info, no)
+                simplify_info_get_fully_strict(!.Info, not_fully_strict)
             )
         then
             simplify_info_get_deleted_call_callees(!.Info,

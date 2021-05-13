@@ -454,7 +454,7 @@ unification_set_reuse(ShortReuseDescription, !Unification) :-
             CellsToUpdate)
     then
         (
-            HowToConstruct0 = construct_statically
+            HowToConstruct0 = construct_statically(_)
             % Leave static terms as-is.
         ;
             ( HowToConstruct0 = construct_dynamically

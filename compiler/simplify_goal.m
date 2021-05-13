@@ -132,7 +132,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         ; Purity = purity_semipure
         ),
         Goal0ContainsTrace = contains_no_trace_goal,
-        ( simplify_info_get_fully_strict(!.Info, no)
+        ( simplify_info_get_fully_strict(!.Info, not_fully_strict)
         ; Goal0CanLoopOrThrow = cannot_loop_or_throw
         )
     then
@@ -194,7 +194,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         ; Purity = purity_semipure
         ),
         Goal0ContainsTrace = contains_no_trace_goal,
-        ( simplify_info_get_fully_strict(!.Info, no)
+        ( simplify_info_get_fully_strict(!.Info, not_fully_strict)
         ; Goal0CanLoopOrThrow = cannot_loop_or_throw
         )
     then

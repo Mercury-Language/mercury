@@ -541,7 +541,7 @@ goal_is_excess_assign(Info, ConjNonLocals, Goal0, !Subn) :-
     % with `HeadVar__n' or an anonymous variable.
     not (
         trace_level_needs_meaningful_var_names(TraceLevel) = yes,
-        TraceOptimized = no,
+        TraceOptimized = not_trace_optimized,
         var_is_named(VarSet, ElimVar),
         not var_is_named(VarSet, ReplacementVar)
     ),

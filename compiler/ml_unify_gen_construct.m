@@ -337,7 +337,7 @@ ml_generate_dynamic_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
                     TagwordArgModes, [], RevArgFilledBitfields),
                 UseMap = use_packed_word_map
             ;
-                HowToConstruct = construct_statically,
+                HowToConstruct = construct_statically(_),
                 ml_gen_tagword_statically(!.Info, TagwordRHSVarsTypesWidths,
                     [], RevArgFilledBitfields),
                 UseMap = do_not_use_packed_word_map
@@ -395,7 +395,7 @@ ml_generate_dynamic_construct_tagword_compound(ConsId, TagFilledBitfield,
                 [], RevArgFilledBitfields),
             UseMap = use_packed_word_map
         ;
-            HowToConstruct = construct_statically,
+            HowToConstruct = construct_statically(_),
             ml_gen_tagword_statically(!.Info, ArgVarsTypesWidths,
                 [], RevArgFilledBitfields),
             UseMap = do_not_use_packed_word_map
@@ -412,7 +412,7 @@ ml_generate_dynamic_construct_tagword_compound(ConsId, TagFilledBitfield,
         (
             HowToConstruct = construct_dynamically
         ;
-            HowToConstruct = construct_statically,
+            HowToConstruct = construct_statically(_),
             GroundTerm =
                 ml_ground_term(CastTagwordRval, LHSType, LHS_MLDS_Type),
             ml_gen_info_set_const_var(LHSVar, GroundTerm, !Info)
@@ -439,7 +439,7 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag,
             Stmts, !Info),
         Defns = []
     ;
-        HowToConstruct = construct_statically,
+        HowToConstruct = construct_statically(_),
         expect(unify(TakeAddr, []), $pred,
             "cannot take address of static object's field"),
         ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,

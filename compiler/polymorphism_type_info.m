@@ -491,7 +491,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
 
             new_type_info_var(Type, type_info, Var, !Info),
             Unification = construct(Var, type_info_const(ConstNum),
-                [], [], construct_statically, cell_is_shared,
+                [], [], construct_statically(born_static), cell_is_shared,
                 no_construct_sub_info),
             Ground = ground(shared, none_or_default_func),
             UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),

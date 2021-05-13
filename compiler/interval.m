@@ -384,7 +384,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
                 HowToConstruct = construct_in_region(_),
                 unexpected($pred, "construct in region")
             ;
-                ( HowToConstruct = construct_statically
+                ( HowToConstruct = construct_statically(_)
                 ; HowToConstruct = construct_dynamically
                 )
             ),

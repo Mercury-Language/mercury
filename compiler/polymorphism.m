@@ -2724,7 +2724,8 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
         % Create the construction unification to initialize the variable.
         ConstConsId = typeclass_info_const(ConstNum),
         Unification = construct(TypeClassInfoVar, ConstConsId, [], [],
-            construct_statically, cell_is_shared, no_construct_sub_info),
+            construct_statically(born_static), cell_is_shared,
+            no_construct_sub_info),
         Ground = ground(shared, none_or_default_func),
         UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
         % XXX The UnifyContext is wrong.
@@ -3317,7 +3318,8 @@ materialize_typeclass_info_var(Constraint, InstanceIdConstNum, Var, Goals,
         ConsId = typeclass_info_const(InstanceIdConstNum),
         RHS = rhs_functor(ConsId, is_not_exist_constr, []),
         Unification = construct(Var, ConsId, [], [],
-            construct_statically, cell_is_shared, no_construct_sub_info),
+            construct_statically(born_static), cell_is_shared,
+            no_construct_sub_info),
         Ground = ground(shared, none_or_default_func),
         UnifyMode = unify_modes_li_lf_ri_rf(free, Ground, Ground, Ground),
         % XXX The UnifyContext is wrong.
@@ -3332,7 +3334,6 @@ materialize_typeclass_info_var(Constraint, InstanceIdConstNum, Var, Goals,
         Goal = hlds_goal(GoalExpr, GoalInfo),
         Goals = [Goal]
     ).
-
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.polymorphism.

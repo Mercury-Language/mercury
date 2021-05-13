@@ -483,7 +483,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
         (
             Unification = construct(Var, _, _, _, HowToConstruct, _, _),
             (
-                HowToConstruct = construct_statically,
+                HowToConstruct = construct_statically(_),
                 !IrInfo ^ static_vars :=
                     set.insert(!.IrInfo ^ static_vars, Var)
             ;

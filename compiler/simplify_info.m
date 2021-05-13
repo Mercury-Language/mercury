@@ -134,6 +134,18 @@
 % Getters and setters of fields of simplify_info.
 %
 
+:- type maybe_fully_strict
+    --->    not_fully_strict
+    ;       fully_strict.
+
+:- type maybe_trace_optimized
+    --->    not_trace_optimized
+    ;       trace_optimized.
+
+:- type maybe_ignore_marked_static
+    --->    do_not_ignore_marked_static
+    ;       ignore_marked_static.
+
 :- pred simplify_info_get_simplify_tasks(simplify_info::in,
     simplify_tasks::out) is det.
 :- pred simplify_info_get_module_info(simplify_info::in, module_info::out)
@@ -149,9 +161,12 @@
     pred_proc_id::out) is det.
 :- pred simplify_info_get_inst_varset(simplify_info::in,
     inst_varset::out) is det.
-:- pred simplify_info_get_fully_strict(simplify_info::in, bool::out) is det.
+:- pred simplify_info_get_fully_strict(simplify_info::in,
+    maybe_fully_strict::out) is det.
 :- pred simplify_info_get_trace_level_optimized(simplify_info::in,
-    trace_level::out, bool::out) is det.
+    trace_level::out, maybe_trace_optimized::out) is det.
+:- pred simplify_info_get_ignore_marked_static(simplify_info::in,
+    maybe_ignore_marked_static::out) is det.
 
 :- pred simplify_info_get_rtti_varmaps(simplify_info::in, rtti_varmaps::out)
     is det.
@@ -295,12 +310,14 @@
                 sip_inst_varset             :: inst_varset,
 
                 % The value of the --fully-strict option.
-                sip_fully_strict            :: bool,
+                sip_fully_strict            :: maybe_fully_strict,
 
                 sip_trace_level             :: trace_level,
 
                 % The value of the --trace-optimized option.
-                sip_trace_optimized         :: bool
+                sip_trace_optimized         :: maybe_trace_optimized,
+
+                sip_ignore_marked_static    :: maybe_ignore_marked_static
             ).
 
 :- type simplify_sub_info
@@ -352,12 +369,26 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
     PredProcId = proc(PredId, ProcId),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
+    globals.lookup_bool_option(Globals, fully_strict, FullyStrict0),
+    ( FullyStrict0 = no,  FullyStrict = not_fully_strict
+    ; FullyStrict0 = yes, FullyStrict = fully_strict
+    ),
     globals.get_trace_level(Globals, TraceLevel),
-    globals.lookup_bool_option(Globals, trace_optimized, TraceOptimized),
+    globals.lookup_bool_option(Globals, trace_optimized, TraceOptimized0),
+    ( TraceOptimized0 = no,  TraceOptimized = not_trace_optimized
+    ; TraceOptimized0 = yes, TraceOptimized = trace_optimized
+    ),
+    Backend = lookup_current_backend(Globals),
+    (
+        Backend = low_level_backend,
+        IgnoreMarkedStatic = ignore_marked_static
+    ;
+        Backend = high_level_backend,
+        IgnoreMarkedStatic = do_not_ignore_marked_static
+    ),
 
     Params = simplify_info_params(PredProcId, InstVarSet, FullyStrict,
-        TraceLevel, TraceOptimized),
+        TraceLevel, TraceOptimized, IgnoreMarkedStatic),
 
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     ElimVars = [],
@@ -461,6 +492,8 @@ simplify_info_get_fully_strict(Info, X) :-
 simplify_info_get_trace_level_optimized(Info, X, Y) :-
     X = Info ^ simp_params ^ sip_trace_level,
     Y = Info ^ simp_params ^ sip_trace_optimized.
+simplify_info_get_ignore_marked_static(Info, X) :-
+    X = Info ^ simp_params ^ sip_ignore_marked_static.
 
 simplify_info_get_rtti_varmaps(Info, X) :-
     X = Info ^ simp_sub_info ^ ssimp_rtti_varmaps.

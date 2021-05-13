@@ -656,13 +656,16 @@ endif
 # used by simplify.m to eliminate the unreachable code. Since the only profit
 # would be to pass unrealistic test cases like constant_prop_2, this is not
 # worth doing.
+#
+# constant_prop_loop_inv is a cut_down version of constant_prop_2.
 
 ifeq "$(findstring hl,$(GRADE))$(findstring prof,$(GRADE))" "hlprof"
 	PROF_PROGS =
 else
   ifeq "$(findstring profdeep,$(GRADE))" ""
 	PROF_PROGS = \
-		constant_prop_2
+		constant_prop_2 \
+		constant_prop_loop_inv
   else
 	PROF_PROGS =
   endif

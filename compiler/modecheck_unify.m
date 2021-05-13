@@ -633,8 +633,9 @@ modecheck_unify_const_struct(X, ConsId, ConstNum, UnifyContext,
     ( if inst_is_free(ModuleInfo0, InstOfX) then
         Inst = InstOfY,
         modecheck_set_var_inst(X, Inst, yes(InstOfY), !ModeInfo),
-        Unification = construct(X, ConsId, [], [], construct_statically,
-            cell_is_shared, no_construct_sub_info),
+        Unification = construct(X, ConsId, [], [],
+            construct_statically(born_static), cell_is_shared,
+            no_construct_sub_info),
         UnifyMode = unify_modes_li_lf_ri_rf(InstOfX, Inst, InstOfY, Inst),
         UnifyGoalExpr = unify(X, rhs_functor(ConsId, is_not_exist_constr, []),
             UnifyMode, Unification, UnifyContext)
@@ -661,8 +662,9 @@ modecheck_unify_const_struct(X, ConsId, ConstNum, UnifyContext,
         Inst = not_reached,
         modecheck_set_var_inst(X, Inst, no, !ModeInfo),
         % Return any old garbage.
-        Unification = construct(X, ConsId, [], [], construct_statically,
-            cell_is_shared, no_construct_sub_info),
+        Unification = construct(X, ConsId, [], [],
+            construct_statically(born_static), cell_is_shared,
+            no_construct_sub_info),
         UnifyMode = unify_modes_li_lf_ri_rf(InstOfX, Inst, InstOfY, Inst),
         UnifyGoalExpr = unify(X, rhs_functor(ConsId, is_not_exist_constr, []),
             UnifyMode, Unification, UnifyContext)

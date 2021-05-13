@@ -1136,7 +1136,7 @@ var_locn_assign_dynamic_cell_to_var(Var, ReserveWordAtStart, Ptag, CellArgs,
             RegionVarCode = empty,
             MaybeRegionRval = no
         ;
-            HowToConstruct = construct_statically,
+            HowToConstruct = construct_statically(_),
             % construct_statically is not normally used in LLDS grades, but
             % it may be set by mark_static_terms.m to support loop invariant
             % hoisting. If we get here then have we missed an opportunity to

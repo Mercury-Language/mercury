@@ -193,7 +193,7 @@ unification_mark_static_terms(Unification0, Unification, !StaticVars) :-
         % If all the arguments are static, then the newly constructed variable
         % is static too.
         ( if list.all_true(set_tree234.contains(!.StaticVars), ArgVars) then
-            HowToConstruct = construct_statically,
+            HowToConstruct = construct_statically(marked_static),
             set_tree234.insert(Var, !StaticVars),
             % This is a minor optimization to improve the efficiency of the
             % compiler: don't bother allocating memory if we don't need to.
