@@ -69,6 +69,7 @@ Changes to the Mercury standard library
 ### Changes to the `dir` module
 
 * The following predicate has been added:
+
     - pred `general_foldl2/8`
 
 ### Changes to the `getopt` module
