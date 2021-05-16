@@ -441,10 +441,10 @@ query_oracle_user(UserQuestion, OracleResponse, !Oracle, !IO) :-
 answer_known(Oracle, Question, Answer) :-
     Atom = get_decl_question_atom(Question),
     ( if trusted(Atom ^ proc_layout, Oracle) then
-        % We tell the analyser that this node doesn't contain a bug, however
-        % its children may still contain bugs, since trusted procs may call
-        % untrusted procs, for example when an untrusted closure is passed
-        % to a trusted predicate.
+        % We tell the analyser that this node does not contain a bug,
+        % however its children may still contain bugs, since trusted procs
+        % may call untrusted procs. One example is when an untrusted closure
+        % is passed to a trusted predicate.
         Answer = ignore(get_decl_question_node(Question))
     else
         query_oracle_kb(Oracle ^ kb_current, Question, Answer)
@@ -523,7 +523,6 @@ update_revised_knowledge_base(Oracle1, Oracle2, Oracle3) :-
             % For ground atoms, the knowledge is represented directly with
             % a map. This is used, for example, in the common case that
             % the user supplies a truth value for a "wrong answer" node.
-            %
             kb_ground_map :: map(final_decl_atom, decl_truth),
 
             % This map stores knowledge about the completeness of the set

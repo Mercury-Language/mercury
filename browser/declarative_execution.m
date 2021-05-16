@@ -254,7 +254,7 @@
                 proc_layout         :: proc_layout,
 
                 % The arguments, including the compiler-generated ones.
-                % XXX This representation can't handle partially instantiated
+                % XXX This representation cannot handle partially instantiated
                 % data structures.
                 atom_args           :: list(trace_atom_arg)
             ).
@@ -653,7 +653,7 @@ step_left_in_contour(Store, Node) = Prec :-
         (
             Status = undecided
             % An exception must have been thrown inside the negation,
-            % so we don't consider it a separate context.
+            % so we do not consider it a separate context.
         ;
             ( Status = failed
             ; Status = succeeded
@@ -865,16 +865,15 @@ disj_node_from_id(Store, NodeId, Node) :-
 
     % The "map" is actually just an integer representing the version
     % of the map. The empty map should be given the value 0, and
-    % each time the map is destructively modified (by C code), the
-    % value should be incremented.
+    % each time the map is destructively modified (by C code),
+    % the value should be incremented.
     %
 :- type trace_node_store
     --->    store(int).
 
-    % The implementation of the identifiers is the same as what
-    % is identified. This fact is hidden, however, to force the
-    % abstract map to be explicitly used whenever a new node is
-    % accessed.
+    % The implementation of the identifiers is the same as what is identified.
+    % This fact is hidden, however, to force the abstract map to be
+    % explicitly used whenever a new node is accessed.
     %
 :- type trace_node_id
     --->    id(c_pointer).

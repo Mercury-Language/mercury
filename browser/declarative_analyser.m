@@ -172,8 +172,8 @@
             % choose a skipped suspect to requery.
 
     ;       analyser_follow_subterm_end(
-                % Follow the subterm all the way to where it's bound or
-                % until it can't be followed any further (for example
+                % Follow the subterm either all the way to where it is bound,
+                % or until it cannot be followed any further (for example
                 % when there is a call to a module with no tracing),
                 % and ask a question about the nearest unknown suspect
                 % on the subterm dependency chain. Then proceed to do
@@ -276,14 +276,12 @@ top_down_search_mode = analyser_top_down.
     ;       ques_reason_divide_and_query(
                 dq_weighting            :: weighting_heuristic,
 
+                % The weight of the search space before the question was asked.
                 dq_old_weight           :: int,
-                                        % The weight of the search space before
-                                        % the question was asked.
 
+                % The weight the searchspace will be if the user answers `no'
+                % to the current question.
                 dq_chosen_subtree_weight :: int
-                                        % The weight the searchspace will be
-                                        % if the user answers `no' to the
-                                        % current question.
             )
 
     ;       ques_reason_skipped
@@ -478,27 +476,28 @@ change_search_mode(Store, Oracle, UserMode, !Analyser, Response) :-
 process_answer(Store, Answer, SuspectId, !Analyser) :-
     (
         Answer = skip(_),
-        skip_suspect(SuspectId, !.Analyser ^ search_space, SearchSpace),
+        SearchSpace0 = !.Analyser ^ search_space,
+        skip_suspect(SuspectId, SearchSpace0, SearchSpace),
         !Analyser ^ search_space := SearchSpace
     ;
         Answer = ignore(_),
-        ignore_suspect(Store, SuspectId, !.Analyser ^ search_space,
-            SearchSpace),
+        SearchSpace0 = !.Analyser ^ search_space,
+        ignore_suspect(Store, SuspectId, SearchSpace0, SearchSpace),
         !Analyser ^ search_space := SearchSpace
     ;
         Answer = truth_value(_, truth_correct),
-        assert_suspect_is_correct(SuspectId, !.Analyser ^ search_space,
-            SearchSpace),
+        SearchSpace0 = !.Analyser ^ search_space,
+        assert_suspect_is_correct(SuspectId, SearchSpace0, SearchSpace),
         !Analyser ^ search_space := SearchSpace
     ;
         Answer = truth_value(_, truth_inadmissible),
-        assert_suspect_is_inadmissible(SuspectId, !.Analyser ^ search_space,
-            SearchSpace),
+        SearchSpace0 = !.Analyser ^ search_space,
+        assert_suspect_is_inadmissible(SuspectId, SearchSpace0, SearchSpace),
         !Analyser ^ search_space := SearchSpace
     ;
         Answer = truth_value(_, truth_erroneous),
-        assert_suspect_is_erroneous(SuspectId, !.Analyser ^ search_space,
-            SearchSpace),
+        SearchSpace0 = !.Analyser ^ search_space,
+        assert_suspect_is_erroneous(SuspectId, SearchSpace0, SearchSpace),
         !Analyser ^ search_space := SearchSpace
     ;
         Answer = suspicious_subterm(Node, ArgPos, TermPath, HowTrack,
@@ -506,7 +505,7 @@ process_answer(Store, Answer, SuspectId, !Analyser) :-
 
         % XXX The following 2 lines just done so that debugging info can be
         % printed for tests run when declarative_analyser.m not compiled with
-        % tracing (so can't use dd_dd command in mdb). Should be removed when
+        % tracing (so cannot use dd_dd command in mdb). Should be removed when
         % edt_dependency becomes stable enough.
 
         edt_dependency(Store, Node, ArgPos, TermPath, _, DebugOrigin),
@@ -514,32 +513,33 @@ process_answer(Store, Answer, SuspectId, !Analyser) :-
         (
             ShouldAssertInvalid = assert_invalid,
             edt_subterm_mode(Store, Node, ArgPos, TermPath, Mode),
+            SearchSpace0 = !.Analyser ^ search_space,
             (
                 Mode = subterm_in,
                 assert_suspect_is_inadmissible(SuspectId,
-                    !.Analyser ^ search_space, SearchSpace)
+                    SearchSpace0, SearchSpace)
             ;
                 Mode = subterm_out,
                 assert_suspect_is_erroneous(SuspectId,
-                    !.Analyser ^ search_space, SearchSpace)
+                    SearchSpace0, SearchSpace)
             ),
             !Analyser ^ search_space := SearchSpace
         ;
             ShouldAssertInvalid = no_assert_invalid
         ),
-        !Analyser ^ search_mode :=
-            analyser_follow_subterm_end(SuspectId, ArgPos, TermPath, no,
-                HowTrack)
+        NewSearchMode = analyser_follow_subterm_end(SuspectId, ArgPos,
+            TermPath, no, HowTrack),
+        !Analyser ^ search_mode := NewSearchMode
     ).
 
 revise_analysis(Store, Response, !Analyser) :-
-    SearchSpace = !.Analyser ^ search_space,
-    ( if root(SearchSpace, RootId) then
-        Node = get_edt_node(!.Analyser ^ search_space, RootId),
+    SearchSpace0 = !.Analyser ^ search_space,
+    ( if root(SearchSpace0, RootId) then
+        Node = get_edt_node(SearchSpace0, RootId),
         edt_question(Store, Node, Question),
         Response = analyser_response_revise(Question),
-        revise_root(Store, SearchSpace, SearchSpace1),
-        !Analyser ^ search_space := SearchSpace1,
+        revise_root(Store, SearchSpace0, SearchSpace),
+        !Analyser ^ search_space := SearchSpace,
         !Analyser ^ last_search_question :=
             yes(suspect_and_reason(RootId, ques_reason_revise)),
         !Analyser ^ search_mode :=
@@ -557,15 +557,13 @@ revise_analysis(Store, Response, !Analyser) :-
 decide_analyser_response(Store, Oracle, Response, !Analyser) :-
     maybe_check_search_space_consistency(Store, !.Analyser ^ search_space,
         "Start of decide_analyser_response"),
-    some [!SearchSpace] (
-        !:SearchSpace = !.Analyser ^ search_space,
-        search_for_question(Store, Oracle, !SearchSpace,
-            !.Analyser ^ search_mode, !.Analyser ^ fallback_search_mode,
-            NewMode, SearchResponse),
-        !Analyser ^ search_space := !.SearchSpace,
-        !Analyser ^ search_mode := NewMode,
-        handle_search_response(Store, SearchResponse, !Analyser, Response)
-    ),
+    SearchSpace0 = !.Analyser ^ search_space,
+    search_for_question(Store, Oracle, SearchSpace0, SearchSpace,
+        !.Analyser ^ search_mode, !.Analyser ^ fallback_search_mode,
+        NewMode, SearchResponse),
+    !Analyser ^ search_space := SearchSpace,
+    !Analyser ^ search_mode := NewMode,
+    handle_search_response(Store, SearchResponse, !Analyser, Response),
     maybe_check_search_space_consistency(Store, !.Analyser ^ search_space,
         "End of decide_analyser_response").
 
@@ -606,8 +604,8 @@ handle_search_response(Store, SearchResponse, !Analyser, AnalyserResponse) :-
             yes(suspect_and_reason(SuspectId, Reason))
     ;
         SearchResponse = search_response_require_explicit_subtree(SuspectId),
-        !Analyser ^ require_explicit := yes(explicit_subtree(
-            SuspectId)),
+        !Analyser ^ require_explicit :=
+            yes(explicit_subtree(SuspectId)),
         Node = get_edt_node(!.Analyser ^ search_space, SuspectId),
         AnalyserResponse = analyser_response_require_explicit_subtree(Node)
     ;
@@ -633,8 +631,8 @@ handle_search_response(Store, SearchResponse, !Analyser, AnalyserResponse) :-
     %   Response):
     %
     % Create a bug analyser-response using the given Evidence.
-    % If InadmissibleChildren isn't empty then an i_bug will be created,
-    % otherwise an e_bug will be created.
+    % If InadmissibleChildren is empty, then an e_bug will be created,
+    % otherwise an i_bug will be created.
     %
 :- pred bug_response(S::in, search_space(T)::in,
     suspect_id::in, list(suspect_id)::in, list(suspect_id)::in,
@@ -644,18 +642,17 @@ bug_response(Store, SearchSpace, BugId, Evidence, InadmissibleChildren,
         Response) :-
     BugNode = get_edt_node(SearchSpace, BugId),
     (
+        InadmissibleChildren = [],
+        edt_get_e_bug(Store, BugNode, EBug),
+        Bug = e_bug(EBug)
+    ;
         InadmissibleChildren = [InadmissibleChild | _],
         edt_get_i_bug(Store, BugNode,
             get_edt_node(SearchSpace, InadmissibleChild), IBug),
         Bug = i_bug(IBug)
-    ;
-        InadmissibleChildren = [],
-        edt_get_e_bug(Store, BugNode, EBug),
-        Bug = e_bug(EBug)
     ),
     EDTNodes = list.map(get_edt_node(SearchSpace), Evidence),
-    list.map(edt_question(Store), EDTNodes,
-        EvidenceAsQuestions),
+    list.map(edt_question(Store), EDTNodes, EvidenceAsQuestions),
     Response = analyser_response_bug_found(Bug, EvidenceAsQuestions).
 
 %---------------------------------------------------------------------------%
@@ -702,7 +699,7 @@ search_for_question(Store, Oracle, !SearchSpace, OldMode, FallBackSearchMode,
     search_response::out) is det <= mercury_edt(S, T).
 
 top_down_search(Store, Oracle, !SearchSpace, Response) :-
-    % If there's no root yet (because the oracle hasn't asserted any nodes
+    % If there is no root yet (because the oracle has not asserted any nodes
     % are erroneous yet) then use the topmost suspect as a starting point.
 
     ( if root(!.SearchSpace, RootId) then
@@ -727,7 +724,7 @@ top_down_search(Store, Oracle, !SearchSpace, Response) :-
             % in the search space, if there is a root (i.e. an erroneous
             % suspect), then it must be a bug. Note that only top down search
             % actually checks if a bug was found. This is okay, since all the
-            % other search algorithms call top down search if they can't find
+            % other search algorithms call top down search if they cannot find
             % an unknown suspect.
             root(!.SearchSpace, BugId)
         then
@@ -748,7 +745,7 @@ top_down_search(Store, Oracle, !SearchSpace, Response) :-
             )
         else
             % Try to extend the search space upwards. If this fails
-            % and we're not at the topmost traced node, then request that
+            % and we are not at the topmost traced node, then request that
             % an explicit supertree be generated.
             ( if
                 extend_search_space_upwards(Store, Oracle, !.SearchSpace,
@@ -760,7 +757,7 @@ top_down_search(Store, Oracle, !SearchSpace, Response) :-
                 topmost_det(!.SearchSpace, TopMostId),
                 TopMostNode = get_edt_node(!.SearchSpace, TopMostId),
                 ( if edt_topmost_node(Store, TopMostNode) then
-                    % We can't look any higher.
+                    % We cannot look any higher.
                     Response = search_response_no_suspects
                 else
                     Response = search_response_require_explicit_supertree
@@ -813,7 +810,7 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
             Output = no,
             % Since the subterm is not an output of the binding node,
             % it will not appear in any of the arguments of the binding node
-            % (it can't be an input, because then it would have been bound
+            % (it cannot be an input, because then it would have been bound
             % outside the node).
             MaybePath = no
         ),
@@ -883,12 +880,11 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
             NewLastUnknown = LastUnknown
         ),
         ( if
-            % Check if it's worth continuing tracking the sub-term.
+            % Check if itis worth continuing tracking the sub-term.
             % We want to stop if we enter a portion of the search space
-            % known not to contain the bug from which we can't return
+            % known not to contain the bug from which we cannot return
             % (for example if we come across an erroneous node where
             % the sub-term is an input).
-
             give_up_subterm_tracking(!.SearchSpace, OriginId, SubtermMode)
         then
             ( if
@@ -906,10 +902,9 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
         else
             % This recursive call will not lead to an infinite loop
             % because eventually either the sub-term will be bound
-            % (and find_subterm_origin will respond with primitive_op/3)
+            % (and find_subterm_origin will respond with primitive_op/3),
             % or there will be insufficient tracing information to continue
             % (and find_subterm_origin will respond with not_found).
-
             follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
                 !TriedShortcutProcs, NewLastUnknown, OriginId,
                 OriginArgPos, OriginTermPath,
@@ -952,7 +947,6 @@ setup_binary_search(SearchSpace, SuspectId, SearchMode) :-
 binary_search(Store, Oracle, PathArray, Top, Bottom, LastTested,
         !SearchSpace, FallBackSearchMode, NewMode, Response) :-
     SuspectId = PathArray ^ elem(LastTested),
-
     % Check what the result of the query about LastTested was and adjust
     % the range appropriately.
     ( if
@@ -1019,7 +1013,7 @@ find_unknown_closest_to_middle(SearchSpace, PathArray, Top, Bottom, Unknown) :-
     % (inclusive) where the status of the suspect is unknown. The preferred
     % position to return is as close as possible to InnerTop and
     % InnerBottom, with the proviso that elements between InnerTop and
-    % InnerBottom (exclusive) aren't tested, since the caller has already
+    % InnerBottom (exclusive) are not tested, since the caller has already
     % found they were not unknown.
     %
 :- pred find_unknown_closest_to_range(search_space(T)::in,
@@ -1051,7 +1045,7 @@ find_unknown_closest_to_range(SearchSpace, PathArray, OuterTop, OuterBottom,
 
 divide_and_query_search(Store, Oracle, Weighting, !SearchSpace,
         Response, analyser_divide_and_query(Weighting)) :-
-    % If there's no root yet (because the oracle hasn't asserted any nodes
+    % If there is no root yet (because the oracle has not asserted any nodes
     % are erroneous yet), then use top-down search.
     ( if root(!.SearchSpace, RootId) then
         ( if children(Store, Oracle, RootId, !SearchSpace, Children) then

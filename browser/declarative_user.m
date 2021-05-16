@@ -318,7 +318,7 @@ handle_command(Cmd, UserQuestion, Response, !User, !IO) :-
                     HowTrack, ShouldAssertInvalid),
                 Response = user_response_answer(Question, Answer)
             ;
-                % Tracking the entire atom doesn't make sense.
+                % Tracking the entire atom does not make sense.
                 MaybeTrack = track(_, _, []),
                 io.write_string(!.User ^ outstream,
                     "Cannot track the entire atom. " ++
@@ -360,7 +360,7 @@ handle_command(Cmd, UserQuestion, Response, !User, !IO) :-
         Cmd = user_cmd_browse_io(ActionNum),
         Question = get_decl_question(UserQuestion),
         edt_node_io_actions(Question, MaybeIoActions),
-        % We don't have code yet to trace a marked I/O action.
+        % We do not have code yet to trace a marked I/O action.
         browse_chosen_io_action(MaybeIoActions, ActionNum, _MaybeTrack,
             !User, !IO),
         query_user(UserQuestion, Response, !User, !IO)
@@ -1304,8 +1304,8 @@ convert_dirs_to_term_path_from_atom(atom(_, Args), [Dir | Dirs], TermPath) :-
     ;
         MaybeValue = no,
         (
-            % The user can cd to an unbound argument, but they
-            % can't cd into subterms of an unbound argument.
+            % Users can cd *to* unbound arguments, but they cannot cd
+            % *into* subterms of an unbound argument.
             (
                 Dirs = [],
                 TermPath = [Pos]

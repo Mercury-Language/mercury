@@ -99,7 +99,7 @@
     %
 :- typeclass mercury_edt(S, T) where [
 
-        % Returns the question corresponding to the given node.
+        % Return the question corresponding to the given node.
         %
     pred edt_question(S::in, T::in, decl_question(T)::out) is det,
 
@@ -108,13 +108,13 @@
         %
     pred edt_get_e_bug(S::in, T::in, decl_e_bug::out) is det,
 
-        % If this node is an I-bug then return the bug.
+        % If this node is an I-bug, then return the bug.
         % An I-bug is an erroneous node whose children are all correct
         % or inadmissible, with at least one child being inadmissible.
         %
     pred edt_get_i_bug(S::in, T::in, T::in, decl_i_bug::out) is det,
 
-        % Gives the list of children of the given tree node. If the tree
+        % Return the list of children of the given tree node. If the tree
         % is represented implicitly, then the procedure fails.
         %
     pred edt_children(S::in, T::in, list(T)::out) is semidet,
@@ -140,17 +140,17 @@
     pred edt_subterm_mode(S::in, T::in, arg_pos::in, term_path::in,
         subterm_mode::out) is det,
 
-        % Succeeds if the Node is the root of an implicit subtree.
-        % Fails otherwise.
+        % Succeed if the Node is the root of an implicit subtree.
+        % Otherwise, fail.
         %
     pred edt_is_implicit_root(S::in, T::in) is semidet,
 
-        % True if the two nodes are the same even if one may be represented
+        % Succeed if the two nodes are the same even if one is represented
         % implicitly and the other explicitly.
         %
     pred edt_same_nodes(S::in, T::in, T::in) is semidet,
 
-        % True if it is not possible to materialize any nodes
+        % Succeed if it is not possible to materialize any nodes
         % above the given node.
         %
     pred edt_topmost_node(S::in, T::in) is semidet,
@@ -232,7 +232,7 @@
     % can look for bugs. The search space keeps track of which nodes in
     % the EDT could contain a bug as well as skipped or ignored nodes.
     % Each suspect in the search space has an identifier (suspect_id)
-    % that's independent of the EDT node id and independent of whether the
+    % that is independent of the EDT node id and independent of whether the
     % EDT node is represented implicitly or explicitly.
     %
     % Information about each node that is relevant to the bug search is
@@ -269,7 +269,7 @@
     % that we think contains a bug, based on information received so far.
     % Normally the root will be marked erroneous, but it could also be
     % marked unknown, skipped or ignored (for example when the search has
-    % just started and the oracle hasn't asserted any suspects are erroneous
+    % just started and the oracle has not asserted any suspects are erroneous
     % or when a bug search is being revised. This pred returns the root,
     % or fails if the search space is empty.
     %
@@ -380,7 +380,7 @@
     %
     % Path is InitialPath appended to the list of suspect_id's between
     % FromId and ToId (inclusive). ToId should be an ancestor of FromId.
-    % If it isn't then the call will fail.
+    % If it isn't, then the call will fail.
     %
 :- pred get_path(search_space(T)::in, suspect_id::in, suspect_id::in,
     list(suspect_id)::out) is semidet.
@@ -425,7 +425,7 @@
     %
     % Finds the origin of the subterm given by SuspectId, ArgPos and TermPath
     % in its immediate neighbours. If the children of a suspect are required
-    % then they'll be added to the search space, unless an explicit subtree
+    % then they will be added to the search space, unless an explicit subtree
     % is required in which case the appropriate response is returned
     % (see definition of find_origin_response type below).
     %
@@ -451,7 +451,7 @@
 
 :- type find_origin_response
     --->    not_found
-            % The origin couldn't be found because of insufficient
+            % The origin could not be found because of insufficient
             % tracing information.
 
     ;       origin(suspect_id, arg_pos, term_path, subterm_mode)
@@ -536,7 +536,7 @@
     is semidet.
 
     % Mark the root and its non-ignored children as unknown.
-    % Throws an exception if the search space doesn't have a root.
+    % Throws an exception if the search space does not have a root.
     %
 :- pred revise_root(S::in, search_space(T)::in, search_space(T)::out)
     is det <= mercury_edt(S, T).
@@ -563,7 +563,7 @@
 %---------------------%
 
     % Check the consistency of the search space if the MR_DD_CHECK_SEARCH_SPACE
-    % C macro is defined. Throw an exception if it's not consistent.
+    % C macro is defined. Throw an exception if it is not consistent.
     % Used for assertion checking during debugging.
     %
 :- pred maybe_check_search_space_consistency(S::in, search_space(T)::in,
@@ -1047,7 +1047,7 @@ find_subterm_origin(Store, Oracle, SuspectId, ArgPos, TermPath, HowTrack,
     % of SuspectId if the origin is an output. SuspectId should point to
     % a parent of Node if the mode of the sub-term is input and should point to
     % Node itself if the mode of the sub-term is output. Output should be yes
-    % if the sub-term is an output of SuspectId and no if it isn't.
+    % if the sub-term is an output of SuspectId and no if it is not.
     %
 :- pred resolve_origin(S::in, oracle_state::in, T::in,
     arg_pos::in, term_path::in, suspect_id::in, bool::in,
@@ -1136,7 +1136,7 @@ subterm_is_in_input_with_same_prefix(Store, Node, OutputArgPos, TermPath,
     ).
 
     % Returns the suspect id in the given list that refers to the given edt
-    % node or fails if it can't find such a suspect in the list.
+    % node or fails if it cannot find such a suspect in the list.
     %
 :- pred find_edt_node_in_suspect_list(list(suspect_id)::in, T::in,
     search_space(T)::in, suspect_id::out) is semidet.
@@ -1153,7 +1153,7 @@ find_edt_node_in_suspect_list([SuspectId | SuspectIds], Node, SearchSpace,
     ).
 
     % Looks up the suspect in the search space and throws an exception if
-    % it can't find the suspect.
+    % it cannot find the suspect.
     %
 :- pred lookup_suspect(search_space(T)::in, suspect_id::in, suspect(T)::out)
     is det.
@@ -1162,7 +1162,7 @@ lookup_suspect(SearchSpace, SuspectId, Suspect) :-
     ( if map.search(SearchSpace ^ store, SuspectId, FoundSuspect) then
         Suspect = FoundSuspect
     else
-        throw(internal_error("lookup_suspect", "couldn't find suspect"))
+        throw(internal_error("lookup_suspect", "could not find suspect"))
     ).
 
     % Update or add the suspect in the search space.
@@ -1180,7 +1180,7 @@ set_suspect(SuspectId, Suspect, !SearchSpace) :-
     %
     % Sets the status of SuspectId and all its descendants to Status.
     % If a descendant (including the suspect) already has a status in
-    % StopStatusSet then propagate_status_downwards won't update any
+    % StopStatusSet then propagate_status_downwards will not update any
     % further descendants. The list of all the children of the lowest
     % updated suspects is returned in StopSuspects.
     %
@@ -1193,7 +1193,7 @@ propagate_status_downwards(Status, StopStatusSet, SuspectId, StopSuspects,
     propagate_status_downwards(Status, StopStatusSet, SuspectId, [],
         StopSuspects, !SearchSpace).
 
-    % A version of propagate_status_downwards which doesn't return leaves.
+    % A version of propagate_status_downwards which does not return leaves.
     %
 :- pred propagate_status_downwards(suspect_status::in,
     list(suspect_status)::in, suspect_id::in,
@@ -1552,8 +1552,8 @@ add_children(Store, Oracle, EDTChildren, SuspectId, Status, !SearchSpace,
     list.foldl(adjust_suspect_status_from_oracle(Store, Oracle), Children,
         !SearchSpace),
 
-    % Recalc the weight if the suspect is ignored. This wouldn't have
-    % been done by ignore_suspect/4 since the children wouldn't have been
+    % Recalculate the weight if the suspect is ignored. This would not have
+    % been done by ignore_suspect/4, since the children would not have been
     % available.
 
     ( if Suspect ^ status = suspect_ignored then
@@ -1658,7 +1658,7 @@ insert_new_topmost_node(Store, Oracle, NewTopMostEDTNode, !SearchSpace) :-
         lookup_suspect(!.SearchSpace, OldTopMostId, OldTopMost),
         ( if
             % One of the children of the new topmost node will be the old
-            % topmost node, so filter it out so it isn't added twice.
+            % topmost node, so filter it out so it is not added twice.
 
             find_node_in_list(Store, EDTChildren, OldTopMost ^ edt_node, Pos),
             list.split_list(Pos - 1, EDTChildren, LeftChildren,
@@ -1815,7 +1815,7 @@ suspect_in_buggy_subtree(SearchSpace, SuspectId) :-
     % Children is the children of all the suspects in SuspectIds appended
     % together. If an explicit subtree is required to find the children
     % of at least one element of SuspectIds, then ExplicitRequired will be yes,
-    % otherwise it'll be no. If an explicit subtree is required for a suspect
+    % otherwise it will be no. If an explicit subtree is required for a suspect
     % then its children are not included in Children.
     %
 :- pred get_children_list(S::in, oracle_state::in,
@@ -2035,8 +2035,8 @@ find_first_implicit_root(Store, SearchSpace, [SuspectId | SuspectIds],
     lookup_suspect(SearchSpace, SuspectId, Suspect),
     Status = Suspect ^ status,
     ( if
-        % Check that it might be worth our while building an explicit
-        % subtree here.
+        % Check whether it might be worthwhile to build
+        % an explicit subtree here.
         in_buggy_subtree(Status, yes),
         edt_is_implicit_root(Store, Suspect ^ edt_node)
     then

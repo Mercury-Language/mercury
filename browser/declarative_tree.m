@@ -142,12 +142,9 @@ get_edt_node_initial_atom(Store, Ref, Atom) :-
 
 get_edt_node_event_number(Store, Ref, Event) :-
     det_edt_return_node_from_id(Store, Ref, Node),
-    (
-        Node = node_exit(_, _, _, _, Event, _, _, _)
-    ;
-        Node = node_fail(_, _, _, Event, _, _)
-    ;
-        Node = node_excp(_, _, _, _, Event, _, _)
+    ( Node = node_exit(_, _, _, _, Event, _, _, _)
+    ; Node = node_fail(_, _, _, Event, _, _)
+    ; Node = node_excp(_, _, _, _, Event, _, _)
     ).
 
 %---------------------------------------------------------------------------%
@@ -225,7 +222,7 @@ trace_get_i_bug(wrap(Store), dynamic(BugRef), dynamic(InadmissibleRef),
     % over and each of these children could have different parents. We return
     % the last interface event of the parent CALL event as the parent. This is
     % OK since trace_last_parent is only used when an explicit subtree
-    % is generated which is above the previous subtree, so it doesn't
+    % is generated which is above the previous subtree, so it does not
     % really matter which parent we pick.
     %
 :- pred trace_last_parent(wrap(S)::in, edt_node(R)::in, edt_node(R)::out)
@@ -329,12 +326,12 @@ trace_subtree_suspicion(Store, NodeId, Suspicion, Excess) :-
     % (the field that is used depends on the value of Weighting).
     % If Node is a FAIL or EXCP, then sum the differences between the first
     % CALL and the first EXIT, subsequent REDOs and EXITs and the final
-    % REDO and FAIL/EXCP. If Node is a FAIL or EXCP then all the previous
-    % EXITs will be included in the EDT and the subtrees rooted at these
+    % REDO and FAIL/EXCP. If Node is a FAIL or EXCP, then all the previous
+    % EXITs will be included in the EDT, and the subtrees rooted at these
     % EXITs will have common annotated trace nodes. Excess is the total
     % weight of all duplicated nodes. PrevWeight and PrevDupWeight are
     % accumulators which should initially be zero. RecordDups keeps track
-    % of whether the final node was a FAIL or EXCP. This should be `no'
+    % of whether the final node was a FAIL or EXCP; this should be `no'
     % initially. DupFactor keeps track of how many times the nodes before
     % the last REDO could have been duplicated, and should initially be zero.
     %
@@ -404,12 +401,12 @@ trace_weight(Weighting, wrap(Store), dynamic(Ref), PrevWeight, Weight,
                 NewRecordDups = yes,
                 (
                     Weighting = number_of_events,
-                    Excess = PrevDupWeight + DupFactor *
-                        (FinalEvent - CallEvent + 1)
+                    Excess = PrevDupWeight +
+                        DupFactor * (FinalEvent - CallEvent + 1)
                 ;
                     Weighting = suspicion,
-                    Excess = PrevDupWeight + DupFactor *
-                        (FinalSuspicion - CallSuspicion)
+                    Excess = PrevDupWeight +
+                        DupFactor * (FinalSuspicion - CallSuspicion)
                 )
             ;
                 NewRecordDups = no,
@@ -437,8 +434,8 @@ trace_context(wrap(Store), dynamic(Ref), FileName - LineNo,
     call_node_from_id(Store, CallId, Call),
     (
         Call ^ call_return_label = yes(ReturnLabel),
-        get_context_from_label_layout(ReturnLabel, ReturnFileName,
-            ReturnLineNo),
+        get_context_from_label_layout(ReturnLabel,
+            ReturnFileName, ReturnLineNo),
         MaybeReturnContext = yes(ReturnFileName - ReturnLineNo)
     ;
         Call ^ call_return_label = no,
@@ -519,7 +516,7 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
         Node = node_fail(_, CallId, _, _, _, _),
 
         % Fail events can be reached here if there were events missing
-        % due to a parent being shallow traced. In this case, we can't tell
+        % due to a parent being shallow traced. In this case, we cannot tell
         % whether the call was in a negated context or backtracked over,
         % so we have to assume the former.
         %
@@ -538,8 +535,8 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
 
         % There is a nested context. Neg_fail events can be reached here
         % if there were events missing due to a parent being shallow traced.
-        % In this case, we can't tell whether the call was in a negated context
-        % or backtracked over, so we have to assume the former.
+        % In this case, we cannot tell whether the call was in a negated
+        % context or backtracked over, so we have to assume the former.
 
         contour_children(ContourType, Store, Prec, NestedStartId, Ns0, Ns1)
     ;
@@ -661,7 +658,7 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
     ;
         Node = node_exit(_, CallId, _, _, _, _, _, _),
         % Only include an exit node as a missing answer child if it
-        % produces output. If the exit event doesn't produce output,
+        % produces output. If the exit event does not produce output,
         % then the only way the call could have behaved differently
         % is by failing, which won't change the fail, negs or else event
         % anchoring the end of the current stratum, since the rest of the goal
@@ -708,19 +705,17 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 % the top of the selected subterm.
 %
 % If the mode is `in', the origin could be:
-%   - a primitive (unification or foreign_proc) within the body of the
-%     parent,
+%   - a primitive (unification or foreign_proc) within the body of the parent,
 %   - an output subterm in a sibling node, or
 %   - an input subterm of the parent node.
-% In this case we look at the contour leading up to the call event associated
+% In this case, we look at the contour leading up to the call event associated
 % with the given node. This contour will be wholly within the parent call.
 %
 % If the mode is `out', the origin could be:
-%   - a primitive (unification or foreign_proc) within the body of the
-%     call,
+%   - a primitive (unification or foreign_proc) within the body of the call,
 %   - an output subterm of a child of the node, or
 %   - an input subterm of the node itself.
-% In this case we look at the contour leading up to the exit or exception event
+% In this case, we look at the contour leading up to the exit or exception event
 % associated with the given node. This contour will be wholly within the
 % current call.
 %
@@ -748,6 +743,7 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
                 % generated ones.
                 int,
 
+                % XXX document me
                 int,
 
                 % The id of the node preceding the exit node if start_loc
@@ -798,8 +794,8 @@ trace_subterm_mode(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode) :-
         Mode = start_loc_to_subterm_mode(StartLoc)
     ;
         ChainStart = require_explicit_subtree,
-        % The only time a subtree will be required is if the
-        % mode of the subterm is output.
+        % The only time a subtree will be required is
+        % if the mode of the subterm is output.
         Mode = subterm_out
     ).
 
@@ -846,7 +842,7 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
 trace_dependency_special_case(Store, ProcDefnRep, Ref, StartLoc,
         ArgNum, TermPath, NodeId, Origin) :-
     % Catch_impl's body is a single call to builtin_catch. Builtin_catch
-    % doesn't generate any events, so we need to handle catch_impl specially.
+    % does not generate any events, so we need to handle catch_impl specially.
 
     proc_defn_rep_is_catch_impl(ProcDefnRep),
     (
@@ -907,14 +903,12 @@ trace_dependency_in_proc_defn_rep(Store, TermPath, StartLoc, ArgNum,
     (
         MaybePrims = yes(primitive_list_and_var(Primitives, Var,
             MaybeClosure)),
-
-        % If the subterm is in a closure argument then the argument number
+        % If the subterm is in a closure argument, then the argument number
         % of the closure argument is prefixed to the term path, since the
         % closure is itself a term. This is done here because at the time
         % of the closure call it is not easy to decide if the call is higher
         % order or not, without repeating all the work done in
         % make_primitive_list.
-
         (
             MaybeClosure = yes,
             AdjustedTermPath = [ArgNum | TermPath]
@@ -980,14 +974,14 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
         Node = node_excp(_, CallId, _, _, _, _, _),
         call_node_from_id(Store, CallId, CallNode),
         CallAtom = get_trace_call_atom(CallNode),
-
-        % XXX We don't yet handle tracking of the exception value.
-
+        % XXX We do not yet handle tracking of the exception value.
         ( if trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) then
             find_chain_start_inside(Store, CallId, CallNode,
                 ArgPos, ChainStart)
         else
             throw(internal_error($pred, "unbound exception term"))
+
+
         )
     ).
 
@@ -1036,9 +1030,9 @@ parent_proc_defn_rep(Store, CallId, ProcDefnRep) :-
         ProcDefnRep = no
     ).
 
-    % Finds the call node of the parent of the given node. Fails if
-    % the call node cannot be found because it was not included in the
-    % annotated trace.
+    % Finds the call node of the parent of the given node.
+    % Fails if the call node cannot be found because it was
+    % not included in the annotated trace.
     %
 :- pred step_left_to_call(S::in, R::in, trace_node(R)::out(trace_node_call))
     is semidet <= annotated_trace(S, R).
@@ -1073,7 +1067,6 @@ materialize_contour(Store, NodeId, Node, Nodes0, Nodes) :-
     else
         % We include NEGE and (possibly failed) COND events in the contour
         % so we can track input sub-terms through negated contexts.
-
         ( if Node = node_neg(NegPrec, _, _) then
             PrevNodeId = NegPrec
         else if Node = node_cond(CondPrec, _, _) then
@@ -1126,15 +1119,15 @@ get_exit_atom(Store, _ - Exit, FinalAtom) :-
                 closure     :: bool
             ).
 
-    % Constructs a list of the primitive goals along the given contour if
-    % it can. It might not be able to construct the list in the case where
-    % there are higher order calls and we're not sure if everything is
-    % traced, then there might be extra/missing events on the contour and
+    % Constructs a list of the primitive goals along the given contour
+    % if it can. It might not be able to construct the list in the case
+    % where there are higher order calls and we are not sure if everything
+    % is traced, then there might be extra/missing events on the contour and
     % we need to make sure the primitive atomic goals match up with the
     % contour events, but in the case of higher order calls this is not
     % easily done as the name/module of the higher order call is not
-    % available in the goal_rep. If it cannot construct the primitive list
-    % reliably then `no' is returned. MaybeEnd is the goal path of the
+    % available in the goal_rep. If we cannot construct the primitive list
+    % reliably, then we return `no'. MaybeEnd is the goal path of the
     % call event that should be at the end of the contour for input subterms.
     %
 :- func make_primitive_list(S, goal_and_path_list,
@@ -1170,8 +1163,8 @@ make_primitive_list(Store, GoalPaths, Contour, MaybeEnd, ArgNum, TotalArgs,
     then
         % We were unable to identify the goal corresponding to this call
         % (it might have been a higher order call) so we return no to indicate
-        % this. This is the safest thing to do when we're not sure
-        % what has/hasn't been traced.
+        % this. This is the safest thing to do when we are not sure
+        % what has/has not been traced.
         MaybePrims = no
     else
         (
@@ -1372,7 +1365,7 @@ remove_leading_exit_fail_events(Contour0, Contour) :-
 
     % Trys to match an atomic goal to the first event on the contour.
     % These should match if AllTraced = yes. If AllTraced = no, then
-    % if the goal doesn't match the contour event (i.e. they are for
+    % if the goal does not match the contour event (i.e. they are for
     % different predicates), then the goal will be treated as a primitive
     % operation with no children. The next atomic goal will then be tried
     % as a match for the first event on the contour. This will
@@ -1485,7 +1478,7 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                     (
                         AllTraced = yes,
                         throw(internal_error($pred,
-                            "atomic goal doesn't match exit event\n"))
+                            "atomic goal does not match exit event\n"))
                     ;
                         AllTraced = no,
                         CallInfo = no,
@@ -1730,7 +1723,6 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
 plain_call_is_special_case(Module, Name, Args, NewVar) :-
     % builtin.cc_multi_equal is the same as a unification for the
     % purposes of subterm dependency tracking.
-
     Module = "builtin",
     Name = "cc_multi_equal",
     list.length(Args, 3),
@@ -1889,7 +1881,7 @@ calls_arguments_are_all_ground(Store, CallId) :-
     call_node_from_id(Store, CallId, Call),
     Args = Call ^ call_atom_args,
 
-    % XXX The following won't work for partially instantiated arguments.
+    % XXX The following will not work for partially instantiated arguments.
     all [Arg] (
         list.member(Arg, Args)
     =>
@@ -1907,3 +1899,5 @@ decl_require(Goal, Loc, Msg) :-
     else
         throw(internal_error(Loc, Msg))
     ).
+
+%---------------------------------------------------------------------------%
