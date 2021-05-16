@@ -945,12 +945,18 @@ list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
     NestedClassPrefixesSet = set.list_to_set(NestedClassPrefixes),
 
     SearchDir = ClassSubDir / "jmercury",
-    FollowSymLinks = yes,
-    dir.recursive_foldl2(
+    SubDir = enter_subdirs(follow_symlinks),
+    FoldParams = fold_params(SubDir, on_error_keep_going),
+    % Unfortunately, dir.general_foldl2 is not *quite* general enough
+    % that we could tell it to not even try to open any file or directory
+    % that does not start with a prefix in NestedClassPrefixesSet.
+    dir.general_foldl2(FoldParams,
         accumulate_nested_class_files(NestedClassPrefixesSet),
-        SearchDir, FollowSymLinks, [], Result, !IO),
+        SearchDir, [], NestedClassFiles, Errors, !IO),
+    list.filter(file_error_is_relevant(NestedClassPrefixesSet),
+        Errors, RelevantErrors),
     (
-        Result = ok(NestedClassFiles),
+        RelevantErrors = [],
         AllClassFiles0 = MainClassFiles ++ NestedClassFiles,
         % Remove the `Mercury/classs' prefix if present.
         ( if ClassSubDir = dir.this_directory then
@@ -963,7 +969,7 @@ list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
         ),
         list.sort(AllClassFiles, ListClassFiles)
     ;
-        Result = error(_, Error),
+        RelevantErrors = [file_error(_, _, Error) | _],
         unexpected($pred, io.error_message(Error))
     ).
 
@@ -1001,17 +1007,62 @@ make_nested_class_prefix(ClassFileName, ClassPrefix) :-
     io::di, io::uo) is det.
 
 accumulate_nested_class_files(NestedClassPrefixes, DirName, BaseName,
-        _FileType, Continue, !Acc, !IO) :-
+        FileType, Continue, !Acc, !IO) :-
+    (
+        % These file types may be .class files.
+        ( FileType = regular_file
+        ; FileType = symbolic_link
+        ),
+        IsNestedCF =
+            file_is_nested_class_file(NestedClassPrefixes, DirName, BaseName),
+        (
+            IsNestedCF = yes,
+            !:Acc = [DirName / BaseName | !.Acc]
+        ;
+            IsNestedCF = no
+        )
+    ;
+        % These file types cannot be .class files.
+        ( FileType = directory
+        ; FileType = named_pipe
+        ; FileType = socket
+        ; FileType = character_device
+        ; FileType = block_device
+        ; FileType = message_queue
+        ; FileType = semaphore
+        ; FileType = shared_memory
+        ; FileType = unknown
+        )
+    ),
+    Continue = yes.
+
+:- func file_is_nested_class_file(set(string), string, string) = bool.
+
+file_is_nested_class_file(NestedClassPrefixes, DirName, BaseName)
+        = IsNestedCF :-
     ( if
         string.sub_string_search(BaseName, "$", Dollar),
         BaseNameToDollar = string.left(BaseName, Dollar + 1),
         set.contains(NestedClassPrefixes, DirName / BaseNameToDollar)
     then
-        !:Acc = [DirName / BaseName | !.Acc]
+        IsNestedCF = yes
     else
+        IsNestedCF = no
+    ).
+
+:- pred file_error_is_relevant(set(string)::in, file_error::in)
+    is semidet.
+
+file_error_is_relevant(NestedClassPrefixes, FileError) :-
+    FileError = file_error(PathName, _Op, _IOError),
+    ( if split_name(PathName, DirName, BaseName) then
+        file_is_nested_class_file(NestedClassPrefixes, DirName, BaseName) = yes
+    else
+        % If we cannot read the top level SearchDir, that error is relevant.
         true
-    ),
-    Continue = yes.
+    ).
+
+%-----------------------------------------------------------------------------%
 
 get_env_classpath(Classpath, !IO) :-
     io.get_environment_var("CLASSPATH", MaybeCP, !IO),
