@@ -20,7 +20,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.file_kind.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
@@ -162,27 +161,6 @@
     list(item_block(MS))::in,
     set(foreign_language)::out, c_j_cs_fims::out,
     foreign_include_file_infos::out, contains_foreign_export::out) is det.
-
-%---------------------------------------------------------------------------%
-%
-% Operations to construct item block section kinds.
-%
-
-:- func make_ims_imported(import_locn, module_name, int_file_kind) =
-    int_module_section.
-:- func make_ims_used(import_locn, module_name, int_file_kind) =
-    int_module_section.
-:- func make_ims_used_and_imported(import_locn, module_name, int_file_kind) =
-    int_module_section.
-:- func make_ims_abstract_imported(module_name, int_file_kind) =
-    int_module_section.
-:- func make_ims_int3_implementation(module_name, int_file_kind) =
-    int_module_section.
-
-:- func make_oms_opt_imported(module_name, opt_file_kind) =
-    opt_module_section.
-:- func make_ioms_opt_imported(module_name, int_file_kind) =
-    int_for_opt_module_section.
 
 %---------------------------------------------------------------------------%
 %
@@ -1401,27 +1379,6 @@ do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info) :-
         IncludeFilesCord = cord.snoc(IncludeFilesCord0, IncludeFile),
         !Info ^ all_foreign_include_files := IncludeFilesCord
     ).
-
-%---------------------------------------------------------------------------%
-
-make_ims_imported(ImportLocn, ModuleName, IntFileKind) =
-    ims_imported_or_used(ModuleName, IntFileKind, ImportLocn, iou_imported).
-make_ims_used(ImportLocn, ModuleName, IntFileKind) =
-    ims_imported_or_used(ModuleName, IntFileKind, ImportLocn, iou_used).
-make_ims_used_and_imported(ImportLocn, ModuleName, IntFileKind) =
-    ims_imported_or_used(ModuleName, IntFileKind, ImportLocn,
-        iou_used_and_imported).
-make_ims_abstract_imported(ModuleName, IntFileKind) =
-    ims_abstract_imported(ModuleName, IntFileKind).
-:- pragma no_determinism_warning(make_ims_int3_implementation/2).
-make_ims_int3_implementation(_ModuleName, _IntFileKind) = _ :-
-    unexpected($pred,
-        "An .int3 file should not have an implementation section").
-
-make_oms_opt_imported(ModuleName, OptFileKind) =
-    oms_opt_imported(ModuleName, OptFileKind).
-make_ioms_opt_imported(ModuleName, OptFileKind) =
-    ioms_opt_imported(ModuleName, OptFileKind).
 
 %---------------------------------------------------------------------------%
 

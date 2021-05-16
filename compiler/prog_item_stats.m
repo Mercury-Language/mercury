@@ -185,12 +185,6 @@ gather_stats_in_aug_comp_unit(AugCompUnit, !:CompUnitStats) :-
 % section_name_int(ims_imported_or_used(_, _, _, iou_used_and_imported)) =
 %     "int_used_and_imported".
 % section_name_int(ims_abstract_imported(_, _)) = "int_abstract_imported".
-% 
-% :- func section_name_opt(opt_module_section) = string.
-% section_name_opt(oms_opt_imported(_, _)) = "opt_imported".
-% 
-% :- func section_name_int_for_opt(int_for_opt_module_section) = string.
-% section_name_int_for_opt(ioms_opt_imported(_, _)) = "int_for_opt_imported".
 
 %-----------------------------------------------------------------------------%
 

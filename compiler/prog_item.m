@@ -1065,68 +1065,32 @@
     % (Since there is no recomp_avail_ancestor_import, yet).
 :- type read_why_int0
     --->    rwi0_section
-            % The items in the .int0 file's sections should have section marker
-            % make_ims_imported(import_locn_ancestor_int0_interface) and
-            % make_ims_imported(import_locn_ancestor_int0_implementation)
-            % respectively.
-            %
             % Add the parse tree to the set of directly-read interfaces.
     ;       rwi0_opt.
-            % The items in both sections should have section marker
-            % make_ioms_opt_imported.
-            %
             % Add the parse tree to the set of read-int-for-opt interfaces.
 
 :- type read_why_int1
     --->    rwi1_int_import
-            % The items in the interface should have the section marker
-            % make_ims_imported(import_locn_interface).
-            % The items in the implementation should have the section marker
-            % make_ims_abstract_imported.
-            %
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_import as recompilation reason.
     ;       rwi1_int_use
-            % The items in the interface should have the section marker
-            % make_ims_used(import_locn_interface).
-            % The items in the implementation should have the section marker
-            % make_ims_abstract_imported.
-            %
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_use as recompilation reason.
     ;       rwi1_imp_import
-            % The items in the interface should have the section marker
-            % make_ims_imported(import_locn_implementation).
-            % The items in the implementation should have the section marker
-            % make_ims_abstract_imported.
-            %
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_imp_import as recompilation reason.
     ;       rwi1_imp_use
-            % The items in the interface should have the section marker
-            % make_ims_used(import_locn_implementation).
-            % The items in the implementation should have the section marker
-            % make_ims_abstract_imported.
-            %
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_imp_use as recompilation reason.
     ;       rwi1_int_use_imp_import
-            % The items in the interface should have the section marker
-            % make_ims_used_and_imported(import_locn_interface).
-            % The items in the implementation should have the section marker
-            % make_ims_abstract_imported.
-            %
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_use_imp_import as recompilation reason.
     ;       rwi1_opt.
-            % The items in both sections should have the section marker
-            % make_ioms_opt_imported.
-            %
             % Add the parse tree to the set of read-int-for-opt interfaces.
             %
             % Record recomp_avail_imp_use as recompilation reason.
@@ -1134,105 +1098,57 @@
     % All these record recomp_avail_imp_use as recompilation reason.
 :- type read_why_int2
     --->    rwi2_int_use
-            % The items in the interface should have the section marker
-            % make_ims_used(import_locn_interface).
-            % The items in the implementation should have the section marker
-            % make_ims_abstract_imported.
-            %
             % Add the parse tree to the set of indirectly-read interfaces.
     ;       rwi2_imp_use
-            % The items in the interface should have the section marker
-            % make_ims_used(import_locn_import_by_ancestor).
-            % The items in the implementation should have the section marker
-            % make_ims_abstract_imported.
-            %
             % Add the parse tree to the set of indirectly-read interfaces.
     ;       rwi2_abstract
-            % The items in both sections should have the section marker
-            % make_ims_abstract_imported.
-            %
             % Add the parse tree to the set of indirectly-read interfaces.
     ;       rwi2_opt.
-            % The items in both sections should have the section marker
-            % make_ioms_opt_imported.
-            %
             % Add the parse tree to the set of read-int-for-opt interfaces.
 
 :- type read_why_int3
     --->    rwi3_direct_ancestor_import
-            % The items in the interface should have the section marker
-            % make_ims_imported(import_locn_import_by_ancestor).
-            %
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_import as recompilation reason.
             % (Since there is no recomp_avail_ancestor_import, yet).
     ;       rwi3_direct_int_import
-            % The items in the interface should have the section marker
-            % make_ims_imported(import_locn_interface).
-            %
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_import as recompilation reason.
     ;       rwi3_direct_imp_import
-            % The items in the interface should have the section marker
-            % make_ims_imported(import_locn_implementation).
-            %
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_imp_import as recompilation reason.
     ;       rwi3_direct_ancestor_use
-            % The items in the interface should have the section marker
-            % make_ims_used(import_locn_import_by_ancestor).
-            %
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_use as recompilation reason.
             % (Since there is no recomp_avail_ancestor_use, yet).
     ;       rwi3_direct_int_use
-            % The items in the interface should have the section marker
-            % make_ims_used(import_locn_interface).
-            %
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_use as recompilation reason.
     ;       rwi3_direct_imp_use
-            % The items in the interface should have the section marker
-            % make_ims_used(import_locn_implementation).
-            %
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_imp_use as recompilation reason.
     ;       rwi3_direct_int_use_imp_import
-            % The items in the interface should have the section marker
-            % make_ims_used_and_imported(import_locn_interface).
-            %
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_use_imp_import as recompilation reason.
     ;       rwi3_indirect_int_use
-            % The items in the interface should have the section marker
-            % make_ims_used(import_locn_interface).
-            %
             % Add the parse tree to the set of indirectly-read interfaces.
             %
             % Record recomp_avail_int_use as recompilation reason.
             % (Since there is no recomp_avail_indirect_use_int, yet).
     ;       rwi3_indirect_imp_use.
-            % The items in the interface should have the section marker
-            % make_ims_used(import_locn_implementation).
-            %
             % Add the parse tree to the set of indirectly-read interfaces.
             %
             % Record recomp_avail_imp_use as recompilation reason.
             % (Since there is no recomp_avail_indirect_use_imp, yet).
 
 :- type raw_item_block == item_block(module_section).
-
-:- type src_item_block == item_block(src_module_section).
-:- type int_item_block == item_block(int_module_section).
-:- type opt_item_block == item_block(opt_module_section).
-:- type int_for_opt_item_block == item_block(int_for_opt_module_section).
 
 :- type item_block(MS)
     --->    item_block(
@@ -1283,17 +1199,6 @@
             % originally came from the implementation section of an interface
             % file; usually type declarations (especially equivalence types)
             % which should be used in code generation but not in type checking.
-
-:- type opt_module_section
-    --->    oms_opt_imported(module_name, opt_file_kind).
-            % This is used internally by the compiler, to identify items which
-            % originally came from an optimization file.
-
-:- type int_for_opt_module_section
-    --->    ioms_opt_imported(module_name, int_file_kind).
-            % This is used internally by the compiler, to identify items which
-            % originally came from an interface file needed by an
-            % optimization file.
 
 %---------------------------------------------------------------------------%
 

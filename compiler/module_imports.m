@@ -537,16 +537,15 @@
                 mai_ancestor_int_specs  :: map(module_name, ancestor_int_spec),
                 mai_direct_int_specs    :: map(module_name, direct_int_spec),
                 mai_indirect_int_specs  :: map(module_name, indirect_int_spec),
-                % Implicitly every everything in {plain,trans} opt files
-                % is in single section with section kind
-                % oms_opt_imported(OptModuleName, OptFileKind).
+                % Implicitly every everything in both plain and trans
+                % opt files is in single section.
                 mai_plain_opts          :: map(module_name,
                                             parse_tree_plain_opt),
                 mai_trans_opts          :: map(module_name,
                                             parse_tree_trans_opt),
-                % Implicitly every everything in int_for_opt interface files,
-                % in both interface and implementation sections, has
-                % section kind ioms_opt_imported(IntModuleName, IntKind).
+                % Implicitly everything in int_for_opt interface files
+                % is treated the same whether it is in the interface or the
+                % implementation section.
                 mai_int_for_opt_specs   :: map(module_name, int_for_opt_spec),
 
                 mai_version_numbers_map :: module_version_numbers_map,

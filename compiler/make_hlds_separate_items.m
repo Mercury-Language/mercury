@@ -103,64 +103,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Return the status and qualifier need appropriate for items
-    % in the given kind of block.
-    %
-:- pred src_module_section_status(src_module_section::in,
-    sec_info::out) is det.
-:- pred int_module_section_status(int_module_section::in,
-    sec_info::out) is det.
-:- pred int_for_opt_module_section_status(int_for_opt_module_section::in,
-    sec_info::out) is det.
-
-src_module_section_status(SrcSection, SectionInfo) :-
-    (
-        SrcSection = sms_interface,
-        Status = item_defined_in_this_module(item_export_anywhere),
-        NeedQual = may_be_unqualified
-    ;
-        SrcSection = sms_implementation,
-        Status = item_defined_in_this_module(item_export_nowhere),
-        NeedQual = may_be_unqualified
-    ;
-        SrcSection = sms_impl_but_exported_to_submodules,
-        Status = item_defined_in_this_module(item_export_only_submodules),
-        NeedQual = may_be_unqualified
-    ),
-    SectionInfo = sec_info(Status, NeedQual).
-
-int_module_section_status(IntSection, SectionInfo) :-
-    (
-        IntSection = ims_imported_or_used(_ModuleName, _IntFileKind,
-            ImportLocn, ImportedOrUsed),
-        Status =
-            item_defined_in_other_module(item_import_int_concrete(ImportLocn)),
-        (
-            ( ImportedOrUsed = iou_imported
-            ; ImportedOrUsed = iou_used_and_imported
-            ),
-            NeedQual = may_be_unqualified
-        ;
-            ImportedOrUsed = iou_used,
-            NeedQual = must_be_qualified
-        )
-    ;
-        IntSection = ims_abstract_imported(_ModuleName, _IntFileKind),
-        Status = item_defined_in_other_module(item_import_int_abstract),
-        NeedQual = must_be_qualified
-    ),
-    SectionInfo = sec_info(Status, NeedQual).
-
-int_for_opt_module_section_status(IntForOptSection, SectionInfo) :-
-    (
-        IntForOptSection = ioms_opt_imported(_ModuleName, _OptFileKind),
-        Status = item_defined_in_other_module(item_import_opt_int),
-        NeedQual = must_be_qualified
-    ),
-    SectionInfo = sec_info(Status, NeedQual).
-
-%---------------------------------------------------------------------------%
-
 :- type int_type_ctor_repns
     --->    int_type_ctor_repns(int_file_kind, type_ctor_repn_map).
 
@@ -361,7 +303,7 @@ acc_int_for_opt_spec(IntForOptSpec, !Acc) :-
     item_accumulator::in, item_accumulator::out) is det.
 
 acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
-    % XXX CLEANUP *If* we could reply on _MaybeImplicitFIMLangs
+    % XXX CLEANUP *If* we could rely on _MaybeImplicitFIMLangs
     % having been filled in by now, which unfortunately we can't,
     % we could include the FIMs it corresponds to in AccFIMs,
     % which should allow us to delete some code elsewhere in the compiler
@@ -384,18 +326,18 @@ acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
         SubDeclPragmas, ImpImplPragmas, SubPromises,
         ImpInitialises, ImpFinalises, SubMutables),
 
-    src_module_section_status(sms_interface, IntSectionInfo),
-    src_module_section_status(sms_implementation, ImpSectionInfo),
-    IntSectionInfo = sec_info(IntItemMercuryStatus, _IntNeedQual),
-    ImpSectionInfo = sec_info(ImpItemMercuryStatus, _ImpNeedQual),
+    IntItemMercuryStatus = item_defined_in_this_module(item_export_anywhere),
+    ImpItemMercuryStatus = item_defined_in_this_module(item_export_nowhere),
+    IntSectionInfo = sec_info(IntItemMercuryStatus, may_be_unqualified),
+    ImpSectionInfo = sec_info(ImpItemMercuryStatus, may_be_unqualified),
     ( if map.is_empty(InclMap) then
         % There are no submodules to export stuff to.
-        SubSectionInfo = ImpSectionInfo,
-        SubItemMercuryStatus = ImpItemMercuryStatus
+        SubItemMercuryStatus = ImpItemMercuryStatus,
+        SubSectionInfo = ImpSectionInfo
     else
-        src_module_section_status(sms_impl_but_exported_to_submodules,
-            SubSectionInfo),
-        SubSectionInfo = sec_info(SubItemMercuryStatus, _SubNeedQual)
+        SubItemMercuryStatus = 
+            item_defined_in_this_module(item_export_only_submodules),
+        SubSectionInfo = sec_info(SubItemMercuryStatus, may_be_unqualified)
     ),
 
     AccAvails0 = !.Acc ^ ia_avails,
@@ -510,31 +452,27 @@ acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
     read_why_int0::in, item_accumulator::in, item_accumulator::out) is det.
 
 acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
-    % XXX ITEM_LIST Compute {Int,Imp}Section and {Int,Imp}ItemMercuryStatus
-    % directly from ReadWhy0.
     (
         ReadWhy0 = rwi0_section,
-        MakeIntSection =
-            make_ims_imported(import_locn_ancestor_int0_interface),
-        MakeImpSection =
-            make_ims_imported(import_locn_ancestor_int0_implementation),
-        IntSection = MakeIntSection(ModuleName, ifk_int0),
-        ImpSection = MakeImpSection(ModuleName, ifk_int0),
-        int_module_section_status(IntSection, IntSectionInfo),
-        int_module_section_status(ImpSection, ImpSectionInfo)
+        IntImportLocn = import_locn_ancestor_int0_interface,
+        ImpImportLocn = import_locn_ancestor_int0_implementation,
+        IntItemImport = item_import_int_concrete(IntImportLocn),
+        ImpItemImport = item_import_int_concrete(ImpImportLocn),
+        IntNeedQual = may_be_unqualified,
+        ImpNeedQual = may_be_unqualified
     ;
         ReadWhy0 = rwi0_opt,
-        MakeIntSection = make_ioms_opt_imported,
-        MakeImpSection = make_ioms_opt_imported,
-        IntOptSection = MakeIntSection(ModuleName, ifk_int0),
-        ImpOptSection = MakeImpSection(ModuleName, ifk_int0),
-        int_for_opt_module_section_status(IntOptSection, IntSectionInfo),
-        int_for_opt_module_section_status(ImpOptSection, ImpSectionInfo)
+        IntItemImport = item_import_opt_int,
+        ImpItemImport = item_import_opt_int,
+        IntNeedQual = must_be_qualified,
+        ImpNeedQual = must_be_qualified
     ),
-    IntSectionInfo = sec_info(IntItemMercuryStatus, _IntNeedQual),
-    ImpSectionInfo = sec_info(ImpItemMercuryStatus, _ImpNeedQual),
+    IntItemMercuryStatus = item_defined_in_other_module(IntItemImport),
+    ImpItemMercuryStatus = item_defined_in_other_module(ImpItemImport),
+    IntSectionInfo = sec_info(IntItemMercuryStatus, IntNeedQual),
+    ImpSectionInfo = sec_info(ImpItemMercuryStatus, ImpNeedQual),
 
-    ParseTreeInt0 = parse_tree_int0(ModuleName, _ModuleNameContext,
+    ParseTreeInt0 = parse_tree_int0(_ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
         _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, ImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
@@ -647,41 +585,46 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
     read_why_int1::in, item_accumulator::in, item_accumulator::out) is det.
 
 acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
-    % XXX ITEM_LIST Compute {Int,Imp}Section and {Int,Imp}ItemMercuryStatus
-    % directly from ReadWhy1.
     (
         (
             ReadWhy1 = rwi1_int_import,
-            MakeIntSection = make_ims_imported(import_locn_interface)
+            IntImportLocn = import_locn_interface,
+            IntNeedQual = may_be_unqualified
         ;
             ReadWhy1 = rwi1_int_use,
-            MakeIntSection = make_ims_used(import_locn_interface)
+            IntImportLocn = import_locn_interface,
+            IntNeedQual = must_be_qualified
         ;
             ReadWhy1 = rwi1_imp_import,
-            MakeIntSection = make_ims_imported(import_locn_implementation)
+            IntImportLocn = import_locn_implementation,
+            IntNeedQual = may_be_unqualified
         ;
             ReadWhy1 = rwi1_imp_use,
-            MakeIntSection = make_ims_used(import_locn_implementation)
+            IntImportLocn = import_locn_implementation,
+            IntNeedQual = must_be_qualified
         ;
             ReadWhy1 = rwi1_int_use_imp_import,
-            MakeIntSection = make_ims_used_and_imported(import_locn_interface)
+            IntImportLocn = import_locn_interface,
+            IntNeedQual = may_be_unqualified
+            % XXX ITEM_LIST Either this should be something like
+            % must_be_qualified_in_interface, or the job of IntNeedQual should
+            % be split into, with IntNeedQualInInterface = must_be_qualified,
+            % and IntNeedQualInImplementation = may_be_unqualified.
         ),
-        MakeImpSection = make_ims_abstract_imported,
-        IntSection = MakeIntSection(ModuleName, ifk_int1),
-        ImpSection = MakeImpSection(ModuleName, ifk_int1),
-        int_module_section_status(IntSection, IntSectionInfo),
-        int_module_section_status(ImpSection, ImpSectionInfo)
+        IntItemImport = item_import_int_concrete(IntImportLocn),
+        ImpItemImport = item_import_int_abstract,
+        ImpNeedQual = must_be_qualified
     ;
         ReadWhy1 = rwi1_opt,
-        MakeIntSection = make_ioms_opt_imported,
-        MakeImpSection = make_ioms_opt_imported,
-        IntOptSection = MakeIntSection(ModuleName, ifk_int1),
-        ImpOptSection = MakeImpSection(ModuleName, ifk_int1),
-        int_for_opt_module_section_status(IntOptSection, IntSectionInfo),
-        int_for_opt_module_section_status(ImpOptSection, ImpSectionInfo)
+        IntItemImport = item_import_opt_int,
+        ImpItemImport = item_import_opt_int,
+        IntNeedQual = must_be_qualified,
+        ImpNeedQual = must_be_qualified
     ),
-    IntSectionInfo = sec_info(IntItemMercuryStatus, _IntNeedQual),
-    ImpSectionInfo = sec_info(ImpItemMercuryStatus, _ImpNeedQual),
+    IntItemMercuryStatus = item_defined_in_other_module(IntItemImport),
+    ImpItemMercuryStatus = item_defined_in_other_module(ImpItemImport),
+    IntSectionInfo = sec_info(IntItemMercuryStatus, IntNeedQual),
+    ImpSectionInfo = sec_info(ImpItemMercuryStatus, ImpNeedQual),
 
     ParseTreeInt1 = parse_tree_int1(ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _ImpInclMap, _InclMap,
@@ -779,34 +722,31 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
     read_why_int2::in, item_accumulator::in, item_accumulator::out) is det.
 
 acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
-    % XXX ITEM_LIST Compute {Int,Imp}Section and {Int,Imp}ItemMercuryStatus
-    % directly from ReadWhy2.
     (
         (
             ReadWhy2 = rwi2_int_use,
-            MakeIntSection = make_ims_used(import_locn_interface)
+            IntImportLocn = import_locn_interface
         ;
             ReadWhy2 = rwi2_imp_use,
-            MakeIntSection = make_ims_used(import_locn_implementation)
-        ;
-            ReadWhy2 = rwi2_abstract,
-            MakeIntSection = make_ims_abstract_imported
+            IntImportLocn = import_locn_implementation
         ),
-        MakeImpSection = make_ims_abstract_imported,
-        IntSection = MakeIntSection(ModuleName, ifk_int2),
-        ImpSection = MakeImpSection(ModuleName, ifk_int2),
-        int_module_section_status(IntSection, IntSectionInfo),
-        int_module_section_status(ImpSection, ImpSectionInfo)
+        IntItemImport = item_import_int_concrete(IntImportLocn),
+        ImpItemImport = item_import_int_abstract
+    ;
+        ReadWhy2 = rwi2_abstract,
+        IntItemImport = item_import_int_abstract,
+        ImpItemImport = item_import_int_abstract
     ;
         ReadWhy2 = rwi2_opt,
-        MakeIntSection = make_ioms_opt_imported,
-        MakeImpSection = make_ioms_opt_imported,
-        IntOptSection = MakeIntSection(ModuleName, ifk_int2),
-        ImpOptSection = MakeImpSection(ModuleName, ifk_int2),
-        int_for_opt_module_section_status(IntOptSection, IntSectionInfo),
-        int_for_opt_module_section_status(ImpOptSection, ImpSectionInfo)
+        IntItemImport = item_import_opt_int,
+        ImpItemImport = item_import_opt_int
     ),
-    IntSectionInfo = sec_info(IntItemMercuryStatus, _IntNeedQual),
+    IntItemMercuryStatus = item_defined_in_other_module(IntItemImport),
+    ImpItemMercuryStatus = item_defined_in_other_module(ImpItemImport),
+    IntNeedQual = must_be_qualified,
+    ImpNeedQual = must_be_qualified,
+    IntSectionInfo = sec_info(IntItemMercuryStatus, IntNeedQual),
+    ImpSectionInfo = sec_info(ImpItemMercuryStatus, ImpNeedQual),
 
     ParseTreeInt2 = parse_tree_int2(ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, _IntInclMap, _InclMap,
@@ -879,39 +819,54 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
     read_why_int3::in, item_accumulator::in, item_accumulator::out) is det.
 
 acc_parse_tree_int3(ParseTreeInt3, ReadWhy3, !Acc) :-
-    % XXX ITEM_LIST Compute IntSection and IntItemMercuryStatus
-    % directly from ReadWhy3.
     (
         ReadWhy3 = rwi3_direct_ancestor_import,
-        MakeIntSection = make_ims_imported(import_locn_import_by_ancestor)
+        IntImportLocn = import_locn_import_by_ancestor,
+        IntNeedQual = may_be_unqualified
     ;
         ReadWhy3 = rwi3_direct_int_import,
-        MakeIntSection = make_ims_imported(import_locn_interface)
+        IntImportLocn = import_locn_interface,
+        IntNeedQual = may_be_unqualified
     ;
         ReadWhy3 = rwi3_direct_imp_import,
-        MakeIntSection = make_ims_imported(import_locn_implementation)
+        IntImportLocn = import_locn_implementation,
+        IntNeedQual = may_be_unqualified
     ;
         ReadWhy3 = rwi3_direct_ancestor_use,
-        MakeIntSection = make_ims_used(import_locn_import_by_ancestor)
+        IntImportLocn = import_locn_import_by_ancestor,
+        IntNeedQual = must_be_qualified
     ;
         ReadWhy3 = rwi3_direct_int_use,
-        MakeIntSection = make_ims_used(import_locn_interface)
+        IntImportLocn = import_locn_interface,
+        IntNeedQual = must_be_qualified
     ;
         ReadWhy3 = rwi3_direct_imp_use,
-        MakeIntSection = make_ims_used(import_locn_implementation)
+        IntImportLocn = import_locn_implementation,
+        IntNeedQual = must_be_qualified
     ;
         ReadWhy3 = rwi3_direct_int_use_imp_import,
-        MakeIntSection = make_ims_used_and_imported(import_locn_interface)
+        IntImportLocn = import_locn_interface,
+        IntNeedQual = may_be_unqualified
+        % XXX ITEM_LIST Either this should be something like
+        % must_be_qualified_in_interface, or the job of IntNeedQual should
+        % be split into, with IntNeedQualInInterface = must_be_qualified,
+        % and IntNeedQualInImplementation = may_be_unqualified.
     ;
         ReadWhy3 = rwi3_indirect_int_use,
-        MakeIntSection = make_ims_used(import_locn_interface)
+        IntImportLocn = import_locn_interface,
+        IntNeedQual = must_be_qualified
+        % XXX ITEM_LIST We should use only the subset of the items in this file
+        % that caused it to be indirectly imported.
     ;
         ReadWhy3 = rwi3_indirect_imp_use,
-        MakeIntSection = make_ims_used(import_locn_implementation)
+        IntImportLocn = import_locn_implementation,
+        IntNeedQual = must_be_qualified
+        % XXX ITEM_LIST We should use only the subset of the items in this file
+        % that caused it to be indirectly imported.
     ),
-    IntSection = MakeIntSection(ModuleName, ifk_int3),
-    int_module_section_status(IntSection, IntSectionInfo),
-    IntSectionInfo = sec_info(IntItemMercuryStatus, _NeedQual),
+    IntItemImport = item_import_int_concrete(IntImportLocn),
+    IntItemMercuryStatus = item_defined_in_other_module(IntItemImport),
+    IntSectionInfo = sec_info(IntItemMercuryStatus, IntNeedQual),
 
     ParseTreeInt3 = parse_tree_int3(ModuleName, _ModuleNameContext,
         _IntInclMap, _InclMap, _IntImportMap, ImportUseMap,
