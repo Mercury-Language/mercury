@@ -203,14 +203,14 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
     PredIdPieces = describe_one_pred_name(ModuleInfo,
         should_not_module_qualify, PredId),
 
-    Pieces = [words("In")] ++ PredIdPieces ++ [suffix(":"), nl,
+    MainPieces = [words("In")] ++ PredIdPieces ++ [suffix(":"), nl,
         fixed("type error: unsatisfied typeclass " ++
         choose_number(Constraints, "constraint:", "constraints:")),
         nl_indent_delta(1)] ++
         component_list_to_line_pieces(
             list.map(constraint_to_error_piece(TVarSet), Constraints), []) ++
         [nl_indent_delta(-1)],
-    Msg = simplest_msg(Context, Pieces),
+    MainMsg = simplest_msg(Context, MainPieces),
 
     ConstrainedGoals = find_constrained_goals(PredInfo, Constraints),
     (
@@ -224,17 +224,16 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
         ContextMsgs = []
     ;
         ConstrainedGoals = [_ | _],
-        DueTo = choose_number(Constraints,
-            "The constraint is due to:",
-            "The constraints are due to:"),
-        ContextMsgsPrefix = error_msg(yes(Context), do_not_treat_as_first, 0,
-            [always([words(DueTo)])]),
+        DueToPieces = choose_number(Constraints,
+            [words("The constraint is due to:")],
+            [words("The constraints are due to:")]),
+        ContextMsgsPrefix = simplest_msg(Context, DueToPieces),
         ContextMsgsList = constrained_goals_to_error_msgs(ModuleInfo,
             ConstrainedGoals),
         ContextMsgs = [ContextMsgsPrefix | ContextMsgsList]
     ),
     Spec = error_spec($pred, severity_error, phase_type_check,
-        [Msg | ContextMsgs]),
+        [MainMsg | ContextMsgs]),
     !:Specs = [Spec | !.Specs].
 
 :- func constraint_to_error_piece(tvarset, prog_constraint)

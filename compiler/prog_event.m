@@ -108,7 +108,7 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
             TermReadRes = eof,
             EventSetName = "",
             EventSpecMap = map.init,
-            Pieces = [words("eof in term specification file"), nl],
+            Pieces = [words("eof in term specification file."), nl],
             Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
             ErrorSpec = error_spec($pred, severity_error,
                 phase_term_to_parse_tree, [Msg]),

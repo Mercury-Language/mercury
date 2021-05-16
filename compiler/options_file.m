@@ -225,10 +225,10 @@ read_args_file(OptionsFile, MaybeMCFlags, Specs, UndefSpecs, !IO) :-
         FlagsResult = var_result_unset,
         MaybeMCFlags = no,
         ( if Specs0 = [], UndefSpecs = [] then
+            Pieces = [words("mercury_compile: internal error:"),
+                words("arguments file does not set MCFLAGS."), nl],
             Spec = error_spec($pred, severity_error, phase_read_files,
-                [error_msg(no, treat_as_first, 0,
-                    [always([words("mercury_compile: internal error:"),
-                    words("arguments file does not set MCFLAGS."), nl])])]),
+                [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
             Specs = [Spec | Specs0]
         else
             % Any of the errors in Specs or UndefSpecs could be the reason
@@ -427,11 +427,12 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
                     PreStack0 = pre_stack_nested(Context, _),
                     MaybeContext = yes(Context)
                 ),
+                Pieces = [words("Cannot open options file"),
+                    quote(ErrorFile), suffix(":"),
+                    words(Error), suffix("."), nl],
                 Spec = error_spec($pred, severity_error, phase_read_files,
                     [error_msg(MaybeContext, treat_as_first, 0,
-                        [always([words("Cannot open options file"),
-                            quote(ErrorFile), suffix(":"),
-                            words(Error), suffix(".")])])]),
+                        [always(Pieces)])]),
                 !:IOSpecs = [Spec | !.IOSpecs]
             ;
                 IsOptionsFileOptional = options_file_need_not_exist
@@ -1576,10 +1577,10 @@ lookup_variable_words_maybe_env_value(MaybeEnvValue, Variables, VarName,
             Result = var_result_set(EnvWords)
         ;
             SplitResult = error(Msg),
+            Pieces = [words("Error: in environment variable"),
+                quote(VarName), suffix(":"), words(Msg), nl],
             ErrorSpec = error_spec($pred, severity_error, phase_read_files,
-                [error_msg(no, do_not_treat_as_first, 0,
-                    [always([words("Error: in environment variable"),
-                        quote(VarName), suffix(":"), words(Msg), nl])])]),
+                [error_msg(no, do_not_treat_as_first, 0, [always(Pieces)])]),
             Result = var_result_error(one_or_more(ErrorSpec, []))
         )
     ;
