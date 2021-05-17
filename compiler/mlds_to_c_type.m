@@ -19,6 +19,8 @@
 :- import_module io.
 :- import_module list.
 
+%---------------------%
+
 :- pred mlds_output_type(mlds_to_c_opts::in, mlds_type::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
@@ -44,12 +46,16 @@
     io.text_output_stream::in, mlds_type::in, initializer_array_size::in,
     io::di, io::uo) is det.
 
+%---------------------%
+
     % mlds_output_return_list(List, OutputPred, !IO) outputs
     % a List of return types/values using OutputPred.
     %
 :- pred mlds_output_return_list(io.text_output_stream::in,
     pred(T, io.text_output_stream, io, io)::in(pred(in, in, di, uo) is det),
     list(T)::in, io::di, io::uo) is det.
+
+%---------------------%
 
 :- pred mlds_output_cast(mlds_to_c_opts::in, io.text_output_stream::in,
     mlds_type::in, io::di, io::uo) is det.
@@ -79,6 +85,8 @@ mlds_output_type(Opts, Type, Stream, !IO) :-
     % the suffix.
     mlds_output_type_prefix(Opts, Stream, Type, !IO),
     mlds_output_type_suffix(Opts, Stream, Type, no_size, !IO).
+
+%---------------------%
 
 mlds_output_type_prefix(Opts, Stream, MLDS_Type, !IO) :-
     (
@@ -243,6 +251,28 @@ mlds_output_mercury_type_prefix(Stream, CtorCat, !IO) :-
         io.write_string(Stream, "MR_Word", !IO)
     ).
 
+:- pred mlds_output_func_type_prefix(mlds_to_c_opts::in,
+    io.text_output_stream::in, mlds_func_params::in, io::di, io::uo) is det.
+
+mlds_output_func_type_prefix(Opts, Stream, Params, !IO) :-
+    Params = mlds_func_params(_Parameters, RetTypes),
+    (
+        RetTypes = [],
+        io.write_string(Stream, "void", !IO)
+    ;
+        RetTypes = [RetType],
+        mlds_output_type(Opts, RetType, Stream, !IO)
+    ;
+        RetTypes = [_, _ | _],
+        mlds_output_return_list(Stream, mlds_output_type(Opts), RetTypes, !IO)
+    ),
+    % Note that mlds_func_type actually corresponds to a function _pointer_
+    % type in C. This is necessary because function types in C are not first
+    % class.
+    io.write_string(Stream, " MR_CALL (*", !IO).
+
+%---------------------%
+
 mlds_output_type_suffix_no_size(Opts, Stream, Type, !IO) :-
     mlds_output_type_suffix(Opts, Stream, Type, no_size, !IO).
 
@@ -309,36 +339,6 @@ mlds_output_type_suffix(Opts, Stream, MLDS_Type, ArraySize, !IO) :-
         )
     ).
 
-:- pred mlds_output_func_type_prefix(mlds_to_c_opts::in,
-    io.text_output_stream::in, mlds_func_params::in, io::di, io::uo) is det.
-
-mlds_output_func_type_prefix(Opts, Stream, Params, !IO) :-
-    Params = mlds_func_params(_Parameters, RetTypes),
-    (
-        RetTypes = [],
-        io.write_string(Stream, "void", !IO)
-    ;
-        RetTypes = [RetType],
-        mlds_output_type(Opts, RetType, Stream, !IO)
-    ;
-        RetTypes = [_, _ | _],
-        mlds_output_return_list(Stream, mlds_output_type(Opts), RetTypes, !IO)
-    ),
-    % Note that mlds_func_type actually corresponds to a function _pointer_
-    % type in C. This is necessary because function types in C are not first
-    % class.
-    io.write_string(Stream, " MR_CALL (*", !IO).
-
-mlds_output_return_list(Stream, OutputPred, List, !IO) :-
-    % Even though C does not support multiple return types, this case needs
-    % to be handled for e.g. MLDS dumps when compiling to Java. We generate
-    % an "#error" directive to make the error message clearer, but then we go
-    % ahead and generate C-like pseudo-code for the purposes of MLDS dumps.
-    io.write_string(Stream, "\n#error multiple return values\n", !IO),
-    io.write_string(Stream, "\t{", !IO),
-    write_out_list(OutputPred, ", ", List, Stream, !IO),
-    io.write_string(Stream, "}", !IO).
-
 :- pred mlds_output_func_type_suffix(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_func_params::in, io::di, io::uo) is det.
 
@@ -380,6 +380,18 @@ mlds_output_array_type_suffix(Stream, array_size(Size0), !IO) :-
     % arrays into one-element C arrays.
     int.max(Size0, 1, Size),
     io.format(Stream, "[%d]", [i(Size)], !IO).
+
+%---------------------------------------------------------------------------%
+
+mlds_output_return_list(Stream, OutputPred, List, !IO) :-
+    % Even though C does not support multiple return types, this case needs
+    % to be handled for e.g. MLDS dumps when compiling to Java. We generate
+    % an "#error" directive to make the error message clearer, but then we go
+    % ahead and generate C-like pseudo-code for the purposes of MLDS dumps.
+    io.write_string(Stream, "\n#error multiple return values\n", !IO),
+    io.write_string(Stream, "\t{", !IO),
+    write_out_list(OutputPred, ", ", List, Stream, !IO),
+    io.write_string(Stream, "}", !IO).
 
 %---------------------------------------------------------------------------%
 
