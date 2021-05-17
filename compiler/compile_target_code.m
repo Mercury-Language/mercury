@@ -2625,7 +2625,7 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
         ;
             MaybeDirName = error(Error),
             LinkerOpt = "",
-            Pieces = [words(Error), suffix(".\n")],
+            Pieces = [words(Error), suffix("."), nl],
             Spec = error_spec($pred, severity_error, phase_read_files,
                 [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
             write_error_spec_ignore(Globals, Spec, !IO),
