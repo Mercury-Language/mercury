@@ -1,72 +1,36 @@
 coerce_recursive_type.m:045: In clause for `bad(in) = out':
-coerce_recursive_type.m:045:   in coerce:
-coerce_recursive_type.m:045:   mode error: the input term has instantiatedness
-coerce_recursive_type.m:045:   `ground',
-coerce_recursive_type.m:045:   and cannot be converted to the type
+coerce_recursive_type.m:045:   in coerce expression:
+coerce_recursive_type.m:045:   mode error: cannot convert the argument term
+coerce_recursive_type.m:045:   from type
+coerce_recursive_type.m:045:   `coerce_recursive_type.rec(coerce_recursive_type.fruit)'
+coerce_recursive_type.m:045:   to
+coerce_recursive_type.m:045:   `coerce_recursive_type.rec(coerce_recursive_type.citrus)'
+coerce_recursive_type.m:045:   because it has instantiatedness `ground', and
+coerce_recursive_type.m:045:   `coerce_recursive_type.rec(coerce_recursive_type.fruit)'
+coerce_recursive_type.m:045:   is not a subtype of
 coerce_recursive_type.m:045:   `coerce_recursive_type.rec(coerce_recursive_type.citrus)'.
 coerce_recursive_type.m:051: In clause for
 coerce_recursive_type.m:051:   `bad2(in((coerce_recursive_type.cons_apple3))) =
 coerce_recursive_type.m:051:   out':
-coerce_recursive_type.m:051:   in coerce:
-coerce_recursive_type.m:051:   mode error: the input term has instantiatedness
-coerce_recursive_type.m:051:     named inst cons_apple3,
-coerce_recursive_type.m:051:     which expands to
-coerce_recursive_type.m:051:       bound(
-coerce_recursive_type.m:051:         cons(
-coerce_recursive_type.m:051:           ground,
-coerce_recursive_type.m:051:           named inst cons_apple2,
-coerce_recursive_type.m:051:           which expands to
-coerce_recursive_type.m:051:             bound(
-coerce_recursive_type.m:051:               cons(
-coerce_recursive_type.m:051:                 ground,
-coerce_recursive_type.m:051:                 named inst cons_apple,
-coerce_recursive_type.m:051:                 which expands to
-coerce_recursive_type.m:051:                   bound(
-coerce_recursive_type.m:051:                     cons(
-coerce_recursive_type.m:051:                       named inst apple,
-coerce_recursive_type.m:051:                       which expands to
-coerce_recursive_type.m:051:                         bound(
-coerce_recursive_type.m:051:                           apple
-coerce_recursive_type.m:051:                         ),
-coerce_recursive_type.m:051:                         ground
-coerce_recursive_type.m:051:                     )
-coerce_recursive_type.m:051:                   )
-coerce_recursive_type.m:051:               )
-coerce_recursive_type.m:051:             )
-coerce_recursive_type.m:051:         )
-coerce_recursive_type.m:051:       ),
-coerce_recursive_type.m:051:   and cannot be converted to the type
-coerce_recursive_type.m:051:   `coerce_recursive_type.rec(coerce_recursive_type.citrus)'.
+coerce_recursive_type.m:051:   in coerce expression:
+coerce_recursive_type.m:051:   mode error: in the argument term:
+coerce_recursive_type.m:051:   in the first argument of function symbol `cons':
+coerce_recursive_type.m:051:   cannot convert the subterm from type
+coerce_recursive_type.m:051:   `coerce_recursive_type.fruit' to
+coerce_recursive_type.m:051:   `coerce_recursive_type.citrus' because it has
+coerce_recursive_type.m:051:   instantiatedness `ground', and
+coerce_recursive_type.m:051:   `coerce_recursive_type.fruit' is not a subtype
+coerce_recursive_type.m:051:   of `coerce_recursive_type.citrus'.
 coerce_recursive_type.m:058: In clause for
 coerce_recursive_type.m:058:   `bad3(in((coerce_recursive_type.cons_apple3))) =
 coerce_recursive_type.m:058:   out':
-coerce_recursive_type.m:058:   in coerce:
-coerce_recursive_type.m:058:   mode error: the input term has instantiatedness
-coerce_recursive_type.m:058:     named inst cons_apple3,
-coerce_recursive_type.m:058:     which expands to
-coerce_recursive_type.m:058:       bound(
-coerce_recursive_type.m:058:         cons(
-coerce_recursive_type.m:058:           ground,
-coerce_recursive_type.m:058:           named inst cons_apple2,
-coerce_recursive_type.m:058:           which expands to
-coerce_recursive_type.m:058:             bound(
-coerce_recursive_type.m:058:               cons(
-coerce_recursive_type.m:058:                 ground,
-coerce_recursive_type.m:058:                 named inst cons_apple,
-coerce_recursive_type.m:058:                 which expands to
-coerce_recursive_type.m:058:                   bound(
-coerce_recursive_type.m:058:                     cons(
-coerce_recursive_type.m:058:                       named inst apple,
-coerce_recursive_type.m:058:                       which expands to
-coerce_recursive_type.m:058:                         bound(
-coerce_recursive_type.m:058:                           apple
-coerce_recursive_type.m:058:                         ),
-coerce_recursive_type.m:058:                         ground
-coerce_recursive_type.m:058:                     )
-coerce_recursive_type.m:058:                   )
-coerce_recursive_type.m:058:               )
-coerce_recursive_type.m:058:             )
-coerce_recursive_type.m:058:         )
-coerce_recursive_type.m:058:       ),
-coerce_recursive_type.m:058:   and cannot be converted to the type
-coerce_recursive_type.m:058:   `coerce_recursive_type.rec(coerce_recursive_type.fruit)'.
+coerce_recursive_type.m:058:   in coerce expression:
+coerce_recursive_type.m:058:   mode error: in the argument term:
+coerce_recursive_type.m:058:   in the second argument of function symbol
+coerce_recursive_type.m:058:   `cons':
+coerce_recursive_type.m:058:   in the second argument of function symbol
+coerce_recursive_type.m:058:   `cons':
+coerce_recursive_type.m:058:   in the first argument of function symbol `cons':
+coerce_recursive_type.m:058:   the instantiatedness of the subterm
+coerce_recursive_type.m:058:   `bound(apple)' is invalid for the type of the
+coerce_recursive_type.m:058:   subterm `coerce_recursive_type.citrus'.

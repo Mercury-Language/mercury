@@ -23,24 +23,8 @@ coerce_int.m:026:         )
 coerce_int.m:026:       ).
 coerce_int.m:032: In clause for `bad_wrong_type(in(coerce_int.wrap(bound(1 ;
 coerce_int.m:032:   2)))) = out(coerce_int.wrap(bound(1 ; 2)))':
-coerce_int.m:032:   in coerce:
-coerce_int.m:032:   mode error: the input term has instantiatedness
-coerce_int.m:032:     named inst wrap(
-coerce_int.m:032:       bound(
-coerce_int.m:032:         1
-coerce_int.m:032:       ;
-coerce_int.m:032:         2
-coerce_int.m:032:       )
-coerce_int.m:032:     ),
-coerce_int.m:032:     which expands to
-coerce_int.m:032:       bound(
-coerce_int.m:032:         wrap(
-coerce_int.m:032:           bound(
-coerce_int.m:032:             1
-coerce_int.m:032:           ;
-coerce_int.m:032:             2
-coerce_int.m:032:           )
-coerce_int.m:032:         )
-coerce_int.m:032:       ),
-coerce_int.m:032:   and cannot be converted to the type
-coerce_int.m:032:   `coerce_int.wrap(uint)'.
+coerce_int.m:032:   in coerce expression:
+coerce_int.m:032:   mode error: in the argument term:
+coerce_int.m:032:   in the argument of function symbol `wrap':
+coerce_int.m:032:   the instantiatedness of the subterm `bound(1 ; 2)' is
+coerce_int.m:032:   invalid for the type of the subterm `uint'.

@@ -520,7 +520,7 @@ cast_type_to_string(unsafe_type_cast) = "unsafe_type_cast".
 cast_type_to_string(unsafe_type_inst_cast) = "unsafe_type_inst_cast".
 cast_type_to_string(equiv_type_cast) = "equiv_type_cast".
 cast_type_to_string(exists_cast) = "exists_cast".
-cast_type_to_string(subtype_coerce) = "coerce".
+cast_type_to_string(subtype_coerce) = "coerce expression".
 
 call_arg_id_to_string(CallId, ArgNum, PredMarkers) = Str :-
     ( if ArgNum =< 0 then

@@ -162,12 +162,8 @@
 
     % Mode errors in coerce expressions.
 
-    ;       mode_error_coerce_input_not_ground(prog_var, mer_inst)
-            % The argument in a coerce expression has a non-ground inst.
-
-    ;       mode_error_coerce_ground_invalid(mer_inst, mer_type)
-            % The argument in a coerce expression has a ground inst
-            % that is not valid for the result type.
+    ;       mode_error_coerce_error(coerce_error)
+            % Mode error in coerce expression.
 
     % Mode errors that can happen in more than one kind of goal.
 
@@ -268,6 +264,28 @@
     --->    merge_disj
     ;       merge_if_then_else
     ;       merge_stm_atomic.
+
+%---------------------%
+
+:- type coerce_error
+    --->    coerce_error(
+                % Path to subterm where the mode error was detected.
+                list(coerce_error_term_path_step),
+                % Type of the subterm.
+                mer_type,
+                % Target type of the conversion.
+                mer_type,
+                coerce_error_reason
+            ).
+
+:- type coerce_error_term_path_step
+    --->    coerce_error_term_path_step(cons_id, int).
+
+:- type coerce_error_reason
+    --->    input_inst_not_ground(mer_inst)
+    ;       invalid_inst_for_input_type(mer_inst)
+    ;       invalid_cons_ids_for_result_type(list(cons_id))
+    ;       has_inst_expect_upcast(mer_inst).
 
 %---------------------%
 
@@ -471,12 +489,8 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
         Spec = mode_error_merge_disj_to_spec(ModeInfo, MergeContext,
             MergeErrors)
     ;
-        ModeError = mode_error_coerce_input_not_ground(Var, VarInst),
-        Spec = mode_error_coerce_input_not_ground_to_spec(ModeInfo, Var,
-            VarInst)
-    ;
-        ModeError = mode_error_coerce_ground_invalid(Inst, Type),
-        Spec = mode_error_coerce_ground_invalid_to_spec(ModeInfo, Inst, Type)
+        ModeError = mode_error_coerce_error(CoerceError),
+        Spec = mode_error_coerce_error_to_spec(ModeInfo, CoerceError)
     ;
         ModeError = mode_error_bind_locked_var(Reason, Var, InstA, InstB),
         Spec = mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var,
@@ -1308,38 +1322,102 @@ merge_context_to_string(merge_stm_atomic) = "atomic".
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_coerce_input_not_ground_to_spec(mode_info, prog_var,
-    mer_inst) = error_spec.
+:- func mode_error_coerce_error_to_spec(mode_info, coerce_error) = error_spec.
 
-mode_error_coerce_input_not_ground_to_spec(ModeInfo, Var, VarInst) = Spec :-
-    Preamble = mode_info_context_preamble(ModeInfo),
-    mode_info_get_context(ModeInfo, Context),
-    mode_info_get_varset(ModeInfo, VarSet),
-    Pieces = [words("mode error:"),
-        quote(mercury_var_to_name_only(VarSet, Var))] ++
-        has_instantiatedness(ModeInfo, VarInst, ",") ++
-        [words("but it must be ground."), nl],
-    Spec = simplest_spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
-
-%---------------------------------------------------------------------------%
-
-:- func mode_error_coerce_ground_invalid_to_spec(mode_info, mer_inst, mer_type)
-    = error_spec.
-
-mode_error_coerce_ground_invalid_to_spec(ModeInfo, Inst, Type) = Spec :-
+mode_error_coerce_error_to_spec(ModeInfo, Error) = Spec :-
+    Error = coerce_error(TermPath, FromType, ToType, Reason),
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     varset.init(TypeVarSet),
-    Pieces = [words("mode error: the input term has instantiatedness")] ++
-        report_inst(ModeInfo, quote_short_inst, [suffix(","), nl],
-            [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
-            Inst) ++
-        [words("and cannot be converted to the type"),
-        quote(mercury_type_to_string(TypeVarSet, print_name_only, Type)),
-        suffix("."), nl],
+    (
+        TermPath = [],
+        TermPathPieces = [],
+        TheTerm = words("the argument term")
+    ;
+        TermPath = [_ | _],
+        TermPathPieces =
+            [words("in the argument term:"), nl] ++
+            list.condense(list.map(make_term_path_piece, TermPath)),
+        TheTerm = words("the subterm")
+    ),
+    FromTypeStr =
+        mercury_type_to_string(TypeVarSet, print_name_only, FromType),
+    ToTypeStr =
+        mercury_type_to_string(TypeVarSet, print_name_only, ToType),
+    (
+        Reason = input_inst_not_ground(Inst),
+        ReasonPieces =
+            [TheTerm, words("has instantiatedness")] ++
+            report_inst(ModeInfo, quote_short_inst, [suffix(",")],
+                [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
+                Inst) ++
+            [words("but it must have a ground inst."), nl]
+    ;
+        Reason = invalid_inst_for_input_type(Inst),
+        ReasonPieces =
+            [words("the instantiatedness of"), TheTerm] ++
+            report_inst(ModeInfo, quote_short_inst, [],
+                [nl_indent_delta(1)], [nl_indent_delta(-1)], Inst) ++
+            [words("is invalid for the type of"), TheTerm,
+            quote(FromTypeStr), suffix("."), nl]
+    ;
+        Reason = invalid_cons_ids_for_result_type(ConsIds),
+        ConsIdsStrs = list.map(unqualify_cons_id_to_string, ConsIds),
+        ReasonPieces =
+            [words("cannot convert"), TheTerm,
+            words("from type"), quote(FromTypeStr),
+            words("to"), quote(ToTypeStr),
+            words("because its instantiatedness includes the function"),
+            words(choose_number(ConsIds, "symbol", "symbols"))] ++
+            list_to_quoted_pieces(ConsIdsStrs) ++
+            [suffix("."), nl]
+    ;
+        Reason = has_inst_expect_upcast(Inst),
+        ReasonPieces =
+            [words("cannot convert"), TheTerm,
+            words("from type"), quote(FromTypeStr),
+            words("to"), quote(ToTypeStr),
+            words("because it has instantiatedness")] ++
+            report_inst(ModeInfo, quote_short_inst, [suffix(",")],
+                [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
+                Inst) ++
+            [words("and"), quote(FromTypeStr),
+            words("is not a subtype of"), quote(ToTypeStr),
+            suffix("."), nl]
+    ),
+    Pieces = [words("mode error:")] ++ TermPathPieces ++ ReasonPieces,
     Spec = simplest_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
+
+:- func make_term_path_piece(coerce_error_term_path_step) =
+    list(format_component).
+
+make_term_path_piece(Step) = Pieces :-
+    Step = coerce_error_term_path_step(ConsId, ArgNum),
+    ( if
+        ConsId = cons(_SymName, 1, _),
+        ArgNum = 1
+    then
+        ArgPieces = [words("in the argument")]
+    else
+        ArgPieces = [words("in the"), nth_fixed(ArgNum), words("argument")]
+    ),
+    ConsIdStr = unqualify_cons_id_to_string(ConsId),
+    Pieces = ArgPieces ++
+        [words("of function symbol"), quote(ConsIdStr), suffix(":"), nl].
+
+:- func unqualify_cons_id_to_string(cons_id) = string.
+
+unqualify_cons_id_to_string(ConsId0) = Str :-
+    ( if ConsId0 = cons(Name0, Arity, TypeCtor) then
+        UnqualName = unqualify_name(Name0),
+        Name = unqualified(UnqualName),
+        ConsId = cons(Name, Arity, TypeCtor)
+    else
+        ConsId = ConsId0
+    ),
+    Str = mercury_cons_id_to_string(output_mercury, does_not_need_brackets,
+        ConsId).
 
 %---------------------------------------------------------------------------%
 

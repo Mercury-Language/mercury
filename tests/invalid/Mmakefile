@@ -125,6 +125,7 @@ SINGLEMODULE= \
 	coerce_instvar \
 	coerce_int \
 	coerce_mode_error \
+	coerce_mode_error2 \
 	coerce_non_du \
 	coerce_recursive_inst \
 	coerce_recursive_type \

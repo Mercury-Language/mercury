@@ -1,0 +1,17 @@
+coerce_mode_error2.m:039: In clause for `test1(out)':
+coerce_mode_error2.m:039:   in coerce expression:
+coerce_mode_error2.m:039:   mode error: in the argument term:
+coerce_mode_error2.m:039:   in the second argument of function symbol `foo':
+coerce_mode_error2.m:039:   cannot convert the subterm from type
+coerce_mode_error2.m:039:   `coerce_mode_error2.fruit' to
+coerce_mode_error2.m:039:   `coerce_mode_error2.citrus' because its
+coerce_mode_error2.m:039:   instantiatedness includes the function symbols
+coerce_mode_error2.m:039:   `apple' and `banana'.
+coerce_mode_error2.m:050: In clause for `test2(out)':
+coerce_mode_error2.m:050:   in coerce expression:
+coerce_mode_error2.m:050:   mode error: cannot convert the argument term from
+coerce_mode_error2.m:050:   type
+coerce_mode_error2.m:050:   `coerce_mode_error2.foo(coerce_mode_error2.fruit)'
+coerce_mode_error2.m:050:   to `coerce_mode_error2.foo_citrus' because its
+coerce_mode_error2.m:050:   instantiatedness includes the function symbol
+coerce_mode_error2.m:050:   `nil'.

@@ -1,6 +1,6 @@
 coerce_implied_mode.m:036: In clause for
 coerce_implied_mode.m:036:   `coerce_implied_mode3(in(bound(orange)))':
-coerce_implied_mode.m:036:   in coerce:
+coerce_implied_mode.m:036:   in coerce expression:
 coerce_implied_mode.m:036:   warning: unification of `Y' and `V_4' cannot
 coerce_implied_mode.m:036:   succeed.
 coerce_implied_mode.m:036:   `Y' has instantiatedness `bound(orange)',
