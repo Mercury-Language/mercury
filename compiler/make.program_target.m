@@ -398,9 +398,13 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
     (
         MaybePreLinkCommand = yes(PreLinkCommand),
         make_all_module_command(PreLinkCommand, MainModuleName,
-            to_sorted_list(AllModules), CommandString, !IO),
-        invoke_system_command(Globals, ErrorStream, cmd_verbose,
-            CommandString, PreLinkSucceeded, !IO)
+            set.to_sorted_list(AllModules), CommandString, !IO),
+        % XXX STREAM This preserves old behavior, but our caller
+        % should pass to us a progress stream *explicitly*.
+        io.output_stream(OutputStream, !IO),
+        ProgressStream = OutputStream,
+        invoke_system_command(Globals, ProgressStream, ErrorStream,
+            OutputStream, cmd_verbose, CommandString, PreLinkSucceeded, !IO)
     ;
         MaybePreLinkCommand = no,
         PreLinkSucceeded = yes
@@ -425,10 +429,15 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         MaybeTimestamp, AllModules, ObjModules, CompilationTarget, PIC,
         DepsSuccess, BuildDepsResult, ErrorStream, Succeeded, !Info, !IO) :-
-    % Clear the option -- we'll pass the list of files directly.
+    % Clear the option -- we will pass the list of files directly.
     globals.lookup_accumulating_option(Globals, link_objects, LinkObjects),
     globals.set_option(link_objects, accumulating([]),
         Globals, NoLinkObjsGlobals),
+
+    % XXX STREAM This preserves old behavior, but our caller
+    % should pass to us a progress stream *explicitly*.
+    io.output_stream(OutputStream, !IO),
+    ProgressStream = OutputStream,
 
     % Remake the `_init.o' file.
     % XXX We should probably make a `_init.o' file for shared
@@ -436,8 +445,8 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
     AllModulesList = set.to_sorted_list(AllModules),
     (
         FileType = executable,
-        make_init_obj_file(NoLinkObjsGlobals, ErrorStream, MainModuleName,
-            AllModulesList, InitObjectResult, !IO),
+        make_init_obj_file(NoLinkObjsGlobals, ProgressStream, ErrorStream,
+            MainModuleName, AllModulesList, InitObjectResult, !IO),
         MaybeInitObjectResult = yes(InitObjectResult)
     ;
         ( FileType = static_library
@@ -473,9 +482,8 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
 
     % Report errors if any of the extra objects aren't present.
     list.map_foldl2(dependency_status(NoLinkObjsGlobals),
-        list.map((func(F) = dep_file(F, no)), ObjectsToCheck),
-            ExtraObjStatus, !Info, !IO),
-
+        list.map((func(F) = dep_file(F, no)), ObjectsToCheck), ExtraObjStatus,
+        !Info, !IO),
     ( if list.member(deps_status_error, ExtraObjStatus) then
         DepsResult3 = deps_error
     else
@@ -510,8 +518,9 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             UseGradeSubdirs),
         (
             UseGradeSubdirs = yes,
-            post_link_make_symlink_or_copy(NoLinkObjsGlobals, ErrorStream,
-                FileType, MainModuleName, Succeeded, MadeSymlinkOrCopy, !IO),
+            post_link_make_symlink_or_copy(NoLinkObjsGlobals,
+                ProgressStream, ErrorStream, FileType, MainModuleName,
+                Succeeded, MadeSymlinkOrCopy, !IO),
             (
                 MadeSymlinkOrCopy = yes,
                 maybe_symlink_or_copy_linked_target_message(NoLinkObjsGlobals,
@@ -584,8 +593,9 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             % Run the link in a separate process so it can be killed
             % if an interrupt is received.
             call_in_forked_process(
-                compile_target_code.link(NoLinkObjsGlobals, ErrorStream,
-                    FileType, MainModuleName, AllObjects),
+                compile_target_code.link(NoLinkObjsGlobals,
+                    ProgressStream, ErrorStream, FileType,
+                    MainModuleName, AllObjects),
                 Succeeded, !IO)
         ),
         CmdLineTargets0 = !.Info ^ command_line_targets,
@@ -699,8 +709,14 @@ build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
     bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_java_files_2(JavaFiles, Globals, ErrorStream, Succeeded, !Info, !IO) :-
+    list.det_head_tail(JavaFiles, HeadJavaFile, TailJavaFiles),
+    % XXX STREAM This preserves old behavior, but our caller
+    % should pass to us a progress stream *explicitly*.
+    io.output_stream(OutputStream, !IO),
+    ProgressStream = OutputStream,
     call_in_forked_process(
-        compile_java_files(Globals, ErrorStream, JavaFiles),
+        compile_java_files(Globals, ProgressStream, ErrorStream,
+            HeadJavaFile, TailJavaFiles),
         Succeeded, !IO).
 
 :- pred delete_java_class_timestamps(string::in, maybe_error(timestamp)::in,
@@ -1203,9 +1219,13 @@ build_c_library(Globals, MainModuleName, AllModules, Succeeded, !Info, !IO) :-
         (
             SharedLibsSucceeded = yes,
             % Errors while making the .init file should be very rare.
-            io.output_stream(ErrorStream, !IO),
-            make_library_init_file(Globals, ErrorStream, MainModuleName,
-                AllModules, Succeeded, !IO)
+            % XXX STREAM This preserves old behavior, but our caller
+            % should pass to us a progress stream *explicitly*.
+            io.output_stream(OutputStream, !IO),
+            ProgressStream = OutputStream,
+            ErrorStream = OutputStream,
+            make_library_init_file(Globals, ProgressStream, ErrorStream,
+                MainModuleName, AllModules, Succeeded, !IO)
         ;
             SharedLibsSucceeded = no,
             Succeeded = no
@@ -1669,36 +1689,40 @@ maybe_install_library_file(Globals, Linkage, FileName, InstallDir, Succeeded,
     io::di, io::uo) is det.
 
 install_file(Globals, FileName, InstallDir, Succeeded, !IO) :-
+    % XXX STREAM This preserves old behavior, but our caller
+    % should pass to us a progress stream *explicitly*.
+    io.output_stream(OutputStream, !IO),
+    ProgressStream = OutputStream,
+    ErrorStream = OutputStream,
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("Installing file ", !IO),
-            io.write_string(FileName, !IO),
-            io.write_string(" in ", !IO),
-            io.write_string(InstallDir, !IO),
-            io.nl(!IO)
+            io.format(ProgressStream, "Installing file %s in %s\n",
+                [s(FileName), s(InstallDir)], !IO),
+            io.flush_output(ProgressStream, !IO)
         ), !IO),
     Command = make_install_file_command(Globals, FileName, InstallDir),
-    io.output_stream(OutputStream, !IO),
-    invoke_system_command(Globals, OutputStream, cmd_verbose, Command,
-        Succeeded, !IO).
+    invoke_system_command(Globals, ProgressStream, ErrorStream, OutputStream,
+        cmd_verbose, Command, Succeeded, !IO).
 
 :- pred install_directory(globals::in, dir_name::in, dir_name::in, bool::out,
     io::di, io::uo) is det.
 :- pragma consider_used(install_directory/6).
 
 install_directory(Globals, SourceDirName, InstallDir, Succeeded, !IO) :-
+    % XXX STREAM This preserves old behavior, but our caller
+    % should pass to us a progress stream *explicitly*.
+    io.output_stream(OutputStream, !IO),
+    ProgressStream = OutputStream,
+    ErrorStream = OutputStream,
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("Installing directory ", !IO),
-            io.write_string(SourceDirName, !IO),
-            io.write_string(" in ", !IO),
-            io.write_string(InstallDir, !IO),
-            io.nl(!IO)
+            io.format(ProgressStream, "Installing directory %s in %s\n",
+                [s(SourceDirName), s(InstallDir)], !IO),
+            io.flush_output(ProgressStream, !IO)
         ), !IO),
     Command = make_install_dir_command(Globals, SourceDirName, InstallDir),
-    io.output_stream(OutputStream, !IO),
-    invoke_system_command(Globals, OutputStream, cmd_verbose, Command,
-        Succeeded, !IO).
+    invoke_system_command(Globals, ProgressStream, ErrorStream, OutputStream,
+        cmd_verbose, Command, Succeeded, !IO).
 
 :- pred make_install_dirs(globals::in, bool::out, bool::out, io::di, io::uo)
     is det.
@@ -1773,9 +1797,8 @@ print_mkdir_errors([], yes, !IO).
 print_mkdir_errors([ok | Rest], Succeeded, !IO) :-
     print_mkdir_errors(Rest, Succeeded, !IO).
 print_mkdir_errors([error(Error) | Rest], no, !IO) :-
-    io.write_string("Error creating installation directories: ", !IO),
-    io.write_string(io.error_message(Error), !IO),
-    io.nl(!IO),
+    io.format("Error creating installation directories: %s\n",
+        [s(io.error_message(Error))], !IO),
     print_mkdir_errors(Rest, _, !IO).
 
 :- pred make_install_symlink(globals::in, string::in, string::in, bool::out,
@@ -1792,24 +1815,28 @@ make_install_symlink(Globals, Subdir, Ext, Succeeded, !IO) :-
     bool::out, io::di, io::uo) is det.
 
 generate_archive_index(Globals, FileName, InstallDir, Succeeded, !IO) :-
+    % XXX STREAM This preserves old behavior, but our caller
+    % should pass to us a progress stream *explicitly*.
+    io.output_stream(OutputStream, !IO),
+    ProgressStream = OutputStream,
+    ErrorStream = OutputStream,
     verbose_make_msg(Globals,
         ( pred(!.IO::di, !:IO::uo) is det :-
-            io.write_string("Generating archive index for file ", !IO),
-            io.write_string(FileName, !IO),
-            io.write_string(" in ", !IO),
-            io.write_string(InstallDir, !IO),
-            io.nl(!IO)
+            io.format(ProgressStream,
+                "Generating archive index for file %s in %s\n",
+                [s(FileName), s(InstallDir)], !IO),
+            io.flush_output(ProgressStream, !IO)
         ), !IO),
     globals.lookup_string_option(Globals, ranlib_command, RanLibCommand),
     globals.lookup_string_option(Globals, ranlib_flags, RanLibFlags),
+    % XXX What is the point of using more than one space?
     Command = string.join_list("    ", [
         quote_arg(RanLibCommand),
         RanLibFlags,
         quote_arg(InstallDir / FileName)
     ]),
-    io.output_stream(OutputStream, !IO),
-    invoke_system_command(Globals, OutputStream, cmd_verbose, Command,
-        Succeeded, !IO).
+    invoke_system_command(Globals, ProgressStream, ErrorStream, OutputStream,
+        cmd_verbose, Command, Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
 

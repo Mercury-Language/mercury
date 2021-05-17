@@ -246,6 +246,7 @@
 :- import_module parse_tree.module_qual.qualify_items.
 
 :- import_module bool.
+:- import_module io.
 :- import_module map.
 :- import_module one_or_more.
 :- import_module pair.
@@ -469,6 +470,7 @@ mq_info_set_module_used(InInt, ModuleName, !Info) :-
     --->    mq_sub_info(
                 % The name of the current module.
                 mqsi_this_module                :: module_name,
+                mqsi_globals                    :: globals,
 
                 % Modules which have been imported or used, i.e. the ones
                 % for which there was a `:- import_module' or `:- use_module'
@@ -560,7 +562,7 @@ init_mq_info(Globals, ModuleName, ReportErrors, Info) :-
     % the names of those entities wrong, it is ok to tell them that the
     % affected module hasn't been (explicitly) imported.
     set.list_to_set([mercury_public_builtin_module], ImportedOrUsedModules),
-    SubInfo = mq_sub_info(ModuleName, ImportedOrUsedModules,
+    SubInfo = mq_sub_info(ModuleName, Globals, ImportedOrUsedModules,
         InstanceModules, ExportedInstancesFlag,
         did_not_find_undef_type, did_not_find_undef_inst,
         did_not_find_undef_mode, did_not_find_undef_typeclass,
@@ -586,6 +588,8 @@ init_mq_info(Globals, ModuleName, ReportErrors, Info) :-
         TypeIdSet, InstIdSet, ModeIdSet, ClassIdSet,
         AsYetUnusedInterfaceModules, MaybeRecompInfo).
 
+%---------------------------------------------------------------------------%
+
 :- pred mq_info_get_modules(mq_info::in, module_id_set::out) is det.
 :- pred mq_info_get_types(mq_info::in, type_id_set::out) is det.
 :- pred mq_info_get_insts(mq_info::in, inst_id_set::out) is det.
@@ -596,6 +600,7 @@ init_mq_info(Globals, ModuleName, ReportErrors, Info) :-
 % mq_info_get_recompilation_info is exported
 
 :- pred mq_info_get_this_module(mq_info::in, module_name::out) is det.
+:- pred mq_info_get_globals(mq_info::in, globals::out) is det.
 :- pred mq_info_get_imported_modules(mq_info::in, set(module_name)::out)
     is det.
 :- pred mq_info_get_imported_instance_modules(mq_info::in,
@@ -625,6 +630,8 @@ mq_info_get_recompilation_info(Info, X) :-
 
 mq_info_get_this_module(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_this_module.
+mq_info_get_globals(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_globals.
 mq_info_get_imported_modules(Info, X) :-
     X = Info ^ mqi_sub_info ^ mqsi_imported_modules.
 mq_info_get_imported_instance_modules(Info, X) :-
@@ -706,6 +713,18 @@ mq_info_set_found_undef_typeclass(!Info) :-
     !Info ^ mqi_sub_info ^ mqsi_found_undef_typeclass := X.
 mq_info_set_suppress_found_undef(X, !Info) :-
     !Info ^ mqi_sub_info ^ mqsi_suppress_found_undef := X.
+
+%---------------------------------------------------------------------------%
+
+:- pred get_mq_debug_output_stream(mq_info::in, io.text_output_stream::out,
+    io::di, io::uo) is det.
+
+get_mq_debug_output_stream(Info, DebugStream, !IO) :-
+    mq_info_get_globals(Info, Globals),
+    mq_info_get_this_module(Info, ModuleName),
+    get_debug_output_stream(Globals, ModuleName, DebugStream, !IO).
+
+%---------------------------------------------------------------------------%
 
 :- pred mq_info_record_undef_mq_id(id_type::in,
     mq_info::in, mq_info::out) is det.

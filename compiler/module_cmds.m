@@ -43,20 +43,27 @@
 :- pred update_interface_return_changed(globals::in, module_name::in,
     file_name::in, update_interface_result::out, io::di, io::uo) is det.
 
-:- pred update_interface_return_succeeded(globals::in, module_name::in,
-    file_name::in, bool::out, io::di, io::uo) is det.
+    % update_interface_return_succeeded(Globals, ModuleName, OutputFileName,
+    %   Succeeded, !IO)
+    %
+:- pred update_interface_return_succeeded(globals::in,
+    module_name::in, file_name::in, bool::out, io::di, io::uo) is det.
 
+    % update_interface(Globals, ModuleName, OutputFileName, !IO)
+    %
 :- pred update_interface(globals::in, module_name::in, file_name::in,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % copy_file(Globals, Source, Destination, Succeeded, !IO).
+    % copy_file(Globals, ProgressStream, ErrorStream,
+    %   Source, Destination, Succeeded, !IO).
     %
     % XXX A version of this predicate belongs in the standard library.
     %
-:- pred copy_file(globals::in, file_name::in, file_name::in, io.res::out,
-    io::di, io::uo) is det.
+:- pred copy_file(globals::in,
+    io.text_output_stream::in, io.text_output_stream::in,
+    file_name::in, file_name::in, io.res::out, io::di, io::uo) is det.
 
     % maybe_make_symlink(Globals, TargetFile, LinkName, Result, !IO):
     %
@@ -66,35 +73,42 @@
 :- pred maybe_make_symlink(globals::in, file_name::in, file_name::in,
     bool::out, io::di, io::uo) is det.
 
-    % make_symlink_or_copy_file(Globals, LinkTarget, LinkName, Succeeded, !IO):
+    % make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
+    %   LinkTarget, LinkName, Succeeded, !IO):
     %
     % Attempt to make LinkName a symlink pointing to LinkTarget, copying
     % LinkTarget to LinkName if that fails (or if `--use-symlinks' is not set).
     %
-:- pred make_symlink_or_copy_file(globals::in, file_name::in, file_name::in,
-    bool::out, io::di, io::uo) is det.
+:- pred make_symlink_or_copy_file(globals::in,
+    io.text_output_stream::in, io.text_output_stream::in,
+    file_name::in, file_name::in, bool::out, io::di, io::uo) is det.
 
     % As above, but for when LinkTarget is a directory rather than a file.
     %
-:- pred make_symlink_or_copy_dir(globals::in, file_name::in, file_name::in,
-    bool::out, io::di, io::uo) is det.
+:- pred make_symlink_or_copy_dir(globals::in,
+    io.text_output_stream::in, io.text_output_stream::in,
+    file_name::in, file_name::in, bool::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % touch_interface_datestamp(Globals, ModuleName, Ext, !IO):
+    % touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+    %   ModuleName, Ext, !IO):
     %
     % Touch the datestamp file `ModuleName.Ext'. Datestamp files are used
     % to record when each of the interface files was last updated.
     %
-:- pred touch_interface_datestamp(globals::in, module_name::in, other_ext::in,
-    io::di, io::uo) is det.
+:- pred touch_interface_datestamp(globals::in,
+    io.text_output_stream::in, io.text_output_stream::in,
+    module_name::in, other_ext::in, io::di, io::uo) is det.
 
-    % touch_datestamp(Globals, FileName, !IO):
+    % touch_datestamp(Globals, ProgressStream, ErrorStream, FileName, !IO):
     %
     % Update the modification time for the given file,
     % clobbering the contents of the file.
     %
-:- pred touch_datestamp(globals::in, file_name::in, io::di, io::uo) is det.
+:- pred touch_datestamp(globals::in,
+    io.text_output_stream::in, io.text_output_stream::in,
+    file_name::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -116,25 +130,30 @@
             % Output the command line with `--verbose-commands'. This should be
             % used for commands that may be of interest to the user.
 
-    % invoke_system_command(Globals, ErrorStream, Verbosity, Command,
-    %       Succeeded):
+    % invoke_system_command(Globals, ProgressStream, ErrorStream,
+    %   CmdOutputStream, Verbosity, Command, Succeeded):
     %
-    % Invoke an executable. Both standard and error output will go to the
-    % specified output stream.
+    % Invoke an executable. Progress messages, error output and output from the
+    % invoked command will go to the specified output streams. It is expected
+    % that on most invocationbs, ErrorStream and CmdOutputStream will be the
+    % same stream.
     %
-:- pred invoke_system_command(globals::in, io.output_stream::in,
+:- pred invoke_system_command(globals::in, io.text_output_stream::in,
+    io.text_output_stream::in, io.text_output_stream::in,
     command_verbosity::in, string::in, bool::out, io::di, io::uo) is det.
 
-    % invoke_system_command_maybe_filter_output(Globals, ErrorStream,
-    %   Verbosity, Command, MaybeProcessOutput, Succeeded)
+    % invoke_system_command_maybe_filter_output(Globals,
+    %   ProgressStream, ErrorStream, CmdOutputStream, Verbosity, Command,
+    %   MaybeProcessOutput, Succeeded)
     %
-    % Invoke an executable. Both standard and error output will go to the
-    % specified output stream after being piped through `ProcessOutput'
+    % Invoke an executable. Progress messages and error output will go
+    % to the specified output streams after being piped through `ProcessOutput'
     % if MaybeProcessOutput is yes(ProcessOutput).
     %
 :- pred invoke_system_command_maybe_filter_output(globals::in,
-    io.output_stream::in, command_verbosity::in, string::in, maybe(string)::in,
-    bool::out, io::di, io::uo) is det.
+    io.text_output_stream::in, io.text_output_stream::in,
+    io.text_output_stream::in, command_verbosity::in, string::in,
+    maybe(string)::in, bool::out, io::di, io::uo) is det.
 
     % Make a command string, which needs to be invoked in a shell environment.
     %
@@ -285,7 +304,8 @@ update_interface(Globals, ModuleName, OutputFileName, !IO) :-
         Succeeded, !IO),
     (
         Succeeded = no,
-        report_error("problem updating interface files.", !IO)
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+        report_error(ErrorStream, "problem updating interface files.", !IO)
     ;
         Succeeded = yes
     ).
@@ -303,7 +323,8 @@ update_interface_create_file(Globals, ProgressStream, ErrorStream,
     string.format("%% `%s' has %s.\n", [s(OutputFileName), s(ChangedStr)],
         ChangedMsg),
     maybe_write_string(ProgressStream, Verbose, ChangedMsg, !IO),
-    copy_file(Globals, TmpOutputFileName, OutputFileName, MoveRes, !IO),
+    copy_file(Globals, ProgressStream, ErrorStream,
+        TmpOutputFileName, OutputFileName, MoveRes, !IO),
     (
         MoveRes = ok,
         Result = interface_new_or_changed
@@ -369,12 +390,12 @@ binary_input_stream_cmp_2(TmpOutputFileStream, Byte, Continue, _, Differ,
 
 %-----------------------------------------------------------------------------%
 
-copy_file(Globals, Source, Destination, Res, !IO) :-
+copy_file(Globals, ProgressStream, ErrorStream, Source, Destination,
+        Res, !IO) :-
     % Try to use the system's cp command in order to preserve metadata.
     Command = make_install_file_command(Globals, Source, Destination),
-    io.output_stream(OutputStream, !IO),
-    invoke_system_command(Globals, OutputStream, cmd_verbose, Command,
-        Succeeded, !IO),
+    invoke_system_command(Globals, ProgressStream, ErrorStream, ErrorStream,
+        cmd_verbose, Command, Succeeded, !IO),
     (
         Succeeded = yes,
         Res = ok
@@ -401,14 +422,15 @@ copy_file(Globals, Source, Destination, Res, !IO) :-
         )
     ).
 
-:- pred copy_dir(globals::in, dir_name::in, dir_name::in, bool::out,
-    io::di, io::uo) is det.
+:- pred copy_dir(globals::in,
+    io.text_output_stream::in, io.text_output_stream::in,
+    dir_name::in, dir_name::in, bool::out, io::di, io::uo) is det.
 
-copy_dir(Globals, Source, Destination, Succeeded, !IO) :-
+copy_dir(Globals, ProgressStream, ErrorStream, Source, Destination,
+        Succeeded, !IO) :-
     Command = make_install_dir_command(Globals, Source, Destination),
-    io.output_stream(OutputStream, !IO),
-    invoke_system_command(Globals, OutputStream, cmd_verbose, Command,
-        Succeeded, !IO).
+    invoke_system_command(Globals, ProgressStream, ErrorStream, ErrorStream,
+        cmd_verbose, Command, Succeeded, !IO).
 
 maybe_make_symlink(Globals, LinkTarget, LinkName, Result, !IO) :-
     globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
@@ -422,8 +444,8 @@ maybe_make_symlink(Globals, LinkTarget, LinkName, Result, !IO) :-
         Result = no
     ).
 
-make_symlink_or_copy_file(Globals, SourceFileName, DestinationFileName,
-        Succeeded, !IO) :-
+make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
+        SourceFileName, DestinationFileName, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
     globals.lookup_bool_option(Globals, verbose_commands, PrintCommand),
     (
@@ -431,9 +453,9 @@ make_symlink_or_copy_file(Globals, SourceFileName, DestinationFileName,
         LinkOrCopy = "linking",
         (
             PrintCommand = yes,
-            io.format("%% Linking file `%s' -> `%s'\n",
+            io.format(ProgressStream, "%% Linking file `%s' -> `%s'\n",
                 [s(SourceFileName), s(DestinationFileName)], !IO),
-            io.flush_output(!IO)
+            io.flush_output(ProgressStream, !IO)
         ;
             PrintCommand = no
         ),
@@ -443,13 +465,14 @@ make_symlink_or_copy_file(Globals, SourceFileName, DestinationFileName,
         LinkOrCopy = "copying",
         (
             PrintCommand = yes,
-            io.format("%% Copying file `%s' -> `%s'\n",
+            io.format(ProgressStream, "%% Copying file `%s' -> `%s'\n",
                 [s(SourceFileName), s(DestinationFileName)], !IO),
-            io.flush_output(!IO)
+            io.flush_output(ProgressStream, !IO)
         ;
             PrintCommand = no
         ),
-        copy_file(Globals, SourceFileName, DestinationFileName, Result, !IO)
+        copy_file(Globals, ProgressStream, ErrorStream,
+            SourceFileName, DestinationFileName, Result, !IO)
     ),
     (
         Result = ok,
@@ -459,14 +482,14 @@ make_symlink_or_copy_file(Globals, SourceFileName, DestinationFileName,
         Succeeded = no,
         io.progname_base("mercury_compile", ProgName, !IO),
         io.error_message(Error, ErrorMsg),
-        io.format("%s: error %s `%s' to `%s', %s\n",
+        io.format(ErrorStream, "%s: error %s `%s' to `%s', %s\n",
             [s(ProgName), s(LinkOrCopy), s(SourceFileName),
             s(DestinationFileName), s(ErrorMsg)], !IO),
-        io.flush_output(!IO)
+        io.flush_output(ErrorStream, !IO)
     ).
 
-make_symlink_or_copy_dir(Globals, SourceDirName, DestinationDirName,
-        Succeeded, !IO) :-
+make_symlink_or_copy_dir(Globals, ProgressStream, ErrorStream,
+        SourceDirName, DestinationDirName, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
     (
         UseSymLinks = yes,
@@ -478,47 +501,51 @@ make_symlink_or_copy_dir(Globals, SourceDirName, DestinationDirName,
             Result = error(Error),
             Succeeded = no,
             io.progname_base("mercury_compile", ProgName, !IO),
-            io.format("%s: error linking `%s' to `%s': %s\n",
+            io.format(ErrorStream, "%s: error linking `%s' to `%s': %s\n",
                 [s(ProgName), s(SourceDirName), s(DestinationDirName),
                 s(io.error_message(Error))], !IO),
-            io.flush_output(!IO)
+            io.flush_output(ErrorStream, !IO)
         )
     ;
         UseSymLinks = no,
-        copy_dir(Globals, SourceDirName, DestinationDirName, Succeeded, !IO),
+        copy_dir(Globals, ProgressStream, ErrorStream,
+            SourceDirName, DestinationDirName, Succeeded, !IO),
         (
             Succeeded = yes
         ;
             Succeeded = no,
             io.progname_base("mercury_compile", ProgName, !IO),
-            io.format("%s: error copying directory `%s' to `%s'\n",
+            io.format(ErrorStream, "%s: error copying directory `%s' to `%s'\n",
                 [s(ProgName), s(SourceDirName), s(DestinationDirName)], !IO),
-            io.flush_output(!IO)
+            io.flush_output(ErrorStream, !IO)
         )
     ).
 
 %-----------------------------------------------------------------------------%
 
-touch_interface_datestamp(Globals, ModuleName, OtherExt, !IO) :-
+touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+        ModuleName, OtherExt, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(OtherExt), ModuleName, OutputFileName, !IO),
-    touch_datestamp(Globals, OutputFileName, !IO).
+    touch_datestamp(Globals, ProgressStream, ErrorStream, OutputFileName, !IO).
 
-touch_datestamp(Globals, OutputFileName, !IO) :-
+touch_datestamp(Globals, ProgressStream, ErrorStream, OutputFileName, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose,
+    maybe_write_string(ProgressStream, Verbose,
         "% Touching `" ++ OutputFileName ++ "'... ", !IO),
-    maybe_flush_output(Verbose, !IO),
+    maybe_flush_output(ProgressStream, Verbose, !IO),
     io.open_output(OutputFileName, Result, !IO),
     (
         Result = ok(OutputStream),
+        % This write does the "touching", i.e. the updating of the file's
+        % time of last modification.
         io.write_string(OutputStream, "\n", !IO),
         io.close_output(OutputStream, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
+        maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
     ;
         Result = error(IOError),
         io.error_message(IOError, IOErrorMessage),
-        io.format("\nError opening `%s' for output: %s.\n",
+        io.format(ErrorStream, "\nError opening `%s' for output: %s.\n",
             [s(OutputFileName), s(IOErrorMessage)], !IO)
     ).
 
@@ -530,13 +557,14 @@ maybe_set_exit_status(no, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-invoke_system_command(Globals, ErrorStream, Verbosity,
-        Command, Succeeded, !IO) :-
-    invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
-        Command, no, Succeeded, !IO).
+invoke_system_command(Globals, ProgressStream,
+        ErrorStream, CmdOutputStream, Verbosity, Command, Succeeded, !IO) :-
+    invoke_system_command_maybe_filter_output(Globals, ProgressStream,
+        ErrorStream, CmdOutputStream, Verbosity, Command, no, Succeeded, !IO).
 
-invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
-        Command, MaybeProcessOutput, Succeeded, !IO) :-
+invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
+        CmdOutputStream, Verbosity, Command, MaybeProcessOutput,
+        Succeeded, !IO) :-
     % This predicate shouldn't alter the exit status of mercury_compile.
     io.get_exit_status(OldStatus, !IO),
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -549,8 +577,9 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
     ),
     (
         PrintCommand = yes,
-        io.format("%%s Invoking system command `%s'...\n", [s(Command)], !IO),
-        io.flush_output(!IO)
+        io.format(ProgressStream,
+            "%%s Invoking system command `%s'...\n", [s(Command)], !IO),
+        io.flush_output(ProgressStream, !IO)
     ;
         PrintCommand = no
     ),
@@ -568,17 +597,18 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
             % XXX the output will go to the wrong place!
             CommandRedirected = Command
         else if use_win32 then
-            % On windows we can't in general redirect standard error in the
-            % shell.
-            CommandRedirected = Command ++ " > " ++ TmpFile
+            % On windows, we can't in general redirect standard error
+            % in the shell.
+            CommandRedirected = string.format("%s > %s",
+                [s(Command), s(TmpFile)])
         else
-            CommandRedirected =
-                string.append_list([Command, " > ", TmpFile, " 2>&1"])
+            CommandRedirected = string.format("%s > %s 2>&1",
+                [s(Command), s(TmpFile)])
         ),
         io.call_system_return_signal(CommandRedirected, Result, !IO),
         (
             Result = ok(exited(Status)),
-            maybe_write_string(PrintCommand, "% done.\n", !IO),
+            maybe_write_string(ProgressStream, PrintCommand, "% done.\n", !IO),
             ( if Status = 0 then
                 CommandSucceeded = yes
             else
@@ -593,7 +623,8 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
             % Also report the error to standard output, because if we raise the
             % signal, this error may not ever been seen, the process stops, and
             % the user is confused.
-            report_error(ErrorMsg, !IO),
+            io.stdout_stream(StdOut, !IO),
+            report_error(StdOut, ErrorMsg, !IO),
 
             % Make sure the current process gets the signal. Some systems (e.g.
             % Linux) ignore SIGINT during a call to system().
@@ -613,9 +644,9 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
     ),
 
     ( if
+        MaybeProcessOutput = yes(ProcessOutput),
         % We can't do bash style redirection on .NET.
-        not use_dotnet,
-        MaybeProcessOutput = yes(ProcessOutput)
+        not use_dotnet
     then
         io.make_temp_file(ProcessedTmpFileResult, !IO),
         (
@@ -625,27 +656,26 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
             ( if use_win32 then
                 get_system_env_type(Globals, SystemEnvType),
                 ( if SystemEnvType = env_type_powershell then
-                    ProcessOutputRedirected = string.append_list(
-                        ["Get-Content ", TmpFile, " | ", ProcessOutput,
-                            " > ", ProcessedTmpFile, " 2>&1"])
+                    ProcessOutputRedirected = string.format(
+                        "Get-context %s | %s > %s 2>&1",
+                        [s(TmpFile), s(ProcessOutput), s(ProcessedTmpFile)])
                 else
                     % On windows we can't in general redirect standard
                     % error in the shell.
-                    ProcessOutputRedirected = string.append_list(
-                        [ProcessOutput, " < ", TmpFile, " > ",
-                            ProcessedTmpFile])
+                    ProcessOutputRedirected = string.format("%s < %s > %s",
+                        [s(ProcessOutput), s(TmpFile), s(ProcessedTmpFile)])
                 )
             else
-                ProcessOutputRedirected = string.append_list(
-                    [ProcessOutput, " < ", TmpFile, " > ",
-                        ProcessedTmpFile, " 2>&1"])
+                ProcessOutputRedirected = string.format("%s < %s > %s 2>&1",
+                    [s(ProcessOutput), s(TmpFile), s(ProcessedTmpFile)])
             ),
             io.call_system_return_signal(ProcessOutputRedirected,
                 ProcessOutputResult, !IO),
             io.remove_file(TmpFile, _, !IO),
             (
                 ProcessOutputResult = ok(exited(ProcessOutputStatus)),
-                maybe_write_string(PrintCommand, "% done.\n", !IO),
+                maybe_write_string(ProgressStream, PrintCommand,
+                    "% done.\n", !IO),
                 ( if ProcessOutputStatus = 0 then
                     ProcessOutputSucceeded = yes
                 else
@@ -684,10 +714,12 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
 
     % Write the output to the error stream.
 
+    % XXX Why do we try to do this EVEN WHEN the code above had not Succeeded?
     io.open_input(ProcessedTmpFile, TmpFileRes, !IO),
     (
         TmpFileRes = ok(TmpFileStream),
-        io.input_stream_foldl_io(TmpFileStream, io.write_char(ErrorStream),
+        % XXX Call io.read_file_as_string, then print out the string.
+        io.input_stream_foldl_io(TmpFileStream, io.write_char(CmdOutputStream),
             Res, !IO),
         (
             Res = ok
@@ -1085,9 +1117,10 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext("")), MainModuleName, FileName, !IO),
 
+    get_progress_output_stream(Globals, MainModuleName, ProgressStream, !IO),
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Generating shell script `" ++
-        FileName ++ "'...\n", !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        "% Generating shell script `" ++ FileName ++ "'...\n", !IO),
 
     % Remove symlink in the way, if any.
     io.remove_file(FileName, _, !IO),
@@ -1101,7 +1134,7 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
             ChmodResult = ok(Status),
             ( if Status = 0 then
                 Succeeded = yes,
-                maybe_write_string(Verbose, "% done.\n", !IO)
+                maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
             else
                 unexpected($pred, "chmod exit status != 0"),
                 Succeeded = no
@@ -1123,9 +1156,10 @@ create_launcher_batch_file(Globals, MainModuleName, Pred, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".bat")), MainModuleName, FileName, !IO),
 
+    get_progress_output_stream(Globals, MainModuleName, ProgressStream, !IO),
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Generating batch file `" ++
-        FileName ++ "'...\n", !IO),
+    maybe_write_string(ProgressStream, Verbose,
+        "% Generating batch file `" ++ FileName ++ "'...\n", !IO),
 
     % Remove an existing batch file of the same name, if any.
     io.remove_file(FileName, _, !IO),

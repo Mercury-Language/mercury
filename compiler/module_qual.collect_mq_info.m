@@ -253,9 +253,10 @@ collect_mq_info_in_direct_int_spec(DirectIntSpec, !Info) :-
 
 collect_mq_info_in_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Info) :-
     trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (
-        io.format("collect_mq_info_in_parse_tree_int0: %s ",
+        get_mq_debug_output_stream(!.Info, DebugStream, !IO),
+        io.format(DebugStream, "collect_mq_info_in_parse_tree_int0: %s ",
             [s(sym_name_to_string(ParseTreeInt0 ^ pti0_module_name))], !IO),
-        io.write_line(ReadWhy0, !IO)
+        io.write_line(DebugStream, ReadWhy0, !IO)
     ),
 
     (
@@ -345,9 +346,10 @@ collect_mq_info_in_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Info) :-
 
 collect_mq_info_in_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Info) :-
     trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (
-        io.format("collect_mq_info_in_parse_tree_int1: %s ",
+        get_mq_debug_output_stream(!.Info, DebugStream, !IO),
+        io.format(DebugStream, "collect_mq_info_in_parse_tree_int1: %s ",
             [s(sym_name_to_string(ParseTreeInt1 ^ pti1_module_name))], !IO),
-        io.write_line(ReadWhy1, !IO)
+        io.write_line(DebugStream, ReadWhy1, !IO)
     ),
 
     (
@@ -419,9 +421,10 @@ collect_mq_info_in_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Info) :-
 
 collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info) :-
     trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (
-        io.format("collect_mq_info_in_parse_tree_int3: %s ",
+        get_mq_debug_output_stream(!.Info, DebugStream, !IO),
+        io.format(DebugStream, "collect_mq_info_in_parse_tree_int3: %s ",
             [s(sym_name_to_string(ParseTreeInt3 ^ pti3_module_name))], !IO),
-        io.write_line(Role, !IO)
+        io.write_line(DebugStream, Role, !IO)
     ),
 
     (

@@ -717,6 +717,11 @@ do_op_mode(Globals, OpMode, DetectedGradeFlags, OptionVariables,
     io::di, io::uo) is det.
 
 do_op_mode_standalone_interface(Globals, StandaloneIntBasename, !IO) :-
+    % XXX We do not have a module name, so we cannot construct
+    % ProgressStream and ErrorStream from it.
+    io.stderr_stream(StdErr, !IO),
+    ErrorStream = StdErr,
+    ProgressStream = StdErr,
     globals.get_target(Globals, Target),
     (
         ( Target = target_csharp
@@ -726,11 +731,12 @@ do_op_mode_standalone_interface(Globals, StandaloneIntBasename, !IO) :-
             quote("--generate-standalone-interface"),
             words("is not required for target language"),
             words(compilation_target_string(Target)), suffix("."), nl],
-        write_error_pieces_plain(Globals, NotRequiredMsg, !IO),
+        write_error_pieces_plain(ErrorStream, Globals, NotRequiredMsg, !IO),
         io.set_exit_status(1, !IO)
     ;
         Target = target_c,
-        make_standalone_interface(Globals, StandaloneIntBasename, !IO)
+        make_standalone_interface(Globals, ProgressStream, ErrorStream,
+            StandaloneIntBasename, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -861,8 +867,8 @@ do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin, DetectedGradeFlags,
             globals.get_target(Globals, Target),
             (
                 Target = target_java,
-                % For Java, at the "link" step we just generate a shell
-                % script; the actual linking will be done at runtime by
+                % For Java, at the "link" step we just generate a shell script;
+                % the actual linking will be done at runtime by
                 % the Java interpreter.
                 create_java_shell_script(Globals, MainModuleName,
                     Succeeded, !IO)
@@ -870,9 +876,14 @@ do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin, DetectedGradeFlags,
                 ( Target = target_c
                 ; Target = target_csharp
                 ),
+                get_progress_output_stream(Globals, MainModuleName,
+                    ProgressStream, !IO),
+                get_error_output_stream(Globals, MainModuleName,
+                    ErrorStream, !IO),
                 compile_with_module_options(Globals, MainModuleName,
                     DetectedGradeFlags, OptionVariables, OptionArgs,
-                    link_module_list(ModulesToLink, ExtraObjFiles),
+                    link_module_list(ProgressStream, ErrorStream,
+                        ModulesToLink, ExtraObjFiles),
                     Succeeded, !IO)
             ),
             maybe_set_exit_status(Succeeded, !IO)
@@ -2440,6 +2451,8 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
         FrontEndErrors = no,
         NumErrors = 0
     then
+        get_progress_output_stream(!.HLDS, ProgressStream, !IO),
+        get_error_output_stream(!.HLDS, ErrorStream, !IO),
         (
             Target = target_csharp,
             mlds_backend(!.HLDS, _, MLDS, NewSpecs, !DumpInfo, !IO),
@@ -2464,12 +2477,11 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
                     Succeeded = no
                 ;
                     TargetCodeSucceeded = yes,
-                    io.output_stream(OutputStream, !IO),
                     module_name_to_file_name(Globals, $pred,
                         do_not_create_dirs, ext_other(other_ext(".java")),
                         ModuleName, JavaFile, !IO),
-                    compile_java_files(Globals, OutputStream, [JavaFile],
-                        Succeeded, !IO),
+                    compile_java_files(Globals, ProgressStream, ErrorStream,
+                        JavaFile, [], Succeeded, !IO),
                     maybe_set_exit_status(Succeeded, !IO)
                 )
             ),
@@ -2507,9 +2519,8 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
                         module_name_to_file_name(Globals, $pred,
                             do_create_dirs, ext_other(ObjOtherExt),
                             ModuleName, O_File, !IO),
-                        io.output_stream(OutputStream, !IO),
-                        do_compile_c_file(Globals, OutputStream, PIC,
-                            C_File, O_File, Succeeded, !IO),
+                        do_compile_c_file(Globals, ProgressStream, ErrorStream,
+                            PIC, C_File, O_File, Succeeded, !IO),
                         maybe_set_exit_status(Succeeded, !IO)
                     )
                 ),
@@ -2530,7 +2541,8 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
             recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,
                 MaybeTimestampMap, !IO),
             FindTimestampFiles(ModuleName, TimestampFiles, !IO),
-            list.foldl(touch_datestamp(Globals), TimestampFiles, !IO)
+            list.foldl(touch_datestamp(Globals, ProgressStream, ErrorStream),
+                TimestampFiles, !IO)
         ;
             Succeeded = no
             % An error should have been reported earlier.

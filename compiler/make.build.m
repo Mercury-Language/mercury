@@ -58,7 +58,7 @@
     % the error file for the given module.
     %
 :- pred build_with_output_redirect(globals::in, module_name::in,
-    build(io.output_stream)::in(build), bool::out,
+    build(io.text_output_stream)::in(build), bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 :- type build2(T, U) ==
@@ -67,7 +67,7 @@
 
 :- pred build_with_module_options_and_output_redirect(globals::in,
     module_name::in, list(string)::in,
-    build2(list(string), io.output_stream)::in(build2),
+    build2(list(string), io.text_output_stream)::in(build2),
     bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------%
@@ -75,14 +75,23 @@
     % Produce an output stream which writes to the error file
     % for the given module.
     %
+    % XXX We should do away with this predicate altogether,
+    % and just have every part of the compiler write to explicitly specified
+    % output streams.
+    %
 :- pred prepare_to_redirect_output(module_name::in,
-    maybe(io.output_stream)::out,
+    maybe(io.text_output_stream)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Close the module error output stream.
     %
-:- pred unredirect_output(globals::in, module_name::in, io.output_stream::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    % XXX We should do away with this predicate altogether,
+    % and just have every part of the compiler write to explicitly specified
+    % output streams.
+    %
+:- pred unredirect_output(globals::in, module_name::in,
+    io.text_output_stream::in, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -257,7 +266,7 @@ build_with_module_options_and_output_redirect(Globals, ModuleName,
         Succeeded, !Info, !IO).
 
 :- pred build_with_module_options_and_output_redirect_2(module_name::in,
-    build2(list(string), io.output_stream)::in(build2), globals::in,
+    build2(list(string), io.text_output_stream)::in(build2), globals::in,
     list(string)::in, bool::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
@@ -268,8 +277,8 @@ build_with_module_options_and_output_redirect_2(ModuleName, Build, Globals,
         Succeeded, !Info, !IO).
 
 :- pred build_with_module_options_and_output_redirect_3(list(string)::in,
-    build2(list(string), io.output_stream)::in(build2), globals::in,
-    io.output_stream::in, bool::out, make_info::in, make_info::out,
+    build2(list(string), io.text_output_stream)::in(build2), globals::in,
+    io.text_output_stream::in, bool::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
 build_with_module_options_and_output_redirect_3(AllOptions, Build, Globals,
@@ -279,9 +288,9 @@ build_with_module_options_and_output_redirect_3(AllOptions, Build, Globals,
 %---------------------------------------------------------------------------%
 
 prepare_to_redirect_output(_ModuleName, MaybeErrorStream, !Info, !IO) :-
-    % Write the output to a temporary file first, so it's easy to just print
-    % the part of the error file that relates to the current command. It will
-    % be appended to the error file later.
+    % Write the output to a temporary file first, to make it easy
+    % to just print the part of the error file that relates to the
+    % current command. It will be appended to the error file later.
     open_temp_output(ErrorFileResult, !IO),
     (
         ErrorFileResult = ok({_ErrorFileName, ErrorOutputStream}),
@@ -334,11 +343,11 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
     io.remove_file(TmpErrorFileName, _, !IO).
 
 :- pred make_write_error_streams(string::in, io.input_stream::in,
-    io.output_stream::in, io.output_stream::in, int::in, io::di, io::uo)
-    is det.
+    io.text_output_stream::in, io.text_output_stream::in, int::in,
+    io::di, io::uo) is det.
 
-make_write_error_streams(FileName, InputStream, FullOutputStream,
-        PartialOutputStream, LinesToWrite, !IO) :-
+make_write_error_streams(FileName, InputStream,
+        FullOutputStream, PartialOutputStream, LinesToWrite, !IO) :-
     io.input_stream_foldl2_io(InputStream,
         make_write_error_char(FullOutputStream, PartialOutputStream),
         LinesToWrite, Res, !IO),
@@ -350,8 +359,9 @@ make_write_error_streams(FileName, InputStream, FullOutputStream,
             [s(FileName), s(io.error_message(Error))], !IO)
     ).
 
-:- pred make_write_error_char(io.output_stream::in, io.output_stream::in,
-    char::in, int::in, int::out, io::di, io::uo) is det.
+:- pred make_write_error_char(io.text_output_stream::in,
+    io.text_output_stream::in, char::in, int::in, int::out,
+    io::di, io::uo) is det.
 
 make_write_error_char(FullOutputStream, PartialOutputStream, Char,
         !LinesRemaining, !IO) :-

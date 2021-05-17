@@ -413,8 +413,10 @@ output_trans_opt_file(!.HLDS, !Specs, !DumpInfo, !IO) :-
         io.close_output(TmpOptStream, !IO),
 
         update_interface(Globals, ModuleName, OptFileName, !IO),
-        touch_interface_datestamp(Globals, ModuleName,
-            other_ext(".trans_opt_date"), !IO),
+        get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+        touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+            ModuleName, other_ext(".trans_opt_date"), !IO),
 
         globals.lookup_bool_option(Globals, experiment5, Experiment5),
         (

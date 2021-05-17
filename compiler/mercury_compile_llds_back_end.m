@@ -740,12 +740,16 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
             ( OpModeCodeGen = opmcg_target_and_object_code_only
             ; OpModeCodeGen = opmcg_target_object_and_executable
             ),
-            io.output_stream(OutputStream, !IO),
-            llds_c_to_obj(Globals, OutputStream, ModuleName, CompileOK, !IO),
+            get_progress_output_stream(Globals, ModuleSymName,
+                ProgressStream, !IO),
+            get_error_output_stream(Globals, ModuleSymName, ErrorStream, !IO),
+            llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
+                CompileOK, !IO),
             module_info_get_fact_table_file_names(HLDS, FactTableBaseFiles),
-            list.map2_foldl(compile_fact_table_file(Globals, OutputStream),
-                FactTableBaseFiles, FactTableObjFiles, FactTableCompileOKs,
-                !IO),
+            list.map2_foldl(
+                compile_fact_table_file(Globals, ProgressStream, ErrorStream),
+                FactTableBaseFiles, FactTableObjFiles,
+                FactTableCompileOKs, !IO),
             bool.and_list([CompileOK | FactTableCompileOKs], Succeeded),
             maybe_set_exit_status(Succeeded, !IO)
         ;
@@ -883,10 +887,12 @@ output_llds_file(Globals, LLDS0, Succeeded, !IO) :-
     transform_llds(Globals, LLDS0, LLDS),
     output_llds(Globals, LLDS, Succeeded, !IO).
 
-:- pred llds_c_to_obj(globals::in, io.output_stream::in, module_name::in,
+:- pred llds_c_to_obj(globals::in,
+    io.text_output_stream::in, io.text_output_stream::in, module_name::in,
     bool::out, io::di, io::uo) is det.
 
-llds_c_to_obj(Globals, ErrorStream, ModuleName, Succeeded, !IO) :-
+llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
+        Succeeded, !IO) :-
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
     pic_object_file_extension(Globals, PIC, ObjOtherExt),
@@ -894,22 +900,23 @@ llds_c_to_obj(Globals, ErrorStream, ModuleName, Succeeded, !IO) :-
         ext_other(other_ext(".c")), ModuleName, C_File, !IO),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(ObjOtherExt), ModuleName, O_File, !IO),
-    compile_target_code.do_compile_c_file(Globals, ErrorStream, PIC,
-        C_File, O_File, Succeeded, !IO).
+    compile_target_code.do_compile_c_file(Globals, ProgressStream, ErrorStream,
+        PIC, C_File, O_File, Succeeded, !IO).
 
-:- pred compile_fact_table_file(globals::in, io.output_stream::in, string::in,
+:- pred compile_fact_table_file(globals::in,
+    io.text_output_stream::in, io.text_output_stream::in, string::in,
     string::out, bool::out, io::di, io::uo) is det.
 
-compile_fact_table_file(Globals, ErrorStream, BaseName, O_FileName,
-        Succeeded, !IO) :-
+compile_fact_table_file(Globals, ProgressStream, ErrorStream,
+        BaseName, O_FileName, Succeeded, !IO) :-
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
     pic_object_file_extension(Globals, PIC, ObjOtherExt),
     % XXX EXT
     C_FileName = BaseName ++ ".c",
     O_FileName = BaseName ++ other_extension_to_string(ObjOtherExt),
-    compile_target_code.do_compile_c_file(Globals, ErrorStream, PIC,
-        C_FileName, O_FileName, Succeeded, !IO).
+    compile_target_code.do_compile_c_file(Globals, ProgressStream, ErrorStream,
+        PIC, C_FileName, O_FileName, Succeeded, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module top_level.mercury_compile_llds_back_end.

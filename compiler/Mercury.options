@@ -99,10 +99,8 @@ MCFLAGS-make.util                         += --no-ansi-c --no-halt-at-warn
 MCFLAGS-transform_hlds.pd_debug           = --no-warn-unknown-format-calls
 MCFLAGS-parse_tree.parse_tree_out_info    = --no-warn-unknown-format-calls
 
-MCFLAGS-analysis                             += --no-warn-implicit-stream-calls
 MCFLAGS-analysis.file                        += --no-warn-implicit-stream-calls
 MCFLAGS-backend_libs.bytecode_data           += --no-warn-implicit-stream-calls
-MCFLAGS-backend_libs.compile_target_code     += --no-warn-implicit-stream-calls
 MCFLAGS-bytecode_backend.bytecode            += --no-warn-implicit-stream-calls
 MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-implicit-stream-calls
 MCFLAGS-check_hlds.build_mode_constraints    += --no-warn-implicit-stream-calls
@@ -112,7 +110,6 @@ MCFLAGS-check_hlds.mode_constraints          += --no-warn-implicit-stream-calls
 MCFLAGS-check_hlds.old_type_constraints      += --no-warn-implicit-stream-calls
 MCFLAGS-check_hlds.ordering_mode_constraints += --no-warn-implicit-stream-calls
 MCFLAGS-check_hlds.prop_mode_constraints     += --no-warn-implicit-stream-calls
-MCFLAGS-hlds.hlds_error_util                 += --no-warn-implicit-stream-calls
 MCFLAGS-hlds.hlds_goal                       += --no-warn-implicit-stream-calls
 MCFLAGS-hlds.inst_graph                      += --no-warn-implicit-stream-calls
 MCFLAGS-hlds.make_hlds.add_clause            += --no-warn-implicit-stream-calls
@@ -131,12 +128,9 @@ MCFLAGS-libs.process_util                    += --no-warn-implicit-stream-calls
 MCFLAGS-ll_backend.deep_profiling            += --no-warn-implicit-stream-calls
 MCFLAGS-ll_backend.fact_table                += --no-warn-implicit-stream-calls
 MCFLAGS-make                                 += --no-warn-implicit-stream-calls
-MCFLAGS-make.build                           += --no-warn-implicit-stream-calls
 MCFLAGS-make.dependencies                    += --no-warn-implicit-stream-calls
 MCFLAGS-make.module_dep_file                 += --no-warn-implicit-stream-calls
-MCFLAGS-make.module_target                   += --no-warn-implicit-stream-calls
 MCFLAGS-make.options_file                    += --no-warn-implicit-stream-calls
-MCFLAGS-make.program_target                  += --no-warn-implicit-stream-calls
 MCFLAGS-make.util                            += --no-warn-implicit-stream-calls
 MCFLAGS-mode_robdd.implications              += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.deps_map                  += --no-warn-implicit-stream-calls
@@ -144,13 +138,9 @@ MCFLAGS-parse_tree.error_util                += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.find_module               += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.generate_dep_d_files      += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.grab_modules              += --no-warn-implicit-stream-calls
-MCFLAGS-parse_tree.module_cmds               += --no-warn-implicit-stream-calls
-MCFLAGS-parse_tree.module_qual.collect_mq_info += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.prog_ctgc                 += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.prog_out                  += --no-warn-implicit-stream-calls
 MCFLAGS-parse_tree.read_modules              += --no-warn-implicit-stream-calls
-MCFLAGS-parse_tree.source_file_map           += --no-warn-implicit-stream-calls
-MCFLAGS-recompilation.check                  += --no-warn-implicit-stream-calls
 MCFLAGS-top_level.mercury_compile_front_end  += --no-warn-implicit-stream-calls
 MCFLAGS-top_level.mercury_compile_llds_back_end += --no-warn-implicit-stream-calls
 MCFLAGS-top_level.mercury_compile_main       += --no-warn-implicit-stream-calls
@@ -187,11 +177,6 @@ MCFLAGS-transform_hlds.rbmm.points_to_graph += --no-warn-inconsistent-pred-order
 MCFLAGS-transform_hlds.rbmm.region_liveness_info += --no-warn-inconsistent-pred-order-clauses
 
 # Bug workarounds.
-
-# This works around bug 48 in Mantis.
-# (This has been fixed, and the workaround can be removed once new compilers
-# have been installed.)
-MCFLAGS-analysis += --no-common-struct
 
 # XXX work around a bug that sometimes appears at -O4 and above.
 # mmc -r analysis.file.c -s asm_fast.gc -O4 --intermodule-optimisation

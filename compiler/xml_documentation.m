@@ -36,6 +36,7 @@
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module mdbcomp.
@@ -113,11 +114,13 @@ xml_documentation(ModuleInfo, !IO) :-
                 write_xml_doc(Stream, MIXmlDoc, !IO)
             ;
                 OpenResult = error(Err),
-                unable_to_open_file(FileName, Err, !IO)
+                get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+                unable_to_open_file(ErrorStream, FileName, Err, !IO)
             )
         ;
             SrcResult = error(SrcErr),
-            unable_to_open_file(SrcFileName, SrcErr, !IO)
+            get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+            unable_to_open_file(ErrorStream, SrcFileName, SrcErr, !IO)
         )
     ;
         MaybeSrcFileName = no,

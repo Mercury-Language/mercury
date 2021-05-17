@@ -152,8 +152,10 @@ write_short_interface_file_int3(Globals, _SourceFileName, RawCompUnit, !IO) :-
     (
         EffectivelyErrors = no,
         actually_write_interface_file3(Globals, ParseTreeInt3, "", no, !IO),
-        touch_interface_datestamp(Globals, ModuleName,
-            other_ext(".date3"), !IO)
+        get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+        touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+            ModuleName, other_ext(".date3"), !IO)
     ;
         EffectivelyErrors = yes,
         report_file_not_written(Globals, Specs, no, ModuleName,
@@ -204,8 +206,10 @@ write_private_interface_file_int0(Globals, SourceFileName,
             % Write out the `.int0' file.
             actually_write_interface_file0(Globals, ParseTreeInt0, "",
                 MaybeTimestamp, !IO),
-            touch_interface_datestamp(Globals, ModuleName,
-                other_ext(".date0"), !IO)
+            get_progress_output_stream(Globals, ModuleName,
+                ProgressStream, !IO),
+            touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+                ModuleName, other_ext(".date0"), !IO)
         ;
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(Globals, EffectiveGetQualSpecs, no,
@@ -261,8 +265,10 @@ write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
                 MaybeTimestamp, !IO),
             actually_write_interface_file2(Globals, ParseTreeInt2, "",
                 MaybeTimestamp, !IO),
-            touch_interface_datestamp(Globals, ModuleName,
-                other_ext(".date"), !IO)
+            get_progress_output_stream(Globals, ModuleName,
+                ProgressStream, !IO),
+            touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+                ModuleName, other_ext(".date"), !IO)
         ;
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(Globals, EffectiveGetQualSpecs, no,

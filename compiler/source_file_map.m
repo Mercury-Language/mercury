@@ -124,6 +124,8 @@ default_module_name_for_file(FileName, DefaultModuleName) :-
     string.remove_suffix(FileName, ".m", FileNameBeforeDotM),
     file_name_to_module_name(FileNameBeforeDotM, DefaultModuleName).
 
+%-----------------------------------------------------------------------------%
+
     % Read the Mercury.modules file (if it exists) to find the mapping
     % from module name to file name.
     %
@@ -205,22 +207,28 @@ parse_source_file_map(Lines, ModulesFileName, CurLineNumber, ErrorMsg,
         ErrorMsg = ""
     ).
 
+%-----------------------------------------------------------------------------%
+
 write_source_file_map(Globals, FileNames, !IO) :-
+    % XXX We print error messages to stderr, because there is no appropriate
+    % module name we can give to globals.get_error_output_stream.
     ModulesFileName = modules_file_name,
-    io.open_output(ModulesFileName, OpenRes, !IO),
+    io.open_output(ModulesFileName, FileResult, !IO),
     (
-        OpenRes = ok(Stream),
-        list.foldl2(write_source_file_map_2(Globals, Stream), FileNames,
+        FileResult = ok(FileStream),
+        list.foldl2(write_source_file_map_2(Globals, FileStream), FileNames,
             bimap.init, _, !IO),
-        io.close_output(Stream, !IO)
+        io.close_output(FileStream, !IO)
     ;
-        OpenRes = error(Error),
-        io.format("mercury_compile: error opening `%s' for output: %s",
+        FileResult = error(Error),
+        io.stderr_stream(StdErr, !IO),
+        io.format(StdErr,
+            "mercury_compile: error opening `%s' for output: %s",
             [s(ModulesFileName), s(io.error_message(Error))], !IO),
         io.set_exit_status(1, !IO)
     ).
 
-:- pred write_source_file_map_2(globals::in, io.output_stream::in,
+:- pred write_source_file_map_2(globals::in, io.text_output_stream::in,
     file_name::in,
     bimap(module_name, file_name)::in, bimap(module_name, file_name)::out,
     io::di, io::uo) is det.
@@ -234,8 +242,10 @@ write_source_file_map_2(Globals, MapStream, FileName,
             bimap.search(SeenModules0, ModuleName, PrevFileName),
             PrevFileName \= FileName
         then
-            io.format("mercury_compile: module `%s' " ++
-                "defined in multiple files: %s, %s\n.",
+            io.stderr_stream(StdErr, !IO),
+            io.format(StdErr,
+                "mercury_compile: " ++
+                "module `%s' defined in multiple files: %s, %s\n.",
                 [s(sym_name_to_string(ModuleName)),
                 s(PrevFileName), s(FileName)], !IO),
             io.set_exit_status(1, !IO),
@@ -265,6 +275,8 @@ write_source_file_map_2(Globals, MapStream, FileName,
         MaybeModuleName = no,
         SeenModules = SeenModules0
     ).
+
+%-----------------------------------------------------------------------------%
 
 :- func modules_file_name = string.
 

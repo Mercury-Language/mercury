@@ -536,8 +536,10 @@ create_and_write_opt_file(IntermodAnalysis, Globals, !HLDS, !DumpInfo,
         io.close_output(TmpOptStream, !IO),
 
         update_interface(Globals, ModuleName, OptFileName, !IO),
-        touch_interface_datestamp(Globals, ModuleName,
-            other_ext(".optdate"), !IO),
+        get_progress_output_stream(!.HLDS, ProgressStream, !IO),
+        get_error_output_stream(!.HLDS, ErrorStream, !IO),
+        touch_interface_datestamp(Globals, ProgressStream, ErrorStream,
+            ModuleName, other_ext(".optdate"), !IO),
 
         globals.lookup_bool_option(Globals, experiment5, Experiment5),
         (

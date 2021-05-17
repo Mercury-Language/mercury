@@ -325,6 +325,7 @@
 :- include_module analysis.file.
 
 :- import_module analysis.file.
+:- import_module hlds.passes_aux.
 :- import_module parse_tree.module_cmds.    % XXX unwanted dependency
 
 :- import_module map.
@@ -1304,7 +1305,10 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModule0, !Info, !IO) :-
     % analysed.
     module_name_to_write_file_name(Compiler, Globals,
         other_ext(".analysis_date"), ThisModule, TimestampFileName, !IO),
-    touch_datestamp(Globals, TimestampFileName, !IO).
+    get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+    get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+    touch_datestamp(Globals, ProgressStream, ErrorStream,
+        TimestampFileName, !IO).
 
 :- pred load_module_imdg(globals::in, module_name::in,
     analysis_info::in, analysis_info::out, io::di, io::uo) is det.

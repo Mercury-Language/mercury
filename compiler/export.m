@@ -736,8 +736,8 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
         ;
             Errors = [_ | _],
             io.remove_file(TmpFileName, _, !IO),
-            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             % report_error sets the exit status.
+            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             list.foldl(report_error(ErrorStream), Errors, !IO)
         )
     ;

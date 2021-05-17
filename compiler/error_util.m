@@ -713,10 +713,13 @@
 
 %---------------------------------------------------------------------------%
 
-    % Report why the file is not able to be opened to stderr_stream,
-    % and set the exit status to 1.
+    % Report why the file is not able to be opened to the specified stream,
+    % or to stderr_stream, and set the exit status to 1.
     %
-:- pred unable_to_open_file(string::in, io.error::in, io::di, io::uo) is det.
+:- pred unable_to_open_file(string::in,
+    io.error::in, io::di, io::uo) is det.
+:- pred unable_to_open_file(io.text_output_stream::in, string::in,
+    io.error::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -2636,12 +2639,11 @@ report_warning(Stream, Globals, Context, Indent, Components, !IO) :-
 
 unable_to_open_file(FileName, IOErr, !IO) :-
     io.stderr_stream(StdErr, !IO),
-    io.write_string(StdErr, "Unable to open file: '", !IO),
-    io.write_string(StdErr, FileName, !IO),
-    io.write_string(StdErr, "' because\n", !IO),
-    io.write_string(StdErr, io.error_message(IOErr), !IO),
-    io.nl(StdErr, !IO),
+    unable_to_open_file(StdErr, FileName, IOErr, !IO).
 
+unable_to_open_file(ErrorStream, FileName, IOErr, !IO) :-
+    io.format(ErrorStream, "Unable to open file '%s': %s\n",
+        [s(FileName), s(io.error_message(IOErr))], !IO),
     io.set_exit_status(1, !IO).
 
 %---------------------------------------------------------------------------%
