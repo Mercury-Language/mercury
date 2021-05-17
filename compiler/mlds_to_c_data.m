@@ -247,7 +247,7 @@ mlds_output_rval(Opts, Rval, Stream, !IO) :-
             Rval = ml_scalar_common_addr(ScalarCommon),
             io.write_string(Stream, "&", !IO)
         ),
-        ScalarCommon = ml_scalar_common(ModuleName, _Type,
+        ScalarCommon = mlds_scalar_common(ModuleName, _Type,
             ml_scalar_common_type_num(TypeNum), RowNum),
         ModuleSymName = mlds_module_name_to_sym_name(ModuleName),
         MangledModuleName = sym_name_mangle(ModuleSymName),
@@ -255,7 +255,7 @@ mlds_output_rval(Opts, Rval, Stream, !IO) :-
             [s(MangledModuleName), i(TypeNum), i(RowNum)], !IO)
     ;
         Rval = ml_vector_common_row_addr(VectorCommon, RowRval),
-        VectorCommon = ml_vector_common(ModuleName, _Type,
+        VectorCommon = mlds_vector_common(ModuleName, _Type,
             ml_vector_common_type_num(TypeNum), StartRowNum, _NumRows),
         ModuleSymName = mlds_module_name_to_sym_name(ModuleName),
         MangledModuleName = sym_name_mangle(ModuleSymName),

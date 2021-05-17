@@ -198,7 +198,7 @@ output_scalar_defns_for_csharp(Info, Stream, Indent, TypeNum, CellGroup,
 
 output_scalar_init_for_csharp(Info, Stream, Indent, Map, Scalar, !IO) :-
     map.lookup(Map, Scalar, Initializer),
-    Scalar = ml_scalar_common(_, Type, TypeNum, RowNum),
+    Scalar = mlds_scalar_common(_, Type, TypeNum, RowNum),
     TypeNum = ml_scalar_common_type_num(TypeRawNum),
     output_n_indents(Stream, Indent, !IO),
     io.format(Stream, "MR_scalar_common_%d[%d] =\n",

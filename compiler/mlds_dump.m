@@ -783,7 +783,7 @@ mlds_rval_const_to_strcord(Const) = Cord :-
 :- func mlds_scalar_common_to_strcord(mlds_scalar_common) = strcord.
 
 mlds_scalar_common_to_strcord(ScalarCommon) = Cord :-
-    ScalarCommon = ml_scalar_common(_ModuleName, _Type, TypeNum, RowNum),
+    ScalarCommon = mlds_scalar_common(_ModuleName, _Type, TypeNum, RowNum),
     TypeNum = ml_scalar_common_type_num(TypeNumInt),
     Cord = strcord("scalar_common(type ") ++ intcord(TypeNumInt) ++
         comma_cord ++ strcord("row ") ++ intcord(RowNum) ++ strcord(")").
@@ -791,7 +791,7 @@ mlds_scalar_common_to_strcord(ScalarCommon) = Cord :-
 :- func mlds_vector_common_to_strcord(mlds_vector_common) = strcord.
 
 mlds_vector_common_to_strcord(VectorCommon) = Cord :-
-    VectorCommon = ml_vector_common(_ModuleName, _Type, TypeNum,
+    VectorCommon = mlds_vector_common(_ModuleName, _Type, TypeNum,
         StartRowNum, NumRows),
     TypeNum = ml_vector_common_type_num(TypeNumInt),
     Cord = strcord("vector_common(type ") ++ intcord(TypeNumInt) ++

@@ -433,7 +433,7 @@ ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer, Common,
         counter.allocate(RowNum, RowCounter0, RowCounter),
         MembersMap0 = !.CellGroup ^ mscg_members,
         NewCommon =
-            ml_scalar_common(MLDS_ModuleName, ConstType, TypeNum, RowNum),
+            mlds_scalar_common(MLDS_ModuleName, ConstType, TypeNum, RowNum),
         bimap.search_insert(Initializer, NewCommon, MaybeOldCommon,
             MembersMap0, MembersMap),
         (
@@ -702,7 +702,7 @@ ml_gen_static_vector_defn(MLDS_ModuleName, TypeNum, RowInitializers, Common,
         !CellGroup ^ mvcg_next_row := NextRow,
 
         StructType = !.CellGroup ^ mvcg_type,
-        Common = ml_vector_common(MLDS_ModuleName, StructType, TypeNum,
+        Common = mlds_vector_common(MLDS_ModuleName, StructType, TypeNum,
             StartRowNum, NumRows),
 
         Rows0 = !.CellGroup ^ mvcg_rows,

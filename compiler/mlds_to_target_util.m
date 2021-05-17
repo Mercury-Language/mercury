@@ -442,7 +442,7 @@ output_auto_gen_comment(Stream, SourceFileName, !IO)  :-
 
 add_scalar_inits(MLDS_ModuleName, Type, TypeNum, Initializer,
         RowNum, RowNum + 1, !Graph, !Map) :-
-    Scalar = ml_scalar_common(MLDS_ModuleName, Type, TypeNum, RowNum),
+    Scalar = mlds_scalar_common(MLDS_ModuleName, Type, TypeNum, RowNum),
     map.det_insert(Scalar, Initializer, !Map),
     digraph.add_vertex(Scalar, _Key, !Graph),
     add_scalar_deps(Scalar, Initializer, !Graph).

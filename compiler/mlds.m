@@ -1958,12 +1958,12 @@
     --->    ml_vector_common_type_num(int).
 
 :- type mlds_scalar_common
-    --->    ml_scalar_common(mlds_module_name, mlds_type,
+    --->    mlds_scalar_common(mlds_module_name, mlds_type,
                 ml_scalar_common_type_num, int).
             % module name, type, type number, row number
 
 :- type mlds_vector_common
-    --->    ml_vector_common(mlds_module_name, mlds_type,
+    --->    mlds_vector_common(mlds_module_name, mlds_type,
                 ml_vector_common_type_num, int, int).
             % module name, type, type number,
             % starting row number, number of rows

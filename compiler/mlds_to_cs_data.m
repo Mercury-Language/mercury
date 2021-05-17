@@ -261,7 +261,7 @@ output_rval_for_csharp(Info, Rval, Stream, !IO) :-
         unexpected($pred, "ml_scalar_common")
     ;
         Rval = ml_scalar_common_addr(ScalarCommon),
-        ScalarCommon = ml_scalar_common(ModuleName, _Type,
+        ScalarCommon = mlds_scalar_common(ModuleName, _Type,
             ml_scalar_common_type_num(TypeNum), RowNum),
         ModuleSymName = mlds_module_name_to_sym_name(ModuleName),
         MangledModuleName =
@@ -270,7 +270,7 @@ output_rval_for_csharp(Info, Rval, Stream, !IO) :-
             [s(MangledModuleName), i(TypeNum), i(RowNum)], !IO)
     ;
         Rval = ml_vector_common_row_addr(VectorCommon, RowRval),
-        VectorCommon = ml_vector_common(_ModuleName, _Type,
+        VectorCommon = mlds_vector_common(_ModuleName, _Type,
             ml_vector_common_type_num(TypeNum), StartRowNum, _NumRows),
         % XXX Why do we print a "MangledModuleName." prefix for scalar common
         % addresses but not for vector common addresses?
