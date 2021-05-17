@@ -460,8 +460,8 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
     ;
         ModeError = mode_error_var_is_not_sufficiently_instantiated(Var,
             ActualInst, ExpectedInst, MaybeMultiMode),
-        Spec = mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo,
-            Var, ActualInst, ExpectedInst, MaybeMultiMode)
+        Spec = mode_error_var_is_not_sufficiently_instantiated_to_spec(
+            ModeInfo, Var, ActualInst, ExpectedInst, MaybeMultiMode)
     ;
         ModeError = mode_error_clobbered_var_is_live(Var),
         Spec = mode_error_clobbered_var_is_live_to_spec(ModeInfo, Var)
@@ -772,9 +772,22 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
         has_inst_expected_inst_was(ModeInfo, VarInst, ExpectedInst)],
     MainMsgs = [simplest_msg(Context, Preamble ++ MainPieces)],
     Phase = phase_mode_check(report_in_any_mode),
+    ( if
+        inst_has_uniqueness(VarInst, mostly_unique),
+        inst_has_uniqueness(ExpectedInst, unique)
+    then
+        UniqPieces = [words("This kind of uniqueness mismatch"),
+            words("is usually caused by doing input/output"),
+            words("or some other kind of destructive update"),
+            words("in a context where it can be backtracked over,"),
+            words("such as the condition of an if-then-else."), nl],
+        UniqMsgs = [simplest_msg(Context, UniqPieces)]
+    else
+        UniqMsgs = []
+    ),
     (
         MaybeMultiModeError = no,
-        Spec = error_spec($pred, severity_error, Phase, MainMsgs)
+        MultiModeMsgs = []
     ;
         MaybeMultiModeError = yes(PredMultiModeError),
         ConnectPieces = [words("This may have been caused by"),
@@ -785,8 +798,39 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
         mode_info_get_module_info(ModeInfo, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
         extract_spec_msgs(Globals, SubSpec0, SubMsgs),
-        Spec = error_spec($pred, severity_error, Phase,
-            MainMsgs ++ ConnectMsgs ++ SubMsgs)
+        MultiModeMsgs = ConnectMsgs ++ SubMsgs
+    ),
+    AllMsgs = MainMsgs ++ UniqMsgs ++ MultiModeMsgs,
+    Spec = error_spec($pred, severity_error, Phase, AllMsgs).
+
+:- pred inst_has_uniqueness(mer_inst::in, uniqueness::in) is semidet.
+
+inst_has_uniqueness(Inst, SearchUniq) :-
+    require_complete_switch [Inst]
+    (
+        ( Inst = free
+        ; Inst = free(_)
+        ; Inst = any(_, _)
+        ; Inst = abstract_inst(_, _)
+        ; Inst = not_reached
+        ; Inst = inst_var(_)
+        ),
+        fail
+    ;
+        Inst = defined_inst(_),
+        % We could expand the defined inst, but the novice Mercury programmers
+        % that the error message addendum this code helps to construct
+        % will virtually never encounter defined insts that expand out
+        % to unique or mostly_unique.
+        fail
+    ;
+        ( Inst = ground(Uniq, _)
+        ; Inst = bound(Uniq, _, _)
+        ),
+        Uniq = SearchUniq
+    ;
+        Inst = constrained_inst_vars(_, SubInst),
+        inst_has_uniqueness(SubInst, SearchUniq)
     ).
 
 %---------------------------------------------------------------------------%

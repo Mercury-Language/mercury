@@ -6,11 +6,11 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- pred foo(io__state::di, io__state::uo) is semidet.
+:- pred foo(io::di, io::uo) is semidet.
 :- pragma external_pred(foo/2).
 
 % This should be a unique mode error, since if foo does I/O before failing,

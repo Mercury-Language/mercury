@@ -4,3 +4,7 @@ io_in_ite_cond.m:020:   `io_in_ite_cond.foo'/2:
 io_in_ite_cond.m:020:   mode error: variable `STATE_VARIABLE_IO_0' has
 io_in_ite_cond.m:020:   instantiatedness `mostly_unique',
 io_in_ite_cond.m:020:   expected instantiatedness was `unique'.
+io_in_ite_cond.m:020:   This kind of uniqueness mismatch is usually caused by
+io_in_ite_cond.m:020:   doing input/output or some other kind of destructive
+io_in_ite_cond.m:020:   update in a context where it can be backtracked over,
+io_in_ite_cond.m:020:   such as the condition of an if-then-else.

@@ -3,3 +3,7 @@ uniq_neg.m:031:   in argument 3 of call to predicate `uniq_neg.occurs'/4:
 uniq_neg.m:031:   mode error: variable `STATE_VARIABLE_Store_0' has
 uniq_neg.m:031:   instantiatedness `mostly_unique',
 uniq_neg.m:031:   expected instantiatedness was `unique'.
+uniq_neg.m:031:   This kind of uniqueness mismatch is usually caused by doing
+uniq_neg.m:031:   input/output or some other kind of destructive update in a
+uniq_neg.m:031:   context where it can be backtracked over, such as the
+uniq_neg.m:031:   condition of an if-then-else.

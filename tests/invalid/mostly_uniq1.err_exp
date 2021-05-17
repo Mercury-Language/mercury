@@ -6,4 +6,8 @@ mostly_uniq1.m:023:   in argument 2 of call to predicate `io.write_int'/3:
 mostly_uniq1.m:023:   mode error: variable `DCG_0' has instantiatedness
 mostly_uniq1.m:023:   `mostly_unique',
 mostly_uniq1.m:023:   expected instantiatedness was `unique'.
+mostly_uniq1.m:023:   This kind of uniqueness mismatch is usually caused by
+mostly_uniq1.m:023:   doing input/output or some other kind of destructive
+mostly_uniq1.m:023:   update in a context where it can be backtracked over,
+mostly_uniq1.m:023:   such as the condition of an if-then-else.
 For more information, recompile with `-E'.
