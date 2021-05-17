@@ -399,12 +399,6 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % This times does have to be after we have processed all predicate
     % and mode declarations, since several pragmas do refer to predicates
     % or to modes of predicates.
-    %
-    % XXX This means we don't need to make any distinction between pass 2 and
-    % pass 3 pragmas anymore. This distinction will be deleted soon.
-    % NOTE Until then, we loop over the pragmas with a bespoke predicate,
-    % not list.foldl2, because list.foldl2 doesn't (yet) know how to preserve
-    % the subtype inst of ItemPragmas[23].
     list.foldl3(add_decl_pragma, ItemPragmasDecl,
         !ModuleInfo, !QualInfo, !Specs),
 
