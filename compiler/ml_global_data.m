@@ -401,8 +401,29 @@ ml_gen_static_scalar_const_addr(MLDS_ModuleName, ConstVarKind, ConstType0,
     mlds_initializer::in, mlds_scalar_common::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer, Common,
+ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer0, Common,
         !GlobalData) :-
+    Initializer = Initializer0,
+    % We could set Initializer using the following code instead, but
+    % while it does sometimes discover that two initializers that differ
+    % in their MLDS forms would nevertheless generate the same C code,
+    % it does so very rarely. (For example, at one time this code
+    % reduced the total size of the .rodata sections of the the .o files
+    % in the compiler directory from 160,636 bytes to 160,540 bytes.)
+    % The small improvement in memory efficiency does not justify
+    % the execution time cost of the code needed to get it.
+%   ml_global_data_get_target(!.GlobalData, Target),
+%   (
+%       Target = ml_target_c,
+%       % Attempt to eliminate differences between MLDS initializers
+%       % that will not affect the C code we generate.
+%       Initializer = semicanonicalize_types_in_initializer_for_c(Initializer0)
+%   ;
+%       ( Target = ml_target_csharp
+%       ; Target = ml_target_java
+%       ),
+%       Initializer = Initializer0
+%   ),
     InitArraySize = get_initializer_array_size(Initializer),
     CellType = ml_scalar_cell_type(ConstType, InitArraySize),
     some [!CellGroup] (
