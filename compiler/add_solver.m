@@ -179,14 +179,14 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
         FromAnyMaybeAttrs, TVarSet, InstVarSet, ExistQTVars, purity_impure,
         NoConstraints, Context, -1),
 
-    module_add_pred_decl(PredStatus, NeedQual, ToGndPredDecl,
-        _MaybeToGndPredProcId, !ModuleInfo, !Specs),
-    module_add_pred_decl(PredStatus, NeedQual, ToAnyPredDecl,
-        _MaybeToAnyPredProcId, !ModuleInfo, !Specs),
-    module_add_pred_decl(PredStatus, NeedQual, FromGndPredDecl,
-        _MaybeFromGndPredProcId, !ModuleInfo, !Specs),
-    module_add_pred_decl(PredStatus, NeedQual, FromAnyPredDecl,
-        _MaybeFromAnyPredProcId, !ModuleInfo, !Specs).
+    module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual,
+        ToGndPredDecl, _MaybeToGndPredProcId, !ModuleInfo, !Specs),
+    module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual,
+        ToAnyPredDecl, _MaybeToAnyPredProcId, !ModuleInfo, !Specs),
+    module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual,
+        FromGndPredDecl, _MaybeFromGndPredProcId, !ModuleInfo, !Specs),
+    module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual,
+        FromAnyPredDecl, _MaybeFromAnyPredProcId, !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 

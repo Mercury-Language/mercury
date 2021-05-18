@@ -43,8 +43,8 @@
     % If there is no mode part, we could return the pred_id, but we would
     % not be able to return a proc_id.
     %
-:- pred module_add_pred_decl(pred_status::in, need_qualifier::in,
-    item_pred_decl_info::in, maybe(pred_proc_id)::out,
+:- pred module_add_pred_decl(item_mercury_status::in, pred_status::in,
+    need_qualifier::in, item_pred_decl_info::in, maybe(pred_proc_id)::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -55,14 +55,16 @@
     is_address_taken::in, has_parallel_conj::in,
     pred_info::in, pred_info::out, proc_id::out) is det.
 
+    % Is the mode declaration we are adding to the HLDS derived from
+    % a combined predmode declaration?
+:- type part_of_predmode
+    --->    not_part_of_predmode
+    ;       part_of_predmode.
+
     % Add a mode declaration for a predicate.
-    % XXX We should take an item_mode_decl_info as input, just as
-    % module_add_pred_decl takes an item_pred_decl_info.
     %
-:- pred module_add_mode(prog_context::in, int::in,
-    maybe(item_mercury_status)::in, pred_status::in,
-    pred_or_func::in, sym_name::in, inst_varset::in, list(mer_mode)::in,
-    maybe(determinism)::in, maybe_class_method::in,
+:- pred module_add_mode_decl(part_of_predmode::in, maybe_class_method::in,
+    item_mercury_status::in, pred_status::in, item_mode_decl_info::in,
     pred_proc_id::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -116,16 +118,98 @@
 :- import_module term.
 :- import_module varset.
 
-module_add_pred_decl(PredStatus, NeedQual, ItemPredDecl, MaybePredProcId,
-        !ModuleInfo, !Specs) :-
-    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
-        WithType, WithInst, MaybeDetism, Origin, TypeVarSet, InstVarSet,
-        ExistQVars, Purity, Constraints, Context, SeqNum),
+module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
+        MaybePredProcId, !ModuleInfo, !Specs) :-
+    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc,
+        ArgTypesAndModes, WithType, WithInst, MaybeDetism,
+        Origin, TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints,
+        Context, SeqNum),
     % Any WithType and WithInst annotations should have been expanded
     % and the type and/or inst put into TypesAndModes by equiv_type.m.
     expect(unify(WithType, no), $pred, "WithType != no"),
     expect(unify(WithInst, no), $pred, "WithInst != no"),
 
+    PredName = unqualify_name(PredSymName),
+    ( if PredName = "" then
+        Pieces = [words("Error: you cannot declare a"),
+            words(pred_or_func_to_full_str(PredOrFunc)),
+            words("whose name is a variable."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
+        !:Specs = [Spec | !.Specs],
+        MaybePredProcId = no
+    else
+        split_types_and_modes(ArgTypesAndModes, ArgTypes, MaybeArgModes0),
+        list.length(ArgTypes, PredFormArity),
+        ( if
+            PredOrFunc = pf_predicate,
+            MaybeArgModes0 = yes(ArgModes0),
+            % If a predicate declaration has no arguments ano no determinism,
+            % then it has none of the components of a mode declaration.
+            ArgModes0 = [],
+            MaybeDetism = no
+        then
+            MaybeArgModes = no
+        else if
+            % A function declaration that contains no argument modes but does
+            % specify a determinism is implicitly specifying the default mode.
+            PredOrFunc = pf_function,
+            MaybeArgModes0 = no,
+            MaybeDetism = yes(_)
+        then
+            adjust_func_arity(pf_function, FuncArity, PredFormArity),
+            in_mode(InMode),
+            list.duplicate(FuncArity, InMode, InModes),
+            out_mode(OutMode),
+            MaybeArgModes = yes(InModes ++ [OutMode])
+        else
+            MaybeArgModes = MaybeArgModes0
+        ),
+        ( MaybeArgModes = no,     PredmodeDecl = no_predmode_decl
+        ; MaybeArgModes = yes(_), PredmodeDecl = predmode_decl
+        ),
+        record_pred_origin(PredSymName, Origin, PredOrigin, Markers),
+        add_new_pred(PredOrigin, Context, SeqNum, PredStatus, NeedQual,
+            PredOrFunc, PredSymName, TypeVarSet, ExistQVars, ArgTypes,
+            Constraints, PredmodeDecl, Purity, Markers, Succeeded,
+            !ModuleInfo, !Specs),
+        (
+            MaybeArgModes = yes(ArgModes),
+            (
+                Succeeded = no,
+                % Do not try to add the mode declaration part of the predmode
+                % declaration to the HLDS if adding the pred declaration part
+                % has failed.
+                MaybePredProcId = no
+            ;
+                Succeeded = yes,
+                ( if check_marker(Markers, marker_class_method) then
+                    IsClassMethod = is_a_class_method
+                else
+                    IsClassMethod = is_not_a_class_method
+                ),
+                ItemModeDecl = item_mode_decl_info(PredSymName,
+                    yes(PredOrFunc), ArgModes, WithInst, MaybeDetism,
+                    InstVarSet, Context, SeqNum),
+                module_add_mode_decl(part_of_predmode, IsClassMethod,
+                    ItemMercuryStatus, PredStatus, ItemModeDecl, PredProcId,
+                    !ModuleInfo, !Specs),
+                MaybePredProcId = yes(PredProcId)
+            )
+        ;
+            MaybeArgModes = no,
+            MaybePredProcId = no,
+            % There is no valid mode declaration part we can add to the HLDS.
+            % Check for an invalid mode declaration part anyway.
+            check_for_modeless_predmode_decl(PredStatus, PredOrFunc,
+                PredSymName, ArgTypes, MaybeDetism, Context, !Specs)
+        )
+    ).
+
+:- pred record_pred_origin(sym_name::in, item_maybe_attrs::in,
+    pred_origin::out, pred_markers::out) is det.
+
+record_pred_origin(PredSymName, Origin, PredOrigin, Markers) :-
     % If this predicate was added as a result of the mutable
     % transformation, then mark this predicate as a mutable access pred.
     % We do this so that we can tell optimizations, like inlining,
@@ -168,127 +252,63 @@ module_add_pred_decl(PredStatus, NeedQual, ItemPredDecl, MaybePredProcId,
         Origin = item_origin_user,
         PredOrigin = origin_user(PredSymName),
         Markers = Markers0
-    ),
+    ).
 
-    split_types_and_modes(TypesAndModes, Types, MaybeModes0),
-    list.length(Types, Arity),
+:- pred check_for_modeless_predmode_decl(pred_status::in, pred_or_func::in,
+    sym_name::in, list(mer_type)::in, maybe(determinism)::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_for_modeless_predmode_decl(PredStatus, PredOrFunc,
+        PredSymName, ArgTypes, MaybeDetism, Context, !Specs) :-
     ( if
+        MaybeDetism = yes(_),
+        % Functions are allowed to declare a determinism without declaring
+        % argument modes; the determinism will apply to the default mode.
+        % Predicates do not have a default mode, so they may NOT declare
+        % a determinism without declaring the argument modes, UNLESS
+        % there are no arguments whose mode needs to be declared.
         PredOrFunc = pf_predicate,
-        MaybeModes0 = yes(Modes0),
-
-        % For predicates with no arguments, if the determinism is not declared,
-        % a mode is not added. The determinism can be specified by a separate
-        % mode declaration.
-        Modes0 = [],
-        MaybeDetism = no
+        ArgTypes = [_ | _],
+        % Do not generate an error message unless the predicate
+        % is defined in this module.
+        pred_status_defined_in_this_module(PredStatus) = yes
     then
-        MaybeModes = no
-    else if
-        % A function declaration that contains no argument modes but does
-        % specify a determinism is implicitly specifying the default mode.
-        PredOrFunc = pf_function,
-        MaybeModes0 = no,
-        MaybeDetism = yes(_)
-    then
-        adjust_func_arity(pf_function, FuncArity, Arity),
-        in_mode(InMode),
-        list.duplicate(FuncArity, InMode, InModes),
-        out_mode(OutMode),
-        list.append(InModes, [OutMode], ArgModes),
-        MaybeModes = yes(ArgModes)
-    else
-        MaybeModes = MaybeModes0
-    ),
-    add_new_pred(PredOrigin, Context, SeqNum, PredStatus, NeedQual,
-        PredOrFunc, PredSymName, TypeVarSet, ExistQVars, Types, Constraints,
-        MaybeModes, Purity, Markers, Succeeded, !ModuleInfo, !Specs),
-    (
-        MaybeModes = yes(Modes),
-        (
-            Succeeded = no,
-            % Do not try to add the mode declaration part of the predmode
-            % declaration to the HLDS if adding the pred declaration part
-            % has failed.
-            MaybePredProcId = no
-        ;
-            Succeeded = yes,
-            ( if check_marker(Markers, marker_class_method) then
-                IsClassMethod = is_a_class_method
-            else
-                IsClassMethod = is_not_a_class_method
-            ),
-            % By setting MaybeModeItemMercuryStatus to no, we are telling
-            % module_add_mode that there *was* no separate mode declaration.
-            % Since we have already recorded (in the cur_user_decl_info slot
-            % of the predicate's pred_info) that this predicate has a predmode
-            % declaration, the addition of a *separate* mode declaration
-            % would lead to the generation of an error message.
-            MaybeModeItemMercuryStatus = maybe.no,
-            module_add_mode(Context, SeqNum,
-                MaybeModeItemMercuryStatus, PredStatus,
-                PredOrFunc, PredSymName, InstVarSet, Modes, MaybeDetism,
-                IsClassMethod, PredProcId, !ModuleInfo, !Specs),
-            MaybePredProcId = yes(PredProcId)
-        )
-    ;
-        MaybeModes = no,
-        % There is no valid mode declaration part we can add to the HLDS.
-        % Check for an invalid mode declaration part anyway.
-        MaybePredProcId = no,
+        % The declaration of "is" looks like this:
+        %   :- pred is(T, T) is det.
+        % We can't just delete "is det" part, because if we do,
+        % the compiler will think that the predicate name "is"
+        % is introducing a determinism, which yields a syntax error.
+        % We also cannot add the argument modes, since "is" has both
+        % unique and non-unique modes.
         ( if
-            MaybeDetism = yes(_),
-            % Functions are allowed to declare a determinism without declaring
-            % argument modes; the determinism will apply to the default mode.
-            % Predicates do not have a default mode, so they may NOT declare
-            % a determinism without declaring the argument modes, UNLESS
-            % there are no arguments whose mode needs to be declared.
-            PredOrFunc = pf_predicate,
-            Types = [_ | _],
-
-            % Don't generate an error message unless the predicate is defined
-            % in this module.
-            pred_status_defined_in_this_module(PredStatus) = yes
+            PredSymName = qualified(PredModuleName, "is"),
+            PredModuleName = mercury_std_lib_module_name(unqualified("prolog"))
         then
-            % The declaration of "is" looks like this:
-            %   :- pred is(T, T) is det.
-            % We can't just delete "is det" part, because if we do, the
-            % compiler will think that the predicate name "is" is introducing
-            % a determinism, which yields a syntax error. We also cannot add
-            % the argument modes, since "is" has both unique and non-unique
-            % modes.
-            % "is" used to be defined in int.m, but is now defined in prolog.m.
-            ( if
-                PredSymName = qualified(PredModuleName, "is"),
-                ( PredModuleName = mercury_int_module
-                ; PredModuleName =
-                    mercury_std_lib_module_name(unqualified("prolog"))
-                )
-            then
-                true
-            else
-                DetPieces = [words("Error: predicate"),
-                    unqual_sym_name_arity(sym_name_arity(PredSymName, Arity)),
-                    words("declares a determinism without declaring"),
-                    words("the modes of its arguments."), nl],
-                DetSpec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, DetPieces),
-                !:Specs = [DetSpec | !.Specs]
-            )
-        else
             true
+        else
+            list.length(ArgTypes, PredFormArity),
+            SNA = sym_name_arity(PredSymName, PredFormArity),
+            DetPieces = [words("Error: predicate"), unqual_sym_name_arity(SNA),
+                words("declares a determinism without declaring"),
+                words("the modes of its arguments."), nl],
+            DetSpec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, DetPieces),
+            !:Specs = [DetSpec | !.Specs]
         )
+    else
+        true
     ).
 
 :- pred add_new_pred(pred_origin::in, prog_context::in, int::in,
     pred_status::in, need_qualifier::in, pred_or_func::in, sym_name::in,
     tvarset::in, existq_tvars::in, list(mer_type)::in, prog_constraints::in,
-    maybe_modes::in, purity::in, pred_markers::in, bool::out,
+    maybe_predmode_decl::in, purity::in, pred_markers::in, bool::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual,
         PredOrFunc, PredSymName, TVarSet, ExistQVars, Types, Constraints,
-        MaybeModes, Purity, Markers0, Succeeded, !ModuleInfo, !Specs) :-
+        PredmodeDecl, Purity, Markers0, Succeeded, !ModuleInfo, !Specs) :-
     % NB. Predicates are also added in lambda.m, which converts
     % lambda expressions into separate predicates, so any changes may need
     % to be reflected there too.
@@ -334,13 +354,6 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual,
             )
         then
             DeclSection = item_decl_section(ItemExport),
-            (
-                MaybeModes = no,
-                PredmodeDecl = no_predmode_decl
-            ;
-                MaybeModes = yes(_),
-                PredmodeDecl = predmode_decl
-            ),
             CurUserDecl = yes(cur_user_decl_info(DeclSection, PredmodeDecl,
                 SeqNum))
         else
@@ -678,54 +691,75 @@ add_new_proc(Context, SeqNum, Arity, InstVarSet, ArgModes,
 
 %---------------------------------------------------------------------------%
 
-module_add_mode(Context, SeqNum, MaybeItemMercuryStatus, PredStatus,
-        PredOrFunc, PredSymName, InstVarSet, Modes, MaybeDetism,
-        IsClassMethod, PredProcId, !ModuleInfo, !Specs) :-
-    % We should store the mode varset and the mode condition in the HLDS
-    % - at the moment we just ignore those two arguments.
-
-    % Lookup the pred or func declaration in the predicate table.
-    % If it is not there (or if it is ambiguous), optionally print a warning
-    % message and insert an implicit definition for the predicate;
-    % it is presumed to be local, and its type will be inferred automatically.
-
-    module_info_get_name(!.ModuleInfo, ModuleName0),
-    sym_name_get_module_name_default(PredSymName, ModuleName0, ModuleName),
-    list.length(Modes, Arity),
-    module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-    predicate_table_lookup_pf_sym_arity(PredicateTable0,
-        is_fully_qualified, PredOrFunc, PredSymName, Arity, PredIds),
-    ( if PredIds = [PredIdPrime] then
-        PredId = PredIdPrime
-    else
-        preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-            PredSymName, Arity, PredOrFunc, PredStatus, IsClassMethod, Context,
-            origin_user(PredSymName), [decl("mode"), words("declaration")],
-            PredId, !Specs)
+module_add_mode_decl(PartOfPredmode, IsClassMethod,
+        ItemMercuryStatus, PredStatus, ItemModeDecl, PredProcId,
+        !ModuleInfo, !Specs) :-
+    ItemModeDecl = item_mode_decl_info(PredSymName, MaybePredOrFunc,
+        Modes, WithInst, _MaybeDetism, _InstVarSet, Context, _SeqNum),
+    % Any WithInst annotations should have been expanded
+    % and the inst put into Modes by equiv_type.m.
+    expect(unify(WithInst, no), $pred, "WithInst != no"),
+    % The equiv_type pass should have also either set the pred_or_func,
+    % or removed the item from the parse tree.
+    (
+        MaybePredOrFunc = yes(PredOrFunc)
+    ;
+        MaybePredOrFunc = no,
+        unexpected($pred, "no pred_or_func on mode declaration")
     ),
-    module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
-    predicate_table_get_preds(PredicateTable1, Preds0),
-    map.lookup(Preds0, PredId, PredInfo0),
-    module_do_add_mode(Context, SeqNum, MaybeItemMercuryStatus, Arity,
-        InstVarSet, Modes, MaybeDetism, IsClassMethod,
-        PredInfo0, PredInfo, ProcId, !Specs),
-    map.det_update(PredId, PredInfo, Preds0, Preds),
-    predicate_table_set_preds(Preds, PredicateTable1, PredicateTable),
-    module_info_set_predicate_table(PredicateTable, !ModuleInfo),
-    PredProcId = proc(PredId, ProcId).
+    PredName = unqualify_name(PredSymName),
+    % XXX CLEANUP move this test to module_add_mode?
+    ( if PredName = "" then
+        % This dummy PredProcId won't be used due to the error.
+        PredProcId = proc(invalid_pred_id, invalid_proc_id),
+        Pieces = [words("Error: you cannot declare a mode"),
+            words("for a predicate whose name is a variable."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    else
+        % Lookup the pred or func declaration in the predicate table.
+        % If it is not there (or if it is ambiguous), optionally print a warning
+        % message and insert an implicit definition for the predicate;
+        % it is presumed to be local, and its type will be inferred
+        % automatically.
+        module_info_get_name(!.ModuleInfo, ModuleName0),
+        sym_name_get_module_name_default(PredSymName, ModuleName0, ModuleName),
+        list.length(Modes, Arity),
+        module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
+        predicate_table_lookup_pf_sym_arity(PredicateTable0,
+            is_fully_qualified, PredOrFunc, PredSymName, Arity, PredIds),
+        ( if PredIds = [PredIdPrime] then
+            PredId = PredIdPrime
+        else
+            preds_add_implicit_report_error(!ModuleInfo, ModuleName,
+                PredSymName, Arity, PredOrFunc, PredStatus, IsClassMethod,
+                Context, origin_user(PredSymName),
+                [decl("mode"), words("declaration")], PredId, !Specs)
+        ),
+        module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
+        predicate_table_get_preds(PredicateTable1, Preds0),
+        map.lookup(Preds0, PredId, PredInfo0),
+        module_do_add_mode(PartOfPredmode, IsClassMethod, ItemMercuryStatus,
+            ItemModeDecl, PredInfo0, PredInfo, ProcId, !Specs),
+        map.det_update(PredId, PredInfo, Preds0, Preds),
+        predicate_table_set_preds(Preds, PredicateTable1, PredicateTable),
+        module_info_set_predicate_table(PredicateTable, !ModuleInfo),
+        PredProcId = proc(PredId, ProcId)
+    ).
 
-:- pred module_do_add_mode(prog_context::in, int::in,
-    maybe(item_mercury_status)::in, arity::in,
-    inst_varset::in, list(mer_mode)::in,
-    maybe(determinism)::in, maybe_class_method::in,
+:- pred module_do_add_mode(part_of_predmode::in, maybe_class_method::in,
+    item_mercury_status::in, item_mode_decl_info::in,
     pred_info::in, pred_info::out, proc_id::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_do_add_mode(Context, SeqNum, MaybeItemMercuryStatus, Arity,
-        InstVarSet, Modes, MaybeDetism, IsClassMethod,
-        !PredInfo, ProcId, !Specs) :-
+module_do_add_mode(PartOfPredmode, IsClassMethod, ItemMercuryStatus,
+        ItemModeDecl, !PredInfo, ProcId, !Specs) :-
     PredName = pred_info_name(!.PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
+    ItemModeDecl = item_mode_decl_info(_PredSymName, _MaybePredOrFunc,
+        Modes, _WithInst, MaybeDetism, InstVarSet, Context, SeqNum),
+    list.length(Modes, Arity),
     % Check that the determinism was specified.
     (
         MaybeDetism = no,
@@ -758,7 +792,7 @@ module_do_add_mode(Context, SeqNum, MaybeItemMercuryStatus, Arity,
         CurUserDecl = cur_user_decl_info(PredDeclSection, PredIsPredMode,
             _PredDeclSeqNum),
         ( if
-            MaybeItemMercuryStatus = yes(ItemMercuryStatus),
+            PartOfPredmode = not_part_of_predmode,
             ItemMercuryStatus = item_defined_in_this_module(ItemExport)
         then
             ModeDeclSection = item_decl_section(ItemExport),

@@ -17,8 +17,8 @@
 :- import_module list.
 
 :- pred module_add_pragma_tabled(pragma_info_tabled::in, prog_context::in,
-    pred_status::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+    item_mercury_status::in, pred_status::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -63,7 +63,7 @@
 :- import_module term.
 :- import_module varset.
 
-module_add_pragma_tabled(TabledInfo, Context, Status,
+module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
         !ModuleInfo, !QualInfo, !Specs) :-
     TabledInfo = pragma_info_tabled(EvalMethod, PredOrProcSpec,
         MaybeAttributes),
@@ -102,7 +102,7 @@ module_add_pragma_tabled(TabledInfo, Context, Status,
             module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [pragma_decl(EvalMethodStr), words("declaration")],
             preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-                PredName, PredFormArityInt, PredOrFunc, Status,
+                PredName, PredFormArityInt, PredOrFunc, PredStatus,
                 is_not_a_class_method, Context, origin_user(PredName),
                 DescPieces, PredId, !Specs),
             PredIds = [PredId]
@@ -125,7 +125,7 @@ module_add_pragma_tabled(TabledInfo, Context, Status,
             user_arity_pred_form_arity(pf_predicate, UserArity,
                 pred_form_arity(PredFormArityInt)),
             preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-                PredName, PredFormArityInt, pf_predicate, Status,
+                PredName, PredFormArityInt, pf_predicate, PredStatus,
                 is_not_a_class_method, Context, origin_user(PredName),
                 DescPieces, PredId, !Specs),
             PredIds = [PredId]
@@ -178,18 +178,18 @@ module_add_pragma_tabled(TabledInfo, Context, Status,
     ),
     list.foldl3(
         module_add_pragma_tabled_for_pred(EvalMethod, PFUMM, PredName,
-            MaybeAttributes, Context, Status),
+            MaybeAttributes, Context, ItemMercuryStatus, PredStatus),
         PredIds, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred module_add_pragma_tabled_for_pred(eval_method::in,
     pred_func_or_unknown_maybe_modes::in, sym_name::in,
-    maybe(table_attributes)::in, prog_context::in, pred_status::in,
-    pred_id::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+    maybe(table_attributes)::in, prog_context::in,
+    item_mercury_status::in, pred_status::in, pred_id::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_pragma_tabled_for_pred(EvalMethod0, PFUMM, PredName,
-        MaybeAttributes, Context, PredStatus, PredId,
+        MaybeAttributes, Context, ItemMercuryStatus, PredStatus, PredId,
         !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     ( if EvalMethod0 = eval_minimal(_) then
@@ -298,8 +298,8 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PFUMM, PredName,
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                 set_eval_method_create_aux_preds(ProcId, ProcInfo0,
                     Context, PFSymNameArity, yes, EvalMethod,
-                    MaybeAttributes, PredStatus, ProcTable0, ProcTable,
-                    !ModuleInfo, !QualInfo, !Specs),
+                    MaybeAttributes, ItemMercuryStatus, PredStatus,
+                    ProcTable0, ProcTable, !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             else
@@ -334,7 +334,7 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PFUMM, PredName,
                 ),
                 set_eval_method_create_aux_preds_list(ExistingProcs, Context,
                     PFSymNameArity, SingleProc, EvalMethod, MaybeAttributes,
-                    PredStatus, ProcTable0, ProcTable,
+                    ItemMercuryStatus, PredStatus, ProcTable0, ProcTable,
                     !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
@@ -345,32 +345,35 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PFUMM, PredName,
 :- pred set_eval_method_create_aux_preds_list(
     assoc_list(proc_id, proc_info)::in, prog_context::in,
     pf_sym_name_arity::in, bool::in, eval_method::in,
-    maybe(table_attributes)::in, pred_status::in,
+    maybe(table_attributes)::in, item_mercury_status::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-set_eval_method_create_aux_preds_list([], _, _, _, _, _, _,
+set_eval_method_create_aux_preds_list([], _, _, _, _, _, _, _,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs).
 set_eval_method_create_aux_preds_list([ProcId - ProcInfo0 | Rest], Context,
-        PFSymNameArity, SingleProc, EvalMethod, MaybeAttributes, PredStatus,
+        PFSymNameArity, SingleProc, EvalMethod, MaybeAttributes,
+        ItemMercuryStatus, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context,
-        PFSymNameArity, SingleProc, EvalMethod, MaybeAttributes, PredStatus,
+        PFSymNameArity, SingleProc, EvalMethod, MaybeAttributes,
+        ItemMercuryStatus, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs),
     set_eval_method_create_aux_preds_list(Rest, Context,
-        PFSymNameArity, SingleProc, EvalMethod, MaybeAttributes, PredStatus,
+        PFSymNameArity, SingleProc, EvalMethod, MaybeAttributes,
+        ItemMercuryStatus, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred set_eval_method_create_aux_preds(proc_id::in, proc_info::in,
     prog_context::in, pf_sym_name_arity::in, bool::in, eval_method::in,
-    maybe(table_attributes)::in, pred_status::in,
+    maybe(table_attributes)::in, item_mercury_status::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, PFSymNameArity,
-        SingleProc, EvalMethod, MaybeAttributes, PredStatus,
+        SingleProc, EvalMethod, MaybeAttributes, ItemMercuryStatus, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     proc_info_get_eval_method(ProcInfo0, OldEvalMethod),
     % NOTE: We don't bother detecting multiple tabling pragmas
@@ -439,7 +442,7 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, PFSymNameArity,
             (
                 Statistics = table_gather_statistics,
                 create_tabling_statistics_pred(ProcId, Context,
-                    PFSymNameArity, SingleProc, PredStatus,
+                    PFSymNameArity, SingleProc, ItemMercuryStatus, PredStatus,
                     !ProcTable, !ModuleInfo, !QualInfo, !Specs)
             ;
                 Statistics = table_dont_gather_statistics
@@ -447,7 +450,7 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, PFSymNameArity,
             (
                 AllowReset = table_allow_reset,
                 create_tabling_reset_pred(ProcId, Context,
-                    PFSymNameArity, SingleProc, PredStatus,
+                    PFSymNameArity, SingleProc, ItemMercuryStatus, PredStatus,
                     !ProcTable, !ModuleInfo, !QualInfo, !Specs)
             ;
                 AllowReset = table_dont_allow_reset
@@ -477,13 +480,14 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, PFSymNameArity,
     ).
 
 :- pred create_tabling_statistics_pred(proc_id::in, prog_context::in,
-    pf_sym_name_arity::in, bool::in, pred_status::in,
+    pf_sym_name_arity::in, bool::in, item_mercury_status::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 create_tabling_statistics_pred(ProcId, Context, PFSymNameArity, SingleProc,
-        PredStatus, !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
+        ItemMercuryStatus, PredStatus,
+        !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     TableBuiltinModule = mercury_table_statistics_module,
     StatsPredSymName =
         tabling_stats_pred_name(PFSymNameArity, ProcId, SingleProc),
@@ -506,8 +510,8 @@ create_tabling_statistics_pred(ProcId, Context, PFSymNameArity, SingleProc,
         ArgTypesAndModes, maybe.no, maybe.no, yes(detism_det), MaybeAttrs,
         TypeVarSet, InstVarSet, ExistQVars, purity_pure, Constraints,
         Context, -1),
-    module_add_pred_decl(PredStatus, may_be_unqualified, PredDecl,
-        _MaybePredProcId, !ModuleInfo, !Specs),
+    module_add_pred_decl(ItemMercuryStatus, PredStatus, may_be_unqualified,
+        PredDecl, _MaybePredProcId, !ModuleInfo, !Specs),
 
     some [!Attrs, !VarSet] (
         varset.init(!:VarSet),
@@ -565,13 +569,14 @@ create_tabling_statistics_pred(ProcId, Context, PFSymNameArity, SingleProc,
     ).
 
 :- pred create_tabling_reset_pred(proc_id::in, prog_context::in,
-    pf_sym_name_arity::in, bool::in, pred_status::in,
+    pf_sym_name_arity::in, bool::in, item_mercury_status::in, pred_status::in,
     proc_table::in, proc_table::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 create_tabling_reset_pred(ProcId, Context, PFSymNameArity, SingleProc,
-         PredStatus, !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
+         ItemMercuryStatus, PredStatus,
+         !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
     ResetPredSymName = tabling_reset_pred_name(PFSymNameArity, ProcId,
         SingleProc),
     TypeAndModeArg1 = type_and_mode(io_state_type, di_mode),
@@ -589,8 +594,8 @@ create_tabling_reset_pred(ProcId, Context, PFSymNameArity, SingleProc,
         ArgTypesAndModes, maybe.no, maybe.no, yes(detism_det), MaybeAttrs,
         TypeVarSet, InstVarSet, ExistQVars, purity_pure, Constraints,
         Context, -1),
-    module_add_pred_decl(PredStatus, may_be_unqualified, PredDecl,
-        _MaybePredProcId, !ModuleInfo, !Specs),
+    module_add_pred_decl(ItemMercuryStatus, PredStatus, may_be_unqualified,
+        PredDecl, _MaybePredProcId, !ModuleInfo, !Specs),
 
     some [!Attrs, !VarSet] (
         varset.init(!:VarSet),

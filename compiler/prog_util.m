@@ -94,8 +94,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type maybe_modes == maybe(list(mer_mode)).
-
     % A pred declaration may contains just types, as in
     %   :- pred list.append(list(T), list(T), list(T)).
     % or it may contain both types and modes, as in
@@ -105,7 +103,7 @@
     % into two separate lists for the types and (if present) the modes.
     %
 :- pred split_types_and_modes(list(type_and_mode)::in, list(mer_type)::out,
-    maybe_modes::out) is det.
+    maybe(list(mer_mode))::out) is det.
 
 :- pred split_type_and_mode(type_and_mode::in, mer_type::out,
     maybe(mer_mode)::out) is det.

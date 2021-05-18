@@ -81,7 +81,7 @@ add_typeclass_defns([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
     item_mercury_status_to_typeclass_status(ItemMercuryStatus,
         TypeClassStatus0),
     list.foldl2(
-        add_typeclass_defn(yes(ItemMercuryStatus), TypeClassStatus0, NeedQual),
+        add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual),
         Items, !ModuleInfo, !Specs),
     add_typeclass_defns(SecSubLists, !ModuleInfo, !Specs).
 
@@ -95,13 +95,13 @@ add_instance_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_typeclass_defn(maybe(item_mercury_status)::in,
+:- pred add_typeclass_defn(item_mercury_status::in,
     typeclass_status::in, need_qualifier::in, item_typeclass_info::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_typeclass_defn(MaybeIMS, TypeClassStatus0, NeedQual, ItemTypeClassInfo,
-        !ModuleInfo, !Specs) :-
+add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
+        ItemTypeClassInfo, !ModuleInfo, !Specs) :-
     ItemTypeClassInfo = item_typeclass_info(ClassName, ClassParamVars,
         Constraints, FunDeps, Interface, VarSet, Context, _SeqNum),
     module_info_get_class_table(!.ModuleInfo, ClassTable0),
@@ -197,7 +197,7 @@ add_typeclass_defn(MaybeIMS, TypeClassStatus0, NeedQual, ItemTypeClassInfo,
         (
             Interface = class_interface_concrete(ClassDecls),
             module_add_class_interface(ClassName, ClassParamVars,
-                TypeClassStatus, MaybeIMS, NeedQual,
+                TypeClassStatus, ItemMercuryStatus, NeedQual,
                 ClassDecls, ClassMethodPredProcIds, !ModuleInfo, !Specs)
         ;
             Interface = class_interface_abstract,
@@ -219,26 +219,29 @@ add_typeclass_defn(MaybeIMS, TypeClassStatus0, NeedQual, ItemTypeClassInfo,
 
 :- func make_hlds_fundep(list(tvar), prog_fundep) = hlds_class_fundep.
 
-make_hlds_fundep(TVars, fundep(Domain0, Range0)) = fundep(Domain, Range) :-
-    Domain = make_hlds_fundep_2(TVars, Domain0),
-    Range = make_hlds_fundep_2(TVars, Range0).
+make_hlds_fundep(TVars, ProgFunDeps) = HLDSFunDeps :-
+    ProgFunDeps = fundep(ProgDomain, ProgRange),
+    convert_vars_to_arg_posns(TVars, ProgDomain, HLDSDomain),
+    convert_vars_to_arg_posns(TVars, ProgRange, HLDSRange),
+    HLDSFunDeps = fundep(HLDSDomain, HLDSRange).
 
-:- func make_hlds_fundep_2(list(tvar), list(tvar)) = set(hlds_class_argpos).
+:- pred convert_vars_to_arg_posns(list(tvar)::in, list(tvar)::in,
+    set(hlds_class_argpos)::out) is det.
 
-make_hlds_fundep_2(TVars, List) = list.foldl(Func, List, set.init) :-
-    Func = (func(TVar, Set0) = set.insert(Set0, N) :-
-        N = get_list_index(TVars, 1, TVar)
-    ).
+convert_vars_to_arg_posns(TVars, List, ArgPosnsSet) :-
+    TVarToArgPosFunc = (func(TVar) = get_list_index(TVars, 1, TVar)),
+    ArgPosns = list.map(TVarToArgPosFunc, List),
+    set.list_to_set(ArgPosns, ArgPosnsSet).
 
 :- func get_list_index(list(T), hlds_class_argpos, T) = hlds_class_argpos.
 
 get_list_index([], _, _) = _ :-
     unexpected($pred, "element not found").
-get_list_index([E | Es], N, X) =
+get_list_index([E | Es], CurPos, X) =
     ( if X = E then
-        N
+        CurPos
     else
-        get_list_index(Es, N + 1, X)
+        get_list_index(Es, CurPos + 1, X)
     ).
 
 :- pred constraints_are_identical(list(tvar)::in, tvarset::in,
@@ -269,13 +272,13 @@ class_fundeps_are_identical(OldFunDeps0, FunDeps0) :-
     OldFunDeps = FunDeps.
 
 :- pred module_add_class_interface(sym_name::in, list(tvar)::in,
-    typeclass_status::in, maybe(item_mercury_status)::in,
+    typeclass_status::in, item_mercury_status::in,
     need_qualifier::in, list(class_decl)::in, list(pred_proc_id)::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_class_interface(ClassName, ClassParamVars, TypeClassStatus,
-        MaybeItemMercuryStatus, NeedQual, ClassDecls, !:PredProcIds,
+        ItemMercuryStatus, NeedQual, ClassDecls, !:PredProcIds,
         !ModuleInfo, !Specs) :-
     classify_class_decls(ClassDecls, ClassPredOrFuncInfos, ClassModeInfos),
 
@@ -301,10 +304,9 @@ module_add_class_interface(ClassName, ClassParamVars, TypeClassStatus,
     % XXX STATUS
     TypeClassStatus = typeclass_status(OldImportStatus),
     PredStatus = pred_status(OldImportStatus),
-    ItemNumber = -1,
     list.foldl3(
         add_class_pred_or_func_decl(ClassName, ClassParamVars,
-            ItemNumber, PredStatus, NeedQual),
+            ItemMercuryStatus, PredStatus, NeedQual),
         ClassPredOrFuncInfos, !PredProcIds, !ModuleInfo, !Specs),
 
     % Add the mode declarations. Since we have already added the
@@ -312,7 +314,7 @@ module_add_class_interface(ClassName, ClassParamVars, TypeClassStatus,
     % in the predicate table corresponding to the mode we are about to add.
     % If not, report an error.
     list.foldl3(
-        add_class_mode_decl(ItemNumber, MaybeItemMercuryStatus, PredStatus),
+        add_class_mode_decl(ItemMercuryStatus, PredStatus),
         ClassModeInfos, !PredProcIds, !ModuleInfo, !Specs),
     list.foldl3(handle_no_mode_decl,
         ClassPredOrFuncInfos, !PredProcIds, !ModuleInfo, !Specs),
@@ -333,14 +335,15 @@ classify_class_decls([Decl | Decls], !:PredOrFuncInfos, !:ModeInfos) :-
     ).
 
 :- pred add_class_pred_or_func_decl(sym_name::in, list(tvar)::in,
-    int::in, pred_status::in, need_qualifier::in, class_pred_or_func_info::in,
+    item_mercury_status::in, pred_status::in, need_qualifier::in,
+    class_pred_or_func_info::in,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_class_pred_or_func_decl(ClassName, ClassParamVars, ItemNumber,
-        PredStatus, NeedQual,
-        PredOrFuncInfo, !PredProcIds, !ModuleInfo, !Specs) :-
+add_class_pred_or_func_decl(ClassName, ClassParamVars,
+        ItemMercuryStatus, PredStatus, NeedQual, PredOrFuncInfo,
+        !PredProcIds, !ModuleInfo, !Specs) :-
     PredOrFuncInfo = class_pred_or_func_info(PredName, PredOrFunc,
         ArgTypesAndModes, WithType, WithInst, MaybeDetism,
         TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints0, Context),
@@ -358,12 +361,13 @@ add_class_pred_or_func_decl(ClassName, ClassParamVars, ItemNumber,
     Origin = compiler_origin_class_method(ClassId, MethodId),
     Attrs = item_compiler_attributes(Origin),
     MaybeAttrs = item_origin_compiler(Attrs),
+    SeqNum = -1,
     PredDecl = item_pred_decl_info(PredName, PredOrFunc,
         ArgTypesAndModes, WithType, WithInst, MaybeDetism, MaybeAttrs,
         TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints,
-        Context, ItemNumber),
-    module_add_pred_decl(PredStatus, NeedQual, PredDecl, MaybePredProcId,
-        !ModuleInfo, !Specs),
+        Context, SeqNum),
+    module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, PredDecl,
+        MaybePredProcId, !ModuleInfo, !Specs),
     (
         MaybePredProcId = no
     ;
@@ -371,16 +375,16 @@ add_class_pred_or_func_decl(ClassName, ClassParamVars, ItemNumber,
         !:PredProcIds = [PredProcId | !.PredProcIds]
     ).
 
-:- pred add_class_mode_decl(int::in, maybe(item_mercury_status)::in,
-    pred_status::in, class_mode_info::in,
+:- pred add_class_mode_decl(item_mercury_status::in, pred_status::in,
+    class_mode_info::in,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_class_mode_decl(ItemNumber, MaybeItemMercuryStatus, PredStatus,
-        ModeInfo, !PredProcIds, !ModuleInfo, !Specs) :-
-    ModeInfo = class_mode_info(PredName, MaybePredOrFunc, Modes,
-        _WithInst, MaybeDetism, VarSet, Context),
+add_class_mode_decl(ItemMercuryStatus, PredStatus, ModeInfo,
+        !PredProcIds, !ModuleInfo, !Specs) :-
+    ModeInfo = class_mode_info(PredSymName, MaybePredOrFunc, Modes,
+        _WithInst, MaybeDetism, InstVarSet, Context),
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     PredArity = list.length(Modes) : int,
     (
@@ -392,10 +396,10 @@ add_class_mode_decl(ItemNumber, MaybeItemMercuryStatus, PredStatus,
         MaybePredOrFunc = yes(PredOrFunc)
     ),
     predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-        PredOrFunc, PredName, PredArity, PredIds),
+        PredOrFunc, PredSymName, PredArity, PredIds),
     (
         PredIds = [],
-        missing_pred_or_func_method_error(PredName, PredArity, PredOrFunc,
+        missing_pred_or_func_method_error(PredSymName, PredArity, PredOrFunc,
             Context, !Specs)
     ;
         PredIds = [HeadPredId | TailPredIds],
@@ -405,16 +409,20 @@ add_class_mode_decl(ItemNumber, MaybeItemMercuryStatus, PredStatus,
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
             pred_info_get_markers(PredInfo, PredMarkers),
             ( if check_marker(PredMarkers, marker_class_method) then
-                module_add_mode(Context, ItemNumber,
-                    MaybeItemMercuryStatus, PredStatus,
-                    PredOrFunc, PredName, VarSet, Modes, MaybeDetism,
-                    is_a_class_method, PredProcId, !ModuleInfo, !Specs),
+                WithInst = maybe.no,
+                SeqNum = -1,
+                ItemModeDecl = item_mode_decl_info(PredSymName,
+                    MaybePredOrFunc, Modes, WithInst, MaybeDetism, InstVarSet,
+                    Context, SeqNum),
+                module_add_mode_decl(not_part_of_predmode, is_a_class_method,
+                    ItemMercuryStatus, PredStatus, ItemModeDecl, PredProcId,
+                    !ModuleInfo, !Specs),
                 !:PredProcIds = [PredProcId | !.PredProcIds]
             else
                 % XXX It may also be worth reporting that although there
                 % wasn't a matching class method, there was a matching
                 % predicate/function.
-                missing_pred_or_func_method_error(PredName, PredArity,
+                missing_pred_or_func_method_error(PredSymName, PredArity,
                     PredOrFunc, Context, !Specs)
             )
         ;

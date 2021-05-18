@@ -676,31 +676,10 @@ add_pred_decls([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
     SecSubList = sec_sub_list(SectionInfo, PredDecls),
     SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    list.foldl2(add_pred_decl(PredStatus, NeedQual), PredDecls,
-        !ModuleInfo, !Specs),
+    list.map_foldl2(
+        module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual),
+        PredDecls, _MaybePredProcIds, !ModuleInfo, !Specs),
     add_pred_decls(SecSubLists, !ModuleInfo, !Specs).
-
-:- pred add_pred_decl(pred_status::in, need_qualifier::in,
-    item_pred_decl_info::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_pred_decl(PredStatus, NeedQual, ItemPredDecl, !ModuleInfo, !Specs) :-
-    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, _TypesAndModes,
-        _WithType, _WithInst, _MaybeDetism, _Origin, _TypeVarSet, _InstVarSet,
-        _ExistQVars, _Purity, _ClassContext, Context, _SeqNum),
-    PredName = unqualify_name(PredSymName),
-    % XXX CLEANUP move this test to module_add_pred_decl?
-    ( if PredName = "" then
-        Pieces = [words("Error: you cannot declare a"),
-            words(pred_or_func_to_full_str(PredOrFunc)),
-            words("whose name is a variable."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
-        !:Specs = [Spec | !.Specs]
-    else
-        module_add_pred_decl(PredStatus, NeedQual, ItemPredDecl,
-            _MaybePredProcId, !ModuleInfo, !Specs)
-    ).
 
 %---------------------------------------------------------------------------%
 
@@ -712,39 +691,11 @@ add_mode_decls([], !ModuleInfo, !Specs).
 add_mode_decls([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
     SecSubList = ims_sub_list(ItemMercuryStatus, ModeDecls),
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    list.foldl2(add_mode_decl(yes(ItemMercuryStatus), PredStatus), ModeDecls,
-        !ModuleInfo, !Specs),
+    list.map_foldl2(
+        module_add_mode_decl(not_part_of_predmode, is_not_a_class_method,
+            ItemMercuryStatus, PredStatus),
+        ModeDecls, _PredProcIds, !ModuleInfo, !Specs),
     add_mode_decls(SecSubLists, !ModuleInfo, !Specs).
-
-:- pred add_mode_decl(maybe(item_mercury_status)::in, pred_status::in,
-    item_mode_decl_info::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_mode_decl(MaybeIMS, PredStatus, ItemModeDecl, !ModuleInfo, !Specs) :-
-    ItemModeDecl = item_mode_decl_info(PredSymName, MaybePredOrFunc, Modes,
-        _WithInst, MaybeDet, VarSet, Context, SeqNum),
-    PredName = unqualify_name(PredSymName),
-    % XXX CLEANUP move this test to module_add_mode?
-    ( if PredName = "" then
-        Pieces = [words("Error: you cannot declare a mode"),
-            words("for a predicate whose name is a variable."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
-        !:Specs = [Spec | !.Specs]
-    else
-        (
-            MaybePredOrFunc = yes(PredOrFunc),
-            module_add_mode(Context, SeqNum, MaybeIMS, PredStatus,
-                PredOrFunc, PredSymName, VarSet, Modes, MaybeDet,
-                is_not_a_class_method, _, !ModuleInfo, !Specs)
-        ;
-            MaybePredOrFunc = no,
-            % equiv_type.m should have either set the pred_or_func
-            % or removed the item from the parse tree.
-            % XXX CLEANUP move this test to module_add_mode?
-            unexpected($pred, "no pred_or_func on mode declaration")
-        )
-    ).
 
 %---------------------------------------------------------------------------%
 

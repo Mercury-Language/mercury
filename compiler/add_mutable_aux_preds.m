@@ -470,7 +470,8 @@ add_aux_pred_decls_for_mutables_if_local([SecSubList | SecSubLists],
         ItemMercuryStatus = item_defined_in_this_module(_),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         list.foldl2(
-            check_and_add_aux_pred_decls_for_mutable(PredStatus, NeedQual),
+            check_and_add_aux_pred_decls_for_mutable(ItemMercuryStatus,
+                PredStatus, NeedQual),
             ItemMutables, !ModuleInfo, !Specs)
     ;
         ItemMercuryStatus = item_defined_in_other_module(_)
@@ -506,13 +507,13 @@ add_aux_pred_defns_for_mutables_if_local([SecSubList | SecSubLists],
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred check_and_add_aux_pred_decls_for_mutable(pred_status::in,
-    need_qualifier::in, item_mutable_info::in,
+:- pred check_and_add_aux_pred_decls_for_mutable(item_mercury_status::in,
+    pred_status::in, need_qualifier::in, item_mutable_info::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_and_add_aux_pred_decls_for_mutable(PredStatus, NeedQual, ItemMutable,
-        !ModuleInfo, !Specs) :-
+check_and_add_aux_pred_decls_for_mutable(ItemMercuryStatus, PredStatus,
+        NeedQual, ItemMutable, !ModuleInfo, !Specs) :-
     check_mutable(ItemMutable, !.ModuleInfo, !Specs),
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, Type, _OrigInst, Inst,
@@ -528,7 +529,7 @@ check_and_add_aux_pred_decls_for_mutable(PredStatus, NeedQual, ItemMutable,
             Context),
         NeededPredKinds, NeededPredDecls),
     list.map_foldl2(
-        module_add_pred_decl(PredStatus, NeedQual),
+        module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual),
         NeededPredDecls, _MaybePredProcIds, !ModuleInfo, !Specs).
 
 :- pred check_mutable(item_mutable_info::in, module_info::in,
@@ -538,10 +539,10 @@ check_mutable(ItemMutable, ModuleInfo, !Specs) :-
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, _Type, OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    % XXX We don't currently support the foreign_name attribute
-    % for all languages.
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, CompilationTarget),
+    % NOTE We currently support the foreign_name attribute for all targets,
+    % but we did not do so when we supported Erlang.
     (
         ( CompilationTarget = target_c,      ForeignLanguage = lang_c
         ; CompilationTarget = target_java,   ForeignLanguage = lang_java

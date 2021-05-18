@@ -1409,8 +1409,8 @@ add_impl_pragma_tabled(ItemMercuryStatus, ItemPragmaInfo,
     (
         TypeLayout = yes,
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        module_add_pragma_tabled(TabledInfo, Context, PredStatus,
-            !ModuleInfo, !QualInfo, !Specs)
+        module_add_pragma_tabled(TabledInfo, Context,
+            ItemMercuryStatus, PredStatus, !ModuleInfo, !QualInfo, !Specs)
     ;
         TypeLayout = no,
         TabledInfo = pragma_info_tabled(EvalMethod, _, _),
