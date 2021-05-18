@@ -7186,23 +7186,23 @@ other than a recursive type of the exact form @samp{base(B1, ..., Bn)}
 Type conversion expressions must also be mode-correct.
 Intuitively, conversion from a subtype to its supertype is safe,
 but a conversion from a supertype to one of its subtypes is safe only if
-the inst approximating the input term
+the inst approximating the term to be converted
 indicates that the result would also be valid in the subtype.
 
 Mode checking proceeds by simultaneously traversing
-the inst tree of the input term,
-the type tree of the input term,
+the inst tree of the @code{coerce} argument,
+the type tree of the @code{coerce} argument,
 and the type tree of the result term,
 and producing the inst tree of the result term
 if the conversion is valid.
 Let
 @itemize
 @item
-@var{InstX} be the current node in the input inst tree,
+@var{InstX} be the current node in the @code{coerce} argument's inst tree,
 @item
 @var{InstY} be the current node in the result inst tree,
 @item
-@var{TypeX} be the current node in the input type tree,
+@var{TypeX} be the current node in the @code{coerce} argument's type tree,
 @item
 @var{TypeY} be the current node in the result type tree,
 @item
