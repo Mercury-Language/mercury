@@ -19,21 +19,21 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred add_decl_pragma(ims_item(item_decl_pragma_info)::in,
+:- pred add_decl_pragmas(ims_list(item_decl_pragma_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_impl_pragma(ims_item(item_impl_pragma_info)::in,
-    list(ims_item(item_tabled))::in, list(ims_item(item_tabled))::out,
+:- pred add_impl_pragmas(ims_list(item_impl_pragma_info)::in,
+    ims_list(item_tabled)::in, ims_list(item_tabled)::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred add_impl_pragmas_tabled(ims_list(item_tabled)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pragma_foreign_proc_export(pragma_info_foreign_proc_export::in,
     prog_context::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-:- pred add_impl_pragma_tabled(ims_item(item_tabled)::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_gen_pragma(item_generated_pragma_info::in,
@@ -91,11 +91,52 @@
 
 %---------------------------------------------------------------------------%
 %
+% Loop over lists of pragmas to add to the HLDS.
+%
+
+add_decl_pragmas([], !ModuleInfo, !QualInfo, !Specs).
+add_decl_pragmas([ImsList | ImsLists], !ModuleInfo, !QualInfo, !Specs) :-
+    ImsList = ims_sub_list(ItemMercuryStatus, Items),
+    list.foldl3(add_decl_pragma(ItemMercuryStatus), Items,
+        !ModuleInfo, !QualInfo, !Specs),
+    add_decl_pragmas(ImsLists, !ModuleInfo, !QualInfo, !Specs).
+
+add_impl_pragmas([], !RevPragmaTabled, !ModuleInfo, !QualInfo, !Specs).
+add_impl_pragmas([ImsList | ImsLists],
+        !RevPragmaTabledLists, !ModuleInfo, !QualInfo, !Specs) :-
+    ImsList = ims_sub_list(ItemMercuryStatus, Items),
+    list.foldl4(add_impl_pragma(ItemMercuryStatus), Items,
+        [], RevPragmaTableds, !ModuleInfo, !QualInfo, !Specs),
+    (
+        RevPragmaTableds = []
+    ;
+        RevPragmaTableds = [_ | _],
+        list.reverse(RevPragmaTableds, PragmaTableds),
+        PragmaTabledList = ims_sub_list(ItemMercuryStatus, PragmaTableds),
+        !:RevPragmaTabledLists = [PragmaTabledList | !.RevPragmaTabledLists]
+    ),
+    add_impl_pragmas(ImsLists,
+        !RevPragmaTabledLists, !ModuleInfo, !QualInfo, !Specs).
+
+add_impl_pragmas_tabled([], !ModuleInfo, !QualInfo, !Specs).
+add_impl_pragmas_tabled([ImsList | ImsLists],
+        !ModuleInfo, !QualInfo, !Specs) :-
+    ImsList = ims_sub_list(ItemMercuryStatus, Items),
+    list.foldl3(add_impl_pragma_tabled(ItemMercuryStatus), Items,
+        !ModuleInfo, !QualInfo, !Specs),
+    add_impl_pragmas_tabled(ImsLists, !ModuleInfo, !QualInfo, !Specs).
+
+%---------------------------------------------------------------------------%
+%
 % Adding decl pragmas to the HLDS.
 %
 
-add_decl_pragma(SectionItem, !ModuleInfo, !QualInfo, !Specs) :-
-    SectionItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
+:- pred add_decl_pragma(item_mercury_status::in, item_decl_pragma_info::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_decl_pragma(ItemMercuryStatus, ItemPragmaInfo,
+        !ModuleInfo, !QualInfo, !Specs) :-
     ItemPragmaInfo = item_pragma_info(Pragma, Context, _SeqNum),
     (
         Pragma = decl_pragma_obsolete_pred(ObsoletePredInfo),
@@ -607,9 +648,13 @@ add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs):-
 % Adding impl pragmas to the HLDS.
 %
 
-add_impl_pragma(SectionItem, !RevPragmaTabled,
+:- pred add_impl_pragma(item_mercury_status::in, item_impl_pragma_info::in,
+    list(item_tabled)::in, list(item_tabled)::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_impl_pragma(ItemMercuryStatus, ItemPragmaInfo, !RevPragmaTabled,
         !ModuleInfo, !QualInfo, !Specs) :-
-    SectionItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
     ItemPragmaInfo = item_pragma_info(Pragma, Context, SeqNum),
     (
         Pragma = impl_pragma_foreign_decl(FDInfo),
@@ -642,8 +687,7 @@ add_impl_pragma(SectionItem, !RevPragmaTabled,
     ;
         Pragma = impl_pragma_tabled(TabledInfo),
         ItemPragmaTabledInfo = item_pragma_info(TabledInfo, Context, SeqNum),
-        TabledSectionItem = ims_item(ItemMercuryStatus, ItemPragmaTabledInfo),
-        !:RevPragmaTabled = [TabledSectionItem | !.RevPragmaTabled]
+        !:RevPragmaTabled = [ItemPragmaTabledInfo | !.RevPragmaTabled]
     ;
         Pragma = impl_pragma_inline(PredSymNameArity),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
@@ -1353,8 +1397,12 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
 
 %---------------------%
 
-add_impl_pragma_tabled(SectionItem, !ModuleInfo, !QualInfo, !Specs) :-
-    SectionItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
+:- pred add_impl_pragma_tabled(item_mercury_status::in, item_tabled::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_impl_pragma_tabled(ItemMercuryStatus, ItemPragmaInfo,
+        !ModuleInfo, !QualInfo, !Specs) :-
     ItemPragmaInfo = item_pragma_info(TabledInfo, Context, _SeqNum),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, type_layout, TypeLayout),

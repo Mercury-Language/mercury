@@ -26,19 +26,20 @@
 :- type ims_tuple_list(T) == list(ims_tuple_item(T)).
 :- type ims_tuple_item(T) == {item_mercury_status, T}.
 
-    % Items in the blocks of the parse tree are stored in the order in which
-    % they appear in the files they were read in from; source files, interface
-    % files and/or optimization files. Take these conmingled items and separate
-    % them out by kind, i.e. return a separate list for each kind of item.
-    %
-    % How we add an item to the HLDS depends on what kind of section
-    % it occurs in. In all cases, we need to know the status of the item
-    % (e.g. whether it is defined in the current module, whether it is
-    % imported or exported etc), and in some cases, we also need to know
-    % whether appearances of the thing it defines elsewhere in the code
-    % must be module qualified or not. We therefore pair each item with either
-    % its item_mercury_status (the ims_lists below) or with its
-    % item_mercury_status and need_qualifier flag (the sec_lists below).
+    % The augmented compilation unit consists of the parse tree of
+    % a source module, the parse trees of interface files, and the
+    % parse trees of optimization files. For most of these kinds of item,
+    % return all the items of that kind in these parse trees in a
+    % two level list. The top level list, which is usually a sec_list
+    % or an ims_list, is a plain list, whose elements are sec_sub_lists
+    % and ims_sub_lists respectively. Each of these sublists contains
+    % a list of the items of the given kind in one section of a parse tree,
+    % wrapped up together with either a sec_info or an item_mercury_status,
+    % both of which specify properties of the given section of the
+    % given parse tree. The properties say e.g. whether the section is
+    % in the current module, whether its contents are imported or exported,
+    % whether references elsewhere in the code to the entities it defines
+    % must be module qualified or not.
     %
     % XXX CLEANUP We should return several kinds of items as maps,
     % not as lists. Specifically,
@@ -58,13 +59,8 @@
     % only to minimize the complexity of the diff that radically rewrites
     % this module and the associated code.
     %
-    % XXX CLEANUP We currently convert values of type read_whyN
-    % to various item_block kinds, and then transform those item_block
-    % kinds to item_mercury_status values. We should do this in one step,
-    % but we keep the two step process to make the review of this diff easier.
-    %
 :- pred separate_items_in_aug_comp_unit(aug_compilation_unit::in,
-    ims_list(list(item_avail))::out,
+    ims_list(item_avail)::out,
     list(item_fim)::out,
     sec_list(item_type_defn_info)::out,
     sec_list(item_type_defn_info)::out,
@@ -109,29 +105,33 @@
 :- type module_int_type_ctor_repns ==
     assoc_list(module_name, int_type_ctor_repns).
 
+:- type sec_cord(T) == cord(sec_sub_list(T)).
+:- type ims_cord(T) == cord(ims_sub_list(T)).
+:- type ims_tuple_cord(T) == cord(ims_tuple_item(T)).
+
 :- type item_accumulator
     --->    item_accumulator(
-                ia_avails           :: ims_list(list(item_avail)),
-                ia_fims             :: list(item_fim),
-                ia_type_defns_abs   :: sec_list(item_type_defn_info),
-                ia_type_defns_mer   :: sec_list(item_type_defn_info),
-                ia_type_defns_for   :: sec_list(item_type_defn_info),
-                ia_inst_defns       :: ims_list(item_inst_defn_info),
-                ia_mode_defns       :: ims_list(item_mode_defn_info),
-                ia_typeclasses      :: sec_list(item_typeclass_info),
-                ia_instances        :: ims_list(item_instance_info),
-                ia_pred_decls       :: sec_list(item_pred_decl_info),
-                ia_mode_decls       :: ims_list(item_mode_decl_info),
-                ia_clauses          :: ims_list(item_clause_info),
-                ia_foreign_enums    :: ims_tuple_list(item_foreign_enum_info),
-                ia_fees             :: list(item_foreign_export_enum_info),
-                ia_decl_pragmas     :: ims_list(item_decl_pragma_info),
-                ia_impl_pragmas     :: ims_list(item_impl_pragma_info),
-                ia_gen_pragmas      :: list(item_generated_pragma_info),
-                ia_promises         :: ims_list(item_promise_info),
-                ia_initialises      :: ims_list(item_initialise_info),
-                ia_finalises        :: ims_list(item_finalise_info),
-                ia_mutables         :: sec_list(item_mutable_info),
+                ia_avails           :: ims_cord(item_avail),
+                ia_fims             :: cord(item_fim),
+                ia_type_defns_abs   :: sec_cord(item_type_defn_info),
+                ia_type_defns_mer   :: sec_cord(item_type_defn_info),
+                ia_type_defns_for   :: sec_cord(item_type_defn_info),
+                ia_inst_defns       :: ims_cord(item_inst_defn_info),
+                ia_mode_defns       :: ims_cord(item_mode_defn_info),
+                ia_typeclasses      :: sec_cord(item_typeclass_info),
+                ia_instances        :: ims_cord(item_instance_info),
+                ia_pred_decls       :: sec_cord(item_pred_decl_info),
+                ia_mode_decls       :: ims_cord(item_mode_decl_info),
+                ia_clauses          :: ims_cord(item_clause_info),
+                ia_foreign_enums    :: ims_tuple_cord(item_foreign_enum_info),
+                ia_fees             :: cord(item_foreign_export_enum_info),
+                ia_decl_pragmas     :: ims_cord(item_decl_pragma_info),
+                ia_impl_pragmas     :: ims_cord(item_impl_pragma_info),
+                ia_gen_pragmas      :: cord(item_generated_pragma_info),
+                ia_promises         :: ims_cord(item_promise_info),
+                ia_initialises      :: ims_cord(item_initialise_info),
+                ia_finalises        :: ims_cord(item_finalise_info),
+                ia_mutables         :: sec_cord(item_mutable_info),
                 ia_type_repns       :: module_int_type_ctor_repns
             ).
 
@@ -146,54 +146,63 @@ separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
         _ModuleVersionNumbers, ParseTreeModuleSrc,
         AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs),
-
-    % We start with an empty list for each kind of item.
-    % Then for each file we have read in, in reverse order,
-    % we prepend all the items of that kind in that file to the list.
-    % The final result should be a list of all the items of that kind
-    % in the original forward order.
-    %
-    % For the item kinds that we wrap in a sec_item or ims_item
-    % (which is most kinds of items), we use acc_sec_list and acc_ims_list
-    % to do the wrapping up and the prepending at the same time, which
-    % keeps the amount of memory we allocate linear in the number of items
-    % while preserving tail recursion.
-    %
-    % An even better approach could be to wrap up with the section_info
-    % or the item_mercury_status not a single item of a given kind,
-    % but a list of items of a given kind, as we already do for item_avails.
-    % This would have three advantages.
-    %
-    % - First, it would allow us to avoid the traversal that we currently do
-    %   to do the wrapping.
-    % - Second, it would reduce the amount of memory we need to allocate.
-    % - Third, it would naturally break up potentially long lists into chunks,
-    %   which should reduce any problems with non-tail-recursive traversals.
-    %
-    % The one drawback is minor: the need for an inner loop for processing
-    % each kind of item.
+    % We start with an empty cord for each kind of item.
+    % Then for each file we have read in, we append to this cord
+    % all the items of that kind in that file to the list,
+    % with the items in the interface section preceding the items
+    % in the implementation section. The final result should be a cord
+    % of all the items of that kind in the original forward order.
     %
     % XXX ITEM_LIST PlainOpts and TransOpts have separate lists of
     % the different kinds of pragmas they may contain, but they have to
     % wrap them up as decl_pragmas or generated_pragmas before adding them
     % to the accumulator. This should not be necessary.
     some [!Acc] (
-        !:Acc = item_accumulator([], [], [], [], [], [], [], [], [],
-            [], [], [], [], [], [], [], [], [], [], [], [], []),
-        map.foldl_values(acc_int_for_opt_spec, IntForOptSpecs, !Acc),
-        map.foldl_values(acc_parse_tree_trans_opt, TransOpts, !Acc),
-        map.foldl_values(acc_parse_tree_plain_opt, PlainOpts, !Acc),
-        map.foldl_values(acc_indirect_int_spec, IndirectIntSpecs, !Acc),
-        map.foldl_values(acc_direct_int_spec, DirectIntSpecs, !Acc),
-        map.foldl_values(acc_ancestor_int_spec, AncestorIntSpecs, !Acc),
+        !:Acc = item_accumulator(cord.init, cord.init,
+            cord.init, cord.init, cord.init,
+            cord.init, cord.init, cord.init, cord.init,
+            cord.init, cord.init, cord.init,
+            cord.init, cord.init,
+            cord.init, cord.init, cord.init, cord.init,
+            cord.init, cord.init, cord.init, []),
         acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc),
-        !.Acc = item_accumulator(Avails, FIMs,
-            TypeDefnsAbstract, TypeDefnsMercury, TypeDefnsForeign,
-            InstDefns, ModeDefns, Typeclasses, Instances,
-            PredDecls, ModeDecls, Clauses, ForeignEnums, ForeignExportEnums,
-            PragmasDecl, PragmasImpl, PragmasGen, Promises,
-            Initialises, Finalises, Mutables, ModuleIntTypeRepns)
+        map.foldl_values(acc_ancestor_int_spec, AncestorIntSpecs, !Acc),
+        map.foldl_values(acc_direct_int_spec, DirectIntSpecs, !Acc),
+        map.foldl_values(acc_indirect_int_spec, IndirectIntSpecs, !Acc),
+        map.foldl_values(acc_parse_tree_plain_opt, PlainOpts, !Acc),
+        map.foldl_values(acc_parse_tree_trans_opt, TransOpts, !Acc),
+        map.foldl_values(acc_int_for_opt_spec, IntForOptSpecs, !Acc),
+        !.Acc = item_accumulator(AvailsCord, FIMsCord,
+            TypeDefnsAbstractCord, TypeDefnsMercuryCord, TypeDefnsForeignCord,
+            InstDefnsCord, ModeDefnsCord, TypeclassesCord, InstancesCord,
+            PredDeclsCord, ModeDeclsCord, ClausesCord,
+            ForeignEnumsCord, ForeignExportEnumsCord,
+            PragmasDeclCord, PragmasImplCord, PragmasGenCord, PromisesCord,
+            InitialisesCord, FinalisesCord, MutablesCord, ModuleIntTypeRepns)
     ),
+
+    Avails = cord.list(AvailsCord),
+    FIMs = cord.list(FIMsCord),
+    TypeDefnsAbstract = cord.list(TypeDefnsAbstractCord),
+    TypeDefnsMercury = cord.list(TypeDefnsMercuryCord),
+    TypeDefnsForeign = cord.list(TypeDefnsForeignCord),
+    InstDefns = cord.list(InstDefnsCord),
+    ModeDefns = cord.list(ModeDefnsCord),
+    Typeclasses = cord.list(TypeclassesCord),
+    Instances = cord.list(InstancesCord),
+    PredDecls = cord.list(PredDeclsCord),
+    ModeDecls = cord.list(ModeDeclsCord),
+    Clauses = cord.list(ClausesCord),
+    ForeignEnums = cord.list(ForeignEnumsCord),
+    ForeignExportEnums = cord.list(ForeignExportEnumsCord),
+    PragmasDecl = cord.list(PragmasDeclCord),
+    PragmasImpl = cord.list(PragmasImplCord),
+    PragmasGen = cord.list(PragmasGenCord),
+    Promises = cord.list(PromisesCord),
+    Initialises = cord.list(InitialisesCord),
+    Finalises = cord.list(FinalisesCord),
+    Mutables = cord.list(MutablesCord),
+
     list.foldl(acc_int_type_repn_map, ModuleIntTypeRepns,
         map.init, ModuleIntTypeRepnMap),
     map.foldl_values(acc_type_repn_map, ModuleIntTypeRepnMap,
@@ -363,61 +372,61 @@ acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
 
     import_and_or_use_map_to_item_avails(do_not_include_implicit,
         ImportUseMap, IntAvails, ImpAvails),
-    acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails0, AccAvails1),
-    acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails1, AccAvails),
+    acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails0, AccAvails1),
+    acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails1, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, map.keys(IntFIMSpecMap)),
     ImpFIMs = list.map(fim_spec_to_item, map.keys(ImpFIMSpecMap)),
-    AccFIMs = IntFIMs ++ ImpFIMs ++ AccFIMs0,
-    acc_sec_list(SubSectionInfo, SubTypeDefnsAbs,
-        AccTypeDefnsAbs0, AccTypeDefnsAbs1),
+    AccFIMs = AccFIMs0 ++ cord.from_list(IntFIMs) ++ cord.from_list(ImpFIMs),
     acc_sec_list(IntSectionInfo, IntTypeDefnsAbs,
+        AccTypeDefnsAbs0, AccTypeDefnsAbs1),
+    acc_sec_list(SubSectionInfo, SubTypeDefnsAbs,
         AccTypeDefnsAbs1, AccTypeDefnsAbs),
-    acc_sec_list(SubSectionInfo, SubTypeDefnsMer,
-        AccTypeDefnsMer0, AccTypeDefnsMer1),
     acc_sec_list(IntSectionInfo, IntTypeDefnsMer,
+        AccTypeDefnsMer0, AccTypeDefnsMer1),
+    acc_sec_list(SubSectionInfo, SubTypeDefnsMer,
         AccTypeDefnsMer1, AccTypeDefnsMer),
-    acc_sec_list(SubSectionInfo, SubTypeDefnsFor,
-        AccTypeDefnsFor0, AccTypeDefnsFor1),
     acc_sec_list(IntSectionInfo, IntTypeDefnsFor,
+        AccTypeDefnsFor0, AccTypeDefnsFor1),
+    acc_sec_list(SubSectionInfo, SubTypeDefnsFor,
         AccTypeDefnsFor1, AccTypeDefnsFor),
-    acc_ims_list(SubItemMercuryStatus, SubInstDefns,
-        AccInstDefns0, AccInstDefns1),
     acc_ims_list(IntItemMercuryStatus, IntInstDefns,
+        AccInstDefns0, AccInstDefns1),
+    acc_ims_list(SubItemMercuryStatus, SubInstDefns,
         AccInstDefns1, AccInstDefns),
-    acc_ims_list(SubItemMercuryStatus, SubModeDefns,
-        AccModeDefns0, AccModeDefns1),
     acc_ims_list(IntItemMercuryStatus, IntModeDefns,
+        AccModeDefns0, AccModeDefns1),
+    acc_ims_list(SubItemMercuryStatus, SubModeDefns,
         AccModeDefns1, AccModeDefns),
-    acc_sec_list(SubSectionInfo, SubTypeClasses,
-        AccTypeClasses0, AccTypeClasses1),
     acc_sec_list(IntSectionInfo, IntTypeClasses,
+        AccTypeClasses0, AccTypeClasses1),
+    acc_sec_list(SubSectionInfo, SubTypeClasses,
         AccTypeClasses1, AccTypeClasses),
-    acc_ims_list(SubItemMercuryStatus, SubInstances,
-        AccInstances0, AccInstances1),
     acc_ims_list(IntItemMercuryStatus, IntInstances,
+        AccInstances0, AccInstances1),
+    acc_ims_list(SubItemMercuryStatus, SubInstances,
         AccInstances1, AccInstances),
-    acc_sec_list(SubSectionInfo, SubPredDecls, AccPredDecls0, AccPredDecls1),
-    acc_sec_list(IntSectionInfo, IntPredDecls, AccPredDecls1, AccPredDecls),
-    acc_ims_list(SubItemMercuryStatus, SubModeDecls,
-        AccModeDecls0, AccModeDecls1),
+    acc_sec_list(IntSectionInfo, IntPredDecls, AccPredDecls0, AccPredDecls1),
+    acc_sec_list(SubSectionInfo, SubPredDecls, AccPredDecls1, AccPredDecls),
     acc_ims_list(IntItemMercuryStatus, IntModeDecls,
+        AccModeDecls0, AccModeDecls1),
+    acc_ims_list(SubItemMercuryStatus, SubModeDecls,
         AccModeDecls1, AccModeDecls),
     acc_ims_list(ImpItemMercuryStatus, ImpClauses,
         AccClauses0, AccClauses),
     acc_ims_tuple_list(SubItemMercuryStatus, SubForeignEnums,
         AccForeignEnums0, AccForeignEnums),
-    AccForeignExportEnums =
-        IntForeignExportEnums ++ ImpForeignExportEnums ++
-        AccForeignExportEnums0,
-    acc_ims_list(SubItemMercuryStatus, SubDeclPragmas,
-        AccDeclPragmas0, AccDeclPragmas1),
+    AccForeignExportEnums = AccForeignExportEnums0 ++
+        cord.from_list(IntForeignExportEnums) ++
+        cord.from_list(ImpForeignExportEnums),
     acc_ims_list(IntItemMercuryStatus, IntDeclPragmas,
+        AccDeclPragmas0, AccDeclPragmas1),
+    acc_ims_list(SubItemMercuryStatus, SubDeclPragmas,
         AccDeclPragmas1, AccDeclPragmas),
     acc_ims_list(SubItemMercuryStatus, ImpImplPragmas,
         AccImplPragmas0, AccImplPragmas),
-    acc_ims_list(SubItemMercuryStatus, SubPromises,
-        AccPromises0, AccPromises1),
     acc_ims_list(IntItemMercuryStatus, IntPromises,
+        AccPromises0, AccPromises1),
+    acc_ims_list(SubItemMercuryStatus, SubPromises,
         AccPromises1, AccPromises),
     acc_ims_list(ImpItemMercuryStatus, ImpInitialises,
         AccInitialises0, AccInitialises),
@@ -500,68 +509,68 @@ acc_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Acc) :-
 
     import_and_or_use_map_to_item_avails(do_not_include_implicit,
         ImportUseMap, IntAvails, ImpAvails),
-    acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails0, AccAvails1),
-    acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails1, AccAvails),
+    acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails0, AccAvails1),
+    acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails1, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs)),
     ImpFIMs = list.map(fim_spec_to_item, set.to_sorted_list(ImpFIMSpecs)),
-    AccFIMs = IntFIMs ++ ImpFIMs ++ AccFIMs0,
+    AccFIMs = AccFIMs0 ++ cord.from_list(IntFIMs) ++ cord.from_list(ImpFIMs),
     IntTypeDefns = type_ctor_defn_map_to_type_defns(IntTypeDefnMap),
     ImpTypeDefns = type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
     separate_type_defns_abs_mer_for(IntTypeDefns,
         [], IntTypeDefnsAbs, [], IntTypeDefnsMer, [], IntTypeDefnsFor),
     separate_type_defns_abs_mer_for(ImpTypeDefns,
         [], ImpTypeDefnsAbs, [], ImpTypeDefnsMer, [], ImpTypeDefnsFor),
-    acc_sec_list(ImpSectionInfo, ImpTypeDefnsAbs,
-        AccTypeDefnsAbs0, AccTypeDefnsAbs1),
     acc_sec_list(IntSectionInfo, IntTypeDefnsAbs,
+        AccTypeDefnsAbs0, AccTypeDefnsAbs1),
+    acc_sec_list(ImpSectionInfo, ImpTypeDefnsAbs,
         AccTypeDefnsAbs1, AccTypeDefnsAbs),
-    acc_sec_list(ImpSectionInfo, ImpTypeDefnsMer,
-        AccTypeDefnsMer0, AccTypeDefnsMer1),
     acc_sec_list(IntSectionInfo, IntTypeDefnsMer,
+        AccTypeDefnsMer0, AccTypeDefnsMer1),
+    acc_sec_list(ImpSectionInfo, ImpTypeDefnsMer,
         AccTypeDefnsMer1, AccTypeDefnsMer),
-    acc_sec_list(ImpSectionInfo, ImpTypeDefnsFor,
-        AccTypeDefnsFor0, AccTypeDefnsFor1),
     acc_sec_list(IntSectionInfo, IntTypeDefnsFor,
+        AccTypeDefnsFor0, AccTypeDefnsFor1),
+    acc_sec_list(ImpSectionInfo, ImpTypeDefnsFor,
         AccTypeDefnsFor1, AccTypeDefnsFor),
     IntInstDefns = inst_ctor_defn_map_to_inst_defns(IntInstDefnMap),
     ImpInstDefns = inst_ctor_defn_map_to_inst_defns(ImpInstDefnMap),
-    acc_ims_list(ImpItemMercuryStatus, ImpInstDefns,
-        AccInstDefns0, AccInstDefns1),
     acc_ims_list(IntItemMercuryStatus, IntInstDefns,
+        AccInstDefns0, AccInstDefns1),
+    acc_ims_list(ImpItemMercuryStatus, ImpInstDefns,
         AccInstDefns1, AccInstDefns),
     IntModeDefns = mode_ctor_defn_map_to_mode_defns(IntModeDefnMap),
     ImpModeDefns = mode_ctor_defn_map_to_mode_defns(ImpModeDefnMap),
-    acc_ims_list(ImpItemMercuryStatus, ImpModeDefns,
-        AccModeDefns0, AccModeDefns1),
     acc_ims_list(IntItemMercuryStatus, IntModeDefns,
+        AccModeDefns0, AccModeDefns1),
+    acc_ims_list(ImpItemMercuryStatus, ImpModeDefns,
         AccModeDefns1, AccModeDefns),
-    acc_sec_list(ImpSectionInfo, ImpTypeClasses,
-        AccTypeClasses0, AccTypeClasses1),
     acc_sec_list(IntSectionInfo, IntTypeClasses,
+        AccTypeClasses0, AccTypeClasses1),
+    acc_sec_list(ImpSectionInfo, ImpTypeClasses,
         AccTypeClasses1, AccTypeClasses),
-    acc_ims_list(ImpItemMercuryStatus, ImpInstances,
-        AccInstances0, AccInstances1),
     acc_ims_list(IntItemMercuryStatus, IntInstances,
+        AccInstances0, AccInstances1),
+    acc_ims_list(ImpItemMercuryStatus, ImpInstances,
         AccInstances1, AccInstances),
-    acc_sec_list(ImpSectionInfo, ImpPredDecls, AccPredDecls0, AccPredDecls1),
-    acc_sec_list(IntSectionInfo, IntPredDecls, AccPredDecls1, AccPredDecls),
-    acc_ims_list(ImpItemMercuryStatus, ImpModeDecls,
-        AccModeDecls0, AccModeDecls1),
+    acc_sec_list(IntSectionInfo, IntPredDecls, AccPredDecls0, AccPredDecls1),
+    acc_sec_list(ImpSectionInfo, ImpPredDecls, AccPredDecls1, AccPredDecls),
     acc_ims_list(IntItemMercuryStatus, IntModeDecls,
+        AccModeDecls0, AccModeDecls1),
+    acc_ims_list(ImpItemMercuryStatus, ImpModeDecls,
         AccModeDecls1, AccModeDecls),
-    acc_ims_tuple_list(ImpItemMercuryStatus,
-        cjcs_map_to_list(ImpForeignEnumMap),
-        AccForeignEnums0, AccForeignEnums1),
     acc_ims_tuple_list(IntItemMercuryStatus,
         cjcs_map_to_list(IntForeignEnumMap),
+        AccForeignEnums0, AccForeignEnums1),
+    acc_ims_tuple_list(ImpItemMercuryStatus,
+        cjcs_map_to_list(ImpForeignEnumMap),
         AccForeignEnums1, AccForeignEnums),
-    acc_ims_list(ImpItemMercuryStatus, ImpDeclPragmas,
-        AccDeclPragmas0, AccDeclPragmas1),
     acc_ims_list(IntItemMercuryStatus, IntDeclPragmas,
+        AccDeclPragmas0, AccDeclPragmas1),
+    acc_ims_list(ImpItemMercuryStatus, ImpDeclPragmas,
         AccDeclPragmas1, AccDeclPragmas),
-    acc_ims_list(ImpItemMercuryStatus, ImpPromises,
-        AccPromises0, AccPromises1),
     acc_ims_list(IntItemMercuryStatus, IntPromises,
+        AccPromises0, AccPromises1),
+    acc_ims_list(ImpItemMercuryStatus, ImpPromises,
         AccPromises1, AccPromises),
 
     !Acc ^ ia_avails := AccAvails,
@@ -652,47 +661,47 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
 
     import_and_or_use_map_to_item_avails(do_not_include_implicit,
         ImportUseMap, IntAvails, ImpAvails),
-    acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails0, AccAvails1),
-    acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails1, AccAvails),
+    acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails0, AccAvails1),
+    acc_ims_avails(ImpItemMercuryStatus, ImpAvails, AccAvails1, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs)),
     ImpFIMs = list.map(fim_spec_to_item, set.to_sorted_list(ImpFIMSpecs)),
-    AccFIMs = IntFIMs ++ ImpFIMs ++ AccFIMs0,
+    AccFIMs = AccFIMs0 ++ cord.from_list(IntFIMs) ++ cord.from_list(ImpFIMs),
     IntTypeDefns = type_ctor_defn_map_to_type_defns(IntTypeDefnMap),
     ImpTypeDefns = type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
     separate_type_defns_abs_mer_for(IntTypeDefns,
         [], IntTypeDefnsAbs, [], IntTypeDefnsMer, [], IntTypeDefnsFor),
     separate_type_defns_abs_mer_for(ImpTypeDefns,
         [], ImpTypeDefnsAbs, [], ImpTypeDefnsMer, [], ImpTypeDefnsFor),
-    acc_sec_list(ImpSectionInfo, ImpTypeDefnsAbs,
-        AccTypeDefnsAbs0, AccTypeDefnsAbs1),
     acc_sec_list(IntSectionInfo, IntTypeDefnsAbs,
+        AccTypeDefnsAbs0, AccTypeDefnsAbs1),
+    acc_sec_list(ImpSectionInfo, ImpTypeDefnsAbs,
         AccTypeDefnsAbs1, AccTypeDefnsAbs),
-    acc_sec_list(ImpSectionInfo, ImpTypeDefnsMer,
-        AccTypeDefnsMer0, AccTypeDefnsMer1),
     acc_sec_list(IntSectionInfo, IntTypeDefnsMer,
+        AccTypeDefnsMer0, AccTypeDefnsMer1),
+    acc_sec_list(ImpSectionInfo, ImpTypeDefnsMer,
         AccTypeDefnsMer1, AccTypeDefnsMer),
-    acc_sec_list(ImpSectionInfo, ImpTypeDefnsFor,
-        AccTypeDefnsFor0, AccTypeDefnsFor1),
     acc_sec_list(IntSectionInfo, IntTypeDefnsFor,
+        AccTypeDefnsFor0, AccTypeDefnsFor1),
+    acc_sec_list(ImpSectionInfo, ImpTypeDefnsFor,
         AccTypeDefnsFor1, AccTypeDefnsFor),
     InstDefns = inst_ctor_defn_map_to_inst_defns(IntInstDefnMap),
     acc_ims_list(IntItemMercuryStatus, InstDefns, AccInstDefns0, AccInstDefns),
     ModeDefns = mode_ctor_defn_map_to_mode_defns(IntModeDefnMap),
     acc_ims_list(IntItemMercuryStatus, ModeDefns, AccModeDefns0, AccModeDefns),
-    acc_sec_list(ImpSectionInfo, ImpTypeClasses,
-        AccTypeClasses0, AccTypeClasses1),
     acc_sec_list(IntSectionInfo, IntTypeClasses,
+        AccTypeClasses0, AccTypeClasses1),
+    acc_sec_list(ImpSectionInfo, ImpTypeClasses,
         AccTypeClasses1, AccTypeClasses),
     acc_ims_list(IntItemMercuryStatus, IntInstances,
         AccInstances0, AccInstances),
     acc_sec_list(IntSectionInfo, IntPredDecls, AccPredDecls0, AccPredDecls),
     acc_ims_list(IntItemMercuryStatus, IntModeDecls,
         AccModeDecls0, AccModeDecls),
-    acc_ims_tuple_list(ImpItemMercuryStatus,
-        cjcs_map_to_list(ImpForeignEnumMap),
-        AccForeignEnums0, AccForeignEnums1),
     acc_ims_tuple_list(IntItemMercuryStatus,
         cjcs_map_to_list(IntForeignEnumMap),
+        AccForeignEnums0, AccForeignEnums1),
+    acc_ims_tuple_list(ImpItemMercuryStatus,
+        cjcs_map_to_list(ImpForeignEnumMap),
         AccForeignEnums1, AccForeignEnums),
     acc_ims_list(IntItemMercuryStatus, IntDeclPragmas,
         AccDeclPragmas0, AccDeclPragmas),
@@ -772,24 +781,24 @@ acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc) :-
     acc_ims_avails(IntItemMercuryStatus, IntAvails, AccAvails0, AccAvails),
     IntFIMs = list.map(fim_spec_to_item, set.to_sorted_list(IntFIMSpecs)),
     ImpFIMs = list.map(fim_spec_to_item, set.to_sorted_list(ImpFIMSpecs)),
-    AccFIMs = IntFIMs ++ ImpFIMs ++ AccFIMs0,
+    AccFIMs = AccFIMs0 ++ cord.from_list(IntFIMs) ++ cord.from_list(ImpFIMs),
     IntTypeDefns = type_ctor_defn_map_to_type_defns(IntTypeDefnMap),
     ImpTypeDefns = type_ctor_defn_map_to_type_defns(ImpTypeDefnMap),
     separate_type_defns_abs_mer_for(IntTypeDefns,
         [], IntTypeDefnsAbs, [], IntTypeDefnsMer, [], IntTypeDefnsFor),
     separate_type_defns_abs_mer_for(ImpTypeDefns,
         [], ImpTypeDefnsAbs, [], ImpTypeDefnsMer, [], ImpTypeDefnsFor),
-    acc_sec_list(ImpSectionInfo, ImpTypeDefnsAbs,
-        AccTypeDefnsAbs0, AccTypeDefnsAbs1),
     acc_sec_list(IntSectionInfo, IntTypeDefnsAbs,
+        AccTypeDefnsAbs0, AccTypeDefnsAbs1),
+    acc_sec_list(ImpSectionInfo, ImpTypeDefnsAbs,
         AccTypeDefnsAbs1, AccTypeDefnsAbs),
-    acc_sec_list(ImpSectionInfo, ImpTypeDefnsMer,
-        AccTypeDefnsMer0, AccTypeDefnsMer1),
     acc_sec_list(IntSectionInfo, IntTypeDefnsMer,
+        AccTypeDefnsMer0, AccTypeDefnsMer1),
+    acc_sec_list(ImpSectionInfo, ImpTypeDefnsMer,
         AccTypeDefnsMer1, AccTypeDefnsMer),
-    acc_sec_list(ImpSectionInfo, ImpTypeDefnsFor,
-        AccTypeDefnsFor0, AccTypeDefnsFor1),
     acc_sec_list(IntSectionInfo, IntTypeDefnsFor,
+        AccTypeDefnsFor0, AccTypeDefnsFor1),
+    acc_sec_list(ImpSectionInfo, ImpTypeDefnsFor,
         AccTypeDefnsFor1, AccTypeDefnsFor),
     InstDefns = inst_ctor_defn_map_to_inst_defns(IntInstDefnMap),
     acc_ims_list(IntItemMercuryStatus, InstDefns, AccInstDefns0, AccInstDefns),
@@ -959,7 +968,7 @@ acc_parse_tree_plain_opt(ParseTreePlainOpt, !Acc) :-
     OptAvails = use_map_to_item_avails(UseMap),
     acc_ims_avails(ItemMercuryStatus, OptAvails, AccAvails0, AccAvails),
     OptFIMs = list.map(fim_spec_to_item, set.to_sorted_list(FIMSpecs)),
-    AccFIMs = OptFIMs ++ AccFIMs0,
+    AccFIMs = AccFIMs0 ++ cord.from_list(OptFIMs),
     separate_type_defns_abs_mer_for(TypeDefns,
         [], TypeDefnsAbs, [], TypeDefnsMer, [], TypeDefnsFor),
     acc_sec_list(SectionInfo, TypeDefnsAbs,
@@ -998,7 +1007,7 @@ acc_parse_tree_plain_opt(ParseTreePlainOpt, !Acc) :-
         list.map(wrap_exceptions_pragma, Exceptions) ++
         list.map(wrap_trailing_pragma, Trailings) ++
         list.map(wrap_mm_tabling_pragma, MMTablings),
-    AccGenPragmas = OptGenPragmas ++ AccGenPragmas0,
+    AccGenPragmas = AccGenPragmas0 ++ cord.from_list(OptGenPragmas),
     acc_ims_list(ItemMercuryStatus, Promises, AccPromises0, AccPromises),
 
     !Acc ^ ia_avails := AccAvails,
@@ -1044,7 +1053,7 @@ acc_parse_tree_trans_opt(ParseTreeTransOpt, !Acc) :-
         list.map(wrap_exceptions_pragma, Exceptions) ++
         list.map(wrap_trailing_pragma, Trailings) ++
         list.map(wrap_mm_tabling_pragma, MMTablings),
-    AccGenPragmas = OptGenPragmas ++ AccGenPragmas0,
+    AccGenPragmas = AccGenPragmas0 ++ cord.from_list(OptGenPragmas),
 
     !Acc ^ ia_decl_pragmas := AccDeclPragmas,
     !Acc ^ ia_gen_pragmas := AccGenPragmas.
@@ -1052,14 +1061,15 @@ acc_parse_tree_trans_opt(ParseTreeTransOpt, !Acc) :-
 %---------------------------------------------------------------------------%
 
 :- pred acc_ims_avails(item_mercury_status::in, list(item_avail)::in,
-    ims_list(list(item_avail))::in, ims_list(list(item_avail))::out) is det.
+    ims_cord(item_avail)::in, ims_cord(item_avail)::out) is det.
 
 acc_ims_avails(ItemMercuryStatus, Avails, !AccAvails) :-
     (
         Avails = []
     ;
         Avails = [_ | _],
-        !:AccAvails = [ims_item(ItemMercuryStatus, Avails) | !.AccAvails]
+        ImsSubList = ims_sub_list(ItemMercuryStatus, Avails),
+        cord.snoc(ImsSubList, !AccAvails)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1173,53 +1183,40 @@ wrap_mm_tabling_pragma(X) = Item :-
 %---------------------------------------------------------------------------%
 
 :- pred acc_sec_list(sec_info::in, list(T)::in,
-    list(sec_item(T))::in, list(sec_item(T))::out) is det.
+    sec_cord(T)::in, sec_cord(T)::out) is det.
 
-acc_sec_list(SectionInfo, Items, !SecItems) :-
-    list.reverse(Items, RevItems),
-    acc_sec_list_loop(SectionInfo, RevItems, !SecItems).
-
-:- pred acc_sec_list_loop(sec_info::in, list(T)::in,
-    list(sec_item(T))::in, list(sec_item(T))::out) is det.
-
-acc_sec_list_loop(_SectionInfo, [], !SecItems).
-acc_sec_list_loop(SectionInfo, [RevItem | RevItems], !SecItems) :-
-    !:SecItems = [sec_item(SectionInfo, RevItem) | !.SecItems],
-    acc_sec_list_loop(SectionInfo, RevItems, !SecItems).
+acc_sec_list(SectionInfo, Items, !SecCord) :-
+    (
+        Items = []
+    ;
+        Items = [_ | _],
+        SecSubList = sec_sub_list(SectionInfo, Items),
+        cord.snoc(SecSubList, !SecCord)
+    ).
 
 %---------------------%
 
 :- pred acc_ims_list(item_mercury_status::in, list(T)::in,
-    list(ims_item(T))::in, list(ims_item(T))::out) is det.
+    ims_cord(T)::in, ims_cord(T)::out) is det.
 
-acc_ims_list(ItemMercuryStatus, Items, !ImsItems) :-
-    list.reverse(Items, RevItems),
-    acc_ims_list_loop(ItemMercuryStatus, RevItems, !ImsItems).
-
-:- pred acc_ims_list_loop(item_mercury_status::in, list(T)::in,
-    list(ims_item(T))::in, list(ims_item(T))::out) is det.
-
-acc_ims_list_loop(_ItemMercuryStatus, [], !ImsItems).
-acc_ims_list_loop(ItemMercuryStatus, [RevItem | RevItems], !ImsItems) :-
-    !:ImsItems = [ims_item(ItemMercuryStatus, RevItem) | !.ImsItems],
-    acc_ims_list_loop(ItemMercuryStatus, RevItems, !ImsItems).
+acc_ims_list(ItemMercuryStatus, Items, !ImsCord) :-
+    (
+        Items = []
+    ;
+        Items = [_ | _],
+        ImsSubList = ims_sub_list(ItemMercuryStatus, Items),
+        cord.snoc(ImsSubList, !ImsCord)
+    ).
 
 %---------------------%
 
 :- pred acc_ims_tuple_list(item_mercury_status::in, list(T)::in,
-    list(ims_tuple_item(T))::in, list(ims_tuple_item(T))::out) is det.
+    ims_tuple_cord(T)::in, ims_tuple_cord(T)::out) is det.
 
-acc_ims_tuple_list(ItemMercuryStatus, Items, !ImsItems) :-
-    list.reverse(Items, RevItems),
-    acc_ims_tuple_list_loop(ItemMercuryStatus, RevItems, !ImsItems).
-
-:- pred acc_ims_tuple_list_loop(item_mercury_status::in, list(T)::in,
-    list(ims_tuple_item(T))::in, list(ims_tuple_item(T))::out) is det.
-
-acc_ims_tuple_list_loop(_ItemMercuryStatus, [], !ImsItems).
-acc_ims_tuple_list_loop(ItemMercuryStatus, [RevItem | RevItems], !ImsItems) :-
-    !:ImsItems = [{ItemMercuryStatus, RevItem} | !.ImsItems],
-    acc_ims_tuple_list_loop(ItemMercuryStatus, RevItems, !ImsItems).
+acc_ims_tuple_list(_ItemMercuryStatus, [], !ImsItems).
+acc_ims_tuple_list(ItemMercuryStatus, [Item | Items], !ImsItems) :-
+    cord.snoc({ItemMercuryStatus, Item}, !ImsItems),
+    acc_ims_tuple_list(ItemMercuryStatus, Items, !ImsItems).
 
 %---------------------------------------------------------------------------%
 

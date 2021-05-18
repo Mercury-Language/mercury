@@ -22,12 +22,12 @@
 
 :- import_module list.
 
-:- pred module_add_inst_defn(item_inst_defn_info::in, inst_status::in,
+:- pred module_add_inst_defn(inst_status::in, item_inst_defn_info::in,
     module_info::in, module_info::out,
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred module_add_mode_defn(item_mode_defn_info::in, mode_status::in,
+:- pred module_add_mode_defn(mode_status::in, item_mode_defn_info::in,
     module_info::in, module_info::out,
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -51,7 +51,7 @@
 
 %----------------------------------------------------------------------------%
 
-module_add_inst_defn(ItemInstDefnInfo, InstStatus, !ModuleInfo,
+module_add_inst_defn(InstStatus, ItemInstDefnInfo, !ModuleInfo,
         !FoundInvalidInstOrMode, !Specs) :-
     ItemInstDefnInfo = item_inst_defn_info(InstName, InstParams, MaybeForType,
         MaybeAbstractInstDefn, VarSet, Context, _SeqNum),
@@ -222,7 +222,7 @@ should_report_duplicate_inst_or_mode(InstModeStatus) = ReportDup :-
 
 %-----------------------------------------------------------------------------%
 
-module_add_mode_defn(ItemModeDefnInfo, ModeStatus, !ModuleInfo,
+module_add_mode_defn(ModeStatus, ItemModeDefnInfo, !ModuleInfo,
         !FoundInvalidInstOrMode, !Specs) :-
     ItemModeDefnInfo = item_mode_defn_info(Name, Params, MaybeAbstractModeDefn,
         VarSet, Context, _SeqNum),

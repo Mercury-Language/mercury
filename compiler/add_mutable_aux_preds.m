@@ -396,18 +396,19 @@
 
 %---------------------------------------------------------------------------%
 
-    % If the given mutable item is local to this module, construct the
-    % predicate declarations of the auxiliary predicates it needs,
+    % For the mutable items that are local to this module, construct the
+    % predicate declarations of the auxiliary predicates they need,
     % and add them to the HLDS.
     %
-:- pred add_aux_pred_decls_for_mutable_if_local(
-    sec_item(item_mutable_info)::in, module_info::in, module_info::out,
+:- pred add_aux_pred_decls_for_mutables_if_local(
+    sec_list(item_mutable_info)::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-    % If the given mutable item is local to this module,
-    % add the definitions of its auxiliary predicates to the HLDS,
-    % add the (backend-specific) data structure holding the mutable's value
-    % to the HLDS, and arrange for this data structure to be initialized.
+    % For the mutable items local to this module, add the definitions
+    % of their auxiliary predicates to the HLDS, add the (backend-specific)
+    % data structure holding the mutables' values to the HLDS, and
+    % arrange for these data structures to be initialized.
     %
     % XXX We should do this by constructing those definitions as a set of
     % clauses, foreign_procs and foreign_export items, and adding those
@@ -416,8 +417,8 @@
     % to construct the declarations and the definitions of those aux
     % predicates at the same time.
     %
-:- pred add_aux_pred_defns_for_mutable_if_local(
-    sec_item(item_mutable_info)::in,
+:- pred add_aux_pred_defns_for_mutables_if_local(
+    sec_list(item_mutable_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -458,23 +459,77 @@
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-add_aux_pred_decls_for_mutable_if_local(SectionItem, !ModuleInfo, !Specs) :-
-    SectionItem = sec_item(SectionInfo, ItemMutable),
+add_aux_pred_decls_for_mutables_if_local([], !ModuleInfo, !Specs).
+add_aux_pred_decls_for_mutables_if_local([SecSubList | SecSubLists],
+        !ModuleInfo, !Specs) :-
+    SecSubList = sec_sub_list(SectionInfo, ItemMutables),
     SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
     (
         ItemMercuryStatus = item_defined_in_this_module(_),
-        check_mutable(ItemMutable, !.ModuleInfo, !Specs),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_aux_pred_decls_for_mutable(PredStatus, NeedQual,
-            ItemMutable, !ModuleInfo, !Specs)
+        list.foldl2(
+            check_and_add_aux_pred_decls_for_mutable(PredStatus, NeedQual),
+            ItemMutables, !ModuleInfo, !Specs)
     ;
         ItemMercuryStatus = item_defined_in_other_module(_)
         % We don't implement the `mutable' declaration unless it is defined
         % in this module. If we did not have this check, we would duplicate
         % the definition of the global variable storing the mutable
         % in any submodules of the module that actually defined the mutable.
-    ).
+    ),
+    add_aux_pred_decls_for_mutables_if_local(SecSubLists,
+        !ModuleInfo, !Specs).
+
+add_aux_pred_defns_for_mutables_if_local([], !ModuleInfo, !QualInfo, !Specs).
+add_aux_pred_defns_for_mutables_if_local([SecSubList | SecSubLists],
+        !ModuleInfo, !QualInfo, !Specs) :-
+    SecSubList = sec_sub_list(SectionInfo, ItemMutables),
+    SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
+    (
+        ItemMercuryStatus = item_defined_in_this_module(_),
+        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+        list.foldl3(
+            add_aux_pred_defns_for_mutable(PredStatus),
+            ItemMutables, !ModuleInfo, !QualInfo, !Specs)
+    ;
+        ItemMercuryStatus = item_defined_in_other_module(_)
+        % We don't implement the `mutable' declaration unless it is defined
+        % in this module. If we did not have this check, we would duplicate
+        % the definition of the global variable storing the mutable
+        % in any submodules of the module that actually defined the mutable.
+    ),
+    add_aux_pred_defns_for_mutables_if_local(SecSubLists,
+        !ModuleInfo, !QualInfo, !Specs).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred check_and_add_aux_pred_decls_for_mutable(pred_status::in,
+    need_qualifier::in, item_mutable_info::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_and_add_aux_pred_decls_for_mutable(PredStatus, NeedQual, ItemMutable,
+        !ModuleInfo, !Specs) :-
+    check_mutable(ItemMutable, !.ModuleInfo, !Specs),
+    ItemMutable = item_mutable_info(MutableName,
+        _OrigType, Type, _OrigInst, Inst,
+        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    get_mutable_target_params(Globals, MutAttrs, TargetParams),
+    PublicPredKinds = TargetParams ^ mtp_public_aux_preds,
+    PrivatePredKinds = TargetParams ^ mtp_private_aux_preds,
+    NeededPredKinds = PublicPredKinds ++ PrivatePredKinds,
+    module_info_get_name(!.ModuleInfo, ModuleName),
+    list.map(
+        make_mutable_aux_pred_decl(ModuleName, MutableName, Type, Inst,
+            Context),
+        NeededPredKinds, NeededPredDecls),
+    list.map_foldl2(
+        module_add_pred_decl(PredStatus, NeedQual),
+        NeededPredDecls, _MaybePredProcIds, !ModuleInfo, !Specs).
 
 :- pred check_mutable(item_mutable_info::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -483,7 +538,6 @@ check_mutable(ItemMutable, ModuleInfo, !Specs) :-
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, _Type, OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-
     % XXX We don't currently support the foreign_name attribute
     % for all languages.
     module_info_get_globals(ModuleInfo, Globals),
@@ -774,50 +828,11 @@ named_parent_to_pieces(InstCtor, Pieces) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred add_aux_pred_decls_for_mutable(pred_status::in, need_qualifier::in,
-    item_mutable_info::in, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_aux_pred_decls_for_mutable(PredStatus, NeedQual, ItemMutable,
-        !ModuleInfo, !Specs) :-
-    ItemMutable = item_mutable_info(MutableName,
-        _OrigType, Type, _OrigInst, Inst,
-        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    module_info_get_globals(!.ModuleInfo, Globals),
-    get_mutable_target_params(Globals, MutAttrs, TargetParams),
-    PublicPredKinds = TargetParams ^ mtp_public_aux_preds,
-    PrivatePredKinds = TargetParams ^ mtp_private_aux_preds,
-    NeededPredKinds = PublicPredKinds ++ PrivatePredKinds,
-    module_info_get_name(!.ModuleInfo, ModuleName),
-    list.map(
-        make_mutable_aux_pred_decl(ModuleName, MutableName, Type, Inst,
-            Context),
-        NeededPredKinds, NeededPredDecls),
-    list.map_foldl2(
-        module_add_pred_decl(PredStatus, NeedQual),
-        NeededPredDecls, _MaybePredProcIds, !ModuleInfo, !Specs).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-add_aux_pred_defns_for_mutable_if_local(SectionItem,
-        !ModuleInfo, !QualInfo, !Specs) :-
-    SectionItem = sec_item(SectionInfo, ItemMutable),
-    SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
-    (
-        ItemMercuryStatus = item_defined_in_this_module(_),
-        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_aux_pred_defns_for_mutable(ItemMutable, PredStatus, !ModuleInfo,
-            !QualInfo, !Specs)
-    ;
-        ItemMercuryStatus = item_defined_in_other_module(_)
-    ).
-
-:- pred add_aux_pred_defns_for_mutable(item_mutable_info::in, pred_status::in,
+:- pred add_aux_pred_defns_for_mutable(pred_status::in, item_mutable_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_aux_pred_defns_for_mutable(ItemMutable, PredStatus,
+add_aux_pred_defns_for_mutable(PredStatus, ItemMutable,
         !ModuleInfo, !QualInfo, !Specs) :-
     % The transformation here is documented in the comments at the
     % beginning of prog_mutable.m.

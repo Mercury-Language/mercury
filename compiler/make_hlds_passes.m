@@ -147,7 +147,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     %
     % The constraints of what we have to add before what are documented below.
 
-    separate_items_in_aug_comp_unit(AugCompUnit, ItemAvailLists, ItemFIMs,
+    separate_items_in_aug_comp_unit(AugCompUnit, ItemAvails, ItemFIMs,
         ItemTypeDefnsAbstract, ItemTypeDefnsMercury, ItemTypeDefnsForeign,
         ItemInstDefns, ItemModeDefns, ItemPredDecls, ItemModeDecls,
         ItemPromises, ItemTypeclasses, ItemInstances,
@@ -169,7 +169,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     !:Specs = [],
 
     % Record the import_module and use_module declarations.
-    list.foldl(add_item_avail_list, ItemAvailLists, !ModuleInfo),
+    add_item_avails(ItemAvails, !ModuleInfo),
 
     % Record type definitions.
     %
@@ -206,13 +206,16 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         % but beware: the current code of maybe_make_abstract_type_defn,
         % while usually returning abstract types, sometimes returns Mercury
         % types.
-        list.foldl5(add_type_defn, ItemTypeDefnsAbstract,
+        % XXX CLEANUP Instead of returning solver_aux_pred_infos,
+        % add_type_defns should return item_pred_decl_infos that
+        % we could add to the HLDS along with all the other pred_decls.
+        add_type_defns(ItemTypeDefnsAbstract,
             !ModuleInfo, !FoundInvalidType, !Specs,
             !SolverAuxPredInfos, !SolverItemMutables),
-        list.foldl5(add_type_defn, ItemTypeDefnsMercury,
+        add_type_defns(ItemTypeDefnsMercury,
             !ModuleInfo, !FoundInvalidType, !Specs,
             !SolverAuxPredInfos, !SolverItemMutables),
-        list.foldl5(add_type_defn, ItemTypeDefnsForeign,
+        add_type_defns(ItemTypeDefnsForeign,
             !ModuleInfo, !FoundInvalidType, !Specs,
             !SolverAuxPredInfos, !SolverItemMutables),
         SolverAuxPredInfos = !.SolverAuxPredInfos,
@@ -223,13 +226,13 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % the processing of a type-specific inst may require access not just
     % to the definition of *that* type, but of any other type that occurs
     % in its definition, either directly or indirectly.
-    list.foldl3(add_inst_defn, ItemInstDefns,
+    add_inst_defns(ItemInstDefns,
         !ModuleInfo, !FoundInvalidInstOrMode, !Specs),
 
     % Mode definitions may refer to user defined insts. Since we have already
     % seen all inst definitions, we could check whether the newly defined
     % mode refers to an undefined inst, we do not (yet) do so.
-    list.foldl3(add_mode_defn, ItemModeDefns,
+    add_mode_defns(ItemModeDefns,
         !ModuleInfo, !FoundInvalidInstOrMode, !Specs),
 
     % A predicate declaration defines the type of the arguments of a predicate,
@@ -237,7 +240,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % all type, inst and mode definitions, we could check whether the newly
     % defined predicate refers to an undefined type, inst, or mode, but
     % we do not (yet) do so.
-    list.foldl2(add_pred_decl, ItemPredDecls,
+    add_pred_decls(ItemPredDecls,
         !ModuleInfo, !Specs),
 
     % We need to process the mode declaration of a predicate
@@ -248,7 +251,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     %
     % Note that mode declarations embedded in predmode declarations
     % have already been added to the HLDS by add_pred_decl.
-    list.foldl2(add_mode_decl, ItemModeDecls,
+    add_mode_decls(ItemModeDecls,
         !ModuleInfo, !Specs),
     list.foldl2(add_solver_type_aux_pred_decls, SolverAuxPredInfos,
         !ModuleInfo, !Specs),
@@ -261,15 +264,15 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % We have to do this after we add types and insts to the HLDS,
     % so we can check the types and insts in the mutable for validity.
     % XXX Currently, we check only the inst for validity.
-    list.foldl2(add_aux_pred_decls_for_mutable_if_local, ItemMutables,
+    add_aux_pred_decls_for_mutables_if_local(ItemMutables,
         !ModuleInfo, !Specs),
-    list.foldl2(add_aux_pred_decls_for_mutable_if_local, SolverItemMutables,
+    add_aux_pred_decls_for_mutables_if_local(SolverItemMutables,
         !ModuleInfo, !Specs),
 
     % Record the definitions of typeclasses.
     % This will add the pred and mode declarations of the methods inside them
     % to the HLDS.
-    list.foldl2(add_typeclass_defn, ItemTypeclasses,
+    add_typeclass_defns(ItemTypeclasses,
         !ModuleInfo, !Specs),
 
     % The old pass 2.
@@ -281,11 +284,11 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % adds that implicit mode declaration in such circumstances.
     % XXX It should also generate error messages for PREDICATES that have
     % no mode declaration.
-    list.foldl(maybe_add_default_mode, ItemPredDecls,
+    maybe_add_default_modes(ItemPredDecls,
         !ModuleInfo),
 
     % Record instance definitions.
-    list.foldl2(add_instance_defn, ItemInstances,
+    add_instance_defns(ItemInstances,
         !ModuleInfo, !Specs),
 
     % Implement several kinds of pragmas, the ones in the subtype
@@ -342,7 +345,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     init_qual_info(MQInfo0, TypeEqvMap, !:QualInfo),
 
     % Add clauses to their predicates.
-    list.foldl3(add_clause, ItemClauses,
+    add_clauses(ItemClauses,
         !ModuleInfo, !QualInfo, !Specs),
 
     % Remember attempts to define predicates in the interface.
@@ -353,13 +356,11 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     list.foldl3(add_solver_type_aux_pred_defns_if_local,
         SolverAuxPredInfos,
         !ModuleInfo, !QualInfo, !Specs),
-    list.foldl3(add_aux_pred_defns_for_mutable_if_local,
-        ItemMutables,
+    add_aux_pred_defns_for_mutables_if_local(ItemMutables,
         !ModuleInfo, !QualInfo, !Specs),
-    list.foldl3(add_aux_pred_defns_for_mutable_if_local,
-        SolverItemMutables,
+    add_aux_pred_defns_for_mutables_if_local(SolverItemMutables,
         !ModuleInfo, !QualInfo, !Specs),
-    list.foldl3(add_promise, ItemPromises,
+    add_promises(ItemPromises,
         !ModuleInfo, !QualInfo, !Specs),
 
     % Check that the predicates listed in `:- initialise' and `:- finalise'
@@ -367,9 +368,9 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % pragma foreign_export declarations for them and record their exported
     % names in the module_info, so that we can generate code to call them
     % at initialisation/finalisation time.
-    list.foldl2(add_initialise, ItemInitialises,
+    add_initialises(ItemInitialises,
         !ModuleInfo, !Specs),
-    list.foldl2(add_finalise, ItemFinalises,
+    add_finalises(ItemFinalises,
         !ModuleInfo, !Specs),
 
     % Implement all pragmas.
@@ -399,17 +400,17 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % This times does have to be after we have processed all predicate
     % and mode declarations, since several pragmas do refer to predicates
     % or to modes of predicates.
-    list.foldl3(add_decl_pragma, ItemPragmasDecl,
+    add_decl_pragmas(ItemPragmasDecl,
         !ModuleInfo, !QualInfo, !Specs),
 
     % We want to process tabled pragmas *after* any inline pragmas
     % (which are also impl pragmas), so that we can detect and report
     % the problem if a predicate or function has both an inline pragma
     % and a tabled pragma.
-    list.foldl4(add_impl_pragma, ItemPragmasImpl, [], RevItemPragmasTabled,
+    add_impl_pragmas(ItemPragmasImpl, [], RevItemPragmasTabled,
         !ModuleInfo, !QualInfo, !Specs),
     list.reverse(RevItemPragmasTabled, ItemPragmasTabled),
-    list.foldl3(add_impl_pragma_tabled, ItemPragmasTabled,
+    add_impl_pragmas_tabled(ItemPragmasTabled,
         !ModuleInfo, !QualInfo, !Specs),
 
     list.foldl2(add_gen_pragma, PragmasGen,
@@ -420,8 +421,8 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % We can do this only after we have processed every predicate declaration,
     % as well as everything that affects either the type table or the
     % constructor table.
-    list.foldl(check_pred_if_field_access_function(!.ModuleInfo),
-        ItemPredDecls, !Specs),
+    check_preds_if_field_access_function(!.ModuleInfo, ItemPredDecls,
+        !Specs),
 
     map.foldl(add_version_numbers, ModuleVersionNumbers, !QualInfo),
 
@@ -476,12 +477,14 @@ add_builtin_type_ctor_special_preds_in_builtin_module(TypeCtor, !ModuleInfo) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred add_item_avail_list(ims_item(list(item_avail))::in,
+:- pred add_item_avails(ims_list(item_avail)::in,
     module_info::in, module_info::out) is det.
 
-add_item_avail_list(StatusItem, !ModuleInfo) :-
-    StatusItem = ims_item(ItemMercuryStatus, Avails),
-    list.foldl(add_item_avail(ItemMercuryStatus), Avails, !ModuleInfo).
+add_item_avails([], !ModuleInfo).
+add_item_avails([ImsList | ImsLists], !ModuleInfo) :-
+    ImsList = ims_sub_list(ItemMercuryStatus, Avails),
+    list.foldl(add_item_avail(ItemMercuryStatus), Avails, !ModuleInfo),
+    add_item_avails(ImsLists, !ModuleInfo).
 
 :- pred add_item_avail(item_mercury_status::in, item_avail::in,
     module_info::in, module_info::out) is det.
@@ -563,16 +566,36 @@ add_item_avail(ItemMercuryStatus, Avail, !ModuleInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred add_type_defn(sec_item(item_type_defn_info)::in,
+:- pred add_type_defns(sec_list(item_type_defn_info)::in,
     module_info::in, module_info::out,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out,
     list(solver_aux_pred_info)::in, list(solver_aux_pred_info)::out,
     sec_list(item_mutable_info)::in, sec_list(item_mutable_info)::out) is det.
 
-add_type_defn(SectionItem, !ModuleInfo, !FoundInvalidType, !Specs,
+add_type_defns([], !ModuleInfo, !FoundInvalidType,
+        !Specs, !SolverAuxPredInfos, !SectionMutableItems).
+add_type_defns([SecList | SecLists], !ModuleInfo, !FoundInvalidType,
+        !Specs, !SolverAuxPredInfos, !SectionMutableItems) :-
+    SecList = sec_sub_list(SectionInfo, TypeDefns),
+    SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
+    item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
+    list.foldl5(add_type_defn(SectionInfo, TypeStatus), TypeDefns,
+        !ModuleInfo, !FoundInvalidType, !Specs,
+        !SolverAuxPredInfos, !SectionMutableItems),
+    add_type_defns(SecLists, !ModuleInfo, !FoundInvalidType,
+        !Specs, !SolverAuxPredInfos, !SectionMutableItems).
+
+:- pred add_type_defn(sec_info::in, type_status::in, item_type_defn_info::in,
+    module_info::in, module_info::out,
+    found_invalid_type::in, found_invalid_type::out,
+    list(error_spec)::in, list(error_spec)::out,
+    list(solver_aux_pred_info)::in, list(solver_aux_pred_info)::out,
+    sec_list(item_mutable_info)::in, sec_list(item_mutable_info)::out) is det.
+
+add_type_defn(SectionInfo, TypeStatus, ItemTypeDefnInfo,
+        !ModuleInfo, !FoundInvalidType, !Specs,
         !SolverAuxPredInfos, !SectionMutableItems) :-
-    SectionItem = sec_item(SectionInfo, ItemTypeDefnInfo),
     SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
     ItemTypeDefnInfo = item_type_defn_info(SymName, TypeParams, TypeDefn,
         TypeVarSet, Context, _SeqNum),
@@ -596,10 +619,8 @@ add_type_defn(SectionItem, !ModuleInfo, !FoundInvalidType, !Specs,
         !:SolverAuxPredInfos = [SolverAuxPredInfo | !.SolverAuxPredInfos],
 
         MutableItems = SolverTypeDetails ^ std_mutable_items,
-        list.map(wrap_with_section_info(SectionInfo), MutableItems,
-            TypeSectionMutableItems),
-        !:SectionMutableItems =
-            TypeSectionMutableItems ++ !.SectionMutableItems
+        MutableList = sec_sub_list(SectionInfo, MutableItems),
+        !:SectionMutableItems = [MutableList | !.SectionMutableItems]
     ;
         ( TypeDefn = parse_tree_du_type(_)
         ; TypeDefn = parse_tree_eqv_type(_)
@@ -607,48 +628,68 @@ add_type_defn(SectionItem, !ModuleInfo, !FoundInvalidType, !Specs,
         ; TypeDefn = parse_tree_foreign_type(_)
         )
     ),
-    item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
     module_add_type_defn(TypeStatus, NeedQual, ItemTypeDefnInfo,
         !ModuleInfo, !FoundInvalidType, !Specs).
 
 %---------------------------------------------------------------------------%
 
-:- pred add_inst_defn(ims_item(item_inst_defn_info)::in,
+:- pred add_inst_defns(ims_list(item_inst_defn_info)::in,
     module_info::in, module_info::out,
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_inst_defn(StatusItem, !ModuleInfo, !FoundInvalidInstOrMode, !Specs) :-
-    StatusItem = ims_item(ItemMercuryStatus, ItemInstDefnInfo),
+add_inst_defns([], !ModuleInfo, !FoundInvalidInstOrMode, !Specs).
+add_inst_defns([ImsSubList | ImsSubLists],
+        !ModuleInfo, !FoundInvalidInstOrMode, !Specs) :-
+    ImsSubList = ims_sub_list(ItemMercuryStatus, InstDefns),
     item_mercury_status_to_inst_status(ItemMercuryStatus, InstStatus),
-    module_add_inst_defn(ItemInstDefnInfo, InstStatus,
+    list.foldl3(module_add_inst_defn(InstStatus), InstDefns,
+        !ModuleInfo, !FoundInvalidInstOrMode, !Specs),
+    add_inst_defns(ImsSubLists,
         !ModuleInfo, !FoundInvalidInstOrMode, !Specs).
 
 %---------------------------------------------------------------------------%
 
-:- pred add_mode_defn(ims_item(item_mode_defn_info)::in,
+:- pred add_mode_defns(ims_list(item_mode_defn_info)::in,
     module_info::in, module_info::out,
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_mode_defn(StatusItem, !ModuleInfo, !FoundInvalidInstOrMode, !Specs) :-
-    StatusItem = ims_item(ItemMercuryStatus, ItemModeDefnInfo),
+add_mode_defns([], !ModuleInfo, !FoundInvalidInstOrMode, !Specs).
+add_mode_defns([ImsSubList | ImsSubLists],
+        !ModuleInfo, !FoundInvalidInstOrMode, !Specs) :-
+    ImsSubList = ims_sub_list(ItemMercuryStatus, ModeDefns),
     item_mercury_status_to_mode_status(ItemMercuryStatus, ModeStatus),
-    module_add_mode_defn(ItemModeDefnInfo, ModeStatus,
+    list.foldl3(module_add_mode_defn(ModeStatus), ModeDefns,
+        !ModuleInfo, !FoundInvalidInstOrMode, !Specs),
+    add_mode_defns(ImsSubLists,
         !ModuleInfo, !FoundInvalidInstOrMode, !Specs).
 
 %---------------------------------------------------------------------------%
 
-:- pred add_pred_decl(sec_item(item_pred_decl_info)::in,
+:- pred add_pred_decls(sec_list(item_pred_decl_info)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pred_decl(SectionItem, !ModuleInfo, !Specs) :-
-    SectionItem = sec_item(SectionInfo, ItemPredDecl),
+add_pred_decls([], !ModuleInfo, !Specs).
+add_pred_decls([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
+    SecSubList = sec_sub_list(SectionInfo, PredDecls),
+    SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
+    item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+    list.foldl2(add_pred_decl(PredStatus, NeedQual), PredDecls,
+        !ModuleInfo, !Specs),
+    add_pred_decls(SecSubLists, !ModuleInfo, !Specs).
+
+:- pred add_pred_decl(pred_status::in, need_qualifier::in,
+    item_pred_decl_info::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pred_decl(PredStatus, NeedQual, ItemPredDecl, !ModuleInfo, !Specs) :-
     ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, _TypesAndModes,
         _WithType, _WithInst, _MaybeDetism, _Origin, _TypeVarSet, _InstVarSet,
         _ExistQVars, _Purity, _ClassContext, Context, _SeqNum),
     PredName = unqualify_name(PredSymName),
+    % XXX CLEANUP move this test to module_add_pred_decl?
     ( if PredName = "" then
         Pieces = [words("Error: you cannot declare a"),
             words(pred_or_func_to_full_str(PredOrFunc)),
@@ -657,24 +698,33 @@ add_pred_decl(SectionItem, !ModuleInfo, !Specs) :-
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
-        SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
-        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         module_add_pred_decl(PredStatus, NeedQual, ItemPredDecl,
             _MaybePredProcId, !ModuleInfo, !Specs)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred add_mode_decl(ims_item(item_mode_decl_info)::in,
+:- pred add_mode_decls(ims_list(item_mode_decl_info)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_mode_decl(StatusItem, !ModuleInfo, !Specs) :-
-    StatusItem = ims_item(ItemMercuryStatus, ItemModeDecl),
+add_mode_decls([], !ModuleInfo, !Specs).
+add_mode_decls([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
+    SecSubList = ims_sub_list(ItemMercuryStatus, ModeDecls),
+    item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+    list.foldl2(add_mode_decl(yes(ItemMercuryStatus), PredStatus), ModeDecls,
+        !ModuleInfo, !Specs),
+    add_mode_decls(SecSubLists, !ModuleInfo, !Specs).
+
+:- pred add_mode_decl(maybe(item_mercury_status)::in, pred_status::in,
+    item_mode_decl_info::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_mode_decl(MaybeIMS, PredStatus, ItemModeDecl, !ModuleInfo, !Specs) :-
     ItemModeDecl = item_mode_decl_info(PredSymName, MaybePredOrFunc, Modes,
         _WithInst, MaybeDet, VarSet, Context, SeqNum),
-
     PredName = unqualify_name(PredSymName),
+    % XXX CLEANUP move this test to module_add_mode?
     ( if PredName = "" then
         Pieces = [words("Error: you cannot declare a mode"),
             words("for a predicate whose name is a variable."), nl],
@@ -684,29 +734,35 @@ add_mode_decl(StatusItem, !ModuleInfo, !Specs) :-
     else
         (
             MaybePredOrFunc = yes(PredOrFunc),
-            item_mercury_status_to_pred_status(ItemMercuryStatus, ModeStatus),
-            module_add_mode(Context, SeqNum,
-                yes(ItemMercuryStatus), ModeStatus,
+            module_add_mode(Context, SeqNum, MaybeIMS, PredStatus,
                 PredOrFunc, PredSymName, VarSet, Modes, MaybeDet,
                 is_not_a_class_method, _, !ModuleInfo, !Specs)
         ;
             MaybePredOrFunc = no,
             % equiv_type.m should have either set the pred_or_func
             % or removed the item from the parse tree.
+            % XXX CLEANUP move this test to module_add_mode?
             unexpected($pred, "no pred_or_func on mode declaration")
         )
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_add_default_mode(sec_item(item_pred_decl_info)::in,
+:- pred maybe_add_default_modes(sec_list(item_pred_decl_info)::in,
     module_info::in, module_info::out) is det.
 
-maybe_add_default_mode(SectionItem, !ModuleInfo) :-
-    SectionItem = sec_item(_SectionInfo, ItemPredDecl),
+maybe_add_default_modes([], !ModuleInfo).
+maybe_add_default_modes([SecSubList | SecSubLists], !ModuleInfo) :-
+    SecSubList = sec_sub_list(_SectionInfo, Items),
+    list.foldl(maybe_add_default_mode, Items, !ModuleInfo),
+    maybe_add_default_modes(SecSubLists, !ModuleInfo).
+
+:- pred maybe_add_default_mode(item_pred_decl_info::in,
+    module_info::in, module_info::out) is det.
+
+maybe_add_default_mode(ItemPredDecl, !ModuleInfo) :-
     ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
         _, _, _, _, _, _, _, _, _, _, _),
-
     % Add default modes for function declarations, if necessary.
     PredName = unqualify_name(PredSymName),
     ( if PredName = "" then
@@ -739,12 +795,23 @@ maybe_add_default_mode(SectionItem, !ModuleInfo) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred add_clause(ims_item(item_clause_info)::in,
+:- pred add_clauses(ims_list(item_clause_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_clause(StatusItem, !ModuleInfo, !QualInfo, !Specs) :-
-    StatusItem = ims_item(ItemMercuryStatus, ItemClauseInfo),
+add_clauses([], !ModuleInfo, !QualInfo, !Specs).
+add_clauses([ImsList | ImsLists], !ModuleInfo, !QualInfo, !Specs) :-
+    ImsList = ims_sub_list(ItemMercuryStatus, Items),
+    list.foldl3(add_clause(ItemMercuryStatus), Items,
+        !ModuleInfo, !QualInfo, !Specs),
+    add_clauses(ImsLists, !ModuleInfo, !QualInfo, !Specs).
+
+:- pred add_clause(item_mercury_status::in, item_clause_info::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_clause(ItemMercuryStatus, ItemClauseInfo,
+        !ModuleInfo, !QualInfo, !Specs) :-
     ItemClauseInfo = item_clause_info(PredSymName, PredOrFunc, Args, _Origin,
         VarSet, MaybeBodyGoal, Context, SeqNum),
     % At this stage we only need know that it is not a promise declaration.
@@ -756,12 +823,23 @@ add_clause(StatusItem, !ModuleInfo, !QualInfo, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred add_promise(ims_item(item_promise_info)::in,
+:- pred add_promises(ims_list(item_promise_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_promise(StatusItem, !ModuleInfo, !QualInfo, !Specs) :-
-    StatusItem = ims_item(ItemMercuryStatus, ItemPromiseInfo),
+add_promises([], !ModuleInfo, !QualInfo, !Specs).
+add_promises([ImsList | ImsLists], !ModuleInfo, !QualInfo, !Specs) :-
+    ImsList = ims_sub_list(ItemMercuryStatus, Items),
+    list.foldl3(add_promise(ItemMercuryStatus), Items,
+        !ModuleInfo, !QualInfo, !Specs),
+    add_promises(ImsLists, !ModuleInfo, !QualInfo, !Specs).
+
+:- pred add_promise(item_mercury_status::in, item_promise_info::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_promise(ItemMercuryStatus, ItemPromiseInfo,
+        !ModuleInfo, !QualInfo, !Specs) :-
     ItemPromiseInfo = item_promise_info(PromiseType, Goal, VarSet, UnivVars,
         Context, _SeqNum),
     % If the outermost universally quantified variables are placed in the head
@@ -819,12 +897,21 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
 
 %---------------------------------------------------------------------------%
 
-:- pred add_initialise(ims_item(item_initialise_info)::in,
+:- pred add_initialises(ims_list(item_initialise_info)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_initialise(StatusItem, !ModuleInfo, !Specs) :-
-    StatusItem = ims_item(ItemMercuryStatus, ItemInitialise),
+add_initialises([], !ModuleInfo, !Specs).
+add_initialises([ImsList | ImsLists], !ModuleInfo, !Specs) :-
+    ImsList = ims_sub_list(ItemMercuryStatus, Items),
+    list.foldl2(add_initialise(ItemMercuryStatus), Items, !ModuleInfo, !Specs),
+    add_initialises(ImsLists, !ModuleInfo, !Specs).
+
+:- pred add_initialise(item_mercury_status::in, item_initialise_info::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_initialise(ItemMercuryStatus, ItemInitialise, !ModuleInfo, !Specs) :-
     ItemInitialise = item_initialise_info(SymName, Arity, Origin, Context,
         _SeqNum),
     (
@@ -843,12 +930,21 @@ add_initialise(StatusItem, !ModuleInfo, !Specs) :-
         % but we should NOT implement it.
     ).
 
-:- pred add_finalise(ims_item(item_finalise_info)::in,
+:- pred add_finalises(ims_list(item_finalise_info)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_finalise(StatusItem, !ModuleInfo, !Specs) :-
-    StatusItem = ims_item(ItemMercuryStatus, ItemFinaliseInfo),
+add_finalises([], !ModuleInfo, !Specs).
+add_finalises([ImsList | ImsLists], !ModuleInfo, !Specs) :-
+    ImsList = ims_sub_list(ItemMercuryStatus, Items),
+    list.foldl2(add_finalise(ItemMercuryStatus), Items, !ModuleInfo, !Specs),
+    add_finalises(ImsLists, !ModuleInfo, !Specs).
+
+:- pred add_finalise(item_mercury_status::in, item_finalise_info::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_finalise(ItemMercuryStatus, ItemFinaliseInfo, !ModuleInfo, !Specs) :-
     ItemFinaliseInfo = item_finalise_info(SymName, Arity, Origin, Context,
         _SeqNum),
     (

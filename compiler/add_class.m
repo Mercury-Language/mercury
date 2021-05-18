@@ -21,11 +21,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_typeclass_defn(sec_item(item_typeclass_info)::in,
+:- pred add_typeclass_defns(sec_list(item_typeclass_info)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_instance_defn(ims_item(item_instance_info)::in,
+:- pred add_instance_defns(ims_list(item_instance_info)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -72,12 +72,36 @@
 :- import_module set.
 :- import_module varset.
 
-add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
-    SectionItem = sec_item(SectionInfo, ItemTypeClassInfo),
+%-----------------------------------------------------------------------------%
+
+add_typeclass_defns([], !ModuleInfo, !Specs).
+add_typeclass_defns([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
+    SecSubList = sec_sub_list(SectionInfo, Items), 
     SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
     item_mercury_status_to_typeclass_status(ItemMercuryStatus,
         TypeClassStatus0),
+    list.foldl2(
+        add_typeclass_defn(yes(ItemMercuryStatus), TypeClassStatus0, NeedQual),
+        Items, !ModuleInfo, !Specs),
+    add_typeclass_defns(SecSubLists, !ModuleInfo, !Specs).
 
+add_instance_defns([], !ModuleInfo, !Specs).
+add_instance_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
+    ImsSubList = ims_sub_list(ItemMercuryStatus, Items),
+    item_mercury_status_to_instance_status(ItemMercuryStatus, InstanceStatus0),
+    list.foldl2(add_instance_defn(InstanceStatus0), Items,
+        !ModuleInfo, !Specs),
+    add_instance_defns(ImsSubLists, !ModuleInfo, !Specs).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_typeclass_defn(maybe(item_mercury_status)::in,
+    typeclass_status::in, need_qualifier::in, item_typeclass_info::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_typeclass_defn(MaybeIMS, TypeClassStatus0, NeedQual, ItemTypeClassInfo,
+        !ModuleInfo, !Specs) :-
     ItemTypeClassInfo = item_typeclass_info(ClassName, ClassParamVars,
         Constraints, FunDeps, Interface, VarSet, Context, _SeqNum),
     module_info_get_class_table(!.ModuleInfo, ClassTable0),
@@ -173,7 +197,7 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
         (
             Interface = class_interface_concrete(ClassDecls),
             module_add_class_interface(ClassName, ClassParamVars,
-                TypeClassStatus, yes(ItemMercuryStatus), NeedQual,
+                TypeClassStatus, MaybeIMS, NeedQual,
                 ClassDecls, ClassMethodPredProcIds, !ModuleInfo, !Specs)
         ;
             Interface = class_interface_abstract,
@@ -455,12 +479,14 @@ handle_no_mode_decl(PredOrFuncInfo, !PredProcIds, !ModuleInfo, !Specs) :-
 
 %-----------------------------------------------------------------------------%
 
-add_instance_defn(StatusItem, !ModuleInfo, !Specs) :-
-    StatusItem = ims_item(ItemMercuryStatus, ItemInstanceInfo),
+:- pred add_instance_defn(instance_status::in, item_instance_info::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_instance_defn(InstanceStatus0, ItemInstanceInfo, !ModuleInfo, !Specs) :-
     ItemInstanceInfo = item_instance_info(ClassName, Types, OriginalTypes,
         Constraints, InstanceBody0, VarSet, InstanceModuleName,
         Context, _SeqNum),
-    item_mercury_status_to_instance_status(ItemMercuryStatus, InstanceStatus0),
     (
         InstanceBody0 = instance_body_abstract,
         % XXX This can make the status abstract_imported even if the instance

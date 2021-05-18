@@ -82,8 +82,8 @@
     list(prog_var)::in, pred_status::in, prog_context::in, pred_id::out)
     is det.
 
-:- pred check_pred_if_field_access_function(module_info::in,
-    sec_item(item_pred_decl_info)::in,
+:- pred check_preds_if_field_access_function(module_info::in,
+    sec_list(item_pred_decl_info)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -941,9 +941,22 @@ preds_do_add_implicit(ModuleName, PredSymName, PredArity, PredOrFunc,
 
 %---------------------------------------------------------------------------%
 
-check_pred_if_field_access_function(ModuleInfo, SectionItem, !Specs) :-
-    SectionItem = sec_item(SectionInfo, ItemPredDecl),
+check_preds_if_field_access_function(_ModuleInfo, [], !Specs).
+check_preds_if_field_access_function(ModuleInfo, [SecList | SecLists],
+        !Specs) :-
+    SecList = sec_sub_list(SectionInfo, ItemPredSecls),
     SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
+    item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+    list.foldl(check_pred_if_field_access_function(ModuleInfo, PredStatus),
+        ItemPredSecls, !Specs),
+    check_preds_if_field_access_function(ModuleInfo, SecLists, !Specs).
+
+:- pred check_pred_if_field_access_function(module_info::in, pred_status::in,
+    item_pred_decl_info::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_pred_if_field_access_function(ModuleInfo, PredStatus, ItemPredDecl,
+        !Specs) :-
     ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc, TypesAndModes,
         _, _, _, _, _, _, _, _, _, Context, _SeqNum),
     (
@@ -952,7 +965,6 @@ check_pred_if_field_access_function(ModuleInfo, SectionItem, !Specs) :-
         PredOrFunc = pf_function,
         list.length(TypesAndModes, PredArity),
         adjust_func_arity(pf_function, FuncArity, PredArity),
-        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         maybe_check_field_access_function(ModuleInfo, SymName, FuncArity,
             PredStatus, Context, !Specs)
     ).

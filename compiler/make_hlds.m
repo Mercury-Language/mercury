@@ -56,13 +56,13 @@
     --->    did_not_find_invalid_inst_or_mode
     ;       found_invalid_inst_or_mode.
 
-:- type ims_list(T) == list(ims_item(T)).
-:- type ims_item(T)
-    --->    ims_item(item_mercury_status, T).
+:- type ims_list(T) == list(ims_sub_list(T)).
+:- type ims_sub_list(T)
+    --->    ims_sub_list(item_mercury_status, list(T)).
 
-:- type sec_list(T) == list(sec_item(T)).
-:- type sec_item(T)
-    --->    sec_item(sec_info, T).
+:- type sec_list(T) == list(sec_sub_list(T)).
+:- type sec_sub_list(T)
+    --->    sec_sub_list(sec_info, list(T)).
 :- type sec_info
     --->    sec_info(
                 % The status of the items defined in the section.
@@ -102,13 +102,6 @@
                 % implementation section.
                 need_qualifier
             ).
-
-:- inst ims_item(I) for ims_item/1
-    --->    ims_item(ground, I).
-:- inst sec_item(I) for sec_item/1
-    --->    sec_item(ground, I).
-
-:- pred wrap_with_section_info(sec_info::in, T::in, sec_item(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -175,9 +168,6 @@
 %-----------------------------------------------------------------------------%
 
 :- type make_hlds_qual_info == hlds.make_hlds.qual_info.qual_info.
-
-wrap_with_section_info(SectionInfo, Item, SectionItem) :-
-    SectionItem = sec_item(SectionInfo, Item).
 
 %-----------------------------------------------------------------------------%
 
