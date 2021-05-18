@@ -708,7 +708,6 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         unexpected($pred, "no pred_or_func on mode declaration")
     ),
     PredName = unqualify_name(PredSymName),
-    % XXX CLEANUP move this test to module_add_mode?
     ( if PredName = "" then
         % This dummy PredProcId won't be used due to the error.
         PredProcId = proc(invalid_pred_id, invalid_proc_id),
