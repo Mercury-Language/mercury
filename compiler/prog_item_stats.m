@@ -232,7 +232,7 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
         Item = item_clause(ItemClauseInfo),
         !ItemStats ^ item_num_clauses := !.ItemStats ^ item_num_clauses + 1,
 
-        ItemClauseInfo = item_clause_info(_, _, _, _, _, MaybeGoal, _, _),
+        ItemClauseInfo = item_clause_info(_, _, _, _, MaybeGoal, _, _),
         (
             MaybeGoal = ok2(Goal, _GoalWarningSpecs),
             gather_stats_in_goal(Goal, !GoalStats)

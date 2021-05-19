@@ -1310,10 +1310,9 @@
 
 :- type item_clause_info
     --->    item_clause_info(
-                cl_predname                     :: sym_name,
                 cl_pred_or_func                 :: pred_or_func,
+                cl_predname                     :: sym_name,
                 cl_head_args                    :: list(prog_term),
-                cl_maybe_attrs                  :: item_maybe_attrs,
                 cl_varset                       :: prog_varset,
                 cl_body                         :: maybe2(goal,
                                                     list(warning_spec)),

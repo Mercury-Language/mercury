@@ -883,7 +883,7 @@ parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
     ),
 
     (
-        MaybeFunctor = ok2(Name, ArgTerms0),
+        MaybeFunctor = ok2(SymName, ArgTerms0),
         (
             MaybeFuncResultTerm = yes(FuncResultTerm),
             PredOrFunc = pf_function,
@@ -894,8 +894,8 @@ parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
             ArgTerms = ArgTerms0
         ),
         list.map(term.coerce, ArgTerms, ProgArgTerms),
-        ItemClause = item_clause_info(Name, PredOrFunc, ProgArgTerms,
-            item_origin_user, ProgVarSet, MaybeBodyGoal, Context, SeqNum),
+        ItemClause = item_clause_info(PredOrFunc, SymName, ProgArgTerms,
+            ProgVarSet, MaybeBodyGoal, Context, SeqNum),
         Item = item_clause(ItemClause),
         MaybeIOM = ok1(iom_item(Item))
     ;

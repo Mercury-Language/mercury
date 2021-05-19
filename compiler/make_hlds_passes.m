@@ -763,7 +763,7 @@ add_clauses([ImsList | ImsLists], !ModuleInfo, !QualInfo, !Specs) :-
 
 add_clause(ItemMercuryStatus, ItemClauseInfo,
         !ModuleInfo, !QualInfo, !Specs) :-
-    ItemClauseInfo = item_clause_info(PredSymName, PredOrFunc, Args, _Origin,
+    ItemClauseInfo = item_clause_info(PredOrFunc, PredSymName, Args,
         VarSet, MaybeBodyGoal, Context, SeqNum),
     % At this stage we only need know that it is not a promise declaration.
     GoalType = goal_type_none,

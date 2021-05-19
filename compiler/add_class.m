@@ -752,8 +752,8 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
 produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
         InstanceClause, TVarSet0, TVarSet, !ModuleInfo, !QualInfo,
         !ClausesInfo, !Specs) :-
-    InstanceClause = item_clause_info(PredName, ClausePredOrFunc, HeadTerms0,
-        _Origin, CVarSet, MaybeBodyGoal, _ClauseContext, _SeqNum),
+    InstanceClause = item_clause_info(ClausePredOrFunc, PredName, HeadTerms0,
+        CVarSet, MaybeBodyGoal, _ClauseContext, _SeqNum),
     % XXX Can this ever fail? If yes, we should generate an error message
     % instead of aborting.
     expect(unify(PredOrFunc, ClausePredOrFunc), $pred, "PredOrFunc mismatch"),

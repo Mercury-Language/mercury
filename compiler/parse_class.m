@@ -731,8 +731,8 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
                 IOM = iom_item(Item),
                 Item = item_clause(ItemClause)
             then
-                ItemClause = item_clause_info(ClassMethodName, PredOrFunc,
-                    HeadArgs, _Origin, _VarSet, _ClauseBody, Context, _SeqNum),
+                ItemClause = item_clause_info(PredOrFunc, ClassMethodName,
+                    HeadArgs, _VarSet, _ClauseBody, Context, _SeqNum),
                 adjust_func_arity(PredOrFunc, ArityInt, list.length(HeadArgs)),
                 InstanceMethod = instance_method(PredOrFunc, ClassMethodName,
                     instance_proc_def_clauses([ItemClause]), ArityInt,

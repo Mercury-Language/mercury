@@ -1010,14 +1010,13 @@ are_items_changed([Section1 - Item1 | Items1], [Section2 - Item2 | Items2],
 is_item_changed(Item1, Item2, Changed) :-
     (
         Item1 = item_clause(ItemClause1),
-        ItemClause1 = item_clause_info(_, _, PorF, SymName, Args, Goal, _, _),
+        ItemClause1 = item_clause_info(PorF, SymName, Args, _, Goal, _, _),
         % XXX Need to compare the goals properly in clauses and assertions.
         % That is not necessary at the moment because smart recompilation
         % doesn't work with inter-module optimization yet.
         ( if
             Item2 = item_clause(ItemClause2),
-            ItemClause2 =
-                item_clause_info(_, _, PorF, SymName, Args, Goal, _, _)
+            ItemClause2 = item_clause_info(PorF, SymName, Args, _, Goal, _, _)
         then
             Changed = unchanged
         else

@@ -475,11 +475,11 @@ expand_bang_state_pairs_in_method(IM0, IM) :-
     item_clause_info::out) is det.
 
 expand_bang_state_pairs_in_clause(ItemClause0, ItemClause) :-
-    ItemClause0 = item_clause_info(SymName, PredOrFunc, Args0, Origin, VarSet,
-        Body, Context, SeqNum),
+    ItemClause0 = item_clause_info(PredOrFunc, SymName, Args0, VarSet,
+        MaybeBody, Context, SeqNum),
     expand_bang_state_pairs_in_terms(Args0, Args),
-    ItemClause = item_clause_info(SymName, PredOrFunc, Args, Origin, VarSet,
-        Body, Context, SeqNum).
+    ItemClause = item_clause_info(PredOrFunc, SymName, Args, VarSet,
+        MaybeBody, Context, SeqNum).
 
 %-----------------------------------------------------------------------------%
 %

@@ -2400,8 +2400,8 @@ classify_src_items_int([Item | Items],
         !:RevModeDecls = [ItemModeDeclInfo | !.RevModeDecls]
     ;
         Item = item_clause(ItemClauseInfo),
-        ItemClauseInfo = item_clause_info(PredSymName, PredOrFunc,
-            ArgTerms, _MaybeAttrs, _VarSet, _Body, Context, _SeqNum),
+        ItemClauseInfo = item_clause_info(PredOrFunc, PredSymName, ArgTerms,
+            _VarSet, _Body, Context, _SeqNum),
         list.length(ArgTerms, Arity),
         % There is no point printing out the qualified name
         % since the module name is implicit in the context.

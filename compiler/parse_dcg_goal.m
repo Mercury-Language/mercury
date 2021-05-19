@@ -78,13 +78,13 @@ parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, Context, SeqNum,
     parse_implicitly_qualified_sym_name_and_args(ModuleName, DCG_Head,
         VarSet0, HeadContextPieces, MaybeFunctor),
     (
-        MaybeFunctor = ok2(Name, ArgTerms0),
+        MaybeFunctor = ok2(SymName, ArgTerms0),
         list.map(term.coerce, ArgTerms0, ArgTerms1),
         ArgTerms = ArgTerms1 ++
             [term.variable(DCGVar0, Context),
             term.variable(DCGVar, Context)],
-        ItemClause = item_clause_info(Name, pf_predicate, ArgTerms,
-            item_origin_user, ProgVarSet, MaybeBodyGoal, Context, SeqNum),
+        ItemClause = item_clause_info(pf_predicate, SymName, ArgTerms,
+            ProgVarSet, MaybeBodyGoal, Context, SeqNum),
         Item = item_clause(ItemClause),
         MaybeIOM = ok1(iom_item(Item))
     ;

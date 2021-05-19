@@ -705,8 +705,8 @@ acc_implicit_avail_needs_in_mutable(ItemMutableInfo,
     acc_implicit_avail_needs_in_term(InitValue, !ImplicitAvailNeeds).
 
 acc_implicit_avail_needs_in_clause(ItemClause, !ImplicitAvailNeeds) :-
-    ItemClause = item_clause_info(_PredName,_PredOrFunc, HeadTerms,
-        _Origin, _VarSet, MaybeGoal, _Context, _SeqNum),
+    ItemClause = item_clause_info(_PredOrFunc, _PredSymName, HeadTerms,
+        _VarSet, MaybeGoal, _Context, _SeqNum),
     acc_implicit_avail_needs_in_terms(HeadTerms, !ImplicitAvailNeeds),
     (
         MaybeGoal = ok2(Goal, _),

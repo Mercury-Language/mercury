@@ -71,7 +71,7 @@
 %---------------------------------------------------------------------------%
 
 mercury_output_item_clause(Info, Stream, ItemClause, !IO) :-
-    ItemClause = item_clause_info(PredName0, PredOrFunc, ArgTerms, _MaybeAttrs,
+    ItemClause = item_clause_info(PredOrFunc, PredName0, ArgTerms,
         VarSet, MaybeBodyGoal, Context, _SeqNum),
     get_clause_body_goal(MaybeBodyGoal, BodyGoal),
     maybe_unqualify_sym_name(Info, PredName0, PredName),
@@ -89,7 +89,7 @@ mercury_output_item_clause(Info, Stream, ItemClause, !IO) :-
     io.write_string(Stream, ".\n", !IO).
 
 output_instance_method_clause(MethodName, ItemClause, Stream, !IO) :-
-    ItemClause = item_clause_info(_PredName, PredOrFunc, ArgTerms, _MaybeAttrs,
+    ItemClause = item_clause_info(PredOrFunc, _PredName, ArgTerms,
         VarSet, MaybeBodyGoal, _Context, _SeqNum),
     get_clause_body_goal(MaybeBodyGoal, BodyGoal),
     (
