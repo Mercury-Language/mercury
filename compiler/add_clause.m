@@ -26,17 +26,17 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_clause(prog_varset::in, pred_or_func::in, sym_name::in,
-    list(prog_term)::in, maybe2(goal, list(warning_spec))::in,
-    pred_status::in, prog_context::in, item_seq_num::in, goal_type::in,
+:- pred module_add_clause(pred_status::in, goal_type::in, item_clause_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred clauses_info_add_clause(clause_applicable_modes::in, list(proc_id)::in,
-    prog_varset::in, tvarset::in, list(prog_term)::in, goal::in,
-    prog_context::in, item_seq_num::in, pred_status::in, pred_or_func::in,
-    arity::in, goal_type::in, hlds_goal::out, prog_varset::out, tvarset::out,
-    list(quant_warning)::out, clauses_info::in, clauses_info::out,
+    pred_status::in, goal_type::in,
+    pred_or_func::in, arity::in, list(prog_term)::in,
+    prog_context::in, item_seq_num::in, list(quant_warning)::out,
+    goal::in, hlds_goal::out,
+    prog_varset::in, prog_varset::out, tvarset::in, tvarset::out,
+    clauses_info::in, clauses_info::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -87,9 +87,10 @@
 
 %-----------------------------------------------------------------------------%
 
-module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
-        Status, Context, SeqNum, GoalType,
+module_add_clause(PredStatus, GoalType, ClauseInfo,
         !ModuleInfo, !QualInfo, !Specs) :-
+    ClauseInfo = item_clause_info(PredOrFunc, PredName, ArgTerms0,
+        ClauseVarSet, MaybeBodyGoal, Context, SeqNum),
     ( if
         illegal_state_var_func_result(PredOrFunc, ArgTerms0, SVar, SVarCtxt)
     then
@@ -116,8 +117,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
                 NameString = sym_name_to_string(PredName),
                 string.format("%s %s %s (%s).\n",
                     [s("Attempted to introduce a predicate"),
-                    s("for a promise with an identical"),
-                    s("name to an existing predicate"),
+                    s("for a promise with a name that is identical"),
+                    s("to the name to an existing predicate"),
                     s(NameString)], UnexpectedMsg),
                 unexpected($pred, UnexpectedMsg)
             else
@@ -138,38 +139,38 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
             % A promise will not have a corresponding pred declaration.
             ( if GoalType = goal_type_promise(_) then
                 HeadVars = term.term_list_to_var_list(ArgTerms),
-                preds_add_implicit_for_assertion(!ModuleInfo, ModuleName,
-                    PredName, Arity, PredOrFunc, HeadVars, Status, Context,
-                    NewPredId)
+                preds_add_implicit_for_assertion(ModuleName, PredOrFunc,
+                    PredName, Arity, HeadVars, PredStatus, Context,
+                    NewPredId, !ModuleInfo)
             else
-                preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-                    PredName, Arity, PredOrFunc, Status, is_not_a_class_method,
+                preds_add_implicit_report_error(ModuleName, PredOrFunc,
+                    PredName, Arity, PredStatus, is_not_a_class_method,
                     Context, origin_user(PredName), [words("clause")],
-                    NewPredId, !Specs)
+                    NewPredId, !ModuleInfo, !Specs)
             ),
             MaybePredId = yes(NewPredId)
         ),
         (
             MaybePredId = yes(PredId),
-            module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
-                ArgTerms, Arity, ArityAdjustment, MaybeBodyGoal,
-                Status, Context, SeqNum, GoalType, IllegalSVarResult,
-                !ModuleInfo, !QualInfo, !Specs)
+            module_add_clause_2(PredStatus, GoalType, PredId,
+                PredOrFunc, PredName, ArgTerms, Arity, ArityAdjustment,
+                ClauseVarSet, MaybeBodyGoal, Context, SeqNum,
+                IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs)
         ;
             MaybePredId = no
         )
     ).
 
-:- pred module_add_clause_2(prog_varset::in, pred_or_func::in, sym_name::in,
-    pred_id::in, list(prog_term)::in, int::in, int::in,
-    maybe2(goal, list(warning_spec))::in, pred_status::in, prog_context::in,
-    item_seq_num::in, goal_type::in, maybe({prog_var, prog_context})::in,
+:- pred module_add_clause_2(pred_status::in, goal_type::in, pred_id::in,
+    pred_or_func::in, sym_name::in, list(prog_term)::in, int::in, int::in,
+    prog_varset::in, maybe2(goal, list(warning_spec))::in, prog_context::in,
+    item_seq_num::in, maybe({prog_var, prog_context})::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
-        MaybeAnnotatedArgTerms, Arity, ArityAdjustment, MaybeBodyGoal,
-        PredStatus, Context, SeqNum, GoalType, IllegalSVarResult,
+module_add_clause_2(PredStatus, GoalType, PredId, PredOrFunc, PredName,
+        MaybeAnnotatedArgTerms, Arity, ArityAdjustment, ClauseVarSet,
+        MaybeBodyGoal, Context, SeqNum, IllegalSVarResult,
         !ModuleInfo, !QualInfo, !Specs) :-
     some [!PredInfo, !PredicateTable, !PredSpecs] (
         % Lookup the pred_info for this pred, add the clause to the
@@ -230,7 +231,7 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
                 words("To supply your own definition for a field access"),
                 words("function, for example to check the input"),
                 words("to a field update, give the field"),
-                words("of the constructor a different name.")],
+                words("of the constructor a different name."), nl],
             FieldAccessMsg = simple_msg(Context,
                 [always(FieldAccessMainPieces),
                 verbose_only(verbose_always, FieldAccessVerbosePieces)]),
@@ -287,9 +288,9 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
                     ProcIdsForThisClause, AllProcIds,
                     !ModuleInfo, !QualInfo, !Specs),
                 clauses_info_add_clause(ProcIdsForThisClause, AllProcIds,
-                    ClauseVarSet, TVarSet0, ArgTerms, BodyGoal,
-                    Context, SeqNum, PredStatus, PredOrFunc, Arity,
-                    GoalType, Goal, VarSet, TVarSet, Warnings,
+                    PredStatus, GoalType, PredOrFunc, Arity, ArgTerms,
+                    Context, SeqNum, Warnings,
+                    BodyGoal, Goal, ClauseVarSet, VarSet, TVarSet0, TVarSet,
                     Clauses0, Clauses, !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_clauses_info(Clauses, !PredInfo),
                 ( if GoalType = goal_type_promise(PromiseType) then
@@ -622,9 +623,9 @@ get_mode_annotation(VarSet, ContextPieces, MaybeAnnotatedArgTerm, ArgTerm,
         MaybeMaybeAnnotation = ok1(no)
     ).
 
-clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, ArgTerms,
-        BodyGoal, Context, SeqNum, PredStatus, PredOrFunc, Arity,
-        GoalType, Goal, VarSet, TVarSet, QuantWarnings,
+clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, GoalType,
+        PredOrFunc, Arity, ArgTerms, Context, SeqNum, QuantWarnings,
+        BodyGoal, Goal, CVarSet, VarSet, TVarSet0, TVarSet,
         !ClausesInfo, !ModuleInfo, !QualInfo, !Specs) :-
     !.ClausesInfo = clauses_info(VarSet0, TVarNameMap0,
         ExplicitVarTypes0, InferredVarTypes, HeadVars,

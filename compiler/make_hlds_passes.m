@@ -753,24 +753,12 @@ maybe_add_default_mode(ItemPredDecl, !ModuleInfo) :-
 add_clauses([], !ModuleInfo, !QualInfo, !Specs).
 add_clauses([ImsList | ImsLists], !ModuleInfo, !QualInfo, !Specs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
-    list.foldl3(add_clause(ItemMercuryStatus), Items,
-        !ModuleInfo, !QualInfo, !Specs),
-    add_clauses(ImsLists, !ModuleInfo, !QualInfo, !Specs).
-
-:- pred add_clause(item_mercury_status::in, item_clause_info::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_clause(ItemMercuryStatus, ItemClauseInfo,
-        !ModuleInfo, !QualInfo, !Specs) :-
-    ItemClauseInfo = item_clause_info(PredOrFunc, PredSymName, Args,
-        VarSet, MaybeBodyGoal, Context, SeqNum),
-    % At this stage we only need know that it is not a promise declaration.
+    % At this stage, we only need know that it is not a promise declaration.
     GoalType = goal_type_none,
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    module_add_clause(VarSet, PredOrFunc, PredSymName, Args, MaybeBodyGoal,
-        PredStatus, Context, SeqNum, GoalType,
-        !ModuleInfo, !QualInfo, !Specs).
+    list.foldl3(module_add_clause(PredStatus, GoalType), Items,
+        !ModuleInfo, !QualInfo, !Specs),
+    add_clauses(ImsLists, !ModuleInfo, !QualInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -791,40 +779,9 @@ add_promises([ImsList | ImsLists], !ModuleInfo, !QualInfo, !Specs) :-
 
 add_promise(ItemMercuryStatus, ItemPromiseInfo,
         !ModuleInfo, !QualInfo, !Specs) :-
-    ItemPromiseInfo = item_promise_info(PromiseType, Goal, VarSet, UnivVars,
-        Context, _SeqNum),
-    % If the outermost universally quantified variables are placed in the head
-    % of the dummy predicate, the typechecker will avoid warning about unbound
-    % type variables, as this implicitly adds a universal quantification of the
-    % type variables needed.
-    term.var_list_to_term_list(UnivVars, HeadVars),
-    (
-        ( PromiseType = promise_type_exclusive
-        ; PromiseType = promise_type_exhaustive
-        ; PromiseType = promise_type_exclusive_exhaustive
-        ),
-        % Extra error checking for promise ex declarations.
-        check_promise_ex_decl(UnivVars, PromiseType, Goal, Context, !Specs)
-    ;
-        PromiseType = promise_type_true
-    ),
-    % Add as dummy predicate.
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context,
-        PredStatus, !ModuleInfo, !QualInfo, !Specs).
-
-:- pred add_promise_clause(promise_type::in, list(term(prog_var_type))::in,
-    prog_varset::in, goal::in, prog_context::in, pred_status::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
-        !ModuleInfo, !QualInfo, !Specs) :-
-    term.context_line(Context, Line),
-    term.context_file(Context, File),
-    string.format("%s__%d__%s",
-        [s(prog_out.promise_to_string(PromiseType)), i(Line), s(File)], Name),
-
+    ItemPromiseInfo = item_promise_info(PromiseType, Goal, VarSet, UnivVars,
+        Context, SeqNum),
     % Promise declarations are recorded as a predicate with a goal_type
     % of goal_type_promise(X), where X is a promise_type. This allows us
     % to leverage off all the other checks in the compiler that operate
@@ -840,11 +797,39 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
     % The double underscores in the compiler-generated name would be turned
     % into module qualifications if the name were provided by the user,
     % guarding against accidental name clashes.
+    %
+    % XXX We should be testing Goal here to see if it has the form of
+    % one of the supported kinds of promises, recording it in a
+    % promise-kind-specific format if it is, and rejecting it with warning
+    % if it is not.
+    (
+        ( PromiseType = promise_type_exclusive
+        ; PromiseType = promise_type_exhaustive
+        ; PromiseType = promise_type_exclusive_exhaustive
+        ),
+        % Extra error checking for promise ex declarations.
+        check_promise_ex_decl(UnivVars, PromiseType, Goal, Context, !Specs)
+    ;
+        PromiseType = promise_type_true
+    ),
+    GoalType = goal_type_promise(PromiseType), 
 
+    term.context_line(Context, Line),
+    term.context_file(Context, File),
+    string.format("%s__%d__%s",
+        [s(prog_out.promise_to_string(PromiseType)), i(Line), s(File)], Name),
     module_info_get_name(!.ModuleInfo, ModuleName),
-    module_add_clause(VarSet, pf_predicate, qualified(ModuleName, Name),
-        HeadVars, ok2(Goal, []), Status, Context, item_no_seq_num,
-        goal_type_promise(PromiseType), !ModuleInfo, !QualInfo, !Specs).
+    PromisePredSymName = qualified(ModuleName, Name),
+
+    % If the outermost universally quantified variables are placed in the head
+    % of the dummy predicate, the typechecker will avoid warning about unbound
+    % type variables, as this implicitly adds a universal quantification of the
+    % type variables needed.
+    term.var_list_to_term_list(UnivVars, HeadVars),
+    ClauseInfo = item_clause_info(pf_predicate, PromisePredSymName, HeadVars,
+        VarSet, ok2(Goal, []), Context, SeqNum),
+    module_add_clause(PredStatus, GoalType, ClauseInfo,
+        !ModuleInfo, !QualInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 

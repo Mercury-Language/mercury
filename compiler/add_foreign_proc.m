@@ -86,11 +86,11 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
     (
         PredIds = [],
         module_info_get_name(!.ModuleInfo, ModuleName),
-        preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-            PredName, Arity, PredOrFunc, PredStatus, is_not_a_class_method,
+        preds_add_implicit_report_error(ModuleName, PredOrFunc,
+            PredName, Arity, PredStatus, is_not_a_class_method,
             Context, origin_user(PredName),
             [pragma_decl("foreign_proc"), words("declaration")],
-            PredId, !Specs)
+            PredId, !ModuleInfo, !Specs)
     ;
         PredIds = [PredId]
     ;

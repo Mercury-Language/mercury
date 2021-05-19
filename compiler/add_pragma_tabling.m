@@ -101,10 +101,10 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
             PredIds0 = [],
             module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [pragma_decl(EvalMethodStr), words("declaration")],
-            preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-                PredName, PredFormArityInt, PredOrFunc, PredStatus,
+            preds_add_implicit_report_error(ModuleName, PredOrFunc,
+                PredName, PredFormArityInt, PredStatus,
                 is_not_a_class_method, Context, origin_user(PredName),
-                DescPieces, PredId, !Specs),
+                DescPieces, PredId, !ModuleInfo, !Specs),
             PredIds = [PredId]
         ;
             PredIds0 = [_ | _],
@@ -124,10 +124,10 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
             % only a guess.
             user_arity_pred_form_arity(pf_predicate, UserArity,
                 pred_form_arity(PredFormArityInt)),
-            preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-                PredName, PredFormArityInt, pf_predicate, PredStatus,
+            preds_add_implicit_report_error(ModuleName, pf_predicate,
+                PredName, PredFormArityInt, PredStatus,
                 is_not_a_class_method, Context, origin_user(PredName),
-                DescPieces, PredId, !Specs),
+                DescPieces, PredId, !ModuleInfo, !Specs),
             PredIds = [PredId]
         ;
             PredIds0 = [_ | _],
@@ -564,9 +564,10 @@ create_tabling_statistics_pred(ProcId, Context, PFSymNameArity, SingleProc,
                 GetStatsExpr, UpdateIOExpr),
             BodyExpr = promise_purity_expr(Context, purity_pure,
                 GetStatsUpdateIOExpr),
-            module_add_clause(!.VarSet, pf_predicate, StatsPredSymName, Args,
-                ok2(BodyExpr, []), PredStatus, Context, item_no_seq_num,
-                goal_type_none, !ModuleInfo, !QualInfo, !Specs)
+            StatsClauseInfo = item_clause_info(pf_predicate, StatsPredSymName,
+                Args, !.VarSet, ok2(BodyExpr, []), Context, item_no_seq_num),
+            module_add_clause(PredStatus, goal_type_none, StatsClauseInfo,
+                !ModuleInfo, !QualInfo, !Specs)
         )
     ).
 
@@ -634,9 +635,10 @@ create_tabling_reset_pred(ProcId, Context, PFSymNameArity, SingleProc,
             Args = [variable(IO0, Context), variable(IO, Context)],
             BodyExpr = unify_expr(Context,
                 variable(IO0, Context), variable(IO, Context), purity_pure),
-            module_add_clause(!.VarSet, pf_predicate, ResetPredSymName, Args,
-                ok2(BodyExpr, []), PredStatus, Context, item_no_seq_num,
-                goal_type_none, !ModuleInfo, !QualInfo, !Specs)
+            ResetClauseInfo = item_clause_info(pf_predicate, ResetPredSymName,
+                Args, !.VarSet, ok2(BodyExpr, []), Context, item_no_seq_num),
+            module_add_clause(PredStatus, goal_type_none, ResetClauseInfo,
+                !ModuleInfo, !QualInfo, !Specs)
         )
     ).
 

@@ -753,7 +753,7 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
         InstanceClause, TVarSet0, TVarSet, !ModuleInfo, !QualInfo,
         !ClausesInfo, !Specs) :-
     InstanceClause = item_clause_info(ClausePredOrFunc, PredName, HeadTerms0,
-        CVarSet, MaybeBodyGoal, _ClauseContext, _SeqNum),
+        ClauseVarSet, MaybeBodyGoal, _ClauseContext, _SeqNum),
     % XXX Can this ever fail? If yes, we should generate an error message
     % instead of aborting.
     expect(unify(PredOrFunc, ClausePredOrFunc), $pred, "PredOrFunc mismatch"),
@@ -762,8 +762,8 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
             StateVarContext)
     then
         TVarSet = TVarSet0,
-        report_illegal_func_svar_result(StateVarContext, CVarSet, StateVar,
-            !Specs),
+        report_illegal_func_svar_result(StateVarContext, ClauseVarSet,
+            StateVar, !Specs),
         !:Specs = get_any_errors_warnings2(MaybeBodyGoal) ++ !.Specs
     else
         (
@@ -785,18 +785,16 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
             % XXX STATUS
             InstanceStatus = instance_status(OldImportStatus),
             PredStatus = pred_status(OldImportStatus),
-            clauses_info_add_clause(all_modes, AllProcIds, CVarSet, TVarSet0,
-                HeadTerms, BodyGoal, Context, item_no_seq_num,
-                PredStatus, PredOrFunc, Arity, GoalType, Goal,
-                VarSet, TVarSet, Warnings,
+            clauses_info_add_clause(all_modes, AllProcIds,
+                PredStatus, GoalType, PredOrFunc, Arity, HeadTerms,
+                Context, item_no_seq_num, Warnings,
+                BodyGoal, Goal, ClauseVarSet, VarSet, TVarSet0, TVarSet,
                 !ClausesInfo, !ModuleInfo, !QualInfo, !Specs),
 
             PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredName, Arity),
-
             % Warn about singleton variables.
             warn_singletons(!.ModuleInfo, PFSymNameArity, VarSet, Goal,
                 !Specs),
-
             % Warn about variables with overlapping scopes.
             add_quant_warnings(PFSymNameArity, VarSet, Warnings, !Specs)
         )

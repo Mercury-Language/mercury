@@ -73,16 +73,16 @@
     %   :- pred p(T1, T2, ..., Tn).
     % for that predicate; the real types will be inferred by type inference.
     %
-:- pred preds_add_implicit_report_error(module_info::in, module_info::out,
-    module_name::in, sym_name::in, arity::in, pred_or_func::in,
-    pred_status::in, maybe_class_method::in, prog_context::in,
-    pred_origin::in, list(format_component)::in, pred_id::out,
+:- pred preds_add_implicit_report_error(module_name::in, pred_or_func::in,
+    sym_name::in, arity::in, pred_status::in, maybe_class_method::in,
+    prog_context::in, pred_origin::in, list(format_component)::in,
+    pred_id::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred preds_add_implicit_for_assertion(module_info::in, module_info::out,
-    module_name::in, sym_name::in, arity::in, pred_or_func::in,
-    list(prog_var)::in, pred_status::in, prog_context::in, pred_id::out)
-    is det.
+:- pred preds_add_implicit_for_assertion(module_name::in, pred_or_func::in,
+    sym_name::in, arity::in, list(prog_var)::in,
+    pred_status::in, prog_context::in, pred_id::out,
+    module_info::in, module_info::out) is det.
 
 :- pred check_preds_if_field_access_function(module_info::in,
     sec_list(item_pred_decl_info)::in,
@@ -731,10 +731,10 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         ( if PredIds = [PredIdPrime] then
             PredId = PredIdPrime
         else
-            preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-                PredSymName, Arity, PredOrFunc, PredStatus, IsClassMethod,
-                Context, origin_user(PredSymName),
-                [decl("mode"), words("declaration")], PredId, !Specs)
+            preds_add_implicit_report_error(ModuleName, PredOrFunc,
+                PredSymName, Arity, PredStatus, IsClassMethod, Context,
+                origin_user(PredSymName), [decl("mode"), words("declaration")],
+                PredId, !ModuleInfo, !Specs)
         ),
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
         predicate_table_get_preds(PredicateTable1, Preds0),
@@ -904,9 +904,9 @@ unqualified_pred_error(PredSymName, Arity, Context, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
-preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-        PredSymName, PredArity, PredOrFunc, Status, IsClassMethod, Context,
-        PredOrigin, DescPieces, PredId, !Specs) :-
+preds_add_implicit_report_error(ModuleName, PredOrFunc, PredSymName, PredArity,
+        Status, IsClassMethod, Context, PredOrigin, DescPieces, PredId,
+        !ModuleInfo, !Specs) :-
     maybe_report_undefined_pred_error(!.ModuleInfo, PredSymName, PredArity,
         PredOrFunc, Status, IsClassMethod, Context, DescPieces, !Specs),
     (
@@ -919,23 +919,23 @@ preds_add_implicit_report_error(!ModuleInfo, ModuleName,
     ),
     clauses_info_init(PredOrFunc, PredArity, init_clause_item_numbers_user,
         ClausesInfo),
-    preds_do_add_implicit(ModuleName, PredSymName, PredArity, PredOrFunc,
+    preds_do_add_implicit(ModuleName, PredOrFunc, PredSymName, PredArity,
         Status, Context, PredOrigin, ClausesInfo, PredId, !ModuleInfo).
 
-preds_add_implicit_for_assertion(!ModuleInfo, ModuleName, PredSymName,
-        PredArity, PredOrFunc, HeadVars, Status, Context, PredId) :-
+preds_add_implicit_for_assertion(ModuleName, PredOrFunc, PredSymName,
+        PredArity, HeadVars, Status, Context, PredId, !ModuleInfo) :-
     clauses_info_init_for_assertion(HeadVars, ClausesInfo),
     term.context_file(Context, FileName),
     term.context_line(Context, LineNum),
     PredOrigin = origin_assertion(FileName, LineNum),
-    preds_do_add_implicit(ModuleName, PredSymName, PredArity, PredOrFunc,
+    preds_do_add_implicit(ModuleName, PredOrFunc, PredSymName, PredArity,
         Status, Context, PredOrigin, ClausesInfo, PredId, !ModuleInfo).
 
-:- pred preds_do_add_implicit(module_name::in, sym_name::in, arity::in,
-    pred_or_func::in, pred_status::in, prog_context::in, pred_origin::in,
+:- pred preds_do_add_implicit(module_name::in, pred_or_func::in, sym_name::in,
+    arity::in, pred_status::in, prog_context::in, pred_origin::in,
     clauses_info::in, pred_id::out, module_info::in, module_info::out) is det.
 
-preds_do_add_implicit(ModuleName, PredSymName, PredArity, PredOrFunc,
+preds_do_add_implicit(ModuleName, PredOrFunc, PredSymName, PredArity,
         PredStatus, Context, PredOrigin, ClausesInfo, PredId, !ModuleInfo) :-
     CurUserDecl = maybe.no,
     init_markers(Markers0),
