@@ -126,7 +126,7 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     ToGndPredDecl = item_pred_decl_info(ToGndRepnSymName, pf_function,
         ToGndRepnArgTypesModes, maybe.no, maybe.no, yes(detism_det),
         ToGndMaybeAttrs, TVarSet, InstVarSet, ExistQTVars, purity_impure,
-        NoConstraints, Context, -1),
+        NoConstraints, Context, item_no_seq_num),
 
     % The `:- impure
     %   func 'representation of any st'(st::in(ai)) =
@@ -143,7 +143,7 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     ToAnyPredDecl = item_pred_decl_info(ToAnyRepnSymName, pf_function,
         ToAnyRepnArgTypesModes, maybe.no, maybe.no, yes(detism_det),
         ToAnyMaybeAttrs, TVarSet, InstVarSet, ExistQTVars, purity_impure,
-        NoConstraints, Context, -1),
+        NoConstraints, Context, item_no_seq_num),
 
     % The `:- impure
     %   func 'representation to ground st'(rt::in(gi)) =
@@ -160,7 +160,7 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     FromGndPredDecl = item_pred_decl_info(FromGndRepnSymName, pf_function,
         FromGndRepnArgTypesModes, maybe.no, maybe.no, yes(detism_det),
         FromGndMaybeAttrs, TVarSet, InstVarSet, ExistQTVars, purity_impure,
-        NoConstraints, Context, -1),
+        NoConstraints, Context, item_no_seq_num),
 
     % The `:- impure
     %   func 'representation to any st'(rt::in(ai)) =
@@ -177,7 +177,7 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     FromAnyPredDecl = item_pred_decl_info(FromAnyRepnSymName, pf_function,
         FromAnyRepnArgTypesModes, maybe.no, maybe.no, yes(detism_det),
         FromAnyMaybeAttrs, TVarSet, InstVarSet, ExistQTVars, purity_impure,
-        NoConstraints, Context, -1),
+        NoConstraints, Context, item_no_seq_num),
 
     module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual,
         ToGndPredDecl, _MaybeToGndPredProcId, !ModuleInfo, !Specs),
@@ -268,7 +268,9 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
         InstVarSet,
         Impl
     ),
-    add_pragma_foreign_proc(ToGroundRepnFPInfo, PredStatus, Context, no,
+    PragmaToGroundRepnFPInfo =
+        item_pragma_info(ToGroundRepnFPInfo, Context, item_no_seq_num),
+    add_pragma_foreign_proc(PredStatus, PragmaToGroundRepnFPInfo,
         !ModuleInfo, !Specs),
 
     % The `func(in(any)) = out(<i_any>) is det' mode.
@@ -286,7 +288,9 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
         InstVarSet,
         Impl
     ),
-    add_pragma_foreign_proc(ToAnyRepnFPInfo, PredStatus, Context, no,
+    PragmaToAnyRepnFPInfo =
+        item_pragma_info(ToAnyRepnFPInfo, Context, item_no_seq_num),
+    add_pragma_foreign_proc(PredStatus, PragmaToAnyRepnFPInfo,
         !ModuleInfo, !Specs),
 
     % The `func(in(<i_ground>)) = out is det' mode.
@@ -304,7 +308,9 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
         InstVarSet,
         Impl
     ),
-    add_pragma_foreign_proc(FromGroundRepnFPInfo, PredStatus, Context, no,
+    PragmaFromGroundRepnFPInfo =
+        item_pragma_info(FromGroundRepnFPInfo, Context, item_no_seq_num),
+    add_pragma_foreign_proc(PredStatus, PragmaFromGroundRepnFPInfo,
         !ModuleInfo, !Specs),
 
     % The `func(in(<i_any>)) = out(any) is det' mode.
@@ -322,7 +328,9 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
         InstVarSet,
         Impl
     ),
-    add_pragma_foreign_proc(FromAnyRepnFPInfo, PredStatus, Context, no,
+    PragmaFromAnyRepnFPInfo =
+        item_pragma_info(FromAnyRepnFPInfo, Context, item_no_seq_num),
+    add_pragma_foreign_proc(PredStatus, PragmaFromAnyRepnFPInfo,
         !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%

@@ -1009,7 +1009,7 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
         ( pred(ModeAndDet::in, NewProcId::out,
                 OldPredInfo::in, NewPredInfo::out) is det :-
             ModeAndDet = modes_and_detism(Modes, InstVarSet, MaybeDet),
-            ItemNumber = -1,
+            ItemNumber = item_no_seq_num,
             % Before the simplification pass, HasParallelConj
             % is not meaningful.
             HasParallelConj = has_no_parallel_conj,

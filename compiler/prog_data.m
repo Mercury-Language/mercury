@@ -1938,6 +1938,14 @@ valid_trace_grade_name(GradeName) :-
     --->    type_only(mer_type)
     ;       type_and_mode(mer_type, mer_mode).
 
+:- type item_seq_num
+    --->    item_seq_num(int)
+            % This item was read in from a file, and the argument
+            % specifies the position of this item in the sequence of items
+            % read in from that file.
+    ;       item_no_seq_num.
+            % This item was not read in from a file.
+
 %---------------------------------------------------------------------------%
 %
 % Module system.

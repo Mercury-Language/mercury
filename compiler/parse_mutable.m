@@ -27,13 +27,13 @@
 :- import_module varset.
 
 :- pred parse_initialise_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 :- pred parse_finalise_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 :- pred parse_mutable_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 :- type mutable_locn
     --->    mutable_locn_item
@@ -42,7 +42,7 @@
             % The mutable is part of an item that defines a solver type.
 
 :- pred parse_mutable_decl_info(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, mutable_locn::in,
+    prog_context::in, item_seq_num::in, mutable_locn::in,
     maybe1(item_mutable_info)::out) is det.
 
 %-----------------------------------------------------------------------------e

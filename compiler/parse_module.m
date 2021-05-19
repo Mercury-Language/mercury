@@ -1820,7 +1820,8 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult,
 
 term_to_iom_result(ModuleName, VarSet, Term, !SeqNumCounter, ReadIOMResult) :-
     counter.allocate(SeqNum, !SeqNumCounter),
-    parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeItemOrMarker),
+    parse_item_or_marker(ModuleName, VarSet, Term, item_seq_num(SeqNum),
+        MaybeItemOrMarker),
     (
         MaybeItemOrMarker = ok1(ItemOrMarker),
         ReadIOMResult = read_iom_ok(VarSet, Term, ItemOrMarker)

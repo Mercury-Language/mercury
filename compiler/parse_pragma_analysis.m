@@ -30,35 +30,35 @@
 %---------------------------------------------------------------------------%
 
 :- pred parse_pragma_unused_args(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 :- pred parse_pragma_termination_info(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 :- pred parse_pragma_termination2_info(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 :- pred parse_pragma_structure_sharing(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 :- pred parse_pragma_structure_reuse(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 :- pred parse_pragma_exceptions(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 :- pred parse_pragma_trailing_info(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 :- pred parse_pragma_mm_tabling_info(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 %---------------------------------------------------------------------------%

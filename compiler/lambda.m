@@ -578,8 +578,8 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
             % then the one we are creating here may have them as well.
             % If it does not, then the value in the proc_info of the lambda
             % predicate will be an overconservative estimate.
-            ItemNumber = -1,
-            proc_info_create(LambdaContext, ItemNumber,
+            SeqNum = item_no_seq_num,
+            proc_info_create(LambdaContext, SeqNum,
                 LambdaVarSet, LambdaVarTypes, AllArgVars,
                 InstVarSet, AllArgModes, detism_decl_explicit, Detism,
                 LambdaGoal, LambdaRttiVarMaps, address_is_taken,

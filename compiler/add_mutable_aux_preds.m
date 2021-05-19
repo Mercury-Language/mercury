@@ -1162,7 +1162,9 @@ define_pre_init_pred(TargetParams, ItemMutable, TargetMutableName, Attrs,
         varset.init,    % InstVarSet
         fp_impl_ordinary(PreInitCode, yes(Context))
     ),
-    add_pragma_foreign_proc(PreInitFCInfo, PredStatus, Context, no,
+    PragmaPreInitFCInfo =
+        item_pragma_info(PreInitFCInfo, Context, item_no_seq_num),
+    add_pragma_foreign_proc(PredStatus, PragmaPreInitFCInfo,
         !ModuleInfo, !Specs),
 
     CallPreInitExpr = call_expr(Context, PreInitPredName, [], purity_impure).
@@ -1233,9 +1235,13 @@ define_lock_unlock_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
             varset.init,    % InstVarSet
             fp_impl_ordinary(UnlockForeignProcBody, yes(Context))
         ),
-        add_pragma_foreign_proc(LockFCInfo, PredStatus, Context, no,
+        PragmaLockFCInfo =
+            item_pragma_info(LockFCInfo, Context, item_no_seq_num),
+        PragmaUnlockFCInfo =
+            item_pragma_info(UnlockFCInfo, Context, item_no_seq_num),
+        add_pragma_foreign_proc(PredStatus, PragmaLockFCInfo,
             !ModuleInfo, !Specs),
-        add_pragma_foreign_proc(UnlockFCInfo, PredStatus, Context, no,
+        add_pragma_foreign_proc(PredStatus, PragmaUnlockFCInfo,
             !ModuleInfo, !Specs),
         CallLockExpr0 =
             call_expr(Context, LockPredName, [], purity_impure),
@@ -1362,9 +1368,13 @@ define_unsafe_get_set_preds(TargetParams, ItemMutable, TargetMutableName,
         varset.init,    % InstVarSet
         fp_impl_ordinary(TrailCode ++ UnsafeSetCode, yes(Context))
     ),
-    add_pragma_foreign_proc(UnsafeGetFCInfo, PredStatus, Context, no,
+    PragmaUnsafeGetFCInfo =
+        item_pragma_info(UnsafeGetFCInfo, Context, item_no_seq_num),
+    PragmaUnsafeSetFCInfo =
+        item_pragma_info(UnsafeSetFCInfo, Context, item_no_seq_num),
+    add_pragma_foreign_proc(PredStatus, PragmaUnsafeGetFCInfo,
         !ModuleInfo, !Specs),
-    add_pragma_foreign_proc(UnsafeSetFCInfo, PredStatus, Context, no,
+    add_pragma_foreign_proc(PredStatus, PragmaUnsafeSetFCInfo,
         !ModuleInfo, !Specs),
 
     CallUnsafeGetExpr0 = call_expr(Context, UnsafeGetPredName,
@@ -1456,9 +1466,13 @@ define_main_get_set_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
             varset.init,    % InstVarSet
             fp_impl_ordinary(ConstantSetCode, yes(Context))
         ),
-        add_pragma_foreign_proc(ConstantGetFCInfo, PredStatus, Context, no,
+        PragmaConstantGetFCInfo =
+            item_pragma_info(ConstantGetFCInfo, Context, item_no_seq_num),
+        PragmaConstantSetFCInfo =
+            item_pragma_info(ConstantSetFCInfo, Context, item_no_seq_num),
+        add_pragma_foreign_proc(PredStatus, PragmaConstantGetFCInfo,
             !ModuleInfo, !Specs),
-        add_pragma_foreign_proc(ConstantSetFCInfo, PredStatus, Context, no,
+        add_pragma_foreign_proc(PredStatus, PragmaConstantSetFCInfo,
             !ModuleInfo, !Specs),
         set.det_remove(mutable_pred_constant_get, !PredKinds),
         set.det_remove(mutable_pred_constant_secret_set, !PredKinds),
@@ -1500,11 +1514,13 @@ define_main_get_set_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
                 ImpureGetExpr),
             StdSetPredExpr = ImpureSetExpr,
             module_add_clause(VarSetOnlyX, pf_predicate, StdGetPredName,
-                StdPredArgs, ok2(StdGetPredExpr, []), PredStatus, Context, no,
-                goal_type_none, !ModuleInfo, !QualInfo, !Specs),
+                StdPredArgs, ok2(StdGetPredExpr, []), PredStatus,
+                Context, item_no_seq_num, goal_type_none,
+                !ModuleInfo, !QualInfo, !Specs),
             module_add_clause(VarSetOnlyX, pf_predicate, StdSetPredName,
-                StdPredArgs, ok2(StdSetPredExpr, []), PredStatus, Context, no,
-                goal_type_none, !ModuleInfo, !QualInfo, !Specs),
+                StdPredArgs, ok2(StdSetPredExpr, []), PredStatus,
+                Context, item_no_seq_num, goal_type_none,
+                !ModuleInfo, !QualInfo, !Specs),
             set.det_remove(mutable_pred_std_get, !PredKinds),
             set.det_remove(mutable_pred_std_set, !PredKinds)
         ),
@@ -1539,11 +1555,13 @@ define_main_get_set_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
                 promise_purity_expr(Context, purity_pure, IOSetPredExpr),
 
             module_add_clause(VarSetXandIOs, pf_predicate, IOGetPredName,
-                IOPredArgs, ok2(PureIOGetPredExpr, []), PredStatus, Context,
-                no, goal_type_none, !ModuleInfo, !QualInfo, !Specs),
+                IOPredArgs, ok2(PureIOGetPredExpr, []), PredStatus,
+                Context, item_no_seq_num, goal_type_none,
+                !ModuleInfo, !QualInfo, !Specs),
             module_add_clause(VarSetXandIOs, pf_predicate, IOSetPredName,
-                IOPredArgs, ok2(PureIOSetPredExpr, []), PredStatus, Context,
-                no, goal_type_none, !ModuleInfo, !QualInfo, !Specs),
+                IOPredArgs, ok2(PureIOSetPredExpr, []), PredStatus,
+                Context, item_no_seq_num, goal_type_none,
+                !ModuleInfo, !QualInfo, !Specs),
             set.det_remove(mutable_pred_io_get, !PredKinds),
             set.det_remove(mutable_pred_io_set, !PredKinds)
         )
@@ -1580,8 +1598,8 @@ define_init_pred(ItemMutable, PredStatus, Lang, InitSetPredName,
     % See the comments for parse_mutable_decl_info for the reason
     % why we _must_ pass VarSetMutableX here.
     module_add_clause(VarSetMutableX, pf_predicate, InitPredName, [],
-        ok2(InitPredExpr, []), PredStatus, Context, no, goal_type_none,
-        !ModuleInfo, !QualInfo, !Specs),
+        ok2(InitPredExpr, []), PredStatus, Context, item_no_seq_num,
+        goal_type_none, !ModuleInfo, !QualInfo, !Specs),
 
     InitPredArity = 0,
     add_initialise_for_mutable(ModuleName, MutableName,

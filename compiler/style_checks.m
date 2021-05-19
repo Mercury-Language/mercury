@@ -125,13 +125,12 @@ detect_non_contiguous_pred_decls(ModuleInfo, MaybeDefnKind, PredId,
         !StyleInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_cur_user_decl_info(PredInfo, MaybeDeclInfo),
-    (
-        MaybeDeclInfo = no
-    ;
+    % Generate warnings for --warn-non-contiguous-decls if warranted.
+    ( if
         MaybeDeclInfo = yes(DeclInfo),
-
-        % Generate warnings for --warn-non-contiguous-decls if warranted.
-        DeclInfo = cur_user_decl_info(DeclSection, _, PredDeclItemNumber),
+        DeclInfo = cur_user_decl_info(DeclSection, _, MaybePredDeclItemNumber),
+        MaybePredDeclItemNumber = item_seq_num(PredDeclItemNumber)
+    then
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.foldl2_values(gather_proc_item_numbers, ProcTable,
             [], UnsortedProcINCs, proc_contiguity_makes_sense, MakesSense),
@@ -185,14 +184,16 @@ detect_non_contiguous_pred_decls(ModuleInfo, MaybeDefnKind, PredId,
                 )
             )
         )
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%
 
-    % The item number of a declaration, and its context ("inc" is
-    % shorthand for "item number and context"). The declaration
-    % may be a predicate's `:- pred' or `:- func' declaration,
-    % or a procedure's `:- mode' declaration.
+    % The item number of a declaration, and its context ("inc" is shorthand
+    % for "item number and context"). The declaration may be a predicate's
+    % `:- pred' or `:- func' declaration, or a procedure's
+    % `:- mode' declaration.
 :- type inc
     --->    inc(int, prog_context).
 
@@ -207,11 +208,13 @@ detect_non_contiguous_pred_decls(ModuleInfo, MaybeDefnKind, PredId,
 gather_proc_item_numbers(ProcInfo, !ProcINCs, !MakesSense) :-
     ( if proc_info_is_valid_mode(ProcInfo) then
         proc_info_get_item_number(ProcInfo, ItemNumber),
-        ( if ItemNumber > 1 then
+        (
+            ItemNumber = item_seq_num(SeqNum),
             proc_info_get_context(ProcInfo, Context),
-            ProcINC = inc(ItemNumber, Context),
+            ProcINC = inc(SeqNum, Context),
             !:ProcINCs = [ProcINC | !.ProcINCs]
-        else
+        ;
+            ItemNumber = item_no_seq_num,
             % The procedure was declared either as part of a predmode
             % declaration, in which case requiring it to have an item number
             % that *follows* the item number of the pred or func declaration

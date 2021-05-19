@@ -17,8 +17,7 @@
 :- import_module list.
 :- import_module maybe.
 
-:- pred add_pragma_foreign_proc(pragma_info_foreign_proc::in,
-    pred_status::in, prog_context::in, maybe(int)::in,
+:- pred add_pragma_foreign_proc(pred_status::in, item_foreign_proc::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -58,8 +57,8 @@
 
 %-----------------------------------------------------------------------------%
 
-add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
-        !ModuleInfo, !Specs) :-
+add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
+    PragmaFPInfo = item_pragma_info(FPInfo, Context, SeqNum),
     FPInfo = pragma_info_foreign_proc(Attributes0, PredName, PredOrFunc,
         PVars, ProgVarSet, _InstVarset, PragmaImpl),
     list.length(PVars, Arity),
@@ -127,7 +126,7 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
         % Record the existence of this "clause".
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
         ItemNumbers0 = ClausesInfo0 ^ cli_item_numbers,
-        add_clause_item_number(MaybeItemNumber, Context, item_is_foreign_proc,
+        add_clause_item_number(SeqNum, Context, item_is_foreign_proc,
             ItemNumbers0, ItemNumbers),
         ClausesInfo1 = ClausesInfo0 ^ cli_item_numbers := ItemNumbers,
         pred_info_set_clauses_info(ClausesInfo1, !PredInfo),

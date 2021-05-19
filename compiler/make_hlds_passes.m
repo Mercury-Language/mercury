@@ -769,7 +769,7 @@ add_clause(ItemMercuryStatus, ItemClauseInfo,
     GoalType = goal_type_none,
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
     module_add_clause(VarSet, PredOrFunc, PredSymName, Args, MaybeBodyGoal,
-        PredStatus, Context, yes(SeqNum), GoalType,
+        PredStatus, Context, SeqNum, GoalType,
         !ModuleInfo, !QualInfo, !Specs).
 
 %---------------------------------------------------------------------------%
@@ -843,7 +843,7 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
 
     module_info_get_name(!.ModuleInfo, ModuleName),
     module_add_clause(VarSet, pf_predicate, qualified(ModuleName, Name),
-        HeadVars, ok2(Goal, []), Status, Context, no,
+        HeadVars, ok2(Goal, []), Status, Context, item_no_seq_num,
         goal_type_promise(PromiseType), !ModuleInfo, !QualInfo, !Specs).
 
 %---------------------------------------------------------------------------%

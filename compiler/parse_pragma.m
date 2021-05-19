@@ -33,7 +33,7 @@
     % a pragma item, and it may not even be an item.
     %
 :- pred parse_pragma(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -90,7 +90,7 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeIOM) :-
     ).
 
 :- pred parse_pragma_type(module_name::in, varset::in, term::in,
-    string::in, list(term)::in, prog_context::in, int::in,
+    string::in, list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is semidet.
 
 parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
@@ -308,7 +308,7 @@ report_unrecognized_pragma(Context) = Spec :-
 
 :- pred parse_name_arity_decl_pragma(module_name::in, string::in,
     (func(pred_pfu_name_arity) = decl_pragma)::in(func(in) = out is det),
-    varset::in, term::in, list(term)::in, prog_context::in, int::in,
+    varset::in, term::in, list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_name_arity_decl_pragma(ModuleName, PragmaName, MakePragma,
@@ -340,7 +340,7 @@ parse_name_arity_decl_pragma(ModuleName, PragmaName, MakePragma,
 
 :- pred parse_name_arity_impl_pragma(module_name::in, string::in,
     (func(pred_pfu_name_arity) = impl_pragma)::in(func(in) = out is det),
-    varset::in, term::in, list(term)::in, prog_context::in, int::in,
+    varset::in, term::in, list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_name_arity_impl_pragma(ModuleName, PragmaName, MakePragma,
@@ -412,7 +412,7 @@ parse_pragma_source_file(PragmaTerms, Context, MaybeIOM) :-
 %
 
 :- pred parse_pragma_external(module_name::in, varset::in, term::in,
-    string::in, list(term)::in, prog_context::in, int::in,
+    string::in, list(term)::in, prog_context::in, item_seq_num::in,
     pred_or_func::in, maybe1(item_or_marker)::out) is det.
 
 parse_pragma_external(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
@@ -557,7 +557,8 @@ parse_pragma_external_options(VarSet, MaybeOptionsTerm, ContextPieces,
 %
 
 :- pred parse_pragma_obsolete(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    varset::in, prog_context::in, item_seq_num::in,
+    maybe1(item_or_marker)::out) is det.
 
 parse_pragma_obsolete(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         Context, SeqNum, MaybeIOM) :-
@@ -600,7 +601,8 @@ parse_pragma_obsolete(ModuleName, PragmaTerms, ErrorTerm, VarSet,
    ).
 
 :- pred parse_pragma_obsolete_proc(module_name::in, list(term)::in, term::in,
-    varset::in, prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    varset::in, prog_context::in, item_seq_num::in,
+    maybe1(item_or_marker)::out) is det.
 
 parse_pragma_obsolete_proc(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         Context, SeqNum, MaybeIOM) :-
@@ -702,7 +704,7 @@ parse_pragma_obsolete_in_favour_of_snas(ArgNum, [Term | Terms], VarSet,
 %
 
 :- pred parse_pragma_require_tail_recursion(module_name::in, string::in,
-    list(term)::in, term::in, varset::in, prog_context::in, int::in,
+    list(term)::in, term::in, varset::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
@@ -920,7 +922,7 @@ pragma_require_tailrec_unknown_term_error(Term, Context) = Spec :-
 %
 
 :- pred parse_oisu_pragma(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
@@ -1024,7 +1026,7 @@ parse_oisu_preds_term(ModuleName, VarSet, ArgNum, ExpectedFunctor, Term,
 %
 
 :- pred parse_pragma_type_spec(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
@@ -1117,7 +1119,7 @@ parse_type_spec_pair(Term, TypeSpec) :-
 %
 
 :- pred parse_pragma_fact_table(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
@@ -1167,7 +1169,7 @@ parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
 %
 
 :- pred parse_pragma_require_feature_set(varset::in, term::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
         Context, SeqNum, MaybeIOM) :-

@@ -36,7 +36,7 @@
     % Parse foreign_type pragmas.
     %
 :- pred parse_pragma_foreign_type(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(maybe_canonical)::in, maybe1(item_or_marker)::out) is det.
 
 :- pred parse_foreign_type_assertions(cord(format_component)::in,
@@ -49,21 +49,21 @@
     % Parse foreign_decl pragmas.
     %
 :- pred parse_pragma_foreign_decl(varset::in, term::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 %---------------------%
 
     % Parse foreign_code pragmas.
     %
 :- pred parse_pragma_foreign_code(varset::in, term::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 %---------------------%
 
     % Parse foreign_proc pragmas.
     %
 :- pred parse_pragma_foreign_proc(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 %---------------------%
@@ -71,21 +71,21 @@
     % Parse foreign_export pragmas.
     %
 :- pred parse_pragma_foreign_export(varset::in, term::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 %---------------------%
 
     % Parse foreign_export_enum pragmas.
     %
 :- pred parse_pragma_foreign_export_enum(varset::in, term::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 %---------------------%
 
     % Parse foreign_enum pragmas.
     %
 :- pred parse_pragma_foreign_enum(module_name::in, varset::in, term::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 %---------------------%
@@ -93,8 +93,8 @@
     % Parse foreign_import_module pragmas.
     %
 :- pred parse_pragma_foreign_import_module(varset::in, term::in,
-    list(term)::in, prog_context::in, int::in, maybe1(item_or_marker)::out)
-    is det.
+    list(term)::in, prog_context::in, item_seq_num::in,
+    maybe1(item_or_marker)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -531,8 +531,8 @@ parse_pragma_foreign_proc(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context,
     ).
 
 :- pred parse_pragma_ordinary_foreign_proc(module_name::in, varset::in,
-    foreign_language::in, term::in, term::in, term::in, prog_context::in,
-    int::in, maybe1(item_or_marker)::out) is det.
+    foreign_language::in, term::in, term::in, term::in,
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 parse_pragma_ordinary_foreign_proc(ModuleName, VarSet, ForeignLanguage,
         PredAndVarsTerm, FlagsTerm, CodeTerm, Context, SeqNum, MaybeIOM) :-

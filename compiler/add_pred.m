@@ -48,7 +48,7 @@
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_new_proc(prog_context::in, int::in, arity::in,
+:- pred add_new_proc(prog_context::in, item_seq_num::in, arity::in,
     inst_varset::in, list(mer_mode)::in,
     maybe(list(mer_mode))::in, maybe(list(is_live))::in,
     detism_decl::in, maybe(determinism)::in,
@@ -144,7 +144,7 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
         ( if
             PredOrFunc = pf_predicate,
             MaybeArgModes0 = yes(ArgModes0),
-            % If a predicate declaration has no arguments ano no determinism,
+            % If a predicate declaration has no arguments and no determinism,
             % then it has none of the components of a mode declaration.
             ArgModes0 = [],
             MaybeDetism = no
@@ -299,7 +299,7 @@ check_for_modeless_predmode_decl(PredStatus, PredOrFunc,
         true
     ).
 
-:- pred add_new_pred(pred_origin::in, prog_context::in, int::in,
+:- pred add_new_pred(pred_origin::in, prog_context::in, item_seq_num::in,
     pred_status::in, need_qualifier::in, pred_or_func::in, sym_name::in,
     tvarset::in, existq_tvars::in, list(mer_type)::in, prog_constraints::in,
     maybe_predmode_decl::in, purity::in, pred_markers::in, bool::out,
@@ -354,10 +354,10 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual,
             )
         then
             DeclSection = item_decl_section(ItemExport),
-            CurUserDecl = yes(cur_user_decl_info(DeclSection, PredmodeDecl,
-                SeqNum))
+            MaybeCurUserDecl = yes(cur_user_decl_info(DeclSection,
+                PredmodeDecl, SeqNum))
         else
-            CurUserDecl = no
+            MaybeCurUserDecl = no
         ),
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
         clauses_info_init(PredOrFunc, PredArity, init_clause_item_numbers_user,
@@ -368,7 +368,7 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual,
         add_markers(PurityMarkers, Markers0, Markers),
         map.init(VarNameRemap),
         pred_info_init(ModuleName, PredSymName, PredArity, PredOrFunc, Context,
-            PredOrigin, PredStatus, CurUserDecl, goal_type_none,
+            PredOrigin, PredStatus, MaybeCurUserDecl, goal_type_none,
             Markers, Types, TVarSet, ExistQVars, Constraints, Proofs,
             ConstraintMap, ClausesInfo, VarNameRemap, PredInfo0),
         predicate_table_lookup_pf_m_n_a(PredTable0, is_fully_qualified,
@@ -718,10 +718,10 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         !:Specs = [Spec | !.Specs]
     else
         % Lookup the pred or func declaration in the predicate table.
-        % If it is not there (or if it is ambiguous), optionally print a warning
-        % message and insert an implicit definition for the predicate;
-        % it is presumed to be local, and its type will be inferred
-        % automatically.
+        % If it is not there (or if it is ambiguous), optionally print
+        % a warning message and insert an implicit definition
+        % for the predicate; it is presumed to be local, and its type
+        % will be inferred automatically.
         module_info_get_name(!.ModuleInfo, ModuleName0),
         sym_name_get_module_name_default(PredSymName, ModuleName0, ModuleName),
         list.length(Modes, Arity),

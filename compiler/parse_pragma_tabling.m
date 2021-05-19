@@ -32,7 +32,7 @@
     % Parse a tabling pragma.
     %
 :- pred parse_tabling_pragma(module_name::in, varset::in, term::in,
-    string::in, list(term)::in, prog_context::in, int::in,
+    string::in, list(term)::in, prog_context::in, item_seq_num::in,
     eval_method::in, maybe1(item_or_marker)::out) is det.
 
 %---------------------------------------------------------------------------%

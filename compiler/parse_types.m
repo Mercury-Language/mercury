@@ -48,20 +48,20 @@
     ;       iom_marker_src_file(string)
             % The term was a pragma specifying the new filename.
 
-    ;       iom_marker_module_start(module_name, prog_context, int)
+    ;       iom_marker_module_start(module_name, prog_context, item_seq_num)
             % The term was a `:- module' declaration. The arguments give
             % the module's name, and the context and sequence number of the
             % declaration. The module name is exactly what was in the
             % declaration; it is NOT implicitly module qualified by the
             % enclosing module.
 
-    ;       iom_marker_module_end(module_name, prog_context, int)
+    ;       iom_marker_module_end(module_name, prog_context, item_seq_num)
             % The term was a `:- end_module' declaration. The arguments give
             % the module's name, and the context and sequence number of the
             % declaration. Again, the module name as is, and not implicitly
             % module qualified.
 
-    ;       iom_marker_section(module_section, prog_context, int)
+    ;       iom_marker_section(module_section, prog_context, item_seq_num)
             % The term was a `:- interface' or `:- implementation' declaration.
             % The arguments give the section's kind, and the context
             % and sequence number of the declaration.

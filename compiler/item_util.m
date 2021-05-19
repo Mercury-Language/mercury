@@ -379,7 +379,7 @@ include_map_to_item_includes(IncludeMap, IntIncludes, ImpIncludes) :-
 include_map_to_item_includes_acc(ModuleName, InclInfo,
         !RevIntIncludes, !RevImpIncludes) :-
     InclInfo = include_module_info(Section, Context),
-    Include = item_include(ModuleName, Context, -1),
+    Include = item_include(ModuleName, Context, item_no_seq_num),
     (
         Section = ms_interface,
         !:RevIntIncludes = [Include | !.RevIntIncludes]
@@ -389,7 +389,7 @@ include_map_to_item_includes_acc(ModuleName, InclInfo,
     ).
 
 acc_include_for_module_and_context(ModuleName, Context, !RevIncludes) :-
-    Incl = item_include(ModuleName, Context, -1),
+    Incl = item_include(ModuleName, Context, item_no_seq_num),
     !:RevIncludes = [Incl | !.RevIncludes].
 
 module_names_contexts_to_item_includes(IncludeMap) = Includes :-
@@ -404,7 +404,7 @@ module_names_contexts_to_item_includes(IncludeMap) = Includes :-
 module_names_contexts_to_item_includes_acc(ModuleName, Contexts,
         !RevIncludes) :-
     Contexts = one_or_more(Context, _),
-    Include = item_include(ModuleName, Context, -1),
+    Include = item_include(ModuleName, Context, item_no_seq_num),
     !:RevIncludes = [Include | !.RevIncludes].
 
 %---------------------------------------------------------------------------%
@@ -836,7 +836,7 @@ import_and_or_use_map_to_item_avails_acc(IncludeImplicit,
 
 get_implicit_avails(ModuleName, Implicit, IntAvails, ImpAvails) :-
     term.context_init("implicit", -1, Context),
-    SN = -1,
+    SN = item_no_seq_num,
     (
         Implicit = implicit_int_import,
         Avail = avail_import(avail_import_info(ModuleName, Context, SN)),
@@ -858,7 +858,7 @@ get_implicit_avails(ModuleName, Implicit, IntAvails, ImpAvails) :-
     list(item_avail)::out, list(item_avail)::out) is det.
 
 get_explicit_avails(ModuleName, Explicit, IntAvails, ImpAvails) :-
-    SN = -1,
+    SN = item_no_seq_num,
     (
         Explicit = int_import(Context),
         Avail = avail_import(avail_import_info(ModuleName, Context, SN)),
@@ -1022,7 +1022,7 @@ use_map_to_item_avails(UseMap) = Avails :-
 
 use_map_to_item_avails_acc(ModuleName, Contexts, !RevAvails) :-
     Contexts = one_or_more(Context, _),
-    Avail = avail_use(avail_use_info(ModuleName, Context, -1)),
+    Avail = avail_use(avail_use_info(ModuleName, Context, item_no_seq_num)),
     !:RevAvails = [Avail | !.RevAvails].
 
 acc_avails_with_contexts(ImportOrUse, ModuleName, Contexts, !RevAvails) :-
@@ -1035,10 +1035,12 @@ acc_avails_with_contexts(ImportOrUse, ModuleName, Contexts, !RevAvails) :-
 acc_avail_with_context(ImportOrUse, ModuleName, Context, !RevAvails) :-
     (
         ImportOrUse = import_decl,
-        Avail = avail_import(avail_import_info(ModuleName, Context, -1))
+        Avail = avail_import(avail_import_info(ModuleName, Context,
+            item_no_seq_num))
     ;
         ImportOrUse = use_decl,
-        Avail = avail_use(avail_use_info(ModuleName, Context, -1))
+        Avail = avail_use(avail_use_info(ModuleName, Context,
+            item_no_seq_num))
     ),
     !:RevAvails = [Avail | !.RevAvails].
 
@@ -1082,12 +1084,12 @@ fim_item_to_spec(FIM) = FIMSpec :-
 
 fim_spec_to_item(FIMSpec) = FIM :-
     FIMSpec = fim_spec(Lang, ModuleName),
-    FIM = item_fim(Lang, ModuleName, term.dummy_context_init, -1).
+    FIM = item_fim(Lang, ModuleName, term.dummy_context_init, item_no_seq_num).
 
 fim_module_lang_to_spec(ModuleName, Lang) = fim_spec(Lang, ModuleName).
 
 fim_module_lang_to_item(ModuleName, Lang) =
-    item_fim(Lang, ModuleName, term.dummy_context_init, -1).
+    item_fim(Lang, ModuleName, term.dummy_context_init, item_no_seq_num).
 
 %---------------------------------------------------------------------------%
 
@@ -1690,21 +1692,23 @@ project_pragma_type(item_pragma_info(Pragma, _, _)) = Pragma.
 %---------------------------------------------------------------------------%
 
 wrap_include(ModuleName) = Include :-
-    Include = item_include(ModuleName, term.context_init, -1).
+    Include = item_include(ModuleName, term.context_init, item_no_seq_num).
 
 wrap_import_avail(ModuleName) = Avail :-
-    ImportInfo = avail_import_info(ModuleName, term.context_init, -1),
+    ImportInfo = avail_import_info(ModuleName, term.context_init,
+        item_no_seq_num),
     Avail = avail_import(ImportInfo).
 
 wrap_use_avail(ModuleName) = Avail :-
-    UseInfo = avail_use_info(ModuleName, term.context_init, -1),
+    UseInfo = avail_use_info(ModuleName, term.context_init, item_no_seq_num),
     Avail = avail_use(UseInfo).
 
 wrap_import(ModuleName) = ImportInfo :-
-    ImportInfo = avail_import_info(ModuleName, term.context_init, -1).
+    ImportInfo = avail_import_info(ModuleName, term.context_init,
+        item_no_seq_num).
 
 wrap_use(ModuleName) = UseInfo :-
-    UseInfo = avail_use_info(ModuleName, term.context_init, -1).
+    UseInfo = avail_use_info(ModuleName, term.context_init, item_no_seq_num).
 
 wrap_avail_import(AvailImportInfo) = avail_import(AvailImportInfo).
 wrap_avail_use(AvailUseInfo) = avail_use(AvailUseInfo).

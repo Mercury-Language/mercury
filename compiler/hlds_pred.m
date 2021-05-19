@@ -550,7 +550,7 @@
     --->    cur_user_decl_info(
                 decl_section,
                 maybe_predmode_decl,
-                int                         % The item number.
+                item_seq_num
             ).
 
     % pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context,
@@ -618,7 +618,8 @@
     tsubst::in, external_type_params::in, constraint_proof_map::in,
     constraint_map::in, list(prog_constraint)::in, inst_graph_info::in,
     list(arg_modes_map)::in, map(prog_var, string)::in, set(assert_id)::in,
-    maybe(list(sym_name_arity))::in, list(mer_type)::in, pred_info::out) is det.
+    maybe(list(sym_name_arity))::in, list(mer_type)::in,
+    pred_info::out) is det.
 
 %---------------------%
 
@@ -1111,6 +1112,12 @@ calls_are_fully_qualified(Markers) =
                 % (b) explicitly by the user, as opposed to by the compiler,
                 % then this records what section the predicate declaration
                 % is in, and whether it is a predmode declaration.
+                %
+                % Note that "defined explicitly by the user" does not guarantee
+                % that the cur_user_decl_info will contain a valid
+                % item_seq_num, because for class methods, it won't.
+                % (This is because predicate declarations in typeclass items
+                % do not have their own separate item_seq_num.)
                 psi_cur_user_decl               :: maybe(cur_user_decl_info),
 
                 % Whether the goals seen so far, if any, for this predicate
@@ -1348,7 +1355,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
     ),
 
     Context = goal_info_get_context(GoalInfo),
-    ItemNumber = -1,
+    ItemNumber = item_no_seq_num,
     Detism = goal_info_get_determinism(GoalInfo),
     compute_arg_types_modes(ArgVars, VarTypes0, InstMap0, InstMap,
         ArgTypes, ArgModes),
@@ -2194,13 +2201,13 @@ marker_list_to_markers(Markers, MarkerSet) :-
     ;       detism_decl_none.
             % The determinism of the procedure is not declared.
 
-:- pred proc_info_init(prog_context::in, int::in, arity::in,
+:- pred proc_info_init(prog_context::in, item_seq_num::in, arity::in,
     list(mer_type)::in, maybe(list(mer_mode))::in, list(mer_mode)::in,
     maybe(list(is_live))::in, detism_decl::in, maybe(determinism)::in,
     is_address_taken::in, has_parallel_conj::in, map(prog_var, string)::in,
     proc_info::out) is det.
 
-:- pred proc_info_create(prog_context::in, int::in,
+:- pred proc_info_create(prog_context::in, item_seq_num::in,
     prog_varset::in, vartypes::in, list(prog_var)::in,
     inst_varset::in, list(mer_mode)::in,
     detism_decl::in, determinism::in, hlds_goal::in,
@@ -2226,7 +2233,8 @@ marker_list_to_markers(Markers, MarkerSet) :-
     hlds_goal::out, prog_varset::out, vartypes::out, rtti_varmaps::out,
     inst_varset::out, maybe(list(mer_mode))::out, list(mer_mode)::out,
     maybe(list(is_live))::out, maybe(determinism)::out, determinism::out,
-    eval_method::out, list(mode_error_info)::out, prog_context::out, int::out,
+    eval_method::out, list(mode_error_info)::out,
+    prog_context::out, item_seq_num::out,
     can_process::out, maybe(mode_constraint)::out, detism_decl::out,
     list(prog_context)::out, maybe(untuple_proc_info)::out,
     map(prog_var, string)::out, list(error_spec)::out, set(pred_proc_id)::out,
@@ -2247,8 +2255,9 @@ marker_list_to_markers(Markers, MarkerSet) :-
     hlds_goal::in, prog_varset::in, vartypes::in, rtti_varmaps::in,
     inst_varset::in, maybe(list(mer_mode))::in, list(mer_mode)::in,
     maybe(list(is_live))::in, maybe(determinism)::in, determinism::in,
-    eval_method::in, list(mode_error_info)::in, prog_context::in, int::in,
-    can_process::in, maybe(mode_constraint)::in, detism_decl::in,
+    eval_method::in, list(mode_error_info)::in,
+    prog_context::in, item_seq_num::in, can_process::in,
+    maybe(mode_constraint)::in, detism_decl::in,
     list(prog_context)::in, maybe(untuple_proc_info)::in,
     map(prog_var, string)::in, list(error_spec)::in, set(pred_proc_id)::in,
     is_address_taken::in, proc_foreign_exports::in, has_parallel_conj::in,
@@ -2365,7 +2374,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
     list(mode_error_info)::out) is det.
 
 :- pred proc_info_get_context(proc_info::in, prog_context::out) is det.
-:- pred proc_info_get_item_number(proc_info::in, int::out) is det.
+:- pred proc_info_get_item_number(proc_info::in, item_seq_num::out) is det.
 :- pred proc_info_get_can_process(proc_info::in, can_process::out) is det.
 :- pred proc_info_get_detism_decl(proc_info::in, detism_decl::out) is det.
 :- pred proc_info_get_cse_nopull_contexts(proc_info::in,
@@ -2730,9 +2739,8 @@ marker_list_to_markers(Markers, MarkerSet) :-
                 % first clause if there was no mode declaration.
                 psi_proc_context                :: prog_context,
 
-                % The item number of the mode declaration, if there was one,
-                % and a negative number otherwise.
-                psi_item_number                 :: int,
+                % The item number of the mode declaration, if there was one.
+                psi_item_number                 :: item_seq_num,
 
                 % Set to cannot_process if we must not process this procedure
                 % just yet. This is used to delay mode checking etc. for
@@ -3200,8 +3208,8 @@ proc_info_create(Context, ItemNumber, VarSet, VarTypes, HeadVars,
         DetismDecl, yes(Detism), Detism, Goal, RttiVarMaps, IsAddressTaken,
         HasParallelConj, VarNameRemap, ProcInfo).
 
-:- pred proc_info_create_with_declared_detism(prog_context::in, int::in,
-    prog_varset::in, vartypes::in, list(prog_var)::in,
+:- pred proc_info_create_with_declared_detism(prog_context::in,
+    item_seq_num::in, prog_varset::in, vartypes::in, list(prog_var)::in,
     inst_varset::in, list(mer_mode)::in,
     detism_decl::in, maybe(determinism)::in, determinism::in, hlds_goal::in,
     rtti_varmaps::in, is_address_taken::in, has_parallel_conj::in,

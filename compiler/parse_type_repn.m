@@ -31,7 +31,7 @@
     % Parse ":- type_representation(...)" items.
     %
 :- pred parse_type_repn_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 %---------------------------------------------------------------------------%
 

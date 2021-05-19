@@ -29,7 +29,6 @@
 
 :- import_module bool.
 :- import_module list.
-:- import_module maybe.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -328,7 +327,7 @@
     --->    item_is_clause
     ;       item_is_foreign_proc.
 
-:- pred add_clause_item_number(maybe(int)::in, term.context::in,
+:- pred add_clause_item_number(item_seq_num::in, term.context::in,
     clause_item_number_type::in,
     clause_item_numbers::in, clause_item_numbers::out) is det.
 
@@ -504,9 +503,9 @@ clauses_are_non_contiguous(ClauseItemNumbers, Type, FirstRegion, SecondRegion,
         BothRegions = [FirstRegion, SecondRegion | LaterRegions]
     ).
 
-add_clause_item_number(MaybeItemNumber, Context, Type, !ClauseItemNumbers) :-
+add_clause_item_number(SeqNum, Context, Type, !ClauseItemNumbers) :-
     (
-        MaybeItemNumber = no,
+        SeqNum = item_no_seq_num,
         (
             !.ClauseItemNumbers = user_clauses(_MercuryRegions, _BothRegions)
             % This can happen for predicates defined in foreign languages
@@ -525,7 +524,7 @@ add_clause_item_number(MaybeItemNumber, Context, Type, !ClauseItemNumbers) :-
             !.ClauseItemNumbers = comp_gen_clauses
         )
     ;
-        MaybeItemNumber = yes(ItemNumber),
+        SeqNum = item_seq_num(ItemNumber),
         (
             !.ClauseItemNumbers = user_clauses(MercuryRegions0, BothRegions0),
             (

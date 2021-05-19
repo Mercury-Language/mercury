@@ -33,12 +33,12 @@
     % Parse a typeclass declaration.
     %
 :- pred parse_typeclass_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
     % Parse an instance declaration.
     %
 :- pred parse_instance_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
     % Parse constraints on a pred or func declaration, or on an existentially
     % quantified type definition. Currently all such constraints must be
@@ -113,7 +113,8 @@ parse_typeclass_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
     ).
 
 :- pred parse_non_empty_class(module_name::in, varset::in, term::in, term::in,
-    prog_context::in, int::in, maybe1(item_typeclass_info)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_typeclass_info)::out)
+    is det.
 
 parse_non_empty_class(ModuleName, VarSet, NameTerm, MethodsTerm,
         Context, SeqNum, MaybeItemTypeClassInfo) :-
@@ -136,7 +137,8 @@ parse_non_empty_class(ModuleName, VarSet, NameTerm, MethodsTerm,
     ).
 
 :- pred parse_class_head(module_name::in, varset::in, term::in,
-    prog_context::in, int::in, maybe1(item_typeclass_info)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_typeclass_info)::out)
+    is det.
 
 parse_class_head(ModuleName, VarSet, ArgTerm, Context, SeqNum,
         MaybeItemTypeClassInfo) :-
@@ -152,7 +154,7 @@ parse_class_head(ModuleName, VarSet, ArgTerm, Context, SeqNum,
     ).
 
 :- pred parse_constrained_class(module_name::in, varset::in,
-    term::in, term::in, prog_context::in, int::in,
+    term::in, term::in, prog_context::in, item_seq_num::in,
     maybe1(item_typeclass_info)::out) is det.
 
 parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
@@ -327,7 +329,8 @@ collect_simple_and_fundep_constraints([Constraint | Constraints],
     ).
 
 :- pred parse_unconstrained_class(module_name::in, tvarset::in, term::in,
-    prog_context::in, int::in, maybe1(item_typeclass_info)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_typeclass_info)::out)
+    is det.
 
 parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
         MaybeTypeClassInfo) :-
@@ -361,8 +364,8 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
                     % XXX Would this be a better context?
                     % Context = get_term_context(NameTerm),
                     TypeClassInfo = item_typeclass_info(ClassName, Vars, [],
-                        [], class_interface_abstract, TVarSet, Context,
-                        SeqNum),
+                        [], class_interface_abstract, TVarSet,
+                        Context, SeqNum),
                     MaybeTypeClassInfo = ok1(TypeClassInfo)
                 else
                     Pieces = [words("Error: expected distinct variables"),
@@ -461,7 +464,8 @@ parse_instance_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
     ).
 
 :- pred parse_instance_name(module_name::in, tvarset::in, term::in,
-    prog_context::in, int::in, maybe1(item_instance_info)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_instance_info)::out)
+    is det.
 
 parse_instance_name(ModuleName, TVarSet, ArgTerm, Context, SeqNum,
         MaybeItemInstanceInfo) :-
@@ -476,7 +480,7 @@ parse_instance_name(ModuleName, TVarSet, ArgTerm, Context, SeqNum,
     ).
 
 :- pred parse_derived_instance(module_name::in, tvarset::in,
-    term::in, term::in, prog_context::in, int::in,
+    term::in, term::in, prog_context::in, item_seq_num::in,
     maybe1(item_instance_info)::out) is det.
 
 parse_derived_instance(ModuleName, TVarSet, NameTerm, ConstraintsTerm,
@@ -509,7 +513,8 @@ parse_instance_constraints(ModuleName, VarSet, ConstraintsTerm, Result) :-
         Result).
 
 :- pred parse_underived_instance(module_name::in, tvarset::in, term::in,
-    prog_context::in, int::in, maybe1(item_instance_info)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_instance_info)::out)
+    is det.
 
 parse_underived_instance(ModuleName, TVarSet, NameTerm, Context, SeqNum,
         MaybeItemInstanceInfo) :-
@@ -530,8 +535,8 @@ parse_underived_instance(ModuleName, TVarSet, NameTerm, Context, SeqNum,
             (
                 MaybeTypes = ok1(Types),
                 ItemInstanceInfo = item_instance_info(ClassName, Types, Types,
-                    [], instance_body_abstract, TVarSet, ModuleName, Context,
-                    SeqNum),
+                    [], instance_body_abstract, TVarSet, ModuleName,
+                    Context, SeqNum),
                 MaybeItemInstanceInfo = ok1(ItemInstanceInfo)
             ;
                 MaybeTypes = error1(Specs),
@@ -544,7 +549,7 @@ parse_underived_instance(ModuleName, TVarSet, NameTerm, Context, SeqNum,
     ).
 
 :- pred parse_non_empty_instance(module_name::in, varset::in, tvarset::in,
-    term::in, term::in, prog_context::in, int::in,
+    term::in, term::in, prog_context::in, item_seq_num::in,
     maybe1(item_instance_info)::out) is det.
 
 parse_non_empty_instance(ModuleName, VarSet, TVarSet, NameTerm, MethodsTerm,
@@ -715,8 +720,8 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
         % we will pick that up later, in check_typeclass.m.)
 
         DefaultModuleName = unqualified(""),
-        parse_item_or_marker(DefaultModuleName, VarSet, MethodTerm, -1,
-            MaybeIOM),
+        parse_item_or_marker(DefaultModuleName, VarSet, MethodTerm,
+            item_no_seq_num, MaybeIOM),
         (
             MaybeIOM = error1(Specs),
             MaybeInstanceMethod = error1(Specs)

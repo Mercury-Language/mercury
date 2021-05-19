@@ -28,13 +28,13 @@
 
 :- pred module_add_clause(prog_varset::in, pred_or_func::in, sym_name::in,
     list(prog_term)::in, maybe2(goal, list(warning_spec))::in,
-    pred_status::in, prog_context::in, maybe(int)::in, goal_type::in,
+    pred_status::in, prog_context::in, item_seq_num::in, goal_type::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred clauses_info_add_clause(clause_applicable_modes::in, list(proc_id)::in,
     prog_varset::in, tvarset::in, list(prog_term)::in, goal::in,
-    prog_context::in, maybe(int)::in, pred_status::in, pred_or_func::in,
+    prog_context::in, item_seq_num::in, pred_status::in, pred_or_func::in,
     arity::in, goal_type::in, hlds_goal::out, prog_varset::out, tvarset::out,
     list(quant_warning)::out, clauses_info::in, clauses_info::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -88,7 +88,7 @@
 %-----------------------------------------------------------------------------%
 
 module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
-        Status, Context, MaybeSeqNum, GoalType,
+        Status, Context, SeqNum, GoalType,
         !ModuleInfo, !QualInfo, !Specs) :-
     ( if
         illegal_state_var_func_result(PredOrFunc, ArgTerms0, SVar, SVarCtxt)
@@ -153,7 +153,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
             MaybePredId = yes(PredId),
             module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
                 ArgTerms, Arity, ArityAdjustment, MaybeBodyGoal,
-                Status, Context, MaybeSeqNum, GoalType, IllegalSVarResult,
+                Status, Context, SeqNum, GoalType, IllegalSVarResult,
                 !ModuleInfo, !QualInfo, !Specs)
         ;
             MaybePredId = no
@@ -163,13 +163,13 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, ArgTerms0, MaybeBodyGoal,
 :- pred module_add_clause_2(prog_varset::in, pred_or_func::in, sym_name::in,
     pred_id::in, list(prog_term)::in, int::in, int::in,
     maybe2(goal, list(warning_spec))::in, pred_status::in, prog_context::in,
-    maybe(int)::in, goal_type::in, maybe({prog_var, prog_context})::in,
+    item_seq_num::in, goal_type::in, maybe({prog_var, prog_context})::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
         MaybeAnnotatedArgTerms, Arity, ArityAdjustment, MaybeBodyGoal,
-        PredStatus, Context, MaybeSeqNum, GoalType, IllegalSVarResult,
+        PredStatus, Context, SeqNum, GoalType, IllegalSVarResult,
         !ModuleInfo, !QualInfo, !Specs) :-
     some [!PredInfo, !PredicateTable, !PredSpecs] (
         % Lookup the pred_info for this pred, add the clause to the
@@ -288,7 +288,7 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId,
                     !ModuleInfo, !QualInfo, !Specs),
                 clauses_info_add_clause(ProcIdsForThisClause, AllProcIds,
                     ClauseVarSet, TVarSet0, ArgTerms, BodyGoal,
-                    Context, MaybeSeqNum, PredStatus, PredOrFunc, Arity,
+                    Context, SeqNum, PredStatus, PredOrFunc, Arity,
                     GoalType, Goal, VarSet, TVarSet, Warnings,
                     Clauses0, Clauses, !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_clauses_info(Clauses, !PredInfo),
@@ -623,7 +623,7 @@ get_mode_annotation(VarSet, ContextPieces, MaybeAnnotatedArgTerm, ArgTerm,
     ).
 
 clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, ArgTerms,
-        BodyGoal, Context, MaybeSeqNum, PredStatus, PredOrFunc, Arity,
+        BodyGoal, Context, SeqNum, PredStatus, PredOrFunc, Arity,
         GoalType, Goal, VarSet, TVarSet, QuantWarnings,
         !ClausesInfo, !ModuleInfo, !QualInfo, !Specs) :-
     !.ClausesInfo = clauses_info(VarSet0, TVarNameMap0,
@@ -724,7 +724,7 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0, ArgTerms,
             add_clause(Clause, ClausesRep0, ClausesRep)
         ),
         qual_info_get_var_types(!.QualInfo, ExplicitVarTypes),
-        add_clause_item_number(MaybeSeqNum, Context, item_is_clause,
+        add_clause_item_number(SeqNum, Context, item_is_clause,
             ItemNumbers0, ItemNumbers),
         !:ClausesInfo = clauses_info(VarSet, TVarNameMap,
             ExplicitVarTypes, InferredVarTypes, HeadVars,

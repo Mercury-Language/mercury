@@ -2697,7 +2697,7 @@ accumulate_modules_in_insts([Inst | Insts], !MaybeUnqual, !ModuleNames) :-
 %---------------------------------------------------------------------------%
 
 make_foreign_import(ModuleName, Lang) = FIM :-
-    FIM = item_fim(Lang, ModuleName, term.context_init, -1).
+    FIM = item_fim(Lang, ModuleName, term.context_init, item_no_seq_num).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.comp_unit_interface.

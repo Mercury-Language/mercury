@@ -1318,7 +1318,7 @@
                 cl_body                         :: maybe2(goal,
                                                     list(warning_spec)),
                 cl_context                      :: prog_context,
-                cl_seq_num                      :: int
+                cl_seq_num                      :: item_seq_num
             ).
 
 :- type item_type_defn_info == item_type_defn_info_general(type_defn).
@@ -1343,7 +1343,7 @@
                 td_ctor_defn                    :: T,
                 td_tvarset                      :: tvarset,
                 td_context                      :: prog_context,
-                td_seq_num                      :: int
+                td_seq_num                      :: item_seq_num
             ).
 
 :- type item_inst_defn_info
@@ -1356,7 +1356,7 @@
                 id_inst_defn                    :: maybe_abstract_inst_defn,
                 id_varset                       :: inst_varset,
                 id_context                      :: prog_context,
-                id_seq_num                      :: int
+                id_seq_num                      :: item_seq_num
             ).
 
 :- type maybe_abstract_inst_defn
@@ -1372,7 +1372,7 @@
                 md_mode_defn                    :: maybe_abstract_mode_defn,
                 md_varset                       :: inst_varset,
                 md_context                      :: prog_context,
-                md_seq_num                      :: int
+                md_seq_num                      :: item_seq_num
             ).
 
 :- type maybe_abstract_mode_defn
@@ -1401,7 +1401,7 @@
                 pf_purity                       :: purity,
                 pf_constraints                  :: prog_constraints,
                 pf_context                      :: prog_context,
-                pf_seq_num                      :: int
+                pf_seq_num                      :: item_seq_num
             ).
 
 :- type item_mode_decl_info
@@ -1418,7 +1418,7 @@
                 pfm_maybe_detism                :: maybe(determinism),
                 pfm_instvarset                  :: inst_varset,
                 pfm_context                     :: prog_context,
-                pfm_seq_num                     :: int
+                pfm_seq_num                     :: item_seq_num
             ).
 
 :- type item_foreign_enum_info
@@ -1428,7 +1428,7 @@
                 fe_values                       :: one_or_more(
                                                     pair(sym_name, string)),
                 fe_context                      :: prog_context,
-                fe_seq_num                      :: int
+                fe_seq_num                      :: item_seq_num
             ).
 
 :- type foreign_enum_spec
@@ -1446,7 +1446,7 @@
                 fee_overrides                   :: assoc_list(sym_name,
                                                     string),
                 fee_context                     :: prog_context,
-                fee_seq_num                     :: int
+                fee_seq_num                     :: item_seq_num
             ).
 
 :- type item_decl_pragma_info == item_pragma_info(decl_pragma).
@@ -1456,7 +1456,7 @@
     --->    item_pragma_info(
                 prag_type                       :: T,
                 prag_context                    :: prog_context,
-                prag_seq_num                    :: int
+                prag_seq_num                    :: item_seq_num
             ).
 
 :- type item_promise_info
@@ -1466,7 +1466,7 @@
                 prom_varset                     :: prog_varset,
                 prom_univ_quant_vars            :: list(prog_var),
                 prom_context                    :: prog_context,
-                prom_seq_num                    :: int
+                prom_seq_num                    :: item_seq_num
             ).
 
 :- type item_typeclass_info
@@ -1478,7 +1478,7 @@
                 tc_class_methods                :: class_interface,
                 tc_varset                       :: tvarset,
                 tc_context                      :: prog_context,
-                tc_seq_num                      :: int
+                tc_seq_num                      :: item_seq_num
             ).
 
 :- type item_instance_info
@@ -1494,7 +1494,7 @@
                 ci_varset                       :: tvarset,
                 ci_module_containing_instance   :: module_name,
                 ci_context                      :: prog_context,
-                ci_seq_num                      :: int
+                ci_seq_num                      :: item_seq_num
             ).
 
 :- type item_initialise_info
@@ -1504,7 +1504,7 @@
                 init_arity                      :: arity,
                 init_maybe_attrs                :: item_maybe_attrs,
                 init_context                    :: prog_context,
-                init_seq_num                    :: int
+                init_seq_num                    :: item_seq_num
             ).
 
 :- type item_finalise_info
@@ -1514,7 +1514,7 @@
                 final_arity                     :: arity,
                 final_maybe_attrs               :: item_maybe_attrs,
                 final_context                   :: prog_context,
-                final_seq_num                   :: int
+                final_seq_num                   :: item_seq_num
             ).
 
 :- type item_mutable_info
@@ -1532,7 +1532,7 @@
                 mut_init_value_varset           :: prog_varset,
                 mut_attrs                       :: mutable_var_attributes,
                 mut_context                     :: prog_context,
-                mut_seq_num                     :: int
+                mut_seq_num                     :: item_seq_num
             ).
 
 :- type item_type_repn_info_eqv
@@ -1558,7 +1558,7 @@
                 tr_ctor_repn_info               :: T,
                 tr_tvarset                      :: tvarset,
                 tr_context                      :: prog_context,
-                tr_seq_num                      :: int
+                tr_seq_num                      :: item_seq_num
             ).
 
 %---------------------------------------------------------------------------%
@@ -1585,7 +1585,7 @@
 
                 % The context and item sequence number of the declaration.
                 incl_context                    :: prog_context,
-                incl_seq_num                    :: int
+                incl_seq_num                    :: item_seq_num
             ).
 
 :- type import_or_use
@@ -1616,13 +1616,13 @@
     --->    avail_import_info(
                 aii_module_name     :: module_name,
                 aii_context         :: prog_context,
-                aii_seq_num         :: int
+                aii_seq_num         :: item_seq_num
             ).
 :- type avail_use_info
     --->    avail_use_info(
                 aui_module_name     :: module_name,
                 aui_context         :: prog_context,
-                aui_seq_num         :: int
+                aui_seq_num         :: item_seq_num
             ).
 
 :- type item_fim
@@ -1646,7 +1646,7 @@
                 fim_lang                        :: foreign_language,
                 fim_module_name                 :: module_name,
                 fim_context                     :: prog_context,
-                fim_seq_num                     :: int
+                fim_seq_num                     :: item_seq_num
             ).
 
 %---------------------------------------------------------------------------%

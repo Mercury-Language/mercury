@@ -962,7 +962,7 @@ add_includes_for_nested_submodules(ModuleName, SubInclInfoMap,
 submodule_include_info_map_to_item_includes_acc(ModuleName, SubInclInfo,
         !RevIntIncludes, !RevImpIncludes) :-
     SubInclInfo = submodule_include_info(SectionKind, Context),
-    Incl = item_include(ModuleName, Context, -1),
+    Incl = item_include(ModuleName, Context, item_no_seq_num),
     (
         SectionKind = ms_interface,
         !:RevIntIncludes = [Incl | !.RevIntIncludes]

@@ -509,7 +509,7 @@ create_tabling_statistics_pred(ProcId, Context, PFSymNameArity, SingleProc,
     PredDecl = item_pred_decl_info(StatsPredSymName, pf_predicate,
         ArgTypesAndModes, maybe.no, maybe.no, yes(detism_det), MaybeAttrs,
         TypeVarSet, InstVarSet, ExistQVars, purity_pure, Constraints,
-        Context, -1),
+        Context, item_no_seq_num),
     module_add_pred_decl(ItemMercuryStatus, PredStatus, may_be_unqualified,
         PredDecl, _MaybePredProcId, !ModuleInfo, !Specs),
 
@@ -541,11 +541,13 @@ create_tabling_statistics_pred(ProcId, Context, PFSymNameArity, SingleProc,
                 ProcId),
             StatsCode = "MR_get_tabling_stats(&" ++ Global ++ ", &Stats);",
             StatsImpl = fp_impl_ordinary(StatsCode, yes(Context)),
-            StatsPragmaFCInfo = pragma_info_foreign_proc(!.Attrs,
+            StatsFCInfo = pragma_info_foreign_proc(!.Attrs,
                 StatsPredSymName, pf_predicate, [Arg1, Arg2, Arg3],
                 !.VarSet, InstVarSet, StatsImpl),
-            add_pragma_foreign_proc(StatsPragmaFCInfo, PredStatus, Context,
-                yes(-1), !ModuleInfo, !Specs)
+            PragmaStatsFCInfo =
+                item_pragma_info(StatsFCInfo, Context, item_no_seq_num),
+            add_pragma_foreign_proc(PredStatus, PragmaStatsFCInfo,
+                !ModuleInfo, !Specs)
         ;
             IsTablingSupported = no,
             DummyStatsFuncSymName = qualified(mercury_table_statistics_module,
@@ -563,8 +565,8 @@ create_tabling_statistics_pred(ProcId, Context, PFSymNameArity, SingleProc,
             BodyExpr = promise_purity_expr(Context, purity_pure,
                 GetStatsUpdateIOExpr),
             module_add_clause(!.VarSet, pf_predicate, StatsPredSymName, Args,
-                ok2(BodyExpr, []), PredStatus, Context, no, goal_type_none,
-                !ModuleInfo, !QualInfo, !Specs)
+                ok2(BodyExpr, []), PredStatus, Context, item_no_seq_num,
+                goal_type_none, !ModuleInfo, !QualInfo, !Specs)
         )
     ).
 
@@ -593,7 +595,7 @@ create_tabling_reset_pred(ProcId, Context, PFSymNameArity, SingleProc,
     PredDecl = item_pred_decl_info(ResetPredSymName, pf_predicate,
         ArgTypesAndModes, maybe.no, maybe.no, yes(detism_det), MaybeAttrs,
         TypeVarSet, InstVarSet, ExistQVars, purity_pure, Constraints,
-        Context, -1),
+        Context, item_no_seq_num),
     module_add_pred_decl(ItemMercuryStatus, PredStatus, may_be_unqualified,
         PredDecl, _MaybePredProcId, !ModuleInfo, !Specs),
 
@@ -620,19 +622,21 @@ create_tabling_reset_pred(ProcId, Context, PFSymNameArity, SingleProc,
                 PFSymNameArity, ProcId),
             ResetCode = GlobalVarName ++ ".MR_pt_tablenode.MR_integer = 0;",
             ResetImpl = fp_impl_ordinary(ResetCode, yes(Context)),
-            ResetPragmaFCInfo = pragma_info_foreign_proc(!.Attrs,
+            ResetFCInfo = pragma_info_foreign_proc(!.Attrs,
                 ResetPredSymName, pf_predicate, [Arg1, Arg2],
                 !.VarSet, InstVarSet, ResetImpl),
-            add_pragma_foreign_proc(ResetPragmaFCInfo, PredStatus, Context,
-                yes(-1), !ModuleInfo, !Specs)
+            PragmaResetFCInfo =
+                item_pragma_info(ResetFCInfo, Context, item_no_seq_num),
+            add_pragma_foreign_proc(PredStatus, PragmaResetFCInfo,
+                !ModuleInfo, !Specs)
         ;
             IsTablingSupported = no,
             Args = [variable(IO0, Context), variable(IO, Context)],
             BodyExpr = unify_expr(Context,
                 variable(IO0, Context), variable(IO, Context), purity_pure),
             module_add_clause(!.VarSet, pf_predicate, ResetPredSymName, Args,
-                ok2(BodyExpr, []), PredStatus, Context, no, goal_type_none,
-                !ModuleInfo, !QualInfo, !Specs)
+                ok2(BodyExpr, []), PredStatus, Context, item_no_seq_num,
+                goal_type_none, !ModuleInfo, !QualInfo, !Specs)
         )
     ).
 

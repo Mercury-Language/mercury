@@ -32,13 +32,13 @@
     % Parse the definition of a solver type.
     %
 :- pred parse_solver_type_defn_item(module_name::in, varset::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
     % Parse the definition of a type.
     %
 :- pred parse_type_defn_item(module_name::in, varset::in,
-    list(term)::in, prog_context::in, int::in, is_solver_type::in,
+    list(term)::in, prog_context::in, item_seq_num::in, is_solver_type::in,
     maybe1(item_or_marker)::out) is det.
 
     % Parses the attributes in a "where" clause. It looks for and processes
@@ -150,7 +150,7 @@ parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
     % parse_du_type_defn parses the definition of a discriminated union type.
     %
 :- pred parse_du_type_defn(module_name::in, varset::in, term::in, term::in,
-    prog_context::in, int::in, is_solver_type::in,
+    prog_context::in, item_seq_num::in, is_solver_type::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
@@ -332,8 +332,8 @@ parse_maybe_exist_quant_constructor(ModuleName, VarSet, Ordinal, Term,
         (
             MaybeExistQVars = ok1(ExistQVars),
             list.map(term.coerce_var, ExistQVars, ExistQTVars),
-            parse_constructor(ModuleName, VarSet, Ordinal, ExistQTVars, SubTerm,
-                MaybeConstructor)
+            parse_constructor(ModuleName, VarSet, Ordinal, ExistQTVars,
+                SubTerm, MaybeConstructor)
         ;
             MaybeExistQVars = error1(Specs),
             MaybeConstructor = error1(Specs)
@@ -741,8 +741,8 @@ find_constructor([Ctor | Ctors], SymName, Arity, NamedCtor) :-
     % parse_eqv_type_defn parses the definition of an equivalence type.
     %
 :- pred parse_eqv_type_defn(module_name::in, varset::in, term::in, term::in,
-    prog_context::in, int::in, is_solver_type::in, maybe1(item_or_marker)::out)
-    is det.
+    prog_context::in, item_seq_num::in, is_solver_type::in,
+    maybe1(item_or_marker)::out) is det.
 
 parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         IsSolverType, MaybeIOM) :-
@@ -805,7 +805,7 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     % - a solver type.
     %
 :- pred parse_where_block_type_defn(module_name::in, varset::in, term::in,
-    term::in, prog_context::in, int::in, is_solver_type::in,
+    term::in, prog_context::in, item_seq_num::in, is_solver_type::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
@@ -843,7 +843,7 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
     ).
 
 :- pred parse_where_type_is_abstract(module_name::in, varset::in,
-    term::in, term::in, prog_context::in, int::in,
+    term::in, term::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
@@ -925,7 +925,7 @@ parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
 
 :- pred parse_solver_type_base(module_name::in, varset::in, term::in,
     maybe(solver_type_details)::in, maybe_canonical::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 parse_solver_type_base(ModuleName, VarSet, HeadTerm,
         MaybeSolverTypeDetails, MaybeCanonical, Context, SeqNum, MaybeIOM) :-
@@ -977,7 +977,7 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
 %
 
 :- pred parse_abstract_type_defn(module_name::in, varset::in, term::in,
-    prog_context::in, int::in, is_solver_type::in,
+    prog_context::in, item_seq_num::in, is_solver_type::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
@@ -1299,7 +1299,7 @@ parse_mutable_decl_term(ModuleName, VarSet, Term, MaybeItemMutableInfo) :-
     ( if
         Term = term.functor(term.atom("mutable"), ArgTerms, Context)
     then
-        SeqNum = -1,
+        SeqNum = item_no_seq_num,
         parse_mutable_decl_info(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             mutable_locn_in_solver_type, MaybeItemMutableInfo)
     else

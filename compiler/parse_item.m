@@ -19,6 +19,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_types.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
 :- import_module term.
@@ -40,8 +41,8 @@
     % If the parsing attempt is unsuccessful, bind MaybeItemOrMarker
     % to an appropriate error message.
     %
-:- pred parse_item_or_marker(module_name::in, varset::in, term::in, int::in,
-    maybe1(item_or_marker)::out) is det.
+:- pred parse_item_or_marker(module_name::in, varset::in, term::in,
+    item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
     % parse_class_decl(ModuleName, VarSet, Term, MaybeClassDecl):
     %
@@ -51,7 +52,7 @@
     % Qualify appropriate parts of the declaration with ModuleName
     % as the module name.
     %
-    % Exported for use by parse_class.m.
+    %ino Exported for use by parse_class.m.
     %
 :- pred parse_class_decl(module_name::in, varset::in, term::in,
     maybe1(class_decl)::out) is det.
@@ -112,7 +113,6 @@
 :- import_module parse_tree.parse_type_name.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.parse_vars.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module recompilation.
 :- import_module recompilation.version.
@@ -140,11 +140,11 @@ parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
 %---------------------------------------------------------------------------%
 
 :- pred parse_decl_term_item_or_marker(module_name::in, varset::in, term::in,
-    int::in, maybe1(item_or_marker)::out) is det.
+    item_seq_num::in, maybe1(item_or_marker)::out) is det.
 :- pragma inline(parse_decl_term_item_or_marker/5).
 
 parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
-    SeqNum, MaybeIOM) :-
+        SeqNum, MaybeIOM) :-
     ( if DeclTerm = term.functor(term.atom(Functor), ArgTerms, Context) then
         ( if
             parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
@@ -183,7 +183,7 @@ decl_functor_is_not_valid(Term, Functor) = Spec :-
 
 :- pred parse_decl_item_or_marker(module_name::in, varset::in,
     string::in, list(term)::in, decl_in_class::in, prog_context::in,
-    int::in, maybe1(item_or_marker)::out) is semidet.
+    item_seq_num::in, maybe1(item_or_marker)::out) is semidet.
 
 parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         IsInClass, Context, SeqNum, MaybeIOM) :-
@@ -307,7 +307,8 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
     ).
 
 :- pred parse_attr_decl_item_or_marker(module_name::in, varset::in,
-    string::in, list(term)::in, decl_in_class::in, prog_context::in, int::in,
+    string::in, list(term)::in, decl_in_class::in,
+    prog_context::in, item_seq_num::in,
     cord(purity_attr)::in, cord(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is semidet.
 
@@ -387,7 +388,7 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
 %---------------------------------------------------------------------------%
 
 :- pred parse_clause_term_item_or_marker(module_name::in, varset::in, term::in,
-    int::in, maybe1(item_or_marker)::out) is det.
+    item_seq_num::in, maybe1(item_or_marker)::out) is det.
 :- pragma inline(parse_clause_term_item_or_marker/5).
 
 parse_clause_term_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
@@ -421,7 +422,7 @@ parse_clause_term_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
 parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
     TermContext = get_term_context(Term),
     parse_attributed_decl(ModuleName, VarSet, Term, decl_is_in_class,
-        TermContext, -1, cord.init, cord.init, MaybeIOM),
+        TermContext, item_no_seq_num, cord.init, cord.init, MaybeIOM),
     (
         MaybeIOM = error1(Specs),
         MaybeClassMethod = error1(Specs)
@@ -467,7 +468,8 @@ parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
     ;       qca_constraint(quantifier_type, term).
 
 :- pred parse_quant_attr(module_name::in, varset::in,
-    string::in, list(term)::in, decl_in_class::in, prog_context::in, int::in,
+    string::in, list(term)::in, decl_in_class::in,
+    prog_context::in, item_seq_num::in,
     quantifier_type::in, cord(purity_attr)::in, cord(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
@@ -494,7 +496,8 @@ parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
     ).
 
 :- pred parse_constraint_attr(module_name::in, varset::in,
-    string::in, list(term)::in, decl_in_class::in, prog_context::in, int::in,
+    string::in, list(term)::in, decl_in_class::in,
+    prog_context::in, item_seq_num::in,
     quantifier_type::in, cord(purity_attr)::in, cord(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
@@ -521,7 +524,8 @@ parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
     ).
 
 :- pred parse_purity_attr(module_name::in, varset::in,
-    string::in, list(term)::in, decl_in_class::in, prog_context::in, int::in,
+    string::in, list(term)::in, decl_in_class::in,
+    prog_context::in, item_seq_num::in,
     purity::in, cord(purity_attr)::in, cord(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
@@ -547,7 +551,7 @@ parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
     ).
 
 :- pred parse_attributed_decl(module_name::in, varset::in, term::in,
-    decl_in_class::in, prog_context::in, int::in,
+    decl_in_class::in, prog_context::in, item_seq_num::in,
     cord(purity_attr)::in, cord(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
@@ -571,7 +575,7 @@ parse_attributed_decl(ModuleName, VarSet, Term, IsInClass, _Context, SeqNum,
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_module_marker(list(term)::in, prog_context::in, int::in,
+:- pred parse_module_marker(list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
@@ -590,8 +594,8 @@ parse_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
         MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_end_module_marker(list(term)::in, prog_context::in, int::in,
-    maybe1(item_or_marker)::out) is det.
+:- pred parse_end_module_marker(list(term)::in, prog_context::in,
+    item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 parse_end_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
     ( if
@@ -612,7 +616,7 @@ parse_end_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
 %---------------------------------------------------------------------------%
 
 :- pred parse_section_marker(string::in, list(term)::in,
-    prog_context::in, int::in, module_section::in,
+    prog_context::in, item_seq_num::in, module_section::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_section_marker(Functor, ArgTerms, Context, SeqNum, Section, MaybeIOM) :-
@@ -637,7 +641,7 @@ parse_section_marker(Functor, ArgTerms, Context, SeqNum, Section, MaybeIOM) :-
     ;       iiu_use_module.
 
 :- pred parse_incl_imp_use_items(module_name::in, varset::in,
-    string::in, list(term)::in, prog_context::in, int::in,
+    string::in, list(term)::in, prog_context::in, item_seq_num::in,
     incl_imp_use::in, maybe1(item_or_marker)::out) is det.
 
 parse_incl_imp_use_items(ModuleName, VarSet, Functor, ArgTerms, Context,
@@ -706,20 +710,20 @@ parse_incl_imp_use_items(ModuleName, VarSet, Functor, ArgTerms, Context,
         MaybeIOM = error1([Spec])
     ).
 
-:- pred make_item_include(prog_context::in, int::in, module_name::in,
+:- pred make_item_include(prog_context::in, item_seq_num::in, module_name::in,
     item_include::out) is det.
 
 make_item_include(Context, SeqNum, ModuleName, Incl) :-
     Incl = item_include(ModuleName, Context, SeqNum).
 
-:- pred make_item_avail_import(prog_context::in, int::in,
+:- pred make_item_avail_import(prog_context::in, item_seq_num::in,
     module_name::in, item_avail::out) is det.
 
 make_item_avail_import(Context, SeqNum, ModuleName, Avail) :-
     AvailImportInfo = avail_import_info(ModuleName, Context, SeqNum),
     Avail = avail_import(AvailImportInfo).
 
-:- pred make_item_avail_use(prog_context::in, int::in,
+:- pred make_item_avail_use(prog_context::in, item_seq_num::in,
     module_name::in, item_avail::out) is det.
 
 make_item_avail_use(Context, SeqNum, ModuleName, Avail) :-
@@ -734,7 +738,7 @@ make_item_avail_use(Context, SeqNum, ModuleName, Avail) :-
 
 :- pred parse_mode_defn_or_decl_item(module_name::in, varset::in,
     list(term)::in, decl_in_class::in,
-    prog_context::in, int::in, maybe_allow_mode_defn::in,
+    prog_context::in, item_seq_num::in, maybe_allow_mode_defn::in,
     list(quant_constr_attr)::in, maybe1(item_or_marker)::out) is det.
 
 parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, IsInClass, Context,
@@ -773,7 +777,7 @@ parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, IsInClass, Context,
 %---------------------------------------------------------------------------%
 
 :- pred parse_version_numbers_marker(module_name::in,
-    string::in, list(term)::in, prog_context::in, int::in,
+    string::in, list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
@@ -838,7 +842,7 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
 %---------------------------------------------------------------------------%
 
 :- pred parse_clause(module_name::in, varset::in, term::in, term::in,
-    term.context::in, int::in, maybe1(item_or_marker)::out) is det.
+    term.context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         MaybeIOM) :-
@@ -908,7 +912,8 @@ parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
     % parse_pred_or_func_decl parses a predicate or function declaration.
     %
 :- pred parse_pred_or_func_decl_item(module_name::in, varset::in,
-    string::in, list(term)::in, decl_in_class::in, prog_context::in, int::in,
+    string::in, list(term)::in, decl_in_class::in,
+    prog_context::in, item_seq_num::in,
     pred_or_func::in, list(purity_attr)::in, list(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
@@ -1009,7 +1014,8 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
     %
 :- pred parse_pred_decl_base(pred_or_func::in, module_name::in, varset::in,
     term::in, maybe(mer_type)::in, maybe(mer_inst)::in,
-    maybe(determinism)::in, decl_in_class::in, prog_context::in, int::in,
+    maybe(determinism)::in, decl_in_class::in,
+    prog_context::in, item_seq_num::in,
     list(purity_attr)::in, list(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
@@ -1116,7 +1122,8 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
     % Parse a `:- func p(...)' declaration *without* a with_type clause.
     %
 :- pred parse_func_decl_base(module_name::in, varset::in, term::in,
-    maybe(determinism)::in, decl_in_class::in, prog_context::in, int::in,
+    maybe(determinism)::in, decl_in_class::in,
+    prog_context::in, item_seq_num::in,
     list(purity_attr)::in, list(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
@@ -1196,7 +1203,8 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, IsInClass, Context,
 
 :- pred parse_func_decl_base_2(sym_name::in, list(type_and_mode)::in,
     type_and_mode::in, term::in, term::in, varset::in, maybe(determinism)::in,
-    existq_tvars::in, prog_constraints::in, prog_context::in, int::in,
+    existq_tvars::in, prog_constraints::in,
+    prog_context::in, item_seq_num::in,
     list(purity_attr)::in, maybe1(item_or_marker)::out) is det.
 
 parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
@@ -1363,8 +1371,8 @@ wrap_nth(MaybeAddPredix, ArgNum) = Component :-
 %
 
 :- pred parse_mode_decl(module_name::in, varset::in, term::in,
-    decl_in_class::in, prog_context::in, int::in, list(quant_constr_attr)::in,
-    maybe1(item_or_marker)::out) is det.
+    decl_in_class::in, prog_context::in, item_seq_num::in,
+    list(quant_constr_attr)::in, maybe1(item_or_marker)::out) is det.
 
 parse_mode_decl(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
         QuantConstrAttrs, MaybeIOM) :-
@@ -1411,8 +1419,8 @@ parse_mode_decl(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
     ).
 
 :- pred parse_mode_decl_base(module_name::in, varset::in, term::in,
-    decl_in_class::in, prog_context::in, int::in, maybe(mer_inst)::in,
-    maybe(determinism)::in, list(quant_constr_attr)::in,
+    decl_in_class::in, prog_context::in, item_seq_num::in,
+    maybe(mer_inst)::in, maybe(determinism)::in, list(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_mode_decl_base(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
@@ -1470,7 +1478,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
 
 :- pred parse_pred_mode_decl(sym_name::in, list(term)::in, module_name::in,
     term::in, varset::in, maybe(mer_inst)::in, maybe(determinism)::in,
-    prog_context::in, int::in, list(quant_constr_attr)::in,
+    prog_context::in, item_seq_num::in, list(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
@@ -1508,8 +1516,7 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
                 MaybePredOrFunc = no
             ),
             ItemModeDecl = item_mode_decl_info(Functor, MaybePredOrFunc,
-                ArgModes, WithInst, MaybeDet, InstVarSet,
-                Context, SeqNum),
+                ArgModes, WithInst, MaybeDet, InstVarSet, Context, SeqNum),
             Item = item_mode_decl(ItemModeDecl),
             MaybeIOM = ok1(iom_item(Item))
         ;
@@ -1524,7 +1531,7 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
 
 :- pred parse_func_mode_decl(sym_name::in, list(term)::in, module_name::in,
     term::in, term::in, varset::in, maybe(determinism)::in,
-    prog_context::in, int::in, list(quant_constr_attr)::in,
+    prog_context::in, item_seq_num::in, list(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_func_mode_decl(Functor, ArgTerms, ModuleName, RetModeTerm, FullTerm,
@@ -1756,7 +1763,7 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
 %---------------------------------------------------------------------------%
 
 :- pred parse_promise_item(varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
     ( if ArgTerms = [Term] then
@@ -1809,7 +1816,7 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
 %---------------------------------------------------------------------------%
 
 :- pred parse_promise_ex_item(varset::in, string::in, list(term)::in,
-    prog_context::in, int::in, promise_type::in, list(term)::in,
+    prog_context::in, item_seq_num::in, promise_type::in, list(term)::in,
     maybe1(item_or_marker)::out) is det.
 
 parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,

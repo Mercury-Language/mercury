@@ -29,23 +29,23 @@
     % Parse a `:- inst <InstDefn>.' declaration.
     %
 :- pred parse_inst_defn_item(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
     % Parse an `:- abstract_inst <AbstractInstDefn>.' declaration.
     %
 :- pred parse_abstract_inst_defn_item(module_name::in, varset::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
     % Parse a `:- mode <ModeDefn>.' declaration.
     %
 :- pred parse_mode_defn(module_name::in, varset::in, term::in, term::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
     % Parse an `:- abstract_mode <AbstractModeDefn>.' declaration.
     %
 :- pred parse_abstract_mode_defn_item(module_name::in, varset::in,
-    list(term)::in, prog_context::in, int::in,
+    list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is det.
 
 %-----------------------------------------------------------------------------e
@@ -101,7 +101,7 @@ parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
     ).
 
 :- pred parse_inst_defn_eqv(module_name::in, varset::in, term::in, term::in,
-    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+    prog_context::in, item_seq_num::in, maybe1(item_or_marker)::out) is det.
 
 parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeIOM) :-
