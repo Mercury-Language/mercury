@@ -26,12 +26,17 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_clause(pred_status::in, goal_type::in, item_clause_info::in,
+:- type clause_type
+    --->    clause_not_for_promise
+    ;       clause_for_promise(promise_type).
+
+:- pred module_add_clause(pred_status::in, clause_type::in,
+    item_clause_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred clauses_info_add_clause(clause_applicable_modes::in, list(proc_id)::in,
-    pred_status::in, goal_type::in,
+    pred_status::in, clause_type::in,
     pred_or_func::in, arity::in, list(prog_term)::in,
     prog_context::in, item_seq_num::in, list(quant_warning)::out,
     goal::in, hlds_goal::out,
@@ -87,7 +92,7 @@
 
 %-----------------------------------------------------------------------------%
 
-module_add_clause(PredStatus, GoalType, ClauseInfo,
+module_add_clause(PredStatus, ClauseType, ClauseInfo,
         !ModuleInfo, !QualInfo, !Specs) :-
     ClauseInfo = item_clause_info(PredOrFunc, PredName, ArgTerms0,
         ClauseVarSet, MaybeBodyGoal, Context, SeqNum),
@@ -113,7 +118,8 @@ module_add_clause(PredStatus, GoalType, ClauseInfo,
             is_fully_qualified, PredOrFunc, PredName, Arity, PredIds),
         ( if PredIds = [PredIdPrime] then
             MaybePredId = yes(PredIdPrime),
-            ( if GoalType = goal_type_promise(_) then
+            (
+                ClauseType = clause_for_promise(_),
                 NameString = sym_name_to_string(PredName),
                 string.format("%s %s %s (%s).\n",
                     [s("Attempted to introduce a predicate"),
@@ -121,8 +127,8 @@ module_add_clause(PredStatus, GoalType, ClauseInfo,
                     s("to the name to an existing predicate"),
                     s(NameString)], UnexpectedMsg),
                 unexpected($pred, UnexpectedMsg)
-            else
-                true
+            ;
+                ClauseType = clause_not_for_promise
             )
         else if unqualify_name(PredName) = ",", Arity = 2 then
             MaybePredId = no,
@@ -137,12 +143,14 @@ module_add_clause(PredStatus, GoalType, ClauseInfo,
             !:Specs = [Spec | !.Specs]
         else
             % A promise will not have a corresponding pred declaration.
-            ( if GoalType = goal_type_promise(_) then
+            (
+                ClauseType = clause_for_promise(PromiseType),
                 HeadVars = term.term_list_to_var_list(ArgTerms),
                 preds_add_implicit_for_assertion(ModuleName, PredOrFunc,
-                    PredName, Arity, HeadVars, PredStatus, Context,
-                    NewPredId, !ModuleInfo)
-            else
+                    PredName, Arity, HeadVars, PredStatus, PromiseType,
+                    Context, NewPredId, !ModuleInfo)
+            ;
+                ClauseType = clause_not_for_promise,
                 preds_add_implicit_report_error(ModuleName, PredOrFunc,
                     PredName, Arity, PredStatus, is_not_a_class_method,
                     Context, origin_user(PredName), [words("clause")],
@@ -152,7 +160,7 @@ module_add_clause(PredStatus, GoalType, ClauseInfo,
         ),
         (
             MaybePredId = yes(PredId),
-            module_add_clause_2(PredStatus, GoalType, PredId,
+            module_add_clause_2(PredStatus, ClauseType, PredId,
                 PredOrFunc, PredName, ArgTerms, Arity, ArityAdjustment,
                 ClauseVarSet, MaybeBodyGoal, Context, SeqNum,
                 IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs)
@@ -161,14 +169,14 @@ module_add_clause(PredStatus, GoalType, ClauseInfo,
         )
     ).
 
-:- pred module_add_clause_2(pred_status::in, goal_type::in, pred_id::in,
+:- pred module_add_clause_2(pred_status::in, clause_type::in, pred_id::in,
     pred_or_func::in, sym_name::in, list(prog_term)::in, int::in, int::in,
     prog_varset::in, maybe2(goal, list(warning_spec))::in, prog_context::in,
     item_seq_num::in, maybe({prog_var, prog_context})::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_add_clause_2(PredStatus, GoalType, PredId, PredOrFunc, PredSymName,
+module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
         MaybeAnnotatedArgTerms, Arity, ArityAdjustment, ClauseVarSet,
         MaybeBodyGoal, Context, SeqNum, IllegalSVarResult,
         !ModuleInfo, !QualInfo, !Specs) :-
@@ -232,16 +240,20 @@ module_add_clause_2(PredStatus, GoalType, PredId, PredOrFunc, PredSymName,
                     ProcIdsForThisClause, AllProcIds,
                     !ModuleInfo, !QualInfo, !Specs),
                 clauses_info_add_clause(ProcIdsForThisClause, AllProcIds,
-                    PredStatus, GoalType, PredOrFunc, Arity, ArgTerms,
+                    PredStatus, ClauseType, PredOrFunc, Arity, ArgTerms,
                     Context, SeqNum, Warnings,
                     BodyGoal, Goal, ClauseVarSet, VarSet, TVarSet0, TVarSet,
                     Clauses0, Clauses, !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_clauses_info(Clauses, !PredInfo),
-                ( if GoalType = goal_type_promise(PromiseType) then
-                    pred_info_set_goal_type(goal_type_promise(PromiseType),
-                        !PredInfo)
-                else
-                    pred_info_update_goal_type(goal_type_clause, !PredInfo)
+                (
+                    ClauseType = clause_for_promise(_PromiseType)
+                    % We have already set the goal type.
+                ;
+                    ClauseType = clause_not_for_promise,
+                    % We normally add all Mercury clauses before we add
+                    % any foreign_procs, but just in case that changes
+                    % in the future ...
+                    pred_info_update_goal_type(np_goal_type_clause, !PredInfo)
                 ),
                 pred_info_set_typevarset(TVarSet, !PredInfo),
                 pred_info_get_arg_types(!.PredInfo, _ArgTVarSet, ExistQVars,
@@ -256,7 +268,7 @@ module_add_clause_2(PredStatus, GoalType, PredId, PredOrFunc, PredSymName,
                 ProcIds = pred_info_all_procids(!.PredInfo),
                 ( if
                     ProcIds = [],
-                    GoalType \= goal_type_promise(_)
+                    ClauseType = clause_not_for_promise
                 then
                     pred_info_get_markers(!.PredInfo, EndMarkers0),
                     add_marker(marker_infer_modes, EndMarkers0, EndMarkers),
@@ -478,7 +490,7 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
             ( ModeAnnotations = ma_empty
             ; ModeAnnotations = ma_none
             ),
-            ( if pred_info_pragma_goal_type(PredInfo) then
+            ( if pred_info_defn_has_foreign_proc(PredInfo) then
                 % We are only allowed to mix foreign procs and
                 % mode specific clauses, so make this clause
                 % mode specific but apply to all modes.
@@ -648,7 +660,7 @@ mode_decl_for_pred_info_to_pieces(PredInfo, ProcId) =
 
 %-----------------------------------------------------------------------------%
 
-clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, GoalType,
+clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
         PredOrFunc, Arity, ArgTerms, Context, SeqNum, QuantWarnings,
         BodyGoal, Goal, CVarSet, VarSet, TVarSet0, TVarSet,
         !ClausesInfo, !ModuleInfo, !QualInfo, !Specs) :-
@@ -679,7 +691,7 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, GoalType,
         MaybeOptImported, !QualInfo),
     varset.merge_renaming(VarSet0, CVarSet, VarSet1, Renaming),
     add_clause_transform(Renaming, HeadVars, ArgTerms, BodyGoal, Context,
-        PredOrFunc, Arity, GoalType, Goal0, VarSet1, VarSet,
+        PredOrFunc, Arity, ClauseType, Goal0, VarSet1, VarSet,
         QuantWarnings, StateVarWarnings, StateVarErrors,
         !ModuleInfo, !QualInfo, !Specs),
     qual_info_get_tvarset(!.QualInfo, TVarSet),
@@ -763,14 +775,14 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, GoalType,
     %
 :- pred add_clause_transform(prog_var_renaming::in,
     proc_arg_vector(prog_var)::in, list(prog_term)::in, goal::in,
-    prog_context::in, pred_or_func::in, arity::in, goal_type::in,
+    prog_context::in, pred_or_func::in, arity::in, clause_type::in,
     hlds_goal::out, prog_varset::in, prog_varset::out,
     list(quant_warning)::out, list(error_spec)::out, list(error_spec)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_clause_transform(Renaming, HeadVars, ArgTerms0, ParseTreeBodyGoal, Context,
-        PredOrFunc, Arity, GoalType, Goal, !VarSet,
+        PredOrFunc, Arity, ClauseType, Goal, !VarSet,
         QuantWarnings, StateVarWarnings, StateVarErrors,
         !ModuleInfo, !QualInfo, !Specs) :-
     some [!SInfo, !SVarState, !SVarStore] (
@@ -780,9 +792,11 @@ add_clause_transform(Renaming, HeadVars, ArgTerms0, ParseTreeBodyGoal, Context,
         svar_prepare_for_clause_head(ArgTerms1, ArgTerms, !VarSet,
             FinalSVarMap, !:SVarState, !:SVarStore, !Specs),
         InitialSVarState = !.SVarState,
-        ( if GoalType = goal_type_promise(_) then
+        (
+            ClauseType = clause_for_promise(_),
             HeadGoal = true_goal
-        else
+        ;
+            ClauseType = clause_not_for_promise,
             ArgContext = ac_head(PredOrFunc, Arity),
             HeadGoal0 = true_goal,
             pair_vars_with_terms(HeadVarList, ArgTerms, HeadVarsArgTerms),

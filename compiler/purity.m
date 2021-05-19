@@ -363,17 +363,22 @@ perform_pred_purity_checks(ModuleInfo, PredId, PredInfo,
         pred_info_get_markers(PredInfo, Markers),
         pred_info_get_goal_type(PredInfo, GoalType),
         ( if
-            ( GoalType = goal_type_foreign
-            ; GoalType = goal_type_clause_and_foreign
-            ; check_marker(Markers, marker_class_method)
-            ; check_marker(Markers, marker_class_instance_method)
-            ; check_marker(Markers, marker_stub)
+            (
+                GoalType = goal_not_for_promise(NPGoalType),
+                ( NPGoalType = np_goal_type_foreign
+                ; NPGoalType = np_goal_type_clause_and_foreign
+                )
+            ;
+                ( check_marker(Markers, marker_class_method)
+                ; check_marker(Markers, marker_class_instance_method)
+                ; check_marker(Markers, marker_stub)
+                )
             )
         then
             true
         else
-            TooPureSpec = warn_pred_body_too_pure(ModuleInfo,
-                PredInfo, PredId, ActualPurity, DeclaredPurity),
+            TooPureSpec = warn_pred_body_too_pure(ModuleInfo, PredInfo, PredId,
+                ActualPurity, DeclaredPurity),
             !:Specs = [TooPureSpec | !.Specs]
         )
     ).
@@ -525,7 +530,7 @@ compute_purity_for_clause(Clause0, Clause, PredInfo, Purity, !Info) :-
             check_marker(Markers, marker_promised_equivalent_clauses)
         ;
             pred_info_get_goal_type(PredInfo, GoalType),
-            GoalType = goal_type_foreign
+            GoalType = goal_not_for_promise(np_goal_type_foreign)
         )
     then
         ClausePurity = purity_pure

@@ -1584,9 +1584,10 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
     OutVarNums = list.map(term.var_to_int, OutVars),
     Origin = origin_transformed(transform_accumulator(OutVarNums),
         OldOrigin, OrigPredId),
+    GoalType = goal_not_for_promise(np_goal_type_none),
     pred_info_create(ModuleName, SymName, PredOrFunc, PredContext, Origin,
         pred_status(status_local), Markers, Types, TypeVarSet,
-        ExistQVars, ClassContext, Assertions, VarNameRemap,
+        ExistQVars, ClassContext, Assertions, VarNameRemap, GoalType,
         NewProcInfo, NewProcId, NewPredInfo).
 
 %---------------------------------------------------------------------------%

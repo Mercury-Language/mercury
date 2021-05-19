@@ -781,12 +781,12 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
             % which the instance method pred should not have, so this
             % dummy value should be ok.
             AllProcIds = [],
-            GoalType = goal_type_none,    % goal is not a promise
             % XXX STATUS
             InstanceStatus = instance_status(OldImportStatus),
             PredStatus = pred_status(OldImportStatus),
             clauses_info_add_clause(all_modes, AllProcIds,
-                PredStatus, GoalType, PredOrFunc, Arity, HeadTerms,
+                PredStatus, clause_not_for_promise,
+                PredOrFunc, Arity, HeadTerms,
                 Context, item_no_seq_num, Warnings,
                 BodyGoal, Goal, ClauseVarSet, VarSet, TVarSet0, TVarSet,
                 !ClausesInfo, !ModuleInfo, !QualInfo, !Specs),

@@ -231,9 +231,10 @@ create_fresh_pred_proc_info_copy_2(PredId, PredInfo, ProcInfo, ReusePredName,
     pred_info_get_var_name_remap(PredInfo, VarNameRemap),
     NewPredOrigin = origin_transformed(transform_structure_reuse, PredOrigin,
         PredId),
+    GoalType = goal_not_for_promise(np_goal_type_none),
     pred_info_create(ModuleName, ReusePredName, PredOrFunc, ProgContext,
         NewPredOrigin, PredStatus, PredMarkers, MerTypes, TVarset,
-        ExistQTVars, ProgConstraints, AssertIds, VarNameRemap,
+        ExistQTVars, ProgConstraints, AssertIds, VarNameRemap, GoalType,
         ProcInfo, ReuseProcId, ReusePredInfo).
 
 %-----------------------------------------------------------------------------%

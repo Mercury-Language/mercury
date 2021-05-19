@@ -181,14 +181,40 @@
     --->    impl_lang_mercury
     ;       impl_lang_foreign(foreign_language).
 
-    % The type of goals that have been given for a pred.
-
+    % A predicate, and the goal inside it, may implement a promise declaration,
+    % or it may be an ordinary predicate.
 :- type goal_type
-    --->    goal_type_clause
-    ;       goal_type_foreign               % pragma foreign_proc(...)
-    ;       goal_type_clause_and_foreign    % both clauses and foreign_procs
-    ;       goal_type_promise(promise_type)
-    ;       goal_type_none.
+    --->    goal_not_for_promise(np_goal_type)
+    ;       goal_for_promise(promise_type).
+
+    % An ordinary non-promise predicate may be defined by Mercury clauses,
+    % foreign procs, both, or neither. (The last is the recorded situation
+    % when we have added the predicate's declaration to the HLDS but have not
+    % processed any clauses or foreign procs just yet.)
+    %
+    % We use this information in two ways.
+    %
+    % First, intermod.m needs to know whether a predicate's definition
+    % contains any foreign_procs, because if it does, then it cannot append
+    % variable numbers after variable names for disambiguation, in e.g. clause
+    % heads, since that would screw up references to those variables in the
+    % foreign code.
+    %
+    % Second, purity.m has special handling for predicates that are defined
+    % *only* by foreign procs.
+    %
+    % Therefore the compiler does make a distinction between how it handles
+    % np_goal_type_foreign and np_goal_type_clause_and_foreign.
+    %
+    % As it happens, the compiler makes no distinction between how it handles
+    % np_goal_type_none and np_goal_type_clause, with the obvious exception
+    % that adding a foreign proc to the two results in no_goal_types that
+    % *are* distinguishable.
+:- type np_goal_type
+    --->    np_goal_type_none
+    ;       np_goal_type_clause
+    ;       np_goal_type_foreign
+    ;       np_goal_type_clause_and_foreign.
 
     % NOTE: `liveness_info' records liveness in the sense used by code
     % generation. This is *not* the same thing as the notion of liveness
@@ -581,8 +607,8 @@
 :- pred pred_info_create(module_name::in, sym_name::in, pred_or_func::in,
     prog_context::in, pred_origin::in, pred_status::in, pred_markers::in,
     list(mer_type)::in, tvarset::in, existq_tvars::in, prog_constraints::in,
-    set(assert_id)::in, map(prog_var, string)::in, proc_info::in,
-    proc_id::out, pred_info::out) is det.
+    set(assert_id)::in, map(prog_var, string)::in, goal_type::in,
+    proc_info::in, proc_id::out, pred_info::out) is det.
 
 %---------------------%
 
@@ -862,14 +888,14 @@
     % Do we have a clause goal type?
     % (this means either "clauses" or "clauses_and_pragmas")
     %
-:- pred pred_info_clause_goal_type(pred_info::in) is semidet.
+:- pred pred_info_defn_has_clause(pred_info::in) is semidet.
 
     % Do we have a pragma goal type?
     % (this means either "pragmas" or "clauses_and_pragmas")
     %
-:- pred pred_info_pragma_goal_type(pred_info::in) is semidet.
+:- pred pred_info_defn_has_foreign_proc(pred_info::in) is semidet.
 
-:- pred pred_info_update_goal_type(goal_type::in,
+:- pred pred_info_update_goal_type(np_goal_type::in,
     pred_info::in, pred_info::out) is det.
 
     % Succeeds if there was a `:- pragma inline(...)' declaration
@@ -1231,10 +1257,10 @@ pred_info_init(ModuleName, PredSymName, Arity, PredOrFunc, Context,
 
 pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
         Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
-        Assertions, VarNameRemap, ProcInfo, ProcId, PredInfo) :-
+        Assertions, VarNameRemap, GoalType, ProcInfo, ProcId, PredInfo) :-
     % argument Context
     CurUserDecl = maybe.no,
-    GoalType = goal_type_clause,
+    % argument GoalType
     map.init(Kinds),
     % XXX kind inference:
     % we assume all tvars have kind `star'.
@@ -1386,10 +1412,11 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
     proc_info_set_maybe_termination_info(TermInfo, ProcInfo0, ProcInfo),
 
     set.init(Assertions),
-
+    GoalType = goal_not_for_promise(np_goal_type_none),
     pred_info_create(SymNameModule, SymName, pf_predicate, Context, Origin,
         PredStatus, Markers, ArgTypes, TVarSet, ExistQVars,
-        ClassContext, Assertions, VarNameRemap, ProcInfo, ProcId, PredInfo),
+        ClassContext, Assertions, VarNameRemap, GoalType, ProcInfo,
+        ProcId, PredInfo),
 
     module_info_get_predicate_table(ModuleInfo0, PredTable0),
     predicate_table_insert(PredInfo, PredId, PredTable0, PredTable),
@@ -1788,48 +1815,54 @@ pred_info_mark_as_external(!PredInfo) :-
     PredStatus = pred_status(status_external(OldImportStatus0)),
     pred_info_set_status(PredStatus, !PredInfo).
 
-pred_info_clause_goal_type(PredInfo) :-
+pred_info_defn_has_clause(PredInfo) :-
     pred_info_get_goal_type(PredInfo, GoalType),
-    clause_goal_type(GoalType).
+    GoalType = goal_not_for_promise(NPGoalType),
+    goal_type_has_clause(NPGoalType).
 
-pred_info_pragma_goal_type(PredInfo) :-
+pred_info_defn_has_foreign_proc(PredInfo) :-
     pred_info_get_goal_type(PredInfo, GoalType),
-    pragma_goal_type(GoalType).
+    GoalType = goal_not_for_promise(NPGoalType),
+    goal_type_has_foreign_proc(NPGoalType).
 
-:- pred clause_goal_type(goal_type::in) is semidet.
+:- pred goal_type_has_clause(np_goal_type::in) is semidet.
 
-clause_goal_type(goal_type_clause).
-clause_goal_type(goal_type_clause_and_foreign).
+goal_type_has_clause(np_goal_type_clause).
+goal_type_has_clause(np_goal_type_clause_and_foreign).
 
-:- pred pragma_goal_type(goal_type::in) is semidet.
+:- pred goal_type_has_foreign_proc(np_goal_type::in) is semidet.
 
-pragma_goal_type(goal_type_foreign).
-pragma_goal_type(goal_type_clause_and_foreign).
+goal_type_has_foreign_proc(np_goal_type_foreign).
+goal_type_has_foreign_proc(np_goal_type_clause_and_foreign).
 
-pred_info_update_goal_type(GoalType1, !PredInfo) :-
+pred_info_update_goal_type(NPGoalType1, !PredInfo) :-
     pred_info_get_goal_type(!.PredInfo, GoalType0),
     (
-        GoalType0 = goal_type_none,
-        GoalType = GoalType1
+        GoalType0 = goal_not_for_promise(NPGoalType0),
+        (
+            NPGoalType0 = np_goal_type_none,
+            NPGoalType = NPGoalType1
+        ;
+            NPGoalType0 = np_goal_type_clause,
+            ( if goal_type_has_foreign_proc(NPGoalType1) then
+                NPGoalType = np_goal_type_clause_and_foreign
+            else
+                NPGoalType = np_goal_type_clause
+            )
+        ;
+            NPGoalType0 = np_goal_type_foreign,
+            ( if goal_type_has_clause(NPGoalType1) then
+                NPGoalType = np_goal_type_clause_and_foreign
+            else
+                NPGoalType = np_goal_type_foreign
+            )
+        ;
+            NPGoalType0 = np_goal_type_clause_and_foreign,
+            NPGoalType = NPGoalType0
+        ),
+        GoalType = goal_not_for_promise(NPGoalType)
     ;
-        GoalType0 = goal_type_foreign,
-        ( if clause_goal_type(GoalType1) then
-            GoalType = goal_type_clause_and_foreign
-        else
-            GoalType = goal_type_foreign
-        )
-    ;
-        GoalType0 = goal_type_clause,
-        ( if pragma_goal_type(GoalType1) then
-            GoalType = goal_type_clause_and_foreign
-        else
-            GoalType = goal_type_clause
-        )
-    ;
-        GoalType0 = goal_type_clause_and_foreign,
-        GoalType = GoalType0
-    ;
-        GoalType0 = goal_type_promise(_),
+        GoalType0 = goal_for_promise(_),
         unexpected($pred, "promise")
     ),
     % ( if GoalType = GoalType0 then
@@ -4208,7 +4241,7 @@ is_inline_builtin(ModuleName, PredName, ProcId, Arity) :-
     builtin_ops.test_if_builtin(ModuleName, PredName, ProcId, Args).
 
 pred_info_is_promise(PredInfo, PromiseType) :-
-    pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType)).
+    pred_info_get_goal_type(PredInfo, goal_for_promise(PromiseType)).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

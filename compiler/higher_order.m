@@ -1343,7 +1343,7 @@ maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
             pred_info_is_pseudo_imported(CalleePredInfo),
             hlds_pred.in_in_unification_proc_id(CalledProc)
         ;
-            pred_info_pragma_goal_type(CalleePredInfo)
+            pred_info_defn_has_foreign_proc(CalleePredInfo)
         )
     then
         GoalExpr = GoalExpr0

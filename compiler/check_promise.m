@@ -85,7 +85,7 @@ check_promises_in_pred(PredId, !ToInvalidatePredIds, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_goal_type(PredInfo, GoalType),
     (
-        GoalType = goal_type_promise(PromiseType),
+        GoalType = goal_for_promise(PromiseType),
         ( if pred_info_is_imported(PredInfo) then
             % We won't have run typechecking on this predicate. This means that
             % the pred_ids and proc_ids fields in plain_call goals won't be
@@ -111,11 +111,7 @@ check_promises_in_pred(PredId, !ToInvalidatePredIds, !ModuleInfo, !Specs) :-
             )
         )
     ;
-        ( GoalType = goal_type_clause
-        ; GoalType = goal_type_foreign
-        ; GoalType = goal_type_clause_and_foreign
-        ; GoalType = goal_type_none
-        )
+        GoalType = goal_not_for_promise(_)
     ).
 
 %---------------------%

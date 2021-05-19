@@ -378,7 +378,7 @@ gather_opt_export_preds_in_list([PredId | PredIds], ProcessLocalPreds,
         ),
         (
             DoWrite = yes,
-            ( if pred_info_pragma_goal_type(PredInfo) then
+            ( if pred_info_defn_has_foreign_proc(PredInfo) then
                 % The foreign code of this predicate may refer to entities
                 % in the foreign language that are defined in a foreign module
                 % that is imported by a foreign_import_module declaration.
@@ -1952,22 +1952,25 @@ intermod_write_pred_decl(Stream, ModuleInfo, OrderPredInfo,
     pred_info_get_class_context(PredInfo, ClassContext),
     pred_info_get_goal_type(PredInfo, GoalType),
     (
-        GoalType = goal_type_foreign,
-        % For foreign code goals, we cannot append variable numbers to type
-        % variables in the predicate declaration, because the foreign code
-        % may contain references to variables such as `TypeInfo_for_T'
-        % which will break if `T' is written as `T_1' in the pred declaration.
-        VarNamePrint = print_name_only
+        GoalType = goal_not_for_promise(NPGoalType),
+        (
+            ( NPGoalType = np_goal_type_foreign
+            ; NPGoalType = np_goal_type_clause_and_foreign
+            ),
+            % For foreign code goals, we cannot append variable numbers
+            % to type variables in the predicate declaration, because
+            % the foreign code may contain references to variables
+            % such as `TypeInfo_for_T', which will break if `T'
+            % is written as `T_1' in the pred declaration.
+            VarNamePrint = print_name_only
+        ;
+            ( NPGoalType = np_goal_type_clause
+            ; NPGoalType = np_goal_type_none
+            ),
+            VarNamePrint = print_name_and_num
+        )
     ;
-        GoalType = goal_type_clause_and_foreign,
-        % Because foreign code may be present, we treat this case like
-        % foreign code above.
-        VarNamePrint = print_name_only
-    ;
-        ( GoalType = goal_type_clause
-        ; GoalType = goal_type_promise(_)
-        ; GoalType = goal_type_none
-        ),
+        GoalType = goal_for_promise(_),
         VarNamePrint = print_name_and_num
     ),
     PredSymName = qualified(ModuleName, PredName),
@@ -2206,7 +2209,7 @@ intermod_write_pred(OutInfo, Stream, ModuleInfo, OrderPredInfo,
 
     pred_info_get_goal_type(PredInfo, GoalType),
     (
-        GoalType = goal_type_promise(PromiseType),
+        GoalType = goal_for_promise(PromiseType),
         (
             Clauses = [Clause],
             write_promise(OutInfo, Stream, ModuleInfo, VarSet,
@@ -2219,11 +2222,7 @@ intermod_write_pred(OutInfo, Stream, ModuleInfo, OrderPredInfo,
             unexpected($pred, "assertion not a single clause.")
         )
     ;
-        ( GoalType = goal_type_clause
-        ; GoalType = goal_type_foreign
-        ; GoalType = goal_type_clause_and_foreign
-        ; GoalType = goal_type_none
-        ),
+        GoalType = goal_not_for_promise(_),
         pred_info_get_typevarset(PredInfo, TypeVarset),
         TypeQual = varset_vartypes(TypeVarset, VarTypes),
         list.foldl(

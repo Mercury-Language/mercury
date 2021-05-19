@@ -607,10 +607,11 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
             ProcInfo = !.ProcInfo
         ),
         set.init(Assertions),
+        GoalType = goal_not_for_promise(np_goal_type_none),
         pred_info_create(ModuleName, PredName, PredOrFunc, LambdaContext,
             origin_lambda(OrigFile, OrigLine, LambdaCount),
             pred_status(status_local), LambdaMarkers, ArgTypes, TVarSet,
-            ExistQVars, Constraints, Assertions, VarNameRemap,
+            ExistQVars, Constraints, Assertions, VarNameRemap, GoalType,
             ProcInfo, ProcId, PredInfo),
 
         % Save the new predicate in the predicate table.

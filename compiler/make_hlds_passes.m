@@ -753,10 +753,9 @@ maybe_add_default_mode(ItemPredDecl, !ModuleInfo) :-
 add_clauses([], !ModuleInfo, !QualInfo, !Specs).
 add_clauses([ImsList | ImsLists], !ModuleInfo, !QualInfo, !Specs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
-    % At this stage, we only need know that it is not a promise declaration.
-    GoalType = goal_type_none,
+    ClauseType = clause_not_for_promise,
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    list.foldl3(module_add_clause(PredStatus, GoalType), Items,
+    list.foldl3(module_add_clause(PredStatus, ClauseType), Items,
         !ModuleInfo, !QualInfo, !Specs),
     add_clauses(ImsLists, !ModuleInfo, !QualInfo, !Specs).
 
@@ -812,7 +811,7 @@ add_promise(ItemMercuryStatus, ItemPromiseInfo,
     ;
         PromiseType = promise_type_true
     ),
-    GoalType = goal_type_promise(PromiseType), 
+    ClauseType = clause_for_promise(PromiseType), 
 
     term.context_line(Context, Line),
     term.context_file(Context, File),
@@ -828,7 +827,7 @@ add_promise(ItemMercuryStatus, ItemPromiseInfo,
     term.var_list_to_term_list(UnivVars, HeadVars),
     ClauseInfo = item_clause_info(pf_predicate, PromisePredSymName, HeadVars,
         VarSet, ok2(Goal, []), Context, SeqNum),
-    module_add_clause(PredStatus, GoalType, ClauseInfo,
+    module_add_clause(PredStatus, ClauseType, ClauseInfo,
         !ModuleInfo, !QualInfo, !Specs).
 
 %---------------------------------------------------------------------------%

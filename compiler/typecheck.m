@@ -627,7 +627,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, NextIteration) :-
                     % this fact won't affect the type analysis of any other
                     % predicate.
                     pred_info_get_goal_type(!.PredInfo, GoalType),
-                    GoalType = goal_type_promise(_)
+                    GoalType = goal_for_promise(_)
                 )
             then
                 NextIteration = next_iteration_is_not_needed
@@ -3554,7 +3554,8 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     pred_info_get_status(PredInfo, PredStatus),
     ( if
         Body ^ du_type_is_foreign_type = yes(_),
-        not pred_info_get_goal_type(PredInfo, goal_type_clause_and_foreign),
+        pred_info_get_goal_type(PredInfo, GoalType),
+        GoalType \= goal_not_for_promise(np_goal_type_clause_and_foreign),
         not is_unify_index_or_compare_pred(PredInfo),
         PredStatus \= pred_status(status_opt_imported)
     then

@@ -606,10 +606,11 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
     some [!PredInfo, !Body, !VarSet, !VarTypes] (
         % Construct the pred info structure. We initially construct it with
         % the old proc info which will be replaced below.
+        GoalType = goal_not_for_promise(np_goal_type_none),
         pred_info_create(ModuleName, PredSym, PredOrFunc, Context, Origin,
             pred_status(status_local), Markers, ArgTypes0, TypeVarSet,
-            ExistQVars, ClassConstraints, set.init, map.init, OldProcInfo,
-            ProcId, !:PredInfo),
+            ExistQVars, ClassConstraints, set.init, map.init, GoalType,
+            OldProcInfo, ProcId, !:PredInfo),
 
         % Add the new predicate to the module.
         some [!PredTable] (

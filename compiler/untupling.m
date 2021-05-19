@@ -194,7 +194,8 @@ expand_args_in_pred(PredId, !ModuleInfo, !TransformMap, !Counter) :-
         % satisfy the following criteria.
         pred_info_get_status(PredInfo, PredStatus),
         pred_status_defined_in_this_module(PredStatus) = yes,
-        pred_info_get_goal_type(PredInfo, goal_type_clause),
+        pred_info_get_goal_type(PredInfo,
+            goal_not_for_promise(np_goal_type_clause)),
         % Some of these limitations may be able to be lifted later.
         % For now, take the safe option and don't touch them.
         pred_info_get_exist_quant_tvars(PredInfo, []),

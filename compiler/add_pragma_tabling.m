@@ -566,7 +566,8 @@ create_tabling_statistics_pred(ProcId, Context, PFSymNameArity, SingleProc,
                 GetStatsUpdateIOExpr),
             StatsClauseInfo = item_clause_info(pf_predicate, StatsPredSymName,
                 Args, !.VarSet, ok2(BodyExpr, []), Context, item_no_seq_num),
-            module_add_clause(PredStatus, goal_type_none, StatsClauseInfo,
+            ClauseType = clause_not_for_promise,
+            module_add_clause(PredStatus, ClauseType, StatsClauseInfo,
                 !ModuleInfo, !QualInfo, !Specs)
         )
     ).
@@ -637,7 +638,8 @@ create_tabling_reset_pred(ProcId, Context, PFSymNameArity, SingleProc,
                 variable(IO0, Context), variable(IO, Context), purity_pure),
             ResetClauseInfo = item_clause_info(pf_predicate, ResetPredSymName,
                 Args, !.VarSet, ok2(BodyExpr, []), Context, item_no_seq_num),
-            module_add_clause(PredStatus, goal_type_none, ResetClauseInfo,
+            ClauseType = clause_not_for_promise,
+            module_add_clause(PredStatus, ClauseType, ResetClauseInfo,
                 !ModuleInfo, !QualInfo, !Specs)
         )
     ).

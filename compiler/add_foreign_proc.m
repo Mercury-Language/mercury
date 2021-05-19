@@ -178,7 +178,7 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
             % we can generate code for.
             not list.member(PragmaForeignLanguage, BackendForeignLangs)
         then
-            pred_info_update_goal_type(goal_type_foreign,
+            pred_info_update_goal_type(np_goal_type_foreign,
                 PredInfo0, !:PredInfo),
             module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
         else
@@ -208,7 +208,7 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
                     Context, PredOrFunc, PredName, Arity, Markers,
                     ClausesInfo1, ClausesInfo, !ModuleInfo, !Specs),
                 pred_info_set_clauses_info(ClausesInfo, !PredInfo),
-                pred_info_update_goal_type(goal_type_foreign, !PredInfo),
+                pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
                 map.det_update(PredId, !.PredInfo, Preds0, Preds),
                 predicate_table_set_preds(Preds, PredTable1, PredTable),
                 module_info_set_predicate_table(PredTable, !ModuleInfo),

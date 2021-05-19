@@ -81,7 +81,7 @@
 
 :- pred preds_add_implicit_for_assertion(module_name::in, pred_or_func::in,
     sym_name::in, arity::in, list(prog_var)::in,
-    pred_status::in, prog_context::in, pred_id::out,
+    pred_status::in, promise_type::in, prog_context::in, pred_id::out,
     module_info::in, module_info::out) is det.
 
 :- pred check_preds_if_field_access_function(module_info::in,
@@ -359,6 +359,7 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual,
         else
             MaybeCurUserDecl = no
         ),
+        GoalType = goal_not_for_promise(np_goal_type_none),
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
         clauses_info_init(PredOrFunc, PredArity, init_clause_item_numbers_user,
             ClausesInfo),
@@ -368,7 +369,7 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual,
         add_markers(PurityMarkers, Markers0, Markers),
         map.init(VarNameRemap),
         pred_info_init(ModuleName, PredSymName, PredArity, PredOrFunc, Context,
-            PredOrigin, PredStatus, MaybeCurUserDecl, goal_type_none,
+            PredOrigin, PredStatus, MaybeCurUserDecl, GoalType,
             Markers, Types, TVarSet, ExistQVars, Constraints, Proofs,
             ConstraintMap, ClausesInfo, VarNameRemap, PredInfo0),
         predicate_table_lookup_pf_m_n_a(PredTable0, is_fully_qualified,
@@ -919,25 +920,32 @@ preds_add_implicit_report_error(ModuleName, PredOrFunc, PredSymName, PredArity,
     ),
     clauses_info_init(PredOrFunc, PredArity, init_clause_item_numbers_user,
         ClausesInfo),
+    GoalType = goal_not_for_promise(np_goal_type_none),
     preds_do_add_implicit(ModuleName, PredOrFunc, PredSymName, PredArity,
-        Status, Context, PredOrigin, ClausesInfo, PredId, !ModuleInfo).
+        Status, Context, PredOrigin, GoalType, ClausesInfo,
+        PredId, !ModuleInfo).
 
 preds_add_implicit_for_assertion(ModuleName, PredOrFunc, PredSymName,
-        PredArity, HeadVars, Status, Context, PredId, !ModuleInfo) :-
+        PredArity, HeadVars, Status, PromiseType, Context,
+        PredId, !ModuleInfo) :-
     clauses_info_init_for_assertion(HeadVars, ClausesInfo),
     term.context_file(Context, FileName),
     term.context_line(Context, LineNum),
     PredOrigin = origin_assertion(FileName, LineNum),
+    GoalType = goal_for_promise(PromiseType),
     preds_do_add_implicit(ModuleName, PredOrFunc, PredSymName, PredArity,
-        Status, Context, PredOrigin, ClausesInfo, PredId, !ModuleInfo).
+        Status, Context, PredOrigin, GoalType, ClausesInfo,
+        PredId, !ModuleInfo).
 
 :- pred preds_do_add_implicit(module_name::in, pred_or_func::in, sym_name::in,
     arity::in, pred_status::in, prog_context::in, pred_origin::in,
-    clauses_info::in, pred_id::out, module_info::in, module_info::out) is det.
+    goal_type::in, clauses_info::in, pred_id::out,
+    module_info::in, module_info::out) is det.
 
 preds_do_add_implicit(ModuleName, PredOrFunc, PredSymName, PredArity,
-        PredStatus, Context, PredOrigin, ClausesInfo, PredId, !ModuleInfo) :-
-    CurUserDecl = maybe.no,
+        PredStatus, Context, PredOrigin, GoalType, ClausesInfo,
+        PredId, !ModuleInfo) :-
+    MaybeCurUserDecl = maybe.no,
     init_markers(Markers0),
     varset.init(TVarSet0),
     make_n_fresh_vars("T", PredArity, TypeVars, TVarSet0, TVarSet),
@@ -952,7 +960,7 @@ preds_do_add_implicit(ModuleName, PredOrFunc, PredSymName, PredArity,
     map.init(ConstraintMap),
     map.init(VarNameRemap),
     pred_info_init(ModuleName, PredSymName, PredArity, PredOrFunc, Context,
-        PredOrigin, PredStatus, CurUserDecl, goal_type_none, Markers0,
+        PredOrigin, PredStatus, MaybeCurUserDecl, GoalType, Markers0,
         Types, TVarSet, ExistQVars, Constraints, Proofs, ConstraintMap,
         ClausesInfo, VarNameRemap, PredInfo0),
     add_marker(marker_infer_type, Markers0, Markers1),

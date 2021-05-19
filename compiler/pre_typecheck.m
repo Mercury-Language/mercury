@@ -152,7 +152,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         ItemNumbers = init_clause_item_numbers_comp_gen,
         clauses_info_set_clauses_rep(ClausesRep, ItemNumbers,
             ClausesInfo0, ClausesInfo),
-        pred_info_update_goal_type(goal_type_clause_and_foreign, !PredInfo),
+        pred_info_update_goal_type(np_goal_type_clause, !PredInfo),
         pred_info_set_clauses_info(ClausesInfo, !PredInfo),
         pred_info_get_markers(!.PredInfo, Markers0),
         add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
