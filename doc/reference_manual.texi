@@ -5881,9 +5881,13 @@ as though it were a predicate specified in an @samp{initialise} directive.
 :- initialise baz/2.
 @end example
 
-In the above example, @samp{foo/2} is invoked first,
-then @samp{bar} is set with an initial value of 561
-and the @samp{baz/2} is invoked.
+In the above example,
+
+@itemize
+@item @samp{foo/2} will be invoked first,
+@item then @samp{bar} will be set to its initial value of 561,
+@item and then @samp{baz/2} will be invoked.
+@end itemize
 
 The effect of a mutable initial value expression
 terminating with an uncaught exception
