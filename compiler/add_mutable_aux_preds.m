@@ -532,300 +532,6 @@ check_and_add_aux_pred_decls_for_mutable(ItemMercuryStatus, PredStatus,
         module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual),
         NeededPredDecls, _MaybePredProcIds, !ModuleInfo, !Specs).
 
-:- pred check_mutable(item_mutable_info::in, module_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_mutable(ItemMutable, ModuleInfo, !Specs) :-
-    ItemMutable = item_mutable_info(MutableName,
-        _OrigType, _Type, OrigInst, Inst,
-        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, CompilationTarget),
-    % NOTE We currently support the foreign_name attribute for all targets,
-    % but we did not do so when we supported Erlang.
-    (
-        ( CompilationTarget = target_c,      ForeignLanguage = lang_c
-        ; CompilationTarget = target_java,   ForeignLanguage = lang_java
-        ; CompilationTarget = target_csharp, ForeignLanguage = lang_csharp
-        ),
-        mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
-        (
-            MaybeForeignNames = no
-        ;
-            MaybeForeignNames = yes(ForeignNames),
-            % Report any errors with the foreign_name attributes
-            % during this pass.
-            module_info_get_name(ModuleInfo, ModuleName),
-            get_global_name_from_foreign_names(ModuleInfo, Context,
-                ModuleName, MutableName, ForeignLanguage, ForeignNames,
-                _TargetMutableName, !Specs)
-        )
-    ),
-
-    % If the mutable is to be trailed, then we need to be in a trailing grade.
-    TrailMutableUpdates = mutable_var_trailed(MutAttrs),
-    globals.lookup_bool_option(Globals, use_trail, UseTrail),
-    ( if
-        TrailMutableUpdates = mutable_trailed,
-        UseTrail = no
-    then
-        TrailPieces = [words("Error: trailed"), decl("mutable"),
-            words("declaration in non-trailing grade."), nl],
-        TrailSpec = simplest_spec($pred, severity_error,
-            phase_parse_tree_to_hlds, Context, TrailPieces),
-        !:Specs = [TrailSpec | !.Specs]
-    else
-        true
-    ),
-
-    % Check that the inst in the mutable declaration is a valid inst
-    % for a mutable declaration.
-    % It is okay to pass a dummy varset in here since any attempt
-    % to use inst variables in a mutable declaration should already
-    % been dealt with when the mutable declaration was parsed.
-    DummyInstVarSet = varset.init,
-    check_mutable_inst(ModuleInfo, Context, DummyInstVarSet, [], Inst,
-        [], ExpandedInstSpecs),
-    (
-        ExpandedInstSpecs = []
-    ;
-        ExpandedInstSpecs = [_ | _],
-        % We found some insts in Inst that are not allowed in mutables.
-        %
-        % Inst has been processed by equiv_type.m, which replaces named insts
-        % with the definition of the named inst. When we check it, the error
-        % messages we generate for any errors in it will lack information
-        % about what nested sequence of named inst definitions the errors is
-        % inside. We therefore compute the error messages on the original
-        % inst as well.
-        %
-        % If ExpandedInstSpecs is nonempty, then UnexpandedInstSpecs should
-        % be nonempty as well, but we prepare for it to be empty just in case.
-        check_mutable_inst(ModuleInfo, Context, DummyInstVarSet, [], OrigInst,
-            [], UnexpandedInstSpecs),
-        (
-            UnexpandedInstSpecs = [],
-            % Printing error messages without the proper context is better than
-            % not printing error messages at all, once we have discovered
-            % an error.
-            !:Specs = ExpandedInstSpecs ++ !.Specs
-        ;
-            UnexpandedInstSpecs = [_ | _],
-            !:Specs = UnexpandedInstSpecs ++ !.Specs
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-    % Add an error to !Specs for each part of the inst that isn't allowed
-    % inside a mutable declaration.
-    %
-:- pred check_mutable_inst(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_ctor)::in, mer_inst::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
-        !Specs) :-
-    (
-        ( Inst = any(Uniq, _)
-        ; Inst = ground(Uniq, _)
-        ),
-        check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet,
-            ParentInsts, Inst, Uniq, !Specs)
-    ;
-        Inst = bound(Uniq, _, BoundInsts),
-        check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet,
-            ParentInsts, Inst, Uniq, !Specs),
-        check_mutable_bound_insts(ModuleInfo, Context, InstVarSet,
-            ParentInsts, BoundInsts, !Specs)
-    ;
-        Inst = defined_inst(InstName),
-        (
-            InstName = user_inst(UserInstSymName, UserInstArgs),
-            list.length(UserInstArgs, UserInstArity),
-            UserInstCtor = inst_ctor(UserInstSymName, UserInstArity),
-            ( if
-                list.member(UserInstCtor, ParentInsts)
-            then
-                true
-            else if
-                UserInstSymName =
-                    qualified(UserInstModuleName, UserInstBaseName),
-                UserInstModuleName = mercury_public_builtin_module,
-                UserInstArity = 0,
-                ( UserInstBaseName = "dead"
-                ; UserInstBaseName = "mostly_dead"
-                )
-            then
-                FreePieces = [words("may not appear in"),
-                    decl("mutable"), words("declarations.")],
-                UnqualInstName =
-                    user_inst(unqualified(UserInstBaseName), UserInstArgs),
-                UnqualInst = defined_inst(UnqualInstName),
-                invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet,
-                    ParentInsts, UnqualInst, FreePieces, !Specs)
-            else
-                check_mutable_insts(ModuleInfo, Context, InstVarSet,
-                    ParentInsts, UserInstArgs, !Specs),
-
-                module_info_get_inst_table(ModuleInfo, InstTable),
-                inst_table_get_user_insts(InstTable, UserInstTable),
-                ( if map.search(UserInstTable, UserInstCtor, InstDefn) then
-                    InstDefn = hlds_inst_defn(DefnInstVarSet, _Params,
-                        InstBody, _MMTC, _Context, _Status),
-                    InstBody = eqv_inst(EqvInst),
-                    DefnParentInsts = [UserInstCtor | ParentInsts],
-                    check_mutable_inst(ModuleInfo, Context, DefnInstVarSet,
-                        DefnParentInsts, EqvInst, !Specs)
-                else
-                    UndefinedPieces = [words("is not defined.")],
-                    invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet,
-                        ParentInsts, Inst, UndefinedPieces, !Specs)
-                )
-            )
-        ;
-            ( InstName = unify_inst(_, _, _, _)
-            ; InstName = merge_inst(_, _)
-            ; InstName = ground_inst(_, _, _, _)
-            ; InstName = any_inst(_, _, _, _)
-            ; InstName = shared_inst(_)
-            ; InstName = mostly_uniq_inst(_)
-            ; InstName = typed_inst(_, _)
-            ; InstName = typed_ground(_, _)
-            ),
-            unexpected($pred, "non-user inst")
-        )
-    ;
-        ( Inst = free
-        ; Inst = free(_)
-        ),
-        FreePieces = [words("may not appear in"),
-            decl("mutable"), words("declarations.")],
-        invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
-            Inst, FreePieces, !Specs)
-    ;
-        Inst = constrained_inst_vars(_, _),
-        ConstrainedPieces = [words("is constrained, and thus"),
-            words("may not appear in"), decl("mutable"),
-            words("declarations.")],
-        invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
-            Inst, ConstrainedPieces, !Specs)
-    ;
-        Inst = abstract_inst(_, _),
-        AbstractPieces = [words("is abstract, and thus"),
-            words("may not appear in"), decl("mutable"),
-            words("declarations.")],
-        invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
-            Inst, AbstractPieces, !Specs)
-    ;
-        Inst = inst_var(_)
-        % The parser ensures that the inst in the mutable declaration does
-        % not have any variables. Any variables we encounter here must be
-        % a parameter from a named inst that the top level inst refers to
-        % either directly or indirectly.
-    ;
-        Inst = not_reached,
-        unexpected($pred, "not_reached")
-    ).
-
-:- pred check_mutable_bound_insts(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_ctor)::in, list(bound_inst)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_mutable_bound_insts(_ModuleInfo, _Context, _InstVarSet, _ParentInsts,
-        [], !Specs).
-check_mutable_bound_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
-        [BoundInst | BoundInsts], !Specs) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
-    check_mutable_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
-        ArgInsts, !Specs),
-    check_mutable_bound_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
-        BoundInsts, !Specs).
-
-:- pred check_mutable_insts(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_ctor)::in, list(mer_inst)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_mutable_insts(_ModuleInfo, _Context, _InstVarSet, _ParentInsts,
-        [], !Specs).
-check_mutable_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
-        [Inst | Insts], !Specs) :-
-    check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts,
-        Inst, !Specs),
-    check_mutable_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
-        Insts, !Specs).
-
-%---------------------%
-
-:- pred check_mutable_inst_uniqueness(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_ctor)::in, mer_inst::in, uniqueness::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet, ParentInsts,
-        Inst, Uniq, !Specs) :-
-    (
-        Uniq = shared
-    ;
-        (
-            Uniq = unique,
-            UniqStr = "unique"
-        ;
-            Uniq = mostly_unique,
-            UniqStr = "mostly_unique"
-        ;
-            Uniq = clobbered,
-            UniqStr = "clobbered"
-        ;
-            Uniq = mostly_clobbered,
-            UniqStr = "mostly_clobbered"
-        ),
-        ( if Inst = ground(Uniq, _) then
-            UniqPieces = [words("may not appear in"),
-                decl("mutable"), words("declarations.")]
-        else
-            UniqPieces = [words("has uniqueness"), quote(UniqStr), suffix(","),
-                words("which may not appear in"),
-                decl("mutable"), words("declarations.")]
-        ),
-        invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
-            Inst, UniqPieces, !Specs)
-    ).
-
-:- pred invalid_inst_in_mutable(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_ctor)::in, mer_inst::in,
-    list(format_component)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
-        ProblemPieces, !Specs) :-
-    named_parents_to_pieces(ParentInsts, ParentPieces),
-    InstPieces = error_msg_inst(ModuleInfo, InstVarSet,
-        dont_expand_named_insts, quote_short_inst,
-        [], [nl_indent_delta(1)], [nl_indent_delta(-1)], Inst),
-    Pieces = [words("Error:") | ParentPieces] ++
-        [words("the inst") | InstPieces] ++ ProblemPieces ++ [nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
-    !:Specs = [Spec | !.Specs].
-
-:- pred named_parents_to_pieces(list(inst_ctor)::in,
-    list(format_component)::out) is det.
-
-named_parents_to_pieces([], []).
-named_parents_to_pieces([InstCtor | InstCtors], Pieces) :-
-    named_parent_to_pieces(InstCtor, HeadPieces),
-    named_parents_to_pieces(InstCtors, TailPieces),
-    Pieces = HeadPieces ++ TailPieces.
-
-:- pred named_parent_to_pieces(inst_ctor::in,
-    list(format_component)::out) is det.
-
-named_parent_to_pieces(InstCtor, Pieces) :-
-    InstCtor = inst_ctor(InstName, InstArity),
-    Pieces = [words("in the expansion of the named inst"),
-        qual_sym_name_arity(sym_name_arity(InstName, InstArity)),
-        suffix(":"), nl].
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -1904,6 +1610,303 @@ compute_needed_private_mutable_aux_preds(PreInit, LockUnlock, UnsafeAccess,
     ),
     PrivateAuxPreds = InitPreds ++ PreInitPreds ++
         UnsafeAccessPreds ++ LockUnlockPreds.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred check_mutable(item_mutable_info::in, module_info::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_mutable(ItemMutable, ModuleInfo, !Specs) :-
+    ItemMutable = item_mutable_info(MutableName,
+        _OrigType, _Type, OrigInst, Inst,
+        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, CompilationTarget),
+    % NOTE We currently support the foreign_name attribute for all targets,
+    % but we did not do so when we supported Erlang.
+    (
+        ( CompilationTarget = target_c,      ForeignLanguage = lang_c
+        ; CompilationTarget = target_java,   ForeignLanguage = lang_java
+        ; CompilationTarget = target_csharp, ForeignLanguage = lang_csharp
+        ),
+        mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
+        (
+            MaybeForeignNames = no
+        ;
+            MaybeForeignNames = yes(ForeignNames),
+            % Report any errors with the foreign_name attributes
+            % during this pass.
+            module_info_get_name(ModuleInfo, ModuleName),
+            get_global_name_from_foreign_names(ModuleInfo, Context,
+                ModuleName, MutableName, ForeignLanguage, ForeignNames,
+                _TargetMutableName, !Specs)
+        )
+    ),
+
+    % If the mutable is to be trailed, then we need to be in a trailing grade.
+    TrailMutableUpdates = mutable_var_trailed(MutAttrs),
+    globals.lookup_bool_option(Globals, use_trail, UseTrail),
+    ( if
+        TrailMutableUpdates = mutable_trailed,
+        UseTrail = no
+    then
+        TrailPieces = [words("Error: trailed"), decl("mutable"),
+            words("declaration in non-trailing grade."), nl],
+        TrailSpec = simplest_spec($pred, severity_error,
+            phase_parse_tree_to_hlds, Context, TrailPieces),
+        !:Specs = [TrailSpec | !.Specs]
+    else
+        true
+    ),
+
+    % Check that the inst in the mutable declaration is a valid inst
+    % for a mutable declaration.
+    % It is okay to pass a dummy varset in here since any attempt
+    % to use inst variables in a mutable declaration should already
+    % been dealt with when the mutable declaration was parsed.
+    DummyInstVarSet = varset.init,
+    check_mutable_inst(ModuleInfo, Context, DummyInstVarSet, [], Inst,
+        [], ExpandedInstSpecs),
+    (
+        ExpandedInstSpecs = []
+    ;
+        ExpandedInstSpecs = [_ | _],
+        % We found some insts in Inst that are not allowed in mutables.
+        %
+        % Inst has been processed by equiv_type.m, which replaces named insts
+        % with the definition of the named inst. When we check it, the error
+        % messages we generate for any errors in it will lack information
+        % about what nested sequence of named inst definitions the errors is
+        % inside. We therefore compute the error messages on the original
+        % inst as well.
+        %
+        % If ExpandedInstSpecs is nonempty, then UnexpandedInstSpecs should
+        % be nonempty as well, but we prepare for it to be empty just in case.
+        check_mutable_inst(ModuleInfo, Context, DummyInstVarSet, [], OrigInst,
+            [], UnexpandedInstSpecs),
+        (
+            UnexpandedInstSpecs = [],
+            % Printing error messages without the proper context is better than
+            % not printing error messages at all, once we have discovered
+            % an error.
+            !:Specs = ExpandedInstSpecs ++ !.Specs
+        ;
+            UnexpandedInstSpecs = [_ | _],
+            !:Specs = UnexpandedInstSpecs ++ !.Specs
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % Add an error to !Specs for each part of the inst that isn't allowed
+    % inside a mutable declaration.
+    %
+:- pred check_mutable_inst(module_info::in, prog_context::in,
+    inst_varset::in, list(inst_ctor)::in, mer_inst::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
+        !Specs) :-
+    (
+        ( Inst = any(Uniq, _)
+        ; Inst = ground(Uniq, _)
+        ),
+        check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet,
+            ParentInsts, Inst, Uniq, !Specs)
+    ;
+        Inst = bound(Uniq, _, BoundInsts),
+        check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet,
+            ParentInsts, Inst, Uniq, !Specs),
+        check_mutable_bound_insts(ModuleInfo, Context, InstVarSet,
+            ParentInsts, BoundInsts, !Specs)
+    ;
+        Inst = defined_inst(InstName),
+        (
+            InstName = user_inst(UserInstSymName, UserInstArgs),
+            list.length(UserInstArgs, UserInstArity),
+            UserInstCtor = inst_ctor(UserInstSymName, UserInstArity),
+            ( if
+                list.member(UserInstCtor, ParentInsts)
+            then
+                true
+            else if
+                UserInstSymName =
+                    qualified(UserInstModuleName, UserInstBaseName),
+                UserInstModuleName = mercury_public_builtin_module,
+                UserInstArity = 0,
+                ( UserInstBaseName = "dead"
+                ; UserInstBaseName = "mostly_dead"
+                )
+            then
+                FreePieces = [words("may not appear in"),
+                    decl("mutable"), words("declarations.")],
+                UnqualInstName =
+                    user_inst(unqualified(UserInstBaseName), UserInstArgs),
+                UnqualInst = defined_inst(UnqualInstName),
+                invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet,
+                    ParentInsts, UnqualInst, FreePieces, !Specs)
+            else
+                check_mutable_insts(ModuleInfo, Context, InstVarSet,
+                    ParentInsts, UserInstArgs, !Specs),
+
+                module_info_get_inst_table(ModuleInfo, InstTable),
+                inst_table_get_user_insts(InstTable, UserInstTable),
+                ( if map.search(UserInstTable, UserInstCtor, InstDefn) then
+                    InstDefn = hlds_inst_defn(DefnInstVarSet, _Params,
+                        InstBody, _MMTC, _Context, _Status),
+                    InstBody = eqv_inst(EqvInst),
+                    DefnParentInsts = [UserInstCtor | ParentInsts],
+                    check_mutable_inst(ModuleInfo, Context, DefnInstVarSet,
+                        DefnParentInsts, EqvInst, !Specs)
+                else
+                    UndefinedPieces = [words("is not defined.")],
+                    invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet,
+                        ParentInsts, Inst, UndefinedPieces, !Specs)
+                )
+            )
+        ;
+            ( InstName = unify_inst(_, _, _, _)
+            ; InstName = merge_inst(_, _)
+            ; InstName = ground_inst(_, _, _, _)
+            ; InstName = any_inst(_, _, _, _)
+            ; InstName = shared_inst(_)
+            ; InstName = mostly_uniq_inst(_)
+            ; InstName = typed_inst(_, _)
+            ; InstName = typed_ground(_, _)
+            ),
+            unexpected($pred, "non-user inst")
+        )
+    ;
+        ( Inst = free
+        ; Inst = free(_)
+        ),
+        FreePieces = [words("may not appear in"),
+            decl("mutable"), words("declarations.")],
+        invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
+            Inst, FreePieces, !Specs)
+    ;
+        Inst = constrained_inst_vars(_, _),
+        ConstrainedPieces = [words("is constrained, and thus"),
+            words("may not appear in"), decl("mutable"),
+            words("declarations.")],
+        invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
+            Inst, ConstrainedPieces, !Specs)
+    ;
+        Inst = abstract_inst(_, _),
+        AbstractPieces = [words("is abstract, and thus"),
+            words("may not appear in"), decl("mutable"),
+            words("declarations.")],
+        invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
+            Inst, AbstractPieces, !Specs)
+    ;
+        Inst = inst_var(_)
+        % The parser ensures that the inst in the mutable declaration does
+        % not have any variables. Any variables we encounter here must be
+        % a parameter from a named inst that the top level inst refers to
+        % either directly or indirectly.
+    ;
+        Inst = not_reached,
+        unexpected($pred, "not_reached")
+    ).
+
+:- pred check_mutable_bound_insts(module_info::in, prog_context::in,
+    inst_varset::in, list(inst_ctor)::in, list(bound_inst)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_mutable_bound_insts(_ModuleInfo, _Context, _InstVarSet, _ParentInsts,
+        [], !Specs).
+check_mutable_bound_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
+        [BoundInst | BoundInsts], !Specs) :-
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    check_mutable_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
+        ArgInsts, !Specs),
+    check_mutable_bound_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
+        BoundInsts, !Specs).
+
+:- pred check_mutable_insts(module_info::in, prog_context::in,
+    inst_varset::in, list(inst_ctor)::in, list(mer_inst)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_mutable_insts(_ModuleInfo, _Context, _InstVarSet, _ParentInsts,
+        [], !Specs).
+check_mutable_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
+        [Inst | Insts], !Specs) :-
+    check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts,
+        Inst, !Specs),
+    check_mutable_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
+        Insts, !Specs).
+
+%---------------------%
+
+:- pred check_mutable_inst_uniqueness(module_info::in, prog_context::in,
+    inst_varset::in, list(inst_ctor)::in, mer_inst::in, uniqueness::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet, ParentInsts,
+        Inst, Uniq, !Specs) :-
+    (
+        Uniq = shared
+    ;
+        (
+            Uniq = unique,
+            UniqStr = "unique"
+        ;
+            Uniq = mostly_unique,
+            UniqStr = "mostly_unique"
+        ;
+            Uniq = clobbered,
+            UniqStr = "clobbered"
+        ;
+            Uniq = mostly_clobbered,
+            UniqStr = "mostly_clobbered"
+        ),
+        ( if Inst = ground(Uniq, _) then
+            UniqPieces = [words("may not appear in"),
+                decl("mutable"), words("declarations.")]
+        else
+            UniqPieces = [words("has uniqueness"), quote(UniqStr), suffix(","),
+                words("which may not appear in"),
+                decl("mutable"), words("declarations.")]
+        ),
+        invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
+            Inst, UniqPieces, !Specs)
+    ).
+
+:- pred invalid_inst_in_mutable(module_info::in, prog_context::in,
+    inst_varset::in, list(inst_ctor)::in, mer_inst::in,
+    list(format_component)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
+        ProblemPieces, !Specs) :-
+    named_parents_to_pieces(ParentInsts, ParentPieces),
+    InstPieces = error_msg_inst(ModuleInfo, InstVarSet,
+        dont_expand_named_insts, quote_short_inst,
+        [], [nl_indent_delta(1)], [nl_indent_delta(-1)], Inst),
+    Pieces = [words("Error:") | ParentPieces] ++
+        [words("the inst") | InstPieces] ++ ProblemPieces ++ [nl],
+    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Context, Pieces),
+    !:Specs = [Spec | !.Specs].
+
+:- pred named_parents_to_pieces(list(inst_ctor)::in,
+    list(format_component)::out) is det.
+
+named_parents_to_pieces([], []).
+named_parents_to_pieces([InstCtor | InstCtors], Pieces) :-
+    named_parent_to_pieces(InstCtor, HeadPieces),
+    named_parents_to_pieces(InstCtors, TailPieces),
+    Pieces = HeadPieces ++ TailPieces.
+
+:- pred named_parent_to_pieces(inst_ctor::in,
+    list(format_component)::out) is det.
+
+named_parent_to_pieces(InstCtor, Pieces) :-
+    InstCtor = inst_ctor(InstName, InstArity),
+    Pieces = [words("in the expansion of the named inst"),
+        qual_sym_name_arity(sym_name_arity(InstName, InstArity)),
+        suffix(":"), nl].
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.add_mutable_aux_preds.
