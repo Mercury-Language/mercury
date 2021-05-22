@@ -117,7 +117,7 @@ To build the source distribution under MSYS follow these steps:
 5.  run: `make' and then `make install'.
 
 Add /c/mercury/bin (or whatever path you installed Mercury to) to the MSYS or
-MSY2 PATH (you cannot add `c:/mercury/bin' to the PATH because `:' is used
+MSYS2 PATH (you cannot add `c:/mercury/bin' to the PATH because `:' is used
 to separate directories in the MSYS or MSYS2 PATH).
 
 NOTE TO DEVELOPERS: the tools/bootcheck script does not work properly
