@@ -853,7 +853,8 @@ add_initialise(ItemMercuryStatus, ItemInitialise, !ModuleInfo, !Specs) :-
         ItemMercuryStatus = item_defined_in_this_module(_),
         (
             Origin = item_origin_user,
-            implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs)
+            implement_initialise_finalise(iof_init, SymName, Arity, Context,
+                !ModuleInfo, !Specs)
         ;
             Origin = item_origin_compiler(_CompilerAttrs),
             unexpected($pred, "bad introduced initialise declaration")
@@ -886,7 +887,8 @@ add_finalise(ItemMercuryStatus, ItemFinaliseInfo, !ModuleInfo, !Specs) :-
         ItemMercuryStatus = item_defined_in_this_module(_),
         (
             Origin = item_origin_user,
-            implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs)
+            implement_initialise_finalise(iof_final, SymName, Arity, Context,
+                !ModuleInfo, !Specs)
         ;
             Origin = item_origin_compiler(_),
             unexpected($pred, "bad introduced finalise declaration")
@@ -900,28 +902,37 @@ add_finalise(ItemMercuryStatus, ItemFinaliseInfo, !ModuleInfo, !Specs) :-
 
 %---------------------%
 
-:- pred implement_initialise(sym_name::in, arity::in, prog_context::in,
+:- type init_or_final
+    --->    iof_init
+    ;       iof_final.
+
+:- pred implement_initialise_finalise(init_or_final::in,
+    sym_name::in, arity::in, prog_context::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
-    % To implement an `:- initialise initpred.' declaration for C backends,
-    % we need to:
+implement_initialise_finalise(InitOrFinal, SymName, Arity, Context,
+        !ModuleInfo, !Specs) :-
+    % To implement an `:- initialise pred.' or `:- finalise pred' declaration
+    % for C backends, we need to:
     %
-    % (1) construct a new C function name, CName, to use to export initpred,
+    % (1) construct a new C function name, CName, to use to export pred,
     % (2) add the export pragma that does this,
-    % (3) record the initpred/cname pair in the ModuleInfo so that
+    % (3) record the pred/cname pair in the ModuleInfo so that
     %     code generation can ensure CName is called during module
-    %     initialisation.
+    %     initialisation/finalisation
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     predicate_table_lookup_pred_sym_arity(PredTable,
         may_be_partially_qualified, SymName, Arity, PredIds),
+    ( InitOrFinal = iof_init,  DeclName = "initialise"
+    ; InitOrFinal = iof_final, DeclName = "finalise"
+    ),
     (
         PredIds = [],
         Pieces = [words("Error:"),
             qual_sym_name_arity(sym_name_arity(SymName, Arity)),
-            words("used in"), decl("initialise"), words("declaration"),
+            words("used in"), decl(DeclName), words("declaration"),
             words("does not have a corresponding"),
             decl("pred"), words("declaration."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
@@ -931,16 +942,31 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
         PredIds = [PredId],
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
         ( if is_valid_init_or_final_pred(PredInfo, ExpectedHeadModes) then
-            module_info_new_user_init_pred(SymName, Arity, CName, !ModuleInfo),
+            (
+                InitOrFinal = iof_init,
+                Origin = compiler_origin_initialise,
+                module_info_new_user_init_pred(SymName, Arity, CName,
+                    !ModuleInfo)
+            ;
+                InitOrFinal = iof_final,
+                Origin = compiler_origin_finalise,
+                module_info_new_user_final_pred(SymName, Arity, CName,
+                    !ModuleInfo)
+            ),
             make_and_add_pragma_foreign_proc_export(SymName, ExpectedHeadModes,
-                CName, compiler_origin_initialise, Context,
-                !ModuleInfo, !Specs)
+                CName, Origin, Context, !ModuleInfo, !Specs)
         else
             Pieces = [words("Error:"),
                 qual_sym_name_arity(sym_name_arity(SymName, Arity)),
-                words("used in initialise declaration"),
-                words("has invalid signature."), nl],
-            % TODO: provide verbose error information here.
+                words("used in"), decl(DeclName), words("declaration"),
+                words("has an invalid signature."), nl,
+                words("A signature is valid only if it has"),
+                words("one of these two forms:"), nl,
+                quote(":- pred <predname>(io::di, io::uo) is <detism>."), nl,
+                quote(":- impure pred <predname> is <detism>."), nl,
+                words("where"), quote("<detism>"),
+                words("is either"), quote("det"),
+                words("or"), quote("cc_multi"), suffix("."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -949,68 +975,14 @@ implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
         PredIds = [_, _ | _],
         Pieces = [words("Error:"),
             qual_sym_name_arity(sym_name_arity(SymName, Arity)),
-            words("used in initialise declaration"),
-            words("matches multiple pred declarations."), nl],
+            words("used in"), decl(DeclName), words("declaration"),
+            words("has multiple"), decl("pred"), words("declarations."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
 %---------------------%
-
-:- pred implement_finalise(sym_name::in, arity::in, prog_context::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
-    % To implement a `:- finalise finalpred.' declaration for C backends,
-    % we need to:
-    %
-    % (1) construct a new C function name, CName, to use to export finalpred,
-    % (2) add `:- pragma foreign_export("C", finalpred(di, uo), CName).',
-    % (3) record the finalpred/cname pair in the ModuleInfo so that
-    % code generation can ensure cname is called during module finalisation.
-
-    module_info_get_predicate_table(!.ModuleInfo, PredTable),
-    predicate_table_lookup_pred_sym_arity(PredTable,
-        may_be_partially_qualified, SymName, Arity, PredIds),
-    (
-        PredIds = [],
-        Pieces = [words("Error:"),
-            qual_sym_name_arity(sym_name_arity(SymName, Arity)),
-            words("used in"), decl("finalise"), words("declaration"),
-            words("does not have a corresponding"),
-            decl("pred"), words("declaration."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
-        !:Specs = [Spec | !.Specs]
-    ;
-        PredIds = [PredId],
-        module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-        ( if is_valid_init_or_final_pred(PredInfo, ExpectedHeadModes) then
-            module_info_new_user_final_pred(SymName, Arity, CName,
-                !ModuleInfo),
-            make_and_add_pragma_foreign_proc_export(SymName, ExpectedHeadModes,
-                CName, compiler_origin_finalise, Context, !ModuleInfo, !Specs)
-        else
-            Pieces = [words("Error:"),
-                qual_sym_name_arity(sym_name_arity(SymName, Arity)),
-                words("used in"), decl("finalise"),
-                words("declaration has invalid signature."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
-        )
-    ;
-        PredIds = [_, _ | _],
-        Pieces = [words("Error:"),
-            qual_sym_name_arity(sym_name_arity(SymName, Arity)),
-            words("used in"), decl("finalise"), words("declaration"),
-            words("has multiple"), decl("pred"), words("declarations."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
-        !:Specs = [Spec | !.Specs]
-    ).
 
 :- pred is_valid_init_or_final_pred(pred_info::in, list(mer_mode)::out)
     is semidet.

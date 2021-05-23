@@ -1,15 +1,24 @@
-bad_initialise_decl.m:015: Error: `i2'/2 used in initialise declaration has
-bad_initialise_decl.m:015:   invalid signature.
+bad_initialise_decl.m:015: Error: `i2'/2 used in `:- initialise' declaration
+bad_initialise_decl.m:015:   has an invalid signature.
+bad_initialise_decl.m:015:   A signature is valid only if it has one of these
+bad_initialise_decl.m:015:   two forms:
+bad_initialise_decl.m:015:   `:- pred <predname>(io::di, io::uo) is <detism>.'
+bad_initialise_decl.m:015:   `:- impure pred <predname> is <detism>.'
+bad_initialise_decl.m:015:   where `<detism>' is either `det' or `cc_multi'.
 bad_initialise_decl.m:015: Error: `:- initialise' declaration in module
 bad_initialise_decl.m:015:   interface.
-bad_initialise_decl.m:021: Error: `i1'/2 used in initialise declaration has
-bad_initialise_decl.m:021:   invalid signature.
+bad_initialise_decl.m:021: Error: `i1'/2 used in `:- initialise' declaration
+bad_initialise_decl.m:021:   has an invalid signature.
+bad_initialise_decl.m:021:   A signature is valid only if it has one of these
+bad_initialise_decl.m:021:   two forms:
+bad_initialise_decl.m:021:   `:- pred <predname>(io::di, io::uo) is <detism>.'
+bad_initialise_decl.m:021:   `:- impure pred <predname> is <detism>.'
+bad_initialise_decl.m:021:   where `<detism>' is either `det' or `cc_multi'.
 bad_initialise_decl.m:022: Error: `i3'/2 used in `:- initialise' declaration
 bad_initialise_decl.m:022:   does not have a corresponding `:- pred'
 bad_initialise_decl.m:022:   declaration.
-bad_initialise_decl.m:023: Error: the predicate specification in an
-bad_initialise_decl.m:023:   `:- initialise' declaration must specify the
-bad_initialise_decl.m:023:   predicate's arity; `i4' doesn't.
+bad_initialise_decl.m:023: Error in `:- initialise' declaration: expected
+bad_initialise_decl.m:023:   `predname/arity', got `i4'.
 bad_initialise_decl.m:024: Error: `:- initialise' declaration specifies a
 bad_initialise_decl.m:024:   predicate, `(i5 / 6)', whose arity is not zero or
 bad_initialise_decl.m:024:   two.
