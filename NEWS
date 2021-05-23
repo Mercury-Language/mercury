@@ -154,6 +154,11 @@ Changes to the Mercury standard library
 
 ### Changes to the `list` module
 
+* The following predicates have been added:
+
+    - pred `foldl7/16`
+    - pred `foldl8/18`
+
 * The following obsolete predicate has been removed:
 
     - pred `takewhile/4`            (replacement: `take_while/4`)

@@ -1180,6 +1180,95 @@
     in, out) is nondet,
     in, in, out, in, out, in, out, in, out, in, out, in, out) is nondet.
 
+    % foldl7(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5, !Acc6, !Acc7):
+    % Does the same job as foldl, but with seven accumulators.
+    % (Although no more expressive than foldl, this is often
+    % a more convenient format, and a little more efficient).
+    %
+:- pred foldl7(pred(L, A, A, B, B, C, C, D, D, E, E, F, F, G, G), list(L),
+    A, A, B, B, C, C, D, D, E, E, F, F, G, G).
+:- mode foldl7(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out) is det,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out) is det.
+:- mode foldl7(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is det,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is det.
+:- mode foldl7(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is det,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is det.
+:- mode foldl7(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out) is cc_multi,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out) is cc_multi.
+:- mode foldl7(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is cc_multi,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is cc_multi.
+:- mode foldl7(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out) is semidet.
+:- mode foldl7(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is semidet.
+:- mode foldl7(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is semidet.
+:- mode foldl7(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out) is nondet,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out) is nondet.
+
+    % foldl8(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5, !Acc6, !Acc7):
+    % Does the same job as foldl, but with seven accumulators.
+    % (Although no more expressive than foldl, this is often
+    % a more convenient format, and a little more efficient).
+    %
+:- pred foldl8(pred(L, A, A, B, B, C, C, D, D, E, E, F, F, G, G, H, H),
+    list(L),
+    A, A, B, B, C, C, D, D, E, E, F, F, G, G, H , H).
+:- mode foldl8(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, in, out) is det,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, in, out) is det.
+:- mode foldl8(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, mdi, muo) is det,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, mdi, muo) is det.
+:- mode foldl8(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, di, uo) is det,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, di, uo) is det.
+:- mode foldl8(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, in, out) is cc_multi,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, in, out) is cc_multi.
+:- mode foldl8(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, di, uo) is cc_multi,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, di, uo) is cc_multi.
+:- mode foldl8(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, in, out) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, in, out) is semidet.
+:- mode foldl8(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, mdi, muo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, mdi, muo) is semidet.
+:- mode foldl8(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, di, uo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, di, uo) is semidet.
+:- mode foldl8(pred(in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, in, out) is nondet,
+    in, in, out, in, out, in, out, in, out, in, out,
+    in, out, in, out, in, out) is nondet.
+
 %---------------------%
 
     % foldr(Func, List, Start) = End calls Func with each element of List
@@ -3187,6 +3276,16 @@ foldl6(_, [], !A, !B, !C, !D, !E, !F).
 foldl6(P, [H | T], !A, !B, !C, !D, !E, !F) :-
     P(H, !A, !B, !C, !D, !E, !F),
     list.foldl6(P, T, !A, !B, !C, !D, !E, !F).
+
+foldl7(_, [], !A, !B, !C, !D, !E, !F, !G).
+foldl7(P, [H | T], !A, !B, !C, !D, !E, !F, !G) :-
+    P(H, !A, !B, !C, !D, !E, !F, !G),
+    list.foldl7(P, T, !A, !B, !C, !D, !E, !F, !G).
+
+foldl8(_, [], !A, !B, !C, !D, !E, !F, !G, !H).
+foldl8(P, [H | T], !A, !B, !C, !D, !E, !F, !G, !H) :-
+    P(H, !A, !B, !C, !D, !E, !F, !G, !H),
+    list.foldl8(P, T, !A, !B, !C, !D, !E, !F, !G, !H).
 
 %---------------------------------------------------------------------------%
 

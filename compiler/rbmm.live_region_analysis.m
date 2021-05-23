@@ -202,19 +202,6 @@ proc_lv_to_proc_lr(Graph, ModuleInfo, ProcInfo, ProgPoint, LVs, !ProcLRMap) :-
     lv_to_lr(LVs, Graph, ModuleInfo, ProcInfo, LRs),
     map.set(ProgPoint, LRs, !ProcLRMap).
 
-:- pred foldl8(pred(L, A, A, B, B, C, C, D, D, E, E, F, F, G, G, H, H),
-    list(L),
-    A, A, B, B, C, C, D, D, E, E, F, F, G, G, H, H).
-:- mode foldl8(pred(in, in, out, in, out, in, out, in, out, in, out, in, out,
-    in, out, in, out) is det,
-    in, in, out, in, out, in, out, in, out, in, out, in, out, in, out, in,
-    out) is det.
-
-foldl8(_, [], !A, !B, !C, !D, !E, !F, !G, !H).
-foldl8(P, [H|T], !A, !B, !C, !D, !E, !F, !G, !H) :-
-    call(P, H, !A, !B, !C, !D, !E, !F, !G, !H),
-    foldl8(P, T, !A, !B, !C, !D, !E, !F, !G, !H).
-
     % From a set of live variables, derive the set of live regions.
     % A live region is defined to be reachable from a live variable
     % in the corresponding region points-to graph.
