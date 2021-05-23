@@ -851,7 +851,7 @@ multiply_by_pow(Scale0, Base, Exp) = Result :-
     hash(F::in) = (H::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    int Code = (new java.lang.Double(F)).hashCode();
+    int Code = java.lang.Double.valueOf(F).hashCode();
     if (Code < 0) {
         H = -Code ^ 1;
     } else {
