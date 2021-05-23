@@ -36,7 +36,7 @@ BUILDING A MINGW OR MINGW-W64 COMPILER UNDER MSYS
 
 To build the source distribution under MSYS follow these steps:
 
-1a. Download and install MinGW and MSYS from <http://www.mingw.org>
+1a. Download and install MinGW and MSYS from <https://osdn.net/projects/mingw/>
 
     In order to build and install Mercury you will require at least the
     following components:
@@ -54,7 +54,7 @@ To build the source distribution under MSYS follow these steps:
     ensure that it occurs in your PATH before the MinGW GCC.
 
 1b. Alternatively, download and install MSYS2 environment from
-    <https://msys2.github.io>
+    <https://www.msys2.org>
 
     You can use the MinGW-w64 version of GCC to build a copy of Mercury that
     generates 32-bit or 64-bit executables.  Start the "MinGW-w64 Win32 Shell"
