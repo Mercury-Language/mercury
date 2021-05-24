@@ -758,7 +758,7 @@ AC_SUBST(ENABLE_BOEHM_USE_MUNMAP)
 #-----------------------------------------------------------------------------#
 
 MERCURY_MSG("looking for GNU Make...")
-AC_PROGRAMS_CHECK(GNU_MAKE,gmake make)
+AC_CHECK_PROGS([GNU_MAKE], [gmake, make])
 if test "$GNU_MAKE" != ""; then
     case "`$GNU_MAKE -v bogus </dev/null 2>&1`" in
         "GNU Make"*)
