@@ -23,10 +23,8 @@ define(MERCURY_MSG,
 AC_INIT(scripts/mmc.in)
 TMPDIR=${TMPDIR=/tmp}
 
-# AC_CHECK_TYPES does not exist in versions of autoconf before 2.50.
-# AC_CHECK_TYPE is broken in versions of autoconf before 2.50.
-# Version 7 of the Boehm gc requires at least version 2.58.
-AC_PREREQ(2.58)
+AC_PREREQ(2.69)
+
 #-----------------------------------------------------------------------------#
 #
 # Ensure that all messages are saved to a file `configure.log' by
@@ -111,7 +109,7 @@ AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
 #
 
 AC_ARG_WITH(cc,
-    AC_HELP_STRING([--with-cc=<program>], [Specify which C compiler to use.]),
+    AS_HELP_STRING([--with-cc=<program>], [Specify which C compiler to use.]),
     mercury_cv_with_cc="$withval", mercury_cv_with_cc="")
 
 case "$mercury_cv_with_cc" in
@@ -683,7 +681,7 @@ fi
 #
 
 AC_ARG_ENABLE(gc-large-config,
-    AC_HELP_STRING([--disable-gc-large-config],
+    AS_HELP_STRING([--disable-gc-large-config],
                    [disable large heaps when using conservative GC]),
     enable_gc_large_config="$enableval",enable_gc_large_config=yes)
 
@@ -711,12 +709,12 @@ AC_SUBST(ENABLE_BOEHM_LARGE_CONFIG)
 #
 
 AC_ARG_ENABLE(gc-mmap,
-    AC_HELP_STRING([--enable-gc-mmap],
+    AS_HELP_STRING([--enable-gc-mmap],
                    [use mmap instead of sbrk when using Boehm GC]),
     enable_gc_mmap="$enableval",enable_gc_mmap=no)
 
 AC_ARG_ENABLE(gc-munmap,
-    AC_HELP_STRING([--enable-gc-munmap],
+    AS_HELP_STRING([--enable-gc-munmap],
                    [enable unmapping of unused pages when using Boehm GC]),
     enable_gc_munmap="$enableval",enable_gc_munmap=no)
 
@@ -1246,7 +1244,7 @@ AC_CHECK_LIB(m, sin, [MATH_LIB=-lm], [MATH_LIB=])
 #
 
 AC_ARG_ENABLE(shared-libs,
-    AC_HELP_STRING([--disable-shared-libs],
+    AS_HELP_STRING([--disable-shared-libs],
       [do not build shared version of the library even if that is supported]),
     [mercury_cv_enable_shared_libs="$enableval"],
     [mercury_cv_enable_shared_libs=yes])
@@ -1258,7 +1256,7 @@ AC_ARG_ENABLE(shared-libs,
 
 enable_symlinks_opt=no
 AC_ARG_ENABLE(symlinks,
-   AC_HELP_STRING([--enable-symlinks],
+   AS_HELP_STRING([--enable-symlinks],
                   [enable symbolic links. This is the default on all
                    systems except Windows. On Windows you can force
                    symbolic links to be used by giving this option.
@@ -1300,7 +1298,7 @@ AC_SUBST(MATH_LIB)
 #
 
 AC_ARG_WITH(csharp-compiler,
-    AC_HELP_STRING([--with-csharp-compiler=<compiler>],
+    AS_HELP_STRING([--with-csharp-compiler=<compiler>],
                    [Specify which C Sharp compiler to use (default:
                    autodetect)]),
     mercury_cv_with_csharp_compiler="$withval",
@@ -1333,7 +1331,7 @@ AC_SUBST([CSHARP_DELAYSIGN_FLAG])
 MERCURY_CHECK_JAVA
 
 AC_ARG_ENABLE(javac-flags-for-heap-size,
-    AC_HELP_STRING([--enable-javac-flags-for-heap-size],
+    AS_HELP_STRING([--enable-javac-flags-for-heap-size],
                    [enable maximum heap size option for Java compiler]),
     enable_javac_flags_for_heap_size="$enableval",
     enable_javac_flags_for_heap_size=yes)
@@ -2768,7 +2766,7 @@ AC_MSG_RESULT($mercury_cv_profiling)
 #
 
 AC_ARG_ENABLE(deep-profiler,
-   AC_HELP_STRING([--enable-deep-profiler=<directory>],
+   AS_HELP_STRING([--enable-deep-profiler=<directory>],
                   [install deep profiler CGI script in <directory>]),
    enable_deep_profiler="$enableval",enable_deep_profiler=default)
 
@@ -2879,7 +2877,7 @@ else
 fi
 
 AC_ARG_WITH([gc-win32-pthreads],
-   AC_HELP_STRING([--with-gc-win32-pthreads],
+   AS_HELP_STRING([--with-gc-win32-pthreads],
             [Force the use of pthreads-win32 or winpthreads with Boehm GC.
              This is the default for MinGW if detected.]),
    [with_gc_win32_pthreads="$withval"],
@@ -3180,7 +3178,7 @@ AC_SUBST([SYMPREFIX])
 # use by non-developers.
 
 AC_ARG_WITH([llds-base-grade],
-   AC_HELP_STRING([--with-llds-base-grade=<base_grade>],
+   AS_HELP_STRING([--with-llds-base-grade=<base_grade>],
           [Force the use of <base_grade> as the base LLDS grade.
           <base_grade> must be one of asm_fast, reg or none]),
    [user_llds_base_grade="$withval";mercury_cv_user_base_grade=yes],
@@ -3284,7 +3282,7 @@ esac
 # "DEFAULT_GRADE" in the environment before invoking configure.
 
 AC_ARG_WITH(default-grade,
-    AC_HELP_STRING([--with-default-grade=GRADE],
+    AS_HELP_STRING([--with-default-grade=GRADE],
                    [Have the built compiler default to using GRADE]),
     [case "$withval" in
         # Handle `--with-default-grade' (no `=GRADE') and
@@ -3379,17 +3377,17 @@ AC_SUBST(GRADE)
 #
 
 AC_ARG_ENABLE(inefficient-grades,
-    AC_HELP_STRING([--enable-inefficient-grades],
+    AS_HELP_STRING([--enable-inefficient-grades],
                    [install inefficient versions of the library]),
     enable_inefficient_grades="$enableval",enable_inefficient_grades=no)
 
 AC_ARG_ENABLE(most-grades,
-    AC_HELP_STRING([--disable-most-grades],
+    AS_HELP_STRING([--disable-most-grades],
                    [install only the essential versions of the library]),
     enable_most_grades="$enableval",enable_most_grades=yes)
 
 AC_ARG_ENABLE(nogc-grades,
-    AC_HELP_STRING([--enable-nogc-grades],
+    AS_HELP_STRING([--enable-nogc-grades],
                    [install no-gc versions of the library]),
     enable_nogc_grades="$enableval",enable_nogc_grades=no)
 
@@ -3400,98 +3398,98 @@ AC_ARG_ENABLE(agc-grades, [],
     enable_agc_grades="$enableval",enable_agc_grades=no)
 
 AC_ARG_ENABLE(debug-grades,
-    AC_HELP_STRING([--disable-debug-grades],
+    AS_HELP_STRING([--disable-debug-grades],
                    [do not install the debugging versions of the library]),
     enable_debug_grades="$enableval",enable_debug_grades=yes)
 
 AC_ARG_ENABLE(decl-debug-grades,
-    AC_HELP_STRING([--disable-decl-debug-grades],
+    AS_HELP_STRING([--disable-decl-debug-grades],
                    [do not install the declarative debugging versions
                     of the library]),
     enable_decl_debug_grades="$enableval",enable_decl_debug_grades=yes)
 
 AC_ARG_ENABLE(ssdebug-grades,
-    AC_HELP_STRING([--enable-ssdebug-grades],
+    AS_HELP_STRING([--enable-ssdebug-grades],
                    [install the ssdebug versions of the library]),
     enable_ssdebug_grades="$enableval",enable_ssdebug_grades=no)
 
 AC_ARG_ENABLE(prof-grades,
-    AC_HELP_STRING([--disable-prof-grades],
+    AS_HELP_STRING([--disable-prof-grades],
                    [do not install profiling versions of the library]),
     enable_prof_grades="$enableval",enable_prof_grades=yes)
 
 AC_ARG_ENABLE(old-prof-grades,
-    AC_HELP_STRING([--disable-old-prof-grades],
+    AS_HELP_STRING([--disable-old-prof-grades],
                    [do not install non-deep profiling versions of the library]),
     enable_old_prof_grades="$enableval",enable_old_prof_grades=yes)
 
 AC_ARG_ENABLE(trail-grades,
-    AC_HELP_STRING([--disable-trail-grades],
+    AS_HELP_STRING([--disable-trail-grades],
                    [do not install trailing versions of the library]),
     enable_trail_grades="$enableval",enable_trail_grades=yes)
 
 AC_ARG_ENABLE(par-grades,
-    AC_HELP_STRING([--disable-par-grades],
+    AS_HELP_STRING([--disable-par-grades],
                    [do not install thread-safe versions of the library]),
     enable_par_grades="$enableval",enable_par_grades=yes)
 
 AC_ARG_ENABLE(mm-grades,
-    AC_HELP_STRING([--enable-mm-grades],
+    AS_HELP_STRING([--enable-mm-grades],
                    [install minimal model versions of the library]),
     enable_mm_grades="$enableval",enable_mm_grades=no)
 
 AC_ARG_ENABLE(mmos-grades,
-    AC_HELP_STRING([--enable-mmos-grades],
+    AS_HELP_STRING([--enable-mmos-grades],
                    [install experimental minimal model own stack versions of the library]),
     enable_mmos_grades="$enableval",enable_mmos_grades=no)
 
 AC_ARG_ENABLE(dmm-grades,
-   AC_HELP_STRING([--enable-dmm-grades],
+   AS_HELP_STRING([--enable-dmm-grades],
                   [install minimal model debug versions of the library]),
     enable_dmm_grades="$enableval",enable_dmm_grades=no)
 
 AC_ARG_ENABLE(hlc-prof-grades,
-   AC_HELP_STRING([--enable-hlc-prof-grades],
+   AS_HELP_STRING([--enable-hlc-prof-grades],
                   [install profiling versions of the high level C grade]),
    enable_hlc_prof_grades="$enableval",enable_hlc_prof_grades=no)
 
 AC_ARG_ENABLE(hlc-low-level-debug-grades,
-   AC_HELP_STRING([--enable-hlc-low-level-debug-grades],
+   AS_HELP_STRING([--enable-hlc-low-level-debug-grades],
                   [install a low-level debugging version of the high level C grade]),
    enable_hlc_ll_debug_grades="$enableval",enable_hlc_ll_debug_grades=no)
 
 AC_ARG_ENABLE(rbmm-grades,
-   AC_HELP_STRING([--enable-rbmm-grades],
+   AS_HELP_STRING([--enable-rbmm-grades],
                   [install experimental region-based memory management versions of the library]),
    enable_rbmm_grades="$enableval",enable_rbmm_grades=no)
 
 AC_ARG_ENABLE(stseg-grades,
-    AC_HELP_STRING([--enable-stseg-grades],
+    AS_HELP_STRING([--enable-stseg-grades],
         [install stack segments versions of the library]),
     [enable_stseg_grades="$enableval"],[enable_stseg_grades="no"])
 
 AC_ARG_ENABLE(minimal-install,
-    AC_HELP_STRING([--enable-minimal-install],
+    AS_HELP_STRING([--enable-minimal-install],
         [install the minimal system required to bootstrap Mercury]),
     [enable_min_install="$enableval"],[enable_min_install="no"])
 
 AC_ARG_ENABLE(csharp-grade,
-   AC_HELP_STRING([--disable-csharp-grade], [do not install the C# grade]),
+   AS_HELP_STRING([--disable-csharp-grade], [do not install the C# grade]),
    enable_csharp_grade="$enableval",enable_csharp_grade=yes)
 
 AC_ARG_ENABLE(java-grade,
-   AC_HELP_STRING([--disable-java-grade], [do not install the Java grade]),
+   AS_HELP_STRING([--disable-java-grade], [do not install the Java grade]),
    enable_java_grade="$enableval",enable_java_grade=yes)
 
 AC_ARG_ENABLE(libgrades,
-    AC_HELP_STRING([--enable-libgrades=...],
+    AS_HELP_STRING([--enable-libgrades=...],
             [install exactly the given versions of the library.
             The versions are specified using a comma-separated
             list.]),
     enable_libgrades_given=yes;enable_libgrades="$enableval",enable_libgrades_given=no)
 
 AC_ARG_ENABLE(additional-libgrades,
-    AC_HELP_STRING([--enable-additional-libgrades=...],
+    AS_HELP_STRING([--enable-additional-libgrades=...],
             [install the given versions of the library in addition
             to those requested by other options. The versions are
             specified using a comma-separated list.]),
@@ -4063,7 +4061,7 @@ fi
 # force the user to set a value using --with-macosx-deployment-target.
 
 AC_ARG_WITH([macosx-deployment-target],
-    AC_HELP_STRING([--with-macosx-deployment-target=<target>],
+    AS_HELP_STRING([--with-macosx-deployment-target=<target>],
           [Specify the deployment target on Mac OS X.]),
     [mercury_cv_macosx_deployment_target="$withval"],
     [mercury_cv_macosx_deployment_target="auto"]
@@ -4581,7 +4579,7 @@ fi
 #
 
 AC_ARG_ENABLE([sanitizers],
-    AC_HELP_STRING([--enable-sanitizers],
+    AS_HELP_STRING([--enable-sanitizers],
         [enable AddressSanitizer and UndefinedBehaviorSanitizer]),
     [ac_sanitizers="$enableval"], [ac_sanitizers=no])
 
@@ -4940,7 +4938,7 @@ LIBS="$save_LIBS"
 #
 
 AC_ARG_ENABLE(extern-debug,
-    AC_HELP_STRING([--disable-extern-debug],
+    AS_HELP_STRING([--disable-extern-debug],
                    [disable the external (separate process) debugger]),
     mercury_cv_enable_extern_debug="$enableval",
     mercury_cv_enable_extern_debug="$mercury_cv_sockets_work")
@@ -4972,7 +4970,7 @@ AC_SUBST(NSL_LIBRARY)
 
 # XXX this is poorly named.
 AC_ARG_ENABLE(dynamic-link,
-    AC_HELP_STRING([--disable-dynamic-link],
+    AS_HELP_STRING([--disable-dynamic-link],
                    [disable the use of dynamic linking]),
     [mercury_cv_enable_dynamic_link="$enableval"],
     [mercury_cv_enable_dynamic_link=yes])
@@ -5002,7 +5000,7 @@ AC_SUBST(TRACE_BASE_LIBS_SYSTEM)
 
 AC_MSG_CHECKING(whether to enable the new MercuryFile struct)
 AC_ARG_ENABLE(new-mercuryfile-struct,
-    AC_HELP_STRING([--enable-new-mercuryfile-struct],
+    AS_HELP_STRING([--enable-new-mercuryfile-struct],
                    [enable new MercuryFile struct.]),
     ac_new_mercuryfile_struct=yes,ac_new_mercuryfile_struct=no)
 
@@ -5019,7 +5017,7 @@ fi
 #
 
 AC_ARG_ENABLE([tagged-trail],
-    AC_HELP_STRING([--disable-tagged-trail],
+    AS_HELP_STRING([--disable-tagged-trail],
         [do not use tagged trail entries, even if they are supported.]),
     [ac_tagged_trail="$enableval"], [ac_tagged_trail=yes])
 
@@ -5031,7 +5029,7 @@ fi
 #-----------------------------------------------------------------------------#
 
 AC_ARG_WITH(msvcrt,
-    AC_HELP_STRING([--with-msvcrt],
+    AS_HELP_STRING([--with-msvcrt],
                    [use the MS Visual C runtime if using MS C compiler.]),
     mercury_cv_msvcrt=yes,mercury_cv_msvcrt=no)
 
@@ -5053,7 +5051,7 @@ AC_SUBST(USE_MSVCRT)
 #-----------------------------------------------------------------------------#
 
 AC_ARG_ENABLE(lto,
-    AC_HELP_STRING([--enable-lto],
+    AS_HELP_STRING([--enable-lto],
                    [Enable link-time optimization for C grades (experimental)]),
     mercury_cv_lto=yes,mercury_cv_lto=no)
 
