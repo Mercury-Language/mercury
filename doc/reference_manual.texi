@@ -2265,8 +2265,10 @@ A tuple type is equivalent to a discriminated union type
 @subsubsection The universal type
 The type @code{univ} is defined in the standard library module @code{univ},
 along with the predicates @code{type_to_univ/2} and @code{univ_to_type/2}.
-With those predicates, values of any type can be converted to the universal
-type and back again.
+With those predicates,
+values of any type can be converted to the universal type, and back again.
+The conversion from @code{univ} to the original type
+will check that the value inside the @code{univ}  has the expected type.
 The universal type is useful for situations
 where you need heterogeneous collections.
 

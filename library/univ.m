@@ -32,10 +32,14 @@
     % True iff the type stored in `Univ' is the same as the type of `Object',
     % and the value stored in `Univ' is equal to the value of `Object'.
     %
-    % Operational, the forwards mode converts an object to type `univ',
-    % while the reverse mode converts the value stored in `Univ'
-    % to the type of `Object', but fails if the type stored in `Univ'
-    % does not match the type of `Object'.
+    % Operationally,
+    %
+    % - the forward modes (the di,uo mode and the in,out mode)
+    %   convert `Object' to type univ;
+    %
+    % - the reverse mode (out,in) checks whether the value stored in `Univ'
+    %   is of type T. If this type test succeeds, it returns that value
+    %   as `Object', but if the test fails, it fails as well.
     %
 :- pred type_to_univ(T, univ).
 :- mode type_to_univ(di, uo) is det.
