@@ -5158,7 +5158,8 @@ AC_SUBST(HWLOC_STATIC_LIBS)
 #
 if test "$reconfiguring" = "no"
 then
-
+    # XXX when we drop support for autoconf < 2.70 we should use the following:
+    # AC_PROG_LEX([noyywrap])
     AC_PROG_LEX
     if test "`basename $LEX`" != "flex"
     then
