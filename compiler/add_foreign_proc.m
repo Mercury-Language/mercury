@@ -17,6 +17,10 @@
 :- import_module list.
 :- import_module maybe.
 
+:- pred add_pragma_foreign_procs(ims_list(item_foreign_proc)::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
 :- pred add_pragma_foreign_proc(pred_status::in, item_foreign_proc::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -54,6 +58,18 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
+
+add_pragma_foreign_procs([], !ModuleInfo, !Specs).
+add_pragma_foreign_procs([ImsSubList | ImsSubLists],
+        !ModuleInfo, !Specs) :-
+    ImsSubList = ims_sub_list(ItemMercuryStatus, PragmaFPInfos),
+    item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+    list.foldl2(add_pragma_foreign_proc(PredStatus), PragmaFPInfos,
+        !ModuleInfo, !Specs),
+    add_pragma_foreign_procs(ImsSubLists,
+        !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 

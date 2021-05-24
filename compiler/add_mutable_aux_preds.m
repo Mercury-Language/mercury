@@ -391,35 +391,37 @@
 :- import_module hlds.make_hlds.qual_info.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.prog_foreign.
 
 :- import_module list.
 
 %---------------------------------------------------------------------------%
 
-    % For the mutable items that are local to this module, construct the
-    % predicate declarations of the auxiliary predicates they need,
-    % and add them to the HLDS.
-    %
-:- pred add_aux_pred_decls_for_mutables_if_local(
-    sec_list(item_mutable_info)::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- type item_fpe == item_pragma_info(pragma_info_foreign_proc_export).
 
-    % For the mutable items local to this module, add the definitions
-    % of their auxiliary predicates to the HLDS, add the (backend-specific)
-    % data structure holding the mutables' values to the HLDS, and
-    % arrange for these data structures to be initialized.
+    % Check the mutables that are local to this module for errors,
+    % and if they are ok, construct and return
     %
-    % XXX We should do this by constructing those definitions as a set of
-    % clauses, foreign_procs and foreign_export items, and adding those
-    % to the HLDS, or even better, returning those items to our caller
-    % for *it* to add to the HLDS. It should then be possible for us
-    % to construct the declarations and the definitions of those aux
-    % predicates at the same time.
+    % - the predicate declarations of the auxiliary predicates they need,
     %
-:- pred add_aux_pred_defns_for_mutables_if_local(
+    % - the definitions of those auxiliary predicates, in the form of
+    %   clauses (for some) or foreign procs (for the others),
+    %
+    % - the foreign_body_codes that contain the definitions of the
+    %   global variables that contain the mutable,
+    %
+    % - any foreign_decl_codes that contain declarations of those
+    %   global variables, if needed by the target language,
+    %
+    % Also, export the initialization predicates to the target language,
+    % and arrange for them to be called before main/2.
+    %
+:- pred implement_mutables_if_local(module_info::in,
     sec_list(item_mutable_info)::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    sec_list(item_pred_decl_info)::out,
+    ims_list(item_clause_info)::out, ims_list(item_foreign_proc)::out,
+    list(foreign_decl_code)::out, list(foreign_body_code)::out,
+    list(item_fpe)::out, pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -429,12 +431,8 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
-:- import_module hlds.add_pred.
 :- import_module hlds.error_msg_inst.
 :- import_module hlds.hlds_inst_mode.
-:- import_module hlds.make_hlds.add_clause.
-:- import_module hlds.make_hlds.add_foreign_proc.
-:- import_module hlds.make_hlds.add_pragma.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -446,11 +444,11 @@
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
-:- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_mutable.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -461,39 +459,64 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-add_aux_pred_decls_for_mutables_if_local([], !ModuleInfo, !Specs).
-add_aux_pred_decls_for_mutables_if_local([SecSubList | SecSubLists],
-        !ModuleInfo, !Specs) :-
-    SecSubList = sec_sub_list(SectionInfo, ItemMutables),
-    SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
-    (
-        ItemMercuryStatus = item_defined_in_this_module(_),
-        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        list.foldl2(
-            check_and_add_aux_pred_decls_for_mutable(ItemMercuryStatus,
-                PredStatus, NeedQual),
-            ItemMutables, !ModuleInfo, !Specs)
-    ;
-        ItemMercuryStatus = item_defined_in_other_module(_)
-        % We don't implement the `mutable' declaration unless it is defined
-        % in this module. If we did not have this check, we would duplicate
-        % the definition of the global variable storing the mutable
-        % in any submodules of the module that actually defined the mutable.
-    ),
-    add_aux_pred_decls_for_mutables_if_local(SecSubLists,
-        !ModuleInfo, !Specs).
+:- type sec_cord(T) == cord(sec_sub_list(T)).
 
-add_aux_pred_defns_for_mutables_if_local([], !ModuleInfo, !QualInfo, !Specs).
-add_aux_pred_defns_for_mutables_if_local([SecSubList | SecSubLists],
-        !ModuleInfo, !QualInfo, !Specs) :-
+implement_mutables_if_local(ModuleInfo, SecList, PredDecls,
+        ClauseInfos, ForeignProcs, ForeignDeclCodes, ForeignBodyCodes,
+        FPEInfos, !PredTargetNames, !Specs) :-
+    implement_mutables_loop(ModuleInfo, SecList,
+        [], PredDecls, cord.init, ClauseInfoCord, cord.init, ForeignProcCord,
+        cord.init, ForeignDeclCodeCord, cord.init, ForeignBodyCodeCord,
+        cord.init, FPEInfoCord, !PredTargetNames, !Specs),
+    ClauseInfos = cord.list(ClauseInfoCord),
+    ForeignProcs = cord.list(ForeignProcCord),
+    ForeignDeclCodes = cord.list(ForeignDeclCodeCord),
+    ForeignBodyCodes = cord.list(ForeignBodyCodeCord),
+    FPEInfos = cord.list(FPEInfoCord).
+
+:- pred implement_mutables_loop(module_info::in,
+    sec_list(item_mutable_info)::in,
+    sec_list(item_pred_decl_info)::in, sec_list(item_pred_decl_info)::out,
+    ims_cord(item_clause_info)::in, ims_cord(item_clause_info)::out,
+    ims_cord(item_foreign_proc)::in, ims_cord(item_foreign_proc)::out,
+    cord(foreign_decl_code)::in, cord(foreign_decl_code)::out,
+    cord(foreign_body_code)::in, cord(foreign_body_code)::out,
+    cord(item_fpe)::in, cord(item_fpe)::out,
+    pred_target_names::in, pred_target_names::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+implement_mutables_loop(_ModuleInfo, [],
+        !PredDecls, !ClauseInfoCord, !ForeignProcCord,
+        !ForeignDeclCodeCord, !ForeignBodyCodeCord,
+        !FPEInfoCord, !PredTargetNames, !Specs).
+implement_mutables_loop(ModuleInfo, [SecSubList | SecSubLists],
+        !PredDecls, !ClauseInfoCord, !ForeignProcCord,
+        !ForeignDeclCodeCord, !ForeignBodyCodeCord,
+        !FPEInfoCord, !PredTargetNames, !Specs) :-
     SecSubList = sec_sub_list(SectionInfo, ItemMutables),
     SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
     (
         ItemMercuryStatus = item_defined_in_this_module(_),
-        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        list.foldl3(
-            add_aux_pred_defns_for_mutable(PredStatus),
-            ItemMutables, !ModuleInfo, !QualInfo, !Specs)
+        list.foldl8(
+            check_and_add_aux_pred_decls_for_mutable(ModuleInfo, SectionInfo),
+            ItemMutables, !PredDecls,
+            cord.init, ClauseInfoSubCord, cord.init, ForeignProcSubCord,
+            !ForeignDeclCodeCord, !ForeignBodyCodeCord,
+            !FPEInfoCord, !PredTargetNames, !Specs),
+        ( if cord.is_empty(ClauseInfoSubCord) then
+            true
+        else
+            ClauseInfoSubList =
+                ims_sub_list(ItemMercuryStatus, cord.list(ClauseInfoSubCord)),
+            cord.snoc(ClauseInfoSubList, !ClauseInfoCord)
+        ),
+        ( if cord.is_empty(ForeignProcSubCord) then
+            true
+        else
+            ForeignProcSubList =
+                ims_sub_list(ItemMercuryStatus, cord.list(ForeignProcSubCord)),
+            cord.snoc(ForeignProcSubList, !ForeignProcCord)
+        )
     ;
         ItemMercuryStatus = item_defined_in_other_module(_)
         % We don't implement the `mutable' declaration unless it is defined
@@ -501,52 +524,71 @@ add_aux_pred_defns_for_mutables_if_local([SecSubList | SecSubLists],
         % the definition of the global variable storing the mutable
         % in any submodules of the module that actually defined the mutable.
     ),
-    add_aux_pred_defns_for_mutables_if_local(SecSubLists,
-        !ModuleInfo, !QualInfo, !Specs).
+    implement_mutables_loop(ModuleInfo, SecSubLists,
+        !PredDecls, !ClauseInfoCord, !ForeignProcCord,
+        !ForeignDeclCodeCord, !ForeignBodyCodeCord,
+        !FPEInfoCord, !PredTargetNames, !Specs).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+% XXX CLEANUP put the predicates in this module in a logical order
+% in a separate diff once review is done.
 
-:- pred check_and_add_aux_pred_decls_for_mutable(item_mercury_status::in,
-    pred_status::in, need_qualifier::in, item_mutable_info::in,
-    module_info::in, module_info::out,
+:- pred check_and_add_aux_pred_decls_for_mutable(module_info::in,
+    sec_info::in, item_mutable_info::in,
+    sec_list(item_pred_decl_info)::in, sec_list(item_pred_decl_info)::out,
+    cord(item_clause_info)::in, cord(item_clause_info)::out,
+    cord(item_foreign_proc)::in, cord(item_foreign_proc)::out,
+    cord(foreign_decl_code)::in, cord(foreign_decl_code)::out,
+    cord(foreign_body_code)::in, cord(foreign_body_code)::out,
+    cord(item_fpe)::in, cord(item_fpe)::out,
+    pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_and_add_aux_pred_decls_for_mutable(ItemMercuryStatus, PredStatus,
-        NeedQual, ItemMutable, !ModuleInfo, !Specs) :-
-    check_mutable(ItemMutable, !.ModuleInfo, !Specs),
+check_and_add_aux_pred_decls_for_mutable(ModuleInfo, SecInfo, ItemMutable,
+        !PredDecls, !ClauseInfoCord, !ForeignProcCord,
+        !ForeignDeclCodeCord, !ForeignBodyCodeCord,
+        !FPEInfoCord, !PredTargetNames, !Specs) :-
+    check_mutable(ModuleInfo, ItemMutable, !Specs),
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, Type, _OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    module_info_get_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     get_mutable_target_params(Globals, MutAttrs, TargetParams),
     PublicPredKinds = TargetParams ^ mtp_public_aux_preds,
     PrivatePredKinds = TargetParams ^ mtp_private_aux_preds,
     NeededPredKinds = PublicPredKinds ++ PrivatePredKinds,
-    module_info_get_name(!.ModuleInfo, ModuleName),
+    module_info_get_name(ModuleInfo, ModuleName),
     list.map(
         make_mutable_aux_pred_decl(ModuleName, MutableName, Type, Inst,
             Context),
         NeededPredKinds, NeededPredDecls),
-    list.map_foldl2(
-        module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual),
-        NeededPredDecls, _MaybePredProcIds, !ModuleInfo, !Specs).
+    !:PredDecls = [sec_sub_list(SecInfo, NeededPredDecls) | !.PredDecls],
+    add_aux_pred_defns_for_mutable(ModuleInfo, ItemMutable,
+        !ClauseInfoCord, !ForeignProcCord,
+        !ForeignDeclCodeCord, !ForeignBodyCodeCord,
+        !FPEInfoCord, !PredTargetNames).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 
-:- pred add_aux_pred_defns_for_mutable(pred_status::in, item_mutable_info::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred add_aux_pred_defns_for_mutable(module_info::in, item_mutable_info::in,
+    cord(item_clause_info)::in, cord(item_clause_info)::out,
+    cord(item_foreign_proc)::in, cord(item_foreign_proc)::out,
+    cord(foreign_decl_code)::in, cord(foreign_decl_code)::out,
+    cord(foreign_body_code)::in, cord(foreign_body_code)::out,
+    cord(item_fpe)::in, cord(item_fpe)::out,
+    pred_target_names::in, pred_target_names::out) is det.
 
-add_aux_pred_defns_for_mutable(PredStatus, ItemMutable,
-        !ModuleInfo, !QualInfo, !Specs) :-
+add_aux_pred_defns_for_mutable(ModuleInfo, ItemMutable,
+        !ClauseInfoCord, !ForeignProcCord,
+        !ForeignDeclCodes, !ForeignBodyCodes,
+        !FPEInfoCord, !PredTargetNames) :-
     % The transformation here is documented in the comments at the
     % beginning of prog_mutable.m.
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, Type, _OrigInst, _Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    module_info_get_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     get_mutable_target_params(Globals, MutAttrs, TargetParams),
     IsConstant = mutable_var_constant(MutAttrs),
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
@@ -554,28 +596,33 @@ add_aux_pred_defns_for_mutable(PredStatus, ItemMutable,
     Lang = TargetParams ^ mtp_target_lang,
 
     % Work out what name to give the global in the target language.
-    module_info_get_name(!.ModuleInfo, ModuleName),
-    decide_mutable_target_var_name(!.ModuleInfo, MutAttrs, ModuleName,
+    module_info_get_name(ModuleInfo, ModuleName),
+    decide_mutable_target_var_name(ModuleInfo, MutAttrs, ModuleName,
         MutableName, Lang, Context, TargetMutableName),
-
     % We define the global storing the mutable now rather than earlier
     % because the target-language-specific name of the type of the global
     % depends on whether there are any foreign_type declarations for Type.
     (
         ImplLang = mutable_lang_c,
-        define_mutable_global_var_c(TargetMutableName, Type, IsConstant,
-            IsThreadLocal, Context, !ModuleInfo)
+        define_mutable_global_var_c(ModuleInfo, TargetMutableName, Type,
+            IsConstant, IsThreadLocal, Context,
+            !ForeignDeclCodes, !ForeignBodyCodes)
     ;
         ImplLang = mutable_lang_csharp,
         define_mutable_global_var_csharp(TargetMutableName, Type,
-            IsThreadLocal, Context, !ModuleInfo)
+            IsThreadLocal, Context, !ForeignBodyCodes)
     ;
         ImplLang = mutable_lang_java,
-        define_mutable_global_var_java( TargetMutableName, Type,
-            IsThreadLocal, Context, !ModuleInfo)
+        define_mutable_global_var_java(TargetMutableName, Type,
+            IsThreadLocal, Context, !ForeignBodyCodes)
     ),
-    define_aux_preds_for_mutable(TargetParams, ItemMutable, TargetMutableName,
-        PredStatus, !ModuleInfo, !QualInfo, !Specs).
+
+    define_aux_preds_for_mutable(ModuleInfo, TargetParams, ItemMutable,
+        TargetMutableName, ClauseInfos, ForeignProcs, FPEInfo,
+        !PredTargetNames),
+    !:ClauseInfoCord = !.ClauseInfoCord ++ cord.from_list(ClauseInfos),
+    !:ForeignProcCord = !.ForeignProcCord ++ cord.from_list(ForeignProcs),
+    cord.snoc(FPEInfo, !FPEInfoCord).
 
 %---------------------------------------------------------------------------%
 %
@@ -585,12 +632,14 @@ add_aux_pred_defns_for_mutable(PredStatus, ItemMutable,
     % Define the global variable used to hold the mutable on the C backend,
     % and if needed, the mutex controlling access to it.
     %
-:- pred define_mutable_global_var_c(string::in, mer_type::in,
+:- pred define_mutable_global_var_c(module_info::in, string::in, mer_type::in,
     mutable_constant::in, mutable_thread_local::in, prog_context::in,
-    module_info::in, module_info::out) is det.
+    cord(foreign_decl_code)::in, cord(foreign_decl_code)::out,
+    cord(foreign_body_code)::in, cord(foreign_body_code)::out) is det.
 
-define_mutable_global_var_c(TargetMutableName, Type, IsConstant, IsThreadLocal,
-        Context, !ModuleInfo) :-
+define_mutable_global_var_c(ModuleInfo, TargetMutableName, Type,
+        IsConstant, IsThreadLocal, Context,
+        !ForeignDeclCodes, !ForeignBodyCodes) :-
     % The declaration we construct will be included in the .mh files. Since
     % these are grade independent, we need to output both the high- and
     % low-level C declarations for the global used to implement the mutable,
@@ -601,10 +650,10 @@ define_mutable_global_var_c(TargetMutableName, Type, IsConstant, IsThreadLocal,
         % is that in the latter, mutables are *always* boxed, whereas
         % in the former they may not be.
         HighLevelTypeName = global_foreign_type_name(bp_native_if_possible,
-            lang_c, !.ModuleInfo, Type),
+            lang_c, ModuleInfo, Type),
         LowLevelTypeName = global_foreign_type_name(bp_always_boxed,
-            lang_c, !.ModuleInfo, Type),
-        module_info_get_globals(!.ModuleInfo, Globals),
+            lang_c, ModuleInfo, Type),
+        module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
             HighLevelCode = no,
@@ -653,22 +702,22 @@ define_mutable_global_var_c(TargetMutableName, Type, IsConstant, IsThreadLocal,
         "#endif\n" | LockDeclStrs]),
     ForeignDeclCode = foreign_decl_code(lang_c, foreign_decl_is_exported,
         floi_literal(DeclBody), Context),
-    module_add_foreign_decl_code_aux(ForeignDeclCode, !ModuleInfo),
+    cord.snoc(ForeignDeclCode, !ForeignDeclCodes),
 
     DefnBody = string.append_list([
         TypeName, " ", TargetMutableName, ";\n" | LockDefnStrs]),
     ForeignBodyCode = foreign_body_code(lang_c,
         floi_literal(DefnBody), Context),
-    module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo).
+    cord.snoc(ForeignBodyCode, !ForeignBodyCodes).
 
     % Define the global variable used to hold the mutable on the C# backend.
     %
 :- pred define_mutable_global_var_csharp(string::in, mer_type::in,
     mutable_thread_local::in, prog_context::in,
-    module_info::in, module_info::out) is det.
+    cord(foreign_body_code)::in, cord(foreign_body_code)::out) is det.
 
 define_mutable_global_var_csharp(TargetMutableName, Type, IsThreadLocal,
-        Context, !ModuleInfo) :-
+        Context, !ForeignBodyCodes) :-
     (
         IsThreadLocal = mutable_not_thread_local,
         ( if Type = int_type then
@@ -683,16 +732,16 @@ define_mutable_global_var_csharp(TargetMutableName, Type, IsThreadLocal,
     DefnBody = "static " ++ TypeStr ++ " " ++ TargetMutableName ++ ";\n",
     DefnForeignBodyCode =
         foreign_body_code(lang_csharp, floi_literal(DefnBody), Context),
-    module_add_foreign_body_code(DefnForeignBodyCode, !ModuleInfo).
+    cord.snoc(DefnForeignBodyCode, !ForeignBodyCodes).
 
     % Define the global variable used to hold the mutable on the Java backend.
     %
 :- pred define_mutable_global_var_java(string::in, mer_type::in,
     mutable_thread_local::in, prog_context::in,
-    module_info::in, module_info::out) is det.
+    cord(foreign_body_code)::in, cord(foreign_body_code)::out) is det.
 
 define_mutable_global_var_java(TargetMutableName, Type, IsThreadLocal,
-        Context, !ModuleInfo) :-
+        Context, !ForeignBodyCodes) :-
     (
         IsThreadLocal = mutable_not_thread_local,
         % Synchronization is only required for double and long values,
@@ -719,17 +768,19 @@ define_mutable_global_var_java(TargetMutableName, Type, IsThreadLocal,
     ),
     DefnForeignBodyCode =
         foreign_body_code(lang_java, floi_literal(DefnBody), Context),
-    module_add_foreign_body_code(DefnForeignBodyCode, !ModuleInfo).
+    cord.snoc(DefnForeignBodyCode, !ForeignBodyCodes).
 
 %---------------------------------------------------------------------------%
 
-:- pred define_aux_preds_for_mutable(mutable_target_params::in,
-    item_mutable_info::in, string::in, pred_status::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred define_aux_preds_for_mutable(module_info::in,
+    mutable_target_params::in, item_mutable_info::in, string::in,
+    list(item_clause_info)::out, list(item_foreign_proc)::out,
+    item_pragma_info(pragma_info_foreign_proc_export)::out,
+    pred_target_names::in, pred_target_names::out) is det.
 
-define_aux_preds_for_mutable(TargetParams, ItemMutable, TargetMutableName,
-        PredStatus, !ModuleInfo, !QualInfo, !Specs) :-
+define_aux_preds_for_mutable(ModuleInfo, TargetParams, ItemMutable,
+        TargetMutableName, ClauseInfos, ForeignProcs, PragmaFPEInfo,
+        !PredTargetNames) :-
     TargetParams = mutable_target_params(ImplLang, Lang, BoxPolicy,
         _PreInit, _LockUnlock, _UnsafeAccess,
         PrivatePredKinds, PublicPredKinds),
@@ -763,69 +814,76 @@ define_aux_preds_for_mutable(TargetParams, ItemMutable, TargetMutableName,
 
     some [!PredKinds]
     (
+        module_info_get_name(ModuleInfo, ModuleName),
         set.list_to_set(NeededPredKinds, !:PredKinds),
         ( if set.remove(mutable_pred_pre_init, !PredKinds) then
-            define_pre_init_pred(TargetParams, ItemMutable, TargetMutableName,
-                Attrs, PredStatus, CallPreInitExpr,
-                !ModuleInfo, !QualInfo, !Specs),
-            MaybeCallPreInitExpr = yes(CallPreInitExpr)
+            define_pre_init_pred(ModuleName, TargetParams, ItemMutable,
+                TargetMutableName, Attrs, CallPreInitExpr, PreInitForeignProc),
+            MaybeCallPreInitExpr = yes(CallPreInitExpr),
+            PreInitForeignProcs = [PreInitForeignProc]
         else
-            MaybeCallPreInitExpr = no
+            MaybeCallPreInitExpr = no,
+            PreInitForeignProcs = []
         ),
         ( if
             set.remove(mutable_pred_lock, !PredKinds),
             set.remove(mutable_pred_unlock, !PredKinds)
         then
-            define_lock_unlock_preds(TargetParams, ItemMutable,
-                TargetMutableName, Attrs, PredStatus, LockUnlockExprs,
-                !ModuleInfo, !QualInfo, !Specs),
+            define_lock_unlock_preds(ModuleName, TargetParams, ItemMutable,
+                TargetMutableName, Attrs, LockUnlockExprs,
+                LockUnlockForeignProcs),
             MaybeLockUnlockExprs = yes(LockUnlockExprs)
         else
-            MaybeLockUnlockExprs = no
+            MaybeLockUnlockExprs = no,
+            LockUnlockForeignProcs = []
         ),
         ( if
             set.remove(mutable_pred_unsafe_get, !PredKinds),
             set.remove(mutable_pred_unsafe_set, !PredKinds)
         then
-            define_unsafe_get_set_preds(TargetParams, ItemMutable,
-                TargetMutableName, Attrs, PredStatus, UnsafeGetSetExprs,
-                !ModuleInfo, !QualInfo, !Specs),
+            define_unsafe_get_set_preds(ModuleInfo, TargetParams,
+                ItemMutable, TargetMutableName, Attrs,
+                UnsafeGetSetExprs, UnsafeGetSetForeignProcs),
             MaybeUnsafeGetSetExprs = yes(UnsafeGetSetExprs)
         else
-            MaybeUnsafeGetSetExprs = no
+            MaybeUnsafeGetSetExprs = no,
+            UnsafeGetSetForeignProcs = []
         ),
 
         % We do this after defining (a) the lock and unlock predicates and
         % (b) the unsafe get and set predicates, since they give us
         % (a) MaybeLockUnlockExprs and (b) MaybeUnsafeGetSetExprs respectively.
-        define_main_get_set_preds(TargetParams, ItemMutable, TargetMutableName,
-            Attrs, PredStatus, MaybeLockUnlockExprs, MaybeUnsafeGetSetExprs,
-            InitSetPredName, !PredKinds, !ModuleInfo, !QualInfo, !Specs),
+        define_main_get_set_preds(ModuleName, TargetParams, ItemMutable,
+            TargetMutableName, Attrs, MaybeLockUnlockExprs,
+            MaybeUnsafeGetSetExprs, InitSetPredName,
+            GetSetClauseInfos, GetSetForeignProcs, !PredKinds),
 
         ( if set.remove(mutable_pred_init, !PredKinds) then
             % We do this after defining (a) the preinit predicate and
             % (b) the main get and set predicates, since they give us
             % (a) MaybeCallPreInitExpr and (b) InitSetPredName respectively.
-            define_init_pred(ItemMutable, PredStatus, Lang, InitSetPredName,
-                MaybeCallPreInitExpr, !ModuleInfo, !QualInfo, !Specs)
+            define_init_pred(ModuleName, Lang, ItemMutable, InitSetPredName,
+                MaybeCallPreInitExpr, InitClauseInfo, PragmaFPEInfo,
+                !PredTargetNames)
         else
             unexpected($pred, "mutable does not need init predicate")
         ),
 
-        expect(set.is_empty(!.PredKinds), $pred, "!.PredKinds is not empty")
+        expect(set.is_empty(!.PredKinds), $pred, "!.PredKinds is not empty"),
+
+        ClauseInfos = GetSetClauseInfos ++ [InitClauseInfo],
+        ForeignProcs = PreInitForeignProcs ++ LockUnlockForeignProcs ++
+            GetSetForeignProcs ++ UnsafeGetSetForeignProcs
     ).
 
     % Define the pre_init predicates, if needed by the init predicate.
     %
-:- pred define_pre_init_pred(mutable_target_params::in, item_mutable_info::in,
-    string::in, pragma_foreign_proc_attributes::in, pred_status::in, goal::out,
-    module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred define_pre_init_pred(module_name::in, mutable_target_params::in,
+    item_mutable_info::in, string::in, pragma_foreign_proc_attributes::in,
+    goal::out, item_foreign_proc::out) is det.
 
-define_pre_init_pred(TargetParams, ItemMutable, TargetMutableName, Attrs,
-        PredStatus, CallPreInitExpr, !ModuleInfo, !QualInfo, !Specs) :-
-    module_info_get_name(!.ModuleInfo, ModuleName),
+define_pre_init_pred(ModuleName, TargetParams, ItemMutable, TargetMutableName,
+        Attrs, CallPreInitExpr, ForeignProc) :-
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, _Type, _OrigInst, _Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
@@ -868,24 +926,18 @@ define_pre_init_pred(TargetParams, ItemMutable, TargetMutableName, Attrs,
         varset.init,    % InstVarSet
         fp_impl_ordinary(PreInitCode, yes(Context))
     ),
-    PragmaPreInitFCInfo =
+    ForeignProc =
         item_pragma_info(PreInitFCInfo, Context, item_no_seq_num),
-    add_pragma_foreign_proc(PredStatus, PragmaPreInitFCInfo,
-        !ModuleInfo, !Specs),
-
     CallPreInitExpr = call_expr(Context, PreInitPredName, [], purity_impure).
 
     % Define the lock and unlock predicates, if needed.
     %
-:- pred define_lock_unlock_preds(mutable_target_params::in,
+:- pred define_lock_unlock_preds(module_name::in, mutable_target_params::in,
     item_mutable_info::in, string::in, pragma_foreign_proc_attributes::in,
-    pred_status::in, {goal, goal}::out,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    {goal, goal}::out, list(item_foreign_proc)::out) is det.
 
-define_lock_unlock_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
-        PredStatus, LockUnlockExprs, !ModuleInfo, !QualInfo, !Specs) :-
-    module_info_get_name(!.ModuleInfo, ModuleName),
+define_lock_unlock_preds(ModuleName, TargetParams, ItemMutable,
+        TargetMutableName, Attrs, LockUnlockExprs, ForeignProcs) :-
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, _Type, _OrigInst, _Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
@@ -941,14 +993,11 @@ define_lock_unlock_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
             varset.init,    % InstVarSet
             fp_impl_ordinary(UnlockForeignProcBody, yes(Context))
         ),
-        PragmaLockFCInfo =
+        LockForeignProc =
             item_pragma_info(LockFCInfo, Context, item_no_seq_num),
-        PragmaUnlockFCInfo =
+        UnlockForeignProc =
             item_pragma_info(UnlockFCInfo, Context, item_no_seq_num),
-        add_pragma_foreign_proc(PredStatus, PragmaLockFCInfo,
-            !ModuleInfo, !Specs),
-        add_pragma_foreign_proc(PredStatus, PragmaUnlockFCInfo,
-            !ModuleInfo, !Specs),
+        ForeignProcs = [LockForeignProc, UnlockForeignProc],
         CallLockExpr0 =
             call_expr(Context, LockPredName, [], purity_impure),
         CallUnlockExpr0 =
@@ -964,16 +1013,13 @@ define_lock_unlock_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
 
     % Define the unsafe get and set predicates, if needed.
     %
-:- pred define_unsafe_get_set_preds(mutable_target_params::in,
+:- pred define_unsafe_get_set_preds(module_info::in, mutable_target_params::in,
     item_mutable_info::in, string::in, pragma_foreign_proc_attributes::in,
-    pred_status::in, {goal, goal}::out,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    {goal, goal}::out, list(item_foreign_proc)::out) is det.
 
-define_unsafe_get_set_preds(TargetParams, ItemMutable, TargetMutableName,
-        Attrs, PredStatus, UnsafeGetSetExprs,
-        !ModuleInfo, !QualInfo, !Specs) :-
-    module_info_get_name(!.ModuleInfo, ModuleName),
+define_unsafe_get_set_preds(ModuleInfo, TargetParams, ItemMutable,
+        TargetMutableName, Attrs, UnsafeGetSetExprs, ForeignProcs) :-
+    module_info_get_name(ModuleInfo, ModuleName),
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, Type, _OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
@@ -1010,7 +1056,7 @@ define_unsafe_get_set_preds(TargetParams, ItemMutable, TargetMutableName,
         ;
             IsThreadLocal = mutable_thread_local,
             TypeName = global_foreign_type_name(BoxPolicy, Lang,
-                !.ModuleInfo, Type),
+                ModuleInfo, Type),
             UnsafeGetCode = "MR_get_thread_local_mutable(" ++
                 TypeName ++ ", X, " ++ TargetMutableName ++ ");\n",
             UnsafeSetCode = "MR_set_thread_local_mutable(" ++
@@ -1074,14 +1120,11 @@ define_unsafe_get_set_preds(TargetParams, ItemMutable, TargetMutableName,
         varset.init,    % InstVarSet
         fp_impl_ordinary(TrailCode ++ UnsafeSetCode, yes(Context))
     ),
-    PragmaUnsafeGetFCInfo =
+    UnsafeGetForeignProc =
         item_pragma_info(UnsafeGetFCInfo, Context, item_no_seq_num),
-    PragmaUnsafeSetFCInfo =
+    UnsafeSetForeignProc =
         item_pragma_info(UnsafeSetFCInfo, Context, item_no_seq_num),
-    add_pragma_foreign_proc(PredStatus, PragmaUnsafeGetFCInfo,
-        !ModuleInfo, !Specs),
-    add_pragma_foreign_proc(PredStatus, PragmaUnsafeSetFCInfo,
-        !ModuleInfo, !Specs),
+    ForeignProcs = [UnsafeGetForeignProc, UnsafeSetForeignProc],
 
     CallUnsafeGetExpr0 = call_expr(Context, UnsafeGetPredName,
         [variable(X, Context)], purity_semipure),
@@ -1103,17 +1146,15 @@ define_unsafe_get_set_preds(TargetParams, ItemMutable, TargetMutableName,
     % and the unsafe get and set predicates, since they give us
     % MaybeLockUnlockExprs and MaybeUnsafeGetSetExprs.
     %
-:- pred define_main_get_set_preds(mutable_target_params::in,
+:- pred define_main_get_set_preds(module_name::in, mutable_target_params::in,
     item_mutable_info::in, string::in, pragma_foreign_proc_attributes::in,
-    pred_status::in, maybe({goal, goal})::in, maybe({goal, goal})::in,
-    sym_name::out, set(mutable_pred_kind)::in, set(mutable_pred_kind)::out,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    maybe({goal, goal})::in, maybe({goal, goal})::in, sym_name::out,
+    list(item_clause_info)::out, list(item_foreign_proc)::out,
+    set(mutable_pred_kind)::in, set(mutable_pred_kind)::out) is det.
 
-define_main_get_set_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
-        PredStatus, MaybeLockUnlockExprs, MaybeUnsafeGetSetExprs,
-        InitSetPredName, !PredKinds, !ModuleInfo, !QualInfo, !Specs) :-
-    module_info_get_name(!.ModuleInfo, ModuleName),
+define_main_get_set_preds(ModuleName, TargetParams, ItemMutable,
+        TargetMutableName, Attrs, MaybeLockUnlockExprs, MaybeUnsafeGetSetExprs,
+        InitSetPredName, ClauseInfos, ForeignProcs, !PredKinds) :-
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, _Type, _OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
@@ -1172,14 +1213,12 @@ define_main_get_set_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
             varset.init,    % InstVarSet
             fp_impl_ordinary(ConstantSetCode, yes(Context))
         ),
-        PragmaConstantGetFCInfo =
+        ConstantGetForeignProc =
             item_pragma_info(ConstantGetFCInfo, Context, item_no_seq_num),
-        PragmaConstantSetFCInfo =
+        ConstantSetForeignProc =
             item_pragma_info(ConstantSetFCInfo, Context, item_no_seq_num),
-        add_pragma_foreign_proc(PredStatus, PragmaConstantGetFCInfo,
-            !ModuleInfo, !Specs),
-        add_pragma_foreign_proc(PredStatus, PragmaConstantSetFCInfo,
-            !ModuleInfo, !Specs),
+        ClauseInfos = [],
+        ForeignProcs = [ConstantGetForeignProc, ConstantSetForeignProc],
         set.det_remove(mutable_pred_constant_get, !PredKinds),
         set.det_remove(mutable_pred_constant_secret_set, !PredKinds),
 
@@ -1226,16 +1265,13 @@ define_main_get_set_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
             StdSetClauseInfo = item_clause_info(pf_predicate, StdSetPredName,
                 StdPredArgs, VarSetOnlyX, ok2(StdSetPredExpr, []),
                 Context, item_no_seq_num),
-            ClauseType = clause_not_for_promise,
-            module_add_clause(PredStatus, ClauseType, StdGetClauseInfo,
-                !ModuleInfo, !QualInfo, !Specs),
-            module_add_clause(PredStatus, ClauseType, StdSetClauseInfo,
-                !ModuleInfo, !QualInfo, !Specs),
+            StdClauseInfos = [StdGetClauseInfo, StdSetClauseInfo],
             set.det_remove(mutable_pred_std_get, !PredKinds),
             set.det_remove(mutable_pred_std_set, !PredKinds)
         ),
         (
-            AttachToIO = mutable_dont_attach_to_io_state
+            AttachToIO = mutable_dont_attach_to_io_state,
+            ClauseInfos = StdClauseInfos
         ;
             AttachToIO = mutable_attach_to_io_state,
             some [!VarSet] (
@@ -1270,30 +1306,28 @@ define_main_get_set_preds(TargetParams, ItemMutable, TargetMutableName, Attrs,
             IOSetClauseInfo = item_clause_info(pf_predicate,
                 IOSetPredName, IOPredArgs, VarSetXandIOs,
                 ok2(PureIOSetPredExpr, []), Context, item_no_seq_num),
-            ClauseType = clause_not_for_promise,
-            module_add_clause(PredStatus, ClauseType, IOGetClauseInfo,
-                !ModuleInfo, !QualInfo, !Specs),
-            module_add_clause(PredStatus, ClauseType, IOSetClauseInfo,
-                !ModuleInfo, !QualInfo, !Specs),
+            ClauseInfos = StdClauseInfos ++ [IOGetClauseInfo, IOSetClauseInfo],
             set.det_remove(mutable_pred_io_get, !PredKinds),
             set.det_remove(mutable_pred_io_set, !PredKinds)
-        )
+        ),
+        ForeignProcs = []
     ).
 
     % Define the init predicate, and arrange for it to be called
     % at initialization time.
     %
-:- pred define_init_pred(item_mutable_info::in, pred_status::in,
-    foreign_language::in, sym_name::in, maybe(goal)::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred define_init_pred(module_name::in, foreign_language::in,
+    item_mutable_info::in, sym_name::in, maybe(goal)::in,
+    item_clause_info::out,
+    item_pragma_info(pragma_info_foreign_proc_export)::out,
+    pred_target_names::in, pred_target_names::out) is det.
 
-define_init_pred(ItemMutable, PredStatus, Lang, InitSetPredName,
-        MaybeCallPreInitExpr, !ModuleInfo, !QualInfo, !Specs) :-
-    module_info_get_name(!.ModuleInfo, ModuleName),
+define_init_pred(ModuleName, Lang, ItemMutable, InitSetPredName,
+        MaybeCallPreInitExpr, InitClauseInfo, PragmaFPEInfo,
+        !PredTargetNames) :-
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, _Type, _OrigInst, _Inst,
-        InitTerm, VarSetMutable, _MutAttrs, Context, _SeqNum),
+        InitTerm, VarSetMutable, _MutAttrs, Context, SeqNum),
     varset.new_named_var("X", X, VarSetMutable, VarSetMutableX),
     VarX = variable(X, Context),
 
@@ -1308,28 +1342,11 @@ define_init_pred(ItemMutable, PredStatus, Lang, InitSetPredName,
         InitPredExpr = conj_expr(Context, CallPreInitExpr, UnifyCallSetExpr)
     ),
     InitPredName = mutable_init_pred_sym_name(ModuleName, MutableName),
-    ClauseType = clause_not_for_promise,
     % See the comments for parse_mutable_decl_info for the reason
     % why we _must_ pass VarSetMutableX here.
     InitClauseInfo = item_clause_info(pf_predicate, InitPredName, [],
         VarSetMutableX, ok2(InitPredExpr, []), Context, item_no_seq_num),
-    module_add_clause(PredStatus, ClauseType, InitClauseInfo,
-        !ModuleInfo, !QualInfo, !Specs),
 
-    InitPredArity = 0,
-    add_initialise_for_mutable(ModuleName, MutableName,
-        InitPredName, InitPredArity, Context, Lang, !ModuleInfo, !Specs).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- pred add_initialise_for_mutable(module_name::in, string::in,
-    sym_name::in, arity::in, prog_context::in, foreign_language::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_initialise_for_mutable(ModuleName, MutableName, SymName, Arity,
-        Context, Lang, !ModuleInfo, !Specs) :-
     % The compiler introduces initialise declarations that call impure
     % predicates as part of the source-to-source transformation for mutable
     % variables. These predicates *must* be impure in order to prevent the
@@ -1337,11 +1354,19 @@ add_initialise_for_mutable(ModuleName, MutableName, SymName, Arity,
     Attrs = item_compiler_attributes(compiler_origin_mutable(ModuleName,
         MutableName, mutable_pred_init)),
     Origin = item_origin_compiler(Attrs),
-    module_info_new_user_init_pred(SymName, Arity, CName, !ModuleInfo),
-    PredNameModesPF = proc_pf_name_modes(pf_predicate, SymName, []),
+    Arity = 0,
+    (
+        SeqNum = item_seq_num(SeqNumInt)
+    ;
+        SeqNum = item_no_seq_num,
+        unexpected($pred, "item_no_seq_num")
+    ),
+    new_user_init_pred(ModuleName, SeqNumInt, InitPredName, Arity,
+        TargetName, !PredTargetNames),
+    PredNameModesPF = proc_pf_name_modes(pf_predicate, InitPredName, []),
     FPEInfo = pragma_info_foreign_proc_export(Origin, Lang,
-        PredNameModesPF, CName),
-    add_pragma_foreign_proc_export(FPEInfo, Context, !ModuleInfo, !Specs).
+        PredNameModesPF, TargetName),
+    PragmaFPEInfo = item_pragma_info(FPEInfo, Context, item_no_seq_num).
 
 %---------------------------------------------------------------------------%
 
@@ -1614,10 +1639,10 @@ compute_needed_private_mutable_aux_preds(PreInit, LockUnlock, UnsafeAccess,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred check_mutable(item_mutable_info::in, module_info::in,
+:- pred check_mutable(module_info::in, item_mutable_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_mutable(ItemMutable, ModuleInfo, !Specs) :-
+check_mutable(ModuleInfo, ItemMutable, !Specs) :-
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, _Type, OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),

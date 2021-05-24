@@ -53,6 +53,7 @@
 :- import_module recompilation.
 
 :- import_module cord.
+:- import_module counter.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -368,6 +369,10 @@
     set(proc_analysis_kind)::out) is det.
 :- pred module_info_get_analysis_info(module_info::in,
     analysis_info::out) is det.
+:- pred module_info_get_user_init_pred_target_names(module_info::in,
+    pred_target_names::out) is det.
+:- pred module_info_get_user_final_pred_target_names(module_info::in,
+    pred_target_names::out) is det.
 :- pred module_info_get_structure_reuse_preds(module_info::in,
     set(pred_id)::out) is det.
 :- pred module_info_get_exported_enums(module_info::in,
@@ -457,6 +462,10 @@
 :- pred module_info_set_proc_analysis_kinds(set(proc_analysis_kind)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_analysis_info(analysis_info::in,
+    module_info::in, module_info::out) is det.
+:- pred module_info_set_user_init_pred_target_names(pred_target_names::in,
+    module_info::in, module_info::out) is det.
+:- pred module_info_set_user_final_pred_target_names(pred_target_names::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_structure_reuse_preds(set(pred_id)::in,
     module_info::in, module_info::out) is det.
@@ -631,16 +640,25 @@
 
 %---------------------%
 
+    % The predicate with the given sym_name and arity is represented
+    % in the target language as the string in the second argument.
+    % The pred_or_func is implicitly pf_predicate.
+:- type pred_target_name == pair(sym_name_arity, string).
+:- type pred_target_names
+    --->    pred_target_names(
+                map(int, list(pred_target_name))
+            ).
+
     % Add a new initialize or finalize predicate.
     %
-:- pred module_info_new_user_init_pred(sym_name::in, arity::in, string::out,
-    module_info::in, module_info::out) is det.
-:- pred module_info_new_user_final_pred(sym_name::in, arity::in, string::out,
-    module_info::in, module_info::out) is det.
+:- pred new_user_init_pred(module_name::in, int::in, sym_name::in, arity::in,
+    string::out, pred_target_names::in, pred_target_names::out) is det.
+:- pred new_user_final_pred(module_name::in, int::in, sym_name::in, arity::in,
+    string::out, pred_target_names::in, pred_target_names::out) is det.
 
-:- pred module_info_user_init_pred_c_names(module_info::in,
+:- pred module_info_user_init_pred_target_names(module_info::in,
     list(string)::out) is det.
-:- pred module_info_user_final_pred_c_names(module_info::in,
+:- pred module_info_user_final_pred_target_names(module_info::in,
     list(string)::out) is det.
 
 :- pred module_info_user_init_pred_procs(module_info::in,
@@ -699,7 +717,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module counter.
 :- import_module int.
 :- import_module require.
 :- import_module string.
@@ -801,8 +818,8 @@
                 %
                 % The first criterion is declarations (decl_codes) vs
                 % non-declarations (body codes). We separate these because
-                % we have to put definitions before code that may use those
-                % definitions.
+                % we have to put declarations before code that may use those
+                % declarations.
                 %
                 % We would prefer the second criterion to be declarations
                 % that define types vs declarations that define other entities
@@ -922,18 +939,14 @@
                 % Information for the inter-module analysis framework.
                 mri_analysis_info               :: analysis_info,
 
-                % Exported C names for preds appearing in `:- initialise
-                % initpred' directives in this module, in order of appearance.
-                mri_user_init_pred_c_names      :: assoc_list(
-                                                    sym_name_arity,
-                                                    string),
+                % Exported target language names for preds appearing in
+                % `:- initialise' directives, and implicitly in
+                % `:- mutable' directives, in this module.
+                mri_user_init_pred_target_names :: pred_target_names,
 
-                % Export C names for preds appearing in `:- finalise
-                % finalpred' directives in this module, in order of
-                % appearance.
-                mri_user_final_pred_c_names     :: assoc_list(
-                                                    sym_name_arity,
-                                                    string),
+                % Exported target names for preds appearing in
+                % `:- finalise' directives in this module.
+                mri_user_final_pred_target_names :: pred_target_names,
 
                 % Predicates which were created as reuse versions of other
                 % procedures. Its only use is to avoid writing out pragmas
@@ -1104,8 +1117,8 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
     ),
     AnalysisInfo = init_analysis_info(mmc, ModuleName, MakeAnalysisReg),
 
-    UserInitPredCNames = [],
-    UserFinalPredCNames = [],
+    UserInitPredTargetNames = pred_target_names(map.init),
+    UserFinalPredTargetNames = pred_target_names(map.init),
     set.init(StructureReusePredIds),
     ExportedEnums = [],
     EventSet = event_set("", map.init),
@@ -1147,8 +1160,8 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
         ComplexityProcInfos,
         ProcAnalysisKinds,
         AnalysisInfo,
-        UserInitPredCNames,
-        UserFinalPredCNames,
+        UserInitPredTargetNames,
+        UserFinalPredTargetNames,
         StructureReusePredIds,
         ExportedEnums,
         EventSet,
@@ -1219,10 +1232,6 @@ module_info_optimize(!ModuleInfo) :-
     map(prog_context, counter)::out) is det.
 :- pred module_info_get_indirectly_imported_module_names(module_info::in,
     set(module_name)::out) is det.
-:- pred module_info_get_user_init_pred_c_names(module_info::in,
-    assoc_list(sym_name_arity, string)::out) is det.
-:- pred module_info_get_user_final_pred_c_names(module_info::in,
-    assoc_list(sym_name_arity, string)::out) is det.
 
 :- pred module_info_set_maybe_dependency_info(maybe(hlds_dependency_info)::in,
     module_info::in, module_info::out) is det.
@@ -1231,12 +1240,6 @@ module_info_optimize(!ModuleInfo) :-
 :- pred module_info_set_lambdas_per_context(map(prog_context, counter)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_atomics_per_context(map(prog_context, counter)::in,
-    module_info::in, module_info::out) is det.
-:- pred module_info_set_user_init_pred_c_names(
-    assoc_list(sym_name_arity, string)::in,
-    module_info::in, module_info::out) is det.
-:- pred module_info_set_user_final_pred_c_names(
-    assoc_list(sym_name_arity, string)::in,
     module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -1338,10 +1341,10 @@ module_info_get_proc_analysis_kinds(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_proc_analysis_kinds.
 module_info_get_analysis_info(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_analysis_info.
-module_info_get_user_init_pred_c_names(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_user_init_pred_c_names.
-module_info_get_user_final_pred_c_names(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_user_final_pred_c_names.
+module_info_get_user_init_pred_target_names(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_user_init_pred_target_names.
+module_info_get_user_final_pred_target_names(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_user_final_pred_target_names.
 module_info_get_structure_reuse_preds(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_structure_reuse_preds.
 module_info_get_exported_enums(MI, X) :-
@@ -1470,10 +1473,10 @@ module_info_set_proc_analysis_kinds(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_proc_analysis_kinds := X.
 module_info_set_analysis_info(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_analysis_info := X.
-module_info_set_user_init_pred_c_names(X, !MI) :-
-    !MI ^ mi_rare_info ^ mri_user_init_pred_c_names := X.
-module_info_set_user_final_pred_c_names(X, !MI) :-
-    !MI ^ mi_rare_info ^ mri_user_final_pred_c_names := X.
+module_info_set_user_init_pred_target_names(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_user_init_pred_target_names := X.
+module_info_set_user_final_pred_target_names(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_user_final_pred_target_names := X.
 module_info_set_structure_reuse_preds(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_structure_reuse_preds := X.
 module_info_set_exported_enums(X, !MI) :-
@@ -1758,67 +1761,92 @@ module_info_add_parent_to_used_modules(ModuleSpecifier, !MI) :-
 
 %---------------------%
 
-module_info_new_user_init_pred(SymName, Arity, CName, !MI) :-
+new_user_init_pred(ModuleName, SeqNum, SymName, Arity,
+        CName, !PredTargetNames) :-
     % XXX There is some debate as to whether duplicate initialise directives
     % in the same module should constitute an error. Currently it is not, but
     % we may wish to revisit this code. The reference manual is therefore
     % deliberately quiet on the subject.
+    new_pred_target_name(ModuleName, "init", SeqNum, SymName, Arity,
+        CName, !PredTargetNames).
 
-    module_info_get_user_init_pred_c_names(!.MI, InitPredCNames0),
-    UserInitPredNo = list.length(InitPredCNames0),
-    module_info_get_name(!.MI, ModuleSymName0),
-    ( if mercury_std_library_module_name(ModuleSymName0) then
-        ModuleSymName = add_outermost_qualifier("mercury", ModuleSymName0)
+new_user_final_pred(ModuleName, SeqNum, SymName, Arity,
+        CName, !PredTargetNames) :-
+    new_pred_target_name(ModuleName, "final", SeqNum, SymName, Arity,
+        CName, !PredTargetNames).
+
+:- pred new_pred_target_name(module_name::in, string::in, int::in,
+    sym_name::in, arity::in, string::out,
+    pred_target_names::in, pred_target_names::out) is det.
+
+new_pred_target_name(ModuleName0, InitOrFinal, SeqNum, SymName, Arity, CName,
+        !PredTargetNames) :-
+    !.PredTargetNames = pred_target_names(PredTargetNameMap0),
+    ( if mercury_std_library_module_name(ModuleName0) then
+        ModuleName = add_outermost_qualifier("mercury", ModuleName0)
     else
-        ModuleSymName = ModuleSymName0
+        ModuleName = ModuleName0
     ),
-    ModuleName = prog_foreign.sym_name_mangle(ModuleSymName),
-    CName = string.format("%s__user_init_pred_%d",
-        [s(ModuleName), i(UserInitPredNo)]),
-    InitPredCNames = InitPredCNames0 ++
-        [sym_name_arity(SymName, Arity) - CName],
-    module_info_set_user_init_pred_c_names(InitPredCNames, !MI).
-
-module_info_new_user_final_pred(SymName, Arity, CName, !MI) :-
-    module_info_get_user_final_pred_c_names(!.MI, FinalPredCNames0),
-    UserFinalPredNo = list.length(FinalPredCNames0),
-    module_info_get_name(!.MI, ModuleSymName0),
-    ( if mercury_std_library_module_name(ModuleSymName0) then
-        ModuleSymName = add_outermost_qualifier("mercury", ModuleSymName0)
+    ModuleNameStr = prog_foreign.sym_name_mangle(ModuleName),
+    ( if map.search(PredTargetNameMap0, SeqNum, SeqNumPredTargetNames0) then
+        % The only situation in which a sequence number will have
+        % more than one entry is when a solver type's representation
+        % involves more than one mutable. The number of these should be
+        % be limited, which is why the quadratic behavior of this code is ok.
+        % We do nevertheless need to include something, such as Suffix,
+        % to distinguish the target names from each other.
+        list.length(SeqNumPredTargetNames0, Suffix),
+        CName = string.format("%s__user_%s_pred_%d_%d",
+            [s(ModuleNameStr), s(InitOrFinal), i(SeqNum), i(Suffix)]),
+        PredTargetName = sym_name_arity(SymName, Arity) - CName,
+        SeqNumPredTargetNames = SeqNumPredTargetNames0 ++ [PredTargetName],
+        map.det_update(SeqNum, SeqNumPredTargetNames,
+            PredTargetNameMap0, PredTargetNameMap)
     else
-        ModuleSymName = ModuleSymName0
+        CName = string.format("%s__user_%s_pred_%d_%d",
+            [s(ModuleNameStr), s(InitOrFinal), i(SeqNum), i(0)]),
+        PredTargetName = sym_name_arity(SymName, Arity) - CName,
+        map.det_insert(SeqNum, [PredTargetName],
+            PredTargetNameMap0, PredTargetNameMap)
     ),
-    ModuleName = prog_foreign.sym_name_mangle(ModuleSymName),
-    CName = string.format("%s__user_final_pred_%d",
-        [s(ModuleName), i(UserFinalPredNo)]),
-    FinalPredCNames = FinalPredCNames0 ++
-        [sym_name_arity(SymName, Arity) - CName],
-    module_info_set_user_final_pred_c_names(FinalPredCNames, !MI).
+    !:PredTargetNames = pred_target_names(PredTargetNameMap).
 
-module_info_user_init_pred_c_names(MI, CNames) :-
-    module_info_get_user_init_pred_c_names(MI, InitPredCNames),
-    CNames = assoc_list.values(InitPredCNames).
+module_info_user_init_pred_target_names(MI, CNames) :-
+    module_info_get_user_init_pred_target_names(MI, InitPredTargetNames),
+    InitPredTargetNames = pred_target_names(SeqNumToPredTargetNamesMap),
+    map.values(SeqNumToPredTargetNamesMap, PredTargetNamesLists),
+    list.condense(PredTargetNamesLists, PredTargetNames),
+    CNames = assoc_list.values(PredTargetNames).
 
-module_info_user_final_pred_c_names(MI, CNames) :-
-    module_info_get_user_final_pred_c_names(MI, FinalPredCNames),
-    CNames = assoc_list.values(FinalPredCNames).
+module_info_user_final_pred_target_names(MI, CNames) :-
+    module_info_get_user_final_pred_target_names(MI, FinalPredTargetNames),
+    FinalPredTargetNames = pred_target_names(SeqNumToPredTargetNamesMap),
+    map.values(SeqNumToPredTargetNamesMap, PredTargetNamesLists),
+    list.condense(PredTargetNamesLists, PredTargetNames),
+    CNames = assoc_list.values(PredTargetNames).
 
 module_info_user_init_pred_procs(MI, PredProcIds) :-
-    module_info_get_user_init_pred_c_names(MI, InitPredCNames),
-    SymNameAndArities = assoc_list.keys(InitPredCNames),
-    list.map(get_unique_pred_proc_id_for_symname_and_arity(MI),
-        SymNameAndArities, PredProcIds).
+    module_info_get_user_init_pred_target_names(MI, InitPredTargetNames),
+    InitPredTargetNames = pred_target_names(SeqNumToPredTargetNamesMap),
+    map.values(SeqNumToPredTargetNamesMap, PredTargetNamesLists),
+    list.condense(PredTargetNamesLists, PredTargetNames),
+    SymNamesArities = assoc_list.keys(PredTargetNames),
+    list.map(get_unique_pred_proc_id_for_pred_sym_name_arity(MI),
+        SymNamesArities, PredProcIds).
 
 module_info_user_final_pred_procs(MI, PredProcIds) :-
-    module_info_get_user_final_pred_c_names(MI, FinalPredCNames),
-    SymNameAndArities = assoc_list.keys(FinalPredCNames),
-    list.map(get_unique_pred_proc_id_for_symname_and_arity(MI),
-        SymNameAndArities, PredProcIds).
+    module_info_get_user_final_pred_target_names(MI, FinalPredTargetNames),
+    FinalPredTargetNames = pred_target_names(SeqNumToPredTargetNamesMap),
+    map.values(SeqNumToPredTargetNamesMap, PredTargetNamesLists),
+    list.condense(PredTargetNamesLists, PredTargetNames),
+    SymNamesArities = assoc_list.keys(PredTargetNames),
+    list.map(get_unique_pred_proc_id_for_pred_sym_name_arity(MI),
+        SymNamesArities, PredProcIds).
 
-:- pred get_unique_pred_proc_id_for_symname_and_arity(module_info::in,
+:- pred get_unique_pred_proc_id_for_pred_sym_name_arity(module_info::in,
     sym_name_arity::in, pred_proc_id::out) is det.
 
-get_unique_pred_proc_id_for_symname_and_arity(MI,
+get_unique_pred_proc_id_for_pred_sym_name_arity(MI,
         sym_name_arity(SymName, Arity), PredProcId) :-
     module_info_get_predicate_table(MI, PredTable),
     predicate_table_lookup_pred_sym_arity(PredTable,

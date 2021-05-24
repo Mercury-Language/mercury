@@ -32,8 +32,9 @@
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_pragma_foreign_proc_export(pragma_info_foreign_proc_export::in,
-    prog_context::in, module_info::in, module_info::out,
+:- pred add_pragma_info_foreign_proc_export(
+    item_pragma_info(pragma_info_foreign_proc_export)::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_gen_pragma(item_generated_pragma_info::in,
@@ -754,6 +755,14 @@ add_impl_pragma(ItemMercuryStatus, ItemPragmaInfo, !RevPragmaTabled,
     ).
 
 %---------------------%
+
+add_pragma_info_foreign_proc_export(PragmaFPEInfo, !ModuleInfo, !Specs) :-
+    PragmaFPEInfo = item_pragma_info(FPEInfo, Context, _SeqNum),
+    add_pragma_foreign_proc_export(FPEInfo, Context, !ModuleInfo, !Specs).
+
+:- pred add_pragma_foreign_proc_export(pragma_info_foreign_proc_export::in,
+    prog_context::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pragma_foreign_proc_export(FPEInfo, Context, !ModuleInfo, !Specs) :-
     FPEInfo = pragma_info_foreign_proc_export(Origin, Lang,

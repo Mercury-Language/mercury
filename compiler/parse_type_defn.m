@@ -196,8 +196,8 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeWhere = ok3(no, canon, no)
     ;
         MaybeWhereTerm = yes(WhereTerm),
-        parse_type_decl_where_term(non_solver_type, ModuleName, VarSet,
-            WhereTerm, MaybeWhere)
+        parse_type_decl_where_term(non_solver_type, ModuleName, SeqNum,
+            VarSet, WhereTerm, MaybeWhere)
     ),
     ( if
         SolverSpecs = [],
@@ -816,8 +816,8 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
             BodyTerm, Context, SeqNum, MaybeIOM)
     ;
         IsSolverType = solver_type,
-        parse_type_decl_where_term(solver_type, ModuleName, VarSet, BodyTerm,
-            MaybeWhere),
+        parse_type_decl_where_term(solver_type, ModuleName, SeqNum,
+            VarSet, BodyTerm, MaybeWhere),
         (
             MaybeWhere = error3(Specs),
             MaybeIOM = error1(Specs)
@@ -1017,11 +1017,11 @@ parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
 %
 
 :- pred parse_type_decl_where_term(is_solver_type::in, module_name::in,
-    varset::in, term::in,
+    item_seq_num::in, varset::in, term::in,
     maybe3(maybe(solver_type_details), maybe_canonical,
         maybe(list(sym_name_arity)))::out) is det.
 
-parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, Term0,
+parse_type_decl_where_term(IsSolverType, ModuleName, SeqNum, VarSet, Term0,
         MaybeWhereDetails) :-
     GroundContextPieces = cord.singleton(
         words("the ground inst of a solver type")),
@@ -1041,7 +1041,7 @@ parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, Term0,
                 parse_where_inst_is(ModuleName, VarSet, AnyContextPieces)),
             MaybeAnyIs, !MaybeTerm),
         parse_where_attribute(parse_where_is("constraint_store",
-                parse_where_mutable_is(ModuleName, VarSet)),
+                parse_where_mutable_is(ModuleName, SeqNum, VarSet)),
             MaybeCStoreIs, !MaybeTerm),
         parse_where_attribute(parse_where_is("equality",
                 parse_where_pred_is(ModuleName, VarSet)),
@@ -1266,12 +1266,12 @@ parse_where_type_is(_ModuleName, VarSet, Term) = MaybeType :-
     parse_type(no_allow_ho_inst_info(wnhii_solver_type_defn),
         VarSet, ContextPieces, Term, MaybeType).
 
-:- func parse_where_mutable_is(module_name, varset, term) =
+:- func parse_where_mutable_is(module_name, item_seq_num, varset, term) =
     maybe1(list(item_mutable_info)).
 
-parse_where_mutable_is(ModuleName, VarSet, Term) = MaybeItems :-
+parse_where_mutable_is(ModuleName, SeqNum, VarSet, Term) = MaybeItems :-
     ( if Term = term.functor(term.atom("mutable"), _, _) then
-        parse_mutable_decl_term(ModuleName, VarSet, Term, MaybeItem),
+        parse_mutable_decl_term(ModuleName, SeqNum, VarSet, Term, MaybeItem),
         (
             MaybeItem = ok1(Mutable),
             MaybeItems  = ok1([Mutable])
@@ -1280,7 +1280,7 @@ parse_where_mutable_is(ModuleName, VarSet, Term) = MaybeItems :-
             MaybeItems  = error1(Specs)
         )
     else if list_term_to_term_list(Term, Terms) then
-        map_parser(parse_mutable_decl_term(ModuleName, VarSet),
+        map_parser(parse_mutable_decl_term(ModuleName, SeqNum, VarSet),
             Terms, MaybeItems)
     else
         TermStr = describe_error_term(VarSet, Term),
@@ -1292,14 +1292,14 @@ parse_where_mutable_is(ModuleName, VarSet, Term) = MaybeItems :-
         MaybeItems = error1([Spec])
     ).
 
-:- pred parse_mutable_decl_term(module_name::in, varset::in, term::in,
-    maybe1(item_mutable_info)::out) is det.
+:- pred parse_mutable_decl_term(module_name::in, item_seq_num::in,
+    varset::in, term::in, maybe1(item_mutable_info)::out) is det.
 
-parse_mutable_decl_term(ModuleName, VarSet, Term, MaybeItemMutableInfo) :-
+parse_mutable_decl_term(ModuleName, SeqNum, VarSet, Term,
+        MaybeItemMutableInfo) :-
     ( if
         Term = term.functor(term.atom("mutable"), ArgTerms, Context)
     then
-        SeqNum = item_no_seq_num,
         parse_mutable_decl_info(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             mutable_locn_in_solver_type, MaybeItemMutableInfo)
     else

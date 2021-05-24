@@ -105,8 +105,6 @@
 :- type module_int_type_ctor_repns ==
     assoc_list(module_name, int_type_ctor_repns).
 
-:- type sec_cord(T) == cord(sec_sub_list(T)).
-:- type ims_cord(T) == cord(ims_sub_list(T)).
 :- type ims_tuple_cord(T) == cord(ims_tuple_item(T)).
 
 :- type item_accumulator

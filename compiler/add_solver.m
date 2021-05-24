@@ -27,9 +27,7 @@
                 list(type_param),
                 tvarset,
                 solver_type_details,
-                prog_context,
-                item_mercury_status,
-                need_qualifier
+                prog_context
             ).
 
     % A solver type t defined with
@@ -54,25 +52,22 @@
     % Declare these auxiliary predicates. We need the declarations available
     % whether the solver type is defined in this module or not.
     %
-:- pred add_solver_type_aux_pred_decls(solver_aux_pred_info::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred get_solver_type_aux_pred_decls(solver_aux_pred_info::in,
+    list(item_pred_decl_info)::out) is det.
 
-    % Define the auxiliary predicates above IF the solver type is defined
-    % in this module; we don't want them to be doubly defined if the solver
-    % type is defined in another module.
+    % Define the auxiliary predicates declared above. It is the caller's
+    % resposibility to call this predicate only if the solver type is defined
+    % in this module, since we don't want them to be doubly defined
+    % both in this module and in the module that defines the solver type.
     %
-:- pred add_solver_type_aux_pred_defns_if_local(solver_aux_pred_info::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred get_solver_type_aux_pred_defns(compilation_target::in,
+    solver_aux_pred_info::in, list(item_foreign_proc)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds.add_pred.
-:- import_module hlds.make_hlds.add_foreign_proc.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.prog_data_foreign.
@@ -86,11 +81,9 @@
 
 %-----------------------------------------------------------------------------%
 
-add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
-    SolverAuxPredInfo = solver_aux_pred_info(TypeSymName, TypeParams, TVarSet,
-        SolverTypeDetails, Context, ItemMercuryStatus, NeedQual),
-    item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-
+get_solver_type_aux_pred_decls(SolverAuxPredInfo, PredDecls) :-
+    SolverAuxPredInfo = solver_aux_pred_info(TypeSymName, TypeParams,
+        TVarSet, SolverTypeDetails, Context),
     % XXX kind inference:
     % We set the kinds to `star'. This will be different when we have
     % a kind system.
@@ -106,6 +99,9 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     InGndMode = in_mode(GndInst),
     OutAnyMode = out_mode(AnyInst),
     OutGndMode = out_mode(GndInst),
+    NoWithType = maybe.no,
+    NoWithInst = maybe.no,
+    DetismDet = yes(detism_det),
 
     InstVarSet = varset.init,
     ExistQTVars = [],
@@ -124,7 +120,7 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
             solver_type_to_ground_pred)),
     ToGndMaybeAttrs = item_origin_compiler(ToGndAttrs),
     ToGndPredDecl = item_pred_decl_info(ToGndRepnSymName, pf_function,
-        ToGndRepnArgTypesModes, maybe.no, maybe.no, yes(detism_det),
+        ToGndRepnArgTypesModes, NoWithType, NoWithInst, DetismDet,
         ToGndMaybeAttrs, TVarSet, InstVarSet, ExistQTVars, purity_impure,
         NoConstraints, Context, item_no_seq_num),
 
@@ -141,7 +137,7 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
             solver_type_to_any_pred)),
     ToAnyMaybeAttrs = item_origin_compiler(ToAnyAttrs),
     ToAnyPredDecl = item_pred_decl_info(ToAnyRepnSymName, pf_function,
-        ToAnyRepnArgTypesModes, maybe.no, maybe.no, yes(detism_det),
+        ToAnyRepnArgTypesModes, NoWithType, NoWithInst, DetismDet,
         ToAnyMaybeAttrs, TVarSet, InstVarSet, ExistQTVars, purity_impure,
         NoConstraints, Context, item_no_seq_num),
 
@@ -158,7 +154,7 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
             solver_type_from_ground_pred)),
     FromGndMaybeAttrs = item_origin_compiler(FromGndAttrs),
     FromGndPredDecl = item_pred_decl_info(FromGndRepnSymName, pf_function,
-        FromGndRepnArgTypesModes, maybe.no, maybe.no, yes(detism_det),
+        FromGndRepnArgTypesModes, NoWithType, NoWithInst, DetismDet,
         FromGndMaybeAttrs, TVarSet, InstVarSet, ExistQTVars, purity_impure,
         NoConstraints, Context, item_no_seq_num),
 
@@ -173,45 +169,21 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     FromAnyAttrs = item_compiler_attributes(
         compiler_origin_solver_type(TypeSymName, Arity,
             solver_type_from_any_pred)),
-    FromAnyMaybeAttrs = item_origin_compiler(FromAnyAttrs),
+    FromAnyOrigin = item_origin_compiler(FromAnyAttrs),
     FromAnyPredDecl = item_pred_decl_info(FromAnyRepnSymName, pf_function,
-        FromAnyRepnArgTypesModes, maybe.no, maybe.no, yes(detism_det),
-        FromAnyMaybeAttrs, TVarSet, InstVarSet, ExistQTVars, purity_impure,
+        FromAnyRepnArgTypesModes, NoWithType, NoWithInst, DetismDet,
+        FromAnyOrigin, TVarSet, InstVarSet, ExistQTVars, purity_impure,
         NoConstraints, Context, item_no_seq_num),
 
-    module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual,
-        ToGndPredDecl, _MaybeToGndPredProcId, !ModuleInfo, !Specs),
-    module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual,
-        ToAnyPredDecl, _MaybeToAnyPredProcId, !ModuleInfo, !Specs),
-    module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual,
-        FromGndPredDecl, _MaybeFromGndPredProcId, !ModuleInfo, !Specs),
-    module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual,
-        FromAnyPredDecl, _MaybeFromAnyPredProcId, !ModuleInfo, !Specs).
+    PredDecls =
+        [ToGndPredDecl, ToAnyPredDecl, FromGndPredDecl, FromAnyPredDecl].
 
 %-----------------------------------------------------------------------------%
 
-add_solver_type_aux_pred_defns_if_local(SolverAuxPredInfo,
-        !ModuleInfo, !QualInfo, !Specs) :-
-    SolverAuxPredInfo = solver_aux_pred_info(_TypeSymName, _TypeParams,
-        _TVarSet, _SolverTypeDetails, _Context, ItemMercuryStatus, _NeedQual),
-    (
-        ItemMercuryStatus = item_defined_in_this_module(_),
-        add_solver_type_aux_pred_defns(SolverAuxPredInfo,
-            !ModuleInfo, !QualInfo, !Specs)
-    ;
-        ItemMercuryStatus = item_defined_in_other_module(_)
-    ).
-
-:- pred add_solver_type_aux_pred_defns(solver_aux_pred_info::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_solver_type_aux_pred_defns(SolverAuxPredInfo,
-        !ModuleInfo, !QualInfo, !Specs) :-
+get_solver_type_aux_pred_defns(Target, SolverAuxPredInfo,
+        PragmaForeignProcs) :-
     SolverAuxPredInfo = solver_aux_pred_info(TypeSymName, TypeParams,
-        _TVarSet, SolverTypeDetails, Context, ItemMercuryStatus, _NeedQual),
-    item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-
+        _TVarSet, SolverTypeDetails, Context),
     list.length(TypeParams, Arity),
 
     AnyInst = SolverTypeDetails ^ std_any_inst,
@@ -228,8 +200,6 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
 
     InstVarSet = varset.init,
 
-    module_info_get_globals(!.ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
     (
         Target = target_c,
         Lang = lang_c
@@ -270,8 +240,6 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
     ),
     PragmaToGroundRepnFPInfo =
         item_pragma_info(ToGroundRepnFPInfo, Context, item_no_seq_num),
-    add_pragma_foreign_proc(PredStatus, PragmaToGroundRepnFPInfo,
-        !ModuleInfo, !Specs),
 
     % The `func(in(any)) = out(<i_any>) is det' mode.
     %
@@ -290,8 +258,6 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
     ),
     PragmaToAnyRepnFPInfo =
         item_pragma_info(ToAnyRepnFPInfo, Context, item_no_seq_num),
-    add_pragma_foreign_proc(PredStatus, PragmaToAnyRepnFPInfo,
-        !ModuleInfo, !Specs),
 
     % The `func(in(<i_ground>)) = out is det' mode.
     %
@@ -310,8 +276,6 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
     ),
     PragmaFromGroundRepnFPInfo =
         item_pragma_info(FromGroundRepnFPInfo, Context, item_no_seq_num),
-    add_pragma_foreign_proc(PredStatus, PragmaFromGroundRepnFPInfo,
-        !ModuleInfo, !Specs),
 
     % The `func(in(<i_any>)) = out(any) is det' mode.
     %
@@ -330,8 +294,12 @@ add_solver_type_aux_pred_defns(SolverAuxPredInfo,
     ),
     PragmaFromAnyRepnFPInfo =
         item_pragma_info(FromAnyRepnFPInfo, Context, item_no_seq_num),
-    add_pragma_foreign_proc(PredStatus, PragmaFromAnyRepnFPInfo,
-        !ModuleInfo, !Specs).
+
+    PragmaForeignProcs =
+        [PragmaToGroundRepnFPInfo,
+        PragmaToAnyRepnFPInfo,
+        PragmaFromGroundRepnFPInfo,
+        PragmaFromAnyRepnFPInfo].
 
 %-----------------------------------------------------------------------------%
 

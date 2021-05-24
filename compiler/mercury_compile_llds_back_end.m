@@ -711,8 +711,8 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
     C_HeaderCodes = C_IncludeHeaderCodes ++ C_LocalHeaderCodes ++
         [DeclGuardStart | C_ExportedHeaderCodes] ++ [DeclGuardEnd],
 
-    module_info_user_init_pred_c_names(HLDS, UserInitPredCNames),
-    module_info_user_final_pred_c_names(HLDS, UserFinalPredCNames),
+    module_info_user_init_pred_target_names(HLDS, UserInitPredCNames),
+    module_info_user_final_pred_target_names(HLDS, UserFinalPredCNames),
 
     CFile = c_file(ModuleSymName, C_HeaderCodes, C_BodyCodes, C_ExportDefns,
         TablingInfoStructs, ScalarCommonCellDatas, VectorCommonCellDatas,

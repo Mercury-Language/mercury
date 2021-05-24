@@ -42,6 +42,7 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
+:- import_module cord.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -57,10 +58,12 @@
     ;       found_invalid_inst_or_mode.
 
 :- type ims_list(T) == list(ims_sub_list(T)).
+:- type ims_cord(T) == cord(ims_sub_list(T)).
 :- type ims_sub_list(T)
     --->    ims_sub_list(item_mercury_status, list(T)).
 
 :- type sec_list(T) == list(sec_sub_list(T)).
+:- type sec_cord(T) == cord(sec_sub_list(T)).
 :- type sec_sub_list(T)
     --->    sec_sub_list(sec_info, list(T)).
 :- type sec_info
