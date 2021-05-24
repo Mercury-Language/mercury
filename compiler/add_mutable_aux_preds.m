@@ -498,7 +498,7 @@ implement_mutables_loop(ModuleInfo, [SecSubList | SecSubLists],
     (
         ItemMercuryStatus = item_defined_in_this_module(_),
         list.foldl8(
-            check_and_add_aux_pred_decls_for_mutable(ModuleInfo, SectionInfo),
+            check_and_implement_mutable(ModuleInfo, SectionInfo),
             ItemMutables, !PredDecls,
             cord.init, ClauseInfoSubCord, cord.init, ForeignProcSubCord,
             !ForeignDeclCodeCord, !ForeignBodyCodeCord,
@@ -534,7 +534,7 @@ implement_mutables_loop(ModuleInfo, [SecSubList | SecSubLists],
 % XXX CLEANUP put the predicates in this module in a logical order
 % in a separate diff once review is done.
 
-:- pred check_and_add_aux_pred_decls_for_mutable(module_info::in,
+:- pred check_and_implement_mutable(module_info::in,
     sec_info::in, item_mutable_info::in,
     sec_list(item_pred_decl_info)::in, sec_list(item_pred_decl_info)::out,
     cord(item_clause_info)::in, cord(item_clause_info)::out,
@@ -545,7 +545,7 @@ implement_mutables_loop(ModuleInfo, [SecSubList | SecSubLists],
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_and_add_aux_pred_decls_for_mutable(ModuleInfo, SecInfo, ItemMutable,
+check_and_implement_mutable(ModuleInfo, SecInfo, ItemMutable,
         !PredDecls, !ClauseInfoCord, !ForeignProcCord,
         !ForeignDeclCodeCord, !ForeignBodyCodeCord,
         !FPEInfoCord, !PredTargetNames, !Specs) :-
@@ -597,8 +597,8 @@ add_aux_pred_defns_for_mutable(ModuleInfo, ItemMutable,
 
     % Work out what name to give the global in the target language.
     module_info_get_name(ModuleInfo, ModuleName),
-    decide_mutable_target_var_name(ModuleInfo, MutAttrs, ModuleName,
-        MutableName, Lang, Context, TargetMutableName),
+    decide_mutable_target_var_name(Globals, ModuleName, MutableName, MutAttrs,
+        Lang, Context, TargetMutableName),
     % We define the global storing the mutable now rather than earlier
     % because the target-language-specific name of the type of the global
     % depends on whether there are any foreign_type declarations for Type.
@@ -649,10 +649,10 @@ define_mutable_global_var_c(ModuleInfo, TargetMutableName, Type,
         % The only difference between the high- and low-level C backends
         % is that in the latter, mutables are *always* boxed, whereas
         % in the former they may not be.
-        HighLevelTypeName = global_foreign_type_name(bp_native_if_possible,
-            lang_c, ModuleInfo, Type),
-        LowLevelTypeName = global_foreign_type_name(bp_always_boxed,
-            lang_c, ModuleInfo, Type),
+        HighLevelTypeName = global_foreign_type_name(ModuleInfo,
+            bp_native_if_possible, lang_c, Type),
+        LowLevelTypeName = global_foreign_type_name(ModuleInfo,
+            bp_always_boxed, lang_c, Type),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
@@ -1055,8 +1055,8 @@ define_unsafe_get_set_preds(ModuleInfo, TargetParams, ItemMutable,
             UnsafeSetCode = TargetMutableName ++ " = X;\n"
         ;
             IsThreadLocal = mutable_thread_local,
-            TypeName = global_foreign_type_name(BoxPolicy, Lang,
-                ModuleInfo, Type),
+            TypeName =
+                global_foreign_type_name(ModuleInfo, BoxPolicy, Lang, Type),
             UnsafeGetCode = "MR_get_thread_local_mutable(" ++
                 TypeName ++ ", X, " ++ TargetMutableName ++ ");\n",
             UnsafeSetCode = "MR_set_thread_local_mutable(" ++
@@ -1371,24 +1371,24 @@ define_init_pred(ModuleName, Lang, ItemMutable, InitSetPredName,
 %---------------------------------------------------------------------------%
 
     % Decide what the name of the underlying global used to implement the
-    % mutable should be. If there is a foreign_name attribute then use that
+    % mutable should be. If there is a foreign_name attribute, then use that,
     % otherwise construct one based on the Mercury name for the mutable.
     %
-:- pred decide_mutable_target_var_name(module_info::in,
-    mutable_var_attributes::in, module_name::in, string::in,
-    foreign_language::in, prog_context::in, string::out) is det.
+:- pred decide_mutable_target_var_name(globals::in, module_name::in,
+    string::in, mutable_var_attributes::in, foreign_language::in,
+    prog_context::in, string::out) is det.
 
-decide_mutable_target_var_name(ModuleInfo, MutAttrs, ModuleName, MutableName,
+decide_mutable_target_var_name(Globals, ModuleName, MutableName, MutAttrs,
         ForeignLanguage, Context, TargetMutableName) :-
     mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
     (
         MaybeForeignNames = no,
-        TargetMutableName = mutable_c_var_name(ModuleName, MutableName)
+        TargetMutableName = mutable_var_name(ModuleName, MutableName)
     ;
         MaybeForeignNames = yes(ForeignNames),
         % We have already any errors during pass 2, so ignore them here.
-        get_global_name_from_foreign_names(ModuleInfo, Context,
-            ModuleName, MutableName, ForeignLanguage, ForeignNames,
+        get_global_name_from_foreign_names(Globals, ModuleName, MutableName,
+            Context, ForeignLanguage, ForeignNames,
             TargetMutableName, [], _Specs)
     ).
 
@@ -1397,26 +1397,23 @@ decide_mutable_target_var_name(ModuleInfo, MutAttrs, ModuleName, MutableName,
     % otherwise take the Mercury name for the mutable and mangle it into
     % an appropriate variable name.
     %
- :- pred get_global_name_from_foreign_names(module_info::in,
-    prog_context::in, module_name::in, string::in, foreign_language::in,
-    list(foreign_name)::in, string::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+ :- pred get_global_name_from_foreign_names(globals::in, module_name::in,
+    string::in, prog_context::in, foreign_language::in, list(foreign_name)::in,
+    string::out, list(error_spec)::in, list(error_spec)::out) is det.
 
-get_global_name_from_foreign_names(ModuleInfo, Context,
-        ModuleName, MutableName, ForeignLanguage, ForeignNames,
-        TargetMutableName, !Specs) :-
-    get_matching_foreign_names(ForeignNames, ForeignLanguage,
+get_global_name_from_foreign_names(Globals, ModuleName, MutableName, Context,
+        ForeignLanguage, ForeignNames, TargetMutableName, !Specs) :-
+        get_foreign_names_in_lang(ForeignNames, ForeignLanguage,
         TargetMutableNames),
     (
         TargetMutableNames = [],
-        TargetMutableName = mutable_c_var_name(ModuleName, MutableName)
+        TargetMutableName = mutable_var_name(ModuleName, MutableName)
     ;
         TargetMutableNames = [foreign_name(_, TargetMutableName)]
         % XXX We should really check that this is a valid identifier
         % in the target language here.
     ;
         TargetMutableNames = [_, _ | _],
-        module_info_get_globals(ModuleInfo, Globals),
         globals.get_target(Globals, CompilationTarget),
         Pieces = [words("Error: multiple foreign_name attributes"),
             words("specified for the"),
@@ -1426,16 +1423,16 @@ get_global_name_from_foreign_names(ModuleInfo, Context,
             Context, Pieces),
         !:Specs = [Spec | !.Specs],
 
-        TargetMutableName = mutable_c_var_name(ModuleName, MutableName)
+        TargetMutableName = mutable_var_name(ModuleName, MutableName)
     ).
 
-:- pred get_matching_foreign_names(list(foreign_name)::in,
+:- pred get_foreign_names_in_lang(list(foreign_name)::in,
     foreign_language::in, list(foreign_name)::out) is det.
 
-get_matching_foreign_names([], _TargetForeignLanguage, []).
-get_matching_foreign_names([ForeignName | ForeignNames], TargetForeignLanguage,
+get_foreign_names_in_lang([], _TargetForeignLanguage, []).
+get_foreign_names_in_lang([ForeignName | ForeignNames], TargetForeignLanguage,
         MatchingForeignNames) :-
-    get_matching_foreign_names(ForeignNames, TargetForeignLanguage,
+    get_foreign_names_in_lang(ForeignNames, TargetForeignLanguage,
         TailMatchingForeignNames),
     ForeignName = foreign_name(ForeignLanguage, _),
     ( if ForeignLanguage = TargetForeignLanguage then
@@ -1450,10 +1447,10 @@ get_matching_foreign_names([ForeignName | ForeignNames], TargetForeignLanguage,
     % whereas in the former they may not be. The other backends that support
     % mutables are all native_if_possible.
     %
-:- func global_foreign_type_name(box_policy, foreign_language, module_info,
+:- func global_foreign_type_name(module_info, box_policy, foreign_language,
     mer_type) = string.
 
-global_foreign_type_name(BoxPolicy, Lang, ModuleInfo, Type) = String :-
+global_foreign_type_name(ModuleInfo, BoxPolicy, Lang, Type) = String :-
     (
         BoxPolicy = bp_always_boxed,
         String = "MR_Word"
@@ -1464,18 +1461,23 @@ global_foreign_type_name(BoxPolicy, Lang, ModuleInfo, Type) = String :-
 
 %---------------------------------------------------------------------------%
 
-:- func mutable_c_var_name(module_name, string) = string.
+    % Generate a name for the target language variable that holds
+    % the current the state of the mutable.
+    %
+    % This variable name should be acceptable in all our current backends.
+    %
+:- func mutable_var_name(module_name, string) = string.
 
-mutable_c_var_name(ModuleName, Name) = MangledCVarName :-
-    RawCVarName = "mutable_variable_" ++ Name,
-    QualifiedCVarName0 = qualified(ModuleName, RawCVarName),
+mutable_var_name(ModuleName, Name) = MangledVarName :-
+    RawVarName = "mutable_variable_" ++ Name,
+    QualifiedVarName0 = qualified(ModuleName, RawVarName),
     ( if mercury_std_library_module_name(ModuleName) then
-        QualifiedCVarName =
-            add_outermost_qualifier("mercury", QualifiedCVarName0)
+        QualifiedVarName =
+            add_outermost_qualifier("mercury", QualifiedVarName0)
     else
-        QualifiedCVarName = QualifiedCVarName0
+        QualifiedVarName = QualifiedVarName0
     ),
-    MangledCVarName = sym_name_mangle(QualifiedCVarName).
+    MangledVarName = sym_name_mangle(QualifiedVarName).
 
     % Returns the name of the mutex associated a given mutable. The input
     % to this function is the name of the mutable in the target language,
@@ -1663,8 +1665,8 @@ check_mutable(ModuleInfo, ItemMutable, !Specs) :-
             % Report any errors with the foreign_name attributes
             % during this pass.
             module_info_get_name(ModuleInfo, ModuleName),
-            get_global_name_from_foreign_names(ModuleInfo, Context,
-                ModuleName, MutableName, ForeignLanguage, ForeignNames,
+            get_global_name_from_foreign_names(Globals, ModuleName,
+                MutableName, Context, ForeignLanguage, ForeignNames,
                 _TargetMutableName, !Specs)
         )
     ),
