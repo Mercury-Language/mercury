@@ -36,15 +36,15 @@ AC_MSG_CHECKING(for $1 function)
 mercury_cv_ieee_func_define="MR_HAVE_`echo $1 | \
 	tr abcdefghijklmnopqrstuvwxyz./ ABCDEFGHIJKLMNOPQRSTUVWXYZ__`"
 
-AC_TRY_LINK([
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 	#include <math.h>
 #ifdef MR_HAVE_IEEEFP_H
 	#include <ieeefp.h>
 #endif
-],[
+]], [[
 	float f;
 	$1(f);
-],[mercury_cv_have_ieee_func=yes],[mercury_cv_have_ieee_func=no])
+]])],[mercury_cv_have_ieee_func=yes],[mercury_cv_have_ieee_func=no])
 
 if test "$mercury_cv_have_ieee_func" = yes; then
 	AC_MSG_RESULT(yes)
@@ -70,15 +70,15 @@ mercury_cv_math_func_define="MR_HAVE_`echo $1 | \
 save_libs="$LIBS"
 LIBS="$2 $LIBS"
 
-AC_TRY_LINK([
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #ifdef MR_HAVE_FENV_H
 	#include <fenv.h>
 #endif
-],[
+]], [[
 
 	int i = 0;
 	$1(i);
-],[mercury_cv_have_math_func=yes],[mercury_cv_have_math_func=no])
+]])],[mercury_cv_have_math_func=yes],[mercury_cv_have_math_func=no])
 
 LIBS="$save_libs"
 
@@ -183,15 +183,11 @@ AC_SUBST(ALL_LOCAL_C_LIB_DIR_MMC_OPTS)
 #
 
 AC_DEFUN([MERCURY_TRY_STATIC_ASSERT], [
-    AC_TRY_COMPILE(
-	[$1],
-	[
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[$1]], [[
 	    struct mercury_static_assert {
 		int static_assert_expr : ( $2 ) ? 1 : -1;
 	    };
-	],
-	[$3],
-	[$4])
+	]])],[$3],[$4])
 ])
 
 #-----------------------------------------------------------------------------#
@@ -391,12 +387,12 @@ for CANDIDATE_CSC0 in $CSC_COMPILERS; do
         }
     }
 EOF
-            echo $CANDIDATE_CSC conftest.cs >&AC_FD_CC 2>&1
+            echo $CANDIDATE_CSC conftest.cs >&AS_MESSAGE_LOG_FD 2>&1
             OUTPUT=$($CANDIDATE_CSC conftest.cs 2>&1)
             RESULT=$?
             rm -f conftest.cs conftest.exe
-            echo $OUTPUT >&AC_FD_CC
-            echo returned $RESULT >&AC_FD_CC
+            echo $OUTPUT >&AS_MESSAGE_LOG_FD
+            echo returned $RESULT >&AS_MESSAGE_LOG_FD
             if echo $OUTPUT | grep CS1644 > /dev/null; then
                 # This compiler does not support generics.
                 AC_MSG_RESULT(no)
@@ -461,8 +457,8 @@ then
 	}
 EOF
 	if
-		echo $CSC conftest.cs >&AC_FD_CC 2>&1 && \
-			$CSC conftest.cs  >&AC_FD_CC 2>&1 && \
+		echo $CSC conftest.cs >&AS_MESSAGE_LOG_FD 2>&1 && \
+			$CSC conftest.cs  >&AS_MESSAGE_LOG_FD 2>&1 && \
 			$CLI_INTERPRETER ./conftest.exe > conftest.out 2>&1
 	then
 		mercury_cv_microsoft_dotnet_library_version=`cat conftest.out`
@@ -555,10 +551,10 @@ if test "$JAVAC" != "" -a "$JAVA_INTERPRETER" != "" -a "$JAR" != ""; then
 		}
 EOF
 	if
-		echo "$JAVAC" conftest.java >&AC_FD_CC 2>&1 &&
-		"$JAVAC" conftest.java >&AC_FD_CC 2>&1 &&
-		echo "$JAVA_INTERPRETER" conftest > conftest.out 2>&AC_FD_CC &&
-		CLASSPATH=. "$JAVA_INTERPRETER" conftest > conftest.out 2>&AC_FD_CC &&
+		echo "$JAVAC" conftest.java >&AS_MESSAGE_LOG_FD 2>&1 &&
+		"$JAVAC" conftest.java >&AS_MESSAGE_LOG_FD 2>&1 &&
+		echo "$JAVA_INTERPRETER" conftest > conftest.out 2>&AS_MESSAGE_LOG_FD &&
+		CLASSPATH=. "$JAVA_INTERPRETER" conftest > conftest.out 2>&AS_MESSAGE_LOG_FD &&
 		test "`tr -d '\015' < conftest.out`" = "Hello, world"
 	then
 		mercury_cv_java="yes"
@@ -699,7 +695,7 @@ int main(int argc, char **argv)
 }
 EOF
 
-echo "$CC $nologo_opt ${cc_out_opt}conftest conftest.c" >&AC_FD_CC 2>&1
+echo "$CC $nologo_opt ${cc_out_opt}conftest conftest.c" >&AS_MESSAGE_LOG_FD 2>&1
 if
     # We direct the output to /dev/null because it appears to be
     # the only way to shut some C compilers up.
@@ -760,7 +756,7 @@ int main(int argc, char **argv)
 }
 EOF
 
-echo "$CC conftest.c -Fecontest" >&AC_FD_CC 2>&1
+echo "$CC conftest.c -Fecontest" >&AS_MESSAGE_LOG_FD 2>&1
 if
     $CC conftest.c -Feconftest > /dev/null
 then
@@ -779,8 +775,7 @@ fi
 AC_DEFUN([MERCURY_HAVE_PTHREADS_WIN32], [
 AC_MSG_CHECKING([if we are using pthreads-win32])
 
-AC_TRY_COMPILE([#include <pthread.h>],
-    [
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[
         #ifndef PTW32_VERSION
             #error I suppose not
         #endif
@@ -788,9 +783,7 @@ AC_TRY_COMPILE([#include <pthread.h>],
         {
             return (int) pthread_self().p;
         }
-    ],
-    [mercury_cv_have_pthreads_win32=yes],
-    [mercury_cv_have_pthreads_win32=no])
+    ]])],[mercury_cv_have_pthreads_win32=yes],[mercury_cv_have_pthreads_win32=no])
 
 AC_MSG_RESULT($mercury_cv_have_pthreads_win32)
 ])
