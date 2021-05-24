@@ -98,8 +98,7 @@ AC_SUBST(RECONFIGURE_ARGS)
 
 #-----------------------------------------------------------------------------#
 
-AC_CONFIG_HEADER(runtime/mercury_conf.h)
-AC_CONFIG_HEADER(robdd/robdd_conf.h)
+AC_CONFIG_HEADERS(runtime/mercury_conf.h robdd/robdd_conf.h)
 DEFAULT_PREFIX="/usr/local/mercury-`. ./VERSION; echo $VERSION`"
 AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
 
