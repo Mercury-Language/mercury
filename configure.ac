@@ -566,13 +566,13 @@ EOF
     unset MERCURY_STDLIB_DIR
 
     if
-        echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
+        echo $BOOTSTRAP_MC conftest >&AS_MESSAGE_LOG_FD 2>&1 &&
         $BOOTSTRAP_MC \
             --verbose \
             $link_static_opt conftest \
             --fixed-contiguity-2018-10-19 \
             --no-ssdb \
-            </dev/null >&AC_FD_CC 2>&1 &&
+            </dev/null >&AS_MESSAGE_LOG_FD 2>&1 &&
         test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&
         $BOOTSTRAP_MC \
             --grade none.gc \
@@ -583,7 +583,7 @@ EOF
             --output-grade-string \
             --shlib-linker-install-name-flag "-dummy_flag" \
             --ranlib-flags "" \
-            </dev/null >&AC_FD_CC 2>&1
+            </dev/null >&AS_MESSAGE_LOG_FD 2>&1
     then
         AC_MSG_RESULT(yes)
     else
@@ -1001,7 +1001,7 @@ EOF
 
     AC_MSG_CHECKING(whether we can make error messages filterable)
     if $CC -ftrack-macro-expansion=0 -fno-diagnostics-show-caret -c conftest.c \
-        </dev/null >&AC_FD_CC 2>&1
+        </dev/null >&AS_MESSAGE_LOG_FD 2>&1
     then
         AC_MSG_RESULT(yes)
         CFLAGS_FOR_ERRMSG_FILTER="-ftrack-macro-expansion=0 -fno-diagnostics-show-caret"
@@ -1012,7 +1012,7 @@ EOF
 
     AC_MSG_CHECKING(whether we can use -fno-move-loop-invariants)
     if $CC -fno-move-loop-invariants -c conftest.c \
-        </dev/null >&AC_FD_CC 2>&1
+        </dev/null >&AS_MESSAGE_LOG_FD 2>&1
     then
         AC_MSG_RESULT(yes)
         CFLAGS_FOR_NO_MOVE_LOOP_INVARIANTS="-fno-move-loop-invariants"
@@ -1023,7 +1023,7 @@ EOF
 
     AC_MSG_CHECKING(whether we can use -fno-reorder-functions)
     if $CC -fno-reorder-functions -c conftest.c \
-        </dev/null >&AC_FD_CC 2>&1
+        </dev/null >&AS_MESSAGE_LOG_FD 2>&1
     then
         AC_MSG_RESULT(yes)
         CFLAGS_FOR_NO_REORDER_FUNCTIONS="-fno-reorder-functions"
@@ -1034,7 +1034,7 @@ EOF
 
     AC_MSG_CHECKING(whether we can use -fno-tree-dominator-opts)
     if $CC -fno-tree-dominator-opts -c conftest.c \
-        </dev/null >&AC_FD_CC 2>&1
+        </dev/null >&AS_MESSAGE_LOG_FD 2>&1
     then
         AC_MSG_RESULT(yes)
         CFLAGS_FOR_NO_TREE_DOMINATOR_OPTS="-fno-tree-dominator-opts"
@@ -2254,12 +2254,12 @@ AC_CACHE_VAL(mercury_cv_bzero_needs_strings_header, [
         }
 EOF
 
-    if $CC -c conftest.c < /dev/null >&AC_FD_CC 2>&1
+    if $CC -c conftest.c < /dev/null >&AS_MESSAGE_LOG_FD 2>&1
     then
         mercury_cv_bzero_needs_strings_header=no
     else
         if $CC -DMR_BZERO_NEEDS_STRINGS_HEADER -c conftest.c \
-            < /dev/null >&AC_FD_CC 2>&1
+            < /dev/null >&AS_MESSAGE_LOG_FD 2>&1
         then
             mercury_cv_bzero_needs_strings_header=yes
         else
@@ -3994,8 +3994,8 @@ if test "$AS" != ""; then
     foo(x)
 EOF
     if
-        echo $AS conftest.s >&AC_FD_CC 2>&1 &&
-        $AS conftest.s </dev/null >&AC_FD_CC 2>&1
+        echo $AS conftest.s >&AS_MESSAGE_LOG_FD 2>&1 &&
+        $AS conftest.s </dev/null >&AS_MESSAGE_LOG_FD 2>&1
     then
         mercury_cv_asm_does_full_preprocessing="yes"
     else

@@ -7,7 +7,7 @@
 # Note: you need a previous version of Mercury already installed, since
 # the Git archive doesn't have all the necessary files for bootstrapping.
 #
-# You also need autoconf (version 2.58 or later) (and hence GNU m4) installed.
+# You also need autoconf (version 2.69 or later) (and hence GNU m4) installed.
 #
 # Step 1.  ./prepare.sh
 #
