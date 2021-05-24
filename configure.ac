@@ -5433,8 +5433,8 @@ output_files="$nonexecutable_output_files $executable_output_files"
 # if you add new .in files to either of those you *must* update
 # scripts/mercury_config.in.
 
-AC_OUTPUT($output_files
-,
+AC_CONFIG_FILES($output_files)
+AC_CONFIG_COMMANDS([default],
 [
 # Only do this when compiling the source, not when reconfiguring
 # an installation.
@@ -5445,7 +5445,7 @@ case $reconfiguring in no)
                 cmp runtime/mercury_conf.h "$conf_h_copy" > /dev/null && \
                 test -f runtime/mercury_conf.h.date
             then
-                # The date file need not be updated, so don't update it,
+                # The date file need not be updated, so do not update it,
                 # since that would lead to the recompilation of a bunch
                 # of files.
                 true
@@ -5477,6 +5477,7 @@ case $reconfiguring in no)
 esac],
 [reconfiguring=$reconfiguring]
 )
+AC_OUTPUT
 
 for file in $nonexecutable_output_files
 do
