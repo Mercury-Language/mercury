@@ -1448,9 +1448,8 @@ MERCURY_CHECK_FOR_FENV_FUNC([fesetround], [$MATH_LIB])
 
 AC_MSG_CHECKING(whether we have __builtin_bswap16)
 AC_CACHE_VAL(mercury_cv_have_builtin_bswap16,
-    AC_TRY_LINK(
-        [],
-        [__builtin_bswap16(1);],
+    AC_LINK_IFELSE(
+        [AC_LANG_PROGRAM([[]], [[__builtin_bswap16(1);]])],
         [mercury_cv_have_builtin_bswap16=yes],
         [mercury_cv_have_builtin_bswap16=no])
 )
@@ -1461,11 +1460,10 @@ fi
 
 AC_MSG_CHECKING(whether we have __builtin_bswap32)
 AC_CACHE_VAL(mercury_cv_have_builtin_bswap32,
-    AC_TRY_LINK(
-        [],
-        [__builtin_bswap32(1);],
-        [mercury_cv_have_builtin_bswap32=yes],
-        [mercury_cv_have_builtin_bswap32=no])
+    AC_LINK_IFELSE(
+       [AC_LANG_PROGRAM([[]], [[__builtin_bswap32(1);]])],
+       [mercury_cv_have_builtin_bswap32=yes],
+       [mercury_cv_have_builtin_bswap32=no])
 )
 AC_MSG_RESULT($mercury_cv_have_builtin_bswap32)
 if test "$mercury_cv_have_builtin_bswap32" = yes; then
@@ -1474,11 +1472,10 @@ fi
 
 AC_MSG_CHECKING(whether we have __builtin_bswap64)
 AC_CACHE_VAL(mercury_cv_have_builtin_bswap64,
-    AC_TRY_LINK(
-        [],
-        [__builtin_bswap64(1);],
-        [mercury_cv_have_builtin_bswap64=yes],
-        [mercury_cv_have_builtin_bswap64=no])
+    AC_LINK_IFELSE(
+       [AC_LANG_PROGRAM([[]], [[__builtin_bswap64(1);]])],
+       [mercury_cv_have_builtin_bswap64=yes],
+       [mercury_cv_have_builtin_bswap64=no])
 )
 AC_MSG_RESULT($mercury_cv_have_builtin_bswap64)
 if test "$mercury_cv_have_builtin_bswap64" = yes; then
@@ -1503,8 +1500,7 @@ AC_SUBST(HAVE_GETOPT)
 if test "$ac_cv_func_sigaction" = yes; then
 AC_MSG_CHECKING(for SA_SIGINFO and siginfo_t)
 AC_CACHE_VAL(mercury_cv_siginfo_t,
-AC_TRY_RUN(
-    [
+AC_RUN_IFELSE([AC_LANG_SOURCE([[
         #include <stdio.h>
         #include <stdlib.h>
         #include <signal.h>
@@ -1548,9 +1544,7 @@ AC_TRY_RUN(
             save_signum = signum;
             save_cause = info->si_code;
         }
-    ],
-    [mercury_cv_siginfo_t=yes],
-    [mercury_cv_siginfo_t=no]))
+    ]])],[mercury_cv_siginfo_t=yes],[mercury_cv_siginfo_t=no],[]))
 AC_MSG_RESULT($mercury_cv_siginfo_t)
 else
     mercury_cv_siginfo_t=no
@@ -4659,12 +4653,12 @@ AC_SUBST_FILE(CONFIGURE_HELP)
 
 AC_MSG_CHECKING(for struct tms and times function)
 AC_CACHE_VAL(mercury_cv_have_posix_times,
-    AC_TRY_LINK(
-        [
+    AC_LINK_IFELSE(
+        [AC_LANG_PROGRAM([[
             #include <sys/types.h>
             #include <sys/times.h>
-        ],
-        [
+        ]],
+        [[
             struct tms t;
             long Ut, St, CUt, CSt;
             long Ret;
@@ -4675,7 +4669,7 @@ AC_CACHE_VAL(mercury_cv_have_posix_times,
             St = (long) t.tms_stime;
             CUt = (long) t.tms_cutime;
             CSt = (long) t.tms_cstime;
-        ],
+        ]])],
         [mercury_cv_have_posix_times=yes],
         [mercury_cv_have_posix_times=no]))
 
@@ -4694,15 +4688,14 @@ fi
 
 AC_MSG_CHECKING(for environ global variable)
 AC_CACHE_VAL(mercury_cv_have_environ,
-AC_TRY_LINK(
-    [
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
         #include <unistd.h>
 
         extern char **environ;
-    ],
-    [
+    ]],
+    [[
         environ
-    ],
+    ]])],
     [mercury_cv_have_environ=yes],
     [mercury_cv_have_environ=no]))
 
@@ -4721,13 +4714,12 @@ fi
 
 AC_MSG_CHECKING(for Sleep function)
 AC_CACHE_VAL(mercury_cv_have_capital_s_sleep,
-AC_TRY_LINK(
-    [
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
         #include <windows.h>
-    ],
-    [
+    ]],
+    [[
         Sleep(1);
-    ],
+    ]])],
     [mercury_cv_have_capital_s_sleep=yes],
     [mercury_cv_have_capital_s_sleep=no]))
 
@@ -4755,29 +4747,24 @@ MERCURY_CHECK_FOR_IEEE_FUNC(isfinite)
 # Check whether sockets work (we need them for the external debugger)
 #
 
-#
-# check whether we need -lsocket
+# Check whether we need -lsocket.
 #
 AC_CHECK_LIB(socket, socket, SOCKET_LIBRARY=-lsocket, SOCKET_LIBRARY="")
 
-#
-# check whether we need -lnsl
+# Check whether we need -lnsl.
 #
 AC_CHECK_LIB(nsl, inet_addr, NSL_LIBRARY=-lnsl, NSL_LIBRARY="")
 
-#
-# temporarily add -lsocket to LIBS, for use by TRY_LINK
+# Temporarily add -lsocket to LIBS, for use by LINK_ELSEIF.
 #
 save_LIBS="$LIBS"
 LIBS="$LIBS $SOCKET_LIBRARY $NSL_LIBRARY"
 
-#
-# use TRY_LINK to see whether we can use sockets
+# Use LINK_ELSEIF to see whether we can use sockets.
 #
 AC_MSG_CHECKING(whether we can use sockets (for Morphine))
 AC_CACHE_VAL(mercury_cv_sockets_work,
-AC_TRY_LINK(
-    [
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
         changequote(<<,>>)
         /*
         ** The following code was copied from
@@ -4805,9 +4792,9 @@ AC_TRY_LINK(
             fprintf(stderr, "", s);
             exit(1);
         }
-    ],
-    [
-        /* this is the body of the test function */
+    ]],
+    [[
+        /* This is the body of the test function. */
         {
             int fd;
             int len;
@@ -4906,12 +4893,11 @@ AC_TRY_LINK(
             file_out = fdopen(fd, "w");
         }
         changequote([,])
-    ],
+    ]])],
     [mercury_cv_sockets_work=yes],
     [mercury_cv_sockets_work=no]))
 
-#
-# figure out whether the test succeeded
+# Figure out whether the test succeeded.
 #
 if test "$mercury_cv_sockets_work" = yes; then
     AC_MSG_RESULT(yes)
@@ -4919,8 +4905,7 @@ else
     AC_MSG_RESULT(no)
 fi
 
-#
-# restore the previous value of LIBS
+# Restore the previous value of LIBS.
 #
 LIBS="$save_LIBS"
 
