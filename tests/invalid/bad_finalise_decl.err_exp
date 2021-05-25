@@ -18,4 +18,4 @@ bad_finalise_decl.m:022:   not have a corresponding `:- pred' declaration.
 bad_finalise_decl.m:023: Error in `:- finalise' declaration: expected
 bad_finalise_decl.m:023:   `predname/arity', got `i4'.
 bad_finalise_decl.m:024: Error: `:- finalise' declaration specifies a predicate
-bad_finalise_decl.m:024:   whose arity is not zero or two: (i5 / 6).
+bad_finalise_decl.m:024:   whose arity is not zero or two: `(i5 / 6)'.

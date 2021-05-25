@@ -109,17 +109,16 @@ mutable_pre_init_pred_sym_name(ModuleName, Name) =
 compute_needed_public_mutable_aux_preds(MutAttrs, PublicAuxPreds) :-
     % The logic we use here is duplicated in define_main_get_set_preds
     % in add_mutable_aux_preds.m. The comment there explains why.
-    IsConstant = mutable_var_constant(MutAttrs),
-    AttachToIO = mutable_var_attach_to_io_state(MutAttrs),
+    MutAttrs = mutable_var_attributes(_ForeignNames, Const),
     (
-        IsConstant = mutable_constant,
+        Const = mutable_is_constant,
         % We create the "get" access predicate, which is pure since
         % it always returns the same value, but we must also create
         % a secret "set" predicate for use by the initialization code.
         GetSetPreds =
             [mutable_pred_constant_get, mutable_pred_constant_secret_set]
     ;
-        IsConstant = mutable_not_constant,
+        Const = mutable_is_not_constant(AttachToIO, _Trail),
         % Create the standard, non-pure access predicates. These are
         % always created for non-constant mutables, even if the
         % `attach_to_io_state' attribute has been specified.

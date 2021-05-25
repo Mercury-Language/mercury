@@ -590,31 +590,30 @@ add_aux_pred_defns_for_mutable(ModuleInfo, ItemMutable,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
     module_info_get_globals(ModuleInfo, Globals),
     get_mutable_target_params(Globals, MutAttrs, TargetParams),
-    IsConstant = mutable_var_constant(MutAttrs),
-    IsThreadLocal = mutable_var_thread_local(MutAttrs),
-    ImplLang = TargetParams ^ mtp_mutable_impl_lang,
     Lang = TargetParams ^ mtp_target_lang,
+
+    MutAttrs = mutable_var_attributes(_LangMap, Const),
 
     % Work out what name to give the global in the target language.
     module_info_get_name(ModuleInfo, ModuleName),
-    decide_mutable_target_var_name(Globals, ModuleName, MutableName, MutAttrs,
-        Lang, Context, TargetMutableName),
-    % We define the global storing the mutable now rather than earlier
-    % because the target-language-specific name of the type of the global
-    % depends on whether there are any foreign_type declarations for Type.
+    decide_mutable_target_var_name(ModuleName, MutableName, MutAttrs,
+        Lang, TargetMutableName),
+    % We need ModuleInfo after all type definitions have been processed
+    % as an input, because the target-language-specific name of the type
+    % of the global variable we are defining here depends on whether
+    % there are any foreign_type declarations for Type.
     (
-        ImplLang = mutable_lang_c,
+        Lang = lang_c,
         define_mutable_global_var_c(ModuleInfo, TargetMutableName, Type,
-            IsConstant, IsThreadLocal, Context,
-            !ForeignDeclCodes, !ForeignBodyCodes)
+            Const, Context, !ForeignDeclCodes, !ForeignBodyCodes)
     ;
-        ImplLang = mutable_lang_csharp,
+        Lang = lang_csharp,
         define_mutable_global_var_csharp(TargetMutableName, Type,
-            IsThreadLocal, Context, !ForeignBodyCodes)
+            Const, Context, !ForeignBodyCodes)
     ;
-        ImplLang = mutable_lang_java,
+        Lang = lang_java,
         define_mutable_global_var_java(TargetMutableName, Type,
-            IsThreadLocal, Context, !ForeignBodyCodes)
+            Const, Context, !ForeignBodyCodes)
     ),
 
     define_aux_preds_for_mutable(ModuleInfo, TargetParams, ItemMutable,
@@ -633,17 +632,17 @@ add_aux_pred_defns_for_mutable(ModuleInfo, ItemMutable,
     % and if needed, the mutex controlling access to it.
     %
 :- pred define_mutable_global_var_c(module_info::in, string::in, mer_type::in,
-    mutable_constant::in, mutable_thread_local::in, prog_context::in,
+    mutable_maybe_constant::in, prog_context::in,
     cord(foreign_decl_code)::in, cord(foreign_decl_code)::out,
     cord(foreign_body_code)::in, cord(foreign_body_code)::out) is det.
 
 define_mutable_global_var_c(ModuleInfo, TargetMutableName, Type,
-        IsConstant, IsThreadLocal, Context,
-        !ForeignDeclCodes, !ForeignBodyCodes) :-
+        Const, Context, !ForeignDeclCodes, !ForeignBodyCodes) :-
     % The declaration we construct will be included in the .mh files. Since
     % these are grade independent, we need to output both the high- and
     % low-level C declarations for the global used to implement the mutable,
     % and make the choice conditional on whether MR_HIGHLEVEL_CODE is defined.
+    IsThreadLocal = mutable_var_thread_local(Const),
     (
         IsThreadLocal = mutable_not_thread_local,
         % The only difference between the high- and low-level C backends
@@ -664,8 +663,7 @@ define_mutable_global_var_c(ModuleInfo, TargetMutableName, Type,
         )
     ;
         IsThreadLocal = mutable_thread_local,
-        % For thread-local mutables, the variable holds an index into an
-        % array.
+        % For thread-local mutables, the variable holds an index into an array.
         TypeName = "MR_Unsigned",
         HighLevelTypeName = TypeName,
         LowLevelTypeName  = TypeName
@@ -674,7 +672,7 @@ define_mutable_global_var_c(ModuleInfo, TargetMutableName, Type,
     % Constant mutables do not require mutexes, as their values are never
     % updated. Thread-local mutables do not require mutexes either.
     ( if
-        ( IsConstant = mutable_constant
+        ( Const = mutable_is_constant
         ; IsThreadLocal = mutable_thread_local
         )
     then
@@ -713,11 +711,12 @@ define_mutable_global_var_c(ModuleInfo, TargetMutableName, Type,
     % Define the global variable used to hold the mutable on the C# backend.
     %
 :- pred define_mutable_global_var_csharp(string::in, mer_type::in,
-    mutable_thread_local::in, prog_context::in,
+    mutable_maybe_constant::in, prog_context::in,
     cord(foreign_body_code)::in, cord(foreign_body_code)::out) is det.
 
-define_mutable_global_var_csharp(TargetMutableName, Type, IsThreadLocal,
-        Context, !ForeignBodyCodes) :-
+define_mutable_global_var_csharp(TargetMutableName, Type, Const, Context,
+        !ForeignBodyCodes) :-
+    IsThreadLocal = mutable_var_thread_local(Const),
     (
         IsThreadLocal = mutable_not_thread_local,
         ( if Type = int_type then
@@ -737,11 +736,12 @@ define_mutable_global_var_csharp(TargetMutableName, Type, IsThreadLocal,
     % Define the global variable used to hold the mutable on the Java backend.
     %
 :- pred define_mutable_global_var_java(string::in, mer_type::in,
-    mutable_thread_local::in, prog_context::in,
+    mutable_maybe_constant::in, prog_context::in,
     cord(foreign_body_code)::in, cord(foreign_body_code)::out) is det.
 
-define_mutable_global_var_java(TargetMutableName, Type, IsThreadLocal,
-        Context, !ForeignBodyCodes) :-
+define_mutable_global_var_java(TargetMutableName, Type, Const, Context,
+        !ForeignBodyCodes) :-
+    IsThreadLocal = mutable_var_thread_local(Const),
     (
         IsThreadLocal = mutable_not_thread_local,
         % Synchronization is only required for double and long values,
@@ -781,7 +781,7 @@ define_mutable_global_var_java(TargetMutableName, Type, IsThreadLocal,
 define_aux_preds_for_mutable(ModuleInfo, TargetParams, ItemMutable,
         TargetMutableName, ClauseInfos, ForeignProcs, PragmaFPEInfo,
         !PredTargetNames) :-
-    TargetParams = mutable_target_params(ImplLang, Lang, BoxPolicy,
+    TargetParams = mutable_target_params(Lang, BoxPolicy,
         _PreInit, _LockUnlock, _UnsafeAccess,
         PrivatePredKinds, PublicPredKinds),
     NeededPredKinds = PublicPredKinds ++ PrivatePredKinds,
@@ -790,12 +790,12 @@ define_aux_preds_for_mutable(ModuleInfo, TargetParams, ItemMutable,
     % access predicates.
     Attrs0 = default_attributes(Lang),
     (
-        ImplLang = mutable_lang_c,
+        Lang = lang_c,
         set_box_policy(BoxPolicy, Attrs0, Attrs1),
         set_may_call_mercury(proc_will_not_call_mercury, Attrs1, Attrs)
     ;
-        ( ImplLang = mutable_lang_csharp
-        ; ImplLang = mutable_lang_java
+        ( Lang = lang_csharp
+        ; Lang = lang_java
         ),
         % The mutable variable name is not module-qualified, and so
         % it must not be exported to `.opt' files. We could add the
@@ -887,15 +887,18 @@ define_pre_init_pred(ModuleName, TargetParams, ItemMutable, TargetMutableName,
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, _Type, _OrigInst, _Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    IsConstant = mutable_var_constant(MutAttrs),
-    expect(unify(IsConstant, mutable_not_constant), $pred,
-        "need_pre_init_pred, but IsConstant = mutable_constant"),
-    IsThreadLocal = mutable_var_thread_local(MutAttrs),
-    ImplLang = TargetParams ^ mtp_mutable_impl_lang,
-    PreInitPredName = mutable_pre_init_pred_sym_name(ModuleName, MutableName),
-
+    MutAttrs = mutable_var_attributes(_LangMap, Const),
     (
-        ImplLang = mutable_lang_c,
+        Const = mutable_is_not_constant(_, _)
+    ;
+        Const = mutable_is_constant,
+        unexpected($pred, "need_pre_init_pred, but mutable_is_constant")
+    ),
+    IsThreadLocal = mutable_var_thread_local(Const),
+    Lang = TargetParams ^ mtp_target_lang,
+    PreInitPredName = mutable_pre_init_pred_sym_name(ModuleName, MutableName),
+    (
+        Lang = lang_c,
         (
             IsThreadLocal = mutable_not_thread_local,
             PreInitCode = string.append_list([
@@ -911,11 +914,11 @@ define_pre_init_pred(ModuleName, TargetParams, ItemMutable, TargetMutableName,
                 " = MR_new_thread_local_mutable_index();\n"
         )
     ;
-        ImplLang = mutable_lang_csharp,
+        Lang = lang_csharp,
         PreInitCode = TargetMutableName ++
             " = runtime.ThreadLocalMutables.new_index();\n"
     ;
-        ImplLang = mutable_lang_java,
+        Lang = lang_java,
         unexpected($pred, "preinit for java")
     ),
     PreInitFCInfo = pragma_info_foreign_proc(Attrs,
@@ -941,17 +944,19 @@ define_lock_unlock_preds(ModuleName, TargetParams, ItemMutable,
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, _Type, _OrigInst, _Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    IsConstant = mutable_var_constant(MutAttrs),
-    expect(unify(IsConstant, mutable_not_constant), $pred,
-        "need_lock_unlock_preds, but IsConstant = mutable_constant"),
-    IsThreadLocal = mutable_var_thread_local(MutAttrs),
-    ImplLang = TargetParams ^ mtp_mutable_impl_lang,
-
+    MutAttrs = mutable_var_attributes(_LangMap, Const),
     (
-        ImplLang = mutable_lang_c,
+        Const = mutable_is_not_constant(_, _)
+    ;
+        Const = mutable_is_constant,
+        unexpected($pred, "need_lock_unlock_preds, but mutable_is_constant")
+    ),
+    IsThreadLocal = mutable_var_thread_local(Const),
+    Lang = TargetParams ^ mtp_target_lang,
+    (
+        Lang = lang_c,
         set_thread_safe(proc_thread_safe, Attrs, LockAndUnlockAttrs),
         MutableMutexVarName = mutable_mutex_var_name(TargetMutableName),
-
         (
             IsThreadLocal = mutable_not_thread_local,
             % XXX The second argument of both calls should be the name of
@@ -1004,10 +1009,10 @@ define_lock_unlock_preds(ModuleName, TargetParams, ItemMutable,
             call_expr(Context, UnlockPredName, [], purity_impure),
         LockUnlockExprs = {CallLockExpr0, CallUnlockExpr0}
     ;
-        ImplLang = mutable_lang_csharp,
+        Lang = lang_csharp,
         unexpected($pred, "lock_unlock for csharp")
     ;
-        ImplLang = mutable_lang_java,
+        Lang = lang_java,
         unexpected($pred, "lock_unlock for java")
     ).
 
@@ -1023,11 +1028,15 @@ define_unsafe_get_set_preds(ModuleInfo, TargetParams, ItemMutable,
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, Type, _OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    IsConstant = mutable_var_constant(MutAttrs),
-    expect(unify(IsConstant, mutable_not_constant), $pred,
-        "need_unsafe_get_set_preds, but IsConstant = mutable_constant"),
-    IsThreadLocal = mutable_var_thread_local(MutAttrs),
-    ImplLang = TargetParams ^ mtp_mutable_impl_lang,
+    MutAttrs = mutable_var_attributes(_LangMap, Const),
+    (
+        Const = mutable_is_not_constant(_, _)
+    ;
+        Const = mutable_is_constant,
+        unexpected($pred,
+            "need_unsafe_get_set_preds, but mutable_is_constant")
+    ),
+    IsThreadLocal = mutable_var_thread_local(Const),
     Lang = TargetParams ^ mtp_target_lang,
     BoxPolicy = TargetParams ^ mtp_box_policy,
     varset.new_named_var("X", X, varset.init, VarSetOnlyX),
@@ -1036,9 +1045,9 @@ define_unsafe_get_set_preds(ModuleInfo, TargetParams, ItemMutable,
     set_purity(purity_semipure, ThreadSafeAttrs, UnsafeGetAttrs),
     UnsafeSetAttrs = ThreadSafeAttrs,   % defaults to purity_impure
 
-    TrailedMutable = mutable_var_trailed(MutAttrs),
     (
-        ImplLang = mutable_lang_c,
+        Lang = lang_c,
+        TrailedMutable = mutable_var_trailed(Const),
         (
             TrailedMutable = mutable_untrailed,
             TrailCode = ""
@@ -1063,7 +1072,7 @@ define_unsafe_get_set_preds(ModuleInfo, TargetParams, ItemMutable,
                 TypeName ++ ", X, " ++ TargetMutableName ++ ");\n"
         )
     ;
-        ImplLang = mutable_lang_csharp,
+        Lang = lang_csharp,
         % We generate an error for trailed mutables in pass 2, but we
         % still continue on to pass 3 even in the presence of such errors.
         TrailCode = "",
@@ -1085,7 +1094,7 @@ define_unsafe_get_set_preds(ModuleInfo, TargetParams, ItemMutable,
                 TargetMutableName ++ ", X);\n"
         )
     ;
-        ImplLang = mutable_lang_java,
+        Lang = lang_java,
         % We generate an error for trailed mutables in pass 2, but we
         % still continue on to pass 3 even in the presence of such errors.
         TrailCode = "",
@@ -1158,9 +1167,7 @@ define_main_get_set_preds(ModuleName, TargetParams, ItemMutable,
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, _Type, _OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-        IsConstant = mutable_var_constant(MutAttrs),
-    AttachToIO = mutable_var_attach_to_io_state(MutAttrs),
-    ImplLang = TargetParams ^ mtp_mutable_impl_lang,
+    Lang = TargetParams ^ mtp_target_lang,
     BoxPolicy = TargetParams ^ mtp_box_policy,
     varset.new_named_var("X", X, varset.init, VarSetOnlyX),
 
@@ -1175,8 +1182,9 @@ define_main_get_set_preds(ModuleName, TargetParams, ItemMutable,
     %   and then
     % - having our caller check that there are no mutable_pred_kinds that
     %   it says we need but which we have *not* defined.
+    MutAttrs = mutable_var_attributes(_LangMap, Const),
     (
-        IsConstant = mutable_constant,
+        Const = mutable_is_constant,
         ConstantGetPredName =
             mutable_get_pred_sym_name(ModuleName, MutableName),
         ConstantSecretSetPredName =
@@ -1188,9 +1196,9 @@ define_main_get_set_preds(ModuleName, TargetParams, ItemMutable,
             ConstantGetAttrs0, ConstantGetAttrs),
         ConstantSetAttrs = Attrs,
         (
-            ( ImplLang = mutable_lang_c
-            ; ImplLang = mutable_lang_csharp
-            ; ImplLang = mutable_lang_java
+            ( Lang = lang_c
+            ; Lang = lang_csharp
+            ; Lang = lang_java
             ),
             ConstantGetCode = "X = " ++ TargetMutableName ++ ";\n",
             ConstantSetCode = TargetMutableName ++ " = X;\n"
@@ -1220,19 +1228,16 @@ define_main_get_set_preds(ModuleName, TargetParams, ItemMutable,
         ClauseInfos = [],
         ForeignProcs = [ConstantGetForeignProc, ConstantSetForeignProc],
         set.det_remove(mutable_pred_constant_get, !PredKinds),
-        set.det_remove(mutable_pred_constant_secret_set, !PredKinds),
-
-        expect(unify(AttachToIO, mutable_dont_attach_to_io_state),
-            $pred, "AttachToIO = mutable_attach_to_io_state")
+        set.det_remove(mutable_pred_constant_secret_set, !PredKinds)
     ;
-        IsConstant = mutable_not_constant,
+        Const = mutable_is_not_constant(AttachToIO, _Trail),
         StdGetPredName = mutable_get_pred_sym_name(ModuleName, MutableName),
         StdSetPredName = mutable_set_pred_sym_name(ModuleName, MutableName),
         InitSetPredName = StdSetPredName,
         (
-            ( ImplLang = mutable_lang_c
-            ; ImplLang = mutable_lang_csharp
-            ; ImplLang = mutable_lang_java
+            ( Lang = lang_c
+            ; Lang = lang_csharp
+            ; Lang = lang_java
             ),
             (
                 MaybeUnsafeGetSetExprs =
@@ -1371,74 +1376,20 @@ define_init_pred(ModuleName, Lang, ItemMutable, InitSetPredName,
 %---------------------------------------------------------------------------%
 
     % Decide what the name of the underlying global used to implement the
-    % mutable should be. If there is a foreign_name attribute, then use that,
-    % otherwise construct one based on the Mercury name for the mutable.
+    % mutable should be. If there is a foreign_name attribute for the target
+    % language, then use that, otherwise construct one based on the
+    % Mercury name for the mutable.
     %
-:- pred decide_mutable_target_var_name(globals::in, module_name::in,
-    string::in, mutable_var_attributes::in, foreign_language::in,
-    prog_context::in, string::out) is det.
+:- pred decide_mutable_target_var_name(module_name::in, string::in,
+    mutable_var_attributes::in, foreign_language::in, string::out) is det.
 
-decide_mutable_target_var_name(Globals, ModuleName, MutableName, MutAttrs,
-        ForeignLanguage, Context, TargetMutableName) :-
-    mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
-    (
-        MaybeForeignNames = no,
-        TargetMutableName = mutable_var_name(ModuleName, MutableName)
-    ;
-        MaybeForeignNames = yes(ForeignNames),
-        % We have already any errors during pass 2, so ignore them here.
-        get_global_name_from_foreign_names(Globals, ModuleName, MutableName,
-            Context, ForeignLanguage, ForeignNames,
-            TargetMutableName, [], _Specs)
-    ).
-
-    % Check to see if there is a valid foreign_name attribute for this backend.
-    % If so, use it as the name of the global variable in the target code,
-    % otherwise take the Mercury name for the mutable and mangle it into
-    % an appropriate variable name.
-    %
- :- pred get_global_name_from_foreign_names(globals::in, module_name::in,
-    string::in, prog_context::in, foreign_language::in, list(foreign_name)::in,
-    string::out, list(error_spec)::in, list(error_spec)::out) is det.
-
-get_global_name_from_foreign_names(Globals, ModuleName, MutableName, Context,
-        ForeignLanguage, ForeignNames, TargetMutableName, !Specs) :-
-        get_foreign_names_in_lang(ForeignNames, ForeignLanguage,
-        TargetMutableNames),
-    (
-        TargetMutableNames = [],
-        TargetMutableName = mutable_var_name(ModuleName, MutableName)
-    ;
-        TargetMutableNames = [foreign_name(_, TargetMutableName)]
-        % XXX We should really check that this is a valid identifier
-        % in the target language here.
-    ;
-        TargetMutableNames = [_, _ | _],
-        globals.get_target(Globals, CompilationTarget),
-        Pieces = [words("Error: multiple foreign_name attributes"),
-            words("specified for the"),
-            fixed(compilation_target_string(CompilationTarget)),
-            words("backend."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
-        !:Specs = [Spec | !.Specs],
-
-        TargetMutableName = mutable_var_name(ModuleName, MutableName)
-    ).
-
-:- pred get_foreign_names_in_lang(list(foreign_name)::in,
-    foreign_language::in, list(foreign_name)::out) is det.
-
-get_foreign_names_in_lang([], _TargetForeignLanguage, []).
-get_foreign_names_in_lang([ForeignName | ForeignNames], TargetForeignLanguage,
-        MatchingForeignNames) :-
-    get_foreign_names_in_lang(ForeignNames, TargetForeignLanguage,
-        TailMatchingForeignNames),
-    ForeignName = foreign_name(ForeignLanguage, _),
-    ( if ForeignLanguage = TargetForeignLanguage then
-        MatchingForeignNames = [ForeignName | TailMatchingForeignNames]
+decide_mutable_target_var_name(ModuleName, MutableName, MutAttrs,
+        ForeignLanguage, TargetMutableName) :-
+    MutAttrs = mutable_var_attributes(LangMap, _Const),
+    ( if map.search(LangMap, ForeignLanguage, TargetMutableName0) then
+        TargetMutableName = TargetMutableName0
     else
-        MatchingForeignNames = TailMatchingForeignNames
+        TargetMutableName = mutable_var_name(ModuleName, MutableName)
     ).
 
     % The first argument global_foreign_type_name says whether the mutable
@@ -1491,11 +1442,6 @@ mutable_mutex_var_name(TargetMutableVarName) = MutexVarName :-
 
 %---------------------------------------------------------------------------%
 
-:- type mutable_impl_lang
-    --->    mutable_lang_c
-    ;       mutable_lang_csharp
-    ;       mutable_lang_java.
-
 :- type need_pre_init_pred
     --->    dont_need_pre_init_pred
     ;       need_pre_init_pred.
@@ -1510,7 +1456,6 @@ mutable_mutex_var_name(TargetMutableVarName) = MutexVarName :-
 
 :- type mutable_target_params
     --->    mutable_target_params(
-                mtp_mutable_impl_lang   :: mutable_impl_lang,
                 mtp_target_lang         :: foreign_language,
                 mtp_box_policy          :: box_policy,
                 mtp_need_pre_init       :: need_pre_init_pred,
@@ -1537,11 +1482,7 @@ get_mutable_target_params(Globals, MutAttrs, TargetParams) :-
     globals.get_target(Globals, CompilationTarget),
     (
         CompilationTarget = target_c,
-        ImplLang = mutable_lang_c,
         Lang = lang_c,
-        PreInit0 = need_pre_init_pred,
-        LockUnlock0 = need_lock_unlock_preds,
-        UnsafeAccess0 = need_unsafe_get_set_preds,
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
             HighLevelCode = no,
@@ -1552,44 +1493,49 @@ get_mutable_target_params(Globals, MutAttrs, TargetParams) :-
         )
     ;
         CompilationTarget = target_csharp,
-        ImplLang = mutable_lang_csharp,
         Lang = lang_csharp,
-        IsThreadLocal = mutable_var_thread_local(MutAttrs),
-        (
-            IsThreadLocal = mutable_thread_local,
-            PreInit0 = need_pre_init_pred
-        ;
-            IsThreadLocal = mutable_not_thread_local,
-            PreInit0 = dont_need_pre_init_pred
-        ),
-        LockUnlock0 = dont_need_lock_unlock_preds,
-        UnsafeAccess0 = need_unsafe_get_set_preds,
         BoxPolicy = bp_native_if_possible
     ;
         CompilationTarget = target_java,
-        ImplLang = mutable_lang_java,
         Lang = lang_java,
-        PreInit0 = dont_need_pre_init_pred,
-        LockUnlock0 = dont_need_lock_unlock_preds,
-        UnsafeAccess0 = need_unsafe_get_set_preds,
         BoxPolicy = bp_native_if_possible
     ),
-    IsConstant = mutable_var_constant(MutAttrs),
+    MutAttrs = mutable_var_attributes(_LangMap, Const),
     (
-        IsConstant = mutable_not_constant,
-        PreInit = PreInit0,
-        LockUnlock = LockUnlock0,
-        UnsafeAccess = UnsafeAccess0
-    ;
-        IsConstant = mutable_constant,
+        Const = mutable_is_constant,
         PreInit = dont_need_pre_init_pred,
         LockUnlock = dont_need_lock_unlock_preds,
         UnsafeAccess = dont_need_unsafe_get_set_preds
+    ;
+        Const = mutable_is_not_constant(_, _),
+        (
+            CompilationTarget = target_c,
+            PreInit = need_pre_init_pred,
+            LockUnlock = need_lock_unlock_preds,
+            UnsafeAccess = need_unsafe_get_set_preds
+        ;
+            CompilationTarget = target_csharp,
+            IsThreadLocal = mutable_var_thread_local(Const),
+            (
+                IsThreadLocal = mutable_thread_local,
+                PreInit = need_pre_init_pred
+            ;
+                IsThreadLocal = mutable_not_thread_local,
+                PreInit = dont_need_pre_init_pred
+            ),
+            LockUnlock = dont_need_lock_unlock_preds,
+            UnsafeAccess = need_unsafe_get_set_preds
+        ;
+            CompilationTarget = target_java,
+            PreInit = dont_need_pre_init_pred,
+            LockUnlock = dont_need_lock_unlock_preds,
+            UnsafeAccess = need_unsafe_get_set_preds
+        )
     ),
     compute_needed_private_mutable_aux_preds(PreInit, LockUnlock, UnsafeAccess,
         PrivatePredKinds),
     compute_needed_public_mutable_aux_preds(MutAttrs, PublicPredKinds),
-    TargetParams = mutable_target_params(ImplLang, Lang, BoxPolicy,
+    TargetParams = mutable_target_params(Lang, BoxPolicy,
         PreInit, LockUnlock, UnsafeAccess, PrivatePredKinds, PublicPredKinds).
 
     % This predicate decides which of the private auxiliary predicates
@@ -1645,7 +1591,7 @@ compute_needed_private_mutable_aux_preds(PreInit, LockUnlock, UnsafeAccess,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_mutable(ModuleInfo, ItemMutable, !Specs) :-
-    ItemMutable = item_mutable_info(MutableName,
+    ItemMutable = item_mutable_info(_MutableName,
         _OrigType, _Type, OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
     module_info_get_globals(ModuleInfo, Globals),
@@ -1653,29 +1599,17 @@ check_mutable(ModuleInfo, ItemMutable, !Specs) :-
     % NOTE We currently support the foreign_name attribute for all targets,
     % but we did not do so when we supported Erlang.
     (
-        ( CompilationTarget = target_c,      ForeignLanguage = lang_c
-        ; CompilationTarget = target_java,   ForeignLanguage = lang_java
-        ; CompilationTarget = target_csharp, ForeignLanguage = lang_csharp
-        ),
-        mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
-        (
-            MaybeForeignNames = no
-        ;
-            MaybeForeignNames = yes(ForeignNames),
-            % Report any errors with the foreign_name attributes
-            % during this pass.
-            module_info_get_name(ModuleInfo, ModuleName),
-            get_global_name_from_foreign_names(Globals, ModuleName,
-                MutableName, Context, ForeignLanguage, ForeignNames,
-                _TargetMutableName, !Specs)
+        ( CompilationTarget = target_c
+        ; CompilationTarget = target_java
+        ; CompilationTarget = target_csharp
         )
     ),
 
     % If the mutable is to be trailed, then we need to be in a trailing grade.
-    TrailMutableUpdates = mutable_var_trailed(MutAttrs),
+    MutAttrs = mutable_var_attributes(_LangMap, Const),
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     ( if
-        TrailMutableUpdates = mutable_trailed,
+        mutable_var_trailed(Const) = mutable_trailed,
         UseTrail = no
     then
         TrailPieces = [words("Error: trailed"), decl("mutable"),

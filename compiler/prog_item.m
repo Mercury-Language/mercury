@@ -1759,45 +1759,34 @@
     --->    mutable_not_thread_local
     ;       mutable_thread_local.
 
-    % Has the user specified a name for us to use on the target code side
-    % of the FLI?
+    % Attributes for mutable variables.
     %
-:- type foreign_name
-    --->    foreign_name(
-                foreign_name_lang :: foreign_language,
-                foreign_name_name :: string
+:- type mutable_var_attributes
+    --->    mutable_var_attributes(
+                mutable_foreign_names       :: map(foreign_language, string),
+                mutable_constant            :: mutable_maybe_constant
             ).
 
-    % An abstract type for representing a set of mutable variable
-    % attributes.
-    %
-:- type mutable_var_attributes.
+:- type mutable_maybe_constant
+    --->    mutable_is_constant
+            % implies mutable_dont_attach_to_io_state
+            % implies mutable_untrailed
+            % implies mutable_not_thread_local
+    ;       mutable_is_not_constant(
+                mutable_attach_to_io_state,
+                mutable_maybe_thread_local
+            ).
 
-    % Return the default attributes for a mutable variable.
-    %
-:- func default_mutable_attributes = mutable_var_attributes.
+:- type mutable_maybe_thread_local
+    --->    mutable_is_not_thread_local(
+                mutable_trailed
+            )
+    ;       mutable_is_thread_local.
+            % implies mutable_untrailed
 
-    % Access functions for the `mutable_var_attributes' structure.
-    %
-:- func mutable_var_trailed(mutable_var_attributes) = mutable_trailed.
-:- func mutable_var_maybe_foreign_names(mutable_var_attributes)
-    = maybe(list(foreign_name)).
-:- func mutable_var_attach_to_io_state(mutable_var_attributes)
-    = mutable_attach_to_io_state.
-:- func mutable_var_constant(mutable_var_attributes) = mutable_constant.
-:- func mutable_var_thread_local(mutable_var_attributes)
+:- func mutable_var_thread_local(mutable_maybe_constant)
     = mutable_thread_local.
-
-:- pred set_mutable_var_trailed(mutable_trailed::in,
-    mutable_var_attributes::in, mutable_var_attributes::out) is det.
-:- pred set_mutable_add_foreign_name(foreign_name::in,
-    mutable_var_attributes::in, mutable_var_attributes::out) is det.
-:- pred set_mutable_var_attach_to_io_state(mutable_attach_to_io_state::in,
-    mutable_var_attributes::in, mutable_var_attributes::out) is det.
-:- pred set_mutable_var_constant(mutable_constant::in,
-    mutable_var_attributes::in, mutable_var_attributes::out) is det.
-:- pred set_mutable_var_thread_local(mutable_thread_local::in,
-    mutable_var_attributes::in, mutable_var_attributes::out) is det.
+:- func mutable_var_trailed(mutable_maybe_constant) = mutable_trailed.
 
 %---------------------------------------------------------------------------%
 %
@@ -2763,52 +2752,29 @@ init_empty_parse_tree_module_src(ModuleName, ModuleNameContext) =
 % Mutable variables.
 %
 
-    % Attributes for mutable variables.
-    %
-:- type mutable_var_attributes
-    --->    mutable_var_attributes(
-                mutable_trailed             :: mutable_trailed,
-                mutable_foreign_names       :: maybe(list(foreign_name)),
-                mutable_attach_to_io_state  :: mutable_attach_to_io_state,
-                mutable_constant            :: mutable_constant,
-                mutable_thread_local        :: mutable_thread_local
-            ).
+mutable_var_thread_local(Const) = Local :-
+    ( if
+        Const = mutable_is_not_constant(_AttachToIO, IsLocal),
+        % Const = mutable_is_constant would imply mutable_not_thread_local
+        IsLocal = mutable_is_thread_local
+    then
+        Local = mutable_thread_local
+    else
+        Local = mutable_not_thread_local
+    ).
 
-default_mutable_attributes =
-    mutable_var_attributes(mutable_trailed, no,
-        mutable_dont_attach_to_io_state, mutable_not_constant,
-        mutable_not_thread_local).
-
-mutable_var_trailed(MVarAttrs) = X :-
-    X = MVarAttrs ^ mutable_trailed.
-mutable_var_maybe_foreign_names(MVarAttrs) = X :-
-    X = MVarAttrs ^ mutable_foreign_names.
-mutable_var_attach_to_io_state(MVarAttrs) = X :-
-    X = MVarAttrs ^ mutable_attach_to_io_state.
-mutable_var_constant(MVarAttrs) = X :-
-    X = MVarAttrs ^ mutable_constant.
-mutable_var_thread_local(MVarAttrs) = X :-
-    X = MVarAttrs ^ mutable_thread_local.
-
-set_mutable_var_trailed(Trailed, !Attributes) :-
-    !Attributes ^ mutable_trailed := Trailed.
-set_mutable_add_foreign_name(ForeignName, !Attributes) :-
-    MaybeForeignNames0 = !.Attributes ^ mutable_foreign_names,
-    (
-        MaybeForeignNames0 = no,
-        MaybeForeignNames  = yes([ForeignName])
-    ;
-        MaybeForeignNames0 = yes(ForeignNames0),
-        ForeignNames = [ForeignName | ForeignNames0],
-        MaybeForeignNames   = yes(ForeignNames)
-    ),
-    !Attributes ^ mutable_foreign_names := MaybeForeignNames.
-set_mutable_var_attach_to_io_state(AttachToIOState, !Attributes) :-
-    !Attributes ^ mutable_attach_to_io_state := AttachToIOState.
-set_mutable_var_constant(Constant, !Attributes) :-
-    !Attributes ^ mutable_constant := Constant.
-set_mutable_var_thread_local(ThreadLocal, !Attributes) :-
-    !Attributes ^ mutable_thread_local := ThreadLocal.
+mutable_var_trailed(Const) = Trail :-
+    ( if
+        Const = mutable_is_not_constant(_AttachToIO, IsLocal),
+        % Const = mutable_is_constant would imply mutable_untrailed.
+        IsLocal = mutable_is_not_thread_local(Trail0),
+        % Local = mutable_is_thread_local would imply mutable_untrailed.
+        Trail0 = mutable_trailed
+    then
+        Trail = mutable_trailed
+    else
+        Trail = mutable_untrailed
+    ).
 
 %---------------------------------------------------------------------------%
 

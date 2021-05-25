@@ -6,19 +6,23 @@ bad_mutable.m:019: In declaration for mutable `not_an_inst':
 bad_mutable.m:019:   error: undefined inst `special_ground'/0.
 bad_mutable.m:021: Error in `:- mutable' declaration:
 bad_mutable.m:021:   unrecognised attribute `bad_attrib'.
-bad_mutable.m:023: Error: the type in a `:- mutable' declaration cannot contain
-bad_mutable.m:023:   variables: list(T).
-bad_mutable.m:025: Error: conflicting attributes in attribute list:
-bad_mutable.m:025:   [untrailed, trailed].
-bad_mutable.m:027: Error: multiple foreign_name attributes specified for the C
-bad_mutable.m:027:   backend.
-bad_mutable.m:030: Error: conflicting attributes in attribute list:
-bad_mutable.m:030:   [thread_local, trailed].
-bad_mutable.m:032: Error: conflicting attributes in attribute list:
-bad_mutable.m:032:   [thread_local, constant].
+bad_mutable.m:023: Error: the type in a `:- mutable' declaration may not
+bad_mutable.m:023:   contain variables, but `list(T)' does.
+bad_mutable.m:025: Error: attributes `untrailed' and `trailed' conflict.
+bad_mutable.m:028: Error: attributes `foreign_name("C", "one")' and
+bad_mutable.m:028:   `foreign_name("C", "two")' conflict.
+bad_mutable.m:030: Error: attributes `thread_local' and `trailed' conflict.
+bad_mutable.m:032: Error: attributes `constant' and `thread_local' conflict.
 bad_mutable.m:039: Error: in the expansion of the named inst
 bad_mutable.m:039:   `bad_mutable.t1'/0:
 bad_mutable.m:039:   the inst `unique' may not appear in `:- mutable'
 bad_mutable.m:039:   declarations.
 bad_mutable.m:041: In fifth argument of `:- mutable' declaration: error:
-bad_mutable.m:041:   expected a list of attributes, got thread_local.
+bad_mutable.m:041:   expected a list of attributes, got `thread_local'.
+bad_mutable.m:043: Error: attributes `constant' and `trailed' conflict.
+bad_mutable.m:045: Error: attribute `untrailed' is repeated.
+bad_mutable.m:049: Error: attribute `constant' is repeated.
+bad_mutable.m:050: Error: attribute `constant' is repeated.
+bad_mutable.m:052: Error: attribute `thread_local' conflicts with the default,
+bad_mutable.m:052:   which is that updates are trailed. You need to specify the
+bad_mutable.m:052:   `untrailed' attribute explicitly.
