@@ -2856,6 +2856,10 @@ in which case it will have only the declared modes.
 To create a higher-order term from a field selection function,
 an explicit lambda expression must be used,
 unless a single mode declaration is supplied for the field selection function.
+The reason for this is that normally,
+field access functions are implemented directly as unifications,
+without the code of a function being generated for them.
+The declaration acts as the request for the generation of that code.
 
 @node Field update
 @subsection Field update
@@ -2887,6 +2891,10 @@ in which case it will have only the declared modes.
 To create a higher-order term from a field update function,
 an explicit lambda expression must be used,
 unless a single mode declaration is supplied for the field update function.
+The reason for this is that normally, as with field access functions,
+field update functions are implemented directly as unifications,
+without the code of a function being generated for them.
+The declaration acts as the request for the generation of that code.
 
 Some fields cannot be updated using field update functions.
 For the constructor @samp{unsettable/2} below,
