@@ -1,0 +1,365 @@
+C BACKENDS
+
+For non-constant mutables the transformation is as follows:
+
+  :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
+
+===>
+
+  :- pragma foreign_decl("C", "
+          extern <CType> mutable_<varname>;
+          #ifdef MR_THREAD_SAFE
+              extern MercuryLock mutable_<varname>_lock;
+          #endif
+
+  ").
+
+  :- pragma foreign_code("C", "
+          <CType> mutable_<varname>;
+          #ifdef MR_THREAD_SAFE
+              MercuryLock mutable_<varname>_lock;
+          #endif
+  ").
+
+NOTES:
+
+* The name of the C global corresponding to mutable_<varname> may be
+  mangled.
+
+* <CType> is chosen on a backend-specific basis. If the value stored
+  in the mutable is always boxed it is `MR_Word' otherwise it may
+  be some native type, `MR_Integer', `MR_Float' etc.
+
+  :- initialise initialise_mutable_<varname>/0.
+
+  :- impure pred initialise_mutable_<varname> is det.
+
+  initialise_mutable_<varname> :-
+      impure pre_initialise_mutable_<varname>,
+      impure X = <initval>,
+      impure set_<varname>(X).
+
+  :- impure pred pre_initialise_mutable_<varname> is det.
+  :- pragma foreign_proc("C",
+      pre_initialise_mutable_<varname>,
+      [will_not_call_mercury],
+  "
+      #ifdef MR_THREAD_SAFE
+          pthread_init_mutex(&mutable_<varname>_lock, MR_MUTEX_ATTR);
+      #endif
+  ").
+
+Operations on mutables are defined in terms of the following four predicates.
+Note that they are all marked `thread_safe' in order to avoid having
+to acquire the global lock.
+
+  :- impure pred unsafe_set_<varname>(<vartype>::in(<varinst>)) is det.
+  :- pragma foreign_proc("C",
+      unsafe_set_<varname>(X::in(<varinst>)),
+      [will_not_call_mercury, thread_safe],
+  "
+      mutable_<varname> = X;
+  ").
+
+  :- semipure pred unsafe_get_<varname>(<vartype>::out(<varinst>)) is det.
+  :- pragma foreign_proc("C",
+      unsafe_get_<varname>(X::out(<varinst>)),
+      [promise_semipure, will_not_call_mercury, thread_safe],
+  "
+       X = mutable_<varname>;
+  ").
+
+  :- impure lock_<varname> is det.
+  :- pragma foreign_proc("C",
+      lock_<varname>,
+      [will_not_call_mercury, promise_pure],
+  "
+      #ifdef MR_THREAD_SAFE
+         MR_LOCK(&mutable_<varname>_lock, \"lock_<varname>/0\");
+      #endif
+  ").
+
+  :- impure unlock_<varname> is det.
+  :- pragma foreign_proc("C",
+      unlock_<varname>,
+      [will_not_call_mercury, promise_pure],
+  "
+      #ifdef MR_THREAD_SAFE
+         MR_UNLOCK(&mutable_<varname>_lock, \"unlock_<varname>/0\");
+      #endif
+  ").
+
+The other operations are all defined in Mercury using the above predicates:
+
+  :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.
+
+  set_<varname>(X) :-
+      impure lock_<varname>,
+      impure unsafe_set_<varname>(X),
+      impure unlock_<varname>.
+
+  :- semipure pred get_<varname>(<vartype>::out(<varinst>)) is det.
+
+  get_<varname>(X) :-
+      promise_semipure (
+          impure lock_<varname>
+          semipure unsafe_get_<varname>(X),
+          impure unlock_<varname>
+      ).
+
+etc.
+
+For thread-local mutables the transformation is as above, with the following
+differences:
+
+  :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [thread_local]).
+
+===>
+
+  :- pragma foreign_decl("C", "extern MR_Unsigned mutable_<varname>;").
+  :- pragma foreign_code("C", "MR_Unsigned mutable_<varname>;").
+
+  :- pragma foreign_proc("C",
+      pre_initialise_mutable_<varname>,
+      [will_not_call_mercury],
+  "
+      mutable_<varname> = MR_new_thread_local_mutable_index();
+  ").
+
+  :- pragma foreign_proc("C",
+      unsafe_set_<varname>(X::in(<varinst>)),
+      [will_not_call_mercury, thread_safe],
+  "
+      MR_set_thread_local_mutable(<type>, X, mutable_<varname>);
+  ").
+
+  :- pragma foreign_proc("C",
+      unsafe_get_<varname>(X::out(<varinst>)),
+      [promise_semipure, will_not_call_mercury, thread_safe],
+  "
+       MR_get_thread_local_mutable(<type>, X, mutable_<varname>);
+  ").
+
+  :- pragma foreign_proc("C",
+      lock_<varname>,
+      [will_not_call_mercury, promise_pure],
+  "
+      /* blank */
+  ").
+
+  :- pragma foreign_proc("C",
+      unlock_<varname>,
+      [will_not_call_mercury, promise_pure],
+  "
+      /* blank */
+  ").
+
+For constant mutables the transformation is:
+
+  :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [constant]).
+
+===>
+
+  :- pragma foreign_decl("C", "extern <CType> mutable_<varname>;").
+  :- pragma foreign_code("C", "<CType> mutable_<varname>;").
+
+  :- pred get_<varname>(<vartype>::out(<varinst>)) is det.
+  :- pragma foreign_proc("C",
+      get_<varname>(X::out(<varinst>)),
+      [will_not_call_mercury, promise_pure, thread_safe],
+  "
+      X = mutable_<varname>;
+  ").
+
+In order to initialise constant mutables we generate the following:
+
+  :- impure pred secret_initialization_only_set_<varname>(
+      <vartype>::in(<varinst>)) is det.
+
+  :- pragma foreign_proc("C",
+      secret_initialization_only_set_<varname>(X::in(<varinst>)),
+      [will_not_call_mercury],
+  "
+      mutable_<varname> = X;
+  ").
+
+  :- initialise initialise_mutable_<varname>/0.
+
+  :- impure pred initialise_mutable_<varname> is det.
+
+  initialise_mutable_<varname> :-
+      impure X = <initval>,
+      impure secret_initialization_only_set_<varname>(X).
+
+%-----------------------------------------------------------------------------%
+
+JAVA BACKEND
+
+For non-constant mutables the transformation is as follows:
+
+  :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
+
+===>
+
+  :- pragma foreign_code("Java", "
+      static <JType> mutable_<varname>;
+  ").
+
+  :- initialise initialise_mutable_<varname>/0.
+
+  :- impure pred initialise_mutable_<varname> is det.
+
+  initialise_mutable_<varname> :-
+      impure X = <initval>,
+      impure set_<varname>(X).
+
+<JType> is either `int' or `java.lang.Object' (all other types).
+
+Operations on mutables are defined in terms of the following two predicates.
+They are actually "safe": by the Java specification, 32-bit variables are
+loaded/stored atomically. Doubles and longs may be treated as two 32-bit
+variables, but Mercury does not expose them yet. The predicates are named so
+to minimise the differences with the C backends.
+
+  :- impure pred unsafe_set_<varname>(<vartype>::in(<varinst>)) is det.
+  :- pragma foreign_proc("Java",
+      unsafe_set_<varname>(X::in(<varinst>)),
+      [will_not_call_mercury, thread_safe],
+  "
+      mutable_<varname> = X;
+  ").
+
+  :- semipure pred unsafe_get_<varname>(<vartype>::out(<varinst>)) is det.
+  :- pragma foreign_proc("Java",
+      unsafe_get_<varname>(X::out(<varinst>)),
+      [promise_semipure, will_not_call_mercury, thread_safe],
+  "
+      X = mutable_<varname>;
+  ").
+
+If mutable_<varname> has the type `java.lang.Object' a cast is required
+after the code above, to cast X to the correct type. This is handled by
+the MLDS code generator.
+
+For thread-local mutables the transformation is as follows:
+
+  :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
+
+===>
+
+  :- pragma foreign_code("Java", "
+      static java.lang.ThreadLocal<JType> mutable_<varname> =
+          new java.lang.InheritableThreadLocal<JType>();
+  ").
+
+  :- pragma foreign_proc("Java",
+      unsafe_set_<varname>(X::in(<varinst>)),
+      [will_not_call_mercury, thread_safe],
+  "
+      mutable_<varname>.set(X);
+  ").
+
+  :- pragma foreign_proc("Java",
+      unsafe_get_<varname>(X::out(<varinst>)),
+      [promise_semipure, will_not_call_mercury, thread_safe],
+  "
+      X = mutable_<varname>.get();
+  ").
+
+<JType> is `java.lang.Integer' or `java.lang.Object'.
+
+The above prediates are called by these predicates, again to minimise
+differences with the C backends:
+
+  :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.
+
+  set_<varname>(X) :-
+      impure unsafe_set_<varname>(X).
+
+  :- semipure pred get_<varname>(<vartype>::out(<varinst>)) is det.
+
+  get_<varname>(X) :-
+      semipure unsafe_get_<varname>(X).
+
+For constant mutables the transformation is:
+
+  :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [constant]).
+
+===>
+
+  :- pragma foreign_code("Java", "
+      static <JType> mutable_<varname>;
+  ").
+
+  :- pred get_<varname>(<vartype>::out(<varinst>)) is det.
+  :- pragma foreign_proc("Java",
+      get_<varname>(X::out(<varinst>)),
+      [will_not_call_mercury, promise_pure, thread_safe],
+  "
+      X = mutable_<varname>;
+  ").
+
+In order to initialise constant mutables we generate the following:
+
+  :- impure pred secret_initialization_only_set_<varname>(
+      <vartype>::in(<varinst>)) is det.
+
+  :- pragma foreign_proc("Java",
+      secret_initialization_only_set_<varname>(X::in(<varinst>)),
+      [will_not_call_mercury],
+  "
+      mutable_<varname> = X;
+  ").
+
+  :- initialise initialise_mutable_<varname>/0.
+
+  :- impure pred initialise_mutable_<varname> is det.
+
+  initialise_mutable_<varname> :-
+      impure X = <initval>,
+      impure secret_initialization_only_set_<varname>(X).
+
+%-----------------------------------------------------------------------------%
+
+C# BACKEND
+
+The C# implementation is analogous to the Java implementation, except for
+thread-local mutables, which are transformed as follows:
+
+  :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
+
+===>
+
+  :- pragma foreign_code("C#", "
+      private static int mutable_<varname>;
+  ").
+
+  :- initialise initialise_mutable_<varname>/0.
+
+  :- impure pred initialise_mutable_<varname> is det.
+
+  initialise_mutable_<varname> :-
+      impure pre_initialise_mutable_<varname>,
+      impure X = <initvalue>,
+      impure set_<varname>(X).
+
+  :- pragma foreign_proc("C#",
+      pre_initialise_mutable_<varname>,
+      [will_not_call_mercury],
+  "
+      mutable_<varname> = runtime.ThreadLocalMutables.new_index();
+  ").
+
+  :- pragma foreign_proc("C#",
+      unsafe_set_<varname>(X::in(<varinst>)),
+      [will_not_call_mercury, thread_safe],
+  "
+      runtime.ThreadLocalMutables.set(mutable_<varname>, X);
+  ").
+
+  :- pragma foreign_proc("C#",
+      unsafe_get_<varname>(X::out(<varinst>)),
+      [promise_semipure, will_not_call_mercury, thread_safe],
+  "
+      X = runtime.ThreadLocalMutables.get(mutable_<varname>);
+  ").
