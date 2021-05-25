@@ -107,12 +107,6 @@ For more information on any of these issues see our
 <li> see also the comments in compiler/ml_code_gen.m
 </ul>
 
-<h3> .NET back-end </h3>
-<ul>
-<li> finish off standard library implementation
-<li> see also the TODO list in compiler/mlds_to_il.m
-</ul>
-
 <h2> debugger </h2>
 
 <ul>
@@ -209,7 +203,6 @@ For more information on any of these issues see our
      [we do allow this in case where the mode can be determined from
      the inst of the high-order arguments]
 
-
 <li> improve support for higher-order programming, eg. by providing
      operators in the standard library which do things like:
      <ul>
@@ -217,16 +210,6 @@ For more information on any of these issues see our
      <li>take a predicate with one output argument and treat it like a function.
      ie. <tt>:- func (pred(T)) = T.</tt>
      </ul>
-</ul>
-
-<h2> module system: </h2>
-
-<ul>
-<li> produce warnings for implementation imports that are not needed
-
-<li> produce warnings for imports that are in the wrong place
-  (in the interface instead of the implementation, and vice versa)
-  	[vice versa done by stayl]
 </ul>
 
 <h2> source-level transformations </h2>
@@ -248,9 +231,6 @@ For more information on any of these issues see our
 <h2> code generation: </h2>
 
 <ul>
-<li> allow floating point fields of structures without boxing
-	(need multi-word fields)
-
 <li> stack allocation of structures
 
 </ul>
