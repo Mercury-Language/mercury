@@ -8,7 +8,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: prog_mutable.m.
-% Main authors: rafe, juliensf.
+% Main authors: rafe, juliensf, zs.
 %
 %---------------------------------------------------------------------------%
 
@@ -39,6 +39,12 @@
                 mp_type_name_func   :: type_foreign_name_func
             ).
 
+    % This function should lookup the name of the given Mercury type
+    % in the given foreign target language, even if the Mercury type
+    % is defined using a foreign_type pragma. This means that our caller
+    % needs to embed in this function access to a version of the type table
+    % from *after* all type definitions have been processed.
+    %
 :- type type_foreign_name_func ==
     (func(foreign_language, mer_type) = string).
 
@@ -120,56 +126,30 @@ implement_mutable(ModuleParams, ItemMutable,
         make_mutable_aux_pred_decl(ModuleName, MutableName, Type, Inst,
             Context),
         NeededPredKinds, PredDecls),
-    add_aux_pred_defns_for_mutable(ModuleParams, ItemMutable,
+    implement_defns_for_mutable(ModuleParams, ItemMutable,
         ClauseInfos, ForeignProcs, FPEInfo,
         !ForeignDeclCodeCord, !ForeignBodyCodeCord, !PredTargetNames).
 
 %---------------------------------------------------------------------------%
 
-:- pred add_aux_pred_defns_for_mutable(module_params::in,
-    item_mutable_info::in,
+:- pred implement_defns_for_mutable(module_params::in, item_mutable_info::in,
     list(item_clause_info)::out, list(item_foreign_proc)::out,
     item_fproc_export::out,
     cord(foreign_decl_code)::in, cord(foreign_decl_code)::out,
     cord(foreign_body_code)::in, cord(foreign_body_code)::out,
     pred_target_names::in, pred_target_names::out) is det.
 
-add_aux_pred_defns_for_mutable(ModuleParams, ItemMutable,
+implement_defns_for_mutable(ModuleParams, ItemMutable,
         ClauseInfos, ForeignProcs, FPEInfo,
         !ForeignDeclCodes, !ForeignBodyCodes, !PredTargetNames) :-
-    % The transformation here is documented in the comments at the
-    % beginning of prog_mutable.m.
     ItemMutable = item_mutable_info(MutableName,
         _OrigType, Type, _OrigInst, _Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
     Globals = ModuleParams ^ mp_globals,
     get_mutable_target_params(Globals, MutAttrs, TargetParams),
     Lang = TargetParams ^ mtp_target_lang,
-
-    MutAttrs = mutable_var_attributes(_LangMap, Const),
-
-    % Work out what name to give the global in the target language.
-    ModuleName = ModuleParams ^ mp_module_name,
-    decide_mutable_target_var_name(ModuleName, MutableName, MutAttrs,
-        Lang, TargetMutableName),
-    % We need ModuleParams after all type definitions have been processed
-    % as an input, because the target-language-specific name of the type
-    % of the global variable we are defining here depends on whether
-    % there are any foreign_type declarations for Type.
-    (
-        Lang = lang_c,
-        define_mutable_global_var_c(ModuleParams, TargetMutableName, Type,
-            Const, Context, !ForeignDeclCodes, !ForeignBodyCodes)
-    ;
-        Lang = lang_csharp,
-        define_mutable_global_var_csharp(TargetMutableName, Type,
-            Const, Context, !ForeignBodyCodes)
-    ;
-        Lang = lang_java,
-        define_mutable_global_var_java(TargetMutableName, Type,
-            Const, Context, !ForeignBodyCodes)
-    ),
-
+    define_mutable_global_var(ModuleParams, Lang, MutableName, Type, MutAttrs,
+        Context, TargetMutableName, !ForeignDeclCodes, !ForeignBodyCodes),
     define_aux_preds_for_mutable(ModuleParams, TargetParams, ItemMutable,
         TargetMutableName, ClauseInfos, ForeignProcs, FPEInfo,
         !PredTargetNames).
@@ -179,16 +159,70 @@ add_aux_pred_defns_for_mutable(ModuleParams, ItemMutable,
 % Define the global holding the mutable.
 %
 
+:- pred define_mutable_global_var(module_params::in, foreign_language::in,
+    string::in, mer_type::in, mutable_var_attributes::in, prog_context::in,
+    string::out,
+    cord(foreign_decl_code)::in, cord(foreign_decl_code)::out,
+    cord(foreign_body_code)::in, cord(foreign_body_code)::out) is det.
+
+define_mutable_global_var(ModuleParams, Lang, MutableName, Type, MutAttrs,
+        Context, TargetMutableName, !ForeignDeclCodes, !ForeignBodyCodes) :-
+    MutAttrs = mutable_var_attributes(LangMap, Const),
+    ModuleName = ModuleParams ^ mp_module_name,
+    mutable_target_var_name(ModuleName, MutableName, LangMap, Lang,
+        TargetMutableName),
+    (
+        Lang = lang_c,
+        define_mutable_global_var_c(ModuleParams, TargetMutableName, Type,
+            Const, Context, ForeignDeclCode, ForeignBodyCode),
+        cord.snoc(ForeignDeclCode, !ForeignDeclCodes)
+    ;
+        Lang = lang_csharp,
+        define_mutable_global_var_csharp(TargetMutableName, Type,
+            Const, Context, ForeignBodyCode)
+    ;
+        Lang = lang_java,
+        define_mutable_global_var_java(TargetMutableName, Type,
+            Const, Context, ForeignBodyCode)
+    ),
+    cord.snoc(ForeignBodyCode, !ForeignBodyCodes).
+
+    % Decide what the name of the underlying global used to implement the
+    % mutable should be. If there is a foreign_name attribute for the target
+    % language, then use that, otherwise construct one based on the
+    % Mercury name for the mutable.
+    %
+    % The variable name should be acceptable in all our current backends.
+    %
+:- pred mutable_target_var_name(module_name::in, string::in,
+    map(foreign_language, string)::in, foreign_language::in,
+    string::out) is det.
+
+mutable_target_var_name(ModuleName, MutableName, LangMap, Lang,
+        TargetMutableVarName) :-
+    ( if map.search(LangMap, Lang, TargetVarName) then
+        TargetMutableVarName = TargetVarName
+    else
+        RawVarName = "mutable_variable_" ++ MutableName,
+        QualifiedVarName0 = qualified(ModuleName, RawVarName),
+        ( if mercury_std_library_module_name(ModuleName) then
+            QualifiedVarName =
+                add_outermost_qualifier("mercury", QualifiedVarName0)
+        else
+            QualifiedVarName = QualifiedVarName0
+        ),
+        TargetMutableVarName = sym_name_mangle(QualifiedVarName)
+    ).
+
     % Define the global variable used to hold the mutable on the C backend,
     % and if needed, the mutex controlling access to it.
     %
 :- pred define_mutable_global_var_c(module_params::in, string::in,
     mer_type::in, mutable_maybe_constant::in, prog_context::in,
-    cord(foreign_decl_code)::in, cord(foreign_decl_code)::out,
-    cord(foreign_body_code)::in, cord(foreign_body_code)::out) is det.
+    foreign_decl_code::out, foreign_body_code::out) is det.
 
 define_mutable_global_var_c(ModuleParams, TargetMutableName, Type,
-        Const, Context, !ForeignDeclCodes, !ForeignBodyCodes) :-
+        Const, Context, ForeignDeclCode, ForeignBodyCode) :-
     % The declaration we construct will be included in the .mh files. Since
     % these are grade independent, we need to output both the high- and
     % low-level C declarations for the global used to implement the mutable,
@@ -219,7 +253,6 @@ define_mutable_global_var_c(ModuleParams, TargetMutableName, Type,
         HighLevelTypeName = TypeName,
         LowLevelTypeName  = TypeName
     ),
-
     % Constant mutables do not require mutexes, as their values are never
     % updated. Thread-local mutables do not require mutexes either.
     ( if
@@ -242,7 +275,6 @@ define_mutable_global_var_c(ModuleParams, TargetMutableName, Type,
             "#endif\n"
         ]
     ),
-
     DeclBody = string.append_list([
         "#ifdef MR_HIGHLEVEL_CODE\n",
         "    extern ", HighLevelTypeName, " ", TargetMutableName, ";\n",
@@ -251,22 +283,19 @@ define_mutable_global_var_c(ModuleParams, TargetMutableName, Type,
         "#endif\n" | LockDeclStrs]),
     ForeignDeclCode = foreign_decl_code(lang_c, foreign_decl_is_exported,
         floi_literal(DeclBody), Context),
-    cord.snoc(ForeignDeclCode, !ForeignDeclCodes),
-
     DefnBody = string.append_list([
         TypeName, " ", TargetMutableName, ";\n" | LockDefnStrs]),
-    ForeignBodyCode = foreign_body_code(lang_c,
-        floi_literal(DefnBody), Context),
-    cord.snoc(ForeignBodyCode, !ForeignBodyCodes).
+    ForeignBodyCode =
+        foreign_body_code(lang_c, floi_literal(DefnBody), Context).
 
     % Define the global variable used to hold the mutable on the C# backend.
     %
 :- pred define_mutable_global_var_csharp(string::in, mer_type::in,
     mutable_maybe_constant::in, prog_context::in,
-    cord(foreign_body_code)::in, cord(foreign_body_code)::out) is det.
+    foreign_body_code::out) is det.
 
 define_mutable_global_var_csharp(TargetMutableName, Type, Const, Context,
-        !ForeignBodyCodes) :-
+        ForeignBodyCode) :-
     IsThreadLocal = mutable_var_thread_local(Const),
     (
         IsThreadLocal = mutable_not_thread_local,
@@ -280,18 +309,17 @@ define_mutable_global_var_csharp(TargetMutableName, Type, Const, Context,
         TypeStr = "int"
     ),
     DefnBody = "static " ++ TypeStr ++ " " ++ TargetMutableName ++ ";\n",
-    DefnForeignBodyCode =
-        foreign_body_code(lang_csharp, floi_literal(DefnBody), Context),
-    cord.snoc(DefnForeignBodyCode, !ForeignBodyCodes).
+    ForeignBodyCode =
+        foreign_body_code(lang_csharp, floi_literal(DefnBody), Context).
 
     % Define the global variable used to hold the mutable on the Java backend.
     %
 :- pred define_mutable_global_var_java(string::in, mer_type::in,
     mutable_maybe_constant::in, prog_context::in,
-    cord(foreign_body_code)::in, cord(foreign_body_code)::out) is det.
+    foreign_body_code::out) is det.
 
 define_mutable_global_var_java(TargetMutableName, Type, Const, Context,
-        !ForeignBodyCodes) :-
+        ForeignBodyCode) :-
     IsThreadLocal = mutable_var_thread_local(Const),
     (
         IsThreadLocal = mutable_not_thread_local,
@@ -317,9 +345,8 @@ define_mutable_global_var_java(TargetMutableName, Type, Const, Context,
             " = new java.lang.InheritableThreadLocal<", TypeStr, ">();\n"
         ])
     ),
-    DefnForeignBodyCode =
-        foreign_body_code(lang_java, floi_literal(DefnBody), Context),
-    cord.snoc(DefnForeignBodyCode, !ForeignBodyCodes).
+    ForeignBodyCode =
+        foreign_body_code(lang_java, floi_literal(DefnBody), Context).
 
 %---------------------------------------------------------------------------%
 
@@ -332,6 +359,11 @@ define_mutable_global_var_java(TargetMutableName, Type, Const, Context,
 define_aux_preds_for_mutable(ModuleParams, TargetParams, ItemMutable,
         TargetMutableName, ClauseInfos, ForeignProcs, PragmaFPEInfo,
         !PredTargetNames) :-
+    % The transformation we implement here is documented in notes/mutables.
+    ItemMutable = item_mutable_info(MutableName,
+        _OrigType, Type, _OrigInst, Inst,
+        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
+    MutAttrs = mutable_var_attributes(_LangMap, Const),
     TargetParams = mutable_target_params(Lang, BoxPolicy,
         _PreInit, _LockUnlock, _UnsafeAccess,
         PrivatePredKinds, PublicPredKinds),
@@ -368,8 +400,9 @@ define_aux_preds_for_mutable(ModuleParams, TargetParams, ItemMutable,
         ModuleName = ModuleParams ^ mp_module_name,
         set.list_to_set(NeededPredKinds, !:PredKinds),
         ( if set.remove(mutable_pred_pre_init, !PredKinds) then
-            define_pre_init_pred(ModuleName, TargetParams, ItemMutable,
-                TargetMutableName, Attrs, CallPreInitExpr, PreInitForeignProc),
+            define_pre_init_pred(ModuleName, TargetParams, MutableName,
+                Const, Context, TargetMutableName, Attrs,
+                CallPreInitExpr, PreInitForeignProc),
             MaybeCallPreInitExpr = yes(CallPreInitExpr),
             PreInitForeignProcs = [PreInitForeignProc]
         else
@@ -380,9 +413,9 @@ define_aux_preds_for_mutable(ModuleParams, TargetParams, ItemMutable,
             set.remove(mutable_pred_lock, !PredKinds),
             set.remove(mutable_pred_unlock, !PredKinds)
         then
-            define_lock_unlock_preds(ModuleName, TargetParams, ItemMutable,
-                TargetMutableName, Attrs, LockUnlockExprs,
-                LockUnlockForeignProcs),
+            define_lock_unlock_preds(ModuleName, TargetParams, MutableName,
+                Const, Context, TargetMutableName, Attrs,
+                LockUnlockExprs, LockUnlockForeignProcs),
             MaybeLockUnlockExprs = yes(LockUnlockExprs)
         else
             MaybeLockUnlockExprs = no,
@@ -393,8 +426,8 @@ define_aux_preds_for_mutable(ModuleParams, TargetParams, ItemMutable,
             set.remove(mutable_pred_unsafe_set, !PredKinds)
         then
             define_unsafe_get_set_preds(ModuleParams, TargetParams,
-                ItemMutable, TargetMutableName, Attrs,
-                UnsafeGetSetExprs, UnsafeGetSetForeignProcs),
+                MutableName, Type, Inst, Const, Context, TargetMutableName,
+                Attrs, UnsafeGetSetExprs, UnsafeGetSetForeignProcs),
             MaybeUnsafeGetSetExprs = yes(UnsafeGetSetExprs)
         else
             MaybeUnsafeGetSetExprs = no,
@@ -404,9 +437,9 @@ define_aux_preds_for_mutable(ModuleParams, TargetParams, ItemMutable,
         % We do this after defining (a) the lock and unlock predicates and
         % (b) the unsafe get and set predicates, since they give us
         % (a) MaybeLockUnlockExprs and (b) MaybeUnsafeGetSetExprs respectively.
-        define_main_get_set_preds(ModuleName, TargetParams, ItemMutable,
-            TargetMutableName, Attrs, MaybeLockUnlockExprs,
-            MaybeUnsafeGetSetExprs, InitSetPredName,
+        define_main_get_set_preds(ModuleName, TargetParams, MutableName,
+            Inst, Const, Context, TargetMutableName, Attrs,
+            MaybeLockUnlockExprs, MaybeUnsafeGetSetExprs, InitSetPredName,
             GetSetClauseInfos, GetSetForeignProcs, !PredKinds),
 
         ( if set.remove(mutable_pred_init, !PredKinds) then
@@ -430,15 +463,12 @@ define_aux_preds_for_mutable(ModuleParams, TargetParams, ItemMutable,
     % Define the pre_init predicates, if needed by the init predicate.
     %
 :- pred define_pre_init_pred(module_name::in, mutable_target_params::in,
-    item_mutable_info::in, string::in, pragma_foreign_proc_attributes::in,
-    goal::out, item_foreign_proc::out) is det.
+    string::in, mutable_maybe_constant::in, prog_context::in, string::in,
+    pragma_foreign_proc_attributes::in, goal::out, item_foreign_proc::out)
+    is det.
 
-define_pre_init_pred(ModuleName, TargetParams, ItemMutable, TargetMutableName,
-        Attrs, CallPreInitExpr, ForeignProc) :-
-    ItemMutable = item_mutable_info(MutableName,
-        _OrigType, _Type, _OrigInst, _Inst,
-        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    MutAttrs = mutable_var_attributes(_LangMap, Const),
+define_pre_init_pred(ModuleName, TargetParams, MutableName, Const, Context,
+        TargetMutableName, Attrs, CallPreInitExpr, ForeignProc) :-
     (
         Const = mutable_is_not_constant(_, _)
     ;
@@ -487,15 +517,12 @@ define_pre_init_pred(ModuleName, TargetParams, ItemMutable, TargetMutableName,
     % Define the lock and unlock predicates, if needed.
     %
 :- pred define_lock_unlock_preds(module_name::in, mutable_target_params::in,
-    item_mutable_info::in, string::in, pragma_foreign_proc_attributes::in,
+    string::in, mutable_maybe_constant::in, prog_context::in, string::in,
+    pragma_foreign_proc_attributes::in,
     {goal, goal}::out, list(item_foreign_proc)::out) is det.
 
-define_lock_unlock_preds(ModuleName, TargetParams, ItemMutable,
+define_lock_unlock_preds(ModuleName, TargetParams, MutableName, Const, Context,
         TargetMutableName, Attrs, LockUnlockExprs, ForeignProcs) :-
-    ItemMutable = item_mutable_info(MutableName,
-        _OrigType, _Type, _OrigInst, _Inst,
-        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    MutAttrs = mutable_var_attributes(_LangMap, Const),
     (
         Const = mutable_is_not_constant(_, _)
     ;
@@ -570,17 +597,15 @@ define_lock_unlock_preds(ModuleName, TargetParams, ItemMutable,
     % Define the unsafe get and set predicates, if needed.
     %
 :- pred define_unsafe_get_set_preds(module_params::in,
-    mutable_target_params::in, item_mutable_info::in,
-    string::in, pragma_foreign_proc_attributes::in,
+    mutable_target_params::in, string::in, mer_type::in, mer_inst::in,
+    mutable_maybe_constant::in, prog_context::in, string::in,
+    pragma_foreign_proc_attributes::in,
     {goal, goal}::out, list(item_foreign_proc)::out) is det.
 
-define_unsafe_get_set_preds(ModuleParams, TargetParams, ItemMutable,
-        TargetMutableName, Attrs, UnsafeGetSetExprs, ForeignProcs) :-
+define_unsafe_get_set_preds(ModuleParams, TargetParams, MutableName,
+        Type, Inst, Const, Context, TargetMutableName, Attrs,
+        UnsafeGetSetExprs, ForeignProcs) :-
     ModuleName = ModuleParams ^ mp_module_name,
-    ItemMutable = item_mutable_info(MutableName,
-        _OrigType, Type, _OrigInst, Inst,
-        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
-    MutAttrs = mutable_var_attributes(_LangMap, Const),
     (
         Const = mutable_is_not_constant(_, _)
     ;
@@ -708,17 +733,16 @@ define_unsafe_get_set_preds(ModuleParams, TargetParams, ItemMutable,
     % MaybeLockUnlockExprs and MaybeUnsafeGetSetExprs.
     %
 :- pred define_main_get_set_preds(module_name::in, mutable_target_params::in,
-    item_mutable_info::in, string::in, pragma_foreign_proc_attributes::in,
+    string::in, mer_inst::in, mutable_maybe_constant::in, prog_context::in,
+    string::in, pragma_foreign_proc_attributes::in,
     maybe({goal, goal})::in, maybe({goal, goal})::in, sym_name::out,
     list(item_clause_info)::out, list(item_foreign_proc)::out,
     set(mutable_pred_kind)::in, set(mutable_pred_kind)::out) is det.
 
-define_main_get_set_preds(ModuleName, TargetParams, ItemMutable,
-        TargetMutableName, Attrs, MaybeLockUnlockExprs, MaybeUnsafeGetSetExprs,
+define_main_get_set_preds(ModuleName, TargetParams, MutableName, Inst, Const,
+        Context, TargetMutableName, Attrs,
+        MaybeLockUnlockExprs, MaybeUnsafeGetSetExprs,
         InitSetPredName, ClauseInfos, ForeignProcs, !PredKinds) :-
-    ItemMutable = item_mutable_info(MutableName,
-        _OrigType, _Type, _OrigInst, Inst,
-        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
     Lang = TargetParams ^ mtp_target_lang,
     BoxPolicy = TargetParams ^ mtp_box_policy,
     varset.new_named_var("X", X, varset.init, VarSetOnlyX),
@@ -734,7 +758,6 @@ define_main_get_set_preds(ModuleName, TargetParams, ItemMutable,
     %   and then
     % - having our caller check that there are no mutable_pred_kinds that
     %   it says we need but which we have *not* defined.
-    MutAttrs = mutable_var_attributes(_LangMap, Const),
     (
         Const = mutable_is_constant,
         ConstantGetPredName =
@@ -927,74 +950,6 @@ define_init_pred(ModuleName, Lang, ItemMutable, InitSetPredName,
 
 %---------------------------------------------------------------------------%
 
-    % Decide what the name of the underlying global used to implement the
-    % mutable should be. If there is a foreign_name attribute for the target
-    % language, then use that, otherwise construct one based on the
-    % Mercury name for the mutable.
-    %
-:- pred decide_mutable_target_var_name(module_name::in, string::in,
-    mutable_var_attributes::in, foreign_language::in, string::out) is det.
-
-decide_mutable_target_var_name(ModuleName, MutableName, MutAttrs,
-        ForeignLanguage, TargetMutableName) :-
-    MutAttrs = mutable_var_attributes(LangMap, _Const),
-    ( if map.search(LangMap, ForeignLanguage, TargetMutableName0) then
-        TargetMutableName = TargetMutableName0
-    else
-        TargetMutableName = mutable_var_name(ModuleName, MutableName)
-    ).
-
-    % The BoxPolicy says whether the mutable should always be boxed or not.
-    % The only difference between the high- and low-level C backends is that
-    % in the latter mutables are *always* boxed, whereas in the former
-    % they may not be. The other backends that support mutables are all
-    % native_if_possible.
-    %
-:- func global_foreign_type_name(module_params, box_policy, foreign_language,
-    mer_type) = string.
-
-global_foreign_type_name(ModuleParams, BoxPolicy, Lang, Type) = String :-
-    (
-        BoxPolicy = bp_always_boxed,
-        String = "MR_Word"
-    ;
-        BoxPolicy = bp_native_if_possible,
-        TypeNameFunc = ModuleParams ^ mp_type_name_func,
-        String = TypeNameFunc(Lang, Type)
-    ).
-
-%---------------------------------------------------------------------------%
-
-    % Generate a name for the target language variable that holds
-    % the current the state of the mutable.
-    %
-    % This variable name should be acceptable in all our current backends.
-    %
-:- func mutable_var_name(module_name, string) = string.
-
-mutable_var_name(ModuleName, Name) = MangledVarName :-
-    RawVarName = "mutable_variable_" ++ Name,
-    QualifiedVarName0 = qualified(ModuleName, RawVarName),
-    ( if mercury_std_library_module_name(ModuleName) then
-        QualifiedVarName =
-            add_outermost_qualifier("mercury", QualifiedVarName0)
-    else
-        QualifiedVarName = QualifiedVarName0
-    ),
-    MangledVarName = sym_name_mangle(QualifiedVarName).
-
-    % Returns the name of the mutex associated a given mutable. The input
-    % to this function is the name of the mutable in the target language,
-    % i.e. it is the result of a call to mutable_c_var_name/2 or one of the
-    % specified foreign names for the mutable.
-    %
-:- func mutable_mutex_var_name(string) = string.
-
-mutable_mutex_var_name(TargetMutableVarName) = MutexVarName :-
-    MutexVarName = TargetMutableVarName ++ "_lock".
-
-%---------------------------------------------------------------------------%
-
 :- type need_pre_init_pred
     --->    dont_need_pre_init_pred
     ;       need_pre_init_pred.
@@ -1060,7 +1015,7 @@ get_mutable_target_params(Globals, MutAttrs, TargetParams) :-
         LockUnlock = dont_need_lock_unlock_preds,
         UnsafeAccess = dont_need_unsafe_get_set_preds
     ;
-        Const = mutable_is_not_constant(_, _),
+        Const = mutable_is_not_constant(_, Local),
         (
             CompilationTarget = target_c,
             PreInit = need_pre_init_pred,
@@ -1068,12 +1023,11 @@ get_mutable_target_params(Globals, MutAttrs, TargetParams) :-
             UnsafeAccess = need_unsafe_get_set_preds
         ;
             CompilationTarget = target_csharp,
-            IsThreadLocal = mutable_var_thread_local(Const),
             (
-                IsThreadLocal = mutable_thread_local,
+                Local = mutable_is_thread_local,
                 PreInit = need_pre_init_pred
             ;
-                IsThreadLocal = mutable_not_thread_local,
+                Local = mutable_is_not_thread_local(_),
                 PreInit = dont_need_pre_init_pred
             ),
             LockUnlock = dont_need_lock_unlock_preds,
@@ -1137,7 +1091,6 @@ compute_needed_private_mutable_aux_preds(PreInit, LockUnlock, UnsafeAccess,
     PrivateAuxPreds = InitPreds ++ PreInitPreds ++
         UnsafeAccessPreds ++ LockUnlockPreds.
 
-
 %---------------------------------------------------------------------------%
 
     % This predicate decides which of the publicly visible auxiliary predicates
@@ -1161,7 +1114,7 @@ compute_needed_public_mutable_aux_preds(MutAttrs, PublicAuxPreds) :-
         GetSetPreds =
             [mutable_pred_constant_get, mutable_pred_constant_secret_set]
     ;
-        Const = mutable_is_not_constant(AttachToIO, _Trail),
+        Const = mutable_is_not_constant(AttachToIO, _Local),
         % Create the standard, non-pure access predicates. These are
         % always created for non-constant mutables, even if the
         % `attach_to_io_state' attribute has been specified.
@@ -1179,6 +1132,17 @@ compute_needed_public_mutable_aux_preds(MutAttrs, PublicAuxPreds) :-
         )
     ),
     PublicAuxPreds = GetSetPreds.
+
+%---------------------------------------------------------------------------%
+
+    % Returns the name of the mutex associated eith a given mutable.
+    % The input to this function is the name of the mutable in the target
+    % language.
+    %
+:- func mutable_mutex_var_name(string) = string.
+
+mutable_mutex_var_name(TargetMutableVarName) = MutexVarName :-
+    MutexVarName = TargetMutableVarName ++ "_lock".
 
 %---------------------------------------------------------------------------%
 
@@ -1218,46 +1182,69 @@ make_mutable_aux_pred_decl(ModuleName, Name, Type, Inst, Context, Kind,
     ;
         Kind = mutable_pred_unsafe_get,
         PredSymName = mutable_unsafe_get_pred_sym_name(ModuleName, Name),
-        ArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))],
+        ArgTypesAndModes = [type_out(Type, Inst)],
         Purity = purity_semipure
     ;
         Kind = mutable_pred_unsafe_set,
         PredSymName = mutable_unsafe_set_pred_sym_name(ModuleName, Name),
-        ArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))],
+        ArgTypesAndModes = [type_in(Type, Inst)],
         Purity = purity_impure
     ;
         Kind = mutable_pred_std_get,
         PredSymName = mutable_get_pred_sym_name(ModuleName, Name),
-        ArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))],
+        ArgTypesAndModes = [type_out(Type, Inst)],
         Purity = purity_semipure
     ;
         Kind = mutable_pred_std_set,
         PredSymName = mutable_set_pred_sym_name(ModuleName, Name),
-        ArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))],
+        ArgTypesAndModes = [type_in(Type, Inst)],
         Purity = purity_impure
     ;
         Kind = mutable_pred_constant_get,
         PredSymName = mutable_get_pred_sym_name(ModuleName, Name),
-        ArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))],
+        ArgTypesAndModes = [type_out(Type, Inst)],
         Purity = purity_pure
     ;
         Kind = mutable_pred_constant_secret_set,
         PredSymName = mutable_secret_set_pred_sym_name(ModuleName, Name),
-        ArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))],
+        ArgTypesAndModes = [type_in(Type, Inst)],
         Purity = purity_impure
     ;
         Kind = mutable_pred_io_get,
         PredSymName = mutable_get_pred_sym_name(ModuleName, Name),
-        ArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))]
-            ++ io_state_pair,
+        ArgTypesAndModes = [type_out(Type, Inst) | io_state_pair],
         Purity = purity_pure
     ;
         Kind = mutable_pred_io_set,
         PredSymName = mutable_set_pred_sym_name(ModuleName, Name),
-        ArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))]
-            ++ io_state_pair,
+        ArgTypesAndModes = [type_in(Type, Inst) | io_state_pair],
         Purity = purity_pure
     ),
+    make_aux_pred_decl(ModuleName, Name, PredSymName, ArgTypesAndModes, Purity,
+        Kind, Context, PredDecl).
+
+%---------------------------------------------------------------------------%
+
+:- func type_in(mer_type, mer_inst) = type_and_mode.
+
+type_in(Type, Inst) = type_and_mode(Type, in_mode(Inst)).
+
+:- func type_out(mer_type, mer_inst) = type_and_mode.
+
+type_out(Type, Inst) = type_and_mode(Type, out_mode(Inst)).
+
+:- func io_state_pair = list(type_and_mode).
+
+io_state_pair =
+    [type_and_mode(io_state_type, di_mode),
+    type_and_mode(io_state_type, uo_mode)].
+
+:- pred make_aux_pred_decl(module_name::in, string::in, sym_name::in,
+    list(type_and_mode)::in, purity::in, mutable_pred_kind::in,
+    prog_context::in, item_pred_decl_info::out) is det.
+
+make_aux_pred_decl(ModuleName, Name, PredSymName, ArgTypesAndModes, Purity,
+        Kind, Context, PredDecl) :-
     WithType = maybe.no,
     WithMode = maybe.no,
     Origin = compiler_origin_mutable(ModuleName, Name, Kind),
@@ -1273,11 +1260,26 @@ make_mutable_aux_pred_decl(ModuleName, Name, Type, Inst, Context, Kind,
         TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints,
         Context, SeqNum).
 
-:- func io_state_pair = list(type_and_mode).
+%---------------------------------------------------------------------------%
 
-io_state_pair =
-    [type_and_mode(io_state_type, di_mode),
-    type_and_mode(io_state_type, uo_mode)].
+    % The BoxPolicy says whether the mutable should always be boxed or not.
+    % The only difference between the high- and low-level C backends is that
+    % in the latter mutables are *always* boxed, whereas in the former
+    % they may not be. The other backends that support mutables are all
+    % native_if_possible.
+    %
+:- func global_foreign_type_name(module_params, box_policy, foreign_language,
+    mer_type) = string.
+
+global_foreign_type_name(ModuleParams, BoxPolicy, Lang, Type) = String :-
+    (
+        BoxPolicy = bp_always_boxed,
+        String = "MR_Word"
+    ;
+        BoxPolicy = bp_native_if_possible,
+        TypeNameFunc = ModuleParams ^ mp_type_name_func,
+        String = TypeNameFunc(Lang, Type)
+    ).
 
 %---------------------------------------------------------------------------%
 %
