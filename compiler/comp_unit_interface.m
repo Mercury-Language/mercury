@@ -528,19 +528,6 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0, !Specs) :-
 make_instance_abstract(Instance) =
     Instance ^ ci_method_instances := instance_body_abstract.
 
-:- func mutable_public_aux_pred_decls(module_name, item_mutable_info)
-    = list(item_pred_decl_info).
-
-mutable_public_aux_pred_decls(ModuleName, ItemMutable) = PublicAuxPredDecls :-
-    ItemMutable = item_mutable_info(MutableName,
-        _OrigType, Type, _OrigInst, Inst, _Value, _Varset, MutAttrs,
-        Context, _SeqNum),
-    compute_needed_public_mutable_aux_preds(MutAttrs, PublicAuxPreds),
-    list.map(
-        make_mutable_aux_pred_decl(ModuleName, MutableName, Type, Inst,
-            Context),
-        PublicAuxPreds, PublicAuxPredDecls).
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 

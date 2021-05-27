@@ -74,11 +74,11 @@
     % constants, and substitute different constant types (since all the
     % cons_ids that refer to HLDS concepts are constants).
     %
-    % Using two different types requires a translation from one to the
-    % other. While the runtime cost would be acceptable, the cost in code
-    % complexity isn't, since the translation isn't confined to
-    % make_hlds.m. (I found this out the hard way.) This is especially so
-    % if we want to use in each case only the tightest possible type.
+    % Using two different types requires a translation from one to the other.
+    % While the runtime cost would be acceptable, the cost in code complexity
+    % is not, since the translation isn't confined to make_hlds.m.
+    % (I found this out the hard way.) This is especially so if
+    % we want to use the tightest possible type in each case.
     % For example, while construct goals can involve all cons_ids,
     % deconstruct goals and switches can currently involve only the
     % cons_ids that can appear in parse trees.
@@ -1159,7 +1159,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     % This is how instantiatednesses and modes are represented.
     %
     % Note that the inst of a variable at a given program point encodes
-    % five different kinds distinct but related kinds of information:
+    % five different kinds of distinct but related kinds of information:
     %
     % 1     Is the program point reachable?
     %
@@ -1169,7 +1169,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
     %
     % 4     Of the nodes which are bound, which are known to be bound to
     %       only a subset of the function symbols of the type of the affected
-    %       type tree node?
+    %       type tree node, and if so, what is the subset?
     %
     % 5     Of the nodes which are bound, and which correspond to a higher
     %       order type, what is the determinism and what are the modes

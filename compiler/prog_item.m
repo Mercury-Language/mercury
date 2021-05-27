@@ -1451,6 +1451,7 @@
 :- type item_decl_pragma_info == item_pragma_info(decl_pragma).
 :- type item_impl_pragma_info == item_pragma_info(impl_pragma).
 :- type item_generated_pragma_info == item_pragma_info(generated_pragma).
+:- type item_fproc_export == item_pragma_info(pragma_info_foreign_proc_export).
 :- type item_pragma_info(T)
     --->    item_pragma_info(
                 prag_type                       :: T,

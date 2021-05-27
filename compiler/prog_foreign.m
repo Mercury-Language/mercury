@@ -36,6 +36,8 @@
 
 :- import_module bool.
 :- import_module list.
+:- import_module map.
+:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
@@ -181,6 +183,38 @@
 :- func qualify_name(string, string) = string.
 
 :- func convert_to_valid_c_identifier(string) = string.
+
+%-----------------------------------------------------------------------------%
+
+    % The exported predicate with the given sym_name and arity is represented
+    % in the target language as the string in the second argument.
+    % The pred_or_func is implicitly pf_predicate.
+    %
+    % Used in the implementation of mutable, initialise and finalise
+    % declarations.
+    %
+:- type pred_target_name == pair(sym_name_arity, string).
+
+    % Maps a mutable, initialise or finalise declaration, whose sequence number
+    % (which must be present and valid) is the integer key, to the
+    % the exported predicate or predicates that the compiler generates
+    % for that declaration.
+    %
+    % We use the sequence number as the key in a map so that we can invoke
+    % the exported initialization predicates in program order, as the
+    % language manual expects us to do.
+    %
+:- type pred_target_names
+    --->    pred_target_names(
+                map(int, list(pred_target_name))
+            ).
+
+    % Add a new initialize or finalize predicate.
+    %
+:- pred new_user_init_pred(module_name::in, int::in, sym_name::in, arity::in,
+    string::out, pred_target_names::in, pred_target_names::out) is det.
+:- pred new_user_final_pred(module_name::in, int::in, sym_name::in, arity::in,
+    string::out, pred_target_names::in, pred_target_names::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -424,6 +458,58 @@ convert_to_valid_c_identifier_2(String) = Name :-
         % String is the empty string.
         Name = String
     ).
+
+%---------------------------------------------------------------------------%
+
+new_user_init_pred(ModuleName, SeqNum, SymName, Arity,
+        CName, !PredTargetNames) :-
+    % XXX There is some debate as to whether duplicate initialise directives
+    % in the same module should constitute an error. Currently it is not, but
+    % we may wish to revisit this code. The reference manual is therefore
+    % deliberately quiet on the subject.
+    new_pred_target_name(ModuleName, "init", SeqNum, SymName, Arity,
+        CName, !PredTargetNames).
+
+new_user_final_pred(ModuleName, SeqNum, SymName, Arity,
+        CName, !PredTargetNames) :-
+    new_pred_target_name(ModuleName, "final", SeqNum, SymName, Arity,
+        CName, !PredTargetNames).
+
+:- pred new_pred_target_name(module_name::in, string::in, int::in,
+    sym_name::in, arity::in, string::out,
+    pred_target_names::in, pred_target_names::out) is det.
+
+new_pred_target_name(ModuleName0, InitOrFinal, SeqNum, SymName, Arity, CName,
+        !PredTargetNames) :-
+    !.PredTargetNames = pred_target_names(PredTargetNameMap0),
+    ( if mercury_std_library_module_name(ModuleName0) then
+        ModuleName = add_outermost_qualifier("mercury", ModuleName0)
+    else
+        ModuleName = ModuleName0
+    ),
+    ModuleNameStr = prog_foreign.sym_name_mangle(ModuleName),
+    ( if map.search(PredTargetNameMap0, SeqNum, SeqNumPredTargetNames0) then
+        % The only situation in which a sequence number will have
+        % more than one entry is when a solver type's representation
+        % involves more than one mutable. The number of these should be
+        % be limited, which is why the quadratic behavior of this code is ok.
+        % We do nevertheless need to include something, such as Suffix,
+        % to distinguish the target names from each other.
+        list.length(SeqNumPredTargetNames0, Suffix),
+        CName = string.format("%s__user_%s_pred_%d_%d",
+            [s(ModuleNameStr), s(InitOrFinal), i(SeqNum), i(Suffix)]),
+        PredTargetName = sym_name_arity(SymName, Arity) - CName,
+        SeqNumPredTargetNames = SeqNumPredTargetNames0 ++ [PredTargetName],
+        map.det_update(SeqNum, SeqNumPredTargetNames,
+            PredTargetNameMap0, PredTargetNameMap)
+    else
+        CName = string.format("%s__user_%s_pred_%d_%d",
+            [s(ModuleNameStr), s(InitOrFinal), i(SeqNum), i(0)]),
+        PredTargetName = sym_name_arity(SymName, Arity) - CName,
+        map.det_insert(SeqNum, [PredTargetName],
+            PredTargetNameMap0, PredTargetNameMap)
+    ),
+    !:PredTargetNames = pred_target_names(PredTargetNameMap).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.prog_foreign.
