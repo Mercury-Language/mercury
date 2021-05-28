@@ -384,7 +384,7 @@ maybe_handle_stack_flush(BeforeAfter, GoalExpr, Info, !Common) :-
     ( if
         simplify_do_common_struct(Info),
         not simplify_do_extra_common_struct(Info),
-        will_flush(GoalExpr, BeforeAfter) = yes
+        will_flush(BeforeAfter, GoalExpr) = yes
     then
         common_info_stack_flush(!Common)
     else
@@ -395,9 +395,9 @@ maybe_handle_stack_flush(BeforeAfter, GoalExpr, Info, !Common) :-
     % that causes any variable to be flushed to its stack slot or to a
     % register at the specified time, and `yes' otherwise.
     %
-:- func will_flush(hlds_goal_expr, before_after) = bool.
+:- func will_flush(before_after, hlds_goal_expr) = bool.
 
-will_flush(GoalExpr, BeforeAfter) = WillFlush :-
+will_flush(BeforeAfter, GoalExpr) = WillFlush :-
     (
         GoalExpr = unify(_, _, _, Unify, _),
         ( if Unify = complicated_unify(_, _, _) then
@@ -423,24 +423,21 @@ will_flush(GoalExpr, BeforeAfter) = WillFlush :-
     ;
         GoalExpr = generic_call(GenericCall, _, _, _, _),
         (
-            GenericCall = higher_order(_, _, _, _),
-            WillFlush0 = yes
-        ;
-            GenericCall = class_method(_, _, _, _),
-            WillFlush0 = yes
-        ;
-            GenericCall = event_call(_),
-            WillFlush0 = no
-        ;
-            GenericCall = cast(_),
-            WillFlush0 = no
-        ),
-        (
             BeforeAfter = before,
             WillFlush = no
         ;
             BeforeAfter = after,
-            WillFlush = WillFlush0
+            (
+                ( GenericCall = higher_order(_, _, _, _)
+                ; GenericCall = class_method(_, _, _, _)
+                ),
+                WillFlush = yes
+            ;
+                ( GenericCall = event_call(_)
+                ; GenericCall = cast(_)
+                ),
+                WillFlush = no
+            )
         )
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
