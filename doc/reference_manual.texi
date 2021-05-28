@@ -6921,7 +6921,7 @@ but the caller is allowed to depend on those type variables
 satisfying the declared type class constraints, if any.
 
 For example, the function @samp{make_list} constructs
-a value of type @samp{list_of_showable}
+a value of type @samp{showable_list}
 containing a sequence of values of different types,
 all of which are instances of the @samp{showable} class
 
@@ -6946,7 +6946,7 @@ applies the @samp{show} method of the @samp{showable} class
 to the values in such a list.
 
 @example
-:- func process_list(list_of_showable) = list(string).
+:- func process_list(showable_list) = list(string).
 process_list(nil) = "".
 process_list(cons(Head, Tail)) = [show(Head) | process_list(Tail)].
 @end example
