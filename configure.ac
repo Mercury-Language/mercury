@@ -2061,8 +2061,7 @@ AC_SUBST(MR_LITTLE_ENDIAN)
 
 AC_MSG_CHECKING(whether we can use files as locks)
 AC_CACHE_VAL(mercury_cv_have_ocreat_oexcl,
-    AC_TRY_COMPILE(
-        [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
             #ifdef MR_HAVE_SYS_TYPES_H
             #include <sys/types.h>
             #endif
@@ -2072,15 +2071,15 @@ AC_CACHE_VAL(mercury_cv_have_ocreat_oexcl,
             #ifdef MR_HAVE_FCNTL_H
             #include <fcntl.h>
             #endif
-        ],
-        [
+        ]],
+        [[
             #if defined(O_CREAT) && defined(O_EXCL)
 
             #else
                 /* Deliberate syntax error. */
                 }
             #endif
-        ],
+        ]])],
         [mercury_cv_have_ocreat_oexcl=yes],
         [mercury_cv_have_ocreat_oexcl=no])
 )
