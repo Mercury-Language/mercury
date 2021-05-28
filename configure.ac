@@ -1563,8 +1563,7 @@ if test "$mercury_cv_siginfo_t" = yes; then
         #   SPARC   REG_PC
         #   MIPS    CTX_EPC
         for try_reg in REG_RIP REG_EIP REG_PC CTX_EPC ; do
-            AC_TRY_RUN(
-                [
+            AC_RUN_IFELSE([AC_LANG_SOURCE([[
                     changequote(<<,>>)
                     #define _GNU_SOURCE /* for register constants */
                     #include <stdio.h>
@@ -1609,9 +1608,9 @@ if test "$mercury_cv_siginfo_t" = yes; then
                         save_pc = uc->uc_mcontext.gregs[$try_reg];
                     }
                     changequote([,])
-                ],
+                ]])],
                 [mercury_cv_pc_access=$try_reg;mercury_cv_pc_access_greg=yes],
-                [true])
+                [true],[])
             if test "$mercury_cv_pc_access" != no; then
                 break
             fi
@@ -2008,8 +2007,7 @@ AC_DEFINE_UNQUOTED(MR_SYNC_TERM_SIZE, $SYNC_TERM_SIZE)
 
 AC_MSG_CHECKING(whether architecture is big-endian)
 AC_CACHE_VAL(mercury_cv_is_bigender,
-    AC_TRY_RUN(
-        [
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
             #include <stdlib.h>
             int main() {
                 int     x = 1;
@@ -2022,9 +2020,9 @@ AC_CACHE_VAL(mercury_cv_is_bigender,
                 else
                     exit(1);
             }
-        ],
+        ]])],
         [mercury_cv_is_bigender=yes],
-        [mercury_cv_is_bigender=no])
+        [mercury_cv_is_bigender=no],[])
 )
 AC_MSG_RESULT($mercury_cv_is_bigender)
 if test "$mercury_cv_is_bigender" = yes; then
@@ -2036,8 +2034,7 @@ AC_SUBST(MR_BIG_ENDIAN)
 
 AC_MSG_CHECKING(whether architecture is little-endian)
 AC_CACHE_VAL(mercury_cv_is_littleender,
-    AC_TRY_RUN(
-        [
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
             #include <stdlib.h>
             int main() {
                 int     x = 1;
@@ -2050,9 +2047,9 @@ AC_CACHE_VAL(mercury_cv_is_littleender,
                 else
                     exit(1);
             }
-        ],
+        ]])],
         [mercury_cv_is_littleender=yes],
-        [mercury_cv_is_littleender=no])
+        [mercury_cv_is_littleender=no],[])
 )
 AC_MSG_RESULT($mercury_cv_is_littleender)
 if test "$mercury_cv_is_littleender" = yes; then
@@ -2158,8 +2155,7 @@ fi
 
 AC_MSG_CHECKING(to see if we can handle contexts blocking on IO)
 AC_CACHE_VAL(mercury_cv_can_do_pending_io,
-    AC_TRY_RUN(
-        [
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
             #ifdef MR_HAVE_SYS_SELECT_H
             #include <sys/select.h>
             #endif
@@ -2177,9 +2173,9 @@ AC_CACHE_VAL(mercury_cv_can_do_pending_io,
                 err = select(1, &f, &f, &f, &zero);
                 exit(err != 0);
             }
-        ],
+        ]])],
         [mercury_cv_can_do_pending_io=yes],
-        [mercury_cv_can_do_pending_io=no])
+        [mercury_cv_can_do_pending_io=no],[])
 )
 AC_MSG_RESULT($mercury_cv_can_do_pending_io)
 if test "$mercury_cv_can_do_pending_io" = yes; then
@@ -2191,23 +2187,20 @@ AC_SUBST(MR_CAN_DO_PENDING_IO)
 
 AC_MSG_CHECKING(for sched.h cpuset macros)
 AC_CACHE_VAL(mercury_cv_have_sched_cpuset_macros,
-    AC_TRY_COMPILE(
-        [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
             #define _GNU_SOURCE
             #ifdef MR_HAVE_SCHED_H
             #include <sched.h>
             #endif
-        ],
-        [
+        ]], [[
             #if defined(CPU_ALLOC) && defined(CPU_COUNT_S)
             #else
                 /* Deliberate syntax error. */
                 }
             #endif
-        ],
+        ]])],
         [mercury_cv_have_sched_cpuset_macros=yes],
-        [mercury_cv_have_sched_cpuset_macros=no]
-    )
+        [mercury_cv_have_sched_cpuset_macros=no])
 )
 AC_MSG_RESULT($mercury_cv_have_sched_cpuset_macros)
 if test "$mercury_cv_have_sched_cpuset_macros" = yes; then
@@ -2370,13 +2363,11 @@ case "$ac_cv_prog_gcc" in yes)
                     # may be used to target x86.
                     AC_MSG_CHECKING(whether C compiler targets x86_64)
                     AC_CACHE_VAL(mercury_cv_target_x86_64,
-                        AC_TRY_COMPILE(
-                            [],
-                            [
+                        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
                                 #ifndef __x86_64__
                                 #error "Target is not x86_64"
                                 #endif
-                            ],
+                            ]])],
                             [mercury_cv_target_x86_64=yes],
                             [mercury_cv_target_x86_64=no])
                     )
@@ -2525,8 +2516,7 @@ if test "$LIBRARY_PATH_FOR_GOTOS" != ""; then
 fi
 
 AC_CACHE_VAL(mercury_cv_gcc_labels,
-    AC_TRY_RUN(
-        [
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
             extern void     exit(int);
             void            *entry_foo_1;
             void            *entry_bar_1;
@@ -2571,9 +2561,9 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
             void *dummy_identity_function(void *p) {
                 return p;
             }
-        ],
+        ]])],
         [mercury_cv_gcc_labels=yes],
-        [mercury_cv_gcc_labels=no])
+        [mercury_cv_gcc_labels=no],[])
 )
 AC_MSG_RESULT($mercury_cv_gcc_labels)
 if test "$mercury_cv_gcc_labels" = yes; then
@@ -2584,8 +2574,7 @@ if test "$mercury_cv_gcc_labels" = yes; then
     AC_MSG_CHECKING(whether we can use asm labels)
 
     AC_CACHE_VAL(mercury_cv_asm_labels,
-    AC_TRY_RUN(
-        [
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
             #include <stdlib.h>
             void *volatile volatile_global_pointer;
             extern void mercury__label1 (void)
@@ -2604,9 +2593,9 @@ if test "$mercury_cv_gcc_labels" = yes; then
                     "/* this is a comment */");
                 exit(0);
             }
-        ],
+        ]])],
         [mercury_cv_asm_labels=yes],
-        [mercury_cv_asm_labels=no])
+        [mercury_cv_asm_labels=no],[])
     )
     AC_MSG_RESULT($mercury_cv_asm_labels)
 else
@@ -2647,8 +2636,7 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
     fi
 
     AC_CACHE_VAL(mercury_cv_gcc_model_fast,
-    AC_TRY_RUN(
-        [
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
             #define MR_USE_GCC_NONLOCAL_GOTOS
             #define MR_USE_GCC_GLOBAL_REGISTERS
             #include "mercury_engine.h"
@@ -2662,9 +2650,9 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
                     exit(1);
                 exit(0);
             }
-        ],
+        ]])],
         [mercury_cv_gcc_model_fast=yes],
-        [mercury_cv_gcc_model_fast=no])
+        [mercury_cv_gcc_model_fast=no],[])
     )
     AC_MSG_RESULT($mercury_cv_gcc_model_fast)
 
@@ -2684,8 +2672,7 @@ save_CC="$CC"
 CC="$CC $CFLAGS_FOR_REGS"
 
 AC_CACHE_VAL(mercury_cv_gcc_model_reg,
-AC_TRY_RUN(
-    [
+AC_RUN_IFELSE([AC_LANG_SOURCE([[
         #define MR_USE_GCC_GLOBAL_REGISTERS
         #include "mercury_engine.h"
         changequote(<<,>>)
@@ -2698,9 +2685,9 @@ AC_TRY_RUN(
                 exit(1);
             exit(0);
         }
-    ],
+    ]])],
     [mercury_cv_gcc_model_reg=yes],
-    [mercury_cv_gcc_model_reg=no])
+    [mercury_cv_gcc_model_reg=no],[])
 )
 AC_MSG_RESULT($mercury_cv_gcc_model_reg)
 
@@ -2711,8 +2698,7 @@ CC="$save_CC"
 
 AC_MSG_CHECKING(whether we can support time profiling on this system)
 AC_CACHE_VAL(mercury_cv_profiling,
-AC_TRY_CPP(
-    [
+AC_PREPROC_IFELSE([AC_LANG_SOURCE([[
         /* The following code comes from runtime/mercury_timing.h */
         #include    <errno.h>
         #include    <limits.h>
@@ -2748,7 +2734,7 @@ AC_TRY_CPP(
             !defined(MR_HAVE_SETITIMER)
         #error "Time profiling not supported on this system"
         #endif
-    ],
+    ]])],
     [mercury_cv_profiling=yes],
     [mercury_cv_profiling=no]))
 AC_MSG_RESULT($mercury_cv_profiling)
@@ -3086,9 +3072,11 @@ LIBS="$save_LIBS"
 
 AC_MSG_CHECKING(whether we can use thread-local storage class extension)
 AC_CACHE_VAL(mercury_cv_thread_local_storage,
-    AC_TRY_COMPILE(
-        [],
-        [static __thread int thread_local_variable;],
+    AC_COMPILE_IFELSE(
+        [AC_LANG_PROGRAM(
+            [[]],
+            [[static __thread int thread_local_variable;]])
+        ],
         [mercury_cv_thread_local_storage=yes],
         [mercury_cv_thread_local_storage=no])
 )
@@ -4010,8 +3998,7 @@ AC_SUBST(AS)
 
 AC_MSG_CHECKING(whether structure assignment conflicts with global registers)
 AC_CACHE_VAL(mercury_cv_cannot_use_structure_assignment,
-AC_TRY_RUN(
-    [
+AC_RUN_IFELSE([AC_LANG_SOURCE([[
         changequote(<<,>>)
 
         /* MR_USE_GCC_GLOBAL_REGISTERS are essential to the purpose of the test. */
@@ -4037,9 +4024,9 @@ AC_TRY_RUN(
         }
 
         changequote([,])
-    ],
+    ]])],
     [mercury_cv_cannot_use_structure_assignment=no],
-    [mercury_cv_cannot_use_structure_assignment=yes])
+    [mercury_cv_cannot_use_structure_assignment=yes],[])
 )
 AC_MSG_RESULT($mercury_cv_cannot_use_structure_assignment)
 if test $mercury_cv_cannot_use_structure_assignment = "yes"; then
