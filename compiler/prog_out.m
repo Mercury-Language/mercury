@@ -25,7 +25,6 @@
 :- import_module parse_tree.prog_data_pragma.
 
 :- import_module io.
-:- import_module list.
 :- import_module maybe.
 
     % Write to a string the information in term context (at the moment,
@@ -189,6 +188,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_util.
 
+:- import_module list.
 :- import_module require.
 :- import_module string.
 :- import_module term.

@@ -11,23 +11,14 @@
 :- interface.
 
 :- import_module hlds.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
-:- import_module bool.
 :- import_module list.
-
-:- import_module hlds.hlds_clauses.
-:- import_module hlds.hlds_pred.
-:- import_module libs.
-:- import_module libs.globals.
-:- import_module libs.options.
-:- import_module parse_tree.prog_data.
-
-:- import_module maybe.
 :- import_module set_tree234.
-:- import_module term.
 
 :- func typecheck_report_max_iterations_exceeded(int) = error_spec.
 
@@ -49,16 +40,22 @@
 
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.pred_table.
+:- import_module libs.
+:- import_module libs.globals.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_pred_decl.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
+:- import_module bool.
 :- import_module edit_seq.
 :- import_module int.
+:- import_module maybe.
 :- import_module string.
 :- import_module varset.
 

@@ -36,7 +36,6 @@
 :- import_module assoc_list.
 :- import_module bag.
 :- import_module bool.
-:- import_module getopt.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -395,6 +394,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
 
+:- import_module getopt.
 :- import_module int.
 :- import_module pair.
 :- import_module require.

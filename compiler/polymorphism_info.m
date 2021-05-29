@@ -25,26 +25,18 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
-:- import_module hlds.status.
 :- import_module hlds.vartypes.
-:- import_module libs.
-:- import_module libs.globals.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
-:- import_module term.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -234,8 +226,13 @@
 :- implementation.
 
 :- import_module hlds.make_goal.
+:- import_module hlds.status.
+:- import_module libs.
+:- import_module libs.globals.
 
+:- import_module bool.
 :- import_module int.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 

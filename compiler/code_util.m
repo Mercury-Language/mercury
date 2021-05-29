@@ -32,8 +32,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
-:- import_module maybe.
-:- import_module pair.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -132,6 +130,8 @@
 :- import_module hlds.code_model.
 
 :- import_module int.
+:- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module term.
 

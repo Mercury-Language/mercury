@@ -188,7 +188,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module term.
 
 %---------------------------------------------------------------------------%
 
@@ -310,6 +309,7 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
+:- import_module term.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%

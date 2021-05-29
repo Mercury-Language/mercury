@@ -24,12 +24,10 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
 :- import_module parse_tree.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module maybe.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -62,10 +60,12 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
 
 :- import_module int.
+:- import_module maybe.
 :- import_module require.
 :- import_module varset.
 

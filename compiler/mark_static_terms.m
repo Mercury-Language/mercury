@@ -23,7 +23,6 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 
 :- import_module bool.
 :- import_module io.
@@ -39,6 +38,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.file_util.

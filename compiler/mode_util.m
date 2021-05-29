@@ -27,7 +27,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module map.
 
 %---------------------------------------------------------------------------%
 % XXX Group related declarations together.
@@ -313,6 +312,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module require.

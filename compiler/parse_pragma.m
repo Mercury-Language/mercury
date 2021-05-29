@@ -18,7 +18,6 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_data.
@@ -44,6 +43,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_pragma_analysis.
 :- import_module parse_tree.parse_pragma_foreign.
 :- import_module parse_tree.parse_pragma_tabling.

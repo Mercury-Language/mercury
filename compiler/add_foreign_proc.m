@@ -15,7 +15,6 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
-:- import_module maybe.
 
 :- pred add_pragma_foreign_procs(ims_list(item_foreign_proc)::in,
     module_info::in, module_info::out,
@@ -55,6 +54,7 @@
 :- import_module bag.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
