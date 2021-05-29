@@ -53,7 +53,6 @@
 :- import_module recompilation.
 
 :- import_module cord.
-:- import_module counter.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -700,6 +699,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module counter.
 :- import_module int.
 :- import_module require.
 :- import_module string.
