@@ -2313,7 +2313,7 @@ AC_SUBST(MR_DARWIN_SETJMP_WORKAROUND)
 CFLAGS_FOR_REGS=
 CFLAGS_FOR_GOTOS=
 LIBRARY_PATH_FOR_GOTOS=
-case "$ac_cv_prog_gcc" in yes)
+case "$ac_cv_c_compiler_gnu" in yes)
     case "`$CC --version < /dev/null`" in
         2.8*)
             CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse"
@@ -4121,7 +4121,7 @@ DEFAULT_LINKAGE="shared"
 if test "$mercury_cv_enable_shared_libs" = "yes"; then
     case "$host" in
         i*86-*-linux|i*86-*-linux-gnu|x86_64-*-linux*)
-            case $ac_cv_prog_gcc in
+            case "$ac_cv_c_compiler_gnu" in
                 yes)
                     AC_MSG_RESULT(yes)
                     EXT_FOR_SHARED_LIB=so
