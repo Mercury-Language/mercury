@@ -20,10 +20,11 @@ dnl MERCURY_MSG(MESSAGE)
 define(MERCURY_MSG,
 [echo $1 1>&AS_MESSAGE_FD])
 #-----------------------------------------------------------------------------#
-AC_INIT(scripts/mmc.in)
+AC_INIT
+AC_CONFIG_SRCDIR([scripts/mmc.in])
 TMPDIR=${TMPDIR=/tmp}
 
-AC_PREREQ(2.69)
+AC_PREREQ([2.69])
 
 #-----------------------------------------------------------------------------#
 #
