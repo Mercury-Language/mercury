@@ -494,7 +494,7 @@ generate_private_interface_int0(AugCompUnit, ParseTreeInt0, !Specs) :-
     ImpInstances = list.map(make_instance_abstract, ImpInstances0),
 
     ImpPredDecls = ImpPredDecls0 ++ list.condense(
-        list.map(mutable_public_aux_pred_decls(ModuleName), ImpMutables)),
+        list.map(declare_mutable_aux_preds_for_int0(ModuleName), ImpMutables)),
 
     IntTypeDefns = IntTypeDefnsAbs ++ IntTypeDefnsMer ++ IntTypeDefnsForeign,
     ImpTypeDefns = ImpTypeDefnsAbs ++ ImpTypeDefnsMer ++ ImpTypeDefnsForeign,

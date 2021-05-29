@@ -21,7 +21,6 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.make_hlds.qual_info.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_foreign.
@@ -205,7 +204,8 @@ check_mutable(ModuleInfo, ItemMutable, !Specs) :-
     MutAttrs = mutable_var_attributes(_LangMap, Const),
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     ( if
-        mutable_var_trailed(Const) = mutable_trailed,
+        Const = mutable_is_not_constant(_, Local),
+        mutable_thread_local_trailed(Local) = mutable_trailed,
         UseTrail = no
     then
         TrailPieces = [words("Error: trailed"), decl("mutable"),

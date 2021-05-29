@@ -1787,7 +1787,8 @@
 
 :- func mutable_var_thread_local(mutable_maybe_constant)
     = mutable_thread_local.
-:- func mutable_var_trailed(mutable_maybe_constant) = mutable_trailed.
+:- func mutable_thread_local_trailed(mutable_maybe_thread_local)
+    = mutable_trailed.
 
 %---------------------------------------------------------------------------%
 %
@@ -2764,16 +2765,11 @@ mutable_var_thread_local(Const) = Local :-
         Local = mutable_not_thread_local
     ).
 
-mutable_var_trailed(Const) = Trail :-
-    ( if
-        Const = mutable_is_not_constant(_AttachToIO, IsLocal),
-        % Const = mutable_is_constant would imply mutable_untrailed.
-        IsLocal = mutable_is_not_thread_local(Trail0),
-        % Local = mutable_is_thread_local would imply mutable_untrailed.
-        Trail0 = mutable_trailed
-    then
-        Trail = mutable_trailed
-    else
+mutable_thread_local_trailed(Local) = Trail :-
+    (
+        Local = mutable_is_not_thread_local(Trail)
+    ;
+        Local = mutable_is_thread_local,
         Trail = mutable_untrailed
     ).
 
