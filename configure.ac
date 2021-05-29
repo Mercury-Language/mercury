@@ -109,7 +109,7 @@ AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
 
 AC_ARG_WITH(cc,
     AS_HELP_STRING([--with-cc=<program>], [Specify which C compiler to use.]),
-    mercury_cv_with_cc="$withval", mercury_cv_with_cc="")
+    [mercury_cv_with_cc="$withval"], [mercury_cv_with_cc=""])
 
 case "$mercury_cv_with_cc" in
     yes)
@@ -682,7 +682,7 @@ fi
 AC_ARG_ENABLE(gc-large-config,
     AS_HELP_STRING([--disable-gc-large-config],
                    [disable large heaps when using conservative GC]),
-    enable_gc_large_config="$enableval",enable_gc_large_config=yes)
+    [enable_gc_large_config="$enableval"],[enable_gc_large_config=yes])
 
 AC_MSG_CHECKING(whether to enable large heaps when using conservative GC)
 case "$enable_gc_large_config" in
@@ -710,12 +710,12 @@ AC_SUBST(ENABLE_BOEHM_LARGE_CONFIG)
 AC_ARG_ENABLE(gc-mmap,
     AS_HELP_STRING([--enable-gc-mmap],
                    [use mmap instead of sbrk when using Boehm GC]),
-    enable_gc_mmap="$enableval",enable_gc_mmap=no)
+    [enable_gc_mmap="$enableval"],[enable_gc_mmap=no])
 
 AC_ARG_ENABLE(gc-munmap,
     AS_HELP_STRING([--enable-gc-munmap],
                    [enable unmapping of unused pages when using Boehm GC]),
-    enable_gc_munmap="$enableval",enable_gc_munmap=no)
+    [enable_gc_munmap="$enableval"],[enable_gc_munmap=no])
 
 AC_MSG_CHECKING(whether to enable unmapping of unused pages when using Boehm GC)
 case "$enable_gc_munmap" in
@@ -1261,7 +1261,7 @@ AC_ARG_ENABLE(symlinks,
                    symbolic links to be used by giving this option.
                    Note that symbolic links will only work on Windows if
                    you are using the Cygwin version of GCC.]),
-   [ enable_symlinks_opt=yes ])
+   [enable_symlinks_opt=yes])
 
 # If we're compiling the compiler on Windows, don't use symlinks when
 # installing unless the --enable-symlinks option is given.
@@ -1300,8 +1300,8 @@ AC_ARG_WITH(csharp-compiler,
     AS_HELP_STRING([--with-csharp-compiler=<compiler>],
                    [Specify which C Sharp compiler to use (default:
                    autodetect)]),
-    mercury_cv_with_csharp_compiler="$withval",
-    mercury_cv_with_csharp_compiler="")
+    [mercury_cv_with_csharp_compiler="$withval"],
+    [mercury_cv_with_csharp_compiler=""])
 MERCURY_CHECK_DOTNET
 
 # The Roslyn (i.e. Microsoft) C# compiler does not support signing assemblies
@@ -1332,8 +1332,8 @@ MERCURY_CHECK_JAVA
 AC_ARG_ENABLE(javac-flags-for-heap-size,
     AS_HELP_STRING([--enable-javac-flags-for-heap-size],
                    [enable maximum heap size option for Java compiler]),
-    enable_javac_flags_for_heap_size="$enableval",
-    enable_javac_flags_for_heap_size=yes)
+    [enable_javac_flags_for_heap_size="$enableval"],
+    [enable_javac_flags_for_heap_size=yes])
 
 case "$enable_javac_flags_for_heap_size" in
     yes)
@@ -1499,8 +1499,8 @@ AC_SUBST(HAVE_GETOPT)
 
 if test "$ac_cv_func_sigaction" = yes; then
 AC_MSG_CHECKING(for SA_SIGINFO and siginfo_t)
-AC_CACHE_VAL(mercury_cv_siginfo_t,
-AC_RUN_IFELSE([AC_LANG_SOURCE([[
+AC_CACHE_VAL([mercury_cv_siginfo_t],
+[AC_RUN_IFELSE([AC_LANG_SOURCE([[
         #include <stdio.h>
         #include <stdlib.h>
         #include <signal.h>
@@ -1544,7 +1544,7 @@ AC_RUN_IFELSE([AC_LANG_SOURCE([[
             save_signum = signum;
             save_cause = info->si_code;
         }
-    ]])],[mercury_cv_siginfo_t=yes],[mercury_cv_siginfo_t=no],[]))
+    ]])],[mercury_cv_siginfo_t=yes],[mercury_cv_siginfo_t=no],[])])
 AC_MSG_RESULT($mercury_cv_siginfo_t)
 else
     mercury_cv_siginfo_t=no
@@ -1554,7 +1554,7 @@ if test "$mercury_cv_siginfo_t" = yes; then
     AC_DEFINE(MR_HAVE_SIGINFO)
 
     AC_MSG_CHECKING(for PC access from signal handler context)
-    AC_CACHE_VAL(mercury_cv_pc_access,
+    AC_CACHE_VAL([mercury_cv_pc_access], [
         mercury_cv_pc_access=no
         mercury_cv_pc_access_greg=no
         # Which register contains the program counter:
@@ -1564,7 +1564,6 @@ if test "$mercury_cv_siginfo_t" = yes; then
         #   MIPS    CTX_EPC
         for try_reg in REG_RIP REG_EIP REG_PC CTX_EPC ; do
             AC_RUN_IFELSE([AC_LANG_SOURCE([[
-                    changequote(<<,>>)
                     #define _GNU_SOURCE /* for register constants */
                     #include <stdio.h>
                     #include <stdlib.h>
@@ -1607,7 +1606,6 @@ if test "$mercury_cv_siginfo_t" = yes; then
                         save_cause = info->si_code;
                         save_pc = uc->uc_mcontext.gregs[$try_reg];
                     }
-                    changequote([,])
                 ]])],
                 [mercury_cv_pc_access=$try_reg;mercury_cv_pc_access_greg=yes],
                 [true],[])
@@ -1615,7 +1613,7 @@ if test "$mercury_cv_siginfo_t" = yes; then
                 break
             fi
         done
-    )
+    ])
     AC_MSG_RESULT($mercury_cv_pc_access)
     if test "$mercury_cv_pc_access" != no; then
         AC_DEFINE_UNQUOTED(MR_PC_ACCESS,$mercury_cv_pc_access)
@@ -1628,7 +1626,7 @@ fi
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(for an integer type with the same size as a pointer)
-AC_CACHE_VAL(mercury_cv_word_type,
+AC_CACHE_VAL([mercury_cv_word_type], [
     MERCURY_TRY_STATIC_ASSERT(
         [],
         [sizeof(int) == sizeof(void *)],
@@ -1642,7 +1640,7 @@ AC_CACHE_VAL(mercury_cv_word_type,
                 [sizeof(long long) == sizeof(void *)],
                 [mercury_cv_word_type="long long"],
                 [mercury_cv_word_type=unknown])))
-)
+])
 AC_MSG_RESULT($mercury_cv_word_type)
 AC_DEFINE_UNQUOTED(MR_WORD_TYPE, $mercury_cv_word_type)
 MR_WORD_TYPE=$mercury_cv_word_type
@@ -1913,13 +1911,13 @@ AC_SUBST(MR_LONG_IS_64_BIT)
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(whether we can use unboxed floats)
-AC_CACHE_VAL(mercury_cv_unboxed_floats,
-    MERCURY_TRY_STATIC_ASSERT(
+AC_CACHE_VAL([mercury_cv_unboxed_floats],
+    [MERCURY_TRY_STATIC_ASSERT(
         [],
         [sizeof(double) == sizeof(void *)],
         [mercury_cv_unboxed_floats=yes],
         [mercury_cv_unboxed_floats=no])
-)
+])
 AC_MSG_RESULT($mercury_cv_unboxed_floats)
 if test "$mercury_cv_unboxed_floats" = yes; then
     HAVE_BOXED_FLOATS="--unboxed-float"
@@ -1932,13 +1930,13 @@ AC_SUBST(HAVE_BOXED_FLOATS)
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(whether float is 64-bit)
-AC_CACHE_VAL(mercury_cv_float_is_64_bit,
-    MERCURY_TRY_STATIC_ASSERT(
+AC_CACHE_VAL([mercury_cv_float_is_64_bit],
+    [MERCURY_TRY_STATIC_ASSERT(
         [#include <limits.h>],
         [sizeof(float) * CHAR_BIT == 64],
         [mercury_cv_float_is_64_bit=yes],
         [mercury_cv_float_is_64_bit=no])
-)
+])
 AC_MSG_RESULT($mercury_cv_float_is_64_bit)
 if test "$mercury_cv_float_is_64_bit" = yes; then
     AC_DEFINE(MR_FLOAT_IS_64_BIT)
@@ -1948,13 +1946,13 @@ AC_SUBST(MR_FLOAT_IS_64_BIT)
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(whether double is 64-bit)
-AC_CACHE_VAL(mercury_cv_double_is_64_bit,
-    MERCURY_TRY_STATIC_ASSERT(
+AC_CACHE_VAL([mercury_cv_double_is_64_bit],
+    [MERCURY_TRY_STATIC_ASSERT(
         [#include <limits.h>],
         [sizeof(double) * CHAR_BIT == 64],
         [mercury_cv_double_is_64_bit=yes],
         [mercury_cv_double_is_64_bit=no])
-)
+])
 AC_MSG_RESULT($mercury_cv_double_is_64_bit)
 if test "$mercury_cv_double_is_64_bit" = yes; then
     AC_DEFINE(MR_DOUBLE_IS_64_BIT)
@@ -1964,13 +1962,13 @@ AC_SUBST(MR_DOUBLE_IS_64_BIT)
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(whether long double is 64-bit)
-AC_CACHE_VAL(mercury_cv_long_double_is_64_bit,
-    MERCURY_TRY_STATIC_ASSERT(
+AC_CACHE_VAL([mercury_cv_long_double_is_64_bit],
+    [MERCURY_TRY_STATIC_ASSERT(
         [#include <limits.h>],
         [sizeof(long double) * CHAR_BIT == 64],
         [mercury_cv_long_double_is_64_bit=yes],
         [mercury_cv_long_double_is_64_bit=no])
-)
+])
 AC_MSG_RESULT($mercury_cv_long_double_is_64_bit)
 if test "$mercury_cv_long_double_is_64_bit" = yes; then
     AC_DEFINE(MR_LONG_DOUBLE_IS_64_BIT)
@@ -2006,8 +2004,8 @@ AC_DEFINE_UNQUOTED(MR_SYNC_TERM_SIZE, $SYNC_TERM_SIZE)
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(whether architecture is big-endian)
-AC_CACHE_VAL(mercury_cv_is_bigender,
-    AC_RUN_IFELSE([AC_LANG_SOURCE([[
+AC_CACHE_VAL([mercury_cv_is_bigender],
+    [AC_RUN_IFELSE([AC_LANG_SOURCE([[
             #include <stdlib.h>
             int main() {
                 int     x = 1;
@@ -2023,7 +2021,7 @@ AC_CACHE_VAL(mercury_cv_is_bigender,
         ]])],
         [mercury_cv_is_bigender=yes],
         [mercury_cv_is_bigender=no],[])
-)
+])
 AC_MSG_RESULT($mercury_cv_is_bigender)
 if test "$mercury_cv_is_bigender" = yes; then
     AC_DEFINE(MR_BIG_ENDIAN)
@@ -2033,8 +2031,8 @@ AC_SUBST(MR_BIG_ENDIAN)
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(whether architecture is little-endian)
-AC_CACHE_VAL(mercury_cv_is_littleender,
-    AC_RUN_IFELSE([AC_LANG_SOURCE([[
+AC_CACHE_VAL([mercury_cv_is_littleender],
+    [AC_RUN_IFELSE([AC_LANG_SOURCE([[
             #include <stdlib.h>
             int main() {
                 int     x = 1;
@@ -2050,7 +2048,7 @@ AC_CACHE_VAL(mercury_cv_is_littleender,
         ]])],
         [mercury_cv_is_littleender=yes],
         [mercury_cv_is_littleender=no],[])
-)
+])
 AC_MSG_RESULT($mercury_cv_is_littleender)
 if test "$mercury_cv_is_littleender" = yes; then
     AC_DEFINE(MR_LITTLE_ENDIAN)
@@ -2060,8 +2058,8 @@ AC_SUBST(MR_LITTLE_ENDIAN)
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(whether we can use files as locks)
-AC_CACHE_VAL(mercury_cv_have_ocreat_oexcl,
-    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+AC_CACHE_VAL([mercury_cv_have_ocreat_oexcl],
+    [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
             #ifdef MR_HAVE_SYS_TYPES_H
             #include <sys/types.h>
             #endif
@@ -2082,7 +2080,7 @@ AC_CACHE_VAL(mercury_cv_have_ocreat_oexcl,
         ]])],
         [mercury_cv_have_ocreat_oexcl=yes],
         [mercury_cv_have_ocreat_oexcl=no])
-)
+])
 AC_MSG_RESULT($mercury_cv_have_ocreat_oexcl)
 if test "$mercury_cv_have_ocreat_oexcl" = yes; then
     AC_DEFINE(MR_HAVE_OCREAT_OEXCL)
@@ -2091,7 +2089,7 @@ fi
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(return values of system)
-AC_CACHE_VAL(mercury_cv_normal_system_retval,
+AC_CACHE_VAL([mercury_cv_normal_system_retval], [
     AC_TRY_RUN(
         [
             #include <stdlib.h>
@@ -2127,7 +2125,7 @@ AC_CACHE_VAL(mercury_cv_normal_system_retval,
         ],
         [mercury_cv_normal_system_retval=yes],
         [mercury_cv_normal_system_retval=no],
-        AC_TRY_COMPILE(
+        [AC_TRY_COMPILE(
             [
                 #include <sys/wait.h>
             ],
@@ -2141,9 +2139,9 @@ AC_CACHE_VAL(mercury_cv_normal_system_retval,
                 #endif
             ],
             [mercury_cv_normal_system_retval=yes],
-            [mercury_cv_normal_system_retval=no])
+            [mercury_cv_normal_system_retval=no])]
     )
-)
+])
 AC_MSG_RESULT($mercury_cv_normal_system_retval)
 if test "$mercury_cv_normal_system_retval" = no; then
         # Warn since VC++6 compiler fails this test
@@ -2153,7 +2151,7 @@ fi
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(to see if we can handle contexts blocking on IO)
-AC_CACHE_VAL(mercury_cv_can_do_pending_io,
+AC_CACHE_VAL([mercury_cv_can_do_pending_io], [
     AC_RUN_IFELSE([AC_LANG_SOURCE([[
             #ifdef MR_HAVE_SYS_SELECT_H
             #include <sys/select.h>
@@ -2175,7 +2173,7 @@ AC_CACHE_VAL(mercury_cv_can_do_pending_io,
         ]])],
         [mercury_cv_can_do_pending_io=yes],
         [mercury_cv_can_do_pending_io=no],[])
-)
+])
 AC_MSG_RESULT($mercury_cv_can_do_pending_io)
 if test "$mercury_cv_can_do_pending_io" = yes; then
     AC_DEFINE(MR_CAN_DO_PENDING_IO)
@@ -2185,8 +2183,8 @@ AC_SUBST(MR_CAN_DO_PENDING_IO)
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(for sched.h cpuset macros)
-AC_CACHE_VAL(mercury_cv_have_sched_cpuset_macros,
-    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+AC_CACHE_VAL([mercury_cv_have_sched_cpuset_macros],
+    [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
             #define _GNU_SOURCE
             #ifdef MR_HAVE_SCHED_H
             #include <sched.h>
@@ -2200,7 +2198,7 @@ AC_CACHE_VAL(mercury_cv_have_sched_cpuset_macros,
         ]])],
         [mercury_cv_have_sched_cpuset_macros=yes],
         [mercury_cv_have_sched_cpuset_macros=no])
-)
+])
 AC_MSG_RESULT($mercury_cv_have_sched_cpuset_macros)
 if test "$mercury_cv_have_sched_cpuset_macros" = yes; then
     AC_DEFINE(MR_HAVE_SCHED_CPUSET_MACROS)
@@ -2214,7 +2212,7 @@ AC_SUBST(MR_HAVE_SCHED_CPUSET_MACROS)
 # on MacOS 10.3. (It appears to be fixed in MacOS 10.4.)
 
 AC_MSG_CHECKING(to see if strings.h is needed for bzero)
-AC_CACHE_VAL(mercury_cv_bzero_needs_strings_header, [
+AC_CACHE_VAL([mercury_cv_bzero_needs_strings_header], [
     save_CC="$CC"
 
     case "$CC" in
@@ -2514,8 +2512,8 @@ if test "$LIBRARY_PATH_FOR_GOTOS" != ""; then
     export LIBRARY_PATH
 fi
 
-AC_CACHE_VAL(mercury_cv_gcc_labels,
-    AC_RUN_IFELSE([AC_LANG_SOURCE([[
+AC_CACHE_VAL([mercury_cv_gcc_labels],
+    [AC_RUN_IFELSE([AC_LANG_SOURCE([[
             extern void     exit(int);
             void            *entry_foo_1;
             void            *entry_bar_1;
@@ -2563,7 +2561,7 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
         ]])],
         [mercury_cv_gcc_labels=yes],
         [mercury_cv_gcc_labels=no],[])
-)
+])
 AC_MSG_RESULT($mercury_cv_gcc_labels)
 if test "$mercury_cv_gcc_labels" = yes; then
     AC_DEFINE(MR_HAVE_GCC_LABELS)
@@ -2572,8 +2570,8 @@ fi
 if test "$mercury_cv_gcc_labels" = yes; then
     AC_MSG_CHECKING(whether we can use asm labels)
 
-    AC_CACHE_VAL(mercury_cv_asm_labels,
-    AC_RUN_IFELSE([AC_LANG_SOURCE([[
+    AC_CACHE_VAL([mercury_cv_asm_labels],
+    [AC_RUN_IFELSE([AC_LANG_SOURCE([[
             #include <stdlib.h>
             void *volatile volatile_global_pointer;
             extern void mercury__label1 (void)
@@ -2595,7 +2593,7 @@ if test "$mercury_cv_gcc_labels" = yes; then
         ]])],
         [mercury_cv_asm_labels=yes],
         [mercury_cv_asm_labels=no],[])
-    )
+    ])
     AC_MSG_RESULT($mercury_cv_asm_labels)
 else
     mercury_cv_asm_labels=${mercury_cv_asm_labels-no}
@@ -2634,14 +2632,12 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
         export LIBRARY_PATH
     fi
 
-    AC_CACHE_VAL(mercury_cv_gcc_model_fast,
+    AC_CACHE_VAL([mercury_cv_gcc_model_fast],[
     AC_RUN_IFELSE([AC_LANG_SOURCE([[
             #define MR_USE_GCC_NONLOCAL_GOTOS
             #define MR_USE_GCC_GLOBAL_REGISTERS
             #include "mercury_engine.h"
-            changequote(<<,>>)
             MercuryEngine MR_engine_base;
-            changequote([,])
             int main() {
                 MR_mr0 = 20;
                 MR_mr7 = 22;
@@ -2652,7 +2648,7 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
         ]])],
         [mercury_cv_gcc_model_fast=yes],
         [mercury_cv_gcc_model_fast=no],[])
-    )
+    ])
     AC_MSG_RESULT($mercury_cv_gcc_model_fast)
 
     # Restore env vars modified above
@@ -2670,13 +2666,11 @@ AC_MSG_CHECKING(whether we can use global registers without gcc labels)
 save_CC="$CC"
 CC="$CC $CFLAGS_FOR_REGS"
 
-AC_CACHE_VAL(mercury_cv_gcc_model_reg,
-AC_RUN_IFELSE([AC_LANG_SOURCE([[
+AC_CACHE_VAL([mercury_cv_gcc_model_reg],
+[AC_RUN_IFELSE([AC_LANG_SOURCE([[
         #define MR_USE_GCC_GLOBAL_REGISTERS
         #include "mercury_engine.h"
-        changequote(<<,>>)
         MercuryEngine MR_engine_base;
-        changequote([,])
         int main() {
             MR_mr0 = 20;
             MR_mr7 = 22;
@@ -2687,7 +2681,7 @@ AC_RUN_IFELSE([AC_LANG_SOURCE([[
     ]])],
     [mercury_cv_gcc_model_reg=yes],
     [mercury_cv_gcc_model_reg=no],[])
-)
+])
 AC_MSG_RESULT($mercury_cv_gcc_model_reg)
 
 # Restore env vars modified above
@@ -2696,8 +2690,8 @@ CC="$save_CC"
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(whether we can support time profiling on this system)
-AC_CACHE_VAL(mercury_cv_profiling,
-AC_PREPROC_IFELSE([AC_LANG_SOURCE([[
+AC_CACHE_VAL([mercury_cv_profiling],
+[AC_PREPROC_IFELSE([AC_LANG_SOURCE([[
         /* The following code comes from runtime/mercury_timing.h */
         #include    <errno.h>
         #include    <limits.h>
@@ -2735,7 +2729,8 @@ AC_PREPROC_IFELSE([AC_LANG_SOURCE([[
         #endif
     ]])],
     [mercury_cv_profiling=yes],
-    [mercury_cv_profiling=no]))
+    [mercury_cv_profiling=no])
+])
 AC_MSG_RESULT($mercury_cv_profiling)
 
 #-----------------------------------------------------------------------------#
@@ -3070,15 +3065,15 @@ LIBS="$save_LIBS"
 #-----------------------------------------------------------------------------#
 
 AC_MSG_CHECKING(whether we can use thread-local storage class extension)
-AC_CACHE_VAL(mercury_cv_thread_local_storage,
-    AC_COMPILE_IFELSE(
+AC_CACHE_VAL([mercury_cv_thread_local_storage],
+    [AC_COMPILE_IFELSE(
         [AC_LANG_PROGRAM(
             [[]],
             [[static __thread int thread_local_variable;]])
         ],
         [mercury_cv_thread_local_storage=yes],
         [mercury_cv_thread_local_storage=no])
-)
+])
 AC_MSG_RESULT($mercury_cv_thread_local_storage)
 
 if test "$mercury_cv_thread_local_storage" = yes; then
@@ -3359,94 +3354,94 @@ AC_SUBST(GRADE)
 AC_ARG_ENABLE(inefficient-grades,
     AS_HELP_STRING([--enable-inefficient-grades],
                    [install inefficient versions of the library]),
-    enable_inefficient_grades="$enableval",enable_inefficient_grades=no)
+    [enable_inefficient_grades="$enableval"],[enable_inefficient_grades=no])
 
 AC_ARG_ENABLE(most-grades,
     AS_HELP_STRING([--disable-most-grades],
                    [install only the essential versions of the library]),
-    enable_most_grades="$enableval",enable_most_grades=yes)
+    [enable_most_grades="$enableval"],[enable_most_grades=yes])
 
 AC_ARG_ENABLE(nogc-grades,
     AS_HELP_STRING([--enable-nogc-grades],
                    [install no-gc versions of the library]),
-    enable_nogc_grades="$enableval",enable_nogc_grades=no)
+    [enable_nogc_grades="$enableval"],[enable_nogc_grades=no])
 
 # Not publicly documented since the agc grades are currently broken.
 #
 #  --enable-agc-grades     install accurate GC versions of the library
 AC_ARG_ENABLE(agc-grades, [],
-    enable_agc_grades="$enableval",enable_agc_grades=no)
+    [enable_agc_grades="$enableval"],[enable_agc_grades=no])
 
 AC_ARG_ENABLE(debug-grades,
     AS_HELP_STRING([--disable-debug-grades],
                    [do not install the debugging versions of the library]),
-    enable_debug_grades="$enableval",enable_debug_grades=yes)
+    [enable_debug_grades="$enableval"],[enable_debug_grades=yes])
 
 AC_ARG_ENABLE(decl-debug-grades,
     AS_HELP_STRING([--disable-decl-debug-grades],
                    [do not install the declarative debugging versions
                     of the library]),
-    enable_decl_debug_grades="$enableval",enable_decl_debug_grades=yes)
+    [enable_decl_debug_grades="$enableval"],[enable_decl_debug_grades=yes])
 
 AC_ARG_ENABLE(ssdebug-grades,
     AS_HELP_STRING([--enable-ssdebug-grades],
                    [install the ssdebug versions of the library]),
-    enable_ssdebug_grades="$enableval",enable_ssdebug_grades=no)
+    [enable_ssdebug_grades="$enableval"],[enable_ssdebug_grades=no])
 
 AC_ARG_ENABLE(prof-grades,
     AS_HELP_STRING([--disable-prof-grades],
                    [do not install profiling versions of the library]),
-    enable_prof_grades="$enableval",enable_prof_grades=yes)
+    [enable_prof_grades="$enableval"],[enable_prof_grades=yes])
 
 AC_ARG_ENABLE(old-prof-grades,
     AS_HELP_STRING([--disable-old-prof-grades],
                    [do not install non-deep profiling versions of the library]),
-    enable_old_prof_grades="$enableval",enable_old_prof_grades=yes)
+    [enable_old_prof_grades="$enableval"],[enable_old_prof_grades=yes])
 
 AC_ARG_ENABLE(trail-grades,
     AS_HELP_STRING([--disable-trail-grades],
                    [do not install trailing versions of the library]),
-    enable_trail_grades="$enableval",enable_trail_grades=yes)
+    [enable_trail_grades="$enableval"],[enable_trail_grades=yes])
 
 AC_ARG_ENABLE(par-grades,
     AS_HELP_STRING([--disable-par-grades],
                    [do not install thread-safe versions of the library]),
-    enable_par_grades="$enableval",enable_par_grades=yes)
+    [enable_par_grades="$enableval"],[enable_par_grades=yes])
 
 AC_ARG_ENABLE(mm-grades,
     AS_HELP_STRING([--enable-mm-grades],
                    [install minimal model versions of the library]),
-    enable_mm_grades="$enableval",enable_mm_grades=no)
+    [enable_mm_grades="$enableval"],[enable_mm_grades=no])
 
 AC_ARG_ENABLE(mmos-grades,
     AS_HELP_STRING([--enable-mmos-grades],
                    [install experimental minimal model own stack versions of the library]),
-    enable_mmos_grades="$enableval",enable_mmos_grades=no)
+    [enable_mmos_grades="$enableval"],[enable_mmos_grades=no])
 
 AC_ARG_ENABLE(dmm-grades,
    AS_HELP_STRING([--enable-dmm-grades],
                   [install minimal model debug versions of the library]),
-    enable_dmm_grades="$enableval",enable_dmm_grades=no)
+    [enable_dmm_grades="$enableval"],[enable_dmm_grades=no])
 
 AC_ARG_ENABLE(hlc-prof-grades,
-   AS_HELP_STRING([--enable-hlc-prof-grades],
+    AS_HELP_STRING([--enable-hlc-prof-grades],
                   [install profiling versions of the high level C grade]),
-   enable_hlc_prof_grades="$enableval",enable_hlc_prof_grades=no)
+    [enable_hlc_prof_grades="$enableval"],[enable_hlc_prof_grades=no])
 
 AC_ARG_ENABLE(hlc-low-level-debug-grades,
-   AS_HELP_STRING([--enable-hlc-low-level-debug-grades],
+    AS_HELP_STRING([--enable-hlc-low-level-debug-grades],
                   [install a low-level debugging version of the high level C grade]),
-   enable_hlc_ll_debug_grades="$enableval",enable_hlc_ll_debug_grades=no)
+    [enable_hlc_ll_debug_grades="$enableval"],[enable_hlc_ll_debug_grades=no])
 
 AC_ARG_ENABLE(rbmm-grades,
-   AS_HELP_STRING([--enable-rbmm-grades],
+    AS_HELP_STRING([--enable-rbmm-grades],
                   [install experimental region-based memory management versions of the library]),
-   enable_rbmm_grades="$enableval",enable_rbmm_grades=no)
+    [enable_rbmm_grades="$enableval"],[enable_rbmm_grades=no])
 
 AC_ARG_ENABLE(stseg-grades,
     AS_HELP_STRING([--enable-stseg-grades],
         [install stack segments versions of the library]),
-    [enable_stseg_grades="$enableval"],[enable_stseg_grades="no"])
+   [enable_stseg_grades="$enableval"],[enable_stseg_grades="no"])
 
 AC_ARG_ENABLE(minimal-install,
     AS_HELP_STRING([--enable-minimal-install],
@@ -3454,26 +3449,28 @@ AC_ARG_ENABLE(minimal-install,
     [enable_min_install="$enableval"],[enable_min_install="no"])
 
 AC_ARG_ENABLE(csharp-grade,
-   AS_HELP_STRING([--disable-csharp-grade], [do not install the C# grade]),
-   enable_csharp_grade="$enableval",enable_csharp_grade=yes)
+    AS_HELP_STRING([--disable-csharp-grade], [do not install the C# grade]),
+    [enable_csharp_grade="$enableval"],[enable_csharp_grade=yes])
 
 AC_ARG_ENABLE(java-grade,
-   AS_HELP_STRING([--disable-java-grade], [do not install the Java grade]),
-   enable_java_grade="$enableval",enable_java_grade=yes)
+    AS_HELP_STRING([--disable-java-grade], [do not install the Java grade]),
+    [enable_java_grade="$enableval"],[enable_java_grade=yes])
 
 AC_ARG_ENABLE(libgrades,
     AS_HELP_STRING([--enable-libgrades=...],
             [install exactly the given versions of the library.
             The versions are specified using a comma-separated
             list.]),
-    enable_libgrades_given=yes;enable_libgrades="$enableval",enable_libgrades_given=no)
+    [enable_libgrades_given=yes;enable_libgrades="$enableval"],
+    [enable_libgrades_given=no])
 
 AC_ARG_ENABLE(additional-libgrades,
     AS_HELP_STRING([--enable-additional-libgrades=...],
             [install the given versions of the library in addition
             to those requested by other options. The versions are
             specified using a comma-separated list.]),
-    enable_additional_libgrades_given=yes;enable_additional_libgrades="$enableval",enable_additional_libgrades_given=no)
+    [enable_additional_libgrades_given=yes;enable_additional_libgrades="$enableval"],
+    [enable_additional_libgrades_given=no])
 
 if test "$enable_most_grades" = no; then
     enable_inefficient_grades=no
@@ -3998,7 +3995,6 @@ AC_SUBST(AS)
 AC_MSG_CHECKING(whether structure assignment conflicts with global registers)
 AC_CACHE_VAL(mercury_cv_cannot_use_structure_assignment,
 AC_RUN_IFELSE([AC_LANG_SOURCE([[
-        changequote(<<,>>)
 
         /* MR_USE_GCC_GLOBAL_REGISTERS are essential to the purpose of the test. */
         /* We define MR_USE_GCC_NONLOCAL_GOTOS because some platforms */
@@ -4022,7 +4018,6 @@ AC_RUN_IFELSE([AC_LANG_SOURCE([[
         #endif
         }
 
-        changequote([,])
     ]])],
     [mercury_cv_cannot_use_structure_assignment=no],
     [mercury_cv_cannot_use_structure_assignment=yes],[])
@@ -4749,9 +4744,8 @@ LIBS="$LIBS $SOCKET_LIBRARY $NSL_LIBRARY"
 # Use LINK_ELSEIF to see whether we can use sockets.
 #
 AC_MSG_CHECKING(whether we can use sockets (for Morphine))
-AC_CACHE_VAL(mercury_cv_sockets_work,
-AC_LINK_IFELSE([AC_LANG_PROGRAM([[
-        changequote(<<,>>)
+AC_CACHE_VAL([mercury_cv_sockets_work],
+[AC_LINK_IFELSE([AC_LANG_PROGRAM([[
         /*
         ** The following code was copied from
         ** runtime/mercury_trace_external.c
@@ -4878,10 +4872,9 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[
             file_in = fdopen(fd, "r");
             file_out = fdopen(fd, "w");
         }
-        changequote([,])
     ]])],
     [mercury_cv_sockets_work=yes],
-    [mercury_cv_sockets_work=no]))
+    [mercury_cv_sockets_work=no])])
 
 # Figure out whether the test succeeded.
 #
@@ -4910,8 +4903,8 @@ LIBS="$save_LIBS"
 AC_ARG_ENABLE(extern-debug,
     AS_HELP_STRING([--disable-extern-debug],
                    [disable the external (separate process) debugger]),
-    mercury_cv_enable_extern_debug="$enableval",
-    mercury_cv_enable_extern_debug="$mercury_cv_sockets_work")
+    [mercury_cv_enable_extern_debug="$enableval"],
+    [mercury_cv_enable_extern_debug="$mercury_cv_sockets_work"])
 
 AC_MSG_CHECKING(whether to enable the external debugger)
 if test "$mercury_cv_enable_extern_debug" = "yes"; then
