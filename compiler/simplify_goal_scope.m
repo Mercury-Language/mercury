@@ -78,7 +78,7 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         const_struct_db_get_ground_term_enabled(ConstStructDb0,
             ConstStructEnabled),
         (
-            ConstStructEnabled = do_not_enable_const_struct,
+            ConstStructEnabled = do_not_enable_const_struct_user,
             module_info_get_globals(ModuleInfo0, Globals),
             globals.get_opt_tuple(Globals, OptTuple),
             CommonStruct = OptTuple ^ ot_opt_common_structs,
@@ -124,7 +124,7 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 GoalInfo = GoalInfo0
             )
         ;
-            ConstStructEnabled = enable_const_struct,
+            ConstStructEnabled = enable_const_struct_user,
             ( if
                 SubGoal0 = hlds_goal(SubGoalExpr, _),
                 SubGoalExpr = conj(plain_conj, Conjuncts),
@@ -270,10 +270,10 @@ disable_simplify_warning(Warning, !Tasks) :-
         % are tail recursive depends on the backend.)
     ;
         Warning = goal_warning_suspicious_recursion,
-        !Tasks ^ do_warn_suspicious_recursion := no
+        !Tasks ^ do_warn_suspicious_recursion := do_not_warn_suspicious_rec
     ;
         Warning = goal_warning_no_solution_disjunct,
-        !Tasks ^ do_warn_no_solution_disjunct := no
+        !Tasks ^ do_warn_no_solution_disjunct := do_not_warn_no_soln_disjunct
     ).
 
 %-----------------------------------------------------------------------------%

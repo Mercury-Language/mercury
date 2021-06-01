@@ -234,8 +234,6 @@
 :- pred simplify_do_elim_removable_scopes(simplify_info::in) is semidet.
 :- pred simplify_do_opt_duplicate_calls(simplify_info::in) is semidet.
 :- pred simplify_do_const_prop(simplify_info::in) is semidet.
-:- pred simplify_do_common_struct(simplify_info::in) is semidet.
-:- pred simplify_do_extra_common_struct(simplify_info::in) is semidet.
 :- pred simplify_do_ignore_par_conjunctions(simplify_info::in) is semidet.
 :- pred simplify_do_warn_suspicious_recursion(simplify_info::in) is semidet.
 :- pred simplify_do_warn_no_solution_disjunct(simplify_info::in) is semidet.
@@ -687,25 +685,25 @@ simplify_info_set_deleted_call_callees(X, !Info) :-
 
 simplify_do_warn_simple_code(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_warn_simple_code = yes.
+    SimplifyTasks ^ do_warn_simple_code = warn_simple_code.
 simplify_do_warn_duplicate_calls(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_warn_duplicate_calls = yes.
+    SimplifyTasks ^ do_warn_duplicate_calls = warn_duplicate_calls.
 simplify_do_warn_implicit_stream_calls(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_warn_implicit_stream_calls = yes.
+    SimplifyTasks ^ do_warn_implicit_streams = warn_implicit_streams.
 simplify_do_format_calls(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_format_calls = yes.
+    SimplifyTasks ^ do_invoke_format_call = invoke_format_call.
 simplify_do_warn_obsolete(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_warn_obsolete = yes.
+    SimplifyTasks ^ do_warn_obsolete = warn_obsolete.
 simplify_do_mark_code_model_changes(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_mark_code_model_changes = yes.
+    SimplifyTasks ^ do_mark_code_model_changes = mark_code_model_changes.
 simplify_do_after_front_end(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_after_front_end = yes.
+    SimplifyTasks ^ do_after_front_end = after_front_end.
 simplify_do_excess_assign(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_excess_assign = elim_excess_assigns.
@@ -714,34 +712,28 @@ simplify_do_test_after_switch(Info) :-
     SimplifyTasks ^ do_test_after_switch = opt_test_after_switch.
 simplify_do_elim_removable_scopes(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_elim_removable_scopes = yes.
+    SimplifyTasks ^ do_elim_removable_scopes = elim_removable_scopes.
 simplify_do_opt_duplicate_calls(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_opt_duplicate_calls = opt_dup_calls.
 simplify_do_const_prop(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_constant_prop = prop_constants.
-simplify_do_common_struct(Info) :-
-    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_common_struct = opt_common_structs.
-simplify_do_extra_common_struct(Info) :-
-    simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_extra_common_struct = yes.
 simplify_do_ignore_par_conjunctions(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_ignore_par_conjunctions = yes.
+    SimplifyTasks ^ do_ignore_par_conjunctions = ignore_par_conjs.
 simplify_do_warn_suspicious_recursion(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_warn_suspicious_recursion = yes.
+    SimplifyTasks ^ do_warn_suspicious_recursion = warn_suspicious_rec.
 simplify_do_warn_no_solution_disjunct(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_warn_no_solution_disjunct = yes.
+    SimplifyTasks ^ do_warn_no_solution_disjunct = warn_no_soln_disjunct.
 
 simplify_do_warn_or_opt_duplicate_calls(Info, OptDuplicateCalls) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     WarnDuplicateCalls = SimplifyTasks ^ do_warn_duplicate_calls,
     OptDuplicateCalls = SimplifyTasks ^ do_opt_duplicate_calls,
-    ( WarnDuplicateCalls = yes
+    ( WarnDuplicateCalls = warn_duplicate_calls
     ; OptDuplicateCalls = opt_dup_calls
     ).
 

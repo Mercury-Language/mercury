@@ -447,7 +447,7 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
         poly_info_get_const_struct_db(!.Info, ConstStructDb0),
         const_struct_db_get_poly_enabled(ConstStructDb0, Enabled),
         ( if
-            Enabled = enable_const_struct,
+            Enabled = enable_const_struct_poly,
             all_are_const_struct_args(ArgTypeInfoVarsMCAs,
                 ArgTypeInfoConstArgs)
         then

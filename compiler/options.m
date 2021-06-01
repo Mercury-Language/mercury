@@ -743,7 +743,8 @@
     ;       optopt_inline_linear_tail_rec_sccs
     ;       optopt_inline_linear_tail_rec_sccs_max_extra
     ;       optopt_from_ground_term_threshold
-    ;       optopt_enable_const_struct
+    ;       optopt_enable_const_struct_poly
+    ;       optopt_enable_const_struct_user
     ;       optopt_common_struct
     ;       optopt_constraint_propagation
     ;       optopt_local_constraint_propagation
@@ -1723,7 +1724,8 @@ optdef(oc_opt, optopt_intermod_inline_simple_threshold, int_special).
 optdef(oc_opt, optopt_inline_linear_tail_rec_sccs,      bool_special).
 optdef(oc_opt, optopt_inline_linear_tail_rec_sccs_max_extra, int_special).
 optdef(oc_opt, optopt_from_ground_term_threshold,       int_special).
-optdef(oc_opt, optopt_enable_const_struct,              bool_special).
+optdef(oc_opt, optopt_enable_const_struct_poly,         bool_special).
+optdef(oc_opt, optopt_enable_const_struct_user,         bool_special).
 optdef(oc_opt, optopt_common_struct,                    bool_special).
 optdef(oc_opt, optopt_constraint_propagation,           bool_special).
 optdef(oc_opt, optopt_local_constraint_propagation,     bool_special).
@@ -2643,7 +2645,9 @@ long_option("inline-linear-tail-rec-sccs-max-extra",
 long_option("from-ground-term-threshold",
                                     optopt_from_ground_term_threshold).
 long_option("inline-vars-threshold",        optopt_inline_vars_threshold).
-long_option("const-struct",         optopt_enable_const_struct).
+% This option is only for internal use by the compiler.
+% long_option("const-struct-poly",    optopt_enable_const_struct_poly).
+long_option("const-struct",         optopt_enable_const_struct_user).
 long_option("common-struct",        optopt_common_struct).
 long_option("excess-assign",        optopt_excess_assign).
 long_option("test-after-switch",    optopt_test_after_switch).
@@ -3487,9 +3491,13 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_inline_linear_tail_rec_sccs(Bool)
         ;
-            Option = optopt_enable_const_struct,
+            Option = optopt_enable_const_struct_poly,
             SpecialData = bool(Bool),
-            OptOption = oo_enable_const_struct(Bool)
+            OptOption = oo_enable_const_struct_poly(Bool)
+        ;
+            Option = optopt_enable_const_struct_user,
+            SpecialData = bool(Bool),
+            OptOption = oo_enable_const_struct_user(Bool)
         ;
             Option = optopt_common_struct,
             SpecialData = bool(Bool),

@@ -679,6 +679,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target,
         !Specs, !:Globals, !IO) :-
     OptTuple0 = !.OptTuple,
     OT_AllowInlining0 = OptTuple0 ^ ot_allow_inlining,
+    OT_EnableConstStructPoly0 = OptTuple0 ^ ot_enable_const_struct_poly,
+    OT_EnableConstStructUser0 = OptTuple0 ^ ot_enable_const_struct_user,
     OT_OptCommonStructs0 = OptTuple0 ^ ot_opt_common_structs,
     OT_PropConstraints0 = OptTuple0 ^ ot_prop_constraints,
     OT_PropLocalConstraints0 = OptTuple0 ^ ot_prop_local_constraints,
@@ -788,6 +790,9 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target,
     handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls, OpMode,
         !Globals, !Specs),
 
+    % The rest of the code of this predicate computes the various fields
+    % of the optimization options tuple.
+
     ( if
         AllowSrcChangesDebug = allow_src_changes,
         AllowSrcChangesProf = allow_src_changes
@@ -795,6 +800,57 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target,
         OT_AllowInlining = OT_AllowInlining0
     else
         OT_AllowInlining = do_not_allow_inlining
+    ),
+
+    (
+        Target = target_c,
+        OT_EnableConstStructPoly = OT_EnableConstStructPoly0,
+        NeedProcBodies = trace_needs_proc_body_reps(TraceLevel, TraceSuppress),
+        ( if
+            (
+                % We generate representations of procedure bodies for the
+                % declarative debugger and for the profiler. When
+                % traverse_primitives in browser/declarative_tree.m looks for
+                % the Nth argument of variable X and X is built with code
+                % such as X = ground_term_const(...), it crashes. It should be
+                % taught not to do that, but in the meantime, we prevent the
+                % situation from arising in the first place. (We never look
+                % for the original sources of type infos and typeclass infos,
+                % so we can use constant structures for them.)
+                NeedProcBodies = yes
+            ;
+                % If we allowed the use of references to the const_struct_db,
+                %
+                % - those references would be dangling references
+                %   if they were ever written to a .opt file, and
+                %
+                % - they would also confuse the termination analyzers,
+                %   since they were written before the const_struct_db
+                %   was implemented, and they have (yet) not been taught
+                %   about it.
+                OpMode = opm_top_args(opma_augment(Augment)),
+                ( Augment = opmau_make_opt_int
+                ; Augment = opmau_make_trans_opt_int
+                )
+            ;
+                % If we are not allowed to use const structs for the
+                % type_infos and typeclass_infos created by the polymorphism
+                % pass, then we may not use them for user terms either.
+                OT_EnableConstStructPoly0 = do_not_enable_const_struct_poly
+            )
+        then
+            OT_EnableConstStructUser = do_not_enable_const_struct_user
+        else
+            OT_EnableConstStructUser = OT_EnableConstStructUser0
+        )
+    ;
+        Target = target_java,
+        OT_EnableConstStructPoly = OT_EnableConstStructPoly0,
+        OT_EnableConstStructUser = do_not_enable_const_struct_user
+    ;
+        Target = target_csharp,
+        OT_EnableConstStructPoly = do_not_enable_const_struct_poly,
+        OT_EnableConstStructUser = do_not_enable_const_struct_user
     ),
 
     % `--optimize-constant-propagation' effectively inlines builtins.
@@ -1043,6 +1099,8 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target,
     ),
 
     !OptTuple ^ ot_allow_inlining := OT_AllowInlining,
+    !OptTuple ^ ot_enable_const_struct_poly := OT_EnableConstStructPoly,
+    !OptTuple ^ ot_enable_const_struct_user := OT_EnableConstStructUser,
     !OptTuple ^ ot_opt_common_structs := OT_OptCommonStructs,
     !OptTuple ^ ot_prop_constraints := OT_PropConstraints,
     !OptTuple ^ ot_prop_local_constraints := OT_PropLocalConstraints,

@@ -10,7 +10,8 @@ int    5    intermod_inline_simple_threshold
 bool   n    inline_linear_tail_rec_sccs                    
 int    0    inline_linear_tail_rec_sccs_max_extra          
 int    5    from_ground_term_threshold                     
-bool   y    enable_const_struct                            
+bool   y    enable_const_struct_poly
+bool   y    enable_const_struct_user
 bool   n    common_struct                                  opt_common_structs
 bool   n    constraint_propagation                         prop_constraints
 bool   n    local_constraint_propagation                   prop_local_constraints

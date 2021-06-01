@@ -121,81 +121,36 @@
     % and simplify.m respectively.
     %
 :- pred const_struct_db_get_poly_enabled(const_struct_db::in,
-    maybe_enable_const_struct::out) is det.
+    maybe_enable_const_struct_poly::out) is det.
 :- pred const_struct_db_get_ground_term_enabled(const_struct_db::in,
-    maybe_enable_const_struct::out) is det.
+    maybe_enable_const_struct_user::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 
-:- import_module bool.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
 
 const_struct_db_init(Globals, Db) :-
-    globals.get_target(Globals, Target),
-    (
-        Target = target_c,
-        can_enable_const_struct(Globals, PolyEnabled, GroundTermEnabled)
-    ;
-        Target = target_java,
-        can_enable_const_struct(Globals, PolyEnabled, _GroundTermEnabled),
-        GroundTermEnabled = do_not_enable_const_struct
-    ;
-        Target = target_csharp,
-        PolyEnabled = do_not_enable_const_struct,
-        GroundTermEnabled = do_not_enable_const_struct
-    ),
+    globals.get_opt_tuple(Globals, OptTuple),
+    PolyEnabled = OptTuple ^ ot_enable_const_struct_poly,
+    GroundTermEnabled = OptTuple ^ ot_enable_const_struct_user,
     Db = const_struct_db(PolyEnabled, GroundTermEnabled, 0,
         map.init, map.init, map.init, map.init).
-
-    % Test if constant structures are enabled for polymorphism structures
-    % and from ground_term_contexts. The latter is only enabled if tracing
-    % does not require procedure bodies to be preserved. The caller
-    % (const_struct_db_init/2) must also check if the compilation grade
-    % supports constant structures.
-    %
-:- pred can_enable_const_struct(globals::in,
-    maybe_enable_const_struct::out, maybe_enable_const_struct::out) is det.
-
-can_enable_const_struct(Globals, PolyEnabled, GroundTermEnabled) :-
-    globals.get_opt_tuple(Globals, OptTuple),
-    PolyEnabled = OptTuple ^ ot_enable_const_struct,
-
-    globals.get_trace_level(Globals, TraceLevel),
-    globals.get_trace_suppress(Globals, TraceSuppress),
-    Bodies = trace_needs_proc_body_reps(TraceLevel, TraceSuppress),
-    (
-        Bodies = no,
-        GroundTermEnabled = PolyEnabled
-    ;
-        Bodies = yes,
-        % We generate representations of procedure bodies for the
-        % declarative debugger and for the profiler. When traverse_primitives
-        % in browser/declarative_tree.m looks for the Nth argument of
-        % variable X and X is built with a unification such as
-        % X = ground_term_const(...), it crashes. It should be taught not
-        % to do that, but in the meantime, we prevent the situation from
-        % arising in the first place. (We never look for the original
-        % sources of type infos and typeclass infos, so we can use constant
-        % structures for them.)
-        GroundTermEnabled = do_not_enable_const_struct
-    ).
 
 lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
     const_struct_db_get_poly_enabled(!.Db, Enabled),
     (
-        Enabled = do_not_enable_const_struct,
+        Enabled = do_not_enable_const_struct_poly,
         unexpected($pred, "not enabled")
     ;
-        Enabled = enable_const_struct,
+        Enabled = enable_const_struct_poly,
         ConstStruct = const_struct(ConsId, Args, Type, Inst, DefinedWhere),
         ( if ConsId = cons(SymName, _, _) then
             Name = unqualify_name(SymName),
@@ -333,8 +288,8 @@ const_struct_db_get_structs(Db, Structs) :-
 
 :- type const_struct_db
     --->    const_struct_db(
-                csdb_poly_enabled           :: maybe_enable_const_struct,
-                csdb_ground_term_enabled    :: maybe_enable_const_struct,
+                csdb_poly_enabled           :: maybe_enable_const_struct_poly,
+                csdb_ground_term_enabled    :: maybe_enable_const_struct_user,
                 csdb_next_num               :: int,
                 csdb_cons_proxy_map         :: map(cons_proxy_struct, int),
                 csdb_noncons_struct_map     :: map(noncons_proxy_struct, int),

@@ -2692,7 +2692,7 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
     poly_info_get_const_struct_db(!.Info, ConstStructDb0),
     const_struct_db_get_poly_enabled(ConstStructDb0, ConstStructEnabled),
     ( if
-        ConstStructEnabled = enable_const_struct,
+        ConstStructEnabled = enable_const_struct_poly,
         all_are_const_struct_args(ArgVarsMCAs, VarConstArgs)
     then
         poly_info_get_num_reuses(!.Info, NumReuses),

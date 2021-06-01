@@ -1199,11 +1199,15 @@ process_try_goals(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
 maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     some [!SimpList] (
-        find_simplify_tasks(Warn, Globals, SimplifyTasks0),
+        ( Warn = no,  WarnGen = do_not_generate_warnings
+        ; Warn = yes, WarnGen = generate_warnings
+        ),
+        find_simplify_tasks(Globals, WarnGen, SimplifyTasks0),
         !:SimpList = simplify_tasks_to_list(SimplifyTasks0),
         (
             SimplifyPass = simplify_pass_frontend,
-            list.cons(simptask_after_front_end, !SimpList)
+            list.cons(simptask_after_front_end, !SimpList),
+            list.cons(simptask_try_opt_const_structs, !SimpList)
         ;
             SimplifyPass = simplify_pass_post_untuple,
             list.cons(simptask_mark_code_model_changes, !SimpList)
@@ -1276,7 +1280,7 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        SimplifyTasks = list_to_simplify_tasks(SimpList),
+        SimplifyTasks = list_to_simplify_tasks(Globals, SimpList),
         process_valid_nonimported_preds_errors(
             update_pred_error(simplify_pred(SimplifyTasks)),
             !HLDS, [], SimplifySpecs, !IO),
@@ -1310,7 +1314,8 @@ simplify_pred(SimplifyTasks0, PredId, !ModuleInfo, !PredInfo, !Specs) :-
     ProcIds = pred_info_valid_non_imported_procids(!.PredInfo),
     % Don't warn for compiler-generated procedures.
     ( if is_unify_index_or_compare_pred(!.PredInfo) then
-        SimplifyTasks = SimplifyTasks0 ^ do_warn_simple_code := no
+        SimplifyTasks = SimplifyTasks0 ^ do_warn_simple_code
+            := do_not_warn_simple_code
     else
         SimplifyTasks = SimplifyTasks0
     ),

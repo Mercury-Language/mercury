@@ -1,17 +1,17 @@
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: simplify_tasks.m.
 %
 % This module handles the specification of what tasks the submodules of
 % simplify.m should perform.
 %
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.simplify.simplify_tasks.
 :- interface.
@@ -68,12 +68,17 @@
     ;       simptask_constant_prop
             % Partially evaluate calls.
 
-    ;       simptask_common_struct
+    ;       simptask_common_structs
             % Common structure elimination.
 
-    ;       simptask_extra_common_struct
+    ;       simptask_extra_common_structs
             % Do common structure elimination even when it might
             % increase stack usage (used by deforestation).
+
+    ;       simptask_try_opt_const_structs
+            % If the backend and the options allow it, replace unifications
+            % that construct constant terms with the assignment of a
+            % ground_term_const cons_id to the relevant variable.
 
     ;       simptask_ignore_par_conjs
             % Replace parallel conjunctions with plain conjunctions.
@@ -97,6 +102,64 @@
     ;       simptask_warn_no_solution_disjunct.
             % Warn about disjuncts that can have no solution.
 
+%---------------------%
+
+:- type maybe_warn_simple_code
+    --->    do_not_warn_simple_code
+    ;       warn_simple_code.
+
+:- type maybe_warn_duplicate_calls
+    --->    do_not_warn_duplicate_calls
+    ;       warn_duplicate_calls.
+
+:- type maybe_warn_implicit_streams
+    --->    do_not_warn_implicit_streams
+    ;       warn_implicit_streams.
+
+:- type maybe_invoke_format_call
+    --->    do_not_invoke_format_call
+    ;       invoke_format_call.
+
+:- type maybe_warn_obsolete
+    --->    do_not_warn_obsolete
+    ;       warn_obsolete.
+
+:- type maybe_mark_cm_changes
+    --->    do_not_mark_code_model_changes
+    ;       mark_code_model_changes.
+
+:- type maybe_after_front_end
+    --->    not_after_front_end
+    ;       after_front_end.
+
+:- type maybe_elim_removable_scopes
+    --->    do_not_elim_removable_scopes
+    ;       elim_removable_scopes.
+
+:- type maybe_opt_extra_structs
+    --->    do_not_opt_extra_structs
+    ;       opt_extra_structs.
+
+:- type maybe_try_opt_const_structs
+    --->    do_not_try_opt_const_structs
+    ;       try_opt_const_structs.
+
+:- type maybe_opt_const_structs
+    --->    do_not_opt_const_structs
+    ;       opt_const_structs.
+
+:- type maybe_ignore_par_conjs
+    --->    do_not_ignore_par_conjs
+    ;       ignore_par_conjs.
+
+:- type maybe_warn_suspicious_rec
+    --->    do_not_warn_suspicious_rec
+    ;       warn_suspicious_rec.
+
+:- type maybe_warn_no_soln_disjunct
+    --->    do_not_warn_no_soln_disjunct
+    ;       warn_no_soln_disjunct.
+
     % Each value of this type represents the full set of tasks
     % that simplification should perform. The submodules of simplify.m
     % use it to find out whether they should perform a specific task
@@ -107,102 +170,149 @@
     % in extra complexity than it would gain.
 :- type simplify_tasks
     --->    simplify_tasks(
-                do_warn_simple_code             :: bool,
-                do_warn_duplicate_calls         :: bool,
-                do_warn_implicit_stream_calls   :: bool,
-                do_format_calls                 :: bool,
-                do_warn_obsolete                :: bool,
-                do_mark_code_model_changes      :: bool,
-                do_after_front_end              :: bool,
+                do_warn_simple_code             :: maybe_warn_simple_code,
+                do_warn_duplicate_calls         :: maybe_warn_duplicate_calls,
+                do_warn_implicit_streams        :: maybe_warn_implicit_streams,
+                do_invoke_format_call           :: maybe_invoke_format_call,
+                do_warn_obsolete                :: maybe_warn_obsolete,
+                do_mark_code_model_changes      :: maybe_mark_cm_changes,
+                do_after_front_end              :: maybe_after_front_end,
                 do_excess_assign                :: maybe_elim_excess_assigns,
                 do_test_after_switch            :: maybe_opt_test_after_switch,
-                do_elim_removable_scopes        :: bool,
+                do_elim_removable_scopes        :: maybe_elim_removable_scopes,
                 do_opt_duplicate_calls          :: maybe_opt_dup_calls,
                 do_constant_prop                :: maybe_prop_constants,
-                do_common_struct                :: maybe_opt_common_structs,
-                do_extra_common_struct          :: bool,
-                do_ignore_par_conjunctions      :: bool,
-                do_warn_suspicious_recursion    :: bool,
-                do_warn_no_solution_disjunct    :: bool
+                do_opt_common_structs           :: maybe_opt_common_structs,
+                do_opt_extra_structs            :: maybe_opt_extra_structs,
+                do_try_opt_const_structs        :: maybe_try_opt_const_structs,
+                do_opt_const_structs            :: maybe_opt_const_structs,
+                do_ignore_par_conjunctions      :: maybe_ignore_par_conjs,
+                do_warn_suspicious_recursion    :: maybe_warn_suspicious_rec,
+                do_warn_no_solution_disjunct    :: maybe_warn_no_soln_disjunct
             ).
 
+    % XXX Now that each field of the simplify_tasks structure
+    % has its own type and thus fields cannot be mistaken for each other,
+    % we should consider requiring the compiler modules that invoke
+    % simplification to construct a simplify_tasks structure directly,
+    % *without* going through simplify task list.
+    %
 :- func simplify_tasks_to_list(simplify_tasks) = list(simplify_task).
-:- func list_to_simplify_tasks(list(simplify_task)) = simplify_tasks.
+:- func list_to_simplify_tasks(globals, list(simplify_task)) = simplify_tasks.
+
+:- type maybe_generate_warnings
+    --->    do_not_generate_warnings
+    ;       generate_warnings.
 
     % Find out which simplifications should be run from the options table
-    % stored in the globals. The first argument states whether warnings
-    % should be issued during this pass of simplification.
+    % stored in the globals. The second argument states whether we should
+    % generate warnings during this pass of simplification.
     %
-:- pred find_simplify_tasks(bool::in, globals::in, simplify_tasks::out) is det.
+:- pred find_simplify_tasks(globals::in, maybe_generate_warnings::in,
+    simplify_tasks::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module libs.options.
 
-simplify_tasks_to_list(SimplifyTasks) = List :-
+simplify_tasks_to_list(SimplifyTasks) = !:List :-
     SimplifyTasks = simplify_tasks(WarnSimpleCode, WarnDupCalls,
         WarnImplicitStreamCalls, DoFormatCalls, WarnObsolete,
         MarkCodeModelChanges, AfterFrontEnd, ExcessAssign, TestAfterSwitch,
         ElimRemovableScopes, OptDuplicateCalls, ConstantProp,
-        CommonStruct, ExtraCommonStruct, RemoveParConjunctions,
+        OptCommonStructs, OptExtraStructs,
+        TryOptConstStructs, _OptConstStructs, IgnoreParConjs,
         WarnSuspiciousRecursion, WarnNoSolutionDisjunct),
-    List =
-        ( WarnSimpleCode = yes -> [simptask_warn_simple_code] ; [] ) ++
-        ( WarnDupCalls = yes -> [simptask_warn_duplicate_calls] ; [] ) ++
-        ( WarnImplicitStreamCalls = yes ->
-            [simptask_warn_implicit_stream_calls] ; [] ) ++
-        ( DoFormatCalls = yes -> [simptask_format_calls] ; [] ) ++
-        ( WarnObsolete = yes -> [simptask_warn_obsolete] ; [] ) ++
-        ( MarkCodeModelChanges = yes ->
-            [simptask_mark_code_model_changes] ; [] ) ++
-        ( AfterFrontEnd = yes -> [simptask_after_front_end] ; [] ) ++
-        ( ExcessAssign = elim_excess_assigns ->
-            [simptask_excess_assigns] ; [] ) ++
-        ( TestAfterSwitch = opt_test_after_switch ->
-            [simptask_test_after_switch] ; [] ) ++
-        ( ElimRemovableScopes = yes ->
-            [simptask_elim_removable_scopes] ; [] ) ++
-        ( OptDuplicateCalls = opt_dup_calls ->
-            [simptask_opt_duplicate_calls] ; [] ) ++
-        ( ConstantProp = prop_constants -> [simptask_constant_prop] ; [] ) ++
-        ( CommonStruct = opt_common_structs ->
-            [simptask_common_struct] ; [] ) ++
-        ( ExtraCommonStruct = yes -> [simptask_extra_common_struct] ; [] ) ++
-        ( RemoveParConjunctions = yes -> [simptask_ignore_par_conjs] ; [] ) ++
-        ( WarnSuspiciousRecursion = yes ->
-            [simptask_warn_suspicious_recursion] ; [] ) ++
-        ( WarnNoSolutionDisjunct = yes ->
-            [simptask_warn_no_solution_disjunct] ; [] ).
+    !:List = [],
+    ( if WarnSimpleCode = warn_simple_code
+        then list.cons(simptask_warn_simple_code, !List) else true ),
+    ( if WarnDupCalls = warn_duplicate_calls
+        then list.cons(simptask_warn_duplicate_calls, !List) else true ),
+    ( if WarnImplicitStreamCalls = warn_implicit_streams
+        then list.cons(simptask_warn_implicit_stream_calls, !List) else true ),
+    ( if DoFormatCalls = invoke_format_call
+        then list.cons(simptask_format_calls, !List) else true ),
+    ( if WarnObsolete = warn_obsolete
+        then list.cons(simptask_warn_obsolete, !List) else true ),
+    ( if MarkCodeModelChanges = mark_code_model_changes
+        then list.cons(simptask_mark_code_model_changes, !List) else true ),
+    ( if AfterFrontEnd = after_front_end
+        then list.cons(simptask_after_front_end, !List) else true ),
+    ( if ExcessAssign = elim_excess_assigns
+        then list.cons(simptask_excess_assigns, !List) else true ),
+    ( if TestAfterSwitch = opt_test_after_switch
+        then list.cons(simptask_test_after_switch, !List) else true ),
+    ( if ElimRemovableScopes = elim_removable_scopes
+        then list.cons(simptask_elim_removable_scopes, !List) else true ),
+    ( if OptDuplicateCalls = opt_dup_calls
+        then list.cons(simptask_opt_duplicate_calls, !List) else true ),
+    ( if ConstantProp = prop_constants
+        then list.cons(simptask_constant_prop, !List) else true ),
+    ( if OptCommonStructs = opt_common_structs
+        then list.cons(simptask_common_structs, !List) else true ),
+    ( if OptExtraStructs = opt_extra_structs
+        then list.cons(simptask_extra_common_structs, !List) else true ),
+    ( if TryOptConstStructs = try_opt_const_structs
+        then list.cons(simptask_try_opt_const_structs, !List) else true ),
+    ( if IgnoreParConjs = ignore_par_conjs
+        then list.cons(simptask_ignore_par_conjs, !List) else true ),
+    ( if WarnSuspiciousRecursion = warn_suspicious_rec
+        then list.cons(simptask_warn_suspicious_recursion, !List) else true ),
+    ( if WarnNoSolutionDisjunct = warn_no_soln_disjunct
+        then list.cons(simptask_warn_no_solution_disjunct, !List) else true ).
 
-list_to_simplify_tasks(List) =
-    simplify_tasks(
-        ( list.member(simptask_warn_simple_code, List) -> yes ; no ),
-        ( list.member(simptask_warn_duplicate_calls, List) -> yes ; no ),
-        ( list.member(simptask_warn_implicit_stream_calls, List) -> yes ; no ),
-        ( list.member(simptask_format_calls, List) -> yes ; no ),
-        ( list.member(simptask_warn_obsolete, List) -> yes ; no ),
-        ( list.member(simptask_mark_code_model_changes, List) -> yes ; no ),
-        ( list.member(simptask_after_front_end, List) -> yes ; no ),
-        ( list.member(simptask_excess_assigns, List) ->
-            elim_excess_assigns ; do_not_elim_excess_assigns ),
-        ( list.member(simptask_test_after_switch, List) ->
-            opt_test_after_switch ; do_not_opt_test_after_switch ),
-        ( list.member(simptask_elim_removable_scopes, List) -> yes ; no ),
-        ( list.member(simptask_opt_duplicate_calls, List) ->
-            opt_dup_calls ; do_not_opt_dup_calls ),
-        ( list.member(simptask_constant_prop, List) ->
-            prop_constants ; do_not_prop_constants ),
-        ( list.member(simptask_common_struct, List) ->
-            opt_common_structs ; do_not_opt_common_structs ),
-        ( list.member(simptask_extra_common_struct, List) -> yes ; no ),
-        ( list.member(simptask_ignore_par_conjs, List) -> yes ; no ),
-        ( list.member(simptask_warn_suspicious_recursion, List) -> yes ; no ),
-        ( list.member(simptask_warn_no_solution_disjunct, List) -> yes ; no )
+list_to_simplify_tasks(Globals, List) = Tasks :-
+    globals.get_opt_tuple(Globals, OptTuple),
+    Tasks = simplify_tasks(
+        ( if list.member(simptask_warn_simple_code, List)
+            then warn_simple_code else do_not_warn_simple_code ),
+        ( if list.member(simptask_warn_duplicate_calls, List)
+            then warn_duplicate_calls else do_not_warn_duplicate_calls ),
+        ( if list.member(simptask_warn_implicit_stream_calls, List)
+            then warn_implicit_streams else do_not_warn_implicit_streams ),
+        ( if list.member(simptask_format_calls, List)
+            then invoke_format_call else do_not_invoke_format_call ),
+        ( if list.member(simptask_warn_obsolete, List)
+            then warn_obsolete else do_not_warn_obsolete ),
+        ( if list.member(simptask_mark_code_model_changes, List)
+            then mark_code_model_changes else do_not_mark_code_model_changes ),
+        ( if list.member(simptask_after_front_end, List)
+            then after_front_end else not_after_front_end ),
+        ( if list.member(simptask_excess_assigns, List)
+            then elim_excess_assigns else do_not_elim_excess_assigns ),
+        ( if list.member(simptask_test_after_switch, List)
+            then opt_test_after_switch else do_not_opt_test_after_switch ),
+        ( if list.member(simptask_elim_removable_scopes, List)
+            then elim_removable_scopes else do_not_elim_removable_scopes ),
+        ( if list.member(simptask_opt_duplicate_calls, List)
+            then opt_dup_calls else do_not_opt_dup_calls ),
+        ( if list.member(simptask_constant_prop, List)
+            then prop_constants else do_not_prop_constants ),
+        ( if list.member(simptask_common_structs, List)
+            then opt_common_structs else do_not_opt_common_structs ),
+        ( if list.member(simptask_extra_common_structs, List)
+            then opt_extra_structs else do_not_opt_extra_structs ),
+        ( if list.member(simptask_try_opt_const_structs, List)
+            then try_opt_const_structs else do_not_try_opt_const_structs ),
+        ( if
+            list.member(simptask_try_opt_const_structs, List),
+            OptTuple ^ ot_enable_const_struct_user = enable_const_struct_user
+        then
+            opt_const_structs
+        else
+            do_not_opt_const_structs
+        ),
+        ( if list.member(simptask_ignore_par_conjs, List)
+            then ignore_par_conjs else do_not_ignore_par_conjs ),
+        ( if list.member(simptask_warn_suspicious_recursion, List)
+            then warn_suspicious_rec else do_not_warn_suspicious_rec ),
+        ( if list.member(simptask_warn_no_solution_disjunct, List)
+            then warn_no_soln_disjunct else do_not_warn_no_soln_disjunct )
     ).
 
-find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
+find_simplify_tasks(Globals, WarnThisPass, SimplifyTasks) :-
     globals.lookup_bool_option(Globals, warn_simple_code, WarnSimple),
     globals.lookup_bool_option(Globals, warn_duplicate_calls, WarnDupCalls),
     globals.lookup_bool_option(Globals, warn_implicit_stream_calls,
@@ -215,41 +325,43 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
     OptFormatCalls = OptTuple ^ ot_opt_format_calls,
     ( if
         (
-            WarnThisPass = yes,
+            WarnThisPass = generate_warnings,
             ( WarnKnownBadFormat = yes ; WarnUnknownFormat = yes  )
         ;
             OptFormatCalls = opt_format_calls
         )
     then
-        DoFormatCalls = yes
+        InvokeFormatCall = invoke_format_call
     else
-        DoFormatCalls = no
+        InvokeFormatCall = do_not_invoke_format_call
     ),
     globals.lookup_bool_option(Globals, warn_obsolete, WarnObsolete),
     ExcessAssign = OptTuple ^ ot_elim_excess_assigns,
     TestAfterSwitch = OptTuple ^ ot_opt_test_after_switch,
-    CommonStruct = OptTuple ^ ot_opt_common_structs,
     OptDuplicateCalls = OptTuple ^ ot_opt_dup_calls,
     ConstantProp = OptTuple ^ ot_prop_constants,
-    MarkCodeModelChanges = no,
-    AfterFrontEnd = no,
-    ElimRemovableScopes = no,
-    ExtraCommonStruct = no,
+    MarkCodeModelChanges = do_not_mark_code_model_changes,
+    AfterFrontEnd = not_after_front_end,
+    ElimRemovableScopes = do_not_elim_removable_scopes,
+    CommonStructs = OptTuple ^ ot_opt_common_structs,
+    ExtraCommonStructs = do_not_opt_extra_structs,
+    TryOptConstStructs = do_not_try_opt_const_structs,
+    OptConstStructs = do_not_opt_const_structs,
     globals.lookup_bool_option(Globals, ignore_par_conjunctions,
         RemoveParConjunctions),
     globals.lookup_bool_option(Globals, warn_suspicious_recursion,
         WarnSuspiciousRecursion),
-    % Warnings about "no solution disjuncts" are a category of warnings
-    % about simple code that happens to have its own disabling mechanism.
-    WarnNoSolutionDisjunct = WarnSimple,
 
     SimplifyTasks = simplify_tasks(
-        ( if WarnSimple = yes, WarnThisPass = yes then yes else no),
-        ( if WarnDupCalls = yes, WarnThisPass = yes then yes else no),
-        ( if WarnImplicitStreamCalls = yes, WarnThisPass = yes
-            then yes else no),
-        DoFormatCalls,
-        ( if WarnObsolete = yes, WarnThisPass = yes then yes else no),
+        ( if WarnSimple = yes, WarnThisPass = generate_warnings
+            then warn_simple_code else do_not_warn_simple_code ),
+        ( if WarnDupCalls = yes, WarnThisPass = generate_warnings
+            then warn_duplicate_calls else do_not_warn_duplicate_calls ),
+        ( if WarnImplicitStreamCalls = yes, WarnThisPass = generate_warnings
+            then warn_implicit_streams else do_not_warn_implicit_streams ),
+        InvokeFormatCall,
+        ( if WarnObsolete = yes, WarnThisPass = generate_warnings
+            then warn_obsolete else do_not_warn_obsolete ),
         MarkCodeModelChanges,
         AfterFrontEnd,
         ExcessAssign,
@@ -257,11 +369,18 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
         ElimRemovableScopes,
         OptDuplicateCalls,
         ConstantProp,
-        CommonStruct,
-        ExtraCommonStruct,
-        RemoveParConjunctions,
-        WarnSuspiciousRecursion,
-        WarnNoSolutionDisjunct
+        CommonStructs,
+        ExtraCommonStructs,
+        TryOptConstStructs,
+        OptConstStructs,
+        ( if RemoveParConjunctions = yes
+            then ignore_par_conjs else do_not_ignore_par_conjs ),
+        ( if WarnSuspiciousRecursion = yes
+            then warn_suspicious_rec else do_not_warn_suspicious_rec ),
+        % Warnings about "no solution disjuncts" are a category of warnings
+        % about simple code that happens to have its own disabling mechanism.
+        ( if WarnSimple = yes, WarnThisPass = generate_warnings
+            then warn_no_soln_disjunct else do_not_warn_no_soln_disjunct )
     ).
 
 %---------------------------------------------------------------------------%

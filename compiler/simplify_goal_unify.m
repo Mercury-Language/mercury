@@ -99,7 +99,8 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         % Don't attempt to pass structs into lambda_goals, since that
         % could change the curried non-locals of the lambda_goal, and
         % that would be difficult to fix up.
-        LambdaCommon0 = common_info_init,
+        simplify_info_get_simplify_tasks(!.Info, SimplifyTasks),
+        LambdaCommon0 = common_info_init(SimplifyTasks),
 
         % Don't attempt to pass structs out of lambda_goals.
         simplify_goal(LambdaGoal0, LambdaGoal, LambdaNestedContext,
@@ -132,27 +133,10 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 RHS0 = rhs_functor(_, _, _),
                 unexpected($pred, "invalid RHS for complicated unify")
             )
-        else if
-            simplify_do_common_struct(!.Info)
-        then
-            common_optimise_unification(Unification0, UnifyMode,
-                GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Common, !Info)
-        else if
-            ( simplify_do_opt_duplicate_calls(!.Info)
-            ; simplify_do_warn_duplicate_calls(!.Info)
-            )
-        then
-            % We need to do the pass, to record the variable equivalences
-            % used for optimizing or warning about duplicate calls.
-            % But we don't want to perform the optimization, so we disregard
-            % the optimized goal and instead use the original one.
-            common_optimise_unification(Unification0, UnifyMode,
-                GoalExpr0, _GoalExpr1, GoalInfo0, _GoalInfo1, !Common, !Info),
-            GoalExpr = GoalExpr0,
-            GoalInfo = GoalInfo0
         else
-            GoalExpr = GoalExpr0,
-            GoalInfo = GoalInfo0
+            common_optimise_unification(RHS0, UnifyMode, Unification0,
+                UnifyContext, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+                !Common, !Info)
         )
     ).
 

@@ -235,13 +235,14 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
 
     ( if
         check_marker(Markers0, marker_has_format_call),
-        SimplifyTasks ^ do_format_calls = yes
+        SimplifyTasks ^ do_invoke_format_call = invoke_format_call
     then
         (
-            SimplifyTasks ^ do_warn_implicit_stream_calls = no,
+            SimplifyTasks ^ do_warn_implicit_streams =
+                do_not_warn_implicit_streams,
             ImplicitStreamWarnings = do_not_generate_implicit_stream_warnings
         ;
-            SimplifyTasks ^ do_warn_implicit_stream_calls = yes,
+            SimplifyTasks ^ do_warn_implicit_streams = warn_implicit_streams,
             ImplicitStreamWarnings = generate_implicit_stream_warnings
         ),
         simplify_proc_analyze_and_format_calls(!ModuleInfo,
@@ -336,18 +337,11 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
 
 simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
         !SimplifyTasks) :-
-    proc_info_get_vartypes(ProcInfo, VarTypes0),
-    vartypes_count(VarTypes0, NumVars),
-    ( if NumVars > turn_off_common_struct_threshold then
-        !SimplifyTasks ^ do_common_struct := do_not_opt_common_structs
-    else
-        true
-    ),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_string_option(Globals, common_struct_preds,
         CommonStructPreds),
     ( if CommonStructPreds = "" then
-        true
+        TurnOffCommonStructByRequest = no
     else
         CommonStructPredIdStrs = string.split_at_char(',', CommonStructPreds),
         ( if
@@ -356,13 +350,24 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
         then
             PredIdInt = pred_id_to_int(PredId),
             ( if list.member(PredIdInt, CommonStructPredIdInts) then
-                true
+                TurnOffCommonStructByRequest = no
             else
-                !SimplifyTasks ^ do_common_struct := do_not_opt_common_structs
+                TurnOffCommonStructByRequest = yes
             )
         else
-            true
+            TurnOffCommonStructByRequest = no
         )
+    ),
+    proc_info_get_vartypes(ProcInfo, VarTypes0),
+    vartypes_count(VarTypes0, NumVars),
+    ( if
+        ( TurnOffCommonStructByRequest = yes
+        ; NumVars > turn_off_common_struct_threshold
+        )
+    then
+        !SimplifyTasks ^ do_opt_common_structs := do_not_opt_common_structs
+    else
+        true
     ).
 
     % If we have too many variables, common_struct used to take so long that
@@ -580,18 +585,16 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
         simplify_info_get_simplify_tasks(!.Info, !:SimplifyTasks),
         OriginalSimplifyTasks = !.SimplifyTasks,
         ( if
-            ( simplify_do_common_struct(!.Info)
-            ; simplify_do_opt_duplicate_calls(!.Info)
+            ( !.SimplifyTasks ^ do_opt_common_structs = opt_common_structs
+            ; !.SimplifyTasks ^ do_opt_const_structs = opt_const_structs
+            ; !.SimplifyTasks ^ do_opt_duplicate_calls = opt_dup_calls
             )
         then
-            !SimplifyTasks ^ do_mark_code_model_changes := no,
+            !SimplifyTasks ^ do_mark_code_model_changes
+                := do_not_mark_code_model_changes,
             !SimplifyTasks ^ do_excess_assign := do_not_elim_excess_assigns,
             simplify_info_set_simplify_tasks(!.SimplifyTasks, !Info),
-
-            do_simplify_top_level_goal(!Goal, NestedContext0, InstMap0,
-                GoalInfo0, !Info),
-            maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
-                !Goal, !Info),
+            do_simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info),
 
             !:SimplifyTasks = OriginalSimplifyTasks,
 
@@ -607,11 +610,13 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             %   which is very likely to confuse the reader.
             simplify_info_set_allow_messages(do_not_allow_messages, !Info),
 
-            % These tasks were done in pass 1. Repeating them in pass 2
-            % would serve no purpose, since we do nothing in pass 1
+            % If requested, these tasks were done in pass 1. Repeating them
+            % in pass 2 would serve no purpose, since we do nothing in pass 1
             % that would generate new occurrences of the situations
             % that these tasks seek to optimize.
-            !SimplifyTasks ^ do_common_struct := do_not_opt_common_structs,
+            !SimplifyTasks ^ do_opt_common_structs :=
+                do_not_opt_common_structs,
+            !SimplifyTasks ^ do_opt_const_structs := do_not_opt_const_structs,
             !SimplifyTasks ^ do_opt_duplicate_calls := do_not_opt_dup_calls,
             simplify_info_reinit(!.SimplifyTasks, !Info)
         else
@@ -619,10 +624,7 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
         ),
         % On the second pass do excess assignment elimination and
         % some cleaning up after the common structure pass.
-        do_simplify_top_level_goal(!Goal, NestedContext0, InstMap0,
-            GoalInfo1, !Info),
-        maybe_recompute_fields_after_top_level_goal(GoalInfo1, InstMap0,
-            !Goal, !Info),
+        do_simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info),
 
         simplify_info_get_found_contains_trace(!.Info, FoundContainsTrace),
         (
@@ -638,13 +640,16 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
     ).
 
 :- pred do_simplify_top_level_goal(hlds_goal::in, hlds_goal::out,
-    simplify_nested_context::in, instmap::in, hlds_goal_info::out,
+    simplify_nested_context::in, instmap::in,
     simplify_info::in, simplify_info::out) is det.
 
-do_simplify_top_level_goal(!Goal, NestedContext0, InstMap0, GoalInfo0, !Info) :-
+do_simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
     !.Goal = hlds_goal(_, GoalInfo0),
-    simplify_goal(!Goal, NestedContext0, InstMap0,
-        common_info_init, _Common, !Info).
+    simplify_info_get_simplify_tasks(!.Info, SimplifyTasks),
+    Common0 = common_info_init(SimplifyTasks),
+    simplify_goal(!Goal, NestedContext0, InstMap0, Common0, _Common, !Info),
+    maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
+        !Goal, !Info).
 
 :- pred maybe_recompute_fields_after_top_level_goal(hlds_goal_info::in,
     instmap::in, hlds_goal::in, hlds_goal::out,

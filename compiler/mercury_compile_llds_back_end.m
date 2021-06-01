@@ -379,7 +379,7 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
     ;
         FollowCode = do_not_opt_follow_code
     ),
-    find_simplify_tasks(no, Globals, SimplifyTasks0),
+    find_simplify_tasks(Globals, do_not_generate_warnings, SimplifyTasks0),
     SimpList0 = simplify_tasks_to_list(SimplifyTasks0),
 
     ConstProp = OptTuple ^ ot_prop_constants,
@@ -405,7 +405,7 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, SCCMap, PredId, PredInfo,
 
     SimpList = [simptask_mark_code_model_changes,
         simptask_elim_removable_scopes | SimpList1],
-    SimplifyTasks = list_to_simplify_tasks(SimpList),
+    SimplifyTasks = list_to_simplify_tasks(Globals, SimpList),
     trace [io(!IO)] (
         write_proc_progress_message("% Simplifying ", PredId, ProcId,
             !.HLDS, !IO)

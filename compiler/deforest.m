@@ -217,7 +217,7 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
 
         % Inlining may have created some opportunities for simplification.
         module_info_get_globals(!.ModuleInfo, Globals),
-        find_simplify_tasks(no, Globals, SimplifyTasks),
+        find_simplify_tasks(Globals, do_not_generate_warnings, SimplifyTasks),
         pd_util.pd_simplify_goal(SimplifyTasks, !Goal, !PDInfo),
         pd_util.propagate_constraints(!Goal, !PDInfo),
         trace [io(!IO)] (
@@ -1841,12 +1841,12 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
 
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    find_simplify_tasks(no, Globals, SimplifyTasks0),
+    find_simplify_tasks(Globals, do_not_generate_warnings, SimplifyTasks0),
     SimpList0 = simplify_tasks_to_list(SimplifyTasks0),
     % Be a bit more aggressive with common structure elimination.
     % This helps achieve folding in some cases.
-    SimpList = [simptask_extra_common_struct | SimpList0],
-    SimplifyTasks = list_to_simplify_tasks(SimpList),
+    SimpList = [simptask_extra_common_structs | SimpList0],
+    SimplifyTasks = list_to_simplify_tasks(Globals, SimpList),
     pd_util.pd_simplify_goal(SimplifyTasks, Goal2, Goal3, !PDInfo),
     pd_info_set_instmap(InstMap0, !PDInfo),
 
@@ -2099,7 +2099,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         trace [io(!IO)] (
             pd_debug_message(DebugPD, "Running simplify\n", [], !IO)
         ),
-        find_simplify_tasks(no, Globals, SimplifyTasks),
+        find_simplify_tasks(Globals, do_not_generate_warnings, SimplifyTasks),
         pd_util.pd_simplify_goal(SimplifyTasks, Goal3, Goal4, !PDInfo),
 
         pd_info_get_cost_delta(!.PDInfo, CostDelta1),

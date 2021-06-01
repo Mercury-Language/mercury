@@ -725,9 +725,11 @@ input_args_are_suspicious(ModuleInfo, CommonInfo, VarSet, VarNameRemap,
         % warnings in cases involving `any' insts.
         inst_is_ground(ModuleInfo, InitialInst),
 
-        ( if
-            common_vars_are_equivalent(CommonInfo, ArgVar, HeadVar)
-        then
+        % XXX This can detect that ArgVar and HeadVar are distinct variables
+        % that are nevertheless guaranteed to be equal *only* if common.m
+        % is recording variable equivalences, but we can get here if it is
+        % *not* doing that.
+        ( if common_vars_are_equivalent(CommonInfo, ArgVar, HeadVar) then
             true
         else
             % If the input argument is not the same in the call as in

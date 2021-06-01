@@ -273,10 +273,10 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         Goal3 = Goal2
     ),
     Goal3 = hlds_goal(GoalExpr3, GoalInfo3),
-    maybe_handle_stack_flush(before, GoalExpr3, !.Info, !Common),
+    maybe_handle_stack_flush(before, GoalExpr3, !Common),
     simplify_goal_expr(GoalExpr3, GoalExpr4, GoalInfo3, GoalInfo4,
         NestedContext, InstMap0, !Common, !Info),
-    maybe_handle_stack_flush(after, GoalExpr4, !.Info, !Common),
+    maybe_handle_stack_flush(after, GoalExpr4, !Common),
     enforce_unreachability_invariant(GoalInfo4, GoalInfo, !Info),
     Goal = hlds_goal(GoalExpr4, GoalInfo).
 
@@ -365,30 +365,16 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, NestedContext0,
     --->    before
     ;       after.
 
-    % Clear the common_info structs accumulated since the last goal
-    % that could cause a stack flush. This is done to avoid replacing
-    % a deconstruction with assignments to the arguments where this
-    % would cause more variables to be live across the stack flush.
-    % Calls and construction unifications are not treated in this way
-    % since it is nearly always better to optimize them away.
-    % When doing deforestation, it may be better to remove
-    % as many common structures as possible.
-    %
-    % Clear the set of variables seen since the last stack flush,
-    % for the same reason.
-    %
 :- pred maybe_handle_stack_flush(before_after::in, hlds_goal_expr::in,
-    simplify_info::in, common_info::in, common_info::out) is det.
+    common_info::in, common_info::out) is det.
 
-maybe_handle_stack_flush(BeforeAfter, GoalExpr, Info, !Common) :-
-    ( if
-        simplify_do_common_struct(Info),
-        not simplify_do_extra_common_struct(Info),
-        will_flush(BeforeAfter, GoalExpr) = yes
-    then
+maybe_handle_stack_flush(BeforeAfter, GoalExpr, !Common) :-
+    WillFlush = will_flush(BeforeAfter, GoalExpr),
+    (
+        WillFlush = yes,
         common_info_stack_flush(!Common)
-    else
-        true
+    ;
+        WillFlush = no
     ).
 
     % Return `no' if execution of the given goal cannot encounter a context

@@ -236,7 +236,8 @@ propagate_constraints(!Goal, !PDInfo) :-
             pd_requantify_goal(NonLocals, !Goal, !PDInfo),
             pd_recompute_instmap_delta(!Goal, !PDInfo),
             rerun_det_analysis(!Goal, !PDInfo),
-            find_simplify_tasks(no, Globals, SimplifyTasks),
+            find_simplify_tasks(Globals, do_not_generate_warnings,
+                SimplifyTasks),
             pd_simplify_goal(SimplifyTasks, !Goal, !PDInfo)
         ;
             % Use Goal0 rather than the output of propagate_constraints_in_goal

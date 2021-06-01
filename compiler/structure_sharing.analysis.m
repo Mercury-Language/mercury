@@ -349,7 +349,8 @@ simplify_and_detect_liveness_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
     % Liveness annotation expects the procedure to have been simplified.
     % For example, an if-then-else with an `erroneous' condition will cause
     % an assertion failure if it is not simplified away.
-    SimplifyTasks = list_to_simplify_tasks([]),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    SimplifyTasks = list_to_simplify_tasks(Globals, []),
     PredProcId = proc(PredId, ProcId),
     simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo),
     detect_liveness_proc(!.ModuleInfo, PredProcId, !ProcInfo).

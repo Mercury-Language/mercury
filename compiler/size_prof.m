@@ -237,7 +237,8 @@ size_prof_process_proc_msg(Transform, PredProcId, !ProcInfo, !ModuleInfo) :-
 
 size_prof_process_proc(Transform, proc(PredId, ProcId), !ProcInfo,
         !ModuleInfo) :-
-    SimplifyTasks = list_to_simplify_tasks([]),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    SimplifyTasks = list_to_simplify_tasks(Globals, []),
     simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo),
 
     proc_info_get_goal(!.ProcInfo, Goal0),

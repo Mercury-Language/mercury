@@ -42,9 +42,12 @@
 :- type maybe_inline_linear_tail_rec_sccs
     --->    inline_linear_tail_rec_sccs
     ;       do_not_inline_linear_tail_rec_sccs.
-:- type maybe_enable_const_struct
-    --->    enable_const_struct
-    ;       do_not_enable_const_struct.
+:- type maybe_enable_const_struct_poly
+    --->    enable_const_struct_poly
+    ;       do_not_enable_const_struct_poly.
+:- type maybe_enable_const_struct_user
+    --->    enable_const_struct_user
+    ;       do_not_enable_const_struct_user.
 :- type maybe_opt_common_structs
     --->    opt_common_structs
     ;       do_not_opt_common_structs.
@@ -294,7 +297,8 @@
     ;       oo_inline_builtins(bool)
     ;       oo_inline_single_use(bool)
     ;       oo_inline_linear_tail_rec_sccs(bool)
-    ;       oo_enable_const_struct(bool)
+    ;       oo_enable_const_struct_poly(bool)
+    ;       oo_enable_const_struct_user(bool)
     ;       oo_opt_common_structs(bool)
     ;       oo_prop_constraints(bool)
     ;       oo_prop_local_constraints(bool)
@@ -425,7 +429,8 @@
                 ot_inline_builtins            :: maybe_inline_builtins,
                 ot_inline_single_use          :: maybe_inline_single_use,
                 ot_inline_linear_tail_rec_sccs :: maybe_inline_linear_tail_rec_sccs,
-                ot_enable_const_struct        :: maybe_enable_const_struct,
+                ot_enable_const_struct_poly   :: maybe_enable_const_struct_poly,
+                ot_enable_const_struct_user   :: maybe_enable_const_struct_user,
                 ot_opt_common_structs         :: maybe_opt_common_structs,
                 ot_prop_constraints           :: maybe_prop_constraints,
                 ot_prop_local_constraints     :: maybe_prop_local_constraints,
@@ -583,7 +588,8 @@ init_opt_tuple = opt_tuple(
         inline_builtins,
         do_not_inline_single_use,
         do_not_inline_linear_tail_rec_sccs,
-        enable_const_struct,
+        enable_const_struct_poly,
+        enable_const_struct_user,
         do_not_opt_common_structs,
         do_not_prop_constraints,
         do_not_prop_local_constraints,
@@ -737,8 +743,11 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
         OptOption = oo_inline_linear_tail_rec_sccs(Bool),
         update_opt_tuple_bool_inline_linear_tail_rec_sccs(Bool, !OptTuple)
     ;
-        OptOption = oo_enable_const_struct(Bool),
-        update_opt_tuple_bool_enable_const_struct(Bool, !OptTuple)
+        OptOption = oo_enable_const_struct_poly(Bool),
+        update_opt_tuple_bool_enable_const_struct_poly(Bool, !OptTuple)
+    ;
+        OptOption = oo_enable_const_struct_user(Bool),
+        update_opt_tuple_bool_enable_const_struct_user(Bool, !OptTuple)
     ;
         OptOption = oo_opt_common_structs(Bool),
         update_opt_tuple_bool_opt_common_structs(Bool, !OptTuple)
@@ -1217,26 +1226,49 @@ update_opt_tuple_bool_inline_linear_tail_rec_sccs(Bool, !OptTuple) :-
         )
     ).
 
-:- pred update_opt_tuple_bool_enable_const_struct(bool::in,
+:- pred update_opt_tuple_bool_enable_const_struct_poly(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_enable_const_struct(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_enable_const_struct,
+update_opt_tuple_bool_enable_const_struct_poly(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_enable_const_struct_poly,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_enable_const_struct,
-            !OptTuple ^ ot_enable_const_struct := enable_const_struct
+            OldValue = do_not_enable_const_struct_poly,
+            !OptTuple ^ ot_enable_const_struct_poly := enable_const_struct_poly
         ;
-            OldValue = enable_const_struct
+            OldValue = enable_const_struct_poly
         )
     else
         (
-            OldValue = do_not_enable_const_struct
+            OldValue = do_not_enable_const_struct_poly
         ;
-            OldValue = enable_const_struct,
-            !OptTuple ^ ot_enable_const_struct := do_not_enable_const_struct
+            OldValue = enable_const_struct_poly,
+            !OptTuple ^ ot_enable_const_struct_poly := do_not_enable_const_struct_poly
+        )
+    ).
+
+:- pred update_opt_tuple_bool_enable_const_struct_user(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_enable_const_struct_user(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_enable_const_struct_user,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_enable_const_struct_user,
+            !OptTuple ^ ot_enable_const_struct_user := enable_const_struct_user
+        ;
+            OldValue = enable_const_struct_user
+        )
+    else
+        (
+            OldValue = do_not_enable_const_struct_user
+        ;
+            OldValue = enable_const_struct_user,
+            !OptTuple ^ ot_enable_const_struct_user := do_not_enable_const_struct_user
         )
     ).
 
