@@ -22,7 +22,7 @@ browser> track -a
 type_to_univ(_, univ_cons(1))
 Valid? info
 Context of current question : univ.m:NNNN (univ.m:NNNN)
-Search mode                 : top down              
+Search mode                 : top down               
 The current question was chosen because the marked subterm was bound by
 the untraced call inside the predicate univ.type_to_univ/2 (univ.m:NNNN).
 The path to the subterm in the atom is 2/2.
