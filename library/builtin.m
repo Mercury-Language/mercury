@@ -649,7 +649,7 @@ compare_rep_tuple_pos(Result, TermA, TermB, Index, Arity) :-
 ").
 
 tuple_arity(_, _) :-
-   private_builtin.sorry("tuple_arity/2").
+    private_builtin.sorry("tuple_arity/2").
 
 :- some [ArgT] pred tuple_arg(T::in, int::in, ArgT::out) is det.
 :- pragma no_determinism_warning(tuple_arg/3).
@@ -667,7 +667,7 @@ tuple_arity(_, _) :-
 ").
 
 tuple_arg(_, _, -1) :-
-   private_builtin.sorry("tuple_arg/3").
+    private_builtin.sorry("tuple_arg/3").
 
 %---------------------------------------------------------------------------%
 
