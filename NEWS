@@ -50,6 +50,12 @@ Changes to the Mercury standard library
 
 * The `lists/1` function now returns an empty list for a 0x0 array.
 
+### Changes to the `assoc_list` module
+
+* The following predicate has been added:
+
+    - pred `maybe_from_corresponding_lists/3`
+
 ### Changes to the `bag` module
 
 * The following obsolete predicates and functions have been removed:

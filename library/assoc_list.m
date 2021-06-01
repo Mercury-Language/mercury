@@ -40,6 +40,12 @@
 :- pred from_corresponding_lists(list(K)::in, list(V)::in,
     assoc_list(K, V)::out) is det.
 
+    % Zip together a list of keys and a list of values.
+    % Fail if they are of different lengths.
+    %
+:- pred maybe_from_corresponding_lists(list(K)::in, list(V)::in,
+    assoc_list(K, V)::out) is semidet.
+
 %---------------------------------------------------------------------------%
 %
 % Operations on lists of keys and/or values.
@@ -362,6 +368,9 @@ from_corresponding_lists(Ks, Vs, KVs) :-
             ++ "\n\tValue list length: " ++ ValueLengthString,
         unexpected($pred, ErrorString)
     ).
+
+maybe_from_corresponding_lists(Ks, Vs, KVs) :-
+    assoc_list.from_corresponding_loop(Ks, Vs, KVs).
 
 :- pred assoc_list.from_corresponding_loop(list(K)::in, list(V)::in,
     assoc_list(K,V)::out) is semidet.
