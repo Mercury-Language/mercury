@@ -2889,7 +2889,8 @@ length(S) = L :-
 
 length(Str, Len) :-
     to_code_unit_list(Str, CodeList),
-    list.length(CodeList, Len).
+    list.length(CodeList, Len0),
+    Len = unsafe_promise_unique(Len0).
 
 count_code_units(Str) = length(Str).
 
