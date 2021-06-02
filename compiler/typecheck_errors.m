@@ -525,7 +525,9 @@ report_event_args_mismatch(Context, EventName, EventArgTypes, Args) = Spec :-
 %---------------------------------------------------------------------------%
 
 maybe_report_no_clauses(ModuleInfo, PredId, PredInfo) = Specs :-
-    ( if should_report_no_clauses(ModuleInfo, PredInfo) then
+    ShouldReport = should_report_no_clauses(ModuleInfo, PredInfo),
+    (
+        ShouldReport = yes,
         PredPieces = describe_one_pred_name(ModuleInfo,
             should_not_module_qualify, PredId),
         Pieces = [words("Error: no clauses for") | PredPieces] ++
@@ -548,12 +550,15 @@ maybe_report_no_clauses(ModuleInfo, PredId, PredInfo) = Specs :-
         Spec = simplest_spec($pred, severity_error, phase_type_check,
             Context, Pieces),
         Specs = [Spec]
-    else
+    ;
+        ShouldReport = no,
         Specs = []
     ).
 
 maybe_report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Specs :-
-    ( if should_report_no_clauses(ModuleInfo, PredInfo) then
+    ShouldReport = should_report_no_clauses(ModuleInfo, PredInfo),
+    (
+        ShouldReport = yes,
         PredPieces = describe_one_pred_name(ModuleInfo,
             should_not_module_qualify, PredId),
         Pieces = [words("Warning: no clauses for ") | PredPieces] ++
@@ -562,26 +567,25 @@ maybe_report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Specs :-
         Spec = conditional_spec($pred, warn_stubs, yes, severity_warning,
             phase_type_check, [simplest_msg(Context, Pieces)]),
         Specs = [Spec]
-    else
+    ;
+        ShouldReport = no,
         Specs = []
     ).
 
-:- pred should_report_no_clauses(module_info::in, pred_info::in) is semidet.
+:- func should_report_no_clauses(module_info, pred_info) = bool.
 
-should_report_no_clauses(ModuleInfo, PredInfo) :-
-    require_det (
-        module_info_get_int_bad_clauses(ModuleInfo, IntBadClauses),
-        module_info_get_name(ModuleInfo, ModuleName),
-        pred_info_get_name(PredInfo, PredName),
-        pred_info_get_orig_arity(PredInfo, Arity),
-        pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-        SymName = qualified(ModuleName, PredName),
-        Id = pf_sym_name_arity(PredOrFunc, SymName, Arity)
-    ),
+should_report_no_clauses(ModuleInfo, PredInfo) = ShouldReport :-
+    module_info_get_int_bad_clauses(ModuleInfo, IntBadClauses),
+    module_info_get_name(ModuleInfo, ModuleName),
+    pred_info_get_name(PredInfo, PredName),
+    pred_info_get_orig_arity(PredInfo, Arity),
+    pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+    SymName = qualified(ModuleName, PredName),
+    Id = pf_sym_name_arity(PredOrFunc, SymName, Arity),
     ( if set.contains(IntBadClauses, Id) then
-        false
+        ShouldReport = no
     else
-        true
+        ShouldReport = yes
     ).
 
 %---------------------------------------------------------------------------%
