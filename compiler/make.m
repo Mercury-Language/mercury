@@ -70,7 +70,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
 :- import_module libs.handle_options.
-:- import_module libs.md4.
+:- import_module libs.md5.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module make.build.
@@ -700,7 +700,7 @@ option_table_hash(AllOptionArgs, Hash, !IO) :-
     list.filter(include_option_in_hash(InconsequentialOptions),
         OptionList, HashOptionList),
     globals.get_opt_tuple(AllOptionArgsGlobals, OptTuple),
-    Hash = md4sum(string({HashOptionList, OptTuple})).
+    Hash = md5sum(string({HashOptionList, OptTuple})).
 
 :- pred include_option_in_hash(set(option)::in,
     pair(option, option_data)::in) is semidet.

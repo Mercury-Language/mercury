@@ -69,7 +69,7 @@ MCFLAGS-transform_hlds.table_gen          = --no-optimize-constructor-last-call
 # In these files, some imports are needed only in some grades.
 # Until unused_imports.m can avoid generating messages about these,
 # disable the pass on these files.
-MCFLAGS-libs.md4                          = --no-warn-unused-imports
+MCFLAGS-libs.md5                          = --no-warn-unused-imports
 MCFLAGS-libs.process_util                 = --no-warn-unused-imports
 
 # process_util.m uses `kill' and `struct sigaction' from <signal.h>,
