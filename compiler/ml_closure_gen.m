@@ -552,8 +552,8 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     %   }
     %
     % Actually, that is a simplified form.
-    % Also when calling a special pred then the closure argument isn't
-    % required. In full generality, it will look more like this:
+    % Also, when calling a special pred, the closure argument isn't required.
+    % In full generality, it will look more like this:
     %
     % #if MODEL_SEMI
     %   bool

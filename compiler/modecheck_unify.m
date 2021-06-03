@@ -380,7 +380,8 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
     ;
         Groundness = ho_any,
         mode_info_get_var_types(!.ModeInfo, NonLocalTypes),
-        NonLocals = set_of_var.filter(
+        % XXX Give FilterPred a more descriptive name.
+        FilterPred =
             ( pred(NonLocal::in) is semidet :-
                 lookup_var_type(NonLocalTypes, NonLocal, NonLocalType),
                 instmap_lookup_var(InstMap1, NonLocal, NonLocalInst),
@@ -389,7 +390,8 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
                 not inst_matches_initial(NonLocalInst,
                     any(shared, none_or_default_func),
                     NonLocalType, ModuleInfo0)
-            ), NonLocals1)
+            ),
+        set_of_var.filter(FilterPred, NonLocals1, NonLocals)
     ),
     set_of_var.to_sorted_list(NonLocals, NonLocalsList),
     instmap_lookup_vars(InstMap1, NonLocalsList, NonLocalInsts),
@@ -408,7 +410,6 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         % Unfortunately, we can't test the latter condition until after
         % we have mode-checked the lambda body. (See the above comment on
         % merging the initial and final instmaps.)
-
         ( if
             Groundness = ho_ground,
             Purity \= purity_impure
@@ -428,8 +429,6 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         mode_info_lock_vars(var_lock_lambda(PredOrFunc), NonLocals, !ModeInfo),
 
         mode_checkpoint(enter, "lambda goal", !ModeInfo),
-        % If we are being called from unique_modes.m, then we need to
-        % call unique_modes_check_goal rather than modecheck_goal.
         (
             HowToCheckGoal = check_unique_modes,
             unique_modes_check_goal(Goal0, Goal, !ModeInfo)
@@ -447,13 +446,11 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
 
         % Ensure that the non-local vars are shared OUTSIDE the
         % lambda unification as well as inside.
-
         instmap_set_vars_corresponding(NonLocalsList, SharedNonLocalInsts,
             InstMap0, InstMap11),
         mode_info_set_instmap(InstMap11, !ModeInfo),
 
         % Now modecheck the unification of X with the lambda-expression.
-
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             ArgVars, Vars, Modes, Det, Goal),
         modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes, Det,
@@ -703,17 +700,22 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             % succeed, and thus it is very unlikely to be what the programmer
             % intended to write.
             %
-            % Unfortunately, if the unintended occurrence of X on the
-            % right hand side has more than one function symbol above it,
-            % then we won't generate this warning, because the compiler
-            % will transform X = f(g(X)) into superhomogeneous form as
-            % X = f(Y), Y = g(X), and neither of those unifications
-            % will pass the list.member(X, ArgVars0) test above.
+            % We used to have the code
+            %   Warning = cannot_succeed_ground_occur_check(X, ConsId),
+            %   mode_info_warning(Warning, !ModeInfo)
+            % here. However, it diagnose occur check problems *only*
+            % if they took the form X = f(..., X, ...). This is because
+            % if the unintended occurrence of X on the right hand side
+            % has more than one function symbol above it, as in e.g.
+            % X = f(g(X)), then the compiler will transform it into
+            % superhomogeneous form as X = f(Y), Y = g(X), and the test
+            % list.member(X, ArgVars0) above will succeed for neither
+            % of those unifications.
             %
-            % We disable this warning, because superhomogeneous.m
-            % should have generated a warning for this already.
-            % Warning = cannot_succeed_ground_occur_check(X, ConsId),
-            % mode_info_warning(Warning, !ModeInfo),
+            % That code is now commented out because superhomogeneous.m
+            % now has code to a warning for occurs check violations that works
+            % regardless of the position of X inside the term that is
+            % unified with it.
             modecheck_set_var_inst(X, not_reached, no, !ModeInfo),
             GoalExpr = disj([])
         else
@@ -779,7 +781,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             % to handle complicated sub-unifications in deconstructions.
             % The only time this can happen during unique mode analysis is if
             % the instmap is unreachable, since inst_is_bound succeeds for
-            % not_reached. (If it did in other cases, the code would be wrong
+            % not_reached. (If it did in other cases, the code would be wrong,
             % since it wouldn't have the correct determinism annotations.)
             append_extra_goals(ExtraGoalsExistConstruct,
                 ExtraGoalsSplitSubUnifies, ExtraGoals),
@@ -1142,8 +1144,8 @@ categorize_unify_var_var(InitInstX, InitInstY, UnifiedInst, LiveX, LiveY, X, Y,
         % a unification as having no solutions is that the unification
         % always fails.
         %
-        % Unifying two preds is not erroneous as far as the
-        % mode checker is concerned, but a mode _error_.
+        % As far as the mode checker is concerned, unifying two preds
+        % is not erroneous, but a mode *error*.
         Unify = disj([]),
         mode_info_get_module_info(!.ModeInfo, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
