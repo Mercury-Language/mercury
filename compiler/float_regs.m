@@ -534,8 +534,8 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
     proc_info_get_has_parallel_conj(!.ProcInfo, HasParallelConj),
 
     % Process the goal.
-    init_lambda_info(VarSet0, VarTypes0, TypeVarSet0, InstVarSet0,
-        RttiVarMaps0, HasParallelConj, !.PredInfo, !.ModuleInfo, Info0),
+    init_lambda_info(!.ModuleInfo, !.PredInfo, VarSet0, TypeVarSet0,
+        InstVarSet0, VarTypes0, RttiVarMaps0, HasParallelConj, Info0),
     insert_reg_wrappers_proc_body(HeadVars, ArgModes, Goal0, Goal1, InstMap0,
         Info0, Info1, !Specs),
     lambda_info_get_varset(Info1, VarSet1),
@@ -547,12 +547,12 @@ insert_reg_wrappers_proc_2(!ProcInfo, !PredInfo, !ModuleInfo, !Specs) :-
 
     % Check if we need to requantify.
     (
-        MustRecomputeNonLocals = yes,
+        MustRecomputeNonLocals = must_recompute_nonlocals,
         implicitly_quantify_clause_body_general(ordinary_nonlocals_no_lambda,
             HeadVars, _Warnings, Goal1, Goal2, VarSet1, VarSet2,
             VarTypes1, VarTypes2, RttiVarMaps1, RttiVarMaps2)
     ;
-        MustRecomputeNonLocals = no,
+        MustRecomputeNonLocals = need_not_recompute_nonlocals,
         Goal2 = Goal1,
         VarSet2 = VarSet1,
         VarTypes2 = VarTypes1,
@@ -1667,10 +1667,10 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     MainContext = umc_implicit("reg_wrapper"),
     UnifyContext = unify_context(MainContext, []),
     LambdaNonLocals = [CallVar],
-    lambda.expand_lambda(Purity, ho_ground, PredOrFunc, EvalMethod,
-        reg_wrapper_proc(RegR_HeadVars), CallVars, ArgModes, Determinism,
-        LambdaNonLocals, CallGoal, LHSVar, UnifyMode, Unification0,
-        UnifyContext, UnifyGoalExpr, !Info),
+    RHS = rhs_lambda_goal(Purity, ho_ground, PredOrFunc, EvalMethod,
+        LambdaNonLocals, CallVars, ArgModes, Determinism, CallGoal),
+    lambda.expand_lambda(reg_wrapper_proc(RegR_HeadVars), LHSVar, RHS,
+        UnifyMode, Unification0, UnifyContext, UnifyGoalExpr, !Info),
 
     % Create the unification goal for Var.
     UnifyNonLocals = set_of_var.make_singleton(LHSVar),
@@ -1683,7 +1683,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
         purity_pure, UnifyGoalInfo),
     UnifyGoal = hlds_goal(UnifyGoalExpr, UnifyGoalInfo),
 
-    lambda_info_set_recompute_nonlocals(yes, !Info).
+    lambda_info_set_recompute_nonlocals(must_recompute_nonlocals, !Info).
 
 :- pred create_fresh_vars(list(mer_type)::in, list(prog_var)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
