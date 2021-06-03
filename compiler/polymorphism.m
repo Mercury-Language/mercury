@@ -1457,7 +1457,8 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
             poly_info_get_errors(!.Info, Specs0),
             poly_info_set_errors(Specs ++ Specs0, !Info),
             % It doesn't matter what Goal we return, since it won't be used.
-            RHS = rhs_functor(int_const(42), is_not_exist_constr, []),
+            RHS = rhs_functor(some_int_const(int_const(42)),
+                is_not_exist_constr, []),
             polymorphism_process_unify(X0, RHS, Mode0, Unification0,
                 UnifyContext, GoalInfo1, Goal, !Info)
         ),

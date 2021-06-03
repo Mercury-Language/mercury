@@ -1343,7 +1343,8 @@ modecheck_goal_generic_call(GenericCall, Args0, Modes0, GoalInfo0, GoalExpr,
         then
             LocalSectag = local_sectag(_, PrimSec, _),
             SectagWholeWord = uint.cast_to_int(PrimSec),
-            BoundFunctor = bound_functor(int_const(SectagWholeWord), []),
+            SectagConsId = some_int_const(int_const(SectagWholeWord)),
+            BoundFunctor = bound_functor(SectagConsId, []),
             BoundInst = bound(Unique, inst_test_results_fgtc, [BoundFunctor]),
             NewMode2 = from_to_mode(free, BoundInst),
             Modes = [Mode1, NewMode2]

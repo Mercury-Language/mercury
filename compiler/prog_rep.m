@@ -103,6 +103,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.rtti_access.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 
@@ -866,16 +867,8 @@ encode_cons_id_and_arity_rep(ConsIdArity, ConsIdBytes, !StringTable) :-
 cons_id_rep(cons(SymName, _, _)) =
     prog_rep.sym_base_name_to_string(SymName).
 cons_id_rep(tuple_cons(_)) = "{}".
-cons_id_rep(int_const(Int)) = string.int_to_string(Int).
-cons_id_rep(uint_const(UInt)) = string.uint_to_string(UInt).
-cons_id_rep(int8_const(Int8)) = string.int8_to_string(Int8).
-cons_id_rep(uint8_const(UInt8)) = string.uint8_to_string(UInt8).
-cons_id_rep(int16_const(Int16)) = string.int16_to_string(Int16).
-cons_id_rep(uint16_const(UInt16)) = string.uint16_to_string(UInt16).
-cons_id_rep(int32_const(Int32)) = string.int32_to_string(Int32).
-cons_id_rep(uint32_const(UInt32)) = string.uint32_to_string(UInt32).
-cons_id_rep(int64_const(Int64)) = string.int64_to_string(Int64).
-cons_id_rep(uint64_const(UInt64)) = string.uint64_to_string(UInt64).
+cons_id_rep(some_int_const(IntConst)) = Str :-
+    int_const_to_string_and_suffix(IntConst, Str, _Suffix).
 cons_id_rep(float_const(Float)) = string.float_to_string(Float).
 cons_id_rep(char_const(Char)) = string.char_to_string(Char).
 cons_id_rep(string_const(String)) = """" ++ String ++ """".

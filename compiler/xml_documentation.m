@@ -723,25 +723,12 @@ cons_id_to_xml(cons(Name, Arity, _)) =
 % The return values here are just a continuation of what we used to do.
 cons_id_to_xml(tuple_cons(Arity)) =
     elem("cons", [], [name_to_xml(unqualified("{}")), arity_to_xml(Arity)]).
-cons_id_to_xml(int_const(I)) = tagged_int("int", I).
-cons_id_to_xml(uint_const(_)) = _ :-
-    unexpected($file, $pred, "NYI uint").
-cons_id_to_xml(int8_const(_)) = _ :-
-    unexpected($file, $pred, "NYI int8").
-cons_id_to_xml(uint8_const(_)) = _ :-
-    unexpected($file, $pred, "NYI uint8").
-cons_id_to_xml(int16_const(_)) = _ :-
-    unexpected($file, $pred, "NYI int16").
-cons_id_to_xml(uint16_const(_)) = _ :-
-    unexpected($file, $pred, "NYI uint16").
-cons_id_to_xml(int32_const(_)) = _ :-
-    unexpected($file, $pred, "NYI int32").
-cons_id_to_xml(uint32_const(_)) = _ :-
-    unexpected($file, $pred, "NYI uint32").
-cons_id_to_xml(int64_const(_)) = _ :-
-    unexpected($file, $pred, "NYI int64").
-cons_id_to_xml(uint64_const(_)) = _ :-
-    unexpected($file, $pred, "NYI uint64").
+cons_id_to_xml(some_int_const(IntConst)) =
+    ( if IntConst = int_const(I) then
+        tagged_int("int", I)
+    else
+        unexpected($pred, "NYI non-int integer const")
+    ).
 cons_id_to_xml(float_const(F)) = tagged_float("float", F).
 cons_id_to_xml(char_const(C)) = tagged_char("char", C).
 cons_id_to_xml(string_const(S)) = tagged_string("string", S).

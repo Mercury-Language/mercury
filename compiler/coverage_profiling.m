@@ -1137,8 +1137,8 @@ make_coverage_point(CPOptions, CoveragePointInfo, Goals, !CoverageInfo) :-
         !:VarInfo = !.CoverageInfo ^ ci_var_info,
 
         generate_var("CPIndex", int_type, CPIndexVar, !VarInfo),
-        generate_deep_const_unify(int_const(CPIndex), CPIndexVar,
-            GoalUnifyIndex),
+        generate_deep_const_unify(some_int_const(int_const(CPIndex)),
+            CPIndexVar, GoalUnifyIndex),
         % When using dynamic coverage profiling we really on this variable
         % being optimised away later.
         generate_var("ProcLayout", c_pointer_type, ProcLayoutVar, !VarInfo),

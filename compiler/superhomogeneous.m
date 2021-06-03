@@ -891,7 +891,7 @@ parse_ordinary_cons_id(VarSet, Functor, ArgTerms, Context, ConsId, !Specs) :-
         ;
             MaybeConsId = error1(ConsIdSpecs),
             % This is a dummy.
-            ConsId = int_const(0),
+            ConsId = some_int_const(int_const(0)),
             !:Specs = ConsIdSpecs ++ !.Specs
         )
     ;

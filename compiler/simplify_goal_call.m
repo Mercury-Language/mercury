@@ -889,25 +889,26 @@ is_useless_unsigned_comparison(ModuleName, PredName, ArgA, ArgB, Pieces) :-
 :- pred arg_is_unsigned_zero(string::in, mer_inst::in, string::out) is semidet.
 
 arg_is_unsigned_zero(ModuleName, Arg, ZeroStr) :-
+    Arg = bound(_, _, [bound_functor(some_int_const(IntConst), [])]),
     (
         ModuleName = "uint",
-        Arg = bound(_, _, [bound_functor(uint_const(0u), [])]),
+        IntConst = uint_const(0u),
         ZeroStr = "0u"
     ;
         ModuleName = "uint8",
-        Arg = bound(_, _, [bound_functor(uint8_const(0u8), [])]),
+        IntConst = uint8_const(0u8),
         ZeroStr = "0u8"
     ;
         ModuleName = "uint16",
-        Arg = bound(_, _, [bound_functor(uint16_const(0u16), [])]),
+        IntConst = uint16_const(0u16),
         ZeroStr = "0u16"
     ;
         ModuleName = "uint32",
-        Arg = bound(_, _, [bound_functor(uint32_const(0u32), [])]),
+        IntConst = uint32_const(0u32),
         ZeroStr = "0u32"
     ;
         ModuleName = "uint64",
-        Arg = bound(_, _, [bound_functor(uint64_const(0u64), [])]),
+        IntConst = uint64_const(0u64),
         ZeroStr = "0u64"
     ).
 
@@ -1301,7 +1302,7 @@ simplify_make_cmp_goal_expr(Info, ModuleSymName, Op, IsBuiltin, X, Y,
     simplify_info::in, simplify_info::out) is det.
 
 simplify_make_int_const(IntConst, ConstVar, Goal, !Info) :-
-    ConstConsId = int_const(IntConst),
+    ConstConsId = some_int_const(int_const(IntConst)),
     simplify_make_const(int_type, ConstConsId, ConstVar, Goal, !Info).
 
 :- pred simplify_make_string_const(string::in, prog_var::out, hlds_goal::out,
@@ -1412,7 +1413,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
         NumTargetBits = int_type_target_bits(Globals, IntType),
         instmap_lookup_var(InstMap0, Y, InstY),
         ( if
-            InstY = bound(_, _, [bound_functor(YConst, [])]),
+            InstY = bound(_, _, [bound_functor(some_int_const(YConst), [])]),
             ( YConst = int_const(_)     % for << and >>
             ; YConst = uint_const(_)    % for <<u and >>u
             )
@@ -1586,83 +1587,85 @@ replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr) :-
 :- pred is_zero_const(int_type::in, cons_id::in) is semidet.
 
 is_zero_const(IntType, ConsId) :-
+    ConsId = some_int_const(IntConst),
     require_complete_switch [IntType]
     (
         IntType = int_type_int,
-        ConsId = int_const(Val),
+        IntConst = int_const(Val),
         Val = 0
     ;
         IntType = int_type_uint,
-        ConsId = uint_const(Val),
+        IntConst = uint_const(Val),
         Val = 0u
     ;
         IntType = int_type_int8,
-        ConsId = int8_const(Val),
+        IntConst = int8_const(Val),
         Val = 0i8
     ;
         IntType = int_type_uint8,
-        ConsId = uint8_const(Val),
+        IntConst = uint8_const(Val),
         Val = 0u8
     ;
         IntType = int_type_int16,
-        ConsId = int16_const(Val),
+        IntConst = int16_const(Val),
         Val = 0i16
     ;
         IntType = int_type_uint16,
-        ConsId = uint16_const(Val),
+        IntConst = uint16_const(Val),
         Val = 0u16
     ;
         IntType = int_type_int32,
-        ConsId = int32_const(Val),
+        IntConst = int32_const(Val),
         Val = 0i32
     ;
         IntType = int_type_uint32,
-        ConsId = uint32_const(Val),
+        IntConst = uint32_const(Val),
         Val = 0u32
     ;
         IntType = int_type_int64,
-        ConsId = int64_const(Val),
+        IntConst = int64_const(Val),
         Val = 0i64
     ;
         IntType = int_type_uint64,
-        ConsId = uint64_const(Val),
+        IntConst = uint64_const(Val),
         Val = 0u64
     ).
 
 :- pred is_int_const(int_type::in, cons_id::in) is semidet.
 
 is_int_const(IntType, ConsId) :-
+    ConsId = some_int_const(IntConst),
     require_complete_switch [IntType]
     (
         IntType = int_type_int,
-        ConsId = int_const(_Val)
+        IntConst = int_const(_Val)
     ;
         IntType = int_type_uint,
-        ConsId = uint_const(_Val)
+        IntConst = uint_const(_Val)
     ;
         IntType = int_type_int8,
-        ConsId = int8_const(_Val)
+        IntConst = int8_const(_Val)
     ;
         IntType = int_type_uint8,
-        ConsId = uint8_const(_Val)
+        IntConst = uint8_const(_Val)
     ;
         IntType = int_type_int16,
-        ConsId = int16_const(_Val)
+        IntConst = int16_const(_Val)
     ;
         IntType = int_type_uint16,
-        ConsId = uint16_const(_Val)
+        IntConst = uint16_const(_Val)
     ;
         IntType = int_type_int32,
-        ConsId = int32_const(_Val)
+        IntConst = int32_const(_Val)
     ;
         IntType = int_type_uint32,
-        ConsId = uint32_const(_Val)
+        IntConst = uint32_const(_Val)
     ;
         IntType = int_type_int64,
-        ConsId = int64_const(_Val)
+        IntConst = int64_const(_Val)
     ;
         IntType = int_type_uint64,
-        ConsId = uint64_const(_Val)
+        IntConst = uint64_const(_Val)
     ).
 
 :- func int_type_target_bits(globals, int_type) = int.

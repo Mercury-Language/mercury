@@ -574,7 +574,7 @@ add_builtin(PredId, HeadTypes0, CompilationTarget, !PredInfo) :-
         HeadVars = [ZeroVar | HeadVars0],
         HeadTypes = [int_type | HeadTypes0],
 
-        ConsId = int_const(0),
+        ConsId = some_int_const(int_const(0)),
         LHS = ZeroVar,
         RHS = rhs_functor(ConsId, is_not_exist_constr, []),
         UnifyMode = unify_modes_li_lf_ri_rf(free, ground_inst,

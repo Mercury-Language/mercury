@@ -623,21 +623,45 @@ rename_in_catch_expr(OldVar, NewVar, Catch0, Catch) :-
 
 %-----------------------------------------------------------------------------%
 
-cons_id_and_args_to_term(int_const(Int), [], Term) :-
-    term.context_init(Context),
-    Term = int_to_decimal_term(Int, Context).
-cons_id_and_args_to_term(uint_const(UInt), [], Term) :-
-    term.context_init(Context),
-    Term = uint_to_decimal_term(UInt, Context).
+cons_id_and_args_to_term(some_int_const(IntConst), [], Term) :-
+    (
+        IntConst = int_const(Int),
+        Term = int_to_decimal_term(Int, term.context_init)
+    ;
+        IntConst = int8_const(Int8),
+        Term = int8_to_decimal_term(Int8, term.context_init)
+    ;
+        IntConst = int16_const(Int16),
+        Term = int16_to_decimal_term(Int16, term.context_init)
+    ;
+        IntConst = int32_const(Int32),
+        Term = int32_to_decimal_term(Int32, term.context_init)
+    ;
+        IntConst = int64_const(Int64),
+        Term = int64_to_decimal_term(Int64, term.context_init)
+    ;
+        IntConst = uint_const(UInt),
+        Term = uint_to_decimal_term(UInt, term.context_init)
+    ;
+        IntConst = uint8_const(UInt8),
+        Term = uint8_to_decimal_term(UInt8, term.context_init)
+    ;
+        IntConst = uint16_const(UInt16),
+        Term = uint16_to_decimal_term(UInt16, term.context_init)
+    ;
+        IntConst = uint32_const(UInt32),
+        Term = uint32_to_decimal_term(UInt32, term.context_init)
+    ;
+        IntConst = uint64_const(UInt64),
+        Term = uint64_to_decimal_term(UInt64, term.context_init)
+    ).
 cons_id_and_args_to_term(float_const(Float), [], Term) :-
-    term.context_init(Context),
-    Term = term.functor(term.float(Float), [], Context).
+    Term = term.functor(term.float(Float), [], term.context_init).
 cons_id_and_args_to_term(char_const(Char), [], Term) :-
     SymName = unqualified(string.from_char(Char)),
     construct_qualified_term(SymName, [], Term).
 cons_id_and_args_to_term(string_const(String), [], Term) :-
-    term.context_init(Context),
-    Term = term.functor(term.string(String), [], Context).
+    Term = term.functor(term.string(String), [], term.context_init).
 cons_id_and_args_to_term(tuple_cons(_Arity), Args, Term) :-
     SymName = unqualified("{}"),
     construct_qualified_term(SymName, Args, Term).
@@ -653,16 +677,7 @@ cons_id_arity(ConsId) = Arity :-
         ConsId = ground_term_const(_, SubConsId),
         Arity = cons_id_arity(SubConsId)
     ;
-        ( ConsId = int_const(_)
-        ; ConsId = uint_const(_)
-        ; ConsId = int8_const(_)
-        ; ConsId = uint8_const(_)
-        ; ConsId = int16_const(_)
-        ; ConsId = uint16_const(_)
-        ; ConsId = int32_const(_)
-        ; ConsId = uint32_const(_)
-        ; ConsId = int64_const(_)
-        ; ConsId = uint64_const(_)
+        ( ConsId = some_int_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)
@@ -686,16 +701,7 @@ cons_id_arity(ConsId) = Arity :-
 
 cons_id_maybe_arity(cons(_, Arity, _)) = yes(Arity).
 cons_id_maybe_arity(tuple_cons(Arity)) = yes(Arity).
-cons_id_maybe_arity(int_const(_)) = yes(0).
-cons_id_maybe_arity(uint_const(_)) = yes(0).
-cons_id_maybe_arity(int8_const(_)) = yes(0).
-cons_id_maybe_arity(uint8_const(_)) = yes(0).
-cons_id_maybe_arity(int16_const(_)) = yes(0).
-cons_id_maybe_arity(uint16_const(_)) = yes(0).
-cons_id_maybe_arity(int32_const(_)) = yes(0).
-cons_id_maybe_arity(uint32_const(_)) = yes(0).
-cons_id_maybe_arity(int64_const(_)) = yes(0).
-cons_id_maybe_arity(uint64_const(_)) = yes(0).
+cons_id_maybe_arity(some_int_const(_)) = yes(0).
 cons_id_maybe_arity(float_const(_)) = yes(0).
 cons_id_maybe_arity(char_const(_)) = yes(0).
 cons_id_maybe_arity(string_const(_)) = yes(0).

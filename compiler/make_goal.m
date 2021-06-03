@@ -223,7 +223,8 @@ make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
 %-----------------------------------------------------------------------------%
 
 make_int_const_construction(Context, Var, Int, Goal) :-
-    make_const_construction(Context, Var, int_const(Int), Goal).
+    ConsId = some_int_const(int_const(Int)),
+    make_const_construction(Context, Var, ConsId, Goal).
 
 make_string_const_construction(Context, Var, String, Goal) :-
     make_const_construction(Context, Var, string_const(String), Goal).

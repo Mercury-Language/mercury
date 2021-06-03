@@ -289,35 +289,38 @@ mercury_format_cons_id(Lang, NeedsBrackets, ConsId, S, !U) :-
             add_string("tuple{}", S, !U)
         )
     ;
-        ConsId = int_const(Int),
-        add_int(Int, S, !U)
-    ;
-        ConsId = uint_const(UInt),
-        add_uint(UInt, S, !U)
-    ;
-        ConsId = int8_const(Int8),
-        add_int8(Int8, S, !U)
-    ;
-        ConsId = uint8_const(UInt8),
-        add_uint8(UInt8, S, !U)
-    ;
-        ConsId = int16_const(Int16),
-        add_int16(Int16, S, !U)
-    ;
-        ConsId = uint16_const(UInt16),
-        add_uint16(UInt16, S, !U)
-    ;
-        ConsId = int32_const(Int32),
-        add_int32(Int32, S, !U)
-    ;
-        ConsId = uint32_const(UInt32),
-        add_uint32(UInt32, S, !U)
-    ;
-        ConsId = int64_const(Int64),
-        add_int64(Int64, S, !U)
-    ;
-        ConsId = uint64_const(UInt64),
-        add_uint64(UInt64, S, !U)
+        ConsId = some_int_const(IntConst),
+        (
+            IntConst = int_const(Int),
+            add_int(Int, S, !U)
+        ;
+            IntConst = uint_const(UInt),
+            add_uint(UInt, S, !U)
+        ;
+            IntConst = int8_const(Int8),
+            add_int8(Int8, S, !U)
+        ;
+            IntConst = uint8_const(UInt8),
+            add_uint8(UInt8, S, !U)
+        ;
+            IntConst = int16_const(Int16),
+            add_int16(Int16, S, !U)
+        ;
+            IntConst = uint16_const(UInt16),
+            add_uint16(UInt16, S, !U)
+        ;
+            IntConst = int32_const(Int32),
+            add_int32(Int32, S, !U)
+        ;
+            IntConst = uint32_const(UInt32),
+            add_uint32(UInt32, S, !U)
+        ;
+            IntConst = int64_const(Int64),
+            add_int64(Int64, S, !U)
+        ;
+            IntConst = uint64_const(UInt64),
+            add_uint64(UInt64, S, !U)
+        )
     ;
         ConsId = float_const(Float),
         add_float(Float, S, !U)

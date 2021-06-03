@@ -664,35 +664,8 @@ functor_cons_id_to_string(ModuleInfo, VarSet, VarNamePrint, ConsId, ArgVars)
         Str = functor_to_string_maybe_needs_quotes(VarSet, VarNamePrint,
             next_to_graphic_token, term.atom("{}"), ArgVars)
     ;
-        ConsId = int_const(Int),
-        Str = int_to_string(Int)
-    ;
-        ConsId = uint_const(UInt),
-        Str = uint_to_string(UInt) ++ "u"
-    ;
-        ConsId = int8_const(Int8),
-        Str = int8_to_string(Int8) ++ "i8"
-    ;
-        ConsId = uint8_const(UInt8),
-        Str = uint8_to_string(UInt8) ++ "u8"
-    ;
-        ConsId = int16_const(Int16),
-        Str = int16_to_string(Int16) ++ "i16"
-    ;
-        ConsId = uint16_const(UInt16),
-        Str = uint16_to_string(UInt16) ++ "u16"
-    ;
-        ConsId = int32_const(Int32),
-        Str = int32_to_string(Int32) ++ "i32"
-    ;
-        ConsId = uint32_const(UInt32),
-        Str = uint32_to_string(UInt32) ++ "u32"
-    ;
-        ConsId = int64_const(Int64),
-        Str = int64_to_string(Int64) ++ "i64"
-    ;
-        ConsId = uint64_const(UInt64),
-        Str = uint64_to_string(UInt64) ++ "u64"
+        ConsId = some_int_const(IntConst),
+        Str = int_const_to_string_with_suffix(IntConst)
     ;
         ConsId = float_const(Float),
         Str = functor_to_string(VarSet, VarNamePrint,
@@ -839,35 +812,8 @@ cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
             )
         )
     ;
-        ConsId = int_const(Int),
-        string.int_to_string(Int, String)
-    ;
-        ConsId = uint_const(UInt),
-        String = uint_to_string(UInt) ++ "u"
-    ;
-        ConsId = int8_const(Int8),
-        String = string.int8_to_string(Int8) ++ "i8"
-    ;
-        ConsId = uint8_const(UInt8),
-        String = string.uint8_to_string(UInt8) ++ "u8"
-    ;
-        ConsId = int16_const(Int16),
-        String = string.int16_to_string(Int16) ++ "i16"
-    ;
-        ConsId = uint16_const(UInt16),
-        String = string.uint16_to_string(UInt16) ++ "u16"
-    ;
-        ConsId = int32_const(Int32),
-        String = string.int32_to_string(Int32) ++ "i32"
-    ;
-        ConsId = uint32_const(UInt32),
-        String = string.uint32_to_string(UInt32) ++ "u32"
-    ;
-        ConsId = int64_const(Int64),
-        String = string.int64_to_string(Int64) ++ "i64"
-    ;
-        ConsId = uint64_const(UInt64),
-        String = string.uint64_to_string(UInt64) ++ "u64"
+        ConsId = some_int_const(IntConst),
+        String = int_const_to_string_with_suffix(IntConst)
     ;
         ConsId = float_const(Float),
         String = float_to_string(Float)
@@ -928,6 +874,12 @@ cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
             "<deep_profiling_proc_layout " ++ int_to_string(PredId) ++ ", " ++
             int_to_string(ProcId) ++ ">"
     ).
+
+:- func int_const_to_string_with_suffix(some_int_const) = string.
+
+int_const_to_string_with_suffix(IntConst) = Str :-
+    int_const_to_string_and_suffix(IntConst, BaseStr, Suffix),
+    Str = BaseStr ++ Suffix.
 
 %---------------------------------------------------------------------------%
 %

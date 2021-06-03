@@ -459,9 +459,10 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
             (
                 PassArity = yes,
                 list.length(ArgTypeInfoVarsMCAs, ActualArity),
-                ArityConstArg = csa_constant(int_const(ActualArity), int_type),
+                ArityConsId = some_int_const(int_const(ActualArity)),
+                ArityConstArg = csa_constant(ArityConsId, int_type),
                 ArityInst = bound(shared, inst_test_results_fgtc,
-                    [bound_functor(int_const(ActualArity), [])]),
+                    [bound_functor(ArityConsId, [])]),
                 StructConstArgs =
                     [TypeCtorConstArg, ArityConstArg | ArgTypeInfoConstArgs],
                 StructArgInsts = [TypeCtorInst, ArityInst | ArgTypeInfoInsts]

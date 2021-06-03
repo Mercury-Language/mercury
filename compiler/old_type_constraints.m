@@ -1034,14 +1034,8 @@ pred_has_arity(Preds, Arity, PredId) :-
     %
 :- pred builtin_atomic_type(cons_id::in, builtin_type::out) is semidet.
 
-builtin_atomic_type(int_const(_), builtin_type_int(int_type_int)).
-builtin_atomic_type(uint_const(_), builtin_type_int(int_type_uint)).
-builtin_atomic_type(int8_const(_), builtin_type_int(int_type_int8)).
-builtin_atomic_type(uint8_const(_), builtin_type_int(int_type_uint8)).
-builtin_atomic_type(int16_const(_), builtin_type_int(int_type_int16)).
-builtin_atomic_type(uint16_const(_), builtin_type_int(int_type_uint16)).
-builtin_atomic_type(int32_const(_), builtin_type_int(int_type_int32)).
-builtin_atomic_type(uint32_const(_), builtin_type_int(int_type_uint32)).
+builtin_atomic_type(some_int_const(IntConst), Type) :-
+    Type = builtin_type_int(type_of_int_const(IntConst)).
 builtin_atomic_type(float_const(_), builtin_type_float).
 builtin_atomic_type(string_const(_), builtin_type_string).
 builtin_atomic_type(cons(unqualified(String), 0, _), builtin_type_char) :-

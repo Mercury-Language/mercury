@@ -726,13 +726,14 @@ parse_integer_cons_id(Base, Integer, Signedness, Size, Context, MaybeConsId) :-
 
 :- pred parse_integer_const(term.context::in, integer_base::in,
     integer::in, string::in, string::in,
-    pred(integer, T)::in(pred(in, out) is semidet), (func(T) = cons_id)::in,
+    pred(integer, T)::in(pred(in, out) is semidet),
+    (func(T) = some_int_const)::in,
     maybe1(cons_id)::out) is det.
 
 parse_integer_const(Context, Base, Integer, IntTypeDesc, IntSuffixStr,
-        ConvPred, ToConsIdPred, MaybeConsId) :-
+        ConvPred, ToIntConstPred, MaybeConsId) :-
     ( if ConvPred(Integer, Int) then
-        ConsId = ToConsIdPred(Int),
+        ConsId = some_int_const(ToIntConstPred(Int)),
         MaybeConsId = ok1(ConsId)
     else
         BasePrefix = integer_base_prefix(Base),

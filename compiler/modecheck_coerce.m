@@ -493,16 +493,7 @@ modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
         % cons(unqualified("{}"), ...) with tuple_cons yet.
         sorry($pred, "tuple_cons")
     ;
-        ( ConsIdX = int_const(_)
-        ; ConsIdX = uint_const(_)
-        ; ConsIdX = int8_const(_)
-        ; ConsIdX = uint8_const(_)
-        ; ConsIdX = int16_const(_)
-        ; ConsIdX = uint16_const(_)
-        ; ConsIdX = int32_const(_)
-        ; ConsIdX = uint32_const(_)
-        ; ConsIdX = int64_const(_)
-        ; ConsIdX = uint64_const(_)
+        ( ConsIdX = some_int_const(_)
         ; ConsIdX = float_const(_)
         ; ConsIdX = char_const(_)
         ; ConsIdX = string_const(_)
@@ -684,19 +675,18 @@ modecheck_coerce_from_bound_make_bound_functor_arg_insts(ModuleInfo, TVarSet,
 :- pred cons_id_matches_builtin_type(cons_id::in, mer_type::in) is semidet.
 
 cons_id_matches_builtin_type(ConsId, Type) :-
-    ( ConsId = int_const(_), Type = int_type
-    ; ConsId = uint_const(_), Type = uint_type
-    ; ConsId = int8_const(_), Type = int8_type
-    ; ConsId = uint8_const(_), Type = uint8_type
-    ; ConsId = int16_const(_), Type = int16_type
-    ; ConsId = uint16_const(_), Type = uint16_type
-    ; ConsId = int32_const(_), Type = int32_type
-    ; ConsId = uint32_const(_), Type = uint32_type
-    ; ConsId = int64_const(_), Type = int64_type
-    ; ConsId = uint64_const(_), Type = uint64_type
-    ; ConsId = float_const(_), Type = float_type
-    ; ConsId = char_const(_), Type = char_type
-    ; ConsId = string_const(_), Type = string_type
+    (
+        ConsId = some_int_const(IC),
+        Type = builtin_type(builtin_type_int(type_of_int_const(IC)))
+    ;
+        ConsId = float_const(_),
+        Type = float_type
+    ;
+        ConsId = char_const(_),
+        Type = char_type
+    ;
+        ConsId = string_const(_),
+        Type = string_type
     ).
 
 :- pred maybe_keep_error(coerce_error::in,

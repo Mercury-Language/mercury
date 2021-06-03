@@ -1268,7 +1268,8 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
     counter.allocate(SiteNum, SiteNumCounter0, SiteNumCounter),
     VarInfo0 = !.DeepInfo ^ deep_varinfo,
     generate_var("SiteNum", int_type, SiteNumVar, VarInfo0, VarInfo1),
-    generate_deep_const_unify(int_const(SiteNum), SiteNumVar, SiteNumVarGoal),
+    generate_deep_const_unify(some_int_const(int_const(SiteNum)),
+        SiteNumVar, SiteNumVarGoal),
     !DeepInfo ^ deep_varinfo := VarInfo1,
     !DeepInfo ^ deep_site_num_counter := SiteNumCounter,
 
@@ -1331,8 +1332,8 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
             generate_var("MethodNum", int_type, MethodNumVar, VarInfo2,
                 VarInfo3),
             !DeepInfo ^ deep_varinfo := VarInfo3,
-            generate_deep_const_unify(int_const(MethodNum), MethodNumVar,
-                MethodNumVarGoal),
+            generate_deep_const_unify(some_int_const(int_const(MethodNum)),
+                MethodNumVar, MethodNumVarGoal),
             generate_deep_det_call(ModuleInfo, "prepare_for_method_call", 3,
                 [SiteNumVar, TypeClassInfoVar, MethodNumVar],
                 [], PrepareCallGoal),
@@ -1569,7 +1570,8 @@ deep_prof_wrap_foreign_code(Goal0, Goal, !DeepInfo) :-
     counter.allocate(SiteNum, SiteNumCounter0, SiteNumCounter),
     generate_var("SiteNum", int_type, SiteNumVar, !.DeepInfo ^ deep_varinfo,
         VarInfo),
-    generate_deep_const_unify(int_const(SiteNum), SiteNumVar, SiteNumVarGoal),
+    generate_deep_const_unify(some_int_const(int_const(SiteNum)),
+        SiteNumVar, SiteNumVarGoal),
 
     ModuleInfo = !.DeepInfo ^ deep_module_info,
     generate_deep_det_call(ModuleInfo, "prepare_for_callback", 1,
@@ -1779,7 +1781,8 @@ generate_single_csn_unify(CSN, CSNVar - UnifyGoal, !DeepInfo) :-
     VarName = string.format("CSN%d", [i(CSN)]),
     generate_var(VarName, int_type, CSNVar, VarInfo0, VarInfo),
     !DeepInfo ^ deep_varinfo := VarInfo,
-    generate_deep_const_unify(int_const(CSN), CSNVar, UnifyGoal).
+    generate_deep_const_unify(some_int_const(int_const(CSN)),
+        CSNVar, UnifyGoal).
 
 :- pred generate_deep_det_call(module_info::in, string::in, int::in,
     list(prog_var)::in, list(prog_var)::in, hlds_goal::out) is det.

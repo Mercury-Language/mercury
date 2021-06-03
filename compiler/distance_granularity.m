@@ -592,12 +592,13 @@ apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
 
                     % Var has instmap bound(Distance).
                     InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
+                    DistanceConsId = some_int_const(int_const(Distance)),
                     MerInst = bound(shared, inst_test_results_fgtc,
-                        [bound_functor(int_const(Distance), [])]),
+                        [bound_functor(DistanceConsId, [])]),
                     instmap_delta_insert_var(Var, MerInst,
                         InstMapDelta0, InstMapDelta),
-                    goal_info_set_instmap_delta(InstMapDelta, GoalInfo0,
-                        GoalInfo),
+                    goal_info_set_instmap_delta(InstMapDelta,
+                        GoalInfo0, GoalInfo),
 
                     Goal = hlds_goal(GoalExpr, GoalInfo),
 
@@ -718,7 +719,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     VarResultDelta =
                         VarResult - ground(unique, none_or_default_func),
                     VarDelta = Var - bound(shared, inst_test_results_fgtc,
-                        [bound_functor(int_const(1), [])]),
+                        [bound_functor(some_int_const(int_const(1)), [])]),
                     InstMapDeltaDecrement = instmap_delta_from_assoc_list(
                         [VarDelta, VarResultDelta]),
                     Detism = detism_det,

@@ -237,7 +237,7 @@ evaluate_det_call(Globals, ModuleName, ProcName, ModeNum, Args,
     arg_hlds_info::in, arg_hlds_info::out, cons_id::out) is semidet.
 
 evaluate_det_call_int_1(Globals, ProcName, ModeNum, X,
-        OutputArg, int_const(OutputArgVal)) :-
+        OutputArg, some_int_const(int_const(OutputArgVal))) :-
     (
         ProcName = "bits_per_int",
         ModeNum = 0,
@@ -257,7 +257,7 @@ evaluate_det_call_uint_1(Globals, ProcName, ModeNum, X, OutputArg, ConsId) :-
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
         target_bits_per_uint(Globals, bits_per_uint(OutputArgVal)),
         % NOTE: this returns an int not a uint.
-        ConsId = int_const(OutputArgVal)
+        ConsId = some_int_const(int_const(OutputArgVal))
     ).
 
 %---------------------%
@@ -267,9 +267,10 @@ evaluate_det_call_uint_1(Globals, ProcName, ModeNum, X, OutputArg, ConsId) :-
     is semidet.
 
 evaluate_det_call_int_2(Globals, ProcName, ModeNum, X, Y,
-        OutputArg, int_const(OutputArgVal)) :-
+        OutputArg, some_int_const(int_const(OutputArgVal))) :-
     ModeNum = 0,
-    X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
+    X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+    FunctorX = some_int_const(int_const(XVal)),
     OutputArg = Y,
     (
         ProcName = "+",
@@ -313,11 +314,12 @@ evaluate_det_call_int_2(Globals, ProcName, ModeNum, X, Y,
     is semidet.
 
 evaluate_det_call_uint_2(Globals, ProcName, ModeNum, X, Y,
-        OutputArg, uint_const(OutputArgVal)) :-
+        OutputArg, some_int_const(uint_const(OutputArgVal))) :-
     (
         ProcName = "\\",
         ModeNum = 0,
-        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+        FunctorX = some_int_const(uint_const(XVal)),
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
         target_bits_per_uint(Globals, TargetBitsPerUInt),
         TargetBitsPerUInt = bits_per_uint(uint.bits_per_uint),
@@ -356,7 +358,7 @@ evaluate_det_call_string_2(_Globals, ProcName, ModeNum, X, Y,
     X ^ arg_inst = bound(_, _, [bound_functor(string_const(XVal), [])]),
     OutputArg = Y,
     CodePointCountX = string.count_codepoints(XVal),
-    OutputArgVal = int_const(CodePointCountX).
+    OutputArgVal = some_int_const(int_const(CodePointCountX)).
 
 %---------------------%
 
@@ -365,9 +367,11 @@ evaluate_det_call_string_2(_Globals, ProcName, ModeNum, X, Y,
     arg_hlds_info::out, cons_id::out) is semidet.
 
 evaluate_det_call_int_3_mode_0(Globals, ProcName, X, Y, Z,
-        OutputArg, int_const(OutputArgVal)) :-
-    X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        OutputArg, some_int_const(int_const(OutputArgVal))) :-
+    X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+    FunctorX = some_int_const(int_const(XVal)),
+    FunctorY = some_int_const(int_const(YVal)),
     (
         ProcName = "plus",
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
@@ -465,27 +469,33 @@ evaluate_det_call_int_3_mode_0(Globals, ProcName, X, Y, Z,
     arg_hlds_info::out, cons_id::out) is semidet.
 
 evaluate_det_call_int_3_mode_1(Globals, ProcName, X, Y, Z,
-        OutputArg, int_const(OutputArgVal)) :-
+        OutputArg, some_int_const(int_const(OutputArgVal))) :-
     (
         ProcName = "+",
-        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
+        FunctorY = some_int_const(int_const(YVal)),
+        FunctorZ = some_int_const(int_const(ZVal)),
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
         int_emu.target_bits_per_int(Globals, BitsPerInt),
         int_emu.minus(BitsPerInt, ZVal, YVal, OutputArgVal)
     ;
         ProcName = "-",
-        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
+        FunctorY = some_int_const(int_const(YVal)),
+        FunctorZ = some_int_const(int_const(ZVal)),
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
         int_emu.target_bits_per_int(Globals, BitsPerInt),
         int_emu.plus(BitsPerInt, YVal, ZVal, OutputArgVal)
     ;
         ProcName = "xor",
-        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
+        FunctorX = some_int_const(int_const(XVal)),
+        FunctorZ = some_int_const(int_const(ZVal)),
         OutputArg = Y,
         OutputArgVal = xor(XVal, ZVal)
     ).
@@ -495,27 +505,35 @@ evaluate_det_call_int_3_mode_1(Globals, ProcName, X, Y, Z,
     arg_hlds_info::out, cons_id::out) is semidet.
 
 evaluate_det_call_int_3_mode_2(Globals, ProcName, X, Y, Z,
-        OutputArg, int_const(OutputArgVal)) :-
+        OutputArg, some_int_const(int_const(OutputArgVal))) :-
     (
         ProcName = "+",
-        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
+        FunctorX = some_int_const(int_const(XVal)),
+        FunctorZ = some_int_const(int_const(ZVal)),
+        OutputArg = Y,
         OutputArg = Y,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
         int_emu.target_bits_per_int(Globals, BitsPerInt),
         int_emu.minus(BitsPerInt, ZVal, XVal, OutputArgVal)
     ;
         ProcName = "-",
-        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
+        FunctorX = some_int_const(int_const(XVal)),
+        FunctorZ = some_int_const(int_const(ZVal)),
+        OutputArg = Y,
         OutputArg = Y,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
         int_emu.target_bits_per_int(Globals, BitsPerInt),
         int_emu.minus(BitsPerInt, XVal, ZVal, OutputArgVal)
     ;
         ProcName = "xor",
-        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(int_const(ZVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
+        FunctorY = some_int_const(int_const(YVal)),
+        FunctorZ = some_int_const(int_const(ZVal)),
         OutputArg = X,
         OutputArgVal = xor(YVal, ZVal)
     ).
@@ -527,11 +545,13 @@ evaluate_det_call_int_3_mode_2(Globals, ProcName, X, Y, Z,
 %---------------------%
 
 evaluate_det_call_uint_3_mode_0(Globals, ProcName, X, Y, Z,
-        OutputArg, uint_const(OutputArgVal)) :-
-    X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
-    Y ^ arg_inst = bound(_, _, [bound_functor(YConst, [])]),
+        OutputArg, some_int_const(uint_const(OutputArgVal))) :-
+    X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+    Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+    FunctorX = some_int_const(uint_const(XVal)),
+    FunctorY = some_int_const(ConstY),
     (
-        YConst = uint_const(YVal),
+        ConstY = uint_const(YVal),
         (
             ProcName = "+",
             globals.lookup_bool_option(Globals, pregenerated_dist, no),
@@ -582,7 +602,7 @@ evaluate_det_call_uint_3_mode_0(Globals, ProcName, X, Y, Z,
             OutputArgVal = xor(XVal, YVal)
         )
     ;
-        YConst = int_const(YVal),
+        ConstY = int_const(YVal),
         (
             ProcName = "unchecked_left_shift",
             globals.lookup_bool_option(Globals, pregenerated_dist, no),
@@ -614,27 +634,33 @@ evaluate_det_call_uint_3_mode_0(Globals, ProcName, X, Y, Z,
     arg_hlds_info::out, cons_id::out) is semidet.
 
 evaluate_det_call_uint_3_mode_1(Globals, ProcName, X, Y, Z,
-        OutputArg, uint_const(OutputArgVal)) :-
+        OutputArg, some_int_const(uint_const(OutputArgVal))) :-
     (
         ProcName = "+",
-        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(uint_const(ZVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
+        FunctorY = some_int_const(uint_const(YVal)),
+        FunctorZ = some_int_const(uint_const(ZVal)),
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
         uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
         uint_emu.minus(BitsPerUInt, ZVal, YVal, OutputArgVal)
     ;
         ProcName = "-",
-        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(uint_const(ZVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
+        FunctorY = some_int_const(uint_const(YVal)),
+        FunctorZ = some_int_const(uint_const(ZVal)),
         OutputArg = X,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
         uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
         uint_emu.plus(BitsPerUInt, YVal, ZVal, OutputArgVal)
     ;
         ProcName = "xor",
-        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(uint_const(ZVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
+        FunctorX = some_int_const(uint_const(XVal)),
+        FunctorZ = some_int_const(uint_const(ZVal)),
         OutputArg = Y,
         OutputArgVal = xor(XVal, ZVal)
     ).
@@ -644,27 +670,33 @@ evaluate_det_call_uint_3_mode_1(Globals, ProcName, X, Y, Z,
     arg_hlds_info::out, cons_id::out) is semidet.
 
 evaluate_det_call_uint_3_mode_2(Globals, ProcName, X, Y, Z,
-        OutputArg, uint_const(OutputArgVal)) :-
+        OutputArg, some_int_const(uint_const(OutputArgVal))) :-
     (
         ProcName = "+",
-        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(uint_const(ZVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
+        FunctorX = some_int_const(uint_const(XVal)),
+        FunctorZ = some_int_const(uint_const(ZVal)),
         OutputArg = Y,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
         uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
         uint_emu.minus(BitsPerUInt, ZVal, XVal, OutputArgVal)
     ;
         ProcName = "-",
-        X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(uint_const(ZVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
+        FunctorX = some_int_const(uint_const(XVal)),
+        FunctorZ = some_int_const(uint_const(ZVal)),
         OutputArg = Y,
         globals.lookup_bool_option(Globals, pregenerated_dist, no),
         uint_emu.target_bits_per_uint(Globals, BitsPerUInt),
         uint_emu.minus(BitsPerUInt, XVal, ZVal, OutputArgVal)
     ;
         ProcName = "xor",
-        Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
-        Z ^ arg_inst = bound(_, _, [bound_functor(uint_const(ZVal), [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+        Z ^ arg_inst = bound(_, _, [bound_functor(FunctorZ, [])]),
+        FunctorY = some_int_const(uint_const(YVal)),
+        FunctorZ = some_int_const(uint_const(ZVal)),
         OutputArg = X,
         OutputArgVal = xor(YVal, ZVal)
     ).
@@ -740,8 +772,10 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
         ModuleName = "int",
         % Signed integer comparisons.
         Args = [X, Y],
-        X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+        FunctorX = some_int_const(int_const(XVal)),
+        FunctorY = some_int_const(int_const(YVal)),
         (
             PredName = "<", ModeNum = 0,
             ( if XVal < YVal then Result = yes else Result = no )
@@ -759,8 +793,10 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
         ModuleName = "int8",
         % 8-bit signed integer comparisons.
         Args = [X, Y],
-        X ^ arg_inst = bound(_, _, [bound_functor(int8_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, _, [bound_functor(int8_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+        FunctorX = some_int_const(int8_const(XVal)),
+        FunctorY = some_int_const(int8_const(YVal)),
         (
             PredName = "<", ModeNum = 0,
             ( if XVal < YVal then Result = yes else Result = no )
@@ -778,8 +814,10 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
         ModuleName = "int16",
         % 16-bit signed integer comparisons.
         Args = [X, Y],
-        X ^ arg_inst = bound(_, _, [bound_functor(int16_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, _, [bound_functor(int16_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+        FunctorX = some_int_const(int16_const(XVal)),
+        FunctorY = some_int_const(int16_const(YVal)),
         (
             PredName = "<", ModeNum = 0,
             ( if XVal < YVal then Result = yes else Result = no )
@@ -797,8 +835,10 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
         ModuleName = "int32",
         % 32-bit signed integer comparisons.
         Args = [X, Y],
-        X ^ arg_inst = bound(_, _, [bound_functor(int32_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, _, [bound_functor(int32_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+        FunctorX = some_int_const(int32_const(XVal)),
+        FunctorY = some_int_const(int32_const(YVal)),
         (
             PredName = "<", ModeNum = 0,
             ( if XVal < YVal then Result = yes else Result = no )
@@ -816,8 +856,10 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
         ModuleName = "int64",
         % 64-bit signed integer comparisons.
         Args = [X, Y],
-        X ^ arg_inst = bound(_, _, [bound_functor(int64_const(XVal), [])]),
-        Y ^ arg_inst = bound(_, _, [bound_functor(int64_const(YVal), [])]),
+        X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+        Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+        FunctorX = some_int_const(int64_const(XVal)),
+        FunctorY = some_int_const(int64_const(YVal)),
         (
             PredName = "<", ModeNum = 0,
             ( if XVal < YVal then Result = yes else Result = no )
@@ -837,46 +879,50 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
         Args = [X, Y],
         (
             PredName = "<", ModeNum = 0,
-            Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+            FunctorY = some_int_const(uint_const(YVal)),
             ( if YVal = 0u then
                 % Special case: no uints are < 0u.
                 Result = no
             else
-                X ^ arg_inst =
-                    bound(_, _, [bound_functor(uint_const(XVal), [])]),
+                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+                FunctorX = some_int_const(uint_const(XVal)),
                 ( if XVal < YVal then Result = yes else Result = no )
             )
         ;
             PredName = "=<", ModeNum = 0,
-            X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+            FunctorX = some_int_const(uint_const(XVal)),
             ( if XVal = 0u then
                 % Special case: 0u =< all uints.
                 Result = yes
             else
-                Y ^ arg_inst =
-                    bound(_, _, [bound_functor(uint_const(YVal), [])]),
+                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+                FunctorY = some_int_const(uint_const(YVal)),
                 ( if XVal =< YVal then Result = yes else Result = no )
             )
         ;
             PredName = ">", ModeNum = 0,
-            X ^ arg_inst = bound(_, _, [bound_functor(uint_const(XVal), [])]),
+            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+            FunctorX = some_int_const(uint_const(XVal)),
             ( if XVal = 0u then
                 % Special case: 0u > than no uints.
                 Result = no
             else
-                Y ^ arg_inst =
-                    bound(_, _, [bound_functor(uint_const(YVal), [])]),
+                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+                FunctorY = some_int_const(uint_const(YVal)),
                 ( if XVal > YVal then Result = yes else Result = no )
             )
         ;
             PredName = ">=", ModeNum = 0,
-            Y ^ arg_inst = bound(_, _, [bound_functor(uint_const(YVal), [])]),
+            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+            FunctorY = some_int_const(uint_const(YVal)),
             ( if YVal = 0u then
                 % Special case: all uints are >= 0u.
                 Result = yes
             else
-                X ^ arg_inst =
-                    bound(_, _, [bound_functor(uint_const(XVal), [])]),
+                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+                FunctorX = some_int_const(uint_const(XVal)),
                 ( if XVal >= YVal then Result = yes else Result = no )
             )
         )
@@ -886,46 +932,50 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
         Args = [X, Y],
         (
             PredName = "<", ModeNum = 0,
-            Y ^ arg_inst = bound(_, _, [bound_functor(uint8_const(YVal), [])]),
+            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+            FunctorY = some_int_const(uint8_const(YVal)),
             ( if YVal = 0u8 then
                 % Special case: no uints are < 0u.
                 Result = no
             else
-                X ^ arg_inst =
-                    bound(_, _, [bound_functor(uint8_const(XVal), [])]),
+                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+                FunctorX = some_int_const(uint8_const(XVal)),
                 ( if XVal < YVal then Result = yes else Result = no )
             )
         ;
             PredName = "=<", ModeNum = 0,
-            X ^ arg_inst = bound(_, _, [bound_functor(uint8_const(XVal), [])]),
+            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+            FunctorX = some_int_const(uint8_const(XVal)),
             ( if XVal = 0u8 then
                 % Special case: 0u =< all uints.
                 Result = yes
             else
-                Y ^ arg_inst =
-                    bound(_, _, [bound_functor(uint8_const(YVal), [])]),
+                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+                FunctorY = some_int_const(uint8_const(YVal)),
                 ( if XVal =< YVal then Result = yes else Result = no )
             )
         ;
             PredName = ">", ModeNum = 0,
-            X ^ arg_inst = bound(_, _, [bound_functor(uint8_const(XVal), [])]),
+            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+            FunctorX = some_int_const(uint8_const(XVal)),
             ( if XVal = 0u8 then
                 % Special case: 0u > than no uints.
                 Result = no
             else
-                Y ^ arg_inst =
-                    bound(_, _, [bound_functor(uint8_const(YVal), [])]),
+                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+                FunctorY = some_int_const(uint8_const(YVal)),
                 ( if XVal > YVal then Result = yes else Result = no )
             )
         ;
             PredName = ">=", ModeNum = 0,
-            Y ^ arg_inst = bound(_, _, [bound_functor(uint8_const(YVal), [])]),
+            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+            FunctorY = some_int_const(uint8_const(YVal)),
             ( if YVal = 0u8 then
                 % Special case: all uints are >= 0u.
                 Result = yes
             else
-                X ^ arg_inst =
-                    bound(_, _, [bound_functor(uint8_const(XVal), [])]),
+                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+                FunctorX = some_int_const(uint8_const(XVal)),
                 ( if XVal >= YVal then Result = yes else Result = no )
             )
         )
@@ -935,50 +985,52 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
         Args = [X, Y],
         (
             PredName = "<", ModeNum = 0,
-            Y ^ arg_inst =
-                bound(_, _, [bound_functor(uint16_const(YVal), [])]),
+            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+            FunctorY = some_int_const(uint16_const(YVal)),
             ( if YVal = 0u16 then
                 % Special case: no uints are < 0u16.
                 Result = no
             else
-                X ^ arg_inst =
-                    bound(_, _, [bound_functor(uint16_const(XVal), [])]),
+                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+                FunctorX = some_int_const(uint16_const(XVal)),
                 ( if XVal < YVal then Result = yes else Result = no )
             )
         ;
             PredName = "=<", ModeNum = 0,
-            X ^ arg_inst =
-                bound(_, _, [bound_functor(uint16_const(XVal), [])]),
+            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+            FunctorX = some_int_const(uint16_const(XVal)),
             ( if XVal = 0u16 then
                 % Special case: 0u =< all uints.
                 Result = yes
             else
                 Y ^ arg_inst =
-                    bound(_, _, [bound_functor(uint16_const(YVal), [])]),
+                    bound(_, _, [bound_functor(FunctorY, [])]),
+                FunctorY = some_int_const(uint16_const(YVal)),
                 ( if XVal =< YVal then Result = yes else Result = no )
             )
         ;
             PredName = ">", ModeNum = 0,
-            X ^ arg_inst =
-                bound(_, _, [bound_functor(uint16_const(XVal), [])]),
+            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+            FunctorX = some_int_const(uint16_const(XVal)),
             ( if XVal = 0u16 then
                 % Special case: 0u > than no uints.
                 Result = no
             else
-                Y ^ arg_inst =
-                    bound(_, _, [bound_functor(uint16_const(YVal), [])]),
+                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+                FunctorY = some_int_const(uint16_const(YVal)),
                 ( if XVal > YVal then Result = yes else Result = no )
             )
         ;
             PredName = ">=", ModeNum = 0,
             Y ^ arg_inst =
-                bound(_, _, [bound_functor(uint16_const(YVal), [])]),
+                bound(_, _, [bound_functor(FunctorY, [])]),
+            FunctorY = some_int_const(uint16_const(YVal)),
             ( if YVal = 0u16 then
                 % Special case: all uints are >= 0u.
                 Result = yes
             else
-                X ^ arg_inst =
-                    bound(_, _, [bound_functor(uint16_const(XVal), [])]),
+                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+                FunctorX = some_int_const(uint16_const(XVal)),
                 ( if XVal >= YVal then Result = yes else Result = no )
             )
         )
@@ -988,50 +1040,51 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
         Args = [X, Y],
         (
             PredName = "<", ModeNum = 0,
-            Y ^ arg_inst =
-                bound(_, _, [bound_functor(uint32_const(YVal), [])]),
+            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+            FunctorY = some_int_const(uint32_const(YVal)),
             ( if YVal = 0u32 then
                 % Special case: no uints are < 0u.
                 Result = no
             else
-                X ^ arg_inst =
-                    bound(_, _, [bound_functor(uint32_const(XVal), [])]),
+                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+                FunctorX = some_int_const(uint32_const(XVal)),
                 ( if XVal < YVal then Result = yes else Result = no )
             )
         ;
             PredName = "=<", ModeNum = 0,
-            X ^ arg_inst =
-                bound(_, _, [bound_functor(uint32_const(XVal), [])]),
+            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+            FunctorX = some_int_const(uint32_const(XVal)),
             ( if XVal = 0u32 then
                 % Special case: 0u =< all uints.
                 Result = yes
             else
-                Y ^ arg_inst =
-                    bound(_, _, [bound_functor(uint32_const(YVal), [])]),
+                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+                FunctorY = some_int_const(uint32_const(YVal)),
                 ( if XVal =< YVal then Result = yes else Result = no )
             )
         ;
             PredName = ">", ModeNum = 0,
             X ^ arg_inst =
-                bound(_, _, [bound_functor(uint32_const(XVal), [])]),
+                bound(_, _, [bound_functor(FunctorX, [])]),
+            FunctorX = some_int_const(uint32_const(XVal)),
             ( if XVal = 0u32 then
                 % Special case: 0u > than no uints.
                 Result = no
             else
-                Y ^ arg_inst =
-                    bound(_, _, [bound_functor(uint32_const(YVal), [])]),
+                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+                FunctorY = some_int_const(uint32_const(YVal)),
                 ( if XVal > YVal then Result = yes else Result = no )
             )
         ;
             PredName = ">=", ModeNum = 0,
-            Y ^ arg_inst =
-                bound(_, _, [bound_functor(uint32_const(YVal), [])]),
+            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+            FunctorY = some_int_const(uint32_const(YVal)),
             ( if YVal = 0u32 then
                 % Special case: all uints are >= 0u.
                 Result = yes
             else
-                X ^ arg_inst =
-                    bound(_, _, [bound_functor(uint32_const(XVal), [])]),
+                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+                FunctorX = some_int_const(uint32_const(XVal)),
                 ( if XVal >= YVal then Result = yes else Result = no )
             )
         )
@@ -1041,50 +1094,50 @@ evaluate_test(ModuleName, PredName, ModeNum, Args, Result) :-
         Args = [X, Y],
         (
             PredName = "<", ModeNum = 0,
-            Y ^ arg_inst =
-                bound(_, _, [bound_functor(uint64_const(YVal), [])]),
+            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+            FunctorY = some_int_const(uint64_const(YVal)),
             ( if YVal = 0u64 then
                 % Special case: no uints are < 0u.
                 Result = no
             else
-                X ^ arg_inst =
-                    bound(_, _, [bound_functor(uint64_const(XVal), [])]),
+                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+                FunctorX = some_int_const(uint64_const(XVal)),
                 ( if XVal < YVal then Result = yes else Result = no )
             )
         ;
             PredName = "=<", ModeNum = 0,
-            X ^ arg_inst =
-                bound(_, _, [bound_functor(uint64_const(XVal), [])]),
+            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+            FunctorX = some_int_const(uint64_const(XVal)),
             ( if XVal = 0u64 then
                 % Special case: 0u =< all uints.
                 Result = yes
             else
-                Y ^ arg_inst =
-                    bound(_, _, [bound_functor(uint64_const(YVal), [])]),
+                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+                FunctorY = some_int_const(uint64_const(YVal)),
                 ( if XVal =< YVal then Result = yes else Result = no )
             )
         ;
             PredName = ">", ModeNum = 0,
-            X ^ arg_inst =
-                bound(_, _, [bound_functor(uint64_const(XVal), [])]),
+            X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+            FunctorX = some_int_const(uint64_const(XVal)),
             ( if XVal = 0u64 then
                 % Special case: 0u > than no uints.
                 Result = no
             else
-                Y ^ arg_inst =
-                    bound(_, _, [bound_functor(uint64_const(YVal), [])]),
+                Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+                FunctorY = some_int_const(uint64_const(YVal)),
                 ( if XVal > YVal then Result = yes else Result = no )
             )
         ;
             PredName = ">=", ModeNum = 0,
-            Y ^ arg_inst =
-                bound(_, _, [bound_functor(uint64_const(YVal), [])]),
+            Y ^ arg_inst = bound(_, _, [bound_functor(FunctorY, [])]),
+            FunctorY = some_int_const(uint64_const(YVal)),
             ( if YVal = 0u64 then
                 % Special case: all uints are >= 0u.
                 Result = yes
             else
-                X ^ arg_inst =
-                    bound(_, _, [bound_functor(uint64_const(XVal), [])]),
+                X ^ arg_inst = bound(_, _, [bound_functor(FunctorX, [])]),
+                FunctorX = some_int_const(uint64_const(XVal)),
                 ( if XVal >= YVal then Result = yes else Result = no )
             )
         )

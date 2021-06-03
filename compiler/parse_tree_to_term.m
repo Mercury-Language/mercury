@@ -35,6 +35,8 @@
 :- func inst_name_to_term(output_lang, inst_name) = prog_term.
 :- func inst_test_results_to_term(prog_context, inst_test_results) = prog_term.
 
+:- func int_const_to_decimal_term(some_int_const, term.context) = term(T).
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -651,45 +653,9 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         FunctorName = "closure_cons",
         Term = term.functor(term.string(FunctorName), [], Context)
     ;
-        ConsId = int_const(Int),
+        ConsId = some_int_const(IntConst),
         term.context_init(Context),
-        Term = int_to_decimal_term(Int, Context)
-    ;
-        ConsId = uint_const(UInt),
-        term.context_init(Context),
-        Term = uint_to_decimal_term(UInt, Context)
-    ;
-        ConsId = int8_const(Int8),
-        term.context_init(Context),
-        Term = int8_to_decimal_term(Int8, Context)
-    ;
-        ConsId = uint8_const(UInt8),
-        term.context_init(Context),
-        Term = uint8_to_decimal_term(UInt8, Context)
-    ;
-        ConsId = int16_const(Int16),
-        term.context_init(Context),
-        Term = int16_to_decimal_term(Int16, Context)
-    ;
-        ConsId = uint16_const(UInt16),
-        term.context_init(Context),
-        Term = uint16_to_decimal_term(UInt16, Context)
-    ;
-        ConsId = int32_const(Int32),
-        term.context_init(Context),
-        Term = int32_to_decimal_term(Int32, Context)
-    ;
-        ConsId = uint32_const(UInt32),
-        term.context_init(Context),
-        Term = uint32_to_decimal_term(UInt32, Context)
-    ;
-        ConsId = int64_const(Int64),
-        term.context_init(Context),
-        Term = int64_to_decimal_term(Int64, Context)
-    ;
-        ConsId = uint64_const(UInt64),
-        term.context_init(Context),
-        Term = uint64_to_decimal_term(UInt64, Context)
+        Term = int_const_to_decimal_term(IntConst, Context)
     ;
         ConsId = float_const(Float),
         term.context_init(Context),
@@ -770,6 +736,39 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         term.context_init(Context),
         FunctorName = "deep_profiling_proc_layout",
         Term = term.functor(term.string(FunctorName), [], Context)
+    ).
+
+int_const_to_decimal_term(IntConst, Context) = Term :-
+    (
+        IntConst = int_const(Int),
+        Term = int_to_decimal_term(Int, Context)
+    ;
+        IntConst = int8_const(Int8),
+        Term = int8_to_decimal_term(Int8, Context)
+    ;
+        IntConst = int16_const(Int16),
+        Term = int16_to_decimal_term(Int16, Context)
+    ;
+        IntConst = int32_const(Int32),
+        Term = int32_to_decimal_term(Int32, Context)
+    ;
+        IntConst = int64_const(Int64),
+        Term = int64_to_decimal_term(Int64, Context)
+    ;
+        IntConst = uint_const(UInt),
+        Term = uint_to_decimal_term(UInt, Context)
+    ;
+        IntConst = uint8_const(UInt8),
+        Term = uint8_to_decimal_term(UInt8, Context)
+    ;
+        IntConst = uint16_const(UInt16),
+        Term = uint16_to_decimal_term(UInt16, Context)
+    ;
+        IntConst = uint32_const(UInt32),
+        Term = uint32_to_decimal_term(UInt32, Context)
+    ;
+        IntConst = uint64_const(UInt64),
+        Term = uint64_to_decimal_term(UInt64, Context)
     ).
 
 :- func det_to_term(prog_context, determinism) = prog_term.

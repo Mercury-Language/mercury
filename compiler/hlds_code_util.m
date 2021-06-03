@@ -89,35 +89,38 @@
 
 cons_id_to_tag(ModuleInfo, ConsId) = ConsTag:-
     (
-        ConsId = int_const(Int),
-        ConsTag = int_tag(int_tag_int(Int))
-    ;
-        ConsId = uint_const(UInt),
-        ConsTag = int_tag(int_tag_uint(UInt))
-    ;
-        ConsId = int8_const(Int8),
-        ConsTag = int_tag(int_tag_int8(Int8))
-    ;
-        ConsId = uint8_const(UInt8),
-        ConsTag = int_tag(int_tag_uint8(UInt8))
-    ;
-        ConsId = int16_const(Int16),
-        ConsTag = int_tag(int_tag_int16(Int16))
-    ;
-        ConsId = uint16_const(UInt16),
-        ConsTag = int_tag(int_tag_uint16(UInt16))
-    ;
-        ConsId = int32_const(Int32),
-        ConsTag = int_tag(int_tag_int32(Int32))
-    ;
-        ConsId = uint32_const(UInt32),
-        ConsTag = int_tag(int_tag_uint32(UInt32))
-    ;
-        ConsId = int64_const(Int64),
-        ConsTag = int_tag(int_tag_int64(Int64))
-    ;
-        ConsId = uint64_const(UInt64),
-        ConsTag = int_tag(int_tag_uint64(UInt64))
+        ConsId = some_int_const(IntConst),
+        (
+            IntConst = int_const(Int),
+            ConsTag = int_tag(int_tag_int(Int))
+        ;
+            IntConst = uint_const(UInt),
+            ConsTag = int_tag(int_tag_uint(UInt))
+        ;
+            IntConst = int8_const(Int8),
+            ConsTag = int_tag(int_tag_int8(Int8))
+        ;
+            IntConst = uint8_const(UInt8),
+            ConsTag = int_tag(int_tag_uint8(UInt8))
+        ;
+            IntConst = int16_const(Int16),
+            ConsTag = int_tag(int_tag_int16(Int16))
+        ;
+            IntConst = uint16_const(UInt16),
+            ConsTag = int_tag(int_tag_uint16(UInt16))
+        ;
+            IntConst = int32_const(Int32),
+            ConsTag = int_tag(int_tag_int32(Int32))
+        ;
+            IntConst = uint32_const(UInt32),
+            ConsTag = int_tag(int_tag_uint32(UInt32))
+        ;
+            IntConst = int64_const(Int64),
+            ConsTag = int_tag(int_tag_int64(Int64))
+        ;
+            IntConst = uint64_const(UInt64),
+            ConsTag = int_tag(int_tag_uint64(UInt64))
+        )
     ;
         ConsId = float_const(Float),
         ConsTag = float_tag(Float)

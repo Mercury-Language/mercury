@@ -136,16 +136,7 @@
             % a code address.
             % XXX We should have a pred_or_func field as well.
 
-    ;       int_const(int)
-    ;       uint_const(uint)
-    ;       int8_const(int8)
-    ;       uint8_const(uint8)
-    ;       int16_const(int16)
-    ;       uint16_const(uint16)
-    ;       int32_const(int32)
-    ;       uint32_const(uint32)
-    ;       int64_const(int64)
-    ;       uint64_const(uint64)
+    ;       some_int_const(some_int_const)
     ;       float_const(float)
     ;       char_const(char)
     ;       string_const(string)
@@ -195,6 +186,21 @@
             % is used by deep profiling, as documented in the deep profiling
             % paper.
 
+:- type some_int_const
+    --->    int_const(int)
+    ;       uint_const(uint)
+    ;       int8_const(int8)
+    ;       uint8_const(uint8)
+    ;       int16_const(int16)
+    ;       uint16_const(uint16)
+    ;       int32_const(int32)
+    ;       uint32_const(uint32)
+    ;       int64_const(int64)
+    ;       uint64_const(uint64).
+
+:- func type_of_int_const(some_int_const) = int_type.
+:- func type_name_of_int_const(some_int_const) = string.
+
     % Describe how a lambda expression is to be evaluated.
     %
     % `normal' is the top-down Mercury execution algorithm.
@@ -220,6 +226,32 @@
 :- pred cons_id_is_const_struct(cons_id::in, int::out) is semidet.
 
 :- implementation.
+
+type_of_int_const(IntConst) = Type :-
+    ( IntConst = int_const(_),    Type = int_type_int
+    ; IntConst = uint_const(_),   Type = int_type_uint
+    ; IntConst = int8_const(_),   Type = int_type_int8
+    ; IntConst = uint8_const(_),  Type = int_type_uint8
+    ; IntConst = int16_const(_),  Type = int_type_int16
+    ; IntConst = uint16_const(_), Type = int_type_uint16
+    ; IntConst = int32_const(_),  Type = int_type_int32
+    ; IntConst = uint32_const(_), Type = int_type_uint32
+    ; IntConst = int64_const(_),  Type = int_type_int64
+    ; IntConst = uint64_const(_), Type = int_type_uint64
+    ).
+
+type_name_of_int_const(IntConst) = TypeName :-
+    ( IntConst = int_const(_),    TypeName = "int"
+    ; IntConst = uint_const(_),   TypeName = "uint"
+    ; IntConst = int8_const(_),   TypeName = "int8"
+    ; IntConst = uint8_const(_),  TypeName = "uint8"
+    ; IntConst = int16_const(_),  TypeName = "int16"
+    ; IntConst = uint16_const(_), TypeName = "uint16"
+    ; IntConst = int32_const(_),  TypeName = "int32"
+    ; IntConst = uint32_const(_), TypeName = "uint32"
+    ; IntConst = int64_const(_),  TypeName = "int64"
+    ; IntConst = uint64_const(_), TypeName = "uint64"
+    ).
 
 impl_defined_const_kind_to_str(IDCKind) = Str :-
     ( IDCKind = idc_file, Str = "$file"
@@ -278,16 +310,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
         ( ConsId = cons(_, _, _)
         ; ConsId = tuple_cons(_)
         ; ConsId = closure_cons(_, _)
-        ; ConsId = int_const(_)
-        ; ConsId = uint_const(_)
-        ; ConsId = int8_const(_)
-        ; ConsId = uint8_const(_)
-        ; ConsId = int16_const(_)
-        ; ConsId = uint16_const(_)
-        ; ConsId = int32_const(_)
-        ; ConsId = uint32_const(_)
-        ; ConsId = int64_const(_)
-        ; ConsId = uint64_const(_)
+        ; ConsId = some_int_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)

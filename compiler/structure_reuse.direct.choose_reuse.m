@@ -1020,10 +1020,11 @@ compute_reuse_type(Background, _NewVar, NewCons, NewCellArgs, DeconSpec,
 
 :- pred cons_has_normal_fields(module_info::in, cons_id::in) is semidet.
 
-cons_has_normal_fields(ModuleInfo, Cons) :-
+cons_has_normal_fields(ModuleInfo, ConsId) :-
+    require_complete_switch [ConsId]
     (
-        Cons = cons(_, _, _),
-        get_cons_repn_defn_det(ModuleInfo, Cons, ConsRepnDefn),
+        ConsId = cons(_, _, _),
+        get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn),
         ConsArgRepns = ConsRepnDefn ^ cr_args,
         all [ArgRepn] (
             list.member(ArgRepn, ConsArgRepns)
@@ -1031,22 +1032,35 @@ cons_has_normal_fields(ModuleInfo, Cons) :-
             ArgRepn = ctor_arg_repn(_, _, apw_full(_, _), _)
         )
     ;
-        Cons = tuple_cons(_)
+        ConsId = tuple_cons(_)
     ;
-        ( Cons = closure_cons(_, _)
-        ; Cons = int_const(_)
-        ; Cons = uint_const(_)
-        ; Cons = float_const(_)
-        ; Cons = char_const(_)
-        ; Cons = string_const(_)
-        ; Cons = impl_defined_const(_)
-        ; Cons = type_ctor_info_const(_, _, _)
-        ; Cons = base_typeclass_info_const(_, _, _, _)
-        ; Cons = type_info_cell_constructor(_)
-        ; Cons = typeclass_info_cell_constructor
-        ; Cons = tabling_info_const(_)
-        ; Cons = table_io_entry_desc(_)
-        ; Cons = deep_profiling_proc_layout(_)
+        ConsId = ground_term_const(_, _RepnConsId)
+        % We could test whether _RepnConsId is normal as we test cons/3
+        % cons_ids above, but we should not do so, because ground term
+        % constants are NOT candidates for reuse.
+    ;
+        ( ConsId = type_info_const(_)
+        ; ConsId = typeclass_info_const(_)
+        ),
+        % XXX Before the require_complete_switch scope was added,
+        % this predicate silently failed for these two cons_ids.
+        % To me (zs), this shows that this module treats these cons_ids
+        % as not having normal fields more by accident than by design.
+        fail
+    ;
+        ( ConsId = closure_cons(_, _)
+        ; ConsId = some_int_const(_)
+        ; ConsId = float_const(_)
+        ; ConsId = char_const(_)
+        ; ConsId = string_const(_)
+        ; ConsId = impl_defined_const(_)
+        ; ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = table_io_entry_desc(_)
+        ; ConsId = deep_profiling_proc_layout(_)
         ),
         unexpected($pred, "unusual cons_id")
     ).

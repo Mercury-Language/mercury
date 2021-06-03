@@ -224,7 +224,7 @@ parse_unit_selector(Term) = UnitSelector :-
                 % XXX UINT, presuambly we need to handle uints here too.
                 decimal_term_to_int(ConsTerm, Int)
             then
-                ConsId = int_const(Int),
+                ConsId = some_int_const(int_const(Int)),
                 UnitSelector = termsel(ConsId, 0)
             else if
                 ConsTerm = term.functor(term.float(Float), _, _)

@@ -240,6 +240,7 @@
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.parse_tree_out_pred_decl.
+:- import_module parse_tree.parse_tree_to_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
@@ -2367,35 +2368,8 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
             RHS = rhs_functor(ConsId, _, Args),
             require_complete_switch [ConsId]
             (
-                ConsId = int_const(Int),
-                RHSTerm = int_to_decimal_term(Int, Context)
-            ;
-                ConsId = int8_const(Int8),
-                RHSTerm = int8_to_decimal_term(Int8, Context)
-            ;
-                ConsId = int16_const(Int16),
-                RHSTerm = int16_to_decimal_term(Int16, Context)
-            ;
-                ConsId = int32_const(Int32),
-                RHSTerm = int32_to_decimal_term(Int32, Context)
-            ;
-                ConsId = int64_const(Int64),
-                RHSTerm = int64_to_decimal_term(Int64, Context)
-            ;
-                ConsId = uint_const(UInt),
-                RHSTerm = uint_to_decimal_term(UInt, Context)
-            ;
-                ConsId = uint8_const(UInt8),
-                RHSTerm = uint8_to_decimal_term(UInt8, Context)
-            ;
-                ConsId = uint16_const(UInt16),
-                RHSTerm = uint16_to_decimal_term(UInt16, Context)
-            ;
-                ConsId = uint32_const(UInt32),
-                RHSTerm = uint32_to_decimal_term(UInt32, Context)
-            ;
-                ConsId = uint64_const(UInt64),
-                RHSTerm = uint64_to_decimal_term(UInt64, Context)
+                ConsId = some_int_const(IntConst),
+                RHSTerm = int_const_to_decimal_term(IntConst, Context)
             ;
                 ConsId = float_const(Float),
                 RHSTerm = term.functor(term.float(Float), [], Context)

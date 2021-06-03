@@ -986,15 +986,6 @@ is_interesting_cons_id(Params, ConsId) = IsInteresting :-
     (
         ( ConsId = cons(_, _, _)
         ; ConsId = tuple_cons(_)
-        ; ConsId = uint_const(_)
-        ; ConsId = int8_const(_)
-        ; ConsId = uint8_const(_)
-        ; ConsId = int16_const(_)
-        ; ConsId = uint16_const(_)
-        ; ConsId = int32_const(_)
-        ; ConsId = uint32_const(_)
-        ; ConsId = int64_const(_)
-        ; ConsId = uint64_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
         ; ConsId = string_const(_)
@@ -1006,12 +997,36 @@ is_interesting_cons_id(Params, ConsId) = IsInteresting :-
         ),
         IsInteresting = no
     ;
-        % We need to keep track of int_consts so we can interpret
-        % calls to the builtins superclass_info_from_typeclass_info and
-        % typeinfo_from_typeclass_info. We do not specialize based on
-        % integers alone.
-        ( ConsId = int_const(_)
-        ; ConsId = type_ctor_info_const(_, _, _)
+        ConsId = some_int_const(IntConst),
+        (
+            ( IntConst = uint_const(_)
+            ; IntConst = int8_const(_)
+            ; IntConst = uint8_const(_)
+            ; IntConst = int16_const(_)
+            ; IntConst = uint16_const(_)
+            ; IntConst = int32_const(_)
+            ; IntConst = uint32_const(_)
+            ; IntConst = int64_const(_)
+            ; IntConst = uint64_const(_)
+            ),
+            IsInteresting = no
+        ;
+            % We need to keep track of int_consts so we can interpret
+            % calls to the builtins superclass_info_from_typeclass_info and
+            % typeinfo_from_typeclass_info. We do not specialize based on
+            % integers alone.
+            IntConst = int_const(_),
+            UserTypeSpec = Params ^ param_do_user_type_spec,
+            (
+                UserTypeSpec = spec_types_user_guided,
+                IsInteresting = yes
+            ;
+                UserTypeSpec = do_not_spec_types_user_guided,
+                IsInteresting = no
+            )
+        )
+    ;
+        ( ConsId = type_ctor_info_const(_, _, _)
         ; ConsId = base_typeclass_info_const(_, _, _, _)
         ; ConsId = type_info_cell_constructor(_)
         ; ConsId = typeclass_info_cell_constructor
@@ -1616,7 +1631,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
         % We don't specialize based on int_consts (we only keep track of them
         % to interpret calls to the procedures which extract fields from
         % typeclass_infos).
-        ConsId \= int_const(_),
+        ConsId \= some_int_const(int_const(_)),
 
         ( if ConsId = closure_cons(_, _) then
             % If we don't have clauses for the callee, we can't specialize
@@ -2143,7 +2158,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
             _ModuleName, ClassId, InstanceNum, _Instance, OtherArgs),
 
         map.search(KnownVarMap0, IndexVar, IndexMaybeConst),
-        IndexMaybeConst = known_const(int_const(Index0), [])
+        IndexMaybeConst = known_const(some_int_const(int_const(Index0)), [])
     then
         (
             ( Manipulator = type_info_from_typeclass_info

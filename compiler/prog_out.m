@@ -128,6 +128,9 @@
 :- func maybe_quoted_cons_id_and_arity_to_string(cons_id) = string.
 :- func cons_id_and_arity_to_string(cons_id) = string.
 
+:- pred int_const_to_string_and_suffix(some_int_const::in,
+    string::out, string::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- func promise_to_string(promise_type) = string.
@@ -371,35 +374,8 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, ConsId)
         ConsId = tuple_cons(Arity),
         String = "{}/" ++ string.int_to_string(Arity)
     ;
-        ConsId = int_const(Int),
-        string.int_to_string(Int, String)
-    ;
-        ConsId = uint_const(UInt),
-        String = uint_to_string(UInt)
-    ;
-        ConsId = int8_const(Int8),
-        String = string.int8_to_string(Int8)
-    ;
-        ConsId = uint8_const(UInt8),
-        String = string.uint8_to_string(UInt8)
-    ;
-        ConsId = int16_const(Int16),
-        String = string.int16_to_string(Int16)
-    ;
-        ConsId = uint16_const(UInt16),
-        String = string.uint16_to_string(UInt16)
-    ;
-        ConsId = int32_const(Int32),
-        String = string.int32_to_string(Int32)
-    ;
-        ConsId = uint32_const(UInt32),
-        String = string.uint32_to_string(UInt32)
-    ;
-        ConsId = int64_const(Int64),
-        String = string.int64_to_string(Int64)
-    ;
-        ConsId = uint64_const(UInt64),
-        String = string.uint64_to_string(UInt64)
+        ConsId = some_int_const(IntConst),
+        int_const_to_string_and_suffix(IntConst, String, _Suffix)
     ;
         ConsId = float_const(Float),
         String = float_to_string(Float)
@@ -465,6 +441,39 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, ConsId)
         String =
             "<deep_profiling_proc_layout " ++ int_to_string(PredId) ++ ", " ++
             int_to_string(ProcId) ++ ">"
+    ).
+
+int_const_to_string_and_suffix(IntConst, Str, Suffix) :-
+     (
+        IntConst = int_const(Int),
+        Str = string.int_to_string(Int),        Suffix = ""
+    ;
+        IntConst = uint_const(UInt),
+        Str = string.uint_to_string(UInt),      Suffix = "u"
+    ;
+        IntConst = int8_const(Int8),
+        Str = string.int8_to_string(Int8),      Suffix = "i8"
+    ;
+        IntConst = uint8_const(UInt8),
+        Str = string.uint8_to_string(UInt8),    Suffix = "u8"
+    ;
+        IntConst = int16_const(Int16),
+        Str = string.int16_to_string(Int16),    Suffix = "i16"
+    ;
+        IntConst = uint16_const(UInt16),
+        Str = string.uint16_to_string(UInt16),  Suffix = "u16"
+    ;
+        IntConst = int32_const(Int32),
+        Str = string.int32_to_string(Int32),    Suffix = "i32"
+    ;
+        IntConst = uint32_const(UInt32),
+        Str = string.uint32_to_string(UInt32),  Suffix = "u32"
+    ;
+        IntConst = int64_const(Int64),
+        Str = string.int64_to_string(Int64),    Suffix = "i64"
+    ;
+        IntConst = uint64_const(UInt64),
+        Str = string.uint64_to_string(UInt64),  Suffix = "u64"
     ).
 
 %-----------------------------------------------------------------------------%

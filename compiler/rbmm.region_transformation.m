@@ -653,7 +653,7 @@ region_transform_case(ModuleInfo, Graph, ResurRenamingProc,
     expect(unify(OtherConsIds, []), $pred, "NYI: multi-cons-id cases"),
     ( if
         ( MainConsId = cons(_, 0, _)
-        ; MainConsId = int_const(_)
+        ; MainConsId = some_int_const(_)
         ; MainConsId = float_const(_)
         ; MainConsId = char_const(_)
         ; MainConsId = string_const(_)

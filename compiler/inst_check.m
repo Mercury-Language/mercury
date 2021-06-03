@@ -555,71 +555,9 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
             !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
         )
     ;
-        ConsId = int_const(_),
-        ( if ForTypeKind = ftk_int(int_type_int) then
-            true
-        else
-            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
-        )
-    ;
-        ConsId = uint_const(_),
-        ( if ForTypeKind = ftk_int(int_type_uint) then
-            true
-        else
-            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
-        )
-    ;
-        ConsId = int8_const(_),
-        ( if ForTypeKind = ftk_int(int_type_int8) then
-            true
-        else
-            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
-        )
-    ;
-        ConsId = uint8_const(_),
-        ( if ForTypeKind = ftk_int(int_type_uint8) then
-            true
-        else
-            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
-        )
-    ;
-        ConsId = int16_const(_),
-        ( if ForTypeKind = ftk_int(int_type_int16) then
-            true
-        else
-            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
-        )
-    ;
-        ConsId = uint16_const(_),
-        ( if ForTypeKind = ftk_int(int_type_uint16) then
-            true
-        else
-            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
-        )
-    ;
-        ConsId = int32_const(_),
-        ( if ForTypeKind = ftk_int(int_type_int32) then
-            true
-        else
-            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
-        )
-    ;
-        ConsId = uint32_const(_),
-        ( if ForTypeKind = ftk_int(int_type_uint32) then
-            true
-        else
-            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
-        )
-    ;
-        ConsId = int64_const(_),
-        ( if ForTypeKind = ftk_int(int_type_int64) then
-            true
-        else
-            !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
-        )
-    ;
-        ConsId = uint64_const(_),
-        ( if ForTypeKind = ftk_int(int_type_uint64) then
+        ConsId = some_int_const(IntConst),
+        ExpType = type_of_int_const(IntConst),
+        ( if ForTypeKind = ftk_int(ExpType) then
             true
         else
             !:Mismatches = cord.snoc(!.Mismatches, simple_miss(ConsId))
@@ -797,37 +735,8 @@ get_possible_types_for_bound_inst(FunctorsToTypesMap, BoundInst, MaybeTypes) :-
         ConsId = tuple_cons(Arity),
         MaybeTypes = yes([type_tuple(Arity)])
     ;
-        (
-            ConsId = int_const(_),
-            IntType = int_type_int
-        ;
-            ConsId = uint_const(_),
-            IntType = int_type_uint
-        ;
-            ConsId = int8_const(_),
-            IntType = int_type_int8
-        ;
-            ConsId = uint8_const(_),
-            IntType = int_type_uint8
-        ;
-            ConsId = int16_const(_),
-            IntType = int_type_int16
-        ;
-            ConsId = uint16_const(_),
-            IntType = int_type_uint16
-        ;
-            ConsId = int32_const(_),
-            IntType = int_type_int32
-        ;
-            ConsId = uint32_const(_),
-            IntType = int_type_uint32
-        ;
-            ConsId = int64_const(_),
-            IntType = int_type_int64
-        ;
-            ConsId = uint64_const(_),
-            IntType = int_type_uint64
-        ),
+        ConsId = some_int_const(IntConst),
+        IntType = type_of_int_const(IntConst),
         MaybeTypes = yes([type_builtin(builtin_type_int(IntType))])
     ;
         ConsId = float_const(_),
@@ -1304,71 +1213,11 @@ find_mismatches_from_builtin(ExpectedBuiltinType, CurNum,
         [BoundInst | BoundInsts], !NumMismatches, !PiecesCord) :-
     BoundInst = bound_functor(ConsId, _SubInsts),
     (
-        ExpectedBuiltinType = builtin_type_int(int_type_int),
-        ( if ConsId = int_const(_) then
-            true
-        else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
-        )
-    ;
-        ExpectedBuiltinType = builtin_type_int(int_type_uint),
-        ( if ConsId = uint_const(_) then
-            true
-        else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
-        )
-    ;
-        ExpectedBuiltinType = builtin_type_int(int_type_int8),
-        ( if ConsId = int8_const(_) then
-            true
-        else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
-        )
-    ;
-        ExpectedBuiltinType = builtin_type_int(int_type_uint8),
-        ( if ConsId = uint8_const(_) then
-            true
-        else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
-        )
-    ;
-        ExpectedBuiltinType = builtin_type_int(int_type_int16),
-        ( if ConsId = int16_const(_) then
-            true
-        else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
-        )
-    ;
-        ExpectedBuiltinType = builtin_type_int(int_type_uint16),
-        ( if ConsId = uint16_const(_) then
-            true
-        else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
-        )
-    ;
-        ExpectedBuiltinType = builtin_type_int(int_type_int32),
-        ( if ConsId = int32_const(_) then
-            true
-        else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
-        )
-    ;
-        ExpectedBuiltinType = builtin_type_int(int_type_uint32),
-        ( if ConsId = uint32_const(_) then
-            true
-        else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
-        )
-    ;
-        ExpectedBuiltinType = builtin_type_int(int_type_int64),
-        ( if ConsId = int64_const(_) then
-            true
-        else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
-        )
-    ;
-        ExpectedBuiltinType = builtin_type_int(int_type_uint64),
-        ( if ConsId = uint64_const(_) then
+        ExpectedBuiltinType = builtin_type_int(IntType),
+        ( if
+            ConsId = some_int_const(IntConst),
+            type_of_int_const(IntConst) = IntType
+        then
             true
         else
             record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)

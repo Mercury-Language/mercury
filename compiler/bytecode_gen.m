@@ -816,35 +816,12 @@ map_cons_id(ByteInfo, ConsId, ByteConsId) :-
         ByteConsId = byte_pred_const(ModuleName, PredName, Arity, IsFunc,
             ProcInt)
     ;
-        ConsId = int_const(IntVal),
-        ByteConsId = byte_int_const(IntVal)
-    ;
-        ConsId = uint_const(_),
-        unexpected($file, $pred, "uint")
-    ;
-        ConsId = int8_const(_),
-        unexpected($file, $pred, "int8")
-    ;
-        ConsId = uint8_const(_),
-        unexpected($file, $pred, "uint8")
-    ;
-        ConsId = int16_const(_),
-        unexpected($file, $pred, "int16")
-    ;
-        ConsId = uint16_const(_),
-        unexpected($file, $pred, "uint16")
-    ;
-        ConsId = int32_const(_),
-        unexpected($file, $pred, "int32")
-    ;
-        ConsId = uint32_const(_),
-        unexpected($file, $pred, "uint32")
-    ;
-        ConsId = int64_const(_),
-        unexpected($file, $pred, "int64")
-    ;
-        ConsId = uint64_const(_),
-        unexpected($file, $pred, "uint64")
+        ConsId = some_int_const(IntConst),
+        ( if IntConst = int_const(IntVal) then
+            ByteConsId = byte_int_const(IntVal)
+        else
+            unexpected($pred, "unsupported int const")
+        )
     ;
         ConsId = float_const(FloatVal),
         ByteConsId = byte_float_const(FloatVal)

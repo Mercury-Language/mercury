@@ -864,7 +864,7 @@ report_error_functor_type(Info, UnifyContext, Context,
         [suffix("."), nl],
 
     ( if
-        Functor = int_const(_),
+        Functor = some_int_const(int_const(_)),
         get_all_transformed_type_stuffs(typestuff_to_type, TypeAssignSet,
             Var, TypesOfVar),
         list.any_true(expected_type_needs_int_constant_suffix, TypesOfVar)
