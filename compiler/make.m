@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
+% Copyright (C) 2013-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -696,15 +697,38 @@ option_table_hash(AllOptionArgs, Hash, !IO) :-
     globals.get_options(AllOptionArgsGlobals, OptionTable),
     map.to_sorted_assoc_list(OptionTable, OptionList),
     inconsequential_options(InconsequentialOptions),
-    list.filter(is_consequential_option(InconsequentialOptions),
-        OptionList, ConsequentialOptionList),
-    Hash = md4sum(string(ConsequentialOptionList)).
+    list.filter(include_option_in_hash(InconsequentialOptions),
+        OptionList, HashOptionList),
+    globals.get_opt_tuple(AllOptionArgsGlobals, OptTuple),
+    Hash = md4sum(string({HashOptionList, OptTuple})).
 
-:- pred is_consequential_option(set(option)::in,
+:- pred include_option_in_hash(set(option)::in,
     pair(option, option_data)::in) is semidet.
 
-is_consequential_option(InconsequentialOptions, Option - _) :-
-    not set.contains(InconsequentialOptions, Option).
+include_option_in_hash(InconsequentialOptions, Option - OptionData) :-
+    require_complete_switch [OptionData]
+    (
+        ( OptionData = bool(_)
+        ; OptionData = int(_)
+        ; OptionData = string(_)
+        ; OptionData = maybe_int(_)
+        ; OptionData = maybe_string(_)
+        ; OptionData = accumulating(_)
+        ),
+        % XXX reconsider if a lot of these options really should be ignored
+        not set.contains(InconsequentialOptions, Option)
+    ;
+        ( OptionData = special
+        ; OptionData = bool_special
+        ; OptionData = int_special
+        ; OptionData = string_special
+        ; OptionData = maybe_string_special
+        ; OptionData = file_special
+        ),
+        % There is no point hashing special options as the option_data is
+        % always the same.
+        fail
+    ).
 
 :- pred compare_hash_file(globals::in, string::in, string::in, bool::out,
     io::di, io::uo) is det.
