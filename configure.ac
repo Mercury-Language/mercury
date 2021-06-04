@@ -2091,8 +2091,7 @@ fi
 
 AC_MSG_CHECKING(return values of system)
 AC_CACHE_VAL([mercury_cv_normal_system_retval], [
-    AC_TRY_RUN(
-        [
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[
             #include <stdlib.h>
             #ifdef MR_HAVE_SYS_WAIT_H
             #include <sys/wait.h>
@@ -2123,14 +2122,13 @@ AC_CACHE_VAL([mercury_cv_normal_system_retval], [
                     }
                 #endif
             }
-        ],
+        ]])],
         [mercury_cv_normal_system_retval=yes],
         [mercury_cv_normal_system_retval=no],
-        [AC_TRY_COMPILE(
-            [
+        [
+            AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
                 #include <sys/wait.h>
-            ],
-            [
+            ]], [[
                 #if defined (WIFEXITED) && defined (WEXITSTATUS) && \
                     defined (WIFSIGNALED) && defined (WTERMSIG)
 
@@ -2138,10 +2136,10 @@ AC_CACHE_VAL([mercury_cv_normal_system_retval], [
                     /* Deliberate syntax error. */
                     }
                 #endif
-            ],
+            ]])],
             [mercury_cv_normal_system_retval=yes],
-            [mercury_cv_normal_system_retval=no])]
-    )
+            [mercury_cv_normal_system_retval=no])
+    ])
 ])
 AC_MSG_RESULT($mercury_cv_normal_system_retval)
 if test "$mercury_cv_normal_system_retval" = no; then
