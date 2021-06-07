@@ -310,7 +310,6 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
 
-:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -784,15 +783,8 @@ ctor_arg_list_to_inst_list([_ | Args], Inst, [Inst | Insts]) :-
 
 propagate_ctor_info_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
     Inst0 = bound(Uniq, InstResults0, BoundInsts0),
+    % Test for the most frequent kinds of type_ctors first.
     ( if
-        type_is_tuple(Type, TupleArgTypes)
-    then
-        list.map(propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes),
-            BoundInsts0, BoundInsts),
-        % Tuples don't have a *conventional* type_ctor.
-        PropagatedResult = inst_result_no_type_ctor_propagated,
-        ConstructNewInst = yes
-    else if
         type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
         TypeCtor = type_ctor(qualified(TypeModule, _), _),
         module_info_get_type_table(ModuleInfo, TypeTable),
@@ -804,13 +796,12 @@ propagate_ctor_info_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
         ( if
             InstResults0 = inst_test_results(_, _, _, _, _, PropagatedResult0),
             PropagatedResult0 =
-                inst_result_type_ctor_propagated(PropagatedTypeCtor),
-            PropagatedTypeCtor = TypeCtor,
+                inst_result_type_ctor_propagated(PropagatedTypeCtor0),
+            PropagatedTypeCtor0 = TypeCtor,
             TypeParams = []
         then
-            BoundInsts = BoundInsts0,
-            PropagatedResult = PropagatedResult0,
-            ConstructNewInst = no
+            % The job has already been done.
+            Inst = Inst0
         else
             map.from_corresponding_lists(TypeParams, TypeArgs, ArgSubst),
             Constructors = one_or_more_to_list(OoMConstructors),
@@ -818,66 +809,76 @@ propagate_ctor_info_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
                 TypeCtor, TypeModule, Constructors, BoundInsts0, BoundInsts1),
             list.sort(BoundInsts1, BoundInsts),
             PropagatedResult = inst_result_type_ctor_propagated(TypeCtor),
-            ConstructNewInst = yes
+            construct_new_bound_inst(Uniq, InstResults0, PropagatedResult,
+                BoundInsts, Inst)
         )
+    else if
+        type_is_tuple(Type, TupleArgTypes)
+    then
+        % There is no need to sort BoundInsts; if BoundInsts0 is sorted,
+        % which it should be, then BoundInsts will be sorted too.
+        list.map(propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes),
+            BoundInsts0, BoundInsts),
+        % Tuples don't have a *conventional* type_ctor.
+        PropagatedResult = inst_result_no_type_ctor_propagated,
+        construct_new_bound_inst(Uniq, InstResults0, PropagatedResult,
+            BoundInsts, Inst)
     else if
         Type = builtin_type(builtin_type_char)
     then
+        % There is no need to sort BoundInsts; if BoundInsts0 is sorted,
+        % which it should be, then BoundInsts will be sorted too.
         list.map(propagate_ctor_info_char, BoundInsts0, BoundInsts),
         % Tuples don't have a *conventional* type_ctor.
         PropagatedResult = inst_result_no_type_ctor_propagated,
-        ConstructNewInst = yes
+        construct_new_bound_inst(Uniq, InstResults0, PropagatedResult,
+            BoundInsts, Inst)
     else
-        % Builtin types other than char don't need processing.
-        BoundInsts = BoundInsts0,                                   % dummy
-        PropagatedResult = inst_result_no_type_ctor_propagated,     % dummy
-        ConstructNewInst = no
-    ),
-    % The code here would be slightly cleaner if ConstructNewInst's type
-    % was maybe(list(bound_inst)), since we wouldn't have to set BoundInsts
-    % and PropagatedResult if ConstructNewInst = no, but this predicate
-    % is a performance bottleneck, so we want to minimize our memory
-    % allocations.
-    (
-        ConstructNewInst = no,
+        % Type variables, and builtin types other than char,
+        % don't need processing.
         Inst = Inst0
+    ).
+
+:- pred construct_new_bound_inst(uniqueness::in, inst_test_results::in,
+    inst_result_type_ctor_propagated::in, list(bound_inst)::in,
+    mer_inst::out) is det.
+
+construct_new_bound_inst(Uniq, InstResults0, PropagatedResult, BoundInsts,
+        Inst) :-
+    (
+        BoundInsts = [],
+        Inst = not_reached
     ;
-        ConstructNewInst = yes,
+        BoundInsts = [_ | _],
         (
-            BoundInsts = [],
-            Inst = not_reached
+            InstResults0 = inst_test_results_fgtc,
+            InstResults = InstResults0
         ;
-            BoundInsts = [_ | _],
-            (
-                InstResults0 = inst_test_results_fgtc,
-                InstResults = InstResults0
-            ;
-                InstResults0 = inst_test_no_results,
-                InstResults = inst_test_results(inst_result_groundness_unknown,
-                    inst_result_contains_any_unknown,
-                    inst_result_contains_inst_names_unknown,
-                    inst_result_contains_inst_vars_unknown,
-                    inst_result_contains_types_unknown, PropagatedResult)
-            ;
-                InstResults0 = inst_test_results(GroundNessResult0,
-                    ContainsAnyResult, _, _, _, _),
-                % XXX I (zs) don't understand the predicate
-                % propagate_ctor_info_into_bound_functors
-                % well enough to figure out under what circumstances we could
-                % keep the parts of InstResult0 we are clobbering here.
-                InstResults = inst_test_results(GroundNessResult0,
-                    ContainsAnyResult, inst_result_contains_inst_names_unknown,
-                    inst_result_contains_inst_vars_unknown,
-                    inst_result_contains_types_unknown, PropagatedResult)
-            ),
-            % We shouldn't need to sort BoundInsts. The cons_ids in the
-            % bound_insts in the list should have been either all typed
-            % or all non-typed. If they were all typed, then pushing the
-            % type_ctor into them should not have modified them. If they
-            % were all non-typed, then pushing the same type_ctor into them all
-            % should not have changed their order.
-            Inst = bound(Uniq, InstResults, BoundInsts)
-        )
+            InstResults0 = inst_test_no_results,
+            InstResults = inst_test_results(inst_result_groundness_unknown,
+                inst_result_contains_any_unknown,
+                inst_result_contains_inst_names_unknown,
+                inst_result_contains_inst_vars_unknown,
+                inst_result_contains_types_unknown, PropagatedResult)
+        ;
+            InstResults0 = inst_test_results(GroundNessResult0,
+                ContainsAnyResult, _, _, _, _),
+            % XXX I (zs) don't understand the predicate
+            % propagate_ctor_info_into_bound_functors
+            % well enough to figure out under what circumstances we could
+            % keep the parts of InstResult0 we are clobbering here.
+            InstResults = inst_test_results(GroundNessResult0,
+                ContainsAnyResult, inst_result_contains_inst_names_unknown,
+                inst_result_contains_inst_vars_unknown,
+                inst_result_contains_types_unknown, PropagatedResult)
+        ),
+        % We shouldn't need to sort BoundInsts. The cons_ids in the
+        % bound_insts in the list should have been either all typed
+        % or all non-typed. If they were all typed, then pushing the
+        % type_ctor into them should not have modified them. If they
+        % were all non-typed, then pushing the same type_ctor into them all
+        % should not have changed their order.
+        Inst = bound(Uniq, InstResults, BoundInsts)
     ).
 
 :- pred propagate_ctor_info_tuple(module_info::in, list(mer_type)::in,
