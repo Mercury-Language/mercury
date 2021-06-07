@@ -561,6 +561,7 @@
 :- import_module getopt.
 :- import_module int.
 :- import_module map.
+:- import_module string.
 
 %---------------------%
 
@@ -571,7 +572,7 @@ process_optimization_options(OptionTable, OptOptions, !:OptTuple) :-
         OptOptions, !OptTuple, not_seen_opt_level, MaybeSeenOptLevel),
     (
         MaybeSeenOptLevel = not_seen_opt_level,
-        DefaultOptLevel = 2,
+        get_default_opt_level(OptionTable, DefaultOptLevel),
         set_opts_upto_level(OptionTable, 0, DefaultOptLevel,
             !OptTuple, MaybeSeenOptLevel, _)
     ;
@@ -3631,6 +3632,21 @@ update_opt_tuple_int_procs_per_c_function(FromOptLevel, N, !OptTuple) :-
         !OptTuple ^ ot_procs_per_c_function := int.max(OldN, N)
     ).
 
+
+:- pred get_default_opt_level(option_table::in, int::out) is det.
+
+get_default_opt_level(OptionTable, DefaultOptLevel) :-
+    % default_opt_level takes a "-O<n>" string for compatibility.
+    lookup_string_option(OptionTable, default_opt_level, Str0),
+    Str = string.strip(Str0),
+    ( if
+        string.remove_prefix("-O", Str, Suffix),
+        string.to_int(string.lstrip(Suffix), Int)
+    then
+        DefaultOptLevel = Int
+    else
+        DefaultOptLevel = 2
+    ).
 
 :- pred set_opts_upto_level(option_table::in, int::in, int::in,
     opt_tuple::in, opt_tuple::out,

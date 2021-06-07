@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2020 The Mercury team.
+% Copyright (C) 2013-2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -873,6 +873,7 @@
 
     % Special optimization options.
 
+    ;       default_opt_level
     ;       opt_level
     ;       opt_space                   % Default is to optimize time.
     ;       intermodule_optimization
@@ -1661,6 +1662,7 @@ optdef(oc_codegen, debug_class_init,                    bool(no)).
     % Special optimization options.
     % These ones are not affected by `-O<n>'.
 
+optdef(oc_spec_opt, default_opt_level,                  string("-O2")).
 optdef(oc_spec_opt, opt_level,                          int_special).
 optdef(oc_spec_opt, opt_space,                          special).
 optdef(oc_spec_opt, intermodule_optimization,           bool(no)).
@@ -2608,6 +2610,7 @@ long_option("debug-class-init",     debug_class_init).
 
 % optimization options
 
+long_option("default-opt-level",    default_opt_level).
 long_option("opt-level",            opt_level).
 long_option("optimization-level",   opt_level).
 long_option("optimisation-level",   opt_level).
@@ -5748,6 +5751,9 @@ options_help_code_generation(!IO) :-
 options_help_optimization(!IO) :-
     io.write_string("\nOptimization Options:\n", !IO),
     write_tabbed_lines([
+        % This is for use by Mercury.config only.
+    %   "--default-opt-level -O<n>",
+    %   "\tSet the default optimization level to <n>.",
         "-O <n>, --opt-level <n>, --optimization-level <n>",
         "\tSet optimization level to <n>.",
         "\tOptimization level -1 means no optimization",

@@ -1267,10 +1267,8 @@ lookup_mmc_maybe_module_options(Variables, MaybeModuleName,
     list.map_foldl2(
         lookup_options_variable(Variables, MaybeModuleName),
         VariableTypes, VariableTypesMaybeValues, [], Specs, !IO),
-    % Default to `-O2', even when mercury_compile is called directly,
-    % not by the mmc script.
-    Result = ["-O2" | list.condense(
-        list.map(convert_to_mmc_options, VariableTypesMaybeValues))].
+    Result = list.condense(
+        list.map(convert_to_mmc_options, VariableTypesMaybeValues)).
 
 :- type options_variable_class
     --->    default

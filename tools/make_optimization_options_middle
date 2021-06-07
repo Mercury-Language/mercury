@@ -35,7 +35,6 @@
 #
 
 BEGIN {
-        default_opt_level = 2;
         next_bool_opt = 0;
         next_int_opt = 0;
         next_string_opt = 0;
@@ -165,6 +164,7 @@ END {
         printf(":- import_module getopt.\n");
         printf(":- import_module int.\n");
         printf(":- import_module map.\n");
+        printf(":- import_module string.\n");
 
         printf("\n%%---------------------%%\n\n");
 
@@ -175,7 +175,7 @@ END {
         printf("%-8sOptOptions, !OptTuple, not_seen_opt_level, MaybeSeenOptLevel),\n", "");
         printf("%-4s(\n", "");
         printf("%-8sMaybeSeenOptLevel = not_seen_opt_level,\n", "");
-        printf("%-8sDefaultOptLevel = %d,\n", "", default_opt_level);
+        printf("%-8sget_default_opt_level(OptionTable, DefaultOptLevel),\n", "");
         printf("%-8sset_opts_upto_level(OptionTable, 0, DefaultOptLevel,\n",
             "");
         printf("%-12s!OptTuple, MaybeSeenOptLevel, _)\n", "");

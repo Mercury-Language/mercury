@@ -5,7 +5,7 @@
 # @configure_input@
 #---------------------------------------------------------------------------#
 # Copyright (C) 2003-2007, 2010-2012 The University of Melbourne.
-# Copyright (C) 2013-2016, 2018-2019 The Mercury team.
+# Copyright (C) 2013-2016, 2018-2021 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -50,8 +50,6 @@ DEFAULT_MERCURY_LINKAGE=@DEFAULT_LINKAGE@
 
 DEFAULT_GRADEFLAGS=--grade "$(MERCURY_DEFAULT_GRADE)"
 
-# The default optimization level should be after
-# all the options that describe the machine configuration.
 DEFAULT_MCFLAGS=\
 		@ALL_LOCAL_C_INCL_DIR_MMC_OPTS@ \
 		@ALL_LOCAL_C_LIB_DIR_MMC_OPTS@ \
@@ -132,10 +130,10 @@ DEFAULT_MCFLAGS=\
 		--sync-term-size "@SYNC_TERM_SIZE@" \
 		--host-env-type "@HOST_ENV_TYPE@" \
 		--target-env-type "@TARGET_ENV_TYPE@" \
+		--default-opt-level "$(MERCURY_DEFAULT_OPT_LEVEL)" \
 		@RESTRICTED_COMMAND_LINE_OPT@ \
 		@HAVE_DELAY_SLOT@ \
 		@HAVE_BOXED_FLOATS@ \
 		@HAVE_BOXED_INT64S@ \
 		@MCFLAGS_FOR_CC@ \
-		$(MERCURY_DEFAULT_OPT_LEVEL) \
 		@MMC_USE_SYMLINKS_OPT@

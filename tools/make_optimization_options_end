@@ -1,4 +1,19 @@
 
+:- pred get_default_opt_level(option_table::in, int::out) is det.
+
+get_default_opt_level(OptionTable, DefaultOptLevel) :-
+    % default_opt_level takes a "-O<n>" string for compatibility.
+    lookup_string_option(OptionTable, default_opt_level, Str0),
+    Str = string.strip(Str0),
+    ( if
+        string.remove_prefix("-O", Str, Suffix),
+        string.to_int(string.lstrip(Suffix), Int)
+    then
+        DefaultOptLevel = Int
+    else
+        DefaultOptLevel = 2
+    ).
+
 :- pred set_opts_upto_level(option_table::in, int::in, int::in,
     opt_tuple::in, opt_tuple::out,
     maybe_seen_opt_level::in, maybe_seen_opt_level::out) is det.
