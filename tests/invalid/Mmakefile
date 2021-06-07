@@ -104,6 +104,7 @@ SINGLEMODULE= \
 	bug83 \
 	builtin_int \
 	builtin_proc \
+	char_inst \
 	circ_inst \
 	circ_inst2 \
 	circ_inst3 \

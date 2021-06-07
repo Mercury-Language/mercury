@@ -317,6 +317,7 @@
 :- import_module one_or_more.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module term.
 :- import_module varset.
 
@@ -819,8 +820,15 @@ propagate_ctor_info_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
             PropagatedResult = inst_result_type_ctor_propagated(TypeCtor),
             ConstructNewInst = yes
         )
+    else if
+        Type = builtin_type(builtin_type_char)
+    then
+        list.map(propagate_ctor_info_char, BoundInsts0, BoundInsts),
+        % Tuples don't have a *conventional* type_ctor.
+        PropagatedResult = inst_result_no_type_ctor_propagated,
+        ConstructNewInst = yes
     else
-        % Builtin types don't need processing.
+        % Builtin types other than char don't need processing.
         BoundInsts = BoundInsts0,                                   % dummy
         PropagatedResult = inst_result_no_type_ctor_propagated,     % dummy
         ConstructNewInst = no
@@ -894,6 +902,26 @@ propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes, BoundInst0, BoundInst) :-
         ArgInsts = ArgInsts0
     ),
     BoundInst = bound_functor(Functor, ArgInsts).
+
+:- pred propagate_ctor_info_char(bound_inst::in, bound_inst::out) is det.
+
+propagate_ctor_info_char(BoundInst0, BoundInst) :-
+    BoundInst0 = bound_functor(Functor0, ArgInsts0),
+    ( if
+        Functor0 = cons(unqualified(Name), 0, _),
+        string.to_char_list(Name, NameChars),
+        NameChars = [NameChar],
+        ArgInsts0 = []
+    then
+        Functor = char_const(NameChar),
+        BoundInst = bound_functor(Functor, [])
+    else
+        % The bound_inst is not a valid one for chars, so leave it alone.
+        % This can only happen in a user defined bound_inst.
+        % A mode error should be reported if anything tries to match with
+        % the inst.
+        BoundInst = BoundInst0
+    ).
 
 :- pred propagate_ctor_info_into_bound_functors(module_info::in, tsubst::in,
     type_ctor::in, module_name::in, list(constructor)::in,
