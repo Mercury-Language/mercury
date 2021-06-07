@@ -129,7 +129,6 @@ MCFLAGS-libs.options                         += --no-warn-implicit-stream-calls
 MCFLAGS-libs.pickle                          += --no-warn-implicit-stream-calls
 MCFLAGS-libs.process_util                    += --no-warn-implicit-stream-calls
 MCFLAGS-ll_backend.deep_profiling            += --no-warn-implicit-stream-calls
-MCFLAGS-ll_backend.fact_table                += --no-warn-implicit-stream-calls
 MCFLAGS-make                                 += --no-warn-implicit-stream-calls
 MCFLAGS-make.build                           += --no-warn-implicit-stream-calls
 MCFLAGS-make.dependencies                    += --no-warn-implicit-stream-calls

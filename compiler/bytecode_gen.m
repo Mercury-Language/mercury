@@ -369,7 +369,7 @@ gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism, ByteInfo, Code) :-
     determinism_to_code_model(Detism, CodeModel),
     get_module_info(ByteInfo, ModuleInfo),
     list.map(get_var_type(ByteInfo), ArgVars, ArgTypes),
-    make_standard_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo,
+    make_standard_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes,
         ArgInfo),
     assoc_list.from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 

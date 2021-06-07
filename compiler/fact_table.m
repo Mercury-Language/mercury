@@ -66,18 +66,17 @@
 
 %-----------------------------------------------------------------------------%
 
-    % fact_table_compile_facts(ModuleInfo, PredName, Arity, FileName, Context,
+    % fact_table_compile_facts(ModuleInfo, FileName, Context,
     %   C_HeaderCode, PrimaryProcID, !PredInfo, !IO):
     %
-    % Compile the fact table into a separate .c file.
+    % Compile the fact table for PredInfo into a separate .c file.
     %
-:- pred fact_table_compile_facts(module_info::in, sym_name::in, user_arity::in,
-    string::in, prog_context::in, string::out, proc_id::out,
-    pred_info::in, pred_info::out, io::di, io::uo) is det.
+:- pred fact_table_compile_facts(module_info::in, string::in, prog_context::in,
+    string::out, proc_id::out, pred_info::in, pred_info::out,
+    io::di, io::uo) is det.
 
-    % fact_table_generate_c_code(ModuleInfo, PredName, PragmaVars,
-    %    ProcID, PrimaryProcID, ProcInfo, ArgTypes, C_ProcCode, C_ExtraCode,
-    %    !IO):
+    % fact_table_generate_c_code(ModuleInfo, PredName, ProcID, PrimaryProcID,
+    %   ProcInfo, PragmaVars, ArgTypes, C_ProcCode, C_ExtraCode, !IO):
     %
     % Generate c code to lookup a fact table in a given mode. C_ProcCode is the
     % C code for the procedure, C_ExtraCode is extra C code that should be
@@ -92,8 +91,9 @@
     % to look up the fact table.
     %
 :- pred fact_table_generate_c_code(module_info::in, sym_name::in,
-    list(pragma_var)::in, proc_id::in, proc_id::in, proc_info::in,
-    list(mer_type)::in, string::out, string::out, io::di, io::uo) is det.
+    proc_id::in, proc_id::in, proc_info::in,
+    list(pragma_var)::in, list(mer_type)::in, string::out, string::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -109,7 +109,9 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_llds.
+:- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -121,7 +123,6 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
@@ -152,8 +153,8 @@
     %
 :- type proc_stream
     --->    proc_stream(
-                proc_id,            % ID of procedure.
-                io.output_stream    % Sort file stream.
+                proc_id,                % ID of procedure.
+                io.text_output_stream   % Sort file stream.
             ).
 
 :- type hash_entry
@@ -175,6 +176,8 @@
     --->    fact(int)                   % Index into fact table.
     ;       hash_table(int, string).    % Hash table for next arg.
 
+% XXX CLEANUP We should replace this with a type that has one functor
+% for each of the allowed types of argument.
 :- type fact_arg == const.
 
     % Sort_file_line contains the information read in from a sort file
@@ -191,7 +194,7 @@
     ;       all_out     % Modes of all arguments are output.
     ;       in_out      % Modes are a mixture of input and output.
     ;       other       % Some arguments have modes that are not in or out.
-    ;       unknown.
+    ;       no_args.    % There are no arguments.
 
 :- type inferred_determinism
     --->    inferred(determinism)   % Determinism has been inferred.
@@ -223,135 +226,173 @@ fact_table_size(Globals, FactTableSize) :-
 
 %---------------------------------------------------------------------------%
 
-fact_table_compile_facts(ModuleInfo, PredName, UserArity, FileName, Context,
-        C_HeaderCode, PrimaryProcID, !PredInfo, !IO) :-
+fact_table_compile_facts(ModuleInfo, FileName, Context,
+        HeaderCode, PrimaryProcID, !PredInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
-    io.see(FileName, SeeResult, !IO),
+    io.open_input(FileName, FileResult, !IO),
     (
-        SeeResult = ok,
+        FileResult = ok(FileStream),
         fact_table_file_name(Globals, $pred, do_create_dirs,
             other_ext(".c"), FileName, OutputFileName, !IO),
         io.open_output(OutputFileName, OpenResult, !IO),
         (
             OpenResult = ok(OutputStream),
-            PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
-            user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-            fact_table_compile_facts_2(ModuleInfo, PredName, PredFormArity,
-                FileName, Context, OutputStream, C_HeaderCode, PrimaryProcID,
-                MaybeDataFileName, !PredInfo, !IO),
+            pred_info_get_module_name(!.PredInfo, ModuleName),
+            pred_info_get_name(!.PredInfo, PredName),
+            PredSymName = qualified(ModuleName, PredName),
+            fact_table_size(Globals, FactTableSize),
+            fact_table_compile_facts_2(FileStream, FileName, OutputStream,
+                FactTableSize, ModuleInfo, PredSymName, Context,
+                HeaderCode, PrimaryProcID, MaybeDataFileName, !PredInfo, !IO),
             io.close_output(OutputStream, !IO),
             (
                 MaybeDataFileName = no
             ;
                 MaybeDataFileName = yes(DataFileName),
-                append_data_table(Globals, OutputFileName, DataFileName, !IO)
+                append_data_table(ModuleInfo, OutputFileName, DataFileName,
+                    !IO)
             )
         ;
             OpenResult = error(Error),
-            print_file_open_error(Globals, yes(Context), FileName, "output",
-                Error, !IO),
-            C_HeaderCode = "",
+            get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+            print_file_open_error(ErrorStream, Globals, yes(Context),
+                FileName, "output", Error, !IO),
+            HeaderCode = "",
             PrimaryProcID = invalid_proc_id
-        )
+        ),
+        io.close_input(FileStream, !IO)
     ;
-        SeeResult = error(Error),
-        print_file_open_error(Globals, yes(Context), FileName, "input",
-            Error, !IO),
-        C_HeaderCode = "",
+        FileResult = error(Error),
+        get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+        print_file_open_error(ErrorStream, Globals, yes(Context), FileName,
+            "input", Error, !IO),
+        HeaderCode = "",
         PrimaryProcID = invalid_proc_id
     ).
 
-:- pred fact_table_compile_facts_2( module_info::in,
-    sym_name::in, pred_form_arity::in, string::in, prog_context::in,
-    io.output_stream::in, string::out, proc_id::out,
-    maybe(string)::out, pred_info::in, pred_info::out, io::di, io::uo) is det.
+:- pred fact_table_compile_facts_2(io.text_input_stream::in, string::in,
+    io.text_output_stream::in, int::in, module_info::in,
+    sym_name::in, prog_context::in,
+    string::out, proc_id::out, maybe(string)::out,
+    pred_info::in, pred_info::out, io::di, io::uo) is det.
 
-fact_table_compile_facts_2(ModuleInfo, PredName, PredFormArity, FileName,
-        Context, OutputStream, C_HeaderCode, PrimaryProcID,
+fact_table_compile_facts_2(FileStream, FileName, OutputStream, FactTableSize,
+        ModuleInfo, PredSymName, Context, HeaderCode, PrimaryProcID,
         MaybeDataFileName, !PredInfo, !IO) :-
     pred_info_get_arg_types(!.PredInfo, Types),
     init_fact_arg_infos(Types, FactArgInfos0),
-    infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
+    infer_determinism_pass_1(ModuleInfo, Context, CheckProcs,
         ExistsAllInMode, WriteHashTables, WriteDataTable,
-        FactArgInfos0, FactArgInfos, [], Pass1Errors),
-    create_fact_table_header(PredName, !.PredInfo, FactArgInfos,
-        C_HeaderCode0, StructName, Pass1Errors, Pass1HeaderErrors),
-    module_info_get_globals(ModuleInfo, Globals),
+        FactArgInfos0, FactArgInfos, !PredInfo, [], Pass1Errors),
+    create_fact_table_header(PredSymName, !.PredInfo, FactArgInfos,
+        HeaderCode0, StructName, Pass1Errors, Pass1HeaderErrors),
     (
         Pass1HeaderErrors = [],
         io.write_string(OutputStream, fact_table_file_header(FileName), !IO),
-        io.write_string(OutputStream, C_HeaderCode0, !IO),
+        io.write_string(OutputStream, HeaderCode0, !IO),
         open_sort_files(CheckProcs, ProcStreams, [], OpenErrors, !IO),
+        % As the documentation on the fact_table_size predicate says,
+        % we impose a limit on the size of the arrays we generate.
+        % The data table may need to be broken into pieces to respect
+        % this limit.
+        %
+        % The nice way to do this would be to
+        %
+        % - generate all the array entries we need,
+        % - break them into chunks that respect the maximum size, and then
+        % - write out each chunk with its prologue and epilogue,
+        %   with the prologue contains the start of the subarray's definition,
+        %   including an opening brace, and the prologue containing
+        %   the matching close brace and the final semicolon.
+        %
+        % This two level loop (first over the chunks, then over the entries
+        % in each chunk) is nice because there is a natural place to put
+        % the prologues and epilogues.
+        %
+        % Unfortunately, this design also requires the whole array to be
+        % in memory at the same time. Since fact tables may be extremely large,
+        % we want to avoid this. We therefore adopt a cruder approach using
+        % a single loop over the entries. In this approach, most loop
+        % iterations just process one entry, but when the entry is the last
+        % entry in what *would have been* a chunk, we also output the epilogue,
+        % and if there are any more entries after it, then the prologue as
+        % well. This requires us to handle the initial prologue here,
+        % and possibly the final epilogue as well.
         (
-            WriteDataTable = yes,
+            WriteDataTable = write_data_table,
             (
                 CheckProcs = [],
                 MaybeOutput = yes(OutputStream - StructName),
                 % Outputs opening brace for first fact array.
-                write_new_data_array(OutputStream, StructName, 0, !IO),
-                WriteDataAfterSorting = no
+                write_new_data_array_opening_brace(OutputStream, StructName,
+                    0, !IO),
+                WriteDataAfterSorting = do_not_write_data_table
             ;
                 CheckProcs = [_ | _],
                 MaybeOutput = no,
-                WriteDataAfterSorting = yes
+                WriteDataAfterSorting = write_data_table
             )
         ;
-            WriteDataTable = no,
+            WriteDataTable = do_not_write_data_table,
             MaybeOutput = no,
-            WriteDataAfterSorting = no
+            WriteDataAfterSorting = do_not_write_data_table
         ),
-        NumFacts0 = 0,
+        get_maybe_progress_output_stream(ModuleInfo, MaybeProgressStream, !IO),
+        FactNum0 = 0,
         CompileErrors0 = [],
-        compile_facts(ModuleInfo, !.PredInfo, unqualify_name(PredName),
-            PredFormArity, FactArgInfos, ProcStreams, MaybeOutput,
-            NumFacts0, NumFacts, CompileErrors0, CompileErrors, !IO),
-        io.seen(!IO),
+        compile_facts(FileStream, FileName, MaybeProgressStream, FactTableSize,
+            ModuleInfo, !.PredInfo, FactArgInfos, ProcStreams, MaybeOutput,
+            FactNum0, FactNum, CompileErrors0, CompileErrors, !IO),
+        NumFacts = FactNum,
         (
             MaybeOutput = yes(_),
             % Outputs closing brace for last fact array.
             write_closing_brace(OutputStream, !IO),
-            fact_table_size(Globals, FactTableSize),
-            write_fact_table_pointer_array(NumFacts, FactTableSize,
-                StructName, OutputStream, C_HeaderCode2, !IO)
+            write_fact_table_pointer_array(OutputStream, FactTableSize,
+                StructName, NumFacts, HeaderCode2, !IO)
         ;
             MaybeOutput = no,
-            C_HeaderCode2 = ""
+            HeaderCode2 = ""
 
         ),
         close_sort_files(ProcStreams, ProcFiles, !IO),
+        module_info_get_globals(ModuleInfo, Globals),
         OpenCompileErrors = OpenErrors ++ CompileErrors,
         (
             OpenCompileErrors = [],
             pred_info_get_proc_table(!.PredInfo, ProcTable0),
-            infer_determinism_pass_2(ProcFiles, Globals, ExistsAllInMode,
+            infer_determinism_pass_2(ModuleInfo, ExistsAllInMode, ProcFiles,
                 ProcTable0, ProcTable, !IO),
             pred_info_set_proc_table(ProcTable, !PredInfo),
             io.make_temp_file(DataFileNameResult, !IO),
             (
                 DataFileNameResult = ok(DataFileName),
-                write_fact_table_arrays(ProcFiles, DataFileName, StructName,
-                    ProcTable, ModuleInfo, NumFacts, FactArgInfos,
-                    WriteHashTables, WriteDataAfterSorting, OutputStream,
-                    C_HeaderCode1, PrimaryProcID, !IO),
-                write_fact_table_numfacts(OutputStream, PredName, NumFacts,
-                    C_HeaderCode3, !IO),
-                string.append_list([C_HeaderCode0, C_HeaderCode1,
-                    C_HeaderCode2, C_HeaderCode3], C_HeaderCode),
+                write_fact_table_arrays(OutputStream, FactTableSize,
+                    ModuleInfo, ProcFiles, DataFileName, ProcTable,
+                    StructName, NumFacts, FactArgInfos,
+                    WriteHashTables, WriteDataAfterSorting,
+                    HeaderCode1, PrimaryProcID, !IO),
+                write_fact_table_numfacts(OutputStream, PredSymName, NumFacts,
+                    HeaderCode3, !IO),
+                HeaderCode = 
+                    HeaderCode0 ++ HeaderCode1 ++ HeaderCode2 ++ HeaderCode3,
                 MaybeDataFileName = yes(DataFileName)
             ;
                 DataFileNameResult = error(Error),
                 ErrorReport = no -
                     [words("Could not create temporary file:"),
                     quote(error_message(Error)), nl],
-                print_error_report(Globals, ErrorReport, !IO),
-                C_HeaderCode = C_HeaderCode0,
+                get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+                print_error_report(ErrorStream, Globals, ErrorReport, !IO),
+                HeaderCode = HeaderCode0,
                 PrimaryProcID = invalid_proc_id,
                 MaybeDataFileName = no
             )
         ;
             OpenCompileErrors = [_ | _],
-            print_error_reports(Globals, OpenCompileErrors, !IO),
-            C_HeaderCode = C_HeaderCode0,
+            get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+            print_error_reports(ErrorStream, Globals, OpenCompileErrors, !IO),
+            HeaderCode = HeaderCode0,
             PrimaryProcID = invalid_proc_id,
             MaybeDataFileName = no
         )
@@ -361,8 +402,10 @@ fact_table_compile_facts_2(ModuleInfo, PredName, PredFormArity, FileName,
         % `:- pred' or `:- func' declaration had some types that are not
         % supported in fact tables so there is no point trying to type-check
         % all the facts.
-        print_error_reports(Globals, Pass1HeaderErrors, !IO),
-        C_HeaderCode = C_HeaderCode0,
+        get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+        module_info_get_globals(ModuleInfo, Globals),
+        print_error_reports(ErrorStream, Globals, Pass1HeaderErrors, !IO),
+        HeaderCode = HeaderCode0,
         PrimaryProcID = invalid_proc_id,
         MaybeDataFileName = no
     ).
@@ -371,123 +414,130 @@ fact_table_compile_facts_2(ModuleInfo, PredName, PredFormArity, FileName,
 
     % Read in facts one by one and check and compile them.
     %
-:- pred compile_facts(module_info::in, pred_info::in, string::in,
-    pred_form_arity::in, list(fact_arg_info)::in, list(proc_stream)::in,
-    maybe(pair(io.output_stream, string))::in, int::in, int::out,
+:- pred compile_facts(io.text_input_stream::in, string::in,
+    maybe(io.text_output_stream)::in, int::in,
+    module_info::in, pred_info::in,
+    list(fact_arg_info)::in, list(proc_stream)::in,
+    maybe(pair(io.text_output_stream, string))::in, int::in, int::out,
     error_reports::in, error_reports::out, io::di, io::uo) is det.
 
-compile_facts(ModuleInfo, PredInfo, PredName, PredFormArity,
-        FactArgInfos, ProcStreams, MaybeOutput, !NumFacts, !Errors, !IO) :-
-    parser.read_term(Result0, !IO),
+compile_facts(FileStream, FileName, MaybeProgressStream, FactTableSize,
+        ModuleInfo, PredInfo, FactArgInfos, ProcStreams, MaybeOutput,
+        !FactNum, !Errors, !IO) :-
+    parser.read_term(FileStream, Result0, !IO),
     (
         Result0 = eof
     ;
         Result0 = error(Message, LineNum),
-        io.input_stream_name(FileName, !IO),
         term.context_init(FileName, LineNum, Context),
         add_error_report(Context, [words(Message)], !Errors)
     ;
         Result0 = term(_VarSet, Term),
-        module_info_get_globals(ModuleInfo, Globals),
-        fact_table_size(Globals, FactTableSize),
-        ( if 0 = !.NumFacts mod FactTableSize then
-            globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+        ( if 0 = !.FactNum mod FactTableSize then
             (
-                VeryVerbose = yes,
-                io.format("%% Read fact %d\n", [i(!.NumFacts)], !IO)
+                MaybeProgressStream = yes(ProgressStream),
+                io.format(ProgressStream, "%% Read fact %d\n",
+                    [i(!.FactNum)], !IO)
             ;
-                VeryVerbose = no
+                MaybeProgressStream = no
             )
         else
             true
         ),
-
-        check_fact_term(ModuleInfo, PredInfo, PredName, PredFormArity, Term,
-            FactArgInfos, ProcStreams, MaybeOutput, !.NumFacts, Result,
-            !Errors, !IO),
+        check_fact_term(FileStream, FileName, MaybeProgressStream,
+            FactTableSize, ModuleInfo, PredInfo, FactArgInfos,
+            !.FactNum, Term, ProcStreams, MaybeOutput, Result, !Errors, !IO),
         (
             Result = ok,
-            !:NumFacts = !.NumFacts + 1
+            !:FactNum = !.FactNum + 1
         ;
             Result = error
         ),
-        compile_facts(ModuleInfo, PredInfo, PredName, PredFormArity,
-            FactArgInfos, ProcStreams, MaybeOutput, !NumFacts, !Errors, !IO)
+        compile_facts(FileStream, FileName, MaybeProgressStream, FactTableSize,
+            ModuleInfo, PredInfo, FactArgInfos, ProcStreams, MaybeOutput,
+            !FactNum, !Errors, !IO)
     ).
 
     % Do syntactic and semantic checks on a fact term.
     %
-:- pred check_fact_term(module_info::in, pred_info::in,
-    string::in, pred_form_arity::in, prog_term::in, list(fact_arg_info)::in,
-    list(proc_stream)::in, maybe(pair(io.output_stream, string))::in,
-    int::in, fact_result::out, error_reports::in, error_reports::out,
+:- pred check_fact_term(io.text_input_stream::in, string::in,
+    maybe(io.text_output_stream)::in, int::in, module_info::in, pred_info::in,
+    list(fact_arg_info)::in, int::in, prog_term::in,
+    list(proc_stream)::in, maybe(pair(io.text_output_stream, string))::in,
+    fact_result::out, error_reports::in, error_reports::out,
     io::di, io::uo) is det.
 
-check_fact_term(_, _, _, _, term.variable(_V, _), _, _, _, _, error,
-        !Errors, !IO) :-
-    io.input_stream_name(FileName, !IO),
-    io.get_line_number(LineNum, !IO),
-    Context = term.context(FileName, LineNum),
-    Msg = "Error: term is not a fact.",
-    add_error_report(Context, [words(Msg)], !Errors).
-check_fact_term(ModuleInfo, PredInfo, PredName, PredFormArity,
-        term.functor(Functor, Terms0, Context), FactArgInfos,
-        ProcStreams, MaybeOutput, FactNum, Result, !Errors, !IO) :-
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    ( if Functor = term.atom(FunctorAtom) then
-        ( if
-            (
-                PredOrFunc = pf_predicate,
-                FunctorAtom = PredName,
-                Terms = Terms0
-            ;
-                PredOrFunc = pf_function,
-                FunctorAtom = "=",
-                Terms0 = [BeforeEqualTerm, ResultTerm],
-                BeforeEqualTerm =
-                    term.functor(term.atom(PredName), BeforeEqualTerms, _),
-                Terms = BeforeEqualTerms ++ [ResultTerm]
+
+check_fact_term(FileStream, FileName, MaybeProgressStream, FactTableSize,
+        ModuleInfo, PredInfo, FactArgInfos, FactNum, Term,
+        ProcStreams, MaybeOutput, Result, !Errors, !IO) :-
+    (
+        Term = term.variable(_, _),
+        io.get_line_number(FileStream, LineNum, !IO),
+        Context = term.context(FileName, LineNum),
+        Pieces = [words("Error: term is not a fact."), nl],
+        add_error_report(Context, Pieces, !Errors),
+        Result = error
+    ;
+        Term = term.functor(Functor, ArgTerms0, Context),
+        ( if Functor = term.atom(FunctorAtom) then
+            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+            pred_info_get_name(PredInfo, PredName),
+            ( if
+                (
+                    PredOrFunc = pf_predicate,
+                    FunctorAtom = PredName,
+                    ArgTerms = ArgTerms0
+                ;
+                    PredOrFunc = pf_function,
+                    FunctorAtom = "=",
+                    ArgTerms0 = [BeforeEqualTerm, ResultTerm],
+                    BeforeEqualTerm =
+                        term.functor(term.atom(PredName), BeforeEqualTerms, _),
+                    ArgTerms = BeforeEqualTerms ++ [ResultTerm]
+                )
+            then
+                check_fact_term_2(MaybeProgressStream, FactTableSize,
+                    ModuleInfo, PredInfo, FactArgInfos,
+                    FactNum, ArgTerms, Context, ProcStreams, MaybeOutput,
+                    Result, !Errors, !IO)
+            else
+                PredPieces = describe_one_pred_info_name(
+                    should_not_module_qualify, PredInfo),
+                Pieces = [words("Error: invalid clause for") | PredPieces]
+                    ++ [suffix("."), nl],
+                add_error_report(Context, Pieces, !Errors),
+                Result = error
             )
-        then
-            check_fact_term_2(ModuleInfo, PredInfo, PredOrFunc,
-                PredFormArity, Terms, Context, FactArgInfos,
-                ProcStreams, MaybeOutput, FactNum, Result, !Errors, !IO)
         else
-            user_arity_pred_form_arity(PredOrFunc, user_arity(UserArityInt),
-                PredFormArity),
-            PFStr = pred_or_func_to_full_str(PredOrFunc),
-            string.format("Error: invalid clause for %s `%s/%d'.",
-                [s(PFStr), s(PredName), i(UserArityInt)], Msg),
-            add_error_report(Context, [words(Msg)], !Errors),
+            Pieces = [words("Error: term is not a fact."), nl],
+            add_error_report(Context, Pieces, !Errors),
             Result = error
         )
-    else
-        add_error_report(Context,
-            [words("Error: term is not a fact.")], !Errors),
-        Result = error
     ).
 
-:- pred check_fact_term_2(module_info::in, pred_info::in,
-    pred_or_func::in, pred_form_arity::in,
-    list(prog_term)::in, context::in, list(fact_arg_info)::in,
-    list(proc_stream)::in, maybe(pair(io.output_stream, string))::in,
-    int::in, fact_result::out, error_reports::in, error_reports::out,
+:- pred check_fact_term_2(maybe(io.text_output_stream)::in, int::in,
+    module_info::in, pred_info::in, list(fact_arg_info)::in,
+    int::in, list(prog_term)::in, context::in,
+    list(proc_stream)::in, maybe(pair(io.text_output_stream, string))::in,
+    fact_result::out, error_reports::in, error_reports::out,
     io::di, io::uo) is det.
 
-check_fact_term_2(ModuleInfo, PredInfo, PredOrFunc, PredFormArity,
-        Terms, Context, FactArgInfos, ProcStreams, MaybeOutput,
-        FactNum, Result, !Errors, !IO) :-
+check_fact_term_2(MaybeProgressStream, FactTableSize, ModuleInfo, PredInfo,
+        FactArgInfos, FactNum, Terms, Context, ProcStreams, MaybeOutput,
+        Result, !Errors, !IO) :-
     % Check that arity of the fact is correct.
-    PredFormArity = pred_form_arity(PredFormArityInt),
+    pred_info_get_orig_arity(PredInfo, OrigArity),
     list.length(Terms, NumTerms),
-    ( if NumTerms = PredFormArityInt then
+    ( if NumTerms = OrigArity then
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         pred_info_get_arg_types(PredInfo, Types),
-        check_fact_type_and_mode(Types, Terms, 0, PredOrFunc, Context,
+        check_fact_type_and_mode(PredOrFunc, Types, Terms, 0, Context,
             Result, !Errors),
         pred_info_get_proc_table(PredInfo, ProcTable),
         string.int_to_string(FactNum, FactNumStr),
-        write_sort_file_lines(ProcStreams, ProcTable, Terms,
-            ModuleInfo, FactNumStr, FactArgInfos, yes, !IO),
+        write_sort_file_lines(ModuleInfo, ProcTable, FactNumStr, Terms,
+            is_primary_proc(FactArgInfos), ProcStreams, !IO),
         % If there are no in_out modes to the predicate, we need to write out
         % the facts at this point. If there are input modes, the facts are
         % written out later on after being sorted on the first input mode.
@@ -500,21 +550,18 @@ check_fact_term_2(ModuleInfo, PredInfo, PredOrFunc, PredFormArity,
                 ),
             list.map(TermToArg, Terms, FactArgs)
         then
-            module_info_get_globals(ModuleInfo, Globals),
-            globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-            fact_table_size(Globals, FactTableSize),
-            write_fact_data(VeryVerbose, FactNum, FactTableSize, FactArgs,
-                StructName, OutputStream, !IO)
+            write_fact_data(OutputStream, MaybeProgressStream, FactTableSize,
+                StructName, FactArgs, FactNum, !IO)
         else
             % If list.map above fails, don't do anything here. The error will
             % have already been reported in check_fact_type_and_mode.
             true
         )
     else
-        Msg1 = "Error: fact has wrong number of arguments.",
-        string.format("Expecting %d arguments, but fact has %d arguments.",
-            [i(PredFormArityInt), i(NumTerms)], Msg2),
-        add_error_report(Context, [words(Msg1), words(Msg2)], !Errors),
+        Pieces = [words("Error: fact has wrong number of arguments."),
+            words("Expecting"), int_fixed(OrigArity), words("arguments, but"),
+            words("fact has"), int_fixed(NumTerms), words("arguments."), nl],
+        add_error_report(Context, Pieces, !Errors),
         Result = error
     ).
 
@@ -522,18 +569,19 @@ check_fact_term_2(ModuleInfo, PredInfo, PredOrFunc, PredFormArity,
     % and be a constant of the correct type. Only string, int and float are
     % supported at the moment.
     %
-:- pred check_fact_type_and_mode(list(mer_type)::in, list(prog_term)::in,
-    int::in, pred_or_func::in, prog_context::in, fact_result::out,
+:- pred check_fact_type_and_mode(pred_or_func::in,
+    list(mer_type)::in, list(prog_term)::in, int::in,
+    prog_context::in, fact_result::out,
     error_reports::in, error_reports::out) is det.
 
-check_fact_type_and_mode(_, [], _, _, _, ok, !Errors).
-check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
+check_fact_type_and_mode(_, _, [], _, _, ok, !Errors).
+check_fact_type_and_mode(PredOrFunc, Types0, [Term | Terms], ArgNum0,
         Context0, Result, !Errors) :-
     ArgNum = ArgNum0 + 1,
     (
         Term = term.variable(_, _),
-        Msg = "Error: non-ground term in fact.",
-        add_error_report(Context0, [words(Msg)], !Errors),
+        Pieces = [words("Error: non-ground term in fact."), nl],
+        add_error_report(Context0, Pieces, !Errors),
         Result = error
     ;
         Term = term.functor(Functor, Items, Context),
@@ -566,13 +614,14 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
             RequiredType = no,
             (
                 Items = [_ | _],
-                Msg = "Error: compound types are not supported in fact tables."
+                Pieces = [words("Error: compound types are"),
+                    words("not supported in fact tables."), nl]
             ;
                 Items = [],
-                Msg = "Error: enumeration types are not " ++
-                    "yet supported in fact tables."
+                Pieces = [words("Error: enumeration types are"),
+                    words("not supported in fact tables."), nl]
             ),
-            add_error_report(Context, [words(Msg)], !Errors),
+            add_error_report(Context, Pieces, !Errors),
             Result = error
         ;
             RequiredType = yes(BuiltinType),
@@ -580,29 +629,30 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
                 Types0 = [Type | Types],
                 Type = builtin_type(BuiltinType)
             then
-                check_fact_type_and_mode(Types, Terms, ArgNum,
-                    PredOrFunc, Context0, Result, !Errors)
+                check_fact_type_and_mode(PredOrFunc, Types, Terms, ArgNum,
+                    Context0, Result, !Errors)
             else
-                report_type_error(Context, ArgNum, Terms, PredOrFunc, !Errors),
+                report_type_error(PredOrFunc, ArgNum, Terms, Context, !Errors),
                 Result = error
             )
         )
     ).
 
-:- pred report_type_error(prog_context::in, int::in, list(prog_term)::in,
-    pred_or_func::in, error_reports::in, error_reports::out) is det.
+:- pred report_type_error(pred_or_func::in, int::in, list(prog_term)::in,
+    prog_context::in, error_reports::in, error_reports::out) is det.
 
-report_type_error(Context, ArgNum, RemainingTerms, PredOrFunc, !Errors) :-
+report_type_error(PredOrFunc, ArgNum, RemainingTerms, Context, !Errors) :-
     ( if
         % Report a different error message for the return value of a function.
         PredOrFunc = pf_function,
         RemainingTerms = []
     then
-        Msg = "Type error in return value of function."
+        Pieces = [words("Type error in return value of function."), nl]
     else
-        string.format("Type error in argument %d.", [i(ArgNum)], Msg)
+        Pieces = [words("Type error in argument"), int_fixed(ArgNum),
+            suffix("."), nl]
     ),
-    add_error_report(Context, [words(Msg)], !Errors).
+    add_error_report(Context, Pieces, !Errors).
 
 %---------------------------------------------------------------------------%
 
@@ -625,15 +675,14 @@ fact_table_file_header(FileName) = FileHeader :-
     list(fact_arg_info)::in, string::out, string::out,
     error_reports::in, error_reports::out) is det.
 
-create_fact_table_header(PredName, PredInfo, FactArgInfos,
-        C_HeaderCode, StructName, !Errors) :-
-
-    make_fact_table_identifier(PredName, Identifier),
+create_fact_table_header(PredSymName, PredInfo, FactArgInfos,
+        HeaderCode, StructName, !Errors) :-
+    make_fact_table_identifier(PredSymName, Identifier),
     StructName = "mercury__" ++ Identifier ++ "_fact_table",
 
     % Define a struct for a fact table entry.
     pred_info_get_context(PredInfo, Context),  % location of :- pred decl
-    create_fact_table_struct(FactArgInfos, 1, Context, StructContents,
+    create_fact_table_struct(Context, FactArgInfos, 1, StructContents,
         !Errors),
     ( if StructContents = "" then
         StructDef = ""
@@ -642,7 +691,7 @@ create_fact_table_header(PredName, PredInfo, FactArgInfos,
             ++ StructContents ++ "};\n\n"
     ),
     HashDef = hash_def,
-    string.append(StructDef, HashDef, C_HeaderCode).
+    HeaderCode = StructDef ++ HashDef.
 
     % Define a struct for a hash table entry.
     %
@@ -653,36 +702,36 @@ hash_def = "
 #define MERCURY_FACT_TABLE_HASH_TABLES
 
 struct MR_fact_table_hash_table_s {
-    MR_Integer size;                            /* size of the hash table */
-    struct MR_fact_table_hash_entry_s *table;   /* the actual table */
+    MR_Integer size;                            // size of the hash table
+    struct MR_fact_table_hash_entry_s *table;   // the actual table
 };
 
 struct MR_fact_table_hash_table_f {
-    MR_Integer size;                            /* size of the hash table */
-    struct MR_fact_table_hash_entry_f *table;   /* the actual table */
+    MR_Integer size;                            // size of the hash table
+    struct MR_fact_table_hash_entry_f *table;   // the actual table
 };
 
 struct MR_fact_table_hash_table_i {
-    MR_Integer size;                            /* size of the hash table */
-    struct MR_fact_table_hash_entry_i *table;   /* the actual table */
+    MR_Integer size;                            // size of the hash table
+    struct MR_fact_table_hash_entry_i *table;   // the actual table
 };
 
-/* hash table for string keys */
+// hash table for string keys
 struct MR_fact_table_hash_entry_s {
-    MR_ConstString  key;        /* lookup key */
-    const MR_Word   *index;     /* index into fact table data array or       */
-                                /* pointer to hash table for next argument   */
+    MR_ConstString  key;        // lookup key
+    const MR_Word   *index;     // index into fact table data array or
+                                // pointer to hash table for next argument
 #if TAGBITS < 2
-    short type;                 /* 0 if entry empty,                         */
-                                /* 1 if entry is a pointer to the data table */
-                                /* 2 if entry is a pointer to another        */
-                                /*   hash table                              */
+    short type;                 // 0 if entry empty,
+                                // 1 if entry is a pointer to the data table
+                                // 2 if entry is a pointer to another
+                                //   hash table
 #endif
-    int next;                   /* location of next entry with the same hash */
-                                /* value */
+    int next;                   // location of next entry with the same hash
+                                // value
 };
 
-/* hash table for float keys */
+// hash table for float keys
 struct MR_fact_table_hash_entry_f {
     MR_Float        key;
     const MR_Word   *index;
@@ -692,7 +741,7 @@ struct MR_fact_table_hash_entry_f {
     int             next;
 };
 
-/* hash table for int keys */
+// hash table for int keys
 struct MR_fact_table_hash_entry_i {
     MR_Integer      key;
     const MR_Word   *index;
@@ -723,21 +772,21 @@ struct MR_fact_table_hash_entry_i {
     #define MR_FACT_TABLE_HASH_POINTER(w)          (w)
 #endif
 
-#endif /* not MERCURY_FACT_TABLE_HASH_TABLES */
+#endif // not MERCURY_FACT_TABLE_HASH_TABLES
 ".
 
     % Create a struct for the fact table consisting of any arguments
     % that are output in some mode. Also ensure that are arguments are
     % either string, float or int.
     %
-:- pred create_fact_table_struct(list(fact_arg_info)::in, int::in,
-    prog_context::in, string::out,
+:- pred create_fact_table_struct(prog_context::in, list(fact_arg_info)::in,
+    int::in, string::out,
     error_reports::in, error_reports::out) is det.
 
-create_fact_table_struct([], _, _, "", !Errors).
-create_fact_table_struct([Info | Infos], I, Context, StructContents,
+create_fact_table_struct(_, [], _, "", !Errors).
+create_fact_table_struct(Context, [Info | Infos], ArgNum, StructContents,
         !Errors) :-
-    create_fact_table_struct(Infos, I + 1, Context, StructContentsTail,
+    create_fact_table_struct(Context, Infos, ArgNum + 1, StructContentsTail,
         !Errors),
     Info = fact_arg_info(Type, _IsInput, IsOutput),
     ( if
@@ -754,7 +803,8 @@ create_fact_table_struct([Info | Infos], I, Context, StructContents,
     then
         (
             IsOutput = yes,
-            string.format("\t%s V_%d;\n", [s(TypeStr), i(I)], StructField),
+            string.format("\t%s V_%d;\n", [s(TypeStr), i(ArgNum)],
+                StructField),
             string.append(StructField, StructContentsTail, StructContents)
         ;
             IsOutput = no,
@@ -764,10 +814,11 @@ create_fact_table_struct([Info | Infos], I, Context, StructContents,
         % Report an error for types other than string, int and float.
         % Context is the `:- pred' or `:- func' declaration where the
         % types are declared.
-        Msg = "Error: invalid type in fact table: " ++
-            "only `string', `int' and `float' types " ++
-            "are allowed in fact tables.",
-        add_error_report(Context, [words(Msg)], !Errors),
+        Pieces = [words("Error: invalid type in fact table."),
+            words("The only types allowed in fact tables are"),
+            quote("string"), suffix(","), quote("int"), words("and"),
+            quote("float"), suffix("."), nl],
+        add_error_report(Context, Pieces, !Errors),
         StructContents = StructContentsTail
     ).
 
@@ -785,16 +836,19 @@ init_fact_arg_infos([Type | Types], [Info | Infos]) :-
     Info = fact_arg_info(Type, no, no),
     init_fact_arg_infos(Types, Infos).
 
-:- pred fill_in_fact_arg_infos(list(mer_mode)::in, module_info::in,
+    % XXX CLEANUP The input to this should NOT be a partially-filled-in
+    % fact_arg_info, but a value of a type containing just the filled-in part.
+    %
+:- pred fill_in_fact_arg_infos(module_info::in, list(mer_mode)::in,
     list(fact_arg_info)::in, list(fact_arg_info)::out) is det.
 
-fill_in_fact_arg_infos([], _, [], []).
-fill_in_fact_arg_infos([_ | _], _, [], _) :-
+fill_in_fact_arg_infos(_, [], [], []).
+fill_in_fact_arg_infos(_, [_ | _], [], _) :-
     unexpected($pred, "too many argmodes").
-fill_in_fact_arg_infos([], _, [_ | _], _) :-
+fill_in_fact_arg_infos(_, [], [_ | _], _) :-
     unexpected($pred, "too many fact_arg_infos").
-fill_in_fact_arg_infos([Mode | Modes], ModuleInfo, [Info0 | Infos0],
-        [Info | Infos]) :-
+fill_in_fact_arg_infos(ModuleInfo, [Mode | Modes],
+        [Info0 | Infos0], [Info | Infos]) :-
     Info0 = fact_arg_info(Type, IsInput, _IsOutput),
     ( if mode_is_fully_input(ModuleInfo, Mode) then
         % XXX Info = fact_arg_info(Type, yes, IsOutput)
@@ -811,43 +865,56 @@ fill_in_fact_arg_infos([Mode | Modes], ModuleInfo, [Info0 | Infos0],
         % infer_proc_determinism_pass_1.
         Info = Info0
     ),
-    fill_in_fact_arg_infos(Modes, ModuleInfo, Infos0, Infos).
+    fill_in_fact_arg_infos(ModuleInfo, Modes, Infos0, Infos).
 
 %---------------------------------------------------------------------------%
+
+:- type all_in_mode
+    --->    all_in_mode_does_not_exist
+    ;       all_in_mode_does_exist.
+
+:- type maybe_write_hash_tables
+    --->    do_not_write_hash_tables
+    ;       write_hash_tables.
+
+:- type maybe_write_data_table
+    --->    do_not_write_data_table
+    ;       write_data_table.
 
     % First pass of determinism inference. (out, out, ..., out) procs are
     % multi and (in, in, .., in) procs are semidet. Return a list of procs
     % containing both in's and out's. These need further analysis later
     % in pass 2.
     %
-:- pred infer_determinism_pass_1(pred_info::in, pred_info::out,
-    prog_context::in, module_info::in, list(proc_id)::out,
-    bool::out, bool::out, bool::out,
+:- pred infer_determinism_pass_1(module_info::in, prog_context::in,
+    list(proc_id)::out, all_in_mode::out,
+    maybe_write_hash_tables::out, maybe_write_data_table::out,
     list(fact_arg_info)::in, list(fact_arg_info)::out,
+    pred_info::in, pred_info::out,
     error_reports::in, error_reports::out) is det.
 
-infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
-        ExistsAllInMode, WriteHashTables, WriteDataTable,
-        !FactArgInfos, !Errors) :-
+infer_determinism_pass_1(ModuleInfo, Context, CheckProcs, AllInMode,
+        WriteHashTables, WriteDataTable, !FactArgInfos, !PredInfo, !Errors) :-
     pred_info_get_proc_table(!.PredInfo, ProcTable0),
     ProcIDs = pred_info_all_procids(!.PredInfo),
     (
         ProcIDs = [],
         % There are no declared modes, so report an error.
-        PredString = pred_info_name(!.PredInfo),
-        Arity = pred_info_orig_arity(!.PredInfo),
-        string.format("Error: no modes declared for fact table `%s/%d'.\n",
-            [s(PredString), i(Arity)], Msg),
-        add_error_report(Context, [words(Msg)], !Errors),
+        PredPieces = describe_one_pred_info_name(should_not_module_qualify,
+            !.PredInfo),
+        Pieces = [words("Error: no modes declared for fact table")
+            | PredPieces] ++ [suffix("."), nl],
+        add_error_report(Context, Pieces, !Errors),
         CheckProcs = [],
-        ExistsAllInMode = no,
-        WriteHashTables = no,
-        WriteDataTable = no
+        AllInMode = all_in_mode_does_not_exist,
+        WriteHashTables = do_not_write_hash_tables,
+        WriteDataTable = do_not_write_data_table
     ;
         ProcIDs = [_ | _],
-        infer_proc_determinism_pass_1(ProcIDs, ModuleInfo,
+        infer_proc_determinism_pass_1(ModuleInfo, ProcIDs, MaybeAllInProc,
             ProcTable0, ProcTable, [], CheckProcs0, !FactArgInfos,
-            MaybeAllInProc, WriteHashTables, WriteDataTable, !Errors),
+            do_not_write_hash_tables, WriteHashTables,
+            do_not_write_data_table, WriteDataTable, !Errors),
 
         % If there is an all_in procedure, it needs to be put on the end of
         % the list so a sort file is created for it. This is required when
@@ -855,11 +922,11 @@ infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
         (
             MaybeAllInProc = yes(ProcID),
             CheckProcs1 = [ProcID | CheckProcs0],
-            ExistsAllInMode = yes
+            AllInMode = all_in_mode_does_exist
         ;
             MaybeAllInProc = no,
             CheckProcs1 = CheckProcs0,
-            ExistsAllInMode = no
+            AllInMode = all_in_mode_does_not_exist
         ),
 
         % We need to get the order right for CheckProcs because the first
@@ -868,44 +935,44 @@ infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
         pred_info_set_proc_table(ProcTable, !PredInfo)
     ).
 
-:- pred infer_proc_determinism_pass_1(list(proc_id)::in, module_info::in,
-    proc_table::in, proc_table::out, list(proc_id)::in, list(proc_id)::out,
+:- pred infer_proc_determinism_pass_1(module_info::in, list(proc_id)::in,
+    maybe(proc_id)::out,
+    proc_table::in, proc_table::out,
+    list(proc_id)::in, list(proc_id)::out,
     list(fact_arg_info)::in, list(fact_arg_info)::out,
-    maybe(proc_id)::out, bool::out, bool::out,
+    maybe_write_hash_tables::in, maybe_write_hash_tables::out,
+    maybe_write_data_table::in, maybe_write_data_table::out,
     error_reports::in, error_reports::out) is det.
 
-infer_proc_determinism_pass_1([], _, !ProcTable, !CheckProcs, !FactArgInfos,
-        no, no, no, !Errors).
-infer_proc_determinism_pass_1([ProcID | ProcIDs], ModuleInfo, !ProcTable,
-        !CheckProcs, !FactArgInfos, MaybeAllInProc, WriteHashTables,
-        WriteDataTable, !Errors) :-
+infer_proc_determinism_pass_1(_, [], no, !CheckProcs, !FactArgInfos,
+        !WriteHashTables, !WriteDataTable, !ProcTable, !Errors).
+infer_proc_determinism_pass_1(ModuleInfo, [ProcID | ProcIDs], MaybeAllInProc,
+        !ProcTable, !CheckProcs, !FactArgInfos,
+        !WriteHashTables, !WriteDataTable, !Errors) :-
     map.lookup(!.ProcTable, ProcID, ProcInfo0),
     proc_info_get_argmodes(ProcInfo0, ArgModes),
-    fill_in_fact_arg_infos(ArgModes, ModuleInfo, !FactArgInfos),
-    fact_table_mode_type(ArgModes, ModuleInfo, ModeType),
+    fill_in_fact_arg_infos(ModuleInfo, ArgModes, !FactArgInfos),
+    compute_fact_table_mode_type(ModuleInfo, ArgModes, ModeType),
     (
         ModeType = all_in,
         InferredDetism = inferred(detism_semi),
-        WriteHashTables0 = yes,
-        WriteDataTable0 = no,
-        MaybeAllInProc0 = yes(ProcID)
+        MaybeAllInProc0 = yes(ProcID),
+        !:WriteHashTables = write_hash_tables
     ;
         ModeType = all_out,
         proc_info_get_declared_determinism(ProcInfo0, MaybeDet),
         ( if
-            (
-                MaybeDet = yes(detism_cc_multi)
-            ;
-                MaybeDet = yes(detism_cc_non)
+            MaybeDet = yes(Det),
+            ( Det = detism_cc_multi
+            ; Det = detism_cc_non
             )
         then
             InferredDetism = inferred(detism_cc_multi)
         else
             InferredDetism = inferred(detism_multi)
         ),
-        WriteHashTables0 = no,
-        WriteDataTable0 = yes,
-        MaybeAllInProc0 = no
+        MaybeAllInProc0 = no,
+        !:WriteDataTable = write_data_table
     ;
         ModeType = in_out,
 
@@ -913,29 +980,26 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ModuleInfo, !ProcTable,
         % Put it off till the second pass.
         InferredDetism = not_yet,
         % Add to list and check in pass 2.
+        MaybeAllInProc0 = no,
         !:CheckProcs = [ProcID | !.CheckProcs],
-        WriteHashTables0 = yes,
-        WriteDataTable0 = yes,
-        MaybeAllInProc0 = no
+        !:WriteHashTables = write_hash_tables,
+        !:WriteDataTable = write_data_table
     ;
         ModeType = other,           % mode error
         InferredDetism = error,
+        MaybeAllInProc0 = no,
         proc_info_get_context(ProcInfo0, Context),
-        Msg = "Error: only `in' and `out' modes are currently " ++
-            "supported in fact tables.",
-        add_error_report(Context, [words(Msg)], !Errors),
-        WriteHashTables0 = no,
-        WriteDataTable0 = no,
-        MaybeAllInProc0 = no
+        Pieces = [words("Error: the only modes allowed in fact tables are"),
+            quote("in"), words("and"), quote("out"), suffix("."), nl],
+        add_error_report(Context, Pieces, !Errors)
     ;
-        ModeType = unknown,         % mode error
+        ModeType = no_args,         % mode error
         InferredDetism = error,
+        MaybeAllInProc0 = no,
         proc_info_get_context(ProcInfo0, Context),
-        Msg = "Error: mode list for procedure is empty.",
-        add_error_report(Context, [words(Msg)], !Errors),
-        WriteHashTables0 = no,
-        WriteDataTable0 = no,
-        MaybeAllInProc0 = no
+        Pieces = [words("Error: predicates without arguments"),
+            words("are not allowed in fact tables."), nl],
+        add_error_report(Context, Pieces, !Errors)
     ),
     ( if InferredDetism = inferred(Determinism) then
         proc_info_set_inferred_determinism(Determinism,
@@ -944,47 +1008,69 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ModuleInfo, !ProcTable,
     else
         true
     ),
-    infer_proc_determinism_pass_1(ProcIDs, ModuleInfo, !ProcTable,
-        !CheckProcs, !FactArgInfos, MaybeAllInProc1, WriteHashTables1,
-        WriteDataTable1, !Errors),
+    infer_proc_determinism_pass_1(ModuleInfo, ProcIDs, MaybeAllInProc1,
+        !ProcTable, !CheckProcs, !FactArgInfos,
+        !WriteHashTables, !WriteDataTable, !Errors),
     (
         MaybeAllInProc0 = yes(_),
         MaybeAllInProc = MaybeAllInProc0
     ;
         MaybeAllInProc0 = no,
         MaybeAllInProc = MaybeAllInProc1
-    ),
-    bool.or(WriteHashTables0, WriteHashTables1, WriteHashTables),
-    bool.or(WriteDataTable0, WriteDataTable1, WriteDataTable).
+    ).
 
     % Return the fact_table_mode_type for a procedure.
     %
-:- pred fact_table_mode_type(list(mer_mode)::in, module_info::in,
-    fact_table_mode_type::out) is det.
+:- pred compute_fact_table_mode_type(module_info::in,
+    list(mer_mode)::in, fact_table_mode_type::out) is det.
 
-fact_table_mode_type([], _, unknown).
-fact_table_mode_type([Mode | Modes], ModuleInfo, ModeType) :-
-    ( if mode_is_fully_input(ModuleInfo, Mode) then
-        ModeType0 = all_in
-    else if mode_is_fully_output(ModuleInfo, Mode) then
-        ModeType0 = all_out
-    else
-        ModeType0 = other
-    ),
-    ( if ModeType0 = other then
-        ModeType = other
-    else
-        fact_table_mode_type(Modes, ModuleInfo, ModeType1),
-        ( if ModeType1 = unknown then
-            ModeType = ModeType0
-        else if ModeType1 = other then
+compute_fact_table_mode_type(ModuleInfo, Modes, ModeType) :-
+    compute_mode_classes(ModuleInfo, Modes, Classes),
+    list.sort_and_remove_dups(Classes, SortedClasses),
+    (
+        SortedClasses = [],
+        ModeType = no_args
+    ;
+        SortedClasses = [_ | _],
+        % SortedClasses may contain a maximum of three elements,
+        % taken from fully_input_mode, fully_output_mode, and mixed_mode.
+        ( if list.contains(SortedClasses, mixed_mode) then
             ModeType = other
-        else if ModeType1 = ModeType0 then
-            ModeType = ModeType0
         else
-            ModeType = in_out
+            % SortedClasses may contain a maximum of two elements,
+            % taken from fully_input_mode and fully_output_mode.
+            ( if SortedClasses = [fully_input_mode] then
+                ModeType = all_in
+            else if SortedClasses = [fully_output_mode] then
+                ModeType = all_out
+            else
+                expect(
+                    unify(SortedClasses,
+                        [fully_input_mode, fully_output_mode]),
+                    $pred, "unexpected SortedClasses"),
+                ModeType = in_out
+            )
         )
     ).
+
+:- type mode_class
+    --->    fully_input_mode
+    ;       fully_output_mode
+    ;       mixed_mode.
+
+:- pred compute_mode_classes(module_info::in,
+    list(mer_mode)::in, list(mode_class)::out) is det.
+
+compute_mode_classes(_, [], []).
+compute_mode_classes(ModuleInfo, [Mode | Modes], [Class | Classes]) :-
+    ( if mode_is_fully_input(ModuleInfo, Mode) then
+        Class = fully_input_mode
+    else if mode_is_fully_output(ModuleInfo, Mode) then
+        Class = fully_output_mode
+    else
+        Class = mixed_mode
+    ),
+    compute_mode_classes(ModuleInfo, Modes, Classes).
 
 %---------------------------------------------------------------------------%
 
@@ -1023,7 +1109,11 @@ close_sort_files([proc_stream(ProcID, Stream) | ProcStreams],
     io.close_output(Stream, !IO),
     close_sort_files(ProcStreams, ProcFiles, !IO).
 
-    % write_sort_file_lines(ProcStreams, ProcTable, Terms):
+:- type maybe_primary_proc
+    --->    is_not_primary_proc
+    ;       is_primary_proc(list(fact_arg_info)).
+
+    % write_sort_file_lines(ModuleInfo, ProcStreams, ProcTable, Terms):
     %
     % Write out a line to each sort file for this fact. The line is made up
     % of the input arguments of the procedure (the key) followed by the
@@ -1033,29 +1123,30 @@ close_sort_files([proc_stream(ProcID, Stream) | ProcStreams],
     % read_sort_file_line so if any changes are made here, corresponding
     % changes should be made there too.
     %
-:- pred write_sort_file_lines(list(proc_stream)::in, proc_table::in,
-    list(prog_term)::in, module_info::in, string::in,
-    list(fact_arg_info)::in, bool::in, io::di, io::uo) is det.
+:- pred write_sort_file_lines(module_info::in, proc_table::in,
+    string::in, list(prog_term)::in, maybe_primary_proc::in,
+    list(proc_stream)::in, io::di, io::uo) is det.
 
-write_sort_file_lines([], _, _, _, _, _, _, !IO).
-write_sort_file_lines([proc_stream(ProcID, Stream) | ProcStreams], ProcTable,
-        Terms, ModuleInfo, FactNumStr, FactArgInfos, IsPrimary, !IO) :-
+write_sort_file_lines(_, _, _, _, _, [], !IO).
+write_sort_file_lines(ModuleInfo, ProcTable, FactNumStr, Terms,
+        IsPrimary, [ProcStream | ProcStreams], !IO) :-
+    ProcStream = proc_stream(ProcID, Stream),
     map.lookup(ProcTable, ProcID, ProcInfo),
     proc_info_get_argmodes(ProcInfo, ArgModes),
     assoc_list.from_corresponding_lists(ArgModes, Terms, ModeTerms),
-    make_sort_file_key(ModeTerms, ModuleInfo, Key),
+    make_sort_file_key(ModuleInfo, ModeTerms, Key),
     (
-        IsPrimary = yes,
+        IsPrimary = is_primary_proc(FactArgInfos),
         assoc_list.from_corresponding_lists(FactArgInfos, Terms, InfoTerms),
         DataString = make_fact_data_string(InfoTerms)
     ;
-        IsPrimary = no,
+        IsPrimary = is_not_primary_proc,
         DataString = ""
     ),
-    io.write_strings(Stream,
-        [Key, "~", FactNumStr, "~", DataString, "\n"], !IO),
-    write_sort_file_lines(ProcStreams, ProcTable, Terms, ModuleInfo,
-        FactNumStr, [], no, !IO).
+    io.format(Stream, "%s~%s~%s\n",
+        [s(Key), s(FactNumStr), s(DataString)], !IO),
+    write_sort_file_lines(ModuleInfo, ProcTable, FactNumStr, Terms,
+        is_not_primary_proc, ProcStreams, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1068,21 +1159,21 @@ write_sort_file_lines([proc_stream(ProcID, Stream) | ProcStreams], ProcTable,
     % with the sort program. The tilde ('~') character is used in the
     % sort file to separate the sort key from the data.
     %
-:- pred make_sort_file_key(assoc_list(mer_mode, prog_term)::in,
-    module_info::in, string::out) is det.
+:- pred make_sort_file_key(module_info::in,
+    assoc_list(mer_mode, prog_term)::in, string::out) is det.
 
-make_sort_file_key([], _, "").
-make_sort_file_key([(Mode - Term) | ModeTerms], ModuleInfo, Key) :-
+make_sort_file_key(_ModuleInfo, [], "").
+make_sort_file_key(ModuleInfo, [HeadModeTerm | TailModeTerms], Key) :-
+    make_sort_file_key(ModuleInfo, TailModeTerms, TailKey),
+    HeadModeTerm = Mode - Term,
     ( if
         mode_is_fully_input(ModuleInfo, Mode),
         Term = term.functor(Const, [], _Context)
     then
-        KeyPart = make_key_part(Const),
-        make_sort_file_key(ModeTerms, ModuleInfo, Key0),
-        string.append(":", Key0, Key1), % field separator
-        string.append(KeyPart, Key1, Key)
+        HeadKey = make_key_part(Const),
+        Key = HeadKey ++ ":" ++ TailKey
     else
-        make_sort_file_key(ModeTerms, ModuleInfo, Key)
+        Key = TailKey
     ).
 
     % Like make_sort_file_key but for the output arguments of the fact.
@@ -1090,17 +1181,17 @@ make_sort_file_key([(Mode - Term) | ModeTerms], ModuleInfo, Key) :-
 :- func make_fact_data_string(assoc_list(fact_arg_info, prog_term)) = string.
 
 make_fact_data_string([]) = "".
-make_fact_data_string([fact_arg_info(_, _, IsOutput) - Term | InfoTerms]) =
-        String :-
+make_fact_data_string([HeadInfoTerm | TailInfoTerms]) = String :-
+    TailString = make_fact_data_string(TailInfoTerms),
+    HeadInfoTerm = fact_arg_info(_, _, IsOutput) - Term,
     ( if
         IsOutput = yes,
         Term = term.functor(Const, [], _)
     then
-        KeyPart = make_key_part(Const),
-        String0 = make_fact_data_string(InfoTerms),
-        string.append_list([KeyPart, ":", String0], String)
+        HeadString = make_key_part(Const),
+        String = HeadString ++ ":" ++ TailString
     else
-        String = make_fact_data_string(InfoTerms)
+        String = TailString
     ).
 
 :- func make_key_part(const) = string.
@@ -1114,8 +1205,8 @@ make_key_part(Const) = Key :-
         (
             Signedness = signed,
             ( if source_integer_to_int(Base, Integer, I) then
-                % Print the integer in base 36 to reduce the amount of I/O we
-                % do.
+                % Print the integer in base 36 to reduce the amount of I/O
+                % that we do.
                 Key = string.int_to_base_string(I, 36)
             else
                 unexpected($pred, "integer too big")
@@ -1160,39 +1251,57 @@ key_from_chars_loop([Char | Chars], !EscapedCharsCord) :-
     else if Char = ('~') then
         !:EscapedCharsCord = !.EscapedCharsCord ++ cord.from_list(['\\', 't'])
     else
-        !:EscapedCharsCord = cord.snoc(!.EscapedCharsCord, Char)
+        cord.snoc(Char, !EscapedCharsCord)
     ),
     key_from_chars_loop(Chars, !EscapedCharsCord).
 
 %---------------------------------------------------------------------------%
 
-    % infer_determinism_pass_2(ProcFiles, Globals, ExistsAllInMode,
+    % infer_determinism_pass_2(ModuleInfo, ExistsAllInMode, ProcFiles,
     %   !ProcTable, !IO):
     %
     % Run `sort' on each sort file to see if the keys are unique.
     % If they are, the procedure is semidet, otherwise it is nondet.
     % Return the updated proc_table.
     %
-:- pred infer_determinism_pass_2(assoc_list(proc_id, string)::in, globals::in,
-    bool::in, proc_table::in, proc_table::out, io::di, io::uo) is det.
+:- pred infer_determinism_pass_2(module_info::in, all_in_mode::in,
+    assoc_list(proc_id, string)::in,
+    proc_table::in, proc_table::out, io::di, io::uo) is det.
 
-infer_determinism_pass_2([], _, _, !ProcTable, !IO).
-infer_determinism_pass_2([ProcID - FileName | ProcFiles], Globals,
-        ExistsAllInMode, !ProcTable, !IO) :-
+infer_determinism_pass_2(_, _, [], !ProcTable, !IO).
+infer_determinism_pass_2(ModuleInfo, ExistsAllInMode,
+        [ProcID - FileName | ProcFiles], !ProcTable, !IO) :-
     map.lookup(!.ProcTable, ProcID, ProcInfo0),
-    make_command_string(string.format(
+    % XXX This sends the output to the *input* file.
+    % This works in the usual implementations of sort,
+    % since you have to finish reading the input before you can generate
+    % any part of the output, but it is not *guaranteed* to work,
+    % since sort may *open* the output file before finishing reading.
+    % XXX Also, this requires "sort" and "cut" to be installed,
+    % but we don't check that. We should have autoconf tests for their
+    % presence/absence, and if either is absent, we should generate
+    % a more specific error message than what results from the failure
+    % of Command.
+    string.format(
         "LC_ALL=C sort -o %s %s && " ++
         "cut -d'~' -f1 %s | LC_ALL=C sort -cu >/dev/null 2>&1",
-        [s(FileName), s(FileName), s(FileName)]), double, Command),
+        [s(FileName), s(FileName), s(FileName)], Command0),
+    make_command_string(Command0, double, Command),
+    module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Invoking system command `", !IO),
-    maybe_write_string(Verbose, Command, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    io.call_system(Command, Result, !IO),
-    maybe_write_string(Verbose, "done.\n", !IO),
+    (
+        Verbose = no,
+        io.call_system(Command, Result, !IO)
+    ;
+        Verbose = yes,
+        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+        io.format(ProgressStream, "%% Invoking system command `%s' ...",
+            [s(Command)], !IO),
+        io.call_system(Command, Result, !IO),
+        io.write_string(ProgressStream, "done.\n", !IO)
+    ),
     (
         Result = ok(ExitStatus),
-
         % sort -cu returns 0 if file is sorted and contains no duplicate keys,
         % >=1 if duplicate keys exist.
         ( if
@@ -1200,7 +1309,7 @@ infer_determinism_pass_2([ProcID - FileName | ProcFiles], Globals,
                 ExitStatus = 0
             ;
                 % This is an all_in mode so it is semidet.
-                ExistsAllInMode = yes,
+                ExistsAllInMode = all_in_mode_does_exist,
                 ProcFiles = []
             )
         then
@@ -1224,111 +1333,119 @@ infer_determinism_pass_2([ProcID - FileName | ProcFiles], Globals,
             io.progname_base("mercury_compile", ProgName, !IO),
             Pieces =
                 [fixed(ProgName), suffix(":"), words("an error occurred"),
-                words("in the"), quote("sort"), words("program"),
+                words("in ether the"), quote("sort"),
+                words("or the"), quote("cut"), words("program"),
                 words("during fact table determinism inference."), nl],
             Spec = error_spec($pred, severity_error, phase_fact_table_check,
                 [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
-            write_error_spec_ignore(Globals, Spec, !IO),
+            get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+            write_error_spec_ignore(ErrorStream, Globals, Spec, !IO),
             Determinism = detism_erroneous
         )
     ;
         Result = error(ErrorCode),
-        write_call_system_error_msg(Globals, "sort", ErrorCode, !IO),
+        get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+        write_call_system_error_msg(ErrorStream, Globals, "sort",
+            ErrorCode, !IO),
         Determinism = detism_erroneous
     ),
     proc_info_set_inferred_determinism(Determinism, ProcInfo0, ProcInfo),
     map.det_update(ProcID, ProcInfo, !ProcTable),
-    infer_determinism_pass_2(ProcFiles, Globals, ExistsAllInMode,
+    infer_determinism_pass_2(ModuleInfo, ExistsAllInMode, ProcFiles,
         !ProcTable, !IO).
 
 %---------------------------------------------------------------------------%
 
     % Write out the fact table data arrays and hash tables.
     %
-:- pred write_fact_table_arrays(assoc_list(proc_id, string)::in, string::in,
-    string::in, proc_table::in, module_info::in, int::in,
-    list(fact_arg_info)::in, bool::in, bool::in, io.output_stream::in,
+:- pred write_fact_table_arrays(io.text_output_stream::in, int::in,
+    module_info::in, assoc_list(proc_id, string)::in, string::in,
+    proc_table::in, string::in, int::in, list(fact_arg_info)::in,
+    maybe_write_hash_tables::in, maybe_write_data_table::in,
     string::out, proc_id::out, io::di, io::uo) is det.
 
-write_fact_table_arrays(ProcFiles0, DataFileName, StructName, ProcTable,
-        ModuleInfo, NumFacts, FactArgInfos, WriteHashTables, WriteDataTable,
-        OutputStream, C_HeaderCode, PrimaryProcID, !IO) :-
+write_fact_table_arrays(OutputStream, FactTableSize, ModuleInfo,
+        ProcFiles, DataFileName, ProcTable, StructName, NumFacts, FactArgInfos,
+        WriteHashTables, WriteDataTable, HeaderCode, PrimaryProcID, !IO) :-
     (
         % No sort files => there was only and all_out mode
         %   => nothing left to be done here.
-        ProcFiles0 = [],
-        C_HeaderCode = "",
+        ProcFiles = [],
+        HeaderCode = "",
         % This won't get used anyway.
         PrimaryProcID = hlds_pred.initial_proc_id
     ;
-        ProcFiles0 = [PrimaryProcID - FileName | ProcFiles1],
+        ProcFiles = [PrimaryProcID - FileName | TailProcFiles],
         (
-            WriteHashTables = yes,
+            WriteHashTables = write_hash_tables,
             (
+                TailProcFiles = [],
+                CreateFactMap = do_not_create_fact_map
+            ;
                 % If there we need to build secondary hash tables (i.e. if
                 % there is >1 input mode) we need to create a ``FactMap''
                 % while writing out the primary table.
-                ProcFiles1 = [_ | _],
-                CreateFactMap = yes
-            ;
-                ProcFiles1 = [],
-                CreateFactMap = no
+                TailProcFiles = [_ | _],
+                CreateFactMap = create_fact_map
             ),
-            write_primary_hash_table(PrimaryProcID, FileName, DataFileName,
-                StructName, ProcTable, ModuleInfo, OutputStream, FactArgInfos,
-                WriteDataTable, NumFacts, CreateFactMap, Result0, FactMap,
-                C_HeaderCode0, !IO),
+            write_primary_hash_table(OutputStream, FactTableSize, ModuleInfo,
+                ProcTable, PrimaryProcID, FileName, DataFileName, StructName,
+                FactArgInfos, WriteDataTable, NumFacts,
+                CreateFactMap, FactMap, PrimaryResult, PrimaryHeaderCode, !IO),
             (
-                Result0 = ok,
-                write_secondary_hash_tables(ProcFiles1, StructName, ProcTable,
-                    ModuleInfo, OutputStream, FactMap, FactArgInfos,
-                    "", C_HeaderCode1, !IO),
-                C_HeaderCode = C_HeaderCode0 ++ C_HeaderCode1
+                PrimaryResult = ok,
+                write_secondary_hash_tables(OutputStream, FactTableSize,
+                    ModuleInfo, ProcTable, StructName, FactArgInfos, FactMap,
+                    TailProcFiles, "", SecondaryHeadCode, !IO),
+                HeaderCode = PrimaryHeaderCode ++ SecondaryHeadCode
             ;
-                Result0 = error,
-                C_HeaderCode = C_HeaderCode0
+                PrimaryResult = error,
+                HeaderCode = PrimaryHeaderCode
             )
         ;
-            WriteHashTables = no,
-            C_HeaderCode = ""
+            WriteHashTables = do_not_write_hash_tables,
+            HeaderCode = ""
         )
     ).
 
     % Write out the data for the fact table.
     %
-:- pred write_fact_table_data(bool::in, int::in, int::in,
-    list(list(fact_arg))::in, string::in, io.output_stream::in,
-    io::di, io::uo) is det.
+:- pred write_fact_table_data(io.text_output_stream::in,
+    maybe(io.text_output_stream)::in, int::in, string::in,
+    list(list(fact_arg))::in, int::in, io::di, io::uo) is det.
 
-write_fact_table_data(_, _, _, [], _, _, !IO).
-write_fact_table_data(VeryVerbose, FactNum, FactTableSize, [Fact | Facts],
-        StructName, OutputStream, !IO) :-
-    write_fact_data(VeryVerbose, FactNum, FactTableSize, Fact,
-        StructName, OutputStream, !IO),
-    write_fact_table_data(VeryVerbose, FactNum + 1, FactTableSize, Facts,
-        StructName, OutputStream, !IO).
+write_fact_table_data(_, _, _, _, [], _, !IO).
+write_fact_table_data(OutputStream, MaybeProgressStream, FactTableSize,
+        StructName, [Fact | Facts], FactNum, !IO) :-
+    write_fact_data(OutputStream, MaybeProgressStream, FactTableSize,
+        StructName, Fact, FactNum, !IO),
+    write_fact_table_data(OutputStream, MaybeProgressStream, FactTableSize,
+        StructName, Facts, FactNum + 1, !IO).
 
     % Write out the data for a single fact, starting a new array if necessary.
     % Note: this predicate will not write the declaration or opening brace
     % for the first array or the closing brace of the last array.
     %
-:- pred write_fact_data(bool::in, int::in, int::in, list(fact_arg)::in,
-    string::in, io.output_stream::in, io::di, io::uo) is det.
+:- pred write_fact_data(io.text_output_stream::in,
+    maybe(io.text_output_stream)::in, int::in, string::in,
+    list(fact_arg)::in, int::in, io::di, io::uo) is det.
 
-write_fact_data(VeryVerbose, FactNum, FactTableSize, Args,
-        StructName, OutputStream, !IO) :-
+write_fact_data(OutputStream, MaybeProgressStream, FactTableSize,
+        StructName, Args, FactNum, !IO) :-
     ( if 0 = FactNum mod FactTableSize then
         ( if FactNum = 0 then
             true
         else
             write_closing_brace(OutputStream, !IO),
-            write_new_data_array(OutputStream, StructName, FactNum, !IO)
+            write_new_data_array_opening_brace(OutputStream, StructName,
+                FactNum, !IO)
         ),
         (
-            VeryVerbose = yes,
-            io.format("%% Writing fact %d\n", [i(FactNum)], !IO)
+            MaybeProgressStream = yes(ProgressStream),
+            io.format(ProgressStream,
+                "%% Writing fact %d\n", [i(FactNum)], !IO)
         ;
-            VeryVerbose = no
+            MaybeProgressStream = no
         )
     else
         true
@@ -1339,21 +1456,21 @@ write_fact_data(VeryVerbose, FactNum, FactTableSize, Args,
 
     % Write out the declaration of a new data array followed by " = {\n".
     %
-:- pred write_new_data_array(io.output_stream::in, string::in, int::in,
-    io::di, io::uo) is det.
+:- pred write_new_data_array_opening_brace(io.text_output_stream::in,
+    string::in, int::in, io::di, io::uo) is det.
 
-write_new_data_array(OutputStream, StructName, FactNum, !IO) :-
+write_new_data_array_opening_brace(OutputStream, StructName, FactNum, !IO) :-
     io.format(OutputStream, "const struct %s_struct %s%d[] = {\n",
         [s(StructName), s(StructName), i(FactNum)], !IO).
 
     % Write out the closing brace of an array.
     %
-:- pred write_closing_brace(io.output_stream::in, io::di, io::uo) is det.
+:- pred write_closing_brace(io.text_output_stream::in, io::di, io::uo) is det.
 
 write_closing_brace(OutputStream, !IO) :-
     io.write_string(OutputStream, "};\n\n", !IO).
 
-:- pred write_fact_args(io.output_stream::in, list(fact_arg)::in,
+:- pred write_fact_args(io.text_output_stream::in, list(fact_arg)::in,
     io::di, io::uo) is det.
 
 write_fact_args(_, [], !IO).
@@ -1393,18 +1510,23 @@ write_fact_args(OutputStream, [Arg | Args], !IO) :-
     % If a data table has been created in a separate file, append it to the
     % end of the main output file and then delete it.
     %
-:- pred append_data_table(globals::in, string::in, string::in,
+:- pred append_data_table(module_info::in, string::in, string::in,
     io::di, io::uo) is det.
 
-append_data_table(Globals, OutputFileName, DataFileName, !IO) :-
+append_data_table(ModuleInfo, OutputFileName, DataFileName, !IO) :-
     make_command_string(string.format("cat %s >>%s",
         [s(DataFileName), s(OutputFileName)]), forward, Command),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Invoking system command `", !IO),
-    maybe_write_string(Verbose, Command, !IO),
-    maybe_write_string(Verbose, ", ...", !IO),
-    io.call_system(Command, Result, !IO),
-    maybe_write_string(Verbose, "done.\n", !IO),
+    get_maybe_progress_output_stream(ModuleInfo, MaybeProgressStream, !IO),
+    (
+        MaybeProgressStream = no,
+        io.call_system(Command, Result, !IO)
+    ;
+        MaybeProgressStream = yes(ProgressStream),
+        io.format(ProgressStream, "%% Invoking system command `%s' ...",
+            [s(Command)], !IO),
+        io.call_system(Command, Result, !IO),
+        io.write_string(ProgressStream, "done.\n", !IO)
+    ),
     (
         Result = ok(ExitStatus),
         ( if ExitStatus = 0 then
@@ -1414,47 +1536,56 @@ append_data_table(Globals, OutputFileName, DataFileName, !IO) :-
                 words("fact table output files."), nl],
             Spec = error_spec($pred, severity_error, phase_fact_table_check,
                 [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
-            write_error_spec_ignore(Globals, Spec, !IO)
+            get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+            module_info_get_globals(ModuleInfo, Globals),
+            write_error_spec_ignore(ErrorStream, Globals, Spec, !IO)
         )
     ;
         Result = error(ErrorCode),
-        write_call_system_error_msg(Globals, "cat", ErrorCode, !IO)
+        get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+        module_info_get_globals(ModuleInfo, Globals),
+        write_call_system_error_msg(ErrorStream, Globals, "cat",
+            ErrorCode, !IO)
     ),
-    delete_temporary_file(Globals, DataFileName, !IO).
+    delete_temporary_file(ModuleInfo, DataFileName, !IO).
 
     % Write hash tables for the primary key. Create a map from indices in the
     % original input table to the table sorted on the primary key.
     % Write out the data table if required.
     %
-:- pred write_primary_hash_table(proc_id::in, string::in, string::in,
-    string::in, proc_table::in, module_info::in, io.output_stream::in,
-    list(fact_arg_info)::in, bool::in, int::in, bool::in, fact_result::out,
-    map(int, int)::out, string::out, io::di, io::uo) is det.
+:- pred write_primary_hash_table(io.text_output_stream::in, int::in,
+    module_info::in, proc_table::in, proc_id::in, string::in, string::in,
+    string::in, list(fact_arg_info)::in, maybe_write_data_table::in, int::in,
+    maybe_create_fact_map::in, map(int, int)::out,
+    fact_result::out, string::out, io::di, io::uo) is det.
 
-write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
-        ModuleInfo, OutputStream, FactArgInfos, WriteDataTable,
-        NumFacts, CreateFactMap, Result, FactMap, C_HeaderCode, !IO) :-
+write_primary_hash_table(OutputStream, FactTableSize, ModuleInfo,
+        ProcTable, ProcID, FileName, DataFileName, StructName, FactArgInfos,
+        WriteDataTable, NumFacts, CreateFactMap, FactMap,
+        Result, HeaderCode, !IO) :-
     map.init(FactMap0),
     module_info_get_globals(ModuleInfo, Globals),
-    io.see(FileName, SeeResult, !IO),
+    io.open_input(FileName, FileResult, !IO),
     (
-        SeeResult = ok,
+        FileResult = ok(FileStream),
         (
-            WriteDataTable  = yes,
+            WriteDataTable = write_data_table,
             io.open_output(DataFileName, OpenResult, !IO),
             (
                 OpenResult = ok(DataStream),
                 MaybeDataStream = yes(DataStream),
                 % output opening brace for first fact array
-                write_new_data_array(DataStream, StructName, 0, !IO)
+                write_new_data_array_opening_brace(DataStream, StructName,
+                    0, !IO)
             ;
                 OpenResult = error(Error),
-                print_file_open_error(Globals, no, DataFileName, "output",
-                    Error, !IO),
+                get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+                print_file_open_error(ErrorStream, Globals, no, DataFileName,
+                    "output", Error, !IO),
                 MaybeDataStream = no
             )
         ;
-            WriteDataTable = no,
+            WriteDataTable = do_not_write_data_table,
             MaybeDataStream = no
         ),
         (
@@ -1463,19 +1594,19 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
             string.format("%s_hash_table_%d_",
                 [s(StructName), i(ProcInt)], HashTableName),
             % Note: the type declared here is not necessarily correct.
-            % The type is declared just to stop the C compiler emitting
-            % warnings.
+            % We declare it just to stop the C compiler emitting warnings.
             string.format("extern struct MR_fact_table_hash_table_i %s0;\n",
-                [s(HashTableName)], C_HeaderCode0),
+                [s(HashTableName)], HeaderCode0),
             map.lookup(ProcTable, ProcID, ProcInfo),
             proc_info_get_argmodes(ProcInfo, ArgModes),
-            read_sort_file_line(FactArgInfos, ArgModes, ModuleInfo,
-                MaybeFirstFact, !IO),
+            read_sort_file_line(FileStream, FileName, ModuleInfo,
+                FactArgInfos, ArgModes, MaybeFirstFact, !IO),
             (
                 MaybeFirstFact = yes(FirstFact),
-                build_hash_table(0, 0, HashTableName, StructName, 0, ArgModes,
-                    ModuleInfo, FactArgInfos, yes, OutputStream, FirstFact,
-                    MaybeDataStream, CreateFactMap, FactMap0, FactMap, !IO),
+                build_hash_table(FileStream, FileName, OutputStream,
+                    MaybeDataStream, FactTableSize, ModuleInfo, primary_table,
+                    ArgModes, FactArgInfos, StructName, 0, HashTableName, 0,
+                    FirstFact, 0, CreateFactMap, FactMap0, FactMap, !IO),
                 Result = ok
             ;
                 MaybeFirstFact = no,
@@ -1486,46 +1617,48 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
             MaybeDataStream = no,
             Result = error,
             FactMap = FactMap0,
-            C_HeaderCode0 = ""
+            HeaderCode0 = ""
         ),
         (
             MaybeDataStream = yes(DataStream1),
             % Closing brace for last fact data array.
             write_closing_brace(DataStream1, !IO),
-            fact_table_size(Globals, FactTableSize),
-            write_fact_table_pointer_array(NumFacts, FactTableSize,
-                StructName, DataStream1, C_HeaderCode1, !IO),
+            write_fact_table_pointer_array(DataStream1, FactTableSize,
+                StructName, NumFacts, HeaderCode1, !IO),
             io.close_output(DataStream1, !IO),
-            C_HeaderCode = C_HeaderCode0 ++ C_HeaderCode1
+            HeaderCode = HeaderCode0 ++ HeaderCode1
         ;
             MaybeDataStream = no,
-            C_HeaderCode = C_HeaderCode0
+            HeaderCode = HeaderCode0
         ),
-        io.seen(!IO),
-        delete_temporary_file(Globals, FileName, !IO)
+        io.close_input(FileStream, !IO),
+        delete_temporary_file(ModuleInfo, FileName, !IO)
     ;
-        SeeResult = error(Error),
-        print_file_open_error(Globals, no, FileName, "input", Error, !IO),
+        FileResult = error(Error),
+        get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+        print_file_open_error(ErrorStream, Globals, no, FileName,
+            "input", Error, !IO),
         Result = error,
         FactMap = FactMap0,
-        C_HeaderCode = ""
+        HeaderCode = ""
     ).
 
     % Build hash tables for non-primary input procs.
     %
-:- pred write_secondary_hash_tables(assoc_list(proc_id, string)::in,
-    string::in, proc_table::in, module_info::in, io.output_stream::in,
-    map(int, int)::in, list(fact_arg_info)::in, string::in, string::out,
-    io::di, io::uo) is det.
+:- pred write_secondary_hash_tables(io.text_output_stream::in, int::in,
+    module_info::in, proc_table::in, string::in,
+    list(fact_arg_info)::in, map(int, int)::in,
+    assoc_list(proc_id, string)::in,
+    string::in, string::out, io::di, io::uo) is det.
 
-write_secondary_hash_tables([], _, _, _, _, _, _, !C_HeaderCode, !IO).
-write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
-        ProcTable, ModuleInfo, OutputStream, FactMap, FactArgInfos,
-        !C_HeaderCode, !IO) :-
+write_secondary_hash_tables(_, _, _, _, _, _, _, [], !HeaderCode, !IO).
+write_secondary_hash_tables(OutputStream, FactTableSize, ModuleInfo,
+        ProcTable, StructName, FactArgInfos, FactMap,
+        [ProcID - FileName | ProcFiles], !HeaderCode, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
-    io.see(FileName, SeeResult, !IO),
+    io.open_input(FileName, FileResult, !IO),
     (
-        SeeResult = ok,
+        FileResult = ok(FileStream),
         proc_id_to_int(ProcID, ProcInt),
         string.format("%s_hash_table_%d_",
             [s(StructName), i(ProcInt)], HashTableName),
@@ -1533,42 +1666,48 @@ write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
         % The type is declared just to stop the C compiler emitting warnings.
         string.format(
             "extern struct MR_fact_table_hash_table_i %s0;\n",
-            [s(HashTableName)], New_C_HeaderCode),
-        string.append(New_C_HeaderCode, !C_HeaderCode),
+            [s(HashTableName)], NewHeaderCode),
+        % XXX CLEANUP This prepends to !HeaderCode, when appending
+        % would look to be more appropriate.
+        string.append(NewHeaderCode, !HeaderCode),
         map.lookup(ProcTable, ProcID, ProcInfo),
         proc_info_get_argmodes(ProcInfo, ArgModes),
-        read_sort_file_line(FactArgInfos, ArgModes, ModuleInfo,
-            MaybeFirstFact, !IO),
+        read_sort_file_line(FileStream, FileName, ModuleInfo,
+            FactArgInfos, ArgModes, MaybeFirstFact, !IO),
         (
             MaybeFirstFact = yes(FirstFact),
-            build_hash_table(0, 0, HashTableName, StructName, 0, ArgModes,
-                ModuleInfo, FactArgInfos, no, OutputStream, FirstFact, no, no,
-                FactMap, _, !IO),
-            io.seen(!IO),
-            delete_temporary_file(Globals, FileName, !IO),
-            write_secondary_hash_tables(ProcFiles, StructName, ProcTable,
-                ModuleInfo, OutputStream, FactMap, FactArgInfos,
-                !C_HeaderCode, !IO)
+            build_hash_table(FileStream, FileName, OutputStream, no,
+                FactTableSize, ModuleInfo, not_primary_table,
+                ArgModes, FactArgInfos, StructName, 0, HashTableName, 0,
+                FirstFact, 0, do_not_create_fact_map, FactMap, _, !IO),
+            io.close_input(FileStream, !IO),
+            delete_temporary_file(ModuleInfo, FileName, !IO),
+            write_secondary_hash_tables(OutputStream, FactTableSize,
+                ModuleInfo, ProcTable, StructName, FactArgInfos, FactMap,
+                ProcFiles, !HeaderCode, !IO)
         ;
             MaybeFirstFact = no,
-            io.seen(!IO)
+            io.close_input(FileStream, !IO)
         )
     ;
-        SeeResult = error(Error),
-        print_file_open_error(Globals, no, FileName, "input", Error, !IO)
+        FileResult = error(Error),
+        get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+        print_file_open_error(ErrorStream, Globals, no, FileName,
+            "input", Error, !IO)
     ).
 
-:- pred read_sort_file_line(list(fact_arg_info)::in, list(mer_mode)::in,
-    module_info::in, maybe(sort_file_line)::out, io::di, io::uo) is det.
+:- pred read_sort_file_line(io.text_input_stream::in, string::in,
+    module_info::in, list(fact_arg_info)::in, list(mer_mode)::in,
+    maybe(sort_file_line)::out, io::di, io::uo) is det.
 
-read_sort_file_line(FactArgInfos, ArgModes, ModuleInfo, MaybeSortFileLine,
-        !IO) :-
-    io.read_line(Result, !IO),
+read_sort_file_line(InputStream, InputFileName, ModuleInfo,
+        FactArgInfos, ArgModes, MaybeSortFileLine, !IO) :-
+    io.read_line(InputStream, Result, !IO),
     (
         Result = ok(LineChars),
         string.from_char_list(LineChars, LineString),
-        split_sort_file_line(FactArgInfos, ArgModes, ModuleInfo,
-            LineString, SortFileLine),
+        split_sort_file_line(ModuleInfo, FactArgInfos, ArgModes, LineString,
+            SortFileLine),
         MaybeSortFileLine = yes(SortFileLine)
     ;
         Result = eof,
@@ -1576,33 +1715,45 @@ read_sort_file_line(FactArgInfos, ArgModes, ModuleInfo, MaybeSortFileLine,
     ;
         Result = error(ErrorCode),
         io.error_message(ErrorCode, ErrorMessage),
-        io.input_stream_name(FileName, !IO),
         Pieces =
-            [words("Error reading file"), quote(FileName), suffix(":"), nl,
+            [words("Error reading file"), quote(InputFileName),
+            suffix(":"), nl,
             words(ErrorMessage), nl],
         Spec = error_spec($pred, severity_error, phase_fact_table_check,
             [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+        get_error_output_stream(ModuleInfo, ErrorStream, !IO),
         module_info_get_globals(ModuleInfo, Globals),
-        write_error_spec_ignore(Globals, Spec, !IO),
+        write_error_spec_ignore(ErrorStream, Globals, Spec, !IO),
         MaybeSortFileLine = no
     ).
+
+:- type maybe_primary_table
+    --->    not_primary_table
+    ;       primary_table.
+
+:- type maybe_create_fact_map
+    --->    do_not_create_fact_map
+    ;       create_fact_map.
 
     % Build and write out a top level hash table and all the lower level
     % tables connected to it.
     %
-:- pred build_hash_table(int::in, int::in, string::in, string::in,
-    int::in, list(mer_mode)::in, module_info::in, list(fact_arg_info)::in,
-    bool::in, io.output_stream::in, sort_file_line::in,
-    maybe(io.output_stream)::in, bool::in,
-    map(int, int)::in, map(int, int)::out, io::di, io::uo) is det.
+:- pred build_hash_table(io.text_input_stream::in, string::in,
+    io.text_output_stream::in, maybe(io.text_output_stream)::in, int::in,
+    module_info::in, maybe_primary_table::in,
+    list(mer_mode)::in, list(fact_arg_info)::in, string::in,
+    int::in, string::in, int::in, sort_file_line::in, int::in,
+    maybe_create_fact_map::in, map(int, int)::in, map(int, int)::out,
+    io::di, io::uo) is det.
 
-build_hash_table(FactNum, InputArgNum, HashTableName, StructName,
-        TableNum, ArgModes, ModuleInfo, Infos, IsPrimaryTable, OutputStream,
-        FirstFact, MaybeDataStream, CreateFactMap, !FactMap, !IO) :-
-    build_hash_table_2(FactNum, InputArgNum, HashTableName, StructName,
-        TableNum, ArgModes, ModuleInfo, Infos, IsPrimaryTable,
-        OutputStream, yes(FirstFact), MaybeDataStream, CreateFactMap,
-        !FactMap, [], HashList, !IO),
+build_hash_table(InputStream, InputFileName, OutputStream, MaybeDataStream,
+        FactTableSize, ModuleInfo, IsPrimaryTable, ArgModes, Infos, StructName,
+        InputArgNum, HashTableName, TableNum,
+        FirstFact, FactNum, CreateFactMap, !FactMap, !IO) :-
+    build_hash_table_loop(InputStream, InputFileName, OutputStream,
+        MaybeDataStream, FactTableSize, ModuleInfo, IsPrimaryTable,
+        ArgModes, Infos, StructName, InputArgNum, HashTableName, TableNum,
+        FirstFact, FactNum, CreateFactMap, !FactMap, [], HashList, !IO),
     list.length(HashList, Len),
     module_info_get_globals(ModuleInfo, Globals),
     calculate_hash_table_size(Globals, Len, HashSize),
@@ -1610,143 +1761,155 @@ build_hash_table(FactNum, InputArgNum, HashTableName, StructName,
     hash_table_from_list(HashList, HashSize, HashTable0, HashTable),
     write_hash_table(OutputStream, HashTableName, TableNum, HashTable, !IO).
 
-:- pred build_hash_table_2(int::in, int::in, string::in, string::in, int::in,
-    list(mer_mode)::in, module_info::in, list(fact_arg_info)::in, bool::in,
-    io.output_stream::in,
-    maybe(sort_file_line)::in, maybe(io.output_stream)::in,
-    bool::in, map(int, int)::in, map(int, int)::out,
+:- pred build_hash_table_loop(io.text_input_stream::in, string::in,
+    io.text_output_stream::in, maybe(io.text_output_stream)::in, int::in,
+    module_info::in, maybe_primary_table::in,
+    list(mer_mode)::in, list(fact_arg_info)::in, string::in,
+    int::in, string::in, int::in, sort_file_line::in, int::in,
+    maybe_create_fact_map::in, map(int, int)::in, map(int, int)::out,
     list(hash_entry)::in, list(hash_entry)::out, io::di, io::uo) is det.
 
-build_hash_table_2(_, _, _, _, _, _, _, _, _, _, no, _, _, !FactMap,
-        !HashList, !IO).
-build_hash_table_2(FactNum, InputArgNum, HashTableName, StructName, !.TableNum,
-        ArgModes, ModuleInfo, Infos, IsPrimaryTable, OutputStream,
-        yes(FirstFact), MaybeDataStream, CreateFactMap, !FactMap, !HashList,
-        !IO) :-
-    top_level_collect_matching_facts(FirstFact, MatchingFacts, MaybeNextFact,
-        Infos, ArgModes, ModuleInfo, !IO),
+build_hash_table_loop(InputStream, InputFileName, OutputStream,
+        MaybeDataStream, FactTableSize, ModuleInfo, IsPrimaryTable,
+        ArgModes, Infos, StructName, InputArgNum, HashTableName, !.TableNum,
+        FirstFact, FactNum, CreateFactMap, !FactMap, !HashList, !IO) :-
+    top_level_collect_matching_facts(InputStream, InputFileName, ModuleInfo,
+        Infos, ArgModes, FirstFact, MatchingFacts, MaybeNextFact, !IO),
     (
-        CreateFactMap = yes,
+        CreateFactMap = create_fact_map,
         update_fact_map(FactNum, MatchingFacts, !FactMap)
     ;
-        CreateFactMap = no
+        CreateFactMap = do_not_create_fact_map
     ),
     module_info_get_globals(ModuleInfo, Globals),
     (
         MaybeDataStream = yes(DataStream),
-        list.map((pred(X::in, Y::out) is det :-
-            X = sort_file_line(_, _, Y)
-        ), MatchingFacts, OutputData),
-        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-        fact_table_size(Globals, FactTableSize),
-        write_fact_table_data(VeryVerbose, FactNum, FactTableSize,
-            OutputData, StructName, DataStream, !IO)
+        OutputData = list.map(
+            (func(sort_file_line(_, _, OutArgs)) = OutArgs),
+            MatchingFacts),
+        get_maybe_progress_output_stream(ModuleInfo, MaybeProgressStream,
+            !IO),
+        write_fact_table_data(DataStream, MaybeProgressStream, FactTableSize,
+            StructName, OutputData, FactNum, !IO)
     ;
         MaybeDataStream = no
     ),
-    do_build_hash_table(Globals, FactNum, InputArgNum, HashTableName,
-        !TableNum, IsPrimaryTable, OutputStream, MatchingFacts, !.FactMap,
-        !HashList, !IO),
-    list.length(MatchingFacts, Len),
-    NextFactNum = FactNum + Len,
-    build_hash_table_2(NextFactNum, InputArgNum, HashTableName, StructName,
-        !.TableNum, ArgModes, ModuleInfo, Infos, IsPrimaryTable, OutputStream,
-        MaybeNextFact, MaybeDataStream, CreateFactMap, !FactMap, !HashList,
-        !IO).
+    do_build_hash_table(OutputStream, Globals, IsPrimaryTable,
+        !.FactMap, FactNum, InputArgNum, HashTableName,
+        MatchingFacts, !TableNum, !HashList, !IO),
+    (
+        MaybeNextFact = no
+    ;
+        MaybeNextFact = yes(NextFact),
+        list.length(MatchingFacts, Len),
+        NextFactNum = FactNum + Len,
+        build_hash_table_loop(InputStream, InputFileName, OutputStream,
+            MaybeDataStream, FactTableSize, ModuleInfo, IsPrimaryTable,
+            ArgModes, Infos, StructName, InputArgNum, HashTableName,
+            !.TableNum, NextFact, NextFactNum,
+            CreateFactMap, !FactMap, !HashList, !IO)
+    ).
 
     % Build a lower level hash table. The main difference to build_hash_table
     % (above) is that ``sort file lines'' are read from a list rather than
     % from the actual sort file.
     %
-:- pred build_hash_table_lower_levels(globals::in, int::in, int::in,
-    string::in, int::in, int::out, bool::in, io.output_stream::in,
-    list(sort_file_line)::in, map(int, int)::in, io::di, io::uo) is det.
+:- pred build_hash_table_lower_levels(io.text_output_stream::in, globals::in,
+    maybe_primary_table::in, map(int, int)::in, int::in, string::in,
+    list(sort_file_line)::in, int::in, int::in, int::out,
+    io::di, io::uo) is det.
 
-build_hash_table_lower_levels(Globals, FactNum, InputArgNum, HashTableName,
-        TableNum0, TableNum, IsPrimaryTable, OutputStream, Facts, FactMap,
-        !IO) :-
-    build_hash_table_lower_levels_2(Globals, FactNum, InputArgNum,
-        HashTableName, TableNum0, TableNum, IsPrimaryTable, OutputStream,
-        Facts, FactMap, [], HashList, !IO),
+build_hash_table_lower_levels(OutputStream, Globals, IsPrimaryTable, FactMap,
+        InputArgNum, HashTableName, Facts, FactNum,
+        TableNum0, TableNum, !IO) :-
+    build_hash_table_lower_levels_loop(OutputStream, Globals, IsPrimaryTable,
+        FactMap, InputArgNum, HashTableName, Facts, FactNum,
+        TableNum0, TableNum, [], HashList, !IO),
     list.length(HashList, Len),
     calculate_hash_table_size(Globals, Len, HashSize),
     hash_table_init(HashSize, HashTable0),
     hash_table_from_list(HashList, HashSize, HashTable0, HashTable),
     write_hash_table(OutputStream, HashTableName, TableNum0, HashTable, !IO).
 
-:- pred build_hash_table_lower_levels_2(globals::in, int::in, int::in,
-    string::in, int::in, int::out, bool::in, io.output_stream::in,
-    list(sort_file_line)::in, map(int, int)::in,
+:- pred build_hash_table_lower_levels_loop(io.text_output_stream::in,
+    globals::in, maybe_primary_table::in, map(int, int)::in, int::in,
+    string::in, list(sort_file_line)::in, int::in, int::in, int::out,
     list(hash_entry)::in, list(hash_entry)::out, io::di, io::uo) is det.
 
-build_hash_table_lower_levels_2(_, _, _, _, !TableNum, _, _, [],
-        _, !HashList, !IO).
-build_hash_table_lower_levels_2(Globals, FactNum, InputArgNum, HashTableName,
-        !TableNum, IsPrimaryTable, OutputStream,
-        [Fact | Facts0], FactMap, !HashList, !IO) :-
-    lower_level_collect_matching_facts(Fact, Facts0, MatchingFacts,
-        Facts1, InputArgNum),
-    do_build_hash_table(Globals, FactNum, InputArgNum, HashTableName,
-        !TableNum, IsPrimaryTable, OutputStream, MatchingFacts, FactMap,
-        !HashList, !IO),
+build_hash_table_lower_levels_loop(_, _, _, _, _, _,
+        [], _, !TableNum, !HashList, !IO).
+build_hash_table_lower_levels_loop(OutputStream, Globals, IsPrimaryTable,
+        FactMap, InputArgNum, HashTableName,
+        [Fact | Facts0], FactNum, !TableNum, !HashList, !IO) :-
+    lower_level_collect_matching_facts(InputArgNum, Fact, Facts0,
+        MatchingFacts, RemainingFacts),
+    do_build_hash_table(OutputStream, Globals, IsPrimaryTable,
+        FactMap, FactNum, InputArgNum, HashTableName,
+        MatchingFacts, !TableNum, !HashList, !IO),
     list.length(MatchingFacts, Len),
     NextFactNum = FactNum + Len,
-    build_hash_table_lower_levels_2(Globals, NextFactNum, InputArgNum,
-        HashTableName, !TableNum, IsPrimaryTable, OutputStream,
-        Facts1, FactMap, !HashList, !IO).
+    build_hash_table_lower_levels_loop(OutputStream, Globals, IsPrimaryTable,
+        FactMap, InputArgNum, HashTableName,
+        RemainingFacts, NextFactNum, !TableNum, !HashList, !IO).
 
     % This is where most of the actual work is done in building up the
     % hash table.
     %
-:- pred do_build_hash_table(globals::in, int::in, int::in, string::in,
-    int::in, int::out, bool::in, io.output_stream::in,
-    list(sort_file_line)::in, map(int, int)::in,
+:- pred do_build_hash_table(io.text_output_stream::in, globals::in,
+    maybe_primary_table::in, map(int, int)::in, int::in, int::in, string::in,
+    list(sort_file_line)::in, int::in, int::out,
     list(hash_entry)::in, list(hash_entry)::out, io::di, io::uo) is det.
 
-do_build_hash_table(Globals, FactNum, InputArgNum, HashTableName, !TableNum,
-        IsPrimaryTable, OutputStream, Facts, FactMap, !HashList, !IO) :-
+do_build_hash_table(OutputStream, Globals, IsPrimaryTable, FactMap,
+        FactNum, InputArgNum, HashTableName, Facts,
+        !TableNum, !HashList, !IO) :-
     (
         Facts = [],
         unexpected($pred, "no facts")
     ;
-        Facts = [Fact | Facts1],
+        Facts = [Fact | TailFacts],
         fact_get_arg_and_index(Fact, InputArgNum, Arg, Index),
         (
-            IsPrimaryTable = yes,
+            IsPrimaryTable = primary_table,
             HashIndex = FactNum
         ;
-            IsPrimaryTable = no,
+            IsPrimaryTable = not_primary_table,
             map.lookup(FactMap, Index, HashIndex)
         ),
-        ( if
-            Facts1 = []
-        then
+        (
+            TailFacts = [],
             % If only one matching index, insert a pointer to the fact table
             % entry into the current hash table.
             !:HashList = [hash_entry(Arg, fact(HashIndex), -1) | !.HashList]
-        else if
-            % See if there are any more input arguments.
-            NextInputArgNum = InputArgNum + 1,
-            Fact = sort_file_line(InputArgs, _, _),
-            N = NextInputArgNum + 1,
-            list.drop(N, InputArgs, _)
-        then
-            !:TableNum = !.TableNum + 1,
-            ThisTableNum = !.TableNum,
-            build_hash_table_lower_levels(Globals, FactNum, NextInputArgNum,
-                HashTableName, !TableNum, IsPrimaryTable, OutputStream,
-                Facts, FactMap, !IO),
-            !:HashList = [hash_entry(Arg,
-                hash_table(ThisTableNum, HashTableName), -1) | !.HashList]
-        else if
-            IsPrimaryTable = no
-        then
-            % Insert all matching indexes into the hash table.
-            hash_list_insert_many(Facts, IsPrimaryTable, FactMap,
-                FactNum, InputArgNum, !HashList)
-        else
-            % Insert only the first matching index into the hash table.
-            !:HashList = [hash_entry(Arg, fact(HashIndex), -1) | !.HashList]
+        ;
+            TailFacts = [_ | _],
+            ( if
+                % See if there are any more input arguments.
+                NextInputArgNum = InputArgNum + 1,
+                Fact = sort_file_line(InputArgs, _, _),
+                N = NextInputArgNum + 1,
+                list.drop(N, InputArgs, _)
+            then
+                !:TableNum = !.TableNum + 1,
+                ThisTableNum = !.TableNum,
+                build_hash_table_lower_levels(OutputStream, Globals,
+                    IsPrimaryTable, FactMap, NextInputArgNum,
+                    HashTableName, Facts, FactNum, !TableNum,  !IO),
+                EntryIndex = hash_table(ThisTableNum, HashTableName),
+                !:HashList = [hash_entry(Arg, EntryIndex, -1) | !.HashList]
+            else
+                (
+                    IsPrimaryTable = primary_table,
+                    % Insert only the first matching index into the hash table.
+                    Entry = hash_entry(Arg, fact(HashIndex), -1),
+                    !:HashList = [Entry | !.HashList]
+                ;
+                    IsPrimaryTable = not_primary_table,
+                    % Insert all matching indexes into the hash table.
+                    hash_list_insert_many(IsPrimaryTable, FactMap, FactNum,
+                        InputArgNum, Facts, !HashList)
+                )
+            )
         )
     ).
 
@@ -1755,26 +1918,28 @@ do_build_hash_table(Globals, FactNum, InputArgNum, HashTableName, !TableNum,
     % in MatchingFacts is always Fact. If an extra fact is read in following
     % the matching facts, it is placed in MaybeNextFact.
     %
-:- pred top_level_collect_matching_facts(sort_file_line::in,
-    list(sort_file_line)::out, maybe(sort_file_line)::out,
-    list(fact_arg_info)::in, list(mer_mode)::in, module_info::in,
+:- pred top_level_collect_matching_facts(io.text_input_stream::in, string::in,
+    module_info::in, list(fact_arg_info)::in, list(mer_mode)::in,
+    sort_file_line::in, list(sort_file_line)::out, maybe(sort_file_line)::out,
     io::di, io::uo) is det.
 
-top_level_collect_matching_facts(Fact, MatchingFacts, MaybeNextFact, Infos,
-        ArgModes, ModuleInfo, !IO) :-
-    top_level_collect_matching_facts_2(Fact, [], MatchingFacts0,
-        MaybeNextFact, Infos, ArgModes, ModuleInfo, !IO),
-    list.reverse(MatchingFacts0, MatchingFacts1),
-    MatchingFacts = [Fact | MatchingFacts1].
+top_level_collect_matching_facts(InputStream, InputFileName, ModuleInfo,
+        Infos, ArgModes, Fact, MatchingFacts, MaybeNextFact, !IO) :-
+    top_level_collect_matching_facts_2(InputStream, InputFileName, ModuleInfo,
+        Infos, ArgModes, Fact, [], RevMatchingFacts, MaybeNextFact, !IO),
+    list.reverse(RevMatchingFacts, MatchingFactsTail),
+    MatchingFacts = [Fact | MatchingFactsTail].
 
-:- pred top_level_collect_matching_facts_2(sort_file_line::in,
-    list(sort_file_line)::in, list(sort_file_line)::out,
-    maybe(sort_file_line)::out, list(fact_arg_info)::in, list(mer_mode)::in,
-    module_info::in, io::di, io::uo) is det.
+:- pred top_level_collect_matching_facts_2(io.text_input_stream::in,
+    string::in, module_info::in, list(fact_arg_info)::in, list(mer_mode)::in,
+    sort_file_line::in, list(sort_file_line)::in, list(sort_file_line)::out,
+    maybe(sort_file_line)::out,
+    io::di, io::uo) is det.
 
-top_level_collect_matching_facts_2(Fact, !MatchingFacts, MaybeNextFact,
-        Infos, ArgModes, ModuleInfo, !IO) :-
-    read_sort_file_line(Infos, ArgModes, ModuleInfo, MaybeSortFileLine, !IO),
+top_level_collect_matching_facts_2(InputStream, InputFileName, ModuleInfo,
+        Infos, ArgModes, Fact, !RevMatchingFacts, MaybeNextFact, !IO) :-
+    read_sort_file_line(InputStream, InputFileName, ModuleInfo,
+        Infos, ArgModes, MaybeSortFileLine, !IO),
     (
         MaybeSortFileLine = yes(Fact1),
         ( if
@@ -1782,9 +1947,10 @@ top_level_collect_matching_facts_2(Fact, !MatchingFacts, MaybeNextFact,
             Fact  = sort_file_line([Arg  | _], _, _)
         then
             ( if Arg = Arg1 then
-                top_level_collect_matching_facts_2(Fact,
-                    [Fact1 | !.MatchingFacts], !:MatchingFacts, MaybeNextFact,
-                    Infos, ArgModes, ModuleInfo, !IO)
+                !:RevMatchingFacts = [Fact1 | !.RevMatchingFacts],
+                top_level_collect_matching_facts_2(InputStream, InputFileName,
+                    ModuleInfo, Infos, ArgModes,
+                    Fact, !RevMatchingFacts, MaybeNextFact, !IO)
             else
                 MaybeNextFact = yes(Fact1)
             )
@@ -1798,39 +1964,34 @@ top_level_collect_matching_facts_2(Fact, !MatchingFacts, MaybeNextFact,
 
     % Same as above, but reads facts from a list instead of from the sort file.
     %
-:- pred lower_level_collect_matching_facts(sort_file_line::in,
+:- pred lower_level_collect_matching_facts(int::in, sort_file_line::in,
     list(sort_file_line)::in, list(sort_file_line)::out,
-    list(sort_file_line)::out, int::in) is det.
+    list(sort_file_line)::out) is det.
 
-lower_level_collect_matching_facts(Fact, Facts0, Matching, Remaining,
-        InputArgNum) :-
-    lower_level_collect_matching_facts_2(Fact, Facts0, [], Matching0,
-        Remaining, InputArgNum),
-    list.reverse(Matching0, Matching1),
-    Matching = [Fact | Matching1].
+lower_level_collect_matching_facts(InputArgNum, Fact, Facts,
+        MatchingFacts, RemainingFacts) :-
+    Fact = sort_file_line(InputArgs, _, _),
+    list.det_index0(InputArgs, InputArgNum, MatchArg),
+    lower_level_collect_matching_facts_loop(InputArgNum, MatchArg, Facts,
+        [], RevMatchingFacts, RemainingFacts),
+    list.reverse(RevMatchingFacts, TailMatchingFacts),
+    MatchingFacts = [Fact | TailMatchingFacts].
 
-:- pred lower_level_collect_matching_facts_2(sort_file_line::in,
+:- pred lower_level_collect_matching_facts_loop(int::in, fact_arg::in,
     list(sort_file_line)::in, list(sort_file_line)::in,
-    list(sort_file_line)::out, list(sort_file_line)::out, int::in) is det.
+    list(sort_file_line)::out, list(sort_file_line)::out) is det.
 
-lower_level_collect_matching_facts_2(_, [], Matching, Matching, [], _).
-lower_level_collect_matching_facts_2(Fact, [Fact0 | Facts0], Matching0,
-        Matching, Remaining, InputArgNum) :-
-    Fact0 = sort_file_line(InputArgs0, _, _),
-    Fact  = sort_file_line(InputArgs,  _, _),
-    ( if
-        list.drop(InputArgNum, InputArgs0, [Arg0 | _]),
-        list.drop(InputArgNum, InputArgs,  [Arg  | _])
-    then
-        ( if Arg = Arg0 then
-            lower_level_collect_matching_facts_2(Fact, Facts0,
-                [Fact0 | Matching0], Matching, Remaining, InputArgNum)
-        else
-            Matching = Matching0,
-            Remaining = [Fact0 | Facts0]
-        )
+lower_level_collect_matching_facts_loop(_, _, [], !RevMatchingFacts, []).
+lower_level_collect_matching_facts_loop(InputArgNum, MatchArg,
+        [Fact | Facts], !RevMatchingFacts, RemainingFacts) :-
+    Fact = sort_file_line(InputArgs, _, _),
+    list.det_index0(InputArgs, InputArgNum, Arg),
+    ( if MatchArg = Arg then
+        !:RevMatchingFacts = [Fact | !.RevMatchingFacts],
+        lower_level_collect_matching_facts_loop(InputArgNum, MatchArg,
+            Facts, !RevMatchingFacts, RemainingFacts)
     else
-        unexpected($pred, "not enough input args")
+        RemainingFacts = [Fact | Facts]
     ).
 
 :- pred update_fact_map(int::in, list(sort_file_line)::in,
@@ -1846,10 +2007,11 @@ update_fact_map(FactNum, [Fact | Facts], !FactMap) :-
 
     % Break up a string into the components of a sort file line.
     %
-:- pred split_sort_file_line(list(fact_arg_info)::in, list(mer_mode)::in,
-    module_info::in, string::in, sort_file_line::out) is det.
+:- pred split_sort_file_line(module_info::in,
+    list(fact_arg_info)::in, list(mer_mode)::in, string::in,
+    sort_file_line::out) is det.
 
-split_sort_file_line(FactArgInfos, ArgModes, ModuleInfo, Line0,
+split_sort_file_line(ModuleInfo, FactArgInfos, ArgModes, Line0,
         SortFileLine) :-
     ( if
         string.sub_string_search(Line0, "~", Pos0),
@@ -1862,7 +2024,7 @@ split_sort_file_line(FactArgInfos, ArgModes, ModuleInfo, Line0,
         string.to_int(IndexString, Index0)
     then
         split_key_to_arg_strings(InputArgsString, InputArgStrings),
-        get_input_args_list(FactArgInfos, ArgModes, ModuleInfo,
+        get_input_args_list(ModuleInfo, FactArgInfos, ArgModes,
             InputArgStrings, InputArgs),
         split_key_to_arg_strings(OutputArgsString, OutputArgStrings),
         (
@@ -1900,30 +2062,32 @@ split_key_to_arg_strings(Key0, ArgStrings) :-
         )
     ).
 
-:- pred get_input_args_list(list(fact_arg_info)::in, list(mer_mode)::in,
-    module_info::in, list(string)::in, list(fact_arg)::out) is det.
+:- pred get_input_args_list(module_info::in,
+    list(fact_arg_info)::in, list(mer_mode)::in, list(string)::in,
+    list(fact_arg)::out) is det.
 
-get_input_args_list([], [], _, _, []).
-get_input_args_list([_ | _], [], _, _, _) :-
+get_input_args_list(_, [], [], _, []).
+get_input_args_list(_, [_ | _], [], _, _) :-
     unexpected($pred, "too many fact_arg_infos").
-get_input_args_list([], [_ | _], _, _, _) :-
+get_input_args_list(_, [], [_ | _], _, _) :-
     unexpected($pred, "too many argmodes").
-get_input_args_list([Info | Infos], [Mode | Modes], ModuleInfo, ArgStrings0,
-        Args) :-
+get_input_args_list(ModuleInfo, [Info | Infos], [Mode | Modes],
+        ArgStrings0, Args) :-
     ( if mode_is_fully_input(ModuleInfo, Mode) then
         (
             ArgStrings0 = [ArgString | ArgStrings],
             Info = fact_arg_info(Type, _, _),
             convert_key_string_to_arg(ArgString, Type, Arg),
-            get_input_args_list(Infos, Modes, ModuleInfo, ArgStrings, Args0),
-            Args = [Arg | Args0]
+            get_input_args_list(ModuleInfo, Infos, Modes,
+                ArgStrings, ArgsTail),
+            Args = [Arg | ArgsTail]
         ;
             ArgStrings0 = [],
             unexpected($pred, "not enough ArgStrings")
         )
     else
-        % This argument is not input so skip it and try the next one.
-        get_input_args_list(Infos, Modes, ModuleInfo, ArgStrings0, Args)
+        % This argument is not input, so skip it and try the next one.
+        get_input_args_list(ModuleInfo, Infos, Modes, ArgStrings0, Args)
     ).
 
 :- pred get_output_args_list(list(fact_arg_info)::in, list(string)::in,
@@ -2012,11 +2176,7 @@ remove_sort_file_escapes([C0 | Cs0], In, Out) :-
 
 fact_get_arg_and_index(Fact, InputArgNum, Arg, Index) :-
     Fact = sort_file_line(InputArgs, Index, _),
-    ( if list.drop(InputArgNum, InputArgs, [ArgPrime | _]) then
-        Arg = ArgPrime
-    else
-        unexpected($pred, "not enough input args")
-    ).
+    list.det_index0(InputArgs, InputArgNum, Arg).
 
 %---------------------------------------------------------------------------%
 
@@ -2058,26 +2218,26 @@ hash_table_insert(Entry, HashSize, !HashTable) :-
     Entry = hash_entry(Key, Index, _),
     fact_table_hash(HashSize, Key, HashVal),
     ( if hash_table_search(!.HashTable, HashVal, _) then
-        hash_table_insert_2(HashVal, _, Index, Key, !HashTable)
+        hash_table_insert_open_address_loop(HashVal, Key, Index, !HashTable)
     else
         hash_table_set(HashVal, hash_entry(Key, Index, -1), !HashTable)
     ).
 
-:- pred hash_table_insert_2(int::in, int::out, hash_index::in, fact_arg::in,
-    hash_table::in, hash_table::out) is det.
+:- pred hash_table_insert_open_address_loop(int::in,
+    fact_arg::in, hash_index::in, hash_table::in, hash_table::out) is det.
 
-hash_table_insert_2(HashVal, FreeVal, Index0, Key0, !HashTable) :-
-    ( if
-        hash_table_search(!.HashTable, HashVal, hash_entry(Key1, Index1, Next))
-    then
+hash_table_insert_open_address_loop(HashVal, Key0, Index0,
+        !HashTable) :-
+    ( if hash_table_search(!.HashTable, HashVal, OldEntry1) then
+        OldEntry1 = hash_entry(Key1, Index1, Next),
         ( if Next = -1 then
             get_free_hash_slot(!.HashTable, HashVal, FreeVal),
-            hash_table_set(FreeVal,
-                hash_entry(Key0, Index0, -1), !HashTable),
-            hash_table_set(HashVal,
-                hash_entry(Key1, Index1, FreeVal), !HashTable)
+            NewEntry = hash_entry(Key0, Index0, -1),
+            hash_table_set(FreeVal, NewEntry, !HashTable),
+            OldEntry = hash_entry(Key1, Index1, FreeVal),
+            hash_table_set(HashVal, OldEntry, !HashTable)
         else
-            hash_table_insert_2(Next, FreeVal, Index0, Key0, !HashTable)
+            hash_table_insert_open_address_loop(Next, Key0, Index0, !HashTable)
         )
     else
         unexpected($pred, "hash table entry empty")
@@ -2087,20 +2247,24 @@ hash_table_insert_2(HashVal, FreeVal, Index0, Key0, !HashTable) :-
     % terminate because the hash table size is selected to be larger than
     % the number of entries that need to go in it.
     %
+    % XXX "This will eventually terminate" is not something one enjoys reading
+    % in the documentation the implementation of a language feature
+    % whose only purpose is to improve compiler performance :-(
+    %
 :- pred get_free_hash_slot(hash_table::in, int::in, int::out) is det.
 
 get_free_hash_slot(HashTable, Start, Free) :-
     HashTable = hash_table(Size, _),
     Max = Size - 1,
-    get_free_hash_slot_2(HashTable, Start, Max, Free).
+    get_free_hash_slot_loop(HashTable, Start, Max, Free).
 
-:- pred get_free_hash_slot_2(hash_table::in, int::in, int::in, int::out)
+:- pred get_free_hash_slot_loop(hash_table::in, int::in, int::in, int::out)
     is det.
 
-get_free_hash_slot_2(HashTable, Start, Max, Free) :-
+get_free_hash_slot_loop(HashTable, Start, Max, Free) :-
     Next = (Start + 1) mod Max,
     ( if hash_table_search(HashTable, Next, _) then
-        get_free_hash_slot_2(HashTable, Next, Max, Free)
+        get_free_hash_slot_loop(HashTable, Next, Max, Free)
     else
         Free = Next
     ).
@@ -2146,24 +2310,24 @@ fact_table_hash_2(HashSize, [N | Ns], !HashVal) :-
     !:HashVal = (N + 31 * !.HashVal) mod HashSize,
     fact_table_hash_2(HashSize, Ns, !HashVal).
 
-:- pred hash_list_insert_many(list(sort_file_line)::in, bool::in,
-    map(int, int)::in, int::in, int::in,
+:- pred hash_list_insert_many(maybe_primary_table::in,
+    map(int, int)::in, int::in, int::in ,list(sort_file_line)::in,
     list(hash_entry)::in, list(hash_entry)::out) is det.
 
-hash_list_insert_many([], _, _, _, _, !HashList).
-hash_list_insert_many([Fact | Facts], IsPrimaryTable, FactMap,
-        FactNum, InputArgNum, !HashList) :-
+hash_list_insert_many(_, _, _, _, [], !HashList).
+hash_list_insert_many(IsPrimaryTable, FactMap, FactNum, InputArgNum,
+        [Fact | Facts], !HashList) :-
     fact_get_arg_and_index(Fact, InputArgNum, Arg, Index),
     (
-        IsPrimaryTable = yes,
+        IsPrimaryTable = primary_table,
         HashIndex = FactNum
     ;
-        IsPrimaryTable = no,
+        IsPrimaryTable = not_primary_table,
         map.lookup(FactMap, Index, HashIndex)
     ),
     !:HashList = [hash_entry(Arg, fact(HashIndex), -1) | !.HashList],
-    hash_list_insert_many(Facts, IsPrimaryTable, FactMap, FactNum,
-        InputArgNum, !HashList).
+    hash_list_insert_many(IsPrimaryTable, FactMap, FactNum, InputArgNum,
+        Facts, !HashList).
 
 :- pred hash_table_init(int::in, hash_table::out) is det.
 
@@ -2197,7 +2361,7 @@ hash_table_set(Index, Value, HashTable0, HashTable) :-
 
     % Write out the C code for a hash table.
     %
-:- pred write_hash_table(io.output_stream::in, string::in, int::in,
+:- pred write_hash_table(io.text_output_stream::in, string::in, int::in,
     hash_table::in, io::di, io::uo) is det.
 
 write_hash_table(OutputStream, BaseName, TableNum, HashTable, !IO) :-
@@ -2209,25 +2373,26 @@ write_hash_table(OutputStream, BaseName, TableNum, HashTable, !IO) :-
     MaxIndex = Size - 1,
     write_hash_table_loop(OutputStream, HashTable, 0, MaxIndex, !IO),
     io.write_string(OutputStream, "};\n\n", !IO),
-    io.format(OutputStream, "
+    StructDefnTemplate = "
 
 struct MR_fact_table_hash_table_%c %s%d = {
     %d,
     %s%d_data
 };
 ",
+    io.format(OutputStream, StructDefnTemplate,
         [c(TableType), s(BaseName), i(TableNum), i(Size),
         s(BaseName), i(TableNum)], !IO).
 
 :- pred write_hash_table_loop(io.text_output_stream::in, hash_table::in,
     int::in, int::in, io::di, io::uo) is det.
 
-write_hash_table_loop(Stream, HashTable, CurrIndex, MaxIndex, !IO) :-
-    ( if CurrIndex > MaxIndex then
+write_hash_table_loop(Stream, HashTable, CurIndex, MaxIndex, !IO) :-
+    ( if CurIndex > MaxIndex then
         true
     else
         io.write_string(Stream, "\t{ ", !IO),
-        ( if hash_table_search(HashTable, CurrIndex, HashEntry) then
+        ( if hash_table_search(HashTable, CurIndex, HashEntry) then
             HashEntry = hash_entry(Key, Index, Next),
             (
                 Key = term.string(String),
@@ -2270,7 +2435,7 @@ write_hash_table_loop(Stream, HashTable, CurrIndex, MaxIndex, !IO) :-
                 "0, MR_FACT_TABLE_MAKE_TAGGED_POINTER(NULL, 0), -1 ", !IO)
         ),
         io.write_string(Stream, "},\n", !IO),
-        write_hash_table_loop(Stream, HashTable, CurrIndex + 1, MaxIndex, !IO)
+        write_hash_table_loop(Stream, HashTable, CurIndex + 1, MaxIndex, !IO)
     ).
 
     % Return 's' for string, 'i' for int, 'f' for float, 'a' for atom.
@@ -2283,13 +2448,13 @@ get_hash_table_type(HashTable, TableType) :-
     ( if map.is_empty(Map) then
         unexpected($pred, "empty hash table")
     else
-        get_hash_table_type_2(Map, 0, TableType)
+        get_hash_table_type_loop(Map, 0, TableType)
     ).
 
-:- pred get_hash_table_type_2(map(int, hash_entry)::in, int::in, char::out)
+:- pred get_hash_table_type_loop(map(int, hash_entry)::in, int::in, char::out)
     is det.
 
-get_hash_table_type_2(Map, Index, TableType) :-
+get_hash_table_type_loop(Map, Index, TableType) :-
     ( if map.search(Map, Index, Entry) then
         Entry = hash_entry(Key, _, _),
         ( if Key = term.string(_) then
@@ -2304,56 +2469,53 @@ get_hash_table_type_2(Map, Index, TableType) :-
             unexpected($pred, "invalid term")
         )
     else
-        get_hash_table_type_2(Map, Index + 1, TableType)
+        get_hash_table_type_loop(Map, Index + 1, TableType)
     ).
 
 %---------------------------------------------------------------------------%
 
     % Write out the array of pointers to the fact table arrays.
     %
-:- pred write_fact_table_pointer_array(int::in, int::in, string::in,
-    io.text_output_stream::in, string::out, io::di, io::uo) is det.
+:- pred write_fact_table_pointer_array(io.text_output_stream::in, int::in,
+    string::in, int::in, string::out, io::di, io::uo) is det.
 
-write_fact_table_pointer_array(NumFacts, FactTableSize,
-        StructName, OutputStream, C_HeaderCode, !IO) :-
-    PointerArrayName = "const struct " ++ StructName ++ "_struct *"
-        ++ StructName ++ "[]",
-    C_HeaderCode = "extern " ++ PointerArrayName ++ ";\n",
-    io.write_strings(OutputStream, [PointerArrayName, " = {\n"], !IO),
-    write_fact_table_pointer_array_2(0, NumFacts, FactTableSize,
-        StructName, OutputStream, !IO),
+write_fact_table_pointer_array(OutputStream, FactTableSize,
+        StructName, NumFacts, HeaderCode, !IO) :-
+    string.format("const struct %s_struct *%s[]",
+        [s(StructName), s(StructName)], PointerArrayName),
+    HeaderCode = "extern " ++ PointerArrayName ++ ";\n",
+    io.format(OutputStream, "%s = {\n", [s(PointerArrayName)], !IO),
+    write_fact_table_pointer_array_loop(OutputStream, FactTableSize,
+        StructName, 0, NumFacts, !IO),
     io.write_string(OutputStream, "};\n", !IO).
 
-:- pred write_fact_table_pointer_array_2(int::in, int::in, int::in, string::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred write_fact_table_pointer_array_loop(io.text_output_stream::in, int::in,
+    string::in, int::in, int::in, io::di, io::uo) is det.
 
-write_fact_table_pointer_array_2(CurrFact, NumFacts, FactTableSize,
-        StructName, OutputStream, !IO) :-
-    ( if CurrFact >= NumFacts then
+write_fact_table_pointer_array_loop(OutputStream, FactTableSize,
+        StructName, CurFact, NumFacts, !IO) :-
+    ( if CurFact >= NumFacts then
         true
     else
         io.format(OutputStream, "\t%s%d,\n",
-            [s(StructName), i(CurrFact)], !IO),
-        NextFact = CurrFact + FactTableSize,
-        write_fact_table_pointer_array_2(NextFact, NumFacts, FactTableSize,
-            StructName, OutputStream, !IO)
+            [s(StructName), i(CurFact)], !IO),
+        NextFact = CurFact + FactTableSize,
+        write_fact_table_pointer_array_loop(OutputStream, FactTableSize,
+            StructName, NextFact, NumFacts, !IO)
     ).
 
 :- pred write_fact_table_numfacts(io.text_output_stream::in,
     sym_name::in, int::in, string::out, io::di, io::uo) is det.
 
-write_fact_table_numfacts(OutputStream, PredName, NumFacts, C_HeaderCode,
-        !IO) :-
-    io.set_output_stream(OutputStream, OldOutputStream, !IO),
+write_fact_table_numfacts(OutputStream, PredName, NumFacts, HeaderCode, !IO) :-
     % Write out the size of the fact table.
     make_fact_table_identifier(PredName, Identifier),
-    io.write_strings(["const MR_Integer mercury__", Identifier,
-        "_fact_table_num_facts = "], !IO),
-    io.write_int(NumFacts, !IO),
-    io.write_string(";\n\n", !IO),
-    C_HeaderCode = "extern const MR_Integer mercury__" ++ Identifier
-        ++ "_fact_table_num_facts;\n",
-    io.set_output_stream(OldOutputStream, _, !IO).
+    io.format(OutputStream,
+        "const MR_Integer mercury__%s_fact_table_num_facts = %d;\n\n",
+        [s(Identifier), i(NumFacts)], !IO),
+    string.format(
+        "extern const MR_Integer mercury__%s_fact_table_num_facts;\n",
+        [s(Identifier)], HeaderCode).
 
 %---------------------------------------------------------------------------%
 
@@ -2365,21 +2527,21 @@ make_fact_table_identifier(SymName, Identifier) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-fact_table_generate_c_code(ModuleInfo, PredName, PragmaVars,
-        ProcID, PrimaryProcID, ProcInfo, ArgTypes, ProcCode, ExtraCode, !IO) :-
+fact_table_generate_c_code(ModuleInfo, PredName, ProcID, PrimaryProcID,
+        ProcInfo, PragmaVars, ArgTypes, ProcCode, ExtraCode, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     fact_table_size(Globals, FactTableSize),
 
     proc_info_get_argmodes(ProcInfo, ArgModes),
     proc_info_interface_determinism(ProcInfo, Determinism),
-    fact_table_mode_type(ArgModes, ModuleInfo, ModeType),
+    compute_fact_table_mode_type(ModuleInfo, ArgModes, ModeType),
     make_fact_table_identifier(PredName, Identifier),
     ( if
         ModeType = all_out,
         Determinism = detism_multi
     then
-        generate_multidet_code(Identifier, PragmaVars, ProcID, ArgTypes,
-            ModuleInfo, FactTableSize, ProcCode, ExtraCode)
+        generate_multidet_code(ModuleInfo, FactTableSize, Identifier, ProcID,
+            PragmaVars, ArgTypes, ProcCode, ExtraCode)
     else if
         ModeType = all_out,
         Determinism = detism_cc_multi
@@ -2390,8 +2552,8 @@ fact_table_generate_c_code(ModuleInfo, PredName, PragmaVars,
         ModeType = all_in,
         Determinism = detism_semi
     then
-        generate_all_in_code(Identifier, PragmaVars, ProcID, ArgTypes,
-            ModuleInfo, FactTableSize, ProcCode),
+        generate_all_in_code(ModuleInfo, FactTableSize, Identifier, ProcID,
+            PragmaVars, ArgTypes, ProcCode),
         ExtraCode = ""
     else if
         ModeType = in_out,
@@ -2399,23 +2561,23 @@ fact_table_generate_c_code(ModuleInfo, PredName, PragmaVars,
         ; Determinism = detism_cc_non
         )
     then
-        generate_semidet_in_out_code(Identifier, PragmaVars, ProcID, ArgTypes,
-            ModuleInfo, FactTableSize, ProcCode),
+        generate_semidet_in_out_code(ModuleInfo, FactTableSize,
+            Identifier, ProcID, PragmaVars, ArgTypes, ProcCode),
         ExtraCode = ""
     else if
         ModeType = in_out,
         Determinism = detism_non,
         ProcID = PrimaryProcID
     then
-        generate_primary_nondet_code(Identifier, PragmaVars, ProcID, ArgTypes,
-            ModuleInfo, FactTableSize, ProcCode, ExtraCode)
+        generate_primary_nondet_code(ModuleInfo, FactTableSize,
+            Identifier, ProcID, PragmaVars, ArgTypes, ProcCode, ExtraCode)
     else if
         ModeType = in_out,
         Determinism = detism_non,
         ProcID \= PrimaryProcID
     then
-        generate_secondary_nondet_code(Identifier, PragmaVars, ProcID,
-            ArgTypes, ModuleInfo, FactTableSize, ProcCode, ExtraCode)
+        generate_secondary_nondet_code(ModuleInfo, FactTableSize,
+            Identifier, ProcID, PragmaVars, ArgTypes, ProcCode, ExtraCode)
     else
         % There is a determinism error in this procedure which will be
         % reported later on when the inferred determinism is compared
@@ -2431,12 +2593,12 @@ fact_table_generate_c_code(ModuleInfo, PredName, PragmaVars,
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_multidet_code(string::in, list(pragma_var)::in, proc_id::in,
-    list(mer_type)::in, module_info::in, int::in, string::out, string::out)
-    is det.
+:- pred generate_multidet_code(module_info::in, int::in,
+    string::in, proc_id::in, list(pragma_var)::in, list(mer_type)::in,
+    string::out, string::out) is det.
 
-generate_multidet_code(PredName, PragmaVars, ProcID, ArgTypes,
-        ModuleInfo, FactTableSize, ProcCode, ExtraCode) :-
+generate_multidet_code(ModuleInfo, FactTableSize, PredName, ProcID,
+        PragmaVars, ArgTypes, ProcCode, ExtraCode) :-
     generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
         ProcCode),
     ExtraCodeTemplate = "
@@ -2455,12 +2617,12 @@ MR_define_entry(%s);
 MR_define_label(%s_i1);
     if (MR_framevar(1) >= %s) MR_fail();
     {
-        /* declare argument vars */
+        // declare argument vars
 %s
         MR_Word ind = MR_framevar(1), tmp;
-        /* lookup fact table */
+        // lookup fact table
 %s
-        /* save output args to registers */
+        // save output args to registers
 %s
     }
     MR_framevar(1)++;
@@ -2481,10 +2643,10 @@ void mercury_sys_init_%s_module(void) {
 
     NumFactsVar = "mercury__" ++ PredName ++ "_fact_table_num_facts",
     list.length(PragmaVars, Arity),
-    generate_argument_vars_code(PragmaVars, ArgTypes, ModuleInfo,
+    generate_argument_vars_code(ModuleInfo, PragmaVars, ArgTypes,
         ArgDeclCode, _InputCode, OutputCode, _, _, _),
-    generate_fact_lookup_code(PredName, PragmaVars, ArgTypes, ModuleInfo, 1,
-        FactTableSize, FactLookupCode),
+    generate_fact_lookup_code(ModuleInfo, FactTableSize, PredName,
+        PragmaVars, ArgTypes, 1, FactLookupCode),
 
     string.format(ExtraCodeTemplate, [
         s(ExtraCodeLabel),
@@ -2516,12 +2678,10 @@ generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
         ProcCode) :-
     ProcCodeTemplate =  "
 
-    /*
-    ** Mention arguments %s to stop the compiler giving a warning.
-    **
-    ** Pop off the nondet stack frame that the pragma c_code generates
-    ** then jump to the code where the work is actually done.
-    */
+    // Mention arguments %s to stop the compiler giving a warning.
+    //
+    // Pop off the nondet stack frame that the pragma c_code generates
+    // then jump to the code where the work is actually done.
 
     MR_maxfr_word = MR_prevfr_slot_word(MR_curfr);
     MR_curfr_word = MR_succfr_slot_word(MR_curfr);
@@ -2578,17 +2738,17 @@ generate_cc_multi_code_2([pragma_var(_, VarName, _, _) | PragmaVars],
 
     % Generate semidet code for all_in mode.
     %
-:- pred generate_all_in_code(string::in, list(pragma_var)::in, proc_id::in,
-    list(mer_type)::in, module_info::in, int::in, string::out) is det.
+:- pred generate_all_in_code(module_info::in, int::in, string::in, proc_id::in,
+    list(pragma_var)::in, list(mer_type)::in, string::out) is det.
 
-generate_all_in_code(PredName, PragmaVars, ProcID, ArgTypes, ModuleInfo,
-        FactTableSize, ProcCode) :-
+generate_all_in_code(ModuleInfo, FactTableSize, PredName, ProcID,
+        PragmaVars, ArgTypes, ProcCode) :-
     generate_decl_code(PredName, ProcID, DeclCode),
 
     proc_id_to_int(ProcID, ProcInt),
     string.format("%s_%d", [s(PredName), i(ProcInt)], LabelName),
-    generate_hash_code(PragmaVars, ArgTypes, ModuleInfo, LabelName, 0,
-        PredName, 1, FactTableSize, HashCode),
+    generate_hash_code(ModuleInfo, FactTableSize, PredName, LabelName, 0,
+        PragmaVars, ArgTypes, 1, HashCode),
 
     SuccessCodeTemplate = "
         success_code_%s:
@@ -2609,18 +2769,18 @@ generate_all_in_code(PredName, PragmaVars, ProcID, ArgTypes, ModuleInfo,
     % Generate code for semidet and cc_nondet in_out modes. Lookup key in
     % hash table and if found return first match. If not found, fail.
     %
-:- pred generate_semidet_in_out_code(string::in, list(pragma_var)::in,
-    proc_id::in, list(mer_type)::in, module_info::in, int::in, string::out)
-    is det.
+:- pred generate_semidet_in_out_code(module_info::in, int::in,
+    string::in, proc_id::in, list(pragma_var)::in, list(mer_type)::in,
+    string::out) is det.
 
-generate_semidet_in_out_code(PredName, PragmaVars, ProcID, ArgTypes,
-        ModuleInfo, FactTableSize, ProcCode):-
+generate_semidet_in_out_code(ModuleInfo, FactTableSize, PredName, ProcID,
+        PragmaVars, ArgTypes, ProcCode):-
     generate_decl_code(PredName, ProcID, DeclCode),
 
     proc_id_to_int(ProcID, ProcInt),
     string.format("%s_%d", [s(PredName), i(ProcInt)], LabelName),
-    generate_hash_code(PragmaVars, ArgTypes, ModuleInfo, LabelName, 0,
-        PredName, 1, FactTableSize, HashCode),
+    generate_hash_code(ModuleInfo, FactTableSize, PredName, LabelName, 0,
+        PragmaVars, ArgTypes, 1, HashCode),
 
     SuccessCodeTemplate = "
         success_code_%s:
@@ -2628,8 +2788,8 @@ generate_semidet_in_out_code(PredName, PragmaVars, ProcID, ArgTypes,
     ",
     string.format(SuccessCodeTemplate, [s(LabelName)], SuccessCode),
 
-    generate_fact_lookup_code(PredName, PragmaVars, ArgTypes, ModuleInfo, 1,
-        FactTableSize, FactLookupCode),
+    generate_fact_lookup_code(ModuleInfo, FactTableSize, PredName,
+        PragmaVars, ArgTypes, 1, FactLookupCode),
 
     FailCodeTemplate = "
             goto skip_%s;
@@ -2658,10 +2818,8 @@ generate_decl_code(Name, ProcID, DeclCode) :-
             char keytype = '\\0';
             MR_Word current_key, tmp;
 
-            /*
-            ** Initialise current_table to the top level hash table
-            ** for this ProcID.
-            */
+            // Initialise current_table to the top level hash table
+            // for this ProcID.
             current_table =
                 &mercury__%s_fact_table_hash_table_%d_0;
 
@@ -2671,57 +2829,56 @@ generate_decl_code(Name, ProcID, DeclCode) :-
 
     % Generate code to calculate hash values and lookup the hash tables.
     %
-:- pred generate_hash_code(list(pragma_var)::in, list(mer_type)::in,
-    module_info::in, string::in, int::in, string::in, int::in, int::in,
+:- pred generate_hash_code(module_info::in, int::in, string::in,
+    string::in, int::in, list(pragma_var)::in, list(mer_type)::in, int::in,
     string::out) is det.
 
-generate_hash_code([], [], _, _, _, _, _, _, "").
-generate_hash_code([], [_ | _], _, _, _, _, _, _, _) :-
+generate_hash_code(_, _, _, _, _, [], [], _, "").
+generate_hash_code(_, _, _, _, _, [], [_ | _], _, _) :-
     unexpected($pred, "length mismatch").
-generate_hash_code([_ | _], [], _, _, _, _, _, _, _) :-
+generate_hash_code(_, _, _, _, _, [_ | _], [], _, _) :-
     unexpected($pred, "length mismatch").
-generate_hash_code([pragma_var(_, Name, Mode, _) | PragmaVars], [Type | Types],
-        ModuleInfo, LabelName, LabelNum, PredName, ArgNum,
-        FactTableSize, C_Code) :-
+generate_hash_code(ModuleInfo, FactTableSize, PredName, LabelName, LabelNum,
+        [PragmaVar | PragmaVars], [Type | Types], ArgNum, Code) :-
+    PragmaVar = pragma_var(_, Name, Mode, _),
     NextArgNum = ArgNum + 1,
     ( if mode_is_fully_input(ModuleInfo, Mode) then
         ( if Type = builtin_type(builtin_type_int(int_type_int)) then
-            generate_hash_int_code(Name, LabelName, LabelNum,
-                PredName, PragmaVars, Types, ModuleInfo,
-                NextArgNum, FactTableSize, C_Code0)
+            generate_hash_int_code(ModuleInfo, Name, LabelName, LabelNum,
+                PredName, PragmaVars, Types, NextArgNum,
+                FactTableSize, ArgCode)
         else if Type = builtin_type(builtin_type_float) then
-            generate_hash_float_code(Name, LabelName, LabelNum,
-                PredName, PragmaVars, Types, ModuleInfo,
-                NextArgNum, FactTableSize, C_Code0)
+            generate_hash_float_code(ModuleInfo, Name, LabelName, LabelNum,
+                PredName, PragmaVars, Types, NextArgNum,
+                FactTableSize, ArgCode)
         else if Type = builtin_type(builtin_type_string) then
-            generate_hash_string_code(Name, LabelName, LabelNum,
-                PredName, PragmaVars, Types, ModuleInfo,
-                NextArgNum, FactTableSize, C_Code0)
+            generate_hash_string_code(ModuleInfo, Name, LabelName, LabelNum,
+                PredName, PragmaVars, Types, NextArgNum,
+                FactTableSize, ArgCode)
         else
             unexpected($pred, "unsupported type")
         ),
-        generate_hash_code(PragmaVars, Types, ModuleInfo, LabelName,
-            LabelNum + 1, PredName, NextArgNum, FactTableSize,
-            C_Code1),
-        string.append(C_Code0, C_Code1, C_Code)
+        generate_hash_code(ModuleInfo, FactTableSize, PredName,
+            LabelName, LabelNum + 1, PragmaVars, Types, NextArgNum, ArgsCode),
+        Code = ArgCode ++ ArgsCode
     else
         % Skip non-input arguments.
-        generate_hash_code(PragmaVars, Types, ModuleInfo, LabelName,
-            LabelNum, PredName, NextArgNum, FactTableSize, C_Code)
+        generate_hash_code(ModuleInfo, FactTableSize, PredName,
+            LabelName, LabelNum, PragmaVars, Types, NextArgNum, Code)
     ).
 
-:- pred generate_hash_int_code(string::in, string::in, int::in, string::in,
-    list(pragma_var)::in, list(mer_type)::in, module_info::in,
+:- pred generate_hash_int_code(module_info::in,string::in, string::in, int::in,
+    string::in, list(pragma_var)::in, list(mer_type)::in,
     int::in, int::in, string::out) is det.
 
-generate_hash_int_code(Name, LabelName, LabelNum, PredName, PragmaVars,
-        Types, ModuleInfo, ArgNum, FactTableSize, C_Code) :-
-    generate_hash_lookup_code(Name, LabelName, LabelNum, plain_equals, 'i',
-        yes, PredName, PragmaVars, Types, ModuleInfo, ArgNum,
+generate_hash_int_code(ModuleInfo, Name, LabelName, LabelNum, PredName,
+        PragmaVars, Types, ArgNum, FactTableSize, Code) :-
+    generate_hash_lookup_code(ModuleInfo, Name, LabelName, LabelNum,
+        plain_equals, 'i', test_keys, PredName, PragmaVars, Types, ArgNum,
         FactTableSize, HashLookupCode),
-    C_Code_Template = "
+    CodeTemplate = "
 
-        /* calculate hash value for an integer */
+        // calculate hash value for an integer
 
         hashsize = ((struct MR_fact_table_hash_table_i *)current_table)
             ->size;
@@ -2730,25 +2887,25 @@ generate_hash_int_code(Name, LabelName, LabelNum, PredName, PragmaVars,
 
         current_key = %s;
 
-        /* lookup the hash table */
+        // lookup the hash table
         %s
 
     ",
-    string.format(C_Code_Template, [s(Name), s(Name), s(Name), s(Name),
-        s(HashLookupCode)], C_Code).
+    string.format(CodeTemplate,
+        [s(Name), s(Name), s(Name), s(Name), s(HashLookupCode)], Code).
 
-:- pred generate_hash_float_code(string::in, string::in, int::in, string::in,
-    list(pragma_var)::in, list(mer_type)::in, module_info::in,
+:- pred generate_hash_float_code(module_info::in, string::in, string::in,
+    int::in, string::in, list(pragma_var)::in, list(mer_type)::in,
     int::in, int::in, string::out) is det.
 
-generate_hash_float_code(Name, LabelName, LabelNum, PredName, PragmaVars,
-        Types, ModuleInfo, ArgNum, FactTableSize, C_Code) :-
-    generate_hash_lookup_code(Name, LabelName, LabelNum, plain_equals, 'f',
-        yes, PredName, PragmaVars, Types, ModuleInfo, ArgNum,
+generate_hash_float_code(ModuleInfo, Name, LabelName, LabelNum, PredName,
+        PragmaVars, Types, ArgNum, FactTableSize, Code) :-
+    generate_hash_lookup_code(ModuleInfo, Name, LabelName, LabelNum,
+        plain_equals, 'f', test_keys, PredName, PragmaVars, Types, ArgNum,
         FactTableSize, HashLookupCode),
-    C_Code_Template = "
+    CodeTemplate = "
 
-        /* calculate hash value for a float */
+        // calculate hash value for a float
 
         hashsize = ((struct MR_fact_table_hash_table_f *)current_table)
             ->size;
@@ -2758,27 +2915,26 @@ generate_hash_float_code(Name, LabelName, LabelNum, PredName, PragmaVars,
 
         current_key = MR_float_to_word(%s);
 
-        /* lookup the hash table */
+        // lookup the hash table
         %s
 
     ",
-    string.format(C_Code_Template, [s(Name), s(Name), s(HashLookupCode)],
-        C_Code).
+    string.format(CodeTemplate, [s(Name), s(Name), s(HashLookupCode)], Code).
 
-:- pred generate_hash_string_code(string::in, string::in, int::in, string::in,
-    list(pragma_var)::in, list(mer_type)::in, module_info::in,
+:- pred generate_hash_string_code(module_info::in, string::in, string::in,
+    int::in, string::in, list(pragma_var)::in, list(mer_type)::in,
     int::in, int::in, string::out) is det.
 
-generate_hash_string_code(Name, LabelName, LabelNum, PredName, PragmaVars,
-        Types, ModuleInfo, ArgNum, FactTableSize, C_Code) :-
-    generate_hash_lookup_code(Name, LabelName, LabelNum,
-        string_equals, 's', yes, PredName, PragmaVars,
-        Types, ModuleInfo, ArgNum, FactTableSize, HashLookupCode),
-    C_Code_Template = "
+generate_hash_string_code(ModuleInfo, Name, LabelName, LabelNum, PredName,
+        PragmaVars, Types, ArgNum, FactTableSize, Code) :-
+    generate_hash_lookup_code(ModuleInfo, Name, LabelName, LabelNum,
+        string_equals, 's', test_keys, PredName, PragmaVars, Types, ArgNum,
+        FactTableSize, HashLookupCode),
+    CodeTemplate = "
 
         hashsize = ((struct MR_fact_table_hash_table_s *) current_table)->size;
 
-        /* calculate hash value for a string */
+        // calculate hash value for a string
         {
             char *p;
             hashval = 0;
@@ -2789,16 +2945,26 @@ generate_hash_string_code(Name, LabelName, LabelNum, PredName, PragmaVars,
 
         current_key = (MR_Word) %s;
 
-        /* lookup the hash table */
+        // lookup the hash table
         %s
 
     ",
-    string.format(C_Code_Template, [s(Name), s(Name), s(HashLookupCode)],
-        C_Code).
+    string.format(CodeTemplate, [s(Name), s(Name), s(HashLookupCode)], Code).
 
 :- type comparison_kind
     --->    plain_equals
     ;       string_equals.
+
+    % XXX CLEANUP Due to a compiler limitation, we can't specify
+    % that KeyType below has mode in(key_char), not simply in.
+:- inst key_char for char/0
+    --->    ('s')
+    ;       ('i')
+    ;       ('f').
+
+:- type maybe_test_keys
+    --->    do_not_test_keys
+    ;       test_keys.
 
     % Generate code to lookup the key in the hash table.
     % KeyType should be 's', 'i' or 'f' for string, int or float,
@@ -2806,16 +2972,17 @@ generate_hash_string_code(Name, LabelName, LabelNum, PredName, PragmaVars,
     % equality for the type given, e.g. "%s == %s" for ints,
     % "strcmp(%s, %s) == 0" for strings.
     %
-:- pred generate_hash_lookup_code(string::in, string::in, int::in,
-    comparison_kind::in, char::in, bool::in, string::in, list(pragma_var)::in,
-    list(mer_type)::in, module_info::in, int::in, int::in, string::out) is det.
+:- pred generate_hash_lookup_code(module_info::in, string::in, string::in,
+    int::in, comparison_kind::in, char::in, maybe_test_keys::in, string::in,
+    list(pragma_var)::in, list(mer_type)::in, int::in, int::in,
+    string::out) is det.
 
-generate_hash_lookup_code(VarName, LabelName, LabelNum, ComparisonKind,
-        KeyType, CheckKeys, PredName, PragmaVars, Types,
-        ModuleInfo, ArgNum, FactTableSize, HashLookupCode) :-
+generate_hash_lookup_code(ModuleInfo, VarName, LabelName, LabelNum,
+        ComparisonKind, KeyType, TestKeys, PredName, PragmaVars, Types,
+        ArgNum, FactTableSize, HashLookupCode) :-
     string.format("((struct MR_fact_table_hash_table_%c *) current_table)"
         ++ "->table[hashval]", [c(KeyType)], HashTableEntry),
-    string.append(HashTableEntry, ".key", HashTableKey),
+    HashTableKey = HashTableEntry ++ ".key",
     (
         ComparisonKind = plain_equals,
         string.format("%s == %s", [s(HashTableKey), s(VarName)],
@@ -2836,7 +3003,7 @@ generate_hash_lookup_code(VarName, LabelName, LabelNum, ComparisonKind,
             }
         } while ((hashval = %s.next) != -1);
 
-        /* key not found */
+        // key not found
         goto failure_code_%s;
 
     found_%s_%d:
@@ -2844,7 +3011,7 @@ generate_hash_lookup_code(VarName, LabelName, LabelNum, ComparisonKind,
         if (MR_FACT_TABLE_HASH_ENTRY_TYPE(%s) == 1) {
             ind = MR_FACT_TABLE_HASH_INDEX(ind);
 
-            /* check that any remaining input arguments match */
+            // check that any remaining input arguments match
             %s
             keytype = '%c';
             hashval = %s.next;
@@ -2855,10 +3022,10 @@ generate_hash_lookup_code(VarName, LabelName, LabelNum, ComparisonKind,
 
     ",
     (
-        CheckKeys = yes,
+        TestKeys = test_keys,
         FactTableName = "mercury__" ++ PredName ++ "_fact_table",
-        generate_test_condition_code(FactTableName, PragmaVars, Types,
-            ModuleInfo, ArgNum, yes, FactTableSize, CondCode),
+        generate_test_condition_code(FactTableSize, ModuleInfo, FactTableName,
+            PragmaVars, Types, ArgNum, have_not_seen_input_arg, CondCode),
         ( if CondCode = "" then
             TestCode = ""
         else
@@ -2867,12 +3034,13 @@ generate_hash_lookup_code(VarName, LabelName, LabelNum, ComparisonKind,
                 TestCode)
         )
     ;
-        CheckKeys = no,
+        TestKeys = do_not_test_keys,
         TestCode = ""
     ),
 
-    string.format(HashLookupCodeTemplate, [s(HashTableEntry),
-        s(CompareString), s(HashTableEntry), s(LabelName), i(LabelNum),
+    string.format(HashLookupCodeTemplate,
+        [s(HashTableEntry), s(CompareString),
+        s(HashTableEntry), s(LabelName), i(LabelNum),
         s(HashTableEntry), s(LabelName), s(LabelName), i(LabelNum),
         s(HashTableEntry), s(TestCode), c(KeyType),
         s(HashTableEntry), s(LabelName)],
@@ -2880,17 +3048,17 @@ generate_hash_lookup_code(VarName, LabelName, LabelNum, ComparisonKind,
 
     % Generate code to lookup the fact table with a given index
     %
-:- pred generate_fact_lookup_code(string::in, list(pragma_var)::in,
-    list(mer_type)::in, module_info::in, int::in, int::in, string::out) is det.
+:- pred generate_fact_lookup_code(module_info::in, int::in, string::in,
+    list(pragma_var)::in, list(mer_type)::in, int::in, string::out) is det.
 
-generate_fact_lookup_code(_, [], [], _, _, _, "").
-generate_fact_lookup_code(_, [_ | _], [], _, _, _, _) :-
+generate_fact_lookup_code(_, _, _, [], [], _, "").
+generate_fact_lookup_code(_, _, _, [_ | _], [], _, _) :-
     unexpected($pred, "too many pragma vars").
-generate_fact_lookup_code(_, [], [_ | _], _, _, _, _) :-
+generate_fact_lookup_code(_, _, _, [], [_ | _], _, _) :-
     unexpected($pred, "too many types").
-generate_fact_lookup_code(PredName,
-        [pragma_var(_, VarName, Mode, _) | PragmaVars],
-        [Type | Types], ModuleInfo, ArgNum, FactTableSize, C_Code) :-
+generate_fact_lookup_code(ModuleInfo, FactTableSize, PredName,
+        [PragmaVar | PragmaVars], [Type | Types], ArgNum, Code) :-
+    PragmaVar = pragma_var(_, VarName, Mode, _),
     NextArgNum = ArgNum + 1,
     ( if mode_is_fully_output(ModuleInfo, Mode) then
         TableEntryTemplate = "mercury__%s_fact_table[ind/%d][ind%%%d].V_%d",
@@ -2904,11 +3072,10 @@ generate_fact_lookup_code(PredName,
                 % warning "assignment discards `const'".
                 Template = "\t\tMR_make_aligned_string(%s, " ++
                     "(MR_String) (MR_Word) %s);\n",
-                string.format(Template, [s(VarName), s(TableEntry)], C_Code0)
+                string.format(Template, [s(VarName), s(TableEntry)], ArgCode)
             else
-                % Unique modes need to allow destructive
-                % update so we need to make a copy of the
-                % string on the heap.
+                % Unique modes need to allow destructive update,
+                % so we need to make a copy of the string on the heap.
                 Template =
                     "       MR_incr_hp_atomic(tmp,
                                 (strlen(%s) + sizeof(MR_Word))
@@ -2918,19 +3085,19 @@ generate_fact_lookup_code(PredName,
                     ",
                 string.format(Template,
                     [s(TableEntry), s(VarName), s(VarName), s(TableEntry)],
-                    C_Code0)
+                    ArgCode)
             )
         else
             Template = "\t\t%s = %s;\n",
-            string.format(Template, [s(VarName), s(TableEntry)], C_Code0)
+            string.format(Template, [s(VarName), s(TableEntry)], ArgCode)
         ),
-        generate_fact_lookup_code(PredName, PragmaVars, Types,
-            ModuleInfo, NextArgNum, FactTableSize, C_Code1),
-        string.append(C_Code0, C_Code1, C_Code)
+        generate_fact_lookup_code(ModuleInfo, FactTableSize, PredName,
+            PragmaVars, Types, NextArgNum, ArgsCode),
+        Code = ArgCode ++ ArgsCode
     else
         % Skip non-output arguments.
-        generate_fact_lookup_code(PredName, PragmaVars, Types,
-            ModuleInfo, NextArgNum, FactTableSize, C_Code)
+        generate_fact_lookup_code(ModuleInfo, FactTableSize, PredName,
+            PragmaVars, Types, NextArgNum, Code)
     ).
 
 %---------------------------------------------------------------------------%
@@ -2939,12 +3106,12 @@ generate_fact_lookup_code(PredName,
 
     % Generate code for the nondet mode with the primary key.
     %
-:- pred generate_primary_nondet_code(string::in, list(pragma_var)::in,
-    proc_id::in, list(mer_type)::in, module_info::in, int::in,
+:- pred generate_primary_nondet_code(module_info::in, int::in,
+    string::in, proc_id::in, list(pragma_var)::in, list(mer_type)::in,
     string::out, string::out) is det.
 
-generate_primary_nondet_code(PredName, PragmaVars, ProcID, ArgTypes,
-        ModuleInfo, FactTableSize, ProcCode, ExtraCode) :-
+generate_primary_nondet_code(ModuleInfo, FactTableSize, PredName, ProcID,
+        PragmaVars, ArgTypes, ProcCode, ExtraCode) :-
     generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
         ProcCode),
     ExtraCodeTemplate = "
@@ -2959,20 +3126,20 @@ MR_BEGIN_CODE
 MR_define_entry(%s);
     MR_mkframe(""%s/%d"", %d, MR_LABEL(%s_i1));
     {
-        /* create argument vars */
+        // create argument vars
 %s
-        /* declare local variables */
+        // declare local variables
 %s
-        /* copy registers to input arg vars */
+        // copy registers to input arg vars
 %s
-        /* copy registers to framevars */
+        // copy registers to framevars
 %s
-        /* lookup hash table */
+        // lookup hash table
 %s
     success_code_%s:
-        /* lookup fact table */
+        // lookup fact table
 %s
-        /* save output args to registers */
+        // save output args to registers
 %s
         MR_framevar(1) = ind + 1;
         MR_succeed();
@@ -2983,18 +3150,18 @@ MR_define_label(%s_i1);
     if (MR_framevar(1) >= %s)
         MR_fail();
     {
-        /* create argument vars */
+        // create argument vars
 %s
         int ind = MR_framevar(1);
-        /* copy framevars to registers */
+        // copy framevars to registers
 %s
-        /* copy registers to input arg vars */
+        // copy registers to input arg vars
 %s
-        /* test fact table entry */
+        // test fact table entry
 %s
-        /* lookup fact table */
+        // lookup fact table
 %s
-        /* save output args to registers */
+        // save output args to registers
 %s
     }
     MR_framevar(1)++;
@@ -3013,18 +3180,18 @@ void mercury_sys_init_%s_module(void) {
 
     ",
 
-    generate_argument_vars_code(PragmaVars, ArgTypes,
-        ModuleInfo, ArgDeclCode, InputCode, OutputCode, SaveRegsCode,
-        GetRegsCode, NumFrameVars),
+    generate_argument_vars_code(ModuleInfo, PragmaVars, ArgTypes,
+        ArgDeclCode, InputCode, OutputCode, SaveRegsCode, GetRegsCode,
+        NumFrameVars),
     generate_decl_code(PredName, ProcID, DeclCode),
     proc_id_to_int(ProcID, ProcInt),
     string.format("%s_%d", [s(PredName), i(ProcInt)], LabelName),
-    generate_hash_code(PragmaVars, ArgTypes, ModuleInfo, LabelName, 0,
-        PredName, 1, FactTableSize, HashCode),
-    generate_fact_lookup_code(PredName, PragmaVars, ArgTypes, ModuleInfo, 1,
-        FactTableSize, FactLookupCode),
-    generate_fact_test_code(PredName, PragmaVars, ArgTypes, ModuleInfo,
-        FactTableSize, FactTestCode),
+    generate_hash_code(ModuleInfo, FactTableSize, PredName, LabelName, 0,
+        PragmaVars, ArgTypes, 1, HashCode),
+    generate_fact_lookup_code(ModuleInfo, FactTableSize, PredName,
+        PragmaVars, ArgTypes, 1, FactLookupCode),
+    generate_fact_test_code(ModuleInfo, FactTableSize, PredName,
+        PragmaVars, ArgTypes, FactTestCode),
 
     string.append_list(["mercury__", PredName, "_fact_table_num_facts"],
         NumFactsVar),
@@ -3068,29 +3235,31 @@ void mercury_sys_init_%s_module(void) {
 
     % Generate code to create argument variables and assign them to registers.
     %
-:- pred generate_argument_vars_code(list(pragma_var)::in, list(mer_type)::in,
-    module_info::in, string::out, string::out, string::out,
+:- pred generate_argument_vars_code(module_info::in,
+    list(pragma_var)::in, list(mer_type)::in,
+    string::out, string::out, string::out,
     string::out, string::out, int::out) is det.
 
-generate_argument_vars_code(PragmaVars, Types, ModuleInfo, DeclCode, InputCode,
+generate_argument_vars_code(ModuleInfo, PragmaVars, Types, DeclCode, InputCode,
         OutputCode, SaveRegsCode, GetRegsCode, NumInputArgs) :-
-    list.map((pred(X::in, Y::out) is det :- X = pragma_var(_, _, Y, _)),
-        PragmaVars, Modes),
-    make_standard_arg_infos(Types, Modes, model_non, ModuleInfo, ArgInfos),
-    generate_argument_vars_code_2(PragmaVars, ArgInfos, Types, ModuleInfo,
-        DeclCode, InputCode, OutputCode, SaveRegsCode, GetRegsCode, 1,
-        NumInputArgs).
+    Modes = list.map((func(pragma_var(_, _, Mode, _)) = Mode), PragmaVars),
+    make_standard_arg_infos(ModuleInfo, model_non, Types, Modes, ArgInfos),
+    generate_argument_vars_code_2(ModuleInfo, PragmaVars, ArgInfos, Types,
+        DeclCode, InputCode, OutputCode, SaveRegsCode, GetRegsCode,
+        1, NumInputArgs).
 
-:- pred generate_argument_vars_code_2(list(pragma_var)::in, list(arg_info)::in,
-    list(mer_type)::in, module_info::in, string::out, string::out, string::out,
+:- pred generate_argument_vars_code_2(module_info::in,
+    list(pragma_var)::in, list(arg_info)::in, list(mer_type)::in,
+    string::out, string::out, string::out,
     string::out, string::out, int::in, int::out) is det.
 
-generate_argument_vars_code_2(PragmaVars0, ArgInfos0, Types0, Module, DeclCode,
-        InputCode, OutputCode, SaveRegsCode, GetRegsCode, !NumInputArgs) :-
+generate_argument_vars_code_2(ModuleInfo, PragmaVars, ArgInfos, Types,
+        DeclCode, InputCode, OutputCode, SaveRegsCode, GetRegsCode,
+        !NumInputArgs) :-
     ( if
-        PragmaVars0 = [],
-        ArgInfos0 = [],
-        Types0 = []
+        PragmaVars = [],
+        ArgInfos = [],
+        Types = []
     then
         DeclCode = "",
         InputCode = "",
@@ -3098,48 +3267,49 @@ generate_argument_vars_code_2(PragmaVars0, ArgInfos0, Types0, Module, DeclCode,
         SaveRegsCode = "",
         GetRegsCode = ""
     else if
-        PragmaVars0 = [pragma_var(_, VarName, _, _) | PragmaVars],
-        ArgInfos0 = [arg_info(Loc, ArgMode) | ArgInfos],
-        Types0 = [Type | Types]
+        PragmaVars = [pragma_var(_, VarName, _, _) | TailPragmaVars],
+        ArgInfos = [arg_info(Loc, ArgMode) | TailArgInfos],
+        Types = [Type | TailTypes]
     then
-        generate_arg_decl_code(VarName, Type, Module, DeclCode0),
+        generate_arg_decl_code(ModuleInfo, VarName, Type, ArgDeclCode),
         ( if ArgMode = top_in then
             !:NumInputArgs = !.NumInputArgs + 1,
             generate_arg_input_code(VarName, Type, Loc, !.NumInputArgs,
-                InputCode0, SaveRegsCode0, GetRegsCode0),
-            OutputCode0 = ""
+                ArgInputCode, ArgSaveRegsCode, ArgGetRegsCode),
+            ArgOutputCode = ""
         else if ArgMode = top_out then
-            generate_arg_output_code(VarName, Type, Loc, OutputCode0),
-            InputCode0 = "",
-            SaveRegsCode0 = "",
-            GetRegsCode0 = ""
+            generate_arg_output_code(VarName, Type, Loc, ArgOutputCode),
+            ArgInputCode = "",
+            ArgSaveRegsCode = "",
+            ArgGetRegsCode = ""
         else
             unexpected($pred, "invalid mode")
         ),
-        generate_argument_vars_code_2(PragmaVars, ArgInfos, Types, Module,
-            DeclCode1, InputCode1, OutputCode1, SaveRegsCode1, GetRegsCode1,
-            !NumInputArgs),
-        DeclCode = DeclCode0 ++ DeclCode1,
-        InputCode = InputCode0 ++ InputCode1,
-        OutputCode = OutputCode0 ++ OutputCode1,
-        SaveRegsCode = SaveRegsCode0 ++ SaveRegsCode1,
-        GetRegsCode = GetRegsCode0 ++ GetRegsCode1
+        generate_argument_vars_code_2(ModuleInfo,
+            TailPragmaVars, TailArgInfos, TailTypes,
+            ArgsDeclCode, ArgsInputCode, ArgsOutputCode, ArgsSaveRegsCode,
+            ArgsGetRegsCode, !NumInputArgs),
+        DeclCode = ArgDeclCode ++ ArgsDeclCode,
+        InputCode = ArgInputCode ++ ArgsInputCode,
+        OutputCode = ArgOutputCode ++ ArgsOutputCode,
+        SaveRegsCode = ArgSaveRegsCode ++ ArgsSaveRegsCode,
+        GetRegsCode = ArgGetRegsCode ++ ArgsGetRegsCode
     else
         unexpected($pred, "list length mismatch")
     ).
 
-:- pred generate_arg_decl_code(string::in, mer_type::in, module_info::in,
+:- pred generate_arg_decl_code(module_info::in, string::in, mer_type::in,
     string::out) is det.
 
-generate_arg_decl_code(Name, Type, Module, DeclCode) :-
-    C_Type = exported_type_to_c_string(Module, Type),
-    string.format("\t\t%s %s;\n", [s(C_Type), s(Name)], DeclCode).
+generate_arg_decl_code(ModuleInfo, Name, Type, DeclCode) :-
+    CType = exported_type_to_c_string(ModuleInfo, Type),
+    string.format("\t\t%s %s;\n", [s(CType), s(Name)], DeclCode).
 
 :- pred generate_arg_input_code(string::in, mer_type::in, arg_loc::in, int::in,
     string::out, string::out, string::out) is det.
 
-generate_arg_input_code(Name, Type, ArgLoc, FrameVarNum, InputCode,
-        SaveRegCode, GetRegCode) :-
+generate_arg_input_code(Name, Type, ArgLoc, FrameVarNum,
+        InputCode, SaveRegCode, GetRegCode) :-
     ArgLoc = reg(RegType, RegNum),
     (
         RegType = reg_r,
@@ -3173,62 +3343,66 @@ generate_arg_output_code(Name, Type, ArgLoc, OutputCode) :-
     % This is only required for generate_primary_nondet_code. Other procedures
     % can test the key in the hash table against the input arguments.
     %
-:- pred generate_fact_test_code(string::in, list(pragma_var)::in,
-    list(mer_type)::in, module_info::in, int::in, string::out) is det.
+:- pred generate_fact_test_code(module_info::in, int::in, string::in,
+    list(pragma_var)::in, list(mer_type)::in, string::out) is det.
 
-generate_fact_test_code(PredName, PragmaVars, ArgTypes, ModuleInfo,
-        FactTableSize, FactTestCode) :-
+generate_fact_test_code(ModuleInfo, FactTableSize, PredName,
+        PragmaVars, ArgTypes, FactTestCode) :-
     FactTableName = "mercury__" ++ PredName ++ "_fact_table",
-    generate_test_condition_code(FactTableName, PragmaVars, ArgTypes,
-        ModuleInfo, 1, yes, FactTableSize, CondCode),
+    generate_test_condition_code(FactTableSize, ModuleInfo, FactTableName,
+        PragmaVars, ArgTypes, 1, have_not_seen_input_arg, CondCode),
     FactTestCode = "\t\tif(" ++ CondCode ++ "\t\t) MR_fail();\n".
 
-:- pred generate_test_condition_code(string::in, list(pragma_var)::in,
-    list(mer_type)::in, module_info::in, int::in, bool::in, int::in,
-    string::out) is det.
+:- type maybe_seen_input_arg
+    --->    have_seen_input_arg
+    ;       have_not_seen_input_arg.
 
-generate_test_condition_code(_, [], [], _, _, _, _, "").
-generate_test_condition_code(_, [_ | _], [], _, _, _, _, "") :-
+:- pred generate_test_condition_code(int::in, module_info::in, string::in,
+    list(pragma_var)::in, list(mer_type)::in, int::in,
+    maybe_seen_input_arg::in, string::out) is det.
+
+generate_test_condition_code(_, _, _, [], [], _, _, "").
+generate_test_condition_code(_, _, _, [_ | _], [], _, _, "") :-
     unexpected($pred, "too many PragmaVars").
-generate_test_condition_code(_, [], [_ | _], _, _, _, _, "") :-
+generate_test_condition_code(_, _, _, [], [_ | _], _, _, "") :-
     unexpected($pred, "too many ArgTypes").
-generate_test_condition_code(FactTableName, [PragmaVar | PragmaVars],
-        [Type | Types], ModuleInfo, ArgNum, !.IsFirstInputArg,
-        FactTableSize, CondCode) :-
+generate_test_condition_code(FactTableSize, ModuleInfo, FactTableName,
+        [PragmaVar | PragmaVars], [Type | Types], ArgNum, !.IsFirstInputArg,
+        CondCode) :-
     PragmaVar = pragma_var(_, Name, Mode, _),
     ( if mode_is_fully_input(ModuleInfo, Mode) then
         ( if Type = builtin_type(builtin_type_string) then
             Template = "strcmp(%s[ind/%d][ind%%%d].V_%d, %s) != 0\n",
             string.format(Template, [s(FactTableName), i(FactTableSize),
-                i(FactTableSize), i(ArgNum), s(Name)], CondCode0)
+                i(FactTableSize), i(ArgNum), s(Name)], ArgCondCode0)
         else
             Template = "%s[ind/%d][ind%%%d].V_%d != %s\n",
             string.format(Template, [s(FactTableName), i(FactTableSize),
-                i(FactTableSize), i(ArgNum), s(Name)], CondCode0)
+                i(FactTableSize), i(ArgNum), s(Name)], ArgCondCode0)
         ),
         (
-            !.IsFirstInputArg = no,
-            CondCode1 = "\t\t|| " ++ CondCode0
+            !.IsFirstInputArg = have_seen_input_arg,
+            ArgCondCode = "\t\t|| " ++ ArgCondCode0
         ;
-            !.IsFirstInputArg = yes,
-            CondCode1 = CondCode0
+            !.IsFirstInputArg = have_not_seen_input_arg,
+            ArgCondCode = ArgCondCode0
         ),
-        !:IsFirstInputArg = no
+        !:IsFirstInputArg = have_seen_input_arg
     else
-        CondCode1 = ""
+        ArgCondCode = ""
     ),
-    generate_test_condition_code(FactTableName, PragmaVars, Types, ModuleInfo,
-        ArgNum + 1, !.IsFirstInputArg, FactTableSize, CondCode2),
-    CondCode = CondCode1 ++ CondCode2.
+    generate_test_condition_code(FactTableSize, ModuleInfo, FactTableName,
+        PragmaVars, Types, ArgNum + 1, !.IsFirstInputArg, ArgsCondCode),
+    CondCode = ArgCondCode ++ ArgsCondCode.
 
     % Generate code for a nondet mode using a secondary key.
-
-:- pred generate_secondary_nondet_code(string::in, list(pragma_var)::in,
-    proc_id::in, list(mer_type)::in, module_info::in, int::in,
+    %
+:- pred generate_secondary_nondet_code(module_info::in, int::in, string::in,
+    proc_id::in, list(pragma_var)::in, list(mer_type)::in,
     string::out, string::out) is det.
 
-generate_secondary_nondet_code(PredName, PragmaVars, ProcID, ArgTypes,
-        ModuleInfo, FactTableSize, ProcCode, ExtraCode) :-
+generate_secondary_nondet_code(ModuleInfo, FactTableSize, PredName, ProcID,
+        PragmaVars, ArgTypes, ProcCode, ExtraCode) :-
     generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
         ProcCode),
     ExtraCodeTemplate = "
@@ -3243,18 +3417,18 @@ MR_BEGIN_CODE
 MR_define_entry(%s);
     MR_mkframe(""%s/%d"", 4, MR_LABEL(%s_i1));
     {
-        /* create argument vars */
+        // create argument vars
 %s
-        /* declare local variables */
+        // declare local variables
 %s
-        /* copy registers to input arg vars */
+        // copy registers to input arg vars
 %s
-        /* lookup hash table */
+        // lookup hash table
 %s
     success_code_%s:
-        /* lookup fact table */
+        // lookup fact table
 %s
-        /* save output args to registers */
+        // save output args to registers
 %s
         if (hashval == -1) MR_succeed_discard();
         MR_framevar(1) = hashval;
@@ -3267,14 +3441,14 @@ MR_define_entry(%s);
     }
 MR_define_label(%s_i1);
     {
-        /* create argument vars */
+        // create argument vars
 %s
         MR_Integer  hashval = MR_framevar(1);
         MR_Word     ind;
         void        *current_table = (void *) MR_framevar(2);
         char        keytype = (char) MR_framevar(3);
 
-        /* lookup hash table */
+        // lookup hash table
         switch(keytype)
         {
             case 's':
@@ -3291,9 +3465,9 @@ MR_define_label(%s_i1);
                     ""fact table hash lookup: nondet stack corrupted?"");
         }
     success_code_%s:
-        /* lookup fact table */
+        // lookup fact table
 %s
-        /* save output args to registers */
+        // save output args to registers
 %s
         if (hashval == -1) MR_succeed_discard();
         MR_framevar(1) = hashval;
@@ -3315,25 +3489,26 @@ void mercury_sys_init_%s_module(void) {
 
     ",
 
-    generate_argument_vars_code(PragmaVars, ArgTypes, ModuleInfo, ArgDeclCode,
+    generate_argument_vars_code(ModuleInfo, PragmaVars, ArgTypes, ArgDeclCode,
         InputCode, OutputCode, _SaveRegsCode, _GetRegsCode, _NumFrameVars),
     generate_decl_code(PredName, ProcID, DeclCode),
     proc_id_to_int(ProcID, ProcInt),
     string.format("%s_%d", [s(PredName), i(ProcInt)], LabelName),
     string.append(LabelName, "_2", LabelName2),
-    generate_hash_code(PragmaVars, ArgTypes, ModuleInfo, LabelName, 0,
-        PredName, 1, FactTableSize, HashCode),
+    generate_hash_code(ModuleInfo, FactTableSize, PredName, LabelName, 0,
+        PragmaVars, ArgTypes, 1, HashCode),
 
-    generate_hash_lookup_code("(char *) MR_framevar(4)", LabelName2, 0,
-        string_equals, 's', no, "", [], [], ModuleInfo, 0, 0,
-        StringHashLookupCode),
-    generate_hash_lookup_code("MR_framevar(4)", LabelName2, 1, plain_equals,
-        'i', no, "", [], [], ModuleInfo, 0, 0, IntHashLookupCode),
-    generate_hash_lookup_code("MR_word_to_float(MR_framevar(4))",
-        LabelName2, 2, plain_equals, 'f', no, "", [], [], ModuleInfo,
-        0, 0, FloatHashLookupCode),
-    generate_fact_lookup_code(PredName, PragmaVars, ArgTypes, ModuleInfo, 1,
-        FactTableSize, FactLookupCode),
+    generate_hash_lookup_code(ModuleInfo,
+        "(char *) MR_framevar(4)", LabelName2, 0, string_equals,
+        's', do_not_test_keys, "", [], [], 0, 0, StringHashLookupCode),
+    generate_hash_lookup_code(ModuleInfo,
+        "MR_framevar(4)", LabelName2, 1, plain_equals,
+        'i', do_not_test_keys, "", [], [], 0, 0, IntHashLookupCode),
+    generate_hash_lookup_code(ModuleInfo,
+        "MR_word_to_float(MR_framevar(4))", LabelName2, 2, plain_equals,
+        'f', do_not_test_keys, "", [], [], 0, 0, FloatHashLookupCode),
+    generate_fact_lookup_code(ModuleInfo, FactTableSize, PredName,
+        PragmaVars, ArgTypes, 1, FactLookupCode),
     list.length(PragmaVars, Arity),
 
     string.format(ExtraCodeTemplate, [
@@ -3375,9 +3550,10 @@ void mercury_sys_init_%s_module(void) {
 
     % Delete a file. Report an error message if something goes wrong.
     %
-:- pred delete_temporary_file(globals::in, string::in, io::di, io::uo) is det.
+:- pred delete_temporary_file(module_info::in, string::in,
+    io::di, io::uo) is det.
 
-delete_temporary_file(Globals, FileName, !IO) :-
+delete_temporary_file(ModuleInfo, FileName, !IO) :-
     io.remove_file(FileName, Result, !IO),
     (
         Result = ok
@@ -3390,13 +3566,17 @@ delete_temporary_file(Globals, FileName, !IO) :-
             words(ErrorMsg), suffix("."), nl],
         Spec = error_spec($pred, severity_error, phase_fact_table_check,
             [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
-        write_error_spec_ignore(Globals, Spec, !IO)
+        get_error_output_stream(ModuleInfo, ErrorStream, !IO),
+        module_info_get_globals(ModuleInfo, Globals),
+        write_error_spec_ignore(ErrorStream, Globals, Spec, !IO)
     ).
 
-:- pred write_call_system_error_msg(globals::in, string::in, io.error::in,
-    io::di, io::uo) is det.
+%-----------------------------------------------------------------------------%
 
-write_call_system_error_msg(Globals, Cmd, ErrorCode, !IO) :-
+:- pred write_call_system_error_msg(io.text_output_stream::in, globals::in,
+    string::in, io.error::in, io::di, io::uo) is det.
+
+write_call_system_error_msg(ErrorStream, Globals, Cmd, ErrorCode, !IO) :-
     io.error_message(ErrorCode, ErrorMsg),
     io.progname_base("mercury_compile", ProgName, !IO),
     Pieces = [fixed(ProgName), suffix(":"),
@@ -3404,13 +3584,9 @@ write_call_system_error_msg(Globals, Cmd, ErrorCode, !IO) :-
         words(ErrorMsg), suffix("."), nl],
     Spec = error_spec($pred, severity_error, phase_fact_table_check,
         [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
-    write_error_spec_ignore(Globals, Spec, !IO).
+    write_error_spec_ignore(ErrorStream, Globals, Spec, !IO).
 
 %-----------------------------------------------------------------------------%
-
-    % We keep error reports in reverse order to keep N calls to
-    % add_error_report at complexity N, rather than N*N. We reverse them
-    % before printing.
 
 :- type error_report    == pair(maybe(context), list(format_component)).
 :- type error_reports   == list(error_report).
@@ -3427,30 +3603,57 @@ add_error_report(Context, Pieces, !Errors) :-
 add_error_report(Pieces, !Errors) :-
     !:Errors = [no - Pieces | !.Errors].
 
-:- pred print_error_reports(globals::in, error_reports::in, io::di, io::uo)
-    is det.
+%-----------------------------------------------------------------------------%
 
-print_error_reports(Globals, RevErrors, !IO) :-
-    list.reverse(RevErrors, Errors),
-    list.foldl(print_error_report(Globals), Errors, !IO).
+:- pred print_file_open_error(io.text_output_stream::in, globals::in,
+    maybe(context)::in, string::in, string::in, io.error::in,
+    io::di, io::uo) is det.
 
-:- pred print_error_report(globals::in, error_report::in, io::di, io::uo)
-    is det.
-
-print_error_report(Globals, MaybeContext - Pieces, !IO) :-
-    Spec = error_spec($pred, severity_error, phase_fact_table_check,
-        [error_msg(MaybeContext, treat_as_first, 0, [always(Pieces)])]),
-    write_error_spec_ignore(Globals, Spec, !IO).
-
-:- pred print_file_open_error(globals::in, maybe(context)::in, string::in,
-    string::in, io.error::in, io::di, io::uo) is det.
-
-print_file_open_error(Globals, MaybeContext, FileName, InOrOut, Error, !IO) :-
+print_file_open_error(ErrorStream, Globals, MaybeContext, FileName, InOrOut,
+        Error, !IO) :-
     io.error_message(Error, ErrorMsg),
     string.format("Error opening file `%s' for %s:",
         [s(FileName), s(InOrOut)], Msg),
     Pieces = [words(Msg), nl, words(ErrorMsg), nl],
-    print_error_report(Globals, MaybeContext - Pieces, !IO).
+    error_report_to_error_spec(MaybeContext - Pieces, Spec),
+    write_error_spec_ignore(ErrorStream, Globals, Spec, !IO).
+
+:- pred print_error_report(io.text_output_stream::in, globals::in,
+    error_report::in, io::di, io::uo) is det.
+
+print_error_report(ErrorStream, Globals, Error, !IO) :-
+    error_report_to_error_spec(Error, Spec),
+    write_error_spec_ignore(ErrorStream, Globals, Spec, !IO).
+
+:- pred print_error_reports(io.text_output_stream::in, globals::in,
+    error_reports::in, io::di, io::uo) is det.
+
+print_error_reports(ErrorStream, Globals, Errors, !IO) :-
+    list.map(error_report_to_error_spec, Errors, Specs),
+    write_error_specs_ignore(ErrorStream, Globals, Specs, !IO).
+
+:- pred error_report_to_error_spec(error_report::in, error_spec::out) is det.
+
+error_report_to_error_spec(MaybeContext - Pieces, Spec) :-
+    Spec = error_spec($pred, severity_error, phase_fact_table_check,
+        [error_msg(MaybeContext, treat_as_first, 0, [always(Pieces)])]).
+
+%-----------------------------------------------------------------------------%
+
+:- pred get_maybe_progress_output_stream(module_info::in,
+    maybe(io.text_output_stream)::out, io::di, io::uo) is det.
+
+get_maybe_progress_output_stream(ModuleInfo, MaybeProgressStream, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    (
+        VeryVerbose = no,
+        MaybeProgressStream = no
+    ;
+        VeryVerbose = yes,
+        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+        MaybeProgressStream = yes(ProgressStream)
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.fact_table.

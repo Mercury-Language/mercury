@@ -985,8 +985,7 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
             some [!IO] (
                 promise_pure (
                     semipure io.unsafe_get_io_state(!:IO),
-                    fact_table_compile_facts( !.ModuleInfo, PredSymName,
-                        UserArity, FileName, Context,
+                    fact_table_compile_facts( !.ModuleInfo, FileName, Context,
                         C_HeaderCode, PrimaryProcId,
                         PredInfo0, PredInfo, !IO),
                     impure io.unsafe_set_io_state(!.IO)
@@ -1068,8 +1067,8 @@ add_fact_table_proc(ProcId, PrimaryProcId, ProcTable,
     some [!IO] (
         promise_pure (
             semipure io.unsafe_get_io_state(!:IO),
-            fact_table_generate_c_code( !.ModuleInfo, SymName, PragmaVars,
-                ProcId, PrimaryProcId, ProcInfo, ArgTypes,
+            fact_table_generate_c_code(!.ModuleInfo, SymName,
+                ProcId, PrimaryProcId, ProcInfo, PragmaVars, ArgTypes,
                 C_ProcCode, C_ExtraCode, !IO),
             impure io.unsafe_set_io_state(!.IO)
         )

@@ -425,12 +425,12 @@
     % since we do set the exit status to a nonzero value when we print an
     % error, and the main use of the num_errors field is to do likewise.
     %
-:- pred write_error_spec_ignore(globals::in, error_spec::in,
-    io::di, io::uo) is det.
+:- pred write_error_spec_ignore(globals::in,
+    error_spec::in, io::di, io::uo) is det.
 :- pred write_error_spec_ignore(io.text_output_stream::in, globals::in,
     error_spec::in, io::di, io::uo) is det.
-:- pred write_error_specs_ignore(globals::in, list(error_spec)::in,
-    io::di, io::uo) is det.
+:- pred write_error_specs_ignore(globals::in,
+    list(error_spec)::in, io::di, io::uo) is det.
 :- pred write_error_specs_ignore(io.text_output_stream::in, globals::in,
     list(error_spec)::in, io::di, io::uo) is det.
 

@@ -264,7 +264,7 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
             lookup_var_types(VarTypes, Args, Types),
             generic_call_arg_reg_types(ModuleInfo, VarTypes, GenericCall,
                 Args, MaybeArgRegs, ArgRegTypes),
-            make_arg_infos(Types, Modes, ArgRegTypes, CodeModel, ModuleInfo,
+            make_arg_infos(ModuleInfo, CodeModel, Types, Modes, ArgRegTypes,
                 ArgInfos),
             assoc_list.from_corresponding_lists(Args, ArgInfos, ArgsInfos),
             % XXX use arg_info.generic_call_arg_reg_types?

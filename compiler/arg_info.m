@@ -57,15 +57,15 @@
     % for procedure. This will pass float arguments via float registers
     % if present, while passing all other arguments via regular registers.
     %
-:- pred make_standard_arg_infos(list(mer_type)::in, list(mer_mode)::in,
-    code_model::in, module_info::in, list(arg_info)::out) is det.
+:- pred make_standard_arg_infos(module_info::in, code_model::in,
+    list(mer_type)::in, list(mer_mode)::in, list(arg_info)::out) is det.
 
     % As above, but pass the register type for each argument explicitly.
     % This is necessary for procedures with float arguments that must be
     % passed via the regular registers instead of float registers.
     %
-:- pred make_arg_infos(list(mer_type)::in, list(mer_mode)::in,
-    list(reg_type)::in, code_model::in, module_info::in,
+:- pred make_arg_infos(module_info::in, code_model::in,
+    list(mer_type)::in, list(mer_mode)::in, list(reg_type)::in, 
     list(arg_info)::out) is det.
 
     % Return the register type to use for each argument of a generic call.
@@ -211,7 +211,7 @@ generate_proc_arg_info(Markers, ArgTypes, ModuleInfo, !ProcInfo) :-
     ),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
     CodeModel = proc_info_interface_code_model(!.ProcInfo),
-    make_arg_infos(ArgTypes, ArgModes, ArgRegTypes, CodeModel, ModuleInfo,
+    make_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes, ArgRegTypes,
         ArgInfo),
     proc_info_set_arg_info(ArgInfo, !ProcInfo).
 
@@ -231,7 +231,7 @@ reg_type_for_headvar(RegR_HeadVars, HeadVar, Type, RegType) :-
 
 %---------------------------------------------------------------------------%
 
-make_standard_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo) :-
+make_standard_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes, ArgInfo) :-
     % This is the useful part of the code ;-).
     %
     % This code is one of the places where we make assumptions about the
@@ -262,7 +262,7 @@ make_standard_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo) :-
         FloatRegType = reg_r
     ),
     list.map(standard_reg_type_for_type(FloatRegType), ArgTypes, RegTypes),
-    make_arg_infos(ArgTypes, ArgModes, RegTypes, CodeModel, ModuleInfo,
+    make_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes, RegTypes,
         ArgInfo).
 
 :- pred standard_reg_type_for_type(reg_type::in, mer_type::in, reg_type::out)
@@ -275,7 +275,7 @@ standard_reg_type_for_type(FloatRegType, Type, RegType) :-
         RegType = reg_r
     ).
 
-make_arg_infos(ArgTypes, ArgModes, ArgRegTypes, CodeModel, ModuleInfo,
+make_arg_infos(ModuleInfo, CodeModel, ArgTypes, ArgModes, ArgRegTypes,
         ArgInfo) :-
     (
         CodeModel = model_semi,
@@ -289,23 +289,23 @@ make_arg_infos(ArgTypes, ArgModes, ArgRegTypes, CodeModel, ModuleInfo,
     FirstInRegR = 1,
     FirstInRegF = 1,
     FirstOutRegF = 1,
-    (
-        make_arg_infos(ArgModes, ArgTypes, ArgRegTypes,
+    ( if
+        make_arg_infos_loop(ModuleInfo, ArgModes, ArgTypes, ArgRegTypes,
             FirstInRegR, FirstInRegF, FirstOutRegR, FirstOutRegF,
-            ModuleInfo, ArgInfoPrime)
-    ->
+            ArgInfoPrime)
+    then
         ArgInfo = ArgInfoPrime
-    ;
+    else
         unexpected($pred, "length mismatch")
     ).
 
-:- pred make_arg_infos(list(mer_mode)::in, list(mer_type)::in,
-    list(reg_type)::in, int::in, int::in, int::in, int::in, module_info::in,
-    list(arg_info)::out) is semidet.
+:- pred make_arg_infos_loop(module_info::in,
+    list(mer_mode)::in, list(mer_type)::in, list(reg_type)::in,
+    int::in, int::in, int::in, int::in, list(arg_info)::out) is semidet.
 
-make_arg_infos([], [], [], _, _, _, _, _, []).
-make_arg_infos([Mode | Modes], [Type | Types], [RegType | RegTypes],
-        !.InRegR, !.InRegF, !.OutRegR, !.OutRegF, ModuleInfo,
+make_arg_infos_loop(_, [], [], [], _, _, _, _, []).
+make_arg_infos_loop(ModuleInfo, [Mode | Modes], [Type | Types],
+        [RegType | RegTypes], !.InRegR, !.InRegF, !.OutRegR, !.OutRegF,
         [ArgInfo | ArgInfos]) :-
     require_det (
         mode_to_top_functor_mode(ModuleInfo, Mode, Type, TopFunctorMode),
@@ -320,8 +320,8 @@ make_arg_infos([Mode | Modes], [Type | Types], [RegType | RegTypes],
         ),
         ArgInfo = arg_info(ArgLoc, TopFunctorMode)
     ),
-    make_arg_infos(Modes, Types, RegTypes, !.InRegR, !.InRegF,
-        !.OutRegR, !.OutRegF, ModuleInfo, ArgInfos).
+    make_arg_infos_loop(ModuleInfo, Modes, Types, RegTypes, !.InRegR, !.InRegF,
+        !.OutRegR, !.OutRegF, ArgInfos).
 
 :- pred get_arg_loc(reg_type::in, arg_loc::out, int::in, int::out,
     int::in, int::out) is det.
