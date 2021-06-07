@@ -35,8 +35,6 @@ MERCURY_JAVA_INTERPRETER=@JAVA_INTERPRETER@
 MERCURY_CSHARP_COMPILER=@CSC@
 MERCURY_CSHARP_COMPILER_TYPE=@CSHARP_COMPILER_TYPE@
 MERCURY_CLI_INTERPRETER=@CLI_INTERPRETER@
-MERCURY_ERLANG_COMPILER=
-MERCURY_ERLANG_INTERPRETER=
 MERCURY_TARGET_ARCH=@FULLARCH@
 # $(MATH_LIB) needs to be defined because it may
 # be used by the substitution for SHARED_LIBS.
@@ -64,8 +62,6 @@ DEFAULT_MCFLAGS=\
 		--csharp-compiler "$(MERCURY_CSHARP_COMPILER)" \
 		--csharp-compiler-type "$(MERCURY_CSHARP_COMPILER_TYPE)" \
 		--cli-interpreter "$(MERCURY_CLI_INTERPRETER)" \
-		--erlang-compiler "$(MERCURY_ERLANG_COMPILER)" \
-		--erlang-interpreter "$(MERCURY_ERLANG_INTERPRETER)" \
 		--grade "$(MERCURY_DEFAULT_GRADE)" \
 		--cflags-for-ansi "@CFLAGS_FOR_ANSI@" \
 		--cflags-for-optimization "@CFLAGS_FOR_OPT@" \
