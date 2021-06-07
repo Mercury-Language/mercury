@@ -95,10 +95,10 @@
 :- mode append(in, in, in) is semidet.    % implied
 :- mode append(in, out, in) is semidet.
 :- mode append(out, out, in) is multi.
-% The following mode is semidet in the sense that it doesn't
-% succeed more than once - but it does create a choice-point,
-% which means it's inefficient and that the compiler can't deduce
-% that it is semidet. Use remove_suffix instead.
+% The following mode is semidet in the sense that it does not
+% succeed more than once - but it does create a choice-point, which means
+% both that it is inefficient, and that the compiler can't deduce that
+% it is semidet. Use remove_suffix instead.
 % :- mode append(out, in, in) is semidet.
 
 :- func append(list(T), list(T)) = list(T).
@@ -207,7 +207,7 @@
 
     % index*(List, Position, Elem):
     %
-    % These predicates select an element in a list from it's position.
+    % These predicates select an element in a list from its position.
     % The `index0' preds consider the first element to be element
     % number zero, whereas the `index1' preds consider the first element
     % to be element number one. The `det_' preds call error/1 if the index
