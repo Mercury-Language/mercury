@@ -16,4 +16,4 @@ fi
 
 echo "Setting up autotools"
 aclocal -I m4
-autoconf
+autoconf -Wno-obsolete
