@@ -12,8 +12,8 @@
 % This file contains routines to serialise arbitrary data structures into some
 % unspecified binary format which can be restored quickly.
 %
-% We don't preserve sharing in the pickled data structure.  This would be
-% possible but would introduce slowdowns in both the pickling and unpickling
+% We don't preserve sharing in the pickled data structure. This would be
+% possible, but would introduce slowdowns in both the pickling and unpickling
 % processes.
 %
 %-----------------------------------------------------------------------------%
@@ -32,8 +32,8 @@
     %
 :- type picklers.
 
-:- type pickler_pred == pred(picklers, univ, io, io).
-:- inst pickler_pred == (pred(in, in, di, uo) is det).
+:- type pickler_pred == pred(io.binary_output_stream, picklers, univ, io, io).
+:- inst pickler_pred == (pred(in, in, in, di, uo) is det).
 
     % Initialize the custom pickling predicates.
     %
@@ -49,9 +49,10 @@
     % stream, using the picklers given to override the default pickling method.
     %
     % Existential, foreign and higher-order types are not supported
-    % generically.  Register custom handlers to handle those types.
+    % generically. Register custom handlers to handle those types.
     %
-:- pred pickle(picklers::in, T::in, io::di, io::uo) is det.
+:- pred pickle(io.binary_output_stream::in, picklers::in, T::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -126,7 +127,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Pickling
+% Pickling.
 %
 
 init_picklers = picklers(map.init).
@@ -136,46 +137,46 @@ register_pickler(TypeCtorDesc, Pickle, Pickles0, Pickles) :-
     map.det_insert(TypeCtorDesc, Pickle, Map0, Map),
     Pickles = picklers(Map).
 
-pickle(Pickles, T, !IO) :-
+pickle(OutputStream, Pickles, T, !IO) :-
     ( if
         dynamic_cast(T, String)
     then
-        pickle_string(String, !IO)
+        pickle_string(OutputStream, String, !IO)
     else if
         dynamic_cast(T, Int)
     then
-        pickle_int32(Int, !IO)
+        pickle_int32(OutputStream, Int, !IO)
     else if
         dynamic_cast(T, Float)
     then
-        pickle_float(Float, !IO)
+        pickle_float(OutputStream, Float, !IO)
     else if
         dynamic_cast(T, Char)
     then
-        pickle_char(Char, !IO)
+        pickle_char(OutputStream, Char, !IO)
     else if
         TypeDesc = type_of(T),
         TypeCtorDesc = type_ctor(TypeDesc),
         user_defined_pickler(Pickles, TypeCtorDesc, Pickle)
     then
-        Pickle(Pickles, univ(T), !IO)
+        Pickle(OutputStream, Pickles, univ(T), !IO)
     else
         deconstruct.functor(T, do_not_allow, Functor, Arity),
-        pickle_string(Functor, !IO),
-        pickle_int32(Arity, !IO),
-        pickle_args(Pickles, 0, Arity, T, !IO)
+        pickle_string(OutputStream, Functor, !IO),
+        pickle_int32(OutputStream, Arity, !IO),
+        pickle_args(OutputStream, Pickles, 0, Arity, T, !IO)
     ).
 
-:- pred pickle_args(picklers::in, int::in, int::in, T::in, io::di, io::uo)
-    is det.
+:- pred pickle_args(io.binary_output_stream::in, picklers::in,
+    int::in, int::in, T::in, io::di, io::uo) is det.
 
-pickle_args(Pickles, N, Arity, T, !IO) :-
+pickle_args(OutputStream, Pickles, N, Arity, T, !IO) :-
     ( if N = Arity then
         true
     else
         ( if deconstruct.arg(T, do_not_allow, N, Arg) then
-            pickle(Pickles, Arg, !IO),
-            pickle_args(Pickles, N + 1, Arity, T, !IO)
+            pickle(OutputStream, Pickles, Arg, !IO),
+            pickle_args(OutputStream, Pickles, N + 1, Arity, T, !IO)
         else
             unexpected($pred, "unable to deconstruct arg")
         )
@@ -214,7 +215,7 @@ user_defined_pickler(picklers(Pickles), TypeCtorDesc, Pickle) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Unpickling
+% Unpickling.
 %
 
 init_unpicklers = unpicklers(map.init).
@@ -225,19 +226,23 @@ register_unpickler(TypeCtorDesc, Unpickle, Unpicklers0, Unpicklers) :-
     Unpicklers = unpicklers(Map).
 
 unpickle_from_file(Unpicklers, FileName, Result, !IO) :-
-    io.see_binary(FileName, SeeResult, !IO),
+    io.open_binary_input(FileName, FileResult, !IO),
     (
-        SeeResult = ok,
-        % Perform unpickling from an intermediate memory buffer, as it seems to
-        % be faster.
-        io.read_binary_file_as_bitmap(ReadResult, !IO),
-        io.seen_binary(!IO),
+        FileResult = ok(FileStream),
+        % Perform unpickling from an intermediate memory buffer,
+        % as it seems to be faster.
+        io.read_binary_file_as_bitmap(FileStream, ReadResult, !IO),
+        io.close_binary_input(FileStream, !IO),
         (
             ReadResult = ok(Bitmap),
-            promise_equivalent_solutions [TryResult] (
-                try((pred(T0::out) is det :-
-                    unpickle(Unpicklers, Bitmap, T0, 0, _State)
-                ), TryResult)
+            promise_equivalent_solutions [TryResult]
+            (
+                try(
+                    ( pred(T0::out) is det :-
+                        unpickle(Unpicklers, Bitmap, T0, 0, _State)
+                    ),
+                    TryResult
+                )
             ),
             (
                 TryResult = succeeded(T),
@@ -255,7 +260,7 @@ unpickle_from_file(Unpicklers, FileName, Result, !IO) :-
             Result = error(Error)
         )
     ;
-        SeeResult = error(Error),
+        FileResult = error(Error),
         Result = error(Error)
     ).
 
@@ -357,20 +362,21 @@ user_defined_unpickler(unpicklers(Unpicklers), TypeCtorDesc, Unpickle) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Basic types picklers/unpicklers
+% Basic types picklers/unpicklers.
 %
 
-:- pred pickle_int32(int::in, io::di, io::uo) is det.
+:- pred pickle_int32(io.binary_output_stream::in, int::in,
+    io::di, io::uo) is det.
 
-pickle_int32(Int, !IO) :-
+pickle_int32(OutputStream, Int, !IO) :-
     A = (Int >> 24) /\ 0xff,
     B = (Int >> 16) /\ 0xff,
     C = (Int >>  8) /\ 0xff,
     D = (Int >>  0) /\ 0xff,
-    io.write_byte(A, !IO),
-    io.write_byte(B, !IO),
-    io.write_byte(C, !IO),
-    io.write_byte(D, !IO).
+    io.write_byte(OutputStream, A, !IO),
+    io.write_byte(OutputStream, B, !IO),
+    io.write_byte(OutputStream, C, !IO),
+    io.write_byte(OutputStream, D, !IO).
 
 :- pred unpickle_int32(unpickle_handle::in, int::out,
     unpickle_state::di, unpickle_state::uo) is det.
@@ -393,12 +399,13 @@ sign_extend_32(X) = R :-
     Mask = 1 `unchecked_left_shift` 31,
     R = (X `xor` Mask) - Mask.
 
-:- pred pickle_char(char::in, io::di, io::uo) is det.
+:- pred pickle_char(io.binary_output_stream::in, char::in,
+    io::di, io::uo) is det.
 
-pickle_char(Char, !IO) :-
+pickle_char(OutputStream, Char, !IO) :-
     % XXX handle non-ASCII characters
     char.to_int(Char, Int),
-    io.write_byte(Int, !IO).
+    io.write_byte(OutputStream, Int, !IO).
 
 :- pred unpickle_char(unpickle_handle::in, char::out,
     unpickle_state::di, unpickle_state::uo) is det.
@@ -407,12 +414,13 @@ unpickle_char(Handle, Char, !State) :-
     get_byte(Handle, Byte, !State),
     char.det_from_int(Byte, Char).
 
-:- pred pickle_string(string::in, io::di, io::uo) is det.
+:- pred pickle_string(io.binary_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-pickle_string(String, !IO) :-
+pickle_string(OutputStream, String, !IO) :-
     Length = string.length(String),
-    pickle_int32(Length, !IO),
-    string.foldl(pickle_char, String, !IO).
+    pickle_int32(OutputStream, Length, !IO),
+    string.foldl(pickle_char(OutputStream), String, !IO).
 
 :- pred unpickle_string(unpickle_handle::in, string::uo,
     unpickle_state::di, unpickle_state::uo) is det.
@@ -465,14 +473,15 @@ allocate_string(_, _) :-
 local_unsafe_set_char(_, _, _, _) :-
     sorry($file, $pred).
 
-:- pred pickle_float(float::in, io::di, io::uo) is det.
+:- pred pickle_float(io.binary_output_stream::in, float::in,
+    io::di, io::uo) is det.
 
-pickle_float(Float, !IO) :-
+pickle_float(OutputStream, Float, !IO) :-
     reinterpret_float_as_ints(Float, A, B),
-    % We always write floats using 64 bits.  Single precision floats are not
+    % We always write floats using 64 bits. Single precision floats are not
     % the default and the compiler hardly uses floats anyhow.
-    pickle_int32(A, !IO),
-    pickle_int32(B, !IO).
+    pickle_int32(OutputStream, A, !IO),
+    pickle_int32(OutputStream, B, !IO).
 
 :- pred reinterpret_float_as_ints(float::in, int::out, int::out) is det.
 :- pragma no_determinism_warning(reinterpret_float_as_ints/3).

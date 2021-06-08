@@ -88,13 +88,16 @@ check_stdlib_is_installed(Globals, GradeDirName, Succeeded, !IO) :-
             Target = target_csharp,
             StdLibCheckFile = StdLibDir / "lib" / GradeDirName / "mer_std.dll"
         ),
-        io.see(StdLibCheckFile, Result, !IO),
+        io.open_input(StdLibCheckFile, StdLibCheckFileResult, !IO),
         (
-            Result = ok,
-            io.seen(!IO),
+            StdLibCheckFileResult = ok(StdLibCheckFileStream),
+            io.close_input(StdLibCheckFileStream, !IO),
             Succeeded = yes
         ;
-            Result = error(_),
+            StdLibCheckFileResult = error(_),
+            % XXX It would be better for our *caller* to print this kind of
+            % message, since it may know a more appropriate target stream
+            % than stderr.
             io.stderr_stream(Stderr, !IO),
             io.progname_base("mercury_compile", ProgName, !IO),
             io.format(Stderr,

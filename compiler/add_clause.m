@@ -64,6 +64,7 @@
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.state_var.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pre_quantification.
 :- import_module hlds.pred_table.
 :- import_module libs.
@@ -305,7 +306,8 @@ add_clause_progress_msg(ModuleInfo, PredInfo, PredOrFunc, PredName,
         PredArity = PredArity0 + ArityAdjustment,
         adjust_func_arity(PredOrFunc, OrigArity, PredArity),
         SNAStr = sym_name_arity_to_string(sym_name_arity(PredName, OrigArity)),
-        io.format("%% Processing clause %d for %s `%s'...\n",
+        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+        io.format(ProgressStream, "%% Processing clause %d for %s `%s'...\n",
             [i(NumClauses + 1), s(PredOrFuncStr), s(SNAStr)], !IO)
     ;
         VeryVerbose = no
@@ -825,35 +827,30 @@ add_clause_transform(Renaming, HeadVars, ArgTerms0, ParseTreeBodyGoal, Context,
             Renaming, BodyGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
 
+        module_info_get_globals(!.ModuleInfo, Globals),
+        module_info_get_name(!.ModuleInfo, ModuleName),
         trace [compiletime(flag("debug-statevar-lambda")), io(!IO)] (
-            io.output_stream(Stream, !IO),
-            io.write_string(Stream, "\nCLAUSE HEAD\n", !IO),
-            io.write_string(Stream, "arg terms before:\n", !IO),
-            list.foldl(io.write_line(Stream), ArgTerms0, !IO),
-            io.write_string(Stream, "arg terms renamed:\n", !IO),
-            list.foldl(io.write_line(Stream), ArgTerms1, !IO),
-            io.write_string(Stream, "arg terms after:\n", !IO),
-            list.foldl(io.write_line(Stream), ArgTerms, !IO),
-            io.write_string(Stream, "head vars:\n", !IO),
-            io.write(Stream, HeadVarList, !IO),
-            io.nl(Stream, !IO),
-            io.write_string(Stream, "arg unifies:\n", !IO),
-            dump_goal(Stream, !.ModuleInfo, !.VarSet, HeadGoal, !IO),
-            io.nl(Stream, !IO),
-            io.write_string(Stream, "clause body:\n", !IO),
-            dump_goal(Stream, !.ModuleInfo, !.VarSet, BodyGoal, !IO),
-            io.nl(Stream, !IO),
-            some [FinalSVarList] (
-                map.to_assoc_list(FinalSVarMap, FinalSVarList),
-                io.write_string(Stream, "FinalSVarMap:\n", !IO),
-                io.write(Stream, FinalSVarList, !IO),
-                io.nl(Stream, !IO)
-            )
+            get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+            io.write_string(DebugStream, "\nCLAUSE HEAD\n", !IO),
+            io.write_string(DebugStream, "arg terms before:\n", !IO),
+            list.foldl(io.write_line(DebugStream), ArgTerms0, !IO),
+            io.write_string(DebugStream, "arg terms renamed:\n", !IO),
+            list.foldl(io.write_line(DebugStream), ArgTerms1, !IO),
+            io.write_string(DebugStream, "arg terms after:\n", !IO),
+            list.foldl(io.write_line(DebugStream), ArgTerms, !IO),
+            io.write_string(DebugStream, "head vars:\n", !IO),
+            io.write_line(DebugStream, HeadVarList, !IO),
+            io.write_string(DebugStream, "arg unifies:\n", !IO),
+            dump_goal_nl(DebugStream, !.ModuleInfo, !.VarSet, HeadGoal, !IO),
+            io.write_string(DebugStream, "clause body:\n", !IO),
+            dump_goal_nl(DebugStream, !.ModuleInfo, !.VarSet, BodyGoal, !IO),
+            map.to_assoc_list(FinalSVarMap, FinalSVarList),
+            io.write_string(DebugStream, "FinalSVarMap:\n", !IO),
+            io.write_line(DebugStream, FinalSVarList, !IO)
         ),
 
         FinalSVarState = !.SVarState,
-        module_info_get_globals(!.ModuleInfo, Globals),
-        svar_finish_clause_body(Globals, Context, FinalSVarMap,
+        svar_finish_clause_body(Globals, ModuleName, Context, FinalSVarMap,
             HeadGoal, BodyGoal, Goal0, InitialSVarState, FinalSVarState,
             !.SVarStore, StateVarWarnings, StateVarErrors),
 

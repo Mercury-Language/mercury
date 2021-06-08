@@ -34,6 +34,7 @@
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.options.
@@ -236,7 +237,9 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PFUMM, PredName,
         trace [io(!IO)] (
             IdStr = pf_sym_name_orig_arity_to_string(PredOrFunc,
                 PredName, PredFormArityInt),
-            io.format("%% Processing `:- pragma %s' for %s...\n",
+            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+            io.format(ProgressStream,
+                "%% Processing `:- pragma %s' for %s...\n",
                 [s(EvalMethodStr), s(IdStr)], !IO)
         )
     ;

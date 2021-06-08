@@ -19,6 +19,7 @@
 :- import_module hlds.make_hlds.goal_expr_to_goal.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
@@ -98,15 +99,15 @@
     % Finish processing a clause. Make the final values of the clause's state
     % vars match the mapping we decided on when processing the head.
     %
-:- pred svar_finish_clause_body(globals::in, prog_context::in,
+:- pred svar_finish_clause_body(globals::in, module_name::in, prog_context::in,
     map(svar, prog_var)::in, hlds_goal::in, hlds_goal::in, hlds_goal::out,
     svar_state::in, svar_state::in, svar_store::in,
     list(error_spec)::out, list(error_spec)::out) is det.
 
     % Finish processing a lambda expression.
     %
-:- pred svar_finish_lambda_body(prog_context::in, map(svar, prog_var)::in,
-    list(hlds_goal)::in, hlds_goal::out,
+:- pred svar_finish_lambda_body(globals::in, module_name::in, prog_context::in,
+    map(svar, prog_var)::in, list(hlds_goal)::in, hlds_goal::out,
     svar_state::in, svar_state::in, svar_store::in, svar_store::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -129,8 +130,8 @@
 
     % Remove some local state variables.
     %
-:- pred svar_finish_local_state_vars(list(svar)::in, svar_state::in,
-    svar_state::in, svar_state::out) is det.
+:- pred svar_finish_local_state_vars(globals::in, module_name::in,
+    list(svar)::in, svar_state::in, svar_state::in, svar_state::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -150,8 +151,8 @@
     % We also add unifiers to the Then arm for any new state variable
     % mappings produced in the condition.
     %
-:- pred svar_finish_if_then_else(loc_kind::in, prog_context::in,
-    list(svar)::in,
+:- pred svar_finish_if_then_else(globals::in, module_name::in,
+    loc_kind::in, prog_context::in, list(svar)::in,
     hlds_goal::in, hlds_goal::out, hlds_goal::in, hlds_goal::out,
     svar_state::in, svar_state::in, svar_state::in, svar_state::in,
     svar_state::out, prog_varset::in, prog_varset::out,
@@ -667,11 +668,12 @@ make_svars_read_only(ROC, Context, [SVar - CurStatus | CurTail], LambdaList) :-
 % Handle the end of processing a clause or lambda expression.
 %
 
-svar_finish_clause_body(Globals, Context, FinalMap, HeadGoal0, BodyGoal0,
-        Goal, InitialSVarState, FinalSVarState, !.SVarStore,
-        WarningSpecs, ErrorSpecs) :-
-    svar_finish_body(Context, FinalMap, [HeadGoal0, BodyGoal0], Goal1,
-        InitialSVarState, FinalSVarState, !SVarStore),
+svar_finish_clause_body(Globals, ModuleName, Context, FinalMap,
+        HeadGoal0, BodyGoal0, Goal, InitialSVarState, FinalSVarState,
+        !.SVarStore, WarningSpecs, ErrorSpecs) :-
+    svar_finish_body(Globals, ModuleName, Context, FinalMap,
+        [HeadGoal0, BodyGoal0], Goal1, InitialSVarState, FinalSVarState,
+        !SVarStore),
     !.SVarStore = svar_store(_, DelayedRenamings, Specs),
     list.filter(severity_is_error(Globals), Specs, ErrorSpecs, WarningSpecs),
     ( if
@@ -681,16 +683,16 @@ svar_finish_clause_body(Globals, Context, FinalMap, HeadGoal0, BodyGoal0,
         Goal = Goal1
     else
         trace [compiletime(flag("state-var-lambda")), io(!IO)] (
-            some [FinalList, DelayedList] (
-                map.to_assoc_list(FinalMap, FinalList),
-                map.to_assoc_list(DelayedRenamings, DelayedList),
-                io.write_string("\nFINISH CLAUSE BODY in context ", !IO),
-                io.write_line(Context, !IO),
-                io.write_string("applying subn\n", !IO),
-                io.write_line(FinalList, !IO),
-                io.write_string("with incremental subn\n", !IO),
-                io.write_line(DelayedList, !IO)
-            )
+            get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+            map.to_assoc_list(FinalMap, FinalList),
+            map.to_assoc_list(DelayedRenamings, DelayedList),
+            io.write_string(DebugStream,
+                "\nFINISH CLAUSE BODY in context ", !IO),
+            io.write_line(DebugStream, Context, !IO),
+            io.write_string(DebugStream, "applying subn\n", !IO),
+            io.write_line(DebugStream, FinalList, !IO),
+            io.write_string(DebugStream, "with incremental subn\n", !IO),
+            io.write_line(DebugStream, DelayedList, !IO)
         ),
         incremental_rename_vars_in_goal(map.init, DelayedRenamings,
             Goal1, Goal2),
@@ -762,16 +764,16 @@ svar_finish_clause_body(Globals, Context, FinalMap, HeadGoal0, BodyGoal0,
         delete_unneeded_copy_goals(Goal2, Goal, SeenLater0, _SeenLater)
     ).
 
-svar_finish_lambda_body(Context, FinalMap, Goals0, Goal,
+svar_finish_lambda_body(Globals, ModuleName, Context, FinalMap, Goals0, Goal,
         InitialSVarState, FinalSVarState, !SVarStore) :-
-    svar_finish_body(Context, FinalMap, Goals0, Goal,
+    svar_finish_body(Globals, ModuleName, Context, FinalMap, Goals0, Goal,
         InitialSVarState, FinalSVarState, !SVarStore).
 
-:- pred svar_finish_body(prog_context::in, map(svar, prog_var)::in,
-    list(hlds_goal)::in, hlds_goal::out,
+:- pred svar_finish_body(globals::in, module_name::in, prog_context::in,
+    map(svar, prog_var)::in, list(hlds_goal)::in, hlds_goal::out,
     svar_state::in, svar_state::in, svar_store::in, svar_store::out) is det.
 
-svar_finish_body(Context, FinalMap, Goals0, Goal,
+svar_finish_body(Globals, ModuleName, Context, FinalMap, Goals0, Goal,
         InitialSVarState, FinalSVarState, !Store) :-
     map.to_assoc_list(FinalMap, FinalAssocList),
     InitialSVarState = svar_state(InitialSVarStatusMap),
@@ -793,11 +795,13 @@ svar_finish_body(Context, FinalMap, Goals0, Goal,
     !.Store = svar_store(NextGoalId1, DelayedRenamingMap1, Specs),
     ( if map.search(DelayedRenamingMap1, GoalId1, DelayedRenaming0) then
         trace [compiletime(flag("state-var-lambda")), io(!IO)] (
-            io.write_string("\nfinishing body, ", !IO),
-            io.write_string("attaching subn to existing goal_id ", !IO),
-            io.write_line(GoalId1, !IO),
-            io.write_string("subn is ", !IO),
-            io.write_line(FinalSVarSubn, !IO)
+            get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+            io.write_string(DebugStream, "\nfinishing body, ", !IO),
+            io.write_string(DebugStream,
+                "attaching subn to existing goal_id ", !IO),
+            io.write_line(DebugStream, GoalId1, !IO),
+            io.write_string(DebugStream, "subn is ", !IO),
+            io.write_line(DebugStream, FinalSVarSubn, !IO)
         ),
 
         map.det_update(GoalId1, DelayedRenaming0 ++ FinalSVarSubn,
@@ -816,11 +820,13 @@ svar_finish_body(Context, FinalMap, Goals0, Goal,
             GoalId = goal_id(GoalIdNum),
 
             trace [compiletime(flag("state-var-lambda")), io(!IO)] (
-                io.write_string("\nfinishing body, ", !IO),
-                io.write_string("attaching subn to new goal_id ", !IO),
-                io.write_line(GoalId, !IO),
-                io.write_string("subn is ", !IO),
-                io.write_line(FinalSVarSubn, !IO)
+                get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+                io.write_string(DebugStream, "\nfinishing body, ", !IO),
+                io.write_string(DebugStream,
+                    "attaching subn to new goal_id ", !IO),
+                io.write_line(DebugStream, GoalId, !IO),
+                io.write_string(DebugStream, "subn is ", !IO),
+                io.write_line(DebugStream, FinalSVarSubn, !IO)
             ),
 
             map.det_insert(GoalId, FinalSVarSubn,
@@ -934,20 +940,21 @@ prepare_svars_for_scope(Context, VarSet, [SVar | SVars],
     ),
     prepare_svars_for_scope(Context, VarSet, SVars, !StatusMap, !Specs).
 
-svar_finish_local_state_vars(StateVars, StateBeforeOutside, StateAfterInside,
-        StateAfterOutside) :-
+svar_finish_local_state_vars(Globals, ModuleName, StateVars,
+        StateBeforeOutside, StateAfterInside, StateAfterOutside) :-
     StateBeforeOutside = svar_state(StatusMapBeforeOutside),
     StateAfterInside = svar_state(StatusMapAfterInside),
     trace [compiletime(flag("state-var-scope")), io(!IO)] (
+        get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
         map.to_assoc_list(StatusMapBeforeOutside, BeforeOutsideStatuses),
         map.to_assoc_list(StatusMapAfterInside, AfterInsideStatuses),
-        io.write_string("Finish of scope\n", !IO),
-        io.write_string("quantified state vars\n", !IO),
-        io.write_line(StateVars, !IO),
-        io.write_string("status before outside\n", !IO),
-        list.foldl(io.write_line, BeforeOutsideStatuses, !IO),
-        io.write_string("status after inside\n", !IO),
-        list.foldl(io.write_line, AfterInsideStatuses, !IO)
+        io.write_string(DebugStream, "Finish of scope\n", !IO),
+        io.write_string(DebugStream, "quantified state vars\n", !IO),
+        io.write_line(DebugStream, StateVars, !IO),
+        io.write_string(DebugStream, "status before outside\n", !IO),
+        list.foldl(io.write_line(DebugStream), BeforeOutsideStatuses, !IO),
+        io.write_string(DebugStream, "status after inside\n", !IO),
+        list.foldl(io.write_line(DebugStream), AfterInsideStatuses, !IO)
     ),
     % Remove access to the state vars introduced in the scope.
     % Leave the status of all other state vars unaffected.
@@ -1252,7 +1259,7 @@ make_copy_goal(FromVar, ToVar, CopyGoal) :-
 % unknown_updated in any of the status maps we handle.
 %
 
-svar_finish_if_then_else(LocKind, Context, QuantStateVars,
+svar_finish_if_then_else(Globals, ModuleName, LocKind, Context, QuantStateVars,
         ThenGoal0, ThenGoal, ElseGoal0, ElseGoal,
         StateBefore, StateAfterCond, StateAfterThen, StateAfterElse,
         StateAfterITE, !VarSet, !Store, !Specs) :-
@@ -1271,7 +1278,7 @@ svar_finish_if_then_else(LocKind, Context, QuantStateVars,
     expect(unify(SVarsBefore, SVarsAfterElse), $pred,
         "vars Before != AfterElse"),
 
-    handle_state_vars_in_ite(LocKind, QuantStateVars,
+    handle_state_vars_in_ite(Globals, ModuleName, LocKind, QuantStateVars,
         SVarsBefore, StatusMapBefore, StatusMapAfterCond,
         StatusMapAfterThen, StatusMapAfterElse,
         map.init, StatusMapAfterITE, !VarSet,
@@ -1324,7 +1331,8 @@ svar_finish_if_then_else(LocKind, Context, QuantStateVars,
         DelayedRenamings1, DelayedRenamings),
     !:Store = svar_store(NextGoalId, DelayedRenamings, Specs).
 
-:- pred handle_state_vars_in_ite(loc_kind::in, list(svar)::in, list(svar)::in,
+:- pred handle_state_vars_in_ite(globals::in, module_name::in,
+    loc_kind::in, list(svar)::in, list(svar)::in,
     map(svar, svar_status)::in, map(svar, svar_status)::in,
     map(svar, svar_status)::in, map(svar, svar_status)::in,
     map(svar, svar_status)::in, map(svar, svar_status)::out,
@@ -1337,12 +1345,12 @@ svar_finish_if_then_else(LocKind, Context, QuantStateVars,
     list(string)::in, list(string)::out, list(string)::in, list(string)::out)
     is det.
 
-handle_state_vars_in_ite(_, _, [], _, _, _, _, !StatusMapAfterITE,
+handle_state_vars_in_ite(_, _, _, _, [], _, _, _, _, !StatusMapAfterITE,
         !VarSet, !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
         !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits).
-handle_state_vars_in_ite(LocKind, QuantStateVars, [SVar | SVars],
-        StatusMapBefore, StatusMapAfterCond, StatusMapAfterThen,
-        StatusMapAfterElse, !StatusMapAfterITE,
+handle_state_vars_in_ite(Globals, ModuleName, LocKind, QuantStateVars,
+        [SVar | SVars], StatusMapBefore, StatusMapAfterCond,
+        StatusMapAfterThen, StatusMapAfterElse, !StatusMapAfterITE,
         !VarSet, !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
         !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits) :-
     map.lookup(StatusMapBefore, SVar, StatusBefore),
@@ -1359,8 +1367,9 @@ handle_state_vars_in_ite(LocKind, QuantStateVars, [SVar | SVars],
         % Then will thus be unchanged. This is why we pass StatusBefore
         % not just for itself, but in place of StatusAfterCond and
         % StatusAfterThen as well.
-        handle_state_var_in_ite(LocKind, SVar, StatusBefore,
-            StatusBefore, StatusBefore, StatusAfterElse, StatusAfterITE,
+        handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar,
+            StatusBefore, StatusBefore, StatusBefore,
+            StatusAfterElse, StatusAfterITE,
             !VarSet, !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
             !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits)
     else
@@ -1372,19 +1381,21 @@ handle_state_vars_in_ite(LocKind, QuantStateVars, [SVar | SVars],
         % that should be readonly in this scope, then our recovery from that
         % error would invalidate these expectations.
 
-        handle_state_var_in_ite(LocKind, SVar, StatusBefore,
-            StatusAfterCond, StatusAfterThen, StatusAfterElse, StatusAfterITE,
+        handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar,
+            StatusBefore, StatusAfterCond, StatusAfterThen,
+            StatusAfterElse, StatusAfterITE,
             !VarSet, !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
             !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits)
     ),
     map.det_insert(SVar, StatusAfterITE, !StatusMapAfterITE),
-    handle_state_vars_in_ite(LocKind, QuantStateVars, SVars,
-        StatusMapBefore, StatusMapAfterCond, StatusMapAfterThen,
-        StatusMapAfterElse, !StatusMapAfterITE,
+    handle_state_vars_in_ite(Globals, ModuleName, LocKind,
+        QuantStateVars, SVars, StatusMapBefore, StatusMapAfterCond,
+        StatusMapAfterThen, StatusMapAfterElse, !StatusMapAfterITE,
         !VarSet, !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
         !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits).
 
-:- pred handle_state_var_in_ite(loc_kind::in, svar::in,
+:- pred handle_state_var_in_ite(globals::in, module_name::in,
+    loc_kind::in, svar::in,
     svar_status::in, svar_status::in, svar_status::in, svar_status::in,
     svar_status::out, prog_varset::in, prog_varset::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
@@ -1395,7 +1406,7 @@ handle_state_vars_in_ite(LocKind, QuantStateVars, [SVar | SVars],
     list(string)::in, list(string)::out, list(string)::in, list(string)::out)
     is det.
 
-handle_state_var_in_ite(LocKind, SVar, StatusBefore,
+handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar, StatusBefore,
         StatusAfterCond, StatusAfterThen, StatusAfterElse, StatusAfterITE,
         !VarSet, !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
         !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits) :-
@@ -1413,16 +1424,17 @@ handle_state_var_in_ite(LocKind, SVar, StatusBefore,
     % 8 yes  yes  yes   rename else to match then
 
     trace [compiletime(flag("state-var-ite")), io(!IO)] (
-        io.write_string("state variable ", !IO),
-        io.write_line(SVar, !IO),
-        io.write_string("status before: ", !IO),
-        io.write_line(StatusBefore, !IO),
-        io.write_string("status after cond: ", !IO),
-        io.write_line(StatusAfterCond, !IO),
-        io.write_string("status after then: ", !IO),
-        io.write_line(StatusAfterThen, !IO),
-        io.write_string("status after else: ", !IO),
-        io.write_line(StatusAfterElse, !IO)
+        get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+        io.write_string(DebugStream, "state variable ", !IO),
+        io.write_line(DebugStream, SVar, !IO),
+        io.write_string(DebugStream, "status before: ", !IO),
+        io.write_line(DebugStream, StatusBefore, !IO),
+        io.write_string(DebugStream, "status after cond: ", !IO),
+        io.write_line(DebugStream, StatusAfterCond, !IO),
+        io.write_string(DebugStream, "status after then: ", !IO),
+        io.write_line(DebugStream, StatusAfterThen, !IO),
+        io.write_string(DebugStream, "status after else: ", !IO),
+        io.write_line(DebugStream, StatusAfterElse, !IO)
     ),
 
     ( if StatusAfterCond = StatusBefore then

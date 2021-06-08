@@ -126,7 +126,9 @@
 
 :- implementation.
 
+:- import_module list.
 :- import_module require.   % Required by non-C grades.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -140,9 +142,14 @@ build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,
         Succeeded = no,
         (
             VeryVerbose = yes,
-            io.write_string("** Received signal ", !IO),
-            io.write_int(Signal, !IO),
-            io.write_string(", cleaning up.\n", !IO)
+            % XXX This is the best that we can do for a signal
+            % that is not associated with any particular make worker.
+            % Ideally, signals that we catch *during* the execution
+            % of a worker task should be reported to the error stream
+            % of the module that the worker task was working on.
+            io.stderr_stream(StdErr, !IO),
+            io.format(StdErr, "** Received signal %d, cleaning up.\n",
+                [i(Signal)], !IO)
         ;
             VeryVerbose = no
         ),

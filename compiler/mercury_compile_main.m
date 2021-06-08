@@ -462,7 +462,8 @@ maybe_dump_options_file(ArgsGlobals, Variables, !IO) :-
         DumpOptionsFile = no
     ;
         DumpOptionsFile = yes,
-        dump_options_file(Variables, !IO)
+        io.stderr_stream(StdErr, !IO),
+        dump_options_file(StdErr, Variables, !IO)
     ).
 
 %---------------------%

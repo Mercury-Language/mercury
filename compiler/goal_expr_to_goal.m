@@ -57,6 +57,7 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -728,12 +729,14 @@ transform_parse_tree_goal_to_hlds_ite(LocKind, Goal, Renaming, HLDSGoal,
     transform_parse_tree_goal_to_hlds(LocKind, Then, Renaming, HLDSThen0,
         AfterCondSVarState, AfterThenSVarState0, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs),
-    svar_finish_local_state_vars(StateVars, BeforeSVarState,
-        AfterThenSVarState0, AfterThenSVarState),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    module_info_get_name(!.ModuleInfo, ModuleName),
+    svar_finish_local_state_vars(Globals, ModuleName, StateVars,
+        BeforeSVarState, AfterThenSVarState0, AfterThenSVarState),
     transform_parse_tree_goal_to_hlds(LocKind, Else, Renaming, HLDSElse0,
         BeforeSVarState, AfterElseSVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs),
-    svar_finish_if_then_else(LocKind, Context, StateVars,
+    svar_finish_if_then_else(Globals, ModuleName, LocKind, Context, StateVars,
         HLDSThen0, HLDSThen, HLDSElse0, HLDSElse,
         BeforeSVarState, AfterCondSVarState, AfterThenSVarState,
         AfterElseSVarState, !:SVarState, !VarSet, !SVarStore, !Specs),
@@ -846,8 +849,11 @@ transform_parse_tree_goal_to_hlds_quant(LocKind, Goal, Renaming, HLDSGoal,
             transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
                 HLDSSubGoal, BeforeInsideSVarState, AfterInsideSVarState,
                 !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-            svar_finish_local_state_vars(StateVars, BeforeOutsideSVarState,
-                AfterInsideSVarState, AfterOutsideSVarState),
+            module_info_get_globals(!.ModuleInfo, Globals),
+            module_info_get_name(!.ModuleInfo, ModuleName),
+            svar_finish_local_state_vars(Globals, ModuleName, StateVars,
+                BeforeOutsideSVarState, AfterInsideSVarState,
+                AfterOutsideSVarState),
             !:SVarState = AfterOutsideSVarState,
             Reason = exist_quant([])
         ),
@@ -1297,13 +1303,12 @@ transform_parse_tree_goal_to_hlds_atomic(LocKind, Goal, Renaming, HLDSGoal,
     goal_info_init(Context, GoalInfo),
     HLDSGoal = hlds_goal(GoalExpr, GoalInfo),
     trace [compiletime(flag("atomic_scope_syntax")), io(!IO)] (
-        io.output_stream(Stream, !IO),
-        io.write_string(Stream, "atomic:\n", !IO),
+        get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
         module_info_get_globals(!.ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals, output_debug),
-        write_goal(OutInfo, Stream, !.ModuleInfo, !.VarSet, print_name_and_num,
-            0, "\n", HLDSGoal, !IO),
-        io.nl(!IO)
+        io.write_string(DebugStream, "atomic:\n", !IO),
+        write_goal_nl(OutInfo, DebugStream, !.ModuleInfo, !.VarSet,
+            print_name_and_num, 0, "\n", HLDSGoal, !IO)
     ).
 
 :- pred transform_orelse_goals(loc_kind::in, list(goal)::in,
@@ -1415,8 +1420,10 @@ transform_parse_tree_goal_to_hlds_trace(LocKind, Goal, Renaming, HLDSGoal,
     transform_parse_tree_goal_to_hlds(LocKind, SubGoal1, Renaming,
         HLDSSubGoal, BeforeInsideSVarState, AfterInsideSVarState,
         !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-    svar_finish_local_state_vars(StateVars, BeforeSVarState,
-        AfterInsideSVarState, AfterSVarState),
+    module_info_get_globals(!.ModuleInfo, Globals),
+    module_info_get_name(!.ModuleInfo, ModuleName),
+    svar_finish_local_state_vars(Globals, ModuleName, StateVars,
+        BeforeSVarState, AfterInsideSVarState, AfterSVarState),
     !:SVarState = AfterSVarState,
     qual_info_set_found_trace_goal(yes, !QualInfo),
     % The QuantVars field is a lie, but a white lie.

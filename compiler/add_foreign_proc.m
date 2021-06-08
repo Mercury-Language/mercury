@@ -36,6 +36,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.make_hlds_warn.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
@@ -86,7 +87,9 @@ add_pragma_foreign_proc(PredStatus, PragmaFPInfo, !ModuleInfo, !Specs) :-
         VeryVerbose = yes,
         trace [io(!IO)] (
             IdStr = pf_sym_name_orig_arity_to_string(PFSymNameArity),
-            io.format("%% Processing `:- pragma foreign_proc' for %s...\n",
+            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
+            io.format(ProgressStream,
+                "%% Processing `:- pragma foreign_proc' for %s...\n",
                 [s(IdStr)], !IO)
         )
     ;

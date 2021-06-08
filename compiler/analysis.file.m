@@ -370,8 +370,10 @@ read_module_analysis_results_2(Compiler, AnalysisFileName, ModuleResults,
 
         check_analysis_file_version_number(Stream, !IO),
         promise_equivalent_solutions [Results, !:IO] (
-            try_io(read_analysis_file_2(Stream, parse_result_entry(Compiler),
-                ModuleResults0), Results, !IO)
+            try_io(
+                read_analysis_file_2(Stream, parse_result_entry(Compiler),
+                    ModuleResults0),
+                Results, !IO)
         ),
         io.close_input(Stream, !IO),
         (
@@ -450,8 +452,8 @@ write_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
     update_interface_return_changed(Globals, ModuleName, FileName,
         UpdateResult, !IO),
 
-    % If analysis file caching is turned on, write the internal represention of
-    % the module results to disk right now.
+    % If analysis file caching is turned on, write the internal represention
+    % of the module results to disk right now.
     globals.lookup_string_option(Globals, analysis_file_cache_dir, CacheDir),
     ( if
         CacheDir \= "",
@@ -947,25 +949,22 @@ write_analysis_cache_file(CacheFileName, ModuleResults, !IO) :-
     % Write to a temporary file first, and only move it into place
     % once it is complete.
     TmpFileName = CacheFileName ++ ".tmp",
-    io.tell_binary(TmpFileName, TellRes, !IO),
+    io.open_binary_output(TmpFileName, TmpFileResult, !IO),
     (
-        TellRes = ok,
-        pickle(init_analysis_picklers, ModuleResults, !IO),
-        io.told_binary(!IO),
+        TmpFileResult = ok(TmpFileStream),
+        pickle(TmpFileStream, init_analysis_picklers, ModuleResults, !IO),
+        io.close_binary_output(TmpFileStream, !IO),
         io.rename_file(TmpFileName, CacheFileName, RenameRes, !IO),
         (
             RenameRes = ok
         ;
             RenameRes = error(Error),
-            io.write_string("Error renaming ", !IO),
-            io.write_string(CacheFileName, !IO),
-            io.write_string(": ", !IO),
-            io.write_string(io.error_message(Error), !IO),
-            io.nl(!IO),
+            io.format("Error renaming %s: %s\n",
+                [s(CacheFileName), s(io.error_message(Error))], !IO),
             io.remove_file(TmpFileName, _, !IO)
         )
     ;
-        TellRes = error(Error),
+        TmpFileResult = error(Error),
         unexpected($pred, io.error_message(Error))
     ).
 
@@ -980,15 +979,16 @@ init_analysis_picklers = Pickles :-
         Pickles = !.Pickles
     ).
 
-:- pred pickle_analysis_result(picklers::in, univ::in, io::di, io::uo) is det.
+:- pred pickle_analysis_result(io.binary_output_stream::in, picklers::in,
+    univ::in, io::di, io::uo) is det.
 
-pickle_analysis_result(Pickles, Univ, !IO) :-
+pickle_analysis_result(OutputStream, Pickles, Univ, !IO) :-
     det_univ_to_type(Univ, some_analysis_result(Call, Answer, Status)),
     Name = analysis_name(Call, Answer),
-    pickle(Pickles, Name, !IO),
-    pickle(Pickles, Call, !IO),
-    pickle(Pickles, Answer, !IO),
-    pickle(Pickles, Status, !IO).
+    pickle(OutputStream, Pickles, Name, !IO),
+    pickle(OutputStream, Pickles, Call, !IO),
+    pickle(OutputStream, Pickles, Answer, !IO),
+    pickle(OutputStream, Pickles, Status, !IO).
 
 :- func init_analysis_unpicklers(Compiler) = unpicklers
     <= compiler(Compiler).

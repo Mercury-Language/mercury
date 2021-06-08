@@ -65,6 +65,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.dependency_graph.
@@ -615,7 +616,8 @@ deep_prof_maybe_transform_proc(ModuleInfo, PredId, ProcId, !ProcTable) :-
             module_info_get_globals(ModuleInfo, Globals),
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             ProcName = pred_proc_id_pair_to_string(ModuleInfo, PredId, ProcId),
-            maybe_write_string(VeryVerbose,
+            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+            maybe_write_string(ProgressStream, VeryVerbose,
                 string.format("%% Deep profiling: %s\n", [s(ProcName)]), !IO)
         ),
         deep_prof_transform_proc(ModuleInfo, proc(PredId, ProcId),

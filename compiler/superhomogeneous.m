@@ -141,6 +141,7 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.goal_expr_to_goal.
+:- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.globals.  % for get_maybe_from_ground_term_threshold
 :- import_module libs.options.  % for warn_suspected_occurs_check_failure
@@ -1122,8 +1123,11 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                 expansion_to_goal_wrap_if_fgti(ThenGoalInfo,
                     ThenExpansion, ThenGoal0),
 
-                svar_finish_local_state_vars(StateVars, BeforeSVarState,
-                    AfterThenInsideSVarState, AfterThenSVarState),
+                module_info_get_globals(!.ModuleInfo, Globals),
+                module_info_get_name(!.ModuleInfo, ModuleName),
+                svar_finish_local_state_vars(Globals, ModuleName, StateVars,
+                    BeforeSVarState, AfterThenInsideSVarState,
+                    AfterThenSVarState),
 
                 substitute_state_var_mapping(ElseTerm0, ElseTerm, !VarSet,
                     BeforeSVarState, AfterElseSVarState0, !Specs),
@@ -1136,8 +1140,9 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                 expansion_to_goal_wrap_if_fgti(ElseGoalInfo,
                     ElseExpansion, ElseGoal0),
 
-                svar_finish_if_then_else(loc_inside_atomic_goal, Context,
-                    StateVars, ThenGoal0, ThenGoal, ElseGoal0, ElseGoal,
+                svar_finish_if_then_else(Globals, ModuleName,
+                    loc_inside_atomic_goal, Context, StateVars,
+                    ThenGoal0, ThenGoal, ElseGoal0, ElseGoal,
                     BeforeSVarState, AfterCondInsideSVarState,
                     AfterThenSVarState, AfterElseSVarState,
                     AfterITESVarState, !VarSet, !SVarStore, !Specs),
@@ -2098,35 +2103,34 @@ build_lambda_expression(LHSVar, UnificationPurity,
             LambdaVars = list.map(project_lambda_var, LambdaArgs1),
 
             trace [compiletime(flag("debug-statevar-lambda")), io(!IO)] (
-                io.output_stream(Stream, !IO),
-                io.write_string(Stream, "\nLAMBDA EXPRESSION\n", !IO),
-                io.write_string(Stream, "arg terms before:\n", !IO),
-                list.foldl(io.write_line(Stream), ArgTerms1, !IO),
-                io.write_string("arg terms after:\n", !IO),
-                list.foldl(io.write_line(Stream), ArgTerms, !IO),
-                io.write_string(Stream, "lambda arg vars:\n", !IO),
-                io.write(Stream, LambdaVars, !IO),
-                io.nl(Stream, !IO),
-                io.write_string(Stream, "lambda arg unifies before:\n", !IO),
-                dump_goal(Stream, !.ModuleInfo, !.VarSet, HeadBefore, !IO),
-                io.nl(Stream, !IO),
-                io.write_string(Stream, "lambda body:\n", !IO),
-                dump_goal(Stream, !.ModuleInfo, !.VarSet, Body, !IO),
-                io.nl(Stream, !IO),
-                io.write_string(Stream, "lambda arg unifies after:\n", !IO),
-                dump_goal(Stream, !.ModuleInfo, !.VarSet, HeadAfter, !IO),
-                io.nl(Stream, !IO),
-                some [FinalSVarList] (
-                    map.to_assoc_list(FinalSVarMap, FinalSVarList),
-                    io.write_string(Stream, "FinalSVarMap:\n", !IO),
-                    io.write(Stream, FinalSVarList, !IO),
-                    io.nl(Stream, !IO)
-                )
+                get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
+                io.write_string(DebugStream, "\nLAMBDA EXPRESSION\n", !IO),
+                io.write_string(DebugStream, "arg terms before:\n", !IO),
+                list.foldl(io.write_line(DebugStream), ArgTerms1, !IO),
+                io.write_string(DebugStream, "arg terms after:\n", !IO),
+                list.foldl(io.write_line(DebugStream), ArgTerms, !IO),
+                io.write_string(DebugStream, "lambda arg vars:\n", !IO),
+                io.write_line(DebugStream, LambdaVars, !IO),
+                io.write_string(DebugStream,
+                    "lambda arg unifies before:\n", !IO),
+                dump_goal_nl(DebugStream, !.ModuleInfo, !.VarSet,
+                    HeadBefore, !IO),
+                io.write_string(DebugStream, "lambda body:\n", !IO),
+                dump_goal_nl(DebugStream, !.ModuleInfo, !.VarSet, Body, !IO),
+                io.write_string(DebugStream,
+                    "lambda arg unifies after:\n", !IO),
+                dump_goal_nl(DebugStream, !.ModuleInfo, !.VarSet,
+                    HeadAfter, !IO),
+                map.to_assoc_list(FinalSVarMap, FinalSVarList),
+                io.write_string(DebugStream, "FinalSVarMap:\n", !IO),
+                io.write_line(DebugStream, FinalSVarList, !IO)
             ),
 
             % Fix up any state variable unifications.
             FinalSVarState = !.SVarState,
-            svar_finish_lambda_body(Context, FinalSVarMap,
+            module_info_get_globals(!.ModuleInfo, Globals),
+            module_info_get_name(!.ModuleInfo, ModuleName),
+            svar_finish_lambda_body(Globals, ModuleName, Context, FinalSVarMap,
                 [HeadBefore, Body, HeadAfter], HLDS_Goal0,
                 InitialSVarState, FinalSVarState, !SVarStore),
 
