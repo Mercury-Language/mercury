@@ -83,6 +83,7 @@
 :- import_module digraph.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -125,7 +126,8 @@ build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
     parse_tree_src_to_module_and_imports_list(Globals, FileNameDotM,
         ParseTreeSrc, ReadModuleErrors, Specs0, Specs,
         _RawCompUnits, ModuleAndImportsList),
-    write_error_specs_ignore(Globals, Specs, !IO),
+    get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+    write_error_specs_ignore(ErrorStream, Globals, Specs, !IO),
     map.init(DepsMap0),
     list.foldl(insert_into_deps_map, ModuleAndImportsList, DepsMap0, DepsMap).
 
@@ -148,15 +150,16 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
     module_and_imports_get_errors(ModuleAndImports, Errors),
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_non_empty(FatalErrors) then
-        ModuleString = sym_name_to_string(ModuleName),
+        ModuleNameStr = sym_name_to_string(ModuleName),
         ( if set.contains(FatalErrors, rme_could_not_open_file) then
-            string.append_list(["cannot read source file for module `",
-                ModuleString, "'."], Message)
+            string.format("cannot read source file for module `%s'.",
+                [s(ModuleNameStr)], Message)
         else
-            string.append_list(["cannot parse source file for module `",
-                ModuleString, "'."], Message)
+            string.format("cannot parse source file for module `%s'.\n",
+                [s(ModuleNameStr)], Message)
         ),
-        report_error(Message, !IO)
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+        report_error(ErrorStream, Message, !IO)
     else
         (
             Mode = output_d_file_only
@@ -199,9 +202,9 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
             io(!TIO)]
         (
             digraph.to_assoc_list(ImpDepsGraph, ImpDepsAL),
-            io.print("ImpDepsAL:\n", !TIO),
-            io.write_list(ImpDepsAL, "\n", print, !TIO),
-            io.nl(!TIO)
+            get_debug_output_stream(Globals, ModuleName, DebugStream, !TIO),
+            io.write_string(DebugStream, "ImpDepsAL:\n", !TIO),
+            list.foldl(io.write_line(DebugStream), ImpDepsAL, !TIO)
         ),
 
         % Compute the indirect dependencies: they are equal to the composition
@@ -286,38 +289,55 @@ lookup_module_and_imports_in_deps_map(DepsMap, ModuleName)
 :- pred maybe_output_imports_graph(globals::in, module_name::in,
     digraph(sym_name)::in, digraph(sym_name)::in, io::di, io::uo) is det.
 
-maybe_output_imports_graph(Globals, Module, IntDepsGraph, ImpDepsGraph,
+maybe_output_imports_graph(Globals, ModuleName, IntDepsGraph, ImpDepsGraph,
         !IO) :-
     globals.lookup_bool_option(Globals, imports_graph, ImportsGraph),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         ImportsGraph = yes,
         module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".imports_graph")), Module, FileName, !IO),
-        maybe_write_string(Verbose, "% Creating imports graph file `", !IO),
-        maybe_write_string(Verbose, FileName, !IO),
-        maybe_write_string(Verbose, "'...", !IO),
+            ext_other(other_ext(".imports_graph")), ModuleName, FileName, !IO),
+        (
+            Verbose = no,
+            MaybeProgressStream = no
+        ;
+            Verbose = yes,
+            get_progress_output_stream(Globals, ModuleName,
+                ProgressStream0, !IO),
+            io.format(ProgressStream0,
+                "%% Creating imports graph file `%s'...",
+                [s(FileName)], !IO),
+            MaybeProgressStream = yes(ProgressStream0)
+        ),
         io.open_output(FileName, ImpResult, !IO),
         (
             ImpResult = ok(ImpStream),
-
             Deps0 = list.foldl(filter_imports_graph,
                 digraph.to_assoc_list(IntDepsGraph), digraph.init),
             Deps = list.foldl(filter_imports_graph,
                 digraph.to_assoc_list(ImpDepsGraph), Deps0),
-
             write_graph(ImpStream, "imports", sym_name_to_node_id, Deps, !IO),
-
             io.close_output(ImpStream, !IO),
-            maybe_write_string(Verbose, " done.\n", !IO)
+            (
+                MaybeProgressStream = no
+            ;
+                MaybeProgressStream = yes(ProgressStream),
+                io.write_string(ProgressStream, " done.\n", !IO)
+            )
         ;
             ImpResult = error(IOError),
-            maybe_write_string(Verbose, " failed.\n", !IO),
-            maybe_flush_output(Verbose, !IO),
+            (
+                MaybeProgressStream = no
+            ;
+                MaybeProgressStream = yes(ProgressStream),
+                io.write_string(ProgressStream, " failed.\n", !IO),
+                io.flush_output(ProgressStream, !IO)
+            ),
+            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
             io.error_message(IOError, IOErrorMessage),
-            string.append_list(["error opening file `", FileName,
-                "' for output: ", IOErrorMessage], ImpMessage),
-            report_error(ImpMessage, !IO)
+            string.format("error opening file `%s' for output: %s\n",
+                [s(FileName), s(IOErrorMessage)], ImpMessage),
+            report_error(ErrorStream, ImpMessage, !IO)
         )
     ;
         ImportsGraph = no

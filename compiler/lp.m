@@ -315,10 +315,11 @@ simplify_eq(eqn(Coeffs0, Op, Const), eqn(Coeffs, Op, Const)) :-
 
 simplify_coeffs(Coeffs0, Coeffs) :-
     map.init(CoeffMap0),
-    AddCoeff = (pred(Pair::in, Map0::in, Map::out) is det :-
-        Pair = Var - Coeff,
-        add_var(Var, Coeff, Map0, Map)
-    ),
+    AddCoeff =
+        ( pred(Pair::in, Map0::in, Map::out) is det :-
+            Pair = Var - Coeff,
+            add_var(Var, Coeff, Map0, Map)
+        ),
     list.foldl(AddCoeff, Coeffs0, CoeffMap0, CoeffMap),
     map.to_assoc_list(CoeffMap, Coeffs).
 
@@ -365,17 +366,18 @@ expand_urs_vars([Var - Coeff | Rest], Vars, !Coeffs) :-
 :- pred collect_vars(equations::in, objective::in, set(var)::out) is det.
 
 collect_vars(Eqns, Obj, Vars) :-
-    GetVar = (pred(Var::out) is nondet :-
-        (
-            list.member(Eqn, Eqns),
-            Eqn = eqn(Coeffs, _, _),
-            list.member(Pair, Coeffs),
-            Pair = Var - _
-        ;
-            list.member(Pair, Obj),
-            Pair = Var - _
-        )
-    ),
+    GetVar =
+        ( pred(Var::out) is nondet :-
+            (
+                list.member(Eqn, Eqns),
+                Eqn = eqn(Coeffs, _, _),
+                list.member(Pair, Coeffs),
+                Pair = Var - _
+            ;
+                list.member(Pair, Obj),
+                Pair = Var - _
+            )
+        ),
     solutions.solutions(GetVar, VarList),
     set.list_to_set(VarList, Vars).
 
@@ -449,12 +451,13 @@ extract_obj_var(Tab, Var, !Map) :-
 
 extract_obj_var2(Tab, Var, Val) :-
     var_col(Tab, Var, Col),
-    GetCell = (pred(Val0::out) is nondet :-
-        all_rows(Tab, Row),
-        index(Tab, Row, Col, 1.0),
-        rhs_col(Tab, RHS),
-        index(Tab, Row, RHS, Val0)
-    ),
+    GetCell =
+        ( pred(Val0::out) is nondet :-
+            all_rows(Tab, Row),
+            index(Tab, Row, Col, 1.0),
+            rhs_col(Tab, RHS),
+            index(Tab, Row, RHS, Val0)
+        ),
     solutions.solutions(GetCell, Solns),
     ( if Solns = [Val1] then
         Val = Val1
@@ -466,25 +469,26 @@ extract_obj_var2(Tab, Var, Val) :-
 
 simplex(A0, A, Result) :-
     AllColumns = all_cols(A0),
-    MinAgg = (pred(Col::in, Min0::in, Min::out) is det :-
-        (
-            Min0 = no,
-            index(A0, 0, Col, MinVal),
-            ( if MinVal < 0.0 then
-                Min = yes(Col - MinVal)
-            else
-                Min = no
+    MinAgg =
+        ( pred(Col::in, Min0::in, Min::out) is det :-
+            (
+                Min0 = no,
+                index(A0, 0, Col, MinVal),
+                ( if MinVal < 0.0 then
+                    Min = yes(Col - MinVal)
+                else
+                    Min = no
+                )
+            ;
+                Min0 = yes(_ - MinVal0),
+                index(A0, 0, Col, CellVal),
+                ( if CellVal < MinVal0 then
+                    Min = yes(Col - CellVal)
+                else
+                    Min = Min0
+                )
             )
-        ;
-            Min0 = yes(_ - MinVal0),
-            index(A0, 0, Col, CellVal),
-            ( if CellVal < MinVal0 then
-                Min = yes(Col - CellVal)
-            else
-                Min = Min0
-            )
-        )
-    ),
+        ),
     solutions.aggregate(AllColumns, MinAgg, no, MinResult),
     (
         MinResult = no,
@@ -493,34 +497,35 @@ simplex(A0, A, Result) :-
     ;
         MinResult = yes(Q - _Val),
         AllRows = all_rows(A0),
-        MaxAgg = (pred(Row::in, Max0::in, Max::out) is det :-
-            (
-                Max0 = no,
-                index(A0, Row, Q, MaxVal),
-                ( if MaxVal > 0.0 then
+        MaxAgg =
+            ( pred(Row::in, Max0::in, Max::out) is det :-
+                (
+                    Max0 = no,
+                    index(A0, Row, Q, MaxVal),
+                    ( if MaxVal > 0.0 then
+                        rhs_col(A0, RHSC),
+                        index(A0, Row, RHSC, MVal),
+                        CVal = MVal/MaxVal,
+                        Max = yes(Row - CVal)
+                    else
+                        Max = no
+                    )
+                ;
+                    Max0 = yes(_ - MaxVal0),
+                    index(A0, Row, Q, CellVal),
                     rhs_col(A0, RHSC),
                     index(A0, Row, RHSC, MVal),
-                    CVal = MVal/MaxVal,
-                    Max = yes(Row - CVal)
-                else
-                    Max = no
+                    ( if
+                        CellVal > 0.0,
+                        MaxVal1 = MVal/CellVal,
+                        MaxVal1 =< MaxVal0
+                    then
+                        Max = yes(Row - MaxVal1)
+                    else
+                        Max = Max0
+                    )
                 )
-            ;
-                Max0 = yes(_ - MaxVal0),
-                index(A0, Row, Q, CellVal),
-                rhs_col(A0, RHSC),
-                index(A0, Row, RHSC, MVal),
-                ( if
-                    CellVal > 0.0,
-                    MaxVal1 = MVal/CellVal,
-                    MaxVal1 =< MaxVal0
-                then
-                    Max = yes(Row - MaxVal1)
-                else
-                    Max = Max0
-                )
-            )
-        ),
+            ),
         solutions.aggregate(AllRows, MaxAgg, no, MaxResult),
         (
             MaxResult = no,
@@ -545,12 +550,13 @@ ensure_zero_obj_coeffs([V | Vs], !Tableau) :-
     ( if Val = 0.0 then
         ensure_zero_obj_coeffs(Vs, !Tableau)
     else
-        FindOne = (pred(P::out) is nondet :-
-            all_rows(!.Tableau, R),
-            index(!.Tableau, R, Col, ValF0),
-            ValF0 \= 0.0,
-            P = R - ValF0
-        ),
+        FindOne =
+            ( pred(P::out) is nondet :-
+                all_rows(!.Tableau, R),
+                index(!.Tableau, R, Col, ValF0),
+                ValF0 \= 0.0,
+                P = R - ValF0
+            ),
         solutions.solutions(FindOne, Ones),
         (
             Ones = [Row - Fac0 | _],
@@ -569,22 +575,24 @@ ensure_zero_obj_coeffs([V | Vs], !Tableau) :-
 fix_basis_and_rem_cols([], !Tableau).
 fix_basis_and_rem_cols([V | Vs], !Tableau) :-
     var_col(!.Tableau, V, Col),
-    BasisAgg = (pred(R::in, Ones0::in, Ones::out) is det :-
-        index(!.Tableau, R, Col, Val),
-        ( if Val = 0.0 then
-            Ones = Ones0
-        else
-            Ones = [Val - R | Ones0]
-        )
-    ),
+    BasisAgg =
+        ( pred(R::in, Ones0::in, Ones::out) is det :-
+            index(!.Tableau, R, Col, Val),
+            ( if Val = 0.0 then
+                Ones = Ones0
+            else
+                Ones = [Val - R | Ones0]
+            )
+        ),
     solutions.aggregate(all_rows(!.Tableau), BasisAgg, [], Res),
     ( if Res = [1.0 - Row] then
-        PivGoal = (pred(Col1::out) is nondet :-
-            all_cols(!.Tableau, Col1),
-            Col \= Col1,
-            index(!.Tableau, Row, Col1, Zz),
-            Zz \= 0.0
-        ),
+        PivGoal =
+            ( pred(Col1::out) is nondet :-
+                all_cols(!.Tableau, Col1),
+                Col \= Col1,
+                index(!.Tableau, Row, Col1, Zz),
+                Zz \= 0.0
+            ),
         solutions.solutions(PivGoal, PivSolns),
         (
             PivSolns = [],
@@ -610,37 +618,42 @@ fix_basis_and_rem_cols([V | Vs], !Tableau) :-
 
 pivot(P, Q, !Tableau) :-
     index(!.Tableau, P, Q, Apq),
-    MostCells = (pred(Cell::out) is nondet :-
-        all_rows0(!.Tableau, J),
-        J \= P,
-        all_cols0(!.Tableau, K),
-        K \= Q,
-        Cell = cell(J, K)
-    ),
-    ScaleCell = (pred(Cell::in, !.T::in, !:T::out) is det :-
-        Cell = cell(J, K),
-        index(!.T, J, K, Ajk),
-        index(!.T, J, Q, Ajq),
-        index(!.T, P, K, Apk),
-        NewAjk = Ajk - Apk * Ajq / Apq,
-        set_index(J, K, NewAjk, !T)
-    ),
+    MostCells =
+        ( pred(Cell::out) is nondet :-
+            all_rows0(!.Tableau, J),
+            J \= P,
+            all_cols0(!.Tableau, K),
+            K \= Q,
+            Cell = cell(J, K)
+        ),
+    ScaleCell =
+        ( pred(Cell::in, !.T::in, !:T::out) is det :-
+            Cell = cell(J, K),
+            index(!.T, J, K, Ajk),
+            index(!.T, J, Q, Ajq),
+            index(!.T, P, K, Apk),
+            NewAjk = Ajk - Apk * Ajq / Apq,
+            set_index(J, K, NewAjk, !T)
+        ),
     solutions.aggregate(MostCells, ScaleCell, !Tableau),
-    QColumn = (pred(Cell::out) is nondet :-
-        all_rows0(!.Tableau, J),
-        Cell = cell(J, Q)
-    ),
-    Zero = (pred(Cell::in, T0::in, T::out) is det :-
-        Cell = cell(J, K),
-        set_index(J, K, 0.0, T0, T)
-    ),
+    QColumn =
+        ( pred(Cell::out) is nondet :-
+            all_rows0(!.Tableau, J),
+            Cell = cell(J, Q)
+        ),
+    Zero =
+        ( pred(Cell::in, T0::in, T::out) is det :-
+            Cell = cell(J, K),
+            set_index(J, K, 0.0, T0, T)
+        ),
     solutions.aggregate(QColumn, Zero, !Tableau),
     PRow = all_cols0(!.Tableau),
-    ScaleRow = (pred(K::in, T0::in, T::out) is det :-
-        index(T0, P, K, Apk),
-        NewApk = Apk / Apq,
-        set_index(P, K, NewApk, T0, T)
-    ),
+    ScaleRow =
+        ( pred(K::in, T0::in, T::out) is det :-
+            index(T0, P, K, Apk),
+            NewApk = Apk / Apq,
+            set_index(P, K, NewApk, T0, T)
+        ),
     solutions.aggregate(PRow, ScaleRow, !Tableau),
     set_index(P, Q, 1.0, !Tableau).
 
@@ -649,12 +662,13 @@ pivot(P, Q, !Tableau) :-
 
 row_op(Scale, From, To, !Tableau) :-
     AllCols = all_cols0(!.Tableau),
-    AddRow = (pred(Col::in, !.Tableau::in, !:Tableau::out) is det :-
-        index(!.Tableau, From, Col, X),
-        index(!.Tableau, To, Col, Y),
-        Z = Y + (Scale * X),
-        set_index(To, Col, Z, !Tableau)
-    ),
+    AddRow =
+        ( pred(Col::in, !.Tableau::in, !:Tableau::out) is det :-
+            index(!.Tableau, From, Col, X),
+            index(!.Tableau, To, Col, Y),
+            Z = Y + (Scale * X),
+            set_index(To, Col, Z, !Tableau)
+        ),
     solutions.aggregate(AllCols, AddRow, !Tableau).
 
 %-----------------------------------------------------------------------------%
@@ -775,23 +789,26 @@ remove_col(C, Tableau0, Tableau) :-
 :- pred get_basis_vars(tableau::in, list(var)::out) is det.
 
 get_basis_vars(Tab, Vars) :-
-    BasisCol = (pred(C::out) is nondet :-
-        all_cols(Tab, C),
-        NonZeroGoal = (pred(P::out) is nondet :-
-            all_rows(Tab, R),
-            index(Tab, R, C, Z),
-            Z \= 0.0,
-            P = R - Z
+    BasisCol =
+        ( pred(C::out) is nondet :-
+            all_cols(Tab, C),
+            NonZeroGoal =
+                ( pred(P::out) is nondet :-
+                    all_rows(Tab, R),
+                    index(Tab, R, C, Z),
+                    Z \= 0.0,
+                    P = R - Z
+                ),
+            solutions.solutions(NonZeroGoal, Solns),
+            Solns = [_ - 1.0]
         ),
-        solutions.solutions(NonZeroGoal, Solns),
-        Solns = [_ - 1.0]
-    ),
     solutions.solutions(BasisCol, Cols),
-    BasisVars = (pred(V::out) is nondet :-
-        list.member(Col, Cols),
-        Tab = tableau(_, _, VarCols, _, _, _, _),
-        map.member(VarCols, V, Col)
-    ),
+    BasisVars =
+        ( pred(V::out) is nondet :-
+            list.member(Col, Cols),
+            Tab = tableau(_, _, VarCols, _, _, _, _),
+            map.member(VarCols, V, Col)
+        ),
     solutions.solutions(BasisVars, Vars).
 
 %-----------------------------------------------------------------------------%
@@ -799,13 +816,14 @@ get_basis_vars(Tab, Vars) :-
 :- pred lp_info_init(varset::in, list(var)::in, lp_info::out) is det.
 
 lp_info_init(VarSet0, URSVars, LPInfo) :-
-    Introduce = (pred(Orig::in, VP0::in, VP::out) is det :-
-        VP0 = VS0 - VM0,
-        varset.new_var(V1, VS0, VS1),
-        varset.new_var(V2, VS1, VS),
-        map.set(Orig, V1 - V2, VM0, VM),
-        VP = VS - VM
-    ),
+    Introduce =
+        ( pred(Orig::in, VP0::in, VP::out) is det :-
+            VP0 = VS0 - VM0,
+            varset.new_var(V1, VS0, VS1),
+            varset.new_var(V2, VS1, VS),
+            map.set(Orig, V1 - V2, VM0, VM),
+            VP = VS - VM
+        ),
     map.init(URSMap0),
     list.foldl(Introduce, URSVars, VarSet0 - URSMap0, VarSet - URSMap),
     LPInfo = lp_info(VarSet, URSMap, [], []).
@@ -871,25 +889,30 @@ between(Min, Max, I) :-
 % Debugging predicates.
 %
 
-:- pred show_tableau(tableau::in, io::di, io::uo) is det.
-:- pragma consider_used(show_tableau/3).
+:- pred show_tableau(io.text_output_stream::in, tableau::in,
+    io::di, io::uo) is det.
+:- pragma consider_used(show_tableau/4).
 
-show_tableau(Tableau, !IO) :-
+show_tableau(OutputStream, Tableau, !IO) :-
     Tableau = tableau(N, M, _, _, _, _, _),
-    io.format("Tableau (%d, %d):\n", [i(N), i(M)], !IO),
-    solutions.aggregate(all_rows0(Tableau), show_row(Tableau), !IO).
+    io.format(OutputStream, "Tableau (%d, %d):\n", [i(N), i(M)], !IO),
+    solutions.aggregate(all_rows0(Tableau),
+        show_row(OutputStream, Tableau), !IO).
 
-:- pred show_row(tableau::in, int::in, io::di, io::uo) is det.
+:- pred show_row(io.text_output_stream::in, tableau::in, int::in,
+    io::di, io::uo) is det.
 
-show_row(Tableau, Row, !IO) :-
-    solutions.aggregate(all_cols0(Tableau), show_cell(Tableau, Row), !IO),
-    io.nl(!IO).
+show_row(OutputStream, Tableau, Row, !IO) :-
+    solutions.aggregate(all_cols0(Tableau),
+        show_cell(OutputStream, Tableau, Row), !IO),
+    io.nl(OutputStream, !IO).
 
-:- pred show_cell(tableau::in, int::in, int::in, io::di, io::uo) is det.
+:- pred show_cell(io.text_output_stream::in, tableau::in, int::in, int::in,
+    io::di, io::uo) is det.
 
-show_cell(Tableau, Row, Col, !IO) :-
+show_cell(OutputStream, Tableau, Row, Col, !IO) :-
     index(Tableau, Row, Col, Val),
-    io.format("%2.2f\t", [f(Val)], !IO).
+    io.format(OutputStream, "%2.2f\t", [f(Val)], !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module libs.lp.
