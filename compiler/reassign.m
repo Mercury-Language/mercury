@@ -136,10 +136,20 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !RevInstrs) :-
     Instr0 = llds_instr(Uinstr0, _),
     (
-        Uinstr0 = comment(_),
-        !:RevInstrs = [Instr0 | !.RevInstrs]
-    ;
-        Uinstr0 = livevals(_),
+        ( Uinstr0 = comment(_)
+        ; Uinstr0 = livevals(_)
+        ; Uinstr0 = keep_assign(_, _)
+        ; Uinstr0 = if_val(_, _)
+        ; Uinstr0 = free_heap(_)
+            % There is no need to update KnownContentsMap since later code
+            % should never refer to the freed cell.
+        ; Uinstr0 = prune_ticket
+        ; Uinstr0 = discard_ticket
+        ; Uinstr0 = prune_tickets_to(_)
+        % ; Uinstr0 = discard_tickets_to(_)
+        ; Uinstr0 = lc_spawn_off(_, _, _)
+        ; Uinstr0 = lc_join_and_terminate(_, _)
+        ),
         !:RevInstrs = [Instr0 | !.RevInstrs]
     ;
         Uinstr0 = block(_, _, _),
@@ -169,44 +179,39 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
             )
         )
     ;
-        Uinstr0 = keep_assign(_, _),
-        !:RevInstrs = [Instr0 | !.RevInstrs]
-    ;
-        Uinstr0 = llcall(_, _, _, _, _, _),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        % The call may clobber any lval.
-        !:KnownContentsMap = map.init,
-        !:DepLvalMap = map.init
-    ;
-        Uinstr0 = mkframe(_, _),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        !:KnownContentsMap = map.init,
-        !:DepLvalMap = map.init
-    ;
-        Uinstr0 = label(_),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        % We don't know what is stored where at the instructions that
-        % jump here.
-        !:KnownContentsMap = map.init,
-        !:DepLvalMap = map.init
-    ;
-        ( Uinstr0 = goto(_)
+        ( Uinstr0 = llcall(_, _, _, _, _, _)
+            % The call may clobber any lval.
+        ; Uinstr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _, _)
+            % The C code may clobber any lval.
+        ; Uinstr0 = label(_)
+            % We don't know what is stored where at the instructions that
+            % jump here.
+        ; Uinstr0 = goto(_)
         ; Uinstr0 = computed_goto(_, _)
+            % The value of !:KnownContentsMap doesn't really matter since
+            % the next instruction (which must be a label) will reset it
+            % to empty anyway.
+        ; Uinstr0 = arbitrary_c_code(_, _, _)
+            % The C code may clobber any lval.
+        ; Uinstr0 = reset_ticket(_, _)
+            % The reset operation may modify any lval.
+        ; Uinstr0 = mkframe(_, _)
+        ; Uinstr0 = incr_sp(_, _, _)
+        ; Uinstr0 = decr_sp(_)
+        ; Uinstr0 = decr_sp_and_return(_)
+            % All stackvars now refer to new locations. Rather than delete
+            % only stackvars from KnownContentsMap, we delete everything.
+        ; Uinstr0 = fork_new_child(_, _)
+            % Both the parent and the child thread jump to labels specified
+            % by the fork instruction, so the value of !:KnownContentsMap
+            % doesn't really matter since the next instruction (which must be
+            % a label) will reset it to empty anyway
+        ; Uinstr0 = join_and_continue(_, _)
+            % Other threads may modify any lval.
         ),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-        % The value of !:KnownContentsMap doesn't really matter since the next
-        % instruction (which must be a label) will reset it to empty anyway.
         !:KnownContentsMap = map.init,
         !:DepLvalMap = map.init
-    ;
-        Uinstr0 = arbitrary_c_code(_, _, _),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        % The C code may clobber any lval.
-        !:KnownContentsMap = map.init,
-        !:DepLvalMap = map.init
-    ;
-        Uinstr0 = if_val(_, _),
-        !:RevInstrs = [Instr0 | !.RevInstrs]
     ;
         ( Uinstr0 = save_maxfr(Target)
         ; Uinstr0 = incr_hp(Target, _, _, _, _, _, _, _)
@@ -221,11 +226,6 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:RevInstrs = [Instr0 | !.RevInstrs],
         clobber_dependents(Target, !KnownContentsMap, !DepLvalMap),
         map.delete(Target, !KnownContentsMap)
-    ;
-        Uinstr0 = free_heap(_),
-        !:RevInstrs = [Instr0 | !.RevInstrs]
-        % There is no need to update KnownContentsMap since later code
-        % should never refer to the freed cell.
     ;
         ( Uinstr0 = push_region_frame(_, EmbeddedFrame)
         ; Uinstr0 = region_set_fixed_slot(_, EmbeddedFrame, _)
@@ -242,66 +242,9 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         map.delete(NumLval, !KnownContentsMap),
         map.delete(AddrLval, !KnownContentsMap)
     ;
-        Uinstr0 = reset_ticket(_, _),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        % The reset operation may modify any lval.
-        !:KnownContentsMap = map.init,
-        !:DepLvalMap = map.init
-    ;
-        ( Uinstr0 = prune_ticket
-        ; Uinstr0 = discard_ticket
-        ; Uinstr0 = prune_tickets_to(_)
-        % ; Uinstr0 = discard_tickets_to(_)
-        ; Uinstr0 = lc_spawn_off(_, _, _)
-        ; Uinstr0 = lc_join_and_terminate(_, _)
-        ),
-        !:RevInstrs = [Instr0 | !.RevInstrs]
-    ;
-        Uinstr0 = incr_sp(_, _, _),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        % All stackvars now refer to new locations. Rather than delete
-        % only stackvars from KnownContentsMap, we delete everything.
-        !:KnownContentsMap = map.init,
-        !:DepLvalMap = map.init
-    ;
-        Uinstr0 = decr_sp(_),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        % All stackvars now refer to new locations. Rather than delete
-        % only stackvars from KnownContentsMap, we delete everything.
-        !:KnownContentsMap = map.init,
-        !:DepLvalMap = map.init
-    ;
-        Uinstr0 = decr_sp_and_return(_),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        % All stackvars now refer to new locations. Rather than delete
-        % only stackvars from KnownContentsMap, we delete everything.
-        !:KnownContentsMap = map.init,
-        !:DepLvalMap = map.init
-    ;
-        Uinstr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _, _),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        % The C code may clobber any lval.
-        !:KnownContentsMap = map.init,
-        !:DepLvalMap = map.init
-    ;
         Uinstr0 = init_sync_term(Target, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         clobber_dependents(Target, !KnownContentsMap, !DepLvalMap)
-    ;
-        Uinstr0 = fork_new_child(_, _),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        % Both the parent and the child thread jump to labels specified
-        % by the fork instruction, so the value of !:KnownContentsMap doesn't
-        % really matter since the next instruction (which must be a label)
-        % will reset it to empty anyway.
-        !:KnownContentsMap = map.init,
-        !:DepLvalMap = map.init
-    ;
-        Uinstr0 = join_and_continue(_, _),
-        !:RevInstrs = [Instr0 | !.RevInstrs],
-        % Other threads may modify any lval.
-        !:KnownContentsMap = map.init,
-        !:DepLvalMap = map.init
     ),
     remove_reassign_loop(Instrs0, !.KnownContentsMap, !.DepLvalMap,
         !RevInstrs).
