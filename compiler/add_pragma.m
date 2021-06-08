@@ -987,7 +987,7 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
                     semipure io.unsafe_get_io_state(!:IO),
                     fact_table_compile_facts( !.ModuleInfo, FileName, Context,
                         C_HeaderCode, PrimaryProcId,
-                        PredInfo0, PredInfo, !IO),
+                        PredInfo0, PredInfo, !Specs, !IO),
                     impure io.unsafe_set_io_state(!.IO)
                 )
             ),
