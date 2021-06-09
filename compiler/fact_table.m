@@ -204,75 +204,93 @@
 
 :- type fact_arg_info
     --->    fact_arg_info(
-                mer_type,   % Type of the argument.
-                bool,       % Is an input argument for some mode.
-                bool        % Is an output argument for some mode.
+                fact_arg_type,      % Type of the argument.
+                bool,               % Is an input argument for some mode.
+                bool                % Is an output argument for some mode.
             ).
+
+    % XXX UINT - handle uints here too when we support them in fact tables.
+:- type fact_arg_type
+    --->    fact_arg_type_int
+    ;       fact_arg_type_float
+    ;       fact_arg_type_string.
 
 %---------------------------------------------------------------------------%
 
 fact_table_compile_facts(ModuleInfo, FileName, Context,
         HeaderCode, PrimaryProcID, !PredInfo, !Specs, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    io.open_input(FileName, FileResult, !IO),
+    pred_info_get_arg_types(!.PredInfo, Types),
+    init_fact_arg_infos(!.PredInfo, Types, FactArgInfos0, [], ArgTypeSpecs),
     (
-        FileResult = ok(FileStream),
-        fact_table_file_name(Globals, $pred, do_create_dirs,
-            other_ext(".c"), FileName, OutputFileName, !IO),
-        io.open_output(OutputFileName, OpenResult, !IO),
+        ArgTypeSpecs = [_ | _],
+        % If the predicate has argument types that are not suitable for
+        % tabling, then there is no point in trying to implement the fact
+        % table, since the effort is doomed to failure.
+        HeaderCode = "",
+        PrimaryProcID = invalid_proc_id,
+        !:Specs = ArgTypeSpecs ++ !.Specs
+    ;
+        ArgTypeSpecs = [],
+        module_info_get_globals(ModuleInfo, Globals),
+        io.open_input(FileName, FileResult, !IO),
         (
-            OpenResult = ok(OutputStream),
-            pred_info_get_module_name(!.PredInfo, ModuleName),
-            pred_info_get_name(!.PredInfo, PredName),
-            PredSymName = qualified(ModuleName, PredName),
-            fact_table_size(Globals, FactTableSize),
-            compile_fact_table_in_file(FileStream, FileName, OutputStream,
-                FactTableSize, ModuleInfo, PredSymName, Context,
-                HeaderCode, PrimaryProcID, MaybeDataFileName,
-                !PredInfo, !Specs, !IO),
-            io.close_output(OutputStream, !IO),
+            FileResult = ok(FileStream),
+            fact_table_file_name(Globals, $pred, do_create_dirs,
+                other_ext(".c"), FileName, OutputFileName, !IO),
+            io.open_output(OutputFileName, OpenResult, !IO),
             (
-                MaybeDataFileName = no
+                OpenResult = ok(OutputStream),
+                pred_info_get_module_name(!.PredInfo, ModuleName),
+                pred_info_get_name(!.PredInfo, PredName),
+                PredSymName = qualified(ModuleName, PredName),
+                fact_table_size(Globals, FactTableSize),
+                compile_fact_table_in_file(FileStream, FileName, OutputStream,
+                    FactTableSize, ModuleInfo, PredSymName, FactArgInfos0,
+                    Context, HeaderCode, PrimaryProcID, MaybeDataFileName,
+                    !PredInfo, !Specs, !IO),
+                io.close_output(OutputStream, !IO),
+                (
+                    MaybeDataFileName = no
+                ;
+                    MaybeDataFileName = yes(DataFileName),
+                    append_data_table(ModuleInfo, OutputFileName, DataFileName,
+                        !Specs, !IO)
+                )
             ;
-                MaybeDataFileName = yes(DataFileName),
-                append_data_table(ModuleInfo, OutputFileName, DataFileName,
-                    !Specs, !IO)
-            )
+                OpenResult = error(Error),
+                add_file_open_error(yes(Context), FileName, "output", Error,
+                    !Specs, !IO),
+                HeaderCode = "",
+                PrimaryProcID = invalid_proc_id
+            ),
+            io.close_input(FileStream, !IO)
         ;
-            OpenResult = error(Error),
-            add_file_open_error(yes(Context), FileName, "output", Error,
+            FileResult = error(Error),
+            add_file_open_error(yes(Context), FileName, "input", Error,
                 !Specs, !IO),
             HeaderCode = "",
             PrimaryProcID = invalid_proc_id
-        ),
-        io.close_input(FileStream, !IO)
-    ;
-        FileResult = error(Error),
-        add_file_open_error(yes(Context), FileName, "input", Error,
-            !Specs, !IO),
-        HeaderCode = "",
-        PrimaryProcID = invalid_proc_id
+        )
     ).
 
 :- pred compile_fact_table_in_file(io.text_input_stream::in, string::in,
     io.text_output_stream::in, int::in, module_info::in,
-    sym_name::in, prog_context::in,
+    sym_name::in, list(fact_arg_info)::in, prog_context::in,
     string::out, proc_id::out, maybe(string)::out,
     pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 compile_fact_table_in_file(FileStream, FileName, OutputStream, FactTableSize,
-        ModuleInfo, PredSymName, Context, HeaderCode, PrimaryProcID,
-        MaybeDataFileName, !PredInfo, !Specs, !IO) :-
-    pred_info_get_arg_types(!.PredInfo, Types),
-    init_fact_arg_infos(Types, FactArgInfos0),
+        ModuleInfo, PredSymName, FactArgInfos0, Context,
+        HeaderCode, PrimaryProcID, MaybeDataFileName,
+        !PredInfo, !Specs, !IO) :-
     infer_determinism_pass_1(ModuleInfo, Context, CheckProcs,
         ExistsAllInMode, WriteHashTables, WriteDataTable,
         FactArgInfos0, FactArgInfos, !PredInfo, [], Pass1Specs),
-    create_fact_table_header(PredSymName, !.PredInfo, FactArgInfos,
-        HeaderCode0, StructName, Pass1Specs, Pass1HeaderSpecs),
+    create_fact_table_header(PredSymName, FactArgInfos,
+        HeaderCode0, StructName),
     (
-        Pass1HeaderSpecs = [],
+        Pass1Specs = [],
         io.write_string(OutputStream, fact_table_file_header(FileName), !IO),
         io.write_string(OutputStream, HeaderCode0, !IO),
         open_sort_files(CheckProcs, ProcStreams, [], OpenSpecs, !IO),
@@ -379,12 +397,12 @@ compile_fact_table_in_file(FileStream, FileName, OutputStream, FactTableSize,
             MaybeDataFileName = no
         )
     ;
-        Pass1HeaderSpecs = [_ | _],
+        Pass1Specs = [_ | _],
         % Either there are no modes declared for this fact table or the
         % `:- pred' or `:- func' declaration had some types that are not
         % supported in fact tables so there is no point trying to type-check
         % all the facts.
-        !:Specs = Pass1HeaderSpecs ++ !.Specs,
+        !:Specs = Pass1Specs ++ !.Specs,
         HeaderCode = HeaderCode0,
         PrimaryProcID = invalid_proc_id,
         MaybeDataFileName = no
@@ -601,13 +619,37 @@ compute_mode_classes(ModuleInfo, [Mode | Modes], [Class | Classes]) :-
     % are initialised to `no' and filled in correctly by
     % infer_determinism_pass_1.
     %
-:- pred init_fact_arg_infos(list(mer_type)::in, list(fact_arg_info)::out)
-    is det.
+:- pred init_fact_arg_infos(pred_info::in, list(mer_type)::in,
+    list(fact_arg_info)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-init_fact_arg_infos([], []).
-init_fact_arg_infos([Type | Types], [Info | Infos]) :-
-    Info = fact_arg_info(Type, no, no),
-    init_fact_arg_infos(Types, Infos).
+init_fact_arg_infos(_, [], [], !Specs).
+init_fact_arg_infos(PredInfo, [Type | Types], [Info | Infos], !Specs) :-
+    ( if
+        Type = builtin_type(BuiltinType),
+        (
+            BuiltinType = builtin_type_int(int_type_int),
+            FactArgTypePrime = fact_arg_type_int
+        ;
+            BuiltinType = builtin_type_float,
+            FactArgTypePrime = fact_arg_type_float
+        ;
+            BuiltinType = builtin_type_string,
+            FactArgTypePrime = fact_arg_type_string
+        )
+    then
+        FactArgType = FactArgTypePrime
+    else
+        pred_info_get_context(PredInfo, Context),
+        Pieces = [words("Error: invalid type in fact table."),
+            words("The only types allowed in fact tables are"),
+            quote("int"), suffix(","), quote("float"), words("and"),
+            quote("string"), suffix("."), nl],
+        add_error_context_and_pieces(Context, Pieces, !Specs),
+        FactArgType = fact_arg_type_int % Dummy; won't be used.
+    ),
+    Info = fact_arg_info(FactArgType, no, no),
+    init_fact_arg_infos(PredInfo, Types, Infos, !Specs).
 
     % XXX CLEANUP The input to this should NOT be a partially-filled-in
     % fact_arg_info, but a value of a type containing just the filled-in part.
@@ -900,19 +942,15 @@ fact_table_file_header(FileName) = FileHeader :-
         "#include ""mercury_imp.h""\n\n"],
         FileHeader).
 
-:- pred create_fact_table_header(sym_name::in, pred_info::in,
-    list(fact_arg_info)::in, string::out, string::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred create_fact_table_header(sym_name::in, list(fact_arg_info)::in,
+    string::out, string::out) is det.
 
-create_fact_table_header(PredSymName, PredInfo, FactArgInfos,
-        HeaderCode, StructName, !Specs) :-
+create_fact_table_header(PredSymName, FactArgInfos, HeaderCode, StructName) :-
     make_fact_table_identifier(PredSymName, Identifier),
     StructName = "mercury__" ++ Identifier ++ "_fact_table",
 
     % Define a struct for a fact table entry.
-    pred_info_get_context(PredInfo, Context),  % location of :- pred decl
-    create_fact_table_struct(Context, FactArgInfos, 1, StructContents,
-        !Specs),
+    create_fact_table_struct(FactArgInfos, 1, StructContents),
     ( if StructContents = "" then
         StructDef = ""
     else
@@ -926,46 +964,29 @@ create_fact_table_header(PredSymName, PredInfo, FactArgInfos,
     % that are output in some mode. Also ensure that are arguments are
     % either string, float or int.
     %
-:- pred create_fact_table_struct(prog_context::in, list(fact_arg_info)::in,
-    int::in, string::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred create_fact_table_struct(list(fact_arg_info)::in, int::in, string::out)
+    is det.
 
-create_fact_table_struct(_, [], _, "", !Specs).
-create_fact_table_struct(Context, [Info | Infos], ArgNum, StructContents,
-        !Specs) :-
-    create_fact_table_struct(Context, Infos, ArgNum + 1, StructContentsTail,
-        !Specs),
+create_fact_table_struct([], _, "").
+create_fact_table_struct([Info | Infos], ArgNum, StructContents) :-
+    create_fact_table_struct(Infos, ArgNum + 1, StructContentsTail),
     Info = fact_arg_info(Type, _IsInput, IsOutput),
-    ( if
-        (
-            Type = builtin_type(builtin_type_string),
-            TypeStr = "MR_ConstString"
-        ;
-            Type = builtin_type(builtin_type_int(int_type_int)),
-            TypeStr = "MR_Integer"
-        ;
-            Type = builtin_type(builtin_type_float),
-            TypeStr = "MR_Float"
-        )
-    then
-        (
-            IsOutput = yes,
-            string.format("\t%s V_%d;\n", [s(TypeStr), i(ArgNum)],
-                StructField),
-            string.append(StructField, StructContentsTail, StructContents)
-        ;
-            IsOutput = no,
-            StructContents = StructContentsTail
-        )
-    else
-        % Report an error for types other than string, int and float.
-        % Context is the `:- pred' or `:- func' declaration where the
-        % types are declared.
-        Pieces = [words("Error: invalid type in fact table."),
-            words("The only types allowed in fact tables are"),
-            quote("string"), suffix(","), quote("int"), words("and"),
-            quote("float"), suffix("."), nl],
-        add_error_context_and_pieces(Context, Pieces, !Specs),
+    (
+        Type = fact_arg_type_int,
+        TypeStr = "MR_Integer"
+    ;
+        Type = fact_arg_type_float,
+        TypeStr = "MR_Float"
+    ;
+        Type = fact_arg_type_string,
+        TypeStr = "MR_ConstString"
+    ),
+    (
+        IsOutput = yes,
+        string.format("\t%s V_%d;\n", [s(TypeStr), i(ArgNum)], StructField),
+        string.append(StructField, StructContentsTail, StructContents)
+    ;
+        IsOutput = no,
         StructContents = StructContentsTail
     ).
 
@@ -1807,31 +1828,31 @@ get_output_args_list([Info | Infos], ArgStrings0, Args) :-
         get_output_args_list(Infos, ArgStrings0, Args)
     ).
 
-:- pred convert_key_string_to_arg(string::in, mer_type::in, fact_arg::out)
+:- pred convert_key_string_to_arg(string::in, fact_arg_type::in, fact_arg::out)
     is det.
 
 convert_key_string_to_arg(ArgString, Type, Arg) :-
-    % XXX UINT - handle uints here too when we support them in fact tables.
-    ( if Type = builtin_type(builtin_type_int(int_type_int)) then
+    (
+        Type = fact_arg_type_int,
         ( if string.base_string_to_int(36, ArgString, I) then
             Arg = term.integer(base_10, integer(I), signed, size_word)
         else
             unexpected($pred, "could not convert string to int")
         )
-    else if Type = builtin_type(builtin_type_string) then
-        string.to_char_list(ArgString, Chars0),
-        remove_sort_file_escapes(Chars0, [], RevChars),
-        list.reverse(RevChars, Chars),
-        string.from_char_list(Chars, S),
-        Arg = term.string(S)
-    else if Type = builtin_type(builtin_type_float) then
+    ;
+        Type = fact_arg_type_float,
         ( if string.to_float(ArgString, F) then
             Arg = term.float(F)
         else
             unexpected($pred, "could not convert string to float")
         )
-    else
-        unexpected($pred, "unsupported type")
+    ;
+        Type = fact_arg_type_string,
+        string.to_char_list(ArgString, Chars0),
+        remove_sort_file_escapes(Chars0, [], RevChars),
+        list.reverse(RevChars, Chars),
+        string.from_char_list(Chars, S),
+        Arg = term.string(S)
     ).
 
     % Remove the escape characters put in the string by make_sort_file_key.
