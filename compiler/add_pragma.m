@@ -978,37 +978,51 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
             PredId = HeadPredId,
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
 
-            % Compile the fact table into a separate .o file.
-            % We should be able to dispense with the impure shenanigans
-            % when we replace fact tables with fast code for large
-            % disjunctions.
-            some [!IO] (
-                promise_pure (
-                    semipure io.unsafe_get_io_state(!:IO),
-                    fact_table_compile_facts( !.ModuleInfo, FileName, Context,
-                        C_HeaderCode, PrimaryProcId,
-                        PredInfo0, PredInfo, !Specs, !IO),
-                    impure io.unsafe_set_io_state(!.IO)
-                )
-            ),
+            fact_table_check_args(!.ModuleInfo, Context, PredId, PredInfo0,
+                CheckResult),
+            (
+                CheckResult = fact_table_args_not_ok(CheckSpecs),
+                !:Specs = CheckSpecs ++ !.Specs,
+                pred_info_get_markers(PredInfo0, PredMarkers0),
+                add_marker(marker_fact_table_semantic_errors,
+                    PredMarkers0, PredMarkers),
+                pred_info_set_markers(PredMarkers, PredInfo0, PredInfo),
+                module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
+            ;
+                CheckResult = fact_table_args_ok(GenInfo),
 
-            module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
-            pred_info_get_proc_table(PredInfo, ProcTable),
-            pred_info_get_arg_types(PredInfo, ArgTypes),
-            ProcIds = pred_info_all_procids(PredInfo),
-            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+                % Compile the fact table into a separate .o file.
+                % We should be able to dispense with the impure shenanigans
+                % when we replace fact tables with fast code for large
+                % disjunctions.
+                some [!IO] (
+                    promise_pure (
+                        semipure io.unsafe_get_io_state(!:IO),
+                        fact_table_compile_facts(!.ModuleInfo, FileName,
+                            Context, GenInfo, C_HeaderCode, PrimaryProcId,
+                            PredInfo0, PredInfo, !Specs, !IO),
+                        impure io.unsafe_set_io_state(!.IO)
+                    )
+                ),
 
-            % Create foreign_decls to declare extern variables.
-            ForeignDeclCode = foreign_decl_code(lang_c, foreign_decl_is_local,
-                floi_literal(C_HeaderCode), Context),
-            module_add_foreign_decl_code_aux(ForeignDeclCode, !ModuleInfo),
+                module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
+                pred_info_get_proc_table(PredInfo, ProcTable),
+                ProcIds = pred_info_all_procids(PredInfo),
+                PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 
-            module_add_fact_table_file(FileName, !ModuleInfo),
+                % Create foreign_decls to declare extern variables.
+                ForeignDeclCode = foreign_decl_code(lang_c,
+                    foreign_decl_is_local, floi_literal(C_HeaderCode),
+                    Context),
+                module_add_foreign_decl_code_aux(ForeignDeclCode, !ModuleInfo),
 
-            % Create foreign_procs to access the table in each mode.
-            add_fact_table_procs(ProcIds, PrimaryProcId,
-                ProcTable, PredOrFunc, PredSymName, UserArity, ArgTypes,
-                PredStatus, Context, !ModuleInfo, !Specs)
+                module_add_fact_table_file(FileName, !ModuleInfo),
+
+                % Create foreign_procs to access the table in each mode.
+                add_fact_table_procs(PredOrFunc, PredSymName, UserArity,
+                    PredStatus, ProcTable,  PrimaryProcId, Context, GenInfo,
+                    ProcIds, !ModuleInfo, !Specs)
+            )
         ;
             TailPredIds = [_ | _],     % >1 predicate found
             UserArity = user_arity(UserArityInt),
@@ -1028,51 +1042,35 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
     % `pragma fact_table's are represented in the HLDS by a
     % `pragma foreign_proc' for each mode of the predicate.
     %
-:- pred add_fact_table_procs(list(proc_id)::in, proc_id::in,
-    proc_table::in, pred_or_func::in, sym_name::in, user_arity::in,
-    list(mer_type)::in, pred_status::in, prog_context::in,
+:- pred add_fact_table_procs(pred_or_func::in, sym_name::in, user_arity::in,
+    pred_status::in, proc_table::in, proc_id::in, prog_context::in,
+    fact_table_gen_info::in, list(proc_id)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_fact_table_procs([],_,_,_,_,_,_,_,_, !ModuleInfo, !Specs).
-add_fact_table_procs([ProcId | ProcIds], PrimaryProcId, ProcTable,
-        PredOrFunc, SymName, Arity, ArgTypes, PredStatus, Context,
+add_fact_table_procs(_, _, _, _, _, _, _, _, [], !ModuleInfo, !Specs).
+add_fact_table_procs(PredOrFunc, SymName, UserArity, PredStatus, ProcTable,
+        PrimaryProcId, Context, GenInfo, [ProcId | ProcIds],
         !ModuleInfo, !Specs) :-
-    add_fact_table_proc(ProcId, PrimaryProcId, ProcTable,
-        PredOrFunc, SymName, Arity, ArgTypes, PredStatus, Context,
-        !ModuleInfo, !Specs),
-    add_fact_table_procs(ProcIds, PrimaryProcId, ProcTable,
-        PredOrFunc, SymName, Arity, ArgTypes, PredStatus, Context,
-        !ModuleInfo, !Specs).
+    add_fact_table_proc(PredOrFunc, SymName, UserArity, PredStatus, ProcTable,
+        PrimaryProcId, Context, GenInfo, ProcId, !ModuleInfo, !Specs),
+    add_fact_table_procs(PredOrFunc, SymName, UserArity, PredStatus, ProcTable,
+        PrimaryProcId, Context, GenInfo, ProcIds, !ModuleInfo, !Specs).
 
-:- pred add_fact_table_proc(proc_id::in, proc_id::in, proc_table::in,
-    pred_or_func::in, sym_name::in, user_arity::in, list(mer_type)::in,
-    pred_status::in, prog_context::in, module_info::in, module_info::out,
+:- pred add_fact_table_proc(pred_or_func::in, sym_name::in, user_arity::in,
+    pred_status::in, proc_table::in, proc_id::in, prog_context::in,
+    fact_table_gen_info::in, proc_id::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_fact_table_proc(ProcId, PrimaryProcId, ProcTable,
-        PredOrFunc, SymName, UserArity, ArgTypes, PredStatus, Context,
-        !ModuleInfo, !Specs) :-
+add_fact_table_proc(PredOrFunc, SymName, UserArity, PredStatus, ProcTable,
+        PrimaryProcId, Context, GenInfo, ProcId, !ModuleInfo, !Specs) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
-    varset.init(ProgVarSet0),
-    user_arity_pred_form_arity(PredOrFunc, UserArity,
-        pred_form_arity(PredFormArityInt)),
-    varset.new_vars(PredFormArityInt, Vars, ProgVarSet0, ProgVarSet),
-    proc_info_get_argmodes(ProcInfo, Modes),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
-    fact_table_pragma_vars(Vars, Modes, ProgVarSet, PragmaVars),
 
-    % We should be able to dispense with the impure shenanigans
-    % when we replace fact tables with fast code for large disjunctions.
-    some [!IO] (
-        promise_pure (
-            semipure io.unsafe_get_io_state(!:IO),
-            fact_table_generate_c_code(!.ModuleInfo, SymName,
-                ProcId, PrimaryProcId, ProcInfo, PragmaVars, ArgTypes,
-                C_ProcCode, C_ExtraCode, !IO),
-            impure io.unsafe_set_io_state(!.IO)
-        )
-    ),
+    fact_table_generate_c_code_for_proc(!.ModuleInfo, SymName,
+        ProcId, PrimaryProcId, ProcInfo, GenInfo,
+        ProgVarSet, PragmaVars, C_ProcCode, C_ExtraCode),
 
     Attrs0 = default_attributes(lang_c),
     set_may_call_mercury(proc_will_not_call_mercury, Attrs0, Attrs1),
@@ -1102,27 +1100,6 @@ add_fact_table_proc(ProcId, PrimaryProcId, ProcTable,
     PredSpec = pred_pfu_name_arity(PFU, SymName, UserArity),
     add_pred_marker("fact_table", PredSpec, PredStatus, Context,
         marker_user_marked_no_inline, [], !ModuleInfo, !Specs).
-
-    % Create a list(pragma_var) that looks like the ones that are created
-    % for foreign_procs in the parser.
-    % This is required by module_add_pragma_c_code to add the C code for
-    % the procedure to the HLDS.
-    %
-:- pred fact_table_pragma_vars(list(prog_var)::in, list(mer_mode)::in,
-    prog_varset::in, list(pragma_var)::out) is det.
-
-fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
-    ( if
-        Vars0 = [Var | VarsTail],
-        Modes0 = [Mode | ModesTail]
-    then
-        varset.lookup_name(VarSet, Var, Name),
-        PragmaVar = pragma_var(Var, Name, Mode, bp_native_if_possible),
-        fact_table_pragma_vars(VarsTail, ModesTail, VarSet, PragmaVarsTail),
-        PragmaVars0 = [PragmaVar | PragmaVarsTail]
-    else
-        PragmaVars0 = []
-    ).
 
 %---------------------%
 

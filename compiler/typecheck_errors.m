@@ -580,9 +580,14 @@ should_report_no_clauses(ModuleInfo, PredInfo) = ShouldReport :-
     pred_info_get_name(PredInfo, PredName),
     pred_info_get_orig_arity(PredInfo, Arity),
     pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+    pred_info_get_markers(PredInfo, PredMarkers),
     SymName = qualified(ModuleName, PredName),
     Id = pf_sym_name_arity(PredOrFunc, SymName, Arity),
-    ( if set.contains(IntBadClauses, Id) then
+    ( if
+        ( set.contains(IntBadClauses, Id)
+        ; check_marker(PredMarkers, marker_fact_table_semantic_errors)
+        )
+    then
         ShouldReport = no
     else
         ShouldReport = yes

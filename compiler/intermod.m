@@ -2086,6 +2086,7 @@ intermod_write_pred_marker_pragmas_loop(Stream, PredOrFunc, PredSymName,
         ; Marker = marker_has_require_scope
         ; Marker = marker_has_incomplete_switch
         ; Marker = marker_has_format_call
+        ; Marker = marker_fact_table_semantic_errors
 
         % Since the inferred declarations are output, these don't need
         % to be done in the importing module.

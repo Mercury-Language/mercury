@@ -821,27 +821,31 @@ output_foreign_literal_or_include(Stream, MaybeSetLineNumbers,
 
 %-----------------------------------------------------------------------------%
 
-convert_type_to_mercury(Rval, Type, TargetArgLoc, ConvertedRval) :-
+convert_type_to_mercury(RvalStr, Type, TargetArgLoc, ConvertedRvalStr) :-
+    % NOTE The predicate convert_arg_type_to_mercury in fact_table.m
+    % duplicates the logic of this predicate as it pertains to the
+    % types that may occur in fact tables. Changes here may need to be made
+    % there as well.
     (
         Type = builtin_type(BuiltinType),
         (
             BuiltinType = builtin_type_string,
-            ConvertedRval = "(MR_Word) " ++ Rval
+            ConvertedRvalStr = "(MR_Word) " ++ RvalStr
         ;
             BuiltinType = builtin_type_float,
             (
                 TargetArgLoc = reg(reg_r, _),
-                ConvertedRval = "MR_float_to_word(" ++ Rval ++ ")"
+                ConvertedRvalStr = "MR_float_to_word(" ++ RvalStr ++ ")"
             ;
                 TargetArgLoc = reg(reg_f, _),
-                ConvertedRval = Rval
+                ConvertedRvalStr = RvalStr
             )
         ;
             BuiltinType = builtin_type_char,
             % We need to explicitly cast to MR_UnsignedChar
             % to avoid problems with C compilers for which `char'
             % is signed.
-            ConvertedRval = "(MR_UnsignedChar) " ++ Rval
+            ConvertedRvalStr = "(MR_UnsignedChar) " ++ RvalStr
         ;
             BuiltinType = builtin_type_int(IntType),
             (
@@ -854,13 +858,13 @@ convert_type_to_mercury(Rval, Type, TargetArgLoc, ConvertedRval) :-
                 ; IntType = int_type_int32
                 ; IntType = int_type_uint32
                 ),
-                ConvertedRval = Rval
+                ConvertedRvalStr = RvalStr
             ;
                 IntType = int_type_int64,
-                ConvertedRval = "MR_int64_to_word(" ++ Rval ++ ")"
+                ConvertedRvalStr = "MR_int64_to_word(" ++ RvalStr ++ ")"
             ;
                 IntType = int_type_uint64,
-                ConvertedRval = "MR_uint64_to_word(" ++ Rval ++ ")"
+                ConvertedRvalStr = "MR_uint64_to_word(" ++ RvalStr ++ ")"
             )
         )
     ;
@@ -871,23 +875,27 @@ convert_type_to_mercury(Rval, Type, TargetArgLoc, ConvertedRval) :-
         ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
         ),
-        ConvertedRval = Rval
+        ConvertedRvalStr = RvalStr
     ).
 
-convert_type_from_mercury(SourceArgLoc, Rval, Type, ConvertedRval) :-
+convert_type_from_mercury(SourceArgLoc, RvalStr, Type, ConvertedRvalStr) :-
+    % NOTE The predicate convert_arg_type_from_mercury in fact_table.m
+    % duplicates the logic of this predicate as it pertains to the
+    % types that may occur in fact tables. Changes here may need to be made
+    % there as well.
     (
         Type = builtin_type(BuiltinType),
         (
             BuiltinType = builtin_type_string,
-            ConvertedRval = "(MR_String) " ++ Rval
+            ConvertedRvalStr = "(MR_String) " ++ RvalStr
         ;
             BuiltinType = builtin_type_float,
             (
                 SourceArgLoc = reg(reg_r, _),
-                ConvertedRval = "MR_word_to_float(" ++ Rval ++ ")"
+                ConvertedRvalStr = "MR_word_to_float(" ++ RvalStr ++ ")"
             ;
                 SourceArgLoc = reg(reg_f, _),
-                ConvertedRval = Rval
+                ConvertedRvalStr = RvalStr
             )
         ;
             BuiltinType = builtin_type_int(IntType),
@@ -901,17 +909,17 @@ convert_type_from_mercury(SourceArgLoc, Rval, Type, ConvertedRval) :-
                 ; IntType = int_type_int32
                 ; IntType = int_type_uint32
                 ),
-                ConvertedRval = Rval
+                ConvertedRvalStr = RvalStr
             ;
                 IntType = int_type_int64,
-                ConvertedRval = "MR_word_to_int64(" ++ Rval ++ ")"
+                ConvertedRvalStr = "MR_word_to_int64(" ++ RvalStr ++ ")"
             ;
                 IntType = int_type_uint64,
-                ConvertedRval = "MR_word_to_uint64(" ++ Rval ++ ")"
+                ConvertedRvalStr = "MR_word_to_uint64(" ++ RvalStr ++ ")"
             )
         ;
             BuiltinType = builtin_type_char,
-            ConvertedRval = Rval
+            ConvertedRvalStr = RvalStr
         )
     ;
         ( Type = type_variable(_, _)
@@ -921,7 +929,7 @@ convert_type_from_mercury(SourceArgLoc, Rval, Type, ConvertedRval) :-
         ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
         ),
-        ConvertedRval = Rval
+        ConvertedRvalStr = RvalStr
     ).
 
 %-----------------------------------------------------------------------------%

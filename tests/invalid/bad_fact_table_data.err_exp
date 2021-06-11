@@ -1,0 +1,11 @@
+fact_table_data_file_x:002: Error: fact has wrong number of arguments. Expected
+fact_table_data_file_x:002:   3 arguments, got 4.
+fact_table_data_file_x:003: Error: clause is not for predicate `table_x'/3.
+fact_table_data_file_x:004: Type error in argument 2: expected a float, got
+fact_table_data_file_x:004:   `"a"'.
+fact_table_data_file_x:004: Type error in argument 3: expected a string, got
+fact_table_data_file_x:004:   `1.0'.
+fact_table_data_file_x:005: Type error in argument 2: expected a float, got
+fact_table_data_file_x:005:   `a'.
+fact_table_data_file_x:005: Type error in argument 3: expected a string, got
+fact_table_data_file_x:005:   `1.0'.

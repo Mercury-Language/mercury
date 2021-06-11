@@ -424,7 +424,7 @@
             % these incomplete switches, even if the overall determinism
             % of the procedure body is correct.
 
-    ;       marker_has_format_call.
+    ;       marker_has_format_call
             % The body of this predicate contains calls to predicates
             % recognized by format_call.is_format_call. This marker is set
             % if applicable during typechecking, when the predicate body
@@ -432,6 +432,17 @@
             % that optimize correct format calls and/or warn about incorrect
             % (or at least not verifiably correct) format calls, which
             % would be no-ops on predicates that do not have this marker.
+
+    ;       marker_fact_table_semantic_errors.
+            % This predicate has a fact_table pragma for it, so it is
+            % *expected* not to have any clauses in the program itself,
+            % but the compiler found some problems with its declaration,
+            % and so the compiler did not generate clauses (actually,
+            % foreign_procs) for it either. Therefore its procedures
+            % have no implementations, but there should be no separate
+            % error message about this: since they would probably generate
+            % more confusion than enlightenment. The error messages generated
+            % by fact_table.m should be entirely sufficient.
 
 :- type pred_transformation
     --->    transform_higher_order_specialization(

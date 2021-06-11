@@ -1,0 +1,15 @@
+bad_fact_table_decls.m:045: Error: type `bool.bool' is not allowed in fact
+bad_fact_table_decls.m:045:   tables. The only types allowed in fact tables are
+bad_fact_table_decls.m:045:   `int', `float', and `string'.
+bad_fact_table_decls.m:045: Error: type `int16' is not allowed in fact tables.
+bad_fact_table_decls.m:045:   The only types allowed in fact tables are `int',
+bad_fact_table_decls.m:045:   `float', and `string'.
+bad_fact_table_decls.m:054: Error: `:- pragma fact_table' declaration for a
+bad_fact_table_decls.m:054:   predicate with more than one mode in which all
+bad_fact_table_decls.m:054:   arguments are input.
+bad_fact_table_decls.m:057: Error: the `:- pragma fact_table' declaration
+bad_fact_table_decls.m:057:   requires all the arguments of predicate
+bad_fact_table_decls.m:057:   `table_3'/3 mode 0 to be either fully input or
+bad_fact_table_decls.m:057:   fully output, but the second argument is neither.
+bad_fact_table_decls.m:058: In mode declaration for predicate `table_3'/3:
+bad_fact_table_decls.m:058:   error: undefined mode `any'/0.

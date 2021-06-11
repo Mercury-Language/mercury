@@ -1,0 +1,5 @@
+table_x(0, 1.0, "a").
+table_x(0, 1.0, "a", "b").
+table_x(0, 1.0) = "a".
+table_x(0, "a", 1.0).
+table_x(0, a, 1.0).
