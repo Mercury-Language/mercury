@@ -150,16 +150,6 @@ MCFLAGS-transform_hlds.stm_expand            += --no-warn-implicit-stream-calls
 MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-hlds.inst_graph         += --no-warn-inconsistent-pred-order-clauses
 MCFLAGS-mode_robdd.tfeirn       += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-transform_hlds.ctgc.datastruct += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-transform_hlds.ctgc.fixpoint_table += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-transform_hlds.ctgc.selector += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-transform_hlds.ctgc.structure_reuse.domain += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-transform_hlds.ctgc.structure_reuse.indirect += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-transform_hlds.ctgc.structure_sharing.analysis += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-transform_hlds.ctgc.structure_sharing.domain += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-transform_hlds.ctgc.util += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-transform_hlds.rbmm.points_to_graph += --no-warn-inconsistent-pred-order-clauses
-MCFLAGS-transform_hlds.rbmm.region_liveness_info += --no-warn-inconsistent-pred-order-clauses
 
 # Bug workarounds.
 
