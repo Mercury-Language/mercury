@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006, 2009, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ctgc.datastruct.m.
 % Main author: nancy.
@@ -12,7 +12,7 @@
 % Definition of predicates and functions for the manipulation of
 % datastructures.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.datastruct.
 :- interface.
@@ -26,7 +26,7 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Create an initial top-datastruct of the given variable.
     %
@@ -90,14 +90,14 @@
 
 :- func datastructs_vars(list(datastruct)) = list(prog_var).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds.vartypes.
 :- import_module transform_hlds.ctgc.selector.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 datastruct_init(V) = datastruct_init_with_selector(V, []).
 
@@ -180,19 +180,19 @@ datastructs_that_are_subsumed_by_list(ModuleInfo, ProcInfo,
 datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Datastructs, Data):-
     datastruct_subsumed_by_list(ModuleInfo, ProcInfo, Data, Datastructs).
 
-datastruct_apply_widening(ModuleInfo, ProcInfo, Data0, Data) :-
-    Data0 = selected_cel(Var, Sel0),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    lookup_var_type(VarTypes, Var, Type),
-    selector_apply_widening(ModuleInfo, Type, Sel0, Sel),
-    Data = selected_cel(Var, Sel).
-
 datastruct_lists_least_upper_bound(ModuleInfo, ProcInfo, Data1, Data2)
         = Data :-
     list.filter(
         datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Data1),
         Data2, _SubsumedData, NotSubsumedData),
     Data = list.append(NotSubsumedData, Data1).
+
+datastruct_apply_widening(ModuleInfo, ProcInfo, Data0, Data) :-
+    Data0 = selected_cel(Var, Sel0),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    lookup_var_type(VarTypes, Var, Type),
+    selector_apply_widening(ModuleInfo, Type, Sel0, Sel),
+    Data = selected_cel(Var, Sel).
 
 datastructs_project(Vars, DataIn) =
     list.filter(
@@ -201,6 +201,6 @@ datastructs_project(Vars, DataIn) =
 
 datastructs_vars(Data) = list.map(func(X) = X ^ sc_var, Data).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.datastruct.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

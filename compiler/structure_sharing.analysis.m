@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
 % Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: structure_sharing.analysis.m.
 % Main authors: nancy.
@@ -13,7 +13,7 @@
 % Implementation of the structure sharing analysis needed for compile-time
 % garbage collection (CTGC).
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_sharing.analysis.
 :- interface.
@@ -22,7 +22,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Perform structure sharing analysis on the procedures defined in the
     % current module.
@@ -30,7 +30,7 @@
 :- pred perform_structure_sharing_analysis(module_info::in, module_info::out)
     is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type structure_sharing_call.
 :- type structure_sharing_answer.
@@ -53,8 +53,8 @@
     structure_sharing_answer).
 :- instance to_term(structure_sharing_answer).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -105,7 +105,7 @@
 :- import_module term.
 :- import_module term_conversion.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % During analysis we accumulate a list of imported procedures whose
     % answers this module depends on. This doesn't include `opt_imported'
@@ -113,7 +113,7 @@
     %
 :- type dep_procs == list(pred_proc_id).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 perform_structure_sharing_analysis(!ModuleInfo) :-
     % Process all the imported sharing information.
@@ -143,7 +143,7 @@ perform_structure_sharing_analysis(!ModuleInfo) :-
     set.insert(pak_structure_sharing, ProcAnalysisKinds0, ProcAnalysisKinds),
     module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Preliminary steps.
 %
@@ -218,7 +218,7 @@ process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Process the intermodule imported sharing information from the analysis
     % framework
@@ -329,8 +329,8 @@ structure_sharing_answer_to_domain(MaybePPId, HeadVarTypes, ProcInfo, Answer,
         )
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Annotate the HLDS with pre-birth and post-death information, as
     % used by the liveness pass (liveness.m). This information is used to
@@ -355,7 +355,7 @@ simplify_and_detect_liveness_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
     simplify_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo, !ProcInfo),
     detect_liveness_proc(!.ModuleInfo, PredProcId, !ProcInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred sharing_analysis(module_info::in, module_info::out,
     sharing_as_table::in) is det.
@@ -457,7 +457,7 @@ analyse_scc_until_fixpoint(ModuleInfo, SCC, SharingTable,
 
 max_runs = 100.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Perform structure sharing analysis on a procedure.
 %
@@ -481,10 +481,10 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs) :-
     Run = ss_fixpoint_table_which_run(!.FixpointTable),
     TabledAsDescr = ss_fixpoint_table_get_short_description(PPId,
         !.FixpointTable),
-    trace [io(!TIO)] (
+    trace [io(!IO)] (
         write_proc_progress_message(
             "% Sharing analysis (run " ++ string.int_to_string(Run) ++ ") ",
-            PPId, ModuleInfo, !TIO)
+            PPId, ModuleInfo, !IO)
     ),
 
     % In some cases the sharing can be predicted to be bottom, in which
@@ -496,8 +496,10 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs) :-
             bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo,
                 ProcInfo)
         then
-            trace [io(!TIO)] (
-                maybe_write_string(Verbose, "\t\t: bottom predicted", !TIO)
+            trace [io(!IO)] (
+                get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+                maybe_write_string(DebugStream, Verbose,
+                    "\t\t: bottom predicted", !IO)
             ),
             Status = optimal
         else
@@ -521,12 +523,12 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs) :-
                 WidenAsDescr = "-"
             ),
 
-            trace [io(!TIO)] (
-                maybe_write_string(Verbose, "\n\t\t: " ++
-                    TabledAsDescr ++ "->" ++
-                    FullAsDescr ++ "/" ++
-                    ProjAsDescr ++ "/" ++
-                    WidenAsDescr, !TIO)
+            trace [io(!IO)] (
+                get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+                maybe_write_string(DebugStream, Verbose,
+                    "\n\t\t: " ++ TabledAsDescr ++ "->" ++
+                    FullAsDescr ++ "/" ++ ProjAsDescr ++ "/" ++ WidenAsDescr,
+                    !IO)
             )
         ),
         SharingAs_Status = sharing_as_and_status(!.Sharing, Status),
@@ -534,11 +536,13 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs) :-
             !FixpointTable)
     ),
     Desc = ss_fixpoint_table_description(!.FixpointTable),
-    trace [io(!TIO)] (
-        maybe_write_string(Verbose, "\t\t (ft = " ++ Desc ++ ")\n", !TIO)
+    trace [io(!IO)] (
+        get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+        maybe_write_string(DebugStream, Verbose,
+            "\t\t (ft = " ++ Desc ++ ")\n", !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Structure sharing analysis of goals.
 %
@@ -675,9 +679,10 @@ analyse_goal_with_progress(ModuleInfo, PredInfo, ProcInfo, SharingTable,
         Verbose, Goal, !FixpointTable, !DepProcs, !SharingAs, !Status) :-
     (
         Verbose = yes,
-        trace [io(!TIO)] (
-            io.write_char('.', !TIO),
-            io.flush_output(!TIO)
+        trace [io(!IO)] (
+            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+            io.write_char(DebugStream, '.', !IO),
+            io.flush_output(DebugStream, !IO)
         )
     ;
         Verbose = no
@@ -685,7 +690,7 @@ analyse_goal_with_progress(ModuleInfo, PredInfo, ProcInfo, SharingTable,
     analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
         !FixpointTable, !DepProcs, !SharingAs, !Status).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Additional code for analysing disjuctions.
 %
@@ -704,7 +709,7 @@ analyse_disj(ModuleInfo, PredInfo, ProcInfo, SharingTable, SharingBeforeDisj,
     !:Sharing = sharing_as_least_upper_bound(ModuleInfo, ProcInfo, !.Sharing,
         GoalSharing).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Additional code for analysing switches.
 %
@@ -723,7 +728,7 @@ analyse_case(ModuleInfo, PredInfo, ProcInfo, SharingTable, Sharing0,
     !:Sharing = sharing_as_least_upper_bound(ModuleInfo, ProcInfo, !.Sharing,
         CaseSharing).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for handling calls.
 %
@@ -785,7 +790,7 @@ analyse_generic_call(ModuleInfo, ProcInfo, GenDetails, CallArgs, Modes,
         SetToTop = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred update_sharing_in_table(ss_fixpoint_table::in, pred_proc_id::in,
     sharing_as_table::in, sharing_as_table::out) is det.
@@ -794,7 +799,7 @@ update_sharing_in_table(FixpointTable, PPId, !SharingTable) :-
     ss_fixpoint_table_get_final_as(PPId, FixpointTable, SharingAs_Status),
     sharing_as_table_set(PPId, SharingAs_Status, !SharingTable).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Structure sharing fixpoint table.
 %
@@ -806,25 +811,37 @@ update_sharing_in_table(FixpointTable, PPId, !SharingTable) :-
     %
 :- func ss_fixpoint_table_init(list(pred_proc_id)) = ss_fixpoint_table.
 
+ss_fixpoint_table_init(Keys) = init_fixpoint_table(wrapped_init, Keys).
+
     % Add the results of a new analysis pass to the already existing
     % fixpoint table.
     %
 :- pred ss_fixpoint_table_new_run(ss_fixpoint_table::in,
     ss_fixpoint_table::out) is det.
 
+ss_fixpoint_table_new_run(!Table) :-
+    fixpoint_table.new_run(!Table).
+
     % The fixpoint table keeps track of the number of analysis passes. This
     % predicate returns this number.
     %
 :- func ss_fixpoint_table_which_run(ss_fixpoint_table) = int.
+
+ss_fixpoint_table_which_run(Tin) = fixpoint_table.which_run(Tin).
 
     % A fixpoint is reached if all entries in the table are stable,
     % i.e. haven't been modified by the last analysis pass.
     %
 :- pred ss_fixpoint_table_stable(ss_fixpoint_table::in) is semidet.
 
+ss_fixpoint_table_stable(Table) :-
+    fixpoint_table.fixpoint_reached(Table).
+
     % Give a string description of the state of the fixpoint table.
     %
 :- func ss_fixpoint_table_description(ss_fixpoint_table) = string.
+
+ss_fixpoint_table_description(Table) = fixpoint_table.description(Table).
 
     % Enter the newly computed structure sharing description for a given
     % procedure. If the description is different from the one that was
@@ -835,6 +852,11 @@ update_sharing_in_table(FixpointTable, PPId, !SharingTable) :-
 :- pred ss_fixpoint_table_new_as(module_info::in, proc_info::in,
     pred_proc_id::in, sharing_as_and_status::in,
     ss_fixpoint_table::in, ss_fixpoint_table::out) is det.
+
+ss_fixpoint_table_new_as(ModuleInfo, ProcInfo, Id, SharingAs, !Table) :-
+    add_to_fixpoint_table(
+        sharing_as_and_status_is_subsumed_by(ModuleInfo, ProcInfo),
+        Id, SharingAs, !Table).
 
     % Retrieve the structure sharing description for a given pred_proc_id.
     %
@@ -848,47 +870,11 @@ update_sharing_in_table(FixpointTable, PPId, !SharingTable) :-
 :- pred ss_fixpoint_table_get_as(pred_proc_id::in, sharing_as_and_status::out,
     ss_fixpoint_table::in, ss_fixpoint_table::out) is semidet.
 
-:- func ss_fixpoint_table_get_short_description(pred_proc_id,
-    ss_fixpoint_table) = string.
-
-    % Retrieve the structure sharing information without changing the table.
-    % To be used after fixpoint has been reached.
-    % Software error if the procedure is not in the table.
-    %
-:- pred ss_fixpoint_table_get_final_as(pred_proc_id::in,
-    ss_fixpoint_table::in, sharing_as_and_status::out) is det.
-
-    % Same as ss_fixpoint_table_get_final_as, but fails instead of aborting
-    % if the procedure is not in the table.
-    %
-:- pred ss_fixpoint_table_get_final_as_semidet(pred_proc_id::in,
-    ss_fixpoint_table::in, sharing_as_and_status::out) is semidet.
-
-%-----------------------------------------------------------------------------%
-
-:- func wrapped_init(pred_proc_id) = sharing_as_and_status.
-
-wrapped_init(_Id) = sharing_as_and_status(sharing_as_init, optimal).
-
-ss_fixpoint_table_init(Keys) = init_fixpoint_table(wrapped_init, Keys).
-
-ss_fixpoint_table_new_run(!Table) :-
-    fixpoint_table.new_run(!Table).
-
-ss_fixpoint_table_which_run(Tin) = fixpoint_table.which_run(Tin).
-
-ss_fixpoint_table_stable(Table) :-
-    fixpoint_table.fixpoint_reached(Table).
-
-ss_fixpoint_table_description(Table) = fixpoint_table.description(Table).
-
-ss_fixpoint_table_new_as(ModuleInfo, ProcInfo, Id, SharingAs, !Table) :-
-    add_to_fixpoint_table(
-        sharing_as_and_status_is_subsumed_by(ModuleInfo, ProcInfo),
-        Id, SharingAs, !Table).
-
 ss_fixpoint_table_get_as(PPId, SharingAs, !Table) :-
     get_from_fixpoint_table(PPId, SharingAs, !Table).
+
+:- func ss_fixpoint_table_get_short_description(pred_proc_id,
+    ss_fixpoint_table) = string.
 
 ss_fixpoint_table_get_short_description(PPId, Table) = Descr :-
     ( if
@@ -900,13 +886,32 @@ ss_fixpoint_table_get_short_description(PPId, Table) = Descr :-
         Descr = "-"
     ).
 
+    % Retrieve the structure sharing information without changing the table.
+    % To be used after fixpoint has been reached.
+    % Software error if the procedure is not in the table.
+    %
+:- pred ss_fixpoint_table_get_final_as(pred_proc_id::in,
+    ss_fixpoint_table::in, sharing_as_and_status::out) is det.
+
 ss_fixpoint_table_get_final_as(PPId, T, SharingAs_Status) :-
     SharingAs_Status = get_from_fixpoint_table_final(PPId, T).
+
+    % Same as ss_fixpoint_table_get_final_as, but fails instead of aborting
+    % if the procedure is not in the table.
+    %
+:- pred ss_fixpoint_table_get_final_as_semidet(pred_proc_id::in,
+    ss_fixpoint_table::in, sharing_as_and_status::out) is semidet.
 
 ss_fixpoint_table_get_final_as_semidet(PPId, T, SharingAs_Status) :-
     get_from_fixpoint_table_final_semidet(PPId, T, SharingAs_Status).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- func wrapped_init(pred_proc_id) = sharing_as_and_status.
+
+wrapped_init(_Id) = sharing_as_and_status(sharing_as_init, optimal).
+
+%---------------------------------------------------------------------------%
 %
 % Types and instances for the intermodule analysis framework.
 %
@@ -1064,7 +1069,7 @@ sharing_answer_from_term(Term, Answer) :-
         Answer = structure_sharing_answer_real(HeadVars, Types, SharingPairs)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Additional predicates used for intermodule analysis.
 %
@@ -1129,18 +1134,17 @@ maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
             else
                 Status = Status0
             ),
-            trace [io(!TIO),
+            trace [io(!IO),
                 compile_time(flag("structure_sharing")),
                 run_time(env("TOP_REASONS"))
             ] (
+                get_debug_output_stream(ModuleInfo, DebugStream, !IO),
                 ReasonsList = set.to_sorted_list(Reasons),
-                io.write_string(":\n", !TIO),
-                io.write_list(ReasonsList, "\n",
-                    write_top_feedback(ModuleInfo), !TIO),
-                io.nl(!TIO),
-                io.write_string("\t", !TIO),
-                io.write(Status, !TIO),
-                io.nl(!TIO)
+                io.write_string(DebugStream, ":\n", !IO),
+                list.foldl(write_top_feedback(DebugStream, ModuleInfo),
+                    ReasonsList, !IO),
+                io.write_string(DebugStream, "\t", !IO),
+                io.write_line(DebugStream, Status, !IO)
             )
         ;
             Sharing = structure_sharing_real(SharingPairs),
@@ -1185,27 +1189,28 @@ handle_dep_procs(ModuleInfo, DepPPId, !AnalysisInfo) :-
     record_dependency(DepModuleName, DepFuncId, FuncInfo, Call, Answer,
         !AnalysisInfo).
 
-:- pred write_top_feedback(module_info::in, top_feedback::in, io::di, io::uo)
-    is det.
+%---------------------------------------------------------------------------%
 
-write_top_feedback(ModuleInfo, Reason, !IO) :-
-    io.write_string("\t", !IO),
+:- pred write_top_feedback(io.text_output_stream::in, module_info::in,
+    top_feedback::in, io::di, io::uo) is det.
+
+write_top_feedback(Stream, ModuleInfo, Reason, !IO) :-
+    io.write_string(Stream, "\t", !IO),
     (
         Reason = top_failed_lookup(ShroudedPPId),
         PPId = unshroud_pred_proc_id(ShroudedPPId),
         PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
-        io.format("failed_lookup: %s", [s(PPIdStr)], !IO)
+        io.format(Stream, "failed_lookup: %s\n", [s(PPIdStr)], !IO)
     ;
         Reason = top_from_lookup(ShroudedPPId),
         PPId = unshroud_pred_proc_id(ShroudedPPId),
         PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
-        io.format("from_lookup: %s", [s(PPIdStr)], !IO)
+        io.format(Stream, "from_lookup: %s\n", [s(PPIdStr)], !IO)
     ;
         Reason = top_cannot_improve(String),
-        io.write_string("cannot_improve: ", !IO),
-        io.write_string(String, !IO)
+        io.format(Stream, "cannot_improve: %s\n", [s(String)], !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_sharing.analysis.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

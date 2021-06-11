@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: structure_reuse.domain.m.
 % Main authors: nancy.
@@ -12,7 +12,7 @@
 % Definition of the abstract domain for keeping track of opportunities for
 % structure reuse.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_reuse.domain.
 :- interface.
@@ -34,7 +34,7 @@
 :- import_module map.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % A reuse condition stores all the necessary information to check if
     % a procedure call is safe w.r.t. a structure reuse opportunity within
@@ -47,7 +47,7 @@
     %
 :- type reuse_as.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % reuse_condition
 %
@@ -80,7 +80,7 @@
 :- pred reuse_condition_subsumed_by(module_info::in, proc_info::in,
     reuse_condition::in, reuse_condition::in) is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % reuse_as
 %
 % XXX The implementation of this type has changed wrt. its counterpart in the
@@ -207,7 +207,7 @@
 :- func from_structure_reuse_domain(structure_reuse_domain) = reuse_as.
 :- func to_structure_reuse_domain(reuse_as) = structure_reuse_domain.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % reuse_as_table
 %
@@ -258,8 +258,8 @@
     no_clobber_args::in, pred_proc_id::in,
     reuse_as_table::in, reuse_as_table::out) is det.
 
-:- pred reuse_as_table_maybe_dump(bool::in, module_info::in,
-    reuse_as_table::in, io::di, io::uo) is det.
+:- pred reuse_as_table_maybe_dump(io.text_output_stream::in, bool::in,
+    module_info::in, reuse_as_table::in, io::di, io::uo) is det.
 
     % Load all the structure reuse information present in the HLDS into
     % a reuse table. This is only for the old intermodule optimisation system
@@ -267,8 +267,8 @@
     %
 :- func load_structure_reuse_table(module_info) = reuse_as_table.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -286,7 +286,7 @@
 :- import_module solutions.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type reuse_condition
     --->    always
@@ -323,7 +323,7 @@
             % = element representing the collection of reuse conditions
             % collected for the reuses detected so far.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Reuse_condition.
 %
@@ -382,6 +382,22 @@ reuse_condition_is_conditional(condition(_, _, _)).
 
 reuse_condition_reusable_nodes(condition(Nodes, _, _), Nodes).
 
+reuse_condition_rename(MapVar, TypeSubst, Condition, RenamedCondition):-
+    (
+        Condition = always,
+        RenamedCondition = always
+    ;
+        Condition = condition(DeadNodes, InUseNodes, LocalSharing),
+        RenamedDeadNodes = set.map(rename_datastruct(MapVar, TypeSubst),
+            DeadNodes),
+        RenamedInUseNodes = list.map(rename_datastruct(MapVar, TypeSubst),
+            InUseNodes),
+        sharing_as_rename(MapVar, TypeSubst, LocalSharing,
+            RenamedLocalSharing),
+        RenamedCondition = condition(RenamedDeadNodes, RenamedInUseNodes,
+            RenamedLocalSharing)
+    ).
+
 reuse_condition_subsumed_by(ModuleInfo, ProcInfo, Cond1, Cond2) :-
     (
         Cond1 = always
@@ -423,23 +439,7 @@ reuse_condition_subsumed_by_list(ModuleInfo, ProcInfo, Cond, [Cond1|Rest]) :-
 reuse_conditions_subsume_reuse_condition(ModuleInfo, ProcInfo, Conds, Cond):-
     reuse_condition_subsumed_by_list(ModuleInfo, ProcInfo, Cond, Conds).
 
-reuse_condition_rename(MapVar, TypeSubst, Condition, RenamedCondition):-
-    (
-        Condition = always,
-        RenamedCondition = always
-    ;
-        Condition = condition(DeadNodes, InUseNodes, LocalSharing),
-        RenamedDeadNodes = set.map(rename_datastruct(MapVar, TypeSubst),
-            DeadNodes),
-        RenamedInUseNodes = list.map(rename_datastruct(MapVar, TypeSubst),
-            InUseNodes),
-        sharing_as_rename(MapVar, TypeSubst, LocalSharing,
-            RenamedLocalSharing),
-        RenamedCondition = condition(RenamedDeadNodes, RenamedInUseNodes,
-            RenamedLocalSharing)
-    ).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % reuse_as
 %
@@ -813,7 +813,7 @@ collect_aliased_vars(DataA - DataB, !Vars) :-
     set.insert(DataA ^ sc_var, !Vars),
     set.insert(DataB ^ sc_var, !Vars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred reuse_condition_satisfied(module_info::in, proc_info::in,
     livedata::in, sharing_as::in, prog_vars::in, reuse_condition::in,
@@ -865,7 +865,7 @@ reuse_condition_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 from_structure_reuse_domain(ReuseDomain) = ReuseAs :-
     (
@@ -922,7 +922,7 @@ to_structure_reuse_condition(Condition) = StructureReuseCondition :-
     StructureReuseCondition = structure_reuse_condition(DeadNodes, LiveNodes,
         to_structure_sharing_domain(SharingAs)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % reuse_as_table
 %
@@ -951,33 +951,38 @@ reuse_as_table_insert_reuse_version_proc(PPId, NoClobbers, NewPPId, !Table) :-
     bimap.det_insert(ppid_no_clobbers(PPId, NoClobbers), NewPPId, T0, T),
     !Table ^ reuse_version_map := T.
 
-reuse_as_table_maybe_dump(DoDump, ModuleInfo, Table, !IO) :-
+%---------------------------------------------------------------------------%
+
+reuse_as_table_maybe_dump(Stream, DoDump, ModuleInfo, Table, !IO) :-
     (
         DoDump = no
     ;
         DoDump = yes,
-        reuse_as_table_dump(ModuleInfo, Table, !IO)
+        reuse_as_table_dump(Stream, ModuleInfo, Table, !IO)
     ).
 
-:- pred reuse_as_table_dump(module_info::in, reuse_as_table::in,
-    io::di, io::uo) is det.
+:- pred reuse_as_table_dump(io.text_output_stream::in, module_info::in,
+    reuse_as_table::in, io::di, io::uo) is det.
 
-reuse_as_table_dump(ModuleInfo, Table, !IO) :-
+reuse_as_table_dump(Stream, ModuleInfo, Table, !IO) :-
     ReuseInfoMap = Table ^ reuse_info_map,
     ( if map.is_empty(ReuseInfoMap) then
-        io.write_string("% ReuseTable: Empty\n", !IO)
+        io.write_string(Stream, "% ReuseTable: Empty\n", !IO)
     else
-        io.write_string("% ReuseTable: PPId --> Reuse\n", !IO),
-        map.foldl(dump_entries(ModuleInfo), ReuseInfoMap, !IO)
+        io.write_string(Stream, "% ReuseTable: PPId --> Reuse\n", !IO),
+        map.foldl(dump_entries(Stream, ModuleInfo), ReuseInfoMap, !IO)
     ).
 
-:- pred dump_entries(module_info::in, pred_proc_id::in,
-    reuse_as_and_status::in, io::di, io::uo) is det.
+:- pred dump_entries(io.text_output_stream::in, module_info::in,
+    pred_proc_id::in, reuse_as_and_status::in, io::di, io::uo) is det.
 
-dump_entries(ModuleInfo, PPId, reuse_as_and_status(ReuseAs, _Status), !IO) :-
+dump_entries(Stream, ModuleInfo, PPId,
+        reuse_as_and_status(ReuseAs, _Status), !IO) :-
     PPIdStr = pred_proc_id_to_string(ModuleInfo, PPId),
-    io.format("%% %s\t--> %s\n",
+    io.format(Stream, "%% %s\t--> %s\n",
         [s(PPIdStr), s(reuse_as_short_description(ReuseAs))], !IO).
+
+%---------------------------------------------------------------------------%
 
 load_structure_reuse_table(ModuleInfo) = ReuseTable :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
@@ -1010,6 +1015,6 @@ load_structure_reuse_table_3(ModuleInfo, PredId, ProcId, !ReuseTable) :-
         MaybePublicReuse = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.domain.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

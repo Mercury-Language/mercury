@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: structure_reuse.direct.choose_reuse.m.
 % Main authors: nancy.
@@ -93,7 +93,7 @@
 % In this example, it is allowed to reuse X for Y. And it will also be
 % discovered by the analysis.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
 :- interface.
@@ -104,13 +104,13 @@
 :- import_module hlds.hlds_module.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred determine_reuse(module_info::in, proc_info::in, dead_cell_table::in,
     hlds_goal::in, hlds_goal::out, reuse_as::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -131,7 +131,7 @@
 :- import_module string.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 determine_reuse(ModuleInfo, ProcInfo, DeadCellTable, !Goal, ReuseAs) :-
     % Check for local reuse:
@@ -150,7 +150,7 @@ determine_reuse(ModuleInfo, ProcInfo, DeadCellTable, !Goal, ReuseAs) :-
         FreeCells = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % A type to collect all the background information needed to process
     % each individual goal.
@@ -170,7 +170,7 @@ background_info_init(Strategy, ModuleInfo, ProcInfo) = Background :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
     Background = background(Strategy, ModuleInfo, ProcInfo, VarTypes).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Some types and predicates for the administration of the deconstructions,
 % constructions and the 'matches' we want to derive from them.
 %
@@ -351,7 +351,7 @@ match_add_construction(ConSpec, Match0, Match) :-
     Value = (Value0 * FDegree0 + ConSpec ^ con_reuse ^ reuse_value) / FDegree,
     Match = match(DeconSpecs0, ConSpecs, Value, Degree).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Manipulating the values of matches...
 %
@@ -451,7 +451,7 @@ average_match(List, AverageMatch) :-
         unexpected($pred, "empty list")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Process a single goal:
 %
@@ -490,8 +490,14 @@ choose_reuse_in_goal(Background, !DeadCellTable, !Goal, !ReuseAs) :-
             % Maybe dump all the matches recorded in the table, highlight the
             % match with the highest value.
             trace [io(!IO)] (
-                maybe_write_string(VeryVerbose, "% Reuse results: \n", !IO),
-                maybe_dump_match_table(VeryVerbose, MatchTable, Match, !IO)
+                (
+                    VeryVerbose = no
+                ;
+                    VeryVerbose = yes,
+                    io.stderr_stream(StdErr, !IO),
+                    io.write_string(StdErr, "% Reuse results: \n", !IO),
+                    dump_match_table(StdErr, MatchTable, Match, !IO)
+                )
             ),
 
             OldGoal = !.Goal,
@@ -542,7 +548,7 @@ remove_deconstructions_from_dead_cell_table(Match, !DeadCellTable) :-
 remove_deconstruction_from_dead_cell_table(DeconSpec, !DeadCellTable) :-
     dead_cell_table_remove(DeconSpec ^ decon_pp, !DeadCellTable).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Compute the match table for a given goal
 %
@@ -755,7 +761,7 @@ deconstruction_specs_2(DeadVar, Table, !DeconstructionSpecs) :-
 
 match_get_decon_specs(Match) = Match ^ decon_specs.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Find construction unifications for dead cells, compute the values of the
 % matches.
@@ -894,7 +900,7 @@ add_degree(Match, Degree0) = Degree0 + Match ^ match_degree.
 
 empty_reuse_description(no_reuse_info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Verify the value of a match for a given construction
 %
@@ -1098,7 +1104,7 @@ needs_update_and(does_not_need_update, needs_update) = needs_update.
 needs_update_and(does_not_need_update, does_not_need_update) =
     does_not_need_update.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % has_secondary_tag(ModuleInfo, ConsId, HasSecTag) returns `yes' iff
     % ConsId requires a remote secondary tag to distinguish between
@@ -1172,8 +1178,8 @@ equals([X | Xs], [Y | Ys]) = [NeedsUpdate | equals(Xs, Ys)] :-
 drop_one([]) = [].
 drop_one([_ | Xs]) = Xs.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
     % Once a match is selected (hence a set of deconstructions and matching
     % constructions), annotate all the involved unifications in the goal.
@@ -1332,7 +1338,7 @@ deconstruction_spec_with_program_point(DeconstructionSpec ^ decon_pp,
 construction_spec_with_program_point(ConstructionSpec ^ con_pp,
     ConstructionSpec).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates to print intermediate results as stored in a match_table.
 %
@@ -1341,54 +1347,47 @@ construction_spec_with_program_point(ConstructionSpec ^ con_pp,
 
 line_length = 79.
 
-:- pred dump_line(string::in, io::di, io::uo) is det.
+:- pred dump_line(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
 
-dump_line(Msg, !IO) :-
+dump_line(Stream, Msg, !IO) :-
     Prefix = "%---",
     Start = string.append(Prefix, Msg),
     Remainder = line_length - string.count_codepoints(Start) - 1,
     Line = Start ++ string.duplicate_char('-', Remainder),
-    io.write_string(Line, !IO),
-    io.write_string("%\n", !IO).
+    io.write_string(Stream, Line, !IO),
+    io.write_string(Stream, "%\n", !IO).
 
-:- pred maybe_dump_match_table(bool::in, match_table::in, match::in,
+:- pred dump_match_table(io.text_output_stream::in, match_table::in, match::in,
     io::di, io::uo) is det.
 
-maybe_dump_match_table(VeryVerbose, MatchTable, HighestMatch, !IO) :-
-    (
-        VeryVerbose = yes,
-        dump_line("reuse table", !IO),
-        io.write_string("%\t|\tvar\t|\tvalue\t|\tdegree\n", !IO),
-        dump_match("%-sel- ", HighestMatch, !IO),
-        dump_full_table(MatchTable, !IO),
-        dump_line("", !IO)
-    ;
-        VeryVerbose = no
-    ).
+dump_match_table(Stream, MatchTable, HighestMatch, !IO) :-
+    dump_line(Stream, "reuse table", !IO),
+    io.write_string(Stream, "%\t|\tvar\t|\tvalue\t|\tdegree\n", !IO),
+    dump_match(Stream, "%-sel- ", HighestMatch, !IO),
+    dump_full_table(Stream, MatchTable, !IO),
+    dump_line(Stream, "", !IO).
 
-:- pred dump_match(string::in, match::in, io::di, io::uo) is det.
+:- pred dump_match(io.text_output_stream::in, string::in, match::in,
+    io::di, io::uo) is det.
 
-dump_match(Prefix, Match, !IO) :-
-    io.write_string(Prefix, !IO),
-    io.write_string("\t|\t", !IO),
-    io.write_int(term.var_to_int(match_get_dead_var(Match)), !IO),
-    io.write_string("\t|\t", !IO),
+dump_match(Stream, Prefix, Match, !IO) :-
+    MatchVarInt = term.var_to_int(match_get_dead_var(Match)),
+    io.format(Stream, "%s\t|\t%d\t|\t", [s(Prefix), i(MatchVarInt)], !IO),
     Val = Match ^ match_value,
     ( if Val = 0.0 then
-        io.write_string("-", !IO)
+        io.write_string(Stream, "-", !IO)
     else
-        io.format("%.2f", [f(Val)], !IO)
+        io.format(Stream, "%.2f", [f(Val)], !IO)
     ),
     Degree = Match ^ match_degree,
-    io.write_string("\t|\t", !IO),
-    io.write_int(Degree, !IO),
-    io.write_string("\t", !IO),
-    dump_match_details(Match, !IO),
-    io.nl(!IO).
+    io.format(Stream, "\t|\t%d\t", [i(Degree)], !IO),
+    dump_match_details(Stream, Match, !IO).
 
-:- pred dump_match_details(match::in, io::di, io::uo) is det.
+:- pred dump_match_details(io.text_output_stream::in, match::in,
+    io::di, io::uo) is det.
 
-dump_match_details(Match, !IO) :-
+dump_match_details(Stream, Match, !IO) :-
     Conds = list.map((func(DeconSpec) = DeconSpec ^ decon_conds),
         Match ^ decon_specs),
     ( if all_true(reuse_as_all_unconditional_reuses, Conds) then
@@ -1396,35 +1395,25 @@ dump_match_details(Match, !IO) :-
     else
         CondsString = "C"
     ),
-
     D = list.length(Match ^ decon_specs),
     C = list.length(Match ^ con_specs),
-    string.append_list(["d: ", int_to_string(D), ", c: ",
-        int_to_string(C),
-        ", Co: ", CondsString], Details),
-    io.write_string(Details, !IO).
+    io.format(Stream, "d: %d, c: %d, Co: %s\n",
+        [i(D), i(C), s(CondsString)], !IO).
 
-:- pred dump_full_table(match_table::in, io::di, io::uo) is det.
+:- pred dump_full_table(io.text_output_stream::in, match_table::in,
+    io::di, io::uo) is det.
 
-dump_full_table(MatchTable, !IO) :-
+dump_full_table(Stream, MatchTable, !IO) :-
     ( if multi_map.is_empty(MatchTable) then
-        dump_line("empty match table", !IO)
+        dump_line(Stream, "empty match table", !IO)
     else
-        dump_line("full table (start)", !IO),
+        dump_line(Stream, "full table (start)", !IO),
         multi_map.values(MatchTable, Matches),
-        list.foldl(dump_match("%-----"), Matches, !IO),
-        dump_line("full table (end)", !IO)
+        list.foldl(dump_match(Stream, "%-----"), Matches, !IO),
+        dump_line(Stream, "full table (end)", !IO)
     ).
 
-:- pred maybe_dump_full_table(bool::in, match_table::in,
-    io::di, io::uo) is det.
-:- pragma consider_used(maybe_dump_full_table/4).
-
-maybe_dump_full_table(no, _M, !IO).
-maybe_dump_full_table(yes, M, !IO) :-
-    dump_full_table(M, !IO).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % After determining all local reuses of dead datastructures (a data
     % structure becomes dead and is reused in one and the same procedure), we
@@ -1442,12 +1431,14 @@ check_for_cell_caching(VeryVerbose, DeadCellTable0, !Goal) :-
     dead_cell_table_remove_conditionals(DeadCellTable0, DeadCellTable),
     ( if dead_cell_table_is_empty(DeadCellTable) then
         trace [io(!IO)] (
-            maybe_write_string(VeryVerbose,
+            io.stderr_stream(StdErr, !IO),
+            maybe_write_string(StdErr, VeryVerbose,
                 "% No cells to be cached/freed.\n", !IO)
         )
     else
         trace [io(!IO)] (
-            maybe_write_string(VeryVerbose,
+            io.stderr_stream(StdErr, !IO),
+            maybe_write_string(StdErr, VeryVerbose,
                 "% Marking cacheable/freeable cells.\n", !IO)
         ),
         check_for_cell_caching_2(DeadCellTable, !Goal)
@@ -1545,6 +1536,6 @@ check_for_cell_caching_in_unification(DeadCellTable, !Unification,
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006-2008, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ctgc.util.m.
 % Main author: nancy.
 %
 % Utility operations for the CTGC-system.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.util.
 :- interface.
@@ -25,7 +25,7 @@
 :- import_module list.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Check if some of the predicates are "special" predicates (as in
     % "special_pred_map" known from module_info) or not defined in the
@@ -72,8 +72,8 @@
     %
 :- pred top_cell_may_be_reusable(module_info::in, mer_type::in) is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -87,7 +87,11 @@
 :- import_module bool.
 :- import_module map.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+some_preds_require_no_analysis(ModuleInfo, PPIds) :-
+    set.member(proc(PredId, _), PPIds),
+    pred_requires_no_analysis(ModuleInfo, PredId).
 
 pred_requires_no_analysis(ModuleInfo, PredId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -98,10 +102,6 @@ pred_requires_no_analysis(ModuleInfo, PredId) :-
 
 pred_requires_analysis(ModuleInfo, PredId) :-
     not pred_requires_no_analysis(ModuleInfo, PredId).
-
-some_preds_require_no_analysis(ModuleInfo, PPIds) :-
-    set.member(proc(PredId, _), PPIds),
-    pred_requires_no_analysis(ModuleInfo, PredId).
 
 get_variable_renaming(ModuleInfo, PPId, ActualArgs) = VariableRenaming :-
     module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo, ProcInfo),
@@ -145,7 +145,7 @@ reverse_renaming(RevSubst, K0, V0, !Acc) :-
     apply_variable_renaming_to_type(RevSubst, V0, V),
     map.det_insert(K, V, !Acc).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 var_needs_sharing_analysis(ModuleInfo, ProcInfo, Var) :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
@@ -208,6 +208,6 @@ type_category_top_cell_may_be_reusable(CtorCat) = Reusable :-
         Reusable = yes
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2008, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File smm_common.m.
 % Main author: Quan Phan.
@@ -12,7 +12,7 @@
 % This module contains defines types and procedures that are common to
 % various static memory management analyses, e.g. CTGC, RBMM.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.smm_common.
 :- interface.
@@ -31,7 +31,7 @@
 :- import_module list.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Succeeds if the selector selects the type node of the input type.
     %
@@ -46,7 +46,7 @@
 :- pred some_are_special_preds(list(pred_proc_id)::in, module_info::in)
     is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Definition of a program point.
 %
@@ -66,10 +66,11 @@
 
     % Dump the information contained in a program point.
     %
-:- pred dump_program_point(program_point::in, io::di, io::uo) is det.
+:- pred dump_program_point(io.text_output_stream::in, program_point::in,
+    io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -81,8 +82,9 @@
 
 :- import_module bool.
 :- import_module map.
+:- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Check if the selector is valid w.r.t the type.
     %
@@ -154,11 +156,12 @@ program_point_init(GoalInfo) = ProgPoint :-
     RevGoalPath = goal_info_get_reverse_goal_path(GoalInfo),
     ProgPoint = pp(Context, RevGoalPath).
 
-dump_program_point(pp(Context, RevGoalPath), !IO):-
-    prog_out.write_context(Context, !IO),
-    io.write_string("--", !IO),
-    io.write_string(rev_goal_path_to_string(RevGoalPath), !IO).
+%---------------------------------------------------------------------------%
 
-%-----------------------------------------------------------------------------%
+dump_program_point(Stream, pp(Context, RevGoalPath), !IO):-
+    prog_out.write_context(Stream, Context, !IO),
+    io.format(Stream, "--%s", [s(rev_goal_path_to_string(RevGoalPath))], !IO).
+
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.smm_common.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

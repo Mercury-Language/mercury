@@ -1,18 +1,18 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ff=unix ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
 % Copyright (C) 2017 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: structure_reuse.indirect.m.
 % Main authors: nancy, wangp.
 %
 % Determine the indirect reuse.  This requires a fixpoint computation.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_reuse.indirect.
 :- interface.
@@ -26,7 +26,7 @@
 
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Represents a request to perform analyses of a procedure with
     % restriction on which arguments may be clobbered.
@@ -67,8 +67,8 @@
     set(ppid_no_clobbers)::out, set(sr_request)::out,
     set(sr_request)::in, set(sr_request)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -107,11 +107,11 @@
 :- import_module solutions.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type dep_procs == set(ppid_no_clobbers).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, DepProcs,
         Requests, IntermodRequests) :-
@@ -150,7 +150,7 @@ update_reuse_in_table(FixpointTable, PPId, !ReuseTable) :-
     FinalAs = sr_fixpoint_table_get_final_as(PPId, FixpointTable),
     reuse_as_table_set(PPId, FinalAs, !ReuseTable).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 indirect_reuse_rerun(SharingTable, !ModuleInfo, !ReuseTable,
         DepProcs, Requests, !IntermodRequests) :-
@@ -197,7 +197,7 @@ extend_scc_with_reuse_procs(ReuseTable, SCC, ExtendedSCC) :-
         ), Extension),
     ExtendedSCC = SCC ++ Extension.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred indirect_reuse_analyse_scc_until_fixpoint(sharing_as_table::in,
     list(pred_proc_id)::in, reuse_as_table::in,
@@ -224,7 +224,7 @@ indirect_reuse_analyse_scc_until_fixpoint(SharingTable, SCC,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred indirect_reuse_analyse_pred_proc(sharing_as_table::in,
     reuse_as_table::in, pred_proc_id::in, module_info::in, module_info::out,
@@ -272,9 +272,10 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
         )
     then
         trace [io(!IO)] (
+            io.stderr_stream(StdErr, !IO),
             ProcStr =
                 pred_proc_id_pair_to_string(!.ModuleInfo, PredId, ProcId),
-            io.format("%% Indirect reuse analysis (run %d) %s\n",
+            io.format(StdErr, "%% Indirect reuse analysis (run %d) %s\n",
                 [i(Run), s(ProcStr)], !IO)
         )
     else
@@ -302,17 +303,13 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
         )
     then
         trace [io(!IO)] (
-            io.write_string("% FPT: ", !IO),
-            io.write_string(
-                sr_fixpoint_table_get_short_description(PPId,
-                    !.FixpointTable),
-                !IO),
-            io.nl(!IO),
-
+            io.stderr_stream(StdErr, !IO),
+            Desc = sr_fixpoint_table_get_short_description(PPId,
+                !.FixpointTable),
+            io.format(StdErr, "%% FPT: %s\n", [s(Desc)], !IO),
             NumConditions = reuse_as_count_conditions(IrInfo ^ reuse_as),
-            io.write_string("% Number of conditions: ", !IO),
-            io.write_int(NumConditions, !IO),
-            io.nl(!IO)
+            io.format(StdErr, "%% Number of conditions: %d\n",
+                [i(NumConditions)], !IO)
         )
     else
         true
@@ -329,7 +326,7 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
     proc_info_set_goal(Goal, ProcInfo0, ProcInfo),
     module_info_set_pred_proc_info(PPId, PredInfo0, ProcInfo, !ModuleInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The type ir_background_info has the purpose to collect all the necessary
     % background information needed to be able to perform the indirect reuse
@@ -451,7 +448,7 @@ ir_analysis_info_lub(BaseInfo, IrInfo0, !IrInfo):-
     !:IrInfo = ir_analysis_info(NewSharing, NewReuse, NewStatus, NewStaticVars,
         !.IrInfo ^ fptable, NewDepProcs, NewRequests, NewIntermodRequests).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred indirect_reuse_analyse_goal(ir_background_info::in, hlds_goal::in,
     hlds_goal::out, ir_analysis_info::in, ir_analysis_info::out) is det.
@@ -717,7 +714,8 @@ update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo) :-
                 sharing_as_is_top(NewSharing),
                 not sharing_as_is_top(OldSharing)
             then
-                io.write_string("\tsharing is now top\n", !IO)
+                io.stderr_stream(StdErr, !IO),
+                io.write_string(StdErr, "\tsharing is now top\n", !IO)
             else
                 true
             )
@@ -727,7 +725,7 @@ update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo) :-
     ),
     !IrInfo ^ sharing_as := NewSharing.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Verification of a reuse calls
 %
@@ -767,8 +765,9 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
         % the reuse_as from `lookup_reuse_as' is not definitive.  It may
         % return something else later.
         trace [io(!IO)] (
-            maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
-                NoClobbers, !.GoalInfo, Reason, !IO)
+            io.stderr_stream(StdErr, !IO),
+            maybe_write_verify_indirect_reuse_reason(StdErr, BaseInfo,
+                CalleePPId, NoClobbers, !.GoalInfo, Reason, !IO)
         )
     else if
         reuse_as_all_unconditional_reuses(FormalReuseAs)
@@ -780,9 +779,10 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
         goal_info_set_reuse(reuse(reuse_call(unconditional_reuse, NoClobbers)),
             !GoalInfo),
         trace [io(!IO)] (
-            maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
-                NoClobbers, !.GoalInfo, callee_has_only_unconditional_reuse,
-                !IO)
+            io.stderr_stream(StdErr, !IO),
+            maybe_write_verify_indirect_reuse_reason(StdErr, BaseInfo,
+                CalleePPId, NoClobbers, !.GoalInfo,
+                callee_has_only_unconditional_reuse, !IO)
         )
     else
         (
@@ -802,7 +802,8 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
             then
                 goal_info_set_reuse(no_possible_reuse, !GoalInfo),
                 trace [io(!IO)] (
-                    maybe_write_verify_indirect_reuse_reason(BaseInfo,
+                    io.stderr_stream(StdErr, !IO),
+                    maybe_write_verify_indirect_reuse_reason(StdErr, BaseInfo,
                         CalleePPId, NoClobbers, !.GoalInfo,
                         current_sharing_is_top, !IO)
                 )
@@ -827,16 +828,18 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
         CalleeArgs, FormalReuseAs, NewAndRenamedReuseAs, NotDeadVars),
     ( if reuse_as_no_reuses(NewAndRenamedReuseAs) then
         get_var_indices(NotDeadVars, CalleeArgs, 1, NotDeadArgNums0),
-        NotDeadArgNums = list.sort_and_remove_dups(NotDeadArgNums0
-            ++ NoClobbers),
+        NotDeadArgNums =
+            list.sort_and_remove_dups(NotDeadArgNums0 ++ NoClobbers),
         ( if
             NotDeadArgNums = NoClobbers
         then
             % Don't do anything.  Don't even request a new version.
             goal_info_set_reuse(no_possible_reuse, !GoalInfo),
             trace [io(!IO)] (
-                maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
-                    NoClobbers, !.GoalInfo, reuse_is_unsafe(NotDeadVars), !IO)
+                io.stderr_stream(StdErr, !IO),
+                maybe_write_verify_indirect_reuse_reason(StdErr, BaseInfo,
+                    CalleePPId, NoClobbers, !.GoalInfo,
+                    reuse_is_unsafe(NotDeadVars), !IO)
             )
         else if
             % If there is already an entry for the callee procedure with the
@@ -860,8 +863,10 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
                 goal_info_set_reuse(no_possible_reuse, !GoalInfo)
             ),
             trace [io(!IO)] (
-                maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
-                    NoClobbers, !.GoalInfo, reuse_is_unsafe(NotDeadVars), !IO)
+                io.stderr_stream(StdErr, !IO),
+                maybe_write_verify_indirect_reuse_reason(StdErr, BaseInfo,
+                    CalleePPId, NoClobbers, !.GoalInfo,
+                    reuse_is_unsafe(NotDeadVars), !IO)
             )
         )
     else if reuse_as_all_unconditional_reuses(NewAndRenamedReuseAs) then
@@ -871,8 +876,10 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
         goal_info_set_reuse(reuse(reuse_call(unconditional_reuse, NoClobbers)),
             !GoalInfo),
         trace [io(!IO)] (
-            maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
-                NoClobbers, !.GoalInfo, reuse_is_unconditional, !IO)
+            io.stderr_stream(StdErr, !IO),
+            maybe_write_verify_indirect_reuse_reason(StdErr, BaseInfo,
+                CalleePPId, NoClobbers, !.GoalInfo,
+                reuse_is_unconditional, !IO)
         )
     else if reuse_as_conditional_reuses(NewAndRenamedReuseAs) then
         % Update reuse information and goal_info:
@@ -884,8 +891,10 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
             potential_reuse(reuse_call(conditional_reuse, NoClobbers)),
             !GoalInfo),
         trace [io(!IO)] (
-            maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
-                NoClobbers, !.GoalInfo, reuse_is_conditional, !IO)
+            io.stderr_stream(StdErr, !IO),
+            maybe_write_verify_indirect_reuse_reason(StdErr, BaseInfo,
+                CalleePPId, NoClobbers, !.GoalInfo,
+                reuse_is_conditional, !IO)
         )
     else
         unexpected($pred, "unknown NewReuseAs")
@@ -1009,12 +1018,13 @@ lookup_reuse_as_2(BaseInfo, OrigPPId, PPId, NoClobbers, !IrInfo, ReuseAs) :-
 
     % Output the reasoning behind the result.
     %
-:- pred maybe_write_verify_indirect_reuse_reason(ir_background_info::in,
+:- pred maybe_write_verify_indirect_reuse_reason(io.text_output_stream::in,
+    ir_background_info::in,
     pred_proc_id::in, list(int)::in, hlds_goal_info::in,
     verify_indirect_reuse_reason::in, io::di, io::uo) is det.
 
-maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId, NoClobbers,
-        GoalInfo, Reason, !IO) :-
+maybe_write_verify_indirect_reuse_reason(Stream, BaseInfo, CalleePPId,
+        NoClobbers, GoalInfo, Reason, !IO) :-
     DebugIndirect = BaseInfo ^ debug_indirect,
     (
         DebugIndirect = yes,
@@ -1023,26 +1033,25 @@ maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId, NoClobbers,
         Context = goal_info_get_context(GoalInfo),
         proc_info_get_varset(BaseInfo ^ proc_info, VarSet),
         CalleeStr = pred_proc_id_to_string(ModuleInfo, CalleePPId),
-        io.write_string("\tcall to ", !IO),
-        io.write_string(CalleeStr, !IO),
-        io.write_string("\n\tfrom ", !IO),
-        write_context(Context, !IO),
-        io.write_string("\n\twith NoClobbers = ", !IO),
-        io.write(NoClobbers, !IO),
-        io.write_string("\n\t\treuse: ", !IO),
-        io.write(GoalReuse, !IO),
-        io.write_string("\n\t\treason: ", !IO),
-        write_verify_indirect_reuse_reason(Reason, VarSet, !IO),
-        io.nl(!IO)
+        io.write_string(Stream, "\tcall to ", !IO),
+        io.write_string(Stream, CalleeStr, !IO),
+        io.write_string(Stream, "\n\tfrom ", !IO),
+        write_context(Stream, Context, !IO),
+        io.write_string(Stream, "\n\twith NoClobbers = ", !IO),
+        io.write_line(Stream, NoClobbers, !IO),
+        io.write_string(Stream, "\t\treuse: ", !IO),
+        io.write_line(Stream, GoalReuse, !IO),
+        io.write_string(Stream, "\t\treason: ", !IO),
+        write_verify_indirect_reuse_reason(Stream, Reason, VarSet, !IO)
     ;
         DebugIndirect = no
     ).
 
-:- pred write_verify_indirect_reuse_reason(verify_indirect_reuse_reason::in,
+:- pred write_verify_indirect_reuse_reason(io.text_output_stream::in,
+    verify_indirect_reuse_reason::in,
     prog_varset::in, io::di, io::uo) is det.
 
-write_verify_indirect_reuse_reason(Reason, VarSet, !IO) :-
-    io.output_stream(Stream, !IO),
+write_verify_indirect_reuse_reason(Stream, Reason, VarSet, !IO) :-
     (
         ( Reason = callee_has_no_reuses
         ; Reason = callee_has_only_unconditional_reuse
@@ -1055,8 +1064,10 @@ write_verify_indirect_reuse_reason(Reason, VarSet, !IO) :-
         Reason = reuse_is_unsafe(Vars),
         io.write_string(Stream, "reuse_is_unsafe(", !IO),
         mercury_output_vars(VarSet, print_name_and_num, Vars, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
+        io.write_string(Stream, ")\n", !IO)
     ).
+
+%---------------------------------------------------------------------------%
 
 :- pred get_var_indices(prog_vars::in, prog_vars::in, int::in,
     list(int)::out) is det.
@@ -1103,7 +1114,7 @@ add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule, !IrInfo) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Structure reuse fixpoint table
 %
@@ -1116,26 +1127,39 @@ add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule, !IrInfo) :-
 :- func sr_fixpoint_table_init(list(pred_proc_id), reuse_as_table)
     = sr_fixpoint_table.
 
+sr_fixpoint_table_init(Keys, ReuseTable) = Table :-
+    Table = init_fixpoint_table(get_reuse_as(ReuseTable), Keys).
+
     % Add the results of a new analysis pass to the already existing
     % fixpoint table.
     %
 :- pred sr_fixpoint_table_new_run(sr_fixpoint_table::in,
     sr_fixpoint_table::out) is det.
 
+sr_fixpoint_table_new_run(!Table) :-
+    fixpoint_table.new_run(!Table).
+
     % The fixpoint table keeps track of the number of analysis passes. This
     % predicate returns this number.
     %
 :- func sr_fixpoint_table_which_run(sr_fixpoint_table) = int.
+
+sr_fixpoint_table_which_run(Tin) = fixpoint_table.which_run(Tin).
 
     % A fixpoint is reached if all entries in the table are stable,
     % i.e. haven't been modified by the last analysis pass.
     %
 :- pred sr_fixpoint_table_stable(sr_fixpoint_table::in) is semidet.
 
+sr_fixpoint_table_stable(Table) :-
+    fixpoint_table.fixpoint_reached(Table).
+
     % Give a string description of the state of the fixpoint table.
     %
 :- func sr_fixpoint_table_description(sr_fixpoint_table) = string.
 :- pragma consider_used(sr_fixpoint_table_description/1).
+
+sr_fixpoint_table_description(Table) = fixpoint_table.description(Table).
 
     % Enter the newly computed structure reuse description for a given
     % procedure.  If the description is different from the one that was
@@ -1146,6 +1170,11 @@ add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule, !IrInfo) :-
 :- pred sr_fixpoint_table_new_as(module_info::in, proc_info::in,
     pred_proc_id::in, reuse_as_and_status::in,
     sr_fixpoint_table::in, sr_fixpoint_table::out) is det.
+
+sr_fixpoint_table_new_as(ModuleInfo, ProcInfo, Id, ReuseAs, !Table) :-
+    add_to_fixpoint_table(
+        reuse_as_and_status_subsumed_by(ModuleInfo, ProcInfo),
+        Id, ReuseAs, !Table).
 
     % Retrieve the structure reuse information for a given pred_proc_id.
     %
@@ -1159,56 +1188,11 @@ add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule, !IrInfo) :-
 :- pred sr_fixpoint_table_get_as(pred_proc_id::in, reuse_as_and_status::out,
     sr_fixpoint_table::in, sr_fixpoint_table::out) is semidet.
 
-:- func sr_fixpoint_table_get_short_description(pred_proc_id,
-    sr_fixpoint_table) = string.
-
-    % Retrieve the structure reuse information without changing the table.
-    % To be used after fixpoint has been reached.
-    % Software error if the procedure is not in the table.
-    %
-:- func sr_fixpoint_table_get_final_as(pred_proc_id,
-    sr_fixpoint_table) = reuse_as_and_status.
-
-    % Same as sr_fixpoint_table_get_final_as, yet fails instead of aborting
-    % if the procedure is not in the table.
-    %
-:- pred sr_fixpoint_table_get_final_as_semidet(pred_proc_id::in,
-    sr_fixpoint_table::in, reuse_as_and_status::out) is semidet.
-
-%-----------------------------------------------------------------------------%
-
-:- func get_reuse_as(reuse_as_table, pred_proc_id) = reuse_as_and_status.
-
-get_reuse_as(ReuseTable, PPId) = ReuseAs :-
-    ( if reuse_as_table_search(ReuseTable, PPId, ReuseAs0) then
-        ReuseAs = ReuseAs0
-    else
-        % We assume an unknown answer is `optimal' otherwise we would not be
-        % able to get mutually recursive procedures out of the `suboptimal'
-        % state.
-        ReuseAs = reuse_as_and_status(reuse_as_init, optimal)
-    ).
-
-sr_fixpoint_table_init(Keys, ReuseTable) = Table :-
-    Table = init_fixpoint_table(get_reuse_as(ReuseTable), Keys).
-
-sr_fixpoint_table_new_run(!Table) :-
-    fixpoint_table.new_run(!Table).
-
-sr_fixpoint_table_which_run(Tin) = fixpoint_table.which_run(Tin).
-
-sr_fixpoint_table_stable(Table) :-
-    fixpoint_table.fixpoint_reached(Table).
-
-sr_fixpoint_table_description(Table) = fixpoint_table.description(Table).
-
-sr_fixpoint_table_new_as(ModuleInfo, ProcInfo, Id, ReuseAs, !Table) :-
-    add_to_fixpoint_table(
-        reuse_as_and_status_subsumed_by(ModuleInfo, ProcInfo),
-        Id, ReuseAs, !Table).
-
 sr_fixpoint_table_get_as(PPId, ReuseAs, !Table) :-
     get_from_fixpoint_table(PPId, ReuseAs, !Table).
+
+:- func sr_fixpoint_table_get_short_description(pred_proc_id,
+    sr_fixpoint_table) = string.
 
 sr_fixpoint_table_get_short_description(PPId, Table) = Descr :-
     ( if fixpoint_table.is_recursive(Table) then
@@ -1226,12 +1210,39 @@ sr_fixpoint_table_get_short_description(PPId, Table) = Descr :-
     ),
     Descr = Descr0 ++ " " ++ Rec.
 
+    % Retrieve the structure reuse information without changing the table.
+    % To be used after fixpoint has been reached.
+    % Software error if the procedure is not in the table.
+    %
+:- func sr_fixpoint_table_get_final_as(pred_proc_id,
+    sr_fixpoint_table) = reuse_as_and_status.
+
 sr_fixpoint_table_get_final_as(PPId, T) =
     get_from_fixpoint_table_final(PPId, T).
+
+    % Same as sr_fixpoint_table_get_final_as, yet fails instead of aborting
+    % if the procedure is not in the table.
+    %
+:- pred sr_fixpoint_table_get_final_as_semidet(pred_proc_id::in,
+    sr_fixpoint_table::in, reuse_as_and_status::out) is semidet.
 
 sr_fixpoint_table_get_final_as_semidet(PPId, T, Elem) :-
     get_from_fixpoint_table_final_semidet(PPId, T, Elem).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- func get_reuse_as(reuse_as_table, pred_proc_id) = reuse_as_and_status.
+
+get_reuse_as(ReuseTable, PPId) = ReuseAs :-
+    ( if reuse_as_table_search(ReuseTable, PPId, ReuseAs0) then
+        ReuseAs = ReuseAs0
+    else
+        % We assume an unknown answer is `optimal' otherwise we would not be
+        % able to get mutually recursive procedures out of the `suboptimal'
+        % state.
+        ReuseAs = reuse_as_and_status(reuse_as_init, optimal)
+    ).
+
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.indirect.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

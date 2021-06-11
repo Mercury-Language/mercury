@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2007, 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: rbmm.points_to_graph.m.
 % Main author: Quan Phan.
@@ -27,25 +27,26 @@
 :- import_module map.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
-% The region points-to graph.
-%
+%---------------------------------------------------------------------------%
+
+    % The region points-to graph.
 :- type rpt_graph.
 :- type rptg_nodes == map(rptg_node, rptg_node_content).
 :- type rptg_edges == map(rptg_edge, rptg_edge_info).
 :- type rptg_outedges == map(rptg_node, map(rptg_edge, rptg_node)).
 
-:- func rptg_get_nodes(rpt_graph) = rptg_nodes.
-:- func rptg_get_nodes_as_list(rpt_graph) = list(rptg_node).
-:- func rptg_get_edges(rpt_graph) = rptg_edges.
-:- func rptg_get_outedges(rpt_graph) = rptg_outedges.
-
-:- func rptg_get_next_node_id(rpt_graph) = int.
-
     % rpt_graph_init(Graph) binds Graph to an empty graph containing
     % no nodes and no edges.
     %
 :- func rpt_graph_init = rpt_graph.
+
+:- func rptg_get_nodes(rpt_graph) = rptg_nodes.
+:- func rptg_get_edges(rpt_graph) = rptg_edges.
+:- func rptg_get_outedges(rpt_graph) = rptg_outedges.
+
+:- func rptg_get_nodes_as_list(rpt_graph) = list(rptg_node).
+
+:- func rptg_get_next_node_id(rpt_graph) = int.
 
     % rptg_get_node_content(Graph, Node) takes Graph and Node
     % and returns the information NodeContent associated with Node.
@@ -145,17 +146,25 @@
 :- pred rptg_get_node_by_node(rpt_graph::in, rptg_node::in, rptg_node::out)
     is det.
 
-    % Compare two graphs.
-    %
-:- pred rptg_equal(rpt_graph::in, rpt_graph::in) is semidet.
+:- func rptg_lookup_region_name(rpt_graph, rptg_node) = string.
+:- func rptg_lookup_node_type(rpt_graph, rptg_node) = mer_type.
+:- func rptg_lookup_node_vars(rpt_graph, rptg_node) = set(prog_var).
+:- func rptg_lookup_node_is_allocated(rpt_graph, rptg_node) = bool.
 
-    % This predicate finds all regions that are reachable from X.
-    % The regions must be reached by edges with labels (type selectors)
-    % which are valid with the type of X.
+:- pred rptg_is_allocated_node(rpt_graph::in, rptg_node::in) is semidet.
+
+    % Return the list of edges (edge id's).
     %
-:- pred rptg_reach_from_a_variable(rpt_graph::in, module_info::in,
-    proc_info::in, prog_var::in, set(rptg_node)::in, set(rptg_node)::out)
-    is det.
+:- func rptg_lookup_list_outedges(rpt_graph, rptg_node) = list(rptg_edge).
+
+    % Return the outedges map.
+    %
+:- func rptg_lookup_map_outedges(rpt_graph, rptg_node) =
+    map(rptg_edge, rptg_node).
+
+    % Return the list of nodes reached directly from a node.
+    %
+:- func rptg_lookup_list_endnodes(rpt_graph, rptg_node) = list(rptg_node).
 
     % rptg_find_edge_from_node_with_same_content(N, EdgeContent, Graph, M)
     % finds in Graph, an edge that has the given EdgeContent.
@@ -174,25 +183,17 @@
 :- pred rptg_edge_in_graph(rptg_node::in, rptg_edge_content::in, rptg_node::in,
     rpt_graph::in) is semidet.
 
-:- func rptg_lookup_region_name(rpt_graph, rptg_node) = string.
-:- func rptg_lookup_node_type(rpt_graph, rptg_node) = mer_type.
-:- func rptg_lookup_node_vars(rpt_graph, rptg_node) = set(prog_var).
-:- func rptg_lookup_node_is_allocated(rpt_graph, rptg_node) = bool.
-
-:- pred rptg_is_allocated_node(rpt_graph::in, rptg_node::in) is semidet.
-
-    % Return the list of edges (edge id's).
+    % This predicate finds all regions that are reachable from X.
+    % The regions must be reached by edges with labels (type selectors)
+    % which are valid with the type of X.
     %
-:- func rptg_lookup_list_outedges(rpt_graph, rptg_node) = list(rptg_edge).
+:- pred rptg_reach_from_a_variable(rpt_graph::in, module_info::in,
+    proc_info::in, prog_var::in, set(rptg_node)::in, set(rptg_node)::out)
+    is det.
 
-    % Return the list of nodes reached directly from a node.
+    % Compare two graphs.
     %
-:- func rptg_lookup_list_endnodes(rpt_graph, rptg_node) = list(rptg_node).
-
-    % Return the outedges map.
-    %
-:- func rptg_lookup_map_outedges(rpt_graph, rptg_node) =
-    map(rptg_edge, rptg_node).
+:- pred rptg_equal(rpt_graph::in, rpt_graph::in) is semidet.
 
     % The unify operator.
     % We merge the second node into the first one.
@@ -205,9 +206,9 @@
 :- pred edge_operator(rptg_node::in, rptg_node::in, rptg_edge_content::in,
     rpt_graph::in, rpt_graph::out) is det.
 
-%-----------------------------------------------------------------------------%
-% A node in region points-to graphs.
-%
+%---------------------------------------------------------------------------%
+
+    % A node in region points-to graphs.
 :- type rptg_node
         --->    rptg_node(int).
 
@@ -241,9 +242,9 @@
 :- pred rptg_node_content_set_is_allocated(bool::in,
     rptg_node_content::in, rptg_node_content::out) is det.
 
-%-----------------------------------------------------------------------------%
-% An edge in region points-to graphs.
-%
+%---------------------------------------------------------------------------%
+
+    % An edge in region points-to graphs.
 :- type rptg_edge
         --->    rptg_edge(int).
 
@@ -264,8 +265,8 @@
                     rptg_edge_label         :: rptg_edge_content
                 ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -311,6 +312,8 @@
                     rptg_outedges       :: rptg_outedges
                 ).
 
+%---------------------------------------------------------------------------%
+
 rpt_graph_init = Graph :-
     counter.init(1, NodeSupply),
     counter.init(1, EdgeSupply),
@@ -320,47 +323,67 @@ rpt_graph_init = Graph :-
     Graph = rpt_graph(NodeSupply, EdgeSupply, Nodes, Edges, OutEdges).
 
 :- func rptg_get_node_supply(rpt_graph) = counter.
-
-rptg_get_node_supply(G) = G ^ rptg_node_supply.
-
-:- pred rptg_set_node_supply(counter::in, rpt_graph::in, rpt_graph::out)is det.
-
-rptg_set_node_supply(NS, !G) :-
-    !G ^ rptg_node_supply := NS.
-
 :- func rptg_get_edge_supply(rpt_graph) = counter.
 
+rptg_get_node_supply(G) = G ^ rptg_node_supply.
 rptg_get_edge_supply(G) = G ^ rptg_edge_supply.
-
-:- pred rptg_set_edge_supply(counter::in,
-    rpt_graph::in, rpt_graph::out) is det.
-
-rptg_set_edge_supply(ES, !G) :-
-    !G ^ rptg_edge_supply := ES.
-
 rptg_get_nodes(G) = G ^ rptg_nodes.
 rptg_get_edges(G) = G ^ rptg_edges.
 rptg_get_outedges(G) = G ^ rptg_outedges.
+
+:- pred rptg_set_node_supply(counter::in,
+    rpt_graph::in, rpt_graph::out)is det.
+:- pred rptg_set_edge_supply(counter::in,
+    rpt_graph::in, rpt_graph::out) is det.
+:- pred rptg_set_nodes(rptg_nodes::in,
+    rpt_graph::in, rpt_graph::out) is det.
+:- pred rptg_set_edges(rptg_edges::in,
+    rpt_graph::in, rpt_graph::out) is det.
+:- pred rptg_set_outedges(rptg_outedges::in,
+    rpt_graph::in, rpt_graph::out) is det.
+
+rptg_set_node_supply(NS, !G) :-
+    !G ^ rptg_node_supply := NS.
+rptg_set_edge_supply(ES, !G) :-
+    !G ^ rptg_edge_supply := ES.
+rptg_set_nodes(Nodes, !G) :-
+    !G ^ rptg_nodes := Nodes.
+rptg_set_edges(Edges, !G) :-
+    !G ^ rptg_edges := Edges.
+rptg_set_outedges(OutEdges, !G) :-
+    !G ^ rptg_outedges := OutEdges.
+
+%---------------------------------------------------------------------------%
+
+rptg_get_nodes_as_list(Graph) = NodeList :-
+    map.keys(rptg_get_nodes(Graph), NodeList).
+
+%---------------------%
 
 rptg_get_next_node_id(G) = NextNodeId :-
     NodeSupply = rptg_get_node_supply(G),
     counter.allocate(NextNodeId, NodeSupply, _).
 
-:- pred rptg_set_nodes(rptg_nodes::in, rpt_graph::in, rpt_graph::out) is det.
+%---------------------%
 
-rptg_set_nodes(Nodes, !G) :-
-    !G ^ rptg_nodes := Nodes.
+rptg_get_node_content(Graph, Node) = NodeContent :-
+    map.lookup(rptg_get_nodes(Graph), Node, NodeContent).
 
-:- pred rptg_set_edges(rptg_edges::in, rpt_graph::in, rpt_graph::out) is det.
+%---------------------%
 
-rptg_set_edges(Edges, !G) :-
-    !G ^ rptg_edges := Edges.
+rptg_set_node_content(Node, NodeContent, !Graph) :-
+    Nodes0 = rptg_get_nodes(!.Graph),
+    map.det_update(Node, NodeContent, Nodes0, Nodes),
+    rptg_set_nodes(Nodes, !Graph).
 
-:- pred rptg_set_outedges(rptg_outedges::in, rpt_graph::in, rpt_graph::out)
-    is det.
+%---------------------%
 
-rptg_set_outedges(OutEdges, !G) :-
-    !G ^ rptg_outedges := OutEdges.
+rptg_set_node_is_allocated(Node, IsAlloc, !Graph) :-
+    NodeContent0 = rptg_get_node_content(!.Graph, Node),
+    rptg_node_content_set_is_allocated(IsAlloc, NodeContent0, NodeContent),
+    rptg_set_node_content(Node, NodeContent, !Graph).
+
+%---------------------%
 
     % After adding a node, we need to update Content0 so that the merged_from
     % set of the node contains itself.
@@ -389,15 +412,14 @@ rptg_add_node(Content0, rptg_node(NodeId), !G) :-
     map.set(Node, map.init, OutEdges0, OutEdges),
     rptg_set_outedges(OutEdges, !G).
 
-rptg_get_node_content(Graph, Node) = NodeContent :-
-    map.lookup(rptg_get_nodes(Graph), Node, NodeContent).
+%---------------------%
 
-rptg_get_nodes_as_list(Graph) = NodeList :-
-    map.keys(rptg_get_nodes(Graph), NodeList).
+rptg_get_edge_contents(G, Edge, Start, End, Content) :-
+    Edges = rptg_get_edges(G),
+    map.lookup(Edges, Edge, EdgeInfo),
+    EdgeInfo = rptg_edge_info(Start, End, Content).
 
-rptg_successors(Graph, Node) = Successors :-
-    SuccessorList = rptg_lookup_list_endnodes(Graph, Node),
-    set.list_to_set(SuccessorList, Successors).
+%---------------------%
 
 rptg_set_edge(Start, End, EdgeContent, Edge, !G) :-
     ES0 = rptg_get_edge_supply(!.G),
@@ -417,10 +439,13 @@ rptg_set_edge(Start, End, EdgeContent, Edge, !G) :-
     map.set(Start, StartOutEdges, OutEdges0, OutEdges),
     rptg_set_outedges(OutEdges, !G).
 
-rptg_get_edge_contents(G, Edge, Start, End, Content) :-
-    Edges = rptg_get_edges(G),
-    map.lookup(Edges, Edge, EdgeInfo),
-    EdgeInfo = rptg_edge_info(Start, End, Content).
+%---------------------%
+
+rptg_successors(Graph, Node) = Successors :-
+    SuccessorList = rptg_lookup_list_endnodes(Graph, Node),
+    set.list_to_set(SuccessorList, Successors).
+
+%---------------------%
 
 rptg_path(G, S, E, Path) :-
     rptg_path_2(G, S, E, [], Path).
@@ -435,14 +460,16 @@ rptg_path_2(G, S, E, Nodes0, Path) :-
     map.lookup(OutEdges, S, OutEdgesOfS),
     (
         map.member(OutEdgesOfS, Edge, E),
-        \+ list.member(E, Nodes0),
+        not list.member(E, Nodes0),
         Path = [Edge]
     ;
         map.member(OutEdgesOfS, Edge, N),
-        \+ list.member(N, Nodes0),
+        not list.member(N, Nodes0),
         rptg_path_2(G, N, E, [N | Nodes0], Path0),
         Path = [Edge | Path0]
     ).
+
+%---------------------%
 
 rptg_reachable_and_having_type(Graph, Start, EType, E) :-
     rptg_lookup_node_type(Graph, Start) = Type,
@@ -488,6 +515,8 @@ find_node_with_same_type([N | Ns], Graph, Type, End) :-
         find_node_with_same_type(Ns, Graph, Type, End)
     ).
 
+%---------------------%
+
 rptg_get_node_by_region_name(Graph, RegionName, Node) :-
     AllNodes = rptg_get_nodes_as_list(Graph),
     ( if
@@ -511,6 +540,8 @@ get_node_by_region_name_from_list(Graph, NodeList, RegName, Node) :-
         get_node_by_region_name_from_list(Graph, Rest, RegName, Node)
     ).
 
+%---------------------%
+
 rptg_get_node_by_vars(Graph, Vars, Node) :-
     Nodes = rptg_get_nodes_as_list(Graph),
     ( if get_node_by_vars_from_list(Graph, Nodes, Vars, NodePrime) then
@@ -531,11 +562,15 @@ get_node_by_vars_from_list(Graph, List, Vars, Node) :-
         get_node_by_vars_from_list(Graph, Rest, Vars, Node)
     ).
 
+%---------------------%
+
     % Find a node in the graph using a variable assigned to it.
     %
 rptg_get_node_by_variable(Graph, Var, Node) :-
     Vars = set.make_singleton_set(Var),
     rptg_get_node_by_vars(Graph, Vars, Node).
+
+%---------------------%
 
 rptg_get_node_by_node(Graph, Node, MergedNode) :-
     NodeMap = rptg_get_nodes(Graph),
@@ -562,6 +597,8 @@ get_node_by_node_from_list(Graph, [N | Ns], Node, MergedNode) :-
         get_node_by_node_from_list(Graph, Ns, Node, MergedNode)
     ).
 
+%---------------------%
+
 rptg_lookup_region_name(Graph, Node) = RegionName :-
     NodeContent = rptg_get_node_content(Graph, Node),
     RegionName = rptg_node_content_get_region_name(NodeContent).
@@ -577,6 +614,8 @@ rptg_lookup_node_vars(Graph, Node) = Vars :-
 rptg_lookup_node_is_allocated(Graph, Node) = IsAllocated :-
     NodeContent = rptg_get_node_content(Graph, Node),
     IsAllocated = rptg_node_content_get_is_allocated(NodeContent).
+
+%---------------------%
 
 rptg_is_allocated_node(Graph, Region) :-
     IsAlloc = rptg_lookup_node_is_allocated(Graph, Region),
@@ -594,38 +633,189 @@ rptg_lookup_list_endnodes(Graph, Node) = EndNodeList :-
     OutEdgesOfNode = rptg_lookup_map_outedges(Graph, Node),
     map.values(OutEdgesOfNode, EndNodeList).
 
-rptg_set_node_content(Node, NodeContent, !Graph) :-
-    Nodes0 = rptg_get_nodes(!.Graph),
-    map.det_update(Node, NodeContent, Nodes0, Nodes),
-    rptg_set_nodes(Nodes, !Graph).
+%---------------------------------------------------------------------------%
+%
+% For finding and checking edges in graph.
+%
 
-rptg_set_node_is_allocated(Node, IsAlloc, !Graph) :-
-    NodeContent0 = rptg_get_node_content(!.Graph, Node),
-    rptg_node_content_set_is_allocated(IsAlloc, NodeContent0, NodeContent),
-    rptg_set_node_content(Node, NodeContent, !Graph).
+rptg_find_edge_from_node_with_same_content(N, EdgeContent, G, M) :-
+    EdgeList = rptg_lookup_list_outedges(G, N),
+    find_edge_with_same_content(EdgeContent, EdgeList, G, M).
 
-rptg_node_content_get_vars(NC) = NC ^ rptg_nc_vars.
-rptg_node_content_get_region_name(NC) = NC ^ rptg_nc_reg_var_name.
-rptg_node_content_get_merged_from(NC) = NC ^ rptg_nc_merged_from.
-rptg_node_content_get_node_type(NC) = NC ^ rptg_nc_node_type.
-rptg_node_content_get_is_allocated(NC) = NC ^ rptg_nc_is_allocated.
+:- pred find_edge_with_same_content(rptg_edge_content::in,
+    list(rptg_edge)::in, rpt_graph::in, rptg_node::out) is semidet.
 
-rptg_node_content_set_vars(Vars, !NC) :-
-    !NC ^ rptg_nc_vars := Vars.
-rptg_node_content_set_region_name(Name, !NC) :-
-    !NC ^ rptg_nc_reg_var_name := Name.
-rptg_node_content_set_merged_from(Nodes, !NC) :-
-    !NC ^ rptg_nc_merged_from := Nodes.
-rptg_node_content_set_node_type(NodeType, !NC) :-
-    !NC ^ rptg_nc_node_type := NodeType.
-rptg_node_content_set_is_allocated(IsAllocated, !NC) :-
-    !NC ^ rptg_nc_is_allocated := IsAllocated.
+find_edge_with_same_content(EdgeContent, [Edge | Edges], G, M) :-
+    rptg_get_edge_contents(G, Edge, _N, M0, EdgeContent0),
+    ( if EdgeContent0 = EdgeContent then
+        M = M0
+    else
+        find_edge_with_same_content(EdgeContent, Edges, G, M)
+    ).
 
-rptg_edge_content_get_label(AC) = AC ^ rptg_ec_label.
-rptg_edge_content_set_label(Label, !AC) :-
-    !AC ^ rptg_ec_label := Label.
+rptg_edge_in_graph(Start, Label, End, Graph) :-
+    OutEdgesOfStart = rptg_lookup_map_outedges(Graph, Start),
 
-%-----------------------------------------------------------------------------%
+    % Out of the above, find those that point to End.
+    solutions(map.inverse_search(OutEdgesOfStart, End), EdgePointToEndList),
+
+    find_edge_with_same_content(Label, EdgePointToEndList, Graph, _).
+
+%---------------------------------------------------------------------------%
+
+rptg_reach_from_a_variable(Graph, HLDS, ProcInfo, X, !Reach_X) :-
+    rptg_get_node_by_variable(Graph, X, N_X),
+    Node_Selector = pair(N_X, []),
+
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    lookup_var_type(VarTypes, X, TypeX),
+
+    % Find regions reached from X.
+    reach_from_a_variable_2([Node_Selector], Graph, HLDS,
+        TypeX, [], !Reach_X).
+
+    % This predicate receives a (remembered) list of nodes that are
+    % reached from X, along with the valid selectors to those nodes
+    % from the node of X.
+    % Algorithm:
+    %   1. each node is recorded into the reach_from_x set,
+    %   2. if an target of a node's out-edge can be reached by a valid
+    %   selector, we "remember" the target as reachable from X but not
+    %   record it yet,
+    %   3. do until the remembered list is empty.
+    %
+:- pred reach_from_a_variable_2(assoc_list(rptg_node, selector)::in,
+    rpt_graph::in, module_info::in, mer_type::in, list(rptg_node)::in,
+    set(rptg_node)::in, set(rptg_node)::out) is det.
+
+reach_from_a_variable_2([], _, _, _, _, !Reach_X).
+reach_from_a_variable_2([Node_Selector | Node_Selectors0],
+        Graph, HLDS, TypeX, Processed0, !Reach_X) :-
+    Node_Selector = Node - Selector,
+
+    % Add the "remembered" Node to reach_from_x set
+    set.insert(Node, !Reach_X),
+
+    % Add the Node to processed list so that we do not have to deal with
+    % it more than once. (Node is not yet in Processed0 because if it
+    % is in there it will not be in the to-be-processed list.
+    Processed = [Node | Processed0],
+
+    % Take out-edges of the Node and update the remembered list.
+    EdgeList = rptg_lookup_list_outedges(Graph, Node),
+    list.foldl(
+        update_remembered_list(Selector, HLDS, TypeX, Graph, Processed),
+        EdgeList, Node_Selectors0, Node_Selectors),
+
+    reach_from_a_variable_2(Node_Selectors, Graph, HLDS, TypeX,
+        Processed, !Reach_X).
+
+    % A target is remembered as reachable from X if its edge's selector
+    % is valid. The remembered list is appended, so it is a breadth-first
+    % process.
+    %
+:- pred update_remembered_list(selector::in, module_info::in,
+    mer_type::in, rpt_graph::in, list(rptg_node)::in, rptg_edge::in,
+    assoc_list(rptg_node, selector)::in,
+    assoc_list(rptg_node, selector)::out) is det.
+
+update_remembered_list(Selector0, HLDS, TypeX, Graph, Processed, OutEdge,
+        !List) :-
+    rptg_get_edge_contents(Graph, OutEdge, _Start, End, EdgeContent),
+    EdgeSelector = rptg_edge_content_get_label(EdgeContent),
+    Selector = Selector0 ++ EdgeSelector,
+    ( if check_type_of_node(HLDS, TypeX, Selector) then
+        % The edge's selector is a valid one.
+        ( if list.member(End, Processed) then
+            % Already processed, ignore.
+            true
+        else
+            % A non-processed node and can be reached from X by a
+            % valid selector, so it is remembered.
+            !:List = !.List ++ [pair(End, Selector)]
+        )
+    else
+        % Selector is not valid, ignore.
+        true
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Equality of region points-to graphs.
+%
+
+rptg_equal(Graph1, Graph2) :-
+    Graph1 = rpt_graph(NS1, AS1, Nodes1, Edges1, OutEdges1),
+    Graph2 = rpt_graph(NS2, AS2, Nodes2, Edges2, OutEdges2),
+    NS1 = NS2,
+    AS1 = AS2,
+    simple_map_equal(Nodes1, Nodes2),
+    simple_map_equal(Edges1, Edges2),
+    complex_map_equal(OutEdges1, OutEdges2).
+
+% The comparisons below may not be necessary, unification can help if it is
+% sure that the elements are added to the maps in the same order.
+%
+    % The values of the maps are required to be comparable using
+    % unification, i.e., values of type V1 can be compared using
+    % unification.
+    %
+:- pred simple_map_equal(map(K1, V1)::in, map(K1, V1)::in) is semidet.
+
+simple_map_equal(Map1, Map2) :-
+    % Check if they have the same number of entries?
+    map.count(Map1, C1),
+    map.count(Map2, C2),
+    C1 = C2,
+
+    % If yes, check if all the entries are equal.
+    map.keys(Map1, Ks1),
+    simple_map_equal_2(Ks1, Map1, Map2).
+
+    % With the condition that the two maps have the same number of entries,
+    % verify that all keys in map 1 are also in map 2 and that their
+    % corresponding values are equal.
+    %
+:- pred simple_map_equal_2(list(K1)::in,
+    map(K1, V1)::in, map(K1, V1)::in) is semidet.
+
+simple_map_equal_2([], _, _).
+simple_map_equal_2([K | Ks], Map1, Map2) :-
+    % K is also in map 2?
+    map.search(Map2, K, V2),
+
+    % Yes, so check whether the values are equal.
+    map.lookup(Map1, K, V1),
+    V1 = V2,
+    simple_map_equal_2(Ks, Map1, Map2).
+
+    % The maps need to be of map-in-map structure, namely
+    % map(k1, map(k2, v)) and values of type V can be compared by unifying
+    % (i.e., in our notion here map(k2, v) is a "simple" map).
+    %
+:- pred complex_map_equal(map(K1, map(K2, V))::in, map(K1, map(K2, V))::in)
+    is semidet.
+
+complex_map_equal(Map1, Map2) :-
+    map.count(Map1, C1),
+    map.count(Map2, C2),
+    C1 = C2,
+    map.keys(Map1, Ks1),
+    complex_map_equal_2(Ks1, Map1, Map2).
+
+:- pred complex_map_equal_2(list(K1)::in, map(K1, map(K2, V))::in,
+    map(K1, map(K2, V))::in) is semidet.
+
+complex_map_equal_2([], _, _).
+complex_map_equal_2([K | Ks], Map1, Map2) :-
+    map.search(Map2, K, V2),
+
+    % V2 is "simple" map, so compare it with V1.
+    map.lookup(Map1, K, V1),
+    simple_map_equal(V1, V2),
+    complex_map_equal_2(Ks, Map1, Map2).
+
+%---------------------------------------------------------------------------%
 %
 % The two graph-manipulating operators, i.e., unify and edge.
 %
@@ -830,187 +1020,31 @@ delete_all_inedges_and_edges_2([N | Ns], Node, !Edges, !OutEdges) :-
 edge_operator(Start, End, Info, !G) :-
     rptg_set_edge(Start, End, Info, _Edge, !G).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-%
-% For finding and checking edges in graph.
-%
+%---------------------------------------------------------------------------%
 
-rptg_find_edge_from_node_with_same_content(N, EdgeContent, G, M) :-
-    EdgeList = rptg_lookup_list_outedges(G, N),
-    find_edge_with_same_content(EdgeContent, EdgeList, G, M).
+rptg_node_content_get_vars(NC) = NC ^ rptg_nc_vars.
+rptg_node_content_get_region_name(NC) = NC ^ rptg_nc_reg_var_name.
+rptg_node_content_get_merged_from(NC) = NC ^ rptg_nc_merged_from.
+rptg_node_content_get_node_type(NC) = NC ^ rptg_nc_node_type.
+rptg_node_content_get_is_allocated(NC) = NC ^ rptg_nc_is_allocated.
 
-:- pred find_edge_with_same_content(rptg_edge_content::in,
-    list(rptg_edge)::in, rpt_graph::in, rptg_node::out) is semidet.
+rptg_node_content_set_vars(Vars, !NC) :-
+    !NC ^ rptg_nc_vars := Vars.
+rptg_node_content_set_region_name(Name, !NC) :-
+    !NC ^ rptg_nc_reg_var_name := Name.
+rptg_node_content_set_merged_from(Nodes, !NC) :-
+    !NC ^ rptg_nc_merged_from := Nodes.
+rptg_node_content_set_node_type(NodeType, !NC) :-
+    !NC ^ rptg_nc_node_type := NodeType.
+rptg_node_content_set_is_allocated(IsAllocated, !NC) :-
+    !NC ^ rptg_nc_is_allocated := IsAllocated.
 
-find_edge_with_same_content(EdgeContent, [Edge | Edges], G, M) :-
-    rptg_get_edge_contents(G, Edge, _N, M0, EdgeContent0),
-    ( if EdgeContent0 = EdgeContent then
-        M = M0
-    else
-        find_edge_with_same_content(EdgeContent, Edges, G, M)
-    ).
+%---------------------------------------------------------------------------%
 
-rptg_edge_in_graph(Start, Label, End, Graph) :-
-    OutEdgesOfStart = rptg_lookup_map_outedges(Graph, Start),
+rptg_edge_content_get_label(AC) = AC ^ rptg_ec_label.
+rptg_edge_content_set_label(Label, !AC) :-
+    !AC ^ rptg_ec_label := Label.
 
-    % Out of the above, find those that point to End.
-    solutions(map.inverse_search(OutEdgesOfStart, End), EdgePointToEndList),
-
-    find_edge_with_same_content(Label, EdgePointToEndList, Graph, _).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-%
-% Equality of region points-to graphs.
-%
-
-rptg_equal(Graph1, Graph2) :-
-    Graph1 = rpt_graph(NS1, AS1, Nodes1, Edges1, OutEdges1),
-    Graph2 = rpt_graph(NS2, AS2, Nodes2, Edges2, OutEdges2),
-    NS1 = NS2,
-    AS1 = AS2,
-    simple_map_equal(Nodes1, Nodes2),
-    simple_map_equal(Edges1, Edges2),
-    complex_map_equal(OutEdges1, OutEdges2).
-
-% The comparisons below may not be necessary, unification can help if it is
-% sure that the elements are added to the maps in the same order.
-%
-    % The values of the maps are required to be comparable using
-    % unification, i.e., values of type V1 can be compared using
-    % unification.
-    %
-:- pred simple_map_equal(map(K1, V1)::in, map(K1, V1)::in) is semidet.
-
-simple_map_equal(Map1, Map2) :-
-    % Check if they have the same number of entries?
-    map.count(Map1, C1),
-    map.count(Map2, C2),
-    C1 = C2,
-
-    % If yes, check if all the entries are equal.
-    map.keys(Map1, Ks1),
-    simple_map_equal_2(Ks1, Map1, Map2).
-
-    % With the condition that the two maps have the same number of entries,
-    % verify that all keys in map 1 are also in map 2 and that their
-    % corresponding values are equal.
-    %
-:- pred simple_map_equal_2(list(K1)::in,
-    map(K1, V1)::in, map(K1, V1)::in) is semidet.
-
-simple_map_equal_2([], _, _).
-simple_map_equal_2([K | Ks], Map1, Map2) :-
-    % K is also in map 2?
-    map.search(Map2, K, V2),
-
-    % Yes, so check whether the values are equal.
-    map.lookup(Map1, K, V1),
-    V1 = V2,
-    simple_map_equal_2(Ks, Map1, Map2).
-
-    % The maps need to be of map-in-map structure, namely
-    % map(k1, map(k2, v)) and values of type V can be compared by unifying
-    % (i.e., in our notion here map(k2, v) is a "simple" map).
-    %
-:- pred complex_map_equal(map(K1, map(K2, V))::in, map(K1, map(K2, V))::in)
-    is semidet.
-
-complex_map_equal(Map1, Map2) :-
-    map.count(Map1, C1),
-    map.count(Map2, C2),
-    C1 = C2,
-    map.keys(Map1, Ks1),
-    complex_map_equal_2(Ks1, Map1, Map2).
-
-:- pred complex_map_equal_2(list(K1)::in, map(K1, map(K2, V))::in,
-    map(K1, map(K2, V))::in) is semidet.
-
-complex_map_equal_2([], _, _).
-complex_map_equal_2([K | Ks], Map1, Map2) :-
-    map.search(Map2, K, V2),
-
-    % V2 is "simple" map, so compare it with V1.
-    map.lookup(Map1, K, V1),
-    simple_map_equal(V1, V2),
-    complex_map_equal_2(Ks, Map1, Map2).
-
-rptg_reach_from_a_variable(Graph, HLDS, ProcInfo, X, !Reach_X) :-
-    rptg_get_node_by_variable(Graph, X, N_X),
-    Node_Selector = pair(N_X, []),
-
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    lookup_var_type(VarTypes, X, TypeX),
-
-    % Find regions reached from X.
-    reach_from_a_variable_2([Node_Selector], Graph, HLDS,
-        TypeX, [], !Reach_X).
-
-    % This predicate receives a (remembered) list of nodes that are
-    % reached from X, along with the valid selectors to those nodes
-    % from the node of X.
-    % Algorithm:
-    %   1. each node is recorded into the reach_from_x set,
-    %   2. if an target of a node's out-edge can be reached by a valid
-    %   selector, we "remember" the target as reachable from X but not
-    %   record it yet,
-    %   3. do until the remembered list is empty.
-    %
-:- pred reach_from_a_variable_2(assoc_list(rptg_node, selector)::in,
-    rpt_graph::in, module_info::in, mer_type::in, list(rptg_node)::in,
-    set(rptg_node)::in, set(rptg_node)::out) is det.
-
-reach_from_a_variable_2([], _, _, _, _, !Reach_X).
-reach_from_a_variable_2([Node_Selector | Node_Selectors0],
-        Graph, HLDS, TypeX, Processed0, !Reach_X) :-
-    Node_Selector = Node - Selector,
-
-    % Add the "remembered" Node to reach_from_x set
-    set.insert(Node, !Reach_X),
-
-    % Add the Node to processed list so that we do not have to deal with
-    % it more than once. (Node is not yet in Processed0 because if it
-    % is in there it will not be in the to-be-processed list.
-    Processed = [Node | Processed0],
-
-    % Take out-edges of the Node and update the remembered list.
-    EdgeList = rptg_lookup_list_outedges(Graph, Node),
-    list.foldl(
-        update_remembered_list(Selector, HLDS, TypeX, Graph, Processed),
-        EdgeList, Node_Selectors0, Node_Selectors),
-
-    reach_from_a_variable_2(Node_Selectors, Graph, HLDS, TypeX,
-        Processed, !Reach_X).
-
-    % A target is remembered as reachable from X if its edge's selector
-    % is valid. The remembered list is appended, so it is a breadth-first
-    % process.
-    %
-:- pred update_remembered_list(selector::in, module_info::in,
-    mer_type::in, rpt_graph::in, list(rptg_node)::in, rptg_edge::in,
-    assoc_list(rptg_node, selector)::in,
-    assoc_list(rptg_node, selector)::out) is det.
-update_remembered_list(Selector0, HLDS, TypeX, Graph, Processed, OutEdge,
-        !List) :-
-    rptg_get_edge_contents(Graph, OutEdge, _Start, End, EdgeContent),
-    EdgeSelector = rptg_edge_content_get_label(EdgeContent),
-    Selector = Selector0 ++ EdgeSelector,
-    ( if check_type_of_node(HLDS, TypeX, Selector) then
-        % The edge's selector is a valid one.
-        ( if list.member(End, Processed) then
-            % Already processed, ignore.
-            true
-        else
-            % A non-processed node and can be reached from X by a
-            % valid selector, so it is remembered.
-            !:List = !.List ++ [pair(End, Selector)]
-        )
-    else
-        % Selector is not valid, ignore.
-        true
-    ).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.points_to_graph.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

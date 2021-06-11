@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2007, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File rbmm.region_liveness_info.m.
 % Main author: Quan Phan.
@@ -12,7 +12,7 @@
 % Defines the data structures used in several phases of the live region
 % analysis.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.rbmm.region_liveness_info.
 
@@ -35,7 +35,7 @@
 :- type execution_path == assoc_list(program_point, hlds_goal).
 :- type execution_path_table == map(pred_proc_id, list(execution_path)).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The part for program variables.
 %
@@ -60,7 +60,7 @@
 :- pred find_input_output_args(module_info::in, proc_info::in,
     list(prog_var)::out, list(prog_var)::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The part for region/node
 %
@@ -90,12 +90,20 @@
     %
 :- type proc_pp_region_set_table == map(pred_proc_id, pp_region_set_table).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds.arg_info.
 :- import_module hlds.vartypes.
+
+find_input_output_args(ModuleInfo, CalleeProcInfo, Inputs, Outputs) :-
+    proc_info_get_headvars(CalleeProcInfo, ArgVars),
+    proc_info_get_vartypes(CalleeProcInfo, VarTypes),
+    lookup_var_types(VarTypes, ArgVars, ArgTypes),
+    proc_info_get_argmodes(CalleeProcInfo, ArgModes),
+    arg_info.compute_in_and_out_vars(ModuleInfo, ArgVars, ArgModes, ArgTypes,
+        Inputs, Outputs).
 
 region_set_equal(RegionSet1, RegionSet2) :-
     set.equal(RegionSet1, RegionSet2).
@@ -119,14 +127,6 @@ prst_equal_2([PPId | PPIds], PRST1, PRST2) :-
     set.equal(RS1, RS2),
     prst_equal_2(PPIds, PRST1, PRST2).
 
-find_input_output_args(ModuleInfo, CalleeProcInfo, Inputs, Outputs) :-
-    proc_info_get_headvars(CalleeProcInfo, ArgVars),
-    proc_info_get_vartypes(CalleeProcInfo, VarTypes),
-    lookup_var_types(VarTypes, ArgVars, ArgTypes),
-    proc_info_get_argmodes(CalleeProcInfo, ArgModes),
-    arg_info.compute_in_and_out_vars(ModuleInfo, ArgVars, ArgModes, ArgTypes,
-        Inputs, Outputs).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.rbmm.region_liveness_info.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

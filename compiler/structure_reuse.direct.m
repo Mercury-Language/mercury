@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: structure_reuse.direct.m.
 % Main authors: nancy.
@@ -20,7 +20,7 @@
 %   - Detecting where datastructures may become garbage.
 %   - Finding where these garbage datastructures can be reused.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_reuse.direct.
 :- interface.
@@ -34,7 +34,7 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The first pass, where we process all procedures defined in the module.
     %
@@ -48,8 +48,8 @@
     list(pred_proc_id)::in, module_info::in, module_info::out,
     reuse_as_table::in, reuse_as_table::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -72,7 +72,7 @@
 :- include_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
 :- include_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable) :-
     % Gather the pred_ids of the preds that need to be analysed.
@@ -181,7 +181,9 @@ direct_reuse_process_proc_2(SharingTable, PredId, ProcId,
     determine_dead_deconstructions(ModuleInfo, PredInfo, !.ProcInfo,
         SharingTable, Goal0, DeadCellTable),
     trace [io(!IO)] (
-        dead_cell_table_maybe_dump(VeryVerbose, DeadCellTable, !IO)
+        get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+        dead_cell_table_maybe_dump(DebugStream, VeryVerbose,
+            DeadCellTable, !IO)
     ),
 
     % Determine how the detected dead datastructures can be reused.
@@ -193,10 +195,12 @@ direct_reuse_process_proc_2(SharingTable, PredId, ProcId,
     proc_info_set_goal(Goal, !ProcInfo),
 
     trace [io(!IO)] (
-        maybe_write_string(VeryVerbose, "% reuse analysis done.\n", !IO)
+        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+        maybe_write_string(ProgressStream, VeryVerbose,
+            "% reuse analysis done.\n", !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % We use the type dead_cell_table to collect all deconstructions that possibly
 % leave garbage behind.
@@ -264,33 +268,35 @@ dead_cell_table_add_unconditional(PP, C, !Table) :-
         dead_cell_table_set(PP, C, !Table)
     ).
 
+%---------------------------------------------------------------------------%
+
     % Dump the contents of the table.
     %
-:- pred dead_cell_table_maybe_dump(bool::in, dead_cell_table::in,
-    io::di, io::uo) is det.
+:- pred dead_cell_table_maybe_dump(io.text_output_stream::in,
+    bool::in, dead_cell_table::in, io::di, io::uo) is det.
 
-dead_cell_table_maybe_dump(MaybeDump, Table, !IO) :-
+dead_cell_table_maybe_dump(Stream, MaybeDump, Table, !IO) :-
     (
         MaybeDump = no
     ;
         MaybeDump = yes,
-        io.write_string("\t\t|--------|\n", !IO),
-        map.foldl(dead_cell_entry_dump, Table, !IO),
-        io.write_string("\t\t|--------|\n", !IO)
+        io.write_string(Stream, "\t\t|--------|\n", !IO),
+        map.foldl(dead_cell_entry_dump(Stream), Table, !IO),
+        io.write_string(Stream, "\t\t|--------|\n", !IO)
     ).
 
-:- pred dead_cell_entry_dump(program_point::in, reuse_condition::in,
-    io::di, io::uo) is det.
+:- pred dead_cell_entry_dump(io.text_output_stream::in,
+    program_point::in, reuse_condition::in, io::di, io::uo) is det.
 
-dead_cell_entry_dump(PP, Cond, !IO) :-
+dead_cell_entry_dump(Stream, PP, Cond, !IO) :-
     ( if reuse_condition_is_conditional(Cond) then
-        io.write_string("\t\t|  cond  |\t", !IO)
+        io.write_string(Stream, "\t\t|  cond  |\t", !IO)
     else
-        io.write_string("\t\t| always |\t", !IO)
+        io.write_string(Stream, "\t\t| always |\t", !IO)
     ),
-    dump_program_point(PP, !IO),
-    io.write_string("\n", !IO).
+    dump_program_point(Stream, PP, !IO),
+    io.write_string(Stream, "\n", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.direct.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

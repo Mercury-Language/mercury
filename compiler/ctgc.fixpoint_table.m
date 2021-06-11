@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ctgc.fixpoint_table.m.
 % Main author: nancy.
@@ -13,7 +13,7 @@
 % The purpose of this table is mainly to map pred_proc_ids onto abstract
 % substitutions representing either structure sharing or structure reuse.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.fixpoint_table.
 :- interface.
@@ -36,6 +36,10 @@
     %
 :- func which_run(fixpoint_table(K, E)) = int.
 
+    % Check whether the entries are recursive.
+    %
+:- pred is_recursive(fixpoint_table(K, E)::in) is semidet.
+
     % Check whether a fixpoint has been reached.
     %
 :- pred fixpoint_reached(fixpoint_table(K, E)::in) is semidet.
@@ -43,10 +47,6 @@
     % Return a short description of the state of the fixpoint table.
     %
 :- func description(fixpoint_table(K, E)) = string.
-
-    % Check whether the entries are recursive.
-    %
-:- pred is_recursive(fixpoint_table(K, E)::in) is semidet.
 
     % add_to_fixpoint_table(EqualityTest, Key, Element, !Table):
     %
@@ -84,8 +84,8 @@
 :- pred get_from_fixpoint_table_final_semidet(K::in, fixpoint_table(K, E)::in,
     E::out) is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -93,7 +93,7 @@
 :- import_module map.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type fixpoint_table(K, E)
     --->    fixpoint_table(
@@ -117,7 +117,7 @@
     --->    is_stable
     ;       is_unstable.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func fp_entry_init(E) = fp_entry(E).
 :- func fp_entry_init_with_stability(is_stable, E) = fp_entry(E).
@@ -138,7 +138,8 @@ init_fixpoint_table(InitFunction, Ks) = FT :-
 new_run(T0, T0 ^ run := T0 ^ run + 1).
 which_run(T0) = T0 ^ run.
 
-is_recursive(T) :- T ^ recursive = is_recursive.
+is_recursive(T) :-
+    T ^ recursive = is_recursive.
 
 fixpoint_reached(T) :-
     IsRecursive = T ^ recursive,
@@ -179,7 +180,6 @@ add_to_fixpoint_table(IsLessOrEqualTest, Index, Elem, !T) :-
     else
         IsStable = is_unstable
     ),
-    %
     % Whether or not the tabled element is equal to the new element, the final
     % tabled element will always be set to the new one. This is handy for
     % performing the following trick: equality can be checked on some partial
@@ -188,7 +188,6 @@ add_to_fixpoint_table(IsLessOrEqualTest, Index, Elem, !T) :-
     % too.  (in fact this is necessary for the reuse-fixpoint table where not
     % only the reuses are kept (the abstract substitution), but also the goal
     % that might have changed.
-    %
     FinalTabledElem = fp_entry_init_with_stability(IsStable, Elem),
     map.det_update(Index, FinalTabledElem, Map0, Map),
     !T ^ mapping := Map.
@@ -212,6 +211,6 @@ get_from_fixpoint_table_final_semidet(Index, T, Elem) :-
     map.search(T ^ mapping, Index, Entry),
     Elem = Entry ^ entry_elem.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.fixpoint_table.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006,2008-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: ctgc.selector.m.
 % Main author: nancy.
 %
 % Definition of predicates and functions for the manipulation of selectors.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.selector.
 :- interface.
@@ -25,7 +25,7 @@
 :- import_module io.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % An exception of this type is thrown a procedure would need to know the
     % type of a existentially typed node to proceed.
@@ -60,6 +60,12 @@
 :- pred selector_subsumed_by(module_info::in, normalization::in,
     selector::in, selector::in, mer_type::in, selector::out) is semidet.
 
+    % As above but fail if the subtype would be an existential type instead of
+    % aborting.
+    %
+:- pred type_of_node(module_info::in, mer_type::in, selector::in,
+    mer_type::out) is semidet.
+
     % Using the type information of the variable to which the given selector
     % belongs, normalize that selector.
     % S2 is the normalized form of S1 iff:
@@ -68,12 +74,6 @@
     %
 :- pred normalize_selector_with_type_information(module_info::in, mer_type::in,
     selector::in, selector::out) is det.
-
-    % As above but fail if the subtype would be an existential type instead of
-    % aborting.
-    %
-:- pred type_of_node(module_info::in, mer_type::in, selector::in,
-    mer_type::out) is semidet.
 
     % Abbreviate a selector to the type of the node it selects.
     %
@@ -84,8 +84,8 @@
     %
 :- pred reset_tables(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -103,7 +103,7 @@
 :- import_module set.
 :- import_module solutions.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 top_selector = [].
 
@@ -509,7 +509,7 @@ selector_apply_widening(ModuleInfo, MainType, Selector0, Selector) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % BRANCH_MAP : copy/pasted from wimvh/bta_reduce.m
 %
@@ -541,13 +541,13 @@ branch_map_search([Type - Sel | TypeSels], KeyType, ValueSel):-
         branch_map_search(TypeSels, KeyType, ValueSel)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 reset_tables(!IO) :-
     table_reset_for_type_contains_subtype_1_4(!IO),
     table_reset_for_type_arg_types_3(!IO),
     table_reset_for_normalize_selector_with_type_information_4(!IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.selector.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

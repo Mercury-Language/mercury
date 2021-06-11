@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: structure_reuse.direct.detect_garbage.m.
 % Main authors: nancy.
@@ -12,7 +12,7 @@
 % Detect where datastructures become garbage in a given procedure: construct
 % a dead cell table.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
 :- interface.
@@ -20,7 +20,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Using the sharing table listing all the structure sharing of all
     % the known procedures, return a table of all data structures that may
@@ -32,8 +32,8 @@
     proc_info::in, sharing_as_table::in, hlds_goal::in,
     dead_cell_table::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -52,7 +52,7 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type detect_bg_info
     --->    detect_bg_info(
@@ -87,7 +87,8 @@ determine_dead_deconstructions(ModuleInfo, PredInfo, ProcInfo, SharingTable,
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            io.nl(!IO)
+            io.stderr_stream(StdErr, !IO),
+            io.nl(StdErr, !IO)
         )
     ;
         VeryVerbose = no
@@ -183,8 +184,9 @@ determine_dead_deconstructions_2_with_progress(Background, TopGoal,
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            io.write_char('.', !IO),
-            io.flush_output(!IO)
+            io.stderr_stream(StdErr, !IO),
+            io.write_char(StdErr, '.', !IO),
+            io.flush_output(StdErr, !IO)
         )
     ;
         VeryVerbose = no
@@ -320,6 +322,6 @@ var_not_live(ModuleInfo, ProcInfo, GoalInfo, Sharing, Var) :-
         fail
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
