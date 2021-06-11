@@ -48,21 +48,23 @@
 
     % Display the compiler version.
     %
-:- pred display_compiler_version(io::di, io::uo) is det.
+:- pred display_compiler_version(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
     % usage_errors(Globals, Specs, !IO)
     %
     % Print the list of error messages, and then the usage message.
     %
-:- pred usage_errors(globals::in, list(error_spec)::in, io::di, io::uo) is det.
+:- pred usage_errors(io.text_output_stream::in, globals::in,
+    list(error_spec)::in, io::di, io::uo) is det.
 
     % Display usage message.
     %
-:- pred usage(io::di, io::uo) is det.
+:- pred usage(io.text_output_stream::in, io::di, io::uo) is det.
 
     % Display long usage message for help.
     %
-:- pred long_usage(io::di, io::uo) is det.
+:- pred long_usage(io.text_output_stream::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -98,20 +100,18 @@ generate_default_globals(DefaultGlobals, !IO) :-
 
 handle_given_options(Args0, OptionArgs, Args, Specs, !:Globals, !IO) :-
     trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
-        io.nl(!TIO),
-        io.write_string("original arguments\n", !TIO),
-        dump_arguments(Args0, !TIO)
+        io.stderr_stream(StdErr, !TIO),
+        io.write_string(StdErr, "\noriginal arguments\n", !TIO),
+        dump_arguments(StdErr, Args0, !TIO)
     ),
     process_given_options(Args0, OptionArgs, Args, MaybeError, OptionTable,
         OptOptions, !IO),
     trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
-        io.nl(!TIO),
-        io.write_string("final option arguments\n", !TIO),
-        dump_arguments(OptionArgs, !TIO),
-
-        io.nl(!TIO),
-        io.write_string("final non-option arguments\n", !TIO),
-        dump_arguments(Args, !TIO)
+        io.stderr_stream(StdErr, !TIO),
+        io.write_string(StdErr, "\nfinal option arguments\n", !TIO),
+        dump_arguments(StdErr, OptionArgs, !TIO),
+        io.write_string(StdErr, "\nfinal non-option arguments\n", !TIO),
+        dump_arguments(StdErr, Args, !TIO)
     ),
     convert_option_table_result_to_globals(MaybeError, OptionTable, OptOptions,
         Specs, !:Globals, !IO),
@@ -162,12 +162,13 @@ process_given_options(RawArgs, OptionArgs, NonOptionArgs, MaybeError,
         OptionArgs, NonOptionArgs, MaybeError, _OptionsSet,
         OptionTable0, OptionTable, cord.init, OptOptionsCord, !IO).
 
-:- pred dump_arguments(list(string)::in, io::di, io::uo) is det.
+:- pred dump_arguments(io.text_output_stream::in, list(string)::in,
+    io::di, io::uo) is det.
 
-dump_arguments([], !IO).
-dump_arguments([Arg | Args], !IO) :-
-    io.format("    <%s>\n", [s(Arg)], !IO),
-    dump_arguments(Args, !IO).
+dump_arguments(_, [], !IO).
+dump_arguments(Stream, [Arg | Args], !IO) :-
+    io.format(Stream, "    <%s>\n", [s(Arg)], !IO),
+    dump_arguments(Stream, Args, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -2967,8 +2968,8 @@ option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue,
         globals.set_option(ImpliedOption, ImpliedOptionValue, !Globals)
     ).
 
-:- pred disable_smart_recompilation(string::in, globals::in, globals::out,
-    io::di, io::uo) is det.
+:- pred disable_smart_recompilation(string::in,
+    globals::in, globals::out, io::di, io::uo) is det.
 
 disable_smart_recompilation(OptionDescr, !Globals, !IO) :-
     io_set_disable_smart_recompilation(disable_smart_recompilation, !IO),
@@ -2976,10 +2977,12 @@ disable_smart_recompilation(OptionDescr, !Globals, !IO) :-
     globals.lookup_bool_option(!.Globals, warn_smart_recompilation, WarnSmart),
     (
         WarnSmart = yes,
-        io.write_string("Warning: smart recompilation " ++
-            "does not yet work with ", !IO),
-        io.write_string(OptionDescr, !IO),
-        io.write_string(".\n", !IO),
+        % Disabling smart recompilation is not a module-specific thing,
+        % so we cannot direct the error message to a module-specific file.
+        io.stderr_stream(StdErr, !IO),
+        io.format(StdErr,
+            "Warning: smart recompilation does not yet work with %s.\n",
+            [s(OptionDescr)], !IO),
         globals.lookup_bool_option(!.Globals, halt_at_warn, Halt),
         (
             Halt = yes,
@@ -2993,33 +2996,33 @@ disable_smart_recompilation(OptionDescr, !Globals, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-display_compiler_version(!IO) :-
+display_compiler_version(Stream, !IO) :-
     library.version(Version, Fullarch),
-    io.write_strings([
+    io.write_strings(Stream, [
         "Mercury Compiler, version ", Version, ", on ", Fullarch, "\n",
         "Copyright (C) 1993-2012 The University of Melbourne\n",
         "Copyright (C) 2013-2021 The Mercury team\n"
     ], !IO).
 
-usage_errors(Globals, Specs, !IO) :-
+usage_errors(ErrorStream, Globals, Specs, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
-    io.format("%s:\n", [s(ProgName)], !IO),
+    io.format(ErrorStream, "%s:\n", [s(ProgName)], !IO),
     % If _NumErrors > 0, this will set the exit status to 1.
     % It will also set the exit status to 1 if  _NumWarnings > 0
     % and --halt-at-warn was specified.
-    write_error_specs_ignore(Globals, Specs, !IO).
+    write_error_specs_ignore(ErrorStream, Globals, Specs, !IO).
 
 :- mutable(already_printed_usage, bool, no, ground,
     [untrailed, attach_to_io_state]).
 
-usage(!IO) :-
+usage(Stream, !IO) :-
     % usage is called from many places; ensure that we don't print the
     % duplicate copies of the message.
     get_already_printed_usage(AlreadyPrinted, !IO),
     (
         AlreadyPrinted = no,
-        display_compiler_version(!IO),
-        io.write_strings([
+        display_compiler_version(Stream, !IO),
+        io.write_strings(Stream, [
             "Usage: mmc [<options>] <arguments>\n",
             "Use `mmc --help' for more information.\n"
         ], !IO),
@@ -3028,27 +3031,25 @@ usage(!IO) :-
         AlreadyPrinted = yes
     ).
 
-long_usage(!IO) :-
+long_usage(Stream, !IO) :-
     % long_usage is called from only one place, so can't print duplicate
     % copies of the long usage message. We can print both a short and along
     % usage message, but there is no simple way to avoid that.
     library.version(Version, Fullarch),
-    io.write_strings(["Name: mmc -- Melbourne Mercury Compiler, version ",
-        Version, ", on ", Fullarch, "\n"], !IO),
-    io.write_string("Copyright: Copyright (C) 1993-2012 " ++
-        "The University of Melbourne\n", !IO),
-    io.write_string("           Copyright (C) 2013-2021 " ++
-        "The Mercury team\n", !IO),
-    io.write_string("Usage: mmc [<options>] <arguments>\n", !IO),
-    io.write_string("Arguments:\n", !IO),
-    io.write_string("\tArguments ending in `.m' " ++
-        "are assumed to be source file names.\n", !IO),
-    io.write_string("\tArguments that do not end in `.m' " ++
-        "are assumed to be module names.\n", !IO),
-    io.write_string("\tArguments in the form @file are replaced " ++
-        "with the contents of the file.\n", !IO),
-    io.write_string("Options:\n", !IO),
-    options_help(!IO).
+    Template = 
+        "Name: mmc -- Melbourne Mercury Compiler, version %s on %s\n" ++
+        "Copyright: Copyright (C) 1993-2012 The University of Melbourne\n" ++
+        "Copyright (C) 2013-2021 The Mercury team\n" ++
+        "Usage: mmc [<options>] <arguments>\n" ++
+        "Arguments:\n" ++
+        "\tArguments ending in `.m' are assumed to be source file names.\n" ++
+        "\tArguments that do not end in `.m' " ++
+            "are assumed to be module names.\n" ++
+        "\tArguments in the form @file " ++
+            "are replaced with the contents of the file.\n",
+    io.format(Stream, Template, [s(Version), s(Fullarch)], !IO),
+    io.write_string(Stream, "Options:\n", !IO),
+    options_help(Stream, !IO).
 
 %---------------------------------------------------------------------------%
 

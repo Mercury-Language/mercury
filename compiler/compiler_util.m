@@ -64,15 +64,10 @@
     %
 :- pred record_warning(globals::in, io::di, io::uo) is det.
 
-    % Report a warning, and set the exit status to error if the
-    % `--halt-at-warn' option is set.
-    %
-:- pred report_warning(globals::in, string::in, io::di, io::uo) is det.
-
     % Report a warning to the specified stream, and set the exit status
     % to error if the --halt-at-warn option is set.
     %
-:- pred report_warning_to_stream(globals::in, io.output_stream::in, string::in,
+:- pred report_warning(io.output_stream::in, globals::in, string::in,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -119,11 +114,7 @@ record_warning(Globals, !IO) :-
         HaltAtWarn = no
     ).
 
-report_warning(Globals, Message, !IO) :-
-    record_warning(Globals, !IO),
-    io.write_string(Message, !IO).
-
-report_warning_to_stream(Globals, Stream, Message, !IO) :-
+report_warning(Stream, Globals, Message, !IO) :-
     record_warning(Globals, !IO),
     io.write_string(Stream, Message, !IO).
 

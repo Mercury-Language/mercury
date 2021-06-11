@@ -134,7 +134,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred options_help(io::di, io::uo) is det.
+:- pred options_help(io.text_output_stream::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -840,7 +840,7 @@
     %   - LLDS
     ;       optopt_common_data
     ;       optopt_common_layout_data
-    ;       optopt_optimize            % Also used for MLDS->MLDS optimizations.
+    ;       optopt_optimize           % Also used for MLDS->MLDS optimizations.
     ;       optopt_optimize_peep
     ;       optopt_optimize_peep_mkword
     ;       optopt_optimize_jumps
@@ -2548,11 +2548,11 @@ long_option("basic-stack-layout",   basic_stack_layout).
 long_option("procid-stack-layout",  procid_stack_layout).
 long_option("trace-stack-layout",   trace_stack_layout).
 long_option("body-typeinfo-liveness",   body_typeinfo_liveness).
-long_option("can-compare-constants-as-ints",    can_compare_constants_as_ints).
-long_option("pretest-equality-cast-pointers",   pretest_equality_cast_pointers).
-long_option("can-compare-compound-values",      can_compare_compound_values).
-long_option("delay-partial-instantiations", delay_partial_instantiations).
-long_option("allow-defn-of-builtins",           allow_defn_of_builtins).
+long_option("can-compare-constants-as-ints",  can_compare_constants_as_ints).
+long_option("pretest-equality-cast-pointers", pretest_equality_cast_pointers).
+long_option("can-compare-compound-values",    can_compare_compound_values).
+long_option("delay-partial-instantiations",   delay_partial_instantiations).
+long_option("allow-defn-of-builtins",         allow_defn_of_builtins).
 long_option("type-ctor-info",       type_ctor_info).
 long_option("type-ctor-layout",     type_ctor_layout).
 long_option("type-ctor-functors",   type_ctor_functors).
@@ -2642,9 +2642,9 @@ long_option("inline-compound-threshold",    optopt_inline_compound_threshold).
 long_option("inline-simple-threshold",      optopt_inline_simple_threshold).
 long_option("intermod-inline-simple-threshold",
                                     optopt_intermod_inline_simple_threshold).
-long_option("inline-linear-tail-rec-sccs",  optopt_inline_linear_tail_rec_sccs).
+long_option("inline-linear-tail-rec-sccs", optopt_inline_linear_tail_rec_sccs).
 long_option("inline-linear-tail-rec-sccs-max-extra",
-                                    optopt_inline_linear_tail_rec_sccs_max_extra).
+                                 optopt_inline_linear_tail_rec_sccs_max_extra).
 long_option("from-ground-term-threshold",
                                     optopt_from_ground_term_threshold).
 long_option("inline-vars-threshold",        optopt_inline_vars_threshold).
@@ -2670,24 +2670,31 @@ long_option("osv-loop",             optopt_optimize_saved_vars_cell_loop).
 long_option("osv-full-path",        optopt_optimize_saved_vars_cell_full_path).
 long_option("osv-on-stack",         optopt_optimize_saved_vars_cell_on_stack).
 long_option("osv-cand-head",
-                            optopt_optimize_saved_vars_cell_candidate_headvars).
+                        optopt_optimize_saved_vars_cell_candidate_headvars).
 % The next four options are used by tupling.m as well; changes to them
 % may require changes there as well.
-long_option("osv-cvstore-cost",     optopt_optimize_saved_vars_cell_cv_store_cost).
-long_option("osv-cvload-cost",      optopt_optimize_saved_vars_cell_cv_load_cost).
-long_option("osv-fvstore-cost",     optopt_optimize_saved_vars_cell_fv_store_cost).
-long_option("osv-fvload-cost",      optopt_optimize_saved_vars_cell_fv_load_cost).
-long_option("osv-op-ratio",         optopt_optimize_saved_vars_cell_op_ratio).
-long_option("osv-node-ratio",       optopt_optimize_saved_vars_cell_node_ratio).
+long_option("osv-cvstore-cost",
+                        optopt_optimize_saved_vars_cell_cv_store_cost).
+long_option("osv-cvload-cost",
+                        optopt_optimize_saved_vars_cell_cv_load_cost).
+long_option("osv-fvstore-cost",
+                        optopt_optimize_saved_vars_cell_fv_store_cost).
+long_option("osv-fvload-cost",
+                        optopt_optimize_saved_vars_cell_fv_load_cost).
+long_option("osv-op-ratio",
+                        optopt_optimize_saved_vars_cell_op_ratio).
+long_option("osv-node-ratio",
+                        optopt_optimize_saved_vars_cell_node_ratio).
 long_option("osv-allpath-node-ratio",
-                            optopt_optimize_saved_vars_cell_all_path_node_ratio).
+                        optopt_optimize_saved_vars_cell_all_path_node_ratio).
 long_option("osv-all-cand",
-                            optopt_optimize_saved_vars_cell_include_all_candidates).
+                    optopt_optimize_saved_vars_cell_include_all_candidates).
 long_option("delay-construct",      optopt_delay_construct).
 long_option("delay-constructs",     optopt_delay_construct).
 long_option("follow-code",          optopt_follow_code).
 long_option("constraint-propagation",   optopt_constraint_propagation).
-long_option("local-constraint-propagation", optopt_local_constraint_propagation).
+long_option("local-constraint-propagation",
+                                     optopt_local_constraint_propagation).
 long_option("optimize-unused-args", optopt_optimize_unused_args).
 long_option("optimise-unused-args", optopt_optimize_unused_args).
 long_option("intermod-unused-args", optopt_intermod_unused_args).
@@ -2726,8 +2733,10 @@ long_option("optimise-dead-procs",  optopt_optimize_dead_procs).
 long_option("deforestation",        optopt_deforestation).
 long_option("deforestation-depth-limit",    optopt_deforestation_depth_limit).
 long_option("deforestation-cost-factor",    optopt_deforestation_cost_factor).
-long_option("deforestation-vars-threshold", optopt_deforestation_vars_threshold).
-long_option("deforestation-size-threshold", optopt_deforestation_size_threshold).
+long_option("deforestation-vars-threshold",
+                                    optopt_deforestation_vars_threshold).
+long_option("deforestation-size-threshold",
+                                    optopt_deforestation_size_threshold).
 
 long_option("untuple",              optopt_untuple).
 long_option("tuple",                optopt_tuple).
@@ -2759,8 +2768,10 @@ long_option("string-binary-switch-size",    optopt_string_binary_switch_size).
 long_option("tag-switch-size",      optopt_tag_switch_size).
 long_option("try-switch-size",      optopt_try_switch_size).
 long_option("binary-switch-size",   optopt_binary_switch_size).
-long_option("switch-single-rec-base-first", optopt_switch_single_rec_base_first).
-long_option("switch-multi-rec-base-first",  optopt_switch_multi_rec_base_first).
+long_option("switch-single-rec-base-first",
+                                    optopt_switch_single_rec_base_first).
+long_option("switch-multi-rec-base-first",
+                                    optopt_switch_multi_rec_base_first).
 long_option("static-ground-terms",  optopt_static_ground_cells).
 % static_ground_floats should be set only in handle_options.m.
 % long_option("static-ground-floats", static_ground_floats).
@@ -2783,7 +2794,8 @@ long_option("optimize-tailcalls",   optopt_optimize_mlds_tailcalls).
 long_option("optimise-tailcalls",   optopt_optimize_mlds_tailcalls).
 long_option("optimize-initializations", optopt_optimize_initializations).
 long_option("optimise-initializations", optopt_optimize_initializations).
-long_option("eliminate-unused-mlds-assigns", optopt_eliminate_unused_mlds_assigns).
+long_option("eliminate-unused-mlds-assigns",
+                                    optopt_eliminate_unused_mlds_assigns).
 long_option("eliminate-local-vars", optopt_eliminate_local_vars).
 long_option("generate-trail-ops-inline", optopt_generate_trail_ops_inline).
 
@@ -4170,34 +4182,34 @@ quote_char_unix('$').
 
 %---------------------------------------------------------------------------%
 
-options_help(!IO) :-
-    io.write_string("\t-?, -h, --help\n", !IO),
-    io.write_string("\t\tPrint this usage message.\n", !IO),
-    options_help_warning(!IO),
-    options_help_verbosity(!IO),
-    options_help_output(!IO),
-    options_help_aux_output(!IO),
-    options_help_semantics(!IO),
-    options_help_termination(!IO),
-    options_help_ctgc(!IO),
-    options_help_compilation_model(!IO),
-    options_help_code_generation(!IO),
-    options_help_optimization(!IO),
-    options_help_hlds_hlds_optimization(!IO),
-    options_help_hlds_llds_optimization(!IO),
-    options_help_llds_llds_optimization(!IO),
-    options_help_mlds_mlds_optimization(!IO),
-    options_help_output_optimization(!IO),
-    options_help_target_code_compilation(!IO),
-    options_help_link(!IO),
-    options_help_build_system(!IO),
-    options_help_misc(!IO).
+options_help(Stream, !IO) :-
+    io.write_string(Stream, "\t-?, -h, --help\n", !IO),
+    io.write_string(Stream, "\t\tPrint this usage message.\n", !IO),
+    options_help_warning(Stream, !IO),
+    options_help_verbosity(Stream, !IO),
+    options_help_output(Stream, !IO),
+    options_help_aux_output(Stream, !IO),
+    options_help_semantics(Stream, !IO),
+    options_help_termination(Stream, !IO),
+    options_help_ctgc(Stream, !IO),
+    options_help_compilation_model(Stream, !IO),
+    options_help_code_generation(Stream, !IO),
+    options_help_optimization(Stream, !IO),
+    options_help_hlds_hlds_optimization(Stream, !IO),
+    options_help_hlds_llds_optimization(Stream, !IO),
+    options_help_llds_llds_optimization(Stream, !IO),
+    options_help_mlds_mlds_optimization(Stream, !IO),
+    options_help_output_optimization(Stream, !IO),
+    options_help_target_code_compilation(Stream, !IO),
+    options_help_link(Stream, !IO),
+    options_help_build_system(Stream, !IO),
+    options_help_misc(Stream, !IO).
 
-:- pred options_help_warning(io::di, io::uo) is det.
+:- pred options_help_warning(io.text_output_stream::in, io::di, io::uo) is det.
 
-options_help_warning(!IO) :-
-    io.write_string("\nWarning Options:\n", !IO),
-    write_tabbed_lines([
+options_help_warning(Stream, !IO) :-
+    io.write_string(Stream, "\nWarning Options:\n", !IO),
+    write_tabbed_lines(Stream, [
         "-w, --inhibit-warnings",
         "\tDisable all warning messages.",
         "--inhibit-style-warnings",
@@ -4414,11 +4426,12 @@ options_help_warning(!IO) :-
 %       "\tby convention is the $pred of the code that constructs it."
     ], !IO).
 
-:- pred options_help_verbosity(io::di, io::uo) is det.
+:- pred options_help_verbosity(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_verbosity(!IO) :-
-    io.write_string("\nVerbosity Options:\n", !IO),
-    write_tabbed_lines([
+options_help_verbosity(Stream, !IO) :-
+    io.write_string(Stream, "\nVerbosity Options:\n", !IO),
+    write_tabbed_lines(Stream, [
         "-v, --verbose",
         "\tOutput progress messages at each stage in the compilation.",
         "-V, --very-verbose",
@@ -4543,11 +4556,11 @@ options_help_verbosity(!IO) :-
 %         "\toption."
     ], !IO).
 
-:- pred options_help_output(io::di, io::uo) is det.
+:- pred options_help_output(io.text_output_stream::in, io::di, io::uo) is det.
 
-options_help_output(!IO) :-
-    io.write_string("\nOutput Options:\n", !IO),
-    write_tabbed_lines([
+options_help_output(Stream, !IO) :-
+    io.write_string(Stream, "\nOutput Options:\n", !IO),
+    write_tabbed_lines(Stream, [
         "These options are mutually exclusive.",
         "Only the first one specified will apply.",
         "If none of these options are specified, the default action",
@@ -4665,11 +4678,12 @@ options_help_output(!IO) :-
         "\tgenerated Java class files will be placed."
     ], !IO).
 
-:- pred options_help_aux_output(io::di, io::uo) is det.
+:- pred options_help_aux_output(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_aux_output(!IO) :-
-    io.write_string("\nAuxiliary Output Options:\n", !IO),
-    write_tabbed_lines([
+options_help_aux_output(Stream, !IO) :-
+    io.write_string(Stream, "\nAuxiliary Output Options:\n", !IO),
+    write_tabbed_lines(Stream, [
 % These are commented out until the compiler consistently does
 % what these options say it should do when specified.
 %       "--error-output-suffix .xyz",
@@ -4956,12 +4970,17 @@ options_help_aux_output(!IO) :-
 %       "\tLimit common struct optimization to the preds with the given ids.",
     ], !IO).
 
-:- pred options_help_semantics(io::di, io::uo) is det.
+:- pred options_help_semantics(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_semantics(!IO) :-
-    io.write_string("\nLanguage semantics options:\n", !IO),
-    io.write_string("(See the Mercury language reference manual for detailed explanations.)\n", !IO),
-    write_tabbed_lines([
+options_help_semantics(Stream, !IO) :-
+    io.write_string(Stream,
+        "\nLanguage semantics options:\n", !IO),
+    io.write_string(Stream,
+        "(See the Mercury language reference manual ", !IO),
+    io.write_string(Stream,
+        "for detailed explanations.)\n", !IO),
+    write_tabbed_lines(Stream, [
         "--no-reorder-conj",
         "\tExecute conjunctions left-to-right except where the modes imply",
         "\tthat reordering is unavoidable.",
@@ -4996,11 +5015,12 @@ options_help_semantics(!IO) :-
         "\tGet the specification of user-defined events from <filename>."
     ], !IO).
 
-:- pred options_help_ctgc(io::di, io::uo) is det.
+:- pred options_help_ctgc(io.text_output_stream::in, io::di, io::uo) is det.
 
-options_help_ctgc(!IO) :-
-    io.write_string("\nCompile Time Garbage Collection Options:\n", !IO),
-    write_tabbed_lines([
+options_help_ctgc(Stream, !IO) :-
+    io.write_string(Stream,
+        "\nCompile Time Garbage Collection Options:\n", !IO),
+    write_tabbed_lines(Stream, [
         "--structure-sharing",
         "\tPerform structure sharing analysis.",
         "--structure-sharing-widening <n>",
@@ -5035,11 +5055,12 @@ options_help_ctgc(!IO) :-
 %       "\tcannot be reused."
     ], !IO).
 
-:- pred options_help_termination(io::di, io::uo) is det.
+:- pred options_help_termination(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_termination(!IO) :-
-    io.write_string("\nTermination Analysis Options:\n", !IO),
-    write_tabbed_lines([
+options_help_termination(Stream, !IO) :-
+    io.write_string(Stream, "\nTermination Analysis Options:\n", !IO),
+    write_tabbed_lines(Stream, [
         "--enable-term, --enable-termination",
         "\tAnalyse each predicate to discover if it terminates.",
         "--chk-term, --check-term, --check-termination",
@@ -5113,19 +5134,20 @@ options_help_termination(!IO) :-
 %       "\tattempt to infer termination,"
     ], !IO).
 
-:- pred options_help_compilation_model(io::di, io::uo) is det.
+:- pred options_help_compilation_model(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_compilation_model(!IO) :-
-    io.write_string("\nCompilation model options:\n", !IO),
-    write_tabbed_lines([
+options_help_compilation_model(Stream, !IO) :-
+    io.write_string(Stream, "\nCompilation model options:\n", !IO),
+    write_tabbed_lines(Stream, [
         "The following compilation options affect the generated",
         "code in such a way that the entire program must be",
         "compiled with the same setting of these options,",
         "and it must be linked to a version of the Mercury",
         "library which has been compiled with the same setting."
     ], !IO),
-    io.write_string("\n", !IO),
-    write_tabbed_lines([
+    io.write_string(Stream, "\n", !IO),
+    write_tabbed_lines(Stream, [
         "-s <grade>, --grade <grade>",
         "\tSelect the compilation model. The <grade> should be one of",
         "\tthe base grades `none', `reg', `asm_fast', `hlc', `java' or,",
@@ -5153,8 +5175,9 @@ options_help_compilation_model(!IO) :-
         "\twill result in an error at link time."
     ], !IO),
 
-    io.write_string("\n    Target selection compilation model options:\n", !IO),
-    write_tabbed_lines([
+    io.write_string(Stream,
+        "\n    Target selection compilation model options:\n", !IO),
+    write_tabbed_lines(Stream, [
         %"--target c\t\t\t(grades: none, reg, jump, fast,",
         %"\t\t\t\t\tasm_jump, asm_fast, hl, hlc)",
         "--target c\t\t\t(grades: none, reg, asm_fast, hlc)",
@@ -5184,9 +5207,11 @@ options_help_compilation_model(!IO) :-
         "\tcode."
     ], !IO),
 
-    io.write_string("\n    Optional feature compilation model options:\n", !IO),
-    io.write_string("\n      Debugging\n", !IO),
-    write_tabbed_lines([
+    io.write_string(Stream,
+        "\n    Optional feature compilation model options:\n", !IO),
+    io.write_string(Stream,
+        "\n      Debugging\n", !IO),
+    write_tabbed_lines(Stream, [
         "--debug\t\t\t\t(grade modifier: `.debug')",
         "\tEnable Mercury-level debugging.",
         "\tSee the Debugging chapter of the Mercury User's Guide",
@@ -5206,8 +5231,9 @@ options_help_compilation_model(!IO) :-
 %       "--ss-debug\t\t\t\t(grade modifier: `.ssdebug')",
 %       "\tEnable the source-to-source debugging transform."
     ], !IO),
-    io.write_string("\n      Profiling\n", !IO),
-    write_tabbed_lines([
+    io.write_string(Stream,
+        "\n      Profiling\n", !IO),
+    write_tabbed_lines(Stream, [
         "-p, --profiling, --time-profiling",
         "\t\t\t\t(grade modifier: `.prof')",
         "\tEnable time and call profiling. Insert profiling hooks in the",
@@ -5313,8 +5339,9 @@ options_help_compilation_model(!IO) :-
         "\tgrades on some processors, See README.ThreadScope for details."
     ], !IO),
 
-    io.write_string("\n      Miscellaneous optional features\n", !IO),
-    write_tabbed_lines([
+    io.write_string(Stream,
+        "\n      Miscellaneous optional features\n", !IO),
+    write_tabbed_lines(Stream, [
         "--gc {none, boehm, hgc, accurate, automatic}",
         "--garbage-collection {none, boehm, hgc, accurate, automatic}",
         "\t\t\t\t(`java' and `csharp' grades",
@@ -5368,8 +5395,9 @@ options_help_compilation_model(!IO) :-
         %"\t that may be allocated into by a call."
     ], !IO),
 
-    io.write_string("\n    LLDS back-end compilation model options:\n", !IO),
-    write_tabbed_lines([
+    io.write_string(Stream,
+        "\n    LLDS back-end compilation model options:\n", !IO),
+    write_tabbed_lines(Stream, [
 
         %"--gcc-global-registers\t\t(grades: reg, fast, asm_fast)",
         %"--no-gcc-global-registers\t(grades: none, jump, asm_jump)",
@@ -5407,8 +5435,9 @@ options_help_compilation_model(!IO) :-
 %       "\tUse float registers for argument passing."
     ], !IO),
 
-    io.write_string("\n    MLDS back-end compilation model options:\n", !IO),
-    write_tabbed_lines([
+    io.write_string(Stream,
+        "\n    MLDS back-end compilation model options:\n", !IO),
+    write_tabbed_lines(Stream, [
         "-H, --high-level-code\t\t\t(grades: hlc, csharp, java)",
         "\tUse an alternative back-end that generates high-level code",
         "\trather than the very low-level code that is generated by our",
@@ -5447,9 +5476,11 @@ options_help_compilation_model(!IO) :-
 %   ])
     ], !IO),
 
-    io.write_string("\n    Developer compilation model options:\n", !IO),
-    io.write_string("\n      Data representation\n", !IO),
-    write_tabbed_lines([
+    io.write_string(Stream,
+        "\n    Developer compilation model options:\n", !IO),
+    io.write_string(Stream,
+        "\n      Data representation\n", !IO),
+    write_tabbed_lines(Stream, [
         "--num-ptag-bits <n>           (This option is not for general use.)",
         "\tUse <n> primary tag bits."
         % Normally, The --num-tag-bits option is used only by the compiler.
@@ -5511,8 +5542,9 @@ options_help_compilation_model(!IO) :-
 %       "\tDisallow storing a single constructor argument in two words"
 %       "(namely, double-precision floats).",
     ], !IO),
-    io.write_string("\n      Developer optional features\n", !IO),
-    write_tabbed_lines([
+    io.write_string(Stream,
+        "\n      Developer optional features\n", !IO),
+    write_tabbed_lines(Stream, [
         "--use-minimal-model-stack-copy",
         "(This option is not for general use.)",
         "\tEnable the use of the standard form of minimal model tabling.",
@@ -5625,11 +5657,12 @@ options_help_compilation_model(!IO) :-
 %       Use the constraint based type checker instead of the old one.
     ], !IO).
 
-:- pred options_help_code_generation(io::di, io::uo) is det.
+:- pred options_help_code_generation(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_code_generation(!IO) :-
-    io.write_string("\nCode generation options:\n", !IO),
-    write_tabbed_lines([
+options_help_code_generation(Stream, !IO) :-
+    io.write_string(Stream, "\nCode generation options:\n", !IO),
+    write_tabbed_lines(Stream, [
 %       "--low-level-debug",
 %       "\tEnables various low-level debugging stuff, that was in",
 %       "\tthe distant past used to debug the low-level code generation.",
@@ -5728,8 +5761,8 @@ options_help_code_generation(!IO) :-
 %        "\tenvironment variable MERCURY_DEBUG_CLASS_INIT is defined."
     ], !IO),
 
-    io.write_string("\n    Code generation target options:\n", !IO),
-    write_tabbed_lines([
+    io.write_string(Stream, "\n    Code generation target options:\n", !IO),
+    write_tabbed_lines(Stream, [
         "--branch-delay-slot    \t(This option is not for general use.)",
         "\tAssume that branch instructions have a delay slot.",
         "--num-real-r-regs <n>  \t(This option is not for general use.)",
@@ -5746,11 +5779,12 @@ options_help_code_generation(!IO) :-
         "\treal machine registers."
     ], !IO).
 
-:- pred options_help_optimization(io::di, io::uo) is det.
+:- pred options_help_optimization(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_optimization(!IO) :-
-    io.write_string("\nOptimization Options:\n", !IO),
-    write_tabbed_lines([
+options_help_optimization(Stream, !IO) :-
+    io.write_string(Stream, "\nOptimization Options:\n", !IO),
+    write_tabbed_lines(Stream, [
         % This is for use by Mercury.config only.
     %   "--default-opt-level -O<n>",
     %   "\tSet the default optimization level to <n>.",
@@ -5803,11 +5837,13 @@ options_help_optimization(!IO) :-
 %       "\timprove compile times with `--intermodule-analysis'."
     ], !IO).
 
-:- pred options_help_hlds_hlds_optimization(io::di, io::uo) is det.
+:- pred options_help_hlds_hlds_optimization(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_hlds_hlds_optimization(!IO) :-
-    io.write_string("\n    High-level (HLDS -> HLDS) optimizations:\n", !IO),
-    write_tabbed_lines([
+options_help_hlds_hlds_optimization(Stream, !IO) :-
+    io.write_string(Stream,
+        "\n    High-level (HLDS -> HLDS) optimizations:\n", !IO),
+    write_tabbed_lines(Stream, [
         "--no-inlining",
         "\tDisable all forms of inlining.",
         "--no-inline-simple",
@@ -6056,11 +6092,13 @@ options_help_hlds_hlds_optimization(!IO) :-
     % XXX This is out-of-date. --smart-indexing also affects the
     % MLDS backend.
     %
-:- pred options_help_hlds_llds_optimization(io::di, io::uo) is det.
+:- pred options_help_hlds_llds_optimization(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_hlds_llds_optimization(!IO) :-
-    io.write_string("\n    Medium-level (HLDS -> LLDS) optimizations:\n", !IO),
-    write_tabbed_lines([
+options_help_hlds_llds_optimization(Stream, !IO) :-
+    io.write_string(Stream,
+        "\n    Medium-level (HLDS -> LLDS) optimizations:\n", !IO),
+    write_tabbed_lines(Stream, [
         "--no-smart-indexing",
         "\tGenerate switches as simple if-then-else chains;",
         "\tdisable string hashing and integer table-lookup indexing.",
@@ -6131,11 +6169,13 @@ options_help_hlds_llds_optimization(!IO) :-
 %       "\tanother procedure invocation".
     ], !IO).
 
-:- pred options_help_llds_llds_optimization(io::di, io::uo) is det.
+:- pred options_help_llds_llds_optimization(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_llds_llds_optimization(!IO) :-
-    io.write_string("\n    Low-level (LLDS -> LLDS) optimizations:\n", !IO),
-    write_tabbed_lines([
+options_help_llds_llds_optimization(Stream, !IO) :-
+    io.write_string(Stream,
+        "\n    Low-level (LLDS -> LLDS) optimizations:\n", !IO),
+    write_tabbed_lines(Stream, [
         "--no-common-data",
         "\tDisable optimization of common data structures.",
         "--no-common-layout-data",
@@ -6189,11 +6229,12 @@ options_help_llds_llds_optimization(!IO) :-
         "\t(default: 4000)."
     ], !IO).
 
-:- pred options_help_mlds_mlds_optimization(io::di, io::uo) is det.
+:- pred options_help_mlds_mlds_optimization(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_mlds_mlds_optimization(!IO) :-
-    io.write_string("\n    MLDS -> MLDS optimizations:\n", !IO),
-    write_tabbed_lines([
+options_help_mlds_mlds_optimization(Stream, !IO) :-
+    io.write_string(Stream, "\n    MLDS -> MLDS optimizations:\n", !IO),
+    write_tabbed_lines(Stream, [
         "--no-mlds-optimize",
         "\tDisable the MLDS->MLDS optimization passes.",
         "--no-mlds-peephole",
@@ -6217,11 +6258,13 @@ options_help_mlds_mlds_optimization(!IO) :-
         "\tin the standard library."
     ], !IO).
 
-:- pred options_help_output_optimization(io::di, io::uo) is det.
+:- pred options_help_output_optimization(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_output_optimization(!IO) :-
-    io.write_string("\n    Output-level (LLDS -> C) optimizations:\n", !IO),
-    write_tabbed_lines([
+options_help_output_optimization(Stream, !IO) :-
+    io.write_string(Stream,
+        "\n    Output-level (LLDS -> C) optimizations:\n", !IO),
+    write_tabbed_lines(Stream, [
         "--use-macro-for-redo-fail",
         "\tEmit the fail or redo macro instead of a branch",
         "\tto the fail or redo code in the runtime system.",
@@ -6245,11 +6288,12 @@ options_help_output_optimization(!IO) :-
         "\textension."
     ], !IO).
 
-:- pred options_help_target_code_compilation(io::di, io::uo) is det.
+:- pred options_help_target_code_compilation(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_target_code_compilation(!IO) :-
-    io.write_string("\n    Target code compilation:\n", !IO),
-    write_tabbed_lines([
+options_help_target_code_compilation(Stream, !IO) :-
+    io.write_string(Stream, "\n    Target code compilation:\n", !IO),
+    write_tabbed_lines(Stream, [
         "\tNote that if you are using Mmake, you need to pass these",
         "\toptions to the target code compiler (e.g. `mgnuc')",
         "\trather than to `mmc'.",
@@ -6341,11 +6385,11 @@ options_help_target_code_compilation(!IO) :-
         "\tInfrastructure (CLI) execution environment, e.g. `mono'."
     ], !IO).
 
-:- pred options_help_link(io::di, io::uo) is det.
+:- pred options_help_link(io.text_output_stream::in, io::di, io::uo) is det.
 
-options_help_link(!IO) :-
-    io.write_string("\nLink Options:\n", !IO),
-    write_tabbed_lines([
+options_help_link(Stream, !IO) :-
+    io.write_string(Stream, "\nLink Options:\n", !IO),
+    write_tabbed_lines(Stream, [
         "-o <filename>, --output-file <filename>",
         "\tSpecify the name of the final executable.",
         "\t(The default executable name is the same as the name",
@@ -6515,11 +6559,12 @@ options_help_link(!IO) :-
         % they are deliberately not documented.
     ], !IO).
 
-:- pred options_help_build_system(io::di, io::uo) is det.
+:- pred options_help_build_system(io.text_output_stream::in,
+    io::di, io::uo) is det.
 
-options_help_build_system(!IO) :-
-    io.write_string("\nBuild System Options:\n", !IO),
-    write_tabbed_lines([
+options_help_build_system(Stream, !IO) :-
+    io.write_string(Stream, "\nBuild System Options:\n", !IO),
+    write_tabbed_lines(Stream, [
         % `--invoked-by-mmc-make' is for internal use by the
         % compiler. `mmc --make' passes it as the first argument
         % when compiling a module.
@@ -6679,11 +6724,11 @@ options_help_build_system(!IO) :-
         "\tinvoked."
     ], !IO).
 
-:- pred options_help_misc(io::di, io::uo) is det.
+:- pred options_help_misc(io.text_output_stream::in, io::di, io::uo) is det.
 
-options_help_misc(!IO) :-
-    io.write_string("\nMiscellaneous Options:\n", !IO),
-    write_tabbed_lines([
+options_help_misc(Stream, !IO) :-
+    io.write_string(Stream, "\nMiscellaneous Options:\n", !IO),
+    write_tabbed_lines(Stream, [
         "--filenames-from-stdin",
         "\tRead then compile a newline terminated module name or",
         "\tfile name from the standard input. Repeat this until EOF",
@@ -6737,14 +6782,13 @@ options_help_misc(!IO) :-
         "\tonly be processed for implicit parallelism."
     ], !IO).
 
-:- pred write_tabbed_lines(list(string)::in, io::di, io::uo) is det.
+:- pred write_tabbed_lines(io.text_output_stream::in, list(string)::in,
+    io::di, io::uo) is det.
 
-write_tabbed_lines([], !IO).
-write_tabbed_lines([Str | Strs], !IO) :-
-    io.write_char('\t', !IO),
-    io.write_string(Str, !IO),
-    io.write_char('\n', !IO),
-    write_tabbed_lines(Strs, !IO).
+write_tabbed_lines(_, [], !IO).
+write_tabbed_lines(Stream, [Str | Strs], !IO) :-
+    io.format(Stream, "\t%s\n", [s(Str)], !IO),
+    write_tabbed_lines(Stream, Strs, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module libs.options.

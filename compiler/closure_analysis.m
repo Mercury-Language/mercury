@@ -167,9 +167,10 @@ closure_analyse_proc(Debug, PPId, !ModuleInfo) :-
     (
         Debug = yes,
         proc_info_get_varset(ProcInfo, Varset),
-        trace [io(!TIO)] (
-            dump_closure_info(Varset, Body, !TIO),
-            io.flush_output(!TIO)
+        trace [io(!IO)] (
+            get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
+            dump_closure_info(DebugStream, Varset, Body, !IO),
+            io.flush_output(DebugStream, !IO)
         )
     ;
         Debug = no
@@ -451,62 +452,74 @@ merge_closure_values(exclusive(A), exclusive(B), exclusive(A `set.union` B)).
 % Debugging code, used if the '--debug-closure' option is given.
 %
 
-:- pred dump_closure_info(prog_varset::in, hlds_goal::in,
-    io::di, io::uo) is det.
+:- pred dump_closure_info(io.text_output_stream::in, prog_varset::in,
+    hlds_goal::in, io::di, io::uo) is det.
 
-dump_closure_info(Varset, Goal, !IO) :-
+dump_closure_info(DebugStream, Varset, Goal, !IO) :-
+    % XXX zs: It seems to me that the output from this predicate
+    % would be much easier to understand if each piece of the output
+    % was preceded by the identity of the goal that it came from.
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    dump_closure_info_expr(Varset, GoalExpr, GoalInfo, !IO).
+    (
+        GoalExpr = unify(_, _, _, _, _)
+    ;
+        GoalExpr = plain_call(_, _, _, _, _, _),
+        dump_ho_values(DebugStream, Varset, GoalInfo, !IO)
+    ;
+        GoalExpr = generic_call(_, _, _, _, _),
+        dump_ho_values(DebugStream, Varset, GoalInfo, !IO)
+    ;
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+    ;
+        GoalExpr = conj(_ConjType, SubGoals),
+        list.foldl(dump_closure_info(DebugStream, Varset), SubGoals, !IO)
+    ;
+        GoalExpr = disj(SubGoals),
+        list.foldl(dump_closure_info(DebugStream, Varset), SubGoals, !IO)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        SubGoals = list.map((func(case(_, _, CaseGoal)) = CaseGoal), Cases),
+        list.foldl(dump_closure_info(DebugStream, Varset), SubGoals, !IO)
+    ;
+        GoalExpr = if_then_else(_, CondGoal, ThenGoal, ElseGoal),
+        dump_closure_info(DebugStream, Varset, CondGoal, !IO),
+        dump_closure_info(DebugStream, Varset, ThenGoal, !IO),
+        dump_closure_info(DebugStream, Varset, ElseGoal, !IO)
+    ;
+        GoalExpr = negation(SubGoal),
+        dump_closure_info(DebugStream, Varset, SubGoal, !IO)
+    ;
+        GoalExpr = scope(_, SubGoal),
+        dump_closure_info(DebugStream, Varset, SubGoal, !IO)
+    ;
+        GoalExpr = shorthand(_),
+        unexpected($pred, "shorthand")
+    ).
 
-:- pred dump_closure_info_expr(prog_varset::in, hlds_goal_expr::in,
+:- pred dump_ho_values(io.text_output_stream::in, prog_varset::in,
     hlds_goal_info::in, io::di, io::uo) is det.
 
-dump_closure_info_expr(Varset, conj(_ConjType, Goals), _, !IO) :-
-    list.foldl(dump_closure_info(Varset), Goals, !IO).
-dump_closure_info_expr(Varset, plain_call(_,_,_,_,_,_), GoalInfo, !IO) :-
-    dump_ho_values(GoalInfo, Varset, !IO).
-dump_closure_info_expr(Varset, generic_call(_,_,_,_,_), GoalInfo, !IO) :-
-    dump_ho_values(GoalInfo, Varset, !IO).
-dump_closure_info_expr(Varset, scope(_, Goal), _, !IO) :-
-    dump_closure_info(Varset, Goal, !IO).
-dump_closure_info_expr(Varset, switch(_, _, Cases), _, !IO) :-
-    CaseToGoal = (func(case(_, _, Goal)) = Goal),
-    Goals = list.map(CaseToGoal, Cases),
-    list.foldl(dump_closure_info(Varset), Goals, !IO).
-dump_closure_info_expr(Varset, if_then_else(_, Cond, Then, Else), _, !IO) :-
-    list.foldl(dump_closure_info(Varset), [Cond, Then, Else], !IO).
-dump_closure_info_expr(_, unify(_,_,_,_,_), _, !IO).
-dump_closure_info_expr(Varset, negation(Goal), _, !IO) :-
-    dump_closure_info(Varset, Goal, !IO).
-dump_closure_info_expr(_, call_foreign_proc(_, _, _, _, _, _, _), _, !IO).
-dump_closure_info_expr(Varset, disj(Goals), _, !IO) :-
-    list.foldl(dump_closure_info(Varset), Goals, !IO).
-dump_closure_info_expr(_, shorthand(_), _, _, _) :-
-    unexpected($pred, "shorthand").
-
-:- pred dump_ho_values(hlds_goal_info::in, prog_varset::in,
-    io::di, io::uo) is det.
-
-dump_ho_values(GoalInfo, Varset, !IO) :-
+dump_ho_values(DebugStream, Varset, GoalInfo, !IO) :-
     HO_Values = goal_info_get_ho_values(GoalInfo),
     ( if map.is_empty(HO_Values) then
         true
     else
-        prog_out.write_context(goal_info_get_context(GoalInfo), !IO),
-        io.nl(!IO),
-        map.foldl(dump_ho_value(Varset), HO_Values, !IO)
+        Context = goal_info_get_context(GoalInfo),
+        prog_out.write_context(DebugStream, Context, !IO),
+        io.nl(DebugStream, !IO),
+        map.foldl(dump_ho_value(DebugStream, Varset), HO_Values, !IO)
     ).
 
-:- pred dump_ho_value(prog_varset::in, prog_var::in, set(pred_proc_id)::in,
-    io::di, io::uo) is det.
+:- pred dump_ho_value(io.text_output_stream::in, prog_varset::in,
+    prog_var::in, set(pred_proc_id)::in, io::di, io::uo) is det.
 
-dump_ho_value(Varset, ProgVar, Values, !IO) :-
+dump_ho_value(DebugStream, Varset, ProgVar, Values, !IO) :-
     VarName = varset.lookup_name(Varset, ProgVar),
-    io.format("%s =\n", [s(VarName)], !IO),
+    io.format(DebugStream, "%s =\n", [s(VarName)], !IO),
     WritePPIds =
         ( pred(PPId::in, !.IO::di, !:IO::uo) is det :-
-            io.write_string("\t", !IO),
-            io.write_line(PPId, !IO)
+            io.write_string(DebugStream, "\t", !IO),
+            io.write_line(DebugStream, PPId, !IO)
         ),
     set.fold(WritePPIds, Values, !IO).
 

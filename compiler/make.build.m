@@ -237,7 +237,9 @@ build_with_module_options_args_invoked(Globals, InvokedByMmcMake, ModuleName,
             OptionSpecs = [_ | _],
             Succeeded = no,
             MaybeInfo = no,
-            usage_errors(BuildGlobals, OptionSpecs, !IO)
+            get_error_output_stream(BuildGlobals, ModuleName,
+                ErrorStream, !IO),
+            usage_errors(ErrorStream, BuildGlobals, OptionSpecs, !IO)
         ;
             OptionSpecs = [],
             Build(BuildGlobals, AllOptionArgs, Succeeded, Info0, Info, !IO),

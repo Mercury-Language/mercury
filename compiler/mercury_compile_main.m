@@ -437,7 +437,8 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
         % the command-line arguments, not the contents of DEFAULT_MCFLAGS.
         (
             Specs = [_ | _],
-            usage_errors(ActualGlobals, Specs, !IO)
+            io.stderr_stream(StdErr, !IO),
+            usage_errors(StdErr, ActualGlobals, Specs, !IO)
         ;
             Specs = [],
             main_after_setup(ActualGlobals, DetectedGradeFlags, Variables,
@@ -658,15 +659,11 @@ main_after_setup(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
     % will be in line with the expectations of at least some users.
     %
     ( if Help = yes then
-        io.stdout_stream(Stdout, !IO),
-        io.set_output_stream(Stdout, OldOutputStream, !IO),
-        long_usage(!IO),
-        io.set_output_stream(OldOutputStream, _, !IO)
+        io.stdout_stream(StdOut, !IO),
+        long_usage(StdOut, !IO)
     else if Version = yes then
-        io.stdout_stream(Stdout, !IO),
-        io.set_output_stream(Stdout, OldOutputStream, !IO),
-        display_compiler_version(!IO),
-        io.set_output_stream(OldOutputStream, _, !IO)
+        io.stdout_stream(StdOut, !IO),
+        display_compiler_version(StdOut, !IO)
     else
         globals.get_op_mode(Globals, OpMode),
         HaveReadModuleMaps0 = init_have_read_module_maps,
@@ -706,7 +703,8 @@ do_op_mode(Globals, OpMode, DetectedGradeFlags, OptionVariables,
             Args = [],
             FileNamesFromStdin = no
         then
-            usage(!IO)
+            io.stderr_stream(StdErr, !IO),
+            usage(StdErr, !IO)
         else
             do_op_mode_args(Globals, OpModeArgs, FileNamesFromStdin,
                 DetectedGradeFlags, OptionVariables, OptionArgs, Args,

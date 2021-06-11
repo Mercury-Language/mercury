@@ -1270,8 +1270,8 @@ do_make_init_obj_file(Globals, ProgressStream, ErrorStream, MustCompile,
             do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
                 InitTargetFileName, InitObjFileName, Res, IO0, IO)
         ),
-    maybe_compile_init_obj_file(Globals, MaybeInitTargetFile, MustCompile,
-        CompileCInitFile, InitObjFileName, Result, !IO).
+    maybe_compile_init_obj_file(Globals, ProgressStream, MaybeInitTargetFile,
+        MustCompile, CompileCInitFile, InitObjFileName, Result, !IO).
 
 :- pred make_init_target_file(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
@@ -1404,15 +1404,16 @@ make_init_target_file(Globals, ProgressStream, ErrorStream, MkInit,
         MaybeInitTargetFile = no
     ).
 
-:- pred maybe_compile_init_obj_file(globals::in, maybe(file_name)::in,
-    bool::in, compile_init_file_pred::in(compile_init_file_pred),
+:- pred maybe_compile_init_obj_file(globals::in, io.text_output_stream::in,
+    maybe(file_name)::in, bool::in,
+    compile_init_file_pred::in(compile_init_file_pred),
     file_name::in, maybe(file_name)::out, io::di, io::uo) is det.
 
 :- type compile_init_file_pred == pred(file_name, bool, io, io).
 :- inst compile_init_file_pred == (pred(in, out, di, uo) is det).
 
-maybe_compile_init_obj_file(Globals, MaybeInitTargetFile, MustCompile, Compile,
-        InitObjFileName, Result, !IO) :-
+maybe_compile_init_obj_file(Globals, ProgressStream, MaybeInitTargetFile,
+        MustCompile, Compile, InitObjFileName, Result, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
     (
@@ -1424,10 +1425,10 @@ maybe_compile_init_obj_file(Globals, MaybeInitTargetFile, MustCompile, Compile,
             ; Rel = missing_timestamp
             )
         then
-            maybe_write_string(Verbose,
+            maybe_write_string(ProgressStream, Verbose,
                 "% Compiling initialization file...\n", !IO),
             Compile(InitTargetFileName, CompileOk, !IO),
-            maybe_report_stats(Stats, !IO),
+            maybe_report_stats(ProgressStream, Stats, !IO),
             (
                 CompileOk = yes,
                 Result = yes(InitObjFileName)
@@ -1562,7 +1563,7 @@ link(Globals, ProgressStream, ErrorStream, LinkTargetType,
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    maybe_write_string(Verbose, "% Linking...\n", !IO),
+    maybe_write_string(ProgressStream, Verbose, "% Linking...\n", !IO),
     link_output_filename(Globals, LinkTargetType, ModuleName, _Ext,
         OutputFileName, !IO),
     (
@@ -1595,7 +1596,7 @@ link(Globals, ProgressStream, ErrorStream, LinkTargetType,
             LinkTargetType, ModuleName, OutputFileName, ObjectsList,
             LinkSucceeded, !IO)
     ),
-    maybe_report_stats(Stats, !IO),
+    maybe_report_stats(ProgressStream, Stats, !IO),
     (
         LinkSucceeded = yes,
         post_link_make_symlink_or_copy(Globals, ProgressStream, ErrorStream,
@@ -2571,8 +2572,8 @@ reserve_stack_size_flags(Globals) = Flags :-
 :- pred process_link_library(globals::in, list(dir_name)::in, string::in,
     string::out, bool::in, bool::out, io::di, io::uo) is det.
 
-process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
-        !IO) :-
+process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
+        !Succeeded, !IO) :-
     globals.get_target(Globals, Target),
     (
         Target = target_c,
@@ -2628,7 +2629,8 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
             Pieces = [words(Error), suffix("."), nl],
             Spec = error_spec($pred, severity_error, phase_read_files,
                 [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
-            write_error_spec_ignore(Globals, Spec, !IO),
+            io.stderr_stream(StdErr, !IO),
+            write_error_spec_ignore(StdErr, Globals, Spec, !IO),
             !:Succeeded = no
         )
     else
@@ -2933,8 +2935,7 @@ create_java_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         )
     ;
         TempFileResult = error(ErrorMessage),
-        io.write_string(ErrorStream, ErrorMessage, !IO),
-        io.nl(!IO),
+        io.format(ErrorStream, "%s\n", [s(ErrorMessage)], !IO),
         Succeeded0 = no
     ),
     ( if
@@ -3240,14 +3241,18 @@ make_standalone_int_body(Globals, ProgressStream, ErrorStream,
         ;
             CompileOk = no,
             io.set_exit_status(1, !IO),
-            io.write_string("mercury_compile: error while compiling", !IO),
-            io.format("standalone interface in `%s'\n", [s(CFileName)], !IO)
+            io.write_string(ErrorStream,
+                "mercury_compile: error while compiling", !IO),
+            io.format(ErrorStream,
+                "standalone interface in `%s'\n", [s(CFileName)], !IO)
         )
     ;
         MkInitCmdOk = no,
         io.set_exit_status(1, !IO),
-        io.write_string("mercury_compile: error while creating ", !IO),
-        io.format("standalone interface in `%s'\n", [s(CFileName)], !IO)
+        io.write_string(ErrorStream,
+            "mercury_compile: error while creating ", !IO),
+        io.format(ErrorStream,
+            "standalone interface in `%s'\n", [s(CFileName)], !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3423,14 +3428,9 @@ output_library_link_flags(Globals, Stream, !IO) :-
     % Find the Mercury standard libraries.
     get_mercury_std_libs(Globals, LinkTargetType, MercuryStdLibs),
     get_system_libs(Globals, LinkTargetType, SystemLibs),
-    string.append_list([
-        LinkLibraryDirectories, " ",
-        RpathOpts, " ",
-        LinkLibraries, " ",
-        MercuryStdLibs, " ",
-        SystemLibs], LinkFlags),
-    io.write_string(Stream, LinkFlags, !IO),
-    io.nl(Stream, !IO).
+    io.format(Stream, "%s %s %s %s %s\n",
+        [s(LinkLibraryDirectories), s(RpathOpts), s(LinkLibraries),
+        s(MercuryStdLibs), s(SystemLibs)], !IO).
 
 %-----------------------------------------------------------------------------%
 

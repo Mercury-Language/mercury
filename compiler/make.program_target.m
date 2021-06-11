@@ -1420,7 +1420,8 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
 
     (
         OptionsSpecs = [_ | _],
-        usage_errors(Globals, OptionsSpecs, !IO),
+        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+        usage_errors(ErrorStream, Globals, OptionsSpecs, !IO),
         Succeeded = no
     ;
         OptionsSpecs = [],

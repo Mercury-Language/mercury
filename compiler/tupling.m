@@ -170,27 +170,24 @@ tuple_arguments(!ModuleInfo, !IO) :-
     globals.get_opt_tuple(Globals, OptTuple),
     TraceCountsFile = OptTuple ^ ot_tuple_trace_counts_file,
     ( if TraceCountsFile = "" then
-        report_warning(Globals, "Warning: --tuple requires " ++
-            "--tuple-trace-counts-file to work.\n", !IO)
+        get_error_output_stream(!.ModuleInfo, ErrorStream, !IO),
+        report_warning(ErrorStream, Globals,
+            "Warning: --tuple requires --tuple-trace-counts-file to work.\n",
+            !IO)
     else
         read_trace_counts_source(TraceCountsFile, Result, !IO),
         (
             Result = list_ok(_, TraceCounts),
             tuple_arguments_with_trace_counts(!ModuleInfo, TraceCounts)
         ;
-            Result = list_error_message(Message),
-            warn_trace_counts_error(Globals, TraceCountsFile, Message, !IO)
+            Result = list_error_message(Reason),
+            get_error_output_stream(!.ModuleInfo, ErrorStream, !IO),
+            string.format(
+                "Warning: unable to read trace count summary from %s (%s)\n",
+                [s(TraceCountsFile), s(Reason)], Message),
+            report_warning(ErrorStream, Globals, Message, !IO)
         )
     ).
-
-:- pred warn_trace_counts_error(globals::in, string::in, string::in,
-    io::di, io::uo) is det.
-
-warn_trace_counts_error(Globals, TraceCountsFile, Reason, !IO) :-
-    string.format(
-        "Warning: unable to read trace count summary from %s (%s)\n",
-        [s(TraceCountsFile), s(Reason)], Message),
-    report_warning(Globals, Message, !IO).
 
 :- pred tuple_arguments_with_trace_counts(module_info::in, module_info::out,
     trace_counts::in) is det.
