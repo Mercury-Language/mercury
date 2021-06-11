@@ -126,13 +126,19 @@
 :- pred maybe_report_stats(bool::in, io::di, io::uo) is det.
 :- pred maybe_report_stats(io.text_output_stream::in, bool::in,
     io::di, io::uo) is det.
+:- pred maybe_report_stats_to_stream(maybe(io.text_output_stream)::in,
+    io::di, io::uo) is det.
 
 :- pred maybe_write_string(bool::in, string::in, io::di, io::uo) is det.
 :- pred maybe_write_string(io.text_output_stream::in, bool::in, string::in,
     io::di, io::uo) is det.
+:- pred maybe_write_string_to_stream(maybe(io.text_output_stream)::in,
+    string::in, io::di, io::uo) is det.
 
 :- pred maybe_flush_output(bool::in, io::di, io::uo) is det.
 :- pred maybe_flush_output(io.text_output_stream::in, bool::in,
+    io::di, io::uo) is det.
+:- pred maybe_flush_output_to_stream(maybe(io.text_output_stream)::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -508,6 +514,12 @@ maybe_report_stats(Stream, yes, !IO) :-
     io.report_standard_stats(Stream, !IO).
 maybe_report_stats(_Stream, no, !IO).
 
+maybe_report_stats_to_stream(yes(Stream), !IO) :-
+    io.report_standard_stats(Stream, !IO).
+maybe_report_stats_to_stream(no, !IO).
+
+%---------------------%
+
 maybe_write_string(Verbose, String, !IO) :-
     io.output_stream(Stream, !IO),
     maybe_write_string(Stream, Verbose, String, !IO).
@@ -516,6 +528,12 @@ maybe_write_string(Stream, yes, String, !IO) :-
     io.write_string(Stream, String, !IO).
 maybe_write_string(_Stream, no, _, !IO).
 
+maybe_write_string_to_stream(yes(Stream), String, !IO) :-
+    io.write_string(Stream, String, !IO).
+maybe_write_string_to_stream(no, _, !IO).
+
+%---------------------%
+
 maybe_flush_output(Verbose, !IO) :-
     io.output_stream(Stream, !IO),
     maybe_flush_output(Stream, Verbose, !IO).
@@ -523,6 +541,10 @@ maybe_flush_output(Verbose, !IO) :-
 maybe_flush_output(Stream, yes, !IO) :-
     io.flush_output(Stream, !IO).
 maybe_flush_output(_Stream, no, !IO).
+
+maybe_flush_output_to_stream(yes(Stream), !IO) :-
+    io.flush_output(Stream, !IO).
+maybe_flush_output_to_stream(no, !IO).
 
 %---------------------------------------------------------------------------%
 

@@ -2981,26 +2981,27 @@ incremental_rename_vars_in_goal(Subn0, SubnUpdates, Goal0, Goal) :-
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
 follow_subn_until_fixpoint(FromVar - ToVar, !Subn) :-
+    % About the use of stderr_stream: getting either the debug stream,
+    % or the data needed to construct it, down to here would be nontrivial.
+    % It should be done the next time this trace code is enabled,
+    % if there *is* such a time.
     ( if map.search(!.Subn, ToVar, SubstitutedToVar) then
         trace [compiletime(flag("statevar-subn")), io(!IO)] (
+            FromVarStr = string.string(FromVar),
+            ToVarStr = string.string(ToVar),
+            SubstitutedToVarStr = string.string(SubstitutedToVar),
             io.stderr_stream(StdErr, !IO),
-            io.write_string(StdErr, "short circuiting ", !IO),
-            io.write(StdErr, FromVar, !IO),
-            io.write_string(StdErr, ": ", !IO),
-            io.write(StdErr, ToVar, !IO),
-            io.write_string(StdErr, " -> ", !IO),
-            io.write(StdErr, SubstitutedToVar, !IO),
-            io.nl(StdErr, !IO)
+            io.format(StdErr, "short circuiting %s: %s -> %s\n",
+                [s(FromVarStr), s(ToVarStr), s(SubstitutedToVarStr)], !IO)
         ),
         follow_subn_until_fixpoint(FromVar - SubstitutedToVar, !Subn)
     else
         trace [compiletime(flag("statevar-subn")), io(!IO)] (
+            FromVarStr = string.string(FromVar),
+            ToVarStr = string.string(ToVar),
             io.stderr_stream(StdErr, !IO),
-            io.write_string("applied substitution: ", !IO),
-            io.write(StdErr, FromVar, !IO),
-            io.write_string(StdErr, " to ", !IO),
-            io.write(StdErr, ToVar, !IO),
-            io.nl(StdErr, !IO)
+            io.format(StdErr, "applied substitution %s to %s\n",
+                [s(FromVarStr), s(ToVarStr)], !IO)
         ),
         map.det_insert(FromVar, ToVar, !Subn)
     ).

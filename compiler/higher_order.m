@@ -64,6 +64,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.special_pred.
@@ -2700,13 +2701,21 @@ filter_request(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
     Arity = pred_info_orig_arity(PredInfo),
     pred_info_get_arg_types(PredInfo, Types),
     list.length(Types, ActualArity),
-    maybe_write_request(VeryVerbose, ModuleInfo, "Request for",
-        qualified(PredModule, PredName), Arity, ActualArity,
-        no, HOArgs, Context, !IO),
+    (
+        VeryVerbose = no,
+        MaybeProgressStream = no
+    ;
+        VeryVerbose = yes,
+        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+        MaybeProgressStream = yes(ProgressStream),
+        write_request(ProgressStream, ModuleInfo, "Request for",
+            qualified(PredModule, PredName), Arity, ActualArity,
+            no, HOArgs, Context, !IO)
+    ),
     (
         IsUserTypeSpec = yes,
         % Ignore the size limit for user specified specializations.
-        maybe_write_string(VeryVerbose,
+        maybe_write_string_to_stream(MaybeProgressStream,
             "%    request specialized (user-requested specialization)\n", !IO),
         list.cons(Request, !AcceptedRequests)
     ;
@@ -2720,7 +2729,7 @@ filter_request(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
         ( if
             GoalSize > Info ^ hogi_params ^ param_size_limit
         then
-            maybe_write_string(VeryVerbose,
+            maybe_write_string_to_stream(MaybeProgressStream,
                 "%    not specializing (goal too large).\n", !IO)
         else if
             higher_order_args_size(HOArgs) >
@@ -2731,7 +2740,7 @@ filter_request(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
             % all of the curried arguments are passed as separate arguments.
             % Without this extras/xml/xml.parse.chars.m takes forever to
             % compile.
-            maybe_write_string(VeryVerbose,
+            maybe_write_string_to_stream(MaybeProgressStream,
                 "%    not specializing (args too large).\n", !IO)
         else if
             % To ensure termination of the specialization process, the depth
@@ -2756,10 +2765,10 @@ filter_request(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
             )
         then
             !:LoopRequests = [Request | !.LoopRequests],
-            maybe_write_string(VeryVerbose,
+            maybe_write_string_to_stream(MaybeProgressStream,
                 "%    not specializing (recursive specialization).\n", !IO)
         else
-            maybe_write_string(VeryVerbose,
+            maybe_write_string_to_stream(MaybeProgressStream,
                 "%    request specialized.\n", !IO),
             list.cons(Request, !AcceptedRequests)
         )
@@ -2880,10 +2889,16 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         PredStatus = pred_status(status_local)
     ),
 
-    list.length(Types, ActualArity),
-    maybe_write_request(VeryVerbose, ModuleInfo0, "Specializing",
-        qualified(PredModule, Name0), PredArity, ActualArity,
-        yes(PredName), HOArgs, Context, !IO),
+    (
+        VeryVerbose = no
+    ;
+        VeryVerbose = yes,
+        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+        list.length(Types, ActualArity),
+        write_request(ProgressStream, ModuleInfo0, "Specializing",
+            qualified(PredModule, Name0), PredArity, ActualArity,
+            yes(PredName), HOArgs, Context, !IO)
+    ),
 
     pred_info_get_origin(PredInfo0, OrigOrigin),
     pred_info_get_typevarset(PredInfo0, TypeVarSet),
@@ -2945,42 +2960,42 @@ higher_order_add_new_pred(CalledPredProcId, NewPred, !Info) :-
     ),
     !Info ^ hogi_new_pred_map := NewPredMap.
 
-:- pred maybe_write_request(bool::in, module_info::in, string::in,
-    sym_name::in, arity::in, arity::in, maybe(string)::in,
+:- pred write_request(io.text_output_stream::in, module_info::in,
+    string::in, sym_name::in, arity::in, arity::in, maybe(string)::in,
     list(higher_order_arg)::in, prog_context::in, io::di, io::uo) is det.
 
-maybe_write_request(no, _, _, _, _, _, _, _, _, !IO).
-maybe_write_request(yes, ModuleInfo, Msg, SymName, PredArity, ActualArity,
-        MaybeNewName, HOArgs, Context, !IO) :-
+write_request(OutputStream, ModuleInfo, Msg,
+        SymName, PredArity, ActualArity, MaybeNewName, HOArgs, Context, !IO) :-
     OldName = sym_name_to_string(SymName),
-    io.write_string("% ", !IO),
-    prog_out.write_context(Context, !IO),
-    io.format("%s `%s'/%d", [s(Msg), s(OldName), i(PredArity)], !IO),
+    io.write_string(OutputStream, "% ", !IO),
+    prog_out.write_context(OutputStream, Context, !IO),
+    io.format(OutputStream, "%s `%s'/%d",
+        [s(Msg), s(OldName), i(PredArity)], !IO),
     (
         MaybeNewName = yes(NewName),
-        io.write_string(" into ", !IO),
-        io.write_string(NewName, !IO)
+        io.format(OutputStream, " into %s", [s(NewName)], !IO)
     ;
         MaybeNewName = no
     ),
-    io.write_string(" with higher-order arguments:\n", !IO),
+    io.write_string(OutputStream, " with higher-order arguments:\n", !IO),
     NumToDrop = ActualArity - PredArity,
-    output_higher_order_args(ModuleInfo, NumToDrop, 0, HOArgs, !IO).
+    output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, 0,
+        HOArgs, !IO).
 
-:- pred output_higher_order_args(module_info::in, int::in, int::in,
-    list(higher_order_arg)::in, io::di, io::uo) is det.
+:- pred output_higher_order_args(io.text_output_stream::in, module_info::in,
+    int::in, int::in, list(higher_order_arg)::in, io::di, io::uo) is det.
 
-output_higher_order_args(_, _, _, [], !IO).
-output_higher_order_args(ModuleInfo, NumToDrop, Indent,
+output_higher_order_args(_, _, _, _, [], !IO).
+output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, Indent,
         [HOArg | HOArgs], !IO) :-
     HOArg = higher_order_arg(ConsId, ArgNo, NumArgs, _, _, _,
         CurriedHOArgs, IsConst),
-    io.write_string("% ", !IO),
+    io.write_string(OutputStream, "% ", !IO),
     list.duplicate(Indent + 1, "  ", Spaces),
-    list.foldl(io.write_string, Spaces, !IO),
+    list.foldl(io.write_string(OutputStream), Spaces, !IO),
     (
         IsConst = yes,
-        io.write_string("const ", !IO)
+        io.write_string(OutputStream, "const ", !IO)
     ;
         IsConst = no
     ),
@@ -2991,36 +3006,32 @@ output_higher_order_args(ModuleInfo, NumToDrop, Indent,
         PredArity = pred_info_orig_arity(PredInfo),
         % Adjust message for type_infos.
         DeclaredArgNo = ArgNo - NumToDrop,
-        io.write_string("HeadVar__", !IO),
-        io.write_int(DeclaredArgNo, !IO),
-        io.write_string(" = `", !IO),
-        io.write_string(Name, !IO),
-        io.write_string("'/", !IO),
-        io.write_int(PredArity, !IO)
+        io.format(OutputStream, "HeadVar__%d = `%s'/%d",
+            [i(DeclaredArgNo), s(Name), i(PredArity)], !IO)
     else if ConsId = type_ctor_info_const(TypeModule, TypeName, TypeArity) then
-        io.format("type_ctor_info for `%s'/%d",
+        io.format(OutputStream, "type_ctor_info for `%s'/%d",
             [s(sym_name_to_escaped_string(qualified(TypeModule, TypeName))),
             i(TypeArity)], !IO)
     else if ConsId = base_typeclass_info_const(_, ClassId, _, _) then
         ClassId = class_id(ClassSymName, ClassArity),
-        io.format("base_typeclass_info for `%s'/%d",
+        io.format(OutputStream, "base_typeclass_info for `%s'/%d",
             [s(sym_name_to_escaped_string(ClassSymName)), i(ClassArity)], !IO)
     else
         % XXX output the type.
-        io.write_string("type_info/typeclass_info ", !IO)
+        io.write_string(OutputStream, "type_info/typeclass_info ", !IO)
     ),
-    io.write_string(" with ", !IO),
-    io.write_int(NumArgs, !IO),
-    io.write_string(" curried arguments", !IO),
+    io.format(OutputStream, " with %d curried arguments", [i(NumArgs)], !IO),
     (
         CurriedHOArgs = [],
-        io.nl(!IO)
+        io.nl(OutputStream, !IO)
     ;
         CurriedHOArgs = [_ | _],
-        io.write_string(":\n", !IO),
-        output_higher_order_args(ModuleInfo, 0, Indent + 1, CurriedHOArgs, !IO)
+        io.write_string(OutputStream, ":\n", !IO),
+        output_higher_order_args(OutputStream, ModuleInfo, 0, Indent + 1,
+            CurriedHOArgs, !IO)
     ),
-    output_higher_order_args(ModuleInfo, NumToDrop, Indent, HOArgs, !IO).
+    output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, Indent,
+        HOArgs, !IO).
 
 %-----------------------------------------------------------------------------%
 
