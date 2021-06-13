@@ -290,6 +290,28 @@
     #error "high level code and minimal model tabling are not compatible"
   #endif
 
+  // Tabling is incompatible with multiple threads of execution for several
+  // reasons. The main one is that when we find that the entry for a call's
+  // input arguments in the called procedure's call table is already active
+  // before the call, all forms of tabling treat it as a sign of infinite
+  // recursion, as in e.g. f(42, ...) calling ... calling f(42, ...).
+  // However, in a grade that allows more than thread of execution to be active
+  // at the same time, the two f(42, ...) calls need not be related as
+  // ancestor and descendant; they could be independent calls in different
+  // threads. This invalidates the basic assumption on top of which
+  // tabling is built.
+  // 
+  // There are other reasons as well. The data structures used by tabling
+  // are not protected by critical sections, so simultaneous access by more
+  // than one thread at the same time can cause data corruption, and
+  // in the process of suspending one call in one thread, the stack copy
+  // implementation of minimal model tabling can actively overwrite parts
+  // of the stack that are still being used by other threads.
+
+  #if defined(MR_THREAD_SAFE)
+    #error "parallel execution and minimal model tabling are not compatible"
+  #endif
+
   // Neither form of the minimal model tabling works if the system recovers
   // memory allocated after a choice point when backtracking to that choice
   // point. This rules out the use of the native Mercury collector, as well as

@@ -11,8 +11,7 @@
 #   An `sh' subroutine for handling implications between grade-related
 #   options. Used by the `ml', `mgnuc' and `c2init' scripts.
 #
-#   The code here should be inserted after a script's option-parsing
-#   loop.
+#   The code here should be inserted after a script's option-parsing loop.
 #
 # IMPORTANT: any changes to the handling of grades here may also require
 # changes to compiler/handle_options.m.
@@ -39,6 +38,15 @@ esac
 case ${use_trail},${use_minimal_model} in
     true,true)
         echo "trailing and minimal model tabling are not compatible" 1>&2
+        exit 1
+        ;;
+esac
+
+# .par grade is not compatible with .*mm*
+#   (see comment in runtime/mercury_grade.h for rationale)
+case ${use_trail},${use_minimal_model} in
+    true,true)
+        echo "parallel execution and minimal model tabling are not compatible" 1>&2
         exit 1
         ;;
 esac

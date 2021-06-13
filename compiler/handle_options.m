@@ -1641,8 +1641,6 @@ handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs) :-
         UseMinimalModelStackCopy),
     globals.lookup_bool_option(!.Globals, use_minimal_model_own_stacks,
         UseMinimalModelOwnStacks),
-    bool.or(UseMinimalModelStackCopy, UseMinimalModelOwnStacks,
-        UseMinimalModel),
     % Minimal model tabling is not compatible with high level code
     % or with trailing; see the comments in runtime/mercury_grade.h.
     ( if
@@ -1653,24 +1651,45 @@ handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs) :-
             [words("You cannot use both forms of minimal model tabling"),
             words("at once."), nl],
         add_error(phase_options, DualMMSpec, !Specs)
-    else if
-        UseMinimalModel = bool.yes,
-        globals.lookup_bool_option(!.Globals, highlevel_code, yes)
-    then
-        MMHLSpec =
-            [words("Minimal model tabling is incompatible with"),
-            words("high level code."), nl],
-        add_error(phase_options, MMHLSpec, !Specs)
-    else if
-        UseMinimalModel = bool.yes,
-        globals.lookup_bool_option(!.Globals, use_trail, yes)
-    then
-        MMTrailSpec =
-            [words("Minimal model tabling is incompatible with"),
-            words("trailing."), nl],
-        add_error(phase_options, MMTrailSpec, !Specs)
     else
         true
+    ),
+    bool.or(UseMinimalModelStackCopy, UseMinimalModelOwnStacks,
+        UseMinimalModel),
+    (
+        UseMinimalModel = bool.yes,
+        globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
+        (
+            HighLevelCode = yes,
+            MMHLSpec =
+                [words("Minimal model tabling is incompatible with"),
+                words("high level code."), nl],
+            add_error(phase_options, MMHLSpec, !Specs)
+        ;
+            HighLevelCode = no
+        ),
+        globals.lookup_bool_option(!.Globals, use_trail, UseTrail),
+        (
+            UseTrail = yes,
+            MMTrailSpec =
+                [words("Minimal model tabling is incompatible with"),
+                words("trailing."), nl],
+            add_error(phase_options, MMTrailSpec, !Specs)
+        ;
+            UseTrail = no
+        ),
+        globals.lookup_bool_option(!.Globals, parallel, Parallel),
+        (
+            Parallel = yes,
+            MMParSpec =
+                [words("Minimal model tabling is incompatible with"),
+                words("parallel execution."), nl],
+            add_error(phase_options, MMParSpec, !Specs)
+        ;
+            Parallel = no
+        )
+    ;
+        UseMinimalModel = no
     ),
 
     % Stack copy minimal model tabling needs to be able to rewrite all

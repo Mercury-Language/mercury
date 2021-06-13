@@ -167,9 +167,11 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
         ProfileMemory = no
     ),
 
-    % NOTE: compatibility with profile_deep is checked elsewhere.
+    % Compatibility with profile_deep is checked by
+    % handle_profiling_options in handle_options.m.
 
-    % NOTE: compatibility with debugging is checked elsewhere.
+    % Compatibility with debugging is checked by
+    % handle_debugging_options in handle_options.m.
 
     % Trailing is only supported by the C back-ends.
     %
