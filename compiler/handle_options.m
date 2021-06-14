@@ -1641,8 +1641,6 @@ handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs) :-
         UseMinimalModelStackCopy),
     globals.lookup_bool_option(!.Globals, use_minimal_model_own_stacks,
         UseMinimalModelOwnStacks),
-    % Minimal model tabling is not compatible with high level code
-    % or with trailing; see the comments in runtime/mercury_grade.h.
     ( if
         UseMinimalModelStackCopy = bool.yes,
         UseMinimalModelOwnStacks = bool.yes
@@ -1658,6 +1656,8 @@ handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs) :-
         UseMinimalModel),
     (
         UseMinimalModel = bool.yes,
+        % Minimal model tabling is not compatible with any of high level code,
+        % trailing, and parallelism; see comments in runtime/mercury_grade.h.
         globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
         (
             HighLevelCode = yes,
