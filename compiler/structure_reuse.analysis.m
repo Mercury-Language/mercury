@@ -843,7 +843,7 @@ analysis_name = "structure_reuse".
 
     % We deliberately have `conditional' reuse incomparable with
     % `unconditional' reuse. If they were comparable, a caller using an
-    % `conditional' answer would would only be marked `suboptimal' if that
+    % `conditional' answer would only be marked `suboptimal' if that
     % answer changes to `unconditional'. Since we don't honour the old
     % `conditional' answer by generating that version of the procedure, there
     % would be a linking error if the caller is not updated to call the

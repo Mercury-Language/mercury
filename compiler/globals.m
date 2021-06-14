@@ -113,7 +113,7 @@
 :- type gc_method
     --->    gc_automatic
             % It is the responsibility of the target language that
-            % we are compiling to to handle GC.
+            % we are compiling to handle GC.
 
     ;       gc_none
             % No garbage collection. However, memory may be recovered on

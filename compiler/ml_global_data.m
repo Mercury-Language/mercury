@@ -408,7 +408,7 @@ ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer0, Common,
     % while it does sometimes discover that two initializers that differ
     % in their MLDS forms would nevertheless generate the same C code,
     % it does so very rarely. (For example, at one time this code
-    % reduced the total size of the .rodata sections of the the .o files
+    % reduced the total size of the .rodata sections of the .o files
     % in the compiler directory from 160,636 bytes to 160,540 bytes.)
     % The small improvement in memory efficiency does not justify
     % the execution time cost of the code needed to get it.

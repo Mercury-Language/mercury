@@ -324,7 +324,7 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
     %     of its arguments being the insts of the corresponding arguments
     %     at the time of the call.
     %
-    % (b) Mode inference of predicate B finds finds that there is no way
+    % (b) Mode inference of predicate B finds that there is no way
     %     to schedule the goals of the body of B with those initial insts.
     %     We record a mode error for this mode of B, making that mode of B
     %     invalid in the sense of proc_info_is_valid_mode. However:

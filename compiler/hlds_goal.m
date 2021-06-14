@@ -2006,7 +2006,7 @@ rbmm_info_init =
 
                 % The overall determinism of the goal (computed during
                 % determinism analysis). Since the determinism analysis problem
-                % is is undecidable, this may be a conservative approximation.
+                % is undecidable, this may be a conservative approximation.
 /*  1 */        gi_determinism      :: determinism,
 
 /*  - */        gi_purity           :: purity,

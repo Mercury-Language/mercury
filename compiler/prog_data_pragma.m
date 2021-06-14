@@ -52,7 +52,7 @@
             % loop check only
     ;       tabled_memo(
                 % memoing + loop check
-                % Preserve the value of this attribure until the invocation
+                % Preserve the value of this attribute until the invocation
                 % of the relevant code in table_gen.m.
                 table_attr_backend_warning
             )
