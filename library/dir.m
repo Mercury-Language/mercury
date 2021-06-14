@@ -282,8 +282,8 @@
     % Regardless of the setting of fp_on_error, we stop the traversal
     % if Pred returns Continue = `no'.
     %
-    % In all cases, the value of Data will reflect the the results
-    % of all the invocations of Pred during the traversal up to the time
+    % In all cases, the value of Data will reflect the results of all
+    % the invocations of Pred during the traversal up to the time
     % the traversal was stopped either by an error, by Continue = `no',
     % or by running out of files to traverse.
     %
