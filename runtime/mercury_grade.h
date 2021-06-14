@@ -322,36 +322,21 @@
     #error "minimal model tabling requires conservative gc"
   #endif
 
-  // Native gc needs to be able to redirect pointers to the heap. Minimal model
-  // tabling takes snapshots of stack segments that may contain pointers to the
-  // heap, or creates extra stacks that may contain pointers to the heap,
-  // but there is currently no mechanism implemented to trace and redirect
-  // such pointers.
-  //
-  // XXX This test is redundant; if we use conservative (i.e. Boehm) gc,
-  // we cannot also use native (also known as accurate) gc.
-
-  #if defined(MR_NATIVE_GC)
-    #error "minimal model tabling and native gc are not compatible"
-  #endif
-
   // Saving and restoring the trail state would not be sufficient
   // to handle the combination of trailing and minimal model tabling.
   // Consider the following sequence of events:
   //
-  //      execution enters a goal being committed across
-  //      a new entry is pushed on the trail
-  //      a tabled goal suspends,
-  //              causing the saving of a trail segment
-  //              and then a failure
-  //      the goal being committed across fails,
-  //              which invokes a failed commit on the trail entry
-  //      ...
-  //      the tabled goal is resumed,
-  //              causing the restoring of the saved trail segment
-  //              and then a success
-  //      the goal being committed across now succeeds,
-  //              which invokes a successful commit on the trail entry
+  //  execution enters a goal being committed across
+  //  a new entry is pushed on the trail
+  //  a tabled goal suspends,
+  //      causing the saving of a trail segment and then a failure
+  //  the goal being committed across fails,
+  //      which invokes a failed commit on the trail entry
+  //  ...
+  //  the tabled goal is resumed,
+  //      causing the restoring of the saved trail segment and then a success
+  //  the goal being committed across now succeeds,
+  //      which invokes a successful commit on the trail entry
   //
   // The trail handler will be thoroughly confused by such a sequence.
   //
