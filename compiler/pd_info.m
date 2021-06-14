@@ -624,14 +624,14 @@ pd_info.check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
     map.lookup(VarRenaming, OldVar, NewVar),
     instmap_lookup_var(NewInstMap, NewVar, NewVarInst),
     lookup_var_type(VarTypes, NewVar, Type),
-    inst_matches_initial(NewVarInst, OldVarInst, Type, ModuleInfo),
+    inst_matches_initial(ModuleInfo, Type, NewVarInst, OldVarInst),
     (
         !.ExactSoFar = exact,
         % Does inst_matches_initial(Inst1, Inst2, M) and
         % inst_matches_initial(Inst2, Inst1, M) imply that Inst1
         % and Inst2 are interchangable?
         ( if
-            inst_matches_initial(OldVarInst, NewVarInst, Type, ModuleInfo)
+            inst_matches_initial(ModuleInfo, Type, OldVarInst, NewVarInst)
         then
             !:ExactSoFar = exact
         else

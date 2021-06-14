@@ -371,7 +371,7 @@ record_var_if_bound(ModuleInfo, VarTypes, InstMap0, InstMap, Var,
     instmap_lookup_var(InstMap0, Var, Inst0),
     instmap_lookup_var(InstMap, Var, Inst),
     lookup_var_type(VarTypes, Var, Type),
-    ( if inst_matches_final_typed(Inst0, Inst, Type, ModuleInfo) then
+    ( if inst_matches_final_typed(ModuleInfo, Type, Inst0, Inst) then
         true
     else
         set_of_var.insert(Var, !BoundVars),

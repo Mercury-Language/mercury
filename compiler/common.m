@@ -1241,7 +1241,7 @@ partition_call_args(VarTypes, ModuleInfo, [ArgMode | ArgModes],
         InputArgs1, OutputArgs1, OutputModes1),
     mode_get_insts(ModuleInfo, ArgMode, InitialInst, FinalInst),
     lookup_var_type(VarTypes, Arg, Type),
-    ( if inst_matches_binding(InitialInst, FinalInst, Type, ModuleInfo) then
+    ( if inst_matches_binding(ModuleInfo, Type, InitialInst, FinalInst) then
         InputArgs = [Arg | InputArgs1],
         OutputArgs = OutputArgs1,
         OutputModes = OutputModes1
@@ -1254,7 +1254,7 @@ partition_call_args(VarTypes, ModuleInfo, [ArgMode | ArgModes],
         % that would create false aliasing between the different variables.
         % (inst_matches_binding applied to identical insts fails only for
         % `any' insts.)
-        inst_matches_binding(FinalInst, FinalInst, Type, ModuleInfo),
+        inst_matches_binding(ModuleInfo, Type, FinalInst, FinalInst),
 
         % Don't optimize calls where a partially instantiated variable is
         % further instantiated. That case is difficult to test properly

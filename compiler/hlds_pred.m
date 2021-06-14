@@ -3856,7 +3856,7 @@ proc_info_instantiated_head_vars(ModuleInfo, ProcInfo, ChangedInstHeadVars) :-
         VarMode = Var - Mode,
         lookup_var_type(VarTypes, Var, Type),
         mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
-        not inst_matches_binding(Inst1, Inst2, Type, ModuleInfo)
+        not inst_matches_binding(ModuleInfo, Type, Inst1, Inst2)
     ),
     list.filter_map(IsInstChanged, HeadVarModes, ChangedInstHeadVars).
 
@@ -3870,7 +3870,7 @@ proc_info_uninstantiated_head_vars(ModuleInfo, ProcInfo,
         VarMode = Var - Mode,
         lookup_var_type(VarTypes, Var, Type),
         mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
-        inst_matches_binding(Inst1, Inst2, Type, ModuleInfo)
+        inst_matches_binding(ModuleInfo, Type, Inst1, Inst2)
     ),
     list.filter_map(IsInstUnchanged, HeadVarModes, UnchangedInstHeadVars).
 

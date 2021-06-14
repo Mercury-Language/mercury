@@ -482,7 +482,7 @@ modecheck_var_has_inst_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
     lookup_var_type(VarTypes, Var, Type),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     ( if
-        inst_matches_initial_no_implied_modes_sub(VarInst, Inst, Type,
+        inst_matches_initial_no_implied_modes_sub(Type, VarInst, Inst,
             ModuleInfo0, ModuleInfo, !Subst)
     then
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
@@ -513,7 +513,7 @@ modecheck_var_has_inst_no_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
     lookup_var_type(VarTypes, Var, Type),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     ( if
-        inst_matches_initial_sub(VarInst, Inst, Type, ModuleInfo0, ModuleInfo,
+        inst_matches_initial_sub(Type, VarInst, Inst, ModuleInfo0, ModuleInfo,
             !Subst)
     then
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
@@ -537,7 +537,7 @@ modecheck_introduced_type_info_var_has_inst_no_exact_match(Var, Type, Inst,
     instmap_lookup_var(InstMap, Var, VarInst),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     ( if
-        inst_matches_initial_sub(VarInst, Inst, Type, ModuleInfo0, ModuleInfo,
+        inst_matches_initial_sub(Type, VarInst, Inst, ModuleInfo0, ModuleInfo,
             map.init, _Subst)
     then
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
@@ -646,7 +646,7 @@ modecheck_set_var_inst(Var0, NewInst0, MaybeUInst, !ModeInfo) :-
             % If we haven't added any information and
             % we haven't bound any part of the var, then
             % the only thing we can have done is lose uniqueness.
-            inst_matches_initial(OldInst, NewInst, Type, ModuleInfo)
+            inst_matches_initial(ModuleInfo, Type, OldInst, NewInst)
         then
             instmap_set_var(Var0, NewInst, InstMap0, InstMap),
             mode_info_set_instmap(InstMap, !ModeInfo)
@@ -655,7 +655,7 @@ modecheck_set_var_inst(Var0, NewInst0, MaybeUInst, !ModeInfo) :-
             % lost some uniqueness, or bound part of the var.
             % The call to inst_matches_binding will succeed
             % only if we haven't bound any part of the var.
-            not inst_matches_binding(NewInst, OldInst, Type, ModuleInfo),
+            not inst_matches_binding(ModuleInfo, Type, NewInst, OldInst),
 
             % We have bound part of the var. If the var was locked,
             % then we need to report an error ...
@@ -668,10 +668,10 @@ modecheck_set_var_inst(Var0, NewInst0, MaybeUInst, !ModeInfo) :-
                 % mode `any >> any', however it should be allowed because
                 % it has only been unified with a free variable.
                 MaybeUInst = yes(UInst),
-                inst_is_at_least_as_instantiated(NewInst, UInst, Type,
-                    ModuleInfo),
-                inst_matches_binding_allow_any_any(NewInst0, OldInst, Type,
-                    ModuleInfo)
+                inst_is_at_least_as_instantiated(ModuleInfo, Type,
+                    NewInst, UInst),
+                inst_matches_binding_allow_any_any(ModuleInfo, Type,
+                    NewInst0, OldInst)
             )
         then
             WaitingVars = set_of_var.make_singleton(Var0),
@@ -773,8 +773,8 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
         % If the initial inst of the variable matches_final the initial inst
         % specified in the pred's mode declaration, then it is not a call
         % to an implied mode, it is an exact match with a genuine mode.
-        inst_matches_initial_no_implied_modes_sub(VarInst1, InitialInst,
-            VarType, ModuleInfo0, _ModuleInfo, map.init, _Sub)
+        inst_matches_initial_no_implied_modes_sub(VarType,
+            VarInst1, InitialInst, ModuleInfo0, _ModuleInfo, map.init, _Sub)
     then
         Var = Var0
     else

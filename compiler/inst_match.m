@@ -32,7 +32,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % inst_matches_initial(InstA, InstB, Type, ModuleInfo):
+    % inst_matches_initial(ModuleInfo, Type, InstA, InstB):
     %
     % Succeed iff `InstA' specifies at least as much information as `InstB',
     % and in those parts where they specify the same information, `InstA'
@@ -42,14 +42,14 @@
     % Similarly, inst_matches_initial(bound(a), bound(a;b), _) should
     % succeed, but not vice versa.
     %
-:- pred inst_matches_initial(mer_inst::in, mer_inst::in, mer_type::in,
-    module_info::in) is semidet.
+:- pred inst_matches_initial(module_info::in, mer_type::in,
+    mer_inst::in, mer_inst::in) is semidet.
 
     % This version of inst_matches_initial builds up a substitution map
     % (inst_var_sub). For each inst_var which occurs in InstA there will be
     % a substitution to the corresponding inst in InstB.
     %
-:- pred inst_matches_initial_sub(mer_inst::in, mer_inst::in, mer_type::in,
+:- pred inst_matches_initial_sub(mer_type::in, mer_inst::in, mer_inst::in,
     module_info::in, module_info::out, inst_var_sub::in, inst_var_sub::out)
     is semidet.
 
@@ -57,16 +57,17 @@
     % This makes it almost the same as inst_matches_final. The only difference
     % is in the way it handles constrained_inst_vars.
     %
-:- pred inst_matches_initial_no_implied_modes(mer_inst::in, mer_inst::in,
-    mer_type::in, module_info::in) is semidet.
+:- pred inst_matches_initial_no_implied_modes(module_info::in, mer_type::in,
+    mer_inst::in, mer_inst::in) is semidet.
 
     % A version of the above that also computes the inst_var_sub.
     %
-:- pred inst_matches_initial_no_implied_modes_sub(mer_inst::in, mer_inst::in,
-    mer_type::in, module_info::in, module_info::out,
+:- pred inst_matches_initial_no_implied_modes_sub(mer_type::in,
+    mer_inst::in, mer_inst::in,
+    module_info::in, module_info::out,
     inst_var_sub::in, inst_var_sub::out) is semidet.
 
-    % inst_matches_final(InstA, InstB, ModuleInfo):
+    % inst_matches_final(ModuleInfo, InstA, InstB):
     %
     % Succeed iff InstA is compatible with InstB, i.e. iff InstA will satisfy
     % the final inst requirement InstB. This is true if the information
@@ -74,7 +75,7 @@
     % and where the information is the same and both insts specify a binding,
     % the binding must be identical.
     %
-:- pred inst_matches_final(mer_inst::in, mer_inst::in, module_info::in)
+:- pred inst_matches_final(module_info::in, mer_inst::in, mer_inst::in)
     is semidet.
 
     % This version of inst_matches_final allows you to pass in the type of the
@@ -83,8 +84,8 @@
     % bound(...), ...). This version is to be preferred when the type is
     % available.
     %
-:- pred inst_matches_final_typed(mer_inst::in, mer_inst::in, mer_type::in,
-    module_info::in) is semidet.
+:- pred inst_matches_final_typed(module_info::in, mer_type::in,
+    mer_inst::in, mer_inst::in) is semidet.
 
     % Normally ground matches bound(...) only if the latter is complete for the
     % type. However, the mode checker would reject some compiler-generated
@@ -96,8 +97,8 @@
     --->    ground_matches_bound_if_complete
     ;       ground_matches_bound_always.
 
-:- pred inst_matches_final_gmb(mer_inst::in, mer_inst::in, mer_type::in,
-    module_info::in, ground_matches_bound::in) is semidet.
+:- pred inst_matches_final_gmb(module_info::in, ground_matches_bound::in,
+    mer_type::in, mer_inst::in, mer_inst::in) is semidet.
 
     % The difference between inst_matches_initial and inst_matches_final is
     % that inst_matches_initial requires only something which is at least as
@@ -120,8 +121,8 @@
     % uniqueness comparisons are reversed and we don't allow
     % inst_is_at_least_as_instantiated(any, any).
     %
-:- pred inst_is_at_least_as_instantiated(mer_inst::in, mer_inst::in,
-    mer_type::in, module_info::in) is semidet.
+:- pred inst_is_at_least_as_instantiated(module_info::in, mer_type::in,
+    mer_inst::in, mer_inst::in) is semidet.
 
     % inst_matches_binding(InstA, InstB, Type, ModuleInfo):
     %
@@ -130,14 +131,14 @@
     % ignores uniqueness, and that `any' does not match itself. It is used
     % to check whether variables get bound in negated contexts.
     %
-:- pred inst_matches_binding(mer_inst::in, mer_inst::in, mer_type::in,
-    module_info::in) is semidet.
+:- pred inst_matches_binding(module_info::in, mer_type::in,
+    mer_inst::in, mer_inst::in) is semidet.
 
     % inst_matches_binding_allow_any_any is the same as
     % inst_matches_binding except that it also allows `any' to match `any'.
     %
-:- pred inst_matches_binding_allow_any_any(mer_inst::in, mer_inst::in,
-    mer_type::in, module_info::in) is semidet.
+:- pred inst_matches_binding_allow_any_any(module_info::in, mer_type::in,
+    mer_inst::in, mer_inst::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -175,15 +176,15 @@
 :- pred pred_inst_matches_ground(module_info::in, pred_inst_info::in)
     is semidet.
 
-    % pred_inst_matches(PredInstA, PredInstB, ModuleInfo)
+    % pred_inst_matches(ModuleInfo, PredInstA, PredInstB)
     %
     % Succeeds if PredInstA specifies a pred that can be used wherever and
     % whenever PredInstB could be used. This is true if they both have the
     % same PredOrFunc indicator and the same determinism, and if the arguments
     % match using pred_inst_argmodes_match.
     %
-:- pred pred_inst_matches(pred_inst_info::in, pred_inst_info::in,
-    module_info::in) is semidet.
+:- pred pred_inst_matches(module_info::in,
+    pred_inst_info::in, pred_inst_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -299,7 +300,7 @@ init_inst_match_info(ModuleInfo, MaybeSub, CalculateSub, Comparison,
         Comparison, AnyMatchesAny, GroundMatchesBound).
 
 :- type inst_matches_pred ==
-    pred(mer_inst, mer_inst, maybe(mer_type),
+    pred(maybe(mer_type), mer_inst, mer_inst,
         inst_match_info, inst_match_info).
 :- inst inst_matches_pred == (pred(in, in, in, in, out) is semidet).
 
@@ -314,14 +315,14 @@ swap_sub(P, !Info) :-
     !Info ^ imi_calculate_sub := CalculateSub.
 
 :- pred unswap(inst_matches_pred::in(inst_matches_pred),
-    mer_inst::in, mer_inst::in, maybe(mer_type)::in,
+    maybe(mer_type)::in, mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-unswap(P, InstA, InstB, Type, !Info) :-
+unswap(P, Type, InstA, InstB, !Info) :-
     % Swap the arguments *and* undo swap_sub.
     CalculateSub = !.Info ^ imi_calculate_sub,
     !Info ^ imi_calculate_sub := swap_calculate_sub(CalculateSub),
-    P(InstB, InstA, Type, !Info),
+    P(Type, InstB, InstA, !Info),
     !Info ^ imi_calculate_sub := CalculateSub.
 
 :- func swap_calculate_sub(calculate_sub) = calculate_sub.
@@ -335,33 +336,32 @@ swap_calculate_sub(cs_none) = cs_none.
 :- pred handle_inst_var_subs(
     inst_matches_pred::in(inst_matches_pred),
     inst_matches_pred::in(inst_matches_pred),
-    mer_inst::in, mer_inst::in, maybe(mer_type)::in,
+    maybe(mer_type)::in, mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-handle_inst_var_subs(Recurse, Continue, InstA, InstB, Type, !Info) :-
+handle_inst_var_subs(Recurse, Continue, Type, InstA, InstB, !Info) :-
     CalculateSub = !.Info ^ imi_calculate_sub,
     (
         CalculateSub = cs_forward,
-        handle_inst_var_subs_2(Recurse, Continue, InstA, InstB,
-            Type, !Info)
+        handle_inst_var_subs_2(Recurse, Continue, Type, InstA, InstB, !Info)
     ;
         CalculateSub = cs_reverse,
         % Calculate the inst var substitution with arguments swapped,
         % but swap back for inst matching.
         handle_inst_var_subs_2(unswap(Recurse), unswap(Continue),
-            InstB, InstA, Type, !Info)
+            Type, InstB, InstA, !Info)
     ;
         CalculateSub = cs_none,
-        Continue(InstA, InstB, Type, !Info)
+        Continue(Type, InstA, InstB, !Info)
     ).
 
 :- pred handle_inst_var_subs_2(
     inst_matches_pred::in(inst_matches_pred),
     inst_matches_pred::in(inst_matches_pred),
-    mer_inst::in, mer_inst::in, maybe(mer_type)::in,
+    maybe(mer_type)::in, mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-handle_inst_var_subs_2(Recurse, Continue, InstA, InstB, Type, !Info) :-
+handle_inst_var_subs_2(Recurse, Continue, Type, InstA, InstB, !Info) :-
     ( if InstB = constrained_inst_vars(InstVarsB, SubInstB) then
         % Add the substitution InstVarsB => InstA `glb` SubInstB
         % (see get_subst_inst in dmo's thesis, page 78).
@@ -378,14 +378,14 @@ handle_inst_var_subs_2(Recurse, Continue, InstA, InstB, Type, !Info) :-
         % to InstB.
         ( if UnifyInst = constrained_inst_vars(InstVarsB, UnifySubInst) then
             % Avoid infinite regress.
-            Recurse(InstA, UnifySubInst, Type, !Info)
+            Recurse(Type, InstA, UnifySubInst, !Info)
         else
-            Recurse(InstA, UnifyInst, Type, !Info)
+            Recurse(Type, InstA, UnifyInst, !Info)
         )
     else if InstA = constrained_inst_vars(_InstVarsA, SubInstA) then
-        Recurse(SubInstA, InstB, Type, !Info)
+        Recurse(Type, SubInstA, InstB, !Info)
     else
-        Continue(InstA, InstB, Type, !Info)
+        Continue(Type, InstA, InstB, !Info)
     ).
 
     % Update the inst_var_sub that is computed by inst_matches_initial.
@@ -429,12 +429,12 @@ update_inst_var_sub_2(InstA, MaybeType, InstVar, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-inst_matches_initial(InstA, InstB, Type, ModuleInfo) :-
-    inst_matches_initial_1(InstA, InstB, Type, ModuleInfo, _,
-        no_inst_var_sub, _).
+inst_matches_initial(ModuleInfo, Type, InstA, InstB) :-
+    inst_matches_initial_1(Type, InstA, InstB,
+        ModuleInfo, _, no_inst_var_sub, _).
 
-inst_matches_initial_sub(InstA, InstB, Type, !ModuleInfo, !Sub) :-
-    inst_matches_initial_1(InstA, InstB, Type, !ModuleInfo,
+inst_matches_initial_sub(Type, InstA, InstB, !ModuleInfo, !Sub) :-
+    inst_matches_initial_1(Type, InstA, InstB, !ModuleInfo,
         inst_var_sub(!.Sub), MaybeSub),
     (
         MaybeSub = inst_var_sub(!:Sub)
@@ -443,34 +443,35 @@ inst_matches_initial_sub(InstA, InstB, Type, !ModuleInfo, !Sub) :-
         unexpected($pred, "missing inst_var_sub")
     ).
 
-inst_matches_initial_no_implied_modes(InstA, InstB, Type, ModuleInfo) :-
+inst_matches_initial_no_implied_modes(ModuleInfo, Type, InstA, InstB) :-
     Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_forward,
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    inst_matches_final_mt(InstA, InstB, yes(Type), Info0, _).
+    inst_matches_final_mt(yes(Type), InstA, InstB, Info0, _).
 
-inst_matches_initial_no_implied_modes_sub(InstA, InstB, Type, !ModuleInfo,
-        !Sub) :-
+inst_matches_initial_no_implied_modes_sub(Type, InstA, InstB,
+        !ModuleInfo, !Sub) :-
     Info0 = init_inst_match_info(!.ModuleInfo, inst_var_sub(!.Sub), cs_forward,
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    inst_matches_final_mt(InstA, InstB, yes(Type), Info0, Info),
+    inst_matches_final_mt(yes(Type), InstA, InstB, Info0, Info),
     !:ModuleInfo = Info ^ imi_module_info,
     inst_var_sub(!:Sub) = Info ^ imi_maybe_sub.
 
-:- pred inst_matches_initial_1(mer_inst::in, mer_inst::in, mer_type::in,
+:- pred inst_matches_initial_1(mer_type::in, mer_inst::in, mer_inst::in,
     module_info::in, module_info::out,
     maybe_inst_var_sub::in, maybe_inst_var_sub::out) is semidet.
 
-inst_matches_initial_1(InstA, InstB, Type, !ModuleInfo, !MaybeSub) :-
+inst_matches_initial_1(Type, InstA, InstB, !ModuleInfo, !MaybeSub) :-
     Info0 = init_inst_match_info(!.ModuleInfo, !.MaybeSub, cs_forward,
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    inst_matches_initial_mt(InstA, InstB, yes(Type), Info0, Info),
+    inst_matches_initial_mt(yes(Type), InstA, InstB, Info0, Info),
     !:ModuleInfo = Info ^ imi_module_info,
     !:MaybeSub = Info ^ imi_maybe_sub.
 
-:- pred inst_matches_initial_mt(mer_inst::in, mer_inst::in,
-    maybe(mer_type)::in, inst_match_info::in, inst_match_info::out) is semidet.
+:- pred inst_matches_initial_mt(maybe(mer_type)::in,
+    mer_inst::in, mer_inst::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_initial_mt(InstA, InstB, MaybeType, !Info) :-
+inst_matches_initial_mt(MaybeType, InstA, InstB, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
     Expansions0 = !.Info ^ imi_expansions,
     ( if expansion_insert_new(ThisExpansion, Expansions0, Expansions) then
@@ -478,15 +479,15 @@ inst_matches_initial_mt(InstA, InstB, MaybeType, !Info) :-
         inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
         inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
         handle_inst_var_subs(inst_matches_initial_mt, inst_matches_initial_4,
-            ExpandedInstA, ExpandedInstB, MaybeType, !Info)
+            MaybeType, ExpandedInstA, ExpandedInstB, !Info)
     else
         true
     ).
 
-:- pred inst_matches_initial_4(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
+:- pred inst_matches_initial_4(maybe(mer_type)::in, mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
+inst_matches_initial_4(MaybeType, InstA, InstB, !Info) :-
     % To avoid infinite regress, we assume that inst_matches_initial is true
     % for any pairs of insts which occur in `Expansions'.
     %
@@ -499,20 +500,20 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
             !.Info ^ imi_any_matches_any = any_does_match_any,
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType,
+            ho_inst_info_matches_initial(MaybeType, HOInstInfoA, HOInstInfoB,
                 !Info)
         ;
             InstB = free
         ;
             InstB = ground(_, _),
-            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
+            maybe_any_to_bound(!.Info ^ imi_module_info, MaybeType, UniqA,
                 HOInstInfoA, NextInstA),
-            inst_matches_initial_mt(NextInstA, InstB, MaybeType, !Info)
+            inst_matches_initial_mt(MaybeType, NextInstA, InstB, !Info)
         ;
             InstB = bound(_, _, _),
-            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
+            maybe_any_to_bound(!.Info ^ imi_module_info, MaybeType, UniqA,
                 HOInstInfoA, NextInstA),
-            inst_matches_initial_mt(NextInstA, InstB, MaybeType, !Info)
+            inst_matches_initial_mt(MaybeType, NextInstA, InstB, !Info)
         )
     ;
         InstA = free,
@@ -523,8 +524,8 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
             InstB = any(UniqB, none_or_default_func),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            compare_bound_inst_list_uniq(!.Info ^ imi_uniqueness_comparison,
-                BoundInstsA, UniqB, !.Info ^ imi_module_info),
+            compare_bound_inst_list_uniq(!.Info ^ imi_module_info,
+                !.Info ^ imi_uniqueness_comparison, BoundInstsA, UniqB),
             inst_contains_nondefault_func_mode_1(InstA, no, !Info)
         ;
             InstB = free
@@ -541,30 +542,30 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
             else
                 compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                     UniqA, UniqB),
-                bound_inst_list_matches_initial_mt(BoundInstsA, BoundInstsB,
-                    MaybeType, !Info)
+                bound_inst_list_matches_initial_mt(MaybeType,
+                    BoundInstsA, BoundInstsB, !Info)
             )
         ;
             InstB = ground(UniqB, none_or_default_func),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            inst_results_bound_inst_list_is_ground_mt(InstResultsA,
-                BoundInstsA, MaybeType, !.Info ^ imi_module_info),
-            compare_bound_inst_list_uniq(!.Info ^ imi_uniqueness_comparison,
-                BoundInstsA, UniqB, !.Info ^ imi_module_info),
+            inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
+                MaybeType, InstResultsA, BoundInstsA),
+            compare_bound_inst_list_uniq(!.Info ^ imi_module_info,
+                !.Info ^ imi_uniqueness_comparison, BoundInstsA, UniqB),
             inst_contains_nondefault_func_mode_1(InstA, no, !Info)
         ;
             InstB = abstract_inst(_,_),
-            inst_results_bound_inst_list_is_ground_mt(InstResultsA,
-                BoundInstsA, no, !.Info ^ imi_module_info),
+            inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
+                no, InstResultsA, BoundInstsA),
             (
                 UniqA = unique,
-                bound_inst_list_is_unique(BoundInstsA,
-                    !.Info ^ imi_module_info)
+                bound_inst_list_is_unique(!.Info ^ imi_module_info,
+                    BoundInstsA)
             ;
                 UniqA = mostly_unique,
-                bound_inst_list_is_mostly_unique(BoundInstsA,
-                    !.Info ^ imi_module_info)
+                bound_inst_list_is_mostly_unique(!.Info ^ imi_module_info,
+                    BoundInstsA)
             ),
             inst_contains_nondefault_func_mode_1(InstA, no, !Info)
         )
@@ -574,7 +575,7 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
             InstB = any(UniqB, HOInstInfoB),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType,
+            ho_inst_info_matches_initial(MaybeType, HOInstInfoA, HOInstInfoB,
                 !Info)
         ;
             InstB = free
@@ -584,15 +585,15 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
             % We can only check this case properly if the type is known.
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            bound_inst_list_is_complete_for_type(set.init,
-                !.Info ^ imi_module_info, BoundInstsB, Type),
-            ground_matches_initial_bound_inst_list(UniqA, BoundInstsB,
-                yes(Type), !Info)
+            bound_inst_list_is_complete_for_type(!.Info ^ imi_module_info,
+                set.init, Type, BoundInstsB),
+            ground_matches_initial_bound_inst_list(UniqA, yes(Type),
+                BoundInstsB, !Info)
         ;
             InstB = ground(UniqB, HOInstInfoB),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType,
+            ho_inst_info_matches_initial(MaybeType, HOInstInfoA, HOInstInfoB,
                 !Info)
         ;
             InstB = abstract_inst(_,_),
@@ -612,7 +613,7 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
             InstB = abstract_inst(Name, ArgsB),
             list.duplicate(length(ArgsA), no, MaybeTypes),
             % XXX how do we get the argument types for an abstract inst?
-            inst_list_matches_initial_mt(ArgsA, ArgsB, MaybeTypes, !Info)
+            inst_list_matches_initial_mt(MaybeTypes, ArgsA, ArgsB, !Info)
         )
     ;
         InstA = not_reached
@@ -624,28 +625,28 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
     % `bound_inst_list_is_complete_for_type' is done by the caller.
     %
 :- pred ground_matches_initial_bound_inst_list(uniqueness::in,
-    list(bound_inst)::in, maybe(mer_type)::in,
+    maybe(mer_type)::in, list(bound_inst)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-ground_matches_initial_bound_inst_list(_, [], _, !Info).
-ground_matches_initial_bound_inst_list(Uniq, [BoundInst | BoundInsts],
-        MaybeType, !Info) :-
+ground_matches_initial_bound_inst_list(_, _, [], !Info).
+ground_matches_initial_bound_inst_list(Uniq, MaybeType,
+        [BoundInst | BoundInsts], !Info) :-
     BoundInst = bound_functor(ConsId, Args),
     maybe_get_cons_id_arg_types(!.Info ^ imi_module_info, MaybeType, ConsId,
         list.length(Args), MaybeTypes),
-    ground_matches_initial_inst_list(Uniq, Args, MaybeTypes, !Info),
-    ground_matches_initial_bound_inst_list(Uniq, BoundInsts, MaybeType, !Info).
+    ground_matches_initial_inst_list(Uniq, MaybeTypes, Args, !Info),
+    ground_matches_initial_bound_inst_list(Uniq, MaybeType, BoundInsts, !Info).
 
-:- pred ground_matches_initial_inst_list(uniqueness::in, list(mer_inst)::in,
-    list(maybe(mer_type))::in, inst_match_info::in, inst_match_info::out)
-    is semidet.
+:- pred ground_matches_initial_inst_list(uniqueness::in,
+    list(maybe(mer_type))::in, list(mer_inst)::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
 
 ground_matches_initial_inst_list(_, [], [], !Info).
-ground_matches_initial_inst_list(Uniq, [Inst | Insts],
-        [MaybeType | MaybeTypes], !Info) :-
+ground_matches_initial_inst_list(Uniq,
+        [MaybeType | MaybeTypes], [Inst | Insts], !Info) :-
     Ground = ground(Uniq, none_or_default_func),
-    inst_matches_initial_mt(Ground, Inst, MaybeType, !Info),
-    ground_matches_initial_inst_list(Uniq, Insts, MaybeTypes, !Info).
+    inst_matches_initial_mt(MaybeType, Ground, Inst, !Info),
+    ground_matches_initial_inst_list(Uniq, MaybeTypes, Insts, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -653,11 +654,11 @@ ground_matches_initial_inst_list(Uniq, [Inst | Insts],
     % each functor of the type and each argument of each functor is also
     % ``complete'' for its type.
     %
-:- pred bound_inst_list_is_complete_for_type(set(inst_name)::in,
-    module_info::in, list(bound_inst)::in, mer_type::in) is semidet.
+:- pred bound_inst_list_is_complete_for_type(module_info::in,
+    set(inst_name)::in, mer_type::in, list(bound_inst)::in) is semidet.
 
-bound_inst_list_is_complete_for_type(Expansions, ModuleInfo, BoundInsts,
-        Type) :-
+bound_inst_list_is_complete_for_type(ModuleInfo, Expansions, Type,
+        BoundInsts) :-
     % Is this a type for which cons_ids are recorded in the type_table?
     type_util.cons_id_arg_types(ModuleInfo, Type, _, _),
 
@@ -676,15 +677,15 @@ bound_inst_list_is_complete_for_type(Expansions, ModuleInfo, BoundInsts,
             % are not module-qualified, so we need to call
             % equivalent_cons_ids instead of just using `=/2'.
             equivalent_cons_ids(ConsId0, ConsId),
-            list.map(inst_is_complete_for_type(Expansions, ModuleInfo),
-                ArgInsts, ArgTypes)
+            list.map(inst_is_complete_for_type(ModuleInfo, Expansions),
+                ArgTypes, ArgInsts)
         )
     ).
 
-:- pred inst_is_complete_for_type(set(inst_name)::in, module_info::in,
-    mer_inst::in, mer_type::in) is semidet.
+:- pred inst_is_complete_for_type(module_info::in, set(inst_name)::in,
+    mer_type::in, mer_inst::in) is semidet.
 
-inst_is_complete_for_type(Expansions, ModuleInfo, Inst, Type) :-
+inst_is_complete_for_type(ModuleInfo, Expansions, Type, Inst) :-
     require_complete_switch [Inst]
     (
         Inst = defined_inst(Name),
@@ -692,13 +693,13 @@ inst_is_complete_for_type(Expansions, ModuleInfo, Inst, Type) :-
             true
         else
             inst_lookup(ModuleInfo, Name, ExpandedInst),
-            inst_is_complete_for_type(set.insert(Expansions, Name),
-                ModuleInfo, ExpandedInst, Type)
+            inst_is_complete_for_type(ModuleInfo, set.insert(Expansions, Name),
+                Type, ExpandedInst)
         )
     ;
         Inst = bound(_, _, BoundInsts),
-        bound_inst_list_is_complete_for_type(Expansions, ModuleInfo,
-            BoundInsts, Type)
+        bound_inst_list_is_complete_for_type(ModuleInfo, Expansions,
+            Type, BoundInsts)
     ;
         % XXX This switch was originally an if-then-else chain, with explicit
         % tests for defined_inst and bound, and the final else case being
@@ -755,13 +756,14 @@ first_unqual_cons_id_is_greater(ConsIdA, ConsIdB) :-
     % This predicate checks if two ho_inst_infos match_initial.
     % It does not check uniqueness.
     %
-:- pred ho_inst_info_matches_initial(ho_inst_info::in, ho_inst_info::in,
-    maybe(mer_type)::in, inst_match_info::in, inst_match_info::out) is semidet.
+:- pred ho_inst_info_matches_initial(maybe(mer_type)::in,
+    ho_inst_info::in, ho_inst_info::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
 
-ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
+ho_inst_info_matches_initial(MaybeType, HOInstInfoA, HOInstInfoB, !Info) :-
     (
         HOInstInfoB = none_or_default_func,
-        ho_inst_info_matches_ground_2(HOInstInfoA, MaybeType, !Info)
+        ho_inst_info_matches_ground_2(MaybeType, HOInstInfoA, !Info)
     ;
         HOInstInfoB = higher_order(PredInstB),
         (
@@ -769,43 +771,44 @@ ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
             PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
             Arity = list.length(ArgModes),
             PredInstA = pred_inst_info_default_func_mode(Arity),
-            pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
+            pred_inst_matches_2(MaybeType, PredInstA, PredInstB, !Info)
         ;
             HOInstInfoA = higher_order(PredInstA),
-            pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
+            pred_inst_matches_2(MaybeType, PredInstA, PredInstB, !Info)
         )
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred compare_bound_inst_list_uniq(uniqueness_comparison::in,
-    list(bound_inst)::in, uniqueness::in, module_info::in) is semidet.
+:- pred compare_bound_inst_list_uniq(module_info::in,
+    uniqueness_comparison::in,
+    list(bound_inst)::in, uniqueness::in) is semidet.
 
-compare_bound_inst_list_uniq(uc_match, BoundInsts, Uniq, ModuleInfo) :-
-    bound_inst_list_matches_uniq(BoundInsts, Uniq, ModuleInfo).
-compare_bound_inst_list_uniq(uc_instantiated, BoundInsts, Uniq, ModuleInfo) :-
-    uniq_matches_bound_inst_list(Uniq, BoundInsts, ModuleInfo).
+compare_bound_inst_list_uniq(ModuleInfo, uc_match, BoundInsts, Uniq) :-
+    bound_inst_list_matches_uniq(ModuleInfo, Uniq, BoundInsts).
+compare_bound_inst_list_uniq(ModuleInfo, uc_instantiated, BoundInsts, Uniq) :-
+    uniq_matches_bound_inst_list(ModuleInfo, Uniq, BoundInsts).
 
-:- pred bound_inst_list_matches_uniq(list(bound_inst)::in, uniqueness::in,
-    module_info::in) is semidet.
+:- pred bound_inst_list_matches_uniq(module_info::in, uniqueness::in,
+    list(bound_inst)::in) is semidet.
 
-bound_inst_list_matches_uniq(BoundInsts, Uniq, ModuleInfo) :-
+bound_inst_list_matches_uniq(ModuleInfo, Uniq, BoundInsts) :-
     ( if Uniq = unique then
-        bound_inst_list_is_unique(BoundInsts, ModuleInfo)
+        bound_inst_list_is_unique(ModuleInfo, BoundInsts)
     else if Uniq = mostly_unique then
-        bound_inst_list_is_mostly_unique(BoundInsts, ModuleInfo)
+        bound_inst_list_is_mostly_unique(ModuleInfo, BoundInsts)
     else
         true
     ).
 
-:- pred uniq_matches_bound_inst_list(uniqueness::in, list(bound_inst)::in,
-    module_info::in) is semidet.
+:- pred uniq_matches_bound_inst_list(module_info::in, uniqueness::in,
+    list(bound_inst)::in) is semidet.
 
-uniq_matches_bound_inst_list(Uniq, BoundInsts, ModuleInfo) :-
+uniq_matches_bound_inst_list(ModuleInfo, Uniq, BoundInsts) :-
     ( if Uniq = shared then
-        bound_inst_list_is_not_partly_unique(BoundInsts, ModuleInfo)
+        bound_inst_list_is_not_partly_unique(ModuleInfo, BoundInsts)
     else if Uniq = mostly_unique then
-        bound_inst_list_is_not_fully_unique(BoundInsts, ModuleInfo)
+        bound_inst_list_is_not_fully_unique(ModuleInfo, BoundInsts)
     else
         true
     ).
@@ -818,58 +821,58 @@ uniq_matches_bound_inst_list(Uniq, BoundInsts, ModuleInfo) :-
     % that all other constructors must have all their arguments `not_reached'.)
     % The code here makes use of the fact that the bound_inst lists are sorted.
     %
-:- pred bound_inst_list_matches_initial_mt(list(bound_inst)::in,
-    list(bound_inst)::in, maybe(mer_type)::in,
+:- pred bound_inst_list_matches_initial_mt(maybe(mer_type)::in,
+    list(bound_inst)::in, list(bound_inst)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-bound_inst_list_matches_initial_mt([], _, _, !Info).
-bound_inst_list_matches_initial_mt([X | Xs], [Y | Ys], MaybeType, !Info) :-
+bound_inst_list_matches_initial_mt(_, [], _, !Info).
+bound_inst_list_matches_initial_mt(MaybeType, [X | Xs], [Y | Ys], !Info) :-
     X = bound_functor(ConsIdX, ArgsX),
     Y = bound_functor(ConsIdY, ArgsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         maybe_get_cons_id_arg_types(!.Info ^ imi_module_info, MaybeType,
             ConsIdX, list.length(ArgsX), MaybeTypes),
-        inst_list_matches_initial_mt(ArgsX, ArgsY, MaybeTypes, !Info),
-        bound_inst_list_matches_initial_mt(Xs, Ys, MaybeType, !Info)
+        inst_list_matches_initial_mt(MaybeTypes, ArgsX, ArgsY, !Info),
+        bound_inst_list_matches_initial_mt(MaybeType, Xs, Ys, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdY does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_initial Y. We just
         % need to check that [X | Xs] matches_initial Ys.
-        bound_inst_list_matches_initial_mt([X | Xs], Ys, MaybeType, !Info)
+        bound_inst_list_matches_initial_mt(MaybeType, [X | Xs], Ys, !Info)
     ).
 
-:- pred inst_list_matches_initial_mt(list(mer_inst)::in, list(mer_inst)::in,
-    list(maybe(mer_type))::in, inst_match_info::in, inst_match_info::out)
-    is semidet.
+:- pred inst_list_matches_initial_mt(list(maybe(mer_type))::in,
+    list(mer_inst)::in, list(mer_inst)::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
 
 inst_list_matches_initial_mt([], [], [], !Info).
-inst_list_matches_initial_mt([X | Xs], [Y | Ys], [MaybeType | MaybeTypes],
+inst_list_matches_initial_mt([MaybeType | MaybeTypes], [X | Xs], [Y | Ys],
         !Info) :-
-    inst_matches_initial_mt(X, Y, MaybeType, !Info),
-    inst_list_matches_initial_mt(Xs, Ys, MaybeTypes, !Info).
+    inst_matches_initial_mt(MaybeType, X, Y, !Info),
+    inst_list_matches_initial_mt(MaybeTypes, Xs, Ys, !Info).
 
 %-----------------------------------------------------------------------------%
 
-inst_matches_final(InstA, InstB, ModuleInfo) :-
+inst_matches_final(ModuleInfo, InstA, InstB) :-
     Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    inst_matches_final_mt(InstA, InstB, no, Info0, _).
+    inst_matches_final_mt(no, InstA, InstB, Info0, _).
 
-inst_matches_final_typed(InstA, InstB, Type, ModuleInfo) :-
-    inst_matches_final_gmb(InstA, InstB, Type, ModuleInfo,
-        ground_matches_bound_if_complete).
+inst_matches_final_typed(ModuleInfo, Type, InstA, InstB) :-
+    inst_matches_final_gmb(ModuleInfo, ground_matches_bound_if_complete,
+        Type, InstA, InstB).
 
-inst_matches_final_gmb(InstA, InstB, Type, ModuleInfo, GroundMatchesBound) :-
+inst_matches_final_gmb(ModuleInfo, GroundMatchesBound, Type, InstA, InstB) :-
     Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
         uc_match, any_does_match_any, GroundMatchesBound),
-    inst_matches_final_mt(InstA, InstB, yes(Type), Info0, _).
+    inst_matches_final_mt(yes(Type), InstA, InstB, Info0, _).
 
-:- pred inst_matches_final_mt(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
+:- pred inst_matches_final_mt(maybe(mer_type)::in, mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_final_mt(InstA, InstB, MaybeType, !Info) :-
+inst_matches_final_mt(MaybeType, InstA, InstB, !Info) :-
     ( if InstA = InstB then
         true
     else
@@ -880,33 +883,33 @@ inst_matches_final_mt(InstA, InstB, MaybeType, !Info) :-
             inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
             inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
             handle_inst_var_subs(inst_matches_final_mt, inst_matches_final_3,
-                ExpandedInstA, ExpandedInstB, MaybeType, !Info)
+                MaybeType, ExpandedInstA, ExpandedInstB, !Info)
         else
             true
         )
     ).
 
-:- pred inst_matches_final_3(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
+:- pred inst_matches_final_3(maybe(mer_type)::in, mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
+inst_matches_final_3(MaybeType, InstA, InstB, !Info) :-
     (
         InstA = any(UniqA, HOInstInfoA),
         (
             InstB = any(UniqB, HOInstInfoB),
-            ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType,
+            ho_inst_info_matches_final(MaybeType, HOInstInfoA, HOInstInfoB,
                 !Info),
             unique_matches_final(UniqA, UniqB)
         ;
             InstB = ground(_, _),
-            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
+            maybe_any_to_bound(!.Info ^ imi_module_info, MaybeType, UniqA,
                 HOInstInfoA, NextInstA),
-            inst_matches_final_mt(NextInstA, InstB, MaybeType, !Info)
+            inst_matches_final_mt(MaybeType, NextInstA, InstB, !Info)
         ;
             InstB = bound(_, _, _),
-            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
+            maybe_any_to_bound(!.Info ^ imi_module_info, MaybeType, UniqA,
                 HOInstInfoA, NextInstA),
-            inst_matches_final_mt(NextInstA, InstB, MaybeType, !Info)
+            inst_matches_final_mt(MaybeType, NextInstA, InstB, !Info)
         )
     ;
         InstA = free,
@@ -925,49 +928,49 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
         (
             InstB = any(UniqB, none_or_default_func),
             unique_matches_final(UniqA, UniqB),
-            bound_inst_list_matches_uniq(BoundInstsA, UniqB,
-                !.Info ^ imi_module_info),
+            bound_inst_list_matches_uniq(!.Info ^ imi_module_info, UniqB,
+                BoundInstsA),
             % We do not yet allow `free' to match `any'.
             % Among other things, changing this would break compare_inst
             % in modecheck_call.m.
-            inst_results_bound_inst_list_is_ground_or_any(InstResultsA,
-                BoundInstsA, !.Info ^ imi_module_info),
+            inst_results_bound_inst_list_is_ground_or_any(
+                !.Info ^ imi_module_info, InstResultsA, BoundInstsA),
             inst_contains_nondefault_func_mode_1(InstA, no, !Info)
         ;
             InstB = bound(UniqB, _InstResultsB, BoundInstsB),
             unique_matches_final(UniqA, UniqB),
-            bound_inst_list_matches_final(BoundInstsA, BoundInstsB, MaybeType,
+            bound_inst_list_matches_final(MaybeType, BoundInstsA, BoundInstsB,
                 !Info)
         ;
             InstB = ground(UniqB, none_or_default_func),
             unique_matches_final(UniqA, UniqB),
-            inst_results_bound_inst_list_is_ground_mt(InstResultsA,
-                BoundInstsA, MaybeType, !.Info ^ imi_module_info),
-            bound_inst_list_matches_uniq(BoundInstsA, UniqB,
-                !.Info ^ imi_module_info),
+            inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
+                MaybeType, InstResultsA, BoundInstsA),
+            bound_inst_list_matches_uniq(!.Info ^ imi_module_info, UniqB,
+                BoundInstsA),
             inst_contains_nondefault_func_mode_1(InstA, no, !Info)
         )
     ;
         InstA = ground(UniqA, HOInstInfoA),
         (
             InstB = any(UniqB, HOInstInfoB),
-            ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType,
+            ho_inst_info_matches_final(MaybeType, HOInstInfoA, HOInstInfoB,
                 !Info),
             unique_matches_final(UniqA, UniqB)
         ;
             InstB = bound(UniqB, InstResultsB, BoundInstsB),
-            ho_inst_info_matches_ground_2(HOInstInfoA, MaybeType, !Info),
+            ho_inst_info_matches_ground_2(MaybeType, HOInstInfoA, !Info),
             unique_matches_final(UniqA, UniqB),
             ModuleInfo = !.Info ^ imi_module_info,
-            inst_results_bound_inst_list_is_ground_mt(InstResultsB,
-                BoundInstsB, MaybeType, ModuleInfo),
-            uniq_matches_bound_inst_list(UniqA, BoundInstsB, ModuleInfo),
+            inst_results_bound_inst_list_is_ground_mt(ModuleInfo, MaybeType,
+                InstResultsB, BoundInstsB),
+            uniq_matches_bound_inst_list(ModuleInfo, UniqA, BoundInstsB),
             inst_contains_nondefault_func_mode_1(InstB, no, !Info),
             (
                 MaybeType = yes(Type),
                 % We can only do this check if the type is known.
-                bound_inst_list_is_complete_for_type(set.init, ModuleInfo,
-                    BoundInstsB, Type)
+                bound_inst_list_is_complete_for_type(ModuleInfo, set.init,
+                    Type, BoundInstsB)
             ;
                 % XXX the check for bound_inst_list_is_complete_for_type
                 % makes the mode checker too conservative in the absence
@@ -977,7 +980,7 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
             )
         ;
             InstB = ground(UniqB, HOInstInfoB),
-            ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType,
+            ho_inst_info_matches_final(MaybeType, HOInstInfoA, HOInstInfoB,
                 !Info),
             unique_matches_final(UniqA, UniqB)
         )
@@ -989,7 +992,7 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
             InstB = abstract_inst(Name, ArgsB),
             list.duplicate(list.length(ArgsA), no, MaybeTypes),
             % XXX how do we get the argument types for an abstract inst?
-            inst_list_matches_final(ArgsA, ArgsB, MaybeTypes, !Info)
+            inst_list_matches_final(MaybeTypes, ArgsA, ArgsB, !Info)
         )
     ;
         InstA = not_reached
@@ -999,19 +1002,20 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
             % Constrained_inst_vars match_final only if InstVarsA contains
             % all the variables in InstVarsB.
             set.subset(InstVarsB, InstVarsA),
-            inst_matches_final_mt(SubInstA, SubInstB, MaybeType, !Info)
+            inst_matches_final_mt(MaybeType, SubInstA, SubInstB, !Info)
         else
-            inst_matches_final_mt(SubInstA, InstB, MaybeType, !Info)
+            inst_matches_final_mt(MaybeType, SubInstA, InstB, !Info)
         )
     ).
 
-:- pred ho_inst_info_matches_final(ho_inst_info::in, ho_inst_info::in,
-    maybe(mer_type)::in, inst_match_info::in, inst_match_info::out) is semidet.
+:- pred ho_inst_info_matches_final(maybe(mer_type)::in,
+    ho_inst_info::in, ho_inst_info::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
 
-ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
+ho_inst_info_matches_final(MaybeType, HOInstInfoA, HOInstInfoB, !Info) :-
     (
         HOInstInfoB = none_or_default_func,
-        ho_inst_info_matches_ground_2(HOInstInfoA, MaybeType, !Info)
+        ho_inst_info_matches_ground_2(MaybeType, HOInstInfoA, !Info)
     ;
         HOInstInfoB = higher_order(PredInstB),
         (
@@ -1019,22 +1023,22 @@ ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
             PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
             list.length(ArgModes, Arity),
             PredInstA = pred_inst_info_default_func_mode(Arity),
-            pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
+            pred_inst_matches_2(MaybeType, PredInstA, PredInstB, !Info)
         ;
             HOInstInfoA = higher_order(PredInstA),
-            pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
+            pred_inst_matches_2(MaybeType, PredInstA, PredInstB, !Info)
         )
     ).
 
-:- pred inst_list_matches_final(list(mer_inst)::in, list(mer_inst)::in,
-    list(maybe(mer_type))::in, inst_match_info::in, inst_match_info::out)
-    is semidet.
+:- pred inst_list_matches_final(list(maybe(mer_type))::in,
+    list(mer_inst)::in, list(mer_inst)::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
 
 inst_list_matches_final([], [], [], !Info).
-inst_list_matches_final([ArgA | ArgsA], [ArgB | ArgsB],
-        [MaybeType | MaybeTypes], !Info) :-
-    inst_matches_final_mt(ArgA, ArgB, MaybeType, !Info),
-    inst_list_matches_final(ArgsA, ArgsB, MaybeTypes, !Info).
+inst_list_matches_final([MaybeType | MaybeTypes],
+        [ArgA | ArgsA], [ArgB | ArgsB], !Info) :-
+    inst_matches_final_mt(MaybeType, ArgA, ArgB, !Info),
+    inst_list_matches_final(MaybeTypes, ArgsA, ArgsB, !Info).
 
     % Here we check that the functors in the first list are a subset of the
     % functors in the second list. (If a bound(...) inst only specifies
@@ -1043,50 +1047,51 @@ inst_list_matches_final([ArgA | ArgsA], [ArgB | ArgsB],
     % `not_reached'.) The code here makes use of the fact that the bound_inst
     % lists are sorted.
     %
-:- pred bound_inst_list_matches_final(list(bound_inst)::in,
-    list(bound_inst)::in, maybe(mer_type)::in,
+:- pred bound_inst_list_matches_final(maybe(mer_type)::in,
+    list(bound_inst)::in, list(bound_inst)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-bound_inst_list_matches_final([], _, _, !Info).
-bound_inst_list_matches_final([X | Xs], [Y | Ys], MaybeType, !Info) :-
+bound_inst_list_matches_final(_, [], _, !Info).
+bound_inst_list_matches_final(MaybeType, [X | Xs], [Y | Ys], !Info) :-
     X = bound_functor(ConsIdX, ArgInstsX),
     Y = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         maybe_get_cons_id_arg_types(!.Info ^ imi_module_info, MaybeType,
             ConsIdX, list.length(ArgInstsX), MaybeTypes),
-        inst_list_matches_final(ArgInstsX, ArgInstsY, MaybeTypes, !Info),
-        bound_inst_list_matches_final(Xs, Ys, MaybeType, !Info)
+        inst_list_matches_final(MaybeTypes, ArgInstsX, ArgInstsY, !Info),
+        bound_inst_list_matches_final(MaybeType, Xs, Ys, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdY does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_final Y. We just
         % need to check that [X | Xs] matches_final Ys.
-        bound_inst_list_matches_final([X | Xs], Ys, MaybeType, !Info)
+        bound_inst_list_matches_final(MaybeType, [X | Xs], Ys, !Info)
     ).
 
-inst_is_at_least_as_instantiated(InstA, InstB, Type, ModuleInfo) :-
+inst_is_at_least_as_instantiated(ModuleInfo, Type, InstA, InstB) :-
     Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
         uc_instantiated, any_does_not_match_any,
         ground_matches_bound_if_complete),
-    inst_matches_initial_mt(InstA, InstB, yes(Type), Info0, _).
+    inst_matches_initial_mt(yes(Type), InstA, InstB, Info0, _).
 
 %-----------------------------------------------------------------------------%
 
-inst_matches_binding(InstA, InstB, Type, ModuleInfo) :-
+inst_matches_binding(ModuleInfo, Type, InstA, InstB) :-
     Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
         uc_match, any_does_not_match_any, ground_matches_bound_if_complete),
-    inst_matches_binding_mt(InstA, InstB, yes(Type), Info0, _).
+    inst_matches_binding_mt(yes(Type), InstA, InstB, Info0, _).
 
-inst_matches_binding_allow_any_any(InstA, InstB, Type, ModuleInfo) :-
+inst_matches_binding_allow_any_any(ModuleInfo, Type, InstA, InstB) :-
     Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    inst_matches_binding_mt(InstA, InstB, yes(Type), Info0, _).
+    inst_matches_binding_mt(yes(Type), InstA, InstB, Info0, _).
 
-:- pred inst_matches_binding_mt(mer_inst::in, mer_inst::in,
-    maybe(mer_type)::in, inst_match_info::in, inst_match_info::out) is semidet.
+:- pred inst_matches_binding_mt(maybe(mer_type)::in,
+    mer_inst::in, mer_inst::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_binding_mt(InstA, InstB, MaybeType, !Info) :-
+inst_matches_binding_mt(MaybeType, InstA, InstB, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
     Expansions0 = !.Info ^ imi_expansions,
     ( if expansion_insert_new(ThisExpansion, Expansions0, Expansions) then
@@ -1095,15 +1100,15 @@ inst_matches_binding_mt(InstA, InstB, MaybeType, !Info) :-
             InstA, ExpandedInstA),
         inst_expand_and_remove_constrained_inst_vars(!.Info ^ imi_module_info,
             InstB, ExpandedInstB),
-        inst_matches_binding_3(ExpandedInstA, ExpandedInstB, MaybeType, !Info)
+        inst_matches_binding_3(MaybeType, ExpandedInstA, ExpandedInstB, !Info)
     else
         true
     ).
 
-:- pred inst_matches_binding_3(mer_inst::in, mer_inst::in, maybe(mer_type)::in,
+:- pred inst_matches_binding_3(maybe(mer_type)::in, mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_binding_3(InstA, InstB, MaybeType, !Info) :-
+inst_matches_binding_3(MaybeType, InstA, InstB, !Info) :-
     (
         InstA = free,
         InstB = free
@@ -1117,86 +1122,86 @@ inst_matches_binding_3(InstA, InstB, MaybeType, !Info) :-
             AnyMatchesAny = !.Info ^ imi_any_matches_any,
             (
                 AnyMatchesAny = any_does_match_any,
-                ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType,
+                ho_inst_info_matches_final(MaybeType, HOInstInfoA, HOInstInfoB,
                     !Info)
             ;
                 AnyMatchesAny = any_does_not_match_any,
-                maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
+                maybe_any_to_bound(!.Info ^ imi_module_info, MaybeType, UniqA,
                     HOInstInfoA, NextInstA),
-                maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqB,
+                maybe_any_to_bound(!.Info ^ imi_module_info, MaybeType, UniqB,
                     HOInstInfoB, NextInstB),
-                inst_matches_binding_mt(NextInstA, NextInstB, MaybeType, !Info)
+                inst_matches_binding_mt(MaybeType, NextInstA, NextInstB, !Info)
             )
         ;
             InstB = ground(_, _),
-            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
+            maybe_any_to_bound(!.Info ^ imi_module_info, MaybeType, UniqA,
                 HOInstInfoA, NextInstA),
-            inst_matches_binding_mt(NextInstA, InstB, MaybeType, !Info)
+            inst_matches_binding_mt(MaybeType, NextInstA, InstB, !Info)
         ;
             InstB = bound(_, _, _),
-            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqA,
+            maybe_any_to_bound(!.Info ^ imi_module_info, MaybeType, UniqA,
                 HOInstInfoA, NextInstA),
-            inst_matches_binding_mt(NextInstA, InstB, MaybeType, !Info)
+            inst_matches_binding_mt(MaybeType, NextInstA, InstB, !Info)
         )
     ;
         InstA = ground(_, _),
         InstB = any(UniqB, HOInstInfoB),
-        maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqB,
+        maybe_any_to_bound(!.Info ^ imi_module_info, MaybeType, UniqB,
             HOInstInfoB, NextInstB),
-        inst_matches_binding_mt(InstA, NextInstB, MaybeType, !Info)
+        inst_matches_binding_mt(MaybeType, InstA, NextInstB, !Info)
     ;
         InstA = bound(_UniqA, InstResultsA, BoundInstsA),
         (
             InstB = any(UniqB, HOInstInfoB),
-            maybe_any_to_bound(MaybeType, !.Info ^ imi_module_info, UniqB,
+            maybe_any_to_bound(!.Info ^ imi_module_info, MaybeType, UniqB,
                 HOInstInfoB, NextInstB),
-            inst_matches_binding_mt(InstA, NextInstB, MaybeType, !Info)
+            inst_matches_binding_mt(MaybeType, InstA, NextInstB, !Info)
         ;
             InstB = bound(_UniqB, _InstResultB, BoundInstsB),
-            bound_inst_list_matches_binding(BoundInstsA, BoundInstsB,
-                MaybeType, !Info)
+            bound_inst_list_matches_binding(MaybeType,
+                BoundInstsA, BoundInstsB, !Info)
         ;
             InstB = ground(_UniqB, none_or_default_func),
-            inst_results_bound_inst_list_is_ground_mt(InstResultsA,
-                BoundInstsA, MaybeType, !.Info ^ imi_module_info),
+            inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
+                MaybeType, InstResultsA, BoundInstsA),
             inst_contains_nondefault_func_mode_1(InstA, no, !Info)
         )
     ;
         InstA = ground(_UniqA, HOInstInfoA),
         (
             InstB = bound(_UniqB, InstResultsB, BoundInstsB),
-            inst_results_bound_inst_list_is_ground_mt(InstResultsB,
-                BoundInstsB, MaybeType, !.Info ^ imi_module_info),
+            inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
+                MaybeType, InstResultsB, BoundInstsB),
             inst_contains_nondefault_func_mode_1(InstB, no, !Info),
             (
                 MaybeType = yes(Type),
                 % We can only do this check if the type is known.
-                bound_inst_list_is_complete_for_type(set.init,
-                    !.Info ^ imi_module_info, BoundInstsB, Type)
+                bound_inst_list_is_complete_for_type(!.Info ^ imi_module_info,
+                    set.init, Type, BoundInstsB)
             ;
                 MaybeType = no,
                 fail
             )
         ;
             InstB = ground(_UniqB, HOInstInfoB),
-            ho_inst_info_matches_binding(HOInstInfoA, HOInstInfoB, MaybeType,
-                !.Info ^ imi_module_info)
+            ho_inst_info_matches_binding(!.Info ^ imi_module_info,
+                MaybeType, HOInstInfoA, HOInstInfoB)
         )
     ;
         InstA = abstract_inst(Name, ArgsA),
         InstB = abstract_inst(Name, ArgsB),
         list.duplicate(length(ArgsA), no, MaybeTypes),
         % XXX how do we get the argument types for an abstract inst?
-        inst_list_matches_binding(ArgsA, ArgsB, MaybeTypes, !Info)
+        inst_list_matches_binding(MaybeTypes, ArgsA, ArgsB, !Info)
     ;
         InstA = not_reached
     ).
 
-:- pred ho_inst_info_matches_binding(ho_inst_info::in, ho_inst_info::in,
-    maybe(mer_type)::in, module_info::in) is semidet.
+:- pred ho_inst_info_matches_binding(module_info::in, maybe(mer_type)::in,
+    ho_inst_info::in, ho_inst_info::in) is semidet.
 
-ho_inst_info_matches_binding(HOInstInfoA, HOInstInfoB, MaybeType,
-        ModuleInfo) :-
+ho_inst_info_matches_binding(ModuleInfo, MaybeType,
+        HOInstInfoA, HOInstInfoB) :-
     (
         HOInstInfoB = none_or_default_func,
         ho_inst_info_matches_ground_mt(ModuleInfo, HOInstInfoA, MaybeType)
@@ -1207,22 +1212,22 @@ ho_inst_info_matches_binding(HOInstInfoA, HOInstInfoB, MaybeType,
             PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
             Arity = list.length(ArgModes),
             PredInstA = pred_inst_info_default_func_mode(Arity),
-            pred_inst_matches_mt(PredInstA, PredInstB, MaybeType, ModuleInfo)
+            pred_inst_matches_mt(ModuleInfo, MaybeType, PredInstA, PredInstB)
         ;
             HOInstInfoA = higher_order(PredInstA),
-            pred_inst_matches_mt(PredInstA, PredInstB, MaybeType, ModuleInfo)
+            pred_inst_matches_mt(ModuleInfo, MaybeType, PredInstA, PredInstB)
         )
     ).
 
-:- pred inst_list_matches_binding(list(mer_inst)::in, list(mer_inst)::in,
-    list(maybe(mer_type))::in, inst_match_info::in, inst_match_info::out)
-    is semidet.
+:- pred inst_list_matches_binding(list(maybe(mer_type))::in,
+    list(mer_inst)::in, list(mer_inst)::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
 
 inst_list_matches_binding([], [], [], !Info).
-inst_list_matches_binding([ArgA | ArgsA], [ArgB | ArgsB],
-        [MaybeType | MaybeTypes], !Info) :-
-    inst_matches_binding_mt(ArgA, ArgB, MaybeType, !Info),
-    inst_list_matches_binding(ArgsA, ArgsB, MaybeTypes, !Info).
+inst_list_matches_binding([MaybeType | MaybeTypes],
+        [ArgA | ArgsA], [ArgB | ArgsB], !Info) :-
+    inst_matches_binding_mt(MaybeType, ArgA, ArgB, !Info),
+    inst_list_matches_binding(MaybeTypes, ArgsA, ArgsB, !Info).
 
     % Here we check that the functors in the first list are a subset of the
     % functors in the second list. (If a bound(...) inst only specifies
@@ -1231,26 +1236,26 @@ inst_list_matches_binding([ArgA | ArgsA], [ArgB | ArgsB],
     % `not_reached'.) The code here makes use of the fact that the bound_inst
     % lists are sorted.
     %
-:- pred bound_inst_list_matches_binding(list(bound_inst)::in,
-    list(bound_inst)::in, maybe(mer_type)::in,
+:- pred bound_inst_list_matches_binding(maybe(mer_type)::in,
+    list(bound_inst)::in, list(bound_inst)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-bound_inst_list_matches_binding([], _, _, !Info).
-bound_inst_list_matches_binding([X | Xs], [Y | Ys], MaybeType, !Info) :-
+bound_inst_list_matches_binding(_, [], _, !Info).
+bound_inst_list_matches_binding(MaybeType, [X | Xs], [Y | Ys], !Info) :-
     X = bound_functor(ConsIdX, ArgsX),
     Y = bound_functor(ConsIdY, ArgsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         maybe_get_cons_id_arg_types(!.Info ^ imi_module_info, MaybeType,
             ConsIdX, list.length(ArgsX), MaybeTypes),
-        inst_list_matches_binding(ArgsX, ArgsY, MaybeTypes, !Info),
-        bound_inst_list_matches_binding(Xs, Ys, MaybeType, !Info)
+        inst_list_matches_binding(MaybeTypes, ArgsX, ArgsY, !Info),
+        bound_inst_list_matches_binding(MaybeType, Xs, Ys, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdX does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_binding Y. We just
         % need to check that [X | Xs] matches_binding Ys.
-        bound_inst_list_matches_binding([X | Xs], Ys, MaybeType, !Info)
+        bound_inst_list_matches_binding(MaybeType, [X | Xs], Ys, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1305,7 +1310,7 @@ inst_contains_nondefault_func_mode_2(Inst, !.Expansions, ContainsNonstd,
         !Info) :-
     (
         Inst = ground(_, HOInstInfo),
-        ( if ho_inst_info_matches_ground_2(HOInstInfo, no, !Info) then
+        ( if ho_inst_info_matches_ground_2(no, HOInstInfo, !Info) then
             ContainsNonstd = no
         else
             ContainsNonstd = yes
@@ -1402,34 +1407,34 @@ ho_inst_info_matches_ground(ModuleInfo, HOInstInfo) :-
 ho_inst_info_matches_ground_mt(ModuleInfo, HOInstInfo, MaybeType) :-
     Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none, uc_match,
         any_does_match_any, ground_matches_bound_if_complete),
-    ho_inst_info_matches_ground_2(HOInstInfo, MaybeType, Info, _).
+    ho_inst_info_matches_ground_2(MaybeType, HOInstInfo, Info, _).
 
-:- pred ho_inst_info_matches_ground_2(ho_inst_info::in, maybe(mer_type)::in,
+:- pred ho_inst_info_matches_ground_2(maybe(mer_type)::in, ho_inst_info::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-ho_inst_info_matches_ground_2(HOInstInfo, MaybeType, !Info) :-
+ho_inst_info_matches_ground_2(MaybeType, HOInstInfo, !Info) :-
     (
         HOInstInfo = higher_order(PredInst),
-        pred_inst_matches_ground_2(PredInst, MaybeType, !Info)
+        pred_inst_matches_ground_2(MaybeType, PredInst, !Info)
     ;
         HOInstInfo = none_or_default_func
     ).
 
 pred_inst_matches_ground(ModuleInfo, PredInst) :-
-    pred_inst_matches_ground_mt(ModuleInfo, PredInst, no).
+    pred_inst_matches_ground_mt(ModuleInfo, no, PredInst).
 
-:- pred pred_inst_matches_ground_mt(module_info::in, pred_inst_info::in,
-    maybe(mer_type)::in) is semidet.
+:- pred pred_inst_matches_ground_mt(module_info::in, maybe(mer_type)::in,
+    pred_inst_info::in) is semidet.
 
-pred_inst_matches_ground_mt(ModuleInfo, PredInst, MaybeType) :-
+pred_inst_matches_ground_mt(ModuleInfo, MaybeType, PredInst) :-
     Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none, uc_match,
         any_does_match_any, ground_matches_bound_if_complete),
-    pred_inst_matches_ground_2(PredInst, MaybeType, Info, _).
+    pred_inst_matches_ground_2(MaybeType, PredInst, Info, _).
 
-:- pred pred_inst_matches_ground_2(pred_inst_info::in, maybe(mer_type)::in,
+:- pred pred_inst_matches_ground_2(maybe(mer_type)::in, pred_inst_info::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-pred_inst_matches_ground_2(PredInst, MaybeType, !Info) :-
+pred_inst_matches_ground_2(MaybeType, PredInst, !Info) :-
     PredInst = pred_inst_info(PredOrFunc, ArgModes, _, _),
     (
         PredOrFunc = pf_predicate
@@ -1437,33 +1442,34 @@ pred_inst_matches_ground_2(PredInst, MaybeType, !Info) :-
         PredOrFunc = pf_function,
         Arity = list.length(ArgModes),
         DefaultFunc = pred_inst_info_default_func_mode(Arity),
-        pred_inst_matches_2(PredInst, DefaultFunc, MaybeType, !Info)
+        pred_inst_matches_2(MaybeType, PredInst, DefaultFunc, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
 
-pred_inst_matches(PredInstA, PredInstB, ModuleInfo) :-
-    pred_inst_matches_mt(PredInstA, PredInstB, no, ModuleInfo).
+pred_inst_matches(ModuleInfo, PredInstA, PredInstB) :-
+    pred_inst_matches_mt(ModuleInfo, no, PredInstA, PredInstB).
 
-:- pred pred_inst_matches_mt(pred_inst_info::in, pred_inst_info::in,
-    maybe(mer_type)::in, module_info::in) is semidet.
+:- pred pred_inst_matches_mt(module_info::in, maybe(mer_type)::in,
+    pred_inst_info::in, pred_inst_info::in) is semidet.
 
-pred_inst_matches_mt(PredInstA, PredInstB, MaybeType, ModuleInfo) :-
+pred_inst_matches_mt(ModuleInfo, MaybeType, PredInstA, PredInstB) :-
     Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    pred_inst_matches_2(PredInstA, PredInstB, MaybeType, Info0, _).
+    pred_inst_matches_2(MaybeType, PredInstA, PredInstB, Info0, _).
 
-    % pred_inst_matches_2(PredInstA, PredInstB, !Info)
+    % pred_inst_matches_2(MaybeType, PredInstA, PredInstB, !Info)
     %
     % Same as pred_inst_matches/3, except that it updates the inst_var_sub
     % in the inst_match_info, and that any inst pairs in !.Info ^ expansions
     % are assumed to match_final each other. (This avoids infinite loops
     % when calling inst_matches_final on higher-order recursive insts.)
     %
-:- pred pred_inst_matches_2(pred_inst_info::in, pred_inst_info::in,
-    maybe(mer_type)::in, inst_match_info::in, inst_match_info::out) is semidet.
+:- pred pred_inst_matches_2(maybe(mer_type)::in,
+    pred_inst_info::in, pred_inst_info::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
 
-pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info) :-
+pred_inst_matches_2(MaybeType, PredInstA, PredInstB, !Info) :-
     % In the float_regs.m pass a variable may take on pred insts which differ
     % only in the arg reg lists in different branches. They should be allowed
     % to match here.
@@ -1471,11 +1477,11 @@ pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info) :-
     PredInstB = pred_inst_info(PredOrFunc, ModesB, _MaybeArgRegsB, Det),
     maybe_get_higher_order_arg_types(MaybeType, list.length(ModesA),
         MaybeTypes),
-    pred_inst_argmodes_matches(ModesA, ModesB, MaybeTypes, !Info).
+    pred_inst_argmodes_matches(MaybeTypes, ModesA, ModesB, !Info).
 
-    % pred_inst_argmodes_matches(ModesA, ModesB, MaybeTypes, !Info):
+    % pred_inst_argmodes_matches(MaybeTypes, ModesA, ModesB, !Info):
     %
-    % succeeds if the initial insts of ModesB specify at least as much
+    % Succeeds if the initial insts of ModesB specify at least as much
     % information as, and the same binding as, the initial insts of ModesA;
     % and the final insts of ModesA specify at least as much information as,
     % and the same binding as, the final insts of ModesB. Any inst pairs
@@ -1485,23 +1491,23 @@ pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info) :-
     % the initial insts, and covariant in the final insts;
     % as far as binding goes, it is invariant for both.)
     %
-:- pred pred_inst_argmodes_matches(list(mer_mode)::in, list(mer_mode)::in,
-    list(maybe(mer_type))::in, inst_match_info::in, inst_match_info::out)
-    is semidet.
+:- pred pred_inst_argmodes_matches(list(maybe(mer_type))::in,
+    list(mer_mode)::in, list(mer_mode)::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
 
 pred_inst_argmodes_matches([], [], [], !Info).
-pred_inst_argmodes_matches([ModeA | ModeAs], [ModeB | ModeBs],
-        [MaybeType | MaybeTypes], !Info) :-
+pred_inst_argmodes_matches([MaybeType | MaybeTypes],
+        [ModeA | ModeAs], [ModeB | ModeBs], !Info) :-
     ModuleInfo = !.Info ^ imi_module_info,
     mode_get_insts(ModuleInfo, ModeA, InitialA, FinalA0),
     mode_get_insts(ModuleInfo, ModeB, InitialB, FinalB),
     % inst_matches_final_mt should probably just accept cs_reverse directly.
-    swap_sub(inst_matches_final_mt(InitialB, InitialA, MaybeType), !Info),
+    swap_sub(inst_matches_final_mt(MaybeType, InitialB, InitialA), !Info),
     % Apply the substitution computed so far (it may be necessary for InitialA
     % as well).
     maybe_apply_substitution(!.Info, FinalA0, FinalA),
-    inst_matches_final_mt(FinalA, FinalB, MaybeType, !Info),
-    pred_inst_argmodes_matches(ModeAs, ModeBs, MaybeTypes, !Info).
+    inst_matches_final_mt(MaybeType, FinalA, FinalB, !Info),
+    pred_inst_argmodes_matches(MaybeTypes, ModeAs, ModeBs, !Info).
 
 :- pred maybe_apply_substitution(inst_match_info::in,
     mer_inst::in, mer_inst::out) is det.

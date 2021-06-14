@@ -1737,7 +1737,7 @@ compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
     SaveSub = !.Sub,
     instmap_lookup_var(InstMap, Arg, ArgInst),
     lookup_var_type(VarTypes, Arg, Type),
-    ( if inst_matches_initial_sub(ArgInst, Inst, Type, !ModuleInfo, !Sub) then
+    ( if inst_matches_initial_sub(Type, ArgInst, Inst, !ModuleInfo, !Sub) then
         true
     else
         % error("compute_inst_var_sub: " ++

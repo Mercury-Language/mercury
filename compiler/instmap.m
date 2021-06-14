@@ -743,7 +743,7 @@ var_is_not_output(ModuleInfo, VarTypes, InstMap0, InstMapDeltaMap, Var) :-
         % to allow the caller to specify what kinds of deviations from an exact
         % syntactic match are ok.
         lookup_var_type(VarTypes, Var, Type),
-        inst_matches_binding(NewInst, OldInst, Type, ModuleInfo)
+        inst_matches_binding(ModuleInfo, Type, NewInst, OldInst)
     else
         % If the instmap delta doesn't contain the variable, it may still
         % have been (partially) output, if its inst is (or contains) `any'.
@@ -771,7 +771,7 @@ instmap_changed_vars_loop(ModuleInfo, VarTypes, [VarB | VarBs],
     instmap_lookup_var(InstMapB, VarB, FinalInst),
     lookup_var_type(VarTypes, VarB, Type),
     ( if
-        inst_matches_final_typed(InitialInst, FinalInst, Type, ModuleInfo)
+        inst_matches_final_typed(ModuleInfo, Type, InitialInst, FinalInst)
     then
         ChangedVars = ChangedVars0
     else

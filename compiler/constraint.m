@@ -342,7 +342,7 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
             instmap_lookup_var(InstMap0, Var, InstBefore),
             instmap_delta_search_var(InstMapDelta, Var, InstAfter),
             lookup_var_type(VarTypes, Var, Type),
-            not inst_matches_initial(InstAfter, InstBefore, Type, ModuleInfo)
+            not inst_matches_initial(ModuleInfo, Type, InstAfter, InstBefore)
         ),
     IncompatibleInstVars = set_of_var.list_to_set(
         list.filter(InCompatible, InstMapVars)),
@@ -356,7 +356,7 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
             instmap_lookup_var(InstMap0, Var, InstBefore),
             instmap_delta_search_var(InstMapDelta, Var, InstAfter),
             lookup_var_type(VarTypes, Var, Type),
-            not inst_matches_binding(InstAfter, InstBefore, Type, ModuleInfo)
+            not inst_matches_binding(ModuleInfo, Type, InstAfter, InstBefore)
         ),
     BoundVars = set_of_var.list_to_set(list.filter(Bound, InstMapVars)),
 

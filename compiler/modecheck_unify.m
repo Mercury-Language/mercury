@@ -387,9 +387,8 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
                 instmap_lookup_var(InstMap1, NonLocal, NonLocalInst),
                 % XXX should filter other higher-order any vars, not just
                 % functions with the default mode.
-                not inst_matches_initial(NonLocalInst,
-                    any(shared, none_or_default_func),
-                    NonLocalType, ModuleInfo0)
+                not inst_matches_initial(ModuleInfo0, NonLocalType,
+                    NonLocalInst, any(shared, none_or_default_func))
             ),
         set_of_var.filter(FilterPred, NonLocals1, NonLocals)
     ),
@@ -414,9 +413,9 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
             Groundness = ho_ground,
             Purity \= purity_impure
         then
-            inst_list_is_ground(NonLocalInsts, ModuleInfo2)
+            inst_list_is_ground(ModuleInfo2, NonLocalInsts)
         else
-            inst_list_is_ground_or_any(NonLocalInsts, ModuleInfo2)
+            inst_list_is_ground_or_any(ModuleInfo2, NonLocalInsts)
         )
     then
         make_shared_inst_list(NonLocalInsts, SharedNonLocalInsts,
@@ -1589,7 +1588,7 @@ match_mode_by_higher_order_insts(ModuleInfo, VarTypes, InstMap,
     ( if Initial = ground(_, higher_order(_)) then
         instmap_lookup_var(InstMap, ArgVar, ArgInst),
         lookup_var_type(VarTypes, ArgVar, ArgType),
-        ( if inst_matches_initial(ArgInst, Initial, ArgType, ModuleInfo) then
+        ( if inst_matches_initial(ModuleInfo, ArgType, ArgInst, Initial) then
             NonGroundArgVars = TailNonGroundArgVars,
             Result = TailResult
         else

@@ -811,7 +811,7 @@ partition_deconstruct_args(Info, Vars, ArgModes, InputVars, OutputVars) :-
 
         % If the inst of the argument of the LHS is changed,
         % the argument is input.
-        ( if inst_matches_binding(InitX, FinalX, HeadType, ModuleInfo) then
+        ( if inst_matches_binding(ModuleInfo, HeadType, InitX, FinalX) then
             InputVars = InputVarsTail
         else
             InputVars = [HeadVar | InputVarsTail]
@@ -819,7 +819,7 @@ partition_deconstruct_args(Info, Vars, ArgModes, InputVars, OutputVars) :-
 
         % If the inst of the argument of the RHS is changed,
         % the argument is output.
-        ( if inst_matches_binding(InitY, FinalY, HeadType, ModuleInfo) then
+        ( if inst_matches_binding(ModuleInfo, HeadType, InitY, FinalY) then
             OutputVars = OutputVarsTail
         else
             OutputVars = [HeadVar | OutputVarsTail]

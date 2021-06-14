@@ -1068,7 +1068,7 @@ find_satisfied_initial_insts_in_proc(ModuleInfo,
         ProcNum, !ArgNumMatchedProcs) :-
     ArgTuple = argnum_var_type_inst(ArgNum, _Var, VarType, VarInst),
     ( if
-        inst_matches_initial_sub(VarInst, ProcInitialInst, VarType,
+        inst_matches_initial_sub(VarType, VarInst, ProcInitialInst,
             ModuleInfo, _UpdatedModuleInfo, map.init, _Subst)
     then
         multi_map.add(ArgNum, ProcNum, !ArgNumMatchedProcs)

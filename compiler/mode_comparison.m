@@ -385,12 +385,12 @@ compare_inst(ModuleInfo, InstA, InstB, MaybeArgInst, Type, Result) :-
     %   and at least as much binding as B --
     %   with the exception that `any' matches_initial `free'
     %   and perhaps vice versa.
-    ( if inst_matches_initial(InstA, InstB, Type, ModuleInfo) then
+    ( if inst_matches_initial(ModuleInfo, Type, InstA, InstB) then
         A_mi_B = yes
     else
         A_mi_B = no
     ),
-    ( if inst_matches_initial(InstB, InstA, Type, ModuleInfo) then
+    ( if inst_matches_initial(ModuleInfo, Type, InstB, InstA) then
         B_mi_A = yes
     else
         B_mi_A = no
@@ -411,16 +411,16 @@ compare_inst(ModuleInfo, InstA, InstB, MaybeArgInst, Type, Result) :-
         ;
             MaybeArgInst = yes(ArgInst),
             ( if
-                inst_matches_initial_no_implied_modes(ArgInst,
-                    InstA, Type, ModuleInfo)
+                inst_matches_initial_no_implied_modes(ModuleInfo, Type,
+                    ArgInst, InstA)
             then
                 Arg_mf_A = yes
             else
                 Arg_mf_A = no
             ),
             ( if
-                inst_matches_initial_no_implied_modes(ArgInst,
-                    InstB, Type, ModuleInfo)
+                inst_matches_initial_no_implied_modes(ModuleInfo, Type,
+                    ArgInst, InstB)
             then
                 Arg_mf_B = yes
             else
@@ -437,16 +437,16 @@ compare_inst(ModuleInfo, InstA, InstB, MaybeArgInst, Type, Result) :-
             % If the actual arg inst is not available, or comparing with
             % the arg inst doesn't help, then compare the two proc insts.
             ( if
-                inst_matches_initial_no_implied_modes(InstA,
-                    InstB, Type, ModuleInfo)
+                inst_matches_initial_no_implied_modes(ModuleInfo, Type,
+                    InstA, InstB)
             then
                 A_mf_B = yes
             else
                 A_mf_B = no
             ),
             ( if
-                inst_matches_initial_no_implied_modes(InstB,
-                    InstA, Type, ModuleInfo)
+                inst_matches_initial_no_implied_modes(ModuleInfo, Type,
+                    InstB, InstA)
             then
                 B_mf_A = yes
             else

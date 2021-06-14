@@ -1530,8 +1530,8 @@ check_final_inst(InferModes, GroundMatchesBound,
     mode_info_get_var_types(!.ModeInfo, VarTypes),
     lookup_var_type(VarTypes, Var, Type),
     ( if
-        inst_matches_final_gmb(VarInst, ExpectedInst, Type,
-            ModuleInfo, GroundMatchesBound)
+        inst_matches_final_gmb(ModuleInfo, GroundMatchesBound, Type,
+            VarInst, ExpectedInst)
     then
         true
     else
@@ -1546,7 +1546,7 @@ check_final_inst(InferModes, GroundMatchesBound,
             % XXX This might need to be reconsidered now we have
             % unique modes.
             ( if
-                inst_matches_initial(VarInst, ExpectedInst, Type, ModuleInfo)
+                inst_matches_initial(ModuleInfo, Type, VarInst, ExpectedInst)
             then
                 Reason = too_instantiated
             else if
@@ -1564,7 +1564,7 @@ check_final_inst(InferModes, GroundMatchesBound,
                 % is. In the extremely common case that Inst is `ground',
                 % we need only the latter, but we can't get it by itself.
                 ( ExpectedInst = ground(shared, none_or_default_func)
-                ; inst_matches_initial(ExpectedInst, VarInst, Type, ModuleInfo)
+                ; inst_matches_initial(ModuleInfo, Type, ExpectedInst, VarInst)
                 )
             then
                 Reason = not_instantiated_enough
