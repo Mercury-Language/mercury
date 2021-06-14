@@ -580,7 +580,7 @@ dead_proc_examine_const_struct_args([Arg | Args], !Queue, !Needed) :-
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
     is det.
 
-dead_proc_examine_proc(ModuleInfo, AnalyzeTraceGoalProcs, PredProcId,
+dead_proc_examine_proc(ModuleInfo, AnalyzeDeletedCalls, PredProcId,
         !Queue, !Needed) :-
     PredProcId = proc(PredId, ProcId),
     ( if
@@ -593,17 +593,16 @@ dead_proc_examine_proc(ModuleInfo, AnalyzeTraceGoalProcs, PredProcId,
     then
         trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
             get_debug_output_stream(ModuleInfo, DebugStream, !IO),
-            io.format(DebugStream, "examining proc %d %d %s\n",
-                [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId)),
-                s(string.string(AnalyzeTraceGoalProcs))], !IO)
+            io.format(DebugStream, "examining proc %d %d\n",
+                [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))], !IO)
         ),
         proc_info_get_goal(ProcInfo, Goal),
         dead_proc_examine_goal(ModuleInfo, PredProcId, Goal,
             !Queue, !Needed),
         (
-            AnalyzeTraceGoalProcs = do_not_analyze_link_deleted_calls
+            AnalyzeDeletedCalls = do_not_analyze_link_deleted_calls
         ;
-            AnalyzeTraceGoalProcs = analyze_link_deleted_calls,
+            AnalyzeDeletedCalls = analyze_link_deleted_calls,
             proc_info_get_deleted_call_callees(ProcInfo, DeletedCallCallees),
             set.foldl2(need_trace_goal_proc, DeletedCallCallees,
                 !Queue, !Needed)
