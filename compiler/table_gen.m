@@ -177,14 +177,12 @@ table_gen_process_procs(TraceTableIO, PredId, [ProcId | ProcIds],
 table_gen_process_proc(TraceTableIO, PredId, ProcId, ProcInfo0, PredInfo0,
         !ModuleInfo, !GenMap, !Specs) :-
     proc_info_get_eval_method(ProcInfo0, EvalMethod),
-    RequiresTablingTransform =
-        eval_method_requires_tabling_transform(EvalMethod),
     (
-        RequiresTablingTransform = yes,
-        table_gen_transform_proc_if_possible(EvalMethod, PredId,
+        EvalMethod = eval_tabled(TabledMethod),
+        table_gen_transform_proc_if_possible(TabledMethod, PredId,
             ProcId, ProcInfo0, _, PredInfo0, _, !ModuleInfo, !GenMap, !Specs)
     ;
-        RequiresTablingTransform = no,
+        EvalMethod = eval_normal,
         ( if
             TraceTableIO = yes,
             proc_info_has_io_state_pair(!.ModuleInfo, ProcInfo0,
@@ -256,8 +254,9 @@ table_gen_process_io_proc(PredId, ProcId, ProcInfo0, PredInfo0,
             TraceTableIoOnlyRetry = yes,
             EntryKind = entry_stores_outputs
         ),
-        TableIoMethod = eval_table_io(EntryKind, Unitize),
-        proc_info_set_eval_method(TableIoMethod, ProcInfo0, ProcInfo1),
+        TableIoMethod = tabled_io(EntryKind, Unitize),
+        proc_info_set_eval_method(eval_tabled(TableIoMethod),
+            ProcInfo0, ProcInfo1),
         table_gen_transform_proc_if_possible(TableIoMethod,
             PredId, ProcId, ProcInfo1, _, PredInfo0, _, !ModuleInfo,
             !GenMap, !Specs)
@@ -368,40 +367,27 @@ report_missing_tabled_for_io(PredInfo, PredId, ProcId, ModuleInfo) = Spec :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred table_gen_transform_proc_if_possible(eval_method::in,
+:- pred table_gen_transform_proc_if_possible(tabled_eval_method::in,
     pred_id::in, proc_id::in, proc_info::in, proc_info::out,
     pred_info::in, pred_info::out, module_info::in, module_info::out,
     generator_map::in, generator_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-table_gen_transform_proc_if_possible(EvalMethod, PredId, ProcId,
+table_gen_transform_proc_if_possible(TabledMethod, PredId, ProcId,
         !ProcInfo, !PredInfo, !ModuleInfo, !GenMap, !Specs) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    current_grade_supports_tabling(Globals, IsTablingSupported),
+    find_grade_problems_for_tabling(!.ModuleInfo, PredId, ProcId, TabledMethod,
+        GradeSpecs),
     (
-        IsTablingSupported = yes,
-        table_gen_transform_proc(EvalMethod, PredId, ProcId,
+        GradeSpecs = [],
+        table_gen_transform_proc(TabledMethod, PredId, ProcId,
             !ProcInfo, !PredInfo, !ModuleInfo, !GenMap)
     ;
-        IsTablingSupported = no,
-        ( if EvalMethod = eval_memo(table_attr_ignore_without_warning) then
+        GradeSpecs = [_ | _],
+        ( if TabledMethod = tabled_memo(table_attr_ignore_without_warning) then
             true
         else
-            pred_info_get_context(!.PredInfo, Context),
-            ProcPieces = describe_one_proc_name(!.ModuleInfo,
-                should_module_qualify, proc(PredId, ProcId)),
-            EvalMethodStr = eval_method_to_string(EvalMethod),
-            Pieces = [words("Ignoring the pragma"), fixed(EvalMethodStr),
-                words("for")] ++ ProcPieces ++
-                [words("due to lack of support on this back end."), nl],
-            % We use severity_informational because severity_warning
-            % would combine with --halt-at-warn to prevent the clean
-            % compilation of the library and the compiler.
-            Spec = simplest_spec($pred, severity_informational, phase_code_gen,
-                Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            !:Specs = GradeSpecs ++ !.Specs
         ),
-
         % XXX We set the evaluation method to eval_normal here to prevent
         % problems in the ml code generator if we are compiling in a grade
         % that does not support tabling. (See ml_gen_maybe_add_table_var/6
@@ -410,18 +396,153 @@ table_gen_transform_proc_if_possible(EvalMethod, PredId, ProcId,
         % We do this here rather than when processing the tabling pragmas
         % (in add_pragma.m) so that we can still generate error messages
         % for misuses of the tabling pragmas.
-
         proc_info_set_eval_method(eval_normal, !ProcInfo),
         module_info_set_pred_proc_info(PredId, ProcId, !.PredInfo,
             !.ProcInfo, !ModuleInfo)
     ).
 
-:- pred table_gen_transform_proc(eval_method::in, pred_id::in, proc_id::in,
+:- pred find_grade_problems_for_tabling(module_info::in,
+    pred_id::in, proc_id::in, tabled_eval_method::in,
+    list(error_spec)::out) is det.
+
+find_grade_problems_for_tabling(ModuleInfo, PredId, ProcId, TabledMethod,
+        !:Specs) :-
+    % We use severity_informational for any messages because severity_warning
+    % would combine with --halt-at-warn to prevent the clean compilation
+    % of the library and the compiler.
+    %
+    % Please keep this code in sync with current_grade_supports_tabling
+    % in globals.m.
+    !:Specs = [],
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    (
+        Target = target_c
+    ;
+        ( Target = target_csharp
+        ; Target = target_java
+        ),
+        tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
+            TabledMethod, TargetContext, TargetPrefixPieces),
+        TargetPieces = TargetPrefixPieces ++
+            [words("tabling is implemented only on the C backend."), nl],
+        TargetSpec = simplest_spec($pred, severity_informational,
+            phase_code_gen, TargetContext, TargetPieces),
+        !:Specs = [TargetSpec | !.Specs]
+    ),
+    globals.get_gc_method(Globals, GC),
+    (
+        GC = gc_accurate,
+        tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
+            TabledMethod, GcContext, GcPrefixPieces),
+        GcPieces = GcPrefixPieces ++
+            [words("tabling is not compatible with --gc accurate."), nl],
+        GcSpec = simplest_spec($pred, severity_informational,
+            phase_code_gen, GcContext, GcPieces),
+        !:Specs = [GcSpec | !.Specs]
+    ;
+        GC = gc_hgc,
+        tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
+            TabledMethod, GcContext, GcPrefixPieces),
+        GcPieces = GcPrefixPieces ++
+            [words("tabling is not compatible with --gc hgc."), nl],
+        GcSpec = simplest_spec($pred, severity_informational,
+            phase_code_gen, GcContext, GcPieces),
+        !:Specs = [GcSpec | !.Specs]
+    ;
+        ( GC = gc_automatic
+        ; GC = gc_none
+        ; GC = gc_boehm
+        ; GC = gc_boehm_debug
+        )
+    ),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    (
+        Parallel = no
+    ;
+        Parallel = yes,
+        tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
+            TabledMethod, ParContext, ParPrefixPieces),
+        ParPieces = ParPrefixPieces ++
+            [words("tabling is not compatible with parallel execution."), nl],
+        ParSpec = simplest_spec($pred, severity_informational,
+            phase_code_gen, ParContext, ParPieces),
+        !:Specs = [ParSpec | !.Specs]
+    ),
+    (
+        TabledMethod = tabled_minimal(_),
+        globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+        (
+            HighLevelCode = yes,
+            tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
+                TabledMethod, HighLevelCodeContext, HighLevelCodePrefixPieces),
+            HighLevelCodePieces = HighLevelCodePrefixPieces ++
+                [words("minimal model tabling"),
+                words("is not compatible with generating high level code."),
+                nl],
+            HighLevelCodeSpec = simplest_spec($pred, severity_informational,
+                phase_code_gen, HighLevelCodeContext, HighLevelCodePieces),
+            !:Specs = [HighLevelCodeSpec | !.Specs]
+        ;
+            HighLevelCode = no
+        ),
+        globals.lookup_bool_option(Globals, use_trail, UseTrail),
+        (
+            UseTrail = yes,
+            tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
+                TabledMethod, TrailContext, TrailPrefixPieces),
+            TrailPieces = TrailPrefixPieces ++
+                [words("minimal model tabling"),
+                words("is not compatible with trailing."), nl],
+            TrailSpec = simplest_spec($pred, severity_informational,
+                phase_code_gen, TrailContext, TrailPieces),
+            !:Specs = [TrailSpec | !.Specs]
+        ;
+            UseTrail = no
+        ),
+        globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
+        globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
+        ( if ( ProfileCalls = yes ; ProfileDeep = yes ) then
+            tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId,
+                TabledMethod, ProfContext, ProfPrefixPieces),
+            ProfPieces = ProfPrefixPieces ++
+                [words("minimal model tabling"),
+                words("is not compatible with profiling."), nl],
+            ProfSpec = simplest_spec($pred, severity_informational,
+                phase_code_gen, ProfContext, ProfPieces),
+            !:Specs = [ProfSpec | !.Specs]
+        else
+            true
+        )
+    ;
+        ( TabledMethod = tabled_loop_check
+        ; TabledMethod = tabled_memo(_)
+        ; TabledMethod = tabled_io(_, _)
+        )
+    ).
+
+:- pred tabling_grade_error_prefix_pieces(module_info::in,
+    pred_id::in, proc_id::in, tabled_eval_method::in,
+    prog_context::out, list(format_component)::out) is det.
+
+tabling_grade_error_prefix_pieces(ModuleInfo, PredId, ProcId, TabledMethod,
+        Context, PrefixPieces) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_context(PredInfo, Context),
+    ProcPieces = describe_one_proc_name(ModuleInfo, should_module_qualify,
+        proc(PredId, ProcId)),
+    TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
+    PrefixPieces = [words("Ignoring the"), pragma_decl(TabledMethodStr),
+        words("declaration for")] ++ ProcPieces ++
+        [suffix(","), words("because")].
+
+:- pred table_gen_transform_proc(tabled_eval_method::in,
+    pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, pred_info::in, pred_info::out,
     module_info::in, module_info::out,
     generator_map::in, generator_map::out) is det.
 
-table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
+table_gen_transform_proc(TabledMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         !ModuleInfo, !GenMap) :-
     table_info_init(!.ModuleInfo, !.PredInfo, !.ProcInfo, TableInfo0),
 
@@ -440,24 +561,18 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         MaybeAttributes = no,
         Attributes = default_memo_table_attributes
     ),
-
     (
-        EvalMethod = eval_normal,
-        % This should have been caught by our caller.
-        unexpected($pred, "eval_normal")
-    ;
-        EvalMethod = eval_table_io(_, _),
-        expect(unify(MaybeAttributes, no), $pred,
-            "eval_table_io and Attributes"),
+        TabledMethod = tabled_io(_, _),
+        expect(unify(MaybeAttributes, no), $pred, "tabled_io and Attributes"),
         % Since we don't actually create a call table for I/O tabled
         % procedures, the value of MaybeSpecMethod doesn't really matter.
         MaybeSpecMethod = msm_all_same(arg_value),
         Statistics = table_dont_gather_statistics,
         MaybeSizeLimit = no
     ;
-        ( EvalMethod = eval_loop_check
-        ; EvalMethod = eval_memo(_)
-        ; EvalMethod = eval_minimal(_)
+        ( TabledMethod = tabled_loop_check
+        ; TabledMethod = tabled_memo(_)
+        ; TabledMethod = tabled_minimal(_)
         ),
         CallStrictness = Attributes ^ table_attr_strictness,
         Statistics = Attributes ^ table_attr_statistics,
@@ -473,24 +588,23 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
             MaybeSpecMethod = msm_specified(ArgMethods, HiddenArgMethod)
         ),
         (
-            EvalMethod = eval_loop_check
+            TabledMethod = tabled_loop_check
         ;
-            EvalMethod = eval_memo(_)
+            TabledMethod = tabled_memo(_)
         ;
-            EvalMethod = eval_minimal(_),
+            TabledMethod = tabled_minimal(_),
             expect(unify(MaybeSizeLimit, no), $pred,
-                "eval_minimal with size limit"),
+                "tabled_minimal with size limit"),
             expect(unify(MaybeSpecMethod, msm_all_same(arg_value)), $pred,
-                "eval_minimal without all_strict")
+                "tabled_minimal without all_strict")
         )
     ),
     get_input_output_vars(HeadVars, ArgModes, !.ModuleInfo, MaybeSpecMethod, _,
         InputVarModeMethods, OutputVarModeMethods),
     allocate_slot_numbers(InputVarModeMethods, 0, NumberedInputVars),
     allocate_slot_numbers(OutputVarModeMethods, 0, NumberedOutputVars),
-    % The case EvalMethod = eval_normal was caught by the code above.
     (
-        EvalMethod = eval_table_io(Decl, Unitize),
+        TabledMethod = tabled_io(Decl, Unitize),
         module_info_get_globals(!.ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, trace_table_io_states,
             TableIoStates),
@@ -502,20 +616,20 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         MaybeCallTableTip = no,
         MaybeProcTableStructInfo = no
     ;
-        EvalMethod = eval_loop_check,
+        TabledMethod = tabled_loop_check,
         create_new_loop_goal(OrigGoal, Statistics,
             PredId, ProcId, HeadVars, NumberedInputVars, NumberedOutputVars,
             VarSet0, VarSet, VarTypes0, VarTypes,
             TableInfo0, TableInfo, CallTableTip, Goal, InputSteps),
         MaybeOutputSteps = no,
         generate_gen_proc_table_info(TableInfo, PredId, ProcId,
-            InputSteps, MaybeOutputSteps,
+            TabledMethod, InputSteps, MaybeOutputSteps,
             InputVarModeMethods, OutputVarModeMethods, ProcTableStructInfo),
         MaybeCallTableTip = yes(CallTableTip),
         MaybeProcTableIOInfo = no,
         MaybeProcTableStructInfo = yes(ProcTableStructInfo)
     ;
-        EvalMethod = eval_memo(_),
+        TabledMethod = tabled_memo(_),
         (
             CodeModel = model_non,
             create_new_memo_non_goal(Detism, OrigGoal, Statistics,
@@ -535,14 +649,14 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
                 TableInfo0, TableInfo, CallTableTip, Goal, InputSteps),
             MaybeOutputSteps = no
         ),
-        generate_gen_proc_table_info(TableInfo, PredId, ProcId, InputSteps,
-            MaybeOutputSteps, InputVarModeMethods, OutputVarModeMethods,
-            ProcTableStructInfo),
+        generate_gen_proc_table_info(TableInfo, PredId, ProcId, TabledMethod,
+            InputSteps, MaybeOutputSteps,
+            InputVarModeMethods, OutputVarModeMethods, ProcTableStructInfo),
         MaybeCallTableTip = yes(CallTableTip),
         MaybeProcTableIOInfo = no,
         MaybeProcTableStructInfo = yes(ProcTableStructInfo)
     ;
-        EvalMethod = eval_minimal(MinimalMethod),
+        TabledMethod = tabled_minimal(MinimalMethod),
         expect(unify(CodeModel, model_non), $pred,
             "table_gen_transform_proc: minimal model but not model_non"),
         (
@@ -553,8 +667,9 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
                 CallTableTip, Goal, InputSteps, OutputSteps),
             MaybeCallTableTip = yes(CallTableTip),
             MaybeOutputSteps = yes(OutputSteps),
-            generate_gen_proc_table_info(TableInfo, PredId, ProcId, InputSteps,
-                MaybeOutputSteps, InputVarModeMethods, OutputVarModeMethods,
+            generate_gen_proc_table_info(TableInfo, PredId, ProcId,
+                TabledMethod, InputSteps, MaybeOutputSteps,
+                InputVarModeMethods, OutputVarModeMethods,
                 ProcTableStructInfo),
             MaybeProcTableStructInfo = yes(ProcTableStructInfo)
         ;
@@ -1920,11 +2035,12 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
     proc_info_set_vartypes(!.VarTypes, !ProcInfo),
     proc_info_set_varset(!.VarSet, !ProcInfo),
 
+    GenTabledMethod = tabled_minimal(own_stacks_generator),
     InputVarModeMethods = list.map(project_out_pos, NumberedInputVars),
     OutputVarModeMethods = list.map(project_out_pos, NumberedOutputVars),
-    generate_gen_proc_table_info(!.TableInfo, PredId, ProcId, InputSteps,
-        yes(OutputSteps), InputVarModeMethods, OutputVarModeMethods,
-        ProcTableStructInfo),
+    generate_gen_proc_table_info(!.TableInfo, PredId, ProcId,
+        GenTabledMethod, InputSteps, yes(OutputSteps),
+        InputVarModeMethods, OutputVarModeMethods, ProcTableStructInfo),
 
     PredProcId = proc(PredId, ProcId),
     add_proc_table_struct(PredProcId, ProcTableStructInfo, !.ProcInfo,
@@ -1932,7 +2048,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
 
     SpecialReturn = generator_return(returning_generator_locn, DebugArgStr),
     proc_info_set_maybe_special_return(yes(SpecialReturn), !ProcInfo),
-    proc_info_set_eval_method(eval_minimal(own_stacks_generator), !ProcInfo),
+    proc_info_set_eval_method(eval_tabled(GenTabledMethod), !ProcInfo),
 
     pred_info_get_proc_table(!.PredInfo, ProcTable0),
     map.det_insert(ProcId, !.ProcInfo, ProcTable0, ProcTable),
@@ -2099,11 +2215,12 @@ keep_marker(marker_fact_table_semantic_errors) = no.
 %-----------------------------------------------------------------------------%
 
 :- pred generate_gen_proc_table_info(table_info::in, pred_id::in, proc_id::in,
+    tabled_eval_method::in,
     list(table_step_desc)::in, maybe(list(table_step_desc))::in,
     list(var_mode_method)::in, list(var_mode_method)::in,
     proc_table_struct_info::out) is det.
 
-generate_gen_proc_table_info(TableInfo, PredId, ProcId,
+generate_gen_proc_table_info(TableInfo, PredId, ProcId, TabledMethod,
         InputSteps, MaybeOutputSteps, InputVars, OutputVars,
         ProcTableStructInfo) :-
     ModuleInfo = TableInfo ^ table_module_info,
@@ -2112,7 +2229,6 @@ generate_gen_proc_table_info(TableInfo, PredId, ProcId,
     PredInfo = TableInfo ^ table_cur_pred_info,
     pred_info_get_typevarset(PredInfo, TVarSet),
     ProcInfo = TableInfo ^ table_cur_proc_info,
-    proc_info_get_eval_method(ProcInfo, EvalMethod),
     proc_info_get_context(ProcInfo, Context),
 
     InOutHeadVars = InputVars ++ OutputVars,
@@ -2125,7 +2241,7 @@ generate_gen_proc_table_info(TableInfo, PredId, ProcId,
 
     ProcTableStructInfo = proc_table_struct_info(RTTIProcLabel, TVarSet,
         Context, NumInputs, NumOutputs, InputSteps, MaybeOutputSteps,
-        TableArgTypeInfo, EvalMethod).
+        TableArgTypeInfo, TabledMethod).
 
 %-----------------------------------------------------------------------------%
 

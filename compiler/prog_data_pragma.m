@@ -42,19 +42,29 @@
     % The evaluation method that should be used for a procedure.
     %
 :- type eval_method
-    --->    eval_normal                 % normal mercury evaluation
-    ;       eval_loop_check             % loop check only
-    ;       eval_memo(                  % memoing + loop check
+    --->    eval_normal                         % normal mercury evaluation
+    ;       eval_tabled(tabled_eval_method).    % tabled evaluation
+
+    % The evaluation method that should be used for a procedure.
+    %
+:- type tabled_eval_method
+    --->    tabled_loop_check
+            % loop check only
+    ;       tabled_memo(
+                % memoing + loop check
                 % Preserve the value of this attribure until the invocation
                 % of the relevant code in table_gen.m.
                 table_attr_backend_warning
             )
-    ;       eval_table_io(              % memoing I/O actions for debugging
+    ;       tabled_io(
+                % memoing I/O actions for debugging
                 table_io_entry_kind,
                 table_io_is_unitize
             )
-    ;       eval_minimal(eval_minimal_method).
-                                        % minimal model evaluation
+    ;       tabled_minimal(
+                % minimal model evaluation
+                eval_minimal_method
+            ).
 
 :- type eval_minimal_method
     --->    stack_copy
@@ -157,7 +167,7 @@
     ;       table_io_alone.     % The procedure is tabled for I/O by itself;
                                 % it can have no Mercury descendants.
 
-:- func eval_method_to_table_type(eval_method) = string.
+:- func tabled_eval_method_to_table_type(tabled_eval_method) = string.
 
 :- implementation.
 
@@ -165,27 +175,24 @@ default_memo_table_attributes =
     table_attributes(cts_all_strict, no, table_dont_gather_statistics,
         table_dont_allow_reset, table_attr_ignore_with_warning).
 
-eval_method_to_table_type(EvalMethod) = TableTypeStr :-
+tabled_eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     (
-        EvalMethod = eval_normal,
-        unexpected($pred, "eval_normal")
-    ;
-        EvalMethod = eval_table_io(_, _),
+        EvalMethod = tabled_io(_, _),
         unexpected($pred, "eval_table_io")
     ;
-        EvalMethod = eval_loop_check,
+        EvalMethod = tabled_loop_check,
         TableTypeStr = "MR_TABLE_TYPE_LOOPCHECK"
     ;
-        EvalMethod = eval_memo(_),
+        EvalMethod = tabled_memo(_),
         TableTypeStr = "MR_TABLE_TYPE_MEMO"
     ;
-        EvalMethod = eval_minimal(stack_copy),
+        EvalMethod = tabled_minimal(stack_copy),
         TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY"
     ;
-        EvalMethod = eval_minimal(own_stacks_consumer),
+        EvalMethod = tabled_minimal(own_stacks_consumer),
         unexpected($pred, "own_stacks_consumer")
     ;
-        EvalMethod = eval_minimal(own_stacks_generator),
+        EvalMethod = tabled_minimal(own_stacks_generator),
         TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS"
     ).
 

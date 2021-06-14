@@ -1641,41 +1641,54 @@ write_maybe_slot_num(Stream, no, !IO) :-
 
 :- func eval_method_to_c_string(eval_method) = string.
 
-eval_method_to_c_string(eval_normal) =     "MR_EVAL_METHOD_NORMAL".
-eval_method_to_c_string(eval_loop_check) = "MR_EVAL_METHOD_LOOP_CHECK".
-eval_method_to_c_string(eval_memo(_)) =       "MR_EVAL_METHOD_MEMO".
-eval_method_to_c_string(eval_minimal(MinimalMethod)) = Str :-
+eval_method_to_c_string(EvalMethod) = Str :-
     (
-        MinimalMethod = stack_copy,
-        Str = "MR_EVAL_METHOD_MINIMAL_STACK_COPY"
+        EvalMethod = eval_normal,
+        Str = "MR_EVAL_METHOD_NORMAL"
     ;
-        MinimalMethod = own_stacks_consumer,
-        Str = "MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER"
-    ;
-        MinimalMethod = own_stacks_generator,
-        Str = "MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR"
-    ).
-eval_method_to_c_string(eval_table_io(EntryKind, Unitize)) = Str :-
-    (
-        ( EntryKind = entry_stores_outputs
-        ; EntryKind = entry_stores_procid_outputs
-        ),
-        Unitize = table_io_alone,
-        Str = "MR_EVAL_METHOD_TABLE_IO"
-    ;
-        ( EntryKind = entry_stores_outputs
-        ; EntryKind = entry_stores_procid_outputs
-        ),
-        Unitize = table_io_unitize,
-        Str = "MR_EVAL_METHOD_TABLE_IO_UNITIZE"
-    ;
-        EntryKind = entry_stores_procid_inputs_outputs,
-        Unitize = table_io_alone,
-        Str = "MR_EVAL_METHOD_TABLE_IO_DECL"
-    ;
-        EntryKind = entry_stores_procid_inputs_outputs,
-        Unitize = table_io_unitize,
-        Str = "MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL"
+        EvalMethod = eval_tabled(TabledMethod),
+        (
+            TabledMethod = tabled_loop_check,
+            Str = "MR_EVAL_METHOD_LOOP_CHECK"
+        ;
+            TabledMethod = tabled_memo(_),
+            Str = "MR_EVAL_METHOD_MEMO"
+        ;
+            TabledMethod = tabled_minimal(MinimalMethod),
+            (
+                MinimalMethod = stack_copy,
+                Str = "MR_EVAL_METHOD_MINIMAL_STACK_COPY"
+            ;
+                MinimalMethod = own_stacks_consumer,
+                Str = "MR_EVAL_METHOD_MINIMAL_OWN_STACKS_CONSUMER"
+            ;
+                MinimalMethod = own_stacks_generator,
+                Str = "MR_EVAL_METHOD_MINIMAL_OWN_STACKS_GENERATOR"
+            )
+        ;
+            TabledMethod = tabled_io(EntryKind, Unitize),
+            (
+                ( EntryKind = entry_stores_outputs
+                ; EntryKind = entry_stores_procid_outputs
+                ),
+                Unitize = table_io_alone,
+                Str = "MR_EVAL_METHOD_TABLE_IO"
+            ;
+                ( EntryKind = entry_stores_outputs
+                ; EntryKind = entry_stores_procid_outputs
+                ),
+                Unitize = table_io_unitize,
+                Str = "MR_EVAL_METHOD_TABLE_IO_UNITIZE"
+            ;
+                EntryKind = entry_stores_procid_inputs_outputs,
+                Unitize = table_io_alone,
+                Str = "MR_EVAL_METHOD_TABLE_IO_DECL"
+            ;
+                EntryKind = entry_stores_procid_inputs_outputs,
+                Unitize = table_io_unitize,
+                Str = "MR_EVAL_METHOD_TABLE_IO_UNITIZE_DECL"
+            )
+        )
     ).
 
 %-----------------------------------------------------------------------------%

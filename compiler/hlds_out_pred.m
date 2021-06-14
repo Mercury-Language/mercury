@@ -1042,13 +1042,9 @@ write_proc_tabling_info(Stream, VarSet, TVarSet, VarNamePrint,
     (
         EvalMethod = eval_normal
     ;
-        ( EvalMethod = eval_loop_check
-        ; EvalMethod = eval_memo(_)
-        ; EvalMethod = eval_minimal(_)
-        ; EvalMethod = eval_table_io(_, _)
-        ),
+        EvalMethod = eval_tabled(TabledMethod),
         io.format(Stream, "%% eval method: %s\n",
-            [s(eval_method_to_string(EvalMethod))], !IO)
+            [s(tabled_eval_method_to_string(TabledMethod))], !IO)
     ),
     (
         MaybeProcTableIOInfo = yes(ProcTableIOInfo),

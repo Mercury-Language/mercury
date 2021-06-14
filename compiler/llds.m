@@ -106,7 +106,7 @@
     --->    tabling_info_struct(
                 % The id of the procedure whose table this structure is.
                 tis_proc_label              :: proc_label,
-                tis_eval_method             :: eval_method,
+                tis_eval_method             :: tabled_eval_method,
 
                 tis_num_inputs              :: int,
                 tis_num_outputs             :: int,

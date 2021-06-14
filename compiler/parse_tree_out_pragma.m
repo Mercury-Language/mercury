@@ -1206,8 +1206,8 @@ pred_or_proc_pfumm_name_to_string(Lang, PredOrProcSpec)
 
 mercury_output_pragma_tabled(Stream, TabledInfo, !IO) :-
     TabledInfo =
-        pragma_info_tabled(EvalMethod, PredOrProcSpec, MaybeAttributes),
-    PragmaName = eval_method_to_pragma_name(EvalMethod),
+        pragma_info_tabled(TabledMethod, PredOrProcSpec, MaybeAttributes),
+    PragmaName = tabled_eval_method_to_pragma_name(TabledMethod),
     (
         MaybeAttributes = yes(Attributes),
         Attributes = table_attributes(Strictness, MaybeSizeLimit, Stats,

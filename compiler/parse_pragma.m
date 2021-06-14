@@ -215,20 +215,20 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
             % We don't know yet whether the pragma has a
             % disable_warning_if_ignored attribute, but if it does,
             % parse_tabling_pragma will override this placeholder argument.
-            EvalMethod = eval_memo(table_attr_ignore_with_warning)
+            TabledMethod = tabled_memo(table_attr_ignore_with_warning)
         ;
             PragmaName = "loop_check",
-            EvalMethod = eval_loop_check
+            TabledMethod = tabled_loop_check
         ;
             PragmaName = "minimal_model",
             % We don't yet know whether we will use the stack_copy or the
             % own_stacks technique for computing minimal models. The decision
             % depends on the grade, and is made in make_hlds.m; the
             % "stack_copy" here is just a placeholder.
-            EvalMethod = eval_minimal(stack_copy)
+            TabledMethod = tabled_minimal(stack_copy)
         ),
         parse_tabling_pragma(ModuleName, VarSet, ErrorTerm,
-            PragmaName, PragmaTerms, Context, SeqNum, EvalMethod, MaybeIOM)
+            PragmaName, PragmaTerms, Context, SeqNum, TabledMethod, MaybeIOM)
     ;
         PragmaName = "unused_args",
         parse_pragma_unused_args(ModuleName, VarSet, ErrorTerm,

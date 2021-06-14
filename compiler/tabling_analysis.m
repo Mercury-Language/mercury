@@ -283,14 +283,14 @@ check_proc_for_mm_tabling(SCC, PPId, !Results, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_eval_method(ProcInfo, EvalMethod),
     (
-        EvalMethod = eval_minimal(_),
+        EvalMethod = eval_tabled(tabled_minimal(_)),
         Result = mm_tabled_may_call,
         MaybeAnalysisStatus = yes(optimal)
     ;
         ( EvalMethod = eval_normal
-        ; EvalMethod = eval_loop_check
-        ; EvalMethod = eval_memo(_)
-        ; EvalMethod = eval_table_io(_, _)
+        ; EvalMethod = eval_tabled(tabled_loop_check)
+        ; EvalMethod = eval_tabled(tabled_memo(_))
+        ; EvalMethod = eval_tabled(tabled_io(_, _))
         ),
         proc_info_get_goal(ProcInfo, Body),
         proc_info_get_vartypes(ProcInfo, VarTypes),

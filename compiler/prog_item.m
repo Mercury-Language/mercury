@@ -2333,7 +2333,7 @@
 :- type pragma_info_tabled
     --->    pragma_info_tabled(
                 % Tabling type, Predname, Arity, PredOrFunc?, Mode?
-                tabled_method           :: eval_method,
+                tabled_method           :: tabled_eval_method,
                 tabled_name             :: pred_or_proc_pfumm_name,
                 tabled_attributes       :: maybe(table_attributes)
             ).

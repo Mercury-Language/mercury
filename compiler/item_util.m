@@ -1604,22 +1604,19 @@ impl_pragma_desc_pieces(Pragma) = Pieces :-
         Pieces = [pragma_decl("fact_table"), words("declaration")]
     ;
         Pragma = impl_pragma_tabled(Tabled),
-        Tabled = pragma_info_tabled(EvalMethod, _, _),
+        Tabled = pragma_info_tabled(TabledMethod, _, _),
         (
-            EvalMethod = eval_memo(_),
+            TabledMethod = tabled_memo(_),
             Pieces = [pragma_decl("memo"), words("declaration")]
         ;
-            EvalMethod = eval_loop_check,
+            TabledMethod = tabled_loop_check,
             Pieces = [pragma_decl("loop_check"), words("declaration")]
         ;
-            EvalMethod = eval_minimal(_),
+            TabledMethod = tabled_minimal(_),
             Pieces = [pragma_decl("minimal_model"), words("declaration")]
         ;
-            EvalMethod = eval_table_io(_, _),
+            TabledMethod = tabled_io(_, _),
             unexpected($pred, "eval_table_io")
-        ;
-            EvalMethod = eval_normal,
-            unexpected($pred, "eval_normal")
         )
     ;
         Pragma = impl_pragma_promise_pure(_),

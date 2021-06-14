@@ -280,19 +280,19 @@ check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
 
     % Make sure the code model is valid given the eval method.
     proc_info_get_eval_method(ProcInfo, EvalMethod),
-    Valid = valid_determinism_for_eval_method(EvalMethod, InferredDetism),
-    (
-        Valid = yes
-    ;
-        Valid = no,
+    ( if
+        EvalMethod = eval_tabled(TabledMethod),
+        valid_determinism_for_tabled_eval_method(TabledMethod, InferredDetism)
+            = no
+    then
         proc_info_get_context(ProcInfo, Context),
         MainPieces = [words("Error:"),
-            pragma_decl(eval_method_to_pragma_name(EvalMethod)),
+            pragma_decl(tabled_eval_method_to_pragma_name(TabledMethod)),
             words("declaration not allowed for procedure"),
             words("with determinism"),
             quote(determinism_to_string(InferredDetism)), suffix("."), nl],
 
-        solutions.solutions(get_valid_dets(EvalMethod), Detisms),
+        solutions.solutions(get_valid_determinisms(TabledMethod), Detisms),
         DetismStrs = list.map(determinism_to_string, Detisms),
         list.sort(DetismStrs, SortedDetismStrs),
         DetismPieces = list_to_pieces(SortedDetismStrs),
@@ -307,6 +307,8 @@ check_determinism(PredProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                 [always(MainPieces),
                 verbose_only(verbose_always, VerbosePieces)])]),
         !:Specs = [ValidSpec | !.Specs]
+    else
+        true
     ).
 
 :- pred cse_nopull_msgs(proc_info::in, list(error_msg)::out) is det.
@@ -400,11 +402,12 @@ detism_decl_name(DetismDecl) = Name :-
         % unexpected($pred, "detism_decl_name: detism_decl_none")
     ).
 
-:- pred get_valid_dets(eval_method::in, determinism::out) is nondet.
+:- pred get_valid_determinisms(tabled_eval_method::in, determinism::out)
+    is nondet.
 
-get_valid_dets(EvalMethod, Detism) :-
+get_valid_determinisms(TabledMethod, Detism) :-
     determinism(Detism),
-    valid_determinism_for_eval_method(EvalMethod, Detism) = yes.
+    valid_determinism_for_tabled_eval_method(TabledMethod, Detism) = yes.
 
     % Generate all the possible determinisms.
     %

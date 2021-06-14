@@ -278,12 +278,12 @@ ml_gen_add_table_var(ModuleInfo, PredProcId - TableStructInfo, !DataDefns) :-
     TableStructInfo = table_struct_info(ProcTableStructInfo, _Attributes),
     ProcTableStructInfo = proc_table_struct_info(RttiProcLabel, _TVarSet,
         Context, NumInputs, NumOutputs, InputSteps, MaybeOutputSteps,
-        _ArgInfos, EvalMethod),
+        _ArgInfos, TabledMethod),
 
     ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, PredLabel,
         _PredModule),
     MLDS_ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    TableTypeStr = eval_method_to_table_type(EvalMethod),
+    TableTypeStr = tabled_eval_method_to_table_type(TabledMethod),
     % We will probably need to add actual prefixes when tabling is implemented
     % for Java and C#.
     TableTypeTargetPrefixes = target_prefixes("", ""),

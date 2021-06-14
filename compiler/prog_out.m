@@ -167,11 +167,12 @@
     % Convert an eval_method of a pragma to a string giving the name
     % of the pragma.
     %
-:- func eval_method_to_pragma_name(eval_method) = string.
+:- func tabled_eval_method_to_pragma_name(tabled_eval_method) = string.
 
     % Convert an eval_method to a string description.
     %
 :- func eval_method_to_string(eval_method) = string.
+:- func tabled_eval_method_to_string(tabled_eval_method) = string.
 
 :- func maybe_arg_tabling_method_to_string(maybe(arg_tabling_method)) = string.
 
@@ -513,11 +514,9 @@ purity_prefix_to_string(Purity) = String :-
         String = PurityName ++ " "
     ).
 
-eval_method_to_pragma_name(eval_normal) = _ :-
-    unexpected($pred, "normal").
-eval_method_to_pragma_name(eval_loop_check) = "loop_check".
-eval_method_to_pragma_name(eval_memo(_)) =  "memo".
-eval_method_to_pragma_name(eval_minimal(MinimalMethod)) = Str :-
+tabled_eval_method_to_pragma_name(tabled_loop_check) = "loop_check".
+tabled_eval_method_to_pragma_name(tabled_memo(_)) =  "memo".
+tabled_eval_method_to_pragma_name(tabled_minimal(MinimalMethod)) = Str :-
     (
         MinimalMethod = own_stacks_consumer,
         % The fact that this is not the name of the corresponding pragma
@@ -532,42 +531,53 @@ eval_method_to_pragma_name(eval_minimal(MinimalMethod)) = Str :-
         MinimalMethod = stack_copy,
         Str = "minimal_model"
     ).
-eval_method_to_pragma_name(eval_table_io(_, _)) = _ :-
+tabled_eval_method_to_pragma_name(tabled_io(_, _)) = _ :-
     unexpected($pred, "io").
 
 eval_method_to_string(eval_normal) = "normal".
-eval_method_to_string(eval_loop_check) = "loop_check".
-eval_method_to_string(eval_memo(_)) =  "memo".
-eval_method_to_string(eval_minimal(MinimalMethod)) = Str :-
+eval_method_to_string(eval_tabled(TabledMethod)) =
+    tabled_eval_method_to_string(TabledMethod).
+
+tabled_eval_method_to_string(TabledMethod) = Str :-
     (
-        MinimalMethod = own_stacks_consumer,
-        Str = "minimal_model_own_stacks_consumer"
+        TabledMethod = tabled_loop_check,
+        Str = "loop_check"
     ;
-        MinimalMethod = own_stacks_generator,
-        Str = "minimal_model_own_stacks_generator"
+        TabledMethod = tabled_memo(_),
+        Str = "memo"
     ;
-        MinimalMethod = stack_copy,
-        Str = "minimal_model_stack_copy"
+        TabledMethod = tabled_minimal(MinimalMethod),
+        (
+            MinimalMethod = own_stacks_consumer,
+            Str = "minimal_model_own_stacks_consumer"
+        ;
+            MinimalMethod = own_stacks_generator,
+            Str = "minimal_model_own_stacks_generator"
+        ;
+            MinimalMethod = stack_copy,
+            Str = "minimal_model_stack_copy"
+        )
+    ;
+        TabledMethod = tabled_io(EntryKind, IsUnitize),
+        (
+            EntryKind = entry_stores_outputs,
+            EntryKindStr = "entry_stores_outputs, "
+        ;
+            EntryKind = entry_stores_procid_outputs,
+            EntryKindStr = "entry_stores_procid_outputs, "
+        ;
+            EntryKind = entry_stores_procid_inputs_outputs,
+            EntryKindStr = "entry_stores_procid_inputs_outputs, "
+        ),
+        (
+            IsUnitize = table_io_unitize,
+            UnitizeStr = "unitize"
+        ;
+            IsUnitize = table_io_alone,
+            UnitizeStr = "alone"
+        ),
+        Str = "table_io(" ++ EntryKindStr ++ UnitizeStr ++ ")"
     ).
-eval_method_to_string(eval_table_io(EntryKind, IsUnitize)) = Str :-
-    (
-        EntryKind = entry_stores_outputs,
-        EntryKindStr = "entry_stores_outputs, "
-    ;
-        EntryKind = entry_stores_procid_outputs,
-        EntryKindStr = "entry_stores_procid_outputs, "
-    ;
-        EntryKind = entry_stores_procid_inputs_outputs,
-        EntryKindStr = "entry_stores_procid_inputs_outputs, "
-    ),
-    (
-        IsUnitize = table_io_unitize,
-        UnitizeStr = "unitize"
-    ;
-        IsUnitize = table_io_alone,
-        UnitizeStr = "alone"
-    ),
-    Str = "table_io(" ++ EntryKindStr ++ UnitizeStr ++ ")".
 
 maybe_arg_tabling_method_to_string(yes(ArgTablingMethod)) =
     arg_tabling_method_to_string(ArgTablingMethod).

@@ -579,7 +579,8 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
 
         % Don't count procs using minimal evaluation as they should always
         % terminate if they have a finite number of answers.
-        not proc_info_get_eval_method(ProcInfo, eval_minimal(_)),
+        proc_info_get_eval_method(ProcInfo, EvalMethod),
+        EvalMethod \= eval_tabled(tabled_minimal(_)),
 
         % Don't warn about impure procedures, since (unlike pure and semipure
         % procedures) they may modify the state in ways not visible to us.

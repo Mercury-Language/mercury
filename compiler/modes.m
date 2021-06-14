@@ -168,6 +168,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_pred_decl.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
@@ -1612,23 +1613,28 @@ proc_check_eval_methods_and_main(ModuleInfo, PredInfo, [ProcId | ProcIds],
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_eval_method(ProcInfo, EvalMethod),
     proc_info_get_argmodes(ProcInfo, Modes),
-    ( if
-        eval_method_requires_ground_args(EvalMethod) = yes,
-        not only_fully_in_out_modes(Modes, ModuleInfo)
-    then
-        GroundArgsSpec = report_eval_method_requires_ground_args(ProcInfo),
-        !:Specs = [GroundArgsSpec | !.Specs]
-    else
-        true
-    ),
-    ( if
-        eval_method_destroys_uniqueness(EvalMethod) = yes,
-        not only_nonunique_modes(Modes, ModuleInfo)
-    then
-        UniquenessSpec = report_eval_method_destroys_uniqueness(ProcInfo),
-        !:Specs = [UniquenessSpec | !.Specs]
-    else
-        true
+    (
+        EvalMethod = eval_normal
+    ;
+        EvalMethod = eval_tabled(TabledMethod),
+        ( if only_fully_in_out_modes(Modes, ModuleInfo) then
+            true
+        else
+            % All tabled methods require ground arguments.
+            GroundArgsSpec =
+                report_eval_method_requires_ground_args(ProcInfo, TabledMethod),
+            !:Specs = [GroundArgsSpec | !.Specs]
+        ),
+        ( if
+            tabled_eval_method_destroys_uniqueness(TabledMethod) = yes,
+            not only_nonunique_modes(Modes, ModuleInfo)
+        then
+            UniquenessSpec =
+                report_eval_method_destroys_uniqueness(ProcInfo, TabledMethod),
+            !:Specs = [UniquenessSpec | !.Specs]
+        else
+            true
+        )
     ),
     ( if
         pred_info_name(PredInfo) = "main",
@@ -1688,14 +1694,14 @@ modes_are_valid_for_main(ModuleInfo, [Di, Uo]) :-
     ( Free = free ; Free = free(_Type) ),
     inst_expand(ModuleInfo, UoFinalInst, Unique).
 
-:- func report_eval_method_requires_ground_args(proc_info) = error_spec.
+:- func report_eval_method_requires_ground_args(proc_info, tabled_eval_method)
+    = error_spec.
 
-report_eval_method_requires_ground_args(ProcInfo) = Spec :-
-    proc_info_get_eval_method(ProcInfo, EvalMethod),
+report_eval_method_requires_ground_args(ProcInfo, TabledMethod) = Spec :-
     proc_info_get_context(ProcInfo, Context),
-    EvalMethodS = eval_method_to_string(EvalMethod),
+    TabledMethodStr = tabled_eval_method_to_pragma_name(TabledMethod),
     MainPieces = [words("Sorry, not implemented:"),
-        pragma_decl(EvalMethodS),
+        pragma_decl(TabledMethodStr),
         words("declaration not allowed for procedure"),
         words("with partially instantiated modes."), nl],
     VerbosePieces = [words("Tabling of predicates/functions"),
@@ -1706,21 +1712,19 @@ report_eval_method_requires_ground_args(ProcInfo) = Spec :-
     Spec = error_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), [Msg]).
 
-:- func report_eval_method_destroys_uniqueness(proc_info) = error_spec.
+:- func report_eval_method_destroys_uniqueness(proc_info, tabled_eval_method)
+    = error_spec.
 
-report_eval_method_destroys_uniqueness(ProcInfo) = Spec :-
-    proc_info_get_eval_method(ProcInfo, EvalMethod),
+report_eval_method_destroys_uniqueness(ProcInfo, TabledMethod) = Spec :-
     proc_info_get_context(ProcInfo, Context),
-    EvalMethodS = eval_method_to_string(EvalMethod),
+    TabledMethodStr = tabled_eval_method_to_pragma_name(TabledMethod),
     MainPieces = [words("Error:"),
-        pragma_decl(EvalMethodS),
-        words("declaration not allowed for procedure"),
-        words("with unique modes."), nl],
+        pragma_decl(TabledMethodStr), words("declaration"),
+        words("not allowed for procedure with unique modes."), nl],
     VerbosePieces =
         [words("Tabling of predicates/functions with unique modes"),
-        words("is not allowed as this would lead to a copying"),
-        words("of the unique arguments which would result"),
-        words("in them no longer being unique."), nl],
+        words("is not allowed, as tabling requires copying arguments,"),
+        words("which would destroy their uniqueness."), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
     Spec = error_spec($pred, severity_error,

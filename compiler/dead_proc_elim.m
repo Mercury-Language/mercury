@@ -142,6 +142,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.prog_item.      % undesirable dependency
+:- import_module parse_tree.prog_data_pragma.
 :- import_module transform_hlds.direct_arg_in_out.
 
 :- import_module assoc_list.
@@ -607,12 +608,10 @@ dead_proc_examine_proc(proc(PredId, ProcId), AnalyzeTraceGoalProcs,
         ),
 
         proc_info_get_eval_method(ProcInfo, EvalMethod),
-        HasPerProcTablingPtr =
-            eval_method_has_per_proc_tabling_pointer(EvalMethod),
-        (
-            HasPerProcTablingPtr = no
-        ;
-            HasPerProcTablingPtr = yes,
+        ( if
+            EvalMethod = eval_tabled(TabledMethod),
+            tabled_eval_method_has_per_proc_tabling_pointer(TabledMethod) = yes
+        then
             trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
                 get_debug_output_stream(ModuleInfo, DebugStream, !IO),
                 io.format(DebugStream, "need table struct for proc %d %d\n",
@@ -621,6 +620,8 @@ dead_proc_examine_proc(proc(PredId, ProcId), AnalyzeTraceGoalProcs,
             ),
             TableStructEntity = entity_table_struct(PredId, ProcId),
             map.set(TableStructEntity, not_eliminable, !Needed)
+        else
+            true
         ),
         pred_info_get_origin(PredInfo, Origin),
         ( if Origin = origin_mutable(ModuleName, MutableName, PredKind) then

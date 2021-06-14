@@ -1296,7 +1296,8 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         )
     ;
         Feature = reqf_memo,
-        current_grade_supports_tabling(Globals, IsTablingSupported),
+        current_grade_supports_tabling(Globals,
+            tabled_memo(table_attr_ignore_with_warning), IsTablingSupported),
         (
             IsTablingSupported = no,
             Pieces = [words("Error: this module must be compiled in a grade"),
@@ -1398,9 +1399,9 @@ add_impl_pragma_tabled(ItemMercuryStatus, ItemPragmaInfo,
             ItemMercuryStatus, PredStatus, !ModuleInfo, !QualInfo, !Specs)
     ;
         TypeLayout = no,
-        TabledInfo = pragma_info_tabled(EvalMethod, _, _),
+        TabledInfo = pragma_info_tabled(TabledMethod, _, _),
         Pieces = [words("Error:"),
-            pragma_decl(eval_method_to_string(EvalMethod)),
+            pragma_decl(tabled_eval_method_to_pragma_name(TabledMethod)),
             words("declaration requires type_ctor_layout structures."),
             words("Don't use --no-type-layout to disable them."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,

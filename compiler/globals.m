@@ -28,6 +28,8 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.sym_name. % for module_name
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data_pragma.
 
 :- import_module bimap.
 :- import_module bool.
@@ -367,9 +369,10 @@
     %
 :- pred want_return_var_layouts(globals::in, bool::out) is det.
 
-    % Check that the current grade supports tabling.
+    % Check that the current grade supports tabling of the specified kind.
     %
-:- pred current_grade_supports_tabling(globals::in, bool::out) is det.
+:- pred current_grade_supports_tabling(globals::in, tabled_eval_method::in,
+    bool::out) is det.
 
     % Check that code compiled in the current grade can execute
     % conjunctions in parallel.
@@ -945,12 +948,35 @@ want_return_var_layouts(Globals, WantReturnLayouts) :-
         WantReturnLayouts = no
     ).
 
-current_grade_supports_tabling(Globals, TablingSupported) :-
+current_grade_supports_tabling(Globals, TabledMethod, TablingSupported) :-
+    % Please keep this code in sync with find_grade_problems_for_tabling
+    % in table_gen.m.
     globals.get_target(Globals, Target),
     globals.get_gc_method(Globals, GC_Method),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    globals.lookup_bool_option(Globals, use_trail, UseTrail),
+    globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
+    globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
+    % There is no point in checking for threadscope profiling,
+    % since it cannot be enabled without Parallel=yes.
+    % There is no point in checking for term size profiling or RBMM,
+    % since neither is production-ready.
     ( if
         Target = target_c,
-        GC_Method \= gc_accurate
+        GC_Method \= gc_accurate,
+        Parallel = no,
+        require_complete_switch [TabledMethod]
+        (
+            TabledMethod = tabled_minimal(_),
+            UseTrail = no,
+            ProfileCalls = no,
+            ProfileDeep = no
+        ;
+            ( TabledMethod = tabled_loop_check
+            ; TabledMethod = tabled_memo(_)
+            ; TabledMethod = tabled_io(_, _)
+            )
+        )
     then
         TablingSupported = yes
     else

@@ -32,7 +32,7 @@
     %
 :- pred parse_tabling_pragma(module_name::in, varset::in, term::in,
     string::in, list(term)::in, prog_context::in, item_seq_num::in,
-    eval_method::in, maybe1(item_or_marker)::out) is det.
+    tabled_eval_method::in, maybe1(item_or_marker)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -55,7 +55,7 @@
 %---------------------------------------------------------------------------%
 
 parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
-        Context, SeqNum, EvalMethod0, MaybeIOM) :-
+        Context, SeqNum, TabledMethod0, MaybeIOM) :-
     (
         (
             PragmaTerms = [PredOrProcSpecTerm0],
@@ -73,7 +73,7 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
             (
                 MaybeAttrs = no,
                 TabledInfo =
-                    pragma_info_tabled(EvalMethod0, PredOrProcSpec, no),
+                    pragma_info_tabled(TabledMethod0, PredOrProcSpec, no),
                 Pragma = impl_pragma_tabled(TabledInfo),
                 ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
                 Item = item_impl_pragma(ItemPragma),
@@ -84,7 +84,7 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                     [words("In the second argument of"),
                     pragma_decl(PragmaName), words("declaration:"), nl]),
                 parse_list_elements("tabling attributes",
-                    parse_tabling_attribute(AttrContextPieces, EvalMethod0),
+                    parse_tabling_attribute(AttrContextPieces, TabledMethod0),
                     VarSet, AttrsListTerm, MaybeAttributeList),
                 (
                     MaybeAttributeList = ok1(AttributeList),
@@ -97,26 +97,24 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                             Attributes ^ table_attr_backend_warning,
                         (
                             DisableWarning = table_attr_ignore_with_warning,
-                            EvalMethod = EvalMethod0
+                            TabledMethod = TabledMethod0
                         ;
                             DisableWarning = table_attr_ignore_without_warning,
                             (
-                                EvalMethod0 = eval_memo(_),
-                                EvalMethod = eval_memo(
+                                TabledMethod0 = tabled_memo(_),
+                                TabledMethod = tabled_memo(
                                     table_attr_ignore_without_warning)
                             ;
-                                ( EvalMethod0 = eval_loop_check
-                                ; EvalMethod0 = eval_minimal(_)
+                                ( TabledMethod0 = tabled_loop_check
+                                ; TabledMethod0 = tabled_minimal(_)
                                 ),
-                                EvalMethod = EvalMethod0
+                                TabledMethod = TabledMethod0
                             ;
-                                ( EvalMethod0 = eval_table_io(_, _)
-                                ; EvalMethod0 = eval_normal
-                                ),
+                                TabledMethod0 = tabled_io(_, _),
                                 unexpected($pred, "non-pragma eval method")
                             )
                         ),
-                        TabledInfo = pragma_info_tabled(EvalMethod,
+                        TabledInfo = pragma_info_tabled(TabledMethod,
                             PredOrProcSpec, yes(Attributes)),
                         Pragma = impl_pragma_tabled(TabledInfo),
                         ItemPragma = item_pragma_info(Pragma, Context, SeqNum),
@@ -148,11 +146,11 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_tabling_attribute(cord(format_component)::in, eval_method::in,
-    varset::in, term::in,
+:- pred parse_tabling_attribute(cord(format_component)::in,
+    tabled_eval_method::in, varset::in, term::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
-parse_tabling_attribute(ContextPieces, EvalMethod, VarSet, Term,
+parse_tabling_attribute(ContextPieces, TabledMethod, VarSet, Term,
         MaybeContextAttribute) :-
     ( if
         Term = term.functor(term.atom(Functor), ArgTerms, Context),
@@ -166,27 +164,27 @@ parse_tabling_attribute(ContextPieces, EvalMethod, VarSet, Term,
     then
         (
             Functor = "fast_loose",
-            parse_tabling_attr_fast_loose(ContextPieces, EvalMethod,
+            parse_tabling_attr_fast_loose(ContextPieces, TabledMethod,
                 VarSet, Context, ArgTerms, MaybeContextAttribute)
         ;
             Functor = "specified",
-            parse_tabling_attr_specified(ContextPieces, EvalMethod,
+            parse_tabling_attr_specified(ContextPieces, TabledMethod,
                 VarSet, Context, ArgTerms, MaybeContextAttribute)
         ;
             Functor = "size_limit",
-            parse_tabling_attr_size_limit(ContextPieces, EvalMethod,
+            parse_tabling_attr_size_limit(ContextPieces, TabledMethod,
                 VarSet, Context, ArgTerms, MaybeContextAttribute)
         ;
             Functor = "statistics",
-            parse_tabling_attr_statistics(ContextPieces, EvalMethod,
+            parse_tabling_attr_statistics(ContextPieces, TabledMethod,
                 VarSet, Context, ArgTerms, MaybeContextAttribute)
         ;
             Functor = "allow_reset",
-            parse_tabling_attr_allow_reset(ContextPieces, EvalMethod,
+            parse_tabling_attr_allow_reset(ContextPieces, TabledMethod,
                 VarSet, Context, ArgTerms, MaybeContextAttribute)
         ;
             Functor = "disable_warning_if_ignored",
-            parse_tabling_attr_backend_warning(ContextPieces, EvalMethod,
+            parse_tabling_attr_backend_warning(ContextPieces, TabledMethod,
                 VarSet, Context, ArgTerms, MaybeContextAttribute)
         )
     else
@@ -208,14 +206,14 @@ parse_tabling_attribute(ContextPieces, EvalMethod, VarSet, Term,
 %---------------------%
 
 :- pred parse_tabling_attr_fast_loose(cord(format_component)::in,
-    eval_method::in, varset::in, term.context::in, list(term)::in,
+    tabled_eval_method::in, varset::in, term.context::in, list(term)::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
-parse_tabling_attr_fast_loose(ContextPieces, EvalMethod, _VarSet,
+parse_tabling_attr_fast_loose(ContextPieces, TabledMethod, _VarSet,
         Context, ArgTerms, MaybeContextAttribute) :-
     (
         ArgTerms = [],
-        require_tabling_fast_loose(ContextPieces, EvalMethod, Context,
+        require_tabling_fast_loose(ContextPieces, TabledMethod, Context,
             FastLooseSpecs),
         (
             FastLooseSpecs = [],
@@ -238,10 +236,10 @@ parse_tabling_attr_fast_loose(ContextPieces, EvalMethod, _VarSet,
 %---------------------%
 
 :- pred parse_tabling_attr_specified(cord(format_component)::in,
-    eval_method::in, varset::in, term.context::in, list(term)::in,
+    tabled_eval_method::in, varset::in, term.context::in, list(term)::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
-parse_tabling_attr_specified(ContextPieces, EvalMethod, VarSet,
+parse_tabling_attr_specified(ContextPieces, TabledMethod, VarSet,
         Context, ArgTerms, MaybeContextAttribute) :-
     (
         (
@@ -280,7 +278,7 @@ parse_tabling_attr_specified(ContextPieces, EvalMethod, VarSet,
         parse_list_elements("argument tabling methods",
             parse_arg_tabling_method(MethodsContextPieces),
             VarSet, MethodsTerm, MaybeMaybeArgMethods),
-        require_tabling_fast_loose(ContextPieces, EvalMethod, Context,
+        require_tabling_fast_loose(ContextPieces, TabledMethod, Context,
             FastLooseSpecs),
         ( if
             MaybeMaybeArgMethods = ok1(MaybeArgMethods),
@@ -346,10 +344,10 @@ parse_arg_tabling_method(ContextPieces, VarSet, Term,
 %---------------------%
 
 :- pred parse_tabling_attr_size_limit(cord(format_component)::in,
-    eval_method::in, varset::in, term.context::in, list(term)::in,
+    tabled_eval_method::in, varset::in, term.context::in, list(term)::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
-parse_tabling_attr_size_limit(ContextPieces, EvalMethod, VarSet,
+parse_tabling_attr_size_limit(ContextPieces, TabledMethod, VarSet,
         Context, ArgTerms, MaybeContextAttribute) :-
     (
         ArgTerms = [LimitTerm],
@@ -357,7 +355,7 @@ parse_tabling_attr_size_limit(ContextPieces, EvalMethod, VarSet,
             [lower_case_next_if_not_first,
             words("In the first argument of size_limit:"), nl]),
         parse_decimal_int(LimitContextPieces, VarSet, LimitTerm, MaybeLimit),
-        AllowsSizeLimit = eval_method_allows_size_limit(EvalMethod),
+        AllowsSizeLimit = eval_method_allows_size_limit(TabledMethod),
         (
             AllowsSizeLimit = yes,
             AllowSpecs = []
@@ -366,7 +364,7 @@ parse_tabling_attr_size_limit(ContextPieces, EvalMethod, VarSet,
             AllowPieces = cord.list(ContextPieces) ++
                 [lower_case_next_if_not_first,
                 words("Error: evaluation method"),
-                fixed(eval_method_to_string(EvalMethod)),
+                fixed(tabled_eval_method_to_string(TabledMethod)),
                 words("does not allow size limits."), nl],
             AllowSpec = simplest_spec($pred, severity_error,
                 phase_term_to_parse_tree, Context, AllowPieces),
@@ -396,10 +394,10 @@ parse_tabling_attr_size_limit(ContextPieces, EvalMethod, VarSet,
 %---------------------%
 
 :- pred parse_tabling_attr_statistics(cord(format_component)::in,
-    eval_method::in, varset::in, term.context::in, list(term)::in,
+    tabled_eval_method::in, varset::in, term.context::in, list(term)::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
-parse_tabling_attr_statistics(ContextPieces, _EvalMethod, _VarSet,
+parse_tabling_attr_statistics(ContextPieces, _TabledMethod, _VarSet,
         Context, ArgTerms, MaybeContextAttribute) :-
     (
         ArgTerms = [],
@@ -417,10 +415,10 @@ parse_tabling_attr_statistics(ContextPieces, _EvalMethod, _VarSet,
 %---------------------%
 
 :- pred parse_tabling_attr_allow_reset(cord(format_component)::in,
-    eval_method::in, varset::in, term.context::in, list(term)::in,
+    tabled_eval_method::in, varset::in, term.context::in, list(term)::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
-parse_tabling_attr_allow_reset(ContextPieces, _EvalMethod, _VarSet,
+parse_tabling_attr_allow_reset(ContextPieces, _TabledMethod, _VarSet,
         Context, ArgTerms, MaybeContextAttribute) :-
     (
         ArgTerms = [],
@@ -438,15 +436,15 @@ parse_tabling_attr_allow_reset(ContextPieces, _EvalMethod, _VarSet,
 %---------------------%
 
 :- pred parse_tabling_attr_backend_warning(cord(format_component)::in,
-    eval_method::in, varset::in, term.context::in, list(term)::in,
+    tabled_eval_method::in, varset::in, term.context::in, list(term)::in,
     maybe1(pair(term.context, single_tabling_attribute))::out) is det.
 
-parse_tabling_attr_backend_warning(ContextPieces, EvalMethod, _VarSet,
+parse_tabling_attr_backend_warning(ContextPieces, TabledMethod, _VarSet,
         Context, ArgTerms, MaybeContextAttribute) :-
     (
         ArgTerms = [],
         AllowsDisableWarning =
-            eval_method_allows_disable_warning_if_ignored(EvalMethod),
+            eval_method_allows_disable_warning_if_ignored(TabledMethod),
         (
             AllowsDisableWarning = yes,
             Attribute = attr_ignore_without_warning,
@@ -455,7 +453,7 @@ parse_tabling_attr_backend_warning(ContextPieces, EvalMethod, _VarSet,
             AllowsDisableWarning = no,
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: evaluation method"),
-                fixed(eval_method_to_string(EvalMethod)),
+                fixed(tabled_eval_method_to_string(TabledMethod)),
                 words("does not allow disable_warning_if_ignored."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_term_to_parse_tree, Context, Pieces),
@@ -472,11 +470,11 @@ parse_tabling_attr_backend_warning(ContextPieces, EvalMethod, _VarSet,
 
 %---------------------------------------------------------------------------%
 
-:- pred require_tabling_fast_loose(cord(format_component)::in, eval_method::in,
-    term.context::in, list(error_spec)::out) is det.
+:- pred require_tabling_fast_loose(cord(format_component)::in,
+    tabled_eval_method::in, term.context::in, list(error_spec)::out) is det.
 
-require_tabling_fast_loose(ContextPieces, EvalMethod, Context, Specs) :-
-    AllowsFastLoose = eval_method_allows_fast_loose(EvalMethod),
+require_tabling_fast_loose(ContextPieces, TabledMethod, Context, Specs) :-
+    AllowsFastLoose = eval_method_allows_fast_loose(TabledMethod),
     (
         AllowsFastLoose = yes,
         Specs = []
@@ -484,7 +482,7 @@ require_tabling_fast_loose(ContextPieces, EvalMethod, Context, Specs) :-
         AllowsFastLoose = no,
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
             words("Error: evaluation method"),
-            fixed(eval_method_to_string(EvalMethod)),
+            fixed(tabled_eval_method_to_string(TabledMethod)),
             words("does not allow fast_loose tabling."), nl],
         Spec = simplest_spec($pred, severity_error,
             phase_term_to_parse_tree, Context, Pieces),
@@ -493,29 +491,27 @@ require_tabling_fast_loose(ContextPieces, EvalMethod, Context, Specs) :-
 
 %---------------------------------------------------------------------------%
 
-:- func eval_method_allows_fast_loose(eval_method) = bool.
+:- func eval_method_allows_fast_loose(tabled_eval_method) = bool.
 
-eval_method_allows_fast_loose(eval_normal) = no.
-eval_method_allows_fast_loose(eval_loop_check) = yes.
-eval_method_allows_fast_loose(eval_memo(_)) = yes.
-eval_method_allows_fast_loose(eval_table_io(_, _)) = no.
-eval_method_allows_fast_loose(eval_minimal(_)) = no.
+eval_method_allows_fast_loose(tabled_loop_check) = yes.
+eval_method_allows_fast_loose(tabled_memo(_)) = yes.
+eval_method_allows_fast_loose(tabled_io(_, _)) = no.
+eval_method_allows_fast_loose(tabled_minimal(_)) = no.
 
-:- func eval_method_allows_size_limit(eval_method) = bool.
+:- func eval_method_allows_size_limit(tabled_eval_method) = bool.
 
-eval_method_allows_size_limit(eval_normal) = no.
-eval_method_allows_size_limit(eval_loop_check) = yes.
-eval_method_allows_size_limit(eval_memo(_)) = yes.
-eval_method_allows_size_limit(eval_table_io(_, _)) = no.
-eval_method_allows_size_limit(eval_minimal(_)) = no.
+eval_method_allows_size_limit(tabled_loop_check) = yes.
+eval_method_allows_size_limit(tabled_memo(_)) = yes.
+eval_method_allows_size_limit(tabled_io(_, _)) = no.
+eval_method_allows_size_limit(tabled_minimal(_)) = no.
 
-:- func eval_method_allows_disable_warning_if_ignored(eval_method) = bool.
+:- func eval_method_allows_disable_warning_if_ignored(tabled_eval_method)
+    = bool.
 
-eval_method_allows_disable_warning_if_ignored(eval_normal) = no.
-eval_method_allows_disable_warning_if_ignored(eval_loop_check) = no.
-eval_method_allows_disable_warning_if_ignored(eval_memo(_)) = yes.
-eval_method_allows_disable_warning_if_ignored(eval_table_io(_, _)) = no.
-eval_method_allows_disable_warning_if_ignored(eval_minimal(_)) = no.
+eval_method_allows_disable_warning_if_ignored(tabled_loop_check) = no.
+eval_method_allows_disable_warning_if_ignored(tabled_memo(_)) = yes.
+eval_method_allows_disable_warning_if_ignored(tabled_io(_, _)) = no.
+eval_method_allows_disable_warning_if_ignored(tabled_minimal(_)) = no.
 
 %---------------------------------------------------------------------------%
 

@@ -150,7 +150,7 @@ complexity_arg_is_profiled(complexity_arg_info(_, Kind)) :-
 %
 
 output_tabling_info_struct(Info, Stream, TablingInfoStruct, !DeclSet, !IO) :-
-    TablingInfoStruct = tabling_info_struct(ProcLabel, EvalMethod,
+    TablingInfoStruct = tabling_info_struct(ProcLabel, TabledMethod,
         NumInputs, NumOutputs, InputSteps, MaybeOutputSteps, PTIVectorRval,
         TypeParamsRval, MaybeSizeLimit, Stats),
 
@@ -215,30 +215,19 @@ output_tabling_info_struct(Info, Stream, TablingInfoStruct, !DeclSet, !IO) :-
         )
     ),
 
+    TabledMethodStr = tabled_eval_method_to_table_type(TabledMethod),
+    ( MaybeOutputSteps = no,     OS = 0
+    ; MaybeOutputSteps = yes(_), OS = 1
+    ),
     io.write_string(Stream, "\nstatic MR_ProcTableInfo ", !IO),
     output_data_id(Info, Stream, InfoDataId, !IO),
-    io.write_string(Stream, " = {\n", !IO),
-    io.write_string(Stream, eval_method_to_table_type(EvalMethod), !IO),
-    io.write_string(Stream, ",\n", !IO),
-    io.write_int(Stream, NumInputs, !IO),
-    io.write_string(Stream, ",\n", !IO),
-    io.write_int(Stream, NumOutputs, !IO),
-    io.write_string(Stream, ",\n", !IO),
-    (
-        MaybeOutputSteps = no,
-        io.write_string(Stream, "0,\n", !IO)
-    ;
-        MaybeOutputSteps = yes(_),
-        io.write_string(Stream, "1,\n", !IO)
-    ),
+    io.format(Stream, "= {\n%s,\n%d,\n%d,\n%d,\n",
+        [s(TabledMethodStr), i(NumInputs), i(NumOutputs), i(OS)], !IO),
     io.write_string(Stream, "(const MR_PseudoTypeInfo *) ", !IO),
     output_rval(Info, PTIVectorRval, Stream, !IO),
-    io.write_string(Stream, ",\n", !IO),
-    io.write_string(Stream, "(const MR_TypeParamLocns *) ", !IO),
+    io.write_string(Stream, ",\n(const MR_TypeParamLocns *) ", !IO),
     output_rval(Info, TypeParamsRval, Stream, !IO),
-    io.write_string(Stream, ",\n", !IO),
-    io.write_string(Stream, "{ 0 },\n", !IO),
-    io.write_string(Stream, "{\n", !IO),
+    io.write_string(Stream, ",\n{ 0 },\n{\n", !IO),
     output_data_id(Info, Stream, InputStepsDataId, !IO),
     io.write_string(Stream, ",\n", !IO),
     (
