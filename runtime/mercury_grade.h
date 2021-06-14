@@ -295,9 +295,9 @@
   // input arguments in the called procedure's call table is already active
   // before the call, all forms of tabling treat it as a sign of infinite
   // recursion, as in e.g. f(42, ...) calling ... calling f(42, ...).
-  // However, in a grade that allows more than thread of execution to be active
-  // at the same time, the two f(42, ...) calls need not be related as
-  // ancestor and descendant; they could be independent calls in different
+  // However, in a grade that allows more than one thread of execution
+  // to be active at the same time, the f(42, ...) calls need not be related
+  // as ancestor and descendant; they could be independent calls in different
   // threads. This invalidates the basic assumption on top of which
   // tabling is built.
   // 
