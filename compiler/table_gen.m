@@ -225,8 +225,8 @@ table_gen_process_io_proc(PredId, ProcId, ProcInfo0, PredInfo0,
         PredModuleName, AnnotationIsMissing, TransformPrimitive),
     (
         AnnotationIsMissing = yes,
-        Spec = report_missing_tabled_for_io(PredInfo0, PredId, ProcId,
-            !.ModuleInfo),
+        Spec = report_missing_tabled_for_io(!.ModuleInfo, PredInfo0,
+            PredId, ProcId),
         !:Specs = [Spec | !.Specs]
     ;
         AnnotationIsMissing = no
@@ -354,10 +354,10 @@ subgoal_tabled_for_io_attribute(Goal, TabledForIoAttr) :-
         not TabledForIoAttr = proc_not_tabled_for_io
     ).
 
-:- func report_missing_tabled_for_io(pred_info, pred_id, proc_id, module_info)
+:- func report_missing_tabled_for_io(module_info, pred_info, pred_id, proc_id)
     = error_spec.
 
-report_missing_tabled_for_io(PredInfo, PredId, ProcId, ModuleInfo) = Spec :-
+report_missing_tabled_for_io(ModuleInfo, PredInfo, PredId, ProcId) = Spec :-
     pred_info_get_context(PredInfo, Context),
     ProcPieces = describe_one_proc_name(ModuleInfo,
         should_not_module_qualify, proc(PredId, ProcId)),

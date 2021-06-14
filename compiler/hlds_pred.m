@@ -2626,7 +2626,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
     %
 :- pred proc_info_never_succeeds(proc_info::in, can_proc_succeed::out) is det.
 
-:- pred proc_info_arglives(proc_info::in, module_info::in,
+:- pred proc_info_arglives(module_info::in, proc_info::in,
     list(is_live)::out) is det.
 :- pred proc_info_arg_info(proc_info::in, list(arg_info)::out) is det.
 :- pred proc_info_get_initial_instmap(module_info::in, proc_info::in,
@@ -3796,7 +3796,7 @@ proc_info_never_succeeds(ProcInfo, CanSucceed) :-
         )
     ).
 
-proc_info_arglives(ProcInfo, ModuleInfo, ArgLives) :-
+proc_info_arglives(ModuleInfo, ProcInfo, ArgLives) :-
     proc_info_get_maybe_arglives(ProcInfo, MaybeArgLives),
     (
         MaybeArgLives = yes(ArgLives0),

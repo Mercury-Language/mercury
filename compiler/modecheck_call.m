@@ -130,7 +130,7 @@ modecheck_call_pred(PredId, MaybeDetism, ProcId0, TheProcId,
         % Check that `ArgsVars0' have livenesses which match the
         % expected livenesses.
         mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-        proc_info_arglives(ProcInfo, ModuleInfo, ProcArgLives0),
+        proc_info_arglives(ModuleInfo, ProcInfo, ProcArgLives0),
         modecheck_var_list_is_live_no_exact_match(ArgVars0, ProcArgLives0,
             ArgOffset, !ModeInfo),
 
@@ -222,7 +222,7 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
         ProcArgModes0, ProcArgModes),
     mode_info_set_instvarset(InstVarSet, !ModeInfo),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    proc_info_arglives(ProcInfo, ModuleInfo, ProcArgLives0),
+    proc_info_arglives(ModuleInfo, ProcInfo, ProcArgLives0),
 
     % Check whether the livenesses of the args matches their expected liveness.
     modecheck_var_list_is_live_no_exact_match(ArgVars0, ProcArgLives0, 0,

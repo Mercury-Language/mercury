@@ -2079,7 +2079,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         trace [io(!IO)] (
             pd_debug_message(DebugPD, "Running unique modes\n", [], !IO)
         ),
-        proc_info_arglives(CalledProcInfo, ModuleInfo, ArgLives),
+        proc_info_arglives(ModuleInfo, CalledProcInfo, ArgLives),
         get_live_vars(Args, ArgLives, LiveVars0),
         set_of_var.list_to_set(LiveVars0, LiveVars1),
         set_of_var.intersect(NonLocals, LiveVars1, LiveVars),

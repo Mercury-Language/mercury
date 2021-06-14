@@ -497,10 +497,10 @@ report_max_iterations_exceeded(ModuleInfo) = Spec :-
     Spec = error_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), [Msg]).
 
-    % copy_pred_bodies(OldPredTable, ProcId, ModuleInfo0, ModuleInfo):
+    % copy_pred_bodies(OldPredTable, ProcId, !ModuleInfo):
     %
     % Copy the procedure bodies for all procedures of the specified PredIds
-    % from OldPredTable into ModuleInfo0, giving ModuleInfo.
+    % from OldPredTable into !ModuleInfo.
     %
 :- pred copy_pred_bodies(pred_table::in, list(pred_id)::in,
     module_info::in, module_info::out) is det.
@@ -857,7 +857,7 @@ do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
     % Extract the useful fields in the proc_info.
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_argmodes(!.ProcInfo, ArgModes0),
-    proc_info_arglives(!.ProcInfo, !.ModuleInfo, ArgLives0),
+    proc_info_arglives(!.ModuleInfo, !.ProcInfo, ArgLives0),
     proc_info_get_goal(!.ProcInfo, Body0),
 
     % Modecheck the body. First set the initial instantiation of the head
@@ -1268,7 +1268,7 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
             detect_cse_in_proc(PredId, ProcId, !ModuleInfo),
             determinism_check_proc(ProcId, PredId, !ModuleInfo, DetismSpecs),
             expect(unify(DetismSpecs, []), $pred, "found detism error"),
-            save_proc_info(ProcId, PredId, !.ModuleInfo, !OldPredTable),
+            save_proc_info(!.ModuleInfo, ProcId, PredId, !OldPredTable),
             unique_modes_check_proc(PredId, ProcId, !ModuleInfo,
                 NewChanged, UniqueSpecs),
             bool.or(NewChanged, !Changed),
@@ -1282,10 +1282,10 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
     % Save a copy of the proc info for the specified procedure in
     % !OldProcTable.
     %
-:- pred save_proc_info(proc_id::in, pred_id::in, module_info::in,
+:- pred save_proc_info(module_info::in, proc_id::in, pred_id::in,
     pred_table::in, pred_table::out) is det.
 
-save_proc_info(ProcId, PredId, ModuleInfo, !OldPredTable) :-
+save_proc_info(ModuleInfo, ProcId, PredId, !OldPredTable) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         _PredInfo, ProcInfo),
     map.lookup(!.OldPredTable, PredId, OldPredInfo0),
@@ -1458,7 +1458,7 @@ modecheck_final_insts_gmb(InferModes, GroundMatchesBound,
         mode_info_get_pred_id(!.ModeInfo, PredId),
         mode_info_get_proc_id(!.ModeInfo, ProcId),
         module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
-        proc_info_arglives(ProcInfo, ModuleInfo, ArgLives),
+        proc_info_arglives(ModuleInfo, ProcInfo, ArgLives),
         normalise_insts(ModuleInfo, ArgTypes, VarFinalInsts0, VarFinalInsts1),
         maybe_clobber_insts(VarFinalInsts1, ArgLives, VarFinalInsts2),
         check_final_insts(InferModes, GroundMatchesBound,
@@ -1617,7 +1617,7 @@ proc_check_eval_methods_and_main(ModuleInfo, PredInfo, [ProcId | ProcIds],
         EvalMethod = eval_normal
     ;
         EvalMethod = eval_tabled(TabledMethod),
-        ( if only_fully_in_out_modes(Modes, ModuleInfo) then
+        ( if only_fully_in_out_modes(ModuleInfo, Modes) then
             true
         else
             % All tabled methods require ground arguments.
@@ -1627,7 +1627,7 @@ proc_check_eval_methods_and_main(ModuleInfo, PredInfo, [ProcId | ProcIds],
         ),
         ( if
             tabled_eval_method_destroys_uniqueness(TabledMethod) = yes,
-            not only_nonunique_modes(Modes, ModuleInfo)
+            not only_nonunique_modes(ModuleInfo, Modes)
         then
             UniquenessSpec =
                 report_eval_method_destroys_uniqueness(ProcInfo, TabledMethod),
@@ -1649,11 +1649,11 @@ proc_check_eval_methods_and_main(ModuleInfo, PredInfo, [ProcId | ProcIds],
     ),
     proc_check_eval_methods_and_main(ModuleInfo, PredInfo, ProcIds, !Specs).
 
-:- pred only_fully_in_out_modes(list(mer_mode)::in, module_info::in)
+:- pred only_fully_in_out_modes(module_info::in, list(mer_mode)::in)
     is semidet.
 
-only_fully_in_out_modes([], _).
-only_fully_in_out_modes([Mode | Modes], ModuleInfo) :-
+only_fully_in_out_modes(_, []).
+only_fully_in_out_modes(ModuleInfo, [Mode | Modes]) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
     (
         inst_is_ground(ModuleInfo, InitialInst)
@@ -1665,16 +1665,16 @@ only_fully_in_out_modes([Mode | Modes], ModuleInfo) :-
             inst_is_ground(ModuleInfo, FinalInst)
         )
     ),
-    only_fully_in_out_modes(Modes, ModuleInfo).
+    only_fully_in_out_modes(ModuleInfo, Modes).
 
-:- pred only_nonunique_modes(list(mer_mode)::in, module_info::in) is semidet.
+:- pred only_nonunique_modes(module_info::in, list(mer_mode)::in) is semidet.
 
-only_nonunique_modes([], _).
-only_nonunique_modes([Mode | Rest], ModuleInfo) :-
+only_nonunique_modes(_, []).
+only_nonunique_modes(ModuleInfo, [Mode | Modes]) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
     inst_is_not_partly_unique(ModuleInfo, InitialInst),
     inst_is_not_partly_unique(ModuleInfo, FinalInst),
-    only_nonunique_modes(Rest, ModuleInfo).
+    only_nonunique_modes(ModuleInfo, Modes).
 
 :- pred modes_are_valid_for_main(module_info::in, list(mer_mode)::in)
     is semidet.
