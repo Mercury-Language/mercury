@@ -25,3 +25,7 @@ bad_pragma.m:031:   declaration.
 bad_pragma.m:036: In the second argument of `:- pragma memo' declaration:
 bad_pragma.m:036:   in the first argument of size_limit:
 bad_pragma.m:036:   error: expected a decimal integer, got `12.3'.
+bad_pragma.m:040: Error: `:- pragma no_inline' declaration for function
+bad_pragma.m:040:   `foo1'/2 without corresponding `:- func' declaration.
+bad_pragma.m:041: Error: `:- pragma consider_used' declaration for function
+bad_pragma.m:041:   `foo2'/2 without corresponding `:- func' declaration.

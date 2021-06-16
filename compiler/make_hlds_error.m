@@ -117,16 +117,20 @@ report_undefined_pred_or_func_error(MaybePorF, Name, Arity, OtherArities,
         Context, DescPieces, !Specs) :-
     (
         MaybePorF = no,
+        SNAPrefixPieces = [],
         PredOrFuncPieces = [decl("pred"), words("or"), decl("func")]
     ;
         MaybePorF = yes(pf_predicate),
+        SNAPrefixPieces = [words("predicate")],
         PredOrFuncPieces = [decl("pred")]
     ;
         MaybePorF = yes(pf_function),
+        SNAPrefixPieces = [words("function")],
         PredOrFuncPieces = [decl("func")]
     ),
-    MainPieces = [words("Error:") | DescPieces] ++ [words("for"),
-        unqual_sym_name_arity(sym_name_arity(Name, Arity)),
+    SNA = sym_name_arity(Name, Arity),
+    MainPieces = [words("Error:") | DescPieces] ++
+        [words("for")] ++ SNAPrefixPieces ++ [unqual_sym_name_arity(SNA),
         words("without corresponding")] ++ PredOrFuncPieces ++
         [words("declaration."), nl],
     (

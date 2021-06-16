@@ -36,3 +36,6 @@ foo3(N, N).
     [size_limit(12.3)]).
 
 foo4(N, N).
+
+:- pragma no_inline(func(foo1/2)).
+:- pragma consider_used(func(foo2/2)).

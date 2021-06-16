@@ -5,11 +5,11 @@ require_tailrec_invalid.m:026:   for `non_existent_pred'/3 without
 require_tailrec_invalid.m:026:   corresponding `:- pred' or `:- func'
 require_tailrec_invalid.m:026:   declaration.
 require_tailrec_invalid.m:027: Error: `:- pragma require_tail_recursion' pragma
-require_tailrec_invalid.m:027:   for `non_existent_proc'/2 without
+require_tailrec_invalid.m:027:   for predicate `non_existent_proc'/2 without
 require_tailrec_invalid.m:027:   corresponding `:- pred' declaration.
 require_tailrec_invalid.m:028: Error: `:- pragma require_tail_recursion' pragma
-require_tailrec_invalid.m:028:   for `non_existent_func_proc'/1 without
-require_tailrec_invalid.m:028:   corresponding `:- func' declaration.
+require_tailrec_invalid.m:028:   for function `non_existent_func_proc'/1
+require_tailrec_invalid.m:028:   without corresponding `:- func' declaration.
 require_tailrec_invalid.m:031: Error: `:- pragma require_tail_recursion'
 require_tailrec_invalid.m:031:   declaration for undeclared mode of predicate
 require_tailrec_invalid.m:031:   `require_tailrec_invalid.length'/2.
@@ -41,8 +41,8 @@ require_tailrec_invalid.m:055: Error: unrecognised
 require_tailrec_invalid.m:055:   `:- pragma require_tail_recursion' attribute:
 require_tailrec_invalid.m:055:   `blahblahblah'.
 require_tailrec_invalid.m:059: Error: `:- pragma require_tail_recursion' pragma
-require_tailrec_invalid.m:059:   for `blahblahblah'/0 without corresponding
-require_tailrec_invalid.m:059:   `:- pred' declaration.
+require_tailrec_invalid.m:059:   for predicate `blahblahblah'/0 without
+require_tailrec_invalid.m:059:   corresponding `:- pred' declaration.
 require_tailrec_invalid.m:061: In the second argument of
 require_tailrec_invalid.m:061:   `:- pragma require_tail_recursion'
 require_tailrec_invalid.m:061:   declaration:

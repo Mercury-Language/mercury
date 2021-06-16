@@ -973,8 +973,8 @@ add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
         PredIds = [],
         UserArity = user_arity(UseArityInt),
         OtherArities = list.map(project_user_arity_int, OtherUserArities),
-        report_undefined_pred_or_func_error(no, PredSymName, UseArityInt,
-            OtherArities, Context,
+        report_undefined_pred_or_func_error(pfu_to_maybe_pred_or_func(PFU),
+            PredSymName, UseArityInt, OtherArities, Context,
             [pragma_decl("fact_table"), words("declaration")], !Specs)
     ;
         PredIds = [HeadPredId | TailPredIds],
@@ -1652,8 +1652,9 @@ do_add_pred_marker(PragmaName, PredSpec, Status, MustBeExported,
         UserArity = user_arity(UserArityInt),
         OtherArities = list.map(project_user_arity_int, OtherUserArities),
         DescPieces = [pragma_decl(PragmaName), words("declaration")],
-        report_undefined_pred_or_func_error(no, PredSymName, UserArityInt,
-            OtherArities, Context, DescPieces, !Specs)
+        report_undefined_pred_or_func_error(pfu_to_maybe_pred_or_func(PFU),
+            PredSymName, UserArityInt, OtherArities, Context, DescPieces,
+            !Specs)
     ).
 
     % For each pred_id in the list, check whether markers present in the list
