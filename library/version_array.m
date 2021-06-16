@@ -470,7 +470,7 @@ lookup(VA, I) = X :-
         out_of_bounds_error(I, max(VA), "version_array.lookup")
     ).
 
-:- pragma inline(version_array.elem/2).
+:- pragma inline(func(version_array.elem/2)).
 VA ^ elem(I) =
     lookup(VA, I).
 
@@ -483,7 +483,7 @@ set(I, X, !VA) :-
         out_of_bounds_error(I, max(!.VA), "version_array.set")
     ).
 
-:- pragma inline(version_array.'elem :='/3).
+:- pragma inline(func(version_array.'elem :='/3)).
 (VA0 ^ elem(I) := X) = VA :-
     set(I, X, VA0, VA).
 
@@ -755,7 +755,7 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
 
 :- pred eq_version_array(version_array(T)::in, version_array(T)::in)
     is semidet.
-:- pragma terminates(eq_version_array/2).
+:- pragma terminates(pred(eq_version_array/2)).
 
 eq_version_array(VAa, VAb) :-
     N = max(VAa),
@@ -775,7 +775,7 @@ eq_version_array_2(I, VAa, VAb) :-
 
 :- pred cmp_version_array(comparison_result::uo,
     version_array(T)::in, version_array(T)::in) is det.
-:- pragma terminates(cmp_version_array/3).
+:- pragma terminates(pred(cmp_version_array/3)).
 
 cmp_version_array(R, VAa, VAb) :-
     SizeA = VAa ^ size,

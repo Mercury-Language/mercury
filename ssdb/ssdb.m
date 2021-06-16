@@ -576,8 +576,7 @@ handle_event_call_nondet(ProcId, ListVarValue, Level) :-
 
 :- pred handle_event_call_2(ssdb_event_type::in(either_call), ssdb_proc_id::in,
     list(var_value)::in, ssdb_tracing_level::in, io::di, io::uo) is det.
-
-:- pragma inline(handle_event_call_2/6).
+:- pragma inline(pred(handle_event_call_2/6)).
 
 handle_event_call_2(Event, ProcId, ListVarValue, Level, !IO) :-
     get_ssdb_event_number_inc(EventNum, !IO),
@@ -643,8 +642,7 @@ handle_event_exit_nondet(ProcId, ListVarValue) :-
 
 :- pred handle_event_exit_2(ssdb_event_type::in, ssdb_proc_id::in,
     list(var_value)::in, ssdb_retry::out, io::di, io::uo) is det.
-
-:- pragma inline(handle_event_exit_2/6).
+:- pragma inline(pred(handle_event_exit_2/6)).
 
 handle_event_exit_2(Event, ProcId, ListVarValue, Retry, !IO) :-
     get_ssdb_event_number_inc(EventNum, !IO),
@@ -705,8 +703,7 @@ handle_event_fail_nondet(ProcId, _ListVarValue, Retry) :-
 
 :- pred handle_event_fail_2(ssdb_event_type::in(either_fail), ssdb_proc_id::in,
     ssdb_retry::out, io::di, io::uo) is det.
-
-:- pragma inline(handle_event_fail_2/5).
+:- pragma inline(pred(handle_event_fail_2/5)).
 
 handle_event_fail_2(Event, ProcId, Retry, !IO) :-
     get_ssdb_event_number_inc(EventNum, !IO),
@@ -3426,16 +3423,16 @@ print_invalid_argument(!IO) :-
 
 %----------------------------------------------------------------------------%
 
-:- pragma inline(invent_io/1).
 :- impure pred invent_io(io::uo) is det.
+:- pragma inline(pred(invent_io/1)).
 
 invent_io(IO) :-
     private_builtin.unsafe_type_cast(0, IO0),
     unsafe_promise_unique(IO0, IO),
     impure impure_true.
 
-:- pragma inline(consume_io/1).
 :- impure pred consume_io(io::di) is det.
+:- pragma inline(pred(consume_io/1)).
 
 consume_io(_) :-
     impure impure_true.

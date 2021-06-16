@@ -218,10 +218,10 @@ float_to_byte_list(Val, [B0, B1, B2, B3, B4, B5, B6, B7]) :-
     % Convert a `float' to the representation used in the bytecode.
     % That is, a sequence of eight bytes.
     %
-:- pragma no_determinism_warning(float_to_float64_bytes/9).
 :- pred float_to_float64_bytes(float::in,
     int::out, int::out, int::out, int::out,
     int::out, int::out, int::out, int::out) is det.
+:- pragma no_determinism_warning(pred(float_to_float64_bytes/9)).
 
 :- pragma foreign_proc("C",
     float_to_float64_bytes(FloatVal::in, B0::out, B1::out, B2::out,

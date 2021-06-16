@@ -254,17 +254,17 @@
 
     % Default hash_preds for ints and strings and everything (buwahahaha!)
     %
-:- pragma obsolete(int_hash/2, [int.hash/2]).
+:- pragma obsolete(pred(int_hash/2), [int.hash/2]).
 :- pred int_hash(int::in, int::out) is det.
-:- pragma obsolete(uint_hash/2, [uint.hash/2]).
+:- pragma obsolete(pred(uint_hash/2), [uint.hash/2]).
 :- pred uint_hash(uint::in, int::out) is det.
-:- pragma obsolete(float_hash/2, [float.hash/2]).
+:- pragma obsolete(pred(float_hash/2), [float.hash/2]).
 :- pred float_hash(float::in, int::out) is det.
-:- pragma obsolete(char_hash/2, [char.hash/2]).
+:- pragma obsolete(pred(char_hash/2), [char.hash/2]).
 :- pred char_hash(char::in, int::out) is det.
-:- pragma obsolete(string_hash/2, [string.hash/2]).
+:- pragma obsolete(pred(string_hash/2), [string.hash/2]).
 :- pred string_hash(string::in, int::out) is det.
-:- pragma obsolete(generic_hash/2).
+:- pragma obsolete(pred(generic_hash/2)).
 :- pred generic_hash(T::in, int::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -418,14 +418,14 @@ set(Key, Value, HT0, HT) :-
 :- func find_slot(hash_table(K, V), K) = int.
 :- mode find_slot(hash_table_ui, in) = out is det.
 % :- mode find_slot(in, in) = out is det.
-:- pragma inline(find_slot/2).
+:- pragma inline(func(find_slot/2)).
 
 find_slot(HT, K) = HashSlot :-
     find_slot_2(HT ^ hash_pred, K, HT ^ num_buckets, HashSlot).
 
 :- pred find_slot_2(hash_pred(K)::in(hash_pred), K::in, int::in, int::out)
     is det.
-:- pragma inline(find_slot_2/4).
+:- pragma inline(pred(find_slot_2/4)).
 
 find_slot_2(HashPred, K, NumBuckets, HashSlot) :-
     HashPred(K, Hash),
@@ -687,7 +687,7 @@ from_assoc_list_loop([K - V | T], !HT) :-
     %
 :- func expand(int::in, int::in, hash_pred(K)::in(hash_pred),
     hash_bucket_array(K, V)::in) = (hash_table(K, V)::hash_table_uo) is det.
-:- pragma no_inline(expand/4).
+:- pragma no_inline(func(expand/4)).
 
 expand(NumOccupants, MaxOccupants0, HashPred, Buckets0) = HT :-
     NumBuckets0 = array.size(Buckets0),
@@ -936,7 +936,7 @@ generic_hash(T, Hash) :-
         list.foldl(hash_and_accumulate_hash_value, Args, Hash1, Hash)
     ).
 
-:- pragma obsolete(hash_and_accumulate_hash_value/3).
+:- pragma obsolete(pred(hash_and_accumulate_hash_value/3)).
 :- pred hash_and_accumulate_hash_value(T::in, int::in, int::out) is det.
 
 hash_and_accumulate_hash_value(T, !HashAcc) :-

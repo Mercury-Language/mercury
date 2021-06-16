@@ -2403,7 +2403,7 @@ operator_to_string(lp_gt_eq) = ">=".
 
 :- pred write_vars(io.text_output_stream::in, varset::in, lp_vars::in,
     io::di, io::uo) is det.
-:- pragma consider_used(write_vars/5).
+:- pragma consider_used(pred(write_vars/5)).
 
 write_vars(Stream, VarSet, Vars, !IO) :-
     VarStrs = list.map(var_to_string(VarSet), Vars),
@@ -2419,7 +2419,7 @@ var_to_string(VarSet, Var) = varset.lookup_name(VarSet, Var, "Unnamed").
     %
 :- pred write_matrix(io.text_output_stream::in, lp_varset::in,
     bool::in, matrix::in, io::di, io::uo) is det.
-:- pragma consider_used(write_matrix/6).
+:- pragma consider_used(pred(write_matrix/6)).
 
 write_matrix(Stream, VarSet, WriteLabels, Matrix, !IO) :-
     list.foldl(write_vector(Stream, VarSet, WriteLabels), Matrix, !IO).
@@ -2438,7 +2438,7 @@ write_vector(Stream, VarSet, _WriteLabels, Vector, !IO) :-
     %
 :- pred write_term(io.text_output_stream::in, lp_varset::in, lp_term::in,
     io::di, io::uo) is det.
-:- pragma consider_used(write_term/5).
+:- pragma consider_used(pred(write_term/5)).
 
 write_term(Stream, VarSet, Var - Coefficient, !IO) :-
     ( if Coefficient > zero then

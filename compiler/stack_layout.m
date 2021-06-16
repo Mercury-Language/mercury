@@ -2439,8 +2439,8 @@ init_label_layouts_info = Info :-
     % but the less we can afford to do so.
     %
 :- pred find_sequence(list(T)::in, list(T)::in, int::in, int::out) is semidet.
-:- pragma type_spec(find_sequence/4, T = int).
-:- pragma type_spec(find_sequence/4, T = rval).
+:- pragma type_spec(pred(find_sequence/4), T = int).
+:- pragma type_spec(pred(find_sequence/4), T = rval).
 
 find_sequence(Search, [Head | Tail], CurOffset, FoundAtOffset) :-
     ( if find_sequence_attempt(Search, [Head | Tail]) then
@@ -2450,8 +2450,8 @@ find_sequence(Search, [Head | Tail], CurOffset, FoundAtOffset) :-
     ).
 
 :- pred find_sequence_attempt(list(T)::in, list(T)::in) is semidet.
-:- pragma type_spec(find_sequence_attempt/2, T = int).
-:- pragma type_spec(find_sequence_attempt/2, T = rval).
+:- pragma type_spec(pred(find_sequence_attempt/2), T = int).
+:- pragma type_spec(pred(find_sequence_attempt/2), T = rval).
 
 find_sequence_attempt([], _).
 find_sequence_attempt([SearchHead | SearchTail], [Head | Tail]) :-

@@ -1070,7 +1070,7 @@ call_call(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal, MaybeGoal,
 :- pred call_call_2(set_of_progvar::in, hlds_goal::in,
     list(hlds_goal)::in, maybe(hlds_goal)::in, maybe(hlds_goal)::out,
     pd_info::in, pd_info::out) is det.
-:- pragma consider_used(call_call_2/7).
+:- pragma consider_used(pred(call_call_2/7)).
 
 call_call_2(ConjNonLocals, EarlierGoal, BetweenGoals, MaybeLaterGoal,
         MaybeGoal, !PDInfo) :-

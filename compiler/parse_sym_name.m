@@ -216,7 +216,7 @@ try_parse_sym_name_and_args(Term, SymName, Args) :-
     try_parse_sym_name_and_args_from_f_args(Functor, FunctorArgs,
         SymName, Args).
 
-:- pragma inline(try_parse_sym_name_and_args_from_f_args/4).
+:- pragma inline(pred(try_parse_sym_name_and_args_from_f_args/4)).
 
 try_parse_sym_name_and_args_from_f_args(Functor, FunctorArgs, SymName, Args) :-
     Functor = term.atom(FunctorName),

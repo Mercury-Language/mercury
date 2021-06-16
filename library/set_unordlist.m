@@ -56,14 +56,14 @@
     %
 :- pred empty(set_unordlist(_T)::in) is semidet.
 :- pred is_empty(set_unordlist(_T)::in) is semidet.
-:- pragma obsolete(empty/1, [is_empty/1]).
+:- pragma obsolete(pred(empty/1), [is_empty/1]).
 
     % `non_empty(Set)' is true iff `Set' is not an empty set.
     % `is_non_empty' is a synonym of `non_empty'.
     %
 :- pred non_empty(set_unordlist(_T)::in) is semidet.
 :- pred is_non_empty(set_unordlist(_T)::in) is semidet.
-:- pragma obsolete(non_empty/1, [is_non_empty/1]).
+:- pragma obsolete(pred(non_empty/1), [is_non_empty/1]).
 
 :- pred is_singleton(set_unordlist(T)::in, T::out) is semidet.
 
@@ -441,7 +441,7 @@ init = S :-
 
 init(sul([])).
 
-:- pragma promise_equivalent_clauses(set_unordlist.singleton_set/2).
+:- pragma promise_equivalent_clauses(pred(set_unordlist.singleton_set/2)).
 
 singleton_set(X::in, Set::out) :-
     Set = sul([X]).

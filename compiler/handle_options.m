@@ -2975,7 +2975,7 @@ option_implies(SourceOption, ImpliedOption, ImpliedOptionValue, !Globals) :-
     %
 :- pred option_neg_implies(option::in, option::in, option_data::in,
     globals::in, globals::out) is det.
-:- pragma consider_used(option_neg_implies/5).
+:- pragma consider_used(pred(option_neg_implies/5)).
 
 option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue,
         !Globals) :-

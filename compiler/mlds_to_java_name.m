@@ -315,7 +315,7 @@ output_valid_mangled_name_for_java(Stream, Name, !IO) :-
     % for all names. At the moment it only affects library modules.
     %
 :- pred enforce_java_names(string::in, string::out) is det.
-:- pragma consider_used(enforce_java_names/2).
+:- pragma consider_used(pred(enforce_java_names/2)).
 
 enforce_java_names(Name, JavaName) :-
     % If the Name contains one or more dots (`.'), then capitalize

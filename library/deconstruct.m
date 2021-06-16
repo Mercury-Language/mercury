@@ -306,13 +306,13 @@
 % typeinfo variables. Thus these foreign_proc's references to TypeInfo_for_T
 % will refer to an undefined variable.
 
-:- pragma no_inline(functor/4).
-:- pragma no_inline(functor_number/3).
-:- pragma no_inline(functor_number_cc/3).
-:- pragma no_inline(arg/4).
-:- pragma no_inline(named_arg/4).
-:- pragma no_inline(deconstruct/5).
-:- pragma no_inline(limited_deconstruct/6).
+:- pragma no_inline(pred(functor/4)).
+:- pragma no_inline(pred(functor_number/3)).
+:- pragma no_inline(pred(functor_number_cc/3)).
+:- pragma no_inline(pred(arg/4)).
+:- pragma no_inline(pred(named_arg/4)).
+:- pragma no_inline(pred(deconstruct/5)).
+:- pragma no_inline(pred(limited_deconstruct/6)).
 
 %---------------------------------------------------------------------------%
 
@@ -1047,7 +1047,7 @@ limited_deconstruct_idcc(Term, _MaxArity, Functor, Arity, Arguments) :-
 :- mode local_deconstruct(in, in(include_details_cc), out, out, out, out)
     is cc_multi.
 :- mode local_deconstruct(in, in, out, out, out, out) is cc_multi.
-:- pragma consider_used(local_deconstruct/6).
+:- pragma consider_used(pred(local_deconstruct/6)).
 
 local_deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
     rtti_implementation.deconstruct(Term, NonCanon, Functor, FunctorNumber,
@@ -1058,7 +1058,7 @@ local_deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
 :- mode local_univ_named_arg(in, in(canonicalize), in, out) is semidet.
 :- mode local_univ_named_arg(in, in(include_details_cc), in, out)
     is semidet. % conceptually committed-choice
-:- pragma consider_used(local_univ_named_arg/4).
+:- pragma consider_used(pred(local_univ_named_arg/4)).
 
 local_univ_named_arg(Term, NonCanon, Name, Argument) :-
     rtti_implementation.univ_named_arg(Term, NonCanon, Name, Argument).

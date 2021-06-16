@@ -54,14 +54,14 @@
     %
 :- pred empty(set_tree234(_T)::in) is semidet.
 :- pred is_empty(set_tree234(_T)::in) is semidet.
-:- pragma obsolete(empty/1, [is_empty/1]).
+:- pragma obsolete(pred(empty/1), [is_empty/1]).
 
     % `non_empty(Set)' is true iff `Set' is not an empty set.
     % `is_non_empty' is a synonym for `non_empty'.
     %
 :- pred non_empty(set_tree234(T)::in) is semidet.
 :- pred is_non_empty(set_tree234(T)::in) is semidet.
-:- pragma obsolete(non_empty/1, [is_non_empty/1]).
+:- pragma obsolete(pred(non_empty/1), [is_non_empty/1]).
 
 :- pred is_singleton(set_tree234(T)::in, T::out) is semidet.
 
@@ -564,22 +564,22 @@
 :- import_module string.
 :- import_module term.  % for var/1.
 
-:- pragma type_spec(sorted_list_to_set/1, T = var(_)).
-:- pragma type_spec(sorted_list_to_set/2, T = var(_)).
-:- pragma type_spec(rev_sorted_list_to_set/1, T = var(_)).
-:- pragma type_spec(rev_sorted_list_to_set/2, T = var(_)).
-:- pragma type_spec(do_from_sorted_list/6, E = var(_)).
-:- pragma type_spec(do_from_rev_sorted_list/6, E = var(_)).
-:- pragma type_spec(rev_sorted_list_to_set/1, T = var(_)).
-:- pragma type_spec(contains(in, in), T = var(_)).
-:- pragma type_spec(insert/3, T = var(_)).
-:- pragma type_spec(insert_list/3, T = var(_)).
-:- pragma type_spec(union/2, T = var(_)).
-:- pragma type_spec(union/3, T = var(_)).
-:- pragma type_spec(intersect/2, T = var(_)).
-:- pragma type_spec(intersect/3, T = var(_)).
-:- pragma type_spec(difference/2, T = var(_)).
-:- pragma type_spec(difference/3, T = var(_)).
+:- pragma type_spec(func(sorted_list_to_set/1),         T = var(_)).
+:- pragma type_spec(pred(sorted_list_to_set/2),         T = var(_)).
+:- pragma type_spec(func(rev_sorted_list_to_set/1),     T = var(_)).
+:- pragma type_spec(pred(rev_sorted_list_to_set/2),     T = var(_)).
+:- pragma type_spec(pred(do_from_sorted_list/6),        T = var(_)).
+:- pragma type_spec(pred(do_from_rev_sorted_list/6),    T = var(_)).
+:- pragma type_spec(func(rev_sorted_list_to_set/1),     T = var(_)).
+:- pragma type_spec(contains(in, in),                   T = var(_)).
+:- pragma type_spec(pred(insert/3),                     T = var(_)).
+:- pragma type_spec(pred(insert_list/3),                T = var(_)).
+:- pragma type_spec(func(union/2),                      T = var(_)).
+:- pragma type_spec(pred(union/3),                      T = var(_)).
+:- pragma type_spec(func(intersect/2),                  T = var(_)).
+:- pragma type_spec(pred(intersect/3),                  T = var(_)).
+:- pragma type_spec(func(difference/2),                 T = var(_)).
+:- pragma type_spec(pred(difference/3),                 T = var(_)).
 
 :- type set_tree234(T)
     --->    empty
@@ -672,7 +672,7 @@ is_singleton(two(X, empty, empty), X).
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_equivalent_clauses(member/2).
+:- pragma promise_equivalent_clauses(pred(member/2)).
 
 member(Element::out, Set::in) :-
     all_members(Set, Element).
@@ -2622,8 +2622,8 @@ sorted_list_to_set(List, Tree) :-
         )
     ).
 
-:- pred do_from_sorted_list(int::in, list(E)::in, list(E)::out,
-    int::in, int::in, set_tree234(E)::out) is det.
+:- pred do_from_sorted_list(int::in, list(T)::in, list(T)::out,
+    int::in, int::in, set_tree234(T)::out) is det.
 
 do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
     ( if Level0 = 1 then
@@ -2772,8 +2772,8 @@ rev_sorted_list_to_set(List, Tree) :-
         )
     ).
 
-:- pred do_from_rev_sorted_list(int::in, list(E)::in, list(E)::out,
-    int::in, int::in, set_tree234(E)::out) is det.
+:- pred do_from_rev_sorted_list(int::in, list(T)::in, list(T)::out,
+    int::in, int::in, set_tree234(T)::out) is det.
 
 do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
     ( if Level0 = 1 then

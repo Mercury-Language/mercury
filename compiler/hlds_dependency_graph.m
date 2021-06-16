@@ -530,7 +530,7 @@ maybe_add_dependency_arc(DepGraph, WhatEdges, EdgeKind, Caller, PredProcId,
     multi_map(prog_var, pred_proc_id)::in, map(pred_proc_id, scc_id)::in,
     digraph(scc_id)::in, digraph(scc_id)::out,
     set(scc_id)::in, set(scc_id)::out) is det.
-:- pragma consider_used(handle_higher_order_args/9).
+:- pragma consider_used(pred(handle_higher_order_args/9)).
 
 handle_higher_order_args([], _, _, _, _, !SCCRel, !NoMerge).
 handle_higher_order_args([Arg | Args], IsAgg, SCCid, Map, PredSCC,
@@ -629,7 +629,7 @@ proc_is_exported(ModuleInfo, PredProcId) :-
 
 :- pred write_dependency_ordering(io.text_output_stream::in, module_info::in,
     int::in, list(list(pred_proc_id))::in, io::di, io::uo) is det.
-:- pragma consider_used(write_dependency_ordering/6).
+:- pragma consider_used(pred(write_dependency_ordering/6)).
 
 write_dependency_ordering(Stream, _ModuleInfo, _CurSCCNum, [], !IO) :-
     io.write_string(Stream, "\n", !IO).

@@ -362,21 +362,21 @@ poly_info_extract(Info, Specs, !PredInfo, !ProcInfo, !:ModuleInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(poly_info_get_module_info/2).
-:- pragma inline(poly_info_get_varset/2).
-:- pragma inline(poly_info_get_var_types/2).
-:- pragma inline(poly_info_get_rtti_varmaps/2).
-:- pragma inline(poly_info_get_typevarset/2).
-:- pragma inline(poly_info_get_tvar_kind_map/2).
-:- pragma inline(poly_info_get_proof_map/2).
-:- pragma inline(poly_info_get_constraint_map/2).
-:- pragma inline(poly_info_get_type_info_var_map/2).
-:- pragma inline(poly_info_get_typeclass_info_map/2).
-:- pragma inline(poly_info_get_const_struct_var_map/2).
-:- pragma inline(poly_info_get_int_const_map/2).
-:- pragma inline(poly_info_get_num_reuses/2).
-:- pragma inline(poly_info_get_const_struct_db/2).
-:- pragma inline(poly_info_get_errors/2).
+:- pragma inline(pred(poly_info_get_module_info/2)).
+:- pragma inline(pred(poly_info_get_varset/2)).
+:- pragma inline(pred(poly_info_get_var_types/2)).
+:- pragma inline(pred(poly_info_get_rtti_varmaps/2)).
+:- pragma inline(pred(poly_info_get_typevarset/2)).
+:- pragma inline(pred(poly_info_get_tvar_kind_map/2)).
+:- pragma inline(pred(poly_info_get_proof_map/2)).
+:- pragma inline(pred(poly_info_get_constraint_map/2)).
+:- pragma inline(pred(poly_info_get_type_info_var_map/2)).
+:- pragma inline(pred(poly_info_get_typeclass_info_map/2)).
+:- pragma inline(pred(poly_info_get_const_struct_var_map/2)).
+:- pragma inline(pred(poly_info_get_int_const_map/2)).
+:- pragma inline(pred(poly_info_get_num_reuses/2)).
+:- pragma inline(pred(poly_info_get_const_struct_db/2)).
+:- pragma inline(pred(poly_info_get_errors/2)).
 
 poly_info_get_module_info(!.PI, X) :-
     X = !.PI ^ poly_module_info.
@@ -411,19 +411,19 @@ poly_info_get_defined_where(!.PI, X) :-
 poly_info_get_errors(!.PI, X) :-
     X = !.PI ^ poly_errors.
 
-:- pragma inline(poly_info_set_varset/3).
-:- pragma inline(poly_info_set_varset_types/4).
-:- pragma inline(poly_info_set_varset_types_rtti/5).
-:- pragma inline(poly_info_set_rtti_varmaps/3).
-:- pragma inline(poly_info_set_typevarset/3).
-:- pragma inline(poly_info_set_proof_map/3).
-:- pragma inline(poly_info_set_type_info_var_map/3).
-:- pragma inline(poly_info_set_typeclass_info_map/3).
-:- pragma inline(poly_info_set_int_const_map/3).
-:- pragma inline(poly_info_set_const_struct_var_map/3).
-:- pragma inline(poly_info_set_num_reuses/3).
-:- pragma inline(poly_info_set_const_struct_db/3).
-:- pragma inline(poly_info_set_errors/3).
+:- pragma inline(pred(poly_info_set_varset/3)).
+:- pragma inline(pred(poly_info_set_varset_types/4)).
+:- pragma inline(pred(poly_info_set_varset_types_rtti/5)).
+:- pragma inline(pred(poly_info_set_rtti_varmaps/3)).
+:- pragma inline(pred(poly_info_set_typevarset/3)).
+:- pragma inline(pred(poly_info_set_proof_map/3)).
+:- pragma inline(pred(poly_info_set_type_info_var_map/3)).
+:- pragma inline(pred(poly_info_set_typeclass_info_map/3)).
+:- pragma inline(pred(poly_info_set_int_const_map/3)).
+:- pragma inline(pred(poly_info_set_const_struct_var_map/3)).
+:- pragma inline(pred(poly_info_set_num_reuses/3)).
+:- pragma inline(pred(poly_info_set_const_struct_db/3)).
+:- pragma inline(pred(poly_info_set_errors/3)).
 
 poly_info_set_varset(X, !PI) :-
     !PI ^ poly_varset := X.

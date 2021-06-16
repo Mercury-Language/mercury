@@ -191,40 +191,40 @@
     ops.priority::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
-:- pragma type_spec(maybe_write_paren/6,
+:- pragma type_spec(pred(maybe_write_paren/6),
     (Stream = io.output_stream, State = io.state)).
 
-:- pragma type_spec(write/4,
+:- pragma type_spec(pred(write/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(write/5,
+:- pragma type_spec(pred(write/5),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(write_univ/4,
+:- pragma type_spec(pred(write_univ/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(write_univ/5,
+:- pragma type_spec(pred(write_univ/5),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_int/4,
+:- pragma type_spec(pred(put_int/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_uint/4,
+:- pragma type_spec(pred(put_uint/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_int8/4,
+:- pragma type_spec(pred(put_int8/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_uint8/4,
+:- pragma type_spec(pred(put_uint8/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_int16/4,
+:- pragma type_spec(pred(put_int16/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_uint16/4,
+:- pragma type_spec(pred(put_uint16/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_int32/4,
+:- pragma type_spec(pred(put_int32/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_uint32/4,
+:- pragma type_spec(pred(put_uint32/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_int64/4,
+:- pragma type_spec(pred(put_int64/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_uint64/4,
+:- pragma type_spec(pred(put_uint64/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_float/4,
+:- pragma type_spec(pred(put_float/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(put_char/4,
+:- pragma type_spec(pred(put_char/4),
     (Stream = io.output_stream, State = io.state)).
 
 %---------------------------------------------------------------------------%
@@ -719,7 +719,7 @@ write_univ(Stream, NonCanon, Univ, !State) :-
 :- mode do_write_univ(in, in(canonicalize), in, di, uo) is det.
 :- mode do_write_univ(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode do_write_univ(in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(do_write_univ/5,
+:- pragma type_spec(pred(do_write_univ/5),
     (Stream = io.output_stream, State = io.state)).
 
 do_write_univ(Stream, NonCanon, Univ, !State) :-
@@ -735,16 +735,14 @@ do_write_univ(Stream, NonCanon, Univ, !State) :-
 :- mode do_write_univ_prio(in, in(include_details_cc), in, in, di, uo)
     is cc_multi.
 :- mode do_write_univ_prio(in, in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(do_write_univ_prio/6,
+:- pragma type_spec(pred(do_write_univ_prio/6),
     (Stream = io.output_stream, State = io.state)).
 
     % We only use the io.stream_db we read impurely when we have
     % the io.state.
-:- pragma promise_pure(do_write_univ_prio/6).
-
+:- pragma promise_pure(pred(do_write_univ_prio/6)).
 do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
     % We need to special-case a whole bunch of builtin types.
-
     TypeDesc = univ_type(Univ),
     type_ctor_and_args(TypeDesc, TypeCtorDesc, ArgTypeDescs),
     type_ctor_name_and_arity(TypeCtorDesc,
@@ -1012,7 +1010,7 @@ same_private_builtin_type(_, _).
 :- mode write_ordinary_term(in, in(include_details_cc), in, in, di, uo)
     is cc_multi.
 :- mode write_ordinary_term(in, in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(write_ordinary_term/6,
+:- pragma type_spec(pred(write_ordinary_term/6),
     (Stream = io.output_stream, State = io.state)).
 
 write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
@@ -1069,7 +1067,7 @@ write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
     in, di, uo) is cc_multi.
 :- mode select_op_info_and_print(in, in, in, in, in, in, in,
     di, uo) is cc_multi.
-:- pragma type_spec(select_op_info_and_print/9,
+:- pragma type_spec(pred(select_op_info_and_print/9),
     (Stream = io.output_stream, State = io.state)).
 
 select_op_info_and_print(Stream, NonCanon, OpInfo, OtherOpInfos, Priority,
@@ -1164,7 +1162,7 @@ select_op_info_and_print(Stream, NonCanon, OpInfo, OtherOpInfos, Priority,
     in, in, di, uo) is cc_multi.
 :- mode select_remaining_op_info_and_print(in, in, in, in,
     in, in, di, uo) is cc_multi.
-:- pragma type_spec(select_remaining_op_info_and_print/8,
+:- pragma type_spec(pred(select_remaining_op_info_and_print/8),
     (Stream = io.output_stream, State = io.state)).
 
 select_remaining_op_info_and_print(Stream, NonCanon,
@@ -1193,10 +1191,10 @@ select_remaining_op_info_and_print(Stream, NonCanon, [],
 :- mode write_functor_and_args(in, in(include_details_cc), in, in, di, uo)
     is cc_multi.
 :- mode write_functor_and_args(in, in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(write_functor_and_args/6,
+:- pragma type_spec(pred(write_functor_and_args/6),
     (Stream = io.output_stream, State = io.state)).
 
-:- pragma inline(write_functor_and_args/6).
+:- pragma inline(pred(write_functor_and_args/6)).
 
 write_functor_and_args(Stream, NonCanon, Functor, Args, !State) :-
     term_io.quote_atom_agt(Stream, Functor,
@@ -1211,7 +1209,7 @@ write_functor_and_args(Stream, NonCanon, Functor, Args, !State) :-
         Args = []
     ).
 
-:- pragma inline(maybe_write_paren/6).
+:- pragma inline(pred(maybe_write_paren/6)).
 
 maybe_write_paren(Stream, String, Priority, OpPriority, !State) :-
     ( if OpPriority > Priority then
@@ -1228,7 +1226,7 @@ maybe_write_paren(Stream, String, Priority, OpPriority, !State) :-
 :- mode write_list_tail(in, in(canonicalize), in, di, uo) is det.
 :- mode write_list_tail(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode write_list_tail(in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(write_list_tail/5,
+:- pragma type_spec(pred(write_list_tail/5),
     (Stream = io.output_stream, State = io.state)).
 
 write_list_tail(Stream, NonCanon, Univ, !State) :-
@@ -1261,7 +1259,7 @@ write_list_tail(Stream, NonCanon, Univ, !State) :-
 :- mode write_term_args(in, in(canonicalize), in, di, uo) is det.
 :- mode write_term_args(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode write_term_args(in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(write_term_args/5,
+:- pragma type_spec(pred(write_term_args/5),
     (Stream = io.output_stream, State = io.state)).
 
 write_term_args(_Stream, _, [], !State).
@@ -1277,7 +1275,7 @@ write_term_args(Stream, NonCanon, [X | Xs], !State) :-
 :- mode write_arg(in, in(canonicalize), in, di, uo) is det.
 :- mode write_arg(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode write_arg(in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(write_arg/5,
+:- pragma type_spec(pred(write_arg/5),
     (Stream = io.output_stream, State = io.state)).
 
 write_arg(Stream, NonCanon, X, !State) :-
@@ -1336,7 +1334,7 @@ write_c_pointer(Stream, C_Pointer, !State) :-
 :- pred write_array(Stream::in, array(T)::in, State::di, State::uo) is det
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
-:- pragma type_spec(write_array/4,
+:- pragma type_spec(pred(write_array/4),
     (Stream = io.output_stream, State = io.state)).
 
 write_array(Stream, Array, !State) :-
@@ -1348,7 +1346,7 @@ write_array(Stream, Array, !State) :-
 :- pred write_version_array(Stream::in, version_array(T)::in,
     State::di, State::uo) is det <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
-:- pragma type_spec(write_version_array/4,
+:- pragma type_spec(pred(write_version_array/4),
     (Stream = io.output_stream, State = io.state)).
 
 write_version_array(Stream, VersionArray, !State) :-

@@ -641,7 +641,7 @@ type_ctor_is_variable_arity(TypeCtorInfo) :-
 
 :- pred compare_pseudo_type_infos(comparison_result::out,
     pseudo_type_info::in, pseudo_type_info::in) is det.
-:- pragma consider_used(compare_pseudo_type_infos/3).
+:- pragma consider_used(pred(compare_pseudo_type_infos/3)).
 
 :- pragma foreign_export("C#", compare_pseudo_type_infos(out, in, in),
     "ML_compare_pseudo_type_infos").
@@ -5542,7 +5542,7 @@ notag_functor_arg_name(NoTagFunctorDesc) = NoTagFunctorDesc ^ unsafe_index(2).
 
     % XXX get rid of this
 :- func unsafe_index(int, T) = U.
-:- pragma consider_used(unsafe_index/2).
+:- pragma consider_used(func(unsafe_index/2)).
 :- pragma foreign_proc("C#",
     unsafe_index(_Num::in, _Array::in) = (Item::out),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -5556,8 +5556,8 @@ unsafe_index(_, _) = _ :-
 
     % XXX get rid of this
 :- pred null(T::in) is semidet.
-:- pragma no_determinism_warning(null/1).
-:- pragma consider_used(null/1).
+:- pragma no_determinism_warning(pred(null/1)).
+:- pragma consider_used(pred(null/1)).
 
 :- pragma foreign_proc("C",
     null(S::in),
@@ -5615,7 +5615,7 @@ null_string = _ :-
 %---------------------------------------------------------------------------%
 
 :- func unsafe_get_enum_value(T) = int.
-:- pragma no_determinism_warning(unsafe_get_enum_value/1).
+:- pragma no_determinism_warning(func(unsafe_get_enum_value/1)).
 
 :- pragma foreign_proc("C#",
     unsafe_get_enum_value(Enum::in) = (Value::out),
@@ -5646,7 +5646,7 @@ unsafe_get_enum_value(_) = _ :-
 %---------------------------------------------------------------------------%
 
 :- func unsafe_get_foreign_enum_value(T) = int.
-:- pragma no_determinism_warning(unsafe_get_foreign_enum_value/1).
+:- pragma no_determinism_warning(func(unsafe_get_foreign_enum_value/1)).
 
 :- pragma foreign_proc("C#",
     unsafe_get_foreign_enum_value(T::in) = (Value::out),
@@ -5700,7 +5700,7 @@ high_level_data :-
 %---------------------------------------------------------------------------%
 
 :- pred semidet_unimplemented(string::in) is semidet.
-:- pragma consider_used(semidet_unimplemented/1).
+:- pragma consider_used(pred(semidet_unimplemented/1)).
 
 semidet_unimplemented(S) :-
     ( if semidet_succeed then
@@ -5710,7 +5710,7 @@ semidet_unimplemented(S) :-
     ).
 
 :- pred det_unimplemented(string::in) is det.
-:- pragma consider_used(det_unimplemented/1).
+:- pragma consider_used(pred(det_unimplemented/1)).
 
 det_unimplemented(S) :-
     ( if semidet_succeed then

@@ -228,7 +228,7 @@ ML_finalize_semaphore(void *obj, void *cd)
     %
     % XXX get rid of this limitation at some stage.
     %
-:- pragma no_inline(semaphore.impure_signal/1).
+:- pragma no_inline(pred(semaphore.impure_signal/1)).
 :- pragma foreign_proc("C",
     impure_signal(Semaphore::in),
     [will_not_call_mercury, thread_safe],
@@ -327,7 +327,7 @@ ML_finalize_semaphore(void *obj, void *cd)
     %
     % XXX get rid of this limitation at some stage.
     %
-:- pragma no_inline(impure_wait/1).
+:- pragma no_inline(pred(impure_wait/1)).
 :- pragma foreign_proc("C",
     impure_wait(Semaphore::in),
     [will_not_call_mercury, thread_safe],

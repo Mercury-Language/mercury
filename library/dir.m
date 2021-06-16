@@ -773,7 +773,7 @@ is_dotnet_root_directory(FileName) :-
     ).
 
 :- pred is_dotnet_root_directory_2(string::in) is semidet.
-:- pragma no_determinism_warning(is_dotnet_root_directory_2/1).
+:- pragma no_determinism_warning(pred(is_dotnet_root_directory_2/1)).
 
 :- pragma foreign_proc("C#",
     is_dotnet_root_directory_2(FileName::in),
@@ -835,7 +835,7 @@ dotnet_path_name_is_absolute(FileName) :-
     ).
 
 :- pred dotnet_path_name_is_absolute_2(string::in) is semidet.
-:- pragma no_determinism_warning(dotnet_path_name_is_absolute_2/1).
+:- pragma no_determinism_warning(pred(dotnet_path_name_is_absolute_2/1)).
 
 :- pragma foreign_proc("C#",
     dir.dotnet_path_name_is_absolute_2(FileName::in),

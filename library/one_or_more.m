@@ -1935,7 +1935,7 @@ reverse(OoM) = RevOoM :-
     det_list_to_one_or_more(RevList, RevOoM).
 
     % reverse(A, B) <=> reverse(B, A).
-:- pragma promise_equivalent_clauses(one_or_more.reverse/2).
+:- pragma promise_equivalent_clauses(pred(one_or_more.reverse/2)).
 
 reverse(OoM::in, RevOoM::out) :-
     RevOoM = one_or_more.reverse(OoM).

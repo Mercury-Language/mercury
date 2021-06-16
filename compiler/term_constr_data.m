@@ -689,7 +689,7 @@ size_var_to_string(SizeVarSet, Var) = Str :-
     Str = string.format("%s[%d]", [s(VarName), i(term.var_to_int(Var))]).
 
 :- func recursion_type_to_string(recursion_type) = string.
-:- pragma consider_used(recursion_type_to_string/1).
+:- pragma consider_used(func(recursion_type_to_string/1)).
 
 recursion_type_to_string(none)        = "none".
 recursion_type_to_string(direct_only) = "direct recursion only".

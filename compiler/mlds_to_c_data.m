@@ -384,7 +384,7 @@ mlds_output_boxed_rval(Opts, Stream, Type, Rval, !IO) :-
 
 :- pred mlds_output_boxed_rval_generic(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_rval::in, io::di, io::uo) is det.
-:- pragma inline(mlds_output_boxed_rval_generic/5).
+:- pragma inline(pred(mlds_output_boxed_rval_generic/5)).
 
 mlds_output_boxed_rval_generic(Opts, Stream, Rval, !IO) :-
     % Rval already has type MR_Box, so no cast is needed.
@@ -392,7 +392,7 @@ mlds_output_boxed_rval_generic(Opts, Stream, Rval, !IO) :-
 
 :- pred mlds_output_boxed_rval_float(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_rval::in, io::di, io::uo) is det.
-:- pragma inline(mlds_output_boxed_rval_float/5).
+:- pragma inline(pred(mlds_output_boxed_rval_float/5)).
 
 mlds_output_boxed_rval_float(Opts, Stream, Rval, !IO) :-
     io.write_string(Stream, "MR_box_float(", !IO),
@@ -401,7 +401,7 @@ mlds_output_boxed_rval_float(Opts, Stream, Rval, !IO) :-
 
 :- pred mlds_output_boxed_rval_int64(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_rval::in, io::di, io::uo) is det.
-:- pragma inline(mlds_output_boxed_rval_int64/5).
+:- pragma inline(pred(mlds_output_boxed_rval_int64/5)).
 
 mlds_output_boxed_rval_int64(Opts, Stream, Rval, !IO) :-
     io.write_string(Stream, "MR_box_int64(", !IO),
@@ -410,7 +410,7 @@ mlds_output_boxed_rval_int64(Opts, Stream, Rval, !IO) :-
 
 :- pred mlds_output_boxed_rval_uint64(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_rval::in, io::di, io::uo) is det.
-:- pragma inline(mlds_output_boxed_rval_uint64/5).
+:- pragma inline(pred(mlds_output_boxed_rval_uint64/5)).
 
 mlds_output_boxed_rval_uint64(Opts, Stream, Rval, !IO) :-
     io.write_string(Stream, "MR_box_uint64(", !IO),
@@ -419,7 +419,7 @@ mlds_output_boxed_rval_uint64(Opts, Stream, Rval, !IO) :-
 
 :- pred mlds_output_boxed_rval_smaller_than_word(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_rval::in, io::di, io::uo) is det.
-:- pragma inline(mlds_output_boxed_rval_smaller_than_word/5).
+:- pragma inline(pred(mlds_output_boxed_rval_smaller_than_word/5)).
 
 mlds_output_boxed_rval_smaller_than_word(Opts, Stream, Rval, !IO) :-
     % We cast first to MR_Word, and then to MR_Box.
@@ -431,7 +431,7 @@ mlds_output_boxed_rval_smaller_than_word(Opts, Stream, Rval, !IO) :-
 
 :- pred mlds_output_boxed_rval_default(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_rval::in, io::di, io::uo) is det.
-:- pragma inline(mlds_output_boxed_rval_default/5).
+:- pragma inline(pred(mlds_output_boxed_rval_default/5)).
 
 mlds_output_boxed_rval_default(Opts, Stream, Rval, !IO) :-
     io.write_string(Stream, "((MR_Box) (", !IO),
@@ -583,7 +583,7 @@ mlds_output_unboxed_rval(Opts, Stream, Type, Rval, !IO) :-
 
 :- pred mlds_output_unboxed_rval_float(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_rval::in, io::di, io::uo) is det.
-:- pragma inline(mlds_output_unboxed_rval_float/5).
+:- pragma inline(pred(mlds_output_unboxed_rval_float/5)).
 
 mlds_output_unboxed_rval_float(Opts, Stream, Rval, !IO) :-
     io.write_string(Stream, "MR_unbox_float(", !IO),
@@ -592,7 +592,7 @@ mlds_output_unboxed_rval_float(Opts, Stream, Rval, !IO) :-
 
 :- pred mlds_output_unboxed_rval_int64(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_rval::in, io::di, io::uo) is det.
-:- pragma inline(mlds_output_unboxed_rval_int64/5).
+:- pragma inline(pred(mlds_output_unboxed_rval_int64/5)).
 
 mlds_output_unboxed_rval_int64(Opts, Stream, Rval, !IO) :-
     io.write_string(Stream, "MR_unbox_int64(", !IO),
@@ -601,7 +601,7 @@ mlds_output_unboxed_rval_int64(Opts, Stream, Rval, !IO) :-
 
 :- pred mlds_output_unboxed_rval_uint64(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_rval::in, io::di, io::uo) is det.
-:- pragma inline(mlds_output_unboxed_rval_uint64/5).
+:- pragma inline(pred(mlds_output_unboxed_rval_uint64/5)).
 
 mlds_output_unboxed_rval_uint64(Opts, Stream, Rval, !IO) :-
     io.write_string(Stream, "MR_unbox_uint64(", !IO),
@@ -611,7 +611,7 @@ mlds_output_unboxed_rval_uint64(Opts, Stream, Rval, !IO) :-
 :- pred mlds_output_unboxed_rval_smaller_than_word(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_type::in, mlds_rval::in,
     io::di, io::uo) is det.
-:- pragma inline(mlds_output_unboxed_rval_smaller_than_word/6).
+:- pragma inline(pred(mlds_output_unboxed_rval_smaller_than_word/6)).
 
 mlds_output_unboxed_rval_smaller_than_word(Opts, Stream, Type, Rval, !IO) :-
     % We cast first to MR_Word, and then to the desired type.
@@ -632,7 +632,7 @@ mlds_output_unboxed_rval_smaller_than_word(Opts, Stream, Type, Rval, !IO) :-
 :- pred mlds_output_unboxed_rval_default(mlds_to_c_opts::in,
     io.text_output_stream::in, mlds_type::in, mlds_rval::in,
     io::di, io::uo) is det.
-:- pragma inline(mlds_output_unboxed_rval_default/6).
+:- pragma inline(pred(mlds_output_unboxed_rval_default/6)).
 
 mlds_output_unboxed_rval_default(Opts, Stream, Type, Rval, !IO) :-
     io.write_string(Stream, "(", !IO),

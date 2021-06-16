@@ -294,7 +294,7 @@ type_contains_subtype(ModuleInfo, FromType, ToType) :-
     % We assume that type definitions for a module don't change for the
     % duration of the analysis.
     %
-:- pragma memo(type_contains_subtype_1/4,
+:- pragma memo(pred(type_contains_subtype_1/4),
     [allow_reset, disable_warning_if_ignored,
     specified([promise_implied, value, value, output])]).
 
@@ -338,7 +338,7 @@ type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
 :- pred type_arg_types(module_info::in, mer_type::in, list(mer_type)::out)
     is det.
 
-:- pragma memo(type_arg_types/3,
+:- pragma memo(pred(type_arg_types/3),
     [allow_reset, disable_warning_if_ignored,
     specified([promise_implied, value, output])]).
 
@@ -409,7 +409,7 @@ select_subtype(ModuleInfo, Type, ConsID, Position, SubType) :-
         unexpected($pred, "type is both existential and non-existential")
     ).
 
-:- pragma memo(normalize_selector_with_type_information/4,
+:- pragma memo(pred(normalize_selector_with_type_information/4),
     [allow_reset, disable_warning_if_ignored,
     specified([promise_implied, value, value, output])]).
 

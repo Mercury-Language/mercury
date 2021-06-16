@@ -546,7 +546,7 @@ make_tc_instance_constraint_id(TCName, TCTypes, Ordinal, NumTypes, RttiId) :-
 
 :- pred output_code_addr_in_list(io.text_output_stream::in, code_addr::in,
     io::di, io::uo) is det.
-:- pragma consider_used(output_code_addr_in_list/4).
+:- pragma consider_used(pred(output_code_addr_in_list/4)).
 
 output_code_addr_in_list(Stream, CodeAddr, !IO) :-
     io.write_string(Stream, "\t", !IO),
@@ -1984,7 +1984,7 @@ output_exist_locns(Locns, Stream, !IO) :-
 
 :- pred output_maybe_static_code_addr(maybe(code_addr)::in,
     io.text_output_stream::in, io::di, io::uo) is det.
-:- pragma consider_used(output_maybe_static_code_addr/4).
+:- pragma consider_used(pred(output_maybe_static_code_addr/4)).
 
 output_maybe_static_code_addr(yes(CodeAddr), Stream, !IO) :-
     output_static_code_addr(CodeAddr, Stream, !IO).

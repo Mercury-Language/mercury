@@ -572,7 +572,7 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
 :- pred output_int_binop_for_java(java_out_info::in, io.text_output_stream::in,
     binary_op::in(int_binary_op), mlds_rval::in, mlds_rval::in, io::di, io::uo)
     is det.
-:- pragma no_inline(output_int_binop_for_java/7).
+:- pragma no_inline(pred(output_int_binop_for_java/7)).
 
 output_int_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
     (
@@ -774,7 +774,7 @@ output_int_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
 :- pred output_basic_binop_maybe_with_enum_for_java(java_out_info::in,
     io.text_output_stream::in, string::in, mlds_rval::in, mlds_rval::in,
     io::di, io::uo) is det.
-:- pragma no_inline(output_basic_binop_maybe_with_enum_for_java/7).
+:- pragma no_inline(pred(output_basic_binop_maybe_with_enum_for_java/7)).
 
 output_basic_binop_maybe_with_enum_for_java(Info, Stream, OpStr, X, Y, !IO) :-
     ( if rval_is_enum_object(X) then
@@ -792,7 +792,7 @@ output_basic_binop_maybe_with_enum_for_java(Info, Stream, OpStr, X, Y, !IO) :-
 :- pred output_basic_binop_for_java(java_out_info::in,
     io.text_output_stream::in, string::in, mlds_rval::in, mlds_rval::in,
     io::di, io::uo) is det.
-:- pragma no_inline(output_basic_binop_for_java/7).
+:- pragma no_inline(pred(output_basic_binop_for_java/7)).
 
 output_basic_binop_for_java(Info, Stream, OpStr, X, Y, !IO) :-
     io.write_string(Stream, "(", !IO),
@@ -806,7 +806,7 @@ output_basic_binop_for_java(Info, Stream, OpStr, X, Y, !IO) :-
 :- pred output_basic_binop_with_mask_for_java(java_out_info::in,
     io.text_output_stream::in, string::in, string::in,
     mlds_rval::in, mlds_rval::in, io::di, io::uo) is det.
-:- pragma no_inline(output_basic_binop_with_mask_for_java/8).
+:- pragma no_inline(pred(output_basic_binop_with_mask_for_java/8)).
 
 output_basic_binop_with_mask_for_java(Info, Stream, OpStr, Mask, X, Y, !IO) :-
     io.write_string(Stream, "(((", !IO),
@@ -820,7 +820,7 @@ output_basic_binop_with_mask_for_java(Info, Stream, OpStr, Mask, X, Y, !IO) :-
 :- pred output_binop_func_call_for_java(java_out_info::in,
     io.text_output_stream::in, string::in, mlds_rval::in, mlds_rval::in,
     io::di, io::uo) is det.
-:- pragma no_inline(output_binop_func_call_for_java/7).
+:- pragma no_inline(pred(output_binop_func_call_for_java/7)).
 
 output_binop_func_call_for_java(Info, Stream, FuncName, X, Y, !IO) :-
     io.write_string(Stream, FuncName, !IO),

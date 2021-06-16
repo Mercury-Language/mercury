@@ -141,7 +141,7 @@ parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
 
 :- pred parse_decl_term_item_or_marker(module_name::in, varset::in, term::in,
     item_seq_num::in, maybe1(item_or_marker)::out) is det.
-:- pragma inline(parse_decl_term_item_or_marker/5).
+:- pragma inline(pred(parse_decl_term_item_or_marker/5)).
 
 parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
         SeqNum, MaybeIOM) :-
@@ -389,7 +389,7 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
 
 :- pred parse_clause_term_item_or_marker(module_name::in, varset::in, term::in,
     item_seq_num::in, maybe1(item_or_marker)::out) is det.
-:- pragma inline(parse_clause_term_item_or_marker/5).
+:- pragma inline(pred(parse_clause_term_item_or_marker/5)).
 
 parse_clause_term_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
     ( if

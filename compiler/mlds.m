@@ -2553,7 +2553,7 @@ mlds_append_class_qualifier_module_qual(ModuleName0, ClassName, ClassArity)
 
 :- func mlds_append_class_qualifier_base(module_name, module_name,
     mlds_class_name, arity) = mlds_module_name.
-:- pragma inline(mlds_append_class_qualifier_base/4).
+:- pragma inline(func(mlds_append_class_qualifier_base/4)).
 
 mlds_append_class_qualifier_base(Package, Module, ClassName, ClassArity)
         = ModuleName :-

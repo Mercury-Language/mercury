@@ -93,18 +93,18 @@
     % They are very simple and almost certainly not very good
     % for your purpose, whatever your purpose is.
     %
-:- pragma obsolete(int_hash/2, [int.hash/2]).
 :- pred int_hash(int::in, int::out) is det.
-:- pragma obsolete(uint_hash/2, [uint.hash/2]).
+:- pragma obsolete(pred(int_hash/2), [int.hash/2]).
 :- pred uint_hash(uint::in, int::out) is det.
-:- pragma obsolete(char_hash/2, [char.hash/2]).
+:- pragma obsolete(pred(uint_hash/2), [uint.hash/2]).
 :- pred char_hash(char::in, int::out) is det.
-:- pragma obsolete(string_hash/2, [string.hash/2]).
+:- pragma obsolete(pred(char_hash/2), [char.hash/2]).
 :- pred string_hash(string::in, int::out) is det.
-:- pragma obsolete(float_hash/2, [float.hash/2]).
+:- pragma obsolete(pred(string_hash/2), [string.hash/2]).
 :- pred float_hash(float::in, int::out) is det.
-:- pragma obsolete(generic_hash/2).
+:- pragma obsolete(pred(float_hash/2), [float.hash/2]).
 :- pred generic_hash(T::in, int::out) is det.
+:- pragma obsolete(pred(generic_hash/2)).
 
     % Copy the hash table explicitly.
     %
@@ -205,9 +205,9 @@
     %
 :- pred equal(version_hash_table(K, V)::in, version_hash_table(K, V)::in)
     is semidet.
-% This pragma is required because termination analysis can't analyse the use
-% of higher order code.
-:- pragma terminates(equal/2).
+% This pragma is required because termination analysis can't analyse
+% the use of higher order code.
+:- pragma terminates(pred(equal/2)).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -309,7 +309,7 @@ num_occupants(HT) = NumOccupants :-
 %---------------------------------------------------------------------------%
 
 :- func find_slot(version_hash_table(K, V), K) = int.
-:- pragma inline(find_slot/2).
+:- pragma inline(func(find_slot/2)).
 
 find_slot(HT, K) = H :-
     promise_equivalent_solutions [HashPred0] (
@@ -320,7 +320,7 @@ find_slot(HT, K) = H :-
 
 :- pred find_slot_2(hash_pred(K)::in(hash_pred), K::in, int::in, int::out)
     is det.
-:- pragma inline(find_slot_2/4).
+:- pragma inline(pred(find_slot_2/4)).
 
 find_slot_2(HashPred, K, NumBuckets, H) :-
     HashPred(K, Hash),
@@ -668,7 +668,7 @@ from_assoc_list_2([K - V | T], !HT) :-
     %
 :- func expand(int, int, hash_pred(K), buckets(K, V)) =
     version_hash_table(K, V).
-:- pragma no_inline(expand/4).
+:- pragma no_inline(func(expand/4)).
 
 expand(NumOccupants, MaxOccupants0, HashPred0, Buckets0) = HT :-
     NumBuckets0 = size(Buckets0),

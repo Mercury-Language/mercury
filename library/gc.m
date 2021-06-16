@@ -39,12 +39,12 @@
 
 :- implementation.
 
-:- pragma promise_pure(garbage_collect/2).
+:- pragma promise_pure(pred(garbage_collect/2)).
 
 garbage_collect(!IO) :-
     impure garbage_collect.
 
-:- pragma no_inline(garbage_collect/0).
+:- pragma no_inline(pred(garbage_collect/0)).
 
 :- pragma foreign_export("C", garbage_collect, "ML_garbage_collect").
 

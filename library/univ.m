@@ -97,7 +97,7 @@
 :- type univ
     --->    some [T] univ_cons(T).
 
-:- pragma promise_equivalent_clauses(type_to_univ/2).
+:- pragma promise_equivalent_clauses(pred(type_to_univ/2)).
 
 type_to_univ(T::di, Univ::uo) :-
     Univ0 = 'new univ_cons'(T),

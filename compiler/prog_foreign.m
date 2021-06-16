@@ -297,7 +297,7 @@ foreign_language_module_name(ModuleName, Lang) = FullyQualifiedModuleName :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma no_determinism_warning(foreign_language_file_extension/1).
+:- pragma no_determinism_warning(func(foreign_language_file_extension/1)).
 
 foreign_language_file_extension(lang_c) = other_ext(".c").
 foreign_language_file_extension(lang_csharp) = other_ext(".cs").

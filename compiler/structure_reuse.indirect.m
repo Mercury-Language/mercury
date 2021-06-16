@@ -1157,7 +1157,7 @@ sr_fixpoint_table_stable(Table) :-
     % Give a string description of the state of the fixpoint table.
     %
 :- func sr_fixpoint_table_description(sr_fixpoint_table) = string.
-:- pragma consider_used(sr_fixpoint_table_description/1).
+:- pragma consider_used(func(sr_fixpoint_table_description/1)).
 
 sr_fixpoint_table_description(Table) = fixpoint_table.description(Table).
 

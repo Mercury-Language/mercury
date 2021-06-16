@@ -169,7 +169,7 @@ lookup_special_pred_maps(SpecMaps, SpecialPredId, TypeCtor, PredId) :-
 
 :- pred select_special_pred_map(special_pred_maps::in,
     special_pred_id::in, map(type_ctor, pred_id)::out) is det.
-:- pragma inline(select_special_pred_map/3).
+:- pragma inline(pred(select_special_pred_map/3)).
 
 select_special_pred_map(SpecMaps, SpecialPredId, SpecMap) :-
     (
@@ -206,7 +206,7 @@ special_pred_name(SpecialPred, type_ctor(SymName, Arity)) = Name :-
     ).
 
 :- func spec_pred_name_append_type_id = bool.
-:- pragma inline(spec_pred_name_append_type_id/0).
+:- pragma inline(func(spec_pred_name_append_type_id/0)).
 
 % XXX The name demanglers don't yet understand predicate names for special
 % preds that have the type name and arity appended, and the hand-written

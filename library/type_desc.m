@@ -333,7 +333,7 @@ is_exist_pseudo_type_desc(PTD, N) :-
 
 :- pred pseudo_type_desc_to_pseudo_type_info(pseudo_type_desc::in,
     rtti_implementation.pseudo_type_info::out) is det.
-:- pragma consider_used(pseudo_type_desc_to_pseudo_type_info/2).
+:- pragma consider_used(pred(pseudo_type_desc_to_pseudo_type_info/2)).
 
 pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc, PseudoTypeInfo) :-
     ( if type_info_desc_same_representation then
@@ -584,7 +584,7 @@ pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtorDesc, ArgPseudoTypeDescs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma no_determinism_warning(pseudo_type_ctor/1).
+:- pragma no_determinism_warning(func(pseudo_type_ctor/1)).
 
 :- pragma foreign_proc("C",
     type_ctor(TypeInfo::in) = (TypeCtor::out),
@@ -663,7 +663,7 @@ type_ctor_arity(TypeCtor) = Arity :-
     %
 :- pred make_type_ctor_desc(rtti_implementation.type_info::in,
     rtti_implementation.type_ctor_info::in, type_ctor_desc::out) is det.
-:- pragma consider_used(make_type_ctor_desc/3).
+:- pragma consider_used(pred(make_type_ctor_desc/3)).
 
 :- pragma foreign_proc("C#",
     make_type_ctor_desc(TypeInfo::in, TypeCtorInfo::in, TypeCtorDesc::out),
@@ -712,7 +712,7 @@ make_type_ctor_desc(_, _, _) :-
 
 :- pred make_type_ctor_desc_with_arity(int::in,
     rtti_implementation.type_ctor_info::in, type_ctor_desc::out) is det.
-:- pragma consider_used(make_type_ctor_desc_with_arity/3).
+:- pragma consider_used(pred(make_type_ctor_desc_with_arity/3)).
 
 :- pragma foreign_proc("C#",
     make_type_ctor_desc_with_arity(Arity::in, TypeCtorInfo::in,
@@ -804,7 +804,7 @@ type_ctor_name_and_arity(TypeCtorDesc, ModuleName, TypeCtorName,
 
 :- pred type_ctor_desc_to_type_ctor_info(type_ctor_desc::in,
     rtti_implementation.type_ctor_info::out) is det.
-:- pragma consider_used(type_ctor_desc_to_type_ctor_info/2).
+:- pragma consider_used(pred(type_ctor_desc_to_type_ctor_info/2)).
 
 type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo) :-
     ( if type_info_desc_same_representation then
@@ -815,8 +815,8 @@ type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_equivalent_clauses(make_type/2).
-:- pragma no_determinism_warning(make_type/2).
+:- pragma promise_equivalent_clauses(func(make_type/2)).
+:- pragma no_determinism_warning(func(make_type/2)).
 
 make_type(_TypeCtorDesc::in, _ArgTypes::in) = (_TypeDesc::out) :-
     private_builtin.sorry("make_type(in, in) = out").

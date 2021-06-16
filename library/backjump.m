@@ -97,10 +97,10 @@ backjump(Id) :-
 %---------------------------------------------------------------------------%
 
 :- impure pred builtin_choice_id(choice_id::out) is nondet.
-:- pragma terminates(builtin_choice_id/1).
+:- pragma terminates(pred(builtin_choice_id/1)).
 
 :- impure pred builtin_backjump(choice_id::in) is erroneous.
-:- pragma terminates(builtin_backjump/1).
+:- pragma terminates(pred(builtin_backjump/1)).
 
 % builtin_choice_id and builtin_backjump are implemented below using
 % hand-coded low-level C code.

@@ -83,7 +83,7 @@
 :- pred empty(fat_sparse_bitset(T)).
 :- mode empty(in) is semidet.
 :- mode empty(out) is det.
-:- pragma obsolete(empty/1, [init/0, is_empty/1]).
+:- pragma obsolete(pred(empty/1), [init/0, is_empty/1]).
 
 :- pred is_empty(fat_sparse_bitset(T)::in) is semidet.
 
@@ -449,67 +449,67 @@
 
 :- interface.
 
-:- pragma type_spec(singleton_set/2, T = var(_)).
-:- pragma type_spec(singleton_set/2, T = int).
+:- pragma type_spec(pred(singleton_set/2), T = var(_)).
+:- pragma type_spec(pred(singleton_set/2), T = int).
 
-:- pragma type_spec(make_singleton_set/1, T = var(_)).
-:- pragma type_spec(make_singleton_set/1, T = int).
+:- pragma type_spec(func(make_singleton_set/1), T = var(_)).
+:- pragma type_spec(func(make_singleton_set/1), T = int).
 
-:- pragma type_spec(contains/2, T = var(_)).
-:- pragma type_spec(contains/2, T = int).
+:- pragma type_spec(pred(contains/2), T = var(_)).
+:- pragma type_spec(pred(contains/2), T = int).
 
-:- pragma type_spec(insert/2, T = var(_)).
-:- pragma type_spec(insert/2, T = int).
-:- pragma type_spec(insert/3, T = var(_)).
-:- pragma type_spec(insert/3, T = int).
+:- pragma type_spec(func(insert/2), T = var(_)).
+:- pragma type_spec(func(insert/2), T = int).
+:- pragma type_spec(pred(insert/3), T = var(_)).
+:- pragma type_spec(pred(insert/3), T = int).
 
-:- pragma type_spec(insert_list/2, T = var(_)).
-:- pragma type_spec(insert_list/2, T = int).
-:- pragma type_spec(insert_list/3, T = var(_)).
-:- pragma type_spec(insert_list/3, T = int).
+:- pragma type_spec(func(insert_list/2), T = var(_)).
+:- pragma type_spec(func(insert_list/2), T = int).
+:- pragma type_spec(pred(insert_list/3), T = var(_)).
+:- pragma type_spec(pred(insert_list/3), T = int).
 
-:- pragma type_spec(delete/2, T = var(_)).
-:- pragma type_spec(delete/2, T = int).
-:- pragma type_spec(delete/3, T = var(_)).
-:- pragma type_spec(delete/3, T = int).
+:- pragma type_spec(func(delete/2), T = var(_)).
+:- pragma type_spec(func(delete/2), T = int).
+:- pragma type_spec(pred(delete/3), T = var(_)).
+:- pragma type_spec(pred(delete/3), T = int).
 
-:- pragma type_spec(delete_list/2, T = var(_)).
-:- pragma type_spec(delete_list/2, T = int).
-:- pragma type_spec(delete_list/3, T = var(_)).
-:- pragma type_spec(delete_list/3, T = int).
+:- pragma type_spec(func(delete_list/2), T = var(_)).
+:- pragma type_spec(func(delete_list/2), T = int).
+:- pragma type_spec(pred(delete_list/3), T = var(_)).
+:- pragma type_spec(pred(delete_list/3), T = int).
 
-:- pragma type_spec(list_to_set/1, T = var(_)).
-:- pragma type_spec(list_to_set/1, T = int).
-:- pragma type_spec(list_to_set/2, T = var(_)).
-:- pragma type_spec(list_to_set/2, T = int).
+:- pragma type_spec(func(list_to_set/1), T = var(_)).
+:- pragma type_spec(func(list_to_set/1), T = int).
+:- pragma type_spec(pred(list_to_set/2), T = var(_)).
+:- pragma type_spec(pred(list_to_set/2), T = int).
 
-:- pragma type_spec(sorted_list_to_set/1, T = var(_)).
-:- pragma type_spec(sorted_list_to_set/1, T = int).
-:- pragma type_spec(sorted_list_to_set/2, T = var(_)).
-:- pragma type_spec(sorted_list_to_set/2, T = int).
+:- pragma type_spec(func(sorted_list_to_set/1), T = var(_)).
+:- pragma type_spec(func(sorted_list_to_set/1), T = int).
+:- pragma type_spec(pred(sorted_list_to_set/2), T = var(_)).
+:- pragma type_spec(pred(sorted_list_to_set/2), T = int).
 
-:- pragma type_spec(to_sorted_list/1, T = var(_)).
-:- pragma type_spec(to_sorted_list/1, T = int).
-:- pragma type_spec(to_sorted_list/2, T = var(_)).
-:- pragma type_spec(to_sorted_list/2, T = int).
+:- pragma type_spec(func(to_sorted_list/1), T = var(_)).
+:- pragma type_spec(func(to_sorted_list/1), T = int).
+:- pragma type_spec(pred(to_sorted_list/2), T = var(_)).
+:- pragma type_spec(pred(to_sorted_list/2), T = int).
 
-:- pragma type_spec(to_set/1, T = var(_)).
-:- pragma type_spec(to_set/1, T = int).
+:- pragma type_spec(func(to_set/1), T = var(_)).
+:- pragma type_spec(func(to_set/1), T = int).
 
-:- pragma type_spec(from_set/1, T = var(_)).
-:- pragma type_spec(from_set/1, T = int).
+:- pragma type_spec(func(from_set/1), T = var(_)).
+:- pragma type_spec(func(from_set/1), T = int).
 
-:- pragma type_spec(foldl/3, T = int).
-:- pragma type_spec(foldl/3, T = var(_)).
+:- pragma type_spec(func(foldl/3), T = int).
+:- pragma type_spec(func(foldl/3), T = var(_)).
 
-:- pragma type_spec(foldl/4, T = int).
-:- pragma type_spec(foldl/4, T = var(_)).
+:- pragma type_spec(pred(foldl/4), T = int).
+:- pragma type_spec(pred(foldl/4), T = var(_)).
 
-:- pragma type_spec(foldr/3, T = int).
-:- pragma type_spec(foldr/3, T = var(_)).
+:- pragma type_spec(func(foldr/3), T = int).
+:- pragma type_spec(func(foldr/3), T = var(_)).
 
-:- pragma type_spec(foldr/4, T = int).
-:- pragma type_spec(foldr/4, T = var(_)).
+:- pragma type_spec(pred(foldr/4), T = int).
+:- pragma type_spec(pred(foldr/4), T = var(_)).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -607,7 +607,7 @@ find_offsets_of_set_bits(BitOffset, Size, Bits, !SetOffsets) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_equivalent_clauses(member/2).
+:- pragma promise_equivalent_clauses(pred(member/2)).
 
 member(Elem::in, Set::in) :-
     contains(Set, Elem).
@@ -1249,8 +1249,8 @@ list_to_set(A, list_to_set(A)).
     % sorted_list_to_set could be *significantly* faster.
     %
 :- func list_to_set_passes(list(T), bitset_elems) = bitset_elems <= enum(T).
-:- pragma type_spec(list_to_set_passes/2, T = var(_)).
-:- pragma type_spec(list_to_set_passes/2, T = int).
+:- pragma type_spec(func(list_to_set_passes/2), T = var(_)).
+:- pragma type_spec(func(list_to_set_passes/2), T = int).
 
 list_to_set_passes([], Set) = Set.
 list_to_set_passes([H | T], Set0) = Set :-
@@ -1264,8 +1264,8 @@ list_to_set_passes([H | T], Set0) = Set :-
     %
 :- pred list_to_set_same_elem_pass(list(T)::in, int::in,
     uint::in, uint::out,  list(T)::in, list(T)::out) is det <= enum(T).
-:- pragma type_spec(list_to_set_same_elem_pass/6, T = var(_)).
-:- pragma type_spec(list_to_set_same_elem_pass/6, T = int).
+:- pragma type_spec(pred(list_to_set_same_elem_pass/6), T = var(_)).
+:- pragma type_spec(pred(list_to_set_same_elem_pass/6), T = int).
 
 list_to_set_same_elem_pass([], _, !Bits, !LeftOvers).
 list_to_set_same_elem_pass([H | T], Offset, !Bits, !LeftOvers) :-
@@ -1324,8 +1324,8 @@ sorted_list_to_set(L, sorted_list_to_set(L)).
     %
 :- pred sorted_list_to_set_loop(T::in, list(T)::in,
     int::out, uint::out, bitset_elems::out) is det <= enum(T).
-:- pragma type_spec(sorted_list_to_set_loop/5, T = var(_)).
-:- pragma type_spec(sorted_list_to_set_loop/5, T = int).
+:- pragma type_spec(pred(sorted_list_to_set_loop/5), T = var(_)).
+:- pragma type_spec(pred(sorted_list_to_set_loop/5), T = int).
 
 sorted_list_to_set_loop(Elem1, [], Offset, Bits, bitset_nil) :-
     bits_for_index(enum.to_int(Elem1), Offset, Bits).
@@ -1365,8 +1365,8 @@ all_true(P, fat_sparse_bitset(Set)) :-
 
 :- pred all_true_node(pred(T)::in(pred(in) is semidet), bitset_elems::in)
     is semidet <= enum(T).
-:- pragma type_spec(all_true_node/2, T = int).
-:- pragma type_spec(all_true_node/2, T = var(_)).
+:- pragma type_spec(pred(all_true_node/2), T = int).
+:- pragma type_spec(pred(all_true_node/2), T = var(_)).
 
 all_true_node(_, bitset_nil).
 all_true_node(P, bitset_cons(Offset, Bits, Tail)) :-
@@ -1375,8 +1375,8 @@ all_true_node(P, bitset_cons(Offset, Bits, Tail)) :-
 
 :- pred all_true_bits(pred(T)::in(pred(in) is semidet),
     int::in, uint::in, int::in) is semidet <= enum(T).
-:- pragma type_spec(all_true_bits/4, T = int).
-:- pragma type_spec(all_true_bits/4, T = var(_)).
+:- pragma type_spec(pred(all_true_bits/4), T = int).
+:- pragma type_spec(pred(all_true_bits/4), T = var(_)).
 
 all_true_bits(P, Offset, Bits, Size) :-
     ( if Bits = 0u then
@@ -1435,8 +1435,8 @@ foldl(P, fat_sparse_bitset(Set), !Acc) :-
 :- mode do_foldl_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 :- mode do_foldl_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 
-:- pragma type_spec(do_foldl_pred/4, T = int).
-:- pragma type_spec(do_foldl_pred/4, T = var(_)).
+:- pragma type_spec(pred(do_foldl_pred/4), T = int).
+:- pragma type_spec(pred(do_foldl_pred/4), T = var(_)).
 
 do_foldl_pred(_, bitset_nil, !Acc).
 do_foldl_pred(P, bitset_cons(Offset, Bits, Tail), !Acc) :-
@@ -1473,8 +1473,8 @@ foldl2(P, fat_sparse_bitset(Set), !Acc1, !Acc2) :-
 :- mode do_foldl2_pred(pred(in, in, out, in, out) is cc_multi,
     in, in, out, in, out) is cc_multi.
 
-:- pragma type_spec(do_foldl2_pred/6, T = int).
-:- pragma type_spec(do_foldl2_pred/6, T = var(_)).
+:- pragma type_spec(pred(do_foldl2_pred/6), T = int).
+:- pragma type_spec(pred(do_foldl2_pred/6), T = var(_)).
 
 do_foldl2_pred(_, bitset_nil, !Acc1, !Acc2).
 do_foldl2_pred(P, bitset_cons(Offset, Bits, Tail), !Acc1, !Acc2) :-
@@ -1503,8 +1503,8 @@ foldr(P, fat_sparse_bitset(Set), !Acc) :-
 :- mode do_foldr_pred(pred(in, di, uo) is cc_multi, in, di, uo) is cc_multi.
 :- mode do_foldr_pred(pred(in, in, out) is cc_multi, in, in, out) is cc_multi.
 
-:- pragma type_spec(do_foldr_pred/4, T = int).
-:- pragma type_spec(do_foldr_pred/4, T = var(_)).
+:- pragma type_spec(pred(do_foldr_pred/4), T = int).
+:- pragma type_spec(pred(do_foldr_pred/4), T = var(_)).
 
     % We don't just use list.foldr here because the overhead of allocating
     % the closure for fold_bits is significant for the compiler's runtime,
@@ -1544,8 +1544,8 @@ foldr2(P, fat_sparse_bitset(Set), !Acc1, !Acc2) :-
 :- mode do_foldr2_pred(pred(in, in, out, in, out) is cc_multi,
     in, in, out, in, out) is cc_multi.
 
-:- pragma type_spec(do_foldr2_pred/6, T = int).
-:- pragma type_spec(do_foldr2_pred/6, T = var(_)).
+:- pragma type_spec(pred(do_foldr2_pred/6), T = int).
+:- pragma type_spec(pred(do_foldr2_pred/6), T = var(_)).
 
     % We don't just use list.foldr here because the overhead of allocating
     % the closure for fold_bits is significant for the compiler's runtime,
@@ -1577,8 +1577,8 @@ do_foldr2_pred(P, bitset_cons(Offset, Bits, Tail), !Acc1, !Acc2) :-
     in, in, in, di, uo) is cc_multi.
 :- mode fold_bits_low_to_high(pred(in, in, out) is cc_multi,
     in, in, in, in, out) is cc_multi.
-:- pragma type_spec(fold_bits_low_to_high/6, T = int).
-:- pragma type_spec(fold_bits_low_to_high/6, T = var(_)).
+:- pragma type_spec(pred(fold_bits_low_to_high/6), T = int).
+:- pragma type_spec(pred(fold_bits_low_to_high/6), T = var(_)).
 
 fold_bits_low_to_high(P, Offset, Bits, Size, !Acc) :-
     ( if Bits = 0u then
@@ -1618,8 +1618,8 @@ fold_bits_low_to_high(P, Offset, Bits, Size, !Acc) :-
     in, in, in, di, uo) is cc_multi.
 :- mode fold_bits_high_to_low(pred(in, in, out) is cc_multi,
     in, in, in, in, out) is cc_multi.
-:- pragma type_spec(fold_bits_high_to_low/6, T = int).
-:- pragma type_spec(fold_bits_high_to_low/6, T = var(_)).
+:- pragma type_spec(pred(fold_bits_high_to_low/6), T = int).
+:- pragma type_spec(pred(fold_bits_high_to_low/6), T = var(_)).
 
 fold_bits_high_to_low(P, Offset, Bits, Size, !Acc) :-
     ( if Bits = 0u then
@@ -1663,8 +1663,8 @@ fold_bits_high_to_low(P, Offset, Bits, Size, !Acc) :-
     in, in, in, in, out, di, uo) is cc_multi.
 :- mode fold2_bits_low_to_high(pred(in, in, out, in, out) is cc_multi,
     in, in, in, in, out, in, out) is cc_multi.
-:- pragma type_spec(fold2_bits_low_to_high/8, T = int).
-:- pragma type_spec(fold2_bits_low_to_high/8, T = var(_)).
+:- pragma type_spec(pred(fold2_bits_low_to_high/8), T = int).
+:- pragma type_spec(pred(fold2_bits_low_to_high/8), T = var(_)).
 
 fold2_bits_low_to_high(P, Offset, Bits, Size, !Acc1, !Acc2) :-
     ( if Bits = 0u then
@@ -1709,8 +1709,8 @@ fold2_bits_low_to_high(P, Offset, Bits, Size, !Acc1, !Acc2) :-
     in, in, in, in, out, di, uo) is cc_multi.
 :- mode fold2_bits_high_to_low(pred(in, in, out, in, out) is cc_multi,
     in, in, in, in, out, in, out) is cc_multi.
-:- pragma type_spec(fold2_bits_high_to_low/8, T = int).
-:- pragma type_spec(fold2_bits_high_to_low/8, T = var(_)).
+:- pragma type_spec(pred(fold2_bits_high_to_low/8), T = int).
+:- pragma type_spec(pred(fold2_bits_high_to_low/8), T = var(_)).
 
 fold2_bits_high_to_low(P, Offset, Bits, Size, !Acc1, !Acc2) :-
     ( if Bits = 0u then
@@ -1740,7 +1740,7 @@ fold2_bits_high_to_low(P, Offset, Bits, Size, !Acc1, !Acc2) :-
     % element, and an int with the bit corresponding to that element set.
     %
 :- pred bits_for_index(int::in, int::out, uint::out) is det.
-:- pragma inline(bits_for_index/3).
+:- pragma inline(pred(bits_for_index/3)).
 
 bits_for_index(Index, Offset, Bits) :-
     Offset = int.floor_to_multiple_of_bits_per_int(Index),
@@ -1748,17 +1748,17 @@ bits_for_index(Index, Offset, Bits) :-
     Bits = set_bit(0u, BitToSet).
 
 :- func get_bit(uint, int) = uint.
-:- pragma inline(get_bit/2).
+:- pragma inline(func(get_bit/2)).
 
 get_bit(Int, Bit) = Int /\ unchecked_left_shift(1u, Bit).
 
 :- func set_bit(uint, int) = uint.
-:- pragma inline(set_bit/2).
+:- pragma inline(func(set_bit/2)).
 
 set_bit(Int0, Bit) = Int0 \/ unchecked_left_shift(1u, Bit).
 
 :- func clear_bit(uint, int) = uint.
-:- pragma inline(clear_bit/2).
+:- pragma inline(func(clear_bit/2)).
 
 clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1u, Bit).
 
@@ -1766,12 +1766,12 @@ clear_bit(Int0, Bit) = Int0 /\ \ unchecked_left_shift(1u, Bit).
     % the lower `N' bits of the integer. `N' must be less than bits_per_int.
     %
 :- func mask(int) = uint.
-:- pragma inline(mask/1).
+:- pragma inline(func(mask/1)).
 
 mask(N) = \ unchecked_left_shift(\ 0u, N).
 
 :- func make_bitset_cons(int, uint, bitset_elems) = bitset_elems.
-:- pragma inline(make_bitset_cons/3).
+:- pragma inline(func(make_bitset_cons/3)).
 
 make_bitset_cons(Offset, Bits, Tail) = bitset_cons(Offset, Bits, Tail).
 

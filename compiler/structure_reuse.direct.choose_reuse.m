@@ -282,7 +282,7 @@ match_init(DS) = match(DS, [], 0.0, 0).
     % match.
     %
 :- pred match_has_no_construction_candidates(match::in) is semidet.
-:- pragma consider_used(match_has_no_construction_candidates/1).
+:- pragma consider_used(pred(match_has_no_construction_candidates/1)).
 
 match_has_no_construction_candidates(match(_, [], _, _)).
 

@@ -115,12 +115,12 @@
     --->    ok(T)
     ;       some [E] exception(E).
 
-:- pragma promise_pure(future/1).
-
 future(Func) = Future :-
-    impure init(FutureIO),
-    Future = future(FutureIO),
-    impure spawn_impure(run_future(Future, Func)).
+    promise_pure (
+        impure init(FutureIO),
+        Future = future(FutureIO),
+        impure spawn_impure(run_future(Future, Func))
+    ).
 
 :- impure pred run_future(future(T), (func) = T).
 :-        mode run_future(in, ((func) = out) is det) is cc_multi.
@@ -155,7 +155,7 @@ spawn_impure(Task) :-
 
 :- pred spawn_impure_2(impure (pred), io, io).
 :- mode spawn_impure_2((pred) is cc_multi, di, uo) is cc_multi.
-:- pragma promise_pure(spawn_impure_2/3).
+:- pragma promise_pure(pred(spawn_impure_2/3)).
 
 spawn_impure_2(Task, !IO) :-
     impure Task.
@@ -177,10 +177,10 @@ spawn_impure_2(Task, !IO) :-
     --->    ready
     ;       not_ready.
 
-:- pragma promise_pure(init/3).
-
 init(Future, !IO) :-
-    impure init(Future).
+    promise_pure (
+        impure init(Future)
+    ).
 
 :- impure pred init(future_io(T)::uo) is det.
 
@@ -191,10 +191,10 @@ init(future_io(Ready, Wait, Value)) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_pure(signal/4).
-
 signal(Future, Value, !IO) :-
-    impure signal(Future, Value).
+    promise_pure (
+        impure signal(Future, Value)
+    ).
 
 :- impure pred signal(future_io(T)::in, T::in) is det.
 
@@ -228,22 +228,23 @@ wait(Future, Value, !IO) :-
     % future (if it terminates).
     %
 :- pred wait(future_io(T)::in, T::out) is det.
-:- pragma promise_pure(wait/2).
 
 wait(Future, Value) :-
-    Future = future_io(MReady, Wait, MValue),
-    impure get_mutvar(MReady, Ready),
-    (
-        Ready = ready
-        % No wait necessary
-    ;
-        Ready = not_ready,
-        % We need to wait, this will probably block.
-        impure semaphore.impure_wait(Wait),
-        % Signal the semaphore to release the next waiting thread.
-        impure semaphore.impure_signal(Wait)
-    ),
-    impure get_mutvar(MValue, Value).
+    promise_pure (
+        Future = future_io(MReady, Wait, MValue),
+        impure get_mutvar(MReady, Ready),
+        (
+            Ready = ready
+            % No wait necessary
+        ;
+            Ready = not_ready,
+            % We need to wait, this will probably block.
+            impure semaphore.impure_wait(Wait),
+            % Signal the semaphore to release the next waiting thread.
+            impure semaphore.impure_signal(Wait)
+        ),
+        impure get_mutvar(MValue, Value)
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

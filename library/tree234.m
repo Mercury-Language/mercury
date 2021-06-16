@@ -663,10 +663,10 @@
 
 :- import_module maybe.
 
-:- pragma type_spec(tree234.search/3, K = var(_)).
-:- pragma type_spec(tree234.search/3, K = int).
+:- pragma type_spec(pred(tree234.search/3), K = var(_)).
+:- pragma type_spec(pred(tree234.search/3), K = int).
 
-:- pragma type_spec(tree234.lookup/3, K = var(_)).
+:- pragma type_spec(pred(tree234.lookup/3), K = var(_)).
 
 :- pragma type_spec(tree234.set(in, in, in, out), K = var(_)).
 

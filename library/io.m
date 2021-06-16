@@ -2249,14 +2249,14 @@
 
 :- pred io_state_equal(io.state::in, io.state::in) is semidet.
 
-:- pragma no_determinism_warning(io_state_equal/2).
+:- pragma no_determinism_warning(pred(io_state_equal/2)).
 io_state_equal(_, _) :-
     error("attempt to unify two I/O states").
 
 :- pred io_state_compare(comparison_result::uo, io.state::in, io.state::in)
     is det.
 
-:- pragma no_determinism_warning(io_state_compare/3).
+:- pragma no_determinism_warning(pred(io_state_compare/3)).
 io_state_compare(_, _, _) :-
     error("attempt to compare two I/O states").
 
@@ -5413,12 +5413,12 @@ set_output_line_number(output_stream(Stream), LineNum, !IO) :-
 % Reading values of primitive types.
 %
 
-:- pragma inline(read_char/3).              % Inline to allow deforestation.
+:- pragma inline(pred(read_char/3)).          % Inline to allow deforestation.
 read_char(Result, !IO) :-
     input_stream(Stream, !IO),
     read_char(Stream, Result, !IO).
 
-:- pragma inline(read_char/4).              % Inline to allow deforestation.
+:- pragma inline(pred(read_char/4)).          % Inline to allow deforestation.
 read_char(Stream, Result, !IO) :-
     read_char_code(Stream, ResultCode, Char, Error, !IO),
     (
@@ -5433,7 +5433,7 @@ read_char(Stream, Result, !IO) :-
         Result = error(io_error(Msg))
     ).
 
-:- pragma inline(read_char_unboxed/5).      % Inline to allow deforestation.
+:- pragma inline(pred(read_char_unboxed/5)).  % Inline to allow deforestation.
 read_char_unboxed(Stream, Result, Char, !IO) :-
     read_char_code(Stream, ResultCode, Char, Error, !IO),
     (
@@ -5661,12 +5661,12 @@ putback_char(input_stream(Stream), Character, !IO) :-
 
 %---------------------%
 
-:- pragma inline(read_byte/3).              % Inline to allow deforestation.
+:- pragma inline(pred(read_byte/3)).          % Inline to allow deforestation.
 read_byte(Result, !IO) :-
     binary_input_stream(Stream, !IO),
     read_byte(Stream, Result, !IO).
 
-:- pragma inline(read_byte/4).              % Inline to allow deforestation.
+:- pragma inline(pred(read_byte/4)).          % Inline to allow deforestation.
 read_byte(binary_input_stream(Stream), Result, !IO) :-
     read_byte_val(input_stream(Stream), ResultCode, Byte, Error, !IO),
     (
@@ -9313,7 +9313,7 @@ read_file_as_string_2(Stream, String, NumCUs, Error, NullCharError, !IO) :-
 :- pred read_file_as_string_loop(input_stream::in, buffer::buffer_di,
     buffer::buffer_uo, int::in, int::out, int::in, int::out, system_error::out,
     io::di, io::uo) is det.
-:- pragma consider_used(read_file_as_string_loop/10).
+:- pragma consider_used(pred(read_file_as_string_loop/10)).
 
 read_file_as_string_loop(Stream, !Buffer, BufferSize0, BufferSize,
         !NumCUs, Error, !IO) :-
@@ -9450,7 +9450,7 @@ read_binary_file_as_bitmap_2(Stream, BufferSize, Res, !BMs, !IO) :-
     % XXX FIXME this should return an int64.
 :- pred input_stream_file_size(io.input_stream::in, int::out,
     io::di, io::uo) is det.
-:- pragma consider_used(input_stream_file_size/4).
+:- pragma consider_used(pred(input_stream_file_size/4)).
 
 input_stream_file_size(input_stream(Stream), Size, !IO) :-
     stream_file_size(Stream, Size64, !IO),
@@ -9537,7 +9537,7 @@ binary_input_stream_file_size(binary_input_stream(Stream), Size, !IO) :-
 :- mode buffer_uo == out(uniq_buffer).
 
 :- pred alloc_buffer(int::in, buffer::buffer_uo) is det.
-:- pragma consider_used(alloc_buffer/2).
+:- pragma consider_used(pred(alloc_buffer/2)).
 
 :- pragma foreign_proc("C",
     alloc_buffer(Size::in, Buffer::buffer_uo),
@@ -9600,7 +9600,7 @@ resize_buffer(_OldSize, NewSize, buffer(Array0), buffer(Array)) :-
     array.resize(NewSize, Char, Array0, Array).
 
 :- pred buffer_to_string(buffer::buffer_di, int::in, string::uo) is semidet.
-:- pragma consider_used(buffer_to_string/3).
+:- pragma consider_used(pred(buffer_to_string/3)).
 
 :- pragma foreign_proc("C",
     buffer_to_string(Buffer::buffer_di, Len::in, Str::uo),
@@ -9658,7 +9658,7 @@ read_into_buffer(Stream, buffer(Array0), buffer(Array), BufferSize,
 :- pred read_into_array(input_stream::in,
     array(char)::array_di, array(char)::array_uo, int::in, int::in, int::out,
     system_error::out, io::di, io::uo) is det.
-:- pragma consider_used(read_into_array/9).
+:- pragma consider_used(pred(read_into_array/9)).
 
 read_into_array(Stream, !Array, ArraySize, !Pos, Error, !IO) :-
     ( if !.Pos >= ArraySize then
@@ -11623,28 +11623,30 @@ progname_base(DefaultName, PrognameBase, !IO) :-
 
 %---------------------%
 
-:- pragma promise_pure(get_environment_var/4).
 get_environment_var(Var, OptValue, !IO) :-
-    ( if semipure getenv(Var, Value) then
-        OptValue0 = yes(Value)
-    else
-        OptValue0 = no
-    ),
-    OptValue = OptValue0.
-
-:- pragma promise_pure(set_environment_var/5).
-set_environment_var(Var, Value, Res, !IO) :-
-    ( if have_set_environment_var then
-        ( if impure setenv(Var, Value) then
-            Res = ok
+    promise_pure (
+        ( if semipure getenv(Var, Value) then
+            OptValue0 = yes(Value)
         else
-            string.format("Could not set environment variable `%s'",
-                [s(Var)], Message),
+            OptValue0 = no
+        ),
+        OptValue = OptValue0
+    ).
+
+set_environment_var(Var, Value, Res, !IO) :-
+    promise_pure (
+        ( if have_set_environment_var then
+            ( if impure setenv(Var, Value) then
+                Res = ok
+            else
+                string.format("Could not set environment variable `%s'",
+                    [s(Var)], Message),
+                Res = error(io_error(Message))
+            )
+        else
+            Message = "Cannot set environment variables on this platform",
             Res = error(io_error(Message))
         )
-    else
-        Message = "Cannot set environment variables on this platform",
-        Res = error(io_error(Message))
     ).
 
 set_environment_var(Var, Value, IO0, IO) :-
@@ -12024,25 +12026,26 @@ set_globals(Globals, !IO) :-
     unsafe_set_globals(Globals, !IO),
     unlock_globals(!IO).
 
-:- pragma promise_pure(update_globals/3).
 update_globals(UpdatePred, !IO) :-
-    lock_globals(!IO),
-    unsafe_get_globals(Globals0, !IO),
-    promise_equivalent_solutions [!:IO] (
-        Update = (pred(G::out) is det :-
-            UpdatePred(Globals0, G)
-        ),
-        try(Update, UpdateResult),
-        (
-            UpdateResult = succeeded(Globals),
-            unsafe_set_globals(Globals, !IO),
-            unlock_globals(!IO)
-        ;
-            % If the update operation threw an exception
-            % then release the lock and rethrow the exception.
-            UpdateResult = exception(_),
-            impure io.unlock_globals,
-            rethrow(UpdateResult)
+    promise_pure (
+        lock_globals(!IO),
+        unsafe_get_globals(Globals0, !IO),
+        promise_equivalent_solutions [!:IO] (
+            Update = (pred(G::out) is det :-
+                UpdatePred(Globals0, G)
+            ),
+            try(Update, UpdateResult),
+            (
+                UpdateResult = succeeded(Globals),
+                unsafe_set_globals(Globals, !IO),
+                unlock_globals(!IO)
+            ;
+                % If the update operation threw an exception
+                % then release the lock and rethrow the exception.
+                UpdateResult = exception(_),
+                impure io.unlock_globals,
+                rethrow(UpdateResult)
+            )
         )
     ).
 
@@ -12681,7 +12684,7 @@ typedef struct {
 
 :- pred compare_file_id(comparison_result::uo, file_id::in, file_id::in)
     is det.
-:- pragma consider_used(compare_file_id/3).
+:- pragma consider_used(pred(compare_file_id/3)).
 
 compare_file_id(Result, FileId1, FileId2) :-
     compare_file_id_2(Result0, FileId1, FileId2),
@@ -13106,21 +13109,21 @@ with_output_stream(Stream, Pred, !IO) :-
 call_pred_no_result(Pred, {}, !IO) :-
     Pred(!IO).
 
-:- pragma no_determinism_warning(restore_input_stream/5).
 :- pred restore_input_stream(pred(T, io, io), input_stream, io.res, io, io).
 :- mode restore_input_stream(pred(out, di, uo) is det, in, out, di, uo)
     is det.
 :- mode restore_input_stream(pred(out, di, uo) is cc_multi, in, out, di, uo)
     is cc_multi.
+:- pragma no_determinism_warning(pred(restore_input_stream/5)).
 
 restore_input_stream(_DummyPred, Stream, ok, !IO) :-
     set_input_stream(Stream, _OldStream, !IO).
 
-:- pragma no_determinism_warning(restore_output_stream/5).
 :- pred restore_output_stream(pred(io, io), output_stream, io.res, io, io).
 :- mode restore_output_stream(pred(di, uo) is det, in, out, di, uo) is det.
 :- mode restore_output_stream(pred(di, uo) is cc_multi, in, out, di, uo)
     is cc_multi.
+:- pragma no_determinism_warning(pred(restore_output_stream/5)).
 
 restore_output_stream(_DummyPred, Stream, ok, !IO) :-
     set_output_stream(Stream, _OldStream, !IO).

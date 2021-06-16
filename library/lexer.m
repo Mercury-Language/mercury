@@ -375,7 +375,7 @@ linestr_get_context(StartLineContext, Context) :-
 
 :- pred string_read_char(string::in, int::in, char::out,
     posn::in, posn::out) is semidet.
-:- pragma inline(string_read_char/5).
+:- pragma inline(pred(string_read_char/5)).
 
 string_read_char(String, Len, Char, Posn0, Posn) :-
     Posn0 = posn(LineNum0, LineStartOffset0, Offset0),
@@ -390,7 +390,7 @@ string_read_char(String, Len, Char, Posn0, Posn) :-
 :- pred linestr_read_char(string::in, int::in, char::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out)
     is semidet.
-:- pragma inline(linestr_read_char/7).
+:- pragma inline(pred(linestr_read_char/7)).
 
 linestr_read_char(String, Len, Char,
         LineContext0, LineContext, LinePosn0, LinePosn) :-
@@ -413,8 +413,8 @@ linestr_read_char(String, Len, Char,
     % allows us to keep it around anyway, at least for now.
     %
 :- pred string_ungetchar(string::in, posn::in, posn::out) is det.
-:- pragma obsolete(string_ungetchar/3).
-:- pragma consider_used(string_ungetchar/3).
+:- pragma obsolete(pred(string_ungetchar/3)).
+:- pragma consider_used(pred(string_ungetchar/3)).
 
 string_ungetchar(String, Posn0, Posn) :-
     Posn0 = posn(LineNum0, LineOffset0, Offset0),
@@ -512,7 +512,7 @@ unsafe_get_float_between(Str, Start, End, FloatStr) :-
     ).
 
 :- pred is_underscore(char::in) is semidet.
-:- pragma consider_used(is_underscore/1).
+:- pragma consider_used(pred(is_underscore/1)).
 
 is_underscore('_').
 
@@ -566,7 +566,7 @@ get_token(Stream, Token, Context, !IO) :-
     %
 :- pred get_token_2(io.input_stream::in, scanned_past_whitespace::in,
     token::out, token_context::out, io::di, io::uo) is det.
-:- pragma inline(get_token_2/6).
+:- pragma inline(pred(get_token_2/6)).
 
 get_token_2(Stream, ScannedPastWhiteSpace, Token, Context, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
@@ -1016,7 +1016,7 @@ linestr_get_token_2(String, Len, ScannedPastWhiteSpace,
     % so any changes here should be reflected there, and vice versa.
     %
 :- pred lookup_token_action(char::in, get_token_action::out) is semidet.
-:- pragma inline(lookup_token_action/2).
+:- pragma inline(pred(lookup_token_action/2)).
 
 lookup_token_action(Char, Action) :-
     % The body of this predicate should be turned into a single table lookup
@@ -1290,7 +1290,7 @@ execute_get_token_action(Stream, Char, Action, ScannedPastWhiteSpace,
     %
 :- pred handle_special_token(char::in, scanned_past_whitespace::in, token::out)
     is det.
-:- pragma inline(handle_special_token/3).
+:- pragma inline(pred(handle_special_token/3)).
 
 handle_special_token(Char, ScannedPastWhiteSpace, Token) :-
     ( if special_token(Char, SpecialToken) then

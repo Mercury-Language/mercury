@@ -579,7 +579,7 @@ X div Y = Div :-
         Div = Trunc - 1i64
     ).
 
-:- pragma inline('//'/2).
+:- pragma inline(func('//'/2)).
 X // Y = Div :-
     ( if Y = 0i64 then
         throw(domain_error("int64.'//': division by zero"))
@@ -587,14 +587,14 @@ X // Y = Div :-
         Div = unchecked_quotient(X, Y)
     ).
 
-:- pragma inline('/'/2).
+:- pragma inline(func('/'/2)).
 X / Y = X // Y.
 
 % The operations unchecked_quotient and unchecked_rem are builtins.
 
 X mod Y = X  - (X div Y) * Y.
 
-:- pragma inline(rem/2).
+:- pragma inline(func(rem/2)).
 X rem Y = Rem :-
     ( if Y = 0i64 then
         throw(domain_error("int64.rem: division by zero"))
@@ -602,11 +602,11 @@ X rem Y = Rem :-
         Rem = unchecked_rem(X, Y)
     ).
 
-:- pragma inline(even/1).
+:- pragma inline(pred(even/1)).
 even(X) :-
     (X /\ 1i64) = 0i64.
 
-:- pragma inline(odd/1).
+:- pragma inline(pred(odd/1)).
 odd(X) :-
     (X /\ 1i64) \= 0i64.
 

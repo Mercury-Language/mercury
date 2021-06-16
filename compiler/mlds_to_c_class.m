@@ -57,7 +57,7 @@
 :- pred mlds_output_class_decl_opts(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in, mlds_module_name::in,
     mlds_class_defn::in, io::di, io::uo) is det.
-:- pragma consider_used(mlds_output_class_decl_opts/7).
+:- pragma consider_used(pred(mlds_output_class_decl_opts/7)).
 
 mlds_output_class_decl_opts(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     ClassDefn = mlds_class_defn(ClassName, Arity, Context, Flags, Kind,

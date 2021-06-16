@@ -1051,7 +1051,7 @@ table_mmos_setup_consumer(_, _, Consumer) :-
     % Required only to avoid warnings; never executed.
     %
 :- pred pretend_to_generate_value(T::out) is det.
-:- pragma consider_used(pretend_to_generate_value/1).
+:- pragma consider_used(pred(pretend_to_generate_value/1)).
 
 :- pragma foreign_proc("C",
     table_mmos_answer_is_not_duplicate(T::in),

@@ -135,8 +135,7 @@ unique_modes_check_goal(Goal0, Goal, !ModeInfo) :-
 
 :- pred unique_modes_check_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
     hlds_goal::out, mode_info::in, mode_info::out) is det.
-
-:- pragma inline(unique_modes_check_goal_2/5).
+:- pragma inline(pred(unique_modes_check_goal_2/5)).
 
 unique_modes_check_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
@@ -926,7 +925,7 @@ unique_modes_check_conj_2(ConjType, Goal0, Goals0, [Goal | Goals],
 :- pred unique_modes_check_par_conj(list(hlds_goal)::in, bag(prog_var)::in,
     list(hlds_goal)::out, list(pair(instmap, set_of_progvar))::out,
     mode_info::in, mode_info::out) is det.
-:- pragma consider_used(unique_modes_check_par_conj/6).
+:- pragma consider_used(pred(unique_modes_check_par_conj/6)).
 
 unique_modes_check_par_conj(Goals0, NonLocalVarsBag, Goals, Instmaps,
         !ModeInfo) :-

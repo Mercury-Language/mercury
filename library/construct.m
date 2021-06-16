@@ -716,7 +716,7 @@ ML_copy_tagword_args(MR_Word *arg_list_ptr, const MR_Word ptag,
 }
 ").
 
-:- pragma no_inline(construct/3).
+:- pragma no_inline(func(construct/3)).
 :- pragma foreign_proc("C",
     construct(TypeDesc::in, FunctorNumber::in, ArgList::in) = (Term::out),
     [will_not_call_mercury, thread_safe, promise_pure],

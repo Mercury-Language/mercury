@@ -270,7 +270,7 @@ is_singleton(A - B, E) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_equivalent_clauses(member/2).
+:- pragma promise_equivalent_clauses(pred(member/2)).
 
 member(E::in, (SetA - SetB)::in) :-
     ( if tree_bitset.member(E, SetA) then InSetA = yes else InSetA = no),

@@ -385,7 +385,7 @@ implicitly_quantify_goal_quant_info_expr(GoalExpr0, GoalExpr, GoalInfo0,
     out, in, in(ordinary_nonlocals_no_lambda), out, in, out) is det.
 :- mode implicitly_quantify_goal_quant_info_unify(in(goal_expr_unify),
     out, in, in(code_gen_nonlocals_no_lambda), out, in, out) is det.
-:- pragma inline(implicitly_quantify_goal_quant_info_unify/7).
+:- pragma inline(pred(implicitly_quantify_goal_quant_info_unify/7)).
 
 implicitly_quantify_goal_quant_info_unify(GoalExpr0, GoalExpr, GoalInfo0,
         NonLocalsToRecompute, PossiblyNonLocalGoalVars0, !Info) :-
@@ -455,7 +455,7 @@ implicitly_quantify_goal_quant_info_unify(GoalExpr0, GoalExpr, GoalInfo0,
     in(ordinary_nonlocals_no_lambda), out, in, out) is det.
 :- mode implicitly_quantify_goal_quant_info_ite(in(goal_expr_ite), out, in,
     in(code_gen_nonlocals_no_lambda), out, in, out) is det.
-:- pragma inline(implicitly_quantify_goal_quant_info_ite/7).
+:- pragma inline(pred(implicitly_quantify_goal_quant_info_ite/7)).
 
 implicitly_quantify_goal_quant_info_ite(GoalExpr0, GoalExpr, GoalInfo0,
         NonLocalsToRecompute, PossiblyNonLocalGoalVars0, !Info) :-
@@ -549,7 +549,7 @@ implicitly_quantify_goal_quant_info_ite(GoalExpr0, GoalExpr, GoalInfo0,
     out, in, in(ordinary_nonlocals_no_lambda), out, in, out) is det.
 :- mode implicitly_quantify_goal_quant_info_scope(in(goal_expr_scope),
     out, in, in(code_gen_nonlocals_no_lambda), out, in, out) is det.
-:- pragma inline(implicitly_quantify_goal_quant_info_scope/7).
+:- pragma inline(pred(implicitly_quantify_goal_quant_info_scope/7)).
 
 implicitly_quantify_goal_quant_info_scope(GoalExpr0, GoalExpr, GoalInfo0,
         NonLocalsToRecompute, PossiblyNonLocalGoalVars0, !Info) :-
@@ -663,7 +663,7 @@ implicitly_quantify_goal_quant_info_scope(GoalExpr0, GoalExpr, GoalInfo0,
     in, out, in, out, in, in(ordinary_nonlocals_no_lambda), in, out) is det.
 :- mode implicitly_quantify_goal_quant_info_scope_rename_vars(in, out,
     in, out, in, out, in, in(code_gen_nonlocals_no_lambda), in, out) is det.
-:- pragma inline(implicitly_quantify_goal_quant_info_scope_rename_vars/10).
+:- pragma inline(pred(implicitly_quantify_goal_quant_info_scope_rename_vars/10)).
 
 implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
         SubGoal0, SubGoal, Vars0, Vars, GoalInfo0, NonLocalsToRecompute,
@@ -722,7 +722,7 @@ implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
     out, in, in(ordinary_nonlocals_no_lambda), out, in, out) is det.
 :- mode implicitly_quantify_goal_quant_info_shorthand(in(goal_expr_shorthand),
     out, in, in(code_gen_nonlocals_no_lambda), out, in, out) is det.
-:- pragma inline(implicitly_quantify_goal_quant_info_shorthand/7).
+:- pragma inline(pred(implicitly_quantify_goal_quant_info_shorthand/7)).
 
 implicitly_quantify_goal_quant_info_shorthand(GoalExpr0, GoalExpr, GoalInfo0,
         NonLocalsToRecompute, PossiblyNonLocalGoalVars0, !Info) :-
@@ -2481,15 +2481,15 @@ init_quant_info(OutsideVars, VarSet, VarTypes, RttiVarMaps, QuantInfo) :-
 :- pred get_vartypes(quant_info::in, vartypes::out) is det.
 :- pred get_rtti_varmaps(quant_info::in, rtti_varmaps::out) is det.
 :- pred get_warnings(quant_info::in, list(quant_warning)::out) is det.
-:- pragma inline(get_outside/2).
-:- pragma inline(get_lambda_outside/2).
-:- pragma inline(get_quant_vars/2).
-:- pragma inline(get_nonlocals/2).
-:- pragma inline(get_seen/2).
-:- pragma inline(get_varset/2).
-:- pragma inline(get_vartypes/2).
-:- pragma inline(get_rtti_varmaps/2).
-:- pragma inline(get_warnings/2).
+:- pragma inline(pred(get_outside/2)).
+:- pragma inline(pred(get_lambda_outside/2)).
+:- pragma inline(pred(get_quant_vars/2)).
+:- pragma inline(pred(get_nonlocals/2)).
+:- pragma inline(pred(get_seen/2)).
+:- pragma inline(pred(get_varset/2)).
+:- pragma inline(pred(get_vartypes/2)).
+:- pragma inline(pred(get_rtti_varmaps/2)).
+:- pragma inline(pred(get_warnings/2)).
 
 :- pred set_outside(set_of_progvar::in,
     quant_info::in, quant_info::out) is det.
@@ -2509,15 +2509,15 @@ init_quant_info(OutsideVars, VarSet, VarTypes, RttiVarMaps, QuantInfo) :-
     quant_info::in, quant_info::out) is det.
 :- pred set_warnings(list(quant_warning)::in,
     quant_info::in, quant_info::out) is det.
-:- pragma inline(set_outside/3).
-:- pragma inline(set_lambda_outside/3).
-:- pragma inline(set_quant_vars/3).
-:- pragma inline(set_nonlocals/3).
-:- pragma inline(set_seen/3).
-:- pragma inline(set_varset/3).
-:- pragma inline(set_vartypes/3).
-:- pragma inline(set_rtti_varmaps/3).
-:- pragma inline(set_warnings/3).
+:- pragma inline(pred(set_outside/3)).
+:- pragma inline(pred(set_lambda_outside/3)).
+:- pragma inline(pred(set_quant_vars/3)).
+:- pragma inline(pred(set_nonlocals/3)).
+:- pragma inline(pred(set_seen/3)).
+:- pragma inline(pred(set_varset/3)).
+:- pragma inline(pred(set_vartypes/3)).
+:- pragma inline(pred(set_rtti_varmaps/3)).
+:- pragma inline(pred(set_warnings/3)).
 
 get_outside(Q, X) :-
     X = Q ^ qi_outside.

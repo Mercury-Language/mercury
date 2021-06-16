@@ -2087,7 +2087,7 @@ rbmm_info_init =
 
 %-----------------------------------------------------------------------------%
 
-:- pragma inline(goal_info_init/1).
+:- pragma inline(pred(goal_info_init/1)).
 
 goal_info_init(GoalInfo) :-
     Detism = detism_erroneous,
@@ -2100,7 +2100,7 @@ goal_info_init(GoalInfo) :-
         Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
 
-:- pragma inline(goal_info_init/2).
+:- pragma inline(pred(goal_info_init/2)).
 
 goal_info_init(Context, GoalInfo) :-
     Detism = detism_erroneous,

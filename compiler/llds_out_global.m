@@ -690,7 +690,7 @@ output_cons_arg_group_ints_check(Stream, [Int | Ints], Type, !IO) :-
 project_int_constant(const(llconst_int(N)), N).
 
 :- func check_int_const_sizes = bool.
-:- pragma inline(check_int_const_sizes/0).
+:- pragma inline(func(check_int_const_sizes/0)).
 
 % If you this to `yes', we will test all integer constants placed into static
 % data structures to see if they fit into the space allocated for them.
@@ -699,7 +699,7 @@ check_int_const_sizes = no.
 
 :- pred output_int_const(io.text_output_stream::in, int::in, llds_type::in,
     io::di, io::uo) is det.
-:- pragma inline(output_int_const/5).
+:- pragma inline(pred(output_int_const/5)).
 
 output_int_const(Stream, N, Type, !IO) :-
     Check = check_int_const_sizes,
@@ -716,7 +716,7 @@ output_int_const(Stream, N, Type, !IO) :-
     ).
 
 :- pred ok_int_const(int::in, llds_type::in) is semidet.
-:- pragma inline(ok_int_const/2).
+:- pragma inline(pred(ok_int_const/2)).
 
 ok_int_const(N, LLDSType) :-
     require_complete_switch [LLDSType]

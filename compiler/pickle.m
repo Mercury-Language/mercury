@@ -443,7 +443,7 @@ unpickle_string_2(Handle, Index, Length, !String, !State) :-
     ).
 
 :- pred allocate_string(int::in, string::uo) is det.
-:- pragma no_determinism_warning(allocate_string/2).
+:- pragma no_determinism_warning(pred(allocate_string/2)).
 
 :- pragma foreign_proc("C",
     allocate_string(Length::in, Str::uo),
@@ -460,7 +460,7 @@ allocate_string(_, _) :-
     % own copy.
 :- pred local_unsafe_set_char(char::in, int::in, string::di, string::uo)
     is det.
-:- pragma no_determinism_warning(local_unsafe_set_char/4).
+:- pragma no_determinism_warning(pred(local_unsafe_set_char/4)).
 
 :- pragma foreign_proc("C",
     local_unsafe_set_char(Chr::in, Index::in, Str0::di, Str::uo),
@@ -484,7 +484,7 @@ pickle_float(OutputStream, Float, !IO) :-
     pickle_int32(OutputStream, B, !IO).
 
 :- pred reinterpret_float_as_ints(float::in, int::out, int::out) is det.
-:- pragma no_determinism_warning(reinterpret_float_as_ints/3).
+:- pragma no_determinism_warning(pred(reinterpret_float_as_ints/3)).
 
 :- pragma foreign_proc("C",
     reinterpret_float_as_ints(Flt::in, A::out, B::out),
@@ -517,7 +517,7 @@ unpickle_float(Handle, Float, !State) :-
     reinterpret_ints_as_float(A, B, Float).
 
 :- pred reinterpret_ints_as_float(int::in, int::in, float::out) is det.
-:- pragma no_determinism_warning(reinterpret_ints_as_float/3).
+:- pragma no_determinism_warning(pred(reinterpret_ints_as_float/3)).
 
 :- pragma foreign_proc("C",
     reinterpret_ints_as_float(A::in, B::in, Flt::out),

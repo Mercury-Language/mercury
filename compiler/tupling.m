@@ -242,7 +242,7 @@ tuple_arguments_with_trace_counts(!ModuleInfo, TraceCounts0) :-
     hlds_dependency_graph::in, list(pred_proc_id)::in,
     module_info::in, module_info::out, counter::in, counter::out,
     transform_map::in, transform_map::out) is det.
-:- pragma consider_used(maybe_tuple_scc_individual_procs/10).
+:- pragma consider_used(pred(maybe_tuple_scc_individual_procs/10)).
 
 maybe_tuple_scc_individual_procs(_TraceCounts, _TuningParams, _DepGraph,
         [], !ModuleInfo, !Counter, !TransformMap).
@@ -1960,7 +1960,7 @@ get_proc_counts(TraceCounts, ProcLabelInContext, MaybeProcCounts) :-
     ).
 
 :- pred get_proc_calls(proc_trace_counts::in, int::out) is det.
-:- pragma consider_used(get_proc_calls/2).
+:- pragma consider_used(pred(get_proc_calls/2)).
 % While the call above is commented out.
 
 get_proc_calls(ProcCounts, Count) :-

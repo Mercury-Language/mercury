@@ -68,15 +68,15 @@
     % Fail if the key already exists.
     %
 :- pred insert(P::in, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is semidet.
-:- pragma type_spec(insert/4, P = int).
+:- pragma type_spec(pred(insert/4), P = int).
 
     % Insert key K with priority P into the given priority search queue.
     % Throw an exception if the key already exists.
     %
 :- func det_insert(psqueue(P, K), P, K) = psqueue(P, K).
 :- pred det_insert(P::in, K::in, psqueue(P, K)::in, psqueue(P, K)::out) is det.
-:- pragma type_spec(det_insert/3, P = int).
-:- pragma type_spec(det_insert/4, P = int).
+:- pragma type_spec(func(det_insert/3), P = int).
+:- pragma type_spec(pred(det_insert/4), P = int).
 
     % Return the highest priority priority/key pair in the given queue.
     % Fail if the queue is empty.
@@ -92,14 +92,14 @@
     %
 :- pred remove_least(P::out, K::out, psqueue(P, K)::in, psqueue(P, K)::out)
     is semidet.
-:- pragma type_spec(remove_least/4, P = int).
+:- pragma type_spec(pred(remove_least/4), P = int).
 
     % Remove the element with the top priority. If the queue is empty,
     % throw an exception.
     %
 :- pred det_remove_least(P::out, K::out, psqueue(P, K)::in, psqueue(P, K)::out)
     is det.
-:- pragma type_spec(det_remove_least/4, P = int).
+:- pragma type_spec(pred(det_remove_least/4), P = int).
 
     % Create an association list from a priority search queue.
     % The returned list will be in ascending order, sorted first on priority,
@@ -107,29 +107,29 @@
     %
 :- func to_assoc_list(psqueue(P, K)) = assoc_list(P, K).
 :- pred to_assoc_list(psqueue(P, K)::in, assoc_list(P, K)::out) is det.
-:- pragma type_spec(to_assoc_list/1, P = int).
-:- pragma type_spec(to_assoc_list/2, P = int).
+:- pragma type_spec(func(to_assoc_list/1), P = int).
+:- pragma type_spec(pred(to_assoc_list/2), P = int).
 
     % Create a priority search queue from an assoc_list of priority/key pairs.
     %
 :- func from_assoc_list(assoc_list(P, K)) = psqueue(P, K).
 :- pred from_assoc_list(assoc_list(P, K)::in, psqueue(P, K)::out) is det.
-:- pragma type_spec(from_assoc_list/1, P = int).
-:- pragma type_spec(from_assoc_list/2, P = int).
+:- pragma type_spec(func(from_assoc_list/1), P = int).
+:- pragma type_spec(pred(from_assoc_list/2), P = int).
 
     % Remove the element with the given key from a priority queue.
     % Fail if it is not in the queue.
     %
 :- pred remove(P::out, K::in, psqueue(P, K)::in, psqueue(P, K)::out)
     is semidet.
-:- pragma type_spec(remove/4, P = int).
+:- pragma type_spec(pred(remove/4), P = int).
 
     % Remove the element with the given key from a priority queue.
     % Throw an exception if it is not in the queue.
     %
 :- pred det_remove(P::out, K::in, psqueue(P, K)::in, psqueue(P, K)::out)
     is det.
-:- pragma type_spec(det_remove/4, P = int).
+:- pragma type_spec(pred(det_remove/4), P = int).
 
     % Adjust the priority of the specified element; the new priority will be
     % the value returned by the given adjustment function on the old priority.
@@ -137,36 +137,36 @@
     %
 :- pred adjust((func(P) = P)::in, K::in, psqueue(P, K)::in, psqueue(P, K)::out)
     is semidet.
-:- pragma type_spec(adjust/4, P = int).
+:- pragma type_spec(pred(adjust/4), P = int).
 
     % Search for the priority of the specified key. If it is not in the queue,
     % fail.
     %
 :- pred search(psqueue(P, K)::in, K::in, P::out) is semidet.
-:- pragma type_spec(search/3, P = int).
+:- pragma type_spec(pred(search/3), P = int).
 
     % Search for the priority of the specified key. If it is not in the queue,
     % throw an exception.
     %
 :- func lookup(psqueue(P, K), K) = P.
 :- pred lookup(psqueue(P, K)::in, K::in, P::out) is det.
-:- pragma type_spec(lookup/2, P = int).
-:- pragma type_spec(lookup/3, P = int).
+:- pragma type_spec(func(lookup/2), P = int).
+:- pragma type_spec(pred(lookup/3), P = int).
 
     % Return all priority/key pairs whose priority is less than or equal to
     % the given priority.
     %
 :- func at_most(psqueue(P, K), P) = assoc_list(P, K).
 :- pred at_most(psqueue(P, K)::in, P::in, assoc_list(P, K)::out) is det.
-:- pragma type_spec(at_most/2, P = int).
-:- pragma type_spec(at_most/3, P = int).
+:- pragma type_spec(func(at_most/2), P = int).
+:- pragma type_spec(pred(at_most/3), P = int).
 
     % Return the number of priority/key pairs in the given queue.
     %
 :- func size(psqueue(P, K)) = int.
 :- pred size(psqueue(P, K)::in, int::out) is det.
-:- pragma type_spec(size/1, P = int).
-:- pragma type_spec(size/2, P = int).
+:- pragma type_spec(func(size/1), P = int).
+:- pragma type_spec(pred(size/2), P = int).
 
 %---------------------------------------------------------------------------%
 
@@ -365,7 +365,7 @@
     % Get a tournament view of a nonempty priority search queue.
     %
 :- func get_tournament_view(winner(P, K)) = tournament_view(P, K).
-:- pragma type_spec(get_tournament_view/1, P = int).
+:- pragma type_spec(func(get_tournament_view/1), P = int).
 
 get_tournament_view(Winner) = TournamentView :-
     Winner = winner(WinnerPrio, WinnerKey, LTree, MaxKey),
@@ -404,7 +404,7 @@ get_tournament_view(Winner) = TournamentView :-
     %
 :- pred combine_psqueues_via_tournament(psqueue(P, K)::in, psqueue(P, K)::in,
     psqueue(P, K)::out) is det.
-:- pragma type_spec(combine_psqueues_via_tournament/3, P = int).
+:- pragma type_spec(pred(combine_psqueues_via_tournament/3), P = int).
 
 combine_psqueues_via_tournament(PSQA, PSQB, CombinedPSQ) :-
     (
@@ -432,7 +432,7 @@ combine_psqueues_via_tournament(PSQA, PSQB, CombinedPSQ) :-
 
 :- pred combine_winner_psqueue_via_tournament(
     winner(P, K)::in, psqueue(P, K)::in, winner(P, K)::out) is det.
-:- pragma type_spec(combine_winner_psqueue_via_tournament/3, P = int).
+:- pragma type_spec(pred(combine_winner_psqueue_via_tournament/3), P = int).
 
 combine_winner_psqueue_via_tournament(WinnerA, PSQB, CombinedWinner) :-
     (
@@ -445,7 +445,7 @@ combine_winner_psqueue_via_tournament(WinnerA, PSQB, CombinedWinner) :-
 
 :- pred combine_psqueue_winner_via_tournament(
     psqueue(P, K)::in, winner(P, K)::in, winner(P, K)::out) is det.
-:- pragma type_spec(combine_psqueue_winner_via_tournament/3, P = int).
+:- pragma type_spec(pred(combine_psqueue_winner_via_tournament/3), P = int).
 
 combine_psqueue_winner_via_tournament(PSQA, WinnerB, CombinedWinner) :-
     (
@@ -458,7 +458,7 @@ combine_psqueue_winner_via_tournament(PSQA, WinnerB, CombinedWinner) :-
 
 :- pred combine_winners_via_tournament(winner(P, K)::in, winner(P, K)::in,
     winner(P, K)::out) is det.
-:- pragma type_spec(combine_winners_via_tournament/3, P = int).
+:- pragma type_spec(pred(combine_winners_via_tournament/3), P = int).
 
 combine_winners_via_tournament(WinnerA, WinnerB, CombinedWinner) :-
     WinnerA = winner(PrioA, KeyA, LTreeA, MaxKeyA),
@@ -500,7 +500,7 @@ combine_winners_via_tournament(WinnerA, WinnerB, CombinedWinner) :-
     %
 :- func balance(P, K, loser_tree(P, K), K, loser_tree(P, K))
     = loser_tree(P, K).
-:- pragma type_spec(balance/5, P = int).
+:- pragma type_spec(func(balance/5), P = int).
 
 balance(Prio, Key, LTreeL, SplitKey, LTreeR) = LTree :-
     SizeL = loser_tree_size(LTreeL),
@@ -529,7 +529,7 @@ balance(Prio, Key, LTreeL, SplitKey, LTreeR) = LTree :-
     %
 :- func balance_left(P, K, loser_tree(P, K), K, loser_tree(P, K))
     = loser_tree(P, K).
-:- pragma type_spec(balance_left/5, P = int).
+:- pragma type_spec(func(balance_left/5), P = int).
 
 balance_left(Prio, Key, LTreeL, SplitKey, LTreeR) = LTree :-
     (
@@ -551,7 +551,7 @@ balance_left(Prio, Key, LTreeL, SplitKey, LTreeR) = LTree :-
     %
 :- func balance_right(P, K, loser_tree(P, K), K, loser_tree(P, K))
     = loser_tree(P, K).
-:- pragma type_spec(balance_right/5, P = int).
+:- pragma type_spec(func(balance_right/5), P = int).
 
 balance_right(Prio, Key, LTreeL, SplitKey, LTreeR) = LTree :-
     (
@@ -572,7 +572,7 @@ balance_right(Prio, Key, LTreeL, SplitKey, LTreeR) = LTree :-
     %
 :- func double_left(P, K, loser_tree(P, K), K, loser_tree(P, K))
     = loser_tree(P, K).
-:- pragma type_spec(double_left/5, P = int).
+:- pragma type_spec(func(double_left/5), P = int).
 
 double_left(InsertPrio, InsertKey, LTreeA, SplitKeyAB, LTreeBC) = LTree :-
     (
@@ -592,7 +592,7 @@ double_left(InsertPrio, InsertKey, LTreeA, SplitKeyAB, LTreeBC) = LTree :-
     %
 :- func double_right(P, K, loser_tree(P, K), K, loser_tree(P, K))
     = loser_tree(P, K).
-:- pragma type_spec(double_right/5, P = int).
+:- pragma type_spec(func(double_right/5), P = int).
 
 double_right(InsertPrio, InsertKey, LTreeAB, SplitKeyBC, LTreeC) = LTree :-
     (
@@ -612,7 +612,7 @@ double_right(InsertPrio, InsertKey, LTreeAB, SplitKeyBC, LTreeC) = LTree :-
     %
 :- func single_left(P, K, loser_tree(P, K), K, loser_tree(P, K))
     = loser_tree(P, K).
-:- pragma type_spec(single_left/5, P = int).
+:- pragma type_spec(func(single_left/5), P = int).
 
 single_left(InsertPrio, InsertKey, LTreeA, SplitKeyAB, LTreeBC) = LTree :-
     (
@@ -644,7 +644,7 @@ single_left(InsertPrio, InsertKey, LTreeA, SplitKeyAB, LTreeBC) = LTree :-
     %
 :- func single_right(P, K, loser_tree(P, K), K, loser_tree(P, K))
     = loser_tree(P, K).
-:- pragma type_spec(single_right/5, P = int).
+:- pragma type_spec(func(single_right/5), P = int).
 
 single_right(InsertPrio, InsertKey, LTreeAB, SplitKeyBC, LTreeC) = LTree :-
     (
@@ -680,7 +680,7 @@ balance_omega = 4.
 
 :- func construct_node(P, K, loser_tree(P, K), K, loser_tree(P, K))
     = loser_tree(P, K).
-:- pragma inline(construct_node/5).
+:- pragma inline(func(construct_node/5)).
 
 construct_node(Prio, Key, SubLTreeL, SplitKey, SubLTreeR) = LTree :-
     Size = 1 + loser_tree_size(SubLTreeL) + loser_tree_size(SubLTreeR),
@@ -703,7 +703,7 @@ singleton(Prio, Key, PSQ) :-
     PSQ = nonempty_psqueue(singleton_winner(Prio, Key)).
 
 :- func singleton_winner(P, K) = winner(P, K).
-:- pragma inline(singleton_winner/2).
+:- pragma inline(func(singleton_winner/2)).
 
 singleton_winner(Prio, Key) =
     winner(Prio, Key, loser_leaf, Key).
@@ -732,7 +732,7 @@ det_insert(InsertPrio, InsertKey, !PSQ) :-
 
 :- pred insert_tv(P::in, K::in,
     tournament_view(P, K)::in, winner(P, K)::out) is semidet.
-:- pragma type_spec(insert_tv/4, P = int).
+:- pragma type_spec(pred(insert_tv/4), P = int).
 
 insert_tv(InsertPrio, InsertKey, TV, Winner) :-
     (
@@ -796,7 +796,7 @@ det_remove_least(MinPrio, MinKey, !PSQ) :-
     % to be less than or equal to MaxKey.
     %
 :- func convert_loser_tree_to_psqueue(loser_tree(P, K), K) = psqueue(P, K).
-:- pragma type_spec(convert_loser_tree_to_psqueue/2, P = int).
+:- pragma type_spec(func(convert_loser_tree_to_psqueue/2), P = int).
 
 convert_loser_tree_to_psqueue(LTree, MaxKey) = PSQ :-
     (
@@ -838,7 +838,7 @@ from_assoc_list(AssocList, PSQ) :-
 
 :- pred from_assoc_list_loop(assoc_list(P, K)::in,
     psqueue(P, K)::in, psqueue(P, K)::out) is det.
-:- pragma type_spec(from_assoc_list_loop/3, P = int).
+:- pragma type_spec(pred(from_assoc_list_loop/3), P = int).
 
 from_assoc_list_loop([], !PSQ).
 from_assoc_list_loop([Prio - Key | PriosKeys], !PSQ) :-
@@ -865,7 +865,7 @@ det_remove(MatchingPrio, SearchKey, !PSQ) :-
 
 :- pred remove_tv(P::out, K::in,
     tournament_view(P, K)::in, psqueue(P, K)::out) is semidet.
-:- pragma type_spec(remove_tv/4, P = int).
+:- pragma type_spec(pred(remove_tv/4), P = int).
 
 remove_tv(MatchingPrio, SearchKey, TournamentView, PSQ) :-
     (
@@ -907,7 +907,7 @@ adjust(AdjustFunc, SearchKey, !PSQ) :-
 
 :- pred adjust_tv(func(P) = P::in(func(in) = out is det),
     K::in, tournament_view(P, K)::in, winner(P, K)::out) is semidet.
-:- pragma type_spec(adjust_tv/4, P = int).
+:- pragma type_spec(pred(adjust_tv/4), P = int).
 
 adjust_tv(AdjustFunc, SearchKey, TournamentView, Winner) :-
     (
@@ -947,7 +947,7 @@ search(PSQ, SearchKey, MatchingPrio) :-
     ).
 
 :- pred search_tv(tournament_view(P, K)::in, K::in, P::out) is semidet.
-:- pragma type_spec(search_tv/3, P = int).
+:- pragma type_spec(pred(search_tv/3), P = int).
 
 search_tv(TournamentView, SearchKey, MatchingPrio) :-
     (
@@ -994,7 +994,7 @@ at_most(PSQ, MaxPrio, AssocList) :-
 
 :- pred at_most_in_winner(winner(P, K)::in, P::in, cord(pair(P, K))::out)
     is det.
-:- pragma type_spec(at_most_in_winner/3, P = int).
+:- pragma type_spec(pred(at_most_in_winner/3), P = int).
 
 at_most_in_winner(Winner, MaxPrio, Cord) :-
     Winner = winner(WinnerPrio, _, _, _),
@@ -1046,7 +1046,7 @@ loser_tree_size(LTree) = Size :-
 %---------------------------------------------------------------------------%
 
 :- pred leq(V::in, V::in) is semidet.
-:- pragma type_spec(leq/2, V = int).
+:- pragma type_spec(pred(leq/2), V = int).
 
 leq(ValLeft, ValRight) :-
     compare(CMP, ValLeft, ValRight),
@@ -1055,7 +1055,7 @@ leq(ValLeft, ValRight) :-
     ).
 
 :- func min2(V, V) = V.
-:- pragma type_spec(min2/2, V = int).
+:- pragma type_spec(func(min2/2), V = int).
 
 min2(A, B) = Min :-
     ( if A `leq` B then
@@ -1065,7 +1065,7 @@ min2(A, B) = Min :-
     ).
 
 :- func max2(V, V) = V.
-:- pragma type_spec(max2/2, V = int).
+:- pragma type_spec(func(max2/2), V = int).
 
 max2(A, B) = Max :-
     ( if A `leq` B then

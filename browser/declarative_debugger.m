@@ -1024,7 +1024,7 @@ extern  int MR_DD_debug_origin;
 ").
 
 :- pred debug_origin(int::out, io::di, io::uo) is det.
-:- pragma no_determinism_warning(debug_origin/3).
+:- pragma no_determinism_warning(pred(debug_origin/3)).
 
 :- pragma foreign_proc("C",
     debug_origin(Flag::out, _IO0::di, _IO::uo),

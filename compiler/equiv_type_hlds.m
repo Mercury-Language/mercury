@@ -924,7 +924,7 @@ replace_in_unify_mode(TypeEqvMap, UnifyMode0, UnifyMode, Changed, !Info) :-
 :- pred replace_in_from_to_insts(type_eqv_map::in,
     from_to_insts::in, from_to_insts::out, maybe_changed::out,
     tvarset::in, tvarset::out, inst_cache::in, inst_cache::out) is det.
-:- pragma consider_used(replace_in_from_to_insts/8).
+:- pragma consider_used(pred(replace_in_from_to_insts/8)).
 
 replace_in_from_to_insts(TypeEqvMap, FromToInsts0, FromToInsts, Changed,
         !TVarSet, !Cache) :-
@@ -983,7 +983,7 @@ replace_in_inst(TypeEqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
     % is local to this module, such cross-module inlining would not work.
     %
 :- func type_may_occur_in_inst(mer_inst) = bool.
-:- pragma no_inline(type_may_occur_in_inst/1).
+:- pragma no_inline(func(type_may_occur_in_inst/1)).
 
 type_may_occur_in_inst(Inst) = MayOccur :-
     (

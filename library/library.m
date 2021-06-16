@@ -197,7 +197,7 @@
 % at configuration time, because that would cause bootstrapping problems --
 % we might not have a Mercury compiler around to compile library.m with.
 
-:- pragma no_inline(library.version/2).
+:- pragma no_inline(pred(library.version/2)).
 
 :- pragma foreign_proc("C",
     library.version(Version::out, Fullarch::out),

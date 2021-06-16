@@ -378,7 +378,7 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
     list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_impure_semipure/7).
+:- pragma inline(pred(parse_goal_impure_semipure/7)).
 
 parse_goal_impure_semipure(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
@@ -405,7 +405,7 @@ parse_goal_impure_semipure(Functor, ArgTerms, Context, ContextPieces,
     list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_promise_purity/7).
+:- pragma inline(pred(parse_goal_promise_purity/7)).
 
 parse_goal_promise_purity(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
@@ -434,7 +434,7 @@ parse_goal_promise_purity(Functor, ArgTerms, Context, ContextPieces,
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_disable_warnings/7).
+:- pragma inline(pred(parse_goal_disable_warnings/7)).
 
 parse_goal_disable_warnings(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
@@ -507,7 +507,7 @@ parse_goal_disable_warnings(Functor, ArgTerms, Context, ContextPieces,
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_not/7).
+:- pragma inline(pred(parse_goal_not/7)).
 
 parse_goal_not(Functor, ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     ( if ArgTerms = [SubGoalTerm] then
@@ -535,7 +535,7 @@ parse_goal_not(Functor, ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_some_all/7).
+:- pragma inline(pred(parse_goal_some_all/7)).
 
 parse_goal_some_all(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
@@ -608,7 +608,7 @@ parse_goal_some_all(Functor, ArgTerms, Context, ContextPieces,
     maybe2(goal, list(warning_spec)), prog_varset, prog_varset).
 :- mode parse_goal_conj(in(comma), in, in, in, out, in, out) is det.
 :- mode parse_goal_conj(in(ampersand), in, in, in, out, in, out) is det.
-:- pragma inline(parse_goal_conj/7).
+:- pragma inline(pred(parse_goal_conj/7)).
 
 parse_goal_conj(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
@@ -644,7 +644,7 @@ parse_goal_conj(Functor, ArgTerms, Context, ContextPieces,
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_semicolon/6).
+:- pragma inline(pred(parse_goal_semicolon/6)).
 
 parse_goal_semicolon(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     ( if ArgTerms = [SubGoalTermA, SubGoalTermB] then
@@ -707,7 +707,7 @@ parse_goal_semicolon(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_else/6).
+:- pragma inline(pred(parse_goal_else/6)).
 
 parse_goal_else(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     ( if ArgTerms = [CondThenTerm, ElseTerm] then
@@ -787,7 +787,7 @@ parse_goal_else(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_if/6).
+:- pragma inline(pred(parse_goal_if/6)).
 
 parse_goal_if(ArgTerms, Context, _ContextPieces, MaybeGoal, !VarSet) :-
     ( if
@@ -825,7 +825,7 @@ parse_goal_if(ArgTerms, Context, _ContextPieces, MaybeGoal, !VarSet) :-
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_then/6).
+:- pragma inline(pred(parse_goal_then/6)).
 
 parse_goal_then(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     ( if ArgTerms = [TryTerm, ThenTerm] then
@@ -873,7 +873,7 @@ parse_goal_then(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_catch_any/6).
+:- pragma inline(pred(parse_goal_catch_any/6)).
 
 parse_goal_catch_any(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     ( if ArgTerms = [TermA, ArrowTerm] then
@@ -922,7 +922,7 @@ parse_goal_catch_any(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_implication/7).
+:- pragma inline(pred(parse_goal_implication/7)).
 
 parse_goal_implication(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
@@ -962,7 +962,7 @@ parse_goal_implication(Functor, ArgTerms, Context, ContextPieces,
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_trace/6).
+:- pragma inline(pred(parse_goal_trace/6)).
 
 parse_goal_trace(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     ( if ArgTerms = [ParamsTerm, SubGoalTerm] then
@@ -1000,7 +1000,7 @@ parse_goal_trace(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_atomic/6).
+:- pragma inline(pred(parse_goal_atomic/6)).
 
 parse_goal_atomic(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     ( if ArgTerms = [ParamsTerm, SubGoalsTerm] then
@@ -1042,7 +1042,7 @@ parse_goal_atomic(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_promise_eqv_solns/7).
+:- pragma inline(pred(parse_goal_promise_eqv_solns/7)).
 
 parse_goal_promise_eqv_solns(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
@@ -1088,7 +1088,7 @@ parse_goal_promise_eqv_solns(Functor, ArgTerms, Context, ContextPieces,
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_arbitrary/6).
+:- pragma inline(pred(parse_goal_arbitrary/6)).
 
 parse_goal_arbitrary(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     ( if ArgTerms = [VarsTerm, SubGoalTerm] then
@@ -1135,7 +1135,7 @@ parse_goal_arbitrary(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_require_detism/7).
+:- pragma inline(pred(parse_goal_require_detism/7)).
 
 parse_goal_require_detism(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
@@ -1170,7 +1170,7 @@ parse_goal_require_detism(Functor, ArgTerms, Context, ContextPieces,
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_require_complete_switch/6).
+:- pragma inline(pred(parse_goal_require_complete_switch/6)).
 
 parse_goal_require_complete_switch(ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
@@ -1220,7 +1220,7 @@ parse_goal_require_complete_switch(ArgTerms, Context, ContextPieces,
     list(term)::in, term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_require_switch_arm_detism/7).
+:- pragma inline(pred(parse_goal_require_switch_arm_detism/7)).
 
 parse_goal_require_switch_arm_detism(Functor, ArgTerms,
         Context, ContextPieces, MaybeGoal, !VarSet) :-
@@ -1270,7 +1270,7 @@ parse_goal_require_switch_arm_detism(Functor, ArgTerms,
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_event/6).
+:- pragma inline(pred(parse_goal_event/6)).
 
 parse_goal_event(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     ( if ArgTerms = [SubGoalTerm] then
@@ -1344,7 +1344,7 @@ parse_goal_event(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_true_fail/7).
+:- pragma inline(pred(parse_goal_true_fail/7)).
 
 parse_goal_true_fail(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-
@@ -1370,7 +1370,7 @@ parse_goal_true_fail(Functor, ArgTerms, Context, ContextPieces,
     term.context::in, cord(format_component)::in,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
-:- pragma inline(parse_goal_equal/7).
+:- pragma inline(pred(parse_goal_equal/7)).
 
 parse_goal_equal(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet) :-

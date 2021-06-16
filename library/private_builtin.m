@@ -197,19 +197,19 @@
 :- import_module string.
 :- import_module type_desc.
 
-:- pragma inline(builtin_compare_int/3).
-:- pragma inline(builtin_compare_uint/3).
-:- pragma inline(builtin_compare_int8/3).
-:- pragma inline(builtin_compare_uint8/3).
-:- pragma inline(builtin_compare_int16/3).
-:- pragma inline(builtin_compare_uint16/3).
-:- pragma inline(builtin_compare_int32/3).
-:- pragma inline(builtin_compare_uint32/3).
-:- pragma inline(builtin_compare_int64/3).
-:- pragma inline(builtin_compare_uint64/3).
-:- pragma inline(builtin_compare_character/3).
-:- pragma inline(builtin_compare_string/3).
-:- pragma inline(builtin_compare_float/3).
+:- pragma inline(pred(builtin_compare_int/3)).
+:- pragma inline(pred(builtin_compare_uint/3)).
+:- pragma inline(pred(builtin_compare_int8/3)).
+:- pragma inline(pred(builtin_compare_uint8/3)).
+:- pragma inline(pred(builtin_compare_int16/3)).
+:- pragma inline(pred(builtin_compare_uint16/3)).
+:- pragma inline(pred(builtin_compare_int32/3)).
+:- pragma inline(pred(builtin_compare_uint32/3)).
+:- pragma inline(pred(builtin_compare_int64/3)).
+:- pragma inline(pred(builtin_compare_uint64/3)).
+:- pragma inline(pred(builtin_compare_character/3)).
+:- pragma inline(pred(builtin_compare_string/3)).
+:- pragma inline(pred(builtin_compare_float/3)).
 
 builtin_unify_int(X, X).
 
@@ -380,7 +380,7 @@ builtin_compare_float(R, F1, F2) :-
         R = (=)
     ).
 
-:- pragma no_inline(builtin_unify_pred/2).
+:- pragma no_inline(pred(builtin_unify_pred/2)).
 builtin_unify_pred(_X, _Y) :-
     ( if semidet_succeed then
         error("attempted higher-order unification")
@@ -389,7 +389,7 @@ builtin_unify_pred(_X, _Y) :-
         semidet_succeed
     ).
 
-:- pragma no_inline(builtin_compare_pred/3).
+:- pragma no_inline(pred(builtin_compare_pred/3)).
 builtin_compare_pred(Result, _X, _Y) :-
     ( if semidet_succeed then
         error("attempted higher-order comparison")
@@ -418,7 +418,7 @@ builtin_compare_tuple(Res, _, _) :-
         Res = (<)
     ).
 
-:- pragma no_inline(builtin_compare_non_canonical_type/3).
+:- pragma no_inline(pred(builtin_compare_non_canonical_type/3)).
 builtin_compare_non_canonical_type(Res, X, _Y) :-
     % Suppress determinism warning.
     ( if semidet_succeed then
@@ -430,7 +430,7 @@ builtin_compare_non_canonical_type(Res, X, _Y) :-
         Res = (<)
     ).
 
-:- pragma no_inline(builtin_unify_solver_type/2).
+:- pragma no_inline(pred(builtin_unify_solver_type/2)).
 builtin_unify_solver_type(_X, _Y) :-
     % Suppress determinism warning.
     ( if semidet_succeed then
@@ -448,7 +448,7 @@ builtin_unify_solver_type(_X, _Y) :-
         semidet_fail
     ).
 
-:- pragma no_inline(builtin_compare_solver_type/3).
+:- pragma no_inline(pred(builtin_compare_solver_type/3)).
 builtin_compare_solver_type(Res, _X, _Y) :-
     % Suppress determinism warning.
     ( if semidet_succeed then
@@ -462,7 +462,7 @@ builtin_compare_solver_type(Res, _X, _Y) :-
         Res = (<)
     ).
 
-:- pragma no_inline(compare_error/0).
+:- pragma no_inline(pred(compare_error/0)).
 compare_error :-
     error("internal error in compare/3").
 
@@ -1247,9 +1247,9 @@ __Compare____base_typeclass_info_1_0(
 %
 % (Note: it is probably not worth inlining gc_trace/1...)
 
-:- pragma inline(free_heap/1).
-:- pragma inline(mark_hp/1).
-:- pragma inline(restore_hp/1).
+:- pragma inline(pred(free_heap/1)).
+:- pragma inline(pred(mark_hp/1)).
+:- pragma inline(pred(restore_hp/1)).
 
 :- pragma foreign_decl("C", "
     #include ""mercury_heap.h"" // for MR_free_heap()

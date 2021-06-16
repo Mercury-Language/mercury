@@ -118,7 +118,7 @@ short_option('o',               output_filename).
 long_option("out",              output_filename).
 
 :- pred option_default(option::out, option_data::out) is multi.
-:- pragma no_determinism_warning(option_default/2).
+:- pragma no_determinism_warning(pred(option_default/2)).
 
 option_default(output_filename, string("")).
 

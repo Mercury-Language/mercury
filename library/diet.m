@@ -73,7 +73,7 @@
 :- pred empty(diet(T)).
 :- mode empty(in) is semidet.
 :- mode empty(out) is det.
-:- pragma obsolete(empty/1, [init/0, init/1, is_empty/1]).
+:- pragma obsolete(pred(empty/1), [init/0, init/1, is_empty/1]).
 
 :- pred is_empty(diet(T)::in) is semidet.
 
@@ -768,7 +768,7 @@ is_singleton(Set, X) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_equivalent_clauses(member/2).
+:- pragma promise_equivalent_clauses(pred(member/2)).
 
 member(Elem::in, Set::in) :-
     contains(Set, Elem).

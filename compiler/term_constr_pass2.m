@@ -663,7 +663,7 @@ subst_size_var(Map, Old) = (if bimap.search(Map, Old, New) then New else Old).
 
 :- pred write_cycles(io.text_output_stream::in, module_info::in,
     size_varset::in, cycles::in, io::di, io::uo) is det.
-:- pragma consider_used(write_cycles/6).
+:- pragma consider_used(pred(write_cycles/6)).
 
 write_cycles(_, _, _, [], !IO).
 write_cycles(Stream, ModuleInfo, SizeVarSet, [Cycle | Cycles], !IO) :-

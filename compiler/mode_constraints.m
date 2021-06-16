@@ -1830,7 +1830,7 @@ generic_call_constrain_var(Var, GoalId, !Constraint, !GCInfo) :-
 :- pred constrict_to_vars(list(prog_var)::in, set_of_progvar::in,
     goal_id::in, mode_constraint::in, mode_constraint::out,
     goal_constraints_info::in, goal_constraints_info::out) is det.
-:- pragma consider_used(constrict_to_vars/7).
+:- pragma consider_used(pred(constrict_to_vars/7)).
 
 constrict_to_vars(NonLocals, GoalVars, GoalId, !Constraint, !GCInfo) :-
     get_forward_goal_path_map(!.GCInfo ^ mc_info, ForwardGoalPathMap),

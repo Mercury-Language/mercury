@@ -1460,8 +1460,9 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
 :- func remove_grade_dependent_targets(dependency_file, dependency_status,
     version_hash_table(dependency_file, dependency_status)) =
     version_hash_table(dependency_file, dependency_status).
-% See the comment above for the reason why we don't use this predicate.
-:- pragma consider_used(remove_grade_dependent_targets/3).
+% See the comment above for the reason why we don't use this function
+% (that should be a predicate anyway).
+:- pragma consider_used(func(remove_grade_dependent_targets/3)).
 
 remove_grade_dependent_targets(File, _Status, StatusMap0) = StatusMap :-
     ( if
@@ -1707,7 +1708,7 @@ install_file(Globals, FileName, InstallDir, Succeeded, !IO) :-
 
 :- pred install_directory(globals::in, dir_name::in, dir_name::in, bool::out,
     io::di, io::uo) is det.
-:- pragma consider_used(install_directory/6).
+:- pragma consider_used(pred(install_directory/6)).
 
 install_directory(Globals, SourceDirName, InstallDir, Succeeded, !IO) :-
     % XXX STREAM This preserves old behavior, but our caller

@@ -990,7 +990,7 @@ ids_vars_match([Id | Ids], [Var | Vars], VarEqv) :-
 
 :- pred id_var_match(partition_id::in, prog_var::in, eqvclass(prog_var)::in)
     is semidet.
-:- pragma inline(id_var_match/3).
+:- pragma inline(pred(id_var_match/3)).
 
 id_var_match(Id, Var, VarEqv) :-
     eqvclass.partition_id(VarEqv, Var, VarId),

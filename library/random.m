@@ -407,7 +407,7 @@
     % interface from here on is deprecated. All code using this part
     % of the interface will need to be updated.
     %
-:- pragma obsolete(init/2).
+:- pragma obsolete(pred(init/2)).
 :- pred init(int::in, supply::uo) is det.
 
     % random(Num, !RS).
@@ -747,45 +747,49 @@ make_shared_random(P, S) = shared_random(P, S).
 
 :- pred io_random_gen_uint8(io_random(R)::in, uint8::out, io::di, io::uo)
     is det <= random(R).
-:- pragma promise_pure(io_random_gen_uint8/4).
 
 io_random_gen_uint8(io_random(V), N, !IO) :-
-    impure get_mutvar(V, R0),
-    generate_uint8(N, R0, R),
-    impure set_mutvar(V, R).
+    promise_pure (
+        impure get_mutvar(V, R0),
+        generate_uint8(N, R0, R),
+        impure set_mutvar(V, R)
+    ).
 
 :- pred io_random_gen_uint16(io_random(R)::in, uint16::out, io::di, io::uo)
     is det <= random(R).
-:- pragma promise_pure(io_random_gen_uint16/4).
 
 io_random_gen_uint16(io_random(V), N, !IO) :-
-    impure get_mutvar(V, R0),
-    generate_uint16(N, R0, R),
-    impure set_mutvar(V, R).
+    promise_pure (
+        impure get_mutvar(V, R0),
+        generate_uint16(N, R0, R),
+        impure set_mutvar(V, R)
+    ).
 
 :- pred io_random_gen_uint32(io_random(R)::in, uint32::out, io::di, io::uo)
     is det <= random(R).
-:- pragma promise_pure(io_random_gen_uint32/4).
 
 io_random_gen_uint32(io_random(V), N, !IO) :-
-    impure get_mutvar(V, R0),
-    generate_uint32(N, R0, R),
-    impure set_mutvar(V, R).
+    promise_pure (
+        impure get_mutvar(V, R0),
+        generate_uint32(N, R0, R),
+        impure set_mutvar(V, R)
+    ).
 
 :- pred io_random_gen_uint64(io_random(R)::in, uint64::out, io::di, io::uo)
     is det <= random(R).
-:- pragma promise_pure(io_random_gen_uint64/4).
 
 io_random_gen_uint64(io_random(V), N, !IO) :-
-    impure get_mutvar(V, R0),
-    generate_uint64(N, R0, R),
-    impure set_mutvar(V, R).
-
-:- pragma promise_pure(make_io_random/4).
+    promise_pure (
+        impure get_mutvar(V, R0),
+        generate_uint64(N, R0, R),
+        impure set_mutvar(V, R)
+    ).
 
 make_io_random(R, Pio, !IO) :-
-    impure new_mutvar(R, V),
-    Pio = io_random(V).
+    promise_pure (
+        impure new_mutvar(R, V),
+        Pio = io_random(V)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -801,49 +805,53 @@ make_io_random(R, Pio, !IO) :-
 
 :- pred io_urandom_gen_uint8(io_urandom(P, S)::in, uint8::out, io::di, io::uo)
     is det <= urandom(P, S).
-:- pragma promise_pure(io_urandom_gen_uint8/4).
 
 io_urandom_gen_uint8(io_urandom(P, V), N, !IO) :-
-    impure get_mutvar(V, S0),
-    S1 = unsafe_promise_unique(S0),
-    generate_uint8(P, N, S1, S),
-    impure set_mutvar(V, S).
+    promise_pure (
+        impure get_mutvar(V, S0),
+        S1 = unsafe_promise_unique(S0),
+        generate_uint8(P, N, S1, S),
+        impure set_mutvar(V, S)
+    ).
 
 :- pred io_urandom_gen_uint16(io_urandom(P, S)::in, uint16::out,
     io::di, io::uo) is det <= urandom(P, S).
-:- pragma promise_pure(io_urandom_gen_uint16/4).
 
 io_urandom_gen_uint16(io_urandom(P, V), N, !IO) :-
-    impure get_mutvar(V, S0),
-    S1 = unsafe_promise_unique(S0),
-    generate_uint16(P, N, S1, S),
-    impure set_mutvar(V, S).
+    promise_pure (
+        impure get_mutvar(V, S0),
+        S1 = unsafe_promise_unique(S0),
+        generate_uint16(P, N, S1, S),
+        impure set_mutvar(V, S)
+    ).
 
 :- pred io_urandom_gen_uint32(io_urandom(P, S)::in, uint32::out,
     io::di, io::uo) is det <= urandom(P, S).
-:- pragma promise_pure(io_urandom_gen_uint32/4).
 
 io_urandom_gen_uint32(io_urandom(P, V), N, !IO) :-
-    impure get_mutvar(V, S0),
-    S1 = unsafe_promise_unique(S0),
-    generate_uint32(P, N, S1, S),
-    impure set_mutvar(V, S).
+    promise_pure (
+        impure get_mutvar(V, S0),
+        S1 = unsafe_promise_unique(S0),
+        generate_uint32(P, N, S1, S),
+        impure set_mutvar(V, S)
+    ).
 
 :- pred io_urandom_gen_uint64(io_urandom(P, S)::in, uint64::out,
     io::di, io::uo) is det <= urandom(P, S).
-:- pragma promise_pure(io_urandom_gen_uint64/4).
 
 io_urandom_gen_uint64(io_urandom(P, V), N, !IO) :-
-    impure get_mutvar(V, S0),
-    S1 = unsafe_promise_unique(S0),
-    generate_uint64(P, N, S1, S),
-    impure set_mutvar(V, S).
-
-:- pragma promise_pure(make_io_urandom/5).
+    promise_pure (
+        impure get_mutvar(V, S0),
+        S1 = unsafe_promise_unique(S0),
+        generate_uint64(P, N, S1, S),
+        impure set_mutvar(V, S)
+    ).
 
 make_io_urandom(P, S, Pio, !IO) :-
-    impure new_mutvar(S, V),
-    Pio = io_urandom(P, V).
+    promise_pure (
+        impure new_mutvar(S, V),
+        Pio = io_urandom(P, V)
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -927,8 +935,8 @@ perform_sampling(I, !.Record, !Order, !RS) :-
     % It should not be used by user programs.
     %
 :- pred test(int::in, int::in, list(int)::out, int::out) is det.
-:- pragma consider_used(test/4).
-:- pragma obsolete(test/4).
+:- pragma consider_used(pred(test/4)).
+:- pragma obsolete(pred(test/4)).
 
 test(Seed, N, Nums, Max) :-
     init(Seed, RS),

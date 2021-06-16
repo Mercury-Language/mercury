@@ -895,7 +895,7 @@ generate_tail_rec_start_label(TsccKind, Id) = Label :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(init_ml_gen_tscc_info/4).
+:- pragma inline(pred(init_ml_gen_tscc_info/4)).
 
 init_ml_gen_tscc_info(ModuleInfo, InSccMap, TsccKind, TsccInfo) :-
     % XXX FuncLabelCounter needs to start at 1 rather than 0,

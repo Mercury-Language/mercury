@@ -331,7 +331,7 @@ static void MD5_Final(unsigned char *result, MD5_CTX *ctx)
 
 %---------------------------------------------------------------------------%
 
-:- pragma no_determinism_warning(md5sum/1).
+:- pragma no_determinism_warning(func(md5sum/1)).
 :- pragma foreign_proc("C",
     md5sum(In::in) = (Digest::out),
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],

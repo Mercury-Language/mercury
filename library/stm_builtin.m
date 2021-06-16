@@ -479,63 +479,66 @@ atomic_transaction(Goal, Result, !IO) :-
         impure atomic_transaction_impl(Goal, Result)
     ).
 
-:- pragma promise_pure(or_else/5).
 or_else(TransA, TransB, Result, OuterSTM0, OuterSTM) :-
-    impure stm_create_nested_transaction_log(OuterSTM0, InnerSTM_A0),
-    promise_equivalent_solutions [ResultA, InnerSTM_A] (
-        unsafe_try_stm(TransA, ResultA,
-            InnerSTM_A0, InnerSTM_A)
-    ),
-    (
-        ResultA = succeeded(Result),
-        impure stm_merge_nested_logs(InnerSTM_A, OuterSTM0, OuterSTM)
-    ;
-        ResultA = exception(ExcpA),
+    promise_pure (
+        impure stm_create_nested_transaction_log(OuterSTM0, InnerSTM_A0),
+        promise_equivalent_solutions [ResultA, InnerSTM_A] (
+            unsafe_try_stm(TransA, ResultA,
+                InnerSTM_A0, InnerSTM_A)
+        ),
+        (
+            ResultA = succeeded(Result),
+            impure stm_merge_nested_logs(InnerSTM_A, OuterSTM0, OuterSTM)
+        ;
+            ResultA = exception(ExcpA),
 
-        % If transaction A retried, then we should attempt transaction B.
-        % Otherwise we just propagate the exception upwards.
+            % If transaction A retried, then we should attempt transaction B.
+            % Otherwise we just propagate the exception upwards.
 
-        ( if ExcpA = univ(rollback_retry) then
-            impure stm_create_nested_transaction_log(OuterSTM0, InnerSTM_B0),
-            promise_equivalent_solutions [ResultB, InnerSTM_B] (
-                unsafe_try_stm(TransB, ResultB,
-                    InnerSTM_B0, InnerSTM_B)
-            ),
-            (
-                ResultB = succeeded(Result),
-                impure stm_merge_nested_logs(InnerSTM_B, OuterSTM0, OuterSTM)
-            ;
-                ResultB = exception(ExcpB),
-                ( if ExcpB = univ(rollback_retry) then
-                    impure stm_lock,
-                    impure stm_validate(InnerSTM_A, IsValidA),
-                    impure stm_validate(InnerSTM_B, IsValidB),
-                    ( if
-                        IsValidA = stm_transaction_valid,
-                        IsValidB = stm_transaction_valid
-                    then
-                        % We want to wait on the union of the transaction
-                        % variables accessed during both alternatives.
-                        % We merge the transaction logs (the order does not
-                        % matter) and then propagate the retry upwards.
-                        impure stm_merge_nested_logs(InnerSTM_A, OuterSTM0,
-                            OuterSTM1),
-                        impure stm_merge_nested_logs(InnerSTM_B, OuterSTM1,
-                            OuterSTM),
-                        impure stm_unlock,
-                        retry(OuterSTM)
+            ( if ExcpA = univ(rollback_retry) then
+                impure
+                    stm_create_nested_transaction_log(OuterSTM0, InnerSTM_B0),
+                promise_equivalent_solutions [ResultB, InnerSTM_B] (
+                    unsafe_try_stm(TransB, ResultB,
+                        InnerSTM_B0, InnerSTM_B)
+                ),
+                (
+                    ResultB = succeeded(Result),
+                    impure
+                        stm_merge_nested_logs(InnerSTM_B, OuterSTM0, OuterSTM)
+                ;
+                    ResultB = exception(ExcpB),
+                    ( if ExcpB = univ(rollback_retry) then
+                        impure stm_lock,
+                        impure stm_validate(InnerSTM_A, IsValidA),
+                        impure stm_validate(InnerSTM_B, IsValidB),
+                        ( if
+                            IsValidA = stm_transaction_valid,
+                            IsValidB = stm_transaction_valid
+                        then
+                            % We want to wait on the union of the transaction
+                            % variables accessed during both alternatives.
+                            % We merge the transaction logs (the order does not
+                            % matter) and then propagate the retry upwards.
+                            impure stm_merge_nested_logs(InnerSTM_A, OuterSTM0,
+                                OuterSTM1),
+                            impure stm_merge_nested_logs(InnerSTM_B, OuterSTM1,
+                                OuterSTM),
+                            impure stm_unlock,
+                            retry(OuterSTM)
+                        else
+                            impure stm_unlock,
+                            throw(rollback_invalid_transaction)
+                        )
                     else
-                        impure stm_unlock,
-                        throw(rollback_invalid_transaction)
+                        impure stm_discard_transaction_log(InnerSTM_B),
+                        rethrow(ResultB)
                     )
-                else
-                    impure stm_discard_transaction_log(InnerSTM_B),
-                    rethrow(ResultB)
                 )
+            else
+                impure stm_discard_transaction_log(InnerSTM_A),
+                rethrow(ResultA)
             )
-        else
-            impure stm_discard_transaction_log(InnerSTM_A),
-            rethrow(ResultA)
         )
     ).
 

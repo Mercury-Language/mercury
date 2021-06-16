@@ -917,7 +917,7 @@ gather_generated_pragma_for_what_pf_id(GenPragma, MaybePredOrFuncId) :-
     %
 :- pred is_item_include_changed(item_include::in, item_include::in,
     maybe_changed::out) is det.
-:- pragma consider_used(is_item_include_changed/3).
+:- pragma consider_used(pred(is_item_include_changed/3)).
 
 is_item_include_changed(ItemInclude1, ItemInclude2, Changed) :-
     ItemInclude1 = item_include(ModuleName1, _, _),
@@ -932,7 +932,7 @@ is_item_include_changed(ItemInclude1, ItemInclude2, Changed) :-
     %
 :- pred is_item_avail_changed(item_avail::in, item_avail::in,
     maybe_changed::out) is det.
-:- pragma consider_used(is_item_avail_changed/3).
+:- pragma consider_used(pred(is_item_avail_changed/3)).
 
 is_item_avail_changed(Avail1, Avail2, Changed) :-
     (

@@ -302,7 +302,7 @@ min(X, Y) =
 
 X div Y = X // Y.
 
-:- pragma inline('//'/2).
+:- pragma inline(func('//'/2)).
 X // Y = Div :-
     ( if Y = 0u then
         throw(domain_error("uint.'//': division by zero"))
@@ -310,12 +310,12 @@ X // Y = Div :-
         Div = unchecked_quotient(X, Y)
     ).
 
-:- pragma inline('/'/2).
+:- pragma inline(func('/'/2)).
 X / Y = X // Y.
 
 X mod Y = X rem Y.
 
-:- pragma inline(rem/2).
+:- pragma inline(func(rem/2)).
 X rem Y = Rem :-
     ( if Y = 0u then
         throw(domain_error("uint.rem: division by zero"))
@@ -343,11 +343,11 @@ X >> Y = Result :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(even/1).
+:- pragma inline(pred(even/1)).
 even(X) :-
     (X /\ 1u) = 0u.
 
-:- pragma inline(odd/1).
+:- pragma inline(pred(odd/1)).
 odd(X) :-
     (X /\ 1u) \= 0u.
 

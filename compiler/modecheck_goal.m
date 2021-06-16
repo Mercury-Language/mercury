@@ -178,7 +178,7 @@ modecheck_goal(Goal0, Goal, !ModeInfo) :-
 
 :- pred modecheck_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
     hlds_goal::out, mode_info::in, mode_info::out) is det.
-:- pragma inline(modecheck_goal_2/5).
+:- pragma inline(pred(modecheck_goal_2/5)).
 
 modecheck_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo) :-
     % Modecheck the goal, and then store the changes in instantiation

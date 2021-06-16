@@ -85,7 +85,7 @@ io_action_to_browser_term(IoAction) = Term :-
 
 :- pred pickup_io_action(int::in, maybe(io_action)::out, io::di, io::uo)
     is det.
-:- pragma no_determinism_warning(pickup_io_action/4).
+:- pragma no_determinism_warning(pred(pickup_io_action/4)).
 
 :- pragma foreign_proc("C",
     pickup_io_action(SeqNum::in, MaybeIOAction::out, S0::di, S::uo),

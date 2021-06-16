@@ -294,13 +294,16 @@
 % These are not worth inlining, since they will (presumably) not be called
 % frequently, and so any increase in speed from inlining is not worth the
 % increase in code size.
-:- pragma no_inline(throw/1).
-:- pragma no_inline(rethrow/1).
+:- pragma no_inline(func(throw/1)).
+:- pragma no_inline(pred(throw/1)).
+:- pragma no_inline(func(rethrow/1)).
+:- pragma no_inline(pred(rethrow/1)).
 
 % The termination analyzer can infer termination of throw/1 itself but
 % declaring it to be terminating here means that all of the standard library
 % will treat it as terminating as well.
-:- pragma terminates(throw/1).
+:- pragma terminates(func(throw/1)).
+:- pragma terminates(pred(throw/1)).
 
 throw(Exception) = _ :-
     throw(Exception).
@@ -317,7 +320,7 @@ rethrow(ExceptionResult) = _ :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_equivalent_clauses((try)/2).
+:- pragma promise_equivalent_clauses(pred((try)/2)).
 
 try(Goal::pred(out) is det, Result::out(cannot_fail)) :-
     catch_impl(wrap_success_or_failure(Goal), wrap_exception, Result0),
@@ -427,7 +430,7 @@ unsafe_call_store_goal(Goal, Store0, {Result, Store}) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_equivalent_clauses(try_all/3).
+:- pragma promise_equivalent_clauses(pred(try_all/3)).
 
 try_all(Goal::pred(out) is det,
         MaybeException::out, Solutions::out(nil_or_singleton_list)) :-
@@ -491,7 +494,7 @@ incremental_try_all(Goal, AccPred, !Acc) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_equivalent_clauses(finally/6).
+:- pragma promise_equivalent_clauses(pred(finally/6)).
 finally(P::(pred(out, di, uo) is det), PRes::out,
         Cleanup::(pred(out, di, uo) is det), CleanupRes::out,
         !.IO::di, !:IO::uo) :-
@@ -510,7 +513,7 @@ finally(P::(pred(out, di, uo) is cc_multi), PRes::out,
 :- mode finally_2(pred(out, di, uo) is cc_multi,
     pred(out, di, uo) is cc_multi, out, out, di, uo) is cc_multi.
 
-:- pragma promise_pure(finally_2/6).
+:- pragma promise_pure(pred(finally_2/6)).
 
 finally_2(P, Cleanup, PRes, CleanupRes, !IO) :-
     try_io(P, ExcpResult, !IO),
@@ -549,7 +552,7 @@ finally_2(P, Cleanup, PRes, CleanupRes, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma no_inline(throw_if_near_stack_limits/0).
+:- pragma no_inline(pred(throw_if_near_stack_limits/0)).
 
 throw_if_near_stack_limits :-
     ( if impure now_near_stack_limits then
@@ -559,7 +562,7 @@ throw_if_near_stack_limits :-
     ).
 
 :- impure pred now_near_stack_limits is semidet.
-:- pragma no_inline(now_near_stack_limits/0).
+:- pragma no_inline(pred(now_near_stack_limits/0)).
 
 :- pragma foreign_proc("C",
     now_near_stack_limits,
@@ -723,7 +726,7 @@ throw_impl(Univ::in) :-
 % The C# and Java backends implement catch_impl/3 using mode-specific
 % foreign_procs -- the following pragma is necessary in order to avoid
 % compilation errors in the presence of the fib about purity.
-:- pragma promise_equivalent_clauses(catch_impl/3).
+:- pragma promise_equivalent_clauses(pred(catch_impl/3)).
 :- /* impure */
    pred catch_impl(pred(T), handler(T), T).
 :- mode catch_impl(pred(out) is det,       in(handler), out) is det.
@@ -942,7 +945,7 @@ catch_impl(Pred, Handler, T) :-
 %---------------------%
 
 :- pred builtin_throw(univ::in) is erroneous.
-:- pragma terminates(builtin_throw/1).
+:- pragma terminates(pred(builtin_throw/1)).
 
 :- /* impure */
    pred builtin_catch(pred(T), handler(T), T).

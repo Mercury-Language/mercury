@@ -243,7 +243,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_unify/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_unify/16)).
 
 transform_parse_tree_goal_to_hlds_unify(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
@@ -284,7 +284,7 @@ transform_parse_tree_goal_to_hlds_unify(LocKind, Goal, Renaming, HLDSGoal,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_call/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_call/16)).
 
 transform_parse_tree_goal_to_hlds_call(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
@@ -533,7 +533,7 @@ dcg_field_error_context_pieces(AccessType) = ContextPieces :-
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_conj/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_conj/16)).
 
 transform_parse_tree_goal_to_hlds_conj(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
@@ -593,7 +593,7 @@ accumulate_plain_conjuncts(LocKind, Goal, Renaming, !HLDSConjunctsCord,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_par_conj/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_par_conj/16)).
 
 transform_parse_tree_goal_to_hlds_par_conj(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
@@ -650,7 +650,7 @@ accumulate_par_conjuncts(LocKind, Goal, Renaming, !HLDSConjunctsCord,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_disj/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_disj/16)).
 
 transform_parse_tree_goal_to_hlds_disj(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
@@ -713,7 +713,7 @@ accumulate_disjuncts(LocKind, Goal, Renaming, DisjStates0, DisjStates,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_ite/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_ite/16)).
 
 transform_parse_tree_goal_to_hlds_ite(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
@@ -755,7 +755,7 @@ transform_parse_tree_goal_to_hlds_ite(LocKind, Goal, Renaming, HLDSGoal,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_not/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_not/16)).
 
 transform_parse_tree_goal_to_hlds_not(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
@@ -779,7 +779,7 @@ transform_parse_tree_goal_to_hlds_not(LocKind, Goal, Renaming, HLDSGoal,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_equivalent/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_equivalent/16)).
 
 transform_parse_tree_goal_to_hlds_equivalent(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
@@ -811,7 +811,7 @@ transform_parse_tree_goal_to_hlds_equivalent(LocKind, Goal, Renaming, HLDSGoal,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_quant/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_quant/16)).
 
 transform_parse_tree_goal_to_hlds_quant(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
@@ -873,7 +873,7 @@ transform_parse_tree_goal_to_hlds_quant(LocKind, Goal, Renaming, HLDSGoal,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_try/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_try/16)).
 
 transform_parse_tree_goal_to_hlds_try(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
@@ -1215,7 +1215,7 @@ exception_functor(Atom, Arg, Context) = Term :-
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_atomic/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_atomic/16)).
 
 transform_parse_tree_goal_to_hlds_atomic(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
@@ -1342,7 +1342,7 @@ transform_orelse_goals(LocKind, [Goal | Goals], Renaming,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_disable_warnings/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_disable_warnings/16)).
 
 transform_parse_tree_goal_to_hlds_disable_warnings(LocKind, Goal,
         Renaming, HLDSGoal, !SVarState, !SVarStore, !VarSet,
@@ -1389,7 +1389,7 @@ transform_parse_tree_goal_to_hlds_disable_warnings(LocKind, Goal,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_trace/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_trace/16)).
 
 transform_parse_tree_goal_to_hlds_trace(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
@@ -1489,7 +1489,7 @@ extract_trace_io_var(Context, VarSet, Renaming, StateVar0, StateVar,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(transform_parse_tree_goal_to_hlds_event/16).
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_event/16)).
 
 transform_parse_tree_goal_to_hlds_event(LocKind, Goal, Renaming, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-

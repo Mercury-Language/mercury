@@ -640,7 +640,7 @@ substitute_lval_in_instr_until_defn(OldLval, NewLval,
 :- pred substitute_lval_in_instr_until_defn_2(lval::in, lval::in,
     instruction::in, instruction::out,
     list(instruction)::in, list(instruction)::out, int::in, int::out) is det.
-:- pragma inline(substitute_lval_in_instr_until_defn_2/8).
+:- pragma inline(pred(substitute_lval_in_instr_until_defn_2/8)).
 
 substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
     !.Instr = llds_instr(Uinstr0, Comment),

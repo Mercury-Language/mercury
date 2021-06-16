@@ -164,7 +164,7 @@ MR_String   read_specs_file_4(MR_AllocSiteInfoPtr alloc_id,
 
 :- pred read_specs_file_2(string::in, string::in, string::out,
     io::di, io::uo) is det.
-:- pragma no_determinism_warning(read_specs_file_2/5).
+:- pragma no_determinism_warning(pred(read_specs_file_2/5)).
 
 :- pragma foreign_proc("C",
     read_specs_file_2(SpecsFileName::in, TermFileName::in, Problem::out,

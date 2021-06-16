@@ -156,7 +156,7 @@ statement_contains_label(Stmt) :-
 
 :- pred find_any_split_cases(case_id_ptags_map::in,
     is_a_case_split_between_ptags::out) is det.
-:- pragma consider_used(find_any_split_cases/2).
+:- pragma consider_used(pred(find_any_split_cases/2)).
 
 find_any_split_cases(CaseIdPtagsMap, IsAnyCaseSplit) :-
     map.foldl(find_any_split_cases_2, CaseIdPtagsMap,

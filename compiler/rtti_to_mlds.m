@@ -1694,7 +1694,7 @@ gen_init_proc_id(ModuleInfo, RttiProcId) = Initializer :-
 
 :- func gen_init_proc_id_from_univ(module_info, univ) =
     mlds_initializer.
-:- pragma consider_used(gen_init_proc_id_from_univ/2).
+:- pragma consider_used(func(gen_init_proc_id_from_univ/2)).
 
 gen_init_proc_id_from_univ(ModuleInfo, ProcLabelUniv) = Initializer :-
     det_univ_to_type(ProcLabelUniv, ProcLabel),

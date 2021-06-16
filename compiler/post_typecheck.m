@@ -171,7 +171,7 @@ post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
 :- pred find_unproven_body_constraints(module_info::in, pred_id::in,
     pred_info::in, int::in, int::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(find_unproven_body_constraints/7).
+:- pragma inline(pred(find_unproven_body_constraints/7)).
 
 find_unproven_body_constraints(ModuleInfo, PredId, PredInfo,
         !NumBadErrors, !NoTypeErrorSpecs) :-
@@ -363,7 +363,7 @@ describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
 :- pred find_unresolved_types_in_pred(module_info::in, pred_id::in,
     pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(find_unresolved_types_in_pred/6).
+:- pragma inline(pred(find_unresolved_types_in_pred/6)).
 
 find_unresolved_types_in_pred(ModuleInfo, PredId, !PredInfo,
         !NoTypeErrorSpecs) :-

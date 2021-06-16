@@ -366,7 +366,7 @@
 % The other arithmetic and comparison operators are builtins,
 % which the compiler expands inline. We don't need to define them here.
 
-:- pragma inline('/'/2).
+:- pragma inline(func('/'/2)).
 X / Y = Z :-
     ( if float_domain_checks, Y = 0.0 then
         throw(domain_error("float.'/': division by zero"))
@@ -380,7 +380,7 @@ X / Y = Z :-
     % domain check optimized away.
     %
 :- pred float_domain_checks is semidet.
-:- pragma inline(float_domain_checks/0).
+:- pragma inline(pred(float_domain_checks/0)).
 
 :- pragma foreign_proc("C",
     float_domain_checks,

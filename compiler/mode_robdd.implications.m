@@ -46,8 +46,8 @@
 :- func either(var(T), var(T), imp_vars(T)) = imp_vars(T).
 
 :- pred normalise_true_false_implication_vars(bool::out, vars(T)::in,
-    vars(T)::out, vars(T)::in, vars(T)::out, imp_vars(T)::in,
-    imp_vars(T)::out) is det.
+    vars(T)::out, vars(T)::in, vars(T)::out,
+    imp_vars(T)::in, imp_vars(T)::out) is det.
 
 :- pred propagate_equivalences_into_implications(equiv_vars(T)::in, bool::out,
     imp_vars(T)::in, imp_vars(T)::out) is semidet.
@@ -468,7 +468,7 @@ delete_var_from_imp_map(Var, IM0) =
 %------------------------------------------------------------------------%
 
 :- func add_backwards_relations(imp_vars(T)) = imp_vars(T).
-:- pragma consider_used(add_backwards_relations/1).
+:- pragma consider_used(func(add_backwards_relations/1)).
 
 add_backwards_relations(imp_vars(Is0, RIs0, DIs0, RDIs0)) =
     imp_vars(

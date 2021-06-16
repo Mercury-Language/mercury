@@ -596,7 +596,7 @@ set_bindings(!.VarSet, Values, !:VarSet) :-
 %
 
 :- pred use_simple_loop(int::in, int::in) is semidet.
-:- pragma inline(use_simple_loop/2).
+:- pragma inline(pred(use_simple_loop/2)).
 
 use_simple_loop(NumAllocatedA, NumAllocatedB) :-
     % XXX The numbers in this heuristic should to be determined by benchmarks.
@@ -611,7 +611,7 @@ use_simple_loop(NumAllocatedA, NumAllocatedB) :-
     ).
 
 :- pred use_simple_loop_without_names(int::in, int::in) is semidet.
-:- pragma inline(use_simple_loop_without_names/2).
+:- pragma inline(pred(use_simple_loop_without_names/2)).
 
 use_simple_loop_without_names(_NumAllocatedA, NumAllocatedB) :-
     % XXX The numbers in this heuristic should to be determined by benchmarks.

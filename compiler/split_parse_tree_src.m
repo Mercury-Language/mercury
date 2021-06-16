@@ -975,7 +975,7 @@ submodule_include_info_map_to_item_includes_acc(ModuleName, SubInclInfo,
 
 :- pred report_error_implementation_in_interface(module_name::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma consider_used(report_error_implementation_in_interface/4).
+:- pragma consider_used(pred(report_error_implementation_in_interface/4)).
 
 report_error_implementation_in_interface(ModuleName, Context, !Specs) :-
     % XXX Delete this predicate once its job has been confirmed to be done

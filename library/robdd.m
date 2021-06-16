@@ -442,7 +442,7 @@ typedef   MR_Word MR_ROBDD_NODE_TYPE;
 #include ""bryant.c""
 ").
 
-:- pragma no_inline(one/0).
+:- pragma no_inline(func(one/0)).
 :- pragma foreign_proc("C",
     one = (F::out),
     [will_not_call_mercury, promise_pure],
@@ -450,7 +450,7 @@ typedef   MR_Word MR_ROBDD_NODE_TYPE;
     F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_trueVar();
 ").
 
-:- pragma no_inline(zero/0).
+:- pragma no_inline(func(zero/0)).
 :- pragma foreign_proc("C",
     zero = (F::out),
     [will_not_call_mercury, promise_pure],
@@ -458,7 +458,7 @@ typedef   MR_Word MR_ROBDD_NODE_TYPE;
     F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_falseVar();
 ").
 
-:- pragma no_inline(var/1).
+:- pragma no_inline(func(var/1)).
 :- pragma foreign_proc("C",
     var(V::in) = (F::out),
     [will_not_call_mercury, promise_pure],
@@ -466,7 +466,7 @@ typedef   MR_Word MR_ROBDD_NODE_TYPE;
     F = (MR_ROBDD_NODE_TYPE) MR_ROBDD_variableRep(V);
 ").
 
-:- pragma no_inline(ite/3).
+:- pragma no_inline(func(ite/3)).
 :- pragma foreign_proc("C",
     ite(F::in, G::in, H::in) = (ITE::out),
     [will_not_call_mercury, promise_pure],
@@ -475,7 +475,7 @@ typedef   MR_Word MR_ROBDD_NODE_TYPE;
         (MR_ROBDD_node *) G, (MR_ROBDD_node *) H);
 ").
 
-:- pragma no_inline(ite_var/3).
+:- pragma no_inline(func(ite_var/3)).
 :- pragma foreign_proc("C",
     ite_var(V::in, G::in, H::in) = (ITE::out),
     [will_not_call_mercury, promise_pure],
@@ -484,7 +484,7 @@ typedef   MR_Word MR_ROBDD_NODE_TYPE;
         (MR_ROBDD_node *) H);
 ").
 
-:- pragma promise_pure('*'/2).
+:- pragma promise_pure(func('*'/2)).
 X * Y = R :-
     R = glb(X, Y),
 
@@ -514,7 +514,7 @@ X * Y = R :-
     fprintf(stderr, ""Zero constraint!!!\\n"");
 ").
 
-:- pragma no_inline((+)/2).
+:- pragma no_inline(func((+)/2)).
 :- pragma foreign_proc("C",
     (X::in) + (Y::in) = (F::out),
     [will_not_call_mercury, promise_pure],
@@ -523,7 +523,7 @@ X * Y = R :-
         (MR_ROBDD_node *) Y);
 ").
 
-:- pragma no_inline((=<)/2).
+:- pragma no_inline(func((=<)/2)).
 :- pragma foreign_proc("C",
     ((X::in) =< (Y::in)) = (F::out),
     [will_not_call_mercury, promise_pure],
@@ -538,7 +538,7 @@ X * Y = R :-
 
 (~F) = ite(F, zero, one).
 
-:- pragma no_inline(entails/2).
+:- pragma no_inline(pred(entails/2)).
 :- pragma foreign_proc("C",
     entails(X::in, Y::in),
     [will_not_call_mercury, promise_pure],
@@ -547,7 +547,7 @@ X * Y = R :-
         (MR_ROBDD_node *) Y, MR_ROBDD_one) == MR_ROBDD_one);
 ").
 
-:- pragma no_inline(var_entailed/2).
+:- pragma no_inline(pred(var_entailed/2)).
 :- pragma foreign_proc("C",
     var_entailed(F::in, V::in),
     [will_not_call_mercury, promise_pure],
@@ -874,7 +874,7 @@ some_vars(Vs) `insert` V = some_vars(Vs `insert` V).
 :- func tr(robdd(T)) = robdd(T).
 :- func fa(robdd(T)) = robdd(T).
 
-:- pragma no_inline(value/1).
+:- pragma no_inline(func(value/1)).
 :- pragma foreign_proc("C",
     value(F::in) = (Value::out),
     [will_not_call_mercury, promise_pure],
@@ -882,7 +882,7 @@ some_vars(Vs) `insert` V = some_vars(Vs `insert` V).
     Value = (MR_ROBDD_NODE_TYPE) ((MR_ROBDD_node *) F)->value;
 ").
 
-:- pragma no_inline(tr/1).
+:- pragma no_inline(func(tr/1)).
 :- pragma foreign_proc("C",
     tr(F::in) = (Tr::out),
     [will_not_call_mercury, promise_pure],
@@ -890,7 +890,7 @@ some_vars(Vs) `insert` V = some_vars(Vs `insert` V).
     Tr = (MR_ROBDD_NODE_TYPE) ((MR_ROBDD_node *) F)->tr;
 ").
 
-:- pragma no_inline(fa/1).
+:- pragma no_inline(func(fa/1)).
 :- pragma foreign_proc("C",
     fa(F::in) = (Fa::out),
     [will_not_call_mercury, promise_pure],
@@ -983,7 +983,7 @@ print_robdd_2(F, Trues, Falses) -->
         []
     ).
 
-:- pragma no_inline(restrict/2).
+:- pragma no_inline(func(restrict/2)).
 :- pragma foreign_proc("C",
     restrict(V::in, F::in) = (R::out),
     [will_not_call_mercury, promise_pure],
@@ -991,7 +991,7 @@ print_robdd_2(F, Trues, Falses) -->
     R = (MR_ROBDD_NODE_TYPE) MR_ROBDD_restrict(V, (MR_ROBDD_node *) F);
 ").
 
-:- pragma no_inline(restrict_threshold/2).
+:- pragma no_inline(func(restrict_threshold/2)).
 :- pragma foreign_proc("C",
     restrict_threshold(V::in, F::in) = (R::out),
     [will_not_call_mercury, promise_pure],
@@ -1017,7 +1017,7 @@ rename_vars(Subst, F) =
 % variables in both the Then and Else sub graphs are > Var.
 
 :- func make_node(var(T), robdd(T), robdd(T)) = robdd(T).
-:- pragma no_inline(make_node/3).
+:- pragma no_inline(func(make_node/3)).
 :- pragma foreign_proc("C",
     make_node(Var::in, Then::in, Else::in) = (Node::out),
     [will_not_call_mercury, promise_pure],
@@ -1347,7 +1347,7 @@ add_implications_2(FA, FB, IM, R0) =
 
 %---------------------------------------------------------------------------%
 
-:- pragma no_inline(is_terminal/1).
+:- pragma no_inline(pred(is_terminal/1)).
 :- pragma foreign_proc("C",
     is_terminal(F::in),
     [will_not_call_mercury, thread_safe, promise_pure],
@@ -1581,11 +1581,11 @@ minimal_model_2([V | Vs], R0, TrueVars0, TrueVars, FalseVars0, FalseVars) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_pure(clear_caches/2).
+:- pragma promise_pure(pred(clear_caches/2)).
 clear_caches(!IO) :-
     impure clear_caches.
 
-:- pragma no_inline(clear_caches/0).
+:- pragma no_inline(pred(clear_caches/0)).
 :- pragma foreign_proc("C",
     clear_caches,
     [will_not_call_mercury],

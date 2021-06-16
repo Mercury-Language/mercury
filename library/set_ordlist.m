@@ -55,14 +55,14 @@
     %
 :- pred empty(set_ordlist(_T)::in) is semidet.
 :- pred is_empty(set_ordlist(T)::in) is semidet.
-:- pragma obsolete(empty/1, [is_empty/1]).
+:- pragma obsolete(pred(empty/1), [is_empty/1]).
 
     % `non_empty(Set)' is true iff `Set' is not an empty set.
     % `is_non_empty' is a synonym for `non_empty'.
     %
 :- pred non_empty(set_ordlist(T)::in) is semidet.
 :- pred is_non_empty(set_ordlist(T)::in) is semidet.
-:- pragma obsolete(non_empty/1, [is_non_empty/1]).
+:- pragma obsolete(pred(non_empty/1), [is_non_empty/1]).
 
 :- pred is_singleton(set_ordlist(T)::in, T::out) is semidet.
 
@@ -562,20 +562,20 @@
 
 :- import_module term.  % for var/1.
 
-:- pragma type_spec(list_to_set/2, T = var(_)).
-:- pragma type_spec(member(in, in), T = var(_)).
-:- pragma type_spec(contains(in, in), T = var(_)).
-:- pragma type_spec(insert/3, T = var(_)).
-:- pragma type_spec(insert_list/3, T = var(_)).
-:- pragma type_spec(delete/3, T = var(_)).
-:- pragma type_spec(delete_list/3, T = var(_)).
-:- pragma type_spec(remove/3, T = var(_)).
-:- pragma type_spec(remove_list/3, T = var(_)).
-:- pragma type_spec(union/3, T = var(_)).
-:- pragma type_spec(union_list/2, T = var(_)).
-:- pragma type_spec(intersect/3, T = var(_)).
-:- pragma type_spec(intersect_list/2, T = var(_)).
-:- pragma type_spec(difference/3, T = var(_)).
+:- pragma type_spec(pred(list_to_set/2),    T = var(_)).
+:- pragma type_spec(member(in, in),         T = var(_)).
+:- pragma type_spec(contains(in, in),       T = var(_)).
+:- pragma type_spec(pred(insert/3),         T = var(_)).
+:- pragma type_spec(pred(insert_list/3),    T = var(_)).
+:- pragma type_spec(pred(delete/3),         T = var(_)).
+:- pragma type_spec(pred(delete_list/3),    T = var(_)).
+:- pragma type_spec(pred(remove/3),         T = var(_)).
+:- pragma type_spec(pred(remove_list/3),    T = var(_)).
+:- pragma type_spec(pred(union/3),          T = var(_)).
+:- pragma type_spec(pred(union_list/2),     T = var(_)).
+:- pragma type_spec(pred(intersect/3),      T = var(_)).
+:- pragma type_spec(pred(intersect_list/2), T = var(_)).
+:- pragma type_spec(pred(difference/3),     T = var(_)).
 
 %---------------------------------------------------------------------------%
 
@@ -620,7 +620,7 @@ is_singleton(sol([X]), X).
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_equivalent_clauses(member/2).
+:- pragma promise_equivalent_clauses(pred(member/2)).
 
 member(E::out, sol(S)::in) :-
     list.member(E, S).

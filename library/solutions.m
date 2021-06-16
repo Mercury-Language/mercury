@@ -267,7 +267,7 @@ builtin_solutions(Generator, UnsortedList) :-
 :- mode assert_num_solutions(pred(out) is nondet,
      in, out) is det.
 
-:- pragma promise_equivalent_clauses(assert_num_solutions/3).
+:- pragma promise_equivalent_clauses(pred(assert_num_solutions/3)).
 
 assert_num_solutions(_Pred::pred(out) is multi,
         List0::in, List::out(non_empty_list)) :-
@@ -359,63 +359,62 @@ assert_num_solutions(_Pred::pred(out) is nondet, List::in, List::out).
 % Note that the code for builtin_aggregate is very similar to the code
 % for do_while (below).
 
-:- pragma promise_pure(builtin_aggregate/4).
-
 builtin_aggregate(GeneratorPred, CollectorPred, !Acc) :-
-    % Save some of the Mercury virtual machine registers
-    impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
-    impure start_all_soln_neg_context,
+    promise_pure (
+        % Save some of the Mercury virtual machine registers
+        impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
+        impure start_all_soln_neg_context,
 
-    % Initialize the accumulator
-    % /* Mutvar := !.Acc */
-    impure new_mutvar(!.Acc, Mutvar),
+        % Initialize the accumulator
+        % /* Mutvar := !.Acc */
+        impure new_mutvar(!.Acc, Mutvar),
 
-    (
-        % Get a solution.
-        GeneratorPred(Answer0),
+        (
+            % Get a solution.
+            GeneratorPred(Answer0),
 
-        % Check that the generator didn't leave any delayed goals outstanding.
-        impure check_for_floundering(TrailPtr),
+            % Check that the generator didn't leave any delayed goals
+            % outstanding.
+            impure check_for_floundering(TrailPtr),
 
-        % Update the accumulator.
-        % /* Mutvar := CollectorPred(MutVar) */
-        impure swap_heap_and_solutions_heap,
-        impure partial_deep_copy(HeapPtr, Answer0, Answer),
-        impure get_mutvar(Mutvar, Acc0),
-        % This is a lie: CollectorPred may choose from multiple possible
-        % solutions which are not all equivalent.
-        promise_equivalent_solutions [Acc1] (
-            call(CollectorPred, Answer, Acc0, Acc1)
+            % Update the accumulator.
+            % /* Mutvar := CollectorPred(MutVar) */
+            impure swap_heap_and_solutions_heap,
+            impure partial_deep_copy(HeapPtr, Answer0, Answer),
+            impure get_mutvar(Mutvar, Acc0),
+            % This is a lie: CollectorPred may choose from multiple possible
+            % solutions which are not all equivalent.
+            promise_equivalent_solutions [Acc1] (
+                call(CollectorPred, Answer, Acc0, Acc1)
+            ),
+            impure set_mutvar(Mutvar, Acc1),
+            impure swap_heap_and_solutions_heap,
+
+            % Force backtracking, so that we get the next solution.
+            % This will automatically reset the heap and trail.
+            fail
+        ;
+            % There are no more solutions.
+            impure end_all_soln_neg_context_no_more,
+
+            % So now we just need to copy the final value of the accumulator
+            % from the solutions heap back onto the ordinary heap, and then
+            % we can reset the solutions heap pointer. We also need to discard
+            % the trail ticket created by get_registers/3.
+            % /* !:Acc := Mutvar */
+            impure get_mutvar(Mutvar, !:Acc),
+            impure partial_deep_copy(SolutionsHeapPtr, !Acc),
+            impure reset_solutions_heap(SolutionsHeapPtr),
+            impure discard_trail_ticket
         ),
-        impure set_mutvar(Mutvar, Acc1),
-        impure swap_heap_and_solutions_heap,
 
-        % Force backtracking, so that we get the next solution.
-        % This will automatically reset the heap and trail.
-        fail
-    ;
-        % There are no more solutions.
-        impure end_all_soln_neg_context_no_more,
-
-        % So now we just need to copy the final value of the accumulator
-        % from the solutions heap back onto the ordinary heap, and then we can
-        % reset the solutions heap pointer. We also need to discard the trail
-        % ticket created by get_registers/3.
-        % /* !:Acc := Mutvar */
-        impure get_mutvar(Mutvar, !:Acc),
-        impure partial_deep_copy(SolutionsHeapPtr, !Acc),
-        impure reset_solutions_heap(SolutionsHeapPtr),
-        impure discard_trail_ticket
-    ),
-
-    % The solution is not unique because it may depend on the order that
-    % GeneratorPred returned its solutions and the choice made by
-    % CollectorPred.
-    cc_multi_equal(!Acc).
+        % The solution is not unique because it may depend on the order that
+        % GeneratorPred returned its solutions and the choice made by
+        % CollectorPred.
+        cc_multi_equal(!Acc)
+    ).
 
 %---------------------------------------------------------------------------%
-
-:- pragma promise_pure(builtin_aggregate2/6).
 
 :- pred builtin_aggregate2(pred(T), pred(T, U, U, V, V), U, U, V, V).
 :- mode builtin_aggregate2(pred(out) is multi,
@@ -444,59 +443,63 @@ builtin_aggregate(GeneratorPred, CollectorPred, !Acc) :-
     in, out, di, uo) is cc_multi.
 
 builtin_aggregate2(GeneratorPred, CollectorPred, !Acc1, !Acc2) :-
-    % Save some of the Mercury virtual machine registers
-    impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
-    impure start_all_soln_neg_context,
+    promise_pure (
+        % Save some of the Mercury virtual machine registers
+        impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
+        impure start_all_soln_neg_context,
 
-    % Initialize the accumulator
-    impure new_mutvar(!.Acc1, Mutvar1),
-    impure new_mutvar(!.Acc2, Mutvar2),
+        % Initialize the accumulator
+        impure new_mutvar(!.Acc1, Mutvar1),
+        impure new_mutvar(!.Acc2, Mutvar2),
 
-    (
-        % Get a solution.
-        GeneratorPred(Answer0),
+        (
+            % Get a solution.
+            GeneratorPred(Answer0),
 
-        % Check that the generator didn't leave any delayed goals outstanding.
-        impure check_for_floundering(TrailPtr),
+            % Check that the generator didn't leave any delayed goals
+            % outstanding.
+            impure check_for_floundering(TrailPtr),
 
-        % Update the accumulators.
-        impure swap_heap_and_solutions_heap,
-        impure partial_deep_copy(HeapPtr, Answer0, Answer),
-        impure get_mutvar(Mutvar1, SubAccA0),
-        impure get_mutvar(Mutvar2, SubAccB0),
-        % This is a lie: CollectorPred may choose from multiple possible
-        % solutions which are not all equivalent.
-        promise_equivalent_solutions [SubAccA, SubAccB] (
-            call(CollectorPred, Answer, SubAccA0, SubAccA, SubAccB0, SubAccB)
+            % Update the accumulators.
+            impure swap_heap_and_solutions_heap,
+            impure partial_deep_copy(HeapPtr, Answer0, Answer),
+            impure get_mutvar(Mutvar1, SubAccA0),
+            impure get_mutvar(Mutvar2, SubAccB0),
+            % This is a lie: CollectorPred may choose from multiple possible
+            % solutions which are not all equivalent.
+            promise_equivalent_solutions [SubAccA, SubAccB] (
+                call(CollectorPred, Answer,
+                    SubAccA0, SubAccA, SubAccB0, SubAccB)
+            ),
+            impure set_mutvar(Mutvar1, SubAccA),
+            impure set_mutvar(Mutvar2, SubAccB),
+            impure swap_heap_and_solutions_heap,
+
+            % Force backtracking, so that we get the next solution.
+            % This will automatically reset the heap and trail.
+            fail
+        ;
+            % There are no more solutions.
+            impure end_all_soln_neg_context_no_more,
+
+            % So now we just need to copy the final value of the accumulators
+            % from the solutions heap back onto the ordinary heap, and then
+            % we can reset the solutions heap pointer. We also need to discard
+            % the trail ticket created by get_registers/3.
+            impure get_mutvar(Mutvar1, !:Acc1),
+            impure get_mutvar(Mutvar2, !:Acc2),
+            impure partial_deep_copy(SolutionsHeapPtr, !Acc1),
+            impure partial_deep_copy(SolutionsHeapPtr, !Acc2),
+            impure reset_solutions_heap(SolutionsHeapPtr),
+            impure discard_trail_ticket
         ),
-        impure set_mutvar(Mutvar1, SubAccA),
-        impure set_mutvar(Mutvar2, SubAccB),
-        impure swap_heap_and_solutions_heap,
 
-        % Force backtracking, so that we get the next solution.
-        % This will automatically reset the heap and trail.
-        fail
-    ;
-        % There are no more solutions.
-        impure end_all_soln_neg_context_no_more,
-
-        % So now we just need to copy the final value of the accumulators
-        % from the solutions heap back onto the ordinary heap, and then we can
-        % reset the solutions heap pointer. We also need to discard the trail
-        % ticket created by get_registers/3.
-        impure get_mutvar(Mutvar1, !:Acc1),
-        impure get_mutvar(Mutvar2, !:Acc2),
-        impure partial_deep_copy(SolutionsHeapPtr, !Acc1),
-        impure partial_deep_copy(SolutionsHeapPtr, !Acc2),
-        impure reset_solutions_heap(SolutionsHeapPtr),
-        impure discard_trail_ticket
-    ),
-
-    % The solution is not unique because it may depend on the order that
-    % GeneratorPred returned its solutions and the choice made by
-    % CollectorPred.
-    cc_multi_equal(!Acc1),
-    cc_multi_equal(!Acc2).
+        % The solution is not unique because it may depend on the order that
+        % GeneratorPred returned its solutions and the choice made by
+        % CollectorPred.
+        cc_multi_equal(!Acc1),
+        cc_multi_equal(!Acc2)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -509,38 +512,38 @@ builtin_aggregate2(GeneratorPred, CollectorPred, !Acc1, !Acc2) :-
 % for multiple modes. An alternative would be to use a typeclass,
 % but typeclasses still don't work in `jump' or `fast' grades.
 
-:- pragma promise_pure(do_while/4).
-
 do_while(GeneratorPred, CollectorPred, !Acc) :-
-    impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
-    impure new_mutvar(!.Acc, Mutvar),
-    impure start_all_soln_neg_context,
-    (
-        GeneratorPred(Answer0),
+    promise_pure (
+        impure get_registers(HeapPtr, SolutionsHeapPtr, TrailPtr),
+        impure new_mutvar(!.Acc, Mutvar),
+        impure start_all_soln_neg_context,
+        (
+            GeneratorPred(Answer0),
 
-        impure check_for_floundering(TrailPtr),
+            impure check_for_floundering(TrailPtr),
 
-        impure swap_heap_and_solutions_heap,
-        impure partial_deep_copy(HeapPtr, Answer0, Answer),
-        impure get_mutvar(Mutvar, Acc0),
-        promise_equivalent_solutions [More, Acc1] (
-            call(CollectorPred, Answer, More, Acc0, Acc1)
+            impure swap_heap_and_solutions_heap,
+            impure partial_deep_copy(HeapPtr, Answer0, Answer),
+            impure get_mutvar(Mutvar, Acc0),
+            promise_equivalent_solutions [More, Acc1] (
+                call(CollectorPred, Answer, More, Acc0, Acc1)
+            ),
+            impure set_mutvar(Mutvar, Acc1),
+            impure swap_heap_and_solutions_heap,
+
+            % If More = yes, then backtrack for the next solution.
+            % If More = no, then we're done.
+            More = no,
+            impure end_all_soln_neg_context_more
+        ;
+            impure end_all_soln_neg_context_no_more
         ),
-        impure set_mutvar(Mutvar, Acc1),
-        impure swap_heap_and_solutions_heap,
-
-        % If More = yes, then backtrack for the next solution.
-        % If More = no, then we're done.
-        More = no,
-        impure end_all_soln_neg_context_more
-    ;
-        impure end_all_soln_neg_context_no_more
-    ),
-    impure get_mutvar(Mutvar, !:Acc),
-    impure partial_deep_copy(SolutionsHeapPtr, !Acc),
-    impure reset_solutions_heap(SolutionsHeapPtr),
-    impure discard_trail_ticket,
-    cc_multi_equal(!Acc).
+        impure get_mutvar(Mutvar, !:Acc),
+        impure partial_deep_copy(SolutionsHeapPtr, !Acc),
+        impure reset_solutions_heap(SolutionsHeapPtr),
+        impure discard_trail_ticket,
+        cc_multi_equal(!Acc)
+    ).
 
 :- type heap_ptr == private_builtin.heap_pointer.
 :- type trail_ptr ---> trail_ptr(c_pointer).

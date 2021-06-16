@@ -593,7 +593,7 @@ common_goal_vars_from_list(GoalList, GoalVar) :-
 
 :- pred copy_input_vars_in_goallist(stm_goal_vars::in,
     list(stm_goal_vars)::in, list(stm_goal_vars)::out) is det.
-:- pragma consider_used(copy_input_vars_in_goallist/3).
+:- pragma consider_used(pred(copy_input_vars_in_goallist/3)).
 
 copy_input_vars_in_goallist(GoalVar, !GoalList) :-
     CopyInputVarLambda =

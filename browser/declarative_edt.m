@@ -1408,7 +1408,7 @@ recalc_weights_and_get_parents(Store, [SuspectId | SuspectIds], PrevParents,
     % Can be used for assertion checking.
     %
 :- func calc_num_unknown(search_space(T)) = int.
-:- pragma consider_used(calc_num_unknown/1).
+:- pragma consider_used(func(calc_num_unknown/1)).
 
 calc_num_unknown(SearchSpace) = NumUnknown :-
     Suspects = map.values(SearchSpace ^ store),
@@ -1438,7 +1438,7 @@ questionable(suspect_unknown, yes).
     % Can be used for assertion checking.
     %
 :- func calc_num_unexplored(search_space(T)) = int.
-:- pragma consider_used(calc_num_unexplored/1).
+:- pragma consider_used(func(calc_num_unexplored/1)).
 
 calc_num_unexplored(SearchSpace) = NumUnexplored :-
     Suspects = map.values(SearchSpace ^ store),
@@ -2028,7 +2028,7 @@ find_inconsistency_in_weights_2(Store, SearchSpace, SuspectId, Message) :-
     %
 :- pred find_first_implicit_root(S::in, search_space(T)::in,
     list(suspect_id)::in, suspect_id::out) is semidet <= mercury_edt(S, T).
-:- pragma consider_used(find_first_implicit_root/4).
+:- pragma consider_used(pred(find_first_implicit_root/4)).
 
 find_first_implicit_root(Store, SearchSpace, [SuspectId | SuspectIds],
         ImplicitRoot) :-

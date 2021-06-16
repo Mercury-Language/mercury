@@ -395,7 +395,7 @@ term_traverse_abstract_disj_linearly_2(Info, Locals, Goal, !Polyhedron) :-
     %
 :- pred term_traverse_abstract_disj_pairwise(abstract_goals::in, size_vars::in,
     fixpoint_info::in, polyhedron::in, polyhedron::out) is det.
-:- pragma consider_used(term_traverse_abstract_disj_pairwise/5).
+:- pragma consider_used(pred(term_traverse_abstract_disj_pairwise/5)).
 
 term_traverse_abstract_disj_pairwise(Goals, Locals, Info, !Polyhedron) :-
     SizeVarSet = Info ^ tcfi_varset,

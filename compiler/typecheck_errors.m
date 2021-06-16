@@ -2687,7 +2687,7 @@ get_all_type_stuffs_remove_dups([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
     list(type_stuff)::out) is det.
 % Some XXX comments above describe scenarios in which this code
 % could be needed.
-:- pragma consider_used(get_all_type_stuffs/3).
+:- pragma consider_used(pred(get_all_type_stuffs/3)).
 
 get_all_type_stuffs([], _Var, []).
 get_all_type_stuffs([TypeAssign | TypeAssigns], Var,

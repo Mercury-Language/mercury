@@ -221,17 +221,17 @@
 
 :- func quoted_atom_agt(string, adjacent_to_graphic_token) = string.
 
-:- pragma type_spec(term_io.quote_string/4,
+:- pragma type_spec(pred(term_io.quote_string/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(term_io.quote_atom/4,
+:- pragma type_spec(pred(term_io.quote_atom/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(term_io.write_escaped_string/4,
+:- pragma type_spec(pred(term_io.write_escaped_string/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(term_io.write_escaped_char/4,
+:- pragma type_spec(pred(term_io.write_escaped_char/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(term_io.quote_char/4,
+:- pragma type_spec(pred(term_io.quote_char/4),
     (Stream = io.output_stream, State = io.state)).
-:- pragma type_spec(term_io.quote_atom_agt/5,
+:- pragma type_spec(pred(term_io.quote_atom_agt/5),
     (Stream = io.output_stream, State = io.state)).
 
 %---------------------------------------------------------------------------%
@@ -744,7 +744,7 @@ write_escaped_char(Stream, Char, !State) :-
 escaped_char(Char) = String :-
     string_is_escaped_char(Char, String).
 
-:- pragma promise_equivalent_clauses(string_is_escaped_char/2).
+:- pragma promise_equivalent_clauses(pred(string_is_escaped_char/2)).
 
 string_is_escaped_char(Char::in, String::out) :-
     ( if mercury_escape_special_char(Char, QuoteChar) then
@@ -987,7 +987,7 @@ is_mercury_punctuation_char('}').
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_equivalent_clauses(encode_escaped_char/2).
+:- pragma promise_equivalent_clauses(pred(encode_escaped_char/2)).
 
 encode_escaped_char(Char::in, Str::out) :-
     ( if mercury_escape_special_char(Char, EscapeChar) then

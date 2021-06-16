@@ -1422,7 +1422,7 @@ unsafe_copy_bytes(SameBM, SrcBM, SrcFirstByteIndex,
 %    bitmap_di, in, in, in) = bitmap_uo is det.
 :- mode unsafe_do_copy_bytes(in, in,
     bitmap_di, in, in, in) = bitmap_uo is det.
-:- pragma consider_used(unsafe_do_copy_bytes/6).
+:- pragma consider_used(func(unsafe_do_copy_bytes/6)).
 
 unsafe_do_copy_bytes(SrcBM, SrcByteIndex, DestBM, DestByteIndex,
         NumBytes, AddForNext) =
@@ -1789,7 +1789,7 @@ import jmercury.runtime.MercuryBitmap;
     where equality is bitmap_equal, comparison is bitmap_compare.
 
 :- pred bitmap_equal(bitmap::in, bitmap::in) is semidet.
-:- pragma terminates(bitmap_equal/2).
+:- pragma terminates(pred(bitmap_equal/2)).
 
 :- pragma foreign_proc("C",
     bitmap_equal(BM1::in, BM2::in),
@@ -1818,7 +1818,7 @@ bitmap_equal(BM1, BM2) :-
 
 :- pred bytes_equal(byte_index::in, byte_index::in,
     bitmap::in, bitmap::in) is semidet.
-:- pragma consider_used(bytes_equal/4).
+:- pragma consider_used(pred(bytes_equal/4)).
 
 bytes_equal(Index, MaxIndex, BM1, BM2) :-
     ( if Index =< MaxIndex then
@@ -1829,7 +1829,7 @@ bytes_equal(Index, MaxIndex, BM1, BM2) :-
     ).
 
 :- pred bitmap_compare(comparison_result::uo, bitmap::in, bitmap::in) is det.
-:- pragma terminates(bitmap_compare/3).
+:- pragma terminates(pred(bitmap_compare/3)).
 
 :- pragma foreign_proc("C",
     bitmap_compare(Result::uo, BM1::in, BM2::in),
@@ -1913,7 +1913,7 @@ bitmap_compare(Result, BM1, BM2) :-
 
 :- pred bytes_compare(comparison_result::uo, byte_index::in, byte_index::in,
     bitmap::in, bitmap::in) is det.
-:- pragma consider_used(bytes_compare/5).
+:- pragma consider_used(pred(bytes_compare/5)).
 
 bytes_compare(Result, Index, MaxIndex, BM1, BM2) :-
     ( if Index =< MaxIndex then

@@ -751,7 +751,7 @@ make_format_sprintf(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
         WidthStr, PrecPrefixStr, PrecStr, LengthMod, Spec]).
 
 :- func int_length_modifier = string.
-:- pragma no_determinism_warning(int_length_modifier/0).
+:- pragma no_determinism_warning(func(int_length_modifier/0)).
 
 :- pragma foreign_proc("C",
     int_length_modifier = (LengthModifier::out),
@@ -771,7 +771,7 @@ int_length_modifier = _ :-
 % are all handled by casting to a uint64.
 
 :- func int64_decimal_specifier = string.
-:- pragma no_determinism_warning(int64_decimal_specifier/0).
+:- pragma no_determinism_warning(func(int64_decimal_specifier/0)).
 
 :- pragma foreign_proc("C",
     int64_decimal_specifier = (Spec::out),
@@ -787,7 +787,7 @@ int64_decimal_specifier = _ :-
     error("string.int64_decimal_specifier/0 not defined").
 
 :- func uint64_octal_specifier = string.
-:- pragma no_determinism_warning(uint64_octal_specifier/0).
+:- pragma no_determinism_warning(func(uint64_octal_specifier/0)).
 
 :- pragma foreign_proc("C",
     uint64_octal_specifier = (Spec::out),
@@ -803,7 +803,7 @@ uint64_octal_specifier = _ :-
     error("string.uint64_octal_specifier/0 not defined").
 
 :- func uint64_decimal_specifier = string.
-:- pragma no_determinism_warning(uint64_decimal_specifier/0).
+:- pragma no_determinism_warning(func(uint64_decimal_specifier/0)).
 
 :- pragma foreign_proc("C",
     uint64_decimal_specifier = (Spec::out),
@@ -819,7 +819,7 @@ uint64_decimal_specifier = _ :-
     error("string.uint64_decimal_specifier/0 not defined").
 
 :- func uint64_hex_lc_specifier = string.
-:- pragma no_determinism_warning(uint64_hex_lc_specifier/0).
+:- pragma no_determinism_warning(func(uint64_hex_lc_specifier/0)).
 
 :- pragma foreign_proc("C",
     uint64_hex_lc_specifier = (Spec::out),
@@ -835,7 +835,7 @@ uint64_hex_lc_specifier = _ :-
     error("string.uint64_hex_lc_specifier/0 not defined").
 
 :- func uint64_hex_uc_specifier = string.
-:- pragma no_determinism_warning(uint64_hex_uc_specifier/0).
+:- pragma no_determinism_warning(func(uint64_hex_uc_specifier/0)).
 
 :- pragma foreign_proc("C",
     uint64_hex_uc_specifier = (Spec::out),
@@ -863,7 +863,7 @@ uint64_hex_p_specifier =
     % format string is valid.
     %
 :- func native_format_float(string, float) = string.
-:- pragma no_determinism_warning(native_format_float/2).
+:- pragma no_determinism_warning(func(native_format_float/2)).
 
 :- pragma foreign_proc("C",
     native_format_float(FormatStr::in, Val::in) = (Str::out),
@@ -885,7 +885,7 @@ native_format_float(_, _) = _ :-
     % format string is valid.
     %
 :- func native_format_int(string, int) = string.
-:- pragma no_determinism_warning(native_format_int/2).
+:- pragma no_determinism_warning(func(native_format_int/2)).
 
 :- pragma foreign_proc("C",
     native_format_int(FormatStr::in, Val::in) = (Str::out),
@@ -907,7 +907,7 @@ native_format_int(_, _) = _ :-
     % format string is valid.
     %
 :- func native_format_uint(string, uint) = string.
-:- pragma no_determinism_warning(native_format_uint/2).
+:- pragma no_determinism_warning(func(native_format_uint/2)).
 
 :- pragma foreign_proc("C",
     native_format_uint(FormatStr::in, Val::in) = (Str::out),
@@ -925,7 +925,7 @@ native_format_uint(_, _) = _ :-
     error("string.native_format_uint/2 not defined").
 
 :- func native_format_int64(string, int64) = string.
-:- pragma no_determinism_warning(native_format_int64/2).
+:- pragma no_determinism_warning(func(native_format_int64/2)).
 
 :- pragma foreign_proc("C",
     native_format_int64(FormatStr::in, Val::in) = (Str::out),
@@ -943,7 +943,7 @@ native_format_int64(_, _) = _ :-
     error("string.native_format_int64/2 not defined").
 
 :- func native_format_uint64(string, uint64) = string.
-:- pragma no_determinism_warning(native_format_uint64/2).
+:- pragma no_determinism_warning(func(native_format_uint64/2)).
 
 :- pragma foreign_proc("C",
     native_format_uint64(FormatStr::in, Val::in) = (Str::out),
@@ -965,7 +965,7 @@ native_format_uint64(_, _) = _ :-
     % format string is valid.
     %
 :- func native_format_string(string, string) = string.
-:- pragma no_determinism_warning(native_format_string/2).
+:- pragma no_determinism_warning(func(native_format_string/2)).
 
 :- pragma foreign_proc("C",
     native_format_string(FormatStr::in, Val::in) = (Str::out),
@@ -987,7 +987,7 @@ native_format_string(_, _) = _ :-
     % format string is valid.
     %
 :- func native_format_char(string, char) = string.
-:- pragma no_determinism_warning(native_format_char/2).
+:- pragma no_determinism_warning(func(native_format_char/2)).
 
 :- pragma foreign_proc("C",
     native_format_char(FormatStr::in, Val::in) = (Str::out),
@@ -1527,7 +1527,7 @@ format_float(Flags, MaybeWidth, MaybePrec, Kind, Float) = String :-
 %---------------------------------------------------------------------------%
 
 :- func get_prec_to_use(string_format_maybe_prec) = int.
-:- pragma inline(get_prec_to_use/1).
+:- pragma inline(func(get_prec_to_use/1)).
 
 get_prec_to_use(MaybePrec) = Prec :-
     (
@@ -1539,7 +1539,7 @@ get_prec_to_use(MaybePrec) = Prec :-
     ).
 
 :- func get_prec_to_use_minimum_1(string_format_maybe_prec) = int.
-:- pragma inline(get_prec_to_use_minimum_1/1).
+:- pragma inline(func(get_prec_to_use_minimum_1/1)).
 
 get_prec_to_use_minimum_1(MaybePrec) = Prec :-
     (
@@ -1559,7 +1559,7 @@ get_prec_to_use_minimum_1(MaybePrec) = Prec :-
 
 :- func add_sign_like_prefix_to_int_if_needed(string_format_flags, bool,
     int, string) = string.
-:- pragma inline(add_sign_like_prefix_to_int_if_needed/4).
+:- pragma inline(func(add_sign_like_prefix_to_int_if_needed/4)).
 
 add_sign_like_prefix_to_int_if_needed(Flags, ZeroPadded, Int, FieldStr)
         = SignedStr :-
@@ -1581,7 +1581,7 @@ add_sign_like_prefix_to_int_if_needed(Flags, ZeroPadded, Int, FieldStr)
 
 :- func add_sign_like_prefix_to_int64_if_needed(string_format_flags, bool,
     int64, string) = string.
-:- pragma inline(add_sign_like_prefix_to_int64_if_needed/4).
+:- pragma inline(func(add_sign_like_prefix_to_int64_if_needed/4)).
 
 add_sign_like_prefix_to_int64_if_needed(Flags, ZeroPadded, Int64, FieldStr)
         = SignedStr :-
@@ -1603,7 +1603,7 @@ add_sign_like_prefix_to_int64_if_needed(Flags, ZeroPadded, Int64, FieldStr)
 
 :- func add_sign_like_prefix_to_float_if_needed(string_format_flags, bool,
     float, string) = string.
-:- pragma inline(add_sign_like_prefix_to_float_if_needed/4).
+:- pragma inline(func(add_sign_like_prefix_to_float_if_needed/4)).
 
 add_sign_like_prefix_to_float_if_needed(Flags, ZeroPadded, Float, FieldStr)
         = SignedStr :-
@@ -1664,7 +1664,6 @@ justify_string(Flags, MaybeWidth, Str) = JustifiedStr :-
     % Convert a non-negative integer to a decimal string.
     %
 :- func abs_integer_to_decimal(integer) = string.
-:- func abs_int_to_decimal(int) = string.
 
 abs_integer_to_decimal(Num) = NumStr :-
     ( if Num > integer.zero then
@@ -1675,6 +1674,8 @@ abs_integer_to_decimal(Num) = NumStr :-
     else
         NumStr = ""
     ).
+
+:- func abs_int_to_decimal(int) = string.
 
 abs_int_to_decimal(Num) = NumStr :-
     ( if Num > 0 then
@@ -1690,7 +1691,7 @@ abs_int_to_decimal(Num) = NumStr :-
     % Given an int between 0 and 9, return the decimal digit representing it.
     %
 :- func get_decimal_digit(int) = string.
-:- pragma inline(get_decimal_digit/1).
+:- pragma inline(func(get_decimal_digit/1)).
 
 get_decimal_digit(Int) = Decimal :-
     ( if decimal_digit(Int, DecimalPrime) then

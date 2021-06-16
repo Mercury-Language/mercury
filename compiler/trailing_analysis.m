@@ -613,7 +613,7 @@ trail_known_procedure(_, "exception", "rethrow", 1, trail_will_not_modify).
     %
 :- pred trail_get_conditional_closures(module_info::in, set(pred_proc_id)::in,
     list(pred_proc_id)::out) is semidet.
-:- pragma consider_used(trail_get_conditional_closures/3).
+:- pragma consider_used(pred(trail_get_conditional_closures/3)).
 
 trail_get_conditional_closures(ModuleInfo, Closures, Conditionals) :-
     set.fold(trail_get_conditional_closure(ModuleInfo), Closures,

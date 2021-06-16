@@ -270,7 +270,7 @@ first_order_check_cases([Case | Goals], Negated, WholeScc, ThisPredProcId,
 :- pred higher_order_check_sccs(
     assoc_list(list(pred_proc_id), set(pred_proc_id))::in, ho_map::in,
     module_info::in, list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma consider_used(higher_order_check_sccs/5).
+:- pragma consider_used(pred(higher_order_check_sccs/5)).
 
 higher_order_check_sccs([], _HOInfo, _ModuleInfo, !Specs).
 higher_order_check_sccs([HeadSCC | TailSCCs], HOInfo, ModuleInfo, !Specs) :-
@@ -479,7 +479,7 @@ higher_order_check_cases([Case | Goals], Negated, WholeScc, ThisPredProcId,
     %
 :- pred gen_conservative_graph(module_info::in,
     hlds_dependency_graph::in, hlds_dependency_graph::out, ho_map::out) is det.
-:- pragma consider_used(gen_conservative_graph/4).
+:- pragma consider_used(pred(gen_conservative_graph/4)).
 
 gen_conservative_graph(ModuleInfo, !DepGraph, HOInfo) :-
     get_call_info(ModuleInfo, ProcCalls, HOInfo0, CallsHO),

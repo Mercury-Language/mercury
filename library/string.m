@@ -1746,7 +1746,7 @@
 to_char_list(S) = Cs :-
     to_char_list(S, Cs).
 
-:- pragma promise_equivalent_clauses(to_char_list/2).
+:- pragma promise_equivalent_clauses(pred(to_char_list/2)).
 
 to_char_list(Str::in, CharList::out) :-
     do_to_char_list(Str, CharList).
@@ -1774,7 +1774,7 @@ do_to_char_list_loop(Str, Index0, !CharList) :-
 to_rev_char_list(S) = Cs :-
     to_rev_char_list(S, Cs).
 
-:- pragma promise_equivalent_clauses(to_rev_char_list/2).
+:- pragma promise_equivalent_clauses(pred(to_rev_char_list/2)).
 
 to_rev_char_list(Str::in, CharList::out) :-
     do_to_rev_char_list(Str, CharList).
@@ -1806,7 +1806,7 @@ do_to_rev_char_list_loop(Str, Index0, !RevCharList) :-
 from_char_list(Cs) = S :-
     from_char_list(Cs, S).
 
-:- pragma promise_equivalent_clauses(from_char_list/2).
+:- pragma promise_equivalent_clauses(pred(from_char_list/2)).
 
 from_char_list(Chars::out, Str::in) :-
     to_char_list(Str, Chars).
@@ -2376,18 +2376,18 @@ duplicate_char(Char, Count, String) :-
 % so that the compiler can do loop invariant hoisting on calls to them
 % that occur in loops.
 
-:- pragma inline(index/3).
-:- pragma inline(det_index/3).
-:- pragma inline(index_next/4).
-:- pragma inline(index_next_repl/5).
-:- pragma inline(unsafe_index_next/4).
-:- pragma inline(unsafe_index_next_repl/5).
-:- pragma inline(unsafe_index_next_repl_2/5).
-:- pragma inline(prev_index/4).
-:- pragma inline(prev_index_repl/5).
-:- pragma inline(unsafe_prev_index/4).
-:- pragma inline(unsafe_prev_index_repl/5).
-:- pragma inline(unsafe_prev_index_repl_2/5).
+:- pragma inline(pred(index/3)).
+:- pragma inline(pred(det_index/3)).
+:- pragma inline(pred(index_next/4)).
+:- pragma inline(pred(index_next_repl/5)).
+:- pragma inline(pred(unsafe_index_next/4)).
+:- pragma inline(pred(unsafe_index_next_repl/5)).
+:- pragma inline(pred(unsafe_index_next_repl_2/5)).
+:- pragma inline(pred(prev_index/4)).
+:- pragma inline(pred(prev_index_repl/5)).
+:- pragma inline(pred(unsafe_prev_index/4)).
+:- pragma inline(pred(unsafe_prev_index_repl/5)).
+:- pragma inline(pred(unsafe_prev_index_repl_2/5)).
 
 index(Str, Index, Char) :-
     Len = length(Str),
@@ -2845,7 +2845,7 @@ unsafe_set_char(Char, Index, Str0, Str) :-
 length(S) = L :-
     length(S, L).
 
-:- pragma promise_equivalent_clauses(length/2).
+:- pragma promise_equivalent_clauses(pred(length/2)).
 
 :- pragma foreign_proc("C",
     length(Str::in, Length::uo),
@@ -3596,7 +3596,7 @@ unsafe_sub_string_search_start_loop(String, SubString, I, LastI, SubLen, Index)
 append(S1, S2) = S3 :-
     append(S1, S2, S3).
 
-:- pragma promise_equivalent_clauses(append/3).
+:- pragma promise_equivalent_clauses(pred(append/3)).
 
 append(S1::in, S2::in, S3::in) :-
     append_iii(S1, S2, S3).
@@ -4061,7 +4061,7 @@ copy_piece_into_buffer(Piece, !DestOffset, !DestBuffer) :-
 % Splitting up strings.
 %
 
-:- pragma promise_equivalent_clauses(first_char/3).
+:- pragma promise_equivalent_clauses(pred(first_char/3)).
 
 first_char(Str::in, First::in, Rest::in) :-
     first_char_rest_in(Str, First, Rest).
@@ -4407,7 +4407,7 @@ split_into_lines_loop(Str, CurPos, !RevLines) :-
 % Dealing with prefixes and suffixes.
 %
 
-:- pragma promise_equivalent_clauses(prefix/2).
+:- pragma promise_equivalent_clauses(pred(prefix/2)).
 
 prefix(String::in, Prefix::in) :-
     compare_substrings((=), String, 0, Prefix, 0, length(Prefix)).
@@ -4424,7 +4424,7 @@ prefix_2_ioi(String, Prefix, Cur) :-
         prefix_2_ioi(String, Prefix, Next)
     ).
 
-:- pragma promise_equivalent_clauses(suffix/2).
+:- pragma promise_equivalent_clauses(pred(suffix/2)).
 
 suffix(String::in, Suffix::in) :-
     StringLength = length(String),
@@ -4521,7 +4521,7 @@ uncapitalize_first(S0, S) :-
 to_upper(S1) = S2 :-
     to_upper(S1, S2).
 
-:- pragma promise_equivalent_clauses(to_upper/2).
+:- pragma promise_equivalent_clauses(pred(to_upper/2)).
 
 to_upper(StrIn::in, StrOut::uo) :-
     % Use to_code_unit_list instead of to_char_list to preserve ill-formed
@@ -4614,7 +4614,7 @@ to_upper_code_unit(Code0, Code) :-
 to_lower(S1) = S2 :-
     to_lower(S1, S2).
 
-:- pragma promise_equivalent_clauses(to_lower/2).
+:- pragma promise_equivalent_clauses(pred(to_lower/2)).
 
 to_lower(StrIn::in, StrOut::uo) :-
     % Use to_code_unit_list instead of to_char_list to preserve ill-formed
@@ -5481,7 +5481,7 @@ det_to_float(FloatString) = Float :-
 char_to_string(C) = S1 :-
     char_to_string(C, S1).
 
-:- pragma promise_equivalent_clauses(char_to_string/2).
+:- pragma promise_equivalent_clauses(pred(char_to_string/2)).
 
 char_to_string(Char::in, String::uo) :-
     from_char_list([Char], String).
@@ -5639,7 +5639,7 @@ int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
 uint_to_hex_string(UInt) =
     uint_to_lc_hex_string(UInt).
 
-:- pragma inline(uint_to_lc_hex_string/1).
+:- pragma inline(func(uint_to_lc_hex_string/1)).
 
 :- pragma foreign_proc("C",
     uint_to_lc_hex_string(U::in) = (Str::uo),
@@ -5935,7 +5935,7 @@ uint_to_hex_string(UInt) =
 uint64_to_hex_string(UInt) =
     uint64_to_lc_hex_string(UInt).
 
-:- pragma inline(uint64_to_lc_hex_string/1).
+:- pragma inline(func(uint64_to_lc_hex_string/1)).
 
 :- pragma foreign_proc("C",
     uint64_to_lc_hex_string(U64::in) = (S::uo),

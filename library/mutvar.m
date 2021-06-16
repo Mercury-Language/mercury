@@ -71,11 +71,11 @@ XXX `ui' modes don't work yet
 
 :- implementation.
 
-:- pragma inline(new_mutvar/2).
-:- pragma inline(new_mutvar0/1).
-:- pragma inline(get_mutvar/2).
-:- pragma inline(set_mutvar/2).
-:- pragma inline(clear_mutvar/1).
+:- pragma inline(pred(new_mutvar/2)).
+:- pragma inline(pred(new_mutvar0/1)).
+:- pragma inline(pred(get_mutvar/2)).
+:- pragma inline(pred(set_mutvar/2)).
+:- pragma inline(pred(clear_mutvar/1)).
 
 %---------------------------------------------------------------------------%
 

@@ -543,7 +543,7 @@
     % inlining, so code which uses `//'/2 but doesn't import math.m
     % couldn't have the domain check optimized away.
 :- pred int_domain_checks is semidet.
-:- pragma inline(int_domain_checks/0).
+:- pragma inline(pred(int_domain_checks/0)).
 
 :- pragma foreign_proc("C",
     int_domain_checks,
@@ -641,7 +641,7 @@ X div Y = Div :-
         Div = Trunc - 1
     ).
 
-:- pragma inline('//'/2).
+:- pragma inline(func('//'/2)).
 X // Y = Div :-
     ( if
         int_domain_checks,
@@ -652,12 +652,12 @@ X // Y = Div :-
         Div = unchecked_quotient(X, Y)
     ).
 
-:- pragma inline('/'/2).
+:- pragma inline(func('/'/2)).
 X / Y = X // Y.
 
 X mod Y = X - (X div Y) * Y.
 
-:- pragma inline(rem/2).
+:- pragma inline(func(rem/2)).
 X rem Y = Rem :-
     ( if
         int_domain_checks,
@@ -668,11 +668,11 @@ X rem Y = Rem :-
         Rem = unchecked_rem(X, Y)
     ).
 
-:- pragma inline(even/1).
+:- pragma inline(pred(even/1)).
 even(X) :-
     (X /\ 1) = 0.
 
-:- pragma inline(odd/1).
+:- pragma inline(pred(odd/1)).
 odd(X) :-
     (X /\ 1) \= 0.
 
@@ -953,7 +953,7 @@ hash(Int, Hash) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(floor_to_multiple_of_bits_per_int/1).
+:- pragma inline(func(floor_to_multiple_of_bits_per_int/1)).
 
 floor_to_multiple_of_bits_per_int(X) = Floor :-
     Trunc = quot_bits_per_int(X),

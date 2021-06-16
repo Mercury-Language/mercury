@@ -62,14 +62,14 @@
     %
 :- pred empty(set_ctree234(_T)::in) is semidet.
 :- pred is_empty(set_ctree234(_T)::in) is semidet.
-:- pragma obsolete(empty/1, [is_empty/1]).
+:- pragma obsolete(pred(empty/1), [is_empty/1]).
 
     % `non_empty(Set)' is true iff `Set' is not an empty set.
     % `is_non_empty' is a synonym for `non_empty'.
     %
 :- pred non_empty(set_ctree234(T)::in) is semidet.
 :- pred is_non_empty(set_ctree234(T)::in) is semidet.
-:- pragma obsolete(non_empty/1, [is_non_empty/1]).
+:- pragma obsolete(pred(non_empty/1), [is_non_empty/1]).
 
 :- pred is_singleton(set_ctree234(T)::in, T::out) is semidet.
 
@@ -452,40 +452,40 @@
 :- import_module string.
 :- import_module term.  % for var/1.
 
-:- pragma type_spec(contains/2, T = var(_)).
-:- pragma type_spec(do_is_member/3, T = var(_)).
-:- pragma type_spec(do_list_to_set/5, T = var(_)).
-:- pragma type_spec(do_to_sorted_list/3, T = var(_)).
-:- pragma type_spec(subset/2, T = var(_)).
-:- pragma type_spec(do_subset/2, T = var(_)).
-:- pragma type_spec(insert/3, T = var(_)).
-:- pragma type_spec(do_insert/4, T = var(_)).
-:- pragma type_spec(insert2/4, T = var(_)).
-:- pragma type_spec(insert3/4, T = var(_)).
-:- pragma type_spec(insert_list/3, T = var(_)).
-:- pragma type_spec(do_insert_list/5, T = var(_)).
-:- pragma type_spec(delete/3, T = var(_)).
-:- pragma type_spec(do_delete/5, T = var(_)).
-:- pragma type_spec(remove/3, T = var(_)).
-:- pragma type_spec(do_remove/4, T = var(_)).
-:- pragma type_spec(remove_least/3, T = var(_)).
-:- pragma type_spec(do_remove_least/4, T = var(_)).
-:- pragma type_spec(union/2, T = var(_)).
-:- pragma type_spec(union/3, T = var(_)).
-:- pragma type_spec(do_union/5, T = var(_)).
-:- pragma type_spec(union_list/2, T = var(_)).
-:- pragma type_spec(do_union_list/3, T = var(_)).
-:- pragma type_spec(power_union/2, T = var(_)).
-:- pragma type_spec(do_power_union/5, T = var(_)).
-:- pragma type_spec(intersect/2, T = var(_)).
-:- pragma type_spec(intersect/3, T = var(_)).
-:- pragma type_spec(do_intersect/6, T = var(_)).
-:- pragma type_spec(difference/2, T = var(_)).
-:- pragma type_spec(difference/3, T = var(_)).
-:- pragma type_spec(do_difference/5, T = var(_)).
-:- pragma type_spec(divide/4, T = var(_)).
-:- pragma type_spec(do_divide/6, T = var(_)).
-:- pragma type_spec(divide_by_set/4, T = var(_)).
+:- pragma type_spec(pred(contains/2),           T = var(_)).
+:- pragma type_spec(pred(do_is_member/3),       T = var(_)).
+:- pragma type_spec(pred(do_list_to_set/5),     T = var(_)).
+:- pragma type_spec(pred(do_to_sorted_list/3),  T = var(_)).
+:- pragma type_spec(pred(subset/2),             T = var(_)).
+:- pragma type_spec(pred(do_subset/2),          T = var(_)).
+:- pragma type_spec(pred(insert/3),             T = var(_)).
+:- pragma type_spec(pred(do_insert/4),          T = var(_)).
+:- pragma type_spec(pred(insert2/4),            T = var(_)).
+:- pragma type_spec(pred(insert3/4),            T = var(_)).
+:- pragma type_spec(pred(insert_list/3),        T = var(_)).
+:- pragma type_spec(pred(do_insert_list/5),     T = var(_)).
+:- pragma type_spec(pred(delete/3),             T = var(_)).
+:- pragma type_spec(pred(do_delete/5),          T = var(_)).
+:- pragma type_spec(pred(remove/3),             T = var(_)).
+:- pragma type_spec(pred(do_remove/4),          T = var(_)).
+:- pragma type_spec(pred(remove_least/3),       T = var(_)).
+:- pragma type_spec(pred(do_remove_least/4),    T = var(_)).
+:- pragma type_spec(func(union/2),              T = var(_)).
+:- pragma type_spec(pred(union/3),              T = var(_)).
+:- pragma type_spec(pred(do_union/5),           T = var(_)).
+:- pragma type_spec(pred(union_list/2),         T = var(_)).
+:- pragma type_spec(pred(do_union_list/3),      T = var(_)).
+:- pragma type_spec(pred(power_union/2),        T = var(_)).
+:- pragma type_spec(pred(do_power_union/5),     T = var(_)).
+:- pragma type_spec(func(intersect/2),          T = var(_)).
+:- pragma type_spec(pred(intersect/3),          T = var(_)).
+:- pragma type_spec(pred(do_intersect/6),       T = var(_)).
+:- pragma type_spec(func(difference/2),         T = var(_)).
+:- pragma type_spec(pred(difference/3),         T = var(_)).
+:- pragma type_spec(pred(do_difference/5),      T = var(_)).
+:- pragma type_spec(pred(divide/4),             T = var(_)).
+:- pragma type_spec(pred(do_divide/6),          T = var(_)).
+:- pragma type_spec(pred(divide_by_set/4),      T = var(_)).
 
 :- type set_ctree234(T)
     --->    ct(int, set_tree234(T)).
@@ -544,7 +544,7 @@ is_singleton(ct(1, two(X, empty, empty)), X).
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_equivalent_clauses(member/2).
+:- pragma promise_equivalent_clauses(pred(member/2)).
 
 member(E::in, Set::in) :-
     contains(Set, E).
@@ -682,7 +682,7 @@ contains(ct(_, T), E) :-
     do_contains(T, E).
 
 :- pred do_contains(set_tree234(T)::in, T::in) is semidet.
-:- pragma inline(do_contains/2).
+:- pragma inline(pred(do_contains/2)).
 
 do_contains(Tree, E) :-
     do_is_member(Tree, E, yes).
@@ -1263,7 +1263,7 @@ insert_new3(E, Tin, Tout) :-
 
 :- pred split_four(set_tree234(T)::in_four, T::out,
     set_tree234(T)::out_two, set_tree234(T)::out_two) is det.
-:- pragma inline(split_four/4).
+:- pragma inline(pred(split_four/4)).
 
 split_four(Tin, MidE, Sub0, Sub1) :-
     Tin = four(E0, E1, E2, T0, T1, T2, T3),

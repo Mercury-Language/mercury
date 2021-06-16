@@ -281,7 +281,7 @@ lookup_mercury_operator_term(_OpTable, 120, y, x).
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(adjust_priority_for_assoc/3).
+:- pragma inline(pred(adjust_priority_for_assoc/3)).
 
 adjust_priority_for_assoc(Priority, y, Priority).
 adjust_priority_for_assoc(Priority, x, Priority - 1).

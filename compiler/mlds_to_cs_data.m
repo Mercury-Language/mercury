@@ -533,7 +533,7 @@ output_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
 :- pred output_int_binop_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, binary_op::in(int_binary_op),
     mlds_rval::in, mlds_rval::in, io::di, io::uo) is det.
-:- pragma no_inline(output_int_binop_for_csharp/7).
+:- pragma no_inline(pred(output_int_binop_for_csharp/7)).
 
 output_int_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
     (
@@ -640,7 +640,7 @@ output_int_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
 :- pred output_basic_binop_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, string::in, mlds_rval::in, mlds_rval::in,
     io::di, io::uo) is det.
-:- pragma no_inline(output_basic_binop_for_csharp/7).
+:- pragma no_inline(pred(output_basic_binop_for_csharp/7)).
 
 output_basic_binop_for_csharp(Info, Stream, OpStr, X, Y, !IO) :-
     io.write_string(Stream, "(", !IO),

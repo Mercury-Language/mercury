@@ -132,7 +132,7 @@ mlds_output_statement(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
 :- pred mlds_output_stmt_block(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, func_info_c::in, mlds_stmt::in(ml_stmt_is_block),
     io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_block/7).
+:- pragma inline(pred(mlds_output_stmt_block/7)).
 
 mlds_output_stmt_block(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context),
@@ -237,7 +237,7 @@ mlds_output_local_var_decl(Opts, Stream, LocalVarName, Type,
 :- pred mlds_output_stmt_while(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, func_info_c::in, mlds_stmt::in(ml_stmt_is_while),
     io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_while/7).
+:- pragma inline(pred(mlds_output_stmt_while/7)).
 
 mlds_output_stmt_while(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_while(Kind, Cond, BodyStmt, _LoopLocalVars, Context),
@@ -272,7 +272,7 @@ mlds_output_stmt_while(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
 :- pred mlds_output_stmt_if_then_else(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in, func_info_c::in,
     mlds_stmt::in(ml_stmt_is_if_then_else), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_if_then_else/7).
+:- pragma inline(pred(mlds_output_stmt_if_then_else/7)).
 
 mlds_output_stmt_if_then_else(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_if_then_else(Cond, Then0, MaybeElse, Context),
@@ -348,7 +348,7 @@ mlds_output_stmt_if_then_else(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
 :- pred mlds_output_stmt_switch(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, func_info_c::in, mlds_stmt::in(ml_stmt_is_switch),
     io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_switch/7).
+:- pragma inline(pred(mlds_output_stmt_switch/7)).
 
 mlds_output_stmt_switch(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default, Context),
@@ -439,7 +439,7 @@ mlds_output_switch_default(Opts, Stream, Indent, FuncInfo, Context,
 
 :- pred mlds_output_stmt_label(io.text_output_stream::in, indent::in,
     mlds_stmt::in(ml_stmt_is_label), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_label/5).
+:- pragma inline(pred(mlds_output_stmt_label/5)).
 
 mlds_output_stmt_label(Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_label(LabelName, _Context),
@@ -464,7 +464,7 @@ mlds_output_label_name(Stream, LabelName, !IO) :-
 
 :- pred mlds_output_stmt_goto(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, mlds_stmt::in(ml_stmt_is_goto), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_goto/6).
+:- pragma inline(pred(mlds_output_stmt_goto/6)).
 
 mlds_output_stmt_goto(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_goto(Target, _Context),
@@ -511,7 +511,7 @@ mlds_output_stmt_goto(Opts, Stream, Indent, Stmt, !IO) :-
 :- pred mlds_output_stmt_computed_goto(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in,
     mlds_stmt::in(ml_stmt_is_computed_goto), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_computed_goto/6).
+:- pragma inline(pred(mlds_output_stmt_computed_goto/6)).
 
 mlds_output_stmt_computed_goto(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_computed_goto(Expr, Labels, Context),
@@ -554,7 +554,7 @@ mlds_output_computed_goto_label(Opts, Stream, Context, Indent, Label,
 :- pred mlds_output_stmt_call(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, func_info_c::in, mlds_stmt::in(ml_stmt_is_call),
     io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_call/7).
+:- pragma inline(pred(mlds_output_stmt_call/7)).
 
 mlds_output_stmt_call(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_call(Signature, FuncRval, CallArgs, Results,
@@ -621,7 +621,7 @@ mlds_output_stmt_call(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
 :- pred mlds_output_call(mlds_to_c_opts::in, io.text_output_stream::in,
     prog_context::in, indent::in, maybe_call_has_return::in, mlds_rval::in,
     list(mlds_rval)::in, list(mlds_lval)::in, io::di, io::uo) is det.
-:- pragma inline(mlds_output_call/10).
+:- pragma inline(pred(mlds_output_call/10)).
 
 mlds_output_call(Opts, Stream, Context, Indent, CallHasReturn, FuncRval,
         CallArgs, Results, !IO) :-
@@ -733,7 +733,7 @@ mlds_output_time_profile_instr(Opts, Stream, Context, Indent,
 
 :- pred mlds_output_stmt_return(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, mlds_stmt::in(ml_stmt_is_return), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_return/6).
+:- pragma inline(pred(mlds_output_stmt_return/6)).
 
 mlds_output_stmt_return(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_return(Results, _Context),
@@ -759,7 +759,7 @@ mlds_output_stmt_return(Opts, Stream, Indent, Stmt, !IO) :-
 :- pred mlds_output_stmt_do_commit(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in, mlds_stmt::in(ml_stmt_is_do_commit),
     io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_do_commit/6).
+:- pragma inline(pred(mlds_output_stmt_do_commit/6)).
 
 mlds_output_stmt_do_commit(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_do_commit(Ref, _Context),
@@ -780,7 +780,7 @@ mlds_output_stmt_do_commit(Opts, Stream, Indent, Stmt, !IO) :-
 :- pred mlds_output_stmt_try_commit(mlds_to_c_opts::in,
     io.text_output_stream::in, indent::in, func_info_c::in,
     mlds_stmt::in(ml_stmt_is_try_commit), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_try_commit/7).
+:- pragma inline(pred(mlds_output_stmt_try_commit/7)).
 
 mlds_output_stmt_try_commit(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_try_commit(Ref, BodyStmt0, HandlerStmt, Context),
@@ -833,7 +833,7 @@ mlds_output_stmt_try_commit(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
 
 :- pred mlds_output_stmt_atomic(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, mlds_stmt::in(ml_stmt_is_atomic), io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_atomic/6).
+:- pragma inline(pred(mlds_output_stmt_atomic/6)).
 
 mlds_output_stmt_atomic(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_atomic(AtomicStmt, Context),
@@ -931,7 +931,7 @@ write_comment_lines(Stream, Indent, [CommentLine | CommentLines], !IO) :-
     io.text_output_stream::in, indent::in,
     mlds_atomic_statement::in(atomic_stmt_is_new_object), prog_context::in,
     io::di, io::uo) is det.
-:- pragma inline(mlds_output_stmt_atomic_new_object/7).
+:- pragma inline(pred(mlds_output_stmt_atomic_new_object/7)).
 
 mlds_output_stmt_atomic_new_object(Opts, Stream, Indent, AtomicStmt,
         Context, !IO) :-

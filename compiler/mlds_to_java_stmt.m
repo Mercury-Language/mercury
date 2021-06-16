@@ -180,7 +180,7 @@ output_statement_for_java(Info, Stream, Indent, FuncInfo, Stmt,
 :- pred output_stmt_block_for_java(java_out_info::in,
     io.text_output_stream::in, indent::in, func_info_csj::in,
     mlds_stmt::in(ml_stmt_is_block), exit_methods::out, io::di, io::uo) is det.
-:- pragma inline(output_stmt_block_for_java/8).
+:- pragma inline(pred(output_stmt_block_for_java/8)).
 
 output_stmt_block_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
@@ -239,7 +239,7 @@ output_local_var_decl_for_java(Info, Stream, LocalVarName, Type, !IO) :-
 :- pred output_stmt_while_for_java(java_out_info::in,
     io.text_output_stream::in, indent::in, func_info_csj::in,
     mlds_stmt::in(ml_stmt_is_while), exit_methods::out, io::di, io::uo) is det.
-:- pragma inline(output_stmt_while_for_java/8).
+:- pragma inline(pred(output_stmt_while_for_java/8)).
 
 output_stmt_while_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
@@ -287,7 +287,7 @@ output_stmt_while_for_java(Info, Stream, Indent, FuncInfo, Stmt,
     io.text_output_stream::in, indent::in, func_info_csj::in,
     mlds_stmt::in(ml_stmt_is_if_then_else), exit_methods::out,
     io::di, io::uo) is det.
-:- pragma inline(output_stmt_if_then_else_for_java/8).
+:- pragma inline(pred(output_stmt_if_then_else_for_java/8)).
 
 output_stmt_if_then_else_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
@@ -344,7 +344,7 @@ output_stmt_if_then_else_for_java(Info, Stream, Indent, FuncInfo, Stmt,
     io.text_output_stream::in, indent::in, func_info_csj::in,
     mlds_stmt::in(ml_stmt_is_switch), exit_methods::out,
     io::di, io::uo) is det.
-:- pragma inline(output_stmt_switch_for_java/8).
+:- pragma inline(pred(output_stmt_switch_for_java/8)).
 
 output_stmt_switch_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
@@ -365,7 +365,7 @@ output_stmt_switch_for_java(Info, Stream, Indent, FuncInfo, Stmt,
 :- pred output_stmt_call_for_java(java_out_info::in, io.text_output_stream::in,
     indent::in, func_info_csj::in, mlds_stmt::in(ml_stmt_is_call),
     exit_methods::out, io::di, io::uo) is det.
-:- pragma inline(output_stmt_call_for_java/8).
+:- pragma inline(pred(output_stmt_call_for_java/8)).
 
 output_stmt_call_for_java(Info, Stream, Indent, _FuncInfo, Stmt,
         ExitMethods, !IO) :-
@@ -485,7 +485,7 @@ output_stmt_call_for_java(Info, Stream, Indent, _FuncInfo, Stmt,
     io.text_output_stream::in, indent::in, func_info_csj::in,
     mlds_stmt::in(ml_stmt_is_return), exit_methods::out,
     io::di, io::uo) is det.
-:- pragma inline(output_stmt_return_for_java/8).
+:- pragma inline(pred(output_stmt_return_for_java/8)).
 
 output_stmt_return_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
@@ -524,7 +524,7 @@ output_stmt_return_for_java(Info, Stream, Indent, FuncInfo, Stmt,
     io.text_output_stream::in, indent::in, func_info_csj::in,
     mlds_stmt::in(ml_stmt_is_do_commit), exit_methods::out,
     io::di, io::uo) is det.
-:- pragma inline(output_stmt_do_commit_for_java/8).
+:- pragma inline(pred(output_stmt_do_commit_for_java/8)).
 
 output_stmt_do_commit_for_java(Info, Stream, Indent, _FuncInfo, Stmt,
         ExitMethods, !IO) :-
@@ -542,7 +542,7 @@ output_stmt_do_commit_for_java(Info, Stream, Indent, _FuncInfo, Stmt,
     io.text_output_stream::in, indent::in, func_info_csj::in,
     mlds_stmt::in(ml_stmt_is_try_commit), exit_methods::out,
     io::di, io::uo) is det.
-:- pragma inline(output_stmt_try_commit_for_java/8).
+:- pragma inline(pred(output_stmt_try_commit_for_java/8)).
 
 output_stmt_try_commit_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-

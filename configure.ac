@@ -420,6 +420,7 @@ then
         :- pragma foreign_export_enum("Java", bear/0).
 
         :- pred check_int64(int64::out) is det.
+        :- pragma no_inline(pred(check_int64/1)).
 
         check_int64(561i64).
        

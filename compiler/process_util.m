@@ -311,7 +311,7 @@ raise_signal(_, !IO).
     raise((int)Signal);
 ").
 
-:- pragma no_determinism_warning(send_signal/4).
+:- pragma no_determinism_warning(pred(send_signal/4)).
 
 :- pragma foreign_proc("C",
     send_signal(Pid::in, Signal::in, _IO0::di, _IO::uo),
@@ -325,7 +325,7 @@ raise_signal(_, !IO).
 send_signal(_, _, _, _) :-
     sorry($file, $pred).
 
-:- pragma no_determinism_warning(sigint/0).
+:- pragma no_determinism_warning(func(sigint/0)).
 
 :- pragma foreign_proc("C",
     sigint = (Sigint::out),
@@ -400,7 +400,7 @@ start_in_forked_process(P, MaybePid, !IO) :-
 
 :- pred start_in_forked_process_2(io_pred::in(io_pred), pid::out,
     io::di, io::uo) is det.
-:- pragma no_determinism_warning(start_in_forked_process_2/4).
+:- pragma no_determinism_warning(pred(start_in_forked_process_2/4)).
 
 :- pragma foreign_proc("C",
     start_in_forked_process_2(Pred::in(io_pred), Pid::out,
@@ -455,7 +455,7 @@ call_child_process_io_pred(P, Status, !IO) :-
     %
 :- pred do_wait(pid::in, string::out, pid::out, int::out, io::di, io::uo)
     is det.
-:- pragma no_determinism_warning(do_wait/6).
+:- pragma no_determinism_warning(pred(do_wait/6)).
 
 :- pragma foreign_proc("C",
     do_wait(Pid::in, Error::out, MaybeWaitedPid::out, Status::out,

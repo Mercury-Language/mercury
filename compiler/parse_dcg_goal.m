@@ -270,7 +270,7 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
-:- pragma inline(parse_dcg_goal_impure_semipure/11).
+:- pragma inline(pred(parse_dcg_goal_impure_semipure/11)).
 
 parse_dcg_goal_impure_semipure(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
@@ -299,7 +299,7 @@ parse_dcg_goal_impure_semipure(Functor, ArgTerms, Context, ContextPieces,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
-:- pragma inline(parse_dcg_goal_promise_purity/11).
+:- pragma inline(pred(parse_dcg_goal_promise_purity/11)).
 
 parse_dcg_goal_promise_purity(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
@@ -330,7 +330,7 @@ parse_dcg_goal_promise_purity(Functor, ArgTerms, Context, ContextPieces,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
-:- pragma inline(parse_dcg_goal_not/11).
+:- pragma inline(pred(parse_dcg_goal_not/11)).
 
 parse_dcg_goal_not(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
@@ -361,7 +361,7 @@ parse_dcg_goal_not(Functor, ArgTerms, Context, ContextPieces,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
-:- pragma inline(parse_dcg_goal_some_all/11).
+:- pragma inline(pred(parse_dcg_goal_some_all/11)).
 
 parse_dcg_goal_some_all(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
@@ -438,7 +438,7 @@ parse_dcg_goal_some_all(Functor, ArgTerms, Context, ContextPieces,
     in, out, in, out, in, out) is det.
 :- mode parse_dcg_goal_conj(in(ampersand), in, in, in, out,
     in, out, in, out, in, out) is det.
-:- pragma inline(parse_dcg_goal_conj/11).
+:- pragma inline(pred(parse_dcg_goal_conj/11)).
 
 parse_dcg_goal_conj(Functor, ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
@@ -477,7 +477,7 @@ parse_dcg_goal_conj(Functor, ArgTerms, Context, ContextPieces,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
-:- pragma inline(parse_dcg_goal_semicolon/10).
+:- pragma inline(pred(parse_dcg_goal_semicolon/10)).
 
 parse_dcg_goal_semicolon(ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
@@ -552,7 +552,7 @@ parse_dcg_goal_semicolon(ArgTerms, Context, ContextPieces,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
-:- pragma inline(parse_dcg_goal_else/10).
+:- pragma inline(pred(parse_dcg_goal_else/10)).
 
 parse_dcg_goal_else(ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
@@ -582,7 +582,7 @@ parse_dcg_goal_else(ArgTerms, Context, ContextPieces,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
-:- pragma inline(parse_dcg_goal_if/10).
+:- pragma inline(pred(parse_dcg_goal_if/10)).
 
 parse_dcg_goal_if(ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
@@ -632,7 +632,7 @@ parse_dcg_goal_if(ArgTerms, Context, ContextPieces,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
-:- pragma inline(parse_dcg_goal_braces/10).
+:- pragma inline(pred(parse_dcg_goal_braces/10)).
 
 parse_dcg_goal_braces(ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
@@ -660,7 +660,7 @@ parse_dcg_goal_braces(ArgTerms, Context, ContextPieces,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
-:- pragma inline(parse_dcg_goal_nil/10).
+:- pragma inline(pred(parse_dcg_goal_nil/10)).
 
 parse_dcg_goal_nil(ArgTerms, Context, _ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
@@ -693,7 +693,7 @@ parse_dcg_goal_nil(ArgTerms, Context, _ContextPieces,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
-:- pragma inline(parse_dcg_goal_cons/10).
+:- pragma inline(pred(parse_dcg_goal_cons/10)).
 
 parse_dcg_goal_cons(ArgTerms, Context, _ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
@@ -737,7 +737,7 @@ parse_dcg_goal_cons(ArgTerms, Context, _ContextPieces,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
-:- pragma inline(parse_dcg_goal_equal/10).
+:- pragma inline(pred(parse_dcg_goal_equal/10)).
 
 parse_dcg_goal_equal(ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
@@ -759,7 +759,7 @@ parse_dcg_goal_equal(ArgTerms, Context, ContextPieces,
     maybe2(goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
-:- pragma inline(parse_dcg_goal_colon_equal/10).
+:- pragma inline(pred(parse_dcg_goal_colon_equal/10)).
 
 parse_dcg_goal_colon_equal(ArgTerms, Context, _ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-

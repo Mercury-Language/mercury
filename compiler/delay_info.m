@@ -175,7 +175,7 @@
     % Sanity-check the delay_info structure.
     %
 :- pred delay_info_check_invariant(delay_info::in) is det.
-:- pragma inline(delay_info_check_invariant/1).
+:- pragma inline(pred(delay_info_check_invariant/1)).
 
 delay_info_check_invariant(DelayInfo) :-
     trace [compiletime(flag("check_delay_info_invariant"))] (

@@ -370,14 +370,14 @@
 
 :- import_module term.      % for var/1.
 
-:- pragma type_spec(bag.insert/3, T = var(_)).
-:- pragma type_spec(bag.insert_list/3, T = var(_)).
-:- pragma type_spec(bag.insert_set/3, T = var(_)).
+:- pragma type_spec(pred(bag.insert/3), T = var(_)).
+:- pragma type_spec(pred(bag.insert_list/3), T = var(_)).
+:- pragma type_spec(pred(bag.insert_set/3), T = var(_)).
 
-:- pragma type_spec(bag.remove/3, T = var(_)).
-:- pragma type_spec(bag.remove_list/3, T = var(_)).
-:- pragma type_spec(bag.det_remove_list/3, T = var(_)).
-:- pragma type_spec(bag.det_remove_set/3, T = var(_)).
+:- pragma type_spec(pred(bag.remove/3), T = var(_)).
+:- pragma type_spec(pred(bag.remove_list/3), T = var(_)).
+:- pragma type_spec(pred(bag.det_remove_list/3), T = var(_)).
+:- pragma type_spec(pred(bag.det_remove_set/3), T = var(_)).
 
 %---------------------------------------------------------------------------%
 

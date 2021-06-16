@@ -388,7 +388,7 @@ spawn_native(Goal, Res, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma no_inline(yield/2).
+:- pragma no_inline(pred(yield/2)).
 :- pragma foreign_proc("C",
     yield(_IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,

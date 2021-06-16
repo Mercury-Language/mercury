@@ -200,7 +200,7 @@
     % NOTE: This function is deprecated and will be removed in a future
     % release. Use a `promise_equivalent_solutions' goal instead.
     %
-:- pragma obsolete(promise_only_solution/1).
+:- pragma obsolete(func(promise_only_solution/1)).
 :- func promise_only_solution(pred(T)) = T.
 :- mode promise_only_solution(pred(out) is cc_multi) = out is det.
 :- mode promise_only_solution(pred(uo) is cc_multi) = uo is det.
@@ -224,7 +224,7 @@
     % NOTE: This predicate is deprecated and will be removed in a future
     % release. Use a `promise_equivalent_solutions' goal instead.
     %
-:- pragma obsolete(promise_only_solution_io/4).
+:- pragma obsolete(pred(promise_only_solution_io/4)).
 :- pred promise_only_solution_io(
     pred(T, IO, IO)::in(pred(out, di, uo) is cc_multi), T::out,
     IO::di, IO::uo) is det.
@@ -439,12 +439,12 @@
     % that there is only one solution. However, they can only be used in
     % impure code.
     %
-:- pragma obsolete(get_one_solution/1).
+:- pragma obsolete(func(get_one_solution/1)).
 :- impure func get_one_solution(pred(T)) = T.
 :-        mode get_one_solution(pred(out) is cc_multi) = out is det.
 :-        mode get_one_solution(pred(out) is cc_nondet) = out is semidet.
 
-:- pragma obsolete(get_one_solution_io/4).
+:- pragma obsolete(pred(get_one_solution_io/4)).
 :- impure pred get_one_solution_io(pred(T, IO, IO), T, IO, IO).
 :-        mode get_one_solution_io(pred(out, di, uo) is cc_multi,
         out, di, uo) is det.
@@ -473,7 +473,7 @@ false :-
 
     % XXX The calls to unsafe_promise_unique below work around
     % mode checker limitations.
-:- pragma promise_pure(promise_only_solution/1).
+:- pragma promise_pure(func(promise_only_solution/1)).
 promise_only_solution(CCPred::(pred(out) is cc_multi)) = (OutVal::out) :-
     impure OutVal = get_one_solution(CCPred).
 promise_only_solution(CCPred::(pred(uo) is cc_multi)) = (OutVal::uo) :-
@@ -485,7 +485,7 @@ promise_only_solution(CCPred::(pred(uo) is cc_nondet)) = (OutVal::uo) :-
     impure OutVal0 = get_one_solution(CCPred),
     OutVal = unsafe_promise_unique(OutVal0).
 
-:- pragma promise_pure(promise_only_solution_io/4).
+:- pragma promise_pure(pred(promise_only_solution_io/4)).
 promise_only_solution_io(Pred, X, !IO) :-
     impure get_one_solution_io(Pred, X, !IO).
 
@@ -639,7 +639,7 @@ compare_rep_tuple_pos(Result, TermA, TermB, Index, Arity) :-
     ).
 
 :- pred tuple_arity(T::in, int::out) is det.
-:- pragma no_determinism_warning(tuple_arity/2).
+:- pragma no_determinism_warning(pred(tuple_arity/2)).
 
 :- pragma foreign_proc("C",
     tuple_arity(_Term::in, Arity::out),
@@ -652,7 +652,7 @@ tuple_arity(_, _) :-
     private_builtin.sorry("tuple_arity/2").
 
 :- some [ArgT] pred tuple_arg(T::in, int::in, ArgT::out) is det.
-:- pragma no_determinism_warning(tuple_arg/3).
+:- pragma no_determinism_warning(pred(tuple_arg/3)).
 
 :- pragma foreign_proc("C",
     tuple_arg(Term::in, Index::in, Arg::out),
@@ -1211,7 +1211,7 @@ semidet_false :-
 % NOTE: cc_multi_equal/2 is handled specially in browser/declarative_tree.m.
 % Any changes here may need to be reflected there.
 
-:- pragma promise_equivalent_clauses(cc_multi_equal/2).
+:- pragma promise_equivalent_clauses(pred(cc_multi_equal/2)).
 
 :- pragma foreign_proc("C",
     cc_multi_equal(X::in, Y::out),

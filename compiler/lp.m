@@ -891,7 +891,7 @@ between(Min, Max, I) :-
 
 :- pred show_tableau(io.text_output_stream::in, tableau::in,
     io::di, io::uo) is det.
-:- pragma consider_used(show_tableau/4).
+:- pragma consider_used(pred(show_tableau/4)).
 
 show_tableau(OutputStream, Tableau, !IO) :-
     Tableau = tableau(N, M, _, _, _, _, _),

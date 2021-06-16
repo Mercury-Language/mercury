@@ -868,7 +868,7 @@
     % unify/2 for arrays
     %
 :- pred array_equal(array(T)::in, array(T)::in) is semidet.
-:- pragma terminates(array_equal/2).
+:- pragma terminates(pred(array_equal/2)).
 
 array_equal(Array1, Array2) :-
     ( if
@@ -880,8 +880,8 @@ array_equal(Array1, Array2) :-
         fail
     ).
 
-:- pred equal_elements(int, int, array(T), array(T)).
-:- mode equal_elements(in, in, in, in) is semidet.
+:- pred equal_elements(int::in, int::in, array(T)::in, array(T)::in)
+    is semidet.
 
 equal_elements(N, Size, Array1, Array2) :-
     ( if N = Size then
@@ -900,7 +900,7 @@ array_compare(A1, A2) = C :-
     %
 :- pred array_compare(comparison_result::uo, array(T)::in, array(T)::in)
     is det.
-:- pragma terminates(array_compare/3).
+:- pragma terminates(pred(array_compare/3)).
 
 array_compare(Result, Array1, Array2) :-
     array.size(Array1, Size1),
@@ -941,7 +941,7 @@ compare_elements(N, Size, Array1, Array2, Result) :-
 %---------------------------------------------------------------------------%
 
 :- pred bounds_checks is semidet.
-:- pragma inline(bounds_checks/0).
+:- pragma inline(pred(bounds_checks/0)).
 
 :- pragma foreign_proc("C",
     bounds_checks,
@@ -2381,12 +2381,12 @@ member(A, X) :-
     % Experiments indicate that type specialisation improves the speed of
     % array.sort/1 by about 30-40%.
     %
-:- pragma type_spec(array.sort/1, T = int).
-:- pragma type_spec(array.sort/1, T = string).
+:- pragma type_spec(func(array.sort/1), T = int).
+:- pragma type_spec(func(array.sort/1), T = string).
 
 sort(A) = samsort_subarray(A, array.min(A), array.max(A)).
 
-:- pragma no_inline(array.sort_fix_2014/0).
+:- pragma no_inline(pred(array.sort_fix_2014/0)).
 
 sort_fix_2014.
 
@@ -3071,8 +3071,8 @@ do_all_false(Pred, I, UB, Array) :-
 :- func samsort_subarray(array(T)::array_di, int::in, int::in) =
     (array(T)::array_uo) is det.
 
-:- pragma type_spec(samsort_subarray/3, T = int).
-:- pragma type_spec(samsort_subarray/3, T = string).
+:- pragma type_spec(func(samsort_subarray/3), T = int).
+:- pragma type_spec(func(samsort_subarray/3), T = string).
 
 samsort_subarray(A0, Lo, Hi) = A :-
     samsort_up(0, array.copy(A0), A, A0, _, Lo, Hi, Lo).
@@ -3089,8 +3089,8 @@ samsort_subarray(A0, Lo, Hi) = A :-
 :- pred samsort_up(int::in, array(T)::array_di, array(T)::array_uo,
     array(T)::array_di, array(T)::array_uo, int::in, int::in, int::in) is det.
 
-:- pragma type_spec(samsort_up/8, T = int).
-:- pragma type_spec(samsort_up/8, T = string).
+:- pragma type_spec(pred(samsort_up/8), T = int).
+:- pragma type_spec(pred(samsort_up/8), T = string).
 
 samsort_up(N, A0, A, B0, B, Lo, Hi, I) :-
     trace [compile_time(flag("array_sort"))] (
@@ -3147,8 +3147,8 @@ samsort_up(N, A0, A, B0, B, Lo, Hi, I) :-
 :- pred samsort_down(int::in, array(T)::array_di, array(T)::array_uo,
     array(T)::array_di, array(T)::array_uo, int::in, int::in, int::out) is det.
 
-:- pragma type_spec(samsort_down/8, T = int).
-:- pragma type_spec(samsort_down/8, T = string).
+:- pragma type_spec(pred(samsort_down/8), T = int).
+:- pragma type_spec(pred(samsort_down/8), T = string).
 
 samsort_down(N, A0, A, B0, B, Lo, Hi, I) :-
     trace [compile_time(flag("array_sort"))] (
@@ -3205,8 +3205,8 @@ verify_identical(A, B, Lo, Hi) :-
 :- pred copy_run_ascending(array(T)::array_ui,
     array(T)::array_di, array(T)::array_uo, int::in, int::in, int::out) is det.
 
-:- pragma type_spec(copy_run_ascending/6, T = int).
-:- pragma type_spec(copy_run_ascending/6, T = string).
+:- pragma type_spec(pred(copy_run_ascending/6), T = int).
+:- pragma type_spec(pred(copy_run_ascending/6), T = string).
 
 copy_run_ascending(A, !B, Lo, Hi, I) :-
     ( if
@@ -3225,8 +3225,8 @@ copy_run_ascending(A, !B, Lo, Hi, I) :-
 :- func search_until(comparison_result::in, array(T)::array_ui,
     int::in, int::in) = (int::out) is det.
 
-:- pragma type_spec(search_until/4, T = int).
-:- pragma type_spec(search_until/4, T = string).
+:- pragma type_spec(func(search_until/4), T = int).
+:- pragma type_spec(func(search_until/4), T = string).
 
 search_until(R, A, Lo, Hi) =
     ( if
@@ -3247,8 +3247,8 @@ search_until(R, A, Lo, Hi) =
 :- pred copy_subarray(array(T)::array_ui, int::in, int::in, int::in,
     array(T)::array_di, array(T)::array_uo) is det.
 
-:- pragma type_spec(copy_subarray/6, T = int).
-:- pragma type_spec(copy_subarray/6, T = string).
+:- pragma type_spec(pred(copy_subarray/6), T = int).
+:- pragma type_spec(pred(copy_subarray/6), T = string).
 
 copy_subarray(A, Lo, Hi, I, !B) :-
     ( if Lo =< Hi then
@@ -3267,8 +3267,8 @@ copy_subarray(A, Lo, Hi, I, !B) :-
 :- pred copy_subarray_reverse(array(T)::array_ui, int::in, int::in, int::in,
     array(T)::array_di, array(T)::array_uo) is det.
 
-:- pragma type_spec(copy_subarray_reverse/6, T = int).
-:- pragma type_spec(copy_subarray_reverse/6, T = string).
+:- pragma type_spec(pred(copy_subarray_reverse/6), T = int).
+:- pragma type_spec(pred(copy_subarray_reverse/6), T = string).
 
 copy_subarray_reverse(A, Lo, Hi, I, !B) :-
     ( if Lo =< Hi then
@@ -3289,8 +3289,8 @@ copy_subarray_reverse(A, Lo, Hi, I, !B) :-
     int::in, int::in, int::in, int::in, int::in,
     array(T)::array_di, array(T)::array_uo) is det.
 
-:- pragma type_spec(merge_subarrays/8, T = int).
-:- pragma type_spec(merge_subarrays/8, T = string).
+:- pragma type_spec(pred(merge_subarrays/8), T = int).
+:- pragma type_spec(pred(merge_subarrays/8), T = string).
 
 merge_subarrays(A, Lo1, Hi1, Lo2, Hi2, I, !B) :-
     ( if Lo1 > Hi1 then

@@ -902,7 +902,7 @@ process_module_int3(Globals, ReadWhy3, ModuleName, ParseTreeInt3,
     module_name::in, bool::in, io::di, io::uo) is det.
 % Inlining calls to this predicate effectively optimizes it away
 % if the trace condition is not met, as it usually won't be.
-:- pragma inline(maybe_log_augment_decision/7).
+:- pragma inline(pred(maybe_log_augment_decision/7)).
 
 maybe_log_augment_decision(Why, IntFileKind, ReadWhy, ModuleName, Read, !IO) :-
     trace [compile_time(flag("log_augment_decisions")),

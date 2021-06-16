@@ -371,14 +371,14 @@ benchmark_func_loop(Func, In, Out, Repeats) :-
         Out = Out0
     ).
 
-:- pragma promise_pure(benchmark_det_io/7).
-
 benchmark_det_io(Pred, InA, OutA, InB, OutB, Repeats, Time) :-
-    impure get_user_cpu_milliseconds(StartTime),
-    impure benchmark_det_loop_io(Pred, InA, OutA, InB, OutB, Repeats),
-    impure get_user_cpu_milliseconds(EndTime),
-    Time = EndTime - StartTime.
-    % XXX cc_multi_equal(Time0, Time).
+    promise_pure (
+        impure get_user_cpu_milliseconds(StartTime),
+        impure benchmark_det_loop_io(Pred, InA, OutA, InB, OutB, Repeats),
+        impure get_user_cpu_milliseconds(EndTime),
+        Time = EndTime - StartTime
+        % XXX cc_multi_equal(Time0, Time).
+    ).
 
 :- impure pred benchmark_det_loop_io(pred(T1, T2, T3, T3), T1, T2,
     T3, T3, int).
@@ -397,14 +397,14 @@ benchmark_det_loop_io(Pred, InA, OutA, InB, OutB, Repeats) :-
         OutB = OutB0
     ).
 
-:- pragma promise_pure(benchmark_nondet/5).
-
 benchmark_nondet(Pred, In, Count, Repeats, Time) :-
-    impure get_user_cpu_milliseconds(StartTime),
-    impure benchmark_nondet_loop(Pred, In, Count, Repeats),
-    impure get_user_cpu_milliseconds(EndTime),
-    Time0 = EndTime - StartTime,
-    cc_multi_equal(Time0, Time).
+    promise_pure (
+        impure get_user_cpu_milliseconds(StartTime),
+        impure benchmark_nondet_loop(Pred, In, Count, Repeats),
+        impure get_user_cpu_milliseconds(EndTime),
+        Time0 = EndTime - StartTime,
+        cc_multi_equal(Time0, Time)
+    ).
 
 :- impure pred benchmark_nondet_loop(pred(T1, T2), T1, int, int).
 :- mode benchmark_nondet_loop(pred(in, out) is nondet, in, out, in) is det.
@@ -515,15 +515,15 @@ repeat(N) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pragma promise_pure(turn_off_profiling/2).
-
 turn_off_profiling(!IO) :-
-    impure turn_off_profiling.
-
-:- pragma promise_pure(turn_on_profiling/2).
+    promise_pure (
+        impure turn_off_profiling
+    ).
 
 turn_on_profiling(!IO) :-
-    impure turn_on_profiling.
+    promise_pure (
+        impure turn_on_profiling
+    ).
 
 turn_off_profiling :-
     impure turn_off_call_profiling,
@@ -537,35 +537,35 @@ turn_on_profiling :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_pure(turn_off_call_profiling/2).
-
 turn_off_call_profiling(!IO) :-
-    impure turn_off_call_profiling.
-
-:- pragma promise_pure(turn_on_call_profiling/2).
+    promise_pure (
+        impure turn_off_call_profiling
+    ).
 
 turn_on_call_profiling(!IO) :-
-    impure turn_on_call_profiling.
-
-:- pragma promise_pure(turn_off_time_profiling/2).
+    promise_pure (
+        impure turn_on_call_profiling
+    ).
 
 turn_off_time_profiling(!IO) :-
-    impure turn_off_time_profiling.
-
-:- pragma promise_pure(turn_on_time_profiling/2).
+    promise_pure (
+        impure turn_off_time_profiling
+    ).
 
 turn_on_time_profiling(!IO) :-
-    impure turn_on_time_profiling.
-
-:- pragma promise_pure(turn_off_heap_profiling/2).
+    promise_pure (
+        impure turn_on_time_profiling
+    ).
 
 turn_off_heap_profiling(!IO) :-
-    impure turn_off_heap_profiling.
-
-:- pragma promise_pure(turn_on_heap_profiling/2).
+    promise_pure (
+        impure turn_off_heap_profiling
+    ).
 
 turn_on_heap_profiling(!IO) :-
-    impure turn_on_heap_profiling.
+    promise_pure (
+        impure turn_on_heap_profiling
+    ).
 
 %---------------------------------------------------------------------------%
 

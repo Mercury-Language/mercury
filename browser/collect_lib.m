@@ -154,7 +154,7 @@ link_collect(ObjectFile, Filter, Initialize, PostProcess, SendResult,
     ).
 
 :- pred set_to_null_pointer(c_pointer::out) is det.
-:- pragma no_determinism_warning(set_to_null_pointer/1).
+:- pragma no_determinism_warning(pred(set_to_null_pointer/1)).
 
 :- pragma foreign_proc("C",
     set_to_null_pointer(Pointer::out),

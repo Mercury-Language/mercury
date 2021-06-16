@@ -229,13 +229,13 @@
 :- type expansions == set_tree234(inst_match_inputs).
 
 :- func expansion_init = expansions.
-:- pragma inline(expansion_init/0).
+:- pragma inline(func(expansion_init/0)).
 
 expansion_init = set_tree234.init.
 
 :- pred expansion_insert_new(inst_match_inputs::in,
     expansions::in, expansions::out) is semidet.
-:- pragma inline(expansion_insert_new/3).
+:- pragma inline(pred(expansion_insert_new/3)).
 
 expansion_insert_new(E, S0, S) :-
     set_tree234.insert_new(E, S0, S).

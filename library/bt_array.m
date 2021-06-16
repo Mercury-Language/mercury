@@ -236,7 +236,7 @@ in_bounds(bt_array(Low, High, _), Index) :-
 %---------------------------------------------------------------------------%
 
 :- pred actual_position(int::in, int::in, int::in, int::out) is det.
-:- pragma inline(actual_position/4).
+:- pragma inline(pred(actual_position/4)).
 
 actual_position(Low, High, Index, Pos) :-
     Pos = High - Low - Index.
@@ -527,11 +527,11 @@ bsearch_loop(A, Lo, Hi, SearchX, Compare, I) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(ra_list_nil/1).
+:- pragma inline(pred(ra_list_nil/1)).
 
 ra_list_nil(nil).
 
-:- pragma inline(ra_list_cons/3).
+:- pragma inline(pred(ra_list_cons/3)).
 
 ra_list_cons(X, List0, List) :-
     ( if
@@ -544,19 +544,19 @@ ra_list_cons(X, List0, List) :-
         List = cons(1, leaf(X), List0)
     ).
 
-:- pragma inline(ra_list_head/2).
+:- pragma inline(pred(ra_list_head/2)).
 
 ra_list_head(cons(_, leaf(X), _), X).
 ra_list_head(cons(_, node(X, _, _), _), X).
 
-:- pragma inline(ra_list_tail/2).
+:- pragma inline(pred(ra_list_tail/2)).
 
 ra_list_tail(cons(_, leaf(_), Tail), Tail).
 ra_list_tail(cons(Size, node(_, T1, T2), Rest), Tail) :-
     Size2 = Size // 2,
     Tail = cons(Size2, T1, cons(Size2, T2, Rest)).
 
-:- pragma inline(ra_list_head_tail/3).
+:- pragma inline(pred(ra_list_head_tail/3)).
 
 ra_list_head_tail(cons(_, leaf(X), Tail), X, Tail).
 ra_list_head_tail(cons(Size, node(X, T1, T2), Rest), X, Tail) :-
@@ -565,7 +565,7 @@ ra_list_head_tail(cons(Size, node(X, T1, T2), Rest), X, Tail) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(ra_list_lookup/3).
+:- pragma inline(pred(ra_list_lookup/3)).
 
 ra_list_lookup(I, List, X) :-
     I >= 0,
@@ -601,7 +601,7 @@ ra_list_bintree_lookup(Size, node(X0, T1, T2), I, X) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(ra_list_update/4).
+:- pragma inline(pred(ra_list_update/4)).
 
 ra_list_update(List0, I, X, List) :-
     I >= 0,

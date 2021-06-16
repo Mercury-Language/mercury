@@ -287,7 +287,7 @@ translate_builtin(FullyQualifiedModule, PredName, ProcId, Args, Code) :-
 
 :- pred builtin_translation(string::in, string::in, int::in, list(T)::in,
     simple_code(T)::out(simple_code)) is semidet.
-:- pragma inline(builtin_translation/5).
+:- pragma inline(pred(builtin_translation/5)).
 
 builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
     (

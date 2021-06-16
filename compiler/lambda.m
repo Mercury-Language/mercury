@@ -903,7 +903,7 @@ find_used_vars_in_cases([Case | Cases], !VarUses) :-
 
 :- pred mark_var_as_used(prog_var::in,
     array(bool)::array_di, array(bool)::array_uo) is det.
-:- pragma inline(mark_var_as_used/3).
+:- pragma inline(pred(mark_var_as_used/3)).
 
 mark_var_as_used(Var, !VarUses) :-
     array.set(var_to_int(Var), yes, !VarUses).

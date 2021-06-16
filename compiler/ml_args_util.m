@@ -420,7 +420,7 @@ compute_when_to_copy_out(CopyOut, CodeModel, PredOrFunc) = CopyOutWhen :-
     pred_info::out, pred_or_func::out, code_model::out,
     list(var_mvar_type_mode)::out) is det.
 % Some of our callers don't need all our outputs.
-:- pragma inline(get_raw_data_for_proc_params/6).
+:- pragma inline(pred(get_raw_data_for_proc_params/6)).
 
 get_raw_data_for_proc_params(ModuleInfo, PredProcId, PredInfo,
         PredOrFunc, CodeModel, ArgTuples) :-
@@ -1067,7 +1067,7 @@ ml_gen_args_loop(CopyOutWhen, Context, WhatParams, ArgNum,
     in, in, out, in, out, in, out, in, out, in, out) is det.
 :- mode ml_gen_arg(in, in, in, in, in, in, in(fcw),
     in, in, out, in, out, in, out, in, out, in, out) is det.
-:- pragma inline(ml_gen_arg/18).
+:- pragma inline(pred(ml_gen_arg/18)).
 
 ml_gen_arg(CopyOutWhen, Context, WhatParams, ArgNum,
         CalleeType, CalleeMode, CallerArg,

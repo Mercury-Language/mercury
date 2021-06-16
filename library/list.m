@@ -1996,18 +1996,18 @@
 :- pragma type_spec(list.merge(in, in, out), T = var(_)).
 
 :- pragma type_spec(list.merge_and_remove_dups(in, in, out), T = var(_)).
-:- pragma type_spec(list.merge_and_remove_dups/2, T = var(_)).
+:- pragma type_spec(list.merge_and_remove_dups(in, in) = out, T = var(_)).
 
-:- pragma type_spec(list.remove_adjacent_dups/2, T = var(_)).
-:- pragma type_spec(list.remove_adjacent_dups/1, T = var(_)).
+:- pragma type_spec(pred(list.remove_adjacent_dups/2), T = var(_)).
+:- pragma type_spec(func(list.remove_adjacent_dups/1), T = var(_)).
 
 :- pragma type_spec(list.member(in, in), T = var(_)).
 
-:- pragma type_spec(list.sort_and_remove_dups/2, T = var(_)).
-:- pragma type_spec(list.sort_and_remove_dups/1, T = var(_)).
+:- pragma type_spec(pred(list.sort_and_remove_dups/2), T = var(_)).
+:- pragma type_spec(func(list.sort_and_remove_dups/1), T = var(_)).
 
 :- pragma type_spec(list.sort(in, out), T = var(_)).
-:- pragma type_spec(list.sort/1, T = var(_)).
+:- pragma type_spec(list.sort(in) = out, T = var(_)).
 
 %---------------------------------------------------------------------------%
 
@@ -2196,7 +2196,7 @@ det_index1_of_first_occurrence(Xs, SearchX) = N :-
 %---------------------------------------------------------------------------%
 
     % reverse(A, B) <=> reverse(B, A).
-:- pragma promise_equivalent_clauses(list.reverse/2).
+:- pragma promise_equivalent_clauses(pred(list.reverse/2)).
 
 reverse(L0::in, L::out) :-
     list.reverse_prepend(L0, [], L).
@@ -2388,7 +2388,7 @@ remove_adjacent_dups([X | Xs], FilteredXs) :-
     remove_adjacent_dups_loop(X, Xs, FilteredXs).
 
 :- pred remove_adjacent_dups_loop(T::in, list(T)::in, list(T)::out) is det.
-:- pragma type_spec(list.remove_adjacent_dups_loop/3, T = var(_)).
+:- pragma type_spec(pred(list.remove_adjacent_dups_loop/3), T = var(_)).
 
 remove_adjacent_dups_loop(X, [], [X]).
 remove_adjacent_dups_loop(X0, [X1 | Xs], FilteredXs) :-

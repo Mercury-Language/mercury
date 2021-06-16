@@ -118,7 +118,7 @@
     --->    handle(c_pointer).
 
 :- pred is_null(c_pointer::in) is semidet.
-:- pragma no_determinism_warning(is_null/1).
+:- pragma no_determinism_warning(pred(is_null/1)).
 
 :- pragma foreign_proc("C",
     is_null(Pointer::in),
@@ -141,7 +141,7 @@ open(FileName, Mode, Scope, Result, !IO) :-
 
 :- pred dlopen(string::in, link_mode::in, scope::in, c_pointer::out,
     io::di, io::uo) is det.
-:- pragma no_determinism_warning(dlopen/6).
+:- pragma no_determinism_warning(pred(dlopen/6)).
 
 :- pragma foreign_proc("C",
     dlopen(FileName::in, Mode::in, Scope::in, Result::out, _IO0::di, _IO::uo),
@@ -174,7 +174,7 @@ dlopen(_, _, _, _, !IO) :-
     % Convert the given procedure address to a closure.
     %
 :- func make_closure(c_pointer) = c_pointer.
-:- pragma no_determinism_warning(make_closure/1).
+:- pragma no_determinism_warning(func(make_closure/1)).
 
 :- pragma foreign_proc("C",
     make_closure(ProcAddr::in) = (Closure::out),
@@ -311,7 +311,7 @@ mercury_sym(Handle, MercuryProc0, Result, !IO) :-
 
 :- pred dlsym(c_pointer::in, string::in, c_pointer::out,
     io::di, io::uo) is det.
-:- pragma no_determinism_warning(dlsym/5).
+:- pragma no_determinism_warning(pred(dlsym/5)).
 
 :- pragma foreign_proc("C",
     dlsym(Handle::in, Name::in, Pointer::out, _IO0::di, _IO::uo),
@@ -328,7 +328,7 @@ dlsym(_, _, _, !IO) :-
     private_builtin.sorry("dlsym").
 
 :- pred dlerror(string::out, io::di, io::uo) is det.
-:- pragma no_determinism_warning(dlerror/3).
+:- pragma no_determinism_warning(pred(dlerror/3)).
 
 :- pragma foreign_proc("C",
     dlerror(ErrorMsg::out, _IO0::di, _IO::uo),
@@ -356,7 +356,7 @@ close(handle(Handle), Result, !IO) :-
     Result = (if ErrorMsg = "" then dl_ok else dl_error(ErrorMsg)).
 
 :- pred dlclose(c_pointer::in, io::di, io::uo) is det.
-:- pragma no_determinism_warning(dlclose/3).
+:- pragma no_determinism_warning(pred(dlclose/3)).
 
 :- pragma foreign_proc("C",
     dlclose(Handle::in, _IO0::di, _IO::uo),
@@ -376,7 +376,7 @@ dlclose(_, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred high_level_code is semidet.
-:- pragma no_determinism_warning(high_level_code/0).
+:- pragma no_determinism_warning(pred(high_level_code/0)).
 
 :- pragma foreign_proc("C",
     high_level_code,

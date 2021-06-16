@@ -121,7 +121,7 @@
 % sparse_bitset, as discussed on m-rev on 2017 july 3.
 
 :- func top_zone = zone.
-:- pragma inline(top_zone/0).
+:- pragma inline(func(top_zone/0)).
 
 top_zone = 0.
 

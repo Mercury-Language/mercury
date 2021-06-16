@@ -1099,17 +1099,17 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pragma type_spec(map.search/3, K = var(_)).
-:- pragma type_spec(map.search/3, K = int).
+:- pragma type_spec(pred(map.search/3), K = var(_)).
+:- pragma type_spec(pred(map.search/3), K = int).
 
-:- pragma type_spec(map.search/2, K = var(_)).
-:- pragma type_spec(map.search/2, K = int).
+:- pragma type_spec(func(map.search/2), K = var(_)).
+:- pragma type_spec(func(map.search/2), K = int).
 
-:- pragma type_spec(map.lookup/3, K = var(_)).
-:- pragma type_spec(map.lookup/3, K = int).
+:- pragma type_spec(pred(map.lookup/3), K = var(_)).
+:- pragma type_spec(pred(map.lookup/3), K = int).
 
-:- pragma type_spec(map.lookup/2, K = var(_)).
-:- pragma type_spec(map.lookup/2, K = int).
+:- pragma type_spec(func(map.lookup/2), K = var(_)).
+:- pragma type_spec(func(map.lookup/2), K = int).
 
 :- pragma type_spec(map.insert(in, in, in, out), K = var(_)).
 :- pragma type_spec(map.insert(in, in, in, out), K = int).
@@ -1123,32 +1123,32 @@
 :- pragma type_spec(map.update(in, in, in, out), K = var(_)).
 :- pragma type_spec(map.update(in, in, in, out), K = int).
 
-:- pragma type_spec(map.det_update/4, K = var(_)).
-:- pragma type_spec(map.det_update/4, K = int).
+:- pragma type_spec(pred(map.det_update/4), K = var(_)).
+:- pragma type_spec(pred(map.det_update/4), K = int).
 
-:- pragma type_spec(map.search_insert/5, K = var(_)).
-:- pragma type_spec(map.search_insert/5, K = int).
+:- pragma type_spec(pred(map.search_insert/5), K = var(_)).
+:- pragma type_spec(pred(map.search_insert/5), K = int).
 
-:- pragma type_spec(map.overlay/2, K = var(_)).
-:- pragma type_spec(map.overlay/3, K = var(_)).
+:- pragma type_spec(func(map.overlay/2), K = var(_)).
+:- pragma type_spec(pred(map.overlay/3), K = var(_)).
 
-:- pragma type_spec(map.select/2, K = var(_)).
-:- pragma type_spec(map.select/3, K = var(_)).
+:- pragma type_spec(func(map.select/2), K = var(_)).
+:- pragma type_spec(pred(map.select/3), K = var(_)).
 
-:- pragma type_spec(map.select_sorted_list/2, K = var(_)).
-:- pragma type_spec(map.select_sorted_list/3, K = var(_)).
+:- pragma type_spec(func(map.select_sorted_list/2), K = var(_)).
+:- pragma type_spec(pred(map.select_sorted_list/3), K = var(_)).
 
-:- pragma type_spec(map.elem/2, K = int).
-:- pragma type_spec(map.elem/2, K = var(_)).
+:- pragma type_spec(func(map.elem/2), K = int).
+:- pragma type_spec(func(map.elem/2), K = var(_)).
 
-:- pragma type_spec(map.det_elem/2, K = int).
-:- pragma type_spec(map.det_elem/2, K = var(_)).
+:- pragma type_spec(func(map.det_elem/2), K = int).
+:- pragma type_spec(func(map.det_elem/2), K = var(_)).
 
-:- pragma type_spec('elem :='/3, K = int).
-:- pragma type_spec('elem :='/3, K = var(_)).
+:- pragma type_spec(func('elem :='/3), K = int).
+:- pragma type_spec(func('elem :='/3), K = var(_)).
 
-:- pragma type_spec('det_elem :='/3, K = int).
-:- pragma type_spec('det_elem :='/3, K = var(_)).
+:- pragma type_spec(func('det_elem :='/3), K = int).
+:- pragma type_spec(func('det_elem :='/3), K = var(_)).
 
 :- implementation.
 
@@ -1548,7 +1548,7 @@ select_sorted_list(FullMap, Keys, SelectMap) :-
 
 :- pred select_loop(list(K)::in, map(K, V)::in,
     assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
-:- pragma type_spec(map.select_loop/4, K = var(_)).
+:- pragma type_spec(pred(map.select_loop/4), K = var(_)).
 
 select_loop([], _FullMap, !RevSelectAL).
 select_loop([K | Ks], FullMap, !RevSelectAL) :-
@@ -1642,7 +1642,7 @@ overlay(Map0, Map1, Map) :-
     map.overlay_2(AssocList, Map0, Map).
 
 :- pred overlay_2(assoc_list(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
-:- pragma type_spec(map.overlay_2/3, K = var(_)).
+:- pragma type_spec(pred(map.overlay_2/3), K = var(_)).
 
 overlay_2([], !Map).
 overlay_2([K - V | AssocList], !Map) :-
@@ -1658,7 +1658,7 @@ overlay_large_map(Map0, Map1, Map) :-
 
 :- pred overlay_large_map_2(assoc_list(K, V)::in,
     map(K, V)::in, map(K, V)::out) is det.
-:- pragma type_spec(map.overlay_large_map_2/3, K = var(_)).
+:- pragma type_spec(pred(map.overlay_large_map_2/3), K = var(_)).
 
 overlay_large_map_2([], Map, Map).
 overlay_large_map_2([K - V | AssocList], Map0, Map) :-

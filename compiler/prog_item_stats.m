@@ -194,7 +194,7 @@ gather_stats_in_aug_comp_unit(AugCompUnit, !:CompUnitStats) :-
 :- pred gather_stats_in_item_blocks((func(MS) = string)::in,
     list(item_block(MS))::in,
     comp_unit_stats::in, comp_unit_stats::out) is det.
-:- pragma consider_used(gather_stats_in_item_blocks/4).
+:- pragma consider_used(pred(gather_stats_in_item_blocks/4)).
 
 gather_stats_in_item_blocks(_, [], !CompUnitStats).
 gather_stats_in_item_blocks(SectionFunc, [ItemBlock | ItemBlocks],

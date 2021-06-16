@@ -525,7 +525,7 @@ output_quoted_string_cur_stream(Str, !IO) :-
 
 %---------------------%
 
-:- pragma inline(output_quoted_string_lang/5).
+:- pragma inline(pred(output_quoted_string_lang/5)).
 
 output_quoted_string_lang(Stream, Lang, Str, !IO) :-
     (
