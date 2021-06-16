@@ -228,6 +228,7 @@
     ;       warn_suspicious_foreign_code
     ;       warn_state_var_shadowing
     ;       warn_suspected_occurs_check_failure
+    ;       warn_potentially_ambiguous_pragma
     ;       inform_inferred
     ;       inform_inferred_types
     ;       inform_inferred_modes
@@ -1181,7 +1182,7 @@
 %---------------------------------------------------------------------------%
 
 
-:- pragma no_determinism_warning(option_defaults/2).
+:- pragma no_determinism_warning(pred(option_defaults/2)).
 % getopt and hence handle_options.m expect a nondet predicate,
 % so we declare option_defaults to be nondet, even though it is multi.
 
@@ -1303,6 +1304,7 @@ optdef(oc_warn, warn_suspicious_foreign_procs,          bool(no)).
 optdef(oc_warn, warn_suspicious_foreign_code,           bool(no)).
 optdef(oc_warn, warn_state_var_shadowing,               bool(yes)).
 optdef(oc_warn, warn_suspected_occurs_check_failure,    bool(yes)).
+optdef(oc_warn, warn_potentially_ambiguous_pragma,      bool(no)).
 optdef(oc_warn, inform_inferred,                        bool_special).
 optdef(oc_warn, inform_inferred_types,                  bool(yes)).
 optdef(oc_warn, inform_inferred_modes,                  bool(yes)).
@@ -2212,6 +2214,10 @@ long_option("warn-suspected-occurs-failure",
                                         warn_suspected_occurs_check_failure).
 long_option("warn-suspected-occurs-check-failure",
                                         warn_suspected_occurs_check_failure).
+long_option("warn-potentialy-ambiguous-pragma",
+                                        warn_potentially_ambiguous_pragma).
+long_option("warn-potentialy-ambiguous-pragmas",
+                                        warn_potentially_ambiguous_pragma).
 long_option("inform-inferred",          inform_inferred).
 long_option("inform-inferred-types",    inform_inferred_types).
 long_option("inform-inferred-modes",    inform_inferred_modes).
@@ -4048,6 +4054,7 @@ non_style_warning_options = [
     warn_table_with_inline,
     warn_non_term_special_preds,
     warn_suspected_occurs_check_failure,
+    warn_potentially_ambiguous_pragma,
     inform_inferred_types
 ].
 
@@ -4412,6 +4419,9 @@ options_help_warning(Stream, !IO) :-
         "\tDo not warn about code that looks like it unifies a variable",
         "\twith a term that contains that same variable. Such code cannot",
         "\tsucceed because it fails what is called the `occurs check'.",
+        "--warn-potentially-ambiguous-pragma",
+        "\tGenerate warnings for pragmas that do not specify whether they are",
+        "\tfor a predicate or a function.",
         "--no-inform-inferred",
         "\tDo not generate messages about inferred types or modes.",
         "--no-inform-inferred-types",

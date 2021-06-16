@@ -113,12 +113,14 @@ module_add_pragma_tabled(TabledInfo, Context, ItemMercuryStatus, PredStatus,
         )
     ;
         PFUMM = pfumm_unknown(UserArity),
+        TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
+        maybe_warn_about_pfumm_unknown(!.ModuleInfo, TabledMethodStr, PFUMM,
+            PredName, Context, !Specs),
         UserArity = user_arity(UserArityInt),
         predicate_table_lookup_sym_arity(PredicateTable0,
             is_fully_qualified, PredName, UserArityInt, PredIds0),
         (
             PredIds0 = [],
-            TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
             module_info_get_name(!.ModuleInfo, ModuleName),
             DescPieces = [pragma_decl(TabledMethodStr), words("declaration")],
             % XXX The pragma does not say whether the user intends to table

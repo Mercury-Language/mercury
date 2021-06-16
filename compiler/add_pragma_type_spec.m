@@ -83,6 +83,8 @@ add_pragma_type_spec(TSInfo, Context, !ModuleInfo, !QualInfo, !Specs) :-
         UserArity = user_arity(UserArityInt)
     ;
         PFUMM = pfumm_unknown(UserArity),
+        maybe_warn_about_pfumm_unknown(!.ModuleInfo, "type_spec",
+            PFUMM, SymName, Context, !Specs),
         UserArity = user_arity(UserArityInt),
         MaybePredOrFunc = no,
         MaybeModes = no,

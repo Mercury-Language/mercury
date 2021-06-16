@@ -6908,6 +6908,12 @@ Such code cannot succeed because
 it fails what is called the @samp{occurs check}.
 
 @sp 1
+@item --warn-potentially-ambiguous-pragma
+@findex --warn-potentially-ambiguous-pragma
+Generate warnings for pragmas that do not specify
+whether they are for a predicate or a function.
+
+@sp 1
 @item --no-inform-inferred
 @findex --no-inform-inferred
 Do not generate messages about inferred types or modes.

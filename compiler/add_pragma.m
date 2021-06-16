@@ -63,6 +63,7 @@
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.fact_table.
@@ -201,6 +202,8 @@ mark_pred_as_obsolete(ObsoletePredInfo, PragmaStatus, Context,
         !ModuleInfo, !Specs) :-
     ObsoletePredInfo =
         pragma_info_obsolete_pred(PredSpec, ObsoleteInFavourOf),
+    maybe_warn_about_pfu_unknown(!.ModuleInfo, "obsolete", PredSpec, Context,
+        !Specs),
     PredSpec = pred_pfu_name_arity(PFU, SymName, UserArity),
     get_matching_pred_ids(!.ModuleInfo, PFU, SymName, UserArity,
         PredIds, OtherUserArities),
@@ -961,6 +964,8 @@ mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
 
 add_pragma_fact_table(FTInfo, PredStatus, Context, !ModuleInfo, !Specs) :-
     FTInfo = pragma_info_fact_table(PredSpec, FileName),
+    maybe_warn_about_pfu_unknown(!.ModuleInfo, "fact_table", PredSpec,
+        Context, !Specs),
     PredSpec = pred_pfu_name_arity(PFU, PredSymName, UserArity),
     get_matching_pred_ids(!.ModuleInfo, PFU, PredSymName, UserArity,
         PredIds, OtherUserArities),
@@ -1574,6 +1579,8 @@ add_pred_marker(PragmaName, PredSymNameArity, Status, Context,
     else
         MustBeExported = no
     ),
+    maybe_warn_about_pfu_unknown(!.ModuleInfo, PragmaName, PredSymNameArity,
+        Context, !Specs),
     do_add_pred_marker(PragmaName, PredSymNameArity, Status, MustBeExported,
         Context, add_marker_pred_info(Marker), !ModuleInfo, PredIds, !Specs),
     module_info_get_preds(!.ModuleInfo, PredTable),
@@ -1910,6 +1917,88 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
             Specs = [Spec]
         ),
         MaybePredId = error1(Specs)
+    ).
+
+%---------------------%
+
+:- pred maybe_warn_about_pfu_unknown(module_info::in, string::in,
+    pred_pfu_name_arity::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_warn_about_pfu_unknown(ModuleInfo, PragmaName, PFUSNA, Context,
+        !Specs) :-
+    PFUSNA = pred_pfu_name_arity(PFU, SymName, user_arity(UserArityInt)),
+    (
+        ( PFU = pfu_predicate
+        ; PFU = pfu_function
+        )
+    ;
+        PFU = pfu_unknown,
+        module_info_get_globals(ModuleInfo, Globals),
+        module_info_get_name(ModuleInfo, ModuleName),
+        globals.lookup_bool_option(Globals,
+            warn_potentially_ambiguous_pragma, Warn),
+        globals.get_op_mode(Globals, OpMode),
+        ( if
+            Warn = yes,
+            OpMode = opm_top_args(opma_augment(opmau_generate_code(_))),
+            SymName = qualified(ModuleName, _)
+        then
+            SNA = sym_name_arity(SymName, UserArityInt),
+            Pieces = [words("Warning: the"), pragma_decl(PragmaName),
+                words("declaration for"), unqual_sym_name_arity(SNA),
+                words("does not say whether it refers"),
+                words("to a predicate or to a function."), nl,
+                words("(You can specify this information"),
+                words("by wrapping up"), unqual_sym_name_arity(SNA),
+                words("inside"), quote("pred(...)"), words("or"),
+                quote("func(...)"), suffix(".)"), nl],
+            Spec = simplest_spec($pred, severity_warning,
+                phase_parse_tree_to_hlds, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        else
+            true
+        )
+    ).
+
+:- pred maybe_warn_about_pfumm_unknown(module_info::in, string::in,
+    pred_func_or_unknown_maybe_modes::in, sym_name::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_warn_about_pfumm_unknown(ModuleInfo, PragmaName, PFUMM, SymName, Context,
+        !Specs) :-
+    (
+        ( PFUMM = pfumm_predicate(_)
+        ; PFUMM = pfumm_function(_)
+        )
+    ;
+        PFUMM = pfumm_unknown(user_arity(UserArityInt)),
+        module_info_get_globals(ModuleInfo, Globals),
+        module_info_get_name(ModuleInfo, ModuleName),
+        globals.lookup_bool_option(Globals,
+            warn_potentially_ambiguous_pragma, Warn),
+        globals.get_op_mode(Globals, OpMode),
+        ( if
+            Warn = yes,
+            OpMode = opm_top_args(opma_augment(opmau_generate_code(_))),
+            SymName = qualified(ModuleName, _)
+        then
+            SNA = sym_name_arity(SymName, UserArityInt),
+            Pieces = [words("Warning: the"), pragma_decl(PragmaName),
+                words("declaration for"), unqual_sym_name_arity(SNA),
+                words("does not say whether it refers"),
+                words("to a predicate or to a function."), nl,
+                words("(You can specify this information"),
+                words("either by wrapping up"), unqual_sym_name_arity(SNA),
+                words("inside"), quote("pred(...)"), words("or"),
+                quote("func(...)"), suffix(","),
+                words("or by specifying its argument modes.)"), nl],
+            Spec = simplest_spec($pred, severity_warning,
+                phase_parse_tree_to_hlds, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        else
+            true
+        )
     ).
 
 %---------------------%
