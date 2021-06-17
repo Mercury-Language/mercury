@@ -161,41 +161,23 @@ else
 	PROGS0 =
 endif
 
-# Tabling is buggy in the lowlevel .par grades so it's disabled for now.
-# XXX What is the bug? If it is lack of synchronization on table updates,
-# why are these tests enabled for hlc par grades?
+# Tabling is disabled in all .par grades due to the lack of synchronization on
+# table updates.
 ifeq "$(findstring .par,$(GRADE))" ""
 	PROGS1 = $(PROGS0)
 else
-	ifeq "$(findstring hl,$(GRADE))" ""
-		PROGS1 =
-	else
-		PROGS1 = $(PROGS0)
-	endif
+	PROGS1 =
 endif
 
-# Disable these tests in MLDS grades (targeting C, C# and Java)
+# Disable these tests in MLDS grades (C, C# and Java)
 # with high level data representation, because tabling is not implemented
 # for high level data representation.
 ifneq "$(findstring java,$(GRADE))$(findstring csharp,$(GRADE))" ""
 	# This is either the C# grade or the Java grade.
 	PROGS =
 else
-	ifneq "$(findstring hl,$(GRADE))" ""
-		# This is either a hl.* grade (high level data)
-		# or a hlc.* grade (low level data).
-		ifeq "$(findstring hlc,$(GRADE))" ""
-			# This is a hl.* grade.
-			PROGS =
-		else
-			# This is a hlc.* grade.
-			PROGS = $(PROGS1)
-		endif
-	else
-		# This is not a high level data grade, since those
-		# are all covered above.
-		PROGS = $(PROGS1)
-	endif
+	# This is a C grade.
+	PROGS = $(PROGS1)
 endif
 
 TESTS = $(sort $(PROGS))
