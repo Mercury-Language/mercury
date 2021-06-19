@@ -103,7 +103,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module solutions.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -899,44 +898,51 @@ record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info) :-
     % Find all the type variables in the constraint, and remember what
     % index they appear in the typeclass info.
 
+    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     % The first type_info will be just after the superclass infos.
-    First = NumSuperClasses + 1,
-    Last = NumSuperClasses + ClassArity,
-    assoc_list.from_corresponding_lists(ClassTypes, First `..` Last,
-        IndexedClassTypes),
+    record_tci_slots_for_unseen_or_in_type_info_tvars(ExtraHeadVar,
+        ClassTypes, NumSuperClasses + 1, RttiVarMaps0, RttiVarMaps),
+    poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
 
     % Work out which type variables we haven't seen before, or which we
     % assumed earlier would be produced in a type_info (this can happen for
     % code which needs mode reordering and which calls existentially quantified
     % predicates or deconstructs existentially quantified terms).
-    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
-    NewTVarAndIndex =
-        ( pred(TVarAndIndex::out) is nondet :-
-            list.member(Type - Index, IndexedClassTypes),
-            type_vars(Type, TypeVars),
-            list.member(TypeVar, TypeVars),
-            ( if
-                rtti_search_type_info_locn(RttiVarMaps0, TypeVar, TypeInfoLocn)
-            then
-                TypeInfoLocn = type_info(_)
-            else
-                true
-            ),
-            TVarAndIndex = TypeVar - Index
-        ),
-    solutions(NewTVarAndIndex, NewClassTypeVars),
-
-    % Make an entry in the TypeInfo locations map for each new type variable.
-    % The type variable can be found at the previously calculated offset
+    %
+    % Then make an entry in the TypeInfo locations map for each new type
+    % variable. The type variable can be found at the calculated offset
     % with the new typeclass_info.
-    MakeEntry =
-        ( pred(IndexedTypeVar::in, R0::in, R::out) is det :-
-            IndexedTypeVar = TheTypeVar - Index,
-            Location = typeclass_info(ExtraHeadVar, Index),
-            rtti_set_type_info_locn(TheTypeVar, Location, R0, R)
+    %
+:- pred record_tci_slots_for_unseen_or_in_type_info_tvars(prog_var::in,
+    list(mer_type)::in, int::in, rtti_varmaps::in, rtti_varmaps::out) is det.
+
+record_tci_slots_for_unseen_or_in_type_info_tvars(_, [], _, !RttiVarMaps).
+record_tci_slots_for_unseen_or_in_type_info_tvars(ExtraHeadVar,
+        [ClassType | ClassTypes], CurIndex, !RttiVarMaps) :-
+    type_vars(ClassType, TypeVars),
+    list.filter(is_unseen_or_in_type_info_tvar(!.RttiVarMaps),
+        TypeVars, UnSeenOrInTypeInfoTypeVars),
+    Location = typeclass_info(ExtraHeadVar, CurIndex),
+    InsertIntoRttiVarMap =
+        ( pred(TVar::in, R0::in, R::out) is det :-
+            rtti_set_type_info_locn(TVar, Location, R0, R)
         ),
-    list.foldl(MakeEntry, NewClassTypeVars, RttiVarMaps0, RttiVarMaps),
-    poly_info_set_rtti_varmaps(RttiVarMaps, !Info).
+    % XXX If ClassType contains more than one type variable, this records
+    % Location as applying to ALL OF THEM. This code is inherited from
+    % the time when the parameters of typeclasses *had* to be type variables,
+    % and has been a bug since we lifted that restriction ages ago.
+    list.foldl(InsertIntoRttiVarMap, UnSeenOrInTypeInfoTypeVars, !RttiVarMaps),
+    record_tci_slots_for_unseen_or_in_type_info_tvars(ExtraHeadVar,
+        ClassTypes, CurIndex + 1, !RttiVarMaps).
+
+:- pred is_unseen_or_in_type_info_tvar(rtti_varmaps::in, tvar::in) is semidet.
+
+is_unseen_or_in_type_info_tvar(RttiVarMaps, TypeVar) :-
+    ( if rtti_search_type_info_locn(RttiVarMaps, TypeVar, TypeInfoLocn) then
+        TypeInfoLocn = type_info(_)
+    else
+        true
+    ).
 
 :- type tci_var_kind
     --->    base_typeclass_info_kind
