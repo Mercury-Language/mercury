@@ -124,23 +124,23 @@ set_generate(Flag,
 % :- mode zdebugging(in, out) is semidet.
 % zdebugging --> =(p(_, _, _, _, F, _, _, _)), {debugging(F)}.
 
-:- pragma inline(x/3).
+:- pragma inline(pred(x/3)).
 :- pred x(ztoken, pstate, pstate).
 :- mode x(out, in, out) is semidet.
 x(T, p(SN, IO, S, [T-_|TL], F, SL, D, R), p(SN, IO, S, TL, F, SL, D, R)).
 
-:- pragma inline(x/4).
+:- pragma inline(pred(x/4)).
 :- pred x(ztoken, zcontext, pstate, pstate).
 :- mode x(out, out, in, out) is semidet.
 x(T, C, p(SN, IO, S, [T-C|TL], F, SL, D, R), p(SN, IO, S, TL, F, SL, D, R)).
 
-:- pragma inline(add_tokens/3).
+:- pragma inline(pred(add_tokens/3)).
 :- pred add_tokens(ztoken_list, pstate, pstate).
 :- mode add_tokens(in, in, out) is det.
 add_tokens(L, p(SN, IO, S, TL0, F, SL, D, R), p(SN, IO, S, TL, F, SL, D, R)) :-
 	append(L, TL0, TL).
 
-:- pragma inline(c/3).
+:- pragma inline(pred(c/3)).
 % A context of 0 should never be added to a construct,
 % because there must have been some tokens from which
 % to derive the construct.  The 0 case is only to make c/3 det.
