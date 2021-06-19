@@ -173,7 +173,7 @@ update_pos(Dt, Bodies, I, !IO) :-
 
 :- type body_ref == generic_ref(body, io).
 
-:- pragma inline(get_position/6).
+:- pragma inline(pred(get_position/6)).
 :- pred get_position(body_ref::in, float::out, float::out, float::out,
     io::di, io::uo) is det.
 
@@ -185,7 +185,7 @@ get_position(BodyRef, X, Y, Z, !IO) :-
     store.arg_ref(BodyRef, 2, ZRef, !IO),
     store.copy_ref_value(ZRef, Z, !IO).
 
-:- pragma inline(set_position/6).
+:- pragma inline(pred(set_position/6)).
 :- pred set_position(body_ref::in, float::di, float::di, float::di,
     io::di, io::uo) is det.
 
@@ -197,7 +197,7 @@ set_position(BodyRef, X, Y, Z, !IO) :-
     store.arg_ref(BodyRef, 2, ZRef, !IO),
     store.set_ref_value(ZRef, Z, !IO).
 
-:- pragma inline(get_velocity/6).
+:- pragma inline(pred(get_velocity/6)).
 :- pred get_velocity(body_ref::in, float::out, float::out, float::out,
     io::di, io::uo) is det.
 
@@ -209,7 +209,7 @@ get_velocity(BodyRef, Vx, Vy, Vz, !IO) :-
     store.arg_ref(BodyRef, 5, VzRef, !IO),
     store.copy_ref_value(VzRef, Vz, !IO).
 
-:- pragma inline(set_velocity/6).
+:- pragma inline(pred(set_velocity/6)).
 :- pred set_velocity(body_ref::in, float::di, float::di, float::di,
     io::di, io::uo) is det.
 
@@ -221,7 +221,7 @@ set_velocity(BodyRef, Vx, Vy, Vz, !IO) :-
     store.arg_ref(BodyRef, 5, VzRef, !IO),
     store.set_ref_value(VzRef, Vz, !IO).
 
-:- pragma inline(get_mass/4).
+:- pragma inline(pred(get_mass/4)).
 :- pred get_mass(body_ref::in, float::out, io::di, io::uo) is det.
 
 get_mass(BodyRef, Mass, !IO) :-

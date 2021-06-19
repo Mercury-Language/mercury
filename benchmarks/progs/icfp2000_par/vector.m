@@ -95,7 +95,7 @@ cross(point(Ax, Ay, Az), point(Bx, By, Bz)) = point(Cx, Cy, Cz) :-
 
 mag(V) = math__sqrt(mag2(V)).
 
-:- pragma inline(mag2/1).
+:- pragma inline(func(mag2/1)).
 mag2(point(Ax, Ay, Az)) = Ax*Ax + Ay*Ay + Az*Az.
 
 distance_squared(point(X1, Y1, Z1), point(X2, Y2, Z2)) = DistanceSquared :-
@@ -104,7 +104,7 @@ distance_squared(point(X1, Y1, Z1), point(X2, Y2, Z2)) = DistanceSquared :-
 	DZ = Z1 - Z2,
 	DistanceSquared = DX * DX + DY * DY + DZ * DZ.
 
-:- pragma inline(unit/1).
+:- pragma inline(func(unit/1)).
 unit(point(Ax, Ay, Az)) = point(Ax/Mag, Ay/Mag, Az/Mag) :-
 	Mag = mag(point(Ax, Ay, Az)).
 

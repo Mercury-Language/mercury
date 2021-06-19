@@ -112,7 +112,7 @@ FILE		    *bmio__fp;
 	bmio__wr_eof = bmio__plain_buf_eof;
 ").
 
-:- pragma inline(bmio.read_byte/3).
+:- pragma inline(pred(bmio.read_byte/3)).
 
 read_byte(Result, !IO) :-
 	rd(Byte, !IO),

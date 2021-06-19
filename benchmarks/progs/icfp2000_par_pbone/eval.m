@@ -610,7 +610,7 @@ renameObject(difference(Left0, Right0), difference(Left, Right)) -->
 
 :- pred next_object_id(object_id::out, state::in, state::out) is det.
 
-next_object_id(Id, !State) :- 
+next_object_id(Id, !State) :-
     Id = !.State ^ s_global_object_counter,
     !:State = !.State ^ s_global_object_counter := Id + 1.
 
@@ -631,10 +631,10 @@ next_object_id(Id, !State) :-
 :- pred do_extra(extra_operator, env, stack, stack, state, state).
 :- mode do_extra(in, in, in, out, in, out) is det.
 do_extra(Extra0, Env, Stack0, Stack) -->
-	{ extra_operator_mode(Extra0, Extra) },	
+	{ extra_operator_mode(Extra0, Extra) },
 	do_extra2(Extra, Env, Stack0, Stack).
 
-:- pragma inline(do_extra2/6).
+:- pragma inline(pred(do_extra2/6)).
 
 :- pred do_extra2(extra_operator, env, stack, stack, state, state).
 :- mode do_extra2(in(extra_operator_inst), in, in, out, in, out) is det.
@@ -642,8 +642,8 @@ do_extra(Extra0, Env, Stack0, Stack) -->
 do_extra2(mercury_closure(C), Env, Stack0, Stack) -->
 	C(Env, Stack0, _, Stack).
 do_extra2(dup, Env, Stack0, Stack) -->
-	{ Stack0 = [Head | Tail] -> 
-		Stack = [Head, Head | Tail] 
+	{ Stack0 = [Head | Tail] ->
+		Stack = [Head, Head | Tail]
 	;
 		eval_error(Env, Stack0)
 	}.

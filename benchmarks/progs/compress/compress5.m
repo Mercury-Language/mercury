@@ -36,7 +36,7 @@ go(!IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(start/4).
+:- pragma inline(pred(start/4)).
 :- pred start(bitbuf(T)::in, T::di, io::di, io::uo) is det <= store(T).
 
 start(Buf, !.S, !IO) :-

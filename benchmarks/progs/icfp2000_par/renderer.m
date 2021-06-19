@@ -633,7 +633,7 @@ reverse_normals(tree(I1, I2), make_tree(N1, N2)) :-
     reverse_normals(I1, N1),
     reverse_normals(I2, N2).
 
-:- pragma inline(make_tree/2).
+:- pragma inline(func(make_tree/2)).
 
 make_tree(Result1, Result2) = Result :-
     ( Result1 = empty ->

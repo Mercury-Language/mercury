@@ -629,7 +629,7 @@ do_extra(Extra0, Env, Stack0, Stack, !GOC) :-
     extra_operator_mode(Extra0, Extra),
     do_extra2(Extra, Env, Stack0, Stack, !GOC).
 
-:- pragma inline(do_extra2/6).
+:- pragma inline(pred(do_extra2/6)).
 
 :- pred do_extra2(extra_operator::in(extra_operator_inst), env::in,
     stack::in, stack::out,

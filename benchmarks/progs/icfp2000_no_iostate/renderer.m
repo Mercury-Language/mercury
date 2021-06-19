@@ -463,13 +463,13 @@ select_intersection_points_NOT_in_object(tree(I1, I2), Object, MT, Tree) :-
 		intersection_result::out) is det.
 reverse_normals(empty, empty).
 reverse_normals(node(Dist - Intersection0), node(Dist - Intersection)) :-
-	Intersection = Intersection0^surface_normal := 
+	Intersection = Intersection0^surface_normal :=
 		-(Intersection0^surface_normal).
 reverse_normals(tree(I1, I2), make_tree(N1, N2)) :-
 	reverse_normals(I1, N1),
 	reverse_normals(I2, N2).
 
-:- pragma inline(make_tree/2).
+:- pragma inline(func(make_tree/2)).
 
 make_tree(Result1, Result2) = Result :-
 	( Result1 = empty ->

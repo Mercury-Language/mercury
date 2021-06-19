@@ -193,7 +193,7 @@ make_body(Body, MutBody, !IO) :-
                 mass :: float   % Mass is a constant.
             ).
 
-:- pragma inline(get_position/6).
+:- pragma inline(pred(get_position/6)).
 :- pred get_position(body::in, float::out, float::out, float::out,
     io::di, io::uo) is det.
 
@@ -202,7 +202,7 @@ get_position(Body, X, Y, Z, !IO) :-
     store.get_mutvar(Body ^ y, Y, !IO),
     store.get_mutvar(Body ^ z, Z, !IO).
 
-:- pragma inline(set_position/6).
+:- pragma inline(pred(set_position/6)).
 :- pred set_position(body::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
 
@@ -211,7 +211,7 @@ set_position(Body, X, Y, Z, !IO) :-
     store.set_mutvar(Body ^ y, Y, !IO),
     store.set_mutvar(Body ^ z, Z, !IO).
 
-:- pragma inline(get_velocity/6).
+:- pragma inline(pred(get_velocity/6)).
 :- pred get_velocity(body::in, float::out, float::out, float::out,
     io::di, io::uo) is det.
 
@@ -220,7 +220,7 @@ get_velocity(Body, Vx, Vy, Vz, !IO) :-
     store.get_mutvar(Body ^ vy, Vy, !IO),
     store.get_mutvar(Body ^ vz, Vz, !IO).
 
-:- pragma inline(set_velocity/6).
+:- pragma inline(pred(set_velocity/6)).
 :- pred set_velocity(body::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
 

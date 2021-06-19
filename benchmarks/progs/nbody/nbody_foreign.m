@@ -282,7 +282,7 @@ new_body_ref(Body, Ref, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma inline(get_position/6).
+:- pragma inline(pred(get_position/6)).
 :- pred get_position(body_ref::in, float::out, float::out, float::out,
     io::di, io::uo) is det.
 
@@ -291,7 +291,7 @@ get_position(BodyRef, X, Y, Z, !IO) :-
     get_body_ref_field(BodyRef, 1, Y, !IO),
     get_body_ref_field(BodyRef, 2, Z, !IO).
 
-:- pragma inline(set_position/6).
+:- pragma inline(pred(set_position/6)).
 :- pred set_position(body_ref::in, float::in, float::in, float::in,
     io::di, io::uo) is det.
 
@@ -300,7 +300,7 @@ set_position(BodyRef, X, Y, Z, !IO) :-
     set_body_ref_field(BodyRef, 1, Y, !IO),
     set_body_ref_field(BodyRef, 2, Z, !IO).
 
-:- pragma inline(get_velocity/6).
+:- pragma inline(pred(get_velocity/6)).
 :- pred get_velocity(body_ref::in, float::out, float::out, float::out,
     io::di, io::uo) is det.
 
@@ -309,7 +309,7 @@ get_velocity(BodyRef, Vx, Vy, Vz, !IO) :-
     get_body_ref_field(BodyRef, 4, Vy, !IO),
     get_body_ref_field(BodyRef, 5, Vz, !IO).
 
-:- pragma inline(set_velocity/6).
+:- pragma inline(pred(set_velocity/6)).
 :- pred set_velocity(body_ref::in, float::di, float::di, float::di,
     io::di, io::uo) is det.
 
@@ -318,7 +318,7 @@ set_velocity(BodyRef, Vx, Vy, Vz, !IO) :-
     set_body_ref_field(BodyRef, 4, Vy, !IO),
     set_body_ref_field(BodyRef, 5, Vz, !IO).
 
-:- pragma inline(get_mass/4).
+:- pragma inline(pred(get_mass/4)).
 :- pred get_mass(body_ref::in, float::out, io::di, io::uo) is det.
 
 get_mass(BodyRef, Mass, !IO) :-

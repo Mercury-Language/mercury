@@ -160,10 +160,10 @@
 
 :- interface.
 
-:- pragma type_spec(tree234x__search/3, K = var(_)).
-:- pragma type_spec(tree234x__search/3, K = int).
+:- pragma type_spec(pred(tree234x__search/3), K = var(_)).
+:- pragma type_spec(pred(tree234x__search/3), K = int).
 
-:- pragma type_spec(tree234x__lookup/3, K = var(_)).
+:- pragma type_spec(pred(tree234x__lookup/3), K = var(_)).
 
 :- pragma type_spec(tree234x__set(in, in, in, out), K = var(_)).
 
