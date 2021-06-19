@@ -801,7 +801,7 @@ gen_init_tag(Target, CtorClassId, SecondaryTagClassId, TagVal, Context)
 
 ml_gen_hld_du_ctor_typeclass_info_field(ModuleInfo, Context, _Constraint,
         Defn, FieldInfo, !ArgNum) :-
-    Type = build_typeclass_info_type,
+    Type = typeclass_info_type,
     ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, !.ArgNum,
         no, Type, aw_full_word, Defn, FieldInfo),
     !:ArgNum = !.ArgNum + 1.

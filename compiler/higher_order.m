@@ -1238,7 +1238,7 @@ instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
 
 get_arg_typeclass_infos(ModuleInfo, TypeClassInfoVar, InstanceConstraints,
         Index, Goals, Vars, !ProcInfo) :-
-    MakeResultType = (func(_) = build_typeclass_info_type),
+    MakeResultType = (func(_) = typeclass_info_type),
     get_typeclass_info_args(ModuleInfo, TypeClassInfoVar,
         "instance_constraint_from_typeclass_info", MakeResultType,
         InstanceConstraints, Index, Goals, Vars, !ProcInfo).

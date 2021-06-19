@@ -1649,7 +1649,7 @@ polymorphism_process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
     % type_info/typeclass_info vars into the argument type list.
 
     TypeInfoTypes = list.map((func(_) = type_info_type), PredTypeVars),
-    TypeClassInfoType = build_typeclass_info_type,
+    TypeClassInfoType = typeclass_info_type,
     list.length(UnivCs, NumUnivCs),
     list.length(ExistCs, NumExistCs),
     list.duplicate(NumUnivCs + NumExistCs, TypeClassInfoType,

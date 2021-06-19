@@ -45,6 +45,7 @@
 :- func sample_typeclass_info_type = mer_type.
 :- func type_info_type = mer_type.
 :- func type_ctor_info_type = mer_type.
+:- func typeclass_info_type = mer_type.
 :- func type_desc_type = mer_type.
 :- func pseudo_type_desc_type = mer_type.
 :- func type_ctor_desc_type = mer_type.
@@ -67,11 +68,6 @@
     %
 :- func build_type_info_type(mer_type) = mer_type.
 
-   % Build the type describing the typeclass_info for the
-    % given prog_constraint.
-    %
-:- func build_typeclass_info_type = mer_type.
-
     % Check whether a type is either the `type_info' type or the
     % `type_ctor_info' type introduced by this pass.
     %
@@ -79,7 +75,7 @@
 
     % Check whether a type is the `typeclass_info' type.
     %
-:- pred type_is_typeclass_info(mer_type::in) is semidet.
+:- pred type_is_typeclass_info_type(mer_type::in) is semidet.
 
 %---------------------------------------------------------------------------%
 %
@@ -205,6 +201,10 @@ type_ctor_info_type = defined_type(Name, [], kind_star) :-
     BuiltinModule = mercury_private_builtin_module,
     Name = qualified(BuiltinModule, "type_ctor_info").
 
+typeclass_info_type = defined_type(Name, [], kind_star) :-
+    BuiltinModule = mercury_private_builtin_module,
+    Name = qualified(BuiltinModule, "typeclass_info").
+
 type_desc_type = defined_type(Name, [], kind_star) :-
     Module = mercury_std_lib_module_name(unqualified("type_desc")),
     Name = qualified(Module, "type_desc").
@@ -288,10 +288,7 @@ build_type_info_type(Type) = TypeInfoType :-
         TypeInfoType = type_info_type
     ).
 
-build_typeclass_info_type = TypeClassInfoType :-
-    PrivateBuiltin = mercury_private_builtin_module,
-    TypeclassInfoTypeName = qualified(PrivateBuiltin, "typeclass_info"),
-    TypeClassInfoType = defined_type(TypeclassInfoTypeName, [], kind_star).
+%---------------------%
 
 type_is_type_info_or_ctor_type(TypeInfoType) :-
     type_to_ctor_and_args(TypeInfoType, TypeCtor, []),
@@ -301,8 +298,8 @@ type_is_type_info_or_ctor_type(TypeInfoType) :-
     ; TypeName = "type_ctor_info"
     ).
 
-type_is_typeclass_info(TypeClassInfoType) :-
-    type_to_ctor(TypeClassInfoType, TypeCtor),
+type_is_typeclass_info_type(TypeClassInfoType) :-
+    type_to_ctor_and_args(TypeClassInfoType, TypeCtor, []),
     TypeCtor = type_ctor(qualified(ModuleName, "typeclass_info"), 0),
     ModuleName = mercury_private_builtin_module.
 

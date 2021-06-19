@@ -663,7 +663,7 @@ construct_typeclass_info(Constraint, BaseVar, BaseConsId, ArgVarsMCAs,
         new_typeclass_info_var(Constraint, typeclass_info_kind,
             TypeClassInfoVar, TypeClassInfoVarType, !Info),
 
-        BaseConstArg = csa_constant(BaseConsId, build_typeclass_info_type),
+        BaseConstArg = csa_constant(BaseConsId, typeclass_info_type),
         StructArgs = [BaseConstArg | VarConstArgs],
         list.map(get_inst_of_const_struct_arg(ConstStructDb0),
             VarConstArgs, VarInsts),
@@ -969,7 +969,7 @@ new_typeclass_info_var(Constraint, VarKind, Var, VarType, !Info) :-
         Name = "TypeClassInfo_for_" ++ ClassNameString
     ),
     varset.name_var(Var, Name, VarSet1, VarSet),
-    VarType = build_typeclass_info_type,
+    VarType = typeclass_info_type,
     add_var_type(Var, VarType, VarTypes0, VarTypes),
     rtti_det_insert_typeclass_info_var(Constraint, Var,
         RttiVarMaps0, RttiVarMaps),
@@ -983,7 +983,7 @@ new_typeclass_info_var(Constraint, VarKind, Var, VarType, !Info) :-
 
 materialize_base_typeclass_info_var(Constraint, ConsId, Var, Goals, !Info) :-
     poly_info_get_const_struct_var_map(!.Info, ConstStructVarMap0),
-    ConstArg = csa_constant(ConsId, build_typeclass_info_type),
+    ConstArg = csa_constant(ConsId, typeclass_info_type),
     ( if map.search(ConstStructVarMap0, ConstArg, OldVar) then
         poly_info_get_num_reuses(!.Info, NumReuses),
         poly_info_set_num_reuses(NumReuses + 1, !Info),

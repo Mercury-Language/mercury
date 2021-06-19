@@ -1265,15 +1265,15 @@ insert_reg_wrappers_method_call(ClassId, MethodNum, Vars0, Vars,
 
 take_non_rtti_types_from_tail([], []).
 take_non_rtti_types_from_tail([Type | Types0], Types) :-
-    take_non_rtti_types_from_tail(Types0, Types1),
+    take_non_rtti_types_from_tail(Types0, TypesTail),
     ( if
-        ( type_is_typeclass_info(Type)
-        ; Type = type_info_type
+        ( type_is_typeclass_info_type(Type)
+        ; type_is_type_info_or_ctor_type(Type)
         )
     then
-        Types = Types1
+        Types = TypesTail
     else
-        Types = [Type | Types1]
+        Types = [Type | TypesTail]
     ).
 
 :- pred insert_reg_wrappers_foreign_call(pred_id::in, proc_id::in,
