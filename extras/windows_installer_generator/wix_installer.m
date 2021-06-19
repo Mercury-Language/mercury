@@ -32,7 +32,7 @@
 %
 
 :- pred gen_annotated_installer(installer(L)::in, io.input_stream::in,
-    annotated_installer::out, io::di, io::uo) is det 
+    annotated_installer::out, io::di, io::uo) is det
     <= language_independent_tokens(L).
 
 :- instance xmlable(annotated_installer).
@@ -47,8 +47,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module string. 
-:- import_module term_to_xml.
+:- import_module string.
 
 :- import_module wix_files.
 :- import_module wix_gui.

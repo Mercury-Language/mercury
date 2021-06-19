@@ -826,11 +826,11 @@ R * N = Result :-
     % (a) are likely to be quite common in practice and (b) take *some*
     % time to compute.
     %
-:- pragma memo(digit/0).
-:- pragma memo(lower/0).
-:- pragma memo(upper/0).
-:- pragma memo(wspc/0).
-:- pragma memo(dot/0).
+:- pragma memo(func(digit/0)).
+:- pragma memo(func(lower/0)).
+:- pragma memo(func(upper/0)).
+:- pragma memo(func(wspc/0)).
+:- pragma memo(func(dot/0)).
 
 digit      = any("0123456789").
 lower      = any("abcdefghijklmnopqrstuvwxyz").

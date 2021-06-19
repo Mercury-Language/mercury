@@ -361,7 +361,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pragma inline(det_screen/3).
+:- pragma inline(pred(det_screen/3)).
 
 det_screen(Screen, !IO) :-
     screen(MaybeScreen, !IO),
@@ -372,7 +372,7 @@ det_screen(Screen, !IO) :-
         error("screen_det/3")
     ).
 
-:- pragma inline(det_screen/5).
+:- pragma inline(pred(det_screen/5)).
 
 det_screen(Screen, Width, Height, !IO) :-
     det_screen(Screen, !IO),

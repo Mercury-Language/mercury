@@ -430,7 +430,6 @@
 
 :- implementation.
 
-:- import_module bool.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%

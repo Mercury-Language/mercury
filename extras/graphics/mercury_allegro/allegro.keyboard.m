@@ -238,7 +238,7 @@
     %
     % [1] to avoid a conflict with the curses API.
     %
-:- pragma no_inline(key/4).
+:- pragma no_inline(pred(key/4)).
 :- pragma foreign_proc("C",
     key(Scancode::in, IsPressed::out, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],

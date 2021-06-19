@@ -76,13 +76,13 @@
     % Lookup a hostname and build an address structure with the resulting
     % address and the given port.
     %
-:- pragma obsolete(port_address/5).
+:- pragma obsolete(pred(port_address/5)).
 :- pred port_address(string::in, int::in, maybe_error(c_pointer)::out,
     io::di, io::uo) is det.
 
     % service_address(Host, Service, Result, !IO),
     %
-:- pragma obsolete(service_address/5).
+:- pragma obsolete(pred(service_address/5)).
 :- pred service_address(string::in, string::in,
     maybe_error(c_pointer)::out, io::di, io::uo) is det.
 

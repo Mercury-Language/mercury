@@ -148,8 +148,15 @@
 
 %----------------------------------------------------------------------------%
 
-:- import_module mcurses.misc, mcurses.basics.
-:- import_module array, char, int, list, require, solutions, store, string.
+:- import_module mcurses.basics.
+:- import_module mcurses.misc.
+
+:- import_module array.
+:- import_module int.
+:- import_module require.
+:- import_module solutions.
+:- import_module store.
+:- import_module string.
 
 :- type curse_store_type ---> curse_store_type.
 :- type curse_store == store(curse_store_type).

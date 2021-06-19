@@ -1198,13 +1198,13 @@ final_parser_state(ParserState, VarSet) :-
 % If you want profiling to tell you the frequencies of these operations,
 % change the inline pragmas to no_inline pragmas.
 
-:- pragma inline(parser_state_get_stream_name/1).
-:- pragma inline(parser_state_get_ops_table/1).
-:- pragma inline(parser_state_get_varset/1).
-:- pragma inline(parser_state_get_var_names/1).
+:- pragma inline(func(parser_state_get_stream_name/1)).
+:- pragma inline(func(parser_state_get_ops_table/1)).
+:- pragma inline(func(parser_state_get_varset/1)).
+:- pragma inline(func(parser_state_get_var_names/1)).
 
-:- pragma inline(parser_state_set_varset/3).
-:- pragma inline(parser_state_set_var_names/3).
+:- pragma inline(pred(parser_state_set_varset/3)).
+:- pragma inline(pred(parser_state_set_var_names/3)).
 
 parser_state_get_stream_name(ParserState) = X :-
     X = ParserState ^ ps_stream_name.

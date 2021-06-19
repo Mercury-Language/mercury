@@ -296,7 +296,6 @@
 
 :- interface.
 
-:- import_module list.
 :- import_module parsing.
 :- import_module xml.cat.
 :- import_module xml.doc.
@@ -324,7 +323,17 @@
 
 :- import_module xml.encoding.
 :- import_module unicode.
-:- import_module array, char, int, io, map, pair, require, string, unit.
+
+:- import_module array.
+:- import_module char.
+:- import_module int.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module pair.
+:- import_module require.
+:- import_module string.
+:- import_module unit.
 
 :- instance global(gCatalog, catalog) where [].
 :- instance global(gDirs, parse.dirs) where [].

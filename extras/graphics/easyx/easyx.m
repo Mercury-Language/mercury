@@ -430,7 +430,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred set_window_size(window::in, int::in, int::in, io::di, io::uo) is det.
-:- pragma promise_pure(set_window_size/5).
+:- pragma promise_pure(pred(set_window_size/5)).
 
 set_window_size(Window, PW0, PH0, !IO) :-
 
@@ -519,7 +519,7 @@ rgb_int(RGB) = truncate_to_int(65535.0 * RGB).
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(open_display/3).
+:- pragma promise_pure(pred(open_display/3)).
 
 open_display(Display, !IO) :-
     ( if   impure Display0 = xlib.open_display
@@ -528,7 +528,7 @@ open_display(Display, !IO) :-
     ).
 
 
-:- pragma promise_pure(open_display/4).
+:- pragma promise_pure(pred(open_display/4)).
 
 open_display(DisplayName, Display, !IO) :-
     ( if   impure Display0 = xlib.open_display(DisplayName)
@@ -537,7 +537,7 @@ open_display(DisplayName, Display, !IO) :-
     ).
 
 
-:- pragma promise_pure(flush/3).
+:- pragma promise_pure(pred(flush/3)).
 
 flush(Window, !IO) :-
     restore_from_backing_pixmap(Window, !IO),
@@ -545,7 +545,7 @@ flush(Window, !IO) :-
     impure xlib.flush(Display).
 
 
-:- pragma promise_pure(sync/3).
+:- pragma promise_pure(pred(sync/3)).
 
 sync(Window, !IO) :-
     restore_from_backing_pixmap(Window, !IO),
@@ -554,7 +554,7 @@ sync(Window, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(create_window/7).
+:- pragma promise_pure(pred(create_window/7)).
 
 create_window(Display, WindowTitle, PW, PH, Window, !IO) :-
     ( if
@@ -585,7 +585,7 @@ create_window(Display, WindowTitle, PW, PH, Window, !IO) :-
     ).
 
 
-:- pragma promise_pure(clear_window/3).
+:- pragma promise_pure(pred(clear_window/3)).
 
 clear_window(Window, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -597,7 +597,7 @@ clear_window(Window, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(load_font/5).
+:- pragma promise_pure(pred(load_font/5)).
 
 load_font(Window, FontName, Font, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -609,7 +609,7 @@ load_font(Window, FontName, Font, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(get_colour_from_name/5).
+:- pragma promise_pure(pred(get_colour_from_name/5)).
 
 get_colour_from_name(Window, ColourName, Colour, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -620,7 +620,7 @@ get_colour_from_name(Window, ColourName, Colour, !IO) :-
     ).
 
 
-:- pragma promise_pure(get_colour_from_rgb/7).
+:- pragma promise_pure(pred(get_colour_from_rgb/7)).
 
 get_colour_from_rgb(Window, R, G, B, Colour, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -633,7 +633,7 @@ get_colour_from_rgb(Window, R, G, B, Colour, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(set_colour/4).
+:- pragma promise_pure(pred(set_colour/4)).
 
 set_colour(Window, Colour, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -649,7 +649,7 @@ set_colour_from_rgb(Window, R, G, B, !IO) :-
     set_colour(Window, Colour, !IO).
 
 
-:- pragma promise_pure(set_text_bg_colour/4).
+:- pragma promise_pure(pred(set_text_bg_colour/4)).
 
 set_text_bg_colour(Window, Colour, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -657,7 +657,7 @@ set_text_bg_colour(Window, Colour, !IO) :-
     impure xlib.set_bg(Display, GC, Colour).
 
 
-:- pragma promise_pure(set_line_attributes/6).
+:- pragma promise_pure(pred(set_line_attributes/6)).
 
 set_line_attributes(Window, LineWidth, CapStyle, JoinStyle, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -683,7 +683,7 @@ set_line_attributes(Window, LineWidth, CapStyle, JoinStyle, !IO) :-
                 XLibJoinStyle).
 
 
-:- pragma promise_pure(set_font/4).
+:- pragma promise_pure(pred(set_font/4)).
 
 set_font(Window, Font, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -693,7 +693,7 @@ set_font(Window, Font, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(draw_text/8).
+:- pragma promise_pure(pred(draw_text/8)).
 
 draw_text(Window, X0, Y0, JX, JY, Text, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -715,7 +715,7 @@ draw_text(Window, X0, Y0, JX, JY, Text, !IO) :-
     ).
 
 
-:- pragma promise_pure(draw_image_text/8).
+:- pragma promise_pure(pred(draw_image_text/8)).
 
 draw_image_text(Window, X0, Y0, JX, JY, Text, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -745,7 +745,7 @@ draw_image_text(Window, X, Y, Text, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(draw_arc/9).
+:- pragma promise_pure(pred(draw_arc/9)).
 
 draw_arc(Window, X, Y, RX, RY, StartAngle, ThroughAngle, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -761,7 +761,7 @@ draw_arc(Window, X, Y, RX, RY, StartAngle, ThroughAngle, !IO) :-
                 a(StartAngle), a(ThroughAngle)).
 
 
-:- pragma promise_pure(fill_arc/9).
+:- pragma promise_pure(pred(fill_arc/9)).
 
 fill_arc(Window, X, Y, RX, RY, StartAngle, ThroughAngle, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -794,7 +794,7 @@ fill_ellipse(Window, X, Y, RX, RY, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(draw_point/5).
+:- pragma promise_pure(pred(draw_point/5)).
 
 draw_point(Window, X, Y, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -807,7 +807,7 @@ draw_point(Window, X, Y, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(draw_line/7).
+:- pragma promise_pure(pred(draw_line/7)).
 
 draw_line(Window, X1, Y1, X2, Y2, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -820,7 +820,7 @@ draw_line(Window, X1, Y1, X2, Y2, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(draw_rectangle/7).
+:- pragma promise_pure(pred(draw_rectangle/7)).
 
 draw_rectangle(Window, X1, Y1, X2, Y2, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -832,7 +832,7 @@ draw_rectangle(Window, X1, Y1, X2, Y2, !IO) :-
     impure xlib.draw_rectangle(Display, Pix, GC, PX1, PY1, PX2, PY2).
 
 
-:- pragma promise_pure(fill_rectangle/7).
+:- pragma promise_pure(pred(fill_rectangle/7)).
 
 fill_rectangle(Window, X1, Y1, X2, Y2, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -845,7 +845,7 @@ fill_rectangle(Window, X1, Y1, X2, Y2, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(draw_lines/4).
+:- pragma promise_pure(pred(draw_lines/4)).
 
 draw_lines(Window, Coords, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -857,7 +857,7 @@ draw_lines(Window, Coords, !IO) :-
     impure xlib.draw_lines(Display, Pix, GC, XPoints).
 
 
-:- pragma promise_pure(fill_polygon/4).
+:- pragma promise_pure(pred(fill_polygon/4)).
 
 fill_polygon(Window, Coords, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -900,7 +900,7 @@ restore_from_backing_pixmap(Window, !IO) :-
 :- pred restore_from_backing_pixmap(window::in, int::in, int::in,
             int::in, int::in, io::di, io::uo) is det.
 
-:- pragma promise_pure(restore_from_backing_pixmap/7).
+:- pragma promise_pure(pred(restore_from_backing_pixmap/7)).
 
 restore_from_backing_pixmap(Window, PX, PY, PW, PH, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -911,7 +911,7 @@ restore_from_backing_pixmap(Window, PX, PY, PW, PH, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma promise_pure(get_next_event/4).
+:- pragma promise_pure(pred(get_next_event/4)).
 
 get_next_event(Window, Event, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),
@@ -926,7 +926,7 @@ get_next_event(Window, Event, !IO) :-
     ).
 
 
-:- pragma promise_pure(get_next_event_if_any/4).
+:- pragma promise_pure(pred(get_next_event_if_any/4)).
 
 get_next_event_if_any(Window, MaybeEvent, !IO) :-
     store.get_mutvar(Window^display, Display, !IO),

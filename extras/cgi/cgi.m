@@ -164,7 +164,7 @@ cgi.read_n_characters_rev(NumChars, Chars0, Chars, Result) -->
             { Result = error(Error) },
             { Chars = Chars0 }
         ; { CharResult = ok(Char) },
-            { NumChars1 is NumChars - 1 },
+            { NumChars1 = NumChars - 1 },
             read_n_characters_rev(NumChars1, [Char | Chars0], Chars, Result)
         )
     ).

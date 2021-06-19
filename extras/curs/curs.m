@@ -26,14 +26,13 @@
 :- interface.
 
 :- import_module bool.
-:- import_module char.
 :- import_module int.
 :- import_module io.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
 
-    % Start a curses session (colour, unbuffered input, no echoing, 
+    % Start a curses session (colour, unbuffered input, no echoing,
     % invisible cursor if possible, scrolling on when output past
     % the bottom of the main display and any windows).
     %
@@ -87,10 +86,10 @@
     %
 :- pred refresh(io::di, io::uo) is det.
 
-    % This was supposed to do what refresh does but without preceding calls 
+    % This was supposed to do what refresh does but without preceding calls
     % to wnoutrefresh it does nothing.
     %
-:- pragma obsolete(doupdate/2).
+:- pragma obsolete(pred(doupdate/2)).
 :- pred doupdate(io::di, io::uo) is det.
 
     % Read a character from the keyboard (unbuffered) and translate it
@@ -119,7 +118,7 @@
     % indicate that no input is ready.
     %
 :- func err = int.
-    
+
     % Various key code translations outside the normal ASCII range.
     %
 :- func key_down = int.
@@ -220,7 +219,7 @@
         %
     :- module panel.
     :- interface.
-    
+
     :- type panel.
 
         % new(Rows, Cols, Row, Col, Attr, Panel) creates a new panel
@@ -298,6 +297,8 @@
 
 :- implementation.
 
+:- import_module char.
+
 :- type attr == int.
 
 :- type colour == int.
@@ -311,7 +312,7 @@
 
 #ifdef MR_CONSERVATIVE_GC
 
-/*      
+/*
 ** The addresses of the closures that we pass to curses
 ** will be stored by curses in malloc()'ed memory.
 ** However, it is essential that these pointers be

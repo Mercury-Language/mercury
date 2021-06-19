@@ -3199,7 +3199,7 @@ buffer_bit_to_int(stencil) = 2.
 buffer_bit_to_int(accum)   = 3.
 
 % XXX Remove the static data from lookup_buffer_bit/1.
-:- pragma no_inline(lookup_buffer_bit/1).
+:- pragma no_inline(func(lookup_buffer_bit/1)).
 :- func lookup_buffer_bit(int) = int.
 
 :- pragma foreign_proc("C",

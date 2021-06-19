@@ -222,7 +222,7 @@ rnd(Res, rnd(M1a, M2a, _Seed0), rnd(M1d, M2d, Seed1)) :-
     Res = rfloat(Seed1)/rfloat((1 `unchecked_left_shift` 30) - 1).
 
 :- pred shift(vec::in, vec::out) is det.
-:- pragma inline(shift/2).
+:- pragma inline(pred(shift/2)).
 
 shift(Vec0, Vec1) :-
     Vec0 = vec(A, B, C, D, E, F, G, H, I, _),
@@ -242,7 +242,7 @@ shift(Vec0, Vec1) :-
 :- mode ((in ** in(bound(7))) = out) is det.
 :- mode ((in ** in(bound(8))) = out) is det.
 :- mode ((in ** in(bound(9))) = out) is det.
-:- pragma inline((**)/2).
+:- pragma inline(func((**)/2)).
 
 ( Vec ** Ind ) = Res :-
     Vec = vec(A, B, C, D, E, F, G, H, I, J),
@@ -276,7 +276,7 @@ shift(Vec0, Vec1) :-
 :- mode set(in, in(bound(7)), in, out) is det.
 :- mode set(in, in(bound(8)), in, out) is det.
 :- mode set(in, in(bound(9)), in, out) is det.
-:- pragma inline(rnd.set/4).
+:- pragma inline(pred(rnd.set/4)).
 
 set(Vec0, Ind, V, Vec) :-
     Vec0 = vec(A, B, C, D, E, F, G, H, I, J),

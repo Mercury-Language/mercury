@@ -204,7 +204,7 @@
     %
 :- pred merge_subst(varset(T)::in, varset(T)::in, varset(T)::out,
     substitution(T)::out) is det.
-:- pragma obsolete(merge_subst/4).
+:- pragma obsolete(pred(merge_subst/4)).
 
     % Same as merge_subst, except that the names of variables
     % in NewVarSet are not included in the final varset.
@@ -215,7 +215,7 @@
     %
 :- pred merge_subst_without_names(varset(T)::in,
     varset(T)::in, varset(T)::out, substitution(T)::out) is det.
-:- pragma obsolete(merge_subst_without_names/4).
+:- pragma obsolete(pred(merge_subst_without_names/4)).
 
     % merge(VarSet0, NewVarSet, Terms0, VarSet, Terms):
     %

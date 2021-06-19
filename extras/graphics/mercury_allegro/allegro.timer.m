@@ -204,7 +204,7 @@ bpm_to_timer(BPM) = hwticks(Speed) :-
 ").
 
 :- pred install_ticker(int::in, int::out, io::di, io::uo) is det.
-:- pragma no_inline(install_ticker/4).
+:- pragma no_inline(pred(install_ticker/4)).
 
 :- pragma foreign_proc("C",
     install_ticker(Speed::in, Ticker::out, IO0::di, IO::uo),
@@ -229,7 +229,7 @@ bpm_to_timer(BPM) = hwticks(Speed) :-
 ").
 
 :- pred remove_ticker(int::in, io::di, io::uo) is det.
-:- pragma no_inline(remove_ticker/3).
+:- pragma no_inline(pred(remove_ticker/3)).
 
 :- pragma foreign_proc("C",
     remove_ticker(Index::in, IO0::di, IO::uo),

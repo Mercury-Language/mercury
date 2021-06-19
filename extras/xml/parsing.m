@@ -232,7 +232,8 @@
 
 :- implementation.
 
-:- import_module char, int, list, string.
+:- import_module char.
+:- import_module int.
 
 :- type pstate(T)
 	--->	s(
