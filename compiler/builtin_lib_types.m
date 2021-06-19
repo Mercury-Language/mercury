@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2009, 2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: builtin_lib_types.m.
 %
@@ -12,14 +12,14 @@
 % the types and type constructors built into Mercury and defined in modules of
 % the standard Mercury library, as well as the function symbols of those types.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.builtin_lib_types.
 :- interface.
 
 :- import_module parse_tree.prog_data.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Types.
 %
@@ -61,7 +61,27 @@
 :- func region_type = mer_type.
 :- func future_type(mer_type) = mer_type.
 
-%-----------------------------------------------------------------------------%
+%---------------------%
+
+    % Construct the type of the type_info for the given type.
+    %
+:- func build_type_info_type(mer_type) = mer_type.
+
+   % Build the type describing the typeclass_info for the
+    % given prog_constraint.
+    %
+:- func build_typeclass_info_type = mer_type.
+
+    % Check whether a type is either the `type_info' type or the
+    % `type_ctor_info' type introduced by this pass.
+    %
+:- pred type_is_type_info_or_ctor_type(mer_type::in) is semidet.
+
+    % Check whether a type is the `typeclass_info' type.
+    %
+:- pred type_is_typeclass_info(mer_type::in) is semidet.
+
+%---------------------------------------------------------------------------%
 %
 % Type constructors.
 %
@@ -90,7 +110,7 @@
 :- func stm_rollback_exception_type_ctor = type_ctor.
 :- func stm_dummy_output_type_ctor = type_ctor.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Functors.
 %
@@ -115,18 +135,19 @@
     %
 :- func stm_dummy_output_functor = cons_id.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_type.
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 int_type = builtin_type(builtin_type_int(int_type_int)).
 
@@ -244,7 +265,48 @@ future_type(ValueType) = defined_type(Name, [ValueType], kind_star) :-
     Module = mercury_par_builtin_module,
     Name = qualified(Module, "future").
 
-%-----------------------------------------------------------------------------%
+%---------------------%
+
+build_type_info_type(Type) = TypeInfoType :-
+    % XXX TypeInfoType = type_ctor_info_type.
+    ( if type_has_variable_arity_ctor(Type, _, _) then
+        % We cannot use a plain type_ctor_info because we need to
+        % record the arity.
+        TypeInfoType = type_info_type
+    else if type_to_ctor_and_args(Type, _Ctor, Args) then
+        (
+            Args = [],
+            TypeInfoType = type_ctor_info_type
+        ;
+            Args = [_ | _],
+            TypeInfoType = type_info_type
+        )
+    else
+        % The type is variable, which means we have a type_info for it.
+        % That type_info may actually be a type_ctor_info, but the code
+        % of the current predicate won't treat it as such.
+        TypeInfoType = type_info_type
+    ).
+
+build_typeclass_info_type = TypeClassInfoType :-
+    PrivateBuiltin = mercury_private_builtin_module,
+    TypeclassInfoTypeName = qualified(PrivateBuiltin, "typeclass_info"),
+    TypeClassInfoType = defined_type(TypeclassInfoTypeName, [], kind_star).
+
+type_is_type_info_or_ctor_type(TypeInfoType) :-
+    type_to_ctor_and_args(TypeInfoType, TypeCtor, []),
+    TypeCtor = type_ctor(qualified(ModuleName, TypeName), 0),
+    ModuleName = mercury_private_builtin_module,
+    ( TypeName = "type_info"
+    ; TypeName = "type_ctor_info"
+    ).
+
+type_is_typeclass_info(TypeClassInfoType) :-
+    type_to_ctor(TypeClassInfoType, TypeCtor),
+    TypeCtor = type_ctor(qualified(ModuleName, "typeclass_info"), 0),
+    ModuleName = mercury_private_builtin_module.
+
+%---------------------------------------------------------------------------%
 
 int_type_ctor = type_ctor(Name, 0) :-
     Name = unqualified("int").
@@ -289,7 +351,7 @@ stm_rollback_exception_type_ctor = type_ctor(Name, 0) :-
 stm_dummy_output_type_ctor = type_ctor(Name, 0) :-
     Name = qualified(mercury_stm_builtin_module, "stm_dummy_output").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 exception_succeeded_functor = cons(Name, 1, TypeCtor) :-
     Name = qualified(mercury_exception_module, "succeeded"),
@@ -320,6 +382,6 @@ stm_dummy_output_functor = cons(Name, 0, TypeCtor) :-
     Name = qualified(mercury_stm_builtin_module, "stm_dummy_output"),
     TypeCtor = stm_dummy_output_type_ctor.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.builtin_lib_types.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

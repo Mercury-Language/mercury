@@ -50,7 +50,6 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.polymorphism.
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.type_util.
 :- import_module hlds.add_special_pred.
@@ -80,6 +79,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -1238,7 +1238,7 @@ instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
 
 get_arg_typeclass_infos(ModuleInfo, TypeClassInfoVar, InstanceConstraints,
         Index, Goals, Vars, !ProcInfo) :-
-    MakeResultType = polymorphism.build_typeclass_info_type,
+    MakeResultType = (func(_) = build_typeclass_info_type),
     get_typeclass_info_args(ModuleInfo, TypeClassInfoVar,
         "instance_constraint_from_typeclass_info", MakeResultType,
         InstanceConstraints, Index, Goals, Vars, !ProcInfo).
@@ -1256,15 +1256,14 @@ get_arg_typeclass_infos(ModuleInfo, TypeClassInfoVar, InstanceConstraints,
 
 get_unconstrained_instance_type_infos(ModuleInfo, TypeClassInfoVar,
         UnconstrainedTVarTypes, Index, Goals, Vars, !ProcInfo) :-
-    MakeResultType = polymorphism.build_type_info_type,
+    MakeResultType = build_type_info_type,
     get_typeclass_info_args(ModuleInfo, TypeClassInfoVar,
         "unconstrained_type_info_from_typeclass_info",
         MakeResultType, UnconstrainedTVarTypes,
         Index, Goals, Vars, !ProcInfo).
 
 :- pred get_typeclass_info_args(module_info::in, prog_var::in, string::in,
-    pred(T, mer_type)::(pred(in, out) is det),
-    list(T)::in, int::in, list(hlds_goal)::out,
+    (func(T) = mer_type)::in, list(T)::in, int::in, list(hlds_goal)::out,
     list(prog_var)::out, proc_info::in, proc_info::out) is det.
 
 get_typeclass_info_args(ModuleInfo, TypeClassInfoVar, PredName, MakeResultType,
@@ -1278,7 +1277,7 @@ get_typeclass_info_args(ModuleInfo, TypeClassInfoVar, PredName, MakeResultType,
         MakeResultType, Args, Index, Goals, Vars, !ProcInfo).
 
 :- pred get_typeclass_info_args_loop(prog_var::in, pred_id::in, proc_id::in,
-    sym_name::in, pred(T, mer_type)::(pred(in, out) is det),
+    sym_name::in, (func(T) = mer_type)::in,
     list(T)::in, int::in, list(hlds_goal)::out,
     list(prog_var)::out, proc_info::in, proc_info::out) is det.
 
@@ -1286,7 +1285,7 @@ get_typeclass_info_args_loop(_, _, _, _, _, [], _, [], [], !ProcInfo).
 get_typeclass_info_args_loop(TypeClassInfoVar, PredId, ProcId, SymName,
         MakeResultType, [Arg | Args], Index, [IndexGoal, CallGoal | Goals],
         [ResultVar | Vars], !ProcInfo) :-
-    MakeResultType(Arg, ResultType),
+    ResultType = MakeResultType(Arg),
     proc_info_create_var_from_type(ResultType, no, ResultVar, !ProcInfo),
     MaybeContext = no,
     make_int_const_construction_alloc_in_proc(Index, no, IndexGoal, IndexVar,
@@ -3151,8 +3150,8 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !GlobalInfo) :-
     ),
 
     % Add in the extra typeinfo vars.
-    list.map(polymorphism.build_type_info_type,
-        ExtraTypeInfoTVarTypes, ExtraTypeInfoTypes),
+    ExtraTypeInfoTypes =
+        list.map(build_type_info_type, ExtraTypeInfoTVarTypes),
     proc_info_create_vars_from_types(ExtraTypeInfoTypes, ExtraTypeInfoVars,
         !NewProcInfo),
 

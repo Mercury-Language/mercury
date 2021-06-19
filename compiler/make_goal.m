@@ -58,6 +58,12 @@
     prog_context::in, unify_main_context::in, unify_sub_contexts::in,
     hlds_goal::out) is det.
 
+:- pred make_complicated_unify_assigns(list(prog_var)::in, list(prog_var)::in,
+    list(hlds_goal)::out) is det.
+
+:- pred make_complicated_unify_assign(prog_var::in, prog_var::in,
+    hlds_goal::out) is det.
+
     % Create the hlds_goal for a unification that assigns the second variable
     % to the first. The initial inst of the second variable should be
     % ground_inst. The resulting goal has all its fields filled in.
@@ -150,6 +156,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.set_of_var.
 
+:- import_module require.
 :- import_module term.
 :- import_module varset.
 
@@ -197,6 +204,27 @@ create_pure_atomic_complicated_unification(LHS, RHS, Context,
         UnifyMainContext, UnifySubContext, Goal) :-
     create_atomic_complicated_unification(LHS, RHS, Context,
         UnifyMainContext, UnifySubContext, purity_pure, Goal).
+
+%-----------------------------------------------------------------------------%
+
+make_complicated_unify_assigns([], [_ | _], _) :-
+    unexpected($pred, "length mismatch").
+make_complicated_unify_assigns([_ | _], [], _) :-
+    unexpected($pred, "length mismatch").
+make_complicated_unify_assigns([], [], []).
+make_complicated_unify_assigns([Var1 | Vars1], [Var2 | Vars2],
+        [Goal | Goals]) :-
+    make_complicated_unify_assign(Var1, Var2, Goal),
+    make_complicated_unify_assigns(Vars1, Vars2, Goals).
+
+make_complicated_unify_assign(Var1, Var2, Goal) :-
+    ( if Var1 = Var2 then
+        Goal = true_goal
+    else
+        term.context_init(Context),
+        create_pure_atomic_complicated_unification(Var1, rhs_var(Var2),
+            Context, umc_explicit, [], Goal)
+    ).
 
 %-----------------------------------------------------------------------------%
 

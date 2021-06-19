@@ -306,6 +306,11 @@
 :- mode delete_all(di, in, uo) is det.
 :- mode delete_all(in, in, out) is det.
 
+    % delete_nth(List0, N, List) is true iff List0 has an Nth element,
+    % and List is List0 with this element deleted.
+    %
+:- pred delete_nth(list(T)::in, int::in, list(T)::out) is semidet.
+
     % delete_elems(List0, Elems) = List is true iff List is List0 with
     % all occurrences of all elements of Elems removed.
     %
@@ -2241,6 +2246,14 @@ delete_all([X | Xs], ToDelete, DXs) :-
     else
         list.delete_all(Xs, ToDelete, DXs0),
         DXs = [X | DXs0]
+    ).
+
+delete_nth([X | Xs], N, Result) :-
+    ( if N > 1 then
+        delete_nth(Xs, N - 1, ResultTail),
+        Result = [X | ResultTail]
+    else
+        Result = Xs
     ).
 
 delete_elems(Xs, ToDeletes) = DXs :-

@@ -45,6 +45,8 @@
 :- include_module polymorphism.
 :- include_module polymorphism_info.
 :- include_module polymorphism_lambda.
+:- include_module polymorphism_post_copy.
+:- include_module polymorphism_type_class_info.
 :- include_module polymorphism_type_info.
 
 % Preprocessing user insts in the inst table for mode analysis.

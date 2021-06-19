@@ -91,6 +91,7 @@
 :- import_module check_hlds.oisu_check.
 :- import_module check_hlds.old_type_constraints.
 :- import_module check_hlds.polymorphism.
+:- import_module check_hlds.polymorphism_post_copy.
 :- import_module check_hlds.post_typecheck.
 :- import_module check_hlds.pre_typecheck.
 :- import_module check_hlds.purity.

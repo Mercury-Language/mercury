@@ -43,7 +43,6 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.polymorphism.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
@@ -53,6 +52,7 @@
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
 :- import_module parse_tree.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
@@ -645,7 +645,7 @@ slot_info_do_not_duplicate_var(SlotInfo, Var) :-
     SlotInfo = slot_info(_, VarTypes, _, TypeInfoLiveness),
     TypeInfoLiveness = yes,
     lookup_var_type(VarTypes, Var, Type),
-    polymorphism.type_is_type_info_or_ctor_type(Type).
+    type_is_type_info_or_ctor_type(Type).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.saved_vars.

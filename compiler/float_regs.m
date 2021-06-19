@@ -151,7 +151,6 @@
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.polymorphism.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.
@@ -1268,7 +1267,7 @@ take_non_rtti_types_from_tail([], []).
 take_non_rtti_types_from_tail([Type | Types0], Types) :-
     take_non_rtti_types_from_tail(Types0, Types1),
     ( if
-        ( polymorphism.type_is_typeclass_info(Type)
+        ( type_is_typeclass_info(Type)
         ; Type = type_info_type
         )
     then

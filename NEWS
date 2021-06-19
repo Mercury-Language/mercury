@@ -162,6 +162,7 @@ Changes to the Mercury standard library
 
 * The following predicates have been added:
 
+    - pred `delete_nth/3`
     - pred `foldl7/16`
     - pred `foldl8/18`
 

@@ -134,14 +134,13 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.polymorphism.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.builtin_modules.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_util.
+:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
@@ -800,9 +799,9 @@ gen_init_tag(Target, CtorClassId, SecondaryTagClassId, TagVal, Context)
     prog_context::in, prog_constraint::in,
     mlds_field_var_defn::out, mlds_field_info::out, int::in, int::out) is det.
 
-ml_gen_hld_du_ctor_typeclass_info_field(ModuleInfo, Context, Constraint,
+ml_gen_hld_du_ctor_typeclass_info_field(ModuleInfo, Context, _Constraint,
         Defn, FieldInfo, !ArgNum) :-
-    polymorphism.build_typeclass_info_type(Constraint, Type),
+    Type = build_typeclass_info_type,
     ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, !.ArgNum,
         no, Type, aw_full_word, Defn, FieldInfo),
     !:ArgNum = !.ArgNum + 1.
@@ -816,8 +815,7 @@ ml_gen_hld_du_ctor_type_info_field(ModuleInfo, Context, TypeVar,
     % We don't have access to the correct kind here. This won't matter though,
     % since the type will only be checked to see that it is a variable,
     % and won't be used in any other way.
-    Kind = kind_star,
-    polymorphism.build_type_info_type(type_variable(TypeVar, Kind), Type),
+    Type = build_type_info_type(type_variable(TypeVar, kind_star)),
     ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, !.ArgNum,
         no, Type, aw_full_word, Defn, FieldInfo),
     !:ArgNum = !.ArgNum + 1.

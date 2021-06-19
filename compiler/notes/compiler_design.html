@@ -946,6 +946,11 @@ and to extract existing type_infos from typeclass_infos.
 Most of these operations are used only by polymorphism.m,
 but some are also used by other modules.
 <p>
+polymorphism_type_class_info.m provides predicates
+to construct new type_class_infos
+and to extract existing type_infos from typeclass_infos.
+These operations are used only by polymorphism.m.
+<p>
 polymorphism.m subcontracts parts of its job to introduce_exists_casts.m,
 which is sometimes also invoked from modes.m.
 <p>
@@ -958,9 +963,11 @@ When it has done most of its work,
 polymorphism.m calls clause_to_proc.m
 to make duplicate copies of the clauses for each different mode of a predicate;
 all later stages work on procedures, not predicates.
-(Some part of the work of polymorphism.m
+<p>
+A part of the work of polymorphism.m
 is done after copying clauses to procedures,
-though it is not clear whether this is by design or by accident.)
+though it is not clear whether this is by design or by accident.
+This part is done by polymorphism_post_copy.m.
 <li>
 The mode analyser consists of several analysis modules
 and a whole bunch of service modules.
