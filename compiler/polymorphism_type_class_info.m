@@ -929,8 +929,9 @@ record_tci_slots_for_unseen_or_in_type_info_tvars(ExtraHeadVar,
         ),
     % XXX If ClassType contains more than one type variable, this records
     % Location as applying to ALL OF THEM. This code is inherited from
-    % the time when the parameters of typeclasses *had* to be type variables,
-    % and has been a bug since we lifted that restriction ages ago.
+    % the time when the parameters of typeclasses in typeclass constraints
+    % *had* to be type variables, and has been a bug since we lifted
+    % that restriction ages ago.
     list.foldl(InsertIntoRttiVarMap, UnSeenOrInTypeInfoTypeVars, !RttiVarMaps),
     record_tci_slots_for_unseen_or_in_type_info_tvars(ExtraHeadVar,
         ClassTypes, CurIndex + 1, !RttiVarMaps).
