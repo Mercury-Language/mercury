@@ -2214,9 +2214,9 @@ long_option("warn-suspected-occurs-failure",
                                         warn_suspected_occurs_check_failure).
 long_option("warn-suspected-occurs-check-failure",
                                         warn_suspected_occurs_check_failure).
-long_option("warn-potentialy-ambiguous-pragma",
+long_option("warn-potentially-ambiguous-pragma",
                                         warn_potentially_ambiguous_pragma).
-long_option("warn-potentialy-ambiguous-pragmas",
+long_option("warn-potentially-ambiguous-pragmas",
                                         warn_potentially_ambiguous_pragma).
 long_option("inform-inferred",          inform_inferred).
 long_option("inform-inferred-types",    inform_inferred_types).
