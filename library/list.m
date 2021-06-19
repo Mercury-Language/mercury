@@ -1945,8 +1945,9 @@
     % accumulator. It is called with each element of List. If a call succeeds,
     % then the output is included in TrueList and the accumulator is updated.
     %
-:- pred filter_map_foldl(pred(X, Y, A, A)::in(pred(in, out, in, out)
-    is semidet), list(X)::in, list(Y)::out, A::in, A::out) is det.
+:- pred filter_map_foldl(
+    pred(X, Y, A, A)::in(pred(in, out, in, out) is semidet),
+    list(X)::in, list(Y)::out, A::in, A::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
