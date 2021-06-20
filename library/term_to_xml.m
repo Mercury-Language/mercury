@@ -791,7 +791,7 @@ is_primitive_type(TypeDesc, Element) :-
 % the character code.
 %
 % For example "my-functor!" would become "my-45functor-33".
-% If we where using "Tag_" as the prefix for strings that start with
+% If we were using "Tag_" as the prefix for strings that start with
 % capital letters, then "MyFunctor" would become "Tag_MyFunctor".
 %
 
