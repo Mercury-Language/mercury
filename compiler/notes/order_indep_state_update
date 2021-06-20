@@ -60,7 +60,7 @@ arg. Any reference to anything in the past refs set is a violation of the
 condition. Note that if X@f/3,arg2 is in the past refs set, a reference to
 e.g. X@f/3,arg1 is NOT a violation, nor is unifying X@f/3,arg2 with a void
 variable, since this is needed to get to X@f/3,arg1. We will probably need
-a similar exception for updates of fields other han arg2.
+a similar exception for updates of fields other than arg2.
 
 If the feedback tool can verify all that, it can do its analysis of any code
 involving calls to reader/writer predicates in a modified form. The

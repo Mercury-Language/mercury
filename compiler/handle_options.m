@@ -894,7 +894,7 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target,
         AllowSrcChangesDebug = allow_src_changes,
         % --no-reorder-conj implies --no-deforestation,
         ReorderConj = bool.yes,
-        % XXX The folding done by deforestation on on polymorphic predicates
+        % XXX The folding done by deforestation on polymorphic predicates
         % does not respect --body-typeinfo-liveness.
         BodyTypeInfoLiveness = bool.no
     then

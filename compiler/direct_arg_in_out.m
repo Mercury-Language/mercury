@@ -361,7 +361,7 @@ is_direct_arg_in_out_posn(ModuleInfo, VarTypes, Var, Mode, IsDAIO) :-
             ),
             % Equivalence types should have been expanded out by now.
             %
-            % Function symbols of of foreign types cannot have direct_arg tags.
+            % Function symbols of foreign types cannot have direct_arg tags.
             %
             % Deconstruction does not work on solver types themselves;
             % it works only on their representation types.

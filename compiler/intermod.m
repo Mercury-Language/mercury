@@ -2258,7 +2258,7 @@ intermod_write_clause(OutInfo, Stream, ModuleInfo, PredId, SymName, PredOrFunc,
         % either. However, the variable numbers *are* initially allocated
         % in such an order, both by the code that reads in terms and the
         % code that converts parse tree goals into HLDS goals, so this is
-        % not likely to be necessary, while its cost may be be non-negligible.
+        % not likely to be necessary, while its cost may be non-negligible.
         write_clause(OutInfo, Stream, output_mercury, ModuleInfo,
             PredId, PredOrFunc, varset.init, TypeQual, print_name_and_num,
             write_declared_modes, 1, ClauseHeadVars, Clause, !IO)

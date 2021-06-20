@@ -268,7 +268,7 @@ For thread-local mutables the transformation is as follows:
 
 <JType> is `java.lang.Integer' or `java.lang.Object'.
 
-The above prediates are called by these predicates, again to minimise
+The above predicates are called by these predicates, again to minimise
 differences with the C backends:
 
   :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.

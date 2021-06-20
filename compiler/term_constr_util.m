@@ -90,7 +90,7 @@
     % create_nonneg_constraints(SizeVarMap, Zeros) = Constraints.
     %
     % Returns a list of constraints of the form "x >= 0" for every size_var
-    % x that is is in `SizeVarMap' and is not in the set `Zeros'.
+    % x that is in `SizeVarMap' and is not in the set `Zeros'.
     %
 :- func create_nonneg_constraints(size_var_map, zero_vars) = constraints.
 

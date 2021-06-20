@@ -114,7 +114,7 @@
     % This predicate will also traverse only procedures in which renaming
     % happens. For each Condition where renaming happens,
     % it finds the first program point in the corresponding Then and
-    % introduces the reverse renaming annotation before that ponit.
+    % introduces the reverse renaming annotation before that point.
     % Note that that first program point must not be in the condition of
     % an if-then-else. E.g.,
     % if % a renaming exists here: R -> R_ite_1

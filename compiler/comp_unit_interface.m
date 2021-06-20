@@ -739,7 +739,7 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
     %
     % Also, work out which modules we will need access to due to the
     % definitions of equivalence types, foreign types, dummy, enum and other
-    % du types types whose definitions we are keeping in the implementation
+    % du types whose definitions we are keeping in the implementation
     % section.
     get_requirements_of_imp_exported_types(IntTypesMap, ImpTypesMap,
         BothTypesMap, NeededImpTypeCtors, ImpModulesNeededByTypeDefns),

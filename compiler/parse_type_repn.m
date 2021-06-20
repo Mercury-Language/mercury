@@ -1590,7 +1590,7 @@ ok_if_arity_zero(AtomStr, TermContext, ArgTerms, FillKindSize,
 % that list having a function symbol that is the name of a foreign language
 % wrapped around a term that specifies the representation in that language.
 % This is reasonably simple, but it does not encode the invariant that
-% a type must have at most one representation in each each foreign language.
+% a type must have at most one representation in each foreign language.
 %
 % We now therefore generate this information in a another form that *does*
 % encode this invariant. Specifically, we now generate either

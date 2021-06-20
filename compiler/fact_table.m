@@ -2196,7 +2196,7 @@ do_build_hash_table(OutputStream, Globals, IsPrimaryTable, FactMap,
 
 %---------------------%
 
-    % Read lines from the sort file that that have the same first input
+    % Read lines from the sort file that have the same first input
     % argument as Fact. Places these lines into MatchingFacts. The first fact
     % in MatchingFacts is always Fact. If an extra fact is read in following
     % the matching facts, it is placed in MaybeNextFact.
