@@ -27,13 +27,13 @@
 % this module computes what type representation *every* compiler invocation
 % that generates target language code should use for each type, and puts
 % that information into the .int file of the module defining the type
-% in the form of type_repn items. (The algorithm that does this does bake
-% into those type_repn items the effects of the developer-only options
-% such as --allow-packing-local-sectags that are in effect parameters
-% of that algorithm.) Then, compiler invocations that generate target
-% language code decide which of these representations is applicable
-% to their circumstances, specifically: what the target language is,
-% and how many bits there are in a word on the target.
+% in the form of type_repn items. (The algorithm that does this *does* bake
+% into those type_repn items the effects of developer-only options such as
+% --allow-packing-local-sectags, which are in effect parameters of that
+% algorithm.) Then, compiler invocations that generate target language code
+% decide which of these representations is applicable to their circumstances,
+% specifically: what the target language is, and how many bits there are
+% in a word on the target.
 %
 %---------------------------------------------------------------------------%
 %
@@ -297,7 +297,7 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
             map.det_insert(TypeCtor, SubtypeRepnItem, !SubtypeMap)
         ;
             StdDefn = std_mer_type_du_all_plain_constants(DuStatus, DuDefn,
-                HeadName, TailNames, MaybeDefnOrEnumCJCsE),
+                HeadName, TailNames, MaybeDefnOrEnumCJCs),
             (
                 ( DuStatus = std_du_type_mer_ft_exported
                 ; DuStatus = std_du_type_mer_exported
@@ -309,10 +309,10 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
             ),
             expect_not(du_defn_is_subtype(DuDefn), $pred, "type is subtype"),
             decide_type_repns_stage_1_du_all_plain_constants(TypeCtor, DuDefn,
-                HeadName, TailNames, MaybeDefnOrEnumCJCsE, !SimpleDuMap)
+                HeadName, TailNames, MaybeDefnOrEnumCJCs, !SimpleDuMap)
         ;
             StdDefn = std_mer_type_du_not_all_plain_constants(DuStatus, DuDefn,
-                MaybeDefnCJCsE),
+                MaybeDefnCJCs),
             (
                 ( DuStatus = std_du_type_mer_ft_exported
                 ; DuStatus = std_du_type_mer_exported
@@ -324,10 +324,10 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
             ),
             expect_not(du_defn_is_subtype(DuDefn), $pred, "type is subtype"),
             decide_type_repns_stage_1_du_not_all_plain_constants(TypeCtor,
-                DuDefn, MaybeDefnCJCsE, !SimpleDuMap, !WordAlignedTypeCtorsC)
+                DuDefn, MaybeDefnCJCs, !SimpleDuMap, !WordAlignedTypeCtorsC)
         ;
             StdDefn = std_mer_type_abstract(AbsStatus, _AbsDefn,
-                MaybeDefnCJCsE),
+                MaybeDefnCJCs),
             (
                 ( AbsStatus = std_abs_type_ft_exported
                 ; AbsStatus = std_abs_type_abstract_exported
@@ -337,7 +337,7 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
                 AbsStatus = std_abs_type_all_private
             ),
             maybe_mark_type_ctor_as_word_aligned_for_c(TypeCtor,
-                MaybeDefnCJCsE, !WordAlignedTypeCtorsC)
+                MaybeDefnCJCs, !WordAlignedTypeCtorsC)
         )
     ).
 
@@ -347,9 +347,9 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
     c_j_cs_maybe_defn::in,
     word_aligned_type_ctors_c::in, word_aligned_type_ctors_c::out) is det.
 
-maybe_mark_type_ctor_as_word_aligned_for_c(TypeCtor, MaybeDefnCJCsE,
+maybe_mark_type_ctor_as_word_aligned_for_c(TypeCtor, MaybeDefnCJCs,
         !WordAlignedTypeCtorsC) :-
-    MaybeDefnCJCsE = c_java_csharp(MaybeDefnC, _, _),
+    MaybeDefnCJCs = c_java_csharp(MaybeDefnC, _, _),
     ( if
         MaybeDefnC = yes(DefnC),
         DefnC ^ td_ctor_defn ^ foreign_assertions =
@@ -376,8 +376,8 @@ du_defn_is_subtype(DuDefn) :-
     simple_du_map::in, simple_du_map::out) is det.
 
 decide_type_repns_stage_1_du_all_plain_constants(TypeCtor, DuDefn,
-        HeadName, TailNames, MaybeDefnOrEnumCJCsE, !SimpleDuMap) :-
-    decide_type_repns_foreign_defns_or_enums(MaybeDefnOrEnumCJCsE,
+        HeadName, TailNames, MaybeDefnOrEnumCJCs, !SimpleDuMap) :-
+    decide_type_repns_foreign_defns_or_enums(MaybeDefnOrEnumCJCs,
         EnumForeignRepns),
     DuDefn = item_type_defn_info(_TypeCtorSymName, TypeParams, DetailsDu,
         TVarSet, _Context, _SeqNum),
@@ -388,7 +388,8 @@ decide_type_repns_stage_1_du_all_plain_constants(TypeCtor, DuDefn,
             TailNames = [],
             % The type has exactly one data constructor.
             DirectDummyRepn = direct_dummy_repn(HeadName, EnumForeignRepns),
-            SimpleDuRepn = sdr_direct_dummy(TypeParams, TVarSet, DirectDummyRepn)
+            SimpleDuRepn = sdr_direct_dummy(TypeParams, TVarSet,
+                DirectDummyRepn)
         ;
             TailNames = [HeadTailName | TailTailNames],
             % The type has at least two data constructors.
@@ -409,8 +410,8 @@ decide_type_repns_stage_1_du_all_plain_constants(TypeCtor, DuDefn,
     word_aligned_type_ctors_c::in, word_aligned_type_ctors_c::out) is det.
 
 decide_type_repns_stage_1_du_not_all_plain_constants(TypeCtor, DuDefn,
-        MaybeDefnCJCsE, !SimpleDuMap, !WordAlignedTypeCtorsC) :-
-    decide_type_repns_foreign_defns(MaybeDefnCJCsE, ForeignTypeRepns),
+        MaybeDefnCJCs, !SimpleDuMap, !WordAlignedTypeCtorsC) :-
+    decide_type_repns_foreign_defns(MaybeDefnCJCs, ForeignTypeRepns),
     DuDefn = item_type_defn_info(_TypeCtorSymName, TypeParams, DetailsDu,
         TVarSet, _Context, _SeqNum),
     DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeCanonical,
@@ -468,9 +469,9 @@ decide_type_repns_stage_1_du_not_all_plain_constants(TypeCtor, DuDefn,
 :- pred decide_type_repns_foreign_defns_or_enums(
     c_j_cs_maybe_defn_or_enum::in, c_j_cs_enum_repn::out) is det.
 
-decide_type_repns_foreign_defns_or_enums(MaybeDefnOrEnumCJCsE,
-        MaybeRepnCJCsE) :-
-    MaybeDefnOrEnumCJCsE = c_java_csharp(MaybeDefnOrEnumC,
+decide_type_repns_foreign_defns_or_enums(MaybeDefnOrEnumCJCs,
+        MaybeRepnCJCs) :-
+    MaybeDefnOrEnumCJCs = c_java_csharp(MaybeDefnOrEnumC,
         MaybeDefnOrEnumJava, MaybeDefnOrEnumCsharp),
     represent_maybe_foreign_defn_or_enum(MaybeDefnOrEnumC,
         MaybeRepnC),
@@ -478,7 +479,7 @@ decide_type_repns_foreign_defns_or_enums(MaybeDefnOrEnumCJCsE,
         MaybeRepnJava),
     represent_maybe_foreign_defn_or_enum(MaybeDefnOrEnumCsharp,
         MaybeRepnCsharp),
-    MaybeRepnCJCsE = c_java_csharp(MaybeRepnC, MaybeRepnJava,
+    MaybeRepnCJCs = c_java_csharp(MaybeRepnC, MaybeRepnJava,
         MaybeRepnCsharp).
 
 :- pred represent_maybe_foreign_defn_or_enum(maybe(foreign_type_or_enum)::in,
@@ -508,13 +509,13 @@ represent_maybe_foreign_defn_or_enum(MaybeForeignDefnOrEnum,
 :- pred decide_type_repns_foreign_defns(c_j_cs_maybe_defn::in,
     c_j_cs_repn::out) is det.
 
-decide_type_repns_foreign_defns(MaybeDefnCJCsE, MaybeRepnCJCsE) :-
-    MaybeDefnCJCsE = c_java_csharp(MaybeDefnC, MaybeDefnJava,
+decide_type_repns_foreign_defns(MaybeDefnCJCs, MaybeRepnCJCs) :-
+    MaybeDefnCJCs = c_java_csharp(MaybeDefnC, MaybeDefnJava,
         MaybeDefnCsharp),
     represent_maybe_foreign_defn(MaybeDefnC, MaybeRepnC),
     represent_maybe_foreign_defn(MaybeDefnJava, MaybeRepnJava),
     represent_maybe_foreign_defn(MaybeDefnCsharp, MaybeRepnCsharp),
-    MaybeRepnCJCsE = c_java_csharp(MaybeRepnC, MaybeRepnJava,
+    MaybeRepnCJCs = c_java_csharp(MaybeRepnC, MaybeRepnJava,
         MaybeRepnCsharp).
 
 :- pred represent_maybe_foreign_defn(maybe(item_type_defn_info_foreign)::in,
@@ -729,8 +730,8 @@ record_type_repns_in_parse_tree_int3(ParseTreeInt3,
         !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC) :-
     ModuleName = ParseTreeInt3 ^ pti3_module_name,
     TypeRepns = ParseTreeInt3 ^ pti3_int_type_repns,
-    map.foldl4(record_type_repn_in_parse_tree_int3(ModuleName),
-        TypeRepns, !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC).
+    map.foldl4(record_type_repn_in_parse_tree_int3(ModuleName), TypeRepns,
+        !EqvRepnMap, !SubtypeMap, !SimpleDuMap, !WordAlignedTypeCtorsC).
 
 :- pred record_type_repn_in_parse_tree_int3(module_name::in,
     type_ctor::in, item_type_repn_info::in,
@@ -842,18 +843,18 @@ decide_all_type_repns_stage_2(BaseParams, EqvRepnMap, EqvMap, SubtypeMap,
             add_simple_du_repn_item(TypeCtor, SimpleDuRepn, !Int1RepnMap)
         ;
             StdDefn = std_mer_type_du_not_all_plain_constants(_DuStatus,
-                DuDefn, MaybeDefnCJCsE),
+                DuDefn, MaybeDefnCJCs),
             decide_type_repns_stage_2_du_gen(BaseParams, EqvMap, SubtypeMap,
                 WordAlignedTypeCtorsC, SimpleDuMap, TypeCtor,
-                DuDefn, MaybeDefnCJCsE, !Int1RepnMap, !Specs)
+                DuDefn, MaybeDefnCJCs, !Int1RepnMap, !Specs)
         ;
             StdDefn = std_mer_type_abstract(_AbsStatus, AbsDefn,
-                MaybeDefnCJCsE),
-            decide_type_repns_foreign_defns(MaybeDefnCJCsE, RepnCJCsE),
+                MaybeDefnCJCs),
+            decide_type_repns_foreign_defns(MaybeDefnCJCs, RepnCJCs),
             AbsDefn = item_type_defn_info(TypeCtorSymName, TypeParams,
                 _, TVarSet, _Context, _SeqNum),
             RepnInfo = item_type_repn_info(TypeCtorSymName, TypeParams,
-                tcrepn_foreign(RepnCJCsE), TVarSet,
+                tcrepn_foreign(RepnCJCs), TVarSet,
                 term.dummy_context_init, item_no_seq_num),
             map.det_insert(TypeCtor, RepnInfo, !Int1RepnMap)
         )
@@ -868,9 +869,9 @@ decide_all_type_repns_stage_2(BaseParams, EqvRepnMap, EqvMap, SubtypeMap,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_type_repns_stage_2_du_gen(BaseParams, EqvMap, SubtypeMap,
-        WordAlignedTypeCtorsC, SimpleDuMap, TypeCtor, DuDefn, MaybeDefnCJCsE,
+        WordAlignedTypeCtorsC, SimpleDuMap, TypeCtor, DuDefn, MaybeDefnCJCs,
         !Int1RepnMap, !Specs) :-
-    decide_type_repns_foreign_defns(MaybeDefnCJCsE, RepnCJCsE),
+    decide_type_repns_foreign_defns(MaybeDefnCJCs, RepnCJCs),
     DuDefn = item_type_defn_info(TypeCtorSymName, TypeParams, DetailsDu,
         TVarSet, _Context, _SeqNum),
 
@@ -890,7 +891,7 @@ decide_type_repns_stage_2_du_gen(BaseParams, EqvMap, SubtypeMap,
         % The type has exactly one data constructor.
         decide_type_repns_stage_2_du_gen_only_functor(BaseParams,
             SimpleDuMap, TypeCtor, TypeParams, TVarSet, MaybeCanonical,
-            HeadCtor, RepnCJCsE, !Int1RepnMap)
+            HeadCtor, RepnCJCs, !Int1RepnMap)
     ;
         TailCtors0 = [_ | _],
         % The type has two or more data constructors.
@@ -898,7 +899,7 @@ decide_type_repns_stage_2_du_gen(BaseParams, EqvMap, SubtypeMap,
             SimpleDuMap, TVarSet, TailCtors0, TailCtors, !Specs),
         decide_type_repns_stage_2_du_gen_more_functors(BaseParams,
             WordAlignedTypeCtorsC, SimpleDuMap, TypeCtor, TypeParams,
-            TVarSet, [HeadCtor | TailCtors], RepnCJCsE, !Int1RepnMap)
+            TVarSet, [HeadCtor | TailCtors], RepnCJCs, !Int1RepnMap)
     ).
 
 :- pred decide_type_repns_stage_2_du_gen_only_functor(base_params::in,
@@ -907,7 +908,7 @@ decide_type_repns_stage_2_du_gen(BaseParams, EqvMap, SubtypeMap,
     type_ctor_repn_map::in, type_ctor_repn_map::out) is det.
 
 decide_type_repns_stage_2_du_gen_only_functor(BaseParams, SimpleDuMap,
-        TypeCtor, TypeParams, TVarSet, MaybeCanonical, SingleCtor, RepnCJCsE,
+        TypeCtor, TypeParams, TVarSet, MaybeCanonical, SingleCtor, RepnCJCs,
         !Int1RepnMap) :-
     SingleCtor = ctor(_Ordinal, MaybeExistConstraints,
         SingleCtorSymName, Args, Arity, _SingleCtorContext),
@@ -940,7 +941,7 @@ decide_type_repns_stage_2_du_gen_only_functor(BaseParams, SimpleDuMap,
             ArgsRepn32NoSpf, ArgsRepn32Spf),
         ArgTypes = list.map((func(CA) = CA ^ arg_type), Args),
         OnlyFunctorRepn = gen_du_only_functor_repn(SingleCtorName,
-            ArgTypes, CRepns, RepnCJCsE),
+            ArgTypes, CRepns, RepnCJCs),
         DuRepn = dur_gen_only_functor(OnlyFunctorRepn),
         TypeCtor = type_ctor(TypeCtorSymName, _Arity),
         RepnInfo = item_type_repn_info(TypeCtorSymName, TypeParams,
@@ -1014,7 +1015,7 @@ decide_complex_du_only_functor_remote_args(PlatformParams,
 
 decide_type_repns_stage_2_du_gen_more_functors(BaseParams,
         WordAlignedTypeCtorsC, SimpleDuMap, TypeCtor, TypeParams, TVarSet,
-        Ctors, RepnCJCsE, !Int1RepnMap) :-
+        Ctors, RepnCJCs, !Int1RepnMap) :-
     PlatformParams64NoSpfNoDa = platform_params(word_size_64,
         no_double_word_floats, no_direct_args, BaseParams),
     PlatformParams64NoSpfDa = platform_params(word_size_64,
@@ -1055,7 +1056,7 @@ decide_type_repns_stage_2_du_gen_more_functors(BaseParams,
     ),
 
     MoreFunctorsRepn = gen_du_more_functors_repn(CRepn1, CRepn2, CRepn3plus,
-        RepnCJCsE),
+        RepnCJCs),
     DuRepn = dur_gen_more_functors(MoreFunctorsRepn),
     TypeCtor = type_ctor(TypeCtorSymName, _Arity),
     RepnInfo = item_type_repn_info(TypeCtorSymName, TypeParams,
@@ -2357,7 +2358,8 @@ expand_eqv_sub_of_notag_types_in_constructor(EqvMap, SubtypeMap, SimpleDuMap,
 expand_eqv_sub_of_notag_types_in_constructor_args(_, _, _, _, [], [],
         !Changed, !Specs).
 expand_eqv_sub_of_notag_types_in_constructor_args(TypeEqvMap, SubtypeMap,
-        SimpleDuMap, TVarSet, [Arg0 | Args0], [Arg | Args], !Changed, !Specs) :-
+        SimpleDuMap, TVarSet, [Arg0 | Args0], [Arg | Args],
+        !Changed, !Specs) :-
     Arg0 = ctor_arg(MaybeFieldName, ArgType0, Context),
     expand_eqv_sub_of_notag_type_fixpoint(TypeEqvMap, SubtypeMap, SimpleDuMap,
         TVarSet, Context, 100, ArgType0, ArgType, ArgTypeChanged, !Specs),
@@ -2406,8 +2408,8 @@ expand_eqv_sub_of_notag_type_fixpoint(TypeEqvMap, SubtypeMap, SimpleDuMap,
         % Is the Mercury definition of Type0 overridden by a foreign
         % language definition for C?
         NotagRepn = notag_repn(_NotagFunctorName, NotagFunctorArgType0,
-            MaybeCJCsERepn),
-        MaybeCJCsERepn = c_java_csharp(no, _, _)
+            MaybeCJCsRepn),
+        MaybeCJCsRepn = c_java_csharp(no, _, _)
     then
         varset.merge_renaming(TVarSet0, NotagTVarSet0, TVarSet1,
             RenamingNotagTo1),
