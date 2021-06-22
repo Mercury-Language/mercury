@@ -192,27 +192,7 @@ decide_type_repns(!ModuleInfo, !Specs, !IO) :-
     list.foldl2(add_pragma_foreign_export_enum, ForeignExportEnums,
         !ModuleInfo, !Specs),
 
-    MaybeShowTypeRepns = Params ^ ddp_maybe_show_type_repns,
-    (
-        MaybeShowTypeRepns = do_not_show_type_repns
-    ;
-        MaybeShowTypeRepns = show_type_repns(ShowWhichTypes, ForDevelopers),
-        module_info_get_name(!.ModuleInfo, ModuleName),
-        module_name_to_file_name(Globals, $pred, do_create_dirs,
-            ext_other(other_ext(".type_repns")), ModuleName, FileName, !IO),
-        io.open_output(FileName, FileResult, !IO),
-        (
-            FileResult = ok(Stream),
-            MaybePrimaryTags = Params ^ ddp_maybe_primary_tags,
-            list.foldl(
-                show_decisions_if_du_type(Stream, MaybePrimaryTags,
-                    ShowWhichTypes, ForDevelopers),
-                TypeCtorsTypeDefns, !IO),
-            io.close_output(Stream, !IO)
-        ;
-            FileResult = error(_)
-        )
-    ),
+    maybe_show_type_repns(!.ModuleInfo, TypeCtorsTypeDefns, !IO),
 
     add_special_pred_decl_defns_for_types_maybe_lazily(
         SortedTypeCtorsTypeDefns, !ModuleInfo).
@@ -2804,10 +2784,7 @@ deref_eqv_types(ModuleInfo, Type0, Type) :-
 separate_out_constants([], [], []).
 separate_out_constants([Ctor | Ctors], Constants, Functors) :-
     separate_out_constants(Ctors, ConstantsTail, FunctorsTail),
-    ( if
-        Ctor ^ cons_args = [],
-        Ctor ^ cons_maybe_exist = no_exist_constraints
-    then
+    ( if ctor_is_constant(Ctor, _) then
         Constants = [Ctor | ConstantsTail],
         Functors = FunctorsTail
     else
@@ -2911,6 +2888,56 @@ num_bits_needed_for_n_things_loop(N, NumBits0, NumBits) :-
     ).
 
 %---------------------------------------------------------------------------%
+
+:- pred maybe_show_type_repns(module_info::in,
+    assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
+
+maybe_show_type_repns(ModuleInfo, TypeCtorsTypeDefns, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, show_local_type_repns,
+        ShowLocalTypeRepns),
+    (
+        ShowLocalTypeRepns = no
+        % If we are not showing the representations of local types,
+        % we definitely aren't showing the representations of *all* types.
+    ;
+        ShowLocalTypeRepns = yes,
+        globals.lookup_bool_option(Globals, show_all_type_repns,
+            ShowAllTypeRepns),
+        (
+            ShowAllTypeRepns = no,
+            ShowWhichTypes = show_locally_defined_types
+        ;
+            ShowAllTypeRepns = yes,
+            ShowWhichTypes = show_all_visible_types
+        ),
+        globals.lookup_bool_option(Globals, show_developer_type_repns,
+            ShowDeveloperTypeRepns),
+        (
+            ShowDeveloperTypeRepns = no,
+            ForDevelopers = not_for_developers
+        ;
+            ShowDeveloperTypeRepns = yes,
+            ForDevelopers = for_developers
+        ),
+
+        module_info_get_name(ModuleInfo, ModuleName),
+        module_name_to_file_name(Globals, $pred, do_create_dirs,
+            ext_other(other_ext(".type_repns")),
+            ModuleName, TypeRepnFileName, !IO),
+        io.open_output(TypeRepnFileName, TypeRepnFileResult, !IO),
+        (
+            TypeRepnFileResult = ok(TypeRepnStream),
+            compute_maybe_primary_tag_bits(Globals, MaybePrimaryTags),
+            list.foldl(
+                show_decisions_if_du_type(TypeRepnStream, MaybePrimaryTags,
+                    ShowWhichTypes, ForDevelopers),
+                TypeCtorsTypeDefns, !IO),
+            io.close_output(TypeRepnStream, !IO)
+        ;
+            TypeRepnFileResult = error(_)
+        )
+    ).
 
 :- pred show_decisions_if_du_type(io.text_output_stream::in,
     maybe_primary_tags::in, show_which_types::in, maybe_for_developers::in,
@@ -3107,7 +3134,7 @@ show_decisions_for_ctor(Stream, MaybePrimaryTags, ForDevelopers, TypeCtorStr,
         ),
         unexpected($pred, "unexpected kind of tag for general du type")
     ),
-    ( if 
+    ( if
         ForDevelopers = not_for_developers,
         MaybeExist = exist_constraints(ConsExistConstraints)
     then
@@ -3428,9 +3455,7 @@ output_sized_packable_functor_args(Stream, Params, ComponentTypeMap, Prefix,
                 % XXX When we remove "where direct_arg is" clauses
                 % from the language, the second purpose will go away.
                 ddp_maybe_direct_args           :: maybe_direct_args,
-                ddp_direct_arg_map              :: direct_arg_map,
-
-                ddp_maybe_show_type_repns       :: maybe_show_type_repns
+                ddp_direct_arg_map              :: direct_arg_map
             ).
 
 :- pred setup_decide_du_params(globals::in, direct_arg_map::in,
@@ -3445,21 +3470,23 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
         AllowDoubleWords),
     (
         AllowDoubleWords = yes,
-        globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
-        globals.lookup_bool_option(Globals, single_prec_float,
-            SinglePrecFloat),
-        ( if
-            TargetWordBits = 32,
-            SinglePrecFloat = no
-        then
-            DoubleWordFloats = use_double_word_floats
-        else
-            DoubleWordFloats = no_double_word_floats
-        ),
-        ( if TargetWordBits = 32 then
+        globals.get_word_size(Globals, WordSize),
+        (
+            WordSize = word_size_32,
+            globals.lookup_bool_option(Globals, single_prec_float,
+                SinglePrecFloat),
+            (
+                SinglePrecFloat = no,
+                DoubleWordFloats = use_double_word_floats
+            ;
+                SinglePrecFloat = yes,
+                DoubleWordFloats = no_double_word_floats
+            ),
             DoubleWordInt64s = use_double_word_int64s
-        else
-            DoubleWordInt64s = no_double_word_int64s
+        ;
+            WordSize = word_size_64,
+            DoubleWordInt64s = no_double_word_int64s,
+            DoubleWordFloats = no_double_word_floats
         )
     ;
         AllowDoubleWords = no,
@@ -3479,27 +3506,7 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
     ),
 
     % Compute MaybePrimaryTags.
-    (
-        Target = target_c,
-        globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBits),
-        % We require the use of two or three primary tags when targeting C.
-        ( if NumPtagBits = 2 then
-            MaybePrimaryTags = max_primary_tag(ptag(3u8), NumPtagBits)
-        else if NumPtagBits = 3 then
-            MaybePrimaryTags = max_primary_tag(ptag(7u8), NumPtagBits)
-        else
-            % handle_options.m should have generated an error if num_ptag_bits
-            % is not 2 or 3, which should have meant that its caller in
-            % mercury_compile_main.m stops execution before
-            % du_type_layout.m is invoked.
-            unexpected($pred, "target_c but NumPtagBits not 2 or 3")
-        )
-    ;
-        ( Target = target_java
-        ; Target = target_csharp
-        ),
-        MaybePrimaryTags = no_primary_tags
-    ),
+    compute_maybe_primary_tag_bits(Globals, MaybePrimaryTags),
 
     % Compute ArgPackBits.
     globals.lookup_int_option(Globals, arg_pack_bits, ArgPackBits),
@@ -3565,43 +3572,40 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
         MaybeInformPacking = inform_about_packing
     ),
 
-    % Compute MaybeDumpTypeRepns.
-    globals.lookup_bool_option(Globals, show_all_type_repns,
-        ShowAllTypeRepns),
-    globals.lookup_bool_option(Globals, show_local_type_repns,
-        ShowLocalTypeRepns),
-    globals.lookup_bool_option(Globals, show_developer_type_repns,
-        ShowDeveloperTypeRepns),
-    (
-        ShowDeveloperTypeRepns = no,
-        ForDevelopers = not_for_developers
-    ;
-        ShowDeveloperTypeRepns = yes,
-        ForDevelopers = for_developers
-    ),
-    (
-        ShowAllTypeRepns = no,
-        (
-            ShowLocalTypeRepns = no,
-            MaybeShowTypeRepns = do_not_show_type_repns
-        ;
-            ShowLocalTypeRepns = yes,
-            MaybeShowTypeRepns = show_type_repns(show_locally_defined_types,
-                ForDevelopers)
-        )
-    ;
-        ShowAllTypeRepns = yes,
-        MaybeShowTypeRepns = show_type_repns(show_all_visible_types,
-            ForDevelopers)
-    ),
-
     Params = decide_du_params(ArgPackBits, MaybePrimaryTags, Target,
         DoubleWordFloats, DoubleWordInt64s,
         UnboxedNoTagTypes, MaybeInformPacking,
         AllowDoubleWordInts, AllowPackingInts, AllowPackingChars,
         AllowPackingDummies, AllowPackingLocalSegtags,
         AllowPackingRemoteSegtags, AllowPackingMiniTypes,
-        MaybeDirectArgs, DirectArgMap, MaybeShowTypeRepns).
+        MaybeDirectArgs, DirectArgMap).
+
+:- pred compute_maybe_primary_tag_bits(globals::in, maybe_primary_tags::out)
+    is det.
+
+compute_maybe_primary_tag_bits(Globals, MaybePrimaryTags) :-
+    globals.get_target(Globals, Target),
+    (
+        Target = target_c,
+        globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBits),
+        % We require the use of two or three primary tags when targeting C.
+        ( if NumPtagBits = 2 then
+            MaybePrimaryTags = max_primary_tag(ptag(3u8), NumPtagBits)
+        else if NumPtagBits = 3 then
+            MaybePrimaryTags = max_primary_tag(ptag(7u8), NumPtagBits)
+        else
+            % handle_options.m should have generated an error if num_ptag_bits
+            % is not 2 or 3, which should have meant that its caller in
+            % mercury_compile_main.m stops execution before
+            % du_type_layout.m is invoked.
+            unexpected($pred, "target_c but NumPtagBits not 2 or 3")
+        )
+    ;
+        ( Target = target_java
+        ; Target = target_csharp
+        ),
+        MaybePrimaryTags = no_primary_tags
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.du_type_layout.
