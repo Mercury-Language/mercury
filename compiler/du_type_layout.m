@@ -168,7 +168,7 @@ decide_type_repns(!ModuleInfo, !Specs, !IO) :-
         NoTagTypeMap0, NoTagTypeMap1, !Specs),
 
     % Pass 1b.
-    list.foldl2(add_if_subtype_of_simple_du_type_to_maps(TypeTable0),
+    list.foldl2(decide_if_subtype_of_simple_du_type(TypeTable0),
         SubTypeCtorsTypeDefns1,
         ComponentTypeMap1, ComponentTypeMap,
         NoTagTypeMap1, NoTagTypeMap),
@@ -185,8 +185,8 @@ decide_type_repns(!ModuleInfo, !Specs, !IO) :-
         SubTypeCtorsTypeDefns1, SubTypeCtorsTypeDefns2, !Specs),
 
     TypeCtorsTypeDefns = SubTypeCtorsTypeDefns2 ++ NonSubTypeCtorsTypeDefns2,
-    set_all_type_ctor_defns(TypeCtorsTypeDefns, SortedTypeCtorsTypeDefns,
-        TypeTable),
+    set_all_type_ctor_defns(TypeCtorsTypeDefns,
+        SortedTypeCtorsTypeDefns, TypeTable),
     module_info_set_type_table(TypeTable, !ModuleInfo),
 
     list.foldl2(add_pragma_foreign_export_enum, ForeignExportEnums,
@@ -660,12 +660,12 @@ add_abstract_if_packable(TypeCtor, AbstractDetails, !ComponentTypeMap) :-
     % information in component_type_map and no_tag_type_table to
     % any subtypes of those simple du types.
     %
-:- pred add_if_subtype_of_simple_du_type_to_maps(type_table::in,
+:- pred decide_if_subtype_of_simple_du_type(type_table::in,
     pair(type_ctor, hlds_type_defn)::in,
     component_type_map::in, component_type_map::out,
     no_tag_type_table::in, no_tag_type_table::out) is det.
 
-add_if_subtype_of_simple_du_type_to_maps(OldTypeTable, TypeCtorTypeDefn,
+decide_if_subtype_of_simple_du_type(OldTypeTable, TypeCtorTypeDefn,
         !ComponentTypeMap, !NoTagTypeMap) :-
     TypeCtorTypeDefn = TypeCtor - TypeDefn,
     get_type_defn_body(TypeDefn, Body),
