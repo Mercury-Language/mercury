@@ -10,6 +10,7 @@
 --warn-unused-imports
 --warn-insts-with-functors-without-type
 --warn-suspicious-foreign-code
+--warn-potentially-ambiguous-pragma
 --halt-at-warn
 --warn-dead-predicates
 --no-warn-inferred-erroneous

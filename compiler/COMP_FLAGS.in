@@ -10,6 +10,7 @@
 --warn-suspicious-foreign-code
 --warn-dead-preds
 --warn-implicit-stream-calls
+--warn-potentially-ambiguous-pragma
 --halt-at-warn
 --no-mercury-stdlib-dir
 --no-detect-libgrades

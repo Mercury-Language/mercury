@@ -7,6 +7,7 @@
 --warn-inconsistent-pred-order-clauses
 --warn-unused-imports
 --warn-insts-with-functors-without-type
+--warn-potentially-ambiguous-pragma
 --halt-at-warn
 --no-warn-inferred-erroneous
 --no-mercury-stdlib-dir

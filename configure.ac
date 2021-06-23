@@ -578,9 +578,7 @@ EOF
         test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&
         $BOOTSTRAP_MC \
             --grade none.gc \
-            --warn-insts-without-matching-type \
-            --warn-known-bad-format-calls \
-            --partial-inst-copy-2021-01-04 \
+            --warn-potentially-ambiguous-pragma \
             --no-detect-libgrades \
             --output-grade-string \
             --shlib-linker-install-name-flag "-dummy_flag" \
