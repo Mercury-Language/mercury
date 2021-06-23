@@ -132,10 +132,10 @@
                 % The first functor name in the type, and any later functor
                 % names. If there are no later functor names, then the type
                 % is a direct dummy type, and must satisfy the requirements
-                % of non_sub_du_type_is_dummy; if there are, then the type is an
-                % enum type, and must satisfy the requirements of
+                % of non_sub_du_type_is_dummy; if there are, then the type
+                % is an enum type, and must satisfy the requirements of
                 % non_sub_du_type_is_enum. (Function symbols that do not meet
-                % the relevant requirements may be constants but we
+                % the relevant requirements may be constants, but we
                 % don't consider them *plain* constants.)
                 string,
                 list(string),
@@ -1408,16 +1408,14 @@ check_any_type_ctor_enums_for_duplicates(ForeignEnumMap, TypeCtor,
 
 at_most_one_foreign_enum_for_all_langs(TypeCtor, AllEnumsCJCs,
         MaybeEnumCJCs, LeftOverEnumsCJCs, !Specs) :-
-    AllEnumsCJCs = c_java_csharp(EnumsC, EnumsJava,
-        EnumsCsharp),
+    AllEnumsCJCs = c_java_csharp(EnumsC, EnumsJava, EnumsCsharp),
     at_most_one_foreign_enum_for_lang(TypeCtor, lang_c,
         EnumsC, MaybeEnumC, LeftOverEnumsC, !Specs),
     at_most_one_foreign_enum_for_lang(TypeCtor, lang_java,
         EnumsJava, MaybeEnumJava, LeftOverEnumsJava, !Specs),
     at_most_one_foreign_enum_for_lang(TypeCtor, lang_csharp,
         EnumsCsharp, MaybeEnumCsharp, LeftOverEnumsCsharp, !Specs),
-    MaybeEnumCJCs = c_java_csharp(MaybeEnumC, MaybeEnumJava,
-        MaybeEnumCsharp),
+    MaybeEnumCJCs = c_java_csharp(MaybeEnumC, MaybeEnumJava, MaybeEnumCsharp),
     LeftOverEnumsCJCs = c_java_csharp(LeftOverEnumsC,
         LeftOverEnumsJava, LeftOverEnumsCsharp).
 
@@ -1436,7 +1434,7 @@ report_duplicate_type_defn(Kind, TypeCtor, LeastContext, Context, !Specs) :-
 
 :- pred at_most_one_foreign_type_for_lang(type_ctor::in, foreign_language::in,
     list(item_type_defn_info_foreign)::in,
-        maybe(item_type_defn_info_foreign)::out,
+    maybe(item_type_defn_info_foreign)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 at_most_one_foreign_type_for_lang(TypeCtor, Lang, TypeDefns,
@@ -1510,11 +1508,12 @@ project_foreign_enum_context(ForeignEnum) = ForeignEnum ^ fe_context.
     set(prog_context)::in, set(prog_context)::out) is det.
 
 accumulate_type_defn_contexts(TypeDefn, !Contexts) :-
-    set.insert(get_type_defn_context(TypeDefn), !Contexts).
+    set.insert(get_type_defn_info_context(TypeDefn), !Contexts).
 
-:- func get_type_defn_context(item_type_defn_info_general(T)) = prog_context.
+:- func get_type_defn_info_context(item_type_defn_info_general(T))
+    = prog_context.
 
-get_type_defn_context(TypeDefn) = TypeDefn ^ td_context.
+get_type_defn_info_context(TypeDefn) = TypeDefn ^ td_context.
 
 :- pred report_duplicate_foreign_defn(string::in,
     type_ctor::in, foreign_language::in, prog_context::in, prog_context::in,
