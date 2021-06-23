@@ -456,12 +456,25 @@ classify_int_imp_import_use_modules(ModuleName,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_any_duplicate_avail_contexts(Section, DeclName,
-        ModuleName, OoMContexts, Context, !Specs) :-
-    OoMContexts = one_or_more(Context, DuplicateContexts),
-    list.foldl(
-        report_duplicate_avail_context(Section, DeclName,
-            ModuleName, Context),
-        DuplicateContexts, !Specs).
+        ModuleName, OoMContexts, HeadSortedContext, !Specs) :-
+    OoMContexts = one_or_more(HeadContext, TailContexts),
+    % The contexts in OoMContexts are not necessarily in sorted order.
+    list.sort([HeadContext | TailContexts], SortedContexts),
+    (
+        SortedContexts = [],
+        unexpected($pred, "SortedContexts = []")
+    ;
+        SortedContexts = [HeadSortedContext | TailSortedContexts],
+        (
+            TailSortedContexts = []
+        ;
+            TailSortedContexts = [_ | _],
+            list.foldl(
+                report_duplicate_avail_context(Section, DeclName,
+                    ModuleName, HeadSortedContext),
+                TailSortedContexts, !Specs)
+        )
+    ).
 
 :- pred report_duplicate_avail_context(string::in, string::in,
     module_name::in, prog_context::in, prog_context::in,
