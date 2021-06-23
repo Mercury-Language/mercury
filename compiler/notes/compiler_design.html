@@ -426,6 +426,9 @@ belong in its .int3, .int0, .int and .int2 files.
 check_parse_tree_type_defns.m checks whether
 the type definition related items in a raw compilation unit
 are consistent with one another.
+It uses prog_foreign_enum.m
+to check the validity of foreign enum declarations,
+using code that also does the same job for foreign export enum declarations.
 <li>
 convert_parse_tree.m does conversions in both directions
 between the generic interface file parse tree on the one hand

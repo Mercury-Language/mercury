@@ -79,6 +79,7 @@
 :- include_module prog_detism.
 :- include_module prog_event.
 :- include_module prog_foreign.
+:- include_module prog_foreign_enum.
 :- include_module prog_item_stats.
 :- include_module prog_mode.
 :- include_module prog_mutable.

@@ -254,16 +254,11 @@
 
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module hlds.
-:- import_module hlds.add_foreign_enum. % XXX TYPE_REPN undesirable dependency
-% build_ctor_name_to_foreign_name_map_loop, add_unknown_ctors_error
-% and add_foreign_enum_unmapped_ctors_error should be moved here
-% from add_foreign_enum.
 :- import_module mdbcomp.builtin_modules.
+:- import_module parse_tree.prog_foreign_enum.
 :- import_module parse_tree.prog_type.
 
 :- import_module bimap.
-:- import_module cord.
 :- import_module int.
 :- import_module require.
 :- import_module pair.
@@ -964,7 +959,7 @@ pick_up_all_errors([HeadFETuple | TailFETuples], !Specs) :-
     {checked_foreign_enum, list(error_spec)}::out) is det.
 
 build_mercury_foreign_enum_map(TypeCtor, CtorNames, CtorNamesSet,
-        ForeignEnum, {CheckedForeignEnum, !:Specs}) :-
+        ForeignEnum, {CheckedForeignEnum, Specs}) :-
     ForeignEnum = item_foreign_enum_info(_Lang, _TypeCtor, MercuryForeignOoM,
         Context, _SeqNum),
     MercuryForeignAL = one_or_more_to_list(MercuryForeignOoM),
@@ -975,92 +970,15 @@ build_mercury_foreign_enum_map(TypeCtor, CtorNames, CtorNamesSet,
     TypeCtor = type_ctor(TypeCtorSymName, _),
     det_sym_name_get_module_name(TypeCtorSymName, TypeCtorModuleName),
 
-    SeenCtorNames0 = set_tree234.init,
-    SeenForeignNames0 = set_tree234.init,
-    BadQualCtorNamesCord0 = cord.init,
-    InvalidCtorSymNamesCord0 = cord.init,
-    RepeatedCtorNamesCord0 = cord.init,
-    RepeatedForeignNamesCord0 = cord.init,
-    build_ctor_name_to_foreign_name_map_loop(TypeCtorModuleName, CtorNamesSet,
-        MercuryForeignAL, bimap.init, MercuryForeignBiMap,
-        SeenCtorNames0, SeenCtorNames, SeenForeignNames0,
-        BadQualCtorNamesCord0, BadQualCtorNamesCord,
-        InvalidCtorSymNamesCord0, InvalidCtorSymNamesCord,
-        RepeatedCtorNamesCord0, RepeatedCtorNamesCord,
-        RepeatedForeignNamesCord0, RepeatedForeignNamesCord),
-
-    % Badly qualified data constructor names should have been caught by
-    % parse_pragma.m, and should have prevented the construction
-    % of the foreign_enum pragma.
-    expect(cord.is_empty(BadQualCtorNamesCord), $pred, "BadQualCtorNames"),
-
-    !:Specs = [],
-    ( if cord.is_empty(InvalidCtorSymNamesCord) then
-        true
-    else
-        add_unknown_ctors_error(Context, ContextPieces,
-            cord.to_list(InvalidCtorSymNamesCord), !Specs)
-    ),
-    RepeatedCtorNames = cord.to_list(RepeatedCtorNamesCord),
-    RepeatedForeignNames = cord.to_list(RepeatedForeignNamesCord),
-    ( if
-        RepeatedCtorNames = [],
-        RepeatedForeignNames = []
-    then
-        true
-    else
-        MainPieces = ContextPieces ++
-            [invis_order_default_start(3), words("error: "),
-            words("the specified mapping between"),
-            words("the names of Mercury constructors"),
-            words("and the corresponding foreign values"),
-            words("is inconsistent."), nl],
-        (
-            RepeatedCtorNames = [],
-            CtorNamePieces = []
-        ;
-            RepeatedCtorNames = [_ | _],
-            CtorNamePieces =
-                [words("The following Mercury constructor"),
-                words(choose_number(RepeatedCtorNames,
-                    "name is", "names are")),
-                words("repeated:"), nl_indent_delta(2)] ++
-                list_to_quoted_pieces(RepeatedCtorNames) ++
-                [suffix("."), nl_indent_delta(-2)]
-        ),
-        (
-            RepeatedForeignNames = [],
-            ForeignNamePieces = []
-        ;
-            RepeatedForeignNames = [_ | _],
-            ForeignNamePieces =
-                [words("The following foreign"),
-                words(choose_number(RepeatedForeignNames,
-                    "value is", "values are")),
-                words("repeated:"), nl_indent_delta(2)] ++
-                list_to_quoted_pieces(RepeatedForeignNames) ++
-                [suffix("."), nl_indent_delta(-2)]
-        ),
-        Pieces = MainPieces ++ CtorNamePieces ++ ForeignNamePieces,
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
-        !:Specs = [Spec | !.Specs]
-    ),
-    set_tree234.difference(CtorNamesSet, SeenCtorNames, UnseenCtorNames),
-    set_tree234.to_sorted_list(UnseenCtorNames, UnseenCtorNamesList),
+    build_ctor_name_to_foreign_name_map(for_foreign_enum,
+        Context, ContextPieces, TypeCtorModuleName, CtorNamesSet,
+        MercuryForeignAL, MercuryForeignBiMap, [], Specs),
     (
-        UnseenCtorNamesList = []
-    ;
-        UnseenCtorNamesList = [_ | _],
-        add_foreign_enum_unmapped_ctors_error(Context, ContextPieces,
-            UnseenCtorNamesList, !Specs)
-    ),
-    (
-        !.Specs = [],
+        Specs = [],
         bimap.apply_forward_map_to_list(MercuryForeignBiMap, CtorNames,
             ForeignNames)
     ;
-        !.Specs = [_ | _],
+        Specs = [_ | _],
         make_up_dummy_foreign_names(CtorNames, 1, ForeignNames)
     ),
     (

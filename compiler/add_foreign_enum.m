@@ -37,13 +37,10 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
-:- import_module assoc_list.
 :- import_module bimap.
-:- import_module cord.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module set_tree234.
 
 %---------------------------------------------------------------------------%
 
@@ -84,44 +81,21 @@
 
 %---------------------------------------------------------------------------%
 
-    % build_ctor_name_to_foreign_name_map_loop(TypeModuleName, ValidCtorNames,
-    %   Overrides, !OverrideMap, !SeenCtorNames, !.SeenForeignNames,
-    %   !BadQualCtorSymNames, !InvalidCtorSymNames,
-    %   !RepeatedCtorNames, !RepeatedForeignNames):
-    %
-    % Exported to check_parse_tree_type_defns.m.
-    %
-:- pred build_ctor_name_to_foreign_name_map_loop(module_name::in,
-    set_tree234(string)::in, assoc_list(sym_name, string)::in,
-    bimap(string, string)::in, bimap(string, string)::out,
-    set_tree234(string)::in, set_tree234(string)::out, set_tree234(string)::in,
-    cord(sym_name)::in, cord(sym_name)::out,
-    cord(sym_name)::in, cord(sym_name)::out,
-    cord(string)::in, cord(string)::out,
-    cord(string)::in, cord(string)::out) is det.
-
-    % Exported to check_parse_tree_type_defns.m.
-    %
-:- pred add_foreign_enum_unmapped_ctors_error(prog_context::in,
-    list(format_component)::in,
-    list(string)::in(non_empty_list),
-    list(error_spec)::in, list(error_spec)::out) is det.
-:- pred add_unknown_ctors_error(prog_context::in, list(format_component)::in,
-    list(sym_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-%---------------------------------------------------------------------------%
-
 :- implementation.
 
 :- import_module backend_libs.
 :- import_module backend_libs.c_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_foreign_enum.
 
+:- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
+:- import_module set_tree234.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -482,10 +456,6 @@ add_ctor_to_name_map(_Lang, Prefix, MakeUpperCase, OverrideMap, CtorRepn,
 % foreign_export_enums.
 %
 
-:- type for_fe_or_fee
-    --->    for_foreign_enum
-    ;       for_foreign_export_enum.
-
 :- pred build_mercury_foreign_map(module_name::in, sym_name::in, arity::in,
     for_fe_or_fee::in, prog_context::in, list(format_component)::in,
     list(constructor)::in,
@@ -496,7 +466,6 @@ build_mercury_foreign_map(TypeModuleName, TypeSymName, TypeArity, ForWhat,
         Context, ContextPieces, Ctors, Overrides, OverrideMap, !Specs) :-
     find_nonenum_ctors_build_valid_ctor_names(Ctors,
         set_tree234.init, ValidCtorNames, cord.init, NonEnumSNAsCord),
-
     ( if cord.is_empty(NonEnumSNAsCord) then
         true
     else
@@ -504,113 +473,8 @@ build_mercury_foreign_map(TypeModuleName, TypeSymName, TypeArity, ForWhat,
         report_not_enum_type(Context, ContextPieces, TypeSymName, TypeArity,
             NotEnumInfo, !Specs)
     ),
-
-    SeenCtorNames0 = set_tree234.init,
-    SeenForeignNames0 = set_tree234.init,
-    BadQualCtorSymNamesCord0 = cord.init,
-    InvalidCtorSymNamesCord0 = cord.init,
-    RepeatedCtorNamesCord0 = cord.init,
-    RepeatedForeignNamesCord0 = cord.init,
-    build_ctor_name_to_foreign_name_map_loop(TypeModuleName, ValidCtorNames,
-        Overrides, bimap.init, OverrideMap,
-        SeenCtorNames0, SeenCtorNames, SeenForeignNames0,
-        BadQualCtorSymNamesCord0, BadQualCtorSymNamesCord,
-        InvalidCtorSymNamesCord0, InvalidCtorSymNamesCord,
-        RepeatedCtorNamesCord0, RepeatedCtorNamesCord,
-        RepeatedForeignNamesCord0, RepeatedForeignNamesCord),
-
-    ( if cord.is_empty(BadQualCtorSymNamesCord) then
-        true
-    else
-        add_bad_qual_ctors_error(Context, ContextPieces,
-            cord.to_list(BadQualCtorSymNamesCord), !Specs)
-    ),
-    ( if cord.is_empty(InvalidCtorSymNamesCord) then
-        true
-    else
-        add_unknown_ctors_error(Context, ContextPieces,
-            cord.to_list(InvalidCtorSymNamesCord), !Specs)
-    ),
-    RepeatedCtorNames = cord.to_list(RepeatedCtorNamesCord),
-    RepeatedForeignNames = cord.to_list(RepeatedForeignNamesCord),
-    ( if
-        RepeatedCtorNames = [],
-        RepeatedForeignNames = []
-    then
-        true
-    else
-        % How should we describe the contents of RepeatedForeignNames
-        % in error messages: as "names" or "values"?
-        %
-        % (The variable is RepeatedForeignNames because
-        % RepeatedForeignNamesOrValues would be too long.)
-        (
-            ForWhat = for_foreign_export_enum,
-            % Foreign_export_enums specify name of the foreign lval
-            % (variable name or macro name) to set to the representation
-            % of the Mercury constant chosen by the Mercury compiler.
-            NameOrValue = "name",
-            NamesOrValues = "names"
-        ;
-            ForWhat = for_foreign_enum,
-            % Foreign_enums tell the Mercury compiler what rval it should
-            % use to represent the Mercury constant. The rval may be
-            % the value of a variable, but it may also be a constant
-            % (or possibly even a constant expression).
-            NameOrValue = "value",
-            NamesOrValues = "values"
-        ),
-        MainPieces = ContextPieces ++
-            [invis_order_default_start(3), words("error: "),
-            words("the specified mapping between"),
-            words("the names of Mercury constructors"),
-            words("and the corresponding foreign"), words(NamesOrValues),
-            words("is inconsistent."), nl],
-        (
-            RepeatedCtorNames = [],
-            CtorNamePieces = []
-        ;
-            RepeatedCtorNames = [_ | _],
-            CtorNamePieces =
-                [words("The following Mercury constructor"),
-                words(choose_number(RepeatedCtorNames,
-                    "name is", "names are")),
-                words("repeated:"), nl_indent_delta(2)] ++
-                list_to_quoted_pieces(RepeatedCtorNames) ++
-                [suffix("."), nl_indent_delta(-2)]
-        ),
-        (
-            RepeatedForeignNames = [],
-            ForeignNamePieces = []
-        ;
-            RepeatedForeignNames = [_ | _],
-            ForeignNamePieces =
-                [words("The following foreign"),
-                words(choose_number(RepeatedForeignNames,
-                    NameOrValue ++ " is", NamesOrValues ++ " are")),
-                words("repeated:"), nl_indent_delta(2)] ++
-                list_to_quoted_pieces(RepeatedForeignNames) ++
-                [suffix("."), nl_indent_delta(-2)]
-        ),
-        Pieces = MainPieces ++ CtorNamePieces ++ ForeignNamePieces,
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
-        !:Specs = [Spec | !.Specs]
-    ),
-    (
-        ForWhat = for_foreign_export_enum
-    ;
-        ForWhat = for_foreign_enum,
-        set_tree234.difference(ValidCtorNames, SeenCtorNames, UnseenCtorNames),
-        set_tree234.to_sorted_list(UnseenCtorNames, UnseenCtorNamesList),
-        (
-            UnseenCtorNamesList = []
-        ;
-            UnseenCtorNamesList = [_ | _],
-            add_foreign_enum_unmapped_ctors_error(Context, ContextPieces,
-                UnseenCtorNamesList, !Specs)
-        )
-    ).
+    build_ctor_name_to_foreign_name_map(ForWhat, Context, ContextPieces,
+        TypeModuleName, ValidCtorNames, Overrides, OverrideMap, !Specs).
 
 :- pred find_nonenum_ctors_build_valid_ctor_names(list(constructor)::in,
     set_tree234(string)::in, set_tree234(string)::out,
@@ -632,165 +496,7 @@ find_nonenum_ctors_build_valid_ctor_names([Ctor | Ctors],
     find_nonenum_ctors_build_valid_ctor_names(Ctors,
         !ValidNamesSet, !NonEnumSNAs).
 
-build_ctor_name_to_foreign_name_map_loop(_, _, [], !OverrideMap,
-        !SeenCtorNames, _SeenForeignNames, !BadQualCtorSymNames,
-        !InvalidCtorSymNames, !RepeatedCtorNames, !RepeatedForeignNames).
-build_ctor_name_to_foreign_name_map_loop(TypeModuleName, ValidCtorNames,
-        [Override | Overrides], !OverrideMap,
-        !SeenCtorNames, !.SeenForeignNames, !BadQualCtorSymNames,
-        !InvalidCtorSymNames, !RepeatedCtorNames, !RepeatedForeignNames) :-
-    Override = CtorSymName - ForeignName,
-    some [!OK] (
-        !:OK = yes,
-        (
-            CtorSymName = qualified(CtorModuleName, CtorName),
-            ( if CtorModuleName = TypeModuleName then
-                true
-            else
-                cord.snoc(CtorSymName, !BadQualCtorSymNames),
-                !:OK = no
-            )
-        ;
-            CtorSymName = unqualified(CtorName)
-        ),
-        ( if set_tree234.contains(ValidCtorNames, CtorName) then
-            true
-        else
-            cord.snoc(CtorSymName, !InvalidCtorSymNames),
-            !:OK = no
-        ),
-        ( if set_tree234.insert_new(CtorName, !SeenCtorNames) then
-            true
-        else
-            !:RepeatedCtorNames = cord.snoc(!.RepeatedCtorNames, CtorName),
-            !:OK = no
-        ),
-        ( if set_tree234.insert_new(ForeignName, !SeenForeignNames) then
-            true
-        else
-            cord.snoc(ForeignName, !RepeatedForeignNames),
-            !:OK = no
-        ),
-        (
-            !.OK = yes,
-            bimap.det_insert(CtorName, ForeignName, !OverrideMap)
-        ;
-            !.OK = no
-        )
-    ),
-    build_ctor_name_to_foreign_name_map_loop(TypeModuleName, ValidCtorNames,
-        Overrides, !OverrideMap,
-        !SeenCtorNames, !.SeenForeignNames, !BadQualCtorSymNames,
-        !InvalidCtorSymNames, !RepeatedCtorNames, !RepeatedForeignNames).
-
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
-        !Specs) :-
-    list.sort(CtorNames0, CtorNames),
-    list.split_upto(10, CtorNames, CtorsStart, CtorsEnd),
-    DoOrDoes = choose_number(CtorNames, "constructor does", "constructors do"),
-    PrefixPieces = ContextPieces ++ [
-        words("error: the following"), words(DoOrDoes),
-        words("not have a foreign value:")
-    ],
-    (
-        CtorsEnd = [],
-        CtorsPieces =
-            [nl_indent_delta(2)] ++
-            ctor_names_to_line_pieces(CtorNames, [suffix(".")]) ++
-            [nl_indent_delta(-2)],
-        CtorsComponent = always(CtorsPieces)
-    ;
-        CtorsEnd = [_ | _],
-        list.length(CtorsEnd, NumEndCtors),
-        NonVerboseCtorsPieces =
-            [nl_indent_delta(2)] ++
-            ctor_names_to_line_pieces(CtorsStart,
-                [suffix(","), fixed("...")]) ++
-            [nl_indent_delta(-2), words("and"),
-            int_fixed(NumEndCtors), words("more."), nl],
-        VerboseCtorsPieces =
-            [nl_indent_delta(2)] ++
-            ctor_names_to_line_pieces(CtorNames, [suffix(".")]) ++
-            [nl_indent_delta(-2)],
-        CtorsComponent =
-            verbose_and_nonverbose(VerboseCtorsPieces, NonVerboseCtorsPieces)
-    ),
-    Msg = simple_msg(Context, [always(PrefixPieces), CtorsComponent]),
-    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds, [Msg]),
-    !:Specs = [Spec | !.Specs].
-
-%---------------------------------------------------------------------------%
-
-:- func ctor_names_to_line_pieces(list(string), list(format_component))
-    = list(format_component).
-
-ctor_names_to_line_pieces(CtorNames, Final) = Pieces :-
-    Components = list.map(ctor_name_to_format_component, CtorNames),
-    Pieces = component_list_to_line_pieces(Components, Final).
-
-:- func ctor_name_to_format_component(string) = list(format_component).
-
-ctor_name_to_format_component(CtorName) = [quote(CtorName)].
-
-%---------------------------------------------------------------------------%
-
-:- func unqual_ctors_to_line_pieces(list(sym_name), list(format_component))
-    = list(format_component).
-
-unqual_ctors_to_line_pieces(Ctors, Final) = Pieces :-
-    Components = list.map(unqual_ctor_to_format_component, Ctors),
-    Pieces = component_list_to_line_pieces(Components, Final).
-
-:- func unqual_ctor_to_format_component(sym_name) = list(format_component).
-
-unqual_ctor_to_format_component(SymName) = [unqual_sym_name(SymName)].
-
-%---------------------------------------------------------------------------%
-
-:- func qual_ctors_to_line_pieces(list(sym_name), list(format_component))
-    = list(format_component).
-
-qual_ctors_to_line_pieces(Ctors, Final) = Pieces :-
-    Components = list.map(qual_ctor_to_format_component, Ctors),
-    Pieces = component_list_to_line_pieces(Components, Final).
-
-:- func qual_ctor_to_format_component(sym_name) = list(format_component).
-
-qual_ctor_to_format_component(SymName) = [qual_sym_name(SymName)].
-
-%---------------------------------------------------------------------------%
-
-add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
-    IsOrAre = choose_number(Ctors, "symbol is not a constructor",
-        "symbols are not constructors"),
-    ErrorPieces = [invis_order_default_start(1),
-        words("error: the following"), words(IsOrAre),
-        words("of the type:"), nl_indent_delta(2)] ++
-        unqual_ctors_to_line_pieces(Ctors, [suffix(".")]),
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, ContextPieces ++ ErrorPieces),
-    !:Specs = [Spec | !.Specs].
-
-%---------------------------------------------------------------------------%
-
-:- pred add_bad_qual_ctors_error(prog_context::in, list(format_component)::in,
-    list(sym_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
-    HasOrHave = choose_number(Ctors, "symbol has", "symbols have"),
-    ErrorPieces = [invis_order_default_start(2),
-        words("error: the following"),
-        words(HasOrHave), words("a module qualification"),
-        words("that is not compatible with the type definition:"),
-        nl_indent_delta(2)] ++
-        qual_ctors_to_line_pieces(Ctors, [suffix(".")]),
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, ContextPieces ++ ErrorPieces),
-    !:Specs = [Spec | !.Specs].
-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_add_duplicate_foreign_enum_error(sym_name::in, arity::in,
