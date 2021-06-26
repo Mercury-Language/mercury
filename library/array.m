@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-1995, 1997-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2021 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -849,7 +849,8 @@
 %
 
     % MR_ArrayPtr is defined in runtime/mercury_types.h.
-:- pragma foreign_type("C", array(T), "MR_ArrayPtr")
+:- pragma foreign_type("C", array(T), "MR_ArrayPtr",
+        [can_pass_as_mercury_type])
     where equality is array.array_equal,
     comparison is array.array_compare.
 
