@@ -208,7 +208,7 @@ case "$PREFIX" in
     *\ *)
         AC_MSG_ERROR(
 [cannot install into a directory with a name containing
-    spaces: \`$PREFIX.'])
+    spaces: '$PREFIX.'])
         exit 1
         ;;
 esac
@@ -758,7 +758,7 @@ AC_SUBST(ENABLE_BOEHM_USE_MUNMAP)
 #-----------------------------------------------------------------------------#
 
 MERCURY_MSG("looking for GNU Make...")
-AC_CHECK_PROGS([GNU_MAKE], [gmake, make])
+AC_CHECK_PROGS([GNU_MAKE], [gmake make])
 if test "$GNU_MAKE" != ""; then
     case "`$GNU_MAKE -v bogus </dev/null 2>&1`" in
         "GNU Make"*)
@@ -822,7 +822,7 @@ case "$host" in
             fi
         fi
         if test "$MKFIFO" = ""; then
-            AC_MSG_WARN(cannot find a working \`mkfifo' or \`mknod')
+            AC_MSG_WARN(cannot find a working 'mkfifo' or 'mknod')
             MKFIFO=none
             AC_DEFINE_UNQUOTED(MR_MKFIFO, "")
         else
@@ -855,7 +855,7 @@ if test "$MKTEMP" != ""; then
     esac
 fi
 if test "$MKTEMP" = ""; then
-    AC_MSG_WARN(cannot find a working \`mktemp', using \`mkdir || exit')
+    AC_MSG_WARN(cannot find a working 'mktemp', using 'mkdir || exit')
     MKTEMP=""
 fi
 AC_SUBST(MKTEMP)
@@ -3275,7 +3275,7 @@ if test "$DEFAULT_GRADE" = ""; then
     DEFAULT_GRADE=$DEFAULT_BASE_GRADE.gc
 fi
 
-MERCURY_MSG("using grade \`$DEFAULT_GRADE' as the default grade for applications")
+MERCURY_MSG("using grade '$DEFAULT_GRADE' as the default grade for applications")
 AC_SUBST(DEFAULT_GRADE)
 
 #-----------------------------------------------------------------------------#
@@ -3331,16 +3331,16 @@ if test "$BOOTSTRAP_MC" = ""; then
     GRADE="$BOOTSTRAP_GRADE"
     AC_MSG_WARN(
 [Mercury compiler not yet installed -
-****    cannot use grade \`$BEST_GRADE_FOR_COMPILER'
-****    using grade \`$GRADE' to compile the compiler
+****    cannot use grade '$BEST_GRADE_FOR_COMPILER'
+****    using grade '$GRADE' to compile the compiler
 ****    after installation is complete you may reinstall
 ****    from scratch to have a faster compiler.
 ****    NOTE: before reinstalling from scratch, ensure that the
-****    source tree is clean by running \`make realclean'. Not doing
+****    source tree is clean by running 'make realclean'. Not doing
 ****    this may result in a broken Mercury installation.])
 else
     GRADE=$BEST_GRADE_FOR_COMPILER
-    MERCURY_MSG("using grade \`$GRADE' to compile the compiler")
+    MERCURY_MSG("using grade '$GRADE' to compile the compiler")
 fi
 AC_SUBST(GRADE)
 
@@ -4492,8 +4492,8 @@ AC_MSG_RESULT($LD_STATIC_FLAGS)
 case "$LD_STATIC_FLAGS" in
     "")
         AC_MSG_WARN(
-[\`mmc --linkage static' and \`ml --static' not implemented with
-****    this C compiler (\`$CC').])
+['mmc --linkage static' and 'ml --static' not implemented with
+****    this C compiler ('$CC').])
 esac
 
 #-----------------------------------------------------------------------------#
