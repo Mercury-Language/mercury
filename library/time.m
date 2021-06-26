@@ -5,7 +5,7 @@
 % "Feel free to use this code or parts of it any way you want."
 %
 % Some portions are Copyright (C) 1999-2007,2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2021 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -258,11 +258,11 @@ clock(Result, !IO) :-
 :- pragma foreign_proc("C#",
     c_clock(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
+"
     // XXX Ticks is long in .NET!
     Ret = (int) System.Diagnostics.Process.GetCurrentProcess().
         UserProcessorTime.Ticks;
-}").
+").
 :- pragma foreign_proc("Java",
     c_clock(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
@@ -289,10 +289,10 @@ clock(Result, !IO) :-
 :- pragma foreign_proc("C#",
     clocks_per_sec = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
-"{
+"
     // TicksPerSecond is guaranteed to be 10,000,000
     Ret = (int) System.TimeSpan.TicksPerSecond;
-}").
+").
 :- pragma foreign_proc("Java",
     clocks_per_sec = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -322,9 +322,9 @@ time(Result, !IO) :-
 :- pragma foreign_proc("C#",
     c_time(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
-"{
+"
     Ret = System.DateTime.UtcNow;
-}").
+").
 :- pragma foreign_proc("Java",
     c_time(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
@@ -343,9 +343,9 @@ time(Result, !IO) :-
 :- pragma foreign_proc("C#",
     time_t_is_invalid(_Val::in),
     [will_not_call_mercury, promise_pure, thread_safe],
-"{
+"
     SUCCESS_INDICATOR = false;
-}").
+").
 :- pragma foreign_proc("Java",
     time_t_is_invalid(_Val::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -383,7 +383,7 @@ times(Tms, Result, !IO) :-
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
-"{
+"
 #ifdef MR_HAVE_POSIX_TIMES
     struct tms t;
 
@@ -419,7 +419,7 @@ times(Tms, Result, !IO) :-
     Ret = -1;
   #endif
 #endif
-}").
+").
 
 :- pragma foreign_proc("Java",
     c_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
@@ -530,11 +530,11 @@ difftime(time_t(T1), time_t(T0)) = Diff :-
 :- pragma foreign_proc("C#",
     c_difftime(T1::in, T0::in, Diff::out),
     [will_not_call_mercury, promise_pure, thread_safe],
-"{
+"
     System.TimeSpan span;
     span = T1 - T0;
     Diff = span.TotalSeconds;
-}").
+").
 :- pragma foreign_proc("Java",
     c_difftime(T1::in, T0::in, Diff::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -581,7 +581,7 @@ localtime(time_t(Time), TM, !IO) :-
     c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),
     [will_not_call_mercury, promise_semipure],
-"{
+"
     System.DateTime t = Time.ToLocalTime();
 
     // we don't handle leap seconds
@@ -603,7 +603,7 @@ localtime(time_t(Time), TM, !IO) :-
     } else {
         N = 0;
     }
-}").
+").
 :- pragma foreign_proc("Java",
     c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),
@@ -640,7 +640,7 @@ gmtime(time_t(Time)) = TM :-
     c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),
     [will_not_call_mercury, promise_pure, not_thread_safe],
-"{
+"
     struct tm   *p;
     time_t      t;
 
@@ -659,12 +659,12 @@ gmtime(time_t(Time)) = TM :-
     MD = (MR_Integer) p->tm_mday;
     YD = (MR_Integer) p->tm_yday;
     N = (MR_Integer) p->tm_isdst;
-}").
+").
 :- pragma foreign_proc("C#",
     c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),
     [will_not_call_mercury, promise_pure],
-"{
+"
     System.DateTime t = Time;
 
     // we don't handle leap seconds
@@ -678,7 +678,7 @@ gmtime(time_t(Time)) = TM :-
     YD = t.DayOfYear - 1;
     // UTC time can never have daylight savings.
     N = 0;
-}").
+").
 :- pragma foreign_proc("Java",
     c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
         Min::out, Sec::out, YD::out, WD::out, N::out),
@@ -730,7 +730,7 @@ mktime(TM, time_t(Time), !IO) :-
     c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
         YD::in, WD::in, N::in, Time::out),
     [will_not_call_mercury, promise_semipure, not_thread_safe],
- "{
+"
     struct tm t;
 
     t.tm_sec = (int) Sec;
@@ -744,12 +744,12 @@ mktime(TM, time_t(Time), !IO) :-
     t.tm_isdst = (int) N;
 
     Time = mktime(&t);
-}").
+").
 :- pragma foreign_proc("C#",
     c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
         _YD::in, _WD::in, _N::in, Time::out),
     [will_not_call_mercury, promise_semipure],
- "{
+"
     // We don't use YD, WD and N.
     // XXX Ignoring N the daylight savings time indicator is bad
     // On the day when you switch back to standard time from daylight
@@ -760,7 +760,7 @@ mktime(TM, time_t(Time), !IO) :-
     System.DateTime local_time =
         new System.DateTime(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec);
     Time = local_time.ToUniversalTime();
-}").
+").
 :- pragma foreign_proc("Java",
     c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
         _YD::in, _WD::in, N::in, Time::out),
