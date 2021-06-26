@@ -252,6 +252,9 @@ if has("conceal") && exists("mercury_conceal") && mercury_conceal
     syn match mercuryOperator  "\\=[=]\@!" conceal cchar=≠
     syn match mercuryOperator  "`x`"       conceal cchar=×
     syn match mercuryOperator  "//"        conceal cchar=÷
+    syn match mercuryOperator "--->"       conceal cchar=⟶
+    syn match mercuryOperator "=="         conceal cchar=≡
+    syn match mercuryOperator ":-"         conceal cchar=⊢
 
        " unfortunately, Vim does not allow different conceal colours,
        " so these are not concealed by default
