@@ -544,19 +544,19 @@ difftime(time_t(T1), time_t(T0)) = Diff :-
 
 %---------------------------------------------------------------------------%
 
-localtime(time_t(Time), TM, !IO) :-
-    promise_pure (
-        semipure c_localtime(Time, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N),
-        TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N))
-    ).
+localtime(Time, TM, !IO) :-
+    Time = time_t(RawTime),
+    c_localtime(RawTime, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N, !IO),
+    TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N)).
 
-:- semipure pred c_localtime(time_t_rep::in, int::out, int::out, int::out,
-    int::out, int::out, int::out, int::out, int::out, int::out) is det.
+:- pred c_localtime(time_t_rep::in, int::out, int::out, int::out,
+    int::out, int::out, int::out, int::out, int::out, int::out,
+    io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
-        Min::out, Sec::out, YD::out, WD::out, N::out),
-    [will_not_call_mercury, promise_semipure, not_thread_safe],
+        Min::out, Sec::out, YD::out, WD::out, N::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, not_thread_safe, tabled_for_io],
 "
     struct tm   *p;
     time_t      t;
@@ -579,8 +579,8 @@ localtime(time_t(Time), TM, !IO) :-
 ").
 :- pragma foreign_proc("C#",
     c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
-        Min::out, Sec::out, YD::out, WD::out, N::out),
-    [will_not_call_mercury, promise_semipure],
+        Min::out, Sec::out, YD::out, WD::out, N::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
 "
     System.DateTime t = Time.ToLocalTime();
 
@@ -606,8 +606,8 @@ localtime(time_t(Time), TM, !IO) :-
 ").
 :- pragma foreign_proc("Java",
     c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
-        Min::out, Sec::out, YD::out, WD::out, N::out),
-    [will_not_call_mercury, promise_semipure, may_not_duplicate],
+        Min::out, Sec::out, YD::out, WD::out, N::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     java.time.ZoneId tz = java.time.ZoneId.systemDefault();
     java.time.ZonedDateTime zdt =
@@ -713,23 +713,22 @@ int_to_maybe_dst(N) = DST :-
 
 %---------------------------------------------------------------------------%
 
-mktime(TM, time_t(Time), !IO) :-
-    promise_pure (
-        TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, DST),
-        semipure c_mktime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD,
-            maybe_dst_to_int(DST), Time)
-    ).
+mktime(TM, Time, !IO) :-
+    TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, DST),
+    c_mktime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, maybe_dst_to_int(DST),
+        RawTime, !IO),
+    Time = time_t(RawTime).
 
-    % NOTE: mktime() modifies tzname so is strictly impure.
-    % We do not expose tzname through a Mercury interface, though.
+    % NOTE: mktime() modifies tzname, however we do not expose tzname
+    % through a Mercury interface.
     %
-:- semipure pred c_mktime(int::in, int::in, int::in, int::in, int::in,
-    int::in, int::in, int::in, int::in, time_t_rep::out) is det.
+:- pred c_mktime(int::in, int::in, int::in, int::in, int::in, int::in,
+    int::in, int::in, int::in, time_t_rep::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
-        YD::in, WD::in, N::in, Time::out),
-    [will_not_call_mercury, promise_semipure, not_thread_safe],
+        YD::in, WD::in, N::in, Time::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, not_thread_safe, tabled_for_io],
 "
     struct tm t;
 
@@ -747,8 +746,8 @@ mktime(TM, time_t(Time), !IO) :-
 ").
 :- pragma foreign_proc("C#",
     c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
-        _YD::in, _WD::in, _N::in, Time::out),
-    [will_not_call_mercury, promise_semipure],
+        _YD::in, _WD::in, _N::in, Time::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
 "
     // We don't use YD, WD and N.
     // XXX Ignoring N the daylight savings time indicator is bad
@@ -763,8 +762,8 @@ mktime(TM, time_t(Time), !IO) :-
 ").
 :- pragma foreign_proc("Java",
     c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
-        _YD::in, _WD::in, N::in, Time::out),
-    [will_not_call_mercury, promise_semipure, may_not_duplicate],
+        _YD::in, _WD::in, N::in, Time::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     java.time.ZoneId tz = java.time.ZoneId.systemDefault();
     java.time.Instant Time0 = java.time.ZonedDateTime.of(
