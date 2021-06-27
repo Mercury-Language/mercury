@@ -164,7 +164,7 @@
     %
 :- func gmtime(time_t) = tm.
 
-    % mktime(TM) = Time:
+    % mktime(TM, Time, !IO):
     %
     % Converts the broken-down time value `TM' to a (simple) calendar time
     % `Time'. That is, `TM' is relative to the current time zone.
