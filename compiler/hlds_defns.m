@@ -80,9 +80,6 @@
 :- import_module string.
 :- import_module term.
 
-:- type name_arity
-    --->    name_arity(string, arity).
-
 %-----------------------------------------------------------------------------%
 
 write_hlds_defns(Stream, ModuleInfo, !IO) :-

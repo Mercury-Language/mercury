@@ -508,6 +508,10 @@
             % The output should contain the string form of the sym_name,
             % surrounded by `' quotes.
 
+    ;       name_arity(name_arity)
+            % The output should contain the name, surrounded by `' quotes,
+            % followed by '/' and the arity.
+
     ;       qual_sym_name_arity(sym_name_arity)
     ;       unqual_sym_name_arity(sym_name_arity)
             % The output should contain the string form of the sym_name,
@@ -2046,6 +2050,10 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
         Word = sym_name_to_word(SymName),
         Str = join_string_and_tail(Word, Components, TailStr)
     ;
+        Component = name_arity(NameAndArity),
+        Word = name_arity_to_word(NameAndArity),
+        Str = join_string_and_tail(Word, Components, TailStr)
+    ;
         (
             Component = qual_sym_name_arity(SymNameAndArity)
         ;
@@ -2268,6 +2276,10 @@ convert_components_to_paragraphs_acc(FirstInMsg, [Component | Components],
         ),
         RevWords1 = [plain_word(sym_name_to_word(SymName)) | RevWords0]
     ;
+        Component = name_arity(NameAndArity),
+        Word = name_arity_to_word(NameAndArity),
+        RevWords1 = [plain_word(Word) | RevWords0]
+    ;
         (
             Component = qual_sym_name_arity(SymNameAndArity)
         ;
@@ -2460,6 +2472,11 @@ join_prefixes([Head | Tail]) = Strings :-
 
 sym_name_to_word(SymName) =
     add_quotes(sym_name_to_string(SymName)).
+
+:- func name_arity_to_word(name_arity) = string.
+
+name_arity_to_word(name_arity(Name, Arity)) =
+    add_quotes(Name) ++ "/" ++ int_to_string(Arity).
 
 :- func sym_name_arity_to_word(sym_name_arity) = string.
 

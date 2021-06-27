@@ -1976,6 +1976,9 @@ valid_trace_grade_name(GradeName) :-
 
 :- interface.
 
+:- type name_arity
+    --->    name_arity(string, arity).
+
 :- type sym_name_specifier
     --->    sym_name_specifier_name(sym_name)
     ;       sym_name_specifier_name_arity(sym_name, arity).

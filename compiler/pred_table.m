@@ -425,8 +425,6 @@
 :- type name_index  == map(string, list(pred_id)).
 
 :- type name_arity_index == map(name_arity, list(pred_id)).
-:- type name_arity
-    --->    name_arity(string, arity).
 
 :- type module_and_name
     --->    module_and_name(module_name, string).
