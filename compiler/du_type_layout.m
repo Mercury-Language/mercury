@@ -2977,7 +2977,17 @@ show_decisions_if_du_type(Stream, MaybePrimaryTags, ShowWhichTypes,
             Repn = du_type_repn(CtorRepns, _CtorRepnMap, _MaybeCheaperTagTest,
                 DuTypeKind, _MaybeDirectArgFunctors),
             TypeCtorStr = type_ctor_to_string(TypeCtor),
-            io.format(Stream, "\ntype constructor %s: ", [s(TypeCtorStr)], !IO),
+            io.format(Stream, "\ntype constructor %s\n",
+                [s(TypeCtorStr)], !IO),
+            (
+                MaybeSuperType = yes(SuperType),
+                type_to_ctor_det(SuperType, SuperTypeCtor),
+                SuperTypeCtorStr = type_ctor_to_string(SuperTypeCtor),
+                io.format(Stream, "subtype of %s\n",
+                    [s(SuperTypeCtorStr)], !IO)
+            ;
+                MaybeSuperType = no
+            ),
             (
                 DuTypeKind = du_type_kind_direct_dummy,
                 io.write_string(Stream, "dummy type\n", !IO)
@@ -2996,25 +3006,12 @@ show_decisions_if_du_type(Stream, MaybePrimaryTags, ShowWhichTypes,
                 io.write_string(Stream, "notag type\n", !IO)
             ;
                 DuTypeKind = du_type_kind_general,
-                io.write_string(Stream, "general discriminated union type\n",
-                    !IO)
-            ),
-            (
-                MaybeSuperType = yes(SuperType),
-                type_to_ctor_det(SuperType, SuperTypeCtor),
-                SuperTypeCtorStr = type_ctor_to_string(SuperTypeCtor),
-                io.format(Stream, "super type constructor: %s\n",
-                    [s(SuperTypeCtorStr)], !IO)
-            ;
-                MaybeSuperType = no
-            ),
-            ( if DuTypeKind = du_type_kind_general then
+                io.write_string(Stream,
+                    "general discriminated union type\n", !IO),
                 list.foldl(
                     show_decisions_for_ctor(Stream, MaybePrimaryTags,
                         ForDevelopers, TypeCtorStr),
                     CtorRepns, !IO)
-            else
-                true
             )
         )
     ).
@@ -3198,7 +3195,7 @@ show_decisions_for_ctor_args(Stream, ForDevelopers, TypeCtorStr, CtorStr,
             [i(ArgNum)], !IO)
     ;
         ForDevelopers = for_developers,
-        io.format(Stream, "    %s %s arg %d: ",
+        io.format(Stream, "    CTOR_ARG %s %s arg %d: ",
             [s(TypeCtorStr), s(CtorStr), i(ArgNum)], !IO)
     ),
     CtorArgRepn = ctor_arg_repn(_, _, ArgPosWidth, _),
