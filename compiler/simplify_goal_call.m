@@ -1428,10 +1428,16 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
                     ImprovedGoalExpr = GoalExpr0,
                     Context = goal_info_get_context(!.GoalInfo),
                     SymName = qualified(unqualified(ModuleName), PredName),
+                    string.format("%d (exclusive).", [i(NumTargetBits)],
+                        Exclusive),
+                    % Do not let a line break come between the lower
+                    % or upper bound number and the inclusive/exclusive
+                    % notation afterward.
                     Pieces = [words("Error: call to"), qual_sym_name(SymName),
-                        words("with a shift amount that is outside"),
-                        words("of the range 0 (inclusive) to"),
-                        int_fixed(NumTargetBits), words("(exclusive)."), nl],
+                        words("with a shift amount that is"),
+                        words("outside of the range"),
+                        fixed("0 (inclusive)"), words("to"),
+                        fixed(Exclusive), nl],
                     Spec = simplest_spec($pred, severity_error,
                         phase_simplify(report_in_any_mode), Context, Pieces),
                     simplify_info_add_message(Spec, !Info)
