@@ -41,6 +41,7 @@ first_denomination(Kinds_of_coins) =
     ).
 
 :- func error(string) = _.
+:- pragma no_determinism_warning(func(error/1)).
 
 error(S) = _ :-
     error(S).

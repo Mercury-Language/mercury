@@ -17,6 +17,7 @@
 :- implementation.
 
 :- import_module float.
+:- import_module list.
 :- import_module string.
 
 main(!IO) :-

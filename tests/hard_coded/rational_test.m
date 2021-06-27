@@ -17,7 +17,6 @@
 
 :- import_module int.
 :- import_module integer.
-:- import_module io.
 :- import_module list.
 :- import_module rational.
 :- import_module string.

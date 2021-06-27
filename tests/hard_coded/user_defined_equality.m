@@ -50,9 +50,6 @@ main(!IO) :-
 perform_comparison_test(Test, !IO) :-
     try(Test, TryResult),
     (
-        TryResult = failed,
-        io.write_string("failed\n", !IO)
-    ;
         TryResult = succeeded(Result),
         io.write_string("succeeded: ", !IO),
         io.write_line(Result, !IO)

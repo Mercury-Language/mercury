@@ -10,7 +10,6 @@
 :- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
-:- import_module io.
 
 main(!IO) :-
     plus(N1, N2, s(zero)),
