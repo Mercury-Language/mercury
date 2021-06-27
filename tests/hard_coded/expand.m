@@ -30,18 +30,6 @@
 :- import_module term.
 :- import_module univ.
 
-:- pred test_builtins(io::di, io::uo) is cc_multi.
-:- pred test_discriminated(io::di, io::uo) is cc_multi.
-:- pred test_polymorphism(io::di, io::uo) is cc_multi.
-:- pred test_other(io::di, io::uo) is cc_multi.
-:- pred newline(io::di, io::uo) is det.
-:- pred test_functor(T::in, io::di, io::uo) is det.
-:- pred test_functor_number(T::in, io::di, io::uo) is cc_multi.
-:- pred test_arg(T::in, io::di, io::uo) is det.
-:- pred test_expand(T::in, io::di, io::uo) is det.
-:- pred test_expand_du(T::in, io::di, io::uo) is cc_multi.
-:- pred test_all(T::in, io::di, io::uo) is cc_multi.
-
 :- type enum
     --->    one
     ;       two
@@ -72,158 +60,174 @@
 :- type no_tag
     --->    qwerty(int).
 
-main -->
-    test_discriminated,
-    test_polymorphism,
-    test_builtins,
-    test_other.
+main(!IO) :-
+    test_discriminated(!IO),
+    test_polymorphism(!IO),
+    test_builtins(!IO),
+    test_other(!IO).
 
-test_discriminated -->
-    io.write_string("TESTING DISCRIMINATED UNIONS\n"),
+:- pred test_discriminated(io::di, io::uo) is cc_multi.
+
+test_discriminated(!IO) :-
+    io.write_string("TESTING DISCRIMINATED UNIONS\n", !IO),
 
         % test enumerations
-    test_all(one), newline,
-    test_all(two), newline,
-    test_all(three), newline,
+    test_all(one, !IO),
+    test_all(two, !IO),
+    test_all(three, !IO),
 
         % test simple tags
-    test_all(apple([9, 5, 1])), newline,
-    test_all(banana([three, one, two])), newline,
+    test_all(apple([9, 5, 1]), !IO),
+    test_all(banana([three, one, two]), !IO),
 
         % test complicated tags
-    test_all(zop(3.3, 2.03)), newline,
-    test_all(zip(3, 2)), newline,
-    test_all(zap(3, -2.111)), newline,
+    test_all(zop(3.3, 2.03), !IO),
+    test_all(zip(3, 2), !IO),
+    test_all(zap(3, -2.111), !IO),
 
         % test complicated constant
 
-    test_all(wombat), newline,
-    test_all(foo), newline,
+    test_all(wombat, !IO),
+    test_all(foo, !IO),
 
-    newline.
+    io.nl(!IO).
 
-test_all(T) -->
-    test_functor(T), newline,
-    test_functor_number(T), newline,
-    test_arg(T), newline,
-    test_expand(T), newline,
-    test_expand_du(T), newline.
+:- pred test_all(T::in, io::di, io::uo) is cc_multi.
 
-test_functor(T) -->
-    { functor(T, canonicalize, Functor, Arity) },
-    io.write_string(Functor),
-    io.write_string("/"),
-    io.write_int(Arity).
+test_all(T, !IO) :-
+    test_functor(T, !IO),
+    test_functor_number(T, !IO),
+    test_arg(T, !IO),
+    test_expand(T, !IO),
+    test_expand_du(T, !IO),
+    io.nl(!IO).
 
-test_functor_number(T) -->
-    ( { functor_number_cc(T, FunctorNumber, Arity) } ->
-        io.write_int(FunctorNumber),
-        io.write_string("/"),
-        io.write_int(Arity)
-    ;
-        io.write_string("functor_number_cc failed")
+:- pred test_functor(T::in, io::di, io::uo) is det.
+
+test_functor(T, !IO) :-
+    functor(T, canonicalize, Functor, Arity),
+    io.format("%s/%d\n", [s(Functor), i(Arity)], !IO).
+
+:- pred test_functor_number(T::in, io::di, io::uo) is cc_multi.
+
+test_functor_number(T, !IO) :-
+    ( if functor_number_cc(T, FunctorNumber, Arity) then
+        io.format("%d/%d\n", [i(FunctorNumber), i(Arity)], !IO)
+    else
+        io.write_string("functor_number_cc failed\n", !IO)
     ).
 
-test_arg(T) -->
-    { functor(T, canonicalize, Functor, Arity) },
-    (
-        { arg(Arity, T, Argument) }
-    ->
-        { string.format("argument %d of functor %s was:",
-            [i(Arity), s(Functor)], Str) },
-        io.write_string(Str),
-        io.print(Argument)
-    ;
-        io.write_string("no arguments")
+:- pred test_arg(T::in, io::di, io::uo) is det.
+
+test_arg(T, !IO) :-
+    functor(T, canonicalize, Functor, Arity),
+    ( if arg(Arity, T, Argument) then
+        string.format("argument %d of functor %s was:",
+            [i(Arity), s(Functor)], Str),
+        io.write_string(Str, !IO),
+        io.print_line(Argument, !IO)
+    else
+        io.write_string("no arguments\n", !IO)
     ).
 
-test_expand(T) -->
-    { deconstruct(T, canonicalize, Functor, Arity, Arguments) },
-    { string.format("expand: functor %s arity %d arguments ",
-        [s(Functor), i(Arity)], Str) },
-    io.write_string(Str),
-    io.write_string("["),
-    io.write_list(Arguments, ", ", io.print),
-    io.write_string("]").
+:- pred test_expand(T::in, io::di, io::uo) is det.
 
-test_expand_du(T) -->
-    (
-        { deconstruct_du(T, include_details_cc, FunctorNumber,
-            Arity, Arguments) }
-    ->
-        { string.format("expand: functor %d arity %d arguments ",
-            [i(FunctorNumber), i(Arity)], Str) },
-        io.write_string(Str),
-        io.write_string("["),
-        io.write_list(Arguments, ", ", io.print),
-        io.write_string("]")
-    ;
-        io.write_string("deconstruct_du failed")
+test_expand(T, !IO) :-
+    deconstruct(T, canonicalize, Functor, Arity, Arguments),
+    string.format("expand: functor %s arity %d arguments ",
+        [s(Functor), i(Arity)], Str),
+    io.write_string(Str, !IO),
+    io.write_string("[", !IO),
+    io.write_list(Arguments, ", ", io.print, !IO),
+    io.write_string("]\n", !IO).
+
+:- pred test_expand_du(T::in, io::di, io::uo) is cc_multi.
+
+test_expand_du(T, !IO) :-
+    ( if
+        deconstruct_du(T, include_details_cc, FunctorNumber,
+            Arity, Arguments)
+    then
+        string.format("expand: functor %d arity %d arguments ",
+            [i(FunctorNumber), i(Arity)], Str),
+        io.write_string(Str, !IO),
+        io.write_string("[", !IO),
+        io.write_list(Arguments, ", ", io.print, !IO),
+        io.write_string("]\n", !IO)
+    else
+        io.write_string("deconstruct_du failed\n", !IO)
     ).
 
-test_polymorphism -->
-    io.write_string("TESTING POLYMORPHISM\n"),
-    test_all(poly_two(3)), newline,
-    test_all(poly_three(3.33, 4, poly_one(9.11))), newline,
-    test_all(poly_one([2399.3])), newline,
+:- pred test_polymorphism(io::di, io::uo) is cc_multi.
 
-    newline.
+test_polymorphism(!IO) :-
+    io.write_string("TESTING POLYMORPHISM\n", !IO),
+    test_all(poly_two(3), !IO),
+    test_all(poly_three(3.33, 4, poly_one(9.11)), !IO),
+    test_all(poly_one([2399.3]), !IO),
 
-test_builtins -->
-    io.write_string("TESTING BUILTINS\n"),
+    io.nl(!IO).
+
+:- pred test_builtins(io::di, io::uo) is cc_multi.
+
+test_builtins(!IO) :-
+    io.write_string("TESTING BUILTINS\n", !IO),
 
         % test strings
-    test_all(""), newline,
-    test_all("Hello, world\n"), newline,
-    test_all("Foo%sFoo"), newline,
-    test_all(""""), newline,    % interesting - prints """ of course
+    test_all("", !IO),
+    test_all("Hello, world\n", !IO),
+    test_all("Foo%sFoo", !IO),
+    test_all("""", !IO),
 
         % test characters
-    test_all('a'), newline,
-    test_all('&'), newline,
+    test_all('a', !IO),
+    test_all('&', !IO),
 
         % test floats
-    test_all(3.14159), newline,
-    test_all(11.28324983E-22), newline,
-    test_all(22.3954899E22), newline,
+    test_all(3.14159, !IO),
+    test_all(11.28324983E-22, !IO),
+    test_all(22.3954899E22, !IO),
 
         % test integers
-    test_all(-65), newline,
-    test_all(4), newline,
+    test_all(-65, !IO),
+    test_all(4, !IO),
 
         % test univ.
-    { type_to_univ(["hi! I'm a univ!"], Univ) },
-    test_all(Univ), newline,
+    type_to_univ(["hi! I'm a univ!"], Univ),
+    test_all(Univ, !IO),
 
         % test predicates
-    test_all(newline), newline,
+    test_all(newline, !IO),
 
         % test tuples
-    test_all({1, 'b', "third", {1, 2, 3, 4}}), newline,
+    test_all({1, 'b', "third", {1, 2, 3, 4}}, !IO),
 
-    newline.
+    io.nl(!IO).
 
+:- pred test_other(io::di, io::uo) is cc_multi.
+
+test_other(!IO) :-
     % Note: testing abstract types is always going to have results
     % that are dependent on the implementation. If someone changes
     % the implementation, the results of this test can change.
 
-test_other -->
-    io.write_string("TESTING OTHER TYPES\n"),
-    { term.init_var_supply(VarSupply) },
-    { term.create_var(Var, VarSupply, NewVarSupply) },
-    test_all(Var), newline,
-    test_all(VarSupply), newline,
-    test_all(NewVarSupply), newline,
+    io.write_string("TESTING OTHER TYPES\n", !IO),
+    term.init_var_supply(VarSupply),
+    term.create_var(Var, VarSupply, NewVarSupply),
+    test_all(Var : var(generic), !IO),
+    test_all(VarSupply, !IO),
+    test_all(NewVarSupply, !IO),
 
         % presently, at least, map is an equivalence and
         % an abstract type.
-    { map.init(Map) },
-    test_all(Map), newline,
+    map.init(Map : map(int, int)),
+    test_all(Map, !IO),
 
         % a no tag type
-    test_all(qwerty(4)), newline,
+    test_all(qwerty(4), !IO),
+    io.nl(!IO).
 
-    newline.
+:- pred newline(io::di, io::uo) is det.
 
-newline -->
-    io.write_char('\n').
+newline(!IO) :-
+    io.nl(!IO).

@@ -7,7 +7,6 @@
 :- interface.
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
 
 :- pred main(io::di, io::uo) is det.
 
@@ -24,26 +23,27 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int.
 
-main -->
-    { L1 = [1, 2, 3] },
-    { L2 = map_f((func(X::in) = (Y::out) is det :- Y = 2*X), L1) },
-    { map_p((pred(X::in, Y::out) is det :- Y = 2*X), L2, L3) },
-    { L4 = map_f((func(X2) = Y2 :- Y2 = 5*X2), L3) },
-    { L = map_f(func(X3) = 10*X3, L4) },
-    { Foldit =
+:- import_module int.
+:- import_module std_util.
+
+main(!IO) :-
+    L1 = [1, 2, 3],
+    L2 = map_f((func(X::in) = (Y::out) is det :- Y = 2*X), L1),
+    map_p((pred(X::in, Y::out) is det :- Y = 2*X), L2, L3),
+    L4 = map_f((func(X2) = Y2 :- Y2 = 5*X2), L3),
+    L = map_f(func(X3) = 10*X3, L4),
+    Foldit =
         ( pred(IO0::di, IO::uo) is det :-
             list.foldl(io.write_int, L, IO0, IO)
-        )
-    },
-    Foldit,
-    { Write = io.write_string },
-    Write("\n"),
-    ( if { doit(semidet_succeed) } then
-        Write("Yes.\n")
+        ),
+    Foldit(!IO),
+    Write = io.write_string,
+    Write("\n", !IO),
+    ( if doit(semidet_succeed) then
+        Write("Yes.\n", !IO)
     else
-        Write("No.\n")
+        Write("No.\n", !IO)
     ).
 
 map_f(_, []) = [].
