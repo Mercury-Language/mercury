@@ -23,6 +23,7 @@ ORDINARY_PROGS = \
 	bag_various \
 	bidirectional \
 	bigtest \
+	bimap_set_bug \
 	binary_stdin \
 	binary_stdout \
 	bit_twiddle_int16 \
