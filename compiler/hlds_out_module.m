@@ -367,11 +367,10 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         io.nl(Stream, !IO),
         (
             MaybeSuperType = yes(SuperType),
+            SuperTypeStr = mercury_type_to_string(TVarSet,
+                print_name_only, SuperType),
             write_indent(Stream, Indent, !IO),
-            io.write_string(Stream, "=< ", !IO),
-            mercury_output_type(TVarSet, print_name_only, SuperType,
-                Stream, !IO),
-            io.nl(Stream, !IO)
+            io.format(Stream, "%% subtype of %s\n", [s(SuperTypeStr)], !IO)
         ;
             MaybeSuperType = no
         ),
@@ -413,7 +412,8 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
                 io.format(Stream, "%s%%   to %s\n",
                     [s(IndentStr), s(CheapConsIdStr)], !IO),
                 io.format(Stream, "%s%%      %s\n",
-                    [s(IndentStr), s(du_cons_tag_to_string(CheapConsTag))], !IO)
+                    [s(IndentStr), s(du_cons_tag_to_string(CheapConsTag))],
+                    !IO)
             ),
             (
                 DuTypeKind = du_type_kind_mercury_enum,
@@ -422,9 +422,9 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
             ;
                 DuTypeKind = du_type_kind_foreign_enum(Lang),
                 write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% KIND foreign enumeration for ", !IO),
-                io.write_string(Stream, foreign_language_string(Lang), !IO),
-                io.nl(Stream, !IO)
+                io.format(Stream,
+                    "%%s KIND foreign enumeration for %s\n",
+                    [s(foreign_language_string(Lang))], !IO)
             ;
                 DuTypeKind = du_type_kind_direct_dummy,
                 write_indent(Stream, Indent, !IO),
@@ -432,22 +432,18 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
             ;
                 DuTypeKind = du_type_kind_notag(FunctorName, ArgType,
                     MaybeArgName),
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% KIND notag: ", !IO),
-                io.write_string(Stream,
-                    sym_name_to_escaped_string(FunctorName), !IO),
-                io.write_string(Stream, ", ", !IO),
-                mercury_output_type(TVarSet, print_name_only, ArgType,
-                    Stream, !IO),
-                io.write_string(Stream, ", ", !IO),
+                ArgTypeStr = mercury_type_to_string(TVarSet, print_name_only,
+                    ArgType),
                 (
-                    MaybeArgName = yes(ArgName),
-                    io.write_string(Stream, ArgName, !IO)
+                    MaybeArgName = yes(ArgName)
                 ;
                     MaybeArgName = no,
-                    io.write_string(Stream, "no arg name", !IO)
+                    ArgName = "no arg name"
                 ),
-                io.nl(Stream, !IO)
+                write_indent(Stream, Indent, !IO),
+                io.format(Stream, "%% KIND notag: %s, %s, %s\n",
+                    [s(sym_name_to_escaped_string(FunctorName)),
+                    s(ArgTypeStr), s(ArgName)], !IO)
             ;
                 DuTypeKind = du_type_kind_general,
                 write_indent(Stream, Indent, !IO),
@@ -697,7 +693,8 @@ write_ctor(Stream, TVarSet, Indent, Ctor, !IO) :-
     % The module name in SymName must be the same as the module qualifier
     % of the type_ctor, so there is no point in printing it.
     Name = unqualify_name(SymName),
-    NameStr = mercury_bracketed_atom_to_string(not_next_to_graphic_token, Name),
+    NameStr =
+        mercury_bracketed_atom_to_string(not_next_to_graphic_token, Name),
     % The width of ArrowOrSemi is eight spaces, which is the same as
     % four indents.
     ASIndent = 4,
@@ -736,7 +733,8 @@ write_ctor_repn(Stream, TVarSet, Indent, CtorRepn, !IO) :-
     % The module name in SymName must be the same as the module qualifier
     % of the type_ctor, so there is no point in printing it.
     Name = unqualify_name(SymName),
-    NameStr = mercury_bracketed_atom_to_string(not_next_to_graphic_token, Name),
+    NameStr =
+        mercury_bracketed_atom_to_string(not_next_to_graphic_token, Name),
     % The width of ArrowOrSemi is eight spaces, which is the same as
     % four indents.
     ASIndent = 4,
@@ -752,7 +750,8 @@ write_ctor_repn(Stream, TVarSet, Indent, CtorRepn, !IO) :-
     (
         ArgRepns = [],
         io.format(Stream, "%s%s%s\n%s",
-            [s(BracePrefix), s(NameStr), s(BraceSuffix), s(ConsTagString)], !IO)
+            [s(BracePrefix), s(NameStr), s(BraceSuffix), s(ConsTagString)],
+            !IO)
     ;
         ArgRepns = [HeadArgRepn | TailArgRepns],
         io.format(Stream, "%s%s(\n%s",
@@ -868,7 +867,8 @@ does_any_arg_repn_have_a_field_name([ArgRepn | ArgRepns])
 
 du_cons_tag_to_string(ConsTag) = String :-
     (
-        ConsTag = shared_local_tag_no_args(ptag(Ptag), LocalSectag, SectagMask),
+        ConsTag = shared_local_tag_no_args(ptag(Ptag),
+            LocalSectag, SectagMask),
         (
             SectagMask = lsectag_always_rest_of_word,
             MaskString = "rest of word"
@@ -1981,7 +1981,8 @@ write_dependency_info(_Info, Stream, Indent, ModuleInfo, DependencyInfo,
     write_indent(Stream, Indent, !IO),
     io.write_string(Stream, "\n% Bottom up dependency sccs\n\n", !IO),
     Ordering = dependency_info_get_bottom_up_sccs(DependencyInfo),
-    list.foldl(write_dependency_scc(Stream, Indent, ModuleInfo), Ordering, !IO).
+    list.foldl( write_dependency_scc(Stream, Indent, ModuleInfo),
+        Ordering, !IO).
 
 :- pred write_dep_graph_node(io.text_output_stream::in, int::in,
     module_info::in, pred_proc_id::in, io::di, io::uo) is det.
