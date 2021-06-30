@@ -47,6 +47,33 @@
 
 %---------------------------------------------------------------------------%
 %
+% Conversion from uint.
+%
+
+    % from_uint(U, U32):
+    %
+    % Convert a uint into a uint32.
+    % Fails if U is not in [0, 2^32 - 1].
+    %
+:- pred from_uint(uint::in, uint32::out) is semidet.
+
+    % det_from_uint(U) = U32:
+    %
+    % Convert a uint into a uint32.
+    % Throws an exception if U is not in [0, 2^32 - 1].
+    %
+:- func det_from_uint(uint) = uint32.
+
+    % cast_from_uint(U) = U32:
+    %
+    % Convert a uint to a uint32.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to U only if U is in [0, 2^32 - 1].
+    %
+:- func cast_from_uint(uint) = uint32.
+
+%---------------------------------------------------------------------------%
+%
 % Conversion to int.
 %
 
@@ -72,14 +99,6 @@
     % mathematically equal to U32.
     %
 :- func cast_to_uint(uint32) = uint.
-
-    % cast_from_uint(U) = U32:
-    %
-    % Convert a uint to a uint32.
-    % Always succeeds, but will yield a result that is mathematically equal
-    % to I only if I is in [0, 2^32 - 1].
-    %
-:- func cast_from_uint(uint) = uint32.
 
 %---------------------------------------------------------------------------%
 %
@@ -521,6 +540,65 @@ det_from_int(I) = U :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
+    from_uint(U::in, U32::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+    if ((uint64_t) U > (uint64_t) UINT32_MAX) {
+        SUCCESS_INDICATOR = MR_FALSE;
+    } else {
+        U32 = (uint32_t) U;
+        SUCCESS_INDICATOR = MR_TRUE;
+    }
+").
+
+:- pragma foreign_proc("C#",
+    from_uint(U::in, U32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U32 = (uint) U;
+    SUCCESS_INDICATOR = true;
+").
+
+:- pragma foreign_proc("Java",
+    from_uint(U::in, U32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U32 = U;
+    SUCCESS_INDICATOR = true;
+").
+
+det_from_uint(U) = U32 :-
+    ( if from_uint(U, U32Prime) then
+        U32 = U32Prime
+    else
+        error($pred, "cannot convert int to uint32")
+    ).
+
+:- pragma foreign_proc("C",
+    cast_from_uint(U::in) = (U32::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U32 = (uint32_t) U;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_uint(U::in) = (U32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U32 = U;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_uint(U::in) = (U32::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U32 = U;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
     cast_to_int(U32::in) = (I::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness],
@@ -564,30 +642,6 @@ det_from_int(I) = U :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     U = U32;
-").
-
-%---------------------------------------------------------------------------%
-
-:- pragma foreign_proc("C",
-    cast_from_uint(U::in) = (U32::out),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness],
-"
-    U32 = (uint32_t) U;
-").
-
-:- pragma foreign_proc("C#",
-    cast_from_uint(U::in) = (U32::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    U32 = U;
-").
-
-:- pragma foreign_proc("Java",
-    cast_from_uint(U::in) = (U32::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    U32 = U;
 ").
 
 %---------------------------------------------------------------------------%

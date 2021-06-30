@@ -47,6 +47,19 @@
 
 %---------------------------------------------------------------------------%
 %
+% Conversion from uint.
+%
+
+    % cast_from_uint(U) = U64:
+    %
+    % Convert a uint to a uint64.
+    % Always succeeds, and will always yield a result that is
+    % mathematically equal U.
+    %
+:- func cast_from_uint(uint) = uint64.
+
+%---------------------------------------------------------------------------%
+%
 % Conversion to int.
 %
 
@@ -464,8 +477,6 @@ det_from_int(I) = U64 :-
         error($pred, "cannot convert int to uint64")
     ).
 
-%---------------------------------------------------------------------------%
-
 :- pragma foreign_proc("C",
     cast_from_int(I::in) = (U64::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -486,6 +497,30 @@ det_from_int(I) = U64 :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     U64 = I;
+").
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_proc("C",
+    cast_from_uint(U::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U64 = (uint64_t) U;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_uint(U::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U64 = (ulong) U;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_uint(U::in) = (U64::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U64 = (long) U ^ 0xffffffffL;
 ").
 
 %---------------------------------------------------------------------------%

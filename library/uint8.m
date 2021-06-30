@@ -47,6 +47,33 @@
 
 %---------------------------------------------------------------------------%
 %
+% Conversion from uint.
+%
+
+    % from_uint(U, U8):
+    %
+    % Convert a uint to a uint8.
+    % Fails if U is not in [0, 2^8 - 1].
+    %
+:- pred from_uint(uint::in, uint8::out) is semidet.
+
+    % det_from_uint(U) = U8:
+    %
+    % Convert a uint to a uint8.
+    % Throws an exception if U is not in [0, 2^8 - 1].
+    %
+:- func det_from_uint(uint) = uint8.
+
+    % cast_from_uint(U) = U8:
+    %
+    % Convert a uint to a uint8.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to U only if U is in [0, 2^8 - 1].
+    %
+:- func cast_from_uint(uint) = uint8.
+
+%---------------------------------------------------------------------------%
+%
 % Conversion to int.
 %
 
@@ -440,6 +467,41 @@ det_from_int(I) = U8 :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     U8 = (byte) I;
+").
+
+%---------------------------------------------------------------------------%
+
+from_uint(U, U8) :-
+    U =< 255u,
+    U8 = cast_from_uint(U).
+
+det_from_uint(U) = U8 :-
+    ( if from_uint(U, U8Prime) then
+        U8 = U8Prime
+    else
+        error($pred, "cannot convert uint to uint8")
+    ).
+
+:- pragma foreign_proc("C",
+    cast_from_uint(U::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U8 = (uint8_t) U;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_uint(U::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = (byte) U;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_uint(U::in) = (U8::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U8 = (byte) U;
 ").
 
 %---------------------------------------------------------------------------%

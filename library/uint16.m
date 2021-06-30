@@ -45,6 +45,33 @@
     %
 :- func cast_from_int(int) = uint16.
 
+%--------------------------------------------------------------------------%
+%
+% Conversion from int.
+%
+
+    % from_uint(U, U16):
+    %
+    % Convert a uint into a uint16.
+    % Fails if U is not in [0, 2^16 - 1].
+    %
+:- pred from_uint(uint::in, uint16::out) is semidet.
+
+    % det_from_uint(U) = U16:
+    %
+    % Convert a uint into a uint16.
+    % Throws an exception if U is not in [0, 2^16 - 1].
+    %
+:- func det_from_uint(uint) = uint16.
+
+    % cast_from_uint(U) = U16:
+    %
+    % Convert a uint to a uint16.
+    % Always succeeds, but will yield a result that is mathematically equal
+    % to U only if U is in [0, 2^16 - 1].
+    %
+:- func cast_from_uint(uint) = uint16.
+
 %---------------------------------------------------------------------------%
 %
 % Conversion to int.
@@ -96,7 +123,7 @@
     %
     % Convert a uint64 to a uint16.
     % Always succeeds, but will yield a result that is mathematically equal
-    % to I only if I is in [0, 2^16 - 1].
+    % to U64 only if U64 is in [0, 2^16 - 1].
     %
 :- func cast_from_uint64(uint64) = uint16.
 
@@ -487,6 +514,41 @@ det_from_int(I) = U16 :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     U16 = (short) I;
+").
+
+%---------------------------------------------------------------------------%
+
+from_uint(U, U16) :-
+    U =< 65_535u,
+    U16 = cast_from_uint(U).
+
+det_from_uint(U) = U16 :-
+    ( if from_uint(U, U16Prime) then
+        U16 = U16Prime
+    else
+        error($pred, "cannot convert uint to uint16")
+    ).
+
+:- pragma foreign_proc("C",
+    cast_from_uint(U::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness],
+"
+    U16 = (uint16_t) U;
+").
+
+:- pragma foreign_proc("C#",
+    cast_from_uint(U::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U16 = (ushort) U;
+").
+
+:- pragma foreign_proc("Java",
+    cast_from_uint(U::in) = (U16::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    U16 = (short) U;
 ").
 
 %---------------------------------------------------------------------------%

@@ -1392,10 +1392,40 @@
 
     % Convert a signed base N string to an int. Throws an exception
     % if the string argument is not precisely an optional sign followed by
-    % a non-empty string of base N digits and the number is in the range
-    % [min_int, max_int].
+    % a non-empty string of base N digits, or if the number is not in
+    % the range [min_int, max_int].
     %
 :- func det_base_string_to_int(int, string) = int.
+
+%---------------------%
+
+    % Convert a string to a uint. The string must contain only digits [0-9].
+    % If the string does not match this syntax or the number is not
+    % in the range [0, max_uint], to_uint fails.
+    %
+:- pred to_uint(string::in, uint::out) is semidet.
+
+    % Convert a signed base 10 string to a uint. Throws an exception if the
+    % string argument does not match the regexp [0-9]+ or the number is
+    % not in the range [0, max_uint].
+    %
+:- func det_to_uint(string) = uint.
+
+    % Convert a string in the specified base (2-36) to a uint. The string
+    % must contain one or more digits in the specified base. For bases > 10,
+    % digits 10 to 35 are represented by the letters A-Z or a-z. If the string
+    % does not match this syntax or the number is not in the range
+    % [0, max_uint], the predicate fails.
+    %
+:- pred base_string_to_uint(int::in, string::in, uint::out) is semidet.
+
+    % Convert a signed base N string to a uint. Throws an exception
+    % if the string argument is not precisely a non-empty string of base N
+    % digits, or if the number is not in the range [0, max_uint].
+    %
+:- func det_base_string_to_uint(int, string) = uint.
+
+%---------------------%
 
     % Convert a string to a float, returning infinity or -infinity if the
     % conversion overflows. Fails if the string is not a syntactically correct
@@ -1694,6 +1724,7 @@
 :- import_module string.format.
 :- import_module string.to_string.
 :- import_module term_io.
+:- import_module uint.
 :- import_module uint8.
 
 % Many routines in this module are implemented using foreign language code.
@@ -5294,16 +5325,19 @@ to_int(String, Int) :-
 det_to_int(S) = det_base_string_to_int(10, S).
 
 base_string_to_int(Base, String, Int) :-
-    index(String, 0, Char),
-    End = count_code_units(String),
+    string.index(String, 0, Char),
+    End = string.count_code_units(String),
     ( if Char = ('-') then
         End > 1,
-        foldl_between(base_negative_accumulator(Base), String, 1, End, 0, Int)
+        foldl_between(base_negative_int_accumulator(Base), String,
+            1, End, 0, Int)
     else if Char = ('+') then
         End > 1,
-        foldl_between(base_accumulator(Base), String, 1, End, 0, Int)
+        foldl_between(base_positive_int_accumulator(Base), String,
+            1, End, 0, Int)
     else
-        foldl_between(base_accumulator(Base), String, 0, End, 0, Int)
+        foldl_between(base_positive_int_accumulator(Base), String,
+            0, End, 0, Int)
     ).
 
 det_base_string_to_int(Base, S) = N :-
@@ -5313,10 +5347,13 @@ det_base_string_to_int(Base, S) = N :-
         unexpected($pred, "conversion failed")
     ).
 
-:- func base_accumulator(int) = pred(char, int, int).
-:- mode base_accumulator(in) = out(pred(in, in, out) is semidet) is det.
+%---------------------%
 
-base_accumulator(Base) = Pred :-
+:- func base_positive_int_accumulator(int) = pred(char, int, int).
+:- mode base_positive_int_accumulator(in) =
+    out(pred(in, in, out) is semidet) is det.
+
+base_positive_int_accumulator(Base) = Pred :-
     % Avoid allocating a closure for the common bases. A more general, but
     % finicky, way to avoid the allocation is to inline foldl_between so that
     % the higher-order calls in base_string_to_int can be specialised.
@@ -5343,11 +5380,11 @@ accumulate_int(Base, Char, N0, N) :-
     % XXX depends on undefined behaviour
     N0 =< N.
 
-:- func base_negative_accumulator(int) = pred(char, int, int).
-:- mode base_negative_accumulator(in) = out(pred(in, in, out) is semidet)
+:- func base_negative_int_accumulator(int) = pred(char, int, int).
+:- mode base_negative_int_accumulator(in) = out(pred(in, in, out) is semidet)
     is det.
 
-base_negative_accumulator(Base) = Pred :-
+base_negative_int_accumulator(Base) = Pred :-
     % Avoid allocating a closure for the common bases.
     ( if Base = 10 then
         Pred = accumulate_negative_int(10)
@@ -5370,6 +5407,60 @@ accumulate_negative_int(Base, Char, N0, N) :-
     % Fail on overflow.
     % XXX depends on undefined behaviour
     N =< N0.
+
+%---------------------%
+
+to_uint(String, UInt) :-
+    base_string_to_uint(10, String, UInt).
+
+det_to_uint(S) = det_base_string_to_uint(10, S).
+
+base_string_to_uint(Base, String, UInt) :-
+    End = string.count_code_units(String),
+    foldl_between(base_uint_accumulator(Base), String,
+        0, End, 0u, UInt).
+
+det_base_string_to_uint(Base, S) = N :-
+    ( if base_string_to_uint(Base, S, N0) then
+        N = N0
+    else
+        unexpected($pred, "conversion failed")
+    ).
+
+%---------------------%
+
+:- func base_uint_accumulator(int) = pred(char, uint, uint).
+:- mode base_uint_accumulator(in) =
+    out(pred(in, in, out) is semidet) is det.
+
+base_uint_accumulator(Base) = Pred :-
+    % Avoid allocating a closure for the common bases. A more general, but
+    % finicky, way to avoid the allocation is to inline foldl_between so that
+    % the higher-order calls in base_string_to_int can be specialised.
+    % The redundant closures will also need to be deleted by unused argument
+    % elimination.
+    ( if Base = 10 then
+        Pred = accumulate_uint(10u, 10)
+    else if Base = 16 then
+        Pred = accumulate_uint(16u, 16)
+    else if Base = 8 then
+        Pred = accumulate_uint(8u, 8)
+    else if Base = 2 then
+        Pred = accumulate_uint(2u, 2)
+    else
+        % Check that Base fits in a uint exactly once, here.
+        Pred = accumulate_uint(uint.det_from_int(Base), Base)
+    ).
+
+:- pred accumulate_uint(uint::in, int::in, char::in, uint::in, uint::out)
+    is semidet.
+
+accumulate_uint(Base, BaseInt, Char, N0, N) :-
+    char.base_digit_to_int(BaseInt, Char, M),
+    N = (Base * N0) + uint.det_from_int(M),
+    % Fail on overflow.
+    % XXX depends on undefined behaviour
+    N0 =< N.
 
 %---------------------%
 

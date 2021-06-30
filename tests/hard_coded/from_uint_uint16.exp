@@ -1,0 +1,15 @@
+from_uint(0) = 0
+from_uint(1) = 1
+from_uint(2) = 2
+from_uint(8) = 8
+from_uint(10) = 10
+from_uint(16) = 16
+from_uint(127) = 127
+from_uint(32767) = 32767
+from_uint(32768) = 32768
+from_uint(65534) = 65534
+from_uint(65535) = 65535
+from_uint(65536) = <<out-of-range>>
+from_uint(2147483645) = <<out-of-range>>
+from_uint(2147483647) = <<out-of-range>>
+from_uint(4294967295) = <<out-of-range>>
