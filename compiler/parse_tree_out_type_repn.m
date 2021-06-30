@@ -453,7 +453,9 @@ mercury_output_constant_repn(TypeRepnFor, Indent, ConstantRepn, Stream, !IO) :-
 mercury_output_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn,
         Stream, !IO) :-
     (
-        NonConstantRepn = ncr_local_cell(CellLocalSectag, OoMLocalArgRepns),
+        NonConstantRepn = ncr_local_cell(LocalRepn),
+        LocalRepn =
+            nonconstant_local_cell_repn(CellLocalSectag, OoMLocalArgRepns),
         (
             TypeRepnFor = type_repn_for_machines,
             io.write_string(Stream, "local_cell(", !IO),
@@ -478,8 +480,9 @@ mercury_output_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn,
             io.format(Stream, "\n%s)", [s(I)], !IO)
         )
     ;
-        NonConstantRepn =
-            ncr_remote_cell(Ptag, CellRemoteSectag, OoMRemoteArgRepns),
+        NonConstantRepn = ncr_remote_cell(RemoteRepn),
+        RemoteRepn = nonconstant_remote_cell_repn(Ptag, CellRemoteSectag,
+            OoMRemoteArgRepns),
         Ptag = ptag(PtagUint8),
         PtagUint = uint8.cast_to_uint(PtagUint8),
         (
@@ -532,7 +535,7 @@ mercury_output_cell_local_sectag(CellLocalSectag, Stream, !IO) :-
     ;
         CellLocalSectag = cell_local_sectag(Sectag, SectagNumBits),
         io.format(Stream, "local_sectag(%u, %u)",
-            [u(Sectag), u(SectagNumBits)], !IO)
+            [u(Sectag), u8(SectagNumBits)], !IO)
     ).
 
 :- pred mercury_output_cell_remote_sectag(cell_remote_sectag::in,
@@ -558,7 +561,7 @@ mercury_output_sectag_word_or_size(SectagWordOrSize, Stream, !IO) :-
         io.write_string(Stream, "rest", !IO)
     ;
         SectagWordOrSize = sectag_part_of_word(NumBits),
-        io.format(Stream, "part(%u)", [u(NumBits)], !IO)
+        io.format(Stream, "part(%u)", [u8(NumBits)], !IO)
     ).
 
 %---------------------%
@@ -611,7 +614,7 @@ mercury_output_remote_arg_repn(TypeRepnFor, Indent, RemoteArgRepn,
         CellOffset = cell_offset(CellOffsetInt),
         io.format(Stream, "%spartial_%s(%d, %d, %u, %s)",
             [s(NlI), s(FirstOrShifted), i(ArgOnlyOffsetInt), i(CellOffsetInt),
-            u(Shift), s(fill_kind_size_to_string(FillKindSize))], !IO)
+            u8(Shift), s(fill_kind_size_to_string(FillKindSize))], !IO)
     ;
         RemoteArgRepn = remote_none_shifted(ArgOnlyOffset, CellOffset),
         ArgOnlyOffset = arg_only_offset(ArgOnlyOffsetInt),

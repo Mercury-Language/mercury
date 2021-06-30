@@ -785,8 +785,9 @@ parse_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                     then
                         OoMLocalArgs =
                             one_or_more(HeadLocalArg, TailLocalArgs),
-                        NonConstantRepn =
-                            ncr_local_cell(LocalSectag, OoMLocalArgs),
+                        LocalRepn = nonconstant_local_cell_repn(LocalSectag,
+                            OoMLocalArgs),
+                        NonConstantRepn = ncr_local_cell(LocalRepn),
                         MaybeNonConstantRepn = ok1(NonConstantRepn)
                     else
                         Specs =
@@ -837,8 +838,9 @@ parse_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                     then
                         OoMRemoteArgs =
                             one_or_more(HeadRemoteArg, TailRemoteArgs),
-                        NonConstantRepn =
-                            ncr_remote_cell(Ptag, RemoteSectag, OoMRemoteArgs),
+                        RemoteRepn = nonconstant_remote_cell_repn(Ptag,
+                            RemoteSectag, OoMRemoteArgs),
+                        NonConstantRepn = ncr_remote_cell(RemoteRepn),
                         MaybeNonConstantRepn = ok1(NonConstantRepn)
                     else
                         Specs =
@@ -961,17 +963,19 @@ parse_local_sectag(VarSet, Term, MaybeLocalSectag) :-
             (
                 ArgTerms = [ArgTerm1, ArgTerm2],
                 parse_unlimited_uint(VarSet, ArgTerm1, MaybeSectag),
-                parse_unlimited_uint(VarSet, ArgTerm2, MaybeSectagNumBits),
+                parse_uint_in_range(63u, VarSet, ArgTerm2,
+                    MaybeSectagNumBitsUint),
                 ( if
                     MaybeSectag = ok1(Sectag),
-                    MaybeSectagNumBits = ok1(SectagNumBits)
+                    MaybeSectagNumBitsUint = ok1(SectagNumBitsUint)
                 then
+                    SectagNumBits = uint8.det_from_uint(SectagNumBitsUint),
                     LocalSectag = cell_local_sectag(Sectag, SectagNumBits),
                     MaybeLocalSectag = ok1(LocalSectag)
                 else
                     Specs =
                         get_any_errors1(MaybeSectag) ++
-                        get_any_errors1(MaybeSectagNumBits),
+                        get_any_errors1(MaybeSectagNumBitsUint),
                     MaybeLocalSectag = error1(Specs)
                 )
             ;
@@ -1091,12 +1095,13 @@ parse_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
             (
                 ArgTerms = [ArgTerm1],
                 parse_uint_in_range(63u, VarSet, ArgTerm1,
-                    MaybeSectagNumBits),
+                    MaybeSectagNumBitsUint),
                 (
-                    MaybeSectagNumBits = ok1(SectagNumBits),
+                    MaybeSectagNumBitsUint = ok1(SectagNumBitsUint),
+                    SectagNumBits = uint8.det_from_uint(SectagNumBitsUint),
                     MaybeSectagSize = ok1(sectag_part_of_word(SectagNumBits))
                 ;
-                    MaybeSectagNumBits = error1(Specs),
+                    MaybeSectagNumBitsUint = error1(Specs),
                     MaybeSectagSize = error1(Specs)
                 )
             ;
@@ -1404,14 +1409,15 @@ parse_remote_arg_repn_partial(VarSet, AtomStr, ArgTerms, TermContext,
         ArgTerms = [ArgTerm1, ArgTerm2, ArgTerm3, ArgTerm4],
         parse_arg_only_offset(VarSet, ArgTerm1, MaybeArgOnlyOffset),
         parse_cell_offset(VarSet, ArgTerm2, MaybeCellOffset),
-        parse_unlimited_uint(VarSet, ArgTerm3, MaybeShift),
+        parse_uint_in_range(63u, VarSet, ArgTerm3, MaybeShiftUint),
         parse_fill_kind_size(VarSet, ArgTerm4, MaybeFillKindSize),
         ( if
             MaybeArgOnlyOffset = ok1(ArgOnlyOffset),
             MaybeCellOffset = ok1(CellOffset),
-            MaybeShift = ok1(Shift),
+            MaybeShiftUint = ok1(ShiftUint),
             MaybeFillKindSize = ok1(FillKindSize)
         then
+            Shift = uint8.det_from_uint(ShiftUint),
             (
                 AtomStr = "partial_first",
                 RemoteArgRepn = remote_partial_first(ArgOnlyOffset,
@@ -1426,7 +1432,7 @@ parse_remote_arg_repn_partial(VarSet, AtomStr, ArgTerms, TermContext,
             Specs =
                 get_any_errors1(MaybeArgOnlyOffset) ++
                 get_any_errors1(MaybeCellOffset) ++
-                get_any_errors1(MaybeShift) ++
+                get_any_errors1(MaybeShiftUint) ++
                 get_any_errors1(MaybeFillKindSize),
             MaybeRemoteArgRepn = error1(Specs)
         )

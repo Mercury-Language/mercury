@@ -143,7 +143,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
     AugCompUnit = aug_compilation_unit(_ModuleName, _ModuleNameContext,
         _ModuleVersionNumbers, ParseTreeModuleSrc,
         AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs),
+        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs),
     % We start with an empty cord for each kind of item.
     % Then for each file we have read in, we append to this cord
     % all the items of that kind in that file to the list,
@@ -170,6 +170,7 @@ separate_items_in_aug_comp_unit(AugCompUnit, Avails, FIMs,
         map.foldl_values(acc_parse_tree_plain_opt, PlainOpts, !Acc),
         map.foldl_values(acc_parse_tree_trans_opt, TransOpts, !Acc),
         map.foldl_values(acc_int_for_opt_spec, IntForOptSpecs, !Acc),
+        map.foldl_values(acc_type_repn_spec, TypeRepnSpecs, !Acc),
         !.Acc = item_accumulator(AvailsCord, FIMsCord,
             TypeDefnsAbstractCord, TypeDefnsMercuryCord, TypeDefnsForeignCord,
             InstDefnsCord, ModeDefnsCord, TypeclassesCord, InstancesCord,
@@ -303,6 +304,18 @@ acc_int_for_opt_spec(IntForOptSpec, !Acc) :-
         IntForOptSpec = for_opt_int2(ParseTreeInt2, ReadWhy2),
         acc_parse_tree_int2(ParseTreeInt2, ReadWhy2, !Acc)
     ).
+
+:- pred acc_type_repn_spec(type_repn_spec::in,
+    item_accumulator::in, item_accumulator::out) is det.
+
+acc_type_repn_spec(TypeRepnSpec, !Acc) :-
+    TypeRepnSpec = type_repn_spec_int1(ParseTreeInt1),
+    ModuleName = ParseTreeInt1 ^ pti1_module_name,
+    IntTypeRepnMap = ParseTreeInt1 ^ pti1_int_type_repns,
+    AccTypeRepns0 = !.Acc ^ ia_type_repns,
+    AccTypeRepns = [ModuleName - int_type_ctor_repns(ifk_int1, IntTypeRepnMap)
+        | AccTypeRepns0],
+    !Acc ^ ia_type_repns := AccTypeRepns.
 
 %---------------------------------------------------------------------------%
 
@@ -617,6 +630,11 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
             % must_be_qualified_in_interface, or the job of IntNeedQual should
             % be split into, with IntNeedQualInInterface = must_be_qualified,
             % and IntNeedQualInImplementation = may_be_unqualified.
+        ;
+            ReadWhy1 = rwi1_type_repn,
+            % This ReadWhy1 should occur only in type_repn_specs,
+            % which are processed separately by acc_type_repn_spec.
+            unexpected($pred, "rwi1_type_repn") 
         ),
         IntItemImport = item_import_int_concrete(IntImportLocn),
         ImpItemImport = item_import_int_abstract,

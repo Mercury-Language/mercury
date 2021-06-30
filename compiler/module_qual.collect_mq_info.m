@@ -377,6 +377,11 @@ collect_mq_info_in_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Info) :-
         % Since we do not collect module qual info for int_for_opt_specs,
         % we should never encounter this value of ReadWhy1.
         unexpected($pred, "rwi1_opt")
+    ;
+        ReadWhy1 = rwi1_type_repn,
+        % Since we do not collect module qual info for type_repn_specs,
+        % we should never encounter this value of ReadWhy1.
+        unexpected($pred, "rwi1_opt")
     ),
     IntPermissions = module_permissions(IntPermInInt, IntPermInImp),
     % The implementation section of a .int1 file is abstract imported,

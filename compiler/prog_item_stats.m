@@ -156,7 +156,7 @@ gather_stats_in_aug_comp_unit(AugCompUnit, !:CompUnitStats) :-
     AugCompUnit = aug_compilation_unit(_ModuleName, _ModuleNameContext,
         _ModuleVersionNumbers, _ParseTreeModuleSrc, _AncestorIntSpecs,
         _DirectIntSpecs, _IndirectIntSpecs,
-        _PlainOptSpecs, _TransOptSpecs, _IntForOptSpecs),
+        _PlainOptSpecs, _TransOptSpecs, _IntForOptSpecs, _TypeRepnSpecs),
     map.init(!:CompUnitStats).
     % XXX The existing code in this module gathers statistics about
     % the old structure of aug_compilation_units. It should be adapted

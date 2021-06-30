@@ -65,6 +65,8 @@
 :- func get_any_errors_warnings4(maybe4(T1, T2, T3, list(warning_spec))) =
     list(error_spec).
 
+:- pred project_ok1(maybe1(T1)::in, T1::out) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -92,6 +94,14 @@ get_any_errors_warnings3(error3(Specs)) = Specs.
 
 get_any_errors_warnings4(ok4(_, _, _, Specs)) = Specs.
 get_any_errors_warnings4(error4(Specs)) = Specs.
+
+project_ok1(Maybe1, Item) :-
+    (
+        Maybe1 = ok1(Item)
+    ;
+        Maybe1 = error1(_Specs),
+        fail
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.maybe_error.

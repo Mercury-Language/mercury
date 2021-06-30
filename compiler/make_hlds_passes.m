@@ -94,8 +94,8 @@
 do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         TypeEqvMap, UsedModules, !:QualInfo,
         !:FoundInvalidType, !:FoundInvalidInstOrMode, !:ModuleInfo, !:Specs) :-
-    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
-        ModuleVersionNumbers, _, _, _, _, _, _, _),
+    ModuleName = AugCompUnit ^ aci_module_name,
+    ModuleNameContext = AugCompUnit ^ aci_module_name_context,
     get_implicit_avail_needs_in_aug_compilation_unit(Globals, AugCompUnit,
         ImplicitlyUsedModules),
     mq_info_get_partial_qualifier_info(MQInfo0, PQInfo),
@@ -461,6 +461,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     check_preds_if_field_access_function(!.ModuleInfo, ItemPredDecls,
         !Specs),
 
+    ModuleVersionNumbers = AugCompUnit ^ aci_module_version_numbers_map,
     map.foldl(add_version_numbers, ModuleVersionNumbers, !QualInfo),
 
     qual_info_get_mq_info(!.QualInfo, MQInfo),

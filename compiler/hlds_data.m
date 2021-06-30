@@ -928,9 +928,9 @@ set_type_defn_prev_errors(X, !Defn) :-
                 % constructor, but is better because the comparisons
                 % at each node in the map are cheaper.
                 %
-                % It is an invariant that the every constructor_repn in the
-                % dur_ctor_repns field occurs as a value in this map exactly
-                % once, and vice versa.
+                % It is an invariant that there is a bijection between
+                % - the set of constructor names in dur_ctor_repns, and
+                % - the set of keys in dur_ctor_map.
                 dur_ctor_map                :: ctor_name_to_repn_map,
 
                 dur_cheaper_tag_test        :: maybe_cheaper_tag_test,

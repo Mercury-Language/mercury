@@ -693,9 +693,11 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
 :- type arg_shift
     --->    arg_shift(int).
+            % XXX Should be uint8, when shift amounts can be uint8.
 
 :- type arg_num_bits
     --->    arg_num_bits(int).
+            % XXX Should be uint8, when shift amounts can be uint8.
 
 :- type arg_mask
     --->    arg_mask(int).

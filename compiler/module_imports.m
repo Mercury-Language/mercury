@@ -275,6 +275,8 @@
     map(module_name, parse_tree_trans_opt)::out) is det.
 :- pred module_and_imports_get_int_for_opt_specs(module_and_imports::in,
     map(module_name, int_for_opt_spec)::out) is det.
+:- pred module_and_imports_get_type_repn_specs(module_and_imports::in,
+    map(module_name, type_repn_spec)::out) is det.
 :- pred module_and_imports_get_maybe_timestamp_map(module_and_imports::in,
     maybe(module_timestamp_map)::out) is det.
 :- pred module_and_imports_get_errors(module_and_imports::in,
@@ -349,6 +351,8 @@
 :- pred module_and_imports_add_trans_opt(parse_tree_trans_opt::in,
     module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_add_int_for_opt_spec(int_for_opt_spec::in,
+    module_and_imports::in, module_and_imports::out) is det.
+:- pred module_and_imports_add_type_repn_spec(type_repn_spec::in,
     module_and_imports::in, module_and_imports::out) is det.
 
 :- pred module_and_imports_add_grabbed_file(module_name::in, grabbed_file::in,
@@ -548,6 +552,22 @@
                 % implementation section.
                 mai_int_for_opt_specs   :: map(module_name, int_for_opt_spec),
 
+                % The contents of the .int file of the module whose augmented
+                % compilation unit we will build from this module_and_imports
+                % structure. We will use *only* the type representation items
+                % from this .int file.
+                %
+                % The type of this field is has the same structure as the
+                % preceding fields so that we can use the same techniques
+                % to fill it, but it has only two legal states: empty,
+                % and containing one type_repn_spec containing this .int file,
+                % before and after the reading in of that type_repn_spec.
+                %
+                % XXX TYPE_REPN Check that both mmake and mmc --make know
+                % that they need to build this .int file before any compiler
+                % invocation that does code generation.
+                mai_type_repn_specs     :: map(module_name, type_repn_spec),
+
                 mai_version_numbers_map :: module_version_numbers_map,
 
                 % If we are doing smart recompilation, we need to keep
@@ -595,7 +615,7 @@ rebuild_module_and_imports_for_dep_file(Globals,
     AugCompUnit = aug_compilation_unit(_ModuleName, _ModuleNameContext,
         _ModuleVersionNumbers, ParseTreeModuleSrc,
         _AncestorIntSpecs, _DirectIntSpecs, _IndirectIntSpecs,
-        _PlainOpts, _TransOpts, _IntForOptSpecs),
+        _PlainOpts, _TransOpts, _IntForOptSpecs, _TypeRepnSpecs),
     convert_parse_tree_module_src_to_raw_comp_unit(ParseTreeModuleSrc,
         RawCompUnit),
     module_and_imports_get_source_file_name(ModuleAndImports0,
@@ -792,6 +812,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     map.init(PlainOpts),
     map.init(TransOpts),
     map.init(IntForOptSpecs),
+    map.init(TypeRepnSpecs),
 
     map.init(VersionNumbers),
     MaybeTimestampMap = no,
@@ -803,7 +824,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         SortedFactTables, ForeignImports, ForeignIncludeFilesCord,
         ContainsForeignCode, ContainsForeignExport,
         ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         VersionNumbers, MaybeTimestampMap, Specs, Errors,
         GrabbedFileMap, mcm_init).
 
@@ -862,6 +883,7 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
     map.init(PlainOpts),
     map.init(TransOpts),
     map.init(IntForOptSpecs),
+    map.init(TypeRepnSpecs),
     Specs = [],
     set.init(Errors),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
@@ -873,7 +895,7 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
         ForeignImports, ForeignIncludeFiles,
         foreign_code_langs_unknown, ContainsForeignExport,
         ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         VersionNumbers, MaybeTimestampMap, Specs, Errors,
         GrabbedFileMap, mcm_make).
 
@@ -907,6 +929,7 @@ make_module_dep_module_and_imports(SourceFileName, ModuleDir,
     map.init(PlainOpts),
     map.init(TransOpts),
     map.init(IntForOptSpecs),
+    map.init(TypeRepnSpecs),
     map.init(ModuleVersionNumbers),
     Specs = [],
     set.init(Errors),
@@ -920,7 +943,7 @@ make_module_dep_module_and_imports(SourceFileName, ModuleDir,
         ForeignImportModules, cord.from_list(ForeignIncludes),
         ContainsForeignCode, ContainsForeignExport,
         ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         ModuleVersionNumbers, MaybeTimestamps, Specs, Errors,
         GrabbedFileMap, mcm_read).
 
@@ -1532,6 +1555,31 @@ module_and_imports_get_int_for_opt_specs(ModuleAndImports, X) :-
         ),
         X = ModuleAndImports ^ mai_int_for_opt_specs
     ).
+module_and_imports_get_type_repn_specs(ModuleAndImports, X) :-
+    promise_pure (
+        trace [compile_time(flag("mai-stats"))] (
+            semipure get_accesses(Accesses0),
+            Method = ModuleAndImports ^ mai_construction_method,
+            (
+                Method = mcm_init,
+                Fields0 = Accesses0 ^ mfk_init,
+                Fields = Fields0 ^ mf_type_repn_specs := accessed,
+                Accesses = Accesses0 ^ mfk_init := Fields
+            ;
+                Method = mcm_make,
+                Fields0 = Accesses0 ^ mfk_make,
+                Fields = Fields0 ^ mf_type_repn_specs := accessed,
+                Accesses = Accesses0 ^ mfk_make := Fields
+            ;
+                Method = mcm_read,
+                Fields0 = Accesses0 ^ mfk_read,
+                Fields = Fields0 ^ mf_type_repn_specs := accessed,
+                Accesses = Accesses0 ^ mfk_read := Fields
+            ),
+            impure set_accesses(Accesses)
+        ),
+        X = ModuleAndImports ^ mai_type_repn_specs
+    ).
 module_and_imports_get_version_numbers_map(ModuleAndImports, X) :-
     promise_pure (
         trace [compile_time(flag("mai-stats"))] (
@@ -1653,6 +1701,9 @@ module_and_imports_get_grabbed_file_map(ModuleAndImports, X) :-
 :- pred module_and_imports_set_int_for_opt_specs(
     map(module_name, int_for_opt_spec)::in,
     module_and_imports::in, module_and_imports::out) is det.
+:- pred module_and_imports_set_type_repn_specs(
+    map(module_name, type_repn_spec)::in,
+    module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_set_version_numbers_map(
     module_version_numbers_map::in,
     module_and_imports::in, module_and_imports::out) is det.
@@ -1681,6 +1732,8 @@ module_and_imports_set_trans_opts(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_trans_opts := X.
 module_and_imports_set_int_for_opt_specs(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_int_for_opt_specs := X.
+module_and_imports_set_type_repn_specs(X, !ModuleAndImports) :-
+    !ModuleAndImports ^ mai_type_repn_specs := X.
 module_and_imports_set_version_numbers_map(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_version_numbers_map := X.
 module_and_imports_set_maybe_timestamp_map(X, !ModuleAndImports) :-
@@ -1789,6 +1842,12 @@ module_and_imports_add_int_for_opt_spec(X, !ModuleAndImports) :-
     map.det_insert(MN, X, Map0, Map),
     module_and_imports_set_int_for_opt_specs(Map, !ModuleAndImports).
 
+module_and_imports_add_type_repn_spec(X, !ModuleAndImports) :-
+    module_and_imports_get_type_repn_specs(!.ModuleAndImports, Map0),
+    X = type_repn_spec_int1(PT1), MN = PT1 ^ pti1_module_name,
+    map.det_insert(MN, X, Map0, Map),
+    module_and_imports_set_type_repn_specs(Map, !ModuleAndImports).
+
 %---------------------%
 
 module_and_imports_add_grabbed_file(ModuleName, FileWhy, !ModuleAndImports) :-
@@ -1879,10 +1938,11 @@ module_and_imports_d_file(ModuleAndImports,
     module_and_imports_get_plain_opts(ModuleAndImports, PlainOpts),
     module_and_imports_get_trans_opts(ModuleAndImports, TransOpts),
     module_and_imports_get_int_for_opt_specs(ModuleAndImports, IntForOptSpecs),
+    module_and_imports_get_type_repn_specs(ModuleAndImports, TypeRepnSpecs),
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
         ModuleVersionNumbers, ParseTreeModuleSrc,
         AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs).
+        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs).
 
 module_and_imports_get_aug_comp_unit(ModuleAndImports,
         AugCompUnit, Specs, Errors) :-
@@ -1903,10 +1963,11 @@ module_and_imports_get_aug_comp_unit(ModuleAndImports,
     module_and_imports_get_trans_opts(ModuleAndImports, TransOpts),
     module_and_imports_get_int_for_opt_specs(ModuleAndImports,
         IntForOptSpecs),
+    module_and_imports_get_type_repn_specs(ModuleAndImports, TypeRepnSpecs),
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
         ModuleVersionNumbers, ParseTreeModuleSrc,
         AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs),
+        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs),
     module_and_imports_get_specs(ModuleAndImports, Specs),
     module_and_imports_get_errors(ModuleAndImports, Errors).
 
@@ -1947,6 +2008,7 @@ module_and_imports_get_aug_comp_unit(ModuleAndImports,
                 mf_plain_opts                   :: maybe_accessed,
                 mf_trans_opts                   :: maybe_accessed,
                 mf_int_for_opt_specs            :: maybe_accessed,
+                mf_type_repn_specs              :: maybe_accessed,
 
                 mf_version_numbers_map          :: maybe_accessed,
                 mf_maybe_timestamp_map          :: maybe_accessed,
@@ -1975,7 +2037,7 @@ init_mai_fields =
         not_accessed, not_accessed, not_accessed, not_accessed,
 
         not_accessed, not_accessed, not_accessed, not_accessed,
-        not_accessed, not_accessed, not_accessed,
+        not_accessed, not_accessed, not_accessed, not_accessed,
 
         not_accessed, not_accessed, not_accessed, not_accessed).
 
@@ -2006,11 +2068,11 @@ write_mai_fields_stats(Stream, Kind, Fields, !IO) :-
         IntDepsMap, ImpDepsMap, IndirectDeps, FactTableDeps,
         FIMs, ForeignIncludeFiles, HasForeignCode, HasForeignExport,
         ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs,
+        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         VersionNumbersMap, MaybeTimestamMap, Specs, Errors),
     io.format(Stream,
         "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s " ++
-        "%s %s %s %s %s %s %s %s %s %s %s %s %s %s\n",
+        "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n",
         [s(Kind),
         s(acc_str(SrcFileName)),
         s(acc_str(ModuleDir)),
@@ -2036,6 +2098,7 @@ write_mai_fields_stats(Stream, Kind, Fields, !IO) :-
         s(acc_str(PlainOpts)),
         s(acc_str(TransOpts)),
         s(acc_str(IntForOptSpecs)),
+        s(acc_str(TypeRepnSpecs)),
         s(acc_str(VersionNumbersMap)),
         s(acc_str(MaybeTimestamMap)),
         s(acc_str(Specs)),

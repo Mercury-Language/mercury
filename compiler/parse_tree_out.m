@@ -63,6 +63,8 @@
     io.text_output_stream::in, indirect_int_spec::in, io::di, io::uo) is det.
 :- pred mercury_output_int_for_opt_spec(merc_out_info::in,
     io.text_output_stream::in, int_for_opt_spec::in, io::di, io::uo) is det.
+:- pred mercury_output_type_repn_spec(merc_out_info::in,
+    io.text_output_stream::in, type_repn_spec::in, io::di, io::uo) is det.
 
 :- pred mercury_output_parse_tree_int0(merc_out_info::in,
     io.text_output_stream::in, parse_tree_int0::in, io::di, io::uo) is det.
@@ -456,6 +458,10 @@ mercury_output_int_for_opt_spec(Info, Stream, ForOptIntSpec, !IO) :-
         ForOptIntSpec = for_opt_int2(ParseTreeInt2, _),
         mercury_output_parse_tree_int2(Info, Stream, ParseTreeInt2, !IO)
     ).
+
+mercury_output_type_repn_spec(Info, Stream, TypeRepnSpec, !IO) :-
+    TypeRepnSpec = type_repn_spec_int1(ParseTreeInt1),
+    mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO).
 
 %---------------------------------------------------------------------------%
 

@@ -587,7 +587,7 @@ grab_module_int0_files(Globals, Why, ReadWhy0, [ModuleName | ModuleNames],
         !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
     ( if should_read_interface(!.ModuleAndImports, ModuleName, ifk_int0) then
         maybe_log_augment_decision(Why, ifk_int0, ReadWhy0, ModuleName,
-            yes, !IO),
+            decided_to_read, !IO),
         process_module_int0(Globals, ReadWhy0, ModuleName, ParseTreeInt0,
             !HaveReadModuleMaps, !ModuleAndImports, !IO),
         map.keys_as_set(ParseTreeInt0 ^ pti0_int_imports, IntImports),
@@ -600,7 +600,7 @@ grab_module_int0_files(Globals, Why, ReadWhy0, [ModuleName | ModuleNames],
         set.union(ImpUses, !DirectUses)
     else
         maybe_log_augment_decision(Why, ifk_int0, ReadWhy0, ModuleName,
-            no, !IO)
+            decided_not_to_read, !IO)
     ),
     grab_module_int0_files(Globals, Why, ReadWhy0, ModuleNames,
         !DirectImports, !DirectUses,
@@ -621,7 +621,7 @@ grab_module_int1_files(Globals, Why, ReadWhy1, [ModuleName | ModuleNames],
         !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
     ( if should_read_interface(!.ModuleAndImports, ModuleName, ifk_int1) then
         maybe_log_augment_decision(Why, ifk_int1, ReadWhy1, ModuleName,
-            yes, !IO),
+            decided_to_read, !IO),
         process_module_int1(Globals, ReadWhy1, ModuleName, ParseTreeInt1,
             !HaveReadModuleMaps, !ModuleAndImports, !IO),
         map.keys_as_set(ParseTreeInt1 ^ pti1_int_uses, IntUses),
@@ -630,7 +630,7 @@ grab_module_int1_files(Globals, Why, ReadWhy1, [ModuleName | ModuleNames],
         set.union(ImpUses, !ImpIndirectImports)
     else
         maybe_log_augment_decision(Why, ifk_int1, ReadWhy1, ModuleName,
-            no, !IO)
+            decided_not_to_read, !IO)
     ),
     grab_module_int1_files(Globals, Why, ReadWhy1, ModuleNames,
         !IntIndirectImports, !ImpIndirectImports,
@@ -651,14 +651,14 @@ grab_module_int2_files(Globals, Why, ReadWhy2, [ModuleName | ModuleNames],
         !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
     ( if should_read_interface(!.ModuleAndImports, ModuleName, ifk_int2) then
         maybe_log_augment_decision(Why, ifk_int2, ReadWhy2, ModuleName,
-            yes, !IO),
+            decided_to_read, !IO),
         process_module_int2(Globals, ReadWhy2, ModuleName, ParseTreeInt2,
             !HaveReadModuleMaps, !ModuleAndImports, !IO),
         map.keys_as_set(ParseTreeInt2 ^ pti2_int_uses, IntUses),
         set.union(IntUses, !IntIndirectImports)
     else
         maybe_log_augment_decision(Why, ifk_int2, ReadWhy2, ModuleName,
-            no, !IO)
+            decided_not_to_read, !IO)
     ),
     grab_module_int2_files(Globals, Why, ReadWhy2, ModuleNames,
         !IntIndirectImports, !ImpIndirectImports,
@@ -676,14 +676,14 @@ grab_module_int3_files(Globals, Why, ReadWhy3, [ModuleName | ModuleNames],
         !IntIndirectImports, !HaveReadModuleMaps, !ModuleAndImports, !IO) :-
     ( if should_read_interface(!.ModuleAndImports, ModuleName, ifk_int3) then
         maybe_log_augment_decision(Why, ifk_int3, ReadWhy3, ModuleName,
-            yes, !IO),
+            decided_to_read, !IO),
         process_module_int3(Globals, ReadWhy3, ModuleName, ParseTreeInt3,
             !HaveReadModuleMaps, !ModuleAndImports, !IO),
         map.keys_as_set(ParseTreeInt3 ^ pti3_int_imports, Imports),
         set.union(Imports, !IntIndirectImports)
     else
         maybe_log_augment_decision(Why, ifk_int3, ReadWhy3, ModuleName,
-            no, !IO)
+            decided_not_to_read, !IO)
     ),
     grab_module_int3_files(Globals, Why, ReadWhy3, ModuleNames,
         !IntIndirectImports, !HaveReadModuleMaps, !ModuleAndImports, !IO).
@@ -793,6 +793,11 @@ process_module_int1(Globals, ReadWhy1, ModuleName, ParseTreeInt1,
         IntForOptSpec = for_opt_int1(ParseTreeInt1, ReadWhy1),
         module_and_imports_add_int_for_opt_spec(IntForOptSpec,
             !ModuleAndImports)
+    ;
+        ReadWhy1 = rwi1_type_repn,
+        RecompAvail = recomp_avail_int_import,
+        TypeRepnSpec = type_repn_spec_int1(ParseTreeInt1),
+        module_and_imports_add_type_repn_spec(TypeRepnSpec, !ModuleAndImports)
     ),
     maybe_record_interface_timestamp(ModuleName, ifk_int1, RecompAvail,
         MaybeTimestamp, !ModuleAndImports),
@@ -898,8 +903,12 @@ process_module_int3(Globals, ReadWhy3, ModuleName, ParseTreeInt3,
 
 %---------------------------------------------------------------------------%
 
+:- type read_decision
+    --->    decided_not_to_read
+    ;       decided_to_read.
+
 :- pred maybe_log_augment_decision(string::in, int_file_kind::in, T::in,
-    module_name::in, bool::in, io::di, io::uo) is det.
+    module_name::in, read_decision::in, io::di, io::uo) is det.
 % Inlining calls to this predicate effectively optimizes it away
 % if the trace condition is not met, as it usually won't be.
 :- pragma inline(pred(maybe_log_augment_decision/7)).
@@ -912,10 +921,10 @@ maybe_log_augment_decision(Why, IntFileKind, ReadWhy, ModuleName, Read, !IO) :-
         int_file_kind_to_extension(IntFileKind, ExtStr, _Ext),
         WhyStr = string.string(ReadWhy),
         (
-            Read = no,
+            Read = decided_not_to_read,
             ReadStr = "decided not to read"
         ;
-            Read = yes,
+            Read = decided_to_read,
             ReadStr = "decided to read"
         ),
         io.format("AUGMENT_LOG %s, %s, %s, %s: %s\n",
@@ -1012,7 +1021,7 @@ check_imports_accessibility(AugCompUnit, _ImportedModules, !Specs) :-
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
         _ModuleVersionNumbers, ParseTreeModuleSrc, AncestorIntSpecs,
         DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs),
+        PlainOpts, TransOpts, IntForOptSpecs, _TypeRepnSpecs),
     record_includes_imports_uses(ModuleName, ParseTreeModuleSrc,
         AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, ReadModules, InclMap,
@@ -1366,10 +1375,6 @@ record_includes_imports_uses_in_parse_tree_int1(Ancestors,
         IntInclMap, ImpInclMap, _InclMap, _, _, _,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
-    % All possible values of ReadWhyInt1 call for treating
-    % the interface as non-abstract.
-    % All possible values of ReadWhyInt1 but one call for treating
-    % the implementation as abstract.
     IntIncls = module_names_contexts_to_item_includes(IntInclMap),
     ImpIncls = module_names_contexts_to_item_includes(ImpInclMap),
     (
@@ -1379,12 +1384,17 @@ record_includes_imports_uses_in_parse_tree_int1(Ancestors,
         ; ReadWhyInt1 = rwi1_imp_use
         ; ReadWhyInt1 = rwi1_int_use_imp_import
         ),
+        % All these values of ReadWhyInt1 call for treating
+        % - the interface as non-abstract, and
+        % - the implementation as abstract.
         record_includes_acc(non_abstract_section, IntIncls, !InclMap),
         record_includes_acc(abstract_section, ImpIncls, !InclMap)
     ;
         ReadWhyInt1 = rwi1_opt,
         record_includes_acc(non_abstract_section, IntIncls, !InclMap),
         record_includes_acc(non_abstract_section, ImpIncls, !InclMap)
+    ;
+        ReadWhyInt1 = rwi1_type_repn
     ),
     expect_not(set.contains(Ancestors, ModuleName), $pred,
         "processing the .int file of an ancestor").
@@ -1931,6 +1941,14 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
         "opt_new_indirect_deps", rwi2_opt,
         set.union(NewIndirectDeps, NewImplIndirectDeps),
         !HaveReadModuleMaps, !ModuleAndImports, !IO),
+
+    % This compiler invocation can get type representation information
+    % for all the types it has access to in the .int and/or .int2 files
+    % of the modules it imported directly or indirectly, *except* for
+    % the types it defines itself. For representation information for
+    % these types, it must read its *own* .int file.
+    process_module_int1(Globals, rwi1_type_repn, ModuleName,
+        _SelfParseTreeInt1, !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
     % Figure out whether anything went wrong.
     % XXX We should try to put all the relevant error indications into

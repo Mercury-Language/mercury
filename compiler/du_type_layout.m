@@ -114,6 +114,7 @@
 :- import_module hlds.add_foreign_enum.
 :- import_module hlds.add_special_pred.
 :- import_module hlds.hlds_data.
+:- import_module hlds.passes_aux.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
@@ -133,33 +134,1489 @@
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
+:- import_module pretty_printer.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module uint.
+:- import_module uint32.
 :- import_module uint8.
+:- import_module varset.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 decide_type_repns(!ModuleInfo, !Specs, !IO) :-
     module_info_get_type_repn_dec(!.ModuleInfo, TypeRepnDec),
-    TypeRepnDec = type_repn_decision_data(_TypeRepns, DirectArgMap,
-        ForeignEnums, ForeignExportEnums),
-
-    module_info_get_globals(!.ModuleInfo, Globals),
-    setup_decide_du_params(Globals, DirectArgMap, Params),
-
-    list.foldl2(add_pragma_foreign_enum(!.ModuleInfo), ForeignEnums,
-        map.init, TypeCtorToForeignEnumMap, !Specs),
+    TypeRepnDec = type_repn_decision_data(_TypeRepns, _DirectArgMap,
+        _ForeignEnums, ForeignExportEnums),
 
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
     get_all_type_ctor_defns(TypeTable0, TypeCtorsTypeDefns0),
+
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, experiment2, Experiment2),
+    (
+        Experiment2 = no,
+        decide_type_repns_old(!.ModuleInfo, TypeRepnDec, TypeTable0,
+            TypeCtorsTypeDefns0, TypeCtorsTypeDefns, NoTagTypeMap, !Specs)
+    ;
+        Experiment2 = yes,
+        decide_type_repns_old(!.ModuleInfo, TypeRepnDec, TypeTable0,
+            TypeCtorsTypeDefns0, TypeCtorsTypeDefns, NoTagTypeMap, !Specs),
+        module_info_get_name(!.ModuleInfo, ModuleName),
+        decide_type_repns_new(Globals, ModuleName, TypeRepnDec,
+            TypeCtorsTypeDefns0, TypeCtorsTypeDefnsB,
+            UnRepnTypeCtors, BadRepnTypeCtors, !Specs),
+        % XXX decide_type_repns_new should compute NoTagTypeMapB,
+        % for comparison against NoTagTypeMap.
+        get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
+        compare_old_new(DebugStream, UnRepnTypeCtors, BadRepnTypeCtors,
+            TypeCtorsTypeDefns, TypeCtorsTypeDefnsB, !IO)
+    ),
+
+    set_all_type_ctor_defns(TypeCtorsTypeDefns,
+        SortedTypeCtorsTypeDefns, TypeTable),
+    module_info_set_type_table(TypeTable, !ModuleInfo),
+    module_info_set_no_tag_types(NoTagTypeMap, !ModuleInfo),
+
+    add_special_pred_decl_defns_for_types_maybe_lazily(
+        SortedTypeCtorsTypeDefns, !ModuleInfo),
+
+    list.foldl2(add_pragma_foreign_export_enum, ForeignExportEnums,
+        !ModuleInfo, !Specs),
+
+    maybe_show_type_repns(!.ModuleInfo, SortedTypeCtorsTypeDefns, !IO).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- type repn_target
+    --->    repn_target_c(c_repn_target)
+    ;       repn_target_java
+    ;       repn_target_csharp.
+
+:- type c_repn_target
+    --->    c_repn_target(word_size, c_repn_spf, c_repn_allow_direct_arg).
+
+:- type c_repn_spf
+    --->    c_no_single_prec_float
+    ;       c_single_prec_float.
+
+:- type c_repn_allow_direct_arg
+    --->    c_do_not_allow_direct_arg
+    ;       c_allow_direct_arg.
+
+:- pred decide_type_repns_new(globals::in, module_name::in,
+    type_repn_decision_data::in,
+    assoc_list(type_ctor, hlds_type_defn)::in,
+    assoc_list(type_ctor, hlds_type_defn)::out,
+    set(type_ctor)::out, set(type_ctor)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+decide_type_repns_new(Globals, ModuleName, TypeRepnDec, !TypeCtorsTypeDefns,
+        UnRepnTypeCtors, BadRepnTypeCtors, !Specs) :-
+    globals.get_target(Globals, Target),
+    (
+        Target = target_c,
+        globals.get_word_size(Globals, WordSize),
+        globals.lookup_bool_option(Globals, single_prec_float, OptSPF),
+        globals.lookup_bool_option(Globals, allow_direct_args, OptDA),
+        ( OptSPF = no,  SPF = c_no_single_prec_float
+        ; OptSPF = yes, SPF = c_single_prec_float
+        ),
+        ( OptDA = no,  DA = c_do_not_allow_direct_arg
+        ; OptDA = yes, DA = c_allow_direct_arg
+        ),
+        RepnTarget = repn_target_c(c_repn_target(WordSize, SPF, DA))
+    ;
+        Target = target_java,
+        RepnTarget = repn_target_java
+    ;
+        Target = target_csharp,
+        RepnTarget = repn_target_csharp
+    ),
+    TypeRepnDec = type_repn_decision_data(TypeRepns,
+        _DirectArgMap, _ForeignEnums, _ForeignExportEnums),
+    list.map_foldl3(
+        fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeRepns),
+        !TypeCtorsTypeDefns,
+        set.init, UnRepnTypeCtors, set.init, BadRepnTypeCtors, !Specs).
+    % XXX TYPE_REPN fill_in_type_repn_sub
+
+%---------------------------------------------------------------------------%
+
+:- pred fill_in_non_sub_type_repn(globals::in, module_name::in,
+    repn_target::in, type_ctor_repn_map::in,
+    pair(type_ctor, hlds_type_defn)::in,
+    pair(type_ctor, hlds_type_defn)::out,
+    set(type_ctor)::in, set(type_ctor)::out,
+    set(type_ctor)::in, set(type_ctor)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
+        TypeCtorTypeDefn0, TypeCtorTypeDefn,
+        !UnRepnTypeCtors, !BadRepnTypeCtors, !Specs) :-
+    TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
+    TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+    ( if map.search(TypeCtorRepnMap, TypeCtor, ItemTypeRepn) then
+        ItemTypeRepn = item_type_repn_info(RepnSymName, RepnTypeParams,
+            RepnInfo, RepnTVarSet, RepnContext, _RepnSeqNum),
+        list.length(RepnTypeParams, NumRepnTypeParams),
+        expect(unify(TypeCtorSymName, RepnSymName), $pred,
+            "TypeCtorSymName != RepnSymName"),
+        expect(unify(TypeCtorArity, NumRepnTypeParams), $pred,
+            "TypeCtorArity != NumRepnTypeParams"),
+        get_type_defn_body(TypeDefn0, Body0),
+        (
+            Body0 = hlds_du_type(Ctors, MaybeSuperType, MaybeCanon,
+                _, _MaybeForeignTypeBody),
+            (
+                (
+                    RepnInfo = tcrepn_is_word_aligned_ptr,
+                    RepnStr = "is_word_aligned_ptr"
+                ;
+                    RepnInfo = tcrepn_is_eqv_to(_),
+                    RepnStr = "is_eqv_to"
+                ;
+                    RepnInfo = tcrepn_foreign(_),
+                    RepnStr = "foreign"
+                ),
+                Pieces = [words("Error: unexpected"), words(RepnStr),
+                    words("type_repn item for"), qual_type_ctor(TypeCtor),
+                    suffix("."), nl],
+                Spec = simplest_spec($pred, severity_error, phase_type_repn,
+                    RepnContext, Pieces),
+                !:Specs = [Spec | !.Specs],
+                set.insert(TypeCtor, !BadRepnTypeCtors),
+                % The presence of Spec should prevent TypeCtorTypeDefn
+                % from being used.
+                TypeCtorTypeDefn = TypeCtorTypeDefn0
+            ;
+                RepnInfo = tcrepn_du(DuRepnInfo),
+                (
+                    MaybeSuperType = yes(_),
+                    % There should NOT be an tcrepn_du ItemTypeRepn for
+                    % a subtype, since subtypes take their representation
+                    % information from their (ultimate) supertype.
+                    Pieces = [words("Error: tcrepn_du type_repn item"),
+                        words("for subtype"), qual_type_ctor(TypeCtor),
+                        suffix("."), nl],
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_type_repn, RepnContext, Pieces),
+                    !:Specs = [Spec | !.Specs],
+                    set.insert(TypeCtor, !BadRepnTypeCtors),
+                    % The presence of Spec should prevent TypeCtorTypeDefn
+                    % from being used.
+                    TypeCtorTypeDefn = TypeCtorTypeDefn0
+                ;
+                    MaybeSuperType = no,
+                    fill_in_non_sub_du_type_repn(Globals, ModuleName,
+                        RepnTarget, TypeCtor, RepnTVarSet, RepnContext,
+                        Ctors, MaybeCanon, DuRepnInfo, MaybeDuRepn),
+                    % XXX TYPE_REPN Sanity check _MaybeForeignTypeBody
+                    % against the MaybeDuRepn we construct, in case
+                    % exactly one of the two represents a foreign type.
+                    (
+                        MaybeDuRepn = have_du_type_repn(DuRepn),
+                        Body = Body0 ^ du_type_repn := yes(DuRepn),
+                        set_type_defn_body(Body, TypeDefn0, TypeDefn),
+                        TypeCtorTypeDefn = TypeCtor - TypeDefn
+                    ;
+                        MaybeDuRepn = have_foreign_type_repn(ForeignTypeBody),
+                        Body = hlds_foreign_type(ForeignTypeBody),
+                        set_type_defn_body(Body, TypeDefn0, TypeDefn),
+                        TypeCtorTypeDefn = TypeCtor - TypeDefn
+                    ;
+                        MaybeDuRepn = have_errors(CheckSpecs),
+                        !:Specs = CheckSpecs ++ !.Specs,
+                        % The presence of CheckSpecs should prevent
+                        % TypeCtorTypeDefn from being used.
+                        TypeCtorTypeDefn = TypeCtorTypeDefn0
+                        % XXX TYPE_REPN Record TypeCtor's module as
+                        % needing to have its .int file rebuilt.
+                    )
+                )
+            ;
+                RepnInfo = tcrepn_is_subtype_of(_),
+                (
+                    MaybeSuperType = yes(_),
+                    % XXX TYPE_REPN Record TypeCtor as a subtype
+                    % needing a second pass.
+                    TypeCtorTypeDefn = TypeCtorTypeDefn0
+                ;
+                    MaybeSuperType = no,
+                    Pieces = [words("Error: tcrepn_is_subtype_of"),
+                        words("type_repn item for"), qual_type_ctor(TypeCtor),
+                        suffix(","), words("which is NOT a subtype."), nl],
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_type_repn, RepnContext, Pieces),
+                    !:Specs = [Spec | !.Specs],
+                    set.insert(TypeCtor, !BadRepnTypeCtors),
+                    % The presence of Spec should prevent TypeCtorTypeDefn
+                    % from being used.
+                    TypeCtorTypeDefn = TypeCtorTypeDefn0
+                )
+            )
+        ;
+            ( Body0 = hlds_eqv_type(_)
+            ; Body0 = hlds_foreign_type(_)
+            ; Body0 = hlds_abstract_type(_)
+            ; Body0 = hlds_solver_type(_)
+            ),
+            TypeCtorTypeDefn = TypeCtorTypeDefn0
+        )
+    else
+        TypeCtorTypeDefn = TypeCtor - TypeDefn0,
+        get_type_defn_body(TypeDefn0, Body0),
+        (
+            ( Body0 = hlds_du_type(_, _, _, _, _)
+            ; Body0 = hlds_eqv_type(_)
+            ; Body0 = hlds_foreign_type(_)
+            ),
+            set.insert(TypeCtor, !UnRepnTypeCtors),
+            trace [runtime(env("PRINT_UNDEF_TYPE_CTOR")), io(!IO)] (
+                get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+                map.keys(TypeCtorRepnMap, TypeCtorRepnMapKeys),
+                io.write_string(DebugStream, "NOREPN ", !IO),
+                io.write_line(DebugStream, TypeCtor, !IO),
+                io.write_line(DebugStream, Body0, !IO),
+                list.foldl(io.write_line(DebugStream),
+                    TypeCtorRepnMapKeys, !IO)
+            )
+        ;
+            Body0 = hlds_abstract_type(DetailsAbstract0),
+            (
+                ( DetailsAbstract0 = abstract_type_general
+                ; DetailsAbstract0 = abstract_type_fits_in_n_bits(_)
+                ; DetailsAbstract0 = abstract_dummy_type
+                ; DetailsAbstract0 = abstract_notag_type
+                ),
+                set.insert(TypeCtor, !UnRepnTypeCtors),
+                trace [runtime(env("PRINT_UNDEF_TYPE_CTOR")), io(!IO)] (
+                    get_debug_output_stream(Globals, ModuleName,
+                        DebugStream, !IO),
+                    io.write_string(DebugStream, "NOREPN ", !IO),
+                    io.write_line(DebugStream, TypeCtor, !IO),
+                    io.write_line(DebugStream, Body0, !IO)
+                )
+            ;
+                DetailsAbstract0 = abstract_solver_type
+                % Solver types, abstract or not, do not need a representation.
+            ;
+                DetailsAbstract0 = abstract_subtype(_),
+                % XXX TYPE_REPN Not yet implemented.
+                unexpected($pred, "abstract_subtype")
+            )
+        ;
+            Body0 = hlds_solver_type(_)
+            % Solver types, abstract or not, do not need a representation.
+        )
+    ).
+
+%---------------------%
+
+:- type maybe_du_type_repn
+    --->    have_du_type_repn(du_type_repn)
+    ;       have_foreign_type_repn(foreign_type_body)
+    ;       have_errors(list(error_spec)).
+
+%---------------------%
+
+:- pred fill_in_non_sub_du_type_repn(globals::in, module_name::in,
+    repn_target::in, type_ctor::in, tvarset::in, prog_context::in,
+    one_or_more(constructor)::in, maybe_canonical::in, du_repn::in,
+    maybe_du_type_repn::out) is det.
+
+% XXX TYPE_REPN _Globals and _ModuleName are available in case
+% we need get_debug_output_stream.
+% XXX TYPE_REPN _RepnTVarSet is available in case
+% we need it for formatting stuff for error messages.
+fill_in_non_sub_du_type_repn(_Globals, _ModuleName, RepnTarget, TypeCtor,
+        _RepnTVarSet, RepnContext, OoMCtors, MaybeCanon, DuRepnInfo,
+        MaybeDuRepn) :-
+    (
+        (
+            DuRepnInfo = dur_direct_dummy(DirectDummyRepn),
+            check_and_record_du_direct_dummy(TypeCtor, RepnContext, OoMCtors,
+                MaybeCanon, DirectDummyRepn, MercuryMaybeDuRepn),
+            DirectDummyRepn = direct_dummy_repn(_RepnCtorName, MaybeCJCsEnum)
+        ;
+            DuRepnInfo = dur_enum(EnumRepn),
+            check_and_record_du_enum(TypeCtor, RepnContext, OoMCtors,
+                EnumRepn, MercuryMaybeDuRepn),
+            EnumRepn = enum_repn(_RepnHeadCtorName, _RepnHeadTailCtorName,
+                _RepnTailTailCtorNames, MaybeCJCsEnum)
+        ),
+        foreign_target_specific_repn(RepnTarget, MaybeCJCsEnum,
+            ForeignLang, MaybeForeignEnum),
+        (
+            MaybeForeignEnum = yes(ForeignEnumRepn),
+            (
+                ForeignEnumRepn = enum_foreign_type(ForeignTypeRepn),
+                ForeignTypeRepn =
+                    foreign_type_repn(ForeignTypeName, Assertions),
+                record_foreign_type_for_target(RepnTarget, ForeignTypeName,
+                    MaybeCanon, Assertions, ForeignTypeBody),
+                ForeignMaybeDuRepn = have_foreign_type_repn(ForeignTypeBody)
+            ;
+                ForeignEnumRepn = enum_foreign_enum(OoMForeignNames),
+                Ctors = one_or_more_to_list(OoMCtors),
+                ForeignNames = one_or_more_to_list(OoMForeignNames),
+                record_foreign_enums(ForeignLang, ForeignNames, Ctors,
+                    CtorRepns, map.init, CtorNameRepnMap, Lengths),
+                (
+                    Lengths = enum_list_lengths_match,
+                    MaybeDirectArgFunctors = maybe.no,
+                    DuRepn = du_type_repn(CtorRepns, CtorNameRepnMap,
+                        no_cheaper_tag_test,
+                        du_type_kind_foreign_enum(ForeignLang),
+                        MaybeDirectArgFunctors),
+                    ForeignMaybeDuRepn = have_du_type_repn(DuRepn)
+                ;
+                    Lengths = enum_list_lengths_do_not_match,
+                    list.length(Ctors, NumCtors),
+                    list.length(ForeignNames, NumForeignNames),
+                    LangStr = foreign_language_string(ForeignLang),
+                    Pieces = [words("Error in tcrepn_du type_repn item"),
+                        words("for"), qual_type_ctor(TypeCtor), suffix(":"),
+                        words("this enum type has"), int_fixed(NumCtors),
+                        words("functors, but the"), words(LangStr),
+                        words("foreign enum definition for it has"),
+                        int_fixed(NumForeignNames), suffix("."), nl],
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_type_repn, RepnContext, Pieces),
+                    ForeignMaybeDuRepn = have_errors([Spec])
+                )
+            ),
+            combine_mercury_foreign_du_repns(MercuryMaybeDuRepn,
+                ForeignMaybeDuRepn, MaybeDuRepn)
+        ;
+            MaybeForeignEnum = no,
+            MaybeDuRepn = MercuryMaybeDuRepn
+        )
+    ;
+        DuRepnInfo = dur_notag(NoTagRepn),
+        check_and_record_du_notag(TypeCtor, RepnContext, OoMCtors, MaybeCanon,
+            NoTagRepn, MercuryMaybeDuRepn),
+        NoTagRepn = notag_repn(_FunctorName, _ArgType, MaybeCJCs),
+        foreign_target_specific_repn(RepnTarget, MaybeCJCs,
+            _ForeignLang, MaybeForeign),
+        (
+            MaybeForeign = yes(ForeignTypeRepn),
+            ForeignTypeRepn =
+                foreign_type_repn(ForeignTypeName, Assertions),
+            record_foreign_type_for_target(RepnTarget, ForeignTypeName,
+                MaybeCanon, Assertions, ForeignTypeBody),
+            ForeignMaybeDuRepn = have_foreign_type_repn(ForeignTypeBody),
+            combine_mercury_foreign_du_repns(MercuryMaybeDuRepn,
+                ForeignMaybeDuRepn, MaybeDuRepn)
+        ;
+            MaybeForeign = no,
+            MaybeDuRepn = MercuryMaybeDuRepn
+        )
+    ;
+        DuRepnInfo = dur_gen_only_functor(OnlyFunctorRepn),
+        check_and_record_du_only_functor(RepnTarget, TypeCtor,
+            RepnContext, OoMCtors, OnlyFunctorRepn, MaybeDuRepn)
+    ;
+        DuRepnInfo = dur_gen_more_functors(MoreFunctorsRepn),
+        check_and_record_du_more_functors(RepnTarget, TypeCtor,
+            RepnContext, OoMCtors, MoreFunctorsRepn, MaybeDuRepn)
+    ).
+
+:- pred combine_mercury_foreign_du_repns(maybe_du_type_repn::in,
+    maybe_du_type_repn::in, maybe_du_type_repn::out) is det.
+
+combine_mercury_foreign_du_repns(MerMaybeDuRepn, ForMaybeDuRepn,
+        MaybeDuRepn) :-
+    % Return error if EITHER the Mercury OR the foreign definition has errors.
+    % If NEITHER has any errors, return the foreign definition, which overrides
+    % the Mercury definition for the current target.
+    ( if MerMaybeDuRepn = have_errors(MS) then MSpecs = MS else MSpecs = [] ),
+    ( if ForMaybeDuRepn = have_errors(FS) then FSpecs = FS else FSpecs = [] ),
+    MFSpecs = MSpecs ++ FSpecs,
+    (
+        MFSpecs = [_ | _],
+        MaybeDuRepn = have_errors(MFSpecs)
+    ;
+        MFSpecs = [],
+        MaybeDuRepn = ForMaybeDuRepn
+    ).
+
+%---------------------%
+
+:- pred check_and_record_du_direct_dummy(type_ctor::in, prog_context::in,
+    one_or_more(constructor)::in, maybe_canonical::in,
+    direct_dummy_repn::in, maybe_du_type_repn::out) is det.
+
+check_and_record_du_direct_dummy(TypeCtor, Context, OoMCtors, MaybeCanon,
+        DirectDummyRepn, MaybeDuRepn) :-
+    DirectDummyRepn = direct_dummy_repn(RepnCtorName, _MaybeCJCsEnum),
+    ( if
+        OoMCtors = one_or_more(Ctor, []),
+        ctor_is_constant(Ctor, CtorName),
+        CtorName = RepnCtorName
+    then
+        (
+            MaybeCanon = noncanon(_),
+            Pieces = [words("Error: the type representation item for"),
+                qual_type_ctor(TypeCtor), words("says it is direct_dummy,"),
+                words("but the type is noncanonical."), nl],
+            Spec = simplest_spec($pred, severity_error, phase_type_repn,
+                Context, Pieces),
+            MaybeDuRepn = have_errors([Spec])
+        ;
+            MaybeCanon = canon,
+            Ctor = ctor(Ordinal, _MaybeExistConstraints, CtorSymName,
+                _CtorArgs, _NumCtorArgs, CtorContext),
+            CtorTag = dummy_tag,
+            CtorRepn = ctor_repn(Ordinal, no_exist_constraints, CtorSymName,
+                CtorTag, [], 0, CtorContext),
+            insert_ctor_repn_into_map(CtorRepn, map.init, CtorNameRepnMap),
+            MaybeDirectArgFunctors = maybe.no,
+            DuRepn = du_type_repn([CtorRepn], CtorNameRepnMap,
+                no_cheaper_tag_test, du_type_kind_direct_dummy,
+                MaybeDirectArgFunctors),
+            MaybeDuRepn = have_du_type_repn(DuRepn)
+        )
+    else
+        Pieces = [words("Error: the type representation item for"),
+            qual_type_ctor(TypeCtor), words("is incorrect: it says that"),
+            words("the type has a single function symbol,"),
+            words("a constant named"), quote(RepnCtorName), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_type_repn,
+            Context, Pieces),
+        MaybeDuRepn = have_errors([Spec])
+    ).
+
+%---------------------%
+
+:- pred check_and_record_du_enum(type_ctor::in, prog_context::in,
+    one_or_more(constructor)::in, enum_repn::in,
+    maybe_du_type_repn::out) is det.
+
+check_and_record_du_enum(TypeCtor, Context, Ctors, EnumRepn,
+        MaybeDuRepn) :-
+    EnumRepn = enum_repn(RepnHeadCtorName, RepnHeadTailCtorName,
+        RepnTailTailCtorNames, _MaybeCJCs),
+    ( if
+        Ctors = one_or_more(HeadCtor, TailCtors),
+        TailCtors = [HeadTailCtor | TailTailCtors],
+        ctor_is_constant(HeadCtor, HeadCtorName),
+        ctor_is_constant(HeadTailCtor, HeadTailCtorName),
+        list.map(ctor_is_constant, TailTailCtors, TailTailCtorNames),
+        HeadCtorName = RepnHeadCtorName,
+        HeadTailCtorName = RepnHeadTailCtorName,
+        TailTailCtorNames = RepnTailTailCtorNames
+    then
+        map.init(CtorNameRepnMap0),
+        record_enum_repn(HeadCtor, HeadCtorRepn,
+            0u32, _, CtorNameRepnMap0, CtorNameRepnMap1),
+        record_enum_repn(HeadTailCtor, HeadTailCtorRepn,
+            1u32, _, CtorNameRepnMap1, CtorNameRepnMap2),
+        list.map_foldl2(record_enum_repn,
+            TailTailCtors, TailTailCtorRepns,
+            2u32, _, CtorNameRepnMap2, CtorNameRepnMap),
+        CtorRepns = [HeadCtorRepn, HeadTailCtorRepn | TailTailCtorRepns],
+        MaybeDirectArgFunctors = maybe.no,
+        DuRepn = du_type_repn(CtorRepns, CtorNameRepnMap,
+            no_cheaper_tag_test, du_type_kind_mercury_enum,
+            MaybeDirectArgFunctors),
+        MaybeDuRepn = have_du_type_repn(DuRepn)
+    else
+        RepnCtorNames = [RepnHeadCtorName, RepnHeadTailCtorName |
+            RepnTailTailCtorNames],
+        Pieces = [words("Error: the type representation item for"),
+            qual_type_ctor(TypeCtor), words("is incorrect: it says that"),
+            words("the type is an enum, with function symbols named")] ++
+            list_to_pieces(RepnCtorNames) ++ [suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_type_repn,
+            Context, Pieces),
+        MaybeDuRepn = have_errors([Spec])
+    ).
+
+:- pred record_enum_repn(constructor::in, constructor_repn::out,
+    uint32::in, uint32::out,
+    ctor_name_to_repn_map::in, ctor_name_to_repn_map::out) is det.
+
+record_enum_repn(Ctor, CtorRepn, !ExpectedOrdinal, !CtorNameRepnMap) :-
+    Ctor = ctor(Ordinal, _, SymName, _, _, Context),
+    CtorTag = int_tag(int_tag_int(uint32.cast_to_int(Ordinal))),
+    CtorRepn = ctor_repn(Ordinal, no_exist_constraints, SymName, CtorTag,
+        [], 0, Context),
+    expect(unify(Ordinal, !.ExpectedOrdinal), $pred,
+        "Ordinal != !.ExpectedOrdinal"),
+    !:ExpectedOrdinal = !.ExpectedOrdinal + 1u32,
+    insert_ctor_repn_into_map(CtorRepn, !CtorNameRepnMap).
+
+:- type enum_list_lengths
+    --->    enum_list_lengths_do_not_match
+    ;       enum_list_lengths_match.
+
+:- pred record_foreign_enums(foreign_language::in, list(string)::in,
+    list(constructor)::in, list(constructor_repn)::out,
+    ctor_name_to_repn_map::in, ctor_name_to_repn_map::out,
+    enum_list_lengths::out) is det.
+
+record_foreign_enums(_, [], [], [], !CtorNameRepnMap, enum_list_lengths_match).
+record_foreign_enums(_, [], [_ | _], [], !CtorNameRepnMap,
+        enum_list_lengths_do_not_match).
+record_foreign_enums(_, [_ | _], [], [], !CtorNameRepnMap,
+        enum_list_lengths_do_not_match).
+record_foreign_enums(Lang, [ForeignName | ForeignNames], [Ctor | Ctors],
+        [CtorRepn | CtorRepns], !CtorNameRepnMap, Lengths) :-
+    % If the Ctor is no appropriate for an enum type, we will have detected
+    % and reported this fact when we processed the Mercury representation.
+    Ctor = ctor(Ordinal, _MaybeExistConstraints, CtorSymName,
+        _CtorArgs, _NumCtorArgs, CtorContext),
+    CtorTag = foreign_tag(Lang, ForeignName),
+    CtorRepn = ctor_repn(Ordinal, no_exist_constraints, CtorSymName, CtorTag,
+        [], 0, CtorContext),
+    insert_ctor_repn_into_map(CtorRepn, !CtorNameRepnMap),
+    record_foreign_enums(Lang, ForeignNames, Ctors, CtorRepns,
+        !CtorNameRepnMap, Lengths).
+
+%---------------------%
+
+:- pred check_and_record_du_notag(type_ctor::in, prog_context::in,
+    one_or_more(constructor)::in, maybe_canonical::in, notag_repn::in,
+    maybe_du_type_repn::out) is det.
+
+check_and_record_du_notag(TypeCtor, Context, Ctors, MaybeCanon,
+        NoTagRepn, MaybeDuRepn) :-
+    NoTagRepn = notag_repn(RepnCtorName, RepnArgType, _MaybeCJCs),
+    ( if
+        Ctors = one_or_more(Ctor, []),
+        Ctor = ctor(Ordinal, no_exist_constraints, CtorSymName,
+            [CtorArg], 1, CtorContext),
+        CtorArg = ctor_arg(MaybeFieldName, _ArgType, ArgContext),
+        unqualify_name(CtorSymName) = RepnCtorName
+    then
+        (
+            MaybeCanon = noncanon(_),
+            Pieces = [words("Error: the type representation item for"),
+                qual_type_ctor(TypeCtor), words("says it is notag,"),
+                words("but the type is noncanonical."), nl],
+            Spec = simplest_spec($pred, severity_error, phase_type_repn,
+                Context, Pieces),
+            MaybeDuRepn = have_errors([Spec])
+        ;
+            MaybeCanon = canon,
+            % XXX TYPE_REPN The apw_full is a *lie*
+            % if RepnArgType is a 64 bit float on a 32 bit platform.
+            % XXX TYPE_REPN Since the ArgPosWidth of the only argument
+            % of a no_tag type should never be used, we should see whether
+            % it would be practical to use a CtorArgRepn that does not have
+            % this field.
+            ArgPosWidth = apw_full(arg_only_offset(0), cell_offset(0)),
+            CtorArgRepn = ctor_arg_repn(MaybeFieldName, RepnArgType,
+                ArgPosWidth, ArgContext),
+            CtorTag = no_tag,
+            CtorRepn = ctor_repn(Ordinal, no_exist_constraints, CtorSymName,
+                CtorTag, [CtorArgRepn], 1, CtorContext),
+            insert_ctor_repn_into_map(CtorRepn, map.init, CtorNameRepnMap),
+            MaybeDirectArgFunctors = maybe.no,
+            (
+                MaybeFieldName = no,
+                MaybeArgName = no
+            ;
+                MaybeFieldName =
+                    yes(ctor_field_name(ArgSymName, _FieldContext)),
+                MaybeArgName = yes(unqualify_name(ArgSymName))
+            ),
+            DuTypeKind = du_type_kind_notag(CtorSymName, RepnArgType,
+                MaybeArgName),
+            DuRepn = du_type_repn([CtorRepn], CtorNameRepnMap,
+                no_cheaper_tag_test, DuTypeKind, MaybeDirectArgFunctors),
+            MaybeDuRepn = have_du_type_repn(DuRepn)
+        )
+    else
+        Pieces = [words("Error: the type representation item for"),
+            qual_type_ctor(TypeCtor), words("is incorrect: it says that"),
+            words("the type has a single function symbol named"),
+            quote(RepnCtorName), words("with one argument."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_type_repn,
+            Context, Pieces),
+        MaybeDuRepn = have_errors([Spec])
+    ).
+
+%---------------------%
+
+:- pred check_and_record_du_only_functor(repn_target::in, type_ctor::in,
+    prog_context::in, one_or_more(constructor)::in,
+    gen_du_only_functor_repn::in, maybe_du_type_repn::out) is det.
+
+check_and_record_du_only_functor(RepnTarget, TypeCtor, Context,
+        Ctors, OnlyFunctorRepn, MaybeDuRepn) :-
+    OnlyFunctorRepn = gen_du_only_functor_repn(RepnCtorName, RepnArgTypes,
+        CNonConstantRepns, _MaybeCJCs),
+    list.length(RepnArgTypes, NumRepnArgTypes),
+    ( if
+        Ctors = one_or_more(Ctor, []),
+        Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
+            CtorArgs, CtorArity, CtorContext),
+        unqualify_name(CtorSymName) = RepnCtorName,
+        list.length(CtorArgs, NumArgs),
+        NumArgs = NumRepnArgTypes
+    then
+        check_du_functor(TypeCtor, Ctor, RepnCtorName, NumRepnArgTypes, 0u32,
+            [], CtorSpecs),
+        (
+            CtorSpecs = [_ | _],
+            MaybeDuRepn = have_errors(CtorSpecs)
+        ;
+            CtorSpecs = [],
+            (
+                ( RepnTarget = repn_target_java
+                ; RepnTarget = repn_target_csharp
+                ),
+                CtorTag = remote_args_tag(remote_args_only_functor),
+                maybe_exist_constraints_num_extra_words(MaybeExistConstraints,
+                    NumExtraWords),
+                FirstAOWordNum = 0,
+                FirstCellWordNum = NumExtraWords,
+                record_high_level_data_ctor_args(FirstAOWordNum,
+                    FirstCellWordNum, CtorArgs, CtorArgRepns)
+            ;
+                RepnTarget = repn_target_c(CRepnTarget),
+                c_target_specific_repn(CRepnTarget, CNonConstantRepns,
+                    NonConstantRepn),
+                (
+                    NonConstantRepn = ncr_local_cell(NCLocalRepn),
+                    NCLocalRepn = nonconstant_local_cell_repn(LocalSectag,
+                        OoMLocalArgRepns),
+                    % XXX TYPE_REPN Should we encode this invariant in types?
+                    expect(unify(LocalSectag, cell_local_no_sectag), $pred,
+                        "LocalSectag != cell_local_no_sectag"),
+                    LocalArgRepns = one_or_more_to_list(OoMLocalArgRepns),
+                    CtorTag = local_args_tag(local_args_only_functor),
+                    % These -2s mean that these arguments are not on the heap,
+                    % but next to the ptag and any local sectag.
+                    ArgOnlyOffset = arg_only_offset(-2),
+                    CellOffset = cell_offset(-2),
+                    record_local_ctor_args(ArgOnlyOffset, CellOffset,
+                        not_seen_nondummy_arg, CtorArgs, RepnArgTypes,
+                        LocalArgRepns, CtorArgRepns)
+                ;
+                    NonConstantRepn = ncr_remote_cell(NCRemoteRepn),
+                    NCRemoteRepn = nonconstant_remote_cell_repn(Ptag,
+                        RemoteSectag, OoMRemoteArgRepns),
+                    % XXX TYPE_REPN Should we encode these invariants in types?
+                    expect(unify(Ptag, ptag(0u8)), $pred, "Ptag != 0"),
+                    expect(unify(RemoteSectag, cell_remote_no_sectag), $pred,
+                        "RemoteSectag != cell_remote_no_sectag"),
+                    RemoteArgRepns = one_or_more_to_list(OoMRemoteArgRepns),
+                    CtorTag = remote_args_tag(remote_args_only_functor),
+                    record_remote_ctor_args(CtorArgs, RepnArgTypes,
+                        RemoteArgRepns, CtorArgRepns)
+                ;
+                    NonConstantRepn = ncr_direct_arg(_),
+                    unexpected($pred, "ncr_direct_arg")
+                )
+            ),
+            CtorRepn = ctor_repn(Ordinal, no_exist_constraints, CtorSymName,
+                CtorTag, CtorArgRepns, CtorArity, CtorContext),
+            insert_ctor_repn_into_map(CtorRepn, map.init, CtorNameRepnMap),
+            MaybeDirectArgFunctors = maybe.no,
+            DuTypeKind = du_type_kind_general,
+            DuRepn = du_type_repn([CtorRepn], CtorNameRepnMap,
+                no_cheaper_tag_test, DuTypeKind, MaybeDirectArgFunctors),
+            MaybeDuRepn = have_du_type_repn(DuRepn)
+        )
+    else
+        Pieces = [words("Error: the type representation item for"),
+            qual_type_ctor(TypeCtor), words("is incorrect: it says that"),
+            words("the type has a single function symbol named"),
+            quote(RepnCtorName), words("with"),
+            int_fixed(NumRepnArgTypes), words("arguments."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_type_repn,
+            Context, Pieces),
+        MaybeDuRepn = have_errors([Spec])
+    ).
+
+%---------------------%
+
+:- pred check_and_record_du_more_functors(repn_target::in, type_ctor::in,
+    prog_context::in, one_or_more(constructor)::in,
+    gen_du_more_functors_repn::in, maybe_du_type_repn::out) is det.
+
+check_and_record_du_more_functors(RepnTarget, TypeCtor, Context,
+        OoMCtors, MoreFunctorsRepn, MaybeDuRepn) :-
+    MoreFunctorsRepn = gen_du_more_functors_repn(HeadCtorMFRepn,
+        HeadTailCtorMFRepn, TailTailCtorMFRepns, _MaybeCJCs),
+    Ctors = one_or_more_to_list(OoMCtors),
+    CtorMFRepns = [HeadCtorMFRepn, HeadTailCtorMFRepn | TailTailCtorMFRepns],
+    ( if
+        assoc_list.maybe_from_corresponding_lists(Ctors, CtorMFRepns,
+            CtorPairs)
+    then
+        list.foldl2(check_gen_du_functor(TypeCtor), CtorPairs,
+            0u32, _, [], CtorSpecs),
+        (
+            CtorSpecs = [_ | _],
+            MaybeDuRepn = have_errors(CtorSpecs)
+        ;
+            CtorSpecs = [],
+            (
+                ( RepnTarget = repn_target_java
+                ; RepnTarget = repn_target_csharp
+                ),
+                record_high_level_data_ctors(Ctors, CtorRepns),
+                MaybeDirectArgFunctors = maybe.no
+            ;
+                RepnTarget = repn_target_c(CRepnTarget),
+                record_low_level_data_ctors(CRepnTarget, CtorPairs,
+                    CtorRepns, MaybeDirectArgFunctors)
+            ),
+            list.foldl(insert_ctor_repn_into_map, CtorRepns,
+                map.init, CtorNameRepnMap),
+            compute_cheaper_tag_test(TypeCtor, CtorRepns, CheaperTagTest),
+            DuRepn = du_type_repn(CtorRepns, CtorNameRepnMap, CheaperTagTest,
+                du_type_kind_general, MaybeDirectArgFunctors),
+            MaybeDuRepn = have_du_type_repn(DuRepn)
+        )
+    else
+        RepnCtorNames = list.map(gen_du_functor_repn_name_arity,
+            [HeadCtorMFRepn, HeadTailCtorMFRepn | TailTailCtorMFRepns]),
+        Pieces = [words("Error: the type representation item for"),
+            qual_type_ctor(TypeCtor), words("is incorrect: it says that"),
+            words("the type is a non-enum du type,"),
+            words("with function symbols named")] ++
+            list_to_pieces(RepnCtorNames) ++ [suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_type_repn,
+            Context, Pieces),
+        MaybeDuRepn = have_errors([Spec])
+    ).
+
+%---------------------%
+
+:- pred check_gen_du_functor(type_ctor::in,
+    pair(constructor, gen_du_functor_repn)::in, uint32::in, uint32::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_gen_du_functor(TypeCtor, Ctor - GenDuFunctorRepn,
+        !ExpectedOrdinal, !Specs) :-
+    (
+        GenDuFunctorRepn = gen_du_constant_functor_repn(RepnCtorName, _),
+        RepnCtorArity = 0
+    ;
+        GenDuFunctorRepn = gen_du_nonconstant_functor_repn(RepnCtorName,
+            RepnArgTypes0, _),
+        list.length(RepnArgTypes0, RepnCtorArity)
+    ),
+    check_du_functor(TypeCtor, Ctor, RepnCtorName, RepnCtorArity,
+        !.ExpectedOrdinal, !Specs),
+    !:ExpectedOrdinal = !.ExpectedOrdinal + 1u32.
+
+:- pred check_du_functor(type_ctor::in, constructor::in, string::in, int::in,
+    uint32::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+check_du_functor(TypeCtor, Ctor, RepnCtorName, RepnCtorArity, ExpectedOrdinal,
+        !Specs) :-
+    Ctor = ctor(Ordinal, _MaybeExistConstraints, CtorSymName,
+        _CtorArgs, CtorArity, CtorContext),
+    CtorName = unqualify_name(CtorSymName),
+    ( if
+        CtorName = RepnCtorName,
+        CtorArity = RepnCtorArity
+    then
+        true
+    else
+        CtorSNA = name_arity(CtorName, CtorArity),
+        RepnCtorSNA0 = name_arity(RepnCtorName, RepnCtorArity),
+        SNAPieces = [words("Error: the type representation item for"),
+            qual_type_ctor(TypeCtor), words("is incorrect: it says that the"),
+            nth_fixed(uint32.cast_to_int(ExpectedOrdinal)),
+            words("function symbol should be"),
+            name_arity(RepnCtorSNA0), suffix(","),
+            words("but actually it is"), name_arity(CtorSNA), suffix("."), nl],
+        % XXX Context should be for Repn, not Ctor.
+        SNASpec = simplest_spec($pred, severity_error, phase_type_repn,
+            CtorContext, SNAPieces),
+        !:Specs = [SNASpec | !.Specs]
+    ),
+    ( if Ordinal = ExpectedOrdinal then
+        true
+    else
+        RepnCtorSNA1 = name_arity(RepnCtorName, RepnCtorArity),
+        OrdinalPieces = [words("Error: the type representation item for"),
+            qual_type_ctor(TypeCtor), words("is incorrect:"),
+            words("it says that the ordinal of function symbol"),
+            name_arity(RepnCtorSNA1), words("is"),
+            int_fixed(uint32.cast_to_int(Ordinal)), suffix(","),
+            words("but it should be"),
+            int_fixed(uint32.cast_to_int(ExpectedOrdinal)), suffix("."), nl],
+        % XXX Context should be for Repn, not Ctor.
+        OrdinalSpec = simplest_spec($pred, severity_error, phase_type_repn,
+            CtorContext, OrdinalPieces),
+        !:Specs = [OrdinalSpec | !.Specs]
+    ).
+
+%---------------------%
+
+:- pred record_high_level_data_ctors(list(constructor)::in,
+    list(constructor_repn)::out) is det.
+
+record_high_level_data_ctors([], []).
+record_high_level_data_ctors([Ctor | Ctors], [CtorRepn | CtorRepns]) :-
+    Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
+        CtorArgs, CtorArity, CtorContext),
+    OrdinalUint = uint32.cast_to_uint(Ordinal),
+    CtorTag = remote_args_tag(remote_args_ctor(OrdinalUint)),
+    maybe_exist_constraints_num_extra_words(MaybeExistConstraints,
+        NumExtraWords),
+    FirstAOWordNum = 0,
+    FirstCellWordNum = NumExtraWords,
+    record_high_level_data_ctor_args(FirstAOWordNum, FirstCellWordNum,
+        CtorArgs, CtorArgRepns),
+    CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName, CtorTag,
+        CtorArgRepns, CtorArity, CtorContext),
+    record_high_level_data_ctors(Ctors, CtorRepns).
+
+:- pred record_high_level_data_ctor_args(int::in, int::in,
+    list(constructor_arg)::in, list(constructor_arg_repn)::out) is det.
+
+record_high_level_data_ctor_args(_, _, [], []).
+record_high_level_data_ctor_args(CurAOWordNum, CurCellWordNum,
+        [CtorArg | CtorArgs], [CtorArgRepn | CtorArgRepns]) :-
+    CtorArg = ctor_arg(MaybeFieldName, ArgType, ArgContext),
+    ArgRepn = apw_full(arg_only_offset(CurAOWordNum),
+        cell_offset(CurCellWordNum)),
+    CtorArgRepn = ctor_arg_repn(MaybeFieldName, ArgType, ArgRepn, ArgContext),
+    record_high_level_data_ctor_args(CurAOWordNum + 1, CurCellWordNum + 1,
+        CtorArgs, CtorArgRepns).
+
+%---------------------%
+
+:- pred record_low_level_data_ctors(c_repn_target::in,
+    assoc_list(constructor, gen_du_functor_repn)::in,
+    list(constructor_repn)::out, maybe(list(sym_name_arity))::out) is det.
+
+record_low_level_data_ctors(CRepnTarget, CtorsDuRepns, CtorRepns, no) :-
+    % XXX TYPE_REPN Record NumLocalSectagBits and LocalMustMask in CRepnTarget.
+    select_gen_du_repns_for_target(CRepnTarget, CtorsDuRepns,
+        ConstantCtors, LocalCtors, DirectArgCtors, RemoteCtors),
+    list.length(ConstantCtors, NumConstantCtors),
+    list.length(LocalCtors, NumLocalCtors),
+    num_bits_needed_for_n_things(NumConstantCtors + NumLocalCtors,
+        NumLocalSectagBits),
+    CRepnTarget = c_repn_target(WordSize, _, _),
+    ( WordSize = word_size_32, NumPtagBits = 2
+    ; WordSize = word_size_64, NumPtagBits = 3
+    ),
+    compute_sectag_bits(NumLocalSectagBits, LocalSectagBits),
+    ( LocalCtors = [],      LocalMustMask = lsectag_always_rest_of_word
+    ; LocalCtors = [_ | _], LocalMustMask = lsectag_must_be_masked
+    ),
+    some [!CtorOrdRepnMap] (
+        map.init(!:CtorOrdRepnMap),
+        record_constant_ctors(NumPtagBits, LocalSectagBits, LocalMustMask,
+            ConstantCtors, !CtorOrdRepnMap),
+        record_local_ctors(NumPtagBits, LocalSectagBits,
+            LocalCtors, !CtorOrdRepnMap),
+        record_direct_arg_ctors(DirectArgCtors, !CtorOrdRepnMap),
+        record_remote_ctors(RemoteCtors, !CtorOrdRepnMap),
+        flatten_ctor_ord_repn_map(!.CtorOrdRepnMap, CtorsDuRepns, CtorRepns)
+    ).
+
+:- pred select_gen_du_repns_for_target(c_repn_target::in,
+    assoc_list(constructor, gen_du_functor_repn)::in,
+    list({constructor, constant_repn})::out,
+    list({constructor, list(mer_type), nonconstant_local_cell_repn})::out,
+    list({constructor, mer_type, ptag})::out,
+    list({constructor, list(mer_type), nonconstant_remote_cell_repn})::out)
+    is det.
+
+select_gen_du_repns_for_target(_, [], [], [], [], []).
+select_gen_du_repns_for_target(CRepnTarget, [Ctor - Repn | CtorRepns],
+        !:ConstantCtors, !:LocalCtors, !:DirectArgCtors, !:RemoteCtors) :-
+    select_gen_du_repns_for_target(CRepnTarget, CtorRepns,
+        !:ConstantCtors, !:LocalCtors, !:DirectArgCtors, !:RemoteCtors),
+    (
+        Repn = gen_du_constant_functor_repn(_Name, CConstantRepns),
+        c_target_specific_repn(CRepnTarget, CConstantRepns, ConstantRepn),
+        !:ConstantCtors = [{Ctor, ConstantRepn} | !.ConstantCtors]
+    ;
+        Repn = gen_du_nonconstant_functor_repn(_Name, ArgTypes,
+            CNonConstantRepns),
+        c_target_specific_repn(CRepnTarget, CNonConstantRepns,
+            NonConstantRepn),
+        (
+            NonConstantRepn = ncr_local_cell(LocalCellRepn),
+            !:LocalCtors = [{Ctor, ArgTypes, LocalCellRepn} | !.LocalCtors]
+        ;
+            NonConstantRepn = ncr_remote_cell(RemoteCellRepn),
+            !:RemoteCtors = [{Ctor, ArgTypes, RemoteCellRepn} | !.RemoteCtors]
+        ;
+            NonConstantRepn = ncr_direct_arg(Ptag),
+            (
+                ArgTypes = [],
+                unexpected($pred, "ncr_direct_arg but no argtype")
+            ;
+                ArgTypes = [ArgType],
+                !:DirectArgCtors = [{Ctor, ArgType, Ptag} | !.DirectArgCtors]
+            ;
+                ArgTypes = [_, _ | _],
+                unexpected($pred, "ncr_direct_arg but more than one argtype")
+            )
+        )
+    ).
+
+%---------------------%
+
+:- pred flatten_ctor_ord_repn_map(map(uint32, constructor_repn)::in,
+    assoc_list(constructor, T)::in, list(constructor_repn)::out) is det.
+
+flatten_ctor_ord_repn_map(_, [], []).
+flatten_ctor_ord_repn_map(CtorOrdRepnMap, [Ctor - _| CtorPairs],
+        [CtorRepn | CtorRepns]) :-
+    Ctor = ctor(Ordinal, _, _, _, _, _),
+    map.lookup(CtorOrdRepnMap, Ordinal, CtorRepn),
+    flatten_ctor_ord_repn_map(CtorOrdRepnMap, CtorPairs, CtorRepns).
+
+%---------------------%
+
+:- pred record_constant_ctors(int::in, sectag_bits::in, lsectag_mask::in,
+    list({constructor, constant_repn})::in,
+    map(uint32, constructor_repn)::in, map(uint32, constructor_repn)::out)
+    is det.
+
+record_constant_ctors(_, _, _, [], !CtorOrdRepnMap).
+record_constant_ctors(NumPtagBits, LocalSectagBits, MustMask,
+        [ConstantCtor | ConstantCtors], !CtorOrdRepnMap) :-
+    ConstantCtor = {Ctor, ConstantRepn},
+    Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
+        CtorArgs, CtorArity, CtorContext),
+    expect(unify(CtorArgs, []), $pred, "CtorArgs != []"),
+    expect(unify(CtorArity, 0), $pred, "CtorArity != 0"),
+    ConstantRepn = constant_repn(SectagValue, SectagWordOrSize),
+    (
+        SectagWordOrSize = sectag_rest_of_word,
+        expect(unify(MustMask, lsectag_always_rest_of_word), $pred,
+            "MustMask != lsectag_always_rest_of_word")
+    ;
+        SectagWordOrSize = sectag_part_of_word(_),
+        % XXX TYPE_REPN Should we use the arg of sectag_part_of_word,
+        % instead of our parent telling us that info?
+        expect(unify(MustMask, lsectag_must_be_masked), $pred,
+            "MustMask != lsectag_must_be_masked")
+    ),
+    Ptag = ptag(0u8),
+    % OR-ing in the ptag value, which is zero, would be a no-op.
+    PrimSec = SectagValue << NumPtagBits,
+    LocalSectag = local_sectag(SectagValue, PrimSec, LocalSectagBits),
+    CtorTag = shared_local_tag_no_args(Ptag, LocalSectag, MustMask),
+    CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName,
+        CtorTag, [], 0, CtorContext),
+    map.det_insert(Ordinal, CtorRepn, !CtorOrdRepnMap),
+    record_constant_ctors(NumPtagBits, LocalSectagBits, MustMask,
+        ConstantCtors, !CtorOrdRepnMap).
+
+:- pred record_local_ctors(int::in, sectag_bits::in,
+    list({constructor, list(mer_type), nonconstant_local_cell_repn})::in,
+    map(uint32, constructor_repn)::in, map(uint32, constructor_repn)::out)
+    is det.
+
+record_local_ctors(_, _, [], !CtorOrdRepnMap).
+record_local_ctors(NumPtagBits, LocalSectagBits, [LocalCtor | LocalCtors],
+        !CtorOrdRepnMap) :-
+    LocalCtor = {Ctor, ArgTypes, LocalRepn},
+    Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
+        CtorArgs, CtorArity, CtorContext),
+    expect_not(unify(CtorArgs, []), $pred, "CtorArgs = []"),
+    expect(unify(list.length(CtorArgs), CtorArity), $pred, "bad CtorArity"),
+    expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
+        "MaybeExistConstraints != no_exist_constraints"),
+    LocalRepn = nonconstant_local_cell_repn(CellLocalSectag, OoMArgRepns),
+    (
+        CellLocalSectag = cell_local_no_sectag,
+        % A Ctor should have cell_local_no_sectag ONLY if it is the only
+        % functor in its type. record_local_ctors is called if the type
+        % has *more* than one functor.
+        %
+        % XXX Is it worth encoding this invariant in the type?
+        unexpected($pred, "cell_local_no_sectag")
+    ;
+        CellLocalSectag = cell_local_sectag(SectagValue, _SectagSize)
+        % XXX TYPE_REPN _SectagSize should be recorded for more_functors,
+        % not the ctor, so that (a) we could use it for the constants, and
+        % (b) it would be recorded only once.
+    ),
+    Ptag = ptag(0u8),
+    % OR-ing in the ptag value, which is zero, would be a no-op.
+    PrimSec = SectagValue << NumPtagBits,
+    LocalSectag = local_sectag(SectagValue, PrimSec, LocalSectagBits),
+    CtorTag = local_args_tag(local_args_not_only_functor(Ptag, LocalSectag)),
+    % These -2s mean that these arguments are not on the heap,
+    % but next to the ptag and any local sectag.
+    ArgOnlyOffset = arg_only_offset(-2),
+    CellOffset = cell_offset(-2),
+    ArgRepns = one_or_more_to_list(OoMArgRepns),
+    record_local_ctor_args(ArgOnlyOffset, CellOffset, not_seen_nondummy_arg,
+        CtorArgs, ArgTypes, ArgRepns, CtorArgRepns),
+    CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName,
+        CtorTag, CtorArgRepns, CtorArity, CtorContext),
+    map.det_insert(Ordinal, CtorRepn, !CtorOrdRepnMap),
+    record_local_ctors(NumPtagBits, LocalSectagBits, LocalCtors,
+        !CtorOrdRepnMap).
+
+:- type maybe_seen_nondummy_arg
+    --->    not_seen_nondummy_arg
+    ;       seen_nondummy_arg.
+
+:- pred record_local_ctor_args(arg_only_offset::in, cell_offset::in,
+    maybe_seen_nondummy_arg::in, list(constructor_arg)::in,
+    list(mer_type)::in, list(local_arg_repn)::in,
+    list(constructor_arg_repn)::out) is det.
+
+record_local_ctor_args(ArgOnlyOffset, CellOffset, SeenNonDummyArg0,
+        CtorArgs, RepnArgTypes, ArgRepns, CtorArgRepns) :-
+    ( if
+        CtorArgs = [HeadCtorArg | TailCtorArgs],
+        RepnArgTypes = [HeadRepnArgType | TailRepnArgTypes],
+        ArgRepns = [HeadArgRepn | TailArgRepns]
+    then
+        HeadCtorArg = ctor_arg(MaybeFieldName, _ArgType, Context),
+        (
+            HeadArgRepn = local_partial(Shift, FillKindSize),
+            ArgShift = uint.cast_to_int(Shift),
+            fill_kind_size_to_kind_and_size(FillKindSize, FillKind,
+                ArgNumBits),
+            ArgMask = (1 << ArgNumBits) - 1,
+            (
+                SeenNonDummyArg0 = not_seen_nondummy_arg,
+                ArgPosWidth = apw_partial_first(ArgOnlyOffset, CellOffset,
+                    arg_shift(ArgShift), arg_num_bits(ArgNumBits),
+                    arg_mask(ArgMask), FillKind)
+            ;
+                SeenNonDummyArg0 = seen_nondummy_arg,
+                ArgPosWidth = apw_partial_shifted(ArgOnlyOffset, CellOffset,
+                    arg_shift(ArgShift), arg_num_bits(ArgNumBits),
+                    arg_mask(ArgMask), FillKind)
+            ),
+            SeenNonDummyArg = seen_nondummy_arg
+        ;
+            HeadArgRepn = local_none,
+            (
+                SeenNonDummyArg0 = not_seen_nondummy_arg,
+                % XXX TYPE_REPN check that we are counting "seen"
+                % from the correct end of the word.
+                ArgPosWidth = apw_none_nowhere
+            ;
+                SeenNonDummyArg0 = seen_nondummy_arg,
+                ArgPosWidth = apw_none_shifted(ArgOnlyOffset, CellOffset)
+            ),
+            SeenNonDummyArg = SeenNonDummyArg0
+        ),
+        HeadCtorArgRepn = ctor_arg_repn(MaybeFieldName, HeadRepnArgType,
+            ArgPosWidth, Context),
+        record_local_ctor_args(ArgOnlyOffset, CellOffset, SeenNonDummyArg,
+            TailCtorArgs, TailRepnArgTypes, TailArgRepns, TailCtorArgRepns),
+        CtorArgRepns = [HeadCtorArgRepn | TailCtorArgRepns]
+    else if
+        CtorArgs = [],
+        RepnArgTypes = [],
+        ArgRepns = []
+    then
+        CtorArgRepns = []
+    else
+        unexpected($pred, "length mismatch")
+    ).
+
+%---------------------%
+
+:- pred record_direct_arg_ctors(list({constructor, mer_type, ptag})::in,
+    map(uint32, constructor_repn)::in, map(uint32, constructor_repn)::out)
+    is det.
+
+record_direct_arg_ctors([], !CtorOrdRepnMap).
+record_direct_arg_ctors([DirectArgCtor | DirectArgCtors], !CtorOrdRepnMap) :-
+    DirectArgCtor = {Ctor, ArgType, Ptag},
+    Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
+        CtorArgs, CtorArity, CtorContext),
+    expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
+        "direct_arg_tag but maybe_exist_constraints"),
+    (
+        CtorArgs = [],
+        unexpected($pred, "CtorArgs = []")
+    ;
+        CtorArgs = [CtorArg]
+    ;
+        CtorArgs = [_, _ | _],
+        unexpected($pred, "CtorArgs = [_, _ | _]")
+    ),
+    expect(unify(CtorArity, 1), $pred, "CtorArity != 1"),
+    CtorTag = direct_arg_tag(Ptag),
+    CtorArg = ctor_arg(MaybeFieldName, _Type, ArgContext),
+    % The CtorArgRepn, and therefore the ArgPosWidth, will never be used
+    % for direct_arg_tag functors. The CtorArgRepn we construct here is
+    % designed to be the same as what the decide_type_repns_old constructs.
+    ArgPosWidth = apw_full(arg_only_offset(0), cell_offset(0)),
+    CtorArgRepn =
+        ctor_arg_repn(MaybeFieldName, ArgType, ArgPosWidth, ArgContext),
+    CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName, CtorTag,
+        [CtorArgRepn], CtorArity, CtorContext),
+    map.det_insert(Ordinal, CtorRepn, !CtorOrdRepnMap),
+    record_direct_arg_ctors(DirectArgCtors, !CtorOrdRepnMap).
+
+%---------------------%
+
+:- pred record_remote_ctors(
+    list({constructor, list(mer_type), nonconstant_remote_cell_repn})::in,
+    map(uint32, constructor_repn)::in, map(uint32, constructor_repn)::out)
+    is det.
+
+record_remote_ctors([], !CtorOrdRepnMap).
+record_remote_ctors([RemoteCtor | RemoteCtors], !CtorOrdRepnMap) :-
+    RemoteCtor = {Ctor, ArgTypes, Repn},
+    Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
+        CtorArgs, CtorArity, CtorContext),
+    expect_not(unify(CtorArity, 0), $pred, "CtorArity = 0"),
+    Repn = nonconstant_remote_cell_repn(Ptag, CellRemoteSectag,
+        OoMRemoteArgRepns),
+    (
+        CellRemoteSectag = cell_remote_no_sectag,
+        RemoteArgsTagInfo = remote_args_unshared(Ptag)
+    ;
+        CellRemoteSectag = cell_remote_sectag(SectagValue, SectagWordOrSize),
+        (
+            SectagWordOrSize = sectag_rest_of_word,
+            RSectagSize = rsectag_word
+        ;
+            SectagWordOrSize = sectag_part_of_word(SectagNumBits),
+            Mask = (1u << uint8.cast_to_int(SectagNumBits)) - 1u,
+            RSectagSize = rsectag_subword(sectag_bits(SectagNumBits, Mask))
+        ),
+        RemoteSectag = remote_sectag(SectagValue, RSectagSize),
+        RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag)
+    ),
+    CtorTag = remote_args_tag(RemoteArgsTagInfo),
+    RemoteArgRepns = one_or_more_to_list(OoMRemoteArgRepns),
+    record_remote_ctor_args(CtorArgs, ArgTypes, RemoteArgRepns, CtorArgRepns),
+    CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName, CtorTag,
+        CtorArgRepns, CtorArity, CtorContext),
+    map.det_insert(Ordinal, CtorRepn, !CtorOrdRepnMap),
+    record_remote_ctors(RemoteCtors, !CtorOrdRepnMap).
+
+:- pred record_remote_ctor_args(list(constructor_arg)::in, list(mer_type)::in,
+    list(remote_arg_repn)::in, list(constructor_arg_repn)::out) is det.
+
+record_remote_ctor_args(CtorArgs, RepnArgTypes, ArgRepns, CtorArgRepns) :-
+    ( if
+        CtorArgs = [HeadCtorArg | TailCtorArgs],
+        RepnArgTypes = [HeadRepnArgType | TailRepnArgTypes],
+        ArgRepns = [HeadArgRepn | TailArgRepns]
+    then
+        HeadCtorArg = ctor_arg(MaybeFieldName, _ArgType, Context),
+        (
+            HeadArgRepn = remote_full(ArgOnlyOffset, CellOffset),
+            ArgPosWidth = apw_full(ArgOnlyOffset, CellOffset)
+        ;
+            HeadArgRepn = remote_double(ArgOnlyOffset, CellOffset, DWKind),
+            ArgPosWidth = apw_double(ArgOnlyOffset, CellOffset, DWKind)
+        ;
+            HeadArgRepn = remote_partial_first(ArgOnlyOffset, CellOffset,
+                Shift, FillKindSize),
+            ArgShift = uint8.cast_to_int(Shift),
+            fill_kind_size_to_kind_and_size(FillKindSize, FillKind,
+                ArgNumBits),
+            ArgMask = (1 << ArgNumBits) - 1,
+            ArgPosWidth = apw_partial_first(ArgOnlyOffset, CellOffset,
+                arg_shift(ArgShift), arg_num_bits(ArgNumBits),
+                arg_mask(ArgMask), FillKind)
+        ;
+            HeadArgRepn = remote_partial_shifted(ArgOnlyOffset, CellOffset,
+                Shift, FillKindSize),
+            ArgShift = uint8.cast_to_int(Shift),
+            fill_kind_size_to_kind_and_size(FillKindSize, FillKind,
+                ArgNumBits),
+            ArgMask = (1 << ArgNumBits) - 1,
+            ArgPosWidth = apw_partial_shifted(ArgOnlyOffset, CellOffset,
+                arg_shift(ArgShift), arg_num_bits(ArgNumBits),
+                arg_mask(ArgMask), FillKind)
+        ;
+            HeadArgRepn = remote_none_shifted(ArgOnlyOffset, CellOffset),
+            ArgPosWidth = apw_none_shifted(ArgOnlyOffset, CellOffset)
+        ;
+            HeadArgRepn = remote_none_nowhere,
+            ArgPosWidth = apw_none_nowhere
+        ),
+        HeadCtorArgRepn = ctor_arg_repn(MaybeFieldName, HeadRepnArgType,
+            ArgPosWidth, Context),
+        record_remote_ctor_args(TailCtorArgs, TailRepnArgTypes, TailArgRepns,
+            TailCtorArgRepns),
+        CtorArgRepns = [HeadCtorArgRepn | TailCtorArgRepns]
+    else if
+        CtorArgs = [],
+        RepnArgTypes = [],
+        ArgRepns = []
+    then
+        CtorArgRepns = []
+    else
+        unexpected($pred, "length mismatch")
+    ).
+
+%---------------------%
+
+:- pred fill_kind_size_to_kind_and_size(fill_kind_size::in,
+    fill_kind::out, int::out) is det.
+
+fill_kind_size_to_kind_and_size(FillKindSize, FillKind, ArgNumBits) :-
+    (
+        FillKindSize = fk_enum(ArgNumBitsInt),
+        ArgNumBits = uint.cast_to_int(ArgNumBitsInt),
+        FillKind = fill_enum
+    ;
+        FillKindSize = fk_int8,
+        ArgNumBits = 8,
+        FillKind = fill_int8
+    ;
+        FillKindSize = fk_uint8,
+        ArgNumBits = 8,
+        FillKind = fill_uint8
+    ;
+        FillKindSize = fk_int16,
+        ArgNumBits = 16,
+        FillKind = fill_int16
+    ;
+        FillKindSize = fk_uint16,
+        ArgNumBits = 16,
+        FillKind = fill_uint16
+    ;
+        FillKindSize = fk_int32,
+        ArgNumBits = 32,
+        FillKind = fill_int32
+    ;
+        FillKindSize = fk_uint32,
+        ArgNumBits = 32,
+        FillKind = fill_uint32
+    ;
+        FillKindSize = fk_char21,
+        ArgNumBits = 21,
+        FillKind = fill_char21
+    ).
+
+%---------------------%
+
+:- func gen_du_functor_repn_name_arity(gen_du_functor_repn) = string.
+
+gen_du_functor_repn_name_arity(GenDuFunctorRepn) = Str :-
+    (
+        GenDuFunctorRepn = gen_du_constant_functor_repn(FunctorName, _CRepns),
+        Str = string.format("%s/0", [s(FunctorName)])
+    ;
+        GenDuFunctorRepn = gen_du_nonconstant_functor_repn(FunctorName,
+            ArgTypes, _CRepns),
+        Str = string.format("%s/%d",
+            [s(FunctorName), i(list.length(ArgTypes))])
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred foreign_target_specific_repn(repn_target::in, c_java_csharp(T)::in,
+    foreign_language::out, T::out) is det.
+
+foreign_target_specific_repn(RepnTarget, CJCs, Lang, Repn) :-
+    (
+        RepnTarget = repn_target_c(_CRepnTarget),
+        Lang = lang_c,
+        CJCs = c_java_csharp(Repn, _, _)
+    ;
+        RepnTarget = repn_target_java,
+        Lang = lang_java,
+        CJCs = c_java_csharp(_, Repn, _)
+    ;
+        RepnTarget = repn_target_csharp,
+        Lang = lang_csharp,
+        CJCs = c_java_csharp(_, _, Repn)
+    ).
+
+:- pred record_foreign_type_for_target(repn_target::in,
+    string::in, maybe_canonical::in, foreign_type_assertions::in,
+    foreign_type_body::out) is det.
+
+record_foreign_type_for_target(RepnTarget, TypeName, MaybeCanon, Assertions,
+        ForeignTypeBody) :-
+    (
+        RepnTarget = repn_target_c(_CRepnTarget),
+        CType = c_type(TypeName),
+        TypeDetailsForeign =
+            type_details_foreign(CType, MaybeCanon, Assertions),
+        ForeignTypeBody = foreign_type_body(yes(TypeDetailsForeign), no, no)
+    ;
+        RepnTarget = repn_target_java,
+        JavaType = java_type(TypeName),
+        TypeDetailsForeign =
+            type_details_foreign(JavaType, MaybeCanon, Assertions),
+        ForeignTypeBody = foreign_type_body(no, yes(TypeDetailsForeign), no)
+    ;
+        RepnTarget = repn_target_csharp,
+        CsharpType = csharp_type(TypeName),
+        TypeDetailsForeign =
+            type_details_foreign(CsharpType, MaybeCanon, Assertions),
+        ForeignTypeBody = foreign_type_body(no, no, yes(TypeDetailsForeign))
+    ).
+
+:- pred c_target_specific_repn(c_repn_target::in, c_repns(T)::in, T::out)
+    is det.
+
+c_target_specific_repn(CRepnTarget, CRepns, Repn) :-
+    CRepnTarget = c_repn_target(WordSize, SPF, DA),
+    (
+        CRepns = c_repns_same(Repn)
+    ;
+        CRepns = c_repns_64_32(Repn64, Repn32),
+        (
+            WordSize = word_size_32,
+            Repn = Repn32
+        ;
+            WordSize = word_size_64,
+            Repn = Repn64
+        )
+    ;
+        CRepns = c_repns_all(Repn64NoSPFNoDA, Repn64NoSPFDA,
+            Repn32NoSPFNoDA, Repn32NoSPFDA, Repn32SPFNoDA, Repn32SPFDA),
+        (
+            WordSize = word_size_32,
+            (
+                SPF = c_no_single_prec_float,
+                (
+                    DA = c_do_not_allow_direct_arg,
+                    Repn = Repn32NoSPFNoDA
+                ;
+                    DA = c_allow_direct_arg,
+                    Repn = Repn32NoSPFDA
+                )
+            ;
+                SPF = c_single_prec_float,
+                (
+                    DA = c_do_not_allow_direct_arg,
+                    Repn = Repn32SPFNoDA
+                ;
+                    DA = c_allow_direct_arg,
+                    Repn = Repn32SPFDA
+                )
+            )
+        ;
+            WordSize = word_size_64,
+            (
+                DA = c_do_not_allow_direct_arg,
+                Repn = Repn64NoSPFNoDA
+            ;
+                DA = c_allow_direct_arg,
+                Repn = Repn64NoSPFDA
+            )
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred compare_old_new(io.text_output_stream::in,
+    set(type_ctor)::in, set(type_ctor)::in,
+    assoc_list(type_ctor, hlds_type_defn)::in,
+    assoc_list(type_ctor, hlds_type_defn)::in,
+    io::di, io::uo) is det.
+
+compare_old_new(_, _, _, [], [], !IO).
+compare_old_new(Stream, _, _, [], [_ | _], !IO) :-
+    io.write_string(Stream, "MORE NEW TYPE_CTORS THAN OLD\n", !IO).
+compare_old_new(Stream, _, _, [_ | _], [], !IO) :-
+    io.write_string(Stream, "MORE OLD TYPE_CTORS THAN NEW\n", !IO).
+compare_old_new(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
+        [Old | Olds], [New | News], !IO) :-
+    Old = OldTypeCtor - OldTypeCtorDefn,
+    New = NewTypeCtor - NewTypeCtorDefn,
+    ( if OldTypeCtor = NewTypeCtor then
+        get_type_defn_body(OldTypeCtorDefn, OldBody),
+        get_type_defn_body(NewTypeCtorDefn, NewBody),
+        ( if
+            MaybeOldRepn = OldBody ^ du_type_repn,
+            MaybeNewRepn = NewBody ^ du_type_repn
+        then
+            ( if set.member(NewTypeCtor, UnRepnTypeCtors) then
+                UnRepnStr = " (no new repn)"
+            else
+                UnRepnStr = ""
+            ),
+            ( if set.member(NewTypeCtor, BadRepnTypeCtors) then
+                BadRepnStr = " (bad new repn)"
+            else
+                BadRepnStr = ""
+            ),
+            Suffix = UnRepnStr ++ BadRepnStr,
+            (
+                MaybeOldRepn = no,
+                MaybeNewRepn = no
+            ;
+                MaybeOldRepn = no,
+                MaybeNewRepn = yes(_NewRepn),
+                io.format(Stream,
+                    "\nTYPE_CTOR_DEFN MISSING OLD REPN for %s%s\n",
+                    [s(type_ctor_to_string(OldTypeCtor)), s(Suffix)], !IO)
+            ;
+                MaybeOldRepn = yes(_OldRepn),
+                MaybeNewRepn = no,
+                io.format(Stream,
+                    "\nTYPE_CTOR_DEFN MISSING NEW REPN for %s%s\n",
+                    [s(type_ctor_to_string(OldTypeCtor)), s(Suffix)], !IO)
+            ;
+                MaybeOldRepn = yes(OldRepn),
+                MaybeNewRepn = yes(NewRepn),
+                ( if OldRepn = NewRepn then
+                    true
+                else
+                    io.format(Stream,
+                        "\nTYPE_CTOR_DEFN REPN MISMATCH for %s:\n",
+                        [s(type_ctor_to_string(OldTypeCtor))], !IO),
+                    OldDoc = pretty_printer.format(OldTypeCtorDefn),
+                    NewDoc = pretty_printer.format(NewTypeCtorDefn),
+                    io.format(Stream, "old repn:\n", [], !IO),
+                    pretty_printer.write_doc(Stream, OldDoc, !IO),
+                    io.nl(Stream, !IO),
+                    io.format(Stream, "new repn:%s\n", [s(Suffix)], !IO),
+                    pretty_printer.write_doc(Stream, NewDoc, !IO),
+                    io.nl(Stream, !IO)
+                )
+            )
+        else
+            true
+        )
+    else
+        io.format(Stream, "TYPE_CTOR_NAME_MISMATCH: %s vs %s\n",
+            [s(type_ctor_to_string(OldTypeCtor)),
+            s(type_ctor_to_string(NewTypeCtor))], !IO)
+    ),
+    compare_old_new(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
+        Olds, News, !IO).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred decide_type_repns_old(module_info::in,
+    type_repn_decision_data::in, type_table::in,
+    assoc_list(type_ctor, hlds_type_defn)::in,
+    assoc_list(type_ctor, hlds_type_defn)::out, no_tag_type_table::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+decide_type_repns_old(ModuleInfo, TypeRepnDec, TypeTable0,
+        TypeCtorsTypeDefns0, TypeCtorsTypeDefns, NoTagTypeMap, !Specs) :-
+    TypeRepnDec = type_repn_decision_data(_TypeRepns, DirectArgMap,
+        ForeignEnums, _ForeignExportEnums),
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    setup_decide_du_params(Globals, ModuleName, DirectArgMap, Params),
+
+    list.foldl2(add_pragma_foreign_enum(ModuleInfo), ForeignEnums,
+        map.init, TypeCtorToForeignEnumMap, !Specs),
 
     % Pass 1.
     map.init(ComponentTypeMap0),
     map.init(NoTagTypeMap0),
     list.foldl5(
-        decide_if_simple_du_type(!.ModuleInfo, Params,
+        decide_if_simple_du_type(ModuleInfo, Params,
             TypeCtorToForeignEnumMap),
         TypeCtorsTypeDefns0,
         [], NonSubTypeCtorsTypeDefns1,
@@ -173,29 +1630,16 @@ decide_type_repns(!ModuleInfo, !Specs, !IO) :-
         ComponentTypeMap1, ComponentTypeMap,
         NoTagTypeMap1, NoTagTypeMap),
 
-    module_info_set_no_tag_types(NoTagTypeMap, !ModuleInfo),
-
     % Pass 2.
     list.map_foldl(
-        decide_if_complex_du_type(!.ModuleInfo, Params, ComponentTypeMap),
+        decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap),
         NonSubTypeCtorsTypeDefns1, NonSubTypeCtorsTypeDefns2, !Specs),
 
     % Pass 2b.
     list.map_foldl(decide_if_subtype(TypeTable0, NonSubTypeCtorsTypeDefns2),
         SubTypeCtorsTypeDefns1, SubTypeCtorsTypeDefns2, !Specs),
 
-    TypeCtorsTypeDefns = SubTypeCtorsTypeDefns2 ++ NonSubTypeCtorsTypeDefns2,
-    set_all_type_ctor_defns(TypeCtorsTypeDefns,
-        SortedTypeCtorsTypeDefns, TypeTable),
-    module_info_set_type_table(TypeTable, !ModuleInfo),
-
-    list.foldl2(add_pragma_foreign_export_enum, ForeignExportEnums,
-        !ModuleInfo, !Specs),
-
-    maybe_show_type_repns(!.ModuleInfo, TypeCtorsTypeDefns, !IO),
-
-    add_special_pred_decl_defns_for_types_maybe_lazily(
-        SortedTypeCtorsTypeDefns, !ModuleInfo).
+    TypeCtorsTypeDefns = SubTypeCtorsTypeDefns2 ++ NonSubTypeCtorsTypeDefns2.
 
 :- pred add_special_pred_decl_defns_for_types_maybe_lazily(
     assoc_list(type_ctor, hlds_type_defn)::in,
@@ -353,7 +1797,7 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
     DuKind = du_type_kind_foreign_enum(Lang),
     DirectArgMap = Params ^ ddp_direct_arg_map,
     ( if map.search(DirectArgMap, TypeCtor, _DirectArgFunctors) then
-        DirectArgPieces = [words("Error:"), type_ctor_sna(TypeCtor),
+        DirectArgPieces = [words("Error:"), qual_type_ctor(TypeCtor),
             words("has both a"), pragma_decl("foreign_enum"),
             words("declaration and a direct_arg specification."), nl],
         DirectArgSpec = simplest_spec($pred, severity_error, phase_type_check,
@@ -366,7 +1810,7 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
     ( if ctors_are_all_constants(Ctors, _) then
         true
     else
-        NonEnumArgPieces = [words("Error:"), type_ctor_sna(TypeCtor),
+        NonEnumArgPieces = [words("Error:"), qual_type_ctor(TypeCtor),
             words("has a"), pragma_decl("foreign_enum"), words("declaration,"),
             words("but it has function symbols whose arity is not zero."), nl],
         NonEnumArgSpec = simplest_spec($pred, severity_error, phase_type_check,
@@ -444,7 +1888,7 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
     DirectArgMap = Params ^ ddp_direct_arg_map,
     ( if map.search(DirectArgMap, TypeCtor, _DirectArgFunctors) then
         Pieces = [words("Error: all the function symbols of"),
-            type_ctor_sna(TypeCtor), words("have arity zero,"),
+            qual_type_ctor(TypeCtor), words("have arity zero,"),
             words("yet it has a direct_arg specification."), nl],
         Spec = simplest_spec($pred, severity_error, phase_type_check,
             term.context_init, Pieces),
@@ -518,7 +1962,7 @@ decide_simple_type_notag(_ModuleInfo, Params, TypeCtor, TypeDefn0, Body0,
         MaybeSingleArgName),
     DirectArgMap = Params ^ ddp_direct_arg_map,
     ( if map.search(DirectArgMap, TypeCtor, _DirectArgFunctors) then
-        Pieces = [words("Error:"), type_ctor_sna(TypeCtor),
+        Pieces = [words("Error:"), qual_type_ctor(TypeCtor),
             words("is a no_tag type,"),
             words("yet it has a direct_arg specification."), nl],
         Spec = simplest_spec($pred, severity_error, phase_type_check,
@@ -598,7 +2042,7 @@ add_foreign_if_word_aligned_ptr(ModuleInfo, Params, TypeCtor,
         ForeignType, !ComponentTypeMap, !Specs) :-
     DirectArgMap = Params ^ ddp_direct_arg_map,
     ( if map.search(DirectArgMap, TypeCtor, _DirectArgFunctors) then
-        DirectArgPieces = [words("Error:"), type_ctor_sna(TypeCtor),
+        DirectArgPieces = [words("Error:"), qual_type_ctor(TypeCtor),
             words("has a foreign language representation on this backend,"),
             words("but it also has a direct_arg specification."), nl],
         DirectArgSpec = simplest_spec($pred, severity_error, phase_type_check,
@@ -1179,17 +2623,8 @@ decide_complex_du_ctor_remote_args(ModuleInfo, Params, ComponentTypeMap,
         TypeStatus, NumRemoteSectagBits, CtorTag, MaybeExistConstraints,
         CtorSymName, CtorContext, CtorArgs, CtorArgRepns, MaybeTagwordArgs,
         !Specs) :-
-    (
-        MaybeExistConstraints = no_exist_constraints,
-        NumExtraArgWords = 0
-    ;
-        MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistConstraints = cons_exist_constraints(_ExistQTVars, Constraints,
-            UnconstrainedExistQTVars, _ConstrainedExistQTVars),
-        list.length(UnconstrainedExistQTVars, NumTypeInfos),
-        list.length(Constraints, NumTypeClassInfos),
-        NumExtraArgWords = NumTypeInfos + NumTypeClassInfos
-    ),
+    maybe_exist_constraints_num_extra_words(MaybeExistConstraints,
+        NumExtraArgWords),
 
     % There are two schemes for what a memory cell for a term may look like.
     % In the traditional scheme, the cell consists of, in order:
@@ -1823,22 +3258,24 @@ compute_local_packable_functors(Params, ComponentTypeMap, NumPtagBits,
         NumArgPackBits = Params ^ ddp_arg_pack_bits,
         trace [io(!IO), compile_time(flag("du_type_layout"))] (
             some [TraceNumSectagBits] (
-                Stream = io.stdout_stream,
-                io.write_string(Stream, "\nsized packable functors:\n", !IO),
+                get_debug_output_stream(Params ^ ddp_globals,
+                    Params ^ ddp_module_name, DebugStream, !IO),
+                io.write_string(DebugStream,
+                    "\nsized packable functors:\n", !IO),
                 list.foldl(
-                    output_sized_packable_functor(Stream,
+                    output_sized_packable_functor(DebugStream,
                         yes({Params, ComponentTypeMap})),
                     SizedPackableFunctors, !IO),
                 num_bits_needed_for_n_things(NumConstants + NumPackable,
                     TraceNumSectagBits),
-                io.write_string(Stream, "NumPtagBits: ", !IO),
-                io.write_line(Stream, NumPtagBits, !IO),
-                io.write_string(Stream, "TraceNumSectagBits: ", !IO),
-                io.write_line(Stream, TraceNumSectagBits, !IO),
-                io.write_string(Stream, "MaxPackableBits: ", !IO),
-                io.write_line(Stream, MaxPackableBits, !IO),
-                io.write_string(Stream, "NumArgPackBits: ", !IO),
-                io.write_line(Stream, NumArgPackBits, !IO)
+                io.write_string(DebugStream, "NumPtagBits: ", !IO),
+                io.write_line(DebugStream, NumPtagBits, !IO),
+                io.write_string(DebugStream, "TraceNumSectagBits: ", !IO),
+                io.write_line(DebugStream, TraceNumSectagBits, !IO),
+                io.write_string(DebugStream, "MaxPackableBits: ", !IO),
+                io.write_line(DebugStream, MaxPackableBits, !IO),
+                io.write_string(DebugStream, "NumArgPackBits: ", !IO),
+                io.write_line(DebugStream, NumArgPackBits, !IO)
             )
         ),
         ( if
@@ -1885,13 +3322,14 @@ compute_local_packable_functors(Params, ComponentTypeMap, NumPtagBits,
             num_bits_needed_for_n_things(NumConstants, NumSectagBits0),
             NumSectagValues0 = 1 << NumSectagBits0,
             TakeLimit0 = NumSectagValues0 - NumConstants,
-            take_local_packable_functors_constant_sectag_bits(NumArgPackBits,
-                NumPtagBits, NumSectagBits0, TakeLimit0, 0, _NumTaken,
+            take_local_packable_functors_constant_sectag_bits(Params,
+                NumArgPackBits, NumPtagBits, NumSectagBits0,
+                TakeLimit0, 0, _NumTaken,
                 SortedSizedPackableFunctors,
                 [], RevSizedPackedFunctors0, SizedNonPackedFunctors0),
             % _NumTaken may be 0 because TakeLimit0 was 0.
-            take_local_packable_functors_incr_sectag_bits(NumArgPackBits,
-                NumPtagBits, NumSectagBits0, NumSectagBits,
+            take_local_packable_functors_incr_sectag_bits(Params,
+                NumArgPackBits, NumPtagBits, NumSectagBits0, NumSectagBits,
                 RevSizedPackedFunctors0, SizedNonPackedFunctors0,
                 RevSizedPackedFunctors, SizedNonPackedFunctors),
             assoc_list.values(RevSizedPackedFunctors, RevPackedFunctors),
@@ -1932,28 +3370,29 @@ compare_sized_packable_functors(SizeA - CtorA, SizeB - CtorB, Result) :-
         compare(Result, OrdinalA, OrdinalB)
     ).
 
-:- pred take_local_packable_functors_incr_sectag_bits(int::in, int::in,
-    int::in, int::out,
+:- pred take_local_packable_functors_incr_sectag_bits(decide_du_params::in,
+    int::in, int::in, int::in, int::out,
     assoc_list(int, constructor)::in, assoc_list(int, constructor)::in,
     assoc_list(int, constructor)::out, assoc_list(int, constructor)::out)
     is det.
 
-take_local_packable_functors_incr_sectag_bits(NumArgPackBits, NumPtagBits,
-        NumSectagBits0, NumSectagBits,
+take_local_packable_functors_incr_sectag_bits(Params,
+        NumArgPackBits, NumPtagBits, NumSectagBits0, NumSectagBits,
         RevPackedFunctors0, NonPackedFunctors0,
         RevPackedFunctors, NonPackedFunctors) :-
     trace [io(!IO), compile_time(flag("du_type_layout"))] (
-        Stream = io.stdout_stream,
-        io.write_string(Stream, "\nstart of incr_sectag_bits:\n", !IO),
-        io.write_string(Stream, "RevPackedFunctors0:\n", !IO),
-        list.foldl(output_sized_packable_functor(Stream, maybe.no),
+        get_debug_output_stream(Params ^ ddp_globals, Params ^ ddp_module_name,
+            DebugStream, !IO),
+        io.write_string(DebugStream, "\nstart of incr_sectag_bits:\n", !IO),
+        io.write_string(DebugStream, "RevPackedFunctors0:\n", !IO),
+        list.foldl(output_sized_packable_functor(DebugStream, maybe.no),
             RevPackedFunctors0, !IO),
-        io.write_string(Stream, "NumArgPackBits: ", !IO),
-        io.write_line(Stream, NumArgPackBits, !IO),
-        io.write_string(Stream, "NumPtagBits: ", !IO),
-        io.write_line(Stream, NumPtagBits, !IO),
-        io.write_string(Stream, "NumSectagBits0: ", !IO),
-        io.write_line(Stream, NumSectagBits0, !IO)
+        io.write_string(DebugStream, "NumArgPackBits: ", !IO),
+        io.write_line(DebugStream, NumArgPackBits, !IO),
+        io.write_string(DebugStream, "NumPtagBits: ", !IO),
+        io.write_line(DebugStream, NumPtagBits, !IO),
+        io.write_string(DebugStream, "NumSectagBits0: ", !IO),
+        io.write_line(DebugStream, NumSectagBits0, !IO)
     ),
     ( if
         (
@@ -1966,13 +3405,14 @@ take_local_packable_functors_incr_sectag_bits(NumArgPackBits, NumPtagBits,
     then
         NumSectagBits1 = NumSectagBits0 + 1,
         TakeLimit = (1 << NumSectagBits1) - (1 << NumSectagBits0),
-        take_local_packable_functors_constant_sectag_bits(NumArgPackBits,
-            NumPtagBits, NumSectagBits1, TakeLimit, 0, NumTaken,
+        take_local_packable_functors_constant_sectag_bits(Params,
+            NumArgPackBits, NumPtagBits, NumSectagBits1,
+            TakeLimit, 0, NumTaken,
             NonPackedFunctors0,
             RevPackedFunctors0, RevPackedFunctors1, NonPackedFunctors1),
         ( if NumTaken > 0 then
-            take_local_packable_functors_incr_sectag_bits(NumArgPackBits,
-                NumPtagBits, NumSectagBits1, NumSectagBits,
+            take_local_packable_functors_incr_sectag_bits(Params,
+                NumArgPackBits, NumPtagBits, NumSectagBits1, NumSectagBits,
                 RevPackedFunctors1, NonPackedFunctors1,
                 RevPackedFunctors, NonPackedFunctors)
         else
@@ -1986,50 +3426,54 @@ take_local_packable_functors_incr_sectag_bits(NumArgPackBits, NumPtagBits,
         NonPackedFunctors = NonPackedFunctors0
     ).
 
-:- pred take_local_packable_functors_constant_sectag_bits(int::in,
-    int::in, int::in, int::in, int::in, int::out,
+:- pred take_local_packable_functors_constant_sectag_bits(decide_du_params::in,
+    int::in, int::in, int::in, int::in, int::in, int::out,
     assoc_list(int, constructor)::in,
     assoc_list(int, constructor)::in, assoc_list(int, constructor)::out,
     assoc_list(int, constructor)::out) is det.
 
-take_local_packable_functors_constant_sectag_bits(_, _, _, _, !NumTaken, [],
+take_local_packable_functors_constant_sectag_bits(_, _, _, _, _, !NumTaken, [],
         !RevPackedFunctors, []).
-take_local_packable_functors_constant_sectag_bits(ArgPackBits,
+take_local_packable_functors_constant_sectag_bits(Params, ArgPackBits,
         PtagBits, SectagBits, TakeLimit, !NumTaken,
         [PackableFunctor | PackableFunctors],
         !RevPackedFunctors, NonPackedFunctors) :-
     PackableFunctor = PackableBits - _Functor,
     trace [io(!IO), compile_time(flag("du_type_layout"))] (
-        Stream = io.stdout_stream,
-        io.write_string(Stream, "\nconstant_sectag_bits test:\n", !IO),
-        io.write_string(Stream, "PackableFunctor: ", !IO),
-        output_sized_packable_functor(Stream, maybe.no, PackableFunctor, !IO),
-        io.write_string(Stream, "ArgPackBits: ", !IO),
-        io.write_line(Stream, ArgPackBits, !IO),
-        io.write_string(Stream, "PtagBits: ", !IO),
-        io.write_line(Stream, PtagBits, !IO),
-        io.write_string(Stream, "SectagBits: ", !IO),
-        io.write_line(Stream, SectagBits, !IO),
-        io.write_string(Stream, "TakeLimit: ", !IO),
-        io.write_line(Stream, TakeLimit, !IO)
+        get_debug_output_stream(Params ^ ddp_globals, Params ^ ddp_module_name,
+            DebugStream, !IO),
+        io.write_string(DebugStream, "\nconstant_sectag_bits test:\n", !IO),
+        io.write_string(DebugStream, "PackableFunctor: ", !IO),
+        output_sized_packable_functor(DebugStream, maybe.no,
+            PackableFunctor, !IO),
+        io.write_string(DebugStream, "ArgPackBits: ", !IO),
+        io.write_line(DebugStream, ArgPackBits, !IO),
+        io.write_string(DebugStream, "PtagBits: ", !IO),
+        io.write_line(DebugStream, PtagBits, !IO),
+        io.write_string(DebugStream, "SectagBits: ", !IO),
+        io.write_line(DebugStream, SectagBits, !IO),
+        io.write_string(DebugStream, "TakeLimit: ", !IO),
+        io.write_line(DebugStream, TakeLimit, !IO)
     ),
     ( if
         TakeLimit > 0,
         PtagBits + SectagBits + PackableBits =< ArgPackBits
     then
         trace [io(!IO), compile_time(flag("du_type_layout"))] (
-            Stream = io.stdout_stream,
-            io.write_string(Stream, "TAKEN\n", !IO)
+            get_debug_output_stream(Params ^ ddp_globals,
+                Params ^ ddp_module_name, DebugStream, !IO),
+            io.write_string(DebugStream, "TAKEN\n", !IO)
         ),
         !:RevPackedFunctors = [PackableFunctor | !.RevPackedFunctors],
         !:NumTaken = !.NumTaken + 1,
-        take_local_packable_functors_constant_sectag_bits(ArgPackBits,
+        take_local_packable_functors_constant_sectag_bits(Params, ArgPackBits,
             PtagBits, SectagBits, TakeLimit - 1, !NumTaken, PackableFunctors,
             !RevPackedFunctors, NonPackedFunctors)
     else
         trace [io(!IO), compile_time(flag("du_type_layout"))] (
-            Stream = io.stdout_stream,
-            io.write_string(Stream, "NOT TAKEN\n", !IO)
+            get_debug_output_stream(Params ^ ddp_globals,
+                Params ^ ddp_module_name, DebugStream, !IO),
+            io.write_string(DebugStream, "NOT TAKEN\n", !IO)
         ),
         NonPackedFunctors = [PackableFunctor | PackableFunctors]
     ).
@@ -2851,13 +4295,6 @@ find_initial_args_packable_within_limit(Params, ComponentTypeMap, Limit,
         LeftOverArgs = [Arg | Args]
     ).
 
-:- func type_ctor_sna(type_ctor) = format_component.
-
-type_ctor_sna(TypeCtor) = Piece :-
-    TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
-    Piece = qual_sym_name_arity(
-        sym_name_arity(TypeCtorSymName, TypeCtorArity)).
-
 %---------------------------------------------------------------------------%
 
 :- pred compute_sectag_bits(int::in, sectag_bits::out) is det.
@@ -3421,6 +4858,10 @@ output_sized_packable_functor_args(Stream, Params, ComponentTypeMap, Prefix,
 
 :- type decide_du_params
     --->    decide_du_params(
+                % For constructing debug (and possibly other) output streams.
+                ddp_globals                     :: globals,
+                ddp_module_name                 :: module_name,
+
                 ddp_arg_pack_bits               :: int,
                 ddp_maybe_primary_tags          :: maybe_primary_tags,
 
@@ -3455,10 +4896,10 @@ output_sized_packable_functor_args(Stream, Params, ComponentTypeMap, Prefix,
                 ddp_direct_arg_map              :: direct_arg_map
             ).
 
-:- pred setup_decide_du_params(globals::in, direct_arg_map::in,
-    decide_du_params::out) is det.
+:- pred setup_decide_du_params(globals::in, module_name::in,
+    direct_arg_map::in, decide_du_params::out) is det.
 
-setup_decide_du_params(Globals, DirectArgMap, Params) :-
+setup_decide_du_params(Globals, ModuleName, DirectArgMap, Params) :-
     % Compute Target.
     globals.get_target(Globals, Target),
 
@@ -3569,7 +5010,8 @@ setup_decide_du_params(Globals, DirectArgMap, Params) :-
         MaybeInformPacking = inform_about_packing
     ),
 
-    Params = decide_du_params(ArgPackBits, MaybePrimaryTags, Target,
+    Params = decide_du_params(Globals, ModuleName,
+        ArgPackBits, MaybePrimaryTags, Target,
         DoubleWordFloats, DoubleWordInt64s,
         UnboxedNoTagTypes, MaybeInformPacking,
         AllowDoubleWordInts, AllowPackingInts, AllowPackingChars,
@@ -3602,6 +5044,22 @@ compute_maybe_primary_tag_bits(Globals, MaybePrimaryTags) :-
         ; Target = target_csharp
         ),
         MaybePrimaryTags = no_primary_tags
+    ).
+
+:- pred maybe_exist_constraints_num_extra_words(
+    maybe_cons_exist_constraints::in, int::out) is det.
+
+maybe_exist_constraints_num_extra_words(MaybeExistConstraints, ExtraWords) :-
+    (
+        MaybeExistConstraints = no_exist_constraints,
+        ExtraWords = 0
+    ;
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints = cons_exist_constraints(_ExistQTVars, Constraints,
+            UnconstrainedExistQTVars, _ConstrainedExistQTVars),
+        list.length(UnconstrainedExistQTVars, NumTypeInfos),
+        list.length(Constraints, NumTypeClassInfos),
+        ExtraWords = NumTypeInfos + NumTypeClassInfos
     ).
 
 %---------------------------------------------------------------------------%

@@ -330,7 +330,7 @@ acc_implicit_avail_needs_in_aug_compilation_unit(AugCompUnit,
     AugCompUnit = aug_compilation_unit(_ModuleName, _ModuleNameContext,
         _MaybeVersionNumbers, ParseTreeModuleSrc,
         AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs),
+        PlainOpts, TransOpts, IntForOptSpecs, _TypeRepnSpecs),
     acc_implicit_avail_needs_in_parse_tree_module_src(ParseTreeModuleSrc,
         !ImplicitAvailNeeds),
     map.foldl_values(acc_implicit_avail_needs_in_ancestor_int_spec,
@@ -345,6 +345,8 @@ acc_implicit_avail_needs_in_aug_compilation_unit(AugCompUnit,
         PlainOpts, !ImplicitAvailNeeds),
     map.foldl_values(acc_implicit_avail_needs_in_parse_tree_trans_opt,
         TransOpts, !ImplicitAvailNeeds).
+    % The only things we pay attention to inside _TypeRepnSpecs
+    % are type_repn items, which have no implicit avail needs.
 
 %---------------------%
 

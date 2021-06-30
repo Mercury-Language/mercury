@@ -565,6 +565,8 @@
                 pti1_int_decl_pragmas       :: list(item_decl_pragma_info),
                 pti1_int_promises           :: list(item_promise_info),
 
+                % The representations of all types defined in the module,
+                % whether exported or not.
                 pti1_int_type_repns         :: type_ctor_repn_map,
 
                 % Items of various kinds in the implementation.
@@ -610,6 +612,9 @@
                 pti2_int_mode_defns         :: mode_ctor_defn_map,
                 pti2_int_typeclasses        :: list(item_typeclass_info),
                 pti2_int_instances          :: list(item_instance_info),
+
+                % The representations of all types defined in the module,
+                % whether exported or not.
                 pti2_int_type_repns         :: type_ctor_repn_map,
 
                 % Items of various kinds in the implementation.
@@ -1042,7 +1047,12 @@
                 % The interface files needed to make sense
                 % of those optimization files.
                 aci_int_for_opt_specs           :: map(module_name,
-                                                    int_for_opt_spec)
+                                                    int_for_opt_spec),
+
+                % Interface files that we read in only for the type
+                % representation information they contain
+                aci_type_repn_specs             :: map(module_name,
+                                                    type_repn_spec)
             ).
 
 :- type ancestor_int_spec
@@ -1060,6 +1070,9 @@
     --->    for_opt_int0(parse_tree_int0, read_why_int0)
     ;       for_opt_int1(parse_tree_int1, read_why_int1)
     ;       for_opt_int2(parse_tree_int2, read_why_int2).
+
+:- type type_repn_spec
+    --->    type_repn_spec_int1(parse_tree_int1).
 
     % All these record recomp_avail_int_import as recompilation reason.
     % (Since there is no recomp_avail_ancestor_import, yet).
@@ -1090,10 +1103,23 @@
             % Add the parse tree to the set of directly-read interfaces.
             %
             % Record recomp_avail_int_use_imp_import as recompilation reason.
-    ;       rwi1_opt.
+    ;       rwi1_opt
             % Add the parse tree to the set of read-int-for-opt interfaces.
             %
             % Record recomp_avail_imp_use as recompilation reason.
+    ;       rwi1_type_repn.
+            % The only items that should be paid attention to from this
+            % .int file are the type_repn items. They don't need any
+            % section markers.
+            %
+            % Add the parse tree to the type-repn interfaces.
+            %
+            % Record recomp_avail_int_import as recompilation reason.
+            % XXX TYPE_REPN This is a lie, but it is the best we can do now,
+            % because smart recompilation "cannot handle the truth",
+            % due to not yet having been adapted to handle dependencies
+            % on interface files that are needed only for type representation
+            % information.
 
     % All these record recomp_avail_imp_use as recompilation reason.
 :- type read_why_int2
@@ -1105,6 +1131,7 @@
             % Add the parse tree to the set of indirectly-read interfaces.
     ;       rwi2_opt.
             % Add the parse tree to the set of read-int-for-opt interfaces.
+            % XXX TYPE_REPN Do we need a rwi2_type_repn?
 
 :- type read_why_int3
     --->    rwi3_direct_ancestor_import
@@ -1978,6 +2005,7 @@
                 % The representation of this functor for each possible
                 % target platform with the low level data representation.
                 % The nonconstant_repn cannot be ncr_direct_arg.
+                % XXX TYPE_REPN could we encode that invariant in the type?
                 only_arg_repns          :: c_repns(nonconstant_repn),
 
                 % The foreign language definitions for this type, if any.
@@ -2017,6 +2045,11 @@
 
                 % The types of the constructor's arguments, after
                 % the expansion of both equivalence types and notag types.
+                %
+                % Logically, the type of each argument belongs with
+                % the representation of that argument, but we have to store
+                % up to six versions of the representation, and we don't want
+                % a duplicate copy of the type next to each version.
                 gduncf_deref_arg_types  :: list(mer_type),
 
                 % The representation of this functor for each possible
@@ -2033,25 +2066,29 @@
             ).
 
 :- type nonconstant_repn
-    --->    ncr_local_cell(
+    --->    ncr_local_cell(nonconstant_local_cell_repn)
+    ;       ncr_remote_cell(nonconstant_remote_cell_repn)
+    ;       ncr_direct_arg(ptag).
+
+:- type nonconstant_local_cell_repn
+    --->    nonconstant_local_cell_repn(
                 % The ptag is implicitly 0u.
-                ncrlc_sectag            :: cell_local_sectag,
-                ncrlc_arg_repns         :: one_or_more(local_arg_repn)
-            )
-    ;       ncr_remote_cell(
-                ncrrc_ptag              :: ptag,
-                ncrrc_sectag            :: cell_remote_sectag,
-                ncrrc_arg_repns         :: one_or_more(remote_arg_repn)
-            )
-    ;       ncr_direct_arg(
-                ncrdc_ptag              :: ptag
+                nclcr_sectag            :: cell_local_sectag,
+                nclcr_arg_repns         :: one_or_more(local_arg_repn)
+            ).
+
+:- type nonconstant_remote_cell_repn
+    --->    nonconstant_remote_cell_repn(
+                ncrcr_ptag              :: ptag,
+                ncrcr_sectag            :: cell_remote_sectag,
+                ncrcr_arg_repns         :: one_or_more(remote_arg_repn)
             ).
 
 :- type cell_local_sectag
     --->    cell_local_no_sectag
     ;       cell_local_sectag(
                 clss_sectag             :: uint,
-                clss_sectag_size        :: uint
+                clss_sectag_size        :: uint8
             ).
 
 :- type cell_remote_sectag
@@ -2063,7 +2100,10 @@
 
 :- type sectag_word_or_size
     --->    sectag_rest_of_word
-    ;       sectag_part_of_word(uint).
+            % XXX TYPE_REPN This is misnamed in some use cases. Specifically,
+            % when part of cell_remote_sectag, sectag_rest_of_word means that
+            % the sectag occupies a *full* word.
+    ;       sectag_part_of_word(uint8).
 
 :- type local_arg_repn
     --->    local_partial(
@@ -2085,13 +2125,13 @@
     ;       remote_partial_first(
                 rpf_arg_only_offset     :: arg_only_offset,
                 rpf_cell_offset         :: cell_offset,
-                rpf_shift               :: uint,
+                rpf_shift               :: uint8,
                 rpf_fill                :: fill_kind_size
             )
     ;       remote_partial_shifted(
                 rps_arg_only_offset     :: arg_only_offset,
                 rps_cell_offset         :: cell_offset,
-                rps_shift               :: uint,
+                rps_shift               :: uint8,
                 rps_fill                :: fill_kind_size
             )
     ;       remote_none_shifted(
@@ -2101,7 +2141,7 @@
     ;       remote_none_nowhere.
 
 :- type fill_kind_size
-    --->    fk_enum(uint)
+    --->    fk_enum(uint)   % XXX TYPE_REPN should be uint8
     ;       fk_int8
     ;       fk_int16
     ;       fk_int32
@@ -2110,6 +2150,7 @@
     ;       fk_uint32
     ;       fk_char21.
 
+    % XXX TYPE_REPN should return uint8
 :- func fill_kind_size_num_bits(fill_kind_size) = uint.
 
 %---------------------%

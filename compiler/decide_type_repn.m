@@ -989,7 +989,8 @@ decide_complex_du_only_functor_local_args(PlatformParams, PackableArgs,
         PackableArgs, ArgRepns),
     expect(NextShift =< NumWordBits, $pred, "NextShift > NumWordBits"),
     det_list_to_one_or_more(ArgRepns, OoMArgRepns),
-    NonConstantRepn = ncr_local_cell(LocalSectag, OoMArgRepns).
+    LocalRepn = nonconstant_local_cell_repn(LocalSectag, OoMArgRepns),
+    NonConstantRepn = ncr_local_cell(LocalRepn).
 
 :- pred decide_complex_du_only_functor_remote_args(platform_params::in,
     maybe_cons_exist_constraints::in, list(classified_arg)::in,
@@ -999,11 +1000,12 @@ decide_complex_du_only_functor_remote_args(PlatformParams,
         MaybeExistConstraints, ClassifiedArgs, NonConstantRepn) :-
     Ptag = ptag(0u8),
     Sectag = cell_remote_no_sectag,
-    NumRemoteSectagBits = 0u,
+    NumRemoteSectagBits = 0u8,
     decide_remote_args(PlatformParams, NumRemoteSectagBits,
         MaybeExistConstraints, ClassifiedArgs, ArgRepns),
     det_list_to_one_or_more(ArgRepns, OoMArgRepns),
-    NonConstantRepn = ncr_remote_cell(Ptag, Sectag, OoMArgRepns).
+    RemoteRepn = nonconstant_remote_cell_repn(Ptag, Sectag, OoMArgRepns),
+    NonConstantRepn = ncr_remote_cell(RemoteRepn).
 
 %---------------------------------------------------------------------------%
 
@@ -1106,7 +1108,9 @@ decide_gen_du_functors(PlatformParams, WordAlignedTypeCtorsC, SimpleDuMap,
                 list.length(LocalPackedFunctors, NumLocalPackedFunctors),
                 num_bits_needed_for_n_things(
                     NumConstants + NumLocalPackedFunctors,
-                    NumLocalSectagBits),
+                    NumLocalSectagBitsUint),
+                NumLocalSectagBits =
+                    uint8.det_from_uint(NumLocalSectagBitsUint),
                 LocalSectagSize = sectag_part_of_word(NumLocalSectagBits),
                 assign_repns_to_constants(LocalSectagSize,
                     CurLocalSectag0, CurLocalSectag1, Constants, !RepnMap),
@@ -1132,7 +1136,8 @@ decide_gen_du_functors(PlatformParams, WordAlignedTypeCtorsC, SimpleDuMap,
             RemoteSharedFunctors = [_ | _],
             list.length(RemoteSharedFunctors, NumRemoteSharedFunctors),
             num_bits_needed_for_n_things(NumRemoteSharedFunctors,
-                NumRemoteSectagBits),
+                NumRemoteSectagBitsUint),
+            NumRemoteSectagBits = uint8.det_from_uint(NumRemoteSectagBitsUint),
             MaxPtag = ptag(MaxPtagUint8),
             assign_repns_to_remote_shared(PlatformParams,
                 NumRemoteSectagBits, 0u, RemoteSharedFunctors, RSIs,
@@ -1553,7 +1558,7 @@ assign_repns_to_constants(SectagSize, !CurSectag, [Ctor | Ctors], !RepnMap) :-
 %---------------------%
 
 :- pred assign_repns_to_local_packed_functors(platform_params::in,
-    uint::in, uint::in, list(packable_constructor)::in,
+    uint8::in, uint::in, list(packable_constructor)::in,
     ctor_repn_map::in, ctor_repn_map::out) is det.
 
 assign_repns_to_local_packed_functors(_, _, _, [], !RepnMap).
@@ -1566,13 +1571,14 @@ assign_repns_to_local_packed_functors(PlatformParams, NumLocalSectagBits,
     Sectag = cell_local_sectag(!.CurSectag, NumLocalSectagBits),
     WordSize = PlatformParams ^ pp_word_size,
     NumPtagBits = word_size_num_ptag_bits(WordSize),
-    NumPrefixBits = NumPtagBits + NumLocalSectagBits,
+    NumPrefixBits = NumPtagBits + uint8.cast_to_uint(NumLocalSectagBits),
     decide_local_packed_arg_word_loop(NumPrefixBits, NextShift,
         PackableArgs, ArgRepns),
     expect(unify(NextShift, NumPrefixBits + NumBits), $pred,
         "NextShift != NumPrefixBits + NumBits"),
     det_list_to_one_or_more(ArgRepns, OoMArgRepns),
-    Repn = ncr_local_cell(Sectag, OoMArgRepns), 
+    LocalRepn = nonconstant_local_cell_repn(Sectag, OoMArgRepns),
+    Repn = ncr_local_cell(LocalRepn),
     map.det_insert(Ordinal, ctor_nonconstant(Repn), !RepnMap),
     !:CurSectag = !.CurSectag + 1u,
     assign_repns_to_local_packed_functors(PlatformParams, NumLocalSectagBits,
@@ -1635,11 +1641,12 @@ assign_repns_to_remote_unshared(PlatformParams, MaxPtagUint8, !.CurPtagUint8,
     else
         Ptag = ptag(!.CurPtagUint8),
         Sectag = cell_remote_no_sectag,
-        NumRemoteSectagBits = 0u,
+        NumRemoteSectagBits = 0u8,
         decide_remote_args(PlatformParams, NumRemoteSectagBits,
             MaybeExistConstraints, ClassifiedArgs, ArgRepns),
         det_list_to_one_or_more(ArgRepns, OoMArgRepns),
-        Repn = ncr_remote_cell(Ptag, Sectag, OoMArgRepns),
+        RemoteRepn = nonconstant_remote_cell_repn(Ptag, Sectag, OoMArgRepns),
+        Repn = ncr_remote_cell(RemoteRepn),
         map.det_insert(Ordinal, ctor_nonconstant(Repn), !RepnMap),
         !:CurPtagUint8 = !.CurPtagUint8 + 1u8,
         assign_repns_to_remote_unshared(PlatformParams, MaxPtagUint8,
@@ -1683,7 +1690,7 @@ assign_repns_to_remote_unshared(PlatformParams, MaxPtagUint8, !.CurPtagUint8,
                 rsi_arg_repns           :: one_or_more(remote_arg_repn)
             ).
 
-:- pred assign_repns_to_remote_shared(platform_params::in, uint::in,
+:- pred assign_repns_to_remote_shared(platform_params::in, uint8::in,
     uint::in, list(classified_constructor)::in,
     list(remote_shared_info)::out,
     must_mask_remote_sectag::in, must_mask_remote_sectag::out) is det.
@@ -1761,13 +1768,14 @@ add_remote_shared_functors_to_repn_map(Ptag, SectagSize, [RSI | RSIs],
         !RepnMap) :-
     RSI = remote_shared_info(Ordinal, RemoteSectag, OoMArgRepns),
     Sectag = cell_remote_sectag(RemoteSectag, SectagSize),
-    Repn = ncr_remote_cell(Ptag, Sectag, OoMArgRepns),
+    RemoteRepn = nonconstant_remote_cell_repn(Ptag, Sectag, OoMArgRepns),
+    Repn = ncr_remote_cell(RemoteRepn),
     map.det_insert(Ordinal, ctor_nonconstant(Repn), !RepnMap),
     add_remote_shared_functors_to_repn_map(Ptag, SectagSize, RSIs, !RepnMap).
 
 %---------------------------------------------------------------------------%
 
-:- pred decide_remote_args(platform_params::in, uint::in,
+:- pred decide_remote_args(platform_params::in, uint8::in,
     maybe_cons_exist_constraints::in, list(classified_arg)::in,
     list(remote_arg_repn)::out) is det.
 
@@ -1807,7 +1815,7 @@ decide_remote_args(PlatformParams, NumRemoteSectagBits,
         list.length(Constraints, NumTypeClassInfos),
         NumExtraArgWords = NumTypeInfos + NumTypeClassInfos
     ),
-    ( if NumRemoteSectagBits = 0u then
+    ( if NumRemoteSectagBits = 0u8 then
         NumTagwords = 0,
         TagwordArgRepns = [],
         NonTagwordMaybePackableArgs = MaybePackableArgs
@@ -1825,7 +1833,7 @@ decide_remote_args(PlatformParams, NumRemoteSectagBits,
             % next to the remote sectag.
             NumWordBits =
                 word_size_num_word_bits(PlatformParams ^ pp_word_size),
-            Limit = NumWordBits - NumRemoteSectagBits,
+            Limit = NumWordBits - uint8.cast_to_uint(NumRemoteSectagBits),
             find_initial_packable_args_within_limit(Limit, 0u, _NumBits,
                 MaybePackableArgs, PackableArgs, LeftOverArgs),
             % Did we find any?
@@ -1960,7 +1968,7 @@ decide_remote_arg_words_loop(PlatformParams, CurAOWordNum, CurCellWordNum,
             NumUsedBits0, NumUsedBits, ClassifiedArgs,
             PackableArgs, LeftOverClassifiedArgs),
         decide_remote_packed_arg_word_loop(treat_as_first_arg,
-            ArgOnlyOffset, CellOffset, 0u, _NextShift,
+            ArgOnlyOffset, CellOffset, 0u8, _NextShift,
             PackableArgs, WordArgRepns),
         ( if NumUsedBits > 0u then
             NextAOWordNum = CurAOWordNum + 1,
@@ -2014,7 +2022,7 @@ decide_remote_arg_words_loop(PlatformParams, CurAOWordNum, CurCellWordNum,
     % subsequence.
     %
 :- pred decide_remote_packed_arg_word_loop(maybe_treat_as_first_arg::in,
-    arg_only_offset::in, cell_offset::in, uint::in, uint::out,
+    arg_only_offset::in, cell_offset::in, uint8::in, uint8::out,
     list(packable_arg)::in, list(remote_arg_repn)::out) is det.
 
 decide_remote_packed_arg_word_loop(_, _, _, NumPrefixBits, NextShift,
@@ -2051,7 +2059,8 @@ decide_remote_packed_arg_word_loop(TreatAsFirst, ArgOnlyOffset, CellOffset,
             ArgRepn = remote_partial_shifted(ArgOnlyOffset, CellOffset,
                 CurShift, FillKindSize)
         ),
-        NextShift = CurShift + fill_kind_size_num_bits(FillKindSize)
+        NextShift = CurShift +
+            uint8.det_from_uint(fill_kind_size_num_bits(FillKindSize))
     ).
 
 %---------------------%

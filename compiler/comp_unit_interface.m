@@ -449,7 +449,7 @@ get_short_interface_int3_from_items_imp([Item | Items],
 
 generate_private_interface_int0(AugCompUnit, ParseTreeInt0, !Specs) :-
     AugCompUnit = aug_compilation_unit(_, _, ModuleVersionNumbers,
-        ParseTreeModuleSrc, _, _, _, _, _, _),
+        ParseTreeModuleSrc, _, _, _, _, _, _, _),
 
     ( if map.search(ModuleVersionNumbers, ModuleName, VersionNumbers) then
         MaybeVersionNumbers = version_numbers(VersionNumbers)
@@ -659,11 +659,11 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt1, !Specs),
+        ImpTypeDefns, TypeCtorRepnMap, ParseTreeInt1, !Specs),
     generate_interface_int2(AugCompUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt2).
+        ImpTypeDefns, TypeCtorRepnMap, ParseTreeInt2).
 
 :- pred generate_interface_int1(globals::in, aug_compilation_unit::in,
     module_names_contexts::out, set(fim_spec)::out, set(fim_spec)::out,
@@ -671,17 +671,17 @@ generate_interfaces_int1_int2(Globals, AugCompUnit,
     list(item_inst_defn_info)::out, list(item_mode_defn_info)::out,
     list(item_typeclass_info)::out, list(item_instance_info)::out,
     list(item_type_defn_info)::out,
-    type_ctor_checked_map::out, parse_tree_int1::out,
+    type_ctor_repn_map::out, parse_tree_int1::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt1, !Specs) :-
+        ImpTypeDefns, TypeCtorRepnMap, ParseTreeInt1, !Specs) :-
     % We return some of our intermediate results to our caller, for use
     % in constructing the .int2 file.
     AugCompUnit = aug_compilation_unit(_, _, _, ParseTreeModuleSrc,
-        _, DirectIntSpecs, IndirectIntSpecs, _, _, _),
+        _, DirectIntSpecs, IndirectIntSpecs, _, _, _, _),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         IntInclMap, ImpInclMap, InclMap,
@@ -837,12 +837,12 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
     globals.lookup_bool_option(Globals, experiment1, Experiment1),
     (
         Experiment1 = no,
-        map.init(IntTypeRepnMap)
+        map.init(TypeCtorRepnMap)
     ;
         Experiment1 = yes,
         decide_repns_for_all_types_for_int1(Globals, ModuleName,
             TypeCtorCheckedMap, DirectIntSpecs, IndirectIntSpecs,
-            IntTypeRepnMap, RepnSpecs),
+            TypeCtorRepnMap, RepnSpecs),
         !:Specs = !.Specs ++ RepnSpecs
     ),
 
@@ -856,7 +856,7 @@ generate_interface_int1(Globals, AugCompUnit, IntImportUseMap,
         IntTypeClasses, IntInstances,
         IntPredDecls, IntModeDecls,
         IntForeignEnumMap, IntDeclPragmas, IntPromises,
-        IntTypeRepnMap,
+        TypeCtorRepnMap,
         ImpTypeDefnMap, ImpForeignEnumMap, ImpTypeClasses).
 
 %---------------------%
@@ -1935,15 +1935,15 @@ some_type_defn_is_non_abstract([Defn | Defns]) :-
     list(item_type_defn_info)::in,
     list(item_inst_defn_info)::in, list(item_mode_defn_info)::in,
     list(item_typeclass_info)::in, list(item_instance_info)::in,
-    list(item_type_defn_info)::in,
-    type_ctor_checked_map::in, parse_tree_int2::out) is det.
+    list(item_type_defn_info)::in, type_ctor_repn_map::in,
+    parse_tree_int2::out) is det.
 
 generate_interface_int2(AugCompUnit, IntImportUseMap,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeDefns, IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
-        ImpTypeDefns, TypeCtorCheckedMap, ParseTreeInt2) :-
+        ImpTypeDefns, TypeCtorRepnMap, ParseTreeInt2) :-
     AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext, _,
-        ParseTreeModuleSrc, _, _, _, _, _, _),
+        ParseTreeModuleSrc, _, _, _, _, _, _, _),
 
     IntInclMap = ParseTreeModuleSrc ^ ptms_int_includes,
     InclMap = ParseTreeModuleSrc ^ ptms_include_map,
@@ -1982,18 +1982,6 @@ generate_interface_int2(AugCompUnit, IntImportUseMap,
 
     get_int2_items_from_int1_imp_types(ImpTypeDefns,
         set.init, ShortImpImplicitFIMLangs),
-
-    % XXX We should pass to decide_repns_for_simple_types not just
-    % the type definitions in this module, but also all the type_REPNs
-    % we have read in from the .int3 files of the imported modules.
-    % That would allow decide_repns_for_simple_types to take into
-    % account that an imported type (such as bool) is subword sized,
-    % and that therefore some types that have fields of that type
-    % may themselves be subword sized, if all their arguments are subword
-    % sized and there are few enough of them. (Note that will in general
-    % require fully expanding the relevant type equivalence chains.)
-    decide_repns_for_simple_types_for_int3(ModuleName, TypeCtorCheckedMap,
-        ShortIntTypeRepnMap),
 
     % We compute ShortIntUseMap from IntImportUseMap. IntImportUseMap
     % is the set of modules imported *or used* in the interface section
@@ -2080,7 +2068,7 @@ generate_interface_int2(AugCompUnit, IntImportUseMap,
         IntInclMap, ShortInclMap, ShortIntUseMap, ShortImportUseMap,
         ShortIntFIMSpecs, ShortImpFIMSpecs,
         ShortIntTypeDefnMap, ShortIntInstDefnMap, ShortIntModeDefnMap,
-        ShortIntTypeClasses, ShortIntInstances, ShortIntTypeRepnMap,
+        ShortIntTypeClasses, ShortIntInstances, TypeCtorRepnMap,
         ShortImpTypeDefnMap).
 
 %---------------------%

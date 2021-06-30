@@ -837,7 +837,7 @@ construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
         then
             AugCompUnit = aug_compilation_unit(_, _, _, _ParseTreeModuleSrc,
                 AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-                PlainOpts, _TransOpts, IntForOptSpecs),
+                PlainOpts, _TransOpts, IntForOptSpecs, _TypeRepnSpecs),
             some [!FIMSpecs] (
                 set.init(!:FIMSpecs),
                 map.foldl_values(gather_fim_specs_in_ancestor_int_spec,
@@ -851,6 +851,8 @@ construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
                 % .trans_opt files cannot contain FIMs.
                 map.foldl_values(gather_fim_specs_in_int_for_opt_spec,
                     IntForOptSpecs, !FIMSpecs),
+                % Any FIMs in type_repn_specs are ignored.
+
                 % We restrict the set of FIMs to those that are valid
                 % for the current backend. This preserves old behavior,
                 % and makes sense in that the code below generates mmake rules
