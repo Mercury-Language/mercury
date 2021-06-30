@@ -1605,11 +1605,11 @@ describe_which_is_supertype_of_chain(First, OrigTypeCtor, SuperTypeCtors)
     ),
     (
         SuperTypeCtors = [],
-        Pieces = WhichIsPieces ++ [words("the super type of"),
+        Pieces = WhichIsPieces ++ [words("the declared super type of"),
             unqual_type_ctor(OrigTypeCtor)]
     ;
         SuperTypeCtors = [HeadSuperTypeCtor | TailSuperTypeCtors],
-        Pieces = WhichIsPieces ++ [words("the super type of"),
+        Pieces = WhichIsPieces ++ [words("the declared super type of"),
             unqual_type_ctor(HeadSuperTypeCtor), suffix(","), nl] ++
             describe_which_is_supertype_of_chain(is_not_first, OrigTypeCtor,
                 TailSuperTypeCtors)

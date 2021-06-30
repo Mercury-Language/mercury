@@ -1,5 +1,5 @@
 subtype_submodule.m:024: Error: the type `fruit2'/0,
-subtype_submodule.m:024:   the super type of `citrus2'/0,
+subtype_submodule.m:024:   the declared super type of `citrus2'/0,
 subtype_submodule.m:024:   is not defined.
 subtype_submodule.m:024: In definition of type `citrus2'/0:
 subtype_submodule.m:024:   error: undefined type `fruit2'/0.

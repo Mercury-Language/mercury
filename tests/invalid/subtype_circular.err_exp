@@ -1,14 +1,14 @@
 subtype_circular.m:008: Error: circularity in subtype definition chain.
 subtype_circular.m:008:   The chain is:
 subtype_circular.m:008:   `loop'/0,
-subtype_circular.m:008:   the super type of `loop'/0.
+subtype_circular.m:008:   the declared super type of `loop'/0.
 subtype_circular.m:011: Error: circularity in subtype definition chain.
 subtype_circular.m:011:   The chain is:
 subtype_circular.m:011:   `loop1'/0,
-subtype_circular.m:011:   the super type of `loop2'/0,
-subtype_circular.m:011:   which is the super type of `loop1'/0.
+subtype_circular.m:011:   the declared super type of `loop2'/0,
+subtype_circular.m:011:   which is the declared super type of `loop1'/0.
 subtype_circular.m:014: Error: circularity in subtype definition chain.
 subtype_circular.m:014:   The chain is:
 subtype_circular.m:014:   `loop2'/0,
-subtype_circular.m:014:   the super type of `loop1'/0,
-subtype_circular.m:014:   which is the super type of `loop2'/0.
+subtype_circular.m:014:   the declared super type of `loop1'/0,
+subtype_circular.m:014:   which is the declared super type of `loop2'/0.
