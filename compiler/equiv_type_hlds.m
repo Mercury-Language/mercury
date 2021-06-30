@@ -120,7 +120,7 @@ add_type_to_eqv_map(TypeCtor, Defn, !TypeEqvMap, !EqvExportTypes) :-
             IsExported = no
         )
     ;
-        ( Body = hlds_du_type(_, _, _, _, _)
+        ( Body = hlds_du_type(_)
         ; Body = hlds_foreign_type(_)
         ; Body = hlds_solver_type(_)
         ; Body = hlds_abstract_type(_)
@@ -169,7 +169,8 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
     maybe_start_recording_expanded_items(ModuleName, TypeCtorSymName,
         !.MaybeRecompInfo, EquivTypeInfo0),
     (
-        Body0 = hlds_du_type(Ctors0, MaybeSuperType0, MaybeCanonical,
+        Body0 = hlds_du_type(BodyDu0),
+        BodyDu0 = type_body_du(Ctors0, MaybeSuperType0, MaybeCanonical,
             MaybeRepn0, MaybeForeign),
         (
             MaybeSuperType0 = yes(SuperType0),
@@ -199,8 +200,9 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
                 CheaperTagTest, DuKind, DirectArgCtors),
             MaybeRepn = yes(Repn)
         ),
-        Body = hlds_du_type(Ctors, MaybeSuperType, MaybeCanonical,
-            MaybeRepn, MaybeForeign)
+        BodyDu = type_body_du(Ctors, MaybeSuperType, MaybeCanonical,
+            MaybeRepn, MaybeForeign),
+        Body = hlds_du_type(BodyDu)
     ;
         Body0 = hlds_eqv_type(Type0),
         equiv_type.replace_in_type(TypeEqvMap, Type0, Type, _,

@@ -330,7 +330,8 @@ is_direct_arg_in_out_posn(ModuleInfo, VarTypes, Var, Mode, IsDAIO) :-
     then
         get_type_defn_body(TypeDefn, TypeBody),
         (
-            TypeBody = hlds_du_type(_, _, _, MaybeRepn, _),
+            TypeBody = hlds_du_type(TypeBodyDu),
+            TypeBodyDu = type_body_du(_, _, _, MaybeRepn, _),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")
@@ -1500,7 +1501,8 @@ expand_daio_in_unify(GoalInfo0, GoalExpr0, GoalExpr, InstMap0,
             module_info_get_type_table(ModuleInfo, TypeTable),
             search_type_ctor_defn(TypeTable, ConsIdTypeCtor, TypeDefn),
             get_type_defn_body(TypeDefn, TypeBody),
-            TypeBody = hlds_du_type(_, _, _, MaybeRepn, _),
+            TypeBody = hlds_du_type(TypeBodyDu),
+            TypeBodyDu = type_body_du(_, _, _, MaybeRepn, _),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")

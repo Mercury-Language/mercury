@@ -3509,7 +3509,8 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
     ( if
-        Body ^ du_type_is_foreign_type = yes(_),
+        Body = hlds_du_type(BodyDu),
+        BodyDu ^ du_type_is_foreign_type = yes(_),
         pred_info_get_goal_type(PredInfo, GoalType),
         GoalType \= goal_not_for_promise(np_goal_type_clause_and_foreign),
         not is_unify_index_or_compare_pred(PredInfo),
@@ -3631,7 +3632,8 @@ build_type_param_variance_restrictions(TypeTable, TypeCtor, InvariantSet) :-
         hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        TypeBody = hlds_du_type(OoMCtors, _MaybeSuperType, _MaybeCanonical,
+        TypeBody = hlds_du_type(TypeBodyDu),
+        TypeBodyDu = type_body_du(OoMCtors, _MaybeSuperType, _MaybeCanonical,
             _MaybeTypeRepn, _IsForeignType)
     then
         Ctors = one_or_more_to_list(OoMCtors),
@@ -3685,7 +3687,7 @@ build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable, CurTypeCtor,
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             require_complete_switch [TypeBody]
             (
-                TypeBody = hlds_du_type(_, _, _, _, _),
+                TypeBody = hlds_du_type(_),
                 ( if
                     TypeCtor = CurTypeCtor,
                     type_list_to_var_list(TypeArgs, CurTypeParams)

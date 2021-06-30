@@ -603,7 +603,7 @@ ml_gen_hl_tag_field_id(ModuleInfo, Target, Type) = FieldId :-
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
     (
-        TypeDefnBody = hlds_du_type(_, _, _, MaybeRepn, _),
+        TypeDefnBody = hlds_du_type(type_body_du(_, _, _, MaybeRepn, _)),
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")

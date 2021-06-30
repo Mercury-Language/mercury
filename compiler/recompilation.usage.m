@@ -1099,7 +1099,8 @@ find_items_used_by_type_and_mode(TypeAndMode, !Info) :-
 
 find_items_used_by_type_body(TypeBody, !Info) :-
     (
-        TypeBody = hlds_du_type(Ctors, MaybeSuperType, _, _, _),
+        TypeBody = hlds_du_type(TypeBodyDu),
+        TypeBodyDu = type_body_du(Ctors, MaybeSuperType, _, _, _),
         (
             MaybeSuperType = yes(SuperType),
             find_items_used_by_type(SuperType, !Info)

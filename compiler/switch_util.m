@@ -940,7 +940,9 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValuesInRange) :-
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
-            TypeBody = hlds_du_type(OoMCtors, MaybeSuperType, _, MaybeRepn, _),
+            TypeBody = hlds_du_type(TypeBodyDu),
+            TypeBodyDu = type_body_du(OoMCtors, MaybeSuperType, _,
+                MaybeRepn, _),
             (
                 MaybeRepn = yes(Repn)
             ;
@@ -1461,7 +1463,7 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
-        TypeBody = hlds_du_type(_, _, _, MaybeRepn, _),
+        TypeBody = hlds_du_type(type_body_du(_, _, _, MaybeRepn, _)),
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")

@@ -369,7 +369,8 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             Details = tcd_eqv(MaybePseudoTypeInfo),
             LayoutIndexable = no
         ;
-            TypeBody = hlds_du_type(_Ctors, MaybeSuperType, MaybeCanonical,
+            TypeBody = hlds_du_type(TypeBodyDu),
+            TypeBodyDu = type_body_du(_Ctors, MaybeSuperType, MaybeCanonical,
                 MaybeRepn, _IsForeignType),
             (
                 MaybeRepn = no,
@@ -421,7 +422,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
     some [!Flags] (
         !:Flags = set.init,
         (
-            TypeBody = hlds_du_type(_, _, _, _, _),
+            TypeBody = hlds_du_type(_),
             set.insert(kind_of_du_flag, !Flags)
         ;
             ( TypeBody = hlds_eqv_type(_)

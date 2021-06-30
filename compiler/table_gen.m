@@ -3829,7 +3829,8 @@ get_enum_max_int_tag(TypeTable, TypeCtor, MaxIntTag) :-
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     ( if
-        TypeBody = hlds_du_type(_Ctors, MaybeSuperType, MaybeCanonical,
+        TypeBody = hlds_du_type(TypeBodyDu),
+        TypeBodyDu = type_body_du(_Ctors, MaybeSuperType, MaybeCanonical,
             MaybeRepn, _MaybeForeign),
         MaybeCanonical = canon,
         MaybeRepn = yes(Repn),

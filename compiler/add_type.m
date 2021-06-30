@@ -79,9 +79,6 @@
 :- import_module string.
 :- import_module term.
 
-:- inst hlds_type_body_du for hlds_type_body/0
-    --->    hlds_du_type(ground, ground, ground, ground, ground).
-
 %---------------------------------------------------------------------------%
 %
 % The top level: adding the three kinds of item_type_defns (abstract,
@@ -110,7 +107,7 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
         (
             Body = hlds_abstract_type(_)
         ;
-            Body = hlds_du_type(_, _, _, _, _),
+            Body = hlds_du_type(_),
             string.suffix(term.context_file(Context), ".int2")
             % If the type definition comes from a .int2 file then we must
             % treat it as abstract. The constructors may only be used
@@ -425,8 +422,9 @@ convert_type_defn_to_hlds(TypeDefn, TypeCtor, HLDSBody, !ModuleInfo) :-
                 MaybeDirectArgCtors),
         MaybeRepn = no,
         MaybeForeign = no,
-        HLDSBody = hlds_du_type(Ctors, MaybeSuperType, MaybeUserEqComp,
+        TypeBodyDu = type_body_du(Ctors, MaybeSuperType, MaybeUserEqComp,
             MaybeRepn, MaybeForeign),
+        HLDSBody = hlds_du_type(TypeBodyDu),
         (
             MaybeDirectArgCtors = no
         ;
@@ -538,13 +536,13 @@ combine_old_and_new_type_status(OldDefn, NewTypeStatus, CombinedTypeStatus,
 merge_maybe_foreign_type_bodies(Globals, BodyA, BodyB, Body) :-
     (
         BodyA = hlds_foreign_type(ForeignTypeBodyA),
-        BodyB = hlds_du_type(_, _, _, _, _),
-        merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, BodyB,
+        BodyB = hlds_du_type(BodyDuB),
+        merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, BodyDuB,
             Body)
     ;
-        BodyA = hlds_du_type(_, _, _, _, _),
+        BodyA = hlds_du_type(BodyDuA),
         BodyB = hlds_foreign_type(ForeignTypeBodyB),
-        merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyB, BodyA,
+        merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyB, BodyDuA,
             Body)
     ;
         BodyA = hlds_foreign_type(ForeignTypeBodyA),
@@ -555,12 +553,11 @@ merge_maybe_foreign_type_bodies(Globals, BodyA, BodyB, Body) :-
     ).
 
 :- pred merge_foreign_and_du_type_bodies(globals::in,
-    foreign_type_body::in, hlds_type_body::in(hlds_type_body_du),
-    hlds_type_body::out) is semidet.
+    foreign_type_body::in, type_body_du::in, hlds_type_body::out) is semidet.
 
-merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, DuTypeBodyB,
+merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, TypeBodyDuB,
         Body) :-
-    DuTypeBodyB = hlds_du_type(_Ctors, MaybeSuperTypeB, _MaybeUserEq,
+    TypeBodyDuB = type_body_du(_Ctors, MaybeSuperTypeB, _MaybeUserEq,
         _MaybeRepn, MaybeForeignTypeBodyB),
     MaybeSuperTypeB = no,
     (
@@ -579,7 +576,9 @@ merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, DuTypeBodyB,
     then
         Body = hlds_foreign_type(ForeignTypeBody)
     else
-        Body = DuTypeBodyB ^ du_type_is_foreign_type := yes(ForeignTypeBody)
+        TypeBodyDu = TypeBodyDuB ^ du_type_is_foreign_type
+            := yes(ForeignTypeBody),
+        Body = hlds_du_type(TypeBodyDu)
     ).
 
 :- pred merge_foreign_type_bodies(foreign_type_body::in,
@@ -824,7 +823,7 @@ get_body_is_solver_type(Body, IsSolverType) :-
             IsSolverType = non_solver_type
         )
     ;
-        ( Body = hlds_du_type(_, _, _, _, _)
+        ( Body = hlds_du_type(_)
         ; Body = hlds_eqv_type(_)
         ; Body = hlds_foreign_type(_)
         ),
@@ -926,7 +925,8 @@ add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
     get_type_defn_status(TypeDefn, Status),
     get_type_defn_ctors_need_qualifier(TypeDefn, NeedQual),
     (
-        Body = hlds_du_type(OoMCtors, MaybeSuperType, _MaybeUserEqCmp,
+        Body = hlds_du_type(BodyDu),
+        BodyDu = type_body_du(OoMCtors, MaybeSuperType, _MaybeUserEqCmp,
             _MaybeRepn, _MaybeForeign),
 
         % Check subtype conditions if this is a subtype definitions.
@@ -934,7 +934,7 @@ add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
         % save a pass over the type table.
         (
             MaybeSuperType = yes(SuperType),
-            check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, Body,
+            check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, BodyDu,
                 SuperType, MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs),
             (
                 MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
@@ -942,8 +942,9 @@ add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
                 MaybeSetSubtypeNoncanon = set_subtype_noncanon,
                 % Set noncanonical flag on subtype definition if the base type
                 % is noncanonical.
-                NoncanonBody = Body ^ du_type_canonical :=
+                NoncanonBodyDu = BodyDu ^ du_type_canonical :=
                     noncanon(noncanon_subtype),
+                NoncanonBody = hlds_du_type(NoncanonBodyDu),
                 set_type_defn_body(NoncanonBody, TypeDefn, NoncanonTypeDefn),
                 module_info_get_type_table(!.ModuleInfo, TypeTable0),
                 replace_type_ctor_defn(TypeCtor, NoncanonTypeDefn,
@@ -1239,13 +1240,13 @@ check_foreign_type_for_current_target(TypeCtor, ForeignTypeBody, PrevErrors,
     ;       set_subtype_noncanon.
 
 :- pred check_subtype_defn(type_table::in, tvarset::in, type_ctor::in,
-    hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du), mer_type::in,
+    hlds_type_defn::in, type_body_du::in, mer_type::in,
     maybe_set_subtype_noncanonical::out,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBody, SuperType,
-        MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs) :-
+check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBodyDu,
+        SuperType, MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs) :-
     hlds_data.get_type_defn_status(TypeDefn, OrigTypeStatus),
     hlds_data.get_type_defn_context(TypeDefn, Context),
     ( if type_to_ctor_and_args(SuperType, SuperTypeCtor, SuperTypeArgs) then
@@ -1253,7 +1254,7 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBody, SuperType,
             SuperTypeCtor, SearchRes, [], _PrevSuperTypeCtors),
         (
             SearchRes = ok(SuperTypeDefn),
-            check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
+            check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
                 SuperTypeCtor, SuperTypeDefn, SuperTypeArgs,
                 MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs)
         ;
@@ -1280,23 +1281,24 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBody, SuperType,
     ).
 
 :- pred check_subtype_defn_2(type_table::in,
-    type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
+    type_ctor::in, hlds_type_defn::in, type_body_du::in,
     type_ctor::in, hlds_type_defn::in, list(mer_type)::in,
     maybe_set_subtype_noncanonical::out,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
+check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
         SuperTypeCtor, SuperTypeDefn, SuperTypeArgs,
         MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
     hlds_data.get_type_defn_body(SuperTypeDefn, SuperTypeBody),
     (
-        SuperTypeBody = hlds_du_type(_, _, _, _, IsForeign),
+        SuperTypeBody = hlds_du_type(SuperTypeBodyDu),
+        SuperTypeBodyDu = type_body_du(_, _, _, _, IsForeign),
         (
             IsForeign = no,
-            check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBody,
-                SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
+            check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
+                SuperTypeCtor, SuperTypeDefn, SuperTypeBodyDu, SuperTypeArgs,
                 MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs)
         ;
             IsForeign = yes(_),
@@ -1327,14 +1329,14 @@ check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
     ).
 
 :- pred check_subtype_defn_3(type_table::in,
-    type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
-    type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
+    type_ctor::in, hlds_type_defn::in, type_body_du::in,
+    type_ctor::in, hlds_type_defn::in, type_body_du::in,
     list(mer_type)::in, maybe_set_subtype_noncanonical::out,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBody,
-        SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
+check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
+        SuperTypeCtor, SuperTypeDefn, SuperTypeBodyDu, SuperTypeArgs,
         MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs) :-
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     check_subtype_has_base_type(TypeTable, TypeStatus, TypeCtor,
@@ -1348,8 +1350,8 @@ check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBody,
             BaseMaybeCanonical = noncanon(_),
             MaybeSetSubtypeNoncanon = set_subtype_noncanon
         ),
-        check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBody,
-            SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
+        check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
+            SuperTypeCtor, SuperTypeDefn, SuperTypeBodyDu, SuperTypeArgs,
             !FoundInvalidType, !Specs)
     ;
         MaybeBaseTypeError = error(Pieces),
@@ -1377,7 +1379,8 @@ check_subtype_has_base_type(TypeTable, OrigTypeStatus,
         MaybeMaybeCanon) :-
     hlds_data.get_type_defn_body(CurSuperTypeDefn, CurSuperTypeBody),
     (
-        CurSuperTypeBody = hlds_du_type(_, MaybeNextSuperType,
+        CurSuperTypeBody = hlds_du_type(CurSuperTypeBodyDu),
+        CurSuperTypeBodyDu = type_body_du(_, MaybeNextSuperType,
             MaybeCanonical, _, IsForeign),
         (
             IsForeign = no,
@@ -1618,13 +1621,13 @@ describe_which_is_supertype_of_chain(First, OrigTypeCtor, SuperTypeCtors)
 %---------------------%
 
 :- pred check_subtype_ctors(type_table::in,
-    type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
-    type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
+    type_ctor::in, hlds_type_defn::in, type_body_du::in,
+    type_ctor::in, hlds_type_defn::in, type_body_du::in,
     list(mer_type)::in, found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBody,
-        SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
+check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
+        SuperTypeCtor, SuperTypeDefn, SuperTypeBodyDu, SuperTypeArgs,
         !FoundInvalidType, !Specs) :-
     hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet0),
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
@@ -1642,13 +1645,13 @@ check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBody,
     map.from_corresponding_lists(SuperTypeParams, SuperTypeArgs, TSubst),
 
     % Apply the type substitution to the supertype constructors' arguments.
-    SuperTypeBody = hlds_du_type(OoMSuperCtors, _, _, _, _),
+    SuperTypeBodyDu = type_body_du(OoMSuperCtors, _, _, _, _),
     SuperCtors0 = one_or_more_to_list(OoMSuperCtors),
     list.map(rename_and_rec_subst_in_constructor(Renaming, TSubst),
         SuperCtors0, SuperCtors),
 
     % Check each subtype constructor against the supertype's constructors.
-    TypeBody = hlds_du_type(OoMCtors, _, _, _, _),
+    TypeBodyDu = type_body_du(OoMCtors, _, _, _, _),
     Ctors = one_or_more_to_list(OoMCtors),
     foldl2(
         check_subtype_ctor(TypeTable, NewTVarSet, TypeStatus,
@@ -1825,7 +1828,8 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
             TypeCtorA = type_ctor(NameA, ArityA),
             search_type_ctor_defn(TypeTable, TypeCtorA, TypeDefnA),
             hlds_data.get_type_defn_body(TypeDefnA, TypeBodyA),
-            TypeBodyA = hlds_du_type(_, yes(SuperTypeA), _, _, _),
+            TypeBodyA =
+                hlds_du_type(type_body_du(_, yes(SuperTypeA), _, _, _)),
 
             hlds_data.get_type_defn_status(TypeDefnA, TypeStatusA),
             not subtype_defn_int_supertype_defn_impl(OrigTypeStatus,

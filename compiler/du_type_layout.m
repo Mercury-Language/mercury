@@ -270,7 +270,8 @@ fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
             "TypeCtorArity != NumRepnTypeParams"),
         get_type_defn_body(TypeDefn0, Body0),
         (
-            Body0 = hlds_du_type(Ctors, MaybeSuperType, MaybeCanon,
+            Body0 = hlds_du_type(BodyDu0),
+            BodyDu0 = type_body_du(Ctors, MaybeSuperType, MaybeCanon,
                 _, _MaybeForeignTypeBody),
             (
                 (
@@ -320,7 +321,8 @@ fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
                     % exactly one of the two represents a foreign type.
                     (
                         MaybeDuRepn = have_du_type_repn(DuRepn),
-                        Body = Body0 ^ du_type_repn := yes(DuRepn),
+                        BodyDu = BodyDu0 ^ du_type_repn := yes(DuRepn),
+                        Body = hlds_du_type(BodyDu),
                         set_type_defn_body(Body, TypeDefn0, TypeDefn),
                         TypeCtorTypeDefn = TypeCtor - TypeDefn
                     ;
@@ -371,7 +373,7 @@ fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
         TypeCtorTypeDefn = TypeCtor - TypeDefn0,
         get_type_defn_body(TypeDefn0, Body0),
         (
-            ( Body0 = hlds_du_type(_, _, _, _, _)
+            ( Body0 = hlds_du_type(_)
             ; Body0 = hlds_eqv_type(_)
             ; Body0 = hlds_foreign_type(_)
             ),
@@ -1533,8 +1535,10 @@ compare_old_new(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
         get_type_defn_body(OldTypeCtorDefn, OldBody),
         get_type_defn_body(NewTypeCtorDefn, NewBody),
         ( if
-            MaybeOldRepn = OldBody ^ du_type_repn,
-            MaybeNewRepn = NewBody ^ du_type_repn
+            OldBody = hlds_du_type(OldBodyDu),
+            NewBody = hlds_du_type(NewBodyDu),
+            MaybeOldRepn = OldBodyDu ^ du_type_repn,
+            MaybeNewRepn = NewBodyDu ^ du_type_repn
         then
             ( if set.member(NewTypeCtor, UnRepnTypeCtors) then
                 UnRepnStr = " (no new repn)"
@@ -1697,7 +1701,8 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
     (
-        Body0 = hlds_du_type(OoMCtors, MaybeSuperType, MaybeCanonical,
+        Body0 = hlds_du_type(BodyDu0),
+        BodyDu0 = type_body_du(OoMCtors, MaybeSuperType, MaybeCanonical,
             MaybeRepn0, MaybeForeign),
         OoMCtors = one_or_more(HeadCtor, TailCtors),
         expect(unify(MaybeRepn0, no), $pred, "MaybeRepn0 != no"),
@@ -1710,13 +1715,13 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
                 MaybeForeignEnumTagMap = yes(ForeignEnumTagMap)
             then
                 decide_simple_type_foreign_enum(ModuleInfo, Params,
-                    TypeCtor, TypeDefn0, Body0, OoMCtors, ForeignEnumTagMap,
+                    TypeCtor, TypeDefn0, BodyDu0, OoMCtors, ForeignEnumTagMap,
                     TypeCtorTypeDefn, !Specs)
             else if
                 ctors_are_all_constants([HeadCtor | TailCtors], _)
             then
                 decide_simple_type_dummy_or_mercury_enum(ModuleInfo, Params,
-                    TypeCtor, TypeDefn0, Body0, OoMCtors, TypeCtorTypeDefn,
+                    TypeCtor, TypeDefn0, BodyDu0, OoMCtors, TypeCtorTypeDefn,
                     !ComponentTypeMap, !Specs)
             else if
                 TailCtors = []
@@ -1729,7 +1734,7 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
                     Params ^ ddp_unboxed_no_tag_types = use_unboxed_no_tag_types
                 then
                     decide_simple_type_notag(ModuleInfo, Params,
-                        TypeCtor, TypeDefn0, Body0,
+                        TypeCtor, TypeDefn0, BodyDu0,
                         SingleCtorSymName, SingleArg, SingleCtorContext,
                         TypeCtorTypeDefn, !NoTagTypeMap, !Specs)
                 else
@@ -1741,7 +1746,8 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
                     TypeCtorTypeDefn = TypeCtorTypeDefn0
                 )
             else
-                % Figure out the representation of these types in the second pass.
+                % Figure out the representation of these types
+                % in the second pass.
                 TypeCtorTypeDefn = TypeCtorTypeDefn0
             ),
             cons(TypeCtorTypeDefn, !NonSubTypeCtorTypeDefns)
@@ -1785,13 +1791,13 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
 %---------------------%
 
 :- pred decide_simple_type_foreign_enum(module_info::in, decide_du_params::in,
-    type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_du_type),
+    type_ctor::in, hlds_type_defn::in, type_body_du::in,
     one_or_more(constructor)::in, {cons_id_to_tag_map, foreign_language}::in,
     pair(type_ctor, hlds_type_defn)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
-        Body0, OoMCtors, ForeignEnums, TypeCtorTypeDefn, !Specs) :-
+        BodyDu0, OoMCtors, ForeignEnums, TypeCtorTypeDefn, !Specs) :-
     % XXX TYPE_REPN Should MaybeForeign = yes(...) be allowed?
     ForeignEnums = {ForeignEnumTagMap, Lang},
     DuKind = du_type_kind_foreign_enum(Lang),
@@ -1823,7 +1829,8 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
     MaybeDirectArgFunctors = no,
     Repn = du_type_repn(CtorRepns, CtorRepnMap, MaybeCheaperTagTest,
         DuKind, MaybeDirectArgFunctors),
-    Body = Body0 ^ du_type_repn := yes(Repn),
+    BodyDu = BodyDu0 ^ du_type_repn := yes(Repn),
+    Body = hlds_du_type(BodyDu),
     set_type_defn_body(Body, TypeDefn0, TypeDefn),
     TypeCtorTypeDefn = TypeCtor - TypeDefn.
 
@@ -1856,13 +1863,13 @@ add_dummy_repn_to_ctor_arg(ConsArg) = ConsArgRepn :-
 
 :- pred decide_simple_type_dummy_or_mercury_enum(module_info::in,
     decide_du_params::in, type_ctor::in, hlds_type_defn::in,
-    hlds_type_body::in(hlds_du_type), one_or_more(constructor)::in,
+    type_body_du::in, one_or_more(constructor)::in,
     pair(type_ctor, hlds_type_defn)::out,
     component_type_map::in, component_type_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
-        TypeCtor, TypeDefn0, Body0, OoMCtors, TypeCtorTypeDefn,
+        TypeCtor, TypeDefn0, BodyDu0, OoMCtors, TypeCtorTypeDefn,
         !ComponentTypeMap, !Specs) :-
     OoMCtors = one_or_more(HeadCtor, TailCtors),
     (
@@ -1900,7 +1907,8 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
     MaybeDirectArgFunctors = no,
     Repn = du_type_repn(CtorRepns, CtorRepnMap, MaybeCheaperTagTest,
         DuTypeKind, MaybeDirectArgFunctors),
-    Body = Body0 ^ du_type_repn := yes(Repn),
+    BodyDu = BodyDu0 ^ du_type_repn := yes(Repn),
+    Body = hlds_du_type(BodyDu),
     set_type_defn_body(Body, TypeDefn0, TypeDefn),
     TypeCtorTypeDefn = TypeCtor - TypeDefn,
 
@@ -1928,13 +1936,13 @@ assign_tags_to_enum_constants([Ctor | Ctors], [CtorRepn | CtorRepns],
 %---------------------%
 
 :- pred decide_simple_type_notag(module_info::in, decide_du_params::in,
-    type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_du_type),
+    type_ctor::in, hlds_type_defn::in, type_body_du::in,
     sym_name::in, constructor_arg::in, prog_context::in,
     pair(type_ctor, hlds_type_defn)::out,
     no_tag_type_table::in, no_tag_type_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_simple_type_notag(_ModuleInfo, Params, TypeCtor, TypeDefn0, Body0,
+decide_simple_type_notag(_ModuleInfo, Params, TypeCtor, TypeDefn0, BodyDu0,
         SingleCtorSymName, SingleArg, SingleCtorContext,
         TypeCtorTypeDefn, !NoTagTypeMap, !Specs) :-
     SingleCtorTag = no_tag,
@@ -1974,7 +1982,8 @@ decide_simple_type_notag(_ModuleInfo, Params, TypeCtor, TypeDefn0, Body0,
     MaybeDirectArgFunctors = no,
     Repn = du_type_repn([SingleCtorRepn], CtorRepnMap, MaybeCheaperTagTest,
         DuTypeKind, MaybeDirectArgFunctors),
-    Body = Body0 ^ du_type_repn := yes(Repn),
+    BodyDu = BodyDu0 ^ du_type_repn := yes(Repn),
+    Body = hlds_du_type(BodyDu),
     set_type_defn_body(Body, TypeDefn0, TypeDefn),
     TypeCtorTypeDefn = TypeCtor - TypeDefn,
 
@@ -2114,7 +2123,8 @@ decide_if_subtype_of_simple_du_type(OldTypeTable, TypeCtorTypeDefn,
     TypeCtorTypeDefn = TypeCtor - TypeDefn,
     get_type_defn_body(TypeDefn, Body),
     (
-        Body = hlds_du_type(Ctors, MaybeSuperType, _MaybeCanonical,
+        Body = hlds_du_type(BodyDu),
+        BodyDu = type_body_du(Ctors, MaybeSuperType, _MaybeCanonical,
             MaybeRepn, _MaybeForeign),
         (
             MaybeSuperType = yes(SuperType),
@@ -2239,7 +2249,8 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
     (
-        Body0 = hlds_du_type(Ctors, MaybeSuperType, _MaybeCanonical,
+        Body0 = hlds_du_type(BodyDu0),
+        BodyDu0 = type_body_du(Ctors, MaybeSuperType, _MaybeCanonical,
             MaybeRepn0, _MaybeForeign),
         expect(unify(MaybeSuperType, no), $pred, "subtype not separated out"),
         (
@@ -2251,7 +2262,8 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
             MaybeRepn0 = no,
             decide_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
                 TypeCtor, TypeDefn0, one_or_more_to_list(Ctors), Repn, !Specs),
-            Body = Body0 ^ du_type_repn := yes(Repn),
+            BodyDu = BodyDu0 ^ du_type_repn := yes(Repn),
+            Body = hlds_du_type(BodyDu),
             set_type_defn_body(Body, TypeDefn0, TypeDefn),
             TypeCtorTypeDefn = TypeCtor - TypeDefn
         )
@@ -3497,7 +3509,8 @@ decide_if_subtype(OldTypeTable, NonSubTypeCtorsTypeDefns,
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
     (
-        Body0 = hlds_du_type(Ctors, MaybeSuperType, _MaybeCanonical,
+        Body0 = hlds_du_type(BodyDu0),
+        BodyDu0 = type_body_du(Ctors, MaybeSuperType, _MaybeCanonical,
             MaybeRepn0, _MaybeForeign),
         (
             MaybeSuperType = yes(SuperType),
@@ -3510,7 +3523,8 @@ decide_if_subtype(OldTypeTable, NonSubTypeCtorsTypeDefns,
                     BaseTypeCtor, BaseRepn)
             then
                 make_subtype_type_repn(TypeCtor, Ctors, BaseRepn, Repn),
-                Body = Body0 ^ du_type_repn := yes(Repn),
+                BodyDu = BodyDu0 ^ du_type_repn := yes(Repn),
+                Body = hlds_du_type(BodyDu),
                 set_type_defn_body(Body, TypeDefn0, TypeDefn),
                 TypeCtorTypeDefn = TypeCtor - TypeDefn
             else
@@ -3548,7 +3562,8 @@ decide_if_subtype(OldTypeTable, NonSubTypeCtorsTypeDefns,
 search_du_type_repn(TypeDefns, TypeCtor, DuTypeRepn) :-
     assoc_list.search(TypeDefns, TypeCtor, TypeRepn),
     get_type_defn_body(TypeRepn, TypeBody),
-    TypeBody ^ du_type_repn = yes(DuTypeRepn).
+    TypeBody = hlds_du_type(TypeBodyDu),
+    TypeBodyDu ^ du_type_repn = yes(DuTypeRepn).
 
 :- pred make_subtype_type_repn(type_ctor::in, one_or_more(constructor)::in,
     du_type_repn::in, du_type_repn::out) is det.
@@ -3735,7 +3750,8 @@ is_direct_arg_ctor(ComponentTypeMap, TypeCtorModule, TypeStatus,
             % operations.
 
             get_type_defn_body(ArgTypeDefn, ArgTypeDefnBody),
-            ArgTypeDefnBody = hlds_du_type(_ArgCtors, _ArgMaybeSuperType,
+            ArgTypeDefnBody = hlds_du_type(ArgTypeDefnBodyDu),
+            ArgTypeDefnBodyDu = type_body_du(_ArgCtors, _ArgMaybeSuperType,
                 _ArgMaybeUserEqComp, _ArgMaybeRepn, ArgMaybeForeign),
 
             ArgMaybeForeign = no,
@@ -4219,9 +4235,6 @@ deref_eqv_types(ModuleInfo, Type0, Type) :-
 
 %---------------------%
 
-:- inst hlds_du_type for hlds_type_body/0
-    --->    hlds_du_type(ground, ground, ground, ground, ground).
-
 :- pred separate_out_constants(list(constructor)::in,
     list(constructor)::out, list(constructor)::out) is det.
 
@@ -4403,7 +4416,8 @@ show_decisions_if_du_type(Stream, MaybePrimaryTags, ShowWhichTypes,
             ; Body = hlds_solver_type(_)
             )
         ;
-            Body = hlds_du_type(_Ctors, MaybeSuperType, _MaybeCanonical,
+            Body = hlds_du_type(BodyDu),
+            BodyDu = type_body_du(_Ctors, MaybeSuperType, _MaybeCanonical,
                 MaybeRepn, _MaybeForeign),
             (
                 MaybeRepn = no,

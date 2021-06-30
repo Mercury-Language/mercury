@@ -371,7 +371,7 @@ ml_get_maybe_cheaper_tag_test(Info, Type, CheaperTagTest) :-
     ( if
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         get_type_defn_body(TypeDefn, TypeBody),
-        TypeBody = hlds_du_type(_, _, _, MaybeRepn, _),
+        TypeBody = hlds_du_type(type_body_du(_, _, _, MaybeRepn, _)),
         MaybeRepn = yes(Repn)
     then
         CheaperTagTest = Repn ^ dur_cheaper_tag_test

@@ -791,7 +791,8 @@ propagate_ctor_info_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        OoMConstructors = TypeBody ^ du_type_ctors
+        TypeBody = hlds_du_type(TypeBodyDu),
+        OoMConstructors = TypeBodyDu ^ du_type_ctors
     then
         ( if
             InstResults0 = inst_test_results(_, _, _, _, _, PropagatedResult0),

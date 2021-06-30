@@ -362,7 +362,8 @@ write_type_params_loop(Stream, TVarSet, HeadParam, TailParams, !IO) :-
 
 write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
     (
-        TypeBody = hlds_du_type(Ctors, MaybeSuperType, MaybeUserEqComp,
+        TypeBody = hlds_du_type(TypeBodyDu),
+        TypeBodyDu = type_body_du(Ctors, MaybeSuperType, MaybeUserEqComp,
             MaybeRepn, Foreign),
         io.nl(Stream, !IO),
         (

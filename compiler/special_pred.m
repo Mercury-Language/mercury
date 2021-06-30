@@ -362,7 +362,8 @@ special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, TypeBody) :-
             )
         )
     ;
-        one_or_more(HeadCtor, TailCtors) = TypeBody ^ du_type_ctors,
+        TypeBody = hlds_du_type(TypeBodyDu),
+        one_or_more(HeadCtor, TailCtors) = TypeBodyDu ^ du_type_ctors,
         some [Ctor] (
             ( Ctor = HeadCtor
             ; list.member(Ctor, TailCtors)

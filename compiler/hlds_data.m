@@ -736,7 +736,14 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
     % to be equivalent to some other type), and solver_type.
     %
 :- type hlds_type_body
-    --->    hlds_du_type(
+    --->    hlds_du_type(type_body_du)
+    ;       hlds_eqv_type(mer_type)
+    ;       hlds_foreign_type(foreign_type_body)
+    ;       hlds_solver_type(type_details_solver)
+    ;       hlds_abstract_type(type_details_abstract).
+
+:- type type_body_du
+    --->    type_body_du(
                 % The ctors for this type.
                 du_type_ctors               :: one_or_more(constructor),
 
@@ -772,11 +779,7 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 % add_type.m will set the body of this type to
                 % hlds_foreign_type, not hlds_du_type.
                 du_type_is_foreign_type     :: maybe(foreign_type_body)
-            )
-    ;       hlds_eqv_type(mer_type)
-    ;       hlds_foreign_type(foreign_type_body)
-    ;       hlds_solver_type(type_details_solver)
-    ;       hlds_abstract_type(type_details_abstract).
+            ).
 
     % This is how type, modes and constructors are represented. The parts that
     % are not defined here (i.e. type_param, constructor, type, inst and mode)
@@ -1041,7 +1044,7 @@ set_type_defn_prev_errors(X, !Defn) :-
 
 get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
     (
-        TypeBody = hlds_du_type(_, _, _, MaybeRepn, _),
+        TypeBody = hlds_du_type(type_body_du(_, _, _, MaybeRepn, _)),
         (
             MaybeRepn = no,
             unexpected($pred, "MaybeRepn = no")

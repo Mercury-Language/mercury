@@ -213,7 +213,8 @@ add_special_pred_decl_defn(SpecialPredId, TVarSet, Type0, TypeCtor, TypeBody,
     then
         pred_info_set_status(PredStatus, PredInfo0, PredInfo1)
     else if
-        TypeBody ^ du_type_canonical = noncanon(_),
+        TypeBody = hlds_du_type(TypeBodyDu),
+        TypeBodyDu ^ du_type_canonical = noncanon(_),
         pred_info_get_status(PredInfo0, OldPredStatus),
         OldPredStatus = pred_status(status_pseudo_imported),
         pred_status_is_imported(PredStatus) = no
@@ -506,8 +507,9 @@ collect_type_defn_for_tuple(TypeCtor, Type, TVarSet, TypeBody, Context) :-
     MaybeSuperType = no,
     MaybeCanonical = canon,
     IsForeign = no,
-    TypeBody = hlds_du_type(one_or_more(Ctor, []), MaybeSuperType,
+    TypeBodyDu = type_body_du(one_or_more(Ctor, []), MaybeSuperType,
         MaybeCanonical, yes(Repn), IsForeign),
+    TypeBody = hlds_du_type(TypeBodyDu),
     construct_type(TypeCtor, TupleArgTypes, Type),
 
     term.context_init(Context).

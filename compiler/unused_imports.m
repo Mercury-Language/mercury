@@ -437,7 +437,8 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
         DefinedInThisModule = yes,
         Visibility = type_visibility(TypeStatus),
         (
-            TypeBody = hlds_du_type(Ctors, MaybeSuperType, _, _, _),
+            TypeBody = hlds_du_type(TypeBodyDu),
+            TypeBodyDu = type_body_du(Ctors, MaybeSuperType, _, _, _),
             list.foldl(ctor_used_modules(Visibility),
                 one_or_more_to_list(Ctors), !UsedModules),
             (
