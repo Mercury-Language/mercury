@@ -156,6 +156,7 @@ ORDINARY_PROGS = \
 	from_ground_term_bug \
 	from_int_int16 \
 	from_int_int32 \
+	from_int_int64 \
 	from_int_int8 \
 	from_int_uint16 \
 	from_int_uint32 \
