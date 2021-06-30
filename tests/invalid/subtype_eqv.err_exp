@@ -1,4 +1,6 @@
-subtype_eqv.m:020: Error: `O' is not a subtype of the corresponding type `L' in
+subtype_eqv.m:020: Error: the first argument of `orange' has a type, `O', which
+subtype_eqv.m:020:   is not a subtype of the corresponding argument type `L' in
 subtype_eqv.m:020:   the supertype.
-subtype_eqv.m:021: Error: `L' is not a subtype of the corresponding type `O' in
+subtype_eqv.m:021: Error: the first argument of `lemon' has a type, `L', which
+subtype_eqv.m:021:   is not a subtype of the corresponding argument type `O' in
 subtype_eqv.m:021:   the supertype.

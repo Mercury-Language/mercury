@@ -1,39 +1,138 @@
-subtype_invalid_supertype.m:008: Error: `int'/0 is not a discriminated union
-subtype_invalid_supertype.m:008:   type.
-subtype_invalid_supertype.m:009: Error: `uint'/0 is not a discriminated union
-subtype_invalid_supertype.m:009:   type.
-subtype_invalid_supertype.m:010: Error: `int8'/0 is not a discriminated union
-subtype_invalid_supertype.m:010:   type.
-subtype_invalid_supertype.m:011: Error: `uint8'/0 is not a discriminated union
-subtype_invalid_supertype.m:011:   type.
-subtype_invalid_supertype.m:012: Error: `int16'/0 is not a discriminated union
-subtype_invalid_supertype.m:012:   type.
-subtype_invalid_supertype.m:013: Error: `uint16'/0 is not a discriminated union
-subtype_invalid_supertype.m:013:   type.
-subtype_invalid_supertype.m:014: Error: `int32'/0 is not a discriminated union
-subtype_invalid_supertype.m:014:   type.
-subtype_invalid_supertype.m:015: Error: `uint32'/0 is not a discriminated union
-subtype_invalid_supertype.m:015:   type.
-subtype_invalid_supertype.m:016: Error: `int64'/0 is not a discriminated union
-subtype_invalid_supertype.m:016:   type.
-subtype_invalid_supertype.m:017: Error: `uint64'/0 is not a discriminated union
-subtype_invalid_supertype.m:017:   type.
-subtype_invalid_supertype.m:018: Error: `float'/0 is not a discriminated union
-subtype_invalid_supertype.m:018:   type.
-subtype_invalid_supertype.m:019: Error: `string'/0 is not a discriminated union
-subtype_invalid_supertype.m:019:   type.
-subtype_invalid_supertype.m:020: Error: `character'/0 is not a discriminated
-subtype_invalid_supertype.m:020:   union type.
-subtype_invalid_supertype.m:022: Error: `{}'/0 is not a discriminated union
-subtype_invalid_supertype.m:022:   type.
-subtype_invalid_supertype.m:025: Error: `func'/1 is not a discriminated union
-subtype_invalid_supertype.m:025:   type.
-subtype_invalid_supertype.m:028: Error: `pred'/0 is not a discriminated union
-subtype_invalid_supertype.m:028:   type.
-subtype_invalid_supertype.m:031: Error: undefined type `undefined'/0.
+subtype_invalid_supertype.m:008: Error: `int'/0,
+subtype_invalid_supertype.m:008:   the super type of `s1_1'/0,
+subtype_invalid_supertype.m:008:   is not a discriminated union type.
+subtype_invalid_supertype.m:009: Error: `uint'/0,
+subtype_invalid_supertype.m:009:   the super type of `s1_2'/0,
+subtype_invalid_supertype.m:009:   is not a discriminated union type.
+subtype_invalid_supertype.m:010: Error: `int8'/0,
+subtype_invalid_supertype.m:010:   the super type of `s1_3'/0,
+subtype_invalid_supertype.m:010:   is not a discriminated union type.
+subtype_invalid_supertype.m:011: Error: `uint8'/0,
+subtype_invalid_supertype.m:011:   the super type of `s1_4'/0,
+subtype_invalid_supertype.m:011:   is not a discriminated union type.
+subtype_invalid_supertype.m:012: Error: `int16'/0,
+subtype_invalid_supertype.m:012:   the super type of `s1_5'/0,
+subtype_invalid_supertype.m:012:   is not a discriminated union type.
+subtype_invalid_supertype.m:013: Error: `uint16'/0,
+subtype_invalid_supertype.m:013:   the super type of `s1_6'/0,
+subtype_invalid_supertype.m:013:   is not a discriminated union type.
+subtype_invalid_supertype.m:014: Error: `int32'/0,
+subtype_invalid_supertype.m:014:   the super type of `s1_7'/0,
+subtype_invalid_supertype.m:014:   is not a discriminated union type.
+subtype_invalid_supertype.m:015: Error: `uint32'/0,
+subtype_invalid_supertype.m:015:   the super type of `s1_8'/0,
+subtype_invalid_supertype.m:015:   is not a discriminated union type.
+subtype_invalid_supertype.m:016: Error: `int64'/0,
+subtype_invalid_supertype.m:016:   the super type of `s1_9'/0,
+subtype_invalid_supertype.m:016:   is not a discriminated union type.
+subtype_invalid_supertype.m:017: Error: `uint64'/0,
+subtype_invalid_supertype.m:017:   the super type of `s1_10'/0,
+subtype_invalid_supertype.m:017:   is not a discriminated union type.
+subtype_invalid_supertype.m:018: Error: `float'/0,
+subtype_invalid_supertype.m:018:   the super type of `s1_11'/0,
+subtype_invalid_supertype.m:018:   is not a discriminated union type.
+subtype_invalid_supertype.m:019: Error: `string'/0,
+subtype_invalid_supertype.m:019:   the super type of `s1_12'/0,
+subtype_invalid_supertype.m:019:   is not a discriminated union type.
+subtype_invalid_supertype.m:020: Error: `character'/0,
+subtype_invalid_supertype.m:020:   the super type of `s1_13'/0,
+subtype_invalid_supertype.m:020:   is not a discriminated union type.
+subtype_invalid_supertype.m:022: Error: `{}'/0,
+subtype_invalid_supertype.m:022:   the super type of `s2'/0,
+subtype_invalid_supertype.m:022:   is not a discriminated union type.
+subtype_invalid_supertype.m:025: Error: `func'/1,
+subtype_invalid_supertype.m:025:   the super type of `s3'/0,
+subtype_invalid_supertype.m:025:   is not a discriminated union type.
+subtype_invalid_supertype.m:028: Error: `pred'/0,
+subtype_invalid_supertype.m:028:   the super type of `s4'/0,
+subtype_invalid_supertype.m:028:   is not a discriminated union type.
+subtype_invalid_supertype.m:031: Error: the type `undefined'/0,
+subtype_invalid_supertype.m:031:   the super type of `s5'/0,
+subtype_invalid_supertype.m:031:   is not defined.
 subtype_invalid_supertype.m:031: In definition of type `s5'/0:
 subtype_invalid_supertype.m:031:   error: undefined type `undefined'/0.
 subtype_invalid_supertype.m:034: In the supertype part of a subtype definition:
 subtype_invalid_supertype.m:034:   error: `1' is not a type.
 subtype_invalid_supertype.m:034: In the supertype part of a subtype definition:
 subtype_invalid_supertype.m:034:   error: `2' is not a type.
+subtype_invalid_supertype.m:037: Error: circularity in subtype definition
+subtype_invalid_supertype.m:037:   chain.
+subtype_invalid_supertype.m:037:   The chain is:
+subtype_invalid_supertype.m:037:   `s7_b'/0,
+subtype_invalid_supertype.m:037:   the super type of `s7_f'/0,
+subtype_invalid_supertype.m:037:   which is the super type of `s7_e'/0,
+subtype_invalid_supertype.m:037:   which is the super type of `s7_d'/0,
+subtype_invalid_supertype.m:037:   which is the super type of `s7_c'/0,
+subtype_invalid_supertype.m:037:   which is the super type of `s7_b'/0,
+subtype_invalid_supertype.m:037:   which is the super type of `s7_a'/0.
+subtype_invalid_supertype.m:038: Error: circularity in subtype definition
+subtype_invalid_supertype.m:038:   chain.
+subtype_invalid_supertype.m:038:   The chain is:
+subtype_invalid_supertype.m:038:   `s7_b'/0,
+subtype_invalid_supertype.m:038:   the super type of `s7_f'/0,
+subtype_invalid_supertype.m:038:   which is the super type of `s7_e'/0,
+subtype_invalid_supertype.m:038:   which is the super type of `s7_d'/0,
+subtype_invalid_supertype.m:038:   which is the super type of `s7_c'/0,
+subtype_invalid_supertype.m:038:   which is the super type of `s7_b'/0.
+subtype_invalid_supertype.m:039: Error: circularity in subtype definition
+subtype_invalid_supertype.m:039:   chain.
+subtype_invalid_supertype.m:039:   The chain is:
+subtype_invalid_supertype.m:039:   `s7_c'/0,
+subtype_invalid_supertype.m:039:   the super type of `s7_b'/0,
+subtype_invalid_supertype.m:039:   which is the super type of `s7_f'/0,
+subtype_invalid_supertype.m:039:   which is the super type of `s7_e'/0,
+subtype_invalid_supertype.m:039:   which is the super type of `s7_d'/0,
+subtype_invalid_supertype.m:039:   which is the super type of `s7_c'/0.
+subtype_invalid_supertype.m:040: Error: circularity in subtype definition
+subtype_invalid_supertype.m:040:   chain.
+subtype_invalid_supertype.m:040:   The chain is:
+subtype_invalid_supertype.m:040:   `s7_d'/0,
+subtype_invalid_supertype.m:040:   the super type of `s7_c'/0,
+subtype_invalid_supertype.m:040:   which is the super type of `s7_b'/0,
+subtype_invalid_supertype.m:040:   which is the super type of `s7_f'/0,
+subtype_invalid_supertype.m:040:   which is the super type of `s7_e'/0,
+subtype_invalid_supertype.m:040:   which is the super type of `s7_d'/0.
+subtype_invalid_supertype.m:041: Error: circularity in subtype definition
+subtype_invalid_supertype.m:041:   chain.
+subtype_invalid_supertype.m:041:   The chain is:
+subtype_invalid_supertype.m:041:   `s7_e'/0,
+subtype_invalid_supertype.m:041:   the super type of `s7_d'/0,
+subtype_invalid_supertype.m:041:   which is the super type of `s7_c'/0,
+subtype_invalid_supertype.m:041:   which is the super type of `s7_b'/0,
+subtype_invalid_supertype.m:041:   which is the super type of `s7_f'/0,
+subtype_invalid_supertype.m:041:   which is the super type of `s7_e'/0.
+subtype_invalid_supertype.m:042: Error: circularity in subtype definition
+subtype_invalid_supertype.m:042:   chain.
+subtype_invalid_supertype.m:042:   The chain is:
+subtype_invalid_supertype.m:042:   `s7_f'/0,
+subtype_invalid_supertype.m:042:   the super type of `s7_e'/0,
+subtype_invalid_supertype.m:042:   which is the super type of `s7_d'/0,
+subtype_invalid_supertype.m:042:   which is the super type of `s7_c'/0,
+subtype_invalid_supertype.m:042:   which is the super type of `s7_b'/0,
+subtype_invalid_supertype.m:042:   which is the super type of `s7_f'/0.
+subtype_invalid_supertype.m:044: Error: `int'/0,
+subtype_invalid_supertype.m:044:   the super type of `s8_c'/0,
+subtype_invalid_supertype.m:044:   which is the super type of `s8_b'/0,
+subtype_invalid_supertype.m:044:   which is the super type of `s8_a'/0,
+subtype_invalid_supertype.m:044:   is not a discriminated union type.
+subtype_invalid_supertype.m:045: Error: `int'/0,
+subtype_invalid_supertype.m:045:   the super type of `s8_c'/0,
+subtype_invalid_supertype.m:045:   which is the super type of `s8_b'/0,
+subtype_invalid_supertype.m:045:   is not a discriminated union type.
+subtype_invalid_supertype.m:046: Error: `int'/0,
+subtype_invalid_supertype.m:046:   the super type of `s8_c'/0,
+subtype_invalid_supertype.m:046:   is not a discriminated union type.
+subtype_invalid_supertype.m:049: Error: the type `undef9'/0,
+subtype_invalid_supertype.m:049:   the super type of `s9_c'/0,
+subtype_invalid_supertype.m:049:   which is the super type of `s9_b'/0,
+subtype_invalid_supertype.m:049:   which is the super type of `s9_a'/0,
+subtype_invalid_supertype.m:049:   is not defined.
+subtype_invalid_supertype.m:050: Error: the type `undef9'/0,
+subtype_invalid_supertype.m:050:   the super type of `s9_c'/0,
+subtype_invalid_supertype.m:050:   which is the super type of `s9_b'/0,
+subtype_invalid_supertype.m:050:   is not defined.
+subtype_invalid_supertype.m:051: Error: the type `undef9'/0,
+subtype_invalid_supertype.m:051:   the super type of `s9_c'/0,
+subtype_invalid_supertype.m:051:   is not defined.
+subtype_invalid_supertype.m:052: In definition of type `s9_d'/0:
+subtype_invalid_supertype.m:052:   error: undefined type `undef9'/0.

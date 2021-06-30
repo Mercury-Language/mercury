@@ -76,7 +76,6 @@
 :- import_module multi_map.
 :- import_module one_or_more.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 
@@ -638,43 +637,48 @@ check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
         DetailsDu = type_details_du(MaybeSuperType, Ctors, MaybeCanonical,
             _MaybeDirectArg),
         MaybeCanonical = noncanon(_),
-        (
-            MaybeSuperType = no,
+        % Only report errors for types defined in this module.
+        type_status_defined_in_this_module(TypeStatus) = yes
+    then
+        ( if
             % Discriminated unions whose definition consists of a single
             % zero-arity constructor are dummy types. Dummy types are not
             % allowed to have user-defined equality or comparison.
             Ctors = one_or_more(Ctor, []),
             Ctor ^ cons_args = []
-        ;
-            MaybeSuperType = yes(_)
-        ),
-        % Only report errors for types defined in this module.
-        type_status_defined_in_this_module(TypeStatus) = yes
-    then
-        (
-            MaybeSuperType = no,
+        then
             MainPieces = [words("Error: the type"),
                 unqual_type_ctor(TypeCtor), words("contains no information,"),
                 words("and as such it is not allowed to have"),
                 words("user-defined equality or comparison."), nl],
             VerbosePieces = [words("Discriminated union types"),
                 words("whose body consists of a single zero-arity constructor"),
-                words("cannot have user-defined equality or comparison."), nl]
+                words("cannot have user-defined equality or comparison."), nl],
+            DummyMsg = simple_msg(Context, [always(MainPieces),
+                verbose_only(verbose_once, VerbosePieces)]),
+            DummySpec = error_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, [DummyMsg]),
+            !:Specs = [DummySpec | !.Specs],
+            !:FoundInvalidType = found_invalid_type
+        else
+            true
+        ),
+        (
+            MaybeSuperType = no
         ;
             MaybeSuperType = yes(_),
-            MainPieces = [words("Error: the subtype"),
+            SubPieces = [words("Error: the subtype"),
                 unqual_type_ctor(TypeCtor),
-                words("is not allowed to have"),
-                words("user-defined equality or comparison."), nl],
-            VerbosePieces = [words("Only base types are allowed to have"),
-                words("user-defined equality or comparison."), nl]
-        ),
-        Msg = simple_msg(Context, [always(MainPieces),
-            verbose_only(verbose_once, VerbosePieces)]),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [Msg]),
-        !:Specs = [Spec | !.Specs],
-        !:FoundInvalidType = found_invalid_type
+                words("is not allowed to have its own"),
+                words("user-defined equality or comparison;"),
+                words("it must inherit any user-defined"),
+                words("equality and comparison predicates"),
+                words("from its supertype."), nl],
+            SubSpec = simplest_spec($pred, severity_error,
+                phase_parse_tree_to_hlds, Context, SubPieces),
+            !:Specs = [SubSpec | !.Specs],
+            !:FoundInvalidType = found_invalid_type
+        )
     else
         true
     ).
@@ -1245,17 +1249,17 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBody, SuperType,
     hlds_data.get_type_defn_status(TypeDefn, OrigTypeStatus),
     hlds_data.get_type_defn_context(TypeDefn, Context),
     ( if type_to_ctor_and_args(SuperType, SuperTypeCtor, SuperTypeArgs) then
-        Seen0 = set.make_singleton_set(TypeCtor),
-        search_super_type_ctor_defn(TypeTable, OrigTypeStatus, SuperTypeCtor,
-            SearchRes, Seen0, Seen1),
+        search_super_type_ctor_defn(TypeTable, OrigTypeStatus, TypeCtor,
+            SuperTypeCtor, SearchRes, [], _PrevSuperTypeCtors),
         (
             SearchRes = ok(SuperTypeDefn),
             check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
-                SuperTypeCtor, SuperTypeDefn, SuperTypeArgs, Seen1,
+                SuperTypeCtor, SuperTypeDefn, SuperTypeArgs,
                 MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs)
         ;
             SearchRes = error(Error),
-            Pieces = supertype_ctor_defn_error_pieces(SuperTypeCtor, Error),
+            Pieces = supertype_ctor_defn_error_pieces(TypeCtor, [],
+                SuperTypeCtor, Error),
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, Context, Pieces),
             !:Specs = [Spec | !.Specs],
@@ -1277,13 +1281,13 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBody, SuperType,
 
 :- pred check_subtype_defn_2(type_table::in,
     type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
-    type_ctor::in, hlds_type_defn::in, list(mer_type)::in, set(type_ctor)::in,
+    type_ctor::in, hlds_type_defn::in, list(mer_type)::in,
     maybe_set_subtype_noncanonical::out,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
-        SuperTypeCtor, SuperTypeDefn, SuperTypeArgs, Seen0,
+        SuperTypeCtor, SuperTypeDefn, SuperTypeArgs,
         MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
     hlds_data.get_type_defn_body(SuperTypeDefn, SuperTypeBody),
@@ -1293,7 +1297,7 @@ check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
             IsForeign = no,
             check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBody,
                 SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
-                Seen0, MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs)
+                MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs)
         ;
             IsForeign = yes(_),
             Pieces = [words("Error:"), unqual_type_ctor(SuperTypeCtor),
@@ -1325,17 +1329,16 @@ check_subtype_defn_2(TypeTable, TypeCtor, TypeDefn, TypeBody,
 :- pred check_subtype_defn_3(type_table::in,
     type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
     type_ctor::in, hlds_type_defn::in, hlds_type_body::in(hlds_type_body_du),
-    list(mer_type)::in, set(type_ctor)::in,
-    maybe_set_subtype_noncanonical::out,
+    list(mer_type)::in, maybe_set_subtype_noncanonical::out,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBody,
         SuperTypeCtor, SuperTypeDefn, SuperTypeBody, SuperTypeArgs,
-        Seen0, MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs) :-
+        MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs) :-
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
-    check_subtype_has_base_type(TypeTable, TypeStatus, SuperTypeCtor,
-        SuperTypeDefn, MaybeBaseTypeError, Seen0, _Seen),
+    check_subtype_has_base_type(TypeTable, TypeStatus, TypeCtor,
+        [SuperTypeCtor], SuperTypeCtor, SuperTypeDefn, MaybeBaseTypeError),
     (
         MaybeBaseTypeError = ok(BaseMaybeCanonical),
         (
@@ -1366,69 +1369,83 @@ check_subtype_defn_3(TypeTable, TypeCtor, TypeDefn, TypeBody,
 %---------------------%
 
 :- pred check_subtype_has_base_type(type_table::in, type_status::in,
-    type_ctor::in, hlds_type_defn::in,
-    maybe_error(maybe_canonical, list(format_component))::out,
-    set(type_ctor)::in, set(type_ctor)::out) is det.
+    type_ctor::in, list(type_ctor)::in, type_ctor::in, hlds_type_defn::in,
+    maybe_error(maybe_canonical, list(format_component))::out) is det.
 
-check_subtype_has_base_type(TypeTable, OrigTypeStatus, CurTypeCtor,
-        CurTypeDefn, MaybeError, !Seen) :-
-    hlds_data.get_type_defn_body(CurTypeDefn, CurTypeBody),
+check_subtype_has_base_type(TypeTable, OrigTypeStatus,
+        OrigTypeCtor, PrevSuperTypeCtors0, CurSuperTypeCtor, CurSuperTypeDefn,
+        MaybeMaybeCanon) :-
+    hlds_data.get_type_defn_body(CurSuperTypeDefn, CurSuperTypeBody),
     (
-        CurTypeBody = hlds_du_type(_, MaybeSuperType, MaybeCanonical, _,
-            IsForeign),
+        CurSuperTypeBody = hlds_du_type(_, MaybeNextSuperType,
+            MaybeCanonical, _, IsForeign),
         (
             IsForeign = no,
-            MaybeSuperType = no,
-            MaybeError = ok(MaybeCanonical)
-        ;
-            IsForeign = no,
-            MaybeSuperType = yes(SuperType),
-            ( if type_to_ctor_and_args(SuperType, SuperTypeCtor, _) then
-                search_super_type_ctor_defn(TypeTable, OrigTypeStatus,
-                    SuperTypeCtor, SearchRes, !Seen),
-                (
-                    SearchRes = ok(SuperTypeDefn),
-                    check_subtype_has_base_type(TypeTable, OrigTypeStatus,
-                        SuperTypeCtor, SuperTypeDefn, MaybeError, !Seen)
-                ;
-                    SearchRes = error(Error),
-                    Pieces = supertype_ctor_defn_error_pieces(SuperTypeCtor,
-                        Error),
-                    MaybeError = error(Pieces)
+            (
+                MaybeNextSuperType = no,
+                MaybeMaybeCanon = ok(MaybeCanonical)
+            ;
+                MaybeNextSuperType = yes(NextSuperType),
+                ( if type_to_ctor(NextSuperType, NextSuperTypeCtor) then
+                    search_super_type_ctor_defn(TypeTable, OrigTypeStatus,
+                        OrigTypeCtor, NextSuperTypeCtor, SearchRes,
+                        PrevSuperTypeCtors0, PrevSuperTypeCtors1),
+                    (
+                        SearchRes = ok(NextSuperTypeDefn),
+                        check_subtype_has_base_type(TypeTable,
+                            OrigTypeStatus, OrigTypeCtor, PrevSuperTypeCtors1,
+                            NextSuperTypeCtor, NextSuperTypeDefn,
+                            MaybeMaybeCanon)
+                    ;
+                        SearchRes = error(Error),
+                        Pieces = supertype_ctor_defn_error_pieces(OrigTypeCtor,
+                            PrevSuperTypeCtors1, NextSuperTypeCtor, Error),
+                        MaybeMaybeCanon = error(Pieces)
+                    )
+                else
+                    hlds_data.get_type_defn_tvarset(CurSuperTypeDefn, TVarSet),
+                    PrevSuperTypeCtors1 =
+                        [CurSuperTypeCtor | PrevSuperTypeCtors0],
+                    Pieces = report_non_du_supertype(TVarSet, OrigTypeCtor,
+                        PrevSuperTypeCtors1, NextSuperType),
+                    MaybeMaybeCanon = error(Pieces)
                 )
-            else
-                hlds_data.get_type_defn_tvarset(CurTypeDefn, TVarSet),
-                SuperTypeStr = mercury_type_to_string(TVarSet, print_name_only,
-                    SuperType),
-                Pieces = [words("Error:"), quote(SuperTypeStr),
-                    words("is not a discriminated union type."), nl],
-                MaybeError = error(Pieces)
             )
         ;
             IsForeign = yes(_),
-            Pieces = [words("Error:"), unqual_type_ctor(CurTypeCtor),
-                words("has a foreign type definition."), nl],
-            MaybeError = error(Pieces)
+            Pieces = [words("Error:")] ++
+                describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors0,
+                    CurSuperTypeCtor) ++
+                [words("cannot be a supertype"),
+                words("because it has a foreign type definition."), nl],
+            MaybeMaybeCanon = error(Pieces)
         )
     ;
-        ( CurTypeBody = hlds_eqv_type(_)
-        ; CurTypeBody = hlds_foreign_type(_)
-        ; CurTypeBody = hlds_solver_type(_)
-        ; CurTypeBody = hlds_abstract_type(_)
+        ( CurSuperTypeBody = hlds_eqv_type(_)
+        ; CurSuperTypeBody = hlds_foreign_type(_)
+        ; CurSuperTypeBody = hlds_solver_type(_)
+        ; CurSuperTypeBody = hlds_abstract_type(_)
         ),
-        CurTypeDesc = describe_hlds_type_body(CurTypeBody),
-        Pieces = [words("Error:"), unqual_type_ctor(CurTypeCtor),
-            words("is"), words(CurTypeDesc), suffix("."), nl],
-        MaybeError = error(Pieces)
+        CurSuperTypeDesc = describe_hlds_type_body(CurSuperTypeBody),
+        Pieces = [words("Error:")] ++
+            describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors0,
+                CurSuperTypeCtor) ++
+            [words("cannot be a supertype because it is"),
+            words(CurSuperTypeDesc), suffix("."), nl],
+        MaybeMaybeCanon = error(Pieces)
     ).
 
-:- func describe_hlds_type_body(hlds_type_body) = string.
+:- inst non_du_hlds_type_body for hlds_type_body/0
+    --->    hlds_eqv_type(ground)
+    ;       hlds_foreign_type(ground)
+    ;       hlds_solver_type(ground)
+    ;       hlds_abstract_type(ground).
+
+:- func describe_hlds_type_body(hlds_type_body::in(non_du_hlds_type_body)) =
+    (string::out) is det.
 
 describe_hlds_type_body(TypeBody) = Desc :-
     (
-        TypeBody = hlds_du_type(_, _, _, _, _),
-        Desc = "a discriminated union type"
-    ;
         TypeBody = hlds_eqv_type(_),
         Desc = "an equivalence type"
     ;
@@ -1445,32 +1462,40 @@ describe_hlds_type_body(TypeBody) = Desc :-
 %---------------------%
 
 :- type search_type_ctor_defn_error
-    --->    type_is_abstract
-    ;       not_defined
+    --->    supertype_is_abstract
+    ;       supertype_is_not_defined
     ;       circularity_detected.
 
 :- pred search_super_type_ctor_defn(type_table::in, type_status::in,
-    type_ctor::in,
+    type_ctor::in, type_ctor::in,
     maybe_error(hlds_type_defn, search_type_ctor_defn_error)::out,
-    set(type_ctor)::in, set(type_ctor)::out) is det.
+    list(type_ctor)::in, list(type_ctor)::out) is det.
 
-search_super_type_ctor_defn(TypeTable, OrigTypeStatus, TypeCtor, Res, !Seen) :-
-    ( if set.insert_new(TypeCtor, !Seen) then
-        ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
-            hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
+search_super_type_ctor_defn(TypeTable, OrigTypeStatus, OrigTypeCtor,
+        SuperTypeCtor, Res, !PrevSuperTypeCtors) :-
+    ( if
+        ( SuperTypeCtor = OrigTypeCtor
+        ; list.contains(!.PrevSuperTypeCtors, SuperTypeCtor)
+        )
+    then
+        Res = error(circularity_detected)
+    else
+        ( if
+            search_type_ctor_defn(TypeTable, SuperTypeCtor, SuperTypeDefn)
+        then
+            hlds_data.get_type_defn_status(SuperTypeDefn, SuperTypeStatus),
             ( if
                 subtype_defn_int_supertype_defn_impl(OrigTypeStatus,
-                    TypeStatus)
+                    SuperTypeStatus)
             then
-                Res = error(type_is_abstract)
+                Res = error(supertype_is_abstract)
             else
-                Res = ok(TypeDefn)
+                !:PrevSuperTypeCtors = [SuperTypeCtor | !.PrevSuperTypeCtors],
+                Res = ok(SuperTypeDefn)
             )
         else
-            Res = error(not_defined)
+            Res = error(supertype_is_not_defined)
         )
-    else
-        Res = error(circularity_detected)
     ).
 
 :- pred subtype_defn_int_supertype_defn_impl(type_status::in, type_status::in)
@@ -1487,27 +1512,38 @@ subtype_defn_int_supertype_defn_impl(SubTypeStatus, SuperTypeStatus) :-
     type_status_defined_in_this_module(SuperTypeStatus) = yes,
     type_status_defined_in_impl_section(SuperTypeStatus) = yes.
 
-:- func supertype_ctor_defn_error_pieces(type_ctor,
+:- func supertype_ctor_defn_error_pieces(type_ctor, list(type_ctor), type_ctor,
     search_type_ctor_defn_error) = list(format_component).
 
-supertype_ctor_defn_error_pieces(SuperTypeCtor, Error) = Pieces :-
+supertype_ctor_defn_error_pieces(OrigTypeCtor, PrevSuperTypeCtors,
+        LastSuperTypeCtor, Error) = Pieces :-
     (
-        Error = type_is_abstract,
-        Pieces = [words("Error: the type definition for"),
-            unqual_type_ctor(SuperTypeCtor),
-            words("is not visible here."), nl]
+        Error = supertype_is_abstract,
+        Pieces = [words("Error: the type definition for")] ++
+            describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors,
+                LastSuperTypeCtor) ++
+            [suffix(","), nl, words("is not visible here."), nl]
     ;
-        Error = not_defined,
-        ( if special_type_ctor_not_du(SuperTypeCtor) then
-            Pieces = [words("Error:"), unqual_type_ctor(SuperTypeCtor),
+        Error = supertype_is_not_defined,
+        ( if special_type_ctor_not_du(LastSuperTypeCtor) then
+            Pieces = [words("Error:")] ++
+                describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors,
+                    LastSuperTypeCtor) ++
+                [suffix(","), nl,
                 words("is not a discriminated union type."), nl]
         else
-            Pieces = [words("Error: undefined type"),
-                unqual_type_ctor(SuperTypeCtor), suffix("."), nl]
+            Pieces = [words("Error: the type")] ++
+                describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors,
+                    LastSuperTypeCtor) ++
+                [suffix(","), nl, words("is not defined."), nl]
         )
     ;
         Error = circularity_detected,
-        Pieces = [words("Error: circularity in subtype definition."), nl]
+        Pieces = [words("Error: circularity in subtype definition chain."), nl,
+            words("The chain is:"), nl] ++
+            describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors,
+                LastSuperTypeCtor) ++
+            [suffix("."), nl]
     ).
 
 :- pred special_type_ctor_not_du(type_ctor::in) is semidet.
@@ -1528,6 +1564,55 @@ special_type_ctor_not_du(TypeCtor) :-
         type_ctor_is_higher_order(TypeCtor, _, _, _)
     ;
         type_ctor_is_tuple(TypeCtor)
+    ).
+
+%---------------------%
+
+:- func report_non_du_supertype(tvarset, type_ctor,
+    list(type_ctor), mer_type) = list(format_component).
+
+report_non_du_supertype(TVarSet, OrigTypeCtor, PrevSuperTypeCtors1,
+        NextSuperType) = Pieces :-
+    NextSuperTypeStr = mercury_type_to_string(TVarSet,
+        print_name_only, NextSuperType),
+    Pieces = [words("Error:"), quote(NextSuperTypeStr)] ++
+        describe_which_is_supertype_of_chain(is_first,
+            OrigTypeCtor, PrevSuperTypeCtors1) ++
+        [suffix(","), nl, words("is not a discriminated union type."), nl].
+
+%---------------------%
+
+:- func describe_supertype_chain(type_ctor, list(type_ctor), type_ctor)
+    = list(format_component).
+
+describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors, LastSuperTypeCtor)
+        = Pieces :-
+    Pieces = [unqual_type_ctor(LastSuperTypeCtor), suffix(","), nl] ++
+        describe_which_is_supertype_of_chain(is_first, OrigTypeCtor,
+            PrevSuperTypeCtors).
+
+:- type maybe_first
+    --->    is_not_first
+    ;       is_first.
+
+:- func describe_which_is_supertype_of_chain(maybe_first, type_ctor,
+    list(type_ctor)) = list(format_component).
+
+describe_which_is_supertype_of_chain(First, OrigTypeCtor, SuperTypeCtors)
+        = Pieces :-
+    ( First = is_first,     WhichIsPieces = []
+    ; First = is_not_first, WhichIsPieces = [words("which is")]
+    ),
+    (
+        SuperTypeCtors = [],
+        Pieces = WhichIsPieces ++ [words("the super type of"),
+            unqual_type_ctor(OrigTypeCtor)]
+    ;
+        SuperTypeCtors = [HeadSuperTypeCtor | TailSuperTypeCtors],
+        Pieces = WhichIsPieces ++ [words("the super type of"),
+            unqual_type_ctor(HeadSuperTypeCtor), suffix(","), nl] ++
+            describe_which_is_supertype_of_chain(is_not_first, OrigTypeCtor,
+                TailSuperTypeCtors)
     ).
 
 %---------------------%
@@ -1621,14 +1706,14 @@ search_ctor_by_unqual_name([HeadCtor | TailCtors], UnqualName, Arity, Ctor) :-
 
 check_subtype_ctor_2(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
         !FoundInvalidType, !Specs) :-
-    Ctor = ctor(_, MaybeExistConstraints, CtorName, Args, Arity, Context),
+    Ctor = ctor(_, MaybeExistConstraints, CtorSymName, Args, Arity, Context),
     SuperCtor = ctor(_, MaybeSuperExistConstraints, _SuperCtorName, SuperArgs,
         _SuperArity, _SuperContext),
-    list.foldl3_corresponding(
+    list.foldl4_corresponding(
         check_subtype_ctor_arg(TypeTable, TVarSet, TypeStatus,
-            MaybeExistConstraints, MaybeSuperExistConstraints),
+            CtorSymName, MaybeExistConstraints, MaybeSuperExistConstraints),
         Args, SuperArgs,
-        map.init, ExistQVarsMapping,
+        1, _, map.init, ExistQVarsMapping,
         did_not_find_invalid_type, FoundInvalidType, !Specs),
     (
         FoundInvalidType = did_not_find_invalid_type,
@@ -1638,7 +1723,7 @@ check_subtype_ctor_2(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
         ;
             MaybeExistConstraints = exist_constraints(Constraints),
             MaybeSuperExistConstraints = exist_constraints(SuperConstraints),
-            CtorSymNameArity = sym_name_arity(CtorName, Arity),
+            CtorSymNameArity = sym_name_arity(CtorSymName, Arity),
             check_subtype_ctor_exist_constraints(CtorSymNameArity,
                 Constraints, SuperConstraints, ExistQVarsMapping, Context,
                 !FoundInvalidType, !Specs)
@@ -1664,16 +1749,17 @@ check_subtype_ctor_2(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
 :- type existq_tvar_mapping == map(tvar, tvar).
 
 :- pred check_subtype_ctor_arg(type_table::in, tvarset::in, type_status::in,
+    sym_name::in,
     maybe_cons_exist_constraints::in, maybe_cons_exist_constraints::in,
     constructor_arg::in, constructor_arg::in,
-    existq_tvar_mapping::in, existq_tvar_mapping::out,
+    int::in, int::out, existq_tvar_mapping::in, existq_tvar_mapping::out,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_subtype_ctor_arg(TypeTable, TVarSet, OrigTypeStatus,
+check_subtype_ctor_arg(TypeTable, TVarSet, OrigTypeStatus, CtorSymName,
         MaybeExistConstraints, MaybeSuperExistConstraints,
         CtorArg, SuperCtorArg,
-        !ExistQVarsMapping, !FoundInvalidType, !Specs) :-
+        ArgNum, ArgNum + 1, !ExistQVarsMapping, !FoundInvalidType, !Specs) :-
     CtorArg = ctor_arg(_FieldName, ArgType, Context),
     SuperCtorArg = ctor_arg(_SuperFieldName, SuperArgType, _SuperContext),
     ( if
@@ -1688,8 +1774,10 @@ check_subtype_ctor_arg(TypeTable, TVarSet, OrigTypeStatus,
             mercury_type_to_string(TVarSet, print_name_only, ArgType),
         SuperArgTypeStr =
             mercury_type_to_string(TVarSet, print_name_only, SuperArgType),
-        Pieces = [words("Error:"), quote(ArgTypeStr),
-            words("is not a subtype of the corresponding type"),
+        Pieces = [words("Error: the"), nth_fixed(ArgNum), words("argument"),
+            words("of"), quote(unqualify_name(CtorSymName)),
+            words("has a type,"), quote(ArgTypeStr), suffix(","),
+            words("which is not a subtype of the corresponding argument type"),
             quote(SuperArgTypeStr), words("in the supertype."), nl],
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces),

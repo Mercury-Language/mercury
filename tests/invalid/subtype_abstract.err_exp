@@ -1,5 +1,7 @@
-subtype_abstract.m:012: Error: the type definition for `citrus'/0 is not
-subtype_abstract.m:012:   visible here.
-subtype_abstract.m:019: Error: `subtype_abstract.lemon' is not a subtype of the
-subtype_abstract.m:019:   corresponding type `subtype_abstract.fruit' in the
-subtype_abstract.m:019:   supertype.
+subtype_abstract.m:012: Error: the type definition for `citrus'/0,
+subtype_abstract.m:012:   the super type of `lemon'/0,
+subtype_abstract.m:012:   is not visible here.
+subtype_abstract.m:019: Error: the first argument of `basket' has a type,
+subtype_abstract.m:019:   `subtype_abstract.lemon', which is not a subtype of
+subtype_abstract.m:019:   the corresponding argument type
+subtype_abstract.m:019:   `subtype_abstract.fruit' in the supertype.

@@ -33,3 +33,20 @@
 
 :- type s6 =< t(1, 2)
     --->    s.
+
+:- type s7_a =< s7_b ---> s.
+:- type s7_b =< s7_c ---> s.
+:- type s7_c =< s7_d ---> s.
+:- type s7_d =< s7_e ---> s.
+:- type s7_e =< s7_f ---> s.
+:- type s7_f =< s7_b ---> s.
+
+:- type s8_a =< s8_b ---> s.
+:- type s8_b =< s8_c ---> s.
+:- type s8_c =< s8_d ---> s.
+:- type s8_d == int.
+
+:- type s9_a =< s9_b ---> s.
+:- type s9_b =< s9_c ---> s.
+:- type s9_c =< s9_d ---> s.
+:- type s9_d == undef9.

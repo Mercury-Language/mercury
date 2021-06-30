@@ -165,6 +165,7 @@ Changes to the Mercury standard library
     - pred `delete_nth/3`
     - pred `foldl7/16`
     - pred `foldl8/18`
+    - pred `foldl4_corresponding/11`
 
 * The following obsolete predicate has been removed:
 

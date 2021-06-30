@@ -1,26 +1,28 @@
-subtype_ho.m:023: Error:
-subtype_ho.m:023:   `(pred((T :: builtin.in), (io.state :: builtin.di), (io.state :: builtin.uo)) is det)'
-subtype_ho.m:023:   is not a subtype of the corresponding type
+subtype_ho.m:023: Error: the first argument of `task1' has a type,
+subtype_ho.m:023:   `(pred((T :: builtin.in), (io.state :: builtin.di), (io.state :: builtin.uo)) is det)',
+subtype_ho.m:023:   which is not a subtype of the corresponding argument type
 subtype_ho.m:023:   `pred(T, io.state, io.state)' in the supertype.
-subtype_ho.m:026: Error: `pred(T, io.state, io.state)' is not a subtype of the
-subtype_ho.m:026:   corresponding type
+subtype_ho.m:026: Error: the first argument of `task2' has a type,
+subtype_ho.m:026:   `pred(T, io.state, io.state)', which is not a subtype of
+subtype_ho.m:026:   the corresponding argument type
 subtype_ho.m:026:   `(pred((T :: builtin.in), (io.state :: builtin.di), (io.state :: builtin.uo)) is det)'
 subtype_ho.m:026:   in the supertype.
-subtype_ho.m:029: Error:
-subtype_ho.m:029:   `(pred((T :: builtin.out), (io.state :: builtin.di), (io.state :: builtin.uo)) is det)'
-subtype_ho.m:029:   is not a subtype of the corresponding type
+subtype_ho.m:029: Error: the first argument of `task2' has a type,
+subtype_ho.m:029:   `(pred((T :: builtin.out), (io.state :: builtin.di), (io.state :: builtin.uo)) is det)',
+subtype_ho.m:029:   which is not a subtype of the corresponding argument type
 subtype_ho.m:029:   `(pred((T :: builtin.in), (io.state :: builtin.di), (io.state :: builtin.uo)) is det)'
 subtype_ho.m:029:   in the supertype.
-subtype_ho.m:032: Error:
-subtype_ho.m:032:   `(pred((T :: builtin.in), (io.state :: builtin.di), (io.state :: builtin.uo)) is cc_multi)'
-subtype_ho.m:032:   is not a subtype of the corresponding type
+subtype_ho.m:032: Error: the first argument of `task2' has a type,
+subtype_ho.m:032:   `(pred((T :: builtin.in), (io.state :: builtin.di), (io.state :: builtin.uo)) is cc_multi)',
+subtype_ho.m:032:   which is not a subtype of the corresponding argument type
 subtype_ho.m:032:   `(pred((T :: builtin.in), (io.state :: builtin.di), (io.state :: builtin.uo)) is det)'
 subtype_ho.m:032:   in the supertype.
-subtype_ho.m:035: Error: `(impure pred(T, io.state, io.state))' is not a
-subtype_ho.m:035:   subtype of the corresponding type
+subtype_ho.m:035: Error: the first argument of `task1' has a type,
+subtype_ho.m:035:   `(impure pred(T, io.state, io.state))', which is not a
+subtype_ho.m:035:   subtype of the corresponding argument type
 subtype_ho.m:035:   `pred(T, io.state, io.state)' in the supertype.
-subtype_ho.m:036: Error:
-subtype_ho.m:036:   `((impure pred((T :: builtin.in), (io.state :: builtin.di), (io.state :: builtin.uo))) is det)'
-subtype_ho.m:036:   is not a subtype of the corresponding type
+subtype_ho.m:036: Error: the first argument of `task2' has a type,
+subtype_ho.m:036:   `((impure pred((T :: builtin.in), (io.state :: builtin.di), (io.state :: builtin.uo))) is det)',
+subtype_ho.m:036:   which is not a subtype of the corresponding argument type
 subtype_ho.m:036:   `(pred((T :: builtin.in), (io.state :: builtin.di), (io.state :: builtin.uo)) is det)'
 subtype_ho.m:036:   in the supertype.

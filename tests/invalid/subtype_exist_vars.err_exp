@@ -1,8 +1,12 @@
-subtype_exist_vars.m:019: Error: `T' is not a subtype of the corresponding type
-subtype_exist_vars.m:019:   `O' in the supertype.
-subtype_exist_vars.m:022: Error: `T' is not a subtype of the corresponding type
-subtype_exist_vars.m:022:   `int' in the supertype.
-subtype_exist_vars.m:028: Error: `B' is not a subtype of the corresponding type
-subtype_exist_vars.m:028:   `T' in the supertype.
-subtype_exist_vars.m:031: Error: `A' is not a subtype of the corresponding type
-subtype_exist_vars.m:031:   `T' in the supertype.
+subtype_exist_vars.m:019: Error: the first argument of `orange' has a type,
+subtype_exist_vars.m:019:   `T', which is not a subtype of the corresponding
+subtype_exist_vars.m:019:   argument type `O' in the supertype.
+subtype_exist_vars.m:022: Error: the first argument of `apple' has a type, `T',
+subtype_exist_vars.m:022:   which is not a subtype of the corresponding
+subtype_exist_vars.m:022:   argument type `int' in the supertype.
+subtype_exist_vars.m:028: Error: the second argument of `lemon' has a type,
+subtype_exist_vars.m:028:   `B', which is not a subtype of the corresponding
+subtype_exist_vars.m:028:   argument type `T' in the supertype.
+subtype_exist_vars.m:031: Error: the second argument of `lemon' has a type,
+subtype_exist_vars.m:031:   `A', which is not a subtype of the corresponding
+subtype_exist_vars.m:031:   argument type `T' in the supertype.

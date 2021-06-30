@@ -1410,23 +1410,48 @@
 :- pred foldl3_corresponding(pred(A, B, C, C, D, D, E, E),
     list(A), list(B), C, C, D, D, E, E).
 :- mode foldl3_corresponding(
-    pred(in, in, in, out, in, out, in, out) is det, in, in, in, out,
-    in, out, in, out) is det.
+    pred(in, in, in, out, in, out, in, out) is det,
+    in, in, in, out, in, out, in, out) is det.
 :- mode foldl3_corresponding(
-    pred(in, in, in, out, in, out, mdi, muo) is det, in, in, in, out,
-    in, out, mdi, muo) is det.
+    pred(in, in, in, out, in, out, mdi, muo) is det,
+    in, in, in, out, in, out, mdi, muo) is det.
 :- mode foldl3_corresponding(
-    pred(in, in, in, out, in, out, di, uo) is det, in, in, in, out,
-    in, out, di, uo) is det.
+    pred(in, in, in, out, in, out, di, uo) is det,
+    in, in, in, out, in, out, di, uo) is det.
 :- mode foldl3_corresponding(
-    pred(in, in, in, out, in, out, in, out) is semidet, in, in, in, out,
-    in, out, in, out) is semidet.
+    pred(in, in, in, out, in, out, in, out) is semidet,
+    in, in, in, out, in, out, in, out) is semidet.
 :- mode foldl3_corresponding(
-    pred(in, in, in, out, in, out, mdi, muo) is semidet, in, in, in, out,
-    in, out, mdi, muo) is semidet.
+    pred(in, in, in, out, in, out, mdi, muo) is semidet,
+    in, in, in, out, in, out, mdi, muo) is semidet.
 :- mode foldl3_corresponding(
-    pred(in, in, in, out, in, out, di, uo) is semidet, in, in, in, out,
-    in, out, di, uo) is semidet.
+    pred(in, in, in, out, in, out, di, uo) is semidet,
+    in, in, in, out, in, out, di, uo) is semidet.
+
+    % foldl4_corresponding(F, As, Bs, !Acc1, !Acc2, !Acc3, !Acc4):
+    % Does the same job as foldl_corresponding, but has four
+    % accumulators.
+    %
+:- pred foldl4_corresponding(pred(A, B, C, C, D, D, E, E, F, F),
+    list(A), list(B), C, C, D, D, E, E, F, F).
+:- mode foldl4_corresponding(
+    pred(in, in, in, out, in, out, in, out, in, out) is det,
+    in, in, in, out, in, out, in, out, in, out) is det.
+:- mode foldl4_corresponding(
+    pred(in, in, in, out, in, out, in, out, mdi, muo) is det,
+    in, in, in, out, in, out, in, out, mdi, muo) is det.
+:- mode foldl4_corresponding(
+    pred(in, in, in, out, in, out, in, out, di, uo) is det,
+    in, in, in, out, in, out, in, out, di, uo) is det.
+:- mode foldl4_corresponding(
+    pred(in, in, in, out, in, out, in, out, in, out) is semidet,
+    in, in, in, out, in, out, in, out, in, out) is semidet.
+:- mode foldl4_corresponding(
+    pred(in, in, in, out, in, out, in, out, mdi, muo) is semidet,
+    in, in, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode foldl4_corresponding(
+    pred(in, in, in, out, in, out, in, out, di, uo) is semidet,
+    in, in, in, out, in, out, in, out, di, uo) is semidet.
 
     % foldl_corresponding3(P, As, Bs, Cs, !Acc):
     % Like foldl_corresponding but folds over three corresponding
@@ -3359,6 +3384,15 @@ foldl3_corresponding(_, [_ | _], [], _, _, _, _, _, _) :-
 foldl3_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2, !Acc3) :-
     P(A, B, !Acc1, !Acc2, !Acc3),
     list.foldl3_corresponding(P, As, Bs, !Acc1, !Acc2, !Acc3).
+
+foldl4_corresponding(_, [], [], !Acc1, !Acc2, !Acc3, !Acc4).
+foldl4_corresponding(_, [], [_ | _], _, _, _, _, _, _, _, _) :-
+    unexpected($pred, "mismatched list lengths").
+foldl4_corresponding(_, [_ | _], [], _, _, _, _, _, _, _, _) :-
+    unexpected($pred, "mismatched list lengths").
+foldl4_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2, !Acc3, !Acc4) :-
+    P(A, B, !Acc1, !Acc2, !Acc3, !Acc4),
+    list.foldl4_corresponding(P, As, Bs, !Acc1, !Acc2, !Acc3, !Acc4).
 
 foldl_corresponding3(_, [], [], [], !Acc).
 foldl_corresponding3(_, [_ | _], [], [], _, _) :-
