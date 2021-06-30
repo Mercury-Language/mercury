@@ -1,19 +1,8 @@
-undef_type.m:005: Warning: the interface of module `undef_type' does not export
-undef_type.m:005:   anything.
-undef_type.m:005:   To be useful, a module should export something. A file
-undef_type.m:005:   should contain at least one declaration other than
-undef_type.m:005:   `:- import_module' in its interface section(s). This would
-undef_type.m:005:   normally be a `:- pred', `:- func', `:- type', `:- inst' or
-undef_type.m:005:   `:- mode' declaration.
-undef_type.m:007: Error: module `undef_type' should start with either an
-undef_type.m:007:   `:- interface' or an `:- implementation' declaration.
-undef_type.m:007:   The following assumes that the missing declaration is an
-undef_type.m:007:   `:- implementation' declaration.
-undef_type.m:011: In the first argument of function symbol `d' of the type
-undef_type.m:011:   `t1'/0:
-undef_type.m:011:   error: undefined type `undef1'/0.
-undef_type.m:018: In declaration of predicate `q'/1:
-undef_type.m:018:   error: undefined type `undef2'/0.
-undef_type.m:021: In declaration of predicate `r'/1:
-undef_type.m:021:   error: undefined type `io.state'/0.
-undef_type.m:021:   (No module named `io' has been imported.)
+undef_type.m:012: In the first argument of function symbol `d' of the type
+undef_type.m:012:   `t1'/0:
+undef_type.m:012:   error: undefined type `undef1'/0.
+undef_type.m:021: In declaration of predicate `q'/1:
+undef_type.m:021:   error: undefined type `undef2'/0.
+undef_type.m:024: In declaration of predicate `r'/1:
+undef_type.m:024:   error: undefined type `io.state'/0.
+undef_type.m:024:   (No module named `io' has been imported.)

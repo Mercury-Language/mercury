@@ -6,7 +6,7 @@
 
 :- interface.
 
-:- pred blah(undef_type_mod_qual__undefined_type) is det.
+:- pred blah(undef_type_mod_qual.undefined_type) is det.
 
 :- implementation.
 

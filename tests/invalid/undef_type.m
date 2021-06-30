@@ -3,6 +3,7 @@
 %---------------------------------------------------------------------------%
 
 :- module undef_type.
+:- interface.
 
 :- type t1
     --->   a
@@ -12,11 +13,13 @@
 
 :- inst x == bound(a ; b ; c).
 
+:- implementation.
+
 :- pred p.
 p.
 
 :- pred q(undef2).
 q(_).
 
-:- pred r(io__state).
+:- pred r(io.state).
 r(_).

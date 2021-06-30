@@ -8,25 +8,25 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    p,
-    q,
-    undef_symbol__r.
+main(!IO) :-
+    p(!IO),
+    q(!IO),
+    undef_symbol.r(!IO).
 
-:- pred p(io__state::di, io__state::uo) is det.
+:- pred p(io::di, io::uo) is det.
 
-p -->
-    { string__append("hello ", "world.\n", Str) },
-    io__write_string(Str).
+p(!IO) :-
+    string.append("hello ", "world.\n", Str),
+    io.write_string(Str, !IO).
 
-:- pred q(io__state::di, io__state::uo) is det.
+:- pred q(io::di, io::uo) is det.
 
-q -->
-    { Context = term__context("random", 17) },
-    write(Context), nl.
+q(!IO) :-
+    Context = term.context("random", 17),
+    io.write_line(Context, !IO).
 
-% :- pred r(io__state::di, io__state::uo) is det.
+% :- pred r(io::di, io::uo) is det.

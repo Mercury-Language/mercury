@@ -3,8 +3,11 @@
 %---------------------------------------------------------------------------%
 
 :- module undef_mode.
+:- interface.
 
 :- pred x(int).
 :- mode x(foo) is det.
+
+:- implementation.
 
 x(1).
