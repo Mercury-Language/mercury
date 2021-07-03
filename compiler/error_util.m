@@ -45,6 +45,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module edit_seq.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
@@ -694,6 +695,14 @@
     list(format_component)::in, io::di, io::uo) is det.
 
 :- func error_pieces_to_string(list(format_component)) = string.
+
+%---------------------------------------------------------------------------%
+
+    % Convert the output of find_change_hunks from library/edit_seq.m
+    % to a diff we can include in error messages.
+    %
+:- pred change_hunk_to_pieces(change_hunk(string)::in,
+    list(format_component)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -2630,6 +2639,32 @@ get_later_words([Word | Words], OldLen, Avail, Line0, Line, RestWords) :-
         Line = Line0,
         RestWords = [Word | Words]
     ).
+
+%---------------------------------------------------------------------------%
+
+change_hunk_to_pieces(ChangeHunk, ChangeHunkPieces) :-
+    ChangeHunk = change_hunk(StartA, LenA, StartB, LenB, Diffs),
+    string.format("@@ -%d,%d +%d,%d @@",
+        [i(StartA), i(LenA), i(StartB), i(LenB)], HeaderStr),
+    HeaderPieces = [fixed(HeaderStr), nl],
+    list.map(diff_seq_line_to_pieces, Diffs, DiffPieceLists),
+    list.condense([HeaderPieces | DiffPieceLists], ChangeHunkPieces).
+
+:- pred diff_seq_line_to_pieces(diff(string)::in, list(format_component)::out)
+    is det.
+
+diff_seq_line_to_pieces(Diff, Pieces) :-
+    (
+        Diff = unchanged(Str),
+        Line = " " ++ Str
+    ;
+        Diff = deleted(Str),
+        Line = "-" ++ Str
+    ;
+        Diff = inserted(Str),
+        Line = "+" ++ Str
+    ),
+    Pieces = [fixed(Line), nl].
 
 %---------------------------------------------------------------------------%
 

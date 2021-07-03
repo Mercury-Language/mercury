@@ -1654,7 +1654,7 @@ check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
     TypeBodyDu = type_body_du(OoMCtors, _, _, _, _),
     Ctors = one_or_more_to_list(OoMCtors),
     foldl2(
-        check_subtype_ctor(TypeTable, NewTVarSet, TypeStatus,
+        look_up_and_check_subtype_ctor(TypeTable, NewTVarSet, TypeStatus,
             SuperTypeCtor, SuperCtors),
         Ctors, !FoundInvalidType, !Specs),
 
@@ -1663,20 +1663,20 @@ check_subtype_ctors(TypeTable, TypeCtor, TypeDefn, TypeBodyDu,
     check_subtype_ctors_order(TypeCtor, Ctors, SuperTypeCtor, SuperCtors,
         Context, !Specs).
 
-:- pred check_subtype_ctor(type_table::in, tvarset::in, type_status::in,
-    type_ctor::in, list(constructor)::in, constructor::in,
+:- pred look_up_and_check_subtype_ctor(type_table::in, tvarset::in,
+    type_status::in, type_ctor::in, list(constructor)::in, constructor::in,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_subtype_ctor(TypeTable, TVarSet, TypeStatus, SuperTypeCtor, SuperCtors,
-        Ctor, !FoundInvalidType, !Specs) :-
+look_up_and_check_subtype_ctor(TypeTable, TVarSet, TypeStatus,
+        SuperTypeCtor, SuperCtors, Ctor, !FoundInvalidType, !Specs) :-
     Ctor = ctor(_, _, CtorName, _, Arity, Context),
     UnqualCtorName = unqualify_name(CtorName),
     ( if
         search_ctor_by_unqual_name(SuperCtors, UnqualCtorName, Arity,
             SuperCtor)
     then
-        check_subtype_ctor_2(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
+        check_subtype_ctor(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
             !FoundInvalidType, !Specs)
     else
         Pieces = [words("Error:"),
@@ -1702,12 +1702,14 @@ search_ctor_by_unqual_name([HeadCtor | TailCtors], UnqualName, Arity, Ctor) :-
         search_ctor_by_unqual_name(TailCtors, UnqualName, Arity, Ctor)
     ).
 
-:- pred check_subtype_ctor_2(type_table::in, tvarset::in, type_status::in,
+%---------------------%
+
+:- pred check_subtype_ctor(type_table::in, tvarset::in, type_status::in,
     constructor::in, constructor::in,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_subtype_ctor_2(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
+check_subtype_ctor(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
         !FoundInvalidType, !Specs) :-
     Ctor = ctor(_, MaybeExistConstraints, CtorSymName, Args, Arity, Context),
     SuperCtor = ctor(_, MaybeSuperExistConstraints, _SuperCtorName, SuperArgs,
@@ -2025,67 +2027,55 @@ check_subtype_ctor_exist_constraints(CtorSymNameArity,
 
 check_subtype_ctors_order(TypeCtor, Ctors, SuperTypeCtor, SuperCtors, Context,
         !Specs) :-
-    compute_subtype_ctors_out_of_order(Ctors, SuperCtors, CtorsOutOfOrder),
+    compute_subtype_ctors_diff(Ctors, SuperCtors, ChangeHunkPieces),
     (
-        CtorsOutOfOrder = []
+        ChangeHunkPieces = []
     ;
-        CtorsOutOfOrder = [_ | _],
-        CtorsOutOfOrderPieces =
-            list.map(func(SNA) = [unqual_sym_name_arity(SNA)],
-                CtorsOutOfOrder),
+        ChangeHunkPieces = [_ | _],
         Pieces = [words("Warning:"), unqual_type_ctor(TypeCtor),
-            words("declares the following constructors in a"),
-            words("different order to the supertype"),
-            unqual_type_ctor(SuperTypeCtor), suffix(":"),
-            nl_indent_delta(1)] ++
-            component_list_to_line_pieces(CtorsOutOfOrderPieces, []) ++
-            [nl_indent_delta(-1)],
+            words("declares some constructors"),
+            words("in a different order to its supertype"),
+            unqual_type_ctor(SuperTypeCtor), suffix(","),
+            words("as shown by this diff"),
+            words("against those of the supertype's constructors"),
+            words("which are present in the subtype:"), nl,
+            blank_line] ++
+            ChangeHunkPieces,
         Spec = simplest_spec($pred, severity_warning,
             phase_parse_tree_to_hlds, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
-:- pred compute_subtype_ctors_out_of_order(list(constructor)::in,
-    list(constructor)::in, list(sym_name_arity)::out) is det.
+:- pred compute_subtype_ctors_diff(list(constructor)::in,
+    list(constructor)::in, list(format_component)::out) is det.
 
-compute_subtype_ctors_out_of_order(Ctors, SuperCtors, CtorsOutOfOrder) :-
+compute_subtype_ctors_diff(Ctors, SuperCtors, ChangeHunkPieces) :-
     (
-        Ctors = [],
-        CtorsOutOfOrder = []
-    ;
-        Ctors = [_],
-        CtorsOutOfOrder = []
+        ( Ctors = []
+        ; Ctors = [_]
+        ),
+        ChangeHunkPieces = []
     ;
         Ctors = [_, _ | _],
-        list.map(ctor_to_unqual_sym_name_arity, Ctors, CtorNames0),
-        list.map(ctor_to_unqual_sym_name_arity, SuperCtors, SuperCtorNames),
-        list.filter(list.contains(SuperCtorNames), CtorNames0, CtorNames),
+        list.map(ctor_to_string, Ctors, CtorStrs0),
+        list.map(ctor_to_string, SuperCtors, SuperCtorStrs0),
+        list.filter(list.contains(SuperCtorStrs0), CtorStrs0, CtorStrs),
+        list.filter(list.contains(CtorStrs0), SuperCtorStrs0, SuperCtorStrs),
         EditParams = edit_params(1, 1, 1),
-        find_shortest_edit_seq(EditParams, SuperCtorNames, CtorNames, EditSeq),
-        list.filter_map(edit_to_ctor_out_of_order, EditSeq, CtorsOutOfOrder)
+        find_shortest_edit_seq(EditParams, SuperCtorStrs, CtorStrs, EditSeq),
+        find_diff_seq(SuperCtorStrs, EditSeq, DiffSeq),
+        find_change_hunks(3, DiffSeq, ChangeHunks),
+        list.map(change_hunk_to_pieces, ChangeHunks, ChangeHunkPieceLists),
+        list.condense(ChangeHunkPieceLists, ChangeHunkPieces)
     ).
 
-:- pred ctor_to_unqual_sym_name_arity(constructor::in, sym_name_arity::out)
-    is det.
+:- pred ctor_to_string(constructor::in, string::out) is det.
 
-ctor_to_unqual_sym_name_arity(Ctor, UnqualNameArity) :-
+ctor_to_string(Ctor, Str) :-
     Ctor = ctor(_, _, SymName, _, Arity, _),
     UnqualName = unqualify_name(SymName),
-    UnqualNameArity = sym_name_arity(unqualified(UnqualName), Arity).
-
-:- pred edit_to_ctor_out_of_order(edit(sym_name_arity)::in,
-    sym_name_arity::out) is semidet.
-
-edit_to_ctor_out_of_order(Edit, CtorName) :-
-    require_complete_switch [Edit]
-    (
-        Edit = delete(_),
-        fail
-    ;
-        Edit = insert(_, CtorName)
-    ;
-        Edit = replace(_, CtorName)
-    ).
+    SNA = sym_name_arity(unqualified(UnqualName), Arity),
+    Str = sym_name_arity_to_string(SNA).
 
 %---------------------%
 
