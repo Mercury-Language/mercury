@@ -228,8 +228,8 @@ parse_type_repn_subtype_of(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
             Pieces = [words("Error:"), quote(RepnStr),
                 words("should have one argument, a symbol name and arity."),
                 nl],
-            Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-                RepnContext, Pieces),
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, RepnContext, Pieces),
             MaybeRepn = error1([Spec])
         )
     ;
@@ -485,7 +485,7 @@ parse_type_repn_du_gen_du_only_functor(VarSet, TermContext, AtomStr, ArgTerms,
         ),
         DescPieces3 = [words("third argument of"),
             quote(AtomStr)],
-        parse_c_repns(DescPieces3, parse_nonconstant_repn, VarSet,
+        parse_c_repns(DescPieces3, parse_only_nonconstant_repn, VarSet,
             ArgTerm3, MaybeCRepns),
         DescPieces4 = [words("fourth argument of"),
             quote(AtomStr)],
@@ -671,7 +671,7 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
                     MaybeArgTypes = error1([ArgTypeSpec])
                 ),
                 DescPieces3 = [words("third argument of"), quote(AtomStr)],
-                parse_c_repns(DescPieces3, parse_nonconstant_repn,
+                parse_c_repns(DescPieces3, parse_more_nonconstant_repn,
                     VarSet, ArgTerm3, MaybeNonConstantCRepns),
                 ( if
                     MaybeFunctorName = ok1(FunctorName),
@@ -754,10 +754,124 @@ parse_constant_repn(VarSet, Term, MaybeConstantRepn) :-
         MaybeConstantRepn = error1([Spec])
     ).
 
-:- pred parse_nonconstant_repn(varset::in, term::in,
-    maybe1(nonconstant_repn)::out) is det.
+:- pred parse_only_nonconstant_repn(varset::in, term::in,
+    maybe1(only_nonconstant_repn)::out) is det.
 
-parse_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
+parse_only_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
+    ( if
+        Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
+        ( AtomStr = "only_local_cell"
+        ; AtomStr = "only_remote_cell"
+        )
+    then
+        (
+            AtomStr = "only_local_cell",
+            (
+                ArgTerms = [ArgTerm1],
+                ( if
+                    list_term_to_term_list(ArgTerm1, ElementTerms),
+                    ElementTerms = [HeadElementTerm | TailElementTerms]
+                then
+                    parse_local_arg_repn(VarSet, HeadElementTerm,
+                        MaybeHeadLocalArg),
+                    parse_local_arg_repns(VarSet, TailElementTerms,
+                        TailLocalArgs, TailLocalArgSpecs),
+                    ( if
+                        MaybeHeadLocalArg = ok1(HeadLocalArg),
+                        TailLocalArgSpecs = []
+                    then
+                        OoMLocalArgs =
+                            one_or_more(HeadLocalArg, TailLocalArgs),
+                        LocalRepn =
+                            only_nonconstant_local_cell_repn(OoMLocalArgs),
+                        NonConstantRepn = oncr_local_cell(LocalRepn),
+                        MaybeNonConstantRepn = ok1(NonConstantRepn)
+                    else
+                        Specs =
+                            get_any_errors1(MaybeHeadLocalArg) ++
+                            TailLocalArgSpecs,
+                        MaybeNonConstantRepn = error1(Specs)
+                    )
+                else
+                    Pieces = [words("Error: the argument of"),
+                        quote(AtomStr), words("should be a nonempty list"),
+                        words("of local cell argument representations."), nl],
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_term_to_parse_tree, TermContext, Pieces),
+                    MaybeNonConstantRepn = error1([Spec])
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_, _ | _]
+                ),
+                Pieces = [words("Error:"), quote(AtomStr),
+                    words("should have one argument."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeNonConstantRepn = error1([Spec])
+            )
+        ;
+            AtomStr = "only_remote_cell",
+            (
+                ArgTerms = [ArgTerm3],
+                ( if
+                    list_term_to_term_list(ArgTerm3, ElementTerms),
+                    ElementTerms = [HeadElementTerm | TailElementTerms]
+                then
+                    parse_remote_arg_repn(VarSet, HeadElementTerm,
+                        MaybeHeadRemoteArg),
+                    parse_remote_arg_repns(VarSet, TailElementTerms,
+                        TailRemoteArgs, TailRemoteArgSpecs),
+                    ( if
+                        MaybeHeadRemoteArg = ok1(HeadRemoteArg),
+                        TailRemoteArgSpecs = []
+                    then
+                        OoMRemoteArgs =
+                            one_or_more(HeadRemoteArg, TailRemoteArgs),
+                        RemoteRepn =
+                            only_nonconstant_remote_cell_repn(OoMRemoteArgs),
+                        NonConstantRepn = oncr_remote_cell(RemoteRepn),
+                        MaybeNonConstantRepn = ok1(NonConstantRepn)
+                    else
+                        Specs =
+                            get_any_errors1(MaybeHeadRemoteArg) ++
+                            TailRemoteArgSpecs,
+                        MaybeNonConstantRepn = error1(Specs)
+                    )
+                else
+                    Pieces = [words("Error: the argument of"),
+                        quote(AtomStr), words("should be a nonempty list"),
+                        words("of remote cell argument representations."), nl],
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_term_to_parse_tree, TermContext, Pieces),
+                    MaybeNonConstantRepn = error1([Spec])
+                )
+            ;
+                ( ArgTerms = []
+                ; ArgTerms = [_, _ | _]
+                ),
+                Pieces = [words("Error:"), quote(AtomStr),
+                    words("should have one argument."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, TermContext, Pieces),
+                MaybeNonConstantRepn = error1([Spec])
+            )
+        )
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected one of"),
+            quote("only_local_cell(...)"), words("and"),
+            quote("only_remote_cell(...)"), suffix(","),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeNonConstantRepn = error1([Spec])
+    ).
+
+:- pred parse_more_nonconstant_repn(varset::in, term::in,
+    maybe1(more_nonconstant_repn)::out) is det.
+
+parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
     ( if
         Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
         ( AtomStr = "local_cell"
@@ -785,9 +899,9 @@ parse_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                     then
                         OoMLocalArgs =
                             one_or_more(HeadLocalArg, TailLocalArgs),
-                        LocalRepn = nonconstant_local_cell_repn(LocalSectag,
-                            OoMLocalArgs),
-                        NonConstantRepn = ncr_local_cell(LocalRepn),
+                        LocalRepn = more_nonconstant_local_cell_repn(
+                            LocalSectag, OoMLocalArgs),
+                        NonConstantRepn = mncr_local_cell(LocalRepn),
                         MaybeNonConstantRepn = ok1(NonConstantRepn)
                     else
                         Specs =
@@ -838,9 +952,9 @@ parse_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                     then
                         OoMRemoteArgs =
                             one_or_more(HeadRemoteArg, TailRemoteArgs),
-                        RemoteRepn = nonconstant_remote_cell_repn(Ptag,
+                        RemoteRepn = more_nonconstant_remote_cell_repn(Ptag,
                             RemoteSectag, OoMRemoteArgs),
-                        NonConstantRepn = ncr_remote_cell(RemoteRepn),
+                        NonConstantRepn = mncr_remote_cell(RemoteRepn),
                         MaybeNonConstantRepn = ok1(NonConstantRepn)
                     else
                         Specs =
@@ -880,7 +994,7 @@ parse_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                 parse_ptag(VarSet, ArgTerm1, MaybePtag),
                 (
                     MaybePtag = ok1(Ptag),
-                    NonConstantRepn = ncr_direct_arg(Ptag),
+                    NonConstantRepn = mncr_direct_arg(Ptag),
                     MaybeNonConstantRepn = ok1(NonConstantRepn)
                 ;
                     MaybePtag = error1(Specs),
@@ -940,61 +1054,29 @@ parse_ptag(VarSet, Term, MaybePtag) :-
 
 parse_local_sectag(VarSet, Term, MaybeLocalSectag) :-
     ( if
-        Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
-        ( AtomStr = "local_no_sectag"
-        ; AtomStr = "local_sectag"
-        )
+        Term = term.functor(term.atom(AtomStr), ArgTerms, _TermContext),
+        AtomStr = "local_sectag",
+        ArgTerms = [ArgTerm1, ArgTerm2]
     then
-        (
-            AtomStr = "local_no_sectag",
-            (
-                ArgTerms = [],
-                MaybeLocalSectag = ok1(cell_local_no_sectag)
-            ;
-                ArgTerms = [_ | _],
-                Pieces = [words("Error:"), quote(AtomStr),
-                    words("should have no arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
-                MaybeLocalSectag = error1([Spec])
-            )
-        ;
-            AtomStr = "local_sectag",
-            (
-                ArgTerms = [ArgTerm1, ArgTerm2],
-                parse_unlimited_uint(VarSet, ArgTerm1, MaybeSectag),
-                parse_uint_in_range(63u, VarSet, ArgTerm2,
-                    MaybeSectagNumBitsUint),
-                ( if
-                    MaybeSectag = ok1(Sectag),
-                    MaybeSectagNumBitsUint = ok1(SectagNumBitsUint)
-                then
-                    SectagNumBits = uint8.det_from_uint(SectagNumBitsUint),
-                    LocalSectag = cell_local_sectag(Sectag, SectagNumBits),
-                    MaybeLocalSectag = ok1(LocalSectag)
-                else
-                    Specs =
-                        get_any_errors1(MaybeSectag) ++
-                        get_any_errors1(MaybeSectagNumBitsUint),
-                    MaybeLocalSectag = error1(Specs)
-                )
-            ;
-                ( ArgTerms = []
-                ; ArgTerms = [_]
-                ; ArgTerms = [_, _, _ | _]
-                ),
-                Pieces = [words("Error:"), quote(AtomStr),
-                    words("should have two arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
-                MaybeLocalSectag = error1([Spec])
-            )
+        parse_unlimited_uint(VarSet, ArgTerm1, MaybeSectag),
+        parse_uint_in_range(63u, VarSet, ArgTerm2, MaybeSectagNumBitsUint),
+        ( if
+            MaybeSectag = ok1(Sectag),
+            MaybeSectagNumBitsUint = ok1(SectagNumBitsUint)
+        then
+            SectagNumBits = uint8.det_from_uint(SectagNumBitsUint),
+            LocalSectag = cell_local_sectag(Sectag, SectagNumBits),
+            MaybeLocalSectag = ok1(LocalSectag)
+        else
+            Specs =
+                get_any_errors1(MaybeSectag) ++
+                get_any_errors1(MaybeSectagNumBitsUint),
+            MaybeLocalSectag = error1(Specs)
         )
     else
         TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error: expected one of"),
-            quote("local_no_sectag"), words("and"),
-            quote("local_sectag(...)"), suffix(","),
+        Pieces = [words("Error: expected"),
+            quote("local_sectag(Sectag, NumBits)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),

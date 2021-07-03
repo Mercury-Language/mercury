@@ -2006,7 +2006,7 @@
                 % target platform with the low level data representation.
                 % The nonconstant_repn cannot be ncr_direct_arg.
                 % XXX TYPE_REPN could we encode that invariant in the type?
-                only_arg_repns          :: c_repns(nonconstant_repn),
+                only_arg_repns          :: c_repns(only_nonconstant_repn),
 
                 % The foreign language definitions for this type, if any.
                 only_foreign            :: c_j_cs_repn
@@ -2054,7 +2054,7 @@
 
                 % The representation of this functor for each possible
                 % target platform with the low level data representation.
-                gduncf_functor_repn     :: c_repns(nonconstant_repn)
+                gduncf_functor_repn     :: c_repns(more_nonconstant_repn)
             ).
 
 :- type constant_repn
@@ -2065,28 +2065,44 @@
                 cr_sectag_size          :: sectag_word_or_size
             ).
 
-:- type nonconstant_repn
-    --->    ncr_local_cell(nonconstant_local_cell_repn)
-    ;       ncr_remote_cell(nonconstant_remote_cell_repn)
-    ;       ncr_direct_arg(ptag).
+:- type only_nonconstant_repn
+    --->    oncr_local_cell(only_nonconstant_local_cell_repn)
+    ;       oncr_remote_cell(only_nonconstant_remote_cell_repn).
 
-:- type nonconstant_local_cell_repn
-    --->    nonconstant_local_cell_repn(
-                % The ptag is implicitly 0u.
-                nclcr_sectag            :: cell_local_sectag,
-                nclcr_arg_repns         :: one_or_more(local_arg_repn)
+:- type more_nonconstant_repn
+    --->    mncr_local_cell(more_nonconstant_local_cell_repn)
+    ;       mncr_remote_cell(more_nonconstant_remote_cell_repn)
+    ;       mncr_direct_arg(ptag).
+
+:- type only_nonconstant_local_cell_repn
+    --->    only_nonconstant_local_cell_repn(
+                % The ptag and local sectag are both implicitly 0u.
+                onclcr_arg_repns        :: one_or_more(local_arg_repn)
             ).
 
-:- type nonconstant_remote_cell_repn
-    --->    nonconstant_remote_cell_repn(
+:- type more_nonconstant_local_cell_repn
+    --->    more_nonconstant_local_cell_repn(
+                % The ptag is implicitly 0u.
+                mnclcr_sectag           :: cell_local_sectag,
+                mnclcr_arg_repns        :: one_or_more(local_arg_repn)
+            ).
+
+:- type only_nonconstant_remote_cell_repn
+    --->    only_nonconstant_remote_cell_repn(
+                % The ptag is both implicitly 0u, and there is
+                % no remote sectag.
+                ncrcr_arg_repns         :: one_or_more(remote_arg_repn)
+            ).
+
+:- type more_nonconstant_remote_cell_repn
+    --->    more_nonconstant_remote_cell_repn(
                 ncrcr_ptag              :: ptag,
                 ncrcr_sectag            :: cell_remote_sectag,
                 ncrcr_arg_repns         :: one_or_more(remote_arg_repn)
             ).
 
 :- type cell_local_sectag
-    --->    cell_local_no_sectag
-    ;       cell_local_sectag(
+    --->    cell_local_sectag(
                 clss_sectag             :: uint,
                 clss_sectag_size        :: uint8
             ).

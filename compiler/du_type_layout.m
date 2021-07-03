@@ -786,12 +786,9 @@ check_and_record_du_only_functor(RepnTarget, TypeCtor, Context,
                 c_target_specific_repn(CRepnTarget, CNonConstantRepns,
                     NonConstantRepn),
                 (
-                    NonConstantRepn = ncr_local_cell(NCLocalRepn),
-                    NCLocalRepn = nonconstant_local_cell_repn(LocalSectag,
-                        OoMLocalArgRepns),
-                    % XXX TYPE_REPN Should we encode this invariant in types?
-                    expect(unify(LocalSectag, cell_local_no_sectag), $pred,
-                        "LocalSectag != cell_local_no_sectag"),
+                    NonConstantRepn = oncr_local_cell(NCLocalRepn),
+                    NCLocalRepn =
+                        only_nonconstant_local_cell_repn(OoMLocalArgRepns),
                     LocalArgRepns = one_or_more_to_list(OoMLocalArgRepns),
                     CtorTag = local_args_tag(local_args_only_functor),
                     % These -2s mean that these arguments are not on the heap,
@@ -802,20 +799,13 @@ check_and_record_du_only_functor(RepnTarget, TypeCtor, Context,
                         not_seen_nondummy_arg, CtorArgs, RepnArgTypes,
                         LocalArgRepns, CtorArgRepns)
                 ;
-                    NonConstantRepn = ncr_remote_cell(NCRemoteRepn),
-                    NCRemoteRepn = nonconstant_remote_cell_repn(Ptag,
-                        RemoteSectag, OoMRemoteArgRepns),
-                    % XXX TYPE_REPN Should we encode these invariants in types?
-                    expect(unify(Ptag, ptag(0u8)), $pred, "Ptag != 0"),
-                    expect(unify(RemoteSectag, cell_remote_no_sectag), $pred,
-                        "RemoteSectag != cell_remote_no_sectag"),
+                    NonConstantRepn = oncr_remote_cell(NCRemoteRepn),
+                    NCRemoteRepn =
+                        only_nonconstant_remote_cell_repn(OoMRemoteArgRepns),
                     RemoteArgRepns = one_or_more_to_list(OoMRemoteArgRepns),
                     CtorTag = remote_args_tag(remote_args_only_functor),
                     record_remote_ctor_args(CtorArgs, RepnArgTypes,
                         RemoteArgRepns, CtorArgRepns)
-                ;
-                    NonConstantRepn = ncr_direct_arg(_),
-                    unexpected($pred, "ncr_direct_arg")
                 )
             ),
             CtorRepn = ctor_repn(Ordinal, no_exist_constraints, CtorSymName,
@@ -1026,9 +1016,10 @@ record_low_level_data_ctors(CRepnTarget, CtorsDuRepns, CtorRepns, no) :-
 :- pred select_gen_du_repns_for_target(c_repn_target::in,
     assoc_list(constructor, gen_du_functor_repn)::in,
     list({constructor, constant_repn})::out,
-    list({constructor, list(mer_type), nonconstant_local_cell_repn})::out,
+    list({constructor, list(mer_type), more_nonconstant_local_cell_repn})::out,
     list({constructor, mer_type, ptag})::out,
-    list({constructor, list(mer_type), nonconstant_remote_cell_repn})::out)
+    list({constructor, list(mer_type),
+        more_nonconstant_remote_cell_repn})::out)
     is det.
 
 select_gen_du_repns_for_target(_, [], [], [], [], []).
@@ -1046,22 +1037,22 @@ select_gen_du_repns_for_target(CRepnTarget, [Ctor - Repn | CtorRepns],
         c_target_specific_repn(CRepnTarget, CNonConstantRepns,
             NonConstantRepn),
         (
-            NonConstantRepn = ncr_local_cell(LocalCellRepn),
+            NonConstantRepn = mncr_local_cell(LocalCellRepn),
             !:LocalCtors = [{Ctor, ArgTypes, LocalCellRepn} | !.LocalCtors]
         ;
-            NonConstantRepn = ncr_remote_cell(RemoteCellRepn),
+            NonConstantRepn = mncr_remote_cell(RemoteCellRepn),
             !:RemoteCtors = [{Ctor, ArgTypes, RemoteCellRepn} | !.RemoteCtors]
         ;
-            NonConstantRepn = ncr_direct_arg(Ptag),
+            NonConstantRepn = mncr_direct_arg(Ptag),
             (
                 ArgTypes = [],
-                unexpected($pred, "ncr_direct_arg but no argtype")
+                unexpected($pred, "mncr_direct_arg but no argtype")
             ;
                 ArgTypes = [ArgType],
                 !:DirectArgCtors = [{Ctor, ArgType, Ptag} | !.DirectArgCtors]
             ;
                 ArgTypes = [_, _ | _],
-                unexpected($pred, "ncr_direct_arg but more than one argtype")
+                unexpected($pred, "mncr_direct_arg but more than one argtype")
             )
         )
     ).
@@ -1117,7 +1108,7 @@ record_constant_ctors(NumPtagBits, LocalSectagBits, MustMask,
         ConstantCtors, !CtorOrdRepnMap).
 
 :- pred record_local_ctors(int::in, sectag_bits::in,
-    list({constructor, list(mer_type), nonconstant_local_cell_repn})::in,
+    list({constructor, list(mer_type), more_nonconstant_local_cell_repn})::in,
     map(uint32, constructor_repn)::in, map(uint32, constructor_repn)::out)
     is det.
 
@@ -1131,21 +1122,11 @@ record_local_ctors(NumPtagBits, LocalSectagBits, [LocalCtor | LocalCtors],
     expect(unify(list.length(CtorArgs), CtorArity), $pred, "bad CtorArity"),
     expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
         "MaybeExistConstraints != no_exist_constraints"),
-    LocalRepn = nonconstant_local_cell_repn(CellLocalSectag, OoMArgRepns),
-    (
-        CellLocalSectag = cell_local_no_sectag,
-        % A Ctor should have cell_local_no_sectag ONLY if it is the only
-        % functor in its type. record_local_ctors is called if the type
-        % has *more* than one functor.
-        %
-        % XXX Is it worth encoding this invariant in the type?
-        unexpected($pred, "cell_local_no_sectag")
-    ;
-        CellLocalSectag = cell_local_sectag(SectagValue, _SectagSize)
-        % XXX TYPE_REPN _SectagSize should be recorded for more_functors,
-        % not the ctor, so that (a) we could use it for the constants, and
-        % (b) it would be recorded only once.
-    ),
+    LocalRepn = more_nonconstant_local_cell_repn(CellLocalSectag, OoMArgRepns),
+    CellLocalSectag = cell_local_sectag(SectagValue, _SectagSize),
+    % XXX TYPE_REPN _SectagSize should be recorded for more_functors,
+    % not the ctor, so that (a) we could use it for the constants, and
+    % (b) it would be recorded only once.
     Ptag = ptag(0u8),
     % OR-ing in the ptag value, which is zero, would be a no-op.
     PrimSec = SectagValue << NumPtagBits,
@@ -1266,7 +1247,7 @@ record_direct_arg_ctors([DirectArgCtor | DirectArgCtors], !CtorOrdRepnMap) :-
 %---------------------%
 
 :- pred record_remote_ctors(
-    list({constructor, list(mer_type), nonconstant_remote_cell_repn})::in,
+    list({constructor, list(mer_type), more_nonconstant_remote_cell_repn})::in,
     map(uint32, constructor_repn)::in, map(uint32, constructor_repn)::out)
     is det.
 
@@ -1276,7 +1257,7 @@ record_remote_ctors([RemoteCtor | RemoteCtors], !CtorOrdRepnMap) :-
     Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
         CtorArgs, CtorArity, CtorContext),
     expect_not(unify(CtorArity, 0), $pred, "CtorArity = 0"),
-    Repn = nonconstant_remote_cell_repn(Ptag, CellRemoteSectag,
+    Repn = more_nonconstant_remote_cell_repn(Ptag, CellRemoteSectag,
         OoMRemoteArgRepns),
     (
         CellRemoteSectag = cell_remote_no_sectag,
@@ -1731,7 +1712,8 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
                     SingleCtor = ctor(_Ordinal, no_exist_constraints,
                         SingleCtorSymName, [SingleArg], 1, SingleCtorContext),
                     MaybeCanonical = canon,
-                    Params ^ ddp_unboxed_no_tag_types = use_unboxed_no_tag_types
+                    Params ^ ddp_unboxed_no_tag_types =
+                        use_unboxed_no_tag_types
                 then
                     decide_simple_type_notag(ModuleInfo, Params,
                         TypeCtor, TypeDefn0, BodyDu0,

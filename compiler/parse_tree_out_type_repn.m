@@ -283,9 +283,9 @@ mercury_output_du_only_functor(Stream, TypeRepnFor, Indent, TVarSet,
         io.write_string(Stream, ", [", !IO),
         write_out_list(mercury_output_type(TVarSet, print_num_only),
             ", ", ArgTypes, Stream, !IO),
-        io.write_string(Stream, "], ", !IO),
+        io.write_string(Stream, "],", !IO),
         mercury_output_c_repns(TypeRepnFor, 0,
-            mercury_output_nonconstant_repn(TypeRepnFor, 0),
+            mercury_output_only_nonconstant_repn(TypeRepnFor, 0),
             CRepns, Stream, !IO),
         io.write_string(Stream, ", ", !IO),
         mercury_output_c_j_cs_repn(Stream, TypeRepnFor, 0, MaybeCJCsRepn, !IO),
@@ -304,7 +304,7 @@ mercury_output_du_only_functor(Stream, TypeRepnFor, Indent, TVarSet,
             mercury_output_one_type(NlI2, "", TVarSet), ArgTypes, Stream, !IO),
         io.format(Stream, ",", [], !IO),
         mercury_output_c_repns(TypeRepnFor, Indent1,
-            mercury_output_nonconstant_repn(TypeRepnFor, Indent2),
+            mercury_output_only_nonconstant_repn(TypeRepnFor, Indent2),
             CRepns, Stream, !IO),
         io.format(Stream, ",\n", [], !IO),
         mercury_output_c_j_cs_repn(Stream, TypeRepnFor, Indent1,
@@ -410,7 +410,7 @@ mercury_output_gen_du_functor_repn(TypeRepnFor, Indent, TVarSet, FunctorRepn,
                 ", ", ArgTypes, Stream, !IO),
             io.write_string(Stream, "], ", !IO),
             mercury_output_c_repns(TypeRepnFor, 0,
-                mercury_output_nonconstant_repn(TypeRepnFor, 0),
+                mercury_output_more_nonconstant_repn(TypeRepnFor, 0),
                 NonConstantRepns, Stream, !IO),
             io.write_string(Stream, ")", !IO)
         ;
@@ -427,7 +427,7 @@ mercury_output_gen_du_functor_repn(TypeRepnFor, Indent, TVarSet, FunctorRepn,
                 ArgTypes, Stream, !IO),
             io.format(Stream, ",", [], !IO),
             mercury_output_c_repns(TypeRepnFor, Indent1,
-                mercury_output_nonconstant_repn(TypeRepnFor, Indent2),
+                mercury_output_more_nonconstant_repn(TypeRepnFor, Indent2),
                 NonConstantRepns, Stream, !IO),
             io.format(Stream, "\n%s)", [s(I)], !IO)
         )
@@ -447,15 +447,68 @@ mercury_output_constant_repn(TypeRepnFor, Indent, ConstantRepn, Stream, !IO) :-
 
 %---------------------%
 
-:- pred mercury_output_nonconstant_repn(type_repn_for::in, int::in,
-    nonconstant_repn::in, io.text_output_stream::in,io::di, io::uo) is det.
+:- pred mercury_output_only_nonconstant_repn(type_repn_for::in, int::in,
+    only_nonconstant_repn::in, io.text_output_stream::in,io::di, io::uo)
+    is det.
 
-mercury_output_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn,
+mercury_output_only_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn,
         Stream, !IO) :-
     (
-        NonConstantRepn = ncr_local_cell(LocalRepn),
-        LocalRepn =
-            nonconstant_local_cell_repn(CellLocalSectag, OoMLocalArgRepns),
+        NonConstantRepn = oncr_local_cell(LocalRepn),
+        LocalRepn = only_nonconstant_local_cell_repn(OoMLocalArgRepns),
+        (
+            TypeRepnFor = type_repn_for_machines,
+            io.write_string(Stream, "only_local_cell([", !IO),
+            OoMLocalArgRepns =
+                one_or_more(HeadLocalArgRepn, TailLocalArgRepns),
+            write_out_list(mercury_output_local_arg_repn(TypeRepnFor, 0),
+                ", ", [HeadLocalArgRepn | TailLocalArgRepns], Stream, !IO),
+            io.write_string(Stream, "])", !IO)
+        ;
+            TypeRepnFor = type_repn_for_humans,
+            I = indent(Indent),
+            io.format(Stream, "\n%sonly_local_cell([", [s(I)], !IO),
+            OoMLocalArgRepns =
+                one_or_more(HeadLocalArgRepn, TailLocalArgRepns),
+            mercury_output_list_for_humans(Indent + 1,
+                mercury_output_local_arg_repn(TypeRepnFor, Indent + 2),
+                [HeadLocalArgRepn | TailLocalArgRepns], Stream, !IO),
+            io.format(Stream, "\n%s)", [s(I)], !IO)
+        )
+    ;
+        NonConstantRepn = oncr_remote_cell(RemoteRepn),
+        RemoteRepn = only_nonconstant_remote_cell_repn(OoMRemoteArgRepns),
+        (
+            TypeRepnFor = type_repn_for_machines,
+            io.write_string(Stream, "only_remote_cell([", !IO),
+            OoMRemoteArgRepns =
+                one_or_more(HeadRemoteArgRepn, TailRemoteArgRepns),
+            write_out_list(mercury_output_remote_arg_repn(TypeRepnFor, 0),
+                ", ", [HeadRemoteArgRepn | TailRemoteArgRepns], Stream, !IO),
+            io.write_string(Stream, "])", !IO)
+        ;
+            TypeRepnFor = type_repn_for_humans,
+            I = indent(Indent),
+            io.write_string(Stream, "\n%sonly_remote_cell([", !IO),
+            OoMRemoteArgRepns =
+                one_or_more(HeadRemoteArgRepn, TailRemoteArgRepns),
+            mercury_output_list_for_humans(Indent + 1,
+                mercury_output_remote_arg_repn(TypeRepnFor, Indent + 2),
+                [HeadRemoteArgRepn | TailRemoteArgRepns], Stream, !IO),
+            io.format(Stream, "\n%s)", [s(I)], !IO)
+        )
+    ).
+
+:- pred mercury_output_more_nonconstant_repn(type_repn_for::in, int::in,
+    more_nonconstant_repn::in, io.text_output_stream::in,io::di, io::uo)
+    is det.
+
+mercury_output_more_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn,
+        Stream, !IO) :-
+    (
+        NonConstantRepn = mncr_local_cell(LocalRepn),
+        LocalRepn = more_nonconstant_local_cell_repn(CellLocalSectag,
+            OoMLocalArgRepns),
         (
             TypeRepnFor = type_repn_for_machines,
             io.write_string(Stream, "local_cell(", !IO),
@@ -480,8 +533,8 @@ mercury_output_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn,
             io.format(Stream, "\n%s)", [s(I)], !IO)
         )
     ;
-        NonConstantRepn = ncr_remote_cell(RemoteRepn),
-        RemoteRepn = nonconstant_remote_cell_repn(Ptag, CellRemoteSectag,
+        NonConstantRepn = mncr_remote_cell(RemoteRepn),
+        RemoteRepn = more_nonconstant_remote_cell_repn(Ptag, CellRemoteSectag,
             OoMRemoteArgRepns),
         Ptag = ptag(PtagUint8),
         PtagUint = uint8.cast_to_uint(PtagUint8),
@@ -510,7 +563,7 @@ mercury_output_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn,
             io.format(Stream, "\n%s)", [s(I)], !IO)
         )
     ;
-        NonConstantRepn = ncr_direct_arg(Ptag),
+        NonConstantRepn = mncr_direct_arg(Ptag),
         Ptag = ptag(PtagUint8),
         PtagUint = uint8.cast_to_uint(PtagUint8),
         (
@@ -529,14 +582,9 @@ mercury_output_nonconstant_repn(TypeRepnFor, Indent, NonConstantRepn,
     io.text_output_stream::in, io::di, io::uo) is det.
 
 mercury_output_cell_local_sectag(CellLocalSectag, Stream, !IO) :-
-    (
-        CellLocalSectag = cell_local_no_sectag,
-        io.write_string(Stream, "local_no_sectag", !IO)
-    ;
-        CellLocalSectag = cell_local_sectag(Sectag, SectagNumBits),
-        io.format(Stream, "local_sectag(%u, %u)",
-            [u(Sectag), u8(SectagNumBits)], !IO)
-    ).
+    CellLocalSectag = cell_local_sectag(Sectag, SectagNumBits),
+    io.format(Stream, "local_sectag(%u, %u)",
+        [u(Sectag), u8(SectagNumBits)], !IO).
 
 :- pred mercury_output_cell_remote_sectag(cell_remote_sectag::in,
     io.text_output_stream::in, io::di, io::uo) is det.
@@ -959,7 +1007,8 @@ mercury_output_list_for_humans(Indent, WriteX, Xs, Stream, !IO) :-
     ;
         Xs = [HeadX | TailXs],
         io.format(Stream, "%s[", [s(NlI)], !IO),
-        mercury_output_list_for_humans_loop(WriteX, HeadX, TailXs, Stream, !IO),
+        mercury_output_list_for_humans_loop(WriteX, HeadX, TailXs,
+            Stream, !IO),
         io.format(Stream, "%s]", [s(NlI)], !IO)
     ).
 

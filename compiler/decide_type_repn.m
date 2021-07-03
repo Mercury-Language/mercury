@@ -954,7 +954,7 @@ decide_type_repns_stage_2_du_gen_only_functor(BaseParams, SimpleDuMap,
 
 :- pred decide_complex_du_only_functor(platform_params::in, simple_du_map::in,
     maybe_cons_exist_constraints::in, list(constructor_arg)::in,
-    nonconstant_repn::out) is det.
+    only_nonconstant_repn::out) is det.
 
 decide_complex_du_only_functor(PlatformParams, SimpleDuMap,
         MaybeExistConstraints, Args, NonConstantRepn) :-
@@ -976,36 +976,33 @@ decide_complex_du_only_functor(PlatformParams, SimpleDuMap,
     ).
 
 :- pred decide_complex_du_only_functor_local_args(platform_params::in,
-    list(packable_arg)::in, nonconstant_repn::out) is det.
+    list(packable_arg)::in, only_nonconstant_repn::out) is det.
 
 decide_complex_du_only_functor_local_args(PlatformParams, PackableArgs,
         NonConstantRepn) :-
     WordSize = PlatformParams ^ pp_word_size,
     NumWordBits = word_size_num_word_bits(WordSize),
     NumPtagBits = word_size_num_ptag_bits(WordSize),
-    LocalSectag = cell_local_no_sectag,
     NumPrefixBits = NumPtagBits,
     decide_local_packed_arg_word_loop(NumPrefixBits, NextShift,
         PackableArgs, ArgRepns),
     expect(NextShift =< NumWordBits, $pred, "NextShift > NumWordBits"),
     det_list_to_one_or_more(ArgRepns, OoMArgRepns),
-    LocalRepn = nonconstant_local_cell_repn(LocalSectag, OoMArgRepns),
-    NonConstantRepn = ncr_local_cell(LocalRepn).
+    LocalRepn = only_nonconstant_local_cell_repn(OoMArgRepns),
+    NonConstantRepn = oncr_local_cell(LocalRepn).
 
 :- pred decide_complex_du_only_functor_remote_args(platform_params::in,
     maybe_cons_exist_constraints::in, list(classified_arg)::in,
-    nonconstant_repn::out) is det.
+    only_nonconstant_repn::out) is det.
 
 decide_complex_du_only_functor_remote_args(PlatformParams,
         MaybeExistConstraints, ClassifiedArgs, NonConstantRepn) :-
-    Ptag = ptag(0u8),
-    Sectag = cell_remote_no_sectag,
     NumRemoteSectagBits = 0u8,
     decide_remote_args(PlatformParams, NumRemoteSectagBits,
         MaybeExistConstraints, ClassifiedArgs, ArgRepns),
     det_list_to_one_or_more(ArgRepns, OoMArgRepns),
-    RemoteRepn = nonconstant_remote_cell_repn(Ptag, Sectag, OoMArgRepns),
-    NonConstantRepn = ncr_remote_cell(RemoteRepn).
+    RemoteRepn = only_nonconstant_remote_cell_repn(OoMArgRepns),
+    NonConstantRepn = oncr_remote_cell(RemoteRepn).
 
 %---------------------------------------------------------------------------%
 
@@ -1476,7 +1473,7 @@ compare_packable_ctors_by_ordinal(PackableCtorA, PackableCtorB, Result) :-
 
 :- type ctor_repn
     --->    ctor_constant(constant_repn)
-    ;       ctor_nonconstant(nonconstant_repn).
+    ;       ctor_nonconstant(more_nonconstant_repn).
 
     % Map from a functor's ordinal number to its representation.
 :- type ctor_repn_map == map(uint32, ctor_repn).
@@ -1534,7 +1531,7 @@ get_constant_repn(ctor_constant(ConstantRepn)) = ConstantRepn.
 get_constant_repn(ctor_nonconstant(_)) = _ :-
     unexpected($pred, "not constant").
 
-:- func get_nonconstant_repn(ctor_repn) = nonconstant_repn.
+:- func get_nonconstant_repn(ctor_repn) = more_nonconstant_repn.
 
 get_nonconstant_repn(ctor_constant(_)) = _ :-
     unexpected($pred, "not nonconstant").
@@ -1577,8 +1574,8 @@ assign_repns_to_local_packed_functors(PlatformParams, NumLocalSectagBits,
     expect(unify(NextShift, NumPrefixBits + NumBits), $pred,
         "NextShift != NumPrefixBits + NumBits"),
     det_list_to_one_or_more(ArgRepns, OoMArgRepns),
-    LocalRepn = nonconstant_local_cell_repn(Sectag, OoMArgRepns),
-    Repn = ncr_local_cell(LocalRepn),
+    LocalRepn = more_nonconstant_local_cell_repn(Sectag, OoMArgRepns),
+    Repn = mncr_local_cell(LocalRepn),
     map.det_insert(Ordinal, ctor_nonconstant(Repn), !RepnMap),
     !:CurSectag = !.CurSectag + 1u,
     assign_repns_to_local_packed_functors(PlatformParams, NumLocalSectagBits,
@@ -1610,7 +1607,7 @@ assign_repns_to_direct_arg_functors(MaxPtagUint8, !CurPtagUint8,
         LeftOverCtors = [ClassifiedDirectArgCtor | ClassifiedDirectArgCtors]
     else
         Ptag = ptag(!.CurPtagUint8),
-        Repn = ncr_direct_arg(Ptag),
+        Repn = mncr_direct_arg(Ptag),
         map.det_insert(Ordinal, ctor_nonconstant(Repn), !RepnMap),
         !:CurPtagUint8 = !.CurPtagUint8 + 1u8,
         assign_repns_to_direct_arg_functors(MaxPtagUint8, !CurPtagUint8,
@@ -1645,8 +1642,9 @@ assign_repns_to_remote_unshared(PlatformParams, MaxPtagUint8, !.CurPtagUint8,
         decide_remote_args(PlatformParams, NumRemoteSectagBits,
             MaybeExistConstraints, ClassifiedArgs, ArgRepns),
         det_list_to_one_or_more(ArgRepns, OoMArgRepns),
-        RemoteRepn = nonconstant_remote_cell_repn(Ptag, Sectag, OoMArgRepns),
-        Repn = ncr_remote_cell(RemoteRepn),
+        RemoteRepn =
+            more_nonconstant_remote_cell_repn(Ptag, Sectag, OoMArgRepns),
+        Repn = mncr_remote_cell(RemoteRepn),
         map.det_insert(Ordinal, ctor_nonconstant(Repn), !RepnMap),
         !:CurPtagUint8 = !.CurPtagUint8 + 1u8,
         assign_repns_to_remote_unshared(PlatformParams, MaxPtagUint8,
@@ -1768,8 +1766,8 @@ add_remote_shared_functors_to_repn_map(Ptag, SectagSize, [RSI | RSIs],
         !RepnMap) :-
     RSI = remote_shared_info(Ordinal, RemoteSectag, OoMArgRepns),
     Sectag = cell_remote_sectag(RemoteSectag, SectagSize),
-    RemoteRepn = nonconstant_remote_cell_repn(Ptag, Sectag, OoMArgRepns),
-    Repn = ncr_remote_cell(RemoteRepn),
+    RemoteRepn = more_nonconstant_remote_cell_repn(Ptag, Sectag, OoMArgRepns),
+    Repn = mncr_remote_cell(RemoteRepn),
     map.det_insert(Ordinal, ctor_nonconstant(Repn), !RepnMap),
     add_remote_shared_functors_to_repn_map(Ptag, SectagSize, RSIs, !RepnMap).
 
