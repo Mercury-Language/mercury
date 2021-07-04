@@ -1097,7 +1097,11 @@ decide_gen_du_functors(PlatformParams, WordAlignedTypeCtorsC, SimpleDuMap,
             CurLocalSectag0 = 0u,
             (
                 LocalPackedFunctors = [],
-                LocalSectagSize = sectag_rest_of_word,
+                num_bits_needed_for_n_things(NumConstants,
+                    NumLocalSectagBitsUint),
+                NumLocalSectagBits =
+                    uint8.det_from_uint(NumLocalSectagBitsUint),
+                LocalSectagSize = lsectag_rest_of_word(NumLocalSectagBits),
                 assign_repns_to_constants(LocalSectagSize,
                     CurLocalSectag0, _CurLocalSectag, Constants, !RepnMap)
             ;
@@ -1108,7 +1112,7 @@ decide_gen_du_functors(PlatformParams, WordAlignedTypeCtorsC, SimpleDuMap,
                     NumLocalSectagBitsUint),
                 NumLocalSectagBits =
                     uint8.det_from_uint(NumLocalSectagBitsUint),
-                LocalSectagSize = sectag_part_of_word(NumLocalSectagBits),
+                LocalSectagSize = lsectag_part_of_word(NumLocalSectagBits),
                 assign_repns_to_constants(LocalSectagSize,
                     CurLocalSectag0, CurLocalSectag1, Constants, !RepnMap),
                 assign_repns_to_local_packed_functors(PlatformParams,
@@ -1141,12 +1145,12 @@ decide_gen_du_functors(PlatformParams, WordAlignedTypeCtorsC, SimpleDuMap,
                 need_not_mask_remote_sectag, MustMask),
             (
                 MustMask = need_not_mask_remote_sectag,
-                SectagSize = sectag_rest_of_word
+                RSectagSize = rsectag_full_word
             ;
                 MustMask = must_mask_remote_sectag,
-                SectagSize = sectag_part_of_word(NumRemoteSectagBits)
+                RSectagSize = rsectag_part_of_word(NumRemoteSectagBits)
             ),
-            add_remote_shared_functors_to_repn_map(MaxPtag, SectagSize, RSIs,
+            add_remote_shared_functors_to_repn_map(MaxPtag, RSectagSize, RSIs,
                 !RepnMap)
         )
     ).
@@ -1539,8 +1543,9 @@ get_nonconstant_repn(ctor_nonconstant(NonConstantRepn)) = NonConstantRepn.
 
 %---------------------%
 
-:- pred assign_repns_to_constants(sectag_word_or_size::in, uint::in, uint::out,
-    list(constructor)::in, ctor_repn_map::in, ctor_repn_map::out) is det.
+:- pred assign_repns_to_constants(lsectag_word_or_size::in,
+    uint::in, uint::out, list(constructor)::in,
+    ctor_repn_map::in, ctor_repn_map::out) is det.
 
 assign_repns_to_constants(_, !CurSectag, [], !RepnMap).
 assign_repns_to_constants(SectagSize, !CurSectag, [Ctor | Ctors], !RepnMap) :-
@@ -1758,7 +1763,7 @@ remote_sectag_is_shared_with_args([]) = IsShared :-
     IsShared = yes.
 
 :- pred add_remote_shared_functors_to_repn_map(ptag::in,
-    sectag_word_or_size::in, list(remote_shared_info)::in,
+    rsectag_word_or_size::in, list(remote_shared_info)::in,
     ctor_repn_map::in, ctor_repn_map::out) is det.
 
 add_remote_shared_functors_to_repn_map(_, _, [], !RepnMap).

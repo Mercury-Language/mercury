@@ -720,7 +720,7 @@ parse_constant_repn(VarSet, Term, MaybeConstantRepn) :-
         (
             ArgTerms = [ArgTerm1, ArgTerm2],
             parse_unlimited_uint(VarSet, ArgTerm1, MaybeSectag),
-            parse_sectag_word_or_size(VarSet, ArgTerm2, MaybeSectagSize),
+            parse_local_sectag_word_or_size(VarSet, ArgTerm2, MaybeSectagSize),
             ( if
                 MaybeSectag = ok1(Sectag),
                 MaybeSectagSize = ok1(SectagSize)
@@ -1111,7 +1111,7 @@ parse_remote_sectag(VarSet, Term, MaybeRemoteSectag) :-
             (
                 ArgTerms = [ArgTerm1, ArgTerm2],
                 parse_unlimited_uint(VarSet, ArgTerm1, MaybeSectag),
-                parse_sectag_word_or_size(VarSet, ArgTerm2,
+                parse_remote_sectag_word_or_size(VarSet, ArgTerm2,
                     MaybeSectagWordOrSize),
                 ( if
                     MaybeSectag = ok1(Sectag),
@@ -1149,21 +1149,70 @@ parse_remote_sectag(VarSet, Term, MaybeRemoteSectag) :-
         MaybeRemoteSectag = error1([Spec])
     ).
 
-:- pred parse_sectag_word_or_size(varset::in, term::in,
-    maybe1(sectag_word_or_size)::out) is det.
+:- pred parse_local_sectag_word_or_size(varset::in, term::in,
+    maybe1(lsectag_word_or_size)::out) is det.
 
-parse_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
+parse_local_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
     ( if
         Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
-        ( AtomStr = "rest"
-        ; AtomStr = "part"
+        ( AtomStr = "lst_rest"
+        ; AtomStr = "lst_part"
         )
     then
         (
-            AtomStr = "rest",
+            ArgTerms = [ArgTerm1],
+            parse_uint_in_range(63u, VarSet, ArgTerm1,
+                MaybeSectagNumBitsUint),
+            (
+                MaybeSectagNumBitsUint = ok1(SectagNumBitsUint),
+                SectagNumBits = uint8.det_from_uint(SectagNumBitsUint),
+                (
+                    AtomStr = "lst_rest",
+                    MaybeSectagSize = ok1(lsectag_rest_of_word(SectagNumBits))
+                ;
+                    AtomStr = "lst_part",
+                    MaybeSectagSize = ok1(lsectag_part_of_word(SectagNumBits))
+                )
+            ;
+                MaybeSectagNumBitsUint = error1(Specs),
+                MaybeSectagSize = error1(Specs)
+            )
+        ;
+            ( ArgTerms = []
+            ; ArgTerms = [_, _ | _]
+            ),
+            Pieces = [words("Error:"), quote(AtomStr),
+                words("should have one argument."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, TermContext, Pieces),
+            MaybeSectagSize = error1([Spec])
+        )
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = [words("Error: expected one of"),
+            quote("lst_rest(...)"), words("and"),
+            quote("lst_part(...)"), suffix(","),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        MaybeSectagSize = error1([Spec])
+    ).
+
+:- pred parse_remote_sectag_word_or_size(varset::in, term::in,
+    maybe1(rsectag_word_or_size)::out) is det.
+
+parse_remote_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
+    ( if
+        Term = term.functor(term.atom(AtomStr), ArgTerms, TermContext),
+        ( AtomStr = "rst_full"
+        ; AtomStr = "rst_part"
+        )
+    then
+        (
+            AtomStr = "rst_full",
             (
                 ArgTerms = [],
-                MaybeSectagSize = ok1(sectag_rest_of_word)
+                MaybeSectagSize = ok1(rsectag_full_word)
             ;
                 ArgTerms = [_ | _],
                 Pieces = [words("Error:"), quote(AtomStr),
@@ -1173,7 +1222,7 @@ parse_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
                 MaybeSectagSize = error1([Spec])
             )
         ;
-            AtomStr = "part",
+            AtomStr = "rst_part",
             (
                 ArgTerms = [ArgTerm1],
                 parse_uint_in_range(63u, VarSet, ArgTerm1,
@@ -1181,7 +1230,7 @@ parse_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
                 (
                     MaybeSectagNumBitsUint = ok1(SectagNumBitsUint),
                     SectagNumBits = uint8.det_from_uint(SectagNumBitsUint),
-                    MaybeSectagSize = ok1(sectag_part_of_word(SectagNumBits))
+                    MaybeSectagSize = ok1(rsectag_part_of_word(SectagNumBits))
                 ;
                     MaybeSectagNumBitsUint = error1(Specs),
                     MaybeSectagSize = error1(Specs)
@@ -1200,8 +1249,8 @@ parse_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected one of"),
-            quote("rest"), words("and"),
-            quote("part(...)"), suffix(","),
+            quote("rst_full"), words("and"),
+            quote("rst_part(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),

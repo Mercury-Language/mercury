@@ -2062,7 +2062,7 @@
                 % The ptag is 0. The next two fields specify the value
                 % and the size of the local secondary tag.
                 cr_sectag               :: uint,
-                cr_sectag_size          :: sectag_word_or_size
+                cr_sectag_size          :: lsectag_word_or_size
             ).
 
 :- type only_nonconstant_repn
@@ -2111,15 +2111,16 @@
     --->    cell_remote_no_sectag
     ;       cell_remote_sectag(
                 crss_sectag             :: uint,
-                crss_sectag_size        :: sectag_word_or_size
+                crss_sectag_size        :: rsectag_word_or_size
             ).
 
-:- type sectag_word_or_size
-    --->    sectag_rest_of_word
-            % XXX TYPE_REPN This is misnamed in some use cases. Specifically,
-            % when part of cell_remote_sectag, sectag_rest_of_word means that
-            % the sectag occupies a *full* word.
-    ;       sectag_part_of_word(uint8).
+:- type lsectag_word_or_size
+    --->    lsectag_rest_of_word(uint8)
+    ;       lsectag_part_of_word(uint8).
+
+:- type rsectag_word_or_size
+    --->    rsectag_full_word
+    ;       rsectag_part_of_word(uint8).
 
 :- type local_arg_repn
     --->    local_partial(

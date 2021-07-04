@@ -442,8 +442,20 @@ mercury_output_constant_repn(TypeRepnFor, Indent, ConstantRepn, Stream, !IO) :-
     NlI = nl_indent_for_humans_space_for_machines(TypeRepnFor, Indent),
     ConstantRepn = constant_repn(Sectag, SectagWordOrSize),
     io.format(Stream, "%sconstant(%u, ", [s(NlI), u(Sectag)], !IO),
-    mercury_output_sectag_word_or_size(SectagWordOrSize, Stream, !IO),
+    mercury_output_local_sectag_word_or_size(SectagWordOrSize, Stream, !IO),
     io.write_string(Stream, ")", !IO).
+
+:- pred mercury_output_local_sectag_word_or_size(lsectag_word_or_size::in,
+    io.text_output_stream::in, io::di, io::uo) is det.
+
+mercury_output_local_sectag_word_or_size(SectagWordOrSize, Stream, !IO) :-
+    (
+        SectagWordOrSize = lsectag_rest_of_word(NumBits),
+        io.format(Stream, "lst_rest(%u)", [u8(NumBits)], !IO)
+    ;
+        SectagWordOrSize = lsectag_part_of_word(NumBits),
+        io.format(Stream, "lst_part(%u)", [u8(NumBits)], !IO)
+    ).
 
 %---------------------%
 
@@ -596,20 +608,21 @@ mercury_output_cell_remote_sectag(CellLocalSectag, Stream, !IO) :-
     ;
         CellLocalSectag = cell_remote_sectag(Sectag, SectagWordOrSize),
         io.format(Stream, "remote_sectag(%u, ", [u(Sectag)], !IO),
-        mercury_output_sectag_word_or_size(SectagWordOrSize, Stream, !IO),
+        mercury_output_remote_sectag_word_or_size(SectagWordOrSize,
+            Stream, !IO),
         io.format(Stream, ")", [], !IO)
     ).
 
-:- pred mercury_output_sectag_word_or_size(sectag_word_or_size::in,
+:- pred mercury_output_remote_sectag_word_or_size(rsectag_word_or_size::in,
     io.text_output_stream::in, io::di, io::uo) is det.
 
-mercury_output_sectag_word_or_size(SectagWordOrSize, Stream, !IO) :-
+mercury_output_remote_sectag_word_or_size(SectagWordOrSize, Stream, !IO) :-
     (
-        SectagWordOrSize = sectag_rest_of_word,
-        io.write_string(Stream, "rest", !IO)
+        SectagWordOrSize = rsectag_full_word,
+        io.write_string(Stream, "rst_full", !IO)
     ;
-        SectagWordOrSize = sectag_part_of_word(NumBits),
-        io.format(Stream, "part(%u)", [u8(NumBits)], !IO)
+        SectagWordOrSize = rsectag_part_of_word(NumBits),
+        io.format(Stream, "rst_part(%u)", [u8(NumBits)], !IO)
     ).
 
 %---------------------%

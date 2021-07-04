@@ -999,12 +999,9 @@ record_low_level_data_ctors(CRepnTarget, CtorsDuRepns, CtorRepns, no) :-
     ; WordSize = word_size_64, NumPtagBits = 3
     ),
     compute_sectag_bits(NumLocalSectagBits, LocalSectagBits),
-    ( LocalCtors = [],      LocalMustMask = lsectag_always_rest_of_word
-    ; LocalCtors = [_ | _], LocalMustMask = lsectag_must_be_masked
-    ),
     some [!CtorOrdRepnMap] (
         map.init(!:CtorOrdRepnMap),
-        record_constant_ctors(NumPtagBits, LocalSectagBits, LocalMustMask,
+        record_constant_ctors(NumPtagBits, LocalSectagBits,
             ConstantCtors, !CtorOrdRepnMap),
         record_local_ctors(NumPtagBits, LocalSectagBits,
             LocalCtors, !CtorOrdRepnMap),
@@ -1071,13 +1068,13 @@ flatten_ctor_ord_repn_map(CtorOrdRepnMap, [Ctor - _| CtorPairs],
 
 %---------------------%
 
-:- pred record_constant_ctors(int::in, sectag_bits::in, lsectag_mask::in,
+:- pred record_constant_ctors(int::in, sectag_bits::in,
     list({constructor, constant_repn})::in,
     map(uint32, constructor_repn)::in, map(uint32, constructor_repn)::out)
     is det.
 
-record_constant_ctors(_, _, _, [], !CtorOrdRepnMap).
-record_constant_ctors(NumPtagBits, LocalSectagBits, MustMask,
+record_constant_ctors(_, _, [], !CtorOrdRepnMap).
+record_constant_ctors(NumPtagBits, LocalSectagBits,
         [ConstantCtor | ConstantCtors], !CtorOrdRepnMap) :-
     ConstantCtor = {Ctor, ConstantRepn},
     Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
@@ -1086,16 +1083,19 @@ record_constant_ctors(NumPtagBits, LocalSectagBits, MustMask,
     expect(unify(CtorArity, 0), $pred, "CtorArity != 0"),
     ConstantRepn = constant_repn(SectagValue, SectagWordOrSize),
     (
-        SectagWordOrSize = sectag_rest_of_word,
-        expect(unify(MustMask, lsectag_always_rest_of_word), $pred,
-            "MustMask != lsectag_always_rest_of_word")
+        SectagWordOrSize = lsectag_rest_of_word(RepnNumSectagBits),
+        MustMask = lsectag_always_rest_of_word
     ;
-        SectagWordOrSize = sectag_part_of_word(_),
-        % XXX TYPE_REPN Should we use the arg of sectag_part_of_word,
-        % instead of our parent telling us that info?
-        expect(unify(MustMask, lsectag_must_be_masked), $pred,
-            "MustMask != lsectag_must_be_masked")
+        SectagWordOrSize = lsectag_part_of_word(RepnNumSectagBits),
+        MustMask = lsectag_must_be_masked
     ),
+    RepnSectagMask = uint.cast_from_int(
+        (1 << uint8.cast_to_int(RepnNumSectagBits)) - 1),
+    LocalSectagBits = sectag_bits(NumSectagBits, SectagMask),
+    expect(unify(NumSectagBits, RepnNumSectagBits), $pred,
+        "SectagBits != RepnNumSectagBits"),
+    expect(unify(SectagMask, RepnSectagMask), $pred,
+        "SectagMask != RepnSectagMask"),
     Ptag = ptag(0u8),
     % OR-ing in the ptag value, which is zero, would be a no-op.
     PrimSec = SectagValue << NumPtagBits,
@@ -1104,7 +1104,7 @@ record_constant_ctors(NumPtagBits, LocalSectagBits, MustMask,
     CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName,
         CtorTag, [], 0, CtorContext),
     map.det_insert(Ordinal, CtorRepn, !CtorOrdRepnMap),
-    record_constant_ctors(NumPtagBits, LocalSectagBits, MustMask,
+    record_constant_ctors(NumPtagBits, LocalSectagBits,
         ConstantCtors, !CtorOrdRepnMap).
 
 :- pred record_local_ctors(int::in, sectag_bits::in,
@@ -1265,10 +1265,10 @@ record_remote_ctors([RemoteCtor | RemoteCtors], !CtorOrdRepnMap) :-
     ;
         CellRemoteSectag = cell_remote_sectag(SectagValue, SectagWordOrSize),
         (
-            SectagWordOrSize = sectag_rest_of_word,
+            SectagWordOrSize = rsectag_full_word,
             RSectagSize = rsectag_word
         ;
-            SectagWordOrSize = sectag_part_of_word(SectagNumBits),
+            SectagWordOrSize = rsectag_part_of_word(SectagNumBits),
             Mask = (1u << uint8.cast_to_int(SectagNumBits)) - 1u,
             RSectagSize = rsectag_subword(sectag_bits(SectagNumBits, Mask))
         ),
