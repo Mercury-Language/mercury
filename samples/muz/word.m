@@ -10,7 +10,12 @@
 :- module word.
 
 :- interface.
-:- import_module string, list, maybe, assoc_list, map.
+
+:- import_module assoc_list.
+:- import_module list.
+:- import_module map.
+:- import_module maybe.
+:- import_module string.
 
 :- type zcontext == int.
 
@@ -21,11 +26,16 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Flags and Pragmas
 
-:- type status ---> ok ; error.
+:- type status
+    --->    ok
+    ;       error.
 
-:- type flag ---> on ; off.
+:- type flag
+    --->    on
+    ;       off.
 
-:- type zpragma ---> zpragma(operators, abbreviations, monotonics, loglib_ids).
+:- type zpragma
+    --->    zpragma(operators, abbreviations, monotonics, loglib_ids).
 
 :- type flags.
 
@@ -74,22 +84,24 @@
 
 :- type word == string.
 
-:- type operation ---> delta ; xi.
+:- type operation
+    --->    delta
+    ;       xi.
 
 :- type decoration == list(stroke).
 
-:- type ident ---> id(maybe(operation), word, decoration).
+:- type ident
+    --->    id(maybe(operation), word, decoration).
 
 % :- func powerIdent = ident.
 :- func numIdent = ident.
 :- func stringIdent = ident.
 
 :- type stroke
-	--->	exclamation_mark
-	;	question_mark
-	;	prime
-	;	subscript(string)
-	.
+    --->    exclamation_mark
+    ;       question_mark
+    ;       prime
+    ;       subscript(string).
 
 :- type ref == int.     % To uniquely identify each reference to an identifier.
 
@@ -102,7 +114,13 @@
 :- func strokeLPortray(list(stroke)) = list(string).
 
 :- type priority == int.        % >= 1
-:- type op ---> infun(priority) ; postfun ; inrel ; prerel ; ingen ; pregen.
+:- type op
+    --->    infun(priority)
+    ;       postfun
+    ;       inrel
+    ;       prerel
+    ;       ingen
+    ;       pregen.
 
 :- type operators == map(ident, op).
 :- type abbreviations == list(ident).
@@ -120,42 +138,46 @@
 % Flags and Pragmas
 
 %    flags(zpragma(ops, abbrevs, monoton), debug, toolkit, generating_logic).
-:- type flags ---> flags(zpragma, flag, maybe(string), flag).
+:- type flags
+    --->    flags(zpragma, flag, maybe(string), flag).
 
 :- func default_toolkit = string.
 default_toolkit = "/usr/local/apps/muz/lib/toolkit.tex".
 
 defaults = flags(zpragmaInit, off, yes(default_toolkit), off).
 
-zpragmaInit = zpragma(O, [], [], []) :- map__init(O).
+zpragmaInit = zpragma(O, [], [], []) :-
+    map.init(O).
 
 set_zpragma(ZP, flags( _, D, P, G), flags(ZP, D, P, G)).
 
 set_operators(O,
-	flags(zpragma(_, A, M, L), D, P, G),
-	flags(zpragma(O, A, M, L), D, P, G)).
+    flags(zpragma(_, A, M, L), D, P, G),
+    flags(zpragma(O, A, M, L), D, P, G)).
 
 add_operators(Op, IdentList, F0, F) :-
-	list__map((pred(I::in, O::out) is det :-
-		O = I-Op
-	), IdentList, AL),
-	map__from_assoc_list(AL, M),
-	map__overlay(operators(F0), M, Operators),
-	set_operators(Operators, F0, F).
+    list.map(
+        (pred(I::in, O::out) is det :-
+            O = I-Op
+        ), IdentList, AL),
+    map.from_assoc_list(AL, M),
+    map.overlay(operators(F0), M, Operators),
+    set_operators(Operators, F0, F).
 
-search_operators(Operators, Ident, Op) :- map__search(Operators, Ident, Op).
+search_operators(Operators, Ident, Op) :-
+    map.search(Operators, Ident, Op).
 
 set_abbreviations(A,
-	flags(zpragma(O, _, M, L), D, P, G),
-	flags(zpragma(O, A, M, L), D, P, G)).
+    flags(zpragma(O, _, M, L), D, P, G),
+    flags(zpragma(O, A, M, L), D, P, G)).
 
 set_monotonics(M,
-	flags(zpragma(O, A, _, L), D, P, G),
-	flags(zpragma(O, A, M, L), D, P, G)).
+    flags(zpragma(O, A, _, L), D, P, G),
+    flags(zpragma(O, A, M, L), D, P, G)).
 
 set_loglib_ids(L,
-	flags(zpragma(O, A, M, _), D, P, G),
-	flags(zpragma(O, A, M, L), D, P, G)).
+    flags(zpragma(O, A, M, _), D, P, G),
+    flags(zpragma(O, A, M, L), D, P, G)).
 
 set_debugging_on(flags(ZP, _, P, G), flags(ZP, on, P, G)).
 
@@ -189,28 +211,32 @@ stringIdent = id(no, "\\string", []).
 wordPortray(S) = S.
 
 identPortray(id(M, W, D)) = S :-
-	( M = no, S0 = ""
-	; M = yes(O), (O = delta, S0 = "\\Delta "; O = xi, S0 = "\\Xi ")
-	),
-	SL = strokeLPortray(D),
-	string__append_list([S0, wordPortray(W)|SL], S).
+    ( M = no, S0 = ""
+    ; M = yes(O), (O = delta, S0 = "\\Delta "; O = xi, S0 = "\\Xi ")
+    ),
+    SL = strokeLPortray(D),
+    string.append_list([S0, wordPortray(W)|SL], S).
 
 strokeLPortray(LI) = LO :- strokeLPortray([], LI, LO).
 
 :- pred strokeLPortray(list(string), list(stroke), list(string)).
 :- mode strokeLPortray(in, in, out) is det.
+
 strokeLPortray(L, [], L).
-strokeLPortray(L0, [H0|T0], L) :- strokeLPortray([strokePortray(H0)|L0], T0, L).
+strokeLPortray(L0, [H0|T0], L) :-
+    strokeLPortray([strokePortray(H0)|L0], T0, L).
 
 :- func strokePortray(stroke) = string.
+
 strokePortray(exclamation_mark) = "!".
 strokePortray(question_mark) = "?".
 strokePortray(prime) = "'".
-strokePortray(subscript(S0)) = S :- string__append("_", S0, S).
+strokePortray(subscript(S0)) = S :-
+    string.append("_", S0, S).
 
 op_to_string(infun(P)) = S :-
-	string__int_to_string(P, S0),
-	string__append_list(["infun(", S0, ")"], S).
+    string.int_to_string(P, S0),
+    string.append_list(["infun(", S0, ")"], S).
 op_to_string(postfun) = "postfun".
 op_to_string(inrel) = "inrel".
 op_to_string(prerel) = "prerel".

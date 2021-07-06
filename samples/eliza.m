@@ -41,29 +41,28 @@
     %
 main(!IO) :-
     io.write_string("\nHi!  I'm Eliza.  Please tell me your problem.\n", !IO),
-    eliza.initial_state(State),
-    eliza.main_loop([], State, !IO),
+    initial_state(State),
+    main_loop([], State, !IO),
     io.write_string("\nGoodbye.\n", !IO).
 
-:- pred eliza.main_loop(list(string)::in, eliza.state::in, io::di, io::uo)
-    is det.
+:- pred main_loop(list(string)::in, eliza_state::in, io::di, io::uo) is det.
 
-eliza.main_loop(Prev, StateIn, !IO) :-
+main_loop(Prev, StateIn, !IO) :-
     eliza.read_line(MaybeLine, !IO),
     (
         MaybeLine = yes(Line0),
-        eliza.parse(Line0, Line1),
+        parse(Line0, Line1),
         (
             Line1 = [],
-            eliza.main_loop(Prev, StateIn, !IO)
+            main_loop(Prev, StateIn, !IO)
         ;
             Line1 = [_ | _],
             ( if Line1 = Prev then
-                eliza.generate_repeat(StateIn, StateOut, !IO)
+                generate_repeat(StateIn, StateOut, !IO)
             else
-                eliza.generate_response(Line1, StateIn, StateOut, !IO)
+                generate_response(Line1, StateIn, StateOut, !IO)
             ),
-            eliza.main_loop(Line1, StateOut, !IO)
+            main_loop(Line1, StateOut, !IO)
         )
     ;
         MaybeLine = no
@@ -83,24 +82,24 @@ eliza.main_loop(Prev, StateIn, !IO) :-
 :- type response_state == assoc_list(message_type, list(message)).
 :- type repeat_state   == list(string).
 
-:- type eliza.state ---> state(response_state, repeat_state).
+:- type eliza_state
+    --->    state(response_state, repeat_state).
 
     % Initialise the state by reading in the initial message
     % database.
+    %
+:- pred initial_state(eliza_state::out) is det.
 
-:- pred eliza.initial_state(eliza.state::out) is det.
-
-eliza.initial_state(state(ResMsg,RepMsg)) :-
+initial_state(state(ResMsg,RepMsg)) :-
     repeat_messages(RepMsg),
     response_messages(ResMsg).
 
     % Get a repeat message, and then cycle the list so that
     % a new one will come up next time.
+    %
+:- pred get_repeat(string::out, eliza_state::in, eliza_state::out) is det.
 
-:- pred eliza.get_repeat(string::out, eliza.state::in, eliza.state::out)
-    is det.
-
-eliza.get_repeat(MsgOut, state(Res, RepIn), state(Res, RepOut)) :-
+get_repeat(MsgOut, state(Res, RepIn), state(Res, RepOut)) :-
     (
         RepIn = [Msg | Rest],
         MsgOut = Msg,
@@ -112,19 +111,19 @@ eliza.get_repeat(MsgOut, state(Res, RepIn), state(Res, RepOut)) :-
 
     % Get a response message, and then cycle the list so that
     % a new one will come up next time.
+    %
+:- pred get_response(message_type::in, message::out,
+    eliza_state::in, eliza_state::out) is det.
 
-:- pred eliza.get_response(message_type::in, message::out, eliza.state::in,
-    eliza.state::out) is det.
+get_response(Type, MsgOut, state(ResIn, Rep), state(ResOut, Rep)) :-
+    get_response2(Type, MsgOut, ResIn, ResOut).
 
-eliza.get_response(Type, MsgOut, state(ResIn, Rep), state(ResOut, Rep)) :-
-    eliza.get_response2(Type, MsgOut, ResIn, ResOut).
-
-:- pred eliza.get_response2(message_type::in, message::out,
+:- pred get_response2(message_type::in, message::out,
     response_state::in, response_state::out) is det.
 
-eliza.get_response2(_Type, _MsgOut, [], []) :-
+get_response2(_Type, _MsgOut, [], []) :-
     error("Error: Cannot match message type.\n").
-eliza.get_response2(Type, MsgOut,
+get_response2(Type, MsgOut,
         [Type2 - Msgs2 | RestIn],
         [Type2 - Msgs3 | RestOut]) :-
     ( if Type = Type2 then
@@ -137,17 +136,17 @@ eliza.get_response2(Type, MsgOut,
         )
     else
         Msgs2 = Msgs3,
-        eliza.get_response2(Type, MsgOut, RestIn, RestOut)
+        get_response2(Type, MsgOut, RestIn, RestOut)
     ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
     % Write a prompt, then read a line.
+    %
+:- pred read_line(maybe(list(char))::out, io::di, io::uo) is det.
 
-:- pred eliza.read_line(maybe(list(char))::out, io::di, io::uo) is det.
-
-eliza.read_line(MaybeLine, !IO) :-
+read_line(MaybeLine, !IO) :-
     io.write_string("\n> ", !IO),
     io.flush_output(!IO),
     io.input_stream(Stdin, !IO),
@@ -166,15 +165,14 @@ eliza.read_line(MaybeLine, !IO) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % These are the characters that we must strip from a
-    % line during parsing.
+    % These are the characters that we must strip from a line during parsing.
+    %
+:- pred is_punct(char::in) is semidet.
 
-:- pred eliza.is_punct(char::in) is semidet.
-
-eliza.is_punct('.').
-eliza.is_punct(',').
-eliza.is_punct('!').
-eliza.is_punct('?').
+is_punct('.').
+is_punct(',').
+is_punct('!').
+is_punct('?').
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -189,32 +187,32 @@ eliza.is_punct('?').
     %       word stored as a list of characters).
     %
     %     - Turn each word into a string.
+    %
+:- pred parse(list(char)::in, list(string)::out) is det.
 
-:- pred eliza.parse(list(char)::in, list(string)::out) is det.
+parse -->
+    strip,
+    form_words,
+    words_to_strings.
 
-eliza.parse -->
-    eliza.strip,
-    eliza.form_words,
-    eliza.words_to_strings.
+:- pred strip(list(char)::in, list(char)::out) is det.
 
-:- pred eliza.strip(list(char)::in, list(char)::out) is det.
-
-eliza.strip([], []).
-eliza.strip([X | Xs], Ys) :-
+strip([], []).
+strip([X | Xs], Ys) :-
     ( if char.is_whitespace(X) then
-        eliza.strip(Xs, Ys)
+        strip(Xs, Ys)
     else
-        eliza.strip2([X | Xs], Ys)
+        strip2([X | Xs], Ys)
     ).
 
-:- pred eliza.strip2(list(char)::in, list(char)::out) is det.
+:- pred strip2(list(char)::in, list(char)::out) is det.
 
-eliza.strip2([], []).
-eliza.strip2([X | Xs], Ys) :-
-    ( if eliza.is_punct(X) then
-        eliza.strip2([' ' | Xs], Ys)
+strip2([], []).
+strip2([X | Xs], Ys) :-
+    ( if is_punct(X) then
+        strip2([' ' | Xs], Ys)
     else
-        eliza.strip2(Xs, Ys1),
+        strip2(Xs, Ys1),
         ( if char.is_whitespace(X), Ys1 = [] then
             Ys = []
         else
@@ -222,71 +220,68 @@ eliza.strip2([X | Xs], Ys) :-
         )
     ).
 
-:- pred eliza.form_words(list(char)::in, list(list(char))::out) is det.
+:- pred form_words(list(char)::in, list(list(char))::out) is det.
 
-eliza.form_words([], []).
-eliza.form_words([X | Xs], Ys) :-
+form_words([], []).
+form_words([X | Xs], Ys) :-
     ( if char.is_whitespace(X) then
-        eliza.form_words(Xs, Ys)
+        form_words(Xs, Ys)
     else
-        eliza.form_word(Xs, [X], Word, Rest),
-        eliza.form_words(Rest, Words),
+        form_word(Xs, [X], Word, Rest),
+        form_words(Rest, Words),
         Ys = [Word | Words]
     ).
 
-:- pred eliza.form_word(list(char)::in, list(char)::in, list(char)::out,
-    list(char)::out) is det.
+:- pred form_word(list(char)::in, list(char)::in,
+    list(char)::out, list(char)::out) is det.
 
-eliza.form_word([], Word1, Word2, []) :-
+form_word([], Word1, Word2, []) :-
     list.reverse(Word1, Word2).
-eliza.form_word([X | Xs], WordIn, WordOut, Rest) :-
+form_word([X | Xs], WordIn, WordOut, Rest) :-
     ( if char.is_whitespace(X) then
         list.reverse(WordIn, WordOut), Rest = Xs
     else
-        eliza.form_word(Xs, [X | WordIn], WordOut, Rest)
+        form_word(Xs, [X | WordIn], WordOut, Rest)
     ).
 
-:- pred eliza.words_to_strings(list(list(char))::in, list(string)::out) is det.
+:- pred words_to_strings(list(list(char))::in, list(string)::out) is det.
 
-eliza.words_to_strings([], []).
-eliza.words_to_strings([X | Xs], [Y | Ys]) :-
+words_to_strings([], []).
+words_to_strings([X | Xs], [Y | Ys]) :-
     string.from_char_list(X, Y),
-    eliza.words_to_strings(Xs, Ys).
+    words_to_strings(Xs, Ys).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
     % Generate and display a repeat message
-
-:- pred eliza.generate_repeat(eliza.state::in, eliza.state::out,
+    %
+:- pred generate_repeat(eliza_state::in, eliza_state::out,
     io::di, io::uo) is det.
 
-eliza.generate_repeat(!State, !IO) :-
-    eliza.get_repeat(Msg, !State),
+generate_repeat(!State, !IO) :-
+    get_repeat(Msg, !State),
     io.write_string(Msg, !IO),
     io.write_string("\n", !IO).
 
     % Generate and display a repeat message
+    %
+:- pred generate_response(list(string)::in,
+    eliza_state::in, eliza_state::out, io::di, io::uo) is det.
 
-:- pred eliza.generate_response(list(string)::in,
-    eliza.state::in, eliza.state::out, io::di, io::uo) is det.
-
-eliza.generate_response(Words, !State, !IO) :-
-
+generate_response(Words, !State, !IO) :-
     % Find out what sort of message we are dealing with.
-
-    eliza.find_handle(Words, MsgType, Rest),
-    eliza.get_response(MsgType, Maybe - String, !State),
+    find_handle(Words, MsgType, Rest),
+    get_response(MsgType, Maybe - String, !State),
     io.write_string(String, !IO),
 
     % If we must parrot back part of the original message,
     % resolve conjugates, write that string and then add
     % a trailing punctuation mark.
-
     (
         Maybe = yes(C),
-        eliza.perform_conjugate(Rest, Postfix),
-        eliza.write_strings(Postfix, !IO),
+        perform_conjugate(Rest, Postfix),
+        eliza_write_strings(Postfix, !IO),
         io.write_char(C, !IO)
     ;
         Maybe = no
@@ -295,66 +290,66 @@ eliza.generate_response(Words, !State, !IO) :-
 
     % Write a list of strings to the output stream with
     % words thrown in between.
+    %
+:- pred eliza_write_strings(list(string)::in, io::di, io::uo) is det.
 
-:- pred eliza.write_strings(list(string)::in, io::di, io::uo) is det.
-
-eliza.write_strings([], !IO).
-eliza.write_strings([X | Xs], !IO) :-
+eliza_write_strings([], !IO).
+eliza_write_strings([X | Xs], !IO) :-
     io.write_char(' ', !IO),
     io.write_string(X, !IO),
-    eliza.write_strings(Xs, !IO).
+    eliza_write_strings(Xs, !IO).
 
-:- pred eliza.match_prefix(list(string)::in, list(string)::in,
-    list(string)::out) is semidet.
+:- pred match_prefix(list(string)::in,
+    list(string)::in, list(string)::out) is semidet.
 
-eliza.match_prefix([], Ys, Ys).
-eliza.match_prefix([X | Xs], [Y | Ys], Zs) :-
+match_prefix([], Ys, Ys).
+match_prefix([X | Xs], [Y | Ys], Zs) :-
     string.to_upper(Y, X),
-    eliza.match_prefix(Xs,Ys,Zs).
+    match_prefix(Xs,Ys,Zs).
 
-:- pred eliza.find_handle(list(string)::in, message_type::out,
+:- pred find_handle(list(string)::in, message_type::out,
     list(string)::out) is det.
 
-eliza.find_handle(In, MsgType, Out) :-
+find_handle(In, MsgType, Out) :-
     response_handles(Handles),
-    eliza.find_handle2(In, MsgType, Out, Handles).
+    find_handle2(In, MsgType, Out, Handles).
 
-:- pred eliza.find_handle2(list(string)::in, message_type::out,
+:- pred find_handle2(list(string)::in, message_type::out,
     list(string)::out, assoc_list(list(string), message_type)::in) is det.
 
-eliza.find_handle2(In, no_key_message, In, []).
-eliza.find_handle2(In, Type, Out, [Prefix - Type2 | Handles]) :-
-    ( if eliza.find_handle3(In, Prefix, Rest) then
+find_handle2(In, no_key_message, In, []).
+find_handle2(In, Type, Out, [Prefix - Type2 | Handles]) :-
+    ( if find_handle3(In, Prefix, Rest) then
         Out = Rest, Type = Type2
     else
-        eliza.find_handle2(In, Type, Out, Handles)
+        find_handle2(In, Type, Out, Handles)
     ).
 
-:- pred eliza.find_handle3(list(string)::in, list(string)::in,
-    list(string)::out) is semidet.
+:- pred find_handle3(list(string)::in, list(string)::in, list(string)::out)
+    is semidet.
 
-eliza.find_handle3([X | Xs], Prefix, Rest) :-
-    ( if eliza.match_prefix(Prefix, [X | Xs], Rest2) then
+find_handle3([X | Xs], Prefix, Rest) :-
+    ( if match_prefix(Prefix, [X | Xs], Rest2) then
         Rest = Rest2
     else
-        eliza.find_handle3(Xs, Prefix, Rest)
+        find_handle3(Xs, Prefix, Rest)
     ).
 
-:- pred eliza.perform_conjugate(list(string)::in, list(string)::out) is det.
+:- pred perform_conjugate(list(string)::in, list(string)::out) is det.
 
-eliza.perform_conjugate([], []).
-eliza.perform_conjugate([X | Xs], [Y | Ys]) :-
+perform_conjugate([], []).
+perform_conjugate([X | Xs], [Y | Ys]) :-
     ( if ( X = "I", Xs = [] ) then
         Y = "me", Ys = []
     else
-        eliza.conjugate_map(Map),
+        conjugate_map(Map),
         string.to_upper(X, Xupp),
         ( if map.search(Map, Xupp, Result) then
             Y = Result
         else
             Y = X
         ),
-        eliza.perform_conjugate(Xs, Ys)
+        perform_conjugate(Xs, Ys)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -362,15 +357,39 @@ eliza.perform_conjugate([X | Xs], [Y | Ys]) :-
 
 :- type message == pair(maybe(char), string).
 
-:- type message_type --->
-    can_you ; can_i ; you_are ; i_dont ; i_feel ; why_dont ;
-    why_cant ; are_you ; i_cant ; i_am ; you ; yes ; no ;
-    computer ; i_want ; question ; name ; because ; sorry ; dream ;
-    hello ; maybe ; your ; always ; think ; alike ; friend ; no_key_message.
+:- type message_type
+    --->    can_you
+    ;       can_i
+    ;       you_are
+    ;       i_dont
+    ;       i_feel
+    ;       why_dont
+    ;       why_cant
+    ;       are_you
+    ;       i_cant
+    ;       i_am
+    ;       you
+    ;       yes
+    ;       no
+    ;       computer
+    ;       i_want
+    ;       question
+    ;       name
+    ;       because
+    ;       sorry
+    ;       dream
+    ;       hello
+    ;       maybe
+    ;       your
+    ;       always
+    ;       think
+    ;       alike
+    ;       friend
+    ;       no_key_message.
 
-:- pred eliza.conjugate_map(map(string, string)::out) is det.
+:- pred conjugate_map(map(string, string)::out) is det.
 
-eliza.conjugate_map(MapOut) :-
+conjugate_map(MapOut) :-
     one_way_conjugates(AL1),
     two_way_conjugates(AL2),
     assoc_list.reverse_members(AL2, AL3),

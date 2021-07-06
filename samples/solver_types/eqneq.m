@@ -83,15 +83,13 @@
     % Each eqneq is either free, bound, or aliased to another eqneq.
     %
 :- type eqneq_rep
+    --->    free_neq(set(eqneq_id))
             % A free eqneq node records the set of variables it is
             % not equal to.
-    --->    free_neq(set(eqneq_id))
-
-            % An aliased eqneq is represented by another eqneq.
     ;       alias(eqneq_id)
-
-            % A bound eqneq has a value stored as a univ.
+            % An aliased eqneq is represented by another eqneq.
     ;       bound(univ).
+            % A bound eqneq has a value stored as a univ.
 
 %-----------------------------------------------------------------------------%
 
@@ -154,30 +152,22 @@ deref_2(ConstraintStore, EqNeqId0, EqNeqId, EqNeqRep, Depth0, Depth) :-
     % up-to-date after unifications.
     %
 eq(EqNeqA, EqNeqB) :-
-
     promise_pure (
-
         impure EqNeqIdA0 = 'representation of any eqneq/1'(EqNeqA),
         impure EqNeqIdB0 = 'representation of any eqneq/1'(EqNeqB),
         semipure get_constraint_store(ConstraintStore0),
 
         deref(ConstraintStore0, EqNeqIdA0, EqNeqIdA, EqNeqRepA, DepthA),
         deref(ConstraintStore0, EqNeqIdB0, EqNeqIdB, EqNeqRepB, DepthB),
-
         ( if EqNeqIdA = EqNeqIdB then
-
             % eqneqs with the same id are already equated.
-            %
             true
-
         else
-
             (
                 % If both are free, then check the neq constraints and
                 % make one an alias of the other, unifying the neq
                 % constraints.  We use the depth information to keep
                 % alias chains short.
-                %
                 EqNeqRepA = free_neq(NeqSetA0),
                 EqNeqRepB = free_neq(NeqSetB0),
 
@@ -199,12 +189,9 @@ eq(EqNeqA, EqNeqB) :-
                         ^ elem(EqNeqIdA) := alias(EqNeqIdB)   )
                 ),
                 impure set_constraint_store(ConstraintStore)
-
             ;
-
                 % A is free, B is bound: we need only check the
                 % neq constraints.
-                %
                 EqNeqRepA = free_neq(NeqSetA0),
                 EqNeqRepB = bound(_UnivB),
 
@@ -213,12 +200,9 @@ eq(EqNeqA, EqNeqB) :-
                 ConstraintStore =
                     ConstraintStore0 ^ elem(EqNeqIdA) := EqNeqRepB,
                 impure set_constraint_store(ConstraintStore)
-
             ;
-
                 % B is free, A is bound: we need only check the
                 % neq constraints.
-                %
                 EqNeqRepA = bound(_UnivA),
                 EqNeqRepB = free_neq(NeqSetB0),
 
@@ -227,11 +211,8 @@ eq(EqNeqA, EqNeqB) :-
                 ConstraintStore =
                     ConstraintStore0 ^ elem(EqNeqIdB) := EqNeqRepA,
                 impure set_constraint_store(ConstraintStore)
-
             ;
-
                 % Both are bound.
-                %
                 EqNeqRepA = bound(UnivA),
                 EqNeqRepB = bound(UnivB),
 
@@ -243,10 +224,11 @@ eq(EqNeqA, EqNeqB) :-
 :- func update_neq_set(constraint_store, set(eqneq_id)) = set(eqneq_id).
 
 update_neq_set(ConstraintStore, Neqs0) = Neqs :-
-    P = ( func(EqNeqId0, NeqSet0) = NeqSet :-
-        deref(ConstraintStore, EqNeqId0, EqNeqId, _EqNeqRep, _Depth),
-        NeqSet = set.insert(NeqSet0, EqNeqId)
-    ),
+    P =
+        ( func(EqNeqId0, NeqSet0) = NeqSet :-
+            deref(ConstraintStore, EqNeqId0, EqNeqId, _EqNeqRep, _Depth),
+            NeqSet = set.insert(NeqSet0, EqNeqId)
+        ),
     Neqs = set.fold(P, Neqs0, set.init).
 
 %-----------------------------------------------------------------------------%
@@ -254,9 +236,7 @@ update_neq_set(ConstraintStore, Neqs0) = Neqs :-
     % Constrain two eqneqs to be different.
     %
 neq(EqNeqA, EqNeqB) :-
-
     promise_pure (
-
         impure EqNeqIdA0 = 'representation of any eqneq/1'(EqNeqA),
         impure EqNeqIdB0 = 'representation of any eqneq/1'(EqNeqB),
         semipure get_constraint_store(ConstraintStore0),
@@ -265,10 +245,8 @@ neq(EqNeqA, EqNeqB) :-
         deref(ConstraintStore0, EqNeqIdB0, EqNeqIdB, EqNeqRepB, _DepthB),
 
         EqNeqIdA \= EqNeqIdB,
-
         (
             % Both eqneqs are free.
-            %
             EqNeqRepA = free_neq(NeqSetA0),
             EqNeqRepB = free_neq(NeqSetB0),
 
@@ -278,11 +256,8 @@ neq(EqNeqA, EqNeqB) :-
                (( ConstraintStore0 ^ elem(EqNeqIdA) := free_neq(NeqSetA) )
                                    ^ elem(EqNeqIdB) := free_neq(NeqSetB) ),
             impure set_constraint_store(ConstraintStore)
-
         ;
-
             % A is free, B is bound.
-            %
             EqNeqRepA = free_neq(NeqSetA0),
             EqNeqRepB = bound(_UnivB),
 
@@ -290,11 +265,8 @@ neq(EqNeqA, EqNeqB) :-
             ConstraintStore =
                 ConstraintStore0 ^ elem(EqNeqIdA) := free_neq(NeqSetA),
             impure set_constraint_store(ConstraintStore)
-
         ;
-
             % A is bound, B is free.
-            %
             EqNeqRepA = bound(_UnivA),
             EqNeqRepB = free_neq(NeqSetB0),
 
@@ -302,11 +274,8 @@ neq(EqNeqA, EqNeqB) :-
             ConstraintStore =
                 ConstraintStore0 ^ elem(EqNeqIdB) := free_neq(NeqSetB),
             impure set_constraint_store(ConstraintStore)
-
         ;
-
             % A and B are bound.
-            %
             EqNeqRepA = bound(UnivA),
             EqNeqRepB = bound(UnivB),
 

@@ -22,44 +22,52 @@
 :- interface.
 :- import_module io.
 
-:- pred main(state, state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module char, int, string.
 
-% The length of `alphabet' should be a multiple of `cycle'.
-% Inferred declaration: func alphabet = string.
-alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".
+:- import_module char.
+:- import_module int.
+:- import_module string.
 
-% Inferred declaration: func cycle = int.
-cycle = 26.
+main(!IO) :-
+    read_char(Res, !IO),
+    (
+        Res = ok(Char),
+        io.print(rot13(Char), !IO),
+        main(!IO)
+    ;
+        Res = eof
+    ;
+        Res = error(ErrorCode),
+        error_message(ErrorCode, ErrorMessage),
+        io.stderr_stream(StdErr, !IO),
+        io.print(StdErr, "rot13: error reading input: ", !IO),
+        io.print(StdErr, ErrorMessage, !IO),
+        io.nl(StdErr, !IO)
+    ).
 
-% Inferred declaration: func rot_n(int, char) = char.
-rot_n(N, Char) = RotChar :-
-	char_to_string(Char, CharString),
-	( if sub_string_search(alphabet, CharString, Index) then
-		NewIndex = (Index + N) mod cycle + cycle * (Index // cycle),
-		string.det_index(alphabet, NewIndex, RotChar)
-	else
-		RotChar = Char
-	).
+:- func rot13(char) = char.
 
-% Inferred declaration: func rot13(char) = char.
 rot13(Char) = rot_n(13, Char).
 
-main -->
-	read_char(Res),
-	( { Res = ok(Char) },
-		print(rot13(Char)),
-		main
-	; { Res = eof }
-	; { Res = error(ErrorCode) },
-		{ error_message(ErrorCode, ErrorMessage) },
-		stderr_stream(StdErr),
-		print(StdErr, "rot13: error reading input: "),
-		print(StdErr, ErrorMessage),
-		nl(StdErr)
-	).
+:- func rot_n(int, char) = char.
 
+rot_n(N, Char) = RotChar :-
+    char_to_string(Char, CharString),
+    ( if sub_string_search(alphabet, CharString, Index) then
+        NewIndex = (Index + N) mod cycle + cycle * (Index // cycle),
+        string.det_index(alphabet, NewIndex, RotChar)
+    else
+        RotChar = Char
+    ).
 
+:- func cycle = int.
+
+cycle = 26.
+
+    % The length of `alphabet' should be a multiple of `cycle'.
+    %
+:- func alphabet = string.
+
+alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".

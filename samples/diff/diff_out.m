@@ -185,31 +185,22 @@ display_diff(File1, File2, Diff, !IO) :-
 
 display_diff_2(normal, File1, File2, Diff, !IO) :-
     display_diff_normal(File1, File2, Diff, !IO).
-
 display_diff_2(help_only, _File1, _File2, _Diff, !IO) :-
     error("display_diff: help_only").
-
 display_diff_2(version_only, _File1, _File2, _Diff, !IO) :-
     error("display_diff: version_only").
-
 display_diff_2(context(Context), File1, File2, Diff, !IO) :-
     display_context_diff(Context, File1, File2, Diff, !IO).
-
 display_diff_2(unified(Context), File1, File2, Diff, !IO) :-
     display_unified_diff(Context, File1, File2, Diff, !IO).
-
 display_diff_2(ed, File1, File2, Diff, !IO) :-
     display_diff_ed(File1, File2, Diff, !IO).
-
 display_diff_2(forward_ed, File1, File2, Diff, !IO) :-
     display_diff_forward_ed(File1, File2, Diff, !IO).
-
 display_diff_2(rcs, File1, File2, Diff, !IO) :-
     display_diff_rcs(File1, File2, Diff, !IO).
-
 display_diff_2(ifdef(Sym), File1, File2, Diff, !IO) :-
     display_diff_ifdef(Sym, File1, File2, Diff, !IO).
-
 display_diff_2(brief, File1, File2, _Diff, !IO) :-
     % XXX For this output style, we really don't need to perform
     % a complete diff. This should be handled higher up for efficiency.
@@ -217,10 +208,8 @@ display_diff_2(brief, File1, File2, _Diff, !IO) :-
     file.get_file_name(File2, FileName2),
     io.write_strings(["Files ", FileName1, " and ",
         FileName2, " differ\n"], !IO).
-
 display_diff_2(side_by_side, File1, File2, Diff, !IO) :-
     display_diff_side_by_side(File1, File2, Diff, !IO).
-
 display_diff_2(cvs_merge_conflict, File1, File2, Diff, !IO) :-
     display_diff_cvs_merge_conflict(File1, File2, Diff, !IO).
 
@@ -578,8 +567,8 @@ diff_to_context_diff(Xsize, Ysize, Context, [Edit | Diff], CDiff) :-
             ; YsegLo =< Ylast
             )
         then
-            CDiff = [context_edit(Xfirst - XsegHi, Yfirst - YsegHi, [Edit
-                | DDiff]) | CDiff1]
+            CDiff = [context_edit(Xfirst - XsegHi, Yfirst - YsegHi,
+                [Edit | DDiff]) | CDiff1]
         else
             CDiff = [context_edit(Xfirst - Xlast, Yfirst - Ylast,
                 [Edit]) | CDiff0]
@@ -805,8 +794,7 @@ display_diff_side_by_side(File1, File2, Diff, !IO) :-
 
     % Calculate the half-width and offset stuff.
 
-        % XXX If we're expanding tabs, we should
-        %     factor this in.
+    % XXX If we are expanding tabs, we should factor this in.
     Off = (Width0 + 4) // 8 * 4,
     Max =  Off - 3,
     HalfWidth0 = Width0 - Off + 1,
@@ -910,7 +898,6 @@ show_sbs_same_lines(File, SBS, Low - High, !IO) :-
 
             % If the user specified --left, don't display the right column
             % here.
-            %
             (
                 LeftCol = yes,
                 tab_to_column(OutPos, Width, !IO),
@@ -1032,7 +1019,7 @@ print_half_line([C | Cs], SBS, InPos0, OutPos0, OutBound, OutPos, !IO) :-
             globals.io_lookup_bool_option(expand_tabs, ExpandTabs, !IO),
             (
                 ExpandTabs = yes,
-                % If we're expanding tabs, we just pretend that
+                % If we are expanding tabs, we just pretend that
                 % we had Spaces spaces and write them.
                 TabStop0 = OutPos0 + Spaces,
                 ( if TabStop0 > OutBound then
@@ -1042,7 +1029,7 @@ print_half_line([C | Cs], SBS, InPos0, OutPos0, OutBound, OutPos, !IO) :-
                 ),
                 put_spaces(TabStop - OutPos0, OutPos0, OutPos1, !IO)
             ;
-                % If we're not expanding tabs, just print it and
+                % If we are not expanding tabs, just print it and
                 % hope everything lines up okay.
                 ExpandTabs = no,
                 io.write_char('\t', !IO),

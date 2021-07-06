@@ -22,9 +22,9 @@
 :- import_module solutions.
 
 main(!IO) :-
-	N = 2,
-	do_while(hello, get_next, {!.IO, N}, {!:IO, _}),
-	print("Done\n", !IO).
+    N = 2,
+    do_while(hello, get_next, {!.IO, N}, {!:IO, _}),
+    print("Done\n", !IO).
 
 :- pred hello(string::out) is multi.
 
@@ -33,10 +33,9 @@ hello("Good day, world\n").
 hello("Greetings, world\n").
 
 :- pred get_next(string::in, bool::out, {io, int}::di, {io, int}::uo)
-	is det.
+    is det.
 
 get_next(String, More, {IO0, Max0}, {IO, Max}) :-
-	print(String, IO0, IO),
-	More = (Max0 > 1 -> yes ; no),
-	Max = Max0 - 1.
-
+    print(String, IO0, IO),
+    More = (Max0 > 1 -> yes ; no),
+    Max = Max0 - 1.

@@ -85,17 +85,17 @@ main_2(CalcInfo0, !IO) :-
             EvalResult = succeeded(Num),
             io.write_int(Num, !IO),
             io.nl(!IO),
-            ( SetVar = yes(VarToSet) ->
+            ( if SetVar = yes(VarToSet) then
                 map.set(VarToSet, Num, CalcInfo0, CalcInfo)
-            ;
+            else
                 CalcInfo = CalcInfo0
             )
         ;
             EvalResult = exception(Exception),
             CalcInfo = CalcInfo0,
-            ( univ_to_type(Exception, EvalError) ->
+            ( if univ_to_type(Exception, EvalError) then
                 report_eval_error(EvalError, !IO)
-            ;
+            else
                 rethrow(EvalResult)
             )
         ),
@@ -107,76 +107,72 @@ main_2(CalcInfo0, !IO) :-
 :- pred report_eval_error(eval_error::in, io::di, io::uo) is det.
 
 report_eval_error(unknown_operator(Name, Arity), !IO) :-
-    io.write_string("unknown operator `", !IO),
-    io.write_string(Name, !IO),
-    io.write_string("/", !IO),
-    io.write_int(Arity, !IO),
-    io.write_string("'.\n", !IO).
+    io.format("unknown operator `%s/%d'.\n", [s(Name), i(Arity)], !IO).
 report_eval_error(unknown_variable(Name), !IO) :-
-    io.write_string("unknown variable `", !IO),
-    io.write_string(Name, !IO),
-    io.write_string("'.\n", !IO).
+    io.format("unknown variable `%s'.\n", [s(Name)], !IO).
 report_eval_error(unexpected_const(Const), !IO) :-
     io.write_string("unexpected ", !IO),
     (
         Const = term.float(Float),
-        io.write_string(" float `", !IO),
-        io.write_float(Float, !IO),
-        io.write_string("'", !IO)
+        io.format("unexpected float `%f'\n", [f(Float)], !IO)
     ;
         Const = term.string(String),
-        io.write_string(" string """, !IO),
-        io.write_string(String, !IO),
-        io.write_string("""", !IO)
+        io.format("unexpected string ""%s""\n", [s(String)], !IO)
     ;
         ( Const = term.integer(_, _, _, _)
         ; Const = term.atom(_)
         ; Const = term.implementation_defined(_)
         ),
         error("report_eval_error")
-    ),
-    io.nl(!IO).
+    ).
 
 :- func eval_expr(calc_info, varset, term) = int.
 
-eval_expr(CalcInfo, VarSet, term.variable(Var, _Context)) = Res :-
-    varset.lookup_name(VarSet, Var, VarName),
-    ( if map.search(CalcInfo, VarName, Res0) then
-        Res = Res0
-    else
-        throw(unknown_variable(VarName))
-    ).
-eval_expr(CalcInfo, VarSet, term.functor(term.atom(Op), Args, _)) = Res :-
-    ( if
-        (
-            Args = [Arg1],
-            Res0 = eval_unop(Op, eval_expr(CalcInfo, VarSet, Arg1))
-        ;
-            Args = [Arg1, Arg2],
-            Res0 = eval_binop(Op,
-                eval_expr(CalcInfo, VarSet, Arg1),
-                eval_expr(CalcInfo, VarSet, Arg2))
+eval_expr(CalcInfo, VarSet, Term) = Res :-
+    (
+        Term = term.variable(Var, _Context),
+        varset.lookup_name(VarSet, Var, VarName),
+        ( if map.search(CalcInfo, VarName, Res0) then
+            Res = Res0
+        else
+            throw(unknown_variable(VarName))
         )
-    then
-        Res = Res0
-    else
-        throw(unknown_operator(Op, list.length(Args)))
+    ;
+        Term = term.functor(term.atom(Op), Args, _),
+        ( if
+            (
+                Args = [Arg1],
+                Res0 = eval_unop(Op, eval_expr(CalcInfo, VarSet, Arg1))
+            ;
+                Args = [Arg1, Arg2],
+                Res0 = eval_binop(Op,
+                    eval_expr(CalcInfo, VarSet, Arg1),
+                    eval_expr(CalcInfo, VarSet, Arg2))
+            )
+        then
+            Res = Res0
+        else
+            throw(unknown_operator(Op, list.length(Args)))
+        )
+    ;
+        Term = term.functor(Const, _, Context),
+        Const = term.integer(_, _, _, _),
+        ( if term_to_int(Term, Int) then
+            Res = Int
+        else
+            throw(unexpected_const(Const) - Context)
+        )
+    ;
+        Term = term.functor(term.float(Float), _, Context),
+        throw(unexpected_const(term.float(Float)) - Context)
+    ;
+        Term = term.functor(term.string(String), _, Context),
+        throw(unexpected_const(term.string(String)) - Context)
+    ;
+        Term =  term.functor(ImplDefConst, _, Context),
+        ImplDefConst = term.implementation_defined(_),
+        throw(unexpected_const(ImplDefConst) - Context)
     ).
-eval_expr(_, _, Term) = Int :-
-    Term = term.functor(Const, _, Context),
-    Const = term.integer(_, _, _, _),
-    ( if term_to_int(Term, Int0) then
-        Int = Int0
-    else
-        throw(unexpected_const(Const) - Context)
-    ).
-eval_expr(_, _, term.functor(term.float(Float), _, Context)) =
-    throw(unexpected_const(term.float(Float)) - Context).
-eval_expr(_, _, term.functor(term.string(String), _, Context)) =
-    throw(unexpected_const(term.string(String)) - Context).
-eval_expr(_,  _, term.functor(ImplDefConst, _, Context)) = _ :-
-    ImplDefConst = term.implementation_defined(_),
-    throw(unexpected_const(ImplDefConst) - Context).
 
 :- func eval_unop(string, int) = int is semidet.
 

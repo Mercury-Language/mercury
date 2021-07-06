@@ -74,7 +74,6 @@ solve_sudoku(Start, Solution) :-
     % to label_board/2 occurs before the constraints have been posted.)
     ( if
         % Set up the board.
-        %
         init_board(Start, Board),
 
         Board = [X11, X12, X13,  X14, X15, X16,  X17, X18, X19,
@@ -90,7 +89,6 @@ solve_sudoku(Start, Solution) :-
                  X91, X92, X93,  X94, X95, X96,  X97, X98, X99],
 
         % The digits in each row must be different.
-        %
         eqneq.all_different([X11, X12, X13, X14, X15, X16, X17, X18, X19]),
         eqneq.all_different([X21, X22, X23, X24, X25, X26, X27, X28, X29]),
         eqneq.all_different([X31, X32, X33, X34, X35, X36, X37, X38, X39]),
@@ -102,7 +100,6 @@ solve_sudoku(Start, Solution) :-
         eqneq.all_different([X91, X92, X93, X94, X95, X96, X97, X98, X99]),
 
         % The digits in each column must be different.
-        %
         eqneq.all_different([X11, X21, X31, X41, X51, X61, X71, X81, X91]),
         eqneq.all_different([X12, X22, X32, X42, X52, X62, X72, X82, X92]),
         eqneq.all_different([X13, X23, X33, X43, X53, X63, X73, X83, X93]),
@@ -113,8 +110,7 @@ solve_sudoku(Start, Solution) :-
         eqneq.all_different([X18, X28, X38, X48, X58, X68, X78, X88, X98]),
         eqneq.all_different([X19, X29, X39, X49, X59, X69, X79, X89, X99]),
 
-            % The digits in each subsquare must be different.
-            %
+        % The digits in each subsquare must be different.
         eqneq.all_different([X11, X12, X13, X21, X22, X23, X31, X32, X33]),
         eqneq.all_different([X14, X15, X16, X24, X25, X26, X34, X35, X36]),
         eqneq.all_different([X17, X18, X19, X27, X28, X29, X37, X38, X39]),
@@ -126,7 +122,6 @@ solve_sudoku(Start, Solution) :-
         eqneq.all_different([X77, X78, X79, X87, X88, X89, X97, X98, X99])
     then
         % Assign a digit to each square on the board.
-        %
         label_board(Board, Solution)
     else
         false
@@ -134,7 +129,7 @@ solve_sudoku(Start, Solution) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Convert a board description into a board representation.  Each "word" in
+    % Convert a board description into a board representation. Each "word" in
     % the board description is either a digit, in which case we fix that board
     % entry in the representation, or a non-digit, in which case we leave that
     % board entry unconstrained.
@@ -144,9 +139,10 @@ solve_sudoku(Start, Solution) :-
 init_board([], []).
 init_board([Start | Starts], [EqNeq | EqNeqs]) :-
     eqneq.new(EqNeq),
-    ( if string.to_int(Start, X)
-    then eqneq.bind(EqNeq, X)
-    else true
+    ( if string.to_int(Start, X) then
+        eqneq.bind(EqNeq, X)
+    else
+        true
     ),
     init_board(Starts, EqNeqs).
 
@@ -173,21 +169,22 @@ label_board([EqNeq | EqNeqs], [X | Xs]) :-
 
 write_solution(_, _, [], !IO) :-
     io.nl(!IO).
-
 write_solution(N, R, [X | Xs], !IO) :-
     ( if N = 0 then
         io.nl(!IO),
-        ( if (R mod 3) = 0
-        then io.nl(!IO)
-        else true
+        ( if (R mod 3) = 0 then
+            io.nl(!IO)
+        else
+            true
         ),
         write_solution(9, R + 1, [X | Xs], !IO)
     else
         io.write_int(X, !IO),
         io.write_char(' ', !IO),
-        ( if (N mod 3) = 1
-        then io.write_char(' ', !IO)
-        else true
+        ( if (N mod 3) = 1 then
+            io.write_char(' ', !IO)
+        else
+            true
         ),
         write_solution(N - 1, R + 1, Xs, !IO)
     ).

@@ -50,12 +50,14 @@ main(!IO) :-
                 InFileOpened = yes,
                 new(Bytes0, !IO),
                 new(Messages, !IO),
-                spawn((pred(!.IO::di, !:IO::uo) is cc_multi :-
-                    read_midi(Bytes0, Messages, !IO)
-                ), !IO),
-                spawn((pred(!.IO::di, !:IO::uo) is cc_multi :-
-                    print_messages(Messages, !IO)
-                ), !IO),
+                spawn(
+                    ( pred(!.IO::di, !:IO::uo) is cc_multi :-
+                        read_midi(Bytes0, Messages, !IO)
+                    ), !IO),
+                spawn(
+                    ( pred(!.IO::di, !:IO::uo) is cc_multi :-
+                        print_messages(Messages, !IO)
+                    ), !IO),
                 read_input(Bytes0, !IO)
             ;
                 InFileOpened = no

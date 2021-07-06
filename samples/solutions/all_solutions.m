@@ -14,11 +14,10 @@
 :- import_module solutions.
 
 main(!IO) :-
-	solutions(hello, List),
-	io.write_strings(List, !IO).
+    solutions(hello, List),
+    io.write_strings(List, !IO).
 
 :- pred hello(string::out) is multi.
 
 hello("Hello, world\n").
 hello("Hello again, world\n").
-

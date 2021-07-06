@@ -58,8 +58,9 @@ columns = 78.
     --->    [int | int_stream]
     ;       closure((func) = int_stream).
 
-:- inst int_stream for int_stream/0 ==
-    bound([ground | int_stream] ; closure((func) = is_out is det)).
+:- inst int_stream for int_stream/0
+    --->    [ground | int_stream]
+    ;       closure((func) = is_out is det).
 
 :- mode is_in  == in(int_stream).
 :- mode is_out == out(int_stream).
@@ -91,17 +92,16 @@ scale(C, Digit, [D | Ds], Stream) :-
     K = base * D,
     KdC = K // C,
     ( if KdC = (K + base - 1) // C then
-        % We have the next digit.  Construct a closure to
-        % generate the rest.
-
+        % We have the next digit.  Construct a closure to generate the rest.
         Digit = KdC,
-        Stream = closure((func) = [K rem C + NextDigit | Stream0] :-
-                scale(C + 1, NextDigit, Ds, Stream0)
+        Stream =
+            closure(
+                (func) = [K rem C + NextDigit | Stream0] :-
+                    scale(C + 1, NextDigit, Ds, Stream0)
             )
     else
-        % We have a carry to factor in, so calculate the next
-        % digit eagerly then add it on.
-
+        % We have a carry to factor in, so calculate the next digit eagerly
+        % then add it on.
         scale(C + 1, A1, Ds, B1),
         Digit = (K + A1) // C,
         Stream = [(K + A1) rem C | B1]

@@ -26,8 +26,8 @@
 :- import_module solutions.
 
 main(!IO) :-
-	do_while(hello, get_next, !IO),
-	io.write_string("No (more) solutions\n", !IO).
+    do_while(hello, get_next, !IO),
+    io.write_string("No (more) solutions\n", !IO).
 
 :- pred hello(string::out) is multi.
 
@@ -38,15 +38,17 @@ hello("Greetings, world\n").
 :- pred get_next(string::in, bool::out, io::di, io::uo) is det.
 
 get_next(String, More, !IO) :-
-	% print the first answer
-	io.write_string(String, !IO),
+    % print the first answer
+    io.write_string(String, !IO),
 
-	% see if the user wants more answers
-	io.write_string("More? ", !IO),
-	io.read_line(Line, !IO),
-	( if	Line = ok([FirstChar|_]),
-		char.to_upper(FirstChar, 'Y')
-	then	More = yes
- 	else	More = no
-	).
-
+    % see if the user wants more answers
+    io.write_string("More? ", !IO),
+    io.read_line(Line, !IO),
+    ( if
+        Line = ok([FirstChar | _]),
+        char.to_upper(FirstChar, 'Y')
+    then
+        More = yes
+    else
+        More = no
+    ).

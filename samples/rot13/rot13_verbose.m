@@ -22,17 +22,50 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module char, int, require.
+
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module string.
+
+main(!IO) :-
+	io.read_char(Res, !IO),
+	(
+        Res = ok(Char),
+		rot13(Char, RotChar),
+		io.write_char(RotChar, !IO),
+		main(!IO)
+	;
+        Res = eof
+	;
+        Res = error(ErrorCode),
+		io.error_message(ErrorCode, ErrorMessage),
+		io.stderr_stream(StdErr, !IO),
+		io.format(StdErr, "rot13: error reading input: %s\n",
+            [s(ErrorMessage)], !IO)
+	).
+
+	% rot13/2
+	% Applies the rot13 algorithm to a character.
+    %
+:- pred rot13(char::in, char::out) is det.
+
+rot13(Char, RotChar) :-
+	( if rot13a(Char, TmpChar) then
+		RotChar = TmpChar
+	else
+		RotChar = Char
+	).
 
 	% rot13a/2
 	% A table to map the alphabetic characters to their rot13 equivalents
 	% (fails if the input is not alphabetic).
-:- pred rot13a(char, char).
-:- mode rot13a(in, out) is semidet.
+    %
+:- pred rot13a(char::in, char::out) is semidet.
 
 rot13a('a', 'n').
 rot13a('b', 'o').
@@ -86,31 +119,3 @@ rot13a('W', 'J').
 rot13a('X', 'K').
 rot13a('Y', 'L').
 rot13a('Z', 'M').
-
-	% rot13/2
-	% Applies the rot13 algorithm to a character.
-:- pred rot13(char, char).
-:- mode rot13(in, out) is det.
-
-rot13(Char, RotChar) :-
-	( if rot13a(Char, TmpChar) then
-		RotChar = TmpChar
-	else
-		RotChar = Char
-	).
-
-main -->
-	io__read_char(Res),
-	( { Res = ok(Char) },
-		{ rot13(Char, RotChar) },
-		io__write_char(RotChar),
-		main
-	; { Res = eof }
-	; { Res = error(ErrorCode) },
-		{ io__error_message(ErrorCode, ErrorMessage) },
-		io__stderr_stream(StdErr),
-		io__write_string(StdErr, "rot13: error reading input: "),
-		io__write_string(StdErr, ErrorMessage),
-		io__nl(StdErr)
-	).
-

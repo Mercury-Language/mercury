@@ -4,9 +4,9 @@
 % In the standard "commutative" semantics, this program should print out
 % _either_
 %
-%	Hello, World
+%   Hello, World
 % or
-%	Goodbye, World
+%   Goodbye, World
 %
 % Which one it prints out is unspecified: the implementation can pick either.
 %
@@ -23,5 +23,7 @@
 
 :- implementation.
 
-main(!IO) :- io.write_string("Hello, world\n", !IO).
-main(!IO) :- io.write_string("Goodbye, world\n", !IO).
+main(!IO) :-
+    io.write_string("Hello, world\n", !IO).
+main(!IO) :-
+    io.write_string("Goodbye, world\n", !IO).

@@ -87,9 +87,12 @@ expr(Expr) -->
 :- pred expr2(expr::in, expr::out, list(char)::in, list(char)::out) is semidet.
 
 expr2(Factor, Expr) -->
-    ( ['+'] -> factor(Factor2), expr2(plus( Factor, Factor2), Expr)
-    ; ['-'] -> factor(Factor2), expr2(minus(Factor, Factor2), Expr)
-    ; { Expr = Factor }
+    ( if ['+'] then
+        factor(Factor2), expr2(plus( Factor, Factor2), Expr)
+    else if ['-'] then
+        factor(Factor2), expr2(minus(Factor, Factor2), Expr)
+    else
+        { Expr = Factor }
     ).
 
 :- pred factor(expr::out, list(char)::in, list(char)::out) is semidet.
@@ -102,19 +105,22 @@ factor(Factor) -->
     is semidet.
 
 factor2(Term, Factor) -->
-    ( ['*'] -> term(Term2), factor2(times(Term, Term2), Factor)
-    ; ['/'] -> term(Term2), factor2(div(  Term, Term2), Factor)
-    ; { Factor = Term }
+    ( if ['*'] then
+        term(Term2), factor2(times(Term, Term2), Factor)
+    else if ['/'] then
+        term(Term2), factor2(div(  Term, Term2), Factor)
+    else
+        { Factor = Term }
     ).
 
 :- pred term(expr::out, list(char)::in, list(char)::out) is semidet.
 
 term(Term) -->
-    ( const(Const) ->
+    ( if const(Const) then
         { string.from_char_list(Const, ConstString) },
         { string.to_int(ConstString, Num) },
         { Term = number(Num) }
-    ;
+    else
         ['('], expr(Term), [')']
     ).
 
@@ -122,9 +128,9 @@ term(Term) -->
 
 const([Digit|Rest]) -->
     digit(Digit),
-    ( const(Const) ->
+    ( if const(Const) then
         { Rest = Const }
-    ;
+    else
         { Rest = [] }
     ).
 
