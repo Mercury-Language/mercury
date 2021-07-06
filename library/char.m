@@ -227,6 +227,11 @@
     %
 :- func det_base_digit_to_int(int, char) = int.
 
+    % A version of base_digit_to_int that does not check whether
+    % Base is in the range 2 to 36. If it is not, the behavior is undefined.
+    %
+:- pred unsafe_base_digit_to_int(int::in, char::in, int::out) is semidet.
+
 %---------------------%
 
     % Convert an integer in the range 0-1 to a binary digit (0 or 1) in the
@@ -825,31 +830,35 @@ hex_digit_to_int('D', 13).
 hex_digit_to_int('E', 14).
 hex_digit_to_int('F', 15).
 
-det_hex_digit_to_int(Digit) = Int :-
-    ( if hex_digit_to_int(Digit, IntPrime) then
+det_hex_digit_to_int(DigitStr) = Int :-
+    ( if hex_digit_to_int(DigitStr, IntPrime) then
         Int = IntPrime
     else
         error($pred, "char.hex_digit_to_int failed")
     ).
 
-base_digit_to_int(Base, Digit, Int) :-
+base_digit_to_int(Base, DigitStr, Int) :-
     ( if 1 < Base, Base < 37 then
-        ( if lower_upper(Digit, Upper) then
-            int_to_extended_digit(Int, Upper)
-        else
-            int_to_extended_digit(Int, Digit)
-        ),
-        Int < Base
+        unsafe_base_digit_to_int(Base, DigitStr, Int)
     else
-        error($pred, "invalid base")
+        error($pred, "base is not in the range 2 .. 36")
     ).
 
-det_base_digit_to_int(Base, Digit) = Int :-
-    ( if base_digit_to_int(Base, Digit, IntPrime) then
+det_base_digit_to_int(Base, DigitStr) = Int :-
+    ( if base_digit_to_int(Base, DigitStr, IntPrime) then
         Int = IntPrime
     else
         error($pred, "char.base_digit_to_int failed")
     ).
+
+unsafe_base_digit_to_int(Base, DigitStr0, Int) :-
+    ( if lower_upper(DigitStr0, UpperStr) then
+        DigitStr = UpperStr
+    else
+        DigitStr = DigitStr0
+    ),
+    int_to_extended_digit(Int, DigitStr),
+    Int < Base.
 
 %---------------------------------------------------------------------------%
 %

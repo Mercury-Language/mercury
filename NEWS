@@ -65,6 +65,10 @@ Changes to the Mercury standard library
 
 ### Changes to the `char` module
 
+* The following predicate has been added:
+
+    - pred `unsafe_base_digit_to_int/3`
+
 * The following obsolete predicates and functions have been removed:
 
     - func `det_int_to_digit/1`     (replacement: `det_int_to_decimal_digit/1`)

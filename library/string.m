@@ -5367,14 +5367,16 @@ base_positive_int_accumulator(Base) = Pred :-
         Pred = accumulate_int(8)
     else if Base = 2 then
         Pred = accumulate_int(2)
-    else
+    else if 2 =< Base, Base =< 36 then
         Pred = accumulate_int(Base)
+    else
+        unexpected($pred, "base is not in the range 2 .. 36")
     ).
 
 :- pred accumulate_int(int::in, char::in, int::in, int::out) is semidet.
 
 accumulate_int(Base, Char, N0, N) :-
-    char.base_digit_to_int(Base, Char, M),
+    char.unsafe_base_digit_to_int(Base, Char, M),
     N = (Base * N0) + M,
     % Fail on overflow.
     % XXX depends on undefined behaviour
@@ -5394,15 +5396,17 @@ base_negative_int_accumulator(Base) = Pred :-
         Pred = accumulate_negative_int(8)
     else if Base = 2 then
         Pred = accumulate_negative_int(2)
-    else
+    else if 2 =< Base, Base =< 36 then
         Pred = accumulate_negative_int(Base)
+    else
+        unexpected($pred, "base is not in the range 2 .. 36")
     ).
 
 :- pred accumulate_negative_int(int::in, char::in,
     int::in, int::out) is semidet.
 
 accumulate_negative_int(Base, Char, N0, N) :-
-    char.base_digit_to_int(Base, Char, M),
+    char.unsafe_base_digit_to_int(Base, Char, M),
     N = (Base * N0) - M,
     % Fail on overflow.
     % XXX depends on undefined behaviour
@@ -5447,16 +5451,17 @@ base_uint_accumulator(Base) = Pred :-
         Pred = accumulate_uint(8u, 8)
     else if Base = 2 then
         Pred = accumulate_uint(2u, 2)
-    else
-        % Check that Base fits in a uint exactly once, here.
+    else if 2 =< Base, Base =< 36 then
         Pred = accumulate_uint(uint.det_from_int(Base), Base)
+    else
+        unexpected($pred, "base is not in the range 2 .. 36")
     ).
 
 :- pred accumulate_uint(uint::in, int::in, char::in, uint::in, uint::out)
     is semidet.
 
 accumulate_uint(Base, BaseInt, Char, N0, N) :-
-    char.base_digit_to_int(BaseInt, Char, M),
+    char.unsafe_base_digit_to_int(BaseInt, Char, M),
     N = (Base * N0) + uint.det_from_int(M),
     % Fail on overflow.
     % XXX depends on undefined behaviour
