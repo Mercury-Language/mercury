@@ -173,13 +173,13 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
         BodyDu0 = type_body_du(Ctors0, MaybeSuperType0, MaybeCanonical,
             MaybeRepn0, MaybeForeign),
         (
-            MaybeSuperType0 = yes(SuperType0),
+            MaybeSuperType0 = subtype_of(SuperType0),
             hlds_replace_in_type(TypeEqvMap, SuperType0, SuperType,
                 TVarSet0, TVarSet1),
-            MaybeSuperType = yes(SuperType)
+            MaybeSuperType = subtype_of(SuperType)
         ;
-            MaybeSuperType0 = no,
-            MaybeSuperType = no,
+            MaybeSuperType0 = not_a_subtype,
+            MaybeSuperType = not_a_subtype,
             TVarSet1 = TVarSet0
         ),
         equiv_type.replace_in_ctors(TypeEqvMap, Ctors0, Ctors,

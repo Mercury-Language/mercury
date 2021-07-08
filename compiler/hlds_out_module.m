@@ -367,13 +367,13 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
             MaybeRepn, Foreign),
         io.nl(Stream, !IO),
         (
-            MaybeSuperType = yes(SuperType),
+            MaybeSuperType = subtype_of(SuperType),
             SuperTypeStr = mercury_type_to_string(TVarSet,
                 print_name_only, SuperType),
             write_indent(Stream, Indent, !IO),
             io.format(Stream, "%% subtype of %s\n", [s(SuperTypeStr)], !IO)
         ;
-            MaybeSuperType = no
+            MaybeSuperType = not_a_subtype
         ),
         MaybeSolverTypeDetails = no,
         MercInfo = Info ^ hoi_merc_out_info,

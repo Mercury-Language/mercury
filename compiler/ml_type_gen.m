@@ -210,11 +210,11 @@ ml_gen_hld_type_defn(ModuleInfo, Target, TypeCtor, TypeDefn, !ClassDefns) :-
             MaybeRepn = yes(Repn)
         ),
         (
-            MaybeSuperType = yes(_)
+            MaybeSuperType = subtype_of(_)
             % In high-level data grades, a subtype uses the same class as its
             % base type ctor.
         ;
-            MaybeSuperType = no,
+            MaybeSuperType = not_a_subtype,
             Repn = du_type_repn(CtorRepns, _ConsCtorMap, _CheaperTagTest,
                 DuTypeKind, _MaybeDirectArgCtors),
             ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),

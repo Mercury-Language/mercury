@@ -348,7 +348,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 :- type type_details_du
     --->    type_details_du(
                 % The supertype for a subtype definition.
-                du_supertype        :: maybe(mer_type),
+                du_supertype        :: maybe_subtype,
 
                 % The list of data constructors (function symbols) defined
                 % by the type constructor.
@@ -748,6 +748,12 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;       aw_double_word.
 
 :- func arg_pos_width_to_width_only(arg_pos_width) = arg_width.
+
+    % Is a given discriminated union type a subtype of another type?
+    %
+:- type maybe_subtype
+    --->    not_a_subtype
+    ;       subtype_of(mer_type).
 
     % The noncanon functor gives the user-defined unification and/or comparison
     % predicates for a noncanonical type, if they are known.

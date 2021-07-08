@@ -1672,13 +1672,13 @@ replace_in_type_defn_du(MaybeRecord, TypeEqvMap, _InstEqvMap,
     DetailsDu0 = type_details_du(MaybeSuperType0, Ctors0, EqPred,
         DirectArgFunctors),
     (
-        MaybeSuperType0 = yes(SuperType0),
+        MaybeSuperType0 = subtype_of(SuperType0),
         replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
             SuperType0, SuperType, _, !TVarSet, !EquivTypeInfo, !UsedModules),
-        MaybeSuperType = yes(SuperType)
+        MaybeSuperType = subtype_of(SuperType)
     ;
-        MaybeSuperType0 = no,
-        MaybeSuperType = no
+        MaybeSuperType0 = not_a_subtype,
+        MaybeSuperType = not_a_subtype
     ),
     replace_in_ctors_location(MaybeRecord, TypeEqvMap, Ctors0, Ctors,
         !TVarSet, !EquivTypeInfo, !UsedModules),

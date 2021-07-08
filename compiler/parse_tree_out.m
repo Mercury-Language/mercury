@@ -1104,9 +1104,9 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm,
             Stream, !IO),
         (
-            MaybeSuperType = no
+            MaybeSuperType = not_a_subtype
         ;
-            MaybeSuperType = yes(SuperType),
+            MaybeSuperType = subtype_of(SuperType),
             io.write_string(Stream, " =< ", !IO),
             mercury_output_type(TypeVarSet, print_name_only, SuperType,
                 Stream, !IO)

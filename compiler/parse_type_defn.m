@@ -185,7 +185,7 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     else
         parse_type_defn_head(ContextPieces, ModuleName, VarSet, HeadTerm,
             MaybeTypeCtorAndArgs),
-        MaybeSuperType0 = ok1(no),
+        MaybeSuperType0 = ok1(not_a_subtype),
         SuperTypeContext = term.dummy_context_init
     ),
     du_type_rhs_ctors_and_where_terms(BodyTerm, CtorsTerm, MaybeWhereTerm),
@@ -212,11 +212,11 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         expect(unify(SolverTypeDetails, no), $pred,
             "discriminated union type has solver type details"),
         (
-            MaybeSuperType = yes(SuperType),
+            MaybeSuperType = subtype_of(SuperType),
             check_supertype_vars(Params, VarSet, SuperType, SuperTypeContext,
                 [], ErrorSpecs0)
         ;
-            MaybeSuperType = no,
+            MaybeSuperType = not_a_subtype,
             ErrorSpecs0 = []
         ),
         OneOrMoreCtors = one_or_more(HeadCtor, TailCtors),
@@ -1691,7 +1691,7 @@ check_no_free_body_vars(TVarSet, ParamTVars, BodyType, BodyContext, Specs) :-
 %-----------------------------------------------------------------------------e
 
 :- pred parse_supertype(varset::in, cord(format_component)::in, term::in,
-    maybe1(maybe(mer_type))::out) is det.
+    maybe1(maybe_subtype)::out) is det.
 
 parse_supertype(VarSet, ContextPieces, Term, Result) :-
     parse_type(no_allow_ho_inst_info(wnhii_supertype), VarSet,
@@ -1699,7 +1699,7 @@ parse_supertype(VarSet, ContextPieces, Term, Result) :-
     (
         MaybeType = ok1(Type),
         ( if type_to_ctor_and_args(Type, _TypeCtor, _Args) then
-            Result = ok1(yes(Type))
+            Result = ok1(subtype_of(Type))
         else
             Context = get_term_context(Term),
             TermStr = describe_error_term(VarSet, Term),

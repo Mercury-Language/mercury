@@ -1102,10 +1102,10 @@ find_items_used_by_type_body(TypeBody, !Info) :-
         TypeBody = hlds_du_type(TypeBodyDu),
         TypeBodyDu = type_body_du(Ctors, MaybeSuperType, _, _, _),
         (
-            MaybeSuperType = yes(SuperType),
+            MaybeSuperType = subtype_of(SuperType),
             find_items_used_by_type(SuperType, !Info)
         ;
-            MaybeSuperType = no
+            MaybeSuperType = not_a_subtype
         ),
         list.foldl(find_items_used_by_ctor, one_or_more_to_list(Ctors), !Info)
     ;

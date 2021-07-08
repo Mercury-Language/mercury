@@ -998,7 +998,7 @@ non_sub_du_type_is_notag(OoMCtors, MaybeCanonical) :-
 non_sub_du_type_is_enum(DuDetails, NumFunctors) :-
     DuDetails = type_details_du(MaybeSuperType, OoMCtors, _MaybeCanonical,
         _MaybeDirectArgCtors),
-    expect(unify(MaybeSuperType, no), $pred,
+    expect(unify(MaybeSuperType, not_a_subtype), $pred,
         "cannot determine if subtype is enum"),
     Ctors = one_or_more_to_list(OoMCtors),
     Ctors = [_, _ | _],
@@ -1022,7 +1022,7 @@ all_functors_are_constants([Ctor | Ctors], !NumFunctors) :-
 non_sub_du_type_is_dummy(DuDetails) :-
     DuDetails = type_details_du(MaybeSuperType, Ctors, MaybeCanonical,
         MaybeDirectArgCtors),
-    expect(unify(MaybeSuperType, no), $pred,
+    expect(unify(MaybeSuperType, not_a_subtype), $pred,
         "cannot determine if subtype is dummy"),
     Ctors = one_or_more(Ctor, []),
     Ctor = ctor(_Ordinal, MaybeExistConstraints, _FunctorName, [], 0,

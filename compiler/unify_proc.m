@@ -182,7 +182,7 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
     Context = SpecDefnInfo ^ spdi_context,
     ( if
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, yes(SuperType), _, _, _)
+        TypeBodyDu = type_body_du(_, subtype_of(SuperType), _, _, _)
     then
         % Unify subtype terms after casting to base type.
         % This is necessary in high-level data grades,
@@ -246,7 +246,8 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
         ;
             TypeBody = hlds_du_type(TypeBodyDu),
             TypeBodyDu = type_body_du(_, MaybeSuperType, _, MaybeRepn, _),
-            expect(unify(MaybeSuperType, no), $pred, "MaybeSuperType != no"),
+            expect(unify(MaybeSuperType, not_a_subtype), $pred,
+                "MaybeSuperType != not_a_subtype"),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")
@@ -945,7 +946,7 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
     Context = SpecDefnInfo ^ spdi_context,
     ( if
         TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(_, yes(SuperType), _, _, _)
+        TypeBodyDu = type_body_du(_, subtype_of(SuperType), _, _, _)
     then
         % Compare subtype terms after casting to base type.
         TVarSet = SpecDefnInfo ^ spdi_tvarset,
@@ -1002,7 +1003,8 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
         ;
             TypeBody = hlds_du_type(TypeBodyDu),
             TypeBodyDu = type_body_du(_, MaybeSuperType, _, MaybeRepn, _),
-            expect(unify(MaybeSuperType, no), $pred, "MaybeSuperType != no"),
+            expect(unify(MaybeSuperType, not_a_subtype), $pred,
+                "MaybeSuperType != not_a_subtype"),
             (
                 MaybeRepn = no,
                 unexpected($pred, "MaybeRepn = no")
@@ -2582,10 +2584,10 @@ get_du_base_type_loop(TypeTable, TVarSet, Type, BaseType) :-
         TypeBody = hlds_du_type(TypeBodyDu),
         TypeBodyDu = type_body_du(_, MaybeSuperType, _, _MaybeRepn, _),
         (
-            MaybeSuperType = no,
+            MaybeSuperType = not_a_subtype,
             BaseType = Type
         ;
-            MaybeSuperType = yes(SuperType0),
+            MaybeSuperType = subtype_of(SuperType0),
             hlds_data.get_type_defn_tvarset(TypeDefn, TypeDefnTVarSet),
             hlds_data.get_type_defn_tparams(TypeDefn, TypeDefnTypeParams),
             merge_tvarsets_and_subst_type_args(TVarSet, TypeArgs,

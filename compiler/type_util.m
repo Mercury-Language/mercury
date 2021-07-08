@@ -949,10 +949,10 @@ get_base_type_ctor(TypeTable, TypeCtor, BaseTypeCtor) :-
         TypeBody = hlds_du_type(TypeBodyDu),
         TypeBodyDu = type_body_du(_, MaybeSuperType, _, _, _),
         (
-            MaybeSuperType = no,
+            MaybeSuperType = not_a_subtype,
             BaseTypeCtor = TypeCtor
         ;
-            MaybeSuperType = yes(SuperType),
+            MaybeSuperType = subtype_of(SuperType),
             type_to_ctor(SuperType, SuperTypeCtor),
             get_base_type_ctor(TypeTable, SuperTypeCtor, BaseTypeCtor)
         )
@@ -991,7 +991,7 @@ get_supertype(TypeTable, TVarSet, TypeCtor, Args, SuperType) :-
     hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     TypeBody = hlds_du_type(TypeBodyDu),
-    TypeBodyDu = type_body_du(_, yes(SuperType0), _, _, _),
+    TypeBodyDu = type_body_du(_, subtype_of(SuperType0), _, _, _),
     require_det (
         % Create substitution from type parameters to Args.
         hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet0),

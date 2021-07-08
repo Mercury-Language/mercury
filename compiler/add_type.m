@@ -559,7 +559,7 @@ merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, TypeBodyDuB,
         Body) :-
     TypeBodyDuB = type_body_du(_Ctors, MaybeSuperTypeB, _MaybeUserEq,
         _MaybeRepn, MaybeForeignTypeBodyB),
-    MaybeSuperTypeB = no,
+    MaybeSuperTypeB = not_a_subtype,
     (
         MaybeForeignTypeBodyB = yes(ForeignTypeBodyB)
     ;
@@ -663,9 +663,9 @@ check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
             true
         ),
         (
-            MaybeSuperType = no
+            MaybeSuperType = not_a_subtype
         ;
-            MaybeSuperType = yes(_),
+            MaybeSuperType = subtype_of(_),
             SubPieces = [words("Error: the subtype"),
                 unqual_type_ctor(TypeCtor),
                 words("is not allowed to have its own"),
@@ -933,7 +933,7 @@ add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
         % There is no particular reason to do this here except to
         % save a pass over the type table.
         (
-            MaybeSuperType = yes(SuperType),
+            MaybeSuperType = subtype_of(SuperType),
             check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, BodyDu,
                 SuperType, MaybeSetSubtypeNoncanon, !FoundInvalidType, !Specs),
             (
@@ -952,7 +952,7 @@ add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
                 module_info_set_type_table(TypeTable1, !ModuleInfo)
             )
         ;
-            MaybeSuperType = no
+            MaybeSuperType = not_a_subtype
         ),
 
         module_info_get_cons_table(!.ModuleInfo, CtorMap0),
@@ -1385,10 +1385,10 @@ check_subtype_has_base_type(TypeTable, OrigTypeStatus,
         (
             IsForeign = no,
             (
-                MaybeNextSuperType = no,
+                MaybeNextSuperType = not_a_subtype,
                 MaybeMaybeCanon = ok(MaybeCanonical)
             ;
-                MaybeNextSuperType = yes(NextSuperType),
+                MaybeNextSuperType = subtype_of(NextSuperType),
                 ( if type_to_ctor(NextSuperType, NextSuperTypeCtor) then
                     search_super_type_ctor_defn(TypeTable, OrigTypeStatus,
                         OrigTypeCtor, NextSuperTypeCtor, SearchRes,
@@ -1831,7 +1831,7 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
             search_type_ctor_defn(TypeTable, TypeCtorA, TypeDefnA),
             hlds_data.get_type_defn_body(TypeDefnA, TypeBodyA),
             TypeBodyA =
-                hlds_du_type(type_body_du(_, yes(SuperTypeA), _, _, _)),
+                hlds_du_type(type_body_du(_, subtype_of(SuperTypeA), _, _, _)),
 
             hlds_data.get_type_defn_status(TypeDefnA, TypeStatusA),
             not subtype_defn_int_supertype_defn_impl(OrigTypeStatus,

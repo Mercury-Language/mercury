@@ -298,7 +298,7 @@ fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
             ;
                 RepnInfo = tcrepn_du(DuRepnInfo),
                 (
-                    MaybeSuperType = yes(_),
+                    MaybeSuperType = subtype_of(_),
                     % There should NOT be an tcrepn_du ItemTypeRepn for
                     % a subtype, since subtypes take their representation
                     % information from their (ultimate) supertype.
@@ -313,7 +313,7 @@ fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
                     % from being used.
                     TypeCtorTypeDefn = TypeCtorTypeDefn0
                 ;
-                    MaybeSuperType = no,
+                    MaybeSuperType = not_a_subtype,
                     fill_in_non_sub_du_type_repn(Globals, ModuleName,
                         RepnTarget, TypeCtor, RepnTVarSet, RepnContext,
                         Ctors, MaybeCanon, DuRepnInfo, MaybeDuRepn),
@@ -356,12 +356,12 @@ fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
             ;
                 RepnInfo = tcrepn_is_subtype_of(_),
                 (
-                    MaybeSuperType = yes(_),
+                    MaybeSuperType = subtype_of(_),
                     % XXX TYPE_REPN Record TypeCtor as a subtype
                     % needing a second pass.
                     TypeCtorTypeDefn = TypeCtorTypeDefn0
                 ;
-                    MaybeSuperType = no,
+                    MaybeSuperType = not_a_subtype,
                     Pieces = [words("Error: tcrepn_is_subtype_of"),
                         words("type_repn item for"), qual_type_ctor(TypeCtor),
                         suffix(","), words("which is NOT a subtype."), nl],
@@ -1772,7 +1772,7 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
         OoMCtors = one_or_more(HeadCtor, TailCtors),
         expect(unify(MaybeRepn0, no), $pred, "MaybeRepn0 != no"),
         (
-            MaybeSuperType = no,
+            MaybeSuperType = not_a_subtype,
             ( if
                 map.search(TypeCtorToForeignEnumMap, TypeCtor, TCFE),
                 TCFE = type_ctor_foreign_enums(_LangContextMap,
@@ -1818,7 +1818,7 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
             ),
             cons(TypeCtorTypeDefn, !NonSubTypeCtorTypeDefns)
         ;
-            MaybeSuperType = yes(_),
+            MaybeSuperType = subtype_of(_),
             % Figure out the representation of subtypes in later passes.
             cons(TypeCtorTypeDefn0, !SubTypeCtorsTypeDefns)
         )
@@ -2193,7 +2193,7 @@ decide_if_subtype_of_simple_du_type(OldTypeTable, TypeCtorTypeDefn,
         BodyDu = type_body_du(Ctors, MaybeSuperType, _MaybeCanonical,
             MaybeRepn, _MaybeForeign),
         (
-            MaybeSuperType = yes(SuperType),
+            MaybeSuperType = subtype_of(SuperType),
             expect(unify(MaybeRepn, no), $pred, "MaybeRepn != no"),
             ( if
                 type_to_ctor(SuperType, SuperTypeCtor),
@@ -2208,7 +2208,7 @@ decide_if_subtype_of_simple_du_type(OldTypeTable, TypeCtorTypeDefn,
                 unexpected($pred, "cannot get base type")
             )
         ;
-            MaybeSuperType = no,
+            MaybeSuperType = not_a_subtype,
             unexpected($pred, "not subtype")
         )
     ;
@@ -2318,7 +2318,8 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
         Body0 = hlds_du_type(BodyDu0),
         BodyDu0 = type_body_du(Ctors, MaybeSuperType, _MaybeCanonical,
             MaybeRepn0, _MaybeForeign),
-        expect(unify(MaybeSuperType, no), $pred, "subtype not separated out"),
+        expect(unify(MaybeSuperType, not_a_subtype), $pred,
+            "subtype not separated out"),
         (
             MaybeRepn0 = yes(_),
             % We have already decided this type's representation
@@ -3579,7 +3580,7 @@ decide_if_subtype(OldTypeTable, NonSubTypeCtorsTypeDefns,
         BodyDu0 = type_body_du(Ctors, MaybeSuperType, _MaybeCanonical,
             MaybeRepn0, _MaybeForeign),
         (
-            MaybeSuperType = yes(SuperType),
+            MaybeSuperType = subtype_of(SuperType),
             expect(unify(MaybeRepn0, no), $pred,
                 "type representation already decided for subtype"),
             ( if
@@ -3597,7 +3598,7 @@ decide_if_subtype(OldTypeTable, NonSubTypeCtorsTypeDefns,
                 unexpected($pred, "missing base type representation")
             )
         ;
-            MaybeSuperType = no,
+            MaybeSuperType = not_a_subtype,
             unexpected($pred, "not subtype")
         )
     ;
@@ -4497,13 +4498,13 @@ show_decisions_if_du_type(Stream, MaybePrimaryTags, ShowWhichTypes,
             io.format(Stream, "\ntype constructor %s\n",
                 [s(TypeCtorStr)], !IO),
             (
-                MaybeSuperType = yes(SuperType),
+                MaybeSuperType = subtype_of(SuperType),
                 type_to_ctor_det(SuperType, SuperTypeCtor),
                 SuperTypeCtorStr = type_ctor_to_string(SuperTypeCtor),
                 io.format(Stream, "subtype of %s\n",
                     [s(SuperTypeCtorStr)], !IO)
             ;
-                MaybeSuperType = no
+                MaybeSuperType = not_a_subtype
             ),
             (
                 DuTypeKind = du_type_kind_direct_dummy,

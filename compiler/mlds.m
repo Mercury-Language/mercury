@@ -2670,7 +2670,7 @@ mercury_type_ctor_defn_to_mlds_type(ModuleInfo, Type, TypeCtor, TypeDefn) =
         TypeBody = hlds_du_type(TypeBodyDu),
         TypeBodyDu = type_body_du(_, MaybeSuperType, _, _, _),
         ( if
-            MaybeSuperType = yes(SuperType),
+            MaybeSuperType = subtype_of(SuperType),
             compilation_target_uses_high_level_data(ModuleInfo)
         then
             % In high-level data grades, a subtype is represented with the

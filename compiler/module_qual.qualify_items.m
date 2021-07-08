@@ -661,17 +661,17 @@ qualify_type_defn_du(InInt, Context, TypeCtor, DetailsDu0, DetailsDu,
     DetailsDu0 = type_details_du(MaybeSuperType0, OoMCtors0, MaybeUserEqComp0,
         MaybeDirectArgCtors0),
     (
-        MaybeSuperType0 = yes(SuperType0),
+        MaybeSuperType0 = subtype_of(SuperType0),
         ErrorContext = mqec_type_defn(Context, TypeCtor),
         % Note that this will not prevent a subtype defined in an interface
         % section from referring to an abstract type as its supertype.
         % That will be checked while checking other subtype conditions.
         qualify_type(InInt, ErrorContext, SuperType0, SuperType,
             !Info, !Specs),
-        MaybeSuperType = yes(SuperType)
+        MaybeSuperType = subtype_of(SuperType)
     ;
-        MaybeSuperType0 = no,
-        MaybeSuperType = no
+        MaybeSuperType0 = not_a_subtype,
+        MaybeSuperType = not_a_subtype
     ),
     OoMCtors0 = one_or_more(HeadCtor0, TailCtors0),
     qualify_constructor(InInt, TypeCtor, HeadCtor0, HeadCtor, !Info, !Specs),

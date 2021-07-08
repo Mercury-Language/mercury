@@ -442,10 +442,10 @@ type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
             list.foldl(ctor_used_modules(Visibility),
                 one_or_more_to_list(Ctors), !UsedModules),
             (
-                MaybeSuperType = yes(SuperType),
+                MaybeSuperType = subtype_of(SuperType),
                 mer_type_used_modules(Visibility, SuperType, !UsedModules)
             ;
-                MaybeSuperType = no
+                MaybeSuperType = not_a_subtype
             )
         ;
             TypeBody = hlds_eqv_type(EqvType),

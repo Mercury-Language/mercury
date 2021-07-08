@@ -1285,7 +1285,7 @@ accumulate_abs_imp_exported_type_lhs_in_defn(IntTypesMap, BothTypesMap,
         DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeEqCmp,
             MaybeDirectArgCtors),
         (
-            MaybeSuperType = no,
+            MaybeSuperType = not_a_subtype,
             ( if
                 map.search(IntTypesMap, TypeCtor, _),
                 non_sub_du_type_is_enum(DetailsDu, _NumFunctors)
@@ -1307,7 +1307,7 @@ accumulate_abs_imp_exported_type_lhs_in_defn(IntTypesMap, BothTypesMap,
                 true
             )
         ;
-            MaybeSuperType = yes(SuperType),
+            MaybeSuperType = subtype_of(SuperType),
             ( if map.search(IntTypesMap, TypeCtor, _) then
                 set.insert(TypeCtor, !AbsExpEqvLhsTypeCtors),
                 ( if type_to_ctor(SuperType, SuperTypeCtor) then
@@ -1372,10 +1372,10 @@ accumulate_eqv_and_supertypes_in_defn(BothTypesMap, TypeCtor, ItemTypeDefnInfo,
         TypeDefn = parse_tree_du_type(DetailsDu),
         DetailsDu = type_details_du(MaybeSuperType, _, _, _),
         (
-            MaybeSuperType = no
+            MaybeSuperType = not_a_subtype
             % This is the base type.
         ;
-            MaybeSuperType = yes(SuperType),
+            MaybeSuperType = subtype_of(SuperType),
             % Not yet at the base type.
             set.insert(TypeCtor, !AbsExpEqvLhsTypeCtors),
             ( if type_to_ctor(SuperType, SuperTypeCtor) then
@@ -1636,12 +1636,12 @@ ctor_arg_is_dummy_type_by_some_type_defn(TypeDefnMap, TVarSet, Type, TypeCtor,
     DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeEqCmp,
         MaybeDirectArgCtors),
     (
-        MaybeSuperType = no,
+        MaybeSuperType = not_a_subtype,
         non_sub_du_constructor_list_represents_dummy_type_2(TypeDefnMap,
             TVarSet, OoMCtors, MaybeEqCmp, MaybeDirectArgCtors,
             [Type | CoveredTypes0])
     ;
-        MaybeSuperType = yes(SuperType0),
+        MaybeSuperType = subtype_of(SuperType0),
         % A subtype can only be a dummy type if the base type is a dummy type.
         merge_tvarsets_and_subst_type_args(TVarSet, TypeArgs, TypeDefnTVarSet,
             TypeDefnTypeParams, SuperType0, SuperType),
@@ -1678,10 +1678,10 @@ get_base_type(TypeDefnMap, TVarSet, Type, BaseType, SeenTypes0):-
     DetailsDu = type_details_du(MaybeSuperType, _OoMCtors, _MaybeEqCmp,
         _MaybeDirectArgCtors),
     (
-        MaybeSuperType = no,
+        MaybeSuperType = not_a_subtype,
         BaseType = Type
     ;
-        MaybeSuperType = yes(SuperType0),
+        MaybeSuperType = subtype_of(SuperType0),
         merge_tvarsets_and_subst_type_args(TVarSet, TypeArgs,
             TypeDefnTVarSet, TypeDefnTypeParams, SuperType0, SuperType),
         get_base_type(TypeDefnMap, TVarSet, SuperType, BaseType, SeenTypes1)
@@ -1815,7 +1815,7 @@ make_imp_type_abstract(BothTypesMap, !ImpItemTypeDefnInfo) :-
         DetailsDu0 = type_details_du(MaybeSuperType, OoMCtors, MaybeEqCmp,
             MaybeDirectArgCtors),
         (
-            MaybeSuperType = no,
+            MaybeSuperType = not_a_subtype,
             ( if
                 non_sub_du_constructor_list_represents_dummy_type(BothTypesMap,
                     TVarSet, OoMCtors, MaybeEqCmp, MaybeDirectArgCtors)
@@ -1833,7 +1833,7 @@ make_imp_type_abstract(BothTypesMap, !ImpItemTypeDefnInfo) :-
                 !ImpItemTypeDefnInfo ^ td_ctor_defn := TypeDefn
             )
         ;
-            MaybeSuperType = yes(SuperType),
+            MaybeSuperType = subtype_of(SuperType),
             type_to_ctor_det(SuperType, SuperTypeCtor),
             DetailsAbs = abstract_subtype(SuperTypeCtor),
             TypeDefn = parse_tree_abstract_type(DetailsAbs),
@@ -2427,7 +2427,7 @@ make_du_type_abstract(DetailsDu, DetailsAbstract) :-
     DetailsDu = type_details_du(MaybeSuperType, Ctors, MaybeCanonical,
         _MaybeDirectArgCtors),
     (
-        MaybeSuperType = no,
+        MaybeSuperType = not_a_subtype,
         ( if non_sub_du_type_is_enum(DetailsDu, NumFunctors) then
             num_bits_needed_for_n_dense_values(NumFunctors, NumBits),
             DetailsAbstract = abstract_type_fits_in_n_bits(NumBits)
@@ -2439,7 +2439,7 @@ make_du_type_abstract(DetailsDu, DetailsAbstract) :-
             DetailsAbstract = abstract_type_general
         )
     ;
-        MaybeSuperType = yes(SuperType),
+        MaybeSuperType = subtype_of(SuperType),
         type_to_ctor_det(SuperType, SuperTypeCtor),
         DetailsAbstract = abstract_subtype(SuperTypeCtor)
     ).

@@ -748,7 +748,7 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 du_type_ctors               :: one_or_more(constructor),
 
                 % The declared supertype for a subtype definition.
-                du_type_supertype           :: maybe(mer_type),
+                du_type_supertype           :: maybe_subtype,
 
                 % Does this type have user-defined equality and comparison
                 % predicates?

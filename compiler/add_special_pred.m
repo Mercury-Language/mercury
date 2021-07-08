@@ -504,7 +504,7 @@ collect_type_defn_for_tuple(TypeCtor, Type, TVarSet, TypeBody, Context) :-
     DirectArgCtors = no,
     Repn = du_type_repn([CtorRepn], ConsCtorMap, no_cheaper_tag_test,
         du_type_kind_general, DirectArgCtors),
-    MaybeSuperType = no,
+    MaybeSuperType = not_a_subtype,
     MaybeCanonical = canon,
     IsForeign = no,
     TypeBodyDu = type_body_du(one_or_more(Ctor, []), MaybeSuperType,

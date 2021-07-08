@@ -285,10 +285,10 @@ decide_simple_type_repns_stage_1(TypeCtor, CheckedDefn,
                 DetailsDu, TVarSet, _Context, _SeqNum),
             DetailsDu = type_details_du(MaybeSuperType, _, _, _),
             (
-                MaybeSuperType = yes(SuperType),
+                MaybeSuperType = subtype_of(SuperType),
                 type_to_ctor_det(SuperType, SuperTypeCtor)
             ;
-                MaybeSuperType = no,
+                MaybeSuperType = not_a_subtype,
                 unexpected($pred, "no supertype")
             ),
             SubtypeRepnItem = item_type_repn_info(TypeCtorSymName, TypeParams,
@@ -368,7 +368,7 @@ maybe_mark_type_ctor_as_word_aligned_for_c(TypeCtor, MaybeDefnCJCs,
 du_defn_is_subtype(DuDefn) :-
     DuDefn = item_type_defn_info(_, _, DetailsDu, _, _, _),
     DetailsDu = type_details_du(MaybeSuperType, _, _, _),
-    MaybeSuperType = yes(_).
+    MaybeSuperType = subtype_of(_).
 
 :- pred decide_type_repns_stage_1_du_all_plain_constants(type_ctor::in,
     item_type_defn_info_du::in, string::in, list(string)::in,
@@ -383,7 +383,7 @@ decide_type_repns_stage_1_du_all_plain_constants(TypeCtor, DuDefn,
         TVarSet, _Context, _SeqNum),
     DetailsDu = type_details_du(MaybeSuperType, _, _, _),
     (
-        MaybeSuperType = no,
+        MaybeSuperType = not_a_subtype,
         (
             TailNames = [],
             % The type has exactly one data constructor.
@@ -399,7 +399,7 @@ decide_type_repns_stage_1_du_all_plain_constants(TypeCtor, DuDefn,
         ),
         map.det_insert(TypeCtor, SimpleDuRepn, !SimpleDuMap)
     ;
-        MaybeSuperType = yes(_)
+        MaybeSuperType = subtype_of(_)
         % We cannot decide the representation of a subtype independently
         % of its base type, which may not even be in the same module.
     ).
@@ -417,7 +417,7 @@ decide_type_repns_stage_1_du_not_all_plain_constants(TypeCtor, DuDefn,
     DetailsDu = type_details_du(MaybeSuperType, OoMCtors, MaybeCanonical,
         _MaybeDirectArgs),
     (
-        MaybeSuperType = no,
+        MaybeSuperType = not_a_subtype,
         OoMCtors = one_or_more(HeadCtor, TailCtors),
         (
             TailCtors = [],
@@ -459,7 +459,7 @@ decide_type_repns_stage_1_du_not_all_plain_constants(TypeCtor, DuDefn,
             % This means that it need not be word aligned.
         )
     ;
-        MaybeSuperType = yes(_)
+        MaybeSuperType = subtype_of(_)
         % We cannot decide the representation of a subtype independently
         % of its base type, which may not even be in the same module.
     ).
@@ -882,7 +882,7 @@ decide_type_repns_stage_2_du_gen(BaseParams, EqvMap, SubtypeMap,
 
     DetailsDu = type_details_du(MaybeSuperType, OoMCtors0, MaybeCanonical,
         _MaybeDirectArgs),
-    expect(unify(MaybeSuperType, no), $pred, "type is subtype"),
+    expect(unify(MaybeSuperType, not_a_subtype), $pred, "type is subtype"),
     OoMCtors0 = one_or_more(HeadCtor0, TailCtors0),
     expand_eqv_sub_of_notag_types_in_constructor(EqvMap, SubtypeMap,
         SimpleDuMap, TVarSet, HeadCtor0, HeadCtor, !Specs),

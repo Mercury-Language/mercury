@@ -3838,11 +3838,11 @@ get_enum_max_int_tag(TypeTable, TypeCtor, MaxIntTag) :-
     then
         CtorRepns = Repn ^ dur_ctor_repns,
         (
-            MaybeSuperType = no,
+            MaybeSuperType = not_a_subtype,
             list.det_last(CtorRepns, LastCtorRepn),
             max_enum_int_tag(LastCtorRepn, 0, MaxIntTag)
         ;
-            MaybeSuperType = yes(_),
+            MaybeSuperType = subtype_of(_),
             % Subtype enums do not necessary use all values from 0 to
             % MaxIntTag, so this will create a trie node that may be larger
             % than necessary. We could subtract the lowest possible enum value

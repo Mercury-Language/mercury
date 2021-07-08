@@ -538,7 +538,7 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
             _MaybeDirectArgs),
         OoMCtors = one_or_more(HeadCtor, TailCtors),
         (
-            MaybeSuperType = no,
+            MaybeSuperType = not_a_subtype,
             ( if
                 ctor_is_constant(HeadCtor, HeadName0),
                 ctors_are_all_constants(TailCtors, TailNames0)
@@ -581,7 +581,7 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
                     DuDefn, HeadName, TailNames, MaybeDefnOrEnumCJCs)
             )
         ;
-            MaybeSuperType = yes(_),
+            MaybeSuperType = subtype_of(_),
             % A subtype's representation depends on its base type, not only on
             % its own constructors.
             list.foldl(non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn),

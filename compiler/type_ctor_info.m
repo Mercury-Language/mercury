@@ -519,7 +519,7 @@ type_ctor_info_rtti_version = 18u8.
 
     % Make the functor and layout tables for a notag type.
     %
-:- pred make_notag_details(module_info::in, int::in, maybe(mer_type)::in,
+:- pred make_notag_details(module_info::in, int::in, maybe_subtype::in,
     sym_name::in, mer_type::in, maybe(string)::in, equality_axioms::in,
     type_ctor_details::out) is det.
 
@@ -547,7 +547,7 @@ make_notag_details(ModuleInfo, TypeArity, MaybeSuperType, SymName, ArgType,
 
     % Make the functor and layout tables for an enum type.
     %
-:- pred make_mercury_enum_details(module_info::in, maybe(mer_type)::in,
+:- pred make_mercury_enum_details(module_info::in, maybe_subtype::in,
     list(constructor_repn)::in, enum_maybe_dummy::in, equality_axioms::in,
     type_ctor_details::out, bool::out) is det.
 
@@ -559,10 +559,11 @@ make_mercury_enum_details(ModuleInfo, MaybeSuperType, CtorRepns, IsDummy,
     ;
         CtorRepns = [_],
         (
-            MaybeSuperType = no,
-            expect(unify(IsDummy, enum_is_dummy), $pred, "one ctor but not dummy")
+            MaybeSuperType = not_a_subtype,
+            expect(unify(IsDummy, enum_is_dummy), $pred,
+                "one ctor but not dummy")
         ;
-            MaybeSuperType = yes(_)
+            MaybeSuperType = subtype_of(_)
             % A subtype with one constructor is not necessarily a dummy type.
         )
     ;
@@ -594,7 +595,7 @@ make_mercury_enum_details(ModuleInfo, MaybeSuperType, CtorRepns, IsDummy,
     % sort this list on functor name, which is how the type functors structure
     % is constructed.
     %
-:- pred make_enum_functors(maybe(mer_type)::in, list(constructor_repn)::in,
+:- pred make_enum_functors(maybe_subtype::in, list(constructor_repn)::in,
     enum_maybe_dummy::in, uint32::in, list(enum_functor)::out) is det.
 
 make_enum_functors(_, [], _, _, []).
@@ -615,11 +616,11 @@ make_enum_functors(MaybeSuperType, [FunctorRepn | FunctorRepns], IsDummy,
             unexpected($pred, "enum functor's tag is not int_tag")
         ),
         (
-            MaybeSuperType = no,
+            MaybeSuperType = not_a_subtype,
             expect(unify(ConsTagUint32, CurOrdinal), $pred,
                 "enum functor's tag is not the expected int_tag")
         ;
-            MaybeSuperType = yes(_)
+            MaybeSuperType = subtype_of(_)
         ),
         EnumValue = enum_value(ConsTagUint32)
     ;
@@ -752,7 +753,7 @@ make_foreign_enum_maps(ForeignEnumFunctor, !OrdinalMap, !NameMap) :-
 
     % Make the functor and layout tables for a du type.
     %
-:- pred make_du_details(module_info::in, maybe(mer_type)::in,
+:- pred make_du_details(module_info::in, maybe_subtype::in,
     list(constructor_repn)::in, int::in, equality_axioms::in,
     type_ctor_details::out, bool::out) is det.
 
@@ -1109,12 +1110,12 @@ lookup_functor_number(CtorNameToSeqNumMap, CtorName, SeqNumUint32) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_get_base_type_ctor(module_info::in, maybe(mer_type)::in,
+:- pred maybe_get_base_type_ctor(module_info::in, maybe_subtype::in,
     maybe(type_ctor)::out) is det.
 
 maybe_get_base_type_ctor(ModuleInfo, MaybeSuperType, MaybeBaseTypeCtor) :-
     (
-        MaybeSuperType = yes(SuperType),
+        MaybeSuperType = subtype_of(SuperType),
         module_info_get_type_table(ModuleInfo, TypeTable),
         ( if
             type_to_ctor(SuperType, SuperTypeCtor),
@@ -1125,7 +1126,7 @@ maybe_get_base_type_ctor(ModuleInfo, MaybeSuperType, MaybeBaseTypeCtor) :-
             unexpected($pred, "cannot get base type ctor")
         )
     ;
-        MaybeSuperType = no,
+        MaybeSuperType = not_a_subtype,
         MaybeBaseTypeCtor = no
     ).
 

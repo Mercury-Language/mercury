@@ -950,7 +950,7 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValuesInRange) :-
                 unexpected($pred, "MaybeRepn = no")
             ),
             (
-                MaybeSuperType = no,
+                MaybeSuperType = not_a_subtype,
                 Min = 0,
                 OoMCtors = one_or_more(_HeadCtor, TailCtors),
                 list.length(TailCtors, NumTailConstructors),
@@ -958,7 +958,7 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValuesInRange) :-
                 % Max = NumConstructors - 1
                 Max = NumTailConstructors
             ;
-                MaybeSuperType = yes(_),
+                MaybeSuperType = subtype_of(_),
                 % A subtype enum does not necessarily use all values from 0 to
                 % the max.
                 CtorRepns = Repn ^ dur_ctor_repns,
