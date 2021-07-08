@@ -185,11 +185,20 @@
 :- func goal_warning_to_string(goal_warning) = string.
 
 %-----------------------------------------------------------------------------%
+
+    % Convert a type to a string. The result is NOT guaranteed to be
+    % valid Mercury; the intended use case is helping to construct
+    % log messages to help debug the compiler itself.
+    %
+:- pred type_to_debug_string(tvarset::in, mer_type::in, string::out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_util.
 
 :- import_module list.
@@ -615,6 +624,54 @@ goal_warning_to_string(Warning) = Str :-
     ;
         Warning = goal_warning_no_solution_disjunct,
         Str = "no_solution_disjunct"
+    ).
+
+%-----------------------------------------------------------------------------%
+
+type_to_debug_string(TVarSet, Type, Name) :-
+    (
+        Type = type_variable(TVar,_),
+        Name = mercury_var_to_string(TVarSet, print_name_and_num, TVar)
+    ;
+        Type = defined_type(SymName, Subtypes, _),
+        list.map(type_to_debug_string(TVarSet), Subtypes, SubtypeNames),
+        SubtypeName = string.join_list(", ", SubtypeNames),
+        Name = sym_name_to_string(SymName) ++ "(" ++ SubtypeName ++ ")"
+    ;
+        Type = builtin_type(builtin_type_int(IntType)),
+        int_type_to_string(IntType, Name)
+    ;
+        Type = builtin_type(builtin_type_float),
+        Name = "float"
+    ;
+        Type = builtin_type(builtin_type_string),
+        Name = "string"
+    ;
+        Type = builtin_type(builtin_type_char),
+        Name = "character"
+    ;
+        Type = tuple_type(Subtypes, _),
+        list.map(type_to_debug_string(TVarSet), Subtypes, SubtypeNames),
+        Name = "{" ++  string.join_list(", ", SubtypeNames) ++ "}"
+    ;
+        Type = higher_order_type(PorF, Types, _, _, _),
+        list.map(type_to_debug_string(TVarSet), Types, TypeNames),
+        (
+            PorF = pf_predicate,
+            Name = "pred(" ++  string.join_list(", ", TypeNames) ++ ")"
+        ;
+            PorF = pf_function,
+            list.det_split_last(TypeNames, ArgTypeNames, ReturnTypeName),
+            Name = "func(" ++  string.join_list(", ", ArgTypeNames) ++ ") = "
+                ++ ReturnTypeName
+        )
+    ;
+        Type = apply_n_type(_, Subtypes, _),
+        list.map(type_to_debug_string(TVarSet), Subtypes, SubtypeNames),
+        Name = "func(" ++  string.join_list(", ", SubtypeNames) ++ ")"
+    ;
+        Type = kinded_type(Type0, _),
+        type_to_debug_string(TVarSet, Type0, Name)
     ).
 
 %-----------------------------------------------------------------------------%

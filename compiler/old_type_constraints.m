@@ -54,6 +54,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_event.
 :- import_module parse_tree.prog_event.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 
@@ -509,8 +510,8 @@ find_variable_type(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
             else
                 Type = DefaultType,
                 VarName = mercury_var_to_name_only(ProgVarSet, Var),
-                list.map(type_to_string(TVarSet), set.to_sorted_list(Types),
-                    TypeStrings),
+                list.map(type_to_debug_string(TVarSet),
+                    set.to_sorted_list(Types), TypeStrings),
                 TypesString = string.join_list(" or ", TypeStrings),
                 Pieces = [words("Error:"),
                     words("ambiguous overloading causes type ambiguity."),
@@ -2119,7 +2120,7 @@ error_from_one_min_set(ConstraintMap, MinUnsatSet, Components) :-
     map.apply_to_list(MinUnsatList, ConstraintMap, Constraints),
     list.filter_map(get_first_disjunct, Constraints, ConjConstraints),
     list.map(conj_constraint_get_context, ConjConstraints, Contexts),
-    list.map(context_to_string, Contexts, ContextStrings),
+    list.map(bracket_context_to_string, Contexts, ContextStrings),
     Components = list_to_pieces(ContextStrings).
 
     % Uses the min_unsat1 algorithm
@@ -2181,11 +2182,11 @@ add_message_to_spec(ErrMsg, !TCInfo) :-
     Spec = error_spec($pred, severity_error, phase_type_check, [ErrMsg]),
     !TCInfo ^ tconstr_error_specs := [Spec | !.TCInfo ^ tconstr_error_specs].
 
-:- pred context_to_string(prog_context::in, string::out) is det.
+:- pred bracket_context_to_string(prog_context::in, string::out) is det.
 
-context_to_string(Context, String) :-
-    LineNumber = string.int_to_string(term.context_line(Context)),
+bracket_context_to_string(Context, String) :-
     FileName = term.context_file(Context),
+    LineNumber = string.int_to_string(term.context_line(Context)),
     String = "[" ++ FileName ++ ": " ++ LineNumber ++ "]".
 
 :- pred conj_constraint_get_context(conj_type_constraint::in,
@@ -2317,11 +2318,11 @@ type_domain_to_string(TVarSet, Domain, DomainName) :-
         DomainName = "any"
     ;
         Domain = tdomain_singleton(Type),
-        type_to_string(TVarSet, Type, DomainName)
+        type_to_debug_string(TVarSet, Type, DomainName)
     ;
         Domain = tdomain_nonfixed(DomainSet),
-        list.map(type_to_string(TVarSet), set.to_sorted_list(DomainSet),
-            DomainTypeNames),
+        list.map(type_to_debug_string(TVarSet),
+            set.to_sorted_list(DomainSet), DomainTypeNames),
         DomainName = string.join_list(", ", DomainTypeNames)
     ).
 
@@ -2413,57 +2414,9 @@ conj_constraint_to_string(Indent, TVarSet, Constraint, String) :-
 
 simple_constraint_to_string(Indent, TVarSet, stconstr(TVar, Type), String) :-
     VarName = mercury_var_to_string(TVarSet, print_name_and_num, TVar),
-    type_to_string(TVarSet, Type, TypeName),
+    type_to_debug_string(TVarSet, Type, TypeName),
     String = duplicate_char(' ', Indent) ++
         "( " ++ VarName ++ " :: " ++ TypeName ++ ")".
-
-:- pred type_to_string(tvarset::in, mer_type::in, string::out) is det.
-
-type_to_string(TVarSet, Type, Name) :-
-    (
-        Type = type_variable(TVar,_),
-        Name = mercury_var_to_string(TVarSet, print_name_and_num, TVar)
-    ;
-        Type = defined_type(SymName, Subtypes, _),
-        list.map(type_to_string(TVarSet), Subtypes, SubtypeNames),
-        SubtypeName = string.join_list(", ", SubtypeNames),
-        Name = sym_name_to_string(SymName) ++ "(" ++ SubtypeName ++ ")"
-    ;
-        Type = builtin_type(builtin_type_int(IntType)),
-        int_type_to_string(IntType, Name)
-    ;
-        Type = builtin_type(builtin_type_float),
-        Name = "float"
-    ;
-        Type = builtin_type(builtin_type_string),
-        Name = "string"
-    ;
-        Type = builtin_type(builtin_type_char),
-        Name = "character"
-    ;
-        Type = tuple_type(Subtypes, _),
-        list.map(type_to_string(TVarSet), Subtypes, SubtypeNames),
-        Name = "{" ++  string.join_list(", ", SubtypeNames) ++ "}"
-    ;
-        Type = higher_order_type(PorF, Types, _, _, _),
-        list.map(type_to_string(TVarSet), Types, TypeNames),
-        (
-            PorF = pf_predicate,
-            Name = "pred(" ++  string.join_list(", ", TypeNames) ++ ")"
-        ;
-            PorF = pf_function,
-            list.det_split_last(TypeNames, ArgTypeNames, ReturnTypeName),
-            Name = "func(" ++  string.join_list(", ", ArgTypeNames) ++ ") = "
-                ++ ReturnTypeName
-        )
-    ;
-        Type = apply_n_type(_, Subtypes, _),
-        list.map(type_to_string(TVarSet), Subtypes, SubtypeNames),
-        Name = "func(" ++  string.join_list(", ", SubtypeNames) ++ ")"
-    ;
-        Type = kinded_type(Type0, _),
-        type_to_string(TVarSet, Type0, Name)
-    ).
 
 %---------------------------------------------------------------------------%
 %

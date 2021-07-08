@@ -206,12 +206,12 @@ make_instance_string(InstanceTypes, InstanceString) :-
     % Note that for historical reasons, builtin types are treated as being
     % unqualified (`int') rather than being qualified (`builtin.int')
     % at this point.
-    list.map(type_to_string, InstanceTypes, InstanceStrings),
+    list.map(instance_type_ctor_to_string, InstanceTypes, InstanceStrings),
     string.append_list(InstanceStrings, InstanceString).
 
-:- pred type_to_string(mer_type::in, string::out) is det.
+:- pred instance_type_ctor_to_string(mer_type::in, string::out) is det.
 
-type_to_string(Type, String) :-
+instance_type_ctor_to_string(Type, String) :-
     type_to_ctor_det(Type, TypeCtor),
     TypeCtor = type_ctor(TypeName, TypeArity),
     TypeNameString = sym_name_to_string_sep(TypeName, "__"),

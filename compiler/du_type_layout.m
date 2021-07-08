@@ -122,6 +122,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.      % undesirable dependency
 :- import_module parse_tree.prog_out.
@@ -168,12 +169,11 @@ decide_type_repns(!ModuleInfo, !Specs, !IO) :-
         module_info_get_name(!.ModuleInfo, ModuleName),
         decide_type_repns_new(Globals, ModuleName, TypeRepnDec,
             TypeCtorsTypeDefns0, TypeCtorsTypeDefnsB,
-            UnRepnTypeCtors, BadRepnTypeCtors, !Specs),
-        % XXX decide_type_repns_new should compute NoTagTypeMapB,
-        % for comparison against NoTagTypeMap.
+            NoTagTypeMapB, UnRepnTypeCtors, BadRepnTypeCtors, !Specs),
         get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
-        compare_old_new(DebugStream, UnRepnTypeCtors, BadRepnTypeCtors,
-            TypeCtorsTypeDefns, TypeCtorsTypeDefnsB, !IO)
+        compare_old_new_du(DebugStream, UnRepnTypeCtors, BadRepnTypeCtors,
+            TypeCtorsTypeDefns, TypeCtorsTypeDefnsB, !IO),
+        compare_old_new_notag(DebugStream, NoTagTypeMap, NoTagTypeMapB, !IO)
     ),
 
     set_all_type_ctor_defns(TypeCtorsTypeDefns,
@@ -212,11 +212,11 @@ decide_type_repns(!ModuleInfo, !Specs, !IO) :-
     type_repn_decision_data::in,
     assoc_list(type_ctor, hlds_type_defn)::in,
     assoc_list(type_ctor, hlds_type_defn)::out,
-    set(type_ctor)::out, set(type_ctor)::out,
+    no_tag_type_table::out, set(type_ctor)::out, set(type_ctor)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 decide_type_repns_new(Globals, ModuleName, TypeRepnDec, !TypeCtorsTypeDefns,
-        UnRepnTypeCtors, BadRepnTypeCtors, !Specs) :-
+        NoTagTypeMap, UnRepnTypeCtors, BadRepnTypeCtors, !Specs) :-
     globals.get_target(Globals, Target),
     (
         Target = target_c,
@@ -239,9 +239,9 @@ decide_type_repns_new(Globals, ModuleName, TypeRepnDec, !TypeCtorsTypeDefns,
     ),
     TypeRepnDec = type_repn_decision_data(TypeRepns,
         _DirectArgMap, _ForeignEnums, _ForeignExportEnums),
-    list.map_foldl3(
+    list.map_foldl4(
         fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeRepns),
-        !TypeCtorsTypeDefns,
+        !TypeCtorsTypeDefns, map.init, NoTagTypeMap,
         set.init, UnRepnTypeCtors, set.init, BadRepnTypeCtors, !Specs).
     % XXX TYPE_REPN fill_in_type_repn_sub
 
@@ -251,13 +251,14 @@ decide_type_repns_new(Globals, ModuleName, TypeRepnDec, !TypeCtorsTypeDefns,
     repn_target::in, type_ctor_repn_map::in,
     pair(type_ctor, hlds_type_defn)::in,
     pair(type_ctor, hlds_type_defn)::out,
+    no_tag_type_table::in, no_tag_type_table::out,
     set(type_ctor)::in, set(type_ctor)::out,
     set(type_ctor)::in, set(type_ctor)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
         TypeCtorTypeDefn0, TypeCtorTypeDefn,
-        !UnRepnTypeCtors, !BadRepnTypeCtors, !Specs) :-
+        !NoTagTypeMap, !UnRepnTypeCtors, !BadRepnTypeCtors, !Specs) :-
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
     ( if map.search(TypeCtorRepnMap, TypeCtor, ItemTypeRepn) then
@@ -324,7 +325,19 @@ fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
                         BodyDu = BodyDu0 ^ du_type_repn := yes(DuRepn),
                         Body = hlds_du_type(BodyDu),
                         set_type_defn_body(Body, TypeDefn0, TypeDefn),
-                        TypeCtorTypeDefn = TypeCtor - TypeDefn
+                        TypeCtorTypeDefn = TypeCtor - TypeDefn,
+                        ( if
+                            DuRepn = du_type_repn(_, _, _, DuTypeKind, _),
+                            DuTypeKind = du_type_kind_notag(CtorSymName,
+                                RepnArgType, _MaybeArgName)
+                        then
+                            get_type_defn_tparams(TypeDefn0, TypeParams),
+                            NoTagEntry = no_tag_type(TypeParams, CtorSymName,
+                                RepnArgType),
+                            map.det_insert(TypeCtor, NoTagEntry, !NoTagTypeMap)
+                        else
+                            true
+                        )
                     ;
                         MaybeDuRepn = have_foreign_type_repn(ForeignTypeBody),
                         Body = hlds_foreign_type(ForeignTypeBody),
@@ -1497,18 +1510,18 @@ c_target_specific_repn(CRepnTarget, CRepns, Repn) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred compare_old_new(io.text_output_stream::in,
+:- pred compare_old_new_du(io.text_output_stream::in,
     set(type_ctor)::in, set(type_ctor)::in,
     assoc_list(type_ctor, hlds_type_defn)::in,
     assoc_list(type_ctor, hlds_type_defn)::in,
     io::di, io::uo) is det.
 
-compare_old_new(_, _, _, [], [], !IO).
-compare_old_new(Stream, _, _, [], [_ | _], !IO) :-
+compare_old_new_du(_, _, _, [], [], !IO).
+compare_old_new_du(Stream, _, _, [], [_ | _], !IO) :-
     io.write_string(Stream, "MORE NEW TYPE_CTORS THAN OLD\n", !IO).
-compare_old_new(Stream, _, _, [_ | _], [], !IO) :-
+compare_old_new_du(Stream, _, _, [_ | _], [], !IO) :-
     io.write_string(Stream, "MORE OLD TYPE_CTORS THAN NEW\n", !IO).
-compare_old_new(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
+compare_old_new_du(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
         [Old | Olds], [New | News], !IO) :-
     Old = OldTypeCtor - OldTypeCtorDefn,
     New = NewTypeCtor - NewTypeCtorDefn,
@@ -1574,8 +1587,79 @@ compare_old_new(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
             [s(type_ctor_to_string(OldTypeCtor)),
             s(type_ctor_to_string(NewTypeCtor))], !IO)
     ),
-    compare_old_new(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
+    compare_old_new_du(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
         Olds, News, !IO).
+
+:- pred compare_old_new_notag(io.text_output_stream::in,
+    no_tag_type_table::in, no_tag_type_table::in, io::di, io::uo) is det.
+
+compare_old_new_notag(Stream, OldNoTagTypeTable, NewNoTagTypeTable, !IO) :-
+    map.keys_as_set(OldNoTagTypeTable, OldKeys),
+    map.keys_as_set(NewNoTagTypeTable, NewKeys),
+    set.union(OldKeys, NewKeys, Keys),
+    set.foldl(
+        compare_old_new_notag_type_ctor(Stream,
+            OldNoTagTypeTable, NewNoTagTypeTable),
+        Keys, !IO).
+
+:- pred compare_old_new_notag_type_ctor(io.text_output_stream::in,
+    no_tag_type_table::in, no_tag_type_table::in, type_ctor::in,
+    io::di, io::uo) is det.
+
+compare_old_new_notag_type_ctor(Stream, OldNoTagTypeTable, NewNoTagTypeTable,
+        TypeCtor, !IO) :-
+    ( if
+        map.search(OldNoTagTypeTable, TypeCtor, OldEntry),
+        map.search(NewNoTagTypeTable, TypeCtor, NewEntry)
+    then
+        OldEntry = no_tag_type(OldParams, OldCtor, OldArgType),
+        NewEntry = no_tag_type(NewParams, NewCtor, NewArgType),
+        ( if OldParams = NewParams then
+            true
+        else
+            varset.init(DummyVarSetA),
+            OldParamStrs =
+                list.map(mercury_var_to_string(DummyVarSetA, print_num_only),
+                OldParams),
+            NewParamStrs =
+                list.map(mercury_var_to_string(DummyVarSetA, print_num_only),
+                NewParams),
+            OldParamsStr = string.join_list(", ", OldParamStrs),
+            NewParamsStr = string.join_list(", ", NewParamStrs),
+            io.format(Stream, "NOTAG_TYPE_TABLE_PARAMS %s: <%s> vs <%s>\n",
+                [s(type_ctor_to_string(TypeCtor)),
+                s(OldParamsStr), s(NewParamsStr)], !IO)
+        ),
+        ( if OldCtor = NewCtor then
+            true
+        else
+            io.format(Stream, "NOTAG_TYPE_TABLE_CTOR_NAME %s: <%s> vs <%s>\n",
+                [s(type_ctor_to_string(TypeCtor)),
+                s(sym_name_to_string(OldCtor)),
+                s(sym_name_to_string(NewCtor))], !IO)
+        ),
+        ( if OldArgType = NewArgType then
+            true
+        else
+            varset.init(DummyVarSetC),
+            type_to_debug_string(DummyVarSetC, OldArgType, OldArgTypeStr),
+            type_to_debug_string(DummyVarSetC, NewArgType, NewArgTypeStr),
+            io.format(Stream, "NOTAG_TYPE_TABLE_ARG_TYPE %s: <%s> vs <%s>\n",
+                [s(type_ctor_to_string(TypeCtor)),
+                s(OldArgTypeStr), s(NewArgTypeStr)], !IO)
+        )
+    else
+        % We get called only on TypeCtors that exist in at least one of
+        % OldNoTagTypeTable and NewNoTagTypeTable. If TypeCtor is not in one,
+        % it must be in the other.
+        ( if map.search(OldNoTagTypeTable, TypeCtor, _) then
+            PresentIn = "old"
+        else
+            PresentIn = "new"
+        ),
+        io.format(Stream, "NOTAG_TYPE_TABLE_MISMATCH: %s present only in %s\n",
+            [s(type_ctor_to_string(TypeCtor)), s(PresentIn)], !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

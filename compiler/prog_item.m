@@ -1859,6 +1859,10 @@
     % special steps to guard against it, precisely because no perfect defense
     % is possible.
     %
+    % XXX TYPE_REPN Consider whether we can split this type into two,
+    % one for the tcrepns that can occur in .int3 files, and one for the
+    % tcrepns that can occur in .int/.int2 files.
+    %
 :- type type_ctor_repn_info
     --->    tcrepn_is_word_aligned_ptr
     ;       tcrepn_is_eqv_to(mer_type)
