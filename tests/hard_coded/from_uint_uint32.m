@@ -2,10 +2,10 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
 %
-% Test conversion of Mercury ints to unsigned 32-bit integers.
+% Test conversion of uints to unsigned 32-bit integers.
 %
-% The .exp file is for when int is 64-bit.
-% The .exp2 file is for when int is 32-bit.
+% The .exp file is for when uint is 64-bit.
+% The .exp2 file is for when uint is 32-bit.
 %
 %---------------------------------------------------------------------------%
 
@@ -55,8 +55,6 @@ numbers = [
     "16",
     "127",
     "32767",
-     % The next two will only work on machines where 'int' is 64-bit.
-     % XXX two?
     "2147483647",  % INT32_MAX
     "2147483648",  % INT32_MAX + 1
     "4294967295",  % UINT32_MAX

@@ -164,6 +164,7 @@ ORDINARY_PROGS = \
 	from_int_uint8 \
 	from_uint_uint16 \
 	from_uint_uint32 \
+	from_uint_uint64 \
 	from_uint_uint8 \
 	func_and_pred \
 	func_ctor_ambig \

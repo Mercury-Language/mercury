@@ -520,7 +520,7 @@ det_from_int(I) = U64 :-
     cast_from_uint(U::in) = (U64::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    U64 = (long) U ^ 0xffffffffL;
+    U64 = (long) U & 0xffffffffL;
 ").
 
 %---------------------------------------------------------------------------%

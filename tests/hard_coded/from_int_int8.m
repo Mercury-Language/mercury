@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
 
-% Test converson of Mercury ints to signed 8-bit integers.
+% Test conversion of ints to signed 8-bit integers.
 
 :- module from_int_int8.
 :- interface.

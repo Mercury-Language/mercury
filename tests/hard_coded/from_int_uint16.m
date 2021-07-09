@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
 
-% Test conversion of Mercury ints to unsigned 16-bit integers.
+% Test conversion of uints to unsigned 16-bit integers.
 
 :- module from_int_uint16.
 :- interface.

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
 
-% Test conversion of Mercury ints to unsigned 8-bit integers.
+% Test conversion of uints to unsigned 8-bit integers.
 
 :- module from_uint_uint8.
 :- interface.

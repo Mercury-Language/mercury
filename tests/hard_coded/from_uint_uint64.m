@@ -2,14 +2,14 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
 %
-% Test conversion of ints to unsigned 32-bit integers.
+% Test conversion of uints to unsigned 64-bit integers.
 %
 % The .exp file is for when int is 64-bit.
 % The .exp2 file is for when int is 32-bit.
 %
 %---------------------------------------------------------------------------%
 
-:- module from_int_uint32.
+:- module from_uint_uint64.
 :- interface.
 
 :- import_module io.
@@ -21,7 +21,7 @@
 
 :- implementation.
 
-:- import_module uint32.
+:- import_module uint64.
 
 :- import_module list.
 :- import_module string.
@@ -33,13 +33,13 @@ main(!IO) :-
 
 :- pred do_test(string::in, io::di, io::uo) is det.
 
-do_test(IntStr, !IO) :-
-    io.format("from_int(%s) = ", [s(IntStr)], !IO),
+do_test(UIntStr, !IO) :-
+    io.format("from_uint(%s) = ", [s(UIntStr)], !IO),
     ( if
-        string.to_int(IntStr, Int),
-        uint32.from_int(Int, UInt32)
+        string.to_uint(UIntStr, UInt),
+        UInt64 = uint64.cast_from_uint(UInt)
     then
-        io.format("%s\n", [s(uint32_to_string(UInt32))], !IO)
+        io.format("%u\n", [u64(UInt64)], !IO)
     else
         io.write_string("<<out-of-range>>\n", !IO)
     ).
@@ -47,11 +47,6 @@ do_test(IntStr, !IO) :-
 :- func numbers = list(string).
 
 numbers = [
-    "-9223372036854775808",
-    "-2147483648",
-    "-32768",
-    "-128",
-    "-1",
     "0",
     "1",
     "2",
@@ -60,13 +55,15 @@ numbers = [
     "16",
     "127",
     "32767",
-    "2147483647",  % INT32_MAX
-    "2147483648",  % INT32_MAX + 1
-    "4294967295",  % UINT32_MAX
-    "4294967296",  % UINT32_MAX + 1
-    "9223372036854775807"
+    "2147483647",          % INT32_MAX
+    "2147483648",          % INT32_MAX + 1
+    "4294967295",          % UINT32_MAX
+    "4294967296",          % UINT32_MAX + 1
+    "9223372036854775807", % INT64_MAX
+    "9223372036854775808", % INT64_MAX + 1
+    "18446744073709551615" % UINT64_MAX
 ].
 
 %---------------------------------------------------------------------------%
-:- end_module from_int_uint32.
+:- end_module from_uint_uint64.
 %---------------------------------------------------------------------------%

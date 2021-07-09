@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
 
-% Test conversion of Mercury ints to signed 64-bit integers.
+% Test conversion of ints to signed 64-bit integers.
 % The .exp file is for systems where int is 64-bit.
 % The .exp2 file is for systems where int is 32-bit.
 
