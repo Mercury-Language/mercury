@@ -343,11 +343,11 @@
                 ptms_int_promises           :: list(item_promise_info),
 
                 % The set of predicate names for which the interface contains
-                % attempts at either a definition (i.e. a clause or a
+                % either attempts at a definition (i.e. a clause or a
                 % foreign_proc), or something else that tells us that
                 % generating a warning about a lack of a definition
                 % in the implementation section (if in fact there is
-                % no definition there) more misleading than useful.
+                % no definition there) would be more misleading than useful.
                 ptms_int_bad_clauses        :: set(pf_sym_name_arity),
 
                 % A repeat of everything above, but in the implementation
@@ -356,7 +356,7 @@
                 %
                 % However, note that the conversion process we now use
                 % to generate parse_tree_module_srcs will put any impl pragmas,
-                % initialises, finalises and mutable that were wrongly placed
+                % initialises, finalises and mutables that were wrongly placed
                 % in the interface section into their fields below, so that
                 % if there is something wrong with them *beyond* their
                 % location, the compiler can detect and report it in the
