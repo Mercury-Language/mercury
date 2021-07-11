@@ -78,7 +78,9 @@
 
 :- func init_foreign_import_modules = c_j_cs_fims.
 
-:- pred add_foreign_import_module(foreign_language::in, module_name::in,
+:- pred add_fim(foreign_language::in, module_name::in,
+    c_j_cs_fims::in, c_j_cs_fims::out) is det.
+:- pred add_fim_for_module(module_name::in, foreign_language::in,
     c_j_cs_fims::in, c_j_cs_fims::out) is det.
 
 :- pred add_fim_spec(fim_spec::in,
@@ -98,7 +100,7 @@
 init_foreign_import_modules =
     c_j_cs_fims(set.init, set.init, set.init).
 
-add_foreign_import_module(Lang, ModuleName, !FIM) :-
+add_fim(Lang, ModuleName, !FIM) :-
     (
         Lang = lang_c,
         ModuleNames0 = !.FIM ^ fim_c,
@@ -125,9 +127,12 @@ add_foreign_import_module(Lang, ModuleName, !FIM) :-
         )
     ).
 
+add_fim_for_module(Lang, ModuleName, !FIM) :-
+    add_fim(ModuleName, Lang, !FIM).
+
 add_fim_spec(FIMSpec, !FIM) :-
     FIMSpec = fim_spec(Lang, ModuleName),
-    add_foreign_import_module(Lang, ModuleName, !FIM).
+    add_fim(Lang, ModuleName, !FIM).
 
 get_all_fim_specs(FIM) = FIMSpecs :-
     FIM = c_j_cs_fims(ModuleNamesC, ModuleNamesJava, ModuleNamesCSharp),

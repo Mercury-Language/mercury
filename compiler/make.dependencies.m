@@ -835,7 +835,8 @@ union_deps_plain_set(FindDeps, Globals, ModuleName, Success, Deps0, Deps,
     % the dependency calculation predicates can result in every module in
     % the program being read.
     %
-:- func combine_deps(find_module_deps(T)::in(find_module_deps),
+:- func combine_deps(
+    find_module_deps(T)::in(find_module_deps),
     find_module_deps(T)::in(find_module_deps)) =
     (find_module_deps(T)::out(find_module_deps)) is det.
 

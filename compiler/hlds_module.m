@@ -1593,11 +1593,10 @@ module_add_foreign_body_code(ForeignBodyCode, !Module) :-
     module_info_set_foreign_body_codes(ForeignBodyCodes, !Module).
 
 module_add_item_fim(ItemFIM, !Module) :-
-    module_info_get_c_j_cs_fims(!.Module, ForeignImportModules0),
+    module_info_get_c_j_cs_fims(!.Module, FIMs0),
     ItemFIM = item_fim(Lang, ModuleName, _Context, _SeqNum),
-    add_foreign_import_module(Lang, ModuleName,
-        ForeignImportModules0, ForeignImportModules),
-    module_info_set_c_j_cs_fims(ForeignImportModules, !Module).
+    add_fim(Lang, ModuleName, FIMs0, FIMs),
+    module_info_set_c_j_cs_fims(FIMs, !Module).
 
 module_add_fact_table_file(FileName, !Module) :-
     FileNames0 = !.Module ^ mi_rare_info ^ mri_fact_table_file_names,

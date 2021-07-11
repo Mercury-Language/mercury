@@ -471,7 +471,7 @@
                 mai_module_dir          :: dir_name,
 
                 % The name of the top-level module in the above source file.
-                mai_source_file_module_name     :: module_name,
+                mai_source_file_module_name :: module_name,
 
                 % The module that we are compiling. This may be
                 % mai_source_file_module_name, or it may be one of its
@@ -739,21 +739,34 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     % XXX START OF THE REMAINS OF THE OLD CODE
     % Figure out whether the items contain foreign code.
     get_foreign_code_indicators_from_item_blocks(Globals, RawItemBlocks,
-        LangSet, ForeignImports0, ForeignIncludeFilesCord,
-        ContainsForeignExport),
+        LangSet, FIMs0),
 
     % If this module contains `:- pragma foreign_export' or
     % `:- pragma foreign_type' declarations, importing modules may need
     % to import its `.mh' file.
     get_foreign_self_imports_from_item_blocks(RawItemBlocks, SelfImportLangs),
-    list.foldl(
-        ( pred(Lang::in, FIM0::in, FIM::out) is det :-
-            add_foreign_import_module(Lang, ModuleName, FIM0, FIM)
-        ), SelfImportLangs, ForeignImports0, ForeignImports),
+    list.foldl(add_fim_for_module(ModuleName), SelfImportLangs, FIMs0, FIMs),
     % XXX END OF THE REMAINS OF THE OLD CODE
 
     get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
-        IntAvails, ImpAvails, _IntFIMs, _ImpFIMs, IntItems, ImpItems),
+        IntAvails, ImpAvails, IntFIMs, ImpFIMs, IntItems, ImpItems),
+    NewFIMs0 = init_foreign_import_modules,
+    list.foldl(add_fim_spec, list.map(fim_item_to_spec, IntFIMs),
+        NewFIMs0, NewFIMs1),
+    list.foldl(add_fim_spec, list.map(fim_item_to_spec, ImpFIMs),
+        NewFIMs1, NewFIMs2),
+    globals.get_backend_foreign_languages(Globals, BackendLangs),
+    NewFIMs2 = c_j_cs_fims(FIMsC2, FIMsJava2, FIMsCs2),
+    ( if list.member(lang_c, BackendLangs) then
+        FIMsC3 = FIMsC2 else FIMsC3 = set.init ),
+    ( if list.member(lang_java, BackendLangs) then
+        FIMsJava3 = FIMsJava2 else FIMsJava3 = set.init ),
+    ( if list.member(lang_csharp, BackendLangs) then
+        FIMsCs3 = FIMsCs2 else FIMsCs3 = set.init ),
+    NewFIMs3 = c_j_cs_fims(FIMsC3, FIMsJava3, FIMsCs3),
+    list.foldl(add_fim_for_module(ModuleName), SelfImportLangs,
+        NewFIMs3, NewFIMs),
+    expect(unify(FIMs, NewFIMs), $pred, "FIMs != NewFIMs"),
     list.foldl(get_included_modules_in_item_include_acc, IntIncls,
         one_or_more_map.init, PublicChildrenMap),
     list.foldl(get_included_modules_in_item_include_acc, ImpIncls,
@@ -761,20 +774,17 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
 
     get_implicits_foreigns_fact_tables(IntItems, ImpItems,
         IntImplicitImportNeeds, IntImpImplicitImportNeeds, Contents),
-    Contents = item_contents(NewForeignInclFilesCord, FactTables, _NewLangs,
+    Contents = item_contents(ForeignIncludeFilesCord, FactTables, _NewLangs,
         NewForeignExportLangs),
     set.to_sorted_list(FactTables, SortedFactTables),
-    globals.get_backend_foreign_languages(Globals, BackendLangs),
     set.intersect(set.list_to_set(BackendLangs), NewForeignExportLangs,
         NewBackendFELangs),
     ContainsForeignCode = foreign_code_langs_known(LangSet),
     ( if set.is_empty(NewBackendFELangs) then
-        NewContainsForeignExport = contains_no_foreign_export
+        ContainsForeignExport = contains_no_foreign_export
     else
-        NewContainsForeignExport = contains_foreign_export
+        ContainsForeignExport = contains_foreign_export
     ),
-    expect(unify(ContainsForeignExport, NewContainsForeignExport), $pred,
-        "bad ContainsForeignExport"),
 
     get_imports_uses_maps(IntAvails, IntImportsMap0, IntUsesMap0),
     get_imports_uses_maps(ImpAvails, ImpImportsMap, ImpUsesMap0),
@@ -797,11 +807,6 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     one_or_more_map.merge(ImpImportsMap, ImpUsesMap, ImpDepsMap),
     one_or_more_map.merge(IntDepsMap, ImpDepsMap, IntImpDepsMap),
 
-    ForeignIncludeFiles = cord.list(ForeignIncludeFilesCord),
-    NewForeignInclFiles = cord.list(NewForeignInclFilesCord),
-    expect(unify(ForeignIncludeFiles, NewForeignInclFiles), $pred,
-        "bad ForeignIncludeFiles"),
-
     % XXX ITEM_LIST These fields will be filled in later,
     % per the documentation above.
     ParseTreeModuleSrc =
@@ -821,7 +826,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         SourceFileModuleName,
         set.list_to_set(Ancestors), ChildrenMap, PublicChildrenMap,
         NestedDeps, IntDepsMap, IntImpDepsMap, IndirectDeps,
-        SortedFactTables, ForeignImports, ForeignIncludeFilesCord,
+        SortedFactTables, FIMs, ForeignIncludeFilesCord,
         ContainsForeignCode, ContainsForeignExport,
         ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,

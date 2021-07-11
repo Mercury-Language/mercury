@@ -159,8 +159,7 @@
 
 :- pred get_foreign_code_indicators_from_item_blocks(globals::in,
     list(item_block(MS))::in,
-    set(foreign_language)::out, c_j_cs_fims::out,
-    foreign_include_file_infos::out, contains_foreign_export::out) is det.
+    set(foreign_language)::out, c_j_cs_fims::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -290,7 +289,6 @@
 :- import_module recompilation.
 
 :- import_module bool.
-:- import_module cord.
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more_map.
@@ -1148,7 +1146,7 @@ item_needs_foreign_imports(Item) = Langs :-
         Langs = []
     ;
         Item = item_type_repn(_),
-        % These should not be generated yet.
+        % These should not occur in source files.
         unexpected($pred, "item_type_repn")
     ).
 
@@ -1196,19 +1194,16 @@ impl_pragma_needs_foreign_imports(ImplPragma) = Langs :-
     --->    module_foreign_info(
                 used_foreign_languages      :: set(foreign_language),
                 foreign_proc_languages      :: map(sym_name, foreign_language),
-                all_foreign_import_modules  :: c_j_cs_fims,
-                all_foreign_include_files   :: foreign_include_file_infos,
-                module_has_foreign_export   :: contains_foreign_export
+                all_foreign_import_modules  :: c_j_cs_fims
             ).
 
 get_foreign_code_indicators_from_item_blocks(Globals, ItemBlocks,
-        LangSet, ForeignImports, ForeignIncludeFiles, ContainsForeignExport) :-
+        LangSet, ForeignImports) :-
     Info0 = module_foreign_info(set.init, map.init,
-        init_foreign_import_modules, cord.init, contains_no_foreign_export),
+        init_foreign_import_modules),
     list.foldl(get_foreign_code_indicators_from_item_block(Globals),
         ItemBlocks, Info0, Info),
-    Info = module_foreign_info(LangSet0, LangMap, ForeignImports,
-        ForeignIncludeFiles, ContainsForeignExport),
+    Info = module_foreign_info(LangSet0, LangMap, ForeignImports),
     ForeignProcLangs = map.values(LangMap),
     LangSet = set.insert_list(LangSet0, ForeignProcLangs).
 
@@ -1228,10 +1223,9 @@ get_foreign_code_indicators_from_fim(Globals, FIM, !Info) :-
     FIM = item_fim(Lang, ImportedModule, _Context, _SeqNum),
     globals.get_backend_foreign_languages(Globals, BackendLangs),
     ( if list.member(Lang, BackendLangs) then
-        ForeignImportModules0 = !.Info ^ all_foreign_import_modules,
-        add_foreign_import_module(Lang, ImportedModule,
-            ForeignImportModules0, ForeignImportModules),
-        !Info ^ all_foreign_import_modules := ForeignImportModules
+        FIMs0 = !.Info ^ all_foreign_import_modules,
+        add_fim(Lang, ImportedModule, FIMs0, FIMs),
+        !Info ^ all_foreign_import_modules := FIMs
     else
         true
     ).
@@ -1262,8 +1256,7 @@ get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
         UsedForeignLanguages0 = !.Info ^ used_foreign_languages,
         set.insert_list(all_foreign_languages,
             UsedForeignLanguages0, UsedForeignLanguages),
-        !Info ^ used_foreign_languages := UsedForeignLanguages,
-        !Info ^ module_has_foreign_export := contains_foreign_export
+        !Info ^ used_foreign_languages := UsedForeignLanguages
     ;
         ( Item = item_clause(_)
         ; Item = item_type_defn(_)
@@ -1295,20 +1288,17 @@ get_impl_pragma_foreign_code(Globals, Pragma, !Info) :-
         % will only do if there is some foreign_code, not just foreign_decls.
         % Counting foreign_decls here causes problems with intermodule
         % optimization.
-        Pragma = impl_pragma_foreign_decl(FDInfo),
-        FDInfo = pragma_info_foreign_decl(Lang, _IsLocal, LiteralOrInclude),
-        do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info)
+        Pragma = impl_pragma_foreign_decl(_FDInfo)
     ;
         Pragma = impl_pragma_foreign_code(FCInfo),
-        FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude),
+        FCInfo = pragma_info_foreign_code(Lang, _LiteralOrInclude),
         ( if list.member(Lang, BackendLangs) then
             Langs0 = !.Info ^ used_foreign_languages,
             set.insert(Lang, Langs0, Langs),
             !Info ^ used_foreign_languages := Langs
         else
             true
-        ),
-        do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info)
+        )
     ;
         Pragma = impl_pragma_foreign_proc(FPInfo),
         FPInfo = pragma_info_foreign_proc(Attrs, Name, _, _, _, _, _),
@@ -1344,9 +1334,7 @@ get_impl_pragma_foreign_code(Globals, Pragma, !Info) :-
         FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _),
         ( if list.member(Lang, BackendLangs) then
             !Info ^ used_foreign_languages :=
-                set.insert(!.Info ^ used_foreign_languages, Lang),
-            !Info ^ module_has_foreign_export :=
-                contains_foreign_export
+                set.insert(!.Info ^ used_foreign_languages, Lang)
         else
             true
         )
@@ -1378,21 +1366,6 @@ get_impl_pragma_foreign_code(Globals, Pragma, !Info) :-
         ; Pragma = impl_pragma_require_feature_set(_)
         )
         % Do nothing.
-    ).
-
-:- pred do_get_item_foreign_include_file(foreign_language::in,
-    foreign_literal_or_include::in, module_foreign_info::in,
-    module_foreign_info::out) is det.
-
-do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info) :-
-    (
-        LiteralOrInclude = floi_literal(_)
-    ;
-        LiteralOrInclude = floi_include_file(FileName),
-        IncludeFile = foreign_include_file_info(Lang, FileName),
-        IncludeFilesCord0 = !.Info ^ all_foreign_include_files,
-        IncludeFilesCord = cord.snoc(IncludeFilesCord0, IncludeFile),
-        !Info ^ all_foreign_include_files := IncludeFilesCord
     ).
 
 %---------------------------------------------------------------------------%
