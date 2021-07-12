@@ -2525,110 +2525,185 @@ in that every term of a subtype is a valid term in the supertype.
 It is possible to convert terms between subtype and supertype
 using type conversion expressions (@pxref{Type conversions}).
 
-A subtype is defined using the form
+As previously described,
+the syntax for non-subtype discriminated union types is
+@example
+:- type @var{type} ---> @var{body}.
+@end example
+where @var{type} is the name of a type constructor
+applied to zero or more distinct type variables
+(the @emph{parameters} of the type constructor),
+and @var{body} is a sequence of constructor definitions
+separated by semicolons.
+All universally quantified type variables that occur in @var{body}
+must be among @var{type}'s  parameters.
+
+The syntax for subtypes is similar but slightly different:
 @example
 :- type @var{subtype} =< @var{supertype} ---> @var{body}.
 @end example
+Since a subtype is also a discriminated union type,
+the rules for discriminated union types apply to them as well:
+@var{subtype} must be the name of a type constructor
+applied to zero or more distinct type variables (its parameters),
+@var{body} must be a sequence of constructor definitions
+separated by semicolons,
+and all universally quantified type variables that occur in @var{body}
+must be among @var{subtype}'s parameters.
 
-@var{subtype} must be a name term
-whose arguments (if any) are distinct variables.
-
-@var{supertype} must be a type (that may contain variables).
+@var{supertype} must be a type constructor
+applied to zero or more argument types,
+which @emph{may} be type variables, but they do not have to be,
+and if they are, do not need to be distinct.
 After expanding out equivalences,
-the principal constructor must specify a discriminated union type
-whose @emph{definition} is in scope where the subtype definition occurs,
+@var{supertype}'s principal type constructor
+must specify a discriminated union type
+whose definition is in scope where the subtype definition occurs,
 by normal module visibility rules.
 
 The discriminated union type specified by @var{supertype}
 may itself be a subtype.
-Following a chain of visible subtype definitions,
+Following the chain of subtype definitions,
 it must be possible to arrive at a @emph{base type},
-which is not a subtype.
+which is a discriminated union type but @emph{not} a subtype.
 
-Any variable that occurs in @var{supertype} must occur in @var{subtype}.
+The body of the subtype may differ from the body of its supertype in two ways.
+@itemize @bullet
+@item
+It may omit one or more constructor definitions.
+The ability to do this is the main motivation for the use of subtypes.
+(Since the subtype cannot @emph{add} definitions of constructors,
+the set of constructor definitions in the subtype
+must be a subset of the constructors definitions in the supertype.
+We recommend that they should appear in the same relative order
+as in the supertype definition.)
+@item
+It may change the types of some of the arguments of some of the constructors,
+@emph{provided} that each replacement replaces a type with one of its subtypes.
+Formally, this means that
+if the supertype @samp{t} has a constructor @samp{f(T1, ..., Tn)},
+and the subtype @samp{s =< t} has a constructor @samp{f(S1, ..., Sn)}.
+then for each @var{Si}, the condition @samp{Si =< Ti} must hold.
+@end itemize
 
-The @var{body} term is defined as
-a sequence of constructor definitions separated by semicolons.
-Any universally quantified type variable that occurs in @var{body}
-must occur in @var{subtype}.
+This is an example of the first kind of difference:
+@example
+:- type fruit
+    --->    apple
+    ;       pear
+    ;       lemon
+    ;       orange.
 
-The constructor definitions must be a
-subset of the constructors of the supertype;
-we recommend they appear in the same relative order
-as in the supertype definition.
-If the supertype @samp{t} has constructor @samp{f(T1, ..., Tn)} then
-a subtype @samp{s =< t} may have a constructor @samp{f(S1, ..., Sn)}.
-For each @var{Si}, it must be that @samp{Si =< Ti}.
+:- type citrus_fruit =< fruit
+    --->    lemon
+    ;       orange.
+@end example
+
+And this is an example of the second:
+@example
+:- type fruit_basket
+    --->    basket(fruit, int).
+            % What kind of fruit, and how many.
+
+:- type citrus_fruit_basket =< fruit_basket
+    --->    basket(citrus_fruit, int).
+@end example
+
+(There are more examples below.)
+
+If the subtype retains a constructor from the super type
+that has one or more existentially quantified type variables,
+then there must be a one-to-one mapping between
+the existentially quantified type variables
+for the constructor in the subtype definition
+and the same constructor in the supertype definition.
+The subtype constructor must repeat
+exactly the same set of existential class constraints
+on its existentially quantified type variables as in the supertype;
+the subtype constructor cannot add or remove any existential class constraints.
+
+As mentioned above,
+any universally quantified type variable
+that occurs in @var{body} must occur also in @var{subtype}.
+However, this is the only restriction
+on the list of parameters in @var{subtype}.
+For example, it need not have any particular relationship
+with the list of parameters
+of the principal type constructor of @var{supertype}.
+@c There should be some discussion here
+@c of the possible uses of this flexibility.
 
 (In the following discussion,
-assume that equivalence types are expanded out
-as required.)
+we assume that all equivalence types have been expanded out.)
 
-@samp{S =< T} holds
-if @samp{S = f(S1, ..., Sn)}
-and @samp{T = f(T1, ..., Tn)} and
-for each pair of corresponding arguments @samp{Si =< Ti}.
+Mercury considers it possible
+for a type @samp{S} to be a subtype of type @samp{T}, where @samp{S != T},
+in two cases:
+where @samp{S} and @samp{T} are both discriminated union type,
+and where they are both higher order types.
+In every other case,
+@samp{S} is a subtype of @samp{T}, denoted @samp{S =< T},
+if and only if @samp{S} and @samp{T} are syntactically identical,
+i.e.@ @samp{S = T}.
 
-Otherwise, @samp{S =< T} holds
-if @samp{S = f(S1, ..., Sn)}
-and there is a visible definition @w{@samp{:- type f(R1, ..., Rn) =< U}},
-and for each pair of corresponding arguments @w{@samp{Si = Ri}} (unification),
-and @samp{U =< T}.
-In other words,
-any occurrences of @var{Ri} in @var{U} are substituted for @var{Si}
-to give @var{Usub},
-and @samp{Usub =< T} must hold.
+A discriminated union type @samp{S}
+can be a subtype of another discriminated union type @samp{T}
+in two distinct ways:
 
+@itemize
+@item
+If @samp{S} and @samp{T} have the same principal type constructor,
+say @var{f/n}, which implies that
+@samp{S = f(S1, ..., Sn)} and @samp{T = f(T1, ..., Tn)},
+then @samp{S =< T} holds if and only if
+for all @var{i} in @samp{1..n}, @samp{Si =< Ti}.
+@item
+If @samp{S} and @samp{T} have different principal type constructors,
+and if @samp{S = f(S1, ..., Sn)}, @samp{S =< T} holds if
+    @itemize @minus
+    @item
+    there is a visible subtype definition starting with
+    @w{@samp{:- type f(R1, ..., Rn) =< U}},
+    @item
+    for all @var{i} in @samp{1..n}, @w{@samp{Si = Ri}} (unification), and
+    @item
+    @samp{U =< T}.
+    @end itemize
+In other words, if all occurrences of @var{Ri} in @var{U}
+are replaced by the corresponding for @var{Si} to give @var{Usub},
+then @samp{Usub =< T} must hold.
+@end itemize
+
+A higher order type @samp{S}
+can be a subtype of another higher order type @samp{T}
+in only one way.
+Since subtype definitions do not apply to higher order types,
+this way is analogous to the first way above.
+
+@itemize
+@item
 @samp{P =< Q} holds for two higher-order types @var{P} and @var{Q}
-iff @var{P} and @var{Q} are both @samp{pred} types or both @samp{func} types
-with the same arity,
-and @var{P} and @var{Q} have the same argument types.
-In addition,
-if either of @var{P} and @var{Q} has higher-order inst information,
-then @var{P} and @var{Q} must have the same argument modes, determinism,
-and purity.
-(The current implementation does not admit subtyping in
-higher-order arguments.)
+if and only if all of the following conditions hold:
+    @itemize @minus
+    @item
+    @var{P} and @var{Q} are either
+    both @samp{pred} types, or both @samp{func} types,
+    @item
+    they have the same arity,
+    @item
+    @var{P} and @var{Q} have the same argument types
+    (the current implementation does not allow subtyping
+    in higher-order arguments), and
+    @item
+    if either of @var{P} and @var{Q} has higher-order inst information,
+    then @var{P} and @var{Q} must have
+    the @emph{same} higher order inst information,
+    i.e.@ their higher order inst information must specify
+    the same argument modes, determinism, and purity.
+    @end itemize
+@end itemize
 
-@samp{P =< Q} holds if @var{P} and @var{Q} are both
-existentially quantified type variables, and @samp{P = Q}.
-
-There must be a one-to-one mapping between
-existentially quantified type variables
-for a constructor in the subtype definition
-and the same constructor in the supertype definition.
-The subtype constructor must repeat exactly the same set of
-existential class constraints on its existentially quantified type variables
-as in the supertype; the subtype constructor cannot add or remove any
-existential class constraints.
-
-Examples:
-
-@example
-:- type list(T)
-    --->    []
-    ;       [T | list(T)].
-
-:- type non_empty_list(T) =< list(T)
-    --->    [T | list(T)].
-
-:- type non_empty_list_of_foo =< list(foo)
-    --->    [foo | list(foo)].
-
-:- type maybe_foo
-    --->    none
-    ;       some [T] foo(T) => fooable(T).
-
-:- type foo =< maybe_foo
-    --->    some [T] foo(T) => fooable(T).
-
-:- type task
-   --->     create(pred(int::in, io::di, io::uo) is det)
-   ;        delete(pred(int::in, io::di, io::uo) is det).
-
-:- type create_task =< task
-   --->     create(pred(int::in, io::di, io::uo) is det).
-@end example
+In every case not covered above, @samp{S =< T} if and only if @samp{S = T}.
 
 A subtype may be exported as an abstract type
 by declaring only the name of the subtype in the
@@ -2657,6 +2732,91 @@ In that case, values of the subtype will be tested for equality or
 compared using those predicates.
 
 There is no special interaction between subtypes and the type class system.
+
+Some more examples of subtypes:
+
+@example
+:- type list(T)
+    --->    []
+    ;       [T | list(T)].
+
+:- type non_empty_list(T) =< list(T)
+    --->    [T | list(T)].
+
+:- type non_empty_list_of_foo =< list(foo)
+    --->    [foo | list(foo)].
+
+:- type maybe_foo
+    --->    none
+    ;       some [T] foo(T) => fooable(T).
+
+:- type foo =< maybe_foo
+    --->    some [T] foo(T) => fooable(T).
+
+:- type task
+   --->     create(pred(int::in, io::di, io::uo) is det)
+   ;        delete(pred(int::in, io::di, io::uo) is det).
+
+:- type create_task =< task
+   --->     create(pred(int::in, io::di, io::uo) is det).
+@end example
+
+And one more complex example.
+
+In the case of a set of mutually recursive types,
+omitting some constructor definitions from a type may not be enough;
+it may be necessary to replace some argument types with their subtypes as well.
+Consider this pair of mutually recursive types representing a bipartite graph,
+i.e.@ a graph in which there are two kinds of nodes,
+and edges always connect two nodes of different kinds.
+In this bipartite graph,
+the two kinds of nodes are @var{or} nodes and @var{and} nodes,
+and each kind of node can be connected to zero, two or more nodes
+of the other kind.
+
+@example
+:- type or_node
+    --->    or_source(source_id)
+    ;       logical_or(and_node, and_node)
+    ;       logical_or_list(and_node, and_node, and_node, list(and_node)).
+
+:- type and_node
+    --->    and_source(source_id)
+    ;       logical_and(or_node, or_node)
+    ;       logical_and_list(or_node, or_node, or_node, list(or_node)).
+@end example
+
+If we wanted a subtype to represent graphs in which
+no @var{or} node could be connected to more than two @var{and} nodes,
+one might think that it would be enough
+to delete the @var{logical_or_list} constructor from the @var{or_node} type,
+like this:
+
+@example
+:- type binary_or_node =< or_node
+    --->    or_source(source_id)
+    ;       logical_or(and_node, and_node).
+@end example
+
+However, this would not work,
+because the @var{and_node}s have constructors
+whose arguments have type @var{or_node}, not @var{binary_or_node}.
+One would have to create a subtype of the @var{and_node} type
+that constructs @var{and} nodes
+from @var{binary_or_node}s, not plain @var{or_node}s,
+like this:
+
+@example
+:- type binary_or_node =< or_node
+    --->    or_source(source_id)
+    ;       logical_or(binary_or_and_node, binary_or_and_node).
+
+:- type binary_or_and_node =< and_node
+    --->    and_source(source_id)
+    ;       logical_and(binary_or_node, binary_or_node)
+    ;       logical_and_list(binary_or_node, binary_or_node, binary_or_node,
+                list(binary_or_node)).
+@end example
 
 @c -----------------------------------------------------------------------
 
@@ -9773,7 +9933,6 @@ For example:
 * Using pragma foreign_code for Java :: Including Java code in Mercury
 @end menu
 
-
 @node Using pragma foreign_type for Java
 @subsubsection Using pragma foreign_type for Java
 
@@ -10018,7 +10177,6 @@ Newcomers to Mercury are hence encouraged to @strong{skip this section}.
 * Impurity example::    	A simple example using impurity.
 * Higher-order impurity::    	Using impurity with higher-order code.
 @end menu
-
 
 @node Purity levels
 @section Choosing the right level of purity
