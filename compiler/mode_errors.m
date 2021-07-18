@@ -1166,7 +1166,7 @@ mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors, Culprit)
         TailErrors = [_ | _],
         % If there is more than one error, we use the setting of
         % --verbose-errors to decide between reporting just one,
-        % and reporting them all. Unfortunately, We can't use the
+        % and reporting them all. Unfortunately, we can't use the
         % verbose_and_nonverbose functor of the error_msg_component type
         % to package up the two cases, because we need to package up
         % multiple messages, each with its own context.

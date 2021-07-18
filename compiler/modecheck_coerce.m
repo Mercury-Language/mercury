@@ -489,7 +489,7 @@ modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
         )
     ;
         ConsIdX = tuple_cons(_),
-        % XXX post-typecheck does not replace occurences of
+        % XXX post-typecheck does not replace occurrences of
         % cons(unqualified("{}"), ...) with tuple_cons yet.
         sorry($pred, "tuple_cons")
     ;

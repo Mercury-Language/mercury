@@ -1137,7 +1137,7 @@ typecheck_check_for_unsatisfied_coercions(TypeAssignSet, !Info) :-
         )
     ;
         TypeAssignSet = [_, _ | _]
-        % If there are multple type assignments then there is a type ambiguity
+        % If there are multiple type assignments then there is a type ambiguity
         % error anyway. Reporting invalid coercions from different type
         % assignments would be confusing.
     ).
@@ -3150,9 +3150,9 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
 
             % XXX This demonstrates a problem - if a type variable occurs
             % in the types of multiple fields, any predicates changing values
-            % of one of these fields cannot change their types. This especially
-            % a problem for existentially typed fields, because setting the
-            % field always changes the type.
+            % of one of these fields cannot change their types. This is
+            % especially a problem for existentially typed fields, because
+            % setting the field always changes the type.
             %
             % Haskell gets around this problem by allowing multiple fields
             % to be set by the same expression. Haskell doesn't handle all
@@ -3586,7 +3586,7 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
 
 typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
         !TypeAssign) :-
-    % Type bindings must have been aplpied to FromType and ToType already.
+    % Type bindings must have been applied to FromType and ToType already.
     replace_principal_type_ctor_with_base(TypeTable, TVarSet,
         FromType, FromBaseType),
     replace_principal_type_ctor_with_base(TypeTable, TVarSet,
