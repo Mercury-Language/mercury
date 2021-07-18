@@ -1,0 +1,6 @@
+In the release notes for the next release, mention that pragmas that
+specify a predicate or a function now need a pred() or func() wrapper,
+and that pragmas without such wrappers now get a warning, which can be
+shut up (in that release) with --no-warn-potentially-ambiguous-pragma.
+After the release, upgrade the warning to an error. In the release
+after that, remove the option, and always generate an error.
