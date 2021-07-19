@@ -807,7 +807,8 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
 construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
         ContainsForeignCode, ForeignImportModules0,
         ObjFileName, PicObjFileName, MmakeRulesForeignImports, !IO) :-
-    ModuleName = AugCompUnit ^ aci_module_name,
+    ParseTreeModuleSrc = AugCompUnit ^ aci_module_src,
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     (
         ContainsForeignCode = foreign_code_langs_known(_ForeignCodeLangs),
         % XXX This looks wrong to me (zs) in cases when _ForeignCodeLangs
@@ -837,7 +838,7 @@ construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
             set.is_empty(Java0),
             set.is_empty(CSharp0)
         then
-            AugCompUnit = aug_compilation_unit(_, _, _, _ParseTreeModuleSrc,
+            AugCompUnit = aug_compilation_unit(_, _ParseTreeModuleSrc,
                 AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
                 PlainOpts, _TransOpts, IntForOptSpecs, _TypeRepnSpecs),
             some [!FIMSpecs] (

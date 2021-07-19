@@ -917,11 +917,12 @@ maybe_record_interface_timestamp(ModuleName, IntFileKind, RecompAvail,
     set(module_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 check_imports_accessibility(AugCompUnit, _ImportedModules, !Specs) :-
-    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
-        _ModuleVersionNumbers, ParseTreeModuleSrc, AncestorIntSpecs,
-        DirectIntSpecs, IndirectIntSpecs,
+    AugCompUnit = aug_compilation_unit(_ModuleVersionNumbers,
+        ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, _TypeRepnSpecs),
-    record_includes_imports_uses(ModuleName, ParseTreeModuleSrc,
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+    ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
+    record_includes_imports_uses(ParseTreeModuleSrc,
         AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, ReadModules, InclMap,
         SrcIntImportUseMap, SrcImpImportUseMap, AncestorImportUseMap),
@@ -1044,8 +1045,8 @@ append_one_or_more(A, B, AB) :-
     % augmented compilation units. (The raw version would of course be computed
     % from raw_item_blocks.)
     %
-:- pred record_includes_imports_uses(module_name::in,
-    parse_tree_module_src::in, map(module_name, ancestor_int_spec)::in,
+:- pred record_includes_imports_uses(parse_tree_module_src::in,
+    map(module_name, ancestor_int_spec)::in,
     map(module_name, direct_int_spec)::in,
     map(module_name, indirect_int_spec)::in,
     map(module_name, parse_tree_plain_opt)::in,
@@ -1055,7 +1056,7 @@ append_one_or_more(A, B, AB) :-
     module_import_or_use_map::out, module_import_or_use_map::out,
     module_import_or_use_map::out) is det.
 
-record_includes_imports_uses(ModuleName, ParseTreeModuleSrc,
+record_includes_imports_uses(ParseTreeModuleSrc,
         AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, _TransOpts, IntForOptSpecs,
         !:ReadModules, !:InclMap,
@@ -1065,6 +1066,7 @@ record_includes_imports_uses(ModuleName, ParseTreeModuleSrc,
     map.init(!:SrcIntImportUseMap),
     map.init(!:SrcImpImportUseMap),
     map.init(!:AncestorImportUseMap),
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     Ancestors = get_ancestors_set(ModuleName),
     record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
         !ReadModules, !InclMap,

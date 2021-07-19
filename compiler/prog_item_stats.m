@@ -48,8 +48,9 @@
 
 gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
     gather_stats_in_aug_comp_unit(AugCompUnit, CompUnitStats),
-    write_comp_unit_stats(Stream, AugCompUnit ^ aci_module_name,
-        CompUnitStats, !IO).
+    ParseTreeModuleSrc = AugCompUnit ^ aci_module_src,
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+    write_comp_unit_stats(Stream, ModuleName, CompUnitStats, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -153,8 +154,8 @@ init_goal_stats =
     comp_unit_stats::out) is det.
 
 gather_stats_in_aug_comp_unit(AugCompUnit, !:CompUnitStats) :-
-    AugCompUnit = aug_compilation_unit(_ModuleName, _ModuleNameContext,
-        _ModuleVersionNumbers, _ParseTreeModuleSrc, _AncestorIntSpecs,
+    AugCompUnit = aug_compilation_unit(_ModuleVersionNumbers,
+        _ParseTreeModuleSrc, _AncestorIntSpecs,
         _DirectIntSpecs, _IndirectIntSpecs,
         _PlainOptSpecs, _TransOptSpecs, _IntForOptSpecs, _TypeRepnSpecs),
     map.init(!:CompUnitStats).

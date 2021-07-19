@@ -1003,14 +1003,6 @@
 % two types, each specific to one of these invocation kinds.
 :- type aug_compilation_unit
     --->    aug_compilation_unit(
-                % The name of the module.
-                % XXX CLEANUP This is available in aci_module_src.
-                aci_module_name                 :: module_name,
-
-                % The context of the `:- module' declaration.
-                % XXX CLEANUP This is available in aci_module_src.
-                aci_module_name_context         :: prog_context,
-
                 % The module_version_numbers records in all the imported
                 % interface files.
                 aci_module_version_numbers_map  :: module_version_numbers_map,

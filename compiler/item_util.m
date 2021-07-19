@@ -215,7 +215,6 @@
 %
 
 :- func raw_compilation_unit_project_name(raw_compilation_unit) = module_name.
-:- func aug_compilation_unit_project_name(aug_compilation_unit) = module_name.
 :- func parse_tree_module_src_project_name(parse_tree_module_src)
     = module_name.
 
@@ -292,7 +291,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_foreign.
-:- import_module recompilation.
 
 :- import_module bool.
 :- import_module maybe.
@@ -1654,9 +1652,6 @@ gen_pragma_desc_pieces(Pragma) = Pieces :-
 
 raw_compilation_unit_project_name(RawCompUnit) =
     RawCompUnit ^ rci_module_name.
-
-aug_compilation_unit_project_name(AugCompUnit) =
-    AugCompUnit ^ aci_module_name.
 
 parse_tree_module_src_project_name(ParseTreeModuleSrc) =
     ParseTreeModuleSrc ^ ptms_module_name.

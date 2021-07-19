@@ -186,10 +186,11 @@
 
 expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
         TypeEqvMap, !:UsedModules, !RecompInfo, !:Specs) :-
-    AugCompUnit0 = aug_compilation_unit(ModuleName, ModuleNameContext,
-        ModuleVersionNumbers, ParseTreeModuleSrc0, AncestorIntSpecs0,
+    AugCompUnit0 = aug_compilation_unit(ModuleVersionNumbers,
+        ParseTreeModuleSrc0, AncestorIntSpecs0,
         DirectIntSpecs0, IndirectIntSpecs0,
         PlainOpts0, TransOpts0, IntForOptSpecs0, TypeRepnSpecs0),
+    ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
     % First we build up a mapping which records the equivalence type
     % definitions, ...
     some [!TypeEqvMap, !InstEqvMap] (
@@ -247,8 +248,8 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
     % XXX TYPE_REPN Type repns items should be generated fully eqv-expanded,
     % but it may be worth while checking whether this is really so.
     TypeRepnSpecs = TypeRepnSpecs0,
-    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
-        ModuleVersionNumbers, ParseTreeModuleSrc, AncestorIntSpecs,
+    AugCompUnit = aug_compilation_unit(ModuleVersionNumbers,
+        ParseTreeModuleSrc, AncestorIntSpecs,
         DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs),
 

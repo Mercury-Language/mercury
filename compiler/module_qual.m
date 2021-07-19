@@ -258,11 +258,12 @@
 module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         EventSpecMap0, EventSpecMap, EventSpecFileName, !:Info,
         UndefTypes, UndefInsts, UndefModes, UndefTypeClasses, !Specs) :-
-    AugCompUnit0 = aug_compilation_unit(ModuleName, ModuleNameContext,
-        ModuleVersionNumbers, ParseTreeModuleSrc0, AncestorIntSpecs,
+    AugCompUnit0 = aug_compilation_unit(ModuleVersionNumbers,
+        ParseTreeModuleSrc0, AncestorIntSpecs,
         DirectIntSpecs, IndirectIntSpecs,
         PlainOptSpecs, TransOptSpecs, IntForOptSpecs, TypeRepnSpecs),
 
+    ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
     init_mq_info(Globals, ModuleName, should_report_errors, !:Info),
     collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc0, !Info),
     list.foldl(collect_mq_info_in_ancestor_int_spec,
@@ -271,8 +272,8 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         map.values(DirectIntSpecs), !Info),
     module_qualify_parse_tree_module_src(
         ParseTreeModuleSrc0, ParseTreeModuleSrc, !Info, !Specs),
-    AugCompUnit = aug_compilation_unit(ModuleName, ModuleNameContext,
-        ModuleVersionNumbers, ParseTreeModuleSrc, AncestorIntSpecs,
+    AugCompUnit = aug_compilation_unit(ModuleVersionNumbers,
+        ParseTreeModuleSrc, AncestorIntSpecs,
         DirectIntSpecs, IndirectIntSpecs,
         PlainOptSpecs, TransOptSpecs, IntForOptSpecs, TypeRepnSpecs),
 

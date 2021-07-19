@@ -333,9 +333,8 @@ combine_implicit_needs_acc([Head | Tail], !NeedTabling,
 
 acc_implicit_avail_needs_in_aug_compilation_unit(AugCompUnit,
         !ImplicitAvailNeeds) :-
-    AugCompUnit = aug_compilation_unit(_ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, ParseTreeModuleSrc,
-        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+    AugCompUnit = aug_compilation_unit(_MaybeVersionNumbers,
+        ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, _TypeRepnSpecs),
     acc_implicit_avail_needs_in_parse_tree_module_src(ParseTreeModuleSrc,
         !ImplicitAvailNeeds),
