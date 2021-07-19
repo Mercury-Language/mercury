@@ -306,6 +306,27 @@
     is semidet,
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+:- pred foldl6(pred(K, V, A, A, B, B, C, C, D, D, E, E, F, F), tree234(K, V),
+    A, A, B, B, C, C, D, D, E, E, F, F).
+:- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, in, out) is det,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, in, out) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
 :- pred foldl_values(pred(V, A, A), tree234(K, V), A, A).
 :- mode foldl_values(pred(in, in, out) is det, in, in, out) is det.
 :- mode foldl_values(pred(in, mdi, muo) is det, in, mdi, muo) is det.
@@ -411,6 +432,27 @@
     is semidet,
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+:- pred foldl6_values(pred(V, A, A, B, B, C, C, D, D, E, E, F, F),
+    tree234(K, V), A, A, B, B, C, C, D, D, E, E, F, F).
+:- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
+    in, out, in, out) is det,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
+    in, out, in, out) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
 :- func foldr(func(K, V, A) = A, tree234(K, V), A) = A.
 
 :- pred foldr(pred(K, V, A, A), tree234(K, V), A, A).
@@ -505,6 +547,27 @@
 :- mode foldr5(pred(in, in, in, out, in, out, in, out, in, out, di, uo)
     is semidet,
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
+:- pred foldr6(pred(K, V, A, A, B, B, C, C, D, D, E, E, F, F), tree234(K, V),
+    A, A, B, B, C, C, D, D, E, E, F, F).
+:- mode foldr6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, in, out) is det,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode foldr6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode foldr6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode foldr6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, in, out) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode foldr6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode foldr6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
 %---------------------%
 
@@ -4023,6 +4086,27 @@ foldl5(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
     Pred(K2, V2, !A, !B, !C, !D, !E),
     tree234.foldl5(Pred, T3, !A, !B, !C, !D, !E).
 
+foldl6(_Pred, empty, !A, !B, !C, !D, !E, !F).
+foldl6(Pred, two(K, V, T0, T1), !A, !B, !C, !D, !E, !F) :-
+    tree234.foldl6(Pred, T0, !A, !B, !C, !D, !E, !F),
+    Pred(K, V, !A, !B, !C, !D, !E, !F),
+    tree234.foldl6(Pred, T1, !A, !B, !C, !D, !E, !F).
+foldl6(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A, !B, !C, !D, !E, !F) :-
+    tree234.foldl6(Pred, T0, !A, !B, !C, !D, !E, !F),
+    Pred(K0, V0, !A, !B, !C, !D, !E, !F),
+    tree234.foldl6(Pred, T1, !A, !B, !C, !D, !E, !F),
+    Pred(K1, V1, !A, !B, !C, !D, !E, !F),
+    tree234.foldl6(Pred, T2, !A, !B, !C, !D, !E, !F).
+foldl6(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+        !A, !B, !C, !D, !E, !F) :-
+    tree234.foldl6(Pred, T0, !A, !B, !C, !D, !E, !F),
+    Pred(K0, V0, !A, !B, !C, !D, !E, !F),
+    tree234.foldl6(Pred, T1, !A, !B, !C, !D, !E, !F),
+    Pred(K1, V1, !A, !B, !C, !D, !E, !F),
+    tree234.foldl6(Pred, T2, !A, !B, !C, !D, !E, !F),
+    Pred(K2, V2, !A, !B, !C, !D, !E, !F),
+    tree234.foldl6(Pred, T3, !A, !B, !C, !D, !E, !F).
+
 foldl_values(_Pred, empty, !A).
 foldl_values(Pred, two(_K, V, T0, T1), !A) :-
     tree234.foldl_values(Pred, T0, !A),
@@ -4127,6 +4211,28 @@ foldl5_values(Pred, four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3),
     tree234.foldl5_values(Pred, T2, !A, !B, !C, !D, !E),
     Pred(V2, !A, !B, !C, !D, !E),
     tree234.foldl5_values(Pred, T3, !A, !B, !C, !D, !E).
+
+foldl6_values(_Pred, empty, !A, !B, !C, !D, !E, !F).
+foldl6_values(Pred, two(_K, V, T0, T1), !A, !B, !C, !D, !E, !F) :-
+    tree234.foldl6_values(Pred, T0, !A, !B, !C, !D, !E, !F),
+    Pred(V, !A, !B, !C, !D, !E, !F),
+    tree234.foldl6_values(Pred, T1, !A, !B, !C, !D, !E, !F).
+foldl6_values(Pred, three(_K0, V0, _K1, V1, T0, T1, T2),
+        !A, !B, !C, !D, !E, !F) :-
+    tree234.foldl6_values(Pred, T0, !A, !B, !C, !D, !E, !F),
+    Pred(V0, !A, !B, !C, !D, !E, !F),
+    tree234.foldl6_values(Pred, T1, !A, !B, !C, !D, !E, !F),
+    Pred(V1, !A, !B, !C, !D, !E, !F),
+    tree234.foldl6_values(Pred, T2, !A, !B, !C, !D, !E, !F).
+foldl6_values(Pred, four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3),
+        !A, !B, !C, !D, !E, !F) :-
+    tree234.foldl6_values(Pred, T0, !A, !B, !C, !D, !E, !F),
+    Pred(V0, !A, !B, !C, !D, !E, !F),
+    tree234.foldl6_values(Pred, T1, !A, !B, !C, !D, !E, !F),
+    Pred(V1, !A, !B, !C, !D, !E, !F),
+    tree234.foldl6_values(Pred, T2, !A, !B, !C, !D, !E, !F),
+    Pred(V2, !A, !B, !C, !D, !E, !F),
+    tree234.foldl6_values(Pred, T3, !A, !B, !C, !D, !E, !F).
 
 %---------------------------------------------------------------------------%
 
@@ -4236,6 +4342,27 @@ foldr5(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
     tree234.foldr5(Pred, T1, !A, !B, !C, !D, !E),
     Pred(K0, V0, !A, !B, !C, !D, !E),
     tree234.foldr5(Pred, T0, !A, !B, !C, !D, !E).
+
+foldr6(_Pred, empty, !A, !B, !C, !D, !E, !F).
+foldr6(Pred, two(K, V, T0, T1), !A, !B, !C, !D, !E, !F) :-
+    tree234.foldr6(Pred, T1, !A, !B, !C, !D, !E, !F),
+    Pred(K, V, !A, !B, !C, !D, !E, !F),
+    tree234.foldr6(Pred, T0, !A, !B, !C, !D, !E, !F).
+foldr6(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A, !B, !C, !D, !E, !F) :-
+    tree234.foldr6(Pred, T2, !A, !B, !C, !D, !E, !F),
+    Pred(K1, V1, !A, !B, !C, !D, !E, !F),
+    tree234.foldr6(Pred, T1, !A, !B, !C, !D, !E, !F),
+    Pred(K0, V0, !A, !B, !C, !D, !E, !F),
+    tree234.foldr6(Pred, T0, !A, !B, !C, !D, !E, !F).
+foldr6(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+        !A, !B, !C, !D, !E, !F) :-
+    tree234.foldr6(Pred, T3, !A, !B, !C, !D, !E, !F),
+    Pred(K2, V2, !A, !B, !C, !D, !E, !F),
+    tree234.foldr6(Pred, T2, !A, !B, !C, !D, !E, !F),
+    Pred(K1, V1, !A, !B, !C, !D, !E, !F),
+    tree234.foldr6(Pred, T1, !A, !B, !C, !D, !E, !F),
+    Pred(K0, V0, !A, !B, !C, !D, !E, !F),
+    tree234.foldr6(Pred, T0, !A, !B, !C, !D, !E, !F).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

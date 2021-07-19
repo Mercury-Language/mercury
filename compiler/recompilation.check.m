@@ -2261,7 +2261,7 @@ get_ambiguity_checkables_parse_tree_int0(ParseTreeInt0, Checkables) :-
         _IntFIMs, _ImpFIMs,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, _IntInstances,
-        IntPredDecls, _IntModeDecls, _IntForeignEnums,
+        IntPredDecls, _IntModeDecls,
         _IntDeclPragmas, _IntPromises,
         ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
         ImpTypeClasses, _ImpInstances,
@@ -2290,7 +2290,7 @@ get_ambiguity_checkables_parse_tree_int1(ParseTreeInt1, Checkables) :-
         _IntUses, _ImpUses, _ImportUseMap, _IntFIMs, _ImpFIMs,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, _IntItemInstances,
-        IntPredDecls, _IntModeDecls, _IntFEEs, _IntDeclPragmas, _IntPromises,
+        IntPredDecls, _IntModeDecls, _IntDeclPragmas, _IntPromises,
         _IntTypeRepnMap,
         ImpTypeDefnMap, _ImpFEEs, ImpTypeClasses),
     ItemTypeDefns =

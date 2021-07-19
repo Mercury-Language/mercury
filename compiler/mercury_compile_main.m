@@ -1249,8 +1249,8 @@ do_process_compiler_arg_make_interface(Globals0, InterfaceFile, FileOrModule,
     ( if halt_at_module_error(Globals, ReadErrors) then
         write_error_specs_ignore(Globals, ReadSpecs, !IO)
     else
-        split_into_compilation_units_perform_checks(ParseTreeSrc,
-            RawCompUnits, ReadSpecs, ReadSplitSpecs),
+        split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
+            ParseTreeModuleSrcs, ReadSpecs, ReadSplitSpecs),
         filter_interface_generation_specs(Globals, ReadSplitSpecs, Specs, !IO),
         write_error_specs_ignore(Globals, Specs, !IO),
         maybe_print_delayed_error_messages(Globals, !IO),
@@ -1259,18 +1259,18 @@ do_process_compiler_arg_make_interface(Globals0, InterfaceFile, FileOrModule,
             list.foldl2(
                 write_private_interface_file_int0(Globals0,
                     FileName, ModuleName, MaybeTimestamp),
-                RawCompUnits, !HaveReadModuleMaps, !IO)
+                ParseTreeModuleSrcs, !HaveReadModuleMaps, !IO)
         ;
             InterfaceFile = omif_int1_int2,
             list.foldl2(
                 write_interface_file_int1_int2(Globals0,
                     FileName, ModuleName, MaybeTimestamp),
-                RawCompUnits, !HaveReadModuleMaps, !IO)
+                ParseTreeModuleSrcs, !HaveReadModuleMaps, !IO)
         ;
             InterfaceFile = omif_int3,
             list.foldl(
-                write_short_interface_file_int3(Globals0, FileName),
-                RawCompUnits, !IO)
+                write_short_interface_file_int3(Globals0),
+                ParseTreeModuleSrcs, !IO)
         )
     ).
 
@@ -1411,24 +1411,26 @@ read_augment_and_process_module(Globals0, OpModeAugment, OptionArgs,
         ModulesToLink = [],
         ExtraObjFiles = []
     else
-        split_into_compilation_units_perform_checks(ParseTreeSrc,
-            RawCompUnits0, Specs0, Specs1),
+        split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
+            ParseTreeModuleSrcs0, Specs0, Specs1),
         (
             MaybeModulesToRecompile = some_modules(ModulesToRecompile),
             ToRecompile =
-                ( pred(RawCompUnit::in) is semidet :-
-                    RawCompUnit =
-                        raw_compilation_unit(RawCompUnitModuleName, _, _),
-                    list.member(RawCompUnitModuleName, ModulesToRecompile)
+                ( pred(ParseTreeModuleSrc::in) is semidet :-
+                    ParseTreeModuleName =
+                        ParseTreeModuleSrc ^ ptms_module_name,
+                    list.member(ParseTreeModuleName, ModulesToRecompile)
                 ),
-            list.filter(ToRecompile, RawCompUnits0, RawCompUnitsToCompile)
+            list.filter(ToRecompile, ParseTreeModuleSrcs0,
+                ParseTreeModuleSrcsToRecompile)
         ;
             MaybeModulesToRecompile = all_modules,
-            RawCompUnitsToCompile = RawCompUnits0
+            ParseTreeModuleSrcsToRecompile = ParseTreeModuleSrcs0
         ),
-        RawCompUnitNames = set.list_to_set(
-            list.map(raw_compilation_unit_project_name, RawCompUnits0)),
-        set.delete(ModuleName, RawCompUnitNames, NestedCompUnitNames),
+        ParseTreeModuleNames = set.list_to_set(
+            list.map(parse_tree_module_src_project_name,
+                ParseTreeModuleSrcs0)),
+        set.delete(ModuleName, ParseTreeModuleNames, NestedCompUnitNames),
 
         find_timestamp_files(Globals, FindTimestampFiles),
 
@@ -1456,7 +1458,7 @@ read_augment_and_process_module(Globals0, OpModeAugment, OptionArgs,
         ),
         augment_and_process_all_submodules(GlobalsToUse, OpModeAugment,
             FileName, ModuleName, MaybeTimestamp, NestedCompUnitNames,
-            FindTimestampFiles, RawCompUnitsToCompile,
+            FindTimestampFiles, ParseTreeModuleSrcsToRecompile,
             Specs1, ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO)
     ).
 
@@ -1625,27 +1627,29 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
     op_mode_augment::in, string::in, module_name::in,
     maybe(timestamp)::in, set(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
-    list(raw_compilation_unit)::in, list(error_spec)::in,
+    list(parse_tree_module_src)::in, list(error_spec)::in,
     list(string)::out, list(string)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
 augment_and_process_all_submodules(Globals, OpModeAugment,
         FileName, SourceFileModuleName, MaybeTimestamp, NestedSubModules,
-        FindTimestampFiles, RawCompUnits, !.Specs,
+        FindTimestampFiles, ParseTreeModuleSrcs, !.Specs,
         ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
     list.map_foldl3(
         augment_and_process_module(Globals, OpModeAugment,
             FileName, SourceFileModuleName, MaybeTimestamp, NestedSubModules,
             FindTimestampFiles),
-        RawCompUnits, ExtraObjFileLists, !Specs, !HaveReadModuleMaps, !IO),
+        ParseTreeModuleSrcs, ExtraObjFileLists,
+        !Specs, !HaveReadModuleMaps, !IO),
     write_error_specs_ignore(Globals, !.Specs, !IO),
-    list.map(module_to_link, RawCompUnits, ModulesToLink),
+    list.map(module_to_link, ParseTreeModuleSrcs, ModulesToLink),
     list.condense(ExtraObjFileLists, ExtraObjFiles).
 
-:- pred module_to_link(raw_compilation_unit::in, string::out) is det.
+:- pred module_to_link(parse_tree_module_src::in, string::out) is det.
 
-module_to_link(raw_compilation_unit(ModuleName, _, _), ModuleToLink) :-
+module_to_link(ParseTreeModuleSrc, ModuleToLink) :-
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     module_name_to_file_name_stem(ModuleName, ModuleToLink).
 
 %---------------------------------------------------------------------------%
@@ -1668,27 +1672,25 @@ module_to_link(raw_compilation_unit(ModuleName, _, _), ModuleToLink) :-
     op_mode_augment::in, file_name::in, module_name::in,
     maybe(timestamp)::in, set(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
-    raw_compilation_unit::in, list(string)::out,
+    parse_tree_module_src::in, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
 augment_and_process_module(Globals, OpModeAugment,
         SourceFileName, SourceFileModuleName, MaybeTimestamp,
-        NestedSubModules0, FindTimestampFiles, RawCompUnit, ExtraObjFiles,
-        !Specs, !HaveReadModuleMaps, !IO) :-
-    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
-        RawItemBlocks),
-    check_interface_item_blocks_for_no_exports(Globals,
-        ModuleName, ModuleNameContext, RawItemBlocks, !Specs),
+        NestedSubModules0, FindTimestampFiles, ParseTreeModuleSrc,
+        ExtraObjFiles, !Specs, !HaveReadModuleMaps, !IO) :-
+    check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs),
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ( if ModuleName = SourceFileModuleName then
         NestedSubModules = NestedSubModules0
     else
         set.init(NestedSubModules)
     ),
     grab_qual_imported_modules_augment(Globals, SourceFileName,
-        SourceFileModuleName, MaybeTimestamp, NestedSubModules, RawCompUnit,
-        ModuleAndImports, !HaveReadModuleMaps, !IO),
+        SourceFileModuleName, MaybeTimestamp, NestedSubModules,
+        ParseTreeModuleSrc, ModuleAndImports, !HaveReadModuleMaps, !IO),
     module_and_imports_get_aug_comp_unit(ModuleAndImports, _AugCompUnit,
         ImportedSpecs, Errors),
     !:Specs = ImportedSpecs ++ !.Specs,

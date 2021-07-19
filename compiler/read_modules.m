@@ -59,9 +59,7 @@
                 % as soon as we can, using the last two fields instead.
                 hrmm_opt                :: have_read_module_opt_map,
 
-                % XXX CLEANUP We should store parse_tree_module_srcs,
-                % not raw_compilation_units.
-                hrmm_rcu                :: have_read_module_rcu_map,
+                hrmm_module_src         :: have_read_module_msrc_map,
 
                 hrmm_int0               :: have_read_module_int0_map,
                 hrmm_int1               :: have_read_module_int1_map,
@@ -82,8 +80,8 @@
 :- type have_read_module_key(Kind)
     --->    have_read_module_key(module_name, Kind).
 
-:- type have_read_module_rcu_map ==
-    map(module_name, raw_compilation_unit).
+:- type have_read_module_msrc_map ==
+    map(module_name, parse_tree_module_src).
 
 :- type have_read_module_int0_map ==
     have_read_module_map(module_name, parse_tree_int0).
@@ -350,8 +348,8 @@
 %-----------------------------------------------------------------------------%
 
 init_have_read_module_maps = 
-    have_read_module_maps(map.init, map.init,
-        map.init, map.init, map.init, map.init, map.init, map.init, map.init).
+    have_read_module_maps(map.init, map.init, map.init, map.init,
+        map.init, map.init, map.init, map.init, map.init).
 
 %-----------------------------------------------------------------------------%
 

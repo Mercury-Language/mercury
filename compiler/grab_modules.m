@@ -53,16 +53,16 @@
 %---------------------------------------------------------------------------%
 
     % grab_qual_imported_modules_augment(Globals, SourceFileName,
-    %   SourceFileModuleName, MaybeTimestamp, NestedSubModules, RawCompUnit,
-    %   ModuleAndImports, !HaveReadModuleMaps, !IO):
+    %   SourceFileModuleName, MaybeTimestamp, NestedSubModules,
+    %   ParseTreeModuleSrc, ModuleAndImports, !HaveReadModuleMaps, !IO):
     %
-    % Given the raw CompUnit, one of the modules stored in SourceFileName,
+    % Given ParseTreeModuleSrc, one of the modules stored in SourceFileName,
     % read in the private interface files (.int0) for all the parent modules,
     % the long interface files (.int) for all the imported modules, and the
     % short interface files (.in2) for all the indirectly imported modules.
     % Return the `module_and_imports' structure containing all the information
     % gathered this way, from which we will compute the augmented version
-    % of RawCompUnit.
+    % of ParseTreeModuleSrc.
     % XXX ITEM_LIST Move the actual computation of the AugCompUnit together
     % with this code, preferably in a new module, perhaps named something like
     % "augment_comp_unit.m".
@@ -70,11 +70,12 @@
     % SourceFileModuleName is the top-level module name in SourceFileName.
     % ModuleTimestamp is the timestamp of the SourceFileName. NestedSubModules
     % is the list of the names of the nested submodules in SourceFileName
-    % if RawCompUnit is the toplevel module in SourceFileName (i.e. if it is
-    % the compilation unit of SourceFileModuleName). XXX ITEM_LIST document
-    % exactly what NestedSubModules is if RawCompUnit is NOT the toplevel
-    % module in SourceFileName. HaveReadModuleMaps contains the interface
-    % files read during recompilation checking.
+    % if ParseTreeModuleSrc is the toplevel module in SourceFileName
+    % (i.e. if it is the compilation unit of SourceFileModuleName).
+    % (XXX ITEM_LIST document exactly what NestedSubModules is if
+    % ParseTreeModuleSrc is NOT the toplevel module in SourceFileName.)
+    % HaveReadModuleMaps contains the interface files read during
+    % recompilation checking.
     %
     % Used when augmenting a module, which we do when asked to do
     % the tasks described by op_mode_augment. Most of the time, this is
@@ -83,12 +84,12 @@
     %
 :- pred grab_qual_imported_modules_augment(globals::in, file_name::in,
     module_name::in, maybe(timestamp)::in, set(module_name)::in,
-    raw_compilation_unit::in, module_and_imports::out,
+    parse_tree_module_src::in, module_and_imports::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
     % grab_unqual_imported_modules_make_int(Globals,
-    %   SourceFileName, SourceFileModuleName, RawCompUnit,
+    %   SourceFileName, SourceFileModuleName, ParseTreeModuleSrc,
     %   ModuleAndImports, !HaveReadModuleMaps, !IO):
     %
     % Similar to grab_imported_modules_augment, but only reads in the
@@ -102,7 +103,7 @@
     %
 :- pred grab_unqual_imported_modules_make_int(globals::in,
     file_name::in, module_name::in,
-    raw_compilation_unit::in, module_and_imports::out,
+    parse_tree_module_src::in, module_and_imports::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
@@ -132,8 +133,6 @@
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
-:- import_module parse_tree.comp_unit_interface.    % undesirable dependency
-:- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
@@ -146,7 +145,6 @@
 
 :- import_module cord.
 :- import_module map.
-:- import_module one_or_more_map.
 :- import_module one_or_more.
 :- import_module require.
 :- import_module term.
@@ -157,7 +155,7 @@
 
 grab_qual_imported_modules_augment(Globals, SourceFileName,
         SourceFileModuleName, MaybeTimestamp, NestedChildren,
-        RawCompUnit, !:ModuleAndImports, !HaveReadModuleMaps, !IO) :-
+        ParseTreeModuleSrc0, !:ModuleAndImports, !HaveReadModuleMaps, !IO) :-
     % The predicates grab_imported_modules and grab_unqual_imported_modules
     % have quite similar tasks. Please keep the corresponding parts of these
     % two predicates in sync.
@@ -168,26 +166,18 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         !IntImpIndirectImported, !ImpImpIndirectImported]
     (
         % Construct the initial module import structure.
-        RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
-            RawItemBlocks),
+        ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
 
-        get_raw_components(RawItemBlocks, IntIncls, _ImpIncls,
-            _IntAvails, _ImpAvails, _IntFIMs, _ImpFIMs, IntItems, ImpItems),
-        get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-            _IntImplicitImportNeeds, _IntImpImplicitImportNeeds, Contents),
+        get_foreigns_fact_tables(ParseTreeModuleSrc0, Contents),
         Contents = item_contents(ForeignIncludeFilesCord, FactTablesSet,
             LangSet, ForeignExportLangs),
         set.to_sorted_list(LangSet, Langs),
-        ImplicitFIMs = list.map(make_foreign_import(ModuleName), Langs),
         FactTables = set.to_sorted_list(FactTablesSet),
 
-        make_and_add_item_block(ModuleName, ms_implementation,
-            [], [], ImplicitFIMs, [],
-            RawItemBlocks, RawItemBlocks1),
-        RawCompUnit1 = raw_compilation_unit(ModuleName, ModuleNameContext,
-            RawItemBlocks1),
-        check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit1,
-            ParseTreeModuleSrc, [], ConvertSpecs),
+        ImpFIMs0 = ParseTreeModuleSrc0 ^ ptms_imp_fims,
+        list.foldl(add_implicit_fim_for_module(ModuleName), Langs,
+            ImpFIMs0, ImpFIMs),
+        ParseTreeModuleSrc = ParseTreeModuleSrc0 ^ ptms_imp_fims := ImpFIMs,
 
         (
             MaybeTimestamp = yes(Timestamp),
@@ -198,19 +188,19 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
             MaybeTimestampMap = no
         ),
 
-        list.foldl(get_included_modules_in_item_include_acc, IntIncls,
-            one_or_more_map.init, PublicChildren),
+        IntIncls = ParseTreeModuleSrc ^ ptms_int_includes,
+        PublicChildren = IntIncls,
 
         make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
             ParseTreeModuleSrc, PublicChildren, NestedChildren, FactTables,
             ForeignIncludeFilesCord, ForeignExportLangs,
             MaybeTimestampMap, !:ModuleAndImports),
-        module_and_imports_add_specs(ConvertSpecs, !ModuleAndImports),
         !:Specs = [],
 
-        RCUMap0 = !.HaveReadModuleMaps ^ hrmm_rcu,
-        map.set(ModuleName, RawCompUnit, RCUMap0, RCUMap),
-        !HaveReadModuleMaps ^ hrmm_rcu := RCUMap,
+        SrcMap0 = !.HaveReadModuleMaps ^ hrmm_module_src,
+        % XXX Should be map.det_insert.
+        map.set(ModuleName, ParseTreeModuleSrc, SrcMap0, SrcMap),
+        !HaveReadModuleMaps ^ hrmm_module_src := SrcMap,
 
         ImportUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
         import_and_or_use_map_to_module_name_contexts(ImportUseMap,
@@ -308,7 +298,7 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
     ).
 
 grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, RawCompUnit, !:ModuleAndImports,
+        SourceFileModuleName, ParseTreeModuleSrc0, !:ModuleAndImports,
         !HaveReadModuleMaps, !IO) :-
     % The predicates grab_imported_modules and grab_unqual_imported_modules
     % have quite similar tasks. Please keep the corresponding parts of these
@@ -318,47 +308,20 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
 
     some [!IntIndirectImported, !ImpIndirectImported]
     (
-        % XXX We should consider whether we should print _ConvertSpecs,
-        % and set the exit status accordingly. Doing so would diagnose
-        % several kinds of problems earlier than we do now, but whether
-        % people will find that more helpful than annoying cannot be answered
-        % without actually tryng it out.
-        %
-        % XXX For now, we create ParseTreeModuleSrc only to give it to
-        % make_module_and_imports. However, much of the code between here
-        % and the call to that predicate could probably be simplified
-        % if we changed it to work on ParseTreeModuleSrc instead of
-        % RawItemBlocks.
-        check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
-            ParseTreeModuleSrc0, [], _ConvertSpecs),
+        ImportAndOrUseMap = ParseTreeModuleSrc0 ^ ptms_import_use_map,
+        import_and_or_use_map_to_module_name_contexts(ImportAndOrUseMap,
+            IntImportMap, IntUseMap, ImpImportMap, ImpUseMap,
+            IntUseImpImportMap),
+        map.keys_as_set(IntImportMap, IntImports0),
+        map.keys_as_set(IntUseMap, IntUses),
+        map.keys_as_set(ImpImportMap, ImpImports),
+        map.keys_as_set(ImpUseMap, ImpUses),
+        map.keys_as_set(IntUseImpImportMap, IntUsesImpImports),
+        set.insert(mercury_public_builtin_module, IntImports0, IntImports),
 
-        RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
-            RawItemBlocks),
-
-        get_raw_components(RawItemBlocks, _IntIncls, _ImpIncls,
-            IntAvails, ImpAvails, _IntFIMs0, _ImpFIMs, IntItems, ImpItems),
-        get_imports_uses_maps(IntAvails, IntImportsMap0, IntUsesMap0),
-        get_imports_uses_maps(ImpAvails, ImpImportsMap0, ImpUsesMap0),
-        get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-            _IntImplicitImportNeeds, IntImpImplicitImportNeeds, Contents),
+        get_foreigns_fact_tables(ParseTreeModuleSrc0, Contents),
         Contents = item_contents(_ForeignInclFiles, _FactTables,
             LangSet, ForeignExportLangs),
-
-        warn_if_duplicate_use_import_decls(ModuleName, ModuleNameContext,
-            IntImportsMap0, IntImportsMap1, IntUsesMap0, IntUsesMap1,
-            ImpImportsMap0, ImpImportsMap, ImpUsesMap0, ImpUsesMap,
-            IntUsedImpImported, [], _Specs),
-
-        map.keys_as_set(IntImportsMap1, IntImports0),
-        map.keys_as_set(IntUsesMap1, IntUses0),
-        map.keys_as_set(ImpImportsMap, ImpImports),
-        map.keys_as_set(ImpUsesMap, ImpUses),
-        % XXX SECTION
-        compute_implicit_avail_needs(Globals, IntImpImplicitImportNeeds,
-            ImplicitIntUses),
-        set.insert(mercury_public_builtin_module, IntImports0, IntImports),
-        set.union(ImplicitIntUses, IntUses0, IntUses),
-
         ParseTreeModuleSrc = ParseTreeModuleSrc0 ^ ptms_implicit_fim_langs
             := yes(LangSet),
 
@@ -376,9 +339,10 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             ForeignIncludeFiles, ForeignExportLangs,
             MaybeTimestampMap, !:ModuleAndImports),
 
-        RCUMap0 = !.HaveReadModuleMaps ^ hrmm_rcu,
-        map.set(ModuleName, RawCompUnit, RCUMap0, RCUMap),
-        !HaveReadModuleMaps ^ hrmm_rcu := RCUMap,
+        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+        SrcMap0 = !.HaveReadModuleMaps ^ hrmm_module_src,
+        map.set(ModuleName, ParseTreeModuleSrc, SrcMap0, SrcMap),
+        !HaveReadModuleMaps ^ hrmm_module_src := SrcMap,
 
         % Get the .int0 files of the ancestor modules.
         Ancestors = get_ancestors(ModuleName),
@@ -421,7 +385,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         % in the interface and `import_module' in the implementation.
         grab_module_int3_files(Globals,
             "unqual_int_used_imp_imported", rwi3_direct_int_use_imp_import,
-            set.to_sorted_list(IntUsedImpImported),
+            set.to_sorted_list(IntUsesImpImports),
             !IntIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
         % Get the .int3 files of the modules imported in .int3 files.
@@ -433,80 +397,14 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             !.ImpIndirectImported, !HaveReadModuleMaps, !ModuleAndImports, !IO)
     ).
 
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
+:- pred dump_modules(io.text_output_stream::in, set(module_name)::in,
+    io::di, io::uo) is det.
+:- pragma consider_used(pred(dump_modules/4)).
 
-    % This predicate ensures that every import_module declaration is checked
-    % against every use_module declaration, except for the case where
-    % the interface has `:- use_module foo.' and the implementation
-    % `:- import_module foo.'. Return the set of modules that have a
-    % `:- use_module foo' in the interface and an `:- import_module foo'
-    % in the implementation.
-    %
-:- pred warn_if_duplicate_use_import_decls(module_name::in,
-    prog_context::in,
-    module_names_contexts::in, module_names_contexts::out,
-    module_names_contexts::in, module_names_contexts::out,
-    module_names_contexts::in, module_names_contexts::out,
-    module_names_contexts::in, module_names_contexts::out,
-    set(module_name)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-warn_if_duplicate_use_import_decls(ModuleName, Context,
-        !IntImportedMap, !IntUsedMap, !ImpImportedMap, !ImpUsedMap,
-        IntUsedImpImported, !Specs) :-
-    do_warn_if_duplicate_use_import_decls(ModuleName, Context,
-        !.IntImportedMap, !IntUsedMap, !Specs),
-    do_warn_if_duplicate_use_import_decls(ModuleName, Context,
-        !.IntImportedMap, !ImpUsedMap, !Specs),
-    do_warn_if_duplicate_use_import_decls(ModuleName, Context,
-        !.ImpImportedMap, !ImpUsedMap, !Specs),
-    IntUsedImpImported = set.intersect(
-        map.keys_as_set(!.ImpImportedMap),
-        map.keys_as_set(!.IntUsedMap)),
-    ( if set.is_empty(IntUsedImpImported) then
-        % This is the usual case; optimize it.
-        true
-    else
-        IntUsedImpImportedList = set.to_sorted_list(IntUsedImpImported),
-        map.delete_list(IntUsedImpImportedList, !IntUsedMap),
-        map.delete_list(IntUsedImpImportedList, !ImpImportedMap)
-    ).
-
-    % Report warnings for modules imported using both `:- use_module'
-    % and `:- import_module'. Remove the unnecessary `:- use_module'
-    % declarations.
-    %
-:- pred do_warn_if_duplicate_use_import_decls(module_name::in,
-    prog_context::in, module_names_contexts::in,
-    module_names_contexts::in, module_names_contexts::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-do_warn_if_duplicate_use_import_decls(_ModuleName, Context,
-        ImportedMap, !UsedMap, !Specs) :-
-    map.keys_as_set(ImportedMap, Imported),
-    map.keys_as_set(!.UsedMap, Used0),
-    set.intersect(Imported, Used0, ImportedAndUsed),
-    ( if set.is_empty(ImportedAndUsed) then
-        true
-    else
-        set.to_sorted_list(ImportedAndUsed, ImportedAndUsedList),
-        Pieces = [words("Warning:"),
-            words(choose_number(ImportedAndUsedList, "module", "modules"))] ++
-            component_list_to_pieces("and",
-                list.map(wrap_module_name, ImportedAndUsedList)) ++
-            [words(choose_number(ImportedAndUsedList, "is", "are")),
-            words("imported using both"), decl("import_module"),
-            words("and"), decl("use_module"), words("declarations."), nl],
-        Spec = conditional_spec($pred, warn_simple_code, yes,
-            severity_warning, phase_parse_tree_to_hlds,
-            [simplest_msg(Context, Pieces)]),
-        !:Specs = [Spec | !.Specs],
-
-        % Treat the modules with both types of import as if they
-        % were imported using `:- import_module.'
-        map.delete_sorted_list(set.to_sorted_list(ImportedAndUsed), !UsedMap)
-    ).
+dump_modules(Stream, ModuleNames, !IO) :-
+    ModuleNameStrs =
+        set.to_sorted_list(set.map(sym_name_to_string, ModuleNames)),
+    list.foldl(io.write_line(Stream), ModuleNameStrs, !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1213,7 +1111,7 @@ record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
         _IntInclMap, _ImpInclMap, InclMap,
         IntImportMap, IntUseMap, ImpImportMap, ImpUseMap, _ImportUseMap,
         _, _, _,
-        _, _, _, _, _, _, _, _, _, _, _, _, _,
+        _, _, _, _, _, _, _, _, _, _, _, _,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
     include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
@@ -1340,7 +1238,7 @@ record_includes_imports_uses_in_parse_tree_int0(Ancestors,
     ParseTreeInt0 = parse_tree_int0(ModuleName, _, _,
         _IntInclMap, _ImpInclMap, InclMap,
         _IntImportMap, _IntUseMap, _ImpImportMap, _ImpUseMap, ImportUseMap,
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
     include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
     AllIncls = IntIncls ++ ImpIncls,
@@ -1373,7 +1271,7 @@ record_includes_imports_uses_in_parse_tree_int1(Ancestors,
         !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
     ParseTreeInt1 = parse_tree_int1(ModuleName, _, _,
         IntInclMap, ImpInclMap, _InclMap, _, _, _,
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
     IntIncls = module_names_contexts_to_item_includes(IntInclMap),
     ImpIncls = module_names_contexts_to_item_includes(ImpInclMap),

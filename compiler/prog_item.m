@@ -32,7 +32,7 @@
 % more than one set of fields. This is because while we will never
 % knowingly write out erroneous Mercury code, we know that we *will*
 % read in some. An example is import_module and use_module declarations.
-% Each parse_tree_module_src contains four field that respectively specify
+% Each parse_tree_module_src contains four fields that respectively specify
 %
 % - the locations where a module has an import_module in the interface
 % - the locations where a module has an use_module in the interface
@@ -337,8 +337,6 @@
                 ptms_int_instances          :: list(item_instance_info),
                 ptms_int_pred_decls         :: list(item_pred_decl_info),
                 ptms_int_mode_decls         :: list(item_mode_decl_info),
-                ptms_int_foreign_export_enums ::
-                                        list(item_foreign_export_enum_info),
                 ptms_int_decl_pragmas       :: list(item_decl_pragma_info),
                 ptms_int_promises           :: list(item_promise_info),
 
@@ -504,7 +502,6 @@
                 pti0_int_instances          :: list(item_instance_info),
                 pti0_int_pred_decls         :: list(item_pred_decl_info),
                 pti0_int_mode_decls         :: list(item_mode_decl_info),
-                pti0_int_foreign_enums      :: type_ctor_foreign_enum_map,
                 pti0_int_decl_pragmas       :: list(item_decl_pragma_info),
                 pti0_int_promises           :: list(item_promise_info),
                 % XXX We will probably need a list of item_type_repn_infos.
@@ -561,7 +558,6 @@
                 pti1_int_instances          :: list(item_instance_info),
                 pti1_int_pred_decls         :: list(item_pred_decl_info),
                 pti1_int_mode_decls         :: list(item_mode_decl_info),
-                pti1_int_foreign_enum_specs :: type_ctor_foreign_enum_map,
                 pti1_int_decl_pragmas       :: list(item_decl_pragma_info),
                 pti1_int_promises           :: list(item_promise_info),
 
@@ -2806,7 +2802,7 @@ init_empty_parse_tree_module_src(ModuleName, ModuleNameContext) =
         map.init, map.init, map.init,
         map.init, map.init, map.init, map.init, map.init,
         map.init, map.init, maybe.no,
-        [], [], [], [], [], [], [], [], [], [], [], [], set.init,
+        [], [], [], [], [], [], [], [], [], [], [], set.init,
         [], [], [], [], [], [], [], [], [], [], [], [],
         [], [], [], [], [], []
     ).

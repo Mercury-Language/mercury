@@ -175,6 +175,14 @@ Changes to the Mercury standard library
 
     - pred `takewhile/4`            (replacement: `take_while/4`)
 
+### Changes to the `map` module
+
+* The following predicates have been added to this module:
+
+    - pred `foldl6/14`
+    - pred `foldl6_values/14`
+    - pred `fold56/14`
+
 ### Changes to the `prolog` module
 
 * The following predicate has been added to this module:
@@ -318,6 +326,14 @@ Changes to the Mercury standard library
     - func `ctime/1`                (replacement: `localtime/4` and `asctime/1`)
     - func `localtime/1`            (replacement: `localtime/4`)
     - func `mktime/1`               (replacement: `mktime/4`)
+
+### Changes to the `tree234` module
+
+* The following predicates have been added to this module:
+
+    - pred `foldl6/14`
+    - pred `foldl6_values/14`
+    - pred `fold56/14`
 
 ### Changes to the `uint16` module
 

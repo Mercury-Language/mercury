@@ -18,8 +18,6 @@
 :- module parse_tree.check_parse_tree_type_defns.
 :- interface.
 
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -35,15 +33,14 @@
     --->    do_not_insist_on_defn
     ;       do_insist_on_defn.
 
-    % create_type_ctor_checked_map(InsistOnDefn, ModuleName,
-    %   IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
+    % create_type_ctor_checked_map(InsistOnDefn,
+    %   IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
     %   TypeCtorCheckedMap, !Specs):
     %
-    % Given the type and foreign enum definitions in both the interface
-    % and implementation sections of a module, and the type constructors
-    % that are defined in that module, check for each type constructor
-    % whether the definitions of that type constructor are consistent
-    % with one another.
+    % Given the type definitions in both the interface and implementation
+    % sections of a module, and foreign enum definitions in the implementation
+    % section, check for each type constructor whether all the definitions
+    % of that type constructor are consistent with one another.
     %
     % If yes, then include a representation of that consistent set
     % of declarations for that type constructor in TypeCtorCheckedMap.
@@ -64,10 +61,8 @@
     % on arguments of du types.
     %
 :- pred create_type_ctor_checked_map(maybe_insist_on_defn::in,
-    module_name::in,
     type_ctor_defn_map::in, type_ctor_defn_map::in,
-    type_ctor_foreign_enum_map::in, type_ctor_foreign_enum_map::in,
-    type_ctor_checked_map::out,
+    type_ctor_foreign_enum_map::in, type_ctor_checked_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -254,7 +249,9 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_foreign_enum.
 :- import_module parse_tree.prog_type.
 
@@ -269,40 +266,36 @@
 
 %-----------------------------------------------------------------------------%
 
-create_type_ctor_checked_map(InsistOnDefn, ModuleName,
-        IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
-        CheckedMap, !Specs) :-
+create_type_ctor_checked_map(InsistOnDefn, IntTypeDefnMap, ImpTypeDefnMap,
+        ImpForeignEnumMap, CheckedMap, !Specs) :-
     map.keys_as_set(IntTypeDefnMap, IntDefnTypeCtors),
     map.keys_as_set(ImpTypeDefnMap, ImpDefnTypeCtors),
-    map.keys_as_set(IntForeignEnumMap, IntEnumTypeCtors),
+    % Foreign_enum items are not allowed in interface sections.
     map.keys_as_set(ImpForeignEnumMap, ImpEnumTypeCtors),
     % This union operation depends on the type_ctors in all four maps
     % being qualified exactly the same way. We could require the type_ctor keys
     % to be all fully qualified or all fully unqualified; we chose the former.
     TypeCtors = set.to_sorted_list(
         set.union_list([
-            IntDefnTypeCtors, ImpDefnTypeCtors,
-            IntEnumTypeCtors, ImpEnumTypeCtors
+            IntDefnTypeCtors, ImpDefnTypeCtors, ImpEnumTypeCtors
         ])),
     list.foldl2(
-        check_type_ctor_defns(InsistOnDefn, ModuleName,
-            IntTypeDefnMap, ImpTypeDefnMap,
-            IntForeignEnumMap, ImpForeignEnumMap),
+        check_type_ctor_defns(InsistOnDefn, IntTypeDefnMap, ImpTypeDefnMap,
+            ImpForeignEnumMap),
         TypeCtors, map.init, CheckedMap, !Specs),
 
     map.foldl(add_type_ctor_to_field_name_map, CheckedMap,
         map.init, FieldNameMap),
     map.foldl(report_any_duplicate_field_names, FieldNameMap, !Specs).
 
-:- pred check_type_ctor_defns(maybe_insist_on_defn::in, module_name::in,
+:- pred check_type_ctor_defns(maybe_insist_on_defn::in,
     type_ctor_defn_map::in, type_ctor_defn_map::in,
-    type_ctor_foreign_enum_map::in, type_ctor_foreign_enum_map::in,
-    type_ctor::in,
+    type_ctor_foreign_enum_map::in, type_ctor::in,
     type_ctor_checked_map::in, type_ctor_checked_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_type_ctor_defns(InsistOnDefn, ModuleName,
-        IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
+check_type_ctor_defns(InsistOnDefn,
+        IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
         TypeCtor, !TypeCtorCheckedMap, !Specs) :-
     % A given type constructor may have more than one definition in a module.
     % These definitions may be consistent with one another (such as a du
@@ -339,21 +332,6 @@ check_type_ctor_defns(InsistOnDefn, ModuleName,
         ImpMaybeDefn, !Specs),
     check_any_type_ctor_enums_for_duplicates(ImpForeignEnumMap, TypeCtor,
         ImpMaybeEnumCJCs, ImpLeftOverEnumsCJCs, !Specs),
-
-    % The second stage is to look for and report inconsistencies that manifest
-    % themselves as violations of the "foreign enum declarations must not occur
-    % in the interface section" rule. This generates an error for *every*
-    % foreign enum definition for TypeCtor in the interface, not just the
-    % duplicates.
-    ( if map.search(IntForeignEnumMap, TypeCtor, IntEnumsCJCs) then
-        IntEnumsCJCs = c_java_csharp(IntEnumsC, IntEnumsJava,
-            IntEnumsCsharp),
-        IntEnums = IntEnumsC ++ IntEnumsJava ++ IntEnumsCsharp,
-        list.foldl(report_type_ctor_enum_in_int(ModuleName, TypeCtor),
-            IntEnums, !Specs)
-    else
-        true
-    ),
 
     % Get the contexts of each different definition in case we later
     % need to generate error messages for them. This is not very efficient
@@ -1276,34 +1254,6 @@ at_most_one_foreign_type_for_all_langs(TypeCtor, DefnsCJCs, MaybeDefnCJCs,
     at_most_one_foreign_type_for_lang(TypeCtor, lang_csharp,
         DefnsCsharp, MaybeDefnCsharp, !Specs),
     MaybeDefnCJCs = c_java_csharp(MaybeDefnC, MaybeDefnJava, MaybeDefnCsharp).
-
-:- pred report_type_ctor_enum_in_int(module_name::in, type_ctor::in,
-    item_foreign_enum_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-report_type_ctor_enum_in_int(ModuleName, TypeCtor, ForeignEnum, !Specs) :-
-    TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
-    sym_name_get_module_name_default(TypeCtorSymName, ModuleName,
-        TypeCtorModuleName),
-    ( if TypeCtorModuleName = ModuleName then
-        Pieces = [words("Error:"), pragma_decl("foreign_enum"),
-            words("declaration for"), unqual_type_ctor(TypeCtor),
-            words("in the interface section of its defining module."),
-            words("Such declarations must be"),
-            words("in the implementation section."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            ForeignEnum ^ fe_context, Pieces),
-        !:Specs = [Spec | !.Specs]
-    else
-        Pieces = [words("Error:"), pragma_decl("foreign_enum"),
-            words("declaration for"), unqual_type_ctor(TypeCtor),
-            words("in the wrong module."),
-            words("Such declarations must be in the implementation section"),
-            words("of the module that defines the type they are for."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            ForeignEnum ^ fe_context, Pieces),
-        !:Specs = [Spec | !.Specs]
-    ).
 
 :- pred check_any_type_ctor_enums_for_duplicates(
     type_ctor_foreign_enum_map::in, type_ctor::in,

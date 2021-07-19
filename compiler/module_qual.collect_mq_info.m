@@ -140,7 +140,7 @@ collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc, !Info) :-
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
         IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         _IntPredDecls, _IntModeDecls,
-        _IntForeignExportEnums, _IntDeclPragmas, IntPromises, _IntBadPreds,
+        _IntDeclPragmas, IntPromises, _IntBadPreds,
 
         ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsForeign,
         ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
@@ -286,7 +286,7 @@ collect_mq_info_in_parse_tree_int0(ParseTreeInt0, ReadWhy0, !Info) :-
         _IntFIMSpecs, _ImpFIMSpecs,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
-        _IntForeignEnumMap, _IntDeclPragmas, IntPromises,
+        _IntDeclPragmas, IntPromises,
         ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
         ImpTypeClasses, ImpInstances, _ImpPredDecls, _ImpModeDecls,
         _ImpForeignEnumMap, _ImpDeclPragmas, ImpPromises),
@@ -393,7 +393,7 @@ collect_mq_info_in_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Info) :-
         _IntUseMap, _ImpUseMap, _ImportUseMap, _IntFIMSpecs, _ImpFIMSpecs,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, _IntPredDecls, _IntModeDecls,
-        _IntForeignEnumMap, _IntDeclPragmas, IntPromises, _IntTypeRepnMap,
+        _IntDeclPragmas, IntPromises, _IntTypeRepnMap,
         _ImpTypeDefnMap, _ImpForeignEnumMap, _ImpTypeClasses),
 
     mq_info_get_modules(!.Info, Modules0),

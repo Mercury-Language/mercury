@@ -7,7 +7,7 @@
 :- interface.
 
 :- mutable(in_interface, int, 0, ground, [untrailed]).
-
+:- type export_something == int.
 :- implementation.
 
 :- type list(T)

@@ -808,8 +808,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
         ),
         (
             FatalReadError = yes,
-            io.set_output_stream(ErrorStream, _, !IO),
-            write_error_specs_ignore(Globals, Specs0, !IO),
+            write_error_specs_ignore(ErrorStream, Globals, Specs0, !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
             (
                 DisplayErrorReadingFile = yes,
@@ -841,9 +840,9 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             FatalReadError = no,
             parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
                 ParseTreeSrc, ReadModuleErrors, Specs0, Specs,
-                RawCompUnits, ModuleAndImportsList),
-            SubModuleNames = list.map(raw_compilation_unit_project_name,
-                 RawCompUnits),
+                ParseTreeModuleSrcs, ModuleAndImportsList),
+            SubModuleNames = list.map(parse_tree_module_src_project_name,
+                 ParseTreeModuleSrcs),
 
             io.set_output_stream(ErrorStream, _, !IO),
             % XXX Why are we ignoring all previously reported errors?
@@ -865,8 +864,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                 build_with_check_for_interrupt(VeryVerbose,
                     build_with_module_options(Globals, ModuleName,
                         ["--make-short-interface"],
-                        make_int3_files(ErrorStream, SourceFileName,
-                            RawCompUnits)
+                        make_int3_files(ErrorStream, ParseTreeModuleSrcs)
                     ),
                     cleanup_int3_files(Globals, SubModuleNames),
                     Succeeded, !Info, !IO)
@@ -902,15 +900,15 @@ make_info_add_module_and_imports_as_dep(ModuleAndImports, !Info) :-
     map.set(ModuleName, yes(ModuleAndImports), ModuleDeps0, ModuleDeps),
     !Info ^ module_dependencies := ModuleDeps.
 
-:- pred make_int3_files(io.output_stream::in, file_name::in,
-    list(raw_compilation_unit)::in, globals::in, list(string)::in, bool::out,
+:- pred make_int3_files(io.output_stream::in,
+    list(parse_tree_module_src)::in, globals::in, list(string)::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_int3_files(ErrorStream, SourceFileName, RawCompUnits, Globals,
-        _, Succeeded, !Info, !IO) :-
+make_int3_files(ErrorStream, ParseTreeModuleSrcs, Globals, _, Succeeded,
+        !Info, !IO) :-
     io.set_output_stream(ErrorStream, OutputStream, !IO),
-    list.foldl(write_short_interface_file_int3(Globals, SourceFileName),
-        RawCompUnits, !IO),
+    list.foldl(write_short_interface_file_int3(Globals),
+        ParseTreeModuleSrcs, !IO),
     io.set_output_stream(OutputStream, _, !IO),
     io.get_exit_status(ExitStatus, !IO),
     Succeeded = ( if ExitStatus = 0 then yes else no ).

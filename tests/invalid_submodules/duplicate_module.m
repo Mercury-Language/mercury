@@ -9,7 +9,7 @@
 :- interface.
 :- import_module io.
 
-:- pred do_main(io__state::di, io__state::uo) is det.
+:- pred do_main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -25,12 +25,12 @@
     --->    bar
     ;       baz(int).
 
-:- pred hello(io__state::di, io__state::uo) is det.
+:- pred hello(io::di, io::uo) is det.
 
 :- implementation.
 
-hello -->
-    io__write_string("duplicate_module.child.hello\n").
+hello(!IO) :-
+    io.write_string("duplicate_module.child.hello\n", !IO).
 
 :- end_module duplicate_module.child.
 
@@ -46,12 +46,12 @@ hello -->
     --->    bar
     ;       baz(int).
 
-:- pred hello(io__state::di, io__state::uo) is det.
+:- pred hello(io::di, io::uo) is det.
 
 :- implementation.
 
-hello -->
-    io__write_string("duplicate_module.child2.hello\n").
+hello(!IO) :-
+    io.write_string("duplicate_module.child2.hello\n", !IO).
 
 :- end_module duplicate_module.child2.
 
@@ -67,12 +67,12 @@ hello -->
     --->    bar
     ;       baz(int).
 
-:- pred hello(io__state::di, io__state::uo) is det.
+:- pred hello(io::di, io::uo) is det.
 
 :- implementation.
 
-hello -->
-    io__write_string("duplicate_module.child3.hello\n").
+hello(!IO) :-
+    io.write_string("duplicate_module.child3.hello\n", !IO).
 
 :- end_module child3.
 
@@ -82,12 +82,12 @@ hello -->
 :- interface.
 :- import_module io.
 
-:- pred hello(io__state::di, io__state::uo) is det.
+:- pred hello(io::di, io::uo) is det.
 
 :- implementation.
 
-hello -->
-    io__write_string("duplicate_module.child4.hello\n").
+hello(!IO) :-
+    io.write_string("duplicate_module.child4.hello\n", !IO).
 
 :- end_module duplicate_module.child4.
 
@@ -100,7 +100,7 @@ hello -->
 
 %---------------------------------------------------------------------------%
 
-% now we're back in the parent module.
+% Now we are back in the parent module.
 
 :- use_module duplicate_module.child.
 :- use_module duplicate_module.child2.
@@ -108,7 +108,7 @@ hello -->
 :- import_module require.
 :- import_module std_util.
 
-do_main -->
+do_main(!IO) :-
     duplicate_module.child.hello,
     duplicate_module.child2.hello,
     duplicate_module.child3.hello.

@@ -714,6 +714,32 @@
     is semidet,
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+    % Perform an inorder traversal of the map, applying an accumulator
+    % predicate with five accumulators for each key-value pair.
+    % (Although no more expressive than foldl, this is often
+    % a more convenient format, and a little more efficient).
+    %
+:- pred foldl6(pred(K, V, A, A, B, B, C, C, D, D, E, E, F, F), map(K, V),
+    A, A, B, B, C, C, D, D, E, E, F, F).
+:- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, in, out) is det,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, in, out) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode foldl6(pred(in, in,in, out,  in, out, in, out, in, out,
+    in, out, mdi, muo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode foldl6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
 %---------------------%
 
     % Perform an inorder traversal by key of the map, applying an accumulator
@@ -826,6 +852,29 @@
     is semidet,
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
+    % As above, but with five accumulators.
+    %
+:- pred foldl6_values(pred(V, A, A, B, B, C, C, D, D, E, E, F, F), map(K, V),
+    A, A, B, B, C, C, D, D, E, E, F, F).
+:- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
+    in, out, in, out) is det,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
+    in, out, in, out) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode foldl6_values(pred(in,in, out,  in, out, in, out, in, out,
+    in, out, mdi, muo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode foldl6_values(pred(in, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
 :- func foldr(func(K, V, A) = A, map(K, V), A) = A.
 :- pred foldr(pred(K, V, A, A), map(K, V), A, A).
 :- mode foldr(pred(in, in, in, out) is det, in, in, out) is det.
@@ -914,6 +963,27 @@
 :- mode foldr5(pred(in, in, in, out, in, out, in, out, in, out, di, uo)
     is semidet,
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
+
+:- pred foldr6(pred(K, V, A, A, B, B, C, C, D, D, E, E, F, F), map(K, V),
+    A, A, B, B, C, C, D, D, E, E, F, F).
+:- mode foldr6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, in, out) is det,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
+:- mode foldr6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is det.
+:- mode foldr6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is det,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is det.
+:- mode foldr6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, in, out) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, in, out) is semidet.
+:- mode foldr6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, mdi, muo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, mdi, muo) is semidet.
+:- mode foldr6(pred(in, in, in, out, in, out, in, out, in, out,
+    in, out, di, uo) is semidet,
+    in, in, out, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
 %---------------------%
 
@@ -2024,6 +2094,9 @@ foldl4(Pred, Map, !A, !B, !C, !D) :-
 foldl5(Pred, Map, !A, !B, !C, !D, !E) :-
     tree234.foldl5(Pred, Map, !A, !B, !C, !D, !E).
 
+foldl6(Pred, Map, !A, !B, !C, !D, !E, !F) :-
+    tree234.foldl6(Pred, Map, !A, !B, !C, !D, !E, !F).
+
 %---------------------%
 
 foldl_values(Pred, Map, !A) :-
@@ -2035,13 +2108,16 @@ foldl2_values(Pred, Map, !A, !B) :-
 foldl3_values(Pred, Map, !A, !B, !C) :-
     tree234.foldl3_values(Pred, Map, !A, !B, !C).
 
-%---------------------%
-
 foldl4_values(Pred, Map, !A, !B, !C, !D) :-
     tree234.foldl4_values(Pred, Map, !A, !B, !C, !D).
 
 foldl5_values(Pred, Map, !A, !B, !C, !D, !E) :-
     tree234.foldl5_values(Pred, Map, !A, !B, !C, !D, !E).
+
+foldl6_values(Pred, Map, !A, !B, !C, !D, !E, !F) :-
+    tree234.foldl6_values(Pred, Map, !A, !B, !C, !D, !E, !F).
+
+%---------------------%
 
 foldr(F, M, A) = B :-
     P = (pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
@@ -2061,6 +2137,9 @@ foldr4(Pred, Map, !A, !B, !C, !D) :-
 
 foldr5(Pred, Map, !A, !B, !C, !D, !E) :-
     tree234.foldr5(Pred, Map, !A, !B, !C, !D, !E).
+
+foldr6(Pred, Map, !A, !B, !C, !D, !E, !F) :-
+    tree234.foldr6(Pred, Map, !A, !B, !C, !D, !E, !F).
 
 %---------------------%
 

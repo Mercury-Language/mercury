@@ -15,5 +15,5 @@
 :- implementation.
 :- import_module duplicate_module.
 
-main -->
-    duplicate_module__do_main.
+mainI(!IO) :-
+    duplicate_module.do_main(!IO).

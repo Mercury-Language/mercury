@@ -177,7 +177,7 @@
 :- pred parse_tree_src_to_module_and_imports_list(globals::in, file_name::in,
     parse_tree_src::in, read_module_errors::in,
     list(error_spec)::in, list(error_spec)::out,
-    list(raw_compilation_unit)::out, list(module_and_imports)::out) is det.
+    list(parse_tree_module_src)::out, list(module_and_imports)::out) is det.
 
 :- pred rebuild_module_and_imports_for_dep_file(globals::in,
     module_and_imports::in, module_and_imports::out) is det.
@@ -593,17 +593,17 @@
 
 parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
         ParseTreeSrc, ReadModuleErrors, !Specs,
-        RawCompUnits, ModuleAndImportsList) :-
-    split_into_compilation_units_perform_checks(ParseTreeSrc, RawCompUnits,
-        !Specs),
+        ParseTreeModuleSrcs, ModuleAndImportsList) :-
+    split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
+        ParseTreeModuleSrcs, !Specs),
     ParseTreeSrc = parse_tree_src(TopModuleName, _, _),
     CompUnitModuleNames = set.list_to_set(
-        list.map(raw_compilation_unit_project_name, RawCompUnits)),
+        list.map(parse_tree_module_src_project_name, ParseTreeModuleSrcs)),
     MAISpecs0 = [],
     list.map(
         init_module_and_imports(Globals, SourceFileName, TopModuleName,
             CompUnitModuleNames, MAISpecs0, ReadModuleErrors),
-        RawCompUnits, ModuleAndImportsList).
+        ParseTreeModuleSrcs, ModuleAndImportsList).
 
 rebuild_module_and_imports_for_dep_file(Globals,
         ModuleAndImports0, ModuleAndImports) :-
@@ -616,8 +616,6 @@ rebuild_module_and_imports_for_dep_file(Globals,
         _ModuleVersionNumbers, ParseTreeModuleSrc,
         _AncestorIntSpecs, _DirectIntSpecs, _IndirectIntSpecs,
         _PlainOpts, _TransOpts, _IntForOptSpecs, _TypeRepnSpecs),
-    convert_parse_tree_module_src_to_raw_comp_unit(ParseTreeModuleSrc,
-        RawCompUnit),
     module_and_imports_get_source_file_name(ModuleAndImports0,
         SourceFileName),
     module_and_imports_get_source_file_module_name(ModuleAndImports0,
@@ -626,13 +624,14 @@ rebuild_module_and_imports_for_dep_file(Globals,
         NestedChildren),
     set.init(ReadModuleErrors0),
     init_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-        NestedChildren, Specs, ReadModuleErrors0, RawCompUnit,
+        NestedChildren, Specs, ReadModuleErrors0, ParseTreeModuleSrc,
         ModuleAndImports).
 
 %---------------------------------------------------------------------------%
 
     % init_module_and_imports(Globals, FileName, SourceFileModuleName,
-    %   NestedModuleNames, Specs, Errors, RawCompUnit, ModuleAndImports):
+    %   NestedModuleNames, Specs, Errors, ParseTreeModuleSrc,
+    %   ModuleAndImports):
     %
     % Initialize a module_and_imports structure.
     %
@@ -647,12 +646,12 @@ rebuild_module_and_imports_for_dep_file(Globals,
     %
 :- pred init_module_and_imports(globals::in, file_name::in, module_name::in,
     set(module_name)::in, list(error_spec)::in, read_module_errors::in,
-    raw_compilation_unit::in, module_and_imports::out) is det.
+    parse_tree_module_src::in, module_and_imports::out) is det.
 
 init_module_and_imports(Globals, FileName, SourceFileModuleName,
-        NestedModuleNames, Specs, Errors, RawCompUnit, ModuleAndImports) :-
-    RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
-        RawItemBlocks),
+        NestedModuleNames, Specs, Errors, ParseTreeModuleSrc,
+        ModuleAndImports) :-
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     Ancestors = get_ancestors(ModuleName),
 
     % NOTE This if-then-else looks strange, but it works. It works for
@@ -738,6 +737,9 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
 
     % XXX START OF THE REMAINS OF THE OLD CODE
     % Figure out whether the items contain foreign code.
+    convert_parse_tree_module_src_to_raw_comp_unit(ParseTreeModuleSrc,
+        RawCompUnit),
+    RawCompUnit = raw_compilation_unit(_, _, RawItemBlocks),
     get_foreign_code_indicators_from_item_blocks(Globals, RawItemBlocks,
         LangSet, FIMs0),
 
@@ -809,8 +811,6 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
 
     % XXX ITEM_LIST These fields will be filled in later,
     % per the documentation above.
-    ParseTreeModuleSrc =
-        init_empty_parse_tree_module_src(ModuleName, ModuleNameContext),
     map.init(AncestorIntSpecs),
     map.init(DirectIntSpecs),
     map.init(IndirectIntSpecs),

@@ -26,6 +26,7 @@
 
 :- import_module list.
 :- import_module one_or_more.
+:- import_module map.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
@@ -153,6 +154,9 @@
 :- func fim_module_lang_to_spec(module_name, foreign_language) = fim_spec.
 :- func fim_module_lang_to_item(module_name, foreign_language) = item_fim.
 
+:- pred add_implicit_fim_for_module(module_name::in, foreign_language::in,
+    map(fim_spec, prog_context)::in, map(fim_spec, prog_context)::out) is det.
+
     % For what languages could this item need the import of foreign modules.
     %
 :- func item_needs_foreign_imports(item) = list(foreign_language).
@@ -212,6 +216,8 @@
 
 :- func raw_compilation_unit_project_name(raw_compilation_unit) = module_name.
 :- func aug_compilation_unit_project_name(aug_compilation_unit) = module_name.
+:- func parse_tree_module_src_project_name(parse_tree_module_src)
+    = module_name.
 
 :- func item_include_module_name(item_include) = module_name.
 
@@ -289,7 +295,6 @@
 :- import_module recompilation.
 
 :- import_module bool.
-:- import_module map.
 :- import_module maybe.
 :- import_module one_or_more_map.
 :- import_module pair.
@@ -1102,6 +1107,14 @@ fim_module_lang_to_spec(ModuleName, Lang) = fim_spec(Lang, ModuleName).
 fim_module_lang_to_item(ModuleName, Lang) =
     item_fim(Lang, ModuleName, term.dummy_context_init, item_no_seq_num).
 
+add_implicit_fim_for_module(ModuleName, Lang, !Map) :-
+    FIMSpec = fim_spec(Lang, ModuleName),
+    ( if map.search(!.Map, FIMSpec, _) then
+        true
+    else
+        map.det_insert(FIMSpec, term.dummy_context_init, !Map)
+    ).
+
 %---------------------------------------------------------------------------%
 
 item_needs_foreign_imports(Item) = Langs :-
@@ -1644,6 +1657,9 @@ raw_compilation_unit_project_name(RawCompUnit) =
 
 aug_compilation_unit_project_name(AugCompUnit) =
     AugCompUnit ^ aci_module_name.
+
+parse_tree_module_src_project_name(ParseTreeModuleSrc) =
+    ParseTreeModuleSrc ^ ptms_module_name.
 
 item_include_module_name(Incl) = ModuleName :-
     Incl = item_include(ModuleName, _Context, _SeqNum).

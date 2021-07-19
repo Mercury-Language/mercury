@@ -12,6 +12,8 @@
 :- module parse_tree.split_parse_tree_src.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 
@@ -32,8 +34,8 @@
     % - check for non-abstract typeclass instance declarations in module
     %   interfaces.
     %
-:- pred split_into_compilation_units_perform_checks(parse_tree_src::in,
-    list(raw_compilation_unit)::out,
+:- pred split_into_compilation_units_perform_checks(globals::in,
+    parse_tree_src::in, list(parse_tree_module_src)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -42,6 +44,8 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.convert_parse_tree.
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -49,6 +53,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 
@@ -211,31 +216,31 @@ add_new_submodule_to_map(SectionAncestors, ModuleName, !SubModulesMap) :-
 
 %---------------------------------------------------------------------------%
 
-split_into_compilation_units_perform_checks(ParseTreeSrc, RawCompUnits,
-        !Specs) :-
+split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
+        ParseTreeModuleSrcs, !Specs) :-
     split_parse_tree_discover_submodules(ParseTreeSrc, ma_no_parent,
         map.init, SplitModuleMap, map.init, SubModulesMap, !Specs),
     ParseTreeSrc = parse_tree_src(TopModuleName, _, _),
-    create_split_compilation_units_depth_first(TopModuleName,
+    create_split_compilation_units_depth_first(Globals, TopModuleName,
         SplitModuleMap, LeftOverSplitModuleMap,
         SubModulesMap, LeftOverSubModulesMap,
-        cord.init, RawCompUnitCord, !Specs),
-    expect(unify(LeftOverSplitModuleMap, map.init), $pred,
-        "LeftOverSplitModuleMap != map.init"),
-    expect(unify(LeftOverSubModulesMap, map.init), $pred,
-        "LeftOverSubModulesMap != map.init"),
-    RawCompUnits = cord.list(RawCompUnitCord).
+        cord.init, ParseTreeModuleSrcCord, !Specs),
+    expect(map.is_empty(LeftOverSplitModuleMap), $pred,
+        "LeftOverSplitModuleMap is not empty"),
+    expect(map.is_empty(LeftOverSubModulesMap), $pred,
+        "LeftOverSubModulesMap is not empty"),
+    ParseTreeModuleSrcs = cord.list(ParseTreeModuleSrcCord).
 
 %---------------------------------------------------------------------------%
 
-:- pred create_split_compilation_units_depth_first(module_name::in,
-    split_module_map::in, split_module_map::out,
+:- pred create_split_compilation_units_depth_first(globals::in,
+    module_name::in, split_module_map::in, split_module_map::out,
     module_to_submodules_map::in, module_to_submodules_map::out,
-    cord(raw_compilation_unit)::in, cord(raw_compilation_unit)::out,
+    cord(parse_tree_module_src)::in, cord(parse_tree_module_src)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-create_split_compilation_units_depth_first(ModuleName,
-        !SplitModuleMap, !SubModulesMap, !RawCompUnitsCord, !Specs) :-
+create_split_compilation_units_depth_first(Globals, ModuleName,
+        !SplitModuleMap, !SubModulesMap, !ParseTreeModuleSrcCord, !Specs) :-
     map.det_remove(ModuleName, Entry, !SplitModuleMap),
     (
         Entry = split_included(_),
@@ -254,7 +259,9 @@ create_split_compilation_units_depth_first(ModuleName,
                 !Specs),
             RawCompUnit = raw_compilation_unit(ModuleName, Context,
                 RawItemBlocks),
-            !:RawCompUnitsCord = cord.snoc(!.RawCompUnitsCord, RawCompUnit)
+            check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
+                ParseTreeModuleSrc, !Specs),
+            cord.snoc(ParseTreeModuleSrc, !ParseTreeModuleSrcCord)
         ;
             NestedInfo = split_nested_empty(Context),
             % This module may contain include declarations (added by
@@ -266,7 +273,9 @@ create_split_compilation_units_depth_first(ModuleName,
             % the failure of the submodule/deeply_nested test case.
             RawCompUnit = raw_compilation_unit(ModuleName, Context,
                 RawItemBlocks),
-            !:RawCompUnitsCord = cord.snoc(!.RawCompUnitsCord, RawCompUnit)
+            check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
+                ParseTreeModuleSrc, !Specs),
+            cord.snoc(ParseTreeModuleSrc, !ParseTreeModuleSrcCord)
         ;
             NestedInfo = split_nested_only_imp(Context),
             Pieces = [words("Submodule"), qual_sym_name(ModuleName),
@@ -277,8 +286,10 @@ create_split_compilation_units_depth_first(ModuleName,
         ),
         ( if map.remove(ModuleName, SubModulesCord, !SubModulesMap) then
             list.sort_and_remove_dups(cord.list(SubModulesCord), SubModules),
-            list.foldl4(create_split_compilation_units_depth_first, SubModules,
-                !SplitModuleMap, !SubModulesMap, !RawCompUnitsCord, !Specs)
+            list.foldl4(
+                create_split_compilation_units_depth_first(Globals),
+                SubModules, !SplitModuleMap, !SubModulesMap,
+                !ParseTreeModuleSrcCord, !Specs)
         else
             true
         )
@@ -882,7 +893,7 @@ discover_included_submodules([Include | Includes], SectionAncestors,
 
 :- type submodule_include_info
     --->    submodule_include_info(
-                % Should be submodule be include in its parent's interface
+                % Should this submodule be include in its parent's interface
                 % section, or in its implementation section? If it is included
                 % in both, we generate an item_include for it only in the
                 % interface section. This reflects the fact that the submodule
@@ -933,8 +944,17 @@ combine_submodule_include_infos(EntryA, EntryB, Entry) :-
 
 add_includes_for_nested_submodules(ModuleName, SubInclInfoMap,
         !RawItemBlockCord) :-
-    map.foldl2(submodule_include_info_map_to_item_includes_acc, SubInclInfoMap,
-        [], RevIntIncludes, [], RevImpIncludes),
+    % Do not add new include_module items for module names that
+    % already have them in the same section.
+    %
+    % Having both an explicit include_module item and a submodule declaration
+    % for the same (sub)module name is an error, but this should have been
+    % already discovered and reported by the time we get called.
+    list.foldl2(acc_included_module_names, cord.list(!.RawItemBlockCord),
+        set.init, IntMods, set.init, ImpMods),
+    map.foldl2(
+        submodule_include_info_map_to_item_includes_acc(IntMods, ImpMods),
+        SubInclInfoMap, [], RevIntIncludes, [], RevImpIncludes),
     list.reverse(RevIntIncludes, IntIncludes),
     list.reverse(RevImpIncludes, ImpIncludes),
     (
@@ -954,21 +974,45 @@ add_includes_for_nested_submodules(ModuleName, SubInclInfoMap,
         !:RawItemBlockCord = cord.snoc(!.RawItemBlockCord, ImpItemBlock)
     ).
 
+:- pred acc_included_module_names(raw_item_block::in,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out) is det.
+
+acc_included_module_names(RawItemBlock, !IntMods, !ImpMods) :-
+    RawItemBlock = item_block(_, Section, Incls, _Avails, _FIMs, _Items),
+    Modules = list.map(item_include_module_name, Incls),
+    (
+        Section = ms_interface,
+        set.insert_list(Modules, !IntMods)
+    ;
+        Section = ms_implementation,
+        set.insert_list(Modules, !ImpMods)
+    ).
+
 :- pred submodule_include_info_map_to_item_includes_acc(
+    set(module_name)::in, set(module_name)::in,
     module_name::in, submodule_include_info::in,
     list(item_include)::in, list(item_include)::out,
     list(item_include)::in, list(item_include)::out) is det.
 
-submodule_include_info_map_to_item_includes_acc(ModuleName, SubInclInfo,
-        !RevIntIncludes, !RevImpIncludes) :-
+submodule_include_info_map_to_item_includes_acc(IntMods, ImpMods,
+        ModuleName, SubInclInfo, !RevIntIncludes, !RevImpIncludes) :-
     SubInclInfo = submodule_include_info(SectionKind, Context),
     Incl = item_include(ModuleName, Context, item_no_seq_num),
     (
         SectionKind = ms_interface,
-        !:RevIntIncludes = [Incl | !.RevIntIncludes]
+        ( if set.contains(IntMods, ModuleName) then
+            true
+        else
+            !:RevIntIncludes = [Incl | !.RevIntIncludes]
+        )
     ;
         SectionKind = ms_implementation,
-        !:RevImpIncludes = [Incl | !.RevImpIncludes]
+        ( if set.contains(ImpMods, ModuleName) then
+            true
+        else
+            !:RevImpIncludes = [Incl | !.RevImpIncludes]
+        )
     ).
 
 %---------------------------------------------------------------------------%

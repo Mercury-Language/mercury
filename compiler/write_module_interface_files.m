@@ -66,8 +66,8 @@
 
     % Output the unqualified short interface file to <module>.int3.
     %
-:- pred write_short_interface_file_int3(globals::in, file_name::in,
-    raw_compilation_unit::in, io::di, io::uo) is det.
+:- pred write_short_interface_file_int3(globals::in, parse_tree_module_src::in,
+    io::di, io::uo) is det.
 
     % write_private_interface_file_int0(Globals, SourceFileName,
     %   SourceFileModuleName, CompUnit, MaybeTimestamp,
@@ -85,7 +85,7 @@
     % out the .int0 file.
     %
 :- pred write_private_interface_file_int0(globals::in, file_name::in,
-    module_name::in, maybe(timestamp)::in, raw_compilation_unit::in,
+    module_name::in, maybe(timestamp)::in, parse_tree_module_src::in,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
@@ -103,7 +103,7 @@
     % the .int and .int2 files.
     %
 :- pred write_interface_file_int1_int2(globals::in, file_name::in,
-    module_name::in, maybe(timestamp)::in, raw_compilation_unit::in,
+    module_name::in, maybe(timestamp)::in, parse_tree_module_src::in,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
@@ -140,15 +140,15 @@
 % Write out .int3 files.
 %
 
-write_short_interface_file_int3(Globals, _SourceFileName, RawCompUnit, !IO) :-
+write_short_interface_file_int3(Globals, ParseTreeModuleSrc, !IO) :-
     % This qualifies everything as much as it can given the information
     % in the current module and writes out the .int3 file.
-    RawCompUnit = raw_compilation_unit(ModuleName, _, _),
-    generate_short_interface_int3(Globals, RawCompUnit, ParseTreeInt3,
+    generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
         [], Specs0),
     filter_interface_generation_specs(Globals, Specs0, Specs, !IO),
     EffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, Specs),
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     (
         EffectivelyErrors = no,
         actually_write_interface_file3(Globals, ParseTreeInt3, "", no, !IO),
@@ -168,11 +168,11 @@ write_short_interface_file_int3(Globals, _SourceFileName, RawCompUnit, !IO) :-
 %
 
 write_private_interface_file_int0(Globals, SourceFileName,
-        SourceFileModuleName, MaybeTimestamp, RawCompUnit0,
+        SourceFileModuleName, MaybeTimestamp, ParseTreeModuleSrc0,
         !HaveReadModuleMaps, !IO) :-
-    RawCompUnit0 = raw_compilation_unit(ModuleName, _, _),
+    ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
     grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, RawCompUnit0, ModuleAndImports,
+        SourceFileModuleName, ParseTreeModuleSrc0, ModuleAndImports,
         !HaveReadModuleMaps, !IO),
 
     % Check whether we succeeded.
@@ -227,14 +227,14 @@ write_private_interface_file_int0(Globals, SourceFileName,
 %
 
 write_interface_file_int1_int2(Globals, SourceFileName, SourceFileModuleName,
-        MaybeTimestamp, RawCompUnit0, !HaveReadModuleMaps, !IO) :-
-    RawCompUnit0 = raw_compilation_unit(ModuleName, _, _),
-    generate_pre_grab_pre_qual_interface_for_int1_int2(RawCompUnit0,
-        IntRawCompUnit),
+        MaybeTimestamp, ParseTreeModuleSrc0, !HaveReadModuleMaps, !IO) :-
+    ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
+    generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc0,
+        IntParseTreeModuleSrc),
 
     % Get the .int3 files for imported modules.
     grab_unqual_imported_modules_make_int(Globals, SourceFileName,
-        SourceFileModuleName, IntRawCompUnit, ModuleAndImports,
+        SourceFileModuleName, IntParseTreeModuleSrc, ModuleAndImports,
         !HaveReadModuleMaps, !IO),
 
     % Check whether we succeeded.

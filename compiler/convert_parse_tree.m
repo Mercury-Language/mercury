@@ -162,7 +162,7 @@ convert_parse_tree_int0_to_int(ParseTreeInt0) = ParseTreeInt :-
         IntFIMSpecs, ImpFIMSpecs,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntForeignEnumMap, IntDeclPragmas, IntPromises,
+        IntDeclPragmas, IntPromises,
         ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
         ImpForeignEnumMap, ImpDeclPragmas, ImpPromises),
@@ -180,7 +180,6 @@ convert_parse_tree_int0_to_int(ParseTreeInt0) = ParseTreeInt :-
         list.map(wrap_instance_item, IntInstances) ++
         list.map(wrap_pred_decl_item, IntPredDecls) ++
         list.map(wrap_mode_decl_item, IntModeDecls) ++
-        type_ctor_foreign_enum_map_to_items(IntForeignEnumMap) ++
         list.map(wrap_decl_pragma_item, IntDeclPragmas) ++
         list.map(wrap_promise_item, IntPromises),
     ImpItems =
@@ -205,7 +204,7 @@ convert_parse_tree_int1_to_int(ParseTreeInt1) = ParseTreeInt :-
         _IntUseMap, _ImpUseMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntForeignEnumMap, IntDeclPragmas, IntPromises, IntTypeRepnMap,
+        IntDeclPragmas, IntPromises, IntTypeRepnMap,
         ImpTypeDefnMap, ImpForeignEnumMap, ImpTypeClasses),
 
     include_map_to_item_includes(InclMap, IntIncls, ImpIncls),
@@ -222,7 +221,6 @@ convert_parse_tree_int1_to_int(ParseTreeInt1) = ParseTreeInt :-
         list.map(wrap_instance_item, IntInstances) ++
         list.map(wrap_pred_decl_item, IntPredDecls) ++
         list.map(wrap_mode_decl_item, IntModeDecls) ++
-        type_ctor_foreign_enum_map_to_items(IntForeignEnumMap) ++
         list.map(wrap_decl_pragma_item, IntDeclPragmas) ++
         list.map(wrap_promise_item, IntPromises) ++
         type_ctor_repn_map_to_items(IntTypeRepnMap),
@@ -316,7 +314,10 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
         [], IntInstDefns, [], IntModeDefns,
         [], IntTypeClasses0, [], IntInstances0,
         [], IntPredDecls0, [], RevIntModeDecls,
-        [], IntForeignEnums, [], IntDeclPragmas0, [], IntPromises0, !Specs),
+        [], _IntForeignEnums, [], IntDeclPragmas0, [], IntPromises0, !Specs),
+    % XXX ITEM_LIST Should we report any misplaced foreign enums in
+    % _IntForeignEnums now, or wait until code generation? For now,
+    % we do the latter.
     IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
     IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
     IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
@@ -324,7 +325,6 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     list.sort(IntInstances0, IntInstances),
     list.sort(IntPredDecls0, IntPredDecls),
     list.reverse(RevIntModeDecls, IntModeDecls),
-    IntForeignEnumMap = type_ctor_foreign_enum_items_to_map(IntForeignEnums),
     list.sort(IntDeclPragmas0, IntDeclPragmas),
     list.sort(IntPromises0, IntPromises),
 
@@ -345,8 +345,8 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
     list.sort(ImpPromises0, ImpPromises),
 
     % We want only the error messages.
-    create_type_ctor_checked_map(do_not_insist_on_defn, ModuleName,
-        IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
+    create_type_ctor_checked_map(do_not_insist_on_defn,
+        IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
         _TypeDefnCheckedMap, !Specs),
 
     ParseTreeInt0 = parse_tree_int0(ModuleName, ModuleNameContext,
@@ -355,7 +355,7 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
         IntFIMSpecs, ImpFIMSpecs,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntForeignEnumMap, IntDeclPragmas, IntPromises,
+        IntDeclPragmas, IntPromises,
         ImpTypeDefnMap, ImpInstDefnMap, ImpModeDefnMap,
         ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
         ImpForeignEnumMap, ImpDeclPragmas, ImpPromises).
@@ -471,8 +471,11 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
         [], IntInstDefns, [], IntModeDefns,
         [], IntTypeClasses0, [], IntInstances0,
         [], IntPredDecls0, [], RevIntModeDecls,
-        [], IntForeignEnums, [], IntDeclPragmas0, [], IntPromises0,
+        [], _IntForeignEnums, [], IntDeclPragmas0, [], IntPromises0,
         [], IntTypeRepns, !Specs),
+    % XXX ITEM_LIST Should we report any misplaced foreign enums in
+    % _IntForeignEnums now, or wait until code generation? For now,
+    % we do the latter.
     IntTypeDefnMap = type_ctor_defn_items_to_map(IntTypeDefns),
     IntInstDefnMap = inst_ctor_defn_items_to_map(IntInstDefns),
     IntModeDefnMap = mode_ctor_defn_items_to_map(IntModeDefns),
@@ -480,7 +483,6 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     list.sort(IntInstances0, IntInstances),
     list.sort(IntPredDecls0, IntPredDecls),
     list.reverse(RevIntModeDecls, IntModeDecls),
-    IntForeignEnumMap = type_ctor_foreign_enum_items_to_map(IntForeignEnums),
     list.sort(IntDeclPragmas0, IntDeclPragmas),
     list.sort(IntPromises0, IntPromises),
     IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepns),
@@ -492,8 +494,8 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
     list.sort(ImpTypeClasses0, ImpTypeClasses),
 
     % We want only the error messages.
-    create_type_ctor_checked_map(do_not_insist_on_defn, ModuleName,
-        IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
+    create_type_ctor_checked_map(do_not_insist_on_defn,
+        IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
         _TypeDefnCheckedMap, !Specs),
 
     ParseTreeInt1 = parse_tree_int1(ModuleName, ModuleNameContext,
@@ -501,7 +503,7 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
         IntUseMap, ImpUseMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         IntTypeDefnMap, IntInstDefnMap, IntModeDefnMap,
         IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
-        IntForeignEnumMap, IntDeclPragmas, IntPromises, IntTypeRepnMap,
+        IntDeclPragmas, IntPromises, IntTypeRepnMap,
         ImpTypeDefnMap, ImpForeignEnumMap, ImpTypeClasses).
 
 :- pred classify_int1_items_int(list(item)::in,
@@ -709,11 +711,10 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
     classify_int2_items_imp(ImpItems, [], ImpTypeDefns0, !Specs),
     ImpTypeDefnMap = type_ctor_defn_items_to_map(ImpTypeDefns0),
 
-    map.init(IntForeignEnumMap),
     map.init(ImpForeignEnumMap),
     % We want only the error messages.
-    create_type_ctor_checked_map(do_not_insist_on_defn, ModuleName,
-        IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
+    create_type_ctor_checked_map(do_not_insist_on_defn,
+        IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
         _TypeDefnCheckedMap, !Specs),
 
     ParseTreeInt2 = parse_tree_int2(ModuleName, ModuleNameContext,
@@ -881,11 +882,10 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
     IntTypeRepnMap = type_ctor_repn_items_to_map(IntTypeRepns0),
 
     map.init(ImpTypeDefnMap),
-    map.init(IntForeignEnumMap),
     map.init(ImpForeignEnumMap),
     % We want only the error messages.
-    create_type_ctor_checked_map(do_not_insist_on_defn, ModuleName,
-        IntTypeDefnMap, ImpTypeDefnMap, IntForeignEnumMap, ImpForeignEnumMap,
+    create_type_ctor_checked_map(do_not_insist_on_defn,
+        IntTypeDefnMap, ImpTypeDefnMap, ImpForeignEnumMap,
         _TypeDefnCheckedMap, !Specs),
 
     some [!ImpContexts]
@@ -1462,7 +1462,7 @@ convert_parse_tree_module_src_to_raw_comp_unit(ParseTreeModuleSrc,
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
         IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         IntPredDecls, IntModeDecls,
-        IntForeignExportEnums, IntDeclPragmas, IntPromises, _IntBadPreds,
+        IntDeclPragmas, IntPromises, _IntBadPreds,
 
         ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsForeign,
         ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
@@ -1509,7 +1509,6 @@ convert_parse_tree_module_src_to_raw_comp_unit(ParseTreeModuleSrc,
         list.map(wrap_instance_item, IntInstances) ++
         list.map(wrap_pred_decl_item, IntPredDecls) ++
         list.map(wrap_mode_decl_item, IntModeDecls) ++
-        list.map(wrap_foreign_export_enum_item, IntForeignExportEnums) ++
         list.map(wrap_decl_pragma_item, IntDeclPragmas) ++
         list.map(wrap_promise_item, IntPromises),
 
@@ -1569,7 +1568,6 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         [], RevIntInstDefns, [], RevIntModeDefns,
         [], RevIntTypeClasses, [], RevIntInstances0,
         [], RevIntPredDecls, [], RevIntModeDecls,
-        [], RevIntForeignExportEnums,
         [], RevIntDeclPragmas, [], RevIntImplPragmas,
         set.init, IntBadClausePreds, [], RevIntPromises,
         [], RevIntInitialises, [], RevIntFinalises, [], RevIntMutables,
@@ -1603,7 +1601,6 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     list.reverse(RevIntInstances0, IntInstances0),
     list.reverse(RevIntPredDecls, IntPredDecls),
     list.reverse(RevIntModeDecls, IntModeDecls),
-    list.reverse(RevIntForeignExportEnums, IntForeignExportEnums),
     list.reverse(RevIntDeclPragmas, IntDeclPragmas),
     list.reverse(RevIntImplPragmas, IntImplPragmas),
     list.reverse(RevIntPromises, IntPromises),
@@ -1700,7 +1697,7 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
         IntTypeDefnsAbs, IntTypeDefnsMer, IntTypeDefnsForeign,
         IntInstDefns, IntModeDefns, IntTypeClasses, IntInstances,
         IntPredDecls, IntModeDecls,
-        IntForeignExportEnums, IntDeclPragmas, IntPromises, IntBadClausePreds,
+        IntDeclPragmas, IntPromises, IntBadClausePreds,
 
         ImpTypeDefnsAbs, ImpTypeDefnsMer, ImpTypeDefnsForeign,
         ImpInstDefns, ImpModeDefns, ImpTypeClasses, ImpInstances,
@@ -2166,8 +2163,6 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     list(item_instance_info)::in, list(item_instance_info)::out,
     list(item_pred_decl_info)::in, list(item_pred_decl_info)::out,
     list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
-    list(item_foreign_export_enum_info)::in,
-        list(item_foreign_export_enum_info)::out,
     list(item_decl_pragma_info)::in, list(item_decl_pragma_info)::out,
     list(item_impl_pragma_info)::in, list(item_impl_pragma_info)::out,
     set(pf_sym_name_arity)::in, set(pf_sym_name_arity)::out,
@@ -2210,7 +2205,7 @@ classify_src_items_in_blocks([],
         !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
-        !RevIntForeignExportEnums, !RevIntDeclPragmas, !RevIntImplPragmas,
+        !RevIntDeclPragmas, !RevIntImplPragmas,
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntContents, !IntImplicitAvailNeeds,
@@ -2229,7 +2224,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
-        !RevIntForeignExportEnums, !RevIntDeclPragmas, !RevIntImplPragmas,
+        !RevIntDeclPragmas, !RevIntImplPragmas,
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntContents, !IntImplicitAvailNeeds,
@@ -2253,7 +2248,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
             !RevIntTypeDefnsAbs, !RevIntTypeDefnsMer, !RevIntTypeDefnsForeign,
             !RevIntInstDefns, !RevIntModeDefns,
             !RevIntTypeClasses, !RevIntInstances,
-            !RevIntPredDecls, !RevIntModeDecls, !RevIntForeignExportEnums,
+            !RevIntPredDecls, !RevIntModeDecls,
             !RevIntDeclPragmas, !RevIntImplPragmas, !IntBadClausePreds,
             !RevIntPromises, !RevIntInitialises, !RevIntFinalises,
             !RevIntMutables, !IntContents, !IntImplicitAvailNeeds, !Specs)
@@ -2279,7 +2274,7 @@ classify_src_items_in_blocks([ItemBlock | ItemBlocks],
         !RevIntInstDefns, !RevIntModeDefns,
         !RevIntTypeClasses, !RevIntInstances,
         !RevIntPredDecls, !RevIntModeDecls,
-        !RevIntForeignExportEnums, !RevIntDeclPragmas, !RevIntImplPragmas,
+        !RevIntDeclPragmas, !RevIntImplPragmas,
         !IntBadClausePreds, !RevIntPromises,
         !RevIntInitialises, !RevIntFinalises, !RevIntMutables,
         !IntContents, !IntImplicitAvailNeeds,
@@ -2329,8 +2324,6 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
     list(item_instance_info)::in, list(item_instance_info)::out,
     list(item_pred_decl_info)::in, list(item_pred_decl_info)::out,
     list(item_mode_decl_info)::in, list(item_mode_decl_info)::out,
-    list(item_foreign_export_enum_info)::in,
-        list(item_foreign_export_enum_info)::out,
     list(item_decl_pragma_info)::in, list(item_decl_pragma_info)::out,
     list(item_impl_pragma_info)::in, list(item_impl_pragma_info)::out,
     set(pf_sym_name_arity)::in, set(pf_sym_name_arity)::out,
@@ -2346,17 +2339,16 @@ classify_src_items_int([],
         !RevTypeDefnsAbs, !RevTypeDefnsMer, !RevTypeDefnsForeign,
         !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances, !RevPredDecls, !RevModeDecls,
-        !RevForeignExportEnums, !RevDeclPragmas, !RevImplPragmas,
-        !BadClausePreds, !RevPromises, !RevInitialises, !RevFinalises,
-        !RevMutables,
+        !RevDeclPragmas, !RevImplPragmas, !BadClausePreds,
+        !RevPromises, !RevInitialises, !RevFinalises, !RevMutables,
         !Contents, !ImplicitAvailNeeds, !Specs).
 classify_src_items_int([Item | Items],
         !RevTypeDefnsAbs, !RevTypeDefnsMer, !RevTypeDefnsForeign,
         !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances, !RevPredDecls, !RevModeDecls,
-        !RevForeignExportEnums, !RevDeclPragmas, !RevImplPragmas,
-        !BadClausePreds, !RevPromises, !RevInitialises, !RevFinalises,
-        !RevMutables, !Contents, !ImplicitAvailNeeds, !Specs) :-
+        !RevDeclPragmas, !RevImplPragmas, !BadClausePreds,
+        !RevPromises, !RevInitialises, !RevFinalises, !RevMutables,
+        !Contents, !ImplicitAvailNeeds, !Specs) :-
     (
         Item = item_type_defn(ItemTypeDefnInfo),
         ItemTypeDefnInfo = item_type_defn_info(_, _, TypeDefn, _, _, _),
@@ -2512,7 +2504,7 @@ classify_src_items_int([Item | Items],
         !RevTypeDefnsAbs, !RevTypeDefnsMer, !RevTypeDefnsForeign,
         !RevInstDefns, !RevModeDefns,
         !RevTypeClasses, !RevInstances, !RevPredDecls, !RevModeDecls,
-        !RevForeignExportEnums, !RevDeclPragmas, !RevImplPragmas,
+        !RevDeclPragmas, !RevImplPragmas,
         !BadClausePreds, !RevPromises, !RevInitialises, !RevFinalises,
         !RevMutables, !Contents, !ImplicitAvailNeeds, !Specs).
 
