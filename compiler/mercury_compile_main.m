@@ -2192,7 +2192,8 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
             % the .opt or .trans opt file, then import the trans_opt files
             % for all the modules that are imported (or used), and for all
             % ancestor modules.
-            module_and_imports_get_ancestors(ModuleAndImports0, Ancestors),
+            module_and_imports_get_module_name(ModuleAndImports0, ModuleName),
+            Ancestors = get_ancestors_set(ModuleName),
             module_and_imports_get_int_deps_set(ModuleAndImports0, IntDeps),
             module_and_imports_get_imp_deps_set(ModuleAndImports0, ImpDeps),
             TransOptFiles = set.union_list([Ancestors, IntDeps, ImpDeps]),

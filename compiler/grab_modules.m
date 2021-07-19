@@ -642,7 +642,6 @@ process_module_int0(Globals, ReadWhy0, ModuleName, ParseTreeInt0,
         module_and_imports_add_int_for_opt_spec(IntForOptSpec,
             !ModuleAndImports)
     ),
-    module_and_imports_add_ancestor(ModuleName, !ModuleAndImports),
     maybe_record_interface_timestamp(ModuleName, ifk_int0,
         recomp_avail_int_import, MaybeTimestamp, !ModuleAndImports),
     module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports),
@@ -1752,7 +1751,7 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
         !ModuleAndImports, !HaveReadModuleMaps, !IO) :-
     % Read in the .opt files for imported and ancestor modules.
     module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
-    module_and_imports_get_ancestors(!.ModuleAndImports, Ancestors0),
+    Ancestors0 = get_ancestors_set(ModuleName),
     module_and_imports_get_int_deps_set(!.ModuleAndImports, IntDeps0),
     module_and_imports_get_imp_deps_set(!.ModuleAndImports, ImpDeps0),
     OptModules = set.union_list([Ancestors0, IntDeps0, ImpDeps0]),

@@ -229,8 +229,7 @@
     % XXX I think it is unlikely to have a good correctness argument behind it.
     %
 :- pred make_module_dep_module_and_imports(string::in, string::in,
-    module_name::in, module_name::in,
-    list(module_name)::in, list(module_name)::in,
+    module_name::in, module_name::in, list(module_name)::in,
     maybe_top_module::in, list(module_name)::in,
     list(module_name)::in, list(string)::in,
     list(fim_spec)::in, list(foreign_include_file_info)::in,
@@ -252,8 +251,6 @@
     module_name::out) is det.
 :- pred module_and_imports_get_module_name_context(module_and_imports::in,
     prog_context::out) is det.
-:- pred module_and_imports_get_ancestors(module_and_imports::in,
-    set(module_name)::out) is det.
 :- pred module_and_imports_get_maybe_top_module(module_and_imports::in,
     maybe_top_module::out) is det.
 :- pred module_and_imports_get_int_deps_map(module_and_imports::in,
@@ -295,10 +292,6 @@
 :- pred module_and_imports_get_grabbed_file_map(module_and_imports::in,
     grabbed_file_map::out) is det.
 
-    % XXX It should NOT be necessary to set the ancestors
-    % after the module_and_imports structure is initially created.
-:- pred module_and_imports_set_ancestors(set(module_name)::in,
-    module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_set_int_deps_map(module_names_contexts::in,
     module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_set_imp_deps_map(module_names_contexts::in,
@@ -344,8 +337,6 @@
 % Predicates for adding information to module_and_imports structures.
 %
 
-:- pred module_and_imports_add_ancestor(module_name::in,
-    module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_add_direct_dep(module_name::in, prog_context::in,
     module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_add_indirect_dep(module_name::in,
@@ -392,8 +383,7 @@
     % that we need to put into an automatically generated .d file.
     %
 :- pred module_and_imports_d_file(module_and_imports::in,
-    file_name::out, module_name::out,
-    set(module_name)::out, maybe_top_module::out,
+    file_name::out, module_name::out, maybe_top_module::out,
     module_names_contexts::out, module_names_contexts::out,
     set(module_name)::out, list(string)::out,
     c_j_cs_fims::out, foreign_include_file_infos::out,
@@ -499,14 +489,12 @@
                 % XXX CLEANUP The following fields, up to but not including
                 % mai_src, should not be needed, being available in mai_src.
 
-                % The set of mai_module_name's ancestor modules.
-                % XXX CLEANUP This information should be available
-                % as the names of the modules in mai_ancestor_int_specs.
-                mai_ancestors           :: set(module_name),
-
                 % The modules included in the same source file. This field
                 % is only set for the top-level module in each file.
                 mai_maybe_top_module    :: maybe_top_module,
+
+                % XXX CLEANUP The information in the next several fields
+                % should be available in mai_src.
 
                 % The set of modules it directly imports in the interface
                 % (imports via ancestors count as direct).
@@ -691,8 +679,6 @@ maybe_nested_init_module_and_imports(Globals, FileName, SourceFileModuleName,
 init_module_and_imports(Globals, FileName, SourceFileModuleName,
         MaybeTopModule, Specs, Errors, ParseTreeModuleSrc, ModuleAndImports) :-
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    Ancestors = get_ancestors(ModuleName),
-
     % We don't fill in the indirect dependencies yet.
     set.init(IndirectDeps),
 
@@ -837,7 +823,6 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     ModuleAndImports = module_and_imports(FileName, dir.this_directory,
         SourceFileModuleName,
-        set.list_to_set(Ancestors),
         MaybeTopModule, IntDepsMap, IntImpDepsMap, IndirectDeps,
         SortedFactTables, FIMs, ForeignIncludeFilesCord,
         ContainsForeignCode, ContainsForeignExport,
@@ -878,7 +863,6 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
         ParseTreeModuleSrc, MaybeTopModule, FactDeps,
         ForeignIncludeFiles, ForeignExportLangs, MaybeTimestampMap,
         ModuleAndImports) :-
-    set.init(Ancestors),
     map.init(IntDeps),
     map.init(ImpDeps),
     set.init(IndirectDeps),
@@ -907,7 +891,7 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
         SourceFileModuleName,
-        Ancestors, MaybeTopModule, IntDeps, ImpDeps, IndirectDeps, FactDeps,
+        MaybeTopModule, IntDeps, ImpDeps, IndirectDeps, FactDeps,
         ForeignImports, ForeignIncludeFiles,
         foreign_code_langs_unknown, ContainsForeignExport,
         ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
@@ -919,7 +903,7 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
 
 make_module_dep_module_and_imports(SourceFileName, ModuleDir,
         SourceFileModuleName, ModuleName,
-        Ancestors, Children, MaybeTopModule, IntDeps, ImpDeps, FactDeps,
+        Children, MaybeTopModule, IntDeps, ImpDeps, FactDeps,
         ForeignImports, ForeignIncludes,
         ContainsForeignCode, ContainsForeignExport, ModuleAndImports) :-
     ModuleNameContext = term.dummy_context_init,
@@ -962,7 +946,6 @@ make_module_dep_module_and_imports(SourceFileName, ModuleDir,
     map.init(GrabbedFileMap),
     ModuleAndImports = module_and_imports(SourceFileName, ModuleDir,
         SourceFileModuleName,
-        set.list_to_set(Ancestors),
         MaybeTopModule,
         IntDepsContexts, ImpDepsContexts, IndirectDeps, FactDeps,
         ForeignImportModules, cord.from_list(ForeignIncludes),
@@ -1104,31 +1087,6 @@ module_and_imports_get_module_name_context(ModuleAndImports, X) :-
             impure set_accesses(Accesses)
         ),
         X = ModuleAndImports ^ mai_src ^ ptms_module_name_context
-    ).
-module_and_imports_get_ancestors(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Method = ModuleAndImports ^ mai_construction_method,
-            (
-                Method = mcm_init,
-                Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_ancestors := accessed,
-                Accesses = Accesses0 ^ mfk_init := Fields
-            ;
-                Method = mcm_make,
-                Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_ancestors := accessed,
-                Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_ancestors := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
-            ),
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_ancestors
     ).
 module_and_imports_get_maybe_top_module(ModuleAndImports, X) :-
     promise_pure (
@@ -1685,8 +1643,6 @@ module_and_imports_get_grabbed_file_map(ModuleAndImports, X) :-
 :- pred module_and_imports_set_specs(list(error_spec)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-module_and_imports_set_ancestors(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_ancestors := X.
 module_and_imports_set_int_deps_map(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_int_deps_map := X.
 module_and_imports_set_imp_deps_map(X, !ModuleAndImports) :-
@@ -1759,11 +1715,6 @@ module_and_imports_do_we_need_timestamps(ModuleAndImports,
     ).
 
 %---------------------------------------------------------------------------%
-
-module_and_imports_add_ancestor(ModuleName, !ModuleAndImports) :-
-    module_and_imports_get_ancestors(!.ModuleAndImports, Ancestors0),
-    set.insert(ModuleName, Ancestors0, Ancestors),
-    module_and_imports_set_ancestors(Ancestors, !ModuleAndImports).
 
 module_and_imports_add_direct_dep(ModuleName, Context, !ModuleAndImports) :-
     module_and_imports_get_imp_deps_map(!.ModuleAndImports, ImpDepsMap0),
@@ -1878,7 +1829,7 @@ module_and_imports_add_specs_errors(NewSpecs, NewErrors, !ModuleAndImports) :-
 %---------------------------------------------------------------------------%
 
 module_and_imports_d_file(ModuleAndImports,
-        SourceFileName, SourceFileModuleName, Ancestors, MaybeTopModule,
+        SourceFileName, SourceFileModuleName, MaybeTopModule,
         IntDepsMap, ImpDepsMap, IndirectDeps, FactDeps,
         CJCsEFIMs, ForeignIncludeFilesCord, ContainsForeignCode,
         AugCompUnit) :-
@@ -1893,7 +1844,6 @@ module_and_imports_d_file(ModuleAndImports,
         SourceFileName),
     module_and_imports_get_source_file_module_name(ModuleAndImports,
         SourceFileModuleName),
-    module_and_imports_get_ancestors(ModuleAndImports, Ancestors),
     module_and_imports_get_maybe_top_module(ModuleAndImports, MaybeTopModule),
     module_and_imports_get_int_deps_map(ModuleAndImports, IntDepsMap),
     module_and_imports_get_imp_deps_map(ModuleAndImports, ImpDepsMap),

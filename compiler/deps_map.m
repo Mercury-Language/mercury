@@ -165,9 +165,11 @@ generate_deps_map_step(Globals, Module, ExpectationContexts,
         % We could keep a list of the modules we have already processed
         % and subtract it from the sets of modules we add here, but doing that
         % actually leads to a small slowdown.
-        module_and_imports_get_module_name_context(ModuleImports,
-            ModuleNameContext),
-        module_and_imports_get_ancestors(ModuleImports, AncestorModuleNames),
+        module_and_imports_get_parse_tree_module_src(ModuleImports,
+            ParseTreeModuleSrc),
+        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+        ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
+        AncestorModuleNames = get_ancestors_set(ModuleName),
         ForeignImportedModuleNames = get_all_foreign_import_modules(CJCsEFIMs),
         set.foldl(add_module_name_and_context(ModuleNameContext),
             AncestorModuleNames, !Modules),
@@ -176,8 +178,6 @@ generate_deps_map_step(Globals, Module, ExpectationContexts,
 
         module_and_imports_get_int_deps_map(ModuleImports, IntDepsMap),
         module_and_imports_get_imp_deps_map(ModuleImports, ImpDepsMap),
-        module_and_imports_get_parse_tree_module_src(ModuleImports,
-            ParseTreeModuleSrc),
         PublicChildrenMap = ParseTreeModuleSrc ^ ptms_int_includes,
         one_or_more_map.to_assoc_list(IntDepsMap, IntDepsModuleNamesContexts),
         one_or_more_map.to_assoc_list(ImpDepsMap, ImpDepsModuleNamesContexts),

@@ -67,7 +67,7 @@ add_module_and_imports_to_deps_graph(ModuleImports, LookupModuleImports,
     % of not just a few, but many modules.
 
     module_and_imports_get_module_name(ModuleImports, ModuleName),
-    module_and_imports_get_ancestors(ModuleImports, Ancestors),
+    Ancestors = get_ancestors_set(ModuleName),
     digraph.add_vertex(ModuleName, IntModuleKey, !IntDepsGraph),
     add_int_deps(IntModuleKey, ModuleImports, !IntDepsGraph),
     add_parent_imp_deps_set(LookupModuleImports, IntModuleKey, Ancestors,
@@ -93,7 +93,8 @@ add_module_and_imports_to_deps_graph(ModuleImports, LookupModuleImports,
 
 add_int_deps(ModuleKey, ModuleImports, !DepsGraph) :-
     AddDep = add_dep(ModuleKey),
-    module_and_imports_get_ancestors(ModuleImports, Ancestors),
+    module_and_imports_get_module_name(ModuleImports, ModuleName),
+    Ancestors = get_ancestors_set(ModuleName),
     module_and_imports_get_int_deps_set(ModuleImports, IntDeps),
     set.fold(AddDep, Ancestors, !DepsGraph),
     set.fold(AddDep, IntDeps, !DepsGraph).
