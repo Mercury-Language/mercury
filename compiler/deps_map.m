@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: deps_map.m.
 %
@@ -13,7 +13,7 @@
 % data structure, used for similar purposes, that is built on top of this one.
 % XXX Document the exact relationship between the two.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.deps_map.
 :- interface.
@@ -31,16 +31,18 @@
 % This is the data structure we use to record the dependencies.
 % We keep a map from module name to information about the module.
 
-:- type have_processed
-    --->    not_yet_processed
-    ;       already_processed.
-
 :- type deps_map == map(module_name, deps).
 :- type deps
     --->    deps(
                 have_processed,
                 module_and_imports
             ).
+
+:- type have_processed
+    --->    not_yet_processed
+    ;       already_processed.
+
+%---------------------------------------------------------------------------%
 
 :- type submodule_kind
     --->    toplevel
@@ -52,7 +54,7 @@
     %
 :- func get_submodule_kind(module_name, deps_map) = submodule_kind.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_deps_map(globals::in, module_name::in, maybe_search::in,
     deps_map::in, deps_map::out, io::di, io::uo) is det.
@@ -81,7 +83,7 @@
 :- pred insert_into_deps_map(module_and_imports::in,
     deps_map::in, deps_map::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -99,7 +101,7 @@
 :- import_module set.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_submodule_kind(ModuleName, DepsMap) = Kind :-
     Ancestors = get_ancestors(ModuleName),
@@ -117,7 +119,7 @@ get_submodule_kind(ModuleName, DepsMap) = Kind :-
         Kind = toplevel
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 generate_deps_map(Globals, ModuleName, Search, !DepsMap, !IO) :-
     generate_deps_map_loop(Globals, map.singleton(ModuleName, []), Search,
@@ -174,11 +176,12 @@ generate_deps_map_step(Globals, Module, ExpectationContexts,
 
         module_and_imports_get_int_deps_map(ModuleImports, IntDepsMap),
         module_and_imports_get_imp_deps_map(ModuleImports, ImpDepsMap),
-        module_and_imports_get_public_children_map(ModuleImports,
-            PublicChildren),
+        module_and_imports_get_parse_tree_module_src(ModuleImports,
+            ParseTreeModuleSrc),
+        PublicChildrenMap = ParseTreeModuleSrc ^ ptms_int_includes,
         one_or_more_map.to_assoc_list(IntDepsMap, IntDepsModuleNamesContexts),
         one_or_more_map.to_assoc_list(ImpDepsMap, ImpDepsModuleNamesContexts),
-        one_or_more_map.to_assoc_list(PublicChildren,
+        one_or_more_map.to_assoc_list(PublicChildrenMap,
             ChildrenModuleNamesContexts),
         list.foldl(add_module_name_with_contexts,
             IntDepsModuleNamesContexts, !Modules),
@@ -261,6 +264,6 @@ read_dependencies(Globals, ModuleName, ExpectationContexts, Search,
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
     write_error_specs_ignore(ErrorStream, Globals, Specs, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.deps_map.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

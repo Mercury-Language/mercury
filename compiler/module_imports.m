@@ -200,10 +200,8 @@
     module_and_imports::in, module_and_imports::out) is det.
 
     % make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-    %  ParseTreeModuleSrc,
-    %  PublicChildren, MaybeTopModule, FactDeps, ForeignIncludeFiles,
-    %  ForeignExportLangs, HasMain, MaybeTimestampMap,
-    %  ModuleAndImports):
+    %  ParseTreeModuleSrc, MaybeTopModule, FactDeps, ForeignIncludeFiles,
+    %  ForeignExportLangs, HasMain, MaybeTimestampMap, ModuleAndImports):
     %
     % Construct a module_and_imports structure another way.
     % While the code that gets invoked when we make dependencies
@@ -219,7 +217,7 @@
     % module_and_imports structure.
     %
 :- pred make_module_and_imports(globals::in, file_name::in,
-    module_name::in, parse_tree_module_src::in, module_names_contexts::in,
+    module_name::in, parse_tree_module_src::in,
     maybe_top_module::in, list(string)::in, foreign_include_file_infos::in,
     set(foreign_language)::in,
     maybe(module_timestamp_map)::in, module_and_imports::out) is det.
@@ -256,10 +254,6 @@
     prog_context::out) is det.
 :- pred module_and_imports_get_ancestors(module_and_imports::in,
     set(module_name)::out) is det.
-:- pred module_and_imports_get_children_map(module_and_imports::in,
-    module_names_contexts::out) is det.
-:- pred module_and_imports_get_public_children_map(module_and_imports::in,
-    module_names_contexts::out) is det.
 :- pred module_and_imports_get_maybe_top_module(module_and_imports::in,
     maybe_top_module::out) is det.
 :- pred module_and_imports_get_int_deps_map(module_and_imports::in,
@@ -399,7 +393,7 @@
     %
 :- pred module_and_imports_d_file(module_and_imports::in,
     file_name::out, module_name::out,
-    set(module_name)::out, module_names_contexts::out, maybe_top_module::out,
+    set(module_name)::out, maybe_top_module::out,
     module_names_contexts::out, module_names_contexts::out,
     set(module_name)::out, list(string)::out,
     c_j_cs_fims::out, foreign_include_file_infos::out,
@@ -509,12 +503,6 @@
                 % XXX CLEANUP This information should be available
                 % as the names of the modules in mai_ancestor_int_specs.
                 mai_ancestors           :: set(module_name),
-
-                mai_children            :: module_names_contexts,
-
-                % The set of its public children, i.e. child modules that
-                % it includes in the interface section.
-                mai_public_children     :: module_names_contexts,
 
                 % The modules included in the same source file. This field
                 % is only set for the top-level module in each file.
@@ -779,7 +767,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     list.foldl(add_fim_for_module(ModuleName), SelfImportLangs, FIMs0, FIMs),
     % XXX END OF THE REMAINS OF THE OLD CODE
 
-    get_raw_components(RawItemBlocks, IntIncls, ImpIncls,
+    get_raw_components(RawItemBlocks, _IntIncls, _ImpIncls,
         IntAvails, ImpAvails, IntFIMs, ImpFIMs, IntItems, ImpItems),
     NewFIMs0 = init_foreign_import_modules,
     list.foldl(add_fim_spec, list.map(fim_item_to_spec, IntFIMs),
@@ -798,10 +786,6 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     list.foldl(add_fim_for_module(ModuleName), SelfImportLangs,
         NewFIMs3, NewFIMs),
     expect(unify(FIMs, NewFIMs), $pred, "FIMs != NewFIMs"),
-    list.foldl(get_included_modules_in_item_include_acc, IntIncls,
-        one_or_more_map.init, PublicChildrenMap),
-    list.foldl(get_included_modules_in_item_include_acc, ImpIncls,
-        PublicChildrenMap, ChildrenMap),
 
     get_implicits_foreigns_fact_tables(IntItems, ImpItems,
         IntImplicitImportNeeds, IntImpImplicitImportNeeds, Contents),
@@ -853,7 +837,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     ModuleAndImports = module_and_imports(FileName, dir.this_directory,
         SourceFileModuleName,
-        set.list_to_set(Ancestors), ChildrenMap, PublicChildrenMap,
+        set.list_to_set(Ancestors),
         MaybeTopModule, IntDepsMap, IntImpDepsMap, IndirectDeps,
         SortedFactTables, FIMs, ForeignIncludeFilesCord,
         ContainsForeignCode, ContainsForeignExport,
@@ -891,7 +875,7 @@ accumulate_foreign_import_langs_in_item(Item, !LangSet) :-
 %---------------------------------------------------------------------------%
 
 make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-        ParseTreeModuleSrc, PublicChildrenMap, MaybeTopModule, FactDeps,
+        ParseTreeModuleSrc, MaybeTopModule, FactDeps,
         ForeignIncludeFiles, ForeignExportLangs, MaybeTimestampMap,
         ModuleAndImports) :-
     set.init(Ancestors),
@@ -900,7 +884,6 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
     set.init(IndirectDeps),
     % XXX Since PublicChildrenMap should be a subset of ChildrenMap,
     % this looks like bug.
-    map.init(ChildrenMap),
     ForeignImports = init_foreign_import_modules,
     map.init(VersionNumbers),
     globals.get_backend_foreign_languages(Globals, BackendLangs),
@@ -924,8 +907,7 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
         SourceFileModuleName,
-        Ancestors, ChildrenMap, PublicChildrenMap, MaybeTopModule,
-        IntDeps, ImpDeps, IndirectDeps, FactDeps,
+        Ancestors, MaybeTopModule, IntDeps, ImpDeps, IndirectDeps, FactDeps,
         ForeignImports, ForeignIncludeFiles,
         foreign_code_langs_unknown, ContainsForeignExport,
         ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
@@ -948,15 +930,24 @@ make_module_dep_module_and_imports(SourceFileName, ModuleDir,
     one_or_more_map.from_assoc_list(list.map(AddDummyContext, ImpDeps),
         ImpDepsContexts),
     set.init(IndirectDeps),
-    one_or_more_map.from_assoc_list(list.map(AddDummyContext, Children),
-        ChildrenContexts),
-    % XXX We do not know which child modules are public, so saying
-    % none of them are is likely to be a bug.
-    one_or_more_map.init(PublicChildrenContexts),
+    % The definition of AddDummyInclude preserves old behavior,
+    % specifically, the behavior of the following commented-out piece of code.
+%   one_or_more_map.from_assoc_list(list.map(AddDummyContext, Children),
+%       ChildrenContexts),
+%   % XXX We do not know which child modules are public, so saying
+%   % none of them are is likely to be a bug.
+%   one_or_more_map.init(PublicChildrenContexts),
+    AddDummyInclude =
+        ( func(MN) = MN - Incl :-
+            Section = ms_implementation,
+            Incl = include_module_info(Section, term.dummy_context_init)
+        ),
+    map.from_assoc_list(list.map(AddDummyInclude, Children), IncludeMap),
     list.foldl(add_fim_spec, ForeignImports,
         init_foreign_import_modules, ForeignImportModules),
-    ParseTreeModuleSrc =
+    ParseTreeModuleSrc0 =
         init_empty_parse_tree_module_src(ModuleName, ModuleNameContext),
+    ParseTreeModuleSrc = ParseTreeModuleSrc0 ^ ptms_include_map := IncludeMap,
     map.init(AncestorIntSpecs),
     map.init(DirectIntSpecs),
     map.init(IndirectIntSpecs),
@@ -971,7 +962,7 @@ make_module_dep_module_and_imports(SourceFileName, ModuleDir,
     map.init(GrabbedFileMap),
     ModuleAndImports = module_and_imports(SourceFileName, ModuleDir,
         SourceFileModuleName,
-        set.list_to_set(Ancestors), ChildrenContexts, PublicChildrenContexts,
+        set.list_to_set(Ancestors),
         MaybeTopModule,
         IntDepsContexts, ImpDepsContexts, IndirectDeps, FactDeps,
         ForeignImportModules, cord.from_list(ForeignIncludes),
@@ -1138,56 +1129,6 @@ module_and_imports_get_ancestors(ModuleAndImports, X) :-
             impure set_accesses(Accesses)
         ),
         X = ModuleAndImports ^ mai_ancestors
-    ).
-module_and_imports_get_children_map(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Method = ModuleAndImports ^ mai_construction_method,
-            (
-                Method = mcm_init,
-                Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_children := accessed,
-                Accesses = Accesses0 ^ mfk_init := Fields
-            ;
-                Method = mcm_make,
-                Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_children := accessed,
-                Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_children := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
-            ),
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_children
-    ).
-module_and_imports_get_public_children_map(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Method = ModuleAndImports ^ mai_construction_method,
-            (
-                Method = mcm_init,
-                Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_public_children := accessed,
-                Accesses = Accesses0 ^ mfk_init := Fields
-            ;
-                Method = mcm_make,
-                Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_public_children := accessed,
-                Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_public_children := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
-            ),
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_public_children
     ).
 module_and_imports_get_maybe_top_module(ModuleAndImports, X) :-
     promise_pure (
@@ -1782,12 +1723,16 @@ module_and_imports_set_grabbed_file_map(X, !ModuleAndImports) :-
 %---------------------------------------------------------------------------%
 
 module_and_imports_get_children(ModuleAndImports, Children) :-
-    module_and_imports_get_children_map(ModuleAndImports, ChildrenMap),
-    Children = one_or_more_map.keys(ChildrenMap).
+    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
+        ParseTreeModuleSrc),
+    IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
+    Children = map.keys(IncludeMap).
 
 module_and_imports_get_children_set(ModuleAndImports, Children) :-
-    module_and_imports_get_children_map(ModuleAndImports, ChildrenMap),
-    Children = one_or_more_map.keys_as_set(ChildrenMap).
+    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
+        ParseTreeModuleSrc),
+    IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
+    Children = map.keys_as_set(IncludeMap).
 
 module_and_imports_get_int_deps(ModuleAndImports, IntDeps) :-
     module_and_imports_get_int_deps_map(ModuleAndImports, IntDepsMap),
@@ -1933,8 +1878,7 @@ module_and_imports_add_specs_errors(NewSpecs, NewErrors, !ModuleAndImports) :-
 %---------------------------------------------------------------------------%
 
 module_and_imports_d_file(ModuleAndImports,
-        SourceFileName, SourceFileModuleName,
-        Ancestors, PublicChildrenMap, MaybeTopModule,
+        SourceFileName, SourceFileModuleName, Ancestors, MaybeTopModule,
         IntDepsMap, ImpDepsMap, IndirectDeps, FactDeps,
         CJCsEFIMs, ForeignIncludeFilesCord, ContainsForeignCode,
         AugCompUnit) :-
@@ -1950,8 +1894,6 @@ module_and_imports_d_file(ModuleAndImports,
     module_and_imports_get_source_file_module_name(ModuleAndImports,
         SourceFileModuleName),
     module_and_imports_get_ancestors(ModuleAndImports, Ancestors),
-    module_and_imports_get_public_children_map(ModuleAndImports,
-        PublicChildrenMap),
     module_and_imports_get_maybe_top_module(ModuleAndImports, MaybeTopModule),
     module_and_imports_get_int_deps_map(ModuleAndImports, IntDepsMap),
     module_and_imports_get_imp_deps_map(ModuleAndImports, ImpDepsMap),

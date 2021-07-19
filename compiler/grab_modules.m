@@ -188,11 +188,8 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
             MaybeTimestampMap = no
         ),
 
-        IntIncls = ParseTreeModuleSrc ^ ptms_int_includes,
-        PublicChildren = IntIncls,
-
         make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-            ParseTreeModuleSrc, PublicChildren, MaybeTopModule, FactTables,
+            ParseTreeModuleSrc, MaybeTopModule, FactTables,
             ForeignIncludeFilesCord, ForeignExportLangs,
             MaybeTimestampMap, !:ModuleAndImports),
         !:Specs = [],
@@ -325,7 +322,6 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         ParseTreeModuleSrc = ParseTreeModuleSrc0 ^ ptms_implicit_fim_langs
             := yes(LangSet),
 
-        map.init(PublicChildren),
         ( if ParseTreeModuleSrc0 ^ ptms_module_name = SourceFileModuleName then
             % We lie about the set of modules nested inside this one;
             % the lie will be correct only by accident.
@@ -341,7 +337,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         MaybeTimestampMap = no,
 
         make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-            ParseTreeModuleSrc, PublicChildren, MaybeTopModule, FactDeps,
+            ParseTreeModuleSrc, MaybeTopModule, FactDeps,
             ForeignIncludeFiles, ForeignExportLangs,
             MaybeTimestampMap, !:ModuleAndImports),
 

@@ -246,13 +246,14 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
 generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         !:MmakeFile, !IO) :-
     module_and_imports_d_file(ModuleAndImports,
-        SourceFileName, SourceFileModuleName,
-        Ancestors, PublicChildrenMap, MaybeTopModule,
+        SourceFileName, SourceFileModuleName, Ancestors, MaybeTopModule,
         IntDepsMap, ImpDepsMap, IndirectDeps, FactDeps0,
         ForeignImportModules0, ForeignIncludeFilesCord, ContainsForeignCode,
         AugCompUnit),
     one_or_more_map.keys_as_set(IntDepsMap, IntDeps),
     one_or_more_map.keys_as_set(ImpDepsMap, ImpDeps),
+    ParseTreeModuleSrc = AugCompUnit ^ aci_module_src,
+    PublicChildrenMap = ParseTreeModuleSrc ^ ptms_int_includes,
     one_or_more_map.keys_as_set(PublicChildrenMap, PublicChildren),
 
     ModuleName = AugCompUnit ^ aci_module_name,
@@ -1419,8 +1420,10 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     ModulesWithSubModules = list.filter(
         ( pred(Module::in) is semidet :-
             map.lookup(DepsMap, Module, deps(_, ModuleAndImports)),
-            module_and_imports_get_children_map(ModuleAndImports, ChildrenMap),
-            not one_or_more_map.is_empty(ChildrenMap)
+            module_and_imports_get_parse_tree_module_src(ModuleAndImports,
+                ParseTreeModuleSrc),
+            IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
+            not map.is_empty(IncludeMap)
         ), Modules),
 
     make_module_file_names_with_suffix(Globals, ext_other(other_ext("")),
@@ -2100,8 +2103,10 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
         Intermod = yes,
         some [ModuleAndImports] (
             map.member(DepsMap, _, deps(_, ModuleAndImports)),
-            module_and_imports_get_children_map(ModuleAndImports, ChildrenMap),
-            not one_or_more_map.is_empty(ChildrenMap)
+            module_and_imports_get_parse_tree_module_src(ModuleAndImports,
+                ParseTreeModuleSrc),
+            IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
+            not map.is_empty(IncludeMap)
         )
     then
         % The `.int0' files only need to be installed with
