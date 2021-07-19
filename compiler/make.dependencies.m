@@ -1023,9 +1023,10 @@ collect_nested_modules(Globals, ModuleName, !NestedModules, !Info, !IO) :-
         !Info, !IO),
     (
         MaybeModuleAndImports = yes(ModuleAndImports),
-        module_and_imports_get_nested_children(ModuleAndImports,
-            NestedChildren),
-        set.union(NestedChildren, !NestedModules)
+        module_and_imports_get_maybe_top_module(ModuleAndImports,
+            MaybeTopModule),
+        NestedSubModules = get_nested_children_of_top_module(MaybeTopModule),
+        set.union(NestedSubModules, !NestedModules)
     ;
         MaybeModuleAndImports = no
     ).

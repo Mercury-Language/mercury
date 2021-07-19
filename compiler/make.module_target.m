@@ -194,9 +194,11 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
         debug_file_msg(Globals, TargetFile, "checking dependencies", !IO),
 
         ( if CompilationTaskType = process_module(_) then
-            module_and_imports_get_nested_children(ModuleAndImports,
-                NestedChildren),
-            ModulesToCheck = [ModuleName | set.to_sorted_list(NestedChildren)]
+            module_and_imports_get_maybe_top_module(ModuleAndImports,
+                MaybeTopModule),
+            NestedSubModules =
+                get_nested_children_list_of_top_module(MaybeTopModule),
+            ModulesToCheck = [ModuleName | NestedSubModules]
         else
             ModulesToCheck = [ModuleName]
         ),
@@ -943,12 +945,12 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
         unexpected($pred, "no module dependencies")
     ),
 
-    module_and_imports_get_nested_children(ModuleAndImports,
-        NestedChildrenSet),
-    set.to_sorted_list(NestedChildrenSet, NestedChildren),
-    SourceFileModuleNames = [ModuleName | NestedChildren],
+    module_and_imports_get_maybe_top_module(ModuleAndImports,
+        MaybeTopModule),
+    NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
+    SourceFileModuleNames = [ModuleName | NestedSubModules],
 
-    list.map_foldl2(get_module_dependencies(Globals), NestedChildren,
+    list.map_foldl2(get_module_dependencies(Globals), NestedSubModules,
         MaybeNestedImportsList, !Info, !IO),
     ( if
         list.map(

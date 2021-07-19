@@ -47,7 +47,6 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
-:- import_module set.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -83,7 +82,7 @@
     % generating .opt and .trans_opt files.
     %
 :- pred grab_qual_imported_modules_augment(globals::in, file_name::in,
-    module_name::in, maybe(timestamp)::in, set(module_name)::in,
+    module_name::in, maybe(timestamp)::in, maybe_top_module::in,
     parse_tree_module_src::in, module_and_imports::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
@@ -147,14 +146,15 @@
 :- import_module map.
 :- import_module one_or_more.
 :- import_module require.
-:- import_module term.
+:- import_module set.
 :- import_module string.
+:- import_module term.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 grab_qual_imported_modules_augment(Globals, SourceFileName,
-        SourceFileModuleName, MaybeTimestamp, NestedChildren,
+        SourceFileModuleName, MaybeTimestamp, MaybeTopModule,
         ParseTreeModuleSrc0, !:ModuleAndImports, !HaveReadModuleMaps, !IO) :-
     % The predicates grab_imported_modules and grab_unqual_imported_modules
     % have quite similar tasks. Please keep the corresponding parts of these
@@ -192,7 +192,7 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         PublicChildren = IntIncls,
 
         make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-            ParseTreeModuleSrc, PublicChildren, NestedChildren, FactTables,
+            ParseTreeModuleSrc, PublicChildren, MaybeTopModule, FactTables,
             ForeignIncludeFilesCord, ForeignExportLangs,
             MaybeTimestampMap, !:ModuleAndImports),
         !:Specs = [],
@@ -326,7 +326,13 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
             := yes(LangSet),
 
         map.init(PublicChildren),
-        set.init(NestedChildren),
+        ( if ParseTreeModuleSrc0 ^ ptms_module_name = SourceFileModuleName then
+            % We lie about the set of modules nested inside this one;
+            % the lie will be correct only by accident.
+            MaybeTopModule = top_module(set.init)
+        else
+            MaybeTopModule = not_top_module
+        ),
         % Nothing that we will do with !:ModuleAndImports when constructing
         % interface files will involve the files containing fact tables,
         % so it is OK to pass a dummy value for FactDeps.
@@ -335,7 +341,7 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         MaybeTimestampMap = no,
 
         make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-            ParseTreeModuleSrc, PublicChildren, NestedChildren, FactDeps,
+            ParseTreeModuleSrc, PublicChildren, MaybeTopModule, FactDeps,
             ForeignIncludeFiles, ForeignExportLangs,
             MaybeTimestampMap, !:ModuleAndImports),
 

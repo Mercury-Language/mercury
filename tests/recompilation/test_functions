@@ -3,6 +3,10 @@
 # Shell functions used to run the recompilation tests.
 #
 
+# Set a limit of ten minutes for each command. If a command takes that long,
+# it is almost certainly in an infinite loop.
+ulimit -t 600
+
 # Set variables `main_module' and `modules' describing the test being run.
 # Copy in the initial versions of the test files.
 test_module () {
@@ -85,18 +89,20 @@ mmake_test () {
     # XXX This is a hacky way of testing for Java grades.
     echo "mmakeopts=$mmakeopts"
     case $mmakeopts in
-        *java*) target=$main_module.classes
+        *java*)
+            target=$main_module.classes
             run_target="java $main_module"
             ;;
-        *)  target=$main_module
+        *)
+            target=$main_module
             run_target="./$main_module"
             ;;
     esac
 
     case $mmake_should_fail in
         true)
-            # If the compilation is supposed to fail then the mmake output
-            # should be suppressed to avoid making it harder to find
+            # If the compilation is supposed to fail, then we suppress
+            # the mmake output to avoid making it harder to find any
             # genuine failures in the nightly test logs. The `-k' option
             # to mmake avoids differences in the output when using
             # parallel mmakes.
@@ -135,7 +141,7 @@ mmake_test () {
 }
 
 # Compare the output file with the expected output file, generating
-# the expected output file if it doesn't exist and runtests was given
+# the expected output file if (a) it doesn't exist and (b) runtests was given
 # the --generate-missing-exp-files option.
 compare_files () {
     if test "$#" != 2

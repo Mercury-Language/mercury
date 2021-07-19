@@ -1416,10 +1416,8 @@ read_augment_and_process_module(Globals0, OpModeAugment, OptionArgs,
         (
             MaybeModulesToRecompile = some_modules(ModulesToRecompile),
             ToRecompile =
-                ( pred(ParseTreeModuleSrc::in) is semidet :-
-                    ParseTreeModuleName =
-                        ParseTreeModuleSrc ^ ptms_module_name,
-                    list.member(ParseTreeModuleName, ModulesToRecompile)
+                ( pred(PTMS::in) is semidet :-
+                    list.member(PTMS ^ ptms_module_name, ModulesToRecompile)
                 ),
             list.filter(ToRecompile, ParseTreeModuleSrcs0,
                 ParseTreeModuleSrcsToRecompile)
@@ -1430,12 +1428,11 @@ read_augment_and_process_module(Globals0, OpModeAugment, OptionArgs,
         ParseTreeModuleNames = set.list_to_set(
             list.map(parse_tree_module_src_project_name,
                 ParseTreeModuleSrcs0)),
-        set.delete(ModuleName, ParseTreeModuleNames, NestedCompUnitNames),
+        set.delete(ModuleName, ParseTreeModuleNames, NestedModuleNames),
 
         find_timestamp_files(Globals, FindTimestampFiles),
 
         globals.lookup_bool_option(Globals, trace_prof, TraceProf),
-
         ( if
             non_traced_mercury_builtin_module(ModuleName),
             not (
@@ -1457,7 +1454,7 @@ read_augment_and_process_module(Globals0, OpModeAugment, OptionArgs,
             GlobalsToUse = Globals
         ),
         augment_and_process_all_submodules(GlobalsToUse, OpModeAugment,
-            FileName, ModuleName, MaybeTimestamp, NestedCompUnitNames,
+            FileName, MaybeTimestamp, ModuleName, NestedModuleNames,
             FindTimestampFiles, ParseTreeModuleSrcsToRecompile,
             Specs1, ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO)
     ).
@@ -1624,8 +1621,8 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
     %   output_pass(LLDS_FragmentList)
     %
 :- pred augment_and_process_all_submodules(globals::in,
-    op_mode_augment::in, string::in, module_name::in,
-    maybe(timestamp)::in, set(module_name)::in,
+    op_mode_augment::in, string::in, maybe(timestamp)::in,
+    module_name::in, set(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     list(parse_tree_module_src)::in, list(error_spec)::in,
     list(string)::out, list(string)::out,
@@ -1633,12 +1630,12 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
     io::di, io::uo) is det.
 
 augment_and_process_all_submodules(Globals, OpModeAugment,
-        FileName, SourceFileModuleName, MaybeTimestamp, NestedSubModules,
+        FileName, MaybeTimestamp, SourceFileModuleName, NestedSubModules,
         FindTimestampFiles, ParseTreeModuleSrcs, !.Specs,
         ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
     list.map_foldl3(
         augment_and_process_module(Globals, OpModeAugment,
-            FileName, SourceFileModuleName, MaybeTimestamp, NestedSubModules,
+            FileName, MaybeTimestamp, SourceFileModuleName, NestedSubModules,
             FindTimestampFiles),
         ParseTreeModuleSrcs, ExtraObjFileLists,
         !Specs, !HaveReadModuleMaps, !IO),
@@ -1669,27 +1666,27 @@ module_to_link(ParseTreeModuleSrc, ModuleToLink) :-
     % so that new stages can be slotted in without too much trouble.
     %
 :- pred augment_and_process_module(globals::in,
-    op_mode_augment::in, file_name::in, module_name::in,
-    maybe(timestamp)::in, set(module_name)::in,
+    op_mode_augment::in, file_name::in, maybe(timestamp)::in,
+    module_name::in, set(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     parse_tree_module_src::in, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-augment_and_process_module(Globals, OpModeAugment,
-        SourceFileName, SourceFileModuleName, MaybeTimestamp,
-        NestedSubModules0, FindTimestampFiles, ParseTreeModuleSrc,
-        ExtraObjFiles, !Specs, !HaveReadModuleMaps, !IO) :-
+augment_and_process_module(Globals, OpModeAugment, SourceFileName,
+        MaybeTimestamp, SourceFileModuleName, NestedSubModules,
+        FindTimestampFiles, ParseTreeModuleSrc, ExtraObjFiles,
+        !Specs, !HaveReadModuleMaps, !IO) :-
     check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ( if ModuleName = SourceFileModuleName then
-        NestedSubModules = NestedSubModules0
+        MaybeTopModule = top_module(NestedSubModules)
     else
-        set.init(NestedSubModules)
+        MaybeTopModule = not_top_module
     ),
     grab_qual_imported_modules_augment(Globals, SourceFileName,
-        SourceFileModuleName, MaybeTimestamp, NestedSubModules,
+        SourceFileModuleName, MaybeTimestamp, MaybeTopModule,
         ParseTreeModuleSrc, ModuleAndImports, !HaveReadModuleMaps, !IO),
     module_and_imports_get_aug_comp_unit(ModuleAndImports, _AugCompUnit,
         ImportedSpecs, Errors),
@@ -1697,14 +1694,14 @@ augment_and_process_module(Globals, OpModeAugment,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
         process_augmented_module(Globals, OpModeAugment, ModuleAndImports,
-            NestedSubModules, FindTimestampFiles, ExtraObjFiles,
+            MaybeTopModule, FindTimestampFiles, ExtraObjFiles,
             no_prev_dump, _, !Specs, !HaveReadModuleMaps, !IO)
     else
         ExtraObjFiles = []
     ).
 
 :- pred process_augmented_module(globals::in, op_mode_augment::in,
-    module_and_imports::in, set(module_name)::in,
+    module_and_imports::in, maybe_top_module::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     list(string)::out, dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out,
@@ -1712,7 +1709,7 @@ augment_and_process_module(Globals, OpModeAugment,
     io::di, io::uo) is det.
 
 process_augmented_module(Globals0, OpModeAugment, ModuleAndImports,
-        NestedSubModules, FindTimestampFiles, ExtraObjFiles,
+        MaybeTopModule, FindTimestampFiles, ExtraObjFiles,
         !DumpInfo, !Specs, !HaveReadModuleMaps, !IO) :-
     (
         ( OpModeAugment = opmau_typecheck_only
@@ -1802,7 +1799,7 @@ process_augmented_module(Globals0, OpModeAugment, ModuleAndImports,
             OpModeAugment = opmau_generate_code(OpModeCodeGen),
             maybe_prepare_for_intermodule_analysis(Globals, Verbose, Stats,
                 HLDS21, HLDS22, !IO),
-            after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
+            after_front_end_passes(Globals, OpModeCodeGen, MaybeTopModule,
                 FindTimestampFiles, MaybeTimestampMap, HLDS22,
                 ExtraObjFiles, !Specs, !DumpInfo, !IO)
         )
@@ -2413,13 +2410,13 @@ prepare_for_intermodule_analysis(Globals, Verbose, Stats, !HLDS, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred after_front_end_passes(globals::in, op_mode_codegen::in,
-    set(module_name)::in,
+    maybe_top_module::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     maybe(module_timestamp_map)::in, module_info::in,
     list(string)::out, list(error_spec)::in, list(error_spec)::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
-after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
+after_front_end_passes(Globals, OpModeCodeGen, MaybeTopModule,
         FindTimestampFiles, MaybeTimestampMap, !.HLDS,
         ExtraObjFiles, !Specs, !DumpInfo, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -2539,6 +2536,8 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
         ),
         (
             Succeeded = yes,
+            NestedSubModules =
+                get_nested_children_of_top_module(MaybeTopModule),
             recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,
                 MaybeTimestampMap, !IO),
             FindTimestampFiles(ModuleName, TimestampFiles, !IO),

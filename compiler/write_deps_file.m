@@ -247,7 +247,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         !:MmakeFile, !IO) :-
     module_and_imports_d_file(ModuleAndImports,
         SourceFileName, SourceFileModuleName,
-        Ancestors, PublicChildrenMap, NestedDeps,
+        Ancestors, PublicChildrenMap, MaybeTopModule,
         IntDepsMap, ImpDepsMap, IndirectDeps, FactDeps0,
         ForeignImportModules0, ForeignIncludeFilesCord, ContainsForeignCode,
         AugCompUnit),
@@ -308,7 +308,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         FactTableSourceGroups, MmakeRuleDateFileDeps, !IO),
 
     construct_build_nested_children_first_rule(Globals,
-        ModuleName, NestedDeps, MmakeRulesNestedDeps, !IO),
+        ModuleName, MaybeTopModule, MmakeRulesNestedDeps, !IO),
 
     construct_intermod_rules(Globals, ModuleName, LongDeps, AllDeps,
         ErrFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
@@ -521,12 +521,12 @@ construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
     % Build rules that enforce this.
     %
 :- pred construct_build_nested_children_first_rule(globals::in,
-    module_name::in, set(module_name)::in, list(mmake_entry)::out,
+    module_name::in, maybe_top_module::in, list(mmake_entry)::out,
     io::di, io::uo) is det.
 
-construct_build_nested_children_first_rule(Globals,
-        ModuleName, NestedDeps, MmakeRulesNestedDeps, !IO) :-
-    NestedModuleNames = set.to_sorted_list(NestedDeps),
+construct_build_nested_children_first_rule(Globals, ModuleName, MaybeTopModule,
+        MmakeRulesNestedDeps, !IO) :-
+    NestedModuleNames = get_nested_children_list_of_top_module(MaybeTopModule),
     (
         NestedModuleNames = [],
         MmakeRulesNestedDeps = []

@@ -1,4 +1,3 @@
-
 This directory contains tests for the `--smart-recompilation' option.
 The output with `--verbose-recompilation' is checked to make sure
 that recompilation occurs when expected.

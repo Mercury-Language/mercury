@@ -114,12 +114,17 @@ should_recompile(Globals, ModuleName, FindTargetFiles, FindTimestampFiles,
     Info0 = recompilation_check_info(ModuleName, no, [], HaveReadModuleMaps0,
         init_item_id_set(map.init, map.init, map.init),
         set.init, some_modules([]), FindAll, []),
-    should_recompile_2(Globals, no, FindTargetFiles, FindTimestampFiles,
-        ModuleName, Info0, Info, !IO),
+    % XXX How do we know ModuleName is not an inline submodule?
+    should_recompile_2(Globals, is_not_inline_submodule, FindTargetFiles,
+        FindTimestampFiles, ModuleName, Info0, Info, !IO),
     ModulesToRecompile = Info ^ rci_modules_to_recompile,
     HaveReadModuleMaps = Info ^ rci_have_read_module_maps.
 
-:- pred should_recompile_2(globals::in, bool::in,
+:- type maybe_is_inline_submodule
+    --->    is_not_inline_submodule
+    ;       is_inline_submodule.
+
+:- pred should_recompile_2(globals::in, maybe_is_inline_submodule::in,
     find_target_file_names::in(find_target_file_names),
     find_timestamp_file_names::in(find_timestamp_file_names), module_name::in,
     recompilation_check_info::in, recompilation_check_info::out,
@@ -176,10 +181,13 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
             ModulesToRecompile = all_modules
         ;
             ModulesToRecompile = some_modules(_),
+            % XXX How does this piece of code justify the jump from
+            % "not all modules should be recompiled" to "must recompile
+            % !.Info ^ rci_sub_modules"?
             !Info ^ rci_is_inline_sub_module := yes,
             list.foldl2(
-                should_recompile_2(Globals, yes, FindTargetFiles,
-                    FindTimestampFiles),
+                should_recompile_2(Globals, is_inline_submodule,
+                    FindTargetFiles, FindTimestampFiles),
                 !.Info ^ rci_sub_modules, !Info, !IO)
         )
     ;
@@ -211,7 +219,8 @@ write_not_found_reasons_message(Globals, UsageFileName, ModuleName, !IO) :-
     write_recompile_reason(Globals, ModuleName, Reason, !IO).
 
 :- pred should_recompile_3(string::in, string::in, int::in,
-    line_context::in, line_posn::in, globals::in, bool::in,
+    line_context::in, line_posn::in, globals::in,
+    maybe_is_inline_submodule::in,
     find_target_file_names::in(find_target_file_names),
     maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out,
@@ -240,13 +249,13 @@ should_recompile_3(UsedFileName, UsedFileString, MaxOffset,
         !Info ^ rci_used_typeclasses := set.list_to_set(UsedClasses),
 
         (
-            IsSubModule = yes,
+            IsSubModule = is_inline_submodule,
             % For inline submodules, we don't need to check the module
             % timestamp, because we have already checked the timestamp
             % for the parent module.
             MaybeStoppingReason0 = no
         ;
-            IsSubModule = no,
+            IsSubModule = is_not_inline_submodule,
             % If the module has changed, recompile.
             ModuleName = !.Info ^ rci_module_name,
             read_module_src(Globals, "Reading module",

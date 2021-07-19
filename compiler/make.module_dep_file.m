@@ -361,7 +361,8 @@ do_write_module_dep_file_2(Stream, ModuleAndImports, Version, !IO) :-
     module_and_imports_get_children(ModuleAndImports, Children),
     module_and_imports_get_int_deps(ModuleAndImports, IntDeps),
     module_and_imports_get_imp_deps(ModuleAndImports, ImpDeps),
-    module_and_imports_get_nested_children(ModuleAndImports, NestedChildren),
+    module_and_imports_get_maybe_top_module(ModuleAndImports, MaybeTopModule),
+    NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
     module_and_imports_get_fact_table_deps(ModuleAndImports, FactDeps),
     module_and_imports_get_contains_foreign_code(ModuleAndImports,
         ContainsForeignCode),
@@ -390,8 +391,10 @@ do_write_module_dep_file_2(Stream, ModuleAndImports, Version, !IO) :-
     write_out_list(mercury_output_bracketed_sym_name, ", ",
         Children, Stream, !IO),
     io.write_string(Stream, "},\n\t{", !IO),
+    % XXX ITEM_LIST We should write out some indication of top_module vs
+    % not_top_module.
     write_out_list(mercury_output_bracketed_sym_name, ", ",
-        set.to_sorted_list(NestedChildren), Stream, !IO),
+        NestedSubModules, Stream, !IO),
     io.write_string(Stream, "},\n\t{", !IO),
     io.write_string(Stream, string.join_list(", ", FactDeps), !IO),
     io.write_string(Stream, "},\n\t{", !IO),
@@ -549,7 +552,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
             IntDepsTerm,
             ImpDepsTerm,
             ChildrenTerm,
-            NestedChildrenTerm,
+            NestedSubModulesTerm,
             FactDepsTerm,
             ForeignLanguagesTerm,
             ForeignImportsTerm,
@@ -567,7 +570,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         sym_names_term(IntDepsTerm, IntDeps),
         sym_names_term(ImpDepsTerm, ImpDeps),
         sym_names_term(ChildrenTerm, Children),
-        sym_names_term(NestedChildrenTerm, NestedChildren),
+        sym_names_term(NestedSubModulesTerm, NestedSubModules0),
 
         braces_term(fact_dep_term, FactDepsTerm, FactDeps),
         braces_term(foreign_language_term, ForeignLanguagesTerm,
@@ -588,11 +591,18 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
                 ForeignIncludes)
         )
     then
+        ( if ModuleName = SourceFileModuleName then
+            MaybeTopModule = top_module(set.list_to_set(NestedSubModules0))
+        else
+            MaybeTopModule = not_top_module,
+            expect(unify(NestedSubModules0, []), $pred,
+                "NestedSubModules0 != []")
+        ),
         ContainsForeignCode =
             foreign_code_langs_known(set.list_to_set(ForeignLanguages)),
         make_module_dep_module_and_imports(SourceFileName, ModuleDir,
             SourceFileModuleName, ModuleName,
-            Parents, Children, NestedChildren, IntDeps, ImpDeps, FactDeps,
+            Parents, Children, MaybeTopModule, IntDeps, ImpDeps, FactDeps,
             ForeignImports, ForeignIncludes,
             ContainsForeignCode, ContainsForeignExport,
             ModuleAndImports),
@@ -618,16 +628,18 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
                 ModuleDepMap0, ModuleDepMap),
             !Info ^ module_dependencies := ModuleDepMap,
 
-            % Read the dependencies for the nested children. If something
+            % Read the dependencies for any nested children. If something
             % goes wrong (for example one of the files was removed), the
             % dependencies for all modules in the source file will be remade
             % (make_module_dependencies expects to be given the top-level
             % module in the source file).
+            NestedSubModules =
+                get_nested_children_list_of_top_module(MaybeTopModule),
             list.foldl2(
-                read_module_dependencies_2(Globals, do_not_rebuild_module_deps,
-                    SearchDirs),
-                NestedChildren, !Info, !IO),
-            ( if some_bad_module_dependency(!.Info, NestedChildren) then
+                read_module_dependencies_2(Globals,
+                    do_not_rebuild_module_deps, SearchDirs),
+                NestedSubModules, !Info, !IO),
+            ( if some_bad_module_dependency(!.Info, NestedSubModules0) then
                 Result = error("error in nested submodules")
             else
                 Result = ok

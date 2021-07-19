@@ -153,6 +153,23 @@
 
 %---------------------------------------------------------------------------%
 
+:- type maybe_top_module
+    --->    top_module(set(module_name))
+            % This module is the top module in its source file,
+            % and the argument gives the names of all its descendants
+            % (i.e. its children, its children's children, and so on).
+    ;       not_top_module.
+            % This module is NOT the top module in its source file.
+
+    % Return the module's nested childred IF it is a top module.
+    % Otherwise, return the empty set or list.
+    %
+:- func get_nested_children_of_top_module(maybe_top_module) = set(module_name).
+:- func get_nested_children_list_of_top_module(maybe_top_module) =
+    list(module_name).
+
+%---------------------------------------------------------------------------%
+
     % The `module_and_imports' structure holds information about
     % a module and the modules that it imports. We build this structure up
     % as we go along.
@@ -184,7 +201,7 @@
 
     % make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
     %  ParseTreeModuleSrc,
-    %  PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
+    %  PublicChildren, MaybeTopModule, FactDeps, ForeignIncludeFiles,
     %  ForeignExportLangs, HasMain, MaybeTimestampMap,
     %  ModuleAndImports):
     %
@@ -203,7 +220,7 @@
     %
 :- pred make_module_and_imports(globals::in, file_name::in,
     module_name::in, parse_tree_module_src::in, module_names_contexts::in,
-    set(module_name)::in, list(string)::in, foreign_include_file_infos::in,
+    maybe_top_module::in, list(string)::in, foreign_include_file_infos::in,
     set(foreign_language)::in,
     maybe(module_timestamp_map)::in, module_and_imports::out) is det.
 
@@ -216,7 +233,7 @@
 :- pred make_module_dep_module_and_imports(string::in, string::in,
     module_name::in, module_name::in,
     list(module_name)::in, list(module_name)::in,
-    list(module_name)::in, list(module_name)::in,
+    maybe_top_module::in, list(module_name)::in,
     list(module_name)::in, list(string)::in,
     list(fim_spec)::in, list(foreign_include_file_info)::in,
     contains_foreign_code::in, contains_foreign_export::in,
@@ -243,8 +260,8 @@
     module_names_contexts::out) is det.
 :- pred module_and_imports_get_public_children_map(module_and_imports::in,
     module_names_contexts::out) is det.
-:- pred module_and_imports_get_nested_children(module_and_imports::in,
-    set(module_name)::out) is det.
+:- pred module_and_imports_get_maybe_top_module(module_and_imports::in,
+    maybe_top_module::out) is det.
 :- pred module_and_imports_get_int_deps_map(module_and_imports::in,
     module_names_contexts::out) is det.
 :- pred module_and_imports_get_imp_deps_map(module_and_imports::in,
@@ -382,7 +399,7 @@
     %
 :- pred module_and_imports_d_file(module_and_imports::in,
     file_name::out, module_name::out,
-    set(module_name)::out, module_names_contexts::out, set(module_name)::out,
+    set(module_name)::out, module_names_contexts::out, maybe_top_module::out,
     module_names_contexts::out, module_names_contexts::out,
     set(module_name)::out, list(string)::out,
     c_j_cs_fims::out, foreign_include_file_infos::out,
@@ -501,7 +518,7 @@
 
                 % The modules included in the same source file. This field
                 % is only set for the top-level module in each file.
-                mai_nested_children     :: set(module_name),
+                mai_maybe_top_module    :: maybe_top_module,
 
                 % The set of modules it directly imports in the interface
                 % (imports via ancestors count as direct).
@@ -591,18 +608,37 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+get_nested_children_of_top_module(MaybeTopModule) = Modules :-
+    (
+        MaybeTopModule = top_module(Modules)
+    ;
+        MaybeTopModule = not_top_module,
+        set.init(Modules)
+    ).
+
+get_nested_children_list_of_top_module(MaybeTopModule) = Modules :-
+    (
+        MaybeTopModule = top_module(ModulesSet),
+        Modules = set.to_sorted_list(ModulesSet)
+    ;
+        MaybeTopModule = not_top_module,
+        Modules = []
+    ).
+
+%---------------------------------------------------------------------------%
+
 parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
         ParseTreeSrc, ReadModuleErrors, !Specs,
         ParseTreeModuleSrcs, ModuleAndImportsList) :-
     split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
         ParseTreeModuleSrcs, !Specs),
     ParseTreeSrc = parse_tree_src(TopModuleName, _, _),
-    CompUnitModuleNames = set.list_to_set(
+    AllModuleNames = set.list_to_set(
         list.map(parse_tree_module_src_project_name, ParseTreeModuleSrcs)),
     MAISpecs0 = [],
     list.map(
-        init_module_and_imports(Globals, SourceFileName, TopModuleName,
-            CompUnitModuleNames, MAISpecs0, ReadModuleErrors),
+        maybe_nested_init_module_and_imports(Globals, SourceFileName,
+            TopModuleName, AllModuleNames, MAISpecs0, ReadModuleErrors),
         ParseTreeModuleSrcs, ModuleAndImportsList).
 
 rebuild_module_and_imports_for_dep_file(Globals,
@@ -620,18 +656,34 @@ rebuild_module_and_imports_for_dep_file(Globals,
         SourceFileName),
     module_and_imports_get_source_file_module_name(ModuleAndImports0,
         SourceFileModuleName),
-    module_and_imports_get_nested_children(ModuleAndImports0,
-        NestedChildren),
+    module_and_imports_get_maybe_top_module(ModuleAndImports0,
+        MaybeTopModule),
     set.init(ReadModuleErrors0),
     init_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-        NestedChildren, Specs, ReadModuleErrors0, ParseTreeModuleSrc,
+        MaybeTopModule, Specs, ReadModuleErrors0, ParseTreeModuleSrc,
         ModuleAndImports).
 
 %---------------------------------------------------------------------------%
 
+:- pred maybe_nested_init_module_and_imports(globals::in, file_name::in,
+    module_name::in, set(module_name)::in,
+    list(error_spec)::in, read_module_errors::in,
+    parse_tree_module_src::in, module_and_imports::out) is det.
+
+maybe_nested_init_module_and_imports(Globals, FileName, SourceFileModuleName,
+        AllModuleNames, Specs, Errors, ParseTreeModuleSrc, ModuleAndImports) :-
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+    ( if ModuleName = SourceFileModuleName then
+        set.delete(ModuleName, AllModuleNames, NestedModuleNames),
+        MaybeTopModule = top_module(NestedModuleNames)
+    else
+        MaybeTopModule = not_top_module
+    ),
+    init_module_and_imports(Globals, FileName, SourceFileModuleName,
+        MaybeTopModule, Specs, Errors, ParseTreeModuleSrc, ModuleAndImports).
+
     % init_module_and_imports(Globals, FileName, SourceFileModuleName,
-    %   NestedModuleNames, Specs, Errors, ParseTreeModuleSrc,
-    %   ModuleAndImports):
+    %   MaybeTopModule, Specs, Errors, ParseTreeModuleSrc, ModuleAndImports):
     %
     % Initialize a module_and_imports structure.
     %
@@ -645,36 +697,13 @@ rebuild_module_and_imports_for_dep_file(Globals,
     % module_and_imports structure.
     %
 :- pred init_module_and_imports(globals::in, file_name::in, module_name::in,
-    set(module_name)::in, list(error_spec)::in, read_module_errors::in,
+    maybe_top_module::in, list(error_spec)::in, read_module_errors::in,
     parse_tree_module_src::in, module_and_imports::out) is det.
 
 init_module_and_imports(Globals, FileName, SourceFileModuleName,
-        NestedModuleNames, Specs, Errors, ParseTreeModuleSrc,
-        ModuleAndImports) :-
+        MaybeTopModule, Specs, Errors, ParseTreeModuleSrc, ModuleAndImports) :-
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     Ancestors = get_ancestors(ModuleName),
-
-    % NOTE This if-then-else looks strange, but it works. It works for
-    % two different reasons in our callers' two different use cases.
-    %
-    % Use case 1: our callers parse_tree_src_to_module_and_imports_list
-    % and parse_tree_int_to_module_and_imports pass to us in the
-    % NestedModuleNames argument the set of the names of all the modules
-    % that are nested within a single source file.
-    % If the module we are currently processing is the top module in that
-    % source file, then all the other modules in NestedModuleNames are
-    % its (direct or indirect) submodules. If it is not the top module,
-    % then this field is *supposed* to be empty.
-    %
-    % Use case 2: our caller rebuild_module_and_imports_for_dep_file
-    % passes to as NestedModuleNames the value of the same field
-    % of the original module_and_imports structure being rebuilt.
-    % This works because the operation of this if-then-else is idempotent.
-    ( if ModuleName = SourceFileModuleName then
-        set.delete(ModuleName, NestedModuleNames, NestedDeps)
-    else
-        set.init(NestedDeps)
-    ),
 
     % We don't fill in the indirect dependencies yet.
     set.init(IndirectDeps),
@@ -825,7 +854,7 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     ModuleAndImports = module_and_imports(FileName, dir.this_directory,
         SourceFileModuleName,
         set.list_to_set(Ancestors), ChildrenMap, PublicChildrenMap,
-        NestedDeps, IntDepsMap, IntImpDepsMap, IndirectDeps,
+        MaybeTopModule, IntDepsMap, IntImpDepsMap, IndirectDeps,
         SortedFactTables, FIMs, ForeignIncludeFilesCord,
         ContainsForeignCode, ContainsForeignExport,
         ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
@@ -862,7 +891,7 @@ accumulate_foreign_import_langs_in_item(Item, !LangSet) :-
 %---------------------------------------------------------------------------%
 
 make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-        ParseTreeModuleSrc, PublicChildrenMap, NestedChildren, FactDeps,
+        ParseTreeModuleSrc, PublicChildrenMap, MaybeTopModule, FactDeps,
         ForeignIncludeFiles, ForeignExportLangs, MaybeTimestampMap,
         ModuleAndImports) :-
     set.init(Ancestors),
@@ -895,7 +924,7 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
         SourceFileModuleName,
-        Ancestors, ChildrenMap, PublicChildrenMap, NestedChildren,
+        Ancestors, ChildrenMap, PublicChildrenMap, MaybeTopModule,
         IntDeps, ImpDeps, IndirectDeps, FactDeps,
         ForeignImports, ForeignIncludeFiles,
         foreign_code_langs_unknown, ContainsForeignExport,
@@ -908,7 +937,7 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
 
 make_module_dep_module_and_imports(SourceFileName, ModuleDir,
         SourceFileModuleName, ModuleName,
-        Ancestors, Children, NestedChildren, IntDeps, ImpDeps, FactDeps,
+        Ancestors, Children, MaybeTopModule, IntDeps, ImpDeps, FactDeps,
         ForeignImports, ForeignIncludes,
         ContainsForeignCode, ContainsForeignExport, ModuleAndImports) :-
     ModuleNameContext = term.dummy_context_init,
@@ -943,7 +972,7 @@ make_module_dep_module_and_imports(SourceFileName, ModuleDir,
     ModuleAndImports = module_and_imports(SourceFileName, ModuleDir,
         SourceFileModuleName,
         set.list_to_set(Ancestors), ChildrenContexts, PublicChildrenContexts,
-        set.list_to_set(NestedChildren),
+        MaybeTopModule,
         IntDepsContexts, ImpDepsContexts, IndirectDeps, FactDeps,
         ForeignImportModules, cord.from_list(ForeignIncludes),
         ContainsForeignCode, ContainsForeignExport,
@@ -1160,7 +1189,7 @@ module_and_imports_get_public_children_map(ModuleAndImports, X) :-
         ),
         X = ModuleAndImports ^ mai_public_children
     ).
-module_and_imports_get_nested_children(ModuleAndImports, X) :-
+module_and_imports_get_maybe_top_module(ModuleAndImports, X) :-
     promise_pure (
         trace [compile_time(flag("mai-stats"))] (
             semipure get_accesses(Accesses0),
@@ -1168,22 +1197,22 @@ module_and_imports_get_nested_children(ModuleAndImports, X) :-
             (
                 Method = mcm_init,
                 Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_nested_children := accessed,
+                Fields = Fields0 ^ mf_maybe_top_module := accessed,
                 Accesses = Accesses0 ^ mfk_init := Fields
             ;
                 Method = mcm_make,
                 Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_nested_children := accessed,
+                Fields = Fields0 ^ mf_maybe_top_module := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
             ;
                 Method = mcm_read,
                 Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_nested_children := accessed,
+                Fields = Fields0 ^ mf_maybe_top_module := accessed,
                 Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
-        X = ModuleAndImports ^ mai_nested_children
+        X = ModuleAndImports ^ mai_maybe_top_module
     ).
 module_and_imports_get_int_deps_map(ModuleAndImports, X) :-
     promise_pure (
@@ -1905,7 +1934,7 @@ module_and_imports_add_specs_errors(NewSpecs, NewErrors, !ModuleAndImports) :-
 
 module_and_imports_d_file(ModuleAndImports,
         SourceFileName, SourceFileModuleName,
-        Ancestors, PublicChildrenMap, NestedChildren,
+        Ancestors, PublicChildrenMap, MaybeTopModule,
         IntDepsMap, ImpDepsMap, IndirectDeps, FactDeps,
         CJCsEFIMs, ForeignIncludeFilesCord, ContainsForeignCode,
         AugCompUnit) :-
@@ -1923,7 +1952,7 @@ module_and_imports_d_file(ModuleAndImports,
     module_and_imports_get_ancestors(ModuleAndImports, Ancestors),
     module_and_imports_get_public_children_map(ModuleAndImports,
         PublicChildrenMap),
-    module_and_imports_get_nested_children(ModuleAndImports, NestedChildren),
+    module_and_imports_get_maybe_top_module(ModuleAndImports, MaybeTopModule),
     module_and_imports_get_int_deps_map(ModuleAndImports, IntDepsMap),
     module_and_imports_get_imp_deps_map(ModuleAndImports, ImpDepsMap),
     module_and_imports_get_indirect_deps(ModuleAndImports, IndirectDeps),
@@ -1994,7 +2023,7 @@ module_and_imports_get_aug_comp_unit(ModuleAndImports,
                 mf_ancestors                    :: maybe_accessed,
                 mf_children                     :: maybe_accessed,
                 mf_public_children              :: maybe_accessed,
-                mf_nested_children              :: maybe_accessed,
+                mf_maybe_top_module             :: maybe_accessed,
 
                 mf_int_deps_map                 :: maybe_accessed,
                 mf_imp_deps_map                 :: maybe_accessed,
@@ -2069,7 +2098,7 @@ write_mai_stats(Stream, !IO) :-
 write_mai_fields_stats(Stream, Kind, Fields, !IO) :-
     Fields = mai_fields(SrcFileName, ModuleDir,
         SrcFileModuleName, ModuleName, ModuleNameContext,
-        Ancestors, Children, PublicChildren, NestedChildren,
+        Ancestors, Children, PublicChildren, MaybeTopModule,
         IntDepsMap, ImpDepsMap, IndirectDeps, FactTableDeps,
         FIMs, ForeignIncludeFiles, HasForeignCode, HasForeignExport,
         ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
@@ -2087,7 +2116,7 @@ write_mai_fields_stats(Stream, Kind, Fields, !IO) :-
         s(acc_str(Ancestors)),
         s(acc_str(Children)),
         s(acc_str(PublicChildren)),
-        s(acc_str(NestedChildren)),
+        s(acc_str(MaybeTopModule)),
         s(acc_str(IntDepsMap)),
         s(acc_str(ImpDepsMap)),
         s(acc_str(IndirectDeps)),
