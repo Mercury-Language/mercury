@@ -1234,19 +1234,21 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
     VarSet = ClauseContext ^ tecc_varset,
     Context = goal_info_get_context(GoalInfo),
     (
-        GoalExpr0 = conj(ConjType, List0),
+        GoalExpr0 = conj(ConjType, SubGoals0),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("conj", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
         ),
-        typecheck_goal_list(List0, List, Context, !TypeAssignSet, !Info),
-        GoalExpr = conj(ConjType, List)
+        typecheck_goal_list(SubGoals0, SubGoals, Context,
+            !TypeAssignSet, !Info),
+        GoalExpr = conj(ConjType, SubGoals)
     ;
-        GoalExpr0 = disj(List0),
+        GoalExpr0 = disj(SubGoals0),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("disj", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
         ),
-        typecheck_goal_list(List0, List, Context, !TypeAssignSet, !Info),
-        GoalExpr = disj(List)
+        typecheck_goal_list(SubGoals0, SubGoals, Context,
+            !TypeAssignSet, !Info),
+        GoalExpr = disj(SubGoals)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
@@ -1309,18 +1311,18 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;
-        GoalExpr0 = plain_call(_, ProcId, Args, BI, UC, Name),
+        GoalExpr0 = plain_call(_, ProcId, ArgVars, BI, UC, Name),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
             type_checkpoint("call", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
         ),
-        list.length(Args, Arity),
+        list.length(ArgVars, Arity),
         SymNameArity = sym_name_arity(Name, Arity),
         GoalId = goal_info_get_goal_id(GoalInfo),
-        typecheck_call_pred_name(SymNameArity, Context, GoalId, Args, PredId,
-            !TypeAssignSet, !Info),
-        GoalExpr = plain_call(PredId, ProcId, Args, BI, UC, Name)
+        typecheck_call_pred_name(SymNameArity, Context, GoalId, ArgVars,
+            PredId, !TypeAssignSet, !Info),
+        GoalExpr = plain_call(PredId, ProcId, ArgVars, BI, UC, Name)
     ;
-        GoalExpr0 = generic_call(GenericCall, Args, _Modes, _MaybeArgRegs,
+        GoalExpr0 = generic_call(GenericCall, ArgVars, _Modes, _MaybeArgRegs,
             _Detism),
         (
             GenericCall = higher_order(PredVar, Purity, _, _),
@@ -1330,7 +1332,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             ),
             hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
             typecheck_higher_order_call(GenericCallId, Context,
-                PredVar, Purity, Args, !TypeAssignSet, !Info)
+                PredVar, Purity, ArgVars, !TypeAssignSet, !Info)
         ;
             GenericCall = class_method(_, _, _, _),
             unexpected($pred, "unexpected class method call")
@@ -1340,7 +1342,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
                 type_checkpoint("event call", ModuleInfo, VarSet,
                     !.TypeAssignSet, !IO)
             ),
-            typecheck_event_call(Context, EventName, Args,
+            typecheck_event_call(Context, EventName, ArgVars,
                 !TypeAssignSet, !Info)
         ;
             GenericCall = cast(CastType),
@@ -1358,7 +1360,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
                     type_checkpoint("coerce", ModuleInfo, VarSet,
                         !.TypeAssignSet, !IO)
                 ),
-                typecheck_coerce(Context, Args, !TypeAssignSet, !Info)
+                typecheck_coerce(Context, ArgVars, !TypeAssignSet, !Info)
             )
         ),
         GoalExpr = GoalExpr0
@@ -1546,9 +1548,9 @@ ensure_vars_have_a_single_type(VarVectorKind, Context, Vars,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_higher_order_call(GenericCallId, Context, PredVar, Purity, Args,
+typecheck_higher_order_call(GenericCallId, Context, PredVar, Purity, ArgVars,
         !TypeAssignSet, !Info) :-
-    list.length(Args, Arity),
+    list.length(ArgVars, Arity),
     higher_order_pred_type(Purity, Arity, lambda_normal,
         TypeVarSet, PredVarType, ArgTypes),
     VarVectorKind = var_vector_args(arg_vector_generic_call(GenericCallId)),
@@ -1557,7 +1559,7 @@ typecheck_higher_order_call(GenericCallId, Context, PredVar, Purity, Args,
     empty_hlds_constraints(EmptyConstraints),
     ExistQVars = [],
     typecheck_var_has_polymorphic_type_list(VarVectorKind, Context,
-        [PredVar | Args], TypeVarSet, ExistQVars, [PredVarType | ArgTypes],
+        [PredVar | ArgVars], TypeVarSet, ExistQVars, [PredVarType | ArgTypes],
         EmptyConstraints, !TypeAssignSet, !Info).
 
     % higher_order_pred_type(Purity, N, EvalMethod,
@@ -1607,20 +1609,20 @@ higher_order_func_type(Purity, Arity, EvalMethod, TypeVarSet,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_event_call(Context, EventName, Args, !TypeAssignSet, !Info) :-
+typecheck_event_call(Context, EventName, ArgVars, !TypeAssignSet, !Info) :-
     typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_event_set(ModuleInfo, EventSet),
     EventSpecMap = EventSet ^ event_set_spec_map,
     ( if event_arg_types(EventSpecMap, EventName, EventArgTypes) then
-        list.length(Args, NumArgs),
+        list.length(ArgVars, NumArgVars),
         list.length(EventArgTypes, NumEventArgTypes),
-        ( if NumArgs = NumEventArgTypes then
+        ( if NumArgVars = NumEventArgTypes then
             ArgVectorKind = arg_vector_event(EventName),
             typecheck_vars_have_types(ArgVectorKind, Context,
-                Args, EventArgTypes, !TypeAssignSet, !Info)
+                ArgVars, EventArgTypes, !TypeAssignSet, !Info)
         else
             Spec = report_event_args_mismatch(Context,
-                EventName, EventArgTypes, Args),
+                EventName, EventArgTypes, ArgVars),
             typecheck_info_add_error(Spec, !Info)
         )
     else
@@ -1635,7 +1637,7 @@ typecheck_event_call(Context, EventName, Args, !TypeAssignSet, !Info) :-
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_call_pred_name(SymNameArity, Context, GoalId, Args, PredId,
+typecheck_call_pred_name(SymNameArity, Context, GoalId, ArgVars, PredId,
         !TypeAssignSet, !Info) :-
     % Look up the called predicate's arg types.
     typecheck_info_get_module_info(!.Info, ModuleInfo),
@@ -1660,11 +1662,11 @@ typecheck_call_pred_name(SymNameArity, Context, GoalId, Args, PredId,
             PredId = HeadPredId,
             ArgVectorKind = arg_vector_plain_call_pred_id(PredId),
             typecheck_call_pred_id(ArgVectorKind, Context, GoalId,
-                PredId, Args, !TypeAssignSet, !Info)
+                PredId, ArgVars, !TypeAssignSet, !Info)
         ;
             TailPredIds = [_ | _],
             typecheck_call_overloaded_pred(SymNameArity, Context, GoalId,
-                PredIds, Args, !TypeAssignSet, !Info),
+                PredIds, ArgVars, !TypeAssignSet, !Info),
 
             % In general, we can't figure out which predicate it is until
             % after we have resolved any overloading, which may require
@@ -1689,32 +1691,30 @@ typecheck_call_pred_name(SymNameArity, Context, GoalId, Args, PredId,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_call_pred_id(ArgVectorKind, Context, GoalId, PredId, Args,
+typecheck_call_pred_id(ArgVectorKind, Context, GoalId, PredId, ArgVars,
         !TypeAssignSet, !Info) :-
     typecheck_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_predicate_table(ModuleInfo, PredicateTable),
-    predicate_table_get_preds(PredicateTable, Preds),
-    map.lookup(Preds, PredId, PredInfo),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
         PredArgTypes),
     pred_info_get_class_context(PredInfo, PredClassContext),
 
     % Rename apart the type variables in the called predicate's arg types
     % and then unify the types of the call arguments with the called
-    % predicates' arg types (optimize for the common case of a non-polymorphic,
-    % non-constrained predicate).
+    % predicates' arg types. Optimize the common case of a non-polymorphic,
+    % non-constrained predicate.
     ( if
         varset.is_empty(PredTypeVarSet),
         PredClassContext = constraints([], [])
     then
-        typecheck_vars_have_types(ArgVectorKind, Context, Args,
+        typecheck_vars_have_types(ArgVectorKind, Context, ArgVars,
             PredArgTypes, !TypeAssignSet, !Info)
     else
         module_info_get_class_table(ModuleInfo, ClassTable),
         make_body_hlds_constraints(ClassTable, PredTypeVarSet,
             GoalId, PredClassContext, PredConstraints),
         typecheck_var_has_polymorphic_type_list(var_vector_args(ArgVectorKind),
-            Context, Args, PredTypeVarSet, PredExistQVars,
+            Context, ArgVars, PredTypeVarSet, PredExistQVars,
             PredArgTypes, PredConstraints, !TypeAssignSet, !Info)
     ).
 
@@ -1724,7 +1724,7 @@ typecheck_call_pred_id(ArgVectorKind, Context, GoalId, PredId, Args,
     typecheck_info::in, typecheck_info::out) is det.
 
 typecheck_call_overloaded_pred(SymNameArity, Context, GoalId, PredIdList,
-        Args, TypeAssignSet0, TypeAssignSet, !Info) :-
+        ArgVars, TypeAssignSet0, TypeAssignSet, !Info) :-
     Symbol = overloaded_pred(SymNameArity, PredIdList),
     typecheck_info_add_overloaded_symbol(Symbol, Context, !Info),
 
@@ -1741,7 +1741,7 @@ typecheck_call_overloaded_pred(SymNameArity, Context, GoalId, PredIdList,
     % Then unify the types of the call arguments with the
     % called predicates' arg types.
     VarVectorKind = var_vector_args(arg_vector_plain_pred_call(SymNameArity)),
-    typecheck_var_has_arg_type_list(VarVectorKind, 1, Context, Args,
+    typecheck_var_has_arg_type_list(VarVectorKind, 1, Context, ArgVars,
         ArgsTypeAssignSet, TypeAssignSet, !Info).
 
 :- pred get_overloaded_pred_arg_types(list(pred_id)::in, pred_table::in,
@@ -1780,12 +1780,12 @@ get_overloaded_pred_arg_types([PredId | PredIds], Preds, ClassTable, GoalId,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_var_has_polymorphic_type_list(VarVectorKind, Context, Args,
+typecheck_var_has_polymorphic_type_list(VarVectorKind, Context, ArgVars,
         PredTypeVarSet, PredExistQVars, PredArgTypes, PredConstraints,
         TypeAssignSet0, TypeAssignSet, !Info) :-
     rename_apart(TypeAssignSet0, PredTypeVarSet, PredExistQVars,
         PredArgTypes, PredConstraints, [], ArgsTypeAssignSet),
-    typecheck_var_has_arg_type_list(VarVectorKind, 1, Context, Args,
+    typecheck_var_has_arg_type_list(VarVectorKind, 1, Context, ArgVars,
         ArgsTypeAssignSet, TypeAssignSet, !Info).
 
 :- pred rename_apart(type_assign_set::in, tvarset::in, existq_tvars::in,
@@ -1878,15 +1878,15 @@ typecheck_var_has_arg_type(GoalContext, Context, Var,
 delete_first_arg_in_each_arg_type_assign([], []).
 delete_first_arg_in_each_arg_type_assign([ArgTypeAssign0 | ArgTypeAssigns0],
         [ArgTypeAssign | ArgTypeAssigns]) :-
-    ArgTypeAssign0 = args_type_assign(TypeAssign, Args0, Constraints),
+    ArgTypeAssign0 = args_type_assign(TypeAssign, ArgTypes0, Constraints),
     (
-        Args0 = [_ | Args]
+        ArgTypes0 = [_ | ArgTypes]
     ;
-        Args0 = [],
+        ArgTypes0 = [],
         % this should never happen
         unexpected($pred, "skip_arg")
     ),
-    ArgTypeAssign = args_type_assign(TypeAssign, Args, Constraints),
+    ArgTypeAssign = args_type_assign(TypeAssign, ArgTypes, Constraints),
     delete_first_arg_in_each_arg_type_assign(ArgTypeAssigns0, ArgTypeAssigns).
 
 :- pred typecheck_var_has_arg_type_2(args_type_assign_set::in, prog_var::in,
