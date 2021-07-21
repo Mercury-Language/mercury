@@ -65,9 +65,11 @@ Changes to the Mercury standard library
 
 ### Changes to the `char` module
 
-* The following predicate has been added:
+* The following predicates have been added:
 
     - pred `unsafe_base_digit_to_int/3`
+    - pred `to_utf8_uint8/2`
+    - pred `to_utf16_uint16/2`
 
 * The following obsolete predicates and functions have been removed:
 
@@ -160,7 +162,7 @@ Changes to the Mercury standard library
 
 * The following predicate has been renamed:
 
-    - pred `report_stats/2' to `report_standard_stats'/2.
+    - pred `report_stats/2` to `report_standard_stats/2`.
 
 ### Changes to the `list` module
 
@@ -625,8 +627,6 @@ Changes to the Mercury standard library
 
     - func `hash/1`
     - pred `hash/2`
-    - pred `to_utf8_uint8/2`
-    - pred `to_utf16_uint16/2`
 
 ### Changes to the `float` module
 
