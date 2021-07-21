@@ -625,6 +625,8 @@ Changes to the Mercury standard library
 
     - func `hash/1`
     - pred `hash/2`
+    - pred `to_utf8_uint8/2`
+    - pred `to_utf16_uint16/2`
 
 ### Changes to the `float` module
 

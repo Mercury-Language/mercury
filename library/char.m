@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2008, 2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2018 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2021 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -17,7 +17,7 @@
 % But now we use `char' and the use of `character' is discouraged.
 %
 % All predicates and functions exported by this module that deal with
-% Unicode conform to version 10 of the Unicode standard.
+% Unicode conform to version 13 of the Unicode standard.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -286,10 +286,18 @@
     %
 :- pred to_utf8(char::in, list(int)::out) is semidet.
 
+    % As above, but represent UTF-8 code units using uint8s.
+    %
+:- pred to_utf8_uint8(char::in, list(uint8)::out) is semidet.
+
     % Encode a Unicode code point in UTF-16 (native endianness).
     % Fails for surrogate code points.
     %
 :- pred to_utf16(char::in, list(int)::out) is semidet.
+
+    % As above, but represent UTF-16 code units using uint16s.
+    %
+:- pred to_utf16_uint16(char::in, list(uint16)::out) is semidet.
 
     % True iff the character is a Unicode Surrogate code point, that is a code
     % point in General Category `Other,surrogate' (`Cs').
@@ -384,6 +392,8 @@
 :- import_module require.
 :- import_module term_io.
 :- import_module uint.
+:- import_module uint16.
+:- import_module uint8.
 
 :- instance enum(character) where [
     (to_int(X) = Y :-
@@ -949,51 +959,129 @@ det_base_int_to_digit(Base, Int) = Digit :-
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Conversion to UTF-8 code units.
+%
 
 to_utf8(Char, CodeUnits) :-
-    Int = char.to_int(Char),
-    ( if Int =< 0x7f then
-        CodeUnits = [Int]
-    else if Int =< 0x7ff then
-        A = 0xc0 \/ ((Int >> 6) /\ 0x1f),
-        B = 0x80 \/  (Int       /\ 0x3f),
-        CodeUnits = [A, B]
-    else if Int =< 0xffff then
-        not is_surrogate(Char),
-        A = 0xe0 \/ ((Int >> 12) /\ 0x0f),
-        B = 0x80 \/ ((Int >>  6) /\ 0x3f),
-        C = 0x80 \/  (Int        /\ 0x3f),
-        CodeUnits = [A, B, C]
-    else if Int =< 0x10ffff then
-        A = 0xf0 \/ ((Int >> 18) /\ 0x07),
-        B = 0x80 \/ ((Int >> 12) /\ 0x3f),
-        C = 0x80 \/ ((Int >>  6) /\ 0x3f),
-        D = 0x80 \/  (Int        /\ 0x3f),
-        CodeUnits = [A, B, C, D]
-    else
-        % Illegal code point.
-        fail
+    to_utf8_code_units(Char, NumCodeUnits, A, B, C, D),
+    (
+        NumCodeUnits = 1,
+        CodeUnits = [uint8.to_int(A)]
+    ;
+        NumCodeUnits = 2,
+        CodeUnits = [uint8.to_int(A), uint8.to_int(B)]
+    ;
+        NumCodeUnits = 3,
+        CodeUnits = [uint8.to_int(A), uint8.to_int(B), uint8.to_int(C)]
+    ;
+        NumCodeUnits = 4,
+        CodeUnits = [uint8.to_int(A), uint8.to_int(B),
+            uint8.to_int(C), uint8.to_int(D)]
     ).
 
+to_utf8_uint8(Char, CodeUnits) :-
+    to_utf8_code_units(Char, NumCodeUnits, A, B, C, D),
+    (
+        NumCodeUnits = 1,
+        CodeUnits = [A]
+    ;
+        NumCodeUnits = 2,
+        CodeUnits = [A, B]
+    ;
+        NumCodeUnits = 3,
+        CodeUnits = [A, B, C]
+    ;
+        NumCodeUnits = 4,
+        CodeUnits = [A, B, C, D]
+    ).
+
+:- pred to_utf8_code_units(char::in, int::out(bound(1 ; 2 ; 3 ; 4)),
+    uint8::out, uint8::out, uint8::out, uint8::out) is semidet.
+
+to_utf8_code_units(Char, NumCodeUnits, A, B, C, D) :-
+    Int = char.to_int(Char),
+    ( if Int =< 0x7f then
+        A = uint8.cast_from_int(Int),
+        B = 0u8,
+        C = 0u8,
+        D = 0u8,
+        NumCodeUnits = 1
+    else if Int =< 0x7ff then
+        A = uint8.cast_from_int(0xc0 \/ ((Int >> 6) /\ 0x1f)),
+        B = uint8.cast_from_int(0x80 \/  (Int       /\ 0x3f)),
+        C = 0u8,
+        D = 0u8,
+        NumCodeUnits = 2
+    else if Int =< 0xffff then
+        not is_surrogate(Char),
+        A = uint8.cast_from_int(0xe0 \/ ((Int >> 12) /\ 0x0f)),
+        B = uint8.cast_from_int(0x80 \/ ((Int >>  6) /\ 0x3f)),
+        C = uint8.cast_from_int(0x80 \/  (Int        /\ 0x3f)),
+        D = 0u8,
+        NumCodeUnits = 3
+    else if Int =< 0x10ffff then
+        A = uint8.cast_from_int(0xf0 \/ ((Int >> 18) /\ 0x07)),
+        B = uint8.cast_from_int(0x80 \/ ((Int >> 12) /\ 0x3f)),
+        C = uint8.cast_from_int(0x80 \/ ((Int >>  6) /\ 0x3f)),
+        D = uint8.cast_from_int(0x80 \/  (Int        /\ 0x3f)),
+        NumCodeUnits = 4
+    else
+        error($pred, "illegal code point")
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Conversion to UTF-16 code units.
+%
+
 to_utf16(Char, CodeUnits) :-
+    to_utf16_code_units(Char, NumCodeUnits, A, B),
+    (
+        NumCodeUnits = 1,
+        CodeUnits = [uint16.to_int(A)]
+    ;
+        NumCodeUnits = 2,
+        CodeUnits = [uint16.to_int(A), uint16.to_int(B)]
+    ).
+
+to_utf16_uint16(Char, CodeUnits) :-
+    to_utf16_code_units(Char, NumCodeUnits, A, B),
+    (
+        NumCodeUnits = 1,
+        CodeUnits = [A]
+    ;
+        NumCodeUnits = 2,
+        CodeUnits = [A, B]
+    ).
+
+:- pred to_utf16_code_units(char::in, int::out(bound(1 ; 2)),
+    uint16::out, uint16::out) is semidet.
+
+to_utf16_code_units(Char, NumCodeUnits, A, B) :-
     Int = char.to_int(Char),
     ( if Int < 0xd800 then
         % Common case.
-        CodeUnits = [Int]
+        A = uint16.cast_from_int(Int),
+        B = 0u16,
+        NumCodeUnits = 1
     else if Int =< 0xdfff then
         % Surrogate.
         fail
     else if Int =< 0xffff then
-        CodeUnits = [Int]
+        A = uint16.cast_from_int(Int),
+        B = 0u16,
+        NumCodeUnits = 1
     else if Int =< 0x10ffff then
         U = Int - 0x10000,
-        A = 0xd800 \/ (U >> 10),
-        B = 0xdc00 \/ (U /\ 0x3ff),
-        CodeUnits = [A, B]
+        A = uint16.cast_from_int(0xd800 \/ (U >> 10)),
+        B = uint16.cast_from_int(0xdc00 \/ (U /\ 0x3ff)),
+        NumCodeUnits = 2
     else
-        % Illegal code point.
-        fail
+        error($pred, "illegal code point")
     ).
+
+%---------------------------------------------------------------------------%
 
 is_surrogate(Char) :-
     Int = char.to_int(Char),
