@@ -103,13 +103,13 @@ generate_dep_file_for_file(Globals, FileName, !IO) :-
 
 generate_d_file_for_module(Globals, ModuleName, !IO) :-
     map.init(DepsMap),
-    generate_dependencies(Globals, output_d_file_only, do_search, ModuleName,
-        DepsMap, !IO).
+    generate_dependencies(Globals, output_d_file_only, do_search,
+        ModuleName, DepsMap, !IO).
 
 generate_d_file_for_file(Globals, FileName, !IO) :-
     build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO),
-    generate_dependencies(Globals, output_d_file_only, do_search, ModuleName,
-        DepsMap, !IO).
+    generate_dependencies(Globals, output_d_file_only, do_search,
+        ModuleName, DepsMap, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -140,9 +140,10 @@ build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
 :- pred generate_dependencies(globals::in, generate_dependencies_mode::in,
     maybe_search::in, module_name::in, deps_map::in, io::di, io::uo) is det.
 
-generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
+generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
+        !IO) :-
     % First, build up a map of the dependencies.
-    generate_deps_map(Globals, ModuleName, Search, DepsMap0, DepsMap, !IO),
+    generate_deps_map(Globals, Search, ModuleName, DepsMap0, DepsMap, !IO),
 
     % Check whether we could read the main `.m' file.
     map.lookup(DepsMap, ModuleName, ModuleDep),

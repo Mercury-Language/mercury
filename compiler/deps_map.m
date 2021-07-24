@@ -56,7 +56,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_deps_map(globals::in, module_name::in, maybe_search::in,
+:- pred generate_deps_map(globals::in, maybe_search::in, module_name::in,
     deps_map::in, deps_map::out, io::di, io::uo) is det.
 
     % Insert a new entry into the deps_map. If the module already occurred
@@ -121,36 +121,42 @@ get_submodule_kind(ModuleName, DepsMap) = Kind :-
 
 %---------------------------------------------------------------------------%
 
-generate_deps_map(Globals, ModuleName, Search, !DepsMap, !IO) :-
-    generate_deps_map_loop(Globals, map.singleton(ModuleName, []), Search,
+generate_deps_map(Globals, Search, ModuleName, !DepsMap, !IO) :-
+    generate_deps_map_loop(Globals, Search, map.singleton(ModuleName, []),
         !DepsMap, !IO).
 
-:- pred generate_deps_map_loop(globals::in,
-    map(module_name, list(term.context))::in, maybe_search::in,
+    % Values of this type map each module name to the list of contexts
+    % that mention it, and thus establish an expectation that a module
+    % with that name exists.
+    %
+:- type expectation_contexts_map == map(module_name, expectation_contexts).
+:- type expectation_contexts == list(term.context).
+
+:- pred generate_deps_map_loop(globals::in, maybe_search::in,
+    expectation_contexts_map::in,
     deps_map::in, deps_map::out, io::di, io::uo) is det.
 
-generate_deps_map_loop(Globals, !.Modules, Search, !DepsMap, !IO) :-
+generate_deps_map_loop(Globals, Search, !.Modules, !DepsMap, !IO) :-
     ( if map.remove_smallest(Module, ExpectationContexts, !Modules) then
-        generate_deps_map_step(Globals, Module, ExpectationContexts,
-            !Modules, Search, !DepsMap, !IO),
-        generate_deps_map_loop(Globals, !.Modules, Search, !DepsMap, !IO)
+        generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
+            !Modules, !DepsMap, !IO),
+        generate_deps_map_loop(Globals, Search, !.Modules, !DepsMap, !IO)
     else
         % If we can't remove the smallest, then the set of modules to be
         % processed is empty.
         true
     ).
 
-:- pred generate_deps_map_step(globals::in,
-    module_name::in, list(term.context)::in,
-    map(module_name, list(term.context))::in,
-    map(module_name, list(term.context))::out,
-    maybe_search::in, deps_map::in, deps_map::out, io::di, io::uo) is det.
+:- pred generate_deps_map_step(globals::in, maybe_search::in,
+    module_name::in, expectation_contexts::in,
+    expectation_contexts_map::in, expectation_contexts_map::out,
+    deps_map::in, deps_map::out, io::di, io::uo) is det.
 
-generate_deps_map_step(Globals, Module, ExpectationContexts,
-        !Modules, Search, !DepsMap, !IO) :-
+generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
+        !Modules, !DepsMap, !IO) :-
     % Look up the module's dependencies, and determine whether
     % it has been processed yet.
-    lookup_dependencies(Globals, Module, ExpectationContexts, Search, Deps0,
+    lookup_dependencies(Globals, Search, Module, ExpectationContexts, Deps0,
         !DepsMap, !IO),
 
     % If the module hadn't been processed yet, then add its imports, parents,
@@ -194,8 +200,7 @@ generate_deps_map_step(Globals, Module, ExpectationContexts,
     ).
 
 :- pred add_module_name_and_context(term.context::in, module_name::in,
-    map(module_name, list(term.context))::in,
-    map(module_name, list(term.context))::out) is det.
+    expectation_contexts_map::in, expectation_contexts_map::out) is det.
 
 add_module_name_and_context(Context, ModuleName, !Modules) :-
     ( if map.search(!.Modules, ModuleName, OldContexts) then
@@ -206,8 +211,7 @@ add_module_name_and_context(Context, ModuleName, !Modules) :-
 
 :- pred add_module_name_with_contexts(
     pair(module_name, one_or_more(term.context))::in,
-    map(module_name, list(term.context))::in,
-    map(module_name, list(term.context))::out) is det.
+    expectation_contexts_map::in, expectation_contexts_map::out) is det.
 
 add_module_name_with_contexts(ModuleName - NewContexts, !Modules) :-
     ( if map.search(!.Modules, ModuleName, OldContexts) then
@@ -222,16 +226,16 @@ add_module_name_with_contexts(ModuleName - NewContexts, !Modules) :-
     % If we don't know its dependencies, read the module and
     % save the dependencies in the dependency map.
     %
-:- pred lookup_dependencies(globals::in,
-    module_name::in, list(term.context)::in, maybe_search::in,
+:- pred lookup_dependencies(globals::in, maybe_search::in,
+    module_name::in, expectation_contexts::in,
     deps::out, deps_map::in, deps_map::out, io::di, io::uo) is det.
 
-lookup_dependencies(Globals, ModuleName, ExpectationContexts, Search, Deps,
+lookup_dependencies(Globals, Search, ModuleName, ExpectationContexts, Deps,
         !DepsMap, !IO) :-
     ( if map.search(!.DepsMap, ModuleName, DepsPrime) then
         Deps = DepsPrime
     else
-        read_dependencies(Globals, ModuleName, ExpectationContexts, Search,
+        read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
             ModuleImportsList, !IO),
         list.foldl(insert_into_deps_map, ModuleImportsList, !DepsMap),
         map.lookup(!.DepsMap, ModuleName, Deps)
@@ -246,12 +250,13 @@ insert_into_deps_map(ModuleImports, !DepsMap) :-
     % and any nested submodules it contains. Return the module_and_imports
     % structure for the named module, and each of its nested submodules.
     %
-:- pred read_dependencies(globals::in, module_name::in, list(term.context)::in,
-    maybe_search::in, list(module_and_imports)::out, io::di, io::uo) is det.
+:- pred read_dependencies(globals::in, maybe_search::in,
+    module_name::in, expectation_contexts::in,
+    list(module_and_imports)::out, io::di, io::uo) is det.
 
-read_dependencies(Globals, ModuleName, ExpectationContexts, Search,
+read_dependencies(Globals, Search, ModuleName, ExpectationContexts,
         ModuleAndImportsList, !IO) :-
-    % XXX If _SrcSpecs contains error messages, the parse tree may not be
+    % XXX If SrcSpecs contains error messages, the parse tree may not be
     % complete, and the rest of this predicate may work on incorrect data.
     read_module_src(Globals, "Getting dependencies for module",
         ignore_errors, Search, ModuleName, ExpectationContexts,
@@ -259,7 +264,7 @@ read_dependencies(Globals, ModuleName, ExpectationContexts, Search,
         ParseTreeSrc, SrcSpecs, SrcReadModuleErrors, !IO),
     parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
         ParseTreeSrc, SrcReadModuleErrors, SrcSpecs, Specs,
-        _RawCompUnits, ModuleAndImportsList),
+        _ParseTreeModuleSrcs, ModuleAndImportsList),
     % XXX Why do we print out these error messages?
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
     write_error_specs_ignore(ErrorStream, Globals, Specs, !IO).
