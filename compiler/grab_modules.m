@@ -285,6 +285,30 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
             !.ImpImpIndirectImported,
             !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
+        globals.lookup_bool_option(Globals, experiment3, Experiment3),
+        (
+            Experiment3 = no
+        ;
+            Experiment3 = yes,
+            % This compiler invocation can get type representation information
+            % for all the types it has access to in the .int and/or .int2 files
+            % of the modules it imported directly or indirectly, *except* for
+            % the types it defines itself, and the types defined by its
+            % ancestors (if any). For representation information for these
+            % types, it must read its *own* .int file, and the .int file(s)
+            % of its ancestors.
+            process_module_int1(Globals, rwi1_type_repn, ModuleName,
+                _SelfParseTreeInt1, !HaveReadModuleMaps, !ModuleAndImports,
+                !IO)
+            % We don't yet get mmake or mmc --make build a module's ancestor's
+            % .int files before generating code for that module. This code
+            % is commented out until that has been done.
+            % list.map_foldl3(
+            %     process_module_int1(Globals, rwi1_type_repn),
+            %     get_ancestors(ModuleName), _AncestorParseTreeInt1s,
+            %     !HaveReadModuleMaps, !ModuleAndImports, !IO),
+        ),
+
         module_and_imports_get_aug_comp_unit(!.ModuleAndImports,
             AugCompUnit, _, _),
         AllImportedOrUsed = set.union_list([IntImports, IntUses,
@@ -685,22 +709,26 @@ process_module_int1(Globals, ReadWhy1, ModuleName, ParseTreeInt1,
             !ModuleAndImports),
         % XXX CLEANUP Why record a context if it is never meaningful?
         module_and_imports_add_direct_dep(ModuleName, term.dummy_context_init,
-            !ModuleAndImports)
+            !ModuleAndImports),
+        module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports)
     ;
         ReadWhy1 = rwi1_opt,
         RecompAvail = recomp_avail_imp_use,
         IntForOptSpec = for_opt_int1(ParseTreeInt1, ReadWhy1),
         module_and_imports_add_int_for_opt_spec(IntForOptSpec,
-            !ModuleAndImports)
+            !ModuleAndImports),
+        module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports)
     ;
         ReadWhy1 = rwi1_type_repn,
         RecompAvail = recomp_avail_int_import,
         TypeRepnSpec = type_repn_spec_int1(ParseTreeInt1),
         module_and_imports_add_type_repn_spec(TypeRepnSpec, !ModuleAndImports)
+        % Do not add Specs to !ModuleAndImports. Any error messages in there
+        % will be reported when the source file of the affected module
+        % is compiled to target code.
     ),
     maybe_record_interface_timestamp(ModuleName, ifk_int1, RecompAvail,
         MaybeTimestamp, !ModuleAndImports),
-    module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports),
     module_and_imports_maybe_add_module_version_numbers(ModuleName,
         ParseTreeInt1 ^ pti1_maybe_version_numbers, !ModuleAndImports).
 
@@ -1817,8 +1845,9 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
     OptModuleAncestors =
         set.power_union(set.map(get_ancestors_set, OptModules)),
     OldModuleAncestors = get_ancestors_set(ModuleName),
+    set.insert(ModuleName, OldModuleAncestors, OldModuleAndAncestors),
     OptOnlyModuleAncestors =
-        set.difference(OptModuleAncestors, OldModuleAncestors),
+        set.difference(OptModuleAncestors, OldModuleAndAncestors),
 
     grab_module_int0_files(Globals,
         "opt_int0s", rwi0_opt,
@@ -1842,14 +1871,6 @@ grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
         "opt_new_indirect_deps", rwi2_opt,
         set.union(NewIndirectDeps, NewImplIndirectDeps),
         !HaveReadModuleMaps, !ModuleAndImports, !IO),
-
-    % This compiler invocation can get type representation information
-    % for all the types it has access to in the .int and/or .int2 files
-    % of the modules it imported directly or indirectly, *except* for
-    % the types it defines itself. For representation information for
-    % these types, it must read its *own* .int file.
-    process_module_int1(Globals, rwi1_type_repn, ModuleName,
-        _SelfParseTreeInt1, !HaveReadModuleMaps, !ModuleAndImports, !IO),
 
     % Figure out whether anything went wrong.
     % XXX We should try to put all the relevant error indications into
