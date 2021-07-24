@@ -660,7 +660,7 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
                         "Get-context %s | %s > %s 2>&1",
                         [s(TmpFile), s(ProcessOutput), s(ProcessedTmpFile)])
                 else
-                    % On windows we can't in general redirect standard
+                    % On windows, we can't in general redirect standard
                     % error in the shell.
                     ProcessOutputRedirected = string.format("%s < %s > %s",
                         [s(ProcessOutput), s(TmpFile), s(ProcessedTmpFile)])
@@ -695,14 +695,14 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
                 ProcessOutputSucceeded = no
             ;
                 ProcessOutputResult = error(ProcessOutputError),
-                report_error(ErrorStream,
-                    io.error_message(ProcessOutputError), !IO),
+                ProcessOutputErrorMsg = io.error_message(ProcessOutputError),
+                report_error(ErrorStream, ProcessOutputErrorMsg, !IO),
                 ProcessOutputSucceeded = no
             )
         ;
             ProcessedTmpFileResult = error(ProcessTmpError),
-            report_error(ErrorStream,
-                io.error_message(ProcessTmpError), !IO),
+            ProcessTmpErrorMsg = io.error_message(ProcessTmpError),
+            report_error(ErrorStream, ProcessTmpErrorMsg, !IO),
             ProcessOutputSucceeded = no,
             ProcessedTmpFile = ""
         )
@@ -715,21 +715,10 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
     % Write the output to the error stream.
 
     % XXX Why do we try to do this EVEN WHEN the code above had not Succeeded?
-    io.open_input(ProcessedTmpFile, TmpFileRes, !IO),
+    io.read_named_file_as_string(ProcessedTmpFile, TmpFileRes, !IO),
     (
-        TmpFileRes = ok(TmpFileStream),
-        % XXX Call io.read_file_as_string, then print out the string.
-        io.input_stream_foldl_io(TmpFileStream, io.write_char(CmdOutputStream),
-            Res, !IO),
-        (
-            Res = ok
-        ;
-            Res = error(TmpFileReadError),
-            report_error(ErrorStream,
-                "error reading command output: " ++
-                io.error_message(TmpFileReadError), !IO)
-        ),
-        io.close_input(TmpFileStream, !IO)
+        TmpFileRes = ok(TmpFileString),
+        io.write_string(CmdOutputStream, TmpFileString, !IO)
     ;
         TmpFileRes = error(TmpFileError),
         report_error(ErrorStream,
