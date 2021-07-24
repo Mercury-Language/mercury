@@ -2079,8 +2079,8 @@ optdef(oc_misc, compiler_sufficiently_recent,           bool(no)).
 optdef(oc_misc, experiment,                             string("")).
 optdef(oc_misc, experiment1,                            bool(no)).
 optdef(oc_misc, experiment2,                            bool(no)).
-optdef(oc_misc, experiment3,                            bool(yes)).
-optdef(oc_misc, experiment4,                            bool(yes)).
+optdef(oc_misc, experiment3,                            bool(no)).
+optdef(oc_misc, experiment4,                            bool(no)).
 optdef(oc_misc, experiment5,                            bool(no)).
 optdef(oc_misc, ignore_par_conjunctions,                bool(no)).
 optdef(oc_misc, control_granularity,                    bool(no)).
