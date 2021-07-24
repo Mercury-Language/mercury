@@ -501,16 +501,7 @@ include Mercury.options
 
 #-----------------------------------------------------------------------------#
 
-ifneq ($(MMAKE_USE_MMC_MAKE),yes)
-
-%.err: %.m
-	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
-		> $*.err 2>&1; \
-	then false; \
-	else true; \
-	fi
-
-else
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 
 # XXX: with `mmake --use-mmc-make' the ".DEFAULT:" rule seems to take
 # precedence over "%.err: %.m" rules.
@@ -521,6 +512,15 @@ else
 $(addsuffix .err,$(PROGS)):
 	-$(MCM) $@
 	if $(MCM) -r $@ > /dev/null 2>&1 ; \
+	then false; \
+	else true; \
+	fi
+
+else
+
+%.err: %.m
+	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
+		> $*.err 2>&1; \
 	then false; \
 	else true; \
 	fi
