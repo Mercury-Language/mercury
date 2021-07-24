@@ -3406,13 +3406,14 @@ can do so by simply defining them using a mode declaration:
 These two modes are enough for most functions and predicates.
 Nevertheless, Mercury's mode system is sufficiently
 expressive to handle more complex data-flow patterns,
-including those involving partially instantiated data structures i.e.@: data
-structures with ``free'' @emph{holes} in them.
-(In the current implementation,
+including those involving partially instantiated data structures,
+i.e.@: terms that contain both function symbols and free variables,
+such as @samp{f(a, b, X)}.
+In the current implementation,
 partially instantiated data structures are unsupported
 due to a lack of alias tracking in the mode system.
 For more information,
-please see the @file{LIMITATIONS} file distributed with Mercury.)
+please see the @file{LIMITATIONS} file distributed with Mercury.
 
 For example, consider an interface to a database
 that associates data with keys,
