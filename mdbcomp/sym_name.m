@@ -225,13 +225,22 @@
 
 %---------------------------------------------------------------------------%
 
-get_ancestors(ModuleName) = get_ancestors_2(ModuleName, []).
+get_ancestors(ModuleName) = Ancestors :-
+    Ancestors0 = [],
+    get_ancestors_loop(ModuleName, Ancestors0, Ancestors).
 
-:- func get_ancestors_2(module_name, list(module_name)) = list(module_name).
+:- pred get_ancestors_loop(module_name::in,
+    list(module_name)::in, list(module_name)::out) is det.
 
-get_ancestors_2(unqualified(_), Ancestors) = Ancestors.
-get_ancestors_2(qualified(Parent, _), Ancestors0) =
-    get_ancestors_2(Parent, [Parent | Ancestors0]).
+get_ancestors_loop(unqualified(_), !Ancestors).
+get_ancestors_loop(qualified(Parent, _), !Ancestors) :-
+    % We put the (currently) outermost and therefore youngest ancestor
+    % onto the front of the ancestors list now.
+    !:Ancestors = [Parent | !.Ancestors],
+    % And *then* we put on the front of that list the inner and therefore
+    % older ancestors. This is how the oldest ancestor ends up at the
+    % front of the list, and the youngest at the back.
+    get_ancestors_loop(Parent, !Ancestors).
 
 get_ancestors_set(ModuleName) = set.list_to_set(get_ancestors(ModuleName)).
 
