@@ -298,13 +298,14 @@ compiled_code_dependencies(Globals) = Deps :-
         Deps0 = no_deps
     ),
 
-    % Stage 1: dependencies on the source file and on the foreign language
-    % files and Mercury interface files it imports.
+    % Stage 1: dependencies on the source file, and on the fact table files,
+    % foreign language files and Mercury interface files it imports.
     Deps1 = combine_deps_list([
         module_target_source `of` self,
         fact_table_files `files_of` self,
         foreign_include_files `files_of` self,
         module_target_int1 `of` self,
+        module_target_int1 `of` ancestors,
         map_find_module_deps(imports, self),
         Deps0
     ]),

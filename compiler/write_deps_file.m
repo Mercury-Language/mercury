@@ -497,6 +497,9 @@ construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
     make_module_file_name_group_with_suffix(Globals,
         "type_repn self dep", ext_other(other_ext(".int")),
         set.make_singleton_set(ModuleName), TypeRepnSelfDepGroups, !IO),
+    make_module_file_name_group_with_suffix(Globals,
+        "type_repn ancestor dep", ext_other(other_ext(".int")),
+        get_ancestors_set(ModuleName), TypeRepnAncestorsDepGroups, !IO),
     ForeignIncludeFiles = cord.list(ForeignIncludeFilesCord),
     % This is conservative: a target file for foreign language A
     % does not truly depend on a file included for foreign language B.
@@ -508,7 +511,7 @@ construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
     SourceGroups = SourceFileNameGroup ++
         Int0FileNameGroups ++ AncestorSourceGroups ++
         LongDepsSourceGroups ++ ShortDepsSourceGroups ++
-        TypeRepnSelfDepGroups ++
+        TypeRepnSelfDepGroups ++ TypeRepnAncestorsDepGroups ++
         ForeignImportFileNameGroup ++ FactTableSourceGroups,
     MmakeRuleDateFileDeps = mmake_general_rule("date_file_deps",
         mmake_rule_is_not_phony,
