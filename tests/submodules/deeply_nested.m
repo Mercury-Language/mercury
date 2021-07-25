@@ -8,12 +8,16 @@
 
   :- module a.
   :- interface.
+    :- type a ---> a.
     :- module b.
     :- interface.
+      :- type b ---> b.
       :- module c.
       :- interface.
+        :- type c ---> c.
         :- module d.
         :- interface.
+          :- type d ---> d.
           :- module e.
           :- interface.
             :- type f ---> f.

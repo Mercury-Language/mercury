@@ -8,6 +8,8 @@
 :- interface.
 :- import_module io.
 
+:- pred hello(io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 
 :- module nested2.child.
@@ -63,8 +65,6 @@ main(!IO) :-
 :- type foo
     --->    bar
     ;       baz(int).
-
-:- pred hello(io::di, io::uo) is det.
 
 hello(!IO) :-
     io.print("nested2.hello\n", !IO).
