@@ -8,7 +8,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
     :- module nested3.child.
     :- interface.
@@ -18,7 +18,7 @@
         --->    bar
         ;       baz(int).
 
-    :- pred hello(io__state::di, io__state::uo) is det.
+    :- pred hello(io::di, io::uo) is det.
 
     :- end_module nested3.child.
 
@@ -34,7 +34,7 @@
             --->    bar
             ;       baz(int).
 
-        :- pred hello(io__state::di, io__state::uo) is det.
+        :- pred hello(io::di, io::uo) is det.
     :- end_module nested3.child2.
 
 %---------------------------------------------------------------------------%
@@ -42,16 +42,16 @@
     :- module nested3.child.
     :- implementation.
 
-        hello -->
-            io__write_string("nested3.child.hello\n").
+        hello(!IO) :-
+            io.write_string("nested3.child.hello\n", !IO).
 
     :- end_module nested3.child.
 
     :- module nested3.child2.
     :- implementation.
 
-        hello -->
-            io__write_string("nested3.child2.hello\n").
+        hello(!IO) :-
+            io.write_string("nested3.child2.hello\n", !IO).
 
     :- end_module nested3.child2.
 
@@ -71,26 +71,24 @@
 :- type t4 == nested3.child2.foo.
 :- type t5 == nested3.child2.foo.
 
-main -->
-    nested3.child.hello,
-    child.hello,
-    hello,
-    nested3.child2.hello,
-    child2.hello,
+main(!IO) :-
+    nested3.child.hello(!IO),
+    child.hello(!IO),
+    hello(!IO),
+    nested3.child2.hello(!IO),
+    child2.hello(!IO),
 
-    print("t1 = "), print(type_of(has_type_t1)), nl,
-    print("t2 = "), print(type_of(has_type_t2)), nl,
-    print("t3 = "), print(type_of(has_type_t3)), nl,
-    print("t4 = "), print(type_of(has_type_t4)), nl,
-    print("t5 = "), print(type_of(has_type_t5)), nl,
+    io.print("t1 = ", !IO), io.print_line(type_of(has_type_t1), !IO),
+    io.print("t2 = ", !IO), io.print_line(type_of(has_type_t2), !IO),
+    io.print("t3 = ", !IO), io.print_line(type_of(has_type_t3), !IO),
+    io.print("t4 = ", !IO), io.print_line(type_of(has_type_t4), !IO),
+    io.print("t5 = ", !IO), io.print_line(type_of(has_type_t5), !IO),
 
-    print("has_type_t1 = "), print(has_type_t1), nl,
-    print("has_type_t2 = "), print(has_type_t2), nl,
-    print("has_type_t3 = "), print(has_type_t3), nl,
-    print("has_type_t4 = "), print(has_type_t4), nl,
-    print("has_type_t5 = "), print(has_type_t5), nl,
-
-    { true }.
+    io.print("has_type_t1 = ", !IO), io.print_line(has_type_t1, !IO),
+    io.print("has_type_t2 = ", !IO), io.print_line(has_type_t2, !IO),
+    io.print("has_type_t3 = ", !IO), io.print_line(has_type_t3, !IO),
+    io.print("has_type_t4 = ", !IO), io.print_line(has_type_t4, !IO),
+    io.print("has_type_t5 = ", !IO), io.print_line(has_type_t5, !IO).
 
 :- func has_type_t1 = t1.
 :- func has_type_t2 = t2.

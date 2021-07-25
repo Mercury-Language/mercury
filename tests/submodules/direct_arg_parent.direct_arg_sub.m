@@ -22,15 +22,15 @@
 write_maybe_foo(M, !IO) :-
     (
         M = no,
-        write_string("no\n", !IO)
+        io.write_string("no\n", !IO)
     ;
         M = not_possible(Foo),
-        write_string("not_possible(", !IO),
-        write(Foo, !IO),
-        write_string(")\n", !IO)
+        io.write_string("not_possible(", !IO),
+        io.write(Foo, !IO),
+        io.write_string(")\n", !IO)
     ;
         M = forced(Foo),
-        write_string("forced(", !IO),
-        write(Foo, !IO),
-        write_string(")\n", !IO)
+        io.write_string("forced(", !IO),
+        io.write(Foo, !IO),
+        io.write_string(")\n", !IO)
     ).

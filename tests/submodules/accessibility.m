@@ -10,7 +10,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -27,5 +27,5 @@
 :- type t3 == sub_a.sub1.t2.
 :- end_module nested.
 
-main -->
-    io__write_string("Hello.\n").
+main(!IO) :-
+    io.write_string("Hello.\n", !IO).

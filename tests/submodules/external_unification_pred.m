@@ -23,8 +23,8 @@
 
     :- implementation.
 
-    :- pragma foreign_type(c, ft, "int") where equality is unify_ft.
-    :- pragma foreign_type("C#", ft, "int") where equality is unify_ft.
+    :- pragma foreign_type(c, ft, "int")        where equality is unify_ft.
+    :- pragma foreign_type("C#", ft, "int")     where equality is unify_ft.
     :- pragma foreign_type(java, ft, "Integer") where equality is unify_ft.
 
     :- pred unify_ft(ft::in, ft::in) is semidet.
@@ -73,10 +73,10 @@
 main(!IO) :-
     X = create_ft(1),
     Y = create_ft(2),
-    ( X = Y ->
-        io__write_string("true.\n", !IO)
-    ;
-        io__write_string("false.\n", !IO)
+    ( if X = Y then
+        io.write_string("true.\n", !IO)
+    else
+        io.write_string("false.\n", !IO)
     ).
 
 :- end_module external_unification_pred.

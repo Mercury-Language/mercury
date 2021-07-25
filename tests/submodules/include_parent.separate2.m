@@ -10,20 +10,20 @@
 
 % The parent module includes io.
 
-:- pred hello(io__state::di, io__state::uo) is det.
+:- pred hello(io::di, io::uo) is det.
 
   :- module include_parent__separate2__nested.
   :- interface.
-  :- pred hello(io__state::di, io__state::uo) is det.
+  :- pred hello(io::di, io::uo) is det.
   :- end_module include_parent__separate2__nested.
 
 :- implementation.
 
-hello -->
-    io__write_string("include_parent__separate2: hello\n").
+hello(!IO) :-
+    io.write_string("include_parent__separate2: hello\n", !IO).
 
   :- module include_parent__separate2__nested.
   :- implementation.
-  hello -->
-    io__write_string("include_parent__separate2__nested: hello\n").
+  hello(!IO) :-
+    io.write_string("include_parent__separate2__nested: hello\n", !IO).
   :- end_module include_parent__separate2__nested.

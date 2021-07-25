@@ -7,6 +7,7 @@
 % parent, daf_bug_parent, module.
 % "Parent Value" and "Child Value" below should be identical.
 %
+
 :- module daf_bug.
 :- interface.
 
@@ -21,15 +22,11 @@
 
 main(!IO) :-
     io.write_string("Parent Value = ", !IO),
-    io.write(parent_value, !IO),
-    io.nl(!IO),
+    io.write_line(parent_value, !IO),
     io.write_string("Child Value =  ", !IO),
-    io.write(child_value, !IO),
-    io.nl(!IO),
+    io.write_line(child_value, !IO),
 
     io.write_string("Parent Value2 = ", !IO),
-    io.write(parent_value2, !IO),
-    io.nl(!IO),
+    io.write_line(parent_value2, !IO),
     io.write_string("Child Value2 =  ", !IO),
-    io.write(child_value2, !IO),
-    io.nl(!IO).
+    io.write_line(child_value2, !IO).

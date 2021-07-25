@@ -121,87 +121,75 @@ public static class coord {
 main(!IO) :-
     % Check whether we get back the same value as we set.
     GV1Init = 1.2,
-    write(GV1Init, !IO),
-    nl(!IO),
+    io.write_line(GV1Init, !IO),
     impure exported_set_gv1(GV1Init),
     semipure exported_get_gv1(GV1Final),
-    write(GV1Final, !IO),
-    nl(!IO),
-    ( GV1Init = GV1Final ->
+    io.write_line(GV1Final, !IO),
+    ( if GV1Init = GV1Final then
         true
-    ;
-        write_string("GV1 NOT SAME!\n", !IO)
+    else
+        io.write_string("GV1 NOT SAME!\n", !IO)
     ),
 
     % Check whether we get back the same value as the initialization.
     GV2Init = 2.3,
-    write(GV2Init, !IO),
-    nl(!IO),
+    io.write_line(GV2Init, !IO),
     semipure exported_get_gv2(GV2Final),
-    write(GV2Final, !IO),
-    nl(!IO),
-    ( GV2Init = GV2Final ->
+    io.write_line(GV2Final, !IO),
+    ( if GV2Init = GV2Final then
         true
-    ;
-        write_string("GV2 NOT SAME!\n", !IO)
+    else
+        io.write_string("GV2 NOT SAME!\n", !IO)
     ),
 
     % Check whether we get back the same value as we set.
     GV3Init = "abc",
-    write(GV3Init, !IO),
-    nl(!IO),
+    io.write_line(GV3Init, !IO),
     impure exported_set_gv3(GV3Init),
     semipure exported_get_gv3(GV3Final),
-    write(GV3Final, !IO),
-    nl(!IO),
-    ( GV3Init = GV3Final ->
+    io.write_line(GV3Final, !IO),
+    ( if GV3Init = GV3Final then
         true
-    ;
-        write_string("GV3 NOT SAME!\n", !IO)
+    else
+        io.write_string("GV3 NOT SAME!\n", !IO)
     ),
 
     % Check whether we get back the same value as the initialization.
     GV4Init = "def",
-    write(GV4Init, !IO),
-    nl(!IO),
+    io.write_line(GV4Init, !IO),
     semipure exported_get_gv4(GV4Final),
-    write(GV4Final, !IO),
-    nl(!IO),
-    ( GV4Init = GV4Final ->
+    io.write_line(GV4Final, !IO),
+    ( if GV4Init = GV4Final then
         true
-    ;
-        write_string("GV4 NOT SAME!\n", !IO)
+    else
+        io.write_string("GV4 NOT SAME!\n", !IO)
     ),
 
     % Check whether we get back the same value as we set.
     GV5Init = new_coord(1, 2),
-    write(c(x(GV5Init), y(GV5Init)), !IO),
-    nl(!IO),
+    io.write_line(c(x(GV5Init), y(GV5Init)), !IO),
     impure exported_set_gv5(GV5Init),
     semipure exported_get_gv5(GV5Final),
-    write(c(x(GV5Final), y(GV5Final)), !IO),
-    nl(!IO),
-    (
+    io.write_line(c(x(GV5Final), y(GV5Final)), !IO),
+    ( if
         x(GV5Init) = x(GV5Final),
         y(GV5Init) = y(GV5Final)
-    ->
+    then
         true
-    ;
-        write_string("GV5 NOT SAME!\n", !IO)
+    else
+        io.write_string("GV5 NOT SAME!\n", !IO)
     ),
 
     % Check whether we get back the same value as the initialization.
     GV6Init = new_coord(2, 3),
-    write(c(x(GV6Init), y(GV6Init)), !IO),
-    nl(!IO),
+    io.write_line(c(x(GV6Init), y(GV6Init)), !IO),
     semipure exported_get_gv6(GV6Final),
-    write(c(x(GV6Final), y(GV6Final)), !IO),
-    nl(!IO),
-    (
+    io.write_line(c(x(GV6Final), y(GV6Final)), !IO),
+    ( if
         x(GV6Init) = x(GV6Final),
         y(GV6Init) = y(GV6Final)
-    ->
+    then
         true
-    ;
-        write_string("GV6 NOT SAME!\n", !IO)
+    else
+        io.write_string("GV6 NOT SAME!\n", !IO)
     ).

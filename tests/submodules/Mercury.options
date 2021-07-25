@@ -1,20 +1,20 @@
-MCFLAGS-direct_arg_cyclic1 =    --intermodule-optimization
-MCFLAGS-direct_arg_cyclic2 =    --intermodule-optimization
-MCFLAGS-direct_arg_cyclic3 =    --intermodule-optimization
-MCFLAGS-direct_arg_intermod1 =  --intermodule-optimization
-MCFLAGS-direct_arg_intermod2 =  --intermodule-optimization
-MCFLAGS-direct_arg_intermod3 =  --intermodule-optimization
-MCFLAGS-g12_fe_bug = 			--intermodule-optimization
-MCFLAGS-g12_fe_bug.generic_search = --no-warn-interface-imports --intermodule-optimization
-MCFLAGS-g12_fe_bug.solvers = 		--intermodule-optimization
-MCFLAGS-g12_fe_bug.solvers.bounds = 	--intermodule-optimization
+MCFLAGS-direct_arg_cyclic1 =    --intermod-opt
+MCFLAGS-direct_arg_cyclic2 =    --intermod-opt
+MCFLAGS-direct_arg_cyclic3 =    --intermod-opt
+MCFLAGS-direct_arg_intermod1 =  --intermod-opt
+MCFLAGS-direct_arg_intermod2 =  --intermod-opt
+MCFLAGS-direct_arg_intermod3 =  --intermod-opt
+MCFLAGS-g12_fe_bug = 			--intermod-opt
+MCFLAGS-g12_fe_bug.generic_search = --intermod-opt --no-warn-interface-imports
+MCFLAGS-g12_fe_bug.solvers = 		--intermod-opt
+MCFLAGS-g12_fe_bug.solvers.bounds = --intermod-opt
 
-# --intermodule-optimization causes impl_def_literal to abort during
+# --intermod-opt causes impl_def_literal to abort during
 # the STM transformation (bug #136).  Its use here is disabled until
 # that is fixed.
-MCFLAGS-impl_def_literal = --no-intermodule-optimization
-MCFLAGS-impl_def_literal.sub = --no-intermodule-optimization
+MCFLAGS-impl_def_literal     = --no-intermod-opt --no-warn-simple-code
+MCFLAGS-impl_def_literal.sub = --no-intermod-opt --no-warn-simple-code
 
-MCFLAGS-nested_intermod	=	--intermodule-optimization
-MCFLAGS-nested_intermod_main =	--intermodule-optimization
-MCFLAGS-non_word_mutable =	--intermodule-optimization --no-intermodule-analysis
+MCFLAGS-nested_intermod	=	    --intermod-opt
+MCFLAGS-nested_intermod_main =	--intermod-opt
+MCFLAGS-non_word_mutable =	    --intermod-opt --no-intermodule-analysis

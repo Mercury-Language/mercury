@@ -18,7 +18,7 @@
 :- type t1 == foo.
 :- type t2 == nested2.foo.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- end_module nested2.child.
 
@@ -44,19 +44,19 @@ has_type_t2 = nested2.bar.
 has_type_t3 = baz(42).
 has_type_t4 = nested2.baz(42).
 
-main -->
-    nested2.hello,
-    hello,
+main(!IO) :-
+    nested2.hello(!IO),
+    hello(!IO),
 
-    print("t1 = "), print(type_of(has_type_t1)), nl,
-    print("t2 = "), print(type_of(has_type_t2)), nl,
-    print("t3 = "), print(type_of(has_type_t3)), nl,
-    print("t4 = "), print(type_of(has_type_t4)), nl,
+    io.print("t1 = ", !IO), io.print_line(type_of(has_type_t1), !IO),
+    io.print("t2 = ", !IO), io.print_line(type_of(has_type_t2), !IO),
+    io.print("t3 = ", !IO), io.print_line(type_of(has_type_t3), !IO),
+    io.print("t4 = ", !IO), io.print_line(type_of(has_type_t4), !IO),
 
-    print("has_type_t1 = "), print(has_type_t1), nl,
-    print("has_type_t2 = "), print(has_type_t2), nl,
-    print("has_type_t3 = "), print(has_type_t3), nl,
-    print("has_type_t4 = "), print(has_type_t4), nl.
+    io.print("has_type_t1 = ", !IO), io.print_line(has_type_t1, !IO),
+    io.print("has_type_t2 = ", !IO), io.print_line(has_type_t2, !IO),
+    io.print("has_type_t3 = ", !IO), io.print_line(has_type_t3, !IO),
+    io.print("has_type_t4 = ", !IO), io.print_line(has_type_t4, !IO).
 
 :- end_module nested2.child.
 
@@ -64,9 +64,9 @@ main -->
     --->    bar
     ;       baz(int).
 
-:- pred hello(io__state::di, io__state::uo) is det.
+:- pred hello(io::di, io::uo) is det.
 
-hello -->
-    print("nested2.hello\n").
+hello(!IO) :-
+    io.print("nested2.hello\n", !IO).
 
 :- end_module nested2.

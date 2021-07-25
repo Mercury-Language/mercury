@@ -45,9 +45,9 @@ main(!IO) :-
 
     % We don't actually write out the grade string so as not to make the
     % expected output grade-dependent.
-    ( string.length($grade) = 0 ->
+    ( if string.length($grade) = 0 then
         io.write_string("huh?\n", !IO)
-    ;
+    else
         io.write_string("have $grade\n", !IO)
     ),
 
@@ -97,9 +97,9 @@ an_atomic_goal(String, !IO) :-
 fun_with_lines(!IO) :-
     X = $line,
     Y = $line,
-    ( X = Y ->
+    ( if X = Y then
         io.write_string("fun_with_lines: equal\n", !IO)
-    ;
+    else
         io.write_string("fun_with_lines: unequal\n", !IO)
     ).
 
@@ -109,12 +109,12 @@ fun_with_lines_2(!IO) :-
     % The user probably expects the two occurrences of $line to be replaced
     % by two different numbers. That didn't happen in the past, but
     % now it does.
-    (
+    ( if
         $line =
         $line
-    ->
+    then
         io.write_string("fun_with_lines_2: equal\n", !IO)
-    ;
+    else
         io.write_string("fun_with_lines_2: unequal\n", !IO)
     ).
 
