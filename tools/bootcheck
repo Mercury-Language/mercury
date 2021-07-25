@@ -2102,11 +2102,17 @@ then
             test_status=0
             for testdir in ${testdirs}
             do
-                cd ${root}/${tests_prefix}tests/${testdir}
-                mmake ${mmake_opts} ${target_opt} ${jfactor} \
-                    ${test_grade_opt} ${test_log_opt} runtests_dir
-                if test "$?" -ne 0
+                if test -d ${root}/${tests_prefix}tests/${testdir}
                 then
+                    cd ${root}/${tests_prefix}tests/${testdir}
+                    mmake ${mmake_opts} ${target_opt} ${jfactor} \
+                        ${test_grade_opt} ${test_log_opt} runtests_dir
+                    if test "$?" -ne 0
+                    then
+                        test_status=1
+                    fi
+                else
+                    echo "test dir ${testdir} does not exist"
                     test_status=1
                 fi
             done
