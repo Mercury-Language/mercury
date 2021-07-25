@@ -6,35 +6,32 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module int.
 
-main -->
-    ( { p(0) } ->
-        io__write_string("yes.\n")
-    ;
-        io__write_string("no.\n")
+main(!IO) :-
+    ( if p(0) then
+        io.write_string("yes.\n", !IO)
+    else
+        io.write_string("no.\n", !IO)
     ).
 
-:- pred p(int).
-:- mode p(in) is semidet.
+:- pred p(int::in) is semidet.
 
 p(X) :-
-    \+ (
+    not (
         q(X, Y),
         r(Y)
     ).
 
-:- pred q(int, int).
-:- mode q(in, out) is nondet.
+:- pred q(int::in, int::out) is nondet.
 
 q(0, 0).
 q(0, 1).
 
-:- pred r(int).
-:- mode r(in) is semidet.
+:- pred r(int::in) is semidet.
 
 r(Y) :-
     Y > 1.

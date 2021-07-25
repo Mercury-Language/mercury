@@ -82,9 +82,9 @@ test(Xs, !IO) :-
     bt_array.bounds(B0, BMin1, BMax1),
     write_message_int("BMin1: ", BMin1, !IO),
     write_message_int("BMax1: ", BMax1, !IO),
-    ( bt_array.bsearch(B0, 4, CmpPred, BBsearch) ->
+    ( if bt_array.bsearch(B0, 4, CmpPred, BBsearch) then
         MaybeBBsearch = yes(BBsearch)
-    ;
+    else
         MaybeBBsearch = no
     ),
     write_message_maybe_int("BBsearch: ", MaybeBBsearch, !IO),
@@ -155,14 +155,14 @@ write_message_int_list(Msg, List, !IO) :-
         List = [I | Is],
         io.write_char('[', !IO),
         io.write_int(I, !IO),
-        write_int_list_rest(Is, !IO)
+        write_int_list_rest(Is, !IO),
+        io.write_char(']', !IO)
     ),
     io.nl(!IO).
 
 :- pred write_int_list_rest(list(int)::in, io::di, io::uo) is det.
 
-write_int_list_rest([], !IO) :-
-    io.write_char(']', !IO).
+write_int_list_rest([], !IO).
 write_int_list_rest([I | Is], !IO) :-
     io.write_string(", ", !IO),
     io.write_int(I, !IO),

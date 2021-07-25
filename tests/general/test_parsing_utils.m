@@ -78,7 +78,7 @@ run_test(Result) :-
         ActualOutput = yes(ActualOutput0),
         current_offset(Src, CurrentOffset0, PS, _),
         CurrentOffset = yes(CurrentOffset0)
-      else
+    else
         ActualOutput = no,
         CurrentOffset = no
     ),
@@ -472,27 +472,27 @@ test_err(Input, Parser, !IO) :-
 
 skip_ws(Src, unit) -->
     whitespace(Src, _),
-    ( next_char(Src, ('/')), next_char(Src, ('*')) ->
+    ( if next_char(Src, ('/')), next_char(Src, ('*')) then
         find_close_comment(Src),
         skip_ws(Src, _)
-    ;
+    else
         { true }
     ).
 
 :- pred find_close_comment(src::in, ps::in, ps::out) is semidet.
 
 find_close_comment(Src) -->
-    ( next_char(Src, C) ->
-        ( { C = ('*') } ->
-            ( next_char(Src, ('/')) ->
+    ( if next_char(Src, C) then
+        ( if { C = ('*') } then
+            ( if next_char(Src, ('/')) then
                 { true }
-            ;
+            else
                 find_close_comment(Src)
             )
-        ;
+        else
             find_close_comment(Src)
         )
-    ;
+    else
         fail_with_message("unterminated comment", Src, _:unit)
     ).
 
@@ -517,10 +517,10 @@ expr_top(Src, Expr) -->
 
 expr(Src, Expr) -->
     term(Src, Term1),
-    ( op(Src, Op) ->
+    ( if op(Src, Op) then
         expr(Src, Expr2),
         { Expr = op(Op, Term1, Expr2) }
-    ;
+    else
         { Expr = Term1 }
     ).
 
@@ -528,23 +528,21 @@ expr(Src, Expr) -->
 
 term(Src, Term) -->
     current_offset(Src, Start),
-    ( int_literal(Src, Int) ->
+    ( if int_literal(Src, Int) then
         { Term = integer(Int) }
-    ;
-        id(Src, Id)
-    ->
-        ( punct("(", Src, _) ->
-            ( { known_function(Id) } ->
+    else if id(Src, Id) then
+        ( if punct("(", Src, _) then
+            ( if { known_function(Id) } then
                 comma_separated_list(expr, Src, Args),
                 punct(")", Src, _),
                 { Term = function_application(Id, Args) }
-            ;
+            else
                 fail_with_message("unknown function: " ++ Id, Start, Src, Term)
             )
-        ;
+        else
             { Term = variable(Id) }
         )
-    ;
+    else
         { fail }
     ).
 
@@ -556,13 +554,13 @@ known_function("pow").
 :- pred op(src::in, op::out, ps::in, ps::out) is semidet.
 
 op(Src, Op) -->
-    ( punct("+", Src, _) ->
+    ( if punct("+", Src, _) then
         { Op = plus }
-    ; punct("-", Src, _) ->
+    else if punct("-", Src, _) then
         { Op = minus }
-    ; ikeyword(id_chars, "mod", Src, _) ->
+    else if ikeyword(id_chars, "mod", Src, _) then
         { Op = modulo }
-    ;
+    else
         fail_with_message("expecting an operator", Src, Op)
     ).
 

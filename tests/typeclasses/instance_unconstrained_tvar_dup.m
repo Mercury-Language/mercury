@@ -33,11 +33,8 @@ main(!IO) :-
     m([1, 2, 3], [4, 5, 6], !IO),
     io.nl(!IO).
 
-:- pred write_list_pair(list(T), list(U), io, io).
-:- mode write_list_pair(in, in, di, uo) is det.
+:- pred write_list_pair(list(T)::in, list(U)::in, io::di, io::uo) is det.
 
 write_list_pair(T, U, !IO) :-
-    io.write(T, !IO),
-    io.nl(!IO),
-    io.write(U, !IO),
-    io.nl(!IO).
+    io.write_line(T, !IO),
+    io.write_line(U, !IO).

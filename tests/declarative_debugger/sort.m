@@ -98,14 +98,10 @@ sort_lines(Us, Ss) :-
 :- pred msort_n(int::in, lines::in, lines::out, lines::out) is det.
 
 msort_n(N, Unsorted, SortedPart, Rest) :-
-    (
-        N =< 0
-    ->
+    ( if N =< 0 then
         SortedPart = [],
         Rest = Unsorted
-    ;
-        N = 1
-    ->
+    else if N = 1 then
         (
             Unsorted = [U | Us],
             SortedPart = [U],
@@ -114,7 +110,7 @@ msort_n(N, Unsorted, SortedPart, Rest) :-
             Unsorted = [],
             throw("Unsorted = [] and N = 0")
         )
-    ;
+    else
         N1 = N // 2,
         sort.msort_n(N1, Unsorted, Ss1, Us2),
         N2 = N - N1,
@@ -129,12 +125,10 @@ merge([S | Ss], [], [S | Ss]).
 merge([], [S | Ss], [S | Ss]).
 merge([A | As], [B | Bs], [C | Cs]) :-
     compare(Cmp, A, B),
-    (
-        ( Cmp = (<) ; Cmp = (=) )
-    ->
+    ( if ( Cmp = (<) ; Cmp = (=) ) then
         sort.merge(As, [B | Bs], Cs),
         C = A
-    ;
+    else
         sort.merge(As, [B | Bs], Cs), % BUG
         C = B
     ).
@@ -143,7 +137,8 @@ merge([A | As], [B | Bs], [C | Cs]) :-
 
 :- pred print_lines(lines::in, io::di, io::uo) is det.
 
-print_lines(Lines, !IO) :- io.write_list(Lines, "", io.write_string, !IO).
+print_lines(Lines, !IO) :-
+    io.write_list(Lines, "", io.write_string, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module sort.

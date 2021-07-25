@@ -5,9 +5,9 @@ mdb> register --quiet
 mdb> break p
  0: + stop  interface pred ho4.p/1-0 (semidet)
 mdb> continue
-       3:      2  2 CALL pred ho4.p/1-0 (semidet) ho4.m:34 (ho4.m:16)
+       3:      2  2 CALL pred ho4.p/1-0 (semidet) ho4.m:29 (ho4.m:15)
 mdb> finish
-      18:      2  2 FAIL pred ho4.p/1-0 (semidet) ho4.m:34 (ho4.m:16)
+      18:      2  2 FAIL pred ho4.p/1-0 (semidet) ho4.m:29 (ho4.m:15)
 mdb> dd -d 3 -n 7
 Call p(1)
 Unsatisfiable? no
@@ -23,18 +23,18 @@ Complete? yes
 Found partially uncovered atom:
 p(1)
 Is this a bug? yes
-      18:      2  2 FAIL pred ho4.p/1-0 (semidet) ho4.m:34 (ho4.m:16)
+      18:      2  2 FAIL pred ho4.p/1-0 (semidet) ho4.m:29 (ho4.m:15)
 mdb> continue
-      21:      5  2 CALL pred ho4.p/1-0 (semidet) ho4.m:34 (ho4.m:23)
+      21:      5  2 CALL pred ho4.p/1-0 (semidet) ho4.m:29 (ho4.m:20)
 mdb> finish
-      36:      5  2 FAIL pred ho4.p/1-0 (semidet) ho4.m:34 (ho4.m:23)
+      36:      5  2 FAIL pred ho4.p/1-0 (semidet) ho4.m:29 (ho4.m:20)
 mdb> dd -d 3 -n 7
 Call p(2)
 Unsatisfiable? no
 Found partially uncovered atom:
 p(2)
 Is this a bug? yes
-      36:      5  2 FAIL pred ho4.p/1-0 (semidet) ho4.m:34 (ho4.m:23)
+      36:      5  2 FAIL pred ho4.p/1-0 (semidet) ho4.m:29 (ho4.m:20)
 mdb> continue
 \+ p(1).
 \+ p(2).

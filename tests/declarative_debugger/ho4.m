@@ -6,43 +6,36 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module list.
 
-main -->
-    {
-        p(1)
-    ->
+main(!IO) :-
+    ( if p(1) then
         S1 = ""
-    ;
+    else
         S1 = "\\+ "
-    },
-    {
-        p(2)
-    ->
+    ),
+    ( if p(2) then
         S2 = ""
-    ;
+    else
         S2 = "\\+ "
-    },
-    io__write_strings([S1, "p(1).\n", S2, "p(2).\n"]).
+    ),
+    io.write_strings([S1, "p(1).\n", S2, "p(2).\n"], !IO).
 
-:- pred p(int).
-:- mode p(in) is semidet.
+:- pred p(int::in) is semidet.
 
 p(N) :-
     q(r(5), M),
     M = N.
 
-:- pred q(pred(int), int).
-:- mode q(pred(out) is multi, out) is multi.
+:- pred q(pred(int)::in(pred(out) is multi), int::out) is multi.
 
 q(R, N) :-
     R(N).
 
-:- pred r(int, int).
-:- mode r(in, out) is multi.
+:- pred r(int::in, int::out) is multi.
 
 r(A, A).
 r(_, 0).

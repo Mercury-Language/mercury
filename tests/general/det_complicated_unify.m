@@ -10,16 +10,18 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- type foo ---> foo(bar).
-:- type bar ---> bar.
+:- type foo
+    --->    foo(bar).
+:- type bar
+    --->    bar.
 
-main -->
-    { p(foo(bar), foo(bar)), q(bar, bar) },
-    io__write_string("worked\n").
+main(!IO) :-
+    p(foo(bar), foo(bar)), q(bar, bar),
+    io.write_string("worked\n", !IO).
 
 :- pred p(foo::in(bound(foo(bound(bar)))), foo::in(bound(foo(bound(bar)))))
     is det.
@@ -27,4 +29,5 @@ main -->
 p(X, X).
 
 :- pred q(bar::in(bound(bar)), bar::in(bound(bar))) is det.
+
 q(X, X).

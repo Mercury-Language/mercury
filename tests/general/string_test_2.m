@@ -21,34 +21,34 @@ main(!IO) :-
     string.append("abcdef", "", S3),
     io.write_string(S3, !IO),
     io.write_string("\n", !IO),
-    ( string.append("", S4, "abcdef") ->
+    ( if string.append("", S4, "abcdef") then
         io.write_string(S4, !IO),
         io.write_string("\n", !IO)
-    ;
+    else
         io.write_string("failed\n", !IO)
     ),
-    ( string.append("abc", S5, "abcdef") ->
+    ( if string.append("abc", S5, "abcdef") then
         io.write_string(S5, !IO),
         io.write_string("\n", !IO)
-    ;
+    else
         io.write_string("failed\n", !IO)
     ),
-    ( string.remove_prefix("abc", "abcdef", S6) ->
+    ( if string.remove_prefix("abc", "abcdef", S6) then
         io.write_string(S6, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("failed\n", !IO)
     ).
 
-%   ( { string__append(S6, "", "abcdef") } ->
-%       io__write_string(S6),
-%       io__write_string("\n")
-%   ;
-%       io__write_string("failed\n")
+%   ( if string.append(S6, "", "abcdef") then
+%       io.write_string(S6, !IO),
+%       io.write_string("\n", !IO)
+%   else
+%       io.write_string("failed\n", !IO)
 %   ),
-%   ( { string__append(S7, "def", "abcdef") } ->
-%       io__write_string(S7),
-%       io__write_string("\n")
-%   ;
-%       io__write_string("failed\n")
+%   ( if string.append(S7, "def", "abcdef") then
+%       io.write_string(S7, !IO),
+%       io.write_string("\n", !IO)
+%   else
+%       io.write_string("failed\n", !IO)
 %   ).

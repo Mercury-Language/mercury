@@ -14,7 +14,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
@@ -22,17 +22,21 @@
 :- import_module int.
 :- import_module string.
 
-main -->
-    { try(do_loop, R) },
-    io__print(R), nl.
+main(!IO) :-
+    try(do_loop, R),
+    io.print_line(R, !IO).
 
+% No type declaration for do_loop.
 :- mode do_loop(out) is det.
+
 do_loop(X) :-
     loop(100000000, 42, X).
 
-loop(N) -->
-    ( { N = 0 } ->
-        { throw("finished") }
-    ;
-        loop(N - 1)
+% No type or mode declaration for do_loop.
+
+loop(N, !X) :-
+    ( if N = 0 then
+        throw("finished")
+    else
+        loop(N - 1, !X)
     ).

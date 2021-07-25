@@ -25,25 +25,19 @@
 
 main(!IO) :-
     to_b([a, a, a, a, a, a, a, a, a, a], X),
-    (
-        abba([b, a, a, b])
-    ->
+    ( if abba([b, a, a, b]) then
         A = yes
-    ;
+    else
         A = no
     ),
-    (
-        abba([a, a, a, b])
-    ->
+    ( if abba([a, a, a, b]) then
         B = yes
-    ;
+    else
         B = no
     ),
-    (
-        abba([a, a, b, b])
-    ->
+    ( if abba([a, a, b, b]) then
         C = yes
-    ;
+    else
         C = no
     ),
     to_b2([c, c, c, c, c, c, c], Y),

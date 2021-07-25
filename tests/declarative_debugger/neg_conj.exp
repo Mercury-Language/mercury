@@ -5,9 +5,9 @@ mdb> register --quiet
 mdb> break p
  0: + stop  interface pred neg_conj.p/1-0 (semidet)
 mdb> continue
-       3:      2  2 CALL pred neg_conj.p/1-0 (semidet) neg_conj.m:24 (neg_conj.m:15)
+       3:      2  2 CALL pred neg_conj.p/1-0 (semidet) neg_conj.m:23 (neg_conj.m:15)
 mdb> finish
-      18:      2  2 EXIT pred neg_conj.p/1-0 (semidet) neg_conj.m:24 (neg_conj.m:15)
+      18:      2  2 EXIT pred neg_conj.p/1-0 (semidet) neg_conj.m:23 (neg_conj.m:15)
 mdb> dd -d 3 -n 7
 p(0)
 Valid? no
@@ -27,6 +27,6 @@ Complete? yes
 Found incorrect contour:
 p(0)
 Is this a bug? yes
-      18:      2  2 EXIT pred neg_conj.p/1-0 (semidet) neg_conj.m:24 (neg_conj.m:15)
+      18:      2  2 EXIT pred neg_conj.p/1-0 (semidet) neg_conj.m:23 (neg_conj.m:15)
 mdb> continue
 yes.

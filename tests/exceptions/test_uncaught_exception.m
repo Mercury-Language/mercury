@@ -15,11 +15,11 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 :- import_module exception.
 :- import_module std_util.
 
-main -->
-    { throw("<exception thrown from main>") }.
+main(!IO) :-
+    throw("<exception thrown from main>").

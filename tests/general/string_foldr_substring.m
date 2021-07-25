@@ -27,7 +27,7 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    io__write_strings([
+    io.write_strings([
             "sub(\"Hello, World!\",  0,  5) = \"",
                sub("Hello, World!",  0,  5),
         "\"\nsub(\"Hello, World!\",  0, 50) = \"",

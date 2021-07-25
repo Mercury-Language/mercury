@@ -18,7 +18,7 @@
 :- import_module list.
 :- import_module pair.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- type dungeon.
 
@@ -49,8 +49,8 @@
 
 :- import_module store.
 
-main -->
-    io__write_string("OK\n").
+main(!IO) :-
+    io.write_string("OK\n", !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -58,15 +58,15 @@ main -->
 
 :- type dungeon
     --->    dun(
-                win,        % Root window, for messages
-                win,        % main window
-                win,        % message window
+                win,            % Root window, for messages
+                win,            % main window
+                win,            % message window
                 player,
                 list(level),    % levels above me
-                level,      % current level
+                level,          % current level
                 list(level),    % levels below me
                 rnd,
-                int,        % current cycle
+                int,            % current cycle
                 runq
             ).
 

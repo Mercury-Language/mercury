@@ -30,11 +30,11 @@ main(!IO) :-
     monotest(X, _),
     polytest("hello", Y, Z),
     tracetest(U, V),
-    write(U, !IO),
-    write(V, !IO),
-    write(X, !IO),
-    write(Y, !IO),
-    write(Z, !IO).
+    io.write(U, !IO),
+    io.write(V, !IO),
+    io.write(X, !IO),
+    io.write(Y, !IO),
+    io.write(Z, !IO).
 
 :- type t
     --->    t(int).
@@ -45,19 +45,15 @@ monotest(B, I) :-
     make_int(I),
     monotest1(C),
     C = t(X),
-    (
-        X > 0
-    ->
+    ( if X > 0 then
         monotest2(C, D)
-    ;
+    else
         C = D
     ),
     D = t(Y),
-    (
-        Y =< 0
-    ->
+    ( if Y =< 0 then
         D = E
-    ;
+    else
         monotest3(D, E)
     ),
     monotest4(E, B).
@@ -75,11 +71,9 @@ monotest2(A, A).
 monotest3(A, B) :-
     L = [A, t(1), t(2)],
     reverse(L, LR),
-    (
-        LR = [_, _, E]
-    ->
+    ( if LR = [_, _, E] then
         B = E
-    ;
+    else
         B = t(1)
     ).
 
@@ -88,11 +82,9 @@ monotest3(A, B) :-
 monotest4(A, B) :-
     L = [t(1), t(2), A, t(3)],
     filter(unify(A), L, L1),
-    (
-        L1 = [C]
-    ->
+    ( if L1 = [C] then
         B = C
-    ;
+    else
         B = t(4)
     ).
 
@@ -105,11 +97,9 @@ monotest4(A, B) :-
 polytest(A, B, I) :-
     make_int(I1),
     polytest1(A, C),
-    (
-        C = u(_)
-    ->
+    ( if C = u(_) then
         polytest2(C, D)
-    ;
+    else
         C = D
     ),
     I2 = 2 + I1 * 2,
@@ -139,11 +129,9 @@ polytest2(A, A).
 polytest3(A, B) :-
     L = [A, A, A],
     reverse(L, LR),
-    (
-        LR = [_, _, E]
-    ->
+    ( if LR = [_, _, E] then
         B = E
-    ;
+    else
         B = A
     ).
 
@@ -152,11 +140,9 @@ polytest3(A, B) :-
 polytest4(A, B) :-
     L = [v(A), v(A), v(A), u(A)],
     filter(unify(u(A)), L, L1),
-    (
-        L1 = [u(C)]
-    ->
+    ( if L1 = [u(C)] then
         B = C
-    ;
+    else
         B = A
     ).
 
@@ -166,23 +152,19 @@ tracetest(B, I) :-
     make_int(I0),
     tracetest1(C),
     I1 = I0 - 5,
-    (
-        I0 > 0
-    ->
+    ( if I0 > 0 then
         tracetest2(C, D),
         I2 = I1 + 6
-    ;
+    else
         C = D,
         I2 = I0 + 9
     ),
     I3 = I2 + I0 + I1,
     I4 = I3 * 2,
-    (
-        I0 =< 0
-    ->
+    ( if I0 =< 0 then
         D = E,
         I6 = I4 + 2
-    ;
+    else
         I5 = I4 + 3,
         tracetest3(D, E),
         I6 = I5 - 5
@@ -203,12 +185,12 @@ tracetest2(A, A).
 
 tracetest3(A, B) :-
     L = [t(1), t(2), A],
-    (
+    ( if
         L = [_, _, E],
         E = A
-    ->
+    then
         B = E
-    ;
+    else
         B = t(1)
     ).
 
@@ -216,12 +198,12 @@ tracetest3(A, B) :-
 
 tracetest4(A, B) :-
     L = [t(1), t(2), A, t(3)],
-    (
+    ( if
         L = [_, _, C, _],
         C = A
-    ->
+    then
         B = C
-    ;
+    else
         B = t(4)
     ).
 

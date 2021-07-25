@@ -3,33 +3,41 @@
 %---------------------------------------------------------------------------%
 %
 % $ mc bug.m
-% Software error: mkframe in frameopt__doit
+% Software error: mkframe in frameopt.doit
 
 :- module frameopt_mkframe_bug.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 :- import_module bool.
 :- import_module int.
 
-main -->
-    { p1(X1) }, io__write_int(X1), io__write_string("\n"),
-    { p2(X2) }, io__write_int(X2), io__write_string("\n").
+main(!IO) :-
+    p1(X1),
+    io.write_int(X1, !IO),
+    io.nl(!IO),
+    p2(X2),
+    io.write_int(X2, !IO),
+    io.nl(!IO).
 
 :- pred p1(int::out) is multi.
+
 p1(X) :-
     q(FindMe),
-    ( u(41) ->
+    ( if u(41) then
         Z = 1
-    ;
-        ( r(Z) ; s(FindMe, Z) )
+    else
+        ( r(Z)
+        ; s(FindMe, Z)
+        )
     ),
     t(FindMe, Z, X).
 
 :- pred p2(int::out) is multi.
+
 p2(X) :-
     q(Y2),
     (
@@ -39,21 +47,35 @@ p2(X) :-
             Z = 111
 %       )
     ;
-        ( r(Z) ; s(Y2, Z) )
+        ( r(Z)
+        ; s(Y2, Z)
+        )
     ),
     t(Y2, Z, X).
 
 :- pred q(int::out) is det.
-:- pred r(int::out) is det.
-:- pred s(int::in, int::out) is det.
-:- pred t(int::in, int::in, int::out) is det.
-:- pred u(int::in) is semidet.
-:- pred v(bool::out) is det.
 
 q(2).
+
+:- pred r(int::out) is det.
+
 r(3).
-s(X, Y4) :- Y4 = X + 10.
-t(X, Y5, Z) :- Z = X * 100 + Y5.
+
+:- pred s(int::in, int::out) is det.
+
+s(X, Y4) :-
+    Y4 = X + 10.
+
+:- pred t(int::in, int::in, int::out) is det.
+
+t(X, Y5, Z) :-
+    Z = X * 100 + Y5.
+
+:- pred u(int::in) is semidet.
+
 u(A) :-
     A > 30.
+
+:- pred v(bool::out) is det.
+
 v(yes).

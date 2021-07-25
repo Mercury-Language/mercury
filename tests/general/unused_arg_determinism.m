@@ -10,7 +10,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- type t.
 :- func foo(t) = t.
@@ -24,23 +24,25 @@
     --->    t
     ;       u.
 
-main -->
-    try_io(main_2, Result),
-    ( { Result = succeeded(_) },
-        io__write_string("No exception.\n")
-    ; { Result = exception(_) },
-        io__write_string("Exception.\n")
+main(!IO) :-
+    try_io(main_2, Result, !IO),
+    (
+        Result = succeeded(_),
+        io.write_string("No exception.\n", !IO)
+    ;
+        Result = exception(_),
+        io.write_string("Exception.\n", !IO)
     ).
 
-:- pred main_2(int::out, io__state::di, io__state::uo) is det.
+:- pred main_2(int::out, io::di, io::uo) is det.
 
-main_2(0) -->
-    ( { X = foo(t) } ->
-        io__write(X)
-    ;
-        io__write_string("failure")
+main_2(0, !IO) :-
+    ( if X = foo(t) then
+        io.write(X, !IO)
+    else
+        io.write_string("failure", !IO)
     ),
-    io__nl.
+    io.nl(!IO).
 
 foo(_) = _ :-
-    private_builtin__sorry("foo").
+    private_builtin.sorry("foo").

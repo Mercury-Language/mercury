@@ -11,7 +11,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -19,14 +19,15 @@
 :- import_module list.
 :- import_module solutions.
 
-main -->
-    { solutions(test, List) },
-    print_intlist(List).
+main(!IO) :-
+    solutions(test, List),
+    print_intlist(List, !IO).
 
 :- pred test(int::out) is multi.
+
 test(Val) :-
     ( if some [X]
-        list__member(X, [1, 2, 3, 4, 5])
+        list.member(X, [1, 2, 3, 4, 5])
     then
         ( if some [Z] (
             some [Y] foo(X, Y),
@@ -41,15 +42,15 @@ test(Val) :-
         Val = -2
     ).
 
-:- pred foo(int, int).
-:- mode foo(in, out) is nondet.
+:- pred foo(int::in, int::out) is nondet.
 
 foo(X, X).
 foo(_, 7).
 
-:- pred print_intlist(list(int)::in, io__state::di, io__state::uo) is det.
-print_intlist([]) --> [].
-print_intlist([X | L]) -->
-    io__write_int(X),
-    io__nl,
-    print_intlist(L).
+:- pred print_intlist(list(int)::in, io::di, io::uo) is det.
+
+print_intlist([], !IO).
+print_intlist([X | L], !IO) :-
+    io.write_int(X, !IO),
+    io.nl(!IO),
+    print_intlist(L, !IO).

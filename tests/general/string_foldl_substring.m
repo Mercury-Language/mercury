@@ -27,7 +27,7 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    io__write_strings([
+    io.write_strings([
             "rev(\"Hello, World!\",  0,  5) = \"",
                rev("Hello, World!",  0,  5),
         "\"\nrev(\"Hello, World!\",  0, 50) = \"",

@@ -6,7 +6,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module list.
@@ -14,20 +14,19 @@
 :- type foo(T)
     --->    append(T, T, T).
 
-main -->
-    { A = [1, 2, 3, 4, 5] },
-    { B = [6, 7, 8] },
-    { app(A, B, C) },
-    io__write(app__append(A, B, C)),
-    io__write_string(".\n"),
-    { D = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5] },
-    { E = [6, 7, 8] },
-    { app(D, E, F) },
-    io__write(app__append(D, E, F)),
-    io__write_string(".\n").
+main(!IO) :-
+    A = [1, 2, 3, 4, 5],
+    B = [6, 7, 8],
+    app(A, B, C),
+    io.write(app.append(A, B, C), !IO),
+    io.write_string(".\n", !IO),
+    D = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5],
+    E = [6, 7, 8],
+    app(D, E, F),
+    io.write(app.append(D, E, F), !IO),
+    io.write_string(".\n", !IO).
 
-:- pred app(list(T), list(T), list(T)).
-:- mode app(in, in, out) is det.
+:- pred app(list(T)::in, list(T)::in, list(T)::out) is det.
 
 app([], Bs, Bs).
 app([A | As], Bs, [A | Cs]) :-

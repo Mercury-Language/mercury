@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- impure pred main(state::di, state::uo) is det.
+:- impure pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module int.
@@ -18,19 +18,18 @@
 :- type foo
     --->    foo(impure pred(int, int)).
 
-main -->
-    { Y = foo(get_counter) },
-    impure main2(Y).
+main(!IO) :-
+    Y = foo(get_counter),
+    impure main2(Y, !IO).
 
 :- impure pred main2(foo::in(bound(foo(pred(in, out) is det))),
-    state::di, state::uo) is det.
+    io::di, io::uo) is det.
 
-main2(Y) -->
-    { Y = foo(X) },
-    { impure X(4, Z) },
-    print("X = "),
-    print(Z),
-    nl.
+main2(Y, !IO) :-
+    Y = foo(X),
+    impure X(4, Z),
+    io.print("X = ", !IO),
+    io.print_line(Z, !IO).
 
 :- pragma foreign_decl("C", "extern MR_Integer counter;").
 :- pragma foreign_code("C", "MR_Integer counter = 0;").

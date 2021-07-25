@@ -6,18 +6,21 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module int.
 :- import_module std_util.
 
-main -->
-    ( { p('a', X), test(X) } ->
-        io__write_string("yes\n")
-    ;
-        io__write_string("no\n")
+main(!IO) :-
+    ( if
+        p('a', X),
+        test(X)
+    then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ).
 
 :- pred test(int).
@@ -26,40 +29,36 @@ main -->
 test(_) :-
     semidet_fail.
 
-:- pred p(character, int).
-:- mode p(in, out) is nondet.
+:- pred p(character::in, int::out) is nondet.
 
 p(A, D) :-
     q(A, B),
-    (
+    ( if
         r(B, C)
-    ->
+    then
         (
             s(C, D)
         ;
             D = 31
         )
-    ;
+    else
         not(
             q(B, _)
         ),
         D = 32
     ).
 
-:- pred q(character, character).
-:- mode q(in, out) is nondet.
+:- pred q(character::in, character::out) is nondet.
 
 q('a', 'a').
 q('a', 'b').
 q('c', 'c').
 
-:- pred r(character, int).
-:- mode r(in, out) is semidet.
+:- pred r(character::in, int::out) is semidet.
 
 r('a', 10).
 
-:- pred s(int, int).
-:- mode s(in, out) is det.
+:- pred s(int::in, int::out) is det.
 
 s(N, 3 * N).
 

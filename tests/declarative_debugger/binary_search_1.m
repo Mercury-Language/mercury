@@ -16,10 +16,15 @@
 :- import_module binary_search.
 
 sillier_even(N, R) :-
-    (
-        not (N =< 600, N >= 405 ; N mod 3 = 0)
-    ->
+    ( if
+        not (
+                N =< 600,
+                N >= 405
+            ;
+                N mod 3 = 0
+            )
+    then
         binary_search.silly_even(N, R)
-    ;
+    else
         binary_search_1.sillier_even(N-2, R)
     ).

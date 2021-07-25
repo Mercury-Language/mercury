@@ -19,5 +19,4 @@
 :- import_module 'hlc_name_mangling-helper-module'.
 
 main(!IO) :-
-    io.write(foo, !IO),
-    io.nl(!IO).
+    io.write_line(foo, !IO).

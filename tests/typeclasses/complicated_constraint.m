@@ -9,6 +9,8 @@
 :- import_module io.
 :- import_module list.
 
+:- pred main(io::di, io::uo) is det.
+
 :- typeclass printable(A) where [
     pred p(A::in, io.state::di, io.state::uo) is det
 ].
@@ -21,10 +23,18 @@
 :- instance printable(list(T)) <= foo(T).
 :- instance foo(list(T)) <= foo(T).
 
-:- pred main(io::di, io::uo) is det.
-
 :- implementation.
 :- import_module int.
+
+main(!IO) :-
+    p(42, !IO),
+    io.write_string("\n", !IO),
+    p_list([1, 2, 3], !IO),
+    io.write_string("\n", !IO),
+    p([1, 2, 3], !IO),
+    io.write_string("\n", !IO),
+    blah(101, !IO),
+    io.write_string("\n", !IO).
 
 :- instance printable(int) where [
     pred(p/3) is io.write_int
@@ -40,21 +50,10 @@
     pred(p/3) is p_list
 ].
 
-:- pred p_list(list(T), state, state) <= printable(T).
-:- mode p_list(in, di, uo) is det.
+:- pred p_list(list(T)::in, io::di, io::uo) is det <= printable(T).
 
-p_list(Xs) -->
-    list.foldl(p, Xs).
-
-main -->
-    p(42),
-    io.write_string("\n"),
-    p_list([1, 2, 3]),
-    io.write_string("\n"),
-    p([1, 2, 3]),
-    io.write_string("\n"),
-    blah(101),
-    io.write_string("\n").
+p_list(Xs, !IO) :-
+    list.foldl(p, Xs, !IO).
 
 :- pred list_b(list(T)::in) is semidet <= foo(T).
 
@@ -67,16 +66,16 @@ foo_b(1).
 
 % This tests complicated constraints of the form `foo(bar(T))'.
 
-:- pred blah(T, io, io) <= (foo(list(T)), printable(list(T))).
-:- mode blah(in, di, uo) is det.
+:- pred blah(T::in, io::di, io::uo) is det
+    <= (foo(list(T)), printable(list(T))).
 
-blah(X) -->
-    (
+blah(X, !IO) :-
+    ( if
         % This also tests the semidet class method call mechanism
-        { b([X, X]) }
-    ->
-        io__write_string("true\n")
-    ;
-        io__write_string("false\n")
+        b([X, X])
+    then
+        io.write_string("true\n", !IO)
+    else
+        io.write_string("false\n", !IO)
     ),
-    p([X]).
+    p([X], !IO).

@@ -25,6 +25,15 @@
     pred(c/2) is p
 ].
 
+main(!IO) :-
+    solutions(mypred(1), Solns),
+    io.write_line(Solns, !IO).
+
+:- pred mypred(T::in, T::out) is nondet <= thisclass(T).
+
+mypred(A, B) :-
+    c(A, B).
+
 :- pred p(int, int).
 :- mode p(in, in) is semidet.
 :- mode p(out, in) is semidet.
@@ -34,12 +43,3 @@ p(1, 1).
 p(1, 2).
 p(1, 3).
 p(2, 4).
-
-:- pred mypred(T::in, T::out) is nondet <= thisclass(T).
-
-mypred(A, B) :-
-    c(A, B).
-
-main(!IO) :-
-    solutions(mypred(1), Solns),
-    io.write_line(Solns, !IO).

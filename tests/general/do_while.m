@@ -11,7 +11,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
@@ -20,23 +20,23 @@
 :- import_module list.
 :- import_module solutions.
 
-main -->
-    do_while(r(100), write_answer("foo")),
-    { do_while(r(100), collect_answer(201), [], L) },
-    print(L), nl,
-    { do_while(r(100), collect_answer(555), [], L2) },
-    print(L2), nl.
+main(!IO) :-
+    do_while(r(100), write_answer("foo"), !IO),
+    do_while(r(100), collect_answer(201), [], L),
+    io.print_line(L, !IO),
+    do_while(r(100), collect_answer(555), [], L2),
+    io.print_line(L2, !IO).
 
 :- pred write_answer(string::in, int::in, bool::out,
-    io__state::di, io__state::uo) is det.
+    io::di, io::uo) is det.
 
-write_answer(S, R, More) -->
-    print(S), nl,
-    print(R), nl,
-    { More = (if R = 200 then no else yes) }.
+write_answer(S, R, More, !IO) :-
+    io.print_line(S, !IO),
+    io.print_line(R, !IO),
+    More = (if R = 200 then no else yes).
 
-:- pred collect_answer(int, int, bool, list(int), list(int)).
-:- mode collect_answer(in, in, out, in, out) is det.
+:- pred collect_answer(int::in, int::in, bool::out,
+    list(int)::in, list(int)::out) is det.
 
 collect_answer(Limit, R, More, Rs0, [R | Rs0]) :-
     More = (if R = Limit then no else yes).
@@ -51,7 +51,7 @@ r(Mult, Z) :-
 
 q(X, Y) :-
     p(X),
-    (if some [Y1] p(Y1) then
+    ( if some [Y1] p(Y1) then
         Y = Y1
     else
         Y = 42

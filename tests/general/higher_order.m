@@ -11,7 +11,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module list.
@@ -21,40 +21,47 @@
 :- mode map(pred(in, out) is det, in, out) is det.
 :- mode map(pred(in, in) is semidet, in, in) is semidet.
 
-higher_order__map(_Pred, [], []).
-higher_order__map(Pred, [X | Xs], [Y | Ys]) :-
+map(_Pred, [], []).
+map(Pred, [X | Xs], [Y | Ys]) :-
     call(Pred, X, Y),
-    higher_order__map(Pred, Xs, Ys).
+    higher_order.map(Pred, Xs, Ys).
 
 :- pred double(string::in, string::out) is det.
-double(X, Y) :-
-    string__append(X, X, Y).
 
-main -->
-    { higher_order__map(double, ["foo", "bar"], List) },
-    io__write_strings(List),
-    io__write_string("\n"),
-    (
-        { higher_order__map((pred(X::in, Y::in) is semidet :-
-            double(X, Y)), ["ab"], ["abab"]) }
-    ->
-        io__write_string("Yes\n")
-    ;
-        io__write_string("Oops\n")
+double(X, Y) :-
+    string.append(X, X, Y).
+
+main(!IO) :-
+    higher_order.map(double, ["foo", "bar"], List),
+    io.write_strings(List, !IO),
+    io.write_string("\n", !IO),
+    ( if
+        higher_order.map(
+            ( pred(X::in, Y::in) is semidet :-
+                double(X, Y)
+            ), ["ab"], ["abab"])
+    then
+        io.write_string("Yes\n", !IO)
+    else
+        io.write_string("Oops\n", !IO)
     ),
-    (
-        { higher_order__map((pred(X::in, Y::in) is semidet :-
-            double(X, Y)), ["ab"], ["abracadabra"]) }
-    ->
-        io__write_string("Oops\n")
-    ;
-        io__write_string("No\n")
+    ( if
+        higher_order.map(
+            ( pred(X::in, Y::in) is semidet :-
+                double(X, Y)
+            ), ["ab"], ["abracadabra"])
+    then
+        io.write_string("Oops\n", !IO)
+    else
+        io.write_string("No\n", !IO)
     ),
-    (
-        { higher_order__map((pred(X::in, Y::in) is semidet :-
-            double(X, Y)), ["ab"], []) }
-    ->
-        io__write_string("Oops\n")
-    ;
-        io__write_string("No\n")
+    ( if
+        higher_order.map(
+            ( pred(X::in, Y::in) is semidet :-
+                double(X, Y)
+            ), ["ab"], [])
+    then
+        io.write_string("Oops\n", !IO)
+    else
+        io.write_string("No\n", !IO)
     ).

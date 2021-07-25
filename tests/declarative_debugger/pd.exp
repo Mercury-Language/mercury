@@ -5,29 +5,29 @@ mdb> register --quiet
 mdb> break rev
  0: + stop  interface func pd.rev/1-0 (det)
 mdb> continue
-       2:      2  2 CALL func pd.rev/1-0 (det) pd.m:20 (pd.m:15)
+       2:      2  2 CALL func pd.rev/1-0 (det) pd.m:19 (pd.m:15)
 mdb> finish
-      15:      2  2 EXIT func pd.rev/1-0 (det) pd.m:20 (pd.m:15)
+      15:      2  2 EXIT func pd.rev/1-0 (det) pd.m:19 (pd.m:15)
 mdb> dd -d 3 -n 7
 rev([1, 2, 3]) = []
 Valid? no
 rev_2([1, 2, 3], []) = []
 Valid? pd
-      14:      3  3 EXIT func pd.rev_2/2-0 (det) pd.m:24 (pd.m:20)
+      14:      3  3 EXIT func pd.rev_2/2-0 (det) pd.m:23 (pd.m:19)
 mdb> retry
-       3:      3  3 CALL func pd.rev_2/2-0 (det) pd.m:24 (pd.m:20)
+       3:      3  3 CALL func pd.rev_2/2-0 (det) pd.m:23 (pd.m:19)
 mdb> step
-       4:      3  3 SWTC func pd.rev_2/2-0 (det) s2-2; pd.m:25
+       4:      3  3 SWTC func pd.rev_2/2-0 (det) s2-2; pd.m:24
 mdb> step
-       5:      4  4 CALL func pd.rev_2/2-0 (det) pd.m:24 (pd.m:25)
+       5:      4  4 CALL func pd.rev_2/2-0 (det) pd.m:23 (pd.m:24)
 mdb> finish
-      13:      4  4 EXIT func pd.rev_2/2-0 (det) pd.m:24 (pd.m:25)
+      13:      4  4 EXIT func pd.rev_2/2-0 (det) pd.m:23 (pd.m:24)
 mdb> dd -d 3 -n 7
 rev_2([2, 3], [1]) = []
 Valid? no
 rev_2([3], [2, 1]) = []
 Valid? pd
-      12:      5  5 EXIT func pd.rev_2/2-0 (det) pd.m:24 (pd.m:25)
+      12:      5  5 EXIT func pd.rev_2/2-0 (det) pd.m:23 (pd.m:24)
 mdb> dd -d 3 -n 7
 rev_2([3], [2, 1]) = []
 Valid? no
@@ -36,5 +36,5 @@ Valid? no
 Found incorrect contour:
 rev_2([], [3, 2, 1]) = []
 Is this a bug? yes
-      11:      6  6 EXIT func pd.rev_2/2-0 (det) pd.m:24 (pd.m:25)
+      11:      6  6 EXIT func pd.rev_2/2-0 (det) pd.m:23 (pd.m:24)
 mdb> quit -y

@@ -19,7 +19,7 @@
 w_cmp(R, W1, W2) :-
     R = unsafe_promise_unique(
         promise_only_solution(
-            (pred(R1::out) is cc_multi :-
+            ( pred(R1::out) is cc_multi :-
                 W1 = w(S1),
                 W2 = w(S2),
                 compare(R1, to_upper(S1)`with_type`string,

@@ -22,14 +22,14 @@ main(!IO) :-
 :- pred p(int::in, bool::out) is det.
 
 p(N, R) :-
-    (
+    ( if
         some [M] (
             M > 5,
             q(N, M)
         )
-    ->
+    then
         R = yes
-    ;
+    else
         R = no
     ).
 

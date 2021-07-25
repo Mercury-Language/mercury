@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io__state, io__state).
+:- pred main(io, io).
 :- mode main(di, uo) is det.
 
 :- implementation.
@@ -16,20 +16,16 @@
 :- import_module require.
 :- import_module std_util.
 
-main -->
-    (
-        { semidet_succeed }
-    ->
-        io__write_string("yes\n")
-    ;
-        io__progname("foo", Name),
-        { error(Name) }
+main(!IO) :-
+    ( if semidet_succeed then
+        io.write_string("yes\n", !IO)
+    else
+        io.progname("foo", Name, !IO),
+        error(Name)
     ),
-    (
-        { semidet_succeed }
-    ->
-        io__write_string("yes\n")
-    ;
-        io__progname("bar", Name),
-        { error(Name) }
+    ( if semidet_succeed then
+        io.write_string("yes\n", !IO)
+    else
+        io.progname("bar", Name, !IO),
+        error(Name)
     ).

@@ -42,13 +42,13 @@ mdb> c
       E5:     C4 EXIT pred resume.wrapper/6-0 (semidet)
 mdb> retry
       E6:     C4 CALL pred resume.wrapper/6-0 (semidet)
-mdb> break resume.m:38
- 1: + stop  linenumber resume.m:38
+mdb> break resume.m:36
+ 1: + stop  linenumber resume.m:36
 mdb> c
       E7:     C5 CALL func resume.l/1-0 (semidet)
 mdb> delete *
  0: E stop  interface pred resume.wrapper/6-0 (semidet)
- 1: E stop  linenumber resume.m:38
+ 1: E stop  linenumber resume.m:36
 mdb> break -E3 resume.l
  0: + stop  interface func resume.l/1-0 (semidet)
             (ignore next 3 call events)
@@ -84,13 +84,13 @@ mdb> c
       E5:     C4 EXIT pred resume.wrapper/6-0 (semidet)
 mdb> retry
       E6:     C4 CALL pred resume.wrapper/6-0 (semidet)
-mdb> break resume.m:39
- 2: + stop  linenumber resume.m:39
+mdb> break resume.m:37
+ 2: + stop  linenumber resume.m:37
 mdb> c
      E11:     C8 CALL func resume.l/1-0 (semidet)
 mdb> delete *
  0: E stop  interface pred resume.wrapper/6-0 (semidet)
- 2: E stop  linenumber resume.m:39
+ 2: E stop  linenumber resume.m:37
 mdb> break -E3 resume.l
  0: + stop  interface func resume.l/1-0 (semidet)
             (ignore next 3 call events)
@@ -114,13 +114,13 @@ Valid? y
 l([14, 15]) = 15
 Valid? pd
      E14:    C10 EXIT func resume.l/1-0 (semidet)
-mdb> break resume.m:40
- 3: + stop  linenumber resume.m:40
+mdb> break resume.m:38
+ 3: + stop  linenumber resume.m:38
 mdb> c
      E15:    C11 CALL func resume.l/1-0 (semidet)
 mdb> delete *
  0: E stop  interface pred resume.wrapper/6-0 (semidet)
- 3: E stop  linenumber resume.m:40
+ 3: E stop  linenumber resume.m:38
 mdb> f
      E16:    C11 EXIT func resume.l/1-0 (semidet)
 mdb> dd -d 2 -n 7
@@ -142,8 +142,8 @@ Found incorrect contour:
 l([20]) = 20
 Is this a bug? y
      E17:    C12 EXIT func resume.l/1-0 (semidet)
-mdb> break resume.m:41
- 4: + stop  linenumber resume.m:41
+mdb> break resume.m:39
+ 4: + stop  linenumber resume.m:39
 mdb> c
      E18:    C13 CALL func resume.l/1-0 (semidet)
 mdb> f
@@ -153,7 +153,7 @@ l([21, 22, 23, 24, 25]) = 25
 Valid? pd
      E19:    C13 EXIT func resume.l/1-0 (semidet)
 mdb> delete *
- 4: E stop  linenumber resume.m:41
+ 4: E stop  linenumber resume.m:39
 mdb> break wrapper
  0: + stop  interface pred resume.wrapper/6-0 (semidet)
 mdb> c
@@ -175,8 +175,8 @@ Found incorrect contour:
 l([25]) = 25
 Is this a bug? y
      E20:    C14 EXIT func resume.l/1-0 (semidet)
-mdb> break resume.m:42
- 5: + stop  linenumber resume.m:42
+mdb> break resume.m:40
+ 5: + stop  linenumber resume.m:40
 mdb> c
      E21:    C15 CALL func resume.l/1-0 (semidet)
 mdb> f
@@ -187,7 +187,7 @@ Valid? pd
      E22:    C15 EXIT func resume.l/1-0 (semidet)
 mdb> delete *
  0: E stop  interface pred resume.wrapper/6-0 (semidet)
- 5: E stop  linenumber resume.m:42
+ 5: E stop  linenumber resume.m:40
 mdb> break wrapper
  0: + stop  interface pred resume.wrapper/6-0 (semidet)
 mdb> c

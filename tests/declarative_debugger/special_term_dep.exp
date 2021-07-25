@@ -7,9 +7,9 @@ mdb> break p
 mdb> break q
  1: + stop  interface pred special_term_dep.q/2-0 (semidet)
 mdb> continue
-      E2:     C2 CALL pred special_term_dep.p/1-0 (det) special_term_dep.m:32 (special_term_dep.m:25)
+      E2:     C2 CALL pred special_term_dep.p/1-0 (det) special_term_dep.m:31 (special_term_dep.m:25)
 mdb> finish
-      E3:     C2 EXIT pred special_term_dep.p/1-0 (det) special_term_dep.m:32 (special_term_dep.m:25)
+      E3:     C2 EXIT pred special_term_dep.p/1-0 (det) special_term_dep.m:31 (special_term_dep.m:25)
 mdb> dd -d 3 -n 7
 p([2, 3])
 Valid? browse 1
@@ -20,12 +20,12 @@ Found incorrect contour:
 pa([2, 3])
 p([2, 3])
 Is this a bug? yes
-      E3:     C2 EXIT pred special_term_dep.p/1-0 (det) special_term_dep.m:32 (special_term_dep.m:25)
+      E3:     C2 EXIT pred special_term_dep.p/1-0 (det) special_term_dep.m:31 (special_term_dep.m:25)
 mdb> continue
 [2, 3]
-      E4:     C3 CALL pred special_term_dep.q/2-0 (semidet) special_term_dep.m:64 (special_term_dep.m:53)
+      E4:     C3 CALL pred special_term_dep.q/2-0 (semidet) special_term_dep.m:56 (special_term_dep.m:48)
 mdb> finish
-      E5:     C3 EXIT pred special_term_dep.q/2-0 (semidet) special_term_dep.m:64 (special_term_dep.m:53)
+      E5:     C3 EXIT pred special_term_dep.q/2-0 (semidet) special_term_dep.m:56 (special_term_dep.m:48)
 mdb> dd -d 3 -n 7
 q([1, 2], [3])
 Valid? browse 2
@@ -39,6 +39,6 @@ Found inadmissible call:
 Parent q([1, 2], _)
 Call qb([1, 2], _)
 Is this a bug? yes
-      E5:     C3 EXIT pred special_term_dep.q/2-0 (semidet) special_term_dep.m:64 (special_term_dep.m:53)
+      E5:     C3 EXIT pred special_term_dep.q/2-0 (semidet) special_term_dep.m:56 (special_term_dep.m:48)
 mdb> continue
 [3]

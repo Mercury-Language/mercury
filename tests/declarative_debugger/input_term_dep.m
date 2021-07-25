@@ -5,167 +5,142 @@
 :- module input_term_dep.
 :- interface.
 :- import_module io.
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module list.
 
-main -->
+main(!IO) :-
     % Test cases which track an input subterm.
-    test1,      % basic det conjunction
-    test2,      % construction unification
-    test3,      % if-then-else
-    test4.      % negation
+    test1(!IO),      % basic det conjunction
+    test2(!IO),      % construction unification
+    test3(!IO),      % if-then-else
+    test4(!IO).      % negation
 
 %---------------------------------------------------------------------------%
 
-:- pred test1(io__state::di, io__state::uo) is det.
-test1 -->
-    { p(A, B, C) },
-    io__write_int(A),
-    io__nl,
-    io__write_int(B),
-    io__nl,
-    io__write_int(C),
-    io__nl.
+:- pred test1(io::di, io::uo) is det.
 
-:- pred p(int, int, int).
-:- mode p(out, out, out) is det.
+test1(!IO) :-
+    p(A, B, C),
+    io.write_int(A, !IO),
+    io.nl(!IO),
+    io.write_int(B, !IO),
+    io.nl(!IO),
+    io.write_int(C, !IO),
+    io.nl(!IO).
+
+:- pred p(int::out, int::out, int::out) is det.
 
 p(A, B, C) :-
     pa(A),
     pb(B),
     pc(A, C).
 
-:- pred pa(int).
-:- mode pa(out) is det.
+:- pred pa(int::out) is det.
 
 pa(5).
 
-:- pred pb(int).
-:- mode pb(out) is det.
+:- pred pb(int::out) is det.
 
 pb(8).
 
-:- pred pc(int, int).
-:- mode pc(in, out) is det.
+:- pred pc(int::in, int::out) is det.
 
 pc(_, 13).
 
 %---------------------------------------------------------------------------%
 
-:- pred test2(io__state::di, io__state::uo) is det.
+:- pred test2(io::di, io::uo) is det.
 
-test2 -->
-    (
-        { q(X) }
-    ->
-        io__write(X),
-        io__nl
-    ;
-        io__write_string("no\n")
+test2(!IO) :-
+    ( if q(X) then
+        io.write_line(X, !IO)
+    else
+        io.write_string("no\n", !IO)
     ).
 
-:- pred q(list(list(int))).
-:- mode q(out) is semidet.
+:- pred q(list(list(int))::out) is semidet.
 
 q(L) :-
     qa([C, A]),
     qb(B),
     qc([A, B, C], L).
 
-:- pred qa(list(list(int))).
-:- mode qa(out) is det.
+:- pred qa(list(list(int))::out) is det.
 
 qa([[1], [2, 3]]).
 
-:- pred qb(list(int)).
-:- mode qb(out) is det.
+:- pred qb(list(int)::out) is det.
 
 qb([]).
 
-:- pred qc(list(list(int)), list(list(int))).
-:- mode qc(in, out) is det.
+:- pred qc(list(list(int))::in, list(list(int))::out) is det.
 
 qc(L, L).
 
 %---------------------------------------------------------------------------%
 
-:- pred test3(io__state::di, io__state::uo) is det.
+:- pred test3(io::di, io::uo) is det.
 
-test3 -->
-    { r(1, Z) },
-    io__write(Z),
-    io__nl.
+test3(!IO) :-
+    r(1, Z),
+    io.write_line(Z, !IO).
 
-:- pred r(int, int).
-:- mode r(in, out) is det.
+:- pred r(int::in, int::out) is det.
 
 r(N, P) :-
-    (
-        ra(N, A)
-    ->
-        (
-            rb(A)
-        ->
+    ( if ra(N, A) then
+        ( if rb(A) then
             rc(A, P)
-        ;
+        else
             P = 1
         )
-    ;
+    else
         P = 99
     ).
 
-:- pred ra(int, int).
-:- mode ra(in, out) is semidet.
+:- pred ra(int::in, int::out) is semidet.
 
 ra(1, 3).
 
-:- pred rb(int).
-:- mode rb(in) is semidet.
+:- pred rb(int::in) is semidet.
 
 rb(3).
 
-:- pred rc(int, int).
-:- mode rc(in, out) is det.
+:- pred rc(int::in, int::out) is det.
 
 rc(_, 33).
 
 %---------------------------------------------------------------------------%
 
-:- pred test4(io__state::di, io__state::uo) is det.
+:- pred test4(io::di, io::uo) is det.
 
-test4 -->
-    (
-        { s(1) }
-    ->
-        io__write_string("yes\n")
-    ;
-        io__write_string("no\n")
+test4(!IO) :-
+    ( if s(1) then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ).
 
-:- pred s(int).
-:- mode s(in) is semidet.
+:- pred s(int::in) is semidet.
 
 s(N) :-
-    \+ (
+    not (
         sa(N, A),
         sb(A),
-        \+ sc(A)
+        not sc(A)
     ).
 
-:- pred sa(int, int).
-:- mode sa(in, out) is semidet.
+:- pred sa(int::in, int::out) is semidet.
 
 sa(1, 7).
 
-:- pred sb(int).
-:- mode sb(in) is semidet.
+:- pred sb(int::in) is semidet.
 
 sb(7).
 
-:- pred sc(int).
-:- mode sc(in) is semidet.
+:- pred sc(int::in) is semidet.
 
 sc(7).
 

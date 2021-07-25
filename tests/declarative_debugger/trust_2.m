@@ -14,4 +14,4 @@
 
 :- import_module string.
 
-concat(w(S), w(T), w(S++T)).
+concat(w(S), w(T), w(S ++ T)).

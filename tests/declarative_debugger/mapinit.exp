@@ -2,13 +2,13 @@
 mdb> echo on
 Command echo enabled.
 mdb> step
-      E2:     C2 CALL pred mapinit.xmap_init/1-0 (det) mapinit.m:40 (mapinit.m:33)
+      E2:     C2 CALL pred mapinit.xmap_init/1-0 (det) mapinit.m:39 (mapinit.m:33)
 mdb> finish
-      E3:     C2 EXIT pred mapinit.xmap_init/1-0 (det) mapinit.m:40 (mapinit.m:33)
+      E3:     C2 EXIT pred mapinit.xmap_init/1-0 (det) mapinit.m:39 (mapinit.m:33)
 mdb> dd -d 3 -n 7
 xmap_init(empty)
 Valid? q
 Diagnosis aborted.
-      E3:     C2 EXIT pred mapinit.xmap_init/1-0 (det) mapinit.m:40 (mapinit.m:33)
+      E3:     C2 EXIT pred mapinit.xmap_init/1-0 (det) mapinit.m:39 (mapinit.m:33)
 mdb> c
 two(0, "zero", empty, empty)

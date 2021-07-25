@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(state::di, state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -21,14 +21,14 @@
 
 :- pragma promise_pure(main/2).
 
-main -->
-    { X = get_counter },
-    print("X(4) = "),
-    { impure X4 = impure_apply(X, 4) },
-    print(X4), nl,
-    print("X(4) = "),
-    { impure X4b = impure_apply(X, 4) },
-    print(X4b), nl.
+main(!IO) :-
+    X = get_counter,
+    io.print("X(4) = ", !IO),
+    impure X4 = impure_apply(X, 4),
+    io.print_line(X4, !IO),
+    io.print("X(4) = ", !IO),
+    impure X4b = impure_apply(X, 4),
+    io.print_line(X4b, !IO).
 
 :- pragma foreign_decl("C", "extern MR_Integer counter;").
 :- pragma foreign_code("C", "MR_Integer counter = 42;").

@@ -51,14 +51,14 @@ main(!IO) :-
 :- pred test(string::in, map(K, V)::in, map(K, V)::in, io::di, io::uo) is det.
 
 test(Name, A, B, !IO) :-
-    ( map.equal(A, B) ->
+    ( if map.equal(A, B) then
         EqualRes = "equal"
-    ;
+    else
         EqualRes = "not equal"
     ),
-    ( unify(A, B) ->
+    ( if unify(A, B) then
         UnifyRes = "unifiable"
-    ;
+    else
         UnifyRes = "not unifiable"
     ),
     io.format("%s: %s, %s\n", [s(Name), s(UnifyRes), s(EqualRes)], !IO).

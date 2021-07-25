@@ -5,21 +5,19 @@
 :- module throw.
 :- interface.
 :- import_module io.
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is cc_multi.
+
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
 :- import_module exception.
 :- import_module int.
 
-main -->
-    { try(p, X) },
-    io__write(X),
-    io__nl,
-    { try(q, Y) },
-    io__write(Y),
-    io__nl.
+main(!IO) :-
+    try(p, X),
+    io.write_line(X, !IO),
+    try(q, Y),
+    io.write_line(Y, !IO).
 
 :- pred p(int::out) is cc_nondet.
 
@@ -41,11 +39,9 @@ b(A, B) :-
     ;
         B = A * 4
     ),
-    (
-        B > 10
-    ->
+    ( if B > 10 then
         throw("Too big")
-    ;
+    else
         true
     ).
 
@@ -73,10 +69,8 @@ b2(A, B) :-
     ;
         B = A * 4
     ),
-    (
-        B > 10
-    ->
+    ( if B > 10 then
         throw("Too big")
-    ;
+    else
         true
     ).

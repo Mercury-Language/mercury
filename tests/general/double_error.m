@@ -8,31 +8,27 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 :- import_module require.
 
-main -->
-    io__command_line_arguments(Args),
-    { list__length(Args, Num) },
-    (
-        { p(Num) }
-    ->
-        io__write_string("1\n")
-    ;
-        { Arg = "not 1\n" },
-        { error(Arg) }
+main(!IO) :-
+    io.command_line_arguments(Args, !IO),
+    list.length(Args, Num),
+    ( if p(Num) then
+        io.write_string("1\n", !IO)
+    else
+        Arg = "not 1\n",
+        error(Arg)
     ),
-    (
-        { q(Num) }
-    ->
-        io__write_string("2\n")
-    ;
-        { Arg = "not 2\n" },
-        { error(Arg) }
+    ( if q(Num) then
+        io.write_string("2\n", !IO)
+    else
+        Arg = "not 2\n",
+        error(Arg)
     ).
 
 :- pred p(int::in) is semidet.

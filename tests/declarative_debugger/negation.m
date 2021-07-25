@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -16,32 +16,30 @@
 
 main(S0, S) :-
     p(1, X),
-    io__write_int(X, S0, S1),
-    io__nl(S1, S).
+    io.write_int(X, S0, S1),
+    io.nl(S1, S).
 
 :- pred p(int, int).
 :- mode p(in, out) is det.
 
 p(A, B) :-
-    (
+    ( if
         not (
             r(A, C),
             not q(C)
         )
-    ->
+    then
         B = 42
-    ;
+    else
         B = A
     ).
 
-:- pred q(int).
-:- mode q(in) is semidet.
+:- pred q(int::in) is semidet.
 
 q(N) :-
     N > 10.
 
-:- pred r(int, int).
-:- mode r(in, out) is multi.
+:- pred r(int::in, int::out) is multi.
 
 r(K, K + 10).
 r(K, K + 20).

@@ -8,14 +8,14 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module solutions.
 
-main -->
-    { solutions(hello(1, 1), List) },
-    io__write_strings(List).
+main(!IO) :-
+    solutions(hello(1, 1), List),
+    io.write_strings(List, !IO).
 
 :- pred hello(int::in, int::in, string::out) is nondet.
 

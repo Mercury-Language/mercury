@@ -24,8 +24,7 @@ main(!IO) :-
     foo(1, !IO),
     io.nl(!IO).
 
-:- pred foo(T, io, io) <= +(T).
-:- mode foo(in, di, uo) is det.
+:- pred foo(T::in, io::di, io::uo) is det <= +(T).
 
 foo(X, !IO) :-
     p(X, !IO).

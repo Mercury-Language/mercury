@@ -19,11 +19,9 @@
 
 main(!IO) :-
     test1(5, List1),
-    io__write(List1, !IO),
-    io__nl(!IO),
+    io.write_line(List1, !IO),
     test2(21, List2),
-    io__write(List2, !IO),
-    io__nl(!IO).
+    io.write_line(List2, !IO).
 
 :- impure pred set_x(int::in) is det.
 :- pragma no_inline(set_x/1).

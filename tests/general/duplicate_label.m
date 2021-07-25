@@ -10,12 +10,14 @@
 % generated incorrect C code for this module
 % (there was a duplicate definition for a static constant).
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module list.
 
-main -->
-    { X = "foo", Y = [X, X], Z = [Y, Y],
-    list__condense(Z, L) },
-    io__write_strings(L).
+main(!IO) :-
+    X = "foo",
+    Y = [X, X],
+    Z = [Y, Y],
+    list.condense(Z, L),
+    io.write_strings(L, !IO).

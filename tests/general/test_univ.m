@@ -8,7 +8,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -16,30 +16,30 @@
 :- import_module list.
 :- import_module univ.
 
-main -->
-    ( { test1 } ->
-        io__write_string("test 1 ok\n")
-    ;
-        io__write_string("test 1 failed\n")
+main(!IO) :-
+    ( if test1 then
+        io.write_string("test 1 ok\n", !IO)
+    else
+        io.write_string("test 1 failed\n", !IO)
     ),
-    ( { test2 } ->
-        io__write_string("test 2 failed\n")
-    ;
-        io__write_string("test 2 ok\n")
+    ( if test2 then
+        io.write_string("test 2 failed\n", !IO)
+    else
+        io.write_string("test 2 ok\n", !IO)
     ),
-    ( { test3 } ->
-        io__write_string("test 3 failed\n")
-    ;
-        io__write_string("test 3 ok\n")
+    ( if test3 then
+        io.write_string("test 3 failed\n", !IO)
+    else
+        io.write_string("test 3 ok\n", !IO)
     ),
-    ( { test4(Compare) } ->
-        ( { Compare = no } ->
-            io__write_string("test 4 ok\n")
-        ;
-            io__write_string("test 4 comparison failed\n")
+    ( if test4(Compare) then
+        ( if Compare = no then
+            io.write_string("test 4 ok\n", !IO)
+        else
+            io.write_string("test 4 comparison failed\n", !IO)
         )
-    ;
-        io__write_string("test 4 type_to_univ failed\n")
+    else
+        io.write_string("test 4 type_to_univ failed\n", !IO)
     ).
 
 :- pred test1 is semidet.
@@ -75,8 +75,8 @@ test4(Compare) :-
     type_to_univ(X, UnivX),
     type_to_univ(Y, UnivX),
     % The comparison should establish the type of Y as integer (same as X)
-    ( Y = 2 ->
+    ( if Y = 2 then
         Compare = yes
-    ;
+    else
         Compare = no
     ).

@@ -7,9 +7,9 @@ mdb> break a
 mdb> break b
  1: + stop  interface pred propositional.b/0-0 (semidet)
 mdb> continue
-      E2:     C2 CALL pred propositional.a/0-0 (semidet) propositional.m:33 (propositional.m:16)
+      E2:     C2 CALL pred propositional.a/0-0 (semidet) propositional.m:31 (propositional.m:15)
 mdb> finish
-      E3:     C2 EXIT pred propositional.a/0-0 (semidet) propositional.m:33 (propositional.m:16)
+      E3:     C2 EXIT pred propositional.a/0-0 (semidet) propositional.m:31 (propositional.m:15)
 mdb> dd -d 3 -n 7
 a
 Valid? no
@@ -19,11 +19,11 @@ Found incorrect contour:
 c
 a
 Is this a bug? yes
-      E3:     C2 EXIT pred propositional.a/0-0 (semidet) propositional.m:33 (propositional.m:16)
+      E3:     C2 EXIT pred propositional.a/0-0 (semidet) propositional.m:31 (propositional.m:15)
 mdb> continue
-      E4:     C3 CALL pred propositional.b/0-0 (semidet) propositional.m:35 (propositional.m:16)
+      E4:     C3 CALL pred propositional.b/0-0 (semidet) propositional.m:33 (propositional.m:15)
 mdb> finish
-      E5:     C3 EXIT pred propositional.b/0-0 (semidet) propositional.m:35 (propositional.m:16)
+      E5:     C3 EXIT pred propositional.b/0-0 (semidet) propositional.m:33 (propositional.m:15)
 mdb> dd -d 3 -n 7
 b
 Valid? no
@@ -35,8 +35,8 @@ Found incorrect contour:
 i
 f
 Is this a bug? yes
-      E6:     C4 EXIT pred propositional.f/0-0 (semidet) propositional.m:41 (propositional.m:35)
+      E6:     C4 EXIT pred propositional.f/0-0 (semidet) propositional.m:39 (propositional.m:33)
 mdb> continue
-      E5:     C3 EXIT pred propositional.b/0-0 (semidet) propositional.m:35 (propositional.m:16)
+      E5:     C3 EXIT pred propositional.b/0-0 (semidet) propositional.m:33 (propositional.m:15)
 mdb> continue
 yes

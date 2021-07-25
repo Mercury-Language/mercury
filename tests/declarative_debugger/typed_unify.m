@@ -16,9 +16,9 @@
 
 main(!IO) :-
     U = univ(1),
-    ( type_to_univ(I, U) ->
+    ( if type_to_univ(I, U) then
         io.write_int(I, !IO)
-    ;
+    else
         true
     ),
-    nl(!IO).
+    io.nl(!IO).

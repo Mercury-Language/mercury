@@ -5,12 +5,12 @@ mdb> register --quiet
 mdb> break p
  0: + stop  interface pred catch.p/2-0 (cc_multi)
 mdb> continue
-      E2:     C2 CALL pred catch.p/2-0 (cc_multi) catch.m:26 (catch.m:17)
+      E2:     C2 CALL pred catch.p/2-0 (cc_multi) catch.m:24 (catch.m:17)
 mdb> finish
 mdb: warning: reached unknown label
 This may result in some exception events
 being omitted from the trace.
-      E3:     C2 EXIT pred catch.p/2-0 (cc_multi) catch.m:26 (catch.m:17)
+      E3:     C2 EXIT pred catch.p/2-0 (cc_multi) catch.m:24 (catch.m:17)
 mdb> dd -d 3 -n 7
 mdb: warning: reached unknown label
 This may result in some exception events
@@ -24,17 +24,17 @@ Found unhandled or incorrect exception:
 q(1, _)
 "q: bad input"
 Is this a bug? yes
-      E4:     C3 EXCP pred catch.q/2-0 (det) e;c3; catch.m:37
+      E4:     C3 EXCP pred catch.q/2-0 (det) e;c3; catch.m:33
 mdb> continue
 mdb: warning: reached unknown label
 This may result in some exception events
 being omitted from the trace.
-      E3:     C2 EXIT pred catch.p/2-0 (cc_multi) catch.m:26 (catch.m:17)
+      E3:     C2 EXIT pred catch.p/2-0 (cc_multi) catch.m:24 (catch.m:17)
 mdb> continue
 exception(univ_cons("q: bad input"))
-      E5:     C4 CALL pred catch.p/2-0 (cc_multi) catch.m:26 (catch.m:20)
+      E5:     C4 CALL pred catch.p/2-0 (cc_multi) catch.m:24 (catch.m:19)
 mdb> finish
-      E6:     C4 EXIT pred catch.p/2-0 (cc_multi) catch.m:26 (catch.m:20)
+      E6:     C4 EXIT pred catch.p/2-0 (cc_multi) catch.m:24 (catch.m:19)
 mdb> dd -d 3 -n 7
 p(2, succeeded(2))
 Valid? no
@@ -44,6 +44,6 @@ Found incorrect contour:
 q(2, 2)
 p(2, succeeded(2))
 Is this a bug? yes
-      E6:     C4 EXIT pred catch.p/2-0 (cc_multi) catch.m:26 (catch.m:20)
+      E6:     C4 EXIT pred catch.p/2-0 (cc_multi) catch.m:24 (catch.m:19)
 mdb> continue
 succeeded(2)

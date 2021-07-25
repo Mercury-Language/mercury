@@ -14,8 +14,10 @@
     semipure pred m2(T::in, int::out) is det
 ].
 
-:- type foo ---> foo.
-:- type goo ---> goo.
+:- type foo
+    --->    foo.
+:- type goo
+    --->    goo.
 
 :- impure pred foo_m1(foo::in) is det.
 :- semipure pred foo_m2(foo::in, int::out) is det.

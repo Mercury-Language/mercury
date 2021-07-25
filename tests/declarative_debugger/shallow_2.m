@@ -13,35 +13,33 @@
 :- import_module shallow_3.
 
 p(S, M, N) :-
-    (
-        pp(S, 1, M)
-    ->
+    ( if pp(S, 1, M) then
         N = 1
-    ;
+    else
         N = -11
     ).
 
 :- pred pp(string::in, int::in, int::out) is multi.
 
-pp(S, M, N) :- a(S, M, N).
-pp(S, M, N) :- b(S, M, N).
+pp(S, M, N) :-
+    a(S, M, N).
+pp(S, M, N) :-
+    b(S, M, N).
 
 q(S, M, N) :-
-    (
-        a(S, M, -1)
-    ->
+    ( if a(S, M, -1) then
         N = 11
-    ;
+    else
         N = 2
     ).
 
 r(S, M, N) :-
-    (
-        \+ a(S, M, -3),
+    ( if
+        not a(S, M, -3),
         b(S, M, 5)
-    ->
+    then
         N = 23
-    ;
+    else
         N = 0
     ).
 
@@ -55,4 +53,3 @@ r(S, M, N) :-
 % :- pred b(string::in, int::in, int::out) is det.
 %
 % b(_, _, 5).
-

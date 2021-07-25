@@ -5,9 +5,9 @@ mdb> register --quiet
 mdb> break a
  0: + stop  interface pred oracle_db.a/3-0 (semidet)
 mdb> continue
-       3:      2  2 CALL pred oracle_db.a/3-0 (semidet) oracle_db.m:25 (oracle_db.m:15)
+       3:      2  2 CALL pred oracle_db.a/3-0 (semidet) oracle_db.m:22 (oracle_db.m:14)
 mdb> finish
-      10:      2  2 EXIT pred oracle_db.a/3-0 (semidet) oracle_db.m:25 (oracle_db.m:15)
+      10:      2  2 EXIT pred oracle_db.a/3-0 (semidet) oracle_db.m:22 (oracle_db.m:14)
 mdb> dd -d 3 -n 7
 a(99, 99, 99)
 Valid? no
@@ -19,7 +19,7 @@ b(99)
 b(99)
 a(99, 99, 99)
 Is this a bug? yes
-      10:      2  2 EXIT pred oracle_db.a/3-0 (semidet) oracle_db.m:25 (oracle_db.m:15)
+      10:      2  2 EXIT pred oracle_db.a/3-0 (semidet) oracle_db.m:22 (oracle_db.m:14)
 mdb> dd -R
 a(99, 99, 99)
 Valid? [no] no
@@ -31,6 +31,6 @@ b(99)
 b(99)
 a(99, 99, 99)
 Is this a bug? yes
-      10:      2  2 EXIT pred oracle_db.a/3-0 (semidet) oracle_db.m:25 (oracle_db.m:15)
+      10:      2  2 EXIT pred oracle_db.a/3-0 (semidet) oracle_db.m:22 (oracle_db.m:14)
 mdb> continue
 yes.

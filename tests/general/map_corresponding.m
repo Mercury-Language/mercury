@@ -29,19 +29,22 @@
 
 %---------------------------------------------------------------------------%
 
-main -->
-    list__foldl(run_test2, solutions(test_case2)),
-    io__nl,
-    list__foldl(run_test3, solutions(test_case3)),
-    io__nl.
+main(!IO) :-
+    list.foldl(run_test2, solutions(test_case2), !IO),
+    io.nl(!IO),
+    list.foldl(run_test3, solutions(test_case3), !IO),
+    io.nl(!IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred run_test2({bool, list(int), list(int), list(int)}, io, io).
-:- mode run_test2(in, di, uo) is cc_multi.
+:- pred run_test2({bool, list(int), list(int), list(int)}::in,
+    io::di, io::uo) is cc_multi.
 
-run_test2({ShouldSucceed, As, Bs, Cs}, IO0, IO) :-
-    P = ( pred(Zs::out) is det :- Zs = list__map_corresponding(sum2, As, Bs)),
+run_test2({ShouldSucceed, As, Bs, Cs}, !IO) :-
+    P =
+        ( pred(Zs::out) is det :-
+            Zs = list.map_corresponding(sum2, As, Bs)
+        ),
     try(P, ExceptionResult),
     Inputs = to_doc(As) `<>` space `<>` to_doc(Bs),
     (
@@ -49,9 +52,10 @@ run_test2({ShouldSucceed, As, Bs, Cs}, IO0, IO) :-
         (
             ShouldSucceed = yes,
             Result =
-                ( if   Ws = Cs
-                  then text("succeeded correctly on inputs ") `<>` Inputs
-                  else text("*** succeeded incorrectly on inputs ") `<>` Inputs
+                ( if Ws = Cs then
+                    text("succeeded correctly on inputs ") `<>` Inputs
+                else
+                    text("*** succeeded incorrectly on inputs ") `<>` Inputs
                 )
         ;
             ShouldSucceed = no,
@@ -71,8 +75,8 @@ run_test2({ShouldSucceed, As, Bs, Cs}, IO0, IO) :-
                 text("failed as expected on inputs ") `<>` Inputs
         )
     ),
-    io__print("\nlist__map_corresponding/3: ", IO0, IO1),
-    pprint__write(80, Result, IO1, IO).
+    io.print("\nlist__map_corresponding/3: ", !IO),
+    pprint.write(80, Result, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -82,12 +86,14 @@ sum2(X, Y) = X + Y.
 
 %---------------------------------------------------------------------------%
 
-:- pred run_test3({bool, list(int), list(int), list(int), list(int)}, io, io).
-:- mode run_test3(in, di, uo) is cc_multi.
+:- pred run_test3({bool, list(int), list(int), list(int), list(int)}::in,
+    io::di, io::uo) is cc_multi.
 
-run_test3({ShouldSucceed, As, Bs, Cs, Ds}, IO0, IO) :-
-    P = ( pred(Zs::out) is det :-
-        Zs = list__map_corresponding3(sum3, As, Bs, Cs)),
+run_test3({ShouldSucceed, As, Bs, Cs, Ds}, !IO) :-
+    P =
+        ( pred(Zs::out) is det :-
+            Zs = list.map_corresponding3(sum3, As, Bs, Cs)
+        ),
     try(P, ExceptionResult),
     Inputs = to_doc(As) `<>` space `<>` to_doc(Bs) `<>` space `<>` to_doc(Cs),
     (
@@ -95,9 +101,10 @@ run_test3({ShouldSucceed, As, Bs, Cs, Ds}, IO0, IO) :-
         (
             ShouldSucceed = yes,
             Result =
-                ( if   Ws = Ds
-                  then text("succeeded correctly on inputs ") `<>` Inputs
-                  else text("*** succeeded incorrectly on inputs ") `<>` Inputs
+                ( if Ws = Ds then
+                    text("succeeded correctly on inputs ") `<>` Inputs
+                else
+                    text("*** succeeded incorrectly on inputs ") `<>` Inputs
                 )
         ;
             ShouldSucceed = no,
@@ -117,8 +124,8 @@ run_test3({ShouldSucceed, As, Bs, Cs, Ds}, IO0, IO) :-
                 text("failed as expected on inputs ") `<>` Inputs
         )
     ),
-    io__print("\nlist__map_corresponding3/4: ", IO0, IO1),
-    pprint__write(80, Result, IO1, IO).
+    io.print("\nlist__map_corresponding3/4: ", !IO),
+    pprint.write(80, Result, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -128,8 +135,7 @@ sum3(X, Y, Z) = X + Y + Z.
 
 %---------------------------------------------------------------------------%
 
-:- pred test_case2({bool, list(int), list(int), list(int)}).
-:- mode test_case2(out) is multi.
+:- pred test_case2({bool, list(int), list(int), list(int)}::out) is multi.
 
 test_case2({yes, [], [], []}).
 test_case2({yes, [1, 2, 3], [4, 5, 6], [5, 7, 9]}).
@@ -138,8 +144,8 @@ test_case2({no,  [1], [], []}).
 
 %---------------------------------------------------------------------------%
 
-:- pred test_case3({bool, list(int), list(int), list(int), list(int)}).
-:- mode test_case3(out) is multi.
+:- pred test_case3({bool, list(int), list(int), list(int), list(int)}::out)
+    is multi.
 
 test_case3({yes, [], [], [], []}).
 test_case3({yes, [1, 2, 3], [4, 5, 6], [7, 8, 9], [12, 15, 18]}).

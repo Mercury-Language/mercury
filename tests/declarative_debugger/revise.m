@@ -6,14 +6,14 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
-main -->
-    { p("foo", S) },
-    io__write_string(S),
-    io__nl.
+main(!IO) :-
+    p("foo", S),
+    io.write_string(S, !IO),
+    io.nl(!IO).
 
 :- pred p(string::in, string::out) is multi.
 :- pred q(string::in, string::out) is det.

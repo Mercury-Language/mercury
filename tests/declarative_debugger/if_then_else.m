@@ -6,26 +6,26 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    { ite(0, X) },
-    io__write_string("ite(0, "),
-    io__write_int(X),
-    io__write_string(").\n"),
-    { ite(1, Y) },
-    io__write_string("ite(1, "),
-    io__write_int(Y),
-    io__write_string(").\n").
+main(!IO) :-
+    ite(0, X),
+    io.write_string("ite(0, ", !IO),
+    io.write_int(X, !IO),
+    io.write_string(").\n", !IO),
+    ite(1, Y),
+    io.write_string("ite(1, ", !IO),
+    io.write_int(Y, !IO),
+    io.write_string(").\n", !IO).
 
 :- pred ite(int::in, int::out) is det.
 
 ite(A, B) :-
-    ( a(A) ->
+    ( if a(A) then
         b(B)
-    ;
+    else
         a(B)
     ).
 

@@ -16,10 +16,10 @@
 :- import_module list.
 
 main(!IO) :-
-    (
+    ( if
         info.last([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], A),
         info.last([101, 112, 103, 104, 105, 106, 107, 108], B)
-    ->
+    then
         q(0, "lala", C, D),
         q(1, "lala", E, F),
         io.write(A, !IO),
@@ -28,17 +28,17 @@ main(!IO) :-
         io.write(D, !IO),
         io.write(E, !IO),
         io.write(F, !IO)
-    ;
+    else
         true
     ).
 
 :- pred q(int::in, T::in, t(t(t(T)))::out, int::out) is det.
 
 q(N, X, Y, M) :-
-    ( N = 0 ->
+    ( if N = 0 then
         Y = f(N, X),
         M = 2
-    ;
+    else
         M = fproc(N),
         Y = t(t(t(X)))
     ).

@@ -11,16 +11,27 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- type foo ---> foo(bar).
-:- type foo2 ---> foo2(bar) ; yyy(int).
-:- type fum ---> fum(baz).
-:- type fum2 ---> fum2(baz) ; yyy(int).
-:- type bar ---> bar ; zzz(int).
-:- type baz ---> baz1 ; baz2 ; zzz(int).
+:- type foo
+    --->    foo(bar).
+:- type foo2
+    --->    foo2(bar)
+    ;       yyy(int).
+:- type fum
+    --->    fum(baz).
+:- type fum2
+    --->    fum2(baz)
+    ;       yyy(int).
+:- type bar
+    --->    bar
+    ;       zzz(int).
+:- type baz
+    --->    baz1
+    ;       baz2
+    ;       zzz(int).
 
 main(!IO) :-
     p(foo(bar), foo(bar)),

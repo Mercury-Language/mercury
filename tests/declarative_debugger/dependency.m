@@ -7,7 +7,7 @@
 :- interface.
 
 :- import_module io.
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
@@ -18,19 +18,19 @@
 :- import_module require.
 
 :- pragma promise_pure(main/2).
-main -->
-    { impure turn_on_origin_debug },
-    { test(L) },
-    io__write(L),
-    io__write_string(".\n").
+main(!IO) :-
+    impure turn_on_origin_debug,
+    test(L),
+    io.write(L, !IO),
+    io.write_string(".\n", !IO).
 
 :- pred test(list(int)::out) is cc_multi.
 
 test(L) :-
     p(U),
-    ( U = 1 ->
+    ( if U = 1 then
         A = 1
-    ;
+    else
         A = U
     ),
     q(V),
@@ -65,12 +65,12 @@ q(no).
 :- pred r(int::in, list(T)::in, pair(T)::out) is det.
 
 r(A, L, BX) :-
-    (
+    ( if
         A = 1,
         L = [E1, E2 | _]
-    ->
+    then
         BX = E1 - E2
-    ;
+    else
         error("r: bad input")
     ).
 

@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(state::di, state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module int.
@@ -16,12 +16,11 @@
 
 :- pragma promise_pure(main/2).
 
-main -->
+main(!IO) :-
     % A test of functions with arguments.
-    { impure X = get_counter(4) },
-    print("X = "),
-    print(X),
-    nl.
+    impure X = get_counter(4),
+    io.print("X = ", !IO),
+    io.print_line(X, !IO).
 
 :- pragma foreign_decl("C", "extern MR_Integer counter;").
 :- pragma foreign_code("C", "MR_Integer counter = 0;").

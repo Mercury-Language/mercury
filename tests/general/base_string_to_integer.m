@@ -113,11 +113,11 @@ check_base_valid(Base, [String | Strings], !IO) :-
 
 check_base_invalid(_, [], !IO).
 check_base_invalid(Base, [String | Strings], !IO) :-
-    ( integer.from_base_string(Base, String, Num) ->
+    ( if integer.from_base_string(Base, String, Num) then
         NumStr = integer.to_string(Num),
         string.format("ERROR: %s (base %d) = %s\n",
             [s(String), i(Base), s(NumStr)], ErrorMsg),
         error(ErrorMsg)
-    ;
+    else
         check_base_invalid(Base, Strings, !IO)
     ).

@@ -8,29 +8,29 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 :- import_module pair.
 :- import_module solutions.
+:- import_module string.
 
-main -->
-    { solutions((pred(Pair::out) is multi :-
-        Pair = X-Y, q(X, Y)), List) },
-    print_list(List).
+main(!IO) :-
+    solutions(
+        ( pred(Pair::out) is multi :-
+            Pair = X - Y,
+            q(X, Y)
+        ), List),
+    print_list(List, !IO).
 
-:- pred print_list(list(pair(int))::in, io__state::di, io__state::uo) is det.
+:- pred print_list(list(pair(int))::in, io::di, io::uo) is det.
 
-print_list([]) --> [].
-print_list([X-Y | Rest]) -->
-    io__write_string("X = "),
-    io__write_int(X),
-    io__write_string(", Y = "),
-    io__write_int(Y),
-    io__write_string("\n"),
-    print_list(Rest).
+print_list([], !IO).
+print_list([X - Y | XYs], !IO) :-
+    io.format("X = %d, Y = %d\n", [i(X), i(Y)], !IO),
+    print_list(XYs, !IO).
 
 :- pred q(int::out, int::out) is multi.
 

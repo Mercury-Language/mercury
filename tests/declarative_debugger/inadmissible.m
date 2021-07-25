@@ -16,14 +16,11 @@
 :- import_module list.
 
 main(!IO) :-
-    (
-        gtmax(2, [2, 3, 1])
-    ->
-        write_string("max", !IO)
-    ;
-        write_string("not max", !IO)
-    ),
-    nl(!IO).
+    ( if gtmax(2, [2, 3, 1]) then
+        io.write_string("max\n", !IO)
+    else
+        io.write_string("not max\n", !IO)
+    ).
 
 :- pred gtmax(int::in, list(int)::in) is semidet.
 
@@ -41,16 +38,20 @@ ltmax(A, As) :-
 
 :- pred list_to_set(list(int)::in, list(int)::out) is det.
 
-list_to_set(As, S) :- S = As.
+list_to_set(As, S) :-
+    S = As.
 
 :- pred list_to_oset(list(int)::in, list(int)::out) is det.
 
-list_to_oset(As, S) :- sort(int_comp, As, S).
+list_to_oset(As, S) :-
+    sort(int_comp, As, S).
 
 :- pred oset_max(list(int)::in, int::out) is nondet.
 
-oset_max(S, M) :- append(_, [M], S).
+oset_max(S, M) :-
+    append(_, [M], S).
 
 :- pred int_comp(int::in, int::in, comparison_result::out) is det.
 
-int_comp(A, B, R) :- compare(R, A, B).
+int_comp(A, B, R) :-
+    compare(R, A, B).

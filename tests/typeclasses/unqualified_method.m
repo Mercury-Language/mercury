@@ -20,4 +20,4 @@ main(!IO) :-
 :- pred print_modified_int(int::in, io::di, io::uo) is det.
 
 print_modified_int(_, !IO) :-
-    io__write_string("This is the wrong method.\n", !IO).
+    io.write_string("This is the wrong method.\n", !IO).

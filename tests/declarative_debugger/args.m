@@ -6,26 +6,25 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 :- import_module library_forwarding.
 
-main -->
-    (
-        { p(1, X, 3, Y, 5) },
-        { library_forwarding.semidet_fail }
-    ->
-        io__write_int(X),
-        io__nl,
-        io__write_int(Y),
-        io__nl
-    ;
-        io__write_string("no.\n")
+main(!IO) :-
+    ( if
+        p(1, X, 3, Y, 5),
+        library_forwarding.semidet_fail
+    then
+        io.write_int(X, !IO),
+        io.nl(!IO),
+        io.write_int(Y, !IO),
+        io.nl(!IO)
+    else
+        io.write_string("no.\n", !IO)
     ).
 
-:- pred p(int, int, int, int, int).
-:- mode p(in, out, in, out, in) is nondet.
+:- pred p(int::in, int::out, int::in, int::out, int::in) is nondet.
 
 p(A, A + (B * C), B, (A + B) * C, C) :-
     library_forwarding.semidet_succeed.

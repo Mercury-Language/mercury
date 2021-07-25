@@ -98,20 +98,20 @@ main -->
     write_arg("Pair", Pair),
 
     { TypeAndSize = type_and_size("string", 6) },
-    io__write_string("size of `type_and_size(""string"", 6)' = "),
-    io__write_int(size(TypeAndSize)),
-    io__nl,
+    io.write_string("size of `type_and_size(""string"", 6)' = "),
+    io.write_int(size(TypeAndSize)),
+    io.nl,
 
     % Test taking the address of an update function
     % for which a mode declaration has been supplied.
-    { Pairs = list__map('fst :='(Pair), [4, 5, 6]) },
+    { Pairs = list.map('fst :='(Pair), [4, 5, 6]) },
     write_arg("'fst :=' [4, 5, 6]", Pairs),
 
     =(IO0),
     { dcg_syntax(IO0, IO, X, _) },
     :=(IO),
 
-    { Map0 = map__from_assoc_list(['a' - "a", 'b' - "b", 'd' - "D"]) },
+    { Map0 = map.from_assoc_list(['a' - "a", 'b' - "b", 'd' - "D"]) },
     write_arg("Map0 ^ det_elem('a')", Map0 ^ det_elem('a')),
     { Map = Map0 ^ elem('c') := "c" },
     write_arg("Map ^ det_elem('c')", Map ^ det_elem('c')).
@@ -121,11 +121,11 @@ main -->
 ].
 
 :- instance has_size(string) where [
-    func(size/1) is string__length
+    func(size/1) is string.length
 ].
 
 :- instance has_size(char) where [
-    func(size/1) is char__to_int
+    func(size/1) is char.to_int
 ].
 
 :- instance has_size(type_and_size(T)) where [
@@ -150,8 +150,7 @@ dcg_syntax(IO0, IO) -->
 
 :- pred write_arg(string::in, T::in, io::di, io::uo) is det.
 
-write_arg(Descr, Arg) -->
-    io__write_string(Descr),
-    io__write_string(" = "),
-    io__write(Arg),
-    io__nl.
+write_arg(Descr, Arg, !IO) :-
+    io.write_string(Descr, !IO),
+    io.write_string(" = ", !IO),
+    io.write_line(Arg, !IO).

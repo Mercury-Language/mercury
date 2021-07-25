@@ -14,8 +14,7 @@
 
 main(!IO) :-
     p(X),
-    io.write(X, !IO),
-    nl(!IO).
+    io.write_line(X, !IO).
 
 :- type t
     --->    t(

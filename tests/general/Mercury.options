@@ -1,15 +1,15 @@
 # mode_inf, mode_inf_bug and mode_inference_reorder need to be compiled
 # with `--infer-all'.
-MCFLAGS-mode_inf = --infer-all
-MCFLAGS-mode_inf_bug = --infer-all
-MCFLAGS-mode_inference_reorder = --infer-all
+MCFLAGS-mode_inf =                  --infer-all
+MCFLAGS-mode_inf_bug =              --infer-all
+MCFLAGS-mode_inference_reorder =    --infer-all
 
 MCFLAGS-ho_spec_branch_bug = --optimize-higher-order
 
 # The intermod_type test is a regression test for a bug that occurred only
 # when intermodule optimization was enabled.
-MCFLAGS-intermod_type = --intermodule-optimization
-MCFLAGS-intermod_type2 = --intermodule-optimization
+MCFLAGS-intermod_type =             --intermodule-optimization
+MCFLAGS-intermod_type2 =            --intermodule-optimization
 
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), string_test needs to be linked
@@ -32,3 +32,6 @@ MLFLAGS-string_test = --no-strip
 #
 MCFLAGS-string_format_test_2 = --no-warn-known-bad-format-calls
 MCFLAGS-string_format_test_3 = --no-warn-known-bad-format-calls
+
+MCFLAGS-unreachable =               --no-warn-det-decls-too-lax
+MCFLAGS-unused_arg_determinism =    --no-warn-det-decls-too-lax

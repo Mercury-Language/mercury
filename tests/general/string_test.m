@@ -45,16 +45,16 @@ test(X, Y, !IO) :-
     write_message("Non Grouped 45999: ", NumG4, !IO),
     string.duplicate_char('f', 5, FiveFs),
     string.duplicate_char('φ', 5, FivePhis),
-    ( string.to_int("5678", Num5678) ->
+    ( if string.to_int("5678", Num5678) then
         io.write_string("string_to_int 5678: ", !IO),
         io.write_int(Num5678, !IO),
         io.write_string("\n", !IO)
-    ;
+    else
         error("string.to_int(""5678"", _) failed")
     ),
-    ( string.to_int("asdf", _) ->
+    ( if string.to_int("asdf", _) then
         error("string.to_int(""asdf"", _) succeeded")
-    ;
+    else
         true
     ),
     write_message("Five f's: ", FiveFs, !IO),

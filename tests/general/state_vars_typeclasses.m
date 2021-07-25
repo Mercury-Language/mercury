@@ -20,7 +20,10 @@
 :- import_module list.
 :- import_module string.
 
-:- typeclass foo(T) where [ func f(T) = T, pred p(T::in, T::out) is det ].
+:- typeclass foo(T) where [
+    func f(T) = T,
+    pred p(T::in, T::out) is det
+].
 
 :- instance foo(int) where [
     p(!X),
@@ -30,4 +33,4 @@
 main(!IO) :-
     p(1, A),
     B = f(1),
-    format("p(1, %d).\nf(1) = %d.\n", [i(A), i(B)], !IO).
+    io.format("p(1, %d).\nf(1) = %d.\n", [i(A), i(B)], !IO).

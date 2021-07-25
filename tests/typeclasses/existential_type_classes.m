@@ -39,13 +39,29 @@
 :- type my_univ
     --->    some [T] f(T) => fooable(T).
 
+main(!IO) :-
+    do_foo(42, !IO),
+    do_foo("blah", !IO),
+    do_foo(my_exist_t, !IO),
+    do_foo(call_my_exist_t, !IO),
+    do_foo(my_univ_value(my_univ(45)), !IO),
+    do_foo(call_my_univ_value(my_univ("something")), !IO).
+
 :- func my_univ(T) = my_univ <= fooable(T).
+
+my_univ(T) = 'new f'(T).
 
 :- some [T] func my_univ_value(my_univ) = T => fooable(T).
 
+my_univ_value(f(T)) = T.
+
 :- some [T] func call_my_univ_value(my_univ) = T => fooable(T).
 
+call_my_univ_value(Univ) = my_univ_value(Univ).
+
 :- some [T] func my_exist_t = T => fooable(T).
+
+my_exist_t = 43.
 
 :- pred int_foo(int::in, int::out) is det.
 
@@ -56,14 +72,6 @@ int_foo(X, 2*X).
 string_foo(S, N) :-
     string.length(S, N).
 
-main(!IO) :-
-    do_foo(42, !IO),
-    do_foo("blah", !IO),
-    do_foo(my_exist_t, !IO),
-    do_foo(call_my_exist_t, !IO),
-    do_foo(my_univ_value(my_univ(45)), !IO),
-    do_foo(call_my_univ_value(my_univ("something")), !IO).
-
 :- pred do_foo(T::in, io::di, io::uo) is det <= fooable(T).
 
 do_foo(X, !IO) :-
@@ -71,10 +79,3 @@ do_foo(X, !IO) :-
     io.write_line(N, !IO).
 
 call_my_exist_t = my_exist_t.
-
-call_my_univ_value(Univ) = my_univ_value(Univ).
-
-my_exist_t = 43.
-
-my_univ(T) = 'new f'(T).
-my_univ_value(f(T)) = T.

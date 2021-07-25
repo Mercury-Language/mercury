@@ -37,11 +37,11 @@
     pred foo_pred(T::in) is semidet
 ].
 
+:- pred main(io::di, io::uo) is det.
+
 :- pred call_foldl(list(list(T)),
     list(list(U)), list(list(U))) <= foo(T).
 :- mode call_foldl(in, in, out) is semidet.
-
-:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -83,8 +83,7 @@ list_foldl(P, [V | Vs], T0, T, U0, U) :-
     pred(foo_pred/1) is test_first_foo
 ].
 
-:- pred test_first_foo(list(T)) <= foo(T).
-:- mode test_first_foo(in) is semidet.
+:- pred test_first_foo(list(T)::in) is semidet <= foo(T).
 
 test_first_foo([A | _]) :-
     foo_pred(A).

@@ -5,9 +5,9 @@ mdb> register --quiet
 mdb> break p
  0: + stop  interface pred big.p/1-0 (nondet)
 mdb> continue
-      E2:     C2 CALL pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+      E2:     C2 CALL pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> finish
-      E3:     C2 EXIT pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+      E3:     C2 EXIT pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> dd -d 3 -n 7
 p(-12)
 Valid? no
@@ -31,11 +31,11 @@ c(2, 6)
 f(6, -12)
 p(-12)
 Is this a bug? yes
-      E3:     C2 EXIT pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+      E3:     C2 EXIT pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> continue
-      E4:     C2 REDO pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+      E4:     C2 REDO pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> finish
-      E5:     C2 EXIT pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+      E5:     C2 EXIT pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> dd -d 3 -n 7
 p(-14)
 Valid? no
@@ -51,11 +51,11 @@ c(2, 7)
 f(7, -14)
 p(-14)
 Is this a bug? yes
-      E5:     C2 EXIT pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+      E5:     C2 EXIT pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> continue
-      E6:     C2 REDO pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+      E6:     C2 REDO pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> finish
-      E7:     C2 EXIT pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+      E7:     C2 EXIT pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> dd -d 3 -n 7
 p(-20)
 Valid? no
@@ -82,11 +82,11 @@ e(1, 10)
 f(10, -20)
 p(-20)
 Is this a bug? yes
-      E7:     C2 EXIT pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+      E7:     C2 EXIT pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> continue
-      E8:     C2 REDO pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+      E8:     C2 REDO pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> finish
-      E9:     C2 EXIT pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+      E9:     C2 EXIT pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> dd -d 3 -n 7
 p(-22)
 Valid? no
@@ -101,11 +101,11 @@ e(1, 11)
 f(11, -22)
 p(-22)
 Is this a bug? yes
-      E9:     C2 EXIT pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+      E9:     C2 EXIT pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> continue
-     E10:     C2 REDO pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+     E10:     C2 REDO pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> finish
-     E11:     C2 EXIT pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+     E11:     C2 EXIT pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> dd -d 3 -n 7
 p(2)
 Valid? no
@@ -136,11 +136,11 @@ g(1, -1)
 f(-1, 2)
 p(2)
 Is this a bug? yes
-     E11:     C2 EXIT pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+     E11:     C2 EXIT pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> continue
-     E12:     C2 REDO pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+     E12:     C2 REDO pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> finish
-     E13:     C2 FAIL pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+     E13:     C2 FAIL pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> dd -d 3 -n 7
 Call p(_)
 Solutions:
@@ -184,6 +184,6 @@ Valid? yes
 Found partially uncovered atom:
 p(_)
 Is this a bug? yes
-     E13:     C2 FAIL pred big.p/1-0 (nondet) big.m:30 (big.m:19)
+     E13:     C2 FAIL pred big.p/1-0 (nondet) big.m:28 (big.m:18)
 mdb> continue
 no.

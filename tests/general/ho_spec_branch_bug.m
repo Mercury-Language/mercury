@@ -4,6 +4,7 @@
 %
 % Regression test for a bug where the compiler would incorrectly specialize
 % the call to P in do_stuff.
+
 :- module ho_spec_branch_bug.
 
 :- interface.
@@ -21,11 +22,13 @@ main(!IO) :-
 
 :- pred ho1(io::di, io::uo) is det.
 
-ho1(!IO) :- io.write_string("ho1\n", !IO).
+ho1(!IO) :-
+    io.write_string("ho1\n", !IO).
 
 :- pred ho2(io::di, io::uo) is det.
 
-ho2(!IO) :- io.write_string("ho2\n", !IO).
+ho2(!IO) :-
+    io.write_string("ho2\n", !IO).
 
 :- func get_ho2 = (pred(io, io)).
 :- mode get_ho2 = out(pred(di, uo) is det) is det.

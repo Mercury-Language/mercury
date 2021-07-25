@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -16,19 +16,18 @@
 :- import_module list.
 :- import_module solutions.
 
-main -->
-    { solutions(p, List) },
-    write_list(List),
-    io__write_string("\n").
+main(!IO) :-
+    solutions(p, List),
+    write_list(List, !IO),
+    io.nl(!IO).
 
-:- pred write_list(list(int), io__state, io__state).
-:- mode write_list(in, di, uo) is det.
+:- pred write_list(list(int)::in, io::di, io::uo) is det.
 
-write_list([]) --> [].
-write_list([I | Is]) -->
-    io__write_int(I),
-    io__write_string(" "),
-    write_list(Is).
+write_list([], !IO).
+write_list([I | Is], !IO) :-
+    io.write_int(I, !IO),
+    io.write_string(" ", !IO),
+    write_list(Is, !IO).
 
 :- pred p(int::out) is multi.
 

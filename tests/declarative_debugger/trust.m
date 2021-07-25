@@ -18,9 +18,8 @@
 main(!IO) :-
     dostuff(w(S), R),
     write_string(S, !IO),
-    nl(!IO),
-    write(R, !IO),
-    nl(!IO).
+    io.nl(!IO),
+    io.write_line(R, !IO).
 
 :- pred dostuff(w::out, comparison_result::uo) is cc_multi.
 

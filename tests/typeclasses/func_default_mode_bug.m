@@ -26,8 +26,7 @@
 % We declare a typeclass for the constants used in the expressions.
 % The user has to provide a null element for the mult operator
 % and a null element for the plus operator.
-% The user also has to provide a way to test whether term are null
-% or not.
+% The user also has to provide a way to test whether term are null or not.
 % Finally, the user has to provide a way of turning a minus operator
 % to a plus. Typically, this is done by doing :
 % A - B -> A + (B * -1)
@@ -61,6 +60,10 @@
     pred(is_null_for_plus/1) is my_is_null_for_plus,
     func(minus_one/0) is my_minus_one
 ].
+
+main(In, Out) :-
+    io.write(bidon(minus_one), In, Int3),
+    io.nl(Int3, Out).
 
     % This function generates a null element for the multiplication.
     %
@@ -109,7 +112,3 @@ definition_value(X) = value(X, X).
 :- mode definition_value(in, in) = out is det.
 
 definition_value(X, Y) = value(X, Y).
-
-main(In, Out) :-
-    io.write(bidon(minus_one), In, Int3),
-    io.nl(Int3, Out).

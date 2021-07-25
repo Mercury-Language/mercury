@@ -12,16 +12,16 @@ Valid? b 1
 browser> mark
 monotest4(t(101), t(101))
 Valid? n
-Call lambda_find_origin_m_90(t(101), t(1))
+Call lambda_find_origin_m_84(t(101), t(1))
 Unsatisfiable? y
-Call lambda_find_origin_m_90(t(101), t(2))
+Call lambda_find_origin_m_84(t(101), t(2))
 Unsatisfiable? y
-lambda_find_origin_m_90(t(101), t(101))
+lambda_find_origin_m_84(t(101), t(101))
 Valid? y
-Call lambda_find_origin_m_90(t(101), t(3))
+Call lambda_find_origin_m_84(t(101), t(3))
 Unsatisfiable? y
 Found incorrect contour:
-lambda_find_origin_m_90(t(101), t(101))
+lambda_find_origin_m_84(t(101), t(101))
 monotest4(t(101), t(101))
 Is this a bug? y
       E4:     C3 EXIT pred find_origin.monotest4/2-0 (det)
@@ -42,12 +42,12 @@ browser> p
 find_origin.polytest4(u("hello"), u("hello"))
 browser> quit
 dd> no
-Call lambda_find_origin_m_154(u(string), u(u("hello")), v(u("hello")))
+Call lambda_find_origin_m_142(u(string), u(u("hello")), v(u("hello")))
 Unsatisfiable? y
-lambda_find_origin_m_154(u(string), u(u("hello")), u(u("hello")))
+lambda_find_origin_m_142(u(string), u(u("hello")), u(u("hello")))
 Valid? y
 Found incorrect contour:
-lambda_find_origin_m_154(u(string), u(u("hello")), u(u("hello")))
+lambda_find_origin_m_142(u(string), u(u("hello")), u(u("hello")))
 polytest4(u("hello"), u("hello"))
 Is this a bug? y
       E7:     C5 EXIT pred find_origin.polytest4/2-0 (det)

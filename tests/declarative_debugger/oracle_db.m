@@ -6,28 +6,24 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    (
-        { a(99, 99, 99) }
-    ->
-        io__write_string("yes.\n")
-    ;
-        io__write_string("no.\n")
+main(!IO) :-
+    ( if a(99, 99, 99) then
+        io.write_string("yes.\n", !IO)
+    else
+        io.write_string("no.\n", !IO)
     ).
 
-:- pred a(int, int, int).
-:- mode a(in, in, in) is semidet.
+:- pred a(int::in, int::in, int::in) is semidet.
 
 a(X, Y, Z) :-
     b(X),
     b(Y),
     b(Z).
 
-:- pred b(int).
-:- mode b(in) is semidet.
+:- pred b(int::in) is semidet.
 
 b(99).

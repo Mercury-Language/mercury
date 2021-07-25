@@ -19,7 +19,10 @@ main(!IO) :-
     write(X, !IO),
     nl(!IO).
 
-:- type t ---> a ; b ; c.
+:- type t
+    --->    a
+    ;       b
+    ;       c.
 
 :- pred p(t::out) is det.
 
@@ -28,11 +31,9 @@ p(Y) :- X = c, q(X, Y).
 :- pred q(t::in, t::out) is det.
 
 q(X, Y) :-
-    (
-        r(X)
-    ->
+    ( if r(X) then
         Y = a
-    ;
+    else
         Y = b
     ).
 

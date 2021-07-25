@@ -7,32 +7,32 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state :: di, io__state :: uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    io__open_input("read_line_as_string.exp", Result),
-    ( { Result = ok(Stream) } ->
-        io__set_input_stream(Stream, _),
-        io__read_line_as_string(Result2),
-        cat(Result2)
+main(!IO) :-
+    io.open_input("read_line_as_string.exp", Result, !IO),
+    ( Result = ok(Stream) ->
+        io.set_input_stream(Stream, _, !IO),
+        io.read_line_as_string(Result2, !IO),
+        cat(Result2, !IO)
     ;
-        io__write_string("Error opening file!")
+        io.write_string("Error opening file!", !IO)
     ).
 
-:- pred cat(io__result(string)::in, io__state::di, io__state::uo) is det.
+:- pred cat(io.result(string)::in, io::di, io::uo) is det.
 
-cat(Result) -->
+cat(Result, !IO) :-
     (
-        { Result = ok(Line) },
-        io__write_string(Line),
-        io__read_line_as_string(NextResult),
-        cat(NextResult)
+        Result = ok(Line),
+        io.write_string(Line, !IO),
+        io.read_line_as_string(NextResult, !IO),
+        cat(NextResult, !IO)
     ;
-        { Result = eof }
+        Result = eof
     ;
-        { Result = error(_Error) },
-        io__write_string("Error reading file!")
+        Result = error(_Error),
+        io.write_string("Error reading file!", !IO)
     ).
 

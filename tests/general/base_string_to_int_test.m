@@ -42,16 +42,16 @@ main(!IO) :-
     test("-Σ", !IO),
     test("+Σ", !IO),
     test("123Σ", !IO),
-    ( int.bits_per_int = 32 ->
+    ( if int.bits_per_int = 32 then
         MinIntStr = "-2147483648"
-    ; int.bits_per_int = 64 ->
+    else if int.bits_per_int = 64 then
         MinIntStr = "-9223372036854775808"
-    ;
+    else
         error("unknown architecture")
     ),
-    ( string.base_string_to_int(10, MinIntStr, int.min_int) ->
+    ( if string.base_string_to_int(10, MinIntStr, int.min_int) then
         io.write_string("min_int ok.\n", !IO)
-    ;
+    else
         io.write_string("min_int failed.\n", !IO)
     ).
 
@@ -59,8 +59,7 @@ main(!IO) :-
 
 test(S, !IO) :-
     io.format("string.base_string_to_int(10, \"%s\", ", [s(S)], !IO),
-    ( if string.base_string_to_int(10, S, N)
-    then
+    ( if string.base_string_to_int(10, S, N) then
         io.format("%d).\n", [i(N)], !IO)
     else
         io.format("_) failed.\n", [], !IO)

@@ -20,7 +20,8 @@ main(!IO) :-
 
 :- pred p(int::in, int::out) is det.
 
-p(X, Y) :- q(X, Y).
+p(X, Y) :-
+    q(X, Y).
 
 :- pred q(int::in, int::out) is det.
 

@@ -16,20 +16,21 @@
 :- import_module io.
 :- import_module string.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
-main -->
-    { p(X) },
-    io__write_string(X),
-    io__write_string("\n").
+main(!IO) :-
+    p(X),
+    io.write_string(X, !IO),
+    io.write_string("\n", !IO).
 
 :- pred p(string::out) is cc_multi.
+
 p(X1) :-
-    ( q(X), r(X) ->
+    ( if q(X), r(X) then
         X1 = X
-    ;
+    else
         X1 = "none"
     ).
 

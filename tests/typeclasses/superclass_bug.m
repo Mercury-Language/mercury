@@ -118,13 +118,17 @@ ixmldomnode_replacechild_c_code(A, A, B, B, A, C, C) = hresult(5).
 
 :- func comobj_get_interface_pointer(comobj::in) =
     (interface_pointer::out) is det.
+
+comobj_get_interface_pointer(comobj(A)) = interface_pointer(A).
+
 :- func comobj_create(interface_pointer::in, gc_descriptor::in) =
     (comobj::out) is det.
+
+comobj_create(interface_pointer(A), _) = comobj(A).
+
 :- func comobj_duplicate(comobj::in, interface_pointer::in) =
     (comobj::out) is det.
 
-comobj_get_interface_pointer(comobj(A)) = interface_pointer(A).
-comobj_create(interface_pointer(A), _) = comobj(A).
 comobj_duplicate(A, _) = A.
 
 %---------------------------------------------------------------------------%

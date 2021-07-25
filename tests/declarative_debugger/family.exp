@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred family.main/2-0 (det) family.m:11
+       1:      1  1 CALL pred family.main/2-0 (det) family.m:14
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break half_siblings
  0: + stop  interface pred family.half_siblings/2-0 (nondet)
 mdb> continue
-       3:      2  2 CALL pred family.half_siblings/2-0 (nondet) family.m:81 (family.m:13)
+       3:      2  2 CALL pred family.half_siblings/2-0 (nondet) family.m:83 (family.m:15)
 mdb> finish
-     268:      2  2 EXIT pred family.half_siblings/2-0 (nondet) family.m:81 (family.m:13)
+     268:      2  2 EXIT pred family.half_siblings/2-0 (nondet) family.m:83 (family.m:15)
 mdb> dd -d 3 -n 7
 half_siblings(a, b)
 Valid? no
@@ -49,26 +49,26 @@ Complete? yes
 Found partially uncovered atom:
 common_father(_, _)
 Is this a bug? yes
-      86:     15  4 FAIL pred family.common_father/2-0 (nondet) family.m:60 (family.m:77)
+      86:     15  4 FAIL pred family.common_father/2-0 (nondet) family.m:62 (family.m:79)
 mdb> continue
-     268:      2  2 EXIT pred family.half_siblings/2-0 (nondet) family.m:81 (family.m:13)
+     268:      2  2 EXIT pred family.half_siblings/2-0 (nondet) family.m:83 (family.m:15)
 mdb> continue
-     269:      2  2 REDO pred family.half_siblings/2-0 (nondet) family.m:81 (family.m:13)
+     269:      2  2 REDO pred family.half_siblings/2-0 (nondet) family.m:83 (family.m:15)
 mdb> finish
-     530:      2  2 EXIT pred family.half_siblings/2-0 (nondet) family.m:81 (family.m:13)
+     530:      2  2 EXIT pred family.half_siblings/2-0 (nondet) family.m:83 (family.m:15)
 mdb> dd -d 3 -n 7
 half_siblings(b, a)
 Valid? no
 Found partially uncovered atom:
 common_father(_, _)
 Is this a bug? yes
-     348:     59  4 FAIL pred family.common_father/2-0 (nondet) family.m:60 (family.m:77)
+     348:     59  4 FAIL pred family.common_father/2-0 (nondet) family.m:62 (family.m:79)
 mdb> continue
-     530:      2  2 EXIT pred family.half_siblings/2-0 (nondet) family.m:81 (family.m:13)
+     530:      2  2 EXIT pred family.half_siblings/2-0 (nondet) family.m:83 (family.m:15)
 mdb> continue
-     531:      2  2 REDO pred family.half_siblings/2-0 (nondet) family.m:81 (family.m:13)
+     531:      2  2 REDO pred family.half_siblings/2-0 (nondet) family.m:83 (family.m:15)
 mdb> finish
-     695:      2  2 FAIL pred family.half_siblings/2-0 (nondet) family.m:81 (family.m:13)
+     695:      2  2 FAIL pred family.half_siblings/2-0 (nondet) family.m:83 (family.m:15)
 mdb> dd -d 3 -n 7
 Call half_siblings(_, _)
 Solutions:
@@ -85,5 +85,5 @@ Complete? no
 Found partially uncovered atom:
 common_father(_, _)
 Is this a bug? yes
-     693:    110  4 FAIL pred family.common_father/2-0 (nondet) family.m:60 (family.m:71)
+     693:    110  4 FAIL pred family.common_father/2-0 (nondet) family.m:62 (family.m:73)
 mdb> quit -y

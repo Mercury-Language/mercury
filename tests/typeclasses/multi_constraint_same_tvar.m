@@ -28,12 +28,12 @@
     pred(p2/3) is io.write_int
 ].
 
+main(!IO) :-
+    foo(42, !IO).
+
 :- pred foo(T::in, io::di, io::uo) is det <= (c1(T), c2(T)).
 
 foo(X, !IO) :-
     p1(X, !IO),
     p2(X, !IO),
     io.nl(!IO).
-
-main(!IO) :-
-    foo(42, !IO).

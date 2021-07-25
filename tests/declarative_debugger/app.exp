@@ -5,28 +5,28 @@ mdb> register --quiet
 mdb> break app
  0: + stop  interface pred app.app/3-0 (det)
 mdb> continue
-      E2:     C2 CALL pred app.app/3-0 (det) app.m:32 (app.m:20)
+      E2:     C2 CALL pred app.app/3-0 (det) app.m:31 (app.m:20)
 mdb> continue
-      E3:     C3 CALL pred app.app/3-0 (det) app.m:32 (app.m:34)
+      E3:     C3 CALL pred app.app/3-0 (det) app.m:31 (app.m:33)
 mdb> continue
-      E4:     C4 CALL pred app.app/3-0 (det) app.m:32 (app.m:34)
+      E4:     C4 CALL pred app.app/3-0 (det) app.m:31 (app.m:33)
 mdb> continue
-      E5:     C5 CALL pred app.app/3-0 (det) app.m:32 (app.m:34)
+      E5:     C5 CALL pred app.app/3-0 (det) app.m:31 (app.m:33)
 mdb> finish -n
-      E6:     C5 EXIT pred app.app/3-0 (det) app.m:32 (app.m:34)
+      E6:     C5 EXIT pred app.app/3-0 (det) app.m:31 (app.m:33)
 mdb> dd -d 3 -n 7
 app([4, 5], [6, 7, 8], [4, ...])
 Valid? yes
 app([3, 4, 5], [6, 7, 8], [3, ...])
 Valid? quit
 Diagnosis aborted.
-      E6:     C5 EXIT pred app.app/3-0 (det) app.m:32 (app.m:34)
+      E6:     C5 EXIT pred app.app/3-0 (det) app.m:31 (app.m:33)
 mdb> continue
-      E7:     C4 EXIT pred app.app/3-0 (det) app.m:32 (app.m:34)
+      E7:     C4 EXIT pred app.app/3-0 (det) app.m:31 (app.m:33)
 mdb> continue
-      E8:     C3 EXIT pred app.app/3-0 (det) app.m:32 (app.m:34)
+      E8:     C3 EXIT pred app.app/3-0 (det) app.m:31 (app.m:33)
 mdb> continue
-      E9:     C2 EXIT pred app.app/3-0 (det) app.m:32 (app.m:20)
+      E9:     C2 EXIT pred app.app/3-0 (det) app.m:31 (app.m:20)
 mdb> dd -d 3 -n 7
 app([1, 2, 3, 4, 5], [6, 7, ...], [|]/2)
 Valid? no
@@ -38,16 +38,16 @@ Found incorrect contour:
 app([4, 5], [6, 7, 8], [4, ...])
 app([3, 4, 5], [6, 7, 8], [3, ...])
 Is this a bug? yes
-      E7:     C4 EXIT pred app.app/3-0 (det) app.m:32 (app.m:34)
+      E7:     C4 EXIT pred app.app/3-0 (det) app.m:31 (app.m:33)
 mdb> continue
-      E8:     C3 EXIT pred app.app/3-0 (det) app.m:32 (app.m:34)
+      E8:     C3 EXIT pred app.app/3-0 (det) app.m:31 (app.m:33)
 mdb> continue
-      E9:     C2 EXIT pred app.app/3-0 (det) app.m:32 (app.m:20)
+      E9:     C2 EXIT pred app.app/3-0 (det) app.m:31 (app.m:20)
 mdb> continue
 append([1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8]).
-     E10:     C6 CALL pred app.app/3-0 (det) app.m:32 (app.m:25)
+     E10:     C6 CALL pred app.app/3-0 (det) app.m:31 (app.m:25)
 mdb> finish -n
-     E11:     C6 EXIT pred app.app/3-0 (det) app.m:32 (app.m:25)
+     E11:     C6 EXIT pred app.app/3-0 (det) app.m:31 (app.m:25)
 mdb> dd -d 3 -n 7
 app([1, 2, 3, 4, 5, 6, 7, 8, ...], [|]/2, [|]/2)
 Valid? no
@@ -73,8 +73,8 @@ Found incorrect contour:
 app([4, 5], [6, 7, 8], [4, ...])
 app([3, 4, 5], [6, 7, 8], [3, ...])
 Is this a bug? yes
-     E12:     C7 EXIT pred app.app/3-0 (det) app.m:32 (app.m:34)
+     E12:     C7 EXIT pred app.app/3-0 (det) app.m:31 (app.m:33)
 mdb> continue
-     E13:     C8 EXIT pred app.app/3-0 (det) app.m:32 (app.m:34)
+     E13:     C8 EXIT pred app.app/3-0 (det) app.m:31 (app.m:33)
 mdb> quit
 mdb: are you sure you want to quit? y

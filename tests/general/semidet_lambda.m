@@ -9,20 +9,20 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 :- import_module solutions.
 
-main -->
-    { q(Y) },
-    ( { Y = [Z] } ->
-        io__write_int(Z),
-        io__write_string("\n")
-    ;
-        io__write_string("Hello, world\n")
+main(!IO) :-
+    q(Y),
+    ( if Y = [Z] then
+        io.write_int(Z, !IO),
+        io.nl(!IO)
+    else
+        io.write_string("Hello, world\n", !IO)
     ).
 
 :- pred p(int::out) is semidet.

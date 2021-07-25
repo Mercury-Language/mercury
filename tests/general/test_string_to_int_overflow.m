@@ -78,10 +78,10 @@ main(!IO) :-
 :- mode test(pred(out) is semidet, di, uo) is det.
 
 test(P, !IO) :-
-    ( P(X) ->
+    ( if P(X) then
         io.write(X, !IO),
         io.nl(!IO)
-    ;
+    else
         io.write_string("no\n", !IO)
     ).
 

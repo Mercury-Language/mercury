@@ -1,19 +1,18 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-%
+
 :- module pd.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module list.
 
-main -->
-    io__write(rev([1, 2, 3])),
-    io__nl.
+main(!IO) :-
+    io.write_line(rev([1, 2, 3]), !IO).
 
 :- func rev(list(int)) = list(int).
 

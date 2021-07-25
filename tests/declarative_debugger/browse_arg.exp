@@ -5,9 +5,9 @@ mdb> register --quiet
 mdb> break p
  0: + stop  interface pred browse_arg.p/2-0 (det)
 mdb> continue
-       2:      2  2 CALL pred browse_arg.p/2-0 (det) browse_arg.m:25 (browse_arg.m:14)
+       2:      2  2 CALL pred browse_arg.p/2-0 (det) browse_arg.m:23 (browse_arg.m:14)
 mdb> finish
-       3:      2  2 EXIT pred browse_arg.p/2-0 (det) browse_arg.m:25 (browse_arg.m:14)
+       3:      2  2 EXIT pred browse_arg.p/2-0 (det) browse_arg.m:23 (browse_arg.m:14)
 mdb> format_param depth 10
 mdb> dd -d 3 -n 7
 p(1, baz(1, bar))
@@ -38,6 +38,6 @@ Valid? no
 Found incorrect contour:
 p(1, baz(1, bar))
 Is this a bug? yes
-       3:      2  2 EXIT pred browse_arg.p/2-0 (det) browse_arg.m:25 (browse_arg.m:14)
+       3:      2  2 EXIT pred browse_arg.p/2-0 (det) browse_arg.m:23 (browse_arg.m:14)
 mdb> continue
 baz(1, bar)

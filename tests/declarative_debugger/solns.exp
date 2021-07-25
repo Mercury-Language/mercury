@@ -5,9 +5,9 @@ mdb> register --quiet
 mdb> break p
  0: + stop  interface pred solns.p/2-0 (det)
 mdb> continue
-       2:      2  2 CALL pred solns.p/2-0 (det) solns.m:23 (solns.m:17)
+       2:      2  2 CALL pred solns.p/2-0 (det) solns.m:22 (solns.m:17)
 mdb> finish
-      15:      2  2 EXIT pred solns.p/2-0 (det) solns.m:23 (solns.m:17)
+      15:      2  2 EXIT pred solns.p/2-0 (det) solns.m:22 (solns.m:17)
 mdb> dd -d 3 -n 7
 p(1, [1, 2, 3])
 Valid? no
@@ -26,5 +26,5 @@ Complete? yes
 Found incorrect contour:
 p(1, [1, 2, 3])
 Is this a bug? yes
-      15:      2  2 EXIT pred solns.p/2-0 (det) solns.m:23 (solns.m:17)
+      15:      2  2 EXIT pred solns.p/2-0 (det) solns.m:22 (solns.m:17)
 mdb> quit -y

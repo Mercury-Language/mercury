@@ -13,7 +13,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
@@ -24,48 +24,48 @@
 :- import_module string.
 :- import_module univ.
 
-main -->
-    { try_all(det_throw, DetThrowExcp, DetThrowSols) },
-    print_result("det_throw", DetThrowExcp, DetThrowSols),
-    { try_all(det_succeed, DetSucceedExcp, DetSucceedSols) },
-    print_result("det_succeed", DetSucceedExcp, DetSucceedSols),
+main(!IO) :-
+    try_all(det_throw, DetThrowExcp, DetThrowSols),
+    print_result("det_throw", DetThrowExcp, DetThrowSols, !IO),
+    try_all(det_succeed, DetSucceedExcp, DetSucceedSols),
+    print_result("det_succeed", DetSucceedExcp, DetSucceedSols, !IO),
 
-    { try_all(semidet_throw, SemidetThrowExcp, SemidetThrowSols) },
-    print_result("semidet_throw", SemidetThrowExcp, SemidetThrowSols),
-    { try_all(semidet_succeed, SemidetSucceedExcp, SemidetSucceedSols) },
-    print_result("semidet_succeed", SemidetSucceedExcp, SemidetSucceedSols),
-    { try_all(semidet_fail, SemidetFailExcp, SemidetFailSols) },
-    print_result("semidet_fail", SemidetFailExcp, SemidetFailSols),
+    try_all(semidet_throw, SemidetThrowExcp, SemidetThrowSols),
+    print_result("semidet_throw", SemidetThrowExcp, SemidetThrowSols, !IO),
+    try_all(semidet_succeed, SemidetSucceedExcp, SemidetSucceedSols),
+    print_result("semidet_succeed", SemidetSucceedExcp,
+        SemidetSucceedSols, !IO),
+    try_all(semidet_fail, SemidetFailExcp, SemidetFailSols),
+    print_result("semidet_fail", SemidetFailExcp, SemidetFailSols, !IO),
 
-    { try_all(multi_throw, MultiThrowExcp, MultiThrowSols) },
-    print_result("multi_throw", MultiThrowExcp, MultiThrowSols),
-    { try_all(multi_succeed, MultiSucceedExcp, MultiSucceedSols) },
-    print_result("multi_succeed", MultiSucceedExcp, MultiSucceedSols),
-    { try_all(multi_succeed_then_throw, MultiSucceedThenThrowExcp,
-        MultiSucceedThenThrowSols) },
-    print_result("multi_succeed_then_throw", MultiSucceedThenThrowExcp,
+    try_all(multi_throw, MultiThrowExcp, MultiThrowSols),
+    print_result("multi_throw", MultiThrowExcp, MultiThrowSols, !IO),
+    try_all(multi_succeed, MultiSucceedExcp, MultiSucceedSols),
+    print_result("multi_succeed", MultiSucceedExcp, MultiSucceedSols, !IO),
+    try_all(multi_succeed_then_throw, MultiSucceedThenThrowExcp,
         MultiSucceedThenThrowSols),
+    print_result("multi_succeed_then_throw", MultiSucceedThenThrowExcp,
+        MultiSucceedThenThrowSols, !IO),
 
-    { try_all(nondet_throw, NondetThrowExcp, NondetThrowSols) },
-    print_result("nondet_throw", NondetThrowExcp, NondetThrowSols),
-    { try_all(nondet_succeed, NondetSucceedExcp, NondetSucceedSols) },
-    print_result("nondet_succeed", NondetSucceedExcp, NondetSucceedSols),
-    { try_all(nondet_fail, NondetFailExcp, NondetFailSols) },
-    print_result("nondet_fail", NondetFailExcp, NondetFailSols),
-    { try_all(nondet_succeed_then_throw, NondetSucceedThenThrowExcp,
-        NondetSucceedThenThrowSols) },
+    try_all(nondet_throw, NondetThrowExcp, NondetThrowSols),
+    print_result("nondet_throw", NondetThrowExcp, NondetThrowSols, !IO),
+    try_all(nondet_succeed, NondetSucceedExcp, NondetSucceedSols),
+    print_result("nondet_succeed", NondetSucceedExcp, NondetSucceedSols, !IO),
+    try_all(nondet_fail, NondetFailExcp, NondetFailSols),
+    print_result("nondet_fail", NondetFailExcp, NondetFailSols, !IO),
+    try_all(nondet_succeed_then_throw, NondetSucceedThenThrowExcp,
+        NondetSucceedThenThrowSols),
     print_result("nondet_succeed_then_throw", NondetSucceedThenThrowExcp,
-        NondetSucceedThenThrowSols).
+        NondetSucceedThenThrowSols, !IO).
 
 :- pred print_result(string::in, maybe(univ)::in, list(string)::in,
     io::di, io::uo) is det.
 
-print_result(Name, Excp, Sols) -->
-    print(Name ++ ":\n\t"),
-    print(Excp),
-    print("\n\t"),
-    print(Sols),
-    nl.
+print_result(Name, Excp, Sols, !IO) :-
+    io.print(Name ++ ":\n\t", !IO),
+    io.print(Excp, !IO),
+    io.print("\n\t", !IO),
+    io.print_line(Sols, !IO).
 
 :- pred det_throw(string::out) is det.
 det_throw(_) :- throw("det_throw").

@@ -18,8 +18,7 @@
 main(!IO) :-
     p(X),
     try(q(X), Result),
-    io.write(Result, !IO),
-    nl(!IO).
+    io.write_line(Result, !IO).
 
 :- pred p(int::out) is det.
 

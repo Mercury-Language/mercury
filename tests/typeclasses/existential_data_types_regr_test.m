@@ -37,16 +37,12 @@
    func(value/1) is succ_value
 ].
 
-:- func zero_value(zero) = int.
-
-zero_value(_) = 0.
-
-:- func succ_value(succ(N)) = int <= int_singleton(N).
-
-succ_value(succ(N)) = value(N) + 1.
-
 :- type natural_number
     --->    some [N] (nat(N) => int_singleton(N)).
+
+main(!IO) :-
+    nat(N) = to_natural_number(3),
+    io.print_line(value(N), !IO).
 
 :- func to_natural_number(int) = natural_number.
 
@@ -60,6 +56,10 @@ to_natural_number(I) = Result :-
         require__error("to_natural_number: cannot convert negative integer")
     ).
 
-main(!IO) :-
-    nat(N) = to_natural_number(3),
-    io.print_line(value(N), !IO).
+:- func zero_value(zero) = int.
+
+zero_value(_) = 0.
+
+:- func succ_value(succ(N)) = int <= int_singleton(N).
+
+succ_value(succ(N)) = value(N) + 1.

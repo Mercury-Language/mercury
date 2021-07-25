@@ -17,79 +17,93 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
-:- import_module std_util.
+:- import_module solutions.
 :- import_module exception.
 
 % Repeat the test several times, so that we test both construction
 % of the tables and use of the tables.
-main -->
-    print("--- first time ---"), nl,
-    test,
-    print("--- second time ---"), nl,
-    test,
-    print("--- third time ---"), nl,
-    test.
+main(!IO) :-
+    io.print_line("--- first time ---", !IO),
+    test(!IO),
+    io.print_line("--- second time ---", !IO),
+    test(!IO),
+    io.print_line("--- third time ---", !IO),
+    test(!IO).
 
-:- pred test(io__state::di, io__state::uo) is cc_multi.
+:- pred test(io::di, io::uo) is cc_multi.
 
-test -->
-    { try(det_throw, DetThrowResult) },
-    print("det_throw: "), print(DetThrowResult), nl,
-    { try(det_succeed, DetSucceedResult) },
-    print("det_succeed: "), print(DetSucceedResult), nl,
+test(!IO) :-
+    try(det_throw, DetThrowResult),
+    io.print("det_throw: ", !IO),
+    io.print_line(DetThrowResult, !IO),
+    try(det_succeed, DetSucceedResult),
+    io.print("det_succeed: ", !IO),
+    io.print_line(DetSucceedResult, !IO),
 
-    { try(semidet_throw, SemidetThrowResult) },
-    print("semidet_throw: "), print(SemidetThrowResult), nl,
+    try(semidet_throw, SemidetThrowResult),
+    io.print("semidet_throw: ", !IO),
+    io.print_line(SemidetThrowResult, !IO),
 
-    { try(semidet_succeed, SemidetSucceedResult) },
-    print("semidet_succeed: "), print(SemidetSucceedResult), nl,
+    try(semidet_succeed, SemidetSucceedResult),
+    io.print("semidet_succeed: ", !IO),
+    io.print_line(SemidetSucceedResult, !IO),
 
-    { try(semidet_fail, SemidetFailResult) },
-    print("semidet_fail: "), print(SemidetFailResult), nl,
+    try(semidet_fail, SemidetFailResult),
+    io.print("semidet_fail: ", !IO),
+    io.print_line(SemidetFailResult, !IO),
 
-    { try(cc_multi_throw, CCMultiThrowResult) },
-    print("cc_multi_throw: "), print(CCMultiThrowResult), nl,
-    { try(cc_multi_succeed, CCMultiSucceedResult) },
-    print("cc_multi_succeed: "), print(CCMultiSucceedResult), nl,
+    try(cc_multi_throw, CCMultiThrowResult),
+    io.print("cc_multi_throw: ", !IO),
+    io.print_line(CCMultiThrowResult, !IO),
+    try(cc_multi_succeed, CCMultiSucceedResult),
+    io.print("cc_multi_succeed: ", !IO),
+    io.print_line(CCMultiSucceedResult, !IO),
 
-    { try(cc_nondet_throw, CCNondetThrowResult) },
-    print("cc_nondet_throw: "), print(CCNondetThrowResult), nl,
+    try(cc_nondet_throw, CCNondetThrowResult),
+    io.print("cc_nondet_throw: ", !IO),
+    io.print_line(CCNondetThrowResult, !IO),
 
-    { try(cc_nondet_succeed, CCNondetSucceedResult) },
-    print("cc_nondet_succeed: "), print(CCNondetSucceedResult), nl,
+    try(cc_nondet_succeed, CCNondetSucceedResult),
+    io.print("cc_nondet_succeed: ", !IO),
+    io.print_line(CCNondetSucceedResult, !IO),
 
-    { try(cc_nondet_fail, CCNondetFailResult) },
-    print("cc_nondet_fail: "), print(CCNondetFailResult), nl,
+    try(cc_nondet_fail, CCNondetFailResult),
+    io.print("cc_nondet_fail: ", !IO),
+    io.print_line(CCNondetFailResult, !IO),
 
-    { try((pred(R::out) is det :- solutions(multi_throw, R)),
-        MultiThrowResult) },
-    print("multi_throw: "), print(MultiThrowResult), nl,
-    { try((pred(R::out) is det :- solutions(multi_succeed, R)),
-        MultiSucceedResult) },
-    print("multi_succeed: "), print(MultiSucceedResult), nl,
-    { try((pred(R::out) is det :-
+    try((pred(R::out) is det :- solutions(multi_throw, R)),
+        MultiThrowResult),
+    io.print("multi_throw: ", !IO),
+    io.print_line(MultiThrowResult, !IO),
+    try((pred(R::out) is det :- solutions(multi_succeed, R)),
+        MultiSucceedResult),
+    io.print("multi_succeed: ", !IO),
+    io.print_line(MultiSucceedResult, !IO),
+    try((pred(R::out) is det :-
             solutions(multi_succeed_then_throw, R)),
-        MultiSucceedThenThrowResult) },
-    print("multi_succeed_then_throw: "),
-    print(MultiSucceedThenThrowResult), nl,
+        MultiSucceedThenThrowResult),
+    io.print("multi_succeed_then_throw: ", !IO),
+    print(MultiSucceedThenThrowResult, !IO),
 
-    { try((pred(R::out) is det :- solutions(nondet_throw, R)),
-        NondetThrowResult) },
-    print("nondet_throw: "), print(NondetThrowResult), nl,
-    { try((pred(R::out) is det :- solutions(nondet_succeed, R)),
-        NondetSucceedResult) },
-    print("nondet_succeed: "), print(NondetSucceedResult), nl,
-    { try((pred(R::out) is det :- solutions(nondet_fail, R)),
-        NondetFailResult) },
-    print("nondet_fail: "), print(NondetFailResult), nl,
-    { try((pred(R::out) is det :-
-            solutions(nondet_succeed_then_throw, R)),
-        NondetSucceedThenThrowResult) },
-    print("nondet_succeed_then_throw: "),
-    print(NondetSucceedThenThrowResult), nl.
+    try((pred(R::out) is det :- solutions(nondet_throw, R)),
+        NondetThrowResult),
+    io.print("nondet_throw: ", !IO),
+    io.print_line(NondetThrowResult, !IO),
+    try((pred(R::out) is det :- solutions(nondet_succeed, R)),
+        NondetSucceedResult),
+    io.print("nondet_succeed: ", !IO),
+    io.print_line(NondetSucceedResult, !IO),
+    try((pred(R::out) is det :- solutions(nondet_fail, R)),
+        NondetFailResult),
+    io.print("nondet_fail: ", !IO),
+    io.print_line(NondetFailResult, !IO),
+    try((pred(R::out) is det :- solutions(nondet_succeed_then_throw, R)),
+        NondetSucceedThenThrowResult),
+    io.print("nondet_succeed_then_throw: ", !IO),
+    io.print_line(NondetSucceedThenThrowResult, !IO).
 
 :- pred det_throw(string::out) is det.
 :- pragma memo(det_throw/1).

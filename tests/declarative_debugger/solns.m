@@ -6,17 +6,16 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module list.
 :- import_module solutions.
 
-main -->
-    { p(1, Ss) },
-    io__write(Ss),
-    io__nl.
+main(!IO) :-
+    p(1, Ss),
+    io.write_line(Ss, !IO).
 
 :- pred p(int::in, list(int)::out) is det.
 

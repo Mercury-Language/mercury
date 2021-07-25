@@ -9,7 +9,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, state::uo) is det.
+:- pred main(io::di, state::uo) is det.
 
 :- implementation.
 
@@ -34,25 +34,8 @@
 
     % my_univ_value(Univ):
     %   returns the value of the object stored in Univ.
-
 :- type my_univ
     --->    some [T] make_my_univ(T) => fooable(T).
-
-:- some [T] func my_univ_value(my_univ) = T => fooable(T).
-
-:- func my_univ(T) = my_univ <= fooable(T).
-
-:- some [T] func call_my_univ_value(my_univ) = T => fooable(T).
-
-:- some [T] func my_exist_t = T => fooable(T).
-
-:- some [T] func call_my_exist_t = T => fooable(T).
-
-:- pred int_foo(int::in, int::out) is det.
-int_foo(X, 2*X).
-
-:- pred string_foo(string::in, int::out) is det.
-string_foo(S, N) :- string__length(S, N).
 
 main(!IO) :-
     do_foo(42, !IO),
@@ -62,18 +45,35 @@ main(!IO) :-
     do_foo(my_univ_value(my_univ(45)), !IO),
     do_foo(call_my_univ_value(my_univ("something")), !IO).
 
+:- some [T] func my_univ_value(my_univ) = T => fooable(T).
+
+my_univ_value(make_my_univ(X)) = X.
+
+:- func my_univ(T) = my_univ <= fooable(T).
+
+my_univ(X) = 'new make_my_univ'(X).
+
+:- some [T] func call_my_univ_value(my_univ) = T => fooable(T).
+
+call_my_univ_value(Univ) = my_univ_value(Univ).
+
+:- some [T] func my_exist_t = T => fooable(T).
+
+my_exist_t = 43.
+
+:- some [T] func call_my_exist_t = T => fooable(T).
+
+call_my_exist_t = my_exist_t.
+
+:- pred int_foo(int::in, int::out) is det.
+int_foo(X, 2*X).
+
+:- pred string_foo(string::in, int::out) is det.
+
+string_foo(S, N) :- string__length(S, N).
+
 :- pred do_foo(T::in, io::di, io::uo) is det <= fooable(T).
 
 do_foo(X, !IO) :-
     foo(X, N),
     io.write_line(N, !IO).
-
-call_my_exist_t = my_exist_t.
-
-call_my_univ_value(Univ) = my_univ_value(Univ).
-
-my_exist_t = 43.
-
-my_univ_value(make_my_univ(X)) = X.
-
-my_univ(X) = 'new make_my_univ'(X).

@@ -63,27 +63,25 @@ main(!IO) :-
     p(Y, !IO),
     io.nl(!IO).
 
-:- pred zzz(T, T) <= printable(T).
-:- mode zzz(in, out) is det.
+:- pred zzz(T::in, T::out) is det <= printable(T).
 :- pragma no_inline(zzz/2).
 
-zzz(X, Y) :- foo(X, Y).
+zzz(X, Y) :-
+    foo(X, Y).
 
-:- pred my_write_list(list(T), io__state, io__state) <= printable(T).
-:- mode my_write_list(in, di, uo) is det.
+:- pred my_write_list(list(T)::in, io::di, io::uo) is det <= printable(T).
 
-my_write_list([]) -->
-    io__write_string("[]").
-my_write_list([X | Xs]) -->
-    io__write_string("[\n"),
-    my_write_list_2([X | Xs]),
-    io__write_string("]").
+my_write_list([], !IO) :-
+    io.write_string("[]", !IO).
+my_write_list([X | Xs], !IO) :-
+    io.write_string("[\n", !IO),
+    my_write_list_2([X | Xs], !IO),
+    io.write_string("]", !IO).
 
-:- pred my_write_list_2(list(T), io__state, io__state) <= printable(T).
-:- mode my_write_list_2(in, di, uo) is det.
+:- pred my_write_list_2(list(T)::in, io::di, io::uo) is det <= printable(T).
 
-my_write_list_2([]) --> [].
-my_write_list_2([X | Xs]) -->
-    p(X),
-    io__write_string("\n"),
-    my_write_list_2(Xs).
+my_write_list_2([], !IO).
+my_write_list_2([X | Xs], !IO) :-
+    p(X, !IO),
+    io.write_string("\n", !IO),
+    my_write_list_2(Xs, !IO).

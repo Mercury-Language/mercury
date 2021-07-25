@@ -11,7 +11,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -19,17 +19,17 @@
 :- import_module list.
 :- import_module solutions.
 
-main -->
-    { solutions(test, List) },
-    print_intlist(List).
+main(!IO) :-
+    solutions(test, List),
+    print_intlist(List, !IO).
 
-:- pred print_intlist(list(int)::in, io__state::di, io__state::uo) is det.
+:- pred print_intlist(list(int)::in, io::di, io::uo) is det.
 
-print_intlist([]) --> [].
-print_intlist([X | L]) -->
-    io__write_int(X),
-    io__write_string("\n"),
-    print_intlist(L).
+print_intlist([], !IO).
+print_intlist([X | L], !IO) :-
+    io.write_int(X, !IO),
+    io.write_string("\n", !IO),
+    print_intlist(L, !IO).
 
 :- pred test(int::out) is nondet.
 
@@ -44,16 +44,14 @@ test(A) :-
         )
     ).
 
-:- pred p(int).
-:- mode p(out) is multi.
+:- pred p(int::out) is multi.
 
 p(0).
 p(1).
 p(2).
 p(3).
 
-:- pred q(int, int).
-:- mode q(in, out) is nondet.
+:- pred q(int::in, int::out) is nondet.
 
 q(0, 1).
 q(1, 2).
@@ -61,8 +59,7 @@ q(1, 3).
 q(2, 4).
 q(3, 5).
 
-:- pred r(int, int).
-:- mode r(in, out) is nondet.
+:- pred r(int::in, int::out) is nondet.
 
 r(2, 10).
 r(3, 20).

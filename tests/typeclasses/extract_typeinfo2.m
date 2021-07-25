@@ -33,8 +33,7 @@
 
 main(!IO) :-
     comp(R, xvar(63), xvar(61) : xvar(dummy)),
-    io.print(R, !IO),
-    io.nl(!IO).
+    io.print_line(R, !IO).
 
 :- pred comp(comparison_result::out, T::in, T::in) is det <= enum(T).
 :- pragma no_inline(comp/3).

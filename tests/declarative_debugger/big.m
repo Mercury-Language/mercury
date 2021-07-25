@@ -6,7 +6,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state, io__state).
+:- pred main(io, io).
 :- mode main(di, uo) is det.
 
 :- implementation.
@@ -14,16 +14,14 @@
 :- import_module bool.
 :- import_module library_forwarding.
 
-main -->
-    {
-        p(1)
-    ->
+main(!IO) :-
+    ( if p(1) then
         R = yes
-    ;
+    else
         R = no
-    },
-    io__write(R),
-    io__write_string(".\n").
+    ),
+    io.write(R, !IO),
+    io.write_string(".\n", !IO).
 
 :- pred p(int::out) is nondet.
 
@@ -31,15 +29,15 @@ p(X) :-
     a(A),
     (
         b(A, B),
-        (
+        ( if
             c(B, C),
-            \+ (
+            not (
                 d(C, D),
                 D > 5
             )
-        ->
+        then
             c(C, E)
-        ;
+        else
             e(B, E)
         )
     ;
@@ -52,7 +50,7 @@ p(X) :-
             B = 1,
             g(10, E)
         ),
-        \+ (
+        not (
             f(E, H),
             c(H, I),
             g(I, J),
@@ -62,17 +60,15 @@ p(X) :-
     f(E, X).
 
 :- pred a(int::out) is det.
-:- pred b(int::in, int::out) is multi.
-:- pred c(int::in, int::out) is nondet.
-:- pred d(int::in, int::out) is semidet.
-:- pred e(int::in, int::out) is multi.
-:- pred f(int::in, int::out) is det.
-:- pred g(int::in, int::out) is semidet.
 
 a(0).
 
+:- pred b(int::in, int::out) is multi.
+
 b(X, X).
 b(X, X+1).
+
+:- pred c(int::in, int::out) is nondet.
 
 c(0, 2).
 c(0, 3).
@@ -83,13 +79,21 @@ c(3, 17).
 c(4, 8).
 c(4, 9).
 
+:- pred d(int::in, int::out) is semidet.
+
 d(X, X*3) :-
     X mod 2 = 1.
+
+:- pred e(int::in, int::out) is multi.
 
 e(X, X*10).
 e(X, X*11).
 
+:- pred f(int::in, int::out) is det.
+
 f(X, X * -2).
+
+:- pred g(int::in, int::out) is semidet.
 
 g(1, -1).
 g(6, -10).

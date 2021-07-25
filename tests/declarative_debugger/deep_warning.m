@@ -6,38 +6,38 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module deep_sub.
 :- import_module int.
 
-main -->
-    (
-        { p(1, X) },
-        { X > 10 }
-    ->
-        io__write_string("yes\n")
-    ;
-        io__write_string("no\n")
+main(!IO) :-
+    ( if
+        p(1, X),
+        X > 10
+    then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ),
-    (
-        { p(2, Y) },
-        { Y > 10 }
-    ->
-        io__write_string("yes\n")
-    ;
-        io__write_string("no\n")
+    ( if
+        p(2, Y),
+        Y > 10
+    then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ).
 
 :- pred p(int::in, int::out) is nondet.
 
 p(1, X) :-
-    deep_sub__q(X).
+    deep_sub.q(X).
 
 p(2, X) :-
-    deep_sub__q(X),
+    deep_sub.q(X),
     r(X, Y),
     s(Y).
 

@@ -8,18 +8,17 @@
 
 :- module determinism_inlining.
 :- interface.
-
 :- import_module io.
 
-:- pred main(io__state :: di, io__state :: uo) is cc_multi.
-:- implementation.
+:- pred main(io::di, io::uo) is cc_multi.
 
+:- implementation.
 :- import_module int.
 
-main -->
-    { foo(X) },
-    io__write_int(X),
-    io__nl.
+main(!IO) :-
+    foo(X),
+    io.write_int(X, !IO),
+    io.nl(!IO).
 
 :- pred foo(int :: out) is multi.
 

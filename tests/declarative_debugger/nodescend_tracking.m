@@ -31,7 +31,7 @@
 main(!IO) :-
     run_test(List, !IO),
     io.write_int(list.length(List), !IO),
-    nl(!IO).
+    io.nl(!IO).
 
 :- pred run_test(list(t)::out, io::di, io::uo) is det.
 
@@ -52,12 +52,9 @@ change(!List, !IO) :-
             !:List = [reverse(Y, X) | Rest]
         ;
             Head = leave(_, _),
-            %
-            % The test case will track the leave/2 term, so
-            % if the optimisation works then this code should
-            % not be reexecuted by the debugger when tracking
-            % the term.
-            %
+            % The test case will track the leave/2 term, so if the
+            % optimisation works, then this code should not be reexecuted
+            % by the debugger when tracking the term.
             untabled_print(!IO),
             !:List = [Head | Rest]
         )
@@ -66,17 +63,17 @@ change(!List, !IO) :-
 :- func make_test_list(int) = list(t).
 
 make_test_list(NumElements) = List :-
-    ( NumElements =< 1 ->
+    ( if NumElements =< 1 then
         List = [leave(1, 2)]
-    ;
+    else
         List = [reverse(1, 2) | make_test_list(NumElements - 1)]
     ).
 
 :- pred untabled_print(io::di, io::uo) is det.
 
     % untabled_print is intentionally not tabled.
-    % We use it to check when a piece of code is reexecuted by the
-    % debugger.
+    % We use it to check when a piece of code is reexecuted by the debugger.
+    %
 :- pragma foreign_proc("C",
     untabled_print(IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe],

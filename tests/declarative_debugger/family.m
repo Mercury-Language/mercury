@@ -3,21 +3,22 @@
 %---------------------------------------------------------------------------%
 
 :- module family.
+
 :- interface.
 :- import_module io.
-:- pred main(io__state::di, io__state::uo) is det.
+
+:- pred main(io::di, io::uo) is det.
+
 :- implementation.
 
-main -->
-    {
-        half_siblings(b, c)
-    ->
+main(!IO) :-
+    ( if half_siblings(b, c) then
         Msg = "Ok"
-    ;
+    else
         Msg = "Missing answer: half_siblings(b, c)"
-    },
-    io__write_string(Msg),
-    io__nl.
+    ),
+    io.write_string(Msg, !IO),
+    io.nl(!IO).
 
 :- type person
     --->    a
@@ -49,18 +50,19 @@ female(X) :-
     \+ male(X).
 
 :- pred common_mother(person::out, person::out) is nondet.
-:- pred common_father(person::out, person::out) is nondet.
 
 common_mother(A, B) :-
     parent(M, A),
     parent(M, B),
-    \+ A = B,
+    not A = B,
     female(M).
+
+:- pred common_father(person::out, person::out) is nondet.
 
 common_father(A, B) :-
     parent(F, A),
     parent(A, B),       % Oops, that's a bug.
-    \+ A = B,
+    not A = B,
     male(F).
 
 :- pred siblings(person::out, person::out) is nondet.
@@ -80,4 +82,4 @@ full_siblings(A, B) :-
 
 half_siblings(A, B) :-
     siblings(A, B),
-    \+ full_siblings(A, B).
+    not full_siblings(A, B).

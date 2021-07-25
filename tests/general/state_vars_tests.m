@@ -28,8 +28,7 @@
 
 main(!IO) :-
     unsorted_solutions(test, S),
-    io.print(list.reverse(S) `with_type` list(int), !IO),
-    io.nl(!IO).
+    io.print_line(list.reverse(S) `with_type` list(int), !IO).
 
 %---------------------------------------------------------------------------%
 

@@ -31,4 +31,5 @@ main(!IO) :-
 :- pred foo(A::in, B::out) is det <= m(A, B).
 :- pragma no_inline(foo/2).
 
-foo(X, Y) :- a(X, Y).
+foo(X, Y) :-
+    a(X, Y).

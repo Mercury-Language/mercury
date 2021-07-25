@@ -43,5 +43,5 @@ fib(1) = 1
 +(3, 1) = 4
 fib(4) = 4
 Is this a bug? yes
-      75:      8  4 EXIT func func_call.fib/1-0 (det) func_call.m:21 (func_call.m:27)
+      75:      8  4 EXIT func func_call.fib/1-0 (det) func_call.m:21 (func_call.m:25)
 mdb> quit -y

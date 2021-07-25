@@ -26,11 +26,11 @@ leave(1, 2)
 browser> track
 make_test_list(1) = [leave(1, 2)]
 Valid? info
-Context of current question : nodescend_tracking.m:68 (nodescend_tracking.m:72)
+Context of current question : nodescend_tracking.m:65 (nodescend_tracking.m:69)
 Search mode                 : top down                                         
 The current question was chosen because the marked subterm was bound by
 the unification inside the function nodescend_tracking.make_test_list/2
-(nodescend_tracking.m:70). The path to the subterm in the atom is 2/1.
+(nodescend_tracking.m:67). The path to the subterm in the atom is 2/1.
 dd> quit
 Diagnosis aborted.
 

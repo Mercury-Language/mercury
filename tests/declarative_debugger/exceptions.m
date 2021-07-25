@@ -21,20 +21,20 @@
 main(!IO) :-
     % Test finding wrong answer children with a try_all.
     q(MaybeExcp, Solutions),
-    (
+    ( if
         % Test finding missing answer children with a try_all.
         r(_)
-    ->
+    then
         io.write_string("yes\n", !IO)
-    ;
+    else
         io.write_string("no\n", !IO)
     ),
-    (
+    ( if
         % Test finding exception children when there is backtracking.
         v(X)
-    ->
+    then
         io.write_int(X, !IO)
-    ;
+    else
         io.write_string("no\n", !IO)
     ),
     io.write({MaybeExcp, Solutions}, !IO),
@@ -43,7 +43,11 @@ main(!IO) :-
 :- pred p(int::out) is multi.
 
 p(X) :-
-    X = 1 ; X = 2 ; X = 3 ; throw("Error").
+    ( X = 1
+    ; X = 2
+    ; X = 3
+    ; throw("Error")
+    ).
 
 :- pred q(maybe(univ)::out, list(int)::out) is cc_multi.
 
@@ -61,7 +65,11 @@ r(Sols) :-
 :- pred s(int::out) is multi.
 
 s(X) :-
-    X = 4 ; X = 5 ; X = 6 ; throw("Error").
+    ( X = 4
+    ; X = 5
+    ; X = 6
+    ; throw("Error")
+    ).
 
 :- pred t({maybe(univ), list(int)}::out) is cc_multi.
 
@@ -72,7 +80,11 @@ t(S) :-
 :- pred u(int::out) is multi.
 
 u(X) :-
-    X = 7 ; X = 8 ; X = 9 ; throw("Error").
+    ( X = 7
+    ; X = 8
+    ; X = 9
+    ; throw("Error")
+    ).
 
 :- pred v(int::out) is nondet.
 

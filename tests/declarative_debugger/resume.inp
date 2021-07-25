@@ -20,54 +20,54 @@ pd
 print
 c
 retry
+break resume.m:36
+c
+delete *
+break -E3 resume.l
+c
+delete *
+f
+dd -d 3 -n 7
+pd
+break wrapper
+c
+retry
+dd -d 3 -n 7 -r
+y
+y
+n
+y
+c
+retry
+break resume.m:37
+c
+delete *
+break -E3 resume.l
+c
+f
+dd -d 3 -n 7
+pd
+delete *
+break wrapper
+c
+dd -d 3 -n 7 -r
+y
+pd
 break resume.m:38
 c
 delete *
-break -E3 resume.l
-c
-delete *
 f
-dd -d 3 -n 7
+dd -d 2 -n 7
 pd
-break wrapper
-c
-retry
 dd -d 3 -n 7 -r
-y
-y
+n
+n
+n
+n
 n
 y
-c
-retry
 break resume.m:39
 c
-delete *
-break -E3 resume.l
-c
-f
-dd -d 3 -n 7
-pd
-delete *
-break wrapper
-c
-dd -d 3 -n 7 -r
-y
-pd
-break resume.m:40
-c
-delete *
-f
-dd -d 2 -n 7
-pd
-dd -d 3 -n 7 -r
-n
-n
-n
-n
-n
-y
-break resume.m:41
-c
 f
 dd -d 2 -n 7
 pd
@@ -82,7 +82,7 @@ n
 n
 n
 y
-break resume.m:42
+break resume.m:40
 c
 f
 dd -d 2 -n 7

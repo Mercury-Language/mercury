@@ -10,7 +10,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -19,17 +19,18 @@
     ;       g(int)
     ;       h(int).
 
-main -->
-    { create_switch_var(SwitchedOn) },
-    (   (
-            { SwitchedOn = f(Int) }
+main(!IO) :-
+    create_switch_var(SwitchedOn),
+    ( if
+        (
+            SwitchedOn = f(Int)
         ;
-            { SwitchedOn = h(Int) }
+            SwitchedOn = h(Int)
         )
-    ->
-        io__write_int(Int)
-    ;
-        io__write_string("Failed")
+    then
+        io.write_int(Int, !IO)
+    else
+        io.write_string("Failed", !IO)
     ).
 
 :- pred create_switch_var(t::out) is det.

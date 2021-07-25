@@ -21,7 +21,7 @@ exiting from signal handler
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -30,41 +30,47 @@ exiting from signal handler
 :- import_module pair.
 :- import_module solutions.
 
-main -->
-    { solutions(bug, List) },
-    ( { List = [] } ->
-        io__write_string("No solution\n")
+main(!IO) :-
+    solutions(bug, List),
+    (
+        List = [],
+        io.write_string("No solution\n", !IO)
     ;
-        print_solnlist(List)
+        List = [_ | _],
+        print_solnlist(List, !IO)
     ).
 
-:- pred print_solnlist(list(pair(list(int)))::in, io__state::di, io__state::uo)
+:- pred print_solnlist(list(pair(list(int)))::in, io::di, io::uo)
     is det.
 
-print_solnlist([]) --> [].
-print_solnlist([Le - Gr | Rest]) -->
-    print_intlist(Le),
-    print_intlist(Gr),
-    io__nl,
-    print_solnlist(Rest).
+print_solnlist([], !IO).
+print_solnlist([Le - Gr | Rest], !IO) :-
+    print_intlist(Le, !IO),
+    print_intlist(Gr, !IO),
+    io.nl(!IO),
+    print_solnlist(Rest, !IO).
 
 :- pred bug(pair(list(int))::out) is nondet.
 
 bug(Le - Gr) :-
     part(3, [4, 2, 1, 3], Le, Gr).
 
-:- pred part(int, list(int), list(int), list(int)).
-:- mode part(in, in, out, out) is nondet.
+:- pred part(int::in, list(int)::in, list(int)::out, list(int)::out) is nondet.
 
 part(_X, [], [], []).
 part(X, [Y | L], [Y | Le], Gr):-
-    Y =< X, part(X, L, Le, Gr).
+    Y =< X,
+    part(X, L, Le, Gr).
 part(X, [Y | L], Le, [Y | Gr]):-
-    Y > X, part(X, L, Le, Gr).
+    Y > X,
+    part(X, L, Le, Gr).
 
-:- pred print_intlist(list(int)::in, io__state::di, io__state::uo) is det.
+:- pred print_intlist(list(int)::in, io::di, io::uo) is det.
 
-print_intlist([])--> io__nl.
-print_intlist([X | L])--> io__write_int(X), print_intlist(L).
+print_intlist([], !IO) :-
+    io.nl(!IO).
+print_intlist([X | L], !IO) :-
+    io.write_int(X, !IO),
+    print_intlist(L, !IO).
 
 :- end_module partition.

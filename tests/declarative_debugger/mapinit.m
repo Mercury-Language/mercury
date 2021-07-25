@@ -8,7 +8,7 @@
 % describing xmap__init's two input arguments, TypeInfo_for_K and
 % TypeInfo_for_V.
 %
-% The problem was caused by the type private_builtin:typeinfo being declared
+% The problem was caused by the type private_builtin.typeinfo being declared
 % to have arity 1, when its true arity is variable, with the actual argument
 % values being unused by the runtime system. At the call event of xmap_init,
 % the types of the typeinfos include unbound type variables (K and V); the
@@ -21,7 +21,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -29,18 +29,17 @@
 
 :- type xmap(K, V) == tree234(K, V).
 
-main -->
-    { xmap_init(Init) },
-    { xmap_set(Init, 0, "zero", Map) },
-    io__write(Map),
-    io__nl.
+main(!IO) :-
+    xmap_init(Init),
+    xmap_set(Init, 0, "zero", Map),
+    io.write_line(Map, !IO).
 
 :- pred xmap_init(xmap(K, V)::out) is det.
 
 xmap_init(Init) :-
-    tree234__init(Init).
+    tree234.init(Init).
 
 :- pred xmap_set(xmap(K, V)::in, K::in, V::in, xmap(K, V)::out) is det.
 
 xmap_set(Map0, Key, Value, Map) :-
-    tree234__set(Key, Value, Map0, Map).
+    tree234.set(Key, Value, Map0, Map).

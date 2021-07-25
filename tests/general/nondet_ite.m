@@ -8,7 +8,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -16,11 +16,15 @@
 :- import_module list.
 :- import_module solutions.
 
+main(!IO) :-
+    solutions(r, List),
+    write_int_list(List, !IO).
+
 :- pred q(int::out, int::out) is nondet.
 
 q(X, Y) :-
     p(X),
-    (if some [Y1] p(Y1) then
+    ( if some [Y1] p(Y1) then
         Y = Y1
     else
         Y = 42
@@ -38,14 +42,10 @@ r(Z) :-
     q(X, Y),
     Z = X * 100 + Y.
 
-main -->
-    { solutions(r, List) },
-    write_int_list(List).
+:- pred write_int_list(list(int)::in, io::di, io::uo) is det.
 
-:- pred write_int_list(list(int)::in, io__state::di, io__state::uo) is det.
-
-write_int_list([]) --> [].
-write_int_list([X | Xs]) -->
-    io__write_int(X),
-    io__write_string("\n"),
-    write_int_list(Xs).
+write_int_list([], !IO).
+write_int_list([X | Xs], !IO) :-
+    io.write_int(X, !IO),
+    io.nl(!IO),
+    write_int_list(Xs, !IO).

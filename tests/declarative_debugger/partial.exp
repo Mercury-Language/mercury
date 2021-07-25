@@ -13,10 +13,10 @@ browser> cd 1
 browser> mark
 a(1)
 Valid? info
-Context of current question : partial.m:36 (partial.m:29)
+Context of current question : partial.m:35 (partial.m:28)
 Search mode                 : top down                   
 The current question was chosen because the marked subterm was bound by
-the unification inside the predicate partial.a/1 (partial.m:36). The
+the unification inside the predicate partial.a/1 (partial.m:35). The
 path to the subterm in the atom is 1.
 dd> undo
 p(t(1, 2))
@@ -25,10 +25,10 @@ browser> cd 2
 browser> mark
 b(2)
 Valid? info
-Context of current question : partial.m:40 (partial.m:30)
+Context of current question : partial.m:39 (partial.m:29)
 Search mode                 : top down                   
 The current question was chosen because the marked subterm was bound by
-the unification inside the predicate partial.b/1 (partial.m:40). The
+the unification inside the predicate partial.b/1 (partial.m:39). The
 path to the subterm in the atom is 1.
 dd> quit
 Diagnosis aborted.

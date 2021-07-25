@@ -8,7 +8,7 @@
 :- interface.
 :- import_module io.
 
-:- impure pred main(io__state::di, io__state::uo) is det.
+:- impure pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -16,13 +16,13 @@
 :- import_module require.
 :- import_module std_util.
 
-main -->
-    ( { impure test1(1), impure test1(2), impure test1(3) } ->
-        { semipure get(C1) },
-        io__write_int(C1),
-        io__nl
-    ;
-        { error("test1 failed") }
+main(!IO) :-
+    ( if impure test1(1), impure test1(2), impure test1(3) then
+        semipure get(C1),
+        io.write_int(C1, !IO),
+        io.nl(!IO)
+    else
+        error("test1 failed")
     ).
 
 :- impure pred test1(int::in) is semidet.
@@ -35,9 +35,9 @@ test1(X) :-
     ;
         true
     ),
-    ( X > 1 ->
+    ( if X > 1 then
         Z = X - 1
-    ;
+    else
         Z = 3
     ),
     Z < 4.

@@ -16,16 +16,14 @@
 :- import_module list.
 
 main(!IO) :-
-    (
-        wrapper(A, B, C, D, E, F)
-    ->
+    ( if wrapper(A, B, C, D, E, F) then
         io.write(A, !IO),
         io.write(B, !IO),
         io.write(C, !IO),
         io.write(D, !IO),
         io.write(E, !IO),
         io.write(F, !IO)
-    ;
+    else
         io.write_string("fail", !IO)
     ),
     io.nl(!IO).

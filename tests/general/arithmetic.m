@@ -15,8 +15,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -24,46 +23,45 @@
 :- import_module list.
 :- import_module string.
 
-main -->
-    test(3, 4).
+main(!IO) :-
+    test(3, 4, !IO).
 
-:- pred test(int, int, io__state, io__state).
-:- mode test(in, in, di, uo) is det.
+:- pred test(int::in, int::in, io::di, io::uo) is det.
 
-test(X, Y) -->
-    {
-        Plus = X + Y,
-        Times = X * Y,
-        Minus = X - Y,
-        Div = X // Y,
-        Mod = X mod Y,
-        LeftShift = X << Y,
-        RightShift = X >> Y,
-        BitAnd = X /\ Y,
-        BitOr = X \/ Y,
-        BitXor = X `xor` Y,
-        X = BitXor2 `xor` Y,
-        Y = X `xor` BitXor3,
-        BitNeg = \ X
-    },
-    write_message("X: ", X),
-    write_message("Y: ", Y),
-    write_message("X + Y: ", Plus),
-    write_message("X * Y: ", Times),
-    write_message("X - Y: ", Minus),
-    write_message("X / Y: ", Div),
-    write_message("X mod Y: ", Mod),
-    write_message("X << Y: ", LeftShift),
-    write_message("X >> Y: ", RightShift),
-    write_message("X /\\ Y: ", BitAnd),
-    write_message("X \\/ Y: ", BitOr),
-    write_message("X `xor` Y: ", BitXor),
-    write_message("Z such that X = Z `xor` Y: ", BitXor2),
-    write_message("Z such that Y = X `xor` Z: ", BitXor3),
-    write_message("\\ X: ", BitNeg).
+test(X, Y, !IO) :-
+    Plus = X + Y,
+    Times = X * Y,
+    Minus = X - Y,
+    Div = X // Y,
+    Mod = X mod Y,
+    LeftShift = X << Y,
+    RightShift = X >> Y,
+    BitAnd = X /\ Y,
+    BitOr = X \/ Y,
+    BitXor = X `xor` Y,
+    X = BitXor2 `xor` Y,
+    Y = X `xor` BitXor3,
+    BitNeg = \ X,
 
-:- pred write_message(string, int, io__state, io__state).
-:- mode write_message(in, in, di, uo) is det.
+    write_message("X: ", X, !IO),
+    write_message("Y: ", Y, !IO),
+    write_message("X + Y: ", Plus, !IO),
+    write_message("X * Y: ", Times, !IO),
+    write_message("X - Y: ", Minus, !IO),
+    write_message("X / Y: ", Div, !IO),
+    write_message("X mod Y: ", Mod, !IO),
+    write_message("X << Y: ", LeftShift, !IO),
+    write_message("X >> Y: ", RightShift, !IO),
+    write_message("X /\\ Y: ", BitAnd, !IO),
+    write_message("X \\/ Y: ", BitOr, !IO),
+    write_message("X `xor` Y: ", BitXor, !IO),
+    write_message("Z such that X = Z `xor` Y: ", BitXor2, !IO),
+    write_message("Z such that Y = X `xor` Z: ", BitXor3, !IO),
+    write_message("\\ X: ", BitNeg, !IO).
 
-write_message(String, Int) -->
-    io__write_string(String), io__write_int(Int), io__write_string("\n").
+:- pred write_message(string::in, int::in, io::di, io::uo) is det.
+
+write_message(String, Int, !IO) :-
+    io.write_string(String, !IO),
+    io.write_int(Int, !IO),
+    io.nl(!IO).

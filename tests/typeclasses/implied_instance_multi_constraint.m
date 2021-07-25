@@ -44,6 +44,9 @@
     pred(d/3) is my_d
 ].
 
+main(!IO) :-
+    d(foo(7, 42, 69), !IO).
+
 :- pred my_d(foo(A, B, C)::in, io::di, io::uo) is det <= (a(A), b(B), c(C)).
 
 my_d(foo(A, B, C), !IO) :-
@@ -65,6 +68,3 @@ int_b(_, !IO) :-
 
 int_c(_, !IO) :-
     io.write_string("C\n", !IO).
-
-main(!IO) :-
-    d(foo(7, 42, 69), !IO).

@@ -39,28 +39,27 @@ b(X) :-
     binary_search.silly_even(1003, X).
 
 silly_even(N, R) :-
-    (
-        N > 0
-    ->
-        (
-            (N =< 600 , N >= 405 ; N mod 3 = 0)
-        ->
-            binary_search_1.sillier_even(N, R)
-        ;
+    ( if N > 0 then
+        ( if
             (
-                N = 619
-            ->
-                binary_search.silly_even(N-1, R)
+                N =< 600,
+                N >= 405
             ;
-                binary_search.silly_even(N-2, R)
+                N mod 3 = 0
+            )
+        then
+            binary_search_1.sillier_even(N, R)
+        else
+            ( if N = 619 then
+                binary_search.silly_even(N - 1, R)
+            else
+                binary_search.silly_even(N - 2, R)
             )
         )
-    ;
-        (
-            N = 0
-        ->
+    else
+        ( if N = 0 then
             R = yes
-        ;
+        else
             R = no
         )
     ).

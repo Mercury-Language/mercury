@@ -14,7 +14,7 @@
 :- import_module io.
 :- import_module list.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- pred meta_semidet_map(pred(X, Y), list(X), list(maybe(Y))).
 :- mode meta_semidet_map(pred(in, out) is semidet, in, out) is det.
@@ -25,13 +25,13 @@
 :- import_module int.
 :- import_module string.
 
-main -->
-    ( {meta_semidet_map(pos_inc, [0, 1], [X, Y])} ->
-        {maybe_to_string(string__int_to_string, X, SX)},
-        {maybe_to_string(string__int_to_string, Y, SY)},
-        io__write_strings(["Success: X = ", SX, "; Y = ", SY, ".\n"])
-    ;
-        io__write_string("Failure.\n")
+main(!IO) :-
+    ( if meta_semidet_map(pos_inc, [0, 1], [X, Y]) then
+        maybe_to_string(string.int_to_string, X, SX),
+        maybe_to_string(string.int_to_string, Y, SY),
+        io.write_strings(["Success: X = ", SX, "; Y = ", SY, ".\n"], !IO)
+    else
+        io.write_string("Failure.\n", !IO)
     ).
 
 :- pred maybe_to_string(pred(X, string), maybe(X), string).
@@ -39,7 +39,8 @@ main -->
 
 maybe_to_string(_, no, "no").
 maybe_to_string(P, yes(T), S) :-
-    call(P, T, S0), string__append_list(["yes(", S0, ")"], S).
+    call(P, T, S0),
+    string.append_list(["yes(", S0, ")"], S).
 
 :- pred pos_inc(int::in, int::out) is semidet.
 
@@ -49,5 +50,5 @@ pos_inc(X, Y) :-
 
 meta_semidet_map(_, [],  []).
 meta_semidet_map(P, [H0 | T0], [H | T]) :-
-    ( call(P, H0, H1) -> H = yes(H1) ; H = no ),
+    ( if call(P, H0, H1) then H = yes(H1) else H = no ),
     meta_semidet_map(P, T0, T).

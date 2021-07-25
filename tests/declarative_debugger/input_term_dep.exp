@@ -11,9 +11,9 @@ mdb> break r
 mdb> break s
  3: + stop  interface pred input_term_dep.s/1-0 (semidet)
 mdb> continue
-      E2:     C2 CALL pred input_term_dep.p/3-0 (det) input_term_dep.m:35 (input_term_dep.m:24)
+      E2:     C2 CALL pred input_term_dep.p/3-0 (det) input_term_dep.m:35 (input_term_dep.m:25)
 mdb> finish
-      E3:     C2 EXIT pred input_term_dep.p/3-0 (det) input_term_dep.m:35 (input_term_dep.m:24)
+      E3:     C2 EXIT pred input_term_dep.p/3-0 (det) input_term_dep.m:35 (input_term_dep.m:25)
 mdb> dd -d 3 -n 7
 p(5, 8, 13)
 Valid? browse 3
@@ -29,14 +29,14 @@ Found inadmissible call:
 Parent p(_, _, _)
 Call pc(5, _)
 Is this a bug? yes
-      E3:     C2 EXIT pred input_term_dep.p/3-0 (det) input_term_dep.m:35 (input_term_dep.m:24)
+      E3:     C2 EXIT pred input_term_dep.p/3-0 (det) input_term_dep.m:35 (input_term_dep.m:25)
 mdb> continue
 5
 8
 13
-      E4:     C3 CALL pred input_term_dep.q/1-0 (semidet) input_term_dep.m:72 (input_term_dep.m:61)
+      E4:     C3 CALL pred input_term_dep.q/1-0 (semidet) input_term_dep.m:65 (input_term_dep.m:57)
 mdb> finish
-      E5:     C3 EXIT pred input_term_dep.q/1-0 (semidet) input_term_dep.m:72 (input_term_dep.m:61)
+      E5:     C3 EXIT pred input_term_dep.q/1-0 (semidet) input_term_dep.m:65 (input_term_dep.m:57)
 mdb> dd -d 3 -n 7
 q([[2, 3], [], [1]])
 Valid? browse 1
@@ -53,12 +53,12 @@ qb([])
 qc([[2, ...], [], [1]], [[2, ...], [], [1]])
 q([[2, 3], [], [1]])
 Is this a bug? yes
-      E5:     C3 EXIT pred input_term_dep.q/1-0 (semidet) input_term_dep.m:72 (input_term_dep.m:61)
+      E5:     C3 EXIT pred input_term_dep.q/1-0 (semidet) input_term_dep.m:65 (input_term_dep.m:57)
 mdb> continue
 [[2, 3], [], [1]]
-      E6:     C4 CALL pred input_term_dep.r/2-0 (det) input_term_dep.m:104 (input_term_dep.m:97)
+      E6:     C4 CALL pred input_term_dep.r/2-0 (det) input_term_dep.m:92 (input_term_dep.m:87)
 mdb> finish
-      E7:     C4 EXIT pred input_term_dep.r/2-0 (det) input_term_dep.m:104 (input_term_dep.m:97)
+      E7:     C4 EXIT pred input_term_dep.r/2-0 (det) input_term_dep.m:92 (input_term_dep.m:87)
 mdb> dd -d 3 -n 7
 r(1, 33)
 Valid? browse 2
@@ -74,12 +74,12 @@ Found inadmissible call:
 Parent r(1, _)
 Call rc(3, _)
 Is this a bug? yes
-      E7:     C4 EXIT pred input_term_dep.r/2-0 (det) input_term_dep.m:104 (input_term_dep.m:97)
+      E7:     C4 EXIT pred input_term_dep.r/2-0 (det) input_term_dep.m:92 (input_term_dep.m:87)
 mdb> continue
 33
-      E8:     C5 CALL pred input_term_dep.s/1-0 (semidet) input_term_dep.m:150 (input_term_dep.m:140)
+      E8:     C5 CALL pred input_term_dep.s/1-0 (semidet) input_term_dep.m:128 (input_term_dep.m:120)
 mdb> finish
-      E9:     C5 EXIT pred input_term_dep.s/1-0 (semidet) input_term_dep.m:150 (input_term_dep.m:140)
+      E9:     C5 EXIT pred input_term_dep.s/1-0 (semidet) input_term_dep.m:128 (input_term_dep.m:120)
 mdb> dd -d 3 -n 7
 s(1)
 Valid? no
@@ -94,6 +94,6 @@ Found inadmissible call:
 Parent s(1)
 Call sc(7)
 Is this a bug? yes
-      E9:     C5 EXIT pred input_term_dep.s/1-0 (semidet) input_term_dep.m:150 (input_term_dep.m:140)
+      E9:     C5 EXIT pred input_term_dep.s/1-0 (semidet) input_term_dep.m:128 (input_term_dep.m:120)
 mdb> continue
 yes

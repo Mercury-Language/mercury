@@ -32,13 +32,11 @@ q(V, W, X, Y, Z) :-
     p(Y, Z).
 
 main(!IO) :-
-    (
-        q(1, W, X, Y, Z)
-    ->
-        write(W, !IO), nl(!IO),
-        write(X, !IO), nl(!IO),
-        write(Y, !IO), nl(!IO),
-        write(Z, !IO), nl(!IO)
-    ;
+    ( if q(1, W, X, Y, Z) then
+        io.write_line(W, !IO),
+        io.write_line(X, !IO),
+        io.write_line(Y, !IO),
+        io.write_line(Z, !IO)
+    else
         write_string("failed\n", !IO)
     ).

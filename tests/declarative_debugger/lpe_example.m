@@ -6,20 +6,18 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module solutions.
 :- import_module int.
 
-main -->
-    { solutions(p(1), Ss) },
-    io__write(Ss),
-    io__nl.
+main(!IO) :-
+    solutions(p(1), Ss),
+    io.write_line(Ss, !IO).
 
-:- pred p(int, int).
-:- mode p(in, out) is nondet.
+:- pred p(int::in, int::out) is nondet.
 
 p(0, 0).
 p(1, X) :-
@@ -30,13 +28,11 @@ p(1, X) :-
         X = A
     ).
 
-:- pred q(int).
-:- mode q(out) is det.
+:- pred q(int::out) is det.
 
 q(3).
 
-:- pred r(int, int).
-:- mode r(in, out) is multi.
+:- pred r(int::in, int::out) is multi.
 
 r(X, X + 10).
 r(X, X + 20).

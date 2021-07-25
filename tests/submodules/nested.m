@@ -41,7 +41,7 @@ hello(!IO) :-
     --->    bar
     ;       baz(int).
 
-:- pred hello(io__state::di, io__state::uo) is det.
+:- pred hello(io::di, io::uo) is det.
 
 :- implementation.
 

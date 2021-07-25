@@ -14,7 +14,7 @@
 :- import_module list.
 :- import_module std_util.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- pred meta_parse_list(pred(Y, Y, X), list(X), Y, Y).
 :- mode meta_parse_list(pred(in, out, out) is semidet, out, in, out) is det.
@@ -25,20 +25,21 @@
 :- import_module int.
 :- import_module string.
 
-main -->
-    {P = (pred(I::in, O::out, N::out) is semidet :- one_or_two(N, I, O))},
-    ( {meta_parse_list(P, [X, Y], [2, 1, 3], _)} ->
-        {string__int_to_string(X, SX)},
-        {string__int_to_string(Y, SY)},
-        io__write_strings(["Success: X = ", SX, "; Y = ", SY, ".\n"])
-    ;
-        io__write_string("Failure.\n")
+main(!IO) :-
+    P = (pred(I::in, O::out, N::out) is semidet :- one_or_two(N, I, O)),
+    ( if meta_parse_list(P, [X, Y], [2, 1, 3], _) then
+        string.int_to_string(X, SX),
+        string.int_to_string(Y, SY),
+        io.write_strings(["Success: X = ", SX, "; Y = ", SY, ".\n"], !IO)
+    else
+        io.write_string("Failure.\n", !IO)
     ).
 
 meta_parse_list(P, L, In, Out) :-
-    ( call(P, In, Out0, E) ->
-        L = [E | L1], meta_parse_list(P, L1, Out0, Out)
-    ;
+    ( if call(P, In, Out0, E) then
+        L = [E | L1],
+        meta_parse_list(P, L1, Out0, Out)
+    else
         L = [], Out = In
     ).
 

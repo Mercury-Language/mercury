@@ -15,7 +15,7 @@
 :- instance foo(string).
 :- instance foo(list(T)) <= foo(T).
 
-:- pred p(T, io__state, io__state) <= foo(T).
+:- pred p(T, io, io) <= foo(T).
 :- mode p(in, di, uo) is det.
 
 :- some [T] pred q(T) => foo(T).
@@ -37,12 +37,12 @@
 
 :- instance foo(list(T)) <= foo(T) where [
     (bar([]) = "an empty list"),
-    (bar([H | _]) = string__append("a list, and its head is ", bar(H)))
+    (bar([H | _]) = string.append("a list, and its head is ", bar(H)))
 ].
 
-p(T) -->
-    io__write(T),
-    io__write_strings([" is ", bar(T), ".\n"]).
+p(T, !IO) :-
+    io.write(T, !IO),
+    io.write_strings([" is ", bar(T), ".\n"], !IO).
 
 :- type quux
     --->    tchok.

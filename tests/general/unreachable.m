@@ -12,9 +12,13 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
-main -->
-    ( { 1 = 2 } -> { true } ; { true } ).
+main(!IO) :-
+    ( if 1 = 2 then
+        true
+    else
+        true
+    ).

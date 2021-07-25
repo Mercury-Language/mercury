@@ -34,7 +34,11 @@ main(!IO) :-
 main2(XX, Y, !IO) :-
     Foo =
         ( pred(X::in, di, uo) is det -->
-            p1(X), p2(X), nl,
-            p1(Y), p2(Y), nl
+            p1(X),
+            p2(X),
+            nl,
+            p1(Y),
+            p2(Y),
+            nl
         ),
     Foo(XX, !IO).

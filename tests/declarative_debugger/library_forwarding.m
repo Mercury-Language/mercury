@@ -39,8 +39,11 @@ X // Y = 'int__//'(X, Y).
 
 X mod Y = 'int__mod'(X, Y).
 
-X =< Y :- 'int__=<'(X, Y).
-X > Y :- 'int__>'(X, Y).
+X =< Y :-
+    'int__=<'(X, Y).
+
+X > Y :-
+    'int__>'(X, Y).
 
 semidet_succeed :-
     builtin.semidet_succeed.

@@ -19,26 +19,32 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 :- import_module exception.
 
-main -->
-    { try(det_throw, R1) },
-    print("det_throw: "), print_r(R1), nl,
-    { try(det_succeed, R2) },
-    print("det_succeed: "), print_r(R2), nl,
+main(!IO) :-
+    try(det_throw, R1),
+    io.print("det_throw: ", !IO),
+    print_r(R1, !IO), io.nl(!IO),
+    try(det_succeed, R2),
+    io.print("det_succeed: ", !IO),
+    print_r(R2, !IO), io.nl(!IO),
 
-    { try(semidet_throw, SemidetThrowResult) },
-    print("semidet_throw: "), print_r(SemidetThrowResult), nl,
-    { try(semidet_succeed, SemidetSucceedResult) },
-    print("semidet_succeed: "), print_r(SemidetSucceedResult), nl,
-    { try(semidet_fail, SemidetFailResult) },
-    print("semidet_fail: "), print_r(SemidetFailResult), nl.
+    try(semidet_throw, SemidetThrowResult),
+    io.print("semidet_throw: ", !IO),
+    print_r(SemidetThrowResult, !IO), io.nl(!IO),
+    try(semidet_succeed, SemidetSucceedResult),
+    io.print("semidet_succeed: ", !IO),
+    print_r(SemidetSucceedResult, !IO), io.nl(!IO),
+    try(semidet_fail, SemidetFailResult),
+    io.print("semidet_fail: ", !IO),
+    print_r(SemidetFailResult, !IO), io.nl(!IO).
 
-:- pred print_r(exception_result(T)::in, io__state::di, io__state::uo) is det.
-print_r(E) --> print(E).
+:- pred print_r(exception_result(T)::in, io::di, io::uo) is det.
+print_r(E, !IO) :-
+    print(E, !IO).
 
 :- pred det_throw(string::out) is det.
 det_throw(throw("det_throw")).
@@ -53,4 +59,5 @@ det_succeed("det_succeed").
 semidet_succeed("semidet_succeed").
 
 :- pred semidet_fail(string::out) is semidet.
-semidet_fail("semidet_fail") :- fail.
+semidet_fail("semidet_fail") :-
+    fail.

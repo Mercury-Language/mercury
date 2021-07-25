@@ -22,21 +22,6 @@
     pred(a/1) is foo
 ].
 
-:- pred foo(int::out) is multi.
-
-foo(1).
-foo(2).
-foo(3).
-foo(4).
-foo(5).
-foo(6).
-
-:- pred b(T::out) is multi <= c(T).
-:- pragma no_inline(b/1).
-
-b(X) :-
-    a(X).
-
 main(!IO) :-
     ( if
         b(X),
@@ -47,3 +32,18 @@ main(!IO) :-
         io.write_string("failed", !IO)
     ),
     io.nl(!IO).
+
+:- pred b(T::out) is multi <= c(T).
+:- pragma no_inline(b/1).
+
+b(X) :-
+    a(X).
+
+:- pred foo(int::out) is multi.
+
+foo(1).
+foo(2).
+foo(3).
+foo(4).
+foo(5).
+foo(6).
