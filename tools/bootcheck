@@ -100,8 +100,8 @@ Options:
         Don't rebuild the stage 3 directory from scratch after
         building stage 1. Instead use the existing stage 3 directory
         as the starting point for mmake.
-    --test-params
-        When executing the test suite, use the stage 2 Mmake.params
+    --no-test-params
+        When executing the test suite, do not use the stage 2 Mmake.params
         file.
     --keep-success-log-files
         Keep every test case's .log file, renamed as a .kept_log file,
@@ -197,7 +197,7 @@ grade=
 use_gradedir=false
 target=c
 test_grade=
-test_params=false
+test_params=true
 copy_runtime=false
 copy_boehm_gc=false
 copy_slice=true
@@ -410,6 +410,10 @@ do
 
         --test-params)
             test_params=true
+            ;;
+
+        --no-test-params)
+            test_params=false
             ;;
 
         --keep-success-log-files)
