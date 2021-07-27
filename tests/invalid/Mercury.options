@@ -22,7 +22,6 @@ MCFLAGS-children                = --no-intermodule-optimization
 MCFLAGS-coerce_implied_mode     = --halt-at-warn
 MCFLAGS-coerce_infer            = --infer-all
 MCFLAGS-coerce_void             = --halt-at-warn
-MCFLAGS-duplicate_modes         = --verbose-error-messages
 MCFLAGS-ee_invalid              = --verbose-error-messages
 MCFLAGS-empty_interface         = --halt-at-warn -E
 MCFLAGS-exported_mode           = --infer-all --no-intermodule-optimization
@@ -61,7 +60,6 @@ MCFLAGS-missing_interface_import2 = --no-intermodule-optimization
 MCFLAGS-mode_inf                = --infer-all --verbose-error-messages
 MCFLAGS-mpj1                    = --infer-all --verbose-error-messages
 MCFLAGS-multisoln_func          = --infer-types --verbose-error-messages
-MCFLAGS-no_exports              = --halt-at-warn --verbose-error-messages
 MCFLAGS-nonexistent_import      = --no-verbose-make --make nonexistent_import
 MCFLAGS-obsolete_proc_pragma    = --halt-at-warn
 MCFLAGS-overloading             = --no-intermodule-optimization
@@ -92,16 +90,12 @@ MCFLAGS-undef_symbol            = --no-intermodule-optimization
 # Include the verbose part of the error message where we have one.
 MCFLAGS-ambiguous_method        = --verbose-error-messages
 MCFLAGS-anys_in_negated_contexts = --verbose-error-messages
-MCFLAGS-bad_foreign_type        = --verbose-error-messages
-MCFLAGS-bigtest                 = --verbose-error-messages
 MCFLAGS-bind_in_negated         = --verbose-error-messages
 MCFLAGS-bug83                   = --verbose-error-messages
 MCFLAGS-complex_constraint_err  = --verbose-error-messages
-MCFLAGS-errors2                 = --verbose-error-messages
 MCFLAGS-ext_type                = --verbose-error-messages
 MCFLAGS-ext_type_bug            = --verbose-error-messages
 MCFLAGS-freefree                = --verbose-error-messages
-MCFLAGS-fundeps_unbound_in_ctor = --verbose-error-messages
 MCFLAGS-ho_default_func_1       = --verbose-error-messages
 MCFLAGS-ho_default_func_3       = --verbose-error-messages
 MCFLAGS-ho_type_mode_bug        = --verbose-error-messages
@@ -112,13 +106,13 @@ MCFLAGS-multimode_syntax        = --verbose-error-messages
 MCFLAGS-nullary_ho_func_error   = --verbose-error-messages
 MCFLAGS-one_member              = --verbose-error-messages
 MCFLAGS-polymorphic_unification = --verbose-error-messages
-MCFLAGS-predmode                = --verbose-error-messages
-MCFLAGS-prog_io_erroneous       = --verbose-error-messages
 
-MCFLAGS-require_tailrec_1       = -O0 --optimise-tailcalls --no-warn-non-tail-recursion
-MCFLAGS-require_tailrec_2       = -O0 --optimise-tailcalls --warn-non-tail-recursion self -E
-MCFLAGS-require_tailrec_3       = -O0 --optimise-tailcalls --warn-non-tail-recursion self-and-mutual
-MCFLAGS-require_tailrec_invalid = --allow-stubs --no-warn-stubs
+MCFLAGS-require_tailrec_1       = -O0 --optimise-tailcalls \
+                                    --no-warn-non-tail-recursion
+MCFLAGS-require_tailrec_2       = -O0 --optimise-tailcalls \
+                                    --warn-non-tail-recursion self -E
+MCFLAGS-require_tailrec_3       = -O0 --optimise-tailcalls \
+                                    --warn-non-tail-recursion self-and-mutual
 
 # We compile test_feature_set in grade java because that grade is incompatible
 # with the features in the test require_feature_set pragma.
@@ -128,15 +122,11 @@ MCFLAGS-type_error_use_module   = --verbose-error-messages
 MCFLAGS-typeclass_dup_method_mode = --verbose-error-messages
 MCFLAGS-typeclass_constraint_extra_var = --verbose-error-messages
 MCFLAGS-typeclass_missing_det_3 = --verbose-error-messages
-MCFLAGS-typeclass_test_11       = --verbose-error-messages
 MCFLAGS-typeclass_test_12       = --verbose-error-messages
 MCFLAGS-typeclass_test_8        = --verbose-error-messages
-MCFLAGS-types                   = --verbose-error-messages
 MCFLAGS-types2                  = --verbose-error-messages \
                                     --warn-non-contiguous-clauses
 MCFLAGS-type_vars               = --verbose-error-messages
-MCFLAGS-unbound_type_vars       = --verbose-error-messages
 MCFLAGS-undef_type              = --verbose-error-messages
 MCFLAGS-unsatisfiable_constraint = --verbose-error-messages
 MCFLAGS-user_eq_dummy           = --verbose-error-messages
-MCFLAGS-vars_in_wrong_places    = --verbose-error-messages

@@ -93,6 +93,14 @@ invalid*
     We check that the files do *not* compile, and check that the errors
     match those in the hand-written `.err_exp' file.
 
+    invalid_onlydepend tests errors that occur when executing
+    "mmc --generate-dependencies".
+
+    invalid_nodepend contains tests which get errors executing
+    "mmc --generate-dependencies", but which test errors that occur
+    during normal compilation (i.e. when generating code, or with
+    --errorcheck-only).
+
     invalid_make_int tests errors that occur when executing
     "mmc --make-interface".
 

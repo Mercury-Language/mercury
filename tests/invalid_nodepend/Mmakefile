@@ -1,0 +1,144 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab ft=make
+#-----------------------------------------------------------------------------#
+
+TESTS_DIR = ..
+THIS_DIR = invalid_nodepend
+MAYBE_J1 =
+
+# Note: this directory contains invalid single-module programs
+#
+# - for which generating dependencies does not succeed,
+# - but for which we want to test the compiler's reaction when
+#   trying to generate code for the module.
+#
+# Invalid programs for which this is not true should be put into one of
+# the other invalid_* test directories.
+
+PROGS = \
+	after_end_module \
+	bad_detism_category \
+	bad_end_module \
+	bad_existential_data_type \
+	bad_finalise_decl \
+	bad_foreign_code \
+	bad_foreign_decl \
+	bad_foreign_enum \
+	bad_foreign_export \
+	bad_foreign_export_enum \
+	bad_foreign_import_module \
+	bad_foreign_proc \
+	bad_foreign_type \
+	bad_include \
+	bad_initialise_decl \
+	bad_inst_defn \
+	bad_mutable \
+	bad_pragma \
+	bad_with_inst \
+	bigtest \
+	bug115 \
+	bug363 \
+	bug410 \
+	combined_ho_type_inst \
+	combined_ho_type_inst_2 \
+	conflicting_fs \
+	constrained_poly_insts \
+	duplicate_modes \
+	errors \
+	errors1 \
+	errors2 \
+	external \
+	foreign_enum_import \
+	func_errors \
+	funcs_as_preds \
+	fundeps_unbound_in_ctor \
+	impl_def_literal_syntax \
+	inst_list_dup \
+	instance_bug \
+	invalid_binary_literal \
+	invalid_decimal_literal \
+	invalid_float_literal \
+	invalid_hex_literal \
+	invalid_main \
+	invalid_octal_literal \
+	invalid_pragma \
+	invalid_typeclass \
+	kind \
+	no_exports \
+	null_char \
+	occurs \
+	pragma_source_file \
+	predmode \
+	prog_io_erroneous \
+	reserved \
+	reserved_type_name \
+	some \
+	specified \
+	subtype_invalid_supertype \
+	subtype_syntax \
+	type_lhs_var \
+	type_vars \
+	typeclass_no_param \
+	typeclass_test_1 \
+	typeclass_test_11 \
+	typeclass_test_2 \
+	types	\
+	unbound_type_vars \
+	unicode1 \
+	unicode2 \
+	unrecognized_pragma \
+	unterminated_octal_escape \
+	uu_type \
+	var_as_class_name \
+	var_as_pred_name \
+	vars_in_wrong_places \
+	where_abstract_enum \
+	where_direct_arg \
+	where_direct_arg2 \
+	with_type
+
+#-----------------------------------------------------------------------------#
+
+TESTS = $(sort $(PROGS:%=%-nodepend))
+include ../Mmake.common
+
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.err_res ;
+
+#-----------------------------------------------------------------------------#
+
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+
+# XXX: with `mmake --use-mmc-make' the ".DEFAULT:" rule seems to take
+# precedence over "%.err: %.m" rules.
+# XXX: the reason we run the $(MCM) command twice is to avoid doubled up
+# error messages, once while making interface files, then the module proper.
+# The second time the command is run, only one set of error messages
+# should appear.
+$(addsuffix .err,$(PROGS)):
+	-$(MCM) $@
+	if $(MCM) -r $@ > /dev/null 2>&1 ; \
+	then false; \
+	else true; \
+	fi
+
+else
+
+%.err: %.m
+	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
+		> $*.err 2>&1; \
+	then false; \
+	else true; \
+	fi
+
+endif
+
+clean_local: clean_invalid
+
+clean_invalid:
+	rm -f *.dep_err *.err *.err_res *.err_res[2345]
+
+#-----------------------------------------------------------------------------#

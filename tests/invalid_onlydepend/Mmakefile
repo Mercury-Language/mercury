@@ -1,0 +1,37 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab ft=make
+#-----------------------------------------------------------------------------#
+
+TESTS_DIR = ..
+THIS_DIR = invalid_onlydepend
+MAYBE_J1 =
+
+PROGS = \
+	bad_module_name
+
+#-----------------------------------------------------------------------------#
+
+TESTS = $(sort $(PROGS:%=%-nodepend))
+include ../Mmake.common
+
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.err_res ;
+
+#-----------------------------------------------------------------------------#
+
+%.err: %.m
+	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) --generate-dependencies \
+		$* > $*.err 2>&1; \
+	then false; \
+	else true; \
+	fi
+
+clean_local: clean_invalid_onlydepend
+
+clean_invalid_onlydepend:
+	rm -f *.dep_err *.err *.err_res *.err_res[2345]
+
+#-----------------------------------------------------------------------------#
