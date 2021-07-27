@@ -37,4 +37,4 @@ filter_map(Pred, [Head0 | Tail0], List) :-
     else
         List = List1
     ),
-    filter_map(Pred, Tail0, List1).
+    agc_ite.filter_map(Pred, Tail0, List1).
