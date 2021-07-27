@@ -24,7 +24,7 @@
 :- implementation.
 
     % The transformed version of this function was not able to be
-    % mode checked.  The reason for this is that polymorphism was not
+    % mode checked. The reason for this is that polymorphism was not
     % flattening conjunctions, and the conjuncts were therefore not
     % able to be scheduled in any order that would work.
     %

@@ -31,10 +31,10 @@ bug(Int1, Int2, Result) :-
 :- pred compare_int(int::in, int::in, comparison_result::out) is det.
 
 compare_int(Int1, Int2, Res) :-
-    ( Int1 < Int2 ->
+    ( if Int1 < Int2 then
         Res = (<)
-    ; Int1 = Int2 ->
+    else if Int1 = Int2 then
         Res = (=)
-    ;
+    else
         Res = (>)
     ).

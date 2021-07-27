@@ -28,21 +28,16 @@
 :- import_module require.
 
 det_insert_fcl(Map0, Ks, Vs, Map) :-
-    (
-        Ks = [Key | Keys], Vs = [Value | Values]
-    ->
+    ( if Ks = [Key | Keys], Vs = [Value | Values] then
         det_insert(Map0, Key, Value, Map1),
         det_insert_fcl(Map1, Keys, Values, Map)
-    ;
-        Ks = [], Vs = []
-    ->
+    else if Ks = [], Vs = [] then
         Map = Map0
-    ;
+    else
         error("lists do not correspond")
     ).
 
-:- pred det_insert(map(K, V), K, V, map(K, V)).
-:- mode det_insert(in, in, in, out) is det.
+:- pred det_insert(map(K, V)::in, K::in, V::in, map(K, V)::out) is det.
 :- pragma no_inline(det_insert/4).
 
 det_insert(M, _, _, M).

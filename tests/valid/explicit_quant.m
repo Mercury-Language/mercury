@@ -14,4 +14,8 @@
 :- implementation.
 
 only_space_chars(Cs) :-
-    all [C] list__member(C, Cs) => C = ' '.
+    all [C] (
+        list.member(C, Cs)
+    =>
+        C = ' '
+    ).

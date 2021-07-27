@@ -36,13 +36,13 @@
     ;       poly_three(B, A, poly(B, A))
     ;       poly_four(A, B).
 
-write_it -->
-    test_all(3).
+write_it(!IO) :-
+    test_all(3, !IO).
 
-test_all(_T) -->
-    { TypeInfo = type_of(poly_one([2399.3])) },
-    ( { N = num_functors(TypeInfo) } ->
-        io__write_int(N)
-    ;
-        io__write_string("no functors")
+test_all(_T, !IO) :-
+    TypeInfo = type_of(poly_one([2399.3])),
+    ( if N = num_functors(TypeInfo) then
+        io.write_int(N, !IO)
+    else
+        io.write_string("no functors", !IO)
     ).

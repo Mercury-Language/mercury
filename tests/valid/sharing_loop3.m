@@ -46,9 +46,9 @@
 :- pred short_label(instrmap::in, label::in, label::out) is det.
 
 short_label(Instrmap, Label0, Label) :-
-    ( search(Instrmap, Label0, Instr0) ->
+    ( if search(Instrmap, Label0, Instr0) then
         final_dest(Instrmap, Label0, Label, Instr0, _Instr)
-    ;
+    else
         Label = Label0
     ).
 
@@ -56,14 +56,14 @@ short_label(Instrmap, Label0, Label) :-
     instruction::out) is det.
 
 final_dest(Instrmap, SrcLabel, DestLabel, SrcInstr, DestInstr) :-
-    (
+    ( if
         SrcInstr = llds_instr(SrcUinstr, _Comment),
         SrcUinstr = label(TargetLabel),
         search(Instrmap, TargetLabel, TargetInstr)
-    ->
+    then
         final_dest(Instrmap,
             TargetLabel, DestLabel, TargetInstr, DestInstr)
-    ;
+    else
         DestLabel = SrcLabel,
         DestInstr = SrcInstr
     ).

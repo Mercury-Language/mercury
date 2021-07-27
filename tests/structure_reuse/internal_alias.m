@@ -14,7 +14,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -26,9 +26,8 @@
 :- type point_pair
     --->    pp(point, point).
 
-main -->
-    io__write(scale(2.0, identity)),
-    io__nl.
+main(!IO) :-
+    io.write_line(scale(2.0, identity), !IO).
 
 :- func identity = point_pair.
 

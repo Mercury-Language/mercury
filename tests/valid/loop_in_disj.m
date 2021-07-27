@@ -13,15 +13,20 @@
 
 :- pred loop is erroneous.
 
-loop :- loop.
+loop :-
+    loop.
 
 p(X) :-
-    loop
+    (
+        loop
     ;
-    X = 42.
+        X = 42
+    ).
 
 q(X) :-
-    loop,
-    X = 41
+    (
+        loop,
+        X = 41
     ;
-    X = 42.
+        X = 42
+    ).

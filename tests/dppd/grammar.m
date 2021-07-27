@@ -21,7 +21,7 @@
 :- import_module list.
 
 grammar :-
-    expression_query( ['(', '(', '(', '(', n, ')', ')', ')', ')'] ).
+    expression_query(['(', '(', '(', '(', n, ')', ')', ')', ')']).
 
 % The benchmark program (in ordinary clause format)
 % 

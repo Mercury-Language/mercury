@@ -106,9 +106,9 @@ node(c).
 :- pred anc(node, node).
 :- mode anc(in, out).
 :- mode anc(out, in).
+
 anc(X, X) :-
     node(X).
 anc(X, Z) :-
     parent(X, Y),
     anc(Y, Z).
-

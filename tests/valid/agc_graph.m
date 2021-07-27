@@ -31,8 +31,8 @@
 :- type graph(N) == graph(N, unit).
 :- type arc == arc(unit).
 
-:- pred agc_graph__insert_node(graph(N, A), N, node(N), graph(N, A)).
-:- mode agc_graph__insert_node(in, in, out, out) is semidet.
+:- pred insert_node(graph(N, A)::in, N::in, node(N)::out, graph(N, A)::out)
+    is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -51,42 +51,41 @@
 
 :- type graph(N, A)
     --->    graph(
-                agc_graph__node_supply,
-                agc_graph__arc_supply,
+                node_supply,
+                arc_supply,
                 map(node(N), N),
                 map(arc(A), arc_info(N, A)),
                 map(node(N), map(arc(A), node(N)))
             ).
 
-:- type agc_graph__node_supply ==  int.
-:- type agc_graph__arc_supply  ==  int.
+:- type node_supply ==  int.
+:- type arc_supply  ==  int.
 
 :- type arc_info(N, A)
     --->    arc_info(node(N), node(N), A).
 
 %---------------------------------------------------------------------------%
 
-agc_graph__insert_node(G, NInfo, N, G) :-
+insert_node(G, NInfo, N, G) :-
     G = graph(_, _, Nodes0, _, _),
 
-    agc_graph__get_node_supply(G, N),
-    agc_graph__get_edges(G, Edges0),
+    get_node_supply(G, N),
+    get_edges(G, Edges0),
 
-    \+ map__member(Nodes0, _, NInfo),
-    map__init(Edges0).
+    not map.member(Nodes0, _, NInfo),
+    map.init(Edges0).
 
 %---------------------------------------------------------------------------%
 
-:- pred agc_graph__get_node_supply(graph(N, A), agc_graph__node_supply).
-:- mode agc_graph__get_node_supply(in, out) is det.
+:- pred get_node_supply(graph(N, A)::in, node_supply::out) is det.
 
-agc_graph__get_node_supply(G, NS) :-
+get_node_supply(G, NS) :-
     G = graph(NS, _AS, _N, _A, _E).
 
-:- pred agc_graph__get_edges(graph(N, A), map(node(N), map(arc(A), node(N)))).
-:- mode agc_graph__get_edges(in, out) is det.
+:- pred get_edges(graph(N, A)::in, map(node(N), map(arc(A), node(N)))::out)
+    is det.
 
-agc_graph__get_edges(G, E) :-
+get_edges(G, E) :-
     G = graph(_NS, _AS, _N, _A, E).
 
 %---------------------------------------------------------------------------%

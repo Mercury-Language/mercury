@@ -1,3 +1,5 @@
+% vim: ft=mercury ts=4 sts=4 sw=4 et
+
 :- module ho_func_call_2.
 :- interface.
 
@@ -7,8 +9,14 @@
 
 :- implementation.
 
-:- type t ---> a ; b ; c.
-:- inst s ---> a ; b.
+:- type t
+    --->    a
+    ;       b
+    ;       c.
+
+:- inst s
+    --->    a
+    ;       b.
 
 :- type foo
     --->    foo(func(t) = t).
@@ -23,7 +31,4 @@ subfoo(_) = a.
 
 main(!IO) :-
     callfoo(foo(subfoo), c, X),
-    io.write(X, !IO),
-    io.nl(!IO).
-
-% vim: ft=mercury ts=4 sts=4 sw=4 et
+    io.write_line(X, !IO).

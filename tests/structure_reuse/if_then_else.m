@@ -2,8 +2,8 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % A regression test.
-% We test that the determination of possible cons_ids a cell can have is
-% correct for branched goal structures, in this case the if_then_else.
+% We test that the determination of possible cons_ids a cell can have
+% is correct for branched goal structures, in this case the if_then_else.
 %---------------------------------------------------------------------------%
 
 :- module if_then_else.
@@ -12,7 +12,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -21,18 +21,17 @@
     ;       one(int)
     ;       two(int, int).
 
-main -->
-    { X = two(1, 2) },
-    { p(X, Y) },
-    io__write(Y),
-    io__nl.
+main(!IO) :-
+    X = two(1, 2),
+    p(X, Y),
+    io.write_line(Y, !IO).
 
 :- pred p(t::in, t::out) is det.
 
 p(X, Y) :-
-    ( X = empty ->
+    ( if X = empty then
         Y = X
-    ;
+    else
         (
             X = two(A, B),
             Y = two(B, A)

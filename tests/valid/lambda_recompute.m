@@ -39,32 +39,29 @@ compile_display_list([mon(PPos, 1) | DList]) -->
     { map__init(MapIKnow) },
     { for(0, 1, (pred(X::in, in, out) is det -->
         for(0, 1, (pred(Y::in, in, out) is det -->
-            ( { search(MapIKnow, pos(X, Y), Place) } ->
+            ( if { search(MapIKnow, pos(X, Y), Place) } then
                 { Place = place(Kind, _Flags, Obj) },
-                (
-                    (
-                        { Kind \= 1 }
-                    ;
-                        { PPos = pos(X, Y) }
+                ( if
+                    ( { Kind \= 1 }
+                    ; { PPos = pos(X, Y) }
                     )
-                ->
+                then
                     element(place(pos(X, Y), Kind)),
-                    ( { Obj = [_N - T | _] } ->
+                    ( if { Obj = [_N - T | _] } then
                         element(thing(pos(X, Y), T))
-                    ;
+                    else
                         []
                     )
-                ;
+                else
                     []
                 )
-            ;
+            else
                 []
             )
         ))
     ), [], DList) }.
 
-:- pred element(element, display_list, display_list).
-:- mode element(in, in, out) is det.
+:- pred element(element::in, display_list::in, display_list::out) is det.
 
 element(E, DL, [E | DL]).
 
@@ -78,7 +75,7 @@ element(E, DL, [E | DL]).
 :- func pos(int, int) = pos.
 :- pragma no_inline(pos/2).
 
-pos(X, Y) = pos(X, Y).
+pos(X, Y) = X - Y.
 
 :- type map_i_know
     --->    map(
@@ -109,7 +106,7 @@ pos(X, Y) = pos(X, Y).
 for(Min, Max, Pred, !Acc) :-
     ( if Min =< Max then
         call(Pred, Min, !Acc),
-        for(Min+1, Max, Pred, !Acc)
+        for(Min + 1, Max, Pred, !Acc)
     else
         true
     ).

@@ -27,8 +27,8 @@
 :- typeclass compiler(T) where [].
 
 :- pred write_module_analysis_requests(Compiler::in,
-    module_analysis_map(analysis_request)::in,
-    io__state::di, io__state::uo) is det <= compiler(Compiler).
+    module_analysis_map(analysis_request)::in, io::di, io::uo) is det
+    <= compiler(Compiler).
 
 :- implementation.
 
@@ -37,8 +37,8 @@ write_module_analysis_requests(Compiler, ModuleRequests, !IO) :-
         ModuleRequests, !IO).
 
 :- pred write_request_entry(Compiler::in)
-        `with_type` write_entry(analysis_request)
-        `with_inst` write_entry <= compiler(Compiler).
+    `with_type` write_entry(analysis_request)
+    `with_inst` write_entry <= compiler(Compiler).
 
 write_request_entry(_, _, _, analysis_request(_, _), !IO).
 
@@ -46,18 +46,18 @@ write_request_entry(_, _, _, analysis_request(_, _), !IO).
 :- inst write_entry == (pred(in, in, in, di, uo) is det).
 
 :- pred write_analysis_entries(write_entry(T)::in(write_entry),
-    module_analysis_map(T)::in, io__state::di, io__state::uo) is det.
+    module_analysis_map(T)::in, io::di, io::uo) is det.
 
 write_analysis_entries(WriteEntry, ModuleResults, !IO) :-
     mymap_foldl(
-        (pred(AnalysisName::in, FuncResults::in, di, uo) is det -->
-        mymap_foldl(
-            (pred(FuncId::in, FuncResultList::in, di, uo) is det -->
-            list__foldl(
-                (pred(FuncResult::in, di, uo) is det -->
-                WriteEntry(AnalysisName, FuncId, FuncResult)
-                    ), FuncResultList)
-            ), FuncResults)
+        ( pred(AnalysisName::in, FuncResults::in, di, uo) is det -->
+            mymap_foldl(
+                ( pred(FuncId::in, FuncResultList::in, di, uo) is det -->
+                    list.foldl(
+                        ( pred(FuncResult::in, di, uo) is det -->
+                            WriteEntry(AnalysisName, FuncId, FuncResult)
+                        ), FuncResultList)
+                ), FuncResults)
         ), ModuleResults, !IO).
 
 :- pred mymap_foldl(pred(K, V, T, T), mymap(K, V), T, T).

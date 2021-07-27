@@ -27,9 +27,9 @@ p(A, B, !Y) :-
         p0(X0),
         p2(X0, X1),
         p2(X1, X2),
-        (
+        ( if
             A = yes
-        ->
+        then
             (
                 B = yes,
                 p1(X2),
@@ -38,22 +38,22 @@ p(A, B, !Y) :-
                 X4 = X3
             ;
                 B = no,
-                (
+                ( if
                     p1(X2),
                     p2(X2, X3)
-                ->
+                then
                     p1(X3),
                     X4 = X3
-                ;
+                else
                     X4 = X2
                 )
             ),
             X5 = X4
-        ;
-            (
+        else
+            ( if
                 p1(X2),
                 p2(X2, X3)
-            ->
+            then
                 (
                     A = yes,
                     p1(X3),
@@ -69,14 +69,14 @@ p(A, B, !Y) :-
                     A = no,
                     X5 = X3
                 )
-            ;
+            else if
                 p1(X2)
-            ->
+            then
                 p1(X2),
                 p2(X2, X3),
                 p1(X3),
                 X5 = X3
-            ;
+            else
                 X5 = X2
             )
         ),

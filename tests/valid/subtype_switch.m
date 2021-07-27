@@ -21,17 +21,16 @@
     --->    text(string)
     ;       width(int)
     ;       height(int)
-    ;       command(pred(tcl_interp, io__state, io__state))
+    ;       command(pred(tcl_interp, io, io))
     ;       title(string)
     ;       fill_color(string) .
 
-:- inst widget ==
-    bound(( text(ground)
-    ;   width(ground)
-    ;   height(ground)
-    ;   command(pred(in, di, uo) is det)
-    ;   title(ground)
-    )).
+:- inst widget
+    --->    text(ground)
+    ;       width(ground)
+    ;       height(ground)
+    ;       command(pred(in, di, uo) is det)
+    ;       title(ground).
 
 %---------------------------------------------------------------------------%
 
@@ -41,7 +40,7 @@
     --->    text(string)
     ;       width(int)
     ;       height(int)
-    ;       command(pred(string, io__state, io__state))
+    ;       command(pred(string, io, io))
     ;       title(string).
 
 :- import_module int.
@@ -49,23 +48,23 @@
 :- import_module require.
 :- import_module string.
 
-:- pred stringify_config(tcl_interp, config, string, io__state, io__state).
-:- mode stringify_config(in, in(widget), out, di, uo) is det.
+:- pred stringify_config(tcl_interp::in, config::in(widget), string::out,
+    io::di, io::uo) is det.
 
-stringify_config(_Interp, text(Text), Str, IO, IO) :-
-    string__format("-text ""%s""", [s(Text)], Str).
-stringify_config(_Interp, width(Width), Str, IO, IO) :-
-    string__format("-width %d", [i(Width)], Str).
-stringify_config(_Interp, height(Height), Str, IO, IO) :-
-    string__format("-height %d", [i(Height)], Str).
-stringify_config(_Interp, command(_Closure), Str) -->
-    get_thingy_counter(Id),
-    set_thingy_counter(Id+1),
-    { string__format("cmd%d", [i(Id)], CmdName) },
+stringify_config(_Interp, text(Text), Str, !IO) :-
+    string.format("-text ""%s""", [s(Text)], Str).
+stringify_config(_Interp, width(Width), Str, !IO) :-
+    string.format("-width %d", [i(Width)], Str).
+stringify_config(_Interp, height(Height), Str, !IO) :-
+    string.format("-height %d", [i(Height)], Str).
+stringify_config(_Interp, command(_Closure), Str, !IO) :-
+    get_thingy_counter(Id, !IO),
+    set_thingy_counter(Id + 1, !IO),
+    string.format("cmd%d", [i(Id)], CmdName),
     % create_command(Interp, CmdName, command_wrapper(Closure)),
-    { string__format("-command %s", [s(CmdName)], Str) }.
-stringify_config(_Interp, title(Text), Str, IO, IO) :-
-    string__format("-title ""%s""", [s(Text)], Str).
+    string.format("-command %s", [s(CmdName)], Str).
+stringify_config(_Interp, title(Text), Str, !IO) :-
+    string.format("-title ""%s""", [s(Text)], Str).
 
 :- pragma foreign_decl("C", "
     extern MR_Integer   tk_direct_thingy_counter;
@@ -75,7 +74,7 @@ stringify_config(_Interp, title(Text), Str, IO, IO) :-
     MR_Integer  tk_direct_thingy_counter = 0;
 ").
 
-:- pred get_thingy_counter(int::out, io__state::di, io__state::uo) is det.
+:- pred get_thingy_counter(int::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     get_thingy_counter(Int::out, IO0::di, IO::uo),
@@ -84,9 +83,9 @@ stringify_config(_Interp, title(Text), Str, IO, IO) :-
     Int = tk_direct_thingy_counter;
     IO = IO0;
 ").
-get_thingy_counter(5) --> [].
+get_thingy_counter(5, !IO).
 
-:- pred set_thingy_counter(int::in, io__state::di, io__state::uo) is det.
+:- pred set_thingy_counter(int::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     set_thingy_counter(Int::in, IO0::di, IO::uo),
@@ -95,12 +94,12 @@ get_thingy_counter(5) --> [].
     tk_direct_thingy_counter = Int;
     IO = IO0;
 ").
-set_thingy_counter(_) --> [].
+set_thingy_counter(_, !IO).
 
-:- pred command_wrapper(pred(tcl_interp, io__state, io__state), tcl_interp,
-    list(string), tcl_status, string, io__state, io__state).
+:- pred command_wrapper(pred(tcl_interp, io, io), tcl_interp,
+    list(string), tcl_status, string, io, io).
 :- mode command_wrapper(pred(in, di, uo) is det, in, in, out, out,
     di, uo) is det.
 
-command_wrapper(Closure, Interp, _Args, tcl_ok, "") -->
-    call(Closure, Interp).
+command_wrapper(Closure, Interp, _Args, tcl_ok, "", !IO) :-
+    call(Closure, Interp, !IO).

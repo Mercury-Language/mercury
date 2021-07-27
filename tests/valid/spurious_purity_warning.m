@@ -12,15 +12,16 @@
 :- import_module require.
 
 foo(X::out) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         error("foo/1")
-    ;
+    else
         X = 5
     ).
+
 bar(_::in) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         error("bar/1")
-    ;
+    else
         true
     ).
 

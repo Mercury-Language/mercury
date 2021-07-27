@@ -49,31 +49,31 @@
 %---------------------------------------------------------------------------%
 
 p1(Foo, X, object(Y), Res, !IO) :-
-    ( get_thing(X, struct(_)) ->
+    ( if get_thing(X, struct(_)) then
         p2(Foo, X, Y, Res, !IO)
-    ;
+    else
         unexpected($module, $pred)
     ).
 
 :- pred p2(foo::in, object::in, object::in, bool::out, io::di, io::uo) is det.
 
 p2(Foo, X, Y, Res, !IO) :-
-    ( get_thing(X, struct(_)) ->
+    ( if get_thing(X, struct(_)) then
         p3(Foo, X, Z),
-        ( Z = [] ->
+        ( if Z = [] then
             Res = no
-        ; get_thing(Y, struct(_)) ->
+        else if get_thing(Y, struct(_)) then
             Res = yes
-        ;
+        else
             Res = no
         )
-    ; get_thing(X, struct(_)) ->
-        ( get_thing(Y, struct(_)) ->
+    else if get_thing(X, struct(_)) then
+        ( if get_thing(Y, struct(_)) then
             Res = yes
-        ;
+        else
             Res = no
         )
-    ;
+    else
         Res = no
     ).
 

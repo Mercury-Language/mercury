@@ -14,8 +14,8 @@
 :- implementation.
 
 foo(X, Y) :-
-    ( X = 3 ->
+    ( if X = 3 then
         Y = 4
-    ;
+    else
         false
     ).

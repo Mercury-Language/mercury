@@ -15,8 +15,7 @@
 bar :-
     foo((pred(X::in) is semidet :- X = [_ | _]), []).
 
-:- pred foo(pred(T), T).
-:- mode foo(pred(in) is semidet, in) is semidet.
+:- pred foo(pred(T)::in(pred(in) is semidet), T::in) is semidet.
 
 foo(P, T) :-
     call(P, T).

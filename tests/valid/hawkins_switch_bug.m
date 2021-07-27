@@ -25,7 +25,11 @@
 :- import_module map.
 :- import_module set.
 
-:- type kind ---> a ; b ; c.
+:- type kind
+    --->    a
+    ;       b
+    ;       c.
+
 :- pred foo(kind::in, map(int, set(int))::in) is det.
 
 :- implementation.
@@ -39,7 +43,7 @@ foo(Kind, B) :-
         ),
         ( if map.search(B, 0, PDeps0) then
             _PDeps = PDeps0
-          else
+        else
             _PDeps = set.init : set(int)
         )
     ).

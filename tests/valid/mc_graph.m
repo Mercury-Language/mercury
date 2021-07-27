@@ -41,16 +41,15 @@
 
 :- type arc     == arc(unit).
 
-    % mc_graph__init(Graph) binds Graph to an empty mc_graph containing no nodes
+    % init(Graph) binds Graph to an empty mc_graph containing no nodes
     % and no arcs. (The mc_graph contains a counter of the number of nodes
     % allocated in it, so it is possible for a mc_graph to contain no nodes
-    % or arcs and still fail to unify with the binding of Graph from
-    % mc_graph__init.)
+    % or arcs and still fail to unify with the binding of Graph from init.)
     %
-:- pred mc_graph__init(mc_graph(N, A)::out) is det.
-:- func mc_graph__init = mc_graph(N, A).
+:- pred init(mc_graph(N, A)::out) is det.
+:- func init = mc_graph(N, A).
 
-    % mc_graph__set_node(OldGraph, NodeInfo, Node, NewGraph) takes
+    % set_node(OldGraph, NodeInfo, Node, NewGraph) takes
     % OldGraph and NodeInfo which is the information to be stored
     % in a new node, and returns a key "Node" which refers to that
     % node, and the new mc_graph NewGraph containing all of the nodes
@@ -60,70 +59,70 @@
     %
     % This operation is O(lgN) for a mc_graph containing N nodes.
     %
-:- pred mc_graph__set_node(mc_graph(N, A)::in, N::in, node(N)::out,
+:- pred set_node(mc_graph(N, A)::in, N::in, node(N)::out,
     mc_graph(N, A)::out) is det.
 
-    % mc_graph__insert_node/4 is the same as mc_graph__set_node/4 except
+    % insert_node/4 is the same as set_node/4 except
     % that if the information to be stored in the node is stored
-    % in another node, then the mc_graph__insert_node/4 fails.
+    % in another node, then the insert_node/4 fails.
     %
     % This operation is O(N) for a mc_graph containing N nodes since
     % this predicate has to check that the node data isn't in an
     % existing node.
     %
-:- pred mc_graph__insert_node(mc_graph(N, A)::in, N::in, node(N)::out,
+:- pred insert_node(mc_graph(N, A)::in, N::in, node(N)::out,
     mc_graph(N, A)::out) is semidet.
 
-    % mc_graph__det_insert_node/4 is like mc_graph__insert_node, except
+    % det_insert_node/4 is like insert_node, except
     % that if the insertion would fail, it calls error/1.
     %
-:- pred mc_graph__det_insert_node(mc_graph(N, A)::in, N::in, node(N)::out,
+:- pred det_insert_node(mc_graph(N, A)::in, N::in, node(N)::out,
     mc_graph(N, A)::out) is det.
 
-    % mc_graph__search_node(Graph, NodeInfo, Node) nondeterministically
+    % search_node(Graph, NodeInfo, Node) nondeterministically
     % produces bindings of Node such that Node is a node in Graph
     % that has the information NodeInfo attatched to it.
     %
     % This operation is O(lgN) for the first solution for a mc_graph
     % containing N nodes.
     %
-:- pred mc_graph__search_node(mc_graph(N, A)::in, N::in, node(N)::out) is nondet.
+:- pred search_node(mc_graph(N, A)::in, N::in, node(N)::out) is nondet.
 
-    % mc_graph__find_matching_nodes(Graph, NodeInfo, Nodes) takes a mc_graph
+    % find_matching_nodes(Graph, NodeInfo, Nodes) takes a mc_graph
     % Graph and the information NodeInfo and returns the set of nodes
     % Nodes which have the information NodeInfo stored in them. (The set
     % Nodes will of course be empty if there are no matching nodes.)
     %
     % This operation is O(NlgN) for a mc_graph containing N nodes.
     %
-:- pred mc_graph__find_matching_nodes(mc_graph(N, A)::in, N::in, set(node(N))::out)
+:- pred find_matching_nodes(mc_graph(N, A)::in, N::in, set(node(N))::out)
     is det.
-:- func mc_graph__find_matching_nodes(mc_graph(N, A), N) = set(node(N)).
+:- func find_matching_nodes(mc_graph(N, A), N) = set(node(N)).
 
-    % mc_graph__node_contents(Graph, Node, NodeInfo) takes Graph and
+    % node_contents(Graph, Node, NodeInfo) takes Graph and
     % Node and returns the information NodeInfo stored in Node.
     %
     % This operation is O(lgN) for a mc_graph containing N nodes.
     %
-:- pred mc_graph__node_contents(mc_graph(N, A)::in, node(N)::in, N::out) is det.
-:- func mc_graph__node_contents(mc_graph(N, A), node(N)) = N.
+:- pred node_contents(mc_graph(N, A)::in, node(N)::in, N::out) is det.
+:- func node_contents(mc_graph(N, A), node(N)) = N.
 
-    % mc_graph__successors(Graph, Node, Nodes) takes a mc_graph Graph and
+    % successors(Graph, Node, Nodes) takes a mc_graph Graph and
     % a node Node and returns the set of nodes Nodes that are reachable
     % (directly - not transitively) from Node.
     %
     % This operation is O(NlgN) for a mc_graph containing N nodes.
     %
-:- pred mc_graph__successors(mc_graph(N, A)::in, node(N)::in, set(node(N))::out)
+:- pred successors(mc_graph(N, A)::in, node(N)::in, set(node(N))::out)
     is det.
-:- func mc_graph__successors(mc_graph(N, A), node(N)) = set(node(N)).
+:- func successors(mc_graph(N, A), node(N)) = set(node(N)).
 
-    % mc_graph__nodes(Graph, Nodes) binds Nodes to the set of nodes in Graph.
+    % nodes(Graph, Nodes) binds Nodes to the set of nodes in Graph.
     %
-:- pred mc_graph__nodes(mc_graph(N, A)::in, set(node(N))::out) is det.
-:- func mc_graph__nodes(mc_graph(N, A)) = set(node(N)).
+:- pred nodes(mc_graph(N, A)::in, set(node(N))::out) is det.
+:- func nodes(mc_graph(N, A)) = set(node(N)).
 
-    % mc_graph__set_edge(OldGraph, Start, End, ArcInfo, Arc, NewGraph)
+    % set_edge(OldGraph, Start, End, ArcInfo, Arc, NewGraph)
     % takes a mc_graph OldGraph and adds an arc from Start to End with
     % the information ArcInfo stored in it, and returns a key for
     % that arc Arc, and the new mc_graph NewGraph.
@@ -132,37 +131,37 @@
     %
     % This operation is O(lgN+lgM) for a mc_graph with N nodes and M arcs.
     %
-:- pred mc_graph__set_edge(mc_graph(N, A)::in, node(N)::in, node(N)::in, A::in,
+:- pred set_edge(mc_graph(N, A)::in, node(N)::in, node(N)::in, A::in,
     arc(A)::out, mc_graph(N, A)::out) is det.
 
-    % mc_graph__insert_edge/6 is the same as mc_graph__set_edge/6 except that
+    % insert_edge/6 is the same as set_edge/6 except that
     % if an identical arc already exists in the mc_graph the operation fails.
     % This is O(N) for a mc_graph with N edges between the two nodes.
     %
-:- pred mc_graph__insert_edge(mc_graph(N, A)::in, node(N)::in, node(N)::in, A::in,
+:- pred insert_edge(mc_graph(N, A)::in, node(N)::in, node(N)::in, A::in,
     arc(A)::out, mc_graph(N, A)::out) is semidet.
 
-    % mc_graph__det_insert_edge/6 is like mc_graph__insert_edge except
+    % det_insert_edge/6 is like insert_edge except
     % than instead of failing, it calls error/1.
     %
-:- pred mc_graph__det_insert_edge(mc_graph(N, A)::in, node(N)::in, node(N)::in,
+:- pred det_insert_edge(mc_graph(N, A)::in, node(N)::in, node(N)::in,
     A::in, arc(A)::out, mc_graph(N, A)::out) is det.
 
-    % mc_graph__arc_contents(Graph, Arc, Start, End, ArcInfo) takes a
+    % arc_contents(Graph, Arc, Start, End, ArcInfo) takes a
     % mc_graph Graph and an arc Arc and returns the start and end nodes
     % and the information stored in that arc.
     %
-:- pred mc_graph__arc_contents(mc_graph(N, A)::in, arc(A)::in,
+:- pred arc_contents(mc_graph(N, A)::in, arc(A)::in,
     node(N)::out, node(N)::out, A::out) is det.
 
-    % mc_graph__path(Graph, Start, End, Path) is true iff there is a path
+    % path(Graph, Start, End, Path) is true iff there is a path
     % from the node Start to the node End in Graph that goes through
     % the sequence of arcs Arcs.
     % The algorithm will return paths containing at most one cycle.
     %
-:- pred mc_graph__path(mc_graph(N, A), node(N), node(N), list(arc(A))).
-:- mode mc_graph__path(in, in, in, out) is nondet.
-:- mode mc_graph__path(in, in, out, out) is nondet.
+:- pred path(mc_graph(N, A), node(N), node(N), list(arc(A))).
+:- mode path(in, in, in, out) is nondet.
+:- mode path(in, in, out, out) is nondet.
 
 %---------------------------------------------------------------------------%
 
@@ -170,7 +169,6 @@
 
 :- import_module counter.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module require.
 :- import_module std_util.
@@ -195,67 +193,67 @@
 
 %---------------------------------------------------------------------------%
 
-mc_graph__init(Graph) :-
-    Graph = mc_graph(counter__init(0), counter__init(0), Nodes, Arcs, Edges),
-    map__init(Nodes),
-    map__init(Arcs),
-    map__init(Edges).
+init(Graph) :-
+    Graph = mc_graph(counter.init(0), counter.init(0), Nodes, Arcs, Edges),
+    map.init(Nodes),
+    map.init(Arcs),
+    map.init(Edges).
 
 %---------------------------------------------------------------------------%
 
-mc_graph__set_node(!.G, NInfo, node(N), !:G) :-
+set_node(!.G, NInfo, node(N), !:G) :-
     NS0 = !.G ^ node_supply,
-    counter__allocate(N, NS0, NS),
+    counter.allocate(N, NS0, NS),
     !:G = !.G ^ node_supply := NS,
 
     Nodes0 = !.G ^ node_map,
-    map__set(node(N), NInfo, Nodes0, Nodes),
+    map.set(node(N), NInfo, Nodes0, Nodes),
     !:G = !.G ^ node_map := Nodes,
 
     Edges0 = !.G ^ edge_map,
-    map__init(EdgeMap),
-    map__set(node(N), EdgeMap, Edges0, Edges),
+    map.init(EdgeMap),
+    map.set(node(N), EdgeMap, Edges0, Edges),
     !:G = !.G ^ edge_map := Edges.
 
-mc_graph__det_insert_node(!.G, NInfo, N, !:G) :-
-    ( mc_graph__insert_node(!.G, NInfo, NPrime, !:G) ->
+det_insert_node(!.G, NInfo, N, !:G) :-
+    ( if insert_node(!.G, NInfo, NPrime, !:G) then
         N = NPrime
-    ;
-        error("mc_graph__det_insert_node: node already exists.")
+    else
+        error("det_insert_node: node already exists.")
     ).
 
-mc_graph__insert_node(!.G, NInfo, node(N), !:G) :-
+insert_node(!.G, NInfo, node(N), !:G) :-
     % Make sure that the mc_graph doesn't contain NInfo already.
-    \+ map__member(!.G ^ node_map, _, NInfo),
+    not map.member(!.G ^ node_map, _, NInfo),
 
     NS0 = !.G ^ node_supply,
-    counter__allocate(N, NS0, NS),
+    counter.allocate(N, NS0, NS),
     !:G = !.G ^ node_supply := NS,
 
     Nodes0 = !.G ^ node_map,
-    map__set(node(N), NInfo, Nodes0, Nodes),
+    map.set(node(N), NInfo, Nodes0, Nodes),
     !:G = !.G ^ node_map := Nodes,
 
     Edges0 = !.G ^ edge_map,
-    map__init(EdgeSet),
-    map__set(node(N), EdgeSet, Edges0, Edges),
+    map.init(EdgeSet),
+    map.set(node(N), EdgeSet, Edges0, Edges),
     !:G = !.G ^ edge_map := Edges.
 
 %---------------------------------------------------------------------------%
 
-mc_graph__search_node(Graph, NodeInfo, Node) :-
+search_node(Graph, NodeInfo, Node) :-
     NodeTable = Graph ^ node_map,
-    map__member(NodeTable, Node, NodeInfo).
+    map.member(NodeTable, Node, NodeInfo).
 
 %---------------------------------------------------------------------------%
 
-mc_graph__find_matching_nodes(Graph, NodeInfo, NodeSet) :-
+find_matching_nodes(Graph, NodeInfo, NodeSet) :-
     NodeTable = Graph ^ node_map,
 %   Higher order code removed here
-%   solutions(mc_graph__select_node(NodeTable, NodeInfo), NodeList),
+%   solutions(mc_graph.select_node(NodeTable, NodeInfo), NodeList),
     map.sorted_keys(NodeTable, AllNodes),
     filter_node_info(NodeTable, NodeInfo, AllNodes, MatchingNodes),
-    set__sorted_list_to_set(MatchingNodes, NodeSet).
+    set.sorted_list_to_set(MatchingNodes, NodeSet).
 
     % filter_node_info(NodeTable, NodeInfo, Nodes, FilteredNodes)
     %
@@ -268,106 +266,106 @@ mc_graph__find_matching_nodes(Graph, NodeInfo, NodeSet) :-
 filter_node_info(_, _, [], []).
 filter_node_info(NodeTable, NodeInfo, [Node | Nodes], FilteredNodes) :-
     filter_node_info(NodeTable, NodeInfo, Nodes, FilteredNodes0),
-    ( map.search(NodeTable, Node, NodeInfo) ->
+    ( if map.search(NodeTable, Node, NodeInfo) then
         FilteredNodes = [Node | FilteredNodes0]
-    ;
+    else
         FilteredNodes = FilteredNodes0
     ).
 
-:- pred mc_graph__select_node(map(node(N), N)::in, N::in, node(N)::out)
+:- pred select_node(map(node(N), N)::in, N::in, node(N)::out)
     is nondet.
 
-mc_graph__select_node(NodeTable, NodeInfo, Node) :-
-    map__member(NodeTable, Node, NodeInfo).
+select_node(NodeTable, NodeInfo, Node) :-
+    map.member(NodeTable, Node, NodeInfo).
 
 %---------------------------------------------------------------------------%
 
-mc_graph__node_contents(G, N, I) :-
-    map__lookup(G ^ node_map, N, I).
+node_contents(G, N, I) :-
+    map.lookup(G ^ node_map, N, I).
 
 %---------------------------------------------------------------------------%
 
-mc_graph__successors(G, N, Ss) :-
-    map__lookup(G ^ edge_map, N, E),
-    map__values(E, SsList),
-    set__list_to_set(SsList, Ss).
+successors(G, N, Ss) :-
+    map.lookup(G ^ edge_map, N, E),
+    map.values(E, SsList),
+    set.list_to_set(SsList, Ss).
 
 %---------------------------------------------------------------------------%
 
-mc_graph__nodes(G, Ns) :-
-    map__keys(G ^ node_map, Ns1),
-    set__list_to_set(Ns1, Ns).
+nodes(G, Ns) :-
+    map.keys(G ^ node_map, Ns1),
+    set.list_to_set(Ns1, Ns).
 
 %---------------------------------------------------------------------------%
 
-mc_graph__set_edge(!.G, Start, End, Info, Arc, !:G) :-
+set_edge(!.G, Start, End, Info, Arc, !:G) :-
     AS0 = !.G ^ arc_supply,
-    counter__allocate(A, AS0, AS),
+    counter.allocate(A, AS0, AS),
     Arc = arc(A),
     !:G = !.G ^ arc_supply := AS,
 
     Arcs0 = !.G ^ arc_map,
-    map__set(Arc, arc_info(Start, End, Info), Arcs0, Arcs),
+    map.set(Arc, arc_info(Start, End, Info), Arcs0, Arcs),
     !:G = !.G ^ arc_map := Arcs,
 
     Es0 = !.G ^ edge_map,
-    map__lookup(Es0, Start, EdgeMap0),
-    map__set(Arc, End, EdgeMap0, EdgeMap),
-    map__set(Start, EdgeMap, Es0, Es),
+    map.lookup(Es0, Start, EdgeMap0),
+    map.set(Arc, End, EdgeMap0, EdgeMap),
+    map.set(Start, EdgeMap, Es0, Es),
     !:G = !.G ^ edge_map := Es.
 
 %---------------------------------------------------------------------------%
 
-mc_graph__det_insert_edge(!.G, Start, End, Info, Arc, !:G) :-
-    ( mc_graph__insert_edge(!.G, Start, End, Info, ArcPrime, !:G) ->
+det_insert_edge(!.G, Start, End, Info, Arc, !:G) :-
+    ( if mc_graph.insert_edge(!.G, Start, End, Info, ArcPrime, !:G) then
         Arc = ArcPrime
-    ;
-        error("mc_graph__det_insert_edge: this edge is already in the mc_graph.")
+    else
+        error("det_insert_edge: this edge is already in the mc_graph.")
     ).
 
-mc_graph__insert_edge(!.G, Start, End, Info, Arc, !:G) :-
+insert_edge(!.G, Start, End, Info, Arc, !:G) :-
     AS0 = !.G ^ arc_supply,
-    counter__allocate(A, AS0, AS),
+    counter.allocate(A, AS0, AS),
     Arc = arc(A),
     !:G = !.G ^ arc_supply := AS,
 
     Arcs0 = !.G ^ arc_map,
-    map__insert(Arc, arc_info(Start, End, Info), Arcs0, Arcs),
+    map.insert(Arc, arc_info(Start, End, Info), Arcs0, Arcs),
     !:G = !.G ^ arc_map := Arcs,
 
     Es0 = !.G ^ edge_map,
-    map__lookup(Es0, Start, EdgeMap0),
-    map__set(Arc, End, EdgeMap0, EdgeMap),
-    map__set(Start, EdgeMap, Es0, Es),
+    map.lookup(Es0, Start, EdgeMap0),
+    map.set(Arc, End, EdgeMap0, EdgeMap),
+    map.set(Start, EdgeMap, Es0, Es),
     !:G = !.G ^ edge_map := Es.
 
 %---------------------------------------------------------------------------%
 
-mc_graph__arc_contents(G, N, S, E, A) :-
-    map__lookup(G ^ arc_map, N, I),
+arc_contents(G, N, S, E, A) :-
+    map.lookup(G ^ arc_map, N, I),
     I = arc_info(S, E, A).
 
 %---------------------------------------------------------------------------%
 
-mc_graph__path(G, S, E, Path) :-
-    mc_graph__path_2(G, S, E, [], Path).
+path(G, S, E, Path) :-
+    mc_graph.path_2(G, S, E, [], Path).
 
-:- pred mc_graph__path_2(mc_graph(N, A), node(N), node(N),
+:- pred path_2(mc_graph(N, A), node(N), node(N),
     list(node(N)), list(arc(A))).
-:- mode mc_graph__path_2(in, in, in, in, out) is nondet.
-:- mode mc_graph__path_2(in, in, out, in, out) is nondet.
+:- mode path_2(in, in, in, in, out) is nondet.
+:- mode path_2(in, in, out, in, out) is nondet.
 
-mc_graph__path_2(G, S, E, Nodes0, Path) :-
+path_2(G, S, E, Nodes0, Path) :-
     Es = G ^ edge_map,
-    map__lookup(Es, S, Arcs),
+    map.lookup(Es, S, Arcs),
     (
-        map__member(Arcs, A, E),
-        \+ list__member(E, Nodes0),
+        map.member(Arcs, A, E),
+        not list.member(E, Nodes0),
         Path = [A]
     ;
-        map__member(Arcs, A, N),
-        \+ list__member(N, Nodes0),
-        mc_graph__path_2(G, N, E, [N | Nodes0], Path0),
+        map.member(Arcs, A, N),
+        not list.member(N, Nodes0),
+        mc_graph.path_2(G, N, E, [N | Nodes0], Path0),
         Path = [A | Path0]
     ).
 
@@ -376,17 +374,17 @@ mc_graph__path_2(G, S, E, Nodes0, Path) :-
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 %       Functional forms added.
 
-mc_graph__init = G :-
-    mc_graph__init(G).
+init = G :-
+    mc_graph.init(G).
 
-mc_graph__find_matching_nodes(G, N) = S :-
-    mc_graph__find_matching_nodes(G, N, S).
+find_matching_nodes(G, N) = S :-
+    mc_graph.find_matching_nodes(G, N, S).
 
-mc_graph__node_contents(G, N) = NI :-
-    mc_graph__node_contents(G, N, NI).
+node_contents(G, N) = NI :-
+    mc_graph.node_contents(G, N, NI).
 
-mc_graph__successors(G, N) = S :-
-    mc_graph__successors(G, N, S).
+successors(G, N) = S :-
+    mc_graph.successors(G, N, S).
 
-mc_graph__nodes(G) = S :-
-    mc_graph__nodes(G, S).
+nodes(G) = S :-
+    mc_graph.nodes(G, S).

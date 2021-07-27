@@ -30,9 +30,9 @@
 :- import_module int.
 
 int_to_ascii(ConvertNonAscii, U, Old, New) :-
-    ( U < 128 ->
+    ( if U < 128 then
         New = [U | Old]
-    ;
+    else
         ConvertNonAscii(U, S),  % failure
         New = [S | Old]
     ).

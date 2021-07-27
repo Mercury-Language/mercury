@@ -31,8 +31,8 @@ h(A, [B | S], Y) :-
 :- pred g(T::in, T::in, list(T)::in, list(T)::in, list(T)::out) is det.
 
 g(A, B, T, S, [A | Y]) :-
-    ( A = B ->
+    ( if A = B then
         f(S, Y)
-    ;
+    else
         f(T, Y)
     ).

@@ -84,13 +84,14 @@ new_c_candidate(F, C) = new_c_candidate(length(F), F, length(C), C).
 
   % construct data (using GC_malloc)
 nbestlist_to_data(NBL) = OutData :-
-    Lengths = list__map(length, NBL),
+    Lengths = list.map(length, NBL),
     % how many candidates do we have per sentence
-    AllCands = list__condense(NBL),
-    AllCandsC = list__map(
-    func(scored_candidate(Scores, BLEUComps))
-        = new_c_candidate(Scores, BLEUComps),
-    AllCands),
+    AllCands = list.condense(NBL),
+    AllCandsC = list.map(
+        ( func(scored_candidate(Scores, BLEUComps))
+            = new_c_candidate(Scores, BLEUComps)
+        ),
+        AllCands),
     trace [io(!IO)] (
         debugstr("nbestlist_to_data: lengths, allcands: ",
             {0+length(Lengths), 0+length(AllCandsC)}, !IO)
@@ -258,7 +259,6 @@ score_nbestlist(_, _) = [].
 :- pred debugstr(string::in, T::in, io::di, io::uo) is det.
 
 debugstr(Msg, Data, !IO) :-
-    io__stderr_stream(E, !IO),
-    io__write_string(E, Msg, !IO),
-    io__write(E, Data, !IO),
-    io__nl(E, !IO).
+    io.stderr_stream(E, !IO),
+    io.write_string(E, Msg, !IO),
+    io.write_line(E, Data, !IO).

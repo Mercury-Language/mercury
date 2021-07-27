@@ -55,7 +55,6 @@
 
 :- implementation.
 
-:- import_module list.
 :- import_module math.
 
 shade(Scene, Ray, Intersection, Attributes, Colour) :-

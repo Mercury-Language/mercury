@@ -22,28 +22,28 @@
 :- import_module run.
 
 advisor :-
-    what_to_do_today_may( sunny, Program1 ),
+    what_to_do_today_may(sunny, Program1),
     use(Program1),
-    what_to_do_today_may( Weather1, enjoy_yourself_at_home ),
+    what_to_do_today_may(Weather1, enjoy_yourself_at_home),
     use(Weather1),
-    what_to_do_today_may( foggy, Program2 ),
+    what_to_do_today_may(foggy, Program2),
     use(Program2),
-    what_to_do_today_may( Weather2, wash_your_car ),
+    what_to_do_today_may(Weather2, wash_your_car),
     use(Weather2).
     % type error !
-    % what_to_do_today_may(  nice, wash_your_car ).
+    % what_to_do_today_may(nice, wash_your_car).
 
 % The partial deduction query
 % 
-% :- what_to_do_today( first_of_may, _weather, _program ).
+% :- what_to_do_today(first_of_may, _weather, _program).
 % 
 % The renamed run-time queries
 % 
-% :- what_to_do_today__1( sunny, _program ).
-% :- what_to_do_today__1( _wheather, enjoy_yourself_at_home ).
-% :- what_to_do_today__1( foggy, _program ).
-% :- what_to_do_today__1( _wheather, wash_your_car ).
-% :- what_to_do_today__1(  nice, wash_your_car )
+% :- what_to_do_today__1(sunny, _program).
+% :- what_to_do_today__1(_wheather, enjoy_yourself_at_home).
+% :- what_to_do_today__1(foggy, _program).
+% :- what_to_do_today__1(_wheather, wash_your_car).
+% :- what_to_do_today__1(nice, wash_your_car)
 % 
 % Example solution
 % 

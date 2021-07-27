@@ -14,9 +14,9 @@
 :- implementation.
 
 f(X) :-
-    ( semidet_true ->
+    ( if semidet_true then
         X = 1
-    ;
+    else
         not private_builtin.sorry("sorry"),
         fail
     ).

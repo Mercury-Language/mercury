@@ -91,8 +91,7 @@
 :- type y3 ---> foo ; bar.
 :- type z3 ---> foo ; bar.
 
-:- pred ambig(a, a, a, a).
-:- mode ambig(out, out, out, out) is det.
+:- pred ambig(a::out, a::out, a::out, a::out) is det.
 
 :- implementation.
 
@@ -106,7 +105,6 @@ ambig(A1, A2, A3, A4) :-
     constrain(X3, A3),
     constrain(X4, A4).
 
-:- pred constrain(a, a).
-:- mode constrain(in, out) is det.
+:- pred constrain(a::in, a::out) is det.
 
 constrain(A, A).

@@ -20,9 +20,9 @@
 :- import_module require.
 
 foo :-
-    ( bar ->
+    ( if bar then
         true
-    ;
+    else
         true
     ).
 

@@ -21,15 +21,15 @@
     ;       bar.
 
 :- pred main(io::di, io::uo) is det.
-:- pred ambig(T).
-:- mode ambig(in) is semidet.
+
+:- pred ambig(T::in) is semidet.
 
 :- implementation.
 
 main(!IO) :-
-    ( ambig(foo(3, "string")) ->
+    ( if ambig(foo(3, "string")) then
         true
-    ;
+    else
         true
     ).
 

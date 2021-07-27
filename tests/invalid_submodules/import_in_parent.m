@@ -15,7 +15,7 @@
     :- type foo
         --->    foo.
 
-    :- module import_in_parent__sub.
+    :- module import_in_parent.sub.
 
     :- interface.
 
@@ -24,8 +24,8 @@
     :- implementation.
 
     foo(X) :-
-        bool__foo(X).
+        bool.foo(X).
 
-    :- end_module import_in_parent__sub.
+    :- end_module import_in_parent.sub.
 
 :- end_module import_in_parent.

@@ -15,22 +15,21 @@
 :- import_module bool.
 :- import_module int.
 
-main -->
-    { p(1, R) },
-    io__write(R),
-    io__nl.
+main(!IO) :-
+    p(1, R),
+    io.write_line(R, !IO).
 
 :- pred p(int::in, bool::out) is det.
 
 p(N, R) :-
-    (
+    ( if
         some [M] (
             M > 5,
             q(N, M)
         )
-    ->
+    then
         R = yes
-    ;
+    else
         R = no
     ).
 

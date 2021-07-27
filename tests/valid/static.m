@@ -38,21 +38,21 @@
 
 % Test for ordinary if-then-else
 q(X, Y) :-
-    (
+    ( if
         X = a,
         % This line causes the problem. Move it into the then part
         % to avoid the above code gen problem. We can move it into the
         % then part because this line isn't part of the test.
         Result = f("hello", 0)
-    ->
+    then
         Y = g(Result, Result)
-    ;
+    else
         Y = i
     ).
 
 % Test for if-then-else with nondet condition
 r(X, Y, Z) :-
-    (
+    ( if
         X = a,
         (Z0 = 1 ; Z0 = 2),
 
@@ -60,10 +60,10 @@ r(X, Y, Z) :-
         % to avoid the above code gen problem. We can move it into the
         % then part because this line isn't part of the test.
         Result = f("hello", 0)
-    ->
+    then
         Z = Z0,
         Y = g(Result, Result)
-    ;
+    else
         Z = 0,
         Y = i
     ).

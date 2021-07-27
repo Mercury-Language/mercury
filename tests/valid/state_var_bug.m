@@ -15,9 +15,9 @@
 :- implementation.
 
 foo(!X) :-
-    ( copy(!X) ->
+    ( if copy(!X) then
         true
-    ;
+    else
         true
     ),
     (

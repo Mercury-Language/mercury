@@ -27,8 +27,7 @@
 
 main(!IO) :-
     P = stringify_state(int_with_state),
-    io.write(P, !IO),
-    io.nl(!IO).
+    io.write_line(P, !IO).
 
 :- pred int_with_state(int::out, ps::in, ps::out) is semidet.
 

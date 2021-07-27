@@ -12,10 +12,10 @@
 
 :- implementation.
 
-main -->
-   f(X),
-   io__write_int(X),
-   io__nl.
+main(!IO) :-
+   f(X, !IO),
+   io.write_int(X, !IO),
+   io.nl(!IO).
 
 :- pred f(int::out, io::di, io::uo) is det.
 
@@ -26,4 +26,4 @@ main -->
     X = 5;
 ").
 
-f(5) --> [].
+f(5, !IO).

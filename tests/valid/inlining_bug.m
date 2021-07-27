@@ -9,7 +9,7 @@
 % was being set to `mercury_builtin:base_type_info' rather than
 % `type_info'. In the code to compute the type substitution in inlining,
 % type_list_subsumes failed on the argument types, and no substitution
-% was produced. code_util__cons_id_to_tag then aborted when asked to
+% was produced. code_util.cons_id_to_tag then aborted when asked to
 % find the tag for a constructor of a variable type.
 
 :- module inlining_bug.
@@ -28,7 +28,7 @@
 
 calling_pred(_) :-
     Plus1 =
-        (pred(Int0::in, IntPair::out) is det :-
+        ( pred(Int0::in, IntPair::out) is det :-
             IntPair = pair(Int0, Int0)
         ),
     called_pred(Plus1, [1, 2, 3], [X | Ys]),
@@ -41,4 +41,4 @@ calling_pred(_) :-
 
 called_pred(P, [A | As], [B | Bs]) :-
     call(P, A, B),
-    list__map(P, As, Bs).
+    list.map(P, As, Bs).

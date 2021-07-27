@@ -25,14 +25,13 @@
     coerce(_) = 42.0
 ].
 
+main(!IO) :-
+    mg(1.0, S),
+    io.print_line(S, !IO).
+
 mg(S0, S) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         S = S0
-    ;
+    else
         S = S0
     ).
-
-main -->
-    { mg(1.0, S) },
-    io__print(S),
-    io__nl.

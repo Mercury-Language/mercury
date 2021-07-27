@@ -33,9 +33,10 @@
 :- implementation.
 
 foo(Pred) :-
-    Pred = (impure pred(!.A::di, !:A::uo) is det :-
-        impure bar(!A)
-    ).
+    Pred =
+        ( impure pred(!.A::di, !:A::uo) is det :-
+            impure bar(!A)
+        ).
 
 :- impure pred bar(unit, unit).
 :-        mode bar(in, out) is det.
@@ -45,15 +46,17 @@ bar(!A) :-
     impure private_builtin.imp.
 
 baz(Pred) :-
-    Pred = (pred(R::out, A::di, B::uo) is det :-
-        A = B,
-        R = alpha
-    ).
+    Pred =
+        ( pred(R::out, A::di, B::uo) is det :-
+            A = B,
+            R = alpha
+        ).
 
 func_foo(Func) :-
     Func = (impure func(In) = Out :- impure bar(In, Out)).
 
 with_unused(Pred) :-
-    Pred = (impure pred(_::unused, !.A::di, !:A::uo) is det :-
-        impure bar(!A)
-    ).
+    Pred =
+        ( impure pred(_::unused, !.A::di, !:A::uo) is det :-
+            impure bar(!A)
+        ).

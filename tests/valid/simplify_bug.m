@@ -10,7 +10,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -18,21 +18,22 @@
 :- import_module require.
 :- import_module std_util.
 
-main -->
-    ( { nasty([]) } ->
-        main, main
-    ;
-        []
+main(!IO) :-
+    ( if nasty([]) then
+        main(!IO),
+        main(!IO)
+    else
+        true
     ).
 
 :- pred nasty(list(T)::in) is nondet.
 
 nasty(_) :-
-    ( semidet_succeed ->
-        list__append(X, _, []),
+    ( if semidet_succeed then
+        list.append(X, _, []),
         X \= [],
         e(X)
-    ;
+    else
         semidet_succeed
     ).
 

@@ -27,6 +27,4 @@
 
 :- implementation.
 
-:- import_module bool.
-
 :- type t2 == bool.

@@ -20,9 +20,10 @@ main(!IO) :-
 
 get_n_happy_numbers(NumToFind, N) =
     ( if NumToFind > 0 then
-       ( if is_happy(N)
-       then [N | get_n_happy_numbers(NumToFind - 1, N + 1)]
-       else get_n_happy_numbers(NumToFind, N + 1)
+       ( if is_happy(N) then
+            [N | get_n_happy_numbers(NumToFind - 1, N + 1)]
+       else
+            get_n_happy_numbers(NumToFind, N + 1)
        )
     else
        []

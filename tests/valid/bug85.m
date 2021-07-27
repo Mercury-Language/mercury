@@ -99,8 +99,6 @@
 
 :- implementation.
 
-:- import_module list.
-
 coverage_prof_second_pass_goal(DPInfo, Goal0, Goal,
         CoverageAfterKnown0, NextCoverageAfterKnown, !Info, AddedImpurity) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
@@ -122,7 +120,7 @@ coverage_prof_second_pass_goal(DPInfo, Goal0, Goal,
         GoalPortCountsCoverageAfter = no_port_counts_give_coverage_after,
         CoverageAfterKnown1 = CoverageAfterKnown0
     ),
-    (
+    ( if
         (
             IsMDProfInst = goal_is_mdprof_inst
         ;
@@ -132,9 +130,9 @@ coverage_prof_second_pass_goal(DPInfo, Goal0, Goal,
         ;
             GoalExpr0 = conj(plain_conj, _)
         )
-    ->
+    then
         MaybeCPType = no
-    ;
+    else
         CoverageAfterGoals = CPOptions ^ cpo_coverage_after_goal,
         (
             CoverageAfterGoals = yes,

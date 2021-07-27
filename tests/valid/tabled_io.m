@@ -8,8 +8,8 @@
 
 :- import_module io.
 
-:- pred p(io__state::di, io__state::uo) is det.
-:- pred q(io__state::di, io__state::uo) is det.
+:- pred p(io::di, io::uo) is det.
+:- pred q(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -21,8 +21,8 @@ p(S0, _) :-
 q(S0, _) :-
     nasty_fail_q(S0, S0).
 
-:- pred nasty_fail_p(io__state::in, io__state::in) is erroneous.
-:- pred nasty_fail_q(io__state::in(any), io__state::in(any)) is erroneous.
+:- pred nasty_fail_p(io::in, io::in) is erroneous.
+:- pred nasty_fail_q(io::in(any), io::in(any)) is erroneous.
 
 nasty_fail_p(_, _) :-
     throw("ouch").

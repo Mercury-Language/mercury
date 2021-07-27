@@ -28,14 +28,11 @@
     func(method1/1) is bar
 ].
 
-main -->
-    { A = (func(X) = Y is semidet :- X = 4, Y = 7) },
-    { B = (func(X) = (Y) is semidet :- Y = method1(X)) },
-    io__write(list__filter_map(A, [1, 2, 3, 4, 5, 6])),
-    io__nl,
-    io__write(list__filter_map(bar, [1, 2, 3, 4, 5, 6])),
-    io__nl,
-    io__write(list__filter_map(B, [1, 2, 3, 4, 5, 6])),
-    io__nl.
+main(!IO) :-
+    A = (func(X) = Y is semidet :- X = 4, Y = 7),
+    B = (func(X) = (Y) is semidet :- Y = method1(X)),
+    io.write_line(list.filter_map(A, [1, 2, 3, 4, 5, 6]), !IO),
+    io.write_line(list.filter_map(bar, [1, 2, 3, 4, 5, 6]), !IO),
+    io.write_line(list.filter_map(B, [1, 2, 3, 4, 5, 6]), !IO).
 
 bar(4) = 7.

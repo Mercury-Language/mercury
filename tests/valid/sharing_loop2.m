@@ -68,7 +68,7 @@ remap_rval(Remap, Rval0) = Rval :-
         Rval = lval(Lval)
     ;
         Rval0 = const(DataName0),
-    DataName = remap_data_name(Remap, DataName0),
+        DataName = remap_data_name(Remap, DataName0),
         Rval = const(DataName)
     ;
         Rval0 = binop(A0, B0),
@@ -87,16 +87,16 @@ remap_data_name(Remap, DataName0) = DataName :-
     Remap = static_cell_remap_info(TypeNumRemap, ScalarCellGroupRemap),
     (
         DataName0 = scalar_common_ref(TypeNum0),
-        ( TypeNumRemap = cell_type_num_remap(TypeNum0, _) ->
+        ( if TypeNumRemap = cell_type_num_remap(TypeNum0, _) then
             ScalarCellGroupRemap = DataName
-        ;
+        else
             DataName = DataName0
         )
     ;
         DataName0 = vector_common_ref(TypeNum0, Offset),
-        ( TypeNumRemap = cell_type_num_remap(TypeNum0, TypeNum) ->
+        ( if TypeNumRemap = cell_type_num_remap(TypeNum0, TypeNum) then
             DataName = vector_common_ref(TypeNum, Offset)
-        ;
+        else
             DataName = DataName0
         )
     ).

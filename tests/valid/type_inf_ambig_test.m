@@ -10,18 +10,22 @@
 
 :- interface.
 :- import_module io.
-:- import_module int.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- type l1 ---> (nil ; f(int, l1)).
+:- type l1
+    --->    nil
+    ;       f(int, l1).
 
-:- type l2 ---> (nil ; somethingelse).
+:- type l2
+    --->    nil
+    ;       somethingelse.
 
-main -->
-    {foo(L), g(L)}.
+main(!IO) :-
+    foo(L),
+    g(L).
 
 %% :- pred g(l1).   %1
 :- mode g(in) is det.
@@ -34,7 +38,6 @@ g(f(_, R)) :- g(R).  %2
 %%  ;       %3
 %%  L = f(_, R), g(R). %3
 
-:- pred foo(l1).
-:- mode foo(out) is det.
+:- pred foo(l1::out) is det.
 
 foo(f(1, f(2, nil))).

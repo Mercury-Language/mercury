@@ -30,14 +30,12 @@
 :- import_module std_util.
 :- import_module require.
 
-main -->
-    children.child.hello,
-    child.hello,
-    hello,
-    children.child2.hello,
-    child2.hello,
-
-    { true }.
+main(!IO) :-
+    children.child.hello(!IO),
+    child.hello(!IO),
+    hello(!IO),
+    children.child2.hello(!IO),
+    child2.hello(!IO).
 
 %---------------------------------------------------------------------------%
 

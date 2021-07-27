@@ -21,8 +21,6 @@ p(X) :-
     ).
 
 :- pragma foreign_code("Java", "
-
    private static boolean q_1_p_0(int x) { return false; }
    private static boolean r_1_p_0(int x) { return false; }
-
 ").

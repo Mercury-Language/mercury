@@ -6,7 +6,7 @@
 :- interface.
 :- import_module io.
 
-:- pred p(io__state::di, io__state::uo) is erroneous.
+:- pred p(io::di, io::uo) is erroneous.
 
 :- implementation.
 

@@ -16,12 +16,12 @@ bug311.m:185:   variables in the same memory cell, which will cause any
 bug311.m:185:   all-solutions predicate to think that the different solutions
 bug311.m:185:   (since they are at the same address) are in fact all the same
 bug311.m:185:   when invoked on the procedure.
-bug311.m:200: Warning: this disjunction further instantiates the already
-bug311.m:200:   partially instantiated variable GG.
-bug311.m:200:   Since the memory cell of this variable is allocated *before*
-bug311.m:200:   the disjunction, the different disjuncts will return their
-bug311.m:200:   potentially different solutions for this variable in the same
-bug311.m:200:   memory cell, which will cause any all-solutions predicate to
-bug311.m:200:   think that the different solutions (since they are at the same
-bug311.m:200:   address) are in fact all the same when invoked on the lambda
-bug311.m:200:   expression in bug311.m at line 195.
+bug311.m:201: Warning: this disjunction further instantiates the already
+bug311.m:201:   partially instantiated variable GG.
+bug311.m:201:   Since the memory cell of this variable is allocated *before*
+bug311.m:201:   the disjunction, the different disjuncts will return their
+bug311.m:201:   potentially different solutions for this variable in the same
+bug311.m:201:   memory cell, which will cause any all-solutions predicate to
+bug311.m:201:   think that the different solutions (since they are at the same
+bug311.m:201:   address) are in fact all the same when invoked on the lambda
+bug311.m:201:   expression in bug311.m at line 195.

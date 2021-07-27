@@ -2,7 +2,7 @@
 %
 % This a regression test for Mantis bug #128. The bug was that the loop
 % invariants pass considered the unification that constructed a partially
-% instantiated term (_L3-comma in parse_enum0) to be an invariant goal,
+% instantiated term (_L3 - comma in parse_enum0) to be an invariant goal,
 % and attempted to hoist it out of parse_enum0's loop. Due to the free
 % variable inside the term, this yielded a compiler abort.
 
@@ -49,9 +49,9 @@ main(!IO) :-
     parse_res(value)::out, tokens::in, tokens::out) is det.
 
 parse_enum0(L, Vs0, Res, !Ts) :-
-    ( if next(_L2-symbol(Sym), !Ts) then
-        ( if next(_L3-comma, !Ts) then
-            Vs = [Sym-no | Vs0],
+    ( if next(_L2 - symbol(Sym), !Ts) then
+        ( if next(_L3 - comma, !Ts) then
+            Vs = [Sym - no | Vs0],
             parse_enum0(L, Vs, Res, !Ts)
         else
             Res = error
@@ -62,5 +62,5 @@ parse_enum0(L, Vs0, Res, !Ts) :-
 
 :- pred next(pair(int, token)::out, tokens::in, tokens::out) is det.
 
-next(L-T, [L-T | Ts], Ts).
-next(0-eof, [], []).
+next(L - T, [L - T | Ts], Ts).
+next(0 - eof, [], []).

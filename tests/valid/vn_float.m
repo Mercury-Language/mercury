@@ -17,8 +17,8 @@
 :- type vec3
     --->    vec(float, float, float).
 
-:- pred get_planar_coords(list(int), array(vec3), list(vec3), vec3).
-:- mode get_planar_coords(in, in, out, out) is det.
+:- pred get_planar_coords(list(int)::in, array(vec3)::in,
+    list(vec3)::out, vec3::out) is det.
 
 :- implementation.
 
@@ -32,9 +32,7 @@
     --->    mat(vec3, vec3, vec3).
 
 get_planar_coords(IndList, VertArr, PlaneList, Norm) :-
-    (
-        IndList = [Ind1, Ind2, Ind3 | _IndList1]
-    ->
+    ( if IndList = [Ind1, Ind2, Ind3 | _IndList1] then
         % lookup first 3 vertices and calculate normal
         array__lookup(VertArr, Ind1+1, V1),
         array__lookup(VertArr, Ind2+1, V2),
@@ -53,7 +51,7 @@ get_planar_coords(IndList, VertArr, PlaneList, Norm) :-
             vec(-SinY, 0.0, CosY)),
         M =  matmult(MZ, MY),
         move_vertices_to_plane(IndList, VertArr, -V1, M, PlaneList)
-    ;
+    else
         error("Something strange has happend to the vertex list")
     ).
 
@@ -66,56 +64,44 @@ get_angles_from_z_axis(Vec, Theta, Phi) :-
         Vector_radius = mag(Vec),
         XY_radius = mag(vec(X, Y, 0.0)), % magnitude of xy projection
         Pi = math__pi,   % get a useful constant
-        (
-            Vector_radius = 0.0
-        ->
+        ( if Vector_radius = 0.0 then
             error("get_angles_from_z_axis: vector should not be zero-length")
-        ;
+        else
             % check if vector is already on z axis
-            (
-                XY_radius = 0.0
-            ->
+            ( if XY_radius = 0.0 then
                 Theta = 0.0,
                 Phi = 0.0
-            ;
+            else
                 Xabs = float__abs(X),
                 Theta1 = math__asin(Xabs / XY_radius),
                 Phi1 = math__asin(XY_radius / Vector_radius),
 
                 % angles have been calculated for the first octant
                 % they need to be corrected for the octant they are actually in
-                (
-                    X =< 0.0
-                ->
-                    (
-                        Y =< 0.0
-                    ->
+                ( if X =< 0.0 then
+                    ( if Y =< 0.0 then
                         Theta = Pi + Theta1
-                    ;
+                    else
                         Theta = Pi - Theta1
                     )
-                ;
-                    (
-                        Y =< 0.0
-                    ->
+                else
+                    ( if Y =< 0.0 then
                         Theta = -Theta1
-                    ;
+                    else
                         Theta = Theta1
                     )
                 ),
-                (
-                    Z =< 0.0
-                ->
+                ( if Z =< 0.0 then
                     Phi = Phi1 + Pi / 2.0
-                ;
+                else
                     Phi = Phi1
                 )
             )
         )
     ).
 
-:- pred move_vertices_to_plane(list(int), array(vec3), vec3, mat3, list(vec3)).
-:- mode move_vertices_to_plane(in, in, in, in, out) is det.
+:- pred move_vertices_to_plane(list(int)::in, array(vec3)::in,
+    vec3::in, mat3::in, list(vec3)::out) is det.
 
 :- pragma no_inline(move_vertices_to_plane/5).
 

@@ -21,7 +21,7 @@
 :- import_module int.
 :- import_module pair.
 
-% The imports which are modules to be benchmarked.
+% Import the modules to be benchmarked.
 :- import_module advisor.
 :- import_module applast.
 :- import_module doubleapp.
@@ -53,30 +53,27 @@ main(!IO) :-
     io.command_line_arguments(Args, !IO),
     ( if
         Args = ["-n", Arg2],
-        string.to_int(Arg2, Iterations0)
+        string.to_int(Arg2, NumIterations0)
     then
-        Iterations = Iterations0
+        NumIterations = NumIterations0
     else
-        Iterations = 1
+        NumIterations = 1
     ),
-    io.write_string("Iterations: ", !IO),
-    io.write_int(Iterations, !IO),
-    io.nl(!IO),
-    io.nl(!IO),
-    run_benchmark_list(Iterations, benchmark_list, !IO).
+    io.format("Iterations: %d\n\n", [i(NumIterations)], !IO),
+    run_benchmark_list(NumIterations, benchmark_list, !IO).
 
 :- pred run_benchmark_list(int::in, list(benchmark)::in(list_skel(benchmark)),
     io::di, io::uo) is cc_multi.
 
 run_benchmark_list(_, [], !IO).
-run_benchmark_list(Iterations, [Name - Closure | Benchmarks], !IO) :-
-    run_benchmark(Iterations, Name, Closure, !IO),
-    run_benchmark_list(Iterations, Benchmarks, !IO).
+run_benchmark_list(NumIterations, [Name - Closure | Benchmarks], !IO) :-
+    run_benchmark(NumIterations, Name, Closure, !IO),
+    run_benchmark_list(NumIterations, Benchmarks, !IO).
 
-:- pred run_benchmark(int, string, pred, io__state, io__state).
-:- mode run_benchmark(in, in, (pred) is semidet, di, uo) is cc_multi.
+:- pred run_benchmark(int::in, string::in, (pred)::in((pred) is semidet),
+    io::di, io::uo) is cc_multi.
 
-run_benchmark(Iterations, Name, Closure, !IO) :-
+run_benchmark(NumIterations, Name, Closure, !IO) :-
     % By default, we just run a single iteration and print out
     % for each test whether the query succeeded or failed;
     % this is used by the test suite framework.
@@ -91,8 +88,8 @@ run_benchmark(Iterations, Name, Closure, !IO) :-
                 Output = 0
             )
         ),
-    benchmark_det(CallClosure, 0, Result, Iterations, Time),
-    ( if Iterations > 1 then
+    benchmark_det(CallClosure, 0, Result, NumIterations, Time),
+    ( if NumIterations > 1 then
         io.format("%-30s     result %3d        time (ms) %8d\n",
             [s(Name), i(Result), i(Time)], !IO)
     else

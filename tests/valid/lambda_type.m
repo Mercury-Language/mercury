@@ -18,4 +18,3 @@ p :-
 q :-
     _X = (pred(W::out) is det :- W = 1, Z = 1),
     _Y = (pred(W::out) is det :- W = a, Z = a).
-

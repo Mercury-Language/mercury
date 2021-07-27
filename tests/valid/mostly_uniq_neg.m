@@ -17,24 +17,24 @@
     --->    free
     ;       functor(string, int, list(term(S))).
 
-:- pred unify(term(S), term_type(S), term(S), term_type(S), store(S), store(S)).
-:- mode unify(in, in, in, in, mdi, muo) is semidet.
+:- pred unify(term(S)::in, term_type(S)::in, term(S)::in, term_type(S)::in,
+    store(S)::mdi, store(S)::muo) is semidet.
 
 :- implementation.
 
-:- pred occurs(var(S), list(term(S)), store(S), store(S)).
-:- mode occurs(in, in, mdi, muo) is semidet.
+:- pred occurs(var(S)::in, list(term(S))::in, store(S)::mdi, store(S)::muo)
+    is semidet.
 :- pragma no_inline(occurs/4).
 
 occurs(_, _, !S) :-
     semidet_true.
 
-:- pred tr_store_set_mutvar(store_mutvar(T, S), T, store(S), store(S)).
-:- mode tr_store_set_mutvar(in, in, mdi, muo) is det.
+:- pred tr_store_set_mutvar(store_mutvar(T, S)::in, T::in,
+    store(S)::mdi, store(S)::muo) is det.
 :- pragma no_inline(tr_store_set_mutvar/4).
 
 tr_store_set_mutvar(_, _, S, S).
 
-unify(T1, free, _T2, functor(Name2, Arity2, Args2)) -->
-    \+ occurs(T1, Args2),
-    tr_store_set_mutvar(T1, functor(Name2, Arity2, Args2)).
+unify(T1, free, _T2, functor(Name2, Arity2, Args2), !Store) :-
+    not occurs(T1, Args2, !Store),
+    tr_store_set_mutvar(T1, functor(Name2, Arity2, Args2), !Store).

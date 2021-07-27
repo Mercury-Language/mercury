@@ -26,13 +26,14 @@
 :- import_module int.
 
 min(F) = agg(no, M) :-
-    M = (func(Acc0, Val0) = Acc :-
-        Val = apply(F, Val0),
-        (
-            Acc0 = no,
-            Acc = yes(Val)
-        ;
-            Acc0 = yes(Acc1),
-            ( Acc1 < Val -> Acc = yes(Acc1) ; Acc = yes(Val))
-        )
-    ).
+    M =
+        ( func(Acc0, Val0) = Acc :-
+            Val = apply(F, Val0),
+            (
+                Acc0 = no,
+                Acc = yes(Val)
+            ;
+                Acc0 = yes(Acc1),
+                ( Acc1 < Val -> Acc = yes(Acc1) ; Acc = yes(Val))
+            )
+        ).

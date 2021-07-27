@@ -16,7 +16,6 @@ main(!IO).
 
 :- pred p(int::out) is det.
 
-    % Warning about reference to "uninitialized" !.X.
-    %
 p(!:X) :-
+    % Warning about reference to "uninitialized" !.X.
     !.X = 1.

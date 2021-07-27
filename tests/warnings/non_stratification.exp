@@ -1,7 +1,7 @@
-non_stratification.m:016: In `foo'(in):
-non_stratification.m:016:   warning: call introduces a non-stratified loop.
-non_stratification.m:016:   A non-stratified loop is a loop in the call graph
-non_stratification.m:016:   of the given predicate/function that allows it to
-non_stratification.m:016:   call itself in a negated context. This can cause
-non_stratification.m:016:   problems for bottom-up evaluation of the
-non_stratification.m:016:   predicate/function.
+non_stratification.m:017: In `foo'(in):
+non_stratification.m:017:   warning: call introduces a non-stratified loop.
+non_stratification.m:017:   A non-stratified loop is a loop in the call graph
+non_stratification.m:017:   of the given predicate/function that allows it to
+non_stratification.m:017:   call itself in a negated context. This can cause
+non_stratification.m:017:   problems for bottom-up evaluation of the
+non_stratification.m:017:   predicate/function.

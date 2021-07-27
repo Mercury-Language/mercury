@@ -33,7 +33,7 @@
 
 :- type code == token_list.
 
-:- pred interpret(code::in, io__state::di, io__state::uo) is det.
+:- pred interpret(code::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -52,17 +52,17 @@
 :- type env == map(id, value).
 :- type stack == list(value).
 
-interpret(Code) -->
-    initial_setup(Env0, Stack0),
-    interpret(Code, Env0, Stack0, _Env, _Stack).
+interpret(Code, !IO) :-
+    initial_setup(Env0, Stack0, !IO),
+    interpret(Code, Env0, Stack0, _Env, _Stack, !IO).
 
 :- pred initial_setup(env::out, stack::out,
-    io__state::di, io__state::uo) is det.
+    io::di, io::uo) is det.
 
-initial_setup(Env, []) -->
-    { map__init(Env) }.
+initial_setup(Env, [], !IO) :-
+    map.init(Env).
 
 :- pred interpret(code::in, env::in, stack::in,
-    env::out, stack::out, io__state::di, io__state::uo) is det.
+    env::out, stack::out, io::di, io::uo) is det.
 
-interpret(_, Env, Stack, Env, Stack) --> [].
+interpret(_, Env, Stack, Env, Stack, !IO).

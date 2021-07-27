@@ -46,7 +46,7 @@
     % print out all possible bindings for the variables
     % that meet those constraints.  The order in which
     % the solutions will be printed is unspecified.
-:- pred print_labeling(list(fd_var), io__state, io__state).
+:- pred print_labeling(list(fd_var), io, io).
 :- mode print_labeling(in(list_skel(any)), di, uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
@@ -59,31 +59,29 @@
             ground         is ground,
             any            is ground.
 
-print_labeling(Vars) -->
-    { Labeling0 = (
-        impure pred(Labels::out) is nondet :-
+print_labeling(Vars, !IO) :-
+    Labeling0 =
+        ( impure pred(Labels::out) is nondet :-
             labeling(Vars, Labels)
-    ) },
-    { Labeling = (
-        pred(Labels::out) is nondet :-
+        ),
+    Labeling =
+        ( pred(Labels::out) is nondet :-
             promise_pure ( impure Labeling0(Labels) )
-    ) },
-    unsorted_aggregate(Labeling, print_solution).
+        ),
+    unsorted_aggregate(Labeling, print_solution, !IO).
 
-:- pred print_solution(list(fd_var), io__state, io__state).
-:- mode print_solution(in, di, uo) is det.
+:- pred print_solution(list(fd_var)::in, io::di, io::uo) is det.
 
-print_solution(Vars) -->
-    io__print("Here's a solution: "),
-    io__write_list(Vars, ", ", print_var),
-    io__nl.
+print_solution(Vars, !IO) :-
+    io.print("Here's a solution: ", !IO),
+    io.write_list(Vars, ", ", print_var, !IO),
+    io.nl(!IO).
 
-:- pred print_var(fd_var, io__state, io__state).
-:- mode print_var(in, di, uo) is det.
+:- pred print_var(fd_var::in, io::di, io::uo) is det.
 
-print_var(Var) -->
-    { Var == Val }, % convert ground fd_var to int
-    io__write_int(Val).
+print_var(Var, !IO) :-
+    Var == Val, % convert ground fd_var to int
+    io.write_int(Val, !IO).
 
 labeling([], []).
 labeling([V | Vs0], [V | Vs]) :-

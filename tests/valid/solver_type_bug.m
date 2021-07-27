@@ -53,6 +53,10 @@ p2(X) :-
 :- pragma external_pred(q2/1).
 
 :- pragma foreign_code("Java", "
-    private static void q1_1_p_0(int a1, jmercury.runtime.MethodPtr a2, java.lang.Object a3) {}
-    private static void q2_1_p_0(Bar_0 a1, jmercury.runtime.MethodPtr a2, java.lang.Object a3) {}
+    private static void q1_1_p_0(int a1,
+        jmercury.runtime.MethodPtr a2,
+        java.lang.Object a3) {}
+    private static void q2_1_p_0(Bar_0 a1,
+        jmercury.runtime.MethodPtr a2,
+        java.lang.Object a3) {}
 ").

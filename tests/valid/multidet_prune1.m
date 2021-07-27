@@ -11,14 +11,20 @@
 :- implementation.
 :- import_module require.
 
+main(!IO) :-
+    ( if
+        ( X = 1
+        ; X = 2
+        ; fail
+        ),
+        q(X)
+    then
+        io.write_int(1, !IO)
+    else
+        io.write_int(2, !IO)
+    ).
+
 :- pred q(int::in) is det.
 :- pragma no_inline(q/1).
 
 q(_).
-
-main -->
-    ( { X = 1 ; X = 2 ; fail }, { q(X) } ->
-        io__write_int(1)
-    ;
-        io__write_int(2)
-    ).

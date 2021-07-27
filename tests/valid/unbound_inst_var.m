@@ -25,7 +25,7 @@
 
 test(X, X).
 
-% :- pred main(io__state, io__state).
+% :- pred main(io, io).
 % :- mode main(di, uo) is det.
 
 main(IO, IO) :-

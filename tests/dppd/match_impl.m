@@ -26,8 +26,8 @@ match(Pat, T) :-
 
 match1([], _Ts, _P, _T).
 match1([A | Ps], [B | Ts], P, [X | T]) :-
-    ( A = B ->
+    ( if A = B then
         match1(Ps, Ts, P, T)
-    ;
+    else
             match1(P, Ts, P, [X | T])
     ).

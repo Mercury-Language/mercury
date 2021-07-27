@@ -36,9 +36,9 @@
 % problem, then we can fix flattening, and this test case
 % will then pass.
 
-main -->
-    { In = 42 },
-    print(func2(In, In)), nl.
+main(!IO) :-
+    In = 42,
+    io.print_line(func2(In, In), !IO).
 
 :- func func2(int, int) = string.
 :- mode func2(in, in) = out is det.

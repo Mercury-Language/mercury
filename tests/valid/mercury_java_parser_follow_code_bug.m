@@ -82,9 +82,10 @@ parse_file(Filename, !IO) :-
     io.read_file_as_string(Result, !IO),
     ( if Result = ok(Str) then
         impure set_input_string(Str),
-        ( if   compilation_unit(0, _)
-          then io.print(" parsed successfully\n", !IO)
-          else io.print(" failed to parse\n", !IO)
+        ( if compilation_unit(0, _) then
+            io.print(" parsed successfully\n", !IO)
+        else
+            io.print(" failed to parse\n", !IO)
         )
     else
         throw(Result)
@@ -95,32 +96,28 @@ parse_file(Filename, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
-
     MR_String input_string = NULL;
     MR_Word input_length = (MR_Word)0;
-
 ").
 
 :- impure pred set_input_string(string::in) is det.
 
 :- pragma foreign_proc("C",
     set_input_string(Str::in),
-    [will_not_call_mercury], "
-
+    [will_not_call_mercury],
+"
     input_string = Str;
     input_length = strlen(Str);
-
 ").
 
 :- semipure pred input_string_and_length(string::out, int::out) is det.
 
 :- pragma foreign_proc("C",
     input_string_and_length(Str::out, Length::out),
-    [will_not_call_mercury, promise_semipure], "
-
+    [will_not_call_mercury, promise_semipure],
+"
     Str = input_string;
     Length = input_length;
-
 ").
 
 :- pred current_offset(int::out, int::in, int::out) is det.
@@ -148,8 +145,8 @@ char(Char, Offset, Offset + 1) :-
     Offset < Length,
     Char = Str ^ unsafe_elem(Offset).
 
-:- pred input_substring(int::in, int::in, string::out,
-        int::in, int::out) is semidet.
+:- pred input_substring(int::in, int::in, string::out, int::in, int::out)
+    is semidet.
 :- pragma promise_pure(input_substring/5).
 
 input_substring(Start, End, Substring, Offset, Offset) :-
@@ -918,17 +915,17 @@ identifier_suffix -->
         punct("."),
         ( if
             keyword("class")
-          then
+        then
             []
-          else if
+        else if
             keyword("this")
-          then
+        then
             []
-          else if
+        else if
             keyword("super"), arguments
-          then
+        then
             []
-          else
+        else
             keyword("new"), inner_creator
         )
     ).
@@ -1004,17 +1001,17 @@ selector -->
         punct("."),
         ( if
             keyword("this")
-          then
+        then
             []
-          else if
+        else if
             keyword("super"), super_suffix
-          then
+        then
             []
-          else if
+        else if
             keyword("new"), inner_creator
-          then
+        then
             []
-          else
+        else
             java_identifier, optional(arguments)
         )
     ).

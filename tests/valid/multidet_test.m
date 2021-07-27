@@ -15,7 +15,7 @@
 test_pred :-
     test_pred_2.
 
-:- pred test_pred_2 is multidet.
+:- pred test_pred_2 is multi.
 
 test_pred_2 :-
     (

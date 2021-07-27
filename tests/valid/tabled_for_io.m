@@ -11,7 +11,7 @@
 
 :- import_module io.
 
-:- pred test(int::in, int::out, io__state::di, io__state::uo) is det.
+:- pred test(int::in, int::out, io::di, io::uo) is det.
 
 :- implementation.
 
@@ -22,4 +22,4 @@
     B = A;
     IO = IO0;
 ").
-test(X, X) --> [].
+test(X, X, !IO).

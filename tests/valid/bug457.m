@@ -13,17 +13,18 @@
 
 :- import_module io.
 
-:- pred wrapper(pred(io, io), io, io).
-:- mode wrapper(in(pred(di, uo) is cc_multi), di, uo) is cc_multi.
+:- pred wrapper(pred(io, io)::in(pred(di, uo) is cc_multi),
+    io::di, io::uo) is cc_multi.
 
 :- implementation.
 
 :- import_module exception.
 
 wrapper(Pred, !IO) :-
-    Closure = (pred({}::out, IO0::di, IO::uo) is cc_multi :-
-        Pred(IO0, IO)
-    ),
+    Closure =
+        ( pred({}::out, IO0::di, IO::uo) is cc_multi :-
+            Pred(IO0, IO)
+        ),
     try_io(Closure, _TryResult, !IO).
 
 %---------------------------------------------------------------------------%

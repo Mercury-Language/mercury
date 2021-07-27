@@ -7,34 +7,33 @@
 :- interface.
 :- import_module list.
 
-:- type (mode).
+:- type xmode.
 :- type module_info.
 
-:- pred inputs_precede_outputs(list(mode), module_info).
-:- mode inputs_precede_outputs(in, in) is semidet.
+    % Succeed iff all the inputs in the list of modes precede the outputs.
+    %
+:- pred inputs_precede_outputs(list(xmode)::in, module_info::in) is semidet.
 
 :- implementation.
 
-% we need dummy definitions of these types
-:- type (mode)
-    --->    mode(int, int).
+% We need dummy definitions of these types.
+:- type xmode
+    --->    xmode(int, int).
 :- type module_info
     --->    module_info(int, int).
 
-:- pred mode_is_input(module_info::in, (mode)::in) is semidet.
-
-mode_is_input(_, _) :-
-    semidet_true.
-
-% succeed iff all the inputs in the list of modes precede the outputs
-
 inputs_precede_outputs([], _).
 inputs_precede_outputs([Mode | Modes], ModuleInfo) :-
-    ( mode_is_input(ModuleInfo, Mode) ->
+    ( if mode_is_input(ModuleInfo, Mode) then
         inputs_precede_outputs(Modes, ModuleInfo)
-    ;
-        \+ (
-            list__member(OtherMode, Modes),
+    else
+        not (
+            list.member(OtherMode, Modes),
             mode_is_input(ModuleInfo, OtherMode)
         )
     ).
+
+:- pred mode_is_input(module_info::in, xmode::in) is semidet.
+
+mode_is_input(_, _) :-
+    semidet_true.

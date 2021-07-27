@@ -141,14 +141,14 @@ main(!IO) :-
     X = 2,
     Y = 3,
     solutions.solutions(lattice_good(X, Y), SG),
-    io.print(SG, !IO), io.nl(!IO),
+    io.print_line(SG, !IO),
     solutions.solutions(lattice_bad(X, Y), SB),
-    io.print(SB, !IO), io.nl(!IO),
+    io.print_line(SB, !IO),
     solutions.solutions(lattice_bad_fixed(X, Y), SBF),
-    io.print(SBF, !IO), io.nl(!IO),
+    io.print_line(SBF, !IO),
 
     solutions.solutions(lattice_bad_3(X, Y), SB3),
-    io.print(SB3, !IO), io.nl(!IO).
+    io.print_line(SB3, !IO).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -192,15 +192,16 @@ lattice_bad_3(X, Y, Tuple) :-
 :- pred lattice_bad_lambda(int::in, int::in, geometry::out) is multi.
 
 lattice_bad_lambda(X, Y, G) :-
-    P = (pred(YY::in, GG::out) is multi :-
-        GG ^ xsize = X,
-        GG ^ ysize = YY,
-        (
-            GG ^ boundary = torus
-        ;
-            GG ^ boundary = closed
-        )
-    ),
+    P =
+        ( pred(YY::in, GG::out) is multi :-
+            GG ^ xsize = X,
+            GG ^ ysize = YY,
+            (
+                GG ^ boundary = torus
+            ;
+                GG ^ boundary = closed
+            )
+        ),
     P(Y, G).
 
 :- pred lattice_bad_fixed(int::in, int::in, geometry::out) is multi.

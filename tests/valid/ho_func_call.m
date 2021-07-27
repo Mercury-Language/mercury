@@ -12,7 +12,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -20,7 +20,7 @@
 
 :- import_module string.
 
-main(IO, putStocks(getStocks(IO))).
+main(IO, put_stocks(get_stocks(IO))).
 
 :- type maybe(T)
     --->    yes(T)
@@ -32,16 +32,13 @@ main(IO, putStocks(getStocks(IO))).
 :- type stock
     --->    stock(code, qty).
 
-% :- type stocks
-%   --->    list(stock).
-
 :- type iostocks
-    --->    ios(io__state, stocks).
+    --->    ios(io, stocks).
 
 :- type stocks
     --->    []
     ;       [stock  | stocks]
-    ;       closure(func(io__state) = iostocks).
+    ;       closure(func(io) = iostocks).
 
 :- inst iostocks == unique(ios(unique, stocks)).
 :- inst stocks ==
@@ -50,46 +47,46 @@ main(IO, putStocks(getStocks(IO))).
 :- mode is_in  == di(iostocks).
 :- mode is_out == out(iostocks).
 
-:- func putStocks(iostocks) = io__state.
-:- mode putStocks(is_in) = uo is det.
+:- func put_stocks(iostocks) = io.
+:- mode put_stocks(is_in) = uo is det.
 
-putStocks(ios(IO, [])) = IO.
-putStocks(ios(IO, [S | T])) = putStocks(ios(IO1, T)) :-
-    outStock(S, IO, IO1).
-putStocks(ios(IO, closure(Func))) = putStocks(apply(Func, IO)).
+put_stocks(ios(IO, [])) = IO.
+put_stocks(ios(IO, [S | T])) = put_stocks(ios(IO1, T)) :-
+    out_stock(S, IO, IO1).
+put_stocks(ios(IO, closure(Func))) = put_stocks(apply(Func, IO)).
 
-:- pred outStock(stock::in, io__state::di, io__state::uo) is det.
+:- pred out_stock(stock::in, io::di, io::uo) is det.
 
-outStock(stock(C, Q)) -->
-%   io__format("%i %i\n", [i(C), i(Q)]).
-    io__write_int(C),
-    io__write_char(' '),
-    io__write_int(Q),
-    io__nl.
+out_stock(stock(C, Q), !IO) :-
+%   io.format("%i %i\n", [i(C), i(Q)]).
+    io.write_int(C, !IO),
+    io.write_char(' ', !IO),
+    io.write_int(Q, !IO),
+    io.nl(!IO).
 
-:- func getStocks(io__state) = iostocks.
-:- mode getStocks(di) = is_out is det.
+:- func get_stocks(io) = iostocks.
+:- mode get_stocks(di) = is_out is det.
 
-getStocks(S0) = ios(S, Stocks) :-
+get_stocks(S0) = ios(S, Stocks) :-
     tokenize(MStock, S0, S),
     ( MStock = no, Stocks = []
-    ; MStock = yes(Stock), Stocks = [Stock | closure(getStocks)]
+    ; MStock = yes(Stock), Stocks = [Stock | closure(get_stocks)]
     ).
 
 :- pred tokenize(maybe(stock)::out, io::di, io::uo) is det.
 
-tokenize(S) -->
-    io__read_line(CL0),
-    {
+tokenize(S, !IO) :-
+    io.read_line(CL0, !IO),
+    ( if
         CL0 = ok(CL),
-        string__from_char_list(CL, Line),
-        string__sub_string_search(Line, " ", Index),
-        string__split(Line, Index, Left, Right0),
-        string__first_char(Right0, _, Right),
-        string__to_int(Left, Code),
-        string__to_int(Right, Qty)
-    ->
+        string.from_char_list(CL, Line),
+        string.sub_string_search(Line, " ", Index),
+        string.split(Line, Index, Left, Right0),
+        string.first_char(Right0, _, Right),
+        string.to_int(Left, Code),
+        string.to_int(Right, Qty)
+    then
         S = yes(stock(Code, Qty))
-    ;
+    else
         S = no
-    }.
+    ).

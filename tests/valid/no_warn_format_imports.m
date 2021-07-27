@@ -14,4 +14,4 @@
 
 main(!IO) :-
     S = string.format("%s", [s("foo")]),
-    write_string(S, !IO).
+    io.write_string(S, !IO).

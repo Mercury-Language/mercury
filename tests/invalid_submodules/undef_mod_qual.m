@@ -6,13 +6,13 @@
 
 :- interface.
 :- import_module io.
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- use_module undef_mod_qual__foo.
+:- use_module undef_mod_qual.foo.
 
-main -->
-    foo__bletchx.
+main(!IO) :-
+    foo.bletchx(!IO).
 
 %-------------------------------------------------------------------------
 % foo is a submodule
@@ -20,11 +20,11 @@ main -->
 :- module foo.
 
 :- interface.
-:- pred bletch(io__state::di, io__state::uo) is det.
+:- pred bletch(io::di, io::uo) is det.
 
 :- implementation.
-bletch -->
-    write_string("Hi There").
+bletch(!IO) :-
+    io.write_string("Hi There", !IO).
 
 :- end_module foo.
 

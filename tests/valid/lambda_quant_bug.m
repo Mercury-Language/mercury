@@ -18,8 +18,7 @@
     --->    ok(int)
     ;       error(int).
 
-:- pred all_reports(bool, cl_result, io__state, io__state).
-:- mode all_reports(in, out, di, uo) is det.
+:- pred all_reports(bool::in, cl_result::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -29,37 +28,36 @@
 :- import_module list.
 :- import_module string.
 
-all_reports(MProj, MTuples) -->
-    { get_structure(MTemp) },
+all_reports(MProj, MTuples, !IO) :-
+    get_structure(MTemp),
     (
-        { MTemp = ok(_) },
+        MTemp = ok(_),
         (
-            { MProj = yes },
-            { list__map(find, [], Proj) }
+            MProj = yes,
+            list__map(find, [], Proj)
         ;
-            { MProj = no },
-            { list__map(find, [], Proj) }
+            MProj = no,
+            list__map(find, [], Proj)
         ),
-        list__map_foldl(adjust_tuple(Proj), [], _),
-        { MTuples = ok(42) }
+        list.map_foldl(adjust_tuple(Proj), [], _, !IO),
+        MTuples = ok(42)
     ;
-        { MTemp = error(Err) },
-        { MTuples = error(Err) }
+        MTemp = error(Err),
+        MTuples = error(Err)
     ).
 
 :- pragma no_inline(adjust_tuple/5).
-:- pred adjust_tuple(list(int), int, int, io__state, io__state).
+:- pred adjust_tuple(list(int), int, int, io, io).
 :- mode adjust_tuple(in, in, out, di, uo) is det.
 
 adjust_tuple(_, _, 42) --> [].
 
-:- pragma no_inline(get_structure/1).
 :- pred get_structure(cl_result :: out) is det.
+:- pragma no_inline(get_structure/1).
 
 get_structure(error(42)).
 
+:- pred find(int::in, int::out) is det.
 :- pragma no_inline(find/2).
-:- pred find(int, int).
-:- mode find(in, out) is det.
 
 find(_, 42).

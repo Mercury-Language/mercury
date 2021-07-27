@@ -28,14 +28,14 @@
 
 main(!IO) :-
     test([1, 2] - "dummy", Set),
-    io__write_list(set__to_sorted_list(Set), ", ", io__write_int, !IO).
+    io.write_list(set.to_sorted_list(Set), ", ", io.write_int, !IO).
 
 :- pred test(pair(list(T), U)::in, set(T)::out) is det.
 
-test(Pair, set__init) :-
+test(Pair, set.init) :-
     Pair = List - _,
     List = [].
 test(Pair, Set) :-
     Pair = List - _,
     List = [_ | _],
-    set__list_to_set(List, Set).
+    set.list_to_set(List, Set).

@@ -38,16 +38,16 @@
 :- module children.child.
 :- implementation.
 
-hello -->
-    io.write_string("children.child.hello\n").
+hello(!IO) :-
+    io.write_string("children.child.hello\n", !IO).
 
 :- end_module children.child.
 
 :- module children.child2.
 :- implementation.
 
-hello -->
-    io.write_string("children.child2.hello\n").
+hello(!IO) :-
+    io.write_string("children.child2.hello\n", !IO).
 
 :- end_module children.child2.
 

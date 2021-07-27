@@ -28,12 +28,12 @@ print_fib(!IO) :-
 :- func fib(int) = int.
 
 fib(N) =
-    ( N = 0 ->
+    ( if N = 0 then
         0
-    ; N = 1 ->
+    else if N = 1 then
         1
-    ; N < 0 ->
+    else if N < 0 then
         throw("fib with negative argument")
-    ;
+    else
         fib(N - 2) + fib(N - 1)
     ).

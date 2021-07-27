@@ -32,8 +32,6 @@ p :-
     ).
 
 :- pragma foreign_code("Java", "
-
     private static int out_1_p_0() { return 0; }
     private static boolean in_1_p_0(int n) { return false; }
-
 ").

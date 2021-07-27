@@ -16,4 +16,4 @@
 :- implementation.
 
 bug(NextInputArgNum, InputArgs) :-
-    list__drop(NextInputArgNum, InputArgs, [_ | _]).
+    list.drop(NextInputArgNum, InputArgs, [_ | _]).

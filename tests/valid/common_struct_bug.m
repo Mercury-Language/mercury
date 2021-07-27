@@ -11,7 +11,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- type my_list(T)
     --->    cons(data :: T, next :: my_list(T))
@@ -19,7 +19,7 @@
 
 :- implementation.
 
-main(IO0, IO) :-
+main(!IO) :-
     List0_4 = cons(Var16, Var17),
     Var16 = 1,
     Var17 = cons(Var18, Var19),
@@ -39,4 +39,4 @@ main(IO0, IO) :-
         )
     ),
     Var13 = 4,
-    io__write(List1_5, IO0, IO).
+    io.write_line(List1_5, !IO).

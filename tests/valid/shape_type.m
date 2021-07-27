@@ -19,5 +19,5 @@
 :- implementation.
 
 foo_info_init(PredInfo) :-
-    list__append([], [], EmptyList),
+    list.append([], [], EmptyList),
     PredInfo = foo_info(EmptyList).

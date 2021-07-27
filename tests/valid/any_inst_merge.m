@@ -9,12 +9,13 @@
 
 :- interface.
 
-:- type hpair(A, B) ---> (A-B).
+:- type hpair(A, B)
+    --->    (A - B).
 
-:- inst hpair(A, B) == bound(A-B).
+:- inst hpair(A, B) == bound(A - B).
 
-:- pred pass(hpair(A, B), hpair(A, B), hpair(A, B)).
-:- mode pass(in, in(hpair(ground, any)), out(any)) is multi.
+:- pred pass(hpair(A, B)::in, hpair(A, B)::in(hpair(ground, any)),
+    hpair(A, B)::out(any)) is multi.
 
 :- implementation.
 

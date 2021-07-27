@@ -13,10 +13,10 @@
 :- import_module require.
 
 foo(X, Y) :-
-    ( X = 42 ->
+    ( if X = 42 then
         bar(X, Y0),
         Y = Y0 + 1
-    ;
+    else
         error("foo")
     ).
 

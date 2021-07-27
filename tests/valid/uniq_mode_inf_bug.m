@@ -15,8 +15,8 @@
 :- interface.
 :- import_module list.
 
-:- pred occurall(list(int), list(list(int)), list(list(int))).
-:- mode occurall(in, in, out) is nondet.
+:- pred occurall(list(int)::in, list(list(int))::in, list(list(int))::out)
+    is nondet.
 
 :- implementation.
 
@@ -29,20 +29,20 @@ occurall([X | Y], Z, [[X, W] | V]) :-
 
 occur(_X, [], 0).
 occur(X, [Y | Z], W) :-
-    (
+    ( if
         count(X, Y, A),
         occur(X, Z, B)
-    ->
+    then
         W = A + B
-    ;
+    else
         fail
     ).
 
 count(_X, [], 0).
 count(X, [Y | Z], W) :-
-    ( count(X, Z, W1) ->
+    ( if count(X, Z, W1) then
         addx(X, Y, W1, W)
-    ;
+    else
         fail
     ).
 

@@ -14,4 +14,3 @@
 
 foo(X, Y) :-
     Y = apply(X, 1).
-

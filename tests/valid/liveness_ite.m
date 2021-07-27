@@ -36,7 +36,7 @@
     ;       stm_transaction_invalid.
 
 mypred(In, _Out) :-
-    ( semidet_true ->
+    ( if semidet_true then
         IsValid = ff,
         (
             IsValid = stm_transaction_valid,
@@ -45,7 +45,7 @@ mypred(In, _Out) :-
             IsValid = stm_transaction_invalid,
             throw(rollback_invalid_transaction)
         )
-    ;
+    else
         throw(In)
     ).
 

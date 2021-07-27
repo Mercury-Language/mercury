@@ -21,8 +21,8 @@ rr(X, Y) :-
 r([], []).
 r([X], [X]).
 r([X, Y | T], [X | T1]) :-
-    ( X = Y ->
+    ( if X = Y then
         r(T, T1)
-    ;
+    else
         r([Y | T], T1)
     ).

@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -19,10 +19,9 @@
                 field :: int
             ).
 
-main -->
-    { List = list__map(field(info(1)), [1, 2, 3]) },
-    io__write(List),
-    io__nl.
+main(!IO) :-
+    List = list__map(field(info(1)), [1, 2, 3]),
+    io.write_line(List, !IO).
 
 :- func field(info, int) = int.
 

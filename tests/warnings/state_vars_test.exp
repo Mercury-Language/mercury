@@ -1,1 +1,1 @@
-state_vars_test.m:022: Warning: reference to uninitialized state variable !.X.
+state_vars_test.m:021: Warning: reference to uninitialized state variable !.X.

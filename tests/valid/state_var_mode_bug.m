@@ -25,9 +25,9 @@ p(A, B, !Y) :-
         p0(!:X),
         p2(!X),
         p2(!X),
-        (
+        ( if
             A = yes
-        ->
+        then
             (
                 B = yes,
                 p1(!.X),
@@ -35,20 +35,20 @@ p(A, B, !Y) :-
                 p1(!.X)
             ;
                 B = no,
-                (
+                ( if
                     p1(!.X),
                     p2(!X)
-                ->
+                then
                     p1(!.X)
-                ;
+                else
                     true
                 )
             )
-        ;
-            (
+        else
+            ( if
                 p1(!.X),
                 p2(!X)
-            ->
+            then
                 (
                     A = yes,
                     p1(!.X),
@@ -72,13 +72,13 @@ p(A, B, !Y) :-
                 ;
                     A = no
                 )
-            ;
+            else if
                 p1(!.X)
-            ->
+            then
                 p1(!.X),
                 p2(!X),
                 p1(!.X)
-            ;
+            else
                 true
             )
         )

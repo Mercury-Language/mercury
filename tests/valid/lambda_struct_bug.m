@@ -35,22 +35,23 @@
 :- import_module solutions.
 
 adj(pos(X, Y), Adjs) :-
-    Pred = (pred(Adj::out) is nondet :-
-        (
-            X1 = X - 1,
-            Adj = adj(pos(X1, Y), pos(X, Y))
-        ;
-            X1 = X + 1,
-            Adj = adj(pos(X1, Y), pos(X, Y))
-        ;
-            Y1 = Y + 1,
-            Adj = adj(pos(X, Y1), pos(X, Y))
-        ;
-            Y1 = Y - 1,
-            Adj = adj(pos(X, Y1), pos(X, Y))
+    Pred =
+        ( pred(Adj::out) is nondet :-
+            (
+                X1 = X - 1,
+                Adj = adj(pos(X1, Y), pos(X, Y))
+            ;
+                X1 = X + 1,
+                Adj = adj(pos(X1, Y), pos(X, Y))
+            ;
+                Y1 = Y + 1,
+                Adj = adj(pos(X, Y1), pos(X, Y))
+            ;
+                Y1 = Y - 1,
+                Adj = adj(pos(X, Y1), pos(X, Y))
+            ),
+            Adj = adj(pos(A, B), _),
+            A >= 0, A =< 10,    % XXX
+            B >= 0, B =< 10     % XXX
         ),
-        Adj = adj(pos(A, B), _),
-        A >= 0, A =< 10,    % XXX
-        B >= 0, B =< 10     % XXX
-    ),
     solutions(Pred, Adjs).

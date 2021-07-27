@@ -19,4 +19,4 @@
 
 :- pragma inline(p/3).
 p(T, !IO) :-
-    write(T, !IO).
+    io.write(T, !IO).

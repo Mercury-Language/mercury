@@ -39,7 +39,7 @@ test(F, A, B, Result) :-
             G = g3,
             C = A << B
         ),
-        (
+        ( if
             C > 10,
             % Clearly, this *should* be a semidet test, but the compiler
             % will create a separate copy of this if-then-else for each
@@ -49,9 +49,9 @@ test(F, A, B, Result) :-
             % copies, the compiler should *not* generate a warning for this
             % goal.
             not G = g3
-        ->
+        then
             Result = C - B
-        ;
+        else
             Result = B - C
         )
     ;

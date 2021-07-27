@@ -19,17 +19,15 @@
 :- import_module require.
 
 get_type_and_extra_args(TypeInfoParams, PseudoTypeInfo, ArgTypeInfo) :-
-    (
-        typeinfo_is_variable(PseudoTypeInfo, VarNum)
-    ->
+    ( if typeinfo_is_variable(PseudoTypeInfo, VarNum) then
         get_type_info_for_var(TypeInfoParams,
             VarNum, ExpandedTypeInfo),
-        ( typeinfo_is_variable(ExpandedTypeInfo, _) ->
+        ( if typeinfo_is_variable(ExpandedTypeInfo, _) then
             error("get_type_and_extra_args: unbound type variable")
-        ;
+        else
             ArgTypeInfo = ExpandedTypeInfo
         )
-    ;
+    else
         error("get_type_and_extra_args")
     ).
 

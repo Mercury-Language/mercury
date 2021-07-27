@@ -46,39 +46,27 @@ garbage_out_get_det([], yes(nondeterministic), nondeterministic).
 garbage_out_get_det([], yes(deterministic), deterministic).
 
 garbage_out_get_det([L | Ls], OldD, NewDet) :-
-    (
-        L = live_lvalue(stackvar(_), _, _)
-    ->
-        (
-            OldD = yes(Detism)
-        ->
-            (
-                Detism = nondeterministic
-            ->
+    ( if L = live_lvalue(stackvar(_), _, _) then
+        ( if OldD = yes(Detism) then
+            ( if Detism = nondeterministic then
                 Det = yes(commit)
-            ;
+            else
                 Det = OldD
             )
-        ;
+        else
             Det = yes(deterministic)
         )
-    ;
-        L = live_lvalue(framevar(_), _, _)
-    ->
-        (
-            OldD = yes(Detism)
-        ->
-            (
-                Detism = deterministic
-            ->
+    else if L = live_lvalue(framevar(_), _, _) then
+        ( if OldD = yes(Detism) then
+            ( if Detism = deterministic then
                 Det = yes(commit)
-            ;
+            else
                 Det = OldD
             )
-        ;
+        else
             Det = yes(nondeterministic)
         )
-    ;
+    else
         Det = OldD
     ),
     garbage_out_get_det(Ls, Det, NewDet).

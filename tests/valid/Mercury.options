@@ -58,6 +58,7 @@ MCFLAGS-fzn_debug_abort		= --trace rep
 # XXX we should pass --ssdb-trace deep or --ss-debug to gh89
 # but that currently doesn't work in non ssdb grades.
 MCFLAGS-gh89 = --intermodule-optimization -O3 --no-warn-missing-opt-files
+MCFLAGS-higher_order		= --no-warn-det-decls-too-lax
 MCFLAGS-higher_order4		= -O3
 MCFLAGS-higher_order_implied_mode = -O-1
 MCFLAGS-ho_and_type_spec_bug	= -O4
@@ -80,7 +81,9 @@ MCFLAGS-mc_graph		= --prop-mode-constraints
 MCFLAGS-mc_hhf_nonlocals_bug	= --prop-mode-constraints
 MCFLAGS-mc_implied_modes	= --prop-mode-constraints
 MCFLAGS-middle_rec_labels	= --middle-rec
+MCFLAGS-mode_selection		= --no-warn-det-decls-too-lax
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
+MCFLAGS-mostly_uniq_neg		= --no-warn-singleton-vars
 MCFLAGS-mpj6			= --infer-all
 MCFLAGS-mutual_tailrec_outputs	= --inline-linear-tail-rec-sccs
 MCFLAGS-neg_erroneous		= -O3
@@ -107,7 +110,8 @@ MCFLAGS-solver_type_bug		= --halt-at-warn
 MCFLAGS-solv			= --halt-at-warn
 MCFLAGS-some_singleton		= --halt-at-warn
 MCFLAGS-spurious_purity_warning	= --halt-at-warn
-MCFLAGS-stack_opt_simplify	= --optimize-saved-vars
+MCFLAGS-stack_opt_simplify	= --optimize-saved-vars --no-warn-det-decls-too-lax
+MCFLAGS-state_var_mode_bug	= --no-warn-singleton-vars
 MCFLAGS-table_no_attr		= --structure-sharing
 MCFLAGS-tci_spec_varmap		= --deforestation --type-specialisation
 MCFLAGS-time_yaowl		= --allow-stubs

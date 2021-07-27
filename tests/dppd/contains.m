@@ -27,10 +27,10 @@ con([T | Rem_str], Prefix0, Suffix0) :-
     list(char)::out, list(char)::out) is nondet.
 
 new(T, Prefix0, [T2 | Suffix0], Prefix, Suffix) :-
-    ( T = T2 ->
+    ( if T = T2 then
         app( Prefix0, [T], Prefix),
         Suffix = Suffix0
-    ;
+    else
         app(Prefix0, [T], Temp),
         app(Prefix , Rest, Prefix0),
         app(_, Prefix, Temp),

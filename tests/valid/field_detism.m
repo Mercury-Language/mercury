@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 %
 % According to the rules in the language reference manual,
-% this example is not currently valid.  But this behaviour
+% this example is not currently valid. But this behaviour
 % is a bit unexpected for the programmer, so it would be
 % nice if the language was changed so that it was valid.
 

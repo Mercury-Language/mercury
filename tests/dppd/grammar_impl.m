@@ -63,38 +63,46 @@ expression_query(String) :-
 
 :- implementation.
 
-expression( Term, Qualifiers ) -->
-    value( Term ), qualification( Qualifiers ).
-expression( Term, none ) -->
-    value( Term ).
+expression(Term, Qualifiers) -->
+    value(Term), qualification(Qualifiers).
+expression(Term, none) -->
+    value(Term).
 
 :- pred value(variable::in, list(variable)::in, list(variable)::out) is nondet.
 
-value( Term ) --> identifier( Term ).
-value( Term ) --> numeric( Term ).
-value( Term ) --> built_in( Term ).
-value( Term ) --> bracketted( Term ).
-value( subscripted( Term, Subscript ) ) -->
-    identifier( Term ), start_subscript, value( Subscript ), end_subscript.
-value( Term ) --> leftparen, value( Term ), rightparen.
+value(Term) -->
+    identifier(Term).
+value(Term) -->
+    numeric(Term).
+value(Term) -->
+    built_in(Term).
+value(Term) -->
+    bracketed(Term).
+value(subscripted(Term, Subscript)) -->
+    identifier(Term), start_subscript, value(Subscript), end_subscript.
+value(Term) -->
+    leftparen, value(Term), rightparen.
 
 :- pred qualification(qualifier::in, list(variable)::in,
     list(variable)::out) is nondet.
 
-qualification( merge_qualifiers( Qualifier, Qualifiers ) ) -->
-    qualifier( Qualifier ),
-    qualification( Qualifiers ).
-qualification( Qualifier ) -->
-    qualifier( Qualifier ).
+qualification(merge_qualifiers(Qualifier, Qualifiers)) -->
+    qualifier(Qualifier),
+    qualification(Qualifiers).
+qualification(Qualifier) -->
+    qualifier(Qualifier).
 
 :- pred qualifier(qualifier::in, list(variable)::in, list(variable)::out)
     is nondet.
 
-qualifier( such_that( Left, Right ) ) -->
-    such_that, value( Left ), equals, value( Right ).
-qualifier( for_all( Term ) ) --> for_all, subrange( Term ).
-qualifier(qual_when( Term ) ) --> (when), value( Term ).
-qualifier(qual_where( Term ) ) --> (where), is_a( Term ).
+qualifier(such_that(Left, Right)) -->
+    such_that, value(Left), equals, value(Right).
+qualifier(for_all(Term)) -->
+    for_all, subrange(Term).
+qualifier(qual_when(Term)) -->
+    (when), value(Term).
+qualifier(qual_where(Term)) -->
+    (where), is_a(Term).
 
 :- pred leftparen(list(variable)::in, list(variable)::out) is semidet.
 leftparen --> ['('].
@@ -148,42 +156,42 @@ end_subscript --> ['}'].
 
 :- pred identifier(variable::in, list(variable)::in, list(variable)::out)
     is semidet.
-identifier( Identifier ) --> common_function( Identifier ).
-identifier( Identifier ) --> common_variable( Identifier ).
+
+identifier(Identifier) --> common_function(Identifier).
+identifier(Identifier) --> common_variable(Identifier).
 
 :- pred common_variable(variable::in,
     list(variable)::in, list(variable)::out) is semidet.
 
-common_variable( a ) --> [a].
-common_variable( n ) --> [n].
-common_variable( f ) --> [f].
-common_variable( v ) --> [v].
-common_variable( x ) --> [x].
-common_variable( i ) --> [i].
-common_variable( shp ) --> [shp].
-common_variable( arg ) --> [arg].
-common_variable( res ) --> [res].
+common_variable(a) --> [a].
+common_variable(n) --> [n].
+common_variable(f) --> [f].
+common_variable(v) --> [v].
+common_variable(x) --> [x].
+common_variable(i) --> [i].
+common_variable(shp) --> [shp].
+common_variable(arg) --> [arg].
+common_variable(res) --> [res].
 
 :- pred numeric(variable::in, list(variable)::in,
     list(variable)::out) is failure.
-numeric( _) -->
+numeric(_) -->
     fail.
 
-:- pred built_in(variable::in, list(variable)::in,
-    list(variable)::out) is failure.
-built_in( _) -->
-    fail.
-
-:- pred bracketted(variable::in, list(variable)::in,
-    list(variable)::out) is failure.
-bracketted( _) --> fail.
-
-:- pred common_function(variable::in, list(variable)::in,
-    list(variable)::out) is failure.
-common_function( _) --> fail.
-
-:- pred is_a(variable::in, list(variable)::in, list(variable)::out)
+:- pred built_in(variable::in, list(variable)::in, list(variable)::out)
     is failure.
+built_in(_) -->
+    fail.
+
+:- pred bracketed(variable::in, list(variable)::in, list(variable)::out)
+    is failure.
+bracketed(_) --> fail.
+
+:- pred common_function(variable::in, list(variable)::in, list(variable)::out)
+    is failure.
+common_function(_) --> fail.
+
+:- pred is_a(variable::in, list(variable)::in, list(variable)::out) is failure.
 is_a(_) --> fail.
 
 :- pred subrange(variable::in, list(variable)::in, list(variable)::out)

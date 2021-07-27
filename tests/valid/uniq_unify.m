@@ -48,8 +48,8 @@ p(F0, F) :-
 % had to be made mostly_unique for the condition of the if-then-else.
 
 p2(F0, F) :-
-    ( F0 = g ->
+    ( if F0 = g then
         q2(F0, F)
-    ;
+    else
         r2(F0, F)
     ).

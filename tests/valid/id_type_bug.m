@@ -16,9 +16,9 @@
 :- implementation.
 
 p(A, B) :-
-    ( q(A, X0), Z = Z ->
+    ( if q(A, X0), Z = Z then
         X = X0
-    ;
+    else
         X = 1
     ),
     p(X, B).

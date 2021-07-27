@@ -9,8 +9,7 @@
 %   Uncaught Mercury exception:
 %   Software Error: nondet model in det/semidet context
 %
-% NOTE: this is a regression, it didn't occur with
-%       rotd-2005-05-17 and before.
+% NOTE: this is a regression, it didn't occur with rotd-2005-05-17 and before.
 
 :- module constraint_prop_bug.
 
@@ -35,13 +34,13 @@
 
 copy_clauses_to_proc(GoalList, Proc) :-
     GoalInfo0 = hlds_goal_info,
-    (
+    ( if
         list__member(_ - SubGoalInfo, GoalList),
-        \+ goal_info_is_pure(SubGoalInfo)
-    ->
+        not goal_info_is_pure(SubGoalInfo)
+    then
         list__map(get_purity, GoalList, _PurityList),
         GoalInfo = GoalInfo0
-    ;
+    else
         GoalInfo = GoalInfo0
     ),
     Goal = hlds_goal_expr - GoalInfo,

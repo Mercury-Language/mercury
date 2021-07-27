@@ -44,9 +44,9 @@ make(X, X).
 
 do([], !IO).
 do([X | Xs], !IO) :-
-    ( Xs = [_ | _] ->
+    ( if Xs = [_ | _] then
         S = "1"
-    ;
+    else
         S = "2"
     ),
     (

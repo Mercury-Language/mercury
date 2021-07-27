@@ -30,13 +30,13 @@
 
 foo(X) :-
     TypeInfo = type_of([]),
-    map__init(Map),
+    map.init(Map),
     TypeInfo2 = type_of(Map),
-    (
+    ( if
         N = num_functors(TypeInfo),
         M = num_functors(TypeInfo2)
-    ->
+    then
         X = N + M
-    ;
+    else
         X = -1
     ).

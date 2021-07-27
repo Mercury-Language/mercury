@@ -8,11 +8,11 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
 :- import_module sub_a.sub1.
 
-main -->
-    io__write_string("Hello.\n").
+main(!IO) :-
+    io.write_string("Hello.\n", !IO).

@@ -52,9 +52,9 @@
     ;       lower.
 
 merge_key_ranges_2(Lower1, Upper2, IsNeeded) :-
-    ( less_or_equal(Lower1, upper, Upper2) ->
+    ( if less_or_equal(Lower1, upper, Upper2) then
         IsNeeded = no
-    ;
+    else
         IsNeeded = yes
     ).
 

@@ -21,8 +21,7 @@ read_deep_byte(Res, !IO) :-
     read_byte(Res0, !IO),
     trace [compile_time(flag("debug_read_profdeep")), io(!IO)] (
         io.write_string("byte ", !IO),
-        io.write(Res, !IO),
-        io.write_string("\n", !IO)
+        io.write_line(Res, !IO)
     ),
     (
         Res0 = ok(Byte),
