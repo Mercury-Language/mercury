@@ -1,4 +1,4 @@
-undeclared_mode.m:036: Error: no mode declaration for predicate
-undeclared_mode.m:036:   `sort_of_factorial'/2.
-undeclared_mode.m:036: Inferred :- mode sort_of_factorial(di, uo).
+undeclared_mode.m:034: Error: no mode declaration for predicate
+undeclared_mode.m:034:   `sort_of_factorial'/2.
+undeclared_mode.m:034: Inferred :- mode sort_of_factorial(di, uo).
 For more information, recompile with `-E'.

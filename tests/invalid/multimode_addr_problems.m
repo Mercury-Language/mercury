@@ -36,7 +36,7 @@ main(!IO) :-
 :- pragma promise_equivalent_clauses(absolute/2).
 
 absolute(X::in, Y::out) :-
-    Y = ( X < 0 -> -X ; X).
+    Y = ( if X < 0 then -X else X).
 
 absolute(X::out, Y::in) :-
     ( X = Y

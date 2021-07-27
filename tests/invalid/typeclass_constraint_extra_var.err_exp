@@ -1,28 +1,28 @@
-typeclass_constraint_extra_var.m:015: In declaration for predicate `mg'/2:
-typeclass_constraint_extra_var.m:015:   error in type class constraints: type
-typeclass_constraint_extra_var.m:015:   variable `U' occurs in the constraints,
-typeclass_constraint_extra_var.m:015:   but is not determined by the
-typeclass_constraint_extra_var.m:015:   predicate's argument types.
-typeclass_constraint_extra_var.m:015:   All types occurring in typeclass
-typeclass_constraint_extra_var.m:015:   constraints must be fully determined. A
-typeclass_constraint_extra_var.m:015:   type is fully determined if one of the
-typeclass_constraint_extra_var.m:015:   following holds:
-typeclass_constraint_extra_var.m:015:   1) All type variables occurring in the
-typeclass_constraint_extra_var.m:015:   type are determined.
-typeclass_constraint_extra_var.m:015:   2) The type occurs in a constraint
-typeclass_constraint_extra_var.m:015:   argument, that argument is in the range
-typeclass_constraint_extra_var.m:015:   of some functional dependency for that
-typeclass_constraint_extra_var.m:015:   class, and the types in all of the
-typeclass_constraint_extra_var.m:015:   domain arguments for that functional
-typeclass_constraint_extra_var.m:015:   dependency are fully determined.
-typeclass_constraint_extra_var.m:015:   A type variable is determined if one of
-typeclass_constraint_extra_var.m:015:   the following holds:
-typeclass_constraint_extra_var.m:015:   1) The type variable occurs in the
-typeclass_constraint_extra_var.m:015:   argument types of the predicate,
-typeclass_constraint_extra_var.m:015:   function, or constructor which is
-typeclass_constraint_extra_var.m:015:   constrained.
-typeclass_constraint_extra_var.m:015:   2) The type variable occurs in a type
-typeclass_constraint_extra_var.m:015:   which is fully determined.
-typeclass_constraint_extra_var.m:015:   See the "Functional dependencies"
-typeclass_constraint_extra_var.m:015:   section of the reference manual for
-typeclass_constraint_extra_var.m:015:   details.
+typeclass_constraint_extra_var.m:017: In declaration for predicate `mg'/2:
+typeclass_constraint_extra_var.m:017:   error in type class constraints: type
+typeclass_constraint_extra_var.m:017:   variable `U' occurs in the constraints,
+typeclass_constraint_extra_var.m:017:   but is not determined by the
+typeclass_constraint_extra_var.m:017:   predicate's argument types.
+typeclass_constraint_extra_var.m:017:   All types occurring in typeclass
+typeclass_constraint_extra_var.m:017:   constraints must be fully determined. A
+typeclass_constraint_extra_var.m:017:   type is fully determined if one of the
+typeclass_constraint_extra_var.m:017:   following holds:
+typeclass_constraint_extra_var.m:017:   1) All type variables occurring in the
+typeclass_constraint_extra_var.m:017:   type are determined.
+typeclass_constraint_extra_var.m:017:   2) The type occurs in a constraint
+typeclass_constraint_extra_var.m:017:   argument, that argument is in the range
+typeclass_constraint_extra_var.m:017:   of some functional dependency for that
+typeclass_constraint_extra_var.m:017:   class, and the types in all of the
+typeclass_constraint_extra_var.m:017:   domain arguments for that functional
+typeclass_constraint_extra_var.m:017:   dependency are fully determined.
+typeclass_constraint_extra_var.m:017:   A type variable is determined if one of
+typeclass_constraint_extra_var.m:017:   the following holds:
+typeclass_constraint_extra_var.m:017:   1) The type variable occurs in the
+typeclass_constraint_extra_var.m:017:   argument types of the predicate,
+typeclass_constraint_extra_var.m:017:   function, or constructor which is
+typeclass_constraint_extra_var.m:017:   constrained.
+typeclass_constraint_extra_var.m:017:   2) The type variable occurs in a type
+typeclass_constraint_extra_var.m:017:   which is fully determined.
+typeclass_constraint_extra_var.m:017:   See the "Functional dependencies"
+typeclass_constraint_extra_var.m:017:   section of the reference manual for
+typeclass_constraint_extra_var.m:017:   details.

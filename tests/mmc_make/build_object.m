@@ -6,9 +6,9 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    io__write_string("Hello, world\n").
+main(!IO) :-
+    io.write_string("Hello, world\n", !IO).

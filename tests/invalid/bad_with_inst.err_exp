@@ -1,10 +1,10 @@
-bad_with_inst.m:012: In the `with_inst' annotation of a predicate declaration:
-bad_with_inst.m:012:   error: `1234' is not a valid inst.
-bad_with_inst.m:014: In the `with_inst' annotation of a function declaration:
-bad_with_inst.m:014:   error: `5678' is not a valid inst.
-bad_with_inst.m:017: In the `with_inst' annotation of a type class predicate
-bad_with_inst.m:017:   method declaration:
-bad_with_inst.m:017:   error: `"Hello"' is not a valid inst.
-bad_with_inst.m:019: In the `with_inst' annotation of a type class function
-bad_with_inst.m:019:   method declaration:
-bad_with_inst.m:019:   error: `"World"' is not a valid inst.
+bad_with_inst.m:013: In the `with_inst' annotation of a predicate declaration:
+bad_with_inst.m:013:   error: `1234' is not a valid inst.
+bad_with_inst.m:015: In the `with_inst' annotation of a function declaration:
+bad_with_inst.m:015:   error: `5678' is not a valid inst.
+bad_with_inst.m:018: In the `with_inst' annotation of a type class predicate
+bad_with_inst.m:018:   method declaration:
+bad_with_inst.m:018:   error: `"Hello"' is not a valid inst.
+bad_with_inst.m:020: In the `with_inst' annotation of a type class function
+bad_with_inst.m:020:   method declaration:
+bad_with_inst.m:020:   error: `"World"' is not a valid inst.

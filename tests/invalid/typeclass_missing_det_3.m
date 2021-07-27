@@ -14,7 +14,7 @@
 :- import_module io.
 
 :- typeclass writeable(T) where [
-    pred write(T::in, io__state::di, io__state::uo)
+    pred write(T::in, io::di, io::uo)
 ].
 
 :- instance writeable(int) where [

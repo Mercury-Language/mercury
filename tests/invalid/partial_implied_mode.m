@@ -4,13 +4,13 @@
 %
 % This is a test for partially implied modes where the overbound
 % term is partially instantiated. This really shouldn't be an error,
-% and won't be with the alias tracking mode checker. It's difficult
+% and won't be with the alias tracking mode checker. It is difficult
 % to make this program legal with the current mode checker without
 % disallowing construction of partially instantiated terms.
 %
 % The reason partial_implied_mode2.m has to be a separate module
 % is because unification procedures for local types have unique mode
-% analysis run on them (although it's really not necessary).
+% analysis run on them (although it is really not necessary).
 % For local types, the code generator abort did not happen
 % because unique_modes reported a mode error.
 %
@@ -26,21 +26,20 @@
 
 :- type quantitiesdico == map(quantity_key, physic_quantity).
 
-:- pred search_quantitykey_1pin(pin, list(quantity_key),
-    quantitiesdico, quantity_key).
-:- mode search_quantitykey_1pin(in, in, in, out) is det.
+:- pred search_quantitykey_1pin(pin::in, list(quantity_key)::in,
+    quantitiesdico::in, quantity_key::out) is det.
 
 :- implementation.
 
 :- import_module require.
 
 search_quantitykey_1pin(PIN, [CUR_K | L], QTY_DICO, K) :-
-    (
-        map__lookup(QTY_DICO, CUR_K,
+    ( if
+        map.lookup(QTY_DICO, CUR_K,
             physic_quantity(PIN, _SYN, absol(_MEAS, _TBS)))
-    ->
+    then
         K = CUR_K
-    ;
+    else
         search_quantitykey_1pin(PIN, L, QTY_DICO, K)
     ).
 search_quantitykey_1pin(_, [], _, _) :-

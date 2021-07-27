@@ -1,6 +1,7 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+%
 % We shouldn't be able to ground a solver variable in the condition
 % of an if-then-else.
 %
@@ -29,16 +30,17 @@
 main(!IO) :-
     i(X),
     promise_pure (
-        if p(X) then
+        ( if p(X) then
             io.write_string("aye\n", !IO)
         else
             io.write_string("nay\n", !IO)
+        )
     ).
 
 :- pred i(st::oa) is det.
 
 i(X) :-
-    promise_pure(
+    promise_pure (
         impure X = 'representation to any st/0'(42)
     ).
 

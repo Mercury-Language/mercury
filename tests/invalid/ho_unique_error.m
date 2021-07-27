@@ -8,11 +8,11 @@
 
 :- import_module io.
 
-:- pred call_ho(io__state::di, io__state::uo) is multi.
+:- pred call_ho(io::di, io::uo) is multi.
 
 :- implementation.
 
-call_ho -->
-    ( call(io__write_string, "First\n")
-    ; call(io__write_string, "Second\n")
+call_ho(!IO) :-
+    ( call(io__write_string, "First\n", !IO)
+    ; call(io__write_string, "Second\n", !IO)
     ).

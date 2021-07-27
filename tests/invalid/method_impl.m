@@ -7,7 +7,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- typeclass c(T) where [
     pred m1(T::in, int::out) is det
@@ -29,8 +29,7 @@
     pred(m1/2) is bar_m1
 ].
 
-main -->
-    [].
+main(!IO).
 
 :- pragma foreign_code("C", "int foo_counter = 0;").
 

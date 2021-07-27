@@ -1,5 +1,5 @@
-magicbox.m:039: In `arguments_handler'(di, uo, out):
-magicbox.m:039:   error: determinism declaration not satisfied.
-magicbox.m:039:   Declared `cc_multi', inferred `cc_nondet'.
-magicbox.m:056:   Call to `string.to_int'(in, out) can fail.
-magicbox.m:062:   Call to `string.to_int'(in, out) can fail.
+magicbox.m:038: In `arguments_handler'(di, uo, out):
+magicbox.m:038:   error: determinism declaration not satisfied.
+magicbox.m:038:   Declared `cc_multi', inferred `cc_nondet'.
+magicbox.m:055:   Call to `string.to_int'(in, out) can fail.
+magicbox.m:061:   Call to `string.to_int'(in, out) can fail.

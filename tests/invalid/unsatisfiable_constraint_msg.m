@@ -17,9 +17,9 @@
 
 main(!IO) :-
     io.write_string("typeclass_test", !IO),
-    ( test(ta("a"), tb("b")) ->
+    ( if test(ta("a"), tb("b")) then
         io.write_string("true", !IO)
-    ;
+    else
         io.write_string("fail", !IO)
     ).
 
@@ -47,7 +47,7 @@ test(A, B) :-
     --->    tb(B).
 
 :- instance tca(ta(A)) <= (tca(A), tcc(A)) where [
-    (pa(ta(A)) :-
+    ( pa(ta(A)) :-
         pa(A),
         pc(A)
     )

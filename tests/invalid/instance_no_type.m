@@ -34,7 +34,7 @@
 
 :- implementation.
 
-:- type no_such_type ---> no_such_type.
+:- type no_such_type  ---> no_such_type.
 :- type no_such_type2 ---> no_such_type2.
 
 :- instance tc(int) where [].

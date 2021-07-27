@@ -12,9 +12,9 @@
 :- import_module int.
 
 main(!IO) :-
-    ( test(1.0, 2.0) ->
+    ( if test(1.0, 2.0) then
         io.write_string("ok\n", !IO)
-    ;
+    else
         io.write_string("not ok\n", !IO)
     ).
 

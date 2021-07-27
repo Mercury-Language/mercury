@@ -18,6 +18,12 @@
 
 :- implementation.
 
+main(!IO) :-
+    baz(561, 42, F),
+    foo(F, I),
+    io.print(I, !IO),
+    io.nl(!IO).
+
 :- type foo
     --->    a(int)
     ;       b(string).
@@ -34,9 +40,3 @@ foo(a(I), I).
 % should be bar(int::in, foo::out(a))
 :- pred bar(int::in, int::in, foo::out) is det.
 bar(_, _S, b("GOTCHA")).
-
-main(!IO) :-
-    baz(561, 42, F),
-    foo(F, I),
-    io.print(I, !IO),
-    io.nl(!IO).

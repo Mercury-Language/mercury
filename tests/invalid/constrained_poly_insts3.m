@@ -10,8 +10,7 @@
 :- type thing == list(list(int)).
 :- inst thing == list_skel(ground).
 
-:- pred p1(thing, thing).
-:- mode p1(in(I), out(I)) is det.
+:- pred p1(thing::in(I), thing::out(I)) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -20,8 +19,7 @@
 p1(X, Y) :-
     q(X, Y).
 
-:- pred q(thing, thing).
-:- mode q(in(thing), out(thing)) is det.
+:- pred q(thing:in(thing), thing::out(thing)) is det.
 
 q(X, X).
 

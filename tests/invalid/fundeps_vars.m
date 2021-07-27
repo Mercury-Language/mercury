@@ -9,11 +9,11 @@
 :- implementation.
 :- import_module list.
 
-main(!S) :-
-    ( test([0], 1) ->
-        write_string("yes\n", !S)
-    ;
-        write_string("no\n", !S)
+main(!IO) :-
+    ( if test([0], 1) then
+        write_string("yes\n", !IO)
+    else
+        write_string("no\n", !IO)
     ).
 
 :- typeclass foo(T) where [].

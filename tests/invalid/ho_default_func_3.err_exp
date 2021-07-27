@@ -1,21 +1,21 @@
-ho_default_func_3.m:034: In clause for `baz(in, out)':
-ho_default_func_3.m:034:   mode error in conjunction. The next 2 error messages
-ho_default_func_3.m:034:   indicate possible causes of this error.
-ho_default_func_3.m:034:   
-ho_default_func_3.m:034:   In clause for `baz(in, out)':
-ho_default_func_3.m:034:   in call to function `univ.univ'/1:
-ho_default_func_3.m:034:   mode error: argument `V_7' and the return value
-ho_default_func_3.m:034:   `V_6' have the following insts:
-ho_default_func_3.m:034:     /* unique */ (func(di) = uo is det),
-ho_default_func_3.m:034:     free
-ho_default_func_3.m:034:   which does not match any of the modes for function
-ho_default_func_3.m:034:   `univ.univ'/1.
-ho_default_func_3.m:034:   
-ho_default_func_3.m:034:   In clause for `baz(in, out)':
-ho_default_func_3.m:034:   in call to predicate `univ.univ_to_type'/2:
-ho_default_func_3.m:034:   mode error: arguments `V_6, Y0' have the following
-ho_default_func_3.m:034:   insts:
-ho_default_func_3.m:034:     free,
-ho_default_func_3.m:034:     free
-ho_default_func_3.m:034:   which does not match any of the modes for predicate
-ho_default_func_3.m:034:   `univ.univ_to_type'/2.
+ho_default_func_3.m:037: In clause for `baz(in, out)':
+ho_default_func_3.m:037:   mode error in conjunction. The next 2 error messages
+ho_default_func_3.m:037:   indicate possible causes of this error.
+ho_default_func_3.m:037:   
+ho_default_func_3.m:037:   In clause for `baz(in, out)':
+ho_default_func_3.m:037:   in call to function `univ.univ'/1:
+ho_default_func_3.m:037:   mode error: argument `V_7' and the return value
+ho_default_func_3.m:037:   `V_6' have the following insts:
+ho_default_func_3.m:037:     /* unique */ (func(di) = uo is det),
+ho_default_func_3.m:037:     free
+ho_default_func_3.m:037:   which does not match any of the modes for function
+ho_default_func_3.m:037:   `univ.univ'/1.
+ho_default_func_3.m:037:   
+ho_default_func_3.m:037:   In clause for `baz(in, out)':
+ho_default_func_3.m:037:   in call to predicate `univ.univ_to_type'/2:
+ho_default_func_3.m:037:   mode error: arguments `V_6, Y0' have the following
+ho_default_func_3.m:037:   insts:
+ho_default_func_3.m:037:     free,
+ho_default_func_3.m:037:     free
+ho_default_func_3.m:037:   which does not match any of the modes for predicate
+ho_default_func_3.m:037:   `univ.univ_to_type'/2.

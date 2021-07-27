@@ -1,7 +1,7 @@
 :- module pretty_print_test.
 :- interface.
 :- import_module io.
-:- pred main(io.state, io.state).
+:- pred main(io, io).
 :- mode main(di, uo) is det.
 :- implementation.
 :- type foobar

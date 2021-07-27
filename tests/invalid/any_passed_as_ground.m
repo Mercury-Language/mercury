@@ -13,7 +13,7 @@
 
 :- import_module io.
 
-:- pred main(io :: di, io :: uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
 

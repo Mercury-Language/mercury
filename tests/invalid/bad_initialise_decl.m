@@ -23,13 +23,13 @@
 :- initialise i4.
 :- initialise i5/6.
 
+main(!IO) :-
+    io.print("This is main/2.\n", !IO).
+
 :- pred i1(T::di, T::uo) is det.
 i1(X, X).
 
 :- pred i2(io::in, io::out) is det.
 i2(!IO).
-
-main(!IO) :-
-    io.print("This is main/2.\n", !IO).
 
 %---------------------------------------------------------------------------%

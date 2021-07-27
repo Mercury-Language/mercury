@@ -8,15 +8,25 @@
 :- module bad_inst_defn.
 :- interface.
 
-:- type mylist(T) ---> [] ; [T | mylist(T)].
+:- type mylist(T)
+    --->    []
+    ;       [T | mylist(T)].
 
-:- inst test1(A) ---> [] ; [B | mylistskel(A)].
+:- inst test1(A)
+    --->    []
+    ;       [B | mylistskel(A)].
 
-:- inst test2(A) ---> [] ; [B | mylistskel(C)].
+:- inst test2(A)
+    --->    []
+    ;       [B | mylistskel(C)].
 
-:- inst test3(A, A) ---> [] ; [A | mylistskel(A)].
+:- inst test3(A, A)
+    --->    []
+    ;       [A | mylistskel(A)].
 
-:- inst test4(A, A, B, B) ---> [] ; [A | mylistskel(B)].
+:- inst test4(A, A, B, B)
+    --->    []
+    ;       [A | mylistskel(B)].
 
 :- type t
     --->    a

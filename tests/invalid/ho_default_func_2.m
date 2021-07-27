@@ -10,10 +10,12 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
+
+:- include_module ho_default_func_2__sub.
+:- include_module ho_default_func_2__id.
 
 :- import_module ho_default_func_2__sub.
 :- import_module ho_default_func_2__id.
@@ -21,16 +23,16 @@
 :- import_module int.
 :- import_module std_util.
 
-main -->
-    { baz(IdF), eq(getval(IdF), F) },
-    do_io(F).
+main(!IO) :-
+    baz(IdF),
+    eq(getval(IdF), F),
+    do_io(F, !IO).
 
 :- func foo(int) = int.
+
 foo(X) = X + 1.
 
 :- func bar(int) = int.
 :- mode bar(out) = in is det.
-bar(X) = X + 1.
 
-:- include_module ho_default_func_2__sub.
-:- include_module ho_default_func_2__id.
+bar(X) = X + 1.

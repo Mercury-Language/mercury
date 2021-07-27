@@ -11,7 +11,7 @@
 %   Software Error: error_util.m: Unexpected: do_write_error_spec: \
 %   MaybeActual isn't no
 %
-% This bug was originally reported by Nick Nethercote.  The code here
+% This bug was originally reported by Nick Nethercote. The code here
 % is a cut-down version of his code.
 %
 % This test is disabled, because automatic initialization of solver variables
@@ -49,7 +49,7 @@ min_split_var(V) = BranchConstraints :-
     impure get_min_max(V, Min, Max),
     ( if Min = Max then
         error("")
-      else
+    else
         BranchConstraints = []
     ).
 

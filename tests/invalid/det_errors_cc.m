@@ -38,9 +38,9 @@ p1(A, X) :-
 
 p2(A, X) :-
     p3(A, B),
-    ( B < 5 ->
+    ( if B < 5 then
         fail
-    ;
+    else
         X = B
     ).
 
@@ -61,11 +61,11 @@ p4(A, X) :-
 
 p5(A, X) :-
     p1(A, B),
-    ( B < 5 ->
+    ( if B < 5 then
         C = fa
-    ; B < 10 ->
+    else if B < 10 then
         C = fb
-    ;
+    else
         C = fc
     ),
     (
@@ -80,9 +80,9 @@ p5(A, X) :-
 
 p6(A, X) :-
     p1(A, B),
-    ( B < 5 ->
+    ( if B < 5 then
         C = fa
-    ;
+    else
         C = fb
     ),
     (

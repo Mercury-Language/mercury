@@ -10,8 +10,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -20,21 +19,25 @@
 
 :- inst one == bound(1).
 
-main -->
-    { baz(foo, F) },
-    io__write_int(F(42)), nl.
+main(!IO) :-
+    baz(foo, F),
+    io.write_int(F(42), !IO),
+    io.nl(!IO).
 
 :- func foo(int) = int.
+
 foo(X) = X + 1.
 
 :- func bar(int) = int.
 :- mode bar(in(one)) = out is det.
+
 bar(X) = X.
 
 :- pred baz(T::in, T::out) is det.
+
 baz(X, Y) :-
-    ( univ_to_type(univ(bar), Y0) ->
+    ( if univ_to_type(univ(bar), Y0) then
         Y = Y0
-    ;
+    else
         Y = X
     ).

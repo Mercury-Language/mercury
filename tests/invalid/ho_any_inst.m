@@ -49,24 +49,24 @@ p1(A, Pred) :-
 
 cond0(X, Y) :-
     p0(c(X), P),
-    ( call(P) ->            % Illegal!
+    ( if call(P) then           % Illegal!
         Y = 1
-    ;
+    else
         Y = 2
     ).
 
 neg0(X) :-
     p0(c(X), P),
-    \+ call(P).             % Illegal!
+    not call(P).                % Illegal!
 
 cond1(X, Y) :-
     p1(c(X), P),
-    ( call(P, c(0)) ->      % Illegal!
+    ( if call(P, c(0)) then     % Illegal!
         Y = 1
-    ;
+    else
         Y = 2
     ).
 
 neg1(X) :-
     p1(c(X), P),
-    \+ call(P, c(0)).       % Illegal!
+    not call(P, c(0)).          % Illegal!

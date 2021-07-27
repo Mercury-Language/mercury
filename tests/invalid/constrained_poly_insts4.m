@@ -20,8 +20,7 @@
 p2(X, Y) :-
     q(X, Y).
 
-:- pred q(thing, thing).
-:- mode q(in(thing), out(thing)) is det.
+:- pred q(thing::in(thing), thing::out(thing)) is det.
 
 q(X, X).
 

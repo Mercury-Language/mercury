@@ -94,8 +94,8 @@ pred_with_singleton_vars(X).
 %---------------------------------------------------------------------------%
 
 :- import_module int.
-:- use_module int.
 
+:- use_module int.
 :- use_module io.
 
 :- type needs_qualification == state.

@@ -12,10 +12,9 @@
     func coerce(B) = S
 ].
 
-:- pred mg(T, T) <= solver_for(list(U), T).
-:- mode mg(in, out) is det.
-
 :- pred main(io::di, io::uo) is det.
+
+:- pred mg(T::in, T::out) is det <= solver_for(list(U), T).
 
 :- implementation.
 :- import_module float.
@@ -25,14 +24,13 @@
     coerce(_) = 42.0
 ].
 
+main(!IO) :-
+    mg(1.0, S),
+    io.print_line(S, !IO).
+
 mg(S0, S) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         S = coerce([S0])
-    ;
+    else
         S = S0
     ).
-
-main -->
-    { mg(1.0, S) },
-    io__print(S),
-    io__nl.

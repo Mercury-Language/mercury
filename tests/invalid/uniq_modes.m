@@ -6,15 +6,15 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state, io__state).
+:- pred main(io, io).
 :- mode main(di, uo) is det.
 
 :- implementation.
 
 main(In, _Out) :-
-    io__write("looking for", In, Int1),
-    io__nl(Int1, _Int2),
+    io.write("looking for", In, Int1),
+    io.nl(Int1, _Int2),
     fail.
 main(In, Out) :-
-    io__write("not found", In, Int),
-    io__nl(Int, Out).
+    io.write("not found", In, Int),
+    io.nl(Int, Out).

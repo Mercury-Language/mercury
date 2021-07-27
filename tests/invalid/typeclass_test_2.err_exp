@@ -1,10 +1,10 @@
-typeclass_test_2.m:014: In clause for predicate `main'/2:
-typeclass_test_2.m:014:   unsatisfiable typeclass constraint:
-typeclass_test_2.m:014:   `typeclass_test_2.numbered_type(int)'.
-typeclass_test_2.m:024: Error: expected
-typeclass_test_2.m:024:   `pred(<Name> / <Arity>) is <InstanceName>' or
-typeclass_test_2.m:024:   `func(<Name> / <Arity>) is <InstanceName>', not
-typeclass_test_2.m:024:   ((type_num / 0) is foo_type_num).
-typeclass_test_2.m:027: Error: clause for function `foo_type_num'/1
-typeclass_test_2.m:027:   without corresponding `:- func' declaration.
-typeclass_test_2.m:027: Inferred :- func foo_type_num(T1) = int.
+typeclass_test_2.m:015: In clause for predicate `main'/2:
+typeclass_test_2.m:015:   unsatisfiable typeclass constraint:
+typeclass_test_2.m:015:   `typeclass_test_2.numbered_type(int)'.
+typeclass_test_2.m:023: Error: expected
+typeclass_test_2.m:023:   `pred(<Name> / <Arity>) is <InstanceName>' or
+typeclass_test_2.m:023:   `func(<Name> / <Arity>) is <InstanceName>', not
+typeclass_test_2.m:023:   ((type_num / 0) is foo_type_num).
+typeclass_test_2.m:026: Error: clause for function `foo_type_num'/1
+typeclass_test_2.m:026:   without corresponding `:- func' declaration.
+typeclass_test_2.m:026: Inferred :- func foo_type_num(T1) = int.

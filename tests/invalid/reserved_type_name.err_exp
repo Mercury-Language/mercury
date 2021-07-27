@@ -1,5 +1,3 @@
-reserved_type_name.m:001: Error: module must start with a `:- module'
-reserved_type_name.m:001:   declaration.
 reserved_type_name.m:014: Error: the type name `int' is reserved for the
 reserved_type_name.m:014:   Mercury implementation.
 reserved_type_name.m:018: Error: the type name `uint' is reserved for the

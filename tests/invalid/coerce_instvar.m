@@ -25,8 +25,7 @@
 
 :- implementation.
 
-:- pred good(citrus, fruit).
-:- mode good(in(I), out(I)) is det.
+:- pred good(citrus::in(I), fruit::out(I)) is det.
 
 good(X, Y) :-
     Y = coerce(X),
@@ -36,8 +35,7 @@ good(X, Y) :-
         Y = lemon(foo)
     ).
 
-:- pred bad(fruit, citrus).
-:- mode bad(in(I), out(I)) is det.
+:- pred bad(fruit::in(I), citrus::out(I)) is det.
 
 bad(X, Y) :-
     Y = coerce(X).

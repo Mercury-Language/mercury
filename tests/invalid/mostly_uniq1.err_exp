@@ -3,8 +3,8 @@ mostly_uniq1.m:009:   error: invalid determinism for a predicate with I/O state
 mostly_uniq1.m:009:   arguments.
 mostly_uniq1.m:023: In clause for `my_main(di, uo)':
 mostly_uniq1.m:023:   in argument 2 of call to predicate `io.write_int'/3:
-mostly_uniq1.m:023:   mode error: variable `DCG_0' has instantiatedness
-mostly_uniq1.m:023:   `mostly_unique',
+mostly_uniq1.m:023:   mode error: variable `STATE_VARIABLE_IO_0' has
+mostly_uniq1.m:023:   instantiatedness `mostly_unique',
 mostly_uniq1.m:023:   expected instantiatedness was `unique'.
 mostly_uniq1.m:023:   This kind of uniqueness mismatch is usually caused by
 mostly_uniq1.m:023:   doing input/output or some other kind of destructive

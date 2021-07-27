@@ -9,7 +9,10 @@
 :- module bug257.
 :- interface.
 
-:- type xyz ---> x ; y ; z.
+:- type xyz
+    --->    x
+    ;       y
+    ;       z.
 
 :- pred oops(xyz::in, int::out) is semidet.
 

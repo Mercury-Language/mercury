@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- typeclass c1(T) where [].
 :- typeclass c2(T) <= c1(T) where [
@@ -25,7 +25,7 @@
     pred(p/1) is get_int2
 ].
 
-main --> [].
+main(!IO).
 
 get_int(42).
 get_int2(43).

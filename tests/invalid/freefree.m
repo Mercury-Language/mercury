@@ -6,15 +6,15 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    ( { p } ->
-        io__write_string("yes\n")
-    ;
-        io__write_string("no\n")
+main(!IO) :-
+    ( if p then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ).
 
 :- pred p is semidet.

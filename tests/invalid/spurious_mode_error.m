@@ -8,7 +8,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -45,10 +45,10 @@
         m(pred(in, in, out) is det)
     )).
 
-main -->
-    { makeit([a(foo), b(bar), c(baz)], f(no, no, no), Thing) },
-    { foldit([i(23), s("42"), f(4.2)], Thing, 0, Stuff) },
-    write(Stuff).
+main(!IO) :-
+    makeit([a(foo), b(bar), c(baz)], f(no, no, no), Thing),
+    foldit([i(23), s("42"), f(4.2)], Thing, 0, Stuff),
+    write(Stuff, !IO).
 
 :- pred foldit(list(string__poly_type), f(T), T, T).
 :- mode foldit(in, in(f), in, out) is det.
@@ -130,4 +130,3 @@ baz(_, T, T).
 
 foobie(_, T, T).
 */
-

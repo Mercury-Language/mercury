@@ -33,28 +33,39 @@ type_error :-
     expect_int(X).
 
 :- pred type_error_2.
+
 type_error_2 :-
     produce_string(X),
     expect_int(Y),
     X = Y.
 
 :- pred type_error_3.
+
 type_error_3 :-
     X = Y,
     produce_string(X),
     expect_int(Y).
 
-:- type foo_type ---> foo_functor(int, character, string).
-:- type bar_1_type ---> bar_functor(int, character, string).
-:- type bar_2_type ---> bar_functor(character, int, string).
+:- type foo_type
+    --->    foo_functor(int, character, string).
+
+:- type bar_1_type
+    --->    bar_functor(int, character, string).
+
+:- type bar_2_type
+    --->    bar_functor(character, int, string).
 
 :- pred type_error_4.
+
 type_error_4 :-
     Y = 0,
     X = foo_functor(Y, 'x', 1.0).
 
 :- pred type_error_5.
-:- type foo ---> a ; b ; c.
+:- type foo
+    --->    a
+    ;       b
+    ;       c.
 
 type_error_5 :-
     Y = 'a',
@@ -76,11 +87,13 @@ type_error_7 :-
 :- use_module list, string.
 
 :- pred type_error_8.
+
 type_error_8 :-
     from_char_list([], Str),
     string__from_char_list(list.[], Str).
 
 :- pred type_error_9.
+
 type_error_9 :-
     X = {1, "2", '3'},
     Y = {"1", '2', 3},

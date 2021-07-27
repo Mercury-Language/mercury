@@ -7,7 +7,8 @@
 :- module bad_with_inst.
 :- interface.
 
-:- type t ---> t.
+:- type t
+    --->    t.
 
 :- pred foo_pred(T, T) `with_inst` 1234.
 

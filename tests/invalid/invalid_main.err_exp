@@ -2,9 +2,9 @@ invalid_main.m:006: Error: module `invalid_main' should start with either an
 invalid_main.m:006:   `:- interface' or an `:- implementation' declaration.
 invalid_main.m:006:   The following assumes that the missing declaration is an
 invalid_main.m:006:   `:- implementation' declaration.
-invalid_main.m:008: Error: `main'/2 must be `det' or `cc_multi'.
-invalid_main.m:008: Error: `main'/2 must have mode `(di, uo)'.
-invalid_main.m:008: Error: arguments of main/2 must have type `io.state'.
-invalid_main.m:008: In `main'(di, out):
-invalid_main.m:008:   warning: determinism declaration could be tighter.
-invalid_main.m:008:   Declared `multi', inferred `det'.
+invalid_main.m:009: Error: `main'/2 must be `det' or `cc_multi'.
+invalid_main.m:009: Error: `main'/2 must have mode `(di, uo)'.
+invalid_main.m:009: Error: arguments of main/2 must have type `io.state'.
+invalid_main.m:009: In `main'(di, out):
+invalid_main.m:009:   warning: determinism declaration could be tighter.
+invalid_main.m:009:   Declared `multi', inferred `det'.

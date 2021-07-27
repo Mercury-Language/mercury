@@ -1,5 +1,5 @@
-constraint_proof_bug_lib.m:047: In instance declaration for
-constraint_proof_bug_lib.m:047:   `constrainable(constraint_proof_bug_lib.code)':
-constraint_proof_bug_lib.m:047:   the first instance type
-constraint_proof_bug_lib.m:047:   `constraint_proof_bug_lib.code' is an
-constraint_proof_bug_lib.m:047:   abstract exported equivalence type.
+constraint_proof_bug_lib.m:050: In instance declaration for
+constraint_proof_bug_lib.m:050:   `constrainable(constraint_proof_bug_lib.code)':
+constraint_proof_bug_lib.m:050:   the first instance type
+constraint_proof_bug_lib.m:050:   `constraint_proof_bug_lib.code' is an
+constraint_proof_bug_lib.m:050:   abstract exported equivalence type.

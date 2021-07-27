@@ -6,7 +6,7 @@
 
 :- interface.
 
-% it is an error to only declare some of the modes
+% It is an error to only declare some of the modes.
 
 :- func bar(int::in, int) = int is semidet.
 :- func baz(int::in, int::in) = int is semidet.

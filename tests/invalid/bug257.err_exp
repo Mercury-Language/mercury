@@ -1,2 +1,2 @@
-bug257.m:019: Error: the goal inside the require_complete_switch [Gee] scope is
-bug257.m:019:   not a switch on `Gee'.
+bug257.m:022: Error: the goal inside the require_complete_switch [Gee] scope is
+bug257.m:022:   not a switch on `Gee'.

@@ -29,10 +29,10 @@ main(!IO) :-
     io.write_string(p(s("five")), !IO),
     F6 = "%s %f",
     make_bool(6, T6),
-    (
+    ( if
         T6 = yes,
         V6A = i(6)
-    ->
+    then
         V6 = [s("six"), V6A],
         copy(V6, C6),
         io.format(OutputStream, F6, C6, !IO),
@@ -45,7 +45,7 @@ main(!IO) :-
         ;
             T7 = no
         )
-    ;
+    else
         true
     ).
 

@@ -30,21 +30,18 @@ main(!IO) :-
     ),
     list.sort_and_remove_dups(A, ASorted),
     list.sort_and_remove_dups(B, BSorted),
-    io.write(ASorted, !IO),
-    io.nl(!IO),
-    io.write(BSorted, !IO),
-    io.nl(!IO),
-    (
+    io.write_line(ASorted, !IO),
+    io.write_line(BSorted, !IO),
+    ( if
         promise_equivalent_solutions [C, ASorted] (
             ASorted = [_ | ATail],
             ( C = [5] ++ ATail
             ; C = ATail ++ [5]
             )
         )
-    ->
+    then
         list.sort_and_remove_dups(C, CSorted),
-        io.write(CSorted, !IO),
-        io.nl(!IO)
-    ;
+        io.write_line(CSorted, !IO)
+    else
         io.write("cannot compute CSorted\n", !IO)
     ).

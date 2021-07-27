@@ -10,7 +10,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -18,12 +18,12 @@
 
 pi = 3.14159.
 
-main -->
-    print("apply_nullary_func(pi) = "),
+main(!IO) :-
+    io.print("apply_nullary_func(pi) = ", !IO),
     % this would be legal:
     % print(apply_nullary_func((func) = pi)), nl.
     % this one is not:
-    print(apply_nullary_func(pi)), nl.
+    io.print_line(apply_nullary_func(pi), !IO).
 
 :- func apply_nullary_func((func) = T) = T.
 :- mode apply_nullary_func(in((func) = out is det)) = out is det.

@@ -26,8 +26,7 @@ test(RawList, !IO) :-
     io.write(RawList, !IO),
     io.write_string(" ", !IO),
     rsort(RawList, SortedList),
-    io.write(SortedList, !IO),
-    io.nl(!IO).
+    io.write_line(SortedList, !IO).
 
 :- pred rev_sort(list(T)::in, list(T)::out) is nondet.
 

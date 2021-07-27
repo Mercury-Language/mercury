@@ -14,6 +14,9 @@
 
 :- implementation.
 
+main(!IO) :-
+    io.print("Hello, World!\n", !IO).
+
 :- pred good_if_then_else(T::ia, int::out) is det.
 
 good_if_then_else(X, Y) :-
@@ -92,8 +95,5 @@ ig(_) :-
 :- pred oa(int::oa) is det.
 
 oa(42).
-
-main(!IO) :-
-    io.print("Hello, World!\n", !IO).
 
 %---------------------------------------------------------------------------%

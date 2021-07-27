@@ -32,7 +32,7 @@ main(!IO) :-
 :- pred test_detism_scope(int::in, io::di, io::uo) is det.
 
 test_detism_scope(A, !IO) :-
-    (
+    ( if
         require_det (
             A > 10
         ),
@@ -41,9 +41,9 @@ test_detism_scope(A, !IO) :-
             C = B mod 3,
             C = 1
         )
-    ->
+    then
         X = C
-    ;
+    else
         X = A
     ),
     io.format("test_detism_scope(%d) = %d\n", [i(A), i(X)], !IO).

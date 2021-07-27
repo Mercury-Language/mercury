@@ -13,8 +13,8 @@
 
 :- implementation.
 
-main -->
-    foo(_).
+main(!IO) :-
+    foo(_, !IO).
 
 :- type my_foreign_type.
 :- pragma foreign_type("C", my_foreign_type, "
@@ -26,8 +26,8 @@ long short int
 
 :- pragma foreign_export("C", bar(out, di, uo), "bar").
 :- pred bar(my_foreign_type::out, io::di, io::uo) is det.
-bar(X) -->
-    foo(X).
+bar(X, !IO) :-
+    foo(X, !IO).
 
 :- pred foo(my_foreign_type::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",

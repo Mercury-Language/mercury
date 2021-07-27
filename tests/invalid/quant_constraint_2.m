@@ -23,5 +23,4 @@ q = 1.
 
 main(!IO) :-
     X = q,
-    write(X, !IO),
-    nl(!IO).
+    io.write_line(X, !IO).

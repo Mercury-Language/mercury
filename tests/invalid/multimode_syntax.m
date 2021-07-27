@@ -6,11 +6,11 @@
 :- interface.
 :- import_module io.
 
-:- pred main(state::di, state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main --> [].
+main(!IO).
 
 :- func func0 = string.
 :- mode func0 = out is det.

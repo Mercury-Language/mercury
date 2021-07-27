@@ -19,7 +19,7 @@
     --->    signed_short_int(c_pointer).
 
 :- func bread_impl(object, object, unmarshalled(buffer), unmarshalled(buffer),
-    unmarshalled(signed_long_int), io__state, io__state) =
+    unmarshalled(signed_long_int), io, io) =
     unmarshalled(signed_long_int).
 :- mode bread_impl(in, out, in, out, in, di, uo) = out is det.
 

@@ -1,10 +1,10 @@
-bad_inst_defn.m:013: Error: free inst parameter `B' on right hand side of inst
-bad_inst_defn.m:013:   definition.
-bad_inst_defn.m:015: Error: free inst parameters `B' and `C' on right hand side
-bad_inst_defn.m:015:   of inst definition.
-bad_inst_defn.m:017: Error: inst parameter `A' is repeated on left hand side of
-bad_inst_defn.m:017:   inst definition.
-bad_inst_defn.m:019: Error: inst parameters `A' and `B' are repeated on left
-bad_inst_defn.m:019:   hand side of inst definition.
-bad_inst_defn.m:027: Error: expected either `==' or `--->' at start of
-bad_inst_defn.m:027:   `:- inst' definition.
+bad_inst_defn.m:015: Error: free inst parameter `B' on right hand side of inst
+bad_inst_defn.m:015:   definition.
+bad_inst_defn.m:019: Error: free inst parameters `B' and `C' on right hand side
+bad_inst_defn.m:019:   of inst definition.
+bad_inst_defn.m:023: Error: inst parameter `A' is repeated on left hand side of
+bad_inst_defn.m:023:   inst definition.
+bad_inst_defn.m:027: Error: inst parameters `A' and `B' are repeated on left
+bad_inst_defn.m:027:   hand side of inst definition.
+bad_inst_defn.m:037: Error: expected either `==' or `--->' at start of
+bad_inst_defn.m:037:   `:- inst' definition.

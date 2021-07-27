@@ -35,8 +35,7 @@
 
 :- import_module io.
 
-:- pred arguments_handler(io.state, io.state, int).
-:- mode arguments_handler(di, uo, out) is cc_multi.
+:- pred arguments_handler(io::di, io::uo, int::out) is cc_multi.
 
 %---------------------------------------------------------------------------%
 
@@ -48,18 +47,18 @@
 arguments_handler(!IO, Length) :-
     % Check for correct command-line arguments:
     io.command_line_arguments(Arguments, !IO),
-    (
+    ( if
         % Valid arguments - Scenario 1
         list.member("-1", Arguments, ArgsSubS1),
         list.index0(ArgsSubS1, 1, LengthStr)
-    ->
+    then
         string.to_int(LengthStr, Length)
-    ;
+    else if
         % Valid arguments - Scenario 2
         list.member("-2", Arguments, ArgsSubS2),
         list.index0(ArgsSubS2, 2, LengthStr)
-    ->
+    then
         string.to_int(LengthStr, Length)
-    ;
+    else
         Length = 0
     ).

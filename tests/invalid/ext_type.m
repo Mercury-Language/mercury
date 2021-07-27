@@ -23,5 +23,5 @@ r :-
     q(1) = q(2).
 
 :- some [QT] func q(int) = QT.
-q(X) = X.
 
+q(X) = X.

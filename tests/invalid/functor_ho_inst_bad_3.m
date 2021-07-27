@@ -41,4 +41,3 @@ main(!IO) :-
 :- pred get(pred(job_result, io, io)::out) is det.
 
 get(j1).
-

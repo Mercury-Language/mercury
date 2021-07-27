@@ -23,6 +23,9 @@
 :- finalise i4.
 :- finalise i5/6.
 
+main(!IO) :-
+    io.print("This is main/2.\n", !IO).
+
 :- pred i1(T::di, T::uo) is det.
 i1(X, X).
 
@@ -30,12 +33,9 @@ i1(X, X).
 i2(!IO).
 
 :- pred i4(io::di, io::uo) is det.
-:- pred i5(io::di, io::uo) is det.
-
 i4(!IO).
-i5(!IO).
 
-main(!IO) :-
-    io.print("This is main/2.\n", !IO).
+:- pred i5(io::di, io::uo) is det.
+i5(!IO).
 
 %---------------------------------------------------------------------------%

@@ -37,10 +37,10 @@ errors.m:077: In clause for predicate `pred_with_unresolved_polymorphism'/0:
 errors.m:077:   warning: variable `Arg' occurs only once in this scope.
 errors.m:092: In clause for predicate `pred_with_singleton_vars'/1:
 errors.m:092:   warning: variable `X' occurs only once in this scope.
-errors.m:097: Warning: this `:- use_module' declaration for module `int' in the
-errors.m:097:   implementation section is redundant, given the
-errors.m:097:   `:- import_module' declaration for the same module in the same
-errors.m:097:   section.
+errors.m:098: Warning: this `:- use_module' declaration for module `int' in the
+errors.m:098:   implementation section is redundant, given the
+errors.m:098:   `:- import_module' declaration for the same module in the same
+errors.m:098:   section.
 errors.m:096:   The previous declaration is here.
 errors.m:101: In definition of type `needs_qualification'/0:
 errors.m:101:   error: undefined type `state'/0.

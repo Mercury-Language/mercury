@@ -16,7 +16,8 @@
     %
 p(!X) :-
     !:X = !.X +
-        ( if max(0, !.X, !:X)
-          then 1
-          else 2
+        ( if max(0, !.X, !:X) then
+            1
+        else
+            2
         ).

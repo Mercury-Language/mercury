@@ -17,10 +17,10 @@ bigtest.m:009: Error: clause for predicate `fact'/0
 bigtest.m:009:   without corresponding `:- pred' declaration.
 bigtest.m:009: Inferred :- pred fact.
 bigtest.m:010: Syntax error at token ':-': operator precedence error.
-bigtest.m:012: Error: `incorrect_declaration' is not a valid declaration type.
-bigtest.m:014: Error: no mode declaration for predicate `p'/1.
-bigtest.m:014:   (Use `--infer-modes' to enable mode inference.)
-bigtest.m:020: Error: the type name `=' is reserved for the Mercury
-bigtest.m:020:   implementation.
-bigtest.m:020: On the left hand side of type definition: error: type parameters
-bigtest.m:020:   must be variables, but `t3' and `(t1 + t2)' are not.
+bigtest.m:013: Error: `incorrect_declaration' is not a valid declaration type.
+bigtest.m:015: Error: no mode declaration for predicate `p'/1.
+bigtest.m:015:   (Use `--infer-modes' to enable mode inference.)
+bigtest.m:030: Error: the type name `=' is reserved for the Mercury
+bigtest.m:030:   implementation.
+bigtest.m:030: On the left hand side of type definition: error: type parameters
+bigtest.m:030:   must be variables, but `t3' and `(t1 + t2)' are not.

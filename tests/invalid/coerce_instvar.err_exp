@@ -1,8 +1,8 @@
-coerce_instvar.m:043: In clause for `bad(in((I =< ground)), out((I =<
-coerce_instvar.m:043:   ground)))':
-coerce_instvar.m:043:   in coerce expression:
-coerce_instvar.m:043:   mode error: cannot convert the argument term from type
-coerce_instvar.m:043:   `coerce_instvar.fruit' to `coerce_instvar.citrus'
-coerce_instvar.m:043:   because it has instantiatedness `ground', and
-coerce_instvar.m:043:   `coerce_instvar.fruit' is not a subtype of
-coerce_instvar.m:043:   `coerce_instvar.citrus'.
+coerce_instvar.m:041: In clause for `bad(in((I =< ground)), out((I =<
+coerce_instvar.m:041:   ground)))':
+coerce_instvar.m:041:   in coerce expression:
+coerce_instvar.m:041:   mode error: cannot convert the argument term from type
+coerce_instvar.m:041:   `coerce_instvar.fruit' to `coerce_instvar.citrus'
+coerce_instvar.m:041:   because it has instantiatedness `ground', and
+coerce_instvar.m:041:   `coerce_instvar.fruit' is not a subtype of
+coerce_instvar.m:041:   `coerce_instvar.citrus'.

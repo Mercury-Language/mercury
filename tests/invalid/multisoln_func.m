@@ -6,7 +6,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -14,7 +14,7 @@
 :- import_module list.
 :- import_module solutions.
 
-main --> [].
+main(!IO).
 
 :- func f(int) = list(int).
 :- mode f(in) = out is cc_multi.    % illegal

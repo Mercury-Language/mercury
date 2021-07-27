@@ -21,7 +21,9 @@
 
 :- import_module int.
 
-:- type hiddentype ---> (f(int) ; g(int)).
+:- type hiddentype
+    --->    f(int)
+    ;       g(int).
 
 :- type hiddenrenamedtype = hiddentype.
 

@@ -22,5 +22,8 @@
 
 :- implementation.
 
-t(_) :- semidet_succeed.
-u(_) :- semidet_succeed.
+t(_) :-
+    semidet_succeed.
+
+u(_) :-
+    semidet_succeed.

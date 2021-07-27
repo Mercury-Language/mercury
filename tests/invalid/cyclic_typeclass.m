@@ -19,7 +19,7 @@
 
 :- interface.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- import_module io.
 
@@ -41,6 +41,6 @@
     bar(X) = X
 ].
 
-main -->
-    print(foo(42)), nl,
-    print(bar(43)), nl.
+main(!IO) :-
+    io.print_line(foo(42), !IO),
+    io.print_line(bar(43), !IO).

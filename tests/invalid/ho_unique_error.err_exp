@@ -4,8 +4,8 @@ ho_unique_error.m:011:   state arguments.
 ho_unique_error.m:016: In clause for `call_ho(di, uo)':
 ho_unique_error.m:016:   in argument 3 (i.e. argument 2 of the called
 ho_unique_error.m:016:   predicate) of higher-order predicate call:
-ho_unique_error.m:016:   mode error: variable `DCG_0' has instantiatedness
-ho_unique_error.m:016:   `mostly_unique',
+ho_unique_error.m:016:   mode error: variable `STATE_VARIABLE_IO_0' has
+ho_unique_error.m:016:   instantiatedness `mostly_unique',
 ho_unique_error.m:016:   expected instantiatedness was `unique'.
 ho_unique_error.m:016:   This kind of uniqueness mismatch is usually caused by
 ho_unique_error.m:016:   doing input/output or some other kind of destructive

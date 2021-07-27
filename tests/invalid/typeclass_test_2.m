@@ -5,16 +5,15 @@
 :- module typeclass_test_2.
 :- interface.
 :- import_module io.
-:- pred main(io__state::di, io__state::uo) is det.
+
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-main -->
-    io__write_int(
-        type_num(42)        % type error here
-                            % (due to the syntax error below)
-    ),
-    nl.
+main(!IO) :-
+    % Type error here, due to the syntax error below.
+    io.write_int(type_num(42), !IO),
+    io.nl(!IO).
 
 :- typeclass numbered_type(T) where [
     func type_num(T) = int

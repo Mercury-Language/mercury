@@ -13,17 +13,17 @@
 :- import_module string.
 
 main(!IO) :-
-    write_string("test(1): ", !IO),
-    ( test(1) ->
-        write_string("yes\n", !IO)
-    ;
-        write_string("no\n", !IO)
+    io.write_string("test(1): ", !IO),
+    ( if test(1) then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ),
-    write_string("test(2): ", !IO),
-    ( test(2) ->
-        write_string("yes\n", !IO)
-    ;
-        write_string("no\n", !IO)
+    io.write_string("test(2): ", !IO),
+    ( if test(2) then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ).
 
 :- typeclass a(A, B, C, D) <= ((A -> B), (C -> D)) where [

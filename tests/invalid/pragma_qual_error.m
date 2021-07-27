@@ -44,8 +44,8 @@
 %
 
 :- pragma foreign_proc("C",
-     foo(A::not_a_mode, B::out),
-     [promise_pure, will_not_call_mercury],
+    foo(A::not_a_mode, B::out),
+    [promise_pure, will_not_call_mercury],
 "
     B = A;
 ").

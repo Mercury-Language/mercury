@@ -11,16 +11,16 @@
 :- implementation.
 :- import_module list.
 
-main(!S) :-
-    ( test(intcoll([0]), 1) ->
-        write_string("yes\n", !S)
-    ;
-        write_string("no\n", !S)
+main(!IO) :-
+    ( if test(intcoll([0]), 1) then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ),
-    ( e = intcoll([1]) ->
-        write_string("yes\n", !S)
-    ;
-        write_string("no\n", !S)
+    ( if e = intcoll([1]) then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ).
 
 :- typeclass foo(T) where [].
@@ -32,7 +32,8 @@ main(!S) :-
     pred m(E::in, C::in) is semidet
 ].
 
-:- type intcoll ---> intcoll(list(int)).
+:- type intcoll
+    --->    intcoll(list(int)).
 
 :- instance coll(intcoll, int) where [
     (e = intcoll([])),
@@ -41,8 +42,7 @@ main(!S) :-
     m(N, intcoll([_ | Ns])) :- m(N, intcoll(Ns))
 ].
 
-:- pred test(C, E) <= coll(C, E).
-:- mode test(in, in) is semidet.
+:- pred test(C::in, E::in) is semidet <= coll(C, E).
 
 test(C, E) :-
     m(E, i(C, E)).

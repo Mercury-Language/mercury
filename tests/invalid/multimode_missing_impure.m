@@ -6,7 +6,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -25,7 +25,7 @@ main -->
 test0 :-
     puts("test0").
 
-% This should be declared impure, or promise pure
+% This should be declared impure, or promised pure.
 :- pred test1(int).
 :- mode test1(in) is det.
 :- mode test1(out) is det.
@@ -34,7 +34,7 @@ test1(_::in) :-
 test1(0::out) :-
     puts("test1(out)").
 
-% This should be declared impure, or promise pure
+% This should be declared impure, or promised pure.
 :- pred test2(int, int).
 :- mode test2(in, in) is det.
 :- mode test2(in, out) is det.

@@ -6,7 +6,7 @@
 :- interface.
 :- import_module io.
 
-:- pred my_main(io__state::di, io__state::uo) is multi.
+:- pred my_main(io::di, io::uo) is multi.
 
 :- implementation.
 
@@ -18,6 +18,6 @@ p(2).
 % This should be a unique mode error, since the io-state is only mostly_unique,
 % because p/1 has multiple solutions and we didn't declare main as cc_multi.
 
-my_main -->
-    { p(X) },
-    io__write_int(X).
+my_main(!IO) :-
+    p(X),
+    io.write_int(X, !IO).

@@ -11,11 +11,11 @@
 :- implementation.
 :- import_module list.
 
-main(!S) :-
-    ( test(intcoll([0]), 1) ->
-        write_string("yes\n", !S)
-    ;
-        write_string("no\n", !S)
+main(!IO) :-
+    ( if test(intcoll([0]), 1) then
+        io.write_string("yes\n", !IO)
+    else
+        io.write_string("no\n", !IO)
     ).
 
 :- typeclass coll(C, E) where [

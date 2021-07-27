@@ -33,8 +33,8 @@ main -->
 
 :- pragma foreign_export("C", bar(out, di, uo), "bar").
 :- pred bar(my_foreign_type::out, io::di, io::uo) is det.
-bar(X) -->
-    foo(X).
+bar(X, !IO) :-
+    foo(X, !IO).
 
 :- pred foo(my_foreign_type::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",

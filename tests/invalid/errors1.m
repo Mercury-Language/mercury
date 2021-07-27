@@ -48,9 +48,14 @@ pred_which_calls_non_existant_pred :-
 
 %---------------------------------------------------------------------------%
 
-:- type type_with_multiply_defined_ctors  ---> a; a; f(int); f(int).
+:- type type_with_multiply_defined_ctors
+    --->    a
+    ;       a
+    ;       f(int)
+    ;       f(int).
 
-:- type du_type_which_references_undefined_type ---> f(undefined_type).
+:- type du_type_which_references_undefined_type
+    --->    f(undefined_type).
 
 :- type eqv_type_which_references_undefined_type == undefined_type.
 
@@ -86,6 +91,7 @@ pred_with_type_error :-
     pred_expecting_int(X).
 
 :- pred pred_with_singleton_vars(T).
+
 pred_with_singleton_vars(X).
 
 %---------------------------------------------------------------------------%

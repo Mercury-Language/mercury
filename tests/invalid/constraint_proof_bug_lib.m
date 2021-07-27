@@ -32,7 +32,10 @@
 :- type date
     --->    d(int).
 
-get_date_date(Y, M, D, _Date) :- Y=1999, M=6, D=25.
+get_date_date(Y, M, D, _Date) :-
+    Y = 1999,
+    M = 6,
+    D = 25.
 
 :- instance constrainable(date) where [
     pred(apply_op/3) is apply_op_dates
@@ -61,5 +64,7 @@ where [
 :- pred apply_op_fields(field(T, T2)::in, dep_op::in, field(T, T2)::in)
     is semidet <= (constrainable(T), constrainable(T2)).
 
-apply_op_fields(d(D1), Op, d(D2)) :- apply_op(D1, Op, D2).
-apply_op_fields(c(D1), Op, c(D2)) :- apply_op(D1, Op, D2).
+apply_op_fields(d(D1), Op, d(D2)) :-
+    apply_op(D1, Op, D2).
+apply_op_fields(c(D1), Op, c(D2)) :-
+    apply_op(D1, Op, D2).

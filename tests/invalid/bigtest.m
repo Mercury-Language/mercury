@@ -7,14 +7,24 @@
 :- export_type((list/1, bag)).
 
 fact.
-rule :- fact.
+rule :-
+    fact.
 
 :- incorrect_declaration.
 
 :- pred p(t1).
+
 p(a).
 p(X) :- X = b.
 
-:- type t1 ---> a ; b ; c.
-:- type t2 ---> c ; d ; e.
+:- type t1
+    --->    a
+    ;       b
+    ;       c.
+
+:- type t2
+    --->    c
+    ;       d
+    ;       e.
+
 :- type t3 = t1 + t2.

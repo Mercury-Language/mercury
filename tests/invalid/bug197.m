@@ -23,14 +23,15 @@
 :- pred foo(string::in, list(T)::in, ss::mdi, ss::muo) is semidet.
 
 foo(Ls, !SS) :-
-    list.foldl((pred(Name::in, L::in, !.A::in, !:A::out) is semidet :-
-        (
-            Name = "foo"
-        ;
-            Name = "bar",
-            bar(L, !SS)
-        )
-    ), Ls, 10, _).
+    list.foldl(
+        ( pred(Name::in, L::in, !.A::in, !:A::out) is semidet :-
+            (
+                Name = "foo"
+            ;
+                Name = "bar",
+                bar(L, !SS)
+            )
+        ), Ls, 10, _).
 
 :- pred bar(T::in, ss::mdi, ss::muo) is semidet.
 

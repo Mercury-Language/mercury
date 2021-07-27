@@ -15,7 +15,7 @@
 :- import_module(bool).
 
 % I would like to write:
-null(X) = (X=[]).
+null(X) = (X = []).
 % but there is no (=)/2 function in Mercury.  This works:
 %   null(X) = (X=[] -> yes ; no).
 
@@ -28,7 +28,7 @@ cdr([]) = [].
 cons(X, Y) = [X | Y].
 
 % I would like to write:
-ap(X, Y) = (null(X) -> Y ; cons(car(X), ap(cdr(X), Y))).
+ap(X, Y) = (if null(X) then Y else cons(car(X), ap(cdr(X), Y))).
 % but one can't use a function in the condition of a functional
 % if->then;else.  This works:
 % ap(X, Y) = (null(X)=yes -> Y ; cons(car(X), ap(cdr(X), Y))).

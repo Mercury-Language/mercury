@@ -2,42 +2,42 @@ coerce_mode_error.m:035: In clause for `bad_coerce_free_input(in(free), out)':
 coerce_mode_error.m:035:   in coerce expression:
 coerce_mode_error.m:035:   mode error: the argument term has instantiatedness
 coerce_mode_error.m:035:   `free', but it must have a ground inst.
-coerce_mode_error.m:046: In clause for `bad_fruit_to_citrus(in, out)':
-coerce_mode_error.m:046:   in coerce expression:
-coerce_mode_error.m:046:   mode error: cannot convert the argument term from
-coerce_mode_error.m:046:   type `coerce_mode_error.fruit' to
-coerce_mode_error.m:046:   `coerce_mode_error.citrus' because it has
-coerce_mode_error.m:046:   instantiatedness `ground', and
-coerce_mode_error.m:046:   `coerce_mode_error.fruit' is not a subtype of
-coerce_mode_error.m:046:   `coerce_mode_error.citrus'.
-coerce_mode_error.m:052: In clause for `bad_nelist_f_to_list_c(in, out)':
-coerce_mode_error.m:052:   in coerce expression:
-coerce_mode_error.m:052:   mode error: cannot convert the argument term from
-coerce_mode_error.m:052:   type
-coerce_mode_error.m:052:   `coerce_mode_error.non_empty_list(coerce_mode_error.fruit)'
-coerce_mode_error.m:052:   to
-coerce_mode_error.m:052:   `coerce_mode_error.list(coerce_mode_error.citrus)'
-coerce_mode_error.m:052:   because it has instantiatedness `ground', and
-coerce_mode_error.m:052:   `coerce_mode_error.non_empty_list(coerce_mode_error.fruit)'
-coerce_mode_error.m:052:   is not a subtype of
-coerce_mode_error.m:052:   `coerce_mode_error.list(coerce_mode_error.citrus)'.
-coerce_mode_error.m:064: In clause for `bad_from_list_to_least2(in, out)':
-coerce_mode_error.m:064:   in coerce expression:
-coerce_mode_error.m:064:   mode error: in the argument term:
-coerce_mode_error.m:064:   in the second argument of function symbol `'[|]'':
-coerce_mode_error.m:064:   cannot convert the subterm from type
-coerce_mode_error.m:064:   `coerce_mode_error.list(V_1)' to
-coerce_mode_error.m:064:   `coerce_mode_error.non_empty_list(V_1)' because it
-coerce_mode_error.m:064:   has instantiatedness `ground', and
-coerce_mode_error.m:064:   `coerce_mode_error.list(V_1)' is not a subtype of
-coerce_mode_error.m:064:   `coerce_mode_error.non_empty_list(V_1)'.
-coerce_mode_error.m:073: In clause for `from_list_to_least2(in, out)':
-coerce_mode_error.m:073:   in coerce expression:
-coerce_mode_error.m:073:   mode error: in the argument term:
-coerce_mode_error.m:073:   in the second argument of function symbol `'[|]'':
-coerce_mode_error.m:073:   cannot convert the subterm from type
-coerce_mode_error.m:073:   `coerce_mode_error.list(V_1)' to
-coerce_mode_error.m:073:   `coerce_mode_error.non_empty_list(V_1)' because it
-coerce_mode_error.m:073:   has instantiatedness `ground', and
-coerce_mode_error.m:073:   `coerce_mode_error.list(V_1)' is not a subtype of
-coerce_mode_error.m:073:   `coerce_mode_error.non_empty_list(V_1)'.
+coerce_mode_error.m:045: In clause for `bad_fruit_to_citrus(in, out)':
+coerce_mode_error.m:045:   in coerce expression:
+coerce_mode_error.m:045:   mode error: cannot convert the argument term from
+coerce_mode_error.m:045:   type `coerce_mode_error.fruit' to
+coerce_mode_error.m:045:   `coerce_mode_error.citrus' because it has
+coerce_mode_error.m:045:   instantiatedness `ground', and
+coerce_mode_error.m:045:   `coerce_mode_error.fruit' is not a subtype of
+coerce_mode_error.m:045:   `coerce_mode_error.citrus'.
+coerce_mode_error.m:051: In clause for `bad_nelist_f_to_list_c(in, out)':
+coerce_mode_error.m:051:   in coerce expression:
+coerce_mode_error.m:051:   mode error: cannot convert the argument term from
+coerce_mode_error.m:051:   type
+coerce_mode_error.m:051:   `coerce_mode_error.non_empty_list(coerce_mode_error.fruit)'
+coerce_mode_error.m:051:   to
+coerce_mode_error.m:051:   `coerce_mode_error.list(coerce_mode_error.citrus)'
+coerce_mode_error.m:051:   because it has instantiatedness `ground', and
+coerce_mode_error.m:051:   `coerce_mode_error.non_empty_list(coerce_mode_error.fruit)'
+coerce_mode_error.m:051:   is not a subtype of
+coerce_mode_error.m:051:   `coerce_mode_error.list(coerce_mode_error.citrus)'.
+coerce_mode_error.m:063: In clause for `bad_from_list_to_least2(in, out)':
+coerce_mode_error.m:063:   in coerce expression:
+coerce_mode_error.m:063:   mode error: in the argument term:
+coerce_mode_error.m:063:   in the second argument of function symbol `'[|]'':
+coerce_mode_error.m:063:   cannot convert the subterm from type
+coerce_mode_error.m:063:   `coerce_mode_error.list(V_1)' to
+coerce_mode_error.m:063:   `coerce_mode_error.non_empty_list(V_1)' because it
+coerce_mode_error.m:063:   has instantiatedness `ground', and
+coerce_mode_error.m:063:   `coerce_mode_error.list(V_1)' is not a subtype of
+coerce_mode_error.m:063:   `coerce_mode_error.non_empty_list(V_1)'.
+coerce_mode_error.m:072: In clause for `from_list_to_least2(in, out)':
+coerce_mode_error.m:072:   in coerce expression:
+coerce_mode_error.m:072:   mode error: in the argument term:
+coerce_mode_error.m:072:   in the second argument of function symbol `'[|]'':
+coerce_mode_error.m:072:   cannot convert the subterm from type
+coerce_mode_error.m:072:   `coerce_mode_error.list(V_1)' to
+coerce_mode_error.m:072:   `coerce_mode_error.non_empty_list(V_1)' because it
+coerce_mode_error.m:072:   has instantiatedness `ground', and
+coerce_mode_error.m:072:   `coerce_mode_error.list(V_1)' is not a subtype of
+coerce_mode_error.m:072:   `coerce_mode_error.non_empty_list(V_1)'.

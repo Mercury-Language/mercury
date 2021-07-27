@@ -12,13 +12,13 @@
 
 :- implementation.
 
-main -->
-    f(X),
-    io__write_int(X),
-    io__nl,
-    g(Y),
-    io__write_int(Y),
-    io__nl.
+main(!IO) :-
+    f(X, !IO),
+    io.write_int(X, !IO),
+    io.nl(!IO),
+    g(Y, !IO),
+    io.write_int(Y, !IO),
+    io.nl(!IO).
 
 :- pred f(int::out, io::di, io::uo) is det.
 
@@ -29,11 +29,11 @@ main -->
     X = 5;
 ").
 
-f(X) --> [].
+f(X, !IO).
 
 :- pred g(int::out, io::di, io::uo) is det.
 
-g(X) --> [].
+g(X, !IO).
 
 :- pragma foreign_proc("C",
     g(X::out, IO0::di, _IO::uo),

@@ -28,9 +28,6 @@ test_stream(S, !Buffer, !IO) :-
     stream.get(S, ResultA : stream.result(int, E), !Buffer),
     stream.get(S, ResultB : stream.result(float, E), !Buffer),
     stream.get(S, ResultC : stream.result(float, E), !Buffer),
-    io.write(ResultA, !IO),
-    io.nl(!IO),
-    io.write(ResultB, !IO),
-    io.nl(!IO),
-    io.write(ResultC, !IO),
-    io.nl(!IO).
+    io.write_line(ResultA, !IO),
+    io.write_line(ResultB, !IO),
+    io.write_line(ResultC, !IO).

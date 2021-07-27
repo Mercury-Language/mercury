@@ -38,4 +38,3 @@ jbad(_, !IO).
 main(!IO) :-
     Jobs = [job(jbad)],
     list.foldl(run, Jobs, !IO).
-

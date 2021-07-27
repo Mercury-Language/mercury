@@ -6,7 +6,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- typeclass fooable(T) where [
     pred foo(T::out) is det,
@@ -15,6 +15,6 @@
 
 :- implementation.
 
-main -->
-    { foo(X) },
-    { bar(X) }.
+main(!IO) :-
+    foo(X),
+    bar(X).

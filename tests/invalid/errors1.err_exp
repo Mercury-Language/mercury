@@ -13,23 +13,23 @@ errors1.m:034:   without corresponding `:- pred' declaration.
 errors1.m:040: Error: clause for predicate
 errors1.m:040:   `clause_without_pred_or_mode_declaration'/0
 errors1.m:040:   without corresponding `:- pred' declaration.
-errors1.m:051: Error: constructor `errors1.a/0' for type
-errors1.m:051:   `errors1.type_with_multiply_defined_ctors/0' multiply defined.
-errors1.m:051: Error: constructor `errors1.f/1' for type
-errors1.m:051:   `errors1.type_with_multiply_defined_ctors/0' multiply defined.
-errors1.m:053: In the first argument of function symbol `f' of the type
-errors1.m:053:   `du_type_which_references_undefined_type'/0:
-errors1.m:053:   error: undefined type `undefined_type'/0.
-errors1.m:055: In definition of type
-errors1.m:055:   `eqv_type_which_references_undefined_type'/0:
-errors1.m:055:   error: undefined type `undefined_type'/0.
-errors1.m:057: Error: circular equivalence type `errors1.circular_eqv_type'/0.
-errors1.m:059: Error: circular equivalence type
-errors1.m:059:   `errors1.indirectly_circular_eqv_type_1'/0.
-errors1.m:060: Error: circular equivalence type
-errors1.m:060:   `errors1.indirectly_circular_eqv_type_2'/0.
-errors1.m:074: In clause for predicate `pred_with_unresolved_polymorphism'/0:
-errors1.m:074:   warning: variable `Arg' occurs only once in this scope.
-errors1.m:089: In clause for predicate `pred_with_singleton_vars'/1:
-errors1.m:089:   warning: variable `X' occurs only once in this scope.
+errors1.m:053: Error: constructor `errors1.a/0' for type
+errors1.m:053:   `errors1.type_with_multiply_defined_ctors/0' multiply defined.
+errors1.m:055: Error: constructor `errors1.f/1' for type
+errors1.m:055:   `errors1.type_with_multiply_defined_ctors/0' multiply defined.
+errors1.m:058: In the first argument of function symbol `f' of the type
+errors1.m:058:   `du_type_which_references_undefined_type'/0:
+errors1.m:058:   error: undefined type `undefined_type'/0.
+errors1.m:060: In definition of type
+errors1.m:060:   `eqv_type_which_references_undefined_type'/0:
+errors1.m:060:   error: undefined type `undefined_type'/0.
+errors1.m:062: Error: circular equivalence type `errors1.circular_eqv_type'/0.
+errors1.m:064: Error: circular equivalence type
+errors1.m:064:   `errors1.indirectly_circular_eqv_type_1'/0.
+errors1.m:065: Error: circular equivalence type
+errors1.m:065:   `errors1.indirectly_circular_eqv_type_2'/0.
+errors1.m:079: In clause for predicate `pred_with_unresolved_polymorphism'/0:
+errors1.m:079:   warning: variable `Arg' occurs only once in this scope.
+errors1.m:095: In clause for predicate `pred_with_singleton_vars'/1:
+errors1.m:095:   warning: variable `X' occurs only once in this scope.
 For more information, recompile with `-E'.

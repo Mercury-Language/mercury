@@ -6,6 +6,7 @@
 % generate confusing error messages for invalid declarations such as those
 % below if we didn't detect them, and handle them specially.
 %
+
 :- module var_as_class_name.
 :- interface.
 

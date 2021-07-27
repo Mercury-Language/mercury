@@ -16,4 +16,4 @@
 :- instance foo(int, int) where [ (f(N) = N) ].
 
 test(X, !IO) :-
-    write_int(f(X), !IO).
+    io.write_int(f(X), !IO).

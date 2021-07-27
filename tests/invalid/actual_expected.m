@@ -72,27 +72,27 @@ find_compulsory_lvals([], MaybeLiveMap, MaybeFallThrough,
     ).
 find_compulsory_lvals([Instr | Instrs], MaybeLiveMap, MaybeFallThrough,
         PrevLivevals, !:MaybeCompulsoryLvals) :-
-    (
+    ( if
         Instr = livevals(LiveLvals)
-    ->
+    then
         find_compulsory_lvals(Instrs, MaybeLiveMap, MaybeFallThrough,
             yes, !:MaybeCompulsoryLvals),
         union_maybe_compulsory_lvals(LiveLvals, !MaybeCompulsoryLvals)
-    ;
+    else if
         Instr = llcall(_, _)
-    ->
+    then
         require(unify(PrevLivevals, yes),
             "find_compulsory_lvals: call without livevals"),
         % The livevals instruction will include all the live lvals
         % in MaybeCompulsoryLvals after we return.
         !:MaybeCompulsoryLvals = known(set.init)
-    ;
+    else if
         Instr = goto(_Target)
-    ->
+    then
         % The livevals instruction will include all the live lvals
         % in MaybeCompulsoryLvals after we return.
         !:MaybeCompulsoryLvals = known(set.init)
-    ;
+    else
         possible_targets(Instr, Labels, NonLabelCodeAddrs),
         (
             NonLabelCodeAddrs = [],
