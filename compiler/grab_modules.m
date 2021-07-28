@@ -318,6 +318,8 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         module_and_imports_add_specs(!.Specs, !ModuleAndImports)
     ).
 
+%---------------------------------------------------------------------------%
+
 grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         SourceFileModuleName, ParseTreeModuleSrc0, !:ModuleAndImports,
         !HaveReadModuleMaps, !IO) :-
@@ -431,6 +433,137 @@ dump_modules(Stream, ModuleNames, !IO) :-
     ModuleNameStrs =
         set.to_sorted_list(set.map(sym_name_to_string, ModuleNames)),
     list.foldl(io.write_line(Stream), ModuleNameStrs, !IO).
+
+%---------------------------------------------------------------------------%
+
+grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
+        !ModuleAndImports, !HaveReadModuleMaps, !IO) :-
+    % Read in the .opt files for imported and ancestor modules.
+    module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
+    Ancestors0 = get_ancestors_set(ModuleName),
+    module_and_imports_get_int_deps_set(!.ModuleAndImports, IntDeps0),
+    module_and_imports_get_imp_deps_set(!.ModuleAndImports, ImpDeps0),
+    OptModules = set.union_list([Ancestors0, IntDeps0, ImpDeps0]),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    globals.lookup_bool_option(Globals, read_opt_files_transitively,
+        ReadOptFilesTransitively),
+    % Do not add to the queue either the modules in the initial queue,
+    % or the module being compiled.
+    set.insert(ModuleName, OptModules, DontQueueOptModules),
+    read_plain_opt_files(Globals, VeryVerbose, ReadOptFilesTransitively,
+        set.to_sorted_list(OptModules), DontQueueOptModules,
+        cord.empty, ParseTreePlainOptsCord0, set.init, ExplicitDeps,
+        cord.empty, ImplicitNeedsCord, [], OptSpecs0, no, OptError0, !IO),
+    ParseTreePlainOpts0 = cord.list(ParseTreePlainOptsCord0),
+
+    % Get the :- pragma unused_args(...) declarations created when writing
+    % the .opt file for the current module. These are needed because we can
+    % probably remove more arguments with intermod_unused_args, but the
+    % interface for other modules must remain the same.
+    %
+    % Similarly for the  :- pragma structure_reuse(...) declarations. With more
+    % information available when making the target code than when writing the
+    % `.opt' file, it can turn out that a procedure which seemed to have
+    % condition reuse actually has none. But we have to maintain the interface
+    % for modules that use the conditional reuse information from the `.opt'
+    % file.
+    globals.get_opt_tuple(Globals, OptTuple),
+    UnusedArgs = OptTuple ^ ot_opt_unused_args_intermod,
+    globals.lookup_bool_option(Globals, structure_reuse_analysis,
+        StructureReuse),
+    ( if (UnusedArgs = opt_unused_args_intermod ; StructureReuse = yes) then
+        read_plain_opt_file(Globals, VeryVerbose, ModuleName, OwnFileName,
+            OwnParseTreePlainOpt0, OwnSpecs, OwnError, !IO),
+        % XXX We should store the whole parse_tree, with a note next to it
+        % saying "keep only these two kinds of pragmas".
+        keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
+            UnusedArgs, StructureReuse,
+            OwnParseTreePlainOpt0, OwnParseTreePlainOpt),
+        ParseTreePlainOpts = [OwnParseTreePlainOpt | ParseTreePlainOpts0],
+        OptSpecs1 = OwnSpecs ++ OptSpecs0,
+        update_opt_error_status(Globals, warn_missing_opt_files, OwnFileName,
+            OwnSpecs, OwnError, OptSpecs1, OptSpecs2, OptError0, OptError),
+        pre_hlds_maybe_write_out_errors(VeryVerbose, Globals,
+            OptSpecs2, OptSpecs, !IO)
+    else
+        ParseTreePlainOpts = ParseTreePlainOpts0,
+        OptSpecs = OptSpecs0,
+        OptError = OptError0
+    ),
+
+    list.foldl(module_and_imports_add_plain_opt, ParseTreePlainOpts,
+        !ModuleAndImports),
+    module_and_imports_add_specs(OptSpecs, !ModuleAndImports),
+
+    % Read .int0 files required by the `.opt' files, except the ones
+    % we have already read as ancestors of ModuleName,
+    % XXX This code reads in the .int0 files of the ancestors of *OptModules*,
+    % but due to read_opt_files_transitively, ParseTreePlainOpts may contain
+    % more the .opt files of modules that are *not* in OptModules.
+    % This looks like a bug.
+    OptModuleAncestors =
+        set.power_union(set.map(get_ancestors_set, OptModules)),
+    OldModuleAncestors = get_ancestors_set(ModuleName),
+    set.insert(ModuleName, OldModuleAncestors, OldModuleAndAncestors),
+    OptOnlyModuleAncestors =
+        set.difference(OptModuleAncestors, OldModuleAndAncestors),
+
+    grab_module_int0_files(Globals,
+        "opt_int0s", rwi0_opt,
+        set.to_sorted_list(OptOnlyModuleAncestors),
+        set.init, OptAncestorImports, set.init, OptAncestorUses,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO),
+
+    % Figure out which .int files are implicitly needed by the .opt files.
+    combine_implicit_needs(cord.list(ImplicitNeedsCord), AllImplicitNeeds),
+    compute_implicit_avail_needs(Globals, AllImplicitNeeds, ImplicitDeps),
+    NewDeps = set.union_list([ExplicitDeps, ImplicitDeps,
+        OptAncestorImports, OptAncestorUses]),
+
+    % Read in the .int, and .int2 files needed by the .opt files.
+    grab_module_int1_files(Globals,
+        "opt_new_deps", rwi1_opt,
+        set.to_sorted_list(NewDeps),
+        set.init, NewIndirectDeps, set.init, NewImplIndirectDeps,
+        !HaveReadModuleMaps, !ModuleAndImports, !IO),
+    grab_module_int2_files_and_impls_transitively(Globals,
+        "opt_new_indirect_deps", rwi2_opt,
+        set.union(NewIndirectDeps, NewImplIndirectDeps),
+        !HaveReadModuleMaps, !ModuleAndImports, !IO),
+
+    % Figure out whether anything went wrong.
+    % XXX We should try to put all the relevant error indications into
+    % !ModuleAndImports, and let our caller figure out what to do with them.
+    module_and_imports_get_errors(!.ModuleAndImports, ModuleErrors),
+    ( if
+        ( set.is_non_empty(ModuleErrors)
+        ; OptError = yes
+        )
+    then
+        FoundError = yes
+    else
+        FoundError = no
+    ).
+
+%---------------------------------------------------------------------------%
+
+grab_trans_opt_files(Globals, TransOptModuleNames, FoundError,
+        !ModuleAndImports, !HaveReadModuleMaps, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    maybe_write_string(Verbose, "% Reading .trans_opt files..\n", !IO),
+    maybe_flush_output(Verbose, !IO),
+
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    read_trans_opt_files(Globals, VeryVerbose, TransOptModuleNames,
+        cord.init, ParseTreeTransOptsCord,
+        [], TransOptSpecs, no, FoundError, !IO),
+    list.foldl(module_and_imports_add_trans_opt,
+        cord.list(ParseTreeTransOptsCord), !ModuleAndImports),
+    module_and_imports_add_specs(TransOptSpecs, !ModuleAndImports),
+    % XXX why ignore any existing errors?
+    module_and_imports_set_errors(set.init, !ModuleAndImports),
+
+    maybe_write_string(Verbose, "% Done.\n", !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1161,8 +1294,6 @@ record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
     recomp_avails_acc(RevImpImportAvails, !SrcImpImportUseMap),
     recomp_avails_acc(RevImpUseAvails,    !SrcImpImportUseMap).
 
-%---------------------------------------------------------------------------%
-
 :- pred record_includes_imports_uses_in_ancestor_int_spec(set(module_name)::in,
     ancestor_int_spec::in,
     set(module_name)::in, set(module_name)::out,
@@ -1253,7 +1384,7 @@ record_includes_imports_uses_in_int_for_opt_spec(Ancestors,
             !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 :- pred record_includes_imports_uses_in_parse_tree_int0(set(module_name)::in,
     parse_tree_int0::in, read_why_int0::in,
@@ -1286,8 +1417,6 @@ record_includes_imports_uses_in_parse_tree_int0(Ancestors,
     else
         true
     ).
-
-%---------------------------------------------------------------------------%
 
 :- pred record_includes_imports_uses_in_parse_tree_int1(set(module_name)::in,
     parse_tree_int1::in, read_why_int1::in,
@@ -1328,8 +1457,6 @@ record_includes_imports_uses_in_parse_tree_int1(Ancestors,
     expect_not(set.contains(Ancestors, ModuleName), $pred,
         "processing the .int file of an ancestor").
 
-%---------------------------------------------------------------------------%
-
 :- pred record_includes_imports_uses_in_parse_tree_int2(set(module_name)::in,
     parse_tree_int2::in, read_why_int2::in,
     set(module_name)::in, set(module_name)::out,
@@ -1358,8 +1485,6 @@ record_includes_imports_uses_in_parse_tree_int2(Ancestors,
     expect_not(set.contains(Ancestors, ModuleName), $pred,
         "processing the .int2 file of an ancestor").
 
-%---------------------------------------------------------------------------%
-
 :- pred record_includes_imports_uses_in_parse_tree_int3(set(module_name)::in,
     parse_tree_int3::in, read_why_int3::in,
     set(module_name)::in, set(module_name)::out,
@@ -1381,8 +1506,6 @@ record_includes_imports_uses_in_parse_tree_int3(Ancestors,
     record_includes_acc(non_abstract_section, IntIncls, !InclMap),
     expect_not(set.contains(Ancestors, ModuleName), $pred,
         "processing the .int2 file of an ancestor").
-
-%---------------------------------------------------------------------------%
 
 :- pred record_includes_imports_uses_in_parse_tree_plain_opt(
     set(module_name)::in, parse_tree_plain_opt::in,
@@ -1777,115 +1900,6 @@ project_out_import_or_use(import_or_use_context(_, Context)) = Context.
 
 %---------------------------------------------------------------------------%
 
-grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
-        !ModuleAndImports, !HaveReadModuleMaps, !IO) :-
-    % Read in the .opt files for imported and ancestor modules.
-    module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
-    Ancestors0 = get_ancestors_set(ModuleName),
-    module_and_imports_get_int_deps_set(!.ModuleAndImports, IntDeps0),
-    module_and_imports_get_imp_deps_set(!.ModuleAndImports, ImpDeps0),
-    OptModules = set.union_list([Ancestors0, IntDeps0, ImpDeps0]),
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    globals.lookup_bool_option(Globals, read_opt_files_transitively,
-        ReadOptFilesTransitively),
-    % Do not add to the queue either the modules in the initial queue,
-    % or the module being compiled.
-    set.insert(ModuleName, OptModules, DontQueueOptModules),
-    read_plain_opt_files(Globals, VeryVerbose, ReadOptFilesTransitively,
-        set.to_sorted_list(OptModules), DontQueueOptModules,
-        cord.empty, ParseTreePlainOptsCord0, set.init, ExplicitDeps,
-        cord.empty, ImplicitNeedsCord, [], OptSpecs0, no, OptError0, !IO),
-    ParseTreePlainOpts0 = cord.list(ParseTreePlainOptsCord0),
-
-    % Get the :- pragma unused_args(...) declarations created when writing
-    % the .opt file for the current module. These are needed because we can
-    % probably remove more arguments with intermod_unused_args, but the
-    % interface for other modules must remain the same.
-    %
-    % Similarly for the  :- pragma structure_reuse(...) declarations. With more
-    % information available when making the target code than when writing the
-    % `.opt' file, it can turn out that a procedure which seemed to have
-    % condition reuse actually has none. But we have to maintain the interface
-    % for modules that use the conditional reuse information from the `.opt'
-    % file.
-    globals.get_opt_tuple(Globals, OptTuple),
-    UnusedArgs = OptTuple ^ ot_opt_unused_args_intermod,
-    globals.lookup_bool_option(Globals, structure_reuse_analysis,
-        StructureReuse),
-    ( if (UnusedArgs = opt_unused_args_intermod ; StructureReuse = yes) then
-        read_plain_opt_file(Globals, VeryVerbose, ModuleName, OwnFileName,
-            OwnParseTreePlainOpt0, OwnSpecs, OwnError, !IO),
-        % XXX We should store the whole parse_tree, with a note next to it
-        % saying "keep only these two kinds of pragmas".
-        keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
-            UnusedArgs, StructureReuse,
-            OwnParseTreePlainOpt0, OwnParseTreePlainOpt),
-        ParseTreePlainOpts = [OwnParseTreePlainOpt | ParseTreePlainOpts0],
-        OptSpecs1 = OwnSpecs ++ OptSpecs0,
-        update_opt_error_status(Globals, warn_missing_opt_files, OwnFileName,
-            OwnSpecs, OwnError, OptSpecs1, OptSpecs2, OptError0, OptError),
-        pre_hlds_maybe_write_out_errors(VeryVerbose, Globals,
-            OptSpecs2, OptSpecs, !IO)
-    else
-        ParseTreePlainOpts = ParseTreePlainOpts0,
-        OptSpecs = OptSpecs0,
-        OptError = OptError0
-    ),
-
-    list.foldl(module_and_imports_add_plain_opt, ParseTreePlainOpts,
-        !ModuleAndImports),
-    module_and_imports_add_specs(OptSpecs, !ModuleAndImports),
-
-    % Read .int0 files required by the `.opt' files, except the ones
-    % we have already read as ancestors of ModuleName,
-    % XXX This code reads in the .int0 files of the ancestors of *OptModules*,
-    % but due to read_opt_files_transitively, ParseTreePlainOpts may contain
-    % more the .opt files of modules that are *not* in OptModules.
-    % This looks like a bug.
-    OptModuleAncestors =
-        set.power_union(set.map(get_ancestors_set, OptModules)),
-    OldModuleAncestors = get_ancestors_set(ModuleName),
-    set.insert(ModuleName, OldModuleAncestors, OldModuleAndAncestors),
-    OptOnlyModuleAncestors =
-        set.difference(OptModuleAncestors, OldModuleAndAncestors),
-
-    grab_module_int0_files(Globals,
-        "opt_int0s", rwi0_opt,
-        set.to_sorted_list(OptOnlyModuleAncestors),
-        set.init, OptAncestorImports, set.init, OptAncestorUses,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO),
-
-    % Figure out which .int files are implicitly needed by the .opt files.
-    combine_implicit_needs(cord.list(ImplicitNeedsCord), AllImplicitNeeds),
-    compute_implicit_avail_needs(Globals, AllImplicitNeeds, ImplicitDeps),
-    NewDeps = set.union_list([ExplicitDeps, ImplicitDeps,
-        OptAncestorImports, OptAncestorUses]),
-
-    % Read in the .int, and .int2 files needed by the .opt files.
-    grab_module_int1_files(Globals,
-        "opt_new_deps", rwi1_opt,
-        set.to_sorted_list(NewDeps),
-        set.init, NewIndirectDeps, set.init, NewImplIndirectDeps,
-        !HaveReadModuleMaps, !ModuleAndImports, !IO),
-    grab_module_int2_files_and_impls_transitively(Globals,
-        "opt_new_indirect_deps", rwi2_opt,
-        set.union(NewIndirectDeps, NewImplIndirectDeps),
-        !HaveReadModuleMaps, !ModuleAndImports, !IO),
-
-    % Figure out whether anything went wrong.
-    % XXX We should try to put all the relevant error indications into
-    % !ModuleAndImports, and let our caller figure out what to do with them.
-    module_and_imports_get_errors(!.ModuleAndImports, ModuleErrors),
-    ( if
-        ( set.is_non_empty(ModuleErrors)
-        ; OptError = yes
-        )
-    then
-        FoundError = yes
-    else
-        FoundError = no
-    ).
-
 :- pred keep_only_unused_and_reuse_pragmas_in_parse_tree_plain_opt(
     maybe_opt_unused_args_intermod::in, bool::in,
     parse_tree_plain_opt::in, parse_tree_plain_opt::out) is det.
@@ -1988,24 +2002,6 @@ read_plain_opt_file(Globals, VeryVerbose, ModuleName, FileName,
     maybe_write_string(VeryVerbose, "% done.\n", !IO).
 
 %---------------------------------------------------------------------------%
-
-grab_trans_opt_files(Globals, TransOptModuleNames, FoundError,
-        !ModuleAndImports, !HaveReadModuleMaps, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Reading .trans_opt files..\n", !IO),
-    maybe_flush_output(Verbose, !IO),
-
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    read_trans_opt_files(Globals, VeryVerbose, TransOptModuleNames,
-        cord.init, ParseTreeTransOptsCord,
-        [], TransOptSpecs, no, FoundError, !IO),
-    list.foldl(module_and_imports_add_trans_opt,
-        cord.list(ParseTreeTransOptsCord), !ModuleAndImports),
-    module_and_imports_add_specs(TransOptSpecs, !ModuleAndImports),
-    % XXX why ignore any existing errors?
-    module_and_imports_set_errors(set.init, !ModuleAndImports),
-
-    maybe_write_string(Verbose, "% Done.\n", !IO).
 
 :- pred read_trans_opt_files(globals::in, bool::in, list(module_name)::in,
     cord(parse_tree_trans_opt)::in, cord(parse_tree_trans_opt)::out,
