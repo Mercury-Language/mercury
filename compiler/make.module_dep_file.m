@@ -33,7 +33,7 @@
     % command, so this predicate may need to read the source for the module.
     %
 :- pred get_module_dependencies(globals::in, module_name::in,
-    maybe(module_and_imports)::out, make_info::in, make_info::out,
+    maybe_module_dep_info::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
 :- pred write_module_dep_file(globals::in, module_and_imports::in,
@@ -97,13 +97,12 @@ version_number(module_dep_file_v2, 2).
 
 %-----------------------------------------------------------------------------%
 
-get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
-        !Info, !IO) :-
+get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo, !Info, !IO) :-
     RebuildModuleDeps = !.Info ^ rebuild_module_deps,
     (
         ModuleName = unqualified(_),
         maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-            MaybeModuleAndImports, !Info, !IO)
+            MaybeModuleDepInfo, !Info, !IO)
     ;
         ModuleName = qualified(_, _),
         % For submodules, we need to generate the dependencies for the
@@ -117,7 +116,7 @@ get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
             AncestorsAndSelf, Error0, !Info, !IO),
 
         ModuleDepMap = !.Info ^ module_dependencies,
-        map.lookup(ModuleDepMap, ModuleName, MaybeModuleAndImports)
+        map.lookup(ModuleDepMap, ModuleName, MaybeModuleDepInfo)
     ).
 
 :- pred maybe_get_modules_dependencies(globals::in, rebuild_module_deps::in,
@@ -131,11 +130,11 @@ maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
     (
         !.Error = no,
         maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-            MaybeModuleAndImports, !Info, !IO),
+            MaybeModuleDepInfo, !Info, !IO),
         (
-            MaybeModuleAndImports = yes(_)
+            MaybeModuleDepInfo = some_module_dep_info(_)
         ;
-            MaybeModuleAndImports = no,
+            MaybeModuleDepInfo = no_module_dep_info,
             !:Error = yes
         )
     ;
@@ -143,35 +142,33 @@ maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
         % If we found a problem when processing an ancestor, don't even try
         % to process the later modules.
         ModuleDepMap0 = !.Info ^ module_dependencies,
-        MaybeModuleAndImports = no,
         % XXX Could this be map.det_update or map.det_insert?
-        map.set(ModuleName, MaybeModuleAndImports,
-            ModuleDepMap0, ModuleDepMap),
+        map.set(ModuleName, no_module_dep_info, ModuleDepMap0, ModuleDepMap),
         !Info ^ module_dependencies := ModuleDepMap
     ),
     maybe_get_modules_dependencies(Globals, RebuildModuleDeps,
         ModuleNames, !.Error, !Info, !IO).
 
 :- pred maybe_get_module_dependencies(globals::in, rebuild_module_deps::in,
-    module_name::in, maybe(module_and_imports)::out,
+    module_name::in, maybe_module_dep_info::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-        MaybeModuleAndImports, !Info, !IO) :-
+        MaybeModuleDepInfo, !Info, !IO) :-
     ModuleDepMap0 = !.Info ^ module_dependencies,
-    ( if map.search(ModuleDepMap0, ModuleName, MaybeModuleAndImports0) then
-        MaybeModuleAndImports = MaybeModuleAndImports0
+    ( if map.search(ModuleDepMap0, ModuleName, MaybeModuleDepInfo0) then
+        MaybeModuleDepInfo = MaybeModuleDepInfo0
     else
         do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-            MaybeModuleAndImports, !Info, !IO)
+            MaybeModuleDepInfo, !Info, !IO)
     ).
 
 :- pred do_get_module_dependencies(globals::in, rebuild_module_deps::in,
-    module_name::in, maybe(module_and_imports)::out,
+    module_name::in, maybe_module_dep_info::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
-        !:MaybeModuleAndImports, !Info, !IO) :-
+        !:MaybeModuleDepInfo, !Info, !IO) :-
     % We can't just use
     %   `get_target_timestamp(ModuleName - source, ..)'
     % because that could recursively call get_module_dependencies,
@@ -222,14 +219,13 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         % then check whether the module dependency file is up to date.
 
         map.lookup(!.Info ^ module_dependencies, ModuleName,
-            !:MaybeModuleAndImports),
+            !:MaybeModuleDepInfo),
         ( if
-            !.MaybeModuleAndImports = yes(ModuleAndImports0),
-            module_and_imports_get_source_file_dir(ModuleAndImports0,
-                ModuleDir),
+            !.MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo0),
+            module_dep_info_get_source_file_dir(ModuleDepInfo0, ModuleDir),
             ModuleDir = dir.this_directory
         then
-            module_and_imports_get_source_file_name(ModuleAndImports0,
+            module_dep_info_get_source_file_name(ModuleDepInfo0,
                 SourceFileName1),
             get_file_timestamp([dir.this_directory], SourceFileName1,
                 MaybeSourceFileTimestamp1, !Info, !IO),
@@ -294,16 +290,18 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
             RebuildModuleDeps = do_not_rebuild_module_deps,
             ModuleDepMap0 = !.Info ^ module_dependencies,
             % XXX Could this be map.det_update or map.det_insert?
-            map.set(ModuleName, no, ModuleDepMap0, ModuleDepMap1),
+            map.set(ModuleName, no_module_dep_info,
+                ModuleDepMap0, ModuleDepMap1),
             !Info ^ module_dependencies := ModuleDepMap1
         )
     ),
     ModuleDepMap2 = !.Info ^ module_dependencies,
-    ( if map.search(ModuleDepMap2, ModuleName, MaybeModuleAndImports0) then
-        !:MaybeModuleAndImports = MaybeModuleAndImports0
+    ( if map.search(ModuleDepMap2, ModuleName, MaybeModuleDepInfo0) then
+        !:MaybeModuleDepInfo = MaybeModuleDepInfo0
     else
-        !:MaybeModuleAndImports = no,
-        map.det_insert(ModuleName, no, ModuleDepMap2, ModuleDepMap),
+        !:MaybeModuleDepInfo = no_module_dep_info,
+        map.det_insert(ModuleName, no_module_dep_info,
+            ModuleDepMap2, ModuleDepMap),
         !Info ^ module_dependencies := ModuleDepMap
     ).
 
@@ -605,12 +603,15 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
             "ParentsSet != AncestorsSet"),
         ContainsForeignCode =
             foreign_code_langs_known(set.list_to_set(ForeignLanguages)),
-        make_module_dep_module_and_imports(SourceFileName, ModuleDir,
-            SourceFileModuleName, ModuleName,
-            Children, MaybeTopModule, IntDeps, ImpDeps, FactDeps,
-            ForeignImports, ForeignIncludes,
-            ContainsForeignCode, ContainsForeignExport,
-            ModuleAndImports),
+        ModuleSummary = module_dep_summary(SourceFileName, ModuleDir,
+            SourceFileModuleName, ModuleName, set.list_to_set(Children),
+            MaybeTopModule,
+            set.list_to_set(IntDeps), set.list_to_set(ImpDeps),
+            set.list_to_set(FactDeps), set.list_to_set(ForeignImports),
+            set.list_to_set(ForeignIncludes),
+            ContainsForeignCode, ContainsForeignExport),
+        ModuleDepInfo = module_dep_info_summary(ModuleSummary),
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
 
         % Discard the module dependencies if the module is a local module
         % but the source file no longer exists.
@@ -629,7 +630,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
             SourceFileExists = ok,
             ModuleDepMap0 = !.Info ^ module_dependencies,
             % XXX Could this be map.det_insert?
-            map.set(ModuleName, yes(ModuleAndImports),
+            map.set(ModuleName, MaybeModuleDepInfo,
                 ModuleDepMap0, ModuleDepMap),
             !Info ^ module_dependencies := ModuleDepMap,
 
@@ -725,7 +726,7 @@ contains_foreign_export_term(Term, ContainsForeignExport) :-
 
 some_bad_module_dependency(Info, ModuleNames) :-
     list.member(ModuleName, ModuleNames),
-    map.search(Info ^ module_dependencies, ModuleName, no).
+    map.search(Info ^ module_dependencies, ModuleName, no_module_dep_info).
 
 :- pred check_regular_file_exists(file_name::in, maybe_error::out,
     io::di, io::uo) is det.
@@ -851,7 +852,8 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
 
             ModuleDepMap0 = !.Info ^ module_dependencies,
             % XXX Could this be map.det_update?
-            map.set(ModuleName, no, ModuleDepMap0, ModuleDepMap),
+            map.set(ModuleName, no_module_dep_info,
+                ModuleDepMap0, ModuleDepMap),
             !Info ^ module_dependencies := ModuleDepMap
         ;
             FatalReadError = no,
@@ -912,9 +914,11 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
 
 make_info_add_module_and_imports_as_dep(ModuleAndImports, !Info) :-
     module_and_imports_get_module_name(ModuleAndImports, ModuleName),
+    ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+    MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
     ModuleDeps0 = !.Info ^ module_dependencies,
     % XXX Could this be map.det_insert?
-    map.set(ModuleName, yes(ModuleAndImports), ModuleDeps0, ModuleDeps),
+    map.set(ModuleName, MaybeModuleDepInfo, ModuleDeps0, ModuleDeps),
     !Info ^ module_dependencies := ModuleDeps.
 
 :- pred make_int3_files(io.output_stream::in,

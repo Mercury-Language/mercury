@@ -29,11 +29,10 @@
     % (Module1 -> Module2) means Module1 is imported by Module2.
 :- type deps_graph == digraph(module_name).
 
-:- type lookup_module_and_imports == (func(module_name) = module_and_imports).
-:- mode lookup_module_and_imports == in(func(in) = out is det).
+:- type lookup_module_dep_info == (func(module_name) = module_dep_info).
 
-:- pred add_module_and_imports_to_deps_graph(module_and_imports::in,
-    lookup_module_and_imports::lookup_module_and_imports,
+:- pred add_module_dep_info_to_deps_graph(module_dep_info::in,
+    lookup_module_dep_info::in,
     deps_graph::in, deps_graph::out, deps_graph::in, deps_graph::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -47,7 +46,7 @@
 
 %-----------------------------------------------------------------------------%
 
-add_module_and_imports_to_deps_graph(ModuleImports, LookupModuleImports,
+add_module_dep_info_to_deps_graph(ModuleDepInfo, LookupModuleDepInfo,
         !IntDepsGraph, !ImpDepsGraph) :-
     % Add interface dependencies to the interface deps graph.
     %
@@ -66,11 +65,11 @@ add_module_and_imports_to_deps_graph(ModuleImports, LookupModuleImports,
     % source code changes, it can lead to the unnecessary recompilation
     % of not just a few, but many modules.
 
-    module_and_imports_get_module_name(ModuleImports, ModuleName),
+    module_dep_info_get_module_name(ModuleDepInfo, ModuleName),
     Ancestors = get_ancestors_set(ModuleName),
     digraph.add_vertex(ModuleName, IntModuleKey, !IntDepsGraph),
-    add_int_deps(IntModuleKey, ModuleImports, !IntDepsGraph),
-    add_parent_imp_deps_set(LookupModuleImports, IntModuleKey, Ancestors,
+    add_int_deps(IntModuleKey, ModuleDepInfo, !IntDepsGraph),
+    add_parent_imp_deps_set(LookupModuleDepInfo, IntModuleKey, Ancestors,
         !IntDepsGraph),
 
     % Add implementation dependencies to the implementation deps graph.
@@ -82,57 +81,55 @@ add_module_and_imports_to_deps_graph(ModuleImports, LookupModuleImports,
     % things imported only by its parents.
 
     digraph.add_vertex(ModuleName, ImpModuleKey, !ImpDepsGraph),
-    add_imp_deps(ImpModuleKey, ModuleImports, !ImpDepsGraph),
-    add_parent_imp_deps_set(LookupModuleImports, ImpModuleKey, Ancestors,
+    add_imp_deps(ImpModuleKey, ModuleDepInfo, !ImpDepsGraph),
+    add_parent_imp_deps_set(LookupModuleDepInfo, ImpModuleKey, Ancestors,
         !ImpDepsGraph).
 
     % Add interface dependencies to the interface deps graph.
     %
-:- pred add_int_deps(deps_graph_key::in, module_and_imports::in,
+:- pred add_int_deps(deps_graph_key::in, module_dep_info::in,
     deps_graph::in, deps_graph::out) is det.
 
-add_int_deps(ModuleKey, ModuleImports, !DepsGraph) :-
+add_int_deps(ModuleKey, ModuleDepInfo, !DepsGraph) :-
     AddDep = add_dep(ModuleKey),
-    module_and_imports_get_module_name(ModuleImports, ModuleName),
+    module_dep_info_get_module_name(ModuleDepInfo, ModuleName),
     Ancestors = get_ancestors_set(ModuleName),
-    module_and_imports_get_int_deps_set(ModuleImports, IntDeps),
+    module_dep_info_get_int_deps(ModuleDepInfo, IntDeps),
     set.fold(AddDep, Ancestors, !DepsGraph),
     set.fold(AddDep, IntDeps, !DepsGraph).
 
     % Add direct implementation dependencies for a module to the
     % implementation deps graph.
     %
-:- pred add_imp_deps(deps_graph_key::in, module_and_imports::in,
+:- pred add_imp_deps(deps_graph_key::in, module_dep_info::in,
     deps_graph::in, deps_graph::out) is det.
 
-add_imp_deps(ModuleKey, ModuleImports, !DepsGraph) :-
+add_imp_deps(ModuleKey, ModuleDepInfo, !DepsGraph) :-
     % The implementation dependencies are a superset of the
     % interface dependencies, so first we add the interface deps, ...
-    add_int_deps(ModuleKey, ModuleImports, !DepsGraph),
-    % ... and then we add the impl deps.
-    module_and_imports_get_imp_deps_set(ModuleImports, ImpDeps),
+    add_int_deps(ModuleKey, ModuleDepInfo, !DepsGraph),
+    % ... and then we add the implementation deps.
+    module_dep_info_get_imp_deps(ModuleDepInfo, ImpDeps),
     set.foldl(add_dep(ModuleKey), ImpDeps, !DepsGraph).
 
     % Add parent implementation dependencies for the given Parent module
     % to the implementation deps graph values for the given ModuleKey.
     %
-:- pred add_parent_imp_deps(
-    lookup_module_and_imports::lookup_module_and_imports,
+:- pred add_parent_imp_deps(lookup_module_dep_info::in,
     deps_graph_key::in, module_name::in, deps_graph::in, deps_graph::out)
     is det.
 
-add_parent_imp_deps(LookupModuleImports, ModuleKey, Parent, !DepsGraph) :-
-    ParentModuleImports = LookupModuleImports(Parent),
-    add_imp_deps(ModuleKey, ParentModuleImports, !DepsGraph).
+add_parent_imp_deps(LookupModuleDepInfo, ModuleKey, Parent, !DepsGraph) :-
+    ParentModuleDepInfo = LookupModuleDepInfo(Parent),
+    add_imp_deps(ModuleKey, ParentModuleDepInfo, !DepsGraph).
 
-:- pred add_parent_imp_deps_set(
-    lookup_module_and_imports::lookup_module_and_imports,
+:- pred add_parent_imp_deps_set(lookup_module_dep_info::in,
     deps_graph_key::in, set(module_name)::in, deps_graph::in, deps_graph::out)
     is det.
 
-add_parent_imp_deps_set(LookupModuleImports, ModuleKey, Parents,
+add_parent_imp_deps_set(LookupModuleDepInfo, ModuleKey, Parents,
         !DepsGraph) :-
-    set.fold(add_parent_imp_deps(LookupModuleImports, ModuleKey), Parents,
+    set.fold(add_parent_imp_deps(LookupModuleDepInfo, ModuleKey), Parents,
         !DepsGraph).
 
     % Add a single dependency to a graph.

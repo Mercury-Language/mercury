@@ -76,7 +76,7 @@
     % The `pic' field is only used for C foreign code.
     %
 :- pred external_foreign_code_files(globals::in, pic::in,
-    module_and_imports::in, list(foreign_code_file)::out, io::di, io::uo)
+    module_dep_info::in, list(foreign_code_file)::out, io::di, io::uo)
     is det.
 
 %-----------------------------------------------------------------------------%
@@ -109,7 +109,7 @@ make_module_target(Globals, DepFile, Succeeded, !Info, !IO) :-
 make_module_target_extra_options(ExtraOptions, Globals, Dep, Succeeded,
         !Info, !IO) :-
     (
-        Dep = dep_file(_, _),
+        Dep = dep_file(_),
         dependency_status(Globals, Dep, Status, !Info, !IO),
         (
             Status = deps_status_error,
@@ -138,19 +138,19 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
     (
         Status = deps_status_not_considered,
         TargetFile = target_file(ModuleName, _TargetType),
-        get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+        get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
             !Info, !IO),
         (
-            MaybeModuleAndImports = no,
+            MaybeModuleDepInfo = no_module_dep_info,
             Succeeded = no,
             DepStatus0 = !.Info ^ dependency_status,
             version_hash_table.set(Dep, deps_status_error,
                 DepStatus0, DepStatus),
             !Info ^ dependency_status := DepStatus
         ;
-            MaybeModuleAndImports = yes(ModuleAndImports),
+            MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
             make_module_target_file_main_path(ExtraOptions, Globals,
-                TargetFile, ModuleAndImports, Succeeded, !Info, !IO)
+                TargetFile, ModuleDepInfo, Succeeded, !Info, !IO)
         )
     ;
         Status = deps_status_up_to_date,
@@ -164,14 +164,14 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
     ).
 
 :- pred make_module_target_file_main_path(list(string)::in, globals::in,
-    target_file::in, module_and_imports::in, bool::out,
+    target_file::in, module_dep_info::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
-        ModuleAndImports, Succeeded, !Info, !IO) :-
+        ModuleDepInfo, Succeeded, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     CompilationTask = compilation_task(TargetType),
-    module_and_imports_get_source_file_module_name(ModuleAndImports,
+    module_dep_info_get_source_file_module_name(ModuleDepInfo,
         SourceFileModuleName),
     CompilationTask = task_and_options(CompilationTaskType, _),
     ( if
@@ -194,7 +194,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
         debug_file_msg(Globals, TargetFile, "checking dependencies", !IO),
 
         ( if CompilationTaskType = process_module(_) then
-            module_and_imports_get_maybe_top_module(ModuleAndImports,
+            module_dep_info_get_maybe_top_module(ModuleDepInfo,
                 MaybeTopModule),
             NestedSubModules =
                 get_nested_children_list_of_top_module(MaybeTopModule),
@@ -260,7 +260,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
                 Targets0, Targets),
             !Info ^ command_line_targets := Targets,
             build_target(Globals, CompilationTask, TargetFile,
-                ModuleAndImports, TouchedTargetFiles, TouchedFiles,
+                ModuleDepInfo, TouchedTargetFiles, TouchedFiles,
                 ExtraOptions, Succeeded, !Info, !IO)
         ;
             DepsResult = deps_up_to_date,
@@ -362,12 +362,13 @@ force_reanalysis_of_suboptimal_module(Globals, ModuleName, ForceReanalysis,
 %-----------------------------------------------------------------------------%
 
 :- pred build_target(globals::in, compilation_task_type_and_options::in,
-    target_file::in, module_and_imports::in, list(target_file)::in,
+    target_file::in, module_dep_info::in, list(target_file)::in,
     list(file_name)::in, list(string)::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-build_target(Globals, CompilationTask, TargetFile, Imports, TouchedTargetFiles,
-        TouchedFiles, ExtraOptions, Succeeded, !Info, !IO) :-
+build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
+        TouchedTargetFiles, TouchedFiles, ExtraOptions, Succeeded,
+        !Info, !IO) :-
     maybe_make_target_message(Globals, TargetFile, !IO),
     TargetFile = target_file(ModuleName, _TargetType),
     CompilationTask = task_and_options(Task, TaskOptions),
@@ -403,7 +404,8 @@ build_target(Globals, CompilationTask, TargetFile, Imports, TouchedTargetFiles,
         build_with_check_for_interrupt(VeryVerbose,
             build_with_module_options_and_output_redirect(Globals, ModuleName,
                 ExtraOptions ++ TaskOptions,
-                build_target_2(ModuleName, Task, MaybeArgFileName, Imports)),
+                build_target_2(ModuleName, Task, MaybeArgFileName,
+                    ModuleDepInfo)),
             Cleanup, Succeeded, !Info, !IO),
         record_made_target_2(Globals, Succeeded, TargetFile,
             TouchedTargetFiles, TouchedFiles, !Info, !IO),
@@ -450,12 +452,12 @@ cleanup_files(Globals, MaybeArgFileName, TouchedTargetFiles, TouchedFiles,
     ).
 
 :- pred build_target_2(module_name::in, compilation_task_type::in,
-    maybe(file_name)::in, module_and_imports::in, globals::in,
+    maybe(file_name)::in, module_dep_info::in, globals::in,
     list(string)::in, io.text_output_stream::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-build_target_2(ModuleName, Task, ArgFileName, Imports, Globals, AllOptionArgs,
-        ErrorStream, Succeeded, !Info, !IO) :-
+build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
+        AllOptionArgs, ErrorStream, Succeeded, !Info, !IO) :-
     % XXX STREAM Printing progress messages to the current output stream
     % is an attempt to preserve old behavior.
     io.output_stream(ProgressStream, !IO),
@@ -518,7 +520,7 @@ build_target_2(ModuleName, Task, ArgFileName, Imports, Globals, AllOptionArgs,
         % if an interrupt arrives.
         call_in_forked_process(
             build_object_code(Globals, ModuleName, CompilationTarget, PIC,
-                ProgressStream, ErrorStream, Imports),
+                ProgressStream, ErrorStream, ModuleDepInfo),
             Succeeded, !IO)
     ;
         Task = foreign_code_to_object_code(PIC, Lang),
@@ -529,7 +531,7 @@ build_target_2(ModuleName, Task, ArgFileName, Imports, Globals, AllOptionArgs,
         % if an interrupt arrives.
         call_in_forked_process(
             compile_foreign_code_file(Globals, ProgressStream, ErrorStream,
-                PIC, Imports, ForeignCodeFile),
+                PIC, ModuleDepInfo, ForeignCodeFile),
             Succeeded, !IO)
     ;
         Task = fact_table_code_to_object_code(PIC, FactTableFileName),
@@ -541,16 +543,16 @@ build_target_2(ModuleName, Task, ArgFileName, Imports, Globals, AllOptionArgs,
         % if an interrupt arrives.
         call_in_forked_process(
             compile_foreign_code_file(Globals, ProgressStream, ErrorStream,
-                PIC, Imports, FactTableForeignCode),
+                PIC, ModuleDepInfo, FactTableForeignCode),
             Succeeded, !IO)
     ).
 
 :- pred build_object_code(globals::in, module_name::in, compilation_target::in,
     pic::in, io.text_output_stream::in, io.text_output_stream::in,
-    module_and_imports::in, bool::out, io::di, io::uo) is det.
+    module_dep_info::in, bool::out, io::di, io::uo) is det.
 
 build_object_code(Globals, ModuleName, Target, PIC,
-        ProgressStream, ErrorStream, _Imports, Succeeded, !IO) :-
+        ProgressStream, ErrorStream, _ModuleDepInfo, Succeeded, !IO) :-
     (
         Target = target_c,
         compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
@@ -571,11 +573,11 @@ build_object_code(Globals, ModuleName, Target, PIC,
 
 :- pred compile_foreign_code_file(globals::in,
     io.text_output_stream::in, io.text_output_stream::in, pic::in,
-    module_and_imports::in, foreign_code_file::in, bool::out,
+    module_dep_info::in, foreign_code_file::in, bool::out,
     io::di, io::uo) is det.
 
 compile_foreign_code_file(Globals, ProgressStream, ErrorStream, PIC,
-        Imports, ForeignCodeFile, Succeeded, !IO) :-
+        ModuleDepInfo, ForeignCodeFile, Succeeded, !IO) :-
     (
         ForeignCodeFile = foreign_code_file(lang_c, CFile, ObjFile),
         do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
@@ -587,7 +589,7 @@ compile_foreign_code_file(Globals, ProgressStream, ErrorStream, PIC,
     ;
         ForeignCodeFile = foreign_code_file(lang_csharp, CSharpFile, DLLFile),
         compile_csharp_file(Globals, ProgressStream, ErrorStream,
-            Imports, CSharpFile, DLLFile, Succeeded, !IO)
+            ModuleDepInfo, CSharpFile, DLLFile, Succeeded, !IO)
     ).
 
 :- func forkable_module_compilation_task_type(module_compilation_task_type)
@@ -933,32 +935,31 @@ touched_files(Globals, TargetFile, Task, TouchedTargetFiles, TouchedFileNames,
 touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
         TouchedFileNames, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
-    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
         !Info, !IO),
     (
-        MaybeModuleAndImports = yes(ModuleAndImports)
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo)
     ;
-        MaybeModuleAndImports = no,
+        MaybeModuleDepInfo = no_module_dep_info,
         % This error should have been caught earlier. We should not be
         % attempting to build a target if we couldn't find the dependencies
         % for the module.
         unexpected($pred, "no module dependencies")
     ),
 
-    module_and_imports_get_maybe_top_module(ModuleAndImports,
+    module_dep_info_get_maybe_top_module(ModuleDepInfo,
         MaybeTopModule),
     NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
     SourceFileModuleNames = [ModuleName | NestedSubModules],
 
     list.map_foldl2(get_module_dependencies(Globals), NestedSubModules,
-        MaybeNestedImportsList, !Info, !IO),
+        MaybeNestedModuleDepInfos, !Info, !IO),
     ( if
         list.map(
-            ( pred(yes(NestedModuleImports)::in, NestedModuleImports::out)
-                is semidet),
-            MaybeNestedImportsList, NestedImportsList)
+            ( pred(some_module_dep_info(MDI)::in, MDI::out) is semidet),
+            MaybeNestedModuleDepInfos, NestedModuleDepInfos)
     then
-        ModuleImportsList = [ModuleAndImports | NestedImportsList]
+        ModuleDepInfos = [ModuleDepInfo | NestedModuleDepInfos]
     else
         % This error should have been caught earlier. We should not be
         % attempting to build a target if we couldn't find the dependencies
@@ -974,7 +975,7 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
         Task = task_compile_to_target_code,
         TargetPIC = target_type_to_pic(TargetType),
         list.map_foldl(external_foreign_code_files(Globals, TargetPIC),
-            ModuleImportsList, ForeignCodeFileList, !IO),
+            ModuleDepInfos, ForeignCodeFileList, !IO),
         ForeignCodeFiles =
             list.map((func(ForeignFile) = ForeignFile ^ target_file),
                 list.condense(ForeignCodeFileList)),
@@ -1054,8 +1055,7 @@ gather_target_file_timestamp_file_names(Globals, TouchedTargetFile,
         true
     ).
 
-external_foreign_code_files(Globals, PIC, ModuleAndImports, ForeignFiles,
-        !IO) :-
+external_foreign_code_files(Globals, PIC, ModuleDepInfo, ForeignFiles, !IO) :-
     % Find externally compiled foreign code files for
     % `:- pragma foreign_proc' declarations.
     %
@@ -1069,11 +1069,11 @@ external_foreign_code_files(Globals, PIC, ModuleAndImports, ForeignFiles,
     % except the C backend for fact tables.
     (
         CompilationTarget = target_c,
-        module_and_imports_get_fact_table_deps(ModuleAndImports, FactDeps),
+        module_dep_info_get_fact_tables(ModuleDepInfo, FactTableFiles),
         list.map_foldl(
             get_fact_table_foreign_code_file(Globals, do_not_create_dirs,
                 ObjExt),
-            FactDeps, FactTableForeignFiles, !IO),
+            set.to_sorted_list(FactTableFiles), FactTableForeignFiles, !IO),
         ForeignFiles = FactTableForeignFiles
     ;
         ( CompilationTarget = target_java

@@ -50,9 +50,8 @@
     --->    dep_target(target_file)
             % A target which could be made.
 
-    ;       dep_file(file_name, maybe(option)).
+    ;       dep_file(file_name).
             % An ordinary file which `mmc --make' does not know how to rebuild.
-            % The option gives a list of directories in which to search.
 
     % Return a closure which will find the dependencies for a target type
     % given a module name.
@@ -160,7 +159,6 @@
 :- import_module parse_tree.prog_data_foreign.
 
 :- import_module assoc_list.
-:- import_module cord.
 :- import_module dir.
 :- import_module sparse_bitset.
 
@@ -542,10 +540,10 @@ non_intermod_direct_imports(Globals, ModuleIndex, Success, Modules,
 non_intermod_direct_imports_2(Globals, ModuleIndex, Success, Modules,
         !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
         !Info, !IO),
     (
-        MaybeModuleAndImports = yes(ModuleAndImports),
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
 
         % Find the direct imports of this module (modules for which we will
         % read the `.int' files).
@@ -555,11 +553,11 @@ non_intermod_direct_imports_2(Globals, ModuleIndex, Success, Modules,
         % is a submodule, then it may depend on things imported only by its
         % ancestors.
         %
-        module_and_imports_get_int_deps(ModuleAndImports, IntDeps),
-        module_and_imports_get_imp_deps(ModuleAndImports, ImpDeps),
-        module_names_to_index_set(IntDeps, DepsInt, !Info),
-        module_names_to_index_set(ImpDeps, DepsImp, !Info),
-        Modules0 = union(DepsInt, DepsImp),
+        module_dep_info_get_int_deps(ModuleDepInfo, IntDeps),
+        module_dep_info_get_imp_deps(ModuleDepInfo, ImpDeps),
+        module_names_to_index_set(set.to_sorted_list(IntDeps), DepsInt, !Info),
+        module_names_to_index_set(set.to_sorted_list(ImpDeps), DepsImp, !Info),
+        Modules0 = sparse_bitset.union(DepsInt, DepsImp),
         (
             ModuleName = qualified(ParentModule, _),
             module_name_to_index(ParentModule, ParentIndex, !Info),
@@ -572,7 +570,7 @@ non_intermod_direct_imports_2(Globals, ModuleIndex, Success, Modules,
             Modules = Modules0
         )
     ;
-        MaybeModuleAndImports = no,
+        MaybeModuleDepInfo = no_module_dep_info,
         Success = no,
         Modules = init
     ).
@@ -728,19 +726,21 @@ find_module_foreign_imports_2(Languages, Globals, ModuleIndex, Success,
 find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
         Success, ForeignModules, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
         !Info, !IO),
     (
-        MaybeModuleAndImports = yes(ModuleAndImports),
-        module_and_imports_get_c_j_cs_fims(ModuleAndImports, CJCsEFIMs),
-        LangForeignModuleNameSets =
-            set.map(get_lang_fim_modules(CJCsEFIMs), Languages),
-        set.power_union(LangForeignModuleNameSets, ForeignModuleNameSet),
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+        module_dep_info_get_fims(ModuleDepInfo, FIMSpecs),
+        ForLangsPred =
+            ( pred(fim_spec(Lang, Module)::in, Module::out) is semidet :-
+                set.contains(Languages, Lang)
+            ),
+        set.filter_map(ForLangsPred, FIMSpecs, ForeignModuleNameSet),
         module_names_to_index_set(set.to_sorted_list(ForeignModuleNameSet),
             ForeignModules, !Info),
         Success = yes
     ;
-        MaybeModuleAndImports = no,
+        MaybeModuleDepInfo = no_module_dep_info,
         ForeignModules = init,
         Success = no
     ).
@@ -753,16 +753,15 @@ find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
 
 fact_table_files(Globals, ModuleIndex, Success, Files, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
         !Info, !IO),
     (
-        MaybeModuleAndImports = yes(ModuleAndImports),
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         Success = yes,
-        module_and_imports_get_fact_table_deps(ModuleAndImports, FactDeps),
-        FilesList = list.map((func(File) = dep_file(File, no)), FactDeps),
-        Files = set.list_to_set(FilesList)
+        module_dep_info_get_fact_tables(ModuleDepInfo, FactTableFiles),
+        Files = set.map((func(File) = dep_file(File)), FactTableFiles)
     ;
-        MaybeModuleAndImports = no,
+        MaybeModuleDepInfo = no_module_dep_info,
         Success = no,
         Files = init
     ).
@@ -776,20 +775,19 @@ fact_table_files(Globals, ModuleIndex, Success, Files, !Info, !IO) :-
 foreign_include_files(Globals, ModuleIndex, Success, Files, !Info, !IO) :-
     globals.get_backend_foreign_languages(Globals, Languages),
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
         !Info, !IO),
     (
-        MaybeModuleAndImports = yes(ModuleAndImports),
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         Success = yes,
-        module_and_imports_get_source_file_name(ModuleAndImports,
-            SourceFileName),
-        module_and_imports_get_foreign_include_files(ModuleAndImports,
-            ForeignIncludeFilesCord),
+        module_dep_info_get_source_file_name(ModuleDepInfo, SourceFileName),
+        module_dep_info_get_foreign_include_files(ModuleDepInfo,
+            ForeignIncludeFiles),
         FilesList = get_foreign_include_files(set.list_to_set(Languages),
-            SourceFileName, cord.list(ForeignIncludeFilesCord)),
+            SourceFileName, set.to_sorted_list(ForeignIncludeFiles)),
         Files = set.list_to_set(FilesList)
     ;
-        MaybeModuleAndImports = no,
+        MaybeModuleDepInfo = no_module_dep_info,
         Success = no,
         Files = set.init
     ).
@@ -809,7 +807,7 @@ get_foreign_include_files_2(Languages, SourceFileName, ForeignInclude, File) :-
     ForeignInclude = foreign_include_file_info(Language, IncludeFileName),
     set.member(Language, Languages),
     make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
-    File = dep_file(IncludePath, no).
+    File = dep_file(IncludePath).
 
 %-----------------------------------------------------------------------------%
 
@@ -943,12 +941,11 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
         Modules = union(Modules0, Modules1)
     else
         module_index_to_name(!.Info, ModuleIndex, ModuleName),
-        get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+        get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
             !Info, !IO),
         (
-            MaybeModuleAndImports = yes(ModuleAndImports),
-            module_and_imports_get_source_file_dir(ModuleAndImports,
-                ModuleDir),
+            MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+            module_dep_info_get_source_file_dir(ModuleDepInfo, ModuleDir),
             ( if
                 (
                     ModuleLocn = any_module
@@ -957,19 +954,14 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                     ModuleDir = dir.this_directory
                 )
             then
-                module_and_imports_get_c_j_cs_fims(ModuleAndImports,
-                    CJCsEFIMs),
-                module_and_imports_get_module_name(ModuleAndImports,
-                    MAIModuleName),
+                module_dep_info_get_fims(ModuleDepInfo, FIMSpecs),
+                module_dep_info_get_module_name(ModuleDepInfo, MAIModuleName),
                 expect(unify(ModuleName, MAIModuleName), $pred,
                     "ModuleName != MAIModuleName"),
                 Ancestors = get_ancestors_set(ModuleName),
-                module_and_imports_get_children_set(ModuleAndImports,
-                    Children),
-                module_and_imports_get_int_deps_set(ModuleAndImports,
-                    IntDeps),
-                module_and_imports_get_imp_deps_set(ModuleAndImports,
-                    ImpDeps),
+                module_dep_info_get_children(ModuleDepInfo, Children),
+                module_dep_info_get_int_deps(ModuleDepInfo, IntDeps),
+                module_dep_info_get_imp_deps(ModuleDepInfo, ImpDeps),
                 (
                     % Ancestors don't need to be considered here.
                     % Anywhere the interface of the child module is needed,
@@ -978,15 +970,17 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                     ImportsToCheck = IntDeps
                 ;
                     DependenciesType = all_dependencies,
+                    set.map((pred(fim_spec(_, Mod)::in, Mod::out) is det),
+                        FIMSpecs, ForeignDeps),
                     ImportsToCheck = set.union_list([
-                        Ancestors, Children, IntDeps, ImpDeps,
-                        get_all_foreign_import_modules(CJCsEFIMs)
+                        Ancestors, Children, IntDeps, ImpDeps, ForeignDeps
                     ])
                 ;
                     DependenciesType = all_imports,
+                    set.map((pred(fim_spec(_, Mod)::in, Mod::out) is det),
+                        FIMSpecs, ForeignDeps),
                     ImportsToCheck = set.union_list([
-                        Ancestors, IntDeps, ImpDeps,
-                        get_all_foreign_import_modules(CJCsEFIMs)
+                        Ancestors, IntDeps, ImpDeps, ForeignDeps
                     ])
                 ),
                 module_names_to_index_set(set.to_sorted_list(ImportsToCheck),
@@ -1005,7 +999,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                 Modules = Modules0
             )
         ;
-            MaybeModuleAndImports = no,
+            MaybeModuleDepInfo = no_module_dep_info,
             Success = no,
             Modules = Modules0
         )
@@ -1023,16 +1017,15 @@ remove_nested_modules(Globals, Modules0, Modules, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 collect_nested_modules(Globals, ModuleName, !NestedModules, !Info, !IO) :-
-    get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+    get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
         !Info, !IO),
     (
-        MaybeModuleAndImports = yes(ModuleAndImports),
-        module_and_imports_get_maybe_top_module(ModuleAndImports,
-            MaybeTopModule),
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+        module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
         NestedSubModules = get_nested_children_of_top_module(MaybeTopModule),
         set.union(NestedSubModules, !NestedModules)
     ;
-        MaybeModuleAndImports = no
+        MaybeModuleDepInfo = no_module_dep_info
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1075,7 +1068,7 @@ make_write_target_dependency_status(Globals, DepTarget - DepStatus, !IO) :-
 
 dependency_status(Globals, Dep, Status, !Info, !IO) :-
     (
-        Dep = dep_file(_FileName, _),
+        Dep = dep_file(_FileName),
         DepStatusMap0 = !.Info ^ dependency_status,
         ( if version_hash_table.search(DepStatusMap0, Dep, StatusPrime) then
             Status = StatusPrime
@@ -1116,15 +1109,14 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
         then
             Status = StatusPrime
         else
-            get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+            get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
                 !Info, !IO),
             (
-                MaybeModuleAndImports = no,
+                MaybeModuleDepInfo = no_module_dep_info,
                 Status = deps_status_error
             ;
-                MaybeModuleAndImports = yes(ModuleAndImports),
-                module_and_imports_get_source_file_dir(ModuleAndImports,
-                    ModuleDir),
+                MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+                module_dep_info_get_source_file_dir(ModuleDepInfo, ModuleDir),
                 ( if ModuleDir = dir.this_directory then
                     Status = deps_status_not_considered
                 else
@@ -1139,11 +1131,13 @@ dependency_status(Globals, Dep, Status, !Info, !IO) :-
                     ;
                         MaybeTimestamp = error(Error),
                         Status = deps_status_error,
-                        io.write_string("** Error: file `", !IO),
-                        make_write_target_file(Globals, Target, !IO),
-                        io.write_string("' not found: ", !IO),
-                        io.write_string(Error, !IO),
-                        io.nl(!IO)
+                        get_make_target_file_name(Globals, Target,
+                            TargetFileName, !IO),
+                        string.format("** Error: file `%s' not found: %s\n",
+                            [s(TargetFileName), s(Error)], ErrorMsg),
+                        % Try to write this with one call to avoid
+                        % interleaved output when doing parallel builds.
+                        io.write_string(ErrorMsg, !IO)
                     )
                 )
             ),

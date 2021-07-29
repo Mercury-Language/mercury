@@ -222,20 +222,6 @@
     set(foreign_language)::in,
     maybe(module_timestamp_map)::in, module_and_imports::out) is det.
 
-    % Construct a module_and_imports structure for inclusion in
-    % a module dependencies structure, for make.module_dep_file.m.
-    % This structure is only partially filled in. I (zs) don't know
-    % what rationale governs what fields need to be filled in, and when, but
-    % XXX I think it is unlikely to have a good correctness argument behind it.
-    %
-:- pred make_module_dep_module_and_imports(string::in, string::in,
-    module_name::in, module_name::in, list(module_name)::in,
-    maybe_top_module::in, list(module_name)::in,
-    list(module_name)::in, list(string)::in,
-    list(fim_spec)::in, list(foreign_include_file_info)::in,
-    contains_foreign_code::in, contains_foreign_export::in,
-    module_and_imports::out) is det.
-
 %---------------------------------------------------------------------------%
 %
 % Getter and setter predicates for the module_and_imports structure.
@@ -400,6 +386,56 @@
 
 %---------------------------------------------------------------------------%
 
+:- type module_dep_info
+    --->    module_dep_info_imports(module_and_imports)
+    ;       module_dep_info_summary(module_dep_summary).
+
+:- type module_dep_summary
+    --->    module_dep_summary(
+                mds_source_file_name        :: string,
+                mds_source_file_dir         :: string,
+                mds_source_file_module_name :: module_name,
+                mds_module_name             :: module_name,
+                mds_children                :: set(module_name),
+                mds_maybe_top_module        :: maybe_top_module,
+                mds_int_deps                :: set(module_name),
+                mds_imp_deps                :: set(module_name),
+                mds_fact_table_file_names   :: set(string),
+                mds_fims                    :: set(fim_spec),
+                mds_foreign_include_files   :: set(foreign_include_file_info),
+                mds_contains_foreign_code   :: contains_foreign_code,
+                mds_contains_foreign_export :: contains_foreign_export
+            ).
+
+:- pred module_dep_info_get_source_file_name(module_dep_info::in,
+    string::out) is det.
+:- pred module_dep_info_get_source_file_dir(module_dep_info::in,
+    string::out) is det.
+:- pred module_dep_info_get_source_file_module_name(module_dep_info::in,
+    module_name::out) is det.
+:- pred module_dep_info_get_module_name(module_dep_info::in,
+    module_name::out) is det.
+:- pred module_dep_info_get_children(module_dep_info::in,
+    set(module_name)::out) is det.
+:- pred module_dep_info_get_maybe_top_module(module_dep_info::in,
+    maybe_top_module::out) is det.
+:- pred module_dep_info_get_int_deps(module_dep_info::in,
+    set(module_name)::out) is det.
+:- pred module_dep_info_get_imp_deps(module_dep_info::in,
+    set(module_name)::out) is det.
+:- pred module_dep_info_get_fact_tables(module_dep_info::in,
+    set(string)::out) is det.
+:- pred module_dep_info_get_fims(module_dep_info::in,
+    set(fim_spec)::out) is det.
+:- pred module_dep_info_get_foreign_include_files(module_dep_info::in,
+    set(foreign_include_file_info)::out) is det.
+:- pred module_dep_info_get_contains_foreign_code(module_dep_info::in,
+    contains_foreign_code::out) is det.
+:- pred module_dep_info_get_contains_foreign_export(module_dep_info::in,
+    contains_foreign_export::out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- pred write_mai_stats(io.output_stream::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -418,7 +454,6 @@
 :- import_module dir.
 :- import_module one_or_more.
 :- import_module one_or_more_map.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module term.
@@ -469,7 +504,7 @@
                 % The name of the source file and directory
                 % containing the module source.
                 mai_source_file_name    :: file_name,
-                mai_module_dir          :: dir_name,
+                mai_source_file_dir     :: dir_name,
 
                 % The name of the top-level module in the above source file.
                 mai_source_file_module_name :: module_name,
@@ -578,8 +613,7 @@
 
 :- type mai_construction_method
     --->    mcm_init
-    ;       mcm_make
-    ;       mcm_read.
+    ;       mcm_make.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -900,62 +934,6 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
         GrabbedFileMap, mcm_make).
 
 %---------------------------------------------------------------------------%
-
-make_module_dep_module_and_imports(SourceFileName, ModuleDir,
-        SourceFileModuleName, ModuleName,
-        Children, MaybeTopModule, IntDeps, ImpDeps, FactDeps,
-        ForeignImports, ForeignIncludes,
-        ContainsForeignCode, ContainsForeignExport, ModuleAndImports) :-
-    ModuleNameContext = term.dummy_context_init,
-    AddDummyContext =
-        ( func(MN) = MN - one_or_more(term.dummy_context_init, []) ),
-    one_or_more_map.from_assoc_list(list.map(AddDummyContext, IntDeps),
-        IntDepsContexts),
-    one_or_more_map.from_assoc_list(list.map(AddDummyContext, ImpDeps),
-        ImpDepsContexts),
-    set.init(IndirectDeps),
-    % The definition of AddDummyInclude preserves old behavior,
-    % specifically, the behavior of the following commented-out piece of code.
-%   one_or_more_map.from_assoc_list(list.map(AddDummyContext, Children),
-%       ChildrenContexts),
-%   % XXX We do not know which child modules are public, so saying
-%   % none of them are is likely to be a bug.
-%   one_or_more_map.init(PublicChildrenContexts),
-    AddDummyInclude =
-        ( func(MN) = MN - Incl :-
-            Section = ms_implementation,
-            Incl = include_module_info(Section, term.dummy_context_init)
-        ),
-    map.from_assoc_list(list.map(AddDummyInclude, Children), IncludeMap),
-    list.foldl(add_fim_spec, ForeignImports,
-        init_foreign_import_modules, ForeignImportModules),
-    ParseTreeModuleSrc0 =
-        init_empty_parse_tree_module_src(ModuleName, ModuleNameContext),
-    ParseTreeModuleSrc = ParseTreeModuleSrc0 ^ ptms_include_map := IncludeMap,
-    map.init(AncestorIntSpecs),
-    map.init(DirectIntSpecs),
-    map.init(IndirectIntSpecs),
-    map.init(PlainOpts),
-    map.init(TransOpts),
-    map.init(IntForOptSpecs),
-    map.init(TypeRepnSpecs),
-    map.init(ModuleVersionNumbers),
-    Specs = [],
-    set.init(Errors),
-    MaybeTimestamps = no,
-    map.init(GrabbedFileMap),
-    ModuleAndImports = module_and_imports(SourceFileName, ModuleDir,
-        SourceFileModuleName,
-        MaybeTopModule,
-        IntDepsContexts, ImpDepsContexts, IndirectDeps, FactDeps,
-        ForeignImportModules, cord.from_list(ForeignIncludes),
-        ContainsForeignCode, ContainsForeignExport,
-        ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
-        ModuleVersionNumbers, MaybeTimestamps, Specs, Errors,
-        GrabbedFileMap, mcm_read).
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pred module_and_imports_get_version_numbers_map(module_and_imports::in,
@@ -978,11 +956,6 @@ module_and_imports_get_source_file_name(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_source_file_name := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_source_file_name := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -996,22 +969,17 @@ module_and_imports_get_source_file_dir(ModuleAndImports, X) :-
             (
                 Method = mcm_init,
                 Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_module_dir := accessed,
+                Fields = Fields0 ^ mf_source_file_dir := accessed,
                 Accesses = Accesses0 ^ mfk_init := Fields
             ;
                 Method = mcm_make,
                 Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_module_dir := accessed,
+                Fields = Fields0 ^ mf_source_file_dir := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_module_dir := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
-        X = ModuleAndImports ^ mai_module_dir
+        X = ModuleAndImports ^ mai_source_file_dir
     ).
 module_and_imports_get_source_file_module_name(ModuleAndImports, X) :-
     promise_pure (
@@ -1028,11 +996,6 @@ module_and_imports_get_source_file_module_name(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_source_file_module_name := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_source_file_module_name := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1053,11 +1016,6 @@ module_and_imports_get_module_name(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_module_name := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_module_name := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1078,11 +1036,6 @@ module_and_imports_get_module_name_context(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_module_name_context := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_module_name_context := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1103,11 +1056,6 @@ module_and_imports_get_maybe_top_module(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_maybe_top_module := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_maybe_top_module := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1128,11 +1076,6 @@ module_and_imports_get_int_deps_map(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_int_deps_map := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_int_deps_map := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1153,11 +1096,6 @@ module_and_imports_get_imp_deps_map(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_imp_deps_map := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_imp_deps_map := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1178,11 +1116,6 @@ module_and_imports_get_indirect_deps(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_indirect_deps := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_indirect_deps := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1203,11 +1136,6 @@ module_and_imports_get_fact_table_deps(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_fact_table_deps := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_fact_table_deps := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1228,11 +1156,6 @@ module_and_imports_get_c_j_cs_fims(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_foreign_import_modules := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_foreign_import_modules := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1253,11 +1176,6 @@ module_and_imports_get_foreign_include_files(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_foreign_include_files := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_foreign_include_files := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1278,11 +1196,6 @@ module_and_imports_get_contains_foreign_code(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_contains_foreign_code := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_contains_foreign_code := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1303,11 +1216,6 @@ module_and_imports_get_contains_foreign_export(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_contains_foreign_export := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_contains_foreign_export := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1328,11 +1236,6 @@ module_and_imports_get_parse_tree_module_src(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_src := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_src := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1353,11 +1256,6 @@ module_and_imports_get_ancestor_int_specs(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_ancestor_int_specs := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_ancestor_int_specs := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1378,11 +1276,6 @@ module_and_imports_get_direct_int_specs(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_direct_int_specs := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_direct_int_specs := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1403,11 +1296,6 @@ module_and_imports_get_indirect_int_specs(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_indirect_int_specs := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_indirect_int_specs := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1428,11 +1316,6 @@ module_and_imports_get_plain_opts(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_plain_opts := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_plain_opts := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1453,11 +1336,6 @@ module_and_imports_get_trans_opts(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_trans_opts := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_trans_opts := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1478,11 +1356,6 @@ module_and_imports_get_int_for_opt_specs(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_int_for_opt_specs := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_int_for_opt_specs := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1503,11 +1376,6 @@ module_and_imports_get_type_repn_specs(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_type_repn_specs := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_type_repn_specs := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1528,11 +1396,6 @@ module_and_imports_get_version_numbers_map(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_version_numbers_map := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_version_numbers_map := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1553,11 +1416,6 @@ module_and_imports_get_maybe_timestamp_map(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_maybe_timestamp_map := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_maybe_timestamp_map := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1578,11 +1436,6 @@ module_and_imports_get_specs(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_specs := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_specs := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1603,11 +1456,6 @@ module_and_imports_get_errors(ModuleAndImports, X) :-
                 Fields0 = Accesses0 ^ mfk_make,
                 Fields = Fields0 ^ mf_errors := accessed,
                 Accesses = Accesses0 ^ mfk_make := Fields
-            ;
-                Method = mcm_read,
-                Fields0 = Accesses0 ^ mfk_read,
-                Fields = Fields0 ^ mf_errors := accessed,
-                Accesses = Accesses0 ^ mfk_read := Fields
             ),
             impure set_accesses(Accesses)
         ),
@@ -1892,6 +1740,133 @@ module_and_imports_get_aug_comp_unit(ModuleAndImports,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+module_dep_info_get_source_file_name(ModuleDepInfo, X) :-
+    (
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        module_and_imports_get_source_file_name(ModuleAndImports, X)
+    ;
+        ModuleDepInfo = module_dep_info_summary(Summary),
+        X = Summary ^ mds_source_file_name
+    ).
+
+module_dep_info_get_source_file_dir(ModuleDepInfo, X) :-
+    (
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        module_and_imports_get_source_file_dir(ModuleAndImports, X)
+    ;
+        ModuleDepInfo = module_dep_info_summary(Summary),
+        X = Summary ^ mds_source_file_dir
+    ).
+
+module_dep_info_get_source_file_module_name(ModuleDepInfo, X) :-
+    (
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        module_and_imports_get_source_file_module_name(ModuleAndImports, X)
+    ;
+        ModuleDepInfo = module_dep_info_summary(Summary),
+        X = Summary ^ mds_source_file_module_name
+    ).
+
+module_dep_info_get_module_name(ModuleDepInfo, X) :-
+    (
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        module_and_imports_get_module_name(ModuleAndImports, X)
+    ;
+        ModuleDepInfo = module_dep_info_summary(Summary),
+        X = Summary ^ mds_module_name
+    ).
+
+module_dep_info_get_children(ModuleDepInfo, X) :-
+    (
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        module_and_imports_get_children(ModuleAndImports, Xs),
+        set.list_to_set(Xs, X)
+    ;
+        ModuleDepInfo = module_dep_info_summary(Summary),
+        X = Summary ^ mds_children
+    ).
+
+module_dep_info_get_maybe_top_module(ModuleDepInfo, X) :-
+    (
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        module_and_imports_get_maybe_top_module(ModuleAndImports, X)
+    ;
+        ModuleDepInfo = module_dep_info_summary(Summary),
+        X = Summary ^ mds_maybe_top_module
+    ).
+
+module_dep_info_get_int_deps(ModuleDepInfo, X) :-
+    (
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        module_and_imports_get_int_deps(ModuleAndImports, Xs),
+        set.list_to_set(Xs, X)
+    ;
+        ModuleDepInfo = module_dep_info_summary(Summary),
+        X = Summary ^ mds_int_deps
+    ).
+
+module_dep_info_get_imp_deps(ModuleDepInfo, X) :-
+    (
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        module_and_imports_get_imp_deps(ModuleAndImports, Xs),
+        set.list_to_set(Xs, X)
+    ;
+        ModuleDepInfo = module_dep_info_summary(Summary),
+        X = Summary ^ mds_imp_deps
+    ).
+
+module_dep_info_get_fact_tables(ModuleDepInfo, X) :-
+    (
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        module_and_imports_get_fact_table_deps(ModuleAndImports, Xs),
+        set.list_to_set(Xs, X)
+    ;
+        ModuleDepInfo = module_dep_info_summary(Summary),
+        X = Summary ^ mds_fact_table_file_names
+    ).
+
+module_dep_info_get_fims(ModuleDepInfo, X) :-
+    (
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        module_and_imports_get_c_j_cs_fims(ModuleAndImports, CJCsFIMs),
+        X = get_all_fim_specs(CJCsFIMs)
+    ;
+        ModuleDepInfo = module_dep_info_summary(Summary),
+        X = Summary ^ mds_fims
+    ).
+
+module_dep_info_get_foreign_include_files(ModuleDepInfo, X) :-
+    (
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        module_and_imports_get_foreign_include_files(ModuleAndImports, CordX),
+        Xs = cord.list(CordX),
+        set.list_to_set(Xs, X)
+    ;
+        ModuleDepInfo = module_dep_info_summary(Summary),
+        X = Summary ^ mds_foreign_include_files
+    ).
+
+module_dep_info_get_contains_foreign_code(ModuleDepInfo, X) :-
+    (
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        module_and_imports_get_contains_foreign_code(ModuleAndImports, X)
+    ;
+        ModuleDepInfo = module_dep_info_summary(Summary),
+        X = Summary ^ mds_contains_foreign_code
+    ).
+
+module_dep_info_get_contains_foreign_export(ModuleDepInfo, X) :-
+    (
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        module_and_imports_get_contains_foreign_export(ModuleAndImports, X)
+    ;
+        ModuleDepInfo = module_dep_info_summary(Summary),
+        X = Summary ^ mds_contains_foreign_export
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- type maybe_accessed
     --->    not_accessed
     ;       accessed.
@@ -1899,7 +1874,7 @@ module_and_imports_get_aug_comp_unit(ModuleAndImports,
 :- type mai_fields
     --->    mai_fields(
                 mf_source_file_name             :: maybe_accessed,
-                mf_module_dir                   :: maybe_accessed,
+                mf_source_file_dir              :: maybe_accessed,
                 mf_source_file_module_name      :: maybe_accessed,
                 mf_module_name                  :: maybe_accessed,
                 mf_module_name_context          :: maybe_accessed,

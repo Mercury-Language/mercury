@@ -66,7 +66,7 @@
     %
 :- pred compile_csharp_file(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    module_and_imports::in, file_name::in, file_name::in, bool::out,
+    module_dep_info::in, file_name::in, file_name::in, bool::out,
     io::di, io::uo) is det.
 
     % make_library_init_file(Globals, ProgressStream, ErrorStream,
@@ -1018,18 +1018,19 @@ compile_csharp_file(Globals, ProgressStream, ErrorStream, ModuleAndImports,
         string.append_list(list.condense(list.map(
             (func(DLLDir) = ["-lib:", DLLDir, " "]), DLLDirs))),
 
-    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
+    module_dep_info_get_module_name(ModuleAndImports, ModuleName),
     ( if mercury_std_library_module_name(ModuleName) then
         Prefix = "-addmodule:"
     else
         Prefix = "-r:"
     ),
-    module_and_imports_get_c_j_cs_fims(ModuleAndImports, CJCsEFIMs),
+    module_dep_info_get_fims(ModuleAndImports, FIMSpes),
+    % XXX Why are we processing the FIMSpecs that are NOT for C#?
     ForeignDeps = list.map(
         (func(FI) = fim_spec_module_name_from_module(FI, ModuleName)),
-        set.to_sorted_list(get_all_fim_specs(CJCsEFIMs))),
-    module_and_imports_get_int_deps_set(ModuleAndImports, IntDeps),
-    module_and_imports_get_imp_deps_set(ModuleAndImports, ImpDeps),
+        set.to_sorted_list(FIMSpes)),
+    module_dep_info_get_int_deps(ModuleAndImports, IntDeps),
+    module_dep_info_get_imp_deps(ModuleAndImports, ImpDeps),
     set.union(IntDeps, ImpDeps, IntImpDeps),
     set.insert_list(ForeignDeps, IntImpDeps, IntImpForeignDeps),
     ReferencedDlls = referenced_dlls(ModuleName, IntImpForeignDeps),

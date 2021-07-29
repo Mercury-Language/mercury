@@ -270,7 +270,8 @@ deps_list_to_deps_graph([Deps | DepsList], DepsMap,
     module_and_imports_get_errors(ModuleAndImports, ModuleErrors),
     set.intersect(ModuleErrors, fatal_read_module_errors, FatalModuleErrors),
     ( if set.is_empty(FatalModuleErrors) then
-        add_module_and_imports_to_deps_graph(ModuleAndImports,
+        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
+        add_module_dep_info_to_deps_graph(ModuleDepInfo,
             lookup_module_and_imports_in_deps_map(DepsMap),
             !IntDepsGraph, !ImplDepsGraph)
     else
@@ -279,11 +280,12 @@ deps_list_to_deps_graph([Deps | DepsList], DepsMap,
     deps_list_to_deps_graph(DepsList, DepsMap, !IntDepsGraph, !ImplDepsGraph).
 
 :- func lookup_module_and_imports_in_deps_map(deps_map, module_name)
-    = module_and_imports.
+    = module_dep_info.
 
 lookup_module_and_imports_in_deps_map(DepsMap, ModuleName)
-        = ModuleAndImports :-
-    map.lookup(DepsMap, ModuleName, deps(_, ModuleAndImports)).
+        = ModuleDepInfo :-
+    map.lookup(DepsMap, ModuleName, deps(_, ModuleAndImports)),
+    ModuleDepInfo = module_dep_info_imports(ModuleAndImports).
 
 %---------------------------------------------------------------------------%
 

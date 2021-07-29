@@ -105,16 +105,23 @@
                 % XXX CLEANUP Add a prefix to each field name
                 % to avoid accidental name collisions.
 
-                % The items field of each module_and_imports structure
-                % should be empty -- we're not trying to cache the items here.
+                % For modules whose sources we have read in, the
+                % maybe_module_dep_info will contain module_and_imports.
+                % For modules for which we have read only the .dep file,
+                % maybe_module_dep_info will contain a module_dep_summary.
+                %
+                % An old comment about the former says:
+                %
+                % "The items field of each module_and_imports structure should
+                % be empty -- we are not trying to cache the items here",
+                % but I (zs) don't whether that is actually true.
                 module_dependencies     :: map(module_name,
-                                            maybe(module_and_imports)),
+                                            maybe_module_dep_info),
 
                 file_timestamps         :: file_timestamps,
 
                 % Cache chosen file names for a module name and extension.
-                search_file_name_cache  :: map(pair(module_name, ext),
-                                            file_name),
+                search_file_name_cache  :: map(module_name_ext, file_name),
 
                 % Any flags required to set detected library grades.
                 detected_grade_flags    :: list(string),
@@ -184,6 +191,13 @@
                 % so we never have to read and parse each file more than once.
                 mi_read_module_maps     :: have_read_module_maps
             ).
+
+:- type module_name_ext
+    --->    module_name_ext(module_name, ext).
+
+:- type maybe_module_dep_info
+    --->    no_module_dep_info
+    ;       some_module_dep_info(module_dep_info).
 
 :- type module_index_map
     --->    module_index_map(

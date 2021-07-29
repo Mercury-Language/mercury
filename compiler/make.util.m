@@ -165,6 +165,14 @@
 :- pred make_write_dependency_file_list(globals::in, list(dependency_file)::in,
     io::di, io::uo) is det.
 
+    % Return the file name for the given target_file. The I/O state pair
+    % may be needed to find this file name.
+    %
+:- pred get_make_target_file_name(globals::in, target_file::in, string::out,
+    io::di, io::uo) is det.
+
+    % Write out the file name for the given target_file.
+    %
 :- pred make_write_target_file(globals::in, target_file::in,
     io::di, io::uo) is det.
 
@@ -269,14 +277,8 @@ get_timestamp_file_timestamp(Globals, target_file(ModuleName, TargetType),
 get_dependency_timestamp(Globals, DependencyFile, MaybeTimestamp, !Info,
         !IO) :-
     (
-        DependencyFile = dep_file(FileName, MaybeOption),
-        (
-            MaybeOption = yes(Option),
-            globals.lookup_accumulating_option(Globals, Option, SearchDirs)
-        ;
-            MaybeOption = no,
-            SearchDirs = [dir.this_directory]
-        ),
+        DependencyFile = dep_file(FileName),
+        SearchDirs = [dir.this_directory],
         get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO)
     ;
         DependencyFile = dep_target(Target),
@@ -366,12 +368,11 @@ get_target_timestamp_2(Globals, Search, TargetFile, FileName, MaybeTimestamp,
         % `--intermodule-optimization'.
         % Similarly for `.analysis' files.
 
-        get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+        get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
             !Info, !IO),
         ( if
-            MaybeModuleAndImports = yes(ModuleAndImports),
-            module_and_imports_get_source_file_dir(ModuleAndImports,
-                ModuleDir),
+            MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+            module_dep_info_get_source_file_dir(ModuleDepInfo, ModuleDir),
             ModuleDir \= dir.this_directory
         then
             MaybeTimestamp = ok(oldest_timestamp),
@@ -393,14 +394,13 @@ get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
         % In some cases the module name won't match the file name
         % (module mdb.parse might be in parse.m or mdb.m), so we need to
         % look up the file name here.
-        get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
+        get_module_dependencies(Globals, ModuleName, MaybeModuleDepInfo,
             !Info, !IO),
         (
-            MaybeModuleAndImports = yes(ModuleAndImports),
-            module_and_imports_get_source_file_name(ModuleAndImports, FileName)
+            MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+            module_dep_info_get_source_file_name(ModuleDepInfo, FileName)
         ;
-            MaybeModuleAndImports = no,
-
+            MaybeModuleDepInfo = no_module_dep_info,
             % Something has gone wrong generating the dependencies,
             % so just take a punt (which probably won't work).
             module_name_to_source_file_name(ModuleName, FileName, !IO)
@@ -429,7 +429,7 @@ get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
 
 module_name_to_search_file_name_cache(Globals, Ext, ModuleName, FileName,
         !Info, !IO) :-
-    Key = ModuleName - Ext,
+    Key = module_name_ext(ModuleName, Ext),
     Cache0 = !.Info ^ search_file_name_cache,
     ( if map.search(Cache0, Key, FileName0) then
         FileName = FileName0
@@ -912,7 +912,7 @@ debug_file_msg(Globals, TargetFile, Msg, !IO) :-
 
 make_write_dependency_file(Globals, dep_target(TargetFile), !IO) :-
     make_write_target_file(Globals, TargetFile, !IO).
-make_write_dependency_file(_Globals, dep_file(FileName, _), !IO) :-
+make_write_dependency_file(_Globals, dep_file(FileName), !IO) :-
     io.write_string(FileName, !IO).
 
 make_write_dependency_file_list(_, [], !IO).
@@ -922,13 +922,17 @@ make_write_dependency_file_list(Globals, [DepFile | DepFiles], !IO) :-
     io.nl(!IO),
     make_write_dependency_file_list(Globals, DepFiles, !IO).
 
-make_write_target_file(Globals, TargetFile, !IO) :-
-    make_write_target_file_wrapped(Globals, "", TargetFile, "", !IO).
-
-make_write_target_file_wrapped(Globals, Prefix, TargetFile, Suffix, !IO) :-
+get_make_target_file_name(Globals, TargetFile, FileName, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     module_target_to_file_name(Globals, do_not_create_dirs, TargetType,
-        ModuleName, FileName, !IO),
+        ModuleName, FileName, !IO).
+
+make_write_target_file(Globals, TargetFile, !IO) :-
+    get_make_target_file_name(Globals, TargetFile, FileName, !IO),
+    io.write_string(FileName, !IO).
+
+make_write_target_file_wrapped(Globals, Prefix, TargetFile, Suffix, !IO) :-
+    get_make_target_file_name(Globals, TargetFile, FileName, !IO),
     ( if
         Prefix = "",
         Suffix = ""
@@ -1073,7 +1077,7 @@ dependency_file_hash(DepFile, Hash) :-
         DepFile = dep_target(TargetFile),
         Hash = target_file_hash(TargetFile)
     ;
-        DepFile = dep_file(FileName, _MaybeOption),
+        DepFile = dep_file(FileName),
         Hash = string.hash(FileName)
     ).
 
