@@ -1440,7 +1440,7 @@ optdef(oc_aux_output, dump_same_hlds,                   bool(no)).
 optdef(oc_aux_output, dump_mlds,                        accumulating([])).
 optdef(oc_aux_output, dump_mlds_pred_name,              accumulating([])).
 optdef(oc_aux_output, verbose_dump_mlds,                accumulating([])).
-optdef(oc_aux_output, dump_options_file,                bool(no)).
+optdef(oc_aux_output, dump_options_file,                string("")).
 optdef(oc_aux_output, mode_constraints,                 bool(no)).
 optdef(oc_aux_output, simple_mode_constraints,          bool(no)).
 optdef(oc_aux_output, prop_mode_constraints,            bool(no)).
@@ -4952,9 +4952,9 @@ options_help_aux_output(Stream, !IO) :-
         "\tDump the internal compiler representation of the MLDS, after",
         "\tthe specified stage, to `<module>.mlds_dump.<num>-<name>'."
 % This option is only intended to be used for debugging the compiler.
-%       "--dump-options-file",
+%       "--dump-options-file output_file",
 %       "\tDump the internal compiler representation of files named in",
-%       "\t--options-file options."
+%       "\t--options-file options to output_file."
 % The mode constraints code is still experimental so these options are
 % currently commented out.
 %       "--mode-constraints"

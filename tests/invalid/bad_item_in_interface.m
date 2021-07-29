@@ -1,9 +1,9 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% The .err_exp2 is for grades that don't support pragma memo.
 
 :- module bad_item_in_interface.
-
 :- interface.
 
 :- import_module io.

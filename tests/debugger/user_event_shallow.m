@@ -37,6 +37,9 @@ queen(Data, Out) :-
     safe(Out).
 
 :- pred qperm(list(T)::in, list(T)::out) is nondet.
+:- pragma no_inline(pred(qperm/2)).
+% This should prevent the elimination of the safe_test event in our caller
+% at high optimization levels.
 
 qperm([], []).
 qperm(L, K) :-

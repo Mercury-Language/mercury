@@ -113,13 +113,14 @@
 
 %---------------------------------------------------------------------------%
 
-    % Write out the given database to a file named DUMP_OPTIONS_FILE,
-    % for testing the functionality of code that builds such databases.
-    % Report any inability to open DUMP_OPTIONS_FILE to the stream named
-    % by the first argument.
+    % dump_options_file(ErrorStream, FileName, Vars, !IO):
     %
-:- pred dump_options_file(io.text_output_stream::in, options_variables::in,
-    io::di, io::uo) is det.
+    % Write out the given database given by Vars to a file named FileName,
+    % for testing the functionality of code that builds such databases.
+    % Report any inability to open FileName to ErrorStream.
+    %
+:- pred dump_options_file(io.text_output_stream::in, file_name::in,
+    options_variables::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -327,7 +328,8 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
             ),
             trace [compiletime(flag("options_file_debug_stdin")), io(!TIO)] (
                 io.stderr_stream(DebugStream, !TIO),
-                dump_options_file(DebugStream, !.Variables, !TIO)
+                dump_options_file(DebugStream, "DUMP_OPTIONS_FILE",
+                    !.Variables, !TIO)
             )
         ;
             CheckResult = include_error(CheckSpec),
@@ -1628,8 +1630,8 @@ lookup_variable_value(Variables, VarName, Value, !UndefVarNames, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-dump_options_file(DebugStream, Variables, !IO) :-
-    io.open_output("DUMP_OPTIONS_FILE", OpenResult, !IO),
+dump_options_file(DebugStream, FileName, Variables, !IO) :-
+    io.open_output(FileName, OpenResult, !IO),
     (
         OpenResult = ok(DumpStream),
         write_options_variables(DumpStream, Variables, !IO),

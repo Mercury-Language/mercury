@@ -458,13 +458,12 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
     io::di, io::uo) is det.
 
 maybe_dump_options_file(ArgsGlobals, Variables, !IO) :-
-    lookup_bool_option(ArgsGlobals, dump_options_file, DumpOptionsFile),
-    (
-        DumpOptionsFile = no
-    ;
-        DumpOptionsFile = yes,
-        io.stderr_stream(StdErr, !IO),
-        dump_options_file(StdErr, Variables, !IO)
+    lookup_string_option(ArgsGlobals, dump_options_file, DumpOptionsFile),
+    ( if DumpOptionsFile = "" then
+        true
+    else
+        io.stderr_stream(StdErrStream, !IO),
+        dump_options_file(StdErrStream, DumpOptionsFile, Variables, !IO)
     ).
 
 %---------------------%

@@ -442,9 +442,18 @@ $(addsuffix .err,$(PROGS)):
 
 else
 
-%.err: %.m
-	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
-		> $*.err 2>&1; \
+$(SINGLEMODULE_PROGS:%=%.err): %.err: %.m
+	-$(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		$*.m > $*.int_err 2>&1;
+	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		$*.m > $*.err 2>&1; \
+	then false; \
+	else true; \
+	fi
+
+$(MULTIMODULE_PROGS:%=%.err): %.err: %.m
+	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		$*.m > $*.err 2>&1; \
 	then false; \
 	else true; \
 	fi
@@ -461,6 +470,9 @@ endif
 # "Mercury/cs/"; this avoids spurious failures with --use-subdirs.
 foreign_decl_line_number.err: foreign_decl_line_number.m
 	rm -f foreign_decl_line_number.err
+	-$(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		foreign_decl_line_number.m \
+		> foreign_decl_line_number.int_err 2>&1;
 	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 		--cflags "$(CFLAGS_FOR_ERRMSG_FILTER)" \
 		foreign_decl_line_number.m \
@@ -517,8 +529,10 @@ illtyped_compare.err: illtyped_compare.m
 # For these tests the error is only caught when generating target code.
 .PHONY: missing_file
 require_tailrec_1.err require_tailrec_2.err require_tailrec_3.err foreign_include_file_missing.err: %.err : %.m
+	-$(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
+		$*.m > $*.int_err 2>&1;
 	if $(MC) --target-code-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
-		$* > $*.err 2>&1; \
+		$*.m > $*.err 2>&1; \
 	then false; \
 	else true; \
 	fi
@@ -551,6 +565,6 @@ $(foreach module,$(REDIRECT_OPT_ERROR_MODULES),$(eval $(call OVERRIDE_OPT_RULE,$
 clean_local: clean_invalid
 
 clean_invalid:
-	rm -f *.dep_err *.err *.err_res *.err_res[2345]
+	rm -f *.dep_err *.int_err *.err *.err_res *.err_res[2345]
 
 #-----------------------------------------------------------------------------#

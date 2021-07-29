@@ -7767,10 +7767,10 @@ after the specified stage number or stage name, to
 @file{@var{module}.mlds_dump.@var{num}-@var{name}}.
 
 @c @sp 1
-@c @item --dump-options-file
+@c @item --dump-options-file @var{output_file}
 @c @findex --dump-options-file
 @c Dump the internal compiler representation of files named in
-@c --options-file options.
+@c --options-file options to @var{output_file}.
 
 @sp 1
 @item --mode-constraints

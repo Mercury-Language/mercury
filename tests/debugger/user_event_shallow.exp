@@ -29,11 +29,11 @@ User events get no contexts printed.
 mdb> user_event_context full
 User events will get full contexts printed.
 mdb> current
-      E3:     C3 USER <nodiag_fail> pred user_event_shallow.nodiag/3-0 (semidet) s2-2;c4;t;c2; user_event_shallow.m:68
+      E3:     C3 USER <nodiag_fail> pred user_event_shallow.nodiag/3-0 (semidet) s2-2;c4;t;c2; user_event_shallow.m:71
 mdb> user_event_context file
 User events will get only file contexts printed.
 mdb> current
-      E3:     C3 USER <nodiag_fail>  user_event_shallow.m:68
+      E3:     C3 USER <nodiag_fail>  user_event_shallow.m:71
 mdb> vars
         1 test_failed (attr 0)
         2 arg_b (attr 1, B)
