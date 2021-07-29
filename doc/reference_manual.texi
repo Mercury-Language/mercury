@@ -1222,12 +1222,13 @@ by a more local state variable of the same name.)
 For instance, the following clause employing a lambda expression
 @example
 p(@var{A}, @var{B}, !@var{S}) :-
-    F = (pred(@var{C}::in, @var{D}::out) is det :-
-        q(@var{C}, @var{D}, !@var{S})
-    ),
-    ( F(@var{A}, @var{E}) ->
+    F =
+        ( pred(@var{C}::in, @var{D}::out) is det :-
+            q(@var{C}, @var{D}, !@var{S})
+        ),
+    ( if F(@var{A}, @var{E}) then
         @var{B} = @var{E}
-    ;
+    else
         @var{B} = @var{A}
     ).
 @end example
@@ -1237,12 +1238,13 @@ it implicitly refers to @samp{!:@var{S}} inside the lambda expression.
 However
 @example
 p(@var{A}, @var{B}, !@var{S}) :-
-    F = (pred(@var{C}::in, @var{D}::out, !.@var{S}::in, !:@var{S}::out) is det :-
-        q(@var{C}, @var{D}, !@var{S})
-    ),
-    ( F(@var{A}, @var{E}, !@var{S}) ->
+    F =
+        ( pred(@var{C}::in, @var{D}::out, !.@var{S}::in, !:@var{S}::out) is det :-
+            q(@var{C}, @var{D}, !@var{S})
+        ),
+    ( if F(@var{A}, @var{E}, !@var{S}) then
         @var{B} = @var{E}
-    ;
+    else
         @var{B} = @var{A}
     ).
 @end example
@@ -1264,6 +1266,8 @@ for specifying the modes of the two implied parameters;
 third, @samp{!@var{X}} may not appear as an argument in a function application
 since this would not make sense
 given the usual interpretation of state variables and functions.
+(The default mode of functions is that all arguments are input,
+while in the overwhelming majority of cases, @samp{!:@var{X}} is output.)
 
 @table @code
 
