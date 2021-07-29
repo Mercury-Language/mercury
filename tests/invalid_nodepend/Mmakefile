@@ -136,9 +136,9 @@ else
 
 endif
 
-clean_local: clean_invalid
+clean_local: clean_invalid_nodepend
 
-clean_invalid:
+clean_invalid_nodepend:
 	rm -f *.dep_err *.err *.err_res *.err_res[2345]
 
 #-----------------------------------------------------------------------------#
