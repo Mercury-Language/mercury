@@ -4573,7 +4573,7 @@ because that would ask the committed choice goal for a second solution.
 The compiler enforces this rule.
 
 In the declarative semantics,
-which solution will be the first is unpredicatable,
+which solution will be the first is unpredictable,
 but in the operational semantics,
 you @emph{can} predict which solution will be the first,
 since Mercury does depth-first search
