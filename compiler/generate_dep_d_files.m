@@ -143,7 +143,10 @@ build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
 generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
         !IO) :-
     % First, build up a map of the dependencies.
-    generate_deps_map(Globals, Search, ModuleName, DepsMap0, DepsMap, !IO),
+    generate_deps_map(Globals, Search, ModuleName, DepsMap0, DepsMap,
+        [], DepsMapSpecs, !IO),
+    get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
+    write_error_specs_ignore(ErrorStream, Globals, DepsMapSpecs, !IO),
 
     % Check whether we could read the main `.m' file.
     map.lookup(DepsMap, ModuleName, ModuleDep),
@@ -159,7 +162,6 @@ generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
             string.format("cannot parse source file for module `%s'.\n",
                 [s(ModuleNameStr)], Message)
         ),
-        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
         report_error(ErrorStream, Message, !IO)
     else
         (
