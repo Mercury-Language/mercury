@@ -29,11 +29,9 @@ init_bar(1.0).
 :- pred output_foo(foo::in, io::di, io::uo) is det.
     
 output_foo(X, !IO) :-
-    io.write(X, !IO),
-    io.nl(!IO).
+    io.write_line(X, !IO).
 
 :- pred output_bar(bar::in, io::di, io::uo) is det.
 
 output_bar(X, !IO) :-
-    io.write(X, !IO),
-    io.nl(!IO).
+    io.write_line(X, !IO).
