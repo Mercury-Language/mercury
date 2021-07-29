@@ -4545,43 +4545,98 @@ with no non-local output variables to be
 If you want to use the values of output variables,
 then you need to ask yourself
 which one of possibly many solutions to a goal do you want?
-If you want all of them, you need to use the predicate
-@samp{solutions/2} in the standard library module @samp{solutions},
+If you want all of them, you need to one of the predicates
+in the standard library module @samp{solutions},
+such as @samp{solutions/2} itself,
 which collects all of the solutions to a goal into a list ---
 @pxref{Higher-order}.
 
-If you just want one solution and don't care which,
-the calling predicate should be declared @code{nondet} or @code{multi}.
-The nondeterminism should then be propagated up the call tree
-to the point at which it can be pruned.
-In Mercury, pruning can be achieved in several ways.
+If you just want one solution from a predicate and don't care which,
+you should declare the relevant mode of the predicate
+to have determinism @code{cc_nondet} or @code{cc_multi}
+(depending on whether you are guaranteed at least one solution or not).
+This tells the compiler that this mode of this predicate
+may have more than one solution when viewed as a statement in logic,
+but the implementation should stop after generating the first solution.
+In other words, the implementation should @emph{commit} to the first solution.
 
-The first way is the one mentioned above:
-if a goal has no non-local output variables
-then the implementation will only attempt to satisfy the goal once.
-Any potential duplicate solutions will be implicitly pruned away.
+The commit to the first solution means that
+a piece of @code{cc_nondet} or @code{cc_multi} code
+can never be asked to generate a second solution.
+If e.g. a @code{cc_nondet} call is in a conjunction,
+then no call to its right (after mode reordering) may fail,
+because that would ask the committed choice goal for a second solution.
+The compiler enforces this rule.
 
-The second way is to rely on the fact that
-the implementation will only seek a single solution to @samp{main/2},
-so alternative solutions to @samp{main/2}
-(and hence also to @code{nondet} or @code{multi} predicates
+In the declarative semantics,
+which solution will be the first is unpredicatable,
+but in the operational semantics,
+you @emph{can} predict which solution will be the first,
+since Mercury does depth-first search
+with left-to-right execution of clause bodies,
+though that is not on the source code form of each clause body,
+but on its form @emph{after} mode analysis reordering
+to put the producer of each variable before all its consumers.
+
+The @samp{committed choice nondeterminism} of a predicate
+has to be propagated up the call tree,
+making its callers, its callers' callers, and so on,
+also @code{cc_nondet} or @code{cc_multi},
+until either you get to @code{main/2} at the top of the call tree,
+or you get to a location where you don't have to propagate
+the committed choice context upward anymore.
+
+While @code{main/2} is usually declared to have determinism @code{det},
+it may also be declared @code{cc_multi}.
+In the latter case,
+while the program's declarative semantics may admit more than one solution,
+the implementation will stop after the first,
+so alternative solutions to @code{main/2}
+(and hence also to @code{cc_nondet} or @code{cc_multi} predicates
 called directly or indirectly from @samp{main/2})
 are implicitly pruned away.
-This is one way to achieve ``don't care'' style nondeterminism in Mercury.
+This is similar to the ``don't care'' nondeterminism
+of committed choice logic programming languages such as GHC.
 
-The other situation in which you may want pruning
-and committed choice style nondeterminism
-is when you know that all the solutions returned will be equivalent.
+One way to stop propagating committed choice nondeterminism
+is the one mentioned above: if a goal has no non-local output variables
+(i.e.@ none of the goal's outputs are visible from outside the goal),
+then the goal's solutions are indistinguishable from the outside,
+and the implementation will only attempt to satisfy the goal once,
+whether or not the goal is committed choice.
+Therefore if a @code{cc_multi} goal has all its output ignored,
+then the compiler considers it to be a @code{det} goal,
+while if a @code{cc_nondet} goal has all its output ignored,
+then the compiler considers it to be a @code{semidet} goal.
+
+The other way to stop propagating committed choice nondeterminism is applicable
+when you know that all the solutions returned will be equivalent
+in all the ways that your program cares about.
 For example, you might want to find the maximum element in a set
 by iterating over the elements in the set.
 Iterating over the elements in a set in an unspecified order is a
 nondeterministic operation,
-but no matter which order you remove them,
+but no matter which order you iterate over them,
 the maximum value in the set should be the same.
 
-If you know that there will only ever be at most one distinct
-solution under the equality theory of the output variables,
+If this condition is satisfied,
+i.e.@ if you know that there will only ever be at most one distinct solution
+under your equality theory of the output variables,
 then you can use a @samp{promise_equivalent_solutions} determinism cast.
+If goal @samp{G} is a @code{cc_multi} goal
+whose outputs are @code{X} and @code{Y}, then
+@code{promise_equivalent_solutions [X, Y] ( G )}
+promises the compiler that all solutions of @code{G} are equivalent,
+so that regardless of which solution of @code{G}
+the implementation happens to commit to,
+the rest of the program will compute
+either identical or (similarly) equivalent results.
+This allows the compiler to consider
+@code{promise_equivalent_solutions [X, Y] ( G )}
+to have determinism @code{det}.
+Likewise, the compiler will consider
+@code{promise_equivalent_solutions [X, Y] ( G )}
+where @code{G} is @code{cc_nondet} to have determinism @code{semidet}.
 
 Note that specifying a user-defined equivalence relation
 as the equality predicate for user-defined types
