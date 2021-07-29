@@ -1025,10 +1025,11 @@ compile_csharp_file(Globals, ProgressStream, ErrorStream, ModuleAndImports,
         Prefix = "-r:"
     ),
     module_dep_info_get_fims(ModuleAndImports, FIMSpes),
-    % XXX Why are we processing the FIMSpecs that are NOT for C#?
-    ForeignDeps = list.map(
-        (func(FI) = fim_spec_module_name_from_module(FI, ModuleName)),
-        set.to_sorted_list(FIMSpes)),
+    list.filter_map(
+        ( pred(FS::in, M::out) is semidet :-
+            FS = fim_spec(lang_csharp, _),
+            M = fim_spec_module_name_from_module(FS, ModuleName)
+        ), set.to_sorted_list(FIMSpes), ForeignDeps),
     module_dep_info_get_int_deps(ModuleAndImports, IntDeps),
     module_dep_info_get_imp_deps(ModuleAndImports, ImpDeps),
     set.union(IntDeps, ImpDeps, IntImpDeps),
