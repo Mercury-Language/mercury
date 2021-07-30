@@ -5,9 +5,9 @@ mdb> register --quiet
 mdb> break a
  0: + stop  interface pred gcf.a/1-0 (nondet)
 mdb> continue
-       3:      2  2 CALL pred gcf.a/1-0 (nondet) gcf.m:33 (gcf.m:18)
+       3:      2  2 CALL pred gcf.a/1-0 (nondet) gcf.m:29 (gcf.m:18)
 mdb> finish
-      27:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:33 (gcf.m:18)
+      27:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:29 (gcf.m:18)
 mdb> dd -d 3 -n 7
 a(11)
 Valid? no
@@ -23,11 +23,11 @@ c(2, 11)
 f(11)
 a(11)
 Is this a bug? yes
-      27:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:33 (gcf.m:18)
+      27:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:29 (gcf.m:18)
 mdb> continue
-      30:      2  2 REDO pred gcf.a/1-0 (nondet) gcf.m:33 (gcf.m:18)
+      30:      2  2 REDO pred gcf.a/1-0 (nondet) gcf.m:29 (gcf.m:18)
 mdb> finish
-      38:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:33 (gcf.m:18)
+      38:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:29 (gcf.m:18)
 mdb> dd -d 3 -n 7
 a(12)
 Valid? no
@@ -41,11 +41,11 @@ c(2, 12)
 f(12)
 a(12)
 Is this a bug? yes
-      38:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:33 (gcf.m:18)
+      38:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:29 (gcf.m:18)
 mdb> continue
-      41:      2  2 REDO pred gcf.a/1-0 (nondet) gcf.m:33 (gcf.m:18)
+      41:      2  2 REDO pred gcf.a/1-0 (nondet) gcf.m:29 (gcf.m:18)
 mdb> finish
-      54:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:33 (gcf.m:18)
+      54:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:29 (gcf.m:18)
 mdb> dd -d 3 -n 7
 a(20)
 Valid? no
@@ -61,6 +61,6 @@ c(3, 20)
 f(20)
 a(20)
 Is this a bug? yes
-      54:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:33 (gcf.m:18)
+      54:      2  2 EXIT pred gcf.a/1-0 (nondet) gcf.m:29 (gcf.m:18)
 mdb> continue
 yes(20)

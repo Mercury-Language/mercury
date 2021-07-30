@@ -32,4 +32,3 @@ q(N, M) :-
     else
         throw("q: bad input")
     ).
-

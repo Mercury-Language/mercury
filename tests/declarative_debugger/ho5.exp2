@@ -5,7 +5,7 @@ mdb> register --quiet
 mdb> break p
  0: + stop  interface pred ho5.p/2-0 (det)
 mdb> continue
-      E2:     C2 CALL pred ho5.p/2-0 (det) ho5.m:24 (exception.m:NNNN)
+      E2:     C2 CALL pred ho5.p/2-0 (det) ho5.m:22 (exception.m:NNNN)
 mdb> finish
       E3:     C2 EXCP pred ho5.p/2-0 (det) c2; ho5.m:24 (exception.m:NNNN)
 mdb> dd -d 3 -n 7
@@ -24,7 +24,7 @@ Is this a bug? yes
       E3:     C2 EXCP pred ho5.p/2-0 (det) c2; ho5.m:24 (exception.m:NNNN)
 mdb> continue
 exception(univ_cons('<<function>>'))
-      E4:     C3 CALL pred ho5.p/2-0 (det) ho5.m:24 (exception.m:NNNN)
+      E4:     C3 CALL pred ho5.p/2-0 (det) ho5.m:22 (exception.m:NNNN)
 mdb> finish
       E5:     C3 EXCP pred ho5.p/2-0 (det) c2; ho5.m:24 (exception.m:NNNN)
 mdb> dd -d 3 -n 7

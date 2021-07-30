@@ -2,16 +2,16 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% Tests 4 cases of dependency tracking :
-%   1. When the subterm is an input and the origin is the output of a sibling.
-%   2. When the subterm is an input and the origin is the input from the
-%      parent.
-%   3. When the subterm is an output and the origin is an input argument of the
-%      same procedure.
-%   4. When the subterm is an output and the origin is an output of a child.
+% Test four cases of dependency tracking:
+% 1. When the subterm is an input and the origin is the output of a sibling.
+% 2. When the subterm is an input and the origin is the input from the parent.
+% 3. When the subterm is an output and the origin is an input argument of the
+%    same procedure.
+% 4. When the subterm is an output and the origin is an output of a child.
 %
-% These 4 cases are tested with a monomorphic predicate and a polymorphic
-% predicate.
+% Test all four cases with both
+% - a monomorphic predicate, and
+% - a polymorphic predicate.
 
 :- module find_origin.
 

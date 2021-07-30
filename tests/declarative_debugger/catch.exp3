@@ -1,31 +1,26 @@
-      E1:     C1 CALL pred catch.main/2-0 (cc_multi) catch.m:16
+      E1:     C1 CALL pred catch.main/2-0 (cc_multi) catch.m:8
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
  0: + stop  interface pred catch.p/2-0 (cc_multi)
 mdb> continue
-      E2:     C2 CALL pred catch.p/2-0 (cc_multi) catch.m:26 (catch.m:17)
+      E2:     C2 CALL pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:9)
 mdb> finish
-      E3:     C2 EXIT pred catch.p/2-0 (cc_multi) catch.m:26 (catch.m:17)
+      E3:     C2 EXIT pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:9)
 mdb> dd -d 3 -n 7
 p(1, exception(univ_cons("q: bad input")))
 Valid? no
-Call q(1, _)
-Throws "q: bad input"
-Expected? no
-Found unhandled or incorrect exception:
-q(1, _)
-"q: bad input"
-Is this a bug? yes
-      E4:     C3 EXCP pred catch.q/2-0 (det) e;c3; catch.m:37 (exception.m:NNNN)
-mdb> continue
-      E3:     C2 EXIT pred catch.p/2-0 (cc_multi) catch.m:26 (catch.m:17)
+Sorry, the diagnosis cannot continue because it requires support for
+the following: code that catches exceptions.
+The debugger is a work in progress, and this is not supported in the
+current version.
+      E3:     C2 EXIT pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:9)
 mdb> continue
 exception(univ_cons("q: bad input"))
-      E5:     C4 CALL pred catch.p/2-0 (cc_multi) catch.m:26 (catch.m:20)
+      E4:     C3 CALL pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:12)
 mdb> finish
-      E6:     C4 EXIT pred catch.p/2-0 (cc_multi) catch.m:26 (catch.m:20)
+      E5:     C3 EXIT pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:12)
 mdb> dd -d 3 -n 7
 p(2, succeeded(2))
 Valid? no
@@ -35,6 +30,6 @@ Found incorrect contour:
 try(q(2), succeeded(2))
 p(2, succeeded(2))
 Is this a bug? yes
-      E6:     C4 EXIT pred catch.p/2-0 (cc_multi) catch.m:26 (catch.m:20)
+      E5:     C3 EXIT pred catch.p/2-0 (cc_multi) catch.m:18 (catch.m:12)
 mdb> continue
 succeeded(2)
