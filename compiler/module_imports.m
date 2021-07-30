@@ -240,8 +240,6 @@
     module_names_contexts::out) is det.
 :- pred module_and_imports_get_indirect_deps(module_and_imports::in,
     set(module_name)::out) is det.
-:- pred module_and_imports_get_c_j_cs_fims(module_and_imports::in,
-    c_j_cs_fims::out) is det.
 :- pred module_and_imports_get_contains_foreign_code(module_and_imports::in,
     contains_foreign_code::out) is det.
 :- pred module_and_imports_get_contains_foreign_export(module_and_imports::in,
@@ -275,8 +273,6 @@
     module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_set_indirect_deps(set(module_name)::in,
     module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_c_j_cs_fims(c_j_cs_fims::in,
-    module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_set_maybe_timestamp_map(
     maybe(module_timestamp_map)::in,
     module_and_imports::in, module_and_imports::out) is det.
@@ -309,6 +305,8 @@
     set(module_name)::out) is det.
 :- pred module_and_imports_get_fact_tables(module_and_imports::in,
     set(string)::out) is det.
+:- pred module_and_imports_get_fim_specs(module_and_imports::in,
+    set(fim_spec)::out) is det.
 :- pred module_and_imports_get_foreign_include_file_infos(
     module_and_imports::in, set(foreign_include_file_info)::out) is det.
 
@@ -368,8 +366,7 @@
 :- pred module_and_imports_d_file(module_and_imports::in,
     file_name::out, module_name::out, maybe_top_module::out,
     module_names_contexts::out, module_names_contexts::out,
-    set(module_name)::out, c_j_cs_fims::out, contains_foreign_code::out,
-    aug_compilation_unit::out) is det.
+    set(module_name)::out, aug_compilation_unit::out) is det.
 
     % Return the results recorded in the module_and_imports structure.
     %
@@ -450,7 +447,6 @@
 :- import_module dir.
 :- import_module one_or_more.
 :- import_module one_or_more_map.
-:- import_module require.
 :- import_module string.
 :- import_module term.
 
@@ -525,10 +521,6 @@
 
                 % The set of modules it indirectly imports.
                 mai_indirect_deps       :: set(module_name),
-
-                % The information from `:- pragma foreign_import_module'
-                % declarations.
-                mai_fims                :: c_j_cs_fims,
 
                 % Whether or not the module contains foreign code, and if yes,
                 % which languages they use.
@@ -752,39 +744,14 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
         RawCompUnit),
     RawCompUnit = raw_compilation_unit(_, _, RawItemBlocks),
     get_foreign_code_indicators_from_item_blocks(Globals, RawItemBlocks,
-        LangSet, FIMs0),
-
-    % If this module contains `:- pragma foreign_export' or
-    % `:- pragma foreign_type' declarations, importing modules may need
-    % to import its `.mh' file.
-    get_foreign_self_imports_from_item_blocks(RawItemBlocks, SelfImportLangs),
-    list.foldl(add_fim_for_module(ModuleName), SelfImportLangs, FIMs0, FIMs),
-    % XXX END OF THE REMAINS OF THE OLD CODE
-
+        LangSet, _FIMs0),
     get_raw_components(RawItemBlocks, _IntIncls, _ImpIncls,
-        IntAvails, ImpAvails, IntFIMs, ImpFIMs, IntItems, ImpItems),
-    NewFIMs0 = init_foreign_import_modules,
-    list.foldl(add_fim_spec, list.map(fim_item_to_spec, IntFIMs),
-        NewFIMs0, NewFIMs1),
-    list.foldl(add_fim_spec, list.map(fim_item_to_spec, ImpFIMs),
-        NewFIMs1, NewFIMs2),
-    globals.get_backend_foreign_languages(Globals, BackendLangs),
-    NewFIMs2 = c_j_cs_fims(FIMsC2, FIMsJava2, FIMsCs2),
-    ( if list.member(lang_c, BackendLangs) then
-        FIMsC3 = FIMsC2 else FIMsC3 = set.init ),
-    ( if list.member(lang_java, BackendLangs) then
-        FIMsJava3 = FIMsJava2 else FIMsJava3 = set.init ),
-    ( if list.member(lang_csharp, BackendLangs) then
-        FIMsCs3 = FIMsCs2 else FIMsCs3 = set.init ),
-    NewFIMs3 = c_j_cs_fims(FIMsC3, FIMsJava3, FIMsCs3),
-    list.foldl(add_fim_for_module(ModuleName), SelfImportLangs,
-        NewFIMs3, NewFIMs),
-    expect(unify(FIMs, NewFIMs), $pred, "FIMs != NewFIMs"),
-
+        IntAvails, ImpAvails, _IntFIMs, _ImpFIMs, IntItems, ImpItems),
     get_implicits_foreigns_fact_tables(IntItems, ImpItems,
         IntImplicitImportNeeds, IntImpImplicitImportNeeds, Contents),
     Contents = item_contents(_ForeignIncludeFilesCord, _FactTables, _NewLangs,
         NewForeignExportLangs),
+    globals.get_backend_foreign_languages(Globals, BackendLangs),
     set.intersect(set.list_to_set(BackendLangs), NewForeignExportLangs,
         NewBackendFELangs),
     ContainsForeignCode = foreign_code_langs_known(LangSet),
@@ -830,38 +797,12 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     ModuleAndImports = module_and_imports(FileName, dir.this_directory,
         SourceFileModuleName,
-        MaybeTopModule, IntDepsMap, IntImpDepsMap, IndirectDeps, FIMs,
+        MaybeTopModule, IntDepsMap, IntImpDepsMap, IndirectDeps,
         ContainsForeignCode, ContainsForeignExport,
         ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         VersionNumbers, MaybeTimestampMap, Specs, Errors,
         GrabbedFileMap, mcm_init).
-
-    % XXX ITEM_LIST This shouldn't be needed; the representation of the
-    % compilation unit should have all this information separate from
-    % the items.
-    %
-:- pred get_foreign_self_imports_from_item_blocks(list(item_block(MS))::in,
-    list(foreign_language)::out) is det.
-
-get_foreign_self_imports_from_item_blocks(ItemBlocks, Langs) :-
-    list.foldl(accumulate_foreign_import_langs_in_item_block, ItemBlocks,
-        set.init, LangSet),
-    set.to_sorted_list(LangSet, Langs).
-
-:- pred accumulate_foreign_import_langs_in_item_block(item_block(MS)::in,
-    set(foreign_language)::in, set(foreign_language)::out) is det.
-
-accumulate_foreign_import_langs_in_item_block(ItemBlock, !LangSet) :-
-    ItemBlock = item_block(_, _, _, _, _, Items),
-    list.foldl(accumulate_foreign_import_langs_in_item, Items, !LangSet).
-
-:- pred accumulate_foreign_import_langs_in_item(item::in,
-    set(foreign_language)::in, set(foreign_language)::out) is det.
-
-accumulate_foreign_import_langs_in_item(Item, !LangSet) :-
-    Langs = item_needs_foreign_imports(Item),
-    set.insert_list(Langs, !LangSet).
 
 %---------------------------------------------------------------------------%
 
@@ -871,9 +812,6 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
     map.init(IntDeps),
     map.init(ImpDeps),
     set.init(IndirectDeps),
-    % XXX Since PublicChildrenMap should be a subset of ChildrenMap,
-    % this looks like bug.
-    ForeignImports = init_foreign_import_modules,
     map.init(VersionNumbers),
     globals.get_backend_foreign_languages(Globals, BackendLangs),
     set.intersect(set.list_to_set(BackendLangs), ForeignExportLangs,
@@ -897,7 +835,7 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
     ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
         SourceFileModuleName, MaybeTopModule,
         IntDeps, ImpDeps, IndirectDeps,
-        ForeignImports, foreign_code_langs_unknown, ContainsForeignExport,
+        foreign_code_langs_unknown, ContainsForeignExport,
         ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         VersionNumbers, MaybeTimestampMap, Specs, Errors,
@@ -1050,26 +988,6 @@ module_and_imports_get_indirect_deps(ModuleAndImports, X) :-
             impure set_accesses(Accesses)
         ),
         X = ModuleAndImports ^ mai_indirect_deps
-    ).
-module_and_imports_get_c_j_cs_fims(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Method = ModuleAndImports ^ mai_construction_method,
-            (
-                Method = mcm_init,
-                Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_foreign_import_modules := accessed,
-                Accesses = Accesses0 ^ mfk_init := Fields
-            ;
-                Method = mcm_make,
-                Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_foreign_import_modules := accessed,
-                Accesses = Accesses0 ^ mfk_make := Fields
-            ),
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_fims
     ).
 module_and_imports_get_contains_foreign_code(ModuleAndImports, X) :-
     promise_pure (
@@ -1387,8 +1305,6 @@ module_and_imports_set_imp_deps_map(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_imp_deps_map := X.
 module_and_imports_set_indirect_deps(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_indirect_deps := X.
-module_and_imports_set_c_j_cs_fims(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_fims := X.
 module_and_imports_set_ancestor_int_specs(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_ancestor_int_specs := X.
 module_and_imports_set_direct_int_specs(X, !ModuleAndImports) :-
@@ -1453,6 +1369,11 @@ module_and_imports_get_fact_tables(ModuleAndImports, FactTables) :-
     module_and_imports_get_parse_tree_module_src(ModuleAndImports,
         ParseTreeModuleSrc),
     get_fact_tables(ParseTreeModuleSrc ^ ptms_imp_impl_pragmas, FactTables).
+
+module_and_imports_get_fim_specs(ModuleAndImports, FIMSpecs) :-
+    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
+        ParseTreeModuleSrc),
+    get_fims(ParseTreeModuleSrc, FIMSpecs).
 
 module_and_imports_get_foreign_include_file_infos(ModuleAndImports, FIFOs) :-
     module_and_imports_get_parse_tree_module_src(ModuleAndImports,
@@ -1584,8 +1505,7 @@ module_and_imports_add_specs_errors(NewSpecs, NewErrors, !ModuleAndImports) :-
 
 module_and_imports_d_file(ModuleAndImports,
         SourceFileName, SourceFileModuleName, MaybeTopModule,
-        IntDepsMap, ImpDepsMap, IndirectDeps,
-        CJCsEFIMs, ContainsForeignCode, AugCompUnit) :-
+        IntDepsMap, ImpDepsMap, IndirectDeps, AugCompUnit) :-
     % XXX CLEANUP Several of the outputs are part of the parse_tree_module_src
     % in AugCompUnit.
     module_and_imports_get_version_numbers_map(ModuleAndImports,
@@ -1598,9 +1518,6 @@ module_and_imports_d_file(ModuleAndImports,
     module_and_imports_get_int_deps_map(ModuleAndImports, IntDepsMap),
     module_and_imports_get_imp_deps_map(ModuleAndImports, ImpDepsMap),
     module_and_imports_get_indirect_deps(ModuleAndImports, IndirectDeps),
-    module_and_imports_get_c_j_cs_fims(ModuleAndImports, CJCsEFIMs),
-    module_and_imports_get_contains_foreign_code(ModuleAndImports,
-        ContainsForeignCode),
     module_and_imports_get_parse_tree_module_src(ModuleAndImports,
         ParseTreeModuleSrc),
     module_and_imports_get_ancestor_int_specs(ModuleAndImports,
@@ -1729,8 +1646,7 @@ module_dep_info_get_fact_tables(ModuleDepInfo, X) :-
 module_dep_info_get_fims(ModuleDepInfo, X) :-
     (
         ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
-        module_and_imports_get_c_j_cs_fims(ModuleAndImports, CJCsFIMs),
-        X = get_all_fim_specs(CJCsFIMs)
+        module_and_imports_get_fim_specs(ModuleAndImports, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_fims
@@ -1781,8 +1697,6 @@ module_dep_info_get_contains_foreign_export(ModuleDepInfo, X) :-
                 mf_imp_deps_map                 :: maybe_accessed,
                 mf_indirect_deps                :: maybe_accessed,
 
-                mf_foreign_import_modules       :: maybe_accessed,
-                mf_foreign_include_files        :: maybe_accessed,
                 mf_contains_foreign_code        :: maybe_accessed,
                 mf_contains_foreign_export      :: maybe_accessed,
 
@@ -1815,7 +1729,7 @@ init_mai_fields =
 
         not_accessed, not_accessed, not_accessed, not_accessed,
 
-        not_accessed, not_accessed, not_accessed, not_accessed,
+        not_accessed, not_accessed,
 
         not_accessed, not_accessed, not_accessed, not_accessed,
         not_accessed, not_accessed, not_accessed, not_accessed,
@@ -1843,13 +1757,12 @@ write_mai_stats(Stream, !IO) :-
 write_mai_fields_stats(Stream, Kind, Fields, !IO) :-
     Fields = mai_fields(SrcFileName, SrcFileDir, SrcFileModuleName,
         MaybeTopModule, IntDepsMap, ImpDepsMap, IndirectDeps,
-        FIMs, ForeignIncludeFiles, HasForeignCode, HasForeignExport,
+        HasForeignCode, HasForeignExport,
         ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         VersionNumbersMap, MaybeTimestampMap, Specs, Errors),
     io.format(Stream,
-        "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s " ++
-        "%s %s %s %s %s %s %s %s %s\n",
+        "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s\n",
         [s(Kind),
         s(acc_str(SrcFileName)),
         s(acc_str(SrcFileDir)),
@@ -1858,8 +1771,6 @@ write_mai_fields_stats(Stream, Kind, Fields, !IO) :-
         s(acc_str(IntDepsMap)),
         s(acc_str(ImpDepsMap)),
         s(acc_str(IndirectDeps)),
-        s(acc_str(FIMs)),
-        s(acc_str(ForeignIncludeFiles)),
         s(acc_str(HasForeignCode)),
         s(acc_str(HasForeignExport)),
         s(acc_str(ParseTreeModuleSrc)),

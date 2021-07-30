@@ -248,8 +248,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         !:MmakeFile, !IO) :-
     module_and_imports_d_file(ModuleAndImports,
         SourceFileName, SourceFileModuleName, MaybeTopModule,
-        IntDepsMap, ImpDepsMap, IndirectDeps,
-        ForeignImportModules0, ContainsForeignCode, AugCompUnit),
+        IntDepsMap, ImpDepsMap, IndirectDeps, AugCompUnit),
     ParseTreeModuleSrc = AugCompUnit ^ aci_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameString = sym_name_to_string(ModuleName),
@@ -337,7 +336,6 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         MmakeRulesParentDates, !IO),
 
     construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
-        ContainsForeignCode, ForeignImportModules0,
         ObjFileName, PicObjFileName, MmakeRulesForeignImports, !IO),
 
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
@@ -808,76 +806,41 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
 %---------------------%
 
 :- pred construct_foreign_import_rules(globals::in, aug_compilation_unit::in,
-    module_name::in, contains_foreign_code::in, c_j_cs_fims::in,
-    string::in, string::in, list(mmake_entry)::out, io::di, io::uo) is det.
+    module_name::in, string::in, string::in,
+    list(mmake_entry)::out, io::di, io::uo) is det.
 
 construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
-        ContainsForeignCode, ForeignImportModules0,
         ObjFileName, PicObjFileName, MmakeRulesForeignImports, !IO) :-
-    ParseTreeModuleSrc = AugCompUnit ^ aci_module_src,
+    AugCompUnit = aug_compilation_unit(_, ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
+        PlainOpts, _TransOpts, IntForOptSpecs, _TypeRepnSpecs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    (
-        ContainsForeignCode = foreign_code_langs_known(_ForeignCodeLangs),
-        % XXX This looks wrong to me (zs) in cases when _ForeignCodeLangs
-        % is not the empty set. It is possible that in all such cases,
-        % ForeignImportModules0 already contains the needed
-        % foreign_import_module declarations, but it would be nice to see
-        % a reasoned correctness argument about that.
-        FIMSpecs = get_all_fim_specs(ForeignImportModules0)
-    ;
-        ContainsForeignCode = foreign_code_langs_unknown,
-        % If we are generating the `.dep' file, ForeignImportModules0
-        % will contain a conservative approximation to the set of foreign
-        % imports needed which will include imports required by imported
-        % modules.
-        % XXX ITEM_LIST What is the correctness argument that supports
-        % the above assertion?
-        % XXX ITEM_LIST And even if it is true, how does that lead to
-        % us adding the foreign_import_module declarations from the
-        % interface and optimization files to ForeignImportModules
-        % ONLY if ForeignImportModules0 contains nothing?
-        % (Actually, we are replacing ForeignImportModules0 with them,
-        % but when ForeignImportModules0 contains nothing, that is equivalent
-        % to addition.)
-        ( if
-            ForeignImportModules0 = c_j_cs_fims(C0, Java0, CSharp0),
-            set.is_empty(C0),
-            set.is_empty(Java0),
-            set.is_empty(CSharp0)
-        then
-            AugCompUnit = aug_compilation_unit(_, _ParseTreeModuleSrc,
-                AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
-                PlainOpts, _TransOpts, IntForOptSpecs, _TypeRepnSpecs),
-            some [!FIMSpecs] (
-                set.init(!:FIMSpecs),
-                map.foldl_values(gather_fim_specs_in_ancestor_int_spec,
-                    AncestorIntSpecs, !FIMSpecs),
-                map.foldl_values(gather_fim_specs_in_direct_int_spec,
-                    DirectIntSpecs, !FIMSpecs),
-                map.foldl_values(gather_fim_specs_in_indirect_int_spec,
-                    IndirectIntSpecs, !FIMSpecs),
-                map.foldl_values(gather_fim_specs_in_parse_tree_plain_opt,
-                    PlainOpts, !FIMSpecs),
-                % .trans_opt files cannot contain FIMs.
-                map.foldl_values(gather_fim_specs_in_int_for_opt_spec,
-                    IntForOptSpecs, !FIMSpecs),
-                % Any FIMs in type_repn_specs are ignored.
+    some [!FIMSpecs] (
+        get_fims(ParseTreeModuleSrc, !:FIMSpecs),
+        map.foldl_values(gather_fim_specs_in_ancestor_int_spec,
+            AncestorIntSpecs, !FIMSpecs),
+        map.foldl_values(gather_fim_specs_in_direct_int_spec,
+            DirectIntSpecs, !FIMSpecs),
+        map.foldl_values(gather_fim_specs_in_indirect_int_spec,
+            IndirectIntSpecs, !FIMSpecs),
+        map.foldl_values(gather_fim_specs_in_parse_tree_plain_opt,
+            PlainOpts, !FIMSpecs),
+        % .trans_opt files cannot contain FIMs.
+        map.foldl_values(gather_fim_specs_in_int_for_opt_spec,
+            IntForOptSpecs, !FIMSpecs),
+        % Any FIMs in type_repn_specs are ignored.
 
-                % We restrict the set of FIMs to those that are valid
-                % for the current backend. This preserves old behavior,
-                % and makes sense in that the code below generates mmake rules
-                % only for the current backend, but it would be nice if we
-                % could generate dependency rules for *all* the backends.
-                globals.get_backend_foreign_languages(Globals, BackendLangs),
-                IsBackendFIM =
-                    ( pred(FIMSpec::in) is semidet :-
-                        list.member(FIMSpec ^ fimspec_lang, BackendLangs)
-                    ),
-                set.filter(IsBackendFIM, !.FIMSpecs, FIMSpecs)
-            )
-        else
-            FIMSpecs = get_all_fim_specs(ForeignImportModules0)
-        )
+        % We restrict the set of FIMs to those that are valid
+        % for the current backend. This preserves old behavior,
+        % and makes sense in that the code below generates mmake rules
+        % only for the current backend, but it would be nice if we
+        % could generate dependency rules for *all* the backends.
+        globals.get_backend_foreign_languages(Globals, BackendLangs),
+        IsBackendFIM =
+            ( pred(FIMSpec::in) is semidet :-
+                list.member(FIMSpec ^ fimspec_lang, BackendLangs)
+            ),
+        set.filter(IsBackendFIM, !.FIMSpecs, FIMSpecs)
     ),
 
     % Handle dependencies introduced by
@@ -904,28 +867,28 @@ construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
             % NOTE: for C the possible targets might be a .o file _or_ a
             % .pic_o file. We need to include dependencies for the latter
             % otherwise invoking mmake with a <module>.pic_o target will break.
-            ForeignImportTargets = [ObjFileName, PicObjFileName],
-            ForeignImportOtherExt = other_ext(".mh")
+            ForeignImportTargets = one_or_more(ObjFileName, [PicObjFileName]),
+            ForeignImportOtherExt = other_ext(".mh"),
+            gather_foreign_import_deps(Globals, ForeignImportOtherExt,
+                ForeignImportTargets, ForeignImportedModuleNames,
+                MmakeRuleForeignImports, !IO),
+            MmakeRulesForeignImports = [MmakeRuleForeignImports]
         ;
             Target = target_java,
             module_name_to_file_name(Globals, $pred, do_not_create_dirs,
                 ext_other(other_ext(".class")),
                 ModuleName, ClassFileName, !IO),
-            ForeignImportTargets = [ClassFileName],
-            ForeignImportOtherExt = other_ext(".java")
+            ForeignImportTargets = one_or_more(ClassFileName, []),
+            ForeignImportOtherExt = other_ext(".java"),
+            gather_foreign_import_deps(Globals, ForeignImportOtherExt,
+                ForeignImportTargets, ForeignImportedModuleNames,
+                MmakeRuleForeignImports, !IO),
+            MmakeRulesForeignImports = [MmakeRuleForeignImports]
         ;
             Target = target_csharp,
-            % XXX don't know enough about C# yet
-            ForeignImportTargets = [],
-            ForeignImportOtherExt = other_ext(".cs")
-        ),
-        % XXX Instead of generating a separate rule for each target in
-        % ForeignImportTargets, generate one rule with all those targets
-        % before the colon.
-        list.map_foldl(
-            gather_foreign_import_deps(Globals, ForeignImportOtherExt,
-                ForeignImportedModuleNames),
-            ForeignImportTargets, MmakeRulesForeignImports, !IO)
+            % XXX We don't implement mmake rules for C#.
+            MmakeRulesForeignImports = []
+        )
     ).
 
 %---------------------%
@@ -1171,29 +1134,27 @@ gather_nested_deps(Globals, ModuleName, NestedDeps, OtherExt,
         []).
 
 :- pred gather_foreign_import_deps(globals::in, other_ext::in,
-    list(module_name)::in, string::in, mmake_entry::out,
+    one_or_more(string)::in, list(module_name)::in, mmake_entry::out,
     io::di, io::uo) is det.
 
 gather_foreign_import_deps(Globals, ForeignImportOtherExt,
-        ForeignImportedModuleNames, ForeignImportTarget, MmakeRule, !IO) :-
+        ForeignImportTargets, ForeignImportedModuleNames, MmakeRule, !IO) :-
     make_module_file_names_with_suffix(Globals,
         ext_other(ForeignImportOtherExt),
         ForeignImportedModuleNames, ForeignImportedFileNames, !IO),
     ForeignImportExtStr = other_extension_to_string(ForeignImportOtherExt),
-    MmakeRule = mmake_simple_rule("foreign_deps_for_" ++ ForeignImportExtStr,
+    MmakeRule = mmake_flat_rule("foreign_deps_for_" ++ ForeignImportExtStr,
         mmake_rule_is_not_phony,
-        ForeignImportTarget,
+        ForeignImportTargets,
         ForeignImportedFileNames,
         []).
 
 %---------------------------------------------------------------------------%
 
-:- pred make_module_file_names_with_suffix(globals::in,
-    ext::in, list(module_name)::in, list(mmake_file_name)::out,
-    io::di, io::uo) is det.
+:- pred make_module_file_names_with_suffix(globals::in, ext::in,
+    list(module_name)::in, list(mmake_file_name)::out, io::di, io::uo) is det.
 
-make_module_file_names_with_suffix(Globals, Ext,
-        Modules, FileNames, !IO) :-
+make_module_file_names_with_suffix(Globals, Ext, Modules, FileNames, !IO) :-
     list.map_foldl(
         module_name_to_file_name(Globals, $pred, do_not_create_dirs, Ext),
         Modules, FileNames, !IO).
@@ -1224,8 +1185,8 @@ foreign_include_file_path_name(SourceFileName, IncludeFile) = IncludePath :-
 get_fact_table_dependencies(_, _, [], [], !IO).
 get_fact_table_dependencies(Globals, OtherExt,
         [ExtraLink | ExtraLinks], [FileName | FileNames], !IO) :-
-    fact_table_file_name(Globals, $pred, do_not_create_dirs,
-        OtherExt, ExtraLink, FileName, !IO),
+    fact_table_file_name(Globals, $pred, do_not_create_dirs, OtherExt,
+        ExtraLink, FileName, !IO),
     get_fact_table_dependencies(Globals, OtherExt,
         ExtraLinks, FileNames, !IO).
 
@@ -1266,88 +1227,62 @@ generate_dependencies_write_d_file(Globals, Dep,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptOrder, _DepsMap, !IO) :-
     % XXX The fact that _DepsMap is unused here may be a bug.
-    %
-    % XXX Updating !ModuleAndImports does not look a correct thing to do
-    % in this predicate, since it doesn't actually process any module imports.
-    some [!ModuleAndImports] (
-        Dep = deps(_, !:ModuleAndImports),
+    Dep = deps(_, ModuleAndImports),
 
-        % Look up the interface/implementation/indirect dependencies
-        % for this module from the respective dependency graphs,
-        % and save them in the module_and_imports structure.
+    % Look up the interface/implementation/indirect dependencies
+    % for this module from the respective dependency graphs,
+    % and save them in the module_and_imports structure.
 
-        module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
-        get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
-            IndirectOptDepsMap),
-        one_or_more_map.keys_as_set(IndirectOptDepsMap, IndirectOptDeps),
+    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
+    get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
+        IndirectOptDepsMap),
+    one_or_more_map.keys_as_set(IndirectOptDepsMap, IndirectOptDeps),
 
-        globals.lookup_bool_option(Globals, intermodule_optimization,
-            Intermod),
-        (
-            Intermod = yes,
-            % Be conservative with inter-module optimization -- assume a
-            % module depends on the `.int', `.int2' and `.opt' files
-            % for all transitively imported modules.
-            IntDepsMap = IndirectOptDepsMap,
-            ImpDepsMap = IndirectOptDepsMap,
-            IndirectDeps = IndirectOptDeps
-        ;
-            Intermod = no,
-            get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDepsMap),
-            get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDepsMap),
-            get_dependencies_from_graph(IndirectDepsGraph, ModuleName,
-                IndirectDepsMap),
-            one_or_more_map.keys_as_set(IndirectDepsMap, IndirectDeps)
+    globals.lookup_bool_option(Globals, intermodule_optimization,
+        Intermod),
+    (
+        Intermod = yes,
+        % Be conservative with inter-module optimization -- assume a
+        % module depends on the `.int', `.int2' and `.opt' files
+        % for all transitively imported modules.
+        IntDepsMap = IndirectOptDepsMap,
+        ImpDepsMap = IndirectOptDepsMap,
+        IndirectDeps = IndirectOptDeps
+    ;
+        Intermod = no,
+        get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDepsMap),
+        get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDepsMap),
+        get_dependencies_from_graph(IndirectDepsGraph, ModuleName,
+            IndirectDepsMap),
+        one_or_more_map.keys_as_set(IndirectDepsMap, IndirectDeps)
+    ),
+
+    % Compute the trans-opt dependencies for this module. To avoid
+    % the possibility of cycles, each module is only allowed to depend
+    % on modules that occur later than it in the TransOptOrder.
+
+    FindModule =
+        ( pred(OtherModule::in) is semidet :-
+            ModuleName \= OtherModule
         ),
+    list.drop_while(FindModule, TransOptOrder, TransOptDeps0),
+    ( if TransOptDeps0 = [_ | TransOptDeps1] then
+        % The module was found in the list.
+        TransOptDeps = TransOptDeps1
+    else
+        TransOptDeps = []
+    ),
 
-        % Assume we need the `.mh' files for all imported modules
-        % (we will if they define foreign types).
-        % XXX This overly conservative assumption can lead to a lot of
-        % unnecessary recompilations.
-        CSCsFIMs0 = init_foreign_import_modules,
-        globals.get_target(Globals, Target),
-        (
-            Target = target_c,
-            CSCsFIMs = CSCsFIMs0 ^ fim_c := IndirectOptDeps
-        ;
-            Target = target_csharp,
-            CSCsFIMs = CSCsFIMs0 ^ fim_csharp := IndirectOptDeps
-        ;
-            Target = target_java,
-            CSCsFIMs = CSCsFIMs0 ^ fim_java := IndirectOptDeps
-        ),
-        module_and_imports_set_int_deps_map(IntDepsMap, !ModuleAndImports),
-        module_and_imports_set_imp_deps_map(ImpDepsMap, !ModuleAndImports),
-        module_and_imports_set_indirect_deps(IndirectDeps, !ModuleAndImports),
-        module_and_imports_set_c_j_cs_fims(CSCsFIMs, !ModuleAndImports),
-
-        % Compute the trans-opt dependencies for this module. To avoid
-        % the possibility of cycles, each module is only allowed to depend
-        % on modules that occur later than it in the TransOptOrder.
-
-        FindModule =
-            ( pred(OtherModule::in) is semidet :-
-                ModuleName \= OtherModule
-            ),
-        list.drop_while(FindModule, TransOptOrder, TransOptDeps0),
-        ( if TransOptDeps0 = [_ | TransOptDeps1] then
-            % The module was found in the list.
-            TransOptDeps = TransOptDeps1
-        else
-            TransOptDeps = []
-        ),
-
-        % Note that even if a fatal error occured for one of the files
-        % that the current Module depends on, a .d file is still produced,
-        % even though it probably contains incorrect information.
-        module_and_imports_get_errors(!.ModuleAndImports, Errors),
-        set.intersect(Errors, fatal_read_module_errors, FatalErrors),
-        ( if set.is_empty(FatalErrors) then
-            write_dependency_file(Globals, !.ModuleAndImports, IndirectOptDeps,
-                yes(TransOptDeps), !IO)
-        else
-            true
-        )
+    % Note that even if a fatal error occured for one of the files
+    % that the current Module depends on, a .d file is still produced,
+    % even though it probably contains incorrect information.
+    module_and_imports_get_errors(ModuleAndImports, Errors),
+    set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+    ( if set.is_empty(FatalErrors) then
+        write_dependency_file(Globals, !.ModuleAndImports, IndirectOptDeps,
+            yes(TransOptDeps), !IO)
+    else
+        true
     ).
 
 :- pred get_dependencies_from_graph(deps_graph::in, module_name::in,

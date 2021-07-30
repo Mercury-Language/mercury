@@ -194,6 +194,10 @@
 :- pred get_foreigns_fact_tables(parse_tree_module_src::in,
     item_contents::out) is det.
 
+%---------------------------------------------------------------------------%
+
+:- pred get_fims(parse_tree_module_src::in, set(fim_spec)::out) is det.
+
 :- pred get_fact_tables(list(item_impl_pragma_info)::in, set(string)::out)
     is det.
 
@@ -208,6 +212,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.item_util.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.maybe_error.
@@ -1188,6 +1193,33 @@ get_foreigns_fact_tables(ParseTreeModuleSrc, !:Contents) :-
     ).
 
 %---------------------%
+
+get_fims(ParseTreeModuleSrc, FIMSpecs) :-
+    map.keys_as_set(ParseTreeModuleSrc ^ ptms_int_fims, IntFIMSpecs),
+    map.keys_as_set(ParseTreeModuleSrc ^ ptms_imp_fims, ImpFIMSpecs),
+    some [!SelfImportLangs] (
+        Mutables = ParseTreeModuleSrc ^ ptms_imp_mutables,
+        (
+            Mutables = [_ | _],
+            !:SelfImportLangs = set.list_to_set(all_foreign_languages)
+        ;
+            Mutables = [],
+            IntTypeDefnsFor = ParseTreeModuleSrc ^ ptms_int_type_defns_for,
+            ImpForeignEnums = ParseTreeModuleSrc ^ ptms_imp_foreign_enums,
+            ImpImplPragmas =  ParseTreeModuleSrc ^ ptms_imp_impl_pragmas,
+            set.init(!:SelfImportLangs),
+            list.foldl(acc_needed_self_fim_langs_for_type_defn,
+                IntTypeDefnsFor, !SelfImportLangs),
+            list.foldl(acc_needed_self_fim_langs_for_foreign_enum,
+                ImpForeignEnums, !SelfImportLangs),
+            list.foldl(acc_needed_self_fim_langs_for_impl_pragma,
+                ImpImplPragmas, !SelfImportLangs)
+        ),
+        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+        MakeSelfFIM = (func(L) = fim_spec(L, ModuleName)),
+        SelfFIMSpecs = set.map(MakeSelfFIM, !.SelfImportLangs),
+        FIMSpecs = set.union_list([IntFIMSpecs, ImpFIMSpecs, SelfFIMSpecs])
+    ).
 
 get_fact_tables(ImplPragmas, FactTables) :-
     list.foldl(acc_fact_tables_from_impl_pragma, ImplPragmas,

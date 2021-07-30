@@ -161,6 +161,13 @@
     %
 :- func item_needs_foreign_imports(item) = list(foreign_language).
 
+:- pred acc_needed_self_fim_langs_for_type_defn(item_type_defn_info::in,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
+:- pred acc_needed_self_fim_langs_for_foreign_enum(item_foreign_enum_info::in,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
+:- pred acc_needed_self_fim_langs_for_impl_pragma(item_impl_pragma_info::in,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
+
 :- pred get_foreign_code_indicators_from_item_blocks(globals::in,
     list(item_block(MS))::in,
     set(foreign_language)::out, c_j_cs_fims::out) is det.
@@ -1160,6 +1167,24 @@ item_needs_foreign_imports(Item) = Langs :-
         % These should not occur in source files.
         unexpected($pred, "item_type_repn")
     ).
+
+acc_needed_self_fim_langs_for_type_defn(ItemTypeDefn, !Langs) :-
+    ( if
+        ItemTypeDefn ^ td_ctor_defn = parse_tree_foreign_type(DetailsForeign),
+        DetailsForeign = type_details_foreign(ForeignType, _, _)
+    then
+        set.insert(foreign_type_language(ForeignType), !Langs)
+    else
+        true
+    ).
+
+acc_needed_self_fim_langs_for_foreign_enum(FEInfo, !Langs) :-
+    FEInfo = item_foreign_enum_info(Lang, _, _, _, _),
+    set.insert(Lang, !Langs).
+
+acc_needed_self_fim_langs_for_impl_pragma(ItemImplPragma, !Langs) :-
+    ItemImplPragma = item_pragma_info(ImplPragma, _, _),
+    set.insert_list(impl_pragma_needs_foreign_imports(ImplPragma), !Langs).
 
 :- func impl_pragma_needs_foreign_imports(impl_pragma)
     = list(foreign_language).

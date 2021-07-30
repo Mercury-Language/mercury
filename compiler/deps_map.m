@@ -170,7 +170,7 @@ generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
         Done0 = not_yet_processed,
         Deps = deps(already_processed, ModuleImports),
         map.det_update(Module, Deps, !DepsMap),
-        module_and_imports_get_c_j_cs_fims(ModuleImports, CJCsEFIMs),
+        module_and_imports_get_fim_specs(ModuleImports, FIMSpecs),
         % We could keep a list of the modules we have already processed
         % and subtract it from the sets of modules we add here, but doing that
         % actually leads to a small slowdown.
@@ -179,7 +179,8 @@ generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
         ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
         ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
         AncestorModuleNames = get_ancestors_set(ModuleName),
-        ForeignImportedModuleNames = get_all_foreign_import_modules(CJCsEFIMs),
+        ForeignImportedModuleNames =
+            set.map((func(fim_spec(_L, M)) = M), FIMSpecs),
         set.foldl(add_module_name_and_context(ModuleNameContext),
             AncestorModuleNames, !Modules),
         set.foldl(add_module_name_and_context(ModuleNameContext),
