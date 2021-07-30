@@ -1,65 +1,53 @@
 #!/usr/bin/awk -f
 # vim: ft=awk ts=4 sw=4 et
 BEGIN {
-        for (i = 2; i <= 28; i++) {
+        for (i = 2; i <= 24; i++) {
             init[i] = "not accessed";
             make[i] = "not accessed";
-            read[i] = "not accessed";
         }
 
         desc[2]  = "SrcFileName";
-        desc[3]  = "ModuleDir";
+        desc[3]  = "SrcFileDir";
         desc[4]  = "SrcFileModuleName";
-        desc[5]  = "ModuleName";
-        desc[6]  = "ModuleNameContext";
-        desc[7]  = "Ancestors";
-        desc[8]  = "Children";
-        desc[9]  = "PublicChildren";
-        desc[10] = "NestedChildren";
-        desc[11] = "IntDepsMap";
-        desc[12] = "ImpDepsMap";
-        desc[13] = "IndirectDeps";
-        desc[14] = "FactTableDeps";
-        desc[15] = "FIMs";
-        desc[16] = "ForeignIncludeFiles";
-        desc[17] = "HasForeignCode";
-        desc[18] = "HasForeignExport";
-        desc[19] = "HasMain";
-        desc[20] = "SrcBlocks";
-        desc[21] = "DirectIntBlocks";
-        desc[22] = "IndirectIntBlocks";
-        desc[23] = "OptBlocks";
-        desc[24] = "IntForOptBlocks";
-        desc[25] = "VersionNumbersMap";
-        desc[26] = "MaybeTimestamMap";
-        desc[27] = "Specs";
-        desc[28] = "Errors";
+        desc[5]  = "MaybeTopModule";
+        desc[6]  = "IntDepsMap";
+        desc[7]  = "ImpDepsMap";
+        desc[8]  = "IndirectDeps";
+        desc[9]  = "FIMs";
+        desc[10] = "ForeignIncludeFiles";
+        desc[11] = "HasForeignCode";
+        desc[12] = "HasForeignExport";
+        desc[13] = "ParseTreeModuleSrc";
+        desc[14] = "AncestorSpecs";
+        desc[15] = "DirectIntSpecs";
+        desc[16] = "IndirectIntSpecs";
+        desc[17] = "PlainOpts";
+        desc[18] = "TransOpts";
+        desc[19] = "IntForOptSpecs";
+        desc[20] = "TypeRepnSpecs";
+        desc[21] = "VersionNumbersMap";
+        desc[22] = "MaybeTimestampMap";
+        desc[23] = "Specs";
+        desc[24] = "Errors";
 
 }
-$1 == "INIT" && NF == 28 {
-        for (i = 2; i <= 28; i++) {
+$1 == "INIT" && NF == 24 {
+        for (i = 2; i <= 24; i++) {
             if ($i == "a") {
                 init[i] = "accessed";
             }
         }
     }
-$1 == "MAKE" && NF == 28 {
-        for (i = 2; i <= 28; i++) {
+$1 == "MAKE" && NF == 24 {
+        for (i = 2; i <= 24; i++) {
             if ($i == "a") {
                 make[i] = "accessed";
             }
         }
     }
-$1 == "READ" && NF == 28 {
-        for (i = 2; i <= 28; i++) {
-            if ($i == "a") {
-                read[i] = "accessed";
-            }
-        }
-    }
 END {
-        for (i = 2; i <= 28; i++) {
-            printf "%-20s init %12s make %12s read %12s\n",
-                desc[i], init[i], make[i], read[i];
+        for (i = 2; i <= 24; i++) {
+            printf "%-20s init %12s make %12s\n",
+                desc[i], init[i], make[i];
         }
     }

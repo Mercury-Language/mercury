@@ -233,10 +233,6 @@
     dir_name::out) is det.
 :- pred module_and_imports_get_source_file_module_name(module_and_imports::in,
     module_name::out) is det.
-:- pred module_and_imports_get_module_name(module_and_imports::in,
-    module_name::out) is det.
-:- pred module_and_imports_get_module_name_context(module_and_imports::in,
-    prog_context::out) is det.
 :- pred module_and_imports_get_maybe_top_module(module_and_imports::in,
     maybe_top_module::out) is det.
 :- pred module_and_imports_get_int_deps_map(module_and_imports::in,
@@ -300,6 +296,8 @@
 % Predicates for getting information from module_and_imports structures.
 %
 
+:- pred module_and_imports_get_module_name(module_and_imports::in,
+    module_name::out) is det.
 :- pred module_and_imports_get_children(module_and_imports::in,
     list(module_name)::out) is det.
 :- pred module_and_imports_get_children_set(module_and_imports::in,
@@ -993,46 +991,6 @@ module_and_imports_get_source_file_module_name(ModuleAndImports, X) :-
         ),
         X = ModuleAndImports ^ mai_source_file_module_name
     ).
-module_and_imports_get_module_name(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Method = ModuleAndImports ^ mai_construction_method,
-            (
-                Method = mcm_init,
-                Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_module_name := accessed,
-                Accesses = Accesses0 ^ mfk_init := Fields
-            ;
-                Method = mcm_make,
-                Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_module_name := accessed,
-                Accesses = Accesses0 ^ mfk_make := Fields
-            ),
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_src ^ ptms_module_name
-    ).
-module_and_imports_get_module_name_context(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Method = ModuleAndImports ^ mai_construction_method,
-            (
-                Method = mcm_init,
-                Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_module_name_context := accessed,
-                Accesses = Accesses0 ^ mfk_init := Fields
-            ;
-                Method = mcm_make,
-                Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_module_name_context := accessed,
-                Accesses = Accesses0 ^ mfk_make := Fields
-            ),
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_src ^ ptms_module_name_context
-    ).
 module_and_imports_get_maybe_top_module(ModuleAndImports, X) :-
     promise_pure (
         trace [compile_time(flag("mai-stats"))] (
@@ -1498,6 +1456,11 @@ module_and_imports_set_grabbed_file_map(X, !ModuleAndImports) :-
 
 %---------------------------------------------------------------------------%
 
+module_and_imports_get_module_name(ModuleAndImports, ModuleName) :-
+    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
+        ParseTreeModuleSrc),
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name.
+
 module_and_imports_get_children(ModuleAndImports, Children) :-
     module_and_imports_get_parse_tree_module_src(ModuleAndImports,
         ParseTreeModuleSrc),
@@ -1851,14 +1814,8 @@ module_dep_info_get_contains_foreign_export(ModuleDepInfo, X) :-
                 mf_source_file_name             :: maybe_accessed,
                 mf_source_file_dir              :: maybe_accessed,
                 mf_source_file_module_name      :: maybe_accessed,
-                mf_module_name                  :: maybe_accessed,
-                mf_module_name_context          :: maybe_accessed,
 
-                mf_ancestors                    :: maybe_accessed,
-                mf_children                     :: maybe_accessed,
-                mf_public_children              :: maybe_accessed,
                 mf_maybe_top_module             :: maybe_accessed,
-
                 mf_int_deps_map                 :: maybe_accessed,
                 mf_imp_deps_map                 :: maybe_accessed,
                 mf_indirect_deps                :: maybe_accessed,
@@ -1887,19 +1844,15 @@ module_dep_info_get_contains_foreign_export(ModuleDepInfo, X) :-
 :- type mai_fields_kinds
     --->    mai_fields_kinds(
                 mfk_init                        :: mai_fields,
-                mfk_make                        :: mai_fields,
-                mfk_read                        :: mai_fields
+                mfk_make                        :: mai_fields
             ).
 
 :- func init_mai_fields = mai_fields.
 
 init_mai_fields =
-    mai_fields(not_accessed, not_accessed,
-        not_accessed, not_accessed, not_accessed,
+    mai_fields(not_accessed, not_accessed, not_accessed,
 
         not_accessed, not_accessed, not_accessed, not_accessed,
-
-        not_accessed, not_accessed, not_accessed,
 
         not_accessed, not_accessed, not_accessed, not_accessed,
 
@@ -1910,8 +1863,7 @@ init_mai_fields =
 
 :- func init_mai_fields_kinds = mai_fields_kinds.
 
-init_mai_fields_kinds =
-    mai_fields_kinds(init_mai_fields, init_mai_fields, init_mai_fields).
+init_mai_fields_kinds = mai_fields_kinds(init_mai_fields, init_mai_fields).
 
 :- mutable(accesses, mai_fields_kinds, init_mai_fields_kinds, ground,
     [untrailed]).
@@ -1919,36 +1871,28 @@ init_mai_fields_kinds =
 write_mai_stats(Stream, !IO) :-
     promise_pure (
         semipure get_accesses(Accesses),
-        Accesses = mai_fields_kinds(Init, Make, Read),
+        Accesses = mai_fields_kinds(Init, Make),
         write_mai_fields_stats(Stream, "INIT", Init, !IO),
-        write_mai_fields_stats(Stream, "MAKE", Make, !IO),
-        write_mai_fields_stats(Stream, "READ", Read, !IO)
+        write_mai_fields_stats(Stream, "MAKE", Make, !IO)
     ).
 
 :- pred write_mai_fields_stats(io.output_stream::in, string::in,
     mai_fields::in, io::di, io::uo) is det.
 
 write_mai_fields_stats(Stream, Kind, Fields, !IO) :-
-    Fields = mai_fields(SrcFileName, ModuleDir,
-        SrcFileModuleName, ModuleName, ModuleNameContext,
-        Ancestors, Children, PublicChildren, MaybeTopModule,
-        IntDepsMap, ImpDepsMap, IndirectDeps,
+    Fields = mai_fields(SrcFileName, SrcFileDir, SrcFileModuleName,
+        MaybeTopModule, IntDepsMap, ImpDepsMap, IndirectDeps,
         FIMs, ForeignIncludeFiles, HasForeignCode, HasForeignExport,
         ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
-        VersionNumbersMap, MaybeTimestamMap, Specs, Errors),
+        VersionNumbersMap, MaybeTimestampMap, Specs, Errors),
     io.format(Stream,
         "%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s " ++
-        "%s %s %s %s %s %s %s %s %s %s %s %s %s %s\n",
+        "%s %s %s %s %s %s %s %s %s\n",
         [s(Kind),
         s(acc_str(SrcFileName)),
-        s(acc_str(ModuleDir)),
+        s(acc_str(SrcFileDir)),
         s(acc_str(SrcFileModuleName)),
-        s(acc_str(ModuleName)),
-        s(acc_str(ModuleNameContext)),
-        s(acc_str(Ancestors)),
-        s(acc_str(Children)),
-        s(acc_str(PublicChildren)),
         s(acc_str(MaybeTopModule)),
         s(acc_str(IntDepsMap)),
         s(acc_str(ImpDepsMap)),
@@ -1966,7 +1910,7 @@ write_mai_fields_stats(Stream, Kind, Fields, !IO) :-
         s(acc_str(IntForOptSpecs)),
         s(acc_str(TypeRepnSpecs)),
         s(acc_str(VersionNumbersMap)),
-        s(acc_str(MaybeTimestamMap)),
+        s(acc_str(MaybeTimestampMap)),
         s(acc_str(Specs)),
         s(acc_str(Errors))],
         !IO).
