@@ -324,7 +324,7 @@ do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
     (
         ProgDepResult = ok(ProgDepStream),
         choose_module_dep_file_version(ModuleAndImports, Version),
-        do_write_module_dep_file_2(ProgDepStream, ModuleAndImports,
+        do_write_module_dep_file_to_stream(ProgDepStream, ModuleAndImports,
             Version, !IO),
         io.close_output(ProgDepStream, !IO)
     ;
@@ -347,11 +347,11 @@ choose_module_dep_file_version(ModuleAndImports, Version) :-
         Version = module_dep_file_v2
     ).
 
-:- pred do_write_module_dep_file_2(io.text_output_stream::in,
+:- pred do_write_module_dep_file_to_stream(io.text_output_stream::in,
     module_and_imports::in, module_dep_file_version::in,
     io::di, io::uo) is det.
 
-do_write_module_dep_file_2(Stream, ModuleAndImports, Version, !IO) :-
+do_write_module_dep_file_to_stream(Stream, ModuleAndImports, Version, !IO) :-
     module_and_imports_get_source_file_name(ModuleAndImports, SourceFileName),
     module_and_imports_get_source_file_module_name(ModuleAndImports,
         SourceFileModuleName),
@@ -362,7 +362,8 @@ do_write_module_dep_file_2(Stream, ModuleAndImports, Version, !IO) :-
     module_and_imports_get_imp_deps(ModuleAndImports, ImpDeps),
     module_and_imports_get_maybe_top_module(ModuleAndImports, MaybeTopModule),
     NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
-    module_and_imports_get_fact_table_deps(ModuleAndImports, FactDeps),
+    module_and_imports_get_fact_tables(ModuleAndImports, FactTableFilesSet),
+    FactTableFiles = set.to_sorted_list(FactTableFilesSet),
     module_and_imports_get_contains_foreign_code(ModuleAndImports,
         ContainsForeignCode),
     module_and_imports_get_contains_foreign_export(ModuleAndImports,
@@ -395,7 +396,7 @@ do_write_module_dep_file_2(Stream, ModuleAndImports, Version, !IO) :-
     write_out_list(mercury_output_bracketed_sym_name, ", ",
         NestedSubModules, Stream, !IO),
     io.write_string(Stream, "},\n\t{", !IO),
-    io.write_string(Stream, string.join_list(", ", FactDeps), !IO),
+    io.write_string(Stream, string.join_list(", ", FactTableFiles), !IO),
     io.write_string(Stream, "},\n\t{", !IO),
     (
         ContainsForeignCode = foreign_code_langs_known(ForeignLanguageSet),

@@ -104,6 +104,7 @@
 :- import_module libs.mmakefiles.
 :- import_module make.                          % XXX undesirable dependency
 :- import_module parse_tree.find_module.        % XXX undesirable dependency
+:- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
@@ -247,7 +248,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         !:MmakeFile, !IO) :-
     module_and_imports_d_file(ModuleAndImports,
         SourceFileName, SourceFileModuleName, MaybeTopModule,
-        IntDepsMap, ImpDepsMap, IndirectDeps, FactDeps0,
+        IntDepsMap, ImpDepsMap, IndirectDeps,
         ForeignImportModules0, ForeignIncludeFilesCord, ContainsForeignCode,
         AugCompUnit),
     ParseTreeModuleSrc = AugCompUnit ^ aci_module_src,
@@ -258,6 +259,8 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     one_or_more_map.keys_as_set(ImpDepsMap, ImpDeps),
     PublicChildrenMap = ParseTreeModuleSrc ^ ptms_int_includes,
     one_or_more_map.keys_as_set(PublicChildrenMap, PublicChildren),
+    get_fact_tables(ParseTreeModuleSrc ^ ptms_imp_impl_pragmas,
+        FactTableFileNamesSet),
 
     library.version(Version, FullArch),
 
@@ -279,7 +282,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         TransOptDateFileName, MmakeRulesTransOpt, !IO),
 
     construct_fact_tables_entries(ModuleMakeVarName,
-        SourceFileName, ObjFileName, FactDeps0,
+        SourceFileName, ObjFileName, FactTableFileNamesSet,
         MmakeVarsFactTables, FactTableSourceGroups, MmakeRulesFactTables),
 
     ( if string.remove_suffix(SourceFileName, ".m", SourceFileBase) then
@@ -401,19 +404,19 @@ construct_trans_opt_deps_rule(Globals, MaybeTransOptDeps, LongDeps,
 %---------------------%
 
 :- pred construct_fact_tables_entries(string::in, string::in, string::in,
-    list(string)::in,
+    set(string)::in,
     list(mmake_entry)::out, list(mmake_file_name_group)::out,
     list(mmake_entry)::out) is det.
 
 construct_fact_tables_entries(ModuleMakeVarName, SourceFileName, ObjFileName,
-        FactDeps0, MmakeVarsFactTables, FactTableSourceGroups,
+        FactTableFileNamesSet, MmakeVarsFactTables, FactTableSourceGroups,
         MmakeRulesFactTables) :-
-    list.sort_and_remove_dups(FactDeps0, FactDeps),
+    FactTableFileNames = set.to_sorted_list(FactTableFileNamesSet),
     (
-        FactDeps = [_ | _],
+        FactTableFileNames = [_ | _],
         MmakeVarFactTables = mmake_var_defn_list(
             ModuleMakeVarName ++ ".fact_tables",
-            FactDeps),
+            FactTableFileNames),
         MmakeVarFactTablesOs = mmake_var_defn(
             ModuleMakeVarName ++ ".fact_tables.os",
             "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
@@ -448,7 +451,7 @@ construct_fact_tables_entries(ModuleMakeVarName, SourceFileName, ObjFileName,
             []),
         MmakeRulesFactTables = [MmakeRuleFactOs, MmakeRuleFactCs]
     ;
-        FactDeps = [],
+        FactTableFileNames = [],
         MmakeVarsFactTables = [],
         FactTableSourceGroups = [],
         MmakeRulesFactTables = []
@@ -1732,11 +1735,11 @@ get_fact_table_file_names(_DepsMap, [], !FactTableFileNames).
 get_fact_table_file_names(DepsMap, [Module | Modules], !FactTableFileNames) :-
     map.lookup(DepsMap, Module, deps(_, ModuleAndImports)),
     % Handle object files for fact tables.
-    module_and_imports_get_fact_table_deps(ModuleAndImports, FactTableDeps),
+    module_and_imports_get_fact_tables(ModuleAndImports, FactTableFileNames),
     % Handle object files for foreign code.
     % NOTE: currently none of the backends support foreign code
     % in a non target language.
-    set.insert_list(FactTableDeps, !FactTableFileNames),
+    set.union(FactTableFileNames, !FactTableFileNames),
     get_fact_table_file_names(DepsMap, Modules, !FactTableFileNames).
 
 %---------------------------------------------------------------------------%

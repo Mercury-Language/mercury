@@ -194,6 +194,9 @@
 :- pred get_foreigns_fact_tables(parse_tree_module_src::in,
     item_contents::out) is det.
 
+:- pred get_fact_tables(list(item_impl_pragma_info)::in, set(string)::out)
+    is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -1183,6 +1186,12 @@ get_foreigns_fact_tables(ParseTreeModuleSrc, !:Contents) :-
 
 %---------------------%
 
+get_fact_tables(ImplPragmas, FactTables) :-
+    list.foldl(acc_fact_tables_from_impl_pragma, ImplPragmas,
+        set.init, FactTables).
+
+%---------------------%
+
 :- pred get_implicits_foreigns_fact_tables_acc(list(item)::in,
     implicit_avail_needs::in, implicit_avail_needs::out,
     item_contents::in, item_contents::out) is det.
@@ -1359,6 +1368,35 @@ get_implicits_foreigns_fact_tables_from_impl_pragma(ItemImplPragma,
         )
     ;
         ( ImplPragma = impl_pragma_external_proc(_)
+        ; ImplPragma = impl_pragma_inline(_)
+        ; ImplPragma = impl_pragma_no_inline(_)
+        ; ImplPragma = impl_pragma_consider_used(_)
+        ; ImplPragma = impl_pragma_no_detism_warning(_)
+        ; ImplPragma = impl_pragma_require_tail_rec(_)
+        ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
+        ; ImplPragma = impl_pragma_promise_pure(_)
+        ; ImplPragma = impl_pragma_promise_semipure(_)
+        ; ImplPragma = impl_pragma_mode_check_clauses(_)
+        ; ImplPragma = impl_pragma_require_feature_set(_)
+        )
+    ).
+
+:- pred acc_fact_tables_from_impl_pragma(item_impl_pragma_info::in,
+    set(string)::in, set(string)::out) is det.
+
+acc_fact_tables_from_impl_pragma(ItemImplPragma, !FactTables) :-
+    ItemImplPragma = item_pragma_info(ImplPragma, _, _),
+    (
+        ImplPragma = impl_pragma_fact_table(FactTableInfo),
+        FactTableInfo = pragma_info_fact_table(_PredNameArity, FileName),
+        set.insert(FileName, !FactTables)
+    ;
+        ( ImplPragma = impl_pragma_foreign_decl(_)
+        ; ImplPragma = impl_pragma_foreign_code(_)
+        ; ImplPragma = impl_pragma_foreign_proc(_)
+        ; ImplPragma = impl_pragma_foreign_proc_export(_)
+        ; ImplPragma = impl_pragma_tabled(_)
+        ; ImplPragma = impl_pragma_external_proc(_)
         ; ImplPragma = impl_pragma_inline(_)
         ; ImplPragma = impl_pragma_no_inline(_)
         ; ImplPragma = impl_pragma_consider_used(_)

@@ -169,10 +169,9 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
 
         get_foreigns_fact_tables(ParseTreeModuleSrc0, Contents),
-        Contents = item_contents(ForeignIncludeFilesCord, FactTablesSet,
+        Contents = item_contents(ForeignIncludeFilesCord, _FactTablesSet,
             LangSet, ForeignExportLangs),
         set.to_sorted_list(LangSet, Langs),
-        FactTables = set.to_sorted_list(FactTablesSet),
 
         ImpFIMs0 = ParseTreeModuleSrc0 ^ ptms_imp_fims,
         list.foldl(add_implicit_fim_for_module(ModuleName), Langs,
@@ -189,7 +188,7 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         ),
 
         make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-            ParseTreeModuleSrc, MaybeTopModule, FactTables,
+            ParseTreeModuleSrc, MaybeTopModule,
             ForeignIncludeFilesCord, ForeignExportLangs,
             MaybeTimestampMap, !:ModuleAndImports),
         !:Specs = [],
@@ -355,15 +354,11 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         else
             MaybeTopModule = not_top_module
         ),
-        % Nothing that we will do with !:ModuleAndImports when constructing
-        % interface files will involve the files containing fact tables,
-        % so it is OK to pass a dummy value for FactDeps.
-        FactDeps = [],
         ForeignIncludeFiles = cord.init,
         MaybeTimestampMap = no,
 
         make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-            ParseTreeModuleSrc, MaybeTopModule, FactDeps,
+            ParseTreeModuleSrc, MaybeTopModule,
             ForeignIncludeFiles, ForeignExportLangs,
             MaybeTimestampMap, !:ModuleAndImports),
 
