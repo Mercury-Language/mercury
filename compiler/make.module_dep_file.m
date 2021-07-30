@@ -53,7 +53,6 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_sym_name.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
@@ -351,14 +350,17 @@ choose_module_dep_file_version(ModuleAndImports, Version) :-
     io::di, io::uo) is det.
 
 do_write_module_dep_file_to_stream(Stream, ModuleAndImports, Version, !IO) :-
+    version_number(Version, VersionNumber),
     module_and_imports_get_source_file_name(ModuleAndImports, SourceFileName),
     module_and_imports_get_source_file_module_name(ModuleAndImports,
         SourceFileModuleName),
+    SourceFileModuleNameStr =
+        mercury_bracketed_sym_name_to_string(SourceFileModuleName),
     module_and_imports_get_module_name(ModuleAndImports, ModuleName),
-    Ancestors = get_ancestors_set(ModuleName),
-    module_and_imports_get_children(ModuleAndImports, Children),
+    Ancestors = set.to_sorted_list(get_ancestors_set(ModuleName)),
     module_and_imports_get_int_deps(ModuleAndImports, IntDeps),
     module_and_imports_get_imp_deps(ModuleAndImports, ImpDeps),
+    module_and_imports_get_children(ModuleAndImports, Children),
     module_and_imports_get_maybe_top_module(ModuleAndImports, MaybeTopModule),
     NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
     module_and_imports_get_fact_tables(ModuleAndImports, FactTableFilesSet),
@@ -370,36 +372,11 @@ do_write_module_dep_file_to_stream(Stream, ModuleAndImports, Version, !IO) :-
     module_and_imports_get_fim_specs(ModuleAndImports, FIMSpecs),
     module_and_imports_get_foreign_include_file_infos(ModuleAndImports,
         ForeignIncludeFiles),
-    io.write_string(Stream, "module(", !IO),
-    version_number(Version, VersionNumber),
-    io.write_int(Stream, VersionNumber, !IO),
-    io.write_string(Stream, ", """, !IO),
-    io.write_string(Stream, SourceFileName, !IO),
-    io.write_string(Stream, """,\n\t", !IO),
-    mercury_output_bracketed_sym_name(SourceFileModuleName, Stream, !IO),
-    io.write_string(Stream, ",\n\t{", !IO),
-    write_out_list(mercury_output_bracketed_sym_name, ", ",
-        set.to_sorted_list(Ancestors), Stream, !IO),
-    io.write_string(Stream, "},\n\t{", !IO),
-    write_out_list(mercury_output_bracketed_sym_name, ", ",
-        IntDeps, Stream, !IO),
-    io.write_string(Stream, "},\n\t{", !IO),
-    write_out_list(mercury_output_bracketed_sym_name, ", ",
-        ImpDeps, Stream, !IO),
-    io.write_string(Stream, "},\n\t{", !IO),
-    write_out_list(mercury_output_bracketed_sym_name, ", ",
-        Children, Stream, !IO),
-    io.write_string(Stream, "},\n\t{", !IO),
-    % XXX ITEM_LIST We should write out some indication of top_module vs
-    % not_top_module.
-    write_out_list(mercury_output_bracketed_sym_name, ", ",
-        NestedSubModules, Stream, !IO),
-    io.write_string(Stream, "},\n\t{", !IO),
-    io.write_string(Stream, string.join_list(", ", FactTableFiles), !IO),
-    io.write_string(Stream, "},\n\t{", !IO),
     (
         ContainsForeignCode = foreign_code_langs_known(ForeignLanguageSet),
-        ForeignLanguages = set.to_sorted_list(ForeignLanguageSet)
+        ForeignLanguages = set.to_sorted_list(ForeignLanguageSet),
+        ForeignLanguageStrs =
+            list.map(mercury_foreign_language_to_string, ForeignLanguages)
     ;
         ContainsForeignCode = foreign_code_langs_unknown,
         % XXX Setting ForeignLanguages to empty when we know that
@@ -408,20 +385,38 @@ do_write_module_dep_file_to_stream(Stream, ModuleAndImports, Version, !IO) :-
         % this predicate if this field in the module_and_imports structure
         % has not been filled in.
         % XXX CLEANUP We should try replacing this assignment with an abort.
-        ForeignLanguages = []
+        ForeignLanguageStrs = []
     ),
-    write_out_list(mercury_output_foreign_language_string, ", ",
-        ForeignLanguages, Stream, !IO),
     FIMSpecStrs = list.map(fim_spec_to_string, set.to_sorted_list(FIMSpecs)),
-    FIMSpecsStr = string.join_list(", ", FIMSpecStrs),
-    io.format(Stream, "},\n\t{ %s },\n\t", [s(FIMSpecsStr)], !IO),
     contains_foreign_export_to_string(ContainsForeignExport,
         ContainsForeignExportStr),
-    io.write_string(Stream, ContainsForeignExportStr, !IO),
-    io.write_string(Stream, ",\n\t", !IO),
-    % The has_main/no_main slot is not needed anymore, so we just put no_main
-    % in there always.
-    io.write_string(Stream, "no_main", !IO),
+    io.format(Stream,
+        "module(%d, ""%s"",\n" ++
+            "\t%s,\n" ++
+            "\t{%s},\n" ++
+            "\t{%s},\n" ++
+            "\t{%s},\n" ++
+            "\t{%s},\n" ++
+            "\t{%s},\n" ++
+            "\t{%s},\n" ++
+            "\t{%s},\n" ++
+            "\t{%s},\n" ++
+            "\t%s,\n" ++
+            % The has_main/no_main slot is not needed anymore,
+            % so we just put no_main in there always.
+            "\tno_main",
+        [i(VersionNumber), s(SourceFileName),
+        s(SourceFileModuleNameStr),
+        s(bracketed_sym_names_to_comma_list_string(Ancestors)),
+        s(bracketed_sym_names_to_comma_list_string(IntDeps)),
+        s(bracketed_sym_names_to_comma_list_string(ImpDeps)),
+        s(bracketed_sym_names_to_comma_list_string(Children)),
+        s(bracketed_sym_names_to_comma_list_string(NestedSubModules)),
+        s(string.join_list(", ", FactTableFiles)),
+        s(string.join_list(", ", ForeignLanguageStrs)),
+        s(string.join_list(", ", FIMSpecStrs)),
+        s(ContainsForeignExportStr)],
+        !IO),
     (
         Version = module_dep_file_v1
     ;
@@ -432,6 +427,12 @@ do_write_module_dep_file_to_stream(Stream, ModuleAndImports, Version, !IO) :-
         io.format(Stream, ",\n\t{ %s }", [s(FIFOsStr)], !IO)
     ),
     io.write_string(Stream, "\n).\n", !IO).
+
+:- func bracketed_sym_names_to_comma_list_string(list(sym_name)) = string.
+
+bracketed_sym_names_to_comma_list_string(SymNames) = Str :-
+    Strs = list.map(mercury_bracketed_sym_name_to_string, SymNames),
+    Str = string.join_list(", ", Strs).
 
 :- func fim_spec_to_string(fim_spec) = string.
 
