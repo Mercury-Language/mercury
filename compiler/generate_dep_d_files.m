@@ -25,37 +25,37 @@
 
 :- import_module io.
 
-    % generate_module_dependencies(Globals, ModuleName, !IO):
+    % generate_dep_file_for_module(Globals, ModuleName, !IO):
     %
-    % Generate the per-program makefile dependencies (`.dep') file for a
-    % program whose top-level module is `ModuleName'. This involves first
-    % transitively reading in all imported or ancestor modules. While we're
-    % at it, we also save the per-module makefile dependency (`.d') files
-    % for all those modules.
+    % Generate the per-program makefile dependencies file (`.dep' file)
+    % for a program whose top-level module is `ModuleName'. This involves
+    % first transitively reading in all imported or ancestor modules.
+    % While we are at it, we also save the per-module makefile dependency files
+    % (`.d' files) for all those modules.
     %
 :- pred generate_dep_file_for_module(globals::in, module_name::in,
     io::di, io::uo) is det.
 
-    % generate_file_dependencies(Globals, FileName, !IO):
+    % generate_dep_file_for_file(Globals, FileName, !IO):
     %
-    % Same as generate_module_dependencies, but takes a file name instead of
-    % a module name.
+    % Same as generate_dep_file_for_module, but takes a file name
+    % instead of a module name.
     %
 :- pred generate_dep_file_for_file(globals::in, file_name::in,
     io::di, io::uo) is det.
 
-    % generate_module_dependency_file(Globals, ModuleName, !IO):
+    % generate_d_file_for_module(Globals, ModuleName, !IO):
     %
-    % Generate the per module makefile dependency ('.d') file for the
-    % given module.
+    % Generate the per-module makefile dependency file ('.d' file)
+    % for the given module.
     %
 :- pred generate_d_file_for_module(globals::in, module_name::in,
     io::di, io::uo) is det.
 
-    % generate_file_dependency_file(Globals, FileName, !IO):
+    % generate_d_file_for_file(Globals, FileName, !IO):
     %
-    % Same as generate_module_dependency_file, but takes a file name instead of
-    % a module name.
+    % Same as generate_d_file_for_module, but takes a file name
+    % instead of a module name.
     %
 :- pred generate_d_file_for_file(globals::in, file_name::in,
     io::di, io::uo) is det.
@@ -140,8 +140,7 @@ build_deps_map(Globals, FileName, ModuleName, DepsMap, !IO) :-
 :- pred generate_dependencies(globals::in, generate_dependencies_mode::in,
     maybe_search::in, module_name::in, deps_map::in, io::di, io::uo) is det.
 
-generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0,
-        !IO) :-
+generate_dependencies(Globals, Mode, Search, ModuleName, DepsMap0, !IO) :-
     % First, build up a map of the dependencies.
     generate_deps_map(Globals, Search, ModuleName, DepsMap0, DepsMap,
         [], DepsMapSpecs, !IO),
