@@ -249,8 +249,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     module_and_imports_d_file(ModuleAndImports,
         SourceFileName, SourceFileModuleName, MaybeTopModule,
         IntDepsMap, ImpDepsMap, IndirectDeps,
-        ForeignImportModules0, ForeignIncludeFilesCord, ContainsForeignCode,
-        AugCompUnit),
+        ForeignImportModules0, ContainsForeignCode, AugCompUnit),
     ParseTreeModuleSrc = AugCompUnit ^ aci_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameString = sym_name_to_string(ModuleName),
@@ -261,6 +260,8 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     one_or_more_map.keys_as_set(PublicChildrenMap, PublicChildren),
     get_fact_tables(ParseTreeModuleSrc ^ ptms_imp_impl_pragmas,
         FactTableFileNamesSet),
+    get_foreign_include_file_infos(ParseTreeModuleSrc ^ ptms_imp_impl_pragmas,
+        ForeignIncludeFiles),
 
     library.version(Version, FullArch),
 
@@ -308,7 +309,7 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
 
     construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
         Ancestors, LongDeps, ShortDeps, PublicChildren, Int0FileName,
-        OptDateFileName, TransOptDateFileName, ForeignIncludeFilesCord,
+        OptDateFileName, TransOptDateFileName, ForeignIncludeFiles,
         CDateFileName, JavaDateFileName, ErrFileName,
         FactTableSourceGroups, MmakeRuleDateFileDeps, !IO),
 
@@ -463,13 +464,13 @@ construct_fact_tables_entries(ModuleMakeVarName, SourceFileName, ObjFileName,
     module_name::in, string::in,
     set(module_name)::in, set(module_name)::in, set(module_name)::in,
     set(module_name)::in, string::in, string::in, string::in,
-    cord(foreign_include_file_info)::in, string::in, string::in, string::in,
+    set(foreign_include_file_info)::in, string::in, string::in, string::in,
     list(mmake_file_name_group)::in,
     mmake_entry::out, io::di, io::uo) is det.
 
 construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
         Ancestors, LongDeps, ShortDeps, PublicChildren, Int0FileName,
-        OptDateFileName, TransOptDateFileName, ForeignIncludeFilesCord,
+        OptDateFileName, TransOptDateFileName, ForeignIncludeFilesSet,
         CDateFileName, JavaDateFileName, ErrFileName,
         FactTableSourceGroups, MmakeRuleDateFileDeps, !IO) :-
     % For the reason for why there is no mention of a date file for C# here,
@@ -503,7 +504,7 @@ construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
     make_module_file_name_group_with_suffix(Globals,
         "type_repn ancestor dep", ext_other(other_ext(".int")),
         get_ancestors_set(ModuleName), TypeRepnAncestorsDepGroups, !IO),
-    ForeignIncludeFiles = cord.list(ForeignIncludeFilesCord),
+    ForeignIncludeFiles = set.to_sorted_list(ForeignIncludeFilesSet),
     % This is conservative: a target file for foreign language A
     % does not truly depend on a file included for foreign language B.
     ForeignImportFileNames =

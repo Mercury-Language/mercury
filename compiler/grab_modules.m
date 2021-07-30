@@ -169,7 +169,7 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
 
         get_foreigns_fact_tables(ParseTreeModuleSrc0, Contents),
-        Contents = item_contents(ForeignIncludeFilesCord, _FactTablesSet,
+        Contents = item_contents(_ForeignIncludeFilesCord, _FactTablesSet,
             LangSet, ForeignExportLangs),
         set.to_sorted_list(LangSet, Langs),
 
@@ -188,8 +188,7 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
         ),
 
         make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-            ParseTreeModuleSrc, MaybeTopModule,
-            ForeignIncludeFilesCord, ForeignExportLangs,
+            ParseTreeModuleSrc, MaybeTopModule, ForeignExportLangs,
             MaybeTimestampMap, !:ModuleAndImports),
         !:Specs = [],
 
@@ -354,12 +353,10 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         else
             MaybeTopModule = not_top_module
         ),
-        ForeignIncludeFiles = cord.init,
         MaybeTimestampMap = no,
 
         make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-            ParseTreeModuleSrc, MaybeTopModule,
-            ForeignIncludeFiles, ForeignExportLangs,
+            ParseTreeModuleSrc, MaybeTopModule, ForeignExportLangs,
             MaybeTimestampMap, !:ModuleAndImports),
 
         ModuleName = ParseTreeModuleSrc ^ ptms_module_name,

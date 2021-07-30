@@ -60,7 +60,6 @@
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.write_module_interface_files.
 
-:- import_module cord.
 :- import_module dir.
 :- import_module getopt.
 :- import_module parser.
@@ -339,9 +338,9 @@ do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
     module_dep_file_version::out) is det.
 
 choose_module_dep_file_version(ModuleAndImports, Version) :-
-    module_and_imports_get_foreign_include_files(ModuleAndImports,
-        ForeignIncludeFilesCord),
-    ( if cord.is_empty(ForeignIncludeFilesCord) then
+    module_and_imports_get_foreign_include_file_infos(ModuleAndImports,
+        ForeignIncludeFiles),
+    ( if set.is_empty(ForeignIncludeFiles) then
         Version = module_dep_file_v1
     else
         Version = module_dep_file_v2
@@ -369,7 +368,7 @@ do_write_module_dep_file_to_stream(Stream, ModuleAndImports, Version, !IO) :-
     module_and_imports_get_contains_foreign_export(ModuleAndImports,
         ContainsForeignExport),
     module_and_imports_get_c_j_cs_fims(ModuleAndImports, CJCsEFIMs),
-    module_and_imports_get_foreign_include_files(ModuleAndImports,
+    module_and_imports_get_foreign_include_file_infos(ModuleAndImports,
         ForeignIncludeFiles),
     io.write_string(Stream, "module(", !IO),
     version_number(Version, VersionNumber),
@@ -413,11 +412,10 @@ do_write_module_dep_file_to_stream(Stream, ModuleAndImports, Version, !IO) :-
     ),
     write_out_list(mercury_output_foreign_language_string, ", ",
         ForeignLanguages, Stream, !IO),
-    io.write_string(Stream, "},\n\t{", !IO),
     FIMSpecs = get_all_fim_specs(CJCsEFIMs),
-    write_out_list(write_fim_spec, ", ",
-        set.to_sorted_list(FIMSpecs), Stream, !IO),
-    io.write_string(Stream, "},\n\t", !IO),
+    FIMSpecStrs = list.map(fim_spec_to_string, set.to_sorted_list(FIMSpecs)),
+    FIMSpecsStr = string.join_list(", ", FIMSpecStrs),
+    io.format(Stream, "},\n\t{ %s },\n\t", [s(FIMSpecsStr)], !IO),
     contains_foreign_export_to_string(ContainsForeignExport,
         ContainsForeignExportStr),
     io.write_string(Stream, ContainsForeignExportStr, !IO),
@@ -429,30 +427,28 @@ do_write_module_dep_file_to_stream(Stream, ModuleAndImports, Version, !IO) :-
         Version = module_dep_file_v1
     ;
         Version = module_dep_file_v2,
-        io.write_string(Stream, ",\n\t{", !IO),
-        write_out_list(write_foreign_include_file_info, ", ",
-            cord.list(ForeignIncludeFiles), Stream, !IO),
-        io.write_string(Stream, "}", !IO)
+        FIFOStrs = list.map(foreign_include_file_info_to_string,
+            set.to_sorted_list(ForeignIncludeFiles)),
+        FIFOsStr = string.join_list(", ", FIFOStrs),
+        io.format(Stream, ",\n\t{ %s }", [s(FIFOsStr)], !IO)
     ),
     io.write_string(Stream, "\n).\n", !IO).
 
-:- pred write_fim_spec(fim_spec::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
+:- func fim_spec_to_string(fim_spec) = string.
 
-write_fim_spec(FIMSpec, Stream, !IO) :-
+fim_spec_to_string(FIMSpec) = Str :-
     FIMSpec = fim_spec(Lang, ForeignImport),
-    mercury_output_foreign_language_string(Lang, Stream, !IO),
-    io.write_string(Stream, " - ", !IO),
-    mercury_output_bracketed_sym_name(ForeignImport, Stream, !IO).
+    LangStr = mercury_foreign_language_to_string(Lang),
+    ForeignImportStr = mercury_bracketed_sym_name_to_string(ForeignImport),
+    Str = LangStr ++ " - " ++ ForeignImportStr.
 
-:- pred write_foreign_include_file_info(foreign_include_file_info::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- func foreign_include_file_info_to_string(foreign_include_file_info)
+    = string.
 
-write_foreign_include_file_info(ForeignInclude, Stream, !IO) :-
+foreign_include_file_info_to_string(ForeignInclude) = Str :-
     ForeignInclude = foreign_include_file_info(Lang, FileName),
-    mercury_output_foreign_language_string(Lang, Stream, !IO),
-    io.write_string(Stream, " - ", !IO),
-    term_io.quote_string(Stream, FileName, !IO).
+    LangStr = mercury_foreign_language_to_string(Lang),
+    Str = LangStr ++ " - " ++ term_io.quoted_string(FileName).
 
 :- pred contains_foreign_export_to_string(contains_foreign_export, string).
 :- mode contains_foreign_export_to_string(in, out) is det.

@@ -197,6 +197,9 @@
 :- pred get_fact_tables(list(item_impl_pragma_info)::in, set(string)::out)
     is det.
 
+:- pred get_foreign_include_file_infos(list(item_impl_pragma_info)::in,
+    set(foreign_include_file_info)::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -1190,6 +1193,10 @@ get_fact_tables(ImplPragmas, FactTables) :-
     list.foldl(acc_fact_tables_from_impl_pragma, ImplPragmas,
         set.init, FactTables).
 
+get_foreign_include_file_infos(ImplPragmas, FIFOs) :-
+    list.foldl(acc_foreign_include_file_info_from_impl_pragma, ImplPragmas,
+        set.init, FIFOs).
+
 %---------------------%
 
 :- pred get_implicits_foreigns_fact_tables_acc(list(item)::in,
@@ -1368,6 +1375,47 @@ get_implicits_foreigns_fact_tables_from_impl_pragma(ItemImplPragma,
         )
     ;
         ( ImplPragma = impl_pragma_external_proc(_)
+        ; ImplPragma = impl_pragma_inline(_)
+        ; ImplPragma = impl_pragma_no_inline(_)
+        ; ImplPragma = impl_pragma_consider_used(_)
+        ; ImplPragma = impl_pragma_no_detism_warning(_)
+        ; ImplPragma = impl_pragma_require_tail_rec(_)
+        ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
+        ; ImplPragma = impl_pragma_promise_pure(_)
+        ; ImplPragma = impl_pragma_promise_semipure(_)
+        ; ImplPragma = impl_pragma_mode_check_clauses(_)
+        ; ImplPragma = impl_pragma_require_feature_set(_)
+        )
+    ).
+
+:- pred acc_foreign_include_file_info_from_impl_pragma(
+    item_impl_pragma_info::in,
+    set(foreign_include_file_info)::in, set(foreign_include_file_info)::out)
+    is det.
+
+acc_foreign_include_file_info_from_impl_pragma(ItemImplPragma, !FIFOs) :-
+    ItemImplPragma = item_pragma_info(ImplPragma, _, _),
+    (
+        (
+            ImplPragma = impl_pragma_foreign_decl(FDInfo),
+            FDInfo = pragma_info_foreign_decl(Lang, _, LiteralOrInclude)
+        ;
+            ImplPragma = impl_pragma_foreign_code(FCInfo),
+            FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude)
+        ),
+        (
+            LiteralOrInclude = floi_literal(_)
+        ;
+            LiteralOrInclude = floi_include_file(FileName),
+            FIFO = foreign_include_file_info(Lang, FileName),
+            set.insert(FIFO, !FIFOs)
+        )
+    ;
+        ( ImplPragma = impl_pragma_foreign_proc(_)
+        ; ImplPragma = impl_pragma_foreign_proc_export(_)
+        ; ImplPragma = impl_pragma_fact_table(_)
+        ; ImplPragma = impl_pragma_tabled(_)
+        ; ImplPragma = impl_pragma_external_proc(_)
         ; ImplPragma = impl_pragma_inline(_)
         ; ImplPragma = impl_pragma_no_inline(_)
         ; ImplPragma = impl_pragma_consider_used(_)

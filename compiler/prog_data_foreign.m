@@ -21,7 +21,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 
-:- import_module cord.
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
@@ -174,8 +173,6 @@ make_fim_spec(Lang, ModuleName) = fim_spec(Lang, ModuleName).
 %
 
 :- interface.
-
-:- type foreign_include_file_infos == cord(foreign_include_file_info).
 
 :- type foreign_include_file_info
     --->    foreign_include_file_info(
