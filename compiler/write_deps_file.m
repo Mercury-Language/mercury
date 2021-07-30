@@ -1227,62 +1227,68 @@ generate_dependencies_write_d_file(Globals, Dep,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptOrder, _DepsMap, !IO) :-
     % XXX The fact that _DepsMap is unused here may be a bug.
-    Dep = deps(_, ModuleAndImports),
+    some [!ModuleAndImports] (
+        Dep = deps(_, !:ModuleAndImports),
 
-    % Look up the interface/implementation/indirect dependencies
-    % for this module from the respective dependency graphs,
-    % and save them in the module_and_imports structure.
+        % Look up the interface/implementation/indirect dependencies
+        % for this module from the respective dependency graphs,
+        % and save them in the module_and_imports structure.
 
-    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
-    get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
-        IndirectOptDepsMap),
-    one_or_more_map.keys_as_set(IndirectOptDepsMap, IndirectOptDeps),
+        module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
+        get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
+            IndirectOptDepsMap),
+        one_or_more_map.keys_as_set(IndirectOptDepsMap, IndirectOptDeps),
 
-    globals.lookup_bool_option(Globals, intermodule_optimization,
-        Intermod),
-    (
-        Intermod = yes,
-        % Be conservative with inter-module optimization -- assume a
-        % module depends on the `.int', `.int2' and `.opt' files
-        % for all transitively imported modules.
-        IntDepsMap = IndirectOptDepsMap,
-        ImpDepsMap = IndirectOptDepsMap,
-        IndirectDeps = IndirectOptDeps
-    ;
-        Intermod = no,
-        get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDepsMap),
-        get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDepsMap),
-        get_dependencies_from_graph(IndirectDepsGraph, ModuleName,
-            IndirectDepsMap),
-        one_or_more_map.keys_as_set(IndirectDepsMap, IndirectDeps)
-    ),
-
-    % Compute the trans-opt dependencies for this module. To avoid
-    % the possibility of cycles, each module is only allowed to depend
-    % on modules that occur later than it in the TransOptOrder.
-
-    FindModule =
-        ( pred(OtherModule::in) is semidet :-
-            ModuleName \= OtherModule
+        globals.lookup_bool_option(Globals, intermodule_optimization,
+            Intermod),
+        (
+            Intermod = yes,
+            % Be conservative with inter-module optimization -- assume a
+            % module depends on the `.int', `.int2' and `.opt' files
+            % for all transitively imported modules.
+            IntDepsMap = IndirectOptDepsMap,
+            ImpDepsMap = IndirectOptDepsMap,
+            IndirectDeps = IndirectOptDeps
+        ;
+            Intermod = no,
+            get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDepsMap),
+            get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDepsMap),
+            get_dependencies_from_graph(IndirectDepsGraph, ModuleName,
+                IndirectDepsMap),
+            one_or_more_map.keys_as_set(IndirectDepsMap, IndirectDeps)
         ),
-    list.drop_while(FindModule, TransOptOrder, TransOptDeps0),
-    ( if TransOptDeps0 = [_ | TransOptDeps1] then
-        % The module was found in the list.
-        TransOptDeps = TransOptDeps1
-    else
-        TransOptDeps = []
-    ),
 
-    % Note that even if a fatal error occured for one of the files
-    % that the current Module depends on, a .d file is still produced,
-    % even though it probably contains incorrect information.
-    module_and_imports_get_errors(ModuleAndImports, Errors),
-    set.intersect(Errors, fatal_read_module_errors, FatalErrors),
-    ( if set.is_empty(FatalErrors) then
-        write_dependency_file(Globals, !.ModuleAndImports, IndirectOptDeps,
-            yes(TransOptDeps), !IO)
-    else
-        true
+        module_and_imports_set_int_deps_map(IntDepsMap, !ModuleAndImports),
+        module_and_imports_set_imp_deps_map(ImpDepsMap, !ModuleAndImports),
+        module_and_imports_set_indirect_deps(IndirectDeps, !ModuleAndImports),
+
+        % Compute the trans-opt dependencies for this module. To avoid
+        % the possibility of cycles, each module is only allowed to depend
+        % on modules that occur later than it in the TransOptOrder.
+
+        FindModule =
+            ( pred(OtherModule::in) is semidet :-
+                ModuleName \= OtherModule
+            ),
+        list.drop_while(FindModule, TransOptOrder, TransOptDeps0),
+        ( if TransOptDeps0 = [_ | TransOptDeps1] then
+            % The module was found in the list.
+            TransOptDeps = TransOptDeps1
+        else
+            TransOptDeps = []
+        ),
+
+        % Note that even if a fatal error occured for one of the files
+        % that the current Module depends on, a .d file is still produced,
+        % even though it probably contains incorrect information.
+        module_and_imports_get_errors(!.ModuleAndImports, Errors),
+        set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+        ( if set.is_empty(FatalErrors) then
+            write_dependency_file(Globals, !.ModuleAndImports, IndirectOptDeps,
+                yes(TransOptDeps), !IO)
+        else
+            true
+        )
     ).
 
 :- pred get_dependencies_from_graph(deps_graph::in, module_name::in,
