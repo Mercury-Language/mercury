@@ -29,7 +29,17 @@
 :- import_module maybe.
 :- import_module set.
 
-    % write_dependency_file(Globals, Module, AllDeps, MaybeTransOptDeps):
+:- type maybe_intermod_deps
+    --->    no_intermod_deps
+    ;       intermod_deps(
+                id_int_deps         :: set(module_name),
+                id_imp_deps         :: set(module_name),
+                id_indirect_deps    :: set(module_name),
+                id_fim_deps         :: set(module_name)
+            ).
+
+    % write_dependency_file(Globals, ModuleAndImports, MaybeIntermodDeps,
+    %   AllDeps, MaybeTransOptDeps, !IO):
     %
     % Write out the per-module makefile dependencies (`.d') file for the
     % specified module. AllDeps is the set of all module names which the
@@ -40,8 +50,19 @@
     % `.trans_opt' file may depend on. This is set to `no' if the
     % dependency list is not available.
     %
+    % XXX The MaybeIntermodDeps allows generate_dependencies_write_d_file
+    % to supply some information derived from the overall dependency graph
+    % that is intended to override the values of some of the fields in
+    % ModuleAndImports. These used to be passed in ModuleAndImports itself,
+    % but they do not actually belong there, since the overridden fields
+    % are supposed to be *solely* from the main module in ModuleAndImports.
+    % As to *why* this overriding is desirable, I (zs) don't know,
+    % and I am pretty sure that the original author (fjh) does not know
+    % anymore either :-(
+    %
 :- pred write_dependency_file(globals::in, module_and_imports::in,
-    set(module_name)::in, maybe(list(module_name))::in, io::di, io::uo) is det.
+    maybe_intermod_deps::in, set(module_name)::in,
+    maybe(list(module_name))::in, io::di, io::uo) is det.
 
     % generate_dependencies_write_d_files(Globals, Modules,
     %   IntDepsRel, ImplDepsRel, IndirectDepsRel, IndirectOptDepsRel,
@@ -130,18 +151,16 @@
 
 %---------------------------------------------------------------------------%
 
-write_dependency_file(Globals, ModuleAndImports, AllDeps,
+write_dependency_file(Globals, ModuleAndImports, IntermodDeps, AllDeps,
         MaybeTransOptDeps, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-
     % To avoid problems with concurrent updates of `.d' files during
     % parallel makes, we first create the file with a temporary name,
     % and then rename it to the desired name when we have finished.
     module_and_imports_get_module_name(ModuleAndImports, ModuleName),
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".d")), ModuleName, DependencyFileName, !IO),
-    io.make_temp_file(dir.dirname(DependencyFileName), "tmp_d",
-        "", TmpDependencyFileNameRes, !IO),
+    io.make_temp_file(dir.dirname(DependencyFileName), "tmp_d", "",
+        TmpDependencyFileNameRes, !IO),
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
     get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
     (
@@ -150,6 +169,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
         report_error(ErrorStream, Message, !IO)
     ;
         TmpDependencyFileNameRes = ok(TmpDependencyFileName),
+        globals.lookup_bool_option(Globals, verbose, Verbose),
         (
             Verbose = no
         ;
@@ -170,7 +190,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             report_error(ErrorStream, Message, !IO)
         ;
             Result = ok(DepStream),
-            generate_d_file(Globals, ModuleAndImports,
+            generate_d_file(Globals, ModuleAndImports, IntermodDeps,
                 AllDeps, MaybeTransOptDeps, MmakeFile, !IO),
             write_mmakefile(DepStream, MmakeFile, !IO),
             io.close_output(DepStream, !IO),
@@ -241,20 +261,27 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
     % are required by --use-mmc-make.
     %
 :- pred generate_d_file(globals::in, module_and_imports::in,
+    maybe_intermod_deps::in,
     set(module_name)::in, maybe(list(module_name))::in,
     mmakefile::out, io::di, io::uo) is det.
 
-generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
-        !:MmakeFile, !IO) :-
+generate_d_file(Globals, ModuleAndImports, IntermodDeps,
+        AllDeps, MaybeTransOptDeps, !:MmakeFile, !IO) :-
     module_and_imports_d_file(ModuleAndImports,
         SourceFileName, SourceFileModuleName, MaybeTopModule,
-        IntDepsMap, ImpDepsMap, IndirectDeps, AugCompUnit),
+        IntDepsMap0, ImpDepsMap0, IndirectDeps0, AugCompUnit),
     ParseTreeModuleSrc = AugCompUnit ^ aci_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameString = sym_name_to_string(ModuleName),
     Ancestors = get_ancestors_set(ModuleName),
-    one_or_more_map.keys_as_set(IntDepsMap, IntDeps),
-    one_or_more_map.keys_as_set(ImpDepsMap, ImpDeps),
+    (
+        IntermodDeps = no_intermod_deps,
+        one_or_more_map.keys_as_set(IntDepsMap0, IntDeps),
+        one_or_more_map.keys_as_set(ImpDepsMap0, ImpDeps),
+        IndirectDeps = IndirectDeps0
+    ;
+        IntermodDeps = intermod_deps(IntDeps, ImpDeps, IndirectDeps, _FIMDeps)
+    ),
     PublicChildrenMap = ParseTreeModuleSrc ^ ptms_int_includes,
     one_or_more_map.keys_as_set(PublicChildrenMap, PublicChildren),
     get_fact_tables(ParseTreeModuleSrc ^ ptms_imp_impl_pragmas,
@@ -270,8 +297,8 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
     module_name_to_make_var_name(ModuleName, ModuleMakeVarName),
 
     set.union(IntDeps, ImpDeps, LongDeps0),
-    ShortDeps0 = IndirectDeps,
     set.delete(ModuleName, LongDeps0, LongDeps),
+    ShortDeps0 = IndirectDeps,
     set.difference(ShortDeps0, LongDeps, ShortDeps1),
     set.delete(ModuleName, ShortDeps1, ShortDeps),
 
@@ -335,8 +362,9 @@ generate_d_file(Globals, ModuleAndImports, AllDeps, MaybeTransOptDeps,
         Date0FileName, DateFileName, Ancestors, LongDeps, ShortDeps,
         MmakeRulesParentDates, !IO),
 
-    construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
-        ObjFileName, PicObjFileName, MmakeRulesForeignImports, !IO),
+    construct_foreign_import_rules(Globals, AugCompUnit, IntermodDeps,
+        SourceFileModuleName, ObjFileName, PicObjFileName,
+        MmakeRulesForeignImports, !IO),
 
     module_name_to_file_name(Globals, $pred, do_not_create_dirs,
         ext_other(other_ext(".date3")), ModuleName, Date3FileName, !IO),
@@ -805,55 +833,61 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
 
 %---------------------%
 
+    % Handle dependencies introduced by
+    % `:- pragma foreign_import_module' declarations.
+    %
 :- pred construct_foreign_import_rules(globals::in, aug_compilation_unit::in,
-    module_name::in, string::in, string::in,
+    maybe_intermod_deps::in, module_name::in, string::in, string::in,
     list(mmake_entry)::out, io::di, io::uo) is det.
 
-construct_foreign_import_rules(Globals, AugCompUnit, SourceFileModuleName,
-        ObjFileName, PicObjFileName, MmakeRulesForeignImports, !IO) :-
+construct_foreign_import_rules(Globals, AugCompUnit, IntermodDeps,
+        SourceFileModuleName, ObjFileName, PicObjFileName,
+        MmakeRulesForeignImports, !IO) :-
     AugCompUnit = aug_compilation_unit(_, ParseTreeModuleSrc,
         AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, _TransOpts, IntForOptSpecs, _TypeRepnSpecs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    some [!FIMSpecs] (
-        get_fims(ParseTreeModuleSrc, !:FIMSpecs),
-        map.foldl_values(gather_fim_specs_in_ancestor_int_spec,
-            AncestorIntSpecs, !FIMSpecs),
-        map.foldl_values(gather_fim_specs_in_direct_int_spec,
-            DirectIntSpecs, !FIMSpecs),
-        map.foldl_values(gather_fim_specs_in_indirect_int_spec,
-            IndirectIntSpecs, !FIMSpecs),
-        map.foldl_values(gather_fim_specs_in_parse_tree_plain_opt,
-            PlainOpts, !FIMSpecs),
-        % .trans_opt files cannot contain FIMs.
-        map.foldl_values(gather_fim_specs_in_int_for_opt_spec,
-            IntForOptSpecs, !FIMSpecs),
-        % Any FIMs in type_repn_specs are ignored.
+    (
+        IntermodDeps = intermod_deps(_, _, _, ForeignImportedModuleNamesSet)
+    ;
+        IntermodDeps = no_intermod_deps,
+        some [!FIMSpecs] (
+            get_fims(ParseTreeModuleSrc, !:FIMSpecs),
+            map.foldl_values(gather_fim_specs_in_ancestor_int_spec,
+                AncestorIntSpecs, !FIMSpecs),
+            map.foldl_values(gather_fim_specs_in_direct_int_spec,
+                DirectIntSpecs, !FIMSpecs),
+            map.foldl_values(gather_fim_specs_in_indirect_int_spec,
+                IndirectIntSpecs, !FIMSpecs),
+            map.foldl_values(gather_fim_specs_in_parse_tree_plain_opt,
+                PlainOpts, !FIMSpecs),
+            % .trans_opt files cannot contain FIMs.
+            map.foldl_values(gather_fim_specs_in_int_for_opt_spec,
+                IntForOptSpecs, !FIMSpecs),
+            % Any FIMs in type_repn_specs are ignored.
 
-        % We restrict the set of FIMs to those that are valid
-        % for the current backend. This preserves old behavior,
-        % and makes sense in that the code below generates mmake rules
-        % only for the current backend, but it would be nice if we
-        % could generate dependency rules for *all* the backends.
-        globals.get_backend_foreign_languages(Globals, BackendLangs),
-        IsBackendFIM =
-            ( pred(FIMSpec::in) is semidet :-
-                list.member(FIMSpec ^ fimspec_lang, BackendLangs)
-            ),
-        set.filter(IsBackendFIM, !.FIMSpecs, FIMSpecs)
+            % We restrict the set of FIMs to those that are valid
+            % for the current backend. This preserves old behavior,
+            % and makes sense in that the code below generates mmake rules
+            % only for the current backend, but it would be nice if we
+            % could generate dependency rules for *all* the backends.
+            globals.get_backend_foreign_languages(Globals, BackendLangs),
+            IsBackendFIM =
+                ( pred(FIMSpec::in) is semidet :-
+                    list.member(FIMSpec ^ fimspec_lang, BackendLangs)
+                ),
+            set.filter(IsBackendFIM, !.FIMSpecs, FIMSpecs)
+        ),
+        set.filter_map(
+            ( pred(ForeignImportMod::in, ImportModuleName::out) is semidet :-
+                ImportModuleName = fim_spec_module_name_from_module(
+                    ForeignImportMod, SourceFileModuleName),
+                % XXX We can't include mercury.dll as mmake can't find it,
+                % but we know that it exists.
+                ImportModuleName \= unqualified("mercury")
+            ), FIMSpecs, ForeignImportedModuleNamesSet)
     ),
 
-    % Handle dependencies introduced by
-    % `:- pragma foreign_import_module' declarations.
-    set.filter_map(
-        ( pred(ForeignImportMod::in, ImportModuleName::out) is semidet :-
-            ImportModuleName = fim_spec_module_name_from_module(
-                ForeignImportMod, SourceFileModuleName),
-
-            % XXX We can't include mercury.dll as mmake can't find it,
-            % but we know that it exists.
-            ImportModuleName \= unqualified("mercury")
-        ), FIMSpecs, ForeignImportedModuleNamesSet),
     ForeignImportedModuleNames =
         set.to_sorted_list(ForeignImportedModuleNamesSet),
     (
@@ -1143,7 +1177,9 @@ gather_foreign_import_deps(Globals, ForeignImportOtherExt,
         ext_other(ForeignImportOtherExt),
         ForeignImportedModuleNames, ForeignImportedFileNames, !IO),
     ForeignImportExtStr = other_extension_to_string(ForeignImportOtherExt),
-    MmakeRule = mmake_flat_rule("foreign_deps_for_" ++ ForeignImportExtStr,
+    RuleName = "foreign_deps_for_" ++
+        string.remove_prefix_if_present(".", ForeignImportExtStr),
+    MmakeRule = mmake_flat_rule(RuleName,
         mmake_rule_is_not_phony,
         ForeignImportTargets,
         ForeignImportedFileNames,
@@ -1227,72 +1263,67 @@ generate_dependencies_write_d_file(Globals, Dep,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptOrder, _DepsMap, !IO) :-
     % XXX The fact that _DepsMap is unused here may be a bug.
-    some [!ModuleAndImports] (
-        Dep = deps(_, !:ModuleAndImports),
+    Dep = deps(_, ModuleAndImports),
 
-        % Look up the interface/implementation/indirect dependencies
-        % for this module from the respective dependency graphs,
-        % and save them in the module_and_imports structure.
+    % Look up the interface/implementation/indirect dependencies
+    % for this module from the respective dependency graphs,
+    % and save them in the module_and_imports structure.
 
-        module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
-        get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
-            IndirectOptDepsMap),
-        one_or_more_map.keys_as_set(IndirectOptDepsMap, IndirectOptDeps),
+    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
+    get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
+        IndirectOptDeps),
 
-        globals.lookup_bool_option(Globals, intermodule_optimization,
-            Intermod),
-        (
-            Intermod = yes,
-            % Be conservative with inter-module optimization -- assume a
-            % module depends on the `.int', `.int2' and `.opt' files
-            % for all transitively imported modules.
-            IntDepsMap = IndirectOptDepsMap,
-            ImpDepsMap = IndirectOptDepsMap,
-            IndirectDeps = IndirectOptDeps
-        ;
-            Intermod = no,
-            get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDepsMap),
-            get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDepsMap),
-            get_dependencies_from_graph(IndirectDepsGraph, ModuleName,
-                IndirectDepsMap),
-            one_or_more_map.keys_as_set(IndirectDepsMap, IndirectDeps)
+    globals.lookup_bool_option(Globals, intermodule_optimization,
+        Intermod),
+    (
+        Intermod = yes,
+        % Be conservative with inter-module optimization -- assume a
+        % module depends on the `.int', `.int2' and `.opt' files
+        % for all transitively imported modules.
+        IntDeps = IndirectOptDeps,
+        ImpDeps = IndirectOptDeps,
+        IndirectDeps = IndirectOptDeps
+    ;
+        Intermod = no,
+        get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDeps),
+        get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDeps),
+        get_dependencies_from_graph(IndirectDepsGraph, ModuleName,
+            IndirectDeps)
+    ),
+
+    IntermodDeps = intermod_deps(IntDeps, ImpDeps, IndirectDeps,
+        IndirectOptDeps),
+
+    % Compute the trans-opt dependencies for this module. To avoid
+    % the possibility of cycles, each module is only allowed to depend
+    % on modules that occur later than it in the TransOptOrder.
+
+    FindModule =
+        ( pred(OtherModule::in) is semidet :-
+            ModuleName \= OtherModule
         ),
+    list.drop_while(FindModule, TransOptOrder, TransOptDeps0),
+    ( if TransOptDeps0 = [_ | TransOptDeps1] then
+        % The module was found in the list.
+        TransOptDeps = TransOptDeps1
+    else
+        TransOptDeps = []
+    ),
 
-        module_and_imports_set_int_deps_map(IntDepsMap, !ModuleAndImports),
-        module_and_imports_set_imp_deps_map(ImpDepsMap, !ModuleAndImports),
-        module_and_imports_set_indirect_deps(IndirectDeps, !ModuleAndImports),
-
-        % Compute the trans-opt dependencies for this module. To avoid
-        % the possibility of cycles, each module is only allowed to depend
-        % on modules that occur later than it in the TransOptOrder.
-
-        FindModule =
-            ( pred(OtherModule::in) is semidet :-
-                ModuleName \= OtherModule
-            ),
-        list.drop_while(FindModule, TransOptOrder, TransOptDeps0),
-        ( if TransOptDeps0 = [_ | TransOptDeps1] then
-            % The module was found in the list.
-            TransOptDeps = TransOptDeps1
-        else
-            TransOptDeps = []
-        ),
-
-        % Note that even if a fatal error occured for one of the files
-        % that the current Module depends on, a .d file is still produced,
-        % even though it probably contains incorrect information.
-        module_and_imports_get_errors(!.ModuleAndImports, Errors),
-        set.intersect(Errors, fatal_read_module_errors, FatalErrors),
-        ( if set.is_empty(FatalErrors) then
-            write_dependency_file(Globals, !.ModuleAndImports, IndirectOptDeps,
-                yes(TransOptDeps), !IO)
-        else
-            true
-        )
+    % Note that even if a fatal error occured for one of the files
+    % that the current Module depends on, a .d file is still produced,
+    % even though it probably contains incorrect information.
+    module_and_imports_get_errors(ModuleAndImports, Errors),
+    set.intersect(Errors, fatal_read_module_errors, FatalErrors),
+    ( if set.is_empty(FatalErrors) then
+        write_dependency_file(Globals, ModuleAndImports, IntermodDeps,
+            IndirectOptDeps, yes(TransOptDeps), !IO)
+    else
+        true
     ).
 
 :- pred get_dependencies_from_graph(deps_graph::in, module_name::in,
-    module_names_contexts::out) is det.
+    set(module_name)::out) is det.
 
 get_dependencies_from_graph(DepsGraph0, ModuleName, Dependencies) :-
     digraph.add_vertex(ModuleName, ModuleKey, DepsGraph0, DepsGraph),
@@ -1300,10 +1331,9 @@ get_dependencies_from_graph(DepsGraph0, ModuleName, Dependencies) :-
     AddKeyDep =
         ( pred(Key::in, Deps0::in, Deps::out) is det :-
             digraph.lookup_vertex(DepsGraph, Key, Dep),
-            one_or_more_map.add(Dep, term.context_init, Deps0, Deps)
+            set.insert(Dep, Deps0, Deps)
         ),
-    sparse_bitset.foldl(AddKeyDep, DepsKeysSet,
-        one_or_more_map.init, Dependencies).
+    sparse_bitset.foldl(AddKeyDep, DepsKeysSet, set.init, Dependencies).
 
 %---------------------------------------------------------------------------%
 

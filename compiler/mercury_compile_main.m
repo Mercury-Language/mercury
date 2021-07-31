@@ -1969,8 +1969,8 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, ModuleAndImports0, HLDS1,
     ;
         WriteDFile = write_d_file,
         module_info_get_all_deps(HLDS0, AllDeps),
-        write_dependency_file(Globals, ModuleAndImports0, AllDeps,
-            MaybeTransOptDeps, !IO),
+        write_dependency_file(Globals, ModuleAndImports0, no_intermod_deps,
+            AllDeps, MaybeTransOptDeps, !IO),
         globals.lookup_bool_option(Globals,
             generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
         (
