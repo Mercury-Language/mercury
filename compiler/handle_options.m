@@ -728,6 +728,20 @@ convert_options_to_globals(OptionTable0, !.OptTuple, OpMode, Target,
         HostEnvType, SystemEnvType, TargetEnvType, FileInstallCmd,
         LimitErrorContextsMap, !:Globals),
 
+    globals.lookup_bool_option(!.Globals, experiment2, Experiment2),
+    (
+        Experiment2 = no
+    ;
+        Experiment2 = yes,
+        globals.set_option(pack_everything, bool(yes), !Globals),
+        globals.set_option(allow_double_word_ints, bool(yes), !Globals),
+        globals.set_option(allow_packing_dummies, bool(yes), !Globals),
+        globals.set_option(allow_packing_ints, bool(yes), !Globals),
+        globals.set_option(allow_packing_chars, bool(yes), !Globals),
+        globals.set_option(allow_packing_local_sectags, bool(yes), !Globals),
+        globals.set_option(allow_packing_remote_sectags, bool(yes), !Globals)
+    ),
+
     % NOTE: this call must occur *before* any code below that implicitly
     % sets options based on the target language or GC method.
     check_grade_component_compatibility(!.Globals, Target, GC_Method, !Specs),
