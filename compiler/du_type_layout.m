@@ -161,23 +161,27 @@ decide_type_repns(!ModuleInfo, !Specs, !IO) :-
     (
         Experiment2 = no,
         decide_type_repns_old(!.ModuleInfo, TypeRepnDec, TypeTable0,
-            TypeCtorsTypeDefns0, TypeCtorsTypeDefns, NoTagTypeMap, !Specs)
+            TypeCtorsTypeDefns0, TypeCtorsTypeDefns, NoTagTypeMap, !Specs),
+        set_all_type_ctor_defns(TypeCtorsTypeDefns,
+            SortedTypeCtorsTypeDefns, TypeTable)
     ;
         Experiment2 = yes,
         decide_type_repns_old(!.ModuleInfo, TypeRepnDec, TypeTable0,
             TypeCtorsTypeDefns0, TypeCtorsTypeDefns, NoTagTypeMap, !Specs),
+        set_all_type_ctor_defns(TypeCtorsTypeDefns,
+            SortedTypeCtorsTypeDefns, TypeTable),
         module_info_get_name(!.ModuleInfo, ModuleName),
         decide_type_repns_new(Globals, ModuleName, TypeRepnDec,
             TypeCtorsTypeDefns0, TypeCtorsTypeDefnsB,
             NoTagTypeMapB, UnRepnTypeCtors, BadRepnTypeCtors, !Specs),
+        set_all_type_ctor_defns(TypeCtorsTypeDefnsB,
+            SortedTypeCtorsTypeDefnsB, _TypeTableB),
         get_debug_output_stream(!.ModuleInfo, DebugStream, !IO),
         compare_old_new_du(DebugStream, UnRepnTypeCtors, BadRepnTypeCtors,
-            TypeCtorsTypeDefns, TypeCtorsTypeDefnsB, !IO),
+            SortedTypeCtorsTypeDefns, SortedTypeCtorsTypeDefnsB, !IO),
         compare_old_new_notag(DebugStream, NoTagTypeMap, NoTagTypeMapB, !IO)
     ),
 
-    set_all_type_ctor_defns(TypeCtorsTypeDefns,
-        SortedTypeCtorsTypeDefns, TypeTable),
     module_info_set_type_table(TypeTable, !ModuleInfo),
     module_info_set_no_tag_types(NoTagTypeMap, !ModuleInfo),
 
@@ -1516,30 +1520,46 @@ c_target_specific_repn(CRepnTarget, CRepns, Repn) :-
     assoc_list(type_ctor, hlds_type_defn)::in,
     io::di, io::uo) is det.
 
-compare_old_new_du(_, _, _, [], [], !IO).
-compare_old_new_du(Stream, _, _, [], [_ | _], !IO) :-
-    io.write_string(Stream, "MORE NEW TYPE_CTORS THAN OLD\n", !IO).
-compare_old_new_du(Stream, _, _, [_ | _], [], !IO) :-
-    io.write_string(Stream, "MORE OLD TYPE_CTORS THAN NEW\n", !IO).
 compare_old_new_du(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
-        [Old | Olds], [New | News], !IO) :-
-    Old = OldTypeCtor - OldTypeCtorDefn,
-    New = NewTypeCtor - NewTypeCtorDefn,
-    ( if OldTypeCtor = NewTypeCtor then
+        OldSortedTypeCtorsTypeDefns, NewSortedTypeCtorsTypeDefns, !IO) :-
+    % The two sorted assoc lists are sorted on the type_ctor's *base* name,
+    % not on their fully qualified name, so we cannot use
+    % map.from_*sorted*_assoc_list.
+    map.from_assoc_list(OldSortedTypeCtorsTypeDefns, OldTypeTable),
+    map.from_assoc_list(NewSortedTypeCtorsTypeDefns, NewTypeTable),
+    map.keys_as_set(OldTypeTable, OldKeys),
+    map.keys_as_set(NewTypeTable, NewKeys),
+    set.union(OldKeys, NewKeys, Keys),
+    set.foldl(
+        compare_old_new_du_type_ctor(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
+            OldTypeTable, NewTypeTable),
+        Keys, !IO).
+
+:- pred compare_old_new_du_type_ctor(io.text_output_stream::in,
+    set(type_ctor)::in, set(type_ctor)::in,
+    map(type_ctor, hlds_type_defn)::in, map(type_ctor, hlds_type_defn)::in,
+    type_ctor::in, io::di, io::uo) is det.
+
+compare_old_new_du_type_ctor(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
+        OldTypeTable, NewTypeTable, TypeCtor, !IO) :-
+    ( if
+        map.search(OldTypeTable, TypeCtor, OldTypeCtorDefn),
+        map.search(NewTypeTable, TypeCtor, NewTypeCtorDefn)
+    then
         get_type_defn_body(OldTypeCtorDefn, OldBody),
         get_type_defn_body(NewTypeCtorDefn, NewBody),
         ( if
             OldBody = hlds_du_type(OldBodyDu),
-            NewBody = hlds_du_type(NewBodyDu),
-            MaybeOldRepn = OldBodyDu ^ du_type_repn,
-            MaybeNewRepn = NewBodyDu ^ du_type_repn
+            NewBody = hlds_du_type(NewBodyDu)
         then
-            ( if set.member(NewTypeCtor, UnRepnTypeCtors) then
+            MaybeOldRepn = OldBodyDu ^ du_type_repn,
+            MaybeNewRepn = NewBodyDu ^ du_type_repn,
+            ( if set.member(TypeCtor, UnRepnTypeCtors) then
                 UnRepnStr = " (no new repn)"
             else
                 UnRepnStr = ""
             ),
-            ( if set.member(NewTypeCtor, BadRepnTypeCtors) then
+            ( if set.member(TypeCtor, BadRepnTypeCtors) then
                 BadRepnStr = " (bad new repn)"
             else
                 BadRepnStr = ""
@@ -1553,13 +1573,13 @@ compare_old_new_du(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
                 MaybeNewRepn = yes(_NewRepn),
                 io.format(Stream,
                     "\nTYPE_CTOR_DEFN MISSING OLD REPN for %s%s\n",
-                    [s(type_ctor_to_string(OldTypeCtor)), s(Suffix)], !IO)
+                    [s(type_ctor_to_string(TypeCtor)), s(Suffix)], !IO)
             ;
                 MaybeOldRepn = yes(_OldRepn),
                 MaybeNewRepn = no,
                 io.format(Stream,
                     "\nTYPE_CTOR_DEFN MISSING NEW REPN for %s%s\n",
-                    [s(type_ctor_to_string(OldTypeCtor)), s(Suffix)], !IO)
+                    [s(type_ctor_to_string(TypeCtor)), s(Suffix)], !IO)
             ;
                 MaybeOldRepn = yes(OldRepn),
                 MaybeNewRepn = yes(NewRepn),
@@ -1568,7 +1588,7 @@ compare_old_new_du(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
                 else
                     io.format(Stream,
                         "\nTYPE_CTOR_DEFN REPN MISMATCH for %s:\n",
-                        [s(type_ctor_to_string(OldTypeCtor))], !IO),
+                        [s(type_ctor_to_string(TypeCtor))], !IO),
                     OldDoc = pretty_printer.format(OldTypeCtorDefn),
                     NewDoc = pretty_printer.format(NewTypeCtorDefn),
                     io.format(Stream, "old repn:\n", [], !IO),
@@ -1580,15 +1600,30 @@ compare_old_new_du(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
                 )
             )
         else
-            true
+            ( if OldBody = hlds_du_type(_OldBodyDu) then
+                io.format(Stream, "TYPE_CTOR_NAME_ONLY_DU_IN_OLD: %s\n",
+                    [s(type_ctor_to_string(TypeCtor))], !IO)
+            else if NewBody = hlds_du_type(_NewBodyDu) then
+                io.format(Stream, "TYPE_CTOR_NAME_ONLY_DU_IN_NEW: %s\n",
+                    [s(type_ctor_to_string(TypeCtor))], !IO)
+            else
+                true
+            )
         )
     else
-        io.format(Stream, "TYPE_CTOR_NAME_MISMATCH: %s vs %s\n",
-            [s(type_ctor_to_string(OldTypeCtor)),
-            s(type_ctor_to_string(NewTypeCtor))], !IO)
-    ),
-    compare_old_new_du(Stream, UnRepnTypeCtors, BadRepnTypeCtors,
-        Olds, News, !IO).
+        % We get called only on TypeCtors that exist in at least one of
+        % OldTypeTable and NewTypeTable. If TypeCtor is not in one,
+        % it must be in the other.
+        ( if map.search(OldTypeTable, TypeCtor, _OldTypeCtorDefn) then
+            io.format(Stream, "TYPE_CTOR_NAME_ONLY_IN_OLD: %s\n",
+                [s(type_ctor_to_string(TypeCtor))], !IO)
+        else
+            % If the absence of type representation info using the old
+            % algorithm has not been a problem, then the presence of
+            % such info with the new algorithm should not be a problem either.
+            true
+        )
+    ).
 
 :- pred compare_old_new_notag(io.text_output_stream::in,
     no_tag_type_table::in, no_tag_type_table::in, io::di, io::uo) is det.
