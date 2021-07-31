@@ -553,11 +553,11 @@ table_data_to_html(_, td_t(Time)) =
     %
 :- pred table_data_class(table_data::in, table_column_class::out) is semidet.
 
-table_data_class(td_f(_), table_column_class_number).
-table_data_class(td_i(_), table_column_class_number).
+table_data_class(td_f(_),       table_column_class_number).
+table_data_class(td_i(_),       table_column_class_number).
 table_data_class(td_m(_, _, _), table_column_class_number).
-table_data_class(td_p(_), table_column_class_number).
-table_data_class(td_t(_), table_column_class_number).
+table_data_class(td_p(_),       table_column_class_number).
+table_data_class(td_t(_),       table_column_class_number).
 
 :- func default_table_column_class = table_column_class.
 

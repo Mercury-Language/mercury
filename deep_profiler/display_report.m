@@ -3109,8 +3109,8 @@ perf_table_row_memory(TotalsMeaningful, Fields, RowData, MemoryCells) :-
         SelfMem =               Self ^ perf_row_mem,
         SelfMemPerCall =        Self ^ perf_row_mem_percall,
         SelfMemPercent =        Self ^ perf_row_mem_percent,
-        SelfMemCell =           table_cell(td_m(SelfMem, Units, 0)),
-        SelfMemPerCallCell =    table_cell(td_m(SelfMemPerCall, Units, 2)),
+        SelfMemCell =           table_cell(td_m(SelfMem, Units, ndp_0)),
+        SelfMemPerCallCell =    table_cell(td_m(SelfMemPerCall, Units, ndp_2)),
         SelfMemPercentCell =    table_cell(td_p(SelfMemPercent)),
         (
             TotalsMeaningful = total_columns_not_meaningful,
@@ -3135,8 +3135,9 @@ perf_table_row_memory(TotalsMeaningful, Fields, RowData, MemoryCells) :-
             TotalMem =            Total ^ perf_row_mem,
             TotalMemPerCall =     Total ^ perf_row_mem_percall,
             TotalMemPercent =     Total ^ perf_row_mem_percent,
-            TotalMemCell =        table_cell(td_m(TotalMem, Units, 0)),
-            TotalMemPerCallCell = table_cell(td_m(TotalMemPerCall, Units, 2)),
+            TotalMemCell =        table_cell(td_m(TotalMem, Units, ndp_0)),
+            TotalMemPerCallCell = table_cell(td_m(TotalMemPerCall, Units,
+                                    ndp_2)),
             TotalMemPercentCell = table_cell(td_p(TotalMemPercent)),
             (
                 MemoryFields = memory(_),

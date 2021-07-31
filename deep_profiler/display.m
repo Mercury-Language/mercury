@@ -194,7 +194,7 @@
                 memory_units,
 
                 % The number of decimal places to show.
-                int
+                num_decimal_places
             )
     ;       td_p(percent)
     ;       td_s(string)

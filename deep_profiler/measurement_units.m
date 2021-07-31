@@ -47,11 +47,15 @@
     %
 :- func (memory) / (int) = (memory) is det.
 
+:- type num_decimal_places
+    --->    ndp_0
+    ;       ndp_2.
+
     % Format a memory value using the given units.
     %
     % The third argument is the number of decimal places to show.
     %
-:- func format_memory(memory, memory_units, int) = string.
+:- func format_memory(memory, memory_units, num_decimal_places) = string.
 
 :- pred compare_memory(memory::in, memory::in, comparison_result::out) is det.
 
@@ -148,11 +152,6 @@
     %
 :- func commas(int) = string.
 
-    % Format a floating point number, placing commas between groups of three
-    % digits in the integer part. The first argument is a format string.
-    %
-:- func decimal_fraction(string, float) = string.
-
 :- func one_decimal_fraction(float) = string.
 :- func two_decimal_fraction(float) = string.
 :- func four_decimal_fraction(float) = string.
@@ -193,6 +192,18 @@ format_memory(memory(Words, BPW), units_bytes, Decimals) =
     format_number(Decimals, Words * float(BPW)).
 format_memory(memory(Words, _), units_words, Decimals) =
     format_number(Decimals, Words).
+
+:- func format_number(num_decimal_places, float) = string.
+
+format_number(Decimals, Num) = Str :-
+    (
+        Decimals = ndp_0,
+        string.format("%.0f", [f(Num)], Str0)
+    ;
+        Decimals = ndp_2,
+        string.format("%.2f", [f(Num)], Str0)
+    ),
+    Str = decimal_fraction(Str0).
 
 compare_memory(MemoryA, MemoryB, Result) :-
     MemoryA = memory(WordsA, WordSizeA),
@@ -322,8 +333,24 @@ commas(Num) = Str :-
     string.int_to_string(Num, Str0),
     add_commas_intstr(Str0, Str).
 
-decimal_fraction(Format, Measure) = Representation :-
-    string.format(Format, [f(Measure)], Str0),
+one_decimal_fraction(Measure) = Str :-
+    string.format("%.1f", [f(Measure)], Str0),
+    Str = decimal_fraction(Str0).
+
+two_decimal_fraction(Measure) = Str :-
+    string.format("%.2f", [f(Measure)], Str0),
+    Str = decimal_fraction(Str0).
+
+four_decimal_fraction(Measure) = Str :-
+    string.format("%.4f", [f(Measure)], Str0),
+    Str = decimal_fraction(Str0).
+
+    % Format a string representing a floating point number,
+    % placing commas between groups of three digits in the integer part.
+    %
+:- func decimal_fraction(string) = string.
+
+decimal_fraction(Str0) = Representation :-
     string.split_at_char('.', Str0) = SubStrings,
     ( if
         SubStrings = [WholeString0, FractionString]
@@ -339,12 +366,6 @@ decimal_fraction(Format, Measure) = Representation :-
     else
         unexpected($pred, "didn't split on decimal point properly")
     ).
-
-one_decimal_fraction(Measure) = decimal_fraction("%.1f", Measure).
-
-two_decimal_fraction(Measure) = decimal_fraction("%.2f", Measure).
-
-four_decimal_fraction(Measure) = decimal_fraction("%.4f", Measure).
 
 %---------------------------------------------------------------------------%
 
@@ -362,14 +383,6 @@ add_commas([C]) = [C].
 add_commas([C, D]) = [C, D].
 add_commas([C, D, E]) = [C, D, E].
 add_commas([C, D, E, F | R]) = [C, D, E, (',') | add_commas([F | R])].
-
-%---------------------------------------------------------------------------%
-
-:- func format_number(int, float) = string.
-
-format_number(Decimals, Num) = String :-
-    Format = "%." ++ string(Decimals) ++ "f",
-    decimal_fraction(Format, Num) = String.
 
 %---------------------------------------------------------------------------%
 :- end_module measurement_units.
