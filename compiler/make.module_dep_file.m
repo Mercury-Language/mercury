@@ -321,9 +321,8 @@ do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
     io.open_output(ProgDepFile, ProgDepResult, !IO),
     (
         ProgDepResult = ok(ProgDepStream),
-        choose_module_dep_file_version(ModuleAndImports, Version),
         do_write_module_dep_file_to_stream(ProgDepStream, ModuleAndImports,
-            Version, !IO),
+            !IO),
         io.close_output(ProgDepStream, !IO)
     ;
         ProgDepResult = error(Error),
@@ -333,23 +332,11 @@ do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred choose_module_dep_file_version(module_and_imports::in,
-    module_dep_file_version::out) is det.
-
-choose_module_dep_file_version(ModuleAndImports, Version) :-
-    module_and_imports_get_foreign_include_file_infos(ModuleAndImports,
-        ForeignIncludeFiles),
-    ( if set.is_empty(ForeignIncludeFiles) then
-        Version = module_dep_file_v1
-    else
-        Version = module_dep_file_v2
-    ).
-
 :- pred do_write_module_dep_file_to_stream(io.text_output_stream::in,
-    module_and_imports::in, module_dep_file_version::in,
-    io::di, io::uo) is det.
+    module_and_imports::in, io::di, io::uo) is det.
 
-do_write_module_dep_file_to_stream(Stream, ModuleAndImports, Version, !IO) :-
+do_write_module_dep_file_to_stream(Stream, ModuleAndImports, !IO) :-
+    Version = module_dep_file_v2,
     version_number(Version, VersionNumber),
     module_and_imports_get_source_file_name(ModuleAndImports, SourceFileName),
     module_and_imports_get_source_file_module_name(ModuleAndImports,
@@ -388,6 +375,8 @@ do_write_module_dep_file_to_stream(Stream, ModuleAndImports, Version, !IO) :-
         ForeignLanguageStrs = []
     ),
     FIMSpecStrs = list.map(fim_spec_to_string, set.to_sorted_list(FIMSpecs)),
+    FIFOStrs = list.map(foreign_include_file_info_to_string,
+        set.to_sorted_list(ForeignIncludeFiles)),
     contains_foreign_export_to_string(ContainsForeignExport,
         ContainsForeignExportStr),
     io.format(Stream,
@@ -404,7 +393,9 @@ do_write_module_dep_file_to_stream(Stream, ModuleAndImports, Version, !IO) :-
             "\t%s,\n" ++
             % The has_main/no_main slot is not needed anymore,
             % so we just put no_main in there always.
-            "\tno_main",
+            "\tno_main,\n" ++
+            "\t{%s}\n" ++
+        ").\n",
         [i(VersionNumber), s(SourceFileName),
         s(SourceFileModuleNameStr),
         s(bracketed_sym_names_to_comma_list_string(Ancestors)),
@@ -415,18 +406,9 @@ do_write_module_dep_file_to_stream(Stream, ModuleAndImports, Version, !IO) :-
         s(string.join_list(", ", FactTableFiles)),
         s(string.join_list(", ", ForeignLanguageStrs)),
         s(string.join_list(", ", FIMSpecStrs)),
-        s(ContainsForeignExportStr)],
-        !IO),
-    (
-        Version = module_dep_file_v1
-    ;
-        Version = module_dep_file_v2,
-        FIFOStrs = list.map(foreign_include_file_info_to_string,
-            set.to_sorted_list(ForeignIncludeFiles)),
-        FIFOsStr = string.join_list(", ", FIFOStrs),
-        io.format(Stream, ",\n\t{ %s }", [s(FIFOsStr)], !IO)
-    ),
-    io.write_string(Stream, "\n).\n", !IO).
+        s(ContainsForeignExportStr),
+        s(string.join_list(", ", FIFOStrs))],
+        !IO).
 
 :- func bracketed_sym_names_to_comma_list_string(list(sym_name)) = string.
 
