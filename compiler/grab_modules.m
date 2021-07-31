@@ -295,16 +295,12 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
             % ancestors (if any). For representation information for these
             % types, it must read its *own* .int file, and the .int file(s)
             % of its ancestors.
-            process_module_int1(Globals, rwi1_type_repn, ModuleName,
-                _SelfParseTreeInt1, !HaveReadModuleMaps, !ModuleAndImports,
-                !IO)
-            % We don't yet get mmake or mmc --make build a module's ancestor's
-            % .int files before generating code for that module. This code
-            % is commented out until that has been done.
-            % list.map_foldl3(
-            %     process_module_int1(Globals, rwi1_type_repn),
-            %     get_ancestors(ModuleName), _AncestorParseTreeInt1s,
-            %     !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            process_module_int1(Globals, rwi1_type_repn,
+                ModuleName, _SelfParseTreeInt1,
+                !HaveReadModuleMaps, !ModuleAndImports, !IO),
+            list.map_foldl3(process_module_int1(Globals, rwi1_type_repn),
+                get_ancestors(ModuleName), _AncestorParseTreeInt1s,
+                !HaveReadModuleMaps, !ModuleAndImports, !IO)
         ),
 
         module_and_imports_get_aug_comp_unit(!.ModuleAndImports,
