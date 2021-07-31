@@ -502,7 +502,7 @@ ORDINARY_PROGS += \
 	trans_intermod_user_equality
 endif
 
-# Solver types only work in C grades
+# Solver types only work in C grades.
 #
 # Additionally, solver_default_eq_cmp does not yet work in deep profiling
 # grades because deep profiling cannot yet handle exceptions being caught and
@@ -897,8 +897,15 @@ endif
 
 # Setting environment variables is not supported in Java grades.
 ifeq "$(filter java%,$(GRADE))" ""
-	SETENV_PROGS = \
-		setenv
+	# The setenv test case also calls list.length on a list
+	# that has a million elements. Since deep profiling prevents
+	# tail recursion optimization, this runs out of stack.
+	ifeq "$(findstring profdeep,$(GRADE))" ""
+		SETENV_PROGS = \
+			setenv
+	else
+		SETENV_PROGS =
+	endif
 else
 	SETENV_PROGS =
 endif
