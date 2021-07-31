@@ -4568,7 +4568,7 @@ The commit to the first solution means that
 a piece of @code{cc_nondet} or @code{cc_multi} code
 can never be asked to generate a second solution.
 If e.g. a @code{cc_nondet} call is in a conjunction,
-then no call to its right (after mode reordering) may fail,
+then no later goal in that conjunction (after mode reordering) may fail,
 because that would ask the committed choice goal for a second solution.
 The compiler enforces this rule.
 
@@ -4608,9 +4608,9 @@ is the one mentioned above: if a goal has no non-local output variables
 then the goal's solutions are indistinguishable from the outside,
 and the implementation will only attempt to satisfy the goal once,
 whether or not the goal is committed choice.
-Therefore if a @code{cc_multi} goal has all its output ignored,
+Therefore if a @code{cc_multi} goal has all its outputs ignored,
 then the compiler considers it to be a @code{det} goal,
-while if a @code{cc_nondet} goal has all its output ignored,
+while if a @code{cc_nondet} goal has all its outputs ignored,
 then the compiler considers it to be a @code{semidet} goal.
 
 The other way to stop propagating committed choice nondeterminism is applicable
