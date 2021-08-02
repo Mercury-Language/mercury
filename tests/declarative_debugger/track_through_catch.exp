@@ -28,11 +28,11 @@ browser> track
 succeeded(2)
 p(2)
 Valid? info
-Context of current question : track_through_catch.m:26 (track_through_catch.m:19)
+Context of current question : track_through_catch.m:25 (track_through_catch.m:19)
 Search mode                 : top down                                           
 The current question was chosen because the marked subterm was bound by
 the unification inside the predicate track_through_catch.p/1
-(track_through_catch.m:26). The path to the subterm in the atom is 1.
+(track_through_catch.m:25). The path to the subterm in the atom is 1.
 dd> quit
 Diagnosis aborted.
       E3:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:NNNN (track_through_catch.m:20)
