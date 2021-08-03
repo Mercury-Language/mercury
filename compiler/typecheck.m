@@ -2138,7 +2138,7 @@ typecheck_unify_var_var(UnifyContext, Context, X, Y,
     then
         TypeAssignSet = TypeAssignSet0,
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_error_unif_var_var(!.Info, ClauseContext, UnifyContext,
+        Spec = report_error_unify_var_var(!.Info, ClauseContext, UnifyContext,
             Context, X, Y, TypeAssignSet0),
         typecheck_info_add_error(Spec, !Info)
     else

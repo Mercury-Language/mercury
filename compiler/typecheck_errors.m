@@ -99,7 +99,7 @@
 :- func report_error_too_much_overloading(type_error_clause_context,
     prog_context, overloaded_symbol_map) = error_spec.
 
-:- func report_error_unif_var_var(typecheck_info, type_error_clause_context,
+:- func report_error_unify_var_var(typecheck_info, type_error_clause_context,
     unify_context, prog_context, prog_var, prog_var, type_assign_set)
     = error_spec.
 
@@ -755,7 +755,7 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
 
 %---------------------------------------------------------------------------%
 
-report_error_unif_var_var(Info, ClauseContext, UnifyContext, Context,
+report_error_unify_var_var(Info, ClauseContext, UnifyContext, Context,
         X, Y, TypeAssignSet) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
