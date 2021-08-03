@@ -10,7 +10,7 @@
 % File: structure_reuse.indirect.m.
 % Main authors: nancy, wangp.
 %
-% Determine the indirect reuse.  This requires a fixpoint computation.
+% Determine the indirect reuse. This requires a fixpoint computation.
 %
 %---------------------------------------------------------------------------%
 
@@ -172,8 +172,8 @@ indirect_reuse_rerun_analyse_scc(SharingTable, SCC, !ModuleInfo,
     ( if some_preds_require_no_analysis(!.ModuleInfo, SCC) then
         true
     else
-        % Also analyse reuse versions of any procedures in the SCC at the same
-        % time.
+        % Also analyse reuse versions of any procedures in the SCC
+        % at the same time.
         set.to_sorted_list(SCC, SCCProcs),
         extend_scc_with_reuse_procs(!.ReuseTable, SCCProcs, ExtendedSCC),
 
@@ -307,7 +307,7 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
             Desc = sr_fixpoint_table_get_short_description(PPId,
                 !.FixpointTable),
             io.format(StdErr, "%% FPT: %s\n", [s(Desc)], !IO),
-            NumConditions = reuse_as_count_conditions(IrInfo ^ reuse_as),
+            NumConditions = reuse_as_count_conditions(IrInfo ^ ira_reuse_as),
             io.format(StdErr, "%% Number of conditions: %d\n",
                 [i(NumConditions)], !IO)
         )
@@ -316,8 +316,8 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
     ),
 
     % Record the obtained reuse description in the fixpoint table...
-    ReuseAs_Status = reuse_as_and_status(IrInfo ^ reuse_as,
-        IrInfo ^ analysis_status),
+    ReuseAs_Status = reuse_as_and_status(IrInfo ^ ira_reuse_as,
+        IrInfo ^ ira_analysis_status),
     sr_fixpoint_table_new_as(!.ModuleInfo, ProcInfo0, PPId,
         ReuseAs_Status, !FixpointTable),
 
@@ -334,16 +334,16 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
     %
 :- type ir_background_info
     --->    ir_background_info(
-                module_info     :: module_info,
-                pred_proc_id    :: pred_proc_id,
-                pred_info       :: pred_info,
-                proc_info       :: proc_info,
-                sharing_table   :: sharing_as_table,
-                reuse_table     :: reuse_as_table,
-                headvars        :: list(prog_var),
-                max_conditions  :: int,
-                very_verbose    :: bool,
-                debug_indirect  :: bool
+                irb_module_info     :: module_info,
+                irb_pred_proc_id    :: pred_proc_id,
+                irb_pred_info       :: pred_info,
+                irb_proc_info       :: proc_info,
+                irb_sharing_table   :: sharing_as_table,
+                irb_reuse_table     :: reuse_as_table,
+                irb_headvars        :: list(prog_var),
+                irb_max_conditions  :: int,
+                irb_very_verbose    :: bool,
+                irb_debug_indirect  :: bool
             ).
 
     % The type ir_analysis_info gathers the analysis information that may
@@ -351,16 +351,16 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
     %
 :- type ir_analysis_info
     --->    ir_analysis_info(
-                sharing_as      :: sharing_as,
-                reuse_as        :: reuse_as,
-                analysis_status :: analysis_status,
-                static_vars     :: set(prog_var),
-                fptable         :: sr_fixpoint_table,
-                dep_procs       :: dep_procs,
-                requests        :: set(sr_request),
-                                % Requests to locally-defined procedures.
-                inter_requests  :: set(sr_request)
-                                % Requests to imported procedures.
+                ira_sharing_as      :: sharing_as,
+                ira_reuse_as        :: reuse_as,
+                ira_analysis_status :: analysis_status,
+                ira_static_vars     :: set(prog_var),
+                ira_fptable         :: sr_fixpoint_table,
+                ira_dep_procs       :: dep_procs,
+                ira_requests        :: set(sr_request),
+                                    % Requests to locally-defined procedures.
+                ira_inter_requests  :: set(sr_request)
+                                    % Requests to imported procedures.
             ).
 
 :- func ir_background_info_init(module_info, pred_proc_id, pred_info,
@@ -412,41 +412,44 @@ ir_analysis_info_combine(BaseInfo, IrInfoList, FixpointTable, !IrInfo) :-
     ;
         IrInfoList = [_ | _],
         list.foldl(ir_analysis_info_lub(BaseInfo), IrInfoList, !IrInfo),
-        !IrInfo ^ fptable := FixpointTable
+        !IrInfo ^ ira_fptable := FixpointTable
     ).
 
 :- pred ir_analysis_info_lub(ir_background_info::in, ir_analysis_info::in,
     ir_analysis_info::in, ir_analysis_info::out) is det.
 
 ir_analysis_info_lub(BaseInfo, IrInfo0, !IrInfo):-
-    ModuleInfo = BaseInfo ^ module_info,
-    ProcInfo = BaseInfo ^ proc_info,
+    ModuleInfo = BaseInfo ^ irb_module_info,
+    ProcInfo = BaseInfo ^ irb_proc_info,
 
     % Lub of the sharing
     NewSharing = sharing_as_least_upper_bound(ModuleInfo, ProcInfo,
-        !.IrInfo ^ sharing_as, IrInfo0 ^ sharing_as),
+        !.IrInfo ^ ira_sharing_as, IrInfo0 ^ ira_sharing_as),
 
     % Lub of the reuse
     NewReuse = reuse_as_least_upper_bound(ModuleInfo, ProcInfo,
-        !.IrInfo ^ reuse_as, IrInfo0 ^ reuse_as),
+        !.IrInfo ^ ira_reuse_as, IrInfo0 ^ ira_reuse_as),
 
     % Lub of the analysis status.
-    NewStatus = lub(!.IrInfo ^ analysis_status, IrInfo0 ^ analysis_status),
+    NewStatus =
+        lub(!.IrInfo ^ ira_analysis_status, IrInfo0 ^ ira_analysis_status),
 
     % Union of the static vars
-    NewStaticVars = set.union(!.IrInfo ^ static_vars, IrInfo0 ^ static_vars),
+    NewStaticVars =
+        set.union(!.IrInfo ^ ira_static_vars, IrInfo0 ^ ira_static_vars),
 
     % Union of the dependencies.
-    NewDepProcs = set.union(!.IrInfo ^ dep_procs, IrInfo0 ^ dep_procs),
+    NewDepProcs =
+        set.union(!.IrInfo ^ ira_dep_procs, IrInfo0 ^ ira_dep_procs),
 
     % Union of the requests.
-    NewRequests = set.union(!.IrInfo ^ requests, IrInfo0 ^ requests),
-    NewIntermodRequests = set.union(!.IrInfo ^ inter_requests,
-        IrInfo0 ^ inter_requests),
+    NewRequests = set.union(!.IrInfo ^ ira_requests, IrInfo0 ^ ira_requests),
+    NewIntermodRequests =
+        set.union(!.IrInfo ^ ira_inter_requests, IrInfo0 ^ ira_inter_requests),
 
     % The fixpoint table field is updated in ir_analysis_info_combine.
     !:IrInfo = ir_analysis_info(NewSharing, NewReuse, NewStatus, NewStaticVars,
-        !.IrInfo ^ fptable, NewDepProcs, NewRequests, NewIntermodRequests).
+        !.IrInfo ^ ira_fptable, NewDepProcs, NewRequests, NewIntermodRequests).
 
 %---------------------------------------------------------------------------%
 
@@ -454,9 +457,9 @@ ir_analysis_info_lub(BaseInfo, IrInfo0, !IrInfo):-
     hlds_goal::out, ir_analysis_info::in, ir_analysis_info::out) is det.
 
 indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
-    ModuleInfo = BaseInfo ^ module_info,
-    PredInfo = BaseInfo ^ pred_info,
-    ProcInfo = BaseInfo ^ proc_info,
+    ModuleInfo = BaseInfo ^ irb_module_info,
+    PredInfo = BaseInfo ^ irb_pred_info,
+    ProcInfo = BaseInfo ^ irb_proc_info,
 
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     (
@@ -481,8 +484,8 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
             Unification = construct(Var, _, _, _, HowToConstruct, _, _),
             (
                 HowToConstruct = construct_statically(_),
-                !IrInfo ^ static_vars :=
-                    set.insert(!.IrInfo ^ static_vars, Var)
+                !IrInfo ^ ira_static_vars :=
+                    set.insert(!.IrInfo ^ ira_static_vars, Var)
             ;
                 ( HowToConstruct = construct_dynamically
                 ; HowToConstruct = reuse_cell(_)
@@ -498,14 +501,15 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
             Unification = complicated_unify(_, _, _),
             unexpected($pred, "complicated unification")
         ),
-        OldSharing = !.IrInfo ^ sharing_as,
+        OldSharing = !.IrInfo ^ ira_sharing_as,
         NewSharing = add_unify_sharing(ModuleInfo, ProcInfo, Unification,
             GoalInfo0, OldSharing),
         update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo)
     ;
         GoalExpr0 = disj(Goals0),
         list.map2_foldl(indirect_reuse_analyse_disj(BaseInfo, !.IrInfo),
-            Goals0, Goals, IrInfoList, !.IrInfo ^ fptable, NewFixpointTable),
+            Goals0, Goals, IrInfoList,
+            !.IrInfo ^ ira_fptable, NewFixpointTable),
         ir_analysis_info_combine(BaseInfo, IrInfoList, NewFixpointTable,
             !IrInfo),
         GoalExpr = disj(Goals),
@@ -514,7 +518,8 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
         GoalExpr0 = switch(A, B, Cases0),
         list.map2_foldl(
             indirect_reuse_analyse_case(BaseInfo, !.IrInfo),
-            Cases0, Cases, IrInfoList, !.IrInfo ^ fptable, NewFixpointTable),
+            Cases0, Cases, IrInfoList,
+            !.IrInfo ^ ira_fptable, NewFixpointTable),
         ir_analysis_info_combine(BaseInfo, IrInfoList, NewFixpointTable,
             !IrInfo),
         GoalExpr = switch(A, B, Cases),
@@ -546,7 +551,8 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
             IrInfo0, IrInfoIfGoal),
         indirect_reuse_analyse_goal(BaseInfo, ThenGoal0, ThenGoal,
             IrInfoIfGoal, IrInfoThenGoal),
-        IrInfoElseGoal0 = IrInfo0 ^ fptable := IrInfoThenGoal ^ fptable,
+        IrInfoElseGoal0 = IrInfo0 ^ ira_fptable :=
+            IrInfoThenGoal ^ ira_fptable,
         indirect_reuse_analyse_goal(BaseInfo, ElseGoal0, ElseGoal,
             IrInfoElseGoal0, IrInfoElseGoal),
         ir_analysis_info_lub(BaseInfo, IrInfoThenGoal, IrInfoElseGoal,
@@ -558,7 +564,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
             Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl),
         ForeignPPId = proc(ForeignPredId, ForeignProcId),
         Context = goal_info_get_context(GoalInfo0),
-        OldSharing = !.IrInfo ^ sharing_as,
+        OldSharing = !.IrInfo ^ ira_sharing_as,
         add_foreign_proc_sharing(ModuleInfo, PredInfo, ProcInfo,
             ForeignPPId, Attributes, Args, Context, OldSharing, NewSharing),
         update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo)
@@ -573,10 +579,10 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !IrInfo) :-
     ir_analysis_info::in, ir_analysis_info::out) is det.
 
 indirect_reuse_analyse_plain_call(BaseInfo, !Goal, !IrInfo) :-
-    ModuleInfo = BaseInfo ^ module_info,
-    PredInfo = BaseInfo ^ pred_info,
-    ProcInfo = BaseInfo ^ proc_info,
-    SharingTable = BaseInfo ^ sharing_table,
+    ModuleInfo = BaseInfo ^ irb_module_info,
+    PredInfo = BaseInfo ^ irb_pred_info,
+    ProcInfo = BaseInfo ^ irb_proc_info,
+    SharingTable = BaseInfo ^ irb_sharing_table,
 
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     GoalExpr0 = plain_call(CalleePredId, CalleeProcId, CalleeArgs,
@@ -611,9 +617,9 @@ indirect_reuse_analyse_plain_call(BaseInfo, !Goal, !IrInfo) :-
         % Attempt to limit the number of reuse conditions on a procedure.
         % If there are too many conditions already, don't make any more
         % calls to reuse procedures which have conditions on them.
-        MaxConditions = BaseInfo ^ max_conditions,
+        MaxConditions = BaseInfo ^ irb_max_conditions,
         ( if
-            reuse_as_count_conditions(!.IrInfo ^ reuse_as) >= MaxConditions
+            reuse_as_count_conditions(!.IrInfo ^ ira_reuse_as) >= MaxConditions
         then
             CondReuseHandling = ignore_conditional_reuse
         else
@@ -627,7 +633,7 @@ indirect_reuse_analyse_plain_call(BaseInfo, !Goal, !IrInfo) :-
     ;
         Verify = no
     ),
-    OldSharing = !.IrInfo ^ sharing_as,
+    OldSharing = !.IrInfo ^ ira_sharing_as,
     lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
         CalleePredId, CalleeProcId, CalleeArgs, OldSharing, NewSharing),
     update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo).
@@ -638,8 +644,8 @@ indirect_reuse_analyse_plain_call(BaseInfo, !Goal, !IrInfo) :-
 
 indirect_reuse_analyse_generic_call(BaseInfo, GenDetails, CallArgs, Modes,
         GoalInfo, !IrInfo) :-
-    ModuleInfo = BaseInfo ^ module_info,
-    ProcInfo = BaseInfo ^ proc_info,
+    ModuleInfo = BaseInfo ^ irb_module_info,
+    ProcInfo = BaseInfo ^ irb_proc_info,
     (
         ( GenDetails = higher_order(_, _, _, _)
         ; GenDetails = class_method(_, _, _, _)
@@ -667,7 +673,7 @@ indirect_reuse_analyse_generic_call(BaseInfo, GenDetails, CallArgs, Modes,
         Context = goal_info_get_context(GoalInfo),
         context_to_string(Context, ContextString),
         Msg = "generic call (" ++ ContextString ++ ")",
-        OldSharing = !.IrInfo ^ sharing_as,
+        OldSharing = !.IrInfo ^ ira_sharing_as,
         NewSharing = sharing_as_top_sharing_accumulate(
             top_cannot_improve(Msg), OldSharing),
         update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo)
@@ -684,9 +690,9 @@ indirect_reuse_analyse_generic_call(BaseInfo, GenDetails, CallArgs, Modes,
 indirect_reuse_analyse_disj(BaseInfo, IrInfo0, Goal0, Goal, IrInfo,
         !FixpointTable) :-
     % Replace the state of the fixpoint_table in IrInfo0:
-    NewIrInfo = IrInfo0 ^ fptable := !.FixpointTable,
+    NewIrInfo = IrInfo0 ^ ira_fptable := !.FixpointTable,
     indirect_reuse_analyse_goal(BaseInfo, Goal0, Goal, NewIrInfo, IrInfo),
-    !:FixpointTable = IrInfo ^ fptable.
+    !:FixpointTable = IrInfo ^ ira_fptable.
 
     % Similar to indirect_reuse_analyse_disj.
 :- pred indirect_reuse_analyse_case(ir_background_info::in,
@@ -697,16 +703,16 @@ indirect_reuse_analyse_case(BaseInfo, IrInfo0, Case0, Case, IrInfo,
         !FixpointTable) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     % Replace the state of the fixpoint_table in IrInfo0:
-    NewIrInfo = IrInfo0 ^ fptable := !.FixpointTable,
+    NewIrInfo = IrInfo0 ^ ira_fptable := !.FixpointTable,
     indirect_reuse_analyse_goal(BaseInfo, Goal0, Goal, NewIrInfo, IrInfo),
-    !:FixpointTable = IrInfo ^ fptable,
+    !:FixpointTable = IrInfo ^ ira_fptable,
     Case = case(MainConsId, OtherConsIds, Goal).
 
 :- pred update_sharing_as(ir_background_info::in, sharing_as::in,
     sharing_as::in, ir_analysis_info::in, ir_analysis_info::out) is det.
 
 update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo) :-
-    DebugIndirect = BaseInfo ^ debug_indirect,
+    DebugIndirect = BaseInfo ^ irb_debug_indirect,
     (
         DebugIndirect = yes,
         trace [io(!IO)] (
@@ -723,11 +729,12 @@ update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo) :-
     ;
         DebugIndirect = no
     ),
-    !IrInfo ^ sharing_as := NewSharing.
+    !IrInfo ^ ira_sharing_as := NewSharing.
 
 %---------------------------------------------------------------------------%
 %
-% Verification of a reuse calls
+% Verification of a reuse calls.
+% XXX zs: what does that mean?
 %
 
 :- type conditional_reuse_handling
@@ -742,14 +749,14 @@ update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo) :-
     ;       reuse_is_unconditional
     ;       reuse_is_conditional.
 
+    % CalleePPId refers to the original procedure, not the procedure of any
+    % reuse version of another procedure.
+    %
 :- pred verify_indirect_reuse(ir_background_info::in, pred_proc_id::in,
     list(int)::in, prog_vars::in, conditional_reuse_handling::in,
     hlds_goal_info::in, hlds_goal_info::out,
     ir_analysis_info::in, ir_analysis_info::out) is det.
 
-    % CalleePPId refers to the original procedure, not the procedure of any
-    % reuse version of another procedure.
-    %
 verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
         CondReuseHandling, !GoalInfo, !IrInfo) :-
     % Find the reuse information of the called procedure in the reuse table:
@@ -761,9 +768,9 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
         reuse_as_no_reuses(FormalReuseAs)
     then
         Reason = callee_has_no_reuses,
-        % Setting `no_possible_reuse' here would have adverse effects because
-        % the reuse_as from `lookup_reuse_as' is not definitive.  It may
-        % return something else later.
+        % Setting `no_possible_reuse' here would have adverse effects
+        % because the reuse_as from `lookup_reuse_as' is not definitive.
+        % It may return something else later.
         trace [io(!IO)] (
             io.stderr_stream(StdErr, !IO),
             maybe_write_verify_indirect_reuse_reason(StdErr, BaseInfo,
@@ -774,8 +781,8 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
     then
         % With unconditional reuse, we need to mark that the call is always
         % a reuse call.
-        reuse_as_add_unconditional(!.IrInfo ^ reuse_as, NewReuseAs),
-        !IrInfo ^ reuse_as := NewReuseAs,
+        reuse_as_add_unconditional(!.IrInfo ^ ira_reuse_as, NewReuseAs),
+        !IrInfo ^ ira_reuse_as := NewReuseAs,
         goal_info_set_reuse(reuse(reuse_call(unconditional_reuse, NoClobbers)),
             !GoalInfo),
         trace [io(!IO)] (
@@ -798,7 +805,7 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
                 % verifying reuse explicitly, as we don't have any information
                 % anymore about existing (and therefore non-existing) sharing
                 % pairs. In this case, reuse is not allowed.
-                sharing_as_is_top(!.IrInfo ^ sharing_as)
+                sharing_as_is_top(!.IrInfo ^ ira_sharing_as)
             then
                 goal_info_set_reuse(no_possible_reuse, !GoalInfo),
                 trace [io(!IO)] (
@@ -833,7 +840,7 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
         ( if
             NotDeadArgNums = NoClobbers
         then
-            % Don't do anything.  Don't even request a new version.
+            % Don't do anything. Don't even request a new version.
             goal_info_set_reuse(no_possible_reuse, !GoalInfo),
             trace [io(!IO)] (
                 io.stderr_stream(StdErr, !IO),
@@ -846,8 +853,9 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
             % same set of no-clobber arguments we don't need to make a request.
             % XXX might we look up the result for the procedures we're
             % currently analysing, and would that be a problem?
-            reuse_as_table_search_reuse_version_proc(BaseInfo ^ reuse_table,
-                CalleePPId, NotDeadArgNums, _ReusePPId)
+            reuse_as_table_search_reuse_version_proc(
+                BaseInfo ^ irb_reuse_table, CalleePPId, NotDeadArgNums,
+                _ReusePPId)
         then
             verify_indirect_reuse(BaseInfo, CalleePPId, NotDeadArgNums,
                 CalleeArgs, allow_conditional_reuse, !GoalInfo, !IrInfo)
@@ -871,8 +879,8 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
         )
     else if reuse_as_all_unconditional_reuses(NewAndRenamedReuseAs) then
         % Update reuse information and goal_info:
-        reuse_as_add_unconditional(!.IrInfo ^ reuse_as, NewReuseAs),
-        !IrInfo ^ reuse_as := NewReuseAs,
+        reuse_as_add_unconditional(!.IrInfo ^ ira_reuse_as, NewReuseAs),
+        !IrInfo ^ ira_reuse_as := NewReuseAs,
         goal_info_set_reuse(reuse(reuse_call(unconditional_reuse, NoClobbers)),
             !GoalInfo),
         trace [io(!IO)] (
@@ -883,10 +891,10 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
         )
     else if reuse_as_conditional_reuses(NewAndRenamedReuseAs) then
         % Update reuse information and goal_info:
-        reuse_as_least_upper_bound(BaseInfo ^ module_info,
-            BaseInfo ^ proc_info, !.IrInfo ^ reuse_as, NewAndRenamedReuseAs,
-            NewReuseAs),
-        !IrInfo ^ reuse_as := NewReuseAs,
+        reuse_as_least_upper_bound(BaseInfo ^ irb_module_info,
+            BaseInfo ^ irb_proc_info, !.IrInfo ^ ira_reuse_as,
+            NewAndRenamedReuseAs, NewReuseAs),
+        !IrInfo ^ ira_reuse_as := NewReuseAs,
         goal_info_set_reuse(
             potential_reuse(reuse_call(conditional_reuse, NoClobbers)),
             !GoalInfo),
@@ -914,10 +922,10 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
 
 verify_indirect_reuse_for_call(BaseInfo, IrInfo, GoalInfo, CalleePPId,
         CalleeArgs, FormalReuseAs, NewReuseAs, NotDeadVars) :-
-    ModuleInfo = BaseInfo ^ module_info,
-    PredInfo = BaseInfo ^ pred_info,
-    ProcInfo = BaseInfo ^ proc_info,
-    SharingAs = IrInfo ^ sharing_as,
+    ModuleInfo = BaseInfo ^ irb_module_info,
+    PredInfo = BaseInfo ^ irb_pred_info,
+    ProcInfo = BaseInfo ^ irb_proc_info,
+    SharingAs = IrInfo ^ ira_sharing_as,
     proc_info_get_vartypes(ProcInfo, ActualVarTypes),
     pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
     pred_info_get_univ_quant_tvars(PredInfo, CallerHeadTypeParams),
@@ -928,7 +936,7 @@ verify_indirect_reuse_for_call(BaseInfo, IrInfo, GoalInfo, CalleePPId,
     LiveData = livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo,
         SharingAs),
     ProjectedLiveData = livedata_project(CalleeArgs, LiveData),
-    StaticVars = set.to_sorted_list(IrInfo ^ static_vars),
+    StaticVars = set.to_sorted_list(IrInfo ^ ira_static_vars),
 
     reuse_as_satisfied(ModuleInfo, ProcInfo, ProjectedLiveData,
         SharingAs, StaticVars, ActualReuseAs, Result),
@@ -940,7 +948,7 @@ verify_indirect_reuse_for_call(BaseInfo, IrInfo, GoalInfo, CalleePPId,
         LuList = set_of_var.to_sorted_list(LU),
         LuData = list.map(datastruct_init, LuList),
         NewReuseAs = reuse_as_from_called_procedure_to_local_reuse_as(
-            ModuleInfo, ProcInfo, BaseInfo ^ headvars, LuData, SharingAs,
+            ModuleInfo, ProcInfo, BaseInfo ^ irb_headvars, LuData, SharingAs,
             ActualReuseAs),
         NotDeadVars = []
     ;
@@ -964,7 +972,7 @@ verify_indirect_reuse_for_call(BaseInfo, IrInfo, GoalInfo, CalleePPId,
 
 lookup_reuse_as(BaseInfo, OrigPPId, NoClobbers, !IrInfo, ReuseAs) :-
     ( if
-        reuse_as_table_search_reuse_version_proc(BaseInfo ^ reuse_table,
+        reuse_as_table_search_reuse_version_proc(BaseInfo ^ irb_reuse_table,
             OrigPPId, NoClobbers, PPId)
     then
         lookup_reuse_as_2(BaseInfo, OrigPPId, PPId, NoClobbers, !IrInfo,
@@ -985,33 +993,34 @@ lookup_reuse_as(BaseInfo, OrigPPId, NoClobbers, !IrInfo, ReuseAs) :-
 lookup_reuse_as_2(BaseInfo, OrigPPId, PPId, NoClobbers, !IrInfo, ReuseAs) :-
     ( if
         % Check in the fixpoint table
-        sr_fixpoint_table_get_as(PPId, ReuseAs_Status0, !.IrInfo ^ fptable,
+        sr_fixpoint_table_get_as(PPId, ReuseAs_Status0, !.IrInfo ^ ira_fptable,
             NewFixpointTable)
     then
         ReuseAs_Status = ReuseAs_Status0,
-        !IrInfo ^ fptable := NewFixpointTable
+        !IrInfo ^ ira_fptable := NewFixpointTable
     else
         % Or check in the reuse table
-        ReuseAs_Status = get_reuse_as(BaseInfo ^ reuse_table, PPId)
+        ReuseAs_Status = get_reuse_as(BaseInfo ^ irb_reuse_table, PPId)
     ),
 
     ReuseAs_Status = reuse_as_and_status(ReuseAs, Status),
 
     % Combine the status of the reuse information with the status of the
     % current analysis.
-    !IrInfo ^ analysis_status := lub(Status, !.IrInfo ^ analysis_status),
+    !IrInfo ^ ira_analysis_status :=
+        lub(Status, !.IrInfo ^ ira_analysis_status),
 
     % If the called procedure was imported (not opt_imported) then remember
     % that this module depends on the results for that procedure.
     OrigPPId = proc(CalleePredId, _),
-    module_info_pred_info(BaseInfo ^ module_info, CalleePredId,
+    module_info_pred_info(BaseInfo ^ irb_module_info, CalleePredId,
         CalleePredInfo),
     ( if
         pred_info_is_imported_not_external(CalleePredInfo),
         not is_unify_index_or_compare_pred(CalleePredInfo)
     then
         Dep = ppid_no_clobbers(OrigPPId, NoClobbers),
-        !IrInfo ^ dep_procs := set.insert(!.IrInfo ^ dep_procs, Dep)
+        !IrInfo ^ ira_dep_procs := set.insert(!.IrInfo ^ ira_dep_procs, Dep)
     else
         true
     ).
@@ -1025,13 +1034,13 @@ lookup_reuse_as_2(BaseInfo, OrigPPId, PPId, NoClobbers, !IrInfo, ReuseAs) :-
 
 maybe_write_verify_indirect_reuse_reason(Stream, BaseInfo, CalleePPId,
         NoClobbers, GoalInfo, Reason, !IO) :-
-    DebugIndirect = BaseInfo ^ debug_indirect,
+    DebugIndirect = BaseInfo ^ irb_debug_indirect,
     (
         DebugIndirect = yes,
-        ModuleInfo = BaseInfo ^ module_info,
+        ModuleInfo = BaseInfo ^ irb_module_info,
         GoalReuse = goal_info_get_reuse(GoalInfo),
         Context = goal_info_get_context(GoalInfo),
-        proc_info_get_varset(BaseInfo ^ proc_info, VarSet),
+        proc_info_get_varset(BaseInfo ^ irb_proc_info, VarSet),
         CalleeStr = pred_proc_id_to_string(ModuleInfo, CalleePPId),
         io.write_string(Stream, "\tcall to ", !IO),
         io.write_string(Stream, CalleeStr, !IO),
@@ -1088,7 +1097,7 @@ get_var_indices(List, [Var | Vars], Index, Indices) :-
 
 add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule, !IrInfo) :-
     CalleePPId = proc(CalleePredId, _),
-    ModuleInfo = BaseInfo ^ module_info,
+    ModuleInfo = BaseInfo ^ irb_module_info,
     module_info_pred_info(ModuleInfo, CalleePredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
     ( if
@@ -1098,7 +1107,7 @@ add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule, !IrInfo) :-
     then
         IntraModule = yes,
         Request = sr_request(CalleePPId, NotDeadArgNums),
-        !IrInfo ^ requests := set.insert(!.IrInfo ^ requests, Request)
+        !IrInfo ^ ira_requests := set.insert(!.IrInfo ^ ira_requests, Request)
     else
         IntraModule = no,
         module_info_get_globals(ModuleInfo, Globals),
@@ -1107,8 +1116,8 @@ add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule, !IrInfo) :-
         (
             IntermoduleAnalysis = yes,
             Request = sr_request(CalleePPId, NotDeadArgNums),
-            !IrInfo ^ inter_requests :=
-                set.insert(!.IrInfo ^ inter_requests, Request)
+            !IrInfo ^ ira_inter_requests :=
+                set.insert(!.IrInfo ^ ira_inter_requests, Request)
         ;
             IntermoduleAnalysis = no
         )
@@ -1139,8 +1148,8 @@ sr_fixpoint_table_init(Keys, ReuseTable) = Table :-
 sr_fixpoint_table_new_run(!Table) :-
     fixpoint_table.new_run(!Table).
 
-    % The fixpoint table keeps track of the number of analysis passes. This
-    % predicate returns this number.
+    % The fixpoint table keeps track of the number of analysis passes.
+    % This predicate returns this number.
     %
 :- func sr_fixpoint_table_which_run(sr_fixpoint_table) = int.
 
@@ -1162,7 +1171,7 @@ sr_fixpoint_table_stable(Table) :-
 sr_fixpoint_table_description(Table) = fixpoint_table.description(Table).
 
     % Enter the newly computed structure reuse description for a given
-    % procedure.  If the description is different from the one that was
+    % procedure. If the description is different from the one that was
     % already stored for that procedure, the stability of the fixpoint
     % table is set to "unstable".
     % Software error if the procedure is not in the fixpoint table.
