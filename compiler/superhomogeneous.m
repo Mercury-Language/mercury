@@ -1321,10 +1321,12 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                     !ModuleInfo, !QualInfo, !Specs)
             )
         else
+            HeadForm = "<lambda expression head> ",
+            BodyForm = " <lambda expression body>",
+            Form = HeadForm ++ YAtom ++ BodyForm,
             Pieces = [words("Error: the clause neck operator"), quote(YAtom),
                 words("can be used only in expressions of the form"),
-                quote("<lambda expression head> :- <lambda expression body>"),
-                suffix("."), nl],
+                quote(Form), suffix("."), nl],
             Spec = simplest_spec($pred, severity_error,
                 phase_parse_tree_to_hlds, YFunctorContext, Pieces),
             !:Specs = [Spec | !.Specs],
@@ -1353,11 +1355,10 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
         YAtom = "=",
         % A lambda expression without a body goal or a purity marker,
         % and without a declared determinism. This can happen only if
-        % the lambda expression is a function, in which case its top
-        % level function symbol in the term will be "=", and the top functor
-        % of the left operand of the "=" will be "func" or "any_func".
-        % (If it isn't, then we are looking at a plain old unification
-        % that does NOT involve a lambda expression.)
+        % the lambda expression is a function, in which case its top functor
+        % will be "=", and the top functor of the left operand of the "="
+        % will be "func" or "any_func". (If it isn't, then we are looking at
+        % a plain old unification that does NOT involve a lambda expression.)
         ( if
             YArgTerms = [FuncArgsTerm, _ReturnArgModeTerm],
             FuncArgsTerm = term.functor(term.atom(FuncTermFunctor), _, _),

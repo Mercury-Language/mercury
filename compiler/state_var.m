@@ -1767,11 +1767,11 @@ substitute_state_var_mappings([Arg0 | Args0], [Arg | Args], !VarSet, !State,
 substitute_state_var_mapping(Arg0, Arg, !VarSet, !State, !Specs) :-
     ( if Arg0 = functor(atom("!."), [variable(StateVar, _)], Context) then
         lookup_dot_state_var(Context, StateVar, Var, !VarSet, !State, !Specs),
-        Arg = variable(Var, context_init)
+        Arg = variable(Var, Context)
     else if Arg0 = functor(atom("!:"), [variable(StateVar, _)], Context) then
         lookup_colon_state_var(Context, StateVar, Var, !VarSet, !State,
             !Specs),
-        Arg = variable(Var, context_init)
+        Arg = variable(Var, Context)
     else
         Arg = Arg0
     ).

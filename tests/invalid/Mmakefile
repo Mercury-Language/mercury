@@ -59,13 +59,14 @@ SINGLEMODULE= \
 	assert_in_interface \
 	bad_consider_used \
 	bad_detism \
-	bad_fact_table_decls \
 	bad_fact_table_data \
+	bad_fact_table_decls \
 	bad_inst_for_type \
 	bad_instance \
 	bad_instance2 \
 	bad_item_in_interface \
 	bad_pred_arity \
+	bad_statevar_bad_context \
 	bad_sv_unify_msg \
 	bind_in_negated \
 	bind_var_errors \
