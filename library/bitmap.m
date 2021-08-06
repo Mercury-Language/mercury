@@ -12,12 +12,12 @@
 %
 % Efficient bitmap implementation.
 %
-% CAVEAT: the user is referred to the documentation in the header
-% of array.m regarding programming with unique objects (the compiler
-% does not currently recognise them, hence we are forced to use
-% non-unique modes until the situation is rectified; this places
-% a small burden on the programmer to ensure the correctness of his
-% code that would otherwise be assured by the compiler.)
+% CAVEAT: the user is referred to the documentation in the header of array.m
+% regarding programming with unique objects (the compiler does not
+% currently recognise them, hence we are forced to use non-unique modes
+% until the situation is rectified; this places a small burden on programmers
+% to ensure the correctness of their code that would otherwise be assured
+% by the compiler.)
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -37,14 +37,14 @@
     % See runtime/mercury_types.h for the definition of MR_BitmapPtr for
     % use in foreign code.
     %
-    % Comparison of bitmaps first compares the size, if the size is equal
-    % then each bit in turn is compared starting from bit zero.
+    % Comparison of bitmaps first compares the size. If the sizes are equal,
+    % then it compares each bit in turn, starting from bit zero.
     %
 :- type bitmap.
 
 :- inst bitmap == ground.
-:- inst uniq_bitmap == bitmap.  % XXX should be unique
-:- mode bitmap_di == in(uniq_bitmap). % XXX should be di
+:- inst uniq_bitmap == bitmap.          % XXX should be unique
+:- mode bitmap_di == in(uniq_bitmap).   % XXX should be di
 :- mode bitmap_uo == out(uniq_bitmap).
 :- mode bitmap_ui == in(uniq_bitmap).
 
@@ -251,8 +251,8 @@
 
 %---------------------------------------------------------------------------%
 %
-% Unsafe versions of the above: if the index is out of range
-% then behaviour is undefined and bad things are likely to happen.
+% Unsafe versions of the above. If the index is out of range,
+% then behaviour is undefined, and bad things are likely to happen.
 %
 
 :- func unsafe_flip(bitmap, bit_index) = bitmap.
@@ -289,11 +289,10 @@
 % :- mode copy(bitmap_ui) = bitmap_uo is det.
 :- mode copy(in) = bitmap_uo is det.
 
-    % resize(BM, N, B) resizes bitmap BM to have N bits; if N is
-    % smaller than the current number of bits in BM then the excess
-    % are discarded. If N is larger than the current number of bits
-    % in BM then the new bits are set if B = yes and cleared if
-    % B = no.
+    % resize(BM, N, B) resizes bitmap BM to have N bits; if N is smaller
+    % than the current number of bits in BM then the excess are discarded.
+    % If N is larger than the current number of bits in BM, then
+    % the new bits are set if B = yes and cleared if B = no.
     %
 :- func resize(bitmap, num_bits, bool) = bitmap.
 :- mode resize(bitmap_di, in, in) = bitmap_uo is det.
@@ -312,7 +311,7 @@
     % is not within the bounds of the bitmap.
     %
 :- type slice.
-:- func slice(bitmap, bit_index, num_bits) = bitmap.slice.
+:- func slice(bitmap, bit_index, num_bits) = slice.
 
     % As above, but use byte indices.
     %
@@ -324,8 +323,8 @@
 :- func slice ^ slice_start_bit_index = bit_index.
 :- func slice ^ slice_num_bits = num_bits.
 
-    % As above, but return byte indices, throwing an exception if
-    % the slice doesn't start and end on a byte boundary.
+    % As above, but return byte indices, throwing an exception
+    % if the slice doesn't start and end on a byte boundary.
     %
 :- func slice ^ slice_start_byte_index = byte_index.
 :- func slice ^ slice_num_bytes = num_bytes.
@@ -1033,8 +1032,8 @@ shrink_without_copying(!.BM, NewSize) = !:BM :-
 
 %---------------------------------------------------------------------------%
 
-:- type bitmap.slice
-    --->    bitmap.slice_ctor(
+:- type slice
+    --->    slice_ctor(
                 slice_bitmap_field          :: bitmap,
                 slice_start_bit_index_field :: bit_index,
                 slice_num_bits_field        :: num_bits
@@ -1046,7 +1045,7 @@ slice(BM, StartBit, NumBits) = Slice :-
         StartBit >= 0,
         in_range_rexcl(BM, StartBit + NumBits)
     then
-        Slice = bitmap.slice_ctor(BM, StartBit, NumBits)
+        Slice = slice_ctor(BM, StartBit, NumBits)
     else
         throw_bounds_error(BM, "bitmap.slice", StartBit, NumBits)
     ).
@@ -1327,7 +1326,7 @@ copy_bytes_in_bitmap(SrcBM, SrcStartByteIndex, DestStartByteIndex, NumBytes) =
     copy_bytes(1, SrcBM, SrcStartByteIndex,
         SrcBM, DestStartByteIndex, NumBytes).
 
-    % The SameBM parameter is 1 if we are copying within the same bitmap
+    % The SameBM parameter is 1 if we are copying within the same bitmap.
     % We use an `int' rather than a `bool' for easier interfacing with C.
     %
 :- func copy_bytes(int, bitmap, bit_index,
