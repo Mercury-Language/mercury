@@ -199,9 +199,9 @@
 :- pred rebuild_module_and_imports_for_dep_file(globals::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-    % make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-    %  ParseTreeModuleSrc, MaybeTopModule, ForeignIncludeFiles,
-    %  ForeignExportLangs, HasMain, MaybeTimestampMap, ModuleAndImports):
+    % make_module_and_imports(SourceFileName, SourceFileModuleName,
+    %  ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap,
+    %   ModuleAndImports):
     %
     % Construct a module_and_imports structure another way.
     % While the code that gets invoked when we make dependencies
@@ -216,9 +216,8 @@
     % The code in grab_modules.m then proceeds to add more info to the new
     % module_and_imports structure.
     %
-:- pred make_module_and_imports(globals::in, file_name::in,
-    module_name::in, parse_tree_module_src::in,
-    maybe_top_module::in, set(foreign_language)::in,
+:- pred make_module_and_imports(file_name::in, module_name::in,
+    parse_tree_module_src::in, maybe_top_module::in,
     maybe(module_timestamp_map)::in, module_and_imports::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -240,10 +239,6 @@
     module_names_contexts::out) is det.
 :- pred module_and_imports_get_indirect_deps(module_and_imports::in,
     set(module_name)::out) is det.
-:- pred module_and_imports_get_contains_foreign_code(module_and_imports::in,
-    contains_foreign_code::out) is det.
-:- pred module_and_imports_get_contains_foreign_export(module_and_imports::in,
-    contains_foreign_export::out) is det.
 :- pred module_and_imports_get_parse_tree_module_src(module_and_imports::in,
     parse_tree_module_src::out) is det.
 :- pred module_and_imports_get_ancestor_int_specs(module_and_imports::in,
@@ -422,10 +417,6 @@
     set(fim_spec)::out) is det.
 :- pred module_dep_info_get_foreign_include_files(module_dep_info::in,
     set(foreign_include_file_info)::out) is det.
-:- pred module_dep_info_get_contains_foreign_code(module_dep_info::in,
-    contains_foreign_code::out) is det.
-:- pred module_dep_info_get_contains_foreign_export(module_dep_info::in,
-    contains_foreign_export::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -521,14 +512,6 @@
 
                 % The set of modules it indirectly imports.
                 mai_indirect_deps       :: set(module_name),
-
-                % Whether or not the module contains foreign code, and if yes,
-                % which languages they use.
-                mai_has_foreign_code    :: contains_foreign_code,
-
-                % Does the module contain any `:- pragma foreign_export'
-                % declarations?
-                mai_has_foreign_export  :: contains_foreign_export,
 
                 % The contents of the module and its imports.
                 mai_src                 :: parse_tree_module_src,
@@ -743,23 +726,10 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     convert_parse_tree_module_src_to_raw_comp_unit(ParseTreeModuleSrc,
         RawCompUnit),
     RawCompUnit = raw_compilation_unit(_, _, RawItemBlocks),
-    get_foreign_code_indicators_from_item_blocks(Globals, RawItemBlocks,
-        LangSet, _FIMs0),
     get_raw_components(RawItemBlocks, _IntIncls, _ImpIncls,
         IntAvails, ImpAvails, _IntFIMs, _ImpFIMs, IntItems, ImpItems),
     get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-        IntImplicitImportNeeds, IntImpImplicitImportNeeds, Contents),
-    Contents = item_contents(_ForeignIncludeFilesCord, _FactTables, _NewLangs,
-        NewForeignExportLangs),
-    globals.get_backend_foreign_languages(Globals, BackendLangs),
-    set.intersect(set.list_to_set(BackendLangs), NewForeignExportLangs,
-        NewBackendFELangs),
-    ContainsForeignCode = foreign_code_langs_known(LangSet),
-    ( if set.is_empty(NewBackendFELangs) then
-        ContainsForeignExport = contains_no_foreign_export
-    else
-        ContainsForeignExport = contains_foreign_export
-    ),
+        IntImplicitImportNeeds, IntImpImplicitImportNeeds, _Contents),
 
     get_imports_uses_maps(IntAvails, IntImportsMap0, IntUsesMap0),
     get_imports_uses_maps(ImpAvails, ImpImportsMap, ImpUsesMap0),
@@ -798,7 +768,6 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     ModuleAndImports = module_and_imports(FileName, dir.this_directory,
         SourceFileModuleName,
         MaybeTopModule, IntDepsMap, IntImpDepsMap, IndirectDeps,
-        ContainsForeignCode, ContainsForeignExport,
         ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         VersionNumbers, MaybeTimestampMap, Specs, Errors,
@@ -806,21 +775,13 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
 
 %---------------------------------------------------------------------------%
 
-make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
-        ParseTreeModuleSrc, MaybeTopModule, ForeignExportLangs,
-        MaybeTimestampMap, ModuleAndImports) :-
+make_module_and_imports(SourceFileName, SourceFileModuleName,
+        ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap,
+        ModuleAndImports) :-
     map.init(IntDeps),
     map.init(ImpDeps),
     set.init(IndirectDeps),
     map.init(VersionNumbers),
-    globals.get_backend_foreign_languages(Globals, BackendLangs),
-    set.intersect(set.list_to_set(BackendLangs), ForeignExportLangs,
-        BackendFELangs),
-    ( if set.is_empty(BackendFELangs) then
-        ContainsForeignExport = contains_no_foreign_export
-    else
-        ContainsForeignExport = contains_foreign_export
-    ),
     map.init(AncestorSpecs),
     map.init(DirectIntSpecs),
     map.init(IndirectIntSpecs),
@@ -833,9 +794,7 @@ make_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
-        SourceFileModuleName, MaybeTopModule,
-        IntDeps, ImpDeps, IndirectDeps,
-        foreign_code_langs_unknown, ContainsForeignExport,
+        SourceFileModuleName, MaybeTopModule, IntDeps, ImpDeps, IndirectDeps,
         ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         VersionNumbers, MaybeTimestampMap, Specs, Errors,
@@ -988,46 +947,6 @@ module_and_imports_get_indirect_deps(ModuleAndImports, X) :-
             impure set_accesses(Accesses)
         ),
         X = ModuleAndImports ^ mai_indirect_deps
-    ).
-module_and_imports_get_contains_foreign_code(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Method = ModuleAndImports ^ mai_construction_method,
-            (
-                Method = mcm_init,
-                Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_contains_foreign_code := accessed,
-                Accesses = Accesses0 ^ mfk_init := Fields
-            ;
-                Method = mcm_make,
-                Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_contains_foreign_code := accessed,
-                Accesses = Accesses0 ^ mfk_make := Fields
-            ),
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_has_foreign_code
-    ).
-module_and_imports_get_contains_foreign_export(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Method = ModuleAndImports ^ mai_construction_method,
-            (
-                Method = mcm_init,
-                Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_contains_foreign_export := accessed,
-                Accesses = Accesses0 ^ mfk_init := Fields
-            ;
-                Method = mcm_make,
-                Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_contains_foreign_export := accessed,
-                Accesses = Accesses0 ^ mfk_make := Fields
-            ),
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_has_foreign_export
     ).
 module_and_imports_get_parse_tree_module_src(ModuleAndImports, X) :-
     promise_pure (
@@ -1368,7 +1287,7 @@ module_and_imports_get_imp_deps_set(ModuleAndImports, ImpDeps) :-
 module_and_imports_get_fact_tables(ModuleAndImports, FactTables) :-
     module_and_imports_get_parse_tree_module_src(ModuleAndImports,
         ParseTreeModuleSrc),
-    get_fact_tables(ParseTreeModuleSrc ^ ptms_imp_impl_pragmas, FactTables).
+    get_fact_tables(ParseTreeModuleSrc, FactTables).
 
 module_and_imports_get_fim_specs(ModuleAndImports, FIMSpecs) :-
     module_and_imports_get_parse_tree_module_src(ModuleAndImports,
@@ -1378,8 +1297,7 @@ module_and_imports_get_fim_specs(ModuleAndImports, FIMSpecs) :-
 module_and_imports_get_foreign_include_file_infos(ModuleAndImports, FIFOs) :-
     module_and_imports_get_parse_tree_module_src(ModuleAndImports,
         ParseTreeModuleSrc),
-    get_foreign_include_file_infos(ParseTreeModuleSrc ^ ptms_imp_impl_pragmas,
-        FIFOs).
+    get_foreign_include_file_infos(ParseTreeModuleSrc, FIFOs).
 
 module_and_imports_do_we_need_timestamps(ModuleAndImports,
         MaybeReturnTimestamp) :-
@@ -1659,24 +1577,6 @@ module_dep_info_get_foreign_include_files(ModuleDepInfo, X) :-
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_foreign_include_files
-    ).
-
-module_dep_info_get_contains_foreign_code(ModuleDepInfo, X) :-
-    (
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
-        module_and_imports_get_contains_foreign_code(ModuleAndImports, X)
-    ;
-        ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_contains_foreign_code
-    ).
-
-module_dep_info_get_contains_foreign_export(ModuleDepInfo, X) :-
-    (
-        ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
-        module_and_imports_get_contains_foreign_export(ModuleAndImports, X)
-    ;
-        ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_contains_foreign_export
     ).
 
 %---------------------------------------------------------------------------%

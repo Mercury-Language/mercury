@@ -198,11 +198,16 @@
 
 :- pred get_fims(parse_tree_module_src::in, set(fim_spec)::out) is det.
 
-:- pred get_fact_tables(list(item_impl_pragma_info)::in, set(string)::out)
-    is det.
+:- pred get_fact_tables(parse_tree_module_src::in, set(string)::out) is det.
 
-:- pred get_foreign_include_file_infos(list(item_impl_pragma_info)::in,
+:- pred get_foreign_include_file_infos(parse_tree_module_src::in,
     set(foreign_include_file_info)::out) is det.
+
+:- pred get_foreign_export_langs(parse_tree_module_src::in,
+    set(foreign_language)::out) is det.
+
+:- pred get_foreign_code_langs(parse_tree_module_src::in,
+    set(foreign_language)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1221,13 +1226,38 @@ get_fims(ParseTreeModuleSrc, FIMSpecs) :-
         FIMSpecs = set.union_list([IntFIMSpecs, ImpFIMSpecs, SelfFIMSpecs])
     ).
 
-get_fact_tables(ImplPragmas, FactTables) :-
-    list.foldl(acc_fact_tables_from_impl_pragma, ImplPragmas,
-        set.init, FactTables).
+get_fact_tables(ParseTreeModuleSrc, FactTables) :-
+    list.foldl(acc_fact_tables_from_impl_pragma,
+        ParseTreeModuleSrc ^ ptms_imp_impl_pragmas, set.init, FactTables).
 
-get_foreign_include_file_infos(ImplPragmas, FIFOs) :-
-    list.foldl(acc_foreign_include_file_info_from_impl_pragma, ImplPragmas,
-        set.init, FIFOs).
+get_foreign_include_file_infos(ParseTreeModuleSrc, FIFOs) :-
+    list.foldl(acc_foreign_include_file_info_from_impl_pragma,
+        ParseTreeModuleSrc ^ ptms_imp_impl_pragmas, set.init, FIFOs).
+
+get_foreign_export_langs(ParseTreeModuleSrc, Langs) :-
+    ( if
+        ( ParseTreeModuleSrc ^ ptms_imp_initialises = [_ | _]
+        ; ParseTreeModuleSrc ^ ptms_imp_finalises = [_ | _]
+        )
+    then
+        Langs = set.list_to_set(all_foreign_languages)
+    else
+        list.foldl(acc_foreign_export_langs_from_impl_pragma,
+            ParseTreeModuleSrc ^ ptms_imp_impl_pragmas, set.init, Langs)
+    ).
+
+get_foreign_code_langs(ParseTreeModuleSrc, Langs) :-
+    ( if
+        ( ParseTreeModuleSrc ^ ptms_imp_mutables = [_ | _]
+        ; ParseTreeModuleSrc ^ ptms_imp_initialises = [_ | _]
+        ; ParseTreeModuleSrc ^ ptms_imp_finalises = [_ | _]
+        )
+    then
+        Langs = set.list_to_set(all_foreign_languages)
+    else
+        list.foldl(acc_foreign_code_langs_from_impl_pragma,
+            ParseTreeModuleSrc ^ ptms_imp_impl_pragmas, set.init, Langs)
+    ).
 
 %---------------------%
 
@@ -1475,6 +1505,87 @@ acc_fact_tables_from_impl_pragma(ItemImplPragma, !FactTables) :-
         ; ImplPragma = impl_pragma_foreign_code(_)
         ; ImplPragma = impl_pragma_foreign_proc(_)
         ; ImplPragma = impl_pragma_foreign_proc_export(_)
+        ; ImplPragma = impl_pragma_tabled(_)
+        ; ImplPragma = impl_pragma_external_proc(_)
+        ; ImplPragma = impl_pragma_inline(_)
+        ; ImplPragma = impl_pragma_no_inline(_)
+        ; ImplPragma = impl_pragma_consider_used(_)
+        ; ImplPragma = impl_pragma_no_detism_warning(_)
+        ; ImplPragma = impl_pragma_require_tail_rec(_)
+        ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
+        ; ImplPragma = impl_pragma_promise_pure(_)
+        ; ImplPragma = impl_pragma_promise_semipure(_)
+        ; ImplPragma = impl_pragma_mode_check_clauses(_)
+        ; ImplPragma = impl_pragma_require_feature_set(_)
+        )
+    ).
+
+:- pred acc_foreign_export_langs_from_impl_pragma(item_impl_pragma_info::in,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
+
+acc_foreign_export_langs_from_impl_pragma(ItemImplPragma, !Langs) :-
+    ItemImplPragma = item_pragma_info(ImplPragma, _, _),
+    (
+        ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
+        FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _),
+        set.insert(Lang, !Langs)
+    ;
+        ( ImplPragma = impl_pragma_foreign_decl(_)
+        ; ImplPragma = impl_pragma_foreign_code(_)
+        ; ImplPragma = impl_pragma_foreign_proc(_)
+        ; ImplPragma = impl_pragma_fact_table(_)
+        ; ImplPragma = impl_pragma_tabled(_)
+        ; ImplPragma = impl_pragma_external_proc(_)
+        ; ImplPragma = impl_pragma_inline(_)
+        ; ImplPragma = impl_pragma_no_inline(_)
+        ; ImplPragma = impl_pragma_consider_used(_)
+        ; ImplPragma = impl_pragma_no_detism_warning(_)
+        ; ImplPragma = impl_pragma_require_tail_rec(_)
+        ; ImplPragma = impl_pragma_promise_eqv_clauses(_)
+        ; ImplPragma = impl_pragma_promise_pure(_)
+        ; ImplPragma = impl_pragma_promise_semipure(_)
+        ; ImplPragma = impl_pragma_mode_check_clauses(_)
+        ; ImplPragma = impl_pragma_require_feature_set(_)
+        )
+    ).
+
+:- pred acc_foreign_code_langs_from_impl_pragma(item_impl_pragma_info::in,
+    set(foreign_language)::in, set(foreign_language)::out) is det.
+
+acc_foreign_code_langs_from_impl_pragma(ItemImplPragma, !Langs) :-
+    ItemImplPragma = item_pragma_info(ImplPragma, _, _),
+    (
+        (
+            ImplPragma = impl_pragma_foreign_code(FCInfo),
+            FCInfo = pragma_info_foreign_code(Lang, _LiteralOrInclude)
+        ;
+            ImplPragma = impl_pragma_foreign_proc(FPInfo),
+            FPInfo = pragma_info_foreign_proc(Attrs, _Name, _, _, _, _, _),
+            Lang = get_foreign_language(Attrs)
+            % NOTE We used to keep a record of the set of foreign languages
+            % in which there was a foreign_proc for a given procedure,
+            % and then chose the one in the *preferred* foreign language.
+            % This made sense when we had the IL backend, which could handle
+            % foreign procs in both IL and C#, but as of Aug 2021, when
+            % we target a foreign language, we accept for it only the
+            % foreign procs in that language, so this mechanism is unnecessary.
+        ;
+            ImplPragma = impl_pragma_foreign_proc_export(FPEInfo),
+            FPEInfo = pragma_info_foreign_proc_export(_, Lang, _, _)
+        ;
+            ImplPragma = impl_pragma_fact_table(_),
+            Lang = lang_c
+        ),
+        set.insert(Lang, !Langs)
+    ;
+        % We do NOT count foreign_decls here. We only link in a foreign object
+        % file if mlds_to_gcc called mlds_to_c.m to generate it, which it
+        % will only do if there is some foreign_code, not just foreign_decls.
+        % Counting foreign_decls here causes problems with intermodule
+        % optimization.
+        % XXX mlds_to_gcc.m was deleted with the rest of the gcc backend
+        % years ago.
+        ( ImplPragma = impl_pragma_foreign_decl(_)
         ; ImplPragma = impl_pragma_tabled(_)
         ; ImplPragma = impl_pragma_external_proc(_)
         ; ImplPragma = impl_pragma_inline(_)

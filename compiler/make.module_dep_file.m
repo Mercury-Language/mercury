@@ -49,6 +49,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_error.
@@ -321,8 +322,8 @@ do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
     io.open_output(ProgDepFile, ProgDepResult, !IO),
     (
         ProgDepResult = ok(ProgDepStream),
-        do_write_module_dep_file_to_stream(ProgDepStream, ModuleAndImports,
-            !IO),
+        do_write_module_dep_file_to_stream(ProgDepStream, Globals,
+            ModuleAndImports, !IO),
         io.close_output(ProgDepStream, !IO)
     ;
         ProgDepResult = error(Error),
@@ -333,9 +334,9 @@ do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
     ).
 
 :- pred do_write_module_dep_file_to_stream(io.text_output_stream::in,
-    module_and_imports::in, io::di, io::uo) is det.
+    globals::in, module_and_imports::in, io::di, io::uo) is det.
 
-do_write_module_dep_file_to_stream(Stream, ModuleAndImports, !IO) :-
+do_write_module_dep_file_to_stream(Stream, Globals, ModuleAndImports, !IO) :-
     Version = module_dep_file_v2,
     version_number(Version, VersionNumber),
     module_and_imports_get_source_file_name(ModuleAndImports, SourceFileName),
@@ -352,28 +353,23 @@ do_write_module_dep_file_to_stream(Stream, ModuleAndImports, !IO) :-
     NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
     module_and_imports_get_fact_tables(ModuleAndImports, FactTableFilesSet),
     FactTableFiles = set.to_sorted_list(FactTableFilesSet),
-    module_and_imports_get_contains_foreign_code(ModuleAndImports,
-        ContainsForeignCode),
-    module_and_imports_get_contains_foreign_export(ModuleAndImports,
-        ContainsForeignExport),
-    module_and_imports_get_fim_specs(ModuleAndImports, FIMSpecs),
-    module_and_imports_get_foreign_include_file_infos(ModuleAndImports,
-        ForeignIncludeFiles),
-    (
-        ContainsForeignCode = foreign_code_langs_known(ForeignLanguageSet),
-        ForeignLanguages = set.to_sorted_list(ForeignLanguageSet),
-        ForeignLanguageStrs =
-            list.map(mercury_foreign_language_to_string, ForeignLanguages)
-    ;
-        ContainsForeignCode = foreign_code_langs_unknown,
-        % XXX Setting ForeignLanguages to empty when we know that
-        % we *don't* know its correct value looks wrong, but this
-        % may or may not be a bug. It is possible that execution cannot reach
-        % this predicate if this field in the module_and_imports structure
-        % has not been filled in.
-        % XXX CLEANUP We should try replacing this assignment with an abort.
-        ForeignLanguageStrs = []
+    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
+        ParseTreeModuleSrc),
+    globals.get_backend_foreign_languages(Globals, BackendLangsList),
+    BackendLangs = set.list_to_set(BackendLangsList), 
+    get_foreign_code_langs(ParseTreeModuleSrc, CodeLangs),
+    get_foreign_export_langs(ParseTreeModuleSrc, ExportLangs),
+    set.intersect(BackendLangs, CodeLangs, BackendCodeLangs),
+    set.intersect(BackendLangs, ExportLangs, BackendExportLangs),
+    CodeLangStrs = list.map(mercury_foreign_language_to_string,
+        set.to_sorted_list(BackendCodeLangs)),
+    ( if set.is_empty(BackendExportLangs) then
+        ContainsForeignExport = contains_no_foreign_export
+    else
+        ContainsForeignExport = contains_foreign_export
     ),
+    get_fims(ParseTreeModuleSrc, FIMSpecs),
+    get_foreign_include_file_infos(ParseTreeModuleSrc, ForeignIncludeFiles),
     FIMSpecStrs = list.map(fim_spec_to_string, set.to_sorted_list(FIMSpecs)),
     FIFOStrs = list.map(foreign_include_file_info_to_string,
         set.to_sorted_list(ForeignIncludeFiles)),
@@ -404,7 +400,7 @@ do_write_module_dep_file_to_stream(Stream, ModuleAndImports, !IO) :-
         s(bracketed_sym_names_to_comma_list_string(Children)),
         s(bracketed_sym_names_to_comma_list_string(NestedSubModules)),
         s(string.join_list(", ", FactTableFiles)),
-        s(string.join_list(", ", ForeignLanguageStrs)),
+        s(string.join_list(", ", CodeLangStrs)),
         s(string.join_list(", ", FIMSpecStrs)),
         s(ContainsForeignExportStr),
         s(string.join_list(", ", FIFOStrs))],

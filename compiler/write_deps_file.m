@@ -284,10 +284,8 @@ generate_d_file(Globals, ModuleAndImports, IntermodDeps,
     ),
     PublicChildrenMap = ParseTreeModuleSrc ^ ptms_int_includes,
     one_or_more_map.keys_as_set(PublicChildrenMap, PublicChildren),
-    get_fact_tables(ParseTreeModuleSrc ^ ptms_imp_impl_pragmas,
-        FactTableFileNamesSet),
-    get_foreign_include_file_infos(ParseTreeModuleSrc ^ ptms_imp_impl_pragmas,
-        ForeignIncludeFiles),
+    get_fact_tables(ParseTreeModuleSrc, FactTableFileNamesSet),
+    get_foreign_include_file_infos(ParseTreeModuleSrc, ForeignIncludeFiles),
 
     library.version(Version, FullArch),
 
