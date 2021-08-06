@@ -1,6 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% The .exp3 file is for when we optimize var saves across stack flushes.
 
 :- module throw.
 :- interface.
@@ -9,7 +10,6 @@
 :- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
-
 :- import_module exception.
 :- import_module int.
 

@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred throw.main/2-0 (cc_multi) throw.m:10
+      E1:     C1 CALL pred throw.main/2-0 (cc_multi) throw.m:16
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -7,9 +7,9 @@ mdb> break p
 mdb> break q
  1: + stop  interface pred throw.q/1-0 (semidet)
 mdb> continue
-      13:      9  7 CALL pred throw.p/1-0 (cc_nondet) throw.m:20 (exception.m:NNNN)
+      E2:     C2 CALL pred throw.p/1-0 (cc_nondet) throw.m:24
 mdb> finish
-      70:      9  7 EXCP pred throw.p/1-0 (cc_nondet)
+      E3:     C2 EXCP pred throw.p/1-0 (cc_nondet) q!;c2; throw.m:26
 mdb> dd -d 3 -n 7
 Call p(_)
 Throws "Too big"
@@ -23,12 +23,15 @@ Found unhandled or incorrect exception:
 p(_)
 "Too big"
 Is this a bug? yes
-      70:      9  7 EXCP pred throw.p/1-0 (cc_nondet)
+      E3:     C2 EXCP pred throw.p/1-0 (cc_nondet) q!;c2; throw.m:26
 mdb> continue
+mdb: warning: reached unknown label
+This may result in some exception events
+being omitted from the trace.
 exception(univ_cons("Too big"))
-    1210:    466  7 CALL pred throw.q/1-0 (semidet) throw.m:48 (exception.m:NNNN)
+      E4:     C3 CALL pred throw.q/1-0 (semidet) throw.m:50
 mdb> finish
-    1267:    466  7 EXCP pred throw.q/1-0 (semidet)
+      E5:     C3 EXCP pred throw.q/1-0 (semidet) c1;~;q!;c2;~;q!;c1; throw.m:54
 mdb> dd -d 3 -n 7
 Call q(_)
 Throws "Too big"
@@ -42,6 +45,9 @@ Found unhandled or incorrect exception:
 q(_)
 "Too big"
 Is this a bug? yes
-    1267:    466  7 EXCP pred throw.q/1-0 (semidet)
+      E5:     C3 EXCP pred throw.q/1-0 (semidet) c1;~;q!;c2;~;q!;c1; throw.m:54
 mdb> continue
+mdb: warning: reached unknown label
+This may result in some exception events
+being omitted from the trace.
 exception(univ_cons("Too big"))
