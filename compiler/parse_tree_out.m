@@ -1782,41 +1782,23 @@ mercury_format_sym_name_string_pair(SymName - String, S, !U) :-
 
 mercury_output_item_promise(_, Stream, ItemPromise, !IO) :-
     % Any changes here may require similar changes in the write_promise
-    % predicate in hlds_out_module.m.
-
-    ItemPromise = item_promise_info(PromiseType, Goal0, VarSet, UnivVars,
+    % predicate in intermod.m.
+    ItemPromise = item_promise_info(PromiseType, Goal, VarSet, UnivVars,
         _Context, _SeqNum),
-    Indent = 1,
+    UnivVarStrs = list.map(varset.lookup_name(VarSet), UnivVars),
+    UnivVarsStr = string.join_list(", ", UnivVarStrs),
     (
         PromiseType = promise_type_true,
-        % For an assertion, we put back any universally quantified variables
-        % that were stripped off during parsing so that the clause will
-        % output correctly.
-        io.write_string(Stream, ":- promise ", !IO),
-        (
-            UnivVars = [_ | _],
-            Goal = quant_expr(quant_all, quant_ordinary_vars,
-                get_goal_context(Goal0), UnivVars, Goal0)
-        ;
-            UnivVars = [],
-            Goal = Goal0
-        )
+        io.format(Stream, ":- promise all [%s]", [s(UnivVarsStr)], !IO)
     ;
         ( PromiseType = promise_type_exclusive
         ; PromiseType = promise_type_exhaustive
         ; PromiseType = promise_type_exclusive_exhaustive
         ),
-        % A promise ex declaration has a slightly different standard formatting
-        % from an assertion; the universal quantification comes before the rest
-        % of the declaration.
-        io.write_string(Stream, ":- all [", !IO),
-        VarNamePrint = print_name_only,
-        mercury_output_vars(VarSet, VarNamePrint, UnivVars, Stream, !IO),
-        io.write_string(Stream, "]", !IO),
-        mercury_output_newline(Indent, Stream, !IO),
-        io.write_string(Stream, promise_to_string(PromiseType), !IO),
-        Goal0 = Goal
+        io.format(Stream, ":- all [%s]\n%s",
+            [s(UnivVarsStr), s(promise_to_string(PromiseType))], !IO)
     ),
+    Indent = 1,
     mercury_output_newline(Indent, Stream, !IO),
     mercury_output_goal(Stream, VarSet, Indent, Goal, !IO),
     io.write_string(Stream, ".\n", !IO).
@@ -1830,18 +1812,11 @@ mercury_output_item_typeclass(Info, Stream, ItemTypeClass, !IO) :-
     ItemTypeClass = item_typeclass_info(ClassName0, Vars, Constraints, FunDeps,
         Interface, VarSet, _Context, _SeqNum),
     maybe_unqualify_sym_name(Info, ClassName0, ClassName),
-    io.write_string(Stream, ":- typeclass ", !IO),
-
-    % We put an extra set of brackets around the class name in
-    % case the name is an operator.
-    mercury_output_sym_name(ClassName, Stream, !IO),
-    io.write_char(Stream, '(', !IO),
-    write_out_list(
-        ( pred(V::in, S::in, IO0::di, IO::uo) is det :-
-            varset.lookup_name(VarSet, V, VarName),
-            io.write_string(S, VarName, IO0, IO)
-        ), ", ", Vars, Stream, !IO),
-    io.write_char(Stream, ')', !IO),
+    ClassNameStr = mercury_sym_name_to_string(ClassName),
+    VarStrs = list.map(varset.lookup_name(VarSet), Vars),
+    VarsStr = string.join_list(", ", VarStrs),
+    io.format(Stream, ":- typeclass %s(%s)",
+        [s(ClassNameStr), s(VarsStr)], !IO),
     mercury_format_fundeps_and_prog_constraint_list(VarSet, print_name_only,
         FunDeps, Constraints, Stream, !IO),
     (

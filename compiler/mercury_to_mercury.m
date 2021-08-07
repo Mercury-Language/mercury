@@ -95,6 +95,7 @@
 
 :- pred mercury_output_sym_name(sym_name::in, io.text_output_stream::in,
     io::di, io::uo) is det.
+:- func mercury_sym_name_to_string(sym_name) = string.
 :- pred mercury_format_sym_name(sym_name::in, S::in,
     U::di, U::uo) is det <= output(S, U).
 
@@ -404,6 +405,9 @@ mercury_format_cons_id(Lang, NeedsBrackets, ConsId, S, !U) :-
 mercury_output_sym_name(SymName, Stream, !IO) :-
     mercury_format_sym_name_ngt(not_next_to_graphic_token, SymName,
         Stream, !IO).
+
+mercury_sym_name_to_string(SymName) = Str :-
+    mercury_format_sym_name(SymName, unit, "", Str).
 
 mercury_format_sym_name(SymName, S, !U) :-
     mercury_format_sym_name_ngt(not_next_to_graphic_token, SymName, S, !U).

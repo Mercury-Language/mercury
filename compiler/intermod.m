@@ -268,7 +268,6 @@
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
-:- import_module term_io.
 :- import_module unit.
 :- import_module varset.
 
@@ -2220,8 +2219,7 @@ intermod_write_pred(OutInfo, Stream, ModuleInfo, OrderPredInfo,
         (
             Clauses = [Clause],
             write_promise(OutInfo, Stream, ModuleInfo, VarSet,
-                no_varset_vartypes, print_name_only, 0, PromiseType,
-                PredId, PredOrFunc, HeadVars, Clause, !IO)
+                PromiseType, HeadVars, Clause, !IO)
         ;
             ( Clauses = []
             ; Clauses = [_, _ | _]
@@ -2239,47 +2237,31 @@ intermod_write_pred(OutInfo, Stream, ModuleInfo, OrderPredInfo,
     ).
 
 :- pred write_promise(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, prog_varset::in, maybe_vartypes::in, var_name_print::in,
-    int::in, promise_type::in, pred_id::in, pred_or_func::in,
-    list(prog_var)::in, clause::in, io::di, io::uo) is det.
+    module_info::in, prog_varset::in, promise_type::in, list(prog_var)::in,
+    clause::in, io::di, io::uo) is det.
 
-write_promise(Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint, Indent,
-        PromiseType, _PredId, _PredOrFunc, HeadVars, Clause, !IO) :-
+write_promise(Info, Stream, ModuleInfo, VarSet, PromiseType, HeadVars,
+        Clause, !IO) :-
     % Please *either* keep this code in sync with mercury_output_item_promise
     % in parse_tree_out.m, *or* rewrite it to forward the work to that
     % predicate.
-
-    % Curry the varset for term_io.write_variable/4.
-    PrintVar =
-        ( pred(VarName::in, S::in, IOState0::di, IOState::uo) is det :-
-            term_io.write_variable(S, VarName, VarSet, IOState0, IOState)
-        ),
-
-    write_indent(Stream, Indent, !IO),
-
+    HeadVarStrs = list.map(varset.lookup_name(VarSet), HeadVars),
+    HeadVarsStr = string.join_list(", ", HeadVarStrs),
     % Print initial formatting differently for assertions.
     (
         PromiseType = promise_type_true,
-        io.write_string(Stream, ":- promise all [", !IO),
-        write_out_list(PrintVar, ", ", HeadVars, Stream, !IO),
-        io.write_string(Stream, "] (\n", !IO)
+        io.format(Stream, ":- promise all [%s] (\n", [s(HeadVarsStr)], !IO)
     ;
         ( PromiseType = promise_type_exclusive
         ; PromiseType = promise_type_exhaustive
         ; PromiseType = promise_type_exclusive_exhaustive
         ),
-        io.write_string(Stream, ":- all [", !IO),
-        write_out_list(PrintVar, ", ", HeadVars, Stream, !IO),
-        io.write_string(Stream, "]", !IO),
-        mercury_output_newline(Indent, Stream, !IO),
-        io.write_string(Stream, promise_to_string(PromiseType), !IO),
-        mercury_output_newline(Indent, Stream, !IO),
-        io.write_string(Stream, "(\n", !IO)
+        io.format(Stream, ":- all [%s]\n%s\n(\n",
+            [s(HeadVarsStr), s(promise_to_string(PromiseType))], !IO)
     ),
-
     Goal = Clause ^ clause_body,
-    do_write_goal(Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
-        Indent+1, ").\n", Goal, !IO).
+    do_write_goal(Info, Stream, ModuleInfo, VarSet, no_varset_vartypes,
+        print_name_only, 1, ").\n", Goal, !IO).
 
 :- pred intermod_write_clause(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, pred_id::in, sym_name::in, pred_or_func::in,
