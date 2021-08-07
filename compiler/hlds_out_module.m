@@ -31,7 +31,7 @@
 
     % Print out an entire HLDS structure.
     %
-:- pred write_hlds(io.text_output_stream::in, int::in, module_info::in,
+:- pred write_hlds(io.text_output_stream::in, module_info::in,
     io::di, io::uo) is det.
 
     % Exported for intermod.m.
@@ -97,7 +97,7 @@
 % Write out (selected parts of) the entire HLDS.
 %
 
-write_hlds(Stream, Indent, ModuleInfo, !IO) :-
+write_hlds(Stream, ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_id,
         DumpPredIdStrs),
@@ -106,7 +106,7 @@ write_hlds(Stream, Indent, ModuleInfo, !IO) :-
     globals.lookup_bool_option(Globals, dump_hlds_spec_preds, DumpSpecPreds0),
     globals.lookup_accumulating_option(Globals, dump_hlds_spec_preds_for,
         DumpSpecPredTypeNames),
-    write_header(Stream, Indent, ModuleInfo, !IO),
+    write_header(Stream, ModuleInfo, !IO),
     Info = init_hlds_out_info(Globals, output_debug),
     Lang = output_debug,
     DumpOptions0 = Info ^ hoi_dump_hlds_options,
@@ -138,7 +138,7 @@ write_hlds(Stream, Indent, ModuleInfo, !IO) :-
     else
         ( if string.contains_char(DumpOptions, 'I') then
             module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
-            map.foldl(write_avail_entry(Stream, Indent), AvailModuleMap, !IO)
+            map.foldl(write_avail_entry(Stream), AvailModuleMap, !IO)
         else
             true
         ),
@@ -151,9 +151,9 @@ write_hlds(Stream, Indent, ModuleInfo, !IO) :-
             module_info_get_type_table(ModuleInfo, TypeTable),
             module_info_get_instance_table(ModuleInfo, InstanceTable),
             module_info_get_class_table(ModuleInfo, ClassTable),
-            write_type_table(Info, Stream, Indent, LocalOnly, TypeTable, !IO),
-            write_classes(Info, Stream, Indent, ClassTable, !IO),
-            write_instances(Info, Stream, Indent, InstanceTable, !IO)
+            write_type_table(Info, Stream, LocalOnly, TypeTable, !IO),
+            write_classes(Info, Stream, ClassTable, !IO),
+            write_instances(Info, Stream, InstanceTable, !IO)
         else
             true
         ),
@@ -162,8 +162,8 @@ write_hlds(Stream, Indent, ModuleInfo, !IO) :-
             module_info_get_mode_table(ModuleInfo, ModeTable),
             globals.lookup_int_option(Globals, dump_hlds_inst_limit,
                 InstLimit),
-            write_inst_table(Stream, Lang, Indent, InstLimit, InstTable, !IO),
-            write_mode_table(Stream, Indent, ModeTable, !IO)
+            write_inst_table(Stream, Lang, InstLimit, InstTable, !IO),
+            write_mode_table(Stream, ModeTable, !IO)
         else
             true
         ),
@@ -186,7 +186,7 @@ write_hlds(Stream, Indent, ModuleInfo, !IO) :-
         )
     then
         write_preds(Info, Stream, DumpSpecPreds, DumpSpecPredTypeNames,
-            Lang, Indent, ModuleInfo, !IO)
+            Lang, ModuleInfo, !IO)
     else
         true
     ),
@@ -194,37 +194,33 @@ write_hlds(Stream, Indent, ModuleInfo, !IO) :-
         module_info_get_maybe_dependency_info(ModuleInfo, MaybeDependencyInfo),
         (
             MaybeDependencyInfo = no,
-            write_indent(Stream, Indent, !IO),
             io.write_string(Stream, "% No dependency info\n\n", !IO)
         ;
             MaybeDependencyInfo = yes(DependencyInfo),
-            write_dependency_info(Info, Stream, Indent, ModuleInfo,
+            write_dependency_info(Info, Stream, ModuleInfo,
                 DependencyInfo, !IO)
         )
     else
         true
     ),
-    write_footer(Stream, Indent, ModuleInfo, !IO).
+    write_footer(Stream, ModuleInfo, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_header(io.text_output_stream::in, int::in, module_info::in,
+:- pred write_header(io.text_output_stream::in, module_info::in,
     io::di, io::uo) is det.
 
-write_header(Stream, Indent, Module, !IO) :-
+write_header(Stream, Module, !IO) :-
     module_info_get_name(Module, ModuleName),
-    write_indent(Stream, Indent, !IO),
     io.write_string(Stream, "% vim: ts=2 sw=2 ft=mercury\n\n", !IO),
-    write_indent(Stream, Indent, !IO),
     io.format(Stream, ":- module %s.\n\n",
         [s(sym_name_to_escaped_string(ModuleName))], !IO).
 
-:- pred write_footer(io.text_output_stream::in, int::in, module_info::in,
+:- pred write_footer(io.text_output_stream::in, module_info::in,
     io::di, io::uo) is det.
 
-write_footer(Stream, Indent, Module, !IO) :-
+write_footer(Stream, Module, !IO) :-
     module_info_get_name(Module, ModuleName),
-    write_indent(Stream, Indent, !IO),
     io.format(Stream, ":- end_module %s.\n",
         [s(sym_name_to_escaped_string(ModuleName))], !IO).
 
@@ -233,10 +229,10 @@ write_footer(Stream, Indent, Module, !IO) :-
 % Write out the imports and uses.
 %
 
-:- pred write_avail_entry(io.text_output_stream::in, int::in,
-    module_name::in, avail_module_entry::in, io::di, io::uo) is det.
+:- pred write_avail_entry(io.text_output_stream::in, module_name::in,
+    avail_module_entry::in, io::di, io::uo) is det.
 
-write_avail_entry(Stream, Indent, ModuleName, Entry, !IO) :-
+write_avail_entry(Stream, ModuleName, Entry, !IO) :-
     Entry = avail_module_entry(Section, ImportOrUse, Avails),
     (
         ImportOrUse = import_decl,
@@ -245,16 +241,12 @@ write_avail_entry(Stream, Indent, ModuleName, Entry, !IO) :-
         ImportOrUse = use_decl,
         ImportOrUseDecl = "use_module"
     ),
-    write_indent(Stream, Indent, !IO),
     io.format(Stream, ":- %s %s.\n",
         [s(ImportOrUseDecl), s(sym_name_to_escaped_string(ModuleName))], !IO),
-
-    write_indent(Stream, Indent, !IO),
     io.write_string(Stream, "% ", !IO),
     io.write(Stream, Section, !IO),
     io.write_string(Stream, ", ", !IO),
-    io.write(Stream, Avails, !IO),
-    io.write_string(Stream, "\n", !IO).
+    io.write_line(Stream, Avails, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -262,10 +254,9 @@ write_avail_entry(Stream, Indent, ModuleName, Entry, !IO) :-
 %
 
 :- pred write_type_table(hlds_out_info::in, io.text_output_stream::in,
-    int::in, bool::in, type_table::in, io::di, io::uo) is det.
+    bool::in, type_table::in, io::di, io::uo) is det.
 
-write_type_table(Info, Stream, Indent, LocalOnly, TypeTable, !IO) :-
-    write_indent(Stream, Indent, !IO),
+write_type_table(Info, Stream, LocalOnly, TypeTable, !IO) :-
     io.write_string(Stream, "%-------- Types --------\n", !IO),
     get_all_type_ctor_defns(TypeTable, TypeAssocList),
     list.sort(TypeAssocList, SortedTypeAssocList),
@@ -277,7 +268,7 @@ write_type_table(Info, Stream, Indent, LocalOnly, TypeTable, !IO) :-
         list.filter(type_table_entry_is_local, SortedTypeAssocList,
             PrintedTypeAssocList)
     ),
-    write_type_table_entries(Info, Stream, Indent, PrintedTypeAssocList, !IO),
+    write_type_table_entries(Info, Stream, PrintedTypeAssocList, !IO),
     io.nl(Stream, !IO).
 
 :- pred type_table_entry_is_local(pair(type_ctor, hlds_type_defn)::in)
@@ -288,17 +279,17 @@ type_table_entry_is_local(_TypeCtor - TypeDefn) :-
     type_status_defined_in_this_module(TypeStatus) = yes.
 
 :- pred write_type_table_entries(hlds_out_info::in, io.text_output_stream::in,
-    int::in, assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
+    assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
 
-write_type_table_entries(_, _, _, [], !IO).
-write_type_table_entries(Info, Stream, Indent, [Type | Types], !IO) :-
-    write_type_table_entry(Info, Stream, Indent, Type, !IO),
-    write_type_table_entries(Info, Stream, Indent, Types, !IO).
+write_type_table_entries(_, _, [], !IO).
+write_type_table_entries(Info, Stream, [Type | Types], !IO) :-
+    write_type_table_entry(Info, Stream, Type, !IO),
+    write_type_table_entries(Info, Stream, Types, !IO).
 
 :- pred write_type_table_entry(hlds_out_info::in, io.text_output_stream::in,
-    int::in, pair(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
+    pair(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
 
-write_type_table_entry(Info, Stream, Indent, TypeCtor - TypeDefn, !IO) :-
+write_type_table_entry(Info, Stream, TypeCtor - TypeDefn, !IO) :-
     hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet),
     hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
@@ -306,7 +297,7 @@ write_type_table_entry(Info, Stream, Indent, TypeCtor - TypeDefn, !IO) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
     % Write the context.
     io.write_char(Stream, '\n', !IO),
-    maybe_output_context_comment(Stream, Indent, "", Context, !IO),
+    maybe_output_context_comment(Stream, 0, "", Context, !IO),
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'c') then
         io.format(Stream, "%% status %s\n",
@@ -314,7 +305,6 @@ write_type_table_entry(Info, Stream, Indent, TypeCtor - TypeDefn, !IO) :-
     else
         true
     ),
-    write_indent(Stream, Indent, !IO),
     ( if
         ( TypeBody = hlds_solver_type(_)
         ; TypeBody = hlds_abstract_type(abstract_solver_type)
@@ -326,8 +316,7 @@ write_type_table_entry(Info, Stream, Indent, TypeCtor - TypeDefn, !IO) :-
     ),
     write_type_name(Stream, TypeCtor, !IO),
     write_type_params(Stream, TVarSet, TypeParams, !IO),
-    write_type_body(Info, Stream, TypeCtor, TypeBody, Indent + 1,
-        TVarSet, !IO).
+    write_type_body(Info, Stream, TypeCtor, TypeBody, TVarSet, !IO).
 
 :- pred write_type_params(io.text_output_stream::in, tvarset::in,
     list(type_param)::in, io::di, io::uo) is det.
@@ -338,29 +327,27 @@ write_type_params(Stream, TVarSet, TypeParams, !IO) :-
     ;
         TypeParams = [HeadParam | TailParams],
         io.write_string(Stream, "(", !IO),
-        write_type_params_loop(Stream, TVarSet, HeadParam, TailParams, !IO),
+        mercury_output_var(TVarSet, print_name_only, HeadParam, Stream, !IO),
+        write_comma_type_params_loop(Stream, TVarSet, TailParams, !IO),
         io.write_string(Stream, ")", !IO)
     ).
 
-:- pred write_type_params_loop(io.text_output_stream::in, tvarset::in,
-    type_param::in, list(type_param)::in, io::di, io::uo) is det.
+:- pred write_comma_type_params_loop(io.text_output_stream::in, tvarset::in,
+    list(type_param)::in, io::di, io::uo) is det.
 
-write_type_params_loop(Stream, TVarSet, HeadParam, TailParams, !IO) :-
-    mercury_output_var(TVarSet, print_name_only, HeadParam, Stream, !IO),
-    (
-        TailParams = []
-    ;
-        TailParams = [HeadTailParam | TailTailParams],
-        io.write_string(Stream, ", ", !IO),
-        write_type_params_loop(Stream, TVarSet,
-            HeadTailParam, TailTailParams, !IO)
-    ).
+write_comma_type_params_loop(_Stream, _TVarSet, [], !IO).
+write_comma_type_params_loop(Stream, TVarSet, [Param | Params], !IO) :-
+    io.write_string(Stream, ", ", !IO),
+    mercury_output_var(TVarSet, print_name_only, Param, Stream, !IO),
+    write_comma_type_params_loop(Stream, TVarSet, Params, !IO).
 
 :- pred write_type_body(hlds_out_info::in, io.text_output_stream::in,
-    type_ctor::in, hlds_type_body::in, int::in, tvarset::in,
+    type_ctor::in, hlds_type_body::in, tvarset::in,
     io::di, io::uo) is det.
 
-write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
+write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
+    BaseIndent = 1,
+    IndentStr = indent_string(BaseIndent),
     (
         TypeBody = hlds_du_type(TypeBodyDu),
         TypeBodyDu = type_body_du(Ctors, MaybeSuperType, MaybeUserEqComp,
@@ -370,8 +357,8 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
             MaybeSuperType = subtype_of(SuperType),
             SuperTypeStr = mercury_type_to_string(TVarSet,
                 print_name_only, SuperType),
-            write_indent(Stream, Indent, !IO),
-            io.format(Stream, "%% subtype of %s\n", [s(SuperTypeStr)], !IO)
+            io.format(Stream, "%s%% subtype of %s\n",
+                [s(IndentStr), s(SuperTypeStr)], !IO)
         ;
             MaybeSuperType = not_a_subtype
         ),
@@ -380,20 +367,18 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         (
             MaybeRepn = no,
             Ctors = one_or_more(HeadCtor, TailCtors),
-            write_constructors(Stream, TVarSet, Indent,
-                HeadCtor, TailCtors, !IO),
+            write_constructors(Stream, TVarSet, HeadCtor, TailCtors, !IO),
             MaybeDirectArgCtors = no,
             mercury_output_where_attributes(MercInfo, TVarSet,
                 MaybeSolverTypeDetails, MaybeUserEqComp, MaybeDirectArgCtors,
                 Stream, !IO),
-            write_indent(Stream, Indent, !IO),
-            io.write_string(Stream,
-                "% no type representation information yet\n", !IO)
+            io.format(Stream, "%s%% no type representation information yet\n",
+                [s(IndentStr)], !IO)
         ;
             MaybeRepn = yes(Repn),
             Repn = du_type_repn(CtorRepns, CtorRepnMap, CheaperTagTest,
                 DuTypeKind, MaybeDirectArgCtors),
-            write_constructor_repns(Stream, TVarSet, Indent, CtorRepns, !IO),
+            write_constructor_repns(Stream, TVarSet, CtorRepns, !IO),
             (
                 CheaperTagTest = no_cheaper_tag_test
             ;
@@ -403,7 +388,6 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
                     unqual_cons_id(ExpConsId)),
                 CheapConsIdStr = cons_id_and_arity_to_string(
                     unqual_cons_id(CheapConsId)),
-                IndentStr = indent_string(Indent),
                 io.format(Stream, "%s%% cheaper tag test:\n",
                     [s(IndentStr)], !IO),
                 io.format(Stream, "%s%%   from %s\n",
@@ -418,18 +402,17 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
             ),
             (
                 DuTypeKind = du_type_kind_mercury_enum,
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% KIND enumeration\n", !IO)
+                io.format(Stream, "%s%% KIND enumeration\n",
+                    [s(IndentStr)], !IO)
             ;
                 DuTypeKind = du_type_kind_foreign_enum(Lang),
-                write_indent(Stream, Indent, !IO),
                 io.format(Stream,
-                    "%%s KIND foreign enumeration for %s\n",
-                    [s(foreign_language_string(Lang))], !IO)
+                    "%s%% KIND foreign enumeration for %s\n",
+                    [s(IndentStr), s(foreign_language_string(Lang))], !IO)
             ;
                 DuTypeKind = du_type_kind_direct_dummy,
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% KIND dummy\n", !IO)
+                io.format(Stream, "%s%% KIND dummy\n",
+                    [s(IndentStr)], !IO)
             ;
                 DuTypeKind = du_type_kind_notag(FunctorName, ArgType,
                     MaybeArgName),
@@ -441,22 +424,21 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
                     MaybeArgName = no,
                     ArgName = "no arg name"
                 ),
-                write_indent(Stream, Indent, !IO),
-                io.format(Stream, "%% KIND notag: %s, %s, %s\n",
-                    [s(sym_name_to_escaped_string(FunctorName)),
+                io.format(Stream, "%s%% KIND notag: %s, %s, %s\n",
+                    [s(IndentStr), s(sym_name_to_escaped_string(FunctorName)),
                     s(ArgTypeStr), s(ArgName)], !IO)
             ;
                 DuTypeKind = du_type_kind_general,
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% KIND general\n", !IO)
+                io.format(Stream, "%s%% KIND general\n",
+                    [s(IndentStr)], !IO)
             ),
             mercury_output_where_attributes(MercInfo, TVarSet,
                 MaybeSolverTypeDetails, MaybeUserEqComp, MaybeDirectArgCtors,
                 Stream, !IO),
             (
                 Foreign = yes(_),
-                write_indent(Stream, Indent, !IO),
-                io.write_string(Stream, "% has foreign_type\n", !IO)
+                io.format(Stream, "%s%% has foreign_type\n",
+                    [s(IndentStr)], !IO)
             ;
                 Foreign = no
             ),
@@ -468,9 +450,9 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
                 ( if SortedCtorRepns = SortedMapCtorRepns then
                     true
                 else
-                    write_indent(Stream, Indent, !TIO),
-                    io.write_string(Stream, 
-                        "% BUG SortedCtorRepns != SortedMapCtorRepns\n", !TIO)
+                    io.format(Stream, 
+                        "%s%% BUG SortedCtorRepns != SortedMapCtorRepns\n",
+                        [s(IndentStr)], !TIO)
                 )
             )
         )
@@ -523,8 +505,7 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         ),
         % What we output is not valid Mercury syntax, but it is easier
         % to read than valid Mercury syntax would be.
-        IndentStr = indent_string(Indent),
-        Indent1Str = indent_string(Indent + 1),
+        Indent1Str = indent_string(BaseIndent + 1),
         io.format(Stream, " is foreign_type(\n%s%s,\n%s%s,\n%s%s\n%s).\n",
             [s(Indent1Str), s(MaybeCStr),
             s(Indent1Str), s(MaybeJavaStr),
@@ -618,74 +599,73 @@ accumulate_ctor_repns(one_or_more(HeadCR, TailCRs), !AccCRs) :-
 
 %---------------------%
 
-:- pred write_constructors(io.text_output_stream::in, tvarset::in, int::in,
+:- pred write_constructors(io.text_output_stream::in, tvarset::in,
     constructor::in, list(constructor)::in, io::di, io::uo) is det.
 
-write_constructors(Stream, TVarSet, Indent, HeadCtor, TailCtors, !IO) :-
+write_constructors(Stream, TVarSet, HeadCtor, TailCtors, !IO) :-
     ArrowOrSemi0 = "--->    ",
-    write_constructors_loop(Stream, TVarSet, Indent, ArrowOrSemi0,
+    write_constructors_loop(Stream, TVarSet, ArrowOrSemi0,
         HeadCtor, TailCtors, !IO).
 
 :- pred write_constructor_repns(io.text_output_stream::in, tvarset::in,
-    int::in, list(constructor_repn)::in, io::di, io::uo) is det.
+    list(constructor_repn)::in, io::di, io::uo) is det.
 
-write_constructor_repns(Stream, TVarSet, Indent, CtorRepns, !IO) :-
+write_constructor_repns(Stream, TVarSet, CtorRepns, !IO) :-
     (
         CtorRepns = [],
         unexpected($pred, "empty constructor list")
     ;
         CtorRepns = [HeadCtorRepn | TailCtorRepns],
         ArrowOrSemi0 = "--->    ",
-        write_constructor_repns_loop(Stream, TVarSet, Indent, ArrowOrSemi0,
+        write_constructor_repns_loop(Stream, TVarSet, ArrowOrSemi0,
             HeadCtorRepn, TailCtorRepns, !IO)
     ).
 
 %---------------------%
 
 :- pred write_constructors_loop(io.text_output_stream::in, tvarset::in,
-    int::in, string::in, constructor::in, list(constructor)::in,
-    io::di, io::uo) is det.
+    string::in, constructor::in, list(constructor)::in, io::di, io::uo) is det.
 
-write_constructors_loop(Stream, TVarSet, Indent, ArrowOrSemi0,
+write_constructors_loop(Stream, TVarSet, ArrowOrSemi0,
         HeadCtor, TailCtors, !IO) :-
-    write_indent(Stream, Indent, !IO),
+    write_indent(Stream, 1, !IO),
     io.write_string(Stream, ArrowOrSemi0, !IO),
     (
         TailCtors = [],
-        write_ctor(Stream, TVarSet, Indent, HeadCtor, !IO)
+        write_ctor(Stream, TVarSet, HeadCtor, !IO)
     ;
         TailCtors = [HeadTailCtor | TailTailCtors],
-        write_ctor(Stream, TVarSet, Indent, HeadCtor, !IO),
+        write_ctor(Stream, TVarSet, HeadCtor, !IO),
         ArrowOrSemi = ";       ",
-        write_constructors_loop(Stream, TVarSet, Indent, ArrowOrSemi,
+        write_constructors_loop(Stream, TVarSet, ArrowOrSemi,
             HeadTailCtor, TailTailCtors, !IO)
     ).
 
 :- pred write_constructor_repns_loop(io.text_output_stream::in, tvarset::in,
-    int::in, string::in, constructor_repn::in, list(constructor_repn)::in,
+    string::in, constructor_repn::in, list(constructor_repn)::in,
     io::di, io::uo) is det.
 
-write_constructor_repns_loop(Stream, TVarSet, Indent, ArrowOrSemi0,
+write_constructor_repns_loop(Stream, TVarSet, ArrowOrSemi0,
         HeadCtorRepn, TailCtorRepns, !IO) :-
-    write_indent(Stream, Indent, !IO),
+    write_indent(Stream, 1, !IO),
     io.write_string(Stream, ArrowOrSemi0, !IO),
     (
         TailCtorRepns = [],
-        write_ctor_repn(Stream, TVarSet, Indent, HeadCtorRepn, !IO)
+        write_ctor_repn(Stream, TVarSet, HeadCtorRepn, !IO)
     ;
         TailCtorRepns = [HeadTailCtorRepn | TailTailCtorRepns],
-        write_ctor_repn(Stream, TVarSet, Indent, HeadCtorRepn, !IO),
+        write_ctor_repn(Stream, TVarSet, HeadCtorRepn, !IO),
         ArrowOrSemi = ";       ",
-        write_constructor_repns_loop(Stream, TVarSet, Indent, ArrowOrSemi,
+        write_constructor_repns_loop(Stream, TVarSet, ArrowOrSemi,
             HeadTailCtorRepn, TailTailCtorRepns, !IO)
     ).
 
 %---------------------%
 
-:- pred write_ctor(io.text_output_stream::in, tvarset::in, int::in,
+:- pred write_ctor(io.text_output_stream::in, tvarset::in,
     constructor::in, io::di, io::uo) is det.
 
-write_ctor(Stream, TVarSet, Indent, Ctor, !IO) :-
+write_ctor(Stream, TVarSet, Ctor, !IO) :-
     % NOTE The code of this predicate is almost identical to the code of
     % write_ctor_repn below and mercury_output_ctor in parse_tree_out.m.
     % Any changes made here will probably need to be made there as well.
@@ -697,10 +677,11 @@ write_ctor(Stream, TVarSet, Indent, Ctor, !IO) :-
     NameStr =
         mercury_bracketed_atom_to_string(not_next_to_graphic_token, Name),
     % The width of ArrowOrSemi is eight spaces, which is the same as
-    % four indents.
+    % four indents. This comes after the original one indent.
+    BaseIndent = 1,
     ASIndent = 4,
     maybe_cons_exist_constraints_to_prefix_suffix(TVarSet,
-        indent_string(Indent + ASIndent), "\n", MaybeExistConstraints,
+        indent_string(BaseIndent + ASIndent), "\n", MaybeExistConstraints,
         ExistConstraintsPrefix, ExistConstraintsSuffix),
     maybe_brace_for_name_prefix_suffix(Arity, Name, BracePrefix, BraceSuffix),
     io.write_string(Stream, ExistConstraintsPrefix, !IO),
@@ -712,19 +693,19 @@ write_ctor(Stream, TVarSet, Indent, Ctor, !IO) :-
         Args = [HeadArg | TailArgs],
         io.format(Stream, "%s%s(\n", [s(BracePrefix), s(NameStr)], !IO),
         AnyFieldName = does_any_arg_have_a_field_name(Args),
-        mercury_output_ctor_args(Stream, TVarSet, Indent + ASIndent + 1,
+        mercury_output_ctor_args(Stream, TVarSet, BaseIndent + ASIndent + 1,
             AnyFieldName, HeadArg, TailArgs, !IO),
-        write_indent(Stream, Indent + ASIndent, !IO),
+        write_indent(Stream, BaseIndent + ASIndent, !IO),
         io.format(Stream, ")%s\n", [s(BraceSuffix)], !IO)
     ),
     io.write_string(Stream, BraceSuffix, !IO),
     io.write_string(Stream, ExistConstraintsSuffix, !IO),
     io.write_string(Stream, "\n", !IO).
 
-:- pred write_ctor_repn(io.text_output_stream::in, tvarset::in, int::in,
+:- pred write_ctor_repn(io.text_output_stream::in, tvarset::in,
     constructor_repn::in, io::di, io::uo) is det.
 
-write_ctor_repn(Stream, TVarSet, Indent, CtorRepn, !IO) :-
+write_ctor_repn(Stream, TVarSet, CtorRepn, !IO) :-
     % NOTE The code of this predicate is almost identical to the code of
     % write_ctor_repn below and mercury_output_ctor in parse_tree_out.m.
     % Any changes made here will probably need to be made there as well.
@@ -737,16 +718,17 @@ write_ctor_repn(Stream, TVarSet, Indent, CtorRepn, !IO) :-
     NameStr =
         mercury_bracketed_atom_to_string(not_next_to_graphic_token, Name),
     % The width of ArrowOrSemi is eight spaces, which is the same as
-    % four indents.
+    % four indents. This comes after the original one indent.
+    BaseIndent = 1,
     ASIndent = 4,
     maybe_cons_exist_constraints_to_prefix_suffix(TVarSet,
-        indent_string(Indent + ASIndent), "\n", MaybeExistConstraints,
+        indent_string(BaseIndent + ASIndent), "\n", MaybeExistConstraints,
         ExistConstraintsPrefix, ExistConstraintsSuffix),
     maybe_brace_for_name_prefix_suffix(Arity, Name, BracePrefix, BraceSuffix),
     io.write_string(Stream, ExistConstraintsPrefix, !IO),
     io.write_string(Stream, BracePrefix, !IO),
     ConsTagString = string.format("%s%% tag: %s\n",
-        [s(indent_string(Indent + ASIndent)),
+        [s(indent_string(BaseIndent + ASIndent)),
         s(du_cons_tag_to_string(ConsTag))]),
     (
         ArgRepns = [],
@@ -758,9 +740,10 @@ write_ctor_repn(Stream, TVarSet, Indent, CtorRepn, !IO) :-
         io.format(Stream, "%s%s(\n%s",
             [s(BracePrefix), s(NameStr), s(ConsTagString)], !IO),
         AnyFieldName = does_any_arg_repn_have_a_field_name(ArgRepns),
-        mercury_output_ctor_arg_repns(Stream, TVarSet, Indent + ASIndent + 1,
-            AnyFieldName, 1, HeadArgRepn, TailArgRepns, !IO),
-        write_indent(Stream, Indent + ASIndent, !IO),
+        mercury_output_ctor_arg_repns(Stream, TVarSet,
+            BaseIndent + ASIndent + 1, AnyFieldName, 1,
+            HeadArgRepn, TailArgRepns, !IO),
+        write_indent(Stream, BaseIndent + ASIndent, !IO),
         io.format(Stream, ")%s\n", [s(BraceSuffix)], !IO)
     ),
     io.write_string(Stream, ExistConstraintsSuffix, !IO).
@@ -1057,29 +1040,27 @@ fill_kind_to_string(fill_char21) = "char21".
 %
 
 :- pred write_classes(hlds_out_info::in, io.text_output_stream::in,
-    int::in, class_table::in, io::di, io::uo) is det.
+    class_table::in, io::di, io::uo) is det.
 
-write_classes(Info, Stream, Indent, ClassTable, !IO) :-
-    write_indent(Stream, Indent, !IO),
+write_classes(Info, Stream, ClassTable, !IO) :-
     io.write_string(Stream, "%-------- Classes --------\n", !IO),
     map.to_assoc_list(ClassTable, ClassTableList),
-    list.foldl(write_class_defn(Info, Stream, Indent), ClassTableList, !IO),
+    list.foldl(write_class_defn(Info, Stream), ClassTableList, !IO),
     io.nl(Stream, !IO).
 
-:- pred write_class_defn(hlds_out_info::in, io.text_output_stream::in, int::in,
+:- pred write_class_defn(hlds_out_info::in, io.text_output_stream::in,
     pair(class_id, hlds_class_defn)::in, io::di, io::uo) is det.
 
-write_class_defn(Info, Stream, Indent, ClassId - ClassDefn, !IO) :-
-    write_indent(Stream, Indent, !IO),
+write_class_defn(Info, Stream, ClassId - ClassDefn, !IO) :-
     io.write_string(Stream, "% ", !IO),
-
     write_class_id(Stream, ClassId, !IO),
     io.write_string(Stream, ":\n", !IO),
 
     ClassDefn = hlds_class_defn(_, Constraints, FunDeps, _, Vars, _, _,
         Interface, VarSet, Context, _),
 
-    maybe_output_context_comment(Stream, Indent, "", Context, !IO),
+    % ZZZ
+    maybe_output_context_comment(Stream, 0, "", Context, !IO),
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'v') then
         VarNamePrint = print_name_and_num
@@ -1087,23 +1068,19 @@ write_class_defn(Info, Stream, Indent, ClassId - ClassDefn, !IO) :-
         VarNamePrint = print_name_only
     ),
 
-    write_indent(Stream, Indent, !IO),
     io.write_string(Stream, "% Vars: ", !IO),
     mercury_output_vars(VarSet, VarNamePrint, Vars, Stream, !IO),
     io.nl(Stream, !IO),
 
-    write_indent(Stream, Indent, !IO),
     io.write_string(Stream, "% Functional dependencies: ", !IO),
     write_out_list(hlds_output_fundep, ", ", FunDeps, Stream, !IO),
     io.nl(Stream, !IO),
 
-    write_indent(Stream, Indent, !IO),
     io.write_string(Stream, "% Constraints: ", !IO),
     write_out_list(mercury_output_constraint(VarSet, VarNamePrint),
         ", ", Constraints, Stream, !IO),
     io.nl(Stream, !IO),
 
-    write_indent(Stream, Indent, !IO),
     io.write_string(Stream, "% Class Methods: ", !IO),
     write_out_list(write_class_proc, ", ", Interface, Stream, !IO),
     io.nl(Stream, !IO),
@@ -1119,8 +1096,7 @@ hlds_output_fundep(fundep(Domain, Range), Stream, !IO) :-
     RangeStrs = list.map(string.int_to_string, RangeList),
     DomainStr = string.join_list(", ", DomainStrs),
     RangeStr = string.join_list(", ", RangeStrs),
-    io.format(Stream, "(%s -> %s)",
-        [s(DomainStr), s(RangeStr)], !IO).
+    io.format(Stream, "(%s -> %s)", [s(DomainStr), s(RangeStr)], !IO).
 
     % Just output the class methods as pred_ids and proc_ids because it is
     % probably not that useful to have the names. If that information is
@@ -1141,40 +1117,35 @@ write_class_proc(proc(PredId, ProcId), Stream, !IO) :-
 %
 
 :- pred write_instances(hlds_out_info::in, io.text_output_stream::in,
-    int::in, instance_table::in, io::di, io::uo) is det.
+    instance_table::in, io::di, io::uo) is det.
 
-write_instances(Info, Stream, Indent, InstanceTable, !IO) :-
-    write_indent(Stream, Indent, !IO),
+write_instances(Info, Stream, InstanceTable, !IO) :-
     io.write_string(Stream, "%-------- Instances --------\n", !IO),
     map.to_assoc_list(InstanceTable, InstanceTableList),
-    list.foldl(write_instance_defns(Info, Stream, Indent),
-        InstanceTableList, !IO),
+    list.foldl(write_instance_defns(Info, Stream), InstanceTableList, !IO),
     io.nl(Stream, !IO).
 
 :- pred write_instance_defns(hlds_out_info::in, io.text_output_stream::in,
-    int::in, pair(class_id, list(hlds_instance_defn))::in,
-    io::di, io::uo) is det.
+    pair(class_id, list(hlds_instance_defn))::in, io::di, io::uo) is det.
 
-write_instance_defns(Info, Stream, Indent, ClassId - InstanceDefns, !IO) :-
+write_instance_defns(Info, Stream, ClassId - InstanceDefns, !IO) :-
     io.nl(Stream, !IO),
-    write_indent(Stream, Indent, !IO),
     io.write_string(Stream, "% Instances for class ", !IO),
     write_class_id(Stream, ClassId, !IO),
     io.write_string(Stream, ":\n", !IO),
-    list.foldl(write_instance_defn(Info, Stream, Indent + 1),
-        InstanceDefns, !IO).
+    list.foldl(write_instance_defn(Info, Stream), InstanceDefns, !IO).
 
 :- pred write_instance_defn(hlds_out_info::in, io.text_output_stream::in,
-    int::in, hlds_instance_defn::in, io::di, io::uo) is det.
+    hlds_instance_defn::in, io::di, io::uo) is det.
 
-write_instance_defn(Info, Stream, Indent, InstanceDefn, !IO) :-
+write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
     InstanceDefn = hlds_instance_defn(_InstanceModule, Types, OriginalTypes,
         InstanceStatus, Context, Constraints, Body, MaybePredProcIds,
         VarSet, ProofMap),
 
     % Separate this instance from any previous ones, or the class id.
     io.nl(Stream, !IO),
-    maybe_output_context_comment(Stream, Indent, "", Context, !IO),
+    maybe_output_context_comment(Stream, 1, "", Context, !IO),
 
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'v') then
@@ -1185,60 +1156,59 @@ write_instance_defn(Info, Stream, Indent, InstanceDefn, !IO) :-
 
     % Curry the varset for term_io.write_variable/4.
     PrintTerm = mercury_output_type(VarSet, VarNamePrint),
-    write_indent(Stream, Indent, !IO),
+    write_indent(Stream, 1, !IO),
     io.write_string(Stream, "% Types: ", !IO),
     write_out_list(mercury_output_type(VarSet, VarNamePrint), ", ", Types,
         Stream, !IO),
     io.nl(Stream, !IO),
-    write_indent(Stream, Indent, !IO),
+    write_indent(Stream, 1, !IO),
     io.write_string(Stream, "% Original types: ", !IO),
     write_out_list(PrintTerm, ", ", OriginalTypes, Stream, !IO),
     io.nl(Stream, !IO),
 
-    write_indent(Stream, Indent, !IO),
+    write_indent(Stream, 1, !IO),
     io.write_string(Stream, "% Status: ", !IO),
     io.write_string(Stream,
         instance_import_status_to_string(InstanceStatus), !IO),
     io.nl(Stream, !IO),
 
-    write_indent(Stream, Indent, !IO),
+    write_indent(Stream, 1, !IO),
     io.write_string(Stream, "% Constraints: ", !IO),
     write_out_list(mercury_output_constraint(VarSet, VarNamePrint),
         ", ", Constraints, Stream, !IO),
     io.nl(Stream, !IO),
 
-    write_indent(Stream, Indent, !IO),
+    write_indent(Stream, 1, !IO),
     (
         Body = instance_body_abstract,
         io.write_string(Stream, "% abstract", !IO)
     ;
         Body = instance_body_concrete(Methods),
         io.write_string(Stream, "% Instance methods:\n", !IO),
-        write_instance_methods(Stream, Methods, Indent, 1, !IO)
+        write_instance_methods(Stream, Methods, 1, !IO)
     ),
     io.nl(Stream, !IO),
 
     (
         MaybePredProcIds = yes(PredProcIds),
-        write_indent(Stream, Indent, !IO),
+        write_indent(Stream, 1, !IO),
         io.write_string(Stream, "% Procedures: ", !IO),
         io.write(Stream, PredProcIds, !IO),
         io.nl(Stream, !IO)
     ;
         MaybePredProcIds = no
     ),
-    write_constraint_proof_map(Stream, Indent, VarNamePrint, VarSet,
+    write_constraint_proof_map(Stream, 1, VarNamePrint, VarSet,
         ProofMap, !IO),
     io.nl(Stream, !IO).
 
 :- pred write_instance_methods(io.text_output_stream::in,
-    list(instance_method)::in, int::in, int::in, io::di, io::uo) is det.
+    list(instance_method)::in, int::in, io::di, io::uo) is det.
 
-write_instance_methods(_, [], _, _, !IO).
-write_instance_methods(Stream, [Method | Methods], Indent,
-        !.CurMethodNum, !IO) :-
+write_instance_methods(_, [], _, !IO).
+write_instance_methods(Stream, [Method | Methods], !.CurMethodNum, !IO) :-
     Method = instance_method(PredOrFunc, MethodName, _Defn, Arity, _Context),
-    write_indent(Stream, Indent, !IO),
+    write_indent(Stream, 1, !IO),
     io.format(Stream, "%% method %d, %s %s/%d\n",
         [i(!.CurMethodNum), s(pred_or_func_to_str(PredOrFunc)),
         s(sym_name_to_string(MethodName)), i(Arity)], !IO),
@@ -1247,7 +1217,7 @@ write_instance_methods(Stream, [Method | Methods], Indent,
         Methods = [_ | _],
         io.write_string(Stream, ",\n", !IO),
         !:CurMethodNum = !.CurMethodNum + 1,
-        write_instance_methods(Stream, Methods, Indent, !.CurMethodNum, !IO)
+        write_instance_methods(Stream, Methods, !.CurMethodNum, !IO)
     ;
         Methods = []
     ).
@@ -1258,10 +1228,9 @@ write_instance_methods(Stream, [Method | Methods], Indent,
 %
 
 :- pred write_inst_table(io.text_output_stream::in, output_lang::in,
-    int::in, int::in, inst_table::in, io::di, io::uo) is det.
+    int::in, inst_table::in, io::di, io::uo) is det.
 
-write_inst_table(Stream, Lang, Indent, Limit, InstTable, !IO) :-
-    write_indent(Stream, Indent, !IO),
+write_inst_table(Stream, Lang, Limit, InstTable, !IO) :-
     io.write_string(Stream, "%-------- Insts --------\n", !IO),
 
     inst_table_get_user_insts(InstTable, UserInstTable),
@@ -1281,9 +1250,8 @@ write_inst_table(Stream, Lang, Indent, Limit, InstTable, !IO) :-
     mostly_uniq_insts_to_sorted_pairs(MostlyUniqInstTable,
         MostlyUniqInstPairs),
 
-    write_indent(Stream, Indent, !IO),
     io.write_string(Stream, "%-------- User defined insts --------\n", !IO),
-    list.foldl(write_user_inst(Stream, Indent), UserInstPairs, !IO),
+    list.foldl(write_user_inst(Stream), UserInstPairs, !IO),
 
     io.write_string(Stream, "%-------- Unify insts --------\n", !IO),
     list.foldl2(
@@ -1329,12 +1297,11 @@ write_inst_table(Stream, Lang, Indent, Limit, InstTable, !IO) :-
 
     io.nl(Stream, !IO).
 
-:- pred write_user_inst(io.text_output_stream::in, int::in,
+:- pred write_user_inst(io.text_output_stream::in,
     pair(inst_ctor, hlds_inst_defn)::in, io::di, io::uo) is det.
 
-write_user_inst(Stream, Indent, InstCtor - InstDefn, !IO) :-
+write_user_inst(Stream, InstCtor - InstDefn, !IO) :-
     InstCtor = inst_ctor(InstName, _InstArity),
-    write_indent(Stream, Indent, !IO),
     io.format(Stream, "\n:- inst %s", [s(sym_name_to_string(InstName))], !IO),
     InstDefn = hlds_inst_defn(InstVarSet, InstParams, InstBody,
         _MaybeMatchingTypeCtors, _Context, Status),
@@ -1349,10 +1316,8 @@ write_user_inst(Stream, Indent, InstCtor - InstDefn, !IO) :-
     ),
     InstBody = eqv_inst(EqvInst),
     io.write_string(Stream, ":\n", !IO),
-    write_indent(Stream, Indent, !IO),
     mercury_output_inst(Stream, output_debug, InstVarSet, EqvInst, !IO),
     io.write_string(Stream, "\n", !IO),
-    write_indent(Stream, Indent, !IO),
     StatusStr = inst_import_status_to_string(Status),
     io.format(Stream, "%% status %s\n", [s(StatusStr)], !IO).
 
@@ -1534,23 +1499,20 @@ write_inst(Stream, Lang, Inst, !IO) :-
 % Write out the mode table.
 %
 
-:- pred write_mode_table(io.text_output_stream::in, int::in, mode_table::in,
+:- pred write_mode_table(io.text_output_stream::in, mode_table::in,
     io::di, io::uo) is det.
 
-write_mode_table(Stream, Indent, ModeTable, !IO) :-
+write_mode_table(Stream, ModeTable, !IO) :-
     mode_table_get_mode_defns(ModeTable, ModeDefns),
-    write_indent(Stream, Indent, !IO),
     io.write_string(Stream, "%-------- Modes --------\n", !IO),
-    write_indent(Stream, Indent, !IO),
-    map.foldl(write_mode_table_entry(Stream, Indent), ModeDefns, !IO),
+    map.foldl(write_mode_table_entry(Stream), ModeDefns, !IO),
     io.nl(Stream, !IO).
 
-:- pred write_mode_table_entry(io.text_output_stream::in, int::in,
+:- pred write_mode_table_entry(io.text_output_stream::in,
     mode_ctor::in, hlds_mode_defn::in, io::di, io::uo) is det.
 
-write_mode_table_entry(Stream, Indent, ModeCtor, ModeDefn, !IO) :-
+write_mode_table_entry(Stream, ModeCtor, ModeDefn, !IO) :-
     ModeCtor = mode_ctor(ModeName, _ModeArity),
-    write_indent(Stream, Indent, !IO),
     io.format(Stream, "\n:- mode %s", [s(sym_name_to_string(ModeName))], !IO),
     ModeDefn = hlds_mode_defn(InstVarSet, InstParams, ModeBody, _Context,
         Status),
@@ -1565,10 +1527,8 @@ write_mode_table_entry(Stream, Indent, ModeCtor, ModeDefn, !IO) :-
     ),
     ModeBody = hlds_mode_body(EqvMode),
     io.write_string(Stream, ":\n", !IO),
-    write_indent(Stream, Indent, !IO),
     mercury_output_mode(Stream, output_debug, InstVarSet, EqvMode, !IO),
     io.write_string(Stream, "\n", !IO),
-    write_indent(Stream, Indent, !IO),
     StatusStr = mode_import_status_to_string(Status),
     io.format(Stream, "%% status %s\n", [s(StatusStr)], !IO).
 
@@ -1763,13 +1723,12 @@ write_arg_tabling_methods(Stream, Prefix, [MaybeMethod | MaybeMethods], !IO) :-
 %
 
 :- pred write_preds(hlds_out_info::in, io.text_output_stream::in,
-    bool::in, list(string)::in, output_lang::in, int::in, module_info::in,
+    bool::in, list(string)::in, output_lang::in, module_info::in,
     io::di, io::uo) is det.
 
-write_preds(Info, Stream, DumpSpecPreds, DumpSpecPredTypeNames, Lang, Indent,
+write_preds(Info, Stream, DumpSpecPreds, DumpSpecPredTypeNames, Lang,
         ModuleInfo, !IO) :-
     io.write_string(Stream, "%-------- Predicates --------\n\n", !IO),
-    write_indent(Stream, Indent, !IO),
     module_info_get_preds(ModuleInfo, PredTable),
     map.to_assoc_list(PredTable, PredIdsInfos),
     (
@@ -1791,7 +1750,7 @@ write_preds(Info, Stream, DumpSpecPreds, DumpSpecPredTypeNames, Lang, Indent,
             SpecPredMap0, SpecPredMap),
         map.values(SpecPredMap, PrintPredIdsInfos)
     ),
-    list.foldl(maybe_write_pred(Info, Stream, Lang, Indent, ModuleInfo),
+    list.foldl(maybe_write_pred(Info, Stream, Lang, ModuleInfo),
         PrintPredIdsInfos, !IO).
 
 :- pred compare_in_name_order(
@@ -1840,10 +1799,10 @@ add_spec_preds_to_map(DumpSpecPredTypeNames, PredIdInfo, !SpecPredMap) :-
     ).
 
 :- pred maybe_write_pred(hlds_out_info::in, io.text_output_stream::in,
-    output_lang::in, int::in, module_info::in, pair(pred_id, pred_info)::in,
+    output_lang::in, module_info::in, pair(pred_id, pred_info)::in,
     io::di, io::uo) is det.
 
-maybe_write_pred(Info, Stream, Lang, Indent, ModuleInfo, PredId - PredInfo,
+maybe_write_pred(Info, Stream, Lang, ModuleInfo, PredId - PredInfo,
         !IO) :-
     DumpOptions = Info ^ hoi_dump_hlds_options,
     DumpPredIdStrs = Info ^ hoi_dump_hlds_pred_ids,
@@ -1869,8 +1828,7 @@ maybe_write_pred(Info, Stream, Lang, Indent, ModuleInfo, PredId - PredInfo,
                 list.member(PredName, DumpPredNames)
             )
         then
-            write_pred(Info, Stream, Lang, ModuleInfo, Indent,
-                PredId, PredInfo, !IO)
+            write_pred(Info, Stream, Lang, ModuleInfo, PredId, PredInfo, !IO)
         else
             true
         )
@@ -1898,8 +1856,7 @@ maybe_write_pred(Info, Stream, Lang, Indent, ModuleInfo, PredId - PredInfo,
         then
             true
         else
-            write_pred(Info, Stream, Lang, ModuleInfo, Indent,
-                PredId, PredInfo, !IO)
+            write_pred(Info, Stream, Lang, ModuleInfo, PredId, PredInfo, !IO)
         )
     ).
 
@@ -1952,16 +1909,14 @@ write_promise(Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint, Indent,
 %
 
 :- pred write_dependency_info(hlds_out_info::in, io.text_output_stream::in,
-    int::in, module_info::in, hlds_dependency_info::in, io::di, io::uo) is det.
+    module_info::in, hlds_dependency_info::in, io::di, io::uo) is det.
 
-write_dependency_info(_Info, Stream, Indent, ModuleInfo, DependencyInfo,
-        !IO) :-
-    write_indent(Stream, Indent, !IO),
+write_dependency_info(_Info, Stream, ModuleInfo, DependencyInfo, !IO) :-
     io.write_string(Stream, "% Dependency graph\n\n", !IO),
     Graph = dependency_info_get_graph(DependencyInfo),
     digraph.traverse(Graph,
-        write_dep_graph_node(Stream, Indent, ModuleInfo),
-        write_dep_graph_edge(Stream, Indent, ModuleInfo), !IO),
+        write_dep_graph_node(Stream, ModuleInfo),
+        write_dep_graph_edge(Stream, ModuleInfo), !IO),
 
 % If needed, this code can be used to check the raw behavior
 % of digraph operations.
@@ -1979,46 +1934,38 @@ write_dependency_info(_Info, Stream, Indent, ModuleInfo, DependencyInfo,
 %   AtSort = digraph.atsort(Graph),
 %   list.foldl(write_dependency_scc(Indent, ModuleInfo), AtSort, !IO),
 
-    write_indent(Stream, Indent, !IO),
     io.write_string(Stream, "\n% Bottom up dependency sccs\n\n", !IO),
     Ordering = dependency_info_get_bottom_up_sccs(DependencyInfo),
-    list.foldl( write_dependency_scc(Stream, Indent, ModuleInfo),
-        Ordering, !IO).
+    list.foldl(write_dependency_scc(Stream, ModuleInfo), Ordering, !IO).
 
-:- pred write_dep_graph_node(io.text_output_stream::in, int::in,
-    module_info::in, pred_proc_id::in, io::di, io::uo) is det.
+:- pred write_dep_graph_node(io.text_output_stream::in, module_info::in,
+    pred_proc_id::in, io::di, io::uo) is det.
 
-write_dep_graph_node(Stream, Indent, ModuleInfo, Proc, !IO) :-
-    write_dependency_proc(Stream, Indent, "calls from ", ModuleInfo, Proc,
-        !IO).
+write_dep_graph_node(Stream, ModuleInfo, Proc, !IO) :-
+    write_dependency_proc(Stream, "calls from ", ModuleInfo, Proc, !IO).
 
-:- pred write_dep_graph_edge(io.text_output_stream::in, int::in,
-    module_info::in, pred_proc_id::in, pred_proc_id::in,
-    io::di, io::uo) is det.
+:- pred write_dep_graph_edge(io.text_output_stream::in, module_info::in,
+    pred_proc_id::in, pred_proc_id::in, io::di, io::uo) is det.
 
-write_dep_graph_edge(Stream, Indent, ModuleInfo, _ParentProc, ChildProc,
-        !IO) :-
-    write_dependency_proc(Stream, Indent, "  to ", ModuleInfo, ChildProc, !IO).
+write_dep_graph_edge(Stream, ModuleInfo, _ParentProc, ChildProc, !IO) :-
+    write_dependency_proc(Stream, "  to ", ModuleInfo, ChildProc, !IO).
 
-:- pred write_dependency_scc(io.text_output_stream::in, int::in,
-    module_info::in, scc::in, io::di, io::uo) is det.
+:- pred write_dependency_scc(io.text_output_stream::in, module_info::in,
+    scc::in, io::di, io::uo) is det.
 
-write_dependency_scc(Stream, Indent, ModuleInfo, SCC, !IO) :-
-    write_indent(Stream, Indent, !IO),
+write_dependency_scc(Stream, ModuleInfo, SCC, !IO) :-
     io.write_string(Stream, "% SCC\n", !IO),
-    set.foldl(write_dependency_proc(Stream, Indent, "  ", ModuleInfo),
-        SCC, !IO).
+    set.foldl(write_dependency_proc(Stream, "  ", ModuleInfo), SCC, !IO).
 
-:- pred write_dependency_proc(io.text_output_stream::in, int::in, string::in,
+:- pred write_dependency_proc(io.text_output_stream::in, string::in,
     module_info::in, pred_proc_id::in, io::di, io::uo) is det.
 
-write_dependency_proc(Stream, Indent, Prefix, ModuleInfo, PredProcId, !IO) :-
+write_dependency_proc(Stream, Prefix, ModuleInfo, PredProcId, !IO) :-
     PredProcId = proc(PredId, ProcId),
     Pieces = describe_one_proc_name(ModuleInfo,
         should_not_module_qualify, PredProcId),
     Desc = error_pieces_to_string(Pieces),
 
-    write_indent(Stream, Indent, !IO),
     io.format(Stream, "%% %spred %d proc %d, %s\n",
         [s(Prefix), i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId)),
         s(Desc)], !IO).

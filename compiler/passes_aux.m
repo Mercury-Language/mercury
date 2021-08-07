@@ -607,7 +607,7 @@ dump_hlds(DumpFile, HLDS, !IO) :-
     io.open_output(DumpFile, DumpFileResult, !IO),
     (
         DumpFileResult = ok(DumpFileStream),
-        write_hlds(DumpFileStream, 0, HLDS, !IO),
+        write_hlds(DumpFileStream, HLDS, !IO),
         io.close_output(DumpFileStream, !IO),
         maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
