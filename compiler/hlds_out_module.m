@@ -14,13 +14,10 @@
 :- module hlds.hlds_out.hlds_out_module.
 :- interface.
 
-:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.vartypes.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -34,13 +31,6 @@
 :- pred write_hlds(io.text_output_stream::in, module_info::in,
     io::di, io::uo) is det.
 
-    % Exported for intermod.m.
-    %
-:- pred write_promise(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, prog_varset::in, maybe_vartypes::in, var_name_print::in,
-    int::in, promise_type::in, pred_id::in, pred_or_func::in,
-    list(prog_var)::in, clause::in, io::di, io::uo) is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -52,19 +42,19 @@
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_inst_mode.
-:- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_out.hlds_out_pred.
-:- import_module hlds.status.
 % XXX :- import_module hlds.pred_table.
 % We actually use a type equivalence from pred_table.m (specifically,
 % the fact that pred_table is a map), but we get an unused import warning
 % for the above line anyway. The import is commented out until the code
 % that generates the warning is fixed.
+:- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
@@ -89,7 +79,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
-:- import_module term_io.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -1948,49 +1937,6 @@ maybe_write_pred(Info, Stream, Lang, ModuleInfo, PredId - PredInfo,
             write_pred(Info, Stream, Lang, ModuleInfo, PredId, PredInfo, !IO)
         )
     ).
-
-%---------------------------------------------------------------------------%
-%
-% Write out a promise.
-%
-
-write_promise(Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint, Indent,
-        PromiseType, _PredId, _PredOrFunc, HeadVars, Clause, !IO) :-
-    % Please *either* keep this code in sync with mercury_output_item_promise
-    % in parse_tree_out.m, *or* rewrite it to forward the work to that
-    % predicate.
-
-    % Curry the varset for term_io.write_variable/4.
-    PrintVar =
-        ( pred(VarName::in, S::in, IOState0::di, IOState::uo) is det :-
-            term_io.write_variable(S, VarName, VarSet, IOState0, IOState)
-        ),
-
-    write_indent(Stream, Indent, !IO),
-
-    % Print initial formatting differently for assertions.
-    (
-        PromiseType = promise_type_true,
-        io.write_string(Stream, ":- promise all [", !IO),
-        write_out_list(PrintVar, ", ", HeadVars, Stream, !IO),
-        io.write_string(Stream, "] (\n", !IO)
-    ;
-        ( PromiseType = promise_type_exclusive
-        ; PromiseType = promise_type_exhaustive
-        ; PromiseType = promise_type_exclusive_exhaustive
-        ),
-        io.write_string(Stream, ":- all [", !IO),
-        write_out_list(PrintVar, ", ", HeadVars, Stream, !IO),
-        io.write_string(Stream, "]", !IO),
-        mercury_output_newline(Indent, Stream, !IO),
-        io.write_string(Stream, promise_to_string(PromiseType), !IO),
-        mercury_output_newline(Indent, Stream, !IO),
-        io.write_string(Stream, "(\n", !IO)
-    ),
-
-    Goal = Clause ^ clause_body,
-    do_write_goal(Info, Stream, ModuleInfo, VarSet, TypeQual, VarNamePrint,
-        Indent+1, ").\n", Goal, !IO).
 
 %---------------------------------------------------------------------------%
 %
