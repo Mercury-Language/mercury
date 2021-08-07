@@ -698,7 +698,8 @@ and (if the compare predicate needs it) index predicates to the HLDS.
 </ul>
 
 <p>
-The module hlds_out.m contains predicates to dump the HLDS to a file.
+The submodules of the hlds_out.m package
+contain predicates to dump the HLDS to a file.
 These predicates print all the information the compiler has
 about each part of the HLDS.
 The module hlds_desc.m, by contrast contains predicates
@@ -716,9 +717,9 @@ in the original module exactly once.
 are typically so few in number that
 one can keep track of them in one's head.)
 <p>
-The hlds.m package also contains some utility modules that contain
-various library routines which are used by other modules that manipulate
-the HLDS:
+The hlds.m package also contains some utility modules
+that contain various library routines
+which are used by other modules that manipulate the HLDS:
 
 <ul>
 <li>

@@ -14,11 +14,14 @@
 :- module hlds.hlds_out.
 :- interface.
 
-:- include_module hlds_out_util.
-:- include_module hlds_out_mode.
 :- include_module hlds_out_goal.
-:- include_module hlds_out_pred.
+:- include_module hlds_out_inst_table.
+:- include_module hlds_out_mode.
 :- include_module hlds_out_module.
+:- include_module hlds_out_pred.
+:- include_module hlds_out_type_table.
+:- include_module hlds_out_typeclass_table.
+:- include_module hlds_out_util.
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.
