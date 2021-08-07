@@ -1696,6 +1696,95 @@ write_table_struct_info(Stream, ModuleInfo, PredProcId - TableStructInfo,
         io.write_string(Stream, "% may ignore without warning\n", !IO)
     ).
 
+:- pred write_space_and_table_trie_step(io.text_output_stream::in, tvarset::in,
+    table_step_desc::in, io::di, io::uo) is det.
+
+write_space_and_table_trie_step(Stream, TVarSet, StepDesc, !IO) :-
+    StepDesc = table_step_desc(VarName, TrieStep),
+    StepDescStr = table_trie_step_desc(TVarSet, TrieStep),
+    io.format(Stream, " %s: %s", [s(VarName), s(StepDescStr)], !IO).
+
+:- func table_trie_step_desc(tvarset, table_trie_step) = string.
+
+table_trie_step_desc(TVarSet, Step) = Str :-
+    (
+        Step = table_trie_step_int(int_type_int),
+        Str = "int"
+    ;
+        Step = table_trie_step_int(int_type_uint),
+        Str = "uint"
+    ;
+        Step = table_trie_step_int(int_type_int8),
+        Str = "int8"
+    ;
+        Step = table_trie_step_int(int_type_uint8),
+        Str = "uint8"
+    ;
+        Step = table_trie_step_int(int_type_int16),
+        Str = "int16"
+    ;
+        Step = table_trie_step_int(int_type_uint16),
+        Str = "uint16"
+    ;
+        Step = table_trie_step_int(int_type_int32),
+        Str = "int32"
+    ;
+        Step = table_trie_step_int(int_type_uint32),
+        Str = "uint32"
+    ;
+        Step = table_trie_step_int(int_type_int64),
+        Str = "int64"
+    ;
+        Step = table_trie_step_int(int_type_uint64),
+        Str = "uint64"
+    ;
+        Step = table_trie_step_char,
+        Str = "char"
+    ;
+        Step = table_trie_step_string,
+        Str = "string"
+    ;
+        Step = table_trie_step_float,
+        Str = "float"
+    ;
+        Step = table_trie_step_dummy,
+        Str = "dummy"
+    ;
+        Step = table_trie_step_enum(N),
+        Str = string.format("enum(%d)", [i(N)])
+    ;
+        Step = table_trie_step_foreign_enum,
+        Str = "foreign_enum"
+    ;
+        Step = table_trie_step_general(Type, IsPoly, IsAddr),
+        TypeStr = mercury_type_to_string(TVarSet, print_name_and_num, Type),
+        (
+            IsPoly = table_is_poly,
+            IsPolyStr = "poly"
+        ;
+            IsPoly = table_is_mono,
+            IsPolyStr = "mono"
+        ),
+        (
+            IsAddr = table_value,
+            IsAddrStr = "value"
+        ;
+            IsAddr = table_addr,
+            IsAddrStr = "addr"
+        ),
+        Str = string.format("general(%s, %s, %s)",
+            [s(TypeStr), s(IsPolyStr), s(IsAddrStr)])
+    ;
+        Step = table_trie_step_typeinfo,
+        Str = "typeinfo"
+    ;
+        Step = table_trie_step_typeclassinfo,
+        Str = "typeclassinfo"
+    ;
+        Step = table_trie_step_promise_implied,
+        Str = "promise_implied"
+    ).
+
 :- pred write_arg_tabling_methods(io.text_output_stream::in, string::in,
     list(maybe(arg_tabling_method))::in, io::di, io::uo) is det.
 
