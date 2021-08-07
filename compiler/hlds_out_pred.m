@@ -59,12 +59,6 @@
     table_step_desc::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
-
-    % Find the name of a marker.
-    %
-:- pred marker_name(pred_marker::in, string::out) is det.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -1462,42 +1456,6 @@ write_constraint_id(Stream, ConstraintId, !IO) :-
     GoalId = goal_id(GoalIdNum),
     io.format(Stream, "(%c, %d, %d)",
         [c(ConstraintTypeChar), i(GoalIdNum), i(N)], !IO).
-
-%---------------------------------------------------------------------------%
-%
-% Write out predicate markers.
-%
-
-% For markers that we add to a predicate because of a pragma on that predicate,
-% the marker name MUST correspond to the name of the pragma.
-marker_name(marker_stub, "stub").
-marker_name(marker_builtin_stub, "builtin_stub").
-marker_name(marker_infer_type, "infer_type").
-marker_name(marker_infer_modes, "infer_modes").
-marker_name(marker_user_marked_inline, "inline").
-marker_name(marker_no_pred_decl, "no_pred_decl").
-marker_name(marker_user_marked_no_inline, "no_inline").
-marker_name(marker_heuristic_inline, "heuristic_inline").
-marker_name(marker_consider_used, "consider_used").
-marker_name(marker_no_detism_warning, "no_determinism_warning").
-marker_name(marker_class_method, "class_method").
-marker_name(marker_class_instance_method, "class_instance_method").
-marker_name(marker_named_class_instance_method, "named_class_instance_method").
-marker_name(marker_is_impure, "impure").
-marker_name(marker_is_semipure, "semipure").
-marker_name(marker_promised_pure, "promise_pure").
-marker_name(marker_promised_semipure, "promise_semipure").
-marker_name(marker_promised_equivalent_clauses, "promise_equivalent_clauses").
-marker_name(marker_terminates, "terminates").
-marker_name(marker_check_termination, "check_termination").
-marker_name(marker_does_not_terminate, "does_not_terminate").
-marker_name(marker_calls_are_fully_qualified, "calls_are_fully_qualified").
-marker_name(marker_mode_check_clauses, "mode_check_clauses").
-marker_name(marker_mutable_access_pred, "mutable_access_pred").
-marker_name(marker_has_require_scope, "has_require_scope").
-marker_name(marker_has_incomplete_switch, "has_incomplete_switch").
-marker_name(marker_has_format_call, "has_format_call").
-marker_name(marker_fact_table_semantic_errors, "fact_table_semantic_errors").
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_pred.
