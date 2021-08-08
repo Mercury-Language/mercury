@@ -186,6 +186,7 @@
 
 :- implementation.
 
+:- import_module bool.
 :- import_module exception.
 :- import_module int.
 :- import_module list.
@@ -205,7 +206,10 @@
         #include <unistd.h>
     #endif
 
-    #include ""mercury_timing.h"" // for MR_CLOCK_TICKS_PER_SECOND
+    #include ""mercury_timing.h""       // for MR_CLOCK_TICKS_PER_SECOND
+    #include ""mercury_runtime_util.h"" // For MR_strerror.
+    #include ""mercury_regs.h""         // For MR_{save,restore}_transient_hp
+    #include ""mercury_string.h""       // For MR_make_aligned_string_copy etc.
 ").
 
     % We use a no-tag wrapper type for time_t, rather than defining it as an
@@ -240,32 +244,32 @@ compare_time_t_reps(Result, X, Y) :-
 %---------------------------------------------------------------------------%
 
 clock(Result, !IO) :-
-    c_clock(Ret, !IO),
+    target_clock(Ret, !IO),
     ( if Ret = -1 then
         throw(time_error("can't get clock value"))
     else
         Result = Ret
     ).
 
-:- pred c_clock(int::out, io::di, io::uo) is det.
+:- pred target_clock(int::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    c_clock(Ret::out, _IO0::di, _IO::uo),
+    target_clock(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Ret = (MR_Integer) clock();
 ").
 :- pragma foreign_proc("C#",
-    c_clock(Ret::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    target_clock(Ret::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
 "
     // XXX Ticks is long in .NET!
     Ret = (int) System.Diagnostics.Process.GetCurrentProcess().
         UserProcessorTime.Ticks;
 ").
 :- pragma foreign_proc("Java",
-    c_clock(Ret::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    target_clock(Ret::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
 "
     java.lang.management.ThreadMXBean bean =
         java.lang.management.ManagementFactory.getThreadMXBean();
@@ -304,30 +308,30 @@ clock(Result, !IO) :-
 %---------------------------------------------------------------------------%
 
 time(Result, !IO) :-
-    c_time(Ret, !IO),
+    target_time(Ret, !IO),
     ( if time_t_is_invalid(Ret) then
         throw(time_error("can't get time value"))
     else
         Result = time_t(Ret)
     ).
 
-:- pred c_time(time_t_rep::out, io::di, io::uo) is det.
+:- pred target_time(time_t_rep::out, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    c_time(Ret::out, _IO0::di, _IO::uo),
+    target_time(Ret::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
     Ret = time(NULL);
 ").
 :- pragma foreign_proc("C#",
-    c_time(Ret::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    target_time(Ret::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
 "
     Ret = System.DateTime.UtcNow;
 ").
 :- pragma foreign_proc("Java",
-    c_time(Ret::out, _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    target_time(Ret::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
 "
     Ret = java.time.Instant.now();
 ").
@@ -356,7 +360,7 @@ time(Result, !IO) :-
 %---------------------------------------------------------------------------%
 
 times(Tms, Result, !IO) :-
-    c_times(Ret, Ut, St, CUt, CSt, !IO),
+    target_times(Ret, Ut, St, CUt, CSt, !IO),
     ( if Ret = -1 then
         throw(time_error("can't get times value"))
     else
@@ -375,11 +379,11 @@ times(Tms, Result, !IO) :-
 #endif
 ").
 
-:- pred c_times(int::out, int::out, int::out, int::out, int::out,
+:- pred target_times(int::out, int::out, int::out, int::out, int::out,
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    c_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
+    target_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io,
         may_not_duplicate],
@@ -422,9 +426,9 @@ times(Tms, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("Java",
-    c_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
+    target_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     // We can only keep the lower 31 bits of the timestamp.
     Ret = (int) (System.currentTimeMillis() & 0x7fffffff);
@@ -452,9 +456,9 @@ times(Tms, Result, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    c_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
+    target_times(Ret::out, Ut::out, St::out, CUt::out, CSt::out,
         _IO0::di, _IO::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io, may_not_duplicate],
+    [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
     Ret = (int) System.DateTime.UtcNow.Ticks;
 
@@ -478,23 +482,23 @@ times(Tms, Result, !IO) :-
 :- pragma foreign_proc("C#",
     clk_tck = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
-"{
+"
     // TicksPerSecond is guaranteed to be 10,000,000
     Ret = (int) System.TimeSpan.TicksPerSecond;
-}").
+").
 
 clk_tck = Ret :-
-    Ret0 = c_clk_tck,
+    Ret0 = target_clk_tck,
     ( if Ret0 = -1 then
         throw(time_error("can't get clk_tck value"))
     else
         Ret = Ret0
     ).
 
-:- func c_clk_tck = int.
-:- pragma consider_used(func(c_clk_tck/0)).
+:- func target_clk_tck = int.
+:- pragma consider_used(func(target_clk_tck/0)).
 :- pragma foreign_proc("C",
-    c_clk_tck = (Ret::out),
+    target_clk_tck = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
 #if defined(MR_CLOCK_TICKS_PER_SECOND)
@@ -504,7 +508,7 @@ clk_tck = Ret :-
 #endif
 ").
 :- pragma foreign_proc("Java",
-    c_clk_tck = (Ret::out),
+    target_clk_tck = (Ret::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // We use System.currentTimeMillis() to return elapsed time,
@@ -512,23 +516,23 @@ clk_tck = Ret :-
     Ret = 1000;
 ").
 
-c_clk_tck = -1.   % default, to get clk_tck to throw an exception.
+target_clk_tck = -1.   % default, to get clk_tck to throw an exception.
 
 %---------------------------------------------------------------------------%
 
 difftime(time_t(T1), time_t(T0)) = Diff :-
-    c_difftime(T1, T0, Diff).
+    target_difftime(T1, T0, Diff).
 
-:- pred c_difftime(time_t_rep::in, time_t_rep::in, float::out) is det.
+:- pred target_difftime(time_t_rep::in, time_t_rep::in, float::out) is det.
 
 :- pragma foreign_proc("C",
-    c_difftime(T1::in, T0::in, Diff::out),
+    target_difftime(T1::in, T0::in, Diff::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Diff = (MR_Float) difftime(T1, T0);
 ").
 :- pragma foreign_proc("C#",
-    c_difftime(T1::in, T0::in, Diff::out),
+    target_difftime(T1::in, T0::in, Diff::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     System.TimeSpan span;
@@ -536,7 +540,7 @@ difftime(time_t(T1), time_t(T0)) = Diff :-
     Diff = span.TotalSeconds;
 ").
 :- pragma foreign_proc("Java",
-    c_difftime(T1::in, T0::in, Diff::out),
+    target_difftime(T1::in, T0::in, Diff::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Diff = (double) (T1.toEpochMilli() - T0.toEpochMilli()) / 1000;
@@ -546,16 +550,24 @@ difftime(time_t(T1), time_t(T0)) = Diff :-
 
 localtime(Time, TM, !IO) :-
     Time = time_t(RawTime),
-    c_localtime(RawTime, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N, !IO),
-    TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N)).
+    target_localtime(RawTime, IsOk, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N,
+        ErrorMsg, !IO),
+    (
+        IsOk = yes,
+        TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N))
+    ;
+        IsOk = no,
+        throw(time_error("time.localtime: conversion failed: " ++ ErrorMsg))
+    ).
 
-:- pred c_localtime(time_t_rep::in, int::out, int::out, int::out,
-    int::out, int::out, int::out, int::out, int::out, int::out,
+:- pred target_localtime(time_t_rep::in, bool::out, int::out, int::out, int::out,
+    int::out, int::out, int::out, int::out, int::out, int::out, string::out,
     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
-        Min::out, Sec::out, YD::out, WD::out, N::out, _IO0::di, _IO::uo),
+    target_localtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
+        Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, not_thread_safe, tabled_for_io],
 "
     struct tm   *p;
@@ -564,24 +576,45 @@ localtime(Time, TM, !IO) :-
     t = Time;
 
     p = localtime(&t);
-
-    // XXX do we need to handle the case where p == NULL here?
-
-    Sec = (MR_Integer) p->tm_sec;
-    Min = (MR_Integer) p->tm_min;
-    Hrs = (MR_Integer) p->tm_hour;
-    Mnt = (MR_Integer) p->tm_mon;
-    Yr = (MR_Integer) p->tm_year;
-    WD = (MR_Integer) p->tm_wday;
-    MD = (MR_Integer) p->tm_mday;
-    YD = (MR_Integer) p->tm_yday;
-    N = (MR_Integer) p->tm_isdst;
+    if (p == NULL) {
+        char errbuf[MR_STRERROR_BUF_SIZE];
+        const char *errno_msg;
+        IsOk = MR_NO;
+        Sec = 0; // Dummy values.
+        Min = 0;
+        Hrs = 0;
+        Mnt = 0;
+        Yr = 0;
+        WD = 0;
+        MD = 0;
+        YD = 0;
+        N = 0;
+        errno_msg = MR_strerror(errno, errbuf, sizeof(errbuf));
+        MR_save_transient_hp();
+        MR_make_aligned_string_copy(ErrorMsg, errno_msg);
+        MR_restore_transient_hp();
+    } else {
+        IsOk = MR_YES;
+        Sec = (MR_Integer) p->tm_sec;
+        Min = (MR_Integer) p->tm_min;
+        Hrs = (MR_Integer) p->tm_hour;
+        Mnt = (MR_Integer) p->tm_mon;
+        Yr = (MR_Integer) p->tm_year;
+        WD = (MR_Integer) p->tm_wday;
+        MD = (MR_Integer) p->tm_mday;
+        YD = (MR_Integer) p->tm_yday;
+        N = (MR_Integer) p->tm_isdst;
+        ErrorMsg = MR_make_string_const(\"\");
+    }
 ").
 :- pragma foreign_proc("C#",
-    c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
-        Min::out, Sec::out, YD::out, WD::out, N::out, _IO0::di, _IO::uo),
+    target_localtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
+        Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out,
+         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
+    // XXX t will be clamped to MinValue / MaxValue if the converted
+    // time cannot be represented by a DateTime object.
     System.DateTime t = Time.ToLocalTime();
 
     // we don't handle leap seconds
@@ -603,42 +636,75 @@ localtime(Time, TM, !IO) :-
     } else {
         N = 0;
     }
+    IsOk = mr_bool.YES;
+    ErrorMsg = \"\";
 ").
 :- pragma foreign_proc("Java",
-    c_localtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
-        Min::out, Sec::out, YD::out, WD::out, N::out, _IO0::di, _IO::uo),
+    target_localtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
+        Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
-    java.time.ZoneId tz = java.time.ZoneId.systemDefault();
-    java.time.ZonedDateTime zdt =
-        java.time.ZonedDateTime.ofInstant(Time, tz);
+    try {
+        java.time.ZoneId tz = java.time.ZoneId.systemDefault();
+        java.time.ZonedDateTime zdt =
+            java.time.ZonedDateTime.ofInstant(Time, tz);
 
-    Yr = zdt.getYear() - 1900;
-    Mnt = zdt.getMonthValue() - 1;
-    MD = zdt.getDayOfMonth();
-    Hrs = zdt.getHour();
-    Min = zdt.getMinute();
-    Sec = zdt.getSecond();
-    YD = zdt.getDayOfYear() - 1;
-    WD = zdt.getDayOfWeek().getValue() % 7;
+        Yr = zdt.getYear() - 1900;
+        Mnt = zdt.getMonthValue() - 1;
+        MD = zdt.getDayOfMonth();
+        Hrs = zdt.getHour();
+        Min = zdt.getMinute();
+        Sec = zdt.getSecond();
+        YD = zdt.getDayOfYear() - 1;
+        WD = zdt.getDayOfWeek().getValue() % 7;
 
-    if (tz.getRules().isDaylightSavings(Time)) {
-        N = 1;
-    } else {
+        if (tz.getRules().isDaylightSavings(Time)) {
+            N = 1;
+        } else {
+            N = 0;
+        }
+        IsOk = bool.YES;
+        ErrorMsg = \"\";
+    } catch (java.time.DateTimeException e) {
+        Yr = 0;
+        Mnt = 0;
+        MD = 0;
+        Hrs = 0;
+        Min = 0;
+        Sec = 0;
+        YD = 0;
+        WD = 0;
         N = 0;
+        IsOk = bool.NO;
+        if (e.getMessage() != null) {
+            ErrorMsg = e.getMessage();
+        } else {
+            ErrorMsg = \"\";
+        }
     }
 ").
 
-gmtime(time_t(Time)) = TM :-
-    c_gmtime(Time, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N),
-    TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N)).
+%---------------------------------------------------------------------------%
 
-:- pred c_gmtime(time_t_rep::in, int::out, int::out, int::out, int::out,
-    int::out, int::out, int::out, int::out, int::out) is det.
+gmtime(Time) = TM :-
+    Time = time_t(RawTime),
+    target_gmtime(RawTime, IsOk, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N, ErrorMsg),
+    (
+        IsOk = yes,
+        TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N))
+    ;
+        IsOk = no,
+        throw(time_error("time.gmtime: conversion failed: " ++ ErrorMsg))
+    ).
+
+:- pred target_gmtime(time_t_rep::in, bool::out, int::out, int::out, int::out,
+    int::out, int::out, int::out, int::out, int::out, int::out,
+    string::out) is det.
 
 :- pragma foreign_proc("C",
-    c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
-        Min::out, Sec::out, YD::out, WD::out, N::out),
+    target_gmtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
+        Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out),
     [will_not_call_mercury, promise_pure, not_thread_safe],
 "
     struct tm   *p;
@@ -647,27 +713,46 @@ gmtime(time_t(Time)) = TM :-
     t = Time;
 
     p = gmtime(&t);
-
-    // XXX do we need to handle the case where p == NULL here?
-
-    Sec = (MR_Integer) p->tm_sec;
-    Min = (MR_Integer) p->tm_min;
-    Hrs = (MR_Integer) p->tm_hour;
-    Mnt = (MR_Integer) p->tm_mon;
-    Yr = (MR_Integer) p->tm_year;
-    WD = (MR_Integer) p->tm_wday;
-    MD = (MR_Integer) p->tm_mday;
-    YD = (MR_Integer) p->tm_yday;
-    N = (MR_Integer) p->tm_isdst;
+    if (p == NULL) {
+        char errbuf[MR_STRERROR_BUF_SIZE];
+        const char *errno_msg;
+        IsOk = MR_NO;
+        Sec = 0;
+        Min = 0;
+        Hrs = 0;
+        Mnt = 0;
+        Yr = 0;
+        WD = 0;
+        MD = 0;
+        YD = 0;
+        N = 0;
+        errno_msg = MR_strerror(errno, errbuf, sizeof(errbuf));
+        MR_save_transient_hp();
+        MR_make_aligned_string_copy(ErrorMsg, errno_msg);
+        MR_restore_transient_hp();
+    } else {
+        IsOk = MR_YES;
+        Sec = (MR_Integer) p->tm_sec;
+        Min = (MR_Integer) p->tm_min;
+        Hrs = (MR_Integer) p->tm_hour;
+        Mnt = (MR_Integer) p->tm_mon;
+        Yr = (MR_Integer) p->tm_year;
+        WD = (MR_Integer) p->tm_wday;
+        MD = (MR_Integer) p->tm_mday;
+        YD = (MR_Integer) p->tm_yday;
+        N = (MR_Integer) p->tm_isdst;
+        ErrorMsg = MR_make_string_const(\"\");
+    }
 ").
 :- pragma foreign_proc("C#",
-    c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
-        Min::out, Sec::out, YD::out, WD::out, N::out),
+    target_gmtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
+        Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out),
     [will_not_call_mercury, promise_pure],
 "
     System.DateTime t = Time;
 
-    // we don't handle leap seconds
+    // We don't handle leap seconds.
+    // (XXX actually C# does not handle leap seconds.)
     Sec = t.Second;
     Min = t.Minute;
     Hrs = t.Hour;
@@ -678,26 +763,48 @@ gmtime(time_t(Time)) = TM :-
     YD = t.DayOfYear - 1;
     // UTC time can never have daylight savings.
     N = 0;
+    IsOk = mr_bool.NO;
+    ErrorMsg = \"\";
 ").
 :- pragma foreign_proc("Java",
-    c_gmtime(Time::in, Yr::out, Mnt::out, MD::out, Hrs::out,
-        Min::out, Sec::out, YD::out, WD::out, N::out),
+    target_gmtime(Time::in, IsOk::out, Yr::out, Mnt::out, MD::out, Hrs::out,
+        Min::out, Sec::out, YD::out, WD::out, N::out, ErrorMsg::out),
     [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
-    java.time.OffsetDateTime utcTime =
-        java.time.OffsetDateTime.ofInstant(Time,
-        java.time.ZoneOffset.UTC);
+    try {
+        java.time.OffsetDateTime utcTime =
+            java.time.OffsetDateTime.ofInstant(Time,
+            java.time.ZoneOffset.UTC);
 
-    Yr = utcTime.getYear() - 1900;
-    Mnt = utcTime.getMonthValue() - 1;
-    MD = utcTime.getDayOfMonth();
-    Hrs = utcTime.getHour();
-    Min = utcTime.getMinute();
-    Sec = utcTime.getSecond();
-    YD = utcTime.getDayOfYear() - 1;
-    // Sunday = 7 = 0.
-    WD = utcTime.getDayOfWeek().getValue() % 7;
-    N = 0;
+        Yr = utcTime.getYear() - 1900;
+        Mnt = utcTime.getMonthValue() - 1;
+        MD = utcTime.getDayOfMonth();
+        Hrs = utcTime.getHour();
+        Min = utcTime.getMinute();
+        Sec = utcTime.getSecond();
+        YD = utcTime.getDayOfYear() - 1;
+        // Sunday == 7 == 0.
+        WD = utcTime.getDayOfWeek().getValue() % 7;
+        N = 0;
+        IsOk = bool.YES;
+        ErrorMsg = \"\";
+    } catch (java.time.DateTimeException e) {
+        Yr = 0;
+        Mnt = 0;
+        MD = 0;
+        Hrs = 0;
+        Min = 0;
+        Sec = 0;
+        YD = 0;
+        WD = 0;
+        N = 0;
+        IsOk = bool.NO;
+        if (e.getMessage() != null) {
+            ErrorMsg = e.getMessage();
+        } else {
+            ErrorMsg = \"\";
+        }
+    }
 ").
 
 :- func int_to_maybe_dst(int) = maybe(dst).
@@ -715,22 +822,34 @@ int_to_maybe_dst(N) = DST :-
 
 mktime(TM, Time, !IO) :-
     TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, DST),
-    c_mktime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, maybe_dst_to_int(DST),
-        RawTime, !IO),
-    Time = time_t(RawTime).
+    % XXX we need to check the validity  of TM's fields here, since mktime()'s
+    % checks are rubbish.
+    target_mktime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, maybe_dst_to_int(DST),
+        IsOk, RawTime, ErrMsg, !IO),
+    (
+        IsOk = yes,
+        Time = time_t(RawTime)
+    ;
+        IsOk = no,
+        unexpected($pred, "cannot convert to calendar time: " ++ ErrMsg)
+    ).
 
     % NOTE: mktime() modifies tzname, however we do not expose tzname
     % through a Mercury interface.
     %
-:- pred c_mktime(int::in, int::in, int::in, int::in, int::in, int::in,
-    int::in, int::in, int::in, time_t_rep::out, io::di, io::uo) is det.
+:- pred target_mktime(int::in, int::in, int::in, int::in, int::in, int::in,
+    int::in, int::in, int::in, bool::out, time_t_rep::out, string::out,
+     io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
-        YD::in, WD::in, N::in, Time::out, _IO0::di, _IO::uo),
+    target_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
+        YD::in, WD::in, N::in, IsOk::out, Time::out, ErrorMsg::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, not_thread_safe, tabled_for_io],
 "
     struct tm t;
+    char errbuf[MR_STRERROR_BUF_SIZE];
+    const char *errno_msg;
 
     t.tm_sec = (int) Sec;
     t.tm_min = (int) Min;
@@ -743,10 +862,21 @@ mktime(TM, Time, !IO) :-
     t.tm_isdst = (int) N;
 
     Time = mktime(&t);
+    if (Time == (time_t) -1) {
+        IsOk = MR_NO;
+        errno_msg = MR_strerror(errno, errbuf, sizeof(errbuf));
+        MR_save_transient_hp();
+        MR_make_aligned_string_copy(ErrorMsg, errno_msg);
+        MR_restore_transient_hp();
+    } else {
+        IsOk = MR_YES;
+        ErrorMsg = MR_make_string_const(\"\");
+    }
 ").
 :- pragma foreign_proc("C#",
-    c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
-        _YD::in, _WD::in, _N::in, Time::out, _IO0::di, _IO::uo),
+    target_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
+        _YD::in, _WD::in, _N::in, IsOk::out, Time::out, ErrorMsg::out,
+         _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "
     // We don't use YD, WD and N.
@@ -756,47 +886,76 @@ mktime(TM, Time, !IO) :-
     // savings time (N = 1), and then again an hour later, during standard
     // time (N = 0). The .NET API does not seem to provide any way to
     // get the right answer in both cases.
-    System.DateTime local_time =
-        new System.DateTime(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec);
-    Time = local_time.ToUniversalTime();
+    try {
+        System.DateTime local_time =
+            new System.DateTime(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec);
+        Time = local_time.ToUniversalTime();
+        IsOk = mr_bool.YES;
+        ErrorMsg = \"\";
+    } catch (System.ArgumentOutOfRangeException e) {
+        Time = System.DateTime.MinValue; // Dummy value.
+        IsOk = mr_bool.NO;
+        ErrorMsg = e.Message;
+    }
 ").
 :- pragma foreign_proc("Java",
-    c_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
-        _YD::in, _WD::in, N::in, Time::out, _IO0::di, _IO::uo),
+    target_mktime(Yr::in, Mnt::in, MD::in, Hrs::in, Min::in, Sec::in,
+        _YD::in, _WD::in, N::in, IsOk::out, Time::out, ErrorMsg::out,
+        _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, may_not_duplicate],
 "
-    java.time.ZoneId tz = java.time.ZoneId.systemDefault();
-    java.time.Instant Time0 = java.time.ZonedDateTime.of(
-        java.time.LocalDateTime.of(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec),
-        tz).toInstant();
+    try {
+        java.time.ZoneId tz = java.time.ZoneId.systemDefault();
+        java.time.LocalDateTime localDateTime =
+            java.time.LocalDateTime.of(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec);
+        java.time.ZonedDateTime zonedDateTime =
+            java.time.ZonedDateTime.of(localDateTime, tz);
+        java.time.Instant Time0 = zonedDateTime.toInstant();
 
-    // Correct for DST:  This is only an issue when it is possible for the same
-    // 'time' to occur twice due to daylight savings ending.
-    // (In Melbourne, 2:00am-2:59am occur twice when leaving DST)
+        // Correct for DST:  This is only an issue when it is possible for the
+        // same 'time' to occur twice due to daylight savings ending.
+        // (In Melbourne, 2:00am-2:59am occur twice when leaving DST)
 
-    java.time.zone.ZoneRules rules = tz.getRules();
-    boolean isDST = rules.isDaylightSavings(Time0);
+        java.time.zone.ZoneRules rules = tz.getRules();
+        boolean isDST = rules.isDaylightSavings(Time0);
 
-    if (N == 1 & !isDST) {
-        // If the time we constructed is not in daylight savings time, but it
-        // should be, we need to subtract the DSTSavings.
-        java.time.Duration savings = rules.getDaylightSavings(Time0);
-        Time = Time0.minus(savings);
-        if (!rules.isDaylightSavings(Time)) {
-            throw new RuntimeException(
-                ""time.mktime: failed to correct for DST"");
+        if (N == 1 & !isDST) {
+            // If the time we constructed is not in daylight savings time, but
+            // it should be, we need to subtract the DSTSavings.
+            java.time.Duration savings = rules.getDaylightSavings(Time0);
+            Time = Time0.minus(savings);
+            if (!rules.isDaylightSavings(Time)) {
+                IsOk = bool.NO;
+                ErrorMsg = \"failed to correct for DST\";
+            } else {
+                IsOk = bool.YES;
+                ErrorMsg = \"\";
+            }
+        } else if (N == 0 && isDST) {
+            // If the time we constructed is in daylight savings time, but
+            // should not be, we need to add the DSTSavings.
+            java.time.Duration savings = rules.getDaylightSavings(Time0);
+            Time = Time0.plus(savings);
+            if (rules.isDaylightSavings(Time)) {
+                IsOk = bool.NO;
+                ErrorMsg = \"failed to correct for DST\";
+            } else {
+                IsOk = bool.YES;
+                ErrorMsg = \"\";
+            }
+        } else {
+            IsOk = bool.YES;
+            Time = Time0;
+            ErrorMsg = \"\";
         }
-    } else if (N == 0 && isDST) {
-        // If the time we constructed is in daylight savings time, but should
-        // not be, we need to add the DSTSavings.
-        java.time.Duration savings = rules.getDaylightSavings(Time0);
-        Time = Time0.plus(savings);
-        if (rules.isDaylightSavings(Time)) {
-            throw new RuntimeException(
-                ""time.mktime: failed to correct for DST"");
+    } catch (java.lang.Exception e) {
+        IsOk = bool.NO;
+        Time = java.time.Instant.MIN; // Dummy value.
+        if (e.getMessage() != null) {
+            ErrorMsg = e.getMessage();
+        } else {
+            ErrorMsg = \"\";
         }
-    } else {
-        Time = Time0;
     }
 ").
 
