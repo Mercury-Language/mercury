@@ -28,6 +28,7 @@
     :- include_module type_assign.
     :- include_module type_util.
     :- include_module typecheck.
+    :- include_module typecheck_debug.
     :- include_module typecheck_errors.
     :- include_module typecheck_info.
     :- include_module typecheck_msgs.

@@ -87,6 +87,7 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
+:- import_module check_hlds.typecheck_debug.
 :- import_module check_hlds.typecheck_errors.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.prog_type.

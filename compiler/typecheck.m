@@ -100,6 +100,7 @@
 
 :- import_module check_hlds.type_assign.
 :- import_module check_hlds.type_util.
+:- import_module check_hlds.typecheck_debug.
 :- import_module check_hlds.typecheck_errors.
 :- import_module check_hlds.typecheck_info.
 :- import_module check_hlds.typecheck_msgs.

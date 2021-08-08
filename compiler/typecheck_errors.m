@@ -182,6 +182,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
@@ -2298,6 +2299,150 @@ bound_type_to_pieces(TVarSet, InstVarSet, TypeBindings, ExternalTypeParams,
     apply_rec_subst_to_type(TypeBindings, Type0, Type),
     Pieces = type_to_pieces(add_quotes, TVarSet, InstVarSet,
         ExternalTypeParams, Type).
+
+%---------------------------------------------------------------------------%
+
+:- func type_assign_set_to_pieces(type_assign_set, maybe(int), prog_varset)
+    = list(format_component).
+
+type_assign_set_to_pieces([], _, _) = [].
+type_assign_set_to_pieces([TypeAssign | TypeAssigns], MaybeSeq, VarSet) =
+    type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) ++
+    type_assign_set_to_pieces(TypeAssigns, inc_maybe_seq(MaybeSeq), VarSet).
+
+:- func args_type_assign_set_to_pieces(args_type_assign_set, maybe(int),
+    prog_varset) = list(format_component).
+
+args_type_assign_set_to_pieces([], _, _) = [].
+args_type_assign_set_to_pieces([ArgTypeAssign | ArgTypeAssigns], MaybeSeq,
+        VarSet) = Pieces :-
+    % XXX Why does this simply pick the TypeAssign part of the ArgTypeAssign,
+    % instead of invoking convert_args_type_assign?
+    ArgTypeAssign = args_type_assign(TypeAssign, _ArgTypes, _Cnstrs),
+    Pieces = type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) ++
+        args_type_assign_set_to_pieces(ArgTypeAssigns, inc_maybe_seq(MaybeSeq),
+            VarSet).
+
+%---------------------%
+
+:- func type_assign_to_pieces(type_assign, maybe(int), prog_varset)
+    = list(format_component).
+
+type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) = Pieces :-
+    (
+        MaybeSeq = yes(N),
+        SeqPieces0 = [words("Type assignment"), int_fixed(N), suffix(":"), nl],
+        ( if N > 1 then
+            SeqPieces = [blank_line | SeqPieces0]
+        else
+            SeqPieces = SeqPieces0
+        )
+    ;
+        MaybeSeq = no,
+        SeqPieces = []
+    ),
+    type_assign_get_external_type_params(TypeAssign, ExternalTypeParams),
+    type_assign_get_var_types(TypeAssign, VarTypes),
+    type_assign_get_typeclass_constraints(TypeAssign, Constraints),
+    type_assign_get_type_bindings(TypeAssign, TypeBindings),
+    type_assign_get_typevarset(TypeAssign, TypeVarSet),
+    vartypes_vars(VarTypes, Vars),
+    (
+        ExternalTypeParams = [],
+        HeadPieces = []
+    ;
+        ExternalTypeParams = [_ | _],
+        VarsStr =
+            mercury_vars_to_string(TypeVarSet, varnums, ExternalTypeParams),
+        HeadPieces = [words("some [" ++ VarsStr ++ "]"), nl]
+    ),
+    TypePieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
+        TypeBindings, TypeVarSet, no),
+    ConstraintPieces = type_assign_hlds_constraints_to_pieces(Constraints,
+        TypeBindings, TypeVarSet),
+    Pieces = SeqPieces ++ HeadPieces ++ TypePieces ++ ConstraintPieces ++ [nl].
+
+:- func type_assign_types_to_pieces(list(prog_var), prog_varset,
+    vartypes, tsubst, tvarset, bool) = list(format_component).
+
+type_assign_types_to_pieces([], _, _, _, _, FoundOne) = Pieces :-
+    (
+        FoundOne = no,
+        Pieces = [words("(No variables were assigned a type)")]
+    ;
+        FoundOne = yes,
+        Pieces = []
+    ).
+type_assign_types_to_pieces([Var | Vars], VarSet, VarTypes, TypeBindings,
+        TypeVarSet, FoundOne) = Pieces :-
+    ( if search_var_type(VarTypes, Var, Type) then
+        (
+            FoundOne = yes,
+            PrefixPieces = [nl]
+        ;
+            FoundOne = no,
+            PrefixPieces = []
+        ),
+        VarStr = mercury_var_to_string(VarSet, varnums, Var),
+        TypeStr = type_with_bindings_to_string(Type, TypeVarSet, TypeBindings),
+        AssignPieces = [fixed(VarStr), suffix(":"), words(TypeStr)],
+        TailPieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
+            TypeBindings, TypeVarSet, yes),
+        Pieces = PrefixPieces ++ AssignPieces ++ TailPieces
+    else
+        Pieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
+            TypeBindings, TypeVarSet, FoundOne)
+    ).
+
+:- func type_with_bindings_to_string(mer_type, tvarset, tsubst) = string.
+
+type_with_bindings_to_string(Type0, TypeVarSet, TypeBindings) = Str :-
+    apply_rec_subst_to_type(TypeBindings, Type0, Type1),
+    strip_builtin_qualifiers_from_type(Type1, Type),
+    Str = mercury_type_to_string(TypeVarSet, print_name_only, Type).
+
+:- func type_assign_hlds_constraints_to_pieces(hlds_constraints,
+    tsubst, tvarset) = list(format_component).
+
+type_assign_hlds_constraints_to_pieces(Constraints, TypeBindings, TypeVarSet)
+        = Pieces1 ++ Pieces2 :-
+    Constraints =
+        hlds_constraints(ConstraintsToProve, AssumedConstraints, _, _),
+    PiecesList1 = type_assign_constraints_to_pieces_list("&",
+        AssumedConstraints, TypeBindings, TypeVarSet, no),
+    PiecesList2 = type_assign_constraints_to_pieces_list("<=",
+        ConstraintsToProve, TypeBindings, TypeVarSet, no),
+    Pieces1 = component_list_to_line_pieces(PiecesList1, []),
+    Pieces2 = component_list_to_line_pieces(PiecesList2, []).
+
+:- func type_assign_constraints_to_pieces_list(string, list(hlds_constraint),
+    tsubst, tvarset, bool) = list(list(format_component)).
+
+type_assign_constraints_to_pieces_list(_, [], _, _, _) = [].
+type_assign_constraints_to_pieces_list(Operator, [Constraint | Constraints],
+        TypeBindings, TypeVarSet, FoundOne) = [ThisPieces] ++ TailPieceLists :-
+    (
+        FoundOne = no,
+        Prefix = Operator ++ " "
+    ;
+        FoundOne = yes,
+        Prefix = "   "
+    ),
+    apply_rec_subst_to_constraint(TypeBindings, Constraint, BoundConstraint),
+    retrieve_prog_constraint(BoundConstraint, ProgConstraint),
+    ThisPieces = [fixed(Prefix ++
+        mercury_constraint_to_string(TypeVarSet, ProgConstraint))],
+    TailPieceLists = type_assign_constraints_to_pieces_list(Operator,
+        Constraints, TypeBindings, TypeVarSet, yes).
+
+:- func inc_maybe_seq(maybe(int)) = maybe(int).
+
+inc_maybe_seq(no) = no.
+inc_maybe_seq(yes(N)) = yes(N + 1).
+
+:- func varnums = var_name_print.
+
+varnums = print_name_and_num.
 
 %---------------------------------------------------------------------------%
 
