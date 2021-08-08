@@ -7039,7 +7039,13 @@ to all files.
 @c @itemx --debug-types
 @c @findex -T
 @c @findex --debug-types
-@c Output detailed debugging traces of the type checking.
+@c Output detailed debugging traces of type checking.
+
+@c @sp 1
+@c @itemx --debug-types-pred-name @var{pred_or_func_name}
+@c @findex --debug-types-pred-name
+@c Output detailed debugging traces of type checking
+@c only for predicates and functions named by one of these options.
 
 @sp 1
 @item -N

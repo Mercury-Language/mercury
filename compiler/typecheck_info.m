@@ -133,6 +133,15 @@
             ).
 
 %-----------------------------------------------------------------------------%
+
+:- type typecheck_debug_info
+    --->    no_typecheck_debug
+    ;       typecheck_debug(
+                % The value of the detailed_statistics option.
+                td_detailed_statistics          :: bool
+            ).
+
+%-----------------------------------------------------------------------------%
 %
 % Basic access predicates for typecheck_info.
 %
@@ -163,6 +172,8 @@
     maybe(error_spec)::out) is det.
 :- pred typecheck_info_get_nosuffix_integer_vars(typecheck_info::in,
     set_tree234(prog_var)::out) is det.
+:- pred typecheck_info_get_debug_info(typecheck_info::in,
+    typecheck_debug_info::out) is det.
 
 :- pred typecheck_info_set_overloaded_symbol_map(overloaded_symbol_map::in,
     typecheck_info::in, typecheck_info::out) is det.
@@ -272,7 +283,9 @@
                 % or a sized integer (either signed or unsigned), then
                 % we extend the error message with a reminder about the
                 % need for the right suffix.
-                tcsi_nosuffix_integer_vars      :: set_tree234(prog_var)
+                tcsi_nosuffix_integer_vars      :: set_tree234(prog_var),
+
+                tcsi_debug_info                 :: typecheck_debug_info
             ).
 
 %-----------------------------------------------------------------------------%
@@ -290,16 +303,39 @@ typecheck_info_init(ModuleInfo, PredId, PredInfo, ClauseVarSet, Status,
     globals.lookup_bool_option(Globals, verbose_errors, Verbose),
     globals.lookup_int_option(Globals, typecheck_ambiguity_warn_limit,
         AmbiguityWarnLimit),
-    globals.lookup_int_option(Globals, typecheck_ambiguity_error_limit,
-        AmbiguityErrorLimit),
     NoSuffixIntegerMap = set_tree234.init,
+    globals.lookup_accumulating_option(Globals, debug_types_pred_name,
+        DebugTypesPredNames),
+    (
+        DebugTypesPredNames = [_ | _],
+        Name = pred_info_name(PredInfo),
+        ( if list.member(Name, DebugTypesPredNames) then
+            globals.lookup_bool_option(Globals, detailed_statistics, Stats),
+            DebugInfo = typecheck_debug(Stats)
+        else
+            DebugInfo = no_typecheck_debug
+        )
+    ;
+        DebugTypesPredNames = [],
+        globals.lookup_bool_option(Globals, debug_types, DebugTypes),
+        (
+            DebugTypes = yes,
+            globals.lookup_bool_option(Globals, detailed_statistics, Stats),
+            DebugInfo = typecheck_debug(Stats)
+        ;
+            DebugTypes = no,
+            DebugInfo = no_typecheck_debug
+        )
+    ),
     SubInfo = typecheck_sub_info(Verbose, CallsAreFullyQualified,
         AmbiguityErrorLimit, MaybeFieldAccessFunctionStatus,
-        NonOverloadErrors, OverloadErrors, NoSuffixIntegerMap),
+        NonOverloadErrors, OverloadErrors, NoSuffixIntegerMap, DebugInfo),
     ClauseNum = 0,
     ClauseContext = type_error_clause_context(ModuleInfo, PredId,
         PredMarkers, ClauseNum, term.context_init, ClauseVarSet),
     map.init(OverloadedSymbolMap),
+    globals.lookup_int_option(Globals, typecheck_ambiguity_error_limit,
+        AmbiguityErrorLimit),
     Info = typecheck_info(SubInfo, ClauseContext, OverloadedSymbolMap,
         AmbiguityWarnLimit).
 
@@ -338,6 +374,8 @@ typecheck_info_get_overload_error(Info, X) :-
     X = Info ^ tci_sub_info ^ tcsi_overload_error.
 typecheck_info_get_nosuffix_integer_vars(Info, X) :-
     X = Info ^ tci_sub_info ^ tcsi_nosuffix_integer_vars.
+typecheck_info_get_debug_info(Info, X) :-
+    X = Info ^ tci_sub_info ^ tcsi_debug_info.
 
 typecheck_info_set_overloaded_symbol_map(X, !Info) :-
     !Info ^ tci_overloaded_symbol_map := X.

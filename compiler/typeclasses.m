@@ -109,8 +109,8 @@ perform_context_reduction(Context, TypeAssignSet0, TypeAssignSet, !Info) :-
     ModuleInfo = ClauseContext ^ tecc_module_info,
     trace [compiletime(flag("type_checkpoint")), io(!IO)] (
         VarSet = ClauseContext ^ tecc_varset,
-        type_checkpoint("before context reduction",
-            ModuleInfo, VarSet, TypeAssignSet0, !IO)
+        type_checkpoint("before context reduction", !.Info, VarSet,
+            TypeAssignSet0, !IO)
     ),
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_instance_table(ModuleInfo, InstanceTable),

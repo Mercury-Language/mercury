@@ -251,6 +251,7 @@
     ;       proc_size_statistics
     ;       limit_error_contexts
     ;       debug_types
+    ;       debug_types_pred_name
     ;       debug_modes
     ;       debug_modes_statistics
     ;       debug_modes_minimal
@@ -1328,6 +1329,7 @@ optdef(oc_verbosity, detailed_statistics,               bool(no)).
 optdef(oc_verbosity, proc_size_statistics,              string("")).
 optdef(oc_verbosity, limit_error_contexts,              accumulating([])).
 optdef(oc_verbosity, debug_types,                       bool(no)).
+optdef(oc_verbosity, debug_types_pred_name,             accumulating([])).
 optdef(oc_verbosity, debug_modes,                       bool(no)).
 optdef(oc_verbosity, debug_modes_statistics,            bool(no)).
 optdef(oc_verbosity, debug_modes_minimal,               bool(no)).
@@ -2242,6 +2244,7 @@ long_option("detailed-statistics",      detailed_statistics).
 long_option("proc-size-statistics",     proc_size_statistics).
 long_option("limit-error-contexts",     limit_error_contexts).
 long_option("debug-types",              debug_types).
+long_option("debug-types-pred-name",    debug_types_pred_name).
 long_option("debug-modes",              debug_modes).
 long_option("debug-modes-statistics",   debug_modes_statistics).
 long_option("debug-modes-minimal",      debug_modes_minimal).
@@ -4493,10 +4496,13 @@ options_help_verbosity(Stream, !IO) :-
         "\tthe same file, only the last one will have an effect.",
         "\tIf the file name and colon are missing, the limit will apply",
         "\tto all files.",
-% --debug-types works only if the compiler was compiled with
+% These work only if the compiler was compiled with
 % "--trace-flag type_checkpoint".
 %       "-T, --debug-types",
-%       "\tOutput detailed debugging traces of the type checking.",
+%       "\tOutput detailed debugging traces of type checking.",
+%       "--debug-types-pred-name <pred_or_func_name>",
+%       "\tOutput detailed debugging traces of type checking",
+%       "\tonly for predicates and functions named by one of these options.",
         "-N, --debug-modes",
         "\tOutput debugging traces of the mode checking.",
         "--debug-modes-statistics",

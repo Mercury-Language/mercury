@@ -1027,10 +1027,8 @@ typecheck_clause(HeadVars, ArgTypes, !Clause, !TypeAssignSet, !Info) :-
     typecheck_goal(Body0, Body, Context, !TypeAssignSet, !Info),
     trace [compiletime(flag("type_checkpoint")), io(!IO)] (
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        ModuleInfo = ClauseContext ^ tecc_module_info,
         VarSet = ClauseContext ^ tecc_varset,
-        type_checkpoint("end of clause", ModuleInfo, VarSet, !.TypeAssignSet,
-            !IO)
+        type_checkpoint("end of clause", !.Info, VarSet, !.TypeAssignSet, !IO)
     ),
     typecheck_prune_coerce_constraints(!TypeAssignSet, !Info),
     !Clause ^ clause_body := Body,
@@ -1231,13 +1229,12 @@ typecheck_goal(Goal0, Goal, EnclosingContext, !TypeAssignSet, !Info) :-
 
 typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
     typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-    ModuleInfo = ClauseContext ^ tecc_module_info,
     VarSet = ClauseContext ^ tecc_varset,
     Context = goal_info_get_context(GoalInfo),
     (
         GoalExpr0 = conj(ConjType, SubGoals0),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-            type_checkpoint("conj", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
+            type_checkpoint("conj", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
         typecheck_goal_list(SubGoals0, SubGoals, Context,
             !TypeAssignSet, !Info),
@@ -1245,7 +1242,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
     ;
         GoalExpr0 = disj(SubGoals0),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-            type_checkpoint("disj", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
+            type_checkpoint("disj", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
         typecheck_goal_list(SubGoals0, SubGoals, Context,
             !TypeAssignSet, !Info),
@@ -1253,15 +1250,15 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-            type_checkpoint("if", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
+            type_checkpoint("if", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
         typecheck_goal(Cond0, Cond, Context, !TypeAssignSet, !Info),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-            type_checkpoint("then", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
+            type_checkpoint("then", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
         typecheck_goal(Then0, Then, Context, !TypeAssignSet, !Info),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-            type_checkpoint("else", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
+            type_checkpoint("else", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
         typecheck_goal(Else0, Else, Context, !TypeAssignSet, !Info),
         ensure_vars_have_a_type(var_vector_cond_quant, Context, Vars,
@@ -1270,14 +1267,14 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
     ;
         GoalExpr0 = negation(SubGoal0),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-            type_checkpoint("not", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
+            type_checkpoint("not", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
         typecheck_goal(SubGoal0, SubGoal, Context, !TypeAssignSet, !Info),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-            type_checkpoint("scope", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
+            type_checkpoint("scope", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
         typecheck_goal(SubGoal0, SubGoal, Context, !TypeAssignSet, !Info),
         (
@@ -1314,7 +1311,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
     ;
         GoalExpr0 = plain_call(_, ProcId, ArgVars, BI, UC, Name),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-            type_checkpoint("call", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
+            type_checkpoint("call", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
         list.length(ArgVars, Arity),
         SymNameArity = sym_name_arity(Name, Arity),
@@ -1328,7 +1325,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
         (
             GenericCall = higher_order(PredVar, Purity, _, _),
             trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-                type_checkpoint("higher-order call", ModuleInfo, VarSet,
+                type_checkpoint("higher-order call", !.Info, VarSet,
                     !.TypeAssignSet, !IO)
             ),
             hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
@@ -1340,7 +1337,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
         ;
             GenericCall = event_call(EventName),
             trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-                type_checkpoint("event call", ModuleInfo, VarSet,
+                type_checkpoint("event call", !.Info, VarSet,
                     !.TypeAssignSet, !IO)
             ),
             typecheck_event_call(Context, EventName, ArgVars,
@@ -1358,7 +1355,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             ;
                 CastType = subtype_coerce,
                 trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-                    type_checkpoint("coerce", ModuleInfo, VarSet,
+                    type_checkpoint("coerce", !.Info, VarSet,
                         !.TypeAssignSet, !IO)
                 ),
                 typecheck_coerce(Context, ArgVars, !TypeAssignSet, !Info)
@@ -1368,7 +1365,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
     ;
         GoalExpr0 = unify(LHS, RHS0, UnifyMode, Unification, UnifyContext),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-            type_checkpoint("unify", ModuleInfo, VarSet, !.TypeAssignSet, !IO)
+            type_checkpoint("unify", !.Info, VarSet, !.TypeAssignSet, !IO)
         ),
         GoalId = goal_info_get_goal_id(GoalInfo),
         typecheck_unification(UnifyContext, Context, GoalId,
@@ -1397,8 +1394,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
         (
             ShortHand0 = bi_implication(LHS0, RHS0),
             trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-                type_checkpoint("<=>", ModuleInfo, VarSet,
-                    !.TypeAssignSet, !IO)
+                type_checkpoint("<=>", !.Info, VarSet, !.TypeAssignSet, !IO)
             ),
             typecheck_goal(LHS0, LHS, Context, !TypeAssignSet, !Info),
             typecheck_goal(RHS0, RHS, Context, !TypeAssignSet, !Info),
@@ -1407,7 +1403,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             ShortHand0 = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
                 MainGoal0, OrElseGoals0, OrElseInners),
             trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-                type_checkpoint("atomic_goal", ModuleInfo, VarSet,
+                type_checkpoint("atomic_goal", !.Info, VarSet,
                     !.TypeAssignSet, !IO)
             ),
             (
@@ -1446,7 +1442,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
             trace [compiletime(flag("type_checkpoint")), io(!IO)] (
-                type_checkpoint("try_goal", ModuleInfo, VarSet,
+                type_checkpoint("try_goal", !.Info, VarSet,
                     !.TypeAssignSet, !IO)
             ),
             typecheck_goal(SubGoal0, SubGoal, Context, !TypeAssignSet, !Info),

@@ -14,8 +14,7 @@
 :- interface.
 
 :- import_module check_hlds.type_assign.
-:- import_module hlds.
-:- import_module hlds.hlds_module.
+:- import_module check_hlds.typecheck_info.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -24,7 +23,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred type_checkpoint(string::in, module_info::in, prog_varset::in,
+:- pred type_checkpoint(string::in, typecheck_info::in, prog_varset::in,
     type_assign_set::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -33,12 +32,11 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
+:- import_module hlds.
 :- import_module hlds.hlds_class.
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.file_util.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_type.
@@ -51,25 +49,22 @@
 
 %---------------------------------------------------------------------------%
 
-type_checkpoint(Msg, ModuleInfo, VarSet, TypeAssignSet, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, debug_types, DoCheckPoint),
+type_checkpoint(Msg, Info, VarSet, TypeAssignSet, !IO) :-
+    typecheck_info_get_debug_info(Info, Debug),
     (
-        DoCheckPoint = yes,
+        Debug = typecheck_debug(DetailedStats),
         io.output_stream(Stream, !IO),
-        do_type_checkpoint(Stream, Msg, ModuleInfo, VarSet, TypeAssignSet, !IO)
+        do_type_checkpoint(Stream, Msg, DetailedStats, VarSet,
+            TypeAssignSet, !IO)
     ;
-        DoCheckPoint = no
+        Debug = no_typecheck_debug
     ).
 
 :- pred do_type_checkpoint(io.text_output_stream::in, string::in,
-    module_info::in, prog_varset::in, type_assign_set::in,
-    io::di, io::uo) is det.
+    bool::in, prog_varset::in, type_assign_set::in, io::di, io::uo) is det.
 
-do_type_checkpoint(Stream, Msg, ModuleInfo, VarSet, TypeAssignSet, !IO) :-
+do_type_checkpoint(Stream, Msg, Statistics, VarSet, TypeAssignSet, !IO) :-
     io.format(Stream, "At %s:", [s(Msg)], !IO),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     maybe_report_stats(Stream, Statistics, !IO),
     io.nl(Stream, !IO),
     ( if
