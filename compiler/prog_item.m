@@ -228,9 +228,9 @@
 
                 % The set of modules mentioned in `:- include_module'
                 % declarations in the interface and in the implementation,
-                % and their locations. If a module has been included
-                % N times, which is an error, it will appear in (one
-                % or both of) these maps N times.
+                % and their locations. If a module has been included N times,
+                % which is an error, it will appear in (one or both of)
+                % these maps N times.
                 ptms_int_includes           :: module_names_contexts,
                 ptms_imp_includes           :: module_names_contexts,
 
