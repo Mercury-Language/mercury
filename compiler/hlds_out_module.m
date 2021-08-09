@@ -15,14 +15,8 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_out.hlds_out_util.
-:- import_module hlds.hlds_pred.
-:- import_module mdbcomp.
-:- import_module parse_tree.
-:- import_module parse_tree.prog_data.
 
 :- import_module io.
-:- import_module list.
 
 %---------------------------------------------------------------------------%
 
@@ -104,21 +98,27 @@
 :- import_module hlds.hlds_out.hlds_out_pred.
 :- import_module hlds.hlds_out.hlds_out_type_table.
 :- import_module hlds.hlds_out.hlds_out_typeclass_table.
+:- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 
 :- import_module bool.
 :- import_module digraph.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.

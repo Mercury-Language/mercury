@@ -12,10 +12,8 @@
 :- import_module hlds.hlds_inst_mode.
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
-:- import_module parse_tree.prog_data.
 
 :- import_module io.
-:- import_module list.
 
 :- pred write_inst_table(io.text_output_stream::in, output_lang::in,
     int::in, inst_table::in, io::di, io::uo) is det.
@@ -34,9 +32,11 @@
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_to_term.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 
 :- import_module int.
+:- import_module list.
 :- import_module map.
 :- import_module pair.
 :- import_module string.

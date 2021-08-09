@@ -30,14 +30,11 @@
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
-:- import_module bimap.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -85,11 +82,14 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.c_util.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign_enum.
 
 :- import_module assoc_list.
+:- import_module bimap.
 :- import_module bool.
 :- import_module cord.
 :- import_module one_or_more.

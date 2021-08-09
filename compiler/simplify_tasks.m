@@ -20,7 +20,6 @@
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
 
-:- import_module bool.
 :- import_module list.
 
     % Each value of this type represents a task, or a group of related tasks,
@@ -216,6 +215,10 @@
 :- implementation.
 
 :- import_module libs.options.
+
+:- import_module bool.
+
+%---------------------------------------------------------------------------%
 
 simplify_tasks_to_list(SimplifyTasks) = !:List :-
     SimplifyTasks = simplify_tasks(WarnSimpleCode, WarnDupCalls,

@@ -11,12 +11,9 @@
 
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.hlds_out_util.
-:- import_module parse_tree.
-:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
-:- import_module list.
 
 :- pred write_type_table(hlds_out_info::in, io.text_output_stream::in,
     bool::in, type_table::in, io::di, io::uo) is det.
@@ -30,14 +27,17 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
 :- import_module int.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.

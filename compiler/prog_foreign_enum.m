@@ -22,7 +22,6 @@
 
 :- import_module assoc_list.
 :- import_module bimap.
-:- import_module cord.
 :- import_module list.
 :- import_module set_tree234.
 
@@ -60,6 +59,7 @@
 :- implementation.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module pair.
 :- import_module string.
 

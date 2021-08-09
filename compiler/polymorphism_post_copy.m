@@ -13,8 +13,6 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module parse_tree.
-:- import_module parse_tree.prog_data.
 
 :- import_module list.
 
@@ -41,6 +39,8 @@
 :- import_module libs.optimization_options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
 :- import_module int.

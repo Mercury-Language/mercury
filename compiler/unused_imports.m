@@ -101,12 +101,43 @@ warn_about_unused_imports(ModuleInfo, Specs) :-
 
     % The unused imports is simply the set of all imports minus all the
     % used modules.
-    UnusedAnywhereImports = set.difference(AvailAnywhereModules, UsedAnywhere),
+    set.difference(AvailAnywhereModules, UsedAnywhere, UnusedAnywhereImports),
 
     % Determine the modules imported in the interface but not used in
     % the interface.
     UnusedInterfaceImports =
         set.difference(AvailInterfaceModules, UsedInInterface),
+
+    trace [compile_time(flag("debug_unused_imports")), io(!IO)] (
+        AvailInterface = list.map(sym_name_to_string,
+            set.to_sorted_list(AvailInterfaceModules)),
+        AvailAnywhere = list.map(sym_name_to_string,
+            set.to_sorted_list(AvailAnywhereModules)),
+        UsedInterface = list.map(sym_name_to_string,
+            set.to_sorted_list(UsedInInterface)),
+        UsedImplementation = list.map(sym_name_to_string,
+            set.to_sorted_list(UsedInImplementation)),
+        UnusedInterface = list.map(sym_name_to_string,
+            set.to_sorted_list(UnusedInterfaceImports)),
+        UnusedAnywhere = list.map(sym_name_to_string,
+            set.to_sorted_list(UnusedAnywhereImports)),
+
+        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+        io.nl(ProgressStream, !IO),
+        io.write_string(ProgressStream, "AvailInterfaceModules\n", !IO),
+        io.write_line(ProgressStream, AvailInterface, !IO),
+        io.write_string(ProgressStream, "AvailAnywhereModules\n", !IO),
+        io.write_line(ProgressStream, AvailAnywhere, !IO),
+        io.write_string(ProgressStream, "UsedInInterface\n", !IO),
+        io.write_line(ProgressStream, UsedInterface, !IO),
+        io.write_string(ProgressStream, "UsedInImplementation\n", !IO),
+        io.write_line(ProgressStream, UsedImplementation, !IO),
+        io.write_string(ProgressStream, "UnusedInterfaceImports\n", !IO),
+        io.write_line(ProgressStream, UnusedInterface, !IO),
+        io.write_string(ProgressStream, "UnusedAnywhereImports\n", !IO),
+        io.write_line(ProgressStream, UnusedAnywhere, !IO),
+        io.nl(ProgressStream, !IO)
+    ),
 
     map.foldl(
         maybe_warn_about_avail(ModuleName,
@@ -378,6 +409,7 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
 
     trace [compile_time(flag("dump_used_modules_summary")), io(!IO)] (
         get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
+        io.nl(ProgressStream, !IO),
         UsedModulesHistory = [
             "initial"         - UsedModulesInit,
             "type_ctor_defns" - UsedModulesTypeCtor,
@@ -407,14 +439,16 @@ dump_used_modules_history(ProgressStream, !.IntUsed, !.ImpUsed,
     ( if set.is_empty(NewHeadInt) then
         true
     else
-        set.to_sorted_list(NewHeadInt, NewHeadIntList),
+        NewHeadIntList = list.map(sym_name_to_string,
+            set.to_sorted_list(NewHeadInt)),
         io.write_string(ProgressStream, "interface:\n", !IO),
         io.write_line(ProgressStream, NewHeadIntList, !IO)
     ),
     ( if set.is_empty(NewHeadImp) then
         true
     else
-        set.to_sorted_list(NewHeadImp, NewHeadImpList),
+        NewHeadImpList = list.map(sym_name_to_string,
+            set.to_sorted_list(NewHeadImp)),
         io.write_string(ProgressStream, "implementation:\n", !IO),
         io.write_line(ProgressStream, NewHeadImpList, !IO)
     ),
@@ -737,6 +771,10 @@ pred_info_used_modules(ModuleInfo, PredId, PredInfo, !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 proc_info_used_modules(Visibility, _ProcId, ProcInfo, !UsedModules) :-
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
+    list.foldl(mer_type_used_modules(Visibility), HeadVarTypes, !UsedModules),
     % In some rare cases, the type of a variable can refer to a module
     % that is used nowhere else in the module, not even in the types of
     % the arguments of the procedure. The instance method predicate
@@ -753,8 +791,7 @@ proc_info_used_modules(Visibility, _ProcId, ProcInfo, !UsedModules) :-
     % in all the proc_infos in a pred_info should not be a problem,
     % given that the average number of proc_infos per pred_info typically
     % hovers in the 1.01-to-1.2 range.
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    foldl_var_types(mer_type_used_modules(Visibility), VarTypes,
+    foldl_var_types(mer_type_used_modules(visibility_private), VarTypes,
         !UsedModules),
 
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),

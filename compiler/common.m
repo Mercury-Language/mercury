@@ -97,7 +97,6 @@
 :- import_module check_hlds.simplify.simplify_info.
 :- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.
-:- import_module hlds.const_struct.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
@@ -167,14 +166,15 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
+:- import_module hlds.const_struct.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.
-:- import_module libs.options.
 :- import_module libs.optimization_options.
+:- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.

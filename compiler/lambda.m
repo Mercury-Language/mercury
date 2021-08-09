@@ -77,13 +77,9 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.vartypes.
-:- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
-
-:- import_module list.
 
 %---------------------------------------------------------------------------%
 
@@ -148,16 +144,19 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module transform_hlds.
 :- import_module transform_hlds.direct_arg_in_out.
 
-:- import_module assoc_list.
 :- import_module array.
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.

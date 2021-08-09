@@ -57,7 +57,6 @@
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
 
 :- import_module bool.
-:- import_module io.
 
 %---------------------------------------------------------------------------%
 
@@ -124,6 +123,7 @@
 
 :- import_module bimap.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
