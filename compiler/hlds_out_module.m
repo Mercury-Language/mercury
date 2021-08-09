@@ -36,6 +36,63 @@
 
 :- implementation.
 
+% XXX :- import_module hlds.pred_table.
+% We actually use a type equivalence from pred_table.m (specifically,
+% the fact that pred_table is a map), but we get an unused import warning
+% for the above line anyway.
+%
+% The problem is as follows.
+%
+% - The write_preds predicate calls module_info_get_preds, whose output
+%   has type pred_table. Therefore logically, the type of the variable
+%   that holds this output is also pred_table, which means that logically,
+%   this module *does* use *something* exported by pred_table.m.
+%
+% - On the other hand, the equiv_type.m pass, which operates on the augmented
+%   compilation unit, expands out equivalence types. The type of the output
+%   argument of module_info_get_preds, pred_table, is thus replaced with
+%   map(pred_id, pred_info). None of those types is defined in pred_table.m,
+%   and this module uses nothing else exported from pred_table.m either.
+%   This is why code generation can succeed without importing pred_table.m,
+%   and this is also why we get the warning about pred_table.m being unused
+%   if we *do* import it.
+%
+% I (zs) see three ways of fixing this problem.
+%
+% - We could have equiv_type.m record, in every item in which it expands out
+%   a type equivalence (or, for the same reason, an inst or mode equivalence)
+%   defined in a given module, record the name of that module in a new field
+%   in that item. In this case, this would mean including the pred_table module
+%   in this new field in the pred decl item for module_info_get_preds.
+%   We would preserve the value of this field in the HLDS, e.g. in pred_infos.
+%   Then, when the code of this module references module_info_get_preds,
+%   the code generating unused module warnings would consider that reference
+%   to use not just the module that defines module_info_get_preds, but also
+%   all the modules recorded in the new "modules that defined expanded
+%   equivalences" field of its pred_info. And likewide for other entities
+%   that contain types, insts and/or modes that can be expanded.
+%
+% - We could add to every alternative in the mer_type, mer_inst and mer_mode
+%   types a new field that records the set of modules that defined the
+%   equivalence types, insts or modes in its construction. I mean that if
+%   the programmer writes map(pred_id, pred_info), then this set would be
+%   empty, but if the prgrammer writes pred_table, then, when replacing it
+%   with map(pred_id, pred_info), equiv_type.m would include the pred_table
+%   module in this set. Every compiler pass *but* unused imports would
+%   of course ignore this extra argument.
+%
+% - We could simply NOT run equiv_type.m on the augmented compilation unit,
+%   and instead expand type equivalences during type checking, and inst and
+%   mode equivalences during mode checking. In both cases, we could record
+%   the modules defining the types, insts and modes expanded out as being used.
+%
+% The second solution is probably the easiest to implement, but it also comes
+% with a high and persistent memory overhead, which is why I don't think
+% it is a good idea. The first solution is the next easiest. The best solution
+% is, I think, the third, but it is the hardest to retrofit to our existing
+% implementation. (Though it would have been much easier to implement when
+% originally writing the type and mode checkers :-()
+
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
@@ -47,11 +104,6 @@
 :- import_module hlds.hlds_out.hlds_out_pred.
 :- import_module hlds.hlds_out.hlds_out_type_table.
 :- import_module hlds.hlds_out.hlds_out_typeclass_table.
-% XXX :- import_module hlds.pred_table.
-% We actually use a type equivalence from pred_table.m (specifically,
-% the fact that pred_table is a map), but we get an unused import warning
-% for the above line anyway. The import is commented out until the code
-% that generates the warning is fixed.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.

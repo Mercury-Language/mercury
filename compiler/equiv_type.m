@@ -53,6 +53,12 @@
 % This will leave any with_type annotations in clauses unexpanded.
 %
 %---------------------------------------------------------------------------%
+%
+% XXX A big comment on an commented-out import of hlds.pred_table
+% in hlds_out_module.m explores in detail a problem with the operation
+% of this module.
+%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.equiv_type.
 :- interface.
