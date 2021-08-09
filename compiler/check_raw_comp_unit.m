@@ -76,22 +76,19 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
         % XXX ITEM_LIST Should we return "yes" for an item_block
         % that contains only ONE include_module declaration?
         ( if
-            ( IntTypeDefnsAbs = [_ | _]
-            ; IntTypeDefnsMer = [_ | _]
-            ; IntTypeDefnsFor = [_ | _]
-            ; IntInstDefns = [_ | _]
-            ; IntModeDefns = [_ | _]
-            ; IntTypeClasses = [_ | _]
-            ; IntInstances = [_ | _]
-            ; IntPredDecls = [_ | _]
-            ; IntModeDecls = [_ | _]
-            ; IntDeclPragmas = [_ | _]
-            ; IntPromises = [_ | _]
-            ; not map.is_empty(IntIncls)
-            )
+            map.is_empty(IntIncls),
+            IntTypeDefnsAbs = [],
+            IntTypeDefnsMer = [],
+            IntTypeDefnsFor = [],
+            IntInstDefns = [],
+            IntModeDefns = [],
+            IntTypeClasses = [],
+            IntInstances = [],
+            IntPredDecls = [],
+            IntModeDecls = [],
+            IntDeclPragmas = [],
+            IntPromises = []
         then
-            true
-        else
             globals.lookup_bool_option(Globals, warn_nothing_exported, Warn),
             (
                 Warn = no
@@ -101,6 +98,8 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
                 generate_no_exports_warning(ModuleName, ModuleNameContext,
                     !Specs)
             )
+        else
+            true
         )
     ).
 
