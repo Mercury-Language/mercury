@@ -96,9 +96,8 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
 
+:- import_module maybe.
 :- import_module one_or_more.
-:- import_module one_or_more_map.
-:- import_module pair.
 :- import_module set.
 :- import_module term.
 
@@ -165,43 +164,103 @@ generate_deps_map_step(Globals, Search, Module, ExpectationContexts,
     % If the module hadn't been processed yet, then add its imports, parents,
     % and public children to the list of dependencies we need to generate,
     % and mark it as having been processed.
+    % XXX Why only the *public* children?
     Deps0 = deps(Done0, ModuleImports),
     (
         Done0 = not_yet_processed,
         Deps = deps(already_processed, ModuleImports),
         map.det_update(Module, Deps, !DepsMap),
-        module_and_imports_get_fim_specs(ModuleImports, FIMSpecs),
         % We could keep a list of the modules we have already processed
         % and subtract it from the sets of modules we add here, but doing that
         % actually leads to a small slowdown.
         module_and_imports_get_parse_tree_module_src(ModuleImports,
             ParseTreeModuleSrc),
+
         ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-        ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
         AncestorModuleNames = get_ancestors_set(ModuleName),
-        ForeignImportedModuleNames =
-            set.map((func(fim_spec(_L, M)) = M), FIMSpecs),
+        ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
         set.foldl(add_module_name_and_context(ModuleNameContext),
             AncestorModuleNames, !Modules),
-        set.foldl(add_module_name_and_context(ModuleNameContext),
-            ForeignImportedModuleNames, !Modules),
 
-        module_and_imports_get_int_deps_map(ModuleImports, IntDepsMap),
-        module_and_imports_get_imp_deps_map(ModuleImports, ImpDepsMap),
-        PublicChildrenMap = ParseTreeModuleSrc ^ ptms_int_includes,
-        one_or_more_map.to_assoc_list(IntDepsMap, IntDepsModuleNamesContexts),
-        one_or_more_map.to_assoc_list(ImpDepsMap, ImpDepsModuleNamesContexts),
-        one_or_more_map.to_assoc_list(PublicChildrenMap,
-            ChildrenModuleNamesContexts),
-        list.foldl(add_module_name_with_contexts,
-            IntDepsModuleNamesContexts, !Modules),
-        list.foldl(add_module_name_with_contexts,
-            ImpDepsModuleNamesContexts, !Modules),
-        list.foldl(add_module_name_with_contexts,
-            ChildrenModuleNamesContexts, !Modules)
+        IntFIMs = ParseTreeModuleSrc ^ ptms_int_fims,
+        ImpFIMs = ParseTreeModuleSrc ^ ptms_imp_fims,
+        map.foldl(add_fim_module_with_context, IntFIMs, !Modules),
+        map.foldl(add_fim_module_with_context, ImpFIMs, !Modules),
+
+        InclMap = ParseTreeModuleSrc ^ ptms_include_map,
+        map.foldl(add_public_include_module_with_context, InclMap, !Modules),
+
+        ImportUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
+        map.foldl(add_avail_module_with_context, ImportUseMap, !Modules)
     ;
         Done0 = already_processed
     ).
+
+:- pred add_public_include_module_with_context(module_name::in,
+    include_module_info::in,
+    expectation_contexts_map::in, expectation_contexts_map::out) is det.
+
+add_public_include_module_with_context(ModuleName, InclInfo, !Modules) :-
+    InclInfo = include_module_info(Section, Context),
+    (
+        Section = ms_interface,
+        ( if map.search(!.Modules, ModuleName, OldContexts) then
+            Contexts = [Context | OldContexts],
+            map.det_update(ModuleName, Contexts, !Modules)
+        else
+            map.det_insert(ModuleName, [Context], !Modules)
+        )
+    ;
+        Section = ms_implementation
+    ).
+
+:- pred add_section_import_and_or_use_context(module_name::in,
+    section_import_and_or_use::in,
+    expectation_contexts_map::in, expectation_contexts_map::out) is det.
+
+add_section_import_and_or_use_context(ModuleName, SectionImportUse,
+        !Modules) :-
+    (
+        ( SectionImportUse = int_import(Context)
+        ; SectionImportUse = int_use(Context)
+        ; SectionImportUse = imp_import(Context)
+        ; SectionImportUse = imp_use(Context)
+        ),
+        add_module_name_and_context(Context, ModuleName, !Modules)
+    ;
+        SectionImportUse = int_use_imp_import(IntContext, ImpContext),
+        add_module_name_and_context(IntContext, ModuleName, !Modules),
+        add_module_name_and_context(ImpContext, ModuleName, !Modules)
+    ).
+
+:- pred add_avail_module_with_context(module_name::in,
+    maybe_implicit_import_and_or_use::in,
+    expectation_contexts_map::in, expectation_contexts_map::out) is det.
+
+add_avail_module_with_context(ModuleName, MaybeImplicit, !Modules) :-
+    (
+        MaybeImplicit = explicit_avail(SectionImportUse),
+        add_section_import_and_or_use_context(ModuleName, SectionImportUse,
+            !Modules)
+    ;
+        MaybeImplicit = implicit_avail(_, MaybeSectionImportUse),
+        (
+            MaybeSectionImportUse = no,
+            add_module_name_and_context(term.dummy_context_init, ModuleName,
+                !Modules)
+        ;
+            MaybeSectionImportUse = yes(SectionImportUse),
+            add_section_import_and_or_use_context(ModuleName, SectionImportUse,
+                !Modules)
+        )
+    ).
+
+:- pred add_fim_module_with_context(fim_spec::in, term.context::in,
+    expectation_contexts_map::in, expectation_contexts_map::out) is det.
+
+add_fim_module_with_context(FIMSpec, Context, !Modules) :-
+    FIMSpec = fim_spec(_Lang, ModuleName),
+    add_module_name_and_context(Context, ModuleName, !Modules).
 
 :- pred add_module_name_and_context(term.context::in, module_name::in,
     expectation_contexts_map::in, expectation_contexts_map::out) is det.
@@ -213,18 +272,7 @@ add_module_name_and_context(Context, ModuleName, !Modules) :-
         map.det_insert(ModuleName, [Context], !Modules)
     ).
 
-:- pred add_module_name_with_contexts(
-    pair(module_name, one_or_more(term.context))::in,
-    expectation_contexts_map::in, expectation_contexts_map::out) is det.
-
-add_module_name_with_contexts(ModuleName - NewContexts, !Modules) :-
-    ( if map.search(!.Modules, ModuleName, OldContexts) then
-        NewOldContexts = one_or_more_to_list(NewContexts) ++ OldContexts,
-        map.det_update(ModuleName, NewOldContexts, !Modules)
-    else
-        NewOldContexts = one_or_more_to_list(NewContexts),
-        map.det_insert(ModuleName, NewOldContexts, !Modules)
-    ).
+%---------------------%
 
     % Look up a module in the dependency map.
     % If we don't know its dependencies, read the module and
