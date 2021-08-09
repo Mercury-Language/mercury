@@ -1,12 +1,12 @@
 event set queens
 
 event nodiag_fail(
-	test_failed:	string,
-	arg_b:		int,
-	arg_d:		int,
-	arg_list:	list(int)
+    test_failed:    string,
+    arg_b:          int,
+    arg_d:          int,
+    arg_list:       list(int)
 )
 
 event safe_test(
-	test_list:	listint
+    test_list:      listint
 )

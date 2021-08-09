@@ -1,6 +1,6 @@
 event set user_event_spec_2
 
 event event_with_zero_arity_defined_type(
-	arg:		foo
+    arg:        foo
 )
 

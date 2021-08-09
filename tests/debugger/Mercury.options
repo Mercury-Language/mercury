@@ -47,6 +47,7 @@ MCFLAGS-uci_index = --compare-specialization 2 --intermodule-optimization
 MCFLAGS-user_event = --event-set-file-name user_event_spec
 
 MCFLAGS-user_event_shallow = --event-set-file-name user_event_spec --trace shallow
+MCFLAGS-user_event_shallow_exported = --event-set-file-name user_event_spec_3 --trace shallow
 
 MCFLAGS-user_event_2 = --event-set-file-name user_event_spec_2
 
