@@ -582,7 +582,7 @@ throw_system_rng_error(Pred, Msg) :-
 
 #include \"mercury_memory.h\"          // For MR_GC_NEW.
 #include \"mercury_misc.h\"            // For MR_fatal_error.
-#include \"mercury_runtime_util.h\"    // For MR_sterror.
+#include \"mercury_runtime_util.h\"    // For MR_strerror.
 #include \"mercury_regs.h\"            // For MR_{save,restore}_transient_hp
 #include \"mercury_reg_workarounds.h\" // For MR_memcpy.
 #include \"mercury_std.h\"             // For MR_TRUE, MR_FALSE etc.
