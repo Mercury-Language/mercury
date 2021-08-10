@@ -462,6 +462,15 @@
 %-----------------------------------------------------------------------------%
 
 type_ctor_module(type_ctor(TypeSymName, _Arity)) = ModuleName :-
+    % If a type_ctor has an unqualified sym_name, return "builtin" as its
+    % module name, since
+    % 
+    % - after typechecking, all type_ctors will be module qualified, with
+    %   the only exceptions being the type_ctors of builtin types; and
+    %
+    % - before typechecking, no type_ctors will be module qualified beyond
+    %   whatever qualification may have been written down explicitly
+    %   by the programmer, which makes calling this function futile.
     sym_name_get_module_name_default(TypeSymName,
         unqualified("builtin"), ModuleName).
 
@@ -472,6 +481,7 @@ type_ctor_arity(type_ctor(_TypeSymName, Arity)) = Arity.
 
 type_ctor_module_name_arity(type_ctor(TypeSymName, Arity), ModuleName, Name,
         Arity) :-
+    % See the comment in type_ctor_module.
     sym_name_get_module_name_default_name(TypeSymName,
         unqualified("builtin"), ModuleName, Name).
 
