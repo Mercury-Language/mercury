@@ -66,6 +66,12 @@
 %   equivalences" field of its pred_info. And likewide for other entities
 %   that contain types, insts and/or modes that can be expanded.
 %
+%   This approach would record this information on a per item basis
+%   because we want to avoid false positives. If module A imports module B,
+%   and module B contains a predicate p that refers to an equivalence type 
+%   in module C, this fact should make module C appear used in module A
+%   if and only if module A actually *uses* predicate p.
+%
 % - We could add to every alternative in the mer_type, mer_inst and mer_mode
 %   types a new field that records the set of modules that defined the
 %   equivalence types, insts or modes in its construction. I mean that if
@@ -74,6 +80,12 @@
 %   with map(pred_id, pred_info), equiv_type.m would include the pred_table
 %   module in this set. Every compiler pass *but* unused imports would
 %   of course ignore this extra argument.
+%
+%   A complication here is that unifications of mer_types, mer_insts and
+%   mer_modes would have to be done using code that ignores the new fields.
+%   Likewise, we wouldn't be able to use values of those types as keys
+%   in maps without canonicalizing this field, probably by setting it to the
+%   empty set.
 %
 % - We could simply NOT run equiv_type.m on the augmented compilation unit,
 %   and instead expand type equivalences during type checking, and inst and
