@@ -487,9 +487,9 @@ Changes to the Mercury compiler
   keep `opt1` enabled even if `opt1` is not normally enabled at optimization
   level `N`.
 
-* Due to a bug fix, the --warn-unused-imports is now stricter in warning
-  about modules that are imported in the interface section but are not used
-  in the interface section.
+* Due to a bug fix, the `--warn-unused-imports` option is now stricter in
+  warning about modules that are imported in the interface section but are
+  not used in the interface section.
 
 Portability improvements
 ------------------------
