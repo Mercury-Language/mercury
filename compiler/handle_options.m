@@ -3040,9 +3040,6 @@ display_compiler_version(Stream, !IO) :-
 usage_errors(ErrorStream, Globals, Specs, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     io.format(ErrorStream, "%s:\n", [s(ProgName)], !IO),
-    % If _NumErrors > 0, this will set the exit status to 1.
-    % It will also set the exit status to 1 if  _NumWarnings > 0
-    % and --halt-at-warn was specified.
     write_error_specs_ignore(ErrorStream, Globals, Specs, !IO).
 
 :- mutable(already_printed_usage, bool, no, ground,
