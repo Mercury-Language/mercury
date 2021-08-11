@@ -198,26 +198,26 @@
 :- pred rebuild_module_and_imports_for_dep_file(
     module_and_imports::in, module_and_imports::out) is det.
 
-    % make_module_and_imports(SourceFileName, SourceFileModuleName,
-    %  ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap,
-    %   ModuleAndImports):
+    % init_module_and_imports(SourceFileName, SourceFileModuleName,
+    %     ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap, Specs, Errors,
+    %     ModuleAndImports):
     %
-    % Construct a module_and_imports structure another way.
-    % While the code that gets invoked when we make dependencies
-    % calls init_module_and_imports, the code that gets invoked
-    % when we generate interface files or target code uses this
-    % predicate. This difference is (or at least should be) unnecessary;
-    % we should build module_and_imports structures the same way
-    % for both tasks.
+    % Initialize a module_and_imports structure.
     %
-    % XXX ITEM_LIST This predicate is used by code in grab_modules.m
-    % to create a module_and_imports structure in a partially filled in state.
-    % The code in grab_modules.m then proceeds to add more info to the new
+    % We do this just after we have read in a parse_tree_module_src.
+    % Later code, mostly in grab_modules.m but in some other modules as well,
+    % then calls the module_and_imports_{add,set}_* predicates above
+    % to record more information (mostly from read-in interface files)
+    % to the module_and_imports structure. When all such modifications
+    % are done, the module_and_imports_get_aug_comp_unit predicate
+    % will extract the augmented compilation unit from the updated
     % module_and_imports structure.
     %
-:- pred make_module_and_imports(file_name::in, module_name::in,
+:- pred init_module_and_imports(file_name::in, module_name::in,
     parse_tree_module_src::in, maybe_top_module::in,
-    maybe(module_timestamp_map)::in, module_and_imports::out) is det.
+    maybe(module_timestamp_map)::in,
+    list(error_spec)::in, read_module_errors::in,
+    module_and_imports::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -572,10 +572,11 @@ rebuild_module_and_imports_for_dep_file(ModuleAndImports0, ModuleAndImports) :-
         SourceFileModuleName),
     module_and_imports_get_maybe_top_module(ModuleAndImports0,
         MaybeTopModule),
+    MaybeTimestampMap = maybe.no,
     set.init(ReadModuleErrors0),
     init_module_and_imports(SourceFileName, SourceFileModuleName,
-        MaybeTopModule, Specs, ReadModuleErrors0, ParseTreeModuleSrc,
-        ModuleAndImports).
+        ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap,
+        Specs, ReadModuleErrors0, ModuleAndImports).
 
 %---------------------------------------------------------------------------%
 
@@ -593,61 +594,14 @@ maybe_nested_init_module_and_imports(FileName, SourceFileModuleName,
     else
         MaybeTopModule = not_top_module
     ),
+    MaybeTimestampMap = maybe.no,
     init_module_and_imports(FileName, SourceFileModuleName,
-        MaybeTopModule, Specs, Errors, ParseTreeModuleSrc, ModuleAndImports).
+        ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap, Specs, Errors,
+        ModuleAndImports).
 
-    % NOTE There are two predicates that build an initial module_and_imports
-    % structure. One is this predicate, init_module_and_imports, which is
-    % called by compiler invocations that want to find out the dependencies
-    % between modules. The other is make_module_and_imports, which is
-    % called by compiler invocations that want to generate target language
-    % code.
-    %
-    % These two predicates fill in the module_and_imports structure
-    % differently. Some fields, such as HasMain, are not needed during
-    % code generation, and thus are not filled in meaningfully
-    % by make_module_and_imports; some, such as SrcItemBlocks, are needed
-    % *only* during code generation, and are thus not filled in
-    % meaningfully by init_module_and_imports. This should be OK,
-    % though there should be a mechanism to catch accesses to
-    % not-meaningfully-filled-in fields.
-    %
-    % XXX However, the two predicates used to use different algorithms
-    % to fill in some of the remaining fields as well. These differences
-    % are almost certainly bugs, caused by the opacity of this code.
-    % We want to move towards filling in these fields using the *same* code
-    % in both use cases.
-    %
-    % Unless there is a specific reason against it, the code we want to base
-    % the common code on is the code used by (the callers of)
-    % make_module_and_imports. This is because the code used by the
-    % make_module_and_imports approach is more likely to be correct.
-    % The reason for that is that errors during code generation are
-    % much more likely to be noticed than errors in the computation
-    % of dependencies (because even if mmc does not *force* e.g.
-    % an interface file to be up to date, that interface file may *happen*
-    % be up-to-date anyway).
-
-    % init_module_and_imports(Globals, FileName, SourceFileModuleName,
-    %   MaybeTopModule, Specs, Errors, ParseTreeModuleSrc, ModuleAndImports):
-    %
-    % Initialize a module_and_imports structure.
-    %
-    % We do this just after we have read in a raw compulation unit.
-    % Later code, mostly in modules.m but in some other modules as well,
-    % then calls the module_and_imports_{add,set}_* predicates above
-    % to record more information (mostly from read-in interface files)
-    % to the module_and_imports structure. When all such modifications
-    % are done, the module_and_imports_get_aug_comp_unit predicate
-    % will extract the augmented compilation unit from the updated
-    % module_and_imports structure.
-    %
-:- pred init_module_and_imports(file_name::in, module_name::in,
-    maybe_top_module::in, list(error_spec)::in, read_module_errors::in,
-    parse_tree_module_src::in, module_and_imports::out) is det.
-
-init_module_and_imports(SourceFileName, SourceFileModuleName, MaybeTopModule,
-        Specs, Errors, ParseTreeModuleSrc, ModuleAndImports) :-
+init_module_and_imports(SourceFileName, SourceFileModuleName,
+        ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap, Specs, Errors,
+        ModuleAndImports) :-
     map.init(VersionNumbers),
     map.init(AncestorIntSpecs),
     map.init(DirectIntSpecs),
@@ -656,7 +610,6 @@ init_module_and_imports(SourceFileName, SourceFileModuleName, MaybeTopModule,
     map.init(TransOpts),
     map.init(IntForOptSpecs),
     map.init(TypeRepnSpecs),
-    MaybeTimestampMap = no,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
@@ -665,30 +618,6 @@ init_module_and_imports(SourceFileName, SourceFileModuleName, MaybeTopModule,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         VersionNumbers, MaybeTimestampMap, Specs, Errors,
         GrabbedFileMap, mcm_init).
-
-%---------------------------------------------------------------------------%
-
-make_module_and_imports(SourceFileName, SourceFileModuleName,
-        ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap,
-        ModuleAndImports) :-
-    map.init(VersionNumbers),
-    map.init(AncestorSpecs),
-    map.init(DirectIntSpecs),
-    map.init(IndirectIntSpecs),
-    map.init(PlainOpts),
-    map.init(TransOpts),
-    map.init(IntForOptSpecs),
-    map.init(TypeRepnSpecs),
-    Specs = [],
-    set.init(Errors),
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
-    ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
-        SourceFileModuleName, MaybeTopModule,
-        ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
-        PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
-        VersionNumbers, MaybeTimestampMap, Specs, Errors,
-        GrabbedFileMap, mcm_make).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

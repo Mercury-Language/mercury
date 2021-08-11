@@ -187,9 +187,11 @@ grab_qual_imported_modules_augment(Globals, SourceFileName,
             MaybeTimestampMap = no
         ),
 
-        make_module_and_imports(SourceFileName, SourceFileModuleName,
+        Specs = [],
+        set.init(Errors),
+        init_module_and_imports(SourceFileName, SourceFileModuleName,
             ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap,
-            !:ModuleAndImports),
+            Specs, Errors, !:ModuleAndImports),
         !:Specs = [],
 
         SrcMap0 = !.HaveReadModuleMaps ^ hrmm_module_src,
@@ -351,9 +353,11 @@ grab_unqual_imported_modules_make_int(Globals, SourceFileName,
         ),
         MaybeTimestampMap = no,
 
-        make_module_and_imports(SourceFileName, SourceFileModuleName,
+        Specs = [],
+        set.init(Errors),
+        init_module_and_imports(SourceFileName, SourceFileModuleName,
             ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap,
-            !:ModuleAndImports),
+            Specs, Errors, !:ModuleAndImports),
 
         ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
         SrcMap0 = !.HaveReadModuleMaps ^ hrmm_module_src,
