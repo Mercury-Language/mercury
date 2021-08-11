@@ -22,8 +22,8 @@
 :- import_module int.
 :- import_module list.
 :- import_module random.
-:- import_module require.
-:- import_module std_util.
+:- import_module random.sfc32.
+:- import_module uint32.
 
 :- pragma require_feature_set([memo]).
 
@@ -31,21 +31,21 @@
     --->    record(T1, T1, T2).
 
 main(!IO) :-
-    random.init(0, RS0),
-    random.permutation(range(0, 1023), Perm, RS0, RS1),
-    choose_signs_and_enter(Perm, {}, Solns1, RS1, RS2),
+    sfc32.init(RNG, RS0),
+    random.shuffle_list(RNG, range(0, 1023), Perm, RS0, RS1),
+    choose_signs_and_enter(RNG, Perm, {}, Solns1, RS1, RS2),
     ( if test_tables(Solns1, yes) then
         io.write_string("First test successful.\n", !IO)
     else
         io.write_string("First test unsuccessful.\n", !IO)
     ),
-    choose_signs_and_enter(Perm, {'a', [1, 2]}, Solns2, RS2, RS3),
+    choose_signs_and_enter(RNG, Perm, {'a', [1, 2]}, Solns2, RS2, RS3),
     ( if test_tables(Solns2, yes) then
         io.write_string("Second test successful.\n", !IO)
     else
         io.write_string("Second test unsuccessful.\n", !IO)
     ),
-    choose_signs_and_enter(Perm, {{'a', 'b'}, 3, 4}, Solns3, RS3, _),
+    choose_signs_and_enter(RNG, Perm, {{'a', 'b'}, 3, 4}, Solns3, RS3, _),
     ( if test_tables(Solns3, yes) then
         io.write_string("Third test successful.\n", !IO)
     else
@@ -62,19 +62,20 @@ range(Min, Max) =
         [Min | range(Min + 1, Max)]
     ).
 
-:- pred choose_signs_and_enter(list(int)::in, T::in, list(record(int, T))::out,
-    random.supply::mdi, random.supply::muo) is det.
+:- pred choose_signs_and_enter(RNG::in, list(int)::in, T::in,
+    list(record(int, T))::out,
+    State::di, State::uo) is det <= urandom(RNG, State).
 
-choose_signs_and_enter([], _, [], RS, RS).
-choose_signs_and_enter([N | Ns], A, [record(F, S, A) | ISs], RS0, RS) :-
-    random.random(Random, RS0, RS1),
-    ( if Random mod 2 = 0 then
+choose_signs_and_enter(_, [], _, [], !RS).
+choose_signs_and_enter(RNG, [N | Ns], A, [record(F, S, A) | ISs], !RS) :-
+    random.generate_uint32(RNG, Random, !RS),
+    ( if Random mod 2u32 = 0u32 then
         F = N
     else
         F = 0 - N
     ),
     sum(F, A, S),
-    choose_signs_and_enter(Ns, A, ISs, RS1, RS).
+    choose_signs_and_enter(RNG, Ns, A, ISs, !RS).
 
 :- pred test_tables(list(record(int, T))::in, bool::out) is det.
 

@@ -19,9 +19,9 @@
 :- import_module int.
 :- import_module list.
 :- import_module random.
-:- import_module require.
-:- import_module std_util.
+:- import_module random.sfc32.
 :- import_module string.
+:- import_module uint32.
 
 :- pragma require_feature_set([memo]).
 
@@ -29,9 +29,9 @@
     --->  record(T1, T2, T1, T2).
 
 main(!IO) :-
-    random.init(0, RS0),
-    random.permutation(range(0, 1023), Perm, RS0, RS1),
-    choose_signs_and_enter(Perm, "0", Solns1, RS1, _RS2),
+    sfc32.init(RNG, RS0),
+    random.shuffle_list(RNG, range(0, 1023), Perm, RS0, RS1),
+    choose_signs_and_enter(RNG, Perm, "0", Solns1, RS1, _RS2),
     ( if test_tables(Solns1, yes) then
         io.write_string("Test successful.\n", !IO)
     else
@@ -48,20 +48,20 @@ range(Min, Max) =
         [Min | range(Min + 1, Max)]
     ).
 
-:- pred choose_signs_and_enter(list(int)::in, string::in,
+:- pred choose_signs_and_enter(RNG::in, list(int)::in, string::in,
     list(record(int, string))::out,
-    random.supply::mdi, random.supply::muo) is det.
+    State::di, State::uo) is det <= urandom(RNG, State).
 
-choose_signs_and_enter([], _, [], RS, RS).
-choose_signs_and_enter([N | Ns], A, [record(F, A, S, B) | ISs], RS0, RS) :-
-    random.random(Random, RS0, RS1),
-    ( if Random mod 2 = 0 then
+choose_signs_and_enter(_, [], _, [], !RS).
+choose_signs_and_enter(RNG, [N | Ns], A, [record(F, A, S, B) | ISs], !RS) :-
+    random.generate_uint32(RNG, Random, !RS),
+    ( if Random mod 2u32 = 0u32 then
         F = N
     else
         F = 0 - N
     ),
     sum({F, A}, {S, B}),
-    choose_signs_and_enter(Ns, A, ISs, RS1, RS).
+    choose_signs_and_enter(RNG, Ns, A, ISs, !RS).
 
 :- pred test_tables(list(record(int, string))::in, bool::out) is det.
 
