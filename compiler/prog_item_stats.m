@@ -48,7 +48,7 @@
 
 gather_and_write_item_stats(Stream, AugCompUnit, !IO) :-
     gather_stats_in_aug_comp_unit(AugCompUnit, CompUnitStats),
-    ParseTreeModuleSrc = AugCompUnit ^ aci_module_src,
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     write_comp_unit_stats(Stream, ModuleName, CompUnitStats, !IO).
 

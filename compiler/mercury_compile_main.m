@@ -2231,7 +2231,7 @@ make_hlds(Globals, AugCompUnit, EventSet, MQInfo, TypeEqvMap, UsedModules,
         FoundSemanticError, !Specs, !IO) :-
     pre_hlds_maybe_write_out_errors(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% Converting parse tree to hlds...\n", !IO),
-    ParseTreeModuleSrc = AugCompUnit ^ aci_module_src,
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     module_name_to_file_name(Globals, $pred, do_create_dirs,
         ext_other(other_ext(".hlds_dump")), ModuleName, DumpBaseFileName, !IO),

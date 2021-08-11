@@ -986,13 +986,13 @@
 :- type raw_compilation_unit
     --->    raw_compilation_unit(
                 % The name of the module.
-                rci_module_name                 :: module_name,
+                rcu_module_name                 :: module_name,
 
                 % The context of the `:- module' declaration.
-                rci_module_name_context         :: prog_context,
+                rcu_module_name_context         :: prog_context,
 
                 % The items in the module.
-                rci_raw_item_blocks             :: list(raw_item_block)
+                rcu_raw_item_blocks             :: list(raw_item_block)
             ).
 
 % XXX CLEANUP We fill in the module_and_imports structure, from which
@@ -1005,41 +1005,41 @@
     --->    aug_compilation_unit(
                 % The module_version_numbers records in all the imported
                 % interface files.
-                aci_module_version_numbers_map  :: module_version_numbers_map,
+                acu_module_version_numbers_map  :: module_version_numbers_map,
 
                 % The source code of the module.
-                aci_module_src                  :: parse_tree_module_src,
+                acu_module_src                  :: parse_tree_module_src,
 
                 % The interface files of the ancestors of this module.
                 % (If we have e.g. module foo.bar among the modules
                 % we import int_for_opt, we also need to grab its ancestor foo,
                 % but such .int0 files also go into the int_for_opt field.
-                aci_ancestor_int_specs          :: map(module_name,
+                acu_ancestor_int_specs          :: map(module_name,
                                                     ancestor_int_spec),
 
                 % The interface files of directly imported modules.
-                aci_direct_int_specs            :: map(module_name,
+                acu_direct_int_specs            :: map(module_name,
                                                     direct_int_spec),
 
                 % The interface files of indirectly imported modules.
-                aci_indirect_int_specs          :: map(module_name,
+                acu_indirect_int_specs          :: map(module_name,
                                                     indirect_int_spec),
 
                 % The optimization files of directly or indirectly
                 % imported modules.
-                aci_plain_opts                  :: map(module_name,
+                acu_plain_opts                  :: map(module_name,
                                                     parse_tree_plain_opt),
-                aci_trans_opts                  :: map(module_name,
+                acu_trans_opts                  :: map(module_name,
                                                     parse_tree_trans_opt),
 
                 % The interface files needed to make sense
                 % of those optimization files.
-                aci_int_for_opt_specs           :: map(module_name,
+                acu_int_for_opt_specs           :: map(module_name,
                                                     int_for_opt_spec),
 
                 % Interface files that we read in only for the type
                 % representation information they contain
-                aci_type_repn_specs             :: map(module_name,
+                acu_type_repn_specs             :: map(module_name,
                                                     type_repn_spec)
             ).
 

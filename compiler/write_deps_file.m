@@ -269,14 +269,14 @@ generate_d_file(Globals, ModuleAndImports, IntermodDeps,
         AllDeps, MaybeTransOptDeps, !:MmakeFile, !IO) :-
     module_and_imports_d_file(ModuleAndImports,
         SourceFileName, SourceFileModuleName, MaybeTopModule, AugCompUnit),
-    ParseTreeModuleSrc = AugCompUnit ^ aci_module_src,
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameString = sym_name_to_string(ModuleName),
     Ancestors = get_ancestors_set(ModuleName),
     (
         IntermodDeps = no_intermod_deps,
         map.keys_as_set(ParseTreeModuleSrc ^ ptms_import_use_map, LongDeps0),
-        IndirectIntSpecs = AugCompUnit ^ aci_indirect_int_specs,
+        IndirectIntSpecs = AugCompUnit ^ acu_indirect_int_specs,
         map.keys_as_set(IndirectIntSpecs, IndirectDeps)
     ;
         IntermodDeps = intermod_deps(IntDeps, ImpDeps, IndirectDeps, _FIMDeps),

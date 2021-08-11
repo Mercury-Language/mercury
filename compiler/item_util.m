@@ -1492,7 +1492,7 @@ gen_pragma_desc_pieces(Pragma) = Pieces :-
 %---------------------------------------------------------------------------%
 
 raw_compilation_unit_project_name(RawCompUnit) =
-    RawCompUnit ^ rci_module_name.
+    RawCompUnit ^ rcu_module_name.
 
 parse_tree_module_src_project_name(ParseTreeModuleSrc) =
     ParseTreeModuleSrc ^ ptms_module_name.
