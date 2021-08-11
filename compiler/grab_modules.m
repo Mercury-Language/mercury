@@ -427,11 +427,16 @@ dump_modules(Stream, ModuleNames, !IO) :-
 grab_plain_opt_and_int_for_opt_files(Globals, FoundError,
         !ModuleAndImports, !HaveReadModuleMaps, !IO) :-
     % Read in the .opt files for imported and ancestor modules.
-    module_and_imports_get_module_name(!.ModuleAndImports, ModuleName),
+    module_and_imports_get_parse_tree_module_src(!.ModuleAndImports,
+        ParseTreeModuleSrc),
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     Ancestors0 = get_ancestors_set(ModuleName),
-    module_and_imports_get_int_deps_set(!.ModuleAndImports, IntDeps0),
-    module_and_imports_get_imp_deps_set(!.ModuleAndImports, ImpDeps0),
-    OptModules = set.union_list([Ancestors0, IntDeps0, ImpDeps0]),
+    DirectDeps0 = map.keys_as_set(ParseTreeModuleSrc ^ ptms_import_use_map),
+    % Some builtin modules can implicitly depend on themselves.
+    % For those, we don't want to read in their .opt file, since we have
+    % already in their .m file.
+    set.delete(ModuleName, DirectDeps0, DirectDeps),
+    OptModules = set.union(Ancestors0, DirectDeps),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     globals.lookup_bool_option(Globals, read_opt_files_transitively,
         ReadOptFilesTransitively),
@@ -828,9 +833,6 @@ process_module_int1(Globals, ReadWhy1, ModuleName, ParseTreeInt1,
         DirectIntSpec = direct_int1(ParseTreeInt1, ReadWhy1),
         module_and_imports_add_direct_int_spec(DirectIntSpec,
             !ModuleAndImports),
-        % XXX CLEANUP Why record a context if it is never meaningful?
-        module_and_imports_add_direct_dep(ModuleName, term.dummy_context_init,
-            !ModuleAndImports),
         module_and_imports_add_specs_errors(Specs, Errors, !ModuleAndImports)
     ;
         ReadWhy1 = rwi1_opt,
@@ -929,9 +931,6 @@ process_module_int3(Globals, ReadWhy3, ModuleName, ParseTreeInt3,
         ),
         DirectIntSpec = direct_int3(ParseTreeInt3, ReadWhy3),
         module_and_imports_add_direct_int_spec(DirectIntSpec,
-            !ModuleAndImports),
-        % XXX CLEANUP Why record a context if it is never meaningful?
-        module_and_imports_add_direct_dep(ModuleName, term.dummy_context_init,
             !ModuleAndImports)
     ;
         (

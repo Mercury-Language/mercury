@@ -268,19 +268,19 @@ write_dependency_file(Globals, ModuleAndImports, IntermodDeps, AllDeps,
 generate_d_file(Globals, ModuleAndImports, IntermodDeps,
         AllDeps, MaybeTransOptDeps, !:MmakeFile, !IO) :-
     module_and_imports_d_file(ModuleAndImports,
-        SourceFileName, SourceFileModuleName, MaybeTopModule,
-        IntDepsMap0, ImpDepsMap0, IndirectDeps0, AugCompUnit),
+        SourceFileName, SourceFileModuleName, MaybeTopModule, IndirectDeps0,
+        AugCompUnit),
     ParseTreeModuleSrc = AugCompUnit ^ aci_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameString = sym_name_to_string(ModuleName),
     Ancestors = get_ancestors_set(ModuleName),
     (
         IntermodDeps = no_intermod_deps,
-        one_or_more_map.keys_as_set(IntDepsMap0, IntDeps),
-        one_or_more_map.keys_as_set(ImpDepsMap0, ImpDeps),
+        map.keys_as_set(ParseTreeModuleSrc ^ ptms_import_use_map, LongDeps0),
         IndirectDeps = IndirectDeps0
     ;
-        IntermodDeps = intermod_deps(IntDeps, ImpDeps, IndirectDeps, _FIMDeps)
+        IntermodDeps = intermod_deps(IntDeps, ImpDeps, IndirectDeps, _FIMDeps),
+        set.union(IntDeps, ImpDeps, LongDeps0)
     ),
     PublicChildrenMap = ParseTreeModuleSrc ^ ptms_int_includes,
     one_or_more_map.keys_as_set(PublicChildrenMap, PublicChildren),
@@ -294,7 +294,6 @@ generate_d_file(Globals, ModuleAndImports, IntermodDeps,
 
     module_name_to_make_var_name(ModuleName, ModuleMakeVarName),
 
-    set.union(IntDeps, ImpDeps, LongDeps0),
     set.delete(ModuleName, LongDeps0, LongDeps),
     ShortDeps0 = IndirectDeps,
     set.difference(ShortDeps0, LongDeps, ShortDeps1),

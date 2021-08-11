@@ -28,7 +28,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.parse_error.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 
@@ -196,7 +195,7 @@
     list(error_spec)::in, list(error_spec)::out,
     list(parse_tree_module_src)::out, list(module_and_imports)::out) is det.
 
-:- pred rebuild_module_and_imports_for_dep_file(globals::in,
+:- pred rebuild_module_and_imports_for_dep_file(
     module_and_imports::in, module_and_imports::out) is det.
 
     % make_module_and_imports(SourceFileName, SourceFileModuleName,
@@ -233,10 +232,6 @@
     module_name::out) is det.
 :- pred module_and_imports_get_maybe_top_module(module_and_imports::in,
     maybe_top_module::out) is det.
-:- pred module_and_imports_get_int_deps_map(module_and_imports::in,
-    module_names_contexts::out) is det.
-:- pred module_and_imports_get_imp_deps_map(module_and_imports::in,
-    module_names_contexts::out) is det.
 :- pred module_and_imports_get_indirect_deps(module_and_imports::in,
     set(module_name)::out) is det.
 :- pred module_and_imports_get_parse_tree_module_src(module_and_imports::in,
@@ -262,10 +257,6 @@
 :- pred module_and_imports_get_grabbed_file_map(module_and_imports::in,
     grabbed_file_map::out) is det.
 
-:- pred module_and_imports_set_int_deps_map(module_names_contexts::in,
-    module_and_imports::in, module_and_imports::out) is det.
-:- pred module_and_imports_set_imp_deps_map(module_names_contexts::in,
-    module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_set_indirect_deps(set(module_name)::in,
     module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_set_maybe_timestamp_map(
@@ -290,14 +281,8 @@
     list(module_name)::out) is det.
 :- pred module_and_imports_get_children_set(module_and_imports::in,
     set(module_name)::out) is det.
-:- pred module_and_imports_get_int_deps(module_and_imports::in,
-    list(module_name)::out) is det.
-:- pred module_and_imports_get_int_deps_set(module_and_imports::in,
-    set(module_name)::out) is det.
-:- pred module_and_imports_get_imp_deps(module_and_imports::in,
-    list(module_name)::out) is det.
-:- pred module_and_imports_get_imp_deps_set(module_and_imports::in,
-    set(module_name)::out) is det.
+:- pred module_and_imports_get_int_imp_deps(module_and_imports::in,
+    set(module_name)::out, set(module_name)::out) is det.
 :- pred module_and_imports_get_fact_tables(module_and_imports::in,
     set(string)::out) is det.
 :- pred module_and_imports_get_fim_specs(module_and_imports::in,
@@ -313,8 +298,6 @@
 % Predicates for adding information to module_and_imports structures.
 %
 
-:- pred module_and_imports_add_direct_dep(module_name::in, prog_context::in,
-    module_and_imports::in, module_and_imports::out) is det.
 :- pred module_and_imports_add_indirect_dep(module_name::in,
     module_and_imports::in, module_and_imports::out) is det.
 
@@ -360,7 +343,6 @@
     %
 :- pred module_and_imports_d_file(module_and_imports::in,
     file_name::out, module_name::out, maybe_top_module::out,
-    module_names_contexts::out, module_names_contexts::out,
     set(module_name)::out, aug_compilation_unit::out) is det.
 
     % Return the results recorded in the module_and_imports structure.
@@ -427,17 +409,15 @@
 
 :- implementation.
 
-:- import_module mdbcomp.builtin_modules.
-:- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.item_util.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.split_parse_tree_src.
 :- import_module recompilation.
 
 :- import_module cord.
 :- import_module dir.
 :- import_module one_or_more.
-:- import_module one_or_more_map.
 :- import_module string.
 :- import_module term.
 
@@ -498,17 +478,6 @@
                 % The modules included in the same source file. This field
                 % is only set for the top-level module in each file.
                 mai_maybe_top_module    :: maybe_top_module,
-
-                % XXX CLEANUP The information in the next several fields
-                % should be available in mai_src.
-
-                % The set of modules it directly imports in the interface
-                % (imports via ancestors count as direct).
-                mai_int_deps_map        :: module_names_contexts,
-
-                % The set of modules it directly imports in the
-                % implementation.
-                mai_imp_deps_map        :: module_names_contexts,
 
                 % The set of modules it indirectly imports.
                 mai_indirect_deps       :: set(module_name),
@@ -596,12 +565,11 @@ parse_tree_src_to_module_and_imports_list(Globals, SourceFileName,
         list.map(parse_tree_module_src_project_name, ParseTreeModuleSrcs)),
     MAISpecs0 = [],
     list.map(
-        maybe_nested_init_module_and_imports(Globals, SourceFileName,
+        maybe_nested_init_module_and_imports(SourceFileName,
             TopModuleName, AllModuleNames, MAISpecs0, ReadModuleErrors),
         ParseTreeModuleSrcs, ModuleAndImportsList).
 
-rebuild_module_and_imports_for_dep_file(Globals,
-        ModuleAndImports0, ModuleAndImports) :-
+rebuild_module_and_imports_for_dep_file(ModuleAndImports0, ModuleAndImports) :-
     % Make sure all the required fields are filled in.
     % XXX ITEM_LIST Why build a NEW ModuleAndImports? Wouldn't modifying
     % ModuleAndImports0 be easier and clearer?
@@ -618,18 +586,18 @@ rebuild_module_and_imports_for_dep_file(Globals,
     module_and_imports_get_maybe_top_module(ModuleAndImports0,
         MaybeTopModule),
     set.init(ReadModuleErrors0),
-    init_module_and_imports(Globals, SourceFileName, SourceFileModuleName,
+    init_module_and_imports(SourceFileName, SourceFileModuleName,
         MaybeTopModule, Specs, ReadModuleErrors0, ParseTreeModuleSrc,
         ModuleAndImports).
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_nested_init_module_and_imports(globals::in, file_name::in,
+:- pred maybe_nested_init_module_and_imports(file_name::in,
     module_name::in, set(module_name)::in,
     list(error_spec)::in, read_module_errors::in,
     parse_tree_module_src::in, module_and_imports::out) is det.
 
-maybe_nested_init_module_and_imports(Globals, FileName, SourceFileModuleName,
+maybe_nested_init_module_and_imports(FileName, SourceFileModuleName,
         AllModuleNames, Specs, Errors, ParseTreeModuleSrc, ModuleAndImports) :-
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ( if ModuleName = SourceFileModuleName then
@@ -638,32 +606,8 @@ maybe_nested_init_module_and_imports(Globals, FileName, SourceFileModuleName,
     else
         MaybeTopModule = not_top_module
     ),
-    init_module_and_imports(Globals, FileName, SourceFileModuleName,
+    init_module_and_imports(FileName, SourceFileModuleName,
         MaybeTopModule, Specs, Errors, ParseTreeModuleSrc, ModuleAndImports).
-
-    % init_module_and_imports(Globals, FileName, SourceFileModuleName,
-    %   MaybeTopModule, Specs, Errors, ParseTreeModuleSrc, ModuleAndImports):
-    %
-    % Initialize a module_and_imports structure.
-    %
-    % We do this just after we have read in a raw compulation unit.
-    % Later code, mostly in modules.m but in some other modules as well,
-    % then calls the module_and_imports_{add,set}_* predicates above
-    % to record more information (mostly from read-in interface files)
-    % to the module_and_imports structure. When all such modifications
-    % are done, the module_and_imports_get_aug_comp_unit predicate
-    % will extract the augmented compilation unit from the updated
-    % module_and_imports structure.
-    %
-:- pred init_module_and_imports(globals::in, file_name::in, module_name::in,
-    maybe_top_module::in, list(error_spec)::in, read_module_errors::in,
-    parse_tree_module_src::in, module_and_imports::out) is det.
-
-init_module_and_imports(Globals, FileName, SourceFileModuleName,
-        MaybeTopModule, Specs, Errors, ParseTreeModuleSrc, ModuleAndImports) :-
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    % We don't fill in the indirect dependencies yet.
-    set.init(IndirectDeps),
 
     % NOTE There are two predicates that build an initial module_and_imports
     % structure. One is this predicate, init_module_and_imports, which is
@@ -696,64 +640,29 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     % of dependencies (because even if mmc does not *force* e.g.
     % an interface file to be up to date, that interface file may *happen*
     % be up-to-date anyway).
+
+    % init_module_and_imports(Globals, FileName, SourceFileModuleName,
+    %   MaybeTopModule, Specs, Errors, ParseTreeModuleSrc, ModuleAndImports):
     %
-    % We now compute the values of most fields using the approach used
-    % by make_module_and_imports, XXX BUT we exempt the values of
-    % the LangSet, ForeignImports, and ContainsForeignExport fields
-    % from this. For them, we keep using only the old code in
-    % init_module_and_imports, because the new code, which uses
-    % the infrastructure used by grab_*modules_* in modules.m,
-    % the main callers of make_module_and_imports, fills them
-    % quite differently. These differences, which should be looked at
-    % one by one, include the following, and maybe others:
-    % for items involving foreign languages:
-    %   get_foreign_code_indicators_from_item_blocks gathers
-    %       two sets of languages
-    %   get_implicits_foreigns_fact_tables_acc gathers one set
-    % for some kinds of items involving foreign languages:
-    %   get_foreign_code_indicators_from_item_blocks cares about
-    %       the set of languages supported on the current backend
-    %   get_implicits_foreigns_fact_tables_acc does not care
-    % for foreign_import_module:
-    %   get_foreign_code_indicators_from_item_blocks does something
-    %   get_implicits_foreigns_fact_tables_acc does nothing
-    % for pragma/foreign_export_enum,
-    %   get_foreign_code_indicators_from_item_blocks records presence
-    %   get_implicits_foreigns_fact_tables_acc does not
+    % Initialize a module_and_imports structure.
+    %
+    % We do this just after we have read in a raw compulation unit.
+    % Later code, mostly in modules.m but in some other modules as well,
+    % then calls the module_and_imports_{add,set}_* predicates above
+    % to record more information (mostly from read-in interface files)
+    % to the module_and_imports structure. When all such modifications
+    % are done, the module_and_imports_get_aug_comp_unit predicate
+    % will extract the augmented compilation unit from the updated
+    % module_and_imports structure.
+    %
+:- pred init_module_and_imports(file_name::in, module_name::in,
+    maybe_top_module::in, list(error_spec)::in, read_module_errors::in,
+    parse_tree_module_src::in, module_and_imports::out) is det.
 
-    % XXX START OF THE REMAINS OF THE OLD CODE
-    % Figure out whether the items contain foreign code.
-    convert_parse_tree_module_src_to_raw_comp_unit(ParseTreeModuleSrc,
-        RawCompUnit),
-    RawCompUnit = raw_compilation_unit(_, _, RawItemBlocks),
-    get_raw_components(RawItemBlocks, _IntIncls, _ImpIncls,
-        IntAvails, ImpAvails, _IntFIMs, _ImpFIMs, IntItems, ImpItems),
-    get_implicits_foreigns_fact_tables(IntItems, ImpItems,
-        IntImplicitImportNeeds, IntImpImplicitImportNeeds, _Contents),
-
-    get_imports_uses_maps(IntAvails, IntImportsMap0, IntUsesMap0),
-    get_imports_uses_maps(ImpAvails, ImpImportsMap, ImpUsesMap0),
-
-    compute_implicit_avail_needs(Globals, IntImplicitImportNeeds,
-        ImplicitIntUses),
-    compute_implicit_avail_needs(Globals, IntImpImplicitImportNeeds,
-        ImplicitIntImpUses),
-    set.difference(ImplicitIntImpUses, ImplicitIntUses,
-        ImplicitImpUses),
-
-    one_or_more_map.reverse_set(term.dummy_context_init,
-        mercury_public_builtin_module, IntImportsMap0, IntImportsMap),
-    set.fold(one_or_more_map.reverse_set(term.dummy_context_init),
-        ImplicitIntUses, IntUsesMap0, IntUsesMap),
-    set.fold(one_or_more_map.reverse_set(term.dummy_context_init),
-        ImplicitImpUses, ImpUsesMap0, ImpUsesMap),
-
-    one_or_more_map.merge(IntImportsMap, IntUsesMap, IntDepsMap),
-    one_or_more_map.merge(ImpImportsMap, ImpUsesMap, ImpDepsMap),
-    one_or_more_map.merge(IntDepsMap, ImpDepsMap, IntImpDepsMap),
-
-    % XXX ITEM_LIST These fields will be filled in later,
-    % per the documentation above.
+init_module_and_imports(SourceFileName, SourceFileModuleName, MaybeTopModule,
+        Specs, Errors, ParseTreeModuleSrc, ModuleAndImports) :-
+    set.init(IndirectDeps),
+    map.init(VersionNumbers),
     map.init(AncestorIntSpecs),
     map.init(DirectIntSpecs),
     map.init(IndirectIntSpecs),
@@ -761,13 +670,11 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     map.init(TransOpts),
     map.init(IntForOptSpecs),
     map.init(TypeRepnSpecs),
-
-    map.init(VersionNumbers),
     MaybeTimestampMap = no,
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
-    ModuleAndImports = module_and_imports(FileName, dir.this_directory,
-        SourceFileModuleName,
-        MaybeTopModule, IntDepsMap, IntImpDepsMap, IndirectDeps,
+    ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
+        SourceFileModuleName, MaybeTopModule, IndirectDeps,
         ParseTreeModuleSrc, AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         VersionNumbers, MaybeTimestampMap, Specs, Errors,
@@ -778,8 +685,6 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
 make_module_and_imports(SourceFileName, SourceFileModuleName,
         ParseTreeModuleSrc, MaybeTopModule, MaybeTimestampMap,
         ModuleAndImports) :-
-    map.init(IntDeps),
-    map.init(ImpDeps),
     set.init(IndirectDeps),
     map.init(VersionNumbers),
     map.init(AncestorSpecs),
@@ -794,7 +699,7 @@ make_module_and_imports(SourceFileName, SourceFileModuleName,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     ModuleAndImports = module_and_imports(SourceFileName, dir.this_directory,
-        SourceFileModuleName, MaybeTopModule, IntDeps, ImpDeps, IndirectDeps,
+        SourceFileModuleName, MaybeTopModule, IndirectDeps,
         ParseTreeModuleSrc, AncestorSpecs, DirectIntSpecs, IndirectIntSpecs,
         PlainOpts, TransOpts, IntForOptSpecs, TypeRepnSpecs,
         VersionNumbers, MaybeTimestampMap, Specs, Errors,
@@ -887,46 +792,6 @@ module_and_imports_get_maybe_top_module(ModuleAndImports, X) :-
             impure set_accesses(Accesses)
         ),
         X = ModuleAndImports ^ mai_maybe_top_module
-    ).
-module_and_imports_get_int_deps_map(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Method = ModuleAndImports ^ mai_construction_method,
-            (
-                Method = mcm_init,
-                Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_int_deps_map := accessed,
-                Accesses = Accesses0 ^ mfk_init := Fields
-            ;
-                Method = mcm_make,
-                Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_int_deps_map := accessed,
-                Accesses = Accesses0 ^ mfk_make := Fields
-            ),
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_int_deps_map
-    ).
-module_and_imports_get_imp_deps_map(ModuleAndImports, X) :-
-    promise_pure (
-        trace [compile_time(flag("mai-stats"))] (
-            semipure get_accesses(Accesses0),
-            Method = ModuleAndImports ^ mai_construction_method,
-            (
-                Method = mcm_init,
-                Fields0 = Accesses0 ^ mfk_init,
-                Fields = Fields0 ^ mf_imp_deps_map := accessed,
-                Accesses = Accesses0 ^ mfk_init := Fields
-            ;
-                Method = mcm_make,
-                Fields0 = Accesses0 ^ mfk_make,
-                Fields = Fields0 ^ mf_imp_deps_map := accessed,
-                Accesses = Accesses0 ^ mfk_make := Fields
-            ),
-            impure set_accesses(Accesses)
-        ),
-        X = ModuleAndImports ^ mai_imp_deps_map
     ).
 module_and_imports_get_indirect_deps(ModuleAndImports, X) :-
     promise_pure (
@@ -1218,10 +1083,6 @@ module_and_imports_get_grabbed_file_map(ModuleAndImports, X) :-
 :- pred module_and_imports_set_specs(list(error_spec)::in,
     module_and_imports::in, module_and_imports::out) is det.
 
-module_and_imports_set_int_deps_map(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_int_deps_map := X.
-module_and_imports_set_imp_deps_map(X, !ModuleAndImports) :-
-    !ModuleAndImports ^ mai_imp_deps_map := X.
 module_and_imports_set_indirect_deps(X, !ModuleAndImports) :-
     !ModuleAndImports ^ mai_indirect_deps := X.
 module_and_imports_set_ancestor_int_specs(X, !ModuleAndImports) :-
@@ -1268,21 +1129,74 @@ module_and_imports_get_children_set(ModuleAndImports, Children) :-
     IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
     Children = map.keys_as_set(IncludeMap).
 
-module_and_imports_get_int_deps(ModuleAndImports, IntDeps) :-
-    module_and_imports_get_int_deps_map(ModuleAndImports, IntDepsMap),
-    IntDeps = one_or_more_map.keys(IntDepsMap).
+module_and_imports_get_int_imp_deps(ModuleAndImports, IntDeps, ImpDeps) :-
+    module_and_imports_get_parse_tree_module_src(ModuleAndImports,
+        ParseTreeModuleSrc),
+    ImportUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
+    map.foldl2(add_module_dep, ImportUseMap,
+        set.init, IntDeps, set.init, ImpDeps).
 
-module_and_imports_get_int_deps_set(ModuleAndImports, IntDeps) :-
-    module_and_imports_get_int_deps_map(ModuleAndImports, IntDepsMap),
-    IntDeps = one_or_more_map.keys_as_set(IntDepsMap).
+:- pred add_module_dep(module_name::in, maybe_implicit_import_and_or_use::in,
+    set(module_name)::in, set(module_name)::out,
+    set(module_name)::in, set(module_name)::out) is det.
 
-module_and_imports_get_imp_deps(ModuleAndImports, ImpDeps) :-
-    module_and_imports_get_imp_deps_map(ModuleAndImports, ImpDepsMap),
-    ImpDeps = one_or_more_map.keys(ImpDepsMap).
+add_module_dep(ModuleName, MaybeImplicit, !IntDeps, !ImpDeps) :-
+    (
+        MaybeImplicit = explicit_avail(SectionImportUse),
+        Section = section_import_and_or_use_int_imp(SectionImportUse)
+    ;
+        MaybeImplicit = implicit_avail(Implicit, MaybeExplicit),
+        (
+            ( Implicit = implicit_int_import
+            ; Implicit = implicit_int_use
+            ),
+            ImplicitSection = ms_interface
+        ;
+            Implicit = implicit_imp_use,
+            ImplicitSection = ms_implementation
+        ),
+        (
+            MaybeExplicit = no,
+            Section = ImplicitSection
+        ;
+            MaybeExplicit = yes(SectionImportUse),
+            ExplicitSection =
+                section_import_and_or_use_int_imp(SectionImportUse),
+            ( if
+                ( ImplicitSection = ms_interface
+                ; ExplicitSection = ms_interface
+                )
+            then
+                Section = ms_interface
+            else
+                Section = ms_implementation
+            )
+        )
+    ),
+    (
+        Section = ms_interface,
+        set.insert(ModuleName, !IntDeps)
+    ;
+        Section = ms_implementation,
+        set.insert(ModuleName, !ImpDeps)
+    ).
 
-module_and_imports_get_imp_deps_set(ModuleAndImports, ImpDeps) :-
-    module_and_imports_get_imp_deps_map(ModuleAndImports, ImpDepsMap),
-    ImpDeps = one_or_more_map.keys_as_set(ImpDepsMap).
+:- func section_import_and_or_use_int_imp(section_import_and_or_use)
+    = module_section.
+
+section_import_and_or_use_int_imp(SectionImportUse) = Section :-
+    (
+        ( SectionImportUse = int_import(_)
+        ; SectionImportUse = int_use(_)
+        ; SectionImportUse = int_use_imp_import(_, _)
+        ),
+        Section = ms_interface
+    ;
+        ( SectionImportUse = imp_import(_)
+        ; SectionImportUse = imp_use(_)
+        ),
+        Section = ms_implementation
+    ).
 
 module_and_imports_get_fact_tables(ModuleAndImports, FactTables) :-
     module_and_imports_get_parse_tree_module_src(ModuleAndImports,
@@ -1308,11 +1222,6 @@ module_and_imports_do_we_need_timestamps(ModuleAndImports,
     ).
 
 %---------------------------------------------------------------------------%
-
-module_and_imports_add_direct_dep(ModuleName, Context, !ModuleAndImports) :-
-    module_and_imports_get_imp_deps_map(!.ModuleAndImports, ImpDepsMap0),
-    one_or_more_map.add(ModuleName, Context, ImpDepsMap0, ImpDepsMap),
-    module_and_imports_set_imp_deps_map(ImpDepsMap, !ModuleAndImports).
 
 module_and_imports_add_indirect_dep(ModuleName, !ModuleAndImports) :-
     module_and_imports_get_indirect_deps(!.ModuleAndImports, IndirectDeps0),
@@ -1422,8 +1331,8 @@ module_and_imports_add_specs_errors(NewSpecs, NewErrors, !ModuleAndImports) :-
 %---------------------------------------------------------------------------%
 
 module_and_imports_d_file(ModuleAndImports,
-        SourceFileName, SourceFileModuleName, MaybeTopModule,
-        IntDepsMap, ImpDepsMap, IndirectDeps, AugCompUnit) :-
+        SourceFileName, SourceFileModuleName, MaybeTopModule, IndirectDeps,
+        AugCompUnit) :-
     % XXX CLEANUP Several of the outputs are part of the parse_tree_module_src
     % in AugCompUnit.
     module_and_imports_get_version_numbers_map(ModuleAndImports,
@@ -1433,8 +1342,6 @@ module_and_imports_d_file(ModuleAndImports,
     module_and_imports_get_source_file_module_name(ModuleAndImports,
         SourceFileModuleName),
     module_and_imports_get_maybe_top_module(ModuleAndImports, MaybeTopModule),
-    module_and_imports_get_int_deps_map(ModuleAndImports, IntDepsMap),
-    module_and_imports_get_imp_deps_map(ModuleAndImports, ImpDepsMap),
     module_and_imports_get_indirect_deps(ModuleAndImports, IndirectDeps),
     module_and_imports_get_parse_tree_module_src(ModuleAndImports,
         ParseTreeModuleSrc),
@@ -1535,8 +1442,7 @@ module_dep_info_get_maybe_top_module(ModuleDepInfo, X) :-
 module_dep_info_get_int_deps(ModuleDepInfo, X) :-
     (
         ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
-        module_and_imports_get_int_deps(ModuleAndImports, Xs),
-        set.list_to_set(Xs, X)
+        module_and_imports_get_int_imp_deps(ModuleAndImports, X, _)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_int_deps
@@ -1545,8 +1451,7 @@ module_dep_info_get_int_deps(ModuleDepInfo, X) :-
 module_dep_info_get_imp_deps(ModuleDepInfo, X) :-
     (
         ModuleDepInfo = module_dep_info_imports(ModuleAndImports),
-        module_and_imports_get_imp_deps(ModuleAndImports, Xs),
-        set.list_to_set(Xs, X)
+        module_and_imports_get_int_imp_deps(ModuleAndImports, _, X)
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
         X = Summary ^ mds_imp_deps

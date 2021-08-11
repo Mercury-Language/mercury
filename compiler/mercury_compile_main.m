@@ -2195,9 +2195,16 @@ maybe_grab_plain_and_trans_opt_files(Globals, OpModeAugment, Verbose,
             % ancestor modules.
             module_and_imports_get_module_name(ModuleAndImports0, ModuleName),
             Ancestors = get_ancestors_set(ModuleName),
-            module_and_imports_get_int_deps_set(ModuleAndImports0, IntDeps),
-            module_and_imports_get_imp_deps_set(ModuleAndImports0, ImpDeps),
-            TransOptFiles = set.union_list([Ancestors, IntDeps, ImpDeps]),
+            module_and_imports_get_parse_tree_module_src(ModuleAndImports0,
+                ParseTreeModuleSrc),
+            Deps0 = map.keys_as_set(ParseTreeModuleSrc ^ ptms_import_use_map),
+            % Some builtin modules can implicitly depend on themselves.
+            % (For example, we consider every module to depend on both
+            % builtin.m and private_builtin.m, so they "depend" on themselves.)
+            % For those, we don't want to read in their .trans_opt file,
+            % since we already have their .m file.
+            set.delete(ModuleName, Deps0, Deps),
+            TransOptFiles = set.union_list([Ancestors, Deps]),
             set.to_sorted_list(TransOptFiles, TransOptFilesList),
             grab_trans_opt_files(Globals, TransOptFilesList, Error2,
                 ModuleAndImports1, ModuleAndImports, !HaveReadModuleMaps, !IO)

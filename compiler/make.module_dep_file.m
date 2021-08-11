@@ -307,7 +307,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
 %-----------------------------------------------------------------------------%
 
 write_module_dep_file(Globals, ModuleAndImports0, !IO) :-
-    rebuild_module_and_imports_for_dep_file(Globals,
+    rebuild_module_and_imports_for_dep_file(
         ModuleAndImports0, ModuleAndImports),
     do_write_module_dep_file(Globals, ModuleAndImports, !IO).
 
@@ -346,9 +346,11 @@ do_write_module_dep_file_to_stream(Stream, Globals, ModuleAndImports, !IO) :-
         mercury_bracketed_sym_name_to_string(SourceFileModuleName),
     module_and_imports_get_module_name(ModuleAndImports, ModuleName),
     Ancestors = set.to_sorted_list(get_ancestors_set(ModuleName)),
-    module_and_imports_get_int_deps(ModuleAndImports, IntDeps),
-    module_and_imports_get_imp_deps(ModuleAndImports, ImpDeps),
     module_and_imports_get_children(ModuleAndImports, Children),
+    module_and_imports_get_int_imp_deps(ModuleAndImports,
+        IntDepSet, ImpDepSet),
+    set.to_sorted_list(IntDepSet, IntDeps),
+    set.to_sorted_list(ImpDepSet, ImpDeps),
     module_and_imports_get_maybe_top_module(ModuleAndImports, MaybeTopModule),
     NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
     module_and_imports_get_fact_tables(ModuleAndImports, FactTableFilesSet),
