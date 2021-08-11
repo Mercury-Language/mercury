@@ -181,9 +181,9 @@
 build_with_module_options(Globals, ModuleName, ExtraOptions, Build, Succeeded,
         !Info, !IO) :-
     build_with_module_options_args_invoked(Globals, invoked_by_mmc_make,
-        ModuleName, !.Info ^ detected_grade_flags, !.Info ^ options_variables,
-        !.Info ^ option_args, ExtraOptions, Build, Succeeded,
-        !.Info, MaybeInfo, !IO),
+        ModuleName, !.Info ^ mki_detected_grade_flags,
+        !.Info ^ mki_options_variables, !.Info ^ mki_option_args,
+        ExtraOptions, Build, Succeeded, !.Info, MaybeInfo, !IO),
     (
         MaybeInfo = yes(!:Info)
     ;
@@ -316,7 +316,7 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
         TmpErrorInputRes = ok(TmpErrorInputStream),
         module_name_to_file_name(Globals, $pred, do_create_dirs,
             ext_other(other_ext(".err")), ModuleName, ErrorFileName, !IO),
-        ( if set.member(ModuleName, !.Info ^ error_file_modules) then
+        ( if set.member(ModuleName, !.Info ^ mki_error_file_modules) then
             io.open_append(ErrorFileName, ErrorFileRes, !IO)
         else
             io.open_output(ErrorFileName, ErrorFileRes, !IO)
@@ -332,8 +332,8 @@ unredirect_output(Globals, ModuleName, ErrorOutputStream, !Info, !IO) :-
                 !IO),
             io.close_output(ErrorFileOutputStream, !IO),
 
-            !Info ^ error_file_modules :=
-                set.insert(!.Info ^ error_file_modules, ModuleName)
+            !Info ^ mki_error_file_modules :=
+                set.insert(!.Info ^ mki_error_file_modules, ModuleName)
         ;
             ErrorFileRes = error(Error),
             with_locked_stdout(!.Info,
@@ -505,7 +505,7 @@ foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
     create_job_ctl(TotalTasks, MaybeJobCtl, !IO),
     (
         MaybeJobCtl = yes(JobCtl),
-        !Info ^ maybe_stdout_lock := yes(JobCtl),
+        !Info ^ mki_maybe_stdout_lock := yes(JobCtl),
         list.foldl2(
             start_worker_process(Globals, KeepGoing, MakeTarget, Targets,
                 JobCtl, !.Info),
@@ -516,7 +516,7 @@ foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
                 succeeded),
             worker_loop_signal_cleanup(JobCtl, Pids), Succeeded0, !Info, !IO),
         list.foldl2(reap_worker_process, Pids, Succeeded0, Succeeded, !IO),
-        !Info ^ maybe_stdout_lock := no,
+        !Info ^ mki_maybe_stdout_lock := no,
         destroy_job_ctl(JobCtl, !IO)
     ;
         MaybeJobCtl = no,
@@ -998,7 +998,7 @@ lock_stdout(_, !IO).
 unlock_stdout(_, !IO).
 
 with_locked_stdout(Info, Pred, !IO) :-
-    MaybeLock = Info ^ maybe_stdout_lock,
+    MaybeLock = Info ^ mki_maybe_stdout_lock,
     (
         MaybeLock = yes(Lock),
         lock_stdout(Lock, !IO),

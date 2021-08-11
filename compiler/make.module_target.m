@@ -144,10 +144,10 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
         (
             MaybeModuleDepInfo = no_module_dep_info,
             Succeeded = did_not_succeed,
-            DepStatus0 = !.Info ^ dependency_status,
+            DepStatus0 = !.Info ^ mki_dependency_status,
             version_hash_table.set(Dep, deps_status_error,
                 DepStatus0, DepStatus),
-            !Info ^ dependency_status := DepStatus
+            !Info ^ mki_dependency_status := DepStatus
         ;
             MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
             make_module_target_file_main_path(ExtraOptions, Globals,
@@ -205,7 +205,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
         ),
         module_names_to_index_set(ModulesToCheck, ModulesToCheckSet, !Info),
 
-        deps_set_foldl3_maybe_stop_at_error(!.Info ^ keep_going,
+        deps_set_foldl3_maybe_stop_at_error(!.Info ^ mki_keep_going,
             union_deps(target_dependencies(Globals, TargetType)),
             Globals, ModulesToCheckSet, DepsSucceeded,
             sparse_bitset.init, DepFiles0, !Info, !IO),
@@ -232,7 +232,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
                     set.to_sorted_list(PlainSet), !IO)
             ), !IO),
 
-        KeepGoing = !.Info ^ keep_going,
+        KeepGoing = !.Info ^ mki_keep_going,
         ( if
             DepsSucceeded = did_not_succeed,
             KeepGoing= do_not_keep_going
@@ -256,10 +256,10 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
                 TouchedTargetFiles, !Info)
         ;
             DepsResult = deps_out_of_date,
-            Targets0 = !.Info ^ command_line_targets,
+            Targets0 = !.Info ^ mki_command_line_targets,
             set.delete(ModuleName - module_target(TargetType),
                 Targets0, Targets),
-            !Info ^ command_line_targets := Targets,
+            !Info ^ mki_command_line_targets := Targets,
             build_target(Globals, CompilationTask, TargetFile,
                 ModuleDepInfo, TouchedTargetFiles, TouchedFiles,
                 ExtraOptions, Succeeded, !Info, !IO)
@@ -282,7 +282,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
 make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
         TouchedFiles, DepsResult, !Info, !IO) :-
     % Build the dependencies.
-    KeepGoing = !.Info ^ keep_going,
+    KeepGoing = !.Info ^ mki_keep_going,
     foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
         Globals, DepFilesToMake, MakeDepsSucceeded, !Info, !IO),
 
@@ -342,7 +342,7 @@ make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
 
 force_reanalysis_of_suboptimal_module(Globals, ModuleName, ForceReanalysis,
         Info, !IO) :-
-    ( if Info ^ reanalysis_passes > 0 then
+    ( if Info ^ mki_reanalysis_passes > 0 then
         do_read_module_overall_status(mmc, Globals, ModuleName, AnalysisStatus,
             !IO),
         (
@@ -763,7 +763,7 @@ record_made_target_2(Globals, Succeeded, TargetFile, TouchedTargetFiles,
         TouchedTargetFileNames, !Info, !IO),
 
     some [!Timestamps] (
-        !:Timestamps = !.Info ^ file_timestamps,
+        !:Timestamps = !.Info ^ mki_file_timestamps,
         list.foldl(delete_timestamp(Globals), TouchedTargetFileNames,
             !Timestamps),
         list.foldl(delete_timestamp(Globals), OtherTouchedFiles, !Timestamps),
@@ -780,7 +780,7 @@ record_made_target_2(Globals, Succeeded, TargetFile, TouchedTargetFiles,
             true
         ),
 
-        !Info ^ file_timestamps := !.Timestamps
+        !Info ^ mki_file_timestamps := !.Timestamps
     ).
 
 :- pred update_target_status(dependency_status::in, target_file::in,
@@ -788,9 +788,9 @@ record_made_target_2(Globals, Succeeded, TargetFile, TouchedTargetFiles,
 
 update_target_status(TargetStatus, TargetFile, !Info) :-
     Dep = dep_target(TargetFile),
-    DepStatus0 = !.Info ^ dependency_status,
+    DepStatus0 = !.Info ^ mki_dependency_status,
     version_hash_table.set(Dep, TargetStatus, DepStatus0, DepStatus),
-    !Info ^ dependency_status := DepStatus.
+    !Info ^ mki_dependency_status := DepStatus.
 
 :- pred delete_analysis_registry_timestamps(globals::in, string::in,
     maybe_error(timestamp)::in,

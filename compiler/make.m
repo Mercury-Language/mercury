@@ -116,31 +116,31 @@
                 % "The items field of each module_and_imports structure should
                 % be empty -- we are not trying to cache the items here",
                 % but I (zs) don't whether that is actually true.
-                module_dependencies     :: map(module_name,
+                mki_module_dependencies :: map(module_name,
                                             maybe_module_dep_info),
 
-                file_timestamps         :: file_timestamps,
+                mki_file_timestamps     :: file_timestamps,
 
                 % Cache chosen file names for a module name and extension.
-                search_file_name_cache  :: map(module_name_ext, file_name),
+                mki_search_file_name_cache :: map(module_name_ext, file_name),
 
                 % Any flags required to set detected library grades.
-                detected_grade_flags    :: list(string),
+                mki_detected_grade_flags :: list(string),
 
                 % The original set of options passed to mmc, not including
                 % the targets to be made.
-                option_args             :: list(string),
+                mki_option_args         :: list(string),
 
                 % The contents of the Mercury.options file.
-                options_variables       :: options_variables,
+                mki_options_variables   :: options_variables,
 
                 % The mapping between module_names and indices.
-                module_index_map        :: module_index_map,
+                mki_module_index_map    :: module_index_map,
 
                 % The mapping between dependency_files and indices.
-                dep_file_index_map      :: dependency_file_index_map,
+                mki_dep_file_index_map  :: dependency_file_index_map,
 
-                dependency_status       :: version_hash_table(dependency_file,
+                mki_dependency_status   :: version_hash_table(dependency_file,
                                             dependency_status),
 
                 % For each module, the set of modules for which the `.int'
@@ -148,49 +148,50 @@
                 % `.opt' files. The bool records whether there was an error
                 % in the dependencies.
                 % XXX Use a better representation for the sets.
-                cached_direct_imports   :: cached_direct_imports,
+                mki_cached_direct_imports :: cached_direct_imports,
 
-                cached_non_intermod_direct_imports
+                mki_cached_non_intermod_direct_imports
                                         :: cached_direct_imports,
 
                 % The boolean is `yes' if the result is complete.
                 % XXX Use a better representation for the sets.
-                cached_transitive_dependencies
+                mki_cached_transitive_dependencies
                                         :: cached_transitive_dependencies,
 
-                cached_foreign_imports  :: cached_foreign_imports,
+                mki_cached_foreign_imports :: cached_foreign_imports,
 
                 % Should the `.module_dep' files be rebuilt.
                 % Set to `no' for `mmc --make clean'.
-                rebuild_module_deps     :: rebuild_module_deps,
+                mki_rebuild_module_deps :: rebuild_module_deps,
 
-                keep_going              :: maybe_keep_going,
+                mki_keep_going          :: maybe_keep_going,
 
                 % Modules for which we have redirected output
                 % to a `.err' file during this invocation of mmc.
-                error_file_modules      :: set(module_name),
+                mki_error_file_modules  :: set(module_name),
 
                 % Used for reporting which module imported a nonexistent
                 % module.
-                importing_module        :: maybe(module_name),
+                mki_importing_module    :: maybe(module_name),
 
                 % Targets specified on the command line.
-                command_line_targets    :: set(pair(module_name, target_type)),
+                mki_command_line_targets
+                                        :: set(pair(module_name, target_type)),
 
-                % The remaining number of analysis passes that we will allow on
-                % `suboptimal' modules. It starts at the value of
+                % The remaining number of analysis passes that we will allow
+                % on `suboptimal' modules. It starts at the value of
                 % `--analysis-repeat' and decrements to zero as analysis passes
                 % on `suboptimal' modules are performed. `invalid' modules
                 % are not affected as they will always be reanalysed.
-                reanalysis_passes       :: int,
+                mki_reanalysis_passes   :: int,
 
                 % An inter-process lock to prevent multiple processes
                 % interleaving their output to standard output.
-                maybe_stdout_lock       :: maybe(stdout_lock),
+                mki_maybe_stdout_lock   :: maybe(stdout_lock),
 
                 % The parse trees of the files we have read so far,
                 % so we never have to read and parse each file more than once.
-                mi_read_module_maps     :: have_read_module_maps
+                mki_mi_read_module_maps :: have_read_module_maps
             ).
 
 :- type module_name_ext
@@ -672,14 +673,14 @@ make_track_flags_files(Globals, ModuleName, Succeeded, !Info, !IO) :-
 
 make_track_flags_files_2(Globals, ModuleName, Succeeded,
         !LastHash, !Info, !IO) :-
-    lookup_mmc_module_options(!.Info ^ options_variables, ModuleName,
+    lookup_mmc_module_options(!.Info ^ mki_options_variables, ModuleName,
         ModuleOptionArgs, LookupSpecs, !IO),
     write_error_specs_ignore(Globals, LookupSpecs, !IO),
     LookupErrors = contains_errors(Globals, LookupSpecs),
     (
         LookupErrors = no,
-        DetectedGradeFlags = !.Info ^ detected_grade_flags,
-        OptionArgs = !.Info ^ option_args,
+        DetectedGradeFlags = !.Info ^ mki_detected_grade_flags,
+        OptionArgs = !.Info ^ mki_option_args,
         AllOptionArgs = DetectedGradeFlags ++ ModuleOptionArgs ++ OptionArgs,
 
         % The set of options from one module to the next is usually identical,

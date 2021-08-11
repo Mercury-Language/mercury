@@ -322,7 +322,7 @@ get_target_timestamp(Globals, Search, TargetFile, MaybeTimestamp, !Info,
 get_target_timestamp_analysis_registry(Globals, Search, TargetFile, FileName,
         MaybeTimestamp, !Info, !IO) :-
     TargetFile = target_file(ModuleName, _TargetType),
-    FileTimestamps0 = !.Info ^ file_timestamps,
+    FileTimestamps0 = !.Info ^ mki_file_timestamps,
     ( if map.search(FileTimestamps0, FileName, MaybeTimestamp0) then
         MaybeTimestamp = MaybeTimestamp0
     else
@@ -338,7 +338,7 @@ get_target_timestamp_analysis_registry(Globals, Search, TargetFile, FileName,
             MaybeTimestamp = error("invalid module"),
             map.det_insert(FileName, MaybeTimestamp,
                 FileTimestamps0, FileTimestamps),
-            !Info ^ file_timestamps := FileTimestamps
+            !Info ^ mki_file_timestamps := FileTimestamps
         )
     ).
 
@@ -376,9 +376,9 @@ get_target_timestamp_2(Globals, Search, TargetFile, FileName, MaybeTimestamp,
             ModuleDir \= dir.this_directory
         then
             MaybeTimestamp = ok(oldest_timestamp),
-            FileTimestamps0 = !.Info ^ file_timestamps,
+            FileTimestamps0 = !.Info ^ mki_file_timestamps,
             map.set(FileName, MaybeTimestamp, FileTimestamps0, FileTimestamps),
-            !Info ^ file_timestamps := FileTimestamps
+            !Info ^ mki_file_timestamps := FileTimestamps
         else
             MaybeTimestamp = MaybeTimestamp0
         )
@@ -430,18 +430,18 @@ get_file_name(Globals, Search, TargetFile, FileName, !Info, !IO) :-
 module_name_to_search_file_name_cache(Globals, Ext, ModuleName, FileName,
         !Info, !IO) :-
     Key = module_name_ext(ModuleName, Ext),
-    Cache0 = !.Info ^ search_file_name_cache,
+    Cache0 = !.Info ^ mki_search_file_name_cache,
     ( if map.search(Cache0, Key, FileName0) then
         FileName = FileName0
     else
         module_name_to_search_file_name(Globals, $pred, Ext,
             ModuleName, FileName, !IO),
         map.det_insert(Key, FileName, Cache0, Cache),
-        !Info ^ search_file_name_cache := Cache
+        !Info ^ mki_search_file_name_cache := Cache
     ).
 
 get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
-    FileTimestamps0 = !.Info ^ file_timestamps,
+    FileTimestamps0 = !.Info ^ mki_file_timestamps,
     ( if map.search(FileTimestamps0, FileName, MaybeTimestamp0) then
         MaybeTimestamp = MaybeTimestamp0
     else
@@ -452,7 +452,7 @@ get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
             MaybeTimestamp = ok(Timestamp),
             map.det_insert(FileName, MaybeTimestamp,
                 FileTimestamps0, FileTimestamps),
-            !Info ^ file_timestamps := FileTimestamps
+            !Info ^ mki_file_timestamps := FileTimestamps
         ;
             SearchResult = error(_),
             MaybeTimestamp = error("file `" ++ FileName ++ "' not found")
@@ -516,9 +516,9 @@ make_remove_file(Globals, VerboseOption, FileName, !Info, !IO) :-
     verbose_make_msg_option(Globals, VerboseOption,
         report_remove_file(FileName), !IO),
     io.remove_file_recursively(FileName, _, !IO),
-    FileTimestamps0 = !.Info ^ file_timestamps,
+    FileTimestamps0 = !.Info ^ mki_file_timestamps,
     map.delete(FileName, FileTimestamps0, FileTimestamps),
-    !Info ^ file_timestamps := FileTimestamps.
+    !Info ^ mki_file_timestamps := FileTimestamps.
 
 :- pred report_remove_file(string::in, io::di, io::uo) is det.
 
@@ -985,9 +985,10 @@ file_error(Info, TargetFile, !IO) :-
 
 maybe_warn_up_to_date_target(Globals, Target, !Info, !IO) :-
     globals.lookup_bool_option(Globals, warn_up_to_date, Warn),
+    CmdLineTargets0 = !.Info ^ mki_command_line_targets,
     (
         Warn = yes,
-        ( if set.member(Target, !.Info ^ command_line_targets) then
+        ( if set.member(Target, CmdLineTargets0) then
             io.write_string("** Nothing to be done for `", !IO),
             make_write_module_or_linked_target(Globals, Target, !IO),
             io.write_string("'.\n", !IO)
@@ -997,9 +998,8 @@ maybe_warn_up_to_date_target(Globals, Target, !Info, !IO) :-
     ;
         Warn = no
     ),
-    CmdLineTargets0 = !.Info ^ command_line_targets,
     set.delete(Target, CmdLineTargets0, CmdLineTargets),
-    !Info ^ command_line_targets := CmdLineTargets.
+    !Info ^ mki_command_line_targets := CmdLineTargets.
 
 maybe_symlink_or_copy_linked_target_message(Globals, Target, !IO) :-
     verbose_make_msg(Globals,
