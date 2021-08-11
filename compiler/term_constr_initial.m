@@ -377,11 +377,11 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
         ( if
             Name  = pred_info_name(PredInfo),
             Arity = pred_info_orig_arity(PredInfo),
-            special_pred_name_arity(SpecPredId0, Name, _, Arity),
+            special_pred_name_arity(SpecialPredId0, Name, _, Arity),
             ModuleName = pred_info_module(PredInfo),
             any_mercury_builtin_module(ModuleName)
         then
-            SpecialPredId = SpecPredId0
+            SpecialPredId = SpecialPredId0
         else
             pred_info_get_origin(PredInfo, PredOrigin),
             PredOrigin = origin_special_pred(SpecialPredId, _)
@@ -426,59 +426,60 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
     module_info::in, vartypes::in, constr_arg_size_info::out,
     constr_termination_info::out, size_var_map::out, size_vars::out) is det.
 
-special_pred_id_to_termination(spec_pred_compare, HeadProgVars, ModuleInfo,
+special_pred_id_to_termination(SpecialPredId, HeadProgVars, ModuleInfo,
         VarTypes, ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars) :-
-    make_info(HeadProgVars, ModuleInfo, VarTypes, ArgSizeInfo, Termination,
-        SizeVarMap, HeadSizeVars).
-special_pred_id_to_termination(spec_pred_unify, HeadProgVars, ModuleInfo,
-        VarTypes, ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars) :-
-    make_size_var_map(HeadProgVars, _SizeVarset, SizeVarMap),
-    HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadProgVars),
-    Zeros = find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes),
-    NonZeroHeadSizeVars = list.filter(isnt(is_zero_size_var(Zeros)),
-        HeadSizeVars),
-
-    % Unify may have more than two input arguments if one of them is a
-    % type-info related arg, or some such thing. Since all these have
-    % zero size type, after removing them there are two possibilities.
-    % The list of non-zero size type head_vars is empty (if the
-    % arguments are zero sized) or it contains two elements.
-
     (
-        NonZeroHeadSizeVars = [],
-        Constrs  = []
+        SpecialPredId = spec_pred_compare,
+        make_spec_pred_constr_term_info(HeadProgVars, ModuleInfo, VarTypes,
+            ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars)
     ;
-        NonZeroHeadSizeVars = [VarA, VarB],
-        Constrs  = [make_vars_eq_constraint(VarA, VarB)]
-    ;
-        ( NonZeroHeadSizeVars = [_]
-        ; NonZeroHeadSizeVars = [_, _, _ | _]
+        SpecialPredId = spec_pred_unify,
+        make_size_var_map(HeadProgVars, _SizeVarset, SizeVarMap),
+        HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadProgVars),
+        Zeros = find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes),
+        NonZeroHeadSizeVars = list.filter(isnt(is_zero_size_var(Zeros)),
+            HeadSizeVars),
+        % Unify may have more than two input arguments if one of them is a
+        % type-info related arg, or some such thing. Since all these have
+        % zero size type, after removing them there are two possibilities.
+        % The list of non-zero size type head_vars is empty (if the
+        % arguments are zero sized) or it contains two elements.
+        (
+            NonZeroHeadSizeVars = [],
+            Constrs  = []
+        ;
+            NonZeroHeadSizeVars = [VarA, VarB],
+            Constrs  = [make_vars_eq_constraint(VarA, VarB)]
+        ;
+            ( NonZeroHeadSizeVars = [_]
+            ; NonZeroHeadSizeVars = [_, _, _ | _]
+            ),
+            unexpected($pred, "wrong number of args for unify")
         ),
-        unexpected($pred, "wrong number of args for unify")
-    ),
-    Polyhedron  = polyhedron.from_constraints(Constrs),
-    ArgSizeInfo = Polyhedron,
-    Termination = cannot_loop(term_reason_builtin).
-special_pred_id_to_termination(spec_pred_index, HeadProgVars, ModuleInfo,
-        VarTypes, ArgSize, Termination, SizeVarMap, HeadSizeVars) :-
-    NumToDrop = list.length(HeadProgVars) - 2,
-    ( if list.drop(NumToDrop, HeadProgVars, _ZeroSizeHeadVars) then
-        make_info(HeadProgVars, ModuleInfo, VarTypes, ArgSize,
-            Termination, SizeVarMap, HeadSizeVars)
-    else
-        unexpected($pred, "less than two arguments to builtin index")
+        Polyhedron  = polyhedron.from_constraints(Constrs),
+        ArgSizeInfo = Polyhedron,
+        Termination = cannot_loop(term_reason_builtin)
+    ;
+        SpecialPredId = spec_pred_index,
+        NumToDrop = list.length(HeadProgVars) - 2,
+        ( if list.drop(NumToDrop, HeadProgVars, _ZeroSizeHeadVars) then
+            make_spec_pred_constr_term_info(HeadProgVars, ModuleInfo, VarTypes,
+                ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars)
+        else
+            unexpected($pred, "less than two arguments to builtin index")
+        )
     ).
 
     % Sets the termination status and argument size information for
     % those special_preds (compare and index) where the arguments
     % are either zero sized or unconstrained in size.
     %
-:- pred make_info(list(prog_var)::in, module_info::in, vartypes::in,
-    constr_arg_size_info::out, constr_termination_info::out,
+:- pred make_spec_pred_constr_term_info(list(prog_var)::in, module_info::in,
+    vartypes::in, constr_arg_size_info::out, constr_termination_info::out,
     size_var_map::out, size_vars::out) is det.
 
-make_info(HeadProgVars, ModuleInfo, VarTypes, ArgSize, Termination, SizeVarMap,
-        HeadSizeVars) :-
+make_spec_pred_constr_term_info(HeadProgVars, ModuleInfo, VarTypes,
+        ArgSize, Termination, SizeVarMap, HeadSizeVars) :-
     make_size_var_map(HeadProgVars, _SizeVarset, SizeVarMap),
     Zeros = find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes),
     Constraints = create_nonneg_constraints(SizeVarMap, Zeros),
