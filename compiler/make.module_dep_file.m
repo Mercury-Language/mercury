@@ -865,11 +865,11 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
                     cleanup_int3_files(Globals, SubModuleNames),
                     Succeeded, !Info, !IO)
             else
-                Succeeded = no
+                Succeeded = did_not_succeed
             ),
 
             build_with_check_for_interrupt(VeryVerbose,
-                ( pred(yes::out, MakeInfo::in, MakeInfo::out,
+                ( pred(succeeded::out, MakeInfo::in, MakeInfo::out,
                         IO0::di, IO::uo) is det :-
                     list.foldl(do_write_module_dep_file(Globals),
                         ModuleAndImportsList, IO0, IO)
@@ -899,7 +899,8 @@ make_info_add_module_and_imports_as_dep(ModuleAndImports, !Info) :-
     !Info ^ module_dependencies := ModuleDeps.
 
 :- pred make_int3_files(io.output_stream::in,
-    list(parse_tree_module_src)::in, globals::in, list(string)::in, bool::out,
+    list(parse_tree_module_src)::in, globals::in, list(string)::in,
+    maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_int3_files(ErrorStream, ParseTreeModuleSrcs, Globals, _, Succeeded,
@@ -909,7 +910,7 @@ make_int3_files(ErrorStream, ParseTreeModuleSrcs, Globals, _, Succeeded,
         ParseTreeModuleSrcs, !IO),
     io.set_output_stream(OutputStream, _, !IO),
     io.get_exit_status(ExitStatus, !IO),
-    Succeeded = ( if ExitStatus = 0 then yes else no ).
+    Succeeded = ( if ExitStatus = 0 then succeeded else did_not_succeed ).
 
 :- pred cleanup_int3_files(globals::in, list(module_name)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.

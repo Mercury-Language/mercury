@@ -18,6 +18,7 @@
 :- interface.
 
 :- import_module libs.globals.
+:- import_module libs.process_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 
@@ -100,7 +101,7 @@
 :- pred output_to_file_stream(globals::in, module_name::in, string::in,
     pred(io.text_output_stream, list(string), io, io)::
         in(pred(in, out, di, uo) is det),
-    bool::out, io::di, io::uo) is det.
+    maybe_succeeded::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -380,13 +381,13 @@ output_to_file_stream(Globals, ModuleName, FileName, Action0,
             TryResult = succeeded(Errors),
             (
                 Errors = [],
-                Succeeded = yes
+                Succeeded = succeeded
             ;
                 Errors = [_ | _],
                 maybe_write_string(ProgressStream, Verbose, "\n", !IO),
                 get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
                 list.foldl(report_error(ErrorStream), Errors, !IO),
-                Succeeded = no
+                Succeeded = did_not_succeed
             )
         ;
             TryResult = exception(_),
@@ -399,7 +400,7 @@ output_to_file_stream(Globals, ModuleName, FileName, Action0,
         ErrorMessage =
             string.format("can't open file `%s' for output.", [s(FileName)]),
         report_error(ErrorStream, ErrorMessage, !IO),
-        Succeeded = no
+        Succeeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%

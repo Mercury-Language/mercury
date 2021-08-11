@@ -19,11 +19,22 @@
 
 :- import_module bool.
 :- import_module io.
+:- import_module list.
 :- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
-:- type build0(Info) == pred(bool, Info, Info, io, io).
+:- type maybe_succeeded
+    --->    did_not_succeed
+    ;       succeeded.
+
+:- func maybe_succeeded `and` maybe_succeeded = maybe_succeeded.
+
+:- func and_list(list(maybe_succeeded)) = maybe_succeeded.
+
+%-----------------------------------------------------------------------------%
+
+:- type build0(Info) == pred(maybe_succeeded, Info, Info, io, io).
 :- inst build0 == (pred(out, in, out, di, uo) is det).
 
 :- type post_signal_cleanup(Info) == pred(Info, Info, io, io).
@@ -43,7 +54,7 @@
     % afterwards.
     %
 :- pred build_with_check_for_interrupt(bool::in, build0(Info)::in(build0),
-    post_signal_cleanup(Info)::in(post_signal_cleanup), bool::out,
+    post_signal_cleanup(Info)::in(post_signal_cleanup), maybe_succeeded::out,
     Info::in, Info::out, io::di, io::uo) is det.
 
     % raise_signal(Signal).
@@ -60,7 +71,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type io_pred == pred(bool, io, io).
+:- type io_pred == pred(maybe_succeeded, io, io).
 :- inst io_pred == (pred(out, di, uo) is det).
 
 :- type pid == int.
@@ -82,18 +93,18 @@
     % `AltP' will be called instead in the current process.
     %
 :- pred call_in_forked_process_with_backup(io_pred::in(io_pred),
-    io_pred::in(io_pred), bool::out, io::di, io::uo) is det.
+    io_pred::in(io_pred), maybe_succeeded::out, io::di, io::uo) is det.
 
     % As above, but if fork() is not available, just call the
     % predicate in the current process.
     %
-:- pred call_in_forked_process(io_pred::in(io_pred), bool::out,
+:- pred call_in_forked_process(io_pred::in(io_pred), maybe_succeeded::out,
     io::di, io::uo) is det.
 
     % start_in_forked_process(P, Succeeded, !IO)
     %
-    % Start executing `P' in a child process.  Returns immediately, i.e. does
-    % not wait for `P' to finish.  This predicate should only be called if
+    % Start executing `P' in a child process. Returns immediately, i.e. does
+    % not wait for `P' to finish. This predicate should only be called if
     % fork() is available.
     %
     % The child process's exit code will be 0 if `P' returns a success value of
@@ -126,9 +137,20 @@
 
 :- implementation.
 
-:- import_module list.
 :- import_module require.   % Required by non-C grades.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
+
+SucceededA `and` SucceededB =
+    ( if SucceededA = succeeded, SucceededB = succeeded then
+        succeeded
+    else
+        did_not_succeed
+    ).
+
+and_list(Succeededs) = AllSucceeded :-
+    AllSucceeded = list.foldl(and, Succeededs, succeeded).
 
 %-----------------------------------------------------------------------------%
 
@@ -139,7 +161,7 @@ build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,
     restore_signal_handlers(MaybeSigIntHandler, !IO),
     check_for_signal(Signalled, Signal, !IO),
     ( if Signalled = 1 then
-        Succeeded = no,
+        Succeeded = did_not_succeed,
         (
             VeryVerbose = yes,
             % XXX This is the best that we can do for a signal
@@ -195,13 +217,11 @@ build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,
         MR_setup_signal(sig, (MR_Code *) handler, MR_FALSE, \
             ""mercury_compile: cannot install signal handler"");
 
-    /* Have we received a signal. */
+    // Have we received a signal.
 extern volatile sig_atomic_t MC_signalled;
 
-    /*
-    ** Which signal did we receive.
-    ** XXX This assumes a signal number will fit into a sig_atomic_t.
-    */
+    // Which signal did we receive.
+    // XXX This assumes a signal number will fit into a sig_atomic_t.
 extern volatile sig_atomic_t MC_signal_received;
 
 void MC_mercury_compile_signal_handler(int sig);
@@ -230,10 +250,8 @@ setup_signal_handlers(signal_action, !IO).
 "
     MC_signalled = MR_FALSE;
 
-    /*
-    ** mdb sets up a SIGINT handler, so we should restore
-    ** it after we're done.
-    */
+    // mdb sets up a SIGINT handler, so we should restore
+    // it after we're done.
     MR_get_signal_action(SIGINT, &SigintHandler,
         ""error getting SIGINT handler"");
     MC_SETUP_SIGNAL_HANDLER(SIGINT, MC_mercury_compile_signal_handler);
@@ -343,15 +361,13 @@ sigint = _ :-
     can_fork,
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-    /*
-    ** call_in_forked_process_2 is not `thread_safe' so will hold a mutex
-    ** that the child process will want.  At the same time the parent process
-    ** waits for the child to exit, so we have a deadlock.
-    **
-    ** Also, in pthreads, a forked process does not inherit the threads of
-    ** the original process so it is not at all clear whether we could use
-    ** fork() when running in a parallel grade.
-    */
+    // call_in_forked_process_2 is not `thread_safe' so will hold a mutex
+    // that the child process will want. At the same time the parent process
+    // waits for the child to exit, so we have a deadlock.
+    //
+    // Also, in pthreads, a forked process does not inherit the threads of
+    // the original process, so it is not at all clear whether we could use
+    // fork() when running in a parallel grade.
 #if (defined MC_CAN_FORK) && (!defined MR_THREAD_SAFE)
     SUCCESS_INDICATOR = MR_TRUE;
 #else
@@ -362,7 +378,7 @@ sigint = _ :-
 can_fork :-
     semidet_fail.
 
-call_in_forked_process_with_backup(P, AltP, Success, !IO) :-
+call_in_forked_process_with_backup(P, AltP, Succeeded, !IO) :-
     ( if can_fork then
         start_in_forked_process(P, MaybePid, !IO),
         (
@@ -371,24 +387,24 @@ call_in_forked_process_with_backup(P, AltP, Success, !IO) :-
             (
                 WaitRes = ok(Status),
                 ( if Status = exited(0) then
-                    Success = yes
+                    Succeeded = succeeded
                 else
-                    Success = no
+                    Succeeded = did_not_succeed
                 )
             ;
                 WaitRes = error(_Error),
-                Success = no
+                Succeeded = did_not_succeed
             )
         ;
             MaybePid = no,
-            Success = no
+            Succeeded = did_not_succeed
         )
     else
-        AltP(Success, !IO)
+        AltP(Succeeded, !IO)
     ).
 
-call_in_forked_process(P, Success, !IO) :-
-    call_in_forked_process_with_backup(P, P, Success, !IO).
+call_in_forked_process(P, Succeeded, !IO) :-
+    call_in_forked_process_with_backup(P, P, Succeeded, !IO).
 
 start_in_forked_process(P, MaybePid, !IO) :-
     start_in_forked_process_2(P, Pid, !IO),
@@ -410,19 +426,19 @@ start_in_forked_process(P, MaybePid, !IO) :-
 #ifdef MC_CAN_FORK
 
     Pid = fork();
-    if (Pid == -1) {                        /* error */
+    if (Pid == -1) {                        // error
         MR_perror(""error in fork()"");
-    } else if (Pid == 0) {                  /* child */
+    } else if (Pid == 0) {                  // child
         MR_Integer exit_status;
 
         MC_call_child_process_io_pred(Pred, &exit_status);
-        exit((int)exit_status);
-    } else {                                /* parent */
+        exit((int) exit_status);
+    } else {                                // parent
     }
 
-#else /* ! MC_CAN_FORK */
+#else   // ! MC_CAN_FORK
     Pid = 0;
-#endif /* ! MC_CAN_FORK */
+#endif  // MC_CAN_FORK
 ").
 
 start_in_forked_process_2(_, _, !IO) :-
@@ -439,19 +455,19 @@ start_in_forked_process_2(_, _, !IO) :-
 
 call_child_process_io_pred(P, Status, !IO) :-
     setup_child_signal_handlers(!IO),
-    P(Success, !IO),
+    P(Succeeded, !IO),
     (
-        Success = yes,
+        Succeeded = succeeded,
         Status = 0
     ;
-        Success = no,
+        Succeeded = did_not_succeed,
         Status = 1
     ).
 
     % do_wait(Pid, Error, WaitedPid, Status, !IO)
     %
     % Wait until Pid exits and return its status.
-    % If Pid is -1 then wait for any child process to exit.
+    % If Pid is -1, then wait for any child process to exit.
     %
 :- pred do_wait(pid::in, string::out, pid::out, int::out, io::di, io::uo)
     is det.
@@ -469,10 +485,8 @@ call_child_process_io_pred(P, Status, !IO) :-
         char        errbuf[MR_STRERROR_BUF_SIZE];
         const char  *errno_msg;
 
-        /*
-        ** Make sure the wait() is interrupted by the signals
-        ** which cause us to exit.
-        */
+        // Make sure the wait() is interrupted by the signals
+        // which cause us to exit.
         MR_signal_should_restart(SIGINT, MR_FALSE);
         MR_signal_should_restart(SIGTERM, MR_FALSE);
 #ifdef SIGHUP
@@ -497,13 +511,11 @@ call_child_process_io_pred(P, Status, !IO) :-
                     if (!MC_signalled) {
                         continue;
                     }
-                    /*
-                    ** A normally fatal signal has been received, so kill the
-                    ** child immediately.  Use SIGTERM, not MC_signal_received,
-                    ** because the child may be inside a call to system() which
-                    ** would cause SIGINT to be ignored on some systems (e.g.
-                    ** Linux).
-                    */
+                    // A normally fatal signal has been received, so kill the
+                    // child immediately. Use SIGTERM, not MC_signal_received,
+                    // because the child may be inside a call to system() which
+                    // would cause SIGINT to be ignored on some systems (e.g.
+                    // Linux).
                     if (Pid != -1) {
                         kill((pid_t)Pid, SIGTERM);
                     }
@@ -512,9 +524,7 @@ call_child_process_io_pred(P, Status, !IO) :-
             break;
         }
 
-        /*
-        ** Restore the system call signal behaviour.
-        */
+        // Restore the system call signal behaviour.
         MR_signal_should_restart(SIGINT, MR_TRUE);
         MR_signal_should_restart(SIGTERM, MR_TRUE);
 #ifdef SIGHUP
@@ -525,11 +535,11 @@ call_child_process_io_pred(P, Status, !IO) :-
 #endif
     }
 
-#else /* ! MC_CAN_FORK */
+#else   // ! MC_CAN_FORK
     Error = MR_make_string_const(""cannot wait() when fork() is unavailable"");
     MaybeWaitedPid = -1;
     Status = 1;
-#endif /* ! MC_CAN_FORK */
+#endif  // MC_CAN_FORK
 ").
 
 do_wait(_, _, _, _, _, _) :-

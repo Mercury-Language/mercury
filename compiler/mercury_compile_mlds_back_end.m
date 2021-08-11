@@ -21,12 +21,12 @@
 :- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.process_util.
 :- import_module ml_backend.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 
@@ -34,13 +34,13 @@
     list(error_spec)::out, dump_info::in, dump_info::out, io::di, io::uo)
     is det.
 
-:- pred mlds_to_high_level_c(globals::in, mlds::in, bool::out,
+:- pred mlds_to_high_level_c(globals::in, mlds::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-:- pred mlds_to_java(module_info::in, mlds::in, bool::out,
+:- pred mlds_to_java(module_info::in, mlds::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-:- pred mlds_to_csharp(module_info::in, mlds::in, bool::out,
+:- pred mlds_to_csharp(module_info::in, mlds::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -72,6 +72,7 @@
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
 
+:- import_module bool.
 :- import_module maybe.
 :- import_module pprint.
 :- import_module require.

@@ -22,6 +22,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.process_util.
 :- import_module make.dependencies.
 :- import_module parse_tree.
 :- import_module parse_tree.module_imports.
@@ -32,20 +33,21 @@
 
 %-----------------------------------------------------------------------------%
 
-    % make_module_target(Target, Success, !Info).
+    % make_module_target(Target, Succeeded, !Info).
     %
     % Make a target corresponding to a single module.
     %
-:- pred make_module_target(globals::in, dependency_file::in, bool::out,
+:- pred make_module_target(globals::in, dependency_file::in,
+    maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % make_module_target_extra_options(ExtraOpts, Target, Success, !Info)
+    % make_module_target_extra_options(ExtraOpts, Target, Succeeded, !Info)
     %
     % Make a target corresponding to a single module, with extra command line
     % options.
     %
 :- pred make_module_target_extra_options(list(string)::in, globals::in,
-    dependency_file::in, bool::out,
+    dependency_file::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % record_made_target(Globals, Target, Task, MakeSucceeded, !Info, !IO)
@@ -56,8 +58,8 @@
     % Exported for use by make.module_dep_file.write_module_dep_file.
     %
 :- pred record_made_target(globals::in, target_file::in,
-    compilation_task_type::in, bool::in, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    compilation_task_type::in, maybe_succeeded::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 :- type foreign_code_file
     --->    foreign_code_file(
@@ -85,7 +87,6 @@
 :- implementation.
 
 :- import_module analysis.
-:- import_module libs.process_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_foreign.
@@ -113,13 +114,13 @@ make_module_target_extra_options(ExtraOptions, Globals, Dep, Succeeded,
         dependency_status(Globals, Dep, Status, !Info, !IO),
         (
             Status = deps_status_error,
-            Succeeded = no
+            Succeeded = did_not_succeed
         ;
             ( Status = deps_status_not_considered
             ; Status = deps_status_being_built
             ; Status = deps_status_up_to_date
             ),
-            Succeeded = yes
+            Succeeded = succeeded
         )
     ;
         Dep = dep_target(TargetFile),
@@ -128,7 +129,7 @@ make_module_target_extra_options(ExtraOptions, Globals, Dep, Succeeded,
     ).
 
 :- pred make_module_target_file_extra_options(list(string)::in, globals::in,
-    target_file::in, bool::out,
+    target_file::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
@@ -142,7 +143,7 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
             !Info, !IO),
         (
             MaybeModuleDepInfo = no_module_dep_info,
-            Succeeded = no,
+            Succeeded = did_not_succeed,
             DepStatus0 = !.Info ^ dependency_status,
             version_hash_table.set(Dep, deps_status_error,
                 DepStatus0, DepStatus),
@@ -154,17 +155,17 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
         )
     ;
         Status = deps_status_up_to_date,
-        Succeeded = yes
+        Succeeded = succeeded
     ;
         Status = deps_status_being_built,
         unexpected($pred, "target being built, circular dependencies?")
     ;
         Status = deps_status_error,
-        Succeeded = no
+        Succeeded = did_not_succeed
     ).
 
 :- pred make_module_target_file_main_path(list(string)::in, globals::in,
-    target_file::in, module_dep_info::in, bool::out,
+    target_file::in, module_dep_info::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
@@ -206,7 +207,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
 
         deps_set_foldl3_maybe_stop_at_error(!.Info ^ keep_going,
             union_deps(target_dependencies(Globals, TargetType)),
-            Globals, ModulesToCheckSet, DepsSuccess,
+            Globals, ModulesToCheckSet, DepsSucceeded,
             sparse_bitset.init, DepFiles0, !Info, !IO),
         dependency_file_index_set_to_plain_set(!.Info, DepFiles0,
             DepFilesSet0),
@@ -231,26 +232,26 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
                     set.to_sorted_list(PlainSet), !IO)
             ), !IO),
 
-        globals.lookup_bool_option(Globals, keep_going, KeepGoing),
+        KeepGoing = !.Info ^ keep_going,
         ( if
-            DepsSuccess = no,
-            KeepGoing = no
+            DepsSucceeded = did_not_succeed,
+            KeepGoing= do_not_keep_going
         then
             DepsResult = deps_error
         else
             make_dependency_files(Globals, TargetFile, DepFilesToMake,
                 TouchedTargetFiles, TouchedFiles, DepsResult0, !Info, !IO),
             (
-                DepsSuccess = yes,
+                DepsSucceeded = succeeded,
                 DepsResult = DepsResult0
             ;
-                DepsSuccess = no,
+                DepsSucceeded = did_not_succeed,
                 DepsResult = deps_error
             )
         ),
         (
             DepsResult = deps_error,
-            Succeeded = no,
+            Succeeded = did_not_succeed,
             list.foldl(update_target_status(deps_status_error),
                 TouchedTargetFiles, !Info)
         ;
@@ -267,7 +268,7 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
             maybe_warn_up_to_date_target(Globals,
                 ModuleName - module_target(TargetType), !Info, !IO),
             debug_file_msg(Globals, TargetFile, "up to date", !IO),
-            Succeeded = yes,
+            Succeeded = succeeded,
             list.foldl(update_target_status(deps_status_up_to_date),
                 [TargetFile | TouchedTargetFiles], !Info)
         )
@@ -281,21 +282,19 @@ make_module_target_file_main_path(ExtraOptions, Globals, TargetFile,
 make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
         TouchedFiles, DepsResult, !Info, !IO) :-
     % Build the dependencies.
-
-    globals.lookup_bool_option(Globals, keep_going, KeepGoing),
+    KeepGoing = !.Info ^ keep_going,
     foldl2_maybe_stop_at_error(KeepGoing, make_module_target,
-        Globals, DepFilesToMake, MakeDepsSuccess, !Info, !IO),
+        Globals, DepFilesToMake, MakeDepsSucceeded, !Info, !IO),
 
     % Check that the target files exist.
-
     list.map_foldl2(get_target_timestamp(Globals, do_not_search),
         TouchedTargetFiles, TargetTimestamps, !Info, !IO),
     (
-        MakeDepsSuccess = no,
+        MakeDepsSucceeded = did_not_succeed,
         debug_file_msg(Globals, TargetFile, "error making dependencies", !IO),
         DepsResult = deps_error
     ;
-        MakeDepsSuccess = yes,
+        MakeDepsSucceeded = succeeded,
         ( if list.member(error(_), TargetTimestamps) then
             debug_file_msg(Globals, TargetFile, "target file does not exist",
                 !IO),
@@ -332,7 +331,7 @@ make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
                 get_file_name(Globals, do_not_search, TargetFile,
                     TargetFileName, !Info, !IO),
                 check_dependencies(Globals, TargetFileName,
-                    MaybeOldestTimestamp, MakeDepsSuccess, DepFilesToMake,
+                    MaybeOldestTimestamp, MakeDepsSucceeded, DepFilesToMake,
                     DepsResult, !Info, !IO)
             )
         )
@@ -363,7 +362,7 @@ force_reanalysis_of_suboptimal_module(Globals, ModuleName, ForceReanalysis,
 
 :- pred build_target(globals::in, compilation_task_type_and_options::in,
     target_file::in, module_dep_info::in, list(target_file)::in,
-    list(file_name)::in, list(string)::in, bool::out,
+    list(file_name)::in, list(string)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
@@ -384,19 +383,19 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
         (
             ArgFileNameResult = ok(ArgFileName),
             MaybeArgFileName = yes(ArgFileName),
-            ArgFileNameSuccess = ok : io.res
+            ArgFileNameRes = ok : io.res
         ;
             ArgFileNameResult = error(Error),
             MaybeArgFileName = no,
-            ArgFileNameSuccess = error(Error)
+            ArgFileNameRes = error(Error)
         )
     else
         MaybeArgFileName = no,
-        ArgFileNameSuccess = ok
+        ArgFileNameRes = ok
     ),
 
     (
-        ArgFileNameSuccess = ok,
+        ArgFileNameRes = ok,
         get_real_milliseconds(Time0, !IO),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         Cleanup = cleanup_files(Globals, MaybeArgFileName,
@@ -427,10 +426,10 @@ build_target(Globals, CompilationTask, TargetFile, ModuleDepInfo,
             ShowMakeTimes = no
         )
     ;
-        ArgFileNameSuccess = error(ArgFileError),
+        ArgFileNameRes = error(ArgFileError),
         io.format(stderr_stream, "Could not create temporary file: %s\n",
             [s(error_message(ArgFileError))], !IO),
-        Succeeded = no
+        Succeeded = did_not_succeed
     ).
 
 :- pred cleanup_files(globals::in, maybe(string)::in,
@@ -453,7 +452,7 @@ cleanup_files(Globals, MaybeArgFileName, TouchedTargetFiles, TouchedFiles,
 
 :- pred build_target_2(module_name::in, compilation_task_type::in,
     maybe(file_name)::in, module_dep_info::in, globals::in,
-    list(string)::in, io.text_output_stream::in, bool::out,
+    list(string)::in, io.text_output_stream::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
@@ -549,7 +548,7 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
 
 :- pred build_object_code(globals::in, module_name::in, compilation_target::in,
     pic::in, io.text_output_stream::in, io.text_output_stream::in,
-    module_dep_info::in, bool::out, io::di, io::uo) is det.
+    module_dep_info::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 build_object_code(Globals, ModuleName, Target, PIC,
         ProgressStream, ErrorStream, _ModuleDepInfo, Succeeded, !IO) :-
@@ -573,7 +572,7 @@ build_object_code(Globals, ModuleName, Target, PIC,
 
 :- pred compile_foreign_code_file(globals::in,
     io.text_output_stream::in, io.text_output_stream::in, pic::in,
-    module_dep_info::in, foreign_code_file::in, bool::out,
+    module_dep_info::in, foreign_code_file::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
 compile_foreign_code_file(Globals, ProgressStream, ErrorStream, PIC,
@@ -643,20 +642,20 @@ get_object_extension(Globals, PIC) = OtherExt :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred call_mercury_compile_main(globals::in, list(string)::in, bool::out,
-    io::di, io::uo) is det.
+:- pred call_mercury_compile_main(globals::in, list(string)::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
 
 call_mercury_compile_main(Globals, Args, Succeeded, !IO) :-
     io.get_exit_status(Status0, !IO),
     io.set_exit_status(0, !IO),
     mercury_compile_main.main_for_make(Globals, Args, !IO),
     io.get_exit_status(Status, !IO),
-    Succeeded = ( if Status = 0 then yes else no ),
+    Succeeded = ( if Status = 0 then succeeded else did_not_succeed ),
     io.set_exit_status(Status0, !IO).
 
 :- pred invoke_mmc(globals::in,
     io.text_output_stream::in, io.text_output_stream::in, maybe(file_name)::in,
-    list(string)::in, bool::out, io::di, io::uo) is det.
+    list(string)::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 invoke_mmc(Globals, ProgressStream, ErrorStream,
         MaybeArgFileName, Args, Succeeded, !IO) :-
@@ -715,7 +714,7 @@ invoke_mmc(Globals, ProgressStream, ErrorStream,
             ErrorStream, CommandVerbosity, Command, Succeeded, !IO)
     ;
         ArgFileOpenRes = error(Error),
-        Succeeded = no,
+        Succeeded = did_not_succeed,
         io.error_message(Error, ErrorMsg),
         io.format("Error opening `%s' for output: %s\n",
             [s(ArgFileName), s(ErrorMsg)], !IO)
@@ -743,17 +742,17 @@ record_made_target(Globals, TargetFile, CompilationTask, Succeeded,
     record_made_target_2(Globals, Succeeded, TargetFile, TouchedTargetFiles,
         TouchedFiles, !Info, !IO).
 
-:- pred record_made_target_2(globals::in, bool::in, target_file::in,
+:- pred record_made_target_2(globals::in, maybe_succeeded::in, target_file::in,
     list(target_file)::in, list(file_name)::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
 record_made_target_2(Globals, Succeeded, TargetFile, TouchedTargetFiles,
         OtherTouchedFiles, !Info, !IO) :-
     (
-        Succeeded = yes,
+        Succeeded = succeeded,
         TargetStatus = deps_status_up_to_date
     ;
-        Succeeded = no,
+        Succeeded = did_not_succeed,
         TargetStatus = deps_status_error,
         target_file_error(!.Info, Globals, TargetFile, !IO)
     ),

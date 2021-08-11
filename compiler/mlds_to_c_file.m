@@ -30,10 +30,10 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.process_util.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_c_util.
 
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 
@@ -48,7 +48,7 @@
     % string.)
     %
 :- pred output_c_mlds(mlds::in, globals::in, target_or_dump::in,
-    string::in, bool::out, io::di, io::uo) is det.
+    string::in, maybe_succeeded::out, io::di, io::uo) is det.
 
     % output_c_dump_preds(MLDS, Globals, TargetOrDump, Suffix, DumpPreds, !IO):
     %
@@ -96,6 +96,7 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module library.
 :- import_module map.
 :- import_module maybe.
@@ -120,15 +121,15 @@ output_c_mlds(MLDS, Globals, TargetOrDump, Suffix, Succeeded, !IO) :-
     Opts = init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump),
     output_c_file_opts(MLDS, Opts, Suffix, Succeeded0, !IO),
     (
-        Succeeded0 = yes,
+        Succeeded0 = succeeded,
         output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO)
     ;
-        Succeeded0 = no,
-        Succeeded = no
+        Succeeded0 = did_not_succeed,
+        Succeeded = did_not_succeed
     ).
 
 :- pred output_c_file_opts(mlds::in, mlds_to_c_opts::in, string::in,
-    bool::out, io::di, io::uo) is det.
+    maybe_succeeded::out, io::di, io::uo) is det.
 
 output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
@@ -141,7 +142,7 @@ output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
         mlds_output_src_file(Opts, Indent, MLDS), Succeeded, !IO).
 
 :- pred output_c_header_file_opts(mlds::in, mlds_to_c_opts::in, string::in,
-    bool::out, io::di, io::uo) is det.
+    maybe_succeeded::out, io::di, io::uo) is det.
 
 output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
     % We write the header file out to <module>.mih.tmp and then call
@@ -164,10 +165,10 @@ output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
     output_to_file_stream(Globals, ModuleName, TmpHeaderFileName,
         mlds_output_hdr_file(HdrOpts, Indent, MLDS), Succeeded, !IO),
     (
-        Succeeded = yes,
+        Succeeded = succeeded,
         update_interface(Globals, ModuleName, HeaderFileName, !IO)
     ;
-        Succeeded = no
+        Succeeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%

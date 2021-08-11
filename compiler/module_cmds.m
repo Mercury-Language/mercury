@@ -20,10 +20,10 @@
 :- import_module mdbcomp.sym_name.
 :- import_module libs.
 :- import_module libs.file_util.
+:- import_module libs.process_util.
 :- import_module libs.globals.
 :- import_module parse_tree.file_names.
 
-:- import_module bool.
 :- import_module list.
 :- import_module io.
 :- import_module maybe.
@@ -47,7 +47,8 @@
     %   Succeeded, !IO)
     %
 :- pred update_interface_return_succeeded(globals::in,
-    module_name::in, file_name::in, bool::out, io::di, io::uo) is det.
+    module_name::in, file_name::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
     % update_interface(Globals, ModuleName, OutputFileName, !IO)
     %
@@ -71,7 +72,7 @@
     % pointing to LinkTarget.
     %
 :- pred maybe_make_symlink(globals::in, file_name::in, file_name::in,
-    bool::out, io::di, io::uo) is det.
+    maybe_succeeded::out, io::di, io::uo) is det.
 
     % make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
     %   LinkTarget, LinkName, Succeeded, !IO):
@@ -81,13 +82,13 @@
     %
 :- pred make_symlink_or_copy_file(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    file_name::in, file_name::in, bool::out, io::di, io::uo) is det.
+    file_name::in, file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
     % As above, but for when LinkTarget is a directory rather than a file.
     %
 :- pred make_symlink_or_copy_dir(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    file_name::in, file_name::in, bool::out, io::di, io::uo) is det.
+    file_name::in, file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -112,9 +113,9 @@
 
 %-----------------------------------------------------------------------------%
 
-    % If the bool is `no', set the exit status to 1.
+    % If the argument is `did_not_succeed', set the exit status to 1.
     %
-:- pred maybe_set_exit_status(bool::in, io::di, io::uo) is det.
+:- pred maybe_set_exit_status(maybe_succeeded::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -140,7 +141,8 @@
     %
 :- pred invoke_system_command(globals::in, io.text_output_stream::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    command_verbosity::in, string::in, bool::out, io::di, io::uo) is det.
+    command_verbosity::in, string::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
     % invoke_system_command_maybe_filter_output(Globals,
     %   ProgressStream, ErrorStream, CmdOutputStream, Verbosity, Command,
@@ -153,7 +155,7 @@
 :- pred invoke_system_command_maybe_filter_output(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
     io.text_output_stream::in, command_verbosity::in, string::in,
-    maybe(string)::in, bool::out, io::di, io::uo) is det.
+    maybe(string)::in, maybe_succeeded::out, io::di, io::uo) is det.
 
     % Make a command string, which needs to be invoked in a shell environment.
     %
@@ -167,8 +169,8 @@
     % Create a shell script with the same name as the given module to invoke
     % Java with the appropriate options on the class of the same name.
     %
-:- pred create_java_shell_script(globals::in, module_name::in, bool::out,
-    io::di, io::uo) is det.
+:- pred create_java_shell_script(globals::in, module_name::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
 
     % Return the standard Mercury libraries needed for a Java program.
     % Return the empty list if --mercury-standard-library-directory
@@ -203,22 +205,22 @@
 
 :- pred create_launcher_shell_script(globals::in, module_name::in,
     pred(io.output_stream, io, io)::in(pred(in, di, uo) is det),
-    bool::out, io::di, io::uo) is det.
+    maybe_succeeded::out, io::di, io::uo) is det.
 
 :- pred create_launcher_batch_file(globals::in, module_name::in,
     pred(io.output_stream, io, io)::in(pred(in, di, uo) is det),
-    bool::out, io::di, io::uo) is det.
+    maybe_succeeded::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module libs.process_util.
 :- import_module libs.compute_grade.    % for grade_directory_component
 :- import_module libs.options.
 :- import_module parse_tree.java_names.
 
+:- import_module bool.
 :- import_module dir.
 :- import_module int.
 :- import_module require.
@@ -293,21 +295,21 @@ update_interface_return_succeeded(Globals, ModuleName, OutputFileName,
         ( Result = interface_new_or_changed
         ; Result = interface_unchanged
         ),
-        Succeeded = yes
+        Succeeded = succeeded
     ;
         Result = interface_error,
-        Succeeded = no
+        Succeeded = did_not_succeed
     ).
 
 update_interface(Globals, ModuleName, OutputFileName, !IO) :-
     update_interface_return_succeeded(Globals, ModuleName, OutputFileName,
         Succeeded, !IO),
     (
-        Succeeded = no,
+        Succeeded = did_not_succeed,
         get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
         report_error(ErrorStream, "problem updating interface files.", !IO)
     ;
-        Succeeded = yes
+        Succeeded = succeeded
     ).
 
 %-----------------------------------------------------------------------------%
@@ -397,10 +399,10 @@ copy_file(Globals, ProgressStream, ErrorStream, Source, Destination,
     invoke_system_command(Globals, ProgressStream, ErrorStream, ErrorStream,
         cmd_verbose, Command, Succeeded, !IO),
     (
-        Succeeded = yes,
+        Succeeded = succeeded,
         Res = ok
     ;
-        Succeeded = no,
+        Succeeded = did_not_succeed,
         io.open_binary_input(Source, SourceRes, !IO),
         (
             SourceRes = ok(SourceStream),
@@ -424,7 +426,7 @@ copy_file(Globals, ProgressStream, ErrorStream, Source, Destination,
 
 :- pred copy_dir(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    dir_name::in, dir_name::in, bool::out, io::di, io::uo) is det.
+    dir_name::in, dir_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 copy_dir(Globals, ProgressStream, ErrorStream, Source, Destination,
         Succeeded, !IO) :-
@@ -438,10 +440,10 @@ maybe_make_symlink(Globals, LinkTarget, LinkName, Result, !IO) :-
         UseSymLinks = yes,
         io.remove_file_recursively(LinkName, _, !IO),
         io.make_symlink(LinkTarget, LinkName, LinkResult, !IO),
-        Result = ( if LinkResult = ok then yes else no )
+        Result = ( if LinkResult = ok then succeeded else did_not_succeed )
     ;
         UseSymLinks = no,
-        Result = no
+        Result = did_not_succeed
     ).
 
 make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
@@ -476,10 +478,10 @@ make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
     ),
     (
         Result = ok,
-        Succeeded = yes
+        Succeeded = succeeded
     ;
         Result = error(Error),
-        Succeeded = no,
+        Succeeded = did_not_succeed,
         io.progname_base("mercury_compile", ProgName, !IO),
         io.error_message(Error, ErrorMsg),
         io.format(ErrorStream, "%s: error %s `%s' to `%s', %s\n",
@@ -496,10 +498,10 @@ make_symlink_or_copy_dir(Globals, ProgressStream, ErrorStream,
         io.make_symlink(SourceDirName, DestinationDirName, Result, !IO),
         (
             Result = ok,
-            Succeeded = yes
+            Succeeded = succeeded
         ;
             Result = error(Error),
-            Succeeded = no,
+            Succeeded = did_not_succeed,
             io.progname_base("mercury_compile", ProgName, !IO),
             io.format(ErrorStream, "%s: error linking `%s' to `%s': %s\n",
                 [s(ProgName), s(SourceDirName), s(DestinationDirName),
@@ -511,11 +513,12 @@ make_symlink_or_copy_dir(Globals, ProgressStream, ErrorStream,
         copy_dir(Globals, ProgressStream, ErrorStream,
             SourceDirName, DestinationDirName, Succeeded, !IO),
         (
-            Succeeded = yes
+            Succeeded = succeeded
         ;
-            Succeeded = no,
+            Succeeded = did_not_succeed,
             io.progname_base("mercury_compile", ProgName, !IO),
-            io.format(ErrorStream, "%s: error copying directory `%s' to `%s'\n",
+            io.format(ErrorStream,
+                "%s: error copying directory `%s' to `%s'\n",
                 [s(ProgName), s(SourceDirName), s(DestinationDirName)], !IO),
             io.flush_output(ErrorStream, !IO)
         )
@@ -551,8 +554,8 @@ touch_datestamp(Globals, ProgressStream, ErrorStream, OutputFileName, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-maybe_set_exit_status(yes, !IO).
-maybe_set_exit_status(no, !IO) :-
+maybe_set_exit_status(succeeded, !IO).
+maybe_set_exit_status(did_not_succeed, !IO) :-
     io.set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -610,10 +613,10 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
             Result = ok(exited(Status)),
             maybe_write_string(ProgressStream, PrintCommand, "% done.\n", !IO),
             ( if Status = 0 then
-                CommandSucceeded = yes
+                CommandSucceeded = succeeded
             else
                 % The command should have produced output describing the error.
-                CommandSucceeded = no
+                CommandSucceeded = did_not_succeed
             )
         ;
             Result = ok(signalled(Signal)),
@@ -629,18 +632,18 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
             % Make sure the current process gets the signal. Some systems (e.g.
             % Linux) ignore SIGINT during a call to system().
             raise_signal(Signal, !IO),
-            CommandSucceeded = no
+            CommandSucceeded = did_not_succeed
         ;
             Result = error(Error),
             report_error(ErrorStream, io.error_message(Error), !IO),
-            CommandSucceeded = no
+            CommandSucceeded = did_not_succeed
         )
     ;
         TmpFileResult = error(Error),
         report_error(ErrorStream,
             "Could not create temporary file: " ++ error_message(Error), !IO),
         TmpFile = "",
-        CommandSucceeded = no
+        CommandSucceeded = did_not_succeed
     ),
 
     ( if
@@ -677,11 +680,11 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
                 maybe_write_string(ProgressStream, PrintCommand,
                     "% done.\n", !IO),
                 ( if ProcessOutputStatus = 0 then
-                    ProcessOutputSucceeded = yes
+                    ProcessOutputSucceeded = succeeded
                 else
                     % The command should have produced output
                     % describing the error.
-                    ProcessOutputSucceeded = no
+                    ProcessOutputSucceeded = did_not_succeed
                 )
             ;
                 ProcessOutputResult = ok(signalled(ProcessOutputSignal)),
@@ -692,22 +695,22 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream, ErrorStream,
                 report_error(ErrorStream,
                     "system command received signal "
                     ++ int_to_string(ProcessOutputSignal) ++ ".", !IO),
-                ProcessOutputSucceeded = no
+                ProcessOutputSucceeded = did_not_succeed
             ;
                 ProcessOutputResult = error(ProcessOutputError),
                 ProcessOutputErrorMsg = io.error_message(ProcessOutputError),
                 report_error(ErrorStream, ProcessOutputErrorMsg, !IO),
-                ProcessOutputSucceeded = no
+                ProcessOutputSucceeded = did_not_succeed
             )
         ;
             ProcessedTmpFileResult = error(ProcessTmpError),
             ProcessTmpErrorMsg = io.error_message(ProcessTmpError),
             report_error(ErrorStream, ProcessTmpErrorMsg, !IO),
-            ProcessOutputSucceeded = no,
+            ProcessOutputSucceeded = did_not_succeed,
             ProcessedTmpFile = ""
         )
     else
-        ProcessOutputSucceeded = yes,
+        ProcessOutputSucceeded = succeeded,
         ProcessedTmpFile = TmpFile
     ),
     Succeeded = CommandSucceeded `and` ProcessOutputSucceeded,
@@ -1122,21 +1125,21 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
         (
             ChmodResult = ok(Status),
             ( if Status = 0 then
-                Succeeded = yes,
+                Succeeded = succeeded,
                 maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
             else
                 unexpected($pred, "chmod exit status != 0"),
-                Succeeded = no
+                Succeeded = did_not_succeed
             )
         ;
             ChmodResult = error(Message),
             unexpected($pred, io.error_message(Message)),
-            Succeeded = no
+            Succeeded = did_not_succeed
         )
     ;
         OpenResult = error(Message),
         unexpected($pred, io.error_message(Message)),
-        Succeeded = no
+        Succeeded = did_not_succeed
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1157,11 +1160,11 @@ create_launcher_batch_file(Globals, MainModuleName, Pred, Succeeded, !IO) :-
         OpenResult = ok(Stream),
         Pred(Stream, !IO),
         io.close_output(Stream, !IO),
-        Succeeded = yes
+        Succeeded = succeeded
     ;
         OpenResult = error(Message),
         unexpected($pred, io.error_message(Message)),
-        Succeeded = no
+        Succeeded = did_not_succeed
     ).
 
 %-----------------------------------------------------------------------------%

@@ -24,6 +24,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module libs.
 :- import_module libs.op_mode.
+:- import_module libs.process_util.
 :- import_module ll_backend.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
@@ -40,8 +41,8 @@
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 :- pred llds_output_pass(op_mode_codegen::in, module_info::in, global_data::in,
-    list(c_procedure)::in, module_name::in, bool::out, list(string)::out,
-    io::di, io::uo) is det.
+    list(c_procedure)::in, module_name::in, maybe_succeeded::out,
+    list(string)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -519,8 +520,8 @@ maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
         FollowCode = opt_follow_code,
         maybe_write_string(Verbose, "% Migrating branch code...", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_valid_nonimported_procs(update_module(move_follow_code_in_proc),
-            !HLDS),
+        process_valid_nonimported_procs(
+            update_module(move_follow_code_in_proc), !HLDS),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -729,7 +730,7 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
 
     output_llds_file(Globals, CFile, TargetCodeSucceeded, !IO),
     (
-        TargetCodeSucceeded = yes,
+        TargetCodeSucceeded = succeeded,
 
         C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _),
         export.produce_header_file(HLDS, C_ExportDecls, ModuleName, !IO),
@@ -744,22 +745,23 @@ llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
                 ProgressStream, !IO),
             get_error_output_stream(Globals, ModuleSymName, ErrorStream, !IO),
             llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
-                CompileOK, !IO),
+                CompileSucceeded, !IO),
             module_info_get_fact_table_file_names(HLDS, FactTableBaseFiles),
             list.map2_foldl(
                 compile_fact_table_file(Globals, ProgressStream, ErrorStream),
                 FactTableBaseFiles, FactTableObjFiles,
-                FactTableCompileOKs, !IO),
-            bool.and_list([CompileOK | FactTableCompileOKs], Succeeded),
+                FactTableCompileSucceededs, !IO),
+            Succeeded =
+                and_list([CompileSucceeded | FactTableCompileSucceededs]),
             maybe_set_exit_status(Succeeded, !IO)
         ;
             OpModeCodeGen = opmcg_target_code_only,
-            Succeeded = yes,
+            Succeeded = succeeded,
             FactTableObjFiles = []
         )
     ;
-        TargetCodeSucceeded = no,
-        Succeeded = no,
+        TargetCodeSucceeded = did_not_succeed,
+        Succeeded = did_not_succeed,
         FactTableObjFiles = []
     ).
 
@@ -880,8 +882,8 @@ combine_chunks_2([Chunk | Chunks], ModuleName, Num, [Module | Modules]) :-
     Num1 = Num + 1,
     combine_chunks_2(Chunks, ModuleName, Num1, Modules).
 
-:- pred output_llds_file(globals::in, c_file::in, bool::out, io::di, io::uo)
-    is det.
+:- pred output_llds_file(globals::in, c_file::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
 output_llds_file(Globals, LLDS0, Succeeded, !IO) :-
     transform_llds(Globals, LLDS0, LLDS),
@@ -889,7 +891,7 @@ output_llds_file(Globals, LLDS0, Succeeded, !IO) :-
 
 :- pred llds_c_to_obj(globals::in,
     io.text_output_stream::in, io.text_output_stream::in, module_name::in,
-    bool::out, io::di, io::uo) is det.
+    maybe_succeeded::out, io::di, io::uo) is det.
 
 llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
         Succeeded, !IO) :-
@@ -905,7 +907,7 @@ llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
 
 :- pred compile_fact_table_file(globals::in,
     io.text_output_stream::in, io.text_output_stream::in, string::in,
-    string::out, bool::out, io::di, io::uo) is det.
+    string::out, maybe_succeeded::out, io::di, io::uo) is det.
 
 compile_fact_table_file(Globals, ProgressStream, ErrorStream,
         BaseName, O_FileName, Succeeded, !IO) :-

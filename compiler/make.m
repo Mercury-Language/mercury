@@ -72,6 +72,7 @@
 :- import_module libs.handle_options.
 :- import_module libs.md5.
 :- import_module libs.options.
+:- import_module libs.process_util.
 :- import_module libs.timestamp.
 :- import_module make.build.
 :- import_module make.dependencies.
@@ -163,7 +164,7 @@
                 % Set to `no' for `mmc --make clean'.
                 rebuild_module_deps     :: rebuild_module_deps,
 
-                keep_going              :: bool,
+                keep_going              :: maybe_keep_going,
 
                 % Modules for which we have redirected output
                 % to a `.err' file during this invocation of mmc.
@@ -293,6 +294,14 @@
                 linked_tf_type      :: linked_target_type
             ).
 
+:- type maybe_invoked_by_mmc_make
+    --->    not_invoked_by_mmc_make
+    ;       invoked_by_mmc_make.
+
+:- type maybe_keep_going
+    --->    do_not_keep_going
+    ;       do_keep_going.
+
 %-----------------------------------------------------------------------------%
 
 make_write_module_dep_file(Globals, Imports, !IO) :-
@@ -362,7 +371,10 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
         io.set_exit_status(1, !IO)
     ;
         Continue = yes,
-        globals.lookup_bool_option(Globals, keep_going, KeepGoing),
+        globals.lookup_bool_option(Globals, keep_going, KeepGoingBool),
+        ( KeepGoingBool = no,  KeepGoing = do_not_keep_going
+        ; KeepGoingBool = yes, KeepGoing = do_keep_going
+        ),
 
         ModuleIndexMap = module_index_map(
             version_hash_table.init_default(module_name_hash),
@@ -413,15 +425,13 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
 
         % Build the targets, stopping on any errors if `--keep-going'
         % was not set.
-
         foldl2_maybe_stop_at_error(KeepGoing, make_target, Globals,
-            ClassifiedTargets, Success, MakeInfo0, _MakeInfo, !IO),
-
+            ClassifiedTargets, Succeeded, MakeInfo0, _MakeInfo, !IO),
         (
-            Success = no,
+            Succeeded = did_not_succeed,
             io.set_exit_status(1, !IO)
         ;
-            Success = yes
+            Succeeded = succeeded
         )
     ).
 
@@ -433,40 +443,42 @@ report_target_with_dir_component(ProgName, Target) = Spec :-
     Spec = error_spec($pred, severity_error, phase_make_target,
         [error_msg(no, treat_as_first, 0, [always(Pieces)])]).
 
-:- pred make_target(globals::in, pair(module_name, target_type)::in, bool::out,
+:- pred make_target(globals::in, pair(module_name, target_type)::in,
+    maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_target(Globals, Target, Success, !Info, !IO) :-
+make_target(Globals, Target, Succeeded, !Info, !IO) :-
     Target = ModuleName - TargetType,
     globals.lookup_bool_option(Globals, track_flags, TrackFlags),
     (
         TrackFlags = no,
-        TrackFlagsSuccess = yes
+        TrackFlagsSucceeded = succeeded
     ;
         TrackFlags = yes,
-        make_track_flags_files(Globals, ModuleName, TrackFlagsSuccess, !Info,
-            !IO)
+        make_track_flags_files(Globals, ModuleName, TrackFlagsSucceeded,
+            !Info, !IO)
     ),
     (
-        TrackFlagsSuccess = yes,
+        TrackFlagsSucceeded = succeeded,
         (
             TargetType = module_target(ModuleTargetType),
             TargetFile = target_file(ModuleName, ModuleTargetType),
-            make_module_target(Globals, dep_target(TargetFile), Success,
+            make_module_target(Globals, dep_target(TargetFile), Succeeded,
                 !Info, !IO)
         ;
             TargetType = linked_target(ProgramTargetType),
             LinkedTargetFile = linked_target_file(ModuleName,
                 ProgramTargetType),
-            make_linked_target(Globals, LinkedTargetFile, Success, !Info, !IO)
+            make_linked_target(Globals, LinkedTargetFile, Succeeded,
+                !Info, !IO)
         ;
             TargetType = misc_target(MiscTargetType),
-            make_misc_target(Globals, ModuleName - MiscTargetType, Success,
+            make_misc_target(Globals, ModuleName - MiscTargetType, Succeeded,
                 !Info, !IO)
         )
     ;
-        TrackFlagsSuccess = no,
-        Success = no
+        TrackFlagsSucceeded = did_not_succeed,
+        Succeeded = did_not_succeed
     ).
 
 %-----------------------------------------------------------------------------%
@@ -635,30 +647,31 @@ get_executable_type(Globals) = ExecutableType :-
     % updated if they have changed since the last --make run. We use hashes as
     % the full option tables are quite large.
     %
-:- pred make_track_flags_files(globals::in, module_name::in, bool::out,
+:- pred make_track_flags_files(globals::in, module_name::in,
+    maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_track_flags_files(Globals, ModuleName, Success, !Info, !IO) :-
-    find_reachable_local_modules(Globals, ModuleName, Success0, Modules,
+make_track_flags_files(Globals, ModuleName, Succeeded, !Info, !IO) :-
+    find_reachable_local_modules(Globals, ModuleName, Succeeded0, Modules,
         !Info, !IO),
     (
-        Success0 = yes,
-        KeepGoing = no,
+        Succeeded0 = succeeded,
+        KeepGoing = do_not_keep_going,
         DummyLastHash = last_hash([], ""),
         foldl3_maybe_stop_at_error(KeepGoing, make_track_flags_files_2,
-            Globals, set.to_sorted_list(Modules), Success,
+            Globals, set.to_sorted_list(Modules), Succeeded,
             DummyLastHash, _LastHash, !Info, !IO)
     ;
-        Success0 = no,
-        Success = no
+        Succeeded0 = did_not_succeed,
+        Succeeded = did_not_succeed
     ).
 
-:- pred make_track_flags_files_2(globals::in, module_name::in, bool::out,
-    last_hash::in, last_hash::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred make_track_flags_files_2(globals::in, module_name::in,
+    maybe_succeeded::out, last_hash::in, last_hash::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_track_flags_files_2(Globals, ModuleName, Success, !LastHash, !Info,
-        !IO) :-
+make_track_flags_files_2(Globals, ModuleName, Succeeded,
+        !LastHash, !Info, !IO) :-
     lookup_mmc_module_options(!.Info ^ options_variables, ModuleName,
         ModuleOptionArgs, LookupSpecs, !IO),
     write_error_specs_ignore(Globals, LookupSpecs, !IO),
@@ -686,14 +699,14 @@ make_track_flags_files_2(Globals, ModuleName, Success, !LastHash, !Info,
         compare_hash_file(Globals, HashFileName, Hash, Same, !IO),
         (
             Same = yes,
-            Success = yes
+            Succeeded = succeeded
         ;
             Same = no,
-            write_hash_file(HashFileName, Hash, Success, !IO)
+            write_hash_file(HashFileName, Hash, Succeeded, !IO)
         )
     ;
         LookupErrors = yes,
-        Success = no
+        Succeeded = did_not_succeed
     ).
 
 :- pred option_table_hash(list(string)::in, string::out,
@@ -796,24 +809,21 @@ compare_hash_file(Globals, FileName, Hash, Same, !IO) :-
         Verbose = no
     ).
 
-:- pred write_hash_file(string::in, string::in, bool::out, io::di, io::uo)
-    is det.
+:- pred write_hash_file(string::in, string::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
-write_hash_file(FileName, Hash, Success, !IO) :-
+write_hash_file(FileName, Hash, Succeeded, !IO) :-
     io.open_output(FileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),
         io.write_string(Stream, Hash, !IO),
         io.close_output(Stream, !IO),
-        Success = yes
+        Succeeded = succeeded
     ;
         OpenResult = error(Error),
-        io.write_string("Error creating `", !IO),
-        io.write_string(FileName, !IO),
-        io.write_string("': ", !IO),
-        io.write_string(io.error_message(Error), !IO),
-        io.nl(!IO),
-        Success = no
+        io.format("Error creating `%s': %s\n",
+            [s(FileName), s(io.error_message(Error))], !IO),
+        Succeeded = did_not_succeed
     ).
 
 %-----------------------------------------------------------------------------%

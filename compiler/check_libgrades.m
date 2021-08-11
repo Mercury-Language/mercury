@@ -17,8 +17,8 @@
 :- interface.
 
 :- import_module libs.globals.
+:- import_module libs.process_util.
 
-:- import_module bool.
 :- import_module io.
 
 %---------------------------------------------------------------------------%
@@ -27,7 +27,7 @@
     % libraries required by the target are installed in the selected grade.
     % Always succeeds if --libgrade-install-check is *not* enabled.
     %
-:- pred maybe_check_libraries_are_installed(globals::in, bool::out,
+:- pred maybe_check_libraries_are_installed(globals::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -39,6 +39,7 @@
 :- import_module libs.file_util.
 :- import_module libs.options.
 
+:- import_module bool.
 :- import_module dir.
 :- import_module list.
 :- import_module maybe.
@@ -58,11 +59,11 @@ maybe_check_libraries_are_installed(Globals, Succeeded, !IO) :-
             Succeeded0, Succeeded, !IO)
     ;
         LibgradeCheck = no,
-        Succeeded = yes
+        Succeeded = succeeded
     ).
 
-:- pred check_stdlib_is_installed(globals::in, string::in, bool::out,
-    io::di, io::uo) is det.
+:- pred check_stdlib_is_installed(globals::in, string::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
 
 check_stdlib_is_installed(Globals, GradeDirName, Succeeded, !IO) :-
     globals.lookup_maybe_string_option(Globals,
@@ -92,7 +93,7 @@ check_stdlib_is_installed(Globals, GradeDirName, Succeeded, !IO) :-
         (
             StdLibCheckFileResult = ok(StdLibCheckFileStream),
             io.close_input(StdLibCheckFileStream, !IO),
-            Succeeded = yes
+            Succeeded = succeeded
         ;
             StdLibCheckFileResult = error(_),
             % XXX It would be better for our *caller* to print this kind of
@@ -104,15 +105,16 @@ check_stdlib_is_installed(Globals, GradeDirName, Succeeded, !IO) :-
                 "%s: error: the Mercury standard library "  ++
                 "cannot be found in grade %s.\n",
                 [s(ProgName), s(GradeDirName)], !IO),
-            Succeeded = no
+            Succeeded = did_not_succeed
         )
     ;
         MaybeStdLibDir = no,
-        Succeeded = yes
+        Succeeded = succeeded
     ).
 
 :- pred check_library_is_installed(globals::in, string::in,
-    string::in, bool::in, bool::out, io::di, io::uo) is det.
+    string::in, maybe_succeeded::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
 check_library_is_installed(Globals, GradeDirName, LibName, !Succeeded, !IO) :-
     globals.get_target(Globals, Target),
@@ -154,7 +156,7 @@ check_library_is_installed(Globals, GradeDirName, LibName, !Succeeded, !IO) :-
         io.format(Stderr,
             "%s: error: the library `%s' cannot be found in grade `%s'.\n",
             [s(ProgName), s(LibName), s(GradeDirName)], !IO),
-        !:Succeeded = no
+        !:Succeeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%

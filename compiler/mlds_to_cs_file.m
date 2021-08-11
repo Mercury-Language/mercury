@@ -17,16 +17,17 @@
 :- module ml_backend.mlds_to_cs_file.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.process_util.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds.
 
-:- import_module bool.
 :- import_module io.
 
 %---------------------------------------------------------------------------%
 
-:- pred output_csharp_mlds(module_info::in, mlds::in, bool::out,
+:- pred output_csharp_mlds(module_info::in, mlds::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -34,7 +35,6 @@
 
 :- implementation.
 
-:- import_module libs.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -59,6 +59,7 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module list.

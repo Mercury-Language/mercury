@@ -61,6 +61,7 @@
 :- import_module libs.op_mode.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
+:- import_module libs.process_util.
 :- import_module libs.timestamp.
 :- import_module make.
 :- import_module make.build.
@@ -942,12 +943,12 @@ maybe_print_delayed_error_messages(Globals, !IO) :-
         )
     ).
 
-:- type compile == pred(globals, bool, io, io).
+:- type compile == pred(globals, maybe_succeeded, io, io).
 :- inst compile == (pred(in, out, di, uo) is det).
 
 :- pred compile_with_module_options(globals::in, module_name::in,
     list(string)::in, options_variables::in, list(string)::in,
-    compile::in(compile), bool::out, io::di, io::uo) is det.
+    compile::in(compile), maybe_succeeded::out, io::di, io::uo) is det.
 
 compile_with_module_options(Globals, ModuleName, DetectedGradeFlags,
         OptionVariables, OptionArgs, Compile, Succeeded, !IO) :-
@@ -1088,7 +1089,7 @@ process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
 
 :- pred process_compiler_arg_build(op_mode_args::in, file_or_module::in,
     list(string)::in, have_read_module_maps::in,
-    globals::in, list(string)::in, bool::out,
+    globals::in, list(string)::in, maybe_succeeded::out,
     unit::in, {list(string), list(string), have_read_module_maps}::out,
     io::di, io::uo) is det.
 
@@ -1098,16 +1099,16 @@ process_compiler_arg_build(OpModeArgs, FileOrModule, OptionArgs,
         !IO) :-
     maybe_check_libraries_are_installed(Globals, LibgradeCheckSucceeded, !IO),
     (
-        LibgradeCheckSucceeded = yes,
+        LibgradeCheckSucceeded = succeeded,
         do_process_compiler_arg(Globals, OpModeArgs, OptionArgs, FileOrModule,
             Modules, ExtraObjFiles,
             HaveReadModuleMaps0, HaveReadModuleMaps, !IO),
-        Succeeded = yes
+        Succeeded = succeeded
     ;
-        LibgradeCheckSucceeded = no,
+        LibgradeCheckSucceeded = did_not_succeed,
         Modules = [],
         ExtraObjFiles = [],
-        Succeeded = no,
+        Succeeded = did_not_succeed,
         HaveReadModuleMaps = HaveReadModuleMaps0
     ).
 
@@ -2481,10 +2482,10 @@ after_front_end_passes(Globals, OpModeCodeGen, MaybeTopModule,
                 ; OpModeCodeGen = opmcg_target_object_and_executable
                 ),
                 (
-                    TargetCodeSucceeded = no,
-                    Succeeded = no
+                    TargetCodeSucceeded = did_not_succeed,
+                    Succeeded = did_not_succeed
                 ;
-                    TargetCodeSucceeded = yes,
+                    TargetCodeSucceeded = succeeded,
                     module_name_to_file_name(Globals, $pred,
                         do_not_create_dirs, ext_other(other_ext(".java")),
                         ModuleName, JavaFile, !IO),
@@ -2514,10 +2515,10 @@ after_front_end_passes(Globals, OpModeCodeGen, MaybeTopModule,
                     ; OpModeCodeGen = opmcg_target_object_and_executable
                     ),
                     (
-                        TargetCodeSucceeded = no,
-                        Succeeded = no
+                        TargetCodeSucceeded = did_not_succeed,
+                        Succeeded = did_not_succeed
                     ;
-                        TargetCodeSucceeded = yes,
+                        TargetCodeSucceeded = succeeded,
                         module_name_to_file_name(Globals, $pred,
                             do_not_create_dirs, ext_other(other_ext(".c")),
                             ModuleName, C_File, !IO),
@@ -2545,7 +2546,7 @@ after_front_end_passes(Globals, OpModeCodeGen, MaybeTopModule,
             )
         ),
         (
-            Succeeded = yes,
+            Succeeded = succeeded,
             NestedSubModules =
                 get_nested_children_of_top_module(MaybeTopModule),
             recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,
@@ -2554,7 +2555,7 @@ after_front_end_passes(Globals, OpModeCodeGen, MaybeTopModule,
             list.foldl(touch_datestamp(Globals, ProgressStream, ErrorStream),
                 TimestampFiles, !IO)
         ;
-            Succeeded = no
+            Succeeded = did_not_succeed
             % An error should have been reported earlier.
         )
     else

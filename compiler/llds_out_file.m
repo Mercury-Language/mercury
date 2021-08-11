@@ -21,6 +21,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.process_util.
 :- import_module ll_backend.llds.
 
 :- import_module bool.
@@ -30,7 +31,8 @@
 
     % Given a c_file structure, output the LLDS code inside it into a .c file.
     %
-:- pred output_llds(globals::in, c_file::in, bool::out, io::di, io::uo) is det.
+:- pred output_llds(globals::in, c_file::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
 %----------------------------------------------------------------------------%
 
@@ -177,10 +179,10 @@ output_single_c_file(Globals, Stream, CFile, Errors, !DeclSet, !IO) :-
         !DeclSet, !IO),
     list.foldl2(output_tabling_info_struct(Info, Stream), TablingInfoStructs,
         !DeclSet, !IO),
-    list.foldl2(output_scalar_common_data_defn(Info, Stream), ScalarCommonDatas,
-        !DeclSet, !IO),
-    list.foldl2(output_vector_common_data_defn(Info, Stream), VectorCommonDatas,
-        !DeclSet, !IO),
+    list.foldl2(output_scalar_common_data_defn(Info, Stream),
+        ScalarCommonDatas, !DeclSet, !IO),
+    list.foldl2(output_vector_common_data_defn(Info, Stream),
+        VectorCommonDatas, !DeclSet, !IO),
     list.foldl2(output_rtti_data_defn(Info, Stream), RttiDatas, !DeclSet, !IO),
 
     io.nl(Stream, !IO),
