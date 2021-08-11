@@ -351,11 +351,11 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
     ;
         AbsTargets = [_ | _],
         Continue = no,
-        list.foldl(
-            ( pred(Target::in, !.I::di, !:I::uo) is det :-
-                error_util.write_error_plain_with_progname(Target,
-                  "Make target must not contain any directory component.", !I)
-            ), AbsTargets, !IO)
+        io.progname_base("mercury_compile", ProgName, !IO),
+        AbsTargetSpecs =
+            list.map(report_target_with_dir_component(ProgName), AbsTargets),
+        io.stderr_stream(StdErr, !IO),
+        write_error_specs_ignore(StdErr, Globals, AbsTargetSpecs, !IO)
     ),
     (
         Continue = no,
@@ -424,6 +424,14 @@ make_process_compiler_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
             Success = yes
         )
     ).
+
+:- func report_target_with_dir_component(string, string) = error_spec.
+
+report_target_with_dir_component(ProgName, Target) = Spec :-
+    Pieces = [fixed(ProgName), suffix(":"), fixed(Target), suffix(":"), nl,
+        words("Make target must not contain any directory component."), nl],
+    Spec = error_spec($pred, severity_error, phase_make_target,
+        [error_msg(no, treat_as_first, 0, [always(Pieces)])]).
 
 :- pred make_target(globals::in, pair(module_name, target_type)::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.

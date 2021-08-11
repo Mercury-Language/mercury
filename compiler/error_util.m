@@ -178,6 +178,7 @@
 
 :- type error_phase
     --->    phase_options
+    ;       phase_make_target
     ;       phase_read_files
     ;       phase_module_name
     ;       phase_term_to_parse_tree
@@ -665,16 +666,6 @@
     io::di, io::uo) is det.
 :- pred write_error_pieces_plain(io.text_output_stream::in, globals::in,
     list(format_component)::in, io::di, io::uo) is det.
-
-    % write_error_plain_with_progname(ProgName, Msg):
-    %
-    % Display Msg as the error string, with ProgName as a context
-    % and with standard indentation.
-    %
-:- pred write_error_plain_with_progname(string::in, string::in,
-    io::di, io::uo) is det.
-:- pred write_error_plain_with_progname(io.text_output_stream::in,
-    string::in, string::in, io::di, io::uo) is det.
 
     % write_error_pieces(Globals, Context, Indent, Components):
     %
@@ -1415,6 +1406,7 @@ error_spec_accumulator_to_list(yes(AnyModeSpecSet - AllModeSpecSet)) =
     maybe(mode_report_control).
 
 get_maybe_mode_report_control(phase_options) = no.
+get_maybe_mode_report_control(phase_make_target) = no.
 get_maybe_mode_report_control(phase_read_files) = no.
 get_maybe_mode_report_control(phase_module_name) = no.
 get_maybe_mode_report_control(phase_term_to_parse_tree) = no.
@@ -1804,28 +1796,6 @@ write_error_pieces_plain(Globals, Components, !IO) :-
 write_error_pieces_plain(Stream, Globals, Components, !IO) :-
     do_write_error_pieces(Stream, treat_as_first, no, 0,
         Globals, Components, !IO).
-
-%---------------------%
-
-write_error_plain_with_progname(ProgName, Msg, !IO) :-
-    io.output_stream(Stream, !IO),
-    write_error_plain_with_progname(Stream, ProgName, Msg, !IO).
-
-write_error_plain_with_progname(Stream, ProgName, Msg, !IO) :-
-    MaxWidth = 79,
-    LinesInMsg = string.split_at_char('\n', Msg),
-    convert_lines_in_msg_to_pieces(LinesInMsg, LinesInMsgPieces),
-    Components = [fixed(ProgName ++ ":") | LinesInMsgPieces],
-    do_write_error_pieces_params(Stream, treat_as_first, no, 0,
-        yes(MaxWidth), map.init, Components, !IO).
-
-:- pred convert_lines_in_msg_to_pieces(list(string)::in,
-    list(format_component)::out) is det.
-
-convert_lines_in_msg_to_pieces([], []).
-convert_lines_in_msg_to_pieces([Line | Lines], Pieces) :-
-    convert_lines_in_msg_to_pieces(Lines, TailPieces),
-    Pieces = [words(Line), nl | TailPieces].
 
 %---------------------------------------------------------------------------%
 

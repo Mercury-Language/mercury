@@ -725,12 +725,14 @@ do_op_mode_standalone_interface(Globals, StandaloneIntBasename, !IO) :-
         ( Target = target_csharp
         ; Target = target_java
         ),
-        NotRequiredMsg = [words("Error:"),
-            quote("--generate-standalone-interface"),
+        io.progname_base("mercury_compile", ProgName, !IO),
+        Pieces = [fixed(ProgName), suffix(":"), nl,
+            words("Error:"), quote("--generate-standalone-interface"),
             words("is not required for target language"),
             words(compilation_target_string(Target)), suffix("."), nl],
-        write_error_pieces_plain(ErrorStream, Globals, NotRequiredMsg, !IO),
-        io.set_exit_status(1, !IO)
+        Spec = error_spec($pred, severity_error, phase_options,
+            [error_msg(no, treat_as_first, 0, [always(Pieces)])]),
+        write_error_spec_ignore(ErrorStream, Globals, Spec, !IO)
     ;
         Target = target_c,
         make_standalone_interface(Globals, ProgressStream, ErrorStream,
